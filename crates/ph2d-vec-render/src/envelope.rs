@@ -28,12 +28,19 @@ pub const ENVELOPE_HANDLE_R_PX: f64 = 6.0;
 const LINE_PX: f64 = 1.5;
 
 /// A gaiola a desenhar neste frame: os 4 cantos em MUNDO (o host os leu do `VecEnvelope`) e qual
-/// deles está sendo arrastado (`Some(idx)` ⇒ bolinha cheia).
+/// alça está sendo arrastada (`Some(idx)` ⇒ bolinha cheia).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EnvelopeCageView {
     /// Os 4 cantos em coordenadas de MUNDO, ordem `[BL, BR, TR, TL]`.
     pub corners: [[f64; 2]; 4],
-    /// O índice do canto sob arrasto agora, se houver — o único que se desenha cheio.
+    /// Os 2 controles de cada lado, em MUNDO — `Some` só no gesto **Mesh**.
+    ///
+    /// `None` = lados **retos** e sem alça de lado: é o gesto Perspective, onde o mapa ignora os
+    /// controles. A vista diz o que DESENHAR, não em que modo o documento está — assim o renderer
+    /// não precisa conhecer o enum, e uma alça pintada é sempre uma alça viva.
+    pub edges: Option<[[[f64; 2]; 2]; 4]>,
+    /// O índice da alça sob arrasto agora (`0..4` cantos · `4..12` controles), se houver — a única
+    /// que se desenha cheia.
     pub dragging: Option<usize>,
 }
 
@@ -58,13 +65,23 @@ pub fn draw_envelope_cage(
     );
 
     // A moldura da gaiola: BL→BR→TR→TL→BL, fechada. Diz onde a forma está sendo deformada e a que
-    // canto cada bolinha pertence.
+    // canto cada bolinha pertence. Com lados curvos (Mesh) cada aresta é a MESMA cúbica que o mapa
+    // consome — desenhar a corda enquanto o mapa usa a curva mentiria sobre onde a gaiola está.
     let pts: [Point; 4] =
         std::array::from_fn(|i| transform * Point::new(cage.corners[i][0], cage.corners[i][1]));
+    let ctrl: Option<[[Point; 2]; 4]> = cage.edges.map(|e| {
+        std::array::from_fn(|i| {
+            std::array::from_fn(|j| transform * Point::new(e[i][j][0], e[i][j][1]))
+        })
+    });
     let mut frame = BezPath::new();
     frame.move_to(pts[0]);
-    for p in &pts[1..] {
-        frame.line_to(*p);
+    for i in 0..4 {
+        let end = pts[(i + 1) % 4];
+        match ctrl {
+            Some(c) => frame.curve_to(c[i][0], c[i][1], end),
+            None => frame.line_to(end),
+        }
     }
     frame.close_path();
     target.inner_mut().stroke(
@@ -75,7 +92,34 @@ pub fn draw_envelope_cage(
         &frame,
     );
 
-    for (i, p) in pts.iter().enumerate() {
+    // As hastes: cada controle ligado ao canto a que pertence, como em qualquer alça de Bézier — sem
+    // elas as 8 bolinhas ficam soltas no espaço e não se lê de quem são.
+    if let Some(c) = ctrl {
+        let mut tethers = BezPath::new();
+        for i in 0..4 {
+            tethers.move_to(pts[i]);
+            tethers.line_to(c[i][0]);
+            tethers.move_to(pts[(i + 1) % 4]);
+            tethers.line_to(c[i][1]);
+        }
+        target.inner_mut().stroke(
+            &Stroke::new(LINE_PX * 0.5),
+            Affine::IDENTITY,
+            &Brush::Solid(wire),
+            None,
+            &tethers,
+        );
+    }
+
+    // As bolinhas: os 4 cantos e, no Mesh, os 8 controles — no MESMO espaço de índices que o
+    // hit-test do host usa (`0..4` cantos · `4 + 2·lado + j` controles), senão o dedo pegaria uma
+    // alça e outra acenderia.
+    let handles: Vec<Point> = pts
+        .iter()
+        .copied()
+        .chain(ctrl.into_iter().flatten().flatten())
+        .collect();
+    for (i, p) in handles.iter().enumerate() {
         let dot = Circle::new(*p, ENVELOPE_HANDLE_R_PX);
         if cage.dragging == Some(i) {
             target.inner_mut().fill(

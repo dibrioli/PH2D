@@ -18,4 +18,6 @@ pub(super) fn populate_envelope(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ENVELOPE_RUN);
     button(store, ids::VECTOR_ENVELOPE_EXPAND);
     button(store, ids::VECTOR_ENVELOPE_RELEASE);
+    button(store, ids::VECTOR_ENVELOPE_PERSPECTIVE);
+    button(store, ids::VECTOR_ENVELOPE_MESH);
 }

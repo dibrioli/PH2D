@@ -55,6 +55,7 @@ thread_local! {
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_HAS_ENVELOPE: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_ENVELOPE_MESH: Cell<bool> = const { Cell::new(false) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
@@ -308,6 +309,19 @@ pub fn set_current_has_envelope(v: bool) {
 
 pub(crate) fn has_envelope() -> bool {
     CURRENT_HAS_ENVELOPE.with(Cell::get)
+}
+
+/// Publica se o envelope da seleção está no gesto **Mesh** (lados curvos) e não no **Perspective**.
+///
+/// Só é lido quando [`has_envelope`] é `true` — sem envelope não há gesto a mostrar. Um `bool` e não
+/// um espelho do enum: o painel oferece exatamente dois chips, e um enum aqui obrigaria esta crate a
+/// conhecer o `ph2d_ecs::EnvelopeKind` só para desenhar qual está aceso.
+pub fn set_current_envelope_mesh(v: bool) {
+    CURRENT_ENVELOPE_MESH.with(|c| c.set(v));
+}
+
+pub(crate) fn envelope_mesh() -> bool {
+    CURRENT_ENVELOPE_MESH.with(Cell::get)
 }
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).

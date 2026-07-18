@@ -21,18 +21,37 @@
 //! `held_button` está `Some`. Os N frames do arrasto não viram N passos; ao soltar, o [`VecEnvelope`]
 //! alterado (que viaja no `WorldSnapshot`) vira **um** passo no diff global. Nada a instrumentar aqui.
 
-use ph2d_ecs::{Entity, SimWorld, VecEnvelope};
+use ph2d_ecs::{Entity, EnvelopeKind, SimWorld, VecEnvelope};
+use ph2d_vec_envelope::CageEdges;
 use ph2d_vec_render::{ENVELOPE_HANDLE_R_PX, EnvelopeCageView};
 use ph2d_vec_scene::Xform;
 
-/// Os 4 cantos da gaiola do container `bits`, em coordenadas **LOCAIS do container** (como vivem no
-/// componente) — `None` se `bits` não é um envelope (ou sumiu). Quem os leva ao MUNDO é
-/// [`container_world_xform`].
+/// A gaiola do container `bits` em coordenadas **LOCAIS do container** (como vive no componente):
+/// cantos, controles de lado e qual dos dois mapas ela aplica. `None` se `bits` não é um envelope (ou
+/// sumiu). Quem a leva ao MUNDO é [`container_world_xform`].
 #[must_use]
-pub(crate) fn corners_of(sim: &SimWorld, bits: u64) -> Option<[[f64; 2]; 4]> {
+fn cage_of(sim: &SimWorld, bits: u64) -> Option<([[f64; 2]; 4], CageEdges, EnvelopeKind)> {
     sim.world()
         .get::<VecEnvelope>(Entity::from_bits(bits))
-        .map(|env| env.corners)
+        .map(|env| (env.corners, env.edges, env.kind))
+}
+
+/// O gesto que a gaiola do container `bits` aplica — `Perspective` quando `bits` não é um envelope
+/// (nada a desenhar aceso). É o que o painel pergunta para acender o chip certo, pela MESMA leitura
+/// que o [`drag`] usa para escolher o guard.
+#[must_use]
+pub(crate) fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
+    cage_of(sim, bits).map_or(EnvelopeKind::Perspective, |(_, _, k)| k)
+}
+
+/// Os controles de lado a OFERECER — `Some` só no gesto Mesh.
+///
+/// **Porta única** de *"esta gaiola tem alça de lado?"*: o hit-test, o arrasto e o desenho perguntam
+/// aqui. Em Perspective o mapa ignora os controles, então oferecê-los seria alça morta — e se cada
+/// sítio decidisse por conta própria, um deles ofereceria e outro não.
+#[must_use]
+fn offered_edges(edges: CageEdges, kind: EnvelopeKind) -> Option<CageEdges> {
+    (kind == EnvelopeKind::Mesh).then_some(edges)
 }
 
 /// O afim LOCAL→MUNDO do CONTAINER `bits` — a MESMA pose que `vec_transform::build` publica
@@ -55,13 +74,21 @@ fn to_world(local: [[f64; 2]; 4], xf: &Xform) -> [[f64; 2]; 4] {
     std::array::from_fn(|i| xf.apply(local[i]))
 }
 
-/// **Pressão no modo Node:** se a entidade selecionada é um envelope e um canto da gaiola está sob o
-/// cursor, arma o arrasto (`*drag = Some((bits, canto))`) e devolve `true` — o host então PULA o
+/// Os 8 controles LOCAIS levados ao MUNDO pela mesma pose.
+#[must_use]
+fn edges_to_world(local: CageEdges, xf: &Xform) -> CageEdges {
+    std::array::from_fn(|i| std::array::from_fn(|j| xf.apply(local[i][j])))
+}
+
+/// **Pressão no modo Node:** se a entidade selecionada é um envelope e uma **alça** da gaiola está
+/// sob o cursor, arma o arrasto (`*drag = Some((bits, alça))`) e devolve `true` — o host então PULA o
 /// `PenTool`. Fora disso devolve `false` e o pen segue como hoje (seleção / edição de âncora).
 ///
-/// Hit-test no MUNDO: os cantos LOCAIS sobem pela pose do container ([`container_world_xform`]) e o
-/// cursor (mundo) é comparado a eles. `px_to_world` converte o raio da bolinha (px, do renderer) para
-/// o alcance em mundo — a MESMA constante que o desenho usa, para o dedo e a tela concordarem.
+/// As alças são os 4 cantos e — só no gesto Mesh ([`offered_edges`]) — os 8 controles de lado, num
+/// espaço de índices único. Hit-test no MUNDO: a gaiola LOCAL sobe pela pose do container
+/// ([`container_world_xform`]) e o cursor (mundo) é comparado a ela. `px_to_world` converte o raio da
+/// bolinha (px, do renderer) para o alcance em mundo — a MESMA constante que o desenho usa, para o
+/// dedo e a tela concordarem.
 #[must_use]
 pub(crate) fn press(
     sim: &SimWorld,
@@ -71,58 +98,61 @@ pub(crate) fn press(
     drag: &mut Option<(u64, usize)>,
 ) -> bool {
     let Some(bits) = selected else { return false };
-    let Some(local) = corners_of(sim, bits) else {
+    let Some((corners, edges, kind)) = cage_of(sim, bits) else {
         return false;
     };
     let Some(xf) = container_world_xform(sim, bits) else {
         return false;
     };
-    let world = to_world(local, &xf);
+    let world = to_world(corners, &xf);
+    let world_edges = offered_edges(edges, kind).map(|e| edges_to_world(e, &xf));
     let radius = ENVELOPE_HANDLE_R_PX * px_to_world;
-    match ph2d_vec_envelope::nearest_corner(&world, world_pt, radius) {
-        Some(corner) => {
-            *drag = Some((bits, corner));
+    match ph2d_vec_envelope::nearest_handle(&world, world_edges.as_ref(), world_pt, radius) {
+        Some(handle) => {
+            *drag = Some((bits, handle));
             true
         }
         None => false,
     }
 }
 
-/// **Move durante o arrasto:** leva o canto agarrado para `world_pt`, mas só se a gaiola continuar
-/// convexa ([`ph2d_vec_envelope::move_corner_convex`]); não-convexo ⇒ o canto **para na fronteira**
-/// (os cantos não mudam neste frame; o §5 mantém o horizonte fora da gaiola). Devolve `true` enquanto
-/// há um arrasto vivo — o host consome o Move —, tenha o canto andado ou não.
+/// **Move durante o arrasto:** leva a alça agarrada para `world_pt`, mas só se a gaiola sobreviver ao
+/// guard do gesto ([`ph2d_vec_envelope::move_handle`]: convexidade no Perspective · não-dobra no
+/// Mesh). Recusado ⇒ a alça **para na fronteira** (a gaiola não muda neste frame). Devolve `true`
+/// enquanto há um arrasto vivo — o host consome o Move —, tenha a alça andado ou não.
 ///
 /// O cursor está em MUNDO e a gaiola vive em LOCAL do container: o ponto desce pela pose INVERSA
-/// antes do `move_corner_convex`, então mover um canto sob pose girada/escalada segue o dedo.
-/// Convexidade é invariante a afim, logo checá-la em local é o mesmo que em mundo.
+/// antes do `move_handle`, então mover uma alça sob pose girada/escalada segue o dedo. Convexidade e
+/// orientação são invariantes a afim de determinante positivo, logo checá-las em local basta.
 #[must_use]
 pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [f64; 2]) -> bool {
-    let Some((bits, corner)) = active else {
+    let Some((bits, handle)) = active else {
         return false;
     };
     let entity = Entity::from_bits(bits);
-    let (Some(xf), Some(local)) = (
-        container_world_xform(sim, bits),
-        sim.world().get::<VecEnvelope>(entity).map(|env| env.corners),
-    ) else {
+    let (Some(xf), Some((corners, edges, kind))) =
+        (container_world_xform(sim, bits), cage_of(sim, bits))
+    else {
         return true; // arrasto vivo, mas a entidade/componente sumiu: consome e espera o release
     };
     let Some(inv) = xf.inverse() else {
         return true; // pose degenerada: nada a mover com sentido
     };
     let local_pt = inv.apply(world_pt);
-    if let Some(next) = ph2d_vec_envelope::move_corner_convex(local, corner, local_pt)
+    let mesh = kind == EnvelopeKind::Mesh;
+    if let Some(next) = ph2d_vec_envelope::move_handle(corners, edges, mesh, handle, local_pt)
         && let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity)
     {
-        env.corners = next;
+        env.corners = next.corners;
+        env.edges = next.edges;
     }
     true
 }
 
-/// A gaiola a desenhar neste frame, se a entidade selecionada é um envelope — os cantos já em MUNDO
-/// (cantos LOCAIS levados pela pose do container). O canto sob arrasto (se pertencer à seleção) sai
-/// marcado `dragging` — a bolinha cheia.
+/// A gaiola a desenhar neste frame, se a entidade selecionada é um envelope — já em MUNDO (a gaiola
+/// LOCAL levada pela pose do container). A alça sob arrasto (se pertencer à seleção) sai marcada
+/// `dragging` — a bolinha cheia. Os controles de lado só viajam no gesto Mesh, pela MESMA
+/// [`offered_edges`] que o hit-test consulta: uma alça pintada é sempre uma alça viva.
 #[must_use]
 pub(crate) fn view(
     sim: &SimWorld,
@@ -130,13 +160,37 @@ pub(crate) fn view(
     active: Option<(u64, usize)>,
 ) -> Option<EnvelopeCageView> {
     let bits = selected?;
-    let local = corners_of(sim, bits)?;
+    let (corners, edges, kind) = cage_of(sim, bits)?;
     let xf = container_world_xform(sim, bits)?;
     let dragging = active.filter(|(d, _)| *d == bits).map(|(_, c)| c);
     Some(EnvelopeCageView {
-        corners: to_world(local, &xf),
+        corners: to_world(corners, &xf),
+        edges: offered_edges(edges, kind).map(|e| edges_to_world(e, &xf)),
         dragging,
     })
+}
+
+/// **Troca o gesto** da gaiola do container `bits`. `true` se algo mudou.
+///
+/// Ir para **Perspective** re-emite os lados RETOS (`rest_edges`): em Perspective os lados *são*
+/// retos por invariante, e deixar guardados os controles que o artista dobrou faria a troca de volta
+/// para Mesh ressuscitar uma gaiola que o mapa nunca aplicou. Ir para **Mesh** não mexe em nada — os
+/// controles guardados já descrevem os lados atuais (é para isso que o invariante existe).
+pub(crate) fn set_kind(sim: &mut SimWorld, bits: u64, kind: EnvelopeKind) -> bool {
+    let Some(mut env) = sim
+        .world_mut()
+        .get_mut::<VecEnvelope>(Entity::from_bits(bits))
+    else {
+        return false;
+    };
+    if env.kind == kind {
+        return false;
+    }
+    env.kind = kind;
+    if kind == EnvelopeKind::Perspective {
+        env.edges = ph2d_vec_envelope::rest_edges(&env.corners);
+    }
+    true
 }
 
 #[cfg(test)]

@@ -1364,6 +1364,9 @@ impl crate::App {
             let mut pending_create_envelope = false;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
+            // O GESTO da gaiola (ADR-0129 Fatia D): `Some(true)` = Mesh (lados curvos),
+            // `Some(false)` = Perspective (lados retos, mapa projetivo).
+            let mut pending_envelope_mesh: Option<bool> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1507,6 +1510,12 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RELEASE {
                                 // ADR-0129: a fonte autorada volta; a gaiola morre.
                                 pending_release_envelope = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PERSPECTIVE {
+                                // ADR-0129 Fatia D: a homografia -- lados RETOS.
+                                pending_envelope_mesh = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_MESH {
+                                // ADR-0129 Fatia D: o patch de Coons -- os lados DOBRAM.
+                                pending_envelope_mesh = Some(true);
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -2500,6 +2509,28 @@ impl crate::App {
             {
                 eprintln!("[ph2d-vec] envelope: solto (a forma original voltou)");
             }
+            // ADR-0129 Fatia D: trocar o GESTO da gaiola. O container vem da MESMA porta que
+            // decide a selecao e alimenta os chips -- o clique nunca acerta outro envelope que
+            // nao o desenhado. Trocar re-cozinha no frame seguinte: em repouso os dois mapas
+            // coincidem, entao numa gaiola intocada a troca nao move um pixel.
+            if let Some(mesh) = pending_envelope_mesh {
+                let sel: Vec<u64> = self
+                    .vec_pen
+                    .selected_paths()
+                    .iter()
+                    .filter_map(|id| self.vec_entities.get(id).copied())
+                    .collect();
+                let kind = if mesh {
+                    ph2d_ecs::EnvelopeKind::Mesh
+                } else {
+                    ph2d_ecs::EnvelopeKind::Perspective
+                };
+                if let Some(bits) = crate::envelope_live::sole_container(sim, &sel)
+                    && crate::envelope_gesture::set_kind(sim, bits, kind)
+                {
+                    eprintln!("[ph2d-vec] envelope: gaiola em {kind:?}");
+                }
+            }
             // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
             if pending_reset_spine
                 && crate::blend_live::reset_spine(
@@ -3238,9 +3269,13 @@ impl crate::App {
                     .iter()
                     .filter_map(|id| self.vec_entities.get(id).copied())
                     .collect();
-                ph2d_panel_vector::set_current_has_envelope(
-                    crate::envelope_live::sole_container(sim, &sel_bits).is_some(),
-                );
+                let env_container = crate::envelope_live::sole_container(sim, &sel_bits);
+                ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
+                // Qual chip de gesto acende. O painel pergunta ao MESMO container que o
+                // dispatch vai escrever, senao a tela mostraria um gesto e o clique mudaria outro.
+                ph2d_panel_vector::set_current_envelope_mesh(env_container.is_some_and(|b| {
+                    crate::envelope_gesture::kind_of(sim, b) == ph2d_ecs::EnvelopeKind::Mesh
+                }));
             }
             // Live Shapes: o ALVO dos campos de forma do painel é a forma paramétrica
             // SELECIONADA — os campos DELA aparecem (mesmo na ferramenta Select) e a

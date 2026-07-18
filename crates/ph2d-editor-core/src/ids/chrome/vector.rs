@@ -492,6 +492,13 @@ pub const VECTOR_ENVELOPE_EXPAND: NodeId = hash_node_id("vector.envelope.expand"
 /// **Release** — desfaz o envelope: a fonte AUTORADA volta (a deformação é descartada) e a gaiola
 /// morre. Sem ele, envolver seria porta de mão única. NÃO confundir com `VECTOR_BLEND_RELEASE`.
 pub const VECTOR_ENVELOPE_RELEASE: NodeId = hash_node_id("vector.envelope.release");
+/// **Perspective** — o gesto da homografia: a gaiola tem 4 cantos e os lados são RETOS, então toda
+/// reta interior continua reta. É o gesto com que o envelope nasce.
+pub const VECTOR_ENVELOPE_PERSPECTIVE: NodeId = hash_node_id("vector.envelope.perspective");
+/// **Mesh** — o gesto do patch de Coons: os LADOS dobram (2 controles por lado, alças no modo Node).
+/// NÃO é o mesmo mapa que o Perspective — com lados retos ele é bilinear, não projetivo, e os dois
+/// só coincidem com a gaiola em repouso (ADR-0129 §4).
+pub const VECTOR_ENVELOPE_MESH: NodeId = hash_node_id("vector.envelope.mesh");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

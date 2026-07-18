@@ -50,8 +50,27 @@ pub struct VecEnvelopeChild {
     pub source: Vec<u8>,
 }
 
-/// **O Envelope Object.** Um container que guarda os 4 cantos da gaiola + a fonte autorada de cada
-/// filho. A geometria que o mundo vê está no `VecPath` de cada filho (a cozida); esta struct é a
+/// **Qual mapa a gaiola aplica** — os dois gestos do ADR-0129 §4.
+///
+/// Não são um mesmo mapa com um knob: eles **divergem no miolo**. Com os 4 lados retos,
+/// [`EnvelopeKind::Mesh`] é *bilinear* (uma reta interior vira parábola) e
+/// [`EnvelopeKind::Perspective`] é *projetivo* (toda reta continua reta) — que é o que "perspectiva"
+/// quer dizer, e por que Photoshop separa *Distort* de *Warp*. Em **repouso** os dois são a
+/// identidade, então trocar de gesto numa gaiola intocada não move um pixel; trocar depois de
+/// deformar **muda o desenho**, e isso é o mapa mudando, não um bug.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnvelopeKind {
+    /// Homografia dos 4 cantos. Os lados são **retos** (o invariante que `rest_edges` mantém) e as
+    /// retas interiores continuam retas. É o default: é como o envelope nascia antes da Fatia D, e
+    /// arte anterior continua a cozinhar exatamente igual.
+    #[default]
+    Perspective,
+    /// Patch de Coons das 4 curvas de bordo — os lados **dobram**. O *Mesh Warp* do Affinity.
+    Mesh,
+}
+
+/// **O Envelope Object.** Um container que guarda a gaiola (cantos + lados) + a fonte autorada de
+/// cada filho. A geometria que o mundo vê está no `VecPath` de cada filho (a cozida); esta struct é a
 /// **relação** da qual essa geometria é função pura, re-cozida por frame pela shell.
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VecEnvelope {
@@ -63,6 +82,17 @@ pub struct VecEnvelope {
     /// A **convexidade** deles é o que mantém a linha de fuga fora da gaiola (ADR-0129 §5,
     /// `QuadWarp::is_convex`) — e ela é invariante à pose (afim), então checá-la em local basta.
     pub corners: [[f64; 2]; 4],
+    /// Os 2 pontos de controle interiores de cada **lado** da gaiola: `edges[i]` vai de `corners[i]`
+    /// a `corners[(i+1) % 4]`, nas mesmas coordenadas LOCAIS.
+    ///
+    /// ⚠️ **Em [`EnvelopeKind::Perspective`] eles são um FATO DERIVADO, não estado livre:** valem
+    /// sempre os controles canônicos (⅓, ⅔) da gaiola atual, re-emitidos a cada movimento de canto
+    /// (`ph2d_vec_envelope::rest_edges`, a porta única). Guardá-los mesmo assim é o que permite
+    /// trocar para [`EnvelopeKind::Mesh`] e encontrar as alças **sobre os lados**, em vez de
+    /// penduradas na gaiola que existia antes do último arrasto.
+    pub edges: [[[f64; 2]; 2]; 4],
+    /// Qual dos dois mapas esta gaiola aplica (ver [`EnvelopeKind`] — eles NÃO são o mesmo mapa).
+    pub kind: EnvelopeKind,
     /// Os filhos deformados por esta gaiola — um para um envelope de forma única (`N=1`), vários para
     /// um *warp group*. Cada um carrega o seu path + a sua fonte (ver [`VecEnvelopeChild`]).
     pub children: Vec<VecEnvelopeChild>,
@@ -72,11 +102,25 @@ impl SimComponent for VecEnvelope {}
 
 impl VecEnvelope {
     /// Um envelope novo sobre `children` (cada um com os bytes postcard da sua fonte LOCAL), com a
-    /// gaiola em **repouso** (`corners` = cantos da bbox-união das fontes) — as formas não mudam até o
-    /// artista arrastar um canto. É o certo: um envelope que nasce deformado desorienta; um que nasce
-    /// transparente mostra a gaiola e espera o gesto.
+    /// gaiola em **repouso** (`corners` = cantos da bbox-união das fontes, `edges` = os controles
+    /// retos deles) — as formas não mudam até o artista arrastar uma alça. É o certo: um envelope que
+    /// nasce deformado desorienta; um que nasce transparente mostra a gaiola e espera o gesto.
+    ///
+    /// Os `edges` chegam **de fora** (`ph2d_vec_envelope::rest_edges`) em vez de serem computados
+    /// aqui: "o que é um lado reto" é matemática do motor de deformação, e recalculá-la nesta crate
+    /// seria uma segunda porta para a pergunta que decide se o repouso é a identidade EXATA.
+    /// Nasce em [`EnvelopeKind::Perspective`] — o gesto que o envelope sempre teve.
     #[must_use]
-    pub fn at_rest(children: Vec<VecEnvelopeChild>, corners: [[f64; 2]; 4]) -> Self {
-        Self { corners, children }
+    pub fn at_rest(
+        children: Vec<VecEnvelopeChild>,
+        corners: [[f64; 2]; 4],
+        edges: [[[f64; 2]; 2]; 4],
+    ) -> Self {
+        Self {
+            corners,
+            edges,
+            kind: EnvelopeKind::default(),
+            children,
+        }
     }
 }

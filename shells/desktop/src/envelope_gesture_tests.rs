@@ -26,7 +26,12 @@ const POSE: [f64; 2] = [100.0, 50.0];
 
 /// Os cantos LOCAIS levados ao MUNDO pela pose do container (só translação).
 fn world_corners() -> [[f64; 2]; 4] {
-    std::array::from_fn(|i| [rect_corners()[i][0] + POSE[0], rect_corners()[i][1] + POSE[1]])
+    std::array::from_fn(|i| {
+        [
+            rect_corners()[i][0] + POSE[0],
+            rect_corners()[i][1] + POSE[1],
+        ]
+    })
 }
 
 fn ellipse() -> VecPath {
@@ -53,7 +58,8 @@ fn scene() -> (SimWorld, VecScene, VecEntityMap, u64) {
     let mut map = VecEntityMap::new();
     let id = scene.push_path(ellipse());
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[id]).expect("create");
+    let container =
+        crate::envelope_live::create(&mut sim, &mut scene, &map, &[id]).expect("create");
     set_corners(&mut sim, container, rect_corners());
     // A POSE que o gizmo do Select moveria — aqui posta à mão no CONTAINER para o hit-test/desenho
     // terem de atravessá-la (com identidade, local == mundo e o `container_world_xform` poderia sumir
@@ -87,11 +93,24 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
         PX_TO_WORLD,
         &mut drag
     ));
-    assert_eq!(drag, Some((container, 2)), "devia armar o TR (via a pose do container)");
+    assert_eq!(
+        drag,
+        Some((container, 2)),
+        "devia armar o TR (via a pose do container)"
+    );
     // E o cursor no lugar LOCAL do canto (ignorando a pose) NÃO pega: prova que a pose foi aplicada.
     let mut miss = None;
-    assert!(!press(&sim, Some(container), rect_corners()[2], PX_TO_WORLD, &mut miss));
-    assert_eq!(miss, None, "sem aplicar a pose, o hit-test pegaria no lugar errado");
+    assert!(!press(
+        &sim,
+        Some(container),
+        rect_corners()[2],
+        PX_TO_WORLD,
+        &mut miss
+    ));
+    assert_eq!(
+        miss, None,
+        "sem aplicar a pose, o hit-test pegaria no lugar errado"
+    );
 }
 
 /// **O raio é uma cerca:** um cursor no meio da gaiola (mundo) não arma nada.
@@ -116,7 +135,13 @@ fn press_ignores_a_non_envelope_entity() {
     let (mut sim, mut scene, mut map, _container) = scene();
     let plain = add_plain(&mut sim, &mut scene, &mut map);
     let mut drag = None;
-    assert!(!press(&sim, Some(plain), [7.0, 5.0], PX_TO_WORLD, &mut drag));
+    assert!(!press(
+        &sim,
+        Some(plain),
+        [7.0, 5.0],
+        PX_TO_WORLD,
+        &mut drag
+    ));
     assert_eq!(drag, None);
 }
 
@@ -125,7 +150,13 @@ fn press_ignores_a_non_envelope_entity() {
 fn press_with_no_selection_arms_nothing() {
     let (sim, _scene, _map, _container) = scene();
     let mut drag = None;
-    assert!(!press(&sim, None, world_corners()[2], PX_TO_WORLD, &mut drag));
+    assert!(!press(
+        &sim,
+        None,
+        world_corners()[2],
+        PX_TO_WORLD,
+        &mut drag
+    ));
     assert_eq!(drag, None);
 }
 
@@ -135,8 +166,12 @@ fn press_with_no_selection_arms_nothing() {
 fn drag_writes_the_local_corner_from_a_world_cursor() {
     let (mut sim, _scene, _map, container) = scene();
     // Cursor no MUNDO em `[108, 57]` → local `[8, 7]` (convexo).
-    assert!(drag(&mut sim, Some((container, 2)), [8.0 + POSE[0], 7.0 + POSE[1]]));
-    let corners = corners_of(&sim, container).expect("envelope");
+    assert!(drag(
+        &mut sim,
+        Some((container, 2)),
+        [8.0 + POSE[0], 7.0 + POSE[1]]
+    ));
+    let corners = cage_of(&sim, container).expect("envelope").0;
     assert_eq!(
         corners[2],
         [8.0, 7.0],
@@ -150,13 +185,17 @@ fn drag_writes_the_local_corner_from_a_world_cursor() {
 #[test]
 fn drag_refuses_a_non_convex_move_and_freezes_the_corner() {
     let (mut sim, _scene, _map, container) = scene();
-    let before = corners_of(&sim, container).expect("envelope");
+    let before = cage_of(&sim, container).expect("envelope").0;
     // Cursor MUNDO `[103, 52]` → local `[3, 2]` (perto do centro) → quad reflexo.
     assert!(
-        drag(&mut sim, Some((container, 2)), [3.0 + POSE[0], 2.0 + POSE[1]]),
+        drag(
+            &mut sim,
+            Some((container, 2)),
+            [3.0 + POSE[0], 2.0 + POSE[1]]
+        ),
         "o gesto consome o Move mesmo recusando o movimento"
     );
-    let after = corners_of(&sim, container).expect("envelope");
+    let after = cage_of(&sim, container).expect("envelope").0;
     assert_eq!(
         before, after,
         "um movimento nao-convexo mudou a gaiola — o horizonte entraria nela"
@@ -171,8 +210,16 @@ fn view_draws_world_corners_and_marks_only_this_containers_dragged_corner() {
     let (sim, _scene, _map, container) = scene();
 
     let cage = view(&sim, Some(container), Some((container, 2))).expect("cage");
-    assert_eq!(cage.corners, world_corners(), "os cantos saíram em MUNDO (local × pose)");
-    assert_eq!(cage.dragging, Some(2), "o TR deste container esta sob arrasto");
+    assert_eq!(
+        cage.corners,
+        world_corners(),
+        "os cantos saíram em MUNDO (local × pose)"
+    );
+    assert_eq!(
+        cage.dragging,
+        Some(2),
+        "o TR deste container esta sob arrasto"
+    );
 
     assert_eq!(
         view(&sim, Some(container), Some((container + 1, 0)))

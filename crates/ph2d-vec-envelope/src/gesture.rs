@@ -19,7 +19,28 @@
 //!    (o clamp que o LPE de perspectiva do Inkscape também faz), e volta a seguir quando o cursor
 //!    reentra na região convexa. Recusar é `None`; o host mantém os cantos como estavam.
 
-use crate::QuadWarp;
+use crate::{CageEdges, QuadWarp, cage_folds, rest_edges};
+
+/// Quantas alças a gaiola oferece no gesto **Mesh**: 4 cantos + 2 controles por lado.
+///
+/// **Um espaço de índices só** (`0..4` = cantos, `4 + 2·lado + j` = controle) e não dois enums: o
+/// arrasto vivo carrega `(entidade, índice)` e um índice que precisasse de tag seria uma segunda
+/// pergunta ("canto ou controle?") feita em cada sítio que toca o arrasto.
+pub const MESH_HANDLE_COUNT: usize = 12;
+
+/// O índice da alça do controle `j` (0 ou 1) do lado `side` (0..4).
+#[must_use]
+pub fn edge_handle_index(side: usize, j: usize) -> usize {
+    4 + 2 * side + j
+}
+
+/// A gaiola depois de um movimento aceito — os cantos E os controles, porque mover um canto no Mesh
+/// **leva os controles vizinhos junto** (as alças pertencem ao canto, como em qualquer Bézier).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CageMove {
+    pub corners: [[f64; 2]; 4],
+    pub edges: CageEdges,
+}
 
 /// O índice do canto (0..4, ordem `[BL, BR, TR, TL]`) **mais próximo** de `p` dentro de `radius`, ou
 /// `None` se nenhum está ao alcance. Empate → o menor índice (determinístico).
@@ -57,6 +78,85 @@ pub fn move_corner_convex(
     }
     corners[idx] = to;
     QuadWarp::is_convex(&corners).then_some(corners)
+}
+
+/// A alça sob o cursor, no espaço de índices único (`0..4` cantos · `4..12` controles de lado).
+///
+/// `edges` presente = gesto **Mesh** (os 12 candidatos); `None` = gesto **Perspective** (só os 4
+/// cantos — em Perspective os lados são retos por invariante, e oferecer um controle que o mapa
+/// ignora seria alça morta). **Cantos primeiro:** num empate de distância o canto vence, porque ele é
+/// a alça que existe nos dois gestos e a que o artista mira.
+#[must_use]
+pub fn nearest_handle(
+    corners: &[[f64; 2]; 4],
+    edges: Option<&CageEdges>,
+    p: [f64; 2],
+    radius: f64,
+) -> Option<usize> {
+    if let Some(c) = nearest_corner(corners, p, radius) {
+        return Some(c);
+    }
+    let edges = edges?;
+    let r2 = radius * radius;
+    let mut best: Option<(usize, f64)> = None;
+    for (side, pair) in edges.iter().enumerate() {
+        for (j, c) in pair.iter().enumerate() {
+            let d2 = (c[0] - p[0]).powi(2) + (c[1] - p[1]).powi(2);
+            if d2 <= r2 && best.is_none_or(|(_, bd)| d2 < bd) {
+                best = Some((edge_handle_index(side, j), d2));
+            }
+        }
+    }
+    best.map(|(i, _)| i)
+}
+
+/// Move a alça `idx` para `to`, devolvendo a gaiola nova — ou `None` se o movimento for **recusado**
+/// (o host então preserva a gaiola atual e a alça *para na fronteira*, como no arrasto de canto).
+///
+/// # Dois gestos, dois guards — e a diferença é epistemológica
+///
+/// **Perspective** (`mesh == false`): só os cantos, e o guard é a **convexidade**, que tem um teorema
+/// atrás (ADR-0129 §5). Os lados são re-emitidos RETOS por [`rest_edges`] — em Perspective os lados
+/// *são* retos, então o que fica guardado não pode dizer outra coisa; sem isso, trocar para Mesh
+/// depois mostraria controles pendurados onde a gaiola já não está.
+///
+/// **Mesh** (`mesh == true`): as 12 alças, e o guard é *"o patch dobra?"* ([`cage_folds`]), que é
+/// **amostrado** — não há critério fechado para um patch de Coons. Mover um canto **arrasta os 2
+/// controles vizinhos pela mesma translação**: eles pertencem ao canto (é o que uma alça de Bézier
+/// faz), e deixá-los para trás esticaria os lados de um jeito que ninguém pediu.
+#[must_use]
+pub fn move_handle(
+    corners: [[f64; 2]; 4],
+    edges: CageEdges,
+    mesh: bool,
+    idx: usize,
+    to: [f64; 2],
+) -> Option<CageMove> {
+    if !mesh {
+        let corners = move_corner_convex(corners, idx, to)?;
+        return Some(CageMove {
+            edges: rest_edges(&corners),
+            corners,
+        });
+    }
+    let (corners, edges) = if idx < 4 {
+        let d = [to[0] - corners[idx][0], to[1] - corners[idx][1]];
+        let mut corners = corners;
+        corners[idx] = to;
+        let mut edges = edges;
+        // O canto `idx` começa o lado `idx` e termina o lado `idx+3`: os dois controles que o tocam.
+        edges[idx][0] = [edges[idx][0][0] + d[0], edges[idx][0][1] + d[1]];
+        let prev = (idx + 3) % 4;
+        edges[prev][1] = [edges[prev][1][0] + d[0], edges[prev][1][1] + d[1]];
+        (corners, edges)
+    } else if idx < MESH_HANDLE_COUNT {
+        let mut edges = edges;
+        edges[(idx - 4) / 2][(idx - 4) % 2] = to;
+        (corners, edges)
+    } else {
+        return None;
+    };
+    (!cage_folds(&corners, &edges)).then_some(CageMove { corners, edges })
 }
 
 #[cfg(test)]
@@ -139,5 +239,100 @@ mod tests {
     #[test]
     fn an_out_of_range_index_is_none() {
         assert!(move_corner_convex(rect(), 4, [0.0, 0.0]).is_none());
+        assert!(
+            move_handle(
+                rect(),
+                rest_edges(&rect()),
+                true,
+                MESH_HANDLE_COUNT,
+                [1.0, 1.0]
+            )
+            .is_none(),
+            "alça além das 12 devia ser recusada, não indexar fora"
+        );
+    }
+
+    /// **EM PERSPECTIVE OS LADOS SÃO RETOS — E O QUE FICA GUARDADO DIZ ISSO.** Depois de arrastar um
+    /// canto, os controles são exatamente os canônicos da gaiola NOVA.
+    ///
+    /// Não é higiene: sem re-emitir, os controles ficariam pendurados na gaiola VELHA, e trocar para
+    /// Mesh depois mostraria alças fora dos lados — o *"funciona e depois esquece"* de chapéu novo.
+    #[test]
+    fn a_perspective_move_keeps_the_sides_straight() {
+        let m = move_handle(rect(), rest_edges(&rect()), false, 2, [8.0, 7.0])
+            .expect("movimento convexo devia ser aceito");
+        assert_eq!(m.corners[2], [8.0, 7.0]);
+        assert_eq!(
+            m.edges,
+            rest_edges(&m.corners),
+            "os lados guardados não são os retos da gaiola nova"
+        );
+    }
+
+    /// **No Mesh, o canto leva os DOIS controles que o tocam — e só eles.** Uma alça de Bézier
+    /// pertence à sua âncora; deixá-la para trás esticaria o lado sozinho.
+    #[test]
+    fn a_mesh_corner_carries_its_two_handles() {
+        let before = rest_edges(&rect());
+        let m = move_handle(rect(), before, true, 0, [-1.0, -1.0]).expect("aceito");
+        let d = [-1.0, -1.0];
+        assert_eq!(
+            m.edges[0][0],
+            [before[0][0][0] + d[0], before[0][0][1] + d[1]]
+        );
+        assert_eq!(
+            m.edges[3][1],
+            [before[3][1][0] + d[0], before[3][1][1] + d[1]]
+        );
+        // Os outros 6 controles não se mexem.
+        assert_eq!(m.edges[0][1], before[0][1]);
+        assert_eq!(m.edges[3][0], before[3][0]);
+        assert_eq!(m.edges[1], before[1]);
+        assert_eq!(m.edges[2], before[2]);
+    }
+
+    /// **Um movimento que DOBRARIA o patch é recusado** — e o vizinho que não dobra é aceito, senão
+    /// o guard poderia ser "recuse sempre" e o gate ficaria verde.
+    #[test]
+    fn a_mesh_move_that_folds_is_refused() {
+        let e = rest_edges(&rect());
+        assert!(
+            move_handle(rect(), e, true, edge_handle_index(0, 0), [3.0, 30.0]).is_none(),
+            "empurrar o lado de baixo para muito acima do de cima devia dobrar e ser recusado"
+        );
+        assert!(
+            move_handle(rect(), e, true, edge_handle_index(0, 0), [3.0, -2.0]).is_some(),
+            "uma barriga moderada devia ser aceita"
+        );
+    }
+
+    /// **Os controles de lado só existem no Mesh** (ausência) — e o MESMO cursor os acha quando eles
+    /// são oferecidos (presença). Sem o segundo ramo, o primeiro ficaria verde num hit-test que nunca
+    /// acha nada.
+    #[test]
+    fn the_side_handles_exist_only_in_mesh() {
+        let c = rect();
+        let e = rest_edges(&c);
+        let on_control = e[0][0];
+        assert_eq!(
+            nearest_handle(&c, None, on_control, 0.5),
+            None,
+            "Perspective ofereceu um controle de lado"
+        );
+        assert_eq!(
+            nearest_handle(&c, Some(&e), on_control, 0.5),
+            Some(edge_handle_index(0, 0)),
+            "Mesh não achou o controle sob o cursor"
+        );
+    }
+
+    /// **O canto vence o controle num empate** — ele é a alça que existe nos dois gestos, e é a que
+    /// o artista mira quando as duas caem sob o mesmo pixel.
+    #[test]
+    fn a_corner_wins_over_a_side_handle() {
+        let c = rect();
+        let e = rest_edges(&c);
+        // Raio grande o bastante para alcançar o canto 0 E o controle vizinho.
+        assert_eq!(nearest_handle(&c, Some(&e), [1.0, 0.0], 5.0), Some(0));
     }
 }

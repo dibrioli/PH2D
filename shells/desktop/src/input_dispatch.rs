@@ -2672,7 +2672,8 @@ impl App {
                         // path), não a forma selecionada — os bits dele estão na seleção do gizmo
                         // (regra seleciona-só-o-container). Copy, lido ANTES do borrow mutável de
                         // `hero_screen` abaixo. `press` devolve `false` se não for um `VecEnvelope`.
-                        let env_container = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
+                        let env_container =
+                            gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
                         // Fase 2: snapshot pré-interação (vira passo de undo no Up
                         // só se a cena mudar de fato).
                         self.vec_history.begin(&gfx.vec_scene);

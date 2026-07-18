@@ -38,6 +38,20 @@ impl BodyCtx<'_> {
         }
         y = self.action_button(ids::VECTOR_ENVELOPE_RUN, "Envelope", y);
         if state::has_envelope() {
+            // QUAL mapa a gaiola aplica (ADR-0129 §4). Não é um knob de intensidade: os dois
+            // divergem no miolo (projetivo mantém as retas retas; o Coons de lados retos é
+            // bilinear), e o Mesh é o único que oferece as 8 alças de lado. Vem ANTES do
+            // Expand/Release porque escolhe como o envelope VIVO se comporta; os outros dois o
+            // terminam.
+            let mesh = state::envelope_mesh();
+            y = self.segmented2(
+                "Cage",
+                [
+                    (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective", !mesh),
+                    (ids::VECTOR_ENVELOPE_MESH, "Mesh", mesh),
+                ],
+                y,
+            );
             // Tabela tipada como a do Blend (HR-12): o `action_button` delega ao `paint_button`
             // canônico, que é quem costura o AccessKit — e nomear o `NodeId` aqui é o idioma que o
             // gate `every_widget_file_wires_a11y` reconhece nos irmãos desta pasta.

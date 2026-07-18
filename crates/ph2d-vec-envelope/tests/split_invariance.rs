@@ -326,3 +326,63 @@ fn an_isoparametric_line_hides_the_defect() {
         "reta isoparamétrica: o ingênuo deveria ESCAPAR aqui (é o ponto do teste), mas divergiu {d:.3e}"
     );
 }
+
+/// **O GATE-MÃE SOBRE O MAPA DE PRODUÇÃO DA FATIA D** — o patch de Coons com os lados dobrados.
+///
+/// Os gates acima rodam sobre um `Bilinear` escrito à mão: ele isola a matemática, mas **não é o
+/// código que o artista executa**. Um fixture só prova o que contém
+/// ([[reference_topic_fixture_discipline]]), então a gaiola curva entra aqui pelo caminho real —
+/// `CoonsWarp` + `warp_path` — e é cobrada pela mesma invariância.
+#[test]
+fn a_bent_coons_cage_survives_subdivision() {
+    let w = bent_coons();
+    let c = curved();
+
+    let whole = to_bez(&warp_path(&path_of(c), &w, ACCURACY));
+    let split = to_bez(&concat(
+        warp_path(&path_of(c.subsegment(0.0..0.5)), &w, ACCURACY),
+        warp_path(&path_of(c.subsegment(0.5..1.0)), &w, ACCURACY),
+    ));
+
+    let d = max_dist(&whole, &split, 128).max(max_dist(&split, &whole, 128));
+    assert!(
+        d < 4.0 * ACCURACY,
+        "gaiola curva: inteira vs partida divergiram {d:.3e} (tol {:.3e})",
+        4.0 * ACCURACY
+    );
+}
+
+/// **E o fixture EXIBE o defeito sob esse mesmo mapa.** Sem este irmão, o gate acima poderia estar
+/// verde porque a gaiola escolhida quase não deforma — o oráculo tem de ser alcançável
+/// ([[reference_topic_mutation_proofs]]).
+#[test]
+fn the_naive_warp_fails_split_invariance_under_a_coons_cage() {
+    let w = bent_coons();
+    let c = curved();
+
+    let whole = to_bez(&warp_naive(&path_of(c), &w));
+    let split = to_bez(&concat(
+        warp_naive(&path_of(c.subsegment(0.0..0.5)), &w),
+        warp_naive(&path_of(c.subsegment(0.5..1.0)), &w),
+    ));
+
+    let d = max_dist(&whole, &split, 128).max(max_dist(&split, &whole, 128));
+    assert!(
+        d > 40.0 * ACCURACY,
+        "o ingênuo devia divergir de forma grosseira sob a gaiola curva, mas deu {d:.3e}"
+    );
+}
+
+/// A gaiola da Fatia D: domínio do fixture `curved()` (0,0)–(8,6), lados de baixo e de cima
+/// empurrados em sentidos opostos — uma onda, que é o que o gesto Mesh produz na mão.
+fn bent_coons() -> ph2d_vec_envelope::CoonsWarp {
+    let origin = [0.0, 0.0];
+    let size = [8.0, 6.0];
+    let corners = [[0.0, 0.0], [8.0, 0.0], [8.0, 6.0], [0.0, 6.0]];
+    let mut edges = ph2d_vec_envelope::rest_edges(&corners);
+    edges[0][0] = [2.5, -1.6]; // barriga do lado de baixo, para fora
+    edges[0][1] = [5.5, 1.4]; //  e de volta para dentro: uma onda
+    edges[2][0] = [5.5, 7.6]; // o lado de cima faz o inverso
+    edges[2][1] = [2.5, 4.6];
+    ph2d_vec_envelope::CoonsWarp::new(origin, size, corners, &edges).expect("gaiola válida")
+}

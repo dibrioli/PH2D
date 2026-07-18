@@ -18,7 +18,7 @@ const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math
 
 impl BodyCtx<'_> {
     /// A labelled 2-across segmented button row (sibling of `segmented3`).
-    fn segmented2(
+    pub(crate) fn segmented2(
         &mut self,
         label: &str,
         opts: [(ph2d_a11y::NodeId, &str, bool); 2],

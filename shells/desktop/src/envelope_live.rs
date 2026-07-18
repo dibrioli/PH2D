@@ -31,9 +31,10 @@
 //! mapa de paths).
 
 use ph2d_ecs::{
-    ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecEnvelope, VecEnvelopeChild,
+    ChildOf, Entity, EnvelopeKind, Name, RootOrder, SimWorld, Transform, VecEnvelope,
+    VecEnvelopeChild,
 };
-use ph2d_vec_envelope::{QuadWarp, warp_path};
+use ph2d_vec_envelope::{CoonsWarp, QuadWarp, rest_edges, warp_path};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
@@ -168,7 +169,11 @@ pub(crate) fn create(
     sim.world_mut()
         .get_entity_mut(container)
         .ok()?
-        .insert(VecEnvelope::at_rest(children, corners));
+        .insert(VecEnvelope::at_rest(
+            children,
+            corners,
+            rest_edges(&corners),
+        ));
     Some(container.to_bits())
 }
 
@@ -198,16 +203,41 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
         let Some((origin, size)) = union_control_bbox(sources.iter().map(|(_, p)| p)) else {
             continue;
         };
-        // Gaiola degenerada (3 cantos colineares): o `QuadWarp` recusa, e as formas **congelam** onde
-        // estão — a mesma escolha do morph com uma fonte perdida. Nunca somem, nunca viram lixo.
-        let Some(warp) = QuadWarp::new(origin, size, env.corners) else {
-            continue;
-        };
         let acc = accuracy(size);
-        for (id, src) in sources {
-            let cooked = warp_path(&src, &warp, acc);
-            write_shape(scene, id, cooked);
+        // O gesto escolhe o MAPA, e só isso — a espinha (desserializar · deformar · escrever) é a
+        // mesma. Gaiola degenerada (3 cantos colineares no Quad): o mapa recusa, e as formas
+        // **congelam** onde estão — a mesma escolha do morph com uma fonte perdida. Nunca somem,
+        // nunca viram lixo.
+        match env.kind {
+            EnvelopeKind::Perspective => {
+                let Some(warp) = QuadWarp::new(origin, size, env.corners) else {
+                    continue;
+                };
+                cook_children(scene, sources, &warp, acc);
+            }
+            EnvelopeKind::Mesh => {
+                let Some(warp) = CoonsWarp::new(origin, size, env.corners, &env.edges) else {
+                    continue;
+                };
+                cook_children(scene, sources, &warp, acc);
+            }
         }
+    }
+}
+
+/// Deforma cada fonte pelo `warp` e escreve o resultado no path do filho.
+///
+/// Genérica no mapa de propósito: é a **porta única** por onde os dois gestos passam, então nada que
+/// dependa de *qual* mapa é (a tolerância, a escrita em lugar, o estilo preservado) pode divergir
+/// entre eles. Trocar de gesto muda uma linha do `match` acima, e mais nada.
+fn cook_children(
+    scene: &mut VecScene,
+    sources: Vec<(VecPathId, VecPath)>,
+    warp: &impl ph2d_vec_envelope::Warp,
+    acc: f64,
+) {
+    for (id, src) in sources {
+        write_shape(scene, id, warp_path(&src, warp, acc));
     }
 }
 

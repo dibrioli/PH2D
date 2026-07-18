@@ -8,7 +8,7 @@
 //! de cada filho sobrevive · gaiola degenerada congela · assar a pose de mundo do filho na fonte.
 
 use super::*;
-use ph2d_ecs::{ChildOf, Transform, VecPathRef};
+use ph2d_ecs::{ChildOf, EnvelopeKind, Transform, VecPathRef};
 use ph2d_vec_scene::{ShapeKind, cook};
 
 fn ellipse(c: [f64; 2], r: f64) -> VecPath {
@@ -546,3 +546,8 @@ fn create_over_no_live_shapes_is_none() {
         "create deixou um container órfão"
     );
 }
+
+/// Os gates da **Fatia D** (os dois gestos da gaiola) — módulo filho, teto de LOC. Ele herda os
+/// fixtures deste arquivo por `use super::*`.
+#[path = "envelope_kind_tests.rs"]
+mod kind;

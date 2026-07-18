@@ -55,6 +55,8 @@ mod corner_handles;
 mod cursor_pos;
 mod envelope_gesture;
 mod envelope_live;
+/// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
+mod envelope_smoke;
 mod flip_autokey;
 mod flip_demo;
 mod flip_draw;

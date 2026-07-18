@@ -927,6 +927,8 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
         (ids::VECTOR_ENVELOPE_RUN, "Envelope"),
         (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+        (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
+        (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -959,12 +961,13 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
     }
 }
 
-/// **Sem envelope selecionado, Expand/Release NÃO existem na tela** — o par de PRESENÇA do gate
+/// **Sem envelope selecionado, os controles do envelope NÃO existem na tela** — o par de PRESENÇA do gate
 /// acima. Um botão que não faz nada é pior que um botão que falta: sobre uma seleção que não é
-/// envelope, os dois dissolveriam o nada e o artista aprenderia que "às vezes não funciona".
+/// envelope, os dois dissolveriam o nada e o artista aprenderia que "às vezes não funciona"; e os chips de
+/// GESTO escolheriam o mapa de uma gaiola que não existe.
 /// O **Envelope** (criar) continua lá: ele age sobre a seleção e recusa no shell com mensagem.
 #[test]
-fn expand_and_release_are_not_offered_without_an_envelope() {
+fn the_envelope_controls_are_not_offered_without_an_envelope() {
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -977,11 +980,13 @@ fn expand_and_release_are_not_offered_without_an_envelope() {
     for (id, name) in [
         (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+        (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
+        (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                 .is_none(),
-            "o botao {name} foi pintado SEM envelope na selecao — ele dissolveria o nada"
+            "o controle {name} foi pintado SEM envelope na selecao — ele age sobre o nada"
         );
     }
     assert!(

@@ -18,10 +18,14 @@
 |---|---|
 | Branch | `line/Painter`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` |
 | HEAD | `git log --oneline main..HEAD` (um commit não pode citar o próprio hash) |
-| Ahead of `main` | 3 herdados do takeover + os desta jornada (§9 lista o que são) |
-| Árvore | limpa · `check --workspace --all-targets` 0 · `clippy --workspace --all-targets` 0 · `fmt` aplicado |
-| Suítes | **workspace 7658 passed / 0 failed** (tool-painter 724 · painter-brush 256) |
-| Perf | knife **4,57 ms/move @2048² · 5,50 @4096²** (kill 8) — gate novo `smear_perf_kill_criterion` |
+| Ahead of `main` | `git log --oneline main..HEAD \| wc -l` — 3 herdados do takeover + os desta jornada (§9) |
+| Árvore | limpa · `clippy --all-targets` 0 warnings · `fmt` aplicado · teto de LOC verde |
+| Suítes | **workspace 7656 passed / 0 failed** (nextest, `--cargo-profile ci-test`) |
+| Perf | knife 4,57/5,50 · sculpt kernel ≤3,8 · warp 4,2/3,3 — **todos gateados** (§9.1, §9.7) |
+
+⚠️ **Os números acima envelhecem.** Confira-os antes de citá-los: uma tabela de estado que mente é pior
+que uma ausente, porque ela é lida com confiança. (Esta trazia `7658` e uma contagem fixa de commits, e as
+duas estavam erradas duas jornadas depois.)
 
 ⚠️ **Modo L.** Todo path absoluto com `/Worktrees/line-Painter/`; todo comando que muta abre com
 `cd <worktree> &&`. **Integração e ship são ordem EXPLÍCITA do Enio.** Esta linha fecha, entrega e PARA.

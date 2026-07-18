@@ -197,6 +197,7 @@ fn paint_inspector(
     let sampling_info = current_inspector_sampling();
     let blend_info = current_inspector_blend();
     let physics_info = crate::state::current_inspector_physics();
+    let joint_info = crate::state::current_inspector_joint();
     let name_present = current_inspector_name_is_some();
     let any_section = any_live_section([
         transform_info.is_some(),
@@ -206,15 +207,16 @@ fn paint_inspector(
         sampling_info.is_some(),
         blend_info.is_some(),
         physics_info.is_some(),
+        joint_info.is_some(),
         name_present,
     ]);
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    // One slot per live section; §11 Physics Body made it ten. Sized wrong,
-    // a note anchored to the last section silently falls into `trailing_notes`
-    // instead of where its author put it.
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 10] = Default::default();
+    // One slot per live section; §11 Physics Body made it ten and §12 Physics
+    // Joint made it eleven. Sized wrong, a note anchored to the last section
+    // silently falls into `trailing_notes` instead of where its author put it.
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 11] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -412,25 +414,23 @@ fn paint_inspector(
             )
         });
     }
-    // §11 Physics Body — offered for ANY Transform-bearing entity, with or
-    // without a body: the empty state is the Add button, and without it a
-    // sprite could never become physical (ADR-0131 D8).
-    if let Some(phys) = physics_info.as_ref() {
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_PHYSICS_SECTION, 9, SECTION_HEAD_H, {
-            sections::paint_physics_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                phys,
-            )
-        });
-    }
+    y = crate::paint_frame::paint_physics_sections(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        SECTION_HEAD_H,
+        physics_info.as_ref(),
+        joint_info.as_ref(),
+        &notes_per_section[9],
+        &notes_per_section[10],
+    );
     if any_section {
         for (slot, note) in &trailing_notes {
             paint_one_note(
@@ -519,4 +519,17 @@ fn paint_inspector(
         ids::INSP_CLOSE,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
+}
+
+/// The section separator, callable from `paint_frame`'s extracted section
+/// painters. A thin forward rather than a second import path, so there stays
+/// exactly one place that knows what a separator looks like.
+pub(crate) fn paint_section_separator_at(
+    scene: &mut ph2d_vector::VectorScene,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    paint_section_separator(scene, theme, x, w, y)
 }

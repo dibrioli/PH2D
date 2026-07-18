@@ -12,9 +12,9 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorBlendInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo,
-    InspectorSamplingInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilitySectionInfo,
+    InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSpriteInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -62,6 +62,11 @@ thread_local! {
 
     /// M14.E: editable entity-name snapshot.
     pub(crate) static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<InspectorNameInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// §12 Physics Joint. A `RefCell`, unlike its `Cell` siblings, because the
+    /// info carries the two bodies' NAMES and so is not `Copy`.
+    pub(crate) static CURRENT_INSPECTOR_JOINT: std::cell::RefCell<Option<InspectorJointInfo>> =
         const { std::cell::RefCell::new(None) };
 
     /// W3 §7: live ordering/sorting snapshot for the Ordering section.
@@ -164,6 +169,14 @@ pub fn set_current_inspector_blend(info: Option<InspectorBlendInfo>) {
 
 pub(crate) fn current_inspector_blend() -> Option<InspectorBlendInfo> {
     CURRENT_INSPECTOR_BLEND.with(|c| c.get())
+}
+
+pub fn set_current_inspector_joint(info: Option<InspectorJointInfo>) {
+    CURRENT_INSPECTOR_JOINT.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_joint() -> Option<InspectorJointInfo> {
+    CURRENT_INSPECTOR_JOINT.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {

@@ -370,6 +370,16 @@ pub struct InspectorPhysicsInfo {
     /// Splitting it this way is the whole point: the rule is authored once,
     /// and a body only says where it belongs.
     pub layer: u8,
+    /// Is the current selection exactly **two** bodies? Then §11 offers the
+    /// Join button (W3).
+    ///
+    /// The precondition is answered by the shell, which is the half that owns
+    /// the selection — the panel sees one entity at a time and could not work
+    /// it out. It is a snapshot field rather than a check inside the painter
+    /// for the usual reason: the painter decides whether to OFFER the button
+    /// and the event handler decides whether to HONOUR the click, and both
+    /// have to read the same fact.
+    pub can_join: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -398,6 +408,68 @@ pub enum PhysicsFieldEdit {
     Friction(f32),
     /// Move this body to a collision layer (`0..MAX_LAYERS`).
     Layer(u8),
+    /// Create a joint between the two selected bodies (W3). Carries no
+    /// operands: the shell owns the selection, and a second copy of "which
+    /// two" would be a second answer to a question only one half can answer.
+    Join,
+}
+
+/// §12 Physics Joint snapshot (W3) — the selected **joint object**.
+///
+/// A joint is an entity, so this is the section that describes it: what kind
+/// of constraint it is, which two bodies it names, and the parameters that
+/// kind actually uses. Not `Copy`, unlike its siblings, because it carries the
+/// two bodies' NAMES — the joint stores name hashes, and a hash is not
+/// something to show a person.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorJointInfo {
+    pub entity_bits: u64,
+    /// `0` Pin · `1` Spring · `2` Rope.
+    pub kind_tag: u8,
+    /// The bodies, resolved for display. Empty means the name no longer
+    /// matches any body in the scene — deleted or renamed.
+    pub body_a_name: String,
+    pub body_b_name: String,
+    /// Are BOTH bodies present right now? The section says so out loud: a
+    /// joint whose body was renamed is dormant, not broken, and silently
+    /// showing its parameters as if it were live would be a lie.
+    pub bound: bool,
+    pub limits_enabled: bool,
+    /// **Degrees** at this boundary; the component stores radians, exactly as
+    /// `rotation_rad` does.
+    pub limit_min_deg: f32,
+    pub limit_max_deg: f32,
+    pub motor_enabled: bool,
+    /// Degrees per second.
+    pub motor_speed_deg: f32,
+    pub motor_max_force: f32,
+    pub rest_length: f32,
+    pub stiffness: f32,
+    pub damping: f32,
+    pub max_length: f32,
+}
+
+/// A single editable §12 joint field, dispatched as
+/// [`EditorAction::InspectorJointEdit`](crate::action_bus::EditorAction).
+///
+/// Angles arrive in **degrees** and the shell converts, so the panel never
+/// holds a radian and the component never holds a degree.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum JointFieldEdit {
+    /// `JointKind` tag: `0` Pin · `1` Spring · `2` Rope.
+    Kind(u8),
+    LimitsEnabled(bool),
+    LimitMinDeg(f32),
+    LimitMaxDeg(f32),
+    MotorEnabled(bool),
+    MotorSpeedDeg(f32),
+    MotorMaxForce(f32),
+    RestLength(f32),
+    Stiffness(f32),
+    Damping(f32),
+    MaxLength(f32),
+    /// Delete the joint object.
+    Remove,
 }
 
 /// W3 §8 Visibility-section snapshot (the collapsible section body, NOT

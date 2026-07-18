@@ -52,6 +52,7 @@ pub(crate) fn sync_inspector_from_snapshots(
             host.store_mut().set_picker_target(None);
         }
         sync_physics_fields(host);
+        sync_joint_fields(host);
         if let Some(info) = transform {
             host.store_mut().set_number_value(
                 ids::INSP_TRANSFORM_POS_X,
@@ -523,6 +524,28 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
 /// Only the dimensions need mirroring — the two segmented groups read their
 /// selection straight off the snapshot at paint time, so there is nothing in
 /// the store for them to fall out of date with.
+/// §12 Physics Joint — mirror the snapshot into the number boxes, exactly as
+/// the body's dimensions are mirrored. Only the numbers: the three segmented
+/// groups read their selection straight off the snapshot at paint time, so
+/// there is nothing in the store for them to fall out of date with.
+fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
+    let Some(info) = state::current_inspector_joint() else {
+        return;
+    };
+    for (id, v) in [
+        (ids::INSP_JOINT_LIMIT_MIN, info.limit_min_deg),
+        (ids::INSP_JOINT_LIMIT_MAX, info.limit_max_deg),
+        (ids::INSP_JOINT_MOTOR_SPEED, info.motor_speed_deg),
+        (ids::INSP_JOINT_MOTOR_FORCE, info.motor_max_force),
+        (ids::INSP_JOINT_REST_LENGTH, info.rest_length),
+        (ids::INSP_JOINT_STIFFNESS, info.stiffness),
+        (ids::INSP_JOINT_DAMPING, info.damping),
+        (ids::INSP_JOINT_MAX_LENGTH, info.max_length),
+    ] {
+        host.store_mut().set_number_value(id, f64::from(v));
+    }
+}
+
 fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_physics() else {
         return;

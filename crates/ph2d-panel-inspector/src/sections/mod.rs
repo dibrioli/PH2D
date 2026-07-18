@@ -35,10 +35,12 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
 mod color_tint;
 mod identity;
+mod joint;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;
 mod render_source;
+mod rows;
 mod sampling;
 mod sprite_sheet;
 mod transform;
@@ -46,6 +48,7 @@ mod visibility;
 
 pub(crate) use color_tint::paint_color_tint_section;
 pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
+pub(crate) use joint::paint_joint_section;
 pub(crate) use material_blend::paint_material_blend_section;
 pub(crate) use ordering::paint_ordering_section;
 pub(crate) use physics::paint_physics_section;

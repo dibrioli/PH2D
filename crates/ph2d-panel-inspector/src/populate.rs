@@ -29,6 +29,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_visibility_section(store);
     populate_blend(store);
     populate_physics(store);
+    populate_joint(store);
 }
 
 /// W3 §8 Visibility section: register the segmented + bitmask + toggle ids
@@ -93,6 +94,44 @@ fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
 /// friction above 1 is legal (it means "grips harder than it weighs"), so it
 /// gets headroom rather than a false ceiling; density and the extents have no
 /// natural maximum, so their caps are generous rather than meaningful.
+/// §12 Physics Joint (W3). Registering these is what makes the widgets
+/// FOCUSABLE — a control that is painted and hit-registered but never
+/// registered here is dead under the mouse, and looks perfectly fine.
+fn populate_joint(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_JOINT_KIND);
+    register_button_ids(store, &ids::INSP_JOINT_LIMITS);
+    register_button_ids(store, &ids::INSP_JOINT_MOTOR);
+    register_button_ids(store, &[ids::INSP_JOINT_REMOVE, ids::INSP_PHYS_JOIN]);
+    // Physical quantities again — degrees, meters, N·m, spring constants —
+    // so none of these literals has a design token to come from.
+    for (id, value, min, max, step) in [
+        // A hinge limit is an angle; a full turn each way is the widest thing
+        // that still means something.
+        (ids::INSP_JOINT_LIMIT_MIN, -45.0, -360.0, 360.0, 1.0), // LITERAL-PX-OK: degrees
+        (ids::INSP_JOINT_LIMIT_MAX, 45.0, -360.0, 360.0, 1.0),  // LITERAL-PX-OK: degrees
+        // Motor speed in degrees/second, either direction.
+        (ids::INSP_JOINT_MOTOR_SPEED, 114.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s
+        (ids::INSP_JOINT_MOTOR_FORCE, 10.0, 0.0, 10000.0, 0.1),     // LITERAL-PX-OK: N·m ceiling
+        (ids::INSP_JOINT_REST_LENGTH, 1.0, 0.0, 1000.0, 0.01),      // LITERAL-PX-OK: meters
+        (ids::INSP_JOINT_STIFFNESS, 30.0, 0.0, 100000.0, 1.0), // LITERAL-PX-OK: spring constant
+        (ids::INSP_JOINT_DAMPING, 0.5, 0.0, 1000.0, 0.1),      // LITERAL-PX-OK: damping constant
+        (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, min, max, step);
+    }
+}
+
 fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_KIND);
     register_button_ids(store, &ids::INSP_PHYS_SHAPE);

@@ -683,10 +683,28 @@ pub(super) fn publish(
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
         super::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
+    // W3: the Join gesture needs exactly TWO bodies, and only the shell can
+    // see the selection — the panel is handed one entity at a time. Asked once
+    // here, so the painter (which offers the button) and the event handler
+    // (which honours the click) read the same fact.
+    // ⚠️ `sel.len() == 2`, not just `selected_count == 2`: `all()` on an empty
+    // slice is TRUE, so a count that disagreed with the slice would offer the
+    // button over nothing at all.
+    let can_join = selected_count == 2
+        && sel.len() == 2
+        && sel.iter().all(|&b| {
+            let e = ph2d_ecs::Entity::from_bits(b);
+            sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some()
+                && sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some()
+        });
     let inspector_physics = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_physics::build_physics_info(sim.world(), b));
+        .and_then(|b| super::inspector_physics::build_physics_info(sim.world(), b, can_join));
+    let inspector_joint = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_joint::build_joint_info(sim, b));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -706,6 +724,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
+        ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_visibility_section(
             inspector_visibility_section,
         );

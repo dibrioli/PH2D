@@ -37,11 +37,14 @@ mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
-mod inspector_ordering;
-mod inspector_physics;
+mod inspector_joint;
 /// The §11 Physics Body seam's OTHER half: the Inspector click reached the
 /// ECS and the sprite actually falls (panel-side proof lives in
 /// ).
+#[cfg(test)]
+mod inspector_joint_tests;
+mod inspector_ordering;
+mod inspector_physics;
 #[cfg(test)]
 mod inspector_physics_tests;
 mod inspector_visibility;
@@ -1450,6 +1453,13 @@ impl crate::App {
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
             let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
+            // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
+            // signature is already the length its own doc-comment warns about,
+            // and these two are applied in one short block below.
+            let mut joint_edits: Vec<(u64, ph2d_editor::JointFieldEdit)> = Vec::new();
+            // The pair to join, at most one per frame — it is a click, not a
+            // per-entity edit.
+            let mut join_request: Option<(u64, u64)> = None;
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
@@ -1961,13 +1971,28 @@ impl crate::App {
                     // siblings — "make all of these physical" is the gesture
                     // an artist actually performs.
                     EditorAction::InspectorPhysicsEdit { entity_bits, edit } => {
-                        if inspector_selection.is_empty() {
+                        // ⚠️ **Join does NOT fan out.** Every other §11 edit is
+                        // per-entity ("make all of these static"), but joining
+                        // is one gesture over a PAIR — fanned out it would
+                        // create one joint per selected body, i.e. two joints
+                        // between the same two objects, on the very click that
+                        // is supposed to make one.
+                        if matches!(edit, ph2d_editor::PhysicsFieldEdit::Join) {
+                            if let [a, b] = inspector_selection[..] {
+                                join_request = Some((a, b));
+                            }
+                        } else if inspector_selection.is_empty() {
                             physics_edits.push((entity_bits, edit));
                         } else {
                             for &t in &inspector_selection {
                                 physics_edits.push((t, edit));
                             }
                         }
+                    }
+                    // §12 Physics Joint. No fan-out either, and for a simpler
+                    // reason: the section only ever describes one joint object.
+                    EditorAction::InspectorJointEdit { entity_bits, edit } => {
+                        joint_edits.push((entity_bits, edit));
                     }
                     EditorAction::InspectorVisibilitySectionEdit { entity_bits, edit } => {
                         // BulkSelect fan-out, same shape as the sampling edit.
@@ -3979,6 +4004,27 @@ impl crate::App {
                 *sprite_type_id,
             ) {
                 self.title_dirty = true;
+            }
+            // §12 Physics Joint (W3) — the joint edits and the one gesture that
+            // creates a joint. Deletion is NOT here: a joint is an object, so
+            // "Delete Joint" despawns it through the same path any other object
+            // takes, and gets the same undo step for free.
+            for &(bits, edit) in &joint_edits {
+                if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
+                    let e = ph2d_ecs::Entity::from_bits(bits);
+                    let _ = sim.world_mut().despawn(e);
+                } else {
+                    inspector_joint::apply_joint_edit(
+                        sim,
+                        bits,
+                        edit,
+                        editor_queue,
+                        component_registry,
+                    );
+                }
+            }
+            if let Some((a, b)) = join_request {
+                inspector_joint::create_joint(sim, a, b);
             }
             // AutoKey (W4.T1/T2) — the single choke point. Runs HERE, after every
             // UI Transform/opacity write for the frame (gizmo early, Inspector +

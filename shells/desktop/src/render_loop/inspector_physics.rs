@@ -18,7 +18,11 @@ use super::inspector_ordering::{queue_remove, queue_set};
 /// body** — `has_body: false` is what lets the section offer the Add button.
 /// Without that, physics would be authorable only on entities that already
 /// have physics, which is nowhere.
-pub(crate) fn build_physics_info(world: &World, entity_bits: u64) -> Option<InspectorPhysicsInfo> {
+pub(crate) fn build_physics_info(
+    world: &World,
+    entity_bits: u64,
+    can_join: bool,
+) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -39,6 +43,9 @@ pub(crate) fn build_physics_info(world: &World, entity_bits: u64) -> Option<Insp
             restitution: Collider::DEFAULT_RESTITUTION,
             friction: Collider::DEFAULT_FRICTION,
             layer: 0,
+            // An entity with no body cannot be half of a joint, whatever the
+            // selection looks like.
+            can_join: false,
         });
     };
     let (shape_tag, radius, half_x, half_y) = match col.shape {
@@ -60,6 +67,7 @@ pub(crate) fn build_physics_info(world: &World, entity_bits: u64) -> Option<Insp
         restitution: col.restitution,
         friction: col.friction,
         layer: col.layer,
+        can_join,
     })
 }
 
@@ -143,6 +151,12 @@ pub(crate) fn apply_physics_edit(
     };
     let mut next = cur;
     match edit {
+        // Not a field edit at all: creating a joint is one gesture over a
+        // PAIR, and it is intercepted before the per-entity fan-out that
+        // brings us here. Reaching this arm would mean the interception was
+        // removed — and the fan-out would then create one joint per selected
+        // body instead of one joint.
+        PhysicsFieldEdit::Join => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

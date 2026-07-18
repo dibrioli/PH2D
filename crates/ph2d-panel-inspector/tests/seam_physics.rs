@@ -36,6 +36,7 @@ fn with_body() -> InspectorPhysicsInfo {
         restitution: 0.0,
         friction: 0.5,
         layer: 0,
+        can_join: false,
     }
 }
 
@@ -241,4 +242,60 @@ fn the_panel_consumes_the_add_click_so_the_section_is_reachable() {
         "the Add click was not consumed — the §11 arm is unreachable from apply_event"
     );
     let _ = InspectorPanel::ID;
+}
+
+/// **Join Selected Bodies is offered only when the shell says two bodies are
+/// selected, and it is CLICKABLE when it is.**
+///
+/// `can_join` is computed by the shell — the only half that can see a
+/// selection — and read twice: the painter decides whether to offer the
+/// button, the event arm decides whether to honour the click. Both halves are
+/// asserted here, because a button that is painted and not honoured (or
+/// honoured and not painted) is the same bug from either side.
+#[test]
+fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let joinable = InspectorPhysicsInfo {
+        can_join: true,
+        ..with_body()
+    };
+
+    // Painted only when joinable...
+    for can in [false, true] {
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(InspectorPhysicsInfo {
+            can_join: can,
+            ..with_body()
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        assert_eq!(
+            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN),
+            can,
+            "the Join button was painted for can_join={can}"
+        );
+    }
+
+    // ...and honoured only when joinable. Dim is not a refusal
+    // ([[feedback_disabled_button_still_dispatches]]): the id is in the store
+    // all session, so the arm has to check for itself.
+    expect(
+        &click(joinable, ids::INSP_PHYS_JOIN),
+        PhysicsFieldEdit::Join,
+        "Join Selected Bodies",
+    );
+    assert!(
+        click(with_body(), ids::INSP_PHYS_JOIN).is_empty(),
+        "Join fired with can_join=false — the refusal lives only in the paint \
+         loop, which is not a refusal"
+    );
 }

@@ -389,6 +389,14 @@ pub enum EditorAction {
         edit: crate::screens::hero::PhysicsFieldEdit,
     },
 
+    /// Inspector → shell channel for a §12 Physics Joint field (W3). The
+    /// `entity_bits` are the JOINT object's, not a body's — a joint is an
+    /// entity, and this section describes it.
+    InspectorJointEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::JointFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

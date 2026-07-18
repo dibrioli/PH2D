@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod event_joint;
 mod event_ordering;
 mod event_physics;
 mod paint;
@@ -27,10 +28,10 @@ mod sync;
 
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, set_current_display_unit,
-    set_current_inspector_blend, set_current_inspector_name, set_current_inspector_ordering,
-    set_current_inspector_physics, set_current_inspector_sampling, set_current_inspector_sprite,
-    set_current_inspector_transform, set_current_inspector_visibility,
-    set_current_inspector_visibility_section,
+    set_current_inspector_blend, set_current_inspector_joint, set_current_inspector_name,
+    set_current_inspector_ordering, set_current_inspector_physics, set_current_inspector_sampling,
+    set_current_inspector_sprite, set_current_inspector_transform,
+    set_current_inspector_visibility, set_current_inspector_visibility_section,
 };
 
 use ph2d_a11y::NodeId;

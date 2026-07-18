@@ -18,12 +18,12 @@ pub mod layout;
 
 pub use hero::{
     BlendFieldEdit, BottomHudStats, HeroScreen, HeroSelection, InspectorBlendInfo,
-    InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed,
-    InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
-    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilityMixed, InspectorVisibilitySectionInfo, OrderingFieldEdit, PhysicsFieldEdit,
-    RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
-    VisibilityFieldEdit, paint_hero_screen,
+    InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorOrderingMixed, InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSamplingMixed,
+    InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
+    JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, RequestedSpriteStrategy,
+    SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind, VisibilityFieldEdit, paint_hero_screen,
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIER_ROW_H, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H,

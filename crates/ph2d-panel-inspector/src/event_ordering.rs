@@ -140,6 +140,9 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
     }
     // §11 Physics Body lives in its own module: it is not ordering, and
     // this dispatcher is already at the LOC cap.
+    if crate::event_joint::apply_joint_event(host, ev) {
+        return true;
+    }
     if crate::event_physics::apply_physics_event(host, ev) {
         return true;
     }

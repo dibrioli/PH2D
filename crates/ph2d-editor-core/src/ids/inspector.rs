@@ -400,3 +400,61 @@ pub const HIER_RESIZE_HANDLE: NodeId = hash_node_id("hier_resize_handle");
 /// Resize gripper at the Hierarchy's bottom-LEFT corner. Mirror of
 /// [`HIER_RESIZE_HANDLE`].
 pub const HIER_RESIZE_HANDLE_BL: NodeId = hash_node_id("hier_resize_handle_bl");
+
+// ---------------------------------------------------------------------------
+// §12 Physics Joint (W3). A joint is an ENTITY, so this section describes the
+// selected joint object — kind, the two bodies it names, and the parameters
+// the chosen kind actually uses.
+// ---------------------------------------------------------------------------
+
+/// The §12 section header (collapse state owner) and its colour circle.
+pub const INSP_LIVE_JOINT_SECTION: NodeId = hash_node_id("insp_live_joint_section");
+pub const INSP_LIVE_JOINT_COLOR: NodeId = hash_node_id("insp_live_joint_color");
+
+/// Group ids for the three segmented controls in the section. Separate
+/// constants rather than reusing the section/colour ids: a segmented group
+/// owns the label and the aria node, and two groups sharing one id would make
+/// the second one's selection unreadable.
+pub const INSP_JOINT_KIND_GROUP: NodeId = hash_node_id("insp_joint_kind_group");
+pub const INSP_JOINT_LIMITS_GROUP: NodeId = hash_node_id("insp_joint_limits_group");
+pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group");
+
+/// Pin · Spring · Rope. Indexed by the `JointKind` tag the snapshot carries.
+pub const INSP_JOINT_KIND: [NodeId; 3] = [
+    hash_node_id("insp_joint_kind_pin"),
+    hash_node_id("insp_joint_kind_spring"),
+    hash_node_id("insp_joint_kind_rope"),
+];
+
+/// Off · On, for the two Pin-only switches. Segmented rather than a checkbox
+/// because that is the widget this section already speaks, and a two-option
+/// segmented is exactly a switch.
+pub const INSP_JOINT_LIMITS: [NodeId; 2] = [
+    hash_node_id("insp_joint_limits_off"),
+    hash_node_id("insp_joint_limits_on"),
+];
+pub const INSP_JOINT_MOTOR: [NodeId; 2] = [
+    hash_node_id("insp_joint_motor_off"),
+    hash_node_id("insp_joint_motor_on"),
+];
+
+/// Pin: the angular range, in DEGREES at this boundary (the component stores
+/// radians, like `Transform::rotation_rad`).
+pub const INSP_JOINT_LIMIT_MIN: NodeId = hash_node_id("insp_joint_limit_min");
+pub const INSP_JOINT_LIMIT_MAX: NodeId = hash_node_id("insp_joint_limit_max");
+/// Pin: the motor.
+pub const INSP_JOINT_MOTOR_SPEED: NodeId = hash_node_id("insp_joint_motor_speed");
+pub const INSP_JOINT_MOTOR_FORCE: NodeId = hash_node_id("insp_joint_motor_force");
+/// Spring.
+pub const INSP_JOINT_REST_LENGTH: NodeId = hash_node_id("insp_joint_rest_length");
+pub const INSP_JOINT_STIFFNESS: NodeId = hash_node_id("insp_joint_stiffness");
+pub const INSP_JOINT_DAMPING: NodeId = hash_node_id("insp_joint_damping");
+/// Rope.
+pub const INSP_JOINT_MAX_LENGTH: NodeId = hash_node_id("insp_joint_max_length");
+/// Delete the joint object.
+pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
+
+/// The creation gesture, and it lives in §11 (Physics Body) rather than here:
+/// a joint does not exist yet when you want to make one, so the button has to
+/// be somewhere you already are — looking at two bodies you have selected.
+pub const INSP_PHYS_JOIN: NodeId = hash_node_id("insp_phys_join");

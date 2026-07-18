@@ -10,9 +10,9 @@
 //! Snapshot-driven like §10: the panel crate never sees `ph2d-physics-ecs`,
 //! only resolved tags and floats.
 
+use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
 /// Body-kind labels, indexed by `BodyKind` tag. Hardcoded (not read from
 /// `ph2d-physics-ecs`) so the panel stays loose-coupled — the snapshot
@@ -207,6 +207,25 @@ pub(crate) fn paint_physics_section(
         info.layer,
     );
 
+    // The creation gesture for a joint (W3). It lives HERE, in the body
+    // section, because a joint does not exist yet when you want to make one —
+    // the button has to be somewhere you already are, looking at the two
+    // bodies you have selected. Offered only when the selection is exactly two
+    // bodies, which is a fact only the shell can know.
+    if info.can_join {
+        let join_rect = Rect::new(x, yy, w, h);
+        let join = Button::new(ids::INSP_PHYS_JOIN, "Join Selected Bodies")
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_PHYS_JOIN)
+                    .unwrap_or(ButtonState::Normal),
+            );
+        paint_button(&join, join_rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_PHYS_JOIN, join_rect);
+        yy += h + Spacing::Sm.px();
+    }
+
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_PHYS_REMOVE, "Remove Physics Body")
         .kind(ButtonKind::Default)
@@ -218,100 +237,4 @@ pub(crate) fn paint_physics_section(
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_REMOVE, btn_rect);
     yy + h + SECTION_BOTTOM_PAD_PX
-}
-
-/// A labelled segmented control. Returns the next `y`.
-#[allow(clippy::too_many_arguments)]
-fn seg_row(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    group_id: NodeId,
-    option_ids: &[NodeId],
-    labels: &[&str],
-    selected: u8,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let seg = SegmentedAdaptive::new(
-        group_id,
-        label,
-        option_ids
-            .iter()
-            .zip(labels)
-            .map(|(&id, &l)| SegmentedOption::new(id, l))
-            .collect(),
-    )
-    .selected((selected as usize).min(labels.len() - 1));
-    let seg_h = paint_segmented_adaptive(
-        &seg,
-        Rect::new(x, y + label_h, w, ROW_H_PX),
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    y + label_h + seg_h + Spacing::Sm.px()
-}
-
-/// A labelled number box, seeded from the store (which `sync` mirrors from
-/// the snapshot). Returns the next `y`.
-#[allow(clippy::too_many_arguments)]
-fn num_row(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    id: NodeId,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + label_h;
-    let rect = Rect::new(x, row_y, w, ROW_H_PX);
-    hit_index.register(id, rect);
-    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value).state(state);
-    paint_number_input_with_buffer(
-        &input,
-        Some(buffer),
-        caret,
-        anchor,
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    row_y + ROW_H_PX + Spacing::Sm.px()
 }

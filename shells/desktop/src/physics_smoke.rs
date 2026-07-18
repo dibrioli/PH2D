@@ -5,7 +5,8 @@
 //! |-----|------|-------|
 //! | `1` | W1   | one **dynamic** sprite dropped above a **static** floor |
 //! | `2` | W1.5 | a **pile** of bodies, for scrubbing the clock backwards |
-//! | `3` | W2   | plain sprites + a floor, for authoring bodies in the Inspector |
+//! | `3` | W2a  | plain sprites + a floor, for authoring bodies in the Inspector |
+//! | `4` | W2b  | a world panel scene: bodies of mixed size to feel every knob |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -58,6 +59,7 @@ impl crate::App {
         match which.trim() {
             "2" => self.physics_smoke_pile(),
             "3" => self.physics_smoke_author(),
+            "4" => self.physics_smoke_world(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -178,6 +180,73 @@ impl crate::App {
             "[physics-smoke 2] 12 bodies falling onto Floor. Let them settle, then DRAG THE \
              PLAYHEAD BACKWARDS on the timeline ruler: the pile must rebuild exactly as it fell, \
              with no stall. (Timeline panel opened for you; `L` toggles it.)"
+        );
+    }
+
+    /// **Scene 4 (W2b).** The world panel, with a scene built so every knob on
+    /// it changes something you can SEE.
+    ///
+    /// Opens the panel itself — asking the artist to find `W` first is exactly
+    /// the assembly a ready-to-smoke scene removes
+    /// ([[feedback_ready_to_smoke_example]]).
+    ///
+    /// The scene is chosen per knob, not for looks:
+    /// - **bodies of three sizes**, so *Gravity* and *Air Drag* separate the
+    ///   heavy from the light instead of moving everything together;
+    /// - **a tall stack**, because *Sub-steps* and *Iterations* are visible in
+    ///   how a stack settles and in how deep a fast body sinks on impact — a
+    ///   single body shows neither;
+    /// - **bodies that come to rest**, because *Sleep* is only observable on
+    ///   something that stops.
+    fn physics_smoke_world(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+
+        // Three sizes × four columns: a stack that settles unevenly (so it
+        // topples a little, like scene 2) and has small bodies that a drag
+        // value slows down long before it touches the big ones.
+        let sizes = [0.7f32, 0.45, 0.28];
+        for i in 0..12u32 {
+            let col = (i % 4) as f32;
+            let row = (i / 4) as f32;
+            let s = sizes[(i % 3) as usize];
+            let x = col * 0.9 - 1.35;
+            let y = 2.0 + row * 1.1;
+            let hue = 0.25 + 0.18 * (i % 3) as f32;
+            gfx.sim.world_mut().spawn((
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(0, [s, s], [hue, 0.55, 0.85, 1.0]),
+                Name::new(format!("Body{i:02}")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: s * 0.5,
+                        half_y: s * 0.5,
+                    },
+                    density: 1.0,
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.panel_visibility.insert("physics", true);
+        }
+
+        eprintln!(
+            "[physics-smoke 4] 12 bodies of three sizes falling onto Floor, with the PHYSICS \
+             panel open (`W` toggles it).\n\
+             Try, in order:\n\
+               · Gravity Y -> 0      : everything stops falling, mid-air.\n\
+               · Gravity X           : the pile slides sideways.\n\
+               · Air Drag / Linear   : the small bodies slow first.\n\
+               · Sub-steps           : less sink on impact (watch a body land).\n\
+               · Sleep / Delay -> 0  : the settled pile freezes sooner.\n\
+               · Show Colliders      : must agree with the `B` key, always.\n\
+               · Reset to Defaults   : everything back, in one click.\n\
+             Then Ctrl+S, Ctrl+O: the settings must come back with the project."
         );
     }
 

@@ -66,7 +66,7 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        &tr("panel.physics.title"),
+        tr("panel.physics.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -127,7 +127,7 @@ pub(crate) fn paint_row(
 
     paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, w, ROW_H_PX),
-        &label,
+        label,
         track,
         display,
         Some(&text),

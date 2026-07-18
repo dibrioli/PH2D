@@ -47,6 +47,7 @@ fn write_project_with(path: &std::path::Path, schema: u32, timeline: Vec<u8>) {
         painted: Vec::new(),
         motion: String::new(),
         timeline,
+        physics: Default::default(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -323,6 +324,7 @@ fn project_file_round_trips_through_postcard() {
         painted: Vec::new(),
         motion: motion.clone(),
         timeline: animation_of_hero(),
+        physics: Default::default(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -374,7 +376,9 @@ fn project_file_round_trips_through_postcard() {
 /// `WorldSnapshot`; nem o FlipDoc nem a VecScene mudaram, mas o layout do arquivo sim) ·
 /// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0131 W2, a autoria
 /// no Inspector). Nenhuma constante de esquema mudou, então **nenhum gate podia ver isto** —
-/// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado.
+/// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado. ·
+/// **v19** as settings de MUNDO da física (ADR-0131 W2b: 6º campo do `ProjectFile`).
+/// (O v18 é do Flip, e é o caso do PONTO CEGO abaixo.)
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -401,9 +405,89 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (18, 8, 8),
+        (19, 8, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
+    );
+}
+
+/// **As settings de MUNDO da física sobrevivem ao arquivo — e chegam ao SOLVER.**
+///
+/// ⚠️ **O que este gate NÃO prova:** que as settings chegaram ao SOLVER. Sem
+/// janela o `gfx` é `None`, então nem o `rebuild()` nem o `set_settings` do load
+/// rodam aqui — um oráculo sobre o bridge seria verde por ausência. Ele prova a
+/// metade que pode: o arquivo carrega os valores autorados e o schema os aceita.
+///
+/// As outras duas metades têm gates próprios, de propósito:
+/// - que `set_settings` sobrevive a um `rebuild` → `ph2d-physics-ecs`
+///   (`the_settings_survive_a_rebuild`);
+/// - que o load chama os dois na ORDEM certa → o arch-gate abaixo.
+#[test]
+fn the_world_settings_survive_the_project_file() {
+    let path = tmp_path("physics_world_settings");
+
+    // Um mundo autorado: gravidade zero (top-down) e arrasto pesado — nada que
+    // um default possa produzir por acidente.
+    let authored = ph2d_physics_ecs::PhysicsSettings {
+        gravity_x: 0.0,
+        gravity_y: 0.0,
+        linear_damping: 3.5,
+        substeps: 7,
+        ..Default::default()
+    };
+    let file = ProjectFile {
+        state: empty_state(),
+        assets: Vec::new(),
+        painted: Vec::new(),
+        motion: String::new(),
+        timeline: Vec::new(),
+        physics: authored,
+    };
+    let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
+    std::fs::write(&path, bytes).expect("grava");
+
+    let mut app = crate::App::new();
+    app.project_load_from(path.to_str().unwrap());
+
+    // `gfx` é `None` sem janela, então o caminho que instala no BRIDGE não roda
+    // aqui; o que este gate pode afirmar sem GPU é que o arquivo entregou os
+    // valores autorados. (O lado do bridge é gateado em `ph2d-physics-ecs`.)
+    let (ver, back): (u32, ProjectFile) =
+        postcard::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(ver, PROJECT_SCHEMA);
+    assert_eq!(
+        back.physics, authored,
+        "as settings de mundo nao sobreviveram ao arquivo"
+    );
+    let _ = app;
+}
+
+/// **O load instala as settings DEPOIS do `rebuild()` — arch-gate sobre o fonte.**
+///
+/// `rebuild()` constrói um `PhysicsWorld` novo, que nasce nos defaults do motor.
+/// Instalar antes dele é escrever num mundo que ele joga fora: a cena carregaria
+/// com a gravidade do documento ANTERIOR, sem erro nenhum.
+///
+/// Isto é uma afirmação sobre a ORDEM de duas chamadas, e nenhum teste de
+/// unidade a alcança — `gfx` é `None` sem janela, então as duas linhas nem
+/// rodam. Mesmo padrão (e mesmo motivo) do
+/// `the_z_projection_reads_the_tree_after_the_sync`: quando o fato é a ordem do
+/// código do produto, o gate lê o código do produto.
+#[test]
+fn the_load_installs_the_world_settings_after_the_rebuild() {
+    let src = include_str!("project.rs");
+    let rebuild = src
+        .find("physics.rebuild()")
+        .expect("o load precisa derrubar o mundo derivado do documento anterior");
+    let install = src
+        .find("physics.set_settings(")
+        .expect("o load precisa instalar as settings de mundo do ARQUIVO");
+    assert!(
+        rebuild < install,
+        "`set_settings` aparece ANTES de `rebuild()` em project.rs: o rebuild \
+         constroi um PhysicsWorld novo nos defaults do motor e joga fora o que \
+         acabou de ser instalado — a cena carrega com a gravidade do documento \
+         anterior, em silencio"
     );
 }
 

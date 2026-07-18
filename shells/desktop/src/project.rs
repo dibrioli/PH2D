@@ -70,7 +70,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// o `f32` antigo com sucesso e o interpreta na unidade nova, ~100× mais grosso, sem um
 /// erro sequer. Todos os bumps anteriores quebravam LAYOUT (falham alto); este quebra
 /// SIGNIFICADO (falharia calado). Arquivo v17 é recusado — ver o `load`.
-const PROJECT_SCHEMA: u32 = 18;
+/// v19 (ADR-0131 W2b): o arquivo carrega as **settings de MUNDO** da física
+/// (`ProjectFile.physics`) — gravidade, solver, arrasto, sono. Campo novo,
+/// layout posicional muda. Sem ele o painel do W2b seria um painel de knobs que
+/// ESQUECEM: gravidade zero para um jogo top-down é uma decisão do projeto, e
+/// perdê-la ao reabrir é o mesmo que não tê-la.
+const PROJECT_SCHEMA: u32 = 19;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -106,6 +111,15 @@ struct ProjectFile {
     /// a mesma função que cura delete+undo (ver [`crate::timeline_persist`]). Um projeto sem
     /// animação carrega `vec![]`.
     timeline: Vec<u8>,
+    /// As **settings de MUNDO** da física (ADR-0131 D8 / W2b).
+    ///
+    /// Fora do `ProjectState` de propósito: o `ProjectState` é a unidade do undo
+    /// GLOBAL, e um Ctrl+Z do canvas não deve rebobinar a gravidade da cena —
+    /// o mesmo motivo que mantém `motion` e `timeline` aqui fora.
+    ///
+    /// O mundo rapier em si **não** viaja (D2: ele é derivado); o que viaja é o
+    /// que o artista autorou.
+    physics: ph2d_physics_ecs::PhysicsSettings,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -161,6 +175,11 @@ impl crate::App {
                 .map(|g| g.motion.doc.to_text())
                 .unwrap_or_default(),
             timeline,
+            physics: self
+                .gfx
+                .as_ref()
+                .map(|g| g.physics.settings())
+                .unwrap_or_default(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
@@ -271,6 +290,12 @@ impl crate::App {
         // re-deriva das components carregadas (entidades novas, bits novos).
         if let Some(gfx) = self.gfx.as_mut() {
             gfx.physics.rebuild();
+            // ...e as settings do ARQUIVO entram DEPOIS do rebuild, nunca antes:
+            // `rebuild` constrói um `PhysicsWorld` novo, que nasce nos defaults
+            // do motor. Instalar antes seria escrever num mundo que o rebuild
+            // joga fora, e a cena carregaria com a gravidade do documento
+            // ANTERIOR — em silêncio.
+            gfx.physics.set_settings(file.physics);
         }
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
         //

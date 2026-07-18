@@ -2716,7 +2716,7 @@ impl App {
                                     // `crate::corner_handles`). O render já não a desenha lá;
                                     // aqui o hit-test também não pode agarrá-la, senão o
                                     // clique pegaria um alvo que não está na tela.
-                                    let corner_px = (!crate::corner_handles::is_live_shape(
+                                    let corner_px = (!crate::corner_handles::has_derived_verts(
                                         &gfx.sim,
                                         &self.vec_entities,
                                         selected.unwrap_or_default(),

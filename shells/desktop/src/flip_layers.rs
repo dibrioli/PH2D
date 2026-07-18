@@ -100,6 +100,21 @@ pub(crate) fn apply_panel_event(
             }
             false
         }
+        PanelEvent::Click(id) if *id == ids::FLIP_LAYER_DUPLICATE => {
+            // Duplica a camada ATIVA (§4.C) — uma cópia independente, acima da original,
+            // que vira a ativa (o Illustrator/PS). Sem camada ativa: no-op (o botão já
+            // nasce desabilitado, mas a recusa mora aqui também, não só na pintura).
+            let Some(target) = *active_layer else {
+                return false;
+            };
+            if let Some(obj) = flip.object_mut(oid)
+                && let Some(new) = obj.duplicate_layer(target)
+            {
+                *active_layer = Some(new);
+                return true;
+            }
+            false
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_LAYER_DELETE => {
             let Some(target) = active_layer.or_else(|| {
                 flip.object(oid)
@@ -220,6 +235,68 @@ mod tests {
             false,
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 2);
+    }
+
+    /// 🔴 **O botão Duplicate DUPLICA a camada ativa e a cópia vira a ativa** (§4.C) — o
+    /// consumidor real (`apply_panel_event`) sobre o doc, não uma cópia da decisão.
+    ///
+    /// Mutação que sangra: o braço do `FLIP_LAYER_DUPLICATE` chamar `add_layer` (camada
+    /// vazia) em vez de `duplicate_layer` — o count cresce igual, mas a cópia não leva a
+    /// arte, e o `drawings().len()` não dobra.
+    #[test]
+    fn duplicate_layer_button_copies_the_active_layer() {
+        use ph2d_flip::{Hold, KeyKind, Point, Rgba};
+        let (mut doc, _a, b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        // A camada ativa `b` ganha um desenho não-vazio.
+        let obj = doc.object_mut(oid).unwrap();
+        let d = obj
+            .insert_frame(b, 0, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        let mut s = ph2d_flip::FlipStroke::new();
+        s.push_point(Point {
+            pos: ph2d_core::Vec2::new(0.0, 0.0),
+            width: 2.0,
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+        obj.drawing_mut(d).unwrap().strokes.push(s);
+        let drawings_before = obj.drawings().len();
+
+        let mut active = Some(b);
+        assert!(apply_panel_event(
+            &PanelEvent::Click(ids::FLIP_LAYER_DUPLICATE),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        ));
+        let obj = doc.object(oid).unwrap();
+        assert_eq!(obj.layers().len(), 3, "a cópia é uma camada nova");
+        assert_ne!(active, Some(b), "a cópia vira a ativa");
+        assert!(active.is_some());
+        assert_eq!(
+            obj.drawings().len(),
+            drawings_before + 1,
+            "a cópia leva a ARTE (um desenho novo), não é uma camada vazia"
+        );
+    }
+
+    /// Sem camada ativa, Duplicate é no-op (a recusa mora no apply, não só na pintura).
+    #[test]
+    fn duplicate_layer_button_is_a_noop_without_an_active_layer() {
+        let (mut doc, _a, _b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let before = doc.object(oid).unwrap().layers().len();
+        let mut active = None;
+        assert!(!apply_panel_event(
+            &PanelEvent::Click(ids::FLIP_LAYER_DUPLICATE),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        ));
+        assert_eq!(doc.object(oid).unwrap().layers().len(), before);
     }
 
     #[test]

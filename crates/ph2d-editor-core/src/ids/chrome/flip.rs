@@ -130,6 +130,8 @@ pub const FLIP_ERASE_STROKE: NodeId = hash_node_id("flip.erase.stroke");
 // ── Layers toolbar (fixed) ───────────────────────────────────────────────────
 /// Add a new layer on top (of the active object).
 pub const FLIP_LAYER_ADD: NodeId = hash_node_id("flip.layer.add");
+/// Duplicate the active layer (an independent copy, above the original — ADR-0114 §4.C).
+pub const FLIP_LAYER_DUPLICATE: NodeId = hash_node_id("flip.layer.duplicate");
 /// Delete the active layer.
 pub const FLIP_LAYER_DELETE: NodeId = hash_node_id("flip.layer.delete");
 

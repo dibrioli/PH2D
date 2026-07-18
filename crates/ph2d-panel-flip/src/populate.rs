@@ -196,6 +196,7 @@ pub fn populate(store: &mut WidgetStore) {
 
     // Layers toolbar.
     button(store, ids::FLIP_LAYER_ADD);
+    button(store, ids::FLIP_LAYER_DUPLICATE);
     button(store, ids::FLIP_LAYER_DELETE);
 
     // Close (X) chrome button.

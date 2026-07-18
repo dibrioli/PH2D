@@ -627,3 +627,34 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
         }
     }
 }
+
+/// 🔴 **O botão Duplicate Layer CHEGA ao barramento** (§4.C) — o forward do painel
+/// (`event.rs`). O apply real (duplicar no doc) mora no shell (`flip_layers`), mas se o
+/// painel ENGOLIR o clique, nada chega lá. Este gate dirige o Click e prova o forward.
+///
+/// Mutação que sangra: tirar o `FLIP_LAYER_DUPLICATE` do arm de eventos do painel — o
+/// clique deixa de ser Consumed / de virar um `ToolPanelEvent::Click(FLIP_LAYER_DUPLICATE)`.
+#[test]
+fn duplicate_layer_button_forwards_to_the_bus() {
+    use ph2d_editor_core::tool::PanelEvent;
+
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    let outcome =
+        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_LAYER_DUPLICATE));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o clique no Duplicate foi IGNORADO — falta o arm em `event.rs`"
+    );
+    let forwarded = host.drained_actions().into_iter().any(|a| {
+        matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if id == ids::FLIP_LAYER_DUPLICATE
+        )
+    });
+    assert!(
+        forwarded,
+        "o Duplicate nao chegou ao barramento — o shell (flip_layers) nunca duplica"
+    );
+}

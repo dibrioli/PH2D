@@ -370,3 +370,114 @@ fn open_gap_at_a_free_frame_moves_nothing() {
     let keys: Vec<Frame> = o.layer(l).unwrap().frames().keys().copied().collect();
     assert_eq!(keys, vec![0, 5]);
 }
+
+// ── duplicate_layer (§4.C) ────────────────────────────────────────────────────────
+
+/// 🔴 **Duplicar uma camada é uma cópia INDEPENDENTE, acima da original.** A cópia leva os
+/// mesmos frames e propriedades, mas desenhos PRÓPRIOS: editar a cópia não toca o original.
+///
+/// Mutação que sangra: reusar o mesmo `DrawingId` (não deep-copiar) — editar a cópia mudaria
+/// o original, e o `assert_ne` de conteúdo pega.
+#[test]
+fn duplicate_layer_is_an_independent_copy_above_the_original() {
+    let (mut o, l, d) = object_with_one_frame();
+    push_seg(&mut o, d, [0.0, 0.0], [10.0, 0.0]);
+    o.layer_mut(l).unwrap().opacity = 0.5;
+    o.layer_mut(l).unwrap().blend = crate::BlendMode::Multiply;
+
+    let dup = o.duplicate_layer(l).expect("duplicou");
+    assert_ne!(dup, l, "id novo");
+    // Acima da original: [original, cópia].
+    let order: Vec<LayerId> = o.layers().iter().map(|x| x.id).collect();
+    assert_eq!(order, vec![l, dup], "a cópia entra ACIMA da original");
+    // Propriedades copiadas.
+    assert_eq!(o.layer(dup).unwrap().opacity, 0.5);
+    assert_eq!(o.layer(dup).unwrap().blend, crate::BlendMode::Multiply);
+    assert!(o.layer(dup).unwrap().name.contains("copy"));
+
+    // Desenho PRÓPRIO: editar a cópia não muda o original.
+    let dup_did = o.drawing_at(dup, 0).unwrap();
+    let src_did = o.drawing_at(l, 0).unwrap();
+    assert_ne!(dup_did, src_did, "a cópia tem desenho próprio");
+    push_seg(&mut o, dup_did, [99.0, 99.0], [100.0, 100.0]);
+    assert_eq!(
+        o.drawing(src_did).unwrap().strokes.len(),
+        1,
+        "o original intacto"
+    );
+    assert_eq!(
+        o.drawing(dup_did).unwrap().strokes.len(),
+        2,
+        "a cópia divergiu"
+    );
+}
+
+/// 🔴 **A instância DENTRO da camada é preservada** — dois quadros que compartilham UM
+/// desenho na origem compartilham o MESMO desenho novo na cópia (um ciclo continua ciclo),
+/// e o refcount reflete isso.
+///
+/// Mutação que sangra: deep-copiar por-QUADRO (um desenho novo por frame) — os dois quadros
+/// da cópia teriam ids diferentes e `users` seria 1 em vez de 2.
+#[test]
+fn duplicate_layer_preserves_intra_layer_instancing() {
+    let (mut o, l, d) = object_with_one_frame();
+    push_seg(&mut o, d, [0.0, 0.0], [10.0, 0.0]);
+    // Instancia o MESMO desenho no quadro 5 (um ciclo de 2 quadros, 1 arte).
+    assert!(o.duplicate_frame(l, 0, 5, DupMode::Instance));
+    assert_eq!(
+        o.drawing(d).unwrap().users(),
+        2,
+        "1 arte, 2 quadros (origem)"
+    );
+
+    let dup = o.duplicate_layer(l).unwrap();
+    let a = o.drawing_at(dup, 0).unwrap();
+    let b = o.drawing_at(dup, 5).unwrap();
+    assert_eq!(
+        a, b,
+        "os dois quadros da cópia compartilham UM desenho (instância)"
+    );
+    assert_ne!(a, d, "e é um desenho NOVO, não o da origem");
+    assert_eq!(
+        o.drawing(a).unwrap().users(),
+        2,
+        "o refcount reflete os 2 quadros"
+    );
+    // A origem intacta.
+    assert_eq!(o.drawing(d).unwrap().users(), 2);
+}
+
+/// 🔴 **A cópia sobrevive ao delete da original** (e vice-versa) — os refcounts são
+/// independentes, então `remove_unused_drawings` não reclama arte viva.
+///
+/// Mutação que sangra: `users = 0` nos desenhos novos — deletar a original rodaria o GC e
+/// levaria a arte da cópia junto.
+#[test]
+fn the_copy_and_the_original_can_be_deleted_independently() {
+    let (mut o, l, d) = object_with_one_frame();
+    push_seg(&mut o, d, [0.0, 0.0], [10.0, 0.0]);
+    let dup = o.duplicate_layer(l).unwrap();
+    let dup_did = o.drawing_at(dup, 0).unwrap();
+
+    assert!(o.remove_layer(l));
+    o.remove_unused_drawings();
+    // A cópia ainda desenha algo.
+    assert_eq!(
+        o.drawing(o.drawing_at(dup, 0).unwrap())
+            .unwrap()
+            .strokes
+            .len(),
+        1,
+        "a arte da cópia sobreviveu ao delete da original"
+    );
+    let _ = dup_did;
+}
+
+/// Id de camada inexistente = `None`, sem efeito colateral.
+#[test]
+fn duplicate_layer_of_a_missing_id_is_none() {
+    let (mut o, _l, _d) = object_with_one_frame();
+    let before = o.layers().len();
+    assert_eq!(o.duplicate_layer(LayerId(999)), None);
+    assert_eq!(o.layers().len(), before, "nada foi criado");
+}

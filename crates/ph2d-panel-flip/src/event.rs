@@ -124,8 +124,12 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        // ── Layers toolbar (Add/Delete) → the shell drain applies to the doc. ──
-        WidgetEvent::Click(id) if id == ids::FLIP_LAYER_ADD || id == ids::FLIP_LAYER_DELETE => {
+        // ── Layers toolbar (Add/Duplicate/Delete) → the shell drain applies to the doc. ──
+        WidgetEvent::Click(id)
+            if id == ids::FLIP_LAYER_ADD
+                || id == ids::FLIP_LAYER_DUPLICATE
+                || id == ids::FLIP_LAYER_DELETE =>
+        {
             seam_reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

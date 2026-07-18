@@ -126,6 +126,57 @@ impl FlipObject {
         true
     }
 
+    /// **Duplica a camada `id`** (o "Duplicate Layer" do Painter/PS) — uma cópia
+    /// INDEPENDENTE, inserida logo ACIMA da original, e devolve o id dela.
+    ///
+    /// A cópia leva os mesmos frames (tempos, poses, kinds, holds, sentinelas) e as mesmas
+    /// propriedades (blend/opacity/visible/lock/máscaras/cycle/onion), mas ganha desenhos
+    /// PRÓPRIOS: editar a cópia não toca o original. A **instância DENTRO da camada é
+    /// preservada** — dois quadros que compartilham um desenho na origem compartilham o
+    /// MESMO desenho novo na cópia (o mapa é por-DESENHO, não por-quadro), então um ciclo
+    /// que reusa arte continua um ciclo. É a diferença entre duplicar a camada e
+    /// "achatar+recopiar cada quadro".
+    ///
+    /// O refcount de cada desenho novo nasce igual a quantos quadros da cópia o referenciam
+    /// (o mesmo livro que [`Self::duplicate_frame`] mantém) — senão o `remove_unused_drawings`
+    /// reclamaria arte viva, ou a manteria após o delete da cópia.
+    pub fn duplicate_layer(&mut self, id: LayerId) -> Option<LayerId> {
+        use std::collections::BTreeMap; // determinístico (o HashMap é proibido, HR); n pequeno
+        let li = self.layer_index(id)?;
+        // Quantos quadros da origem referenciam cada desenho distinto (a instância local).
+        let mut counts: BTreeMap<DrawingId, u32> = BTreeMap::new();
+        for ff in self.layers[li].frames().values() {
+            if let Some(d) = ff.drawing {
+                *counts.entry(d).or_insert(0) += 1;
+            }
+        }
+        // Um deep-copy por desenho distinto, com `users` = a contagem acima.
+        let mut map: BTreeMap<DrawingId, DrawingId> = BTreeMap::new();
+        for (&old, &users) in &counts {
+            let new_id = DrawingId(self.drawings.len() as u32);
+            let mut clone = self.drawings[old.0 as usize].clone();
+            clone.set_users(users);
+            self.drawings.push(clone);
+            map.insert(old, new_id);
+        }
+        // A camada nova: clona a original (frames/poses/props exatos), troca id+nome e
+        // remapeia os `DrawingId` dos quadros pelo mapa (`frames_mut` é o mesmo canal que a
+        // compactação usa). Todo `did` referenciado está no mapa, por construção.
+        let new_lid = LayerId(self.next_layer_id);
+        self.next_layer_id += 1;
+        let mut layer = self.layers[li].clone();
+        layer.id = new_lid;
+        layer.name = format!("{} copy", layer.name);
+        for ff in layer.frames_mut().values_mut() {
+            if let Some(d) = ff.drawing {
+                ff.drawing = Some(map[&d]);
+            }
+        }
+        // Acima da original (o Illustrator/PS): índice maior = mais perto do topo.
+        self.layers.insert(li + 1, layer);
+        Some(new_lid)
+    }
+
     #[must_use]
     pub fn layer(&self, id: LayerId) -> Option<&FlipLayer> {
         self.layers.iter().find(|l| l.id == id)

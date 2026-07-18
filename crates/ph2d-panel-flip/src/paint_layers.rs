@@ -104,48 +104,36 @@ pub(crate) fn layers_section(
     );
     y += label_font + Spacing::Xs.px();
 
-    // Toolbar: Add | Delete (Delete disabled with no active layer).
+    // Toolbar: Add | Duplicate | Delete (§4.C). Um loop sobre os três botões — a largura de
+    // coluna sai de `.len()` (não de um `3.0` solto), e a regra "precisa de camada ativa"
+    // vale para Duplicate/Delete: sem camada não há o que duplicar nem apagar, e um botão
+    // que não age é pior que um ausente (disabled ⇒ não hit-registrado ⇒ no-op).
     let gap = Spacing::Sm.px();
-    let half = ((m.inner_w - gap) / 2.0).max(1.0);
-    let add_rect = Rect::new(m.inner_x, y, half, m.row_h);
-    button_absent(ctx, ids::FLIP_LAYER_ADD);
-    {
-        let st = ctx
-            .host
-            .store()
-            .button_state(ids::FLIP_LAYER_ADD)
-            .unwrap_or(ButtonState::Normal);
-        let btn = Button::new(ids::FLIP_LAYER_ADD, "Add Layer")
-            .kind(ButtonKind::Default)
-            .state(st);
-        paint_button(&btn, add_rect, ctx.scene, ctx.text_system, theme);
-    }
-    ctx.host
-        .hit_index_mut()
-        .register(ids::FLIP_LAYER_ADD, add_rect);
-
-    let del_rect = Rect::new(m.inner_x + half + gap, y, half, m.row_h);
-    let del_enabled = snap.active.is_some();
-    button_absent(ctx, ids::FLIP_LAYER_DELETE);
-    {
-        let st = if del_enabled {
+    let needs_active = snap.active.is_some();
+    let buttons = [
+        (ids::FLIP_LAYER_ADD, "Add", true),
+        (ids::FLIP_LAYER_DUPLICATE, "Duplicate", needs_active),
+        (ids::FLIP_LAYER_DELETE, "Delete", needs_active),
+    ];
+    let cols = buttons.len() as f32;
+    let col_w = ((m.inner_w - gap * (cols - 1.0)) / cols).max(1.0);
+    for (i, &(id, label, enabled)) in buttons.iter().enumerate() {
+        let rect = Rect::new(m.inner_x + (col_w + gap) * i as f32, y, col_w, m.row_h);
+        button_absent(ctx, id);
+        let st = if enabled {
             ctx.host
                 .store()
-                .button_state(ids::FLIP_LAYER_DELETE)
+                .button_state(id)
                 .unwrap_or(ButtonState::Normal)
         } else {
             ButtonState::Disabled
         };
-        let btn = Button::new(ids::FLIP_LAYER_DELETE, "Delete")
-            .kind(ButtonKind::Default)
-            .state(st);
-        paint_button(&btn, del_rect, ctx.scene, ctx.text_system, theme);
-    }
-    // A disabled button is not hit-registered → it no-ops (mirror of painter).
-    if del_enabled {
-        ctx.host
-            .hit_index_mut()
-            .register(ids::FLIP_LAYER_DELETE, del_rect);
+        let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
+        paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
+        // A disabled button is not hit-registered → it no-ops (mirror of painter).
+        if enabled {
+            ctx.host.hit_index_mut().register(id, rect);
+        }
     }
     y += m.row_h + m.row_gap;
 

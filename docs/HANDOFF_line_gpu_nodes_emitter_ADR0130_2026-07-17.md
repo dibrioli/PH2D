@@ -1,7 +1,9 @@
 # HANDOFF (briefing de continuação) — `line/gpu-nodes` · ADR-0130 · o emitter na GPU (o gather por `id`)
 
 > **Você é o agente que continua esta linha em contexto fresco.** O ADR já está escrito e as fatias 1-2
-> landaram e estão gateadas. Falta a **fatia 3 (o gather)** — a peça mais arriscada — e as fatias 4-5.
+> landaram e estão gateadas. **As fatias 3 (o gather) + 4 (os gates) LANDARAM em `76ae0d52` (2026-07-17)
+> e estão gateadas na RTX** — ver §1.LANDOU e §3.LANDOU. Falta só a **fatia 5** (`forget_state` na edição
+> de param do emitter, D7) — **shell-side e gated por ordem EXPLÍCITA do Enio** (§4 + §6).
 > Leia este doc + o [ADR-0130](architecture/decisions/0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md) inteiro (é curto). O ADR tem o PORQUÊ; este doc tem o ONDE e o COMO, e os gotchas que a wave de pesquisa expôs.
 
 ---
@@ -27,17 +29,27 @@ Fork de `main` em `cdc3acc1`. Commits desta fatia (do ADR pra cima):
 | `33b0a8c8` | **Fatia 1:** `SourceCountFn` cresce o playhead (mecânico) | zero mudança de comportamento |
 | `d29366fc` | **Kernel do `motion.emitter`** — a lei da contagem | `the_emitter_generator_matches_the_cpu`: janela `[15,81,121,121]` + cap 256; 2 mutações |
 | `90e70302` | **Fatia 2:** `dense_window`, a propriedade provável de plano | 5 gates de plano puros; mutação mata 3, deixa o positivo verde |
+| `76ae0d52` | **Fatia 3+4:** o gather aritmético + os gates (§3.LANDOU) | 3 gates de sim de emitter na RTX + 2 de plano; 4 mutações RED |
+
+### §1.LANDOU — fatia 3+4 (`76ae0d52`, 2026-07-17)
+
+- **`ColumnAccess::GatherKey`** (nodegraph, `gpu.rs`): a recusa de `id` virou **condicional** — reivindica uma janela densa, recua uma `id` não-densa/improvável. É **legível** (o id corrente alimenta o `gather_row`); o id passa pelo base. `RefuseIfPresent` FICA (fixtures `test.refuser`).
+- **`plan::eligible`** ganhou o laço do `GatherKey`: `output_shape` provável + densa → reivindica; presente-mas-não-densa **ou** improvável → recua (nunca um mispair posicional mudo).
+- **`codegen`**: gera `gather_row(i)`/`gather_paired(i)` + o uniform `gather_prev_n`. Positional (grid) reduz a `gather_row(i)=i`, então integrate/spring compilam **UM corpo** pros dois modos. **Casts de VALOR** (`u32(max(id,0.0))`, = o CPU `f.max(0.0) as u32`) — os ids são armazenados por valor (`f32(em_id)`), NUNCA `bitcast` (o §3c do handoff dizia bitcast; era um deslize — corrigido). `prev_first = read_<stateport>_id(0u)`, raw.
+- **`lib.rs`** (encode): as portas de ESTADO (porta ≠ base) são **desacopladas do dispatch** sob um gather ativo (`prev_n ≠ n` é normal — pareado por id, não posição); o resto segue `count == dispatch`. `gather_prev_n` empacotado APÓS os params (casa o struct gerado).
+- **integrate/spring**: `id` GatherKey na porta base + `id` Read na porta de estado (pro `prev_first`); o corpo lê o estado em `gather_row(i)`, guardado por `gather_paired(i)` — a **semente por-elemento** (recém-nascido não pareia) DISTINTA do global `HAS_` ("existe QUALQUER estado?").
+
+**Números medidos (RTX, `--release`):** `emitter → integrate` (balístico, muzzle) e `emitter → drag → integrate` casam a CPU com **max |Δpos| ~6e-8** ao longo de uma janela CAPADA que desliza (rate 400, max 40, 20 nascimentos/tick; cap prende no tick 2). Scrub reproduz a janela do passado. Os 22 gates de sim pré-existentes (grid → integrate posicional) intactos + a validação WGSL exaustiva (todo módulo do gather parseia sob naga).
 
 **Rodar tudo verde hoje** (do worktree):
 ```
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --release -- --ignored   # 12 paridade + 11 sim + WGSL
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --test plan_simulation --test plan_analysis   # 11 + 5, sem device
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --release -- --include-ignored   # 16 lib + 2 WGSL + 13 paridade + 14 sim + 5+12 plano
 ```
 
 ### O que o emitter JÁ faz e o que FALTA
 
-- **JÁ:** o `motion.emitter` tem kernel (gerador all-Write) + `source_count` dependente do playhead. `emitter → output` cozinha 100% na GPU e a **contagem** (`n(t)`, o cap, as bordas) casa com a CPU. Kernel em [`crates/ph2d-node-motion-emitter/src/lib.rs`](../crates/ph2d-node-motion-emitter/src/lib.rs).
-- **FALTA (o gather, fatia 3):** o `vel`/`id`/`age` do emitter **não são renderizados** (toda partícula nasce na origem), então o gate de hoje só prova a contagem. Eles ganham gate REAL na **sim** (`emitter → integrate → output`, a janela deslizando), e para isso o `motion.integrate` precisa **parar de recusar** um stream com `id` e passar a **parear por aritmética**.
+- **JÁ (fatia 1-4):** `emitter → [forças] → integrate/spring → output` cozinha **100% na GPU** e casa a CPU: a **contagem** (`n(t)`, cap, bordas) E agora o **gather por id** (`vel`/`id`/`age` viajam e pareiam por `current_id − prev_first`). Kernel do emitter em [`crates/ph2d-node-motion-emitter/src/lib.rs`](../crates/ph2d-node-motion-emitter/src/lib.rs); o gather em `motion.integrate`/`motion.spring` + `ph2d-gpu-cook` (`plan.rs`/`codegen.rs`/`lib.rs`) + `ColumnAccess::GatherKey` em `ph2d-nodegraph::gpu`.
+- **FALTA (fatia 5, D7):** `forget_state` na edição de **param** do emitter — arrastar `rate`/`life`/`max` re-numera os ids e o gather mispareia (**igual na CPU** — é o modelo). **Shell-side** (`render_loop/motion_bridge_gpu.rs`) e **gated por ordem EXPLÍCITA do Enio** (§4 + §6). Não-bloqueante pro gather básico.
 
 ---
 
@@ -58,6 +70,22 @@ Isto **iguala** o `pairing` da CPU (`integrate/src/lib.rs`, um `BTreeMap<id,row>
 ---
 
 ## §3 — FATIA 3: o gather (D4 do ADR-0130) — a parte arriscada
+
+> **§3.LANDOU (`76ae0d52`, 2026-07-17).** Feito exatamente como abaixo, com uma escolha de projeto:
+> em vez de gerar accessors gather-indexados, o **corpo do kernel calcula a linha** (`gather_row(i)`)
+> e passa aos accessors RAW (`read_forces_vel(ig_row)`) — mais simples e é o que o §3c já sugeria. Os
+> gates (§3d) landaram junto (fatia 4). **4 mutações provadas RED** (§3d.MUTAÇÕES). Não é preciso
+> re-implementar; abaixo é o registro do desenho. Os deformers Fase 2 (§3e) **não** foram registrados
+> como keepers (segue seguro/recuando — não-bloqueante).
+>
+> **§3d.MUTAÇÕES (todas restauradas por `cp`, nunca `git checkout`):**
+> 1. `gather_row → i` (posicional): os 3 gates de sim de emitter sangram (crash de bind-group — o
+>    `read_rest_id` vira código morto e a layout descasa). 2. `gather_row … + 1u` (off-by-one): o
+>    **oráculo de paridade** sangra limpo (`cpu 0.47 vs gpu 0.5` — o sobrevivente 0 herda a linha do
+>    vizinho). 3. `gather_paired → true` (colapsa o por-elemento no global, D4): sangra onde `prev_n < n`
+>    (recém-nascidos lendo estado OOB, `cpu 0.62 vs gpu 0.5`). 4. `plan` sem o `!dense`: `a_reorder…recede`
+>    E `a_derivable…id…refuses` (idgen não-densa) ficam RED, enquanto `the_emitters_dense_window_claims`
+>    segue VERDE — o par presença/ausência.
 
 **Objetivo:** `emitter → integrate → output` cozinha na GPU e casa com a CPU **com a janela deslizando** (nascimentos E mortes por tick). Não pode quebrar os 22 gates existentes (`grid → integrate` pareia posicional).
 

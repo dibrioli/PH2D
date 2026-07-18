@@ -298,12 +298,19 @@ impl crate::App {
         };
         if let Some(state) = restored {
             self.apply_project(&state);
-            if std::env::var_os("PH2D_UNDO_LOG").is_some() {
+            if Self::undo_log_on() {
                 eprintln!("[undo] {} aplicado", if redo { "redo" } else { "undo" });
             }
-        } else if std::env::var_os("PH2D_UNDO_LOG").is_some() {
+        } else if Self::undo_log_on() {
             eprintln!("[undo] {} sem passo", if redo { "redo" } else { "undo" });
         }
+    }
+
+    /// **O log do undo está ligado?** Cacheado: o `post_frame_undo` corre a 60 fps e agora
+    /// fala também no SILÊNCIO, então ler o ambiente por frame seria pagar por um diagnóstico.
+    pub(crate) fn undo_log_on() -> bool {
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *ON.get_or_init(|| std::env::var_os("PH2D_UNDO_LOG").is_some())
     }
 
     /// Chamado UMA vez por frame, depois de `render_frame` (com `self` livre e o
@@ -332,20 +339,45 @@ impl crate::App {
         // ação. Sem isto a primeira ação não teria pré-estado e não seria desfazível.
         if self.undo_baseline.is_none() {
             self.undo_baseline = self.capture_project();
+            if Self::undo_log_on() {
+                eprintln!(
+                    "[undo] baseline ARMADO (capturou={}) — o 1o frame nao registra passo",
+                    self.undo_baseline.is_some()
+                );
+            }
             return;
         }
         // Um gesto em andamento (botão pressionado) muta a cada Move; espera o fim
         // para não registrar um passo por frame.
+        // ⚠️ **As tres saidas abaixo eram MUDAS**, e um log que so fala no sucesso nao sabe
+        // diagnosticar um silencio: quando o Enio reportou "Add Zig Zag nao sai linha de log"
+        // (2026-07-18), nao havia como saber QUAL delas disparou. Falam so quando houve INPUT
+        // — sem isso seriam 60 linhas por segundo de "o utilizador nao fez nada".
         if !had_input || self.held_button.is_some() {
+            if had_input && Self::undo_log_on() {
+                eprintln!(
+                    "[undo] input com GESTO em curso ({:?}) — o passo espera o Up",
+                    self.held_button
+                );
+            }
             return;
         }
         let Some(current) = self.capture_project() else {
+            if Self::undo_log_on() {
+                eprintln!("[undo] SEM CAPTURA (gfx ausente) — nenhum passo e' possivel");
+            }
             return;
         };
         if self.undo_baseline.as_ref() == Some(&current) {
+            if Self::undo_log_on() {
+                eprintln!(
+                    "[undo] houve input e o estado NAO mudou — nada a registrar (a acao nao \
+                     alcancou o documento, ou alcancou-o num frame sem input)"
+                );
+            }
             return; // nada mudou desde o último passo
         }
-        if std::env::var_os("PH2D_UNDO_LOG").is_some() {
+        if Self::undo_log_on() {
             let base = self.undo_baseline.as_ref();
             eprintln!(
                 "[undo] passo registrado (fila undo={}) — diff: world={} vec={} flip={}",

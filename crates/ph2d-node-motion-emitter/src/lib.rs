@@ -39,6 +39,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -198,10 +199,156 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         .with("size", Column::Vec2(vec![[spec.size; 2]; n]))
 }
 
+/// The GPU kernel (ADR-0126/0130): **side metadata**, not a lowering — the manifest is
+/// untouched, `eval`/`emit` stays canonical. The emitter is a **generator**, so the kernel is
+/// all-Write (like `motion.grid`), and its dispatch size is playhead-dependent (`source_count`
+/// takes the playhead, ADR-0130): `n(t)` is the alive-window length.
+///
+/// **The kernel derives `first` from `params.count`, it does NOT recompute the cap.** The CPU
+/// (`emit`) computes `n = min(span, max)` then `first = newest + 1 − n`; the cook runs that
+/// same `source_count` and writes `n` into `params.count`, so the kernel takes `first =
+/// u32(floor(t·rate)) + 1 − count` — one `floor`, no `ceil`/`span`/cap to diverge on. Parity is
+/// by construction: `params.playhead` is `clock.playhead as f32` (`lib.rs`, the uniform pack),
+/// which is the exact `f32` the CPU `emit` reads (`ctx.playhead() as f32`), and `source_count`
+/// truncates the same way — so `newest`, `n` and `first` are computed from one shared `f32`
+/// ([[feedback_test_with_product_numbers_not_convenient_ones]] — the number that must match is
+/// the one the product uses).
+///
+/// The hash (`em_hash3`) is the integer avalanche of [`hash`], **bit-exact** in WGSL (u32
+/// wraps mod 2³² like `wrapping_mul`); the wave is the sibling `trig.rs`, byte-identical to the
+/// force kernels' corrected parabolic sine (HR-5). `max` is not a kernel param — `count`
+/// already carries the cap.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let em_t = params.playhead;\n\
+        let em_first = u32(floor(em_t * params.rate)) + 1u - params.count;\n\
+        let em_id = em_first + i;\n\
+        let em_seed = u32(max(params.seed, 0.0));\n\
+        let em_jitter = em_rand01(em_seed, em_id, 0u) - 0.5;\n\
+        let em_deg = params.angle + em_jitter * params.spread;\n\
+        let em_cs = em_cos_sin_cycles(em_deg / 360.0);\n\
+        write_P(i, vec2<f32>(params.x, params.y));\n\
+        write_vel(i, vec2<f32>(em_cs.x * params.speed, em_cs.y * params.speed));\n\
+        write_id(i, f32(em_id));\n\
+        write_age(i, em_t - f32(em_id) / params.rate);\n\
+        write_life(i, params.life);\n\
+        write_Index(i, f32(i));\n\
+        write_Count(i, f32(params.count));\n\
+        write_size(i, vec2<f32>(params.size, params.size));\n",
+    wgsl_lib: "\
+        fn em_hash3(a: u32, b: u32, lane: u32) -> f32 {\n\
+            var h: u32 = a * 0x9e3779b9u + b * 0x85ebca6bu + lane * 0xc2b2ae35u;\n\
+            h = h ^ (h >> 16u);\n\
+            h = h * 0x7feb352du;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x846ca68bu;\n\
+            h = h ^ (h >> 16u);\n\
+            return f32(h >> 8u) / f32(16777216u);\n\
+        }\n\
+        fn em_rand01(seed: u32, id: u32, lane: u32) -> f32 {\n\
+            return em_hash3(seed, id, lane);\n\
+        }\n\
+        fn em_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn em_cos_sin_cycles(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(em_sin_cycles(phase + 0.25), em_sin_cycles(phase));\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "age",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "life",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "Index",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "Count",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[
+        "rate", "life", "speed", "angle", "spread", "x", "y", "seed", "size",
+    ],
+    // Playhead-dependent (ADR-0130): the alive-window length `n(t)`, mirroring `emit`'s count.
+    source_count: Some(|param, playhead| {
+        let t = playhead as f32;
+        let rate = param("rate");
+        let life = param("life");
+        let max = (param("max").max(0.0) as usize).min(MAX_ALIVE);
+        if rate <= 0.0 || life <= 0.0 || t < 0.0 {
+            return 0;
+        }
+        let newest = (t * rate).floor();
+        let oldest = ((t - life) * rate).ceil().max(0.0);
+        if newest < oldest {
+            return 0;
+        }
+        let span = (newest - oldest) as usize + 1;
+        span.min(max)
+    }),
+    applicable: None,
+};
+
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionEmitter))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

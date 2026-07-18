@@ -45,6 +45,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
+    ph2d_node_motion_emitter::register(&mut reg).unwrap();
     reg
 }
 
@@ -791,4 +792,124 @@ fn a_connected_t_keeps_the_color_ramp_on_the_cpu() {
         plan2.stages.iter().any(|s| s.node == cr2),
         "the `t` wire is what refuses — not the fixture"
     );
+}
+
+/// A bare `emitter → output`: a stateless GENERATOR with no `pre` loop, so it
+/// plans fully-GPU **without** the ADR-0130 gather (that is the sim, `emitter →
+/// integrate`, gated once integrate stops refusing an id stream).
+fn emitter_graph(reg: &NodeRegistry, life: f32, max: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    g.set_param(em, "rate", 40.0);
+    g.set_param(em, "life", life);
+    g.set_param(em, "max", max);
+    g.set_param(em, "speed", 4.0);
+    g.set_param(em, "angle", 90.0);
+    g.set_param(em, "spread", 30.0);
+    g.set_param(em, "x", 0.5);
+    g.set_param(em, "y", -0.25);
+    g.set_param(em, "seed", 7.0);
+    g.set_param(em, "size", 0.15);
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (em, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// The **count law** (ADR-0130 fatia do emitter): `source_count`'s `n(t)` and
+/// that the generator dispatches on the GPU. Every particle sits at the origin
+/// until a force moves it, so what render parity sees here is the origin + the
+/// size; the per-particle `vel` (from the hash) and the `id` gather are the
+/// SIM's to prove (`emitter → integrate`, the next slice). This gate's job is
+/// the one thing that is visible at emission — HOW MANY, and WHERE they start.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_emitter_generator_matches_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+
+    let cook_cpu = |g: &Graph, out: NodeId, t: f64| -> Vec<RenderInstance> {
+        let mut cook = Cook::new();
+        let mut cpu = Vec::new();
+        ph2d_eval_motion::evaluate_motion_into(
+            &mut cook,
+            g,
+            &reg,
+            out,
+            t,
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            &mut cpu,
+        )
+        .expect("cpu cook");
+        cpu
+    };
+    let cook_gpu = |g: &Graph, out: NodeId, t: f64| -> Vec<RenderInstance> {
+        let plan = ph2d_gpu_cook::plan(g, &reg, &reg, out);
+        assert!(
+            plan.is_fully_gpu(),
+            "emitter → output must be claimed whole: {:?}",
+            plan.boundaries
+        );
+        assert_eq!(
+            plan.dispatching_stages(&reg),
+            1,
+            "the emitter is the only dispatch (output is a pass-through)"
+        );
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.cook(
+            &gpu,
+            g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(t),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"))
+    };
+
+    // The window SLIDES: births outrun the still-empty tail, so the count grows,
+    // then stabilizes once deaths begin and `first` starts advancing. A constant
+    // count would not exercise `source_count` at all.
+    let (g, out) = emitter_graph(&reg, 3.0, 512.0);
+    let mut counts = Vec::new();
+    for &t in &[0.37f64, 2.0, 4.0, 10.0] {
+        let cpu = cook_cpu(&g, out, t);
+        let gpu = cook_gpu(&g, out, t);
+        assert_eq!(
+            cpu.len(),
+            gpu.len(),
+            "t={t}: alive count cpu {} vs gpu {}",
+            cpu.len(),
+            gpu.len()
+        );
+        assert_parity(&cpu, &gpu);
+        counts.push(cpu.len());
+    }
+    assert!(
+        counts[0] < counts[2] && counts[0] > 0,
+        "the window must grow off zero — counts {counts:?}"
+    );
+
+    // The CAP: `rate·life ≫ max`, so `n = max` and `first = newest+1−max` — the
+    // path where `first` advances EVERY tick. `emit` keeps the NEWEST; the GPU
+    // must too, because the kernel derives `first` from the (capped) `count`.
+    let (gc, outc) = emitter_graph(&reg, 100.0, 256.0);
+    let cpu = cook_cpu(&gc, outc, 10.0);
+    let gpu = cook_gpu(&gc, outc, 10.0);
+    assert_eq!(cpu.len(), 256, "the cap holds n at max");
+    assert_parity(&cpu, &gpu);
+    eprintln!("emitter: window {counts:?}, capped {}", cpu.len());
 }

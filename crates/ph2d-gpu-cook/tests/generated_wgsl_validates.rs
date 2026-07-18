@@ -51,6 +51,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_force_curl::register(&mut reg).unwrap();
     ph2d_node_force_buoyancy::register(&mut reg).unwrap();
     ph2d_node_motion_spring::register(&mut reg).unwrap();
+    ph2d_node_motion_emitter::register(&mut reg).unwrap();
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
 
     let mut validated = 0usize;

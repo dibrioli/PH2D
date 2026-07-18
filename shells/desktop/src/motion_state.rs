@@ -195,6 +195,12 @@ impl MotionState {
         // The GPU path re-plans against the new graph next frame; until then
         // its instance buffer describes the OLD document, so it must not draw.
         self.gpu_live = false;
+        // …and its SIMULATION state (last tick's `pre` columns, keyed by node id)
+        // is the old document's — a new graph that reuses those ids for a `pre`
+        // source would read a stranger's flakes-in-the-air. Forget it, exactly as
+        // the pump above was replaced (ADR-0130 D7: a document change invalidates
+        // the sim); the sim re-bakes from the seed under the new graph next frame.
+        self.gpu_cook.forget_state();
         #[cfg(feature = "panel-motion-graph")]
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }

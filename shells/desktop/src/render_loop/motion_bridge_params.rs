@@ -106,11 +106,20 @@ pub(super) fn apply_param_edits(
                         && (param_value(motion, nid, "channel") - value as f32).abs()
                             > f32::EPSILON;
                     let type_name = channel_switch.then(|| inst.type_name.clone());
+                    // ADR-0130 D7: an edit that re-numbers the emitter's ids
+                    // (rate/life/max) moves the id↔particle map, so the GPU sim's
+                    // paired state would mispair the new window against the old.
+                    // Decide BEFORE `set_param` consumes `param`; forget (re-bake
+                    // from the seed) after the edit lands.
+                    let renumbers_sim = super::gpu::edit_renumbers_emitter(&inst.type_name, param);
                     motion.doc.graph.set_param(nid, param, value as f32);
                     if let Some(tn) = type_name {
                         apply_channel_presets(motion, nid, &tn, value as f32);
                     }
                     motion.pump.mark_dirty();
+                    if renumbers_sim {
+                        motion.gpu_cook.forget_state();
+                    }
                 }
                 // A formula edit (a `motion.expression` text param) — the additive text
                 // channel (docs/Motion Nodes/32-33).

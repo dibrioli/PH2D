@@ -193,13 +193,88 @@ pub(super) fn cook_gpu(
     }
 }
 
+/// Does editing `param` on a node of `type_name` **re-number** the emitter's ids
+/// — ADR-0130 D7, the trigger for forgetting the GPU sim state?
+///
+/// `motion.emitter`'s alive set at `t` is a contiguous id window whose bounds are
+/// a closed function of `rate`/`life`/`max` (`emit`/`source_count`). Editing one
+/// of those THREE moves the `id ↔ particle` map: the same id now names a
+/// different particle, so the sim's paired state (`gather_row = current_id −
+/// prev_first`) would read the OLD window's rows for the NEW ids — a silent
+/// mispair as the window jumps. The honest answer is to **forget the sim** so it
+/// re-bakes from the tick-0 seed under the new params (the Blender/Houdini "edit
+/// invalidates the cache"; the CPU scrub ring does the same on `mark_dirty`).
+///
+/// The launch params (`speed`/`angle`/`spread`/`seed`) and the geometry
+/// (`x`/`y`/`size`) do **NOT** re-number — the gather still pairs id-for-id, so
+/// the running sim KEEPS and only newborn particles take the new launch. That is
+/// the correct live edit, and forgetting there would be a needless pop.
+///
+/// It is a tiny allowlist tied to ONE node's count law, not a general rule that
+/// could rot ([[feedback_a_condition_that_enumerates_its_readers_rots]]): a new
+/// numbering param on the emitter is a deliberate change to `emit` that revisits
+/// this line. **Cost note (D7):** because `rewind_for` anchors a forgotten sim at
+/// tick 0, the re-bake is O(current tick) — a discrete edit deep into playback
+/// hitches once (a bake), and holding a drag re-bakes each frame; a `re-seed at
+/// the current tick` (cheap, restart-from-now) is a possible follow-up if the
+/// bake proves too costly in the smoke.
+pub(super) fn edit_renumbers_emitter(type_name: &str, param: &str) -> bool {
+    type_name == "motion.emitter" && matches!(param, "rate" | "life" | "max")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::motion_state::MotionState;
 
     // A stand-in boundary node id (the routing never dereferences it).
     fn node() -> NodeId {
         NodeId(7)
+    }
+
+    #[test]
+    fn only_the_emitters_renumbering_params_invalidate_the_gpu_sim() {
+        // ADR-0130 D7. rate/life/max move the id↔particle map → forget & re-bake;
+        // the launch params and geometry keep the running sim; and NO other node
+        // type forgets. The mutation that drops the `motion.emitter` guard makes a
+        // grid's or a force's "rate" forget too — the last loop below catches it.
+        for p in ["rate", "life", "max"] {
+            assert!(
+                edit_renumbers_emitter("motion.emitter", p),
+                "{p} re-numbers"
+            );
+        }
+        for p in ["speed", "angle", "spread", "seed", "x", "y", "size"] {
+            assert!(
+                !edit_renumbers_emitter("motion.emitter", p),
+                "{p} keeps the sim (the gather still pairs id-for-id)"
+            );
+        }
+        for ty in [
+            "motion.grid",
+            "force.wind",
+            "motion.integrate",
+            "motion.spring",
+        ] {
+            assert!(
+                !edit_renumbers_emitter(ty, "rate"),
+                "{ty} is not the emitter"
+            );
+        }
+    }
+
+    #[test]
+    fn a_real_emitter_nodes_type_name_drives_the_policy() {
+        // The seam reads `inst.type_name`; pin that a REAL emitter node resolves to
+        // exactly the string the policy matches (and a grid does not), so the wire
+        // from the param edit to the forget can never miss by a renamed type.
+        let mut motion = MotionState::new();
+        let em = motion.doc.graph.add_node("motion.emitter");
+        let grid = motion.doc.graph.add_node("motion.grid");
+        let ty = |m: &MotionState, n| m.doc.graph.node(n).expect("added").type_name.clone();
+        assert!(edit_renumbers_emitter(&ty(&motion, em), "rate"));
+        assert!(!edit_renumbers_emitter(&ty(&motion, em), "speed"));
+        assert!(!edit_renumbers_emitter(&ty(&motion, grid), "rate"));
     }
 
     #[test]

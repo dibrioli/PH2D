@@ -4,8 +4,10 @@
 > (fonte única, DIRETRIZ §1.5.8). O agente cria a worktree, valida, lê §1.5 + DIRETIVA e reporta
 > **"linha pronta"**. ESTE documento é a mensagem seguinte — a tarefa.
 >
-> **Forke de `main` DEPOIS que `line/anim-ajustes` integrar** — ela mexe em `ph2d-timeline`,
-> `ph2d-panel-timeline` e no `render_loop`, que é exatamente onde o nesting vai morar.
+> **Forke de `main` DEPOIS que `line/anim-fixes` integrar** — ela mexe em `ph2d-timeline` e
+> `ph2d-panel-timeline`, que é exatamente onde o nesting vai morar. (A `line/anim-ajustes`, maior,
+> já integrou.) O nome `line/nesting` está **livre**: o bloco do `MODELO_ABERTURA_LINHA` roda
+> literal, sem o fallback de "a branch já existe".
 
 ---
 

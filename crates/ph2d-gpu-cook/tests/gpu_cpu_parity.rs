@@ -51,6 +51,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_map_range::register(&mut reg).unwrap();
     ph2d_node_motion_orbit::register(&mut reg).unwrap();
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
+    ph2d_node_motion_stagger::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1527,4 +1528,51 @@ fn pin_constraint_kernel_matches_the_cpu_within_epsilon() {
         cpu_w.len()
     );
     assert!(worst < 1e-6, "inv_mass parity: max |dw| = {worst:e}");
+}
+
+/// `motion.stagger` — offsets a channel by the element's POSITION in the stream
+/// (`i/(n−1)`), shaped by an easing curve. One of the few kernels that genuinely
+/// needs the engine's own `params.count`: the ramp is a function of the stream's
+/// length, not of the element's columns.
+///
+/// **Every curve family is a BRANCH**, so the fixture walks all eight of them in
+/// all three directions — a gate on the default (Linear) alone would prove one
+/// twenty-fourth of this kernel, and Linear is precisely the branch that does
+/// nothing ([[reference_topic_fixture_discipline]]). Bounce and Circ matter most:
+/// Bounce is four piecewise parabolas and Circ is the only `sqrt`.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn stagger_kernel_matches_the_cpu_across_every_easing() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for curve in 0..=7 {
+        for dir in 0..=2 {
+            let mut g = Graph::new();
+            let (node, out) = deformer_chain(&mut g, 40.0, "motion.stagger");
+            g.set_param(node, "channel", 1.0);
+            g.set_param(node, "min", -0.83);
+            g.set_param(node, "max", 2.17);
+            g.set_param(node, "ease_curve", curve as f32);
+            g.set_param(node, "ease_dir", dir as f32);
+            // Reverse on the odd curves, so the ramp flip is exercised too.
+            g.set_param(node, "reverse", (curve % 2) as f32);
+            assert_gpu_parity(&gpu, &reg, &g, out, 2);
+        }
+    }
+
+    // A SINGLE-element stream: the ramp is `i/(n−1)`, so `n = 1` is a divide by
+    // zero and the CPU guards it with `n <= 1 → 0.0`. The grid above never gets
+    // near it, and a mutation that deleted the guard SURVIVED this gate until
+    // this case existed ([[reference_topic_fixture_discipline]] — a fixture only
+    // proves what it contains, and the degenerate end is where guards live).
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 1.0, "motion.stagger");
+    g.set_param(node, "channel", 1.0);
+    g.set_param(node, "min", -0.83);
+    g.set_param(node, "max", 2.17);
+    g.set_param(node, "ease_curve", 2.0);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }

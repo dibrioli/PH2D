@@ -152,6 +152,8 @@ pub use selection_gizmo::SelectionGizmoView;
 pub use warp::DeformGizmoView;
 /// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
 pub mod impasto_rig;
+/// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
+mod plane_fork;
 pub(super) mod relief_state;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
@@ -167,7 +169,6 @@ pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::too
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
 mod shape_ramp;
-/// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod smear_warp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).

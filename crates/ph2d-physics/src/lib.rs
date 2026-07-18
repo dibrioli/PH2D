@@ -27,6 +27,7 @@
 pub mod world;
 
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
+pub use world::defaults::BodyDefaults;
 pub use world::{BodyDesc, PhysicsWorld, ShapeDesc};
 
 /// The checkpoint ring's stride, in ticks — the bound on how many steps a

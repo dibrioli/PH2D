@@ -5,6 +5,9 @@
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
 pub mod checkpoint;
+pub mod defaults;
+
+use defaults::BodyDefaults;
 
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
@@ -83,6 +86,10 @@ pub struct PhysicsWorld {
     /// The caller's tick length; `integration_parameters.dt` is this divided
     /// by [`Self::substeps`].
     base_dt: f32,
+    /// World-level values every new body is born with (damping, sleep). See
+    /// [`BodyDefaults`] for why a per-body rapier concept is a world setting
+    /// here — and for the one rule that keeps it a single door.
+    body_defaults: BodyDefaults,
 }
 
 impl PhysicsWorld {
@@ -144,6 +151,7 @@ impl PhysicsWorld {
             step_count: 0,
             substeps: Self::DEFAULT_SUBSTEPS,
             base_dt: Self::DEFAULT_DT,
+            body_defaults: BodyDefaults::rapier(),
         }
     }
 
@@ -199,6 +207,32 @@ impl PhysicsWorld {
         }
     }
 
+    /// The world-level values new bodies are born with (damping, sleep).
+    pub fn body_defaults(&self) -> BodyDefaults {
+        self.body_defaults
+    }
+
+    /// Replace the world-level body defaults.
+    ///
+    /// **Applies to the bodies that already exist, not only to future ones.**
+    /// The artist is describing the world in front of them; a drag value that
+    /// only reached the next body spawned would be a number that appears to do
+    /// nothing. See [`BodyDefaults`] for why these are world settings at all.
+    pub fn set_body_defaults(&mut self, d: BodyDefaults) {
+        self.body_defaults = d;
+        d.apply_to_all(&mut self.bodies);
+    }
+
+    /// Stamp the world defaults onto a body that was just inserted — the single
+    /// place every spawn path funnels through, so "every body in this world
+    /// carries this world's defaults" is true by construction rather than by a
+    /// list of call sites someone has to keep in sync.
+    fn stamp_defaults(&mut self, handle: RigidBodyHandle) {
+        if let Some(body) = self.bodies.get_mut(handle) {
+            self.body_defaults.apply_to(body);
+        }
+    }
+
     /// Override the integration dt. Must match the caller's
     /// FixedStep — mismatched dt destroys both accuracy and
     /// determinism.
@@ -247,6 +281,7 @@ impl PhysicsWorld {
             .translation(Vector2::new(x, y))
             .build();
         let body_handle = self.bodies.insert(body);
+        self.stamp_defaults(body_handle);
         let collider = ColliderBuilder::ball(radius).density(density).build();
         let collider_handle =
             self.colliders
@@ -267,6 +302,7 @@ impl PhysicsWorld {
             .translation(Vector2::new(x, y))
             .build();
         let body_handle = self.bodies.insert(body);
+        self.stamp_defaults(body_handle);
         let collider = ColliderBuilder::cuboid(half_x, half_y).build();
         let collider_handle =
             self.colliders
@@ -289,6 +325,7 @@ impl PhysicsWorld {
             .rotation(desc.rotation)
             .build();
         let handle = self.bodies.insert(body);
+        self.stamp_defaults(handle);
         let shape = match desc.shape {
             ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
             ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
@@ -339,7 +376,9 @@ impl PhysicsWorld {
     /// Spawn a body explicitly (advanced — used when you need a
     /// non-circle / non-cuboid shape or non-default body type).
     pub fn insert_body(&mut self, body: RigidBody) -> RigidBodyHandle {
-        self.bodies.insert(body)
+        let handle = self.bodies.insert(body);
+        self.stamp_defaults(handle);
+        handle
     }
 
     pub fn bodies(&self) -> &RigidBodySet {

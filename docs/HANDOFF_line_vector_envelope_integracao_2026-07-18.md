@@ -5,8 +5,10 @@
 (§4.A itens 1–5 do Envelope).
 **Estado:** ✅ **LINHA FECHADA — a fila do ADR-0129 acabou, e TUDO foi smokado e aprovado pelo Enio
 (2026-07-17/18).** Motor + host live já estavam na `main` (Fatias A+B).
-**Ordem do Enio (2026-07-18):** *"vamos integrar ao main"*. Este documento é o briefing do
-**agente integrador** — a linha não integra nem faz push (§0.7 do CLAUDE.md).
+✅ **INTEGRADO em 2026-07-18** — o integrador rebaseou a linha (`b32a46a9` → `8864e4b6`) e fundiu.
+**Este documento está CUMPRIDO: é referência, não pendência.** Quem assume a linha daqui pra frente
+entra por [`HANDOFF_line_vector_continuacao_2026-07-18.md`](HANDOFF_line_vector_continuacao_2026-07-18.md);
+aqui ficam o DESENHO de cada gesto (§8–§10) e as lições dos fixes pós-smoke (§11), que continuam a valer.
 - **Fatia 1** = a alça própria de canto no Node (arrasta os 4 cantos, convexidade obrigatória).
 - **Fatia 2** = mover/girar/escalar o envelope inteiro no Select (geometria LOCAL + pose no `Transform`).
 - **Fatia 3** = o **CONTAINER de N filhos** (*warp group*): o `VecEnvelope` saiu do path e foi para uma

@@ -106,11 +106,44 @@ entrega uma.** Com 52 nós descobertos, qualquer grafo real tem várias ⇒ cai
 
 **É o multiplicador**: sem isso, o kernel nº 21 só ajuda grafos feitos exatamente
 do conjunto coberto. Com isso, **a parte coberta de qualquer grafo roda na GPU**.
-E o trabalho é **shell-side** (o motor está pronto), então é a alavanca mais
-barata por unidade de alcance.
 
-⚠️ O problema real a resolver: o pump marcha **um** nó cozido por tick, e marchar
-duas vezes avançaria o relógio dele duas vezes. Desenhe isso antes de codar.
+#### O mapa do seam (LIDO, não implementado — verifique antes de confiar)
+
+Gastei o resto do meu contexto mapeando isto em vez de começar a codar, porque a
+frase *"marchar duas vezes avançaria o relógio duas vezes"* **descreve o
+chamador atual, não uma restrição do motor**. Os quatro fatos:
+
+1. **O lado GPU já é plural.** `GpuCook::cook` recebe
+   `boundary_streams: &[(NodeId, &Stream)]` e já valida o conjunto contra
+   `plan.boundaries` (`want` vs `got`, erro `BoundaryMismatch`). **Nada a fazer
+   aqui.**
+2. **O pump é singular por um `enum`, não por natureza.**
+   `ph2d-eval-motion/src/lib.rs`: `enum CookTarget { Sinks{…}, Boundary(NodeId) }`
+   (~linha 246) e `boundary_stream: Option<Stream>`.
+3. **O consume é 5 linhas** (~451): `self.cook.cook_scoped(graph, ops, node,
+   playhead, scopes)` e guarda `outputs.first()`. ⚠️ **`self.cook` é o `Cook`
+   MEMOIZADO** — cozinhar o nó X e depois o Y **no mesmo playhead** acerta o memo
+   no prefixo compartilhado, ou seja **não re-simula**.
+4. **A marcha e o `pre` são por CHAMADA**, não por nó: `CookTarget::has_work`
+   *"Drives the once-per-frame `pre`-feedback advance"*, e a decisão
+   forward/scrub + o ring moram no `advance_or_scrub_target_scoped`
+   compartilhado — o doc dele já diz que **só o consume difere** entre Sinks e
+   Boundary.
+
+⇒ **A forma provável:** `CookTarget::Boundary(NodeId)` →
+`Boundaries(&'a [NodeId])`; o consume vira um laço de `cook_scoped` **no mesmo
+playhead, no mesmo memo**; `boundary_stream: Option<Stream>` →
+`boundary_streams: Vec<(NodeId, Stream)>`; e o `gpu_route` para de recusar
+`boundaries.len() > 1`. **UMA marcha, N capturas** — o relógio avança uma vez
+porque a chamada é uma.
+
+⚠️ **Isto é uma LEITURA minha, não uma implementação testada.** O que eu não
+verifiquei e você tem de verificar primeiro: (a) que `cook_scoped` de dois nós no
+mesmo playhead realmente reaproveita o memo do prefixo (meça — se re-simular, o
+custo dobra e o desenho muda); (b) o que acontece quando duas fronteiras têm
+**prefixos disjuntos** com nós sequenciais em cada um; (c) o scrub para trás com
+N fronteiras (o ring é do pump, compartilhado). Um gate red-first que cozinhe um
+grafo de **duas** fronteiras e compare com o CPU puro é o começo certo.
 
 ### (C) Mais kernels (os 52 restantes)
 

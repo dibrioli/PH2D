@@ -191,12 +191,15 @@ fn eligible(
     if manifest.inputs.is_empty() && kernel.source_window.is_none() && !kernel.is_passthrough() {
         return false;
     }
-    // Kernel params must be declared manifest params and must not shadow the
-    // built-in uniform fields the generated module owns.
+    // Kernel params must be declared manifest params. They no longer have to avoid
+    // the built-in uniform names: `codegen::wgsl_field` gives a colliding param its
+    // own field (`count` → `count_`), so the shadowing this used to refuse cannot
+    // happen. `motion.pin_constraint` has a param called `count`, and renaming it
+    // was never an option — it is the artist's vocabulary and it is in saved docs.
     if !kernel
         .params
         .iter()
-        .all(|p| *p != "count" && *p != "playhead" && manifest.param_default(p).is_some())
+        .all(|p| manifest.param_default(p).is_some())
     {
         return false;
     }

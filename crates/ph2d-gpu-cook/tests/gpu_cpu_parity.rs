@@ -50,6 +50,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_luminance::register(&mut reg).unwrap();
     ph2d_node_value_map_range::register(&mut reg).unwrap();
     ph2d_node_motion_orbit::register(&mut reg).unwrap();
+    ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1439,4 +1440,91 @@ fn orbit_kernel_matches_the_cpu_within_epsilon() {
     g.set_param(node, "angle", 23.5);
     g.set_param(node, "speed", 47.0);
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+/// `motion.pin_constraint` — writes `inv_mass`, the column an integrator reads to
+/// decide how much a force may move each element (0 = nailed down).
+///
+/// **This one cannot use `assert_gpu_parity`.** That helper compares the LOWERED
+/// instances, and `inv_mass` is not lowered — it is sim input, not a render
+/// attribute. A parity gate built the usual way would compare two identical
+/// pictures and stay green with the kernel doing nothing at all, so this reads the
+/// column back and compares it directly.
+///
+/// `motion.falloff` sits upstream so the weight VARIES across the selection: with
+/// a flat falloff every pinned element would get the same `inv_mass` and an index
+/// slip inside the range would be invisible.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn pin_constraint_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 12.0);
+    let fall = g.add_node("motion.falloff");
+    let pin = g.add_node("motion.pin_constraint");
+    // A range that starts off zero and ends before the last element, so BOTH
+    // edges of the mask are exercised, and a non-round strength.
+    g.set_param(pin, "first", 17.0);
+    g.set_param(pin, "count", 53.0);
+    g.set_param(pin, "strength", 0.71);
+    connect(&mut g, grid, fall);
+    connect(&mut g, fall, pin);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, pin);
+    assert!(plan.is_fully_gpu(), "grid → falloff → pin is covered");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, pin, PLAYHEAD).expect("cpu cook");
+    let cpu_w = match cpu[0].as_stream().get("inv_mass") {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+        _ => panic!("the CPU wrote no `inv_mass`"),
+    };
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true); // gate-only, so `read_column` can see it
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let gpu_w = gc
+        .read_column(&gpu, pin, "inv_mass")
+        .expect("`inv_mass` reads back");
+
+    // The fixture has to CONTAIN the phenomenon: pinned elements and free ones,
+    // and a varying weight among the pinned. Otherwise this proves nothing.
+    assert!(
+        cpu_w.iter().any(|w| *w > 0.99),
+        "some elements must be free"
+    );
+    let pinned: Vec<f32> = cpu_w.iter().copied().filter(|w| *w < 0.99).collect();
+    assert!(pinned.len() > 2, "and several must be pinned");
+    assert!(
+        pinned.iter().any(|w| (w - pinned[0]).abs() > 1e-6),
+        "the pin weight must VARY across the selection, or an index slip hides"
+    );
+
+    assert_eq!(gpu_w.len(), cpu_w.len());
+    let worst = gpu_w
+        .iter()
+        .zip(&cpu_w)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f32, f32::max);
+    eprintln!(
+        "inv_mass parity: {} elements, max |dw| = {worst:e}",
+        cpu_w.len()
+    );
+    assert!(worst < 1e-6, "inv_mass parity: max |dw| = {worst:e}");
 }

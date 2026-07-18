@@ -5218,6 +5218,7 @@ dependencies = [
  "ph2d-node-motion-orbit",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",
+ "ph2d-node-motion-pin-constraint",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-sort",

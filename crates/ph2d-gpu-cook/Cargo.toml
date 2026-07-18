@@ -50,6 +50,7 @@ ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
+ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 # A VALUE producer, to gate the color-ramp refusal (its `t` port).
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }

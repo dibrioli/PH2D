@@ -51,6 +51,7 @@
 
 pub mod codegen;
 pub mod debug_read;
+pub mod field_name;
 mod gather;
 pub mod instances;
 pub mod lower;

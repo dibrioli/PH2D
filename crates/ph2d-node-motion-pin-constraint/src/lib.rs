@@ -55,6 +55,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -172,6 +173,58 @@ fn pin(input: &Stream, first: usize, count: usize, strength: f32) -> Stream {
     out
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`pin`], element for element.
+///
+/// **`params.count_`, not `params.count`.** This node has a param literally named
+/// `count`, which is also the element count the engine writes into every uniform
+/// block. `codegen::wgsl_field` gives the param its own field
+/// (`count` → `count_`); before that, `plan::eligible` REFUSED the kernel outright
+/// to avoid the shadowing, and renaming the param was never an option — it is the
+/// artist's vocabulary and it lives in saved documents.
+///
+/// `as_index` is ported faithfully, including its guard: a non-finite or negative
+/// param reads as 0, so an absurd number in a loaded document selects nothing
+/// rather than wrapping into a huge range. The `first + count` sum saturates for
+/// the same reason (`u32` here, `usize` on the CPU — both far past any real count).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let pc_first = pc_index(params.first);\n\
+        let pc_last = pc_first + pc_index(params.count_);\n\
+        let pc_sel = i >= pc_first && i < pc_last;\n\
+        let pc_amount = select(\n\
+        \x20   0.0,\n\
+        \x20   clamp(params.strength * read_falloff(i), 0.0, 1.0),\n\
+        \x20   pc_sel);\n\
+        write_inv_mass(i, read_inv_mass(i) * (1.0 - pc_amount));\n",
+    wgsl_lib: "\
+        fn pc_index(v: f32) -> u32 {\n\
+            // Rust `as_index`: non-finite or negative reads as 0, else round\n\
+            // half-away-from-zero (WGSL `round` is half-even).\n\
+            if (!(v >= 0.0)) { return 0u; }\n\
+            if (!(v < 3.4028235e38)) { return 0u; }\n\
+            return u32(floor(v + 0.5));\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: INV_MASS,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: FALLOFF,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["first", "count", "strength"],
+    source_window: None,
+    applicable: None,
+};
+
 struct MotionPinConstraint;
 
 impl NodeOp for MotionPinConstraint {
@@ -192,6 +245,7 @@ impl NodeOp for MotionPinConstraint {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionPinConstraint))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

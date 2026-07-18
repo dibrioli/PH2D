@@ -34,6 +34,7 @@ fn one_lone_strip() -> TimelineViewSnapshot {
             strips: vec![StripView {
                 id: StripId(1),
                 clip_name: "Main".into(),
+                container: None,
                 t_start: 1.0,
                 t_end: 3.0,
                 blend_in: lane.blend_in(0),

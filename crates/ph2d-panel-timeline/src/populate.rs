@@ -76,6 +76,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // later would otherwise paint a button that was never registered — painted but
     // inert, the same trap the clip options already document.
     button(store, ids::TIMELINE_ADD_LANE);
+    button(store, ids::TIMELINE_ADD_CONTAINER);
+    // Every breadcrumb segment, always — the trail's LENGTH changes with where the animator
+    // is, and a widget registered only while it is painted is a widget whose Click arrives
+    // one frame after nothing is listening.
+    for id in ids::TIMELINE_CRUMB {
+        button(store, id);
+    }
     for id in ids::TIMELINE_LANE_MUTE {
         button(store, id);
     }

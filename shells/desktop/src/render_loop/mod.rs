@@ -1013,6 +1013,10 @@ impl crate::App {
         // NOT an intent — hands the now-active clock its own view's loop, so playback
         // wraps over the right range without waiting for the next edit.
         self.timeline.keys_mode = keys_mode;
+        // **Where a stack edit lands** (ADR-0133 §5) — the same mirror, one line later: the
+        // panel knows which container the animator entered, and the intents about to drain
+        // have to land there. Read BEFORE the drain, exactly like `keys_mode`.
+        self.timeline.edit_host = ph2d_panel_timeline::state::edit_host();
         if keys_mode != self.last_timeline_keys_mode {
             self.last_timeline_keys_mode = keys_mode;
             if keys_mode {

@@ -313,6 +313,19 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             let name = doc.fresh_lane_name();
             doc.add_lane_in(host, name);
         }),
+        I::AddContainer => edit_at(state, host, |doc, host, _| {
+            let name = doc.fresh_container_name();
+            let c = doc.add_container(name);
+            let Some(lane) = doc.add_lane_in(host, doc.fresh_lane_name()) else {
+                return; // the stack is full: the lane cap refuses, and so does this
+            };
+            let src = crate::StripSource::Container(u16::try_from(c).unwrap_or(u16::MAX));
+            // A brand-new container is EMPTY, so it has no length of its own yet. Size the
+            // instance to the active clip's length: it is the only number on screen that
+            // means "about this long", and a zero-width strip would be one nobody can grab.
+            let span = doc.end_seconds().max(1.0);
+            let _ = doc.add_strip_to(host, lane, src, 0.0, span);
+        }),
         I::RemoveLane { lane } => edit_at(state, host, |doc, host, _| {
             doc.remove_lane_in(host, lane);
         }),

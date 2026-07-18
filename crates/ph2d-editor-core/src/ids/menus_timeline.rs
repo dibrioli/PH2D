@@ -121,6 +121,7 @@ pub const TIMELINE_LANE_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
 // no speed field (a rate is felt, not typed: Cmd-drag an edge to stretch). The
 // menu carries only what a pointer cannot say.
 /// Copy the strip and lay the copy down right after it.
+pub const CTX_MENU_TL_STRIP_ENTER: NodeId = hash_node_id("ctx.tl.strip.enter");
 pub const CTX_MENU_TL_STRIP_DUPLICATE: NodeId = hash_node_id("ctx_menu_tl_strip_duplicate");
 /// Remove the strip from its lane.
 pub const CTX_MENU_TL_STRIP_DELETE: NodeId = hash_node_id("ctx_menu_tl_strip_delete");
@@ -140,7 +141,12 @@ pub const CTX_MENU_TL_STRIP_RESET_SPEED: NodeId = hash_node_id("ctx_menu_tl_stri
 /// it, and the timeline panel's `apply_event` resolves every row. A row added
 /// here and unhandled there is a menu item that silently does nothing; the seam
 /// test walks this table and fails on exactly that.
-pub const TIMELINE_STRIP_MENU: [(NodeId, &str, Option<[u8; 4]>); 6] = [
+pub const TIMELINE_STRIP_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
+    // First, because it is the only row that CHANGES WHERE YOU ARE rather than editing the
+    // strip under the cursor — and because on a container strip it is the thing you came for.
+    // On a clip strip it raises nothing (`enter_target` returns `None`): a row that acted on
+    // the wrong kind of strip would be worse than one that is simply inert here.
+    (CTX_MENU_TL_STRIP_ENTER, "Enter Container", None),
     (CTX_MENU_TL_STRIP_DUPLICATE, "Duplicate Strip", None),
     (CTX_MENU_TL_STRIP_DELETE, "Delete Strip", None),
     (CTX_MENU_TL_STRIP_ONCE, "Play Once", None),

@@ -19,6 +19,7 @@ fn snap() -> TimelineViewSnapshot {
             strips: vec![StripView {
                 id: StripId(7),
                 clip_name: "Main".into(),
+                container: None,
                 t_start: 1.0,
                 t_end: 3.0,
                 // Uma fade JA autorada: 0,25 s de cada lado. Com a cunha em zero, `start_ease`

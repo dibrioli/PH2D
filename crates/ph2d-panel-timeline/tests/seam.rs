@@ -653,6 +653,34 @@ fn every_strip_menu_row_raises_the_intent_its_label_promises() {
         let mut state = TimelinePanelState::default();
         park_strip_menu(&mut host, strip);
 
+        // **"Enter Container" is the one row whose effect is NOT an intent** — it moves the
+        // panel's view state (which stack you are looking at), and the shell reads that before
+        // the next drain (ADR-0133 §5). It is not exempted from the sweep: it is checked
+        // against the effect it DOES have, because an exemption is a hole and this gate exists
+        // to have none. `publish_one_strip` publishes a CLIP strip, so the honest expectation
+        // here is that the row consumes the click and moves nothing — the container case is
+        // `entering_by_the_menu_and_leaving_by_the_crumb_is_a_round_trip` in `nesting_seam.rs`.
+        if id == c::CTX_MENU_TL_STRIP_ENTER {
+            let before = ph2d_panel_timeline::state::edit_host();
+            let outcome =
+                host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "strip-menu row `{label}` is painted but has no event.rs arm"
+            );
+            assert!(
+                ph2d_panel_timeline::drain_intents().is_empty(),
+                "`{label}` must not raise an intent — entering is a view move, not an edit"
+            );
+            assert_eq!(
+                ph2d_panel_timeline::state::edit_host(),
+                before,
+                "`{label}` on a CLIP strip must move nothing"
+            );
+            continue;
+        }
+
         let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(
             outcome,

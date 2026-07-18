@@ -26,6 +26,7 @@ fn strip(marks: [f64; 4]) -> StripView {
     StripView {
         id: StripId(7),
         clip_name: "X".into(),
+        container: None,
         t_start: 2.0,
         t_end: 4.0,
         blend_in: 0.0,

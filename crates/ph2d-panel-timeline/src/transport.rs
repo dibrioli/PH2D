@@ -45,6 +45,13 @@ const TRANSPORT_BTNS: usize = 5;
 #[derive(Clone, Copy, PartialEq)]
 enum Item {
     Tabs,
+    /// The breadcrumb — where in the nesting you ARE (ADR-0133 §5).
+    ///
+    /// Right after the tabs and before the clip, for the same reason the tabs lead: it decides
+    /// what everything after it is talking about. It is **zero-width at the scene root**, so a
+    /// document that never uses containers pays nothing and sees nothing — there is no trail
+    /// to show until you are inside something.
+    Crumbs,
     Clips,
     Transport,
     ReverseKeys,
@@ -62,6 +69,7 @@ enum Item {
 
 const ITEMS: [Item; 14] = [
     Item::Tabs,
+    Item::Crumbs,
     Item::Clips,
     Item::Transport,
     Item::ReverseKeys,
@@ -173,6 +181,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
         // clip. Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16):
         // they are the two ways to get a clip, and the difference between them is
         // whether it starts empty.
+        Item::Crumbs => crate::breadcrumb::width(snap),
         Item::Clips => crate::transport_clips::width(snap),
         // |< < >/|| > >| — five buttons, four gaps between them.
         Item::Transport => {
@@ -218,6 +227,7 @@ fn paint_item(
     };
     match item {
         Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab),
+        Item::Crumbs => crate::breadcrumb::paint(ctx, theme, x, y, snap),
         Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap),
         Item::Transport => {
             // |< < >/|| > >| — jump to start, step back, play/pause, step forward,

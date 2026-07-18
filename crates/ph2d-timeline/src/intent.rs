@@ -274,6 +274,13 @@ pub enum TimelineIntent {
     // ── the clip stack (ADR-0115 — each is one undo step) ───────────────────
     /// Append an empty lane. Refused past [`crate::MAX_LANES`].
     AddLane,
+    /// **Make a container and drop an instance of it on a new lane here** (ADR-0133).
+    ///
+    /// One intent rather than two (create, then place) because an empty container that is
+    /// nowhere is not a thing an animator asked for: the gesture is *"this part of the
+    /// timeline is a piece"*, and a container nobody instanced would be a dead entry in a
+    /// list. It lands in whichever stack is open, so containers nest by repeating it.
+    AddContainer,
     /// Delete a lane and every strip on it.
     RemoveLane {
         /// Index into [`crate::TimelineDoc::stack`].

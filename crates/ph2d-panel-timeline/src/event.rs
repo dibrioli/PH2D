@@ -345,6 +345,23 @@ fn strip_menu_click(
         .lanes
         .get(lane)
         .is_some_and(|l| l.strips.iter().any(|s| s.id == id_));
+    // **Entering is not an edit**, so it does not raise an intent: it moves the panel's own
+    // view state, and the shell reads it before the next drain. It is also the one row that
+    // means nothing on a clip strip — `container` is `None` there, and the row goes inert
+    // rather than acting on the wrong thing.
+    if id == ids::CTX_MENU_TL_STRIP_ENTER {
+        if let Some(c) = snap
+            .lanes
+            .get(lane)
+            .and_then(|l| l.strips.iter().find(|s| s.id == id_))
+            .and_then(|s| s.container)
+        {
+            state::set_open_container(Some(c));
+        }
+        host.store_mut().close_context_menu();
+        host.store_mut().consume_last_context_menu();
+        return Some(EventOutcome::Consumed);
+    }
     if live {
         let intent = if id == ids::CTX_MENU_TL_STRIP_DUPLICATE {
             TimelineIntent::DuplicateStrip { lane, id: id_ }
@@ -386,6 +403,22 @@ fn strip_menu_click(
 fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
     if id == ids::TIMELINE_ADD_LANE {
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddLane);
+        return Some(EventOutcome::Consumed);
+    }
+    if id == ids::TIMELINE_ADD_CONTAINER {
+        crate::state::push_intent(ph2d_timeline::TimelineIntent::AddContainer);
+        return Some(EventOutcome::Consumed);
+    }
+    // The breadcrumb: segment 0 is the scene root (leave everything), segment `n` pops OUT to
+    // the container at that depth. Popping to where you already are is a no-op, which is what
+    // makes the trailing segment safe to paint as part of the trail rather than special-cased.
+    if let Some(depth) = ids::TIMELINE_CRUMB.iter().position(|&b| b == id) {
+        let crumbs = crate::state::current_snapshot().crumbs;
+        crate::state::set_open_container(
+            depth
+                .checked_sub(1)
+                .and_then(|i| crumbs.get(i).map(|c| c.0)),
+        );
         return Some(EventOutcome::Consumed);
     }
     if let Some(lane) = ids::TIMELINE_LANE_MUTE.iter().position(|&b| b == id) {

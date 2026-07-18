@@ -263,6 +263,7 @@ fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
     let sv = |t_start: f64, t_end: f64| StripView {
         id: StripId(7),
         clip_name: "X".into(),
+        container: None,
         t_start,
         t_end,
         blend_in: 0.0,

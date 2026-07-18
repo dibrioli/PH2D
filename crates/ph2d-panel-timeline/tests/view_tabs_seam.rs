@@ -65,6 +65,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
             strips: vec![StripView {
                 id: StripId(1),
                 clip_name: "Right".into(),
+                container: None,
                 t_start: 2.0,
                 t_end: 5.0,
                 blend_in: 0.0,

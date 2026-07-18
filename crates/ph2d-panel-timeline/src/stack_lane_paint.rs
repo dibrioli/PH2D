@@ -40,22 +40,38 @@ const WEIGHT_STEP: f64 = 0.01; // LITERAL-PX-OK: 1% of the [0, 1] range
 /// Decimals shown in the weight field.
 const WEIGHT_DECIMALS: usize = 2; // LITERAL-PX-OK: 1% resolution needs two
 
-/// The "+ Lane" button, beside "+ Track" in the label column's header strip.
+/// The Arrange tab's two ADDs, sharing the label column's header strip: **+ Lane** and
+/// **+ Container**.
+///
+/// They sit together because they are the two ways to grow the stack you are looking at — one
+/// adds a row, the other adds a *piece* — and both land in whichever stack is open, so
+/// containers nest by pressing the second one twice.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
-    let st = ctx
-        .host
-        .store()
-        .button_state(ids::TIMELINE_ADD_LANE)
-        .unwrap_or(ButtonState::Normal);
-    let btn = Button::new(
-        ids::TIMELINE_ADD_LANE,
-        ph2d_i18n::tr("panel.timeline.add_lane"),
-    )
-    .state(st);
-    paint_button(&btn, header, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(ids::TIMELINE_ADD_LANE, header);
+    let gap = Spacing::Sm.px() * 0.5;
+    let w = ((header.w - gap) * 0.5).max(0.0);
+    for (i, (id, key)) in [
+        (ids::TIMELINE_ADD_LANE, "panel.timeline.add_lane"),
+        (ids::TIMELINE_ADD_CONTAINER, "panel.timeline.add_container"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        #[expect(clippy::cast_precision_loss, reason = "i is 0 or 1")]
+        let rect = Rect::new(header.x + i as f32 * (w + gap), header.y, w, header.h);
+        let st = ctx
+            .host
+            .store()
+            .button_state(id)
+            .unwrap_or(ButtonState::Normal);
+        paint_button(
+            &Button::new(id, ph2d_i18n::tr(key)).state(st),
+            rect,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        ctx.host.hit_index_mut().register(id, rect);
+    }
 }
 
 /// Paint every lane of the clip stack, above the Summary channel and the tracks.

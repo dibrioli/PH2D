@@ -88,6 +88,8 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.summary" => "Summary",
         "panel.timeline.add_track" => "+ Track  \u{25be}",
         "panel.timeline.add_lane" => "+ Lane",
+        "panel.timeline.add_container" => "+ Container",
+        "panel.timeline.crumb_root" => "Scene",
         "panel.timeline.add_marker" => "+M",
         "panel.timeline.time_seconds" => "Time(s)",
         "panel.timeline.frame" => "Frame",

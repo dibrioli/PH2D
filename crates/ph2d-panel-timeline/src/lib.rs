@@ -16,6 +16,16 @@
 
 #![forbid(unsafe_code)]
 
+mod breadcrumb;
+
+/// The breadcrumb's measured width, for the seam gate that pins "zero at the root".
+///
+/// Exposed rather than re-derived in the test: the flow layout and the paint read the SAME
+/// function, and a test that computed its own would stop protecting them the day it drifted.
+#[must_use]
+pub fn breadcrumb_width_for_tests(snap: &ph2d_timeline::TimelineViewSnapshot) -> f32 {
+    breadcrumb::width(snap)
+}
 mod anchor_drag;
 mod box_select;
 mod clip_rename;

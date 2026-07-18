@@ -62,8 +62,14 @@ pub struct TrackView {
 pub struct StripView {
     /// Stable identity — what a drag and a context menu hold on to.
     pub id: StripId,
-    /// The clip it plays.
+    /// The clip — or container — it plays.
     pub clip_name: String,
+    /// `Some(container index)` when this strip plays a CONTAINER (ADR-0133).
+    ///
+    /// The panel needs it to know whether "Enter Container" means anything here, and it is
+    /// carried resolved rather than as a `StripSource` so the panel never has to know the
+    /// document's types — the same reason `clip_name` is a name and not an index.
+    pub container: Option<usize>,
     /// Its span on the timeline, in seconds.
     pub t_start: f64,
     /// Exclusive end.
@@ -184,6 +190,15 @@ pub struct TimelineViewSnapshot {
     /// Every clip's author-visible name, in document order — the selector's list.
     /// Reused across rebuilds (clear + push).
     pub clips: Vec<String>,
+    /// Every container's name, index-aligned with `TimelineDoc::containers()` (ADR-0133).
+    pub containers: Vec<String>,
+    /// **Where the animator IS** — the breadcrumb, outermost first.
+    ///
+    /// Empty means the document's own stack (the trail still paints its root: "Scene"). Each
+    /// entry is `(container index, name)`, and clicking one pops back OUT to it — the
+    /// Animate/Harmony gesture, which the research found is the 2D lineage (After Effects
+    /// opens a new tab instead, and its users rebuild the lost context by hand).
+    pub crumbs: Vec<(usize, String)>,
     /// Index into [`Self::clips`] of the clip being edited.
     pub active_clip: usize,
 }
@@ -266,8 +281,22 @@ impl TimelineViewSnapshot {
         // The clip stack. The blend windows are asked of the LANE, never recomputed
         // here — so the crossfade the panel DRAWS is literally the one the
         // evaluator WEIGHTS by, and the two cannot drift apart.
+        // **The lanes are the OPEN host's** (ADR-0133 §5): inside a container the panel shows
+        // its interior, and the edits it raises are routed to the same host by
+        // `TimelineState::edit_host`. One answer to "which stack am I looking at", read here
+        // and honoured there — two would drift the first time somebody entered a container.
+        self.containers.clear();
+        self.containers
+            .extend(doc.containers().iter().map(|c| c.name.clone()));
+        self.crumbs.clear();
+        if let crate::StackHost::Container(c) = state.edit_host
+            && let Some(named) = doc.containers().get(c)
+        {
+            self.crumbs.push((c, named.name.clone()));
+        }
+        let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host).unwrap_or(&[]);
         self.lanes.clear();
-        for lane in doc.stack() {
+        for lane in host_lanes {
             let mut strips = Vec::with_capacity(lane.strips.len());
             for (i, st) in lane.strips.iter().enumerate() {
                 strips.push(StripView {
@@ -275,6 +304,7 @@ impl TimelineViewSnapshot {
                     // The strip's source names itself, whichever list it lives in — a
                     // container strip that painted a blank label would read as a corrupt
                     // clip strip rather than as what it is (ADR-0133).
+                    container: st.source.container_index().map(usize::from),
                     clip_name: match st.source {
                         crate::StripSource::Clip(i) => doc
                             .clips()

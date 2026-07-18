@@ -158,8 +158,18 @@ criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem
 > invariante "strips ordenados por início" é onde o vizinho significa algo, e um strip arrastado
 > lá dentro a quebraria um nível abaixo de onde alguém olha. 2 gates + 2 mutações.
 >
-> ⚠️ **Até o 3b, o nesting continua INALCANÇÁVEL pelo artista** — `add_container` não tem
-> chamador na UI. Isso é deliberado: é melhor do que uma breadcrumb meio-costurada.
+> **✅ 3b — o nesting ficou ALCANÇÁVEL (2026-07-18).** `[+ Container]` ao lado de `[+ Lane]` no
+> header do Arrange (cria o container E instancia, porque um container que não está em lugar
+> nenhum não é o que ninguém pediu) · **"Enter Container"** como 1ª linha do menu do strip, inerte
+> num strip de clip · **breadcrumb** no flow do transporte, `[ Scene ][ C1 ]`, cada segmento
+> voltando para o seu nível — **zero-largura na raiz**, então quem não usa container não paga nem
+> vê nada. O `edit_host` viaja do painel ao shell pelo canal do `keys_mode`.
+>
+> **O cap agora tem recurso:** `TIMELINE_CRUMB` (8) limita a **TRILHA**, não a profundidade — a
+> chrome não cunha id em runtime. A profundidade segue sem teto, como o ADR mediu.
+>
+> ⚠️ **Falta a 3c: as DUAS RÉGUAS** (o mecanismo do AE). Os dois `Playhead` já existem; falta
+> desenhá-los alinhados, com o marcador ligando um ao outro.
 
 
 1. **Breadcrumb** persistente (Animate/Harmony), com entrar/sair.

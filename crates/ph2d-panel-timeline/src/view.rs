@@ -447,6 +447,7 @@ mod tests {
                     .map(|(i, &(t_start, t_end, lead_in))| StripView {
                         id: StripId(i as u64),
                         clip_name: "C".into(),
+                        container: None,
                         t_start,
                         t_end,
                         blend_in: 0.0,

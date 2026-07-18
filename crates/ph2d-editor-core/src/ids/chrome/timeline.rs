@@ -160,6 +160,27 @@ pub const TIMELINE_CLIP_OPT: [NodeId; 16] = [
     hash_node_id("timeline.clip_opt_15"),
 ];
 
+/// "+ Container" — make a nested container and drop an instance of it here (ADR-0133).
+pub const TIMELINE_ADD_CONTAINER: NodeId = hash_node_id("timeline.add_container");
+
+/// Breadcrumb segments — "Scene", then one per level entered.
+///
+/// **This array IS the nesting-depth cap**, and it is the FIRST resource nesting has that can
+/// justify one: the ADR refused to write a depth limit because evaluation time did not support
+/// it (linear, ~0.27x per level), and it still does not. This is a different resource — the
+/// chrome cannot mint a hit id at runtime, so a trail deeper than this would paint a segment
+/// nothing could click. 8 is what the transport bar can show before the trail is unreadable.
+pub const TIMELINE_CRUMB: [NodeId; 8] = [
+    hash_node_id("timeline.crumb_0"),
+    hash_node_id("timeline.crumb_1"),
+    hash_node_id("timeline.crumb_2"),
+    hash_node_id("timeline.crumb_3"),
+    hash_node_id("timeline.crumb_4"),
+    hash_node_id("timeline.crumb_5"),
+    hash_node_id("timeline.crumb_6"),
+    hash_node_id("timeline.crumb_7"),
+];
+
 // ── Track list + ruler ───────────────────────────────────────────────────────
 /// "+ Track" button (adds a binding for the selected object's property).
 pub const TIMELINE_ADD_TRACK: NodeId = hash_node_id("timeline.add_track");

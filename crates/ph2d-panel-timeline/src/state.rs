@@ -44,6 +44,10 @@ thread_local! {
     /// runs on, not a document edit. `false` (Arrange / normal) until the first
     /// paint, so a hidden panel leaves the timeline on its usual timeline clock.
     static KEYS_MODE: Cell<bool> = const { Cell::new(false) };
+    /// Which container the animator has ENTERED, if any (ADR-0133 §5). Panel-local view
+    /// state, published to the shell like `KEYS_MODE`: a document does not remember which
+    /// container was open, exactly as Animate's does not.
+    static OPEN_CONTAINER: Cell<Option<usize>> = const { Cell::new(None) };
 }
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
@@ -450,6 +454,25 @@ pub(crate) fn publish_keys_mode(on: bool) {
 #[must_use]
 pub fn keys_mode() -> bool {
     KEYS_MODE.with(Cell::get)
+}
+
+/// **Enter a container** (or leave, with `None`) — the breadcrumb's whole job.
+///
+/// Panel-local, and taking effect on the next frame's publish: the shell reads
+/// [`edit_host`] before draining intents, so the edit that follows a click lands in the
+/// stack the click just opened.
+pub(crate) fn set_open_container(c: Option<usize>) {
+    OPEN_CONTAINER.with(|x| x.set(c));
+}
+
+/// **Which stack the panel is editing** — read by the shell each frame and stamped onto
+/// `TimelineState::edit_host` before intents drain, the same channel [`keys_mode`] rides.
+#[must_use]
+pub fn edit_host() -> ph2d_timeline::StackHost {
+    match OPEN_CONTAINER.with(Cell::get) {
+        Some(c) => ph2d_timeline::StackHost::Container(c),
+        None => ph2d_timeline::StackHost::Document,
+    }
 }
 
 /// Raise a dope-sheet edit intent (called by `interact` while draining gestures).

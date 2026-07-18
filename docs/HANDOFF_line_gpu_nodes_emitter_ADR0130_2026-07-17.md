@@ -1,10 +1,9 @@
 # HANDOFF (briefing de continuação) — `line/gpu-nodes` · ADR-0130 · o emitter na GPU (o gather por `id`)
 
-> **Você é o agente que continua esta linha em contexto fresco.** O ADR já está escrito e as fatias 1-2
-> landaram e estão gateadas. **As fatias 3 (o gather) + 4 (os gates) LANDARAM em `76ae0d52` (2026-07-17)
-> e estão gateadas na RTX** — ver §1.LANDOU e §3.LANDOU. Falta só a **fatia 5** (`forget_state` na edição
-> de param do emitter, D7) — **shell-side e gated por ordem EXPLÍCITA do Enio** (§4 + §6).
-> Leia este doc + o [ADR-0130](architecture/decisions/0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md) inteiro (é curto). O ADR tem o PORQUÊ; este doc tem o ONDE e o COMO, e os gotchas que a wave de pesquisa expôs.
+> **Você é o agente que continua esta linha em contexto fresco.** O ADR já está escrito e **TODAS as
+> fatias (1-5) LANDARAM** (fatias 3+4 em `76ae0d52`, fatia 5 em `49829843`, 2026-07-17) e estão gateadas
+> (parity na RTX + policy headless) — ver §1.LANDOU, §3.LANDOU e §4.LANDOU. **Pendente de smoke do Enio**
+> (§7). Leia este doc + o [ADR-0130](architecture/decisions/0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md) inteiro (é curto). O ADR tem o PORQUÊ; este doc tem o ONDE e o COMO, e os gotchas que a wave de pesquisa expôs.
 
 ---
 
@@ -30,6 +29,7 @@ Fork de `main` em `cdc3acc1`. Commits desta fatia (do ADR pra cima):
 | `d29366fc` | **Kernel do `motion.emitter`** — a lei da contagem | `the_emitter_generator_matches_the_cpu`: janela `[15,81,121,121]` + cap 256; 2 mutações |
 | `90e70302` | **Fatia 2:** `dense_window`, a propriedade provável de plano | 5 gates de plano puros; mutação mata 3, deixa o positivo verde |
 | `76ae0d52` | **Fatia 3+4:** o gather aritmético + os gates (§3.LANDOU) | 3 gates de sim de emitter na RTX + 2 de plano; 4 mutações RED |
+| `49829843` | **Fatia 5:** `forget_state` no re-number do emitter (D7, §4.LANDOU) | policy headless (todo param) + node real; 1 mutação RED |
 
 ### §1.LANDOU — fatia 3+4 (`76ae0d52`, 2026-07-17)
 
@@ -127,8 +127,15 @@ Na fatia 2 registrei só os 9 nós do laço (`register_dense_window`). Os deform
 
 ## §4 — Fatias 4-5
 
-- **Fatia 4 = os gates da fatia 3** (já descritos em 3d; landam junto).
-- **Fatia 5 = `forget_state` na edição de PARAM do emitter (D7).** `first` só é monotônico sob params CONSTANTES. Arrastar `rate`/`life`/`max` re-numera os ids → o gather mispareia (igual na CPU — é o modelo, não a GPU). O honesto é invalidar o estado (`forget_state`, `gpu-cook/src/lib.rs:362`) na edição de param do emitter. **Verifique/costure o gatilho** — hoje ele responde a *graph edit*, não a *param change*. É shell-side (`render_loop/motion_bridge_gpu.rs`). Gate: um param-change do emitter zera a sim.
+- **Fatia 4 = os gates da fatia 3** (já descritos em 3d; landaram junto em `76ae0d52`).
+- **Fatia 5 = `forget_state` na edição de PARAM do emitter (D7).** `first` só é monotônico sob params CONSTANTES. Arrastar `rate`/`life`/`max` re-numera os ids → o gather mispareia (igual na CPU — é o modelo, não a GPU). O honesto é invalidar o estado (`forget_state`, `gpu-cook/src/lib.rs`) na edição de param do emitter.
+
+### §4.LANDOU — fatia 5 (`49829843`, 2026-07-17)
+
+- **A policy é uma função PURA**, `motion_bridge_gpu::edit_renumbers_emitter(type_name, param)`: só `motion.emitter` × `{rate, life, max}` re-numera (os params do `emit`/`source_count` que definem a janela viva). `speed`/`angle`/`spread`/`seed` e `x`/`y`/`size` **NÃO** re-numeram — o gather ainda pareia id-a-id, então a sim VIVA continua e só os recém-nascidos pegam o novo lançamento (forgetar ali seria um pop à toa). Allowlist minúscula presa à lei-de-contagem de UM nó, não uma regra que apodrece.
+- **Costurado no seam de param** (`motion_bridge_params.rs`, arm `SetParam`): decide ANTES do `set_param` consumir `param`, `forget_state()` depois do edit pousar. E **`install()` (load de projeto) também forgeta** — as colunas `pre` do doc velho são keyed por node id; um grafo novo reusando esses ids leria estado de um estranho (mesma classe do D7, bug latente corrigido; espelha o reset do pump logo acima).
+- **Gates (headless, sem device):** `only_the_emitters_renumbering_params_invalidate_the_gpu_sim` (todo param do emitter + 4 tipos não-emitter) + `a_real_emitter_nodes_type_name_drives_the_policy` (o `type_name` real do nó casa a policy). Mutação: dropar o guard `motion.emitter` → RED. (O EFEITO do `forget_state` é inobservável headless — precisa de estado de device; o mecanismo já é exercido pelos gates de sim/scrub. Gateamos a DECISÃO, que é a parte arriscada/rot-prone.)
+- ⚠️ **CUSTO / semântica (D7), a decidir no smoke:** `rewind_for` ancora uma sim esquecida no **tick 0** (`ring.rs`, `unwrap_or_default`), então o re-bake é **O(tick atual)** — um edit discreto fundo no playback dá UM hitch (um bake, estilo Blender/Houdini), e **segurar um drag re-bakea a cada frame**. Se ficar caro no smoke, o follow-up é um **re-seed no tick atual** (barato, "recomeça de agora") em vez do re-bake-do-0 — é decisão de superfície (uma API nova no `GpuCook` + o call-site), não deste fix. Também há uma **divergência GPU↔CPU** conhecida: a GPU re-bakea (limpo), o pump CPU mantém o `pre` (mispair parcial) — a GPU é o caminho EXIBIDO (preview), o CPU alimenta readouts do painel; os gates de paridade (1-passo-de-seed) não cobrem edit ao vivo. Consistência total (forgetar os dois, ou re-seed nos dois) é follow-up se o Enio quiser.
 
 ---
 
@@ -146,7 +153,13 @@ Há um agente na timeline (`line/anim-ajustes`, worktree `line-anim`). **Medido:
 
 ---
 
-## §7 — Ao fechar a fatia 3 (o protocolo)
+## §7.SMOKE — como o Enio confere (a linha inteira LANDOU)
+
+O gate É o audit (parity na RTX + policy headless, todos verdes). O smoke interativo:
+- **O gather** (fatias 3-4): `PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=3 cargo run -p ph2d-host-desktop --release` (a cena de simulação; ou monte `emitter → integrate → output` no editor). As partículas devem nascer, driftar pela velocidade de bico (por-id) e morrer — sem pop de velocidade trocada quando a janela desliza. (Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU.)
+- **Fatia 5** (`forget_state`): com o mesmo `PH2D_GPU_COOK=1` e um emitter, **arraste `rate`/`life`/`max`** no painel de params — a sim re-bakea do começo sob os novos params (limpo, não um mispair parcial). Arraste `speed`/`size` — a sim VIVA continua (só os novos nascem diferentes). ⚠️ Se o re-bake fundo no playback estiver caro (§4.LANDOU, custo O(tick)), é o sinal pro follow-up "re-seed no tick atual".
+
+## §7 — Ao fechar a fatia (o protocolo)
 
 1. Gates 1× (paridade `--ignored` na RTX + plano sem device + WGSL). Todas as mutações VERMELHAS→restauradas.
 2. `cargo fmt` nas crates tocadas · `cargo clippy --all-targets` · `typos` (sem arg) · os 2 LOC caps.

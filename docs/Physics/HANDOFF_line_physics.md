@@ -15,7 +15,7 @@
 | Wave | Estado | Commit | Nota |
 |---|---|---|---|
 | **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
-| **W1 — Ponte ECS + tick + hash** | ⏳ pendente (aguarda ordem do Enio) | — | o alicerce |
+| **W1 — Ponte ECS + tick + hash** | ✅ **FECHADO** (2026-07-17, pendente smoke) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ⏳ pendente | — | kill-check de serialização ANTES do build |
 | **W2 — Painel + Inspector body** | ⏳ pendente | — | categoria de painel NOVA (mundo) |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
@@ -27,12 +27,67 @@ código, nenhum contrato tocado, nenhum foundational tocado.
 
 ---
 
+## §W1 — O alicerce LANDOU (2026-07-17, pendente smoke)
+
+Um sprite com `RigidBody{Dynamic}` + `Collider` **cai e assenta** sobre um `Collider{Static}` no ECS real,
+ao dar play, e o mundo é determinístico. A ponte promoveu o wrapper M10 de dormente a **wired e global**.
+
+**Crate-ponte nova `ph2d-physics-ecs`** (glob `crates/*` a pega — zero edit central): components
+`RigidBody{kind}` + `Collider{shape,density}` (**config only** — nunca estado vivo de solver, senão o
+`canonicalize` do undo diffaria um passo espúrio por tick); `PhysicsBridge` (owns `PhysicsWorld` +
+`BTreeMap<Entity, handle>` + `last_stepped`); `register_physics_components`; `deterministic_hash` sobre os
+`Transform` do readback; bin `physics_ecs_c9`.
+
+**A ponte (`bridge.rs`), o coração:** `dispatch(sim, playing, target)` — **play** = `reconcile_structure`
+(spawn/remove em ordem entity-sorted, HR-5) + `step()×(target−last_stepped)` sequencial + `readback`
+(pose→`Transform`, só corpos Dynamic); **paused** = `settle` (corpos seguem o `Transform` autorado,
+read-only no Transform ⇒ frame parado não gera passo de undo). `QueryState` cacheado (zero-alloc, idiom do
+`propagate_transforms`). O `BTreeMap` (não `HashMap`) é a **espinha do determinismo**: itera por `Entity`,
+ordem estável per-run e cross-OS; a lint disallowed-`HashMap` é o guarda estrutural.
+
+**`ph2d-physics` estendido (append-only, meu módulo):** `spawn_body(BodyDesc)`/`set_body_pose`/`remove_body`
++ `BodyDesc`/`ShapeDesc` — cobre os 4 combos body×shape. **Os helpers existentes + `step` + o hash c9
+ficaram byte-idênticos** ⇒ o gate M10 (`physics-c9`) segue verde (`2114f483…`).
+
+**Escala (D4 CORRIGIDO medindo):** o `Transform` já é METROS (Y-up, radianos CCW); rapier é metros ⇒
+**fronteira 1:1, sem conversão**. A única px→m já existe: `ProjectSettings.pixels_per_meter` (default 100)
+no import, do PROJETO. **NÃO** criei um 2º `PIXELS_PER_METER` (seria a 2ª porta que diverge).
+
+**Shell wired:** `AppGfx.physics: PhysicsBridge` (ao lado de `sim`/`motion`); `render_loop/physics_bridge::
+dispatch` chamado **antes de `sim_extract`** (mod.rs, corpo renderiza same-frame; `target =
+round(playhead.time()/dt)`, `playing = is_playing`); `register_physics_components` no boot (`init.rs`);
+smoke `physics_smoke.rs`. **Persistência:** `PROJECT_SCHEMA` **15→16** + a **tripla-pin** de
+`project_tests` para `(16,7,8)` (o gate disparou no bump — o valor se CONTA); `physics.rebuild()` no reset
+de load (mundo é derivado — D2; reconcile self-heal é o backstop).
+
+**Gates (6, todos mutation-verified RED-first):** e2e falls-and-settles (kill readback→RED) · determinismo
+repeatability (guarda estrutural = BTreeMap + lint + CI cross-OS) · zero-alloc capacity (kill `seen.clear()`
+→RED) · registry count=2 (kill um register→RED) · round-trip de snapshot (kill um register→RED) · self-heal
+no respawn (kill remoção de stale→RED). **CI:** `physics-ecs-c9` na matriz do `spike.yml` + compare cross-OS
+(`sort -u | wc -l`) — mirror do `ph2d_physics_c9`.
+
+**Batched gate verde:** fmt · clippy `--all-targets` · `cargo check --workspace` · `nextest-impacted` (723
+passed, 5 skipped).
+
+**⚠️ SMOKE (Enio):** `cd Worktrees/line-physics && PH2D_PHYSICS_SMOKE=1 cargo run -p ph2d-host-desktop` —
+uma bola laranja (dynamic) deve **cair e assentar** sobre a barra cinza (static floor). Ponte morta = bola
+pendurada no ar.
+
+**Deferido (por design, não esquecido):** scrub-back re-sim = **W1.5** (o `settle` seta `last_stepped=target`
+no paused; scrub não rebobina o corpo ainda — o ring é a próxima wave, com o **kill-check de serialização
+do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **W2** (append + wire no painel).
+`readback` só trata corpo root (Transform local = mundo); corpo filho = W2 (via `parent_world_transform`).
+`reconcile` stale é O(N²) (trivial nos counts de W1).
+
+---
+
 ## Decisões (ADR-0130, condensadas — o *porquê* está lá)
 
 - **D1** runtime-truth + bake opcional (Enio). **D2** `PhysicsWorld` transiente shell-side (precedente
   `MotionCookPump`), dirigido por components; NÃO persistido (é rebuild). **D3** contrato
   `RigidBody`/`Collider` append-only, registrado pela crate-ponte, destinado a congelar. **D4** escala
-  pixel→metro numa PORTA ÚNICA (`PIXELS_PER_METER=100.0`). **D5** relógio no `Playhead`
+  **D4 corrigido no W1: sem porta de escala** — `Transform` já é metros = rapier metros (1:1); a única px→m
+  é `ProjectSettings.pixels_per_meter` no import (do projeto). **D5** relógio no `Playhead`
   (`ticks_owed`); scrub por **checkpoint ring esparso** (modelo `CheckpointRing`/`Cook`). **D6** fronteira
   tríplice (rapier / Zona-de-nós / XPBD). **D7** hash do mundo-ECS estende o gate c9 cross-OS. **D8**
   painel global (categoria nova) + seção "Physics Body" no Inspector. **D9** rígido apenas; 0063 fora.
@@ -111,43 +166,68 @@ código, nenhum contrato tocado, nenhum foundational tocado.
 
 ## Ids / consts / variants — ALOCADOS e A ALOCAR (regra §1.5.9.3)
 
-**Alocados no W0 (nomes de design; reservados):**
-- Crate-ponte: **`ph2d-physics-ecs`** (nome reservado; não criada ainda).
-- Painel: crate **`ph2d-panel-physics`**, `Panel::ID = "physics"`, feature Cargo **`panel-physics`**.
-- Const de escala: **`PIXELS_PER_METER = 100.0`** (na porta da ponte).
-- Env de smoke: **`PH2D_PHYSICS_SMOKE`** (1=drop, 2=painel, 3=joint, 4=bake).
-- Gate/artifact CI: **`physics-ecs-c9`** / `physics-ecs-c9-hash-${os}`.
-- ADR: **0130** (confirmado próximo livre; maior on-disk = 0129).
+**Alocados e CRIADOS no W1:**
+- Crate-ponte **`ph2d-physics-ecs`** (glob `crates/*` — zero edit central). Components `RigidBody`/`Collider`;
+  enums `BodyKind{Dynamic,Static}` / `ColliderShape{Ball,Cuboid}` (append-only, variants novos no FIM).
+  Nomes canônicos de registro: **`ph2d::physics::RigidBody`** / **`ph2d::physics::Collider`**.
+  `register_physics_components`; `PhysicsBridge`; bin **`physics_ecs_c9`**.
+- `ph2d-physics` (aditivo): `BodyDesc`/`ShapeDesc`/`spawn_body`/`set_body_pose`/`remove_body`.
+- Shell: campo **`AppGfx.physics`**; módulo **`render_loop/physics_bridge`**; **`mod physics_smoke`**;
+  **`App.physics_smoke_done`**; feature de Cargo `ph2d-physics-ecs` (dep de path no shell).
+- Env de smoke: **`PH2D_PHYSICS_SMOKE`** (=1 usado; 2=painel/3=joint/4=bake **reservados**).
+- CI: **`physics-ecs-c9`** + artifact **`physics-ecs-c9-hash-${os}`** (spike.yml).
+- **`PROJECT_SCHEMA` = 16** (era 15) + tripla-pin `(16,7,8)` em `project_tests`.
+- ADR **0130**.
+- ~~`PIXELS_PER_METER`~~ **NÃO existe** — D4 corrigido; reusa `ProjectSettings.pixels_per_meter`.
 
-**A alocar na wave que os cria (próximo LIVRE, anotar aqui quando criados):**
-- `ids::PHYSICS_PANEL` (IconId/panel-node) — **W2**.
-- `EXPECTED_TYPED` bump em `ph2d-panel-registry-init` — **W2**.
-- `PROJECT_SCHEMA` 13 → 14 (components de física) — **W1**; 14 → 15 (joints) — **W3**.
-- Variants de `BodyKind`/`ColliderShape`/joint-kind — nas waves W1/W3, append-only.
+**A alocar na wave que os cria (próximo LIVRE):**
+- W2: crate `ph2d-panel-physics`, `Panel::ID="physics"`, feature `panel-physics`, `ids::PHYSICS_PANEL`,
+  `EXPECTED_TYPED` bump em `ph2d-panel-registry-init`; campos novos append em `RigidBody`/`Collider`
+  (restituição/atrito/damping/…) + variants `Kinematic`/formas.
+- W3: `PROJECT_SCHEMA` **16 → 17** (joints) + a tripla-pin; components de joint.
 
 ---
 
-## Handoff de INTEGRAÇÃO — sessão W0 (§1.5.9)
+## Handoff de INTEGRAÇÃO — W0 + W1 (§1.5.9)
 
-> Preencher HEAD após o commit. Reportar ao Enio e **PARAR** (regra E/H). NÃO integrar, NÃO pushar.
+> Reportar ao Enio e **PARAR** (regra E/H). NÃO integrar, NÃO pushar.
 
-1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; conteúdo W0 =
-   `456e8b99` (+ 1 commit de ajuste de sha por cima); docs-only. HEAD vivo = `git log` no fechamento.
-2. **Foundational/compartilhado tocado:** **NENHUM.** Arquivos: só `docs/Physics/*` (novos) +
-   `docs/architecture/decisions/0130-*.md` (novo). Zero `.rs`, zero `Cargo.*`, zero código de app.
-3. **Símbolos que podem COLIDIR:** **o número de ADR `0130`** — 4 linhas ativas (FLIP/Painter/Vector/anim)
-   podem reclamar 0130 em paralelo; o gate `architecture_adr_numbers_are_unique` pega na integração. Se o
-   integrador renumerar, o renomeio é escopado **só aos arquivos que a linha mudou** (`git diff
-   --name-only`), NUNCA `git grep` de árvore inteira ([[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]]).
-   Nomes de design reservados (não são símbolos de código ainda): `ph2d-physics-ecs`, `ph2d-panel-physics`,
-   `PIXELS_PER_METER`, `PH2D_PHYSICS_SMOKE`, `physics-ecs-c9`.
-4. **Contratos congelados encostados:** **NENHUM** (docs-only). O contrato de física é novo e não-congelado
-   (freeze é follow-up).
-5. **O que só o `ship.sh` pega:** gate `typos` (docs em pt-BR — checar allowlist se algum termo novo
-   dispara); markdownlint/link-check se existir. Nenhuma dep nova, nenhum clippy/RUSTSEC (zero código).
-6. **Ordem/dependências:** 1 commit, sem ordem. **O que smoke-testar:** **NADA** — sessão de arquitetura,
-   sem superfície de runtime. O smoke real começa em W1 (`PH2D_PHYSICS_SMOKE=1`).
+1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; HEAD = **`9f5fee05`**;
+   **5 commits** (W0: `456e8b99`,`bc7a5990` docs · W1: `44e08cf5` core, `018b00e9` wiring, `9f5fee05` gate).
+2. **Foundational/compartilhado tocado:**
+   - `crates/ph2d-physics/` — **meu módulo** (regra B), **aditivo**: `spawn_body`/`set_body_pose`/
+     `remove_body` + `BodyDesc`/`ShapeDesc`. Helpers existentes + `step` + c9 **byte-idênticos** (hash
+     `physics-c9` intacto = `2114f483…`).
+   - `shells/desktop/` (o consumidor É parte do work item): `Cargo.toml` (+dep), `app_state.rs` (+campo
+     `physics` + `physics_smoke_done`), `init.rs` (+construtor + registro), `main.rs` (+`mod physics_smoke`
+     + init do latch), `project.rs` (schema 15→16 + `rebuild()` no load), `project_tests.rs` (tripla-pin),
+     `render_loop/mod.rs` (+`mod physics_bridge` + `dispatch` antes do `sim_extract`), **novos**
+     `physics_smoke.rs` + `render_loop/physics_bridge.rs`.
+   - `.github/workflows/spike.yml` (+step/artifact/compare `physics-ecs-c9`). `Cargo.lock`.
+   - **`ph2d-ecs` NÃO foi tocado** (só lido; o registro mora na minha crate).
+3. **Símbolos que podem COLIDIR (grep na integração):**
+   - **ADR `0130`** — 4 linhas ativas podem reclamá-lo; gate `architecture_adr_numbers_are_unique`. Renomeio
+     escopado a `git diff --name-only`, **nunca** `git grep` de árvore ([[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]]).
+   - **`PROJECT_SCHEMA` = 16 + a tripla-pin `(16,7,8)`** — ⚠️ **se OUTRA linha também bumpar o schema, o
+     valor se CONTA, não se escolhe** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]): some os
+     dois deltas (ex.: se outra linha subiu p/ 16 por outro motivo, o combinado é 17) e atualize a tripla.
+     O gate `a_schema_bump_anywhere_must_bump_the_project_schema` fica **vermelho** até baterem.
+   - Listas append-only que o Mergiraf funde mas o integrador confere: `mod physics_smoke;`(main.rs),
+     `mod physics_bridge;`(render_loop/mod.rs), o campo `AppGfx.physics` + seu destructure, o bloco
+     `component_registry` de `init.rs`, os `mod`/prólogo do frame.
+   - Nomes de código (únicos, improváveis de colidir): `ph2d::physics::{RigidBody,Collider}`,
+     `physics-ecs-c9-hash-*`, `PH2D_PHYSICS_SMOKE`.
+4. **Contratos congelados encostados:** **NENHUM**. O contrato de física é novo e não-congelado.
+5. **O que só o `ship.sh`/CI pega:** `typos` (pt-BR + comentários) · `machete` (deps novas: `bevy_ecs`+`blake3`
+   na ponte, `ph2d-physics-ecs` no shell — todas USADAS) · `deny`/`audit` (sem crate externa nova além de
+   `bevy_ecs`, já na árvore) · a **matriz cross-OS do `physics-ecs-c9`** (o verdadeiro gate HR-5 — só roda no
+   push; localmente só provei repeatability + os guardas estruturais). O `spike.yml` **não** é validável por
+   yamllint local (indisponível) — os blocos são mirror exato dos existentes.
+6. **O que smoke-testar (Enio):** `cd Worktrees/line-physics && PH2D_PHYSICS_SMOKE=1 cargo run -p
+   ph2d-host-desktop` → a bola cai e assenta. **E confirme que o app normal (sem a env) segue igual** — o
+   `physics_bridge::dispatch` roda todo frame, mas é no-op sem entidades de física (query vazia).
 
-**Resumo:** *Linha `physics` (W0) pronta — HEAD `<sha>`, 1 commit docs-only. Foundational tocado: nenhum.
-Contratos congelados: nenhum. Colisão possível: só o nº de ADR 0130. Smoke: nada (arquitetura). Aguardo
-ordem para W1.*
+**Resumo:** *Linha `physics` (W0+W1) pronta — HEAD `9f5fee05`, 5 commits. Foundational tocado: `ph2d-physics`
+(meu módulo, aditivo, c9 intacto) + shell (consumidor). Contratos congelados: nenhum. Colisões a grepar: ADR
+0130 · `PROJECT_SCHEMA=16`+tripla-pin (CONTAR se outra linha bumpar). 6 gates mutation-verified; batched gate
+verde. Smoke pendente: `PH2D_PHYSICS_SMOKE=1`. Aguardo ordem de integração / W1.5 / W2.*

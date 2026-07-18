@@ -113,30 +113,38 @@ enum ColliderShape { Ball{r}, Cuboid{hx,hy}, Capsule{..}, ... }  // append-only
   `architecture_physics_contract_surface` à la os outros. Desenhar para isolamento agora é o que deixa
   esse freeze ser barato.
 
-### D4 · Escala pixel→metro — a porta ÚNICA de conversão na ponte (a decisão do dia 1)
+### D4 · Escala pixel→metro — reusar a porta que JÁ existe, não abrir uma segunda
 
-Rapier trabalha bem perto de **unidade-1** (1 unidade ≈ 1 metro); constantes internas (sleep, slop,
-margens de contato) são calibradas nessa escala. Nossos sprites são medidos em **pixels** (centenas).
-Alimentar o solver com velocidades de centenas de unidades **destuneia**: enrijece joints, estoura o
-sleep, degrada a estabilidade de empilhamento. É a mesma classe de bug do `DEPTH_UNIT_PX` do impasto
-([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]) — dois eixos que não são a mesma
-unidade, e uma grandeza que cruza a fronteira **crua** fica errada por um fator.
+> ⚠️ **CORRIGIDO no W1 (medição, não suposição).** A redação original desta seção supunha que "os
+> sprites são medidos em pixels (centenas)" e mandava criar um `PIXELS_PER_METER` na ponte. **Grepar o
+> repo desmentiu a premissa** ([[feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate]]),
+> e o que sobrou é uma decisão melhor.
 
-**Decisão:** existe **uma** constante de escala, `PIXELS_PER_METER`, com **uma porta de conversão na
-ponte** — todo valor que cruza ECS↔física passa por ela, na entrada (px→m) e na leitura de volta (m→px):
+Rapier trabalha bem perto de **unidade-1** (1 unidade ≈ 1 metro). O footgun clássico — alimentar o solver
+com magnitudes de centenas — é real. Mas o PH2D **já resolveu essa conversão**, e num único lugar:
 
-- **Default `PIXELS_PER_METER = 100.0`** (um sprite de 100 px = 1 m; um de 256 px ≈ 2,56 m — dentro da
-  faixa 0,1–10 u que o rapier prefere). É um **setting de MUNDO**, editável no painel global (D8).
-- **Posição:** `world_px / PPM → metros` na entrada; `metros × PPM → px` na leitura. **Rotação é
-  adimensional** (radianos no rapier) — **não** escala por PPM; a ponte a escreve no `Transform` na
-  convenção do app (o app usa graus → `rad × 180/π`, multiplicação por constante, determinística).
-- **A conversão é só multiplicação/divisão** — zero transcendental no caminho determinístico (D7); a
-  disciplina transcendental é trivial de manter aqui, mas o gate a prova mesmo assim.
-- **Uma porta, não N:** spawn, update, readback e bake leem a MESMA `to_meters`/`to_pixels`. Duas portas
-  para a mesma pergunta divergem ([[feedback_two_doors_to_the_same_question_diverge]]).
+- **O `Transform` do ECS é medido em METROS** (`ph2d_ecs::Transform` doc: *"translation (meters), rotation
+  (radians, CCW)"*, Y-up), 28 bytes **congelado**. O mundo é meter-native — diferente de Unity/Godot 2D
+  que trabalham em pixels.
+- **A conversão px→m já existe, no IMPORT, e é do PROJETO:** `ProjectSettings.pixels_per_meter` (default
+  **100.0**), usada em `image_import` para dimensionar o sprite (`world_size = source_px /
+  pixels_per_meter`). É a porta única [[feedback_two_doors_to_the_same_question_diverge]] — e ela é do
+  projeto, não da física.
 
-Isto entra no **dia 1** (W1), não depois — é o footgun clássico de rapier, e retrofitá-lo depois
-reescreve todo fixture.
+**Decisão: a fronteira ECS↔rapier NÃO tem conversão.** `Transform` (metros) alimenta o rapier (metros)
+**1:1**; a pose lida de volta vai crua pro `Transform` (sem sinal trocado — os dois são Y-up + radianos
+CCW). **Não** se cria um segundo `PIXELS_PER_METER` na ponte — isso seria exatamente a segunda porta que
+diverge. O `DEPTH_UNIT_PX` do impasto era necessário porque `x` (texel) e `h` (carga) eram eixos
+diferentes; aqui os dois lados **já falam metros**, então a conversão é a identidade.
+
+- **Onde o `pixels_per_meter` importa para a física:** só se um `Collider` for autorado em PIXELS (ex.: "um
+  raio de 64 px"). Aí a conversão é a MESMA `ProjectSettings.pixels_per_meter` — nunca uma cópia. No W1 o
+  `Collider` é autorado em **unidades de mundo (metros)**, casando com o `Sprite.size` (que já é metros),
+  então nem isso é preciso.
+- **Zero transcendental na fronteira** (D7): não há sequer multiplicação de escala; é cópia de `f32`.
+
+Esta é a decisão do **dia 1** justamente por ser *não fazer* o footgun: o instinto de criar um
+`PIXELS_PER_METER` na física é o erro, e reusar a unidade meter-native do mundo é o acerto.
 
 ### D5 · O relógio e o SCRUB — tick no `Playhead`; scrub por **checkpoint ring**
 
@@ -224,8 +232,10 @@ uma categoria nova: world/scene-settings** — sempre disponível, edita resourc
 Dois donos, e misturá-los é o erro:
 
 - **Painel global (mundo) — `ph2d-panel-physics`, docado:** gravidade (vetor), substeps/iterações do
-  solver, damping global, sleep thresholds, **matriz de camadas de colisão**, e — crítico — **`PIXELS_PER_METER`
-  (D4)**. Registrado nos **5 sites** (precedente canônico `ph2d-panel-vector`): (1) `impl Panel` com
+  solver, damping global, sleep thresholds, **matriz de camadas de colisão**. (A **escala do mundo** já é
+  `ProjectSettings.pixels_per_meter` — D4 — um setting do PROJETO; o painel de física pode exibi-lo, mas
+  não o possui nem cria um paralelo.) Registrado nos **5 sites** (precedente canônico `ph2d-panel-vector`):
+  (1) `impl Panel` com
   `ID="physics"`/`NODE_ID=ids::PHYSICS_PANEL`/`populate`/`paint`/`apply_event`; (2) push no
   `ph2d-panel-registry-init` (GERADO por `ph2d-panel-sync` + a const `EXPECTED_TYPED` à mão); (3) feature
   Cargo `panel-physics`; (4) **a lista de fallback de z-order em `hero/paint.rs`** — sem a entrada, o painel
@@ -284,7 +294,7 @@ usa), escrevendo keys nas tracks da entidade em **1 passo de undo**, **determin�
 
 - **Persistência:** as components de física entram no save/undo via `WorldSnapshot` **assim que
   registradas** (D3); o `PhysicsWorld` vivo **não** é serializado (é rebuild das components — D2). Bump de
-  `PROJECT_SCHEMA` (13 → 14 hoje) quando W1 persistir os components. Save format versionado e migrável
+  `PROJECT_SCHEMA` (**15 → 16**, o valor real no worktree — não 13→14; ele se CONTA) quando W1 persistir os components. Save format versionado e migrável
   (HR-14). **Snapshot = ponto fixo** ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]): a
   captura tem que ser tirada **depois** de a ponte convergir no frame, senão o diff registra passo espúrio
   (a lição exata do z-order do vetor).

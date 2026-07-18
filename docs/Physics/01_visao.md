@@ -63,9 +63,11 @@ Divisão limpa, é o que Houdini/Unity fazem (DOPs vs POPs; rigidbody vs particl
 
 ## As armadilhas nomeadas no dia 1 (detalhe na ADR-0130)
 
-- **pixel→metro** — rapier trabalha perto de unidade-1; sprites são medidos em centenas de pixels.
-  Alimentar o solver com velocidades de centenas de unidades enrijece joints e estoura o sleep. **Uma
-  escala convertida num único ponto na ponte** — a lição do `DEPTH_UNIT_PX` do impasto, outro eixo.
+- **pixel→metro (resolvido no W1 medindo, não supondo)** — rapier gosta de unidade-1, e o instinto é criar
+  um `PIXELS_PER_METER` na física. **Errado:** o `Transform` do ECS já é METROS (Y-up, radianos CCW) e a
+  única conversão px→m já existe no import (`ProjectSettings.pixels_per_meter`, do projeto). A fronteira
+  ECS↔rapier é **1:1, sem conversão** — criar uma segunda porta é que seria o bug
+  ([[feedback_two_doors_to_the_same_question_diverge]]).
 - **scrub pra trás** — o estado interno do rapier (manifolds, islands, sleep) é grande; re-simular do
   t=0 a cada scrub é O(t). A ADR **escolhe** checkpoint ring (à la `Cook`) vs re-sim, e precifica.
 - **determinismo do código NOSSO** — a ponte, a escala e o bake grepam todo transcendental e mantêm

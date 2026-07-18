@@ -39,7 +39,9 @@ REAL** ao dar play — e o mundo é **determinístico cross-OS**.
   - `register_physics_components(reg: &mut ComponentRegistry)` — a crate possui, o boot agrega em
     `shells/desktop/src/init.rs` ao lado de `register_render_components` (mantém a contagem-32 de
     `ph2d-ecs` intocada). **Registro no MESMO commit que cria os components.**
-  - **A porta única de escala** `to_meters`/`to_pixels` com `PIXELS_PER_METER = 100.0` (ADR D4).
+  - **Sem porta de escala:** o `Transform` já é METROS = rapier metros (1:1, sem conversão nem sinal
+    trocado — os dois são Y-up + radianos CCW). A única conversão px→m é a que JÁ existe,
+    `ProjectSettings.pixels_per_meter` no import — do projeto, não da física (ADR D4 corrigido no W1).
 - **System de sync (o hot path `physics_step`):** components → `PhysicsWorld` (spawn/update do
   handle-map `Entity ↔ RigidBodyHandle`) → `step()` no tick do `Playhead`
   (`ticks_owed(last_stepped, target)`: play = `last+1..=target` sequencial, scrub/paused =
@@ -48,7 +50,8 @@ REAL** ao dar play — e o mundo é **determinístico cross-OS**.
   `WorldSnapshot` (o mundo é rebuild das components — ADR D2). Gancho `should_record`/`record` do ring já
   no laço (W1.5 o usa).
 - **Persistência mínima:** as components viajam no `WorldSnapshot` (já registradas) → bump
-  `PROJECT_SCHEMA` (13 → 14). O `PhysicsWorld` é reconstruído no load (a lição `rebuild_map`).
+  `PROJECT_SCHEMA` (**15 → 16**, valor real; +a tripla-pin em `project_tests`). O `PhysicsWorld` é
+  reconstruído no load (`rebuild()`; reconcile self-heal é o backstop).
 - **Gate de determinismo estendido:** um bin/harness gêmeo `physics-ecs-c9` que exercita **a ponte + o
   caminho do tick** (não o wrapper cru): monta uma `SimWorld` com N entidades carregando
   `RigidBody`/`Collider`, roda sync + `ticks_owed` por 120 ticks, imprime `physics-ecs-c9 hash: <hex>`.
@@ -132,7 +135,8 @@ massa/restituição/atrito/tipo num sprite selecionado.
 
 ### Entregáveis
 - **`ph2d-panel-physics` docado (categoria MUNDO — ADR D8):** gravidade (vetor), substeps/iterações do
-  solver, `PIXELS_PER_METER`, damping global, sleep thresholds, **matriz de camadas de colisão**. Tokens +
+  solver, damping global, sleep thresholds, **matriz de camadas de colisão** (a escala do mundo é
+  `ProjectSettings.pixels_per_meter`, setting do projeto — o painel exibe, não duplica). Tokens +
   i18n (zero hex/`f32`/string hardcoded; inglês). Registrado nos **5 sites** (precedente
   `ph2d-panel-vector`):
   1. `impl Panel` — `ID="physics"`, `NODE_ID=ids::PHYSICS_PANEL` (próximo IconId/panel-node livre, anotar),
@@ -153,7 +157,7 @@ massa/restituição/atrito/tipo num sprite selecionado.
    [[feedback_painted_is_not_populated_paint_gate]]). Nasce vermelho (sem `populate`, o WidgetStore está
    vazio e não há Click).
 2. **toda row de setting muda o mundo** — seam que CLICA: mexer na gravidade **muda a aceleração dos
-   corpos**; mexer no `PIXELS_PER_METER` **re-escala** a entrada do solver. Mutação: um arm que não chama
+   corpos**; mexer nos substeps/damping **muda a simulação**. Mutação: um arm que não chama
    `apply_ui_edit` (fio órfão) sangra. Varre **cada** row (não "o card mais cheio" —
    [[feedback_the_fullest_card_premise_rots]]).
 3. **sem string hardcoded** — gate i18n; todo label resolve via chave `panel.physics.*`.
@@ -176,7 +180,7 @@ Joints, bake.
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (14 → 15) — joints persistem.
+- Bump `PROJECT_SCHEMA` (**16 → 17** — W1 já usou o 16) + a tripla-pin — joints persistem.
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de

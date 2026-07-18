@@ -431,7 +431,7 @@ diferentes do mesmo artefato.
 - Env de smoke: **`PH2D_PHYSICS_SMOKE`** (=1 usado; 2=painel/3=joint/4=bake **reservados**).
 - CI: **`physics-ecs-c9`** + artifact **`physics-ecs-c9-hash-${os}`** (spike.yml).
 - **`PROJECT_SCHEMA` = 16** (era 15) + tripla-pin `(16,7,8)` em `project_tests`.
-- ADR **0130**.
+- ADR **0131** (era 0130 — renumerado na integração de 2026-07-18: a `line/gpu-nodes` reclamou o 0130 no mesmo dia).
 - ~~`PIXELS_PER_METER`~~ **NÃO existe** — D4 corrigido; reusa `ProjectSettings.pixels_per_meter`.
 
 **A alocar na wave que os cria (próximo LIVRE):**
@@ -466,7 +466,7 @@ diferentes do mesmo artefato.
      `screens/hero/topbar/mod.rs` (tooltips). Shell: `transport.rs` (**novo**, a porta única), `main.rs`
      (`mod transport`), `render_loop/mod.rs` (arm do dreno).
 3. **Símbolos que podem COLIDIR (grep na integração):**
-   - **ADR `0130`** — 4 linhas ativas podem reclamá-lo; gate `architecture_adr_numbers_are_unique`. Renomeio
+   - **ADR `0130` → RESOLVIDO como `0131`** (a `line/gpu-nodes` também o reclamou; gate `architecture_adr_numbers_are_unique`). Renomeio
      escopado a `git diff --name-only`, **nunca** `git grep` de árvore ([[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]]).
    - **`PROJECT_SCHEMA` = 16 + a tripla-pin `(16,7,8)`** — ⚠️ **se OUTRA linha também bumpar o schema, o
      valor se CONTA, não se escolhe** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]): some os

@@ -134,7 +134,7 @@ architecture_tool_contract_surface ..... 4 passed
 architecture_vector_contract_surface ... 11 passed
 ```
 
-Nenhum ADR adicional é exigido além do 0130, que a própria linha escreveu.
+Nenhum ADR adicional é exigido além do **0131** (escrito por esta linha como 0130 e renumerado na integração — a `line/gpu-nodes` reclamou o 0130 no mesmo dia).
 
 ---
 

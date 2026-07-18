@@ -143,8 +143,13 @@ escolha do Enio nesta sessão).
 - `container_view` usar só o 1º filho → caixa não une → gate RED.
 - pular `bake_xform` no `create` → fonte fica local-centrada (x≈-2 em vez de ≈38) → gate RED.
 
-**Smoke — PENDENTE do Enio (Fatia 3):**
-`cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=12 cargo run -p ph2d-host-desktop --features panel-vector`
+**Smoke — PENDENTE do Enio (Fatia 3):** (caminho ABSOLUTO — o relativo só funciona a partir da raiz
+do repo, e é onde este comando já falhou uma vez)
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
+  PH2D_BUILD_SMOKE=12 cargo run -p ph2d-host-desktop --features panel-vector
+```
 - **NODE:** duas elipses sob UMA gaiola; arraste um canto → as duas re-deformam juntas pela mesma
   perspectiva (a prova é a curva LISA entre os cantos, não o canto obedecer).
 - **SELECT** (pill do painel): o gizmo abraça as DUAS (caixa = união) e move/gira/escala o grupo

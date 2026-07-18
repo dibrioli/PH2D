@@ -420,6 +420,14 @@ pub(crate) struct App {
     pub(crate) stack_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,
+    /// Draw collider outlines over the canvas. **Default ON**, like Unity's
+    /// scene gizmos: a collider is invisible, and an invisible thing you are
+    /// authoring cannot be judged. Costs nothing and shows nothing in a scene
+    /// with no physics bodies, so a painter or vector user never sees it.
+    ///
+    /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
+    /// one door, so the key and the checkbox can never disagree.
+    pub(crate) show_colliders: bool,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

@@ -180,6 +180,50 @@ essa grandeza — sem skew do perfil `ci-test`, sem flake.
 scrub errado é *visível* — no meio da queda os corpos estão espalhados no ar, assentados são um monte). Abre
 o painel de timeline sozinho. Deixe assentar e **arraste a régua pra trás**.
 
+### O CONTORNO DO COLLIDER (2026-07-18, smoke do Enio: *"os colliders parecem redondos mas os desenhos são box"*)
+
+Parecia bug do demo; **é o caso NORMAL**. Um sprite é um QUAD texturizado e um collider é **invisível**,
+então uma bola sob um sprite quadrado é indistinguível de uma caixa sob o mesmo sprite — até rolar. Num
+projeto real a arte é o que o artista desenhou e o collider é a forma que ele escolheu; os dois só se
+relacionam por intenção. Deixar o *sprite* redondo consertaria só o demo (e nem dá: o renderer desenha
+quads, não há círculo no atlas).
+
+**A resposta é a que todo editor de física dá** — Unity, Godot e o debug draw do próprio Box2D pintam o
+collider como wireframe sobre a arte: `render_loop/physics_overlay.rs`. Contorno por corpo, **verde =
+estático / ciano = dinâmico** (a 1ª pergunta que se faz a uma cena de física é *"quem aqui se move?"*, e sem
+cor ela não tem resposta na tela). Bola ganha **raio-guia** — o contorno é simétrico por rotação, então sem
+ele um círculo rolando é idêntico a um parado, e rolar é justamente o que o collider existe pra produzir
+(o debug draw do Box2D carrega o mesmo raio, pelo mesmo motivo). Toggle **`B`** (tecla livre desde que o
+W4.T5 da timeline aposentou a demo de `SpriteAnimation`), **default ON** como os gizmos do Unity: uma coisa
+invisível que você está autorando não pode ser julgada. **Cena sem corpos não desenha nada e não custa
+nada**, então usuário de painter/vector nunca vê chrome de física.
+
+⚠️ **Geometria em px de TELA, sob `Affine::IDENTITY`** — os PONTOS sobem pela câmera, a espessura não. No
+Vello o transform do `stroke` **multiplica a largura**: passar o afim mundo→tela transformaria 1,5 px em
+`1,5 × px_por_unidade_de_mundo`. Isso é cicatriz, não hipótese — foi o que virou o realce do Flip num borrão
+que cobria o desenho (smoke, 2026-07-13); o `flip_cursor` sempre desenhou assim por isso.
+
+**A decisão `outlines()` é PURA** (padrão `hit_plan`): o toggle e o *"há física aqui?"* são respondidos e
+devolvidos como dado, não resolvidos dentro do laço de pintura — recusa que mora num laço não se testa, e
+overlay que desenha depois de desligado é o que ninguém nota até estar num screenshot.
+
+**As cenas de smoke pararam de mentir:** todo collider casa com o quad do seu sprite (só cuboides). A cena 2
+usa dois tamanhos de caixa, então a pilha ainda empilha torto e tomba.
+
+**Gates: 8** (redondo-não-é-caixa · 4 cantos · roda com o corpo · segue a pose · px de tela sob zoom 4× ·
+off não desenha · cena sem corpos não desenha · estático ≠ dinâmico na cor). **5 mutações, 5 sangram** — a
+primeira delas é o bug reportado LITERAL (desenhar a bola como o quad do sprite). ⚠️ Tolerância do gate
+redondo é **0,01 px, com motivo**: mundo é `f32`, então a borda carrega ~1e-4 px de arredondamento de trig;
+o erro que o gate existe pra pegar é uma CAIXA, cujos cantos ficam 41 px mais longe — a barra é ~4000× mais
+apertada que o fenômeno.
+
+**Append-only em foundational:** `ph2d-vector` re-exporta `PathEl` (o gateway do kurbo; **não** é a
+superfície congelada — o gate `architecture_vector_contract_surface` escaneia só `-doc` e `-traits`,
+verificado). Campo novo `App.show_colliders`; **W2 põe o checkbox "Show Colliders" no painel lendo ESTE
+flag** — duas portas pra mesma pergunta divergem.
+
+---
+
 ---
 
 ## Decisões (ADR-0130, condensadas — o *porquê* está lá)

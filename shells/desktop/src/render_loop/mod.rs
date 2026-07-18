@@ -78,6 +78,7 @@ mod painter_preview_handoff_tests;
 #[cfg(test)]
 mod painter_preview_pipeline_tests;
 pub(crate) mod physics_bridge;
+pub(crate) mod physics_overlay;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
 mod push_look_probe;
@@ -2923,6 +2924,10 @@ impl crate::App {
                 vector_scene,
                 self.last_pointer,
             );
+            // O contorno dos colliders: um sprite é um QUAD e um collider é
+            // invisível, então sem isto "que forma isto tem, fisicamente?"
+            // não tem resposta na tela (Enio, 2026-07-18). No-op sem corpos.
+            physics_overlay::draw(self.show_colliders, sim, camera, window_size, vector_scene);
             // O realce da seleção (W6): uma seleção que não se VÊ não existe. Overlay
             // (chrome), nunca render de traço — ver o cabeçalho do módulo.
             {

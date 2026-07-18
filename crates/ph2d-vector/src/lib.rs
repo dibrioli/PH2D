@@ -55,7 +55,7 @@ pub use ph2d_vector_doc::{
 // Brush/Color/Fill types our wrapper hands to vello are the same
 // monomorphic types vello expects (no version-skew accidents).
 pub use vello::kurbo::{
-    Affine, BezPath, Cap, Circle, Join, Point, Rect, RoundedRect, Shape, Stroke, Vec2,
+    Affine, BezPath, Cap, Circle, Join, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2,
 };
 pub use vello::peniko::{
     Brush, Color, ColorStop, ColorStops, Fill, Gradient, GradientKind, ImageQuality,

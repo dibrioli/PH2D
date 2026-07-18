@@ -275,6 +275,7 @@ impl App {
             impasto_smoke_done: false,
             stack_smoke_done: false,
             physics_smoke_done: false,
+            show_colliders: true,
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]

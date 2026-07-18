@@ -125,6 +125,18 @@ impl App {
                     .push(Toast::info(format!("Theme · {}", gfx.theme.id())));
                 self.title_dirty = true;
             }
+            // Contorno dos colliders. `B` estava livre (a demo de SpriteAnimation
+            // que a usava foi aposentada no W4.T5 da timeline). W2 põe um
+            // checkbox no painel de física lendo o MESMO flag — duas portas
+            // para a mesma pergunta divergem.
+            KeyCode::KeyB => {
+                self.show_colliders = !self.show_colliders;
+                gfx.toasts.push(Toast::info(if self.show_colliders {
+                    "Colliders shown (B)"
+                } else {
+                    "Colliders hidden (B)"
+                }));
+            }
             KeyCode::KeyT => {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;

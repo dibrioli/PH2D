@@ -63,13 +63,19 @@ impl crate::App {
         self.playhead.play();
     }
 
-    /// **Scene 1 (W1).** One ball, one floor. Approved 2026-07-18.
+    /// **Scene 1 (W1).** One falling body, one floor. Approved 2026-07-18.
     fn physics_smoke_drop(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
         spawn_floor(gfx.sim.world_mut());
 
-        // Dynamic ball dropped from y = 4 → should settle at y ≈ -0.5
-        // (floor_top -0.8 + radius 0.3).
+        // Dynamic body dropped from y = 4 → settles at y ≈ -0.5
+        // (floor_top -0.8 + half height 0.3).
+        //
+        // ⚠️ The collider is a CUBOID matching the sprite quad, not a ball.
+        // A sprite is a textured square, so a ball collider under it draws as
+        // a box and behaves as a circle — the mismatch Enio reported. The
+        // outline overlay makes any such mismatch visible; a demo scene
+        // should not contain one to begin with.
         gfx.sim.world_mut().spawn((
             Transform::from_translation(Vec2::new(0.0, 4.0)),
             Sprite::atlas(0, [0.6, 0.6], [1.0, 0.5, 0.2, 1.0]),
@@ -78,13 +84,16 @@ impl crate::App {
                 kind: BodyKind::Dynamic,
             },
             Collider {
-                shape: ColliderShape::Ball { radius: 0.3 },
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.3,
+                    half_y: 0.3,
+                },
                 density: 1.0,
             },
         ));
 
         eprintln!(
-            "[physics-smoke 1] FallingSprite (dynamic ball) dropped above Floor (static). \
+            "[physics-smoke 1] FallingSprite (dynamic box) dropped above Floor (static). \
              It should fall and settle on the floor. A dead bridge leaves it hanging in the air."
         );
     }
@@ -106,14 +115,25 @@ impl crate::App {
         for i in 0..12u32 {
             let col = (i % 4) as f32;
             let row = (i / 4) as f32;
-            let x = col * 0.9 - 1.35 + if row as u32 % 2 == 0 { 0.0 } else { 0.28 };
+            let x = col * 0.9 - 1.35
+                + if (row as u32).is_multiple_of(2) {
+                    0.0
+                } else {
+                    0.28
+                };
             let y = 1.6 + row * 1.1;
-            let dynamic_ball = i % 3 != 2;
+            // Every collider matches its sprite quad. A sprite is a
+            // textured SQUARE, so a ball collider under one draws as a box
+            // and rolls like a circle — the thing Enio caught. Two sizes,
+            // both boxes, so the pile still stacks unevenly and tips over.
             let hue = 0.25 + 0.06 * (i % 5) as f32;
-            let (sprite, shape) = if dynamic_ball {
+            let (sprite, shape) = if i % 3 != 2 {
                 (
                     Sprite::atlas(0, [0.56, 0.56], [1.0, hue + 0.2, hue, 1.0]),
-                    ColliderShape::Ball { radius: 0.28 },
+                    ColliderShape::Cuboid {
+                        half_x: 0.28,
+                        half_y: 0.28,
+                    },
                 )
             } else {
                 (

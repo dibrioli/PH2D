@@ -23,6 +23,7 @@
 - [Painter: 4 causas + DIRETIVA](feedback_painter_inefficiency_4_causes.md) — costura não-testada / audit=compilar / órfão
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md) — removeu a UI? remova o encanamento
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md) — o repo pode já afirmar o contrário; racionalizar gate verde vira lei falsa
+- [Nota de trabalho diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — o critério que ela declara pode exceder o que o repo exige; confira e corrija a nota
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão; não sobrescreva
 - [Convenção vs inércia](feedback_convention_vs_inertia.md) — tem gate ou é inércia? default = mais isolamento
 
@@ -34,6 +35,7 @@
 - [`cargo fmt -p` reformata WIP alheio](feedback_cargo_fmt_p_reformats_foreign_wip.md) — use `rustfmt <meus arquivos>`
 - [`str.replace()` sem casar é no-op mudo](feedback_python_replace_silent_noop_after_fmt.md) — `assert old in s` sempre
 - [`sed -i` relativo erra de repo](feedback_sed_relative_path_hits_primary_cwd.md) — mutação SEMPRE por caminho absoluto
+- [Rewrite de token = só nos arquivos MUDADOS, não a árvore toda](feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree.md) — `git grep` no ADR-renumber corrompeu um .ttf/UUID/hash; e verifique no MESMO escopo que muta
 - [Mais perigos de git (5)](reference_topic_git_hazards.md) — stash · reset/checkout alheio · fence · worktree-base · mojibake
 
 ## Ship / CI / cadência
@@ -105,7 +107,7 @@
 - [Gate verde de 1ª pode ser verde por ACIDENTE](feedback_a_green_gate_may_be_green_by_accident.md) — mutação sobreviveu? o suspeito é o fixture (3 em 20, no §4.B)
 - [Provas de mutação (5 regras)](reference_topic_mutation_proofs.md) — mute o código · RED só sobre visto-VERDE · oráculo alcançável · otimização dispara · sobrevivente = gate faltando
 - [Fixture em regime CAÓTICO](feedback_a_fixture_can_land_in_a_chaotic_regime.md) — Δ enorme? compare com uma quantidade física; magnitude limitada + sinal virando = divergência máxima
-- [Disciplina de oráculo (4)](reference_topic_oracle_discipline.md) — aparência, não regra · renderize o contradito · taxa de falso-positivo · valor exato
+- [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra · renderize o contradito · taxa de falso-positivo · valor exato
 - [Disciplina de fixture (3)](reference_topic_fixture_discipline.md) — só prova o que contém · zero não falha · gateie as bordas
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · escopo · claims verificados · state-grep · claims de commit
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md) — unidade relativa · clamp=borracha · matéria · lateral · análogo 2.5D · âncora no corpo · acumulação sequencial · canal write-once

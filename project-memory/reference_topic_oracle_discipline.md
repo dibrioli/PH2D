@@ -1,6 +1,6 @@
 ---
 name: reference-topic-oracle-discipline
-description: "Disciplina de oráculo — o pixel/valor exato é o juiz"
+description: "Disciplina de oráculo (5) — o pixel/valor exato é o juiz"
 metadata:
   node_type: memory
   type: reference
@@ -10,3 +10,4 @@ metadata:
 - [[feedback_render_and_look_when_a_green_gate_is_contradicted]] — gate verde contradito? RENDERIZE
 - [[feedback_heuristic_needs_false_positive_rate]] — verde num fixture é sorte do seed
 - [[feedback_loose_oracle_hides_systematic_bias]] — asserte o valor EXATO na unidade do usuário
+- [[feedback_a_magnitude_bound_misses_a_systematic_off_by_one]] — gate com tolerância conta TAMBÉM quantos diferem; erro de convenção é pequeno E onipresente

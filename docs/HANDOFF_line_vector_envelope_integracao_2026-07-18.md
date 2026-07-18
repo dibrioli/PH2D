@@ -474,7 +474,35 @@ RÍGIDO do par); e medir forma por **bbox alinhada ao eixo** não é invariante 
 isométrico de encolher 1%; o que encolheu foi a caixa de um círculo cozido em 4 cúbicas). Rigidez
 preserva **distância** — o oráculo agora é o diâmetro do conjunto de âncoras.
 
-### 10.6 — Smoke da Fatia E
+### 10.6 — ⚠️ O undo fazia o overlay SUMIR (fix `a64a9ced`, pós-smoke)
+
+*"com pins o undo faz os pins sumirem (embora ainda funcionando, estão invisíveis)"* (Enio).
+
+**A causa não estava no envelope, e por isso vale a pena ler:** o `vec_selection` lia *"os meus bits
+sumiram do gizmo"* como **"a árvore deselecionou"**, quando significava **"o mundo foi re-spawnado
+debaixo de mim"** — o `ProjectState::restore` despawna o editável e re-spawna com **ids NOVOS**.
+Resultado: o ramo 2 limpava o pen e o gizmo ficava para sempre com bits de uma entidade morta.
+
+O sintoma é o que o torna confuso: **a ferramenta continua a funcionar e fica invisível.** O recook
+varre por QUERY (a arte segue deformada); o overlay é desenhado pelos BITS (que já não nomeiam
+nada). **A gaiola sofria do mesmo mal, em silêncio** — os três gestos desenham pelos mesmos bits.
+
+Fix: *"sumiram"* e *"morreram"* são fatos diferentes, e distingui-los é barato (uma entidade
+deselecionada continua **existindo**). Todos os bits mortos ⇒ respawn ⇒ re-deriva do pen, cuja
+seleção é `VecPathId` e viaja no snapshot.
+
+⚠️ **A mutação `all` → `any` SOBREVIVEU, e a diferença é real:** com *algum* bit morto (delete de uma
+de duas formas selecionadas) a verdade está no **gizmo**, que ainda tem os sobreviventes — re-derivar
+do pen ali deixaria o id da forma apagada pendurado na seleção para sempre. O gate novo
+(`deleting_one_of_two_selected_shapes_prunes_the_pen`) é o **par** do gate de undo: os dois falam de
+bits mortos e pedem respostas **opostas**.
+
+> **Para a próxima linha que desenhar um overlay:** identidade de overlay por `Entity` bits é frágil
+> por construção neste app — o undo respawna tudo. Ou se deriva a identidade de algo estável
+> (`VecPathId`, `Name`) a cada frame, ou se detecta o respawn. A timeline resolveu o mesmo problema
+> pelo `wire_id`; aqui foi pela detecção.
+
+### 10.7 — Smoke da Fatia E
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
@@ -488,6 +516,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 4. Puxe um pino para muito longe → ele **para** (o guard de dobra).
 5. **Clear Pins** → tudo volta.
 6. Voltar a **Persp**/**Mesh** traz a gaiola de volta, e os pinos ficam guardados.
+7. **Ctrl+Z** (o fix `a64a9ced`): os pinos — e a gaiola nos outros gestos — **continuam visíveis**.
 
 ---
 
@@ -518,7 +547,9 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   não escolhida: o primeiro valor comprava a garantia só para as formas que eu já tinha escrito.
 - **Gates da C:** 7 no motor + 6 no host (a varredura dos presets REAIS) + 4 de seam. **9 mutações
   RED→GREEN.** Dois gates de LOC pagos com split, nenhum allowlist.
-- **Fatia E:** os **pinos** (MLS-rigid) — ver §10. A jacobiana é **fechada** (Wirtinger + o
+- **Fatia E:** os **pinos** (MLS-rigid) — ver §10. **Um fix pós-smoke:** o undo fazia o overlay
+  (gaiola E pinos) sumir — a ferramenta funcionando e invisível — porque a seleção espelhava bits de
+  entidade e o `restore` respawna tudo (§10.6). A jacobiana é **fechada** (Wirtinger + o
   cancelamento do centróide), e a dobra é **recusada** em vez de aproximada, o que **restitui** a
   premissa do `break_cusp` que o ADR dava por perdida.
 - **Gates da E:** 9 no motor + 2 no gate-mãe + 7 no host + 1 de seam. **8 mutações, 1 SOBREVIVENTE →

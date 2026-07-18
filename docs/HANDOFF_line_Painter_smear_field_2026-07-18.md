@@ -243,7 +243,7 @@ Separando os dois (`3352e39f`):
 
 | verbo | KERNEL @2048 / @4096 | PREVIEW (CPU; GPU no produto) | SET-UP antes → depois |
 |---|---|---|---|
-| SMOOTH | **1,20 / 1,18** | 2,19 / 2,16 | 18,9 → **10,5** |
+| SMOOTH | **1,20 / 1,18** | 2,19 / 2,16 | 18,9 → 10,5 → **5,5** (§9.5) |
 | SCRAPE | **0,67 / 0,67** | 2,30 / 2,31 | 12,9 → **4,8** |
 | INFLATE | **3,54 / 3,70** | 2,29 / 2,39 | 15,1 → **5,9** |
 
@@ -327,6 +327,50 @@ que é onde as regressões deste módulo historicamente se escondem (o re-stamp 
 passa pelo mesmo caminho). Vale uma passagem com cabeça fresca e gate próprio, não o fim de uma jornada
 longa.
 
-### 9.5 Também sobra
+### 9.5 A montagem do SMOOTH — FECHADA (a hipótese anotada estava errada)
 
-- A montagem do SMOOTH ainda é a mais cara (**10,5 ms**) porque ele aloca o memo do blur além do `amount`.
+Esta seção dizia: *"a montagem do SMOOTH ainda é a mais cara (10,5 ms) porque ele aloca o memo do blur
+além do `amount`"*. **A causa estava errada, e os próprios números a desmentiam:**
+
+- `vec![0.0; n]` de `f32` cai no `alloc_zeroed` do std (páginas zeradas por mmap) — alocar é quase grátis.
+  O que custa é o **toque**, e o toque é limitado pela pegada do pincel.
+- A montagem do SMOOTH media **10,02 @2048 e 9,70 @4096**: **plana na tela**. Uma alocação canvas-inteira
+  quadruplicaria de 2048 para 4096. Um custo que não escala com a tela não é um custo de tela.
+
+O experimento que decidiu: **reordenar os verbos no gate.** Se o custo fosse aquecimento do processo (pool
+do rayon, arena do alocador), ele ficaria com quem mede primeiro. Medindo o SCRAPE primeiro, ele custou
+4,80 / 4,71 — **não herdou nada** — e o SMOOTH seguiu pagando 11,47 mesmo em segundo. Era o verbo.
+
+**Causa real:** o SMOOTH é o único verbo com **memo de blur**, e a primeira batelada descobre a pegada
+inteira de uma vez (pincel de raio 100 ⇒ ~16 tiles) enquanto cada move seguinte descobre um ou dois. Esses
+16 tiles eram borrados **um de cada vez**, cada um através de uma janela crescida de `r` em cada lado.
+
+**Fix:** os tiles rodam concorrentes. Isso não é uma afirmação nova a defender — é o **próprio argumento de
+byte-identidade do módulo, lido para a frente**: cada tile é função pura do `pre` congelado e da própria
+janela, nenhum lê a saída de outro, e as regiões de escrita são disjuntas. `blur_tile` virou função livre
+sobre `&[f32]` justamente para que a *assinatura* seja o argumento de independência — não existe `&mut self`
+por onde um tile pudesse ver outro. Abaixo de `PAR_MIN_TILES` (4) segue serial: o regime permanente
+descobre 1-2 tiles por move e não pode ficar mais lento para o primeiro move ficar mais rápido.
+
+| | antes | depois |
+|---|---|---|
+| SMOOTH SET-UP @2048 / @4096 | 10,02 / 9,70 | **5,87 / 5,37** · **5,61 / 4,97** (2 runs) |
+| SCRAPE SET-UP (referência) | 4,80 / 4,71 | 5,69 / 4,53 · 5,13 / 4,57 |
+| SMOOTH kernel (regime permanente) | 1,08 / 1,09 | 0,72-0,86 (não regrediu) |
+
+O excesso *específico do SMOOTH* acabou: a montagem dele agora é indistinguível da do SCRAPE. Os ~5 ms que
+sobram são a montagem que **todo** verbo paga (o fork do plano + primeiro toque), já atacada em `050c2d80`.
+
+⚠️ **O gate cobria o caminho paralelo por acidente** (tela de 200 px = 16 tiles). Se alguém subisse o
+limiar, ele cairia no serial e continuaria **verde, medindo o caminho antigo contra si mesmo** — a
+armadilha do ADR-0120. Agora `the_tile_memo_is_byte_identical_to_a_whole_canvas_blur` roda os **dois**
+lados do limiar contra o mesmo oráculo (um blur de canvas inteiro, que não sabe de tiles nem de threads) e
+**afirma o cruzamento**. 3 mutações, 3 sangram: janela `r-1` (1023 texels) · um tile perdido no scatter
+(4096 = um tile exato) · limiar para 32 (o guard de fixture dispara).
+
+`sculpt_tests.rs` estourou o teto de LOC com isso ⇒ split `sculpt_tests/memo.rs` (não allowlist).
+
+### 9.6 Também sobra
+
+- Nada medido em aberto neste eixo. Os kernels estão todos sob o alvo de 4 e planos na tela; a montagem
+  restante é comum a todos os verbos e é o fork do plano.

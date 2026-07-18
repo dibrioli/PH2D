@@ -276,57 +276,6 @@ fn a_faster_mouse_does_not_sculpt_deeper() {
     );
 }
 
-// ── The memo (the property the whole thing rests on) ────────────────────────────────────────────────
-
-/// **A tile's blur is bit-for-bit the canvas's blur.**
-///
-/// No threshold, no tolerance, no "close enough": the memo is either exactly the whole-canvas blur or the
-/// spatula is a different tool at every tile boundary — a seam the eye finds instantly and the arithmetic
-/// never mentions. The read window is the tile grown by `r`, and the outer ring is grown *in order to be
-/// thrown away*; this asserts that throwing it away costs nothing.
-///
-/// **Mutation that must bleed:** in `blur_one_tile`, grow the window by `r - 1` (or not at all). Then a
-/// tile's edge texels read a clamped neighbourhood instead of their real one, and the assert names the
-/// count. (Checked: `r` → `r-1` reddens it.)
-#[test]
-fn the_tile_memo_is_byte_identical_to_a_whole_canvas_blur() {
-    let size = 200u32; // NOT a multiple of TILE=64 → truncated edge tiles, where the clamp argument lives
-    let (mut t, _layer, relief) = sculpt_canvas(size);
-    arm_sculpt(&mut t, 0, 1.0, 1.0); // Radius 1.0 → the maximum radius, the widest window
-    assert!(
-        t.ensure_sculpt_session(),
-        "fixture: no session — the layer must carry relief for any of this to exist"
-    );
-    let r = t.sculpt_radius_px();
-    assert_eq!(r, 16, "fixture: Radius 1.0 is the 16-px cap");
-
-    t.ensure_memo_tiles(
-        Region {
-            x: 0,
-            y: 0,
-            w: size,
-            h: size,
-        },
-        super::sculpt::MemoKey::Blur(r),
-    );
-    let memo = t.paint.sculpt.memo.clone();
-
-    let mut oracle = relief;
-    super::impasto_settle::box_blur(&mut oracle, size, size, r);
-
-    let differing = memo
-        .iter()
-        .zip(&oracle)
-        .filter(|(a, b)| a.to_bits() != b.to_bits())
-        .count();
-    assert_eq!(
-        differing, 0,
-        "the per-tile memo differs from a whole-canvas blur at {differing} texels. It is not an \
-         approximation of one — it is supposed to BE one, bit for bit. The read window (the tile grown \
-         by the radius) is what makes the edge-clamp inside a tile coincide with the canvas's."
-    );
-}
-
 // ── §5: the sculpt writes the relief, and ONLY the relief ───────────────────────────────────────────
 
 /// **Nothing but `heights` moves.**
@@ -591,6 +540,7 @@ mod inflate_junction_probes;
 mod inflate_matter;
 mod inflate_smooth;
 mod inflate_support;
+mod memo;
 mod plane;
 mod session;
 mod w3;

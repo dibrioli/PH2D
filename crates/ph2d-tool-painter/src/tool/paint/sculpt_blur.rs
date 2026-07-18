@@ -37,6 +37,7 @@ use super::region::grow_region;
 use super::sculpt::{MemoKey, SculptFamily, SculptMode};
 use super::{Region, impasto_settle};
 use crate::tool::PainterTool;
+use rayon::prelude::*;
 use std::sync::Arc;
 
 /// The memo's tile edge, in texels.
@@ -50,6 +51,64 @@ const TILE: u32 = 64;
 /// How many tiles a `w × h` canvas takes — the length of `SculptState::blur_done`.
 pub(super) fn tile_count(w: u32, h: u32) -> usize {
     (w.div_ceil(TILE) as usize) * (h.div_ceil(TILE) as usize)
+}
+
+/// Below this many tiles the fill is sub-millisecond and rayon's fork would be most of it.
+///
+/// The steady state of a stroke discovers ONE or two new tiles per move (the brush advances a fraction of
+/// its own width), and that path is 1 ms — it must not be made slower in order to make the first move
+/// faster. Sibling of `plane_fork::PAR_MIN` and `sculpt_close::PAR_MIN`, and set for the same measured
+/// reason: below it, threads cost more than they save. // CLAMP-OK
+pub(super) const PAR_MIN_TILES: usize = 4;
+
+/// Blur ONE tile: lift the read window (the tile grown by the kernel's [`MemoKey::reach`], clipped to the
+/// canvas) out of the frozen `pre`, run the kernel over it, and return the inner tile.
+///
+/// A **free function over `&[f32]`**, not a method: it reads the frozen plane and nothing else, which is
+/// what lets the caller run tiles concurrently. The signature is the independence argument — there is no
+/// `&mut self` through which one tile could see another.
+///
+/// The window growth is the ONE number both kernels' byte-identity arguments rest on, so it is asked of the
+/// key rather than of the caller — a blur that grew by the offset's radius (or the reverse) would be wrong
+/// only near a tile seam, which is the hardest possible place to notice.
+fn blur_tile(pre: &[f32], w: u32, h: u32, tile: Region, key: MemoKey) -> Option<Vec<f32>> {
+    let win = grow_region(tile, key.reach(), w, h)?;
+    let (ww, wh) = (win.w as usize, win.h as usize);
+    let mut scratch: Vec<f32> = Vec::with_capacity(ww * wh);
+    // Indexed, not `get(..)?`. The caller has already established `pre.len() == w·h` and a tile is inside
+    // the canvas by construction, so this cannot fail — and if that ever stops being true, the honest
+    // outcome is the panic it has always been. Degrading it to `None` would mark the tile DONE with its
+    // memo left at 0.0, and Smooth lerps toward the memo: the artist's paint flattened away in silence,
+    // which is precisely the failure the fail-closed branch above exists to refuse.
+    for row in 0..wh {
+        let start = (win.y as usize + row) * (w as usize) + win.x as usize;
+        scratch.extend_from_slice(&pre[start..start + ww]);
+    }
+    // The tile, in the WINDOW's coordinates — what each kernel is asked to produce.
+    let inner = Region {
+        x: tile.x - win.x,
+        y: tile.y - win.y,
+        w: tile.w,
+        h: tile.h,
+    };
+    let mut out: Vec<f32> = vec![0.0; (tile.w as usize) * (tile.h as usize)];
+    match key {
+        MemoKey::None => return None,
+        MemoKey::Blur(r) => {
+            // The SAME box blur the settle uses — not a second one. (A second blur is how the relief a
+            // dab deposits and the relief the spatula reads start disagreeing in the last bit.)
+            impasto_settle::box_blur(&mut scratch, win.w, win.h, r);
+            // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied,
+            // and it is exactly the part we grew in order to throw away.
+            for row in 0..tile.h as usize {
+                let src = (inner.y as usize + row) * ww + inner.x as usize;
+                let dst = row * (tile.w as usize);
+                out[dst..dst + tile.w as usize]
+                    .copy_from_slice(&scratch[src..src + tile.w as usize]);
+            }
+        }
+    }
+    Some(out)
 }
 
 impl PainterTool {
@@ -75,6 +134,7 @@ impl PainterTool {
         let ty0 = rect.y / TILE;
         let tx1 = (rect.x + rect.w - 1) / TILE;
         let ty1 = (rect.y + rect.h - 1) / TILE;
+        let mut todo: Vec<Region> = Vec::new();
         for ty in ty0..=ty1 {
             for tx in tx0..=tx1 {
                 let ti = (ty * tiles_x + tx) as usize;
@@ -87,68 +147,46 @@ impl PainterTool {
                     None => continue,
                     Some(false) => {}
                 }
-                let tile = Region {
+                todo.push(Region {
                     x: tx * TILE,
                     y: ty * TILE,
                     w: TILE.min(w - tx * TILE),
                     h: TILE.min(h - ty * TILE),
-                };
-                self.fill_one_tile(tile, key);
+                });
                 self.paint.sculpt.memo_done[ti] = true;
             }
         }
-    }
-
-    /// Fill ONE tile: lift the read window (the tile grown by the kernel's [`MemoKey::reach`], clipped to
-    /// the canvas) out of the frozen `pre`, run the kernel over it, and keep the inner tile.
-    ///
-    /// The window growth is the ONE number both kernels' byte-identity arguments rest on, so it is asked of
-    /// the key rather than of the caller — a blur that grew by the offset's radius (or the reverse) would be
-    /// wrong only near a tile seam, which is the hardest possible place to notice.
-    fn fill_one_tile(&mut self, tile: Region, key: MemoKey) {
-        let (w, h) = self.source_size;
-        let Some(win) = grow_region(tile, key.reach(), w, h) else {
+        if todo.is_empty() {
             return;
-        };
-        let (ww, wh) = (win.w as usize, win.h as usize);
-        let mut scratch: Vec<f32> = Vec::with_capacity(ww * wh);
-        let pre = &self.paint.sculpt.pre;
-        for row in 0..wh {
-            let start = (win.y as usize + row) * (w as usize) + win.x as usize;
-            scratch.extend_from_slice(&pre[start..start + ww]);
         }
-        // The tile, in the WINDOW's coordinates — what each kernel is asked to produce.
-        let inner = Region {
-            x: tile.x - win.x,
-            y: tile.y - win.y,
-            w: tile.w,
-            h: tile.h,
+        // ── Compute, then scatter. ──────────────────────────────────────────────────────────────
+        //
+        // The tiles are independent, and that is not a new claim to defend — it is the module's OWN
+        // byte-identity argument, read forwards. Each tile is a pure function of the frozen `pre` and its
+        // own window; no tile reads another's output, and every output region is disjoint. So the work
+        // divides across threads without changing one bit, for exactly the reason the crop is exact.
+        //
+        // This is the hitch at the start of a Smooth stroke: the first batch discovers a whole footprint's
+        // worth of tiles at once (a radius-100 brush spans ~16 of them) while every later move discovers
+        // one or two. Measured, that first fill is ~10 ms and every later one ~1 — and the 10 was the
+        // ONLY per-stroke cost in this file that the artist can feel.
+        let pre = Arc::clone(&self.paint.sculpt.pre);
+        let filled: Vec<(Region, Vec<f32>)> = if todo.len() >= PAR_MIN_TILES {
+            todo.par_iter()
+                .filter_map(|&t| blur_tile(&pre, w, h, t, key).map(|o| (t, o)))
+                .collect()
+        } else {
+            todo.iter()
+                .filter_map(|&t| blur_tile(&pre, w, h, t, key).map(|o| (t, o)))
+                .collect()
         };
-        let cells = (tile.w as usize) * (tile.h as usize);
-        let mut out: Vec<f32> = vec![0.0; cells];
-        match key {
-            MemoKey::None => return,
-            MemoKey::Blur(r) => {
-                // The SAME box blur the settle uses — not a second one. (A second blur is how the relief a
-                // dab deposits and the relief the spatula reads start disagreeing in the last bit.)
-                impasto_settle::box_blur(&mut scratch, win.w, win.h, r);
-                for row in 0..tile.h as usize {
-                    let src = (inner.y as usize + row) * ww + inner.x as usize;
-                    let dst = row * (tile.w as usize);
-                    out[dst..dst + tile.w as usize]
-                        .copy_from_slice(&scratch[src..src + tile.w as usize]);
-                }
+        for (tile, out) in filled {
+            for row in 0..tile.h as usize {
+                let dst = (tile.y as usize + row) * (w as usize) + tile.x as usize;
+                let src = row * (tile.w as usize);
+                self.paint.sculpt.memo[dst..dst + tile.w as usize]
+                    .copy_from_slice(&out[src..src + tile.w as usize]);
             }
-        }
-        // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied, and it
-        // is exactly the part we grew in order to throw away. (The source offsets are RELATIVE, so they are
-        // window-independent and survive the crop unchanged — which is the whole reason they are stored as
-        // an offset rather than as an index.)
-        for row in 0..tile.h as usize {
-            let dst = (tile.y as usize + row) * (w as usize) + tile.x as usize;
-            let src = row * (tile.w as usize);
-            self.paint.sculpt.memo[dst..dst + tile.w as usize]
-                .copy_from_slice(&out[src..src + tile.w as usize]);
         }
     }
 

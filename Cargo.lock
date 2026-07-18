@@ -6726,6 +6726,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-physics",
+ "postcard",
  "serde",
 ]
 

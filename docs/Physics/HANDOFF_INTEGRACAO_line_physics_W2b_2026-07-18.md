@@ -82,7 +82,7 @@
 ## 5. O que smoke-testar (Enio)
 
 ```
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-physics && cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=4 cargo run -p ph2d-host-desktop
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=4 cargo run -p ph2d-host-desktop
 ```
 
 O painel abre sozinho (a tecla **`W`** o alterna). 12 corpos de 3 tamanhos caem numa pilha. A

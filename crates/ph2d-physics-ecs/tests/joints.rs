@@ -473,3 +473,198 @@ fn the_chain_hashes_the_same_however_the_archetypes_fall() {
          ECS storage layout into the physics"
     );
 }
+
+/// **A dormant joint must not destroy the scrub cache.**
+///
+/// Found by audit, and measured before the fix: with one half-authored joint
+/// in the scene, `joints_to_remove` was non-empty on **every** frame — a joint
+/// that could not be built was queued for removal whether or not it had ever
+/// been built — so the ring was cleared every frame and a scrub back to tick
+/// 150 replayed **150** steps instead of 0.
+///
+/// Reachable by the most ordinary gestures: delete one of two jointed bodies,
+/// rename one, or start a joint and pick the second body a moment later.
+///
+/// The oracle is the **step count**, which is the quantity the claim is about
+/// and is immune to the machine the test runs on (the W1.5 argument).
+#[test]
+fn a_dormant_joint_does_not_destroy_the_scrub_cache() {
+    fn steps_to_scrub(with_dormant: bool) -> u64 {
+        let mut sim = pendulum();
+        if with_dormant {
+            // A joint object the artist has begun and not finished.
+            sim.world_mut().spawn((
+                Name::new("HalfDone"),
+                PhysicsJoint {
+                    body_a: stable_name_id("Hook"),
+                    body_b: 0,
+                    ..PhysicsJoint::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 5.0)),
+            ));
+        }
+        let mut bridge = PhysicsBridge::new();
+        for tick in 1..=200 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let before = bridge.steps_taken();
+        bridge.dispatch(&mut sim, false, 150);
+        bridge.steps_taken() - before
+    }
+    let control = steps_to_scrub(false);
+    let dormant = steps_to_scrub(true);
+    assert!(
+        control <= 10,
+        "the fixture is not exercising the cache: even without a dormant \
+         joint the scrub replayed {control} steps"
+    );
+    assert_eq!(
+        dormant, control,
+        "one unfinished joint object made a backwards scrub replay {dormant} \
+         steps instead of {control} — the checkpoint ring is being cleared \
+         every frame, and W1.5 is dead for as long as that joint exists"
+    );
+}
+
+/// **A joint pins the same place on the body after a Reset as it did live.**
+///
+/// The other audit finding, and the deeper one: `JointRef::rest` used to store
+/// the anchors in WORLD coordinates, while `spawn_joint` re-derived the local
+/// pair from wherever the bodies stood. So the live spawn and the
+/// rebuild-from-rest were two pieces of code answering *"where on the body is
+/// this pinned?"* differently — measured at **1.611 m** live and **0.642 m**
+/// after a Reset, a pin walking 0.969 m along the body with no user action.
+///
+/// Joining mid-swing is the reachable path: nothing gates the gesture on the
+/// clock, and the module doc claimed a rest-only rule that did not exist.
+#[test]
+fn a_joint_made_mid_swing_survives_a_reset_unchanged() {
+    let mut sim = SimWorld::new();
+    // A hook and a free plank — no joint yet.
+    sim.world_mut().spawn((
+        Name::new("Hook"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.05 },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 6.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("Plank"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.5,
+                half_y: 0.1,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.5, 5.0)),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    // Let it FALL for a while, so the bodies are nowhere near their rest pose.
+    for tick in 1..=40 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    // …and only now does the artist join them.
+    sim.world_mut().spawn((
+        Name::new("Pin"),
+        PhysicsJoint {
+            body_a: stable_name_id("Hook"),
+            body_b: stable_name_id("Plank"),
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 5.0)),
+    ));
+    for tick in 41..=140 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    assert_eq!(bridge.joint_count(), 1);
+    let live = dist(pos(&mut sim, "Plank"), [0.0, 6.0]);
+
+    // Reset, then replay to the same tick. The constraint must be the SAME
+    // one — the pin cannot move along the body because the clock went home.
+    bridge.dispatch(&mut sim, false, 0);
+    for tick in 1..=140 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    let replayed = dist(pos(&mut sim, "Plank"), [0.0, 6.0]);
+    assert!(
+        (live - replayed).abs() < 0.05,
+        "the plank hung {live:.3} m from the hook live and {replayed:.3} m \
+         after a Reset — the joint was re-derived against a different pose, so \
+         the pin walked {:.3} m along the body with nobody touching it",
+        (live - replayed).abs()
+    );
+}
+
+/// **A joint loaded with poison does not poison the simulation.**
+///
+/// The Inspector sanitises what it writes, but `PhysicsJoint` is `serde` and
+/// travels in the project file, so the Inspector is not the only door. Audit
+/// measured it on the unclamped version: `stiffness = NaN` drove the body's
+/// pose to `(NaN, NaN)` within 120 steps, and `readback` wrote that straight
+/// into the entity's `Transform` — from where it flows into the cross-OS
+/// determinism hash.
+#[test]
+fn a_joint_carrying_nan_does_not_poison_the_pose() {
+    let mut sim = pendulum();
+    let pin = named(&mut sim, "Pin");
+    {
+        let mut j = sim.world_mut().get_mut::<PhysicsJoint>(pin).expect("joint");
+        j.kind = JointKind::Spring;
+        j.stiffness = f32::NAN;
+        j.damping = f32::NAN;
+        j.rest_length = f32::NAN;
+    }
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=120 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    let p = pos(&mut sim, "Plank");
+    assert!(
+        p[0].is_finite() && p[1].is_finite(),
+        "a NaN spring constant reached the solver and the plank is at {p:?} — \
+         that NaN is now in the Transform and in the determinism hash"
+    );
+}
+
+/// **Inverted hinge limits are a wide hinge, never a weld.**
+///
+/// `limit_min` and `limit_max` are authored independently, so `min > max` is
+/// one keystroke away — and rapier, handed the pair that way, froze the plank
+/// solid (measured: `rot 0.000` after 180 steps). A hinge the artist believes
+/// is limited to ±45° silently being a weld has no symptom to search for.
+#[test]
+fn inverted_limits_do_not_weld_the_hinge() {
+    let mut sim = pendulum();
+    let pin = named(&mut sim, "Pin");
+    {
+        let mut j = sim.world_mut().get_mut::<PhysicsJoint>(pin).expect("joint");
+        j.limits_enabled = true;
+        // The artist typed the two boxes in the order that reads naturally and
+        // got them the wrong way round.
+        j.limit_min = 0.8;
+        j.limit_max = -0.8;
+    }
+    let mut bridge = PhysicsBridge::new();
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for tick in 1..=180 {
+        bridge.dispatch(&mut sim, true, tick);
+        let e = named(&mut sim, "Plank");
+        let r = sim.world().get::<Transform>(e).expect("t").rotation;
+        lo = lo.min(r);
+        hi = hi.max(r);
+    }
+    assert!(
+        hi - lo > 0.3,
+        "the plank only ever turned through {:.3} rad — inverted limits welded \
+         a hinge the artist believes is limited to ±46°",
+        hi - lo
+    );
+}

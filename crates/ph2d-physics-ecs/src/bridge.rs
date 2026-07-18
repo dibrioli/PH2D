@@ -57,8 +57,8 @@ type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform)
 
 /// A live rapier body owned by the bridge, keyed by its ECS entity.
 #[derive(Copy, Clone)]
-struct BodyRef {
-    handle: RigidBodyHandle,
+pub(super) struct BodyRef {
+    pub(super) handle: RigidBodyHandle,
     /// Cached so `readback` knows which bodies to read (only dynamic ones
     /// move; static bodies keep their authored pose).
     kind: BodyKind,
@@ -68,7 +68,7 @@ struct BodyRef {
     /// [`PhysicsBridge::rewind_to`]). Without it, Reset could not put the
     /// ball back where it started: the live `Transform` has already been
     /// overwritten by the readback.
-    rest: BodyDesc,
+    pub(super) rest: BodyDesc,
 }
 
 /// The ECS ↔ rapier bridge. One per document, held on `AppGfx.physics`.

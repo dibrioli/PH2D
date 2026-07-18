@@ -143,6 +143,51 @@ impl PhysicsJoint {
     /// wrapper measured a 0.2 kg arm needing ~1 N·m), so a motor switched on
     /// visibly does something rather than looking broken.
     pub const DEFAULT_MOTOR_MAX_FORCE: f32 = 10.0;
+    /// The shortest rope the solver accepts. A rope of zero length is a weld
+    /// nobody asked for.
+    pub const MIN_LENGTH: f32 = 1e-3;
+
+    /// This joint with every number forced back into a range the solver can
+    /// use. **The door a loaded project file comes through.**
+    ///
+    /// The Inspector already sanitises what it writes, but a component is
+    /// `serde` and travels in the project file, so the Inspector is not the
+    /// only way values arrive — and this is the last place before rapier.
+    /// `PhysicsSettings::clamped` exists for exactly this reason on the world
+    /// side; without the twin, joints were the one loader-facing surface in
+    /// the line that did not clamp.
+    ///
+    /// Measured on the unclamped version: `stiffness = NaN` drove the body's
+    /// pose to `(NaN, NaN)` within 120 steps, and `readback` then wrote NaN
+    /// straight into the entity's `Transform` — where it flows into the
+    /// cross-OS determinism hash. `max_length = -1` behaved as an unrelated
+    /// length, silently.
+    ///
+    /// ⚠️ **Inverted limits are a WELD, not a wide hinge.** `limit_min` and
+    /// `limit_max` are authored independently, so `min > max` is one keystroke
+    /// away — and rapier, handed `[min, max]` that way, froze the plank solid
+    /// (measured: `rot 0.000` after 180 steps). A hinge the artist believes is
+    /// limited to ±45° being a weld is the kind of wrong that has no symptom
+    /// to search for, so the pair is ordered here.
+    pub fn clamped(mut self) -> Self {
+        fn finite(v: f32, fallback: f32) -> f32 {
+            if v.is_finite() { v } else { fallback }
+        }
+        let d = Self::default();
+        self.limit_min = finite(self.limit_min, d.limit_min);
+        self.limit_max = finite(self.limit_max, d.limit_max);
+        if self.limit_min > self.limit_max {
+            std::mem::swap(&mut self.limit_min, &mut self.limit_max);
+        }
+        self.motor_speed = finite(self.motor_speed, d.motor_speed);
+        self.motor_max_force = finite(self.motor_max_force, d.motor_max_force).max(0.0);
+        self.rest_length = finite(self.rest_length, d.rest_length).max(0.0);
+        self.stiffness = finite(self.stiffness, d.stiffness).max(0.0);
+        self.damping = finite(self.damping, d.damping).max(0.0);
+        // rapier's own docs require a rope's distance to be strictly positive.
+        self.max_length = finite(self.max_length, d.max_length).max(Self::MIN_LENGTH);
+        self
+    }
 
     /// Is this joint fully specified — does it name two *different* bodies?
     ///

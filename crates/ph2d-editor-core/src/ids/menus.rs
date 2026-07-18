@@ -539,8 +539,13 @@ pub const SECTION_IDS: [NodeId; 11] = [
 
 /// Live Inspector section headers (Name / Visibility / Transform /
 /// Render / Color & Tint / Sprite Sheet / Ordering / Sampling /
-/// Material & Blend). Right-click opens the SectionOutline menu.
-pub const LIVE_SECTION_IDS: [NodeId; 9] = [
+/// Material & Blend / Physics Body / Physics Joint). Right-click opens the
+/// SectionOutline menu.
+///
+/// ⚠️ `finish_section` reads `store.section_outline_color(<section id>)` for
+/// EVERY live section, so a section missing from this list has an outline the
+/// paint path is ready to draw and no gesture that can ever set it.
+pub const LIVE_SECTION_IDS: [NodeId; 11] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,
     INSP_LIVE_TRANSFORM_SECTION,
@@ -550,6 +555,8 @@ pub const LIVE_SECTION_IDS: [NodeId; 9] = [
     INSP_LIVE_ORDERING_SECTION,
     INSP_LIVE_SAMPLING_SECTION,
     INSP_LIVE_BLEND_SECTION,
+    INSP_LIVE_PHYSICS_SECTION,
+    INSP_LIVE_JOINT_SECTION,
 ];
 
 /// Grid-snap floating panel root id.

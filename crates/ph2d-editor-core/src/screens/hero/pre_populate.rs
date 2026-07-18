@@ -502,6 +502,12 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_LIVE_RENDER_COLOR,
         ids::INSP_LIVE_COLOR_COLOR,
         ids::INSP_LIVE_SHEET_COLOR,
+        // §11/§12 physics (ADR-0131 W2a/W3). Both painted a colour dot and
+        // registered its hit rect from the day they landed, and neither was
+        // here — so `is_focusable` answered false and the dot never armed.
+        // Painted, hit-registered, and dead under the mouse.
+        ids::INSP_LIVE_PHYSICS_COLOR,
+        ids::INSP_LIVE_JOINT_COLOR,
     ] {
         store.register(id, InteractiveState::Plain);
     }
@@ -538,6 +544,11 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_LIVE_RENDER_SECTION,
         ids::INSP_LIVE_COLOR_SECTION,
         ids::INSP_LIVE_SHEET_SECTION,
+        // §11/§12 physics. Both paint a `.collapsible(...)` chevron and read
+        // `is_collapsed`, and both were missing here — so the chevron promised
+        // a fold that could not happen and `is_collapsed` was pinned false.
+        ids::INSP_LIVE_PHYSICS_SECTION,
+        ids::INSP_LIVE_JOINT_SECTION,
         // Widget Gallery showcase sections.
         ids::INSP_SECTION_INPUTS,
         ids::INSP_SECTION_SLIDER,

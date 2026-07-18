@@ -12,11 +12,12 @@
 //! bodies' isometries as they stand at the moment of the spawn. Two consequences
 //! worth stating out loud:
 //!
-//! * The caller must spawn joints **while the world is at rest** (tick 0). The
-//!   ECS bridge already has that rule for bodies — a body is re-described only
-//!   while `at_rest`, so its `rest` pose is the *authored* pose — and joints ride
-//!   the same rule. Deriving the local anchors mid-simulation would bake in
-//!   whatever offset the bodies happened to have at that instant.
+//! * The conversion happens **exactly once, at authoring time**, and the LOCAL
+//!   pair is what is stored — see [`JointDesc::anchor_a`]. An earlier version
+//!   stored the world pair and re-converted on every spawn, which made a
+//!   rebuild-from-rest produce a *different* constraint than the live spawn
+//!   had; the module doc claimed joints were only ever spawned at rest, and
+//!   that claim was simply false (nothing gated the first spawn).
 //! * The inverse transform is rapier's own (`Isometry2::inverse_transform_point`),
 //!   not trigonometry written here. The solver and the authoring path then agree
 //!   about what "this point, in that body's frame" means by construction, and
@@ -35,7 +36,7 @@
 use rapier2d::dynamics::{
     ImpulseJointHandle, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
 };
-use rapier2d::na::Point2;
+use rapier2d::na::{Isometry2, Point2, Vector2};
 
 use super::PhysicsWorld;
 
@@ -100,9 +101,19 @@ pub struct MotorDesc {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct JointDesc {
     pub kind: JointKind,
-    /// Where the joint attaches **on body A**, in world meters at spawn time.
+    /// Where the joint attaches **on body A**, in that body's own LOCAL frame.
+    ///
+    /// ⚠️ **Local, not world, and that is the whole point.** The artist points
+    /// at a place on screen, so the caller converts once — through
+    /// [`PhysicsWorld::world_to_local_anchors`] — and then *keeps the local
+    /// pair*. Storing the world point instead means the conversion is redone
+    /// against whatever pose the bodies happen to have later, so the live
+    /// spawn and a rebuild-from-rest answer *"where on the body is this
+    /// pinned?"* differently: measured, a joint made mid-swing pinned at
+    /// 1.611 m and replayed at 0.642 m after a Reset — the pin walked 0.969 m
+    /// along the body with no user action.
     pub anchor_a: [f32; 2],
-    /// Where it attaches **on body B**.
+    /// Where it attaches **on body B**, likewise in B's local frame.
     ///
     /// Two points and not one, because a pin and a rope are different animals:
     /// a pin's two anchors are the *same place* (that is what a pin is), while
@@ -195,12 +206,13 @@ impl PhysicsWorld {
         if a == b {
             return None;
         }
-        // Local anchors from the bodies AS THEY STAND — see the module docs for
-        // why the caller owes us a world at rest.
-        let wa = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
-        let wb = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
-        let anchor_a = self.bodies.get(a)?.position().inverse_transform_point(&wa);
-        let anchor_b = self.bodies.get(b)?.position().inverse_transform_point(&wb);
+        // The anchors arrive ALREADY local (see [`JointDesc::anchor_a`]), so
+        // this function has no opinion about where the bodies are — which is
+        // exactly what makes a rebuild reproduce the same constraint.
+        self.bodies.get(a)?;
+        self.bodies.get(b)?;
+        let anchor_a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
+        let anchor_b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
 
         let mut joint: rapier2d::dynamics::GenericJoint = match desc.kind {
             JointKind::Pin => {
@@ -211,11 +223,14 @@ impl PhysicsWorld {
                     builder = builder.limits([min, max]);
                 }
                 if let Some(m) = desc.motor {
-                    // `factor` is the motor's damping — how hard it corrects the
-                    // velocity error. Tying it to `max_force` is what makes the
-                    // two knobs one idea: a stronger motor both pushes harder
-                    // and reaches its target sooner, and a weak one visibly
-                    // struggles. The force ceiling still bounds both.
+                    // `factor` is the motor's damping — how hard it corrects
+                    // the velocity error — and it is the measured constant
+                    // `MOTOR_TRACKING`, NOT the artist's `max_force`. (An
+                    // earlier comment here claimed the two were tied; they
+                    // never were, and the constant's own docs said so three
+                    // screens up. One of the two had to go.) The two knobs stay
+                    // separate on purpose: speed is what the motor wants,
+                    // max_force is what it is allowed to spend getting there.
                     builder = builder
                         .motor_velocity(m.speed, MOTOR_TRACKING)
                         .motor_max_force(m.max_force);
@@ -244,6 +259,51 @@ impl PhysicsWorld {
         // pinned to.
         joint.contacts_enabled = false;
         Some(self.impulse_joints.insert(a, b, joint, true))
+    }
+
+    /// A world point → the same point in the frame of a body **at the pose you
+    /// name**, which is not necessarily the pose it is in.
+    ///
+    /// That distinction is the whole reason this takes a pose instead of a
+    /// handle: a joint's anchor has to be a function of the **authored** scene,
+    /// so it is converted against the bodies' REST poses even when the artist
+    /// creates it mid-swing. Converting against the live pose instead makes the
+    /// same authored point land somewhere else on the body depending on when
+    /// the gesture happened — measured at 1.771 m of walk across a Reset.
+    ///
+    /// `pose` is `[x, y, rotation]`, the same triple `BodyDesc` carries.
+    pub fn local_anchor_at_pose(pose: [f32; 3], world: [f32; 2]) -> [f32; 2] {
+        let iso = Isometry2::new(Vector2::new(pose[0], pose[1]), pose[2]);
+        let p = iso.inverse_transform_point(&Point2::new(world[0], world[1]));
+        [p.x, p.y]
+    }
+
+    /// Two world points → the same two points in the bodies' own frames, using
+    /// the poses the bodies are in **right now**.
+    ///
+    /// **The single door for that conversion**, and it is called exactly once
+    /// per joint — at authoring time — after which the local pair is what is
+    /// stored and replayed. Uses rapier's own inverse transform, so the solver
+    /// and the authoring path cannot drift over what "this point, in that
+    /// body's frame" means (HR-5: no second `sin`/`cos` convention).
+    pub fn world_to_local_anchors(
+        &self,
+        a: RigidBodyHandle,
+        b: RigidBodyHandle,
+        world_a: [f32; 2],
+        world_b: [f32; 2],
+    ) -> Option<([f32; 2], [f32; 2])> {
+        let pa = self
+            .bodies
+            .get(a)?
+            .position()
+            .inverse_transform_point(&Point2::new(world_a[0], world_a[1]));
+        let pb = self
+            .bodies
+            .get(b)?
+            .position()
+            .inverse_transform_point(&Point2::new(world_b[0], world_b[1]));
+        Some(([pa.x, pa.y], [pb.x, pb.y]))
     }
 
     /// Remove a joint. No-op if the handle is already gone.

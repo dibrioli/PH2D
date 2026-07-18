@@ -22,8 +22,15 @@
 //! this rule (`at_rest && b.rest != desc`), and joints ride it rather than
 //! inventing a second one.
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
-use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, RigidBodyHandle};
+use ph2d_ecs::{Entity, Name, SimWorld, stable_name_id};
+use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
+
+use super::BodyRef;
+
+/// The pose a body was authored at — the triple `local_anchor_at_pose` wants.
+fn rest_pose(b: &BodyRef) -> [f32; 3] {
+    [b.rest.x, b.rest.y, b.rest.rotation]
+}
 
 use crate::joint::{JointKind, PhysicsJoint};
 
@@ -47,21 +54,35 @@ pub(super) struct JointRef {
     pub(super) entities: (Entity, Entity),
 }
 
-/// Translate the component + the poses into the plain [`JointDesc`] the
-/// wrapper takes. **The single place the anchor policy above is expressed.**
-pub(super) fn joint_desc(j: &PhysicsJoint, anchor: [f32; 2], body_b_centre: [f32; 2]) -> JointDesc {
+/// The two WORLD points this joint attaches at. **The single place the anchor
+/// policy above is expressed** — and it is expressed on world points, because
+/// that is the frame the artist authors in.
+pub(super) fn anchor_points(
+    j: &PhysicsJoint,
+    anchor: [f32; 2],
+    body_b_centre: [f32; 2],
+) -> ([f32; 2], [f32; 2]) {
+    (
+        anchor,
+        if j.kind.is_hinge() {
+            anchor
+        } else {
+            body_b_centre
+        },
+    )
+}
+
+/// Translate the component + the already-LOCAL anchors into the plain
+/// [`JointDesc`] the wrapper takes.
+pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2]) -> JointDesc {
     JointDesc {
         kind: match j.kind {
             JointKind::Pin => ph2d_physics::JointKind::Pin,
             JointKind::Spring => ph2d_physics::JointKind::Spring,
             JointKind::Rope => ph2d_physics::JointKind::Rope,
         },
-        anchor_a: anchor,
-        anchor_b: if j.kind.is_hinge() {
-            anchor
-        } else {
-            body_b_centre
-        },
+        anchor_a: local_a,
+        anchor_b: local_b,
         // A parameter the kind ignores is not *passed* to the solver either:
         // `is_hinge` is asked here exactly as the Inspector asks it to decide
         // which rows to paint, so a limit left over from a previous kind
@@ -110,10 +131,29 @@ impl PhysicsBridge {
 
         for (e, joint, transform) in q.iter(world) {
             self.joints_seen.push(e);
+            // ⚠️ **A joint that cannot be built is only REMOVED if it was ever
+            // built.** Pushing it unconditionally makes `joints_to_remove`
+            // non-empty on every single frame for as long as the scene holds
+            // one dormant joint — and the ring is cleared on a non-empty
+            // list, so W1.5's bit-exact scrub would die, silently, forever.
+            //
+            // Reachable by the most ordinary gestures: delete one of two
+            // jointed bodies, or rename one, or start a joint and not pick the
+            // second body yet. Measured before the guard: a scrub back to tick
+            // 150 replayed **150** steps instead of 0, with a ring of 1.
+            //
+            // The body half never had this bug (`reconcile_structure` only
+            // pushes entities that are in `self.bodies`); this half had
+            // diverged from its own sibling.
+            let drop_if_live = |me: &mut Self| {
+                if me.joints.contains_key(&e) {
+                    me.joints_to_remove.push(e);
+                }
+            };
             if !joint.names_two_bodies() {
                 // Half-authored: the artist has a joint object but has not
                 // picked both bodies yet. Not an error, and not a joint.
-                self.joints_to_remove.push(e);
+                drop_if_live(self);
                 continue;
             }
             let (Some(&ea), Some(&eb)) =
@@ -122,23 +162,43 @@ impl PhysicsBridge {
                 // A named body that is not here — deleted, renamed, or not yet
                 // spawned. The joint goes dormant and comes back by itself if
                 // the body does (the same healing the timeline's bindings get).
-                self.joints_to_remove.push(e);
+                drop_if_live(self);
                 continue;
             };
             let (Some(ba), Some(bb)) = (self.bodies.get(&ea), self.bodies.get(&eb)) else {
-                self.joints_to_remove.push(e);
+                drop_if_live(self);
                 continue;
             };
-            let centre_b = world
-                .get::<Transform>(eb)
-                .map(|t| [t.translation.x, t.translation.y])
-                .unwrap_or_default();
-            let desc = joint_desc(
+            // Body B's centre for the spring/rope policy — its **rest**
+            // centre, for the same reason the anchor uses the rest pose.
+            let centre_b = [bb.rest.x, bb.rest.y];
+            let handles = (ba.handle, bb.handle);
+            // World → local, ONCE, and **against the bodies' REST poses** —
+            // never against where they happen to be.
+            //
+            // The anchor is a fact about the AUTHORED scene: the artist put the
+            // pin at the plank's left end, and that is where it is whether they
+            // pressed Join at tick 0 or mid-swing. Converting against the live
+            // pose makes the same authored point land somewhere else on the
+            // body depending on when the gesture happened — and then a Reset
+            // re-derives it a third way. Measured before this: the pin walked
+            // **1.771 m** along the plank across a Reset, with nobody touching
+            // anything.
+            //
+            // This is also what makes the rule the module header states TRUE
+            // rather than aspirational: it no longer matters when a joint is
+            // spawned, so nothing has to gate the gesture on the clock.
+            let (wa, wb) = anchor_points(
                 joint,
                 [transform.translation.x, transform.translation.y],
                 centre_b,
             );
-            let handles = (ba.handle, bb.handle);
+            let la = PhysicsWorld::local_anchor_at_pose(rest_pose(ba), wa);
+            let lb = PhysicsWorld::local_anchor_at_pose(rest_pose(bb), wb);
+            // `clamped()` here and not only in the Inspector: a component is
+            // serde and arrives from the project file too, and this is the last
+            // door before rapier.
+            let desc = joint_desc(&joint.clamped(), la, lb);
             match self.joints.get(&e) {
                 None => self.joints_to_spawn.push((e, desc, handles, (ea, eb))),
                 // Re-described at rest, exactly as bodies are — and also when

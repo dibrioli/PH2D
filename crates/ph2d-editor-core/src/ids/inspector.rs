@@ -411,10 +411,16 @@ pub const HIER_RESIZE_HANDLE_BL: NodeId = hash_node_id("hier_resize_handle_bl");
 pub const INSP_LIVE_JOINT_SECTION: NodeId = hash_node_id("insp_live_joint_section");
 pub const INSP_LIVE_JOINT_COLOR: NodeId = hash_node_id("insp_live_joint_color");
 
-/// Group ids for the three segmented controls in the section. Separate
-/// constants rather than reusing the section/colour ids: a segmented group
-/// owns the label and the aria node, and two groups sharing one id would make
-/// the second one's selection unreadable.
+/// Group ids for the three segmented controls in the section.
+///
+/// Separate constants rather than reusing the section/colour ids. ⚠️ The
+/// *reason* is latent, not live: `SegmentedAdaptive`'s `id`/`label` are read
+/// only by `build_a11y`, which **has no callers yet** — so today these are
+/// inert and nothing observes a collision. They are distinct anyway because
+/// §11 next door does reuse `INSP_LIVE_PHYSICS_SECTION` and
+/// `INSP_LIVE_PHYSICS_COLOR` as group ids, and the day accessibility is wired
+/// that is two rects answering to one id. Cheap to get right now; a rename
+/// hunt later.
 pub const INSP_JOINT_KIND_GROUP: NodeId = hash_node_id("insp_joint_kind_group");
 pub const INSP_JOINT_LIMITS_GROUP: NodeId = hash_node_id("insp_joint_limits_group");
 pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group");

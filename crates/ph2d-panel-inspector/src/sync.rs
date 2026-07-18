@@ -516,18 +516,10 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
     )
 }
 
-/// §11 Physics Body — mirror the snapshot's dimensions into the number
-/// boxes. Runs under the same `entity_changed` guard as its siblings: a
-/// re-seed on every frame would fight the user's own typing, overwriting the
-/// buffer mid-edit.
-///
-/// Only the dimensions need mirroring — the two segmented groups read their
-/// selection straight off the snapshot at paint time, so there is nothing in
-/// the store for them to fall out of date with.
 /// §12 Physics Joint — mirror the snapshot into the number boxes, exactly as
-/// the body's dimensions are mirrored. Only the numbers: the three segmented
-/// groups read their selection straight off the snapshot at paint time, so
-/// there is nothing in the store for them to fall out of date with.
+/// the body's dimensions are mirrored below. Only the numbers: the three
+/// segmented groups read their selection straight off the snapshot at paint
+/// time, so there is nothing in the store for them to fall out of date with.
 fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_joint() else {
         return;
@@ -546,6 +538,14 @@ fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
     }
 }
 
+/// §11 Physics Body — mirror the snapshot's dimensions into the number boxes.
+/// Runs under the same `entity_changed` guard as its siblings: a re-seed on
+/// every frame would fight the user's own typing, overwriting the buffer
+/// mid-edit.
+///
+/// Only the dimensions need mirroring — the two segmented groups read their
+/// selection straight off the snapshot at paint time, so there is nothing in
+/// the store for them to fall out of date with.
 fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_physics() else {
         return;

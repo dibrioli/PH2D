@@ -191,3 +191,23 @@ fn a_plain_body_has_no_joint_section() {
     let (mut sim, hook, _) = two_bodies(true);
     assert!(build_joint_info(&mut sim, hook.to_bits()).is_none());
 }
+
+/// **Two bodies that share a name cannot be joined, and the gesture says so.**
+///
+/// The `a == b` guard compares ENTITIES; a joint stores name HASHES. Two
+/// distinct bodies with the same name resolve to one id, so the joint could
+/// never bind — and before this it was still created, handing the artist an
+/// object that does nothing and (until the ring fix) cleared the scrub cache
+/// every frame for as long as it existed.
+#[test]
+fn two_bodies_sharing_a_name_cannot_be_joined() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Hook");
+    assert!(
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits()).is_none(),
+        "a joint was created between two bodies that share a name — it can \
+         never bind, because the two ids it stores are the same number"
+    );
+    let mut q = sim.world_mut().query::<&PhysicsJoint>();
+    assert_eq!(q.iter(sim.world()).count(), 0);
+}

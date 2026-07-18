@@ -6,6 +6,18 @@
 //! `(state: &mut InspectorState, host: &mut dyn PanelHostInternal,
 //! ev: WidgetEvent)`. All `hero.<field>` accesses route through
 //! [`PanelHostInternal`] trait methods.
+//! ⚠️ **The section colour-dot arm ENUMERATES its readers, and it has rotted.**
+//! Six dots are registered `Plain` in `pre_populate` and only some are listed
+//! in the match: `INSP_LIVE_NAME_COLOR` and `INSP_LIVE_VISIBILITY_COLOR` arm on
+//! click and open nothing, and ORDERING / SAMPLING / BLEND are in neither
+//! place. The physics pair (§11/§12) was in the same state until W3 and is now
+//! listed. The real fix is one `(section, colour)` table that `pre_populate`
+//! and the arm both read — one table, N consumers, the shape the physics
+//! panel's `SECTIONS` already uses — but that switches on three sections
+//! belonging to other waves, so it is named in the physics line's handoff
+//! rather than smuggled into it
+//! ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+//!
 
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -27,32 +39,7 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    // Section color-dot click — seed the canonical BlenderPicker
-    // pointing at the section's color id, exact same flow Widget
-    // Gallery uses for its `SECTION_COLOR_IDS`. The picker writes
-    // chosen rgba back via `set_widget_color(<color_id>, rgba)`
-    // (drained in hero.rs:760), and the next `paint_section_header`
-    // call paints the dot in that color. UI canon 2026-05-24:
-    // every section can carry a per-user accent color.
-    if let WidgetEvent::Click(id) = ev
-        && matches!(
-            id,
-            ids::INSP_LIVE_TRANSFORM_COLOR
-                | ids::INSP_LIVE_RENDER_COLOR
-                | ids::INSP_LIVE_COLOR_COLOR
-                | ids::INSP_LIVE_SHEET_COLOR
-        )
-    {
-        let seed = host
-            .store()
-            .widget_color(id)
-            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
-        host.store_mut().set_widget_color(id, seed);
-        host.store_mut().set_picker_target(Some(id));
-        host.store_mut().set_blender_value(
-            ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
-        );
+    if section_color_click(host, ev) {
         return true;
     }
 
@@ -501,5 +488,42 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // `widget::showcase::apply_showcase_event`. The Inspector panel
     // returns `Ignored` for those — host picks them up after the
     // registry walk.
+    false
+}
+
+/// A click on a section's colour dot — seed the canonical `BlenderPicker` at
+/// that section's colour id, the same flow the Widget Gallery uses for its
+/// `SECTION_COLOR_IDS`. The picker writes the chosen rgba back via
+/// `set_widget_color(<color_id>, rgba)` (drained in `hero.rs`), and the next
+/// `paint_section_header` paints the dot in it. UI canon 2026-05-24: every
+/// section can carry a per-user accent colour.
+///
+/// Its own function because `apply_event_impl` is under a ratcheting LOC cap
+/// and the two physics dots (§11/§12) pushed it over. Returns whether the
+/// event was consumed.
+fn section_color_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = ev
+        && matches!(
+            id,
+            ids::INSP_LIVE_TRANSFORM_COLOR
+                | ids::INSP_LIVE_RENDER_COLOR
+                | ids::INSP_LIVE_COLOR_COLOR
+                | ids::INSP_LIVE_SHEET_COLOR
+                | ids::INSP_LIVE_PHYSICS_COLOR
+                | ids::INSP_LIVE_JOINT_COLOR
+        )
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
     false
 }

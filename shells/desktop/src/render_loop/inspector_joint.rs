@@ -121,6 +121,9 @@ pub(crate) fn apply_joint_edit(
         JointFieldEdit::MaxLength(v) => next.max_length = v.max(1e-3),
         JointFieldEdit::Remove => return,
     }
+    // Through the SAME clamp the bridge uses on the way to the solver, so the
+    // Inspector cannot author a state the loader would have to repair.
+    let next = next.clamped();
     if next != current {
         queue_set(queue, registry, entity_bits, JOINT, &next);
     }
@@ -149,6 +152,12 @@ pub(crate) fn create_joint(sim: &mut SimWorld, a_bits: u64, b_bits: u64) -> Opti
     let name_a = ensure_named(sim, a, "Body")?;
     let name_b = ensure_named(sim, b, "Body")?;
 
+    // ⚠️ The `a == b` guard above compares ENTITIES; this compares the thing a
+    // joint actually stores. Two bodies that happen to share a name resolve to
+    // one id, so the joint could never bind — and it would report success.
+    if ph2d_ecs::stable_name_id(&name_a) == ph2d_ecs::stable_name_id(&name_b) {
+        return None;
+    }
     let label = crate::name_unique::unique_name(sim, "Joint");
     let mid = (pa + pb) * 0.5;
     let joint = sim

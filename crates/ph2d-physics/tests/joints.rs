@@ -39,6 +39,31 @@ fn pose(world: &PhysicsWorld, h: ph2d_physics::RigidBodyHandle) -> [f32; 2] {
     [p.translation.x, p.translation.y]
 }
 
+/// Attach `a` to `b`, with the anchors given in **WORLD** coordinates — the
+/// frame an artist points in.
+///
+/// The engine takes LOCAL anchors (so that a rebuild reproduces the identical
+/// constraint), and the conversion is `world_to_local_anchors`. Every fixture
+/// below goes through this helper rather than converting inline, because that
+/// is exactly what the product does: one conversion, at authoring time.
+fn join(
+    w: &mut PhysicsWorld,
+    a: ph2d_physics::RigidBodyHandle,
+    b: ph2d_physics::RigidBodyHandle,
+    desc: JointDesc,
+) -> Option<ph2d_physics::ImpulseJointHandle> {
+    let (la, lb) = w.world_to_local_anchors(a, b, desc.anchor_a, desc.anchor_b)?;
+    w.spawn_joint(
+        a,
+        b,
+        JointDesc {
+            anchor_a: la,
+            anchor_b: lb,
+            ..desc
+        },
+    )
+}
+
 /// **The pendulum, and the anchor is where the ARTIST put it.**
 ///
 /// A hook (static) sits at `(0, 6)`. A plank 1 m long lies to the right with
@@ -71,18 +96,18 @@ fn a_pin_holds_the_point_the_artist_chose_not_the_bodies_centres() {
             half_y: 0.1,
         },
     );
-    let j = w
-        .spawn_joint(
-            hook,
-            plank,
-            JointDesc {
-                kind: JointKind::Pin,
-                anchor_a: [0.0, 5.0],
-                anchor_b: [0.0, 5.0],
-                ..JointDesc::default()
-            },
-        )
-        .expect("two distinct live bodies");
+    let j = join(
+        &mut w,
+        hook,
+        plank,
+        JointDesc {
+            kind: JointKind::Pin,
+            anchor_a: [0.0, 5.0],
+            anchor_b: [0.0, 5.0],
+            ..JointDesc::default()
+        },
+    )
+    .expect("two distinct live bodies");
 
     // ⚠️ **Every assertion here is over the TRAJECTORY, never the final
     // frame.** An undamped pendulum is periodic: it comes back to where it
@@ -150,7 +175,8 @@ fn a_pin_still_lets_the_bodies_rotate() {
             half_y: 0.1,
         },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         hook,
         plank,
         JointDesc {
@@ -204,7 +230,8 @@ fn a_limited_pin_stops_at_the_authored_angle() {
             half_y: 0.1,
         },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         hook,
         plank,
         JointDesc {
@@ -257,7 +284,8 @@ fn a_motor_reaches_the_speed_it_was_given() {
             half_y: 0.1,
         },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         hub,
         disc,
         JointDesc {
@@ -311,7 +339,8 @@ fn bodies_a_joint_connects_do_not_collide_with_each_other() {
         5.0,
         ShapeDesc::Ball { radius: 0.5 },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         a,
         b,
         JointDesc {
@@ -367,7 +396,8 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             friction: 0.5,
             layer: 0,
         });
-        w.spawn_joint(
+        join(
+            &mut w,
             hook,
             arm,
             JointDesc {
@@ -438,7 +468,8 @@ fn a_rope_lets_the_ball_fall_until_it_runs_out() {
         9.5,
         ShapeDesc::Ball { radius: 0.25 },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         hook,
         ball,
         JointDesc {
@@ -501,7 +532,8 @@ fn a_spring_sags_under_gravity_and_overshoots_on_the_way() {
         9.0,
         ShapeDesc::Ball { radius: 0.25 },
     );
-    w.spawn_joint(
+    join(
+        &mut w,
         hook,
         ball,
         JointDesc {
@@ -583,7 +615,8 @@ fn a_jointed_world_hashes_the_same_twice() {
                 y,
                 ShapeDesc::Ball { radius: 0.2 },
             );
-            w.spawn_joint(
+            join(
+                &mut w,
                 prev,
                 link,
                 JointDesc {

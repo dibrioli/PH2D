@@ -105,8 +105,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/event.rs",
         "apply_event_impl",
-        477,
-        "was frozen at a mis-measured 353; truly 477. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks — per-cluster try_* split is ready and now unblocked",
+        452,
+        "was frozen at a mis-measured 353; truly 477, ratcheted to 452 when W3's two physics colour dots pushed it over and the colour-dot arm moved out to `section_color_click`. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks — per-cluster try_* split is ready and now unblocked",
     ),
     (
         "ph2d-panel-inspector/src/paint.rs",

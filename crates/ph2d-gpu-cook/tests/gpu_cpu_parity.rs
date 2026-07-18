@@ -52,6 +52,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_orbit::register(&mut reg).unwrap();
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
+    ph2d_node_motion_look_at::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1506,6 +1507,119 @@ fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
         cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
         "fixture check: the field must VARY, or this proves nothing"
     );
+}
+
+/// **`motion.look_at` — the first kernel with two CONNECTED stream inputs, and
+/// the first that BROADCASTS.**
+///
+/// The node's whole reason to exist is that its target may be either shape: one
+/// global point the entire field turns toward, or a per-element aim. So the gate
+/// runs BOTH, from the same graph, with one wire moved — a fixture with only the
+/// per-element case would stay green with the broadcast completely broken, since
+/// `read(i)` and `read(0)` agree when the field is length N.
+///
+/// The two lengths come from `value.lfo` itself: unconnected it is ONE value (the
+/// count law), connected to the grid it is N. That is not a convenience — it
+/// means this gate fails if EITHER the broadcast or the count law regresses.
+///
+/// The pivot is off-grid and the offset is not a multiple of 90 so a transposed
+/// or sign-flipped `atan2` cannot survive: the aim is a real angle in every
+/// quadrant.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for per_element in [false, true] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 12.0);
+        let tx = g.add_node("value.lfo");
+        let ty = g.add_node("value.lfo");
+        // Different periods/phases so the two coordinates never coincide — a
+        // target on the 45° line would survive an x/y swap.
+        g.set_param(tx, "period", 0.61);
+        g.set_param(tx, "amplitude", 3.1);
+        g.set_param(ty, "period", 0.89);
+        g.set_param(ty, "amplitude", 2.3);
+        g.set_param(ty, "phase", 0.33);
+        if per_element {
+            // Connected → a length-N target field, and a stagger so the elements
+            // genuinely aim in different directions.
+            connect(&mut g, grid, tx);
+            connect(&mut g, grid, ty);
+            g.set_param(tx, "phase_stagger", 0.021);
+            g.set_param(ty, "phase_stagger", 0.017);
+        }
+        let la = g.add_node("motion.look_at");
+        g.set_param(la, "offset", 23.0);
+        connect(&mut g, grid, la);
+        for (src, port) in [(tx, 1u16), (ty, 2u16)] {
+            g.connect(Edge {
+                from: (src, 0),
+                to: (la, port),
+                delayed: false,
+            })
+            .expect("target port");
+        }
+        g.validate(&reg).expect("well-typed");
+
+        let label = if per_element {
+            "per-element"
+        } else {
+            "broadcast"
+        };
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, la);
+        assert!(plan.is_fully_gpu(), "{label}: the whole chain is covered");
+
+        let mut cook = Cook::new();
+        let cpu = cook.cook(&g, &reg, la, PLAYHEAD).expect("cpu cook");
+        let cpu_rot = match cpu[0].as_stream().get("rot") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("{label}: the CPU emitted no `rot`"),
+        };
+
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.retain_streams_for_debug(true);
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+
+        let gpu_rot = gc
+            .read_column(&gpu, la, "rot")
+            .expect("the `rot` column reads back");
+        assert_eq!(gpu_rot.len(), cpu_rot.len(), "{label}: same element count");
+        let worst = gpu_rot
+            .iter()
+            .zip(&cpu_rot)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f32, f32::max);
+        eprintln!(
+            "look_at {label}: {} elements, max |drot| = {worst:e} deg",
+            cpu_rot.len()
+        );
+        // Degrees: the Rajan approximation is ~0.09° off true atan2 on BOTH
+        // paths identically, so what is compared here is the port, not the model.
+        assert!(worst < 1e-3, "{label}: max |drot| = {worst:e} deg");
+
+        // Fixture check: the elements must genuinely aim in DIFFERENT directions,
+        // or a kernel that ignored `P` entirely would pass.
+        assert!(
+            cpu_rot.iter().any(|r| (r - cpu_rot[0]).abs() > 1.0),
+            "{label}: fixture check — the field must aim in varied directions"
+        );
+    }
 }
 
 /// `motion.orbit` — swings each element around a pivot by an angle the playhead

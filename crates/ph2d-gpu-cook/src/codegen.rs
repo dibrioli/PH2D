@@ -119,18 +119,22 @@ pub fn plan_bindings(
             } else {
                 BindingPlan::ReadIdentity
             });
-            let write = match (b.access, here) {
-                (ColumnAccess::Read | ColumnAccess::Consume, _) => None,
-                // A refusal is not an access: it binds nothing on either side —
-                // by the time a plan reaches codegen the node was accepted, so
-                // the refused column is provably absent anyway.
-                (ColumnAccess::RefuseIfPresent, _) => None,
-                // The gather key READS the current element's id (so `read`
-                // above binds it) but writes nothing — the id rides through the
-                // base like any unwritten column (ADR-0130).
-                (ColumnAccess::GatherKey, _) => None,
-                (ColumnAccess::ReadWriteExisting, false) => Some(BindingPlan::WriteDropped),
-                _ => Some(BindingPlan::WriteBuffer),
+            // **Ask [`ColumnAccess::writes`], never re-enumerate it.** This used
+            // to list the accesses that write nothing (`Read`, `Consume`, the
+            // `RefuseIfPresent` that binds nothing on either side, the
+            // `GatherKey` that only reads an id) and default everything else to
+            // a write — so the NEXT read-only access silently became a writer.
+            // `ReadBroadcast` was that access, and the failure was not subtle
+            // for once: two broadcast ports both claimed to write the same
+            // column, and naga rejected `redefinition of out_v`. It would have
+            // been subtle for a kernel with only ONE such port.
+            // [[feedback_a_condition_that_enumerates_its_readers_rots]]
+            let write = match b.access {
+                // The one shape a boolean cannot carry: absent, so no buffer,
+                // but the body still needs a `write_` symbol to call (a no-op).
+                ColumnAccess::ReadWriteExisting if !here => Some(BindingPlan::WriteDropped),
+                a if a.writes(here) => Some(BindingPlan::WriteBuffer),
+                _ => None,
             };
             (read, write)
         })
@@ -179,6 +183,31 @@ pub fn presence_signature(
             let here = b.access.reads() && present(b);
             sig | ((here as u64) << i)
         })
+}
+
+/// Does any binding broadcast ([`ColumnAccess::ReadBroadcast`])? Decides whether
+/// the module carries the `bcast_one` uniform — asked by the codegen that
+/// DECLARES it and the sequencer that PACKS it, for the reason on
+/// [`declares_window`].
+///
+/// **One bitmask, not one field per port.** The engine would otherwise own a
+/// dynamic slice of the struct's namespace (`n_<port name>`, from names authored
+/// for the artist), and every new broadcast port would widen the uniform. A bit
+/// per port answers the only question the reader has — *"is this port length
+/// 1?"* — for any arity, in four bytes, under a name `wgsl_field` can guard like
+/// the other engine fields.
+pub fn broadcasts_anything(kernel: &GpuKernel) -> bool {
+    kernel.bindings.iter().any(|b| b.access.broadcasts())
+}
+
+/// The `bcast_one` value: bit `p` set when input port `p` carries exactly one
+/// element, so [`kernel_module`]'s broadcast readers pin row 0 on it.
+pub fn broadcast_mask(counts: &[u32]) -> u32 {
+    counts
+        .iter()
+        .enumerate()
+        .filter(|(p, n)| **n == 1 && *p < 32)
+        .fold(0u32, |m, (p, _)| m | (1u32 << p))
 }
 
 /// Does this node's generated module carry the `window_first` / `window_age`
@@ -236,6 +265,9 @@ pub fn kernel_module(
     if declares_window(port_names) {
         src.push_str("    window_first: u32,\n    window_age: f32,\n");
     }
+    if broadcasts_anything(kernel) {
+        src.push_str("    bcast_one: u32,\n");
+    }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
 
     // Storage bindings: reads first, then writes (stable, replayable order).
@@ -268,6 +300,18 @@ pub fn kernel_module(
         let ty = wgsl_type(b.dim);
         let c = accessor_suffix(port_names, b);
         match read {
+            // A broadcast port reads row 0 when it carries exactly ONE value —
+            // the `1 => vals[0]` arm of the CPU's `target_at`, decided per
+            // dispatch from a uniform bit rather than per pipeline, so one
+            // compiled module serves both a global target and a per-element one.
+            Some(BindingPlan::ReadBuffer) if b.access.broadcasts() => src.push_str(&format!(
+                "const HAS_{c}: bool = true;\n\
+                 fn read_{c}(i: u32) -> {ty} {{\n\
+                 \x20   let one = (params.bcast_one & {bit}u) != 0u;\n\
+                 \x20   return in_{c}[select(i, 0u, one)];\n\
+                 }}\n",
+                bit = 1u32 << b.port
+            )),
             Some(BindingPlan::ReadBuffer) => src.push_str(&format!(
                 "const HAS_{c}: bool = true;\n\
                  fn read_{c}(i: u32) -> {ty} {{ return in_{c}[i]; }}\n"

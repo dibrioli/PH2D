@@ -44,6 +44,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
+    ph2d_node_motion_look_at::register(&mut reg).unwrap();
     ph2d_node_motion_luminance::register(&mut reg).unwrap();
     ph2d_node_value_map_range::register(&mut reg).unwrap();
     ph2d_node_motion_orbit::register(&mut reg).unwrap();

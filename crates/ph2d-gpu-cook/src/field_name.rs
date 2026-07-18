@@ -27,6 +27,7 @@ const ENGINE_UNIFORMS: &[&str] = &[
     "gather_prev_n",
     "window_first",
     "window_age",
+    "bcast_one",
 ];
 
 /// WGSL **reserved words** that a node's param name could plausibly collide with.

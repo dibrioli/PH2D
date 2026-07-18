@@ -89,10 +89,17 @@ impl GpuCook {
         // A node is never both a gatherer and a generator (a generator has no
         // input to gather FROM), but the offset accounts for both so the layout
         // is total rather than true-by-luck.
+        let window_at = 8 + kernel.params.len() * 4 + usize::from(gather_port.is_some()) * 4;
         if codegen::declares_window(&port_names) {
-            let at = 8 + kernel.params.len() * 4 + usize::from(gather_port.is_some()) * 4;
-            uni[at..at + 4].copy_from_slice(&window.first.to_le_bytes());
-            uni[at + 4..at + 8].copy_from_slice(&window.age_first.to_le_bytes());
+            uni[window_at..window_at + 4].copy_from_slice(&window.first.to_le_bytes());
+            uni[window_at + 4..window_at + 8].copy_from_slice(&window.age_first.to_le_bytes());
+        }
+        // Which input ports carry exactly one element — the broadcast bits, last
+        // in the layout so nothing above them ever moves.
+        if codegen::broadcasts_anything(kernel) {
+            let counts: Vec<u32> = inputs.iter().map(|s| s.count).collect();
+            let at = window_at + usize::from(codegen::declares_window(&port_names)) * 8;
+            uni[at..at + 4].copy_from_slice(&codegen::broadcast_mask(&counts).to_le_bytes());
         }
         let uniform = self.uniform_slot(gpu, stage_idx);
         gpu.queue.write_buffer(uniform, 0, &uni);

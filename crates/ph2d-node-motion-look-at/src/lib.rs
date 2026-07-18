@@ -24,6 +24,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
@@ -97,6 +98,80 @@ fn atan2_approx(y: f32, x: f32) -> f32 {
     r
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`atan2_approx`] plus the
+/// broadcast rule, element for element.
+///
+/// **The first kernel with more than one CONNECTED stream, and the reason
+/// [`ColumnAccess::ReadBroadcast`] exists.** The target is two VALUE fields, and
+/// the whole point of the node is that they may be either: one global point the
+/// entire field turns toward (a bare `value.lfo`, length 1), or a per-element
+/// aim (length N). The CPU says that in `target_at`; the engine says it by
+/// binding `v` on ports 1 and 2 as broadcast reads, and an ABSENT port still
+/// falls back to the declared identity `0.0` — the `0 =>` arm, unchanged.
+///
+/// **Every** read is port-qualified here (`read_in_P`, not `read_P`) — the rule
+/// is per NODE, not per column: a manifest with more than one input port names
+/// all of its readers, because `v` is bound on two ports and a bare `read_v`
+/// would silently resolve to one of them. The write stays bare (one output).
+///
+/// `LOOK_AT_RAD_TO_DEG` is the same literal constant the CPU uses — a `180/π`
+/// recomputed in WGSL would be a second answer to a fixed number.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let la_p = read_in_P(i);\n\
+        let la_dx = read_target_x_v(i) - la_p.x;\n\
+        let la_dy = read_target_y_v(i) - la_p.y;\n\
+        write_rot(i, la_atan2(la_dy, la_dx) * 57.29578 + params.offset);\n",
+    wgsl_lib: "\
+        fn la_atan2(y: f32, x: f32) -> f32 {\n\
+            let ax = abs(x);\n\
+            let ay = abs(y);\n\
+            let hi = max(ax, ay);\n\
+            // Target coincides with the element — leave it at 0 degrees.\n\
+            if (hi == 0.0) { return 0.0; }\n\
+            // a = min/max in [0,1]; atan(a) by the Rajan polynomial (HR-5).\n\
+            let a = min(ax, ay) / hi;\n\
+            var r = 0.7853982 * a - a * (a - 1.0) * (0.2447 + 0.0663 * a);\n\
+            if (ay > ax) { r = 1.5707964 - r; }\n\
+            if (x < 0.0) { r = 3.1415927 - r; }\n\
+            if (y < 0.0) { r = -r; }\n\
+            return r;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 2,
+        },
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["offset"],
+    count_law: None,
+    applicable: None,
+};
+
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
@@ -154,6 +229,7 @@ impl NodeOp for MotionLookAt {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionLookAt))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -303,6 +303,30 @@ mod tests {
         assert_eq!(gpu_route(true, 1, false, &[], 3), GpuRoute::Cpu);
     }
 
+    /// **What two seams cost today** — and the assertion slice B must flip.
+    ///
+    /// A multi-input kernel (`motion.look_at`) can leave a plan with two CPU
+    /// boundaries and real GPU work behind them (measured in `ph2d-gpu-cook`'s
+    /// `boundary_arity`). The pump takes ONE boundary (`CookTarget::Boundary`),
+    /// so the route forfeits the GPU for the whole frame rather than cook a
+    /// partial prefix — never wrong, and never fast either.
+    ///
+    /// This is pinned rather than left implicit because `_ => GpuRoute::Cpu` is a
+    /// catch-all: it swallowed the two-seam case the day it became reachable
+    /// without a single gate changing colour. When the plural pump lands, THIS
+    /// line is what has to change, and it names why.
+    #[test]
+    fn two_seams_forfeit_the_gpu_until_the_pump_is_plural() {
+        // Two DISTINCT nodes — `node()` is a single stand-in id, and reusing it
+        // would model one node consumed on two ports (the duplicate entry the
+        // plural pump will have to dedupe), which is a different shape.
+        let (a, b) = (NodeId(7), NodeId(8));
+        assert_eq!(
+            gpu_route(true, 1, true, &[(a, 0), (b, 0)], 3),
+            GpuRoute::Cpu
+        );
+    }
+
     #[test]
     fn fully_claimed_plan_runs_fully_on_the_gpu() {
         assert_eq!(gpu_route(true, 1, true, &[], 3), GpuRoute::FullyGpu);

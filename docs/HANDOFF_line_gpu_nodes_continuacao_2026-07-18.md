@@ -130,13 +130,33 @@ Há **três alavancas**, e elas têm uma ordem — **corrigida por medição em
 >
 > ⇒ **A ordem inverte: (C) é o multiplicador, e (B) é CONSEQUÊNCIA de (C)** — o
 > dia em que um kernel multi-input pousar. Isso não é uma nota que apodrece: o
-> gate **`no_plan_can_leave_more_than_one_seam_today`**
-> (`crates/ph2d-gpu-cook/tests/boundary_arity.rs`) é um **TRIPWIRE** que fica
-> vermelho exatamente nesse dia, dizendo *"agora a fatia B é real — construa"*.
+> gate `boundary_arity.rs` é um **TRIPWIRE** que fica vermelho exatamente nesse
+> dia, dizendo *"agora a fatia B é real — construa"*.
 >
-> **Ordem corrigida: (C) em lotes → Fase 4 → (A).** (B) quando o tripwire abrir.
+> **⚠️ ATUALIZAÇÃO (mesmo dia): o tripwire DISPAROU.** `motion.look_at` pousou; 2
+> costuras são medidas e reais. A ordem volta a ser **(B) agora** — ver (B) logo
+> abaixo. O resto desta caixa continua valendo como o registro de por que (B) não
+> era trabalho antes.
 
-### (B) N fronteiras no shell — ~~a recomendação~~ **MEDIDO COMO INALCANÇÁVEL (ver acima)**
+### (B) N fronteiras no shell — **DESBLOQUEADA: o tripwire DISPAROU (2026-07-18)**
+
+⚠️ **Isto virou o próximo trabalho real.** `motion.look_at` pousou com kernel, e o
+que era inalcançável passou a ser **medido**: duas entradas descobertas em duas
+portas deixam **exatamente 2 fronteiras**, com **3 stages** ainda reivindicados
+(gate `a_chain_collapses_to_one_seam_but_a_multi_input_kernel_reaches_two`).
+
+**O grafo vermelho-primeiro que faltava agora EXISTE e está escrito** — é o item
+(d) desse gate: `grid → look_at`, com `motion.sort` (sem kernel) em cada porta de
+target. Cozinhe-o com um pump plural e compare contra a CPU pura.
+
+**O que custa hoje:** o shell manda o frame INTEIRO para a CPU (`_ => GpuRoute::
+Cpu`) — nunca errado, nunca rápido. Pinado em
+`two_seams_forfeit_the_gpu_until_the_pump_is_plural` (shell), **e é essa linha que
+a fatia B tem de virar**. Foi pinada de propósito: `_ => Cpu` é um catch-all, e ele
+engoliu o caso de 2 fronteiras no dia em que ele virou alcançável **sem um único
+gate mudar de cor**.
+
+O mapa abaixo continua valendo (e continua sendo LEITURA, não implementação).
 
 Hoje: *"Several boundaries recuse: the motor plans a DAG with N seams (ADR-0127
 D2), but the pump hands over ONE cooked node per tick"*
@@ -325,22 +345,50 @@ DENTRO de um stage saiu para `encode.rs`** (`encode_kernel_stage`: pipeline,
 uniform, bind group, dispatch — 189 LOC). São perguntas diferentes e só a do walk
 é sobre o GRAFO. **535/700** agora — a folga que o broadcast vai gastar.
 
-#### ⚠️ O PRÓXIMO ITEM (a lei de contagem era o pré-requisito dele — agora está lá)
+#### ✅ FECHADO — o BROADCAST (e `motion.look_at`, o 28º kernel)
 
-**Comprimento por-porta / broadcast.** Destrava **4 nós de uma vez** (`look_at`,
-`value.math`, `value.switch`, `motion.drive`).
+**Landou.** `ColumnAccess::ReadBroadcast`: uma porta de comprimento 1 **difunde**
+(elemento `i` lê a linha 0), que é o `1 => vals[0]` do `target_at` da CPU,
+declarado. Absent segue lendo a identidade (o arm `0 =>`); só o caso de
+comprimento 1 é novo. `column_present` ganhou a 3ª regra de comprimento — sem ela
+uma porta de comprimento 1 era julgada **AUSENTE** e lia a identidade, e a
+diferença é um bando inteiro virado para a origem em vez do ponto que o artista
+animou.
 
-⚠️ **JÁ FOI CONSTRUÍDO E REVERTIDO UMA VEZ — leia antes de repetir.** A plumbing
-estava **correta** (campos `n_<porta>` no uniform só para multi-input, anexados
-por ÚLTIMO para não mover offset nenhum, `UNIFORM_BYTES` 64→128, leitor
-`read_<porta>_<col>_bcast(i)` espelhando o `target_at` da CPU) — **os 27 kernels
-ficaram verdes**. O que falhou foi o `look_at` em cima dela, e a causa era esta
-lei de contagem faltando: nada conseguia produzir um campo VALUE de comprimento 1
-no dispositivo, então o leitor de broadcast não tinha o que ler. **Refazer custa
-~20 min** e agora tem chão.
+**Um bitmask, não N campos** (`bcast_one`, bit `p` = "a porta `p` tem exatamente
+um elemento"). A alternativa — um `n_<nome da porta>` por porta — daria ao motor
+uma fatia **dinâmica** do namespace do struct, feita de nomes autorados para o
+ARTISTA, e alargaria o uniform a cada porta nova. Um bit responde a única
+pergunta que o leitor tem, para qualquer aridade, em 4 bytes, sob um nome que o
+`wgsl_field` guarda como os outros campos do motor.
 
-Faça o gate comparar contra os DOIS casos (comprimento 1 e comprimento n) — um
-fixture só com comprimento n passaria com o broadcast quebrado.
+`UNIFORM_BYTES` 64 → **128**: 64 comportava 14 params e mais nada, então um nó com
+muitos params **e** um campo condicional escreveria um param por cima do campo
+seguinte e leria como lixo plausível. É um slot, não alocação por elemento.
+
+**🔴 BUG REAL que o gate pegou (não teoria):** `plan_bindings` **ENUMERAVA** os
+acessos que não escrevem (`Read`, `Consume`, `RefuseIfPresent`, `GatherKey`) e
+mandava todo o resto para `_ => WriteBuffer` — então a variante nova, read-only,
+virou **escritora** em silêncio. Com duas portas de broadcast as duas reivindicaram
+escrever a MESMA coluna e o naga recusou (*"redefinition of `out_v`"*). Com UMA só
+porta teria sido mudo. Havia duas portas para *"isto escreve?"*
+(`ColumnAccess::writes` e essa lista), e elas discordaram assim que a lista ficou
+velha — [[feedback_a_condition_that_enumerates_its_readers_rots]]. Agora o
+`plan_bindings` **pergunta** ao `writes()`.
+
+**Gate: `look_at_broadcasts_a_single_target_and_reads_a_field_per_element`** —
+roda os DOIS comprimentos a partir do mesmo grafo, com um fio movido. Os dois
+comprimentos saem do próprio `value.lfo` (desligado = 1 pela lei de contagem,
+ligado ao grid = N), então o gate falha se o broadcast **ou** a lei regredir.
+Medido: broadcast `|drot| 1,5e-5°` · per-element `7,6e-5°`, 144 elementos.
+3 mutações, 3 mortas (leitor ignora o bitmask ⇒ 327° de erro · comprimento-1
+julgado ausente ⇒ o mesmo 327° · re-enumerar os não-escritores ⇒ o naga de volta).
+
+⚠️ **Todo leitor é qualificado por porta num nó multi-input** — `read_in_P`, não
+`read_P`. A regra é por NÓ, não por coluna, e custou uma rodada.
+
+Ainda destrava, com a plumbing já pronta: `value.math`, `value.switch`,
+`motion.drive`.
 
 ⚠️ **`value.math` vai precisar da 3ª lei** (`max(a.len, b.len)`), e ela **só entra
 junto com o kernel que a consome** — motor sem consumidor foi exatamente o que se
@@ -447,7 +495,7 @@ ela** — que era o que o §2 mandava fazer (*"verifique antes de confiar"*) —
 verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 **COBERTURA**.
 
-**Cobertura: 20 → 27 kernels.**
+**Cobertura: 20 → 28 kernels.**
 
 | commit | o que |
 |---|---|
@@ -464,17 +512,29 @@ verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 | `d51055a4` | `motion.pin_constraint` (26º); um param pode se chamar como um uniform do motor |
 | `02be152a` | `motion.stagger` (27º), com o easing inteiro (8 famílias × 3 direções) |
 | `d6ac6725` | **broadcast tentado e REVERTIDO** — a corrente tem uma etapa antes dela; bug latente medido |
-| (este) | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
+| `8a7ce80d` | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
+| (este) | **o BROADCAST** (`ColumnAccess::ReadBroadcast` + `bcast_one`) e **`motion.look_at`, o 28º kernel** — e o **tripwire DISPAROU**: 2 costuras são medidas, a fatia B está desbloqueada com o grafo vermelho-primeiro escrito |
 
 **Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
 shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada
 integrado, nada pushado** (§0.2).
 
-**Onde o próximo agente começa:** o **broadcast** (§2 C, "O PRÓXIMO ITEM") — o
-pré-requisito dele acabou de pousar, a forma exata já foi provada uma vez, e o
-aviso de "não repita a plumbing antes da lei" agora está satisfeito. Depois
-`motion.look_at`, e então a fatia B vira obrigatória (o tripwire fica vermelho de
-propósito no MESMO commit).
+**Onde o próximo agente começa: a FATIA B** (§2 B) — o tripwire disparou e ela
+deixou de ser hipótese. O grafo vermelho-primeiro está escrito (item (d) do
+`boundary_arity`), o mapa do seam está logo abaixo dela, e a linha do shell que
+tem de virar está pinada e nomeada
+(`two_seams_forfeit_the_gpu_until_the_pump_is_plural`).
+
+Duas perguntas que o mapa NÃO respondeu e que você verifica primeiro: (b) duas
+fronteiras com **prefixos disjuntos** contendo nós sequenciais em cada um; (c) o
+scrub para trás com N fronteiras (o ring é do pump, compartilhado). E lembre da
+**deduplicação**: `plan.boundaries` pode trazer o mesmo nó duas vezes (um `push`
+por porta) — o lado GPU já tolera, um pump plural não.
+
+Se preferir seguir em cobertura antes: `value.math`/`value.switch`/`motion.drive`
+agora só precisam de kernel — a plumbing de broadcast que eles queriam já está lá
+(o `value.math` traz a 3ª lei de contagem, `max(a.len, b.len)`, junto do kernel
+que a consome — nunca antes).
 
 ## §5 — Histórico (não leia salvo arqueologia)
 

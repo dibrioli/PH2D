@@ -69,6 +69,23 @@ pub enum ColumnAccess {
     /// here (nothing is read): the binding declares only *which column on which
     /// port* is disqualifying.
     RefuseIfPresent,
+    /// Read-only, and a **length-1 port BROADCASTS**: element `i` reads row `i`
+    /// when the port is the dispatch length, and row `0` when the port carries
+    /// exactly one value — one number held across the whole field.
+    ///
+    /// This is the third length rule in the engine, and it is the artist-visible
+    /// one. `motion.look_at`'s target is two VALUE fields: wire a bare
+    /// `value.lfo` and the ENTIRE flock turns toward one moving point; wire a
+    /// per-element field and each element aims somewhere else. The CPU expresses
+    /// it as `target_at` (`0 => identity, 1 => vals[0], _ => vals[i]`), and this
+    /// is that function, declared.
+    ///
+    /// Plain [`Self::Read`] cannot express it: presence there means *"this port
+    /// is the dispatch length"*, so a length-1 target would be judged ABSENT and
+    /// silently read its identity — the flock would face the origin instead of
+    /// the point the artist animated. Absent still reads the identity (the
+    /// `0 =>` arm); only the length-1 case is new.
+    ReadBroadcast,
     /// **The `id`-gather key** (ADR-0130), the conditional successor to
     /// [`Self::RefuseIfPresent`] for `motion.integrate`/`motion.spring`. Names
     /// the column this node pairs its per-element state by — an `id` on the
@@ -104,6 +121,7 @@ impl ColumnAccess {
         matches!(
             self,
             ColumnAccess::Read
+                | ColumnAccess::ReadBroadcast
                 | ColumnAccess::ReadWrite
                 | ColumnAccess::ReadWriteExisting
                 | ColumnAccess::Consume
@@ -117,6 +135,7 @@ impl ColumnAccess {
     pub const fn writes(self, present_on_input: bool) -> bool {
         match self {
             ColumnAccess::Read
+            | ColumnAccess::ReadBroadcast
             | ColumnAccess::Consume
             | ColumnAccess::RefuseIfPresent
             | ColumnAccess::GatherKey => false,
@@ -129,6 +148,11 @@ impl ColumnAccess {
     /// base input's copy ride through)?
     pub const fn consumes(self) -> bool {
         matches!(self, ColumnAccess::Consume)
+    }
+
+    /// Does a length-1 port broadcast on this access ([`Self::ReadBroadcast`])?
+    pub const fn broadcasts(self) -> bool {
+        matches!(self, ColumnAccess::ReadBroadcast)
     }
 
     /// Is this binding a plan-time refusal rather than an access?

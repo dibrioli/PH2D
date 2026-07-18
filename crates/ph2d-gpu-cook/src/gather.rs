@@ -37,6 +37,11 @@ pub(crate) fn gather_key_port(
 ///   key's) are paired by id, not position, so `prev_n ≠ n` is NORMAL. Presence
 ///   is simply "carries the column" (any non-empty length) — the length-decouple
 ///   ADR-0130 D4 names. The gather's OWN base-port columns stay dispatch-length.
+/// - **Broadcast** ([`ph2d_nodegraph::gpu::ColumnAccess::ReadBroadcast`]): the
+///   dispatch length OR
+///   exactly one, which element `i` then reads row `0` of. A length-1 port judged
+///   ABSENT here would read its identity, which is the difference between a flock
+///   facing the point the artist animated and a flock facing the origin.
 pub(crate) fn column_present(
     gather_port: Option<usize>,
     count: u32,
@@ -47,6 +52,9 @@ pub(crate) fn column_present(
         None => false,
         Some(s) if gather_port.is_some_and(|kp| b.port != kp) => {
             s.count > 0 && s.cols.contains_key(b.column)
+        }
+        Some(s) if b.access.broadcasts() => {
+            (s.count == count || s.count == 1) && s.cols.contains_key(b.column)
         }
         Some(s) => s.count == count && s.cols.contains_key(b.column),
     }

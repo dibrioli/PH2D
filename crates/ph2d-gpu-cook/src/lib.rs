@@ -167,8 +167,16 @@ pub struct GpuCook {
     reseed: bool,
 }
 
-/// Uniform slot size: count + playhead + up to 14 params, pow2-rounded.
-pub(crate) const UNIFORM_BYTES: u64 = 64;
+/// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
+/// then the conditional engine fields (`gather_prev_n`, the generator's window,
+/// the broadcast mask — appended in that order, each after everything that can
+/// precede it, so adding one never moves an existing offset).
+///
+/// 64 held 14 params and nothing else; a node with many params AND a conditional
+/// field would have run off the end, writing a param into the next field's bytes
+/// and reading as plausible garbage. This is a slot, not an allocation per
+/// element — the headroom is free.
+pub(crate) const UNIFORM_BYTES: u64 = 128;
 
 impl GpuCook {
     pub fn new() -> Self {

@@ -50,6 +50,7 @@ fn registry() -> NodeRegistry {
     // The stand-in for "any of the 52 nodes with no kernel".
     ph2d_node_motion_sort::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
+    ph2d_node_motion_look_at::register(&mut reg).unwrap();
     reg
 }
 
@@ -62,10 +63,29 @@ fn edge(g: &mut Graph, a: NodeId, pa: u16, b: NodeId, pb: u16) {
     .unwrap();
 }
 
-/// Every shape that could plausibly branch the frontier, measured. If ANY of
-/// these ever yields 2+ boundaries, the N-seam shell slice has become real.
+/// **The tripwire FIRED — and this is what it turned into.**
+///
+/// It used to assert that no plan could leave more than one seam, with a message
+/// saying that the day a multi-input kernel landed, the N-seam shell slice
+/// (handoff §2 B) became real and unbuilt. `motion.look_at` landed. Measured:
+/// two uncovered inputs on two different ports leave **exactly two** boundaries,
+/// with three stages still claimed.
+///
+/// So the gate stops predicting and starts recording. It pins two facts that a
+/// future change must not blur:
+///
+/// - the shapes that DO collapse to one seam still do (a chain stops at the
+///   first uncovered node; a refusing second port recedes rather than branching)
+///   — that knowledge was expensive and is still true;
+/// - and the multi-seam shape is REACHABLE, with the fixture that reaches it.
+///   **This graph is slice B's red-first test**: cook it with a plural pump and
+///   compare against the pure CPU.
+///
+/// Today the shell forfeits the GPU entirely for such a plan (`_ => GpuRoute::
+/// Cpu`) — safe, never wrong, and the whole cost slice B removes. That half is
+/// pinned in the shell, next to the route itself.
 #[test]
-fn no_plan_can_leave_more_than_one_seam_today() {
+fn a_chain_collapses_to_one_seam_but_a_multi_input_kernel_reaches_two() {
     let reg = registry();
 
     // (a) A CHAIN of two uncovered nodes: the walk stops at the FIRST one, so
@@ -122,12 +142,40 @@ fn no_plan_can_leave_more_than_one_seam_today() {
     ] {
         assert!(
             plan.boundaries.len() <= 1,
-            "{name}: a plan left {} seams — a multi-input kernel has landed, so \
-             the N-seam shell slice (handoff §2 B) is now REAL and unbuilt. \
-             Build it; then this gate becomes the parity gate for it.",
+            "{name}: this shape used to collapse to one seam and no longer does \
+             ({} seams) — the frontier logic changed under it",
             plan.boundaries.len()
         );
     }
+
+    // (d) `motion.look_at` with BOTH target ports uncovered — the shape that
+    //     could not exist before a multi-input kernel had a kernel. The walk
+    //     claims the node (its base is covered) and stops on each target port
+    //     separately, so the frontier genuinely BRANCHES.
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let la = g.add_node("motion.look_at");
+    let tx = g.add_node("motion.sort");
+    let ty = g.add_node("motion.sort");
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, 0, la, 0);
+    edge(&mut g, tx, 0, la, 1);
+    edge(&mut g, ty, 0, la, 2);
+    edge(&mut g, la, 0, out, 0);
+    let branched = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert_eq!(
+        branched.boundaries,
+        vec![(tx, 0), (ty, 0)],
+        "two uncovered inputs on two ports must leave TWO seams — if this ever \
+         reads as one again, either the walk stopped branching or `look_at` lost \
+         its kernel, and slice B's premise went with it"
+    );
+    assert!(
+        branched.stages.len() >= 3,
+        "and the GPU still claims real work behind those seams ({} stages) — \
+         that claim is exactly what the shell forfeits today",
+        branched.stages.len()
+    );
 }
 
 /// The cost that DOES bite: one uncovered node downstream of the sim forfeits

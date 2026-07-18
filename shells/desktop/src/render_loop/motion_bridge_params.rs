@@ -109,16 +109,21 @@ pub(super) fn apply_param_edits(
                     // ADR-0130 D7: an edit that re-numbers the emitter's ids
                     // (rate/life/max) moves the id↔particle map, so the GPU sim's
                     // paired state would mispair the new window against the old.
-                    // Decide BEFORE `set_param` consumes `param`; forget (re-bake
-                    // from the seed) after the edit lands.
-                    let renumbers_sim = super::gpu::edit_renumbers_emitter(&inst.type_name, param);
+                    // Decided BEFORE `set_param` consumes `param`, and only when
+                    // the value actually MOVES — a slider re-emits its intent every
+                    // frame of a gesture, and restarting the sim on a value that
+                    // did not change would keep it pinned at the seed.
+                    let renumbers_sim = super::gpu::edit_renumbers_emitter(&inst.type_name, param)
+                        && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON;
                     motion.doc.graph.set_param(nid, param, value as f32);
                     if let Some(tn) = type_name {
                         apply_channel_presets(motion, nid, &tn, value as f32);
                     }
                     motion.pump.mark_dirty();
                     if renumbers_sim {
-                        motion.gpu_cook.forget_state();
+                        // RESTART from the tick on screen — never `forget_state`,
+                        // whose re-derive is O(current tick) and freezes a drag.
+                        motion.gpu_cook.reseed_from_next_tick();
                     }
                 }
                 // A formula edit (a `motion.expression` text param) — the additive text

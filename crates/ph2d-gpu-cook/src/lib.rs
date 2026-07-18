@@ -202,6 +202,10 @@ pub struct GpuCook {
     /// The backwards-scrub ring (D5): past states, held by refcount, on the
     /// device. See [`ring`].
     ring: GpuCheckpointRing,
+    /// A **live edit** invalidated the sim: the next [`Self::rewind_for`] seeds AT
+    /// the tick it is asked for instead of anchoring at 0. See
+    /// [`Self::reseed_from_next_tick`].
+    reseed: bool,
 }
 
 /// Uniform slot size: count + playhead + up to 14 params, pow2-rounded.
@@ -419,6 +423,32 @@ impl GpuCook {
         self.prev.clear();
         self.last_tick = None;
         self.ring.clear();
+        self.reseed = false;
+    }
+
+    /// Drop the sim state and **restart it AT the next tick cooked**, rather than
+    /// re-deriving the history the old parameters produced.
+    ///
+    /// This is the **live-edit** invalidation (ADR-0130 D7), and it exists because
+    /// [`Self::forget_state`] is the wrong one for an edit in flight.
+    /// `forget_state` means *"this state is invalid, re-derive it"* — and
+    /// [`Self::rewind_for`] honours that by anchoring an empty ring at tick 0, so
+    /// the caller re-cooks `0..=target`. For a discrete edit that is one honest
+    /// bake (Blender/Houdini re-bake a sim when you edit it). For a param a user
+    /// is **holding and dragging**, it is `O(current tick)` re-simulated EVERY
+    /// FRAME — which is not a bake, it is a freeze (the smoke: *"re-bake travado"*).
+    ///
+    /// An artist dragging an emitter's `rate` is asking *"what does it look like
+    /// with THIS rate?"*, not *"replay the last forty seconds with it"*. So the
+    /// honest answer is a fountain that RESTARTS: seed at the tick on screen and
+    /// step forward from there, `O(1)` per edit. The scrub ring is dropped too —
+    /// its checkpoints are the old params' sim, and a scrub through them would
+    /// show a history this document never had.
+    pub fn reseed_from_next_tick(&mut self) {
+        self.prev.clear();
+        self.ring.clear();
+        self.last_tick = None;
+        self.reseed = true;
     }
 
     /// Rewind (if needed) so that cooking `first..=target` in order stands the
@@ -437,6 +467,15 @@ impl GpuCook {
     /// would explode — it would just quietly show the future's pose and call it
     /// the past.
     pub fn rewind_for(&mut self, target: u64) -> u64 {
+        // A LIVE EDIT invalidated the sim (D7): seed AT the target — do NOT
+        // re-derive the history the old params produced. One cook, not `target`
+        // of them; see [`Self::reseed_from_next_tick`] for why that distinction
+        // is the difference between a bake and a freeze.
+        if std::mem::take(&mut self.reseed) {
+            self.prev.clear();
+            self.last_tick = None;
+            return target;
+        }
         match self.last_tick {
             Some(t) if target > t => t + 1,
             _ => {

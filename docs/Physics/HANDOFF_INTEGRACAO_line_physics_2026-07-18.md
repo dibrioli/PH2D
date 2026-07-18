@@ -11,7 +11,7 @@
 | | |
 |---|---|
 | Branch | `line/physics` |
-| HEAD | `<preenchido no fechamento>` |
+| HEAD | `3238e210` |
 | Base do fork (merge-base com `main`) | `389676f9` |
 | Commits | **33** |
 | Waves cobertas | W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · **W4 (a última do plano)** |

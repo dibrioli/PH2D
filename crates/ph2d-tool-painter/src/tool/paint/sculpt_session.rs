@@ -11,6 +11,26 @@ use super::sculpt::SculptFamily;
 use crate::tool::PainterTool;
 use std::sync::Arc;
 
+/// The stroke's direction AT a dab, from the path itself rather than from the smoothed tangent.
+///
+/// Dab centres are exact samples of the path, so a backward difference between two of them trails by half
+/// a dab spacing — about a pixel. [`ph2d_painter_brush::Dab::dir`] is a *smoothed* heading (the Rake
+/// texture rides it and wants the smoothing), and it trails by roughly the brush RADIUS, which is why the
+/// chisel's groove drifted further off the harder the artist leaned on brush size.
+///
+/// Falls back to the smoothed heading when there is no previous centre (the stroke's first dab) or when
+/// the dab has not moved (a tap, a held brush) — in both cases the difference carries no direction and
+/// inventing one would make the mark depend on float noise.
+fn path_axis(prev: Option<[f32; 2]>, center: [f32; 2], smoothed: [f32; 2]) -> [f32; 2] {
+    let Some(p) = prev else { return smoothed };
+    let (dx, dy) = (center[0] - p[0], center[1] - p[1]);
+    let len = (dx * dx + dy * dy).sqrt();
+    if len < 1e-4 {
+        return smoothed;
+    }
+    [dx / len, dy / len]
+}
+
 impl PainterTool {
     // ── Session lifecycle ───────────────────────────────────────────────────────────────────────
 
@@ -265,13 +285,30 @@ impl PainterTool {
                             displaced: &mut displaced,
                         }),
                     },
-                    // The V's axis — the dab's OWN smoothed heading while **Rake** is on (so the groove
-                    // curves with the hand, not with some average direction), or the brush's fixed dab
-                    // angle while it is off. One function answers it, so the checkbox and the kernel cannot
-                    // disagree about what "the direction of the stroke" means.
+                    // The V's axis — the stroke's direction while **Rake** is on (so the groove curves
+                    // with the hand), or the heading it entered at while it is off. One function answers
+                    // it, so the checkbox and the kernel cannot disagree about what "the direction of the
+                    // stroke" means.
+                    //
+                    // ⚠️ **From the dab CENTRES, not from `Dab::dir`.** `dir` is the *smoothed* tangent the
+                    // Rake texture rides, and a smoothed tangent TRAILS: measured on a quarter circle, the
+                    // groove came out **9° behind at radius 8 and up to 52° behind at radius 60** — the
+                    // lag grows with the brush, because the smoothing window does. Half a right angle off
+                    // does not read as "the knife lags"; it reads as *"Rake não consegue rotacionar o
+                    // brush"* (Enio, 2026-07-18), which is how it was reported.
+                    //
+                    // The dab centres are exact samples of the path, so the difference between two of them
+                    // trails by half a dab SPACING (~1 px) instead of ~1 radius. `prev_center` is already
+                    // maintained here for the Conserve bank, and it already survives batch boundaries via
+                    // `last_bank_center` — so the axis is continuous across pointer events, which a
+                    // per-batch estimate would not be.
+                    //
+                    // `Dab::dir` remains the fallback, and it is the RIGHT one: on the first dab of a
+                    // stroke there is no previous centre, and the heading warm-up exists precisely so that
+                    // dab already carries a settled direction.
                     ph2d_painter_brush::sculpt::Chisel {
                         tilt: chisel_tilt,
-                        dir: self.chisel_dir(d.dir),
+                        dir: self.chisel_dir(path_axis(prev_center, d.center, d.dir)),
                     },
                     mask.as_ref().map(|m| m.as_slice()),
                     w,

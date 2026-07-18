@@ -28,159 +28,10 @@ use ph2d_flip_fill::{FillError, FillMode, FillParams, fill_at};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
-/// Margem da dilatação do fill, em px de tela — a folga que cobre o erro de
-/// VETORIZAÇÃO do contorno (marching squares + RDP + alisamento deixam o contorno até
-/// ~1,5 px DENTRO do eixo nos picos de tremor).
-///
-/// **O valor saiu de uma varredura no pixel**, não do olho: dois defeitos OPOSTOS se
-/// tocam aqui (`gpu_fill_fit::sweep_tuck`, medido no anel da linha, 256 raios):
-///
-/// | margem | fundo sob a linha | transbordo além dela |
-/// |---|---|---|
-/// | 0,0 | **4 px** (o defeito do smoke) | 5 |
-/// | **0,5** | **0** | **16** |
-/// | 1,5 | 0 | 99 |
-/// | 2,0 | 0 | 195 |
-///
-/// `0,5` é o menor valor que zera o vazamento — margem a mais volta a empurrar a cor
-/// para FORA da linha, que é exatamente o defeito que matou o `grow = +2` default
-/// (BUGS #11).
+use crate::flip_fill_dilate::{
+    boundaries, fill_stroke, fill_tuck_world, local_line, mean_line_width,
+};
 use crate::flip_fill_target::filled_shape_target;
-
-const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno, MEDIDO
-
-/// A margem acima, **em unidades de MUNDO** — que é a unidade em que a espessura vive
-/// desde o §4.C.6 ("o Size mede o MUNDO", `SIZE_PX_PER_WORLD = 100`).
-///
-/// ⚠️ **Isto era um bug de UNIDADE, e ele dominava tudo.** O `FILL_TUCK_PX` é medido em
-/// PIXELS (a tabela do sweep acima está em px), e estava sendo somado direto a uma
-/// largura em unidades de mundo: `2 × 0,5 = 1,0` **unidade de mundo = 100 px** de
-/// dilatação espúria, onde se queria 1 px. Num desenho com pincel default (~0,06 de
-/// mundo) a margem ficava **17× mais larga que a própria linha** — a cor virava um blob
-/// arredondado que ignorava o line-art, e nenhum valor de Gap ou Trap mexia nisso
-/// (os dois movem a GEOMETRIA; isto é a dilatação do RENDER).
-///
-/// Regressão do §4.C.6: a lei nova foi aplicada ao `boundaries()` (de onde o
-/// `× px_to_world` sumiu) e esta constante ficou para trás. É o preço documentado de
-/// uma medida de TELA sobreviver numa fronteira que passou a falar MUNDO
-/// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
-fn fill_tuck_world() -> f32 {
-    2.0 * FILL_TUCK_PX / ph2d_tool_flip::SIZE_PX_PER_WORLD
-}
-
-/// As linhas que delimitam o preenchimento: TODOS os traços do desenho que não são,
-/// eles próprios, um preenchimento sem contorno.
-///
-/// Um fill anterior (`hide_stroke`) **não** é fronteira — senão a 2ª cor não conseguiria
-/// entrar por baixo da 1ª. Mas um fechamento de gap persistente (que também é
-/// `hide_stroke`) **é** — é exatamente para isso que ele existe. Os dois se distinguem
-/// pelo `fill`: o preenchimento tem cor; o fechamento não.
-pub(crate) fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
-    drawing
-        .strokes
-        .iter()
-        .filter(|s| !(s.hide_stroke && s.fill.is_some())) // fills anteriores não barram
-        .filter(|s| s.len() >= 2)
-        .map(|s| {
-            let pts = s.positions().to_vec();
-            // **A conversão SUMIU em §4.C.6, e some por CURA, não por descuido.**
-            //
-            // Ela existia porque o documento falava duas línguas: os PONTOS em unidades de
-            // mundo e as LARGURAS em px de TELA. Misturar as duas punha uma linha de 3
-            // unidades de mundo (≈324 px!) num desenho de 2,8 — o clique caía sempre
-            // DENTRO do traço e o balde respondia "clicked on a line", sempre. O `×
-            // px_to_world` era o remendo.
-            //
-            // Agora o Size é uma medida do MUNDO (`size_to_world`), então `width` e `pos`
-            // são a mesma unidade e a meia-espessura é só `w/2`. De quebra o balde deixa
-            // de depender do ZOOM do clique — o mesmo clique no mesmo lugar responde o
-            // mesmo em qualquer aproximação.
-            let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5).collect();
-            (pts, half, s.closed)
-        })
-        .collect()
-}
-
-/// O traço que materializa a região preenchida.
-///
-/// **A largura do contorno é a espessura da LINHA** — e isso não é um contorno de
-/// verdade (o `hide_stroke` segue ligado): é a **dilatação da cor por baixo do
-/// line-art**, sem a qual a arte não fecha.
-///
-/// A geometria do fill termina no **eixo** da linha (BUGS #14 — a única âncora imune
-/// ao zoom), e o eixo fica a meia-espessura da silhueta. Sem dilatar, a metade externa
-/// da linha não tem cor por baixo: com um pincel MACIO ela mistura com o fundo, e o
-/// contorno ganha um halo escuro (o *"o fill não se ajusta à linha"* do smoke). Com a
-/// dilatação, a cor vai exatamente até a silhueta — e como as duas grandezas estão na
-/// MESMA unidade (MUNDO, §4.C.6), o encaixe é invariante ao zoom por CONSTRUÇÃO, que era
-/// todo o ponto da âncora no eixo.
-///
-/// Largura VARIÁVEL (pressão): usa-se a média. A dilatação erra por (w_local − w_média)/2
-/// nos pontos extremos — sub-pixel num traço de mouse (largura constante), e sempre
-/// menor que o erro de não dilatar nada.
-fn fill_stroke(
-    outer: &[Vec2],
-    holes: Vec<Vec<Vec2>>,
-    color: Rgba,
-    opacity: f32,
-    widths: &[f32],
-) -> FlipStroke {
-    let mut s = FlipStroke::new();
-    for (i, &p) in outer.iter().enumerate() {
-        s.push_point(Point {
-            pos: p,
-            // A dilatação (a cor entra por baixo da linha), **por ponto**: ela veste a
-            // linha LOCAL, não a média do desenho.
-            width: widths.get(i).copied().unwrap_or(0.0),
-            opacity: 1.0,
-            color,
-        });
-    }
-    s.closed = true;
-    s.hide_stroke = true; // não é line-art: é a região (o `is_fill` continua valendo)
-    s.holes = holes;
-    s.fill = Some(Fill { color, opacity });
-    s
-}
-
-/// **A espessura da linha que este ponto do contorno está abraçando** (unidades de
-/// mundo) — o dado que a média global não tinha.
-///
-/// O contorno do balde termina no EIXO da linha (BUGS #14), então o line-art mais
-/// próximo de um ponto do contorno é, por construção, a linha que ele veste.
-fn local_line_width(drawing: &FlipDrawing, p: Vec2) -> Option<f32> {
-    drawing
-        .strokes
-        .iter()
-        .filter(|s| !s.hide_stroke)
-        .flat_map(|s| {
-            s.positions()
-                .iter()
-                .copied()
-                .zip(s.widths().iter().copied())
-        })
-        .filter(|(_, w)| *w > 0.0)
-        .min_by(|(a, _), (b, _)| {
-            let da = (a.x - p.x).powi(2) + (a.y - p.y).powi(2);
-            let db = (b.x - p.x).powi(2) + (b.y - p.y).powi(2);
-            da.total_cmp(&db)
-        })
-        .map(|(_, w)| w)
-}
-
-/// A espessura MÉDIA do line-art que delimita a região (unidades de MUNDO) — a dilatação que
-/// o contorno do fill veste. Ignora as regiões (que não têm tinta) e os fechamentos de
-/// gap (largura zero).
-fn mean_line_width(drawing: &FlipDrawing) -> f32 {
-    let (sum, n) = drawing
-        .strokes
-        .iter()
-        .filter(|s| !s.hide_stroke)
-        .flat_map(|s| s.widths().iter().copied())
-        .filter(|w| *w > 0.0)
-        .fold((0.0f32, 0usize), |(sum, n), w| (sum + w, n + 1));
-    if n == 0 { 0.0 } else { sum / n as f32 }
-}
 
 /// O traço invisível que fecha um vão — persistente, sem cor, sem preenchimento.
 fn closure_stroke(a: Vec2, b: Vec2) -> FlipStroke {
@@ -424,7 +275,19 @@ pub(crate) fn fill_click(
     let widths: Vec<f32> = r
         .outer
         .iter()
-        .map(|&p| local_line_width(drawing, p).unwrap_or(fallback) + fill_tuck_world())
+        .map(|&p| match local_line(drawing, p) {
+            // `d` = o quanto ESTE ponto do contorno caiu para dentro do eixo. A cor
+            // precisa de `w/2 + d` para alcançar a borda externa da linha, logo a
+            // dilatação é `w + 2d` — e onde o contorno acertou o eixo (`d ≈ 0`) ela é
+            // exatamente `w`: **nem um pixel de transbordo**.
+            // ⚠️ Margem FIXA, de propósito — ver o doc do `fill_tuck_world`. Uma
+            // compensação por-ponto (`w + 2d`) foi tentada e **revertida sem shipar**:
+            // ela precisa do SINAL (o contorno caiu para DENTRO ou para FORA do eixo?),
+            // e sem ele dobra o erro metade das vezes. Medido: a compensação adaptativa
+            // dava 0,0178 na mediana contra 0,005 da margem fixa.
+            Some((w, _)) => w + fill_tuck_world(),
+            None => fallback + fill_tuck_world(),
+        })
         .collect();
     let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, &widths);
 

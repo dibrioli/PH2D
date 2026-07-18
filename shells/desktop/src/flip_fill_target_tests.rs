@@ -4,7 +4,8 @@
 //! `flip_fill_target::filled_shape_target`.
 
 use crate::flip_fill::tests::{boxed_drawing, style};
-use crate::flip_fill::{boundaries, fill_click, ring_area, ring_contains};
+use crate::flip_fill::{fill_click, ring_area, ring_contains};
+use crate::flip_fill_dilate::boundaries;
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, Point, Rgba};
 use ph2d_tool_flip::FillMode as ToolFillMode;

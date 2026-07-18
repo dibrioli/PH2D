@@ -7,6 +7,7 @@
 pub mod checkpoint;
 pub mod defaults;
 pub mod drag;
+pub mod joints;
 pub mod layers;
 
 use defaults::BodyDefaults;

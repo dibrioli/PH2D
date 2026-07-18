@@ -18,16 +18,17 @@
 //!
 //! ### What this crate is NOT (yet)
 //!
-//! M10 ships the wrapper + the cross-OS determinism gate. ECS
-//! integration (`PhysicsWorld` ↔ `SimWorld` adapter) lands when there
-//! is a real game scene asking for it. Continuous Collision Detection
-//! (CCD), joints, and force fields all work via the underlying Rapier
-//! API but have no convenience helpers here yet.
+//! M10 shipped the wrapper + the cross-OS determinism gate; the ECS
+//! integration it said was waiting for a real scene is now
+//! `ph2d-physics-ecs`, and joints landed with it (see [`world::joints`]).
+//! Continuous Collision Detection and force fields still work via the
+//! underlying Rapier API but have no convenience helpers here.
 
 pub mod world;
 
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::defaults::BodyDefaults;
+pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{BodyDesc, PhysicsWorld, ShapeDesc};
 

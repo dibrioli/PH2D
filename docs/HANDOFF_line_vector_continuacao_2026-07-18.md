@@ -122,6 +122,25 @@ pilha compõe. Duas cláusulas inegociáveis, escritas no ADR-0129 §3:
 - **as alças vivem no espaço da FONTE** (o knotholder do Inkscape é *"totally unaffected by the
   visible distorted path"*); numa pilha aninhada, a de dentro **é** deformada pela de fora.
 
+A pesquisa está em [`docs/Vector Module/20_pesquisa_ferramentas_de_artista.md`](Vector%20Module/20_pesquisa_ferramentas_de_artista.md)
+(o Inkscape tem ~50 LPEs; o doc mapeia quais valem e por quê).
+
+> ⚠️ **DECIDA ISTO ANTES DE ESCREVER CÓDIGO: "como NÓS" encosta num contrato CONGELADO?**
+> O contrato de nós é congelado (CLAUDE.md §6 / [ADR-0039](architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)):
+> `NodeOp=2` · `OpResolver=1` · `NodeManifest=8`, gate `architecture_contract_surface`. Um **nó novo**
+> é drop-crate e não encosta em nada. Mas um **param que não seja `f32`** (uma curva, um enum de
+> efeito, um path) encostaria — e aí é **PARE e reporte ao Enio + ADR**, não contorne.
+>
+> **O precedente já existe e evita a parada:** a linha `line/motion-value` resolveu exatamente isso
+> com o **canal de TEXT PARAM** (`Graph::set_text_param` + `EvalCtx::text_param`) — os params vivem
+> no `Graph`, **não** no `NodeManifest`, e por isso a `motion.expression` nasceu sem tocar o
+> contrato. CLAUDE.md chama isso de *"o padrão canônico para param não-f32"*. Leia-o antes de propor
+> bumpar o manifest.
+>
+> E há a pergunta anterior a essa: **LPE precisa mesmo ser nó?** Os três objetos vivos desta linha
+> (Live Corners, Blend, Envelope) são **componentes ECS** com recook por frame, não nós — e é o
+> desenho que funcionou três vezes. "Como nós" é a palavra da pesquisa, não uma decisão tomada.
+
 ### 4.2 — Morph vivo (`t` animável)
 
 O desenho é o do **CONECTOR**: uma entidade cuja geometria é função pura da relação, re-cozida por

@@ -24,3 +24,9 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 # (the editor-core widget painters take `&mut VectorScene` / `&mut TextSystem`).
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+# Behavioural seam gates (DIRETIVA §5 DoD): drive real ValueChanged events
+# through `apply_event` and assert the param intent that comes out — the only
+# way to prove the soft/hard limit split actually reaches the document.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

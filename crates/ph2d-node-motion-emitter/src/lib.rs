@@ -44,8 +44,10 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod hash;
+mod params_ui;
 mod trig;
 use hash::rand01;
+use params_ui::{PARAM_HARD_MAX, PARAM_HINTS};
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -388,94 +390,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
-
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-/// Param UI hints (M1.P1).
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "rate",
-        label: "Rate",
-        min: 0.0,
-        max: 200.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "life",
-        label: "Life",
-        min: 0.1,
-        max: 20.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "speed",
-        label: "Speed",
-        min: 0.0,
-        max: 20.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "angle",
-        label: "Angle",
-        min: 0.0,
-        max: 360.0,
-        step: 1.0,
-        widget: ParamWidget::Angle,
-    },
-    ParamUiHint {
-        param: "spread",
-        label: "Spread",
-        min: 0.0,
-        max: 360.0,
-        step: 1.0,
-        widget: ParamWidget::Angle,
-    },
-    ParamUiHint {
-        param: "x",
-        label: "Origin X",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "y",
-        label: "Origin Y",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "seed",
-        label: "Seed",
-        min: 0.0,
-        max: 100.0,
-        step: 1.0,
-        widget: ParamWidget::Seed,
-    },
-    ParamUiHint {
-        param: "max",
-        label: "Max Particles",
-        min: 1.0,
-        max: 4096.0,
-        step: 1.0,
-        widget: ParamWidget::IntSlider,
-    },
-    ParamUiHint {
-        param: "size",
-        label: "Size",
-        min: 0.01,
-        max: 2.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-];
 
 #[cfg(test)]
 mod tests {

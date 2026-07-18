@@ -18,7 +18,9 @@ use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
 mod ui;
-pub use ui::{NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamUiHint, ParamWidget};
+pub use ui::{
+    NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamHardMax, ParamUiHint, ParamWidget,
+};
 
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).
@@ -33,6 +35,7 @@ pub struct NodeRegistry {
     /// declared `ParamSpec`), keyed the same way. A `&'static` slice per type so
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
+    param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
     /// GPU/M5 Fase 1 (ADR-0126) — per-type WGSL compute kernel, keyed the same
     /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
     /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
@@ -107,6 +110,23 @@ impl NodeRegistry {
     /// param has no hint).
     pub fn param_ui(&self, id: NodeTypeId) -> Option<&'static [ParamUiHint]> {
         self.param_ui.get(&id).copied()
+    }
+
+    /// Register the params whose typed entry reaches past their slider
+    /// ([`ParamHardMax`]). Additive; last write wins.
+    pub fn register_param_hard_max(&mut self, id: NodeTypeId, limits: &'static [ParamHardMax]) {
+        self.param_hard_max.insert(id, limits);
+    }
+
+    /// The typed-entry ceiling for `(id, param)`, if one was registered. `None`
+    /// means "the slider's `max`", which is what every param without an entry
+    /// has always meant.
+    pub fn param_hard_max(&self, id: NodeTypeId, param: &str) -> Option<f32> {
+        self.param_hard_max
+            .get(&id)?
+            .iter()
+            .find(|l| l.param == param)
+            .map(|l| l.max)
     }
 
     /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0126).

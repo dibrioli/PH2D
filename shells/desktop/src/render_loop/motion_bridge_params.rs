@@ -489,12 +489,22 @@ pub(super) fn build_params_snapshot(
                 // value. That is the correctness half: no clamp, no lie, no
                 // destroy-on-touch, whatever put the value there.
                 let (min, max) = contain(min, max, value_of(spec.name));
+                // The typed ceiling, when the node declared one wider than the
+                // drag range. `max` is the floor of it: a hard limit that sat
+                // BELOW the slider would silently un-type values the slider can
+                // still reach.
+                let hard_max = motion
+                    .registry
+                    .param_hard_max(type_id, spec.name)
+                    .unwrap_or(max)
+                    .max(max);
                 ScalarRow {
                     name: spec.name,
                     label: h.label.to_string(),
                     value,
                     min: f64::from(min),
                     max: f64::from(max),
+                    hard_max: f64::from(hard_max),
                     step: f64::from(step),
                     integer: h.widget.is_integer(),
                     driven,
@@ -527,6 +537,7 @@ pub(super) fn build_params_snapshot(
                     value,
                     min: f64::from(min),
                     max: f64::from(max),
+                    hard_max: f64::from(max),
                     step: 0.1,
                     integer: false,
                     driven,

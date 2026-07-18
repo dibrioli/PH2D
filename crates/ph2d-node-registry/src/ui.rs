@@ -122,7 +122,30 @@ pub struct ParamUiHint {
     /// English, result-named label (HR-15).
     pub label: &'static str,
     pub min: f32,
+    /// The **soft** maximum: how far the SLIDER drags. Also the typed ceiling
+    /// unless a [`ParamHardMax`] widens it.
     pub max: f32,
     pub step: f32,
     pub widget: ParamWidget,
+}
+
+/// A param whose typed entry reaches further than its slider drags — Blender's
+/// **soft vs hard limits**, and the same reason: the useful drag range and the
+/// legal range are different questions. `rate` on `motion.emitter` is the case
+/// that forced it — a fountain is authored between 0 and ~12k particles/sec, but
+/// a one-frame burst is a legitimate `rate` in the millions paired with a
+/// millisecond `life`, and no slider should have to span that to allow it.
+///
+/// Registered as its own additive side-table rather than a field on
+/// [`ParamUiHint`] **for a mechanical reason worth stating**: the hint is a
+/// struct literal at 275 sites across 78 crates, and a new field is 275 edits to
+/// express one exception. A param with no entry here types to its soft `max`,
+/// which is what every existing hint already means — so nothing moves by
+/// default.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ParamHardMax {
+    /// The `ParamSpec::name` this widens.
+    pub param: &'static str,
+    /// The typed-entry ceiling. Must be ≥ the hint's `max` to mean anything.
+    pub max: f32,
 }

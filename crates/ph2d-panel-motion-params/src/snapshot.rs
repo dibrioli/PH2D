@@ -101,7 +101,13 @@ pub struct ScalarRow {
     /// Current value: the per-instance override if set, else the manifest default.
     pub value: f64,
     pub min: f64,
+    /// The **soft** maximum: how far the slider drags.
     pub max: f64,
+    /// The **hard** maximum: how far a TYPED value may go. Equals [`Self::max`]
+    /// unless the node registered a `ParamHardMax` (Blender's soft/hard limits).
+    /// The slider cannot represent anything above `max`, so a value up here is
+    /// authored by the box and the box alone — see the params panel's paint.
+    pub hard_max: f64,
     pub step: f64,
     /// The chip snaps to whole numbers (count / index / seed).
     pub integer: bool,

@@ -215,6 +215,27 @@ fn on_value_changed(
 ) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
         if id == param_chip_id(slot) {
+            // Normally the chip is a MIRROR of the slider: the affine drives it,
+            // it re-fires ValueChanged, and swallowing that is what keeps one
+            // gesture from notifying twice.
+            //
+            // Above the slider's soft `max` there is nothing to mirror. The track
+            // is 0..1 over the soft span, so it saturates at 1.0 and the slider
+            // would report `max` — turning a typed 4.000.000 into 12.000 without
+            // a word. Up there the box is the only widget that can hold the
+            // value, so it speaks for itself.
+            let ParamRow::Scalar(row) = &snap.rows[slot] else {
+                return EventOutcome::Consumed;
+            };
+            let typed = number_value(host.store(), id);
+            if row.driven || typed <= row.max {
+                return EventOutcome::Consumed;
+            }
+            push_param_intent(MotionParamIntent::SetParam {
+                node: snap.node,
+                param: row.name,
+                value: if row.integer { typed.round() } else { typed },
+            });
             return EventOutcome::Consumed;
         }
         // The standalone number box of an Angle / Seed row. An Angle param IS
@@ -456,7 +477,13 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
         }
         // Range (chip typed-value clamp/step) + slider↔chip affine (track 0..1 →
         // value): display = track * span + min. Integer rows snap the chip.
-        store.set_number_range(chip_id, row.min, row.max, row.step);
+        //
+        // The CHIP gets the HARD ceiling and the slider keeps the soft one: the
+        // drag range and the legal range are different questions (Blender's soft
+        // vs hard limits). Above `row.max` the affine below saturates the track
+        // at 1.0, so such a value cannot come back through the slider — which is
+        // exactly why `on_value_changed` lets the chip speak for itself up there.
+        store.set_number_range(chip_id, row.min, row.hard_max, row.step);
         if row.integer {
             store.link_slider_number_mapped_integer(
                 slider_id,

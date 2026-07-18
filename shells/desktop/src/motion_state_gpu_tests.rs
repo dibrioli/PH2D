@@ -289,3 +289,38 @@ fn the_simulation_demo_document_plans_as_a_fully_gpu_loop() {
         "the `forces` port must read the chain's accumulated accel"
     );
 }
+
+/// The fountain's ALIVE COUNT is a product fact, and it was wrong twice without
+/// anything going red: the demo asked for 3.000 while `rate × life` really
+/// bounded it at 4.200, and the emitter's `max` UI hint still advertised the old
+/// 4096 ceiling. A count is the one thing an artist reads off this demo at a
+/// glance, so it gets stated here rather than inferred from three params.
+#[test]
+fn the_emitter_fountain_demo_is_actually_dense() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks =
+        build_gpu_emitter_demo_document(&mut doc, &registry).expect("well-typed emitter demo");
+    let out = *sinks.first().expect("one sink");
+
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let mut lowered = Vec::new();
+    // Well past `life`, so the window is full rather than still filling.
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &doc.graph,
+        &registry,
+        out,
+        10.0,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        &mut lowered,
+    )
+    .expect("cpu cook");
+    assert_eq!(
+        lowered.len(),
+        12_000,
+        "the fountain must run the window it advertises"
+    );
+}

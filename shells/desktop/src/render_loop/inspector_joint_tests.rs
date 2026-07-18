@@ -125,7 +125,10 @@ fn the_new_joint_lands_between_the_two_bodies() {
     let (mut sim, hook, plank) = two_bodies(true);
     let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
     let t = sim.world().get::<Transform>(joint).expect("transform");
-    assert_eq!(t.translation.y, 5.5, "hook at 6, plank at 5 → pivot at 5.5");
+    assert_eq!(
+        t.translation.y, 5.5,
+        "hook at 6, plank at 5 -> pivot at 5.5"
+    );
 }
 
 /// **Degrees in the Inspector, radians in the component.**
@@ -146,7 +149,7 @@ fn the_angle_fields_convert_at_the_boundary() {
         &queue,
         &reg,
     );
-    apply_editor_commands(sim.world_mut(), &queue, &reg);
+    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commands apply");
 
     let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     assert!(

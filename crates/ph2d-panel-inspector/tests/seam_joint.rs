@@ -15,7 +15,7 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::{EventOutcome, Panel};
+use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::screens::hero::{InspectorJointInfo, JointFieldEdit};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_joint};

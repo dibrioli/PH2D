@@ -172,10 +172,10 @@ pub(crate) fn create_joint(sim: &mut SimWorld, a_bits: u64, b_bits: u64) -> Opti
 
 /// The entity's name, assigning a unique one first if it has none.
 fn ensure_named(sim: &mut SimWorld, entity: Entity, base: &str) -> Option<String> {
-    if let Some(n) = sim.world().get::<Name>(entity) {
-        if !n.as_str().is_empty() {
-            return Some(n.as_str().to_string());
-        }
+    if let Some(n) = sim.world().get::<Name>(entity)
+        && !n.as_str().is_empty()
+    {
+        return Some(n.as_str().to_string());
     }
     let fresh = crate::name_unique::unique_name(sim, base);
     sim.world_mut()

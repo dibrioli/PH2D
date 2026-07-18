@@ -40,6 +40,17 @@ type BodyQuery = QueryState<(
     &'static Transform,
 )>;
 
+/// A joint waiting to be handed to the solver: which entity authored it, what
+/// it is, the two body handles, and the two body ENTITIES. The entities travel
+/// alongside the handles because a rewind hands out fresh handles and the only
+/// durable way back to a body is its entity.
+type PendingJoint = (
+    Entity,
+    ph2d_physics::JointDesc,
+    (RigidBodyHandle, RigidBodyHandle),
+    (Entity, Entity),
+);
+
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
 /// The `Transform` is the anchor — see `bridge::joints` for the policy.
 type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform)>;
@@ -87,12 +98,7 @@ pub struct PhysicsBridge {
     /// Name-hash → body entity, rebuilt each frame a joint needs resolving.
     names: BTreeMap<u64, Entity>,
     joints_seen: Vec<Entity>,
-    joints_to_spawn: Vec<(
-        Entity,
-        ph2d_physics::JointDesc,
-        (RigidBodyHandle, RigidBodyHandle),
-        (Entity, Entity),
-    )>,
+    joints_to_spawn: Vec<PendingJoint>,
     joints_to_remove: Vec<Entity>,
     /// New entities to spawn a body for, this frame.
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,

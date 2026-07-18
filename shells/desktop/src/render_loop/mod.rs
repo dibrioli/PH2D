@@ -88,6 +88,7 @@ mod painter_preview_handoff_tests;
 mod painter_preview_pipeline_tests;
 pub(crate) mod physics_bridge;
 pub(crate) mod physics_overlay;
+mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]

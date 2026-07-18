@@ -96,6 +96,32 @@
     `PH2D_M5_DEMO=1`) **FICA** — cerca de Chesterton documentada (frame-budget do HR-4).
   - LOC: `flip_erase.rs` passou de 600 ⇒ testes pro irmão `flip_erase_tests.rs`.
 
+- **§4.C.6 — o Size mede o MUNDO + Strength é Soft-only** (`9b149bd8`, **pendente smoke**):
+  - 🔴 *"a largura do traço está relativa ao zoom do canvas e não é fixa no mundo"* —
+    **REVERTE a decisão de 2026-07-11** (pincel ABSOLUTO em px de tela), que estava
+    documentada em 4 arquivos. O dono da cerca foi quem a tirou, e a nova é a certa: traço
+    é ARTE, e arte não muda de espessura porque a câmera aproximou. **A cura já estava
+    desenhada no renderer** (`thickness_px = raio_mundo · px_per_world`); o `camera_raw`
+    passava `1.0` justamente para FORÇAR a leitura em tela. **Porta única
+    `ph2d_tool_flip::size_to_world`** (`SIZE_PX_PER_WORLD = 100`) — todo sítio que AUTORA
+    passa por ela (traço · Edit ×2 · borracha · sculpt); o anel faz o caminho de volta e
+    **acompanha o zoom** (ele promete o que vai acontecer). ⚠️ **Não dava para virar só o
+    traço:** o Size é compartilhado com borracha/sculpt e, desde o §4.C.4, é literalmente o
+    MESMO número quando linkado — mundo pra desenhar e tela pra apagar seria um número com
+    dois significados. **De quebra curou o documento:** posições eram mundo e larguras eram
+    tela, e essa mistura já custara um bug ao balde (*"uma linha de 3 unidades de mundo
+    (≈324 px!)"*) — a conversão do `flip_fill::boundaries` **SUMIU**. ⚠️ O `px_to_local` do
+    Reshape FICA, mas só para o DELTA do arrasto (gesto de tela por definição).
+  - 🔴 *"borracha hard não obedece a strength"* — não obedecia mesmo, e nunca obedeceu:
+    Hard corta o ponto, Stroke apaga o traço, as duas são binárias e o `erase_at` sempre
+    documentou *"(Soft only)"*. O slider ficava pintado e INERTE = o controle morto que a
+    doutrina modal do painel proíbe. Agora a linha Strength (e o link dela) só existe no
+    **Soft**; o Size fica nos três.
+  - 4 gates novos, mutações provadas. Testes que codificavam a lei ANTIGA foram
+    **corrigidos, não silenciados** (os 5 do anel ganharam um zoom de REFERÊNCIA explícito
+    onde as duas leis coincidem; o do Edit tinha fixture em números da era-px, o que fazia
+    o ida-e-volta ser só proporcional — em mundo é EXATO, que é o que ele diz testar).
+
 **§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, **smoke OK 2026-07-17**).
 Duas coisas, um primitivo:
 - **Halo por-peça** (correção de um gap do §4.B): o overlay caía no branch de traço e

@@ -3,8 +3,7 @@
 //! lição do BUGS #18 (vértice contra segmento).
 
 use super::{
-    FILL_TUCK_PX, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
-    tuck_world,
+    FILL_TUCK_FRACTION, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
 };
 use crate::Vec2;
 
@@ -36,16 +35,16 @@ fn the_contour_wears_the_line_it_hugs_not_the_average() {
     ];
     // Dois pontos de contorno: um colado na grossa, outro colado na fina.
     let contour = [Vec2::new(0.0, 1.0), Vec2::new(0.0, 99.0)];
-    let w = contour_widths(&strokes, &contour, 1.0);
+    let w = contour_widths(&strokes, &contour);
 
-    let tuck = tuck_world(1.0);
+    let k = FILL_TUCK_FRACTION;
     assert!(
-        (w[0] - (10.0 + tuck)).abs() < 1e-4,
+        (w[0] - 10.0 * (1.0 + k)).abs() < 1e-4,
         "junto da linha GROSSA a dilatacao tem de ser 10 + margem, veio {}",
         w[0]
     );
     assert!(
-        (w[1] - (2.0 + tuck)).abs() < 1e-4,
+        (w[1] - 2.0 * (1.0 + k)).abs() < 1e-4,
         "junto da linha FINA a dilatacao tem de ser 2 + margem, veio {} \
          (6 + margem = a MEDIA, que e o bug)",
         w[1]
@@ -59,38 +58,42 @@ fn the_contour_wears_the_line_it_hugs_not_the_average() {
     );
 }
 
-/// **A margem é uma medida de TELA e tem de atravessar a conversão.**
+/// **A margem ESCALA com a linha** — ela é uma fração, não uma distância.
 ///
-/// O BUGS #20 em estado puro: `FILL_TUCK_PX` é medido em pixels (a tabela do sweep está
-/// em px) e estava sendo somado direto a uma largura em unidades de MUNDO. Com
-/// `SIZE_PX_PER_WORLD = 100`, isso é **100× grande demais** — num pincel default
-/// (~0,06 de mundo) a margem ficava 17× mais larga que a própria linha, e a cor virava
-/// um blob que ignorava o line-art.
+/// O smoke de 2026-07-18 (*"extrapolando um pouco da borda externa"*, traço fino, câmera
+/// perto): a margem era uma distância FIXA, e uma distância fixa é uma fração **grande**
+/// numa linha fina e desprezível numa grossa. A assinatura estava na medição do pixel e
+/// passou despercebida — o transbordo media 4 / 2 / 1 em linhas de 8 / 16 / 32 px, *pior
+/// na mais fina*, monotonicamente.
 ///
-/// Mutação que ele mata: devolver `2.0 * FILL_TUCK_PX` ignorando o `px_per_world`.
+/// A grandeza certa é adimensional: o que a margem cobre é o **falloff macio do pincel**,
+/// cuja extensão é proporcional ao raio dele. De quebra, um termo sem unidade não pode
+/// sofrer o BUGS #20 — não há fronteira px↔mundo para esquecer de atravessar.
+///
+/// Mutação que ele mata: voltar a somar uma constante (`w + c`) — a razão entre a
+/// dilatação e a linha deixa de ser a mesma nas duas espessuras.
 #[test]
-fn the_margin_is_a_screen_measure_that_crosses_into_the_documents_unit() {
-    // Num documento cujo mundo JÁ é pixel, a margem é ela mesma (dobrada: é diâmetro).
-    assert!((tuck_world(1.0) - 2.0 * FILL_TUCK_PX).abs() < 1e-9);
+fn the_margin_scales_with_the_line_it_dresses() {
+    // Duas linhas, uma 8× mais grossa que a outra, cada uma com o seu ponto de contorno
+    // EM CIMA do eixo (para isolar a margem: o termo do desvio é zero).
+    let thin = vec![line(0.0, 2.0, -50.0, 50.0, 8)];
+    let fat = vec![line(0.0, 16.0, -50.0, 50.0, 8)];
+    let probe = [Vec2::new(0.0, 0.0)];
 
-    // ⚠️ **A afirmação é a RELAÇÃO, não um literal.** A 1ª versão deste gate cravava
-    // `tuck_world(100) == 0,01`, o que embutia em silêncio o valor de `FILL_TUCK_PX` —
-    // e ele morreu na primeira vez que a varredura escolheu outra margem, denunciando um
-    // bug que não existia. Um gate de UNIDADE tem de sobreviver a uma mudança de VALOR:
-    // são perguntas diferentes, e a do valor tem a sua própria tabela no doc da
-    // constante.
+    let wt = contour_widths(&thin, &probe)[0];
+    let wf = contour_widths(&fat, &probe)[0];
+
+    // A dilatação RELATIVA tem de ser a mesma: é a mesma tinta, o mesmo falloff.
+    let rt = wt / 2.0;
+    let rf = wf / 16.0;
     assert!(
-        (tuck_world(100.0) * 100.0 - tuck_world(1.0)).abs() < 1e-9,
-        "a margem tem de ESCALAR com px_per_world: {} a 100 px/unidade contra {} a 1",
-        tuck_world(100.0),
-        tuck_world(1.0)
+        (rt - rf).abs() < 1e-4,
+        "a linha fina engorda {rt:.4}x e a grossa {rf:.4}x — uma margem FIXA faz \
+         exatamente isso, e e o que o artista ve como franja no traco fino"
     );
-    // E o teto: a margem NUNCA pode ser da ordem de uma linha de pincel default
-    // (~0,06 de mundo). É a asserção que o produto violava por 17×.
     assert!(
-        tuck_world(100.0) < 0.06 * 0.25,
-        "a margem ({}) esta da ordem da propria linha — e o BUGS #20 de volta",
-        tuck_world(100.0)
+        (rt - (1.0 + FILL_TUCK_FRACTION)).abs() < 1e-4,
+        "e a razao e 1 + a fracao; veio {rt}"
     );
 }
 
@@ -249,24 +252,9 @@ fn a_contour_short_of_the_axis_widens_and_one_past_it_narrows() {
     // Margem zero: aqui se mede a COMPENSAÇÃO, não a margem. E os valores são EXATOS,
     // não ordenações frouxas — a lei é `w + 2s`, então cada número é verificável de
     // cabeça. (O alisamento não os move: binomial de uma constante é a constante.)
-    let short = med(&contour_widths_with_margin(
-        &strokes,
-        &ring_at(17.0),
-        1.0,
-        0.0,
-    ));
-    let on = med(&contour_widths_with_margin(
-        &strokes,
-        &ring_at(20.0),
-        1.0,
-        0.0,
-    ));
-    let past = med(&contour_widths_with_margin(
-        &strokes,
-        &ring_at(21.0),
-        1.0,
-        0.0,
-    ));
+    let short = med(&contour_widths_with_margin(&strokes, &ring_at(17.0), 0.0));
+    let on = med(&contour_widths_with_margin(&strokes, &ring_at(20.0), 0.0));
+    let past = med(&contour_widths_with_margin(&strokes, &ring_at(21.0), 0.0));
 
     // Em cima do eixo a lei não faz nada: a largura é a da linha, e nem um pixel a mais.
     assert!(
@@ -287,12 +275,7 @@ fn a_contour_short_of_the_axis_widens_and_one_past_it_narrows() {
 
     // E o piso: um contorno que passou do eixo MAIS do que a linha é grossa não tem cor
     // nenhuma para pôr ali — largura 0, nunca negativa.
-    let way_past = med(&contour_widths_with_margin(
-        &strokes,
-        &ring_at(23.0),
-        1.0,
-        0.0,
-    ));
+    let way_past = med(&contour_widths_with_margin(&strokes, &ring_at(23.0), 0.0));
     assert!(
         way_past == 0.0,
         "alem do eixo por mais que a meia-espessura, a largura e ZERO; veio {way_past}"

@@ -23,59 +23,46 @@
 
 use crate::Vec2;
 
-/// Margem da dilatação, em **px de TELA** — a folga que faz a cor **encostar por baixo do
-/// falloff MACIO** do pincel.
+/// Margem da dilatação, como **fração da meia-espessura da linha** (adimensional).
 ///
-/// ⚠️ **Não é mais a compensação do erro de vetorização** — esse trabalho passou para o
-/// termo `2s` do `contour_widths`, que é POR PONTO. O que sobra para uma constante
-/// uniforme é o que é genuinamente uniforme: a borda de um pincel macio é translúcida, e
-/// a cor tem de ir um pouco ALÉM da silhueta nominal para que o fundo não apareça através
-/// dela. Uma propriedade do PINCEL, não do traçado.
+/// O emprego dela é encostar a cor por baixo do **falloff MACIO** do pincel: a borda de
+/// um pincel macio é translúcida, e a cor tem de ir um pouco além da silhueta nominal
+/// para o fundo não aparecer através dela.
 ///
-/// **O valor saiu de uma varredura no pixel**, com a compensação ligada (as duas metades
-/// não se escolhem em separado). Cobertura = amostras de fundo sob a linha somadas na
-/// faixa de zoom (`the_fill_reaches_under_the_line_at_product_scale`); transbordo =
-/// `the_colour_never_spills_outside_the_line`, em 8/16/32 px:
+/// ⚠️ **É uma FRAÇÃO, e essa é a correção do smoke de 2026-07-18** (*"extrapolando um
+/// pouco da borda externa"*, com o traço fino e a câmera perto). Antes era uma distância
+/// FIXA — e uma distância fixa somada a uma linha de qualquer espessura é uma fração
+/// GRANDE numa linha fina e desprezível numa grossa. A assinatura estava na minha própria
+/// medição e eu passei por ela: o transbordo media **4 / 2 / 1** em linhas de 8 / 16 /
+/// 32 px — *pior na mais fina*, monotonicamente. Uma margem que só depende do PINCEL não
+/// pode fazer isso.
 ///
-/// | lei | margem | cobertura (menor é melhor) | transbordo |
+/// E a extensão do falloff é proporcional ao raio do pincel — não é um número de pixels
+/// que exista fora dele. Então a grandeza certa era adimensional desde o começo, o que de
+/// quebra torna o BUGS #20 (somar px a unidades de mundo) **impossível neste termo**: não
+/// há unidade para atravessar.
+///
+/// **O valor é MEDIDO.** Cobertura = amostras de fundo sob a linha somadas na faixa de
+/// zoom; transbordo = `the_colour_never_spills_outside_the_line` (8/16/32 px, bar 2 %):
+///
+/// | lei | cobertura | transbordo | engorda: fino (0,02) / default (0,06) / grosso (0,12) |
 /// |---|---|---|---|
-/// | uniforme, SEM compensação (até 2026-07-18) | 0,5 | 158 | 3 / 2 / 0 |
-/// | com compensação | 0,0 | 224 | 0 / 0 / 0 |
-/// | **com compensação** | **0,25** | **138** | **4 / 2 / 1** |
-/// | com compensação | 0,5 | 79 | 8 / 11 / 10 |
+/// | margem FIXA (até 2026-07-18) | 158 | 0,2 / 0,1 / 0,0 % | **25 %** / 8,3 % / 4,2 % |
+/// | fração 0,02 | 170 | 0,1 / 0,1 / 0,1 % | 2 % / 2 % / 2 % |
+/// | **fração 0,03** | **156** | **0,2 / 0,1 / 0,5 %** | **3 % / 3 % / 3 %** |
+/// | fração 0,04 | 149 | 0,2 / 0,2 / **1,6 %** | 4 % / 4 % / 4 % |
+/// | fração 0,06 | 116 | 0,2 / 0,3 / **4,6 %** ✗ | 6 % / 6 % / 6 % |
 ///
-/// **0,25 é o ponto que respeita o smoke**: cobre melhor que a lei antiga (138 contra
-/// 158) com o transbordo praticamente parado (a diferença de 3→4 é uma amostra em 1792).
-/// Subir para 0,5 compraria o dobro de cobertura pagando transbordo de verdade — a troca
-/// existe e está medida, mas quem pediu foi o Enio, e ele pediu MENOS franja.
+/// ⚠️ **O ganho NÃO está nos agregados, e é honesto dizer.** Contra a lei antiga, 0,03
+/// mexe pouco na cobertura (156 contra 158) e pouco no transbordo. O que ele conserta é a
+/// **DISTRIBUIÇÃO**: a franja deixa de ser 25 % da linha no traço fino e 4 % no grosso, e
+/// passa a ser 3 % em todos. Foi isso que o Enio viu, e nenhum número somado sobre a
+/// figura inteira ia mostrar — some na média.
 ///
-/// ⚠️ **É uma medida de TELA.** Quem a usa num documento que fala unidades de MUNDO tem
-/// de atravessar `tuck_world` — somá-la crua a uma largura de mundo foi o BUGS #20
-/// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
-pub const FILL_TUCK_PX: f32 = 0.25; // LITERAL-PX-OK: falloff macio do pincel, MEDIDO
-
-/// A margem acima **na unidade do documento**, dado quantos px de tela vale uma unidade
-/// de mundo (`ph2d_tool_flip::SIZE_PX_PER_WORLD` no produto; `1.0` numa fixture cujo
-/// mundo JÁ é pixel).
-///
-/// Dobrada porque a largura de um traço é um DIÂMETRO: para a cor avançar `FILL_TUCK_PX`
-/// para cada lado do eixo, o traço tem de engordar o dobro disso.
-#[must_use]
-pub fn tuck_world(px_per_world: f32) -> f32 {
-    margin_world(FILL_TUCK_PX, px_per_world)
-}
-
-/// A mesma conversão para uma margem **arbitrária**, em px de tela.
-///
-/// ⚠️ **Existe para a VARREDURA que escolhe a constante** (`gpu_fill_fit::sweep_tuck`),
-/// e para mais nada. A varredura precisa perguntar *"e se a margem fosse X?"* — e a
-/// única coisa que ela pode variar é a **constante**: se ela também reescrevesse a
-/// fórmula, voltaria a medir a própria aritmética em vez da do produto, que foi
-/// exatamente como os oito oráculos ficaram cegos. O produto chama `tuck_world`.
-#[must_use]
-pub fn margin_world(margin_px: f32, px_per_world: f32) -> f32 {
-    2.0 * margin_px / px_per_world
-}
+/// O teto é o gate de transbordo, que é anterior a esta mudança e vale para o produto:
+/// 0,06 estoura o limite de 2 % no traço grosso (4,6 %), porque uma fração de um traço
+/// gordo é muita tinta em termos absolutos. 0,03 passa com folga nas três espessuras.
+pub const FILL_TUCK_FRACTION: f32 = 0.03; // adimensional: fracao da meia-espessura
 
 /// **A linha que este ponto do contorno está vestindo**: `(espessura, distância)`, na
 /// unidade do documento.
@@ -203,12 +190,8 @@ fn outward_normals(ring: &[Vec2]) -> Vec<Vec2> {
 /// 0,005 na mediana) porque dobra o erro exatamente nos pontos que transbordaram: metade
 /// das correções ia para o lado errado. Não era a ideia que estava errada, era o `d` nu.
 #[must_use]
-pub fn contour_widths(
-    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
-    contour: &[Vec2],
-    px_per_world: f32,
-) -> Vec<f32> {
-    contour_widths_with_margin(strokes, contour, px_per_world, FILL_TUCK_PX)
+pub fn contour_widths(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], contour: &[Vec2]) -> Vec<f32> {
+    contour_widths_with_margin(strokes, contour, FILL_TUCK_FRACTION)
 }
 
 /// A lei com a margem **parametrizada** — ver o aviso do `margin_world`: isto é para a
@@ -217,10 +200,8 @@ pub fn contour_widths(
 pub fn contour_widths_with_margin(
     strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
     contour: &[Vec2],
-    px_per_world: f32,
-    margin_px: f32,
+    margin_fraction: f32,
 ) -> Vec<f32> {
-    let tuck = margin_world(margin_px, px_per_world);
     let fallback = mean_line_width(strokes);
     let normals = outward_normals(contour);
 
@@ -262,7 +243,9 @@ pub fn contour_widths_with_margin(
             // O `max(0)` não é um teto disfarçado: largura negativa não existe, e um
             // contorno que passou do eixo mais do que a linha é grossa não tem cor
             // nenhuma para pôr ali.
-            (w + 2.0 * s + tuck).max(0.0)
+            // A margem é FRAÇÃO da linha: numa linha fina ela é fina, numa grossa é
+            // grossa — que é o que "encostar no falloff" quer dizer.
+            (w * (1.0 + margin_fraction) + 2.0 * s).max(0.0)
         })
         .collect()
 }

@@ -15,7 +15,7 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
 use ph2d_flip_fill::{
-    FILL_TUCK_PX, FillMode, FillParams, contour_widths, contour_widths_with_margin, fill_at,
+    FILL_TUCK_FRACTION, FillMode, FillParams, contour_widths, contour_widths_with_margin, fill_at,
 };
 use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 
@@ -33,8 +33,6 @@ use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 ///
 /// ⚠️ **O mundo desta fixture É o pixel** (câmera de pixel, `pixel_camera_zoom`), então
 /// a conversão px→mundo é 1. No produto ela é `SIZE_PX_PER_WORLD = 100`.
-const PX_PER_WORLD: f32 = 1.0;
-
 const W: u32 = 320;
 const H: u32 = 320;
 
@@ -283,7 +281,7 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
     // 1) o preenchimento (atrás), 2) o line-art (na frente) — a ordem do produto.
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
     // **A dilatação sai da lei do produto**, com a margem que a varredura está testando.
-    let widths = contour_widths_with_margin(&lines, &res.outer, PX_PER_WORLD, tuck);
+    let widths = contour_widths_with_margin(&lines, &res.outer, tuck);
     let mut f = FlipStroke::new();
     for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
@@ -393,7 +391,7 @@ fn scene_world_full(width_px: f32, hardness: f32, ppw: f32, tremor: bool) -> Fli
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
     // A lei do produto, com a conversão do PRODUTO — é este argumento que o BUGS #20
     // ignorava.
-    let widths = contour_widths(&lines, &res.outer, PRODUCT_PPW);
+    let widths = contour_widths(&lines, &res.outer);
     let mut f = FlipStroke::new();
     for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
@@ -428,11 +426,11 @@ fn scene_world_full(width_px: f32, hardness: f32, ppw: f32, tremor: bool) -> Fli
 }
 
 fn scene_h(width_px: f32, hardness: f32) -> FlipDrawing {
-    scene_t(width_px, hardness, FILL_TUCK_PX)
+    scene_t(width_px, hardness, FILL_TUCK_FRACTION)
 }
 
 fn scene(width_px: f32) -> FlipDrawing {
-    scene_t(width_px, 1.0, FILL_TUCK_PX)
+    scene_t(width_px, 1.0, FILL_TUCK_FRACTION)
 }
 
 /// Círculo sem transcendentais (HR-5 vale no teste também — e é o mesmo helper do solver).
@@ -634,7 +632,7 @@ fn sweep_tuck() {
         return;
     };
     println!("tuck |  linha | fundo sob a linha | transbordo alem dela");
-    for tuck in [0.0f32, 0.5, 0.75, 1.0, 1.5, 2.0] {
+    for tuck in [0.0f32, 0.03, 0.06, 0.10, 0.15, 0.25] {
         for width_px in [8.0f32, 16.0, 32.0] {
             let px = render(&device, &queue, &scene_t(width_px, 0.35, tuck));
             let at = |x: i32, y: i32| -> (i32, i32, i32) {
@@ -759,7 +757,7 @@ fn spiky(width_px: f32) -> FlipDrawing {
 
     let mut d = FlipDrawing::new();
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
-    let widths = contour_widths_with_margin(&lines, &res.outer, PX_PER_WORLD, FILL_TUCK_PX);
+    let widths = contour_widths_with_margin(&lines, &res.outer, FILL_TUCK_FRACTION);
     let mut f = FlipStroke::new();
     for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
@@ -1355,23 +1353,20 @@ fn sweep_zoom() {
 ///
 /// Somado sobre a faixa de zoom (as 6 linhas do `sweep_zoom` que ficam inteiras na tela):
 ///
-/// | lei | margem | amostras de fundo sob a linha |
-/// |---|---|---|
-/// | uniforme, sem compensação (até 2026-07-18) | 0,5 | **158** |
-/// | **com compensação** | **0,25** | **138** |
-/// | com compensação | 0,5 | 79 |
+/// | lei | amostras de fundo sob a linha |
+/// |---|---|
+/// | margem FIXA, sem compensação (até 2026-07-18) | 158 |
+/// | **compensação + margem em FRAÇÃO (0,03)** | **156** |
+/// | sem margem nenhuma | 224 |
 ///
-/// ⚠️ **O fosso é ESTREITO (138 contra 158), e isso é uma escolha, não um acidente.** A
-/// compensação sozinha compraria 79 — metade — mas só com a margem em 0,5, e aí a borda
-/// da cor passa a pousar meio pixel além da silhueta em vez de um quarto. O Enio pediu
-/// MENOS franja; então a margem desceu, e o ganho de cobertura foi gasto nisso. A curva
-/// inteira está no doc do `FILL_TUCK_PX`: quem quiser trocar de ponto tem os números.
+/// ⚠️ **Este gate NÃO discrimina a mudança de 2026-07-18** (156 contra 158 não é fosso),
+/// e ele não deve fingir que sim. O que a mudança conserta é a DISTRIBUIÇÃO da franja
+/// entre espessuras de traço, e quem guarda isso é
+/// `dilate::the_margin_scales_with_the_line_it_dresses` — a propriedade some quando se
+/// soma tudo sobre a figura. O papel deste aqui é o de sempre: barrar uma regressão
+/// GROSSA de cobertura (224 = a lei sem margem nenhuma).
 ///
-/// O que o número não mostra, e é o ganho maior: a borda ficou **uniforme**. Antes ela
-/// variava de −0,37 a +0,49 px conforme o traçado errava mais ou menos; agora a
-/// compensação a nivela e o que sobra é a margem, igual em todo ponto.
-///
-/// O limite fica em 150, entre 138 e 158.
+/// O limite fica em 175, entre 156 e 224.
 #[test]
 #[ignore = "GPU"]
 fn the_fill_reaches_under_the_line_at_product_scale() {
@@ -1391,7 +1386,7 @@ fn the_fill_reaches_under_the_line_at_product_scale() {
     }
     println!("fundo sob a linha, somado na faixa de zoom: {total}");
     assert!(
-        total <= 150,
+        total <= 175,
         "{total} amostras de FUNDO sob a linha — a cor nao esta entrando por baixo do          line-art (158 = o que uma margem uniforme, sem compensacao, deixa)"
     );
 }

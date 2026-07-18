@@ -273,13 +273,12 @@ pub(crate) fn fill_click(
     // de pixel que a verifica vive na crate de render e **precisa alcançá-la**. Enquanto
     // ela morava aqui, ele montava a própria cópia e ficou verde durante o BUGS #20.
     //
-    // ⚠️ **`SIZE_PX_PER_WORLD`, e não o `doc_per_px` do zoom atual.** A margem é uma
-    // medida de tela, mas a geometria do fill é do DOCUMENTO: derivá-la do zoom faria o
-    // contorno depender de quão perto o artista estava quando clicou, que é exatamente o
-    // que a âncora no eixo existe para impedir (BUGS #14). O preço é conhecido — a
-    // margem é uma fração fixa da arte, não do pixel — e está anotado no plano.
-    let widths =
-        ph2d_flip_fill::contour_widths(&strokes, &r.outer, ph2d_tool_flip::SIZE_PX_PER_WORLD);
+    // ⚠️ **Nenhuma conversão de unidade aqui, e isso é de propósito.** A dilatação é
+    // `w·(1+k) + 2s`: a espessura da linha, uma FRAÇÃO adimensional dela, e um desvio
+    // medido na mesma unidade da geometria. Não sobrou grandeza de TELA neste caminho,
+    // então não há fronteira px↔mundo para alguém esquecer de atravessar — que foi
+    // exatamente o BUGS #20.
+    let widths = ph2d_flip_fill::contour_widths(&strokes, &r.outer);
     let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, &widths);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.

@@ -43,8 +43,8 @@ mod trace;
 
 pub use ball::{TrapBall, TrapRegion};
 pub use dilate::{
-    FILL_TUCK_PX, contour_widths, contour_widths_with_margin, local_line, margin_world,
-    mean_line_width, nearest_on_axis, tuck_world,
+    FILL_TUCK_FRACTION, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
+    nearest_on_axis,
 };
 pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};

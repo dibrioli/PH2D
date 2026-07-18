@@ -45,6 +45,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
+    ph2d_node_motion_noise::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1162,4 +1163,67 @@ fn the_sequencer_publishes_each_staged_nodes_element_count() {
         None,
         "an unstaged node reports nothing, never a stale or invented count"
     );
+}
+
+/// `motion.noise` — the Perlin 2002 **gradient**-noise field, ported per element.
+///
+/// The two things this gate is really for:
+///
+/// 1. **It is gradient noise, not the value noise `force.curl` already ships.**
+///    The lattice hash, the eight `(±1,±2)` gradients selected by three hash bits,
+///    the quintic fade and the `1/1.5` normalisation all have to land bit-for-bit
+///    per cell or the field is a DIFFERENT field — a divergence of O(amplitude),
+///    orders outside ε, not a rounding wobble.
+/// 2. **The discrete params pick branches.** `type` selects the per-octave
+///    rectification and `seed`/`octaves` pick hashes and a loop count, so
+///    half-even vs half-away rounding is not an ε either. Hence non-round values
+///    below ([[feedback_test_with_product_numbers_not_convenient_ones]]).
+///
+/// `type` is also the param that forced `codegen::wgsl_field`: it is a WGSL
+/// reserved word, and before the sanitizer this kernel could not compile at all.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn noise_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Every fractal-sum flavour, because each is a different branch inside the
+    // octave loop and a fixture with only the default would prove one third of
+    // the kernel ([[reference_topic_fixture_discipline]]).
+    for (ty, label) in [(0.0, "fbm"), (1.0, "turbulence"), (2.0, "ridged")] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 160.0, "motion.noise");
+        g.set_param(node, "channel", 1.0);
+        g.set_param(node, "amplitude", 1.7);
+        g.set_param(node, "scale", 0.37);
+        g.set_param(node, "octaves", 3.0);
+        g.set_param(node, "roughness", 0.62);
+        g.set_param(node, "type", ty);
+        g.set_param(node, "speed", 0.43);
+        g.set_param(node, "seed", 5.0);
+        eprintln!("  noise type = {label}");
+        assert_gpu_parity(&gpu, &reg, &g, out, 2);
+    }
+}
+
+/// The Rotation/Size channels have no kernel path (they write a different
+/// column), so the plan must RECEDE rather than draw a wrong answer — the
+/// `motion.oscillator` precedent, re-asserted per node because `applicable` is
+/// per node and a copy-paste that dropped it would be invisible.
+#[test]
+fn the_noise_recuses_on_the_channels_its_kernel_cannot_write() {
+    let reg = registry();
+    for channel in [2.0, 3.0] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 8.0, "motion.noise");
+        g.set_param(node, "channel", channel);
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+        assert_eq!(
+            plan.boundaries,
+            vec![(node, 0)],
+            "channel {channel} writes rot/size — the boundary is AT the noise"
+        );
+    }
 }

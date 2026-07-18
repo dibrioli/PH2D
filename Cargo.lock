@@ -5213,6 +5213,7 @@ dependencies = [
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
  "ph2d-node-motion-move",
+ "ph2d-node-motion-noise",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",
  "ph2d-node-motion-rotate",

@@ -2,10 +2,12 @@
 //!
 //! O que eles medem é o comportamento do HOST; a **correção** da deformação (curva sobrevive, não
 //! só os pontos de controle) é da crate `ph2d-vec-envelope` e já está gateada lá (invariância à
-//! subdivisão). Aqui: em repouso não muda nada · a gaiola puxada deforma **pelo motor** · vive na
-//! identidade · a fonte autorada sobrevive no componente · gaiola degenerada congela.
+//! subdivisão). Aqui: em repouso não muda nada · a gaiola puxada deforma **pelo motor** · a **pose
+//! sobrevive ao recook** (é ela que o gizmo do Select move — Fatia 2) e não vaza para a geometria
+//! local · a fonte autorada sobrevive no componente · gaiola degenerada congela.
 
 use super::*;
+use ph2d_ecs::Transform;
 use ph2d_vec_scene::{ShapeKind, cook};
 
 /// Uma cena com um envelope sobre uma forma. Devolve `(sim, scene, map, id, componente)`.
@@ -21,8 +23,7 @@ fn scene_with_envelope(
     let mut map = VecEntityMap::new();
     let id = scene.push_path(shape);
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let xf = crate::vec_transform::build(&sim, &map);
-    let (eid, mut env) = create(&scene, &xf, id).expect("create");
+    let (eid, mut env) = create(&scene, id).expect("create");
     env.corners = corners;
     assert!(attach(&mut sim, &map, eid, &env));
     (sim, scene, map, id, env)
@@ -133,8 +134,7 @@ fn the_smoke_sequence_deforms_the_shape() {
     crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
 
     // Frame N+1 prólogo: create sobre a forma JÁ assentada.
-    let xf = crate::vec_transform::build(&sim, &map);
-    let (eid, mut env) = create(&scene, &xf, id).expect("create pós-settle");
+    let (eid, mut env) = create(&scene, id).expect("create pós-settle");
 
     // Puxa como o smoke: topo a 35% da base.
     let [bl, br, tr, tl] = env.corners;
@@ -194,8 +194,7 @@ fn the_upkeep_path_attaches_and_deforms() {
     crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
 
     // Frame N+1 prólogo (o smoke): create + pull, e ENFILEIRA (não anexa na mão).
-    let xf = crate::vec_transform::build(&sim, &map);
-    let (eid, mut env) = create(&scene, &xf, id).expect("create");
+    let (eid, mut env) = create(&scene, id).expect("create");
     let [bl, br, tr, tl] = env.corners;
     let cx = (tl[0] + tr[0]) * 0.5;
     env.corners = [
@@ -227,24 +226,42 @@ fn the_upkeep_path_attaches_and_deforms() {
     );
 }
 
-/// **O envelope vive na IDENTIDADE.** A geometria é MUNDO; uma pose por cima a deslocaria.
+/// **A POSE sobrevive ao recook — e NÃO vaza para a geometria local (Fatia 2).** No modelo LOCAL a
+/// geometria escrita é local e o `Transform` é a pose; o recook **não** a força a identidade (o
+/// modelo antigo forçava, e por isso o gizmo do Select era inócuo). Duas afirmações: (1) a pose
+/// continua lá após o recook, (2) ela NÃO entrou nos vértices (o bbox local segue perto da fonte,
+/// não deslocado pela pose) — geometria-local + pose-separada é o que impede o gizmo de dobrar.
 #[test]
-fn the_envelope_lives_at_identity() {
+fn the_pose_survives_recook_and_stays_out_of_the_local_geometry() {
     let src = ellipse([5.0, 3.0], 2.0);
     let (origin, size) = control_bbox(&src).unwrap();
     let (mut sim, mut scene, map, id, _) = scene_with_envelope(src, bbox_corners(origin, size));
 
     let e = Entity::from_bits(map[&id]);
+    let pose = ph2d_core::Vec2::new(100.0, -50.0);
     sim.world_mut()
         .get_mut::<Transform>(e)
         .expect("Transform")
-        .translation = ph2d_core::Vec2::new(7.0, -3.0);
+        .translation = pose;
 
-    frame(&mut sim, &mut scene, &map, id);
+    let out = frame(&mut sim, &mut scene, &map, id);
+
+    // (1) a pose sobrevive — é ela que o gizmo do Select move.
     assert_eq!(
-        *sim.world().get::<Transform>(e).expect("Transform"),
-        Transform::IDENTITY,
-        "uma pose sobreviveu — ela somaria com a geometria de mundo e deslocaria a forma"
+        sim.world()
+            .get::<Transform>(e)
+            .expect("Transform")
+            .translation,
+        pose,
+        "o recook apagou a pose (o modelo antigo forçava identidade) — o gizmo seria inócuo"
+    );
+    // (2) e a pose NÃO vazou para a geometria: a fonte vive perto de x=5; se a translação de +100
+    // tivesse entrado nos vértices, o bbox local estaria lá longe. Local + pose separados.
+    let (o, _) = control_bbox(&out).expect("bbox");
+    assert!(
+        o[0] < 50.0,
+        "a pose vazou para a geometria local (bbox em x={:.1}, esperado perto da fonte ~3)",
+        o[0]
     );
 }
 

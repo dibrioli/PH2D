@@ -33,19 +33,21 @@ use crate::SimComponent;
 /// da qual essa geometria é função pura, re-cozida por frame pela shell.
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VecEnvelope {
-    /// A **fonte afiada**: os bytes postcard do `VecPath` autorado, em coordenadas de MUNDO
-    /// (assadas na criação, quando a pose ainda existia). O recook a desserializa, deforma pela
-    /// gaiola e escreve o resultado no path da cena.
+    /// A **fonte afiada**: os bytes postcard do `VecPath` autorado, em coordenadas **LOCAIS** da
+    /// entidade (a POSE vive no `Transform` — ADR-0111). O recook a desserializa, deforma pela
+    /// gaiola (tudo local) e escreve o resultado local no path da cena; o `Transform` o leva ao
+    /// mundo, e é essa pose que o gizmo de sprite move/gira/escala no Select.
     ///
     /// Guardar a fonte é o que impede o *"funciona e depois esquece"* — sem ela, o 1º recook
     /// varreria o que o artista desenhou e não haveria de onde recuperá-lo.
     pub source: Vec<u8>,
-    /// Os 4 cantos da gaiola-destino, em coordenadas de MUNDO, na ordem `[BL, BR, TR, TL]` — a mesma
-    /// que o `QuadWarp` espera. Em **repouso** eles coincidem com os cantos do bbox da fonte, e a
-    /// deformação é a identidade (a forma não muda). Arrastá-los deforma.
+    /// Os 4 cantos da gaiola-destino, em coordenadas **LOCAIS** (o mesmo espaço da fonte), na ordem
+    /// `[BL, BR, TR, TL]` — a que o `QuadWarp` espera. Em **repouso** coincidem com os cantos do
+    /// bbox local da fonte, e a deformação é a identidade (a forma não muda). Arrastá-los (modo
+    /// Node) deforma.
     ///
-    /// São 4 números por canto que a UI (fatia seguinte) move; a **convexidade** deles é o que
-    /// mantém a linha de fuga fora da gaiola (ADR-0129 §5, `QuadWarp::is_convex`).
+    /// A **convexidade** deles é o que mantém a linha de fuga fora da gaiola (ADR-0129 §5,
+    /// `QuadWarp::is_convex`) — e ela é invariante à pose (afim), então checá-la em local basta.
     pub corners: [[f64; 2]; 4],
 }
 

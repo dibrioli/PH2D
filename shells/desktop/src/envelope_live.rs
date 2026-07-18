@@ -1,25 +1,27 @@
-//! **O host do Envelope vivo** (ADR-0129, Fatia B) — a forma deformada por uma gaiola de 4 cantos.
+//! **O host do Envelope vivo** (ADR-0129) — a forma deformada por uma gaiola de 4 cantos.
 //!
 //! Espelho do [`crate::morph_live`], e mais simples: o morph interpola DUAS fontes e cacheia um
 //! `Plan`; o envelope deforma UMA fonte por um mapa `R2→R2` (a homografia do gesto Quad,
 //! [`ph2d_vec_envelope::QuadWarp`]). A entidade que carrega o [`VecEnvelope`] tem o `VecPath` da
 //! forma **cozida** (deformada) na cena, re-escrita *em lugar* a cada frame.
 //!
-//! # A fonte é CONGELADA no componente, e por isso o recook não precisa de xforms
+//! # A fonte + a gaiola vivem em LOCAL; a POSE vive no `Transform` (ADR-0111)
 //!
-//! No morph, as fontes são OUTRAS formas da cena, e o recook as re-assa pelos afins DESTE frame
-//! (elas se movem). No envelope, a fonte é a **própria** forma, autorada e imutável — assada em
-//! MUNDO na criação e guardada nos bytes do [`VecEnvelope`]. O recook a desserializa, deforma pela
-//! gaiola e escreve o resultado. Nada a re-assar por frame ⇒ **sem `VecXforms` no recook**.
+//! A fonte autorada e os 4 cantos ficam no espaço LOCAL da entidade — a fonte nos bytes do
+//! [`VecEnvelope`], os cantos em `corners`. O recook desserializa a fonte, deforma pela gaiola
+//! (tudo local) e escreve o resultado LOCAL no path. Quem o leva ao MUNDO é o `Transform` da
+//! entidade — e é por isso que o **gizmo de sprite move/gira/escala o envelope inteiro no Select**
+//! (Fatia 2): a geometria local é estável, só a pose se move, e o recook **preserva a pose** (não
+//! força identidade). Sem `VecXforms` no recook: a deformação é toda local.
 //!
-//! ⚠️ **Consequência declarada:** mover o objeto-envelope inteiro (gizmo) não está nesta fatia — a
-//! fonte está congelada em mundo e a entidade vive na identidade (como o morph). Mover o conjunto,
-//! e arrastar os cantos da gaiola (modo Node), são a fatia seguinte. Aqui a gaiola é **autorada**
-//! (a cena de smoke a define) e a forma é **estática e correta**.
+//! ⚠️ **Por que não dobra (ADR §3.3):** o Blend dobra porque a geometria dele depende de FONTES que
+//! se movem; a do envelope é função pura de `corners`+fonte FIXOS, então no Select nada a muda e o
+//! gizmo age sobre uma bbox estável. Arrastar os cantos (que MUDA a geometria) é Node-only — e lá o
+//! gizmo não publica. O `settle_origins` PULA o envelope (geometria derivada, reescrita por frame).
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecEnvelope};
+use ph2d_ecs::{Entity, Name, SimWorld, VecEnvelope};
 use ph2d_vec_envelope::{QuadWarp, warp_path};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -51,24 +53,24 @@ pub(crate) fn bbox_corners(origin: [f64; 2], size: [f64; 2]) -> [[f64; 2]; 4] {
     [[ox, oy], [ox + w, oy], [ox + w, oy + h], [ox, oy + h]]
 }
 
-/// **Cria um envelope** sobre a forma `id`: assa a geometria dela em MUNDO (a aparência COZIDA, com
-/// o raio de quina resolvido), guarda-a como fonte, e nasce em **repouso** (cantos = cantos do bbox
-/// da fonte ⇒ identidade ⇒ a forma não muda).
+/// **Cria um envelope** sobre a forma `id`: guarda a geometria LOCAL dela (a aparência COZIDA, com o
+/// raio de quina resolvido) como fonte, e nasce em **repouso** (cantos = bbox LOCAL da fonte ⇒
+/// identidade ⇒ a forma não muda). A POSE da forma fica no `Transform` da entidade (ADR-0111) e o
+/// recook a preserva — por isso o gizmo move/gira/escala o envelope inteiro no Select (Fatia 2).
+///
+/// **Sem assar em MUNDO e sem `xforms`:** a fonte é o LOCAL do path (o que o `settle` já centrou), e
+/// é o `Transform` da entidade que a leva ao mundo. Assar em mundo + forçar identidade (o modelo
+/// antigo) tornava o gizmo inócuo (a pose era descartada a cada frame).
 ///
 /// Devolve `(id, componente)` para a fila `pending` — a entidade da forma já existe, mas o
 /// `attach` acontece no `upkeep` (depois do `sync`), por simetria com o morph e para o caso de a
 /// forma ter acabado de nascer.
 ///
 /// `None` se a forma sumiu ou é degenerada (sem bbox).
-pub(crate) fn create(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    id: VecPathId,
-) -> Option<(VecPathId, VecEnvelope)> {
-    let mut src = scene.paths().iter().find(|p| p.id == id)?.clone();
-    bake_xform(&mut src, &xform_of(xforms, id));
-    // A aparência COZIDA (raio de quina resolvido): é o que o mundo vê, e é o que o envelope
-    // deforma. Sem raio, `cooked()` é a própria fonte emprestada (custo zero).
+pub(crate) fn create(scene: &VecScene, id: VecPathId) -> Option<(VecPathId, VecEnvelope)> {
+    let src = scene.paths().iter().find(|p| p.id == id)?;
+    // A aparência COZIDA em LOCAL (raio de quina resolvido): é o que o envelope deforma. Sem raio,
+    // `cooked()` empresta a fonte (custo zero). NÃO assamos em mundo — a pose vive no `Transform`.
     let source = src.cooked().into_owned();
     let (origin, size) = control_bbox(&source)?;
     let corners = bbox_corners(origin, size);
@@ -84,22 +86,23 @@ fn accuracy(size: [f64; 2]) -> f64 {
     0.001 * size[0].hypot(size[1]).max(1.0)
 }
 
-/// **O re-cook de todo frame.** Para cada entidade com um [`VecEnvelope`]: desserializa a fonte,
-/// deforma-a pela gaiola (`QuadWarp`), e escreve a forma **em lugar**.
+/// **O re-cook de todo frame.** Para cada entidade com um [`VecEnvelope`]: desserializa a fonte
+/// LOCAL, deforma-a pela gaiola (`QuadWarp`, tudo local), e escreve a forma LOCAL **em lugar**.
 ///
-/// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e depois de `vec_transform::build`, no
-/// mesmo lugar do `morph_live::recook` — mas sem os xforms (a fonte já é MUNDO).
-pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap) {
-    let envs: Vec<(VecPathId, Entity, VecEnvelope)> = map
+/// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e no mesmo lugar do `morph_live::recook`.
+/// Sem `VecXforms`: a deformação é local, e é o `Transform` da entidade (via `vec_transform::build`)
+/// que leva a forma ao mundo. **A pose NÃO é tocada** — é ela que o gizmo move no Select (Fatia 2).
+pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) {
+    let envs: Vec<(VecPathId, VecEnvelope)> = map
         .iter()
         .filter_map(|(&id, &bits)| {
             let e = Entity::from_bits(bits);
             let env = sim.world().get::<VecEnvelope>(e)?.clone();
-            Some((id, e, env))
+            Some((id, env))
         })
         .collect();
 
-    for (id, entity, env) in envs {
+    for (id, env) in envs {
         let Ok(source) = postcard::from_bytes::<VecPath>(&env.source) else {
             continue; // fonte corrompida: não há o que deformar, e melhor não escrever lixo
         };
@@ -113,18 +116,9 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMa
         };
         let cooked = warp_path(&source, &warp, accuracy(size));
         write_shape(scene, id, cooked);
-
-        // Vive na IDENTIDADE: a geometria acima é MUNDO. É a mesma regra do morph, e é ela que põe o
-        // componente no filtro do `settle_origins` (senão o pivô seria assentado e a forma sairia
-        // deslocada da posição que ela descreve).
-        if sim
-            .world()
-            .get::<Transform>(entity)
-            .is_some_and(|t| *t != Transform::IDENTITY)
-            && let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
-        {
-            *t = Transform::IDENTITY;
-        }
+        // A pose fica no `Transform` da entidade e é ela que o gizmo move (Fatia 2) — o recook NÃO a
+        // toca. A geometria escrita é LOCAL; `vec_transform::build` a leva ao mundo pela pose. E o
+        // `settle_origins` PULA o envelope (geometria derivada), então o pivô não é reassentado.
     }
 }
 

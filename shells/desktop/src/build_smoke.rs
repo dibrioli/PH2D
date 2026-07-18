@@ -144,14 +144,14 @@ impl crate::App {
             }
             4 if level == 11 => {
                 // A entidade já nasceu (sync do frame anterior) e a forma já foi assentada; `create`
-                // assa a aparência em MUNDO e nasce em repouso (cantos = bbox).
+                // guarda a geometria LOCAL e nasce em repouso (cantos = bbox local). A pose fica no
+                // `Transform` da entidade — no Select o gizmo a move (Fatia 2).
                 let created = {
                     let Some(gfx) = self.gfx.as_ref() else { return };
                     let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
                         return;
                     };
-                    let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-                    crate::envelope_live::create(&gfx.vec_scene, &xf, id)
+                    crate::envelope_live::create(&gfx.vec_scene, id)
                 };
                 if let Some((eid, mut env)) = created {
                     // Estreita o topo para 35% da base: trapézio convexo forte (perspectiva). BL/BR
@@ -179,8 +179,9 @@ impl crate::App {
                         "[envelope-smoke] elipse deformada por gaiola de perspectiva (modo NODE). \
                          OLHE O MEIO DOS SEGMENTOS: as laterais curvam LISO — se so os 4 cantos \
                          obedecessem e o meio ficasse reto/quebrado, seria o bug ingenuo. \
-                         AGORA ARRASTE OS CANTOS da gaiola: a forma re-deforma ao vivo, e o \
-                         convexo e' obrigatorio (um canto puxado p/ dentro para na fronteira)."
+                         NODE: arraste os CANTOS da gaiola (Fatia 1) -- re-deforma ao vivo, convexo \
+                         obrigatorio. SELECT (pill do painel): o GIZMO move/gira/escala o envelope \
+                         INTEIRO (Fatia 2) -- a forma deformada anda junta, sem dobrar."
                     );
                 }
             }

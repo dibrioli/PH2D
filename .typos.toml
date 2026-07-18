@@ -347,6 +347,9 @@ envolve = "envolve"
 # palavras portuguesas.
 acender = "acender"
 Repare = "Repare"
+# pt-BR do fix da borracha macia (ADR-0114 §4.C.5): o gate compara o que 1 dab e 40 dabs
+# DERAM (lido como "dram"/"dream"). É a palavra portuguesa.
+deram = "deram"
 # pt-BR do Blend de formas (`ph2d-vec-blend`): a heurística PREFERE um pareamento e o custo
 # ajuda a FORMAR o resultado (lidos como "prefer"/"former"). São as palavras portuguesas.
 prefere = "prefere"

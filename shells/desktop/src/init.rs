@@ -146,14 +146,18 @@ pub(crate) fn build_initial_state(
             handler.elapsed_ms()
         );
     } else if hero_live_enabled {
-        // M14.4a: spawn a small named set so the hierarchy
-        // panel renders readable rows. The 1000-sprite Vogel
-        // spiral demo is fixture-only; live mode is for the
-        // editor's hierarchy/inspector pipeline.
-        crate::sim_populate::populate_sim_live(&mut sim);
+        // **A cena nasce VAZIA** (Enio 2026-07-17: *"vamos retirar os grupos de sprites de
+        // teste do hierarchy para ficarmos apenas com nossos objetos flip"*).
+        //
+        // O `populate_sim_live` da M14.4a semeava 8 entidades falsas (`group_01/02` +
+        // `sprite_001..008`) só para a Hierarquia ter linhas legíveis quando ela ainda não
+        // tinha conteúdo real. Hoje tem — objetos Flip, formas vetoriais, sprites
+        // importados, camadas do Painter —, então o andaime virou RUÍDO: o artista abre o
+        // app e a árvore já vem suja de coisa que ele não criou. Mesmo destino dos
+        // scaffolds de debug da timeline, aposentados quando a autoria real os tornou
+        // obsoletos.
         println!(
-            "[{:>6}ms] live hero mode (8 named entities; \
-             hierarchy panel binds to ECS)",
+            "[{:>6}ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)",
             handler.elapsed_ms()
         );
     } else {

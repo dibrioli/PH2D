@@ -18,6 +18,36 @@ use ph2d_tool_flip::EraseMode;
 /// Below this opacity a soft-erased point is dropped on pen-up (GP `erase.cc`).
 const OPACITY_REMOVE_THRESHOLD: f32 = 0.05;
 
+/// **A opacidade que o Soft deixa num ponto — IDEMPOTENTE** (Enio 2026-07-17:
+/// *"qualquer nível de strength apaga completamente a linha, nunca deixa
+/// semitransparente"*).
+///
+/// O 1º corte subtraía `strength · falloff` a cada DAB, e a borracha carimba um dab por
+/// evento de ponteiro: um gesto lento sobre o mesmo ponto aplicava dezenas de mordidas, e
+/// `0.1 × 12 dabs` já zera a linha. O resultado era função de **quão fino o motor amostrou
+/// o caminho**, não do que o artista pediu — a MESMA doença que o Painter já curou duas
+/// vezes (a cápsula do depósito e a mordida telescópica do bow wave). A lei do projeto é
+/// a mesma aqui: *o apagado é propriedade do pincel e do CAMINHO, nunca do espaçamento.*
+///
+/// A cura: a mordida tem um **PISO**. O Soft leva a opacidade até `1 − strength·falloff` e
+/// **para** — reaplicar no mesmo ponto não muda mais nada (idempotência ⇒ independência de
+/// amostragem, por construção, sem estado de sessão). Então **Strength É a translucidez que
+/// sobra**: 0,5 deixa a linha pela metade, 1,0 apaga de vez, e a borda segue macia porque o
+/// `falloff` encolhe a mordida (logo, sobe o piso) na periferia.
+///
+/// O `.min(current)` não é higiene: sem ele um ponto **já mais claro** que o piso seria
+/// EMPURRADO PARA CIMA — a borracha pintaria de volta o que outra passada apagou.
+///
+/// ⚠️ Consequência aceita e deliberada: passadas repetidas **não** desbotam mais que a
+/// primeira. Para apagar mais, aumente a Strength. É o preço da previsibilidade — a
+/// alternativa (acumular entre gestos) reintroduz a dependência de amostragem dentro de
+/// cada gesto, que é justamente o bug relatado.
+fn soft_erased(current: f32, strength: f32, falloff: f32) -> f32 {
+    let bite = strength * falloff;
+    let floor = (1.0 - bite).clamp(0.0, 1.0);
+    (current - bite).max(floor).min(current)
+}
+
 /// O desenho que a borracha edita — via o **autokey por-tool** (W3.T3.4): no rabo
 /// de um hold, a borracha SEMPRE trabalha numa DUPLICATA do desenho que está na
 /// tela (nunca num quadro em branco novo, que apagaria o nada e deixaria a arte
@@ -141,7 +171,7 @@ pub(crate) fn erase_at(
                     let d = ((*p - center).x.powi(2) + (*p - center).y.powi(2)).sqrt();
                     if d < radius {
                         let falloff = (1.0 - d / r).clamp(0.0, 1.0); // linear ramp (HR-5)
-                        let reduced = (ops[i] - strength * falloff).max(0.0);
+                        let reduced = soft_erased(ops[i], strength, falloff);
                         if reduced != ops[i] {
                             ops[i] = reduced;
                             changed = true;
@@ -303,265 +333,5 @@ impl crate::App {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_core::Playhead;
-    use ph2d_flip::{FlipDoc, Hold, KeyKind, Point, Rgba};
-
-    fn doc_with_line() -> (FlipDoc, LayerId) {
-        let mut doc = FlipDoc::new();
-        let oid = doc.push_object("O");
-        let obj = doc.object_mut(oid).unwrap();
-        let l = obj.add_layer("L");
-        let d = obj
-            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
-            .unwrap();
-        let mut s = FlipStroke::new();
-        for x in 0..5 {
-            s.push_point(Point {
-                pos: Vec2::new(x as f32, 0.0),
-                width: 0.1,
-                opacity: 1.0,
-                color: Rgba::WHITE,
-            });
-        }
-        obj.drawing_mut(d).unwrap().strokes.push(s);
-        (doc, l)
-    }
-
-    #[test]
-    fn stroke_mode_removes_the_whole_touched_stroke() {
-        let (mut doc, l) = doc_with_line();
-        let hit = erase_at(
-            &mut doc,
-            &Playhead::default(),
-            Some(l),
-            &mut crate::flip_strip::FlipStrip::default(),
-            EraseMode::Stroke,
-            Vec2::new(2.0, 0.0),
-            0.5,
-            1.0,
-        );
-        assert!(hit);
-        let obj = doc.objects().first().unwrap();
-        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
-        assert_eq!(obj.drawing(did).unwrap().strokes.len(), 0);
-    }
-
-    #[test]
-    fn hard_mode_splits_the_stroke_at_the_gap() {
-        let (mut doc, l) = doc_with_line();
-        // Erase the middle point (x=2) → two runs [0,1] and [3,4].
-        let hit = erase_at(
-            &mut doc,
-            &Playhead::default(),
-            Some(l),
-            &mut crate::flip_strip::FlipStrip::default(),
-            EraseMode::Hard,
-            Vec2::new(2.0, 0.0),
-            0.5,
-            1.0,
-        );
-        assert!(hit);
-        let obj = doc.objects().first().unwrap();
-        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
-        assert_eq!(obj.drawing(did).unwrap().strokes.len(), 2, "split into two");
-    }
-
-    #[test]
-    fn soft_mode_reduces_opacity_then_cleanup_removes_faded() {
-        let (mut doc, l) = doc_with_line();
-        // Full-strength soft erase over the whole line → all points to ~0.
-        for _ in 0..2 {
-            erase_at(
-                &mut doc,
-                &Playhead::default(),
-                Some(l),
-                &mut crate::flip_strip::FlipStrip::default(),
-                EraseMode::Soft,
-                Vec2::new(2.0, 0.0),
-                10.0,
-                1.0,
-            );
-        }
-        let obj = doc.objects().first().unwrap();
-        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
-        let min_op = obj.drawing(did).unwrap().strokes[0]
-            .opacities()
-            .iter()
-            .copied()
-            .fold(f32::INFINITY, f32::min);
-        assert!(
-            min_op < OPACITY_REMOVE_THRESHOLD,
-            "center faded below threshold"
-        );
-        assert!(cleanup_soft(
-            &mut doc,
-            &Playhead::default(),
-            Some(l),
-            &mut crate::flip_strip::FlipStrip::default(),
-        ));
-    }
-
-    #[test]
-    fn locked_layer_refuses_erase() {
-        let (mut doc, l) = doc_with_line();
-        doc.objects().first().unwrap(); // sanity
-        let oid = doc.objects().first().unwrap().id;
-        doc.object_mut(oid).unwrap().layer_mut(l).unwrap().locked = true;
-        let hit = erase_at(
-            &mut doc,
-            &Playhead::default(),
-            Some(l),
-            &mut crate::flip_strip::FlipStrip::default(),
-            EraseMode::Stroke,
-            Vec2::new(2.0, 0.0),
-            0.5,
-            1.0,
-        );
-        assert!(!hit, "locked layer preserved");
-    }
-
-    /// Um desenho com line-art + um PREENCHIMENTO (com furo) + um FECHAMENTO de gap.
-    fn doc_with_fill_and_closure() -> (FlipDoc, LayerId) {
-        let (mut doc, l) = doc_with_line();
-        let oid = doc.objects().first().unwrap().id;
-        let obj = doc.object_mut(oid).unwrap();
-        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
-        let dr = obj.drawing_mut(did).unwrap();
-
-        // O preenchimento: contorno invisível, com um furo.
-        let mut fill = FlipStroke::new();
-        for p in [
-            Vec2::new(0.0, 0.0),
-            Vec2::new(10.0, 0.0),
-            Vec2::new(10.0, 10.0),
-            Vec2::new(0.0, 10.0),
-        ] {
-            fill.push_point(Point {
-                pos: p,
-                width: 0.0,
-                opacity: 1.0,
-                color: Rgba::WHITE,
-            });
-        }
-        fill.closed = true;
-        fill.hide_stroke = true;
-        fill.holes = vec![vec![
-            Vec2::new(3.0, 3.0),
-            Vec2::new(7.0, 3.0),
-            Vec2::new(7.0, 7.0),
-            Vec2::new(3.0, 7.0),
-        ]];
-        fill.fill = Some(ph2d_flip::Fill {
-            color: Rgba::WHITE,
-            opacity: 1.0,
-        });
-        dr.strokes.push(fill);
-
-        // O fechamento de gap: invisível, sem cor, opacidade ZERO (é assim que nasce).
-        let mut clo = FlipStroke::new();
-        for p in [Vec2::new(20.0, 20.0), Vec2::new(22.0, 20.0)] {
-            clo.push_point(Point {
-                pos: p,
-                width: 0.0,
-                opacity: 0.0,
-                color: Rgba::TRANSPARENT,
-            });
-        }
-        clo.hide_stroke = true;
-        dr.strokes.push(clo);
-        (doc, l)
-    }
-
-    fn strokes_of(doc: &FlipDoc) -> Vec<FlipStroke> {
-        let obj = doc.objects().first().unwrap();
-        let l = obj.layers().first().unwrap().id;
-        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
-        obj.drawing(did).unwrap().strokes.clone()
-    }
-
-    /// **A borracha macia NÃO pode apagar os fechamentos de gap.**
-    ///
-    /// Um fechamento nasce com opacidade 0 (é invisível de propósito), e o `cleanup_soft`
-    /// coletava lixo por opacidade de ponto: `retain(any opacity >= 0.05)` matava TODOS
-    /// eles — a cada pen-up, em qualquer lugar do canvas. O vão reabria e o balde seguinte
-    /// vazava. O "fechamento persistente" (o twist do Harmony) era desfeito em silêncio.
-    #[test]
-    fn the_soft_eraser_does_not_delete_gap_closures_anywhere_on_the_canvas() {
-        let (mut doc, l) = doc_with_fill_and_closure();
-        let ph = Playhead::new(1.0 / 12.0);
-        let mut strip = crate::flip_strip::FlipStrip::default();
-        let before = strokes_of(&doc).len();
-
-        // Um toque de borracha macia LONGE de tudo (em (100, 100)).
-        erase_at(
-            &mut doc,
-            &ph,
-            Some(l),
-            &mut strip,
-            EraseMode::Soft,
-            Vec2::new(100.0, 100.0),
-            1.0,
-            1.0,
-        );
-        cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
-
-        let after = strokes_of(&doc);
-        assert_eq!(
-            after.len(),
-            before,
-            "a borracha apagou tracos do outro lado do canvas (o fechamento de gap sumiu)"
-        );
-        assert!(
-            after.iter().any(|s| s.hide_stroke && s.fill.is_none()),
-            "o fechamento de gap invisivel foi coletado como lixo"
-        );
-    }
-
-    /// **A borracha de PONTO não morde uma região.** Um preenchimento não tem tinta
-    /// visível (o contorno não é rasterizado): mordê-lo produzia fragmentos com o furo
-    /// PERDIDO (o "O" ficava sólido) e sem `hide_stroke` — o fragmento virava fronteira
-    /// do próximo balde e o Unpaint não o reconhecia mais.
-    #[test]
-    fn a_point_eraser_does_not_shred_a_filled_region() {
-        for mode in [EraseMode::Soft, EraseMode::Hard] {
-            let (mut doc, l) = doc_with_fill_and_closure();
-            let ph = Playhead::new(1.0 / 12.0);
-            let mut strip = crate::flip_strip::FlipStrip::default();
-
-            // Apaga bem no MEIO da região preenchida.
-            erase_at(
-                &mut doc,
-                &ph,
-                Some(l),
-                &mut strip,
-                mode,
-                Vec2::new(5.0, 5.0),
-                4.0,
-                1.0,
-            );
-            cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
-
-            let fills: Vec<FlipStroke> = strokes_of(&doc)
-                .into_iter()
-                .filter(|s| s.hide_stroke && s.fill.is_some())
-                .collect();
-            assert_eq!(
-                fills.len(),
-                1,
-                "{mode:?}: a regiao foi picada em {} pedacos",
-                fills.len()
-            );
-            assert_eq!(
-                fills[0].holes.len(),
-                1,
-                "{mode:?}: o furo do \"O\" foi perdido (a regiao virou solida)"
-            );
-            assert!(
-                fills[0].hide_stroke,
-                "{mode:?}: o fill perdeu o hide_stroke"
-            );
-        }
-    }
-}
+#[path = "flip_erase_tests.rs"]
+mod tests;

@@ -155,6 +155,32 @@ O seam também só reinicia quando o valor **de fato MUDA** — um slider re-emi
 
 ⚠️ **`crates/ph2d-gpu-cook/src/lib.rs` está em 691/700** — a próxima adição orça um split.
 
+### §4.LIVE — "por que reiniciar?" e o defeito que a pergunta expôs (`7316bb43`, 2026-07-17)
+
+Enio: *"o que impede que as atualizações sejam feitas em tempo real, sem travamentos e sem reiniciar? Godot faz assim"*. Responder honestamente achou um **defeito na policy que eu shipei**: ela reiniciava por `rate`, `life` **E** `max`, e **dois dos três não re-numeram nada**.
+
+**A lei é uma linha do `emit`: `birth(k) = k / rate`.** Logo:
+
+| param | efeito na janela viva | re-numera? | política |
+|---|---|---|---|
+| **`rate`** | muda `newest` **e o nascimento de todo id** | **SIM** | reinicia (`reseed_from_next_tick`) — não há estado a carregar, porque *"o estado do id k"* deixa de se referir à mesma coisa |
+| `life` | move só a borda ESQUERDA (`oldest`) | não | **VIVO** |
+| `max` | move só a borda ESQUERDA (o cap) | não | **VIVO** |
+| `speed`/`angle`/`spread`/`seed`/`x`/`y`/`size` | nada na contagem | não | vivo (já era) |
+
+E o vivo de `life`/`max` é **exato dos dois lados**, sem maquinário novo:
+
+- **Encolher** (life↓ / max↓): todo sobrevivente mantém id, mantém linha, e sua trajetória é **bit-idêntica** a uma execução que nunca mudou — nada na física de uma partícula depende de quantas partículas mais velhas foram podadas ao lado dela.
+- **Crescer** (life↑ / max↑): a janela revela ids que o frame anterior não carregava; esses são **semeados pelo bounds-check por-elemento `gather_paired` que já existe para os recém-nascidos** (D4). Sem reinício, e sem ler uma linha que não está lá — a defesa em camadas do D4 fazendo exatamente o trabalho dela.
+
+**Gate (GPU, RTX):** `shrinking_the_life_of_a_live_emitter_leaves_the_survivors_untouched` — marcha a sim, encolhe `life` no meio do voo **sem invalidação nenhuma**, e exige que o frame editado seja um **SUFIXO literal** do não-editado, **bit-idêntico** (drift `== 0.0` exato, não dentro de um ε; os ids sobem oldest-first, então o oráculo não precisa de id no stream de instâncias). Mutação (gather de volta a posicional) → **RED no 1º tick editado**.
+
+⚠️ **O 1º fixture era VACUOSO e o disse:** `FIXED_DT` é **0,05**, não 1/60 — com `life = 0.05` cada partícula vivia **UM tick**, nada pareava, e *"os sobreviventes casam"* era uma afirmação sobre o **conjunto vazio**. Quem pegou foi a **pré-condição de drift** (`moved > MUST_MOVE`), que existe exatamente pra isso. Hoje `life` cobre 4 ticks e a encolhida 2.
+
+**O que AINDA reinicia, e por quê (a resposta ao "Godot faz assim"):** as partículas do Godot são **stateful** — cada uma tem estado próprio num buffer de GPU, então trocar um uniforme não mexe em quem já está vivo. O nosso emitter é **stateless de propósito** (o conjunto vivo é função pura do playhead, ADR-0130), e é isso que compra o **scrub bit-exato** — o Godot não tem (o `seek`/`preprocess` dele re-simula do zero, que é literalmente o re-bake O(tick) que o §4.RESEED deletou). O `rate` é o único ponto onde os dois modelos divergem de fato: ele redefine a IDENTIDADE, e o Godot também reinicia quando o `amount` muda.
+
+**Se um dia o `rate` também tiver de ser vivo** (não construído, é decisão do Enio): o pareamento não precisa ser por id, pode ser por **tempo de nascimento** — `id_velho ≈ round((k/rate_novo) · rate_velho)`, ainda aritmética pura, um uniforme a mais (`prev_rate`). Vira vizinho-mais-próximo no tempo, o que dá exatamente o *look* do Godot (o jato fica mais denso/ralo sem reiniciar). Custo: 1 uniforme + a linha do `gather_row`; o risco é que o pareamento passa a ser aproximado, então o gate de paridade CPU↔GPU precisa de uma política nova (a CPU não pareia nada).
+
 ---
 
 ## §5 — Gotchas que a wave adversarial expôs (não re-descubra)
@@ -180,7 +206,8 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 ```
 
 - **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
-- **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`/`life`/`max`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). Arraste `speed`/`size` → a sim VIVA continua sem reiniciar (só os novos nascem diferentes). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
+- **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
+- **§4.LIVE — o que NÃO reinicia mais:** arraste **`life`** e **`max`** → a fonte **não pisca**: as partículas que continuam vivas seguem exatamente o voo delas (encolher é bit-idêntico; crescer só semeia as que a janela revela). Arraste `speed`/`size`/`angle`/`spread` → idem, a sim viva continua e só os recém-nascidos pegam o novo lançamento. **Se `life`/`max` reiniciarem a fonte, é regressão do §4.LIVE.**
 
 ## §7 — Ao fechar a fatia (o protocolo)
 

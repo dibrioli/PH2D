@@ -1,10 +1,10 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1–5 (ADR-0129)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1–5 + D (ADR-0129)
 
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17/18 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
 (§4.A itens 1–5 do Envelope).
-**Estado:** **Fatias 1, 2 e 3 fechadas e SMOKADAS pelo Enio; Fatias 4+5 fechadas e gateadas, PENDENTES
-de smoke.** Motor + host live já estavam na `main` (Fatias A+B).
+**Estado:** **Fatias 1, 2 e 3 fechadas e SMOKADAS pelo Enio; Fatias 4+5 e a Fatia D fechadas e
+gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias A+B).
 - **Fatia 1** = a alça própria de canto no Node (arrasta os 4 cantos, convexidade obrigatória).
 - **Fatia 2** = mover/girar/escalar o envelope inteiro no Select (geometria LOCAL + pose no `Transform`).
 - **Fatia 3** = o **CONTAINER de N filhos** (*warp group*): o `VecEnvelope` saiu do path e foi para uma
@@ -13,6 +13,9 @@ de smoke.** Motor + host live já estavam na `main` (Fatias A+B).
 - **Fatias 4+5** = a **seção Envelope no painel** (Create) + as duas saídas (**Expand**/**Release**).
   Até elas, `envelope_live::create` só era chamado pela env `PH2D_BUILD_SMOKE`: a feature existia no
   motor, gateada e smokada, e **não existia para o artista**.
+- **Fatia D** = a gaiola ganha **dois gestos**: **Perspective** (homografia, lados retos — o de sempre,
+  e o default) e **Mesh** (patch de **Coons**, os lados DOBRAM: 2 controles por lado, 8 alças novas no
+  modo Node). Chips `Cage: Perspective | Mesh` no painel.
 
 > ⚠️ **A ordem da fila do ADR foi INVERTIDA de propósito** (ele lista 4=Release, 5=painel). Motivo: o
 > Release é um BOTÃO — sem a seção do painel ele não teria onde morar (ou viraria um atalho de teclado,
@@ -215,8 +218,10 @@ As cenas antigas continuam: `PH2D_BUILD_SMOKE=12` (warp group, 2 elipses) e `=11
 
 Fatias 1, 2, 3, **4 e 5** fechadas. Resta da 4.A (fechar o Envelope):
 
-6. **Os outros gestos** (cada um é um `impl Warp` novo): C presets · D 4-curvas/Coons · E pinos/MLS
-   (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito; ADR §3.2). ← **próximo**
+6. ~~**D — 4 curvas de lado (Coons)**~~ — **FECHADA** (`5b6f754c`). Ver §8.
+7. **C — presets de gaiola** (Arc/Flag/Wave/…). ← **próximo**, e a ORDEM MUDOU: ver §8.3.
+8. **E — pinos / MLS** (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
+   ADR §3.2, e o `folds()` da Fatia D é o precedente do guard que ela vai precisar).
 
 E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.).
 
@@ -224,14 +229,105 @@ E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.)
 - **Fidelity/`accuracy` não é exposta.** O `accuracy` é relativo (0,1% da diagonal da união) e não
   tem knob. Quando houver queixa de "a curva perdeu detalhe", é um slider na seção — e o lugar dele
   já está lá.
-- **Presets de gaiola** (arco, bandeira, perspectiva…) — cada um é só um conjunto de `corners`; a
-  porta (`VecEnvelope.corners`) já aceita. É UI, não motor.
+- ~~**Presets de gaiola** — "cada um é só um conjunto de `corners`; é UI, não motor".~~ **Esta frase
+  estava ERRADA e a Fatia D é o motivo** — ver §8.3.
 - **Envelope aninhado** (envolver um envelope). O `container_of` **já sobe a cadeia** e pára no mais
   próximo, então a seleção e o dissolve se comportam; o que NÃO foi exercitado é o `create` sobre um
   container (ele resolve `ids` de PATHS, e um container não tem path) — hoje envolver um envelope
   envolve os **filhos** dele. Se isso for pedido, é uma decisão de modelo, não um fix.
 - **A gaiola só é editável no Node**, e isso é ADR §3.3 (cerca de Chesterton — um gizmo sobre
   geometria que se move dobra; 5 tentativas revertidas no Blend).
+
+---
+
+## §8 — Fatia D: a gaiola com lados que dobram (`5b6f754c`)
+
+### 8.1 — Dois gestos, e por que não é um knob
+
+| Gesto | Mapa | Lados | Alças |
+|---|---|---|---|
+| **Perspective** (default) | homografia dos 4 cantos | RETOS | 4 cantos |
+| **Mesh** | patch de **Coons** das 4 curvas de bordo | dobram | 4 cantos + 8 controles |
+
+**Eles não são o mesmo mapa com um parâmetro.** Com os lados retos o Coons é **bilinear** e a
+homografia é **projetiva**: concordam nos 4 cantos e **divergem no miolo** (sob bilinear uma reta
+interior vira parábola; sob homografia toda reta continua reta — que é o que "perspectiva" quer
+dizer). É a tabela do ADR §4 ao pé da letra, e é por isso que Photoshop separa *Distort* de *Warp*.
+
+**Em repouso os dois são a identidade**, então trocar de gesto numa gaiola intocada não move um
+pixel. Trocar **depois** de deformar muda o desenho — e isso é o mapa mudando, não um bug. O gate
+`perspective_and_mesh_agree_at_rest_and_differ_off_it` crava as duas metades: se ele ficasse verde
+nos dois ramos, um dos dois mapas seria supérfluo.
+
+### 8.2 — As quatro decisões que decidem o resto
+
+1. **O termo bilinear NEGATIVO não é enfeite.** Cada régua já entrega os cantos por conta própria;
+   somá-las os conta **duas vezes**. Subtrair o bilinear cancela a duplicata *exatamente*, e é isso
+   que faz `S(u,0) = B(u)` ao bit — **o bordo desenhado é o bordo do mapa**. Uma alça que pousasse
+   *perto* do bordo tornaria a gaiola uma sugestão, não um contrato.
+2. **Dois guards, e a diferença é epistemológica.** Perspective usa **convexidade**, que tem um
+   teorema atrás (§5 do ADR). Para um patch de Coons **não existe critério fechado equivalente** ⇒
+   `cage_folds` responde por **grade** (17×17 de `det J`) e o código DIZ que é amostragem. Dobra em
+   vetor é pior que em raster (contorno auto-interseccionado = a saga da lasca) e o `break_cusp`
+   volta `None` de propósito.
+3. **A reta entra na forma canônica (⅓, ⅔).** A degenerada `(P0,P0,P3,P3)` não é afim em `t` — a
+   `ph2d-vec-blend` já pagou (as intermediárias ondulavam); aqui o preço seria o repouso deixar de
+   ser identidade **exata**. `rest_edges` é a porta única de "os lados são retos", 3 chamadores.
+4. **Em Perspective os `edges` são FATO DERIVADO, não estado livre.** Valem sempre os canônicos da
+   gaiola atual, re-emitidos a cada movimento de canto **e** na troca de gesto. Sem isso, trocar para
+   Mesh depois mostraria alças penduradas na gaiola que existia antes do último arrasto — o *"funciona
+   e depois esquece"* de chapéu novo.
+
+Detalhes menores, mas que a próxima fatia vai encostar: no Mesh, mover um canto **leva os 2 controles
+vizinhos junto** (uma alça de Bézier pertence à sua âncora); o espaço de índices é **UM** (`0..4`
+cantos · `4 + 2·lado + j` controles) e atravessa hit-test, arrasto e desenho; `offered_edges` é a
+porta única de *"esta gaiola tem alça de lado?"*, então **alça pintada é sempre alça viva**.
+
+### 8.3 — ⚠️ A ordem C↔D estava invertida na fila, e a Fatia D é a prova
+
+A fila do ADR lista **C (presets) antes de D (Coons)**, e o §6 deste handoff dizia que presets eram
+*"só um conjunto de `corners`; é UI, não motor"*. **Isso vale só para os presets QUAD-expressáveis**
+(Perspective, Free Distort). **Arc, Flag, Wave, Bulge, Fish — os presets que a palavra "preset"
+evoca — precisam de LADOS CURVOS**: com 4 cantos retos um "Arc" é um trapézio, e trapézio não é arco.
+
+O próprio ADR já dizia a versão certa (*"o preset só vale primeiro se for GERADOR de gaiola … como
+gerador, **Quad e 4-curvas** saem quase de graça"*) — a fila é que ficou na ordem alfabética. Com a
+Fatia D fechada, **C agora é de fato quase de graça**: cada preset é uma função
+`(bend %, corners) -> (corners, edges)` + `kind = Mesh`, e a porta (`VecEnvelope`) já aceita tudo.
+
+### 8.4 — Dívida de LOC das Fatias 3/4, paga aqui
+
+`build_smoke.rs` (666) e `vec_gizmo_view.rs` (610) **já estavam acima do teto de 600 desde as Fatias
+3/4**, e eu não peguei: o gate HR-18 do **shell** mora em `shells/desktop/tests/file_loc_caps.rs` e
+**não roda com `cargo test -p ph2d-editor-core`** (que foi o que rodei ao fechar aquelas fatias). É a
+mesma classe de [[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]], num diretório diferente.
+
+Splits (mecânicos, sem mudar comportamento): **`envelope_smoke.rs`** (as cenas 11/12 — elas só usam
+os frames 3 e 4 e nenhum braço compartilhado, então sair do `match` é a MESMA sequência) e
+**`vec_gizmo_view_tests.rs`** (seguindo o idioma `#[path]` que o próprio arquivo já usava para os
+testes de hit). As duas cenas foram **verificadas vivas** depois do split.
+
+> **Para quem fechar a próxima fatia:** rode `cargo test -p ph2d-host-desktop --tests` (não só as
+> gates da `editor-core`) — é lá que moram os arch-gates do shell.
+
+### 8.5 — Smoke da Fatia D
+
+Sem env nenhuma:
+
+```
+\
+  cargo run -p ph2d-host-desktop --features panel-vector
+```
+
+1. Desenhe 1–2 formas, selecione → painel → **Envelope** → **Envelope**.
+2. A linha **Cage** aparece com **Perspective** aceso. Clique **Mesh**: **nada deve se mover** (a
+   gaiola está em repouso, e os dois mapas coincidem ali).
+3. Modo **Node**: agora há **8 bolinhas a mais**, uma por controle de lado, cada uma com uma haste
+   até o seu canto. Arraste uma → o lado **curva** e a arte curva com ele.
+4. Arraste um **canto** no Mesh → os 2 controles vizinhos vão junto (o lado acompanha rígido).
+5. Empurre um controle **muito** para o outro lado da gaiola → a alça **para** (o guard de dobra).
+6. Volte para **Perspective** → os lados endireitam e as 8 bolinhas somem.
+7. Cenas antigas seguem: `PH2D_BUILD_SMOKE=12` (warp group) e `=11` (`N=1`).
 
 ---
 
@@ -251,7 +347,14 @@ E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.)
   bloco append-only do painel vetorial.
 - **Gates:** 24 no envelope (shell) + 2 de seleção/gizmo + 2 de seam que CLICAM; clippy/fmt/LOC/tofu/
   a11y/colisão-de-id/wiring-parity verdes; **7 mutações-chave provadas** (3 da F3 + 4 das F4/F5).
-- **Commits (locais, sem push):** `d5695795` (F4+F5) · `10889f0e` (F3) · `5bddd9e4`/`43b918f5`/
-  `207d10b9` (F2/F1) + docs.
+- **Fatia D:** a gaiola ganhou **dois gestos** (Perspective/Mesh) — ver §8. **Nenhum é o outro com um
+  knob:** bilinear ≠ projetivo, e o par de gates crava que eles concordam em repouso e divergem fora
+  dele. +2 ids, +1 crate-módulo (`coons.rs`), `VecEnvelope` ganhou `edges` + `kind`.
+- **Gates da D:** 8 no motor Coons + 6 no gesto + 4 no host + **2 no GATE-MÃE sobre o mapa de
+  produção** (o de invariância à subdivisão rodava só sobre um `Bilinear` escrito à mão) + os 2 de
+  seam do painel **estendidos** (as listas de "o que a seção oferece" ganharam os chips — uma lista
+  nova driftaria). **9 mutações RED→GREEN.**
+- **Commits (locais, sem push):** `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
+  `5bddd9e4`/`43b918f5`/`207d10b9` (F2/F1) + docs.
 - **A linha NÃO integra nem faz push** (§0.7): entrego este handoff e **PARO** — integração e ship só
   por ordem EXPLÍCITA do Enio.

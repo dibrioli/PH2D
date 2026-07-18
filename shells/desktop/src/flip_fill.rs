@@ -525,27 +525,8 @@ impl crate::App {
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return true;
         };
-        // A base PRISTINA — o desenho ANTES do fill. É dela que todo reajuste vai partir
-        // (`flip_live`): re-preencher sobre o resultado anterior faria os parâmetros se
-        // COMPOREM (os fechamentos de gap se empilhariam a cada mexida no slider) em vez
-        // de se substituírem, e o slider deixaria de ser reversível.
-        let base = drawing.strokes.clone();
         match fill_click(drawing, &style, local, px_to_world, &w2l) {
-            Ok(()) => {
-                // O preenchimento vira o **alvo vivo**: Gap/Grow/Precision/cor continuam
-                // mexendo NELE até o usuário fazer outra coisa.
-                self.flip_live = Some(crate::flip_live::FlipLive {
-                    oid,
-                    did,
-                    frame,
-                    layer: active_layer,
-                    mode: style.mode,
-                    applied: style,
-                    px_to_world,
-                    w2l,
-                    kind: crate::flip_live::LiveKind::Fill { base, click: local },
-                });
-            }
+            Ok(()) => {}
             Err(e) => {
                 // Um fill que não aconteceu DIZ por quê — em vez de não fazer nada em
                 // silêncio (que é como um balde parece quebrado).

@@ -300,7 +300,6 @@ impl crate::App {
         // um projeto e veria o grafo congelado em t=0 até apertar Space (o `pause` acima é novo).
         crate::render_loop::motion_bridge::forget_tool_transition();
         self.undo = ProjectUndo::default(); // documento novo, histórico novo
-        self.flip_live_clear(); // …e o alvo vivo do anterior morreu junto
         // O mundo rígido é DERIVADO das components (ADR-0131 D2), então o do
         // documento anterior morre aqui — o `reconcile` do próximo frame o
         // re-deriva das components carregadas (entidades novas, bits novos).

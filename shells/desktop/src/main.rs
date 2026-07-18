@@ -67,7 +67,6 @@ mod flip_erase;
 mod flip_fill;
 mod flip_gizmo_view;
 mod flip_layers;
-mod flip_live;
 mod flip_multiframe;
 mod flip_pose_gizmo;
 mod flip_pose_smoke;
@@ -353,7 +352,6 @@ impl App {
             flip_active_layer: None,
             flip_erasing: false,
             flip_strip: crate::flip_strip::FlipStrip::default(),
-            flip_live: None,
             flip_reshape: None,
             flip_edit_style: None,
             flip_segment_hover: None,
@@ -489,12 +487,8 @@ impl App {
         // o lê no mesmo frame. Barato e guardado (só recomputa quando o cursor move).
         self.flip_segment_hover_refresh();
         self.run_render_frame();
-        // **O alvo VIVO** (`flip_live`): se o painel mudou, refaz a última coisa criada —
-        // o traço ou o preenchimento. Antes do retrato do undo, para o ajuste e o estado
-        // que o usuário vê serem o MESMO passo.
-        self.flip_live_refresh();
         // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
-        // painel, e enquanto existe ela aposenta o alvo vivo. Só a MUDANÇA de estilo age.
+        // painel. Só a MUDANÇA de estilo age.
         crate::flip_select::flip_edit_style_refresh(self);
         // **O DOMÍNIO da seleção** (W8): a troca Stroke↔Point converte a seleção no
         // documento (broadcast/promoção) — uma vez, quando o toggle muda.

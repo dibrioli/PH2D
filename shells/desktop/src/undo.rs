@@ -286,8 +286,6 @@ impl crate::App {
     /// Desfaz (ou refaz) um passo da fila global: empurra o estado atual pro outro
     /// lado e aplica o restaurado.
     pub(crate) fn apply_undo(&mut self, redo: bool) {
-        // O alvo vivo aponta para um desenho de um estado que vai deixar de existir.
-        self.flip_live_clear();
         let Some(current) = self.capture_project() else {
             return;
         };

@@ -254,9 +254,6 @@ impl crate::App {
     /// Pen-down of the eraser: begin the gesture + erase at the cursor. Returns
     /// `true` if consumed (so the caller doesn't fall into the gizmo/pick).
     pub(crate) fn flip_erase_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        // Apagar é "fazer outra coisa": o alvo vivo (o último traço/preenchimento) deixa
-        // de ser o alvo dos ajustes do painel.
-        self.flip_live_clear();
         if !self.flip_wants_erase() {
             return false;
         }

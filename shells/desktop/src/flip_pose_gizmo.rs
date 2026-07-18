@@ -295,9 +295,6 @@ impl crate::App {
             key: t.key,
             c_local: t.c_local,
         });
-        // A instância vira o alvo do gesto — o "alvo vivo" sai de cena (mesma regra
-        // do down do Edit).
-        self.flip_live_clear();
         true
     }
 

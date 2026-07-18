@@ -308,7 +308,6 @@ impl crate::App {
                     }
                 }
             });
-            self.flip_live_clear();
             return true;
         }
         // ── Domínio STROKE (W6): o clique pega o traço inteiro. ──
@@ -346,9 +345,6 @@ impl crate::App {
                 additive,
             },
         });
-        // A seleção vira o alvo dos ajustes do painel — o "alvo vivo" (a última coisa
-        // criada) sai de cena enquanto houver seleção.
-        self.flip_live_clear();
         true
     }
 }
@@ -380,7 +376,6 @@ impl crate::App {
         };
         if n > 0 {
             self.title_dirty = true;
-            self.flip_live_clear(); // o alvo vivo pode ter sido um dos apagados
         }
         n > 0
     }
@@ -389,14 +384,14 @@ impl crate::App {
 /// **Os ajustes do painel miram a SELEÇÃO** — o passe por-frame que aposenta o "alvo
 /// vivo" enquanto há traços selecionados.
 ///
-/// Roda 1×/frame (ao lado do `flip_live_refresh`) e obedece a **duas** regras que não são
+/// Roda 1×/frame e obedece a **duas** regras que não são
 /// negociáveis:
 ///
 /// 1. **Só a MUDANÇA age.** Se o passe reaplicasse o estilo a cada frame, selecionar um
 ///    traço vermelho com o painel em azul o pintaria de azul **no ato do clique** — o
 ///    usuário perderia a arte só por olhar para ela. Por isso o estilo do frame anterior é
 ///    guardado (`flip_edit_style`) e só os campos que **de fato mudaram** são escritos.
-///    (É o mesmo princípio do `same_stroke_style` do alvo vivo, com a diferença de que
+///    (É o mesmo princípio do antigo `same_stroke_style`, com a diferença de que
 ///    aqui não há insumo cru para refazer o traço.)
 ///
 /// 2. **Nada de GEOMETRIA.** O passe escreve só atributos (cor, opacidade, dureza,

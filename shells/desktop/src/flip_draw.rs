@@ -146,7 +146,7 @@ pub(crate) fn bake_stroke(
 
 /// **Das amostras CRUAS ao traço** — smoothing + decimação invisível + estilo.
 ///
-/// É `pub(crate)` porque o **alvo vivo** (`flip_live`) o chama de novo a cada ajuste do
+/// É `pub(crate)` porque os testes o dirigem direto, sem passar pelo gesto do
 /// painel: mudar o Smoothing exige refazer *a partir das amostras*, não do traço assado
 /// (o smoothing filtra o insumo; um traço já filtrado não tem como "desfiltrar").
 pub(crate) fn stroke_from_samples(
@@ -365,13 +365,16 @@ impl crate::App {
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
         let strip_ref = &mut self.flip_strip;
-        let mut live = None;
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {
             let win = gfx.surface.size();
             let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-            if let Some((oid, did, index)) = bake_stroke(
+            // O traço é assado e ACABOU. (Ele já foi o "alvo vivo" — os controles do
+            // painel continuavam reescrevendo o último traço até o usuário fazer outra
+            // coisa. O Enio mandou parar com isso em 2026-07-18: um traço desenhado é um
+            // FATO, não uma pré-visualização que os sliders continuam editando.)
+            bake_stroke(
                 &mut gfx.flip,
                 &playhead,
                 &style,
@@ -381,29 +384,8 @@ impl crate::App {
                 &pressures,
                 px_to_world,
                 &w2l,
-            ) {
-                // O traço vira o **alvo vivo**: os controles do painel continuam mexendo
-                // NELE até o usuário fazer outra coisa. Guarda-se o INSUMO (as amostras
-                // cruas), não o resultado — sem elas o Smoothing seria inajustável.
-                let frame = gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead));
-                live = Some(crate::flip_live::FlipLive {
-                    oid,
-                    did,
-                    frame,
-                    layer: active_layer,
-                    mode: style.mode,
-                    applied: style,
-                    px_to_world,
-                    w2l,
-                    kind: crate::flip_live::LiveKind::Stroke {
-                        index,
-                        points,
-                        pressures,
-                    },
-                });
-            }
+            );
         }
-        self.flip_live = live;
         true
     }
 }

@@ -283,7 +283,7 @@ fn the_bucket_fills_at_the_real_camera_scale() {
 
 /// **Reajustar parte da BASE PRISTINA — nunca do resultado anterior.**
 ///
-/// É o coração do alvo vivo (`flip_live`). Um fill com Gap cria fechamentos
+/// Um fill com Gap cria fechamentos
 /// PERSISTENTES no desenho; se o reajuste rodasse sobre o resultado anterior, cada
 /// mexida no slider empilharia mais um jogo de fechamentos e mais um preenchimento —
 /// os parâmetros se COMPORIAM em vez de se substituírem, e arrastar o slider para a

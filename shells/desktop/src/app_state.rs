@@ -682,10 +682,6 @@ pub(crate) struct App {
     /// inbetweens/seleção de chaves). O documento (frames, desenhos, ciclos) vive no
     /// `FlipDoc`; aqui só o que não é documento.
     pub(crate) flip_strip: crate::flip_strip::FlipStrip,
-    /// **O alvo VIVO** — a última coisa criada (traço ou preenchimento), que os controles
-    /// do painel continuam ajustando até o usuário fazer outra coisa. Enquanto não há
-    /// seleção de traço, é ele o alvo dos ajustes. Ver `flip_live`.
-    pub(crate) flip_live: Option<crate::flip_live::FlipLive>,
     /// ADR-0114 W5: o gesto de ESCULTURA em curso (Down..Up no modo Reshape). Carrega
     /// a máscara congelada no pen-down — e, no Grab, os pesos. `None` quando não há
     /// gesto. Ver `flip_reshape`.

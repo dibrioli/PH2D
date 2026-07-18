@@ -432,8 +432,6 @@ impl crate::App {
             start,
             points,
         });
-        // A seleção vira o alvo do gesto — o "alvo vivo" sai de cena (regra do down do Edit).
-        self.flip_live_clear();
         true
     }
 

@@ -219,9 +219,6 @@ impl crate::App {
     /// Pen-down: resolve o desenho-alvo, congela a máscara e aplica a 1ª amostra.
     /// `true` = consumido (o gizmo/pick não vê o clique).
     pub(crate) fn flip_reshape_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        // Esculpir é "fazer outra coisa": o alvo vivo (o último traço/preenchimento)
-        // deixa de ser o alvo dos ajustes do painel.
-        self.flip_live_clear();
         if !self.flip_wants_reshape() {
             return false;
         }

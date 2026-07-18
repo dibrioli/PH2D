@@ -1,4 +1,4 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1–5 + D + C (ADR-0129)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope COMPLETO — Fatias 1–5 + C + D + E (ADR-0129)
 
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17/18 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
@@ -18,6 +18,8 @@ gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias 
   modo Node). Chips `Cage: Perspective | Mesh` no painel.
 - **Fatia C** = **7 presets que GERAM a gaiola** (Arc · Arc Upper · Arc Lower · Bulge · Flag · Wave ·
   Squeeze) + slider **Bend** (`-1..1`). O preset é **promovível**: arrastar uma alça o solta.
+- **Fatia E** = **PINOS** (MLS-rigid, o *puppet warp*) — 3º gesto, sem gaiola: prega pontos no Node e
+  arrasta. **A fila do ADR-0129 fecha aqui.**
 
 > ⚠️ **A ordem da fila do ADR foi INVERTIDA de propósito** (ele lista 4=Release, 5=painel). Motivo: o
 > Release é um BOTÃO — sem a seção do painel ele não teria onde morar (ou viraria um atalho de teclado,
@@ -222,7 +224,10 @@ Fatias 1, 2, 3, **4 e 5** fechadas. Resta da 4.A (fechar o Envelope):
 
 6. ~~**D — 4 curvas de lado (Coons)**~~ — **FECHADA** (`5b6f754c`). Ver §8.
 7. ~~**C — presets de gaiola**~~ — **FECHADA** (`3f4e0c91`). Ver §9.
-8. **E — pinos / MLS** ← **próximo, e é a última** (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
+8. ~~**E — pinos / MLS**~~ — **FECHADA** (`adc2f228`). Ver §10.
+
+**A fila do ADR-0129 acabou.** O que resta é a 4.B herdada (Live Path Effects como nós, morph vivo,
+blend em cadeia) e o backlog aberto de propósito do §6. (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
    ADR §3.2, e o `folds()` da Fatia D é o precedente do guard que ela vai precisar).
 
 E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.).
@@ -405,6 +410,87 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 
 ---
 
+## §10 — Fatia E: os pinos (`adc2f228`)
+
+### 10.1 — A jacobiana é fechada, e o que a tornou escrevível foi um cancelamento
+
+O `Warp` exige a derivada REAL (uma diferença finita faz o `fit_to_bezpath` **não convergir** — ele
+*trava*, não falha), e derivar `f = (S/|S|)(v − p⋆) + q⋆` parece proibitivo porque `p⋆`, `q⋆` e `S`
+são **todos** função de `v`. Até se notar que **`Σwᵢp̂ᵢ = 0` e `Σwᵢq̂ᵢ = 0` por definição do centróide
+ponderado**: os dois termos de correção de `∂S` são exatamente essas somas e **desaparecem**,
+deixando
+
+```
+∂S/∂v = Σ (∂wᵢ/∂v)·q̂ᵢ·conj(p̂ᵢ)      com  ∂wᵢ/∂v = wᵢ/(pᵢ − v)
+```
+
+O resto é regra do quociente em cálculo de **Wirtinger** (`∂/∂v` e `∂/∂v̄` por estágio), e a jacobiana
+real sai de `A = ∂f/∂v` e `B = ∂f/∂v̄`. Quem for mexer nisto: o gate de diferença central é o oráculo,
+e ele mata as 4 mutações estruturais (R constante · p⋆ constante · termo conjugado descartado · sinal
+de `∂w`).
+
+### 10.2 — Os dois guards NÃO são casos especiais: são o método
+
+- **`v` em cima de um pino** ⇒ devolve o pino movido (o guard do Krita que o ADR mandou copiar). Sem
+  ele, pregar em cima de uma âncora é `NaN` no 1º frame.
+- **`|S| ≈ 0`** ⇒ **translação pura**. E este guard **É** o caso de 1 pino (com um só, `p̂ = q̂ = 0`),
+  que é o critério de aceitação #5 do ADR — não um ramo escrito à mão.
+
+### 10.3 — ⚠️ A dobra foi respondida pela OUTRA ponta, e isso REVOGA um aviso do próprio ADR
+
+O `fit.rs` dizia que a Fatia E quebraria a premissa *"nenhum mapa em escopo dobra"* e que quem
+levasse o MLS adiante teria de implementar `break_cusp`. **A resposta desta linha à degenerescência é
+sempre a mesma — torná-la inalcançável pela mão** — então `pins_fold` **recusa o arrasto que
+dobraria**, e o `break_cusp` em `None` volta a ser honesto. O docstring dele foi reescrito
+(comentário velho mente).
+
+Não é preguiça: aproximar um fold com carinho produz um contorno **auto-interseccionado** (a saga da
+lasca da booleana), não um bico bem fitado. **Preço registrado:** não se torce um pino além de ~90°.
+É limite do MÉTODO (o ADR mediu `det J` mudar de sinal aí), não do guard.
+
+### 10.4 — Duas coisas contra-intuitivas que o smoke vai encontrar
+
+- **Com 2 pinos não se deforma nada.** Uma isometria de um par determina uma rigidez ÚNICA ⇒ o mapa
+  devolve movimento rígido do plano inteiro. **É preciso um 3º pino não-colinear.** Há gate no motor
+  e no produto; quem for depurar *"os pinos não fazem nada"* tem de os encontrar antes de mexer na
+  matemática.
+- **O suporte é GLOBAL** — o deslocamento cresce com a distância, e nenhum parâmetro conserta (o α do
+  paper não tem efeito no campo distante; foi por isso que o slider *"Flexibility"* do Krita foi
+  **recusado** no ADR §6). A mitigação é estrutural: **o container é o escopo**.
+
+⚠️ **E o contra-sinal do ADR continua de pé:** se o smoke mostrar que o gesto quer **posar
+personagem** (membro perto do tronco), o MLS **vai** falhar e nenhum parâmetro salva — a decisão é
+**reaberta** (ARAP/LBS), não calibrada.
+
+### 10.5 — Uma mutação SOBREVIVEU, e o gate que faltava
+
+**Hit-testar o pino pela posição de REPOUSO** passou verde: o fixture nunca tinha arrastado um pino
+antes de o agarrar, então `rest == moved` e o teste não conseguia distinguir. Gate estendido (arrasta
+→ agarra no lugar NOVO → confirma que o lugar VELHO já não pega) ⇒ a mutação morre.
+
+E **dois oráculos meus** que os gates derrubaram: *"mover 1 de 2 pinos não deforma"* é **falso**
+(mover um só muda a distância entre eles, logo não é isometria — a afirmação é sobre movimento
+RÍGIDO do par); e medir forma por **bbox alinhada ao eixo** não é invariante a rotação (acusou o par
+isométrico de encolher 1%; o que encolheu foi a caixa de um círculo cozido em 4 cúbicas). Rigidez
+preserva **distância** — o oráculo agora é o diâmetro do conjunto de âncoras.
+
+### 10.6 — Smoke da Fatia E
+
+```
+\
+  cargo run -p ph2d-host-desktop --features panel-vector
+```
+
+1. Envolva uma forma → chip **Pins** (a fileira Cage agora tem 3). Clique nele: a gaiola **some**.
+2. Modo **Node**: clique em 3 pontos da arte → 3 pinos (bolinha cheia + circulinho de repouso).
+3. Arraste o 3º → **agora** deforma. ⚠️ **Com só 2 pinos a arte MOVE mas não deforma — isso é o
+   método, não um bug** (§10.4).
+4. Puxe um pino para muito longe → ele **para** (o guard de dobra).
+5. **Clear Pins** → tudo volta.
+6. Voltar a **Persp**/**Mesh** traz a gaiola de volta, e os pinos ficam guardados.
+
+---
+
 ## §7 — Resumo de fechamento
 
 - **Fatias 1–5 do Envelope (ADR-0129 §4.A.1–5) construídas e gateadas.** F1/F2/F3 SMOKADAS; F4+F5
@@ -432,7 +518,12 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   não escolhida: o primeiro valor comprava a garantia só para as formas que eu já tinha escrito.
 - **Gates da C:** 7 no motor + 6 no host (a varredura dos presets REAIS) + 4 de seam. **9 mutações
   RED→GREEN.** Dois gates de LOC pagos com split, nenhum allowlist.
-- **Commits (locais, sem push):** `3f4e0c91` (Fatia C) · `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
+- **Fatia E:** os **pinos** (MLS-rigid) — ver §10. A jacobiana é **fechada** (Wirtinger + o
+  cancelamento do centróide), e a dobra é **recusada** em vez de aproximada, o que **restitui** a
+  premissa do `break_cusp` que o ADR dava por perdida.
+- **Gates da E:** 9 no motor + 2 no gate-mãe + 7 no host + 1 de seam. **8 mutações, 1 SOBREVIVENTE →
+  gate novo** (§10.5). Dois oráculos meus caíram no caminho.
+- **Commits (locais, sem push):** `adc2f228` (Fatia E) · `3f4e0c91` (Fatia C) · `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
   `5bddd9e4`/`43b918f5`/`207d10b9` (F2/F1) + docs.
 - **A linha NÃO integra nem faz push** (§0.7): entrego este handoff e **PARO** — integração e ship só
   por ordem EXPLÍCITA do Enio.

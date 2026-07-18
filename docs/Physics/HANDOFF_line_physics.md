@@ -14,7 +14,7 @@
 
 | Wave | Estado | Commit | Nota |
 |---|---|---|---|
-| **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | *(este commit)* | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
+| **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
 | **W1 — Ponte ECS + tick + hash** | ⏳ pendente (aguarda ordem do Enio) | — | o alicerce |
 | **W1.5 — Scrub (checkpoint ring)** | ⏳ pendente | — | kill-check de serialização ANTES do build |
 | **W2 — Painel + Inspector body** | ⏳ pendente | — | categoria de painel NOVA (mundo) |
@@ -131,8 +131,8 @@ código, nenhum contrato tocado, nenhum foundational tocado.
 
 > Preencher HEAD após o commit. Reportar ao Enio e **PARAR** (regra E/H). NÃO integrar, NÃO pushar.
 
-1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; HEAD = *(o commit
-   destes docs)*; **1 commit**, docs-only.
+1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; conteúdo W0 =
+   `456e8b99` (+ 1 commit de ajuste de sha por cima); docs-only. HEAD vivo = `git log` no fechamento.
 2. **Foundational/compartilhado tocado:** **NENHUM.** Arquivos: só `docs/Physics/*` (novos) +
    `docs/architecture/decisions/0130-*.md` (novo). Zero `.rs`, zero `Cargo.*`, zero código de app.
 3. **Símbolos que podem COLIDIR:** **o número de ADR `0130`** — 4 linhas ativas (FLIP/Painter/Vector/anim)

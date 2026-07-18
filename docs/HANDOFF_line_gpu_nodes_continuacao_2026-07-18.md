@@ -237,6 +237,48 @@ stencil Laplaciano) · `motion.twist`/`bend`/`spherize`/`four_point_warp`/
 antes do passe por-elemento; é a primitiva de redução já escopada como item
 separado) · `motion.collide`/`boids` (all-pairs).
 
+#### ✅ Feito nesta jornada (cobertura 20 → 26)
+
+`motion.noise` · `value.lfo` · `motion.luminance` · `value.map_range` ·
+`motion.orbit` · `motion.pin_constraint`. Cada um com gate de paridade
+mutação-testado. **Três bloqueios de MOTOR removidos, e nenhum era sobre kernel:**
+
+1. **Palavra reservada do WGSL** (`motion.noise` tem param `type`) — o codegen
+   emitia o nome cru e o naga recusava.
+2. **Nome de uniform do motor** (`motion.pin_constraint` tem param `count`) — o
+   `plan::eligible` recusava o kernel explicitamente.
+   → os dois pela mesma porta: **`codegen::field_name::wgsl_field`** (sufixo `_`).
+3. **O modelo de stream só sabia "base + escritas"** — os `value.*` emitem um
+   stream de outra ESPÉCIE. Derivado do manifesto (tipo da porta 0 in vs out),
+   sem campo novo no `GpuKernel`, no-op para todos os kernels já existentes.
+
+**Saíram da fila com motivo medido** (não são "kernel que falta"):
+- **`sim.step` / `sim.collide`**: não têm `pre` próprio — o relógio vem da
+  `sim.zone`. Fora do zone `dt ≡ 0`, então o kernel **nunca rodaria**. Voltam se a
+  `sim.zone` (um escopo/laço, não um map) for portada.
+- **`motion.look_at` / `value.math` / `value.switch` / `motion.drive`**: todos
+  fazem **BROADCAST** — uma stream de VALOR de comprimento 1 vale para todo
+  elemento. O dispatch é dimensionado pela porta 0, e ler `port_v[i]` num buffer de
+  comprimento 1 é fora do intervalo: o naga torna seguro, mas **diverge** do
+  broadcast da CPU. O motor não tem **comprimento por-porta** (o `gather_prev_n` é
+  específico do gather).
+
+#### ⚠️ O PRÓXIMO ITEM, e por que ele vale mais que qualquer kernel isolado
+
+**Comprimento por-porta / broadcast.** É o mesmo formato dos três consertos acima —
+uma capacidade que falta ao motor, não um kernel — e destrava **4 nós de uma vez**
+(`look_at`, `value.math`, `value.switch`, `motion.drive`). Forma provável: um
+uniform de comprimento por porta ligada (o host já os conhece: são os `count` dos
+streams de entrada) + um `read_<port>_<col>_bcast(i)` que faz o `target_at` da CPU.
+Faça o gate comparar contra os DOIS casos (comprimento 1 e comprimento n) — um
+fixture só com comprimento n passaria com o broadcast quebrado.
+
+⚠️ **`motion.look_at` é MULTI-INPUT**: quando ele pousar, um grafo com 2 entradas
+descobertas passa a deixar **2 fronteiras**, e o tripwire
+`no_plan_can_leave_more_than_one_seam_today` fica vermelho de propósito — aí a
+fatia B (§2 B) vira trabalho real e obrigatório. Acrescente o fixture ao tripwire
+no MESMO commit do kernel, senão o gate fica incompleto em silêncio.
+
 #### ⚠️ Dois bloqueios de motor que o levantamento expôs
 
 1. **Um param com nome de palavra RESERVADA do WGSL não compila** — e o nº 1 da

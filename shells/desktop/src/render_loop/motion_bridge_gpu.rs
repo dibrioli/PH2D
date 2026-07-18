@@ -194,32 +194,37 @@ pub(super) fn cook_gpu(
 }
 
 /// Does editing `param` on a node of `type_name` **re-number** the emitter's ids
-/// — ADR-0130 D7, the trigger for forgetting the GPU sim state?
+/// — ADR-0130 D7, the trigger for restarting the GPU sim?
 ///
-/// `motion.emitter`'s alive set at `t` is a contiguous id window whose bounds are
-/// a closed function of `rate`/`life`/`max` (`emit`/`source_count`). Editing one
-/// of those THREE moves the `id ↔ particle` map: the same id now names a
-/// different particle, so the sim's paired state (`gather_row = current_id −
-/// prev_first`) would read the OLD window's rows for the NEW ids — a silent
-/// mispair as the window jumps. The honest answer is to **forget the sim** so it
-/// re-bakes from the tick-0 seed under the new params (the Blender/Houdini "edit
-/// invalidates the cache"; the CPU scrub ring does the same on `mark_dirty`).
+/// **Only `rate` does**, and the distinction is the whole point. Particle `k` is
+/// born at `k / rate` (`emit`), so `rate` is the ONLY param in the emitter's
+/// count law that re-defines what id `k` *names*: the same id becomes a different
+/// particle, and the paired state (`gather_row = current_id − prev_first`) would
+/// hand the new ids the old window's rows — a silent mispair as the window jumps.
+/// There is no state to carry, because "the state of id `k`" no longer refers to
+/// the same thing; so the sim restarts at the tick on screen
+/// ([`GpuCook::reseed_from_next_tick`]).
+///
+/// `life` and `max` were in this list and **should not have been** (the smoke
+/// question *"o que impede que as atualizações sejam feitas em tempo real?"*).
+/// They do not touch `birth(k) = k/rate` at all — they only move the window's
+/// LEFT edge (`first = newest + 1 − n`), so id `k` keeps its identity and every
+/// survivor keeps its row. Shrinking is therefore live and **exact**: the
+/// survivors' trajectories are bit-identical to a run that never changed. Growing
+/// reveals ids the previous frame did not carry, and those are seeded by the
+/// per-element `gather_paired` bounds check that already exists for newborns
+/// (ADR-0130 D4) — no restart needed, and no read of a row that isn't there.
 ///
 /// The launch params (`speed`/`angle`/`spread`/`seed`) and the geometry
-/// (`x`/`y`/`size`) do **NOT** re-number — the gather still pairs id-for-id, so
-/// the running sim KEEPS and only newborn particles take the new launch. That is
-/// the correct live edit, and forgetting there would be a needless pop.
+/// (`x`/`y`/`size`) do not re-number either — the gather pairs id-for-id, the
+/// running sim KEEPS, and only newborns take the new launch.
 ///
-/// It is a tiny allowlist tied to ONE node's count law, not a general rule that
-/// could rot ([[feedback_a_condition_that_enumerates_its_readers_rots]]): a new
-/// numbering param on the emitter is a deliberate change to `emit` that revisits
-/// this line. **Cost note (D7):** because `rewind_for` anchors a forgotten sim at
-/// tick 0, the re-bake is O(current tick) — a discrete edit deep into playback
-/// hitches once (a bake), and holding a drag re-bakes each frame; a `re-seed at
-/// the current tick` (cheap, restart-from-now) is a possible follow-up if the
-/// bake proves too costly in the smoke.
+/// It is a tiny allowlist tied to ONE node's numbering law, not a general rule
+/// that could rot ([[feedback_a_condition_that_enumerates_its_readers_rots]]): a
+/// new numbering param on the emitter is a deliberate change to `emit` that
+/// revisits this line.
 pub(super) fn edit_renumbers_emitter(type_name: &str, param: &str) -> bool {
-    type_name == "motion.emitter" && matches!(param, "rate" | "life" | "max")
+    type_name == "motion.emitter" && param == "rate"
 }
 
 #[cfg(test)]
@@ -234,14 +239,25 @@ mod tests {
 
     #[test]
     fn only_the_emitters_renumbering_params_invalidate_the_gpu_sim() {
-        // ADR-0130 D7. rate/life/max move the id↔particle map → forget & re-bake;
-        // the launch params and geometry keep the running sim; and NO other node
-        // type forgets. The mutation that drops the `motion.emitter` guard makes a
-        // grid's or a force's "rate" forget too — the last loop below catches it.
-        for p in ["rate", "life", "max"] {
+        // ADR-0130 D7. `rate` alone moves the id↔particle map (`birth(k) = k/rate`)
+        // → restart; everything else keeps the running sim; and NO other node type
+        // restarts. The mutation that drops the `motion.emitter` guard makes a
+        // grid's or a force's "rate" restart too — the last loop below catches it.
+        assert!(
+            edit_renumbers_emitter("motion.emitter", "rate"),
+            "rate re-numbers: `birth(k) = k/rate`"
+        );
+        // `life`/`max` are the ones this gate got WRONG at first. They move the
+        // window's left edge, never `birth(k)` — survivors keep their rows, and
+        // ids the window newly reveals are seeded by the per-element bounds check.
+        // Listed by NAME, not folded into the loop below, because their absence
+        // here is a decision and not an omission (the GPU gate
+        // `shrinking_the_life_of_a_live_emitter_leaves_the_survivors_untouched`
+        // is what proves the decision is safe).
+        for p in ["life", "max"] {
             assert!(
-                edit_renumbers_emitter("motion.emitter", p),
-                "{p} re-numbers"
+                !edit_renumbers_emitter("motion.emitter", p),
+                "{p} resizes the window; it does not re-number"
             );
         }
         for p in ["speed", "angle", "spread", "seed", "x", "y", "size"] {

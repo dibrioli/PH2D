@@ -1169,3 +1169,126 @@ fn scrubbing_the_emitter_sim_reproduces_the_past_window() {
     let resumed = march(&mut gc, MARCHED);
     assert_parity("emitter re-marched", &cpu[MARCHED as usize], &resumed);
 }
+
+fn emitter_of(g: &Graph) -> NodeId {
+    g.nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.emitter")
+        .expect("the fixture has an emitter")
+        .id
+}
+
+/// Cook the emitter sim tick-by-tick, optionally editing one emitter param
+/// **live** mid-march — with no invalidation of any kind, which is the claim.
+fn emitter_gpu_ticks_with_live_edit(
+    gpu: &GpuContext,
+    g: &mut Graph,
+    reg: &NodeRegistry,
+    out: NodeId,
+    ticks: u64,
+    edit: Option<(u64, &str, f32)>,
+) -> Vec<Vec<RenderInstance>> {
+    let em = emitter_of(g);
+    let plan = plan(g, reg, reg, out);
+    assert!(plan.is_fully_gpu() && plan.drives_a_loop());
+    let mut gc = GpuCook::new();
+    let mut frames = Vec::new();
+    for t in 0..=ticks {
+        if let Some((at, param, v)) = edit
+            && t == at
+        {
+            g.set_param(em, param, v);
+        }
+        gc.cook(
+            gpu,
+            g,
+            reg,
+            reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: t as f64 * FIXED_DT,
+                tick: Some(t),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        frames.push(read_instances(gpu, gc.instances().expect("cooked")));
+    }
+    frames
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn shrinking_the_life_of_a_live_emitter_leaves_the_survivors_untouched() {
+    // THE gate behind narrowing `edit_renumbers_emitter` to `rate` alone (Enio:
+    // *"o que impede que as atualizações sejam feitas em tempo real, sem
+    // travamentos e sem reiniciar? Godot faz assim"*).
+    //
+    // `life` does not appear in `birth(k) = k/rate`, so it cannot re-number: it
+    // only moves the alive window's LEFT edge. Every particle the shorter life
+    // keeps is the SAME particle, pairs to its own row, and must therefore fly
+    // an IDENTICAL trajectory to a run that never changed — bit-identical, not
+    // within an ε, because nothing about its physics depends on how many older
+    // particles were trimmed away beside it.
+    //
+    // The oracle is exact and needs no ids in the instance stream: ids ascend
+    // oldest-first, so a shorter life makes the edited frame a literal SUFFIX of
+    // the unedited one.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // rate 400 at `FIXED_DT` = 0.05 → 20 births/tick. `life` binds (not the cap),
+    // which is the point: `max` is left wide so the LEFT edge is life's alone to
+    // move. **A life of one tick would make this gate vacuous** — every element
+    // would be a newborn, nothing would pair, and "the survivors match" would be a
+    // claim about the empty set. So life spans FOUR ticks and the shorter one TWO:
+    // roughly half the edited window is a survivor with a row to inherit.
+    const TICKS: u64 = 9;
+    const EDIT_AT: u64 = 6;
+    const LIFE: f32 = 0.20;
+    const SHORTER: f32 = 0.10;
+
+    let (mut steady, _, out) = emitter_sim(&reg, 1000.0, &[]);
+    steady.set_param(emitter_of(&steady), "life", LIFE);
+    let mut edited = steady.clone();
+
+    let unedited = emitter_gpu_ticks_with_live_edit(&gpu, &mut steady, &reg, out, TICKS, None);
+    let live = emitter_gpu_ticks_with_live_edit(
+        &gpu,
+        &mut edited,
+        &reg,
+        out,
+        TICKS,
+        Some((EDIT_AT, "life", SHORTER)),
+    );
+
+    // The fixture must contain the phenomenon: the edit has to actually KILL
+    // particles, and survivors must remain — otherwise "the suffix matches" is a
+    // statement about an empty set or about two identical runs.
+    let (before, after) = (unedited[TICKS as usize].len(), live[TICKS as usize].len());
+    assert!(
+        after < before && after > 0,
+        "the shorter life must trim the window and leave survivors: {before} → {after}"
+    );
+    // …and the survivors must have MOVED, or a mispair would be invisible.
+    let moved = max_from_origin(&live[TICKS as usize], EM_ORIGIN);
+    assert!(moved > MUST_MOVE, "the field must have integrated: {moved}");
+    eprintln!("live life edit: {before} → {after} alive, drifted {moved}");
+
+    for t in EDIT_AT..=TICKS {
+        let (full, cut) = (&unedited[t as usize], &live[t as usize]);
+        let tail = &full[full.len() - cut.len()..];
+        // EXACTLY zero, not within ε: `max_move` is the same ruler the parity
+        // gates use, and here the honest bar is bit-identity.
+        let drift = max_move(cut, tail);
+        assert_eq!(
+            drift, 0.0,
+            "tick {t}: shrinking `life` must leave the survivors BIT-identical — \
+             a live edit is not allowed to disturb a particle it did not kill"
+        );
+    }
+}

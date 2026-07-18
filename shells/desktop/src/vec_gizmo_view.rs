@@ -99,6 +99,31 @@ pub(crate) fn view(
     }
     let (anchor, half_intrinsic) = anchor_half(sim, scene, entity)?;
     let wt = world_transform(sim, entity);
+    Some(gizmo_view_from(
+        anchor,
+        half_intrinsic,
+        wt,
+        camera,
+        window_size,
+        last_pointer,
+        pivot_tool_active,
+    ))
+}
+
+/// Monta a `GizmoView` a partir do `anchor`/`half` **intrínsecos** (pré-escala, na linguagem do gizmo
+/// de sprite) e da pose de MUNDO — a MESMA álgebra que o sprite usa. **Porta única:** a forma
+/// vetorial ([`view`]) e o container do envelope ([`container_view`]) chamam esta função, então as
+/// duas caixas concordam por construção (quad center = pivot + R·(anchor ⊙ scale)).
+#[must_use]
+fn gizmo_view_from(
+    anchor: [f32; 2],
+    half_intrinsic: [f32; 2],
+    wt: ph2d_ecs::Transform,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    last_pointer: (f32, f32),
+    pivot_tool_active: bool,
+) -> GizmoView {
     let (sx, sy) = (wt.scale.x, wt.scale.y);
     let half = [
         (half_intrinsic[0] * sx).abs(),
@@ -110,7 +135,7 @@ pub(crate) fn view(
     let (sin_r, cos_r) = libm::sincosf(wt.rotation);
     let cx = wt.translation.x + ax * cos_r - ay * sin_r;
     let cy = wt.translation.y + ax * sin_r + ay * cos_r;
-    Some(GizmoView {
+    GizmoView {
         bbox_min_world: [cx - half[0], cy - half[1]],
         bbox_max_world: [cx + half[0], cy + half[1]],
         pivot_world: [wt.translation.x, wt.translation.y],
@@ -127,7 +152,50 @@ pub(crate) fn view(
             window_size.height as f32,
         ),
         cursor_screen: Some(last_pointer),
-    })
+    }
+}
+
+/// A `GizmoView` de um **container de Envelope** (ADR-0129 Fatia 3) — a caixa é a UNIÃO das bboxes
+/// LOCAIS (espaço do container) dos filhos, e a pose é a do container. Assim o gizmo de sprite move/
+/// gira/escala o envelope INTEIRO como uma unidade (Fatia 2): a seleção é só-o-container (nenhum
+/// filho no gizmo), então o drag escreve só o `Transform` do container e os filhos o seguem por
+/// parentesco — sem cisalhar. `None` se a entidade não é um envelope ou os filhos sumiram.
+#[must_use]
+pub(crate) fn container_view(
+    sim: &SimWorld,
+    scene: &VecScene,
+    entity: Entity,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    last_pointer: (f32, f32),
+    pivot_tool_active: bool,
+) -> Option<GizmoView> {
+    let env = sim.world().get::<ph2d_ecs::VecEnvelope>(entity)?;
+    // A geometria de cada filho na cena É o espaço LOCAL do container (filho na identidade, geometria
+    // deformada re-escrita pelo recook em local). A união das bboxes de curva é a extensão do envelope.
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for child in &env.children {
+        if let Some((clo, chi)) = scene.path_curve_bbox(child.path) {
+            lo = [lo[0].min(clo[0]), lo[1].min(clo[1])];
+            hi = [hi[0].max(chi[0]), hi[1].max(chi[1])];
+        }
+    }
+    if !(lo[0].is_finite() && hi[0] >= lo[0] && hi[1] >= lo[1]) {
+        return None;
+    }
+    let anchor = [((lo[0] + hi[0]) * 0.5) as f32, ((lo[1] + hi[1]) * 0.5) as f32];
+    let half_intrinsic = [((hi[0] - lo[0]) * 0.5) as f32, ((hi[1] - lo[1]) * 0.5) as f32];
+    let wt = world_transform(sim, entity);
+    Some(gizmo_view_from(
+        anchor,
+        half_intrinsic,
+        wt,
+        camera,
+        window_size,
+        last_pointer,
+        pivot_tool_active,
+    ))
 }
 
 /// O ponto de mundo `p` cai DENTRO da forma de `entity`?
@@ -428,6 +496,43 @@ mod tests {
             view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).is_none(),
             "o spine do blend não tem gizmo (a linha é Node-only)"
         );
+    }
+
+    /// **O container de um Envelope publica um gizmo = UNIÃO dos filhos** (ADR-0129 Fatia 3) — a
+    /// caixa que o gizmo de sprite arrasta para mover o envelope inteiro (Fatia 2). Um grupo comum
+    /// (sem `VecEnvelope`) não publica caixa por esta porta.
+    #[test]
+    fn an_envelope_container_publishes_a_union_gizmo_box() {
+        let mut sim = SimWorld::default();
+        let mut scene = VecScene::new();
+        let mut map = VecEntityMap::new();
+        let a = scene.push_path(rectangle([-4.0, -1.0], [-2.0, 1.0]));
+        let b = scene.push_path(rectangle([2.0, -1.0], [4.0, 1.0]));
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a, b]).unwrap();
+        let ce = Entity::from_bits(container);
+        let cam = Camera2d::default();
+        let ws = WindowSize {
+            width: 800,
+            height: 600,
+        };
+
+        let v = container_view(&sim, &scene, ce, &cam, ws, (0.0, 0.0), false)
+            .expect("o container devia publicar um gizmo");
+        // A caixa abrange de x≈-4 a x≈4 — a UNIÃO das duas formas, não uma só.
+        assert!(
+            v.bbox_min_world[0] <= -3.9 && v.bbox_max_world[0] >= 3.9,
+            "a caixa devia unir as duas formas: {:?}..{:?}",
+            v.bbox_min_world,
+            v.bbox_max_world
+        );
+
+        // Um grupo COMUM (sem VecEnvelope) NÃO publica caixa por esta porta.
+        let plain = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, ph2d_ecs::Name::new("G")))
+            .id();
+        assert!(container_view(&sim, &scene, plain, &cam, ws, (0.0, 0.0), false).is_none());
     }
 
     /// O picking respeita o `Transform`: o interior está onde a forma é DESENHADA,

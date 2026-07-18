@@ -1,44 +1,59 @@
-//! **O host do Envelope vivo** (ADR-0129) — a forma deformada por uma gaiola de 4 cantos.
+//! **O host do Envelope vivo** (ADR-0129) — um **container** cujos filhos têm a geometria deformada
+//! por uma gaiola de 4 cantos comum.
 //!
-//! Espelho do [`crate::morph_live`], e mais simples: o morph interpola DUAS fontes e cacheia um
-//! `Plan`; o envelope deforma UMA fonte por um mapa `R2→R2` (a homografia do gesto Quad,
-//! [`ph2d_vec_envelope::QuadWarp`]). A entidade que carrega o [`VecEnvelope`] tem o `VecPath` da
-//! forma **cozida** (deformada) na cena, re-escrita *em lugar* a cada frame.
+//! Espelho do [`crate::morph_live`], e diferente no que deforma: o morph interpola DUAS fontes e
+//! cacheia um `Plan`; o envelope deforma N fontes (1..) por um mapa `R2→R2` (a homografia do gesto
+//! Quad, [`ph2d_vec_envelope::QuadWarp`]). A entidade que carrega o [`VecEnvelope`] é um **container**
+//! (sem `VecPathRef`); cada FILHO tem o `VecPath` da forma **cozida** (deformada) na cena, re-escrita
+//! *em lugar* a cada frame.
 //!
-//! # A fonte + a gaiola vivem em LOCAL; a POSE vive no `Transform` (ADR-0111)
+//! # Um só modelo: o container sempre (`N=1` inclusive)
 //!
-//! A fonte autorada e os 4 cantos ficam no espaço LOCAL da entidade — a fonte nos bytes do
-//! [`VecEnvelope`], os cantos em `corners`. O recook desserializa a fonte, deforma pela gaiola
-//! (tudo local) e escreve o resultado LOCAL no path. Quem o leva ao MUNDO é o `Transform` da
-//! entidade — e é por isso que o **gizmo de sprite move/gira/escala o envelope inteiro no Select**
-//! (Fatia 2): a geometria local é estável, só a pose se move, e o recook **preserva a pose** (não
-//! força identidade). Sem `VecXforms` no recook: a deformação é toda local.
+//! Um envelope de uma forma só é o caso `N=1`; um de várias é o *warp group* do Affinity. Modelar o
+//! de-um como path-com-componente e o de-vários como container seriam DOIS modelos do mesmo fato — e
+//! recook/gesto/gizmo teriam de perguntar "qual dos dois é este?" em cada sítio. Aqui há um só: o
+//! **container**, com 1..N filhos.
+//!
+//! # A fonte + a gaiola vivem em LOCAL do CONTAINER; a POSE vive no `Transform` (ADR-0111)
+//!
+//! Ao criar, cada forma-fonte tem a sua geometria COZIDA **assada em MUNDO** e guardada como a fonte
+//! do filho; o filho é reparentado sob o container e posto na **identidade** (`Transform::IDENTITY`),
+//! e o container nasce na identidade também — então, no nascimento, **container-local == mundo**. O
+//! recook desserializa cada fonte, deforma pela gaiola (uma só, comum) e escreve o resultado LOCAL no
+//! path de cada filho. Quem leva tudo ao MUNDO é o `Transform` do **container** — e é por isso que o
+//! **gizmo de sprite move/gira/escala o envelope inteiro no Select** (Fatia 2): a geometria dos
+//! filhos é estável, só a pose do container se move, e o recook **preserva a pose**.
 //!
 //! ⚠️ **Por que não dobra (ADR §3.3):** o Blend dobra porque a geometria dele depende de FONTES que
-//! se movem; a do envelope é função pura de `corners`+fonte FIXOS, então no Select nada a muda e o
-//! gizmo age sobre uma bbox estável. Arrastar os cantos (que MUDA a geometria) é Node-only — e lá o
-//! gizmo não publica. O `settle_origins` PULA o envelope (geometria derivada, reescrita por frame).
+//! se movem; a do envelope é função pura de `corners`+fontes FIXOS, então no Select nada a muda e o
+//! gizmo age sobre uma bbox estável. Arrastar os cantos (que MUDA a geometria) é Node-only. O
+//! `settle_origins` PULA os filhos (têm `ChildOf` — geometria já em mundo) e o container (não está no
+//! mapa de paths).
 
-use ph2d_ecs::{Entity, Name, SimWorld, VecEnvelope};
+use ph2d_ecs::{
+    ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecEnvelope, VecEnvelopeChild,
+};
 use ph2d_vec_envelope::{QuadWarp, warp_path};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
 
-/// A bbox dos pontos de controle de um path (âncoras + handles, todos os contornos), como
-/// `(origem, tamanho)`.
+/// A bbox-**união** dos pontos de controle (âncoras + handles, todos os contornos) de várias fontes,
+/// como `(origem, tamanho)`. É a bbox de **controle**, não a da curva — ela CONTÉM a curva, que é o
+/// domínio-fonte que o `QuadWarp` precisa (a arte cabe no quadrado unitário).
 ///
-/// É a bbox de **controle**, não a da curva — ela CONTÉM a curva, que é o que o domínio-fonte do
-/// envelope precisa (a arte cabe no quadrado unitário). E, em **repouso** (cantos = cantos desta
-/// bbox), o `QuadWarp` é a identidade **independentemente** de a bbox ser justa ou folgada — então
-/// a folga só afeta como a deformação se distribui quando um canto é puxado, nunca o repouso.
-fn control_bbox(path: &VecPath) -> Option<([f64; 2], [f64; 2])> {
+/// **Porta única:** o `create` (para semear os cantos em repouso) e o `recook` (para montar o mapa)
+/// chamam a MESMA função — se as duas computassem o domínio de formas diferentes, o repouso deixaria
+/// de ser a identidade. `None` se as fontes são vazias/degeneradas.
+fn union_control_bbox<'a>(paths: impl IntoIterator<Item = &'a VecPath>) -> Option<([f64; 2], [f64; 2])> {
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
-    for v in path.verts_all() {
-        for p in [v.anchor, v.in_handle, v.out_handle] {
-            lo = [lo[0].min(p[0]), lo[1].min(p[1])];
-            hi = [hi[0].max(p[0]), hi[1].max(p[1])];
+    for path in paths {
+        for v in path.verts_all() {
+            for p in [v.anchor, v.in_handle, v.out_handle] {
+                lo = [lo[0].min(p[0]), lo[1].min(p[1])];
+                hi = [hi[0].max(p[0]), hi[1].max(p[1])];
+            }
         }
     }
     (lo[0].is_finite() && hi[0] > lo[0] && hi[1] > lo[1])
@@ -53,78 +68,143 @@ pub(crate) fn bbox_corners(origin: [f64; 2], size: [f64; 2]) -> [[f64; 2]; 4] {
     [[ox, oy], [ox + w, oy], [ox + w, oy + h], [ox, oy + h]]
 }
 
-/// **Cria um envelope** sobre a forma `id`: guarda a geometria LOCAL dela (a aparência COZIDA, com o
-/// raio de quina resolvido) como fonte, e nasce em **repouso** (cantos = bbox LOCAL da fonte ⇒
-/// identidade ⇒ a forma não muda). A POSE da forma fica no `Transform` da entidade (ADR-0111) e o
-/// recook a preserva — por isso o gizmo move/gira/escala o envelope inteiro no Select (Fatia 2).
-///
-/// **Sem assar em MUNDO e sem `xforms`:** a fonte é o LOCAL do path (o que o `settle` já centrou), e
-/// é o `Transform` da entidade que a leva ao mundo. Assar em mundo + forçar identidade (o modelo
-/// antigo) tornava o gizmo inócuo (a pose era descartada a cada frame).
-///
-/// Devolve `(id, componente)` para a fila `pending` — a entidade da forma já existe, mas o
-/// `attach` acontece no `upkeep` (depois do `sync`), por simetria com o morph e para o caso de a
-/// forma ter acabado de nascer.
-///
-/// `None` se a forma sumiu ou é degenerada (sem bbox).
-pub(crate) fn create(scene: &VecScene, id: VecPathId) -> Option<(VecPathId, VecEnvelope)> {
-    let src = scene.paths().iter().find(|p| p.id == id)?;
-    // A aparência COZIDA em LOCAL (raio de quina resolvido): é o que o envelope deforma. Sem raio,
-    // `cooked()` empresta a fonte (custo zero). NÃO assamos em mundo — a pose vive no `Transform`.
-    let source = src.cooked().into_owned();
-    let (origin, size) = control_bbox(&source)?;
-    let corners = bbox_corners(origin, size);
-    let bytes = postcard::to_allocvec(&source).ok()?;
-    Some((id, VecEnvelope::at_rest(bytes, corners)))
-}
-
-/// A tolerância de fit (distância de Fréchet), **relativa** ao tamanho da fonte — 0,1% da diagonal
-/// do bbox. Relativa, e não absoluta, para não ter precipício de escala: o mesmo envelope numa arte
-/// grande ou minúscula fita com a mesma fidelidade *percebida*. É a grandeza que o Illustrator
-/// vende como "Fidelity", só que aqui é fit adaptativo, não inserção por contagem.
+/// A tolerância de fit (distância de Fréchet), **relativa** ao tamanho do domínio — 0,1% da diagonal
+/// da bbox-união. Relativa, e não absoluta, para não ter precipício de escala: o mesmo envelope numa
+/// arte grande ou minúscula fita com a mesma fidelidade *percebida*.
 fn accuracy(size: [f64; 2]) -> f64 {
     0.001 * size[0].hypot(size[1]).max(1.0)
 }
 
-/// **O re-cook de todo frame.** Para cada entidade com um [`VecEnvelope`]: desserializa a fonte
-/// LOCAL, deforma-a pela gaiola (`QuadWarp`, tudo local), e escreve a forma LOCAL **em lugar**.
+/// **Cria um envelope** sobre as formas `ids` (1..N): assa a geometria COZIDA de cada uma em MUNDO
+/// (com o raio de quina resolvido) como fonte do filho, reparenta os filhos sob um **container** novo
+/// na identidade, põe cada filho na identidade, e a gaiola nasce em **repouso** (cantos = bbox-união
+/// das fontes ⇒ identidade ⇒ as formas não mudam). A POSE fica no `Transform` do container e o recook
+/// a preserva — por isso o gizmo move/gira/escala o envelope inteiro no Select (Fatia 2).
 ///
-/// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e no mesmo lugar do `morph_live::recook`.
-/// Sem `VecXforms`: a deformação é local, e é o `Transform` da entidade (via `vec_transform::build`)
-/// que leva a forma ao mundo. **A pose NÃO é tocada** — é ela que o gizmo move no Select (Fatia 2).
-pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) {
-    let envs: Vec<(VecPathId, VecEnvelope)> = map
-        .iter()
-        .filter_map(|(&id, &bits)| {
-            let e = Entity::from_bits(bits);
-            let env = sim.world().get::<VecEnvelope>(e)?.clone();
-            Some((id, env))
-        })
-        .collect();
-
-    for (id, env) in envs {
-        let Ok(source) = postcard::from_bytes::<VecPath>(&env.source) else {
-            continue; // fonte corrompida: não há o que deformar, e melhor não escrever lixo
-        };
-        let Some((origin, size)) = control_bbox(&source) else {
+/// **Síncrono** (≠ morph/blend, que têm `pending`+`upkeep`): o morph/blend CRIAM um path novo (o
+/// spine/morfada) que precisa nascer no `sync`; o envelope não cria path nenhum — envolve formas que
+/// **já existem** e adiciona só um container SEM path. Então tudo (assar + reparentar + pendurar)
+/// acontece aqui, com as entidades que já estão na mão.
+///
+/// Devolve os bits do container criado (para a seleção/gizmo), ou `None` se nenhuma forma resolveu
+/// (ids sumidos) ou o domínio-união é degenerado.
+pub(crate) fn create(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+) -> Option<u64> {
+    // 1. Assa a geometria COZIDA de cada forma em MUNDO. A pose do filho vira parte da geometria: é
+    //    isso que permite ao filho ir para a identidade (a fonte já está no espaço do container).
+    //    `baked` = (id, entidade, geometria de mundo) em paralelo, na ordem de `ids`.
+    let mut baked: Vec<(VecPathId, Entity, VecPath)> = Vec::new();
+    for &id in ids {
+        let Some(&bits) = map.get(&id) else { continue };
+        let entity = Entity::from_bits(bits);
+        if sim.world().get_entity(entity).is_err() {
+            continue;
+        }
+        let Some(src) = scene.paths().iter().find(|p| p.id == id) else {
             continue;
         };
-        // Gaiola degenerada (3 cantos colineares): o `QuadWarp` recusa, e a forma **congela** onde
-        // está — a mesma escolha do morph com uma fonte perdida. Nunca some, nunca vira lixo.
+        // A aparência COZIDA em LOCAL do filho (raio de quina resolvido), assada pela pose de MUNDO
+        // do filho → geometria de MUNDO. Sem raio, `cooked()` empresta a fonte (custo zero).
+        let world_xf = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+            sim, entity,
+        ));
+        let mut world_path = src.cooked().into_owned();
+        ph2d_vec_scene::bake_xform(&mut world_path, &world_xf);
+        baked.push((id, entity, world_path));
+    }
+    if baked.is_empty() {
+        return None;
+    }
+    // 2. A gaiola em repouso = bbox-união (em MUNDO = local do container ao nascer) das fontes.
+    let (origin, size) = union_control_bbox(baked.iter().map(|(_, _, p)| p))?;
+    let corners = bbox_corners(origin, size);
+
+    // 3. Container novo na identidade + `RootOrder` explícito (nunca `u32::MAX`, senão a árvore o
+    //    desempataria por bits de alocação — BUGS #15). Nome como os grupos.
+    let order = crate::vec_entities::next_root_order(sim);
+    let container = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Envelope"), RootOrder(order)))
+        .id();
+
+    // 4. Para cada filho: escreve a geometria de MUNDO no path agora (o frame fica correto ANTES do
+    //    recook, que em repouso reescreve o mesmo), guarda a fonte, reparenta sob o container e o põe
+    //    na IDENTIDADE — a fonte já é MUNDO (passo 1), então uma pose própria a aplicaria DUAS vezes.
+    let mut children: Vec<VecEnvelopeChild> = Vec::with_capacity(baked.len());
+    for (id, entity, world_path) in baked {
+        let Ok(bytes) = postcard::to_allocvec(&world_path) else {
+            continue;
+        };
+        write_shape(scene, id, world_path);
+        if let Ok(mut ce) = sim.world_mut().get_entity_mut(entity) {
+            ce.remove::<RootOrder>();
+            ce.insert(ChildOf(container));
+            ce.insert(Transform::IDENTITY);
+        }
+        children.push(VecEnvelopeChild { path: id, source: bytes });
+    }
+    if children.is_empty() {
+        // Nenhuma fonte serializou: desfaz o container órfão e desiste.
+        if let Ok(c) = sim.world_mut().get_entity_mut(container) {
+            c.despawn();
+        }
+        return None;
+    }
+
+    // 5. Pendura o componente no container.
+    sim.world_mut()
+        .get_entity_mut(container)
+        .ok()?
+        .insert(VecEnvelope::at_rest(children, corners));
+    Some(container.to_bits())
+}
+
+/// **O re-cook de todo frame.** Para cada container com um [`VecEnvelope`]: desserializa as fontes
+/// LOCAIS, monta UMA gaiola sobre a bbox-união delas (`QuadWarp`) e escreve cada filho deformado **em
+/// lugar** no path dele.
+///
+/// Roda DEPOIS de `vec_entities::sync` e no mesmo lugar do `morph_live::recook`. Toma `&mut SimWorld`
+/// para varrer os containers por QUERY (eles não têm path, logo não estão no `VecEntityMap`) — como o
+/// `flip_entities` já faz. **A pose NÃO é tocada:** o recook escreve só GEOMETRIA (`scene`), e é o
+/// `Transform` do container (via `vec_transform::build`) que a leva ao mundo. É essa pose que o gizmo
+/// move no Select (Fatia 2).
+pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
+    let envs: Vec<VecEnvelope> = {
+        let mut q = sim.world_mut().query::<&VecEnvelope>();
+        q.iter(sim.world()).cloned().collect()
+    };
+    for env in envs {
+        // Desserializa as fontes; uma corrompida é PULADA (não há o que deformar, e melhor não
+        // escrever lixo) — o filho fica com a última geometria boa.
+        let mut sources: Vec<(VecPathId, VecPath)> = Vec::new();
+        for child in &env.children {
+            if let Ok(src) = postcard::from_bytes::<VecPath>(&child.source) {
+                sources.push((child.path, src));
+            }
+        }
+        let Some((origin, size)) = union_control_bbox(sources.iter().map(|(_, p)| p)) else {
+            continue;
+        };
+        // Gaiola degenerada (3 cantos colineares): o `QuadWarp` recusa, e as formas **congelam** onde
+        // estão — a mesma escolha do morph com uma fonte perdida. Nunca somem, nunca viram lixo.
         let Some(warp) = QuadWarp::new(origin, size, env.corners) else {
             continue;
         };
-        let cooked = warp_path(&source, &warp, accuracy(size));
-        write_shape(scene, id, cooked);
-        // A pose fica no `Transform` da entidade e é ela que o gizmo move (Fatia 2) — o recook NÃO a
-        // toca. A geometria escrita é LOCAL; `vec_transform::build` a leva ao mundo pela pose. E o
-        // `settle_origins` PULA o envelope (geometria derivada), então o pivô não é reassentado.
+        let acc = accuracy(size);
+        for (id, src) in sources {
+            let cooked = warp_path(&src, &warp, acc);
+            write_shape(scene, id, cooked);
+        }
     }
 }
 
-/// Escreve a forma deformada no path `id`, **em lugar** — o estilo (fill/stroke) vem da fonte, que
-/// o `warp_path` preserva. Em lugar, e não `push_path`, pela mesma razão do morph: um id novo por
-/// frame faria entidade/seleção/gizmo **piscarem**.
+/// Escreve a forma deformada no path `id`, **em lugar** — o estilo (fill/stroke) vem da fonte, que o
+/// `warp_path` preserva. Em lugar, e não `push_path`, pela mesma razão do morph: um id novo por frame
+/// faria entidade/seleção/gizmo **piscarem**.
 fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
     let Some(p) = scene.path_mut(id) else {
         return;
@@ -135,50 +215,6 @@ fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
     p.fill_rule = cooked.fill_rule;
     p.fill = cooked.fill;
     p.stroke = cooked.stroke;
-}
-
-/// Pendura (ou atualiza) o [`VecEnvelope`] na entidade do path `id` — espelho de
-/// `morph_live::attach`. Idempotente.
-pub(crate) fn attach(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    env: &VecEnvelope,
-) -> bool {
-    let Some(&bits) = map.get(&id) else {
-        return false;
-    };
-    let entity = Entity::from_bits(bits);
-    if sim.world().get::<VecEnvelope>(entity) == Some(env) {
-        return true;
-    }
-    let first = sim.world().get::<VecEnvelope>(entity).is_none();
-    let Ok(mut e) = sim.world_mut().get_entity_mut(entity) else {
-        return false;
-    };
-    e.insert(env.clone());
-    if first {
-        e.insert(Name::new(format!("Envelope {id}")));
-    }
-    true
-}
-
-/// Drena a fila `pending` (o envelope recém-criado, à espera da entidade nascer no `sync`) —
-/// espelho de `morph_live::upkeep`. Roda entre o `sync` e o [`recook`], **antes** do `settle`:
-/// sem o componente pendurado antes do `settle`, o path seria assentado como um path comum e o
-/// recook do frame seguinte sairia deslocado.
-pub(crate) fn upkeep(
-    sim: &mut SimWorld,
-    scene: &VecScene,
-    map: &VecEntityMap,
-    pending: &mut Option<(VecPathId, VecEnvelope)>,
-) {
-    if let Some((id, env)) = pending.as_ref() {
-        let gone = !scene.paths().iter().any(|p| p.id == *id);
-        if gone || attach(sim, map, *id, env) {
-            *pending = None;
-        }
-    }
 }
 
 #[cfg(test)]

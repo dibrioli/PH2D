@@ -1,44 +1,15 @@
-//! Os gates do [`crate::envelope_live`] — o Envelope vivo (ADR-0129, Fatia B).
+//! Os gates do [`crate::envelope_live`] — o Envelope vivo como **container** (ADR-0129, Fatia 3).
 //!
-//! O que eles medem é o comportamento do HOST; a **correção** da deformação (curva sobrevive, não
-//! só os pontos de controle) é da crate `ph2d-vec-envelope` e já está gateada lá (invariância à
-//! subdivisão). Aqui: em repouso não muda nada · a gaiola puxada deforma **pelo motor** · a **pose
-//! sobrevive ao recook** (é ela que o gizmo do Select move — Fatia 2) e não vaza para a geometria
-//! local · a fonte autorada sobrevive no componente · gaiola degenerada congela.
+//! O que eles medem é o comportamento do HOST; a **correção** da deformação (a curva sobrevive, não
+//! só os pontos de controle) é da crate `ph2d-vec-envelope` e já está gateada lá. Aqui: em repouso
+//! nada muda · a gaiola puxada deforma **pelo motor**, uma só gaiola para TODOS os filhos · `create`
+//! reparenta os filhos na identidade sob o container · a pose vive no `Transform` do CONTAINER e não
+//! vaza para a geometria dos filhos (é ela que o gizmo do Select move — Fatia 2) · a fonte autorada
+//! de cada filho sobrevive · gaiola degenerada congela · assar a pose de mundo do filho na fonte.
 
 use super::*;
-use ph2d_ecs::Transform;
+use ph2d_ecs::{ChildOf, Transform, VecPathRef};
 use ph2d_vec_scene::{ShapeKind, cook};
-
-/// Uma cena com um envelope sobre uma forma. Devolve `(sim, scene, map, id, componente)`.
-///
-/// Os `corners` são passados já puxados (ou em repouso) — `create` nasce em repouso, e o teste
-/// sobrescreve antes de pendurar, que é o que a UI da fatia seguinte fará.
-fn scene_with_envelope(
-    shape: VecPath,
-    corners: [[f64; 2]; 4],
-) -> (SimWorld, VecScene, VecEntityMap, VecPathId, VecEnvelope) {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(shape);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let (eid, mut env) = create(&scene, id).expect("create");
-    env.corners = corners;
-    assert!(attach(&mut sim, &map, eid, &env));
-    (sim, scene, map, id, env)
-}
-
-/// Roda um frame de recook e devolve o path da cena.
-fn frame(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap, id: VecPathId) -> VecPath {
-    recook(sim, scene, map);
-    scene
-        .paths()
-        .iter()
-        .find(|p| p.id == id)
-        .expect("o path")
-        .clone()
-}
 
 fn ellipse(c: [f64; 2], r: f64) -> VecPath {
     cook(
@@ -49,46 +20,80 @@ fn ellipse(c: [f64; 2], r: f64) -> VecPath {
     )
 }
 
-/// A fonte que o recook usa (a cozida, desserializada dos bytes do componente).
-fn source_of(env: &VecEnvelope) -> VecPath {
-    postcard::from_bytes(&env.source).expect("source")
+/// Cria um envelope sobre `shapes` (formas em MUNDO/identidade), com o `sync` que dá entidade a cada
+/// uma. Devolve `(sim, scene, map, container_bits, child_ids)`.
+fn envelope_over(shapes: Vec<VecPath>) -> (SimWorld, VecScene, VecEntityMap, u64, Vec<VecPathId>) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let ids: Vec<VecPathId> = shapes.into_iter().map(|s| scene.push_path(s)).collect();
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let container = create(&mut sim, &mut scene, &map, &ids).expect("create");
+    (sim, scene, map, container, ids)
 }
 
-/// **EM REPOUSO A FORMA NÃO MUDA.** Gaiola = cantos do bbox ⇒ identidade ⇒ a forma volta igual.
+/// O path da cena após um recook.
+fn frame(sim: &mut SimWorld, scene: &mut VecScene, id: VecPathId) -> VecPath {
+    recook(sim, scene);
+    scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .expect("o path")
+        .clone()
+}
+
+/// O `VecEnvelope` do container `bits`.
+fn env_of(sim: &SimWorld, bits: u64) -> VecEnvelope {
+    sim.world()
+        .get::<VecEnvelope>(Entity::from_bits(bits))
+        .expect("VecEnvelope no container")
+        .clone()
+}
+
+/// Sobrescreve os cantos do container.
+fn set_corners(sim: &mut SimWorld, bits: u64, corners: [[f64; 2]; 4]) {
+    sim.world_mut()
+        .get_mut::<VecEnvelope>(Entity::from_bits(bits))
+        .expect("VecEnvelope")
+        .corners = corners;
+}
+
+/// A fonte autorada de um filho (a cozida, desserializada dos bytes do componente).
+fn source_of(child: &VecEnvelopeChild) -> VecPath {
+    postcard::from_bytes(&child.source).expect("source")
+}
+
+/// **EM REPOUSO A FORMA NÃO MUDA.** Gaiola = cantos da bbox-união ⇒ identidade ⇒ a forma volta igual.
 ///
 /// É a metade "presença" do par: um motor que não escrevesse nada também deixaria a forma "igual"
 /// (vazia). Este teste afirma o contrário — a forma continua **cheia** e com o mesmo bbox.
 #[test]
-fn at_rest_the_envelope_leaves_the_shape_unchanged() {
+fn at_rest_the_envelope_leaves_the_child_unchanged() {
     let src = ellipse([5.0, 3.0], 2.0);
-    let (origin, size) = control_bbox(&src).unwrap();
-    let (mut sim, mut scene, map, id, _) =
-        scene_with_envelope(src.clone(), bbox_corners(origin, size));
+    let (b0, b1) = super::union_control_bbox([&src]).unwrap();
+    let (mut sim, mut scene, _map, _c, ids) = envelope_over(vec![src]);
 
-    let out = frame(&mut sim, &mut scene, &map, id);
+    let out = frame(&mut sim, &mut scene, ids[0]);
     assert!(!out.verts.is_empty(), "a forma sumiu em repouso");
-    let (o2, s2) = control_bbox(&out).expect("bbox");
-    let d = (o2[0] - origin[0]).abs()
-        + (o2[1] - origin[1]).abs()
-        + (s2[0] - size[0]).abs()
-        + (s2[1] - size[1]).abs();
-    assert!(
-        d < 1e-6,
-        "repouso deslocou o bbox em {d:.3e} (devia ser identidade)"
-    );
+    let (o2, s2) = super::union_control_bbox([&out]).expect("bbox");
+    let d = (o2[0] - b0[0]).abs() + (o2[1] - b0[1]).abs() + (s2[0] - b1[0]).abs() + (s2[1] - b1[1]).abs();
+    assert!(d < 1e-6, "repouso deslocou o bbox em {d:.3e} (devia ser identidade)");
 }
 
-/// **A GAIOLA PUXADA DEFORMA — e escreve a saída do MOTOR, não a ingênua.**
-///
-/// Duas afirmações num teste: (a) a forma **mudou** (o bbox saiu do lugar), e (b) o que foi escrito
-/// é **exatamente** `warp_path(fonte, QuadWarp)` — o host liga o motor, não uma 2ª porta. A correção
-/// do motor (curva sobrevive) é gateada na crate; aqui prova-se o **fio**.
+/// **A GAIOLA PUXADA DEFORMA — e escreve a saída do MOTOR, não a ingênua.** A forma **mudou**, e o
+/// que foi escrito é **exatamente** `warp_path(fonte, QuadWarp)` — o host liga o motor, não uma 2ª
+/// porta. A correção do motor (curva sobrevive) é gateada na crate; aqui prova-se o **fio**.
 #[test]
-fn a_pulled_cage_deforms_the_shape_through_the_engine() {
+fn a_pulled_cage_deforms_the_child_through_the_engine() {
     let src = ellipse([5.0, 3.0], 2.0);
-    let (origin, size) = control_bbox(&src).unwrap();
+    let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![src]);
+    let (origin, size) = super::union_control_bbox(
+        [&source_of(&env_of(&sim, container).children[0])],
+    )
+    .unwrap();
     // Topo estreitado: trapézio convexo forte (perspectiva).
-    let [bl, br, _tr, _tl] = bbox_corners(origin, size);
+    let [bl, br, ..] = bbox_corners(origin, size);
     let pulled = [
         bl,
         br,
@@ -96,197 +101,157 @@ fn a_pulled_cage_deforms_the_shape_through_the_engine() {
         [origin[0] + size[0] * 0.3, origin[1] + size[1]],
     ];
     assert!(QuadWarp::is_convex(&pulled), "o fixture devia ser convexo");
+    set_corners(&mut sim, container, pulled);
 
-    let (mut sim, mut scene, map, id, env) = scene_with_envelope(src, pulled);
-    let out = frame(&mut sim, &mut scene, &map, id);
+    let source = source_of(&env_of(&sim, container).children[0]);
+    let out = frame(&mut sim, &mut scene, ids[0]);
+    assert_ne!(out.verts, source.verts, "a gaiola foi puxada e a forma não mudou");
 
-    // (a) mudou
-    let source = source_of(&env);
-    assert_ne!(
-        out.verts, source.verts,
-        "a gaiola foi puxada e a forma não mudou"
-    );
-
-    // (b) é a saída do motor, byte a byte
-    let (o, s) = control_bbox(&source).unwrap();
-    let warp = QuadWarp::new(o, s, pulled).unwrap();
-    let expected = warp_path(&source, &warp, accuracy(s));
+    let warp = QuadWarp::new(origin, size, pulled).unwrap();
+    let expected = warp_path(&source, &warp, accuracy(size));
     assert_eq!(
         out.verts, expected.verts,
         "o recook não escreveu a saída do motor — 2ª porta para a mesma pergunta"
     );
 }
 
-/// **A SEQUÊNCIA DO SMOKE deforma** — e é a que difere: no smoke o `create` roda **depois** de o
-/// `settle_origins` ter centrado a forma (geometria vira LOCAL, `Transform` ganha a pose). O teste
-/// acima cria antes de qualquer settle (forma em MUNDO, identidade), e por isso não pegava um bug
-/// de reconstrução mundo↔local. Este reproduz o frame real: push → sync → **settle** → build →
-/// create → pull → attach → recook.
+/// **UMA gaiola deforma DOIS filhos** — o *warp group*. As duas formas passam pelo MESMO `QuadWarp`
+/// sobre a bbox-UNIÃO, byte a byte; nenhuma fica em repouso. É o que separa um container de dois
+/// envelopes soltos: um só mapa, um só gesto.
 #[test]
-fn the_smoke_sequence_deforms_the_shape() {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
+fn a_two_shape_envelope_deforms_both_by_the_one_cage() {
+    let (mut sim, mut scene, _map, container, _ids) =
+        envelope_over(vec![ellipse([-3.0, 0.0], 1.5), ellipse([3.0, 0.0], 1.5)]);
 
-    // Frame N: sync + settle (o que o smoke deixa acontecer antes de criar o envelope).
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    let env = env_of(&sim, container);
+    let sources: Vec<VecPath> = env.children.iter().map(source_of).collect();
+    // A bbox-união abrange as DUAS (de x≈-4.5 a x≈4.5).
+    let (origin, size) = super::union_control_bbox(sources.iter()).unwrap();
+    assert!(origin[0] < -4.0 && origin[0] + size[0] > 4.0, "a união devia abranger ambas");
 
-    // Frame N+1 prólogo: create sobre a forma JÁ assentada.
-    let (eid, mut env) = create(&scene, id).expect("create pós-settle");
-
-    // Puxa como o smoke: topo a 35% da base.
-    let [bl, br, tr, tl] = env.corners;
-    let cx = (tl[0] + tr[0]) * 0.5;
-    let k = 0.35;
-    env.corners = [
+    // Puxa o topo — uma gaiola só.
+    let [bl, br, ..] = bbox_corners(origin, size);
+    let pulled = [
         bl,
         br,
-        [cx + (tr[0] - cx) * k, tr[1]],
-        [cx + (tl[0] - cx) * k, tl[1]],
+        [origin[0] + size[0] * 0.65, origin[1] + size[1]],
+        [origin[0] + size[0] * 0.35, origin[1] + size[1]],
     ];
-    assert!(attach(&mut sim, &map, eid, &env));
+    assert!(QuadWarp::is_convex(&pulled));
+    set_corners(&mut sim, container, pulled);
+    recook(&mut sim, &mut scene);
 
-    let out = frame(&mut sim, &mut scene, &map, id);
-
-    // A fonte que o recook desta sequência de facto usou, e a saída que o motor produziria dela.
-    let e = Entity::from_bits(map[&id]);
-    let env_now = sim
-        .world()
-        .get::<VecEnvelope>(e)
-        .expect("componente")
-        .clone();
-    let source = source_of(&env_now);
-    let (o, s) = control_bbox(&source).expect("bbox");
-    let expected = warp_path(
-        &source,
-        &QuadWarp::new(o, s, env_now.corners).unwrap(),
-        accuracy(s),
-    );
-
-    // (1) a DEFORMAÇÃO aconteceu — a saída difere da fonte em repouso.
-    assert_ne!(
-        out.verts, source.verts,
-        "a sequência do smoke NÃO deformou: o recook devolveu a fonte intacta"
-    );
-    // (2) e é a saída do motor (o fio está certo mesmo pós-settle).
-    assert_eq!(
-        out.verts, expected.verts,
-        "pós-settle o recook divergiu do motor — a reconstrução mundo<->local corrompeu a fonte"
-    );
+    let warp = QuadWarp::new(origin, size, pulled).unwrap();
+    let acc = accuracy(size);
+    for (child, src) in env.children.iter().zip(&sources) {
+        let out = scene.paths().iter().find(|p| p.id == child.path).unwrap();
+        let expected = warp_path(src, &warp, acc);
+        assert_eq!(
+            out.verts, expected.verts,
+            "o filho {} não passou pela gaiola-união (ou passou por outra)",
+            child.path
+        );
+        assert_ne!(out.verts, src.verts, "o filho {} ficou em repouso", child.path);
+    }
 }
 
-/// **O caminho REAL do app: `upkeep` drena o pending e ANEXA** (não `attach` direto). Os outros
-/// gates chamam `attach` na mão; o app enfileira em `vec_envelope_pending` e o `upkeep` do frame
-/// seguinte é quem anexa. Se o `upkeep` não anexar (ex.: a forma "some" da cena por um frame, ou o
-/// mapa não tem a entidade), o componente nunca chega, o recook não acha envelope, e a forma fica
-/// **sem deformar e sem gaiola** — exatamente o sintoma de "não vejo canto onde puxar".
+/// **`create` REPARENTA os filhos na IDENTIDADE sob o container.** Estrutural: o container carrega o
+/// `VecEnvelope` e NÃO tem `VecPathRef` (é grupo); cada filho é `ChildOf(container)` e está em
+/// `Transform::IDENTITY` (a pose dele foi assada na fonte — passo 1 do `create`). Sem a identidade, a
+/// pose do filho se aplicaria DUAS vezes (própria + herdada do container).
 #[test]
-fn the_upkeep_path_attaches_and_deforms() {
+fn create_reparents_children_at_identity_under_the_container() {
+    let (sim, _scene, map, container, ids) =
+        envelope_over(vec![ellipse([-3.0, 0.0], 1.5), ellipse([3.0, 0.0], 1.5)]);
+    let ce = Entity::from_bits(container);
+    assert!(sim.world().get::<VecEnvelope>(ce).is_some(), "container sem VecEnvelope");
+    assert!(sim.world().get::<VecPathRef>(ce).is_none(), "o container não é um path");
+    for id in &ids {
+        let child = Entity::from_bits(map[id]);
+        assert_eq!(
+            sim.world().get::<ChildOf>(child).map(|c| c.parent()),
+            Some(ce),
+            "o filho {id} não foi reparentado sob o container"
+        );
+        assert_eq!(
+            sim.world().get::<Transform>(child).copied(),
+            Some(Transform::IDENTITY),
+            "o filho {id} não ficou na identidade — a pose se aplicaria duas vezes"
+        );
+    }
+}
+
+/// **`create` ASSA a pose de MUNDO do filho na fonte.** Uma forma assentada (`settle`) tem a
+/// geometria LOCAL centrada na origem e a pose no `Transform`. Depois do `create`, a fonte do filho
+/// tem de estar em MUNDO (na posição original), não local-centrada — senão o envelope nasceria na
+/// origem, longe da forma. É o que permite o filho ir para a identidade.
+#[test]
+fn create_bakes_the_child_world_pose_into_the_source() {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
-    let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
-
-    // Frame N: sync + settle (o que o app faz antes de o smoke criar o envelope).
+    // Elipse longe da origem: o settle lhe dá pose ≈(40,20) e geometria local centrada em 0.
+    let id = scene.push_path(ellipse([40.0, 20.0], 2.0));
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    // A geometria local já está centrada perto da origem (o settle a moveu).
+    let local_bbox = scene.path_curve_bbox(id).unwrap();
+    assert!(local_bbox.0[0].abs() < 5.0, "o settle devia ter centrado a geometria local");
 
-    // Frame N+1 prólogo (o smoke): create + pull, e ENFILEIRA (não anexa na mão).
-    let (eid, mut env) = create(&scene, id).expect("create");
-    let [bl, br, tr, tl] = env.corners;
-    let cx = (tl[0] + tr[0]) * 0.5;
-    env.corners = [
-        bl,
-        br,
-        [cx + (tr[0] - cx) * 0.35, tr[1]],
-        [cx + (tl[0] - cx) * 0.35, tl[1]],
-    ];
-    let mut pending = Some((eid, env));
-
-    // Frame N+1 corpo: sync + upkeep (a porta do app) + recook.
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    upkeep(&mut sim, &scene, &map, &mut pending);
-    assert!(pending.is_none(), "o upkeep não drenou o pending");
-
-    // O componente TEM de estar anexado — senão o recook não acha envelope nenhum.
-    let e = Entity::from_bits(map[&id]);
+    let container = create(&mut sim, &mut scene, &map, &[id]).expect("create");
+    // A fonte do filho volta a estar em MUNDO (≈40,20): a pose foi assada.
+    let src = source_of(&env_of(&sim, container).children[0]);
+    let (o, _) = super::union_control_bbox([&src]).unwrap();
     assert!(
-        sim.world().get::<VecEnvelope>(e).is_some(),
-        "o upkeep não anexou o VecEnvelope — nem deforma nem desenha a gaiola"
+        o[0] > 35.0,
+        "a pose de mundo NÃO foi assada na fonte (bbox em x={:.1}, esperado ≈38)",
+        o[0]
     );
-
-    let source = frame(&mut sim, &mut scene, &map, id);
-    // (`frame` roda o recook e devolve o path.) A forma tem de ter deformado.
-    let cooked_src = ellipse([0.0, 0.0], 2.0).cooked().into_owned();
-    assert_ne!(
-        source.verts, cooked_src.verts,
-        "o upkeep anexou mas a forma não deformou"
-    );
+    // E a geometria do path na cena também (container na identidade ⇒ local == mundo).
+    let (wo, _) = scene.path_curve_bbox(id).unwrap();
+    assert!(wo[0] > 35.0, "o path da cena devia render em MUNDO após o create");
 }
 
-/// **A POSE sobrevive ao recook — e NÃO vaza para a geometria local (Fatia 2).** No modelo LOCAL a
-/// geometria escrita é local e o `Transform` é a pose; o recook **não** a força a identidade (o
-/// modelo antigo forçava, e por isso o gizmo do Select era inócuo). Duas afirmações: (1) a pose
-/// continua lá após o recook, (2) ela NÃO entrou nos vértices (o bbox local segue perto da fonte,
-/// não deslocado pela pose) — geometria-local + pose-separada é o que impede o gizmo de dobrar.
+/// **A POSE vive no CONTAINER e não vaza para a geometria dos filhos (Fatia 2).** Mover o `Transform`
+/// do container move o envelope inteiro; o recook não o toca (escreve só geometria local). Duas
+/// afirmações: (1) a pose do container sobrevive ao recook, (2) ela NÃO entrou nos vértices do filho
+/// (a geometria local segue perto da fonte). Container-pose + filho-geometria-local = o gizmo não dobra.
 #[test]
-fn the_pose_survives_recook_and_stays_out_of_the_local_geometry() {
-    let src = ellipse([5.0, 3.0], 2.0);
-    let (origin, size) = control_bbox(&src).unwrap();
-    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src, bbox_corners(origin, size));
-
-    let e = Entity::from_bits(map[&id]);
+fn the_pose_lives_on_the_container_and_stays_out_of_child_geometry() {
+    let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    let ce = Entity::from_bits(container);
     let pose = ph2d_core::Vec2::new(100.0, -50.0);
-    sim.world_mut()
-        .get_mut::<Transform>(e)
-        .expect("Transform")
-        .translation = pose;
+    sim.world_mut().get_mut::<Transform>(ce).expect("Transform").translation = pose;
 
-    let out = frame(&mut sim, &mut scene, &map, id);
+    let out = frame(&mut sim, &mut scene, ids[0]);
 
-    // (1) a pose sobrevive — é ela que o gizmo do Select move.
     assert_eq!(
-        sim.world()
-            .get::<Transform>(e)
-            .expect("Transform")
-            .translation,
+        sim.world().get::<Transform>(ce).expect("Transform").translation,
         pose,
-        "o recook apagou a pose (o modelo antigo forçava identidade) — o gizmo seria inócuo"
+        "o recook apagou a pose do container — o gizmo do Select seria inócuo"
     );
-    // (2) e a pose NÃO vazou para a geometria: a fonte vive perto de x=5; se a translação de +100
-    // tivesse entrado nos vértices, o bbox local estaria lá longe. Local + pose separados.
-    let (o, _) = control_bbox(&out).expect("bbox");
+    let (o, _) = super::union_control_bbox([&out]).expect("bbox");
     assert!(
         o[0] < 50.0,
-        "a pose vazou para a geometria local (bbox em x={:.1}, esperado perto da fonte ~3)",
+        "a pose vazou para a geometria do filho (bbox em x={:.1}, esperado perto da fonte ~3)",
         o[0]
     );
 }
 
-/// **A FONTE AUTORADA SOBREVIVE no componente.** O recook sobrescreveu o path da cena com a
-/// deformada — mas a fonte afiada continua nos bytes do `VecEnvelope`, e é ela que o undo/save
-/// recuperam. Sem isto, o 1º frame varreria o desenho sem retorno (o *"funciona e depois esquece"*).
+/// **A FONTE AUTORADA SOBREVIVE em cada filho.** O recook sobrescreveu os paths da cena com as
+/// deformadas — mas a fonte afiada continua nos bytes de cada `VecEnvelopeChild`, e é ela que o
+/// undo/save recuperam. Sem isto, o 1º frame varreria o desenho sem retorno (*"funciona e esquece"*).
 #[test]
-fn the_authored_source_survives_in_the_component() {
+fn the_authored_source_survives_in_each_child() {
     let src = ellipse([5.0, 3.0], 2.0);
-    let (origin, size) = control_bbox(&src).unwrap();
+    let (mut sim, mut scene, _map, container, _ids) = envelope_over(vec![src.clone()]);
+    let (origin, size) = super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
     let [bl, br, tr, tl] = bbox_corners(origin, size);
-    let pulled = [bl, br, [tr[0] - size[0] * 0.3, tr[1]], tl];
+    set_corners(&mut sim, container, [bl, br, [tr[0] - size[0] * 0.3, tr[1]], tl]);
 
-    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src.clone(), pulled);
-    let scene_before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
-    let out = frame(&mut sim, &mut scene, &map, id);
-    assert_ne!(
-        out.verts, scene_before.verts,
-        "o recook devia ter deformado"
-    );
+    recook(&mut sim, &mut scene);
 
-    // A fonte no componente continua a ser a original (cozida), intacta.
-    let e = Entity::from_bits(map[&id]);
-    let env = sim.world().get::<VecEnvelope>(e).expect("componente");
-    let kept = source_of(env);
+    let kept = source_of(&env_of(&sim, container).children[0]);
     let cooked_src = src.cooked().into_owned();
     assert_eq!(
         kept.verts, cooked_src.verts,
@@ -294,31 +259,42 @@ fn the_authored_source_survives_in_the_component() {
     );
 }
 
-/// **UMA GAIOLA DEGENERADA CONGELA a forma, não a apaga.** 3 cantos colineares ⇒ `QuadWarp::new`
-/// devolve `None` ⇒ o recook pula, e o path da cena fica onde estava (não some, não vira lixo). É a
-/// mesma escolha do morph com uma fonte perdida.
+/// **UMA GAIOLA DEGENERADA CONGELA as formas, não as apaga.** 3 cantos colineares ⇒ `QuadWarp::new`
+/// devolve `None` ⇒ o recook pula, e os paths ficam onde estavam. É a mesma escolha do morph com uma
+/// fonte perdida.
 #[test]
-fn a_degenerate_cage_freezes_the_shape() {
-    let src = ellipse([5.0, 3.0], 2.0);
-    let (origin, size) = control_bbox(&src).unwrap();
-    // Cantos 1,2,3 (BR/TR/TL) colineares — todos em x = ox+w. É essa a singularidade da homografia
-    // de Heckbert (o denominador de Cramer sobre q1,q2,q3 some), não "três cantos quaisquer".
+fn a_degenerate_cage_freezes_the_shapes() {
+    let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    let (origin, size) = super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
+    // Cantos 1,2,3 (BR/TR/TL) colineares — a singularidade da homografia de Heckbert.
     let degenerate = [
         [origin[0], origin[1]],
         [origin[0] + size[0], origin[1]],
         [origin[0] + size[0], origin[1] + size[1] * 0.5],
         [origin[0] + size[0], origin[1] + size[1]],
     ];
-    assert!(
-        QuadWarp::new(origin, size, degenerate).is_none(),
-        "o fixture devia ser degenerado"
-    );
+    assert!(QuadWarp::new(origin, size, degenerate).is_none(), "o fixture devia ser degenerado");
+    set_corners(&mut sim, container, degenerate);
 
-    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src, degenerate);
-    let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
-    let after = frame(&mut sim, &mut scene, &map, id);
+    let before = scene.paths().iter().find(|p| p.id == ids[0]).unwrap().clone();
+    let after = frame(&mut sim, &mut scene, ids[0]);
     assert_eq!(
         after.verts, before.verts,
         "gaiola degenerada mexeu na forma — ela tinha de CONGELAR onde estava"
     );
+}
+
+/// **`create` sobre nada dá `None`** — ids que não resolvem (formas inexistentes) não criam um
+/// container órfão. É a guarda que impede um envelope vazio.
+#[test]
+fn create_over_no_live_shapes_is_none() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let map = VecEntityMap::new();
+    // Ids que nunca entraram no mapa.
+    assert!(create(&mut sim, &mut scene, &map, &[999, 1000]).is_none());
+    assert!(create(&mut sim, &mut scene, &map, &[]).is_none());
+    // E nenhum container foi deixado para trás.
+    let mut q = sim.world_mut().query::<&VecEnvelope>();
+    assert_eq!(q.iter(sim.world()).count(), 0, "create deixou um container órfão");
 }

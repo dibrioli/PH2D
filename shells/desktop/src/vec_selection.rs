@@ -8,7 +8,7 @@
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`crate::vec_entities`].
 
 use crate::vec_entities::{VecEntityMap, subtree_paths};
-use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, VecEnvelope, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -82,6 +82,17 @@ pub(crate) fn sync_selection(
             .iter()
             .filter_map(|id| map.get(id).copied())
             .collect();
+        // ADR-0129 Fatia 3: se toda a seleção vive sob UM container de Envelope, o gizmo é o
+        // CONTAINER SOZINHO — mover/girar/escalar o container move o envelope inteiro, e pôr os
+        // filhos junto os CISALHARIA (eles têm geometria de mundo + `Transform` identidade, então
+        // o gizmo os moveria uma vez pelo próprio `Transform` e outra pelo do pai). O pen fica com
+        // os filhos (a gaiola do Node os alcança pelo container no gizmo).
+        if let Some(container) = sole_envelope_container(sim, &bits) {
+            gizmo.replace_selection(Some(container));
+            state.bits = vec![container];
+            state.paths = pen_now;
+            return;
+        }
         for ancestor in fully_selected_ancestors(sim, scene, map, &bits) {
             if !bits.contains(&ancestor) {
                 bits.push(ancestor);
@@ -132,6 +143,35 @@ pub(crate) fn sync_selection(
     pen.select_many(&ordered);
     state.bits = mine;
     state.paths = pen.selected_paths().to_vec();
+}
+
+/// O ancestral mais próximo de `e` que carrega um [`VecEnvelope`] (ele mesmo inclusive), ou `None`.
+fn envelope_ancestor(w: &ph2d_ecs::World, e: Entity) -> Option<u64> {
+    let mut cur = e;
+    for _ in 0..MAX_DEPTH {
+        if w.get::<VecEnvelope>(cur).is_some() {
+            return Some(cur.to_bits());
+        }
+        cur = w.get::<ChildOf>(cur)?.parent();
+    }
+    None
+}
+
+/// O container de Envelope que **todos** os bits selecionados compartilham, ou `None`. `None` se a
+/// seleção está vazia, se algum bit não vive sob um envelope, ou se há dois envelopes diferentes —
+/// nesses casos a seleção não é "um envelope" e o caminho comum vale.
+fn sole_envelope_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
+    let w = sim.world();
+    let mut found: Option<u64> = None;
+    for &b in selected {
+        let container = envelope_ancestor(w, Entity::from_bits(b))?;
+        match found {
+            None => found = Some(container),
+            Some(f) if f == container => {}
+            Some(_) => return None, // dois envelopes distintos: não é "um envelope"
+        }
+    }
+    found
 }
 
 /// Os ancestrais cuja sub-árvore vetorial está INTEIRAMENTE selecionada. Sem eles a
@@ -250,6 +290,34 @@ mod tests {
             None,
             "desselecionar na árvore chega no canvas"
         );
+    }
+
+    /// **Seleção-só-o-container (ADR-0129 Fatia 3):** clicar um FILHO de um envelope no canvas põe
+    /// SÓ o container no gizmo — nunca o filho, nunca os dois. Somar o filho o cisalharia no drag (a
+    /// geometria dele é MUNDO e o `Transform` é identidade, então o gizmo o moveria uma vez pelo
+    /// próprio `Transform` e outra pela do container). Mutação: sem o ramo, cai no grupo comum e o
+    /// gizmo fica com `{filho, container}` (2 bits) — o gate exige 1.
+    #[test]
+    fn selecting_an_envelope_child_selects_only_the_container() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+
+        let mut gizmo = GizmoStateGroup::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        let mut state = VecSelSync::default();
+
+        // O canvas seleciona o FILHO.
+        pen.select_many(&[a]);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+
+        assert_eq!(
+            gizmo.iter_selected().collect::<Vec<_>>(),
+            vec![container],
+            "o gizmo tem SÓ o container — nem o filho, nem os dois"
+        );
+        assert_eq!(gizmo.selection, Some(container), "e o container é o primário");
     }
 
     /// A árvore manda quando é o subconjunto VETORIAL do gizmo que muda: clicar a

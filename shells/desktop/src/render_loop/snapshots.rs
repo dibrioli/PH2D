@@ -305,6 +305,28 @@ pub(super) fn publish(
                         pivot_tool_active,
                     );
                 }
+                // ADR-0129 Fatia 3: o container de um Envelope é um grupo SEM path próprio, mas TEM
+                // gizmo — a caixa-união dos filhos, para o gizmo de sprite mover/girar/escalar o
+                // envelope inteiro (Fatia 2). Gate no mesmo `vec_gizmo_on` (Select; no Node aparece a
+                // gaiola, não a caixa).
+                if sim
+                    .world()
+                    .get::<ph2d_ecs::VecEnvelope>(sim_entity)
+                    .is_some()
+                {
+                    if !vec_gizmo_on {
+                        return None;
+                    }
+                    return crate::vec_gizmo_view::container_view(
+                        sim,
+                        vec_scene,
+                        sim_entity,
+                        camera,
+                        window_size,
+                        last_pointer,
+                        pivot_tool_active,
+                    );
+                }
                 return None; // grupo/outro: sem gizmo próprio
             }
             let sprite = sim.world().get::<Sprite>(sim_entity)?;

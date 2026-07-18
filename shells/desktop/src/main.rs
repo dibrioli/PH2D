@@ -360,7 +360,6 @@ impl App {
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_blend_pending: None,
             vec_morph_pending: None,
-            vec_envelope_pending: None,
             vec_envelope_drag: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),

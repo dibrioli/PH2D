@@ -1708,7 +1708,6 @@ impl App {
         let w = gfx.camera.screen_to_world((x, y), win);
         crate::envelope_gesture::drag(
             &mut gfx.sim,
-            &self.vec_entities,
             Some(active),
             [f64::from(w[0]), f64::from(w[1])],
         )
@@ -2669,6 +2668,11 @@ impl App {
                         let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
                         let px_to_world =
                             (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
+                        // ADR-0129 Fatia 3: o alvo do gesto de gaiola é o CONTAINER do envelope (sem
+                        // path), não a forma selecionada — os bits dele estão na seleção do gizmo
+                        // (regra seleciona-só-o-container). Copy, lido ANTES do borrow mutável de
+                        // `hero_screen` abaixo. `press` devolve `false` se não for um `VecEnvelope`.
+                        let env_container = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
                         // Fase 2: snapshot pré-interação (vira passo de undo no Up
                         // só se a cena mudar de fato).
                         self.vec_history.begin(&gfx.vec_scene);
@@ -2697,8 +2701,7 @@ impl App {
                                 // `on_press_node` de sempre (seleção / edição de âncora).
                                 if crate::envelope_gesture::press(
                                     &gfx.sim,
-                                    &self.vec_entities,
-                                    selected,
+                                    env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
                                     &mut self.vec_envelope_drag,

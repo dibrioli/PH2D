@@ -149,7 +149,7 @@ pub(crate) fn rebuild_map(sim: &mut SimWorld) -> VecEntityMap {
 
 /// O próximo `RootOrder` livre (o maior em uso + 1). `RootOrder(u32::MAX)` é o
 /// "sem ordem" das raízes que nunca receberam uma, então não conta.
-fn next_root_order(sim: &mut SimWorld) -> u32 {
+pub(crate) fn next_root_order(sim: &mut SimWorld) -> u32 {
     let mut q = sim.world_mut().query::<&RootOrder>();
     let max = q
         .iter(sim.world())

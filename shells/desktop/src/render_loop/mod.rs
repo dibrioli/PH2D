@@ -3242,14 +3242,10 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_morph_pending,
             );
-            // **Envelope Objects, 1ª metade (ADR-0129):** idem — sem o componente pendurado
-            // antes do `settle`, o path seria assentado como comum e o recook sairia deslocado.
-            crate::envelope_live::upkeep(
-                sim,
-                vec_scene,
-                &self.vec_entities,
-                &mut self.vec_envelope_pending,
-            );
+            // **Envelope Objects (ADR-0129 Fatia 3):** SEM `upkeep` — o envelope não cria path
+            // nenhum (o container não tem path), então não há entidade nova esperando o `sync`. Tudo
+            // (assar + reparentar + pendurar) já aconteceu síncrono no `create`. O `settle` pula os
+            // filhos (têm `ChildOf`) e o container (sem path, fora do mapa).
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
@@ -3321,10 +3317,11 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_morph_plans,
             );
-            // **Envelope Objects, 2ª metade (ADR-0129):** a forma é a fonte autorada deformada
-            // pela gaiola — re-cozida aqui, todo frame. Sem xforms: a fonte está congelada em MUNDO
-            // no componente (ela não se move; é a gaiola que deforma).
-            crate::envelope_live::recook(sim, vec_scene, &self.vec_entities);
+            // **Envelope Objects (ADR-0129):** a forma de cada filho é a fonte autorada deformada
+            // pela gaiola comum — re-cozida aqui, todo frame. Sem xforms nem mapa: a fonte é LOCAL do
+            // container e é o `Transform` do container (via `vec_transform::build`) que leva os filhos
+            // ao mundo; o recook varre os containers por QUERY (eles não têm path).
+            crate::envelope_live::recook(sim, vec_scene);
             // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
             // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
             // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um
@@ -3472,16 +3469,16 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-                // A gaiola do **Envelope** (ADR-0129, Fatia 1): os 4 cantos que o Node
-                // arrasta para deformar a forma que a gaiola contém. Alça PRÓPRIA (não o
-                // gizmo de sprite, §3.3), desenhada só quando a forma selecionada é de
-                // fato um envelope — o flag de modo (`envelope_cage`) diz o MODO, o `view`
-                // devolve `None` quando a seleção não carrega um `VecEnvelope`.
+                // A gaiola do **Envelope** (ADR-0129): os 4 cantos que o Node arrasta para
+                // deformar as formas que a gaiola contém. Alça PRÓPRIA (não o gizmo de sprite,
+                // §3.3), desenhada só quando a seleção do gizmo é de fato um envelope — o flag de
+                // modo (`envelope_cage`) diz o MODO, o `view` devolve `None` quando a entidade
+                // selecionada não carrega um `VecEnvelope`. O alvo é o CONTAINER (Fatia 3): a
+                // regra seleciona-só-o-container põe os bits dele em `hero.gizmo.selection`.
                 if overlay.envelope_cage
                     && let Some(cage) = crate::envelope_gesture::view(
                         sim,
-                        &self.vec_entities,
-                        self.vec_pen.selected(),
+                        hero.gizmo.selection,
                         self.vec_envelope_drag,
                     )
                 {

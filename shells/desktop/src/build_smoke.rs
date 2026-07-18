@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=12` — a cena do **WARP GROUP** (ADR-0129 Fatia 3): DUAS elipses sob UMA
+//!   gaiola. As duas curvam pela mesma perspectiva (NODE), e o gizmo do Select abraça e move as
+//!   duas juntas (SELECT). É o que separa um container de dois envelopes soltos.
 //! - `PH2D_BUILD_SMOKE=11` — a cena do **ENVELOPE** (ADR-0129): uma elipse **já deformada** por
 //!   uma gaiola de perspectiva. OLHE O MEIO DOS SEGMENTOS — as laterais curvam liso; é aí que
 //!   o defeito ingênuo (só os cantos) apareceria, não nos cantos.
@@ -143,47 +146,130 @@ impl crate::App {
                 ));
             }
             4 if level == 11 => {
-                // A entidade já nasceu (sync do frame anterior) e a forma já foi assentada; `create`
-                // guarda a geometria LOCAL e nasce em repouso (cantos = bbox local). A pose fica no
-                // `Transform` da entidade — no Select o gizmo a move (Fatia 2).
-                let created = {
-                    let Some(gfx) = self.gfx.as_ref() else { return };
+                // A entidade já nasceu (sync do frame anterior) e a forma já foi assentada. `create`
+                // (Fatia 3) é SÍNCRONO: assa a forma em MUNDO, cria um CONTAINER na identidade,
+                // reparenta a forma como filho na identidade e pendura o `VecEnvelope`. A pose fica no
+                // `Transform` do container — no Select o gizmo a move (Fatia 2).
+                let container = {
+                    let Some(gfx) = self.gfx.as_mut() else { return };
                     let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
                         return;
                     };
-                    crate::envelope_live::create(&gfx.vec_scene, id)
+                    crate::envelope_live::create(
+                        &mut gfx.sim,
+                        &mut gfx.vec_scene,
+                        &self.vec_entities,
+                        &[id],
+                    )
                 };
-                if let Some((eid, mut env)) = created {
-                    // Estreita o topo para 35% da base: trapézio convexo forte (perspectiva). BL/BR
-                    // ficam; TR/TL vêm para o centro-topo.
-                    let [bl, br, tr, tl] = env.corners;
-                    let cx = (tl[0] + tr[0]) * 0.5;
-                    let k = 0.35;
-                    env.corners = [
-                        bl,
-                        br,
-                        [cx + (tr[0] - cx) * k, tr[1]],
-                        [cx + (tl[0] - cx) * k, tl[1]],
-                    ];
-                    debug_assert!(
-                        ph2d_vec_envelope::QuadWarp::is_convex(&env.corners),
-                        "a gaiola do smoke tem de ser convexa (mantém o horizonte fora)"
-                    );
-                    self.vec_envelope_pending = Some((eid, env));
-                    // Fatia 1 (ADR-0129): seleciona o envelope e entra no NODE — a gaiola
-                    // (4 cantos + moldura) aparece e os cantos ficam arrastáveis. Sem isto
-                    // a cena nasceria no Select (default), sem gaiola visível.
-                    self.vec_pen.select_many(&[eid]);
-                    self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
-                    eprintln!(
-                        "[envelope-smoke] elipse deformada por gaiola de perspectiva (modo NODE). \
-                         OLHE O MEIO DOS SEGMENTOS: as laterais curvam LISO — se so os 4 cantos \
-                         obedecessem e o meio ficasse reto/quebrado, seria o bug ingenuo. \
-                         NODE: arraste os CANTOS da gaiola (Fatia 1) -- re-deforma ao vivo, convexo \
-                         obrigatorio. SELECT (pill do painel): o GIZMO move/gira/escala o envelope \
-                         INTEIRO (Fatia 2) -- a forma deformada anda junta, sem dobrar."
-                    );
+                let Some(container) = container else { return };
+                // Estreita o topo para 35% da base: trapézio convexo forte (perspectiva). BL/BR
+                // ficam; TR/TL vêm para o centro-topo. Escrito direto no `VecEnvelope` do container.
+                if let Some(gfx) = self.gfx.as_mut() {
+                    let e = ph2d_ecs::Entity::from_bits(container);
+                    if let Some(mut env) = gfx.sim.world_mut().get_mut::<ph2d_ecs::VecEnvelope>(e) {
+                        let [bl, br, tr, tl] = env.corners;
+                        let cx = (tl[0] + tr[0]) * 0.5;
+                        let k = 0.35;
+                        env.corners = [
+                            bl,
+                            br,
+                            [cx + (tr[0] - cx) * k, tr[1]],
+                            [cx + (tl[0] - cx) * k, tl[1]],
+                        ];
+                        debug_assert!(
+                            ph2d_vec_envelope::QuadWarp::is_convex(&env.corners),
+                            "a gaiola do smoke tem de ser convexa (mantém o horizonte fora)"
+                        );
+                    }
                 }
+                // Fatia 1/3: seleciona o FILHO no pen — a regra seleciona-só-o-container
+                // (`vec_selection`) põe o CONTAINER no gizmo, e a gaiola (que lê a seleção do gizmo)
+                // aparece no NODE. Sem isto a cena nasceria no Select (default).
+                if let Some(id) = self
+                    .gfx
+                    .as_ref()
+                    .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
+                {
+                    self.vec_pen.select_many(&[id]);
+                }
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+                eprintln!(
+                    "[envelope-smoke] elipse deformada por gaiola de perspectiva (modo NODE). \
+                     OLHE O MEIO DOS SEGMENTOS: as laterais curvam LISO — se so os 4 cantos \
+                     obedecessem e o meio ficasse reto/quebrado, seria o bug ingenuo. \
+                     NODE: arraste os CANTOS da gaiola (Fatia 1) -- re-deforma ao vivo, convexo \
+                     obrigatorio. SELECT (pill do painel): o GIZMO move/gira/escala o envelope \
+                     INTEIRO (Fatia 3 = container) -- a forma deformada anda junta, sem dobrar."
+                );
+            }
+            // A cena do WARP GROUP (ADR-0129 Fatia 3): DUAS elipses sob UMA gaiola. É o que separa
+            // um container de dois envelopes soltos — uma gaiola só deforma as duas, e o gizmo do
+            // Select move as duas juntas, sem cisalhar.
+            3 if level == 12 => {
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                gfx.vec_scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [-4.0, -1.5],
+                    [-1.0, 1.5],
+                    &[],
+                    [200, 120, 90],
+                ));
+                gfx.vec_scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [1.0, -1.5],
+                    [4.0, 1.5],
+                    &[],
+                    [90, 180, 140],
+                ));
+            }
+            4 if level == 12 => {
+                // Cria UM envelope sobre AS DUAS formas → container com 2 filhos (warp group).
+                let container = {
+                    let Some(gfx) = self.gfx.as_mut() else { return };
+                    let ids: Vec<_> = gfx.vec_scene.paths().iter().map(|p| p.id).collect();
+                    crate::envelope_live::create(
+                        &mut gfx.sim,
+                        &mut gfx.vec_scene,
+                        &self.vec_entities,
+                        &ids,
+                    )
+                };
+                let Some(container) = container else { return };
+                // Puxa o topo (40% da base) — uma gaiola só, as duas elipses a seguem.
+                if let Some(gfx) = self.gfx.as_mut() {
+                    let e = ph2d_ecs::Entity::from_bits(container);
+                    if let Some(mut env) = gfx.sim.world_mut().get_mut::<ph2d_ecs::VecEnvelope>(e) {
+                        let [bl, br, tr, tl] = env.corners;
+                        let cx = (tl[0] + tr[0]) * 0.5;
+                        let k = 0.4;
+                        env.corners = [
+                            bl,
+                            br,
+                            [cx + (tr[0] - cx) * k, tr[1]],
+                            [cx + (tl[0] - cx) * k, tl[1]],
+                        ];
+                        debug_assert!(
+                            ph2d_vec_envelope::QuadWarp::is_convex(&env.corners),
+                            "a gaiola do smoke tem de ser convexa"
+                        );
+                    }
+                }
+                if let Some(id) = self
+                    .gfx
+                    .as_ref()
+                    .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
+                {
+                    self.vec_pen.select_many(&[id]);
+                }
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+                eprintln!(
+                    "[envelope-smoke 12] DUAS elipses sob UMA gaiola (warp group, modo NODE). \
+                     As duas curvam pela MESMA perspectiva. NODE: arraste um CANTO da gaiola -- \
+                     as duas re-deformam juntas. SELECT (pill do painel): o GIZMO abraça as DUAS \
+                     e move/gira/escala o grupo inteiro -- sem cisalhar (a caixa e' a uniao)."
+                );
             }
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em

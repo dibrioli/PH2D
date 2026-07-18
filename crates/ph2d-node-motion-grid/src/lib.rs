@@ -136,7 +136,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["rows", "cols", "gap_x", "gap_y"],
-    source_count: Some(|param| {
+    // `_playhead`: a grid is static — its element count does not move with time.
+    // The argument exists for the stateless emitter (ADR-0130), not for this.
+    source_count: Some(|param, _playhead| {
         let rows = param_as_count(param("rows"), RECOMMENDED_MAX_ELEMENTS);
         let cols = param_as_count(param("cols"), RECOMMENDED_MAX_ELEMENTS);
         rows.saturating_mul(cols).min(RECOMMENDED_MAX_ELEMENTS)

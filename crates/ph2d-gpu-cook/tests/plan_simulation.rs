@@ -433,7 +433,7 @@ mod idgen {
         wgsl_lib: "",
         bindings: &[P_BINDING, ID_BINDING],
         params: &[],
-        source_count: Some(|_| N),
+        source_count: Some(|_, _| N),
         applicable: None,
     };
     const WITHOUT_ID: GpuKernel = GpuKernel {
@@ -441,7 +441,7 @@ mod idgen {
         wgsl_lib: "",
         bindings: &[P_BINDING],
         params: &[],
-        source_count: Some(|_| N),
+        source_count: Some(|_, _| N),
         applicable: None,
     };
 

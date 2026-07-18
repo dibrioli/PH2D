@@ -804,7 +804,7 @@ mod velgen {
             },
         ],
         params: &[],
-        source_count: Some(|_| N),
+        source_count: Some(|_, _| N),
         applicable: None,
     };
 

@@ -139,10 +139,17 @@ pub struct ColumnBinding {
 }
 
 /// A signature for "how many elements does this generator emit", evaluated on
-/// the CPU at plan time from the node's resolved params (the getter applies
-/// override-else-default, exactly like `EvalCtx::param`). Dispatch size must
-/// be known host-side; a generator's kernel body then writes `0..count`.
-pub type SourceCountFn = fn(&dyn Fn(&str) -> f32) -> usize;
+/// the CPU at cook time from the node's resolved params (the getter applies
+/// override-else-default, exactly like `EvalCtx::param`) **and the playhead**.
+/// Dispatch size must be known host-side; a generator's kernel body then writes
+/// `0..count`.
+///
+/// The playhead is the second argument because a **stateless emitter's** live
+/// count is a function of time — `motion.emitter`'s alive set is a contiguous id
+/// window `[first, first+n)` whose `n(t)` grows and shrinks as particles are born
+/// and die (ADR-0130). A count that ignored the playhead could only describe a
+/// static generator like `motion.grid` (which takes the argument and drops it).
+pub type SourceCountFn = fn(&dyn Fn(&str) -> f32, f64) -> usize;
 
 /// A param-dependent applicability test, evaluated at plan time. A kernel
 /// whose static WGSL body only covers part of a node's param space (e.g. an

@@ -277,7 +277,7 @@ impl GpuCook {
             let count = match kernel.source_count {
                 Some(f) => {
                     let get = |name: &str| resolve_param(graph, stage.node, manifest, name);
-                    f(&get).min(u32::MAX as usize) as u32
+                    f(&get, clock.playhead).min(u32::MAX as usize) as u32
                 }
                 None => base.count,
             };

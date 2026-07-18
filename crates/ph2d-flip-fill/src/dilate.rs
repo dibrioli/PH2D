@@ -23,46 +23,46 @@
 
 use crate::Vec2;
 
-/// Margem da dilatação, como **fração da meia-espessura da linha** (adimensional).
+/// Margem EXTRA de dilatação, como fração da meia-espessura da linha — e ela é **ZERO**.
 ///
-/// O emprego dela é encostar a cor por baixo do **falloff MACIO** do pincel: a borda de
-/// um pincel macio é translúcida, e a cor tem de ir um pouco além da silhueta nominal
-/// para o fundo não aparecer através dela.
+/// # Por que zero (Enio, 2026-07-18): a referência é o CENTRO da linha
 ///
-/// ⚠️ **É uma FRAÇÃO, e essa é a correção do smoke de 2026-07-18** (*"extrapolando um
-/// pouco da borda externa"*, com o traço fino e a câmera perto). Antes era uma distância
-/// FIXA — e uma distância fixa somada a uma linha de qualquer espessura é uma fração
-/// GRANDE numa linha fina e desprezível numa grossa. A assinatura estava na minha própria
-/// medição e eu passei por ela: o transbordo media **4 / 2 / 1** em linhas de 8 / 16 /
-/// 32 px — *pior na mais fina*, monotonicamente. Uma margem que só depende do PINCEL não
-/// pode fazer isso.
+/// > *"Porque não ter como referência o centro da linha? Já tínhamos resolvido isso."*
 ///
-/// E a extensão do falloff é proporcional ao raio do pincel — não é um número de pixels
-/// que exista fora dele. Então a grandeza certa era adimensional desde o começo, o que de
-/// quebra torna o BUGS #20 (somar px a unidades de mundo) **impossível neste termo**: não
-/// há unidade para atravessar.
+/// Tínhamos: é o **BUGS #14**. A geometria do fill termina no **eixo** — a única âncora
+/// imune ao zoom e à espessura — e o #15 dilata a cor do eixo para fora **pela espessura
+/// da própria linha**, para a metade externa (translúcida, num pincel macio) ter cor por
+/// baixo. Isso põe a borda da cor **exatamente na silhueta**. As duas coisas estão certas.
 ///
-/// **O valor é MEDIDO.** Cobertura = amostras de fundo sob a linha somadas na faixa de
-/// zoom; transbordo = `the_colour_never_spills_outside_the_line` (8/16/32 px, bar 2 %):
+/// **Qualquer margem além disso é transbordo por construção** — a cor passa da silhueta,
+/// onde a linha já tem alpha zero, e aparece na tela nua. Era a franja que o Enio viu em
+/// dois smokes seguidos.
 ///
-/// | lei | cobertura | transbordo | engorda: fino (0,02) / default (0,06) / grosso (0,12) |
-/// |---|---|---|---|
-/// | margem FIXA (até 2026-07-18) | 158 | 0,2 / 0,1 / 0,0 % | **25 %** / 8,3 % / 4,2 % |
-/// | fração 0,02 | 170 | 0,1 / 0,1 / 0,1 % | 2 % / 2 % / 2 % |
-/// | **fração 0,03** | **156** | **0,2 / 0,1 / 0,5 %** | **3 % / 3 % / 3 %** |
-/// | fração 0,04 | 149 | 0,2 / 0,2 / **1,6 %** | 4 % / 4 % / 4 % |
-/// | fração 0,06 | 116 | 0,2 / 0,3 / **4,6 %** ✗ | 6 % / 6 % / 6 % |
+/// E ela era **contagem dupla**: a margem existia para cobrir o erro de VETORIZAÇÃO do
+/// contorno, que é exatamente o que o termo `2s` do `contour_widths` passou a fazer — por
+/// ponto, e com sinal. Manter as duas é pagar o mesmo erro duas vezes, e a segunda parcela
+/// é paga em pixels visíveis.
 ///
-/// ⚠️ **O ganho NÃO está nos agregados, e é honesto dizer.** Contra a lei antiga, 0,03
-/// mexe pouco na cobertura (156 contra 158) e pouco no transbordo. O que ele conserta é a
-/// **DISTRIBUIÇÃO**: a franja deixa de ser 25 % da linha no traço fino e 4 % no grosso, e
-/// passa a ser 3 % em todos. Foi isso que o Enio viu, e nenhum número somado sobre a
-/// figura inteira ia mostrar — some na média.
+/// **O trade, medido** (cobertura = amostras de fundo sob a linha na faixa de zoom;
+/// transbordo = `the_colour_never_spills_outside_the_line`, 8/16/32 px):
 ///
-/// O teto é o gate de transbordo, que é anterior a esta mudança e vale para o produto:
-/// 0,06 estoura o limite de 2 % no traço grosso (4,6 %), porque uma fração de um traço
-/// gordo é muita tinta em termos absolutos. 0,03 passa com folga nas três espessuras.
-pub const FILL_TUCK_FRACTION: f32 = 0.03; // adimensional: fracao da meia-espessura
+/// | lei | cobertura | transbordo |
+/// |---|---|---|
+/// | sem compensação e sem margem (o defeito do #15) | 350 | 0,0 % |
+/// | **compensação, margem ZERO** | **224** | **0,0 / 0,0 / 0,0 %** |
+/// | margem FIXA 0,5, sem compensação (até 2026-07-18) | 158 | 0,2 / 0,1 / 0,0 % |
+/// | compensação + fração 0,03 | 156 | 0,2 / 0,1 / 0,5 % |
+/// | compensação + fração 0,06 | 116 | 0,2 / 0,3 / 4,6 % |
+///
+/// ⚠️ **A troca é real e a escolha é do Enio, não minha.** Margem some = franja some
+/// (0,0 % nas três espessuras) e a cobertura piora (224 contra 158). A compensação paga
+/// boa parte da diferença sozinha (o baseline sem ela é 350), e o resíduo se concentra no
+/// zoom BAIXO, onde a linha inteira tem 2-4 px de tela e a métrica pesa mais do que o olho.
+/// Ele viu a franja duas vezes e nunca reclamou de halo; é isso que decide.
+///
+/// A constante fica (em vez de o termo sumir do código) porque ela **é o registro da
+/// troca**: quem quiser reabri-la tem a curva acima e a varredura `sweep_tuck` no repo.
+pub const FILL_TUCK_FRACTION: f32 = 0.0; // adimensional: fracao da meia-espessura
 
 /// **A linha que este ponto do contorno está vestindo**: `(espessura, distância)`, na
 /// unidade do documento.

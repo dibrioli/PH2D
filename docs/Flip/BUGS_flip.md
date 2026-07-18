@@ -821,6 +821,27 @@ passo 0→−1 movia 16,8 px numa linha de 16) · `the_colour_stops_at_the_line_
 
 ---
 
+> **⚠️ EMENDA (2026-07-18) — a margem `FILL_TUCK_PX` desta seção foi a ZERO.**
+>
+> O Enio, em dois smokes seguidos: *"extrapolando um pouquinho para fora… porque não ter como
+> referência o centro da linha? Já tínhamos resolvido isso."* Tínhamos: é o **#14**, logo acima.
+>
+> As duas peças desta seção continuam certas — a geometria termina no **eixo**, e a dilatação
+> leva a cor do eixo até a **silhueta** pela espessura da própria linha. O que estava errado era
+> a **margem extra**: ela põe a cor ALÉM da silhueta, onde a linha já tem alpha zero, e ali a cor
+> aparece na tela nua. Transbordo por construção — exatamente o que o #14 existe para impedir.
+>
+> E era **contagem dupla**: a margem cobria o erro de VETORIZAÇÃO do contorno, que passou a ser
+> coberto pelo termo `2s` (compensação por ponto, com sinal). Pagar duas vezes o mesmo erro, e a
+> segunda parcela em pixels visíveis.
+>
+> A troca, medida: margem zero ⇒ transbordo **0,0 %** nas três espessuras (era 0,2/0,1/0,0) e
+> cobertura 224 (era 158). A compensação sozinha já paga a maior parte da diferença — o baseline
+> sem ela é **350** — e o resíduo se concentra no zoom BAIXO, onde a linha inteira tem 2-4 px de
+> tela. Ele viu a franja duas vezes e nunca reclamou de halo.
+>
+> A tabela de margens abaixo é **histórica**; a viva está no doc de `FILL_TUCK_FRACTION`.
+
 ## #15 — A cor parava no eixo, e a metade externa da linha ficava sem cor por baixo
 
 **Sintoma (Enio, smoke da W5, com screenshot):** *"o fill não se ajusta à linha de contorno. No

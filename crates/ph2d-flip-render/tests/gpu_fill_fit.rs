@@ -1355,18 +1355,17 @@ fn sweep_zoom() {
 ///
 /// | lei | amostras de fundo sob a linha |
 /// |---|---|
+/// | sem compensação nem margem (o defeito do BUGS #15) | 350 |
+/// | **compensação por ponto, margem ZERO** | **224** |
 /// | margem FIXA, sem compensação (até 2026-07-18) | 158 |
-/// | **compensação + margem em FRAÇÃO (0,03)** | **156** |
-/// | sem margem nenhuma | 224 |
 ///
-/// ⚠️ **Este gate NÃO discrimina a mudança de 2026-07-18** (156 contra 158 não é fosso),
-/// e ele não deve fingir que sim. O que a mudança conserta é a DISTRIBUIÇÃO da franja
-/// entre espessuras de traço, e quem guarda isso é
-/// `dilate::the_margin_scales_with_the_line_it_dresses` — a propriedade some quando se
-/// soma tudo sobre a figura. O papel deste aqui é o de sempre: barrar uma regressão
-/// GROSSA de cobertura (224 = a lei sem margem nenhuma).
+/// ⚠️ **Este gate NÃO é o juiz da margem.** Ele barra a regressão GROSSA (350 = a cor
+/// parando no eixo, que é o BUGS #15 de volta). A margem em si foi decidida pelo outro
+/// lado da troca — o transbordo — porque é ele que o Enio vê: a referência do fill é o
+/// CENTRO da linha (BUGS #14), e passar da silhueta é transbordo por construção. A curva
+/// inteira está no doc do `FILL_TUCK_FRACTION`.
 ///
-/// O limite fica em 175, entre 156 e 224.
+/// O limite fica em 280, entre 224 e 350.
 #[test]
 #[ignore = "GPU"]
 fn the_fill_reaches_under_the_line_at_product_scale() {
@@ -1386,7 +1385,7 @@ fn the_fill_reaches_under_the_line_at_product_scale() {
     }
     println!("fundo sob a linha, somado na faixa de zoom: {total}");
     assert!(
-        total <= 175,
+        total <= 280,
         "{total} amostras de FUNDO sob a linha — a cor nao esta entrando por baixo do          line-art (158 = o que uma margem uniforme, sem compensacao, deixa)"
     );
 }

@@ -263,6 +263,24 @@ mutação-testado. **Três bloqueios de MOTOR removidos, e nenhum era sobre kern
   broadcast da CPU. O motor não tem **comprimento por-porta** (o `gather_prev_n` é
   específico do gather).
 
+#### 🔴 BUG LATENTE JÁ NA ÁRVORE — conserte ANTES de portar qualquer consumidor de VALUE
+
+**`value.lfo` desconectado diverge: CPU `count = 1`, GPU `count = 0`.** O `eval`
+faz `n = ctx.input(0).count().max(1)` (desligado ⇒ **um** valor global), e o motor
+dimensiona pela porta 0 — entrada vazia ⇒ `count = 0` ⇒ o stage é **pulado**
+(`if count == 0 { … continue }`) e o stream sai vazio. **Medido**, não deduzido.
+
+Hoje é **inalcançável** (nenhum consumidor de VALUE tem kernel: o `t` do
+`color_ramp` recusa), e foi por isso que o gate do `value.lfo` não pegou — ele
+liga o lfo a um grid, então nunca visita o caso desligado. Mas é uma divergência
+real esperando o primeiro consumidor.
+
+⇒ É a **LEI DE CONTAGEM** que falta ao motor, e ela é o pré-requisito do broadcast,
+não o contrário. Hoje só existem duas leis: `base.count` (porta 0) e
+`source_window` (gerador, função só dos params). Faltam pelo menos três, todas
+medidas: `max(port0, 1)` (`value.lfo` desligado) · `max(a.len, b.len)`
+(`value.math`, broadcast) · e a que `value.lfo` precisa quando LIGADO.
+
 #### ⚠️ O PRÓXIMO ITEM, e por que ele vale mais que qualquer kernel isolado
 
 **Comprimento por-porta / broadcast.** É o mesmo formato dos três consertos acima —

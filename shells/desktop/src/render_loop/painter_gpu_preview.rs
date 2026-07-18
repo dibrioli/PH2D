@@ -27,6 +27,7 @@ use ph2d_render::SpriteRenderer;
 use ph2d_render::layer_compositor::{
     LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
 };
+use ph2d_render::{ImpastoLamp, ImpastoLightInput, ImpastoLightPass};
 use ph2d_tool_painter::PainterTool;
 
 /// Per-session GPU state for the Painter live preview: the layer compositor, the
@@ -38,6 +39,9 @@ use ph2d_tool_painter::PainterTool;
 pub(crate) struct PainterGpuPreview {
     gpu: GpuContext,
     compositor: LayerCompositor,
+    /// Impasto's light — the relief made visible. Runs BETWEEN the composite and the premultiply, which
+    /// is exactly where the CPU pass runs (`runtime::take_preview_arc`: composite, light, overlay).
+    light: ImpastoLightPass,
     premul: PreviewPremul,
 }
 
@@ -46,6 +50,7 @@ impl PainterGpuPreview {
         Self {
             gpu: gpu.clone(),
             compositor: LayerCompositor::new(gpu),
+            light: ImpastoLightPass::new(gpu),
             premul: PreviewPremul::new(gpu),
         }
     }
@@ -79,14 +84,14 @@ impl LayerPixelProvider for PainterLayerProvider<'_> {
 /// later CPU frame.
 ///
 /// A TRIVIAL stack (single visible opaque Normal raster — the composite IS
-/// `canvas_rgba`) stays on the CPU path on purpose:
-/// - the CPU producer there is zero-composite (`take_preview_arc` hands back the
-///   canvas `Arc`) with the B.1 partial dirty-bbox upload, strictly cheaper than
-///   a full-slice re-upload + composite + premul + copy per stroke frame;
-/// - the zero-readback texture mode only engages on a trivial stack
-///   (`preview_is_trivial_stack`), so bowing out here guarantees the GPU layer
-///   path never claims the preview slot (nor spends a recomposite on
-///   intentionally-stale mid-stroke `canvas_rgba`).
+/// `canvas_rgba`) stays on the CPU path on purpose: the CPU producer there is
+/// zero-composite (`take_preview_arc` hands back the canvas `Arc`) with the B.1
+/// partial dirty-bbox upload, strictly cheaper than a full-slice re-upload +
+/// composite + premul + copy per stroke frame.
+///
+/// **Unless the canvas carries relief**, which makes the composite something other
+/// than `canvas_rgba` and takes the zero-composite premise away — see
+/// [`gpu_eligible`].
 pub(super) fn try_drive(
     session_slot: &mut Option<PainterGpuPreview>,
     renderer: &mut SpriteRenderer,
@@ -130,16 +135,15 @@ pub(super) fn try_drive(
 /// runs FIRST — `flatten_for_gpu` happily represents a single plain raster, but
 /// the CPU path is strictly better there (see [`try_drive`]).
 fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
-    if painter.preview_is_trivial_stack() {
-        return None;
-    }
-    // Impasto's light pass is CPU-side (it reads the height field, which the GPU compositor knows
-    // nothing about). Taking the GPU path with relief on screen would composite the layers correctly
-    // and drop the shading on the floor — the artist would sculpt and see nothing. Fall back to the
-    // CPU compositor, which is already the supported path and already what a mask scratch uses.
-    // (The GPU light pass is named and deferred: a new `LayerOp`, reconciled bit-for-bit against this
-    // CPU one — `docs/Painter/16…` §6.)
-    if painter.impasto_visible() {
+    // The trivial bow-out rests on the CPU path being ZERO-composite there — and relief falsifies that
+    // premise. `take_preview_arc` already refuses the fast lane when `impasto_visible()`, because that
+    // lane hands back the raw `canvas_rgba` Arc and the light may never write into the artist's own
+    // pixels. So a sculpted single-layer document — the most ordinary way to use Impasto — pays a FULL
+    // CPU composite plus a full CPU light on every dirty frame, and the GPU is strictly better.
+    //
+    // The two lanes have to agree about this or the work goes to whichever one is worse: the guard here
+    // mirrors `runtime.rs`'s, deliberately and visibly.
+    if painter.preview_is_trivial_stack() && !painter.impasto_visible() {
         return None;
     }
     super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
@@ -183,44 +187,17 @@ pub(super) fn drive(
         }
     };
 
-    // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
-    //    coords — a region dispatch refreshes only `region`, leaving the rest from
-    //    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
-    let provider = PainterLayerProvider { tool };
-    if let Err(e) = session.compositor.composite_region_into_canvas(
-        &session.gpu,
-        &ops,
-        &adj_luts,
-        &provider,
-        width,
-        height,
-        region,
-    ) {
+    // 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
+    //      slot will hold. On any failure the slot is released and the CPU producer takes the frame.
+    if let Err(e) = compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
         toasts.push(Toast::error(format!(
-            "Painter: GPU preview composite falhou ({e}). Caindo no caminho CPU."
+            "Painter: GPU preview falhou ({e}). Caindo no caminho CPU."
         )));
         release_slot(renderer, painter_preview_gpu);
         return false;
     }
 
-    // 2) Premultiply the straight `rgba8unorm` output into a COPY_SRC texture
-    //    (the sprite preview slot samples PREMULTIPLIED — see `ph2d_render::premul`).
-    //    Full-canvas: a single cheap pass; out-of-region texels are the unchanged
-    //    (still-valid) prior composite, so re-premultiplying them is a no-op.
-    {
-        let Some(comp_out) = session.compositor.output_texture() else {
-            return false;
-        };
-        if session
-            .premul
-            .run(&session.gpu, comp_out, width, height)
-            .is_none()
-        {
-            return false;
-        }
-    }
-
-    // 3) Ensure a preview slot of the right size, then COPY the premultiplied
+    // 4) Ensure a preview slot of the right size, then COPY the premultiplied
     //    result into it (rgba8unorm → Rgba8UnormSrgb is copy-compatible). The slot
     //    persists across the stroke, so a seed frame copies the WHOLE canvas and
     //    later frames copy only the wet envelope rect on top of it.
@@ -243,6 +220,117 @@ pub(super) fn drive(
         return false;
     }
     true
+}
+
+/// Composite, light, premultiply — everything that turns the layer stack into the bytes the preview
+/// slot will hold, with no slot and no `SpriteRenderer` in sight. The finished pixels are
+/// `session.premul.output_texture()`.
+///
+/// Extracted so the end-to-end parity gate can drive the REAL chain
+/// (`the_gpu_producer_shows_what_the_cpu_producer_shows`) rather than a mirror of it. A gate that
+/// re-assembled these three calls itself would go on passing after this function stopped doing them in
+/// that order — which is exactly the class of bug it exists to catch.
+///
+/// # Errors
+///
+/// A description of which stage refused. Every one of them is a reason to hand the frame back to the CPU
+/// producer, which can always draw it.
+fn compose_light_premul(
+    session: &mut PainterGpuPreview,
+    tool: &PainterTool,
+    ops: &[LayerOp],
+    adj_luts: &[f32],
+    width: u32,
+    height: u32,
+    region: Region,
+) -> Result<(), String> {
+    // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
+    //    coords — a region dispatch refreshes only `region`, leaving the rest from
+    //    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
+    let provider = PainterLayerProvider { tool };
+    session
+        .compositor
+        .composite_region_into_canvas(
+            &session.gpu,
+            ops,
+            adj_luts,
+            &provider,
+            width,
+            height,
+            region,
+        )
+        .map_err(|e| format!("composite: {e}"))?;
+
+    // 2) Impasto: light the freshly-composited region. Same place in the chain as the CPU pass, and
+    //    for the same reason — lighting is NOT idempotent, so it must see pixels that were composited
+    //    from the layers this frame, never pixels that were already lit. The compositor rewrites
+    //    `region` from scratch on every dispatch, so what it feeds here is always fresh.
+    //
+    //    `None` planes is the ordinary case, not an error: no relief, the pass switched off, or every
+    //    lamp dark. Those are the CPU pass's own bails, and they leave the composite untouched.
+    //
+    //    The match YIELDS the finished texture rather than setting a flag the next step re-reads. That
+    //    is not style: "which texture holds the finished canvas" must have exactly one answer, and a
+    //    second derivation of it that got the condition backwards would ship an unlit painting with
+    //    every gate still green — the failure has no symptom except the artist seeing flat paint.
+    let comp_out = session
+        .compositor
+        .output_texture()
+        .ok_or("composite produced no texture")?;
+    let finished: &wgpu::Texture = match tool.impasto_gpu_planes() {
+        None => comp_out,
+        Some(planes) => {
+            let lamps: Vec<ImpastoLamp> = planes
+                .lamps
+                .iter()
+                .map(|l| ImpastoLamp {
+                    dir: l.dir,
+                    half: l.half,
+                    tint: l.tint,
+                })
+                .collect();
+            let input = ImpastoLightInput {
+                width,
+                height,
+                // The WHOLE canvas, even when the composite refreshed only a region — and the asymmetry
+                // is the point. The light owns a SECOND persistent canvas, so its freshness cannot be
+                // inherited from whichever rectangle the compositor happened to touch: one frame with
+                // the relief hidden (planes `None`, the compositor refreshes a region, the light never
+                // runs) and the next partial lit frame would carry pixels from before that update, in
+                // the corner nobody was looking at.
+                //
+                // It costs nothing today — every dispatch here is already full-canvas — and it stays
+                // correct if a partial lane is ever added, merely not optimal, which is the safe
+                // direction to be wrong in. It is also always sound: the pass reads the compositor's
+                // output (valid everywhere, unlit) and writes its own, so it never re-lights a pixel.
+                region: Region::full(width, height),
+                relief: &planes.relief,
+                cover: &planes.cover,
+                mat0: &planes.mat0,
+                mat1: &planes.mat1,
+                lamps: &lamps,
+                spec_lut: planes.spec_lut,
+                lut_width: planes.lut_width,
+                rough_levels: planes.rough_levels,
+            };
+            // Falling through UNLIT would composite the layers perfectly and drop the shading on the
+            // floor: the artist would sculpt and see nothing, with no error anywhere.
+            session
+                .light
+                .run(&session.gpu, comp_out, &input)
+                .map_err(|e| format!("impasto light: {e:?}"))?
+        }
+    };
+
+    // 3) Premultiply the straight `rgba8unorm` output into a COPY_SRC texture
+    //    (the sprite preview slot samples PREMULTIPLIED — see `ph2d_render::premul`).
+    //    Full-canvas: a single cheap pass; out-of-region texels are the unchanged
+    //    (still-valid) prior composite, so re-premultiplying them is a no-op.
+    session
+        .premul
+        .run(&session.gpu, finished, width, height)
+        .ok_or("premultiply produced no texture")?;
+    Ok(())
 }
 
 /// Ensure `painter_preview_gpu` holds a slot sized `width × height`; reuse the
@@ -309,6 +397,28 @@ mod tests {
         t
     }
 
+    /// A single-layer canvas with a real impasto stroke on it. Big enough that a brush actually deposits
+    /// relief — a 4x4 canvas would leave `heights` empty and every gate below would pass by doing
+    /// nothing.
+    fn sculpted_tool() -> PainterTool {
+        use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+        let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 48 * 48 * 4], 48, 48);
+        t.toggle_brush_impasto();
+        t.set_brush_impasto_depth(0.8);
+        t.set_brush_size_px(9.0);
+        t.on_canvas_pointer(cp([14.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Up));
+        t
+    }
+
     #[test]
     fn trivial_stack_stays_on_the_cpu_path() {
         // A single plain raster IS GPU-representable (flatten = Some), but the
@@ -337,6 +447,62 @@ mod tests {
         assert!(
             matches!(ops[..], [LayerOp::Layer { opacity, .. }] if (opacity - 0.5).abs() < 1e-6),
             "single half-opacity layer flattens to one Layer op: {ops:?}"
+        );
+    }
+
+    /// A sculpted SINGLE-LAYER document — the most ordinary way to use Impasto — must now take the GPU
+    /// path. It is the whole point of the light port, and it is the case the old `impasto_visible()` bail
+    /// sent to the CPU compositor together with every layer, blend mode and adjustment in the document.
+    ///
+    /// The premise this rests on is checked here rather than assumed: the stack IS trivial, so without
+    /// the relief the gate would (correctly) bow out.
+    #[test]
+    fn a_sculpted_document_goes_to_the_gpu_even_when_the_stack_is_trivial() {
+        let t = sculpted_tool();
+        assert!(
+            t.preview_is_trivial_stack(),
+            "precondition: one plain raster layer — the relief is the ONLY reason this goes GPU"
+        );
+        assert!(
+            t.impasto_visible(),
+            "precondition: the canvas carries relief"
+        );
+        assert!(
+            gpu_eligible(&t).is_some(),
+            "a sculpted canvas belongs on the GPU: the CPU lane is not zero-composite here \
+             (runtime.rs refuses its fast path when impasto_visible), so it pays a full composite \
+             AND a full CPU light every dirty frame"
+        );
+    }
+
+    /// …and the light has something to hand the shader. A gate on eligibility alone would stay green if
+    /// the planes came back `None`, which is the shape of "the GPU path claims the frame and draws it
+    /// unlit" — the exact failure the old bail existed to prevent.
+    #[test]
+    fn a_gpu_eligible_sculpted_document_hands_over_planes() {
+        let t = sculpted_tool();
+        let p = t
+            .impasto_gpu_planes()
+            .expect("a lit, sculpted canvas must produce planes for the shader");
+        assert_eq!(p.relief.len(), (p.width as usize) * (p.height as usize));
+        assert!(
+            p.cover.iter().any(|c| *c > 0),
+            "…and the planes must carry actual paint, not an empty canvas"
+        );
+        assert!(!p.lamps.is_empty(), "…lit by at least one lamp");
+    }
+
+    /// Switching the pass OFF must put the canvas back on the CPU's zero-composite fast lane. Otherwise
+    /// hiding the relief would silently cost a full GPU recomposite per frame to draw a picture the CPU
+    /// hands over by cloning an `Arc`.
+    #[test]
+    fn hiding_the_relief_returns_a_trivial_document_to_the_cpu() {
+        let mut t = sculpted_tool();
+        t.toggle_impasto_show();
+        assert!(!t.impasto_visible());
+        assert!(
+            gpu_eligible(&t).is_none(),
+            "no relief on screen -> the trivial bow-out applies again"
         );
     }
 

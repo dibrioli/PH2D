@@ -200,6 +200,36 @@ impl Rig {
         })
     }
 
+    /// The lit lamps, in the form the GPU light pass consumes
+    /// ([`super::impasto_gpu::ImpastoLamp`]).
+    ///
+    /// The rig is resolved HERE and shipped as plain floats, rather than the shader rebuilding `dir`
+    /// from the artist's whole-degree azimuth and elevation: that construction goes through the shared
+    /// 1°-step rotor ([`ph2d_painter_brush::texture::rotate_by_degrees`]), which is what keeps the pass
+    /// transcendental-free (HR-5), and a shader calling `sin`/`cos` for itself would be a second rotor
+    /// disagreeing in the last bits with the one the rest of the app turns by.
+    pub(super) fn export_lamps(&self) -> Vec<super::impasto_gpu::ImpastoLamp> {
+        self.lamps[..self.n]
+            .iter()
+            .map(|l| super::impasto_gpu::ImpastoLamp {
+                dir: l.dir,
+                half: l.half,
+                tint: l.tint,
+            })
+            .collect()
+    }
+
+    /// Force the COLOURED path, so a gate can prove the two lanes agree to the bit.
+    ///
+    /// The achromatic lane is an optimisation, and the GPU port takes it as licence to implement the
+    /// coloured path ONLY — one branch instead of two, in the place where a stray branch is hardest to
+    /// see. That licence has to be earned rather than argued
+    /// (`the_achromatic_fast_lane_is_the_coloured_one_to_the_bit`).
+    #[cfg(test)]
+    pub(super) fn force_chromatic(&mut self) {
+        self.achromatic = false;
+    }
+
     /// Shade one pixel from its height gradient, the paint actually there, and **what that paint is**:
     /// `body` weights the diffuse modelling ([`paint_body`]), `gloss` the highlight ([`gloss_body`]),
     /// `mat` is the material the stroke baked in, `albedo` the pixel's own colour (which is the metal's
@@ -329,7 +359,8 @@ fn channel(
     let flat = if flat <= 1e-4 { 1.0 } else { flat };
     let ratio = (diffuse / flat).clamp(0.0, 2.0);
     let m = AMBIENT + (1.0 - AMBIENT) * ratio;
-    // Fade both with the body, so the pass is a strict no-op on bare canvas.
+    // Fade both with the body, so the pass is a strict no-op on bare canvas. (See the tests below for
+    // why the coloured path is allowed to be the ONLY one the GPU port implements.)
     //
     // (Tried and rejected, 2026-07-12: weighting the BRIGHTENING more harshly than the shadow, to stop
     // the light washing out translucent paint. It bought 5 points of chroma and cost the modelling
@@ -339,4 +370,102 @@ fn channel(
     // must hold is the other one — the light may not touch paint with no body at all — and that is what
     // `body` here, and the gates, enforce.)
     (1.0 + (m - 1.0) * body, mat.shine * spec * gloss)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tool::paint::impasto_rig::{ImpastoLight, LightRig};
+    use ph2d_painter_brush::material::Material;
+
+    /// A grey rig, which is every rig anybody paints with until they deliberately colour a lamp — and
+    /// therefore the rig the achromatic lane exists for.
+    fn grey_rig() -> LightRig {
+        let mut r = LightRig::default();
+        r.lights[1] = ImpastoLight {
+            on: true,
+            angle_deg: 70,
+            elev_deg: 55,
+            intensity: 0.6,
+            color: [1.0, 1.0, 1.0],
+        };
+        r
+    }
+
+    /// **The licence the GPU port is built on.** The achromatic fast lane computes one channel; the
+    /// coloured lane computes three. They must be the SAME float, not merely the same picture — because
+    /// the shader implements the coloured path alone, and a branch that exists on one side of a parity
+    /// gate and not the other is a divergence waiting for the one canvas that takes it.
+    ///
+    /// It holds for a reason worth writing down rather than measuring: on the achromatic lane
+    /// `wax = 0`, so `scattered` is identically `0.0` and the tinted term is `direct + 0.0 · wax_tint`
+    /// — exactly `direct`; and `metallic = 0`, so `spec_tint` is exactly `1.0` and `x · 1.0` is `x`.
+    /// The lanes are the same arithmetic with the zeros written out.
+    #[test]
+    fn the_achromatic_fast_lane_is_the_coloured_one_to_the_bit() {
+        let rig = grey_rig();
+        let fast = Rig::new(&rig).expect("a lit rig");
+        assert!(
+            fast.achromatic,
+            "precondition: a grey rig must actually TAKE the fast lane, or this gate proves nothing"
+        );
+        let mut slow = Rig::new(&rig).expect("a lit rig");
+        slow.force_chromatic();
+        // Materials on the fast lane are the dielectric, wax-free ones — those are its preconditions.
+        for &rough in &[0.0f32, 0.25, 0.5, 1.0] {
+            for &shine in &[0.0f32, 0.7] {
+                let key = Material {
+                    shine,
+                    roughness: rough,
+                    metallic: 0.0,
+                    wax: 0.0,
+                    wax_color: [1.0, 1.0, 1.0],
+                }
+                .to_bytes();
+                let (mf, ms) = (fast.resolve(key), slow.resolve(key));
+                assert!(mf.achromatic && !ms.achromatic, "the two lanes are armed");
+                for &(dhx, dhy) in &[(0.05f32, 0.0f32), (-0.3, 0.12), (0.9, -0.9), (0.01, 0.004)] {
+                    for &body in &[0.2f32, 0.6, 1.0] {
+                        let albedo = [0.83f32, 0.41, 0.17];
+                        let a = fast.shade(&mf, body, body, dhx, dhy, albedo);
+                        let b = slow.shade(&ms, body, body, dhx, dhy, albedo);
+                        assert_eq!(
+                            a, b,
+                            "lanes diverged at rough {rough} shine {shine} slope ({dhx}, {dhy}) \
+                             body {body}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The exported rig is the resolved one, lamp for lamp — the GPU shades from THESE numbers, so a
+    /// re-derivation on the way out would be the rotor bug arriving through the export door.
+    #[test]
+    fn the_exported_lamps_are_the_resolved_ones() {
+        let rig = grey_rig();
+        let r = Rig::new(&rig).expect("a lit rig");
+        let out = r.export_lamps();
+        assert_eq!(out.len(), 2, "the key plus the one lamp the fixture lit");
+        for (i, l) in out.iter().enumerate() {
+            assert_eq!(l.dir, r.lamps[i].dir);
+            assert_eq!(l.half, r.lamps[i].half);
+            assert_eq!(l.tint, r.lamps[i].tint);
+            let len = (l.dir[0] * l.dir[0] + l.dir[1] * l.dir[1] + l.dir[2] * l.dir[2]).sqrt();
+            assert!(
+                (len - 1.0).abs() < 1e-5,
+                "lamp {i} direction is a unit vector"
+            );
+        }
+        // A lamp switched off never crosses: the shader loops over what it is given.
+        let mut dark = LightRig::default();
+        for l in &mut dark.lights {
+            l.on = false;
+        }
+        assert!(
+            Rig::new(&dark).is_none(),
+            "no lit lamp, no rig — and so no export at all"
+        );
+    }
 }

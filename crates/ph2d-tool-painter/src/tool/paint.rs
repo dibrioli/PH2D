@@ -36,6 +36,7 @@ pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
+pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU light pass
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_live; // Impasto: the stroke's commit + the Body card's live re-derivation (LOC split)
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)

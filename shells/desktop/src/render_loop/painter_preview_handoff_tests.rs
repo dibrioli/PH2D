@@ -57,14 +57,25 @@ fn app_frame(
 
 /// **The screen survives the producer handoffs — CPU→GPU→CPU, on real hardware.**
 ///
-/// The dance the live app performs around `impasto_visible`: the CPU producer owns while relief
-/// is on screen, the GPU producer takes the SAME slot texture when it is not (non-trivial
-/// representable stack), and the first CPU frame after a GPU stretch must re-seed the slot whole
-/// — the two defects this phase found (`take_preview_dirty` leaving the CPU composite stale +
-/// the partial plan patching a GPU-seeded slot) both live exactly on that seam, latent today only
-/// because every eligibility-flipping door happens to invalidate the composite. This gate runs
-/// the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real readback —
-/// and holds the final screen bytes to a from-scratch recompose.
+/// The producer handoff dance: the GPU producer takes the slot when the stack is representable, the
+/// CPU producer reclaims it when it is not, and **the first CPU frame after a GPU stretch must
+/// re-seed the slot whole** — the two defects this phase found (`take_preview_dirty` leaving the CPU
+/// composite stale + the partial plan patching a GPU-seeded slot) both live exactly on that seam,
+/// latent today only because every eligibility-flipping door happens to invalidate the composite.
+/// This gate runs the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real
+/// readback — and holds the final screen bytes to a from-scratch recompose.
+///
+/// ## The lever changed, the gate did not (2026-07-18)
+///
+/// This used to flip eligibility with `impasto_show`, on the premise that *"the GPU compositor cannot
+/// light relief"*. It can now ([`ph2d_render::ImpastoLightPass`]), and a sculpted canvas is precisely
+/// what the GPU path is FOR — so relief no longer moves a document between producers, and a dance
+/// built on it would be two identical steps.
+///
+/// The lever is now a layer **mask**, which `flatten_for_gpu` still cannot represent. Nothing this
+/// gate proves has changed: it needs a door that flips eligibility, not that particular door. Relief
+/// now appears on the GPU side of the dance instead of the CPU side, which is the only place the
+/// update shows.
 ///
 /// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
 #[test]
@@ -104,7 +115,8 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
         owns
     };
 
-    // 1. Trivial stack + impasto stroke → the CPU producer owns; the slot holds lit CPU bytes.
+    // 1. Trivial stack, nothing painted yet → the CPU producer owns (the trivial bow-out: its lane
+    //    is zero-composite there, strictly cheaper than a GPU round trip).
     assert!(
         !frame(
             &mut t,
@@ -146,25 +158,11 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
         &mut toasts,
     );
 
-    // 2. Second layer at half opacity: non-trivial but representable — still CPU while the
-    //    relief is visible.
+    // 2. The stroke put RELIEF on the canvas, which takes the trivial bow-out away (the CPU lane
+    //    refuses its zero-composite fast path once `impasto_visible`) → CPU→GPU handoff, with the GPU
+    //    doing the lighting. This is the step the light port exists for.
     let l2 = t.add_raster_layer("Layer 2").expect("layer 2");
     t.set_layer_opacity(l2, 0.5);
-    assert!(
-        !frame(
-            &mut t,
-            &mut renderer,
-            &mut session,
-            &mut preview,
-            &mut preview_gpu,
-            &mut toasts
-        ),
-        "impasto visible must keep the CPU producer (the GPU compositor cannot light relief)"
-    );
-
-    // 3. Light OFF → the GPU producer takes the slot (CPU→GPU handoff), and owns it across a
-    //    plain stroke.
-    t.toggle_impasto_show();
     assert!(
         frame(
             &mut t,
@@ -174,7 +172,20 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
             &mut preview_gpu,
             &mut toasts
         ),
-        "light off + representable stack: the GPU producer owns the preview"
+        "a sculpted, representable stack belongs to the GPU producer — relief and all"
+    );
+
+    // 3. …and it keeps the slot while nothing flips eligibility.
+    assert!(
+        frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts
+        ),
+        "an idle representable stack keeps its GPU-owned slot"
     );
     t.on_canvas_pointer(cp([60.0, 180.0], PointerPhase::Down));
     frame(
@@ -209,9 +220,10 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
         &mut toasts,
     );
 
-    // 4. Light back ON → GPU→CPU handoff; then one more impasto stroke so the partial lane runs
-    //    over the re-seeded slot.
-    t.toggle_impasto_show();
+    // 4. A MASK on the active layer → outside the GPU op-list v1 → GPU→CPU handoff; then one more
+    //    impasto stroke so the partial lane runs over the re-seeded slot. (The mask is the live
+    //    eligibility lever now that relief is not one.)
+    t.add_mask_to_active().expect("a mask on the active layer");
     assert!(
         !frame(
             &mut t,
@@ -221,7 +233,7 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
             &mut preview_gpu,
             &mut toasts
         ),
-        "light on + relief: the CPU producer reclaims the slot"
+        "a masked stack is not GPU-representable: the CPU producer reclaims the slot"
     );
     t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Down));
     frame(
@@ -309,4 +321,99 @@ fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
         "a valid bbox over a GPU-seeded slot must still plan a FULL upload — a Partial here \
          patches CPU-lit bytes into the GPU compositor's unlit frame"
     );
+}
+
+/// **What the artist sees through the GPU producer is what they would have seen through the CPU one
+/// — on a SCULPTED canvas, with the relief lit by the shader.**
+///
+/// This is the gate the GPU light port is answerable to. Everything else about the port is checked a
+/// level down (`ph2d-render`'s `impasto_light_gpu` reconciles the shader against
+/// `apply_impasto_light` pixel for pixel), but that gate hands both sides the same synthetic buffer.
+/// This one runs the PRODUCT: the real `try_drive`, the real eligibility gate, the real flatten, the
+/// real GPU compositor, the real light pass, the real premultiply, the real slot texture — and reads
+/// the bytes the sprite shader will sample straight back off the device.
+///
+/// The oracle is the OTHER producer, which is the only oracle that answers the question actually
+/// being asked. Moving a document between two lanes is only safe if the lanes draw the same picture;
+/// a gate comparing the GPU lane to a re-derivation of what it ought to draw would agree with any bug
+/// the two share, and the whole risk of this change is that they might not share one.
+///
+/// **Why this could not have been written before 2026-07-18:** the eligibility gate sent every
+/// sculpted canvas to the CPU, so there was no GPU-owned frame with relief on it to read back.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    let size = 240u32;
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
+    );
+    let mut t = impasto_tool(size);
+    let (mut session, mut preview, mut toasts) =
+        (None, None, ph2d_editor::toast::ToastQueue::default());
+    let mut preview_gpu: Option<PainterPreviewGpu> = None;
+
+    // Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
+    // leave the normal pointing the same way down the whole stroke and a sign error could hide.
+    t.on_canvas_pointer(cp([60.0, 90.0], PointerPhase::Down));
+    for i in 1u8..=6 {
+        let f = f32::from(i);
+        t.on_canvas_pointer(cp(
+            [60.0 + 22.0 * f, 90.0 + 9.0 * f * f * 0.25],
+            PointerPhase::Move,
+        ));
+    }
+    t.on_canvas_pointer(cp([192.0, 171.0], PointerPhase::Up));
+
+    // Run frames until the producers settle. The GPU must be the one holding the slot: if the
+    // eligibility gate ever sends a sculpted canvas back to the CPU this reads as a plain failure
+    // here rather than as a silent loss of the speed the port was built for.
+    let mut gpu_owns = false;
+    for _ in 0..4 {
+        gpu_owns = app_frame(
+            &mut renderer,
+            &mut t,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts,
+        );
+    }
+    assert!(
+        gpu_owns,
+        "a sculpted canvas must be GPU-owned — that is the whole point of the light port"
+    );
+    assert!(
+        t.impasto_visible(),
+        "precondition: there IS relief to light (a flat canvas would make this gate vacuous)"
+    );
+
+    // The bytes the sprite shader samples, straight off the device.
+    let slot = preview_gpu.expect("the GPU lane owns a live slot");
+    let (w, h, shown) = renderer
+        .individual()
+        .readback(&gpu, slot.texture_id)
+        .expect("readback of the preview slot");
+    assert_eq!((w, h), (size, size), "slot dims match the canvas");
+
+    // …against the CPU producer's own answer for the same document. `screen_truth` drains the tool,
+    // so it runs AFTER the readback.
+    let truth = screen_truth(&mut t);
+    let lit_pixels = shown
+        .chunks_exact(4)
+        .zip(truth.chunks_exact(4))
+        .filter(|(a, _)| a[..3] != [255, 255, 255])
+        .count();
+    assert!(
+        lit_pixels > 2_000,
+        "the fixture must actually contain a lit stroke — only {lit_pixels} pixels are not bare \
+         white paper, and a blank canvas would match a blank oracle perfectly"
+    );
+    assert_screen_equals(&shown, &truth, size, "GPU producer vs CPU producer");
 }

@@ -198,7 +198,18 @@ impl SpecLut {
         self.table[level.min(ROUGH_LEVELS - 1) * SPEC_LUT + i]
     }
 
-    /// The raw row for a level — the shape the GPU port uploads.
+    /// The whole table, row-major `ROUGH_LEVELS x SPEC_LUT` — the shape the GPU port uploads.
+    ///
+    /// The GPU takes these EXACT floats rather than baking its own: `powf` is the one transcendental in
+    /// the model, and uploading the table is what keeps it off the device entirely. A shader computing
+    /// `pow` for itself would be the second implementation of the specular lobe, differing in the last
+    /// bits from this one at every roughness.
+    #[must_use]
+    pub fn table(&self) -> &[f32] {
+        &self.table
+    }
+
+    /// The raw row for a level.
     #[must_use]
     pub fn row(&self, level: usize) -> &[f32] {
         let l = level.min(ROUGH_LEVELS - 1);

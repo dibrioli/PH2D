@@ -32,6 +32,7 @@ pub mod compressed_pipeline;
 pub mod cooked_texture;
 pub mod game_rt;
 pub mod image_filter;
+pub mod impasto_light;
 pub mod individual;
 pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
@@ -77,6 +78,9 @@ pub use compressed_pipeline::{
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
+pub use impasto_light::{
+    IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput, ImpastoLightPass,
+};
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};

@@ -135,7 +135,11 @@ struct ReliefLayer<'a> {
 
 /// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
 /// no per-frame allocation. See [`PainterTool::impasto_fields`].
-struct ReliefFields<'a> {
+///
+/// `pub(super)` for exactly one reader: [`super::impasto_gpu`], which MATERIALISES these fields into
+/// canvas planes so the GPU can shade from them. It is the same fold, asked the same way — the GPU port
+/// re-implements the *optics* and deliberately re-implements none of the *plumbing*.
+pub(super) struct ReliefFields<'a> {
     /// Every visible layer that carries relief, **bottom-up** — the order it composites in. The order
     /// is load-bearing now: [`ReliefComposite::Level`] buries what is *under* it, and until it existed
     /// the fold was a commutative sum that could iterate in any order at all.
@@ -175,7 +179,7 @@ impl ReliefFields<'_> {
     /// The fold walks the layers bottom-up, each one scaled by its own depth and joined to the pile
     /// under it by its own composite mode.
     #[inline]
-    fn height_at(&self, x: i64, y: i64) -> f32 {
+    pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
         let mut h = 0.0f32;
         for l in &self.layers {
@@ -222,7 +226,7 @@ impl ReliefFields<'_> {
     /// is a MIRROR, so bare paper would be the shiniest thing on the canvas and every stroke's
     /// translucent rim would fade toward glass.
     #[inline]
-    fn material_at(&self, x: i64, y: i64) -> MaterialBytes {
+    pub(super) fn material_at(&self, x: i64, y: i64) -> MaterialBytes {
         let i = self.index(x, y);
         // Hoisted, and it matters: this runs once per TEXEL. Quantising the neutral material inside the
         // loop cost 0.5 ms/move at 2048² all by itself — the fold runs every channel over up to four
@@ -278,7 +282,7 @@ impl ReliefFields<'_> {
     /// looking at *paint* rather than paper ([`paint_body`]), and muting a layer's relief does not make
     /// its pigment any less present on the canvas.
     #[inline]
-    fn cover_at(&self, x: i64, y: i64) -> f32 {
+    pub(super) fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
         let mut c = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
         for l in &self.layers {
@@ -333,7 +337,7 @@ impl PainterTool {
     /// presence, not a quantity — two layers of paint over one pixel do not make it 200% paint). Per-layer
     /// Subtract / Replace / Ignore is named and deferred. A hidden layer contributes neither: hide it and
     /// its paint stops catching the light.
-    fn impasto_fields(&self) -> Option<ReliefFields<'_>> {
+    pub(super) fn impasto_fields(&self) -> Option<ReliefFields<'_>> {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         if n == 0 {
@@ -403,7 +407,11 @@ impl PainterTool {
 
     /// Light `rgba` — the pixels of `region`, freshly composited and NOT yet lit (`rgba` is
     /// `region.w × region.h × 4`, straight sRGB8). No-op when the pass is off or nothing has relief.
-    pub(crate) fn apply_impasto_light(&self, rgba: &mut [u8], region: Region) {
+    ///
+    /// **This is the canonical pass**, and it is public because it is what the GPU port is reconciled
+    /// against ([`super::impasto_gpu`] + `ph2d_render::ImpastoLightPass`). A parity gate that compared the
+    /// shader to a re-implementation of this would agree with the bug; it compares against THIS.
+    pub fn apply_impasto_light(&self, rgba: &mut [u8], region: Region) {
         if !self.impasto_visible() {
             return;
         }

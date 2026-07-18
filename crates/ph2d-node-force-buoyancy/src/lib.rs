@@ -276,6 +276,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "wave_speed",
     ],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

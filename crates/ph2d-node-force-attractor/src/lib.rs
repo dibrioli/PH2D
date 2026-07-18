@@ -159,6 +159,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "target_x", "target_y", "strength", "radius", "curve", "repel",
     ],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

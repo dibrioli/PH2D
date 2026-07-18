@@ -88,6 +88,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["coefficient"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

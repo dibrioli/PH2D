@@ -452,12 +452,18 @@ pub(super) fn build_gpu_hybrid_demo_document(
     g.set_param(grid, "cols", 360.0);
     g.set_param(grid, "gap_x", 1.0);
     g.set_param(grid, "gap_y", 1.0);
-    // CPU boundary: Rotation is outside the kernel's X/Y coverage.
-    let spin = g.add_node("motion.oscillator");
-    g.set_param(spin, "channel", 2.0); // Rotation — no kernel → the boundary
-    g.set_param(spin, "amplitude", 45.0); // degrees
-    g.set_param(spin, "frequency", 0.5);
-    g.set_param(spin, "phase_stagger", 0.004);
+    // CPU boundary: `motion.sort` REORDERS the stream — a global permutation, and
+    // this engine's kernel contract is strictly per-element (`i` → element `i`),
+    // so it is uncoverable by STRUCTURE and the seam it creates is permanent.
+    //
+    // ⚠️ It used to be an oscillator on Rotation, "outside the kernel's X/Y
+    // coverage" — and `GpuKernel::variant_by_param` gave the oscillator every
+    // channel, so the demo silently became fully-GPU: a demo built to SHOW the
+    // hybrid seam, exercising the wrong path. Anchoring a seam on "not covered
+    // yet" makes the demo decay every time coverage advances
+    // ([[feedback_a_seam_fixture_must_rest_on_something_uncoverable]]).
+    let spin = g.add_node("motion.sort");
+    g.set_param(spin, "key", 1.0);
     // GPU suffix: a Y wave, then a size pulse.
     let wave = g.add_node("motion.oscillator");
     g.set_param(wave, "channel", 1.0); // Y — kernel-covered

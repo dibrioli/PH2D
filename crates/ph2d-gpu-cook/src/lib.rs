@@ -68,6 +68,7 @@ pub use ring::GpuCheckpointRing;
 pub use stream::{BufferPool, GpuColumn, GpuStream};
 
 use crate::gather::{column_present, gather_key_port};
+use crate::plan::resolve_param;
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::OpResolver;
@@ -326,8 +327,14 @@ impl GpuCook {
             // The presence rule must be the gather-aware one (own-length state
             // ports, ADR-0130), or this counts a different set of buffers than
             // the module `encode_kernel_stage` actually binds.
-            let gather_port = gather_key_port(kernel, &inputs, count);
-            let needed = codegen::storage_bindings(kernel, |b| {
+            // The limit must be counted against the variant this dispatch will
+            // actually run, which for a param-dependent kernel is not `kernel`
+            // itself (`GpuKernel::resolve`).
+            let bindings = kernel
+                .resolve(&|name| resolve_param(graph, stage.node, manifest, name))
+                .bindings;
+            let gather_port = gather_key_port(bindings, &inputs, count);
+            let needed = codegen::storage_bindings(bindings, |b| {
                 column_present(gather_port, count, &inputs, b)
             });
             let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;

@@ -50,7 +50,23 @@ impl GpuCook {
         Some(flat.chunks_exact(2).map(|c| [c[0], c[1]]).collect())
     }
 
-    /// The one reader both wrap. **The width comes from the COLUMN's own `dim`**,
+    /// The same, for a `Dim::Vec4` column (`tint`). Note the buffer's element
+    /// stride is 16 bytes, which for `Vec4` is exactly its four lanes.
+    pub fn read_column_vec4(
+        &self,
+        gpu: &GpuContext,
+        node: NodeId,
+        column: &str,
+    ) -> Option<Vec<[f32; 4]>> {
+        let flat: Vec<f32> = self.read_column_lanes(gpu, node, column)?;
+        Some(
+            flat.chunks_exact(4)
+                .map(|c| [c[0], c[1], c[2], c[3]])
+                .collect(),
+        )
+    }
+
+    /// The one reader all three wrap. **The width comes from the COLUMN's own `dim`**,
     /// through [`crate::stream::element_stride`] — the same function the uploader
     /// and the binder use, so this cannot disagree with them about how wide an
     /// element is (a `Vec3` pads to 16 bytes, and a reader that assumed 12 would

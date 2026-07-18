@@ -26,6 +26,7 @@
 
 #![forbid(unsafe_code)]
 
+use channel::CH_OPACITY;
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::EvalCtx;
@@ -86,41 +87,55 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (ADR-0126) — the value domain's WRITE side on the device,
-/// and the first consumer of [`ColumnAccess::ReadBroadcast`] in a chain that
-/// actually reaches the screen.
+/// The params every variant declares, in one order — the uniform layout is
+/// per-variant, and keeping them identical means a reader never has to ask which
+/// variant a `params.scale` belongs to.
+const DRIVE_PARAMS: &[&str] = &["channel", "scale", "mode"];
+
+/// The shared prologue: resolve the mode, the scaled value and the falloff mask.
+/// Every variant pastes this and then writes ITS column.
 ///
-/// **X/Y only, and the reason is structural rather than lazy.** `drive_channel`
-/// writes a DIFFERENT column per channel — `P` for X/Y, `rot` for Rotation,
-/// `size` for Size, `tint` for Opacity — and materialises the target from its
-/// identity when the stream lacks it. `GpuKernel::bindings` is `&'static`, so a
-/// kernel claiming every channel would have to bind all four, and then a drive on
-/// X would emit `rot`/`size`/`tint` **that the CPU's output does not carry**.
-/// That is not an ε: it is a different stream shape, and it would surface far
-/// away as some later node branching on a column that should not exist
-/// (the discipline `a_value_node_emits_a_bare_stream_not_the_instance_base` pins).
-///
-/// So the kernel binds exactly `{P, falloff}` and `applicable` claims the two
-/// channels that write `P` — the same split, for the same reason, that
-/// `motion.oscillator` already makes. Rotation/Size/Opacity recede to the CPU at
-/// plan time: an explicit boundary, never a wrong answer. Covering them needs
-/// **per-param bindings**, which is an engine feature and not a kernel edit.
-///
-/// ⚠️ **One mutation survives by design:** dropping the `clamp` on `falloff`
-/// changes nothing measurable, because the CPU clamps identically and no node in
-/// the library emits a falloff outside `[0,1]`. It is a defensive MIRROR, kept so
-/// the two sides stay line-for-line comparable; the day something writes an
-/// out-of-range falloff, both clamp and parity still holds.
-///
-/// `P` is `ReadWrite` and not `ReadWriteExisting` because the CPU materialises it
-/// from `[0,0]` when absent (`base_vec2`) — dropping the write instead would make
-/// the drive silently do nothing on a stream without `P`.
-///
-/// The value port BROADCASTS: length 1 is one number held across the field (the
-/// `1 => vals[0]` arm of `value_at`), length N is per-element. `drive_round` is
-/// round-half-away-from-zero to match Rust's `f32::round` — `channel` and `mode`
-/// both pick BRANCHES ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
-const GPU_KERNEL: GpuKernel = GpuKernel {
+/// `drive_round` is round-half-away-from-zero to match Rust's `f32::round` —
+/// `mode` picks a BRANCH ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
+/// The falloff clamp MIRRORS the CPU's; no node writes a falloff outside `[0,1]`
+/// today, so it is defensive on both sides rather than load-bearing.
+const DRIVE_LIB: &str = "\
+    fn drive_round(x: f32) -> f32 {\n\
+        // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+        return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+    }\n\
+    fn drive_combine(cur: f32, v: f32, mode: i32) -> f32 {\n\
+        if (mode == 1) { return v; }\n\
+        if (mode == 2) { return cur * v; }\n\
+        return cur + v;\n\
+    }\n";
+
+/// `falloff` and the value port, bound identically by every variant.
+macro_rules! drive_common {
+    () => {
+        [
+            ColumnBinding {
+                column: "falloff",
+                dim: Dim::Scalar,
+                access: ColumnAccess::Read,
+                // Absent falloff = full effect, the CPU's `falloff_at` fallback.
+                identity: [1.0, 0.0, 0.0, 0.0],
+                port: 0,
+            },
+            ColumnBinding {
+                column: VALUE_COL,
+                dim: Dim::Scalar,
+                access: ColumnAccess::ReadBroadcast,
+                // Absent value = 0.0, the `0 =>` arm of `value_at`.
+                identity: [0.0; 4],
+                port: 1,
+            },
+        ]
+    };
+}
+
+/// **X / Y** — writes one component of `P`.
+const DRIVE_P: GpuKernel = GpuKernel {
     wgsl: "\
         let dr_comp = i32(drive_round(params.channel));\n\
         let dr_mode = i32(drive_round(params.mode));\n\
@@ -128,22 +143,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         var dr_cur = dr_p.x;\n\
         if (dr_comp == 1) { dr_cur = dr_p.y; }\n\
         let dr_v = read_value_v(i) * params.scale;\n\
-        var dr_driven = dr_cur + dr_v;\n\
-        if (dr_mode == 1) { dr_driven = dr_v; }\n\
-        if (dr_mode == 2) { dr_driven = dr_cur * dr_v; }\n\
-        // Lerp toward the original by falloff: 0 leaves the channel untouched.\n\
-        // The clamp MIRRORS the CPU's; no node writes falloff outside [0,1]\n\
-        // today, so it is defensive on both sides rather than load-bearing.\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        let dr_out = dr_cur + (dr_driven - dr_cur) * dr_f;\n\
+        let dr_out = dr_cur + (drive_combine(dr_cur, dr_v, dr_mode) - dr_cur) * dr_f;\n\
         var dr_next = dr_p;\n\
         if (dr_comp == 1) { dr_next.y = dr_out; } else { dr_next.x = dr_out; }\n\
         write_P(i, dr_next);\n",
-    wgsl_lib: "\
-        fn drive_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n",
+    wgsl_lib: DRIVE_LIB,
     bindings: &[
         ColumnBinding {
             column: "P",
@@ -152,30 +157,131 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 0,
         },
+        drive_common!()[0],
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **Rotation** — writes `rot`, in degrees like the CPU's.
+const DRIVE_ROT: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_cur = read_in_rot(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        write_rot(i, dr_cur + (drive_combine(dr_cur, dr_v, dr_mode) - dr_cur) * dr_f);\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
         ColumnBinding {
-            column: "falloff",
+            column: "rot",
             dim: Dim::Scalar,
-            access: ColumnAccess::Read,
-            // Absent falloff = full effect, the CPU's `falloff_at` fallback.
-            identity: [1.0, 0.0, 0.0, 0.0],
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
             port: 0,
         },
-        ColumnBinding {
-            column: VALUE_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::ReadBroadcast,
-            // Absent value = 0.0, the `0 =>` arm of `value_at`.
-            identity: [0.0; 4],
-            port: 1,
-        },
+        drive_common!()[0],
+        drive_common!()[1],
     ],
-    params: &["channel", "scale", "mode"],
+    params: DRIVE_PARAMS,
     count_law: None,
-    applicable: Some(|param| {
-        // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
-        let channel = param("channel").round();
-        channel == 0.0 || channel == 1.0
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **Size** — drives BOTH components uniformly, from the unit identity.
+const DRIVE_SIZE: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_s = read_in_size(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let dr_x = dr_s.x + (drive_combine(dr_s.x, dr_v, dr_mode) - dr_s.x) * dr_f;\n\
+        let dr_y = dr_s.y + (drive_combine(dr_s.y, dr_v, dr_mode) - dr_s.y) * dr_f;\n\
+        write_size(i, vec2<f32>(dr_x, dr_y));\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            // An element with no size starts UNIT, not zero (`base_vec2`).
+            identity: [1.0, 1.0, 0.0, 0.0],
+            port: 0,
+        },
+        drive_common!()[0],
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **Opacity** — the ALPHA of `tint`, clamped to `[0,1]`. An element with no
+/// tint starts from opaque white, so driving the opacity of an uncoloured stream
+/// does what it says instead of silently nothing (doc 51).
+const DRIVE_TINT: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_t = read_in_tint(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let dr_a = dr_t.w + (drive_combine(dr_t.w, dr_v, dr_mode) - dr_t.w) * dr_f;\n\
+        write_tint(i, vec4<f32>(dr_t.x, dr_t.y, dr_t.z, clamp(dr_a, 0.0, 1.0)));\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "tint",
+            dim: Dim::Vec4,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0, 1.0, 1.0, 1.0],
+            port: 0,
+        },
+        drive_common!()[0],
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// GPU compute kernel (ADR-0126) — the value domain's WRITE side on the device,
+/// and the node that named [`GpuKernel::variant_by_param`].
+///
+/// `drive_channel` writes a DIFFERENT column per channel — `P` for X/Y, `rot`
+/// for Rotation, `size` for Size, `tint` for Opacity — and materialises the
+/// target from its identity when the stream lacks it. One static shape could not
+/// express that: binding all four would emit columns **the CPU's output does not
+/// carry** (a different stream SHAPE, not an ε), and binding one meant claiming
+/// only the two channels that write `P`. So the node ships four variants and the
+/// engine picks by `channel` — the SAME mapping `channel_column` uses, including
+/// its `_ => size` catch-all for an out-of-range value.
+///
+/// The value port BROADCASTS: length 1 is one number held across the field (the
+/// `1 => vals[0]` arm of `value_at`), length N is per-element.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    // The top-level shape IS the X/Y variant, so a caller that never resolves
+    // still sees a real kernel rather than the empty (pass-through) one.
+    wgsl: DRIVE_P.wgsl,
+    wgsl_lib: DRIVE_P.wgsl_lib,
+    bindings: DRIVE_P.bindings,
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: Some(|param| {
+        // The same rounding and the same mapping as `channel_column`.
+        match param("channel").round() as i32 {
+            2 => &DRIVE_ROT,
+            CH_OPACITY => &DRIVE_TINT,
+            0 | 1 => &DRIVE_P,
+            _ => &DRIVE_SIZE,
+        }
     }),
+    applicable: None,
 };
 
 struct MotionDrive;

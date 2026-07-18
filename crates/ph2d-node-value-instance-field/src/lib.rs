@@ -182,6 +182,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // engine's default ("as wide as port 0") would size an unconnected one at 0
     // and skip the stage.
     count_law: Some(instance_field_count),
+    variant_by_param: None,
     applicable: None,
 };
 

@@ -292,6 +292,11 @@ impl SourceWindow {
 /// into one.
 pub const ID_WRAP: u32 = 1 << 24;
 
+/// Picks a kernel VARIANT from the node's resolved params — see
+/// [`GpuKernel::variant_by_param`], which explains why the whole kernel varies
+/// and not merely its binding set.
+pub type VariantFn = fn(&dyn Fn(&str) -> f32) -> &'static GpuKernel;
+
 /// A param-dependent applicability test, evaluated at plan time. A kernel
 /// whose static WGSL body only covers part of a node's param space (e.g. an
 /// oscillator kernel that handles the X/Y channels but not Rotation/Size)
@@ -358,6 +363,29 @@ pub struct GpuKernel {
     /// How wide this node's output is — see [`CountLawFn`]. `None` (the common
     /// case) = as wide as port 0.
     pub count_law: Option<CountLawFn>,
+    /// **A kernel whose SHAPE depends on its params** delegates to one of several
+    /// static variants; `None` (the common case) = this kernel is itself.
+    ///
+    /// `motion.drive` and `motion.oscillator` are why this exists: they write a
+    /// *different column* per `channel` — `P` for X/Y, `rot` for Rotation, `size`
+    /// for Size, `tint` for Opacity — and materialise the target from its identity
+    /// when the stream lacks it. With one static shape they had two bad options:
+    /// bind all four (and then a drive on X emits `rot`/`size`/`tint` **that the
+    /// CPU's output does not carry** — a different stream SHAPE, not an ε) or
+    /// claim only the channels writing one column, which is what both did, at ⅖
+    /// and ½ of the node.
+    ///
+    /// **A whole kernel and not merely a binding set**, because the two cannot be
+    /// separated: the generated module only defines `write_<col>` for columns that
+    /// are BOUND, so a body written against `write_P` cannot serve the `rot`
+    /// variant — and it should not want to, since one writes a `vec2` and the
+    /// other an `f32`. Varying the bindings alone would produce a body calling an
+    /// accessor that does not exist.
+    ///
+    /// Resolution is **one level deep** by construction: [`Self::resolve`] does
+    /// not recurse, so a variant's own `variant_by_param` is never read (and
+    /// should be `None`).
+    pub variant_by_param: Option<VariantFn>,
     /// `Some` when the kernel only covers part of the node's param space;
     /// evaluated at plan time. `None` = always applicable.
     pub applicable: Option<ApplicableFn>,
@@ -372,8 +400,25 @@ impl GpuKernel {
         bindings: &[],
         params: &[],
         count_law: None,
+        variant_by_param: None,
         applicable: None,
     };
+
+    /// **The kernel this node actually runs**, given its resolved params — the one
+    /// door for a question that used to be a field read.
+    ///
+    /// Every consumer must come through here rather than use `self` directly: the
+    /// generated WGSL, the bind group it is dispatched against and the cache key
+    /// they are stored under have to describe the SAME variant, and a site that
+    /// skipped this would silently describe the default one.
+    ///
+    /// Does not recurse — see [`Self::variant_by_param`].
+    pub fn resolve(&self, param: &dyn Fn(&str) -> f32) -> &GpuKernel {
+        match self.variant_by_param {
+            Some(f) => f(param),
+            None => self,
+        }
+    }
 
     /// `true` for [`Self::PASSTHROUGH`]-shaped kernels (no body, no bindings).
     pub const fn is_passthrough(&self) -> bool {
@@ -426,6 +471,7 @@ mod tests {
             }],
             params: &[],
             count_law: None,
+            variant_by_param: None,
             applicable: None,
         };
         assert!(!real.is_passthrough());

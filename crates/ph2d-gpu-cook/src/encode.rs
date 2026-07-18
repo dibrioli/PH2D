@@ -45,6 +45,12 @@ impl GpuCook {
         // One answer, carried: `cook` already asked the count law, and the count
         // it dispatches must be the same number the kernel is told about.
         let count = window.count.min(u32::MAX as usize) as u32;
+        // **The variant, resolved once for this dispatch.** Everything below — the
+        // module text, the bind group, the cache key it is stored under — must
+        // describe the SAME kernel, so it is asked for once and threaded through
+        // rather than re-resolved per site (`GpuKernel::resolve`).
+        let kernel = kernel.resolve(&|name| resolve_param(graph, node, manifest, name));
+        let bindings = kernel.bindings;
 
         // Is the binding's column readable off its port? The CPU's re-seed rule
         // (a state whose count no longer matches the live set was rebuilt, so
@@ -53,16 +59,16 @@ impl GpuCook {
         // id-gather (ADR-0130) the state ports are length-decoupled (paired by
         // id, not position); everywhere else it is the dispatch-length test the
         // Fase 1/2 kernels already had.
-        let gather_port = gather_key_port(kernel, inputs, count);
+        let gather_port = gather_key_port(bindings, inputs, count);
         let present = |b: &ColumnBinding| column_present(gather_port, count, inputs, b);
         let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
 
         let ty_key = manifest.id.0;
-        let sig = codegen::presence_signature(kernel, present);
+        let sig = codegen::presence_signature(bindings, present);
         self.kernel_pipelines
             .entry((ty_key, sig))
             .or_insert_with(|| {
-                let src = codegen::kernel_module(kernel, &port_names, present);
+                let src = codegen::kernel_module(kernel, bindings, &port_names, present);
                 CachedPipeline {
                     pipeline: create_pipeline(gpu, &src, manifest.name),
                 }
@@ -96,7 +102,7 @@ impl GpuCook {
         }
         // Which input ports carry exactly one element — the broadcast bits, last
         // in the layout so nothing above them ever moves.
-        if codegen::broadcasts_anything(kernel) {
+        if codegen::broadcasts_anything(bindings) {
             let counts: Vec<u32> = inputs.iter().map(|s| s.count).collect();
             let at = window_at + usize::from(codegen::declares_window(&port_names)) * 8;
             uni[at..at + 4].copy_from_slice(&codegen::broadcast_mask(&counts).to_le_bytes());
@@ -106,12 +112,12 @@ impl GpuCook {
 
         // Bind group: uniform, then read buffers, then fresh write buffers —
         // the exact order `codegen::kernel_module` assigned.
-        let plans = codegen::plan_bindings(kernel, present);
+        let plans = codegen::plan_bindings(bindings, present);
         let mut new_cols: Vec<(String, GpuColumn)> = Vec::new();
         let mut entries: Vec<wgpu::BindGroupEntry> = Vec::new();
         // (entries borrow buffers; collect the write buffers first)
         let mut write_buffers: Vec<(usize, GpuColumn)> = Vec::new();
-        for (i, (b, (_, write))) in kernel.bindings.iter().zip(&plans).enumerate() {
+        for (i, (b, (_, write))) in bindings.iter().zip(&plans).enumerate() {
             if matches!(write, Some(BindingPlan::WriteBuffer)) {
                 let bytes = u64::from(count) * stream::element_stride(b.dim);
                 let buffer = self.pool.acquire(gpu, bytes);
@@ -124,7 +130,7 @@ impl GpuCook {
             resource: uniform.as_entire_binding(),
         });
         let mut slot = 1u32;
-        for (b, (read, _)) in kernel.bindings.iter().zip(&plans) {
+        for (b, (read, _)) in bindings.iter().zip(&plans) {
             if matches!(read, Some(BindingPlan::ReadBuffer)) {
                 let col = inputs[b.port].cols.get(b.column).expect("presence checked");
                 entries.push(wgpu::BindGroupEntry {
@@ -140,7 +146,7 @@ impl GpuCook {
                 resource: col.buffer.as_entire_binding(),
             });
             slot += 1;
-            new_cols.push((kernel.bindings[*i].column.to_string(), col.clone()));
+            new_cols.push((bindings[*i].column.to_string(), col.clone()));
         }
         let pipeline = &self
             .kernel_pipelines
@@ -185,7 +191,7 @@ impl GpuCook {
             GpuStream::default()
         };
         out.count = count;
-        for b in kernel.bindings.iter().filter(|b| b.access.consumes()) {
+        for b in bindings.iter().filter(|b| b.access.consumes()) {
             out.cols.remove(b.column);
         }
         for (name, col) in new_cols {

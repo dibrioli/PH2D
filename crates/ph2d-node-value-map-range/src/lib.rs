@@ -128,6 +128,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     }],
     params: &["in_lo", "in_hi", "out_lo", "out_hi", "clamp"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

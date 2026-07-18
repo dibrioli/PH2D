@@ -16,7 +16,7 @@ use super::*;
 /// secretly plans as fully-GPU (the boundary node accidentally covered) or as
 /// all-CPU (nothing covered) — the artist would smoke the wrong path and never
 /// know. So this asserts the PLAN, headless: the boundary lands on the un-covered
-/// Rotation oscillator, and the GPU suffix carries real compute (the Y wave + the
+/// sort, and the GPU suffix carries real compute (the Y wave + the
 /// scale), so the route decision returns `Hybrid` and the smoke exercises F1.2.
 #[test]
 fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
@@ -28,7 +28,8 @@ fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
     let out = *sinks.first().expect("one sink");
 
     let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
-    // NOT fully-GPU — the first oscillator (Rotation) has no kernel.
+    // NOT fully-GPU — the sort is uncoverable by structure (a reorder is not a
+    // per-element map), so the seam it creates cannot decay with coverage.
     assert!(
         !plan.is_fully_gpu(),
         "the demo must exercise the HYBRID path, not fully-GPU"
@@ -36,8 +37,8 @@ fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
     let &(boundary, _) = plan.boundaries.first().expect("a CPU boundary");
     assert_eq!(
         doc.graph.node(boundary).unwrap().type_name,
-        "motion.oscillator",
-        "the boundary is the Rotation oscillator the kernel does not cover"
+        "motion.sort",
+        "the boundary is the sort, which no per-element kernel can express"
     );
     // The GPU suffix does real work (oscillator(Y) + scale dispatch; output is
     // pass-through), so the route is Hybrid, not a boundary-with-nothing-to-run.

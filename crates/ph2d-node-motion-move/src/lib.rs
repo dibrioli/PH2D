@@ -83,6 +83,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["dx", "dy"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

@@ -52,16 +52,33 @@ fn the_covered_chain_is_claimed_whole() {
 
 #[test]
 fn an_uncovered_param_space_puts_the_boundary_at_that_node() {
-    // Oscillator on the Rotation channel (2): its kernel only covers X/Y →
-    // `applicable` refuses → the CPU cooks grid+oscillator, the GPU runs the
-    // suffix (move, output) from the uploaded boundary stream.
+    // `motion.spring` on the Rotation channel (2): its kernel only covers X/Y →
+    // `applicable` refuses → the CPU cooks the prefix, the GPU runs the suffix
+    // from the uploaded boundary stream.
+    //
+    // ⚠️ This used to use the OSCILLATOR, until `GpuKernel::variant_by_param` let
+    // it (and `noise`/`wiggle`/`drive`) claim every channel — the fixture's
+    // premise disappeared with the restriction it was testing. `motion.spring`
+    // has the same restriction still, so the MECHANISM (`applicable` refuses →
+    // boundary here) keeps a live subject; the day spring gets variants too, this
+    // wants a synthetic kernel rather than another node to borrow.
     let reg = registry();
-    let (mut g, [_, osc, mv, out]) = chain(&reg);
-    g.set_param(osc, "channel", 2.0);
+    let (mut g, [grid, osc, mv, out]) = chain(&reg);
+    let sp = g.add_node("motion.spring");
+    g.set_param(sp, "channel", 2.0);
+    g.disconnect(osc, 0).expect("the chain wired grid → osc");
+    for (a, b) in [(grid, sp), (sp, osc)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert_eq!(plan.boundaries, vec![(osc, 0)]);
+    assert_eq!(plan.boundaries, vec![(sp, 0)]);
     let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
-    assert_eq!(nodes, vec![mv, out]);
+    assert_eq!(nodes, vec![osc, mv, out]);
 }
 
 #[test]

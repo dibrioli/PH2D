@@ -5,7 +5,7 @@
 //! port's length from the dispatch's.
 
 use crate::stream::GpuStream;
-use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::ColumnBinding;
 
 /// The base port of an ACTIVE id-gather (ADR-0130) for this input set, or `None`
 /// when there is none: the kernel declares a [`ColumnBinding`] whose access
@@ -15,11 +15,11 @@ use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel};
 /// then paired by id rather than by position, so their length is decoupled from
 /// the dispatch.
 pub(crate) fn gather_key_port(
-    kernel: &GpuKernel,
+    bindings: &[ColumnBinding],
     inputs: &[GpuStream],
     count: u32,
 ) -> Option<usize> {
-    let key = kernel.bindings.iter().find(|b| b.access.is_gather_key())?;
+    let key = bindings.iter().find(|b| b.access.is_gather_key())?;
     let active = inputs
         .get(key.port)
         .is_some_and(|s| s.count == count && s.cols.contains_key(key.column));

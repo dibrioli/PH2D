@@ -504,6 +504,7 @@ mod refuser {
         ],
         params: &[],
         count_law: None,
+        variant_by_param: None,
         applicable: None,
     };
     pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {
@@ -569,6 +570,7 @@ mod idgen {
         bindings: &[P_BINDING, ID_BINDING],
         params: &[],
         count_law: Some(|_| SourceWindow::of_count(N)),
+        variant_by_param: None,
         applicable: None,
     };
     const WITHOUT_ID: GpuKernel = GpuKernel {
@@ -577,6 +579,7 @@ mod idgen {
         bindings: &[P_BINDING],
         params: &[],
         count_law: Some(|_| SourceWindow::of_count(N)),
+        variant_by_param: None,
         applicable: None,
     };
 
@@ -636,6 +639,7 @@ mod reorder {
         }],
         params: &[],
         count_law: None,
+        variant_by_param: None,
         applicable: None,
     };
     pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {

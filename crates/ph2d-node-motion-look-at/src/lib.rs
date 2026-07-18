@@ -169,6 +169,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["offset"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

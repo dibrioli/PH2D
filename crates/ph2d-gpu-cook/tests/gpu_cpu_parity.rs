@@ -53,6 +53,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
     ph2d_node_motion_look_at::register(&mut reg).unwrap();
+    ph2d_node_motion_sort::register(&mut reg).unwrap();
     ph2d_node_motion_drive::register(&mut reg).unwrap();
     ph2d_node_value_instance_field::register(&mut reg).unwrap();
     ph2d_node_value_attribute::register(&mut reg).unwrap();
@@ -115,7 +116,26 @@ fn assert_parity(cpu: &[RenderInstance], gpu: &[RenderInstance]) {
         for k in 0..2 {
             assert_close("world_pos", i, c.world_pos[k], g.world_pos[k], 2e-3);
             max_pos = max_pos.max((c.world_pos[k] - g.world_pos[k]).abs());
-            assert_close("size", i, c.size[k], g.size[k], 1e-5);
+            // **`size` gets the same bound as `world_pos`, because it now carries
+            // the same deltas.** It used to be `1e-5`, calibrated when nothing
+            // could DRIVE it: every gate left it at the default, so the bound
+            // really meant "identical". `motion.oscillator`/`noise`/`wiggle` write
+            // a wave delta there now (`variant_by_param`).
+            //
+            // Measured, from the identical arithmetic: worst **1,66e-4** on size,
+            // and **4,39e-4** on position in `the_fully_gpu_chain` — which has
+            // always passed under `2e-3`. Holding size to `1e-5` was holding one
+            // field 200× tighter than the field the same wave lands on.
+            //
+            // Relative-to-result was tried and is the WRONG model: a delta can
+            // land near a cancellation (`1.0 + (−0.81) = 0.19`) where the result
+            // is small but the error is inherited from the delta's magnitude, so
+            // a relative bound tightens exactly where the arithmetic is hardest.
+            //
+            // What this must catch — a variant writing the wrong column, or the
+            // wrong delta — diverges by about the amplitude (1,9), three orders
+            // of magnitude above the bound.
+            assert_close("size", i, c.size[k], g.size[k], 2e-3);
             assert_close("anchor", i, c.anchor[k], g.anchor[k], 0.0);
         }
         for k in 0..4 {
@@ -224,19 +244,39 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
-    // Oscillator on Rotation (channel 2): its kernel doesn't cover that, so
-    // the plan puts the CPU boundary at the oscillator — the CPU cooks
-    // grid→oscillator (the REAL `Cook`, canonical semantics), the stream is
-    // uploaded once, and the GPU runs move→output + lowering. This exercises
-    // the seam: `upload_stream`, the boundary handoff, and a `rot` column
-    // flowing into the lowering's sin/cos.
+    // A `motion.sort` between the grid and the oscillator: the CPU cooks
+    // grid→sort (the REAL `Cook`, canonical semantics), the stream is uploaded
+    // once, and the GPU runs oscillator→move→output + lowering. This exercises
+    // the seam: `upload_stream`, the boundary handoff, and a full instance
+    // stream crossing it.
+    //
+    // ⚠️ The boundary used to be an oscillator on **Rotation**, which its kernel
+    // did not cover — and covering every channel (`variant_by_param`) deleted
+    // this fixture's seam outright. `motion.sort` REORDERS the stream, a global
+    // permutation, and this engine's kernel contract is strictly per-element
+    // (`i` → element `i`), so it is uncoverable by STRUCTURE rather than by
+    // backlog ([[feedback_a_seam_fixture_must_rest_on_something_uncoverable]]).
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
     };
     let reg = registry();
-    let (mut g, [_, osc, mv, out]) = chain(&reg, 160.0);
-    g.set_param(osc, "channel", 2.0); // Rotation — outside the kernel's coverage
+    let (mut g, [grid, osc, mv, out]) = chain(&reg, 160.0);
+    // Splice the sort in: grid → sort → oscillator.
+    let srt = g.add_node("motion.sort");
+    g.disconnect(osc, 0).expect("the chain wired grid → osc");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (srt, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (srt, 0),
+        to: (osc, 0),
+        delayed: false,
+    })
+    .unwrap();
 
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
@@ -255,17 +295,17 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
     assert_eq!(
         plan.boundaries,
-        vec![(osc, 0)],
+        vec![(srt, 0)],
         "boundary at the uncovered node"
     );
     assert_eq!(
         plan.stages.iter().map(|s| s.node).collect::<Vec<_>>(),
-        vec![mv, out]
+        vec![osc, mv, out]
     );
     // The boundary stream: cook the oscillator on the SAME canonical CPU path.
     let mut boundary_cook = Cook::new();
     let outputs = boundary_cook
-        .cook(&g, &reg, osc, PLAYHEAD)
+        .cook(&g, &reg, srt, PLAYHEAD)
         .expect("boundary cpu cook");
     let boundary = outputs[0].as_stream().clone();
 
@@ -277,7 +317,7 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
             &reg,
             &reg,
             &plan,
-            &[(osc, &boundary)],
+            &[(srt, &boundary)],
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
@@ -1219,23 +1259,120 @@ fn noise_kernel_matches_the_cpu_within_epsilon() {
     }
 }
 
-/// The Rotation/Size channels have no kernel path (they write a different
-/// column), so the plan must RECEDE rather than draw a wrong answer — the
-/// `motion.oscillator` precedent, re-asserted per node because `applicable` is
-/// per node and a copy-paste that dropped it would be invisible.
+/// **The Rotation and Size variants, numerically** — the payoff of
+/// `variant_by_param`, compared against the CPU for every node that ships them.
+///
+/// The per-node gates above sweep the maths (waveforms, fractal flavours, the
+/// integer hash) on the X/Y variant; this sweeps the CHANNEL, which is the axis
+/// the variants exist for. Both are needed: the maths gates would pass with the
+/// rot/size variants writing the wrong column, and this one would pass with the
+/// waveform wrong, because it only ever uses the default one.
+///
+/// `assert_gpu_parity` compares INSTANCES, and `rot`/`size` both reach them (the
+/// lowering folds `rot` into the basis and `size` into the quad), so a variant
+/// that wrote its delta to the wrong column shows up as a moved sprite.
 #[test]
-fn the_noise_recuses_on_the_channels_its_kernel_cannot_write() {
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_rotation_and_size_variants_match_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
     let reg = registry();
-    for channel in [2.0, 3.0] {
-        let mut g = Graph::new();
-        let (node, out) = deformer_chain(&mut g, 8.0, "motion.noise");
-        g.set_param(node, "channel", channel);
-        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-        assert_eq!(
-            plan.boundaries,
-            vec![(node, 0)],
-            "channel {channel} writes rot/size — the boundary is AT the noise"
-        );
+    for ty in ["motion.noise", "motion.wiggle", "motion.oscillator"] {
+        for (channel, label) in [(2.0, "Rotation"), (3.0, "Size")] {
+            let mut g = Graph::new();
+            let (node, out) = deformer_chain(&mut g, 40.0, ty);
+            g.set_param(node, "channel", channel);
+            // Non-round, and large enough that a delta landing on the wrong
+            // column cannot hide inside ε.
+            g.set_param(node, "amplitude", 1.9);
+            eprintln!("  {ty} on {label}");
+            assert_gpu_parity(&gpu, &reg, &g, out, 2);
+        }
+    }
+}
+
+/// **Two VARIANTS of one node type, in one cook, must not share a pipeline** —
+/// the exact sibling of the presence-signature crash above, for the axis
+/// `GpuKernel::variant_by_param` introduced.
+///
+/// `grid → osc(Rot) → osc(Y) → osc(Rot) → output`: one node TYPE, two different
+/// variants, so two different modules — and the pipeline cache is keyed by type +
+/// signature. A signature that hashed only the presence BITS puts the last two on
+/// the same key, the second is dispatched against the first's layout, and wgpu
+/// rejects it: **a crash, not a wrong number**.
+///
+/// ⚠️ **The THREE oscillators are the fixture, not decoration.** Two (`Y` then
+/// `Rot`) do not collide: the `Rot` variant finds `rot` ABSENT, so its bits are
+/// `0b00` against the `P` variant's `0b01` and the key differs by accident. The
+/// leading `osc(Rot)` materialises `rot`, so the trailing one reads it PRESENT and
+/// the two variants finally agree on `0b01` while disagreeing on everything else.
+/// The mutation removing the binding hash survives the two-node version.
+///
+/// It takes one `GpuCook` cooking BOTH — a fresh sequencer per graph, which is
+/// what every other gate does, never populates the cache twice. That is why the
+/// mutation removing the binding hash from the signature survived the whole suite
+/// until this existed.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn two_variants_of_one_type_in_one_cook_get_different_pipelines() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 12.0);
+    let mut prev = grid;
+    for (channel, amp) in [(2.0f32, 13.0f32), (1.0, 1.3), (2.0, 21.0)] {
+        let n = g.add_node("motion.oscillator");
+        g.set_param(n, "channel", channel);
+        g.set_param(n, "amplitude", amp);
+        g.set_param(n, "frequency", 0.7);
+        connect(&mut g, prev, n);
+        prev = n;
+    }
+    let out = g.add_node("motion.output");
+    connect(&mut g, prev, out);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu(), "every variant is claimed");
+    assert_gpu_parity(&gpu, &reg, &g, out, 4);
+}
+
+/// **Every channel-switching node claims EVERY channel now** — the payoff of
+/// `GpuKernel::variant_by_param`, asserted across the family rather than per
+/// node, because they all had the identical `applicable` restriction for the
+/// identical reason and a copy-paste that kept one behind would be invisible.
+///
+/// This gate used to assert the OPPOSITE for `motion.noise` (Rotation/Size
+/// recede). That assertion was correct while a static binding set could not
+/// switch columns; the engine can switch now, so the fixture flipped rather than
+/// being loosened.
+#[test]
+fn every_channel_switching_node_claims_every_channel() {
+    let reg = registry();
+    for ty in [
+        "motion.noise",
+        "motion.wiggle",
+        "motion.oscillator",
+        "motion.drive",
+    ] {
+        for channel in [0.0, 1.0, 2.0, 3.0] {
+            let mut g = Graph::new();
+            let (node, out) = deformer_chain(&mut g, 8.0, ty);
+            g.set_param(node, "channel", channel);
+            let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+            assert!(
+                plan.boundaries.is_empty(),
+                "{ty} channel {channel}: the plan left a seam at {:?} — a \
+                 channel-switching node should claim every channel through its \
+                 variants",
+                plan.boundaries
+            );
+        }
     }
 }
 
@@ -1994,6 +2131,65 @@ fn instance_field_kernel_matches_the_cpu_in_every_mode() {
     }
 }
 
+/// Did the driven column come out as anything other than all zeros? A row where
+/// both paths produce zero agrees perfectly and tests nothing — which is what
+/// `rot × Multiply` did before the sweep seeded a base.
+fn column_is_nonzero(cpu: &ph2d_nodegraph::attr::Stream, column: &str) -> bool {
+    use ph2d_nodegraph::attr::Column;
+    match cpu.get(column) {
+        Some(Column::Scalar(v)) => v.iter().any(|x| x.abs() > 1e-6),
+        Some(Column::Vec2(v)) => v.iter().any(|x| x[0].abs() > 1e-6 || x[1].abs() > 1e-6),
+        Some(Column::Vec4(v)) => v.iter().any(|x| x.iter().any(|k| k.abs() > 1e-6)),
+        _ => false,
+    }
+}
+
+/// Compare one column of a staged node against the CPU's stream, whatever its
+/// width — the readers are typed, so a gate that needs to follow a PARAM to its
+/// column would otherwise have to branch on the type at every call site.
+fn compare_column(
+    gpu: &ph2d_gpu::GpuContext,
+    gc: &ph2d_gpu_cook::GpuCook,
+    node: NodeId,
+    cpu: &ph2d_nodegraph::attr::Stream,
+    column: &str,
+) -> f32 {
+    use ph2d_nodegraph::attr::Column;
+    match cpu.get(column) {
+        Some(Column::Scalar(c)) => {
+            let g = gc
+                .read_column(gpu, node, column)
+                .expect("column reads back");
+            assert_eq!(g.len(), c.len(), "{column}: element count");
+            g.iter()
+                .zip(c)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0, f32::max)
+        }
+        Some(Column::Vec2(c)) => {
+            let g = gc
+                .read_column_vec2(gpu, node, column)
+                .expect("column reads back");
+            assert_eq!(g.len(), c.len(), "{column}: element count");
+            g.iter()
+                .zip(c)
+                .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                .fold(0.0, f32::max)
+        }
+        Some(Column::Vec4(c)) => {
+            let g = gc
+                .read_column_vec4(gpu, node, column)
+                .expect("column reads back");
+            assert_eq!(g.len(), c.len(), "{column}: element count");
+            g.iter()
+                .zip(c)
+                .map(|(a, b)| (0..4).map(|k| (a[k] - b[k]).abs()).fold(0.0, f32::max))
+                .fold(0.0, f32::max)
+        }
+        _ => panic!("the CPU emitted no `{column}`"),
+    }
+}
+
 /// **`motion.drive` — the value domain's WRITE side**, and the first chain where
 /// a value graph reaches the SCREEN entirely on the device: `grid →
 /// value.instance_field → motion.drive → output`, no CPU seam anywhere.
@@ -2011,7 +2207,7 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
         return;
     };
     let reg = registry();
-    for channel in [0.0f32, 1.0] {
+    for channel in [0.0f32, 1.0, 2.0, 3.0, 4.0] {
         for mode in [0.0f32, 1.0, 2.0] {
             for (per_element, masked) in
                 [(false, false), (true, false), (false, true), (true, true)]
@@ -2045,11 +2241,27 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
                     g.set_param(l, "amplitude", 2.7);
                     l
                 };
+                // A SEED drive first, so the channel under test starts from a
+                // non-trivial base. Without it `rot` starts at its identity 0 and
+                // Multiply yields zero on both sides — agreement that proves
+                // nothing, in 1 of every 3 rows.
+                let seed = g.add_node("motion.drive");
+                g.set_param(seed, "channel", channel);
+                g.set_param(seed, "mode", 1.0); // Set
+                g.set_param(seed, "scale", 0.9);
+                connect(&mut g, src, seed);
+                g.connect(Edge {
+                    from: (v, 0),
+                    to: (seed, 1),
+                    delayed: false,
+                })
+                .expect("seed value port");
+
                 let d = g.add_node("motion.drive");
                 g.set_param(d, "channel", channel);
                 g.set_param(d, "mode", mode);
                 g.set_param(d, "scale", 1.7);
-                connect(&mut g, src, d);
+                connect(&mut g, seed, d);
                 g.connect(Edge {
                     from: (v, 0),
                     to: (d, 1),
@@ -2068,11 +2280,6 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
 
                 let mut cook = Cook::new();
                 let cpu = cook.cook(&g, &reg, d, PLAYHEAD).expect("cpu cook");
-                let cpu_p = match cpu[0].as_stream().get("P") {
-                    Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
-                    _ => panic!("{label}: the CPU emitted no `P`"),
-                };
-
                 let mut gc = ph2d_gpu_cook::GpuCook::new();
                 gc.retain_streams_for_debug(true);
                 gc.cook(
@@ -2106,47 +2313,25 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
                 cpu_cols.sort_unstable();
                 assert_eq!(gpu_cols, cpu_cols, "{label}: same column SET");
 
-                let gpu_p = gc.read_column_vec2(&gpu, d, "P").expect("`P` reads back");
-                assert_eq!(gpu_p.len(), cpu_p.len(), "{label}: same element count");
-                let worst = gpu_p
-                    .iter()
-                    .zip(&cpu_p)
-                    .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
-                    .fold(0.0_f32, f32::max);
-                eprintln!("drive {label}: max |dP| = {worst:e}");
-                assert!(worst < 1e-5, "{label}: max |dP| = {worst:e}");
+                // Compare the column the CHANNEL writes — the whole point of the
+                // variants is that it differs, so a gate hard-wired to `P` would
+                // pass on three channels by never looking at their output.
+                let col = match channel as i32 {
+                    0 | 1 => "P",
+                    2 => "rot",
+                    4 => "tint",
+                    _ => "size",
+                };
+                let worst = compare_column(&gpu, &gc, d, cpu[0].as_stream(), col);
+                eprintln!("drive {label}: col {col}, max |d| = {worst:e}");
+                assert!(worst < 1e-5, "{label}: col {col}, max |d| = {worst:e}");
+                assert!(
+                    column_is_nonzero(cpu[0].as_stream(), col),
+                    "{label}: fixture check — `{col}` came out all zeros, so this \
+                     row compared nothing to nothing"
+                );
             }
         }
-    }
-}
-
-/// **Rotation / Size / Opacity recede to the CPU**, at plan time and on purpose —
-/// the sibling that gives the gate above its meaning. Without it, "the kernel
-/// covers X/Y" is indistinguishable from "the kernel covers everything and the
-/// other channels happen to be untested".
-#[test]
-fn drive_on_a_channel_the_kernel_cannot_write_stays_on_the_cpu() {
-    let reg = registry();
-    for channel in [2.0f32, 3.0, 4.0] {
-        let mut g = Graph::new();
-        let grid = grid_node(&mut g, 8.0);
-        let l = g.add_node("value.lfo");
-        let d = g.add_node("motion.drive");
-        g.set_param(d, "channel", channel);
-        connect(&mut g, grid, d);
-        g.connect(Edge {
-            from: (l, 0),
-            to: (d, 1),
-            delayed: false,
-        })
-        .expect("value port");
-        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, d);
-        assert_eq!(
-            plan.boundaries,
-            vec![(d, 0)],
-            "channel {channel} writes a column the kernel does not bind — the \
-             boundary must be AT the drive"
-        );
     }
 }
 

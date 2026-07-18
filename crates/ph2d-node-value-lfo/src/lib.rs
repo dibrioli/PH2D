@@ -173,6 +173,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "phase_stagger",
     ],
     count_law: Some(lfo_count),
+    variant_by_param: None,
     applicable: None,
 };
 

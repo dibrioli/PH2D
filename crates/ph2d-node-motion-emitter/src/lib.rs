@@ -395,6 +395,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             c.playhead as f32,
         )
     }),
+    variant_by_param: None,
     applicable: None,
 };
 

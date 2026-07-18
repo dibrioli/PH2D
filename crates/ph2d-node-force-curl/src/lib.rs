@@ -214,6 +214,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["strength", "scale", "speed", "octaves", "seed"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

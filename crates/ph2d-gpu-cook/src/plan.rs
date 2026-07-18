@@ -121,7 +121,13 @@ fn output_shape(
             }
         },
     };
-    for b in kernel.bindings {
+    // The set this node will ACTUALLY bind — a param-dependent kernel writes a
+    // different column per param, and deriving the shape from the default set
+    // would predict columns the dispatch never produces.
+    for b in kernel
+        .resolve(&|name| resolve_param(graph, node, manifest, name))
+        .bindings
+    {
         let present = cols.contains(b.column);
         if b.access.consumes() {
             cols.remove(b.column);
@@ -223,7 +229,10 @@ fn eligible(
     // Column-shape refusals (D3): the kernel names a column whose presence it
     // cannot answer for — `motion.integrate` + `id` is a gather. The shape must
     // be PROVABLE, so an input the plan cannot derive refuses too.
-    for b in kernel.bindings.iter().filter(|b| b.access.refuses()) {
+    let bindings = kernel
+        .resolve(&|name| resolve_param(graph, node, manifest, name))
+        .bindings;
+    for b in bindings.iter().filter(|b| b.access.refuses()) {
         let known = match graph.input_edge(node, b.port) {
             None => Some(BTreeSet::new()),
             Some((_, _, true)) => None,
@@ -249,7 +258,7 @@ fn eligible(
     // Default-recede is the whole point: a future structural node that forgets to
     // declare `keeps_dense_window` clears the window, so the gather never claims
     // a stream it cannot pair ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
-    for b in kernel.bindings.iter().filter(|b| b.access.is_gather_key()) {
+    for b in bindings.iter().filter(|b| b.access.is_gather_key()) {
         let shape = match graph.input_edge(node, b.port) {
             None => Some((BTreeSet::new(), false)),
             Some((_, _, true)) => None,

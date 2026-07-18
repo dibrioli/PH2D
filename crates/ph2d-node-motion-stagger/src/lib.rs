@@ -179,6 +179,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["channel", "min", "max", "ease_curve", "ease_dir", "reverse"],
     count_law: None,
+    variant_by_param: None,
     applicable: Some(|param| {
         let channel = param("channel").round();
         channel == 0.0 || channel == 1.0

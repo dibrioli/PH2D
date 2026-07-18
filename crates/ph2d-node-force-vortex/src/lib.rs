@@ -123,6 +123,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &["center_x", "center_y", "strength", "radius", "clockwise"],
     count_law: None,
+    variant_by_param: None,
     applicable: None,
 };
 

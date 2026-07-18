@@ -25,11 +25,12 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
+mod kernel;
+use kernel::GPU_KERNEL;
 mod noise;
 use channel::{apply_channel_delta, falloff_at};
 use noise::{NoiseType, fbm_2d};
@@ -102,162 +103,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
-};
-
-/// GPU compute kernel (ADR-0126): the WGSL port of [`noise::fbm_2d`] over each
-/// element's own `P`, element for element.
-///
-/// **Gradient noise, ported as gradient noise.** `force.curl` already ships an
-/// fBm in WGSL and it is the wrong one to reuse: that is VALUE noise (it lerps a
-/// per-corner random value), while this node is Perlin 2002 GRADIENT noise (it
-/// lerps the dot of a per-corner gradient with the distance vector). The whole
-/// reason this node exists rather than `motion.wiggle` is that gradient noise is
-/// exactly zero at every lattice point and so has no grid artifacts — reusing the
-/// curl's lib would have silently made the GPU draw a DIFFERENT field from the CPU,
-/// and the parity gate would have been the only thing standing between that and a
-/// shipped visual divergence.
-///
-/// **The discrete params are rounded the way Rust rounds.** `octaves`, `type` and
-/// `seed` all pick a BRANCH (or a hash), so a half-even/half-away disagreement is
-/// not an ε — it is a different field. `ns_round` is round-half-away-from-zero to
-/// match `f32::round`, the same guard `motion.oscillator`'s `osc_round` carries
-/// ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
-///
-/// **`params.type_`** — `type` is a WGSL reserved word, so the generated uniform
-/// field takes a trailing underscore (`codegen::wgsl_field`). The param keeps its
-/// artist-facing name.
-///
-/// **Covers the X/Y channels only** (`applicable`, the `motion.oscillator`
-/// precedent): Rotation/Size write a different column, which a static binding set
-/// cannot switch on, so those recede to the CPU rather than to a wrong answer.
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let ns_p = read_P(i);\n\
-        let ns_seed = i32(ns_round(params.seed));\n\
-        let ns_oct = min(max(i32(ns_round(params.octaves)), 1), 8);\n\
-        let ns_ty = i32(ns_round(params.type_));\n\
-        let ns_s = ns_fbm(\n\
-        \x20   ns_p.x * params.scale,\n\
-        \x20   ns_p.y * params.scale + params.playhead * params.speed,\n\
-        \x20   ns_seed, ns_oct, params.roughness, ns_ty);\n\
-        let ns_d = ns_s * params.amplitude * read_falloff(i);\n\
-        var ns_out = ns_p;\n\
-        if (params.channel < 0.5) {\n\
-        \x20   ns_out.x = ns_out.x + ns_d;\n\
-        } else {\n\
-        \x20   ns_out.y = ns_out.y + ns_d;\n\
-        }\n\
-        write_P(i, ns_out);\n",
-    wgsl_lib: "\
-        const NS_NORM: f32 = 1.0 / 1.5;\n\
-        const NS_LACUNARITY: f32 = 2.0;\n\
-        fn ns_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn ns_hash(ix: i32, iy: i32, seed: i32) -> u32 {\n\
-            var h: u32 = bitcast<u32>(ix) * 0x27d4eb2du\n\
-                + bitcast<u32>(iy) * 0x165667b1u\n\
-                + bitcast<u32>(seed) * 0x01934f07u;\n\
-            h = h ^ (h >> 15u);\n\
-            h = h * 0x2c1b3c6du;\n\
-            h = h ^ (h >> 12u);\n\
-            h = h * 0x297175f9u;\n\
-            h = h ^ (h >> 15u);\n\
-            return h;\n\
-        }\n\
-        fn ns_dot_grad(h: u32, dx: f32, dy: f32) -> f32 {\n\
-            // The eight 2002 gradients (+-1,+-2)/(+-2,+-1), as +-u +- 2v.\n\
-            let g = h & 7u;\n\
-            var u = dx;\n\
-            var v = dy;\n\
-            if (g >= 4u) { u = dy; v = dx; }\n\
-            let a = select(u, -u, (g & 1u) != 0u);\n\
-            let b = select(2.0 * v, -2.0 * v, (g & 2u) != 0u);\n\
-            return a + b;\n\
-        }\n\
-        fn ns_fade(t: f32) -> f32 {\n\
-            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
-        }\n\
-        fn ns_grad_noise(x: f32, y: f32, seed: i32) -> f32 {\n\
-            let x0 = floor(x);\n\
-            let y0 = floor(y);\n\
-            let ix = i32(x0);\n\
-            let iy = i32(y0);\n\
-            let fx = x - x0;\n\
-            let fy = y - y0;\n\
-            let u = ns_fade(fx);\n\
-            let v = ns_fade(fy);\n\
-            let n00 = ns_dot_grad(ns_hash(ix, iy, seed), fx, fy);\n\
-            let n10 = ns_dot_grad(ns_hash(ix + 1, iy, seed), fx - 1.0, fy);\n\
-            let n01 = ns_dot_grad(ns_hash(ix, iy + 1, seed), fx, fy - 1.0);\n\
-            let n11 = ns_dot_grad(ns_hash(ix + 1, iy + 1, seed), fx - 1.0, fy - 1.0);\n\
-            let nx0 = n00 + u * (n10 - n00);\n\
-            let nx1 = n01 + u * (n11 - n01);\n\
-            return (nx0 + v * (nx1 - nx0)) * NS_NORM;\n\
-        }\n\
-        fn ns_fbm(x0: f32, y0: f32, seed: i32, octaves: i32, roughness: f32, ty: i32) -> f32 {\n\
-            let gain = clamp(roughness, 0.0, 1.0);\n\
-            var x = x0;\n\
-            var y = y0;\n\
-            var amp = 1.0;\n\
-            var sum = 0.0;\n\
-            var total = 0.0;\n\
-            for (var o = 0; o < octaves; o = o + 1) {\n\
-                // Per-octave seed offset: octaves must be independent fields,\n\
-                // not scaled copies of one (which would beat visibly).\n\
-                let n = ns_grad_noise(x, y, seed + o * 1013);\n\
-                var shaped = n;\n\
-                if (ty == 1) {\n\
-                    shaped = abs(n);\n\
-                } else if (ty == 2) {\n\
-                    let r = 1.0 - abs(n);\n\
-                    shaped = r * r;\n\
-                }\n\
-                sum = sum + amp * shaped;\n\
-                total = total + amp;\n\
-                amp = amp * gain;\n\
-                x = x * NS_LACUNARITY;\n\
-                y = y * NS_LACUNARITY;\n\
-            }\n\
-            return sum / total;\n\
-        }\n",
-    bindings: &[
-        // The target channel is materialized from its identity when absent, the
-        // same as the CPU's `apply_channel_delta` (`base_vec2`). `P` is also the
-        // SAMPLE point, and each invocation reads only its own element, so the
-        // read-then-write is not a race.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::ReadWrite,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "falloff",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Read,
-            identity: [1.0; 4],
-            port: 0,
-        },
-    ],
-    params: &[
-        "channel",
-        "amplitude",
-        "scale",
-        "octaves",
-        "roughness",
-        "type",
-        "speed",
-        "seed",
-    ],
-    count_law: None,
-    applicable: Some(|param| {
-        // The same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
-        let channel = param("channel").round();
-        channel == 0.0 || channel == 1.0
-    }),
 };
 
 struct MotionNoise;

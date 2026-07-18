@@ -144,6 +144,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let cols = param_as_count((c.param)("cols"), RECOMMENDED_MAX_ELEMENTS);
         SourceWindow::of_count(rows.saturating_mul(cols).min(RECOMMENDED_MAX_ELEMENTS))
     }),
+    variant_by_param: None,
     applicable: None,
 };
 

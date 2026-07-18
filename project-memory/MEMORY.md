@@ -72,6 +72,7 @@
 - [Busca NEGATIVA precisa de controle POSITIVO](feedback_a_negative_search_needs_a_positive_control.md) — grep vazio mente; prove que a busca acha o que você sabe estar lá
 - [RE-MEÇA um resíduo anotado antes de curá-lo](feedback_remeasure_a_documented_residual_before_curing_it.md) — a causa E o número da nota podem estar errados; 2× no mesmo dia
 - [Meça a ESCALA antes da causa](feedback_measure_perf_symptom_scale.md) — frame (4-16ms) vs ⅓s muda a classe
+- [Fronteira não é CENSO](feedback_a_frontier_is_not_a_census.md) — contar o que falta ≠ nº de costuras; o custo é da POSIÇÃO. Construa o caso mínimo e meça antes de construir sobre um "N" herdado
 - [Harness reproduz mecanismo, não contexto](feedback_harness_reproduces_mechanism_not_context.md) — instrumente o app real
 - [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — teste a REPETIÇÃO
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — cheque o `git diff` antes de aceitar

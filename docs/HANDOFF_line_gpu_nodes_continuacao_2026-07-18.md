@@ -71,9 +71,9 @@ casa a CPU dentro do ε. Medido na RTX:
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && \
   cargo test -p ph2d-gpu-cook --release -- --include-ignored
 ```
-⇒ **16** lib · **2** WGSL · **15** paridade · **17** sim · **5**+**12** plano ·
-**4** invalidação. Mais: emitter **16** · panel-motion-params **14** ·
-shell `--bins` **776** · nodegraph **84**.
+⇒ **16** lib · **2** WGSL · **15** paridade · **18** sim · **5**+**12** plano ·
+**4** invalidação · **2** `boundary_arity` (novos, 2026-07-18). Mais: emitter
+**16** · panel-motion-params **14** · shell `--bins` **776** · nodegraph **84**.
 
 **Smoke:** `PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=5 cargo run -p ph2d-host-desktop --release`
 → 1,2 MILHÃO de partículas coloridas por idade, ~1 ms/tick.
@@ -213,6 +213,51 @@ Candidatos naturais pro domínio de partículas: `motion.noise`,
 `motion.trail`, `motion.orbit`, `motion.wave`, `motion.stagger`. Multi-input
 (`look_at`/`combine`) **o motor já suporta** — falta só o kernel de cada.
 
+#### Shortlist RANQUEADA (levantada 2026-07-18 — comece por aqui)
+
+Classificação por *valor* (aparece a jusante numa cadeia real de partículas) ÷
+*custo* (classe de viabilidade). O gabarito de tamanho: `motion.rotate`
+(`crates/ph2d-node-motion-rotate/src/lib.rs:62`) = **24 linhas**; `motion.tint`
+≈ 70; `motion.spring` ≈ 130 (o teto, com `gather_paired`).
+
+| # | nó | classe | por quê |
+|---|---|---|---|
+| 1 | `motion.noise` | PER_ELEMENT | o *"faça parecer vivo"* de toda cadeia; `force.curl` **já traz fBm em WGSL** (`ph2d-node-force-curl/src/lib.rs:131-176`) — mas ⚠️ ver o bloqueio do `type` abaixo, e é noise de **GRADIENTE**, não o de VALOR do curl |
+| 2 | `sim.step` | PER_ELEMENT | **o** nó a jusante de toda `sim.zone`; todo binding que precisa (`accel` Consume, `sim_t`, `inv_mass`, `age`) **já existe** no kernel do `integrate` — é transcrição, não desenho |
+| 3 | `sim.collide` | PER_ELEMENT | logo depois do `sim.step`; o mundo vem **todo de params**, então lê só `P`/`vel` do próprio `i` — corpo do tamanho de uma força, zero superfície nova de motor |
+| 4 | `motion.look_at` | PER_ELEMENT (3 in) | orientação a jusante (setas/peixes/pétalas); `atan2_approx` já é polinômio Rajan **transcendental-free** → porta literal, paridade fácil |
+| 5 | `motion.orbit` | PER_ELEMENT | o corpo mais barato que resta (forma do `rotate` + `cos_sin_cycles`) |
+| 6 | `motion.pin_constraint` | PER_ELEMENT | corpo trivial, mas **estratégico**: fica a MONTANTE da sim e `inv_mass` já é coluna ligada no `integrate`/`spring` ⇒ tira uma costura do meio de uma cadeia senão fully-GPU |
+
+**Excluídos de propósito:** `motion.trail` (o handoff o nomeia, mas é
+`CHANGES_COUNT` **e** feedback — dois eixos não-suportados de uma vez) ·
+`motion.wave` (vizinhança estruturada serviria bem à GPU, mas é nó `pre` com
+stencil Laplaciano) · `motion.twist`/`bend`/`spherize`/`four_point_warp`/
+`spline_wrap` (**NEEDS_REDUCTION** — todos fazem um `fold` de max/centroide/bbox
+antes do passe por-elemento; é a primitiva de redução já escopada como item
+separado) · `motion.collide`/`boids` (all-pairs).
+
+#### ⚠️ Dois bloqueios de motor que o levantamento expôs
+
+1. **Um param com nome de palavra RESERVADA do WGSL não compila** — e o nº 1 da
+   lista tem um. `codegen.rs:210` emite o nome do param **verbatim** no struct
+   (`src.push_str(&format!("    {p}: f32,\n"))`), e `motion.noise` tem o param
+   **`type`**. Medido com o naga: `type` → *"name `type` is a reserved keyword"*;
+   `type_` → OK. **Nenhum dos 20 kernels de hoje usa palavra reservada**, então um
+   sanitizador (reservada → sufixo `_`) é **no-op para todos eles** — é a correção
+   mínima e geral. A alternativa barata é gatear por `applicable` só o `Fbm`
+   (padrão) e deixar Turbulence/Ridged na CPU, no precedente do `motion.oscillator`
+   — mas isso entrega ⅓ do nó.
+2. **Os `value.*` descartam a base** (já conhecido, e agora dimensionado): esse
+   ÚNICO gap bloqueia **6 nós PER_ELEMENT de uma vez** — `value.lfo`,
+   `value.instance_field`, `value.map_range`, `value.math`, `value.switch` e
+   `motion.luminance` (todos emitem um `Stream::new(n)` fresco em vez de estender a
+   base). É provavelmente o **melhor retorno por unidade de trabalho da lista
+   inteira** — um conserto de motor que destrava 6 kernels triviais. Considere-o
+   ANTES de moer kernel a kernel. (`value.attribute` e `motion.expression` ficam de
+   fora mesmo assim: a coluna/fórmula deles é **text param**, e `ColumnBinding.column`
+   é `&'static str`.)
+
 ### (A) GPU por default
 
 O objetivo final, e **bloqueado**: os readouts/probe do painel de grafo leem o
@@ -279,6 +324,27 @@ pré-condição, nunca por asserção:
 5. **PARE.** O handoff de integração só se escreve por ordem do Enio.
 
 ---
+
+## §4.5 — O que esta sessão fez (2026-07-18, pós-integração)
+
+**Nenhuma linha de produto mudou.** A sessão foi gasta verificando a recomendação
+deste doc antes de construir sobre ela — que era exatamente o que o §2 mandava
+fazer (*"verifique antes de confiar"*) — e a verificação a **derrubou**.
+
+| commit | o que |
+|---|---|
+| `3428c1fa` | **medição:** um plano não deixa mais de UMA costura hoje ⇒ (B) é inalcançável. 2 gates, mutação-testados, um deles **tripwire** |
+| `258d80fb` | **doc:** o §2 deste handoff corrigido — a ordem inverte, (C) é o multiplicador |
+| `8362d806` | **medição:** a costura-ESPELHO (sim na GPU + readback + cauda na CPU) é **negativa** — 268 ms de readback contra 227 ms da CPU inteira. A alternativa arquitetural está morta, com números |
+| (este) | shortlist ranqueada dos 6 próximos kernels + **2 bloqueios de motor** novos (palavra reservada do WGSL · os `value.*` bloqueiam 6 nós de uma vez) + memória durável |
+
+**Estado:** tudo verde (contagens acima), `fmt`/`clippy`/`machete`/`typos`/os **2**
+LOC caps limpos. **Nada integrado, nada pushado** (§0.2).
+
+**Onde o próximo agente começa:** §2 (C) — a shortlist. E leia o bloqueio nº 2
+antes de escolher: consertar o *base-discard* dos `value.*` destrava **6 kernels
+PER_ELEMENT de uma vez** e é provavelmente melhor retorno que qualquer kernel
+isolado da lista.
 
 ## §5 — Histórico (não leia salvo arqueologia)
 

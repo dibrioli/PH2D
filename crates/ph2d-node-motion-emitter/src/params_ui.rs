@@ -11,9 +11,21 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 
 /// Params whose typed entry reaches past their slider (Blender's hard limits).
 ///
-/// A `rate` in the millions is not a mis-click: paired with a millisecond
-/// `life` it is a one-frame burst, and `MAX_ALIVE` bounds what actually gets
-/// built regardless. The slider stays where fountains are authored.
+/// A `rate` in the millions is not a mis-click: paired with a millisecond `life`
+/// it is a one-frame burst, and `MAX_ALIVE` bounds what actually gets BUILT
+/// regardless — `rate` drives no allocation at all, only how fast spawn indices
+/// advance.
+///
+/// ⚠️ **This number does not protect anything, and the thing that needs
+/// protecting is not a rate.** The emitter's real ceiling is the product
+/// `rate × playhead < 2²⁴`, because ids are `f32`: past 16.777.216 two particles
+/// share an id and both the CPU pairing and the GPU gather hand them the same
+/// state, silently (gated: `the_id_space_is_exact_only_below_two_to_the_24`).
+/// At 4.000.000/s that is **4,2 seconds** of playback; at the slider's 12.000/s
+/// it is 23 minutes. No STATIC cap on `rate` can express a bound on a product,
+/// which is why this one is an ergonomic stop and not a safety one. The fix is
+/// exact ids (wrapped indices, or a `u32`/`f64` id column) — a change to the
+/// stream data model, not to this table.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "rate",
     max: 4_000_000.0,

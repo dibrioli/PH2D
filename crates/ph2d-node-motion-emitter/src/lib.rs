@@ -419,6 +419,56 @@ mod tests {
         }
     }
 
+    /// **The real ceiling is `rate × t`, not `rate`** — and nothing enforces it.
+    ///
+    /// Ids are stored as `f32` (the stream's only scalar type), so spawn indices
+    /// are exact only below 2²⁴ = 16.777.216. Past that, consecutive integers are
+    /// not representable and two particles share an id: the CPU's `BTreeMap<id,
+    /// row>` pairing keeps one of them, and the GPU's `id − prev_first` gather
+    /// hands both the SAME prior row. Silently, and only after enough playback.
+    ///
+    /// The emitter's doc used to file this under "≈ 4,8 days at rate 40, out of
+    /// scope" — which was TRUE while the rate slider stopped at 200 (23 hours).
+    /// It stopped being true when the slider went to 12.000 (23 minutes) and the
+    /// typed box to 4.000.000 (**4,2 seconds**). A note that says "unreachable"
+    /// has to be re-checked by whoever moves the thing that made it unreachable.
+    ///
+    /// This gate does not assert the cliff away — it PINS where it is, so the
+    /// number is measured rather than re-derived, and so that a future fix (exact
+    /// ids: wrapped indices, or a u32/f64 id column) has a red test to turn green.
+    #[test]
+    fn the_id_space_is_exact_only_below_two_to_the_24() {
+        const EXACT: f32 = 16_777_216.0; // 2²⁴
+        let distinct_ids = |rate: f32, t: f32| {
+            let mut sp = spec();
+            sp.rate = rate;
+            sp.life = 1.0;
+            sp.max = 4096;
+            let mut ids = ids_of(&emit(&sp, t));
+            let n = ids.len();
+            ids.dedup();
+            (n, ids.len())
+        };
+        // Below the cliff every particle is its own particle.
+        for (rate, t) in [(200.0f32, 5.0f32), (12_000.0, 5.0), (4_000_000.0, 3.0)] {
+            let (n, distinct) = distinct_ids(rate, t);
+            assert!(t * rate < EXACT, "fixture must stay under the cliff");
+            assert_eq!(distinct, n, "rate {rate} at t={t}: ids must be distinct");
+        }
+        // Above it they are not — half of them collide, and this is the fact the
+        // 4.000.000 typed ceiling walks into after 4,2 seconds of playback.
+        let (burst, late) = (4_000_000.0f32, 5.0f32);
+        let (n, distinct) = distinct_ids(burst, late);
+        assert!(late * burst > EXACT, "fixture must clear the cliff");
+        assert!(
+            distinct < n,
+            "past 2²⁴ the f32 id space must be shown COLLAPSING ({distinct} of {n}) — \
+             if this ever passes with distinct == n, ids became exact and the \
+             ceiling note above is stale"
+        );
+        assert_eq!((n, distinct), (4096, 2049), "the measured collapse");
+    }
+
     #[test]
     fn the_alive_set_is_the_id_window_born_within_life() {
         // rate 10, life 1 → at t = 1.55 the alive ids are those born in

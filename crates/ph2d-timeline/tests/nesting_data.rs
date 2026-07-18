@@ -271,3 +271,93 @@ fn a_container_strip_plays_its_interior() {
         "o interior do container tem de dirigir a pose: esperado 7.0, veio {x}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Fatia 3a — a edição vai para onde o animador está OLHANDO
+// ---------------------------------------------------------------------------
+
+/// **Com um container aberto, um intent de pilha edita o INTERIOR dele.**
+///
+/// É a metade que decide se o nesting é editável ou só representável: as lanes na tela são as
+/// do container, e um edit que caísse na pilha do documento teria mudado algo que o animador
+/// não está vendo — em silêncio, porque as duas pilhas são do mesmo tipo e nada reclamaria.
+#[test]
+fn a_stack_edit_lands_in_the_container_the_animator_opened() {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{TimelineIntent, TimelineState, apply_intent};
+
+    let mut st = TimelineState::new();
+    let c = st.doc.add_container("C".into());
+    let mut ph = Playhead::default();
+
+    // Fechado: a lane vai para o documento.
+    st.edit_host = StackHost::Document;
+    apply_intent(&mut st, &mut ph, TimelineIntent::AddLane);
+    assert_eq!(st.doc.stack().len(), 1, "fechado, a lane é do documento");
+    assert!(st.doc.container_stack(c).unwrap().is_empty());
+
+    // Aberto: a lane vai para o container, e o documento não se move.
+    st.edit_host = StackHost::Container(c);
+    apply_intent(&mut st, &mut ph, TimelineIntent::AddLane);
+    assert_eq!(
+        st.doc.stack().len(),
+        1,
+        "a pilha do documento NÃO pode ter crescido — este é o bug silencioso"
+    );
+    assert_eq!(
+        st.doc.container_stack(c).unwrap().len(),
+        1,
+        "a lane nasceu dentro do container aberto"
+    );
+}
+
+/// **A ordenação por tempo é re-derivada DENTRO dos containers também.**
+///
+/// "Strips ordenados por início" é a invariante em que o vizinho significa alguma coisa —
+/// `hold_at`, o crossfade e `gap_before` leem a lane em ordem. Um strip arrastado para trás
+/// dentro de um container deixaria a lane fora de ordem, e o estrago apareceria como um
+/// crossfade contra o vizinho errado, um nível abaixo de onde alguém olha.
+#[test]
+fn moving_a_strip_inside_a_container_keeps_its_lane_sorted() {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{TimelineIntent, TimelineState, apply_intent};
+
+    let mut st = TimelineState::new();
+    let c = st.doc.add_container("C".into());
+    st.doc
+        .add_lane_in(StackHost::Container(c), "l".into())
+        .unwrap();
+    let host = StackHost::Container(c);
+    let a = st
+        .doc
+        .add_strip_to(host, 0, StripSource::Clip(0), 0.0, 2.0)
+        .unwrap();
+    st.doc
+        .add_strip_to(host, 0, StripSource::Clip(0), 4.0, 6.0)
+        .unwrap();
+
+    st.edit_host = host;
+    let mut ph = Playhead::default();
+    // Empurra o PRIMEIRO para depois do segundo.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::MoveStrip {
+            lane: 0,
+            id: a,
+            t_start: 8.0,
+        },
+    );
+
+    let strips = &st.doc.container_stack(c).unwrap()[0].strips;
+    assert_eq!(strips.len(), 2);
+    assert!(
+        strips[0].t_start <= strips[1].t_start,
+        "a lane do container ficou fora de ordem: {:?}",
+        strips.iter().map(|s| s.t_start).collect::<Vec<_>>()
+    );
+    assert!(
+        (strips[1].t_start - 8.0).abs() < 1e-12,
+        "o strip movido é o de trás agora"
+    );
+}

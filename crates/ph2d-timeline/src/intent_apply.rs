@@ -20,6 +20,10 @@ use crate::strip_edge_edit::{
 pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: TimelineIntent) {
     use TimelineIntent as I;
     let fps = state.doc.fps_display;
+    // **Where a stack edit lands** — the document's own stack, or the interior of the
+    // container the animator has entered. Read ONCE, here, so every arm below routes through
+    // the same answer (ADR-0133 §5).
+    let host = state.edit_host;
     match intent {
         // transport
         I::Play => playhead.play(),
@@ -299,25 +303,31 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // ── the clip stack ──────────────────────────────────────────────────
         // None of these touch the SELECTION: a strip is not a key, and the two
         // never share an identity space.
-        I::AddLane => edit(state, |doc, _| {
+        //
+        // **Every one of them edits `host`, not the document's stack** (ADR-0133 §5): when the
+        // animator has ENTERED a container, the lanes on screen are its interior, and an edit
+        // that landed on the document's stack instead would be an edit to something they are
+        // not looking at. `StackHost::Document` is the default, so a document that never uses
+        // containers takes exactly the path it always did.
+        I::AddLane => edit_at(state, host, |doc, host, _| {
             let name = doc.fresh_lane_name();
-            doc.add_lane(name);
+            doc.add_lane_in(host, name);
         }),
-        I::RemoveLane { lane } => edit(state, |doc, _| {
-            doc.remove_lane(lane);
+        I::RemoveLane { lane } => edit_at(state, host, |doc, host, _| {
+            doc.remove_lane_in(host, lane);
         }),
-        I::SetLaneMuted { lane, muted } => edit(state, |doc, _| {
-            if let Some(l) = doc.stack_mut().get_mut(lane) {
+        I::SetLaneMuted { lane, muted } => edit_at(state, host, |doc, host, _| {
+            if let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) {
                 l.muted = muted;
             }
         }),
-        I::SetLaneMode { lane, mode } => edit(state, |doc, _| {
-            if let Some(l) = doc.stack_mut().get_mut(lane) {
+        I::SetLaneMode { lane, mode } => edit_at(state, host, |doc, host, _| {
+            if let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) {
                 l.mode = mode;
             }
         }),
-        I::SetLaneWeight { lane, weight } => edit(state, |doc, _| {
-            if let Some(l) = doc.stack_mut().get_mut(lane) {
+        I::SetLaneWeight { lane, weight } => edit_at(state, host, |doc, host, _| {
+            if let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) {
                 l.weight = weight.clamp(0.0, 1.0); // CLAMP-OK: constant bounds
             }
         }),
@@ -326,17 +336,18 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             clip,
             t_start,
             t_end,
-        } => edit(state, |doc, _| {
-            doc.add_strip(lane, clip, t_start.max(0.0), t_end.max(0.0));
+        } => edit_at(state, host, |doc, host, _| {
+            let src = crate::StripSource::Clip(u16::try_from(clip).unwrap_or(u16::MAX));
+            let _ = doc.add_strip_to(host, lane, src, t_start.max(0.0), t_end.max(0.0));
         }),
-        I::RemoveStrip { lane, id } => edit(state, |doc, _| {
-            doc.remove_strip(lane, id);
+        I::RemoveStrip { lane, id } => edit_at(state, host, |doc, host, _| {
+            doc.remove_strip_in(host, lane, id);
         }),
-        I::DuplicateStrip { lane, id } => edit(state, |doc, _| {
-            doc.duplicate_strip(lane, id);
+        I::DuplicateStrip { lane, id } => edit_at(state, host, |doc, host, _| {
+            doc.duplicate_strip_in(host, lane, id);
         }),
-        I::MoveStrip { lane, id, t_start } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        I::MoveStrip { lane, id, t_start } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 let span = s.span();
                 s.t_start = t_start.max(0.0);
                 s.t_end = s.t_start + span; // rigid: the span rides along
@@ -348,8 +359,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             edge,
             t,
             from,
-        } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 trim_strip(s, edge, t);
                 mark_edge(s, false, edge, from);
             }
@@ -360,8 +371,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             edge,
             t,
             from,
-        } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 stretch_strip(s, edge, t);
                 mark_edge(s, true, edge, from);
             }
@@ -370,8 +381,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             lane,
             id,
             loop_mode,
-        } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 s.loop_mode = loop_mode;
             }
         }),
@@ -391,8 +402,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             id,
             edge,
             seconds,
-        } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 let other = if edge == 0 { s.ease_out } else { s.ease_in };
                 let room = (s.span() - other.max(0.0)).max(0.0);
                 let v = seconds.clamp(0.0, room); // CLAMP-OK: 0..what the other fade left
@@ -416,8 +427,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // never both (the evaluator would blend against both a frozen and a live opening).
         // The gap is read from the LANE (it needs the neighbours), so the strip index is
         // resolved first.
-        I::SetStripLead { lane, id, seconds } => edit(state, |doc, _| {
-            let Some(l) = doc.stack_mut().get_mut(lane) else {
+        I::SetStripLead { lane, id, seconds } => edit_at(state, host, |doc, host, _| {
+            let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) else {
                 return;
             };
             let Some(i) = l.index_of(id) else {
@@ -428,8 +439,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             s.lead_in = seconds.clamp(0.0, gap); // CLAMP-OK: 0..the empty time before it
             s.ease_in = 0.0; // the inward fade-in and the outward one are exclusive
         }),
-        I::SetStripSpeed { lane, id, speed } => edit(state, |doc, _| {
-            if let Some(s) = doc.strip_mut(lane, id) {
+        I::SetStripSpeed { lane, id, speed } => edit_at(state, host, |doc, host, _| {
+            if let Some(s) = doc.strip_in_mut(host, lane, id) {
                 // The span follows the rate, `t_start` pinned — the same edit
                 // `stretch_strip` makes, stated as a number instead of felt as a
                 // drag (see the variant's docs).
@@ -464,6 +475,18 @@ fn settle(doc: &mut TimelineDoc) {
     doc.active_clip_mut().resolve_roving();
     for lane in doc.stack_mut() {
         lane.resort();
+    }
+    // **Every stack, not just the document's** (ADR-0133). "Strips are sorted by start time"
+    // is the invariant the evaluator's neighbour logic rests on — `hold_at`, the crossfade,
+    // `gap_before` all read a lane in order. A strip dragged inside a CONTAINER would leave
+    // that lane unsorted, and the damage would show up as a crossfade against the wrong
+    // neighbour, one level down from where anyone is looking.
+    for i in 0..doc.containers().len() {
+        if let Some(lanes) = doc.container_stack_mut(i) {
+            for lane in lanes {
+                lane.resort();
+            }
+        }
     }
 }
 
@@ -518,6 +541,20 @@ fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) {
     } else {
         ph2d_core::LoopMode::Wrap
     });
+}
+
+/// [`edit`], for a mutation that must land in whichever stack the animator has OPEN.
+///
+/// The host is passed through rather than read from `state` inside the closure because the
+/// closure already borrows `state` mutably — and threading it makes the routing visible at
+/// every call site, which is the point: a stack edit that forgot the host would silently
+/// edit the document while the animator watched a container.
+fn edit_at(
+    state: &mut TimelineState,
+    host: crate::StackHost,
+    f: impl FnOnce(&mut TimelineDoc, crate::StackHost, &mut Selection),
+) {
+    edit(state, |doc, sel| f(doc, host, sel));
 }
 
 fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {

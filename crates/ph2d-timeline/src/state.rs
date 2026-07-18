@@ -182,6 +182,15 @@ pub struct TimelineState {
     /// clip-switch sync) targets: the Keys-view clip-clock loop, or the Arrange
     /// timeline loop. Session state, like [`Self::flags`]; defaults to Arrange.
     pub keys_mode: bool,
+    /// **Which stack the panel is editing** — the document's own, or the interior of a
+    /// container the animator has ENTERED (ADR-0133 §5).
+    ///
+    /// Stamped by the shell each frame from `ph2d_panel_timeline::state::edit_host()`, before
+    /// intents drain — the same channel [`Self::keys_mode`] rides, for the same reason: the
+    /// panel knows where the animator is looking, and an edit has to land where they are
+    /// looking. Session state; a document does not remember which container was open, exactly
+    /// as Animate does not.
+    pub edit_host: crate::nest::StackHost,
 }
 
 impl TimelineState {

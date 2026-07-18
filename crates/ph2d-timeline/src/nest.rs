@@ -47,9 +47,10 @@ pub struct NamedContainer {
 ///
 /// The document's stack is not itself referenceable — nothing can place *it* inside
 /// something — so a strip added there can never close a cycle. Containers can.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum StackHost {
     /// The timeline's own stack.
+    #[default]
     Document,
     /// The interior of the container at this index.
     Container(usize),
@@ -108,6 +109,83 @@ impl TimelineDoc {
         }
         lanes.push(ClipLane::new(name));
         Some(lanes.len() - 1)
+    }
+
+    /// Remove a lane (and everything on it) from `host`'s stack.
+    pub fn remove_lane_in(&mut self, host: StackHost, lane: usize) -> bool {
+        let Some(lanes) = self.host_stack_mut(host) else {
+            return false;
+        };
+        if lane >= lanes.len() {
+            return false;
+        }
+        lanes.remove(lane);
+        true
+    }
+
+    /// A strip of `host`'s stack, by identity.
+    #[must_use]
+    pub fn strip_in(&self, host: StackHost, lane: usize, id: StripId) -> Option<&ClipStrip> {
+        let l = self.host_stack(host)?.get(lane)?;
+        l.strips.get(l.index_of(id)?)
+    }
+
+    /// A strip of `host`'s stack, for editing.
+    pub fn strip_in_mut(
+        &mut self,
+        host: StackHost,
+        lane: usize,
+        id: StripId,
+    ) -> Option<&mut ClipStrip> {
+        let l = self.host_stack_mut(host)?.get_mut(lane)?;
+        let i = l.index_of(id)?;
+        l.strips.get_mut(i)
+    }
+
+    /// Drop a strip from `host`'s stack.
+    pub fn remove_strip_in(&mut self, host: StackHost, lane: usize, id: StripId) -> bool {
+        let Some(l) = self.host_stack_mut(host).and_then(|s| s.get_mut(lane)) else {
+            return false;
+        };
+        let Some(i) = l.index_of(id) else {
+            return false;
+        };
+        l.strips.remove(i);
+        true
+    }
+
+    /// Copy a strip of `host`'s stack and lay the copy immediately after the original.
+    ///
+    /// Same rule as the document-level [`TimelineDoc::duplicate_strip`] — adjacent, never
+    /// overlapping, because a duplicate laid on top of its source is a crossfade of a clip
+    /// with itself: a null edit dressed as a blend.
+    pub fn duplicate_strip_in(
+        &mut self,
+        host: StackHost,
+        lane: usize,
+        id: StripId,
+    ) -> Option<StripId> {
+        let mut copy = self.strip_in(host, lane, id)?.clone();
+        let new_id = self.alloc_strip_id();
+        let span = copy.span();
+        copy.id = new_id;
+        copy.t_start += span;
+        copy.t_end += span;
+        self.host_stack_mut(host)?.get_mut(lane)?.insert(copy);
+        Some(new_id)
+    }
+
+    /// A name no container is using yet ("Container 1", "Container 2", …).
+    #[must_use]
+    pub fn fresh_container_name(&self) -> String {
+        let mut n = self.containers().len() + 1;
+        loop {
+            let name = format!("Container {n}");
+            if !self.containers().iter().any(|c| c.name == name) {
+                return name;
+            }
+            n += 1;
+        }
     }
 
     /// **May `source` be placed inside `host`?** — the authoring-time cycle guard.

@@ -146,6 +146,22 @@ criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem
 
 ## §5 — Fatia 3 — UI (`ph2d-panel-timeline` + shell)
 
+> **Partida em 3a e 3b (2026-07-18).** A UI é grande e tem duas metades separáveis: *"o edit vai
+> para o lugar certo"* (modelo, headless, gateável) e *"o animador vê e alcança"* (painel). Fazer
+> as duas de uma vez arriscava exatamente o modo de falha que este repo já catalogou — widget
+> pintado mas não registrado, botão que despacha nada. **3a fechou; 3b é o que falta.**
+>
+> **✅ 3a — o roteamento por HOST (2026-07-18).** `TimelineState.edit_host` viaja pelo MESMO canal
+> do `keys_mode` (painel publica → shell carimba antes de drenar), e os **15 intents de pilha**
+> passam a editar `host` em vez do documento (`edit_at`, que passa o host explicitamente para o
+> roteamento ficar visível em cada sítio). `settle` re-ordena as lanes dos containers também — a
+> invariante "strips ordenados por início" é onde o vizinho significa algo, e um strip arrastado
+> lá dentro a quebraria um nível abaixo de onde alguém olha. 2 gates + 2 mutações.
+>
+> ⚠️ **Até o 3b, o nesting continua INALCANÇÁVEL pelo artista** — `add_container` não tem
+> chamador na UI. Isso é deliberado: é melhor do que uma breadcrumb meio-costurada.
+
+
 1. **Breadcrumb** persistente (Animate/Harmony), com entrar/sair.
 2. **As duas réguas juntas** (o mecanismo do AE): a de baixo = tempo do pai, a de cima = o da
    fonte. Nada de rótulo em texto — nenhum produto rotula, e a régua se explica por estar alinhada.

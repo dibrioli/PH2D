@@ -19,7 +19,8 @@
 | **W1** | Ponte ECS + tick no Playhead + hash no replay gate | o alicerce: sprite cai e assenta, determinístico | tudo |
 | **W1.5** | Scrub bit-exato (checkpoint ring) | scrub pra trás sem re-sim O(t) | — (opcional; pode ir depois de W2) |
 | **W2a** | Inspector body | a autoria do artista | joints, bake |
-| **W2b** | Painel global de mundo | gravidade/solver/camadas | — |
+| **W2b** | Painel global de mundo | gravidade/solver/arrasto/sono | — |
+| **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |
 | **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
 
@@ -168,12 +169,42 @@ massa/restituição/atrito/tipo num sprite selecionado.
    editar body sem seleção é no-op explícito (`debug_assert`/`warn`), não corpo vazio.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=3` — abre o painel, ajusta gravidade + escala, dropa corpos e vê a mudança.
+`PH2D_PHYSICS_SMOKE=3` (W2a, autoria no Inspector) · **`=4` (W2b, o painel de mundo)**.
 
 ### Fora
 Joints, bake.
 
 ---
+
+## W2c — Camadas de colisão · *quem colide com quem*
+
+**Por que NÃO entrou no W2b:** a matriz é metade de uma feature. A outra metade é
+**a camada de cada corpo**, que é campo de component (bump de `PROJECT_SCHEMA` +
+`ComponentRegistry`) e UI do **Inspector** — a superfície do W2a, já fechada e smokada.
+Uma matriz sem atribuição por-corpo é uma matriz 1×1: todo corpo na camada 0, uma única
+célula viva, e as outras 255 são chrome que não faz nada. *"Botão que não faz nada é pior
+que botão que falta."*
+
+Duas fricções reais que a wave tem de resolver de propósito, não por acidente:
+- o gate `architecture_panel_wiring_parity` **não enxerga registro dentro de laço**, e uma
+  matriz É um laço — os ids são dinâmicos (`hash` por par de camadas). Precisa do gate
+  irmão que o Painter/Flip já têm para ids dinâmicos (`*_dynamic_ids_dont_collide_*`).
+- mudar a matriz muda o `InteractionGroups` de **todo collider vivo**, então ela entra no
+  mesmo choke point das outras settings (`set_settings` → aplica + limpa o ring), e o
+  `BodyDesc` ganha `memberships`/`filter`.
+
+### Entregáveis
+- `Collider.layer: u8` (append-only) + a linha no Inspector · `PhysicsSettings.layer_matrix`
+  ([u16; 16], triangular na UI como Unity) · `BodyDesc.memberships/filter` → `ColliderBuilder::collision_groups`.
+- Bump `PROJECT_SCHEMA` + a tripla-pin.
+
+### Gates
+1. **dois corpos em camadas que não colidem se ATRAVESSAM** (oráculo de aparência: o de
+   cima chega ao chão). Mutação: a matriz ignorada → colidem → vermelho.
+2. **mudar a matriz alcança colliders que já existem** (o irmão do
+   `the_defaults_reach_bodies_that_already_exist`).
+3. **a matriz é simétrica** — A colide com B ⟺ B colide com A. Uma matriz que pode ficar
+   assimétrica tem dois donos para um fato.
 
 ## W3 — Joints · *as articulações*
 
@@ -183,7 +214,7 @@ Joints, bake.
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (**18 → 19** — W1 usou o 16, W2 o 17, e a integração RECONTOU para 18 ao somar o bump da `line/FLIP`) + a tripla-pin — joints persistem.
+- Bump `PROJECT_SCHEMA` (**19 → 20** — W1 usou o 16, W2a o 17, a integração RECONTOU para 18 ao somar o bump da `line/FLIP`, e o W2b levou o 19 ao persistir as settings de mundo) + a tripla-pin — joints persistem.
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de
@@ -195,7 +226,7 @@ Joints, bake.
    trajetória; o oráculo de aparência pega.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=4` — pêndulo/corrente auto-play.
+`PH2D_PHYSICS_SMOKE=5` — pêndulo/corrente auto-play.
 
 ### Fora
 Bake.
@@ -224,7 +255,7 @@ Bake.
    de bake é UM passo. Mutação: 1 key/frame sem simplify vira 1 undo/frame — o gate conta os passos.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=5` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
+`PH2D_PHYSICS_SMOKE=6` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
 reproduz o movimento).
 
 ### Fora

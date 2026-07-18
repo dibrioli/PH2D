@@ -29,11 +29,12 @@
 > as 4 suítes do módulo verdes · seam do Inspector 7/7 · **os dois hashes C9 BYTE-IDÊNTICOS** aos da
 > entrega (`2f7e2d58…` / `54fea296…`) ⇒ a física atravessou o merge sem mover um bit.
 
-> **▶️ QUEM SEGUE DAQUI:** [`HANDOFF_CONTINUACAO_line_physics_2026-07-18.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-18.md)
-> — o W2b (painel global), com o **mapa de fiação de painel já levantado** (os 5 sites, os gates, a
-> armadilha do z-order que não falha alto) para não ser re-pago. Traz também a **tarefa zero**: o
-> `CLAUDE.md` §5 não tem NENHUM ponteiro para `docs/Physics/`, então este módulo é invisível para
-> quem entra pelo roteador.
+> **▶️ O W2b FECHOU (2026-07-18).** O painel global existe, está fiado nos 5 sites + os 4 do scroll,
+> persiste no arquivo de projeto e tem cena de smoke própria (`PH2D_PHYSICS_SMOKE=4`). A **tarefa
+> zero também fechou**: o `CLAUDE.md` §5 e o roteador §1 agora apontam para `docs/Physics/`.
+> Detalhe em **§W2b** abaixo; o handoff de integração é
+> [`HANDOFF_INTEGRACAO_line_physics_W2b_2026-07-18.md`](HANDOFF_INTEGRACAO_line_physics_W2b_2026-07-18.md).
+> A próxima wave é **W2c** (camadas de colisão) ou **W3** (joints) — ordem do Enio.
 
 ## Estado por-wave
 
@@ -43,8 +44,9 @@
 | **W1 — Ponte ECS + tick + hash** | ✅ **INTEGRADO** (smoke aprovado) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
-| **W2b — Painel global de mundo** | ⏭️ **A PRÓXIMA** | — | gravidade/solver/camadas; terreno re-verificado abaixo |
-| **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
+| **W2b — Painel global de mundo** | ✅ **LANDOU** (pendente smoke) | ver §W2b | gravidade/solver/arrasto/sono + persistência |
+| **W2c — Camadas de colisão** | ⏳ pendente | — | a matriz É metade: a outra é a camada por-corpo (Inspector) |
+| **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll; bumpa o schema **19 → 20** |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
@@ -356,7 +358,9 @@ diferentes do mesmo artefato.
 
 ---
 
-## ⏭️ W2b — o painel global de mundo: terreno RE-VERIFICADO contra a `main` pós-integração (2026-07-18)
+## ✅ §W2b — o painel global de mundo LANDOU (2026-07-18, pendente smoke)
+
+### O terreno que a wave usou (medido pós-integração, mantido como registro)
 
 ⚠️ **Os números abaixo foram medidos DEPOIS da integração, não copiados do plano.** A `main` recebeu
 Painter, FLIP e GPU na mesma janela, e um "próximo id livre" anotado antes do merge é exatamente o tipo
@@ -382,6 +386,127 @@ pintado** — nada quebra, nada avisa.
 `set_substeps`/`set_contact_frequency`/`set_contact_response`/`set_solver_iterations` (no `PhysicsWorld`)
 · e o flag `App.show_colliders`, que o checkbox "Show Colliders" deve LER — **duas portas para a mesma
 pergunta divergem**, então o checkbox e a tecla `B` compartilham o flag, não cada um o seu.
+
+---
+
+### O que a wave entregou
+
+**Crate nova `ph2d-panel-physics`**, docada, categoria MUNDO — a metade do mundo da autoria
+(a metade do CORPO é a seção "Physics Body" do Inspector, W2a). Gravidade (X/Y) · sub-passos ·
+iterações do solver · frequência de contato · arrasto linear/angular · sono (velocidade, giro,
+atraso) · Show Colliders · Reset to Defaults · readouts de escala e nº de corpos.
+
+**Abridor: tecla `W`** (de World), espelho do `L` da timeline. Um painel de mundo não é
+tool-gated, então sem abridor próprio ele é feature que ninguém alcança.
+
+### As decisões que decidem tudo
+
+- **UMA TABELA, QUATRO CONSUMIDORES** (`rows.rs::SECTIONS`). Um knob é pintado, registrado,
+  virado em valor no drag e varrido pelo seam — quatro listas à mão driftam, e o drift é MUDO
+  (row pintada e não registrada = clique dropado em silêncio). `paint`/`populate`/`event`/
+  `tests/seam.rs` iteram a MESMA lista, então um knob novo nasce pintado, registrado, vivo e
+  varrido. É também a resposta estrutural ao *"o card mais cheio apodrece"*.
+- **Não há tool, então não há `ToolPanelEvent`:** o painel emite INTENTS que a ponte do shell
+  drena (padrão `motion-graph`/timeline). Inventar uma tool pro cano existente encaixar seria
+  uma tool que não é tool.
+- **O ARTISTA é dono da visibilidade:** a ponte nunca a escreve — sem edge-trigger
+  `LAST_ACTIVE`, sem tomada do slot do Inspector. Não há aresta de ativação em que disparar, e
+  roubar o Inspector de um painel que o artista abriu de propósito tiraria o que ele estava
+  olhando.
+- **Duas coisas são EXIBIDAS, nunca possuídas:** a escala do mundo é
+  `ProjectSettings.pixels_per_meter` (D4 — já tem dono no menu Settings) e o contorno é o
+  `App.show_colliders` do shell, o MESMO flag da tecla `B`. O toggle devolve um PEDIDO.
+- **Sem camadas de colisão, e por um motivo nomeável** — ver W2c no plano: a matriz é metade de
+  uma feature, e a outra metade (a camada por-corpo) é component + Inspector.
+
+### O que já existia e a wave só ligou — mais o que ela teve de construir
+
+`set_gravity` e os `set_substeps`/`set_contact_frequency`/`set_solver_iterations` já estavam lá.
+O que **não** estava: **damping e sono globais não existem no rapier** — os dois são POR CORPO
+(medido: o `IntegrationParameters` não tem nenhum dos dois). Expô-los como setting de mundo é o
+idioma que todo motor 2D shipa (Godot: `default_linear_damp`, `sleep_threshold_linear`,
+`time_before_sleep`; Unity: sleep tolerances), então nasceu o `BodyDefaults` em
+`ph2d-physics/src/world/defaults.rs`, com **uma porta só** por número.
+⚠️ **Um override por-corpo, se um dia existir, TEM de chegar com modo de combinação** (o
+`damp_mode` do Godot) — um 2º campo que ganha em silêncio é a divergência clássica.
+
+### Todo teto foi MEDIDO (`ph2d-physics/tests/measure_settings.rs`, `--release`, `#[ignore]`)
+
+| knob | teto | de que recurso |
+|---|---|---|
+| sub-passos | **12** | CPU: 500 corpos acordados = **101,9% do HR-4** (4=34,1% · 8=67,8% · 16=135%) |
+| iterações | **16** | CPU: 85,7% do HR-4 (24 = 120,5%, estoura) |
+| contact Hz | **480** | estabilidade: deriva EXATAMENTE 0,0000 mm até 960 Hz; a 1920 Hz aparece (0,011 px) |
+| arrasto | **10** | significado: velocidade terminal ≈ g/d ⇒ 10 = 0,98 m/s (corpo que DERIVA); além disso só sombras de "parado" |
+
+⚠️ **A hipótese óbvia do contact Hz — Nyquist em `1/(2·substep_dt)` = 120 Hz — foi REFUTADA
+pela medição.** As soft constraints do rapier são estáveis muito além. O teto shipado é o
+medido, não o derivado.
+
+⚠️ **E a 1ª rodada do harness mediu NADA:** uma pilha assentada DORME, e corpo dormindo não é
+integrado — a sonda de jitter leu 0,0000 mm em todas as frequências (inclusive 1920) e a tabela
+de custo cronometrou uma pilha que tinha parado de ser simulada. Os dois zeros eram
+**garantidos, não observados**. O harness agora proíbe o sono (que é também o pior caso honesto
+pra um orçamento).
+
+### Persistência: `PROJECT_SCHEMA` **18 → 19**, tripla-pin `(19, 8, 8)`
+
+`ProjectFile.physics` (6º campo), FORA do `ProjectState` — o `ProjectState` é a unidade do undo
+GLOBAL e um Ctrl+Z do canvas não deve rebobinar a gravidade da cena (mesmo motivo do `motion` e
+da `timeline`). ⚠️ **A ORDEM no load: `rebuild()` primeiro, `set_settings` depois** — o rebuild
+constrói um mundo novo nos defaults do motor, então instalar antes seria escrever no que ele
+joga fora, e a cena carregaria com a gravidade do documento ANTERIOR, em silêncio. Pinado por
+arch-gate sobre o fonte (o fato é uma ORDEM; nenhum teste de unidade a alcança porque `gfx` é
+`None` sem janela).
+
+### Gates: 22 novos, 21 mutações, 21 sangram
+
+`ph2d-physics/tests/body_defaults.rs` (5+1 unit) · `ph2d-physics-ecs/tests/settings.rs` (6) ·
+`ph2d-panel-physics/tests/seam.rs` (9) · `project_tests` (2).
+
+**Três gates nasceram VERDES sobre o bug que existiam pra pegar. Vale mais que os 21:**
+
+1. *"os defaults são os do rapier"* comparava `BodyDefaults::rapier()` **contra ele mesmo** (os
+   dois mundos liam a MESMA função) e ficou verde com `linear_damping` mutado pra 0.05. O
+   oráculo tem de ser o RAPIER — um corpo que ele construiu e ninguém configurou — e por isso
+   mora como unit test, onde o rapier é alcançável.
+2. *"cada row muda só o campo dela"* computava a expectativa **com `row.set`**, então ligar a
+   row de `gravity_y` no setter de `gravity_x` mexia nos dois lados. O gate novo não usa
+   aritmética da tabela: round-trip (`get ∘ set` == identidade) + disjunção.
+3. *"as settings sobrevivem ao scrub"* acertava o **RING**, e um checkpoint restaurado carrega o
+   damping dentro do body set ⇒ o `rebuild_from_rest` nunca rodava e o código pré-W2b passava. O
+   MISS é o **Reset** (tick 0 nunca é gravado), e o ring vazio virou pré-condição do fixture —
+   é a assinatura observável de que aquela pista rodou.
+
+Padrão comum: **um oráculo que usa a função sob teste para computar o que espera é sempre
+verde.** Vale a pena procurar por essa forma antes de confiar num gate que passou de primeira.
+
+E duas metades do sono ficaram verdes **uma sem a outra**: uma bola ASSENTADA está abaixo de
+qualquer threshold são e parada por qualquer timer são, então o knob sobrevivente decidia
+sozinho. Agora o threshold é provado por **queda livre** (a bola dorme NO AR — que é também o
+bug que o artista reportaria) e o timer por oráculo **diferencial** (dois timers, mesma cena).
+
+### Fiação (o mapa do handoff de continuação, agora percorrido)
+
+5 sites de painel + 4 do scroll: `ids/chrome/physics.rs` (29 ids, todos na tabela de colisão
+elemento a elemento) · `mod`/`pub use` · **a lista de fallback de z-order** · `panel-sync` +
+`EXPECTED_TYPED` 18→19 + a lista `default` (as duas à mão) · `PHYSICS_SCROLLBAR_ID = NodeId(836)`
++ auto-checagem + `scrollbar_panel_for_id` + **`|| inside(PHYSICS_PANEL)`** no
+`cursor_over_hero_panel` (o 4º, o que não falha alto: sem ele a roda ZOOMA a câmera por baixo).
+i18n `panel.physics.*`.
+
+⚠️ **As seções SÃO colapsáveis por necessidade, não por estilo:** o `paint_section_header` pinta
+o chevron SEMPRE, então um header sem id vivo desenharia um "clique pra dobrar" que não dobra.
+⚠️ **"Show Colliders" é um Button, não um Checkbox:** `Checkbox` emite `Toggled`, que este
+`event.rs` não encaminha — ficaria registrado e morto (a mesma cicatriz do painter-layers).
+
+### Aberto no W2b
+
+- **Nenhum gate mede a perf do painel** — ele é 10 rows de slider, e o custo real do W2b está no
+  solver, que já é gateado por RATIO. Se um knob novo trouxer trabalho por-frame, gateie.
+- **O `body_count` do readout conta corpos, não "corpos dormindo"** — a pergunta *"por que nada
+  se move?"* teria resposta melhor com os dois números. Barato; não foi feito porque ninguém
+  ainda a fez.
 
 ---
 
@@ -484,11 +609,29 @@ pergunta divergem**, então o checkbox e a tecla `B` compartilham o flag, não c
 - ADR **0131** (era 0130 — renumerado na integração de 2026-07-18: a `line/gpu-nodes` reclamou o 0130 no mesmo dia).
 - ~~`PIXELS_PER_METER`~~ **NÃO existe** — D4 corrigido; reusa `ProjectSettings.pixels_per_meter`.
 
+**Alocados e CRIADOS no W2b:**
+- Crate **`ph2d-panel-physics`** (glob `crates/*`), `Panel::ID = "physics"`, struct
+  **`PhysicsPanel`** (o nome é load-bearing: o `ph2d-panel-sync` faz parse de `pub struct <N>Panel`).
+- Feature **`panel-physics`** (gerada) + a entrada na lista `default` e o `EXPECTED_TYPED`
+  **18 → 19** (as duas **à mão** — o sync não as regenera).
+- **29 ids** `PHYSICS_*` em `ids/chrome/physics.rs` (slug family `physics.*`, distinta do
+  `INSP_PHYS_*` do Inspector) — todos na tabela de `node_id_collisions`.
+- **`PHYSICS_SCROLLBAR_ID = NodeId(836)`** (o próximo livre agora é **837**).
+- `ph2d-physics::BodyDefaults` + `world/defaults.rs`; `ph2d-physics-ecs::PhysicsSettings` +
+  `settings.rs` + as consts de range (`MAX_SUBSTEPS`/`MAX_SOLVER_ITERATIONS`/`MIN_CONTACT_HZ`/
+  `MAX_CONTACT_HZ`/`MAX_DAMPING`/`MAX_SLEEP_THRESHOLD`/`MAX_TIME_UNTIL_SLEEP`/`GRAVITY_LIMIT`/
+  `DEFAULT_SOLVER_ITERATIONS`).
+- Shell: `render_loop/physics_panel_bridge.rs` (**nome distinto do `physics_bridge`**, que é a
+  simulação — duas pontes, duas fases), **tecla `W`**, cena de smoke **`PH2D_PHYSICS_SMOKE=4`**.
+- **`PROJECT_SCHEMA` = 19** + tripla-pin `(19, 8, 8)`; `ProjectFile.physics` (6º campo).
+- i18n: 21 chaves `panel.physics.*`.
+
 **A alocar na wave que os cria (próximo LIVRE):**
-- W2: crate `ph2d-panel-physics`, `Panel::ID="physics"`, feature `panel-physics`, `ids::PHYSICS_PANEL`,
-  `EXPECTED_TYPED` bump em `ph2d-panel-registry-init`; campos novos append em `RigidBody`/`Collider`
-  (restituição/atrito/damping/…) + variants `Kinematic`/formas.
-- W3: `PROJECT_SCHEMA` **16 → 17** (joints) + a tripla-pin; components de joint.
+- W2c: `Collider.layer` (append) + `PhysicsSettings.layer_matrix` + ids da matriz (**dinâmicos** —
+  precisam do gate irmão de colisão, o `architecture_panel_wiring_parity` NÃO vê registro em laço)
+  + `PROJECT_SCHEMA` **19 → 20**.
+- W3: `PROJECT_SCHEMA` **19 → 20** (ou 20 → 21 se o W2c vier antes — o valor se **CONTA**) + a
+  tripla-pin; components de joint.
 
 ---
 

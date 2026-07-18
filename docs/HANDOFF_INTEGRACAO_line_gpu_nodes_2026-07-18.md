@@ -1,5 +1,8 @@
 # HANDOFF DE INTEGRAÇÃO — `line/gpu-nodes` (ADR-0130 + emenda 1) · 2026-07-18
 
+
+> ⚠️ **HISTÓRICO — INTEGRADO À `main` EM 2026-07-18.** Este doc conta o briefing do integrador. Quem continua a linha começa em [`HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md).
+
 > **Para o agente INTEGRADOR do Enio** (DIRETRIZ §1.5.3–1.5.4, §1.5.9). Esta linha
 > está **FECHADA**. Ela não integrou, não pushou e não rodou `ship.sh` — por
 > protocolo (§0.7 do CLAUDE.md).

@@ -58,10 +58,11 @@ pub(crate) fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
         if id == i::vector_fx_hide_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Hide));
         }
-        // Um parâmetro de caixinha é pintado como BOTÃO, então chega como Click e não como
-        // ValueChanged — e partilha o id do slider (o painel pinta um OU outro, nunca os dois).
+        // Uma caixinha é pintada como BOTÃO e tem id PRÓPRIO. Reusar o id do slider punha dois
+        // tipos de widget num id só: o store registava um `Slider`, e um slider NÃO emite Click
+        // no Up — este ramo nunca corria (Enio, 2026-07-18).
         for p in 0..i::MAX_FX_ROW_PARAMS {
-            if id == i::vector_fx_param_id(r, p) {
+            if id == i::vector_fx_toggle_id(r, p) {
                 return Some(FxClick::Row(r, FxRowAction::Toggle(p)));
             }
         }

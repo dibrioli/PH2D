@@ -55,6 +55,10 @@ fn is_fx_button(id: ph2d_a11y::NodeId) -> bool {
                 || id == ids::vector_fx_up_id(r)
                 || id == ids::vector_fx_down_id(r)
                 || id == ids::vector_fx_hide_id(r)
+                // A CAIXINHA de um parâmetro também é um botão. Ela tem id próprio desde
+                // 2026-07-18: partilhar o do slider punha dois tipos de widget num id só, e um
+                // slider não emite `Click` no Up.
+                || (0..ids::MAX_FX_ROW_PARAMS).any(|p| id == ids::vector_fx_toggle_id(r, p))
         })
 }
 

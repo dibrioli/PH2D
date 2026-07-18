@@ -151,6 +151,13 @@ fn remove_and_reorder_reach_the_scene() {
 /// seguidamente no mesmo ponto dava sempre o mesmo resultado (Enio, 2026-07-18).
 ///
 /// O oráculo é a ALTERNÂNCIA sob um track FIXO — é isso que o artista faz com o dedo parado.
+///
+/// ⚠️ **ESTE GATE FABRICA O CLIQUE**, e foi por isso que a 1ª correção passou por ele e chegou
+/// morta ao produto: ele chama `apply` com o `Some(Toggle)` já pronto, então prova que o ramo
+/// funciona *se* o Click chegar — nunca que ele chega. E não chegava: o id era partilhado com o
+/// slider, e *um slider não emite `Click` no Up*. Quem responde a essa pergunta é o gate de seam
+/// `every_effect_stack_button_reaches_the_bus_when_clicked`, que PINTA e CLICA a caixinha.
+/// Registado ≠ despachado; este gate cobre a segunda metade, e só ela.
 #[test]
 fn a_toggle_alternates_even_when_clicked_at_the_same_spot() {
     let (mut scene, id) = scene_with_square();

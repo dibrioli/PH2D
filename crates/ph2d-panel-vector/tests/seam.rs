@@ -1230,17 +1230,31 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
 
     // Uma pilha de DUAS linhas: é o que faz o Up e o Down existirem (nas bordas eles não são
     // oferecidos, de propósito).
+    // ⚠️ A linha traz um slider **e** uma CAIXINHA. Sem a caixinha na fixture, a varredura
+    // nunca a via — e ela era o unico controlo da secao pintado como BOTAO sem id proprio: o
+    // store registava um `Slider` no id partilhado, e *um slider nao emite Click no Up*, entao
+    // o ramo que a alternava era codigo morto (Enio, 2026-07-18).
     let row = |label: &'static str| ph2d_panel_vector::FxRowView {
         label,
         enabled: true,
-        params: vec![ph2d_panel_vector::FxParamView {
-            name: "Start",
-            min: 0.0,
-            max: 1.0,
-            toggle: false,
-            integer: false,
-            value: 0.25,
-        }],
+        params: vec![
+            ph2d_panel_vector::FxParamView {
+                name: "Start",
+                min: 0.0,
+                max: 1.0,
+                toggle: false,
+                integer: false,
+                value: 0.25,
+            },
+            ph2d_panel_vector::FxParamView {
+                name: "Smooth",
+                min: 0.0,
+                max: 1.0,
+                toggle: true,
+                integer: false,
+                value: 0.0,
+            },
+        ],
     };
     let publish = || {
         ph2d_panel_vector::set_current_effects(true, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
@@ -1254,6 +1268,11 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     targets.push((ids::vector_fx_down_id(0), "Down linha 0".into()));
     targets.push((ids::vector_fx_up_id(1), "Up linha 1".into()));
     targets.push((ids::vector_fx_hide_id(0), "olho linha 0".into()));
+    // A CAIXINHA: e' um botao, e tem de emitir Click como qualquer outro.
+    targets.push((
+        ids::vector_fx_toggle_id(0, 1),
+        "caixinha Smooth linha 0".into(),
+    ));
 
     for (id, name) in targets {
         publish();

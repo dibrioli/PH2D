@@ -593,6 +593,22 @@ pub fn vector_fx_param_num_id(row: usize, param: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.num"))
 }
 
+/// **A CAIXINHA** do parâmetro `param` da linha `row` — id PRÓPRIO, e a razão é dura.
+///
+/// Um parâmetro de caixinha é pintado como BOTÃO. Reusar o id do slider parecia grátis (o painel
+/// pinta um OU outro), mas **um id só pode ter um tipo de widget no store**: o `populate` regista
+/// o teto sem saber que efeito cai na linha, então o slot era sempre um `Slider` — e o dispatch
+/// diz, com todas as letras, *"sliders emit no Click on release"*.
+///
+/// O ramo que tratava a caixinha nunca chegou a correr. O que a alternava era o `ValueChanged` do
+/// slider, cujo valor é a posição HORIZONTAL do cursor: clicar no mesmo sítio dava sempre o mesmo
+/// estado (Enio, 2026-07-18). E recusar essa escrita — sem dar um id próprio à caixinha — matou-a
+/// por completo, porque tirou o único escritor que existia.
+#[must_use]
+pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.toggle"))
+}
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).

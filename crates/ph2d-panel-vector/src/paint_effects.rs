@@ -177,7 +177,7 @@ impl BodyCtx<'_> {
             // um controle contínuo a mentir sobre um fato binário.
             let on = p.value >= 0.5;
             return self.action_button(
-                slider,
+                ids::vector_fx_toggle_id(row, param),
                 &format!("{}: {}", p.name, if on { "On" } else { "Off" }),
                 y,
             );

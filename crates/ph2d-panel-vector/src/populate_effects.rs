@@ -41,6 +41,9 @@ pub(super) fn populate_effects(store: &mut WidgetStore) {
         button(store, ids::vector_fx_down_id(row));
         button(store, ids::vector_fx_hide_id(row));
         for param in 0..ids::MAX_FX_ROW_PARAMS {
+            // A caixinha tem id PRÓPRIO e é registada como BOTÃO — um id só pode ter um tipo de
+            // widget, e um slider não emite `Click` no Up.
+            button(store, ids::vector_fx_toggle_id(row, param));
             let (slider, num) = (
                 ids::vector_fx_param_id(row, param),
                 ids::vector_fx_param_num_id(row, param),

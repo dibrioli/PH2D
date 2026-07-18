@@ -40,30 +40,10 @@ pub(super) fn unpack_src(v: u32) -> (i64, i64) {
     )
 }
 
-/// **How much of a ball of squared radius `rho2` has reached squared distance `d2`** — the hemisphere's own
-/// normalised profile, `√(1 − d²/ρ²)`, `1` at the centre and `0` at the rim. `rho2 <= 0` (an untouched
-/// source: `amount = 0`) returns `0` through the same comparison.
-///
-/// This is the **single door** the Blob asks TWICE — once for the HEIGHT (the lift a source adds is
-/// `|Depth|·amount·ball_fraction`) and once for the MATTER (the coverage, material and pigment a source
-/// carries arrive at `pre_cover·ball_fraction`). They shipped as one formula and one omission once — the
-/// height tapered, the matter was copied at full strength and cut binary — and the staircase that made was
-/// this line's oldest bug: *two things that must agree about a fact, disagreeing.* One function, one answer.
-///
-/// Unlike the parabola's `ball_taper` it replaced, the ball needs no fade bolted on: it lands at zero on its
-/// own, so the envelope is a `max` of continuous functions — continuous by construction.
-#[inline]
-pub(super) fn ball_fraction(d2: f32, rho2: f32) -> f32 {
-    if rho2 <= 0.0 || d2 >= rho2 {
-        return 0.0;
-    }
-    (1.0 - d2 / rho2).sqrt()
-}
-
 /// **The Blob's engine — an exact bounded-ball dilation, parallelised over output rows.**
 ///
 /// For every texel `q` in the compute region `cr`, the grown height is
-/// `max` over sources `p` within `p`'s own ball of `pre[p] + |Depth|·amount[p]·ball_fraction(d², ρ_p²)`,
+/// `max` over sources `p` within `p`'s own ball of `pre[p] + |Depth|·amount[p]·√(1 − d²/ρ_p²)`,
 /// where the per-source radius is `ρ_p = ρ·amount[p]` texels (`ρ = |Depth|·unit`) — so a strong touch grows
 /// a full ball and an untouched texel (`amount = 0`) grows none, which is the sentinel, for free. `dilate`
 /// false mirrors it to a `min` (erosion, for negative Depth). Returns the height and the packed **argmax**
@@ -71,8 +51,8 @@ pub(super) fn ball_fraction(d2: f32, rho2: f32) -> f32 {
 ///
 /// The two axes are not the same unit: `d` is texels, the lift is loads, so the ball is an ellipsoid in
 /// (texel, load) space — horizontal radius `ρ` texels, vertical radius `|Depth|` loads. The `√(1 − d²/ρ²)`
-/// profile is dimensionless; the `|Depth|·amount` prefactor carries the load ([`ball_fraction`],
-/// [[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
+/// profile is dimensionless; the `|Depth|·amount` prefactor carries the load
+/// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
 ///
 /// `pre`/`amount` are the whole-canvas frozen planes; `cr` is the sub-rectangle written. Reads are clamped
 /// to the canvas, and the caller insets its WRITE region inside `cr` by the reach, so no written texel ever
@@ -98,8 +78,9 @@ pub(super) fn blob_ball(
     // the hot loop's whole geometry — computed here, not per (texel, source). The reformulation folds the
     // per-source math to one subtract and one sqrt: a source at `dq` with falloff `a_p` lifts a texel by
     //   `|Depth|·a_p·√(1 − d²/(ρ·a_p)²) = |Depth|·√(a_p² − d²/ρ²) = mag·√(a_p² − dq)`  (in-ball ⟺ `a_p² > dq`),
-    // which is the SAME quantity `ball_fraction` gives the advection (they agree on the support, the one fact
-    // that matters), with no per-pair divide and no int→float. It is what turned 18 ms/move into shippable.
+    // with no per-pair divide and no int→float. It is what turned 18 ms/move into shippable. (The MATTER no
+    // longer rides this fraction — it reads the smooth grown height + the closed footprint, `sculpt_close` —
+    // so only the height's own lift uses it now.)
     let mut disc: Vec<(i64, i64, f32)> = Vec::new();
     for dy in -r..=r {
         for dx in -r..=r {

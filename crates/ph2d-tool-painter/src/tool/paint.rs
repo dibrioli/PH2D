@@ -48,6 +48,7 @@ mod jitter_settings;
 mod paint_mode;
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
 mod sculpt_blur; // Sculpt: the kernel (one expression, eight verbs) + the per-tile memo the family reads
+mod sculpt_close; // Sculpt: Inflate's footprint is a morphological CLOSING (fill concave, keep convex) — EDT
 mod sculpt_filter; // Sculpt: the WHOLE-LAYER filter (W5b) — the same kernel, driven by a uniform `amount`
 mod sculpt_inflate; // Sculpt: Inflate's render — the BLOB (the one verb that moves matter), split from sculpt_blur
 pub use sculpt_filter::FilterScope; // the two scopes the card's Filter buttons ask for

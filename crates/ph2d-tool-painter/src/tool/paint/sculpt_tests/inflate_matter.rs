@@ -204,170 +204,21 @@ fn a_negative_depth_erodes_the_form_instead_of_just_lowering_it() {
 
 // ── The memo ────────────────────────────────────────────────────────────────────────────────────────
 
-// ── The APPEARANCE: what the artist sees is the COVERAGE, not the height buffer ──────────────────────
-
-/// The paint's width, in texels, on column `x` — measured on the **coverage**, which is what the light
-/// multiplies by (`impasto_light::paint_body(cover) = cover`).
-///
-/// This is the oracle the sibling above should have had. `width_at_half_max` reads `heights`, and `heights`
-/// grew: the gate was green while the screen was unchanged, because relief standing over zero coverage is
-/// **invisible**. The buffer is the implementation; the coverage is the appearance
-/// ([[feedback_oracle_must_model_appearance_not_implementation]] — for the third time on this line, and the
-/// first two were mine as well).
-/// The width of the painted SILHOUETTE — the extent the light actually draws, at a low coverage floor.
-///
-/// `> 32` and not `> 128` (half), because the bounded ball **feathers its rim** — the correction that removed
-/// the junction gash (`super::inflate_junction_probes`). Its outer edge is genuine paint at ~12–48% opacity
-/// (measured on this fixture: a `123`-flat tail 5 texels wide before the drop to `0`), which the light weighs
-/// and the eye sees. A half-opacity threshold measures only the OPAQUE core of the growth and so understates
-/// a feathered silhouette by ~3× (the ball grows this fixture `+14` at the silhouette, `+4` at half). The
-/// light shades by coverage, so the silhouette — where coverage clears the noise floor — is what "the form
-/// grew" means. `> 0` would count a single stray texel; `> 32` is "the light can see it".
-fn paint_width(cov: &[u8], size: u32, x: u32) -> usize {
-    (MID - BAND..=MID + BAND)
-        .filter(|y| cov[((y * size) + x) as usize] > 32)
-        .count()
-}
+// ── The APPEARANCE: coverage, and the CLOSING that shapes it ─────────────────────────────────────────
+//
+// The Blob's footprint is a morphological CLOSING now (`super::super::sculpt_close`): it fills concave
+// armpits and leaves convex flanks where the artist drew them (Enio, 2026-07-17). So "the paint gets WIDER"
+// is true only at a concavity — a straight stroke's convex sides do not grow — and the gates that measure the
+// coverage growth, the colour it carries and the edge it makes were moved to where the concave fixture is, in
+// `super::inflate_junction_probes` (`the_convex_flank_is_preserved_while_the_armpit_fills` and its siblings).
+// What remains here needs no concavity: the height still dilates (the dome), a negative Depth still erodes,
+// and exactly one verb moves the matter at all.
 
 fn covers_of(t: &PainterTool, layer: crate::tool::RtLayerId) -> Vec<u8> {
     t.covers
         .get(&layer)
         .map(|c| (**c).clone())
         .unwrap_or_default()
-}
-
-/// **THE gate for Enio's second smoke: the PAINT gets wider, not merely the height field.**
-///
-/// *"inflate não engorda"* — it did not, and every gate said it did. They measured `heights`, which really
-/// does spread; but the light shades by the **coverage**, so the new rim of relief stood on bare canvas and
-/// rendered nothing at all. The form grew in a buffer nobody looks at.
-///
-/// So Inflate moves the **matter**: what arrives at a texel came from the ball's argmax, and it brings that
-/// texel's coverage, material and colour with it. Paint is a substance; a substance that moves takes its
-/// colour with it. (That sentence was already written down — for W4, the advective family. It arrived early,
-/// forced by the one verb that grows.)
-///
-/// **Mutation that must bleed:** delete the matter loop in `render_inflate` (the block guarded by
-/// `matter_ok` that copies `pre_cover` / `pre_mats` / `pre_rgba` along the ball's `sbuf` argmax) — the
-/// coverage stops moving and this reads exactly the shipped bug.
-#[test]
-fn the_inflate_fattens_the_paint_and_not_just_the_height_buffer() {
-    let size = 200u32;
-    let probe_x = 100u32;
-
-    let run = |mode: Option<u8>| -> (Vec<u8>, usize) {
-        let (mut t, layer, _) = deposited_stroke(size);
-        if let Some(m) = mode {
-            arm_sculpt(&mut t, m, 0.5, 1.0);
-            let mut b = t.paint.brush;
-            b.radius_px = 40.0;
-            b.falloff = Falloff::Constant;
-            t.paint.brush = b;
-            t.paint.brush_by_mode[super::super::PaintMode::Sculpt.slot()] = b;
-            t.set_sculpt_depth(DEPTH_UP); // +0.5 loads ⇒ a ball of 8 px
-            drag(&mut t, &[[60.0, 100.0], [100.0, 100.0], [140.0, 100.0]]);
-        }
-        let cov = covers_of(&t, layer);
-        let w = paint_width(&cov, size, probe_x);
-        (cov, w)
-    };
-
-    let (_, bare) = run(None);
-    let (_, layered) = run(Some(LAYER));
-    let (_, inflated) = run(Some(INFLATE));
-
-    assert!(bare > 8, "fixture: the deposit laid no measurable paint");
-    assert_eq!(
-        layered, bare,
-        "Layer changed how WIDE the paint is ({bare} → {layered} texels). It must not: it lays a coat of \
-         height inside the footprint and moves no matter at all. If this moved, the oracle is measuring \
-         something other than the paint's silhouette and the assert below means nothing."
-    );
-    assert!(
-        inflated >= bare + 8,
-        "Inflate left the PAINT {inflated} texels wide; it was {bare}, and Layer left it {layered}. A Depth \
-         of 0.5 loads is a ball of {:.0} px, so the form's rim should be pushed out by something of that \
-         order. \n\nThis is Enio's smoke of 2026-07-14 (*\"inflate não engorda\"*), and note WHERE it \
-         reads: the COVERAGE. The height buffer fattened all along — the light multiplies by the coverage, \
-         so relief on bare canvas is invisible, and the form grew somewhere nobody can see.",
-        0.5 * UNIT
-    );
-}
-
-/// **The new rim is PAINT — it has the paint's colour, not the canvas's.**
-///
-/// Coverage without pixels would light **bare paper in relief**: the shade *modulates* the RGBA that is
-/// already there (`rgba[i] = light_pixel(albedo, mul, add)`), it does not create any. So the colour has to
-/// travel too, and it travels along the same vector the height did — one ball, one answer to *where did this
-/// come from*, so the relief and the colour cannot disagree about it.
-///
-/// **Mutation that must bleed:** stop writing `rgba` in `render_inflate`'s matter loop (keep the coverage +
-/// material copies, drop the `copy_from_slice` into `rgba`).
-#[test]
-fn the_inflated_rim_carries_the_paints_colour() {
-    let size = 200u32;
-    let (mut t, layer, _) = deposited_stroke(size); // a stroke of [0.1, 0.2, 0.3] — a dark blue
-    let before = (*t.canvas_rgba).clone();
-
-    let probe = |rgba: &[u8], i: usize| -> [u8; 4] {
-        [
-            rgba[i * 4],
-            rgba[i * 4 + 1],
-            rgba[i * 4 + 2],
-            rgba[i * 4 + 3],
-        ]
-    };
-    // Find the paint's own colour (a texel at the stroke's core) and a bare texel just past its edge.
-    let cov0 = covers_of(&t, layer);
-    let core = (0..size)
-        .find(|y| cov0[((y * size) + 100) as usize] > 200)
-        .map(|y| (y * size + 100) as usize)
-        .expect("fixture: a painted texel on the probe column");
-    let edge = (0..size)
-        .filter(|y| cov0[((y * size) + 100) as usize] == 0)
-        .filter(|y| {
-            let d = i64::from(*y) - 100;
-            // The deposit's brush is 16 px, so the paint reaches |d| ≈ 16. This texel is 1-2 px BEYOND its
-            // rim — bare canvas, and in the OPAQUE zone of the 16-px ball (near its centre, where the arriving
-            // coverage is high). The bounded ball feathers to nothing at its rim, so a texel further out
-            // wears the ball's faint outer edge (correctly a pale tint) and is the wrong place to read *what
-            // colour the paint is*; the opaque zone is where the light draws substantial paint, and it must
-            // be the paint's own colour, not the canvas's.
-            (17..=18).contains(&d.abs())
-        })
-        .map(|y| (y * size + 100) as usize)
-        .next()
-        .expect("fixture: a bare texel just outside the paint");
-    let core_rgb = probe(&before, core);
-    assert_ne!(
-        probe(&before, edge),
-        core_rgb,
-        "fixture: the bare texel already has the paint's colour, so the assert below cannot fail"
-    );
-
-    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
-    let mut b = t.paint.brush;
-    b.radius_px = 40.0;
-    b.falloff = Falloff::Constant;
-    t.paint.brush = b;
-    t.paint.brush_by_mode[super::super::PaintMode::Sculpt.slot()] = b;
-    t.set_sculpt_depth(1.0); // +1.0 loads ⇒ a 16-px ball: it reaches
-    drag(&mut t, &[[60.0, 100.0], [100.0, 100.0], [140.0, 100.0]]);
-
-    let after = (*t.canvas_rgba).clone();
-    let got = probe(&after, edge);
-    let near = |a: u8, b: u8| i32::from(a).abs_diff(i32::from(b)) <= 24;
-    assert!(
-        near(got[0], core_rgb[0]) && near(got[1], core_rgb[1]) && near(got[2], core_rgb[2]),
-        "the inflated rim came out {got:?}; the paint it grew from is {core_rgb:?}. Coverage without pixels \
-         lights BARE PAPER in relief — the shade modulates the colour that is there, it does not invent \
-         any. The matter has to bring its colour."
-    );
-    assert!(
-        got[3] > 128,
-        "the inflated rim is transparent (alpha {}), so there is nothing on screen to light",
-        got[3]
-    );
 }
 
 /// **Exactly ONE of the eight verbs moves matter — and the other seven leave the paint byte-identical.**

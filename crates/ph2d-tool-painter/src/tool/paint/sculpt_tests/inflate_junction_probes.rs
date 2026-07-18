@@ -81,6 +81,18 @@
 //! **LANDED 2026-07-17.** The bounded ball is `super::super::sculpt_offset::blob_ball`; the four fences are
 //! deleted; [`the_inflate_fills_the_junctions_armpit_no_gash`] asserts the cross fills, on the real render.
 //!
+//! ## Then the footprint became a CLOSING (2026-07-18)
+//!
+//! The bounded ball fixed the gash but grew the footprint the SAME `ρ` in every direction — into the concave
+//! armpit (wanted) AND off every convex flank (Enio, 2026-07-17: a translucent halo, *"as bordas … não
+//! deveriam nem ser tocados"*, and *"os cruzamentos … muito erodidos"*). The matter's footprint is a
+//! morphological closing now ([`super::super::sculpt_close`]): fill the concave armpits, leave the convex
+//! flanks where the artist drew them. So the armpit gate above holds a smooth FILLET (not the old over-fill),
+//! and its siblings pin the closing's two faces: [`the_convex_flank_is_preserved_while_the_armpit_fills`],
+//! [`the_armpit_fill_is_opaque_with_a_clean_edge`] (no skirt, no staircase), and
+//! [`the_armpit_fill_carries_the_paints_colour`]. The coverage is read off the smooth grown height now, not
+//! the argmax's own ball fraction — the skirt was that fraction fading over the whole ball.
+//!
 
 use super::inflate_edge::{CX, CY, SIZE, covers_of, inflate_the_whole_layer};
 use super::*;
@@ -110,20 +122,23 @@ fn arm_brush(t: &mut PainterTool, r: f32) {
     t.set_brush_impasto_depth(1.0);
 }
 
-/// **THE product gate for Enio's cross: the Inflate FILLS the junction's armpit — no white gash.**
+/// **THE product gate for Enio's cross: the Inflate FILLS the junction's inner corner — no white gash.**
 ///
 /// Two perpendicular strokes. The unbounded parabola left a WHITE GASH in each of the four concave armpits —
 /// coverage that never arrived, framed by opaque paint — because a tall junction *captured* the envelope out
 /// to `√(H/a)` while it could only *serve* out to `ρ√2`, and the boundary of that dead Voronoi cell is a hard
 /// line across otherwise-uniform paint (the root cause, [`super::inflate_junction_probes`] +
-/// [`diag_the_parabola_captures_what_it_cannot_serve`]). The bounded ball has `capture == reach` by
-/// construction, so it fills the armpit and fattens the flanks — the pixels are in
-/// [`super::inflate_ball_candidate::diag_does_the_bounded_ball_fix_the_cross`]; this asserts it on the REAL
-/// render.
+/// [`diag_the_parabola_captures_what_it_cannot_serve`]).
+///
+/// The footprint is a morphological CLOSING now (`super::super::sculpt_close`), so what fills the corner is a
+/// smooth rounded **fillet** — up to the ball's reach into the notch, tapering toward the armpit's open mouth
+/// (it does NOT flood the whole open quadrant; that was the raw dilation's over-fill, and Enio's *"muito
+/// erodidos"* was partly it). What this gate holds is the gash's absence: the inner corner FILLS, and the run
+/// from the arm into the fillet has no bare gap enclosed by paint.
 ///
 /// **Mutation that must bleed:** give the ball unbounded support (in `blob_ball`, drop the `dq <= 1.0` cap so
 /// every disc offset competes and a far winner is disqualified with nothing to fall back to) — or restore the
-/// conditional advection (a `continue` instead of the frozen-plane restore) — the armpit goes bare again.
+/// conditional advection (a `continue` instead of the frozen-plane restore) — the corner goes bare again.
 #[test]
 fn the_inflate_fills_the_junctions_armpit_no_gash() {
     let (mut t, layer) = the_cross();
@@ -132,8 +147,8 @@ fn the_inflate_fills_the_junctions_armpit_no_gash() {
     let cov1 = covers_of(&t, layer);
 
     // The concave armpit runs OUT of the inside corner along the 45° diagonal: past the overlapping cores
-    // (`k ≤ 14`, opaque both ways) it is bare canvas (`k = 15..30`, `0` before), and it is exactly there the
-    // parabola left its gash. Walk it.
+    // (`k ≤ 14`, opaque both ways) it is bare canvas (`k = 15..`, `0` before), and it is exactly there the
+    // parabola left its gash. Walk the near-corner run, where the fillet lands.
     let (cx, cy) = (CX as u32, CY as u32);
     let diag = |cov: &[u8], k: u32| cov[((cy + k) * SIZE + (cx + k)) as usize];
 
@@ -143,18 +158,20 @@ fn the_inflate_fills_the_junctions_armpit_no_gash() {
         "fixture: the armpit diagonal is not bare before Inflate ({before_bare} covered of 16) — the gash \
          cannot form here, so this gate proves nothing"
     );
-    let after_filled = (15..27).filter(|&k| diag(&cov1, k) >= 40).count();
+    // The corner FILLET: the closing fills the inner corner (where the gash was), tapering out toward the
+    // open mouth. The near-corner run must fill; the far run is CORRECTLY bare (the concave curve of a "+").
+    let filled = (15..22).filter(|&k| diag(&cov1, k) >= 40).count();
     assert!(
-        after_filled >= 9,
-        "the junction's armpit stayed bare after Inflate (only {after_filled}/12 of the diagonal filled). \
-         That is the WHITE GASH of Enio's cross (2026-07-16): a tall junction captures the envelope past \
-         where it can serve, and the boundary of its dead Voronoi cell is a hard line across the paint. The \
-         bounded ball has capture == reach and must fill it."
+        filled >= 5,
+        "the junction's inner-corner fillet did not fill (only {filled}/7 of the near-corner diagonal). That \
+         is the WHITE GASH of Enio's cross (2026-07-16): a tall junction captures the envelope past where it \
+         can serve, and the boundary of its dead Voronoi cell is a hard line across the paint. The bounded \
+         ball closes it; the closing fills a smooth fillet in the corner."
     );
 
     // The GASH proper: between the paint at the corner and the paint the ball grew, coverage must not go
     // BARE — an enclosed `0` framed by paint on both sides is the gash, as a hole rather than a short edge.
-    let d: Vec<u8> = (2..28).map(|k| diag(&cov1, k)).collect();
+    let d: Vec<u8> = (2..24).map(|k| diag(&cov1, k)).collect();
     let enclosed_bare = d.iter().position(|&c| c >= 100).is_some_and(|f| {
         let l = d.iter().rposition(|&c| c >= 100).unwrap();
         d[f..=l].contains(&0)
@@ -163,6 +180,124 @@ fn the_inflate_fills_the_junctions_armpit_no_gash() {
         !enclosed_bare,
         "the armpit diagonal has a BARE gap enclosed by paint ({d:?}) — the gash, as a hole rather than a \
          short silhouette"
+    );
+}
+
+/// **The closing's DEFINING property: the convex flank is PRESERVED while the armpit fills** (Enio,
+/// 2026-07-17: *"não protege as bordas do traço que não deveriam nem ser tocados"*).
+///
+/// The bounded ball fixed the gash but grew the footprint the SAME `ρ` in every direction — into the concave
+/// armpit (wanted) AND off every convex flank (the halo). The footprint is a morphological closing now
+/// (`super::super::sculpt_close`): on a straight convex flank the erosion undoes the dilation (net zero, bar
+/// the anti-alias), while the armpit — narrower than `2ρ` — stays filled. This measures both on the ONE
+/// fixture that has both: the capsule's plain flank does not move, its reflex corner does.
+///
+/// **Mutation that must bleed:** make `render_inflate` ignore the closing (drop `* cfill[ci]`, or make
+/// `sculpt_close::closing_fill` return all `1`) — the flank grows by the ball radius, the skirt is back.
+#[test]
+fn the_convex_flank_is_preserved_while_the_armpit_fills() {
+    let (mut t, layer) = the_cross();
+    let cov0 = covers_of(&t, layer);
+    inflate_the_whole_layer(&mut t);
+    let cov1 = covers_of(&t, layer);
+    let (cx, cy) = (CX as u32, CY as u32);
+
+    // The vertical arm's right FLANK, at rows above the junction — a straight convex edge. It must not move
+    // past the closing's ~1.5-texel anti-alias. This is the whole of Enio's request.
+    let grew = |y: u32| right_cover_edge(&cov1, y, 100) - right_cover_edge(&cov0, y, 100);
+    let flank = (cy - 45..cy - 30).map(grew).max().unwrap_or(0);
+    assert!(
+        flank <= 3,
+        "the convex flank grew {flank} texels — more than the closing's ~1.5-texel anti-alias. A raw dilation \
+         grows it by the ball radius (~16 px at Depth 1); the closing must leave a convex edge where the \
+         artist drew it (Enio, 2026-07-17: the edges should not even be touched)."
+    );
+    // …while the concave inner-corner armpit FILLS: the 45° diagonal, bare before, filled after.
+    let diag = |cov: &[u8], k: u32| cov[((cy + k) * SIZE + (cx + k)) as usize];
+    let filled = (15..22)
+        .filter(|&k| diag(&cov0, k) < 40 && diag(&cov1, k) >= 40)
+        .count();
+    assert!(
+        filled >= 4,
+        "the armpit filled only {filled}/7 of its bare near-corner run, while the flank held. The closing \
+         must fill the concavity even as it preserves the flank; if nothing filled, the gash is back."
+    );
+}
+
+/// **The armpit fill is opaque paint with a clean edge — not a translucent skirt, not a hard cut.**
+///
+/// Enio's two rejected rims: the ρ-wide translucent ramp (`pre_cover · ball_fraction`, the skirt of
+/// 2026-07-17) and, before it, the 255→0 cookie-cutter (the staircase of 2026-07-16). The matter reads the
+/// SMOOTH grown-height now and sharpens it (`sculpt_inflate::COVER_AA`), so the fill has an opaque core and a
+/// short anti-aliased edge. Measured on the cross's fillet, down the 45° diagonal.
+///
+/// **Mutation that must bleed:** widen `COVER_AA` toward the ball (the skirt returns — the transition grows
+/// long); or drop the AA entirely (`v = pre_cover[si]` verbatim — the transition collapses to a single-texel
+/// cut). Either way the partial-texel count leaves the `[1, 6]` band.
+#[test]
+fn the_armpit_fill_is_opaque_with_a_clean_edge() {
+    let (mut t, layer) = the_cross();
+    inflate_the_whole_layer(&mut t);
+    let cov = covers_of(&t, layer);
+    let (cx, cy) = (CX as u32, CY as u32);
+    let d: Vec<u8> = (12..30)
+        .map(|k| cov[((cy + k) * SIZE + (cx + k)) as usize])
+        .collect();
+
+    // An OPAQUE core: the fillet reaches near-full coverage where it fills (not a faint ghost throughout).
+    let core = d.iter().copied().max().unwrap_or(0);
+    assert!(
+        core >= 230,
+        "the fillet's strongest coverage is only {core}/255 — a translucent skirt, not solid paint ({d:?})"
+    );
+    // A SHORT edge: from the last opaque texel to the first bare one, a few partial texels — anti-aliased,
+    // neither a wide ramp (skirt) nor zero partials (a hard cut = the staircase).
+    let last_full = d.iter().rposition(|&c| c >= 230).unwrap_or(0);
+    let tail = &d[last_full..];
+    let first_bare = tail.iter().position(|&c| c == 0).unwrap_or(tail.len());
+    let partial = tail[..first_bare]
+        .iter()
+        .filter(|&&c| c > 0 && c < 230)
+        .count();
+    assert!(
+        (1..=6).contains(&partial),
+        "the fillet's edge steps through {partial} partial texels ({tail:?}) — a clean anti-aliased edge is a \
+         few; zero is a cookie-cutter (the staircase), many is the ρ-wide translucent skirt."
+    );
+}
+
+/// **The armpit fill is PAINT — it wears the paint's colour, not the canvas's.**
+///
+/// The matter follows the relief: coverage without pixels lights bare paper in relief, so the fill must carry
+/// the paint's colour along the ball's argmax. The stroke is a dark blue (`[0.1, 0.2, 0.3]`, blue-dominant);
+/// the fillet is read on its HUE, not an exact value, because the impasto light shades a concave fillet
+/// differently from a flat core (comparing lit-to-lit would test the light, not the paint).
+///
+/// **Mutation that must bleed:** stop writing `rgba` in `render_inflate`'s matter loop — the fillet stays the
+/// canvas's white (`r == g == b`, all high) and both clauses fail.
+#[test]
+fn the_armpit_fill_carries_the_paints_colour() {
+    let (mut t, layer) = the_cross();
+    let cov0 = covers_of(&t, layer);
+
+    inflate_the_whole_layer(&mut t);
+    let cov1 = covers_of(&t, layer);
+    let (cx, cy) = (CX as u32, CY as u32);
+    // A texel in the fillet: bare before (cov0 == 0), filled after (cov1 high).
+    let fillet = (14..24)
+        .map(|k| ((cy + k) * SIZE + (cx + k)) as usize)
+        .find(|&i| cov0[i] == 0 && cov1[i] >= 200)
+        .expect("a fillet texel that was bare and is now filled");
+    let got = [
+        t.canvas_rgba[fillet * 4],
+        t.canvas_rgba[fillet * 4 + 1],
+        t.canvas_rgba[fillet * 4 + 2],
+    ];
+    // The stroke's blue-dominant hue, and NOT the canvas's white — either would be violated by bare paper.
+    assert!(
+        got[2] > got[0] + 15 && got.iter().all(|&c| c < 210),
+        "the fillet came out {got:?} — not the stroke's dark blue [0.1, 0.2, 0.3]. Coverage without pixels \
+         lights BARE PAPER in relief (white, r == g == b); the matter must bring its colour."
     );
 }
 

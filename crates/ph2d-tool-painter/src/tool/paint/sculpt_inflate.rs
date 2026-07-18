@@ -9,15 +9,26 @@
 //!
 //! It is the ONE verb that moves MATTER. The other seven reshape `h` inside paint that is already there;
 //! this one grows the form, and a form that grows onto bare canvas without taking its paint along does not
-//! grow at all — the light weighs by coverage. So the ball answers two questions, not one: how high, and
-//! **where did this come from** (the argmax). See [`super::sculpt_offset::ball_fraction`] for the single law
-//! that keeps those two answers from disagreeing about where the form ends.
+//! grow at all — the light weighs by coverage. So it answers two questions, not one: how high (the ball's
+//! dilation, [`super::sculpt_offset::blob_ball`]), and WHERE the footprint may go (a morphological CLOSING,
+//! [`super::sculpt_close`] — fill the concave armpits, leave the convex flanks where the artist drew them,
+//! Enio 2026-07-17). The coverage is read off the smooth grown height, so it cannot disagree with the relief
+//! about where the form ends; the closing decides whether it grows there at all.
 
 use super::impasto_ceiling::H_MAX;
 use super::region::grow_region;
 use super::{Region, impasto_settle};
 use crate::tool::PainterTool;
 use std::sync::Arc;
+
+/// The coverage anti-alias width, **in loads of relief**. The grown form's coverage is read off the SMOOTH
+/// grown-height field `hbuf` — full where the relief has body, feathering to zero over the last `COVER_AA`
+/// loads as the relief itself runs out at the silhouette. Deriving it from the height VALUE (a max of
+/// continuous balls, seamless even on a curved border) and not from the argmax POSITION is what keeps the
+/// argmax's Voronoi cells out of the picture: `pre_cover · ball_fraction(d_win)` fades over the whole ball
+/// (the ρ-wide translucent skirt Enio rejected, 2026-07-17) and jumps across the winner's seams (radial
+/// spokes on a round blob). A solid silhouette with a clean edge, never a skirt, never a cookie-cutter.
+const COVER_AA: f32 = 1.6;
 
 impl PainterTool {
     /// **Inflate — the Blob** (Enio 2026-07-14, third smoke: *"não é inflate … puxa as faces na direção das
@@ -129,6 +140,14 @@ impl PainterTool {
         let pre_cover = Arc::clone(&self.paint.sculpt.pre_cover);
         let pre_mats = Arc::clone(&self.paint.sculpt.pre_mats);
         let pre_rgba = Arc::clone(&self.paint.sculpt.pre_rgba);
+        // The footprint the MATTER may grow into is the CLOSING of the paint, not the ball's raw dilation:
+        // fill the concave armpits, leave the convex flanks where the artist drew them (Enio, 2026-07-17). On
+        // erosion (Depth < 0) there is no growth to gate, so this is only computed for the dilating pass.
+        let cfill = if dilate && pre_cover.len() == n {
+            super::sculpt_close::closing_fill(&pre_cover, wu, cr, depth.abs() * unit)
+        } else {
+            vec![1.0f32; cw * ch]
+        };
         let matter_ok = pre_cover.len() == n
             && pre_mats.len() == n
             && pre_rgba.len() == n * 4
@@ -157,7 +176,7 @@ impl PainterTool {
         }
         // The MATTER dilates with the form: where the ball carried paint from a source, that source's
         // coverage / material / colour extend to here — a form that grows onto bare canvas takes its paint
-        // with it (round-2 lesson). It arrives at the ball's own strength ([`ball_fraction`]): the height
+        // with it (round-2 lesson). It arrives at the ball's own strength (`ball_fraction`): the height
         // fades across the ball's flank, and the matter fades with it by the SAME number, so the silhouette
         // the light draws (it weighs by coverage) cannot disagree with the height about where the form ends.
         // That agreement is the whole of Enio's 2026-07-16 smoke — before it, the coverage was copied at
@@ -180,7 +199,6 @@ impl PainterTool {
             let cov = Arc::make_mut(cov_e);
             let mat = Arc::make_mut(mat_e);
             let rgba = Arc::make_mut(&mut self.canvas_rgba);
-            let rho_f = depth.abs() * unit;
             for y in kr.y..kr.y + kr.h {
                 for x in kr.x..kr.x + kr.w {
                     let ci = ((y - cr.y) as usize) * cw + (x - cr.x) as usize;
@@ -207,17 +225,23 @@ impl PainterTool {
                         let (sx, sy) = (i64::from(x) + dx, i64::from(y) + dy);
                         if sx >= 0 && sy >= 0 && sx < wi && sy < hi {
                             let si = (sy as usize) * wu + (sx as usize);
-                            // How much of the ball got here — the SAME `ball_fraction`, from the same door,
-                            // that set the height's lift: the WINNING source's ball (`ρ·amount[src]`).
-                            let rho_s = rho_f * amount[si].clamp(0.0, 1.0);
-                            let t = super::sculpt_offset::ball_fraction(
-                                (dx * dx + dy * dy) as f32,
-                                rho_s * rho_s,
-                            );
-                            let v = (f32::from(pre_cover[si]) * t) as u8;
+                            // Coverage from the SMOOTH grown-height field, not the argmax POSITION. `hbuf` is a
+                            // max of continuous balls, so on a curved border it is seamless; the argmax's
+                            // Voronoi cells (which `ball_fraction(d_win)` exposed as radial spokes on a round
+                            // blob, 2026-07-17) never reach the picture. Opaque where the relief has body,
+                            // feathering to zero over the last `COVER_AA` loads as the ball runs out at the
+                            // silhouette. The colour still comes from the argmax source `si` (the tallest,
+                            // hence most solid, paint that reaches here) — but seams in the COLOUR are masked
+                            // where the coverage is thin, and invisible in a uniform form.
+                            // Opaque coverage from the smooth height (`hbuf`), gated by the CLOSING (`cfill`):
+                            // full inside a filled armpit, zero on a convex flank (its edge stays put),
+                            // feathering at the fill's own free boundary. The two AAs — the height's at the
+                            // silhouette, the closing's at the armpit mouth — multiply.
+                            let tc = (hbuf[ci] / COVER_AA).clamp(0.0, 1.0) * cfill[ci];
+                            let v = (f32::from(pre_cover[si]) * tc) as u8;
                             // COVERAGE is a PRESENCE: the paint extends only where the ball brings MORE than
                             // is already frozen here; otherwise this texel keeps its own paint.
-                            (v > pre_cover[gi]).then_some((si, t, v))
+                            (v > pre_cover[gi]).then_some((si, tc, v))
                         } else {
                             None
                         }

@@ -271,5 +271,29 @@ fn probe_push_render_and_look() {
     assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     save(&mut t, &dir, "11b_enio_inflated", size);
 
+    // 12. **ENIO'S CROSS** (2026-07-17, the bounded-ball smoke): two PERPENDICULAR thick strokes — the exact
+    //     photograph of the follow-up. The bounded ball closed the armpit gash, but Enio reports it now (a)
+    //     grows a translucent halo along the CONVEX outer edges that "should not be touched" and (b) erodes
+    //     the CROSSINGS. Render before/after so those two are pixels, not theory.
+    let mut t = tool(size);
+    t.set_brush_impasto_depth(1.0);
+    t.set_brush_size_px(30.0);
+    t.on_canvas_pointer(cp([200.0, 90.0], PointerPhase::Down));
+    for i in 1u8..=11 {
+        t.on_canvas_pointer(cp([200.0, 90.0 + 20.0 * f32::from(i)], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 310.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([90.0, 200.0], PointerPhase::Down));
+    for i in 1u8..=11 {
+        t.on_canvas_pointer(cp([90.0 + 20.0 * f32::from(i), 200.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([310.0, 200.0], PointerPhase::Up));
+    save(&mut t, &dir, "12a_cross_before", size);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(7); // Inflate
+    t.set_sculpt_depth(1.0);
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
+    save(&mut t, &dir, "12b_cross_inflated", size);
+
     eprintln!("PNGs written to {dir}");
 }

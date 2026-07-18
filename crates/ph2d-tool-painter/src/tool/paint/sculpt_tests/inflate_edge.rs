@@ -1,37 +1,27 @@
-//! Gates for **the Blob's EDGE** — where the grown form ends, and what the artist sees there.
+//! Gates for **the Blob's EDGE on a CONVEX form** — where an inflated blob ends, and what the artist sees.
 //!
 //! Born from Enio's smoke of the whole-layer filter (2026-07-16): the Filter Layer / Inflate itself was
-//! *"muito bom!"*, and its **border** was rejected — the relief grows with a serrated, torn rim, and
-//! *"essa irregularidade externa é imune ao filtro global e ao pincel smooth, nada pode corrigi-la."*
+//! *"muito bom!"*, and its **border** was rejected — a serrated, torn rim. The bounded ball
+//! (`super::super::sculpt_offset`) closed the junction gash; but on a CONVEX form it still grew the footprint
+//! `ρ` in every direction — first as a translucent skirt, then (once the matter was made opaque) as a clean
+//! but unwanted fattening (Enio, 2026-07-17: *"as bordas do traço … não deveriam nem ser tocados"*).
 //!
-//! ## The ball had TWO edges and they disagreed
+//! ## The footprint is a CLOSING now, so a convex form is DOMED, not grown
 //!
-//! The bounded ball's HEIGHT and MATTER both fade by the ONE law [`super::super::sculpt_offset::ball_fraction`]
-//! (`√(a_p² − d²/ρ²)`). The parabola it replaced faded only the HEIGHT (a squared taper) and copied the
-//! MATTER at FULL strength out to the last qualifying texel and then stopped dead. The light weighs by
-//! coverage (`impasto_light::paint_body(cover) = cover`), so the silhouette the artist saw was cut binary at
-//! the winner of a DISCRETE argmax — a Voronoi-like pattern, binarised. That was the staircase in the
-//! photographs; the bounded ball lands the matter at zero with the height, by construction.
-//!
-//! The law these gates pin: **the height and the matter agree on where the form ends.** One fraction, asked
-//! once ([`super::super::sculpt_offset::ball_fraction`]), answered the same way by both.
+//! The matter's footprint is a morphological closing (`super::super::sculpt_close`): it fills concave armpits
+//! and leaves convex boundaries where they are. A round blob is convex everywhere, so its coverage silhouette
+//! does not move (bar the closing's ~1.5-texel anti-alias) — what Inflate does to it is DOME it, the height
+//! dilating while the footprint holds. The CONCAVE-fill gates (the armpit fills, the flank is preserved, the
+//! fill's edge and colour) live where the concave fixture is, in [`super::inflate_junction_probes`]; this file
+//! pins the convex form ([`the_convex_blob_is_domed_not_grown`]) and the sampling-independence of the
+//! advection ([`a_faster_mouse_does_not_grow_a_different_rim`]).
 //!
 //! ## The fixture is Enio's repro, not the probe's slab
 //!
 //! *A blob with high relief and a **curved** border.* The probe's rectangular slab hides this: its border is
-//! axis-aligned, so the argmax pattern along it is regular and the staircase has nothing to climb. This line
-//! has been bitten three times by a fixture that did not contain the phenomenon — the module docs of
+//! axis-aligned, so the argmax pattern along it is regular and any edge artefact has nothing to climb. This
+//! line has been bitten three times by a fixture that did not contain the phenomenon — the module docs of
 //! [`super::inflate_support`] recount two of them.
-//!
-//! ## The numbers, measured (2026-07-16), on `diag_inflate_edge_profile`
-//!
-//! Radial coverage from the blob's centre outward:
-//!
-//! ```text
-//! the deposit's own edge  255, 251, 222, 125,  11, 0        max step 114   (a real paint edge)
-//! inflated, BEFORE        255, 255, 255, 255, 255, 0        max step 255   (a cookie cutter)
-//! inflated, AFTER         255, 193, 193, 137,  88, 48, 0    max step  62   (a ramp)
-//! ```
 
 use super::super::sculpt_filter::FilterScope;
 use super::*;
@@ -120,101 +110,56 @@ pub(super) fn max_step(profile: &[u8]) -> u8 {
         .unwrap_or(0)
 }
 
-/// **The rim the Inflate grows is FEATHERED — it is no harder than an edge the brush itself can lay.**
+/// **A convex blob is DOMED in place, not grown** -- the closing's other half, on a shape that is convex
+/// everywhere.
 ///
-/// This is Enio's smoke, as a number. The oracle is the **deposit's own edge on the same fixture**, and that
-/// is the point of it: the reference is not invented, it is what *paint* looks like in this product. The
-/// Inflate grows paint; if the edge it grows is harder than any edge the brush can deposit, what it grew is
-/// not paint — it is a cookie cutter, which is exactly the report.
+/// Enio's 2026-07-17 report was two faces of one isotropy: the ball grew the footprint by rho in every
+/// direction, filling concave armpits (wanted) but also skirting off every convex flank (the translucent
+/// halo). The footprint is a morphological CLOSING now (`super::super::sculpt_close`), so a form that is
+/// convex everywhere -- a round blob -- does not grow its coverage: its silhouette stays where the deposit
+/// left it, bar the closing's ~1.5-texel anti-alias. What Inflate still does to it is DOME it -- the height
+/// dilates, so the relief peak rises and the lit shape rounds up in place.
 ///
-/// Measured: the deposit's rim steps by **114**; the Blob's rim stepped by **255** (255 → 0 in one texel)
-/// and now steps by **62**. The moat is on both sides of the deposit's number.
-///
-/// **Mutation that must bleed:** drop the ball fraction from the advection — deliver `pre_cover[si]` verbatim
-/// (`let v = pre_cover[si];`) — and the step goes back to 255. Equally: make [`super::super::sculpt_offset::ball_fraction`]
-/// return `1.0` whenever it returns non-zero.
+/// **Mutation that must bleed:** make `render_inflate`'s coverage ignore the closing (drop the `* cfill[ci]`,
+/// or make `sculpt_close::closing_fill` return all `1`) -- the blob's footprint grows by rho again and
+/// `grown_r` overshoots `bare_r` by the ball radius: the skirt Enio rejected.
 #[test]
-fn the_inflated_rim_is_feathered_not_cut() {
+fn the_convex_blob_is_domed_not_grown() {
     let (mut t, layer) = thick_round_blob();
-    let deposit = radial_cover(&covers_of(&t, layer));
-    let deposit_step = max_step(&deposit);
-
-    // The fixture must CONTAIN the phenomenon: a hard-edged brush would lay a 255-step of its own and make
-    // the comparison below vacuous. Zero does not fail unless you make it fail.
-    assert!(
-        deposit_step < 128,
-        "fixture: the deposit's own rim already steps by {deposit_step} — this brush lays a hard edge, so \
-         'no harder than the deposit' is not a claim about anything. Soften the fixture's falloff."
-    );
-
-    inflate_the_whole_layer(&mut t);
-    let grown = radial_cover(&covers_of(&t, layer));
-    let grown_step = max_step(&grown);
-
-    assert!(
-        grown_step <= deposit_step,
-        "the Inflate left the paint's edge stepping by {grown_step} coverage per texel; the DEPOSIT's own \
-         edge on this very fixture steps by {deposit_step}. So the Blob cut a rim harder than any rim this \
-         brush can paint.\n\n  deposit: {deposit:?}\n  grown:   {grown:?}\n\nThe light weighs by coverage, \
-         so that step IS the silhouette the artist sees — and the place it is cut is read at the winner of \
-         a discrete argmax, which is a Voronoi pattern. Binarised, it is the staircase of Enio's smoke \
-         (2026-07-16)."
-    );
-}
-
-/// **Where the ball's lift has faded, the matter it carried has faded too** — the two edges agree.
-///
-/// The sibling of the gate above, and the one that names the *mechanism* rather than the symptom. The height
-/// fades across the ball's outer flank (`reach − equator = ρ(√2−1)` ≈ 6.6 texels at Depth 1); the matter used
-/// to arrive at full strength across that whole flank and vanish at the end of it. So the form's edge was
-/// described **twice, differently**: the relief said *"I fade out over six texels"* and the paint said
-/// *"I stop, here"* — and the light believes the paint.
-///
-/// Two assertions, both dead: the transition has **partial** texels at all (a binary rim has none), and the
-/// last paint the ball delivers is a **whisper** — because the lift that delivered it is all but spent.
-///
-/// Measured: partial texels **0 → 5**; the outermost delivered coverage **255 → 48**.
-///
-/// **Mutation that must bleed:** the same one — deliver `pre_cover[si]` verbatim. The rim goes binary: zero
-/// partial texels, and the outermost coverage is a full 255.
-#[test]
-fn the_matter_fades_where_the_ball_fades() {
-    let (mut t, layer) = thick_round_blob();
-    inflate_the_whole_layer(&mut t);
-    let grown = radial_cover(&covers_of(&t, layer));
-
-    // The transition: from the last fully-covered texel to the first bare one.
-    let last_full = grown.iter().rposition(|c| *c == 255).expect("solid paint");
-    let first_bare = grown
+    let bare_r = radial_cover(&covers_of(&t, layer))
         .iter()
-        .skip(last_full)
-        .position(|c| *c == 0)
-        .map(|p| p + last_full)
-        .expect("bare canvas past the blob");
-    let transition = &grown[last_full..=first_bare];
-    let partial = transition.iter().filter(|c| **c > 0 && **c < 255).count();
-
-    assert!(
-        partial >= 3,
-        "the grown rim goes from solid paint to bare canvas through {partial} partly-covered texels: \
-         {transition:?}. The ball's lift fades over its outer flank — about {:.1} texels at this Depth — so \
-         the matter it carries has to fade over the same flank. A rim with no partial coverage is a rim the \
-         ball did not fade at all: the height says the form fades out and the paint says it stops dead, and \
-         the light believes the paint.",
-        (super::super::impasto_light::DEPTH_UNIT_PX) * (std::f32::consts::SQRT_2 - 1.0)
-    );
-
-    let outermost = transition
+        .rposition(|&c| c >= 40)
+        .unwrap_or(0);
+    let peak0 = heights_of(&t, layer)
         .iter()
-        .rev()
-        .find(|c| **c > 0)
         .copied()
-        .expect("some paint in the transition");
+        .fold(f32::MIN, f32::max);
+
+    inflate_the_whole_layer(&mut t);
+
+    let grown_r = radial_cover(&covers_of(&t, layer))
+        .iter()
+        .rposition(|&c| c >= 40)
+        .unwrap_or(0);
+    let peak1 = heights_of(&t, layer)
+        .iter()
+        .copied()
+        .fold(f32::MIN, f32::max);
+
+    // The footprint is PRESERVED -- the convex silhouette does not move past the closing's anti-alias.
     assert!(
-        outermost < 128,
-        "the outermost texel the ball painted got a coverage of {outermost} — a full coat, laid at the very \
-         distance where the ball's lift has run out. What arrives has to arrive at the strength that got \
-         there."
+        grown_r <= bare_r + 3,
+        "the convex blob's coverage silhouette grew from radius {bare_r} to {grown_r} texels -- more than the \
+         closing's ~1.5-texel anti-alias. A closing leaves convex boundaries where they are; if this grew by \
+         the ball radius, the footprint is a raw dilation again and the skirt is back (Enio, 2026-07-17: the \
+         edges should not even be touched)."
+    );
+    // ...but the relief is DOMED: the height peak rose.
+    assert!(
+        peak1 > peak0 + 0.25,
+        "the blob's relief peak went {peak0:.2} -> {peak1:.2} loads -- Inflate must still DOME a convex form \
+         (the height dilates), even though its footprint holds. A verb that did nothing to a blob is not the \
+         one that grows the form."
     );
 }
 

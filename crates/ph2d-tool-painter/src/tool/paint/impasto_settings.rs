@@ -9,7 +9,7 @@
 use super::PaintMode;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_painter_brush::{BrushSpec, DepthSource, DrawTo};
+use ph2d_painter_brush::{BrushSpec, DepthSource, DrawTo, Falloff};
 
 /// Widest relief a brush may deposit, either way. Signed: `+` lifts, `−` carves. // CLAMP-OK
 const DEPTH_MIN: f32 = -1.0;
@@ -199,6 +199,14 @@ impl PainterTool {
     /// Toggle the section's master switch.
     pub fn toggle_brush_impasto(&mut self) {
         self.paint.brush.impasto = !self.paint.brush.impasto;
+        // Impasto's default falloff is **Sphere**, not the brush's factory Smooth (Enio 2026-07-17): the
+        // hemispherical shoulder reads as rounded body under the impasto light, where Smooth's flat plateau
+        // lights like a sticker. Only switched when the falloff is still that factory Smooth, so a deliberate
+        // choice — Sharp for a palette-knife edge, say — is never overridden, and re-ticking keeps whatever
+        // the artist last set (Sphere is no longer Smooth, so it is left alone).
+        if self.paint.brush.impasto && self.paint.brush.falloff == Falloff::Smooth {
+            self.paint.brush.falloff = Falloff::Sphere;
+        }
         // Ticking it back ON re-derives the last stroke's body at the current Depth. Ticking it OFF does
         // NOT delete relief that is already painted — the switch governs what the BRUSH deposits, and
         // silently erasing an artist's sculpting because they unticked a checkbox would be indefensible.

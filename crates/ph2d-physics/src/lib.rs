@@ -48,5 +48,5 @@ pub fn checkpoint_budget_bytes() -> usize {
 // downstream crate doesn't need a direct rapier2d dep just to
 // receive a body handle. Keeping the surface narrow per the
 // SKILL §7 anti-pattern "Acoplar API pública a tipos externos".
-pub use rapier2d::dynamics::{RigidBodyHandle, RigidBodyType};
+pub use rapier2d::dynamics::{ImpulseJointHandle, RigidBodyHandle, RigidBodyType};
 pub use rapier2d::geometry::ColliderHandle;

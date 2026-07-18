@@ -17,10 +17,12 @@
 
 mod bridge;
 mod components;
+mod joint;
 pub mod settings;
 
 pub use bridge::PhysicsBridge;
 pub use components::{BodyKind, Collider, ColliderShape, RigidBody};
+pub use joint::{JointKind, PhysicsJoint};
 pub use ph2d_physics::{LayerMatrix, MAX_LAYERS};
 pub use settings::{
     DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,
@@ -40,6 +42,7 @@ use ph2d_ecs::scene::ComponentRegistry;
 pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<RigidBody>("ph2d::physics::RigidBody");
     reg.register::<Collider>("ph2d::physics::Collider");
+    reg.register::<PhysicsJoint>("ph2d::physics::PhysicsJoint");
 }
 
 #[cfg(test)]
@@ -50,11 +53,12 @@ mod tests {
     /// a physics component that skips `register_physics_components` is
     /// dropped from every snapshot in silence. If you add one, bump this.
     #[test]
-    fn registers_both_physics_components() {
+    fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 2);
+        assert_eq!(reg.len(), 3);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
+        assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
     }
 }

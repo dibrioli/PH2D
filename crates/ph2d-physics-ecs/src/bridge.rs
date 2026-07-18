@@ -13,6 +13,8 @@
 //!
 //! [`dispatch`]: PhysicsBridge::dispatch
 
+mod joints;
+
 use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
@@ -20,6 +22,9 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_physics::{
     BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
 };
+
+use crate::joint::PhysicsJoint;
+use joints::JointRef;
 
 use crate::settings::PhysicsSettings;
 
@@ -34,6 +39,10 @@ type BodyQuery = QueryState<(
     &'static Collider,
     &'static Transform,
 )>;
+
+/// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
+/// The `Transform` is the anchor — see `bridge::joints` for the policy.
+type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform)>;
 
 /// A live rapier body owned by the bridge, keyed by its ECS entity.
 #[derive(Copy, Clone)]
@@ -67,10 +76,24 @@ pub struct PhysicsBridge {
     /// Built lazily on first dispatch (needs `&mut World`); `None` after
     /// [`rebuild`](PhysicsBridge::rebuild) so it re-binds to the world.
     query: Option<BodyQuery>,
+    /// The joints this bridge holds, keyed by the entity that authors each one.
+    /// `BTreeMap` for the determinism reason `bodies` documents.
+    joints: BTreeMap<Entity, JointRef>,
+    joint_query: Option<JointQuery>,
     // Reusable scratch — cleared+refilled each frame so the steady-state
     // hot path never reallocates (HR-3; proven by the capacity gate).
     /// Entities carrying physics components this frame (for stale detection).
     seen: Vec<Entity>,
+    /// Name-hash → body entity, rebuilt each frame a joint needs resolving.
+    names: BTreeMap<u64, Entity>,
+    joints_seen: Vec<Entity>,
+    joints_to_spawn: Vec<(
+        Entity,
+        ph2d_physics::JointDesc,
+        (RigidBodyHandle, RigidBodyHandle),
+        (Entity, Entity),
+    )>,
+    joints_to_remove: Vec<Entity>,
     /// New entities to spawn a body for, this frame.
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
@@ -107,7 +130,13 @@ impl PhysicsBridge {
             bodies: BTreeMap::new(),
             last_stepped: 0,
             query: None,
+            joints: BTreeMap::new(),
+            joint_query: None,
             seen: Vec::new(),
+            names: BTreeMap::new(),
+            joints_seen: Vec::new(),
+            joints_to_spawn: Vec::new(),
+            joints_to_remove: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
             settings: PhysicsSettings::default(),
@@ -139,6 +168,20 @@ impl PhysicsBridge {
     /// Number of live rapier bodies (for tests / diagnostics).
     pub fn body_count(&self) -> usize {
         self.bodies.len()
+    }
+
+    /// Number of live rapier joints (for tests / diagnostics).
+    pub fn joint_count(&self) -> usize {
+        self.joints.len()
+    }
+
+    /// Both anchors of every live joint, in **world** meters — what the
+    /// collider overlay draws. A joint is as invisible as a collider is, and
+    /// the answer to that was the same one both times: draw it.
+    pub fn joint_anchors(&self) -> impl Iterator<Item = ([f32; 2], [f32; 2])> + '_ {
+        self.joints
+            .values()
+            .filter_map(|j| self.world.joint_anchors(j.handle))
     }
 
     /// Set world gravity (m/s²). Default is `(0, -9.81)` (Y-up).
@@ -189,8 +232,10 @@ impl PhysicsBridge {
         // settings — re-push them or a project load quietly reverts every knob.
         self.settings.apply_to(&mut self.world);
         self.bodies.clear();
+        self.joints.clear();
         self.last_stepped = 0;
         self.query = None; // re-bind to the (possibly fresh) world
+        self.joint_query = None;
         self.ring.clear(); // cached states belong to the document being left
     }
 
@@ -206,7 +251,14 @@ impl PhysicsBridge {
         if self.query.is_none() {
             self.query = Some(sim.world_mut().query());
         }
+        if self.joint_query.is_none() {
+            self.joint_query = Some(sim.world_mut().query());
+        }
         self.reconcile_structure(sim);
+        // AFTER the bodies, always: a joint binds body handles and derives its
+        // local anchors from where those bodies stand, so it cannot be built
+        // before them (`bridge::joints`).
+        self.reconcile_joints(sim);
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
@@ -298,6 +350,10 @@ impl PhysicsBridge {
         for b in self.bodies.values_mut() {
             b.handle = self.world.spawn_body(b.rest);
         }
+        // Joints come back in the SAME call: the rewind replays its owed steps
+        // immediately, and a replay missing the joints is a different
+        // simulation — the chain would fall apart and re-assemble a frame later.
+        self.respawn_joints_from_rest();
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned

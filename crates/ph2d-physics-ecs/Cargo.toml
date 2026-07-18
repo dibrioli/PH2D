@@ -40,3 +40,9 @@ serde = { version = "1", features = ["derive"] }
 # blake3 for the ECS-bridged determinism hash over the readback poses
 # (same hash family as `PhysicsWorld::deterministic_hash`).
 blake3 = "1"
+
+[dev-dependencies]
+# The `JointKind` discriminants go into the project file, and postcard encodes
+# them POSITIONALLY. The gate that pins their order has to speak postcard to
+# make that claim about the bytes rather than about the source.
+postcard = { version = "1", features = ["use-std"] }

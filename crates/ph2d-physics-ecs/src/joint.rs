@@ -1,0 +1,202 @@
+//! [`PhysicsJoint`] — a joint is an **entity**, and it names its two bodies.
+//!
+//! # Why an entity and not a field on a body
+//!
+//! Because that is what this editor already decided every object is
+//! (ADR-0110: *vector nodes are ECS entities, one hierarchy*). Making the
+//! joint an entity means it shows up in the Hierarchy, is selectable,
+//! nameable, deletable, undoable and saveable — all of it machinery that
+//! already exists and none of it written twice. Deleting a joint is deleting
+//! an object; there is no "remove joint" button to invent.
+//!
+//! It also fixes the ceiling: a joint stored *on* a body can only be one per
+//! body (bevy holds one component of a type per entity), which forbids closed
+//! loops and makes a ragdoll's pelvis impossible to attach three ways.
+//!
+//! And the anchor comes free. The joint entity carries a `Transform`, and the
+//! Inspector's Position fields already "land on every entity that has a
+//! `Transform`, not just sprites" — so the pivot is authorable in numbers on
+//! day one, with no new UI. A point-handle gizmo on canvas is a *different*
+//! thing (all three existing `GizmoView` publishers are boxes with scale
+//! handles) and is not this wave.
+//!
+//! # The two bodies are named, never pointed at
+//!
+//! [`PhysicsJoint::body_a`] and `body_b` hold [`ph2d_ecs::stable_name_id`] —
+//! the hash of the body's `Name` — and **not** `Entity::to_bits()`. Bits are
+//! an allocation id: the undo respawns every entity with new ones, so a joint
+//! holding bits would come undone on the first Ctrl+Z. Worse, bits inside a
+//! component's serialized bytes make two logically identical states compare
+//! different, which is the spurious-undo-step bug `canonicalize` exists to
+//! kill. See the docs on `stable_name_id` for the whole argument, including
+//! what it costs (renaming a body detaches its joints, exactly as it detaches
+//! its timeline tracks).
+
+use ph2d_ecs::{Component, SimComponent};
+use serde::{Deserialize, Serialize};
+
+/// Which constraint this joint applies. **Append-only** — postcard encodes the
+/// discriminant positionally, so new kinds go at the END or every saved
+/// project reads its joints as the wrong type.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum JointKind {
+    /// The two bodies share a point and turn freely about it. The hinge, the
+    /// pendulum's pivot, the ragdoll's elbow.
+    #[default]
+    Pin,
+    /// A damped spring between the anchors — the distance is a target, not a
+    /// law.
+    Spring,
+    /// The anchors may come as close as they like but never further apart than
+    /// [`PhysicsJoint::max_length`].
+    Rope,
+}
+
+impl JointKind {
+    /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does, and
+    /// it is the only one with limits or a motor.
+    ///
+    /// **One door.** The Inspector asks it to decide which rows to paint, and
+    /// the bridge asks it to decide which parameters to hand the solver. Two
+    /// answers to *"does this joint have a motor?"* is how a knob comes to be
+    /// painted for a kind that ignores it.
+    pub fn is_hinge(self) -> bool {
+        matches!(self, JointKind::Pin)
+    }
+
+    /// Does this kind have a length the artist tunes? A pin does not — its
+    /// length is zero by definition (the two anchors are the same place).
+    pub fn has_length(self) -> bool {
+        !self.is_hinge()
+    }
+}
+
+/// A joint between two named bodies. The entity carrying it also carries a
+/// `Transform`, whose translation is the anchor (module docs).
+///
+/// Parameters that do not apply to the chosen [`JointKind`] are ignored and
+/// keep their values — switching kind and switching back returns the joint you
+/// had, the same way a `Collider` preserves its footprint across a shape
+/// change.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PhysicsJoint {
+    /// [`ph2d_ecs::stable_name_id`] of the first body's `Name`. `0` = unset.
+    pub body_a: u64,
+    /// The second body's, likewise.
+    pub body_b: u64,
+    pub kind: JointKind,
+    /// Confine the hinge to an angular range? (Pin only.)
+    pub limits_enabled: bool,
+    /// The range, **radians**. The engine's unit; the Inspector shows degrees,
+    /// converting at the paint/commit boundary like `Transform::rotation_rad`.
+    pub limit_min: f32,
+    pub limit_max: f32,
+    /// Drive the hinge? (Pin only.)
+    pub motor_enabled: bool,
+    /// Target angular velocity, radians/s. Sign picks the direction.
+    pub motor_speed: f32,
+    /// The force ceiling that makes a motor stoppable — a weak one stalls
+    /// against a heavy load instead of winning.
+    pub motor_max_force: f32,
+    /// Spring: the length it pulls towards, meters.
+    pub rest_length: f32,
+    /// Spring: how hard it pulls.
+    pub stiffness: f32,
+    /// Spring: how fast it stops bouncing.
+    pub damping: f32,
+    /// Rope: the distance the anchors may not exceed, meters.
+    pub max_length: f32,
+}
+
+impl Default for PhysicsJoint {
+    /// A free pin between nothing and nothing. Every numeric default is the
+    /// engine's measured one, so a joint the artist creates and never touches
+    /// behaves the way the wrapper's tests describe.
+    fn default() -> Self {
+        Self {
+            body_a: 0,
+            body_b: 0,
+            kind: JointKind::Pin,
+            limits_enabled: false,
+            limit_min: -Self::DEFAULT_LIMIT,
+            limit_max: Self::DEFAULT_LIMIT,
+            motor_enabled: false,
+            motor_speed: Self::DEFAULT_MOTOR_SPEED,
+            motor_max_force: Self::DEFAULT_MOTOR_MAX_FORCE,
+            rest_length: 1.0,
+            stiffness: ph2d_physics::JointDesc::DEFAULT_STIFFNESS,
+            damping: ph2d_physics::JointDesc::DEFAULT_DAMPING,
+            max_length: 1.0,
+        }
+    }
+}
+
+impl PhysicsJoint {
+    /// Half-range a newly limited hinge gets: ±45°, wide enough to read as a
+    /// hinge and narrow enough that switching limits on is visibly different
+    /// from leaving them off.
+    pub const DEFAULT_LIMIT: f32 = std::f32::consts::FRAC_PI_4;
+    /// A new motor's speed, radians/s — about a third of a turn per second,
+    /// slow enough to watch.
+    pub const DEFAULT_MOTOR_SPEED: f32 = 2.0;
+    /// A new motor's force ceiling. Strong enough to lift a small arm (the
+    /// wrapper measured a 0.2 kg arm needing ~1 N·m), so a motor switched on
+    /// visibly does something rather than looking broken.
+    pub const DEFAULT_MOTOR_MAX_FORCE: f32 = 10.0;
+
+    /// Is this joint fully specified — does it name two *different* bodies?
+    ///
+    /// A joint naming one body twice, or naming none, is not a joint the
+    /// solver can build. Asked here so the bridge and the Inspector agree
+    /// about what "incomplete" means.
+    pub fn names_two_bodies(&self) -> bool {
+        self.body_a != 0 && self.body_b != 0 && self.body_a != self.body_b
+    }
+}
+
+impl SimComponent for PhysicsJoint {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_joint_that_names_one_body_twice_is_not_complete() {
+        let j = PhysicsJoint {
+            body_a: 7,
+            body_b: 7,
+            ..PhysicsJoint::default()
+        };
+        assert!(!j.names_two_bodies());
+    }
+
+    #[test]
+    fn a_fresh_joint_names_nobody() {
+        assert!(!PhysicsJoint::default().names_two_bodies());
+    }
+
+    #[test]
+    fn only_a_pin_is_a_hinge_and_only_the_others_have_a_length() {
+        assert!(JointKind::Pin.is_hinge());
+        assert!(!JointKind::Pin.has_length());
+        for k in [JointKind::Spring, JointKind::Rope] {
+            assert!(!k.is_hinge(), "{k:?} is not a hinge");
+            assert!(k.has_length(), "{k:?} has a length");
+        }
+    }
+
+    /// `JointKind` goes into the project file, where postcard encodes the
+    /// discriminant **positionally**. Reordering these — or inserting a kind
+    /// anywhere but the end — silently reads every saved Spring as a Rope.
+    #[test]
+    fn the_kind_discriminants_are_pinned_in_order() {
+        let all = [JointKind::Pin, JointKind::Spring, JointKind::Rope];
+        for (i, k) in all.iter().enumerate() {
+            let bytes = postcard::to_allocvec(k).expect("encode");
+            assert_eq!(
+                bytes[0] as usize, i,
+                "{k:?} must stay at discriminant {i} — postcard is positional"
+            );
+        }
+    }
+}

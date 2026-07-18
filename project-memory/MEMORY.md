@@ -76,6 +76,7 @@
 - [Geometria com unidades mistas](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — converta com a const do RENDERER
 - [Snapshot = PONTO FIXO dos sistemas](feedback_a_snapshot_must_be_a_fixed_point_of_the_systems.md) — senão a normalização vira "ação"
 - [Uma régua mede UM relógio](feedback_one_ruler_measures_one_clock.md) — dois dados no mesmo eixo com BASES diferentes; o "confuso" do usuário era bug de modelo
+- [Inverso impossível = 2º relógio, não read-only](feedback_an_impossible_inverse_is_a_reason_for_a_second_clock_not_a_readonly_control.md) — mapa não-inversível justifica dar ESTADO próprio à vista (precomp do AE), não travar o controle
 - [Lacuna não é silêncio](feedback_a_gap_is_not_silence_two_answers_across_one_pixel.md) — "ausente" e "presente com influência 0" têm de coincidir no limite, senão é salto
 - [Espelhar tempo espelha a FORMA](feedback_mirroring_time_must_mirror_the_shape.md) — o interp mora no key de saída: muda de dono E se espelha
 - [Publicador de view não exige cache primed](feedback_a_view_publisher_must_not_require_a_primed_cache.md) — quem AUTORA num instante pode; quem PUBLICA prima sozinho

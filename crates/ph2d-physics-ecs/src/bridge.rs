@@ -21,6 +21,8 @@ use ph2d_physics::{
     BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
 };
 
+use crate::settings::PhysicsSettings;
+
 use crate::components::{BodyKind, Collider, ColliderShape, RigidBody};
 
 /// The query the bridge iterates each frame. Cached (built once) because
@@ -73,9 +75,12 @@ pub struct PhysicsBridge {
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
     to_remove: Vec<Entity>,
-    /// Kept so a rewind can rebuild a fresh world with the same gravity
-    /// (`PhysicsWorld::new` would silently reset it to the default).
-    gravity: (f32, f32),
+    /// The world's authored settings, kept so a rewind can rebuild a fresh
+    /// world that still has them: `PhysicsWorld::new` starts from the engine
+    /// defaults, so anything not carried here is **silently reset** by a scrub
+    /// backwards. (This field used to be gravity alone, which is exactly that
+    /// bug scoped to nine other knobs.)
+    settings: PhysicsSettings,
     /// Sparse cache of past states, so scrubbing backwards replays at most
     /// `STRIDE` steps instead of `target` of them (W1.5). Purely an
     /// accelerator: on a miss the rest-pose rebuild below runs, which is the
@@ -105,7 +110,7 @@ impl PhysicsBridge {
             seen: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
-            gravity: (0.0, ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y),
+            settings: PhysicsSettings::default(),
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
         }
@@ -138,11 +143,39 @@ impl PhysicsBridge {
 
     /// Set world gravity (m/s²). Default is `(0, -9.81)` (Y-up).
     pub fn set_gravity(&mut self, x: f32, y: f32) {
-        self.gravity = (x, y);
-        self.world.set_gravity(x, y);
-        // Every cached state was simulated under the OLD gravity. Replaying
-        // from one would mix two worlds — the same "an edit invalidates the
-        // cache" rule Motion applies on `mark_dirty`.
+        self.set_settings(PhysicsSettings {
+            gravity_x: x,
+            gravity_y: y,
+            ..self.settings
+        });
+    }
+
+    /// The world's authored settings (what the panel paints, and what the
+    /// project file stores).
+    pub fn settings(&self) -> PhysicsSettings {
+        self.settings
+    }
+
+    /// Replace the world's authored settings and push them into rapier.
+    ///
+    /// Clamps on the way in: a range that only lives in a slider is not a
+    /// range, and this is also the door a loaded project file comes through.
+    ///
+    /// ⚠️ **Clears the checkpoint ring**, for the same reason gravity always
+    /// did: every cached state was simulated under the OLD settings, so
+    /// replaying from one would splice two different worlds together and
+    /// publish the result as if nothing happened. Asked once, for all ten
+    /// knobs, instead of per-knob — one door cannot forget one of them.
+    pub fn set_settings(&mut self, settings: PhysicsSettings) {
+        let settings = settings.clamped();
+        if settings == self.settings {
+            // Idempotent: the panel republishes every frame, and waking every
+            // body (which `set_body_defaults` does) on a frame where nothing
+            // changed would keep a settled stack from ever sleeping.
+            return;
+        }
+        self.settings = settings;
+        settings.apply_to(&mut self.world);
         self.ring.clear();
     }
 
@@ -152,6 +185,9 @@ impl PhysicsBridge {
     /// (runtime-truth: the components are the truth, the world is derived).
     pub fn rebuild(&mut self) {
         self.world = PhysicsWorld::new();
+        // A fresh world starts from the ENGINE defaults, not this document's
+        // settings — re-push them or a project load quietly reverts every knob.
+        self.settings.apply_to(&mut self.world);
         self.bodies.clear();
         self.last_stepped = 0;
         self.query = None; // re-bind to the (possibly fresh) world
@@ -256,7 +292,7 @@ impl PhysicsBridge {
     fn rebuild_from_rest(&mut self) {
         self.ring.clear();
         self.world = PhysicsWorld::new();
-        self.world.set_gravity(self.gravity.0, self.gravity.1);
+        self.settings.apply_to(&mut self.world);
         // BTreeMap → entity order, so the fresh handles are assigned in the
         // same deterministic order as the original spawn (HR-5).
         for b in self.bodies.values_mut() {

@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-panel-physics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# HR-15: every new panel string goes through `tr()`. The Inspector's
+# hardcoded-English exception is NOT inherited by a new panel.
+ph2d-i18n = { path = "../ph2d-i18n" }
+# `PhysicsSettings` + the MEASURED ranges. The panel paints the world's
+# authored settings and emits a whole new one as an intent — it does not
+# keep a second copy of any of these numbers.
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: a panel with an
+# `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
+# observable effect. The debt list is empty; there is no exemption.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

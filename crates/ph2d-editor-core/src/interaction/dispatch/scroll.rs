@@ -138,6 +138,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::AUDIO_EDITOR_PANEL)
     } else if id == crate::widget::FLIP_SCROLLBAR_ID {
         Some(ids::FLIP_PANEL)
+    } else if id == crate::widget::PHYSICS_SCROLLBAR_ID {
+        Some(ids::PHYSICS_PANEL)
     } else {
         None
     }

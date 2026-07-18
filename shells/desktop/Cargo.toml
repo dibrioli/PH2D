@@ -24,6 +24,9 @@ ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+# The world-settings panel (ADR-0131 D8 / W2b). The shell drains its intents
+# in `render_loop::physics_panel_bridge`.
+ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing

@@ -5296,6 +5296,7 @@ dependencies = [
  "ph2d-panel-motion-params",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
+ "ph2d-panel-physics",
  "ph2d-panel-registry-init",
  "ph2d-panel-timeline",
  "ph2d-panel-upscale",
@@ -6608,6 +6609,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-physics"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-physics-ecs",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -6626,6 +6639,7 @@ dependencies = [
  "ph2d-panel-motion-params",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
+ "ph2d-panel-physics",
  "ph2d-panel-sync",
  "ph2d-panel-timeline",
  "ph2d-panel-upscale",

@@ -339,6 +339,11 @@ pub fn paint_hero_screen(
         // by the `timeline` key. WITHOUT this entry the registered+visible panel
         // is never reached by the z-order walk → never painted.
         ids::TIMELINE_PANEL,
+        // Physics world panel (ADR-0131 D8 docked `ph2d-panel-physics`): the
+        // world/scene-settings category — always available, not tool-gated.
+        // Its `paint()` no-ops when hidden. WITHOUT this entry the panel is
+        // registered, visible, and NEVER painted — nothing breaks, nothing warns.
+        ids::PHYSICS_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

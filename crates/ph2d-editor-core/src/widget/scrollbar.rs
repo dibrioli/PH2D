@@ -184,6 +184,12 @@ pub const AUDIO_EDITOR_SCROLLBAR_ID: NodeId = NodeId(834);
 /// without aliasing the Inspector / Vector panels that share the dock slot.
 /// Next free id is `836`; re-read the collision note above before taking it.
 pub const FLIP_SCROLLBAR_ID: NodeId = NodeId(835);
+/// Physics world docked-panel scrollbar (ADR-0131 D8 / W2b) — the panel body
+/// (World + Solver + Damping + Sleep + Debug) overflows the dock height.
+/// Independent thumb id so dispatch routes drag-scroll without aliasing the
+/// Inspector / Vector / Flip panels that share the dock slot.
+/// Next free id is `837`; re-read the collision note above before taking it.
+pub const PHYSICS_SCROLLBAR_ID: NodeId = NodeId(836);
 
 #[cfg(test)]
 mod tests {
@@ -213,6 +219,7 @@ mod tests {
             ("VECTOR", VECTOR_SCROLLBAR_ID),
             ("AUDIO_EDITOR", AUDIO_EDITOR_SCROLLBAR_ID),
             ("FLIP", FLIP_SCROLLBAR_ID),
+            ("PHYSICS", PHYSICS_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

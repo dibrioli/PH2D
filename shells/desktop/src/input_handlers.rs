@@ -137,6 +137,25 @@ impl App {
                     "Colliders hidden (B)"
                 }));
             }
+            // Toggle the Physics world panel (ADR-0131 D8 / W2b). Mirror of the
+            // timeline's `L`: a world panel is not tool-gated, so it needs an
+            // opener of its own or it is a feature nobody can reach. `W` for
+            // World — audited free against the shell's whole shortcut set.
+            KeyCode::KeyW => {
+                let shown = if let Some(hero) = gfx.hero_screen.as_mut() {
+                    let v = !hero.is_panel_visible("physics");
+                    hero.panel_visibility.insert("physics", v);
+                    v
+                } else {
+                    false
+                };
+                gfx.toasts.push(Toast::info(if shown {
+                    "Physics shown (W)"
+                } else {
+                    "Physics hidden (W)"
+                }));
+                self.title_dirty = true;
+            }
             KeyCode::KeyT => {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;

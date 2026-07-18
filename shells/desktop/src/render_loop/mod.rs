@@ -85,6 +85,7 @@ mod painter_preview_handoff_tests;
 mod painter_preview_pipeline_tests;
 pub(crate) mod physics_bridge;
 pub(crate) mod physics_overlay;
+pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
 mod push_look_probe;
@@ -3100,6 +3101,15 @@ impl crate::App {
             // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)
             // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
             // vive no flip_bridge, allowlistado).
+            // Physics WORLD panel (ADR-0131 D8 / W2b). Same phase as the other
+            // panel bridges — after the ActivateTool drain, before paint — but
+            // deliberately NOT tool-gated: this panel belongs to the document,
+            // so the artist owns its visibility and this call never writes it.
+            //
+            // ⚠️ Distinct from `physics_bridge::dispatch` far above, which steps
+            // the SIMULATION at the Playhead tick. Two bridges, two phases.
+            self.show_colliders =
+                physics_panel_bridge::dispatch(hero, physics, self.show_colliders);
             let (flip_active, flip_style) = flip_bridge::publish(
                 hero,
                 tools,

@@ -431,6 +431,7 @@ pub(crate) fn build_initial_state(
             m.default_uv_rect = motion_default_uv;
             m
         },
+        physics: ph2d_physics_ecs::PhysicsBridge::new(),
         text_system,
         hero_screen,
         hero_arena: Bump::with_capacity(4096),
@@ -453,6 +454,9 @@ pub(crate) fn build_initial_state(
             // through `EditorCommand::SetComponent` instead of
             // direct world mutation.
             ph2d_render::register_render_components(&mut reg);
+            // ADR-0130 W1: RigidBody/Collider — without this the
+            // WorldSnapshot (undo + save) silently drops them.
+            ph2d_physics_ecs::register_physics_components(&mut reg);
             reg
         },
         editor_queue: EditorCommandQueue::new(),

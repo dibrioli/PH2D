@@ -40,6 +40,7 @@ mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
 pub(crate) mod motion_bridge;
+pub(crate) mod physics_bridge;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
@@ -568,6 +569,7 @@ impl crate::App {
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
         self.stack_smoke();
+        self.physics_smoke();
         self.flip_pose_smoke();
         self.flip_edit_smoke();
         self.flip_selection_smoke();
@@ -636,6 +638,9 @@ impl crate::App {
             // Motion Nodes: cooked per frame by `motion_bridge` (M0.T10) into its
             // reused instance buffer while the `motion` tool is active.
             motion,
+            // Global rigid physics: stepped per frame by `physics_bridge`
+            // (ADR-0130 W1) — reads RigidBody/Collider, writes Transform.
+            physics,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -1053,6 +1058,12 @@ impl crate::App {
         self.timeline_view
             .rebuild(&mut self.timeline, &self.playhead);
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
+        // Global rigid physics (ADR-0130 W1): step the rapier world at the
+        // Playhead tick and read poses back into Transform, BEFORE
+        // sim_extract so bodies render the same frame. Runtime-truth: play
+        // = N sequential steps + readback; paused = settle to the authored
+        // pose (read-only on Transform → no spurious undo step when idle).
+        physics_bridge::dispatch(physics, sim, &self.playhead, self.fixed_step.fixed_dt());
         sim_extract::run(
             dt,
             sim,

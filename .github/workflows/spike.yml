@@ -491,6 +491,28 @@ jobs:
           path: ${{ runner.temp }}/physics-c9-hash.txt
           if-no-files-found: error
 
+      # ADR-0130 W1 extends the physics gate to the ECS BRIDGE: same
+      # 50-body fixture driven through components -> PhysicsBridge -> readback
+      # into Transform, hashed over those Transforms. Proves OUR code
+      # (iteration order, the meters<->rapier boundary, readback) is
+      # bit-identical cross-OS, not just rapier's internal state.
+      - name: Run physics-ECS C9 (bridge) and capture hash
+        id: physics_ecs_replay
+        shell: bash
+        run: |
+          OUT=$(cargo run --release --locked --quiet --bin physics_ecs_c9 -p ph2d-physics-ecs)
+          echo "$OUT"
+          HASH=$(echo "$OUT" | grep -E '^physics-ecs-c9 hash: ' | awk '{print $3}')
+          echo "Captured physics-ecs hash: $HASH"
+          echo "$HASH" > "${RUNNER_TEMP}/physics-ecs-c9-hash.txt"
+
+      - name: Upload physics-ECS hash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: physics-ecs-c9-hash-${{ matrix.os }}
+          path: ${{ runner.temp }}/physics-ecs-c9-hash.txt
+          if-no-files-found: error
+
   determinism-compare:
     name: C9 cross-platform comparison (ECS + physics)
     needs: determinism
@@ -533,6 +555,22 @@ jobs:
             exit 1
           fi
           echo "PASS: physics hash identical across all OSes (M10 gate)."
+      - name: Compare physics-ECS bridge hashes across all OSes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Per-OS physics-ECS bridge hashes:"
+          for f in hashes/physics-ecs-c9-hash-*/physics-ecs-c9-hash.txt; do
+            os=$(basename "$(dirname "$f")" | sed 's/physics-ecs-c9-hash-//')
+            hash=$(cat "$f")
+            echo "  $os: $hash"
+          done
+          uniq=$(for f in hashes/physics-ecs-c9-hash-*/physics-ecs-c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
+          if [ "$uniq" -ne 1 ]; then
+            echo "FAIL: physics-ECS bridge hashes differ across OSes — HR-5 violated (ADR-0130 W1)."
+            exit 1
+          fi
+          echo "PASS: physics-ECS bridge hash identical across all OSes (ADR-0130 W1 gate)."
 
   # --------------------------------------------------------------------------
   # Bench baseline — runs criterion against `main` to surface regressions in PRs.

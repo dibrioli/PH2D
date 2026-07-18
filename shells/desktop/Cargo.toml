@@ -23,6 +23,7 @@ ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 # GPU/M5 Fase 1 (ADR-0126): GPU-resident node cook (PH2D_GPU_COOK=1).
 ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing

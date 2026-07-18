@@ -5299,6 +5299,7 @@ dependencies = [
  "ph2d-panel-timeline",
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
+ "ph2d-physics-ecs",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",

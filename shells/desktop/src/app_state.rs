@@ -141,6 +141,11 @@ pub(crate) struct AppGfx {
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
     /// `vec_scene` — document ≠ tool (ADR-0040).
     pub(crate) motion: crate::motion_state::MotionState,
+    /// Global rigid-body physics (ADR-0130 W1). Owns the transient rapier
+    /// world + entity↔handle map, driven at the `Playhead` tick by
+    /// `render_loop::physics_bridge`. Derived from `RigidBody`/`Collider`
+    /// components each frame; NOT serialized (rebuilt on load/undo).
+    pub(crate) physics: ph2d_physics_ecs::PhysicsBridge,
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
     pub(crate) text_system: TextSystem,
@@ -413,6 +418,8 @@ pub(crate) struct App {
     pub(crate) impasto_smoke_done: bool,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
+    /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
+    pub(crate) physics_smoke_done: bool,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

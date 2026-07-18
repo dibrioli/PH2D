@@ -34,6 +34,28 @@ use ph2d_editor_core::tool::PanelEvent;
 /// guarda e nunca precisa saber que existe um track `0..1`. Um shell que convertesse por conta
 /// própria seria uma segunda porta para a mesma pergunta — e a que esquecesse o mapa bipolar
 /// carimbaria um preset de força zero quando o artista puxou o slider até a esquerda.
+/// Este id é um dos três parâmetros do Trim (ADR-0132)?
+fn is_trim_param(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_FX_TRIM_START
+        || id == ids::VECTOR_FX_TRIM_END
+        || id == ids::VECTOR_FX_TRIM_OFFSET
+}
+
+/// Os três do Trim são frações `0..=1`: o track JÁ é o valor do documento, então a conversão
+/// é a **identidade**. Mesmo assim eles passam por [`forward_track`] — é esta a fronteira onde
+/// a pergunta *"em que unidade?"* é respondida, e um atalho os deixaria de fora dela.
+///
+/// O `End` cai em `1.0` quando o store ainda não tem o slider: é o ponto NEUTRO do Trim, e um
+/// default de `0.0` faria o caminho desaparecer no primeiro frame.
+fn forward_trim(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    let default = if id == ids::VECTOR_FX_TRIM_END {
+        1.0
+    } else {
+        0.0
+    };
+    forward_track(host, id, default, |t| t)
+}
+
 fn forward_track(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
@@ -59,6 +81,7 @@ pub(crate) fn apply_event(
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_ENVELOPE_BEND => {
             forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0))
         }
+        WidgetEvent::ValueChanged(id) if is_trim_param(id) => forward_trim(host, id),
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_MORPH_T => {
             forward_track(host, id, 0.5, |t| t)
         }
@@ -356,6 +379,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BLEND_EXPAND
         || id == ids::VECTOR_BLEND_RELEASE
         || id == ids::VECTOR_MORPH_RUN
+        || id == ids::VECTOR_FX_TRIM
         || id == ids::VECTOR_ENVELOPE_RUN
         || id == ids::VECTOR_ENVELOPE_EXPAND
         || id == ids::VECTOR_ENVELOPE_RELEASE

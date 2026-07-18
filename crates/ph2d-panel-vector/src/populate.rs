@@ -372,6 +372,10 @@ mod blend;
 #[path = "populate_envelope.rs"]
 mod envelope;
 
+/// O registro dos widgets dos **Effects** (ADR-0132) — módulo irmão, par do `paint_effects`.
+#[path = "populate_effects.rs"]
+mod effects;
+
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
@@ -384,6 +388,7 @@ fn populate_ops(store: &mut WidgetStore) {
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     blend::populate_blend(store);
     envelope::populate_envelope(store);
+    effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);

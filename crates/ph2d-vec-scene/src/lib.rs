@@ -570,6 +570,15 @@ impl VecScene {
         id
     }
 
+    /// Acesso ao path de id `id` — o irmão imutável do [`Self::path_mut`].
+    ///
+    /// Existe porque quem só quer LER estava a chamar `paths().iter().find(…)` à mão, e cada
+    /// cópia dessa busca é uma oportunidade de alguém a escrever com `==` sobre outro campo.
+    #[must_use]
+    pub fn path(&self, id: VecPathId) -> Option<&VecPath> {
+        self.paths.iter().find(|p| p.id == id)
+    }
+
     /// Acesso mutável ao path de id `id` (para edição incremental — ex.: o Pen
     /// anexando vértices ao traço em progresso).
     pub fn path_mut(&mut self, id: VecPathId) -> Option<&mut VecPath> {

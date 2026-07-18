@@ -62,7 +62,7 @@ fn the_star_window_never_pauses() {
     let b = spin_phase(DRAW_ON_FRAMES + HOLD_FRAMES / 2);
     assert!(
         b > a,
-        "o giro continuou durante o hold da elipse ({a} → {b})"
+        "o giro continuou durante o hold da elipse ({a} -> {b})"
     );
 }
 

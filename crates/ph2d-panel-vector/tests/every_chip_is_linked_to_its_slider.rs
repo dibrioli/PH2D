@@ -86,6 +86,23 @@ const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
         ids::VECTOR_BLEND_STEPS_NUM,
     ),
     ("Morph t", ids::VECTOR_MORPH_T, ids::VECTOR_MORPH_T_NUM),
+    // ADR-0132 — os tres do Trim. O Bend do Envelope NAO esta nesta tabela (buraco herdado);
+    // um par novo entra aqui, senao o chip e o slider podem divergir sem ninguem ver.
+    (
+        "Trim Start",
+        ids::VECTOR_FX_TRIM_START,
+        ids::VECTOR_FX_TRIM_START_NUM,
+    ),
+    (
+        "Trim End",
+        ids::VECTOR_FX_TRIM_END,
+        ids::VECTOR_FX_TRIM_END_NUM,
+    ),
+    (
+        "Trim Offset",
+        ids::VECTOR_FX_TRIM_OFFSET,
+        ids::VECTOR_FX_TRIM_OFFSET_NUM,
+    ),
 ];
 
 #[test]

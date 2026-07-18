@@ -56,6 +56,10 @@ mod blend;
 #[path = "paint_envelope.rs"]
 mod envelope;
 
+/// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
+#[path = "paint_effects.rs"]
+mod effects;
+
 impl BodyCtx<'_> {
     /// A full-width slider + linked value chip row; returns the advanced `y`.
     #[allow(clippy::too_many_arguments)]
@@ -186,6 +190,9 @@ impl BodyCtx<'_> {
         // O Envelope fica junto dos outros deformadores não-destrutivos (Blend/Morph): os três
         // produzem geometria DERIVADA de uma relação viva, e o artista os procura no mesmo lugar.
         y = self.step(y, Self::envelope_section);
+        // Effects fica logo depois dos deformadores: os três são não-destrutivos, e a
+        // pilha é a generalização deles (ADR-0132).
+        y = self.step(y, Self::effects_section);
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)

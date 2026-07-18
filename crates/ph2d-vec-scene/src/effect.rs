@@ -61,6 +61,25 @@ impl PathEffect {
         }
     }
 
+    /// Este efeito é um Trim? Devolve os parâmetros dele.
+    ///
+    /// ⚠️ O `match` é **exaustivo de propósito**: quando o 2º tipo de efeito entrar, isto
+    /// deixa de compilar e quem o acrescentar TEM de decidir o que este acessor responde.
+    /// Um `_ => None` hoje seria um silêncio que ninguém voltaria a ler.
+    #[must_use]
+    pub fn as_trim(&self) -> Option<&TrimSpec> {
+        match self {
+            Self::Trim(t) => Some(t),
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_trim`] — para quem AJUSTA um parâmetro.
+    pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
+        match self {
+            Self::Trim(t) => Some(t),
+        }
+    }
+
     /// O nome que o painel mostra. Mora aqui (e não numa tabela no painel) porque uma
     /// segunda lista dos efeitos divergiria da primeira assim que alguém acrescentasse um.
     #[must_use]

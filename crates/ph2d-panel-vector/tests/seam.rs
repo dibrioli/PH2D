@@ -547,7 +547,7 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        21, // +1: ENVELOPE (ADR-0129 Fatia 5)
+        22, // +1: EFFECTS (ADR-0132, a pilha de Live Path Effects)
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -1207,4 +1207,96 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         .is_none(),
         "um preset de GAIOLA foi oferecido no gesto Pinos"
     );
+}
+
+/// **O toggle do Trim (ADR-0132) chega ao bus quando o artista CLICA nele** — pelo caminho
+/// inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs` → bus).
+///
+/// ⚠️ A seção Effects não tem premissa de estado para o BOTÃO: ele é oferecido sempre (é ele
+/// que PÕE o efeito). Os três sliders, sim — ver o par de presença abaixo.
+#[test]
+fn the_trim_toggle_reaches_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    ph2d_panel_vector::set_current_trim(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let r = host
+        .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_FX_TRIM)
+        .expect("o toggle do Trim nao foi PINTADO com area clicavel na secao Effects");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_FX_TRIM)),
+        "o ponteiro sobre o toggle nao virou Click — falta `button()` no `populate_effects`"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(
+            |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c))
+                if c == ids::VECTOR_FX_TRIM)
+        ),
+        "o Click no toggle nao chegou ao bus — falta o id em `forwards_plain_click` \
+         (o botao e clicavel e MORTO)"
+    );
+}
+
+/// **Sem Trim no caminho, os três parâmetros NÃO existem na tela** — o par de PRESENÇA.
+///
+/// Não são pintados "dimmed": um controle apagado que ainda despacha mente, e um que não
+/// despacha é um botão morto. Eles simplesmente não são oferecidos — e o toggle, que é quem
+/// cria o efeito, continua lá.
+#[test]
+fn the_trim_parameters_are_not_offered_without_a_trim() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let params = [
+        (ids::VECTOR_FX_TRIM_START, "Start"),
+        (ids::VECTOR_FX_TRIM_END, "End"),
+        (ids::VECTOR_FX_TRIM_OFFSET, "Offset"),
+    ];
+
+    ph2d_panel_vector::set_current_trim(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for (id, name) in params {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_none(),
+            "{name} foi pintado sem haver Trim no caminho — um slider que edita um efeito \
+             inexistente escreve no vazio"
+        );
+    }
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_FX_TRIM)
+            .is_some(),
+        "o toggle TEM de continuar oferecido — e' ele que cria o efeito"
+    );
+
+    // E COM Trim os três aparecem: sem esta metade, "não oferece" ficaria verde com a seção
+    // inteira apagada. [[feedback_absence_gate_needs_a_presence_sibling]]
+    ph2d_panel_vector::set_current_trim(Some((0.1, 0.8, 0.2)));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for (id, name) in params {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some(),
+            "{name} NAO foi pintado com um Trim no caminho — o artista nao consegue ajusta-lo"
+        );
+    }
+    ph2d_panel_vector::set_current_trim(None);
 }

@@ -313,6 +313,12 @@ pub(crate) fn convertible() -> bool {
 /// Publica se a seleção vive sob UM container de Envelope (ADR-0129) — habilita **Expand**/
 /// **Release**, que só fazem sentido sobre um envelope existente. Quem responde no shell é o
 /// `envelope_live::sole_container`, a MESMA porta que a seleção e o `dissolve` usam.
+/// O estado dos **Effects** (ADR-0132) — módulo irmão pelo teto de 600 LOC deste arquivo.
+#[path = "state_effects.rs"]
+mod effects;
+pub use effects::set_current_trim;
+pub(crate) use effects::trim;
+
 pub fn set_current_has_envelope(v: bool) {
     CURRENT_HAS_ENVELOPE.with(|c| c.set(v));
 }

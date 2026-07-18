@@ -523,6 +523,30 @@ pub const VECTOR_ENVELOPE_PINS: NodeId = hash_node_id("vector.envelope.pins");
 /// permanente.
 pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.clear_pins");
 
+// ── Effects: a PILHA de Live Path Effects (bloco APPEND-ONLY, ADR-0132) ─────
+// A pilha é dado de documento (`VecPath.effects`) e o `cooked()` a avalia logo depois do estágio
+// da quina. Até esta seção existir, a única porta para pôr um efeito num caminho era a env
+// `PH2D_BUILD_SMOKE=13` — o motor existia e o artista não o alcançava.
+/// Seção **EFFECTS** — os efeitos não-destrutivos e empilháveis do caminho selecionado.
+pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects");
+/// **Trim Path** — põe (ou tira) o efeito de revelação no caminho selecionado. É um TOGGLE: o
+/// mesmo botão adiciona e remove, porque "Add" sobre um caminho que já tem um seria um 2º Trim,
+/// e a UI só oferece um (o motor aceita N — ADR-0132 §2).
+pub const VECTOR_FX_TRIM: NodeId = hash_node_id("vector.fx.trim");
+/// **Start** do Trim — a fração do comprimento onde o trecho começa.
+pub const VECTOR_FX_TRIM_START: NodeId = hash_node_id("vector.fx.trim.start");
+/// O campo numérico do [`VECTOR_FX_TRIM_START`].
+pub const VECTOR_FX_TRIM_START_NUM: NodeId = hash_node_id("vector.fx.trim.start.num");
+/// **End** do Trim — a fração onde ele acaba. É este que se keyframa para o *draw-on*.
+pub const VECTOR_FX_TRIM_END: NodeId = hash_node_id("vector.fx.trim.end");
+/// O campo numérico do [`VECTOR_FX_TRIM_END`].
+pub const VECTOR_FX_TRIM_END_NUM: NodeId = hash_node_id("vector.fx.trim.end.num");
+/// **Offset** do Trim — gira o ponto de partida ao longo do caminho. Num contorno fechado ele dá
+/// a volta pela emenda; num aberto ele desliza e o que sai do domínio é recortado.
+pub const VECTOR_FX_TRIM_OFFSET: NodeId = hash_node_id("vector.fx.trim.offset");
+/// O campo numérico do [`VECTOR_FX_TRIM_OFFSET`].
+pub const VECTOR_FX_TRIM_OFFSET_NUM: NodeId = hash_node_id("vector.fx.trim.offset.num");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).
@@ -540,6 +564,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,
     VECTOR_SECTION_ENVELOPE,
+    VECTOR_SECTION_EFFECTS,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,
     VECTOR_SECTION_PATH,

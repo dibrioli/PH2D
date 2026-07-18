@@ -107,15 +107,15 @@ produz o alicerce em que as waves vão assentar, e o faz com o mesmo rigor de um
 
 Três entregáveis, todos em `docs/Physics/` (ou `docs/architecture/decisions/` para o ADR):
 
-### 2.1 · A ADR de abertura — `ADR-0130`
-Arquivo: `docs/architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md`
+### 2.1 · A ADR de abertura — `ADR-0131`
+Arquivo: `docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md`
 (ajuste o slug se preferir, mas **mantenha o número 0130** — é o próximo livre hoje).
 
 Siga o **formato da casa** — abra qualquer ADR recente para o molde exato (ex.
 [`0124`](../architecture/decisions/0124-audio-a-range-edit-must-be-told-its-range.md),
 [`0118`](../architecture/decisions/0118-audio-streaming-voices-residency.md)): cabeçalho
 (**Status: Accepted** · **Decisor(es): Enio + Claude (line/physics W0)** · pré-requisitos · tags),
-Contexto, Decisão, Consequências, Alternativas rejeitadas. A ADR-0130 deve **decidir** os 11 pontos
+Contexto, Decisão, Consequências, Alternativas rejeitadas. A ADR-0131 deve **decidir** os 11 pontos
 do §4 deste handoff — cada um com o *porquê*, não só o *quê*.
 
 > ⚠️ **Colisão de número de ADR:** há 4 linhas ativas (FLIP/Painter/Vector/anim) que podem reclamar
@@ -135,7 +135,7 @@ com: objetivo · entregáveis (crates/arquivos) · **gates red-first, mutation-t
 - `docs/Physics/01_visao.md` (opcional mas recomendado) — a visão de 1 página: o motor global,
   runtime-truth+bake, a fronteira tríplice, o que o diferencia (Rive/Cavalry/AE/Godot 2D).
 
-**Ao terminar os três, PARE e reporte** ("ADR-0130 + plano de waves + tracker prontos; aguardo ordem
+**Ao terminar os três, PARE e reporte** ("ADR-0131 + plano de waves + tracker prontos; aguardo ordem
 para W1"). **Não comece W1** sem a próxima instrução do Enio. Feche → handoff → PARE (regra E).
 
 ---
@@ -241,7 +241,7 @@ conversão do consumidor, uma porta só. Isto entra no **dia 1** da ADR (decisã
 
 ---
 
-## 4 · O que a ADR-0130 tem que DECIDIR (checklist normativo)
+## 4 · O que a ADR-0131 tem que DECIDIR (checklist normativo)
 
 Cada item é uma decisão com *porquê*. A ADR não está completa sem os 11.
 
@@ -396,6 +396,6 @@ Cada costura é exercitada, não só compilada. Cada número vem do produto, nã
 fechar, o motor não vai *parecer* funcionar — vai funcionar, e um teste que clica, ticka e olha vai
 provar isso.
 
-Comece pela FASE 1. Depois escreva a ADR-0130, o plano de waves e o tracker. Então pare e reporte.
+Comece pela FASE 1. Depois escreva a ADR-0131, o plano de waves e o tracker. Então pare e reporte.
 
 **Bom trabalho. Faça o seu melhor.**

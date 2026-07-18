@@ -166,7 +166,7 @@ pub const INSP_SAMPLE_BLEND: [NodeId; 6] = [
     hash_node_id("insp_sample_blend_premult"),
 ];
 
-// ─── §11 Physics Body (ADR-0130 D8) ───────────────────────────────────
+// ─── §11 Physics Body (ADR-0131 D8) ───────────────────────────────────
 /// §11 Physics Body — collapsible section header.
 pub const INSP_LIVE_PHYSICS_SECTION: NodeId = hash_node_id("insp_live_physics_section");
 /// §11 Physics Body — section accent color dot.

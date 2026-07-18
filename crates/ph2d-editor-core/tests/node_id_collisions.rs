@@ -197,7 +197,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("INSP_NOTE_BODY_9", ids::INSP_NOTE_BODY_9),
     ("INSP_NOTE_BODY_10", ids::INSP_NOTE_BODY_10),
     ("INSP_NOTE_BODY_11", ids::INSP_NOTE_BODY_11),
-    // §11 Physics Body (ADR-0130 D8). Array ids are expanded element by
+    // §11 Physics Body (ADR-0131 D8). Array ids are expanded element by
     // element: the table proves pairwise uniqueness, and an array listed as a
     // single name would leave its members unchecked against each other.
     ("INSP_LIVE_PHYSICS_SECTION", ids::INSP_LIVE_PHYSICS_SECTION),

@@ -77,7 +77,7 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_BLEND:
         std::cell::Cell<Option<InspectorBlendInfo>> = const { std::cell::Cell::new(None) };
 
-    /// §11: live Physics Body snapshot (ADR-0130 D8). `Some` even for an
+    /// §11: live Physics Body snapshot (ADR-0131 D8). `Some` even for an
     /// entity with NO body — `has_body: false` is what lets the section
     /// offer the Add button, which is the only door into physics.
     pub(crate) static CURRENT_INSPECTOR_PHYSICS:

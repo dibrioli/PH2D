@@ -1,7 +1,7 @@
 //! [`PhysicsBridge`] — the per-frame seam between the ECS and rapier.
 //!
 //! Owns the transient [`PhysicsWorld`] + the `Entity -> body handle` map.
-//! **Not serialized** (ADR-0130 D2): the live world is *derived* from the
+//! **Not serialized** (ADR-0131 D2): the live world is *derived* from the
 //! `RigidBody`/`Collider` components each frame, exactly like Motion
 //! re-cooks from its graph. The components are the truth-at-rest; the
 //! world is the truth-in-motion; the pose flows into `Transform`.
@@ -348,7 +348,7 @@ impl PhysicsBridge {
     }
 
     /// Read each dynamic body's pose back into its entity's `Transform`
-    /// (meters, radians CCW, Y-up — no conversion; ADR-0130 D4). Static
+    /// (meters, radians CCW, Y-up — no conversion; ADR-0131 D4). Static
     /// bodies never move, so they are skipped. Only touches root-level
     /// bodies' local Transform == world for W1 (child bodies land in W2).
     fn readback(&self, sim: &mut SimWorld) {
@@ -410,7 +410,7 @@ impl PhysicsBridge {
     /// A blake3 digest over the readback poses (the ECS-visible result of
     /// the whole bridge: sync + step + our conversion + readback). This is
     /// what the `physics_ecs_c9` harness prints and CI compares cross-OS
-    /// (ADR-0130 D7) — it proves OUR code on the deterministic path, not
+    /// (ADR-0131 D7) — it proves OUR code on the deterministic path, not
     /// just the wrapper's internal `deterministic_hash`.
     ///
     /// The `bodies` `BTreeMap` iterates in `Entity` order, which is

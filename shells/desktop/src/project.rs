@@ -58,7 +58,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// por chave posada. Sem o bump um v13 leria os coeficientes do afim como o `Vec2` + lixo.
 /// v15 (W8): o traço do Flip ganhou `point_sel` (seleção no domínio Point, FLIP v6→7) —
 /// campo novo no `FlipStroke`, layout posicional muda.
-/// v16 (ADR-0130 W1): `RigidBody`/`Collider` foram REGISTRADOS no
+/// v16 (ADR-0131 W1): `RigidBody`/`Collider` foram REGISTRADOS no
 /// `ComponentRegistry`, então uma cena com corpos físicos grava blobs novos
 /// nas linhas do `WorldSnapshot` — um leitor v15 leria esses bytes na posição
 /// errada. O `PhysicsBridge` em si NÃO é serializado (é derivado das
@@ -259,7 +259,7 @@ impl crate::App {
         crate::render_loop::motion_bridge::forget_tool_transition();
         self.undo = ProjectUndo::default(); // documento novo, histórico novo
         self.flip_live_clear(); // …e o alvo vivo do anterior morreu junto
-        // O mundo rígido é DERIVADO das components (ADR-0130 D2), então o do
+        // O mundo rígido é DERIVADO das components (ADR-0131 D2), então o do
         // documento anterior morre aqui — o `reconcile` do próximo frame o
         // re-deriva das components carregadas (entidades novas, bits novos).
         if let Some(gfx) = self.gfx.as_mut() {

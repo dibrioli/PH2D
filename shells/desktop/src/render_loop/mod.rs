@@ -646,7 +646,7 @@ impl crate::App {
             // reused instance buffer while the `motion` tool is active.
             motion,
             // Global rigid physics: stepped per frame by `physics_bridge`
-            // (ADR-0130 W1) — reads RigidBody/Collider, writes Transform.
+            // (ADR-0131 W1) — reads RigidBody/Collider, writes Transform.
             physics,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
@@ -1065,7 +1065,7 @@ impl crate::App {
         self.timeline_view
             .rebuild(&mut self.timeline, &self.playhead);
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
-        // Global rigid physics (ADR-0130 W1): step the rapier world at the
+        // Global rigid physics (ADR-0131 W1): step the rapier world at the
         // Playhead tick and read poses back into Transform, BEFORE
         // sim_extract so bodies render the same frame. Runtime-truth: play
         // = N sequential steps + readback; paused = settle to the authored

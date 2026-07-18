@@ -379,7 +379,7 @@ pub enum EditorAction {
         edit: crate::screens::hero::BlendFieldEdit,
     },
 
-    /// Inspector → shell channel for a §11 Physics Body field (ADR-0130 D8).
+    /// Inspector → shell channel for a §11 Physics Body field (ADR-0131 D8).
     /// Optional-component edit like [`Self::InspectorBlendEdit`], but the
     /// pair it attaches/detaches is `RigidBody` + `Collider`, and `Add`
     /// deliberately carries no geometry — the shell derives the starting

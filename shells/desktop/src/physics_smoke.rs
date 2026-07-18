@@ -1,5 +1,5 @@
 //! `PH2D_PHYSICS_SMOKE=<n>` — READY-TO-SEE scenes for the global rigid
-//! physics (ADR-0130).
+//! physics (ADR-0131).
 //!
 //! | `n` | Wave | Scene |
 //! |-----|------|-------|

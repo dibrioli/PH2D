@@ -414,7 +414,7 @@ fn paint_inspector(
     }
     // §11 Physics Body — offered for ANY Transform-bearing entity, with or
     // without a body: the empty state is the Add button, and without it a
-    // sprite could never become physical (ADR-0130 D8).
+    // sprite could never become physical (ADR-0131 D8).
     if let Some(phys) = physics_info.as_ref() {
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
         y = live_section!(ids::INSP_LIVE_PHYSICS_SECTION, 9, SECTION_HEAD_H, {

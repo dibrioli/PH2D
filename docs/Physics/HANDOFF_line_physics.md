@@ -2,7 +2,7 @@
 
 > **Tracker VIVO do módulo** (o `docs/HANDOFF_*` da física). Toda jornada futura **atualiza este
 > arquivo**: estado por-wave, decisões, gotchas, ids/consts alocados. LLM nova lê ISTO + a
-> [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md) +
+> [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) +
 > [`00_plano_waves.md`](00_plano_waves.md) antes de tocar código.
 >
 > **Norte (não re-litigar):** runtime-truth + bake opcional; rígido primeiro; solver = `rapier2d 0.28`
@@ -19,14 +19,14 @@
 
 | Wave | Estado | Commit | Nota |
 |---|---|---|---|
-| **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
+| **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0131 + plano de waves + tracker + visão. **Zero código.** |
 | **W1 — Ponte ECS + tick + hash** | ✅ **FECHADO** (2026-07-17, pendente smoke) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **FECHADO** (2026-07-18, pendente smoke) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2 — Inspector body** | ✅ **METADE FECHADA** (2026-07-18, pendente smoke) | ver §W2 | a autoria; o painel GLOBAL segue pendente |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
-**W0 entregou:** [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
+**W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
 código, nenhum contrato tocado, nenhum foundational tocado.
 
@@ -335,7 +335,7 @@ diferentes do mesmo artefato.
 
 ---
 
-## Decisões (ADR-0130, condensadas — o *porquê* está lá)
+## Decisões (ADR-0131, condensadas — o *porquê* está lá)
 
 - **D1** runtime-truth + bake opcional (Enio). **D2** `PhysicsWorld` transiente shell-side (precedente
   `MotionCookPump`), dirigido por components; NÃO persistido (é rebuild). **D3** contrato

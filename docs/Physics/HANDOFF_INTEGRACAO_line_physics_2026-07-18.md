@@ -2,7 +2,7 @@
 
 > Para o **agente integrador**. A linha está fechada e **não integra nem faz ship** por conta própria.
 > Estado técnico completo do módulo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) ·
-> decisão: [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md).
+> decisão: [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).
 
 ---
 

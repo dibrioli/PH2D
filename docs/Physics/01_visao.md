@@ -1,7 +1,7 @@
 # 01 · Visão — O motor de física global do PH2D (1 página)
 
 > Companheiro do [`00_plano_waves.md`](00_plano_waves.md) e da
-> [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md).
+> [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).
 > Estado por-wave vive no tracker [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
 
 ## O que é
@@ -38,7 +38,7 @@ escreve a **ponte ECS**, o **relógio único**, o **painel de mundo**, o **scrub
 
 ## A fronteira tríplice (o que NÃO se sobrepõe)
 
-Três coisas fazem dinâmica no PH2D; a ADR-0130 posiciona as três para não virar
+Três coisas fazem dinâmica no PH2D; a ADR-0131 posiciona as três para não virar
 **"dois motores, um estado"**:
 
 | Mundo | O que é | Dono |
@@ -61,7 +61,7 @@ Divisão limpa, é o que Houdini/Unity fazem (DOPs vs POPs; rigidbody vs particl
 - **O relógio é UM** — o `Playhead` (precedente Motion: `MotionTransport` morreu). Sim, scrub e bake
   compartilham o mesmo relógio fixo de 60 Hz. Nada de um segundo transporte para a física.
 
-## As armadilhas nomeadas no dia 1 (detalhe na ADR-0130)
+## As armadilhas nomeadas no dia 1 (detalhe na ADR-0131)
 
 - **pixel→metro (resolvido no W1 medindo, não supondo)** — rapier gosta de unidade-1, e o instinto é criar
   um `PIXELS_PER_METER` na física. **Errado:** o `Transform` do ECS já é METROS (Y-up, radianos CCW) e a

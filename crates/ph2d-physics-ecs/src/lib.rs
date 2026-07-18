@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! ph2d-physics-ecs — the bridge that wires the dormant `ph2d-physics`
 //! rapier wrapper (M10) into the ECS as a **global, runtime-truth** rigid
-//! world (ADR-0130 W1).
+//! world (ADR-0131 W1).
 //!
 //! - [`RigidBody`] / [`Collider`] are ECS components (config only) that an
 //!   entity carries to become a physics body.

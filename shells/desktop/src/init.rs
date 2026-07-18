@@ -463,7 +463,7 @@ pub(crate) fn build_initial_state(
             // through `EditorCommand::SetComponent` instead of
             // direct world mutation.
             ph2d_render::register_render_components(&mut reg);
-            // ADR-0130 W1: RigidBody/Collider — without this the
+            // ADR-0131 W1: RigidBody/Collider — without this the
             // WorldSnapshot (undo + save) silently drops them.
             ph2d_physics_ecs::register_physics_components(&mut reg);
             reg

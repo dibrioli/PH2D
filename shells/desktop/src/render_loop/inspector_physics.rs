@@ -1,4 +1,4 @@
-//! §11 Physics Body — the shell half of the Inspector section (ADR-0130 D8):
+//! §11 Physics Body — the shell half of the Inspector section (ADR-0131 D8):
 //! the snapshot the panel reads, and the ECS write an edit turns into.
 //!
 //! Its own module rather than more of `inspector_ordering.rs`: physics is not
@@ -12,7 +12,7 @@ use ph2d_editor::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
 use super::inspector_ordering::{queue_remove, queue_set};
 
-/// Build the §11 Physics Body snapshot (ADR-0130 D8).
+/// Build the §11 Physics Body snapshot (ADR-0131 D8).
 ///
 /// **Returns `Some` for a Transform-bearing entity even when it has NO
 /// body** — `has_body: false` is what lets the section offer the Add button.

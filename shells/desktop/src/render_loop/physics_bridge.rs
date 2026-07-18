@@ -1,4 +1,4 @@
-//! Shell-side driver for the ECS physics bridge (ADR-0130 W1).
+//! Shell-side driver for the ECS physics bridge (ADR-0131 W1).
 //!
 //! Thin by design: it reads the ONE clock (`ph2d_core::Playhead`, the same
 //! one Motion stands on since W4.T7) and hands the primitive `(playing,

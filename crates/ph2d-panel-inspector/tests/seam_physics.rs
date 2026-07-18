@@ -1,4 +1,4 @@
-//! **Behavioral SEAM sweep for §11 Physics Body** (ADR-0130 D8).
+//! **Behavioral SEAM sweep for §11 Physics Body** (ADR-0131 D8).
 //!
 //! The architecture gates cover the *focusability* half — a control painted
 //! and hit-registered but never `store.register`ed is dead on click, and

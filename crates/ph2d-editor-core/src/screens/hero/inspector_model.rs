@@ -336,7 +336,7 @@ pub enum BlendFieldEdit {
     Blend(u8),
 }
 
-/// §11 Physics Body-section snapshot (ADR-0130 D8). Mirrors the optional
+/// §11 Physics Body-section snapshot (ADR-0131 D8). Mirrors the optional
 /// `RigidBody` + `Collider` pair from `ph2d-physics-ecs`; editor-core stays
 /// loose-coupled from both `ph2d-ecs` and the physics crate, so the shell
 /// maps tags ↔ enums at the boundary — the same discipline as §10's

@@ -7,7 +7,7 @@
 //! the tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
 //! meters↔rapier boundary, the readback) is bit-identical cross-OS, not
-//! just rapier's internal state (ADR-0130 D7).
+//! just rapier's internal state (ADR-0131 D7).
 //!
 //! CI runs this on Linux/macOS/Windows and compares the three hashes
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):

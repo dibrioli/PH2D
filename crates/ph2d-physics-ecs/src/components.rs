@@ -7,7 +7,7 @@
 //! new undo step and Ctrl+Z would misbehave — the exact bug `canonicalize`
 //! exists to kill. The live world (`PhysicsBridge`) is transient and NOT
 //! snapshotted; these components are the authored *rest* configuration
-//! (ADR-0130 D2/D3). The body's live pose lives in `Transform`.
+//! (ADR-0131 D2/D3). The body's live pose lives in `Transform`.
 
 use ph2d_ecs::{Component, SimComponent};
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ pub enum BodyKind {
 
 /// The collider silhouette, in **world units (meters)** — the same unit as
 /// `Transform` and the sprite's world size (there is no pixel↔meter
-/// conversion at this boundary; the world is meter-native, ADR-0130 D4).
+/// conversion at this boundary; the world is meter-native, ADR-0131 D4).
 /// **Append-only** (Capsule/Triangle/Polygon land later).
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ColliderShape {

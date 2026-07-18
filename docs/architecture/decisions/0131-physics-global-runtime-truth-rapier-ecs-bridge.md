@@ -1,4 +1,4 @@
-# ADR-0130 — Física global: a simulação É o estado, o rígido primeiro, e a ponte tem UMA porta de escala
+# ADR-0131 — Física global: a simulação É o estado, o rígido primeiro, e a ponte tem UMA porta de escala
 
 - **Status:** Accepted (direção — desenho de abertura W0; implementação faseada W1–W4)
 - **Data:** 2026-07-17

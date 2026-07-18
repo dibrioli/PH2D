@@ -1,4 +1,4 @@
-//! §11 Physics Body — the Inspector event arms (ADR-0130 D8).
+//! §11 Physics Body — the Inspector event arms (ADR-0131 D8).
 //!
 //! Its own module rather than another arm in `event_ordering`: physics is not
 //! ordering, and that dispatcher is at its LOC cap. The split is the honest
@@ -14,7 +14,7 @@ use ph2d_editor_core::screens::hero::PhysicsFieldEdit;
 
 pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // §11 Physics Body — Add / Remove, the two segmented groups, and the
-    // dimension commits (ADR-0130 D8).
+    // dimension commits (ADR-0131 D8).
     //
     // Add and Remove are separated on `has_body` rather than trusted from
     // the click alone: the painter only ever offers one of them, but a

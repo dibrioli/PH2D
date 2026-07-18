@@ -82,7 +82,7 @@ fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
     }
 }
 
-/// §11 Physics Body (ADR-0130 D8): the two segmented groups and the two
+/// §11 Physics Body (ADR-0131 D8): the two segmented groups and the two
 /// buttons register as `Button`s (is_focusable → clicks route), the five
 /// dimensions as `NumberInput`s.
 ///

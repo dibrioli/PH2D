@@ -491,7 +491,7 @@ jobs:
           path: ${{ runner.temp }}/physics-c9-hash.txt
           if-no-files-found: error
 
-      # ADR-0130 W1 extends the physics gate to the ECS BRIDGE: same
+      # ADR-0131 W1 extends the physics gate to the ECS BRIDGE: same
       # 50-body fixture driven through components -> PhysicsBridge -> readback
       # into Transform, hashed over those Transforms. Proves OUR code
       # (iteration order, the meters<->rapier boundary, readback) is
@@ -567,10 +567,10 @@ jobs:
           done
           uniq=$(for f in hashes/physics-ecs-c9-hash-*/physics-ecs-c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
           if [ "$uniq" -ne 1 ]; then
-            echo "FAIL: physics-ECS bridge hashes differ across OSes — HR-5 violated (ADR-0130 W1)."
+            echo "FAIL: physics-ECS bridge hashes differ across OSes — HR-5 violated (ADR-0131 W1)."
             exit 1
           fi
-          echo "PASS: physics-ECS bridge hash identical across all OSes (ADR-0130 W1 gate)."
+          echo "PASS: physics-ECS bridge hash identical across all OSes (ADR-0131 W1 gate)."
 
   # --------------------------------------------------------------------------
   # Bench baseline — runs criterion against `main` to surface regressions in PRs.

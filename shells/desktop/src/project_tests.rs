@@ -370,9 +370,9 @@ fn project_file_round_trips_through_postcard() {
 /// v13 a timeline (5º campo do `ProjectFile`) · v14 a pose AFIM do Flip (W7.5:
 /// `FlipFrame.offset: Vec2` → `pose: Pose([f32; 6])`, FLIP v5→6) · v15 a seleção no
 /// domínio Point do Flip (W8: `FlipStroke.point_sel`, FLIP v6→7) · v16 os corpos de
-/// física (ADR-0130 W1: `RigidBody`/`Collider` registrados → blobs novos nas linhas do
+/// física (ADR-0131 W1: `RigidBody`/`Collider` registrados → blobs novos nas linhas do
 /// `WorldSnapshot`; nem o FlipDoc nem a VecScene mudaram, mas o layout do arquivo sim) ·
-/// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0130 W2, a autoria
+/// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0131 W2, a autoria
 /// no Inspector). Nenhuma constante de esquema mudou, então **nenhum gate podia ver isto** —
 /// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado.
 ///

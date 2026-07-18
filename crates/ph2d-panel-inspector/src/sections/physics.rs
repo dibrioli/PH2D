@@ -1,4 +1,4 @@
-//! Physics Body — Inspector §11 section painter (ADR-0130 D8).
+//! Physics Body — Inspector §11 section painter (ADR-0131 D8).
 //!
 //! **This section has two faces, and the empty one is the important one.**
 //! Every other section describes something the entity already has. Before

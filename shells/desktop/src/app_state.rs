@@ -141,7 +141,7 @@ pub(crate) struct AppGfx {
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
     /// `vec_scene` — document ≠ tool (ADR-0040).
     pub(crate) motion: crate::motion_state::MotionState,
-    /// Global rigid-body physics (ADR-0130 W1). Owns the transient rapier
+    /// Global rigid-body physics (ADR-0131 W1). Owns the transient rapier
     /// world + entity↔handle map, driven at the `Playhead` tick by
     /// `render_loop::physics_bridge`. Derived from `RigidBody`/`Collider`
     /// components each frame; NOT serialized (rebuilt on load/undo).

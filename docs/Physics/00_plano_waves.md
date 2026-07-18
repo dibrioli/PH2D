@@ -1,6 +1,6 @@
 # 00 · Plano de waves — o motor de física global (`line/physics`)
 
-> Normativo. Companheiro da [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md)
+> Normativo. Companheiro da [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)
 > (decide o *quê* e o *porquê*); este plano decide o *como*, wave a wave. Visão:
 > [`01_visao.md`](01_visao.md). Estado vivo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
 >

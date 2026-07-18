@@ -26,6 +26,9 @@ mod sections;
 pub mod state;
 mod sync;
 
+/// The §11 Bake button's label — exported so a gate can hold the claim that
+/// the button shows the range it would cover.
+pub use sections::bake_label;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, set_current_display_unit,
     set_current_inspector_blend, set_current_inspector_joint, set_current_inspector_name,

@@ -51,6 +51,7 @@ pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
 pub(crate) use joint::paint_joint_section;
 pub(crate) use material_blend::paint_material_blend_section;
 pub(crate) use ordering::paint_ordering_section;
+pub use physics::bake_label;
 pub(crate) use physics::paint_physics_section;
 pub(crate) use render_source::paint_render_source_section;
 pub(crate) use sampling::paint_sampling_section;

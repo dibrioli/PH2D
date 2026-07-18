@@ -69,6 +69,16 @@ impl BakedTrajectory {
     /// equality is the test that lives where the domain is empty. A body that
     /// jitters by one ulp really did move, and the fit collapses that to two
     /// keys anyway.
+    ///
+    /// ⚠️ **This guards the UNTOUCHED channel only, and the difference matters.**
+    /// A channel the solver moved at all is a channel the bake takes ownership
+    /// of across the whole baked span — hand-authored keys inside that span are
+    /// replaced, not merged. Measured: an X track keyed by hand `0 → 5 → 10`
+    /// over 1.5 s comes back as the simulated trajectory. That is what baking
+    /// MEANS (the artist asked for the simulation's answer), but the reasoning
+    /// above is about protecting a channel the sim has nothing to say about,
+    /// and it should not be read as a promise that hand work survives a bake of
+    /// a channel the sim DOES move. Undo is one press.
     #[must_use]
     pub fn channel(&self, channel: PoseChannel) -> Option<Vec<(f64, f64)>> {
         let pick = |s: &(f64, f32, f32, f32)| match channel {

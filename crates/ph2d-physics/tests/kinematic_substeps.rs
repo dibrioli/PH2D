@@ -246,42 +246,67 @@ fn the_final_slice_is_the_target_itself() {
 ///
 /// The byte-identity claim the whole change rests on: the slicing loop runs
 /// over an empty list, so every scene that shipped before this existed — every
-/// determinism hash, every checkpoint gate — is untouched. Asserted against a
-/// trajectory rather than an endpoint, because a settling body re-converges and
-/// would hide a divergence in the middle.
+/// determinism hash, every checkpoint gate — is untouched.
+///
+/// ⚠️ The oracle is the whole TRAJECTORY, against a reference captured from a
+/// world that has no kinematic machinery in play at all. An earlier version of
+/// this gate said it compared a trajectory and then asserted the resting height
+/// once, with a 5 cm tolerance: a falling body settles, so the endpoint is the
+/// one sample that a divergence in the middle is guaranteed NOT to reach (the
+/// W1.5 scrub lesson, in a gate that cites it). Every sample, exact equality —
+/// "byte-identical" is the claim, so nothing weaker will do.
 #[test]
 fn a_world_with_no_kinematic_body_is_untouched() {
-    let mut world = PhysicsWorld::new();
-    let _ = world.add_static_cuboid(0.0, 0.0, 10.0, 0.1);
-    let ball = world.spawn_body(BodyDesc {
-        body_type: RigidBodyType::Dynamic,
-        x: 0.0,
-        y: 3.0,
-        rotation: 0.0,
-        density: 1.0,
-        restitution: 0.3,
-        friction: 0.5,
-        layer: 0,
-        shape: ShapeDesc::Ball { radius: 0.25 },
-    });
+    let trajectory = || {
+        let mut world = PhysicsWorld::new();
+        let _ = world.add_static_cuboid(0.0, 0.0, 10.0, 0.1);
+        let ball = world.spawn_body(BodyDesc {
+            body_type: RigidBodyType::Dynamic,
+            x: 0.0,
+            y: 3.0,
+            rotation: 0.0,
+            density: 1.0,
+            restitution: 0.3,
+            friction: 0.5,
+            layer: 0,
+            shape: ShapeDesc::Ball { radius: 0.25 },
+        });
+        let mut out = Vec::new();
+        for _ in 0..120 {
+            world.step();
+            let p = world.body_pose(ball).expect("ball");
+            out.push((p.translation.x, p.translation.y, p.rotation.angle()));
+        }
+        // Nothing kinematic ever entered this world, so the aim list must have
+        // stayed empty the whole way — the mechanism behind the claim, not just
+        // its result.
+        assert_eq!(world.kinematic_aim_count(), 0);
+        out
+    };
 
-    let mut trajectory = Vec::new();
-    for _ in 0..120 {
-        world.step();
-        let p = world.body_pose(ball).expect("ball");
-        trajectory.push((p.translation.x, p.translation.y));
-    }
-
-    // The ball falls, bounces, and settles ON the floor — the shape of the
-    // trajectory the pre-existing gates already pin. Any slicing that touched a
-    // non-kinematic world would show up as a different resting height.
-    let (_, y_end) = *trajectory.last().expect("120 samples");
-    assert!(
-        (y_end - 0.35).abs() < 0.05,
-        "the ball settled at y={y_end:.4}, not on top of the floor (0.1 + 0.25)"
+    let a = trajectory();
+    let b = trajectory();
+    assert_eq!(
+        a, b,
+        "the world without kinematic bodies is not deterministic"
     );
+
+    // The fixture has to BE a fall, or "unchanged" is a claim about nothing.
     assert!(
-        trajectory.iter().any(|&(_, y)| y > 2.0),
-        "the ball never started high — the fixture is not measuring a fall"
+        a.iter().any(|s| s.1 > 2.0) && a.last().expect("samples").1 < 0.5,
+        "the fixture is not a drop: it spans {:.2}..{:.2}",
+        a.iter().map(|s| s.1).fold(f32::MAX, f32::min),
+        a.iter().map(|s| s.1).fold(f32::MIN, f32::max)
+    );
+    // It bounces — so the middle of the trajectory carries information the
+    // endpoint does not.
+    let lowest_before_end = a[..a.len() - 20]
+        .iter()
+        .map(|s| s.1)
+        .fold(f32::MAX, f32::min);
+    assert!(
+        a.last().expect("samples").1 > lowest_before_end + 0.001,
+        "the ball never bounced back up, so this trajectory is monotonic and \
+         its middle says nothing its endpoint does not"
     );
 }

@@ -24,10 +24,21 @@
 //! ⚠️ **Two undo queues, and the artist sees two steps.** The keys are the
 //! timeline's (one bracket, gated below); the kind is an object edit and lands
 //! in the global object queue. That is the editor's existing shape — Ctrl+Z in
-//! the audio editor does not undo a sprite move either — but it does mean a
-//! single Ctrl+Z after a bake returns the body to Dynamic while the curves
-//! remain. The toast says what happened, and the §11 chip shows Kinematic
-//! selected, so the state is visible rather than inferred.
+//! the audio editor does not undo a sprite move either — but it means one
+//! Ctrl+Z leaves a half-undone bake, and it leaves a DIFFERENT half depending
+//! on which queue answers:
+//!
+//! - the object queue answers → the body is `Dynamic` again with the curves
+//!   still there, so the solver overwrites them (the case the hand-over exists
+//!   to prevent, restored by undoing it);
+//! - the timeline answers → the keys go and the body stays `Kinematic`, frozen
+//!   at wherever its `Transform` last was, with nothing driving it. Recovering
+//!   means picking Dynamic in §11 by hand.
+//!
+//! Neither is silent — the toast says what the bake did and the §11 chip shows
+//! the kind — but neither is nice, and the honest name for it is a gap: one
+//! gesture that undoes as two. Closing it means one queue owning both halves,
+//! which is a change to the editor's undo architecture and not to the bake.
 
 use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
@@ -369,6 +380,9 @@ pub(crate) fn bake_selection(
     }
 }
 
+#[cfg(test)]
+#[path = "physics_bake_curve_tests.rs"]
+mod curve_tests;
 #[cfg(test)]
 #[path = "physics_bake_tests.rs"]
 mod tests;

@@ -879,6 +879,344 @@ ragdoll diz que os **limites** seguram — joelhos dobram para um lado só.
   chip shipado às cegas.
 - **Motor em mola/corda** — rapier expõe; nenhum consumidor pediu.
 
+## ✅ §W4 — bake-to-timeline (2026-07-18, pendente smoke)
+
+### Assar não é simular de novo — é ANOTAR
+
+A sim já é função pura de `(tick, estado de repouso autorado)` (D2/D7) e o W1.5
+provou que qualquer tick é alcançável e **bit-exato**. Então o bake não é uma
+simulação nova: é a **MESMA**, corrida sobre um alcance, com a pose anotada em
+**cada** tick em vez de só no que o playhead calha de estar.
+
+`ph2d-physics-ecs::bake` (`bake_trajectories`) lê a trajetória — headless,
+determinística, sem saber o que é uma curva. O shell (`render_loop/physics_bake.rs`)
+escreve as chaves. A divisão é deliberada: *"o que é uma chave"* já tem resposta
+no editor, e uma segunda resposta morando dentro da física é como uma curva
+assada passaria a diferir de uma gravada.
+
+**O bake DEVOLVE o relógio** onde o artista o deixou. Gate red-first: clicar Bake
+olhando o tick 40 teleportava a cena para o fim do alcance. A restauração não é
+best-effort — a sim é função do tick, então re-despachar o tick original o
+reproduz exatamente (a propriedade que o `scrub.rs` já gateia, emprestada em vez
+de re-provada).
+
+### O ajuste é o do RECORD, extraído e não reescrito
+
+`render_loop/record_fit.rs` (novo): duas coisas neste editor produzem um valor
+por frame e precisam virar keyframes — o **record** da timeline (gizmo arrastado
+com o relógio correndo) e o **bake**. É o mesmo problema (centenas de chaves
+densas que têm de colapsar para um punhado sem se mover) e agora é a mesma
+resposta, senão uma curva assada e uma gravada sairiam com cara de ferramentas
+diferentes. Foi extraído **do** record: a calibração é a dele, chegada pelos
+smokes do Enio (§17 da timeline), e re-derivá-la para o bake seria um segundo
+jogo de números para manter de acordo com o primeiro.
+
+### O passa-baixa é um número da ENTRADA, nunca do ajuste (MEDIDO)
+
+As 8 passadas do record existem porque um gesto de mouse carrega **tremor**. Um
+solver não carrega nenhum: é determinístico, amostrado exatamente no tick que
+avançou, e cada oscilação do sinal é uma oscilação que o corpo de fato teve.
+Pior: uma trajetória de física é feita de **IMPACTOS**, um quique é uma
+**cúspide**, e o kernel binomial arredonda o ápice — que *é* o quique.
+
+Medido no cenário do próprio gate (pior erro contra a pose simulada, como fração
+da amplitude do movimento):
+
+| passadas | pior erro |
+|---|---|
+| **0** | **2,13%** |
+| 1 | 2,02% |
+| 2 | 2,48% |
+| 4 | 3,31% |
+| 8 (a do record) | 5,70% |
+
+Monotônico depois de uma passada: **o número que a suavização existe para
+melhorar era o que ela estava piorando.** O bake passa `0`. (O `1` mede um fio
+melhor e **não** foi escolhido — a diferença está dentro do ruído de uma fixture
+só, e *"o solver não tem tremor a remover"* é uma razão, enquanto *"uma passada
+pontuou 0,1% melhor num cenário"* é uma coincidência.)
+
+### O bake ENTREGA a pose — `BodyKind::Kinematic`, e isso É o bake
+
+A **ordem do frame** decide, não a preferência: o apply da timeline escreve o
+`Transform` (`mod.rs:1097`) e o readback da física escreve **depois**
+(`mod.rs:1129`). Um corpo dinâmico recém-assado é sobrescrito pelo solver todo
+frame — o artista clica em Bake, não vê nada mudar, e conclui que o botão está
+quebrado. **Dois autores de um fato, e o de trás vence em silêncio.**
+
+Então o bake entrega a pose. `Kinematic` é precisamente o estado *"a cena dirige
+isto, e o solver é avisado"* — o corpo continua no mundo, continua empurrando o
+que atravessa, mas o movimento agora vem da curva. É isso que *runtime-truth
+vira animação* quer dizer, e é por isso que o kind aterrissou nesta wave. O flip
+vai pela **MESMA porta** do chip da §11 (`apply_physics_edit`).
+
+⚠️ **Duas filas de undo, e o artista vê dois passos.** As chaves são da timeline
+(um bracket); o kind é edição de objeto e cai na fila global. É a forma que o
+editor já tem (Ctrl+Z no Audio Editor também não desfaz um move de sprite), mas
+significa que **um** Ctrl+Z depois do bake devolve o corpo a Dynamic com as
+curvas de pé. O toast diz o que aconteceu e o chip da §11 mostra Kinematic
+selecionado, então o estado é visível em vez de inferido.
+
+O playhead **rebobina** depois do bake — que é onde a animação recém-feita
+começa, e é também o que faz o flip chegar ao rapier (`reconcile_structure`
+re-descreve um corpo **em repouso**; sem a rebobinada o corpo diria Kinematic no
+Inspector e se comportaria como Dynamic até o próximo Reset — uma mentira que o
+artista consegue ver).
+
+### `BodyKind::Kinematic` e o BUG que a lei já escrita pegou
+
+O componente **já prometia** o variant (*"`Kinematic` lands with W2/W3"*,
+`components.rs:17`) e ele não tinha chegado. O bake é o primeiro consumidor
+honesto: assar é exatamente o instante em que uma pose deixa de ser **saída** do
+solver e vira **entrada** dele.
+
+Três kinds, três donos da pose. `readback` pergunta `solver_owns_pose()` — porta
+única, senão um corpo reclamado pelos dois lados teria a pose escrita duas vezes
+por tick e a segunda venceria calada.
+
+**O bug:** `step()` roda `substeps = 4` passes por tick, e
+`set_next_kinematic_position` é consumido pelo **PRIMEIRO** deles — a plataforma
+atravessava o tick inteiro em um quarto de tick, a 4× a velocidade real, e ficava
+parada nos outros três. O atrito não tinha o que integrar: **a carga andava
+0,009 m dos 1,000 m da plataforma.** E o comentário do `drag::apply`,
+imediatamente acima do laço, já dizia a regra: *"Per SUBSTEP, not per tick: a
+force applied once per tick would be wrong by the substep count"*. Fix: a mira é
+para o fim do **TICK** e o `step` a fatia entre os sub-steps. **0,009 → 0,975 m.**
+(Sono foi **medido** e não é fator: idêntico com 60 ticks de assentamento, então
+não há `wake` devido.)
+
+A **última fatia é o TARGET**, não um caminho aritmético até ele: `a0 + (a1 - a0)`
+não é sempre exatamente `a1` em f32, e a pose é lida de volta para o `Transform`
+— um ulp na última fatia seria uma pose que o artista não autorou, chegando todo
+tick, sempre na mesma direção.
+
+`BodyKind::tag`/`from_tag`: o mapeamento tag↔variant estava escrito **duas
+vezes** (um `match` produzindo, um `if tag == 1 { Static } else { Dynamic }`
+consumindo) e o consumidor dobrava **todo** tag desconhecido em `Dynamic`. Com
+dois variants era só redundante; com o terceiro seria um chip que o artista clica
+e que seleciona outra coisa. Tag desconhecido agora é **descartado**, não
+adivinhado.
+
+### Canal que nunca se move NÃO vira track
+
+E isso protege trabalho, não arrumação: escrever uma track é **tomar posse** do
+canal, e uma caixa que cai reto tem X constante — assar um X plano por cima de
+quem o artista já animou de lado apagaria a animação dele e pareceria bug do
+bake. Constância **bit-exata** (o rapier escreve o `f32` idêntico num canal que
+não toca), que é o limiar morando onde o domínio é vazio.
+
+### O alcance é mostrado NO BOTÃO
+
+`Bake 5.0s to Timeline`. Ordem: **loop armado** → **extensão do documento** →
+`DEFAULT_BAKE_SECONDS`. O loop primeiro porque **já é** o controle de *"esta
+parte da timeline"* — um campo de range ao lado do botão seria um segundo jeito
+de dizer a mesma coisa. O default é medido: queda de 4 m toca em ~0,9 s e para de
+quicar em ~2,5 s; corrente de 6 elos assenta em ~3,5 s.
+
+### Bake NÃO faz fan-out, e errar custa mais que no Join
+
+Uma corrida da sim serve **todos** os corpos selecionados. Espalhado, ele
+re-simularia a cena inteira uma vez por corpo — **mesmos números**, N vezes o
+trabalho — e deixaria N passos de undo, então desfazer *"o bake"* custaria tantos
+Ctrl+Z quantos objetos. **Nada pareceria errado.** O arch-gate do Join virou
+`shells/desktop/tests/selection_gestures_are_not_fanned_out.rs` e pergunta pelos
+dois.
+
+### Gates: 36 novos, 30 mutações, 28 sangram
+
+| arquivo | n |
+|---|---|
+| `ph2d-physics/tests/kinematic_substeps.rs` | 6 |
+| `ph2d-physics-ecs/tests/kinematic.rs` | 8 |
+| `ph2d-physics-ecs/tests/bake.rs` | 5 |
+| `ph2d-physics-ecs/src/bake.rs` (unit) | 2 |
+| `render_loop/physics_bake_tests.rs` | 11 |
+| `ph2d-panel-inspector/tests/seam_physics.rs` (+2) | 2 |
+| `shells/desktop/tests/selection_gestures_are_not_fanned_out.rs` (+2) | 2 |
+
+**Dois sobreviventes FICAM, e os dois estão documentados onde alguém os
+reencontraria:**
+
+- **o early-out do bake vazio é sobre CUSTO.** O `commit_if_changed` compara o
+  documento e recusa empurrar passo, então um bake vazio pode cair até o fim sem
+  sujar a pilha. Qual camada faz qual promessa está escrito no gate
+  ([[feedback_layered_defenses_need_per_layer_gates]]).
+- **`COLUMN_MERGE_S` é INERTE num bake, e isso foi MEDIDO, não suposto:** colunas
+  `[0.0, 0.583, 1.5]` com a fusão e `[0.0, 0.583, 1.5]` sem ela. Uma mão cruza o
+  extremo de cada eixo alguns milissegundos separada — é para isso que a fusão
+  existe — mas um bake amostra todo canal na **MESMA grade de ticks**, então os
+  extremos caem no mesmo tempo exato. Gate ali seria gate que não pode falhar; a
+  constante é do record e é do record prová-la.
+
+**Três sobreviventes da primeira rodada viraram gate, e o primeiro era grave:**
+apagar o ajuste deixa **uma chave por tick**, o que reproduz a sim
+**exatamente** (o gate de fidelidade fica mais verde que nunca), custa um passo
+de undo (aquele gate passa) e é completamente inútil — ninguém edita noventa
+keyframes por segundo. **A entrega da wave não estava gateada por nada.**
+
+**Duas fixtures nasceram vermelhas por FIXTURE, não por código** — e as duas
+ensinam a mesma coisa: o de fidelidade batia na cúspide (foi o que expôs o
+passa-baixa) e o do alcance default media uma bola rolando para **fora** de um
+chão inclinado — ela nunca para, então *"o movimento terminou"* ali media a
+rampa, não o default ([[feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it]]).
+
+E três mutações da primeira rodada do Kinematic sobreviveram por motivos
+diferentes, todos reais: o unwrap de arco curto só era exercitado numa
+**direção** (o `d` da fixture era sempre negativo, então só encontrava o ramo que
+continuava de pé); a guarda do `readback` é **invisível** num corpo kinematic (a
+mira põe o corpo exatamente onde o `Transform` diz, então reescrever escreve o
+mesmo número — o caso observável é um corpo **Static** movido durante o play); e
+a guarda de tipo da mira **não protege a pose** (medido: o rapier ignora
+next-position em corpo dinâmico), ela protege o **CUSTO** — então o gate lê a
+**lista**, não a pose.
+
+### ⚠️ A auditoria de 2 lentes achou DEZ coisas — e as três piores eram UMA
+
+`Kinematic` faz a sim depender de um **fluxo de entrada por-tick**, e três
+lugares continuavam supondo que ela depende só de `(tick, repouso autorado)`: o
+laço de ticks devidos, o **replay** do rewind, e o **bake**. Um chapéu, três
+cabeças.
+
+**O desenho que fechou: `SceneAtTick`.** A ponte **PERGUNTA** onde a cena põe
+seus corpos dirigidos, num tick dado; quem responde é a metade que possui as
+curvas (o shell, via `apply_from_doc`), e a física não aprende o que é uma
+timeline. O invariante volta a ser verdadeiro: *o mundo é função do tick, dado o
+repouso autorado **E as curvas autoradas*** — as duas reproduzíveis. `dispatch`
+mantém a assinatura (99 chamadores intactos) e delega para
+`dispatch_with_scene`: **uma** implementação, um atalho. Responder `false`
+significa *"não tenho nada a dizer sobre esse tick"* e a ponte volta a espalhar
+o movimento do frame pelos ticks devidos — a reconstrução honesta para um corpo
+sendo arrastado à mão, cujas poses intermediárias nunca foram gravadas.
+
+Os três, medidos:
+
+- **PLAY — e este eu criei consertando os sub-steps.** O `step()` limpa a lista
+  de mira todo passo, e eu mirava **FORA** do laço de ticks devidos: um frame
+  devendo N ticks mirava uma vez, e o corpo cruzava o vão inteiro num tick a N×
+  a velocidade. Arrastar a régua até o tick 60 **ARREMESSAVA** a carga
+  (`x = 1,049` tick-a-tick vs **`-0,520`** num salto). E mirar o **mesmo alvo**
+  N vezes não resolve: a mira é **absoluta**, então o corpo chega no primeiro
+  passo e fica com velocidade zero pelo resto. O vão é **fatiado** entre os
+  ticks devidos, pela mesma lei dos sub-steps.
+- **SCRUB — a resposta dependia do CACHE.** O replay rodava `world.step()` puro,
+  então um corpo kinematic ficava congelado no repouso a replay inteira:
+  ~**3,4 cm** de divergência num replay parcial, e *"a caixa nunca viajou"* num
+  miss do ring. Mesmo gesto, resultado diferente em dias diferentes.
+- **BAKE — simulava outra cena.** Nada avançava a timeline durante o bake, então
+  todo corpo que ela dirige — ou seja, **todo corpo assado antes deste** — ficava
+  parado. Uma caixa sobre uma plataforma assada chega a `x ≈ 1,05` tocando, e o
+  bake reportava **X constante**: nenhuma track horizontal escrita, curva só de Y
+  para um objeto que anda um metro.
+
+**Mais quatro, do produto:**
+
+- **O bake dava `RigidBody{Kinematic}` a TODA entidade selecionada** — um sprite
+  comum ganhava um órfão sem `Collider`, **invisível na §11** (que exige os dois
+  para oferecer Remove) e **salvo no arquivo de projeto**; um chão estático pego
+  num marquee perdia o kind autorado em silêncio. Achado pelas **duas** lentes,
+  independentemente. Agora só os corpos cuja curva foi de fato escrita — e a 2ª
+  porta fechou junto: o braço `Kind` do `apply_physics_edit` **ANEXAVA** o
+  componente sem conferir que havia corpo, e `Kind`/`Shape` eram os únicos chips
+  da §11 sem recusa por `has_body`.
+- **Assar TOCANDO nunca entregava a pose:** `Playhead::rewind` preserva o play
+  state **de propósito** (está no CLAUDE.md desde o load de projeto) e o
+  `advance_ticks` roda **antes** do dispatch, então o relógio já passou de 0
+  quando a ponte olha, `at_rest` nunca mais é verdade, e o corpo segue caindo
+  como Dynamic. O bake **pausa**.
+- **As chaves iam em segundos CRUS de playhead**, enquanto todo outro caminho de
+  autoria do shell escreve no relógio da **ENTIDADE**. Sob um Time Remap de meia
+  velocidade a curva errava a pose simulada por **1,618 m** numa queda de ~2 m —
+  [[feedback_derived_coordinate_seed_must_match_sample]] ao pé da letra. Agora
+  pela mesma porta (`key_time`), e um instante sem resposta única (clipe tocando
+  zero ou duas vezes sob uma pilha) **RECUSA o bake inteiro**: curva com buraco
+  parece simulação errada.
+- **Bake dentro de bracket alheio** (recusa) e o toast que dizia *"nada se
+  moveu"* para um corpo que o artista vê andando — ele já fora assado, e
+  `readback` pula kinematic, então os números são idênticos aos de "parado" e a
+  frase honesta é outra.
+
+**E DOIS defeitos de GATE, os dois meus:**
+
+- **`a_kinematic_body_follows_the_transform_it_is_given` era VAZIO.** Afirmava um
+  valor que ele mesmo tinha escrito, e que o `readback` **não pode tocar** (pula
+  kinematic) — ficava **VERDE com o estágio de drive inteiro deletado**, sendo um
+  duplicado do gate do readback sob um nome que prometia medir o drive. O oráculo
+  agora pergunta ao **SOLVER** onde o corpo está.
+- **`architecture_panel_wiring_parity` só lia arquivos cujo NOME continha
+  "paint"** — e o Inspector pinta quase tudo de `src/sections/*.rs`. Todo id
+  registrado lá era **invisível** ao gate: pintado, hit-registrado, e livre para
+  faltar no `populate.rs` sem nada notar, **no painel com mais widgets do app**.
+  ⚠️ A lente diagnosticou o *fechamento* do meu refactor de LOC como causa; era o
+  **nome do arquivo**, e o buraco **precede a wave**. Alargar surfou **ZERO**
+  ofensor (nenhuma seção estava errada — o que faltava era algo conferindo que
+  continuem certas), e agora tirar dois botões do `populate` deixa o gate
+  **VERMELHO**, o que antes não deixava. Escopado a `paint*` + `sections/`: ler
+  **tudo** também acusa 4 ids da Timeline/Painter, que são de outras waves e
+  parecem os widgets dinâmicos que a allowlist já documenta — decidir isso é dos
+  **donos deles**, então estão **nomeados aqui** em vez de allowlistados por quem
+  não os escreveu (`TIMELINE_LANES`, `TIMELINE_SCROLLBAR`,
+  `TIMELINE_CLIP_RENAME_INPUT`, `PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP`).
+
+**TRÊS fixtures nasceram fracas, e as três pela mesma razão — não continham o
+fenômeno** ([[feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it]]):
+o gate do scrub media o **ENDPOINT** depois de um replay para frente que lavava o
+erro (um sistema amortecido re-converge — a lição do W1.5 **dentro** de um gate
+escrito para honrá-la); o alvo do scrub caía **exatamente na grade do `STRIDE`**,
+então o ring sedia ali e replayava **zero** passos; e a plataforma andava devagar
+demais para os 7 ticks replayados aparecerem acima da tolerância.
+
+**Duas afirmações de doc que o código não sustentava** foram corrigidas em vez de
+apagadas: *"entidades sem `Transform` são puladas"* (não eram — voltavam com zero
+samples e eram contadas, viradas e toastadas) e a proteção do canal constante,
+que **só** protege o canal INTOCADO — um canal que o solver moveu é um canal cujo
+span o bake **toma**, e keys autorados à mão lá dentro são substituídos. Isso é o
+que assar SIGNIFICA, mas o parágrafo lido rápido prometia mais.
+
+### LOC: TRÊS tetos, todos por SPLIT (nunca allowlist)
+
+- `paint_physics_section` 211/200 → **`paint_body_actions`** (os três botões são
+  uma **lista**, não um formulário: cada um é um botão, oferecido ou não, e
+  nenhum lê um campo acima).
+- `ph2d-physics/src/world.rs` 779/700 → **`world/kinematic.rs`**. A mira não é um
+  setter de uma linha — é um alvo para o fim do **TICK** que o `step` tem de
+  espalhar pelos sub-steps, e essa regra mais a interpolação de arco curto que
+  ela exige são uma responsabilidade só.
+- `ph2d-physics-ecs/src/bridge.rs` 728/700 → **`bridge/kinematic.rs`** (depois da
+  auditoria): tudo que responde *"onde a cena diz que este corpo está"* —
+  `SceneAtTick`, `FrozenScene`, a captura e o drive.
+
+### Persistência: `PROJECT_SCHEMA` **NÃO** bumpa (de novo, e pela mesma contagem)
+
+`BodyKind::Kinematic` é variant **apendado** — postcard codifica o discriminante
+posicionalmente, então um variant no FIM mantém todo save legível, exatamente
+como o `JointKind` do W3. Nenhum campo novo entrou em componente nenhum.
+`DOC_VERSION` da timeline idem: o bake só **acrescenta chaves**.
+
+### Smoke: `PH2D_PHYSICS_SMOKE=7`
+
+Rampa + bola que **rola** + duas caixas que quicam, relógio **PAUSADO** e
+timeline aberta. A rampa existe porque **rotação** é o terceiro canal assado e o
+mais fácil de errar em silêncio; as duas caixas existem porque assar **dois**
+corpos num clique é exatamente o caso onde um fan-out apareceria como três passos
+de undo. Pausada de propósito: assar começa no tick 0 de qualquer jeito, então
+uma cena já correndo faria a imagem e a curva discordarem sobre onde o movimento
+começou — o tipo confuso de correto.
+
+### Aberto no W4
+
+- **Assar um JOINT** — hoje o bake lê a pose de **corpos**. Uma corrente assada
+  vira N corpos kinematic com curvas próprias, o que reproduz o movimento mas
+  descarta a articulação. Assar *a restrição* (ou recusar assar corpos unidos) é
+  decisão de design, não mecânica.
+- **Escolher os canais** — o bake escreve X/Y/Rotation sempre que se movem. Não
+  há como pedir "só a rotação".
+- **Alcance com INÍCIO** — o bake sempre parte do tick 0 (a sim é função do
+  tick). Assar `[2s, 5s]` significaria assar de 0 e descartar o começo; nada pede
+  isso ainda.
+- **Um Ctrl+Z para as duas metades** — as chaves e o kind vivem em filas
+  diferentes (acima). Unificá-las é mudança na arquitetura de undo do editor,
+  não no bake.
+
 ---
 
 ## Decisões (ADR-0131, condensadas — o *porquê* está lá)
@@ -1008,6 +1346,29 @@ ragdoll diz que os **limites** seguram — joelhos dobram para um lado só.
   `physics_smoke_joints` (**`PH2D_PHYSICS_SMOKE=6`** — o 6 estava reservado no W1 como "bake",
   que agora é o **7**).
 - **`PROJECT_SCHEMA` INTOCADO em 21** — ver §W3 (a contagem deu zero).
+
+**Alocados e CRIADOS no W4:**
+- `ph2d-physics` (aditivo): módulo **`world/kinematic.rs`** — `set_next_kinematic_pose`,
+  `kinematic_slice` (`pub(super)`), acessor `#[doc(hidden)] kinematic_aim_count`; campo
+  **`PhysicsWorld.kinematic_targets`**.
+- `ph2d-physics-ecs` (aditivo): módulo **`src/bake.rs`** — `BakedTrajectory`/`PoseChannel`/
+  `bake_trajectories`; variant **`BodyKind::Kinematic`** (APENDADO, tag `2`) +
+  `BodyKind::{solver_owns_pose,tag,from_tag}`; estágio privado `PhysicsBridge::drive_kinematic`.
+- `ph2d-editor-core`: id **`INSP_PHYS_BAKE`** (na tabela do `node_id_collisions`) ·
+  **`INSP_PHYS_KIND` foi `[NodeId; 2]` → `[NodeId; 3]`** (o 3º entrou na tabela — ela é escrita
+  à MÃO por índice e parava no `[1]`, então o chip novo não era conferido) · variant
+  **`PhysicsFieldEdit::Bake`** · campo **`InspectorPhysicsInfo.bake_seconds`**.
+- `ph2d-panel-inspector`: `sections/physics.rs::paint_body_actions` (split do teto de 200 LOC);
+  `KIND_LABELS` foi `[&str; 2]` → `[&str; 3]`.
+- Shell: `render_loop/physics_bake.rs` + `render_loop/physics_bake_tests.rs` ·
+  **`render_loop/record_fit.rs`** (extraído do `autokey_pass.rs`: `RecSpan`, `simplify_recorded`
+  — que ganhou o parâmetro `smooth_passes` —, `value_tol`, as 4 consts do record) ·
+  `physics_smoke_bake` (**`PH2D_PHYSICS_SMOKE=7`**) · `KINEMATIC_RGBA` no `physics_overlay.rs` ·
+  `build_physics_info` e `snapshots::publish` ganharam o parâmetro `bake_seconds`.
+- **RENOMEADO:** `shells/desktop/tests/join_is_one_gesture_not_a_fan_out.rs` →
+  **`selection_gestures_are_not_fanned_out.rs`** (agora cobre Join **e** Bake).
+- **`PROJECT_SCHEMA` INTOCADO em 21** e **`DOC_VERSION` intocado** — variant apendado não move
+  layout, e o bake só acrescenta chaves.
 
 **Alocados e CRIADOS no W2b:**
 - Crate **`ph2d-panel-physics`** (glob `crates/*`), `Panel::ID = "physics"`, struct

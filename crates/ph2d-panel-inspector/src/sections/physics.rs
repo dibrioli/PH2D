@@ -28,6 +28,20 @@ const SHAPE_LABELS: [&str; 2] = ["Ball", "Box"];
 /// keep names in sync with a matrix that does not know about them.
 const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
+/// The Bake button's label, carrying the range it would cover.
+///
+/// A function rather than an inline `format!` so the claim "the button shows
+/// the range" is something a test can hold: the number is the only thing
+/// telling the artist how much of the timeline they are about to write, and a
+/// button that silently baked five seconds when the document said two would be
+/// worse than one that asked.
+pub fn bake_label(seconds: f32) -> String {
+    format!("Bake {seconds:.1}s to Timeline")
+}
+
+/// Tag for the Dynamic body kind — the only kind with simulated motion to bake.
+const KIND_DYNAMIC: u8 = 0;
+
 /// Tag for the Ball shape — named because the painter branches on it twice
 /// and a bare `0` at a branch is the kind of thing that survives a refactor
 /// pointing at the wrong variant.
@@ -264,12 +278,17 @@ fn paint_body_actions(
     // handed over to the scene (`BodyKind::Kinematic`). The label carries the
     // resolved range because the range is otherwise invisible — the artist
     // would have to press it to find out how much they were baking.
-    let r = paint_at(
-        ids::INSP_PHYS_BAKE,
-        &format!("Bake {:.1}s to Timeline", info.bake_seconds),
-        &mut yy,
-    );
-    hit_index.register(ids::INSP_PHYS_BAKE, r);
+    //
+    // Offered only for a body the SOLVER moves. A `Static` body never moves and
+    // a `Kinematic` one is already driven by the scene, so for both the bake can
+    // only ever report "nothing moved" — a button promising 5 seconds of work
+    // that is impossible for the thing it is pointing at. The shell honours the
+    // same rule (`event_physics.rs`), because a refusal in the paint loop is
+    // not a refusal.
+    if info.kind_tag == KIND_DYNAMIC {
+        let r = paint_at(ids::INSP_PHYS_BAKE, &bake_label(info.bake_seconds), &mut yy);
+        hit_index.register(ids::INSP_PHYS_BAKE, r);
+    }
 
     let r = paint_at(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
     hit_index.register(ids::INSP_PHYS_REMOVE, r);

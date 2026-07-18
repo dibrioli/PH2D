@@ -11,10 +11,10 @@
 | | |
 |---|---|
 | Branch | `line/physics` |
-| HEAD | `adfab599` |
+| HEAD | `<preenchido no fechamento>` |
 | Base do fork (merge-base com `main`) | `389676f9` |
-| Commits | **21** |
-| Waves cobertas | W0 · W1 · W1.5 · W2a · **W2b** · **W2c** · **W3** |
+| Commits | **33** |
+| Waves cobertas | W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · **W4 (a última do plano)** |
 | ⚠️ `main` andou desde o fork? | **NÃO** — `merge-base == main HEAD == 389676f9` no momento deste handoff |
 
 **Consequência:** enquanto a `main` não andar, isto é **fast-forward puro** (`--ff-only` passa sem
@@ -64,6 +64,50 @@ saíram para `paint_frame.rs` porque `paint_inspector` estava congelado em 431 L
 | `ph2d-editor-core` | `InspectorJointInfo`/`JointFieldEdit`; `InspectorPhysicsInfo.can_join`; `PhysicsFieldEdit::Join`; **23 ids §12** na tabela do `node_id_collisions`. ⚠️ `any_live_section` `[bool; 8] → [bool; 9]` e os slots de nota `10 → 11` — **os dois são rígidos DE PROPÓSITO** |
 | `ph2d-panel-inspector` | `sections/joint.rs`, `sections/rows.rs` (helpers **movidos** de `physics.rs`), `event_joint.rs`, `tests/seam_joint.rs`. ⚠️ `paint.rs` perdeu a família de física para `paint_frame::paint_physics_sections` |
 | `shells/desktop` | `render_loop/inspector_joint.rs` (+tests), `render_loop/physics_overlay_joints.rs`, `tests/join_is_one_gesture_not_a_fan_out.rs`, cena de smoke **6** |
+
+### 2.4c W4 — o que a wave de bake acrescentou (tudo **aditivo**, mas com DOIS renames)
+| Onde | O quê |
+|---|---|
+| `ph2d-physics` | módulo **`world/kinematic.rs`** (split forçado: `world.rs` bateu **779/700**) — `set_next_kinematic_pose`, `kinematic_slice`, `kinematic_aim_count`; campo `PhysicsWorld.kinematic_targets`. ⚠️ **`PhysicsWorld::step` mudou**: ganhou um laço de fatiamento ANTES do `drag::apply`. Empty quando nada é kinematic ⇒ toda cena que já existia roda byte-idêntica (gate `a_world_with_no_kinematic_body_is_untouched`) |
+| `ph2d-physics-ecs` | módulo **`src/bake.rs`**; variant **`BodyKind::Kinematic`** (APENDADO, tag `2`) + `solver_owns_pose`/`tag`/`from_tag`; estágio `PhysicsBridge::drive_kinematic`. ⚠️ **`BodyKind` é `match`ado exaustivamente** em `bridge.rs::body_desc` e em `shells/desktop/src/render_loop/physics_overlay.rs` — um merge que traga outro leitor do enum **não compila** até tratar o 3º braço, que é o comportamento desejado |
+| `ph2d-editor-core` | id `INSP_PHYS_BAKE`; ⚠️ **`INSP_PHYS_KIND` foi `[NodeId; 2]` → `[NodeId; 3]`** (a tabela do `node_id_collisions` é escrita **à MÃO por índice** e parava no `[1]` — se outra linha tocar essa tabela, o `[2]` tem de sobreviver); variant `PhysicsFieldEdit::Bake`; campo `InspectorPhysicsInfo.bake_seconds` |
+| `ph2d-panel-inspector` | `sections/physics.rs::paint_body_actions` (split: `paint_physics_section` bateu **211/200**); `KIND_LABELS` `[&str; 2] → [&str; 3]` |
+| `shells/desktop` | `render_loop/physics_bake.rs` (+tests) · **`render_loop/record_fit.rs`** · `physics_smoke_bake` (cena **7**) · `KINEMATIC_RGBA` no overlay |
+
+⚠️ **DOIS renames, e o integrador tem de saber dos dois:**
+1. `shells/desktop/tests/join_is_one_gesture_not_a_fan_out.rs` → **`selection_gestures_are_not_fanned_out.rs`**
+   (feito com `git mv`, então o diff é um rename; agora cobre Join **e** Bake).
+2. **`simplify_recorded`, `RecSpan`, `value_tol` e as 4 consts do record SAÍRAM de
+   `render_loop/autokey_pass.rs` para `render_loop/record_fit.rs`** — e `simplify_recorded` **ganhou o
+   parâmetro `smooth_passes`** (o record passa `REC_SMOOTH_PASSES`, o bake passa `0`; ver §W4 do tracker
+   para os números que decidiram isso). ⚠️ **Este é o único ponto da wave que mexe em código de OUTRA
+   linha (a timeline).** `autokey_pass.rs` encolheu de 466 para 330 LOC. Num conflito: a lógica é
+   idêntica à que estava lá — o que não pode voltar é uma **segunda cópia** do ajuste, que é a coisa
+   inteira que a extração comprou. As 26 gates do record rodam verdes depois dela.
+
+⚠️ **Assinaturas que mudaram (chamadores atualizados nesta árvore, mas um merge pode trazer outro):**
+- `render_loop::snapshots::publish(...)` ganhou um último parâmetro `bake_seconds: f32`.
+- `render_loop::inspector_physics::build_physics_info(world, bits, can_join, bake_seconds)`.
+- `render_loop::physics_bridge::dispatch(...)` ganhou `doc: &mut TimelineDoc` (a ponte precisa
+  saber onde a timeline põe os corpos dirigidos — §2.4d).
+
+### 2.4d W4 — o que a AUDITORIA mudou (dois commits depois do W4)
+
+A auditoria de 2 lentes achou dez coisas; o detalhe está no §W4 do tracker. O que o **integrador**
+precisa saber:
+
+| Onde | O quê |
+|---|---|
+| `ph2d-physics-ecs` | **trait pública `SceneAtTick` + `FrozenScene`** e **`PhysicsBridge::dispatch_with_scene`** (`src/bridge/kinematic.rs`, split do teto de 700). ⚠️ `dispatch` **mantém a assinatura** e delega — os 99 chamadores existentes não mudaram. `bake_trajectories_with_scene` idem |
+| `ph2d-physics` | **`PhysicsWorld::slice_pose`** (pública, dados simples) — a lei de interpolação que o `step` e a ponte **têm** de compartilhar |
+| `ph2d-panel-inspector` | **`pub fn bake_label`** re-exportado da crate; `Kind`/`Shape` ganharam recusa por `has_body`; o botão Bake só é oferecido para `kind_tag == 0` |
+| **`ph2d-editor-core`** | ⚠️ **`architecture_panel_wiring_parity` mudou de COBERTURA** (`read_paint_sources` agora lê `paint*` **+ `sections/`**). Não é aditivo: se outra linha trouxer um painel com widgets em `sections/` que não estejam no `populate.rs` dele, este gate fica **VERMELHO no merge** — e estará certo. **Buraco pré-existente**, não desta wave |
+
+⚠️ **Quatro ids de OUTRAS waves ficam nomeados aqui em vez de allowlistados por mim.** Ler *todo* `src/`
+(em vez de `paint*` + `sections/`) também acusa `TIMELINE_LANES`, `TIMELINE_SCROLLBAR`,
+`TIMELINE_CLIP_RENAME_INPUT` e `PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP`. Parecem os widgets **dinâmicos**
+que a allowlist do gate já documenta (um campo de rename, lanes, uma scrollbar), mas decidir isso é dos
+**donos deles** — quem quiser fechar o resto do buraco começa por aqui.
 
 ### 2.5 `ph2d-vector` — **1 linha, aditiva**
 `PathEl` acrescentado à lista de re-export do kurbo (`src/lib.rs:58`). **Não é a superfície congelada** —
@@ -173,10 +217,12 @@ O gate de integração não roda estes; para poupar iterações do integrador
 | `cargo deny check` | **advisories ok · bans ok · licenses ok · sources ok** |
 | `cargo audit` | 3 warnings **allowlistados e pré-existentes** (memmap2 etc.); **nada novo desta linha** |
 | `cargo clippy --workspace --all-targets` | **limpo** |
-| `nextest-impacted` | **3640 passed, 43 skipped** |
+| `cargo nextest run --workspace` | **7778 passed, 157 skipped, 0 falhas** |
 
 **Deps novas** (para o machete/deny do integrador conferirem pós-merge): `ph2d-physics-ecs` puxa
-`bevy_ecs 0.18`, `ph2d-core`, `ph2d-ecs`, `ph2d-physics`, `serde` — todas já no workspace. **A única dep
+`bevy_ecs 0.18`, `ph2d-core`, `ph2d-ecs`, `ph2d-physics`, `serde` — todas já no workspace. **O W4 não
+acrescentou dep nenhuma**: o bake chama `ph2d-anim`/`ph2d-timeline` de dentro do shell, que já dependia
+das duas, e a crate de física continua sem saber que uma timeline existe. **A única dep
 externa nova em toda a linha é `dhat 0.3` como `[dev-dependencies]` de `ph2d-physics`** (o gate de
 memória do ring; mesma dep que a `ph2d-audio-edit` já usa).
 
@@ -217,28 +263,63 @@ env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop
 | (mesma cena) | interpenetração no pouso | ✅ aprovado |
 | `=4` | W2b: o painel de mundo (tecla `W`) | ✅ aprovado |
 | `=5` | W2c: a matriz de camadas | ✅ aprovado |
-| **`=6`** | **W3: pêndulo · corrente · ragdoll** | ⏳ **PENDENTE** |
+| `=6` | W3: pêndulo · corrente · ragdoll | ✅ aprovado |
+| **`=7`** | **W4: assar a sim em curvas da timeline** | ⏳ **PENDENTE** |
 
-⚠️ **A cena 6 é a única pendente**, e é a única coisa desta linha que ainda não passou pelos olhos do
-Enio. O que ela tem de mostrar está no §W3 do tracker; em resumo: o pêndulo pendura pela **PONTA** da
-prancha (não pelo meio), os elos da corrente **sobrepõem** nos pinos sem brigar, e os joelhos do ragdoll
-dobram **para um lado só**. Tecla `B` liga o overlay — os joints são os traços **âmbar**.
+⚠️ **A cena 7 é a única pendente**, e é a única coisa desta linha que ainda não passou pelos olhos do
+Enio. Ela nasce **PAUSADA** com a timeline aberta. O gesto: Play uma vez para ver o movimento, rebobinar,
+selecionar o `Roller` e as duas caixas, e **Inspector › Physics Body › `Bake 5.0s to Timeline`**.
+
+O que ela tem de mostrar (detalhe no §W4 do tracker):
+- a timeline enche com **poucas chaves por canal, em colunas alinhadas** — *não* uma por frame (isso
+  seria inutilizável, e é exatamente o bug que o gate novo pega);
+- o chip **Body vira KINEMATIC** e o toast diz isso. Tecla `B`: os contornos passam de ciano a
+  **VIOLETA** — o solver não é mais o dono daquelas poses;
+- **Play**: os objetos repetem o MESMO movimento, agora dirigidos pelas curvas;
+- **UM** Ctrl+Z tira o bake inteiro (todas as chaves, uma pressionada).
+
+E as duas coisas para as quais o bake existe: arrastar uma chave na timeline (o movimento agora é
+editável) e conferir que os corpos assados ainda **empurram** — são kinematic, não fantasmas.
 
 ### 6.4 O que NÃO foi construído (para o integrador não procurar)
-- **O painel global de física** (`ph2d-panel-physics`, gravidade/substeps/camadas) — é a **outra metade
-  do W2**, deliberadamente adiada: os defaults já são bons, enquanto sem o Inspector a física era
-  inalcançável. Nenhum dos 5 sites de registro de painel foi tocado, e a lista de z-order do
-  `hero/paint.rs` está **intacta**.
-- W3 (joints) e W4 (bake) não começaram.
+**O plano de waves está COMPLETO** — W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4, nada em aberto na
+lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no tracker:
+- **Assar um JOINT** — o bake lê a pose de **corpos**. Uma corrente assada vira N corpos kinematic com
+  curvas próprias: reproduz o movimento, descarta a articulação. Assar *a restrição* (ou recusar assar
+  corpos unidos) é decisão de design, não mecânica.
+- **`Weld`/`FixedJoint`**, motor em mola/corda, gizmo de âncora no canvas, re-escolher os corpos de um
+  joint — todos nomeados no §W3.
+- **Fora de TODAS as waves (ADR-0131 D9):** soft-body XPBD, fluidos FLIP/PIC, collider-gen vetorial +
+  fratura.
 
 ---
 
 ## 7. Resumo para o Enio
 
-> Linha `physics` pronta (HEAD `89be6146`, 15 commits, base `cdc3acc1` = `main` atual ⇒ fast-forward).
-> Foundational tocado: `editor-core` (aditivo + 1 catraca de LOC), `panel-inspector` (**`paint.rs`
-> reestruturado**), `ph2d-vector` (1 re-export), `shells/desktop`, `spike.yml`. Contratos congelados:
-> **nenhum** (3 gates verdes). Colisões a grepar: **`PROJECT_SCHEMA=17`** e a **allowance 424** (os dois se
-> CONTAM), **chrome z=300** (re-rodar o sync), **tecla `B`**, `notes_per_section[;10]`, +2 variants de
-> `EditorAction`. Os hashes C9 mudaram **de propósito** e não são pinados. `ship.sh` inteiro já roda verde
-> aqui (3640 testes). Smoke: **tudo aprovado, nada pendente**. Aguardo ordem de integração.
+> Linha `physics` **fechada e completa** — **33 commits**, base `389676f9` = `main` atual ⇒
+> **fast-forward puro**. Todas as 8 waves do plano landaram (W0 · W1 · W1.5 · W2a · W2b · W2c ·
+> W3 · W4).
+>
+> Foundational tocado: `ph2d-ecs` (`stable_name_id`, aditivo), `ph2d-editor-core` (aditivo + 1 catraca de
+> LOC), `ph2d-panel-inspector` (`paint.rs` reestruturado + 2 splits de LOC), `ph2d-anim`/`ph2d-timeline`
+> (**não modificadas** — o bake só as CHAMA), `ph2d-vector` (1 re-export), `shells/desktop`, `spike.yml`.
+> Contratos congelados: **nenhum** (3 gates verdes).
+>
+> Colisões a grepar (§3): **`PROJECT_SCHEMA = 21`** e a **allowance de LOC 424** — os dois se **CONTAM,
+> não se escolhem** · **chrome z=300** (re-rodar o `chrome-sync`) · **tecla `B`** e **tecla `W`** ·
+> `any_live_section[;9]` e slots de nota `[;11]` · 3 variants de `EditorAction` · **`INSP_PHYS_KIND` agora
+> tem 3 entradas** na tabela de ids · e o único ponto que toca código de outra linha: `simplify_recorded`
+> saiu do `autokey_pass.rs` para `record_fit.rs` **com um parâmetro novo** (§2.4c). Os hashes C9 mudaram
+> **de propósito** e não são pinados.
+>
+> Gate batched verde nesta árvore: **7778 testes, 0 falhas**, clippy `--all-targets` limpo,
+> `cargo check --workspace --all-targets` limpo.
+>
+> ⚠️ **A auditoria de 2 lentes do W4 achou DEZ coisas e as três piores eram uma só** — `Kinematic` fez a
+> simulação depender de um fluxo de entrada por-tick, e o laço de play, o replay do scrub e o bake ainda
+> supunham o contrário. Todas corrigidas nesta árvore (§2.4d + §W4 do tracker), com o desenho novo
+> `SceneAtTick`. Dois dos dez eram defeitos de GATE meus, e um deles — a cobertura do
+> `architecture_panel_wiring_parity` — **precede a linha** e agora está fechado.
+>
+> Smoke: **cenas 1-6 aprovadas; a 7 (o bake) está PENDENTE** — é a única coisa da linha que ainda não
+> passou pelos olhos do Enio. Aguardo ordem de integração.

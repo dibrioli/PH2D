@@ -22,7 +22,7 @@
 | **W2b** | Painel global de mundo | gravidade/solver/arrasto/sono | — |
 | **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |  ✅
 | **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |  ✅
-| **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
+| **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |  ✅
 
 **Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
 (`ph2d-fluids`, M13+), collider-gen vetorial + fratura (ADR-0063, aposentada com a 0108).
@@ -259,8 +259,15 @@ Bake.
    de bake é UM passo. Mutação: 1 key/frame sem simplify vira 1 undo/frame — o gate conta os passos.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=7` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
-reproduz o movimento).
+`PH2D_PHYSICS_SMOKE=7` — rampa + bola que rola + duas caixas, relógio PAUSADO: seleciona, assa, e dá play.
+
+⚠️ **"desliga a física" NÃO acontece, e não existe interruptor para isso** — o plano supunha um que o
+módulo nunca teve (física é ligada **iff** a entidade carrega `RigidBody` + `Collider`; a ausência das
+componentes *é* o desligamento). E o desligamento manual seria o desenho errado de qualquer jeito: o apply
+da timeline escreve o `Transform` e o readback da física escreve **depois**, então um corpo dinâmico
+recém-assado é sobrescrito pelo solver todo frame e o artista veria o botão Bake não fazer nada. O bake
+**entrega a pose** (`BodyKind::Kinematic` — o corpo continua no mundo e continua empurrando, mas o
+movimento vem da curva), que é o que *runtime-truth vira animação* quer dizer. Ver §W4 do tracker.
 
 ### Fora
 Soft-body, fluidos, collider-gen vetorial, fratura (M13+ / linhas próprias).

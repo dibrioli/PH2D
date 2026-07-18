@@ -301,14 +301,21 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
     );
 }
 
-/// **The Bake button is painted, registered, and reaches the bus.** (W4.)
+/// **The Bake button is painted, FOCUSABLE, and reaches the bus.** (W4.)
 ///
-/// The three halves that can each be missing on their own: a rect under the
-/// mouse, a focusable id in the store, and an arm that dispatches. It also
-/// checks the label carries the RANGE — the number is the only thing telling
-/// the artist how much of the timeline they are about to write, and a button
-/// that silently baked five seconds when the document said two would be worse
-/// than one that asked.
+/// Driven through `click_at` — a real pointer Down/Up at the painted rect,
+/// through the real dispatcher — rather than through `apply_event` directly.
+/// The difference is the whole point: `apply_event` skips the store's
+/// focusability check, so a button missing from `populate.rs` would be painted,
+/// hit-registered and dead under the mouse while a synthetic-event gate stayed
+/// green. That is the bug the W2c layer matrix was rewritten to catch, and this
+/// gate's first version claimed to check focusability while doing exactly what
+/// that rewrite was undoing.
+///
+/// It also asserts the LABEL carries the range: the number is the only thing
+/// telling the artist how much of the timeline they are about to write, and a
+/// button that silently baked five seconds when the document said two would be
+/// worse than one that asked.
 #[test]
 fn the_bake_button_is_painted_and_reaches_the_bus() {
     use ph2d_editor_core::zones::Rect;
@@ -324,10 +331,21 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(with_body()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let rect = rects
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_PHYS_BAKE)
+        .map(|(_, r)| *r)
+        .expect("the Bake button was never painted, so nothing can be clicked");
+
+    // The real pointer path: this is what fails if the id is not registered.
+    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
     set_current_inspector_physics(None);
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_BAKE),
-        "the Bake button was never painted, so nothing can be clicked"
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::INSP_PHYS_BAKE)),
+        "a real click on the painted Bake rect produced no Click for it — the \
+         id is not focusable in the store, so the button is dead under the mouse"
     );
 
     expect(
@@ -336,9 +354,62 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
         "Bake to Timeline",
     );
 
+    // The label carries the resolved range — the painter builds it from this
+    // same function, so a label that stopped showing the number would have to
+    // change here.
+    let label = ph2d_panel_inspector::bake_label(2.5);
+    assert!(
+        label.contains("2.5"),
+        "the Bake button's label does not show the range it would cover: {label:?}"
+    );
+
     // The empty face has no motion to bake, and offers nothing.
     assert!(
         click(without_body(), ids::INSP_PHYS_BAKE).is_empty(),
         "Bake fired on an entity with no body — there is no simulation to read"
     );
+}
+
+/// **Bake is neither offered nor honoured for a body with no simulated motion.**
+///
+/// A `Static` body never moves and a `Kinematic` one is already driven by the
+/// scene, so a bake of either can only ever report "nothing moved" — a button
+/// promising 5 seconds of work that is impossible for the body it points at.
+/// Both halves have to agree: the painter decides whether to OFFER it and the
+/// event handler decides whether to HONOUR it, and a refusal that lives only in
+/// the paint loop is not a refusal.
+#[test]
+fn bake_is_offered_only_for_a_body_the_solver_moves() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        assert_eq!(
+            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_BAKE),
+            offered,
+            "kind_tag={tag}: the Bake button's presence is wrong"
+        );
+        assert_eq!(
+            !click(info, ids::INSP_PHYS_BAKE).is_empty(),
+            offered,
+            "kind_tag={tag}: the event handler disagrees with the painter about \
+             whether this body can be baked"
+        );
+    }
 }

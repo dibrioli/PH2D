@@ -181,6 +181,22 @@ E o vivo de `life`/`max` é **exato dos dois lados**, sem maquinário novo:
 
 **Se um dia o `rate` também tiver de ser vivo** (não construído, é decisão do Enio): o pareamento não precisa ser por id, pode ser por **tempo de nascimento** — `id_velho ≈ round((k/rate_novo) · rate_velho)`, ainda aritmética pura, um uniforme a mais (`prev_rate`). Vira vizinho-mais-próximo no tempo, o que dá exatamente o *look* do Godot (o jato fica mais denso/ralo sem reiniciar). Custo: 1 uniforme + a linha do `gather_row`; o risco é que o pareamento passa a ser aproximado, então o gate de paridade CPU↔GPU precisa de uma política nova (a CPU não pareia nada).
 
+### §4.TINT — o Gradient do `motion.tint` na GPU (`6f761704`, 2026-07-17)
+
+Item **#6 do §Aberto da Fase 3**, e ele pertencia a ESTA linha: o doc do próprio emitter promete *"ids ascend oldest-first, so `motion.tint` in Gradient mode paints the stream by AGE"* — e esse modo **derrubava a fonte inteira pra CPU**. O `applicable` recusava o Gradient porque o ramp keya em `Index/(Count−1)` com fallback **posicional** (`i`/`n`), e `ColumnBinding.identity` é uma **CONSTANTE** — `read_Index` não conseguia devolver `f32(i)`. O **`HAS_<col>` gerado** fecha, exatamente como já tinha fechado pro `motion.color_ramp`.
+
+**A `DEMO=5` agora colore por idade** (branco quente no bico → azul profundo nas pontas) **e segue planejando 100% GPU**. É o fix em forma visível.
+
+⚠️ **O perigo de curto-circuito do `color_ramp` NÃO existe aqui, e a diferença é ESTRUTURAL, não sorte:** o `t` dele chega em OUTRA porta, onde uma cadeia enraizada noutro gerador pode ter outro comprimento, e este motor chama coluna de comprimento errado de **ausente** — o que ali significaria em silêncio *"use a chave posicional"* enquanto a CPU **preenche**. `Index`/`Count` viajam na **MESMA** porta da base, e **`Stream::set` ASSERE `col.len() == count`** ⇒ presente ⟺ existe, e presente tem exatamente `n`. O `unwrap_or(default)` da CPU é **inalcançável** pros dois — defensivo, não um ramo semântico.
+
+**O gate do ramo posicional precisou de um fixture que pudesse CONTRADIZÊ-lo:** todo gerador GPU-enraizável emite `Index`/`Count` e todo nó de transformação carrega a base ⇒ numa cadeia normal `HAS_Index` é **sempre true** e o fallback seria código não-testado atrás de suíte verde. **O oráculo é a DEFINIÇÃO do fallback**: a mesma boundary stream cozida **duas vezes**, uma com `Index`/`Count` retiradas, tem de bater **BYTE a byte** — com pré-condições de que as colunas retiradas eram mesmo `0..n−1` e `n` (senão a igualdade é coincidência sobre aquela stream) e de que o ramp de fato **varre**.
+
+⚠️ **Duas armadilhas que caíram no caminho, as duas pegas por pré-condição de fixture:**
+1. **`motion.cull` NÃO descarta colunas.** Meu `grep` "provou" que sim — estava lendo o **fixture de teste dentro do próprio crate**, não o `eval` (que copia `for (name, col) in input.columns()`). [[feedback_a_negative_search_needs_a_positive_control]]. Foi a pré-condição do fixture que pegou. O `cull` ficou no gate só como **fronteira CPU** (não tem kernel), que é o que permite entregar ao sufixo GPU uma stream escolhida pelo teste.
+2. **`str.replace(old, new, 1)` com `assert old in s` acertou a demo ERRADA** — havia 3 ocorrências de `let ig = g.add_node("motion.integrate");`. *Assert de presença não é assert de unicidade* — ancore em algo **único** (`assert s.count(anchor) == 1`).
+
+**`NodeManifest.lowerings` intocado** (`&[LoweringKind::Cpu]`) — o kernel é side metadata, o contrato congelado não se move.
+
 ---
 
 ## §5 — Gotchas que a wave adversarial expôs (não re-descubra)
@@ -207,6 +223,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 
 - **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
 - **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
+- **§4.TINT — a fonte agora é COLORIDA por idade** (branco quente no bico → azul nas pontas): é o `motion.tint` em **Gradient** rodando na GPU. O gradiente tem de **varrer ao longo do jato** (as mais velhas, no alto do arco, mais quentes) e a fonte tem de continuar fluida — se ela ficar de uma cor só, ou se o FPS cair, o Gradient recuou pra CPU.
 - **§4.LIVE — o que NÃO reinicia mais:** arraste **`life`** e **`max`** → a fonte **não pisca**: as partículas que continuam vivas seguem exatamente o voo delas (encolher é bit-idêntico; crescer só semeia as que a janela revela). Arraste `speed`/`size`/`angle`/`spread` → idem, a sim viva continua e só os recém-nascidos pegam o novo lançamento. **Se `life`/`max` reiniciarem a fonte, é regressão do §4.LIVE.**
 
 ## §7 — Ao fechar a fatia (o protocolo)

@@ -35,10 +35,16 @@ quanto trabalho uma animação custa.
 Estas não são hipóteses: são armadilhas já expostas pelo código atual.
 
 1. **De quem é o relógio, sob duas camadas?**
-   O `remapped_time` lê `doc.active_clip()`, e o ADR-0115 **já marcou isso como indefinido sob
+   O `remapped_time` lê `doc.active_clip()`, e o ADR-0115 **marcou isso como indefinido sob
    pilha** (*o strip mapeia timeline→clip; o TimeRemap do clip mapeia clip→fonte*). O nesting
    acrescenta uma terceira camada. Responda ANTES de codar: quem responde *"que segundo é agora"*
    para um objeto dentro de um container dentro de um strip.
+
+   > ⚠️ **RESPONDIDO desde que este briefing foi escrito (2026-07-18, [ADR-0133](architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md)).**
+   > A indefinição foi FECHADA para duas camadas: a composição *outer-then-inner* (R6) vive em
+   > `stack_eval::strip_source_time`, e `key_home` **recusa e nomeia o motivo**
+   > (`KeyRefusal::{NotPlaying, PlaysTwice}`) quando o mapa não é função. O nesting **estende a
+   > cadeia**, não inventa a lei. Idem o `O(bindings²)`: o `ClockIndex` (`clock.rs`) já o hoistou.
 
 2. **Um container aninhado é ENTIDADE ECS com filhos, ou é um CLIP que se referencia?**
    Os dois já existem no projeto e puxam pra lados opostos. A hierarquia é única e ECS

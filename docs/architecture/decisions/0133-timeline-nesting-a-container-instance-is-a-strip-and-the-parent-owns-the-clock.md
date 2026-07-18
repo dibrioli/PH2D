@@ -226,25 +226,32 @@ Cada item é executável e nasce VERMELHO.
 
 ## Kill-criterion (declarado ANTES do build, e o baseline é MEDIDO)
 
-**Baseline medido hoje** (2026-07-18, workstation, release,
-`cargo test -p ph2d-timeline --release --all-features --test apply_perf -- --ignored`):
+**Baseline medido hoje** (2026-07-18, workstation, release, na árvore DESTA linha,
+`cargo test -p ph2d-timeline --release --all-features --test apply_perf -- --ignored`), **4 execuções**:
 
 ```text
-  bindings   us/apply   us/binding
-       350        8.0        0.023
-      1400       52.1        0.037
-  4x dados -> custo por binding x1.62   (antes do hoist do ClockIndex: x2.91)
+  bindings   us/apply (4 runs)        us/binding
+       350   7.8 · 8.5 · 10.5 · 10.6   0.022 – 0.030
+      1400  50.1 · 50.2 · 63.3 · 61.1   0.036 – 0.045
+  4x dados -> custo por binding x1.48 – x1.62   (antes do hoist do ClockIndex: x2.84 – x2.91)
 ```
 
-Reproduz a medição de 2026-07-12 (51,84 µs @ 1400) — a baseline é estável e o hoist segue de pé.
-**1400 bindings custam 0,31% de um frame de 60 Hz.**
+⚠️ **A métrica que vale é a FORMA, não o wall-clock** — e isso não é preferência minha, é o que o
+próprio harness manda: *"total wall-clock ratios are a poor test… the cost per binding does not
+have that problem"*. O wall-clock varia ~25% entre execuções (a primeira de cada sessão é sempre a
+lenta: cache frio e turbo). **O crescimento por-binding, que é o que revela a lei, fica em
+1,48–1,62 — linearítmico, e longe do ~4× que a forma quadrática daria.** O hoist do `ClockIndex`
+segue de pé.
+
+Reproduz a medição de 2026-07-12 (51,84 µs @ 1400). **1400 bindings custam ~0,3% de um frame de
+60 Hz.**
 
 **O kill:** um documento de **8 containers × profundidade 3** (a escala de um rig 2D real) deve
 aplicar em **< 2× o custo do mesmo número de bindings achatado**. Acima disso o desenho morre e a
 alternativa nomeada é o desconto do Unreal (uma avaliação, N cópias).
 
 **E é por isso que NÃO há teto de profundidade** (§0.0 — um limite legítimo diz de que recurso ele
-é): a 0,037 µs/binding, mesmo a profundidade 10 sobre 1400 bindings custaria ~520 µs = **3,1% do
+é): a ~0,04 µs/binding, mesmo a profundidade 10 sobre 1400 bindings custaria ~600 µs = **3,6% do
 frame**. **Tempo de avaliação não justifica um teto raso**, e nenhum outro recurso foi medido
 ainda. Se alguém quiser um limite, tem de medir **memória** ou **profundidade de recursão** e
 escrever o número que a medição deu. *"Por segurança" é um palpite esperando um smoke.*

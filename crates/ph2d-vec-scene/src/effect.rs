@@ -86,6 +86,10 @@ pub const MAX_PATH_EFFECTS: usize = 4;
 pub struct FxCtx {
     /// A média entre a largura e a altura da caixa de controle do caminho autorado.
     pub ref_size: f64,
+    /// O centro dessa mesma caixa. É a âncora de toda rotação de efeito — sai da MESMA medição
+    /// que o `ref_size`, e do caminho AUTORADO, para que o significado de um botão não dependa
+    /// da ordem da pilha.
+    pub center: [f64; 2],
 }
 
 impl FxCtx {
@@ -110,6 +114,11 @@ impl FxCtx {
                 ((hi[0] - lo[0]) + (hi[1] - lo[1])) * 0.5
             } else {
                 0.0
+            },
+            center: if seen {
+                [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5]
+            } else {
+                [0.0; 2]
             },
         }
     }
@@ -156,6 +165,13 @@ pub enum PathEffect {
     /// Ondula o caminho em cristas espaçadas por ARCO — o *Zig Zag* / *Roughen*.
     /// Ver [`crate::fx_zigzag`]. **Apendado por último**: postcard é posicional.
     ZigZag(ZigZagSpec),
+    /// N cópias com transformação cumulativa — o *Repeater*. Ver [`crate::fx_repeat`].
+    Repeat(crate::fx_repeat::RepeatSpec),
+    /// Gira em torno do centro com força radial — o *Twist*. Ver [`crate::fx_warp`].
+    Twist(crate::fx_warp::TwistSpec),
+    /// Puxa/empurra os pontos do centro — o *Pucker & Bloat*. Ver [`crate::fx_warp`].
+    /// **Apendado por último**: postcard é posicional.
+    Bloat(crate::fx_warp::BloatSpec),
 }
 
 impl PathEffect {
@@ -168,6 +184,9 @@ impl PathEffect {
         match self {
             Self::Trim(t) => t.is_neutral(),
             Self::ZigZag(z) => z.is_neutral(),
+            Self::Repeat(r) => r.is_neutral(),
+            Self::Twist(t) => t.is_neutral(),
+            Self::Bloat(b) => b.is_neutral(),
         }
     }
 
@@ -180,7 +199,7 @@ impl PathEffect {
     pub fn as_trim(&self) -> Option<&TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -188,7 +207,7 @@ impl PathEffect {
     pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -197,7 +216,7 @@ impl PathEffect {
     pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -205,7 +224,7 @@ impl PathEffect {
     pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -222,12 +241,21 @@ impl PathEffect {
                     "Zig Zag"
                 }
             }
+            Self::Repeat(_) => "Repeater",
+            Self::Twist(_) => "Twist",
+            Self::Bloat(_) => "Pucker & Bloat",
         }
     }
 
     /// **A tabela de tipos** — o menu "Add" do painel sai daqui, então acrescentar um efeito
     /// não toca no painel. A ordem é a dos variants.
-    pub const KINDS: &'static [&'static str] = &["Trim Path", "Zig Zag"];
+    pub const KINDS: &'static [&'static str] = &[
+        "Trim Path",
+        "Zig Zag",
+        "Repeater",
+        "Twist",
+        "Pucker & Bloat",
+    ];
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -237,6 +265,9 @@ impl PathEffect {
         match kind {
             0 => Some(Self::Trim(TrimSpec::default())),
             1 => Some(Self::ZigZag(ZigZagSpec::default())),
+            2 => Some(Self::Repeat(crate::fx_repeat::RepeatSpec::default())),
+            3 => Some(Self::Twist(crate::fx_warp::TwistSpec::default())),
+            4 => Some(Self::Bloat(crate::fx_warp::BloatSpec::default())),
             _ => None,
         }
     }
@@ -247,6 +278,9 @@ impl PathEffect {
         match self {
             Self::Trim(_) => 0,
             Self::ZigZag(_) => 1,
+            Self::Repeat(_) => 2,
+            Self::Twist(_) => 3,
+            Self::Bloat(_) => 4,
         }
     }
 
@@ -306,9 +340,72 @@ impl PathEffect {
             flag("Smooth"),
             flag("Rough"),
         ];
+        const REPEAT: &[FxParam] = &[
+            // **128, e o numero saiu da MEDICAO** (CLAUDE.md §0). Eu tinha escrito 32 por
+            // conforto; medido numa silhueta de 24 ancoras, o custo de `cooked()` e' linear e
+            // ridiculamente barato -- oito vezes menos que as cristas do Zig Zag no MESMO teto:
+            //
+            // | copias  |  2   |  8   |  16  |  32  |  64  | 128  |
+            // |---------|------|------|------|------|------|------|
+            // | ms/cook |0,0008|0,0042|0,0086|0,0144|0,0290|0,0614|
+            //
+            // ⚠️ **O cozimento NAO e' o recurso que limita isto** -- 0,06 ms a 128 nao limita
+            // nada. O custo por medir e' o RENDER de 128 contornos (Vello), e quem quiser subir
+            // tem de medir ESSE, nao este. 128 espelha o teto das cristas por simetria, nao por
+            // ter batido numa parede.
+            FxParam {
+                name: "Copies",
+                min: 1.0,
+                max: 128.0,
+                toggle: false,
+                integer: true,
+            },
+            // Distancias em PERCENTAGEM da forma: `100` = uma largura-media. A mesma lei do
+            // `Size` do Zig Zag, e pela mesma razao.
+            FxParam {
+                name: "Move X",
+                min: -200.0,
+                max: 200.0,
+                toggle: false,
+                integer: false,
+            },
+            FxParam {
+                name: "Move Y",
+                min: -200.0,
+                max: 200.0,
+                toggle: false,
+                integer: false,
+            },
+            FxParam {
+                name: "Rotate",
+                min: -180.0,
+                max: 180.0,
+                toggle: false,
+                integer: false,
+            },
+        ];
+        // Um parametro cada. O Twist entrega o angulo na BORDA da forma; o Bloat e' uma
+        // percentagem do raio de cada ponto (`-100` colapsa no centro, `100` duplica).
+        const TWIST: &[FxParam] = &[FxParam {
+            name: "Angle",
+            min: -360.0,
+            max: 360.0,
+            toggle: false,
+            integer: false,
+        }];
+        const BLOAT: &[FxParam] = &[FxParam {
+            name: "Amount",
+            min: -100.0,
+            max: 100.0,
+            toggle: false,
+            integer: false,
+        }];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
+            Self::Repeat(_) => REPEAT,
+            Self::Twist(_) => TWIST,
+            Self::Bloat(_) => BLOAT,
         }
     }
 
@@ -323,6 +420,12 @@ impl PathEffect {
             (Self::ZigZag(z), 1) => z.ridges,
             (Self::ZigZag(z), 2) => f64::from(u8::from(z.smooth)),
             (Self::ZigZag(z), 3) => f64::from(u8::from(z.rough_seed.is_some())),
+            (Self::Repeat(r), 0) => r.copies,
+            (Self::Repeat(r), 1) => r.move_x,
+            (Self::Repeat(r), 2) => r.move_y,
+            (Self::Repeat(r), 3) => r.rotate,
+            (Self::Twist(t), 0) => t.angle,
+            (Self::Bloat(b), 0) => b.amount,
             _ => 0.0,
         }
     }
@@ -349,6 +452,12 @@ impl PathEffect {
             // A seed é FIXA por enquanto: o que o artista liga é o *modo* Roughen. Um knob de
             // seed entra quando alguém quiser duas rugosidades diferentes na mesma cena.
             (Self::ZigZag(z), 3) => z.rough_seed = (v >= 0.5).then_some(1),
+            (Self::Repeat(r), 0) => r.copies = v,
+            (Self::Repeat(r), 1) => r.move_x = v,
+            (Self::Repeat(r), 2) => r.move_y = v,
+            (Self::Repeat(r), 3) => r.rotate = v,
+            (Self::Twist(t), 0) => t.angle = v,
+            (Self::Bloat(b), 0) => b.amount = v,
             _ => {}
         }
     }
@@ -369,6 +478,19 @@ impl PathEffect {
             Self::ZigZag(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
                     fx_zigzag::zigzag_contour(v, c, spec, ctx.ref_size)
+                });
+            }
+            // ⚠️ O Repeater NÃO passa pelo `apply_per_contour`: ele multiplica a forma inteira,
+            // e um buraco copiado por conta própria deixaria de ser buraco.
+            Self::Repeat(spec) => out = crate::fx_repeat::repeat_path(path, spec, ctx),
+            Self::Twist(spec) => {
+                apply_per_contour(path, &mut out, |v, c| {
+                    crate::fx_warp::twist_contour(v, c, spec, ctx)
+                });
+            }
+            Self::Bloat(spec) => {
+                apply_per_contour(path, &mut out, |v, c| {
+                    crate::fx_warp::bloat_contour(v, c, spec, ctx)
                 });
             }
         }

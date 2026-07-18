@@ -83,7 +83,15 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// component (blob novo nas linhas do `WorldSnapshot`) **e**
 /// `PhysicsSettings.layer_matrix` apendado. Duas quebras de layout no mesmo
 /// bump, nenhuma visível a um gate de constante.
-const PROJECT_SCHEMA: u32 = 23;
+/// v22 (ADR-0132): `VecPath` ganhou a pilha de efeitos (Live Path Effects). v23: a entrada da
+/// pilha virou `FxEntry` (o efeito + se está LIGADO). v24: a pilha ganhou os variants
+/// `Repeat`/`Twist`/`Bloat` — apender variant não move os índices anteriores, então um arquivo
+/// v23 continua a ser lido CERTO; o bump existe para que o caminho inverso (um v24 aberto por um
+/// binário v23) morra como erro de versão em vez de como um postcard perdido.
+/// ⚠️ Estas entradas nasceram como v19..v21 na `line/Vector` e foram **renumeradas +3 na
+/// integração de 2026-07-19**, porque a `line/physics` bumpou três vezes na mesma jornada e o
+/// contador se **CONTA**, não se escolhe.
+const PROJECT_SCHEMA: u32 = 24;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

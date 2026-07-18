@@ -384,7 +384,8 @@ fn project_file_round_trips_through_postcard() {
 /// arrasto real é campo novo) · **v21** a camada + a matriz de colisão (ADR-0131 W2c) ·
 /// **v22** a PILHA de Live Path Effects (ADR-0132: `VecPath.effects`,
 /// `VEC_SCENE_SCHEMA_VERSION` 8→9) · **v23** a entrada da pilha virou `FxEntry` (o efeito +
-/// se está LIGADO — o olho desarma sem perder os parâmetros), `VEC_SCENE_SCHEMA_VERSION` 9→10.
+/// se está LIGADO — o olho desarma sem perder os parâmetros), `VEC_SCENE_SCHEMA_VERSION` 9→10 ·
+/// **v24** os variants `Repeat`/`Twist`/`Bloat` na pilha (`VEC_SCENE_SCHEMA_VERSION` 10→11).
 ///
 /// ⚠️ As entradas do Vector nasceram em **v19..v23** na linha dela e foram **renumeradas para
 /// v22..v26 na integração de 2026-07-19**: a `line/physics` bumpou três vezes na MESMA jornada,
@@ -416,7 +417,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (23, 8, 10),
+        (24, 8, 11),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

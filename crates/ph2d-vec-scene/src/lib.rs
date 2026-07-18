@@ -86,6 +86,13 @@ pub mod fx_trim;
 /// próximo custar pouco. Módulo irmão de `fx_trim`.
 pub mod fx_zigzag;
 
+/// **Repeater** — N cópias com transformação cumulativa (ADR-0132). O 1º efeito que
+/// MULTIPLICA contornos, e por isso o 1º que não passa pelo `apply_per_contour`.
+pub mod fx_repeat;
+
+/// **Twist** e **Pucker & Bloat** — os dois deformadores radiais (ADR-0132).
+pub mod fx_warp;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).
@@ -500,9 +507,15 @@ pub struct VecPath {
 /// `corner_radius` (Live Corners — [`crate::corner_live`]). v9: [`VecPath`] ganhou
 /// `effects`, a pilha de Live Path Effects ([`crate::effect`], ADR-0132). v10: a entrada da
 /// pilha virou [`effect::FxEntry`] (o efeito + se está LIGADO) — desarmar sem perder os
-/// parâmetros. (Migração
-/// robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 10;
+/// parâmetros. v11: [`effect::PathEffect`] ganhou `Repeat`/`Twist`/`Bloat` ([`crate::fx_repeat`],
+/// [`crate::fx_warp`]).
+///
+/// ⚠️ **Apender um variant obriga a bump, embora os saves antigos continuem a ler CERTO.** Os
+/// índices anteriores não se mexem, então v10 lido por v11 está correto — o que quebra é o
+/// sentido inverso: um save v11 com um Repeater, lido por um binário v10, encontra um índice de
+/// variant que não conhece. O bump é o que transforma isso num erro de versão em vez de um
+/// postcard a falhar longe da causa. (Migração robusta = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 11;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

@@ -783,7 +783,7 @@ está olhando. O par vivo ainda conta a verdade sobre **tensão**.
 âncoras no MESMO ponto, o segmento tem comprimento zero e **não pinta nada** — o
 joint mais comum do editor seria invisível. Gate próprio.
 
-### Gates: 57 novos, 40 mutações, 40 sangram
+### Gates: 56 novos, 39 mutações, 39 sangram
 
 | onde | quantos | o que cobrem |
 |---|---|---|

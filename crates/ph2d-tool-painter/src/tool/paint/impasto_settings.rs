@@ -247,6 +247,29 @@ impl PainterTool {
 
     /// **Plow** — how strongly the Smear drags existing relief (the palette knife). Applies from the
     /// next smear: it is a displacement, not a deposit, so there is nothing to re-derive after the fact.
+    /// Diagnostic: the active layer's committed relief and coverage planes, for the render-and-look
+    /// probe to read numbers out of the picture it just drew.
+    #[must_use]
+    pub fn relief_profile_for_probe(&self) -> (Vec<f32>, Vec<u8>) {
+        let active = self.layers.active();
+        let h = active
+            .and_then(|a| self.heights.get(&a))
+            .map(|f| f.as_ref().clone())
+            .unwrap_or_default();
+        let c = active
+            .and_then(|a| self.covers.get(&a))
+            .map(|f| f.as_ref().clone())
+            .unwrap_or_default();
+        (h, c)
+    }
+
+    /// Diagnostic: the Plow the CURRENT mode's brush actually carries. The probe reads it to tell
+    /// "the knife is off" apart from "the knife runs and the light does not show it".
+    #[must_use]
+    pub fn brush_plow_for_probe(&self) -> f32 {
+        self.paint.brush.impasto_plow
+    }
+
     pub fn set_brush_impasto_plow(&mut self, v: f32) {
         self.paint.brush.impasto_plow = v.clamp(0.0, 1.0);
     }

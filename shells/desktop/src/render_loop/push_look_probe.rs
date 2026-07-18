@@ -295,5 +295,53 @@ fn probe_push_render_and_look() {
     assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     save(&mut t, &dir, "12b_cross_inflated", size);
 
+    // 13. **ENIO'S SMEAR** (2026-07-18): *"as fronteiras não são vencidas. o relevo não é levado além."*
+    //     A thick vertical stroke, then the knife dragged straight OUT of it — the gesture of the photo.
+    //     Driven through the REAL app door (`set_paint_tool_mode`), not by poking `paint_mode`, because a
+    //     unit test that pokes the field passed while the product did not.
+    let mut t = tool(size);
+    t.set_brush_impasto_depth(1.0);
+    t.set_brush_size_px(40.0);
+    t.on_canvas_pointer(cp([150.0, 80.0], PointerPhase::Down));
+    for i in 1u8..=10 {
+        t.on_canvas_pointer(cp([150.0, 80.0 + 24.0 * f32::from(i)], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([150.0, 320.0], PointerPhase::Up));
+    save(&mut t, &dir, "13a_smear_before", size);
+    t.set_paint_tool_mode("smear");
+    eprintln!(
+        "[smear-probe] plow of the SMEAR brush the app will use = {}",
+        t.brush_plow_for_probe()
+    );
+    t.on_canvas_pointer(cp([150.0, 200.0], PointerPhase::Down));
+    for i in 1u8..=12 {
+        t.on_canvas_pointer(cp([150.0 + 14.0 * f32::from(i), 200.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([318.0, 200.0], PointerPhase::Up));
+    save(&mut t, &dir, "13b_smear_after", size);
+    {
+        // Turn the picture into numbers: along the knife's line, and ACROSS it at mid-trail.
+        let (hs, cs) = t.relief_profile_for_probe();
+        let at = |x: usize, y: usize| (hs[y * size as usize + x], cs[y * size as usize + x]);
+        eprint!("[smear-probe] along y=200:");
+        for x in (150..330).step_by(20) {
+            let (h, c) = at(x, 200);
+            eprint!("  x{x}:h{h:.2}/c{c}");
+        }
+        eprintln!();
+        eprint!("[smear-probe] across x=250:");
+        for y in (170..232).step_by(6) {
+            let (h, c) = at(250, y);
+            eprint!("  y{y}:h{h:.2}/c{c}");
+        }
+        eprintln!();
+        eprint!("[smear-probe] across x=170 (just outside the ridge):");
+        for y in (150..252).step_by(10) {
+            let (h, c) = at(170, y);
+            eprint!("  y{y}:h{h:.2}/c{c}");
+        }
+        eprintln!();
+    }
+
     eprintln!("PNGs written to {dir}");
 }

@@ -136,7 +136,16 @@ pub(crate) fn build_initial_state(
     let m5_demo_enabled = std::env::var("PH2D_M5_DEMO").as_deref() == Ok("1");
     let hero_live_enabled = !m5_demo_enabled;
     let mut sim = SimWorld::new();
-    if hero_live_enabled {
+    // The physics smoke OWNS the scene: no demo sprites, so the hierarchy
+    // shows only the simulation (Enio 2026-07-18). Spawning them here just to
+    // despawn them later would leave a frame of debris in the hierarchy.
+    let physics_smoke = std::env::var_os("PH2D_PHYSICS_SMOKE").is_some();
+    if physics_smoke {
+        println!(
+            "[{:>6}ms] physics smoke: empty scene (only the physics bodies)",
+            handler.elapsed_ms()
+        );
+    } else if hero_live_enabled {
         // M14.4a: spawn a small named set so the hierarchy
         // panel renders readable rows. The 1000-sprite Vogel
         // spiral demo is fixture-only; live mode is for the

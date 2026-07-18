@@ -38,6 +38,13 @@ struct BodyRef {
     /// Cached so `readback` knows which bodies to read (only dynamic ones
     /// move; static bodies keep their authored pose).
     kind: BodyKind,
+    /// The spawn description captured when this body was FIRST created —
+    /// i.e. the **rest state at tick 0**. rapier cannot rewind, so a
+    /// backwards clock replays from here (see
+    /// [`PhysicsBridge::rewind_to`]). Without it, Reset could not put the
+    /// ball back where it started: the live `Transform` has already been
+    /// overwritten by the readback.
+    rest: BodyDesc,
 }
 
 /// The ECS ↔ rapier bridge. One per document, held on `AppGfx.physics`.
@@ -64,6 +71,9 @@ pub struct PhysicsBridge {
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
     to_remove: Vec<Entity>,
+    /// Kept so a rewind can rebuild a fresh world with the same gravity
+    /// (`PhysicsWorld::new` would silently reset it to the default).
+    gravity: (f32, f32),
 }
 
 impl Default for PhysicsBridge {
@@ -82,6 +92,7 @@ impl PhysicsBridge {
             seen: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
+            gravity: (0.0, ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y),
         }
     }
 
@@ -98,6 +109,7 @@ impl PhysicsBridge {
 
     /// Set world gravity (m/s²). Default is `(0, -9.81)` (Y-up).
     pub fn set_gravity(&mut self, x: f32, y: f32) {
+        self.gravity = (x, y);
         self.world.set_gravity(x, y);
     }
 
@@ -125,8 +137,14 @@ impl PhysicsBridge {
             self.query = Some(sim.world_mut().query());
         }
         self.reconcile_structure(sim);
-        if playing {
-            if target > self.last_stepped {
+        match target.cmp(&self.last_stepped) {
+            // The clock went BACKWARDS — Reset, or a scrub. rapier has no
+            // rewind, so replay from the rest state (see `rewind_to`).
+            std::cmp::Ordering::Less => self.rewind_to(sim, target),
+            // Forward: advance the owed ticks, sequentially. This is play,
+            // and it is equally a scrub FORWARD while paused — the sim state
+            // is a function of the tick, not of the play button.
+            std::cmp::Ordering::Greater => {
                 let owed = target - self.last_stepped;
                 for _ in 0..owed {
                     self.world.step();
@@ -134,13 +152,43 @@ impl PhysicsBridge {
                 self.readback(sim);
                 self.last_stepped = target;
             }
-            // target <= last_stepped while playing = no new fixed tick this
-            // frame: leave the world as-is. Settling here would yank bodies
-            // back to the authored Transform and fight the sim.
-        } else {
-            self.settle(sim);
-            self.last_stepped = target;
+            // The clock is standing still. While PAUSED, let bodies follow a
+            // Transform the artist moved (authoring). While PLAYING, do
+            // nothing: a frame faster than the tick must not touch the world
+            // — `settle` would zero the velocity and the fall would stutter.
+            std::cmp::Ordering::Equal => {
+                if !playing {
+                    self.settle(sim);
+                }
+            }
         }
+    }
+
+    /// Put the world back at tick 0 and replay forward to `target`.
+    ///
+    /// rapier cannot step backwards, and the live `Transform` is no help —
+    /// the readback has already overwritten it with the simulated pose. So
+    /// each body carries the description it was SPAWNED with
+    /// ([`BodyRef::rest`]); a fresh world built from those, replayed
+    /// `target` steps, reproduces the state exactly (the sim is
+    /// deterministic). `target == 0` is the common case — Reset — and costs
+    /// no steps at all.
+    ///
+    /// O(target). The checkpoint ring that makes this O(1)-amortised is
+    /// W1.5; at W1 scene sizes the replay is instant.
+    fn rewind_to(&mut self, sim: &mut SimWorld, target: u64) {
+        self.world = PhysicsWorld::new();
+        self.world.set_gravity(self.gravity.0, self.gravity.1);
+        // BTreeMap → entity order, so the fresh handles are assigned in the
+        // same deterministic order as the original spawn (HR-5).
+        for b in self.bodies.values_mut() {
+            b.handle = self.world.spawn_body(b.rest);
+        }
+        for _ in 0..target {
+            self.world.step();
+        }
+        self.readback(sim);
+        self.last_stepped = target;
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned
@@ -189,7 +237,16 @@ impl PhysicsBridge {
         for i in 0..self.to_spawn.len() {
             let (e, desc, kind) = self.to_spawn[i];
             let handle = self.world.spawn_body(desc);
-            self.bodies.insert(e, BodyRef { handle, kind });
+            // `desc` was built from the Transform as it is RIGHT NOW, before
+            // any stepping — that is the rest state a rewind replays from.
+            self.bodies.insert(
+                e,
+                BodyRef {
+                    handle,
+                    kind,
+                    rest: desc,
+                },
+            );
         }
         self.to_spawn.clear();
     }
@@ -220,14 +277,26 @@ impl PhysicsBridge {
     fn settle(&mut self, sim: &SimWorld) {
         let world = sim.world();
         for (&e, b) in self.bodies.iter() {
-            if let Some(t) = world.get::<Transform>(e) {
-                self.world.set_body_pose(
-                    b.handle,
-                    t.translation.x,
-                    t.translation.y,
-                    t.rotation,
-                    false,
-                );
+            let Some(t) = world.get::<Transform>(e) else {
+                continue;
+            };
+            let (ax, ay, ar) = (t.translation.x, t.translation.y, t.rotation);
+            // Only teleport when the AUTHORED pose actually differs from where
+            // the body is. `set_body_pose` zeroes the velocity, so doing this
+            // unconditionally every paused frame would make Pause → Play
+            // restart the fall from a standstill. The readback writes the
+            // body's pose into `Transform` exactly, so an untouched pair
+            // compares equal; a gizmo drag makes them differ.
+            let moved_by_hand = match self.world.body_pose(b.handle) {
+                Some(pose) => {
+                    pose.translation.x != ax
+                        || pose.translation.y != ay
+                        || pose.rotation.angle() != ar
+                }
+                None => false,
+            };
+            if moved_by_hand {
+                self.world.set_body_pose(b.handle, ax, ay, ar, true);
             }
         }
     }

@@ -20,7 +20,7 @@
 
 **Fechados nesta rodada (sobre a base integrada, à frente da main — não integrados):**
 - **§4.C.1** (`a5738e98`, **smoke OK**) — o pedaço é a unidade visual do Segment (detalhe abaixo).
-- **§4.C.2 — Duplicate Layer** (`47fd348c`, pendente smoke): capacidade nova (reorder já
+- **§4.C.2 — Duplicate Layer** (`47fd348c`, **smoke OK 2026-07-17**): capacidade nova (reorder já
   existia via ↑↓; duplicar não). `FlipObject::duplicate_layer` = cópia INDEPENDENTE acima da
   original — desenhos próprios (deep-copy; editar a cópia não toca o original), a instância
   DENTRO da camada preservada (mapa por-desenho ⇒ ciclo continua ciclo), refcount por-quadro
@@ -28,6 +28,38 @@
   virou loop, largura de `.len()` — o `no_magic_numeric` pega `3.0` solto). Gates: 4 modelo +
   2 seam (forward do painel + apply do shell) + 2 shell, mutações provadas.
   **Smoke:** `PH2D_FLIP_DEMO=1` → tool Flip → Layers → selecione FG → Duplicate.
+- **§4.C.3 — Rename Layer** (`a4609669`, **pendente smoke**): companheiro natural do
+  Add/Duplicate/Delete (o animador duplica "FG copy" → renomeia "FG shadow"; não existia).
+  **DOUBLE-click** no nome abre um `TextInput` inline SOBRE a faixa do nome (espelha o
+  `marker_rename` do timeline), semeado+focado; Enter/Blur commitam, Esc cancela; clique
+  simples segue selecionando. Seam: o commit viaja pela **Row id** via `SelectOption(row_id,
+  name)` — o shell (`flip_layers`) já decodifica Row id → camada (mesmo canal do blend chip,
+  edição de DOCUMENTO). `FlipObject::rename_layer` (troca só o nome, id/frames/arte intactos).
+  Estado: `FlipPanelState.layer_rename` (a struct deixou de ser unit → os literais `= FlipPanelState;`
+  viraram `::default()`). Guarda de teclado: o Delete/Backspace do Edit Mode agora cede a
+  campo de texto focado (`!vector_text_field_focused()`) — bug latente até o Flip ganhar um
+  campo. Gates: 2 modelo + 3 seam painel (abre/commit/ownership) + 2 shell, mutações provadas;
+  `FLIP_LAYER_RENAME_INPUT` no allowlist de wiring-parity (campo dinâmico, como o marker).
+  **A guarda de teclado NÃO é gateada de propósito:** `vector_text_field_focused()` lê o
+  `hero_screen.store` (só com `gfx`=janela); headless nasce `gfx=None` ⇒ o helper é sempre
+  `false` ⇒ um teste headless ficaria verde COM ou SEM a guarda (o "verde por acidente" do §4.C.1).
+  É mirror de uma linha do bloco vetorial irmão, já testado, sobre o mesmo helper.
+  **Smoke:** `PH2D_FLIP_DEMO=1` → tool Flip → Layers → **double-click no NOME** de uma camada
+  → digite → Enter (Esc cancela; Backspace edita o texto, não apaga traços).
+
+**⚠️ DECISÃO PENDENTE DO ENIO — raio dedicado da borracha (NÃO feito, de propósito):** o item
+"`erase_px` separado do `width_px`" da fila ABAIXO **reverteria uma decisão GATEADA**. O
+gate `size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere`
+([`tests/seam.rs`](../../crates/ph2d-panel-flip/tests/seam.rs)) AFIRMA, executavelmente, que
+o Size é **compartilhado** pela borracha, e o `params.rs` documenta o porquê (Reshape/borracha
+compartilham raio+força de propósito: 2º par de sliders = estado duplicado, re-ajuste a cada
+troca de modo). Dar raio próprio à borracha exige MUDAR esse gate — é reverter invariante do
+repo, não "decidir e executar" ([[feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate]] +
+[[feedback_documented_decision_chesterton_fence]]). **Só com ordem do Enio.** (Contra-argumento
+a favor, se ele quiser: apagar é gesto de escala distinta de desenhar — todo tool 2D tem
+borracha com tamanho próprio; o Reshape esculpe as linhas que você desenhou, então lá o
+compartilhamento faz mais sentido que na borracha.) O anel de preview (`flip_cursor.rs`) já
+lê o modo; seria model+painel+seam se aprovado.
 
 **§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, **smoke OK 2026-07-17**).
 Duas coisas, um primitivo:
@@ -144,13 +176,19 @@ todos dela.
 Qualquer um serve de tarefa curta entre smokes:
 
 - ✅ **realce de HOVER no Segment** — FECHOU em §4.C.1 (`a5738e98`, smoke OK).
-- ✅ **duplicar camada** — FECHOU em §4.C.2 (`47fd348c`, pendente smoke).
+- ✅ **duplicar camada** — FECHOU em §4.C.2 (`47fd348c`, smoke OK).
+- ✅ **renomear camada** — FECHOU em §4.C.3 (`a4609669`, pendente smoke).
 - reorder de camada por DRAG (o reorder já existe via ↑↓; isto é a affordance de arrastar) ·
-  AGRUPAR camada (precisa de conceito de grupo no modelo do Flip — não existe hoje) ·
-  máscaras de camada na UI (o modelo tem `FlipLayer.masks`, falta a UI)
-- raio dedicado da borracha (o anel de preview JÁ existe em `flip_cursor.rs`; falta só um
-  `erase_px` separado do `width_px`) · curva de pressão editável · round caps/bevel joins
-  (caps já existem no `pack.rs`; **joins** = trabalho de shader/render, mais fundo)
+  AGRUPAR camada (precisa de conceito de grupo no modelo do Flip — não existe hoje).
+- ⚠️ **máscaras de camada na UI — NÃO é "só a UI":** o modelo tem `FlipLayer.masks`
+  (`Vec<LayerMask{source, invert}>`) mas **NENHUM consumidor** — o `flip_pass.rs` compõe as
+  camadas pelo `LayerCompositor` (blend/opacity) e **nunca aplica máscara**. Expor a UI sem o
+  render seria um controle morto (o bug nº 1). É feature GRANDE (render de clip/mask + UI),
+  não refino — precisa de plano/ordem, não é um "próximo".
+- ⚠️ **raio dedicado da borracha — GATEADO contra** (ver a "DECISÃO PENDENTE DO ENIO" no §1):
+  reverte `size_is_shared_by_brush_eraser_and_sculpt...`. Só com ordem do Enio.
+- curva de pressão editável · round caps/bevel joins (caps já existem no `pack.rs`; **joins**
+  = trabalho de shader/render, mais fundo).
 - **write-back do painel** (espelhar o estilo da seleção no swatch — `Flip/08 §6`; ⚠️ é
   design-ambíguo: o painel hoje é "aplique este valor", não espelho)
 - cache de tesselação com LRU (perf — só com problema MEDIDO)

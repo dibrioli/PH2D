@@ -1,3 +1,5 @@
+> ⬛ **FECHADO 2026-07-17 (`e167926d`, pendente smoke do Enio).** A meça-primeiro (§3.2) decidiu: o `render_inflate` trocou a parábola separável pela **BOLA LIMITADA EXATA** (`sculpt_offset::blob_ball`, `lift = mag·√(a_p²−d²/ρ²)`) — `capture == reach` por construção, as 4 cercas deletadas, a advecção virou incondicional (fix de sampling), 7,3/7,7 ms/move sob o kill. Gate `the_inflate_fills_the_junctions_armpit_no_gash`. Ver CLAUDE.md §5 (entrada do SCULPT). Este handoff vira histórico.
+
 # HANDOFF — a borda do Inflate (`line/Painter`, 2026-07-16)
 
 > ## ⚠️ LEIA ISTO PRIMEIRO — o 2º smoke do Enio REPROVOU a borda de novo, e o fix abaixo NÃO a alcança

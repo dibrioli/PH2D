@@ -44,11 +44,18 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // ([[feedback_disabled_button_still_dispatches]]).
             Some(PhysicsFieldEdit::Join)
         } else if let Some(i) = ids::INSP_PHYS_KIND.iter().position(|&o| o == id) {
-            Some(PhysicsFieldEdit::Kind(i as u8))
+            // Gated like every sibling. Kind and Shape were the only two §11
+            // controls with NO `has_body` check, which made `Kind` a second
+            // door to attaching an orphan `RigidBody` to a plain sprite — the
+            // chips are painted only inside the body block, and a refusal that
+            // lives in the paint loop is not a refusal
+            // ([[feedback_disabled_button_still_dispatches]]).
+            info.has_body.then_some(PhysicsFieldEdit::Kind(i as u8))
         } else {
             ids::INSP_PHYS_SHAPE
                 .iter()
                 .position(|&o| o == id)
+                .filter(|_| info.has_body)
                 .map(|i| PhysicsFieldEdit::Shape(i as u8))
         };
         if let Some(edit) = edit {

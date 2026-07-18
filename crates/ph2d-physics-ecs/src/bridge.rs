@@ -14,6 +14,9 @@
 //! [`dispatch`]: PhysicsBridge::dispatch
 
 mod joints;
+mod kinematic;
+
+pub use kinematic::{FrozenScene, SceneAtTick};
 
 use std::collections::BTreeMap;
 
@@ -100,6 +103,11 @@ pub struct PhysicsBridge {
     joints_seen: Vec<Entity>,
     joints_to_spawn: Vec<PendingJoint>,
     joints_to_remove: Vec<Entity>,
+    /// Where each kinematic body stood when this dispatch began, so a
+    /// multi-tick dispatch can spread its move across the ticks it owes
+    /// instead of teleporting it on the first one. Scratch: cleared and
+    /// refilled per dispatch, so the steady state never reallocates.
+    kin_start: Vec<(Entity, [f32; 3])>,
     /// New entities to spawn a body for, this frame.
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
@@ -143,6 +151,7 @@ impl PhysicsBridge {
             joints_seen: Vec::new(),
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
+            kin_start: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
             settings: PhysicsSettings::default(),
@@ -169,6 +178,26 @@ impl PhysicsBridge {
     /// play/scrub decision, and for tests).
     pub fn last_stepped(&self) -> u64 {
         self.last_stepped
+    }
+
+    /// Where the SOLVER has this entity's body, `(x, y, rotation)` — not where
+    /// the entity's `Transform` says it is.
+    ///
+    /// Exists for gates about the drive stage. The two agree for a dynamic
+    /// body (the readback copies one into the other), which is exactly why a
+    /// test that asks the `Transform` cannot see whether a KINEMATIC body's
+    /// aim reached rapier at all: nothing writes that `Transform`, so it holds
+    /// whatever the test put there either way.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn body_pose(&self, entity: Entity) -> Option<(f32, f32, f32)> {
+        let b = self.bodies.get(&entity)?;
+        let pose = self.world.body_pose(b.handle)?;
+        Some((
+            pose.translation.x,
+            pose.translation.y,
+            pose.rotation.angle(),
+        ))
     }
 
     /// Number of live rapier bodies (for tests / diagnostics).
@@ -254,6 +283,20 @@ impl PhysicsBridge {
     /// - **Not playing:** settle bodies to the authored `Transform` (no
     ///   step) — the artist is posing. Scrub-*back* re-sim is W1.5.
     pub fn dispatch(&mut self, sim: &mut SimWorld, playing: bool, target: u64) {
+        self.dispatch_with_scene(sim, playing, target, &mut FrozenScene);
+    }
+
+    /// [`PhysicsBridge::dispatch`], told where the scene's scene-driven bodies
+    /// are at each tick it runs (see [`SceneAtTick`]). The plain `dispatch` is
+    /// this with nothing to consult; there is ONE implementation so the two
+    /// cannot drift.
+    pub fn dispatch_with_scene(
+        &mut self,
+        sim: &mut SimWorld,
+        playing: bool,
+        target: u64,
+        scene: &mut dyn SceneAtTick,
+    ) {
         if self.query.is_none() {
             self.query = Some(sim.world_mut().query());
         }
@@ -268,19 +311,41 @@ impl PhysicsBridge {
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
-            std::cmp::Ordering::Less => self.rewind_to(sim, target),
+            std::cmp::Ordering::Less => self.rewind_to(sim, target, scene),
             // Forward: advance the owed ticks, sequentially. This is play,
             // and it is equally a scrub FORWARD while paused — the sim state
             // is a function of the tick, not of the play button.
             std::cmp::Ordering::Greater => {
-                // Kinematic bodies are INPUTS to this step, so they are aimed
-                // before it runs. Once, not once per owed tick: the scene's
-                // `Transform` is written per FRAME (by a timeline curve or by
-                // hand) and does not change between the ticks one frame owes,
-                // so re-aiming at the same pose would only re-state it.
-                self.drive_kinematic(sim);
+                // A kinematic body's pose is an INPUT, and the scene supplies
+                // it once per FRAME while a frame may owe several ticks. So the
+                // move is spread across them — the same slicing the wrapper
+                // does across sub-steps, one level up, through the same law
+                // (`PhysicsWorld::slice_pose`).
+                //
+                // ⚠️ Neither half of that is optional, and both were wrong once.
+                // Aiming once per DISPATCH feeds the first step and leaves the
+                // rest with none (an aim is spent by the step it is for), so
+                // the body crosses the whole span in one tick at N× speed:
+                // measured on a platform carrying a box, stepping to tick 60
+                // one tick at a time leaves the cargo riding at x = 1.049,
+                // while asking for tick 60 in ONE dispatch FLINGS it to
+                // x = -0.520 and off the edge. Aiming at the same TARGET every
+                // tick is no better — the aim is absolute, so the body arrives
+                // on the first step and then has zero velocity for the rest.
+                let owed = target - self.last_stepped;
+                self.capture_kinematic_start();
                 let mut tick = self.last_stepped;
-                for _ in 0..(target - self.last_stepped) {
+                for i in 0..owed {
+                    // Ask the scene for THIS tick first. When it answers, the
+                    // pose is exact and there is nothing to interpolate; when it
+                    // does not, spread the frame's move across the ticks owed.
+                    let exact = scene.put(sim, self.last_stepped + i + 1);
+                    let f = if exact {
+                        1.0
+                    } else {
+                        (i + 1) as f32 / owed as f32
+                    };
+                    self.drive_kinematic(sim, f);
                     self.world.step();
                     self.steps_taken += 1;
                     tick += 1;
@@ -321,16 +386,30 @@ impl PhysicsBridge {
     /// target older than the cached window, and Reset, which is `target = 0`)
     /// the world is rebuilt from the bodies' rest descriptions — the path
     /// that shipped in W1, still the only correctness-critical one.
-    fn rewind_to(&mut self, sim: &mut SimWorld, target: u64) {
+    fn rewind_to(&mut self, sim: &mut SimWorld, target: u64, scene: &mut dyn SceneAtTick) {
         let anchor = self.ring.seed(&mut self.world, target);
-        let replayed = match anchor {
-            Some(tick) => target - tick,
+        let (from, replayed) = match anchor {
+            Some(tick) => (tick, target - tick),
             None => {
                 self.rebuild_from_rest();
-                target
+                (0, target)
             }
         };
-        for _ in 0..replayed {
+        for i in 0..replayed {
+            // ⚠️ The replay drives scene-owned bodies too, and skipping this
+            // was the defect that made a scrub disagree with a play. A
+            // kinematic body frozen at its rest pose for the whole replay is a
+            // platform that is not where it was, so every dynamic body that
+            // touched it lands somewhere else — measured at 3.4 cm on a partial
+            // replay, and at "the box never travelled at all" on a ring miss,
+            // which meant the answer also depended on whether the cache
+            // happened to hold the anchor.
+            //
+            // With a scene that answers, this restores the invariant the whole
+            // bridge rests on: the world is a function of the tick, given the
+            // authored rest state AND the authored curves — both reproducible.
+            scene.put(sim, from + i + 1);
+            self.drive_kinematic(sim, 1.0);
             self.world.step();
             self.steps_taken += 1;
         }
@@ -459,28 +538,6 @@ impl PhysicsBridge {
     /// this stage only tells rapier. That is the whole contract of the kind:
     /// the pose is an input, so a curve, a gizmo drag and a parent's motion
     /// all drive it identically, with no branch per author.
-    fn drive_kinematic(&mut self, sim: &SimWorld) {
-        let world = sim.world();
-        for (&e, b) in self.bodies.iter() {
-            // Three kinds, three answers, and `Static` is in NEITHER stage:
-            // the solver does not own its pose (so `readback` skips it) and
-            // the scene does not push it per tick either — a wall that has
-            // been moved by hand is caught by `settle`, while paused, where
-            // zeroing its velocity is the correct thing rather than a bug.
-            if b.kind != BodyKind::Kinematic {
-                continue;
-            }
-            if let Some(t) = world.get::<Transform>(e) {
-                self.world.set_next_kinematic_pose(
-                    b.handle,
-                    t.translation.x,
-                    t.translation.y,
-                    t.rotation,
-                );
-            }
-        }
-    }
-
     /// Read each dynamic body's pose back into its entity's `Transform`
     /// (meters, radians CCW, Y-up — no conversion; ADR-0131 D4). Static
     /// bodies never move and kinematic ones are DRIVEN by that same

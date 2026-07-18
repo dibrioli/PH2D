@@ -22,7 +22,7 @@
 
 use ph2d_ecs::{Entity, SimWorld, Transform};
 
-use crate::PhysicsBridge;
+use crate::{FrozenScene, PhysicsBridge, SceneAtTick};
 
 /// The channels a rigid body's pose actually has. Physics' own vocabulary, not
 /// the timeline's: a body has a position and a heading, and knows nothing about
@@ -101,15 +101,39 @@ impl BakedTrajectory {
 /// them: a bake of the same selection must produce the same thing whichever
 /// way round the artist clicked.
 ///
-/// Entities that carry no `Transform` are skipped rather than reported empty —
-/// there is no pose to bake, and an empty trajectory downstream would be a
-/// track of nothing.
+/// Entities that carry no `Transform` are **skipped**, not reported empty:
+/// there is no pose to bake, and an empty trajectory downstream is a body the
+/// caller would count, flip and toast about for no reason. (This sentence used
+/// to be here while the code did the opposite — `out` was built from every
+/// target and only `record` skipped, so a Transform-less entity came back with
+/// zero samples and was treated as a baked body.)
 pub fn bake_trajectories(
     bridge: &mut PhysicsBridge,
     sim: &mut SimWorld,
     entities: &[Entity],
     ticks: u64,
     fixed_dt: f64,
+) -> Vec<BakedTrajectory> {
+    bake_trajectories_with_scene(bridge, sim, entities, ticks, fixed_dt, &mut FrozenScene)
+}
+
+/// [`bake_trajectories`], told where the scene's scene-driven bodies are at
+/// each tick it simulates.
+///
+/// ⚠️ **A bake that does not advance the scene simulates a DIFFERENT scene.**
+/// Nothing else moves a kinematic body, so through a whole bake it sits at
+/// whatever pose the current frame left it in — and a body baked earlier is
+/// exactly a kinematic body. Measured: a box riding a baked platform reaches
+/// `x ≈ 1.05` when played, and a bake of it reports X **constant**, so no
+/// horizontal track is written at all and the artist gets a Y-only curve for an
+/// object that travels a metre.
+pub fn bake_trajectories_with_scene(
+    bridge: &mut PhysicsBridge,
+    sim: &mut SimWorld,
+    entities: &[Entity],
+    ticks: u64,
+    fixed_dt: f64,
+    scene: &mut dyn SceneAtTick,
 ) -> Vec<BakedTrajectory> {
     let resume_at = bridge.last_stepped();
 
@@ -119,6 +143,7 @@ pub fn bake_trajectories(
 
     let mut out: Vec<BakedTrajectory> = targets
         .iter()
+        .filter(|&&e| sim.world().get::<Transform>(e).is_some())
         .map(|&entity| BakedTrajectory {
             entity,
             samples: Vec::with_capacity(ticks as usize + 1),
@@ -127,21 +152,23 @@ pub fn bake_trajectories(
 
     // Tick 0 is the rest state, and it is a SAMPLE, not a warm-up: it is where
     // the artist placed the object, and the first key of the baked curve.
-    bridge.dispatch(sim, false, 0);
+    scene.put(sim, 0);
+    bridge.dispatch_with_scene(sim, false, 0, scene);
     record(sim, &mut out, 0.0);
 
     for tick in 1..=ticks {
         // One dispatch per tick, and that is not a style choice: asking for the
         // last tick directly would step the world all the way there and read
         // back ONCE, giving a trajectory that is a single pose.
-        bridge.dispatch(sim, true, tick);
+        bridge.dispatch_with_scene(sim, true, tick, scene);
         record(sim, &mut out, tick as f64 * fixed_dt);
     }
 
     // Hand the scene back. The sim is a function of the tick, so this restores
     // the exact state the artist was looking at — the property `scrub.rs`
     // already gates, borrowed rather than re-proved.
-    bridge.dispatch(sim, false, resume_at);
+    scene.put(sim, resume_at);
+    bridge.dispatch_with_scene(sim, false, resume_at, scene);
     out
 }
 

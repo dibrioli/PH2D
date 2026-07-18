@@ -21,8 +21,8 @@ mod components;
 mod joint;
 pub mod settings;
 
-pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories};
-pub use bridge::PhysicsBridge;
+pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
+pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{BodyKind, Collider, ColliderShape, RigidBody};
 pub use joint::{JointKind, PhysicsJoint};
 pub use ph2d_physics::{LayerMatrix, MAX_LAYERS};

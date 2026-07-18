@@ -577,3 +577,76 @@ fn the_bake_range_prefers_the_armed_loop_then_the_document() {
         bake_seconds(&doc, &playhead)
     );
 }
+
+/// **The baked curve reproduces the motion under a Time Remap too.**
+///
+/// The entity's clock, not the playhead's. `apply` samples every track at
+/// `remapped_time`, so a bake that stamped raw playhead seconds writes the
+/// curve at times it will never be read at — and the further the remap is from
+/// identity, the further the object is from where the simulation put it.
+///
+/// Born RED at **1.618 m** of error on a ~2 m drop, under a half-speed remap.
+/// The fix is not arithmetic here: it is going through `key_time`, the same
+/// door the record and the manual K already use
+/// (`feedback_derived_coordinate_seed_must_match_sample`).
+#[test]
+fn a_bake_lands_on_the_entitys_clock_not_the_playheads() {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+
+    // Half speed: playhead 2.0s -> source 1.0s.
+    for (t, v) in [(0.0, 0.0), (2.0, 1.0)] {
+        timeline.doc.upsert_key(
+            ball.to_bits(),
+            PropKind::TimeRemap,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    assert!(
+        (ph2d_timeline::remapped_time(&timeline.doc, ball.to_bits(), 1.0) - 0.5).abs() < 1e-6,
+        "the fixture's remap is not half speed, so it is not measuring the bug"
+    );
+
+    let ticks = ticks_for(BAKE_SECONDS, DT);
+    let truth = simulated(ticks);
+    let outcome = bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        BAKE_SECONDS,
+        DT,
+        &queue,
+        &reg,
+    );
+    assert!(!outcome.is_empty(), "the fixture baked nothing");
+
+    let span = {
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for s in &truth {
+            lo = lo.min(s.2);
+            hi = hi.max(s.2);
+        }
+        (hi - lo).max(1e-3)
+    };
+    let mut worst = 0.0f32;
+    for s in &truth {
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, s.0);
+        let y = sim.world().get::<Transform>(ball).unwrap().translation.y;
+        worst = worst.max((y - s.2).abs());
+    }
+    assert!(
+        worst / span < 0.05,
+        "under a half-speed Time Remap the baked curve misses the simulated \
+         pose by {worst:.4} m ({:.1}% of the {span:.3} m range) — the keys were \
+         written on a clock the apply does not read them on",
+        worst / span * 100.0
+    );
+}

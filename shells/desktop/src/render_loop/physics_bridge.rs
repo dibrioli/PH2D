@@ -30,7 +30,15 @@ pub(crate) fn dispatch(
     sim: &mut SimWorld,
     playhead: &Playhead,
     fixed_dt: f64,
+    doc: &mut ph2d_timeline::TimelineDoc,
 ) {
     let target = physics_tick(playhead, fixed_dt);
-    bridge.dispatch(sim, playhead.is_playing(), target);
+    // ⚠️ The bridge is told where the timeline puts scene-driven bodies at each
+    // tick it runs. It matters on the REWIND path above all: a scrub replays
+    // ticks, and a kinematic body frozen at its rest pose through that replay is
+    // a platform that is not where it was, so a scrub and a play disagree about
+    // the same instant. Passing `FrozenScene` here would compile and would be
+    // that bug (see `bake_and_scrub_agree_with_play`).
+    let mut scene = super::physics_bake::TimelineScene { doc, fixed_dt };
+    bridge.dispatch_with_scene(sim, playhead.is_playing(), target, &mut scene);
 }

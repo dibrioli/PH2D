@@ -1128,7 +1128,13 @@ impl crate::App {
         // sim_extract so bodies render the same frame. Runtime-truth: play
         // = N sequential steps + readback; paused = settle to the authored
         // pose (read-only on Transform → no spurious undo step when idle).
-        physics_bridge::dispatch(physics, sim, &self.playhead, self.fixed_step.fixed_dt());
+        physics_bridge::dispatch(
+            physics,
+            sim,
+            &self.playhead,
+            self.fixed_step.fixed_dt(),
+            &mut self.timeline.doc,
+        );
         sim_extract::run(
             dt,
             sim,
@@ -4081,19 +4087,41 @@ impl crate::App {
                     editor_queue,
                     component_registry,
                 );
-                if outcome.is_empty() {
+                if outcome.unmappable {
+                    toasts.push(ph2d_editor::Toast::info(
+                        "Cannot bake here: this clip does not play exactly once",
+                    ));
+                } else if outcome.refused {
+                    toasts.push(ph2d_editor::Toast::info(
+                        "Finish the current edit before baking",
+                    ));
+                } else if outcome.already_baked {
+                    toasts.push(ph2d_editor::Toast::info(
+                        "Already baked - the timeline drives these bodies now",
+                    ));
+                } else if outcome.is_empty() {
                     toasts.push(ph2d_editor::Toast::info("Nothing to bake: nothing moved"));
                 } else {
                     // Back to the top, because that is where the animation the
                     // artist just made begins - and because the kind change only
                     // reaches rapier at tick 0 (`reconcile_structure`
                     // re-describes a body at rest), so this is also what makes
-                    // the hand-over take effect rather than waiting for the next
-                    // rewind.
+                    // the hand-over take effect.
+                    //
+                    // ⚠️ PAUSE as well, and the rewind alone is not enough:
+                    // `Playhead::rewind` preserves the play state by design, and
+                    // `advance_ticks` runs EARLIER in the frame than
+                    // `physics_bridge::dispatch`. Still playing, the clock is
+                    // already past 0 by the time the bridge looks, `at_rest` is
+                    // never true again, and the flip never reaches rapier: the
+                    // body keeps falling as Dynamic and the curve is discarded -
+                    // exactly the "clicks Bake, nothing changes" failure the
+                    // hand-over exists to prevent.
                     self.playhead.rewind();
+                    self.playhead.pause();
                     toasts.push(ph2d_editor::Toast::info(format!(
-                        "Baked {seconds:.1}s - {} tracks - bodies are now Kinematic",
-                        outcome.tracks
+                        "Baked {seconds:.1}s - {} bodies, {} tracks - now Kinematic",
+                        outcome.bodies, outcome.tracks
                     )));
                 }
             }

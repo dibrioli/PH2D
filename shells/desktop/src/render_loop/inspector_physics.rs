@@ -139,6 +139,16 @@ pub(crate) fn apply_physics_edit(
             );
             return;
         };
+        // ⚠️ Only a body can change KIND. Without this, `Kind` was the one §11
+        // arm that would ATTACH a `RigidBody` to an entity that had none — an
+        // orphan with no `Collider`, which `build_physics_info` cannot show
+        // (it needs both), so §11 offers Add rather than Remove and no gesture
+        // anywhere takes it off again. It saves into the project file all the
+        // same. The other arms are safe by accident rather than by check: they
+        // read the live `Collider` and return early when it is missing.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
         queue_set(
             queue,
             registry,

@@ -230,15 +230,25 @@ fn paint_body_actions(
 ) -> f32 {
     let h = ROW_H_PX;
     let mut yy = y;
-    let mut action = |id, label: &str, yy: &mut f32| {
+    let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {
         let rect = Rect::new(x, *yy, w, h);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
             .state(store.button_state(id).unwrap_or(ButtonState::Normal));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(id, rect);
         *yy += h + Spacing::Sm.px();
+        rect
     };
+
+    // ⚠️ The `hit_index.register` calls below are spelled out with LITERAL ids,
+    // one per button, and that is not verbosity — it is the only form
+    // `architecture_panel_wiring_parity` can see. It collects
+    // `.register(ids::<LITERAL>` and deliberately skips a variable first
+    // argument, so folding these into the closure above (which was the first
+    // shape of this refactor) silently deleted the parity coverage of all three
+    // buttons: deleting Bake and Remove from `populate` then left the whole
+    // panel suite AND the parity gate green, with two buttons painted,
+    // hit-registered and dead under the mouse.
 
     // The creation gesture for a joint (W3). It lives HERE, in the body
     // section, because a joint does not exist yet when you want to make one —
@@ -246,19 +256,22 @@ fn paint_body_actions(
     // bodies you have selected. Offered only when the selection is exactly two
     // bodies, which is a fact only the shell can know.
     if info.can_join {
-        action(ids::INSP_PHYS_JOIN, "Join Selected Bodies", &mut yy);
+        let r = paint_at(ids::INSP_PHYS_JOIN, "Join Selected Bodies", &mut yy);
+        hit_index.register(ids::INSP_PHYS_JOIN, r);
     }
 
     // Bake (W4): the simulated motion becomes timeline curves, and the body is
     // handed over to the scene (`BodyKind::Kinematic`). The label carries the
     // resolved range because the range is otherwise invisible — the artist
     // would have to press it to find out how much they were baking.
-    action(
+    let r = paint_at(
         ids::INSP_PHYS_BAKE,
         &format!("Bake {:.1}s to Timeline", info.bake_seconds),
         &mut yy,
     );
+    hit_index.register(ids::INSP_PHYS_BAKE, r);
 
-    action(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
+    let r = paint_at(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
+    hit_index.register(ids::INSP_PHYS_REMOVE, r);
     yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
 }

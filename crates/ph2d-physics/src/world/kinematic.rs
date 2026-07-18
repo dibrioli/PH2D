@@ -69,40 +69,66 @@ impl PhysicsWorld {
         self.kinematic_targets.push((handle, start, target));
     }
 
-    /// The pose a kinematic body should hold `f` of the way through its tick
-    /// (`f` in `(0, 1]`), given where it started and where it must arrive.
+    /// The pose `f` of the way from `start` to `target`, in plain
+    /// `[x, y, rotation]` — **the one place the interpolation law lives**.
+    ///
+    /// Two callers slice a kinematic move and they must slice it identically:
+    /// [`PhysicsWorld::step`] spreads ONE TICK's move across its sub-steps, and
+    /// the ECS bridge spreads ONE FRAME's move across the ticks that frame owes.
+    /// Two spellings of "half way there" is two answers to one question, and the
+    /// seam between them is invisible — a frame owing one tick would look right
+    /// while a frame owing six would not.
     ///
     /// The angle takes the **shortest arc**, the same law
     /// `ph2d_anim::unwrap_angles` applies to a recorded rotation: without it a
     /// body whose authored rotation crosses ±π would be told to unwind almost a
-    /// full turn inside one tick, and would fling whatever it touched. Constants
-    /// only — no transcendental in the interpolation itself (HR-5); building the
-    /// `Isometry2` costs the same `sincos` that spawning and posing a body
-    /// already cost, so this adds no new convention.
-    pub(super) fn kinematic_slice(
-        start: &Isometry2<f32>,
-        target: &Isometry2<f32>,
-        f: f32,
-    ) -> Isometry2<f32> {
-        // The LAST slice is the target itself, not an arithmetic path to it.
-        // `a0 + (a1 - a0)` is not always exactly `a1` in f32, and the body's
-        // pose is read straight back out into the scene's `Transform` — so a
-        // last-slice ulp would be a pose the artist did not author, arriving
-        // every tick, in the same direction. Exact by construction costs one
-        // comparison and removes the whole class.
+    /// full turn inside one slice, and would fling whatever it touched.
+    /// Constants only — no transcendental (HR-5).
+    ///
+    /// ⚠️ **The LAST slice is the target itself**, not an arithmetic path to it:
+    /// `a0 + (a1 - a0)` is not always exactly `a1` in f32, and the pose is read
+    /// straight back into the scene's `Transform` — a last-slice ulp would be a
+    /// pose the artist never authored, arriving every tick, always in the same
+    /// direction.
+    #[must_use]
+    pub fn slice_pose(start: [f32; 3], target: [f32; 3], f: f32) -> [f32; 3] {
         if f >= 1.0 {
-            return *target;
+            return target;
         }
-        let (a0, a1) = (start.rotation.angle(), target.rotation.angle());
-        let mut d = a1 - a0;
+        let mut d = target[2] - start[2];
         while d > std::f32::consts::PI {
             d -= std::f32::consts::TAU;
         }
         while d < -std::f32::consts::PI {
             d += std::f32::consts::TAU;
         }
-        let t =
-            start.translation.vector + (target.translation.vector - start.translation.vector) * f;
-        Isometry2::new(t, a0 + d * f)
+        [
+            start[0] + (target[0] - start[0]) * f,
+            start[1] + (target[1] - start[1]) * f,
+            start[2] + d * f,
+        ]
+    }
+
+    /// [`PhysicsWorld::slice_pose`] in rapier's own types — what the sub-step
+    /// loop uses.
+    pub(super) fn kinematic_slice(
+        start: &Isometry2<f32>,
+        target: &Isometry2<f32>,
+        f: f32,
+    ) -> Isometry2<f32> {
+        let s = Self::slice_pose(
+            [
+                start.translation.x,
+                start.translation.y,
+                start.rotation.angle(),
+            ],
+            [
+                target.translation.x,
+                target.translation.y,
+                target.rotation.angle(),
+            ],
+            f,
+        );
+        Isometry2::new(Vector2::new(s[0], s[1]), s[2])
     }
 }

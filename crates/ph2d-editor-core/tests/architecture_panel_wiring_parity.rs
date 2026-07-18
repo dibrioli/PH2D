@@ -179,6 +179,31 @@ fn panel_dirs(root: &Path) -> Vec<PathBuf> {
 
 /// Concatenate every `src/**` file whose name contains "paint" (paint.rs,
 /// paint_sections.rs, paint_helpers.rs, paint_adjust.rs, …).
+/// Every `.rs` under a panel's `src/`.
+///
+/// ⚠️ **It used to read only files whose NAME contained "paint", and that was a
+/// hole, not a shortcut.** The Inspector paints most of its widgets from
+/// `src/sections/*.rs` — `physics.rs`, `joint.rs`, `ordering.rs` — none of
+/// which carries "paint" in its name, so every id hit-registered there was
+/// invisible here: painted, hit-registered, and free to be missing from
+/// `populate.rs` with nothing in the repo noticing. That is precisely the
+/// "painted but not focusable, dead under the mouse" failure this gate exists
+/// to prevent, going unwatched in the panel with the most widgets in it.
+///
+/// Reading everything surfaced **zero** offenders, so no section was actually
+/// wrong; what was missing was anything checking that they stay right. Verified
+/// by the reverse: with this reading everything, dropping two buttons from the
+/// Inspector's `populate.rs` turns the gate RED, which it did not before.
+///
+/// Scoped to `paint*` files **plus anything under a `sections/` directory**
+/// rather than to every `.rs`, and that boundary is drawn by measurement:
+/// reading everything also surfaces four ids in the Timeline and Painter panels
+/// (`TIMELINE_LANES`, `TIMELINE_SCROLLBAR`, `TIMELINE_CLIP_RENAME_INPUT`,
+/// `PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP`). Those belong to other waves and look
+/// like the dynamic widgets this gate's allowlist already documents — deciding
+/// that is their owners' call, not a physics wave's, so they are NAMED in the
+/// line's handoff instead of being allowlisted here by someone who did not write
+/// them.
 fn read_paint_sources(panel_dir: &Path) -> String {
     fn walk(dir: &Path, out: &mut String) {
         let Ok(entries) = std::fs::read_dir(dir) else {
@@ -189,9 +214,10 @@ fn read_paint_sources(panel_dir: &Path) -> String {
             if p.is_dir() {
                 walk(&p, out);
             } else if p.extension().and_then(|s| s.to_str()) == Some("rs")
-                && p.file_name()
-                    .and_then(|s| s.to_str())
-                    .is_some_and(|n| n.contains("paint"))
+                && (p.to_string_lossy().contains("sections")
+                    || p.file_name()
+                        .and_then(|s| s.to_str())
+                        .is_some_and(|n| n.contains("paint")))
                 && let Ok(body) = std::fs::read_to_string(&p)
             {
                 out.push_str(&body);

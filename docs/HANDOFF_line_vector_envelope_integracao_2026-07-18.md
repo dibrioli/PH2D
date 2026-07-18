@@ -477,7 +477,7 @@ preserva **distância** — o oráculo agora é o diâmetro do conjunto de ânco
 ### 10.6 — Smoke da Fatia E
 
 ```
-\
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   cargo run -p ph2d-host-desktop --features panel-vector
 ```
 

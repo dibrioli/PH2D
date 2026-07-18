@@ -152,6 +152,75 @@ fn the_sea_demo_document_plans_as_a_fully_gpu_loop() {
     );
 }
 
+/// The **emitter fountain** (`PH2D_GPU_COOK_DEMO=5`, ADR-0130) must plan as a
+/// fully-GPU loop whose integrator is claimed via the **id-gather** — the whole
+/// point of the slice. If a regression made the emitter stop declaring its dense
+/// window (or `motion.integrate` go back to refusing an `id` stream), this demo
+/// would look identical (the CPU has cooked emitter sims since M2, just slower)
+/// and 3.000 particles would quietly stop being a GPU gather. So this pins the
+/// PLAN, headless: emitter → integrate is claimed WHOLE, the state loops on the
+/// device, and the integrator's `rest` reads the EMITTER (the dense-window
+/// source), not a boundary.
+#[test]
+fn the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks =
+        build_gpu_emitter_demo_document(&mut doc, &registry).expect("well-typed emitter demo");
+    let out = *sinks.first().expect("one sink");
+
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the id-gather must leave no boundary — else integrate receded to the CPU: {:?}",
+        plan.boundaries
+    );
+    assert!(
+        plan.drives_a_loop(),
+        "the per-particle state must live on the GPU across ticks"
+    );
+    // emitter + wind + curl + integrate dispatch; `output` is a pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 4);
+    let node = |ty: &str| {
+        doc.graph
+            .nodes()
+            .iter()
+            .position(|n| n.type_name == ty)
+            .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+            .unwrap_or_else(|| panic!("the demo has a {ty}"))
+    };
+    let (em, ig, head, tail) = (
+        node("motion.emitter"),
+        node("motion.integrate"),
+        node("force.wind"),
+        node("force.curl"),
+    );
+    let staged = |n| {
+        plan.stages
+            .iter()
+            .find(|s| s.node == n)
+            .unwrap_or_else(|| panic!("{n:?} is staged"))
+    };
+    // The gather: integrate's `rest` is the EMITTER's dense window (id-gathered),
+    // and its `forces` reads the loop tail's accel — the loop head reads `prev`.
+    assert_eq!(
+        staged(ig).inputs[0],
+        ph2d_gpu_cook::GpuSource::Stage(em),
+        "the integrator gathers the emitter's dense id window"
+    );
+    assert_eq!(
+        staged(ig).inputs[1],
+        ph2d_gpu_cook::GpuSource::Stage(tail),
+        "the `forces` port reads the loop's accumulated accel"
+    );
+    assert_eq!(
+        staged(head).inputs,
+        vec![ph2d_gpu_cook::GpuSource::Prev(ig)],
+        "the loop head reads last tick's state"
+    );
+}
+
 /// The Fase 3 **simulation** demo (`PH2D_GPU_COOK_DEMO=3`) must plan as a
 /// fully-GPU chain that DRIVES A LOOP — the whole claim of ADR-0127. Without
 /// this, the smoke could be quietly cooking on the CPU (the route falls back

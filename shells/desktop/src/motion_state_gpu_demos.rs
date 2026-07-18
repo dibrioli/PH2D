@@ -308,6 +308,104 @@ pub(super) fn build_gpu_sea_demo_document(
     Some(vec![out])
 }
 
+/// The **emitter fountain** (`PH2D_GPU_COOK_DEMO=5`, ADR-0130) — the ready-to-smoke
+/// document for the **id-gather**: `emitter → integrate → output`, with the loop
+/// `integrate --pre--> gravity → curl --> integrate.forces`. Up to **3.000
+/// particles born, launched, arced and killed 100% on the GPU**, their per-particle
+/// state paired across a sliding id window by ARITHMETIC (`current_id −
+/// prev_first`), never a hash/sort.
+///
+/// This is the scene the earlier demos could NOT be: `=3`/`=4` are a fixed GRID
+/// (positional pairing — element `i` is always element `i`), so the gather never
+/// ran. Here the alive set CHURNS every tick — the emitter is stateless, so at
+/// playhead `t` it is the closed id window `[first, first+n)`, and `n`/`first`
+/// slide as particles are born and die. Each particle launches with its OWN muzzle
+/// velocity (`hash(seed, id)` over the `spread` cone), so WHICH prior row a
+/// survivor pairs to is exactly what its trajectory is: a positional mispair would
+/// give it a stranger's velocity and the fountain would boil. It doesn't — the arcs
+/// are clean, which is the gather working.
+///
+/// `gravity` is `force.wind` pointing down (there is no gravity node — a steady
+/// directional force already is one); `curl` frays the stream so it sparkles
+/// instead of falling as a sheet. The emitter is **capped** (`max` < `rate·life`)
+/// so `first` advances every tick — the sliding-window regime the gather is for.
+///
+/// **Fatia 5 lives here too:** with the sim running, drag the emitter's `rate` /
+/// `life` / `max` in the params panel — the fountain re-bakes from the seed under
+/// the new numbering (a clean restart, not a partial mispair). Drag `speed` /
+/// `size` and the running sim keeps (only new particles change).
+pub(super) fn build_gpu_emitter_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let em = g.add_node("motion.emitter");
+    // Capped: rate·life = 4200 > max, so the window binds at `max` and `first`
+    // advances every tick — the gather's whole point. A wide cone gives each id a
+    // distinct muzzle velocity, so a mispair would be visible as a boiling arc.
+    g.set_param(em, "rate", 1400.0);
+    g.set_param(em, "life", 3.0);
+    g.set_param(em, "max", 3000.0);
+    g.set_param(em, "speed", 22.0);
+    g.set_param(em, "angle", 90.0); // up (Y-up world)
+    g.set_param(em, "spread", 60.0);
+    g.set_param(em, "x", 0.0);
+    g.set_param(em, "y", -8.0); // launch from the low centre, up into view
+    g.set_param(em, "seed", 7.0);
+    g.set_param(em, "size", 0.18);
+    let ig = g.add_node("motion.integrate");
+    let out = g.add_node("motion.output");
+
+    // Gravity: steady (`gust = 0`), straight down (270° → the `(cos, sin)` pair
+    // reads (0, −1)) — arcs the fountain back down.
+    let gravity = g.add_node("force.wind");
+    g.set_param(gravity, "angle", 270.0);
+    g.set_param(gravity, "strength", 26.0);
+    g.set_param(gravity, "gust", 0.0);
+    let curl = g.add_node("force.curl");
+    g.set_param(curl, "strength", 5.0);
+    g.set_param(curl, "scale", 0.08);
+    g.set_param(curl, "speed", 0.5);
+    g.set_param(curl, "octaves", 2.0);
+
+    for (i, n) in [em, ig, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 220.0,
+                y: 120.0,
+            },
+        );
+    }
+    for (i, n) in [gravity, curl].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 300.0,
+            },
+        );
+    }
+    for (from, to, port, delayed) in [
+        (em, ig, 0, false),
+        // The feedback the user never draws: last tick's state into the loop head.
+        (ig, gravity, 0, true),
+        (gravity, curl, 0, false),
+        (curl, ig, 1, false),
+        (ig, out, 0, false),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
 /// The GPU/M5 **F1.2 hybrid** ready-to-smoke document (`PH2D_GPU_COOK_DEMO=2`):
 /// `grid(360×360) → oscillator(Rotation) → oscillator(Y) → scale → output`.
 ///

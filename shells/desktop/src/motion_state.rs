@@ -26,8 +26,8 @@ mod strobe;
 mod gpu_demos;
 
 use gpu_demos::{
-    build_gpu_demo_document, build_gpu_hybrid_demo_document, build_gpu_sea_demo_document,
-    build_gpu_sim_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 
 use ph2d_eval_motion::MotionCookPump;
@@ -119,12 +119,18 @@ impl MotionState {
         // chain whose first node (an oscillator on the uncovered Rotation channel)
         // has no kernel, so the CPU cooks the prefix and the GPU runs the suffix;
         // `=3` = the Fase 3 SIMULATION (490.000 particles in a force loop whose
-        // state ping-pongs on the device, ADR-0127).
+        // state ping-pongs on the device, ADR-0127); `=4` = the SEA (490.000
+        // raining onto a travelling wave); `=5` = the emitter FOUNTAIN (ADR-0130,
+        // the id-gather: particles born/killed across a sliding window, paired by
+        // arithmetic — the scene the fixed-grid demos could not be).
         let sinks = match std::env::var("PH2D_GPU_COOK_DEMO").as_deref() {
             Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("3") => build_gpu_sim_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("4") => build_gpu_sea_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // ADR-0130: the emitter FOUNTAIN — the id-gather (particles born/killed
+            // across a sliding window, paired by arithmetic; fatia 5 tunes it live).
+            Ok("5") => build_gpu_emitter_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

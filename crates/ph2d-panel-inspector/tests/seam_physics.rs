@@ -35,6 +35,7 @@ fn with_body() -> InspectorPhysicsInfo {
         density: 1.0,
         restitution: 0.0,
         friction: 0.5,
+        layer: 0,
     }
 }
 
@@ -115,6 +116,34 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::Shape(i as u8),
             &format!("Collider shape option {i}"),
+        );
+    }
+    // All EIGHT layer chips, each asserting its OWN index — a sweep that only
+    // checked "some Layer edit came out" would pass with every chip wired to
+    // layer 0, which is the copy-paste this loop shape invites.
+    for (i, &id) in ids::INSP_PHYS_LAYER.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::Layer(i as u8),
+            &format!("Collision layer chip {i}"),
+        );
+    }
+}
+
+/// **A layer chip on an entity with no body is refused at the event layer.**
+///
+/// The chips are only painted for a body, but painting is not refusing — dim
+/// still dispatches ([[feedback_disabled_button_still_dispatches]]), and an
+/// edit naming a collider that does not exist would reach the bus and be
+/// dropped somewhere further along, where nobody is looking.
+#[test]
+fn a_layer_chip_without_a_body_is_refused() {
+    for &id in ids::INSP_PHYS_LAYER.iter() {
+        let actions = click(without_body(), id);
+        assert!(
+            actions.is_empty(),
+            "a layer chip clicked on an entity with NO physics body reached the \
+             bus: {actions:?}"
         );
     }
 }

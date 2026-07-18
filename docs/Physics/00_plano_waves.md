@@ -20,7 +20,7 @@
 | **W1.5** | Scrub bit-exato (checkpoint ring) | scrub pra trás sem re-sim O(t) | — (opcional; pode ir depois de W2) |
 | **W2a** | Inspector body | a autoria do artista | joints, bake |
 | **W2b** | Painel global de mundo | gravidade/solver/arrasto/sono | — |
-| **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |
+| **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |  ✅
 | **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
 
@@ -198,6 +198,9 @@ Duas fricções reais que a wave tem de resolver de propósito, não por acident
   ([u16; 16], triangular na UI como Unity) · `BodyDesc.memberships/filter` → `ColliderBuilder::collision_groups`.
 - Bump `PROJECT_SCHEMA` + a tripla-pin.
 
+### Smoke
+`PH2D_PHYSICS_SMOKE=5` — dois grupos, duas camadas, um chão.
+
 ### Gates
 1. **dois corpos em camadas que não colidem se ATRAVESSAM** (oráculo de aparência: o de
    cima chega ao chão). Mutação: a matriz ignorada → colidem → vermelho.
@@ -214,7 +217,7 @@ Duas fricções reais que a wave tem de resolver de propósito, não por acident
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (**19 → 20** — W1 usou o 16, W2a o 17, a integração RECONTOU para 18 ao somar o bump da `line/FLIP`, e o W2b levou o 19 ao persistir as settings de mundo) + a tripla-pin — joints persistem.
+- Bump `PROJECT_SCHEMA` (**21 → 22** — W1 usou o 16, W2a o 17, a integração RECONTOU para 18 ao somar o bump da `line/FLIP`, o W2b levou o 19 ao persistir as settings de mundo, o 20 ao apendar o `air_drag` pós-smoke, e o W2c o 21 ao apendar camada+matriz) + a tripla-pin — joints persistem.
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de
@@ -226,7 +229,7 @@ Duas fricções reais que a wave tem de resolver de propósito, não por acident
    trajetória; o oráculo de aparência pega.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=5` — pêndulo/corrente auto-play.
+`PH2D_PHYSICS_SMOKE=6` — pêndulo/corrente auto-play.
 
 ### Fora
 Bake.
@@ -255,7 +258,7 @@ Bake.
    de bake é UM passo. Mutação: 1 key/frame sem simplify vira 1 undo/frame — o gate conta os passos.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=6` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
+`PH2D_PHYSICS_SMOKE=7` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
 reproduz o movimento).
 
 ### Fora

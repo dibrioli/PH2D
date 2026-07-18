@@ -363,6 +363,13 @@ pub struct InspectorPhysicsInfo {
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,
+    /// Which collision layer this body is on (`0..MAX_LAYERS`).
+    ///
+    /// The per-body half of collision layers; the other half — *which layers
+    /// collide with which* — is a WORLD rule and lives in the Physics panel.
+    /// Splitting it this way is the whole point: the rule is authored once,
+    /// and a body only says where it belongs.
+    pub layer: u8,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -389,6 +396,8 @@ pub enum PhysicsFieldEdit {
     Density(f32),
     Restitution(f32),
     Friction(f32),
+    /// Move this body to a collision layer (`0..MAX_LAYERS`).
+    Layer(u8),
 }
 
 /// W3 §8 Visibility-section snapshot (the collapsible section body, NOT

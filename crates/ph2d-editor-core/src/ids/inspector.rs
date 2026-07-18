@@ -197,6 +197,23 @@ pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
 pub const INSP_PHYS_RESTITUTION: NodeId = hash_node_id("insp_phys_restitution");
 /// §11 Coulomb friction.
 pub const INSP_PHYS_FRICTION: NodeId = hash_node_id("insp_phys_friction");
+/// The eight collision-layer chips (W2c). A fixed array, not runtime-hashed
+/// ids: the count is a const, so every one can be checked against the others
+/// and against all chrome by `node_id_collisions` — which does NOT see
+/// registrations made inside a loop, and so cannot police dynamic ids.
+/// Group id for the layer segmented control (the label/aria owner; the eight
+/// chips below are its options).
+pub const INSP_LIVE_PHYSICS_LAYER: NodeId = hash_node_id("insp_live_physics_layer");
+pub const INSP_PHYS_LAYER: [NodeId; 8] = [
+    hash_node_id("insp_phys_layer_0"),
+    hash_node_id("insp_phys_layer_1"),
+    hash_node_id("insp_phys_layer_2"),
+    hash_node_id("insp_phys_layer_3"),
+    hash_node_id("insp_phys_layer_4"),
+    hash_node_id("insp_phys_layer_5"),
+    hash_node_id("insp_phys_layer_6"),
+    hash_node_id("insp_phys_layer_7"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

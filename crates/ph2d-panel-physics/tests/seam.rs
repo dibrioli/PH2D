@@ -342,6 +342,104 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     }
 }
 
+/// **Every one of the 36 matrix cells toggles its OWN pair, both halves.**
+///
+/// This gate carries more weight than its siblings: the cells are registered in
+/// a LOOP, and `architecture_panel_wiring_parity` cannot see loop
+/// registrations. Nothing else in the repo would notice these going dead.
+///
+/// Three claims per cell, because they fail separately: the click is consumed,
+/// it flips the pair it names (not a neighbour — the flat-index ↔ `(i,j)`
+/// conversion is exactly the kind of arithmetic that is off by one), and it
+/// leaves every other pair untouched.
+#[test]
+fn every_matrix_cell_toggles_its_own_pair() {
+    for i in 0..ph2d_physics_ecs::MAX_LAYERS {
+        for j in 0..=i {
+            let (mut host, mut state) = arrange(PhysicsSettings::default());
+            let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
+            let outcome =
+                host.apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::Click(id));
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "matrix cell ({i},{j}) is painted but its arm in event.rs is missing"
+            );
+
+            let intents = drain_intents();
+            let Some(PhysicsIntent::SetSettings(got)) = intents.first() else {
+                panic!("matrix cell ({i},{j}) queued no settings intent: {intents:?}");
+            };
+            let m = ph2d_physics_ecs::LayerMatrix::from_rows(got.layer_matrix);
+
+            assert!(
+                !m.collides(i, j),
+                "clicking ({i},{j}) on a permissive matrix must SEPARATE that pair"
+            );
+            assert!(
+                !m.collides(j, i),
+                "({i},{j}) was cleared but its mirror ({j},{i}) was left set — \
+                 rapier ANDs both directions, so a half-written pair is a rule \
+                 nobody authored"
+            );
+            // ...and nobody else moved.
+            for a in 0..ph2d_physics_ecs::MAX_LAYERS {
+                for b in 0..ph2d_physics_ecs::MAX_LAYERS {
+                    let touched = (a, b) == (i, j) || (a, b) == (j, i);
+                    if !touched {
+                        assert!(
+                            m.collides(a, b),
+                            "clicking ({i},{j}) also changed ({a},{b}) — the flat \
+                             cell index maps to the wrong pair"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// **Every matrix cell answers a REAL pointer at its painted centre.**
+///
+/// ⚠️ This drives `click_at` — the real dispatcher — and not a synthetic
+/// `WidgetEvent`, because the two prove different things and the first version
+/// of this gate only proved the weaker one. A synthetic event reaches
+/// `apply_event` directly; a real click first has to find the cell in the hit
+/// index **and** find it FOCUSABLE in the store. Dropping the cells from
+/// `populate` left the synthetic gate green — the widget would have been
+/// painted, hit-registered, arm-wired, and stone dead under the mouse.
+#[test]
+fn every_matrix_cell_answers_a_real_click() {
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+    for i in 0..ph2d_physics_ecs::MAX_LAYERS {
+        for j in 0..=i {
+            let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
+            let rect = painted
+                .iter()
+                .rev()
+                .find(|(pid, _)| *pid == id)
+                .map(|(_, r)| *r)
+                .unwrap_or_else(|| panic!("matrix cell ({i},{j}) was never painted"));
+            let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+            assert_eq!(
+                host.hit_at(cx, cy),
+                Some(id),
+                "matrix cell ({i},{j}) is painted but something else owns its centre"
+            );
+            let events = host.click_at(cx, cy);
+            assert!(
+                events
+                    .iter()
+                    .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+                "a real click on matrix cell ({i},{j}) produced no Click — it is \
+                 in the hit index but not focusable in the store, so `populate` \
+                 never registered it"
+            );
+        }
+    }
+}
+
 /// **The panel publishes its own rect**, which is what the z-order walk and the
 /// wheel/click hit-barrier route on. Without it the panel paints but pointer
 /// events fall through to the canvas underneath.

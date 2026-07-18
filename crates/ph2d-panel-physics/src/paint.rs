@@ -23,6 +23,7 @@ use crate::state::{self, PhysicsPanelState, set_last_content_h, set_last_visible
 use crate::{PhysicsPanel, rows};
 
 mod body;
+mod matrix;
 
 /// Label gutter. Wider than the padding panel's because these labels are words
 /// ("Sub-steps", "Contact Hz"), not single edges.

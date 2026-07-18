@@ -40,6 +40,27 @@ pub(super) fn paint_sections(
         y += Spacing::Md.px();
     }
 
+    // Collision layers. Its own section because the matrix is a different KIND
+    // of control from the sliders above — and because it is tall.
+    let (open, next_y) = header(
+        ctx,
+        ids::PHYSICS_SEC_LAYERS,
+        tr("panel.physics.section.layers"),
+        x,
+        w,
+        y,
+    );
+    y = next_y;
+    if open {
+        y = super::matrix::paint(
+            ctx,
+            ph2d_physics_ecs::LayerMatrix::from_rows(snapshot.settings.layer_matrix),
+            x,
+            y,
+        );
+        y += Spacing::Md.px();
+    }
+
     let (open, next_y) = header(
         ctx,
         ids::PHYSICS_SEC_DEBUG,

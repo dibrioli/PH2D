@@ -27,6 +27,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             Some(PhysicsFieldEdit::Add)
         } else if id == ids::INSP_PHYS_REMOVE && info.has_body {
             Some(PhysicsFieldEdit::Remove)
+        } else if let Some(i) = ids::INSP_PHYS_LAYER.iter().position(|&o| o == id) {
+            // Gated on `has_body` like every other field edit: the chips are
+            // only painted for a body, and dim is not a refusal
+            // ([[feedback_disabled_button_still_dispatches]]).
+            info.has_body.then_some(PhysicsFieldEdit::Layer(i as u8))
         } else if let Some(i) = ids::INSP_PHYS_KIND.iter().position(|&o| o == id) {
             Some(PhysicsFieldEdit::Kind(i as u8))
         } else {

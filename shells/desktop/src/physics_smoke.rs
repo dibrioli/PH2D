@@ -7,6 +7,7 @@
 //! | `2` | W1.5 | a **pile** of bodies, for scrubbing the clock backwards |
 //! | `3` | W2a  | plain sprites + a floor, for authoring bodies in the Inspector |
 //! | `4` | W2b  | a world panel scene: bodies of mixed size to feel every knob |
+//! | `5` | W2c  | two groups on DIFFERENT layers, for the collision matrix |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -60,6 +61,7 @@ impl crate::App {
             "2" => self.physics_smoke_pile(),
             "3" => self.physics_smoke_author(),
             "4" => self.physics_smoke_world(),
+            "5" => self.physics_smoke_layers(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -254,6 +256,62 @@ impl crate::App {
                · Show Colliders      : must agree with the `B` key, always.\n\
                · Reset to Defaults   : everything back, in one click.\n\
              Then Ctrl+S, Ctrl+O: the settings must come back with the project."
+        );
+    }
+
+    /// **Scene 5 (W2c).** Two groups, two layers, one floor.
+    ///
+    /// The scene exists to make ONE cell of the matrix visible: the left group
+    /// is on layer 0 with the floor, the right group on layer 1. Turning off the
+    /// `(1, 0)` cell drops the right group through the floor while the left
+    /// group sits — and the right group still stacks on ITSELF, which is what
+    /// separates "layers work" from "collisions broke".
+    ///
+    /// Colour follows LAYER, not position: same-coloured groups would make the
+    /// artist read positions to infer a rule.
+    fn physics_smoke_layers(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+
+        for (layer, x0, hue) in [(0u8, -2.2f32, 0.30f32), (1, 0.8, 0.85)] {
+            for i in 0..6u32 {
+                let col = (i % 2) as f32;
+                let row = (i / 2) as f32;
+                gfx.sim.world_mut().spawn((
+                    Transform::from_translation(Vec2::new(x0 + col * 0.7, 1.5 + row * 0.8)),
+                    Sprite::atlas(0, [0.5, 0.5], [hue, 0.55, 0.9, 1.0]),
+                    Name::new(format!("L{layer}_Body{i}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 0.25,
+                            half_y: 0.25,
+                        },
+                        density: 1.0,
+                        layer,
+                        ..Collider::default()
+                    },
+                ));
+            }
+        }
+
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.panel_visibility.insert("physics", true);
+        }
+
+        eprintln!(
+            "[physics-smoke 5] LEFT group on layer 0 (with the floor), RIGHT group on layer 1.\n\
+             The physics panel is open (`W`); expand 'Collision Layers'.\n\
+             Try:\n\
+               · click cell (1,0) : the RIGHT group falls THROUGH the floor, the left\n\
+                                    group stays, and the right group still stacks on itself.\n\
+               · click it again   : they land again -- and this must work on the bodies\n\
+                                    ALREADY in the scene, not only on new ones.\n\
+               · click cell (1,1) : the right group stops colliding with ITSELF.\n\
+               · Inspector > Layer: select one body and move it to another layer.\n\
+               · Ctrl+S, Ctrl+O   : the matrix comes back with the project."
         );
     }
 

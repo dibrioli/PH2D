@@ -22,6 +22,12 @@ const KIND_LABELS: [&str; 2] = ["Dynamic", "Static"];
 /// Collider-shape labels, indexed by `ColliderShape` tag.
 const SHAPE_LABELS: [&str; 2] = ["Ball", "Box"];
 
+/// Collision-layer chip labels. Bare numbers because a layer has no meaning of
+/// its own — what it MEANS is the row it occupies in the world matrix, and that
+/// is where the naming belongs. Naming them here would be a second place to
+/// keep names in sync with a matrix that does not know about them.
+const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
+
 /// Tag for the Ball shape — named because the painter branches on it twice
 /// and a bare `0` at a branch is the kind of thing that survives a refactor
 /// pointing at the wrong variant.
@@ -181,6 +187,25 @@ pub(crate) fn paint_physics_section(
             id,
         );
     }
+
+    // The per-body half of collision layers. The other half — WHICH layers
+    // collide — is a world rule and lives in the Physics panel; a body only
+    // says where it belongs.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Layer",
+        ids::INSP_LIVE_PHYSICS_LAYER,
+        &ids::INSP_PHYS_LAYER,
+        &LAYER_LABELS,
+        info.layer,
+    );
 
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_PHYS_REMOVE, "Remove Physics Body")

@@ -38,6 +38,7 @@ pub(crate) fn build_physics_info(world: &World, entity_bits: u64) -> Option<Insp
             density: 1.0,
             restitution: Collider::DEFAULT_RESTITUTION,
             friction: Collider::DEFAULT_FRICTION,
+            layer: 0,
         });
     };
     let (shape_tag, radius, half_x, half_y) = match col.shape {
@@ -58,6 +59,7 @@ pub(crate) fn build_physics_info(world: &World, entity_bits: u64) -> Option<Insp
         density: col.density,
         restitution: col.restitution,
         friction: col.friction,
+        layer: col.layer,
     })
 }
 
@@ -186,6 +188,11 @@ pub(crate) fn apply_physics_edit(
         PhysicsFieldEdit::Density(v) => next.density = v.max(0.0),
         PhysicsFieldEdit::Restitution(v) => next.restitution = v.clamp(0.0, 1.0),
         PhysicsFieldEdit::Friction(v) => next.friction = v.max(0.0),
+        // Clamped to the layers that exist: a chip cannot produce an out-of-range
+        // value today, but this is also the door a future build's project file
+        // comes through, and `groups_for` would silently fold an overflow onto
+        // the last layer.
+        PhysicsFieldEdit::Layer(n) => next.layer = n.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1),
         PhysicsFieldEdit::Add | PhysicsFieldEdit::Remove | PhysicsFieldEdit::Kind(_) => {
             unreachable!("handled above")
         }

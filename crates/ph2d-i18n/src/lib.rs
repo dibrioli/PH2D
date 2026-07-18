@@ -155,6 +155,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.physics.section.air" => "Air Drag",
         "panel.physics.section.damping" => "Damping",
         "panel.physics.air_drag" => "Density",
+        "panel.physics.section.layers" => "Collision Layers",
         "panel.physics.section.sleep" => "Sleep",
         "panel.physics.section.debug" => "Debug",
         "panel.physics.gravity_x" => "Gravity X",

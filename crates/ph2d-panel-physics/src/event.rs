@@ -9,6 +9,19 @@ use ph2d_physics_ecs::PhysicsSettings;
 use crate::rows;
 use crate::state::{self, PhysicsIntent};
 
+/// Inverse of `ids::physics_layer_cell_index` — the `(row, col)` a flat cell
+/// index names. Derived by walking the triangle rather than stored, so the two
+/// directions cannot drift apart.
+fn cell_pair(index: usize) -> (usize, usize) {
+    let mut i = 0usize;
+    let mut remaining = index;
+    while remaining > i {
+        remaining -= i + 1;
+        i += 1;
+    }
+    (i, remaining)
+}
+
 pub(crate) fn apply_event(
     _state: &mut crate::state::PhysicsPanelState,
     host: &mut dyn PanelHostInternal,
@@ -44,6 +57,24 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             let collapsed = host.store().is_collapsed(id);
             host.store_mut().set_collapsed(id, !collapsed);
+            true
+        }
+        // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
+        // so the asymmetric state the panel could otherwise author does not exist.
+        WidgetEvent::Click(id) if ids::PHYSICS_LAYER_CELL.contains(&id) => {
+            seam_reset_button(host, id);
+            let idx = ids::PHYSICS_LAYER_CELL
+                .iter()
+                .position(|&c| c == id)
+                .expect("guard matched");
+            let (a, b) = cell_pair(idx);
+            let settings = state::current().settings;
+            let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(settings.layer_matrix);
+            m.set(a, b, !m.collides(a, b));
+            state::push_intent(PhysicsIntent::SetSettings(PhysicsSettings {
+                layer_matrix: m.rows(),
+                ..settings
+            }));
             true
         }
         WidgetEvent::Click(id) if id == ids::PHYSICS_SHOW_COLLIDERS => {

@@ -59,7 +59,15 @@ pub fn populate(store: &mut WidgetStore) {
     for section in rows::SECTIONS {
         button(store, section.id);
     }
+    button(store, ids::PHYSICS_SEC_LAYERS);
     button(store, ids::PHYSICS_SEC_DEBUG);
+
+    // The 36 matrix cells. Registered in a loop, which is exactly why the seam
+    // test clicks every one of them: `architecture_panel_wiring_parity` cannot
+    // see loop registrations, so nothing else would notice these going dead.
+    for &cell in ids::PHYSICS_LAYER_CELL.iter() {
+        button(store, cell);
+    }
 
     // Commands. Registered as Buttons — including "Show Colliders", which LOOKS
     // like a checkbox and is not one: a `Checkbox` emits `Toggled`, which this

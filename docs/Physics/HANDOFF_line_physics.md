@@ -45,8 +45,8 @@
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
 | **W2b — Painel global de mundo** | ✅ **INTEGRÁVEL** — smoke **APROVADO** (2026-07-18) | ver §W2b | gravidade/solver/ar/damping/sono + persistência |
-| **W2c — Camadas de colisão** | 🔨 **EM CURSO** | — | a matriz É metade: a outra é a camada por-corpo (Inspector) |
-| **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll; bumpa o schema **19 → 20** |
+| **W2c — Camadas de colisão** | ✅ **LANDOU** (pendente smoke) | ver §W2c | matriz no painel + camada no Inspector |
+| **W3 — Joints** | ⏭️ **A PRÓXIMA** | — | pêndulo/corrente/ragdoll; bumpa o schema **21 → 22** |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
@@ -572,6 +572,66 @@ o chevron SEMPRE, então um header sem id vivo desenharia um "clique pra dobrar"
 - **O `body_count` do readout conta corpos, não "corpos dormindo"** — a pergunta *"por que nada
   se move?"* teria resposta melhor com os dois números. Barato; não foi feito porque ninguém
   ainda a fez.
+
+---
+
+## ✅ §W2c — camadas de colisão (2026-07-18, pendente smoke)
+
+**O modelo é o da Unity, e a escolha muda tudo.** Godot/Box2D dão a cada corpo
+um `layer` E um `mask`: flexível, sem estado global — e a regra *"bala não
+acerta quem atirou"* é re-digitada em cada bala. A Unity tem UMA matriz global e
+cada corpo nomeia uma camada: a regra é autorada **uma vez, no mundo**. rapier é
+nativamente o primeiro (`InteractionGroups{memberships, filter}`), então
+`world/layers.rs` é o segundo em cima dele: `memberships` = o bit da camada,
+`filter` = a **linha** daquela camada na matriz.
+
+⚠️ **A matriz TEM de ser simétrica, e aqui o assimétrico é INEXPRIMÍVEL.** A
+regra do rapier é `(A.mem ∩ B.filter) ≠ ∅ **AND** (B.mem ∩ A.filter) ≠ ∅` — as
+duas direções. Uma matriz meio-escrita não significa *"i vê j mas não o
+contrário"*: o AND faz significar **colisão nenhuma**, uma regra que ninguém
+escreveu. `LayerMatrix::set` escreve as **duas** metades e `from_rows` (a porta
+de leitura de arquivo) **simetriza** — um arquivo editado à mão não instala um
+estado que o tipo diz não existir. Por isso o painel desenha só o **triângulo
+inferior**: a célula espelho seria um segundo controle pro mesmo checkbox.
+
+`groups_for(layer, matrix)` é a **porta única** — spawn e re-filtragem produzem
+os grupos pela mesma função. E o collider já carrega a própria camada (ela **é**
+o `memberships`, um bit), então `set_layer_matrix` re-filtra os vivos sem
+ninguém guardar a camada duas vezes.
+
+**8 camadas, com o limite NOMEADO:** a representação permite 32 (o `Group` do
+rapier é `u32`) e não é isso que aperta — é o painel. Matriz triangular de N tem
+`N(N+1)/2` células: 8 → **36**, 16 → 136, 32 → **528**. A Unity shipa 32 e a
+matriz dela é o exemplo padrão de tela ilegível. Crescer é mudança de UI +
+schema, não de física.
+
+**As duas metades, e é isso que fez a wave existir separada do W2b:** a matriz é
+metade de uma feature — a outra é a **camada por-corpo**, que é campo de
+component (`Collider.layer`) e UI do **Inspector**. Matriz sem ela é 1×1.
+
+**`PROJECT_SCHEMA` 20 → 21** (duas quebras de layout no mesmo bump: `Collider.layer`
+apendado ao component **e** `layer_matrix` apendado às settings).
+
+### Gates: 16 novos (5 bridge + 3 unit + 2 seam-painel + 1 seam-inspector + …), 12 mutações, 12 sangram
+
+⚠️ **Dois nasceram VERDES sobre o bug que existiam pra pegar** — a mesma família
+das três do W2b:
+- o gate da **simetria** envolvia o valor guardado em `from_rows`, a própria
+  função sob teste, então os dois lados normalizavam. Agora lê as **linhas
+  cruas**. E o valor guardado importa independente do solver: `apply_to`
+  simetriza na entrada do rapier, então a SIMULAÇÃO está segura de qualquer
+  jeito; quem não está é o **painel**, que pinta checkbox dessas linhas, e o
+  **arquivo**, que as salva.
+- o gate das 36 células mandava um `WidgetEvent` **sintético**, que chega direto
+  no `apply_event`. Um clique REAL primeiro tem de achar a célula no hit-index
+  **e** achá-la FOCÁVEL no store — então tirar as células do `populate` deixava
+  o gate verde sobre 36 widgets pintados, hit-registrados, com arm ligado, e
+  **mortos sob o mouse**. Agora dirige `click_at`.
+
+⚠️ **As células são registradas num LAÇO, que o `architecture_panel_wiring_parity`
+não enxerga** — e os ids são um **array const**, não hasheados em runtime, pra
+que o `node_id_collisions` ao menos os cubra. O seam que clica as 36 não é
+redundante com os arch-gates: é a única coisa cobrindo aquele widget.
 
 ---
 

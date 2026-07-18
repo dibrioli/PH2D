@@ -29,6 +29,8 @@ pub const PHYSICS_SEC_AIR: NodeId = hash_node_id("physics.sec.air");
 pub const PHYSICS_SEC_DAMPING: NodeId = hash_node_id("physics.sec.damping");
 /// Sleep section.
 pub const PHYSICS_SEC_SLEEP: NodeId = hash_node_id("physics.sec.sleep");
+/// Collision-layer matrix section.
+pub const PHYSICS_SEC_LAYERS: NodeId = hash_node_id("physics.sec.layers");
 /// Debug section (collider overlay + readouts + reset).
 pub const PHYSICS_SEC_DEBUG: NodeId = hash_node_id("physics.sec.debug");
 
@@ -85,6 +87,65 @@ pub const PHYSICS_SLEEP_SPIN_NUM: NodeId = hash_node_id("physics.sleep_spin_num"
 pub const PHYSICS_SLEEP_DELAY: NodeId = hash_node_id("physics.sleep_delay");
 /// Chip linked to [`PHYSICS_SLEEP_DELAY`].
 pub const PHYSICS_SLEEP_DELAY_NUM: NodeId = hash_node_id("physics.sleep_delay_num");
+
+// ── Collision-layer matrix ──────────────────────────────────────────────────
+/// The 36 cells of the triangular 8×8 layer matrix, in row-major lower-triangle
+/// order — cell `(i, j)` with `j <= i` sits at index `i(i+1)/2 + j`.
+///
+/// ⚠️ **A fixed array, not runtime-hashed ids.** `node_id_collisions` checks
+/// consts; ids built at paint time are invisible to it. And
+/// `architecture_panel_wiring_parity` cannot see a registration made inside a
+/// LOOP either — which a matrix necessarily is — so the seam test that CLICKS
+/// every cell is not redundant with those gates, it is the only thing covering
+/// this widget.
+///
+/// Only the lower triangle exists because the matrix is symmetric by
+/// construction: `(i, j)` and `(j, i)` are one fact, so painting both halves
+/// would be two controls for one checkbox.
+pub const PHYSICS_LAYER_CELL: [NodeId; 36] = [
+    hash_node_id("physics.layer_0_0"),
+    hash_node_id("physics.layer_1_0"),
+    hash_node_id("physics.layer_1_1"),
+    hash_node_id("physics.layer_2_0"),
+    hash_node_id("physics.layer_2_1"),
+    hash_node_id("physics.layer_2_2"),
+    hash_node_id("physics.layer_3_0"),
+    hash_node_id("physics.layer_3_1"),
+    hash_node_id("physics.layer_3_2"),
+    hash_node_id("physics.layer_3_3"),
+    hash_node_id("physics.layer_4_0"),
+    hash_node_id("physics.layer_4_1"),
+    hash_node_id("physics.layer_4_2"),
+    hash_node_id("physics.layer_4_3"),
+    hash_node_id("physics.layer_4_4"),
+    hash_node_id("physics.layer_5_0"),
+    hash_node_id("physics.layer_5_1"),
+    hash_node_id("physics.layer_5_2"),
+    hash_node_id("physics.layer_5_3"),
+    hash_node_id("physics.layer_5_4"),
+    hash_node_id("physics.layer_5_5"),
+    hash_node_id("physics.layer_6_0"),
+    hash_node_id("physics.layer_6_1"),
+    hash_node_id("physics.layer_6_2"),
+    hash_node_id("physics.layer_6_3"),
+    hash_node_id("physics.layer_6_4"),
+    hash_node_id("physics.layer_6_5"),
+    hash_node_id("physics.layer_6_6"),
+    hash_node_id("physics.layer_7_0"),
+    hash_node_id("physics.layer_7_1"),
+    hash_node_id("physics.layer_7_2"),
+    hash_node_id("physics.layer_7_3"),
+    hash_node_id("physics.layer_7_4"),
+    hash_node_id("physics.layer_7_5"),
+    hash_node_id("physics.layer_7_6"),
+    hash_node_id("physics.layer_7_7"),
+];
+
+/// Index of cell `(a, b)` in [`PHYSICS_LAYER_CELL`], order-independent.
+pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
+    let (hi, lo) = if a >= b { (a, b) } else { (b, a) };
+    hi * (hi + 1) / 2 + lo
+}
 
 // ── Debug + commands ────────────────────────────────────────────────────────
 /// "Show Colliders" toggle.

@@ -10,6 +10,11 @@
 
 ---
 
+> **📦 LINHA FECHADA E PRONTA PARA INTEGRAR (2026-07-18).** Handoff do integrador:
+> [`HANDOFF_INTEGRACAO_line_physics_2026-07-18.md`](HANDOFF_INTEGRACAO_line_physics_2026-07-18.md)
+> (identidade, foundational tocado, símbolos de colisão com valor literal, gates do `ship.sh` já
+> rodados). **Todo o smoke foi aprovado pelo Enio; nada pendente.**
+
 ## Estado por-wave
 
 | Wave | Estado | Commit | Nota |

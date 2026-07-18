@@ -1,7 +1,8 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18 (a PILHA de efeitos)
 
 **Para:** o agente integrador (DIRETRIZ §1.5.3–1.5.4), quando o Enio mandar.
-**Estado:** ✅ linha **fechada e verde**, 15 commits sobre a `main`. **NÃO integrei e NÃO pushei** —
+**Estado:** ✅ linha **fechada e verde**, 17 commits sobre a `main`.
+**⚠️ Toca FOUNDATIONAL** (`ph2d-editor-core`) desde `64a95f4b` — ver **§12** antes de escolher a ordem. **NÃO integrei e NÃO pushei** —
 a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 
 > ⚠️ **Pendente de SMOKE do Enio** — `PH2D_BUILD_SMOKE=13`. Ver §5.
@@ -375,3 +376,65 @@ PH2D_UNDO_LOG=1 cargo run -p ph2d-host-desktop
 - Se sair **`vec=true`** e o Ctrl+Z mesmo assim não desfizer → há um **passo espúrio a mais** logo a
   seguir, e o 1º Ctrl+Z gasta-se a desfazer o lixo. É a classe que
   `vec_zorder_fixpoint_tests.rs` já apanhou uma vez.
+
+---
+
+## §12 — ⚠️ ESTA LINHA TOCA FOUNDATIONAL (`ph2d-editor-core`)
+
+Até `7fa5f969` a linha vivia inteira em `ph2d-vec-scene` / `ph2d-panel-vector` / `shells/desktop`.
+O commit `64a95f4b` **entra na `ph2d-editor-core`**, e o integrador precisa de saber porquê antes de
+decidir a ordem (ADR-0107 · DIRETRIZ §1.5.3 — `scripts/foundational-integrate.sh`).
+
+**O que mudou lá:** `NumberInputDragState` ganhou o campo `accum` (apendado no FIM da struct),
+`WidgetStore` ganhou `set_number_input_drag_accum`, e o `pointer_move` escolhe a base do Move.
+
+**Porquê:** o scrub lê o valor da caixa de volta como base do Move seguinte, e uma caixa registada
+por `link_slider_number_mapped_integer` **arredonda em toda escrita** — o arredondamento estava
+DENTRO do laço e o resíduo morria a cada Move (`round(round(v) + d) == round(v)` para `d < 0.5`).
+Com `DRAG_RANGE_PX_V = 2500`, uma contagem de `1..128` corre a 0,05 unidades/px e um Move de 3 px
+carrega 0,15: **o eixo vertical estava aritmeticamente morto**.
+
+**⚠️ Não é um bug desta linha, e o alcance é o app inteiro.** Toda caixa inteira sofria: Sculpt
+radius (faixa 15 ⇒ 0,006/px), BgRemoval Min Px, Color-Eq Tile Grid, Posterize Dither Grain. Chegou
+aqui porque as cristas do Zig Zag foram a primeira que o Enio arrastou na vertical.
+
+**Projetado para ISOLAMENTO** (a exigência do CLAUDE.md §0.2 ao criar/tocar foundational):
+
+- O campo é **apendado**, e `NumberInputDragState` **não é serializado** — não há schema a bumpar.
+- **Só as caixas que arredondam leem o acumulador.** As contínuas continuam a ler o valor de volta,
+  byte por byte como antes: o caminho comum é intocado, e não há um 2º modelo de scrub a divergir.
+- O ponto de extensão é uma pergunta ao store (`linked_slider_snap_integer`), que já existia.
+
+**Se outra linha tocar o mesmo arquivo** (`interaction/dispatch/pointer_move.rs` é popular), o
+conflito é textual e local — mas confira que o `base` continua a ramificar, porque a mutação que o
+neutraliza **não sangrava em nenhum gate** antes deste commit (foi o único sobrevivente da sessão, e
+o gate `an_integer_chip_still_travels_on_the_precise_vertical_axis` nasceu dessa sobrevivência).
+
+---
+
+## §13 — O outro achado do mesmo smoke: a caixinha não alternava (`64a95f4b`)
+
+> *"Smooth on/off Rough não consigo ter resultado imediato se apertar seguidamente"*
+
+Este é **da linha**. Uma caixinha é pintada como BOTÃO mas **partilha o id do slider** — e o
+`populate` regista sempre um slider ali, porque regista o **teto**, antes de saber que efeito cai na
+linha. Então um press na caixinha emite **também** `ValueChanged` do slider, com o track = a posição
+**horizontal** do cursor dentro do botão; e essa escrita corria **depois** do flip do Click.
+
+Quem decidia o estado era o *onde* do clique, não o flip — clicar repetidamente no mesmo sítio dava
+sempre o mesmo resultado. A pergunta certa (`is_toggle`) já estava no arm do Click; faltava-lhe o
+**complemento** no arm do parâmetro. Duas escritas para um fato, e a do track tinha de se recusar.
+
+O gate clica **quatro vezes no mesmo track** (`0.9`, o canto direito) e exige quatro alternâncias.
+E tem irmão obrigatório — *um parâmetro contínuo continua a receber o track* — senão a recusa podia
+ser escrita larga demais e matar todos os sliders em silêncio
+([[feedback_absence_gate_needs_a_presence_sibling]]).
+
+---
+
+## §14 — Estado do undo (fecha o §11)
+
+**O smoke do undo passou** (Enio, 2026-07-18). O `PH2D_UNDO_LOG` ficou mais falante de qualquer
+forma (`7fa5f969`): as três saídas antecipadas do `post_frame_undo` explicam-se agora, e só quando
+houve input. Um log que só fala no sucesso não sabe diagnosticar um silêncio — e foi por lhe faltar
+essa propriedade que a primeira corrida não pôde dizer nada.

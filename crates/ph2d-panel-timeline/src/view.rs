@@ -6,7 +6,8 @@
 //! - **wheel** — plain = anchored zoom of the time axis (the time under the
 //!   cursor stays put), Ctrl = horizontal pan, Shift = vertical row scroll.
 //! - **middle-drag** — grab-and-slide both axes at once.
-//! - **F / transport jump** — fit to the keys, or pan the playhead into view.
+//! - **F / transport jump** — fit to what THIS TAB is showing (the keys, or the
+//!   lanes' strips), or pan the playhead into view.
 //!
 //! Chrome resizes (panel edges, label column, graph height) live in `resize`.
 //! None of these raise intents: the view is panel-local and never undoable.
@@ -59,8 +60,8 @@ pub(crate) fn apply_wheel(state: &mut TimelinePanelState, time_x: f32, w: Timeli
     state.view_start_s = state.view_start_s.max(0.0);
 }
 
-/// Fit the time axis to the extent of every key in the document (`F`, Blender's
-/// per-area focus), with a small margin. An empty document — or a zero-width
+/// Fit the time axis to the extent of the content this tab shows (`F`, Blender's
+/// per-area focus) — see [`content_extent`] — with a small margin. An empty document — or a zero-width
 /// `time_area` — resets to the default zoom at `t = 0`; a single key (or several
 /// stacked at one instant) gets a one-second window around it rather than an
 /// infinite zoom.
@@ -70,7 +71,7 @@ pub(crate) fn apply_fit(
     snap: &TimelineViewSnapshot,
 ) {
     let w = f64::from(time_area_w);
-    let extent = key_extent(snap);
+    let extent = content_extent(state, snap);
     let Some((first, last)) = extent.filter(|_| w > 0.0) else {
         state.view_start_s = 0.0;
         state.px_per_s = DEFAULT_PX_PER_S;
@@ -108,6 +109,43 @@ pub(crate) fn reveal_time(state: &mut TimelinePanelState, time_area_w: f32, t: f
     } else if t > start + span - margin {
         state.view_start_s = (t - span + margin).max(0.0);
     }
+}
+
+/// What a fit frames: **the content THIS TAB is showing**.
+///
+/// One ruler, two contents (see `tab.rs`): the Keys tab draws the active clip's
+/// keys, the Arrange tab draws the lanes' strips. Framing the keys in Arrange sized
+/// the view to the active CLIP's duration — and for a first strip that plays that
+/// clip 1:1 from the top, "the clip's duration" and "the first strip" are the same
+/// pixels, so the fit looked deliberate while every strip after it stayed off
+/// screen (Enio, 2026-07-16). The tab already decides what the ruler MEANS; it has
+/// to decide what the ruler FITS by the same token.
+///
+/// Arrange falls back to the keys when no lane holds a strip: `F` on a document
+/// nobody has arranged yet should still frame something rather than snapping back
+/// to the default zoom.
+fn content_extent(state: &TimelinePanelState, snap: &TimelineViewSnapshot) -> Option<(f64, f64)> {
+    if state.tab.shows_lanes() {
+        strip_extent(snap).or_else(|| key_extent(snap))
+    } else {
+        key_extent(snap)
+    }
+}
+
+/// The `(earliest, latest)` timeline second any strip occupies, across every lane,
+/// or `None` when the stack holds none.
+///
+/// **A strip's outward lead-in counts.** It is lane time the strip's entry reaches
+/// back over — content, not margin — so a fit that cropped it would hide the travel
+/// the artist authored, at the one moment they asked to see everything.
+fn strip_extent(snap: &TimelineViewSnapshot) -> Option<(f64, f64)> {
+    snap.lanes
+        .iter()
+        .flat_map(|l| &l.strips)
+        .fold(None, |acc: Option<(f64, f64)>, s| {
+            let span = (s.t_start - s.lead_in.max(0.0), s.t_end);
+            Some(acc.map_or(span, |(lo, hi)| (lo.min(span.0), hi.max(span.1))))
+        })
 }
 
 /// The `(earliest, latest)` key time across every track, or `None` if the
@@ -389,6 +427,115 @@ mod tests {
         );
         // The 4 s extent + 5% each side fills the 800 px area.
         assert!((st.px_per_s - 800.0 / 4.4).abs() < 1e-6, "{}", st.px_per_s);
+    }
+
+    /// A stack: `lanes` strips, given as `(t_start, t_end, lead_in)`. The document
+    /// also carries keys at 0..2 — the ACTIVE CLIP's own duration, which is what the
+    /// fit used to frame in Arrange and is exactly the thing these gates must see it
+    /// stop framing.
+    fn snap_with_strips(strips: &[(f64, f64, f64)]) -> TimelineViewSnapshot {
+        use ph2d_timeline::{LaneMode, LaneView, StripId, StripLoop, StripView};
+        TimelineViewSnapshot {
+            lanes: vec![LaneView {
+                name: "L".into(),
+                muted: false,
+                weight: 1.0,
+                mode: LaneMode::Override,
+                strips: strips
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &(t_start, t_end, lead_in))| StripView {
+                        id: StripId(i as u64),
+                        clip_name: "C".into(),
+                        t_start,
+                        t_end,
+                        blend_in: 0.0,
+                        blend_out: 0.0,
+                        lead_in,
+                        ease_locked_in: false,
+                        ease_locked_out: false,
+                        loop_mode: StripLoop::Once,
+                        speed: 1.0,
+                        marks: [0.0; 4],
+                    })
+                    .collect(),
+            }],
+            ..snap_with_keys(&[0.0, 2.0])
+        }
+    }
+
+    fn arranged() -> TimelinePanelState {
+        TimelinePanelState {
+            tab: crate::tab::Tab::Arrange,
+            ..TimelinePanelState::default()
+        }
+    }
+
+    /// **`F` in Arrange frames the whole set, not the first strip** (Enio,
+    /// 2026-07-16). The fixture is the trap itself: the active clip runs 0..2 and the
+    /// first strip plays it 1:1 from the top, so framing the KEYS produces a view
+    /// that looks perfectly deliberate — and leaves the strip at 8..10 off screen.
+    #[test]
+    fn fit_in_arrange_frames_every_strip_not_just_the_first() {
+        let mut st = arranged();
+        apply_fit(
+            &mut st,
+            800.0,
+            &snap_with_strips(&[(0.0, 2.0), (8.0, 10.0)].map(|(a, b)| (a, b, 0.0))),
+        );
+        assert!(
+            view_end(&st, 800.0) > 10.0,
+            "the last strip must be in view, not just the first: end={}",
+            view_end(&st, 800.0)
+        );
+        assert!(st.view_start_s <= 0.0, "and the first one still is");
+    }
+
+    /// The mirror, and it is what makes the gate above mean anything: the Keys tab
+    /// keeps framing the KEYS even with a stack on the document. Without this pair,
+    /// "always fit the strips" would pass.
+    #[test]
+    fn fit_in_keys_still_frames_the_keys_even_when_a_stack_exists() {
+        let mut st = TimelinePanelState::default(); // Tab::Keys
+        apply_fit(&mut st, 800.0, &snap_with_strips(&[(8.0, 10.0, 0.0)]));
+        assert!(
+            view_end(&st, 800.0) < 8.0,
+            "the far strip is NOT what the Keys tab frames: end={}",
+            view_end(&st, 800.0)
+        );
+    }
+
+    /// **The outward lead-in is content.** It is lane time the entry reaches back
+    /// over, so a fit that started at `t_start` would crop the travel the artist
+    /// authored at the exact moment they asked to see everything.
+    #[test]
+    fn fit_in_arrange_includes_a_strips_outward_lead() {
+        let mut st = arranged();
+        apply_fit(&mut st, 800.0, &snap_with_strips(&[(6.0, 8.0, 2.0)]));
+        assert!(
+            st.view_start_s < 4.0,
+            "the lead-in reaches back to t=4 and must be framed: start={}",
+            st.view_start_s
+        );
+    }
+
+    /// Arrange with nothing arranged still frames something — falling back to the
+    /// keys beats snapping to the default zoom, which reads as "F did nothing".
+    ///
+    /// Asserted on the ZOOM, not on "are the keys visible": the default view happens
+    /// to span 6.7 s at 800 px, so a fit that quietly gave up would still show keys at
+    /// 1 and 5 and the gate would pass having proved nothing. The fitted zoom
+    /// (`800 / 4.4`) is a number only a real fit produces.
+    #[test]
+    fn fit_in_arrange_falls_back_to_the_keys_when_no_lane_holds_a_strip() {
+        let mut st = arranged();
+        apply_fit(&mut st, 800.0, &snap_with_keys(&[1.0, 5.0]));
+        assert!(
+            (st.px_per_s - 800.0 / 4.4).abs() < 1e-6,
+            "the keys were FITTED, not merely left in a default view: {}",
+            st.px_per_s
+        );
+        assert!(st.view_start_s < 1.0 && view_end(&st, 800.0) > 5.0);
     }
 
     #[test]

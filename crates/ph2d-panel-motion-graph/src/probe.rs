@@ -62,10 +62,17 @@ pub(crate) fn draw(
     );
 
     // The reading, and what it MEANS (a bare number is a riddle: 144 what?).
+    // No reading (`None`) draws an em-dash: the card stays where the artist put
+    // it — a card that VANISHED would read as "the probe broke" — and says
+    // plainly that there is nothing to show, rather than a stale number.
+    let reading = match probe.value {
+        Some(v) => format!("{}: {:.3}", probe.label, v),
+        None => format!("{}: —", probe.label),
+    };
     paint_text_title(
         ctx.text_system,
         ctx.scene,
-        &format!("{}: {:.3}", probe.label, probe.value),
+        &reading,
         panel.x + PAD,
         panel.y + PAD * 0.5,
         TEXT_SIZE,

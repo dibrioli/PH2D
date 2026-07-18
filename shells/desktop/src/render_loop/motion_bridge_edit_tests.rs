@@ -224,7 +224,7 @@ fn the_probe_reads_the_node_it_points_at() {
     let view = edit::sample_probe(&mut motion, 0.0).expect("the probe read the node");
     assert_eq!(view.node, grid.0);
     assert_eq!(view.label, "instances");
-    assert_eq!(view.value, 20.0, "a 4×5 grid carries 20 instances");
+    assert_eq!(view.value, Some(20.0), "a 4×5 grid carries 20 instances");
     assert_eq!(view.samples, vec![20.0], "and the ring started filling");
 
     // A second tick appends (the sparkline is a history, not a single reading).
@@ -245,4 +245,65 @@ fn the_probe_lets_go_of_a_deleted_node() {
     motion.doc.graph.remove_node(grid);
     assert!(edit::sample_probe(&mut motion, 0.0).is_none());
     assert!(motion.probe.is_none(), "the probe let go");
+}
+
+/// **A GPU-resident cook leaves the probe with nothing to say — and the probe must
+/// SAY that, rather than cook the answer on the CPU.**
+///
+/// The strong half of this gate is not the `None`: it is that the pump's memo is
+/// still EMPTY afterwards. `sample_probe`'s `cook()` is the cheap memo lookup its
+/// doc-comment describes only while the CPU pump is the one driving; under a GPU
+/// cook the memo is empty, so the SAME call silently becomes a full CPU cook of the
+/// chain — every frame, beside a GPU already drawing it (~50 ms at the emitter
+/// demo's 1,2 M) — and returns a simulation whose `pre` state was never marched.
+/// Asserting the memo stayed empty is what pins "did not cook"; asserting only the
+/// `None` would stay green with the cook back in.
+#[test]
+fn a_gpu_resident_cook_leaves_the_probe_with_no_reading_and_does_not_cook() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    motion.doc.graph.set_param(grid, "rows", 4.0);
+    motion.doc.graph.set_param(grid, "cols", 5.0);
+    motion.probe = Some(grid);
+    // Stale CPU history, exactly as a run that HAD been on the CPU would hold.
+    motion.probe_ring.push(123.0);
+    motion.gpu_live = true;
+
+    let view = edit::sample_probe(&mut motion, 0.0).expect("the probe card stays put");
+    assert_eq!(
+        view.value, None,
+        "no reading, rather than a stale or invented one"
+    );
+    assert!(
+        view.samples.is_empty(),
+        "the CPU sparkline does not survive a GPU cook"
+    );
+    assert!(
+        motion.pump.cook.peek(grid).is_none(),
+        "the probe COOKED under a GPU-resident frame — the memo filled"
+    );
+}
+
+/// The control for the gate above: on the CPU path the probe is untouched. Without
+/// it, deleting the probe outright would leave that gate green
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]) — and the CPU path is the
+/// one an artist uses today, so a regression there is the expensive one.
+#[test]
+fn the_cpu_path_still_reads_and_still_fills_the_memo() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    motion.doc.graph.set_param(grid, "rows", 4.0);
+    motion.doc.graph.set_param(grid, "cols", 5.0);
+    motion.probe = Some(grid);
+    motion.gpu_live = false;
+
+    let view = edit::sample_probe(&mut motion, 0.0).expect("a reading");
+    assert_eq!(view.value, Some(20.0), "the CPU path still answers");
+    assert!(!view.samples.is_empty(), "and still feeds the sparkline");
+    assert!(
+        motion.pump.cook.peek(grid).is_some(),
+        "the CPU path DOES cook — which is what makes the memo assertion above mean something"
+    );
 }

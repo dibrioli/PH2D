@@ -202,6 +202,31 @@ pub(super) fn sample_probe(
         motion.probe_ring.clear();
         return None;
     }
+    // A GPU-resident cook does not feed the CPU memo this probe reads, and the
+    // `cook` below is NOT a memo lookup when the memo is empty — it would run a
+    // full CPU cook of the chain, every frame, beside a GPU that is already
+    // drawing it. At the fountain's 1,2 M that is ~50 ms of the frame, and the
+    // number it returns is cooked from a `pre` state the pump never marched: a
+    // simulation that did not happen. Both halves are unacceptable, and they
+    // have the same remedy — do not cook here.
+    //
+    // ⚠️ `gpu_live` is LAST frame's (this runs before `cook_gpu`, which sets it).
+    // On the frame the route flips, the probe therefore pays one CPU cook — the
+    // cost it used to pay on EVERY frame, so this is bounded and never worse
+    // than the status quo. Moving the sampling after `cook_gpu` would make it
+    // exact ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]);
+    // that is a publish-order change, noted rather than smuggled in here.
+    if motion.gpu_live {
+        // The ring is CPU history — under a GPU cook it would draw a sparkline of
+        // readings that no longer describe what is on screen.
+        motion.probe_ring.clear();
+        return Some(ph2d_panel_motion_graph::ProbeView {
+            node: node.0,
+            label: "gpu".to_string(),
+            value: None,
+            samples: Vec::new(),
+        });
+    }
     let out = motion
         .pump
         .cook
@@ -221,7 +246,7 @@ pub(super) fn sample_probe(
     Some(ph2d_panel_motion_graph::ProbeView {
         node: node.0,
         label,
-        value,
+        value: Some(value),
         samples: ring.clone(),
     })
 }

@@ -183,8 +183,15 @@ pub struct ProbeView {
     /// What the number MEANS — a value stream reads out its scalar, an instance
     /// stream reads out how many instances it carries. English (app UI).
     pub label: String,
-    /// The latest reading (also the last element of `samples`).
-    pub value: f32,
+    /// The latest reading (also the last element of `samples`), or `None` when
+    /// this frame has **no reading to give** — today: the cook ran GPU-resident,
+    /// which does not feed the CPU memo the probe reads.
+    ///
+    /// It is an `Option` and not a sentinel number because the one thing a
+    /// readout may never do is present a wrong number as a right one (the
+    /// ADR-0125 rule). The card draws `—`; the artist sees "no reading here",
+    /// which is the truth, instead of a stale or invented value.
+    pub value: Option<f32>,
     /// The recent readings, oldest first (up to `PROBE_SAMPLES`).
     pub samples: Vec<f32>,
 }

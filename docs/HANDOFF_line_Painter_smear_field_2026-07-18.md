@@ -11,10 +11,10 @@
 | | |
 |---|---|
 | Branch | `line/Painter`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` |
-| HEAD | `14deb079` |
-| Ahead of `main` | **4 commits** |
+| HEAD | `050c2d80` |
+| Ahead of `main` | **6 commits** |
 | Árvore | limpa · `check --workspace --all-targets` 0 · `clippy --workspace --all-targets` 0 · `fmt` aplicado |
-| Suítes | **workspace 7656 passed / 0 failed** (tool-painter 721 · painter-brush 256) |
+| Suítes | **workspace 7658 passed / 0 failed** (tool-painter 724 · painter-brush 256) |
 | Perf | knife **4,57 ms/move @2048² · 5,50 @4096²** (kill 8) — gate novo `smear_perf_kill_criterion` |
 
 ⚠️ **Modo L.** Todo path absoluto com `/Worktrees/line-Painter/`; todo comando que muta abre com
@@ -92,9 +92,13 @@ strength` ⇒ o chamador entrega um spec com `flow = 1.0`. Tornar um slider iner
 
 ---
 
-## 4. ⚠️ O QUE NÃO FECHOU — e por que a próxima pessoa não deve "consertar" sozinha
+## 4. ✅ RESOLVIDO no smoke (2026-07-18): a agulha é o Hardness, e fica
 
-**Com o pincel PADRÃO da faca o produto ainda desenha uma AGULHA.** Renderizado, não deduzido:
+**Enio smokou e aprovou.** A saída escolhida foi a terceira das três abaixo: **Hardness É o controle de
+largura da esfregada**, nenhum default muda. O texto abaixo fica como o registro da medição, porque ele é
+a razão de a decisão ter sido essa — e porque quem mexer no peso do dab no futuro precisa dela.
+
+**Com o pincel PADRÃO da faca o produto desenha uma AGULHA.** Renderizado, não deduzido:
 `scratchpad/look/13b_smear_after.png` mostra a cápsula com um fio saindo — a foto do Enio.
 
 **E não é a lei do transporte.** O pincel padrão do slot Smear é, medido pela sonda:
@@ -126,7 +130,7 @@ antigo tinha a mesma forma, com a decadência multiplicativa por cima.
 3. **Aceitar** que faca macia = fio, e documentar que dureza é o controle de largura da esfregada.
 
 Nenhuma é "o conserto óbvio", e a (2) reabre a pergunta *"o que o peso do dab significa no transporte"*
-que o `walk_dab` responde para três consumidores. **Peça a ordem ao Enio, com esta tabela na mão.**
+que o `walk_dab` responde para três consumidores. **O Enio escolheu a (3)** — nada a fazer no código.
 
 ### 4.1 Como reproduzir em 30 segundos
 
@@ -195,9 +199,9 @@ que sobrou mora.
 
 | # | tarefa | gatilho / estado |
 |---|---|---|
-| **1** | **A agulha residual do Smear** (§4) | **Precisa de ORDEM do Enio** — 3 saídas, todas decisões de produto. Tabela de dureza pronta |
+| ~~1~~ | ~~A agulha residual do Smear~~ | **FECHADO** no smoke de 2026-07-18: Hardness é o controle de largura (§4) |
 | 2 | Engasgo de montagem em tela grande | Medido, não investigado: 8,8 ms @2048 vs 17–21 @4096 na montagem da sessão de sculpt |
-| 3 | Sculpt na GPU | Recomendação do handoff anterior; §0.0 do CLAUDE.md aponta para cá |
+| ~~3~~ | ~~Sculpt na GPU~~ | **DISSOLVIDO por medição** — ver §9. Todo kernel já está sob o alvo |
 | 4 | Cache com chave de versão pros planos da luz GPU | Adiado de propósito; acorde se aparecer em profile |
 | 5 | Conserve p/ Flatten/Fill | Decisão de design, precisa do Enio |
 | 6 | Relevo do papel | **BARREIRA:** exige ordem nova do Enio |
@@ -214,3 +218,74 @@ que sobrou mora.
 - **`str.replace` de `"mod X;"` casa dentro de `"pub mod X;"`** e deixa um `pub ` órfão que gruda na linha
   seguinte (`pub pub mod spec;`). Ancore no prefixo inteiro.
 - Esta máquina degrada ~3× numa sessão longa; prefira **gate contado** a wall-clock.
+
+---
+
+## 9. O Sculpt na GPU foi DISSOLVIDO por medição — e o que apareceu no lugar
+
+Ordem do Enio: *"#3 — Sculpt na GPU"*. Medi antes de desenhar (DIRETIVA §5: kill-criterion antes do build)
+e **o número que justificava o port não existia.**
+
+### 9.1 O gate cobrava do sculpt a luz da CPU
+
+`sculpt_perf_kill_criterion` cronometrava `on_canvas_pointer` + `take_preview_arc()` num `Instant` só,
+comentado *"what a frame really costs"*. Era verdade quando foi escrito e deixou de ser em **2026-07-18**,
+quando a luz foi para a GPU: neste harness headless não há dispositivo, então o `take_preview_arc`
+**compõe e ilumina na CPU — um caminho que o produto não roda**.
+
+Separando os dois (`3352e39f`):
+
+| verbo | KERNEL @2048 / @4096 | PREVIEW (CPU; GPU no produto) | SET-UP antes → depois |
+|---|---|---|---|
+| SMOOTH | **1,20 / 1,18** | 2,19 / 2,16 | 18,9 → **10,5** |
+| SCRAPE | **0,67 / 0,67** | 2,30 / 2,31 | 12,9 → **4,8** |
+| INFLATE | **3,54 / 3,70** | 2,29 / 2,39 | 15,1 → **5,9** |
+
+**Todo verbo já está sob o alvo de 4.** O *"Inflate a 6,4 contra alvo 4"* era ~2,3 ms de luz de CPU
+somados ao kernel. Não era só generoso: gastava a maior parte do orçamento com trabalho de outro, então
+uma regressão real de kernel tinha ~2 ms a menos de folga do que o número anunciava.
+
+Os kernels também são **planos na tela** — limitados pela pegada do pincel (raio 20 custa 4-6× menos que
+raio 100 no mesmo canvas). ⚠️ Eu afirmei o contrário num turno intermediário ("o Inflate escala, 3,77 →
+7,32") e **estava errado**: era a deriva desta máquina. O handoff anterior avisa disso e eu caí mesmo
+assim — **prefira gate CONTADO ou de RAZÃO a wall-clock**.
+
+### 9.2 Três bloqueios que o port teria encontrado
+
+Valem se alguém retomar a ideia:
+
+1. **O caminho quente já é paralelo** — a bola do Inflate foi de 44 ms serial → 3 ms com rayon por linhas.
+2. **`sculpt_close::PAR_MIN`** existe porque abaixo de ~262k texels o rayon deixava o Inflate **mais
+   lento**; o `cr` de uma dab tem ~62k. Um dispatch de GPU tem overhead **maior** que um fork de rayon —
+   a mesma medição que reprovou o rayon nessa escala reprova a GPU.
+3. **O argmax da advecção depende de ordenação ESTÁVEL** (`sort_by`, `sculpt_offset.rs`): num platô
+   uniforme toda fonte equidistante empata no float e a ordem de iteração *é* a resposta. Ordem instável
+   = matéria de outra fonte = **outra cor**. Uma redução paralela de GPU não tem ordem estável nenhuma.
+
+E o resto é **fold**, não óptica (`plane_sum`, `amount`, `bank`, o escalar da onda, `locked_dir` — fatos
+sequenciais sobre a lista de dabs). Pelo padrão da luz isso fica na CPU e sobe pronto; sobraria portar a
+parte que já roda em 3 ms.
+
+### 9.3 O que apareceu no lugar: o fork do plano (`050c2d80`)
+
+A única coisa que escalava com a tela era a **montagem**. Causa medida: a sessão congela `pre` por `Arc`
+(refcount, não cópia) e a primeira escrita chama `Arc::make_mut`, que vê o segundo dono e copia o plano
+inteiro — **10,88 ms a 4096²**, que era praticamente toda a montagem.
+
+A cópia é necessária (snapshot + buffer mutável = uma cópia). Fazê-la numa thread só não era. Porta única
+`plane_fork::fork_par`, **compartilhada de propósito** — sculpt, Reshape e Smear pagavam a mesma cópia.
+
+⚠️ **4× o dado custa 20× o tempo** (16,8 MB → 0,54 ms; 67,1 MB → 10,88 ms): o custo não é banda, é a
+alocação nova com as faltas de página no primeiro toque. É por isso que o paralelo ganha *mais* a 4K.
+
+⚠️ **O gate do caminho rápido é de RAZÃO, e tem de ser.** Os gates de correção não conseguem ver o ramo
+paralelo — um fork é uma cópia, então ele é semanticamente idêntico por construção e nenhum valor,
+ponteiro ou refcount difere. Um gate comportamental seria o caminho serial medido contra ele mesmo, verde
+para sempre. Mutação: neutralizar o ramo leva a razão de **3,2× para 1,0× → RED**, e os dois gates de
+correção seguem verdes sob ela, como a doc diz que devem.
+
+### 9.4 O que sobra aqui
+
+- **PEN-UP do Inflate custa ~10 ms** contra ~4,5 dos outros verbos, nas duas resoluções. Não investiguei.
+  É o próximo número gordo deste módulo, e é o commit do traço, não o kernel.
+- A montagem do SMOOTH ainda é a mais cara (**10,5 ms**) porque ele aloca o memo do blur além do `amount`.

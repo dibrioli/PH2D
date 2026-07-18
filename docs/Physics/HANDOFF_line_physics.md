@@ -280,6 +280,54 @@ livre).
 
 ---
 
+### A INTERPENETRAÇÃO COM O CHÃO (2026-07-18, smoke do Enio) — MEDIDA antes de mexer
+
+*"Observa-se alguma interpenetração dos objetos dinâmicos com o chão"*. A medição separou **duas coisas
+que se parecem e não são**:
+
+| | profundidade | duração |
+|---|---|---|
+| **em repouso** | **1,3 mm** | permanente |
+| **no impacto** (queda de y=4, 9,4 m/s) | **83 mm** | **9 frames (0,15 s)** |
+
+O repouso é o `normalized_allowed_linear_error` do rapier — **1 mm por projeto**. A ~100 px/m isso é
+**0,13 px**: não é o que ninguém viu, e não vale perseguir. O que se vê é o impacto: ~8 px na tela por um
+sexto de segundo.
+
+⚠️ **E a PROFUNDIDADE não é falha do solver.** Medi damping de contato, teto de velocidade corretiva,
+iterações extras do solver e **CCD** — cada um deixou o número em **exatamente 83,2 mm**. É `v × dt`: a
+9,4 m/s o corpo anda 157 mm num tick de 60 Hz, então **no tick em que encosta ele já está dentro**, e
+nenhum solver desfaz isso *depois*. (O CCD não faz nada aqui porque nada **tunela** — 83 mm de
+sobreposição num corpo de 560 mm não é colisão perdida.) Subir o **damping** — o conselho usual do rapier
+para "parecer mais rígido" — vai para o lado **errado**: 5,0 já é super-amortecido e 20 esticou a
+recuperação de 9 para **30 frames**.
+
+**Duas alavancas ortogonais, uma para cada metade:**
+- **`DEFAULT_SUBSTEPS = 4`** ataca a PROFUNDIDADE (1→83 mm · 2→73 · 4→31 · 8→8,8). É o joelho da curva, e
+  o **Box2D v3 ships o mesmo default pelo mesmo motivo**.
+- **`DEFAULT_CONTACT_HZ = 120`** (rapier: 30) ataca a DURAÇÃO — o doc do próprio rapier diz que a
+  frequência natural é o que *"corrige penetrações mais rápido"*. 30 Hz → 9 frames · 120 Hz → 1.
+
+**Resultado: 83 mm/9 frames → 23 mm/1 frame.** Custo medido: 264 µs para **500 corpos** (18% do 1,5 ms de
+HR-4); em cena de smoke é 15 µs. E o trade que eu temia **não se materializou**: a pilha assentada fica em
+**0,00000 mm/tick** antes e depois (gate próprio — trocar penetração por tremor seria artefato pior).
+
+⚠️ **`dt()` mudou de significado e eu quase deixei passar:** com substeps, o `dt` do integrador ≠ o do
+tick. O teste `dt_default_is_60hz` pegou. `dt()` agora é o **TICK** (o que casa com o `FixedStep`/Playhead
+— um `dt()` que virasse o sub-passo em silêncio discordaria do relógio); o do integrador é `substep_dt()`.
+
+⚠️ **Os dois hashes C9 MUDARAM** (`physics-c9` → `2f7e2d58…`, `physics-ecs-c9` → `54fea296…`): parâmetros
+de integração entram no solver. **Nenhum é pinado em literal** — o CI compara os 3 OSes entre si
+(`sort -u | wc -l`), então o gate segue válido e continua provando o que sempre provou.
+
+**Gates (3, em `ph2d-physics/tests/penetration.rs`):** o corpo nunca fica visivelmente dentro do chão por
+mais de 1 frame (nas 4 alturas de queda que as cenas de smoke usam; a barra é **1 px do ARTISTA**, não um
+número que lisonjeia o solver) · a pilha assentada é imóvel · o custo do substepping é RATIO, não
+cronômetro. **2 mutações, 2 sangram** — uma por metade, porque as duas constantes consertam metades
+diferentes do mesmo artefato.
+
+---
+
 ---
 
 ## Decisões (ADR-0130, condensadas — o *porquê* está lá)

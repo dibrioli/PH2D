@@ -78,6 +78,11 @@ pub struct PhysicsWorld {
     /// Step counter — exposes a deterministic "tick number" so tests
     /// can advance N steps and report.
     step_count: u64,
+    /// Sub-steps per `step()` (see [`PhysicsWorld::set_substeps`]).
+    substeps: u32,
+    /// The caller's tick length; `integration_parameters.dt` is this divided
+    /// by [`Self::substeps`].
+    base_dt: f32,
 }
 
 impl PhysicsWorld {
@@ -89,9 +94,39 @@ impl PhysicsWorld {
     /// 9.81 m/s² Earth-standard.
     pub const DEFAULT_GRAVITY_Y: f32 = -9.81;
 
+    /// Integration sub-steps per tick. **Not rapier's default of 1** —
+    /// chosen by measurement (Enio, 2026-07-18: *"observa-se alguma
+    /// interpenetração dos objetos dinâmicos com o chão"*).
+    ///
+    /// A body landing at 9.4 m/s travels 157 mm in a 60 Hz tick, so on the
+    /// tick it first touches it is **already 83 mm inside the floor** — and
+    /// no solver knob moves that number, because it is not a solver failure,
+    /// it is `velocity × dt`. Measured: contact damping, corrective-velocity
+    /// ceiling, extra solver iterations and even CCD all left the depth at
+    /// 83.2 mm. (CCD does nothing here because nothing *tunnels* — 83 mm of
+    /// overlap on a 560 mm body is not a missed collision.)
+    ///
+    /// Sub-stepping is the only lever on the depth, and it is linear:
+    /// 1→83 mm, 2→73, 4→31, 8→8.8. Four is the knee — Box2D v3 ships the
+    /// same default for the same reason — and costs 264 µs for 500 bodies
+    /// against HR-4's 1.5 ms.
+    pub const DEFAULT_SUBSTEPS: u32 = 4;
+
+    /// Contact spring frequency, Hz. **Not rapier's default of 30** — that
+    /// governs how fast the remaining overlap is pushed back out, which is
+    /// the other half of what the artist sees: 30 Hz took 9 frames to become
+    /// invisible, 120 Hz takes 1.
+    ///
+    /// Raising *damping* instead (rapier's usual advice for a stiffer look)
+    /// was measured and goes the wrong way here — 5.0 is already overdamped,
+    /// and 20 stretched the recovery from 9 frames to 30. Damping is left at
+    /// rapier's tuned default.
+    pub const DEFAULT_CONTACT_HZ: f32 = 120.0;
+
     pub fn new() -> Self {
         let integration_parameters = IntegrationParameters {
-            dt: Self::DEFAULT_DT,
+            dt: Self::DEFAULT_DT / Self::DEFAULT_SUBSTEPS as f32,
+            contact_natural_frequency: Self::DEFAULT_CONTACT_HZ,
             ..IntegrationParameters::default()
         };
         Self {
@@ -107,6 +142,8 @@ impl PhysicsWorld {
             narrow_phase: NarrowPhase::new(),
             gravity: Vector2::new(0.0, Self::DEFAULT_GRAVITY_Y),
             step_count: 0,
+            substeps: Self::DEFAULT_SUBSTEPS,
+            base_dt: Self::DEFAULT_DT,
         }
     }
 
@@ -116,15 +153,79 @@ impl PhysicsWorld {
         self.gravity = Vector2::new(x, y);
     }
 
+    /// Contact response tuning, as plain numbers (rapier's
+    /// `IntegrationParameters` stays inside this crate).
+    ///
+    /// - `damping_ratio` — rapier default `5.0`. Its own docs name this as
+    ///   the knob to reach for when the simulation should *look stiffer*,
+    ///   in preference to raising the contact natural frequency (which
+    ///   overshoots and jitters).
+    /// - `max_corrective_velocity` — rapier default `10.0` m/s. The ceiling
+    ///   on how fast the solver is allowed to push accumulated penetration
+    ///   back out.
+    ///
+    /// ⚠️ These feed the solver, so changing them **changes every
+    /// simulation** — including the cross-OS C9 hash. That is a deliberate
+    /// product decision, not a free knob.
+    pub fn set_contact_response(&mut self, damping_ratio: f32, max_corrective_velocity: f32) {
+        self.integration_parameters.contact_damping_ratio = damping_ratio;
+        self.integration_parameters
+            .normalized_max_corrective_velocity = max_corrective_velocity;
+    }
+
+    /// Contact spring frequency, Hz (rapier default `30.0`). rapier's docs:
+    /// *"increasing this value will make it so that penetrations get fixed
+    /// more quickly at the expense of potential jitter due to overshooting"*.
+    pub fn set_contact_frequency(&mut self, hz: f32) {
+        self.integration_parameters.contact_natural_frequency = hz;
+    }
+
+    /// How many integration sub-steps one [`PhysicsWorld::step`] runs.
+    ///
+    /// The **only** lever on how deep a fast body is already overlapping the
+    /// frame it first touches: that depth is `velocity × dt` and no solver
+    /// can undo it after the fact. Halving the sub-step halves the overlap,
+    /// at a proportional cost.
+    pub fn set_substeps(&mut self, n: u32) {
+        self.substeps = n.max(1);
+        self.integration_parameters.dt = self.base_dt / self.substeps as f32;
+    }
+
+    /// Number of solver iterations per step (rapier default `4`). More
+    /// iterations resolve a stack's contacts more completely, at linear cost.
+    pub fn set_solver_iterations(&mut self, n: usize) {
+        if let Some(n) = std::num::NonZeroUsize::new(n) {
+            self.integration_parameters.num_solver_iterations = n;
+        }
+    }
+
     /// Override the integration dt. Must match the caller's
     /// FixedStep — mismatched dt destroys both accuracy and
     /// determinism.
     pub fn set_dt(&mut self, dt: f32) {
-        self.integration_parameters.dt = dt;
+        self.base_dt = dt;
+        self.integration_parameters.dt = dt / self.substeps as f32;
     }
 
+    /// The **tick** length — what one [`PhysicsWorld::step`] advances, and
+    /// what must match the caller's `FixedStep`.
+    ///
+    /// Deliberately not the integrator's dt: `step()` runs
+    /// [`PhysicsWorld::substeps`] internal integrations of `dt/substeps`
+    /// each. One name, one meaning — a `dt()` that silently became the
+    /// sub-step length would quietly disagree with the Playhead.
     pub fn dt(&self) -> f32 {
+        self.base_dt
+    }
+
+    /// The integrator's own step: [`Self::dt`] divided by [`Self::substeps`].
+    pub fn substep_dt(&self) -> f32 {
         self.integration_parameters.dt
+    }
+
+    /// Integration sub-steps per [`PhysicsWorld::step`].
+    pub fn substeps(&self) -> u32 {
+        self.substeps
     }
 
     pub fn step_count(&self) -> u64 {
@@ -258,22 +359,24 @@ impl PhysicsWorld {
     /// [`PhysicsWorld::dt`] — never accept an external dt at the
     /// wrapper boundary (HR-5).
     pub fn step(&mut self) {
-        let physics_hooks = ();
-        let event_handler = ();
-        self.physics_pipeline.step(
-            &self.gravity,
-            &self.integration_parameters,
-            &mut self.island_manager,
-            &mut self.broad_phase,
-            &mut self.narrow_phase,
-            &mut self.bodies,
-            &mut self.colliders,
-            &mut self.impulse_joints,
-            &mut self.multibody_joints,
-            &mut self.ccd_solver,
-            &physics_hooks,
-            &event_handler,
-        );
+        for _ in 0..self.substeps {
+            let physics_hooks = ();
+            let event_handler = ();
+            self.physics_pipeline.step(
+                &self.gravity,
+                &self.integration_parameters,
+                &mut self.island_manager,
+                &mut self.broad_phase,
+                &mut self.narrow_phase,
+                &mut self.bodies,
+                &mut self.colliders,
+                &mut self.impulse_joints,
+                &mut self.multibody_joints,
+                &mut self.ccd_solver,
+                &physics_hooks,
+                &event_handler,
+            );
+        }
         self.step_count += 1;
     }
 

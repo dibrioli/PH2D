@@ -783,16 +783,16 @@ está olhando. O par vivo ainda conta a verdade sobre **tensão**.
 âncoras no MESMO ponto, o segmento tem comprimento zero e **não pinta nada** — o
 joint mais comum do editor seria invisível. Gate próprio.
 
-### Gates: 51 novos, 35 mutações, 35 sangram
+### Gates: 57 novos, 40 mutações, 40 sangram
 
 | onde | quantos | o que cobrem |
 |---|---|---|
 | `ph2d-physics/tests/joints.rs` | 10 | pino/limites/motor/corda/mola no solver; cada afirmação de restrição **pareada** com a afirmação do movimento que ela deve permitir |
-| `ph2d-physics-ecs/tests/joints.rs` | 11 | undo (respawn REAL via `world_to_snapshot`), Reset, scrub, rename, meio-autorado, corpo re-spawnado, ordem de arquétipo |
+| `ph2d-physics-ecs/tests/joints.rs` | 15 | undo (respawn REAL via `world_to_snapshot`), Reset, scrub, rename, meio-autorado, corpo re-spawnado, ordem de arquétipo |
 | `ph2d-physics-ecs/tests/joint_persistence.rs` | 3 | o arquivo antigo ainda abre; nenhum id se moveu; round-trip com parâmetros |
 | `ph2d-panel-inspector/tests/seam_joint.rs` | 7 | sweep que **CLICA de verdade** (`click_at`) |
 | `seam_physics.rs` (+1) | 1 | Join oferecido **e** honrado só com dois corpos |
-| shell `inspector_joint_tests.rs` | 7 | bus → ECS → simulação |
+| shell `inspector_joint_tests.rs` | 8 | bus → ECS → simulação |
 | shell `physics_overlay_joints.rs` | 4 | o desenho, inclusive âncoras coincidentes |
 | shell `join_is_one_gesture_not_a_fan_out.rs` | 2 | arch-gate do fan-out |
 | unit em `ph2d-physics-ecs/src/joint.rs` | 4 | discriminantes postcard pinados em ordem; joint meio-autorado; qual tipo é dobradiça |
@@ -802,6 +802,62 @@ joint mais comum do editor seria invisível. Gate próprio.
 determinista de inserção — que com **um** joint não pode importar. O gate que
 faltava monta a MESMA corrente com os arquétipos caindo diferente (um joint com
 `Name`, outro sem) e exige o mesmo hash.
+
+### ⚠️ A auditoria de 2 lentes achou SEIS coisas — e as duas graves eram minhas
+
+**(1) Qualquer joint dormente destruía o cache de scrub, todo frame.**
+`joints_to_remove` era populado para todo joint que não dava para construir
+(meio-autorado, nomeando um corpo apagado ou renomeado) **independente de ele
+ter SIDO construído**. A lista nunca esvaziava ⇒ `ring.clear()` a cada frame ⇒
+o W1.5 morria calado: scrub para o tick 150 replayava **150** passos em vez de
+0, com ring de 1. Alcançável pelos gestos mais banais. ⚠️ **A metade dos CORPOS
+nunca teve esse bug** — ela só enfileira quem está em `self.bodies`; a dos
+joints tinha divergido da própria irmã.
+
+**(2) A âncora ANDAVA pelo corpo.** `JointRef.rest` guardava as âncoras em
+MUNDO e o spawn re-derivava as locais contra a pose **VIVA**, então o spawn ao
+vivo e o `rebuild_from_rest` respondiam *"onde no corpo isto está preso?"*
+diferente: medido, um pino feito no meio do balanço prendia a **1,611 m** e
+replayava a **0,642 m** depois de um Reset — 0,969 m de caminhada sem ninguém
+tocar em nada. E o doc do módulo afirmava uma regra de *"só em repouso"* que
+**não existia**: nada gateava o primeiro spawn.
+
+O fix não foi gatear o gesto: **a âncora virou função do estado AUTORADO**. A
+conversão mundo→local acontece UMA vez, contra a pose de **REPOUSO** dos corpos
+(`PhysicsWorld::local_anchor_at_pose`), e o par **LOCAL** é o que se guarda e
+replaya. Agora não importa quando um joint é criado — o que torna a frase do
+cabeçalho verdadeira em vez de aspiracional. ⚠️ **O gate desta correção nasceu
+vermelho com 1,771 m e SOBREVIVEU ao primeiro fix** (guardar locais, mas ainda
+convertendo contra a pose viva); só a pose de repouso fecha.
+
+**As outras quatro:** `PhysicsJoint::clamped()` na porta de carga (um componente
+é serde e vem do arquivo — `NaN` em `stiffness` levava a pose para `(NaN, NaN)`
+em 120 passos e o `readback` escrevia isso no `Transform` **e no hash de
+determinismo**) · **limites invertidos SOLDAVAM a dobradiça** (`min > max`
+entregue ao rapier congela a prancha; ordenados no `clamped`) · `create_joint`
+devolvia `Some` para dois corpos de mesmo **NOME** (o guard comparava
+entidades; um joint guarda hashes de nome) · e um comentário afirmando que o
+factor do motor estava atado ao `max_force`, o que nunca foi verdade e o doc da
+própria constante contradizia.
+
+**E a lente de seams:** as **duas** seções desta linha (§11 do W2a e §12 do W3)
+pintavam um dot de cor e um chevron de collapse que não estavam em **nenhuma**
+das três listas compartilhadas — *painted, hit-registered e mortos sob o
+mouse*. Ligadas agora. ⚠️ **O braço do picker ENUMERA seus leitores e já
+apodreceu**: `NAME` e `VISIBILITY` armam e não abrem nada, e
+ORDERING/SAMPLING/BLEND não estão em lugar nenhum. As minhas duas entraram; o
+resto está **NOMEADO aqui em vez de contrabandeado** — são waves de outros
+donos, e o conserto de verdade é UMA tabela `(seção, cor)` que o `pre_populate`
+e o braço leiam (a forma que o `SECTIONS` do painel de física já usa).
+
+**Achados LOW aceitos e não corrigidos** (registrados para não serem
+re-descobertos): `Entity::to_bits()` é *generation-major*, então a ordenação é
+estável quanto a arquétipo mas não sobrevive a um respawn que bumpa gerações —
+herdado da metade dos corpos, não introduzido aqui · o Inspector resolve um
+nome varrendo TODAS as entidades nomeadas e a ponte varre só os corpos, então
+nomes duplicados podem divergir (mitigado pelo `unique_name`) · o `centre_b` de
+um corpo sem `Transform` cai em `[0,0]` em vez de recusar (inalcançável hoje —
+todo corpo em `self.bodies` veio de uma query que exige `Transform`).
 
 ### Smoke: `PH2D_PHYSICS_SMOKE=6`
 

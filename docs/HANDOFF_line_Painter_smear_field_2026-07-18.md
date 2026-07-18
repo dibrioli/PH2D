@@ -17,8 +17,8 @@
 | | |
 |---|---|
 | Branch | `line/Painter`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` |
-| HEAD | `d84b32f9` |
-| Ahead of `main` | **11 commits** (3 herdados do takeover + 8 desta jornada) |
+| HEAD | `git log --oneline main..HEAD` (um commit não pode citar o próprio hash) |
+| Ahead of `main` | 3 herdados do takeover + os desta jornada (§9 lista o que são) |
 | Árvore | limpa · `check --workspace --all-targets` 0 · `clippy --workspace --all-targets` 0 · `fmt` aplicado |
 | Suítes | **workspace 7658 passed / 0 failed** (tool-painter 724 · painter-brush 256) |
 | Perf | knife **4,57 ms/move @2048² · 5,50 @4096²** (kill 8) — gate novo `smear_perf_kill_criterion` |
@@ -290,8 +290,43 @@ ponteiro ou refcount difere. Um gate comportamental seria o caminho serial medid
 para sempre. Mutação: neutralizar o ramo leva a razão de **3,2× para 1,0× → RED**, e os dois gates de
 correção seguem verdes sob ela, como a doc diz que devem.
 
-### 9.4 O que sobra aqui
+### 9.4 O PEN-UP do Inflate: DIAGNOSTICADO, não consertado
 
-- **PEN-UP do Inflate custa ~10 ms** contra ~4,5 dos outros verbos, nas duas resoluções. Não investiguei.
-  É o próximo número gordo deste módulo, e é o commit do traço, não o kernel.
+O número: `Up(commit)` custa **7,4–7,9 ms** no Inflate contra 1,6–3,2 nos irmãos; o preview do mesmo frame
+é uniforme (~2,9) em todos. Está no **commit**, não no desenho.
+
+**A causa, medida.** A primeira hipótese era a cauda do stabilizer (o Up descarrega ~1 raio de trajeto
+segurado). **Refutada:** a razão `Up / move` é **constante em ~1,9–2,1×** para raio 100, 40 e 20. Se fosse
+a cauda ela variaria com o raio (cauda ≈ raio, move = 40 px fixo). Constante em 2× é a assinatura de
+renderizar **duas vezes**, e é isso mesmo — `stroke_lifecycle::paint_end` chama `stamp_dabs` duas vezes:
+
+```rust
+self.paint_extend(ev);              // stamp #1 → render_sculpt(rect_A)
+if let Some(mut stroke) = self.paint.stroke.take() {
+    stroke.finish(&mut dabs);
+    self.stamp_dabs(&dabs);         // stamp #2 → render_sculpt(rect_B)
+```
+
+Os dabs são todos legítimos (o `finish` produz a cauda de verdade). O que é desperdício é o **render**:
+`rect_A` e `rect_B` ficam ambos no fim do traço e se sobrepõem quase inteiramente, e para o Inflate o
+render é a bola `O(ρ²)` — a parte cara.
+
+**Por que consertar seria byte-idêntico** (o argumento, para quem for fazer): o render do sculpt é
+**idempotente** — ele re-deriva `h = pre + k·Δ` do `pre` congelado sobre o rect, não acumula. Renderizar
+uma vez sobre a UNIÃO dá exatamente o mesmo resultado, e o caso que parece perigoso não existe: um texel
+só recebe `amount` do batch 2 se estiver no rect tocado do batch 2, logo está na união. Ganho esperado:
+metade do pen-up do Inflate (~3,7 ms), uma vez por traço.
+
+⚠️ **Não faça isso fundindo os dois `stamp_dabs` numa chamada só.** As fronteiras de batch são
+significativas para outros sistemas (os grupos do `DabRng`, a emenda da cápsula de altura via
+`last_height_center`, o `last_smear_pos`); fundir batches muda o que eles veem. O que precisa ser adiado é
+só o **render** do sculpt — acumular o rect e descarregar uma vez por evento de ponteiro.
+
+**Por que parei aqui:** o ganho é ~3,7 ms uma vez por traço, e a mudança mexe no *agendamento* do render,
+que é onde as regressões deste módulo historicamente se escondem (o re-stamp por frame dos shape editors
+passa pelo mesmo caminho). Vale uma passagem com cabeça fresca e gate próprio, não o fim de uma jornada
+longa.
+
+### 9.5 Também sobra
+
 - A montagem do SMOOTH ainda é a mais cara (**10,5 ms**) porque ele aloca o memo do blur além do `amount`.

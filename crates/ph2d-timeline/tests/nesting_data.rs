@@ -221,20 +221,18 @@ fn deleting_a_clip_repoints_the_strips_inside_containers() {
 }
 
 // ---------------------------------------------------------------------------
-// A inércia, declarada
+// O interior TOCA (Fatia 2 — este gate era a inércia, e foi REESCRITO)
 // ---------------------------------------------------------------------------
 
-/// **Um strip de container ainda não toca nada — e isso é uma decisão, não um esquecimento.**
+/// **Um strip de container toca o interior dele.**
 ///
-/// O avaliador recursivo é a Fatia 2. Até lá o avaliador PULA um strip de container
-/// explicitamente, e o que este gate garante é que pular signifique *nada acontece*, nunca
-/// *acontece a coisa errada* (o índice de container lido como índice de clip seria justamente
-/// isso, e seria silencioso).
-///
-/// Quando a Fatia 2 landar, este gate vira vermelho — e é assim que ele avisa que chegou a hora
-/// de ser reescrito, em vez de ficar mentindo em verde.
+/// Este gate nasceu na Fatia 1 como `a_container_strip_is_inert_until_the_recursive_clock_lands`,
+/// afirmando o oposto — que o interior NÃO era avaliado —, e dizendo no próprio texto que
+/// deveria ser reescrito, nunca apagado, quando a Fatia 2 landasse. Ele ficou vermelho no
+/// commit exato em que o `eval_frame` recursivo entrou, que é como um gate honesto avisa que
+/// chegou a hora. Mesmo fixture, asserção invertida.
 #[test]
-fn a_container_strip_is_inert_until_the_recursive_clock_lands() {
+fn a_container_strip_plays_its_interior() {
     let mut world = World::new();
     let e = world.spawn(Transform::default()).id().to_bits();
 
@@ -249,10 +247,8 @@ fn a_container_strip_is_inert_until_the_recursive_clock_lands() {
     let c = doc.add_container("C".into());
     doc.add_lane_in(StackHost::Container(c), "inner".into())
         .unwrap();
-    // O container tem conteúdo REAL lá dentro: um strip do clip que move o objeto para 7.
     doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 4.0)
         .unwrap();
-    // E o documento toca o container.
     let lane = doc.add_lane("outer".into()).unwrap();
     doc.add_strip_to(
         StackHost::Document,
@@ -270,9 +266,8 @@ fn a_container_strip_is_inert_until_the_recursive_clock_lands() {
         .unwrap()
         .translation
         .x;
-    assert_eq!(
-        x, 0.0,
-        "Fatia 1: o interior do container NÃO é avaliado ainda. Se isto virou 7.0, a Fatia 2 \
-         landou e este gate deve ser reescrito para exigir o valor — não apagado."
+    assert!(
+        (x - 7.0).abs() < 1e-6,
+        "o interior do container tem de dirigir a pose: esperado 7.0, veio {x}"
     );
 }

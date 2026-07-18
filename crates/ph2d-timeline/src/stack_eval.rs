@@ -26,195 +26,11 @@
 
 use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Interp, RationalTime, Track};
 
-use crate::clock::ClockIndex;
 use crate::doc::TimelineDoc;
 use crate::prop::{Algebra, PropKind};
 use crate::refusal::KeyRefusal;
 use crate::stack::LaneMode;
-
-/// One strip that is live at the current time, with everything the per-binding
-/// loop needs — resolved **once per frame**, not once per binding.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct ActiveStrip {
-    /// Which lane it belongs to (its index in the stack).
-    pub lane: usize,
-    /// Which clip it plays.
-    pub clip: usize,
-    /// Its blend weight at this instant (the crossfade ramp).
-    pub w: f64,
-    /// The clip time it is reading.
-    pub t_clip: f64,
-    /// The first frame of its slice — the reference an additive lane measures
-    /// its delta against.
-    pub src_in: f64,
-    /// This entry is a strip that has **ENDED** and is holding its last frame
-    /// ([`crate::ClipLane::hold_at`]) — not one that is playing.
-    ///
-    /// It contributes to the POSE (that is its whole job: a fade-in against nothing
-    /// crossfades from it), but it is not *playing*, so everything that asks "where
-    /// is this clip right now" must skip it — `sole_strip_of` above all, or `K` would
-    /// key into a strip that is over.
-    pub held: bool,
-}
-
-/// Per-frame scratch: which strips are live, and each one's entity clocks.
-///
-/// The clocks are per **strip**, not per document, because two strips can play
-/// two different clips, and an entity's Time Remap track lives *inside* a clip.
-/// One index per live strip is the price of that, and it is a small price: live
-/// strips are counted on one hand.
-///
-/// Zero-alloc in steady state (HR-3): both vectors are cleared and refilled, and
-/// the clock indices are retained so their own buffers stay warm.
-#[derive(Debug, Clone)]
-pub(crate) struct StackScratch {
-    active: Vec<ActiveStrip>,
-    /// Parallel to `active`.
-    clocks: Vec<ClockIndex>,
-    /// The timeline time this was built at. `NaN` until the first rebuild — and
-    /// `NaN != NaN`, so a fresh scratch is never mistaken for a valid one.
-    ///
-    /// It exists because the scratch is a CACHE, and every reader of it (the
-    /// autokey's refusal, the key's landing time) implicitly asks "what is the
-    /// stack doing at t?" while actually being answered "what was it doing at
-    /// whatever t the apply last used". Those coincide in production — the apply
-    /// runs first, same frame, same playhead — and that is precisely the shape of
-    /// coupling that keeps breaking this module. Recording `t` lets a caller
-    /// PRIME (`TimelineDoc::prime_stack`) and turns the invisible dependency into
-    /// a checked one.
-    t: f64,
-}
-
-/// Scratch is not identity — see [`ClockIndex`]'s own note.
-impl PartialEq for StackScratch {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-
-impl Default for StackScratch {
-    fn default() -> Self {
-        Self {
-            active: Vec::new(),
-            clocks: Vec::new(),
-            t: f64::NAN, // never equal to a real time: the first prime always builds
-        }
-    }
-}
-
-impl StackScratch {
-    /// The time this scratch describes (`NaN` if never built).
-    pub(crate) fn built_at(&self) -> f64 {
-        self.t
-    }
-
-    /// Resolve the live strips at `t` and every remapped entity's clock inside
-    /// each one. Call once per frame, after the liveness pass.
-    ///
-    /// With an empty stack this leaves exactly one entry: the active clip, read
-    /// at the playhead. That is not a special case bolted on — it is what "no
-    /// stack" *means*, and it keeps the single-clip path on the same code.
-    pub(crate) fn rebuild(&mut self, doc: &TimelineDoc, t: f64) {
-        self.t = t;
-        self.active.clear();
-        if doc.stack().is_empty() {
-            self.active.push(ActiveStrip {
-                lane: 0,
-                clip: doc.active_index(),
-                w: 1.0,
-                t_clip: t,
-                src_in: 0.0,
-                held: false,
-            });
-        } else {
-            for (li, lane) in doc.stack().iter().enumerate() {
-                if lane.muted {
-                    continue; // muting REMOVES the lane; it is not a zero weight
-                }
-                for (si, strip) in lane.strips.iter().enumerate() {
-                    // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
-                    // zero.** O peso é DADO — a resposta da lane —, não um filtro.
-                    //
-                    // Descartar o peso zero aqui apagava a diferença entre "esta lane não keya o
-                    // canal" (silêncio) e "ela keya, e neste instante não influi" (o primeiro
-                    // instante de um fade-in). O avaliador lia as duas como silêncio, ninguém
-                    // escrevia, e o objeto segurava a pose do frame anterior: o mesmo `t` dava
-                    // poses diferentes conforme o lado de onde o playhead chegava.
-                    //
-                    // Custo: no máximo um punhado de strips de peso zero na lista, e só nas beiras
-                    // exatas de um fade (o clamp da soma garante que o peso só zera nos extremos).
-                    let w = lane.weight_at(si, t);
-                    // `source_time_with_lead`, not `source_time`: in the strip's outward
-                    // lead-in window (in the gap before it) this returns the FROZEN first
-                    // frame, so the strip contributes a still pose there — the travel the
-                    // lead-in is. `weight_at` above already ramps over the same window, so
-                    // the two agree on where the strip is present.
-                    // **A CONTAINER strip is inert here, and deliberately so (ADR-0133,
-                    // Fatia 1).** The recursive clock that evaluates a container's interior
-                    // is Fatia 2; until it lands, the only thing a container strip may do is
-                    // exist and persist. It is skipped EXPLICITLY rather than falling through
-                    // some index check, so it can never be mistaken for a clip index — and
-                    // `a_container_strip_is_inert_until_the_recursive_clock_lands` pins that
-                    // this is a decision, not an accident nobody noticed.
-                    let (Some(t_clip), Some(clip_ix)) = (
-                        strip.source_time_with_lead(t),
-                        strip
-                            .source
-                            .clip_index()
-                            .filter(|&c| (c as usize) < doc.clips().len()),
-                    ) else {
-                        continue; // outside the strip (+ its lead-in), a deleted clip, or a container
-                    };
-                    self.active.push(ActiveStrip {
-                        lane: li,
-                        clip: clip_ix as usize,
-                        w,
-                        t_clip,
-                        src_in: strip.src_in,
-                        held: false,
-                    });
-                }
-                // Whatever coverage the live strips leave unaccounted for is HELD by
-                // the last strip to end — the gap is not silence, and a fade-in
-                // against nothing crosses from there rather than from the rest pose
-                // (`ClipLane::hold_at` carries the whole argument).
-                // The TIMELINE loop (`false` = the Arrange view's), because the stack
-                // runs on the timeline's clock: under it the lane is CYCLIC and the
-                // hold at the top wraps to what the loop's end leaves asserting.
-                if let Some((strip, t_clip, w)) = lane.hold_at(t, doc.active_loop_for(false))
-                    && let Some(clip_ix) = strip
-                        .source
-                        .clip_index()
-                        .filter(|&c| (c as usize) < doc.clips().len())
-                {
-                    self.active.push(ActiveStrip {
-                        lane: li,
-                        clip: clip_ix as usize,
-                        w,
-                        t_clip,
-                        src_in: strip.src_in,
-                        held: true,
-                    });
-                }
-            }
-        }
-
-        // Grow (never shrink) the clock pool, then refill it in place.
-        while self.clocks.len() < self.active.len() {
-            self.clocks.push(ClockIndex::default());
-        }
-        for (i, a) in self.active.iter().enumerate() {
-            let clip = &doc.clips()[a.clip].clip;
-            self.clocks[i].rebuild(doc, clip, a.t_clip);
-        }
-    }
-
-    /// The one live strip of the empty-stack path (the active clip at the
-    /// playhead), and the entity clock resolved inside it.
-    pub(crate) fn solo_clock(&self) -> &ClockIndex {
-        &self.clocks[0]
-    }
-}
+use crate::stack_frames::{ActiveSource, ActiveStrip, StackScratch};
 
 /// One channel of one entity — everything a stack query is *about*, as opposed to
 /// the stack it is asked of. Four values that always travel together.
@@ -258,6 +74,30 @@ fn sample_stack_probed(
     q: Query,
     probe: Option<Probe>,
 ) -> Option<f32> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the scene value is f32; f64 is the blend's working precision"
+    )]
+    eval_frame(doc, scratch, 0, q, probe).map(|v| v as f32)
+}
+
+/// One frame's answer for `q.target`, blended out of ITS lanes — or `None` when no lane
+/// of that frame keys the channel (R2, sparsity).
+///
+/// **The recursion is here and nowhere else.** A container strip's contribution is this
+/// same function run on the frame its interior was resolved into: the interior normalizes
+/// among its own lanes and hands up ONE value, exactly as a clip hands up one sample. That
+/// is what makes a container reusable — its output does not depend on what sits under it in
+/// the parent — and it is the precomp model (AE), not the flatten-into-the-parent model.
+///
+/// Depth is bounded by the container count, because the graph is acyclic by two gates.
+fn eval_frame(
+    doc: &TimelineDoc,
+    scratch: &StackScratch,
+    frame: usize,
+    q: Query,
+    probe: Option<Probe>,
+) -> Option<f64> {
     let Query {
         entity,
         target,
@@ -268,7 +108,13 @@ fn sample_stack_probed(
     let mut acc = f64::from(rest);
     let mut touched = false;
 
-    for (li, lane) in doc.stack().iter().enumerate() {
+    let info = *scratch.frames.get(frame)?;
+    let lanes = match info.container {
+        None => doc.stack(),
+        Some(c) => doc.container_stack(c)?,
+    };
+
+    for (li, lane) in lanes.iter().enumerate() {
         if lane.muted {
             continue;
         }
@@ -281,27 +127,43 @@ fn sample_stack_probed(
         // zero (ela keya, e agora não influi) NÃO são a mesma coisa, e confundi-los foi o bug:
         // ver o `den <= 0` lá embaixo.
         let mut speaks = false;
-        for (i, a) in scratch.active.iter().enumerate() {
+        // Only THIS frame's strips (see `StackFrame::first`). An interior must not blend
+        // against its parent's siblings (ADR-0133 §1), and it must not pay to walk past them.
+        let (first, count) = (info.first, info.count);
+        for i in first..first + count {
+            let a = scratch.active[i];
             if a.lane != li {
                 continue;
             }
-            let probed = probe.filter(|p| p.clip == a.clip);
-            // `.get`, not `[..]`: the index is cached in the scratch, and a scratch
-            // that outlived a DeleteClip would panic here rather than go quiet.
-            let track = doc.clips().get(a.clip).and_then(|c| c.clip.track(target));
-            // Sparsity (R2): a clip that does not key this channel contributes
-            // nothing — unless it is the probed one, whose whole purpose is to
-            // answer "what if it did".
-            let v = match (probed, track) {
-                (Some(p), _) => p.value,
-                (None, Some(tr)) if !tr.is_empty() => {
-                    let t_src = scratch.clocks[i].get(entity, a.t_clip);
-                    let Some(v) = as_f64(tr.sample(t_src)) else {
-                        continue;
-                    };
-                    v
+            let v = match a.source {
+                ActiveSource::Container { frame: child, .. } => {
+                    // The interior IS the value. A container that keys nothing here is
+                    // silent, exactly like a clip with no track for this channel.
+                    match eval_frame(doc, scratch, child, q, probe) {
+                        Some(v) => v,
+                        None => continue,
+                    }
                 }
-                _ => continue,
+                ActiveSource::Clip(clip) => {
+                    let probed = probe.filter(|p| p.clip == clip);
+                    // `.get`, not `[..]`: the index is cached in the scratch, and a scratch
+                    // that outlived a DeleteClip would panic here rather than go quiet.
+                    let track = doc.clips().get(clip).and_then(|c| c.clip.track(target));
+                    // Sparsity (R2): a clip that does not key this channel contributes
+                    // nothing — unless it is the probed one, whose whole purpose is to
+                    // answer "what if it did".
+                    match (probed, track) {
+                        (Some(p), _) => p.value,
+                        (None, Some(tr)) if !tr.is_empty() => {
+                            let t_src = scratch.clocks[i].get(entity, a.t_clip);
+                            let Some(v) = as_f64(tr.sample(t_src)) else {
+                                continue;
+                            };
+                            v
+                        }
+                        _ => continue,
+                    }
+                }
             };
             let x = if additive {
                 // **A write can move the reference it is measured against.** An
@@ -313,11 +175,25 @@ fn sample_stack_probed(
                 // none: the key was written, the delta came out zero, the pose was
                 // thrown away, and every OTHER frame of that lane translated by the
                 // value we had just invented. So the probe models the write.
-                let base = match (probed, track) {
-                    (Some(p), Some(tr)) => reference_after(tr, a.src_in, p),
-                    (Some(p), None) => p.value, // no track: the key IS the curve
-                    (None, Some(tr)) => reference(tr, a.src_in),
-                    (None, None) => v,
+                let base = match a.source {
+                    // A container's reference is its interior read at the strip's FIRST
+                    // frame — the same rule ("the clip's own value at `src_in`"), asked of
+                    // the thing that is actually playing.
+                    // The interior read at the strip's FIRST frame — the same rule a clip
+                    // strip follows, asked of the thing that is actually playing.
+                    ActiveSource::Container { reference, .. } => reference
+                        .and_then(|r| eval_frame(doc, scratch, r, q, probe))
+                        .unwrap_or(v),
+                    ActiveSource::Clip(clip) => {
+                        let probed = probe.filter(|p| p.clip == clip);
+                        let track = doc.clips().get(clip).and_then(|c| c.clip.track(target));
+                        match (probed, track) {
+                            (Some(p), Some(tr)) => reference_after(tr, a.src_in, p),
+                            (Some(p), None) => p.value, // no track: the key IS the curve
+                            (None, Some(tr)) => reference(tr, a.src_in),
+                            (None, None) => v,
+                        }
+                    }
                 };
                 contribution(v, base, algebra)
             } else {
@@ -364,11 +240,7 @@ fn sample_stack_probed(
         touched = true;
     }
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "the scene value is f32; f64 is the blend's working precision"
-    )]
-    touched.then_some(acc as f32)
+    touched.then_some(acc)
 }
 
 /// A hypothetical **write**: "if clip `clip` held `value` at source time `t_key`".
@@ -408,7 +280,11 @@ pub(crate) fn sole_strip_of(
         // A HELD strip is over. It still shapes the pose (a fade crosses from it), but
         // "where is this clip playing right now" must not answer with a strip that has
         // ended — `K` would drop the key past the end of a strip nobody is watching.
-        if a.clip != clip || a.held {
+        // **Every frame, not just the document's** (ADR-0133): under nesting a clip can
+        // be playing inside a container — and twice, if the container itself plays twice.
+        // "Where is this clip right now" has to look everywhere it could be, or `K` would
+        // land a key in one of two places without saying there were two.
+        if a.source.clip() != Some(clip) || a.held {
             continue;
         }
         if found.is_some() {
@@ -427,7 +303,10 @@ pub(crate) fn strip_source_time(
     entity: u64,
 ) -> Option<f64> {
     let i = scratch.active.iter().position(|a| {
-        a.lane == strip.lane && a.clip == strip.clip && a.t_clip.to_bits() == strip.t_clip.to_bits()
+        a.frame == strip.frame
+            && a.lane == strip.lane
+            && a.source == strip.source
+            && a.t_clip.to_bits() == strip.t_clip.to_bits()
     })?;
     Some(scratch.clocks[i].get(entity, strip.t_clip))
 }

@@ -17,7 +17,7 @@ use crate::binding::TargetBinding;
 use crate::nest::NamedContainer;
 use crate::prop::PropKind;
 use crate::stack::ClipLane;
-use crate::stack_eval::StackScratch;
+use crate::stack_frames::StackScratch;
 
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
 /// as the first field (never trust `serde(default)` under a positional format).

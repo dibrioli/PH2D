@@ -39,6 +39,7 @@ pub mod sprite;
 pub mod stack;
 pub mod stack_edit;
 mod stack_eval;
+mod stack_frames;
 pub mod state;
 mod strip_edge_edit;
 

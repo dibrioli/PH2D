@@ -83,9 +83,16 @@ Nada mais no strip muda. Uma faixa pode misturar strips de clip e de container, 
 sobreposição continua valendo, e os canais esparsos continuam valendo — porque **o que blenda é a
 saída, e a saída de um container tem a mesma forma que a de um clip**.
 
-> **Postcard é posicional:** `StripSource` é campo NOVO **apendado**, e `clip` sai. Isso é quebra
-> dura → **`DOC_VERSION` 7 → 8**, load de v7 migra `clip: u16` para `Source::Clip(u16)` (migração
-> total, sem perda). O load rejeita versão desconhecida, como hoje.
+> **Postcard é posicional:** isto **SUBSTITUI** um campo em vez de apendar um, então os bytes de
+> um v7 não estão "faltando" — significam outra coisa dali em diante. **`DOC_VERSION` 7 → 8, e um
+> v7 é REJEITADO.**
+>
+> ⚠️ **Correção (2026-07-18, Fatia 1):** a 1ª versão deste ADR dizia *"o load de v7 migra
+> `clip: u16` para `Source::Clip(u16)`, migração total sem perda"* — e, na frase seguinte, *"o load
+> rejeita versão desconhecida"*. As duas não podem ser verdade, e a segunda é a política da casa:
+> `from_bytes` recusa QUALQUER versão ≠ atual, e o gate que já existia diz textualmente *"an older
+> blob must be REJECTED by the version gate, not misread field-for-field"*. Não há maquinário de
+> migração neste documento, e inventar um dentro de uma fatia de dados seria contrabando.
 
 ### 3. O container é um ASSET REFERENCIADO no DOCUMENTO — não um tipo novo de entidade
 
@@ -216,8 +223,8 @@ Cada item é executável e nasce VERMELHO.
 4. `linking_a_container_into_itself_is_refused_at_the_gesture` — DFS ancestral; mensagem nomeada.
 5. `a_cyclic_document_is_rejected_at_load_not_repaired` — o oposto do auto-reparo do Blender.
    ⚠️ **Gate por camada**: 4 e 5 são independentes; neutralizar um não pode deixar o outro verde.
-6. `a_v7_document_loads_with_its_strips_pointing_at_clips` — migração `clip: u16` →
-   `Source::Clip(u16)`, sem perda.
+6. `the_schema_is_eight_and_a_v7_blob_is_refused` — v7 recusado, não mal-lido (ver a correção
+   acima; o gate desta linha originalmente prometia migração).
 7. `the_ruler_shows_the_parents_clock_and_the_sources_together` — seam que CLICA: entrar num
    container publica a breadcrumb e as duas réguas; sair restaura.
 8. **Perf**: o gate do §Kill.
@@ -246,9 +253,31 @@ segue de pé.
 Reproduz a medição de 2026-07-12 (51,84 µs @ 1400). **1400 bindings custam ~0,3% de um frame de
 60 Hz.**
 
-**O kill:** um documento de **8 containers × profundidade 3** (a escala de um rig 2D real) deve
-aplicar em **< 2× o custo do mesmo número de bindings achatado**. Acima disso o desenho morre e a
-alternativa nomeada é o desconto do Unreal (uma avaliação, N cópias).
+**O kill, como declarado:** um documento de **8 containers × profundidade 3** (a escala de um rig
+2D real) deve aplicar em **< 2× o custo do mesmo número de bindings achatado**.
+
+### ⚠️ A barra declarada FALHOU, e a substituta é medida (2026-07-18, Fatia 2)
+
+Medido (release, 300 bindings, 8 instâncias sobrepostas): **~2,1–2,9× a profundidade 3**. A barra
+falhou como escrita. Mas medir por PROFUNDIDADE mostrou o porquê, e o porquê isenta o desenho:
+
+```text
+  depth 1: 1,51x   depth 2: 1,89x   depth 3: 2,11x   depth 5: 2,59x   depth 8: 3,40x
+  ratio/(depth+1): 0,754 → 0,630 → 0,528 → 0,432 → 0,377   (CAI)
+```
+
+O custo é **linear na profundidade, inclinação ~0,27/nível**, e a coluna normalizada **cai**: cada
+nível a mais custa menos que o primeiro. **Um "2×" é uma CONSTANTE, e avaliar N níveis é
+honestamente trabalho de N níveis** — a barra media a grandeza errada, e eu a escrevi antes de ter
+qualquer medição, que é exatamente o que o §0.0 adverte.
+
+**A barra nova pina a LEI, não o relógio:** dobrar a profundidade não pode mais que dobrar o
+sobrecusto (`the_cost_of_depth_is_linear_not_explosive`, teto 2,9× para o salto 3→8, onde linear
+seria 2,67×). É a mesma doutrina do `apply_perf` deste módulo. Fosso medido dos dois lados: são
+**2,22–2,27** (±2%), mutante (fatia por-frame → varredura completa) **3,42–3,50**.
+
+⚠️ **E o wall-clock absoluto depende da ORDEM em que se mede** — o mesmo depth 3 deu 2,11 e 2,94
+conforme o aquecimento —, o que é a segunda razão para gatear um ratio-de-ratios e não um limiar.
 
 **E é por isso que NÃO há teto de profundidade** (§0.0 — um limite legítimo diz de que recurso ele
 é): a ~0,04 µs/binding, mesmo a profundidade 10 sobre 1400 bindings custaria ~600 µs = **3,6% do

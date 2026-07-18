@@ -111,12 +111,12 @@ os dois caíram por medição. As Fatias 1-3 seguem como escritas.
 
 ---
 
-## §3 — Fatia 1 — dados + ciclo (`ph2d-timeline`, headless)
+## §3 — Fatia 1 — dados + ciclo (`ph2d-timeline`, headless) — ✅ **FECHADA (2026-07-18)**
 
 1. `ClipStrip.clip: u16` → `ClipStrip.source: StripSource{Clip(u16), Container(u16)}`.
 2. `TimelineDoc` ganha a lista de containers (irmã da de clips), cada um dono da própria pilha.
-3. **`DOC_VERSION` 7 → 8**, com migração total de v7 (`clip` → `Source::Clip`). Load rejeita
-   versão desconhecida, como hoje.
+3. **`DOC_VERSION` 7 → 8**; um v7 é **rejeitado**, não migrado — a política da casa para todo
+   bump, e o gate existente já a escrevia.
 4. Ciclo, **duas camadas independentes**: DFS ancestral na criação do link (`NestRefusal::WouldCycle`)
    + re-checagem no load com **rejeição**, nunca auto-reparo.
 
@@ -124,12 +124,12 @@ os dois caíram por medição. As Fatias 1-3 seguem como escritas.
 - `a_container_instance_is_a_strip_and_reads_the_parents_clock`
 - `linking_a_container_into_itself_is_refused_at_the_gesture`
 - `a_cyclic_document_is_rejected_at_load_not_repaired`
-- `a_v7_document_loads_with_its_strips_pointing_at_clips`
+- `the_schema_is_eight_and_a_v7_blob_is_refused`
 
 ⚠️ **Gate POR CAMADA** ([[feedback_layered_defenses_need_per_layer_gates]]): neutralizar o DFS da
 criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem mutação própria.
 
-## §4 — Fatia 2 — o relógio recursivo (`ph2d-timeline`, headless)
+## §4 — Fatia 2 — o relógio recursivo (`ph2d-timeline`, headless) — ✅ **FECHADA (2026-07-18)**
 
 1. A cadeia ganha o elo do container; `key_home` e a amostragem compõem pela **mesma** função em
    qualquer profundidade.
@@ -139,9 +139,10 @@ criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem
 - `the_clock_composes_outer_then_inner_at_every_depth` — a 3 níveis, autoria e leitura dão o mesmo
   instante ([[feedback_derived_coordinate_seed_must_match_sample]], agora recursivo)
 - `a_container_playing_twice_refuses_the_key_and_names_why`
-- **perf**: 8 containers × profundidade 3 em **< 2×** o custo do mesmo número de bindings achatado.
-  Bar em **RATIO**, nunca wall-clock — o `ci-test` compila em `opt-level=1` e o wall-clock mede o
-  perfil, não a lei (e a própria baseline varia ~25% entre execuções).
+- **perf**: ⚠️ a barra de "< 2×" **falhou medida** (deu ~2,1–2,9× a profundidade 3) e foi
+  substituída pela LEI: o custo é linear na profundidade (inclinação ~0,27/nível, e
+  `ratio/(depth+1)` cai), então o gate exige que **dobrar a profundidade não mais que dobre o
+  sobrecusto** — `the_cost_of_depth_is_linear_not_explosive`. Detalhe e fosso no ADR §Kill.
 
 ## §5 — Fatia 3 — UI (`ph2d-panel-timeline` + shell)
 

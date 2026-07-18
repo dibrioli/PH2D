@@ -15,7 +15,7 @@ use ph2d_ecs::{Entity, Transform, World};
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 use crate::sprite::SpriteProp;
-use crate::stack_eval;
+use crate::{stack_eval, stack_frames};
 
 /// Sample every binding in `doc`'s active clip at time `t` (seconds) and write
 /// the resolved value into each bound entity. Updates each binding's `missing`
@@ -301,7 +301,7 @@ pub fn clip_playhead(doc: &TimelineDoc, t: f64) -> Result<f64, crate::KeyRefusal
 /// exactly the shape of bug that has broken this module three times over
 /// ([[feedback_derived_coordinate_seed_must_match_sample]]). Check it rather than
 /// trust it: a reader pointed at another instant gets a confidently wrong answer.
-fn debug_assert_scratch_at(scratch: &stack_eval::StackScratch, t: f64) {
+fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
     debug_assert!(
         scratch.built_at().to_bits() == t.to_bits(),
         "the stack scratch describes t={}, not t={t}: prime_stack first",

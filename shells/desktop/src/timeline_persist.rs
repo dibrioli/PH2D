@@ -25,17 +25,17 @@ use ph2d_timeline::{
     TimelineState, WireId, refresh_and_heal_bindings, resolve_entities, stamp_wire_ids,
 };
 
-/// FNV-1a of a name → a stable non-null `WireId`. Names are unique, so this is a
-/// stable per-object id; `NULL` is reserved, so a hash that lands on 0 is nudged.
+/// A name → the stable `WireId` of the object carrying it.
+///
+/// The hash itself moved to [`ph2d_ecs::stable_name_id`], beside the `Name` it
+/// is derived from, when physics joints (W3) became the second thing in the
+/// editor that has to point at an object across a Ctrl+Z and a save. It is the
+/// same FNV-1a, byte for byte — pinned there against values computed outside
+/// this codebase, because these numbers are already written into every project
+/// file on disk. What stays here is the `WireId` wrapper: the timeline's
+/// namespace for the id, not a second opinion about how to compute it.
 fn wire_id_for_name(name: &str) -> WireId {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    let mut h = OFFSET;
-    for b in name.as_bytes() {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(PRIME);
-    }
-    WireId(if h == 0 { 1 } else { h })
+    WireId(ph2d_ecs::stable_name_id(name))
 }
 
 /// The bound entity's name-derived wire id, or `NULL` when it has no `Name`

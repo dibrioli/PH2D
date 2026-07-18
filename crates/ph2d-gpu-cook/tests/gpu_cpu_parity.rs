@@ -49,6 +49,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_lfo::register(&mut reg).unwrap();
     ph2d_node_motion_luminance::register(&mut reg).unwrap();
     ph2d_node_value_map_range::register(&mut reg).unwrap();
+    ph2d_node_motion_orbit::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1412,4 +1413,30 @@ fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
         cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
         "fixture check: the field must VARY, or this proves nothing"
     );
+}
+
+/// `motion.orbit` — swings each element around a pivot by an angle the playhead
+/// advances. The rotation is ABSOLUTE (the pristine `P` turned by
+/// `angle + playhead·speed`), never cumulative, which is what lets the
+/// transcendental-free parabolic sine stand in for real trig: its ~0.09% error
+/// wobbles the radius sub-pixel and cannot accumulate.
+///
+/// The pivot is deliberately OFF the grid's centre and the angle is not a
+/// multiple of 90°: a pivot at the origin with a right angle would make the
+/// rotation a coordinate swap, which a transposed matrix would survive.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn orbit_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.orbit");
+    g.set_param(node, "pivot_x", 0.83);
+    g.set_param(node, "pivot_y", -1.37);
+    g.set_param(node, "angle", 23.5);
+    g.set_param(node, "speed", 47.0);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }

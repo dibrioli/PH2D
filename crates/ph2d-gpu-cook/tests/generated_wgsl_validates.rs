@@ -46,6 +46,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_value_lfo::register(&mut reg).unwrap();
     ph2d_node_motion_luminance::register(&mut reg).unwrap();
     ph2d_node_value_map_range::register(&mut reg).unwrap();
+    ph2d_node_motion_orbit::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — the simulation loop.
     ph2d_node_motion_integrate::register(&mut reg).unwrap();
     ph2d_node_force_wind::register(&mut reg).unwrap();

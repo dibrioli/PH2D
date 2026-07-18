@@ -23,6 +23,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -92,6 +93,66 @@ fn orbit_point(p: [f32; 2], pivot: [f32; 2], c: f32, s: f32, f: f32) -> [f32; 2]
     [p[0] + (rx - p[0]) * f, p[1] + (ry - p[1]) * f]
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`orbit_point`] over each
+/// element's own `P`.
+///
+/// The rotation is **absolute, not cumulative**: every frame turns the pristine
+/// `P` by `angle + playhead·speed`, so the parabolic sine's ~0.09% error wobbles
+/// the radius by a fraction of a pixel and never accumulates. That is what lets
+/// the transcendental-free approximation stand in for real trig here (HR-5) —
+/// and it is why this kernel ports `sin_cycles` verbatim instead of calling
+/// WGSL's `sin`, which has no cross-vendor guarantee and would put the GPU on a
+/// different circle from the CPU.
+///
+/// `falloff` weights the move per element (absent → 1.0), so the same node can
+/// swing part of a stream — the lerp `p + (rotated − p)·f` is the CPU's, not a
+/// re-derivation.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let ob_pivot = vec2<f32>(params.pivot_x, params.pivot_y);\n\
+        let ob_theta = (params.angle + params.playhead * params.speed) / 360.0;\n\
+        let ob_c = ob_sin_cycles(ob_theta + 0.25);\n\
+        let ob_s = ob_sin_cycles(ob_theta);\n\
+        let ob_p = read_P(i);\n\
+        let ob_d = ob_p - ob_pivot;\n\
+        let ob_r = ob_pivot + vec2<f32>(\n\
+        \x20   ob_c * ob_d.x - ob_s * ob_d.y,\n\
+        \x20   ob_s * ob_d.x + ob_c * ob_d.y);\n\
+        write_P(i, ob_p + (ob_r - ob_p) * read_falloff(i));\n",
+    wgsl_lib: "\
+        fn ob_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["pivot_x", "pivot_y", "angle", "speed"],
+    source_window: None,
+    applicable: None,
+};
+
 struct MotionOrbit;
 
 impl NodeOp for MotionOrbit {
@@ -135,6 +196,7 @@ impl NodeOp for MotionOrbit {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionOrbit))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // M1.R1 — UI metadata (a spatial transform → blue transform, rounded-rect).
     reg.register_ui(
         MANIFEST.id,

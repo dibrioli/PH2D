@@ -53,6 +53,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
     ph2d_node_motion_look_at::register(&mut reg).unwrap();
+    ph2d_node_value_instance_field::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1620,6 +1621,125 @@ fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
             "{label}: fixture check — the field must aim in varied directions"
         );
     }
+}
+
+/// **TWO CPU seams, one march, and the same picture the CPU draws** — slice B,
+/// end to end on the product path.
+///
+/// `motion.look_at`'s two target ports are fed by `value.instance_field`, which
+/// has no kernel, so the plan's frontier BRANCHES: two boundaries, with the grid
+/// and the look_at still claimed behind them. Until the pump went plural the
+/// shell forfeited the GPU for exactly this document.
+///
+/// It drives the REAL `MotionCookPump` rather than calling `Cook` twice by hand,
+/// because the thing being tested is the pump's plural hand-off: the march, the
+/// dedupe, and the labelling of each stream with its node. A gate that cooked
+/// the two boundaries itself would pass with the pump still singular.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn two_cpu_seams_hand_over_in_one_march_and_match_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 10.0);
+    let la = g.add_node("motion.look_at");
+    let out = g.add_node("motion.output");
+    g.set_param(la, "offset", 17.0);
+    connect(&mut g, grid, la);
+    connect(&mut g, la, out);
+    // Two uncovered VALUE producers, one per target port, with DIFFERENT modes so
+    // the two targets never coincide — equal targets would survive the two
+    // streams being swapped or one of them being handed over twice.
+    let mut fields = Vec::new();
+    for (port, mode) in [(1u16, 0.0), (2u16, 2.0)] {
+        let f = g.add_node("value.instance_field");
+        g.set_param(f, "mode", mode);
+        connect(&mut g, grid, f);
+        g.connect(Edge {
+            from: (f, 0),
+            to: (la, port),
+            delayed: false,
+        })
+        .expect("target port");
+        fields.push(f);
+    }
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert_eq!(
+        plan.boundaries,
+        vec![(fields[0], 0), (fields[1], 0)],
+        "the frontier branches: one seam per uncovered target port"
+    );
+    assert!(
+        plan.stages.iter().any(|s| s.node == la),
+        "and the look_at is still claimed BEHIND those seams — otherwise this \
+         gate would be proving that two seams cost nothing because nothing ran"
+    );
+
+    // The CPU's answer, whole, on the canonical path.
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
+    )
+    .expect("cpu cook");
+
+    // The product path: ONE march over the whole boundary set.
+    let mut pump = ph2d_eval_motion::MotionCookPump::new();
+    let nodes: Vec<_> = plan.boundaries.iter().map(|(n, _)| *n).collect();
+    pump.advance_or_scrub_to_nodes_scoped(
+        &g,
+        &reg,
+        &nodes,
+        0,
+        |_| PLAYHEAD,
+        &ph2d_nodegraph::cook::TimeScopes::default(),
+    );
+    let handed: Vec<_> = pump
+        .boundary_streams()
+        .iter()
+        .map(|(n, s)| (*n, s))
+        .collect();
+    assert_eq!(handed.len(), 2, "both seams handed over in that one march");
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let n = gc
+        .cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &handed,
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+    assert_eq!(n as usize, cpu.len(), "same instance count");
+
+    let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+    assert_parity(&cpu, &gpu_out);
+    // Fixture check: the aim must VARY across the field, or a hand-off that
+    // delivered the SAME stream to both ports would pass. `look_at` writes `rot`,
+    // which the lowering folds into `basis` — so the basis is where a constant
+    // rotation would show up as every element sharing one.
+    assert!(
+        cpu.iter()
+            .any(|i| (i.basis[0] - cpu[0].basis[0]).abs() > 1e-3),
+        "fixture check: the elements must aim in varied directions"
+    );
 }
 
 /// `motion.orbit` — swings each element around a pivot by an angle the playhead

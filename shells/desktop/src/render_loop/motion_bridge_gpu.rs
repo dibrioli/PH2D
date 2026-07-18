@@ -28,8 +28,11 @@ pub(super) enum GpuRoute {
     /// The whole chain is kernel-covered: cook it 100% on the GPU, no CPU pump,
     /// no readback (F1.1).
     FullyGpu,
-    /// A CPU prefix cooks up to this boundary node; the GPU runs the suffix (F1.2).
-    Hybrid(NodeId),
+    /// A CPU prefix cooks up to the plan's boundary nodes; the GPU runs the
+    /// suffix. **The nodes are not carried here**: `plan.boundaries` already
+    /// names them, and copying them into the route would be a second list to keep
+    /// in step with the first ([[feedback_two_doors_to_the_same_question_diverge]]).
+    Hybrid,
 }
 
 /// Choose the cook route from the plan and this frame's flags — the one place
@@ -39,14 +42,18 @@ pub(super) enum GpuRoute {
 ///   sink with **no time scopes** — multi-sink and `motion.time_remap` recuse to
 ///   the CPU whole (F1.1's scope; F2+ territory).
 /// - Fully-GPU when the plan claims the whole chain (no boundaries).
-/// - Hybrid when the plan leaves **one** CPU boundary **and** the GPU suffix has
-///   at least one dispatching stage — a boundary whose only GPU stage is the
+/// - Hybrid when the plan leaves **any** CPU boundaries **and** the GPU suffix
+///   has at least one dispatching stage — a boundary whose only GPU stage is the
 ///   pass-through `output` would upload the sink stream just to lower it (no
 ///   compute win), so that recuses to the CPU.
-/// - Several boundaries recuse: the motor plans a DAG with N seams (ADR-0127
-///   D2), but the pump hands over ONE cooked node per tick — marching it twice
-///   would advance its clock twice. The N-seam shell is a later slice; until
-///   then the CPU, which needs no seam at all, owns those documents.
+///
+/// **N boundaries used to recuse here**, on the reasoning that the pump handed
+/// over one cooked node per tick and *"marching it twice would advance its clock
+/// twice"*. That described the CALLER: the march and the `pre` feedback are per
+/// call, so the pump now takes the whole set and marches once
+/// (`advance_or_scrub_to_nodes_scoped`). The reasoning was also unreachable when
+/// it was written — no kernel had two stream inputs — and it silently swallowed
+/// the two-seam case the day `motion.look_at` made it reachable.
 pub(super) fn gpu_route(
     gpu_enabled: bool,
     n_sinks: usize,
@@ -59,7 +66,7 @@ pub(super) fn gpu_route(
     }
     match boundaries {
         [] => GpuRoute::FullyGpu,
-        [(node, _)] if dispatching_stages >= 1 => GpuRoute::Hybrid(*node),
+        _ if dispatching_stages >= 1 => GpuRoute::Hybrid,
         _ => GpuRoute::Cpu,
     }
 }
@@ -148,22 +155,42 @@ pub(super) fn cook_gpu(
                 GpuOutcome::FellThrough
             }
         }
-        GpuRoute::Hybrid(boundary) => {
-            // Cook the CPU prefix up to the boundary on the pump, marching every
-            // owed tick (a sequential prefix must sim each), then upload that
-            // node's stream to the GPU suffix. Time scopes are empty here (the
-            // route gate refused otherwise).
+        GpuRoute::Hybrid => {
+            // Cook the CPU prefix up to EVERY boundary on the pump, marching each
+            // owed tick (a sequential prefix must sim each), then upload their
+            // streams to the GPU suffix. Time scopes are empty here (the route
+            // gate refused otherwise).
+            //
+            // The node list comes from the plan, and the whole set goes in one
+            // call: the march and the `pre` advance are per CALL, so one call per
+            // boundary would advance the clock once per boundary and re-simulate
+            // the shared prefix.
+            let boundary_nodes: Vec<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
             for tick in super::ticks_owed(motion.pump.last_cooked_tick(), target) {
-                motion.pump.advance_or_scrub_to_node_scoped(
+                motion.pump.advance_or_scrub_to_nodes_scoped(
                     &motion.doc.graph,
                     &motion.registry,
-                    boundary,
+                    &boundary_nodes,
                     tick,
                     |t| t as f64 * fixed_dt,
                     scopes,
                 );
             }
-            if let Some(stream) = motion.pump.boundary_stream() {
+            // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the
+            // streams live in `motion.pump`, so the hand-off is materialised first.
+            let handed: Vec<(NodeId, &ph2d_nodegraph::attr::Stream)> = motion
+                .pump
+                .boundary_streams()
+                .iter()
+                .map(|(n, s)| (*n, s))
+                .collect();
+            // A boundary that failed to cook is simply missing, and the sequencer
+            // validates the set against `plan.boundaries` — so an incomplete
+            // hand-off is REFUSED (`BoundaryMismatch`) rather than dispatched
+            // against an empty stream. Letting it try is deliberate: the check
+            // lives in one place, and duplicating it here would be a second
+            // opinion about what a complete hand-off is.
+            if !handed.is_empty() {
                 motion.gpu_live = motion
                     .gpu_cook
                     .cook(
@@ -172,7 +199,7 @@ pub(super) fn cook_gpu(
                         &motion.registry,
                         &motion.registry,
                         &plan,
-                        &[(boundary, stream)],
+                        &handed,
                         // A hybrid plan never drives a loop: a staged `pre`
                         // source plus a boundary is refused whole at plan time
                         // (it would be two sims of one state), so there is no
@@ -303,26 +330,33 @@ mod tests {
         assert_eq!(gpu_route(true, 1, false, &[], 3), GpuRoute::Cpu);
     }
 
-    /// **What two seams cost today** — and the assertion slice B must flip.
+    /// **Two seams take the GPU now** — the assertion that flipped when the pump
+    /// went plural, and the reason it was pinned before it could.
     ///
-    /// A multi-input kernel (`motion.look_at`) can leave a plan with two CPU
+    /// A multi-input kernel (`motion.look_at`) leaves a plan with two CPU
     /// boundaries and real GPU work behind them (measured in `ph2d-gpu-cook`'s
-    /// `boundary_arity`). The pump takes ONE boundary (`CookTarget::Boundary`),
-    /// so the route forfeits the GPU for the whole frame rather than cook a
-    /// partial prefix — never wrong, and never fast either.
+    /// `boundary_arity`, item (d)). This used to assert `Cpu`: the pump took ONE
+    /// boundary, so the route forfeited the GPU for the whole frame — never
+    /// wrong, and never fast either.
     ///
-    /// This is pinned rather than left implicit because `_ => GpuRoute::Cpu` is a
-    /// catch-all: it swallowed the two-seam case the day it became reachable
-    /// without a single gate changing colour. When the plural pump lands, THIS
-    /// line is what has to change, and it names why.
+    /// It was written as a gate rather than left implicit because
+    /// `_ => GpuRoute::Cpu` is a catch-all: it swallowed the two-seam case the
+    /// day it became reachable **without a single gate changing colour**. Being
+    /// pinned is what made the change visible when it came.
     #[test]
-    fn two_seams_forfeit_the_gpu_until_the_pump_is_plural() {
+    fn two_seams_take_the_hybrid_route() {
         // Two DISTINCT nodes — `node()` is a single stand-in id, and reusing it
         // would model one node consumed on two ports (the duplicate entry the
-        // plural pump will have to dedupe), which is a different shape.
+        // pump dedupes), which is a different shape.
         let (a, b) = (NodeId(7), NodeId(8));
         assert_eq!(
             gpu_route(true, 1, true, &[(a, 0), (b, 0)], 3),
+            GpuRoute::Hybrid
+        );
+        // Still no compute win, still the CPU — the dispatching-stage rule is
+        // independent of how many seams there are.
+        assert_eq!(
+            gpu_route(true, 1, true, &[(a, 0), (b, 0)], 0),
             GpuRoute::Cpu
         );
     }
@@ -336,12 +370,12 @@ mod tests {
     fn a_boundary_with_gpu_work_is_hybrid() {
         assert_eq!(
             gpu_route(true, 1, true, &[(node(), 0)], 2),
-            GpuRoute::Hybrid(node())
+            GpuRoute::Hybrid
         );
         // One dispatching stage is enough.
         assert_eq!(
             gpu_route(true, 1, true, &[(node(), 0)], 1),
-            GpuRoute::Hybrid(node())
+            GpuRoute::Hybrid
         );
     }
 

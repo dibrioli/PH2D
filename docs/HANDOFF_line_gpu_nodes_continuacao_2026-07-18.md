@@ -138,88 +138,62 @@ Há **três alavancas**, e elas têm uma ordem — **corrigida por medição em
 > abaixo. O resto desta caixa continua valendo como o registro de por que (B) não
 > era trabalho antes.
 
-### (B) N fronteiras no shell — **DESBLOQUEADA: o tripwire DISPAROU (2026-07-18)**
+### (B) N fronteiras no shell — ✅ **CONSTRUÍDA (2026-07-18)**
 
-⚠️ **Isto virou o próximo trabalho real.** `motion.look_at` pousou com kernel, e o
-que era inalcançável passou a ser **medido**: duas entradas descobertas em duas
-portas deixam **exatamente 2 fronteiras**, com **3 stages** ainda reivindicados
-(gate `a_chain_collapses_to_one_seam_but_a_multi_input_kernel_reaches_two`).
+O tripwire disparou (`motion.look_at` pousou com kernel) e a fatia foi construída
+no mesmo dia. **O pump é plural:** `CookTarget::Boundary(NodeId)` →
+`Boundaries(&[NodeId])`, `boundary_stream: Option<Stream>` →
+`boundary_streams: Vec<(NodeId, Stream)>`, e
+`advance_or_scrub_to_nodes_scoped` recebe **o conjunto inteiro**.
 
-**O grafo vermelho-primeiro que faltava agora EXISTE e está escrito** — é o item
-(d) desse gate: `grid → look_at`, com `motion.sort` (sem kernel) em cada porta de
-target. Cozinhe-o com um pump plural e compare contra a CPU pura.
+**Uma marcha, N consumos.** A frase que manteve isto singular — *"marchar duas
+vezes avançaria o relógio duas vezes"* — descrevia o **CHAMADOR**: a marcha e o
+`pre` são por CHAMADA, e só o consume difere por target. O laço foi para dentro do
+consume; a marcha continua uma.
 
-**O que custa hoje:** o shell manda o frame INTEIRO para a CPU (`_ => GpuRoute::
-Cpu`) — nunca errado, nunca rápido. Pinado em
-`two_seams_forfeit_the_gpu_until_the_pump_is_plural` (shell), **e é essa linha que
-a fatia B tem de virar**. Foi pinada de propósito: `_ => Cpu` é um catch-all, e ele
-engoliu o caso de 2 fronteiras no dia em que ele virou alcançável **sem um único
-gate mudar de cor**.
+**O que era LEITURA e agora é MEDIÇÃO.** O mapa afirmava, por leitura do `cook.rs`,
+que dois `cook_scoped` no mesmo playhead batem no memo — e admitia que a medição
+era impossível porque não existia grafo de 2 fronteiras. Existe agora, e o gate
+**CONTA os evals** (nunca cronometra: uma barra de tempo passa numa máquina rápida
+com o prefixo re-simulado). Prefixo compartilhado = **1 eval**; prefixos
+**disjuntos** = **2** (nem 1, que seria chave de memo colapsada, nem 4).
 
-O mapa abaixo continua valendo (e continua sendo LEITURA, não implementação).
+As duas perguntas que o mapa marcou como não-verificadas foram **gateadas**:
+**(b)** prefixos disjuntos (cada fronteira leva a resposta da PRÓPRIA cadeia) ·
+**(c)** scrub para trás com N fronteiras (a fonte carimba o playhead no `P.x`, e o
+gate exige o valor do tick rebobinado — sem isso ele só checaria que dois streams
+voltaram, o que um scrub devolvendo o futuro também satisfaz).
 
-Hoje: *"Several boundaries recuse: the motor plans a DAG with N seams (ADR-0127
-D2), but the pump hands over ONE cooked node per tick"*
-(`render_loop/motion_bridge_gpu.rs`). **O motor já planeja N costuras; o SHELL só
-entrega uma.** Com 52 nós descobertos, qualquer grafo real tem várias ⇒ cai
-**inteiro** na CPU.
+**Deduplicação, como o mapa avisou:** `plan.boundaries` traz o mesmo nó duas vezes
+quando ele alimenta duas portas estagiadas (`push` por porta); o pump entrega uma
+vez só.
 
-**É o multiplicador**: sem isso, o kernel nº 21 só ajuda grafos feitos exatamente
-do conjunto coberto. Com isso, **a parte coberta de qualquer grafo roda na GPU**.
+**Uma fronteira que falha não cala as outras** — as saudáveis entregam, o conjunto
+sai curto, e o sequenciador **recusa** por `BoundaryMismatch` (a checagem mora num
+lugar só; duplicá-la no shell seria uma 2ª opinião sobre o que é uma entrega
+completa). Derrubar todas por causa de um nó ruim transformaria um erro de edição
+num frame preto.
 
-#### O mapa do seam (LIDO, não implementado — verifique antes de confiar)
+**Shell:** `GpuRoute::Hybrid(NodeId)` → `Hybrid` **sem carregar os nós** — o
+`plan.boundaries` já os nomeia, e copiá-los para a rota seria uma 2ª lista para
+manter em dia. A regra de `dispatching_stages >= 1` continua e é **independente**
+do número de costuras.
 
-Gastei o resto do meu contexto mapeando isto em vez de começar a codar, porque a
-frase *"marchar duas vezes avançaria o relógio duas vezes"* **descreve o
-chamador atual, não uma restrição do motor**. Os quatro fatos:
+**Gate e2e no caminho do PRODUTO:** `two_cpu_seams_hand_over_in_one_march_and_
+match_the_cpu` — `grid → look_at` com dois `value.instance_field` (sem kernel) nas
+portas de target, dirigindo o `MotionCookPump` REAL. Um gate que cozinhasse as duas
+fronteiras à mão passaria com o pump ainda singular.
 
-1. **O lado GPU já é plural.** `GpuCook::cook` recebe
-   `boundary_streams: &[(NodeId, &Stream)]` e já valida o conjunto contra
-   `plan.boundaries` (`want` vs `got`, erro `BoundaryMismatch`). **Nada a fazer
-   aqui.**
-2. **O pump é singular por um `enum`, não por natureza.**
-   `ph2d-eval-motion/src/lib.rs`: `enum CookTarget { Sinks{…}, Boundary(NodeId) }`
-   (~linha 246) e `boundary_stream: Option<Stream>`.
-3. **O consume é 5 linhas** (~451): `self.cook.cook_scoped(graph, ops, node,
-   playhead, scopes)` e guarda `outputs.first()`. ⚠️ **`self.cook` é o `Cook`
-   MEMOIZADO** — cozinhar o nó X e depois o Y **no mesmo playhead** acerta o memo
-   no prefixo compartilhado, ou seja **não re-simula**.
-4. **A marcha e o `pre` são por CHAMADA**, não por nó: `CookTarget::has_work`
-   *"Drives the once-per-frame `pre`-feedback advance"*, e a decisão
-   forward/scrub + o ring moram no `advance_or_scrub_target_scoped`
-   compartilhado — o doc dele já diz que **só o consume difere** entre Sinks e
-   Boundary.
+**7 mutações, 7 mortas** (pump singular · sem dedupe · rota recusando N · nunca
+scrubar · e as 3 do broadcast).
 
-⇒ **A forma provável:** `CookTarget::Boundary(NodeId)` →
-`Boundaries(&'a [NodeId])`; o consume vira um laço de `cook_scoped` **no mesmo
-playhead, no mesmo memo**; `boundary_stream: Option<Stream>` →
-`boundary_streams: Vec<(NodeId, Stream)>`; e o `gpu_route` para de recusar
-`boundaries.len() > 1`. **UMA marcha, N capturas** — o relógio avança uma vez
-porque a chamada é uma.
+⚠️ **Split de LOC:** `ph2d-eval-motion/src/lib.rs` foi a 730 ⇒ o **lowering** saiu
+para `lower.rs` (a costura já estava lá: `lower.rs` responde *"como um stream fica
+na tela"* e não sabe de tick/memo/`pre`; o `lib.rs` roda o RELÓGIO). 555 + 194.
 
-⚠️ **Isto é uma LEITURA minha, não uma implementação testada.**
-
-> **(a) foi RESPONDIDA (2026-07-18), e a resposta é SIM** — mas por leitura do
-> código, não por medição (a medição ficou impossível: não há grafo de 2
-> fronteiras pra medir). O `Fingerprint` de `cook.rs` carrega
-> `tick: consumes_pre.then_some(self.tick)`, e `self.tick` **só anda em
-> `advance_tick_scoped`** — que o pump chama **uma vez por frame**, fora do
-> `cook_target_into`. Logo, dois `cook_scoped` no mesmo playhead/tick batem no
-> mesmo `(node, key)` com fingerprint idêntico e **retornam o memo**, inclusive
-> nos nós sequenciais. **Não re-simula.** Se (B) for construído um dia, isto ainda
-> vale — e ainda assim merece um gate que **CONTE** os evals (não que cronometre).
->
-> **⚠️ E um fato que o mapa não tinha:** `plan.boundaries` pode conter
-> **DUPLICATAS** (`source_of` dá `push` por *porta*, então um nó CPU que alimenta
-> dois nós estagiados entra duas vezes). O lado GPU já tolera (`want`/`got` são
-> `BTreeSet`, e o `uploaded` é um `BTreeMap` — *"a node consumed twice uploads
-> once"*), mas um pump plural **tem de deduplicar** antes de guardar os streams.
-
-O que eu não
-verifiquei e você tem de verificar primeiro: (b) o que acontece quando duas fronteiras têm
-**prefixos disjuntos** com nós sequenciais em cada um; (c) o scrub para trás com
-N fronteiras (o ring é do pump, compartilhado). Um gate red-first que cozinhe um
-grafo de **duas** fronteiras e compare com o CPU puro é o começo certo.
+**Aberto nesta fatia:** ninguém mediu ainda o GANHO de um documento de 2 costuras
+na GPU contra a CPU pura — a paridade está gateada, a **velocidade** não. É a
+próxima medição óbvia, e o handoff §0.0 cobra número, não impressão.
 
 ### (C) Mais kernels (os 52 restantes) — **O MULTIPLICADOR (corrigido)**
 
@@ -513,28 +487,28 @@ verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 | `02be152a` | `motion.stagger` (27º), com o easing inteiro (8 famílias × 3 direções) |
 | `d6ac6725` | **broadcast tentado e REVERTIDO** — a corrente tem uma etapa antes dela; bug latente medido |
 | `8a7ce80d` | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
-| (este) | **o BROADCAST** (`ColumnAccess::ReadBroadcast` + `bcast_one`) e **`motion.look_at`, o 28º kernel** — e o **tripwire DISPAROU**: 2 costuras são medidas, a fatia B está desbloqueada com o grafo vermelho-primeiro escrito |
+| `97c156a9` | **o BROADCAST** (`ColumnAccess::ReadBroadcast` + `bcast_one`) e **`motion.look_at`, o 28º kernel** — e o **tripwire DISPAROU**: 2 costuras são medidas, a fatia B está desbloqueada com o grafo vermelho-primeiro escrito |
+| (este) | **A FATIA B CONSTRUÍDA** — o pump é plural (uma marcha, N entregas), o memo virou MEDIÇÃO (conta evals), (b) e (c) do mapa gateados, split `lower.rs` |
 
 **Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
 shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada
 integrado, nada pushado** (§0.2).
 
-**Onde o próximo agente começa: a FATIA B** (§2 B) — o tripwire disparou e ela
-deixou de ser hipótese. O grafo vermelho-primeiro está escrito (item (d) do
-`boundary_arity`), o mapa do seam está logo abaixo dela, e a linha do shell que
-tem de virar está pinada e nomeada
-(`two_seams_forfeit_the_gpu_until_the_pump_is_plural`).
+**Onde o próximo agente começa.** As três alavancas do §2 estão em estados
+diferentes agora:
 
-Duas perguntas que o mapa NÃO respondeu e que você verifica primeiro: (b) duas
-fronteiras com **prefixos disjuntos** contendo nós sequenciais em cada um; (c) o
-scrub para trás com N fronteiras (o ring é do pump, compartilhado). E lembre da
-**deduplicação**: `plan.boundaries` pode trazer o mesmo nó duas vezes (um `push`
-por porta) — o lado GPU já tolera, um pump plural não.
+1. **(C) COBERTURA — o multiplicador, e o caminho mais curto.**
+   `value.math`/`value.switch`/`motion.drive` só precisam de KERNEL: a plumbing de
+   broadcast que eles queriam já está lá. ⚠️ O `value.math` traz a **3ª lei de
+   contagem** (`max(a.len, b.len)`) **junto do kernel que a consome** — motor sem
+   consumidor já foi revertido uma vez nesta linha.
+2. **MEDIR a fatia B.** A paridade de 2 costuras está gateada; o **ganho** não. Um
+   documento de 2 costuras na GPU contra a CPU pura é a medição que falta, e o §0.0
+   cobra número.
+3. **(A) GPU por default** — segue bloqueada pela Fase 4 (readouts/preview do
+   painel), que é a última coisa entre os 4,19 M partículas e um usuário.
 
-Se preferir seguir em cobertura antes: `value.math`/`value.switch`/`motion.drive`
-agora só precisam de kernel — a plumbing de broadcast que eles queriam já está lá
-(o `value.math` traz a 3ª lei de contagem, `max(a.len, b.len)`, junto do kernel
-que a consome — nunca antes).
+Nada aqui está bloqueado por outra coisa: escolha por retorno.
 
 ## §5 — Histórico (não leia salvo arqueologia)
 

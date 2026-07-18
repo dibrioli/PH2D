@@ -518,3 +518,50 @@ fn entering_two_deep_keeps_the_way_back_to_the_middle() {
         .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[0]));
     assert_eq!(ph2d_panel_timeline::state::edit_host(), StackHost::Document);
 }
+
+/// **A trilha funda é de fato PINTADA, e cada segmento vira alvo clicável.**
+///
+/// Os gates acima provam a POLÍTICA (que profundidade cada slot popa); nenhum deles roda o
+/// `paint`, e um segmento atrás de um `return` antecipado — ou um índice fora da régua de ids
+/// — seria "a trilha não existe" com tudo verde ([[feedback_painted_is_not_populated_paint_gate]]).
+/// Este pinta, e lê o que o clique de fato encontraria.
+#[test]
+fn a_deep_trail_paints_a_clickable_segment_for_every_level() {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    // Uma trilha mais funda que a régua de ids: a pintura não pode estourar o array, e tem de
+    // parar exatamente nele.
+    let deep = ids::TIMELINE_CRUMB.len() + 3;
+    let snap = TimelineViewSnapshot {
+        crumbs: (0..deep).map(|i| (i, format!("C{i}"))).collect(),
+        ..TimelineViewSnapshot::default()
+    };
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    set_current_timeline(Some(snap));
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let painted = ids::TIMELINE_CRUMB
+        .iter()
+        .filter(|id| regs.iter().any(|(r, _)| r == *id))
+        .count();
+    assert_eq!(
+        painted,
+        ids::TIMELINE_CRUMB.len(),
+        "a trilha funda tem de encher a régua de ids -- e nunca passar dela"
+    );
+    // E o controle POSITIVO: na cena a trilha não pinta segmento nenhum.
+    set_current_timeline(Some(TimelineViewSnapshot::default()));
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(
+        !ids::TIMELINE_CRUMB
+            .iter()
+            .any(|id| regs.iter().any(|(r, _)| r == id)),
+        "na raiz a trilha não paga um pixel"
+    );
+    set_current_timeline(None);
+}

@@ -1100,3 +1100,66 @@ fn the_emitter_generator_matches_the_cpu() {
     // the sliding window, cooked down both paths and compared instance by
     // instance.
 }
+
+/// **The panel can still read the wire mass off a GPU frame.**
+///
+/// The graph panel's taper is `f(count)` and its usual source is the CPU memo,
+/// which a GPU-resident cook never fills — so without this every wire flattens to
+/// the same thread exactly when the counts got interesting. The count is not a
+/// result, though: it is what the host SIZED the dispatch with, so publishing it
+/// is bookkeeping, not a readback (and the readback is measured-negative —
+/// `readback_tap_cost_probe`).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_sequencer_publishes_each_staged_nodes_element_count() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const ROWS: f32 = 40.0;
+    let (g, [grid, osc, mv, out]) = chain(&reg, ROWS);
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu(), "the F1.1 chain is claimed whole");
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    // Before any cook there is nothing to report — and reporting a confident 0
+    // would be worse than reporting nothing (a 0-wide wire is a claim).
+    assert_eq!(gc.node_count(grid), None, "no cook yet, no count");
+
+    let n = gc
+        .cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+
+    let want = (ROWS * ROWS) as u32;
+    assert_eq!(n, want, "the chain carries rows² instances");
+    for (node, label) in [
+        (grid, "grid"),
+        (osc, "oscillator"),
+        (mv, "move"),
+        (out, "output"),
+    ] {
+        assert_eq!(
+            gc.node_count(node),
+            Some(want),
+            "{label} is staged, so its element count is host-known"
+        );
+    }
+    // A node the plan never staged has no entry — the panel then falls back to
+    // the CPU memo, which for a hybrid prefix genuinely holds one.
+    assert_eq!(
+        gc.node_count(ph2d_nodegraph::graph::NodeId(9999)),
+        None,
+        "an unstaged node reports nothing, never a stale or invented count"
+    );
+}

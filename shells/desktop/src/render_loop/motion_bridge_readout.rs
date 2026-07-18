@@ -148,9 +148,23 @@ pub(super) fn stamp(
         let id = NodeId(node.id);
         let cooked = motion.pump.cook.peek(id);
         node.readout = cooked.and_then(readout_of);
+        // The wire's mass. The memo answers while the CPU pump drives; under a
+        // GPU-resident cook it is empty, and the count then comes from the
+        // sequencer, which SIZED the dispatch with it — host-side, no readback
+        // (the tap is measured-negative: `readback_tap_cost_probe`). Without this
+        // every wire flattens to the same thread the moment the device takes over,
+        // and the taper — the panel's one answer to "how much is moving?" — dies
+        // exactly where the counts got interesting.
+        //
+        // ⚠️ One frame stale: `stamp` runs before `cook_gpu`. That is invisible
+        // here BY THE SHAPE OF THE CONSUMER — `count` feeds `flow::wire_width`
+        // and nothing else, so it is a sqrt-scaled thickness, never a number on
+        // screen. A reading the artist could quote would not get this latitude
+        // (which is why the probe next door refuses instead).
         node.count = cooked
             .and_then(|o| o.first())
-            .map(|v| v.as_stream().count() as u32);
+            .map(|v| v.as_stream().count() as u32)
+            .or_else(|| motion.gpu_cook.node_count(id));
         node.is_sink = motion.sinks.contains(&id);
         node.preview = cooked.and_then(preview_of);
 

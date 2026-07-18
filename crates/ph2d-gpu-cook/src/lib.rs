@@ -142,6 +142,20 @@ pub struct GpuCook {
     /// skips anything still referenced. No readback, no copy, no barrier —
     /// the ping-pong falls out of the fact that state was always a column.
     prev: BTreeMap<NodeId, GpuStream>,
+    /// **How many elements each staged node carried on the last cook** — the one
+    /// thing the graph panel can still know about a GPU-resident frame without
+    /// reading a single byte back.
+    ///
+    /// The panel's wire taper is `f(count)`, and its usual source is the CPU
+    /// memo, which a GPU cook does not feed — so every wire flattens to the
+    /// same thread the moment the device takes over. But the count is not a
+    /// *result*: it is what the host SIZED the dispatch with, known before the
+    /// kernel ran. Publishing it is bookkeeping, not a readback ([[the tap is
+    /// negative — `readback_tap_cost_probe`]]).
+    ///
+    /// Staged nodes only. A hybrid plan's CPU prefix was cooked on the pump, so
+    /// the memo answers for those; between the two the whole graph is covered.
+    last_counts: BTreeMap<NodeId, u32>,
     /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
     /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
     /// step per tick, so the caller needs to know which one it last took; a
@@ -168,6 +182,15 @@ impl GpuCook {
     /// renderer binds. `None` before the first cook.
     pub fn instances(&self) -> Option<&GpuInstances> {
         self.instances.as_ref()
+    }
+
+    /// How many elements `node` carried on the last [`Self::cook`] — `None` if
+    /// this plan did not stage it (a CPU boundary, or a node no sink reaches).
+    ///
+    /// The graph panel's wire taper reads this when the CPU memo is empty, which
+    /// is every frame of a GPU-resident cook. No readback: see [`Self::last_counts`].
+    pub fn node_count(&self, node: NodeId) -> Option<u32> {
+        self.last_counts.get(&node).copied()
     }
 
     /// The fixed tick this sim's state ([`Self::prev`]) belongs to — the GPU
@@ -318,6 +341,11 @@ impl GpuCook {
             );
             streams.insert(stage.node, out);
         }
+
+        // What the panel gets to know about a GPU frame (see `last_counts`): the
+        // host-side element count of every staged node, recorded once the walk is
+        // done. Cheap (a map of `u32`) and honest — these ARE the dispatch sizes.
+        self.last_counts = streams.iter().map(|(n, st)| (*n, st.count)).collect();
 
         // The sink is the walk's post-order root, so it is the last stage.
         let sink_stream = plan

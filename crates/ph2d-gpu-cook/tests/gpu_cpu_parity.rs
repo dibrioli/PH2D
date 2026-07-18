@@ -53,6 +53,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
     ph2d_node_motion_look_at::register(&mut reg).unwrap();
+    ph2d_node_motion_drive::register(&mut reg).unwrap();
     ph2d_node_value_instance_field::register(&mut reg).unwrap();
     ph2d_node_value_attribute::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
@@ -1989,6 +1990,162 @@ fn instance_field_kernel_matches_the_cpu_in_every_mode() {
         assert!(
             cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
             "{label}: fixture check — the field must VARY, or this proves nothing"
+        );
+    }
+}
+
+/// **`motion.drive` — the value domain's WRITE side**, and the first chain where
+/// a value graph reaches the SCREEN entirely on the device: `grid →
+/// value.instance_field → motion.drive → output`, no CPU seam anywhere.
+///
+/// Sweeps both channels × all three combine modes, and both value LENGTHS — a
+/// broadcast (one `value.lfo`, held across the field) and a per-element field.
+/// The broadcast half is the one that matters: `read(i)` and `read(0)` agree on a
+/// length-N field, so a fixture without the length-1 case would stay green with
+/// the broadcast dead.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for channel in [0.0f32, 1.0] {
+        for mode in [0.0f32, 1.0, 2.0] {
+            for (per_element, masked) in
+                [(false, false), (true, false), (false, true), (true, true)]
+            {
+                let mut g = Graph::new();
+                let grid = grid_node(&mut g, 11.0);
+                // `masked` inserts a real `falloff` column. The grid emits none, so
+                // WITHOUT this every fixture reads the binding's identity (1.0),
+                // the blend is a no-op, and deleting the falloff term entirely is
+                // invisible — a mutation doing exactly that SURVIVED here
+                // ([[reference_topic_fixture_discipline]]).
+                let src = if masked {
+                    let f = g.add_node("motion.falloff");
+                    g.set_param(f, "radius", 3.1);
+                    g.set_param(f, "curve", 1.7);
+                    connect(&mut g, grid, f);
+                    f
+                } else {
+                    grid
+                };
+                // Per-element: a length-N field off the grid. Broadcast: a bare
+                // `value.lfo`, which the count law sizes at ONE.
+                let v = if per_element {
+                    let f = g.add_node("value.instance_field");
+                    g.set_param(f, "mode", 1.0); // Ramp: varies across the field
+                    connect(&mut g, src, f);
+                    f
+                } else {
+                    let l = g.add_node("value.lfo");
+                    g.set_param(l, "period", 0.83);
+                    g.set_param(l, "amplitude", 2.7);
+                    l
+                };
+                let d = g.add_node("motion.drive");
+                g.set_param(d, "channel", channel);
+                g.set_param(d, "mode", mode);
+                g.set_param(d, "scale", 1.7);
+                connect(&mut g, src, d);
+                g.connect(Edge {
+                    from: (v, 0),
+                    to: (d, 1),
+                    delayed: false,
+                })
+                .expect("value port");
+                g.validate(&reg).expect("well-typed");
+
+                let label = format!(
+                    "ch{channel} mode{mode} {}{}",
+                    if per_element { "field" } else { "broadcast" },
+                    if masked { " +falloff" } else { "" }
+                );
+                let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, d);
+                assert!(plan.is_fully_gpu(), "{label}: covered end to end");
+
+                let mut cook = Cook::new();
+                let cpu = cook.cook(&g, &reg, d, PLAYHEAD).expect("cpu cook");
+                let cpu_p = match cpu[0].as_stream().get("P") {
+                    Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+                    _ => panic!("{label}: the CPU emitted no `P`"),
+                };
+
+                let mut gc = ph2d_gpu_cook::GpuCook::new();
+                gc.retain_streams_for_debug(true);
+                gc.cook(
+                    &gpu,
+                    &g,
+                    &reg,
+                    &reg,
+                    &plan,
+                    &[],
+                    CookClock::at(PLAYHEAD),
+                    DEFAULT_UV,
+                    DEFAULT_SIZE,
+                )
+                .expect("gpu cook");
+
+                // Column SET too: the drive rewrites one channel and copies the
+                // rest, so a kernel that materialised `rot`/`size`/`tint` would
+                // hand downstream a different stream shape (which is why the
+                // kernel claims only the two channels that write `P`).
+                let gpu_cols: Vec<&str> = gc
+                    .node_columns(d)
+                    .expect("staged")
+                    .iter()
+                    .map(String::as_str)
+                    .collect();
+                let mut cpu_cols: Vec<&str> = cpu[0]
+                    .as_stream()
+                    .columns()
+                    .map(|(n, _)| n.as_str())
+                    .collect();
+                cpu_cols.sort_unstable();
+                assert_eq!(gpu_cols, cpu_cols, "{label}: same column SET");
+
+                let gpu_p = gc.read_column_vec2(&gpu, d, "P").expect("`P` reads back");
+                assert_eq!(gpu_p.len(), cpu_p.len(), "{label}: same element count");
+                let worst = gpu_p
+                    .iter()
+                    .zip(&cpu_p)
+                    .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                    .fold(0.0_f32, f32::max);
+                eprintln!("drive {label}: max |dP| = {worst:e}");
+                assert!(worst < 1e-5, "{label}: max |dP| = {worst:e}");
+            }
+        }
+    }
+}
+
+/// **Rotation / Size / Opacity recede to the CPU**, at plan time and on purpose —
+/// the sibling that gives the gate above its meaning. Without it, "the kernel
+/// covers X/Y" is indistinguishable from "the kernel covers everything and the
+/// other channels happen to be untested".
+#[test]
+fn drive_on_a_channel_the_kernel_cannot_write_stays_on_the_cpu() {
+    let reg = registry();
+    for channel in [2.0f32, 3.0, 4.0] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 8.0);
+        let l = g.add_node("value.lfo");
+        let d = g.add_node("motion.drive");
+        g.set_param(d, "channel", channel);
+        connect(&mut g, grid, d);
+        g.connect(Edge {
+            from: (l, 0),
+            to: (d, 1),
+            delayed: false,
+        })
+        .expect("value port");
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, d);
+        assert_eq!(
+            plan.boundaries,
+            vec![(d, 0)],
+            "channel {channel} writes a column the kernel does not bind — the \
+             boundary must be AT the drive"
         );
     }
 }

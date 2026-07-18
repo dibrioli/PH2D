@@ -30,6 +30,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -85,6 +86,98 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// GPU compute kernel (ADR-0126) — the value domain's WRITE side on the device,
+/// and the first consumer of [`ColumnAccess::ReadBroadcast`] in a chain that
+/// actually reaches the screen.
+///
+/// **X/Y only, and the reason is structural rather than lazy.** `drive_channel`
+/// writes a DIFFERENT column per channel — `P` for X/Y, `rot` for Rotation,
+/// `size` for Size, `tint` for Opacity — and materialises the target from its
+/// identity when the stream lacks it. `GpuKernel::bindings` is `&'static`, so a
+/// kernel claiming every channel would have to bind all four, and then a drive on
+/// X would emit `rot`/`size`/`tint` **that the CPU's output does not carry**.
+/// That is not an ε: it is a different stream shape, and it would surface far
+/// away as some later node branching on a column that should not exist
+/// (the discipline `a_value_node_emits_a_bare_stream_not_the_instance_base` pins).
+///
+/// So the kernel binds exactly `{P, falloff}` and `applicable` claims the two
+/// channels that write `P` — the same split, for the same reason, that
+/// `motion.oscillator` already makes. Rotation/Size/Opacity recede to the CPU at
+/// plan time: an explicit boundary, never a wrong answer. Covering them needs
+/// **per-param bindings**, which is an engine feature and not a kernel edit.
+///
+/// ⚠️ **One mutation survives by design:** dropping the `clamp` on `falloff`
+/// changes nothing measurable, because the CPU clamps identically and no node in
+/// the library emits a falloff outside `[0,1]`. It is a defensive MIRROR, kept so
+/// the two sides stay line-for-line comparable; the day something writes an
+/// out-of-range falloff, both clamp and parity still holds.
+///
+/// `P` is `ReadWrite` and not `ReadWriteExisting` because the CPU materialises it
+/// from `[0,0]` when absent (`base_vec2`) — dropping the write instead would make
+/// the drive silently do nothing on a stream without `P`.
+///
+/// The value port BROADCASTS: length 1 is one number held across the field (the
+/// `1 => vals[0]` arm of `value_at`), length N is per-element. `drive_round` is
+/// round-half-away-from-zero to match Rust's `f32::round` — `channel` and `mode`
+/// both pick BRANCHES ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_comp = i32(drive_round(params.channel));\n\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_p = read_in_P(i);\n\
+        var dr_cur = dr_p.x;\n\
+        if (dr_comp == 1) { dr_cur = dr_p.y; }\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        var dr_driven = dr_cur + dr_v;\n\
+        if (dr_mode == 1) { dr_driven = dr_v; }\n\
+        if (dr_mode == 2) { dr_driven = dr_cur * dr_v; }\n\
+        // Lerp toward the original by falloff: 0 leaves the channel untouched.\n\
+        // The clamp MIRRORS the CPU's; no node writes falloff outside [0,1]\n\
+        // today, so it is defensive on both sides rather than load-bearing.\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let dr_out = dr_cur + (dr_driven - dr_cur) * dr_f;\n\
+        var dr_next = dr_p;\n\
+        if (dr_comp == 1) { dr_next.y = dr_out; } else { dr_next.x = dr_out; }\n\
+        write_P(i, dr_next);\n",
+    wgsl_lib: "\
+        fn drive_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            // Absent falloff = full effect, the CPU's `falloff_at` fallback.
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            // Absent value = 0.0, the `0 =>` arm of `value_at`.
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &["channel", "scale", "mode"],
+    count_law: None,
+    applicable: Some(|param| {
+        // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
+        let channel = param("channel").round();
+        channel == 0.0 || channel == 1.0
+    }),
+};
+
 struct MotionDrive;
 
 impl NodeOp for MotionDrive {
@@ -109,6 +202,7 @@ impl NodeOp for MotionDrive {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionDrive))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

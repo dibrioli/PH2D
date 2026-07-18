@@ -493,7 +493,7 @@ ela** — que era o que o §2 mandava fazer (*"verifique antes de confiar"*) —
 verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 **COBERTURA**.
 
-**Cobertura: 20 → 29 kernels.**
+**Cobertura: 20 → 30 kernels.**
 
 | commit | o que |
 |---|---|
@@ -513,7 +513,8 @@ verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 | `8a7ce80d` | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
 | `97c156a9` | **o BROADCAST** (`ColumnAccess::ReadBroadcast` + `bcast_one`) e **`motion.look_at`, o 28º kernel** — e o **tripwire DISPAROU**: 2 costuras são medidas, a fatia B está desbloqueada com o grafo vermelho-primeiro escrito |
 | `c88f1e9a` | **A FATIA B CONSTRUÍDA** — o pump é plural (uma marcha, N entregas), o memo virou MEDIÇÃO (conta evals), (b) e (c) do mapa gateados, split `lower.rs` |
-| (este) | **a fatia B MEDIDA** (o híbrido paga a partir de ~4k; sem limiar, com a tabela) + **`value.instance_field` na GPU, o 29º kernel** — o nó que a própria medição apontou |
+| `a2226787` | **a fatia B MEDIDA** (o híbrido paga a partir de ~4k; sem limiar, com a tabela) + **`value.instance_field` na GPU, o 29º kernel** — o nó que a própria medição apontou |
+| (este) | **`motion.drive` na GPU, o 30º** — o domínio de VALOR agora chega à tela sem CPU nenhuma (X/Y; Rot/Size/Opacity recuam por `applicable`, e o motivo é ESTRUTURAL) |
 
 **Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
 shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada
@@ -523,10 +524,20 @@ integrado, nada pushado** (§0.2).
 diferentes agora:
 
 1. **(C) COBERTURA — o multiplicador, e o caminho mais curto.**
-   `value.math`/`value.switch`/`motion.drive` só precisam de KERNEL: a plumbing de
-   broadcast que eles queriam já está lá. ⚠️ O `value.math` traz a **3ª lei de
-   contagem** (`max(a.len, b.len)`) **junto do kernel que a consome** — motor sem
-   consumidor já foi revertido uma vez nesta linha.
+   Restam `value.math` e `value.switch` (o `motion.drive` pousou). ⚠️ O
+   `value.math` traz a **3ª lei de contagem** (`max(a.len, b.len)`) **junto do
+   kernel que a consome** — motor sem consumidor já foi revertido uma vez aqui.
+
+   ⚠️ **E o `motion.drive` deixou um gap NOMEADO que vale mais que os dois:**
+   ele cobre só **X/Y**, porque `drive_channel` escreve uma coluna DIFERENTE por
+   canal (`P` · `rot` · `size` · `tint`) e `GpuKernel::bindings` é `&'static`. Um
+   kernel que reivindicasse todos teria de ligar as quatro, e aí um drive em X
+   emitiria `rot`/`size`/`tint` **que a saída da CPU não carrega** — divergência
+   de FORMA, não de ε. Cobrir os outros três canais quer **bindings por-param**,
+   que é feature de MOTOR, não edição de kernel. É o mesmo formato dos consertos
+   que mais renderam nesta linha (a lei de contagem destravou a família `value.*`;
+   o broadcast destravou 4 nós), e o `motion.oscillator` está bloqueado pelo
+   MESMO limite.
 2. **MEDIR a fatia B.** A paridade de 2 costuras está gateada; o **ganho** não. Um
    documento de 2 costuras na GPU contra a CPU pura é a medição que falta, e o §0.0
    cobra número.

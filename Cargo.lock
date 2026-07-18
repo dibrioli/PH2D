@@ -5208,6 +5208,7 @@ dependencies = [
  "ph2d-node-force-wind",
  "ph2d-node-motion-color-ramp",
  "ph2d-node-motion-cull",
+ "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-grid",

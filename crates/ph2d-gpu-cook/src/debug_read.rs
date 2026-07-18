@@ -32,14 +32,36 @@ impl GpuCook {
         }
     }
 
-    /// Read `node`'s `column` back as scalars — `None` unless
+    /// Read `node`'s scalar `column` back — `None` unless
     /// [`Self::retain_streams_for_debug`] was on for the last cook and that node
-    /// staged and carried the column. Scalar columns only (`Dim::Scalar`), which
-    /// is what a VALUE stream is.
+    /// staged and carried the column. This is the VALUE-stream reader.
     pub fn read_column(&self, gpu: &GpuContext, node: NodeId, column: &str) -> Option<Vec<f32>> {
+        self.read_column_lanes(gpu, node, column)
+    }
+
+    /// The same, for a `Dim::Vec2` column (`P`, `size`, …).
+    pub fn read_column_vec2(
+        &self,
+        gpu: &GpuContext,
+        node: NodeId,
+        column: &str,
+    ) -> Option<Vec<[f32; 2]>> {
+        let flat: Vec<f32> = self.read_column_lanes(gpu, node, column)?;
+        Some(flat.chunks_exact(2).map(|c| [c[0], c[1]]).collect())
+    }
+
+    /// The one reader both wrap. **The width comes from the COLUMN's own `dim`**,
+    /// through [`crate::stream::element_stride`] — the same function the uploader
+    /// and the binder use, so this cannot disagree with them about how wide an
+    /// element is (a `Vec3` pads to 16 bytes, and a reader that assumed 12 would
+    /// misindex from element 1 on). Asking the caller for the width would be a
+    /// second answer to a question the crate already answers, and a wrong one
+    /// would read as a parity failure rather than a mis-read.
+    fn read_column_lanes(&self, gpu: &GpuContext, node: NodeId, column: &str) -> Option<Vec<f32>> {
         let stream: &GpuStream = self.debug_streams.get(&node)?;
         let col = stream.get(column)?;
-        let n = stream.count as usize;
+        let lanes = crate::stream::element_stride(col.dim) as usize / 4;
+        let n = stream.count as usize * lanes;
         if n == 0 {
             return Some(Vec::new());
         }

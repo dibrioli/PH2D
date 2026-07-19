@@ -19,14 +19,23 @@ use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, Point};
 use ph2d_flip_colorize::{ColorRegion, Scribble, colorize};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
-use ph2d_tool_flip::FlipMode;
+use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
+use ph2d_vec_scene::Xform;
 
 /// Distância mínima entre amostras de um rabisco (px de tela) — igual ao `flip_draw`.
 const MIN_SAMPLE_PX: f32 = 2.0;
 
-/// Espessura do rabisco no overlay (px de TELA — a espessura do Flip é absoluta). Grosso
-/// o bastante para o artista VER onde semeou, fino o bastante para não esconder a linha.
-const SCRIBBLE_WIDTH_PX: f32 = 9.0;
+/// A espessura do rabisco, em unidades LOCAIS do desenho.
+///
+/// ⚠️ **Pela MESMA porta do traço do Draw** (`size_to_world(Size) × escala do objeto`,
+/// `flip_draw::build_stroke`): o `Point.width` do Flip é MUNDO, não px de tela, e cravar um
+/// número de tela ali pinta um borrão maior que o desenho. E é o **Size do pincel** que manda
+/// — o Colorize não ganha um 2º slider para a mesma grandeza (a regra do Erase/Sculpt).
+///
+/// O MESMO número governa o overlay e a SEMENTE: o que o artista pinta é o que semeia.
+fn scribble_width(style: &FlipStyleSnapshot, w2l: &Xform) -> f32 {
+    ph2d_tool_flip::size_to_world(style.width_px) * w2l.mean_scale() as f32
+}
 
 /// Os rabiscos coloridos acumulados + o rabisco em curso. Transientes: não viajam no
 /// documento (são sementes), e o Apply/Clear os consomem.
@@ -145,9 +154,11 @@ impl crate::App {
         if self.flip_colorize.scribbles.is_empty() && !live {
             return None;
         }
+        let style = self.flip_style?;
         // MUNDO → LOCAL da camada ativa (a mesma conversão do preview do Draw; o Apply
-        // usa a MESMA `w2l`, então o que se vê é onde a semente cai).
+        // usa a MESMA `w2l` e a MESMA largura, então o que se vê é o que semeia).
         let w2l = self.flip_active_world_to_local();
+        let width = scribble_width(&style, &w2l);
         let mut d = FlipDrawing::default();
         let committed = self.flip_colorize.scribbles.iter().map(|(c, p)| (*c, p));
         let in_flight = live.then_some({
@@ -166,7 +177,7 @@ impl crate::App {
                 let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
                 s.push_point(Point {
                     pos: Vec2::new(l[0] as f32, l[1] as f32),
-                    width: SCRIBBLE_WIDTH_PX,
+                    width,
                     opacity: 1.0,
                     color: c,
                 });
@@ -186,8 +197,13 @@ impl crate::App {
         if self.flip_colorize.scribbles.is_empty() {
             return;
         }
+        let Some(style) = self.flip_style else {
+            return;
+        };
         let active_layer = self.flip_active_layer;
         let w2l = self.flip_active_world_to_local();
+        // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
+        let seed_width = scribble_width(&style, &w2l);
         let playhead = self.playhead;
         let strip = &mut self.flip_strip;
         let scribbles = std::mem::take(&mut self.flip_colorize.scribbles);
@@ -228,7 +244,11 @@ impl crate::App {
                     Vec2::new(l[0] as f32, l[1] as f32)
                 })
                 .collect();
-            seeds.push(Scribble { label, points });
+            seeds.push(Scribble {
+                label,
+                points,
+                width: seed_width,
+            });
         }
 
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {

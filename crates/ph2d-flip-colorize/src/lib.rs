@@ -49,6 +49,13 @@ const V_INK: i32 = 0;
 pub struct Scribble {
     pub label: u16,
     pub points: Vec<Vec2>,
+    /// A ESPESSURA do rabisco (unidades do documento) — a semente é a cápsula, não o eixo.
+    ///
+    /// ⚠️ **Não é cosmético.** O que o artista PINTA tem de ser o que SEMEIA: com um pincel
+    /// grosso, um toque curto tem eixo de 2 px, e uma semente desse tamanho degenera o corte
+    /// (o mínimo passa a ser "cercar o pixel" em vez de colorir a região — ver
+    /// [`lazybrush_binary`]). `0` = só o eixo.
+    pub width: f32,
 }
 
 /// Uma região colorida: uma área conexa que recebeu um rótulo, como GEOMETRIA (`09 §2`). O
@@ -153,13 +160,36 @@ fn neighbour(grid: &Grid, i: usize, d: usize) -> Option<usize> {
     }
 }
 
-/// The grid pixels a polyline passes through, skipping ink (a colour can't seed on the line).
-fn polyline_pixels(grid: &Grid, points: &[Vec2], out: &mut Vec<usize>) {
+/// The grid pixels the scribble COVERS — the capsule of `width` swept along the polyline,
+/// skipping ink (a colour can't seed on the line). `width = 0` degenerates to the axis.
+fn polyline_pixels(grid: &Grid, points: &[Vec2], width: f32, out: &mut Vec<usize>) {
+    let r_px = (width * 0.5 * grid.scale).max(0.0);
+    // The swept union of discs IS the capsule; stamping per sample reuses the walk below.
     let sample = |p: Vec2, out: &mut Vec<usize>| {
-        if let Some((x, y)) = grid.pixel_of(p) {
-            let i = y * grid.w + x;
-            if grid.flags[i] & BOUNDARY == 0 {
-                out.push(i);
+        if r_px < 0.5 {
+            if let Some((x, y)) = grid.pixel_of(p) {
+                let i = y * grid.w + x;
+                if grid.flags[i] & BOUNDARY == 0 {
+                    out.push(i);
+                }
+            }
+            return;
+        }
+        let (cx, cy) = grid.to_px(p);
+        let x0 = (cx - r_px).floor().max(0.0) as usize;
+        let x1 = ((cx + r_px).ceil().max(0.0) as usize).min(grid.w.saturating_sub(1));
+        let y0 = (cy - r_px).floor().max(0.0) as usize;
+        let y1 = ((cy + r_px).ceil().max(0.0) as usize).min(grid.h.saturating_sub(1));
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+                if dx * dx + dy * dy > r_px * r_px {
+                    continue;
+                }
+                let i = y * grid.w + x;
+                if grid.flags[i] & BOUNDARY == 0 {
+                    out.push(i);
+                }
             }
         }
     };
@@ -184,7 +214,7 @@ fn group_scribbles(grid: &Grid, scribbles: &[Scribble]) -> Vec<(u16, Vec<usize>)
     let mut out: Vec<(u16, Vec<usize>)> = Vec::new();
     for s in scribbles {
         let mut px = Vec::new();
-        polyline_pixels(grid, &s.points, &mut px);
+        polyline_pixels(grid, &s.points, s.width, &mut px);
         if px.is_empty() {
             continue;
         }

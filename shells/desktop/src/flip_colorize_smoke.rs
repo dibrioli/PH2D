@@ -119,10 +119,12 @@ impl crate::App {
              azul dir) — voce os VE porque o overlay desenha o que esta acumulado.\n\
              \n\
              COMO USAR (o fluxo real):\n\
-             1. Escolha a cor na swatch **Color** (secao Colorize do painel).\n\
-             2. **Rabisque DENTRO** de uma regiao — a marca sai sob o cursor.\n\
+             1. Cor na swatch **Color** + espessura no **Size** (o MESMO Size do pincel).\n\
+             2. **Rabisque DENTRO** de uma regiao — a marca sai sob o cursor, na espessura\n   \
+                do Size. O que voce PINTA e o que SEMEIA (um toque grosso ja pega).\n\
              3. Troque a cor, rabisque noutra regiao. Repita.\n\
              4. **Apply** — cada regiao vira preenchimento. **Clear** joga os rabiscos fora.\n\
+             5. **Ctrl+Z** desfaz o Apply inteiro (um passo).\n\
              \n\
              CONFIRA no Apply:\n\
              a) A FRONTEIRA entre as cores cola na LINHA em x=+1 (fora do centro) — a cor da\n   \

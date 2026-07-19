@@ -606,6 +606,13 @@ impl crate::App {
         // roda com `self.gfx` preso; aqui, antes de bindar `gfx`, `self` está livre).
         if std::mem::take(&mut self.pending_flip_colorize_apply) {
             self.flip_colorize_apply();
+            // ⚠️ **Sem isto o Apply NÃO É DESFAZÍVEL.** O `post_frame_undo` só compara o
+            // estado quando o frame teve INPUT (`had_input`) — é o proxy dele para "o
+            // usuário fez algo que merece um passo". O clique aconteceu no frame ANTERIOR
+            // (a deferral acima), então este frame normalmente não tem input nenhum: o diff
+            // era pulado e a mutação nunca virava passo. O trabalho é do usuário e cai
+            // NESTE frame, então o frame carrega trabalho — e o proxy volta a ser verdade.
+            self.any_input_this_frame = true;
         }
         if std::mem::take(&mut self.pending_flip_colorize_clear) {
             self.flip_colorize_clear();

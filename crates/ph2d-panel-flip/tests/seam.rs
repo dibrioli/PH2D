@@ -487,9 +487,10 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         (FlipMode::Edit, true),
         (FlipMode::Fill, false),
         (FlipMode::Select, false),
-        // Colorize: o gesto é rabiscar, mas o painel não expõe Size (o rabisco é semente,
-        // não pincel) — o `brush` retorna cedo no modo Colorize.
-        (FlipMode::Colorize, false),
+        // Colorize COMPARTILHA o Size (regra do Erase/Sculpt): ele é a espessura do rabisco,
+        // e como o rabisco semeia pela CÁPSULA, é o Size que decide se um toque curto pega a
+        // região. A `colorize_section` pinta os MESMOS ids `FLIP_SIZE`/`_NUM`.
+        (FlipMode::Colorize, true),
     ];
     assert_eq!(
         cases.len(),

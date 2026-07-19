@@ -250,15 +250,31 @@ fn zero_iterations_is_the_identity_on_the_device_too() {
     assert_eq!(worst, 0.0);
 }
 
-/// **What does the breath COST?** — the `PH2D_GPU_COOK_DEMO=8` scene reported a deep
-/// FPS drop on the LFO's positive half (Enio, 2026-07-19). The suspect is the swept
-/// neighbourhood: the grid cell is `radius` while the contact distance is
-/// `2·radius·spread`, so `reach = ceil(2·spread)` — 2 cells while `spread ≤ 1`, 3 the
-/// instant it passes, i.e. `5×5 = 25` cells → `7×7 = 49`. The scene's LFO is centred
-/// on exactly 1.0, so it steps across that boundary every cycle.
+/// **What does the breath COST?** — the reference table for `motion.collide` on
+/// the device, and the answer to two reports against `PH2D_GPU_COOK_DEMO=8`
+/// (Enio, 2026-07-19): a deep FPS drop on the LFO's positive half, and then again
+/// when the LFO's Amplitude is raised.
 ///
-/// This measures the SCENE's topology (`grid → collide → output` with a `value.lfo`
-/// on `spread`), sweeping the LFO's offset across the range it actually travels.
+/// The first was a DEFECT and is fixed (the cell cull — see the gate below). The
+/// second is **honest work, measured**: what this node costs is contacts-per-disc,
+/// and `spread` scales the interaction radius, so contacts grow with its AREA. It
+/// is the same law Fase 4 measured on the packed flock — *the grid is `O(N)` only
+/// under bounded density* — arriving from the other side: there the crowd got
+/// denser, here the reach gets longer, and no spatial structure helps once a
+/// neighbourhood contains most of the scene.
+///
+/// Two optimisations were tried on top of the cull and **both measured NEUTRAL**;
+/// they are recorded so nobody spends the day re-deriving them:
+/// - **Cheapest-test-first** in the inner loop (distance before the cell dedup and
+///   the inverse-mass read). 6.47 → 6.45 ms. The kernel is memory-bound on reading
+///   the neighbours' positions, so moving arithmetic behind a filter buys nothing.
+/// - **Grid-order thread assignment** (`let me = grid_sorted[i]`, so adjacent
+///   threads take spatially adjacent discs). 6.24 ms, and WORSE at scale (1 M:
+///   36.9 → 43.6). `motion.grid` already emits its lattice row-major, so index
+///   order is ALREADY spatially coherent; the permutation only adds indirection
+///   and scatters the writes.
+///
+/// `#[ignore]`: a measurement, not a gate. The gate is the ratio below.
 #[test]
 #[ignore = "measurement, needs a GPU adapter"]
 fn what_does_the_breath_cost() {
@@ -268,70 +284,41 @@ fn what_does_the_breath_cost() {
     };
     let mut reg = registry();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
-    eprintln!("\nthe breathing packing (262 144 discs, 8 sweeps) vs `spread`:");
+    eprintln!("\nmotion.collide on the GPU, 8 sweeps, lattice pitch 0.25, radius 0.3:");
     eprintln!(
-        "  {:>8}  {:>8}  {:>7}  {:>10}",
-        "spread", "cells", "reach", "ms/cook"
+        "  {:>8}  {:>8}  {:>8}  {:>7}  {:>10}",
+        "discs", "spread", "cells", "reach", "ms/cook"
     );
-    for &spread in &[0.65f32, 0.85, 0.95, 0.999, 1.001, 1.05, 1.20, 1.35] {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.grid");
-        g.set_param(src, "rows", 512.0);
-        g.set_param(src, "cols", 512.0);
-        g.set_param(src, "gap_x", 0.25);
-        g.set_param(src, "gap_y", 0.25);
-        let col = g.add_node("motion.collide");
-        g.set_param(col, "radius", 0.3);
-        g.set_param(col, "iterations", 8.0);
-        g.set_param(col, "strength", 1.0);
-        // Amplitude 0 ⇒ the LFO is a constant at `offset`: the scene's exact wiring,
-        // held still at one point of its cycle.
-        let lfo = g.add_node("value.lfo");
-        g.set_param(lfo, "period", 6.0);
-        g.set_param(lfo, "amplitude", 0.0);
-        g.set_param(lfo, "offset", spread);
-        let out = g.add_node("motion.output");
-        for (from, to, port) in [(src, col, 0), (lfo, col, 1), (col, out, 0)] {
-            g.connect(Edge {
-                from: (from, 0),
-                to: (to, port),
-                delayed: false,
-            })
-            .unwrap();
-        }
-        let plan = plan(&g, &reg, &reg, out);
-        let mut gc = GpuCook::new();
-        let run = |gc: &mut GpuCook| {
-            gc.cook(
-                &gpu,
-                &g,
-                &reg,
-                &reg,
-                &plan,
-                &[],
-                CookClock {
-                    playhead: 0.0,
-                    tick: Some(0),
-                },
-                DEFAULT_UV,
-                DEFAULT_SIZE,
-            )
-            .expect("gpu cook");
-            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        };
-        for _ in 0..2 {
-            run(&mut gc);
-        }
-        let start = std::time::Instant::now();
-        const REPS: u32 = 4;
-        for _ in 0..REPS {
-            run(&mut gc);
-        }
-        let ms = start.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+    // `spread` 0.02 is the FLOOR: reach 1 and essentially no contact, so what it
+    // measures is the infrastructure alone (8 grid builds + 8 dispatches + the
+    // column traffic). Everything above it is contact work.
+    for &(side, spread) in &[
+        (360.0f32, 0.02f32),
+        (360.0, 0.65),
+        (360.0, 1.0),
+        (360.0, 1.35),
+        (360.0, 2.0),
+        (360.0, 3.0),
+        (360.0, 4.0),
+        (512.0, 1.0),
+        (512.0, 1.35),
+        (512.0, 2.0),
+        (512.0, 3.0),
+    ] {
+        let ms = breath_ms(&gpu, &reg, side, spread);
         let reach = (2.0 * spread).ceil().max(1.0) as i32;
         let cells = (2 * reach + 1) * (2 * reach + 1);
-        eprintln!("  {spread:>8.3}  {cells:>8}  {reach:>7}  {ms:>10.3}");
+        let n = (side * side) as u32;
+        eprintln!("  {n:>8}  {spread:>8.3}  {cells:>8}  {reach:>7}  {ms:>10.3}");
     }
+    eprintln!(
+        "\n(the shipped scene is 360² with the LFO at offset 1.0 / amplitude 0.35,\n\
+         so it lives in the 0.65-1.35 rows and the artist can double the amplitude\n\
+         and still hold 60 fps. The far end of that slider is amplitude 10 ⇒ spread\n\
+         11 ⇒ 2025 cells: measured at 314 ms/cook on 262 144 discs. That is not a\n\
+         ceiling anyone should hit by accident, which is why the scene ships with\n\
+         room instead of at the edge.)"
+    );
 }
 
 /// Build the scene's topology held still at one `spread`, and return the best of

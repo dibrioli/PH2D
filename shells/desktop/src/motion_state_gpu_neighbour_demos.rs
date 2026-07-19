@@ -22,12 +22,14 @@
 //!   ~10 s/tick — the grid cannot help a crowd that dense). Spread grows the seed
 //!   cloud with √N so the agents-per-cell stays a lively murmuration and the grid
 //!   stays `O(N)` (~15,5 ms/tick).
-//! - **`=8`, the breathing packing** — a relaxation SOLVER. `grid(512²) → collide
+//! - **`=8`, the breathing packing** — a relaxation SOLVER. `grid(360²) → collide
 //!   → output` with an LFO on `spread`; it sweeps `iterations` times per cook, and
 //!   the sequencer REBUILDS the grid between sweeps because each sweep moves the
-//!   very column the grid indexes (6,4–9,5 ms at 262 k across the LFO's whole
-//!   range, 38 ms at a million). ⚠️ That range used to STEP at the LFO's midpoint —
-//!   see the cell cull in `motion.collide`'s kernel.
+//!   very column the grid indexes (2,5–4,7 ms across the LFO's range; the ceiling
+//!   is millions — 38 ms at 1 M discs). ⚠️ Two things about this cost were reported
+//!   and fixed: it used to STEP at the LFO's midpoint (the cell cull, in
+//!   `motion.collide`'s kernel), and the scene used to be sized with no headroom
+//!   for the Amplitude knob (see `build_gpu_collide_demo_document`).
 //!
 //! Together they are the argument that the grid is a **service** (ADR-0134 D2) and
 //! not a boids-shaped detour: one client keeps its state across ticks, the other
@@ -113,8 +115,8 @@ pub(super) fn build_gpu_boids_demo_document(
 /// SECOND neighbourhood client, and the one that proves the grid is a reusable
 /// service rather than a boids-shaped detour.
 ///
-/// `grid(512×512) → collide → output`, with a `value.lfo` driving the collider's
-/// `spread`. 262.144 discs start on a lattice whose pitch (0.25) is far tighter
+/// `grid(360×360) → collide → output`, with a `value.lfo` driving the collider's
+/// `spread`. 129.600 discs start on a lattice whose pitch (0.25) is far tighter
 /// than the contact distance (`2·radius` = 0.6), so essentially every disc begins
 /// overlapping several neighbours and the whole field shoves itself apart into a
 /// packing. The LFO then makes the discs grow and shrink, so the packing
@@ -124,10 +126,12 @@ pub(super) fn build_gpu_boids_demo_document(
 /// **It is the first ITERATED kernel.** Boids dispatches once per tick (the tick
 /// IS the iteration); this sweeps `iterations` times per cook, and because every
 /// sweep moves the very column the grid indexes, the sequencer REBUILDS the grid
-/// between sweeps (`GridSpec::sweeps_param`). Measured on the RTX at 8 sweeps:
-/// 262.144 discs ≈ **6,8 ms/cook**, 1.048.576 ≈ 38 ms, 4.194.304 ≈ 288 ms — so
-/// the artist can raise `rows`/`cols` into the millions; this scene is sized to
-/// stay comfortably inside a 60 fps frame while it breathes.
+/// between sweeps (`GridSpec::sweeps_param`). Measured on the RTX at 8 sweeps and
+/// `spread` 1: 262.144 discs ≈ **6,2 ms/cook**, 1.048.576 ≈ 37 ms, 4.194.304 ≈
+/// 274 ms — so the artist can raise `rows`/`cols` into the millions. This scene is
+/// sized well under that, for the reason in the `rows` comment: the ceiling of the
+/// MACHINE and the size of a DEMO are different questions, and a demo that spends
+/// the whole frame at rest has nothing left for the knobs.
 ///
 /// ⚠️ **The breath used to cost a STEP, and that was a kernel bug, not a scene
 /// that was too big** (Enio, 2026-07-19: *"profunda queda de FPS nos valores
@@ -152,9 +156,24 @@ pub(super) fn build_gpu_collide_demo_document(
     let g = &mut doc.graph;
 
     let src = g.add_node("motion.grid");
-    // 512 × 512 = 262.144 discs on a pitch far tighter than the contact distance.
-    g.set_param(src, "rows", 512.0);
-    g.set_param(src, "cols", 512.0);
+    // 360 × 360 = 129.600 discs on a pitch far tighter than the contact distance.
+    // ⚠️ SIZED FOR HEADROOM, not for the ceiling (which is millions — see below).
+    // What this node costs is contacts-per-disc, and `spread` grows that with the
+    // AREA of the interaction disc, so a scene tuned to just fit AT REST has none
+    // left the moment the artist touches the LFO's Amplitude — which is exactly
+    // what happened (Enio, 2026-07-19). Measured, 8 sweeps, at the breath's peak
+    // and beyond it:
+    //
+    //     discs    spread 1.35   spread 2.0   spread 3.0
+    //   262 144       9.06 ms     15.94 ms     30.12 ms
+    //   129 600       4.71 ms      7.93 ms     14.58 ms
+    //
+    // At 262 144 the default breath already spent 54 % of a 60 fps frame and
+    // Amplitude 1.0 spent 95 %. At 129 600 the artist can DOUBLE the Amplitude and
+    // still hold 60 fps — and 129 600 is still ~100× what this node could reach
+    // before the grid existed.
+    g.set_param(src, "rows", 360.0);
+    g.set_param(src, "cols", 360.0);
     g.set_param(src, "gap_x", 0.25);
     g.set_param(src, "gap_y", 0.25);
 

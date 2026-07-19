@@ -349,9 +349,10 @@ impl crate::App {
              The regression is unmissable by construction: a body that falls back to
              reading its LOCAL pose as world drops down the x = 0 line, misses the
              narrow pedestal it was drawn above, and falls out of frame forever.
-             Then, to see it is not a trick: drag a RIG in the viewport. Its ball
-             follows, keeps its collider, and still collides -- the pose is composed
-             every frame, not baked at spawn."
+             Then, to see it is not a trick: drag a RIG (the small BLUE square sitting
+             at each pedestal's height) in the viewport. Its ball follows, keeps its
+             collider, and still collides -- the pose is composed every frame, not
+             baked at spawn."
         );
     }
 }

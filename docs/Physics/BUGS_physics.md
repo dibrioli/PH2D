@@ -291,6 +291,36 @@ código que a fixture nunca entrava).
 **12 gates, 10 mutações, 10 sangram** — uma por sítio religado, mais a guarda,
 o `clear()` do scratch e a subtração de rotação do inverso.
 
+### ⚠️ E a cena de smoke nasceu com a fixture INVERTIDA (2026-07-19)
+
+O primeiro corte da cena 8 tinha dois defeitos, achados pelo smoke do Enio:
+
+**(a) Os rigs eram INVISÍVEIS.** Um rig só carregava `Transform` + `Name`, e o
+publicador do gizmo lê `sprite.size`/`resolve_anchor` — uma entidade sem `Sprite`
+**não publica `GizmoView` nenhum**. Então os três rigs não desenhavam nada, não
+eram selecionáveis no viewport, e a própria instrução da cena mandava *"arraste
+um RIG"*: um gesto que a cena tornava impossível. Fix: cada rig ganhou um
+quadradinho azul. **Um ator que a demo manda manipular tem de estar na tela.**
+
+**(b) A fixture do rig ROTACIONADO premiava o bug.** A bola estava autorada em
+local `(0, 3)`; sob um rig girado 0,45 rad a composição correta a leva para
+`x = 1,695` — **1,3 m fora do próprio pedestal**, então ela cai pra sempre e a
+cena acusa uma regressão que não existe. Pior: uma implementação que *ignorasse*
+a rotação do pai a poria em `x = 3,0`, **bem acima do pedestal, e passaria**.
+A cena falhava o conserto e aprovava o defeito.
+
+Fix: a bola é autorada em `R(−rot) · (0, DROP)`, que compõe para exatamente
+acima do pedestal **qualquer que seja a rotação** — e agora é *dropar a rotação*
+que erra o alvo. Medido antes/depois: `BallTilted` `x = 1,695` (cai pra sempre)
+→ `x = 3,000` (pousa em `y = −0,551`, como as outras duas).
+
+⚠️ **O mesmo cegamento estava nos GATES:** todos os 7 usavam `from_translation`,
+ou seja **nenhum tinha ancestral rotacionado**. `parented_scene_rot` agora
+parametriza a rotação e o gate de aterrissagem varre `[0, 0,45]`. Mutação nova
+(compor só a translação do pai) sangra — e sangra **só ali**, o que é correto:
+o gate de *"desenhado == simulado"* testa a direção de SAÍDA, que continua certa
+mesmo com a entrada errada. Cada camada no seu gate.
+
 ### Smoke
 
 `PH2D_PHYSICS_SMOKE=8` — três rigs, cada um com uma bola física parenteada,

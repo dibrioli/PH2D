@@ -1452,7 +1452,11 @@ env PH2D_PHYSICS_SMOKE=8 cargo run -p ph2d-host-desktop
 ```
 
 Três rigs — um nível, dois níveis, e um **rotacionado** — cada um com uma bola física
-parenteada, cada um sobre um pedestal **estreito**. A regressão é inconfundível por
+parenteada, cada um sobre um pedestal **estreito**. Cada rig é um **quadradinho azul**
+visível: sem `Sprite` uma entidade não publica `GizmoView`, então o primeiro corte tinha
+rigs invisíveis e mandava o artista arrastá-los (⚠️ ver `BUGS_physics.md` #2, seção da
+fixture invertida — a bola do rig rotacionado também errava o próprio pedestal, e a cena
+**premiava** a implementação bugada). A regressão é inconfundível por
 construção: um corpo que volte a ler a pose local como mundo cai pela linha `x = 0`, erra
 o pedestal sobre o qual foi desenhado, e some de quadro. Tecla `B`: cada contorno tem de
 sentar exatamente no seu sprite, em toda profundidade. Depois **arraste um rig** no

@@ -45,10 +45,20 @@ fn ball(kind: BodyKind) -> (RigidBody, Collider) {
     )
 }
 
-/// A floor under `PARENT_X`, an empty parent at `(PARENT_X, 0)`, and a ball
-/// hanging off that parent at local `(0, DROP_HEIGHT)` — drawn directly above
-/// the floor, with local coordinates that are NOT above it.
-fn parented_scene(kind: BodyKind) -> (SimWorld, Entity, Entity) {
+/// A floor under `PARENT_X`, a rig at `(PARENT_X, 0)` rotated by `rot`, and a
+/// ball hanging off it — drawn directly above the floor, with local coordinates
+/// that are NOT above it.
+///
+/// ⚠️ **`rot` is not decoration, and leaving it out is how this fixture lies.**
+/// The ball is authored at `R(-rot) · (0, DROP_HEIGHT)`, so correct composition
+/// puts it over the floor whatever the rig's rotation is — which means an
+/// implementation that composed only the parent's TRANSLATION would swing it off
+/// the (deliberately narrow) floor and miss. Author the ball at a plain
+/// `(0, DROP_HEIGHT)` instead and the polarity flips: dropping the rotation
+/// LANDS it and handling it correctly misses. The scene this fixture mirrors
+/// shipped with exactly that inversion
+/// ([[feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it]]).
+fn parented_scene_rot(kind: BodyKind, rot: f32) -> (SimWorld, Entity, Entity) {
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
         RigidBody {
@@ -65,20 +75,36 @@ fn parented_scene(kind: BodyKind) -> (SimWorld, Entity, Entity) {
     ));
     let parent = sim
         .world_mut()
-        .spawn((Transform::from_translation(Vec2::new(PARENT_X, 0.0)),))
+        .spawn((Transform {
+            translation: Vec2::new(PARENT_X, 0.0),
+            rotation: rot,
+            ..Transform::IDENTITY
+        },))
         .id();
     let (rb, col) = ball(kind);
+    let (sin_r, cos_r) = (rot.sin(), rot.cos());
     let child = sim
         .world_mut()
         .spawn((
             rb,
             col,
-            Transform::from_translation(Vec2::new(0.0, DROP_HEIGHT)),
+            Transform::from_translation(Vec2::new(DROP_HEIGHT * sin_r, DROP_HEIGHT * cos_r)),
             ChildOf(parent),
         ))
         .id();
     (sim, parent, child)
 }
+
+/// The un-rotated case — still worth having on its own, because it is the one
+/// where "compose" and "add the parent's translation" agree, so it isolates the
+/// space conversion from the rotation handling.
+fn parented_scene(kind: BodyKind) -> (SimWorld, Entity, Entity) {
+    parented_scene_rot(kind, 0.0)
+}
+
+/// A rig rotated far enough that composing only the translation misses the
+/// floor by more than its half-width (`0.45 rad` swings the ball 1.3 m).
+const RIG_ROT: f32 = 0.45;
 
 /// **The body lands on the floor it is drawn above.**
 ///
@@ -87,20 +113,26 @@ fn parented_scene(kind: BodyKind) -> (SimWorld, Entity, Entity) {
 /// and sailed past a floor that only exists at x = 5 — forever.
 #[test]
 fn a_parented_body_falls_onto_the_floor_it_is_drawn_above() {
-    let (mut sim, _p, child) = parented_scene(BodyKind::Dynamic);
-    let mut bridge = PhysicsBridge::new();
-    bridge.dispatch(&mut sim, true, 180);
+    // Both rigs, because they fail differently: the un-rotated one catches a
+    // bridge that ignores the hierarchy at all, the rotated one catches a
+    // bridge that composes only the parent's translation.
+    for rot in [0.0, RIG_ROT] {
+        let (mut sim, _p, child) = parented_scene_rot(BodyKind::Dynamic, rot);
+        let mut bridge = PhysicsBridge::new();
+        bridge.dispatch(&mut sim, true, 180);
 
-    let (x, y, _) = drawn_at(&sim, child);
-    assert!(
-        (x - PARENT_X).abs() < 0.05,
-        "the ball drifted to x = {x}; it should still be above the floor at {PARENT_X}"
-    );
-    assert!(
-        (y - (FLOOR_TOP + BALL_R)).abs() < 0.05,
-        "the ball came to rest at y = {y}, not on the floor at {}",
-        FLOOR_TOP + BALL_R
-    );
+        let (x, y, _) = drawn_at(&sim, child);
+        assert!(
+            (x - PARENT_X).abs() < 0.05,
+            "rig rotated {rot}: the ball drifted to x = {x}; it should still be \
+             above the floor at {PARENT_X}"
+        );
+        assert!(
+            (y - (FLOOR_TOP + BALL_R)).abs() < 0.05,
+            "rig rotated {rot}: the ball came to rest at y = {y}, not on the floor at {}",
+            FLOOR_TOP + BALL_R
+        );
+    }
 }
 
 /// **What is drawn IS what is simulated** — the invariant the bug broke.
@@ -112,7 +144,7 @@ fn a_parented_body_falls_onto_the_floor_it_is_drawn_above() {
 /// lesson about damped systems re-converging).
 #[test]
 fn the_drawn_pose_and_the_simulated_pose_never_diverge() {
-    let (mut sim, _p, child) = parented_scene(BodyKind::Dynamic);
+    let (mut sim, _p, child) = parented_scene_rot(BodyKind::Dynamic, RIG_ROT);
     let mut bridge = PhysicsBridge::new();
 
     let mut worst = 0.0f32;

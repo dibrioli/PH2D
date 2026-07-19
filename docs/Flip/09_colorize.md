@@ -1,11 +1,12 @@
 # Flip — a wave **COLORIZE**: o plano
 
 > **Estado (2026-07-19):** a **fatia C1 (Trapped-ball, §4) LANDOU** em `ph2d-flip-fill` (2026-07-18,
-> `a6e8277a`). **C2 — o MOTOR do LazyBrush LANDOU headless e gateado** (a crate nova
-> `ph2d-flip-colorize`: `flow.rs` BK + `lib.rs` `colorize()`; line-art + rabiscos → geometria por
-> região, o corte hugga a tinta, um vão não vaza, HR-5; gates em `lib_tests.rs`/`flow_tests.rs`).
-> **ABERTO:** a **FATIA C2** (o gesto de rabisco + paleta + costura no shell, `§6`) e a
-> **pré-segmentação por regiões** (a perf a 4K, `§7.1`); **C3 (onion-fill)** segue planejada.
+> `a6e8277a`). **C2 LANDOU (MOTOR + FATIA, pendente smoke):** o motor headless na crate nova
+> `ph2d-flip-colorize` (`flow.rs` BK + `colorize()`; corte hugga a tinta, vão não vaza, HR-5) **+**
+> o **modo Colorize clicável no shell** (7º `FlipMode`: rabiscar → **Apply** → regiões; gesto irmão
+> do Draw, commit irmão do balde). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`**.
+> **ABERTO:** overlay vivo dos rabiscos · multiframe · Apply live (re-solve por rabisco) · a
+> **pré-segmentação por regiões** (perf a 4K, `§7.1`) · **C3 (onion-fill)**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >

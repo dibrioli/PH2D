@@ -47,6 +47,7 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod gpu;
 mod hash;
 use hash::hash3;
 
@@ -327,6 +328,9 @@ impl NodeOp for MotionBoids {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionBoids))?;
+    // GPU/M5 (ADR-0134): the flock on the device via the spatial grid.
+    reg.register_gpu_kernel(MANIFEST.id, gpu::GPU_KERNEL);
+    reg.register_grid(MANIFEST.id, gpu::GRID);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

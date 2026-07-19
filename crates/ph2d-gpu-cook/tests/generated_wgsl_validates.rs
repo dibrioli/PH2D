@@ -63,6 +63,9 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_spring::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
+    // GPU/M5 (ADR-0134) — the grid-injected WGSL (the `target`/`out`/`in`
+    // reserved-word trap is caught here, device-free, per handoff §0.4).
+    ph2d_node_motion_boids::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

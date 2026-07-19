@@ -1,34 +1,86 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18 (a PILHA de efeitos)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18
 
 **Para:** o agente integrador (DIRETRIZ §1.5.3–1.5.4), quando o Enio mandar.
-**Estado:** ✅ linha **fechada e verde**, 17 commits sobre a `main`.
-**⚠️ Toca FOUNDATIONAL** (`ph2d-editor-core`) desde `64a95f4b` — ver **§12** antes de escolher a ordem. **NÃO integrei e NÃO pushei** —
-a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
+**Estado:** ✅ linha **fechada e verde**, **27 commits** sobre a `main`. **NÃO integrei e NÃO
+pushei** — a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 
-> ⚠️ **Pendente de SMOKE do Enio** — `PH2D_BUILD_SMOKE=13`. Ver §5.
->
-> ⚠️ **O smoke de 2026-07-18 já correu e derrubou quatro coisas** — o layout em card, a escala do
-> `Size`, o empilhamento de dois ZigZags e o readout do chip. Tudo corrigido; ver **§9**. O item
-> `undo/redo` **fica ABERTO** e o §11 diz porquê e como o decidir numa corrida.
+---
+
+## §0 — Leia isto primeiro (o resto é detalhe)
+
+**O que a linha entrega:** os **Live Path Effects** — uma pilha por-caminho avaliada dentro do
+`cooked()` ([ADR-0132](architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md)),
+com **4 efeitos** (Trim Path · Zig Zag/Roughen · Repeater · Pucker & Bloat), a **seção Effects**
+no painel (cards com ordenar/olho/apagar) e a **sonda visual** que passou a ser o método.
+
+**Tudo smokado pelo Enio** (2026-07-18), incluindo o smoke final do Repeater enriquecido.
+
+### As três coisas que decidem a ORDEM de integração
+
+| ⚠️ | Facto | Onde |
+|---|---|---|
+| **Toca FOUNDATIONAL** | `ph2d-editor-core` — o scrub das caixas numéricas inteiras. Passa por `scripts/foundational-integrate.sh` (ADR-0107). | §12 |
+| **Bumpa 2 schemas** | `VEC_SCENE_SCHEMA_VERSION` 8→**13** · `PROJECT_SCHEMA` 18→**23** · tripla do gate `(23, 8, 13)` | §6 |
+| **Contrato congelado: NÃO tocado** | O `NodeOp`/`OpResolver`/`NodeManifest` (§6 do CLAUDE.md) foi **medido** e não bloqueia — a pilha não é um grafo. | §2, §3 |
+
+⚠️ **Se outra linha bumpar o `PROJECT_SCHEMA` na mesma jornada, o valor certo não está em nenhum
+dos dois lados do conflito: ele se CONTA**
+([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+
+### O que fica ABERTO (nenhum é bloqueante)
+
+1. **undo/redo dos efeitos** — o Enio reportou-o três vezes e eu **não consegui reproduzi-lo**.
+   Varri o caminho inteiro quatro vezes, com dois agentes, e **não há assimetria nenhuma** entre
+   os efeitos e o resto do documento. Corrigi o único sítio do frame onde eles se comportavam
+   de forma diferente (o pivô — §15.4). Protocolo de diagnóstico em §11.
+2. **Offset Path não pode ser um efeito da pilha** — achado arquitetural, §15.5.
+3. **O Twist foi CORTADO** e a razão está no §15.3. Não é dívida: é uma decisão.
+
+---
 
 ---
 
 ## §1 — O que entra
 
+Em quatro blocos, na ordem em que aconteceram.
+
+**A espinha (ADR-0132) + o 1º efeito**
+
 | SHA | O quê |
 |---|---|
-| `19383f48` | **ADR-0132** — a decisão de arquitetura do LPE |
-| `e5e40aa6` | **fix**: a alça de raio pergunta se a geometria é DERIVADA (bug vivo, 3 objetos) |
-| `db50c236` | **feat**: a PILHA + o motor de arco + o **Trim Path** |
-| `6f599cf1` | **feat**: a cena de smoke `PH2D_BUILD_SMOKE=13` |
-| `1d85fddb` | **docs**: este handoff + a fila do handoff de continuação parou de mentir |
-| `b6e66db5` | **fix**: o draw-on da cena RECOMEÇA (o smoke reprovou o TEMPO, não o Trim) |
-| `e5992c4b` | **feat**: a **seção Effects** no painel — o artista alcança a pilha |
-| `130cde9e` `ea46a9b9` | **feat**: **Zig Zag / Roughen**, o 2º efeito — e a prova da promessa |
-| `662e1f48` | **refactor**: a seção é **dirigida pela TABELA** — o próximo efeito custa zero painel |
-| `ae4bfd69` | **docs**: o handoff conta o que a promessa do ADR custou de facto |
-| `c0d69ab8` | **feat**: cada efeito num **CARD** (nome + ordenar + olho + apagar) e o `Size` **relativo** |
-| `e38134a1` | **fix**: o 2º ZigZag ondula **sobre** o 1º; o chip mostra o número do **documento** |
+| `02382568` `19383f48` | **ADR-0132** — a decisão: LPE é uma PILHA por-caminho, não um grafo de nós |
+| `e5e40aa6` | **fix**: a alça de raio pergunta se a geometria é DERIVADA (bug vivo, 4 de 5 objetos) |
+| `db50c236` | **feat**: a PILHA + o motor de arco (`arclen.rs`) + o **Trim Path** |
+| `6f599cf1` `b6e66db5` | **feat**: a cena de smoke `PH2D_BUILD_SMOKE=13` |
+
+**O painel, e a promessa do ADR posta à prova**
+
+| SHA | O quê |
+|---|---|
+| `e5992c4b` | **feat**: a **seção Effects** — o artista alcança a pilha |
+| `130cde9e` `ea46a9b9` | **feat**: **Zig Zag / Roughen**, o 2º efeito |
+| `662e1f48` | **refactor**: a seção é **DIRIGIDA PELA TABELA** — o próximo efeito custa zero painel |
+| `c0d69ab8` | **feat**: cada efeito num **CARD** (nome · ordenar · olho · apagar) e o `Size` **relativo** |
+
+**Os quatro achados do 1º smoke**
+
+| SHA | O quê |
+|---|---|
+| `e38134a1` | **fix**: o 2º ZigZag ondula **sobre** o 1º (era aliasing: apagava-o) · o chip mostra o número do **documento** |
+| `7fa5f969` `4daf72cc` | **fix**: o log do undo explica o silêncio (andaime, retirado depois) |
+| `64a95f4b` | **fix** ⚠️ **foundational**: a caixinha alterna · o arrasto vertical de uma CONTAGEM anda |
+| `c76b1f80` | **fix**: a caixinha ganha **id próprio** — um id não pode ter dois tipos de widget |
+
+**Os efeitos, e a correção do MÉTODO**
+
+| SHA | O quê |
+|---|---|
+| `2518ea39` | **feat**: Repeater, Twist e Pucker & Bloat — a promessa do ADR **medida** (zero painel) |
+| `a7ea910c` | **fix**: os três defeitos que o smoke apanhou — e nenhum precisava de smoke |
+| `d63b225a` | **feat**: a **sonda de RENDERIZAR-E-OLHAR** — e o **Twist é CORTADO** |
+| `3d803ebf` | **feat**: o Repeater ganha o **2º eixo** (grelha) e a **2ª rotação** — o Array do Blender a sério |
+
+(Os `docs(vector)` intercalados são atualizações deste handoff.)
 
 **Base:** `02382568` (a linha estava a 2 commits de docs sobre a `main` `389676f9`).
 
@@ -121,6 +173,16 @@ desenhe uma forma, selecione-a (**um** caminho — a seção é por-caminho) e a
    **Rough** (o mesmo motor, deslocamento pseudo-aleatório e determinístico).
 3. **Reordene com Up/Down** e olhe: ondular-depois-cortar **não** é cortar-depois-ondular. Se as
    duas ordens desenharem igual, a pilha não está a compor.
+4. **O olho** desarma sem apagar: os parâmetros do efeito desarmado continuam lá e editáveis.
+5. **Add Repeater** — `Copies X` faz a fileira e `Move X = 100` **encaixa sem folga**. Ligue
+   `Copies Y` e sai uma **grelha**. `Spin` gira cada cópia sobre si mesma (a fileira continua
+   fileira); `Orbit` **leva** a cópia — é o arranjo radial. Se as duas rotações desenharem igual,
+   uma delas é um botão morto.
+6. **Add Pucker & Bloat** — negativo dá a **estrela de pontas**, positivo dá a **flor**, e o meio
+   é a forma intacta. Se ele só aumentar e diminuir a forma, voltou a ser uma escala.
+
+⚠️ **Tudo o acima foi smokado e aprovado pelo Enio** (2026-07-18). O que segue por confirmar é só
+o comportamento do **undo** sobre a pilha (§11).
 
 **Também vale conferir o fix da alça de raio** (`e5e40aa6`), que é independente: num **filho de
 envelope** (`PH2D_BUILD_SMOKE=11`), no modo **Node**, as alças de raio **não devem mais aparecer**.
@@ -132,17 +194,25 @@ Antes apareciam, funcionavam, e o raio sumia no frame seguinte.
 
 - `cargo check --workspace --all-targets` ✅ (o campo novo em `VecPath` muda o layout postcard de tudo)
 - `cargo test` das 4 crates tocadas (`ph2d-vec-scene` · `ph2d-panel-vector` · `ph2d-host-desktop` ·
-  `ph2d-editor-core`) ✅ **1943**, 0 falhas
+  `ph2d-editor-core`) ✅ **1964**, 0 falhas
 - `cargo clippy --workspace --all-targets` ✅ **0 warnings** · `cargo fmt` **antes** de medir LOC
 - ⚠️ Os arch-gates de arquivo (`no_magic_numeric`, LOC cap) moram na **`ph2d-editor-core`** e **não**
-  rodam com `cargo test -p` de outro crate. A linha pagou esse pedágio **três** vezes — a última
-  neste commit final, e o gate apanhou um `100.0` cru a caminho do commit.
+  rodam com `cargo test -p` de outro crate. A linha pagou esse pedágio **três** vezes — a última no
+  commit final da 1ª leva, e o gate apanhou um `100.0` cru a caminho do commit.
 
-**Schema:** `VEC_SCENE_SCHEMA_VERSION` 8→**10** · `PROJECT_SCHEMA` **18→20**, com a tripla do gate de
-acoplamento atualizada para `(20, 8, 10)`. ⚠️ **Se outra linha bumpar o `PROJECT_SCHEMA` na mesma
-jornada, o valor certo não está em nenhum dos dois lados do conflito: ele se CONTA**
-([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). De passagem, a narrativa do gate ganhou
-o **v18** que ninguém tinha acrescentado (a UNIDADE do `width` do Flip, `cb42c9a2`).
+**Schema:** `VEC_SCENE_SCHEMA_VERSION` 8→**13** · `PROJECT_SCHEMA` **18→23**, tripla do gate de
+acoplamento em `(23, 8, 13)`. A escada, para quem tiver de a fundir com outra linha:
+
+| v | o que mudou de forma |
+|---|---|
+| 9 | `VecPath` ganhou `effects` |
+| 10 | a entrada da pilha virou `FxEntry` (o efeito **+ se está LIGADO**) |
+| 11 | variants `Repeat`/`Twist`/`Bloat` |
+| 12 | o `Twist` saiu e os índices fecharam-se atrás dele (a v11 nunca existiu num save) |
+| 13 | o `RepeatSpec` ganhou o 2º eixo e a 2ª rotação |
+
+De passagem, a narrativa do gate ganhou o **v18** que ninguém tinha acrescentado (a UNIDADE do
+`width` do Flip, `cb42c9a2`).
 
 ---
 
@@ -432,9 +502,147 @@ ser escrita larga demais e matar todos os sliders em silêncio
 
 ---
 
-## §14 — Estado do undo (fecha o §11)
+## §14 — Estado do undo — ⚠️ AINDA ABERTO
 
-**O smoke do undo passou** (Enio, 2026-07-18). O `PH2D_UNDO_LOG` ficou mais falante de qualquer
-forma (`7fa5f969`): as três saídas antecipadas do `post_frame_undo` explicam-se agora, e só quando
-houve input. Um log que só fala no sucesso não sabe diagnosticar um silêncio — e foi por lhe faltar
-essa propriedade que a primeira corrida não pôde dizer nada.
+O `PH2D_UNDO_LOG` ficou mais falante durante a caça (`7fa5f969`) e o andaime foi retirado a pedido
+do Enio quando o smoke passou (`4daf72cc`) — **cedo demais**: a ronda seguinte precisou dele. Fica
+a lição, e o protocolo em §11 continua a ser a forma de o decidir numa corrida.
+
+O que MUDOU desde então: o pivô deixou de reagir aos efeitos (§15.4). Era o único sítio do frame
+onde os efeitos e o resto do documento não se comportavam igual perante o registo de passos, e
+agora comportam-se. **Não afirmo que isso fecha o relato** — afirmo que fecha a única assimetria
+que dois agentes e quatro varreduras conseguiram encontrar.
+
+---
+
+## §15 — A leva de efeitos, e o que ela custou aprender (`2518ea39` → `3d803ebf`)
+
+A pilha existia com dois efeitos. Dois provam um mecanismo, não uma plataforma — e o ADR-0132 foi
+construído para que o terceiro custasse **zero painel**. Isso estava por cobrar.
+
+### §15.1 — A promessa foi cobrada, e o número é ZERO
+
+Três efeitos entraram inteiramente dentro de `ph2d-vec-scene`. **Nem uma linha de painel, nem de
+shell.** Fora dela só mudou o `PROJECT_SCHEMA` e a tripla do gate, que são consequência do formato
+e não da UI. Acrescentar um efeito é hoje: um variant + os braços + uma linha em `KINDS`.
+
+### §15.2 — ⚠️ E três dos que entraram estavam MAUS
+
+O Enio: *"três implementações paupérrimas"*. Estavam, e a causa era **uma só**:
+
+> 238 gates verdes, mutações a sangrar, e **eu nunca tinha renderizado nenhuma delas.** Todos os
+> oráculos perguntavam *"o buffer diz o que eu disse que dizia"*; nenhum perguntava *"isto parece
+> a ferramenta cujo nome tem"*.
+
+Os três defeitos, e nenhum precisava de olho clínico:
+
+| efeito | defeito | causa |
+|---|---|---|
+| **Twist** | torcia um "lowpoly" | campo **não-afim** amostrado só nas âncoras |
+| **Pucker & Bloat** | *"só aumenta e reduz a escala"* | implementei o meu **palpite** do efeito em vez de ler o que ele é. A Adobe define-o como um PAR (âncoras para dentro **enquanto** os segmentos curvam para fora); com o mesmo fator nos dois é uma escala, que é o gizmo |
+| **Repeater** | as combinações não encaixavam | os dois eixos dividiam pela **média** de largura e altura, então `100` nunca encaixa numa forma não-quadrada |
+
+**O gate do Bloat afirmava o comportamento errado** — verde por cima da escala. É a lição do
+oráculo, na sua forma mais crua.
+
+### §15.3 — O Twist foi CORTADO, e isso é uma decisão
+
+O sintoma era real e a causa clara. Construí a subdivisão adaptativa que o resolve, e **ela
+funcionava** — há gate a provar que partir não move a curva.
+
+O que não funcionava era o **efeito**. Quatro tentativas, cada uma verificada na folha de contacto:
+força a crescer com o raio, a decrescer, raio de referência pela média, raio pelo máximo,
+subdivisão seis vezes mais fina. **Todas rasgavam** — sobre uma forma com quinas, qualquer queda
+radial cria um diferencial enorme ao longo de UMA aresta e o canto chicoteia à volta do corpo.
+
+Isso deixou de ser defeito de código e passou a ser defeito do meu **modelo** do efeito, e não
+tenho referência que consiga verificar. **Um item de menu que produz geometria rasgada é pior do
+que um item que falta.** A subdivisão e o gate dela ficam no histórico (`fx_warp.rs` antes de
+`d63b225a`), para quem o souber especificar.
+
+### §15.4 — O pivô deixou de reagir aos efeitos
+
+`settle_origins` media a bbox **COZIDA** — correto para o gizmo, que abraça o que se vê; errado
+para o **pivô**, que é propriedade da identidade do objeto e não da aparência de hoje. Com o
+cozido, acrescentar um Trim ou um Repeater deslocava a caixa e fazia esse sistema **escrever no
+documento num frame que o utilizador não provocou** — um escritor por-frame que reage a efeitos,
+que é a forma de um passo de undo espúrio. Agora mede o autorado (`path_bbox`).
+
+É o único sítio do frame onde os efeitos e o resto do documento não se comportavam igual.
+
+### §15.5 — ⚠️ ACHADO ARQUITETURAL: o Offset Path **não pode** ser um efeito da pilha
+
+`ph2d-vec-scene` é deliberadamente `serde` + `postcard` e mais nada (foi o que obrigou o
+`arclen.rs` a existir à mão). Como o `cooked()` é avaliado **dentro** dela, **todo efeito da pilha
+herda essa cerca**.
+
+Um Offset correto exige tratamento de quinas e remoção de auto-interseções — isto é, o motor
+booleano. Ele tem de ser um **comando de edição**, como as booleanas que já existem, e não uma
+entrada na pilha. Melhor saber isto antes de alguém gastar um dia a construí-lo no sítio errado.
+
+### §15.6 — O Repeater, contra o Array do Blender
+
+O modificador do Blender tem **três deslocamentos independentes e acumuláveis**: Relative (fração
+da caixa, POR EIXO), Constant, e **Object Offset** (a transformação cumulativa, de onde saem os
+arranjos radiais e as espirais). Faltavam-me duas dessas ideias.
+
+O Repeater tem agora **6 parâmetros**:
+
+- `Copies X` + `Move X`, `Copies Y` + `Move Y` — dois eixos ⇒ a **grelha sai de um só efeito**
+  (no Blender ela exige empilhar dois Array). A **contagem é o interruptor** do eixo: `1`
+  desliga-o, e um toggle separado seria uma 2ª resposta a *"este eixo está ligado?"*.
+- `Spin` — cada cópia gira sobre o centro **dela**. A fileira continua fileira e ganha um leque.
+- `Orbit` — cada cópia gira em torno do centro do **original**. Sobre uma cópia deslocada isto
+  **leva-a** para outro sítio: é o arranjo radial e a espiral, e é o *Object Offset*.
+
+⚠️ **As duas rotações existem porque fazem coisas diferentes.** A 2ª versão substituiu uma pela
+outra, e **substituir era o erro** (Enio). Há gate que mede a diferença pelo sítio onde a cópia
+acaba — sem ele, uma delas seria um botão morto.
+
+`MAX_FX_PARAMS` 4→**6**, e o `MAX_FX_ROW_PARAMS` do painel com ele. ⚠️ O doc do painel afirmava
+*"há gate a exigir que os dois lados concordem"* e **não havia**; agora há
+(`the_engine_and_the_panel_agree_on_the_parameter_ceiling`).
+
+Tetos **medidos** (CLAUDE.md §0): 128 por eixo, **1024 no produto** — o teto de um eixo não é o
+teto de uma grelha. `32×32` custa 0,66 ms de cozimento. O recurso por medir continua a ser o
+**render** dos contornos, não o cozimento.
+
+---
+
+## §16 — ⬛ A MUDANÇA DE MÉTODO, e é o que mais vale levar daqui
+
+`crates/ph2d-vec-scene/tests/fx_look.rs` + `tests/look/mod.rs` — uma **folha de contacto**: uma
+linha por capacidade, uma coluna por valor do parâmetro, num PNG.
+
+```
+PH2D_FX_LOOK_DIR=/tmp/look cargo test -p ph2d-vec-scene --test fx_look --release -- --ignored --nocapture
+```
+
+Preenchimento = a forma que o artista vê · linha fina = a geometria · **cruzes = as âncoras** (a
+diferença entre *"a curva está errada"* e *"as âncoras estão no sítio errado"*).
+
+**Sem dependência nenhuma**, de propósito: a crate é deliberadamente `serde`+`postcard`, e um PNG
+com blocos deflate **não comprimidos** troca ~40 linhas por zero deps. É o irmão do
+`push_look_probe` do Painter.
+
+Ela pagou-se ao primeiro olhar e **duas vezes depois disso**:
+
+1. O Repeater **orbitava** um centro fixo em vez de ladrilhar — invisível em qualquer gate de
+   buffer, óbvio em meio segundo de imagem.
+2. **A própria sonda estava errada**: preenchia em even-odd, e uma forma auto-intersectada aparecia
+   rasgada onde o produto desenha tinta cheia. Quase fui perseguir um defeito do desenhador.
+3. Um gate meu acusou a subdivisão de mover a curva 0,44 — mas media distância ao **ponto**
+   amostrado mais próximo, com espaçamento 1,25. O oráculo é que estava errado.
+
+⚠️ **A recomendação para quem herdar isto:** um efeito novo entra na folha **antes** de entrar na
+tabela `KINDS`. Foi a ausência disto que deixou passar três efeitos maus numa leva só.
+
+---
+
+## §17 — Fila, para depois da integração
+
+- **Chamfer** (tipo de quina — reta em vez de arco; quase de graça sobre o `corner_live`)
+- **Texto em caminho** — ficou muito mais barato: o `arclen.rs` que o Trim trouxe é o pré-requisito
+- **Offset Path** — ⚠️ como COMANDO, não como efeito (§15.5)
+- **Largura variável** · **mais primitivas** · **blend em cadeia** (>2 formas) · **morph vivo**
+- **Twist**, quando alguém o souber especificar contra uma referência verificável (§15.3)

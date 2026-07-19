@@ -37,9 +37,12 @@ pub struct Dab {
     /// Extra per-dab texture rotation as a unit vector (identity `[1, 0]` = none); set by **Jitter
     /// Rotate**. The stamp composes it into the texture frame; it has no effect without a texture.
     pub rotation: [f32; 2],
-    /// The smoothed **stroke heading** at this dab, as a unit vector (`[0, 0]` = no heading yet, e.g. the
-    /// stroke's first dab). Computed once in the engine from the path tangent (length-weighted EMA, see
-    /// [`crate::heading`]) where the geometry is clean. The stamp feeds it to `dab_basis` as the **Rake**
+    /// The **stroke heading** at this dab, as a unit vector (`[0, 0]` = no heading yet, e.g. the stroke's
+    /// first dab). Computed in the engine from consecutive dab centres ([`crate::heading::from_centers`]),
+    /// so it trails the stroke by ~half a dab spacing — NOT the length-weighted EMA, whose lag scaled with
+    /// the brush and made a raked tip point a brush-width behind on a curve (Enio 2026-07-19). The first
+    /// dab falls back to the settled EMA `heading`, so readers that consult only the first dab (the Push
+    /// bow-wave, the Chisel axis) are byte-identical. The stamp feeds it to `dab_basis` as the **Rake**
     /// direction; it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
     pub dir: [f32; 2],
 }
@@ -94,6 +97,12 @@ pub struct Stroke {
     warm_dist: f32,
     warm_from: [f32; 2],
     warming: bool,
+    /// The previous emitted dab's path position (pre-jitter), so each dab's [`Dab::dir`] is the low-lag
+    /// **Rake** heading from consecutive centres ([`crate::heading::from_centers`]) instead of the
+    /// smoothed EMA that trails the stroke by a brush-width. `None` = no dab emitted yet (first dab of the
+    /// stroke → the settled `heading` fallback). Reset in [`Self::begin`]; the shape editors build a fresh
+    /// `Stroke` per re-stamp, so it restarts there on its own.
+    last_emit_pos: Option<[f32; 2]>,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -135,6 +144,7 @@ impl Stroke {
             warm_dist: 0.0,
             warm_from: [0.0, 0.0],
             warming: false,
+            last_emit_pos: None,
         }
     }
 
@@ -162,6 +172,7 @@ impl Stroke {
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
+        self.last_emit_pos = None; // no dab emitted yet → the first dab's Rake falls back to the heading
         // Rake warm-up (see [`mod@self::warmup`]): hold the opening dabs until travel defines the heading.
         self.warm_buf.clear();
         self.warm_dist = 0.0;
@@ -500,13 +511,19 @@ impl Stroke {
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         let center = self.apply_jitter(pos, radius);
+        // The Rake heading is the low-lag direction from the previous emitted dab to this one (the
+        // smoothed `heading` is the first-dab fallback), so the texture Rake tracks the stroke instead
+        // of trailing it by a brush-width (see [`crate::heading::from_centers`]). Taken from the PATH
+        // position `pos`, not the jittered `center`, so position jitter never wobbles the heading.
+        let dir = crate::heading::from_centers(self.last_emit_pos, pos, self.heading);
+        self.last_emit_pos = Some(pos);
         Dab {
             center,
             radius_px: radius,
             coverage,
             color,
             rotation,
-            dir: self.heading,
+            dir,
         }
     }
 

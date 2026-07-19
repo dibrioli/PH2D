@@ -1419,6 +1419,43 @@ fn arc_stroke_heading_tracks_the_tangent_and_rotates_monotonically() {
 }
 
 #[test]
+fn the_rake_heading_does_not_lag_the_stroke_on_a_large_brush() {
+    // The sibling above checks radius 8 with a 25° tolerance — and STAYED GREEN over the reported bug,
+    // because the old Rake heading (the length-weighted EMA) trailed the arc tangent by a lag that
+    // scaled with the brush: measured 5.9° at radius 8 but **51.7° at radius 60** — half a right angle,
+    // read by the artist as *"Rake não consegue rotacionar o brush"* (Enio 2026-07-19). `Dab::dir` is
+    // now the direction between consecutive dab CENTRES (exact path samples), whose lag is ~half a dab
+    // spacing REGARDLESS of the brush (measured 6.9° at radius 60, matching the Sculpt Chisel's cure).
+    // Assert the worst lag stays under 15° on the big brush the EMA failed. Red-first: reverting
+    // `dab_at` to `dir: self.heading` puts the worst lag back to 51.7° and fails this.
+    const R: f32 = 200.0;
+    let mut spec = straight_spec(60.0, 0.4); // the brush size where the old EMA lag was worst
+    spec.stabilizer = 0.5; // the realistic smoothing (spline + lazy-mouse), as the sibling uses
+    let mut pts = Vec::new();
+    for i in 0..=60 {
+        let th = (i as f32 / 60.0) * std::f32::consts::FRAC_PI_2;
+        pts.push(pt(R * th.cos(), R * th.sin(), 1.0));
+    }
+    let dabs = collect_stroke(spec, no_dynamics(), &pts);
+    let moving: Vec<&Dab> = dabs.iter().filter(|d| d.dir != [0.0, 0.0]).collect();
+    assert!(moving.len() >= 5, "got {} moving dabs", moving.len());
+    let mut worst = 1.0f32;
+    for d in &moving {
+        let r = d.center; // centre at the origin
+        let rl = (r[0] * r[0] + r[1] * r[1]).sqrt();
+        let tangent = [-r[1] / rl, r[0] / rl]; // CCW travel tangent at this arc position
+        let dot = (d.dir[0] * tangent[0] + d.dir[1] * tangent[1]).clamp(-1.0, 1.0);
+        worst = worst.min(dot);
+    }
+    // 15° (dot 0.966) cleanly separates the fix (6.9°) from the bug (51.7°).
+    assert!(
+        worst > 0.966,
+        "the raked heading tracks the arc tangent within 15° on a large brush (worst {:.1}° lag)",
+        worst.acos().to_degrees()
+    );
+}
+
+#[test]
 fn heading_is_independent_of_dab_spacing() {
     // Length-weighting guarantee: the SAME physical arc gives ~the same heading at a given arc position
     // whether dabs are dense or sparse — because the EMA blend is driven by DISTANCE travelled, not by

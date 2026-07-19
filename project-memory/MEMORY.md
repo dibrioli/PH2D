@@ -15,6 +15,8 @@
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — decida no padrão-ouro, execute, reporte
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — pt-BR direto; recomendação primeiro; sem AskUserQuestion-spam
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — pare de calibrar; questione o modelo
+- [Remédio novo torna o velho CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — obsoleto não quebra gate; ao 3º ajuste da mesma constante, questione o modelo
+- [Parâmetro que não muda NADA = resultado descartado a jusante](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor, não o produtor; área é proxy fraco de "mesma região"
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de DESIGN
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play; não peça montagem
@@ -45,6 +47,8 @@
 - [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) — nunca ofereça/rode ship no fim da SUA linha
 - [Integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md) — feche → handoff → PARE
 - [Ship do integrador drena latentes](project_integrator_ship_catches_latents_budget_iterations.md) — 2-4 iterações; gate per-linha não basta
+- [Ordem de integração se MEDE](feedback_integration_order_comes_from_measured_overlap.md) — sobreposição par-a-par; a 1ª linha é FF de graça
+- [Um ✗ do ship pode ser o AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — target symlink pra tmpfs evapora; clippy/nextest nem rodam
 - [Pipe mascara o exit code](feedback_pipe_masks_script_exit_code.md) — `| grep` troca o `$?`; verifique o ESTADO
 - [Crase em msg de commit = execução](feedback_backticks_in_commit_message_are_command_substitution.md) — use `git commit -F <arquivo>`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — só `check --workspace` cruza
@@ -65,6 +69,7 @@
 ## Auditoria
 - [Menu "não faz nada" = falta populate](feedback_context_menu_closes_on_down_repaint.md) — grep o id no `populate_*` PRIMEIRO
 - [Busca NEGATIVA precisa de controle POSITIVO](feedback_a_negative_search_needs_a_positive_control.md) — grep vazio mente; prove que a busca acha o que você sabe estar lá
+- [RE-MEÇA um resíduo anotado antes de curá-lo](feedback_remeasure_a_documented_residual_before_curing_it.md) — a causa E o número da nota podem estar errados; 2× no mesmo dia
 - [Meça a ESCALA antes da causa](feedback_measure_perf_symptom_scale.md) — frame (4-16ms) vs ⅓s muda a classe
 - [Harness reproduz mecanismo, não contexto](feedback_harness_reproduces_mechanism_not_context.md) — instrumente o app real
 - [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — teste a REPETIÇÃO
@@ -106,6 +111,10 @@
 - [Determinism sweep](feedback_determinism_sweep_grep_all_transcendentals.md) — grepe todos os transcendentais
 - [Gate vermelho no seu código CORRETO? pode ser herdado](feedback_a_gate_red_on_your_correct_code_may_predate_you.md) — rode contra o HEAD shipado; não amplifique
 - [Chave de cache: keye no que VARIA o artefato](feedback_a_cache_key_must_key_on_what_varies_the_artifact.md) — derivar do resultado colide; crash, não número errado
+- [A referência aprovada pode já estar no produto](feedback_the_approved_reference_may_already_be_in_the_product.md) — outra rota do sistema é oráculo de graça; gate que a referência REPROVA descreve o seu modelo
+- [Comparar duas rotas exige a MESMA arte](feedback_comparing_two_routes_requires_the_same_art.md) — fixture diferente por rota mede o fixture; gate que mora dentro da rota some com ela
+- [Mover a lei é METADE do conserto](feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it.md) — o oráculo passa a PERGUNTAR o número certo e segue cego se a fixture vive no ponto degenerado (fator 1)
+- [Razão entre dois canais DOENTES é verde](feedback_a_ratio_between_two_sick_channels_is_green_by_construction.md) — ancore no que o produto promete (o pincel), não no canal vizinho
 - [Gate verde de 1ª pode ser verde por ACIDENTE](feedback_a_green_gate_may_be_green_by_accident.md) — mutação sobreviveu? o suspeito é o fixture (3 em 20, no §4.B)
 - [Provas de mutação (5 regras)](reference_topic_mutation_proofs.md) — mute o código · RED só sobre visto-VERDE · oráculo alcançável · otimização dispara · sobrevivente = gate faltando
 - [Fixture em regime CAÓTICO](feedback_a_fixture_can_land_in_a_chaotic_regime.md) — Δ enorme? compare com uma quantidade física; magnitude limitada + sinal virando = divergência máxima

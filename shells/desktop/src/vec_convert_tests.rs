@@ -303,3 +303,66 @@ fn repro_two_tools_on_a_live_shape_across_a_recook() {
     assert!(v[1].corner_radius > 0.0, "a 1a quina sobreviveu ao 2o gesto");
     assert!(v[2].corner_radius < 0.0, "a 2a chanfrou");
 }
+
+/// **Uma receita CONGELADA não é ressuscitada** — o bug que apagava a quina anterior.
+///
+/// O `make_committed_shape_live` roda todo frame. Enquanto ele lia o `selected()` (que vive para
+/// sempre) e se guardava só com *"o componente está presente?"*, congelar a receita de propósito
+/// era lido como *"ainda não nasceu"*: o frame seguinte a repunha e chamava o `recook_into`, que
+/// faz `p.verts = geom.verts` e **zera todo `corner_radius`**. Sobrevivia só o raio escrito
+/// depois do recook — *"a mesma ferramenta desfaz o que tinha feito no outro ponto"* (Enio).
+///
+/// Agora o nascimento é um EVENTO consumido (`pending_live`). Este gate roda o frame DUAS vezes
+/// depois do congelamento, que é onde o defeito aparecia.
+#[test]
+fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
+    use ph2d_vec_edit::shape::{ShapeConstraint, ShapeTool};
+    use ph2d_vec_scene::ShapeKind;
+
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let mut tool = ShapeTool::new();
+
+    // O artista DESENHA um retângulo (o caminho real que pede o nascimento vivo).
+    let id = tool.on_press(
+        &mut scene,
+        ShapeKind::Rectangle,
+        Default::default(),
+        [0.0, 0.0],
+        0.01,
+        ShapeConstraint::default(),
+    );
+    tool.on_drag(&mut scene, [40.0, 40.0], ShapeConstraint::default());
+    assert!(tool.on_release(&mut scene), "a forma foi commitada");
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+
+    // FRAME: ela nasce viva.
+    crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool);
+    let e = entity_of(&map, id);
+    assert!(
+        sim.world().get::<VecShape>(e).is_some(),
+        "pré-condição: a forma nasceu VIVA"
+    );
+
+    // O artista congela a receita (é o que o gesto de quina faz) e arredonda DUAS quinas.
+    assert!(crate::vec_convert::freeze_shape_recipe(&mut sim, &map, id));
+    {
+        let p = scene.path_mut(id).unwrap();
+        p.verts[1].corner_radius = 5.0;
+        p.verts[2].corner_radius = -3.0;
+    }
+
+    // DOIS frames depois — é aqui que a receita ressuscitava e varria os raios.
+    for _ in 0..2 {
+        crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool);
+    }
+
+    assert!(
+        sim.world().get::<VecShape>(e).is_none(),
+        "a receita congelada NÃO pode voltar — o artista a descartou de propósito"
+    );
+    let v = &scene.path(id).unwrap().verts;
+    assert_eq!(v[1].corner_radius, 5.0, "a 1a quina sobreviveu ao frame");
+    assert_eq!(v[2].corner_radius, -3.0, "e a 2a também");
+}

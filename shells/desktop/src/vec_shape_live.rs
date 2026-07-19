@@ -70,21 +70,33 @@ pub(crate) fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape)
     true
 }
 
-/// A forma recém-desenhada (a última commitada pelo `ShapeTool`) NASCE VIVA: re-cozinha a
-/// geometria centrada no local 0, põe o centro do gesto no `Transform` e pendura o
-/// `VecShape`. Idempotente — uma vez viva (componente presente), não faz nada. Roda
-/// pós-`sync` (a entidade existe) e ANTES do `settle` (que pula formas vivas).
+/// A forma recém-desenhada NASCE VIVA: re-cozinha a geometria centrada no local 0, põe o centro
+/// do gesto no `Transform` e pendura o `VecShape`. Roda pós-`sync` (a entidade existe) e ANTES do
+/// `settle` (que pula formas vivas).
+///
+/// ⚠️ **É um EVENTO de uma vez, não um invariante por-frame** — o pedido vem do
+/// `ShapeTool::pending_live` e é CONSUMIDO quando o nascimento acontece.
+///
+/// A versão anterior lia o `selected()` (que vive para sempre) e se guardava só com *"o
+/// componente está presente?"*. Essa pergunta tem DOIS motivos para dar "não": a forma ainda não
+/// nasceu, **ou o artista congelou a receita de propósito** (Convert to Curves / o gesto de
+/// quina). Lendo o 2º como o 1º, o frame seguinte ressuscitava a receita e chamava o
+/// `recook_into` — que faz `p.verts = geom.verts` e **apaga todo `corner_radius` do caminho**.
+/// Sobrevivia só o raio escrito depois do recook: *"a mesma ferramenta desfaz o que tinha feito
+/// no outro ponto"* (Enio). [[feedback_a_condition_that_enumerates_its_readers_rots]]
 pub(crate) fn make_committed_shape_live(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
-    tool: &ShapeTool,
+    tool: &mut ShapeTool,
 ) {
-    let Some(id) = tool.selected() else { return };
+    let Some(id) = tool.pending_live() else { return };
+    // A entidade pode não existir no frame do commit; o pedido sobrevive para o próximo.
     let Some(&bits) = map.get(&id) else { return };
     let entity = Entity::from_bits(bits);
     if sim.world().get::<VecShape>(entity).is_some() {
-        return; // já é viva
+        tool.clear_pending_live(); // já é viva — o pedido está cumprido
+        return;
     }
     let (start, cur) = tool.bounds();
     let shape = VecShape::Param {
@@ -104,6 +116,9 @@ pub(crate) fn make_committed_shape_live(
             t.translation = ph2d_core::Vec2::new(cx, cy);
         }
         e.insert(shape);
+        // O nascimento ACONTECEU: consome o pedido. Daqui em diante, a ausência do `VecShape`
+        // significa "o artista congelou", e ninguém a ressuscita.
+        tool.clear_pending_live();
     }
 }
 

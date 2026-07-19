@@ -3443,7 +3443,7 @@ impl crate::App {
                 sim,
                 vec_scene,
                 &self.vec_entities,
-                &self.vec_shape,
+                &mut self.vec_shape,
             );
             // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
             // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS descartam o

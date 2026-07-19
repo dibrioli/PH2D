@@ -48,6 +48,21 @@ pub struct ShapeTool {
     px_to_world: f64,
     /// A última forma commitada (a shell a seleciona, para já sair editável).
     committed: Option<VecPathId>,
+    /// **A forma que ainda vai NASCER VIVA** — um pedido de UMA vez, consumido quando a shell
+    /// consegue pendurar o `VecShape` nela.
+    ///
+    /// É separado do [`Self::committed`] porque as duas perguntas são diferentes: *"qual foi a
+    /// última forma que desenhei?"* (que a shell consulta para selecionar, para os alvos de snap
+    /// e no release) vive para sempre, e *"falta dar vida a alguma?"* é um EVENTO.
+    ///
+    /// Confundir os dois custou um bug caro: a shell chamava o `make_committed_shape_live` a cada
+    /// frame com o `committed`, e o único guard era *"o componente está presente?"*. Quando o
+    /// artista CONGELAVA a receita de propósito (Convert to Curves, ou o gesto de quina), o
+    /// componente sumia — e o frame seguinte lia essa ausência como *"ainda não nasceu"*,
+    /// ressuscitava a receita e re-cozinhava a geometria, **apagando todo `corner_radius` do
+    /// caminho**. Um raio sobrevivia (o escrito depois do recook), que é exatamente o sintoma
+    /// que o Enio viu: *"a mesma ferramenta desfaz o que tinha feito no outro ponto"*.
+    pending_live: Option<VecPathId>,
 }
 
 impl ShapeTool {
@@ -72,6 +87,21 @@ impl ShapeTool {
     #[must_use]
     pub fn selected(&self) -> Option<VecPathId> {
         self.committed
+    }
+
+    /// A forma que ainda precisa NASCER VIVA, se houver (ver [`Self::pending_live`] no campo).
+    /// A shell a consulta uma vez por frame; `None` = não há nascimento pendente, e ninguém
+    /// pode ressuscitar uma receita que o artista congelou.
+    #[must_use]
+    pub fn pending_live(&self) -> Option<VecPathId> {
+        self.pending_live
+    }
+
+    /// Consome o pedido de nascimento — chamado pela shell **quando ele de fato acontece** (não
+    /// na leitura: a entidade pode ainda não existir no frame do commit, e aí o pedido tem de
+    /// sobreviver para o frame seguinte).
+    pub fn clear_pending_live(&mut self) {
+        self.pending_live = None;
     }
 
     /// O tipo da última forma desenhada (a shell a registra como forma VIVA).
@@ -190,6 +220,9 @@ impl ShapeTool {
             .is_some_and(|pp| bbox_span(pp) >= min);
         if keep {
             self.committed = Some(id);
+            // O pedido de NASCER VIVA — uma vez, aqui, no commit. A shell o consome quando
+            // consegue pendurar o `VecShape`; depois disso ninguém ressuscita a receita.
+            self.pending_live = Some(id);
             true
         } else {
             scene.remove_path(id);

@@ -39,9 +39,11 @@ Ou seja: os DOIS pré-requisitos que já assustavam (o estado que sobrevive ao t
 
 A meta não é "a neve na GPU" (otimizar uma cena que já roda na CPU a contagem modesta) — é a **capacidade que não existe em lugar nenhum**: interação a milhões. `motion.boids` é o primeiro payload porque é o mais icônico e o mais simples de verificar (3 regras locais + seek). `sim.collide` (colisão por vizinhança — **e ele está no prefixo CPU da neve**) e uma futura SPH reusam a MESMA grade. Voronoi (JFA) é outra estrutura e vem depois.
 
-### D2 — Um `GpuKernel` pode declarar um PROGRAMA DE PASSES, append-only
+### D2 — A grade é um SERVIÇO multi-passe reusável do sequenciador (append-only)
 
-Estende o metadado lateral (não o contrato congelado — ADR-0126): um kernel opcionalmente declara uma **sequência de passes**, **buffers auxiliares** (com regra de comprimento e tipo, incluindo `atomic<u32>`) e um **tamanho de dispatch por passe**. Um kernel sem programa de passes é o caso de hoje (byte-idêntico; gate de impressão digital). **Cada nó autora o próprio programa na sua drop-crate** — a filosofia leaf-level do ADR-0126; um serviço de "grade" fixo no sequenciador seria uma 2ª resposta para cada algoritmo novo (JFA, XPBD, radix), então **NÃO** é serviço, é contrato.
+**⚠️ Emenda de implementação (Fase 1b, construída e gateada — `ph2d-gpu-cook::grid` + `tests/gpu_grid.rs`, VERDE na RTX).** A 1ª versão deste D2 pedia um *programa de passes GERAL* que cada nó autoraria, e rejeitava a "grade como serviço" por ela não cobrir JFA/XPBD. **A construção mostrou que essa generalização era prematura:** os TRÊS clientes de D1 (boids, `sim.collide`, SPH) usam a MESMA grade de vizinhança — a grade é o **primitivo compartilhado da classe**, não um caso particular. JFA (voronoi) e XPBD (soft-body) são algoritmos DIFERENTES e FUTUROS; projetar um contrato de passes geral antes deles é especular um N não-medido ([[feedback_a_frontier_is_not_a_census]]).
+
+Então: a **grade** (`clear → count → scan → scatter` sobre o spatial hash) é um **serviço multi-passe no sequenciador** (reusa o `scan` da Fase 1a), parametrizado pela coluna de posição e pelo `cell` (= o `radius`). O NÓ segue **puro metadado** (ADR-0126): declara *"preciso de uma grade sobre `P` com cell = param(radius)"* + a WGSL do seu **query** (como usa os vizinhos). A lógica distintiva do nó continua autorada na drop-crate dele; só a construção da grade — idêntica para os 3 clientes — mora no sequenciador, exatamente como o scan. O contrato de passes GERAL fica **deferido** até um cliente **não-grade** (JFA/XPBD) dar o 2º ponto de dado de que ele precisa pra não ser especulação. Um kernel sem grade é o caso de hoje (byte-idêntico).
 
 ### D3 — A aceleração é um SPATIAL HASH (não grade limitada) — sem redução de bounds
 
@@ -59,10 +61,9 @@ O slider do boids para em 500 e o `param_as_count` capa em `1<<24` — o 500 é 
 
 ## Fases (cada uma com gate de paridade; a CPU nunca sai)
 
-1. **1a — O scan (prefix-sum) reusável na GPU.** O sub-componente mais difícil, ISOLADO de propósito: um utilitário de exclusive-scan multi-nível, testado contra um oráculo CPU em wgpu real (RTX, `--ignored`). Sem ele o counting-sort não fecha.
-2. **1b — O contrato multi-passe + o sequenciador.** `GpuKernel` ganha `passes`/`aux`; `encode`/`codegen` ganham buffers auxiliares, `atomic<u32>` e dispatch por-passe. Provado por um nó-oráculo **counting-sort** (ordenar por chave), GPU == CPU.
-3. **2 — A grade espacial (spatial hash).** limpa→conta→scan→espalha ⇒ `(bucket_start, sorted_indices)`. Gate: a grade da GPU casa com uma grade construída na CPU (mesmos buckets).
-4. **3 — O passo do boids.** As 3 regras de Reynolds lendo a grade (9 células) + o branch de seed do tick 0. Paridade ε vs o all-pairs da CPU. `motion.boids` vira GPU-claimable.
+1. **1a — O scan (prefix-sum) reusável na GPU.** ✅ **FEITO** (`ph2d-gpu-cook::scan`, `tests/gpu_scan.rs`, VERDE na RTX): exclusive-scan recursivo multi-nível, **bit-exato** vs a CPU até 1 M (3 níveis de recursão). O sub-componente mais difícil, isolado de propósito.
+2. **1b/2 — A GRADE (serviço multi-passe).** ✅ **FEITO** (`ph2d-gpu-cook::grid`, `tests/gpu_grid.rs`, VERDE na RTX): `clear → count (atômico) → scan → scatter (atômico)` sobre o spatial hash ⇒ `(starts, sorted)`, reusando o scan. Gate: `starts` bit-exato vs o scan da CPU + `sorted` é permutação de `0..n` + cada elemento no range do próprio bucket, até 300 k (que exercita a recursão do scan). ⚠️ **A wave descobriu que 1b e 2 eram a MESMA coisa** — a grade É a máquina multi-passe, e ela é um SERVIÇO, não um contrato geral (a emenda de D2).
+3. **3 — O passo do boids.** As 3 regras de Reynolds lendo a grade (9 células, filtro por célula exata + distância) + o branch de seed do tick 0. Paridade ε vs o all-pairs da CPU. `motion.boids` vira GPU-claimable — falta o wiring contrato/sequenciador (o nó declara "grade sobre P, cell=radius" + o query).
 5. **4 — Milhões + cap medido + demo.** Mede boids na GPU, escreve o teto com a tabela, sobe o slider para o caminho GPU, e uma cena `PH2D_GPU_COOK_DEMO` de milhões de agentes coalescendo.
 6. **5 (herança) — `sim.collide`** reusa a grade (rumo à neve e à família `sim.*`).
 
@@ -77,7 +78,8 @@ O slider do boids para em 500 e o `param_as_count` capa em `1<<24` — o 500 é 
 
 ## Alternativas rejeitadas
 
-- **Grade como SERVIÇO no sequenciador** (o sequenciador sabe construir grade para quem pedir). Mais simples, mas menos geral: JFA (voronoi) e XPBD (soft-body) são OUTROS algoritmos multi-passe; cada um precisaria do próprio serviço. O contrato multi-passe autora-no-nó serve os três. (ADR-0126: leaf-level, autorável na drop-crate.)
+- ~~**Grade como SERVIÇO no sequenciador**~~ — **RECONSIDERADO e ESCOLHIDO** na Fase 1b (ver a emenda de D2). O que se rejeitou aqui na 1ª versão foi a premissa de que a grade seria "menos geral": ela serve os 3 clientes de D1, e o nó ainda autora o próprio query. O que fica **deferido** é o contrato de passes GERAL (para JFA/XPBD, os algoritmos não-grade), não a grade.
+- **Contrato de passes GERAL antes de um cliente não-grade.** Um mini-idioma declarativo cobrindo grade + JFA + XPBD, projetado antes de construir dois deles, é especular a forma geral a partir de um exemplo — o oposto de "meça antes de generalizar". Fica para quando o 2º algoritmo existir.
 - **Bucket de capacidade fixa com overflow descartado** (sem scan). Evita o scan, mas PERDE vizinhos ⇒ quebra a paridade exata com o all-pairs da CPU. Rejeitado: a paridade é o oráculo.
 - **Grade limitada por bounding-box** (redução de min/max). Exige um readback dos bounds (anti-padrão da §0.0) ou um passe de redução extra. O spatial hash não precisa de bounds.
 - **Não fazer nada (ficar na cobertura incremental).** O censo provou que não há mais cobertura incremental que destrave um documento real. Seria parar a linha no platô.

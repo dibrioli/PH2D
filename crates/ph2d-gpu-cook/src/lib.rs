@@ -55,6 +55,7 @@ pub mod debug_read;
 mod encode;
 pub mod field_name;
 mod gather;
+pub mod grid;
 pub mod instances;
 pub mod lower;
 pub mod plan;

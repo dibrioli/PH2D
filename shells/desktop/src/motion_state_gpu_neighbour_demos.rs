@@ -25,7 +25,9 @@
 //! - **`=8`, the breathing packing** — a relaxation SOLVER. `grid(512²) → collide
 //!   → output` with an LFO on `spread`; it sweeps `iterations` times per cook, and
 //!   the sequencer REBUILDS the grid between sweeps because each sweep moves the
-//!   very column the grid indexes (~7,1 ms at 262 k, 43 ms at a million).
+//!   very column the grid indexes (6,4–9,5 ms at 262 k across the LFO's whole
+//!   range, 38 ms at a million). ⚠️ That range used to STEP at the LFO's midpoint —
+//!   see the cell cull in `motion.collide`'s kernel.
 //!
 //! Together they are the argument that the grid is a **service** (ADR-0134 D2) and
 //! not a boids-shaped detour: one client keeps its state across ticks, the other
@@ -123,9 +125,19 @@ pub(super) fn build_gpu_boids_demo_document(
 /// IS the iteration); this sweeps `iterations` times per cook, and because every
 /// sweep moves the very column the grid indexes, the sequencer REBUILDS the grid
 /// between sweeps (`GridSpec::sweeps_param`). Measured on the RTX at 8 sweeps:
-/// 262.144 discs ≈ **7,1 ms/cook**, 1.048.576 ≈ 43 ms, 4.194.304 ≈ 325 ms — so
+/// 262.144 discs ≈ **6,8 ms/cook**, 1.048.576 ≈ 38 ms, 4.194.304 ≈ 288 ms — so
 /// the artist can raise `rows`/`cols` into the millions; this scene is sized to
 /// stay comfortably inside a 60 fps frame while it breathes.
+///
+/// ⚠️ **The breath used to cost a STEP, and that was a kernel bug, not a scene
+/// that was too big** (Enio, 2026-07-19: *"profunda queda de FPS nos valores
+/// positivos do LFO"*). The swept neighbourhood is `ceil(min_dist / cell)` cells
+/// in each direction, and this LFO is centred on exactly 1.0 — the value where
+/// that ceiling steps 2 → 3, i.e. 25 cells → 49. Measured: **7,58 ms at spread
+/// 0.999, 13,08 ms at 1.001**. The kernel now culls a cell whose nearest point is
+/// out of range before touching its discs, which is why the offset can stay at 1.0
+/// (moving it would only have hidden the step at a different value of a slider the
+/// artist can still reach).
 ///
 /// The CPU reference is `O(N²·iterations)`: a million discs would be ~8·10¹² pair
 /// tests, which is why this node had never left a few thousand. It only became

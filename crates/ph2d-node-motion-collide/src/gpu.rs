@@ -18,10 +18,18 @@
 //! - **Gather, not scatter.** Each thread sums the corrections its OWN contacts ask
 //!   of it and divides by their count. That is exactly the CPU's per-disc average,
 //!   and it needs no atomics — a float `atomicAdd` does not exist in WGSL anyway.
-//! - **The sweep radius is DERIVED.** The grid cell is `radius` but the interaction
-//!   distance is `2·radius·spread`, so a hardcoded 3×3 would silently miss contacts
-//!   the moment `spread` moved. It is `ceil(min_dist / cell)` cells in each
-//!   direction — correct at any `spread`, and honestly more expensive as it grows.
+//! - **The sweep radius is DERIVED, and then CULLED per disc.** The grid cell is
+//!   `radius` but the interaction distance is `2·radius·spread`, so a hardcoded 3×3
+//!   would silently miss contacts the moment `spread` moved: the reach is
+//!   `ceil(min_dist / cell)` cells in each direction. But that ceiling is the WORST
+//!   case — a disc pressed against the far edge of its own cell — and paying it on
+//!   every disc made the cost a step function of `spread` rather than of the
+//!   packing: crossing `spread = 1` stepped the sweep 25 cells → 49 and the cook
+//!   **7.58 ms → 13.08 ms between two neighbouring values** (Enio's report on the
+//!   breathing-packing demo, 2026-07-19). So each cell is asked whether its NEAREST
+//!   point is even in range before its discs are touched — exact, never approximate
+//!   (a contact needs `d2 < min_d2` and every point of the cell is at least `gap`
+//!   away), which flattens the step to 1.00× and speeds the common case up ~40 %.
 
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec};
 use ph2d_nodegraph::port::Dim;
@@ -89,10 +97,20 @@ const WGSL: &str = r#"
     // distance is `2·radius·spread`, so this is 2 at spread 1 — and it GROWS with
     // spread instead of quietly missing the contacts a fixed 3×3 would drop.
     let reach = max(1, i32(ceil(min_dist / max(params.radius, 1e-20))));
+    let cell = params.grid_cell;
     let ci = grid_cell_of(pi);
     for (var dy = -reach; dy <= reach; dy = dy + 1) {
         for (var dx = -reach; dx <= reach; dx = dx + 1) {
             let c = ci + vec2<i32>(dx, dy);
+            // `reach` is the WORST case — a disc pressed against the far edge of its
+            // own cell. What THIS disc needs depends on where inside the cell it sits,
+            // so skip a cell whose NEAREST point is already out of contact range,
+            // before touching a single one of its discs. Exact, never approximate: a
+            // contact needs `d2 < min_d2`, and every point of the cell is at least
+            // this far, so nothing that could touch is ever dropped.
+            let lo = vec2<f32>(f32(c.x), f32(c.y)) * cell;
+            let gap = max(max(lo - pi, pi - (lo + vec2<f32>(cell, cell))), vec2<f32>(0.0, 0.0));
+            if (dot(gap, gap) >= min_d2) { continue; }
             let b = grid_bucket_of(c);
             let hi = grid_starts[b + 1u];
             for (var s = grid_starts[b]; s < hi; s = s + 1u) {

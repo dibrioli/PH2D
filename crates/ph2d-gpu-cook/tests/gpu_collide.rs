@@ -249,3 +249,191 @@ fn zero_iterations_is_the_identity_on_the_device_too() {
     let worst = parity("0 sweeps", &cpu, &gpu_out, 0.0);
     assert_eq!(worst, 0.0);
 }
+
+/// **What does the breath COST?** — the `PH2D_GPU_COOK_DEMO=8` scene reported a deep
+/// FPS drop on the LFO's positive half (Enio, 2026-07-19). The suspect is the swept
+/// neighbourhood: the grid cell is `radius` while the contact distance is
+/// `2·radius·spread`, so `reach = ceil(2·spread)` — 2 cells while `spread ≤ 1`, 3 the
+/// instant it passes, i.e. `5×5 = 25` cells → `7×7 = 49`. The scene's LFO is centred
+/// on exactly 1.0, so it steps across that boundary every cycle.
+///
+/// This measures the SCENE's topology (`grid → collide → output` with a `value.lfo`
+/// on `spread`), sweeping the LFO's offset across the range it actually travels.
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn what_does_the_breath_cost() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping breath cost");
+        return;
+    };
+    let mut reg = registry();
+    ph2d_node_value_lfo::register(&mut reg).unwrap();
+    eprintln!("\nthe breathing packing (262 144 discs, 8 sweeps) vs `spread`:");
+    eprintln!(
+        "  {:>8}  {:>8}  {:>7}  {:>10}",
+        "spread", "cells", "reach", "ms/cook"
+    );
+    for &spread in &[0.65f32, 0.85, 0.95, 0.999, 1.001, 1.05, 1.20, 1.35] {
+        let mut g = Graph::new();
+        let src = g.add_node("motion.grid");
+        g.set_param(src, "rows", 512.0);
+        g.set_param(src, "cols", 512.0);
+        g.set_param(src, "gap_x", 0.25);
+        g.set_param(src, "gap_y", 0.25);
+        let col = g.add_node("motion.collide");
+        g.set_param(col, "radius", 0.3);
+        g.set_param(col, "iterations", 8.0);
+        g.set_param(col, "strength", 1.0);
+        // Amplitude 0 ⇒ the LFO is a constant at `offset`: the scene's exact wiring,
+        // held still at one point of its cycle.
+        let lfo = g.add_node("value.lfo");
+        g.set_param(lfo, "period", 6.0);
+        g.set_param(lfo, "amplitude", 0.0);
+        g.set_param(lfo, "offset", spread);
+        let out = g.add_node("motion.output");
+        for (from, to, port) in [(src, col, 0), (lfo, col, 1), (col, out, 0)] {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (to, port),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let plan = plan(&g, &reg, &reg, out);
+        let mut gc = GpuCook::new();
+        let run = |gc: &mut GpuCook| {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: 0.0,
+                    tick: Some(0),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        for _ in 0..2 {
+            run(&mut gc);
+        }
+        let start = std::time::Instant::now();
+        const REPS: u32 = 4;
+        for _ in 0..REPS {
+            run(&mut gc);
+        }
+        let ms = start.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+        let reach = (2.0 * spread).ceil().max(1.0) as i32;
+        let cells = (2 * reach + 1) * (2 * reach + 1);
+        eprintln!("  {spread:>8.3}  {cells:>8}  {reach:>7}  {ms:>10.3}");
+    }
+}
+
+/// Build the scene's topology held still at one `spread`, and return the best of
+/// `REPS` cook times (the minimum: noise only ever ADDS time, so the floor is the
+/// least contaminated estimate of what the kernel costs).
+fn breath_ms(gpu: &GpuContext, reg: &NodeRegistry, side: f32, spread: f32) -> f64 {
+    let mut g = Graph::new();
+    let src = g.add_node("motion.grid");
+    g.set_param(src, "rows", side);
+    g.set_param(src, "cols", side);
+    g.set_param(src, "gap_x", 0.25);
+    g.set_param(src, "gap_y", 0.25);
+    let col = g.add_node("motion.collide");
+    g.set_param(col, "radius", 0.3);
+    g.set_param(col, "iterations", 8.0);
+    g.set_param(col, "strength", 1.0);
+    let lfo = g.add_node("value.lfo");
+    g.set_param(lfo, "period", 6.0);
+    g.set_param(lfo, "amplitude", 0.0);
+    g.set_param(lfo, "offset", spread);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(src, col, 0), (lfo, col, 1), (col, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    let plan = plan(&g, reg, reg, out);
+    let mut gc = GpuCook::new();
+    let run = |gc: &mut GpuCook| {
+        gc.cook(
+            gpu,
+            &g,
+            reg,
+            reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: 0.0,
+                tick: Some(0),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    };
+    for _ in 0..2 {
+        run(&mut gc);
+    }
+    const REPS: u32 = 6;
+    let mut best = f64::INFINITY;
+    for _ in 0..REPS {
+        let start = std::time::Instant::now();
+        run(&mut gc);
+        best = best.min(start.elapsed().as_secs_f64() * 1e3);
+    }
+    best
+}
+
+/// **The cost of a packing is a fact of its GEOMETRY, not of where the cell grid
+/// happens to fall.** Reported by Enio (2026-07-19) against `PH2D_GPU_COOK_DEMO=8`:
+/// a deep FPS drop on the LFO's positive half. It was a step, not a slope — the
+/// swept neighbourhood is `(2·reach+1)²` cells with `reach = ceil(min_dist / cell)`,
+/// so a `spread` moving through 1.0 stepped 25 cells → 49 and the cook went
+/// **7.58 ms → 13.08 ms between two neighbouring values** (1.73×, and 13 ms is 78 %
+/// of a 60 fps frame).
+///
+/// `reach` is right — it is the WORST case, a disc pressed against the far edge of
+/// its own cell, and a disc there really can have a contact one cell further out.
+/// It is just not what a disc in the MIDDLE of its cell needs, which is nearly all
+/// of them. So the kernel now asks each cell whether its nearest point is even in
+/// range before touching its discs, and the cells the `ceil` added stop being paid
+/// for by discs that cannot use them.
+///
+/// The oracle is a RATIO across the boundary, measured back to back on one machine:
+/// it is what the artist actually feels (a jump), and being a ratio it is immune to
+/// machine drift the way a wall-clock bar is not. Removing the cull restores 1.73.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn crossing_the_reach_boundary_does_not_step_the_cost() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping reach-boundary gate");
+        return;
+    };
+    let mut reg = registry();
+    ph2d_node_value_lfo::register(&mut reg).unwrap();
+    // Either side of `spread = 1`, where `ceil(2·spread)` steps 2 → 3. The two
+    // packings are the same to a tenth of a percent; only the sweep changes.
+    let under = breath_ms(&gpu, &reg, 512.0, 0.999);
+    let over = breath_ms(&gpu, &reg, 512.0, 1.001);
+    let ratio = over / under;
+    eprintln!(
+        "reach boundary: spread 0.999 = {under:.3} ms, 1.001 = {over:.3} ms, ratio {ratio:.3}"
+    );
+    // The step was 1.73×. A tenth of a percent more radius may cost a little more
+    // honest work, but it cannot cost a QUARTER more.
+    assert!(
+        ratio < 1.25,
+        "the cook stepped {ratio:.3}× across the reach boundary ({under:.3} → {over:.3} ms): \
+         a disc is paying for cells it cannot reach"
+    );
+}

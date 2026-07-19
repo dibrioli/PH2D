@@ -25,6 +25,7 @@ use super::MotionState;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_nodegraph::value::CookValue;
+use std::collections::BTreeMap;
 
 /// How many characters a readout may take on a card — a card is 190 units wide and the
 /// readout shares the row with nothing, but a stream of a million instances must not push
@@ -65,16 +66,29 @@ const PREVIEW_POINTS: usize = 48;
 /// it carries. Those are the two questions an artist actually asks a wire — *what is it
 /// worth?* and *how many are there?* — and the readout says which one is on screen.
 fn readout_of(outputs: &[CookValue]) -> Option<String> {
-    let value = outputs.first()?;
-    let stream = value.as_stream();
+    let stream = outputs.first()?.as_stream();
+    let n = stream.count();
+    Some(readout_text(stream, n))
+}
+
+/// The reading, given a stream and **the element count to quote**.
+///
+/// ⚠️ **The count is an ARGUMENT and that is the whole point.** On the CPU path it
+/// is the stream's own length, because the memo holds the real thing. On the GPU
+/// path the stream is a 48-row SUBSAMPLE from the tap and its length is 48
+/// whatever the node emitted — quoting it would print `48 inst` for a grid of
+/// four million. The exact number comes from `CookShape`, which is what the host
+/// SIZED the dispatch with. Two sources, one answer, one function to write it
+/// ([[feedback_two_doors_to_the_same_question_diverge]]).
+fn readout_text(stream: &Stream, count: usize) -> String {
     let text = match stream.get("v") {
         Some(Column::Scalar(v)) if !v.is_empty() => format!("{:.3}", v[0]),
         // A stream with no elements is not "0 instances" in the sense of a count — it is a
         // node that produced NOTHING, and saying so plainly beats a bare zero.
-        _ if stream.count() == 0 => "empty".to_string(),
-        _ => format!("{} inst", stream.count()),
+        _ if count == 0 => "empty".to_string(),
+        _ => format!("{count} inst"),
     };
-    Some(text.chars().take(MAX_LEN).collect())
+    text.chars().take(MAX_LEN).collect()
 }
 
 /// **Did this node's output change?** — a digest of what it emitted, compared frame to frame.
@@ -85,14 +99,21 @@ fn readout_of(outputs: &[CookValue]) -> Option<String> {
 fn digest_of(outputs: &[CookValue]) -> u64 {
     let mut h = FNV_OFFSET;
     for value in outputs {
-        digest_stream(&mut h, value.as_stream());
+        let stream = value.as_stream();
+        let n = stream.count();
+        digest_stream(&mut h, stream, n);
     }
     h
 }
 
-fn digest_stream(h: &mut u64, stream: &Stream) {
+/// `count` is the node's TRUE element count, not the stream's length — they part
+/// on the GPU path, where the stream is a 48-row subsample. Folding the sampled
+/// length instead would make a population change invisible to the digest whenever
+/// the sampled values happened to land the same, and the digest's one job is
+/// answering *"did this change?"*.
+fn digest_stream(h: &mut u64, stream: &Stream, count: usize) {
     let n = stream.count();
-    fold(h, n as u64);
+    fold(h, count as u64);
     for (name, col) in stream.columns() {
         for b in name.as_bytes() {
             fold(h, *b as u64);
@@ -123,7 +144,13 @@ fn fold(h: &mut u64, x: u64) {
 /// `None` when the node emits no positions — a VALUE node's stamp is the number it already
 /// shows, and drawing an empty box under it would be a promise of a picture that is not coming.
 fn preview_of(outputs: &[CookValue]) -> Option<Vec<[f32; 2]>> {
-    let stream = outputs.first()?.as_stream();
+    preview_points(outputs.first()?.as_stream())
+}
+
+/// The stamp's points from a stream. Striding again over an already-tapped
+/// stream is a no-op (`step == 1` at 48 rows or fewer), so the two paths share
+/// this rather than one of them getting a private "already sampled" variant.
+fn preview_points(stream: &Stream) -> Option<Vec<[f32; 2]>> {
     let Some(Column::Vec2(p)) = stream.get("P") else {
         return None;
     };
@@ -140,38 +167,91 @@ fn preview_of(outputs: &[CookValue]) -> Option<Vec<[f32; 2]>> {
 ///
 /// Called with the snapshot the panel is about to receive, right after the cook that filled
 /// the memo.
+/// **The GPU's answer to the same question**, taken at the one place that knows
+/// whether the device drove this frame.
+///
+/// A GPU cook does not feed the CPU memo, so every card would go blank exactly on
+/// the documents worth watching. `GpuCook::tap` samples 48 strided rows per staged
+/// node for a measured **+0,075 ms** on top of a 4,19 M cook — 0,5% of a 60 fps
+/// frame (`bounded_readback_cost_probe`). Only when the device actually drove the
+/// last cook: on the CPU path the memo already holds the real thing and tapping
+/// would be a second answer to a question already answered.
+///
+/// It is computed HERE and handed to [`stamp`] as data rather than `stamp` taking
+/// an `Option<&GpuContext>` and deciding for itself. The device is never optional
+/// in the product — only in a test — so an optional-device parameter would make
+/// "pass the wrong thing and the GPU readouts silently vanish" a reachable bug,
+/// for the sake of a shape only tests want.
+pub(super) fn take_tap(
+    motion: &mut MotionState,
+    gpu: &ph2d_gpu::GpuContext,
+) -> Option<BTreeMap<NodeId, Stream>> {
+    motion
+        .gpu_live
+        .then(|| motion.gpu_cook.tap(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES))
+        .flatten()
+}
+
+/// `tapped` is [`take_tap`]'s result — `None` on a CPU-driven frame.
+///
+/// ⚠️ **One frame behind — and so is the CPU path.** This runs before BOTH cooks
+/// (`cook_gpu` and the pump's `advance_or_scrub_scoped` are further down
+/// `dispatch`), and `Cook::peek` is an unkeyed cache read, so the memo it returns
+/// is the previous frame's too. The tap therefore introduces no staleness; it
+/// matches. (The note that used to sit on `count` implied the CPU readout was
+/// fresh and the GPU count was the exception. It was not.)
 pub(super) fn stamp(
     motion: &mut MotionState,
+    tapped: Option<&BTreeMap<NodeId, Stream>>,
     snap: &mut ph2d_panel_motion_graph::GraphViewSnapshot,
 ) {
     for node in &mut snap.nodes {
         let id = NodeId(node.id);
         let cooked = motion.pump.cook.peek(id);
-        node.readout = cooked.and_then(readout_of);
-        // The wire's mass. The memo answers while the CPU pump drives; under a
-        // GPU-resident cook it is empty, and the count then comes from the
-        // sequencer, which SIZED the dispatch with it — host-side, no readback
-        // (the tap is measured-negative: `readback_tap_cost_probe`). Without this
-        // every wire flattens to the same thread the moment the device takes over,
-        // and the taper — the panel's one answer to "how much is moving?" — dies
-        // exactly where the counts got interesting.
-        //
-        // ⚠️ One frame stale: `stamp` runs before `cook_gpu`. That is invisible
-        // here BY THE SHAPE OF THE CONSUMER — `count` feeds `flow::wire_width`
-        // and nothing else, so it is a sqrt-scaled thickness, never a number on
-        // screen. A reading the artist could quote would not get this latitude
-        // (which is why the probe next door refuses instead).
-        node.count = cooked
+        // The exact element count — the memo's own when the CPU cooked, else the
+        // sequencer's, which SIZED the dispatch with it. NEVER the tap's: see
+        // `readout_text`.
+        let exact = cooked
             .and_then(|o| o.first())
             .map(|v| v.as_stream().count() as u32)
             .or_else(|| motion.gpu_cook.node_count(id));
+        let sampled = tapped.and_then(|t| t.get(&id));
+        node.readout = match (cooked, sampled) {
+            (Some(o), _) => readout_of(o),
+            (None, Some(s)) => Some(readout_text(s, exact.unwrap_or(0) as usize)),
+            (None, None) => None,
+        };
+        // The wire's mass — see `exact` above. Without it every wire flattens to
+        // the same thread the moment the device takes over, and the taper — the
+        // panel's one answer to "how much is moving?" — dies exactly where the
+        // counts got interesting.
+        node.count = exact;
         node.is_sink = motion.sinks.contains(&id);
-        node.preview = cooked.and_then(preview_of);
+        node.preview = match (cooked, sampled) {
+            (Some(o), _) => preview_of(o),
+            (None, Some(s)) => preview_points(s),
+            (None, None) => None,
+        };
 
         // A node the cook never pulled is NEVER hot — no data flows through a wire nothing
         // consumes, and a dead branch flickering with dashes would be the loudest lie on the
         // canvas. (It also means the digest map holds only cooked nodes.)
-        node.hot = match cooked.map(digest_of) {
+        //
+        // ⚠️ The two paths index their samples differently (the CPU strides by
+        // `n.div_ceil(48)` from 0, the tap by `i * n / 48`), so switching between
+        // them mid-session reads as ONE hot frame. That is a dash animation
+        // blinking once on a route change, and paying for it would mean making
+        // one sampler imitate the other's rounding for no gain.
+        let now = match (cooked, sampled) {
+            (Some(o), _) => Some(digest_of(o)),
+            (None, Some(s)) => {
+                let mut h = FNV_OFFSET;
+                digest_stream(&mut h, s, exact.unwrap_or(0) as usize);
+                Some(h)
+            }
+            (None, None) => None,
+        };
+        node.hot = match now {
             Some(now) => {
                 let before = motion.flow_digest.insert(node.id, now);
                 before.is_some_and(|b| b != now)

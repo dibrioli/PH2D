@@ -40,7 +40,7 @@ fn cooked(pump_ticks: usize) -> (MotionState, ph2d_panel_motion_graph::GraphView
         );
     }
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
-    stamp(&mut motion, &mut snap);
+    stamp(&mut motion, None, &mut snap);
     (motion, snap)
 }
 
@@ -102,7 +102,7 @@ fn a_value_stream_reads_out_its_number_not_its_count() {
     );
 
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
-    stamp(&mut motion, &mut snap);
+    stamp(&mut motion, None, &mut snap);
     let r = readout(&snap, 0).expect("the lfo cooked");
     assert!(
         r.parse::<f32>().is_ok(),
@@ -166,7 +166,7 @@ fn frame(
         motion.default_size,
     );
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
-    stamp(motion, &mut snap);
+    stamp(motion, None, &mut snap);
     snap
 }
 
@@ -270,7 +270,7 @@ fn the_readout_tracks_the_frame_it_was_taken_on() {
         motion.default_size,
     );
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
-    stamp(&mut motion, &mut snap);
+    stamp(&mut motion, None, &mut snap);
     assert_eq!(before.as_deref(), Some("12 inst"));
     assert_eq!(readout(&snap, 0), Some("20 inst"), "5x4 after the edit");
 }
@@ -340,4 +340,105 @@ fn a_value_node_has_no_postage_stamp() {
     let node = s.nodes.iter().find(|n| n.id == lfo.0).expect("in view");
     assert!(node.preview.is_none(), "a value node's stamp is its number");
     assert!(node.readout.is_some(), "…and it has one");
+}
+
+// ── The GPU seam ────────────────────────────────────────────────────────────
+
+/// **A GPU-driven frame fills the cards** — the seam that unblocks `PH2D_GPU_COOK`
+/// as a default.
+///
+/// Before the tap, a GPU cook left every reading below empty: no readout, no
+/// postage stamp, no wire march. The panel went blank exactly on the documents
+/// worth watching, and that is what kept the device path opt-in.
+///
+/// ⚠️ **The load-bearing assertion is the COUNT in the readout text.** The tap
+/// returns 48 sampled rows whatever the node emitted, so a readout built by
+/// counting the tapped stream would print `48 inst` for a grid of 400 — a wrong
+/// number presented as right, on the one row an artist reads as a fact. It has to
+/// say `400 inst`, out of `CookShape`. Every other assertion here would pass with
+/// that bug in place.
+///
+/// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let osc = g.add_node("motion.oscillator");
+    let out = g.add_node("motion.output");
+    for (n, x) in [(grid, 0.0), (osc, 200.0), (out, 400.0)] {
+        g.set_pos(n, Pos { x, y: 0.0 });
+    }
+    for (a, b) in [(grid, osc), (osc, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .expect("wire");
+    }
+    // 20x20 = 400: comfortably past the 48 samples, so `400 inst` and `48 inst`
+    // are different strings and the stride is a real stride.
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 1.4);
+    g.set_param(osc, "frequency", 0.8);
+    motion.doc.graph = g;
+    motion.sinks = vec![out];
+    motion.gpu_enabled = true;
+
+    // Drive the REAL frame path, twice — the tap reads the PREVIOUS cook (as does
+    // the CPU memo), so a single cook would leave everything blank for a reason
+    // that has nothing to do with the seam.
+    let scopes = Default::default();
+    for tick in 0..2 {
+        assert!(
+            matches!(
+                super::super::gpu::cook_gpu(&mut motion, &gpu, tick, 1.0 / 60.0, &scopes),
+                super::super::gpu::GpuOutcome::Handled
+            ),
+            "the document must cook on the device, or this gate tests the CPU path"
+        );
+    }
+    assert!(motion.gpu_live, "the device drove the frame");
+    assert!(
+        motion.pump.cook.peek(osc).is_none(),
+        "the CPU memo must be EMPTY — otherwise the readings below could be \
+         coming from the pump and the tap would be untested"
+    );
+
+    let tapped = super::take_tap(&mut motion, &gpu).expect("a GPU frame taps");
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
+    stamp(&mut motion, Some(&tapped), &mut snap);
+
+    let card = snap
+        .nodes
+        .iter()
+        .find(|n| n.id == osc.0)
+        .expect("the oscillator has a card");
+    assert_eq!(
+        card.readout.as_deref(),
+        Some("400 inst"),
+        "the readout quotes the EXACT count from CookShape, never the 48 rows the \
+         tap returned"
+    );
+    assert_eq!(card.count, Some(400), "the wire's mass is the real count");
+    let stamp_pts = card.preview.as_ref().expect("a GPU frame draws a stamp");
+    assert_eq!(stamp_pts.len(), 48, "the stamp is the tap's samples");
+    // The stamp must be the oscillator's WAVE, not 48 copies of one row: a tap
+    // that failed to stride would hand back a near-constant y.
+    let (lo, hi) = stamp_pts
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(l, h), p| (l.min(p[1]), h.max(p[1])));
+    assert!(
+        hi - lo > 0.1,
+        "the stamp must carry the wave's shape, saw a span of {}",
+        hi - lo
+    );
 }

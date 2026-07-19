@@ -217,6 +217,11 @@ pub(super) fn dispatch(
         let probe = motion_active
             .then(|| edit::sample_probe(motion, cook_time))
             .flatten();
+        // The GPU's samples for this frame's cards — see `readout::take_tap`.
+        // Taken before the snapshot borrow, like the probe above.
+        let tapped = motion_active
+            .then(|| readout::take_tap(motion, gpu))
+            .flatten();
         ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
             let mut snap =
                 ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
@@ -242,7 +247,7 @@ pub(super) fn dispatch(
             // never a second cook): its readout, the mass of its stream (the wire's width),
             // and whether that changed since last frame (the wire's march). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
-            readout::stamp(motion, &mut snap);
+            readout::stamp(motion, tapped.as_ref(), &mut snap);
             // **The fold** (doc 57), LAST: everything above published the whole flat
             // graph, and this cuts it down to the level the artist is standing in —
             // folding the nested nodes into cards (which is why it runs after the

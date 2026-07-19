@@ -681,14 +681,47 @@ diferentes agora:
    falso de um amostrador correto. 3 mutações, 3 mortas (prefixo · contar
    elementos em vez de amostras · `lanes` re-derivado à mão).
 
-   **O que falta:** a costura no `motion_bridge_readout.rs`. A **CONTAGEM sai do
-   `CookShape`** (exata — é o que dimensionou o dispatch) e os **VALORES do tap**
-   (subamostra). São duas fontes para uma resposta e é honesto: o caminho CPU
-   **já** subamostra a 48, então o tap entrega exatamente a informação que o
-   painel já usa. ⚠️ Entregar ao painel um `Stream` de 48 elementos e deixar o
-   `readout_of` contá-lo diria **"48 inst"** num grafo de 4,19 M — e o gate acima
-   pina as duas metades justamente para que ninguém "simplifique" o readout em
-   perguntar ao tap.
+   **✅ A COSTURA ESTÁ FEITA** (`motion_bridge_readout.rs`). Numa frame dirigida
+   pelo dispositivo o painel agora mostra readout, contagem, selo e a marcha dos
+   fios — antes ia tudo em branco, e era isso que segurava o `PH2D_GPU_COOK` como
+   opt-in.
+
+   - **A CONTAGEM sai do `CookShape`** (exata — é o que dimensionou o dispatch) e
+     os **VALORES do tap** (subamostra). Duas fontes, uma resposta, e uma função
+     só para escrevê-la: `readout_text(stream, count)` recebe a contagem como
+     ARGUMENTO. Na CPU é o comprimento do próprio stream; na GPU é o do
+     `CookShape`. ⚠️ Contar as 48 linhas do tap diria **"400 inst" → "48 inst"**
+     — número errado apresentado como certo, na única linha que o artista lê como
+     fato. É a mutação S1, e **todas as outras asserções do gate passam com ela**.
+   - **O digest passa a fundir a contagem EXATA**, não a amostrada: senão uma
+     mudança de população cujos 48 valores amostrados coincidissem leria como
+     "não mudou", e a única função do digest é responder *"isto mudou?"*.
+   - **`take_tap` mora no chamador**, ao lado do cook, e o `stamp` recebe DADOS.
+     Um `Option<&GpuContext>` no `stamp` tornaria *"passe a coisa errada e os
+     readouts da GPU somem em silêncio"* um bug alcançável, por uma forma que só
+     os testes queriam.
+
+   ⚠️ **A DESCOBERTA que destravou o desenho: o readout da CPU JÁ era um frame
+   atrasado.** A nota que existia no `count` avisava *"one frame stale: `stamp`
+   runs before `cook_gpu`"* e concluía que *"a reading the artist could quote
+   would not get this latitude"* — o que fazia parecer que alimentar o readout
+   pelo tap cruzaria uma linha. **Não cruza:** o `stamp` roda antes dos DOIS
+   cooks (o `advance_or_scrub_scoped` do pump está mais abaixo no mesmo
+   `dispatch`) e o `Cook::peek` é leitura de cache **sem chave de tempo** — o memo
+   que ele devolve é o do frame anterior também. O tap não adiciona atraso
+   nenhum; ele **empata**. A nota foi corrigida. (Ler a nota e desistir, ou
+   reordenar o frame por causa dela, eram os dois caminhos errados aqui.)
+
+   Gate `a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count` — dirige o
+   `cook_gpu` REAL duas vezes (o tap lê o cook ANTERIOR, então um cook só deixaria
+   tudo em branco por um motivo que não é a costura), exige que o **memo da CPU
+   esteja VAZIO** (senão as leituras poderiam vir do pump e o tap ficaria
+   sem teste) e checa que o selo carrega a ONDA, não 48 cópias de uma linha.
+   3 mutações, 3 mortas.
+
+   **O que falta para virar o default:** a decisão em si (`gpu_enabled` sai do
+   env var), a **sonda** (`edit::sample_probe` ainda lê só o memo — o tap já traz
+   os dados de que ela precisa) e um smoke do Enio.
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 

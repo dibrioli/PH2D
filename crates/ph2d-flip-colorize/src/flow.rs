@@ -1,18 +1,36 @@
-//! The **binary s-t min-cut** on the implicit 4-connected pixel grid — the max-flow the
-//! Colorize LazyBrush multiway is built from (`docs/Flip/09 §3`), and the régua of `§7.1`.
+//! The **binary s-t min-cut** on a general graph — the max-flow the Colorize LazyBrush
+//! multiway is built from (`docs/Flip/09 §3`), and the régua of `§7.1`.
 //!
-//! Clean-room **Boykov–Kolmogorov** (PAMI 2004) — the published max-flow for grid graphs
-//! of vision, which is exactly our 4-connected topology. On the unit-ish LazyBrush cut a
-//! generic max-flow (Dinic / push-relabel) does Θ(diameter) phases over the whole grid and
-//! is pathologically slow — that gap is precisely the number `§7.1` reserved. Single-threaded
-//! and deterministic (fixed scan order, no `HashMap`, no parallelism inside a cut — HR-5: two
-//! identical clicks give the same drawing). Integer capacities ⇒ the min-cut is exact.
+//! Clean-room **Boykov–Kolmogorov** (PAMI 2004) — the published max-flow for the grid graphs
+//! of vision, and the one whose grow/augment/adopt structure survives the move off the grid.
+//! On the unit-ish LazyBrush cut a generic max-flow (Dinic / push-relabel) does Θ(diameter)
+//! phases over the whole graph and is pathologically slow — that gap is precisely the number
+//! `§7.1` reserved. Single-threaded and deterministic (fixed scan order, no `HashMap`, no
+//! parallelism inside a cut — HR-5: two identical clicks give the same drawing). Integer
+//! capacities ⇒ the min-cut is exact.
 //!
-//! ⚠️ **The pixel grid, not yet the region graph.** `§7.1` MEASURED that one raw pixel-grid
-//! cut is seconds+ at full res, so production must run the multiway over the trapped-ball
-//! *region* graph (dozens of nodes, sub-ms). This grid solver is the correct §3 LazyBrush on
-//! small art, the engine's current back-bone, and the §7.1 bench; the region reduction is the
-//! documented perf follow-up. [`GridFlow`] would generalise to a region-adjacency graph.
+//! # Why the topology is EXPLICIT (it used to be the pixel grid, implicitly)
+//!
+//! v1 hard-wired the 4-connected pixel grid: neighbours were index arithmetic and an arc was
+//! `4·i + d`. That is the cheapest possible representation *of a grid*, and it made the
+//! solver unable to express the graph the product actually needs — the **trapped-ball region
+//! graph** (`§8`), whose nodes are regions and whose edges are shared borders of wildly
+//! varying degree. `§7.1` measured why that matters: the raw pixel cut is **3,3 s at 4096²**,
+//! and two scribbles contradicting each other across one line cost **157 s**.
+//!
+//! So the graph is now stored, and the grid is a *constructor* ([`Flow::grid_4conn`]) rather
+//! than the structure. **There is exactly one solver** — the region cut and the pixel cut are
+//! the same code on different adjacency, so they cannot answer differently (and the
+//! 128-instance BK ≡ Edmonds–Karp gate now pins the engine the product ships).
+//!
+//! ## The two representation choices that keep it cheap
+//!
+//! - **Arcs live in PAIRS**: the reverse of arc `a` is `a ^ 1`, with no lookup and no stored
+//!   index. (v1 got this by recomputing the neighbour — only a grid can afford that.)
+//! - **`parent[n]` is an ARC, not a direction**: the arc whose tail is `n` and whose head is
+//!   n's parent. Every walk in `augment`/`adopt`/`try_origin` then reads a residual with one
+//!   index and no arithmetic — `parent_arc` for the child→parent direction, `^ 1` for
+//!   parent→child.
 
 use ph2d_flip_fill::{BOUNDARY, Grid};
 
@@ -20,34 +38,33 @@ const FREE: u8 = 0;
 const S: u8 = 1; // source tree
 const T: u8 = 2; // sink tree
 
-/// `parent[i]` holds a neighbour direction `0..4` when the parent is a real node; these
-/// two sentinels mark a tree root (attached straight to its terminal) and a
-/// free/orphan node.
-const P_TERMINAL: i8 = -1;
-const P_NONE: i8 = -2;
+/// `parent[i]` holds an **arc index** when the parent is a real node; these two sentinels
+/// mark a tree root (attached straight to its terminal) and a free/orphan node.
+///
+/// They sit at the top of the `u32` range, where a real arc index cannot reach: the arc count
+/// is `2 ×` the edge count, and [`Flow::build`] refuses a graph that could collide with them.
+const P_TERMINAL: u32 = u32::MAX;
+const P_NONE: u32 = u32::MAX - 1;
 
-/// The opposite of neighbour direction `d`. Layout: `0`=East, `1`=West, `2`=South,
-/// `3`=North ⇒ the pairs flip with a single bit.
-#[inline]
-const fn opp(d: usize) -> usize {
-    d ^ 1
-}
+/// The largest arc index that can never be mistaken for a sentinel.
+const MAX_ARCS: usize = (u32::MAX - 2) as usize;
 
-/// The **implicit** 4-connected grid graph for one binary s-t cut. The grid is never
-/// materialised as an edge list — neighbours are index arithmetic, so the memory is a
-/// fixed handful of arrays indexed by pixel (`09 §3.2`).
-pub struct GridFlow {
-    w: usize,
-    h: usize,
-    /// `res[4*i + d]` = residual capacity of the arc `i → neighbour(i, d)`. An undirected
-    /// n-link of weight `c` sets both `res[4*p+d]` and `res[4*q+opp(d)]` to `c`.
+/// One binary s-t cut over an explicit graph (`09 §3.2`).
+pub struct Flow {
+    n: usize,
+    /// `head[a]` = the node arc `a` points at. Arcs live in pairs: `a ^ 1` is the reverse.
+    head: Vec<u32>,
+    /// `res[a]` = residual capacity of arc `a`.
     res: Vec<i32>,
+    /// CSR: the arcs whose **tail** is `p` are `inc[first[p]..first[p + 1]]`.
+    first: Vec<u32>,
+    inc: Vec<u32>,
     /// Terminal residual, signed: `t[i] > 0` = residual `source → i`; `t[i] < 0` =
     /// residual `i → sink` (magnitude). A node touches at most one terminal.
     t: Vec<i32>,
     tree: Vec<u8>,
-    /// A neighbour direction `0..4`, or [`P_TERMINAL`] / [`P_NONE`].
-    parent: Vec<i8>,
+    /// The arc from `i` to its parent, or [`P_TERMINAL`] / [`P_NONE`].
+    parent: Vec<u32>,
     /// FIFO of nodes whose edges still need growing, with a membership flag so a node is
     /// never queued twice (determinism + no unbounded growth).
     active: std::collections::VecDeque<u32>,
@@ -61,18 +78,63 @@ pub struct GridFlow {
     dist: Vec<u32>,
     ts: Vec<u64>,
     time: u64,
-    /// Reused walk buffer for [`GridFlow::try_origin`] — no per-orphan allocation.
+    /// Reused walk buffer for [`Flow::try_origin`] — no per-orphan allocation.
     scratch: Vec<u32>,
 }
 
-impl GridFlow {
+impl Flow {
+    /// Build the graph from `n` nodes and a list of **undirected** edges `(p, q, c)`: cutting
+    /// the pair costs `c`, in either direction.
+    ///
+    /// One constructor, so the CSR can never be half-built — a `finish()` you can forget is a
+    /// sentinel with no gate on its reader.
     #[must_use]
-    pub fn new(w: usize, h: usize) -> Self {
-        let n = w * h;
+    pub fn build(n: usize, edges: impl IntoIterator<Item = (u32, u32, i32)>) -> Self {
+        let mut head: Vec<u32> = Vec::new();
+        let mut res: Vec<i32> = Vec::new();
+        let mut deg = vec![0u32; n + 1];
+        for (p, q, c) in edges {
+            debug_assert!(
+                (p as usize) < n && (q as usize) < n,
+                "edge leaves the graph"
+            );
+            // The pair: `2k` is p→q, `2k+1` is q→p, so the reverse is always `a ^ 1`.
+            head.push(q);
+            res.push(c);
+            head.push(p);
+            res.push(c);
+            deg[p as usize] += 1;
+            deg[q as usize] += 1;
+        }
+        assert!(
+            head.len() <= MAX_ARCS,
+            "graph too large for the parent sentinels ({} arcs)",
+            head.len()
+        );
+
+        // CSR by counting sort: prefix-sum the degrees, then place each arc at its tail.
+        let mut first = vec![0u32; n + 1];
+        let mut acc = 0u32;
+        for i in 0..n {
+            first[i] = acc;
+            acc += deg[i];
+        }
+        first[n] = acc;
+        let mut cursor = first.clone();
+        let mut inc = vec![0u32; head.len()];
+        for a in 0..head.len() {
+            // The tail of `a` is the head of its partner.
+            let tail = head[a ^ 1] as usize;
+            inc[cursor[tail] as usize] = a as u32;
+            cursor[tail] += 1;
+        }
+
         Self {
-            w,
-            h,
-            res: vec![0; 4 * n],
+            n,
+            head,
+            res,
+            first,
+            inc,
             t: vec![0; n],
             tree: vec![FREE; n],
             parent: vec![P_NONE; n],
@@ -86,28 +148,22 @@ impl GridFlow {
         }
     }
 
-    /// The neighbour of `i` in direction `d`, or `None` at the grid edge.
-    #[inline]
-    fn neighbour(&self, i: usize, d: usize) -> Option<usize> {
-        let x = i % self.w;
-        let y = i / self.w;
-        match d {
-            0 if x + 1 < self.w => Some(i + 1),
-            1 if x > 0 => Some(i - 1),
-            2 if y + 1 < self.h => Some(i + self.w),
-            3 if y > 0 => Some(i - self.w),
-            _ => None,
+    /// The 4-connected pixel grid, as a graph: every East and South pair, weighted by
+    /// `cap(i, q)`. The gates and the `§7.1` bench live here; the product ships the region
+    /// graph through [`Flow::build`].
+    #[must_use]
+    pub fn grid_4conn(w: usize, h: usize, cap: impl Fn(usize, usize) -> i32) -> Self {
+        let mut edges = Vec::with_capacity(2 * w * h);
+        for i in 0..w * h {
+            let (x, y) = (i % w, i / w);
+            if x + 1 < w {
+                edges.push((i as u32, (i + 1) as u32, cap(i, i + 1)));
+            }
+            if y + 1 < h {
+                edges.push((i as u32, (i + w) as u32, cap(i, i + w)));
+            }
         }
-    }
-
-    /// Set an **undirected** n-link between `i` and its neighbour `d` to weight `c` (both
-    /// directions). Cutting the pair costs `c`.
-    #[inline]
-    pub fn set_nlink(&mut self, i: usize, d: usize, c: i32) {
-        if let Some(q) = self.neighbour(i, d) {
-            self.res[4 * i + d] = c;
-            self.res[4 * q + opp(d)] = c;
-        }
+        Self::build(w * h, edges)
     }
 
     /// Attach node `i` to the **source** (`to_src`) and/or **sink** (`to_snk`) terminals.
@@ -126,23 +182,27 @@ impl GridFlow {
         }
     }
 
-    /// Residual, in the growth direction, of the arc between `p` (in its own tree) and its
-    /// neighbour `q = neighbour(p, d)`. For an S-node the flow would run `p → q`; for a
-    /// T-node it would run `q → p` (toward the sink).
+    /// The arcs whose tail is `p`.
     #[inline]
-    fn tree_cap(&self, p: usize, d: usize, q: usize) -> i32 {
+    fn arcs(&self, p: usize) -> std::ops::Range<usize> {
+        self.first[p] as usize..self.first[p + 1] as usize
+    }
+
+    /// Residual, in the growth direction, of arc `a` (tail `p`, head `q`). For an S-node the
+    /// flow would run `p → q`; for a T-node it would run `q → p` (toward the sink).
+    #[inline]
+    fn tree_cap(&self, p: usize, a: usize) -> i32 {
         if self.tree[p] == S {
-            self.res[4 * p + d]
+            self.res[a]
         } else {
-            self.res[4 * q + opp(d)]
+            self.res[a ^ 1]
         }
     }
 
     /// Run the max-flow. Returns the flow value (= min-cut value, exact).
     pub fn max_flow(&mut self) -> i64 {
-        let n = self.w * self.h;
         // Seed the trees from the terminals.
-        for i in 0..n {
+        for i in 0..self.n {
             if self.t[i] != 0 {
                 self.tree[i] = if self.t[i] > 0 { S } else { T };
                 self.parent[i] = P_TERMINAL;
@@ -151,15 +211,15 @@ impl GridFlow {
         }
 
         let mut flow: i64 = 0;
-        while let Some((p, q, d)) = self.grow() {
-            flow += self.augment(p, q, d);
+        while let Some((p, q, a)) = self.grow() {
+            flow += self.augment(p, q, a);
             self.adopt_all();
         }
         flow
     }
 
-    /// **Grow** phase: pull active nodes and extend their tree until an edge bridges the
-    /// two trees. Returns `(p, q, d)` where `q = neighbour(p, d)` and `tree[p] != tree[q]`.
+    /// **Grow** phase: pull active nodes and extend their tree until an arc bridges the two
+    /// trees. Returns `(p, q, a)` where `a` is an arc `p → q` and `tree[p] != tree[q]`.
     fn grow(&mut self) -> Option<(usize, usize, usize)> {
         while let Some(pf) = self.active.front().copied() {
             let p = pf as usize;
@@ -169,21 +229,20 @@ impl GridFlow {
                 self.in_active[p] = false;
                 continue;
             }
-            for d in 0..4 {
-                let Some(q) = self.neighbour(p, d) else {
-                    continue;
-                };
-                if self.tree_cap(p, d, q) <= 0 {
+            for k in self.arcs(p) {
+                let a = self.inc[k] as usize;
+                let q = self.head[a] as usize;
+                if self.tree_cap(p, a) <= 0 {
                     continue;
                 }
                 if self.tree[q] == FREE {
-                    // Adopt q into p's tree; q's parent is p (direction q→p = opp(d)).
+                    // Adopt q into p's tree; q's parent is p, i.e. the arc q → p.
                     self.tree[q] = self.tree[p];
-                    self.parent[q] = opp(d) as i8;
+                    self.parent[q] = (a ^ 1) as u32;
                     self.set_active(q);
                 } else if self.tree[q] != self.tree[p] {
                     // Bridge found: keep p active (it may bridge again after augment).
-                    return Some((p, q, d));
+                    return Some((p, q, a));
                 }
             }
             // p is fully grown for now; it stays in its tree but leaves the queue.
@@ -193,54 +252,53 @@ impl GridFlow {
         None
     }
 
-    /// The S-tree node, the T-tree node, and the S→T arc residual for the bridge `(p,q,d)`.
+    /// The S-tree node, the T-tree node, and the S→T arc for the bridge `(p, q, a)`.
     #[inline]
-    fn orient(&self, p: usize, q: usize, d: usize) -> (usize, usize, usize) {
-        // Returns (s_node, t_node, arc_index) where arc_index is `4*s_node + dir(s→t)`.
+    fn orient(&self, p: usize, q: usize, a: usize) -> (usize, usize, usize) {
         if self.tree[p] == S {
-            (p, q, 4 * p + d)
+            (p, q, a)
         } else {
-            (q, p, 4 * q + opp(d))
+            (q, p, a ^ 1)
         }
     }
 
     /// **Augment** along the path source → s_node → t_node → sink. Pushes the bottleneck,
     /// saturates arcs, and severs any child whose parent arc hits zero (an orphan).
-    fn augment(&mut self, p: usize, q: usize, d: usize) -> i64 {
-        let (s_node, t_node, arc) = self.orient(p, q, d);
+    fn augment(&mut self, p: usize, q: usize, a: usize) -> i64 {
+        let (s_node, t_node, arc) = self.orient(p, q, a);
 
         // 1) bottleneck: the connecting arc, plus both tree branches to their terminals.
         let mut bottleneck = self.res[arc];
-        // S branch: walk s_node → source root, tree edge is parent→child.
+        // S branch: walk s_node → source root; the tree arc carries flow parent → child,
+        // which is the REVERSE of the stored child → parent arc.
         {
             let mut n = s_node;
             loop {
-                let pd = self.parent[n];
-                if pd == P_TERMINAL {
+                let pa = self.parent[n];
+                if pa == P_TERMINAL {
                     bottleneck = bottleneck.min(self.t[n]); // source residual, > 0
                     break;
                 }
-                let pd = pd as usize;
-                let par = self.neighbour(n, pd).expect("tree parent exists");
-                // arc parent→child = par → n, direction opp(pd) from par.
-                bottleneck = bottleneck.min(self.res[4 * par + opp(pd)]);
-                n = par;
+                debug_assert!(pa != P_NONE, "tree node has no parent");
+                let pa = pa as usize;
+                bottleneck = bottleneck.min(self.res[pa ^ 1]);
+                n = self.head[pa] as usize;
             }
         }
-        // T branch: walk t_node → sink root, tree edge is child→parent (toward sink).
+        // T branch: walk t_node → sink root; here the flow runs child → parent, which IS the
+        // stored arc.
         {
             let mut n = t_node;
             loop {
-                let pd = self.parent[n];
-                if pd == P_TERMINAL {
+                let pa = self.parent[n];
+                if pa == P_TERMINAL {
                     bottleneck = bottleneck.min(-self.t[n]); // sink residual, > 0
                     break;
                 }
-                let pd = pd as usize;
-                let par = self.neighbour(n, pd).expect("tree parent exists");
-                // arc child→parent = n → par, direction pd from n.
-                bottleneck = bottleneck.min(self.res[4 * n + pd]);
-                n = par;
+                debug_assert!(pa != P_NONE, "tree node has no parent");
+                let pa = pa as usize;
+                bottleneck = bottleneck.min(self.res[pa]);
+                n = self.head[pa] as usize;
             }
         }
 
@@ -249,68 +307,54 @@ impl GridFlow {
 
         // 2) push `b`. Reverse residuals go up by the same amount (undirected arcs).
         self.res[arc] -= b;
-        let rev = self.rev_arc(arc);
-        self.res[rev] += b;
+        self.res[arc ^ 1] += b;
 
         // S branch: from s_node up to the source root.
         {
             let mut n = s_node;
             loop {
-                let pd = self.parent[n];
-                if pd == P_TERMINAL {
+                let pa = self.parent[n];
+                if pa == P_TERMINAL {
                     self.t[n] -= b;
                     if self.t[n] == 0 {
                         self.make_orphan(n);
                     }
                     break;
                 }
-                let pd = pd as usize;
-                let par = self.neighbour(n, pd).expect("tree parent exists");
-                let fwd = 4 * par + opp(pd); // par → n
-                let rev = self.rev_arc(fwd);
+                let pa = pa as usize;
+                let fwd = pa ^ 1; // parent → n
                 self.res[fwd] -= b;
-                self.res[rev] += b;
+                self.res[pa] += b;
                 if self.res[fwd] == 0 {
                     self.make_orphan(n); // n lost its parent arc
                 }
-                n = par;
+                n = self.head[pa] as usize;
             }
         }
         // T branch: from t_node down to the sink root.
         {
             let mut n = t_node;
             loop {
-                let pd = self.parent[n];
-                if pd == P_TERMINAL {
+                let pa = self.parent[n];
+                if pa == P_TERMINAL {
                     self.t[n] += b;
                     if self.t[n] == 0 {
                         self.make_orphan(n);
                     }
                     break;
                 }
-                let pd = pd as usize;
-                let par = self.neighbour(n, pd).expect("tree parent exists");
-                let fwd = 4 * n + pd; // n → par
-                let rev = self.rev_arc(fwd);
-                self.res[fwd] -= b;
-                self.res[rev] += b;
-                if self.res[fwd] == 0 {
+                let pa = pa as usize;
+                // n → parent IS the stored arc.
+                self.res[pa] -= b;
+                self.res[pa ^ 1] += b;
+                if self.res[pa] == 0 {
                     self.make_orphan(n);
                 }
-                n = par;
+                n = self.head[pa] as usize;
             }
         }
 
         i64::from(b)
-    }
-
-    /// The reverse of an arc index `4*i + d`: `4*q + opp(d)`.
-    #[inline]
-    fn rev_arc(&self, arc: usize) -> usize {
-        let i = arc / 4;
-        let d = arc % 4;
-        let q = self.neighbour(i, d).expect("arc has a head");
-        4 * q + opp(d)
     }
 
     #[inline]
@@ -337,18 +381,17 @@ impl GridFlow {
         // `n`). Min-`dist` keeps the trees shallow, which is what stops the thrashing
         // (`09 §7.1`).
         let mut best: Option<(usize, u32)> = None;
-        for d in 0..4 {
-            let Some(q) = self.neighbour(n, d) else {
-                continue;
-            };
+        for k in self.arcs(n) {
+            let a = self.inc[k] as usize;
+            let q = self.head[a] as usize;
             if self.tree[q] != mytree {
                 continue;
             }
-            // Residual of the arc q → n (parent → child in growth direction).
+            // Residual of the arc q → n (parent → child in the growth direction).
             let cap = if mytree == S {
-                self.res[4 * q + opp(d)]
+                self.res[a ^ 1]
             } else {
-                self.res[4 * n + d]
+                self.res[a]
             };
             if cap <= 0 {
                 continue;
@@ -356,38 +399,35 @@ impl GridFlow {
             if let Some(dq) = self.try_origin(q, n)
                 && best.is_none_or(|(_, bd)| dq < bd)
             {
-                best = Some((d, dq));
+                best = Some((a, dq));
             }
         }
-        if let Some((d, dq)) = best {
-            self.parent[n] = d as i8; // n's parent is q, direction n→q = d
+        if let Some((a, dq)) = best {
+            self.parent[n] = a as u32; // n's parent is head[a], reached by the arc n → q
             self.dist[n] = dq + 1;
             self.ts[n] = self.time;
             return;
         }
         // No parent: free `n`. Its same-tree neighbours become candidates to re-grow into
         // it, and its children lose their parent.
-        for d in 0..4 {
-            let Some(q) = self.neighbour(n, d) else {
-                continue;
-            };
+        for k in self.arcs(n) {
+            let a = self.inc[k] as usize;
+            let q = self.head[a] as usize;
             if self.tree[q] != mytree {
                 continue;
             }
             // A neighbour that could grow back into n → re-activate it.
             let cap = if mytree == S {
-                self.res[4 * q + opp(d)]
+                self.res[a ^ 1]
             } else {
-                self.res[4 * n + d]
+                self.res[a]
             };
             if cap > 0 {
                 self.set_active(q);
             }
-            // A child of n (its parent points back at n) becomes an orphan.
-            if self.parent[q] != P_TERMINAL
-                && self.parent[q] != P_NONE
-                && self.neighbour(q, self.parent[q] as usize) == Some(n)
-            {
+            // A child of n (its parent arc points back at n) becomes an orphan.
+            let pq = self.parent[q];
+            if pq != P_TERMINAL && pq != P_NONE && self.head[pq as usize] as usize == n {
                 self.make_orphan(q);
             }
         }
@@ -421,9 +461,9 @@ impl GridFlow {
                     break 0;
                 }
                 P_NONE => return None, // reached a free/orphan node → no valid origin
-                pd => {
+                pa => {
                     self.scratch.push(n as u32);
-                    n = self.neighbour(n, pd as usize).expect("tree parent exists");
+                    n = self.head[pa as usize] as usize;
                 }
             }
         };
@@ -438,27 +478,24 @@ impl GridFlow {
     }
 
     /// After `max_flow`, the nodes still reachable from the source in the residual graph —
-    /// the **source side** of the min-cut. Used by the correctness gate; the shipping
-    /// motor would read the labels here.
+    /// the **source side** of the min-cut. This is where the labels are read.
     #[must_use]
     pub fn source_side(&self) -> Vec<bool> {
-        let n = self.w * self.h;
-        let mut side = vec![false; n];
+        let mut side = vec![false; self.n];
         let mut stack = Vec::new();
         // `i` seeds both `side` and the `stack` — a range loop is the clear form.
         #[allow(clippy::needless_range_loop)]
-        for i in 0..n {
+        for i in 0..self.n {
             if self.t[i] > 0 {
                 side[i] = true;
                 stack.push(i);
             }
         }
         while let Some(i) = stack.pop() {
-            for d in 0..4 {
-                if self.res[4 * i + d] > 0
-                    && let Some(q) = self.neighbour(i, d)
-                    && !side[q]
-                {
+            for k in self.arcs(i) {
+                let a = self.inc[k] as usize;
+                let q = self.head[a] as usize;
+                if self.res[a] > 0 && !side[q] {
                     side[q] = true;
                     stack.push(q);
                 }
@@ -481,6 +518,10 @@ impl GridFlow {
 /// the cheapest cut "fence off that pixel" (`perimeter · v_white`) instead of the region cut;
 /// a scribble whose perimeter exceeds the gap it must beat forces the real region answer.
 ///
+/// ⚠️ **This is the PIXEL instance** — `§7.1` measured it at 3,3 s on a 4096² grid, so it is
+/// the gates' and the bench's graph, not the one a click should build. The product runs the
+/// same solver over the trapped-ball region graph (`§8`).
+///
 /// ⚠️ v1 reads `V_pq` from the `BOUNDARY` **bit**, not a coverage float: `ink.rs` marks a bit
 /// today, and the analytic-coverage `V_pq` of `09 §3.1` is a later refinement.
 #[must_use]
@@ -490,27 +531,21 @@ pub fn lazybrush_binary(
     sink: &[usize],
     v_white: i32,
     v_ink: i32,
-) -> GridFlow {
+) -> Flow {
     let w = grid.w;
     let h = grid.h;
-    let mut f = GridFlow::new(w, h);
 
     let k = 2 * (w + h) as i32; // scribble weight — dominates the perimeter (`09 §3`)
 
     let is_ink = |i: usize| grid.flags[i] & BOUNDARY != 0;
-    // n-links: East and South only (each undirected pair is set once).
-    for i in 0..w * h {
-        for d in [0usize, 2] {
-            if let Some(q) = f.neighbour(i, d) {
-                let c = if is_ink(i) || is_ink(q) {
-                    v_ink
-                } else {
-                    v_white
-                };
-                f.set_nlink(i, d, c);
-            }
+    let mut f = Flow::grid_4conn(w, h, |i, q| {
+        if is_ink(i) || is_ink(q) {
+            v_ink
+        } else {
+            v_white
         }
-    }
+    });
+
     // t-links: the two scribbles. A → source, B → sink.
     for &p in source {
         f.set_tlink(p, k, 0);

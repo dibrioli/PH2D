@@ -8,7 +8,16 @@
 //! back is checked to weigh exactly the flow. Then the bench measures the real product
 //! grid — the number `09 §7.1`/`§7.2` reserves before any UI.
 
-use super::{GridFlow, lazybrush_binary, opp};
+use super::{Flow, lazybrush_binary};
+
+/// The opposite of grid neighbour direction `d` (`0`=E, `1`=W, `2`=S, `3`=N ⇒ a single bit).
+///
+/// It lives **in the gates**, not in the solver: the engine is a general graph and has no
+/// notion of a direction: leaving this next to it would assert otherwise. The grid layout is
+/// the ORACLE's language now.
+const fn opp(d: usize) -> usize {
+    d ^ 1
+}
 use ph2d_core::Vec2;
 use ph2d_flip_fill::Grid;
 
@@ -153,15 +162,23 @@ fn bk_matches_edmonds_karp_on_random_grids() {
     ] {
         let n = w * h;
         for _trial in 0..16 {
-            let mut f = GridFlow::new(w, h);
+            // As capacidades nascem em layout de GRADE (`4·i + d`) — que é o que o oráculo
+            // lê. Ele não conhece a representação interna do motor, e é por isso que ele
+            // continua sendo oráculo depois do motor virar grafo geral.
+            let mut caps = vec![0i32; 4 * n];
             for i in 0..n {
                 for d in [0usize, 2] {
-                    if f.neighbour(i, d).is_some() {
+                    if let Some(q) = neighbour(w, h, i, d) {
                         let c = (splitmix(&mut seed) % 7) as i32;
-                        f.set_nlink(i, d, c);
+                        caps[4 * i + d] = c;
+                        caps[4 * q + opp(d)] = c;
                     }
                 }
             }
+            let mut f = Flow::grid_4conn(w, h, |i, q| {
+                let d = if q == i + 1 { 0 } else { 2 };
+                caps[4 * i + d]
+            });
             let a = (splitmix(&mut seed) as usize) % n;
             let mut b = (splitmix(&mut seed) as usize) % n;
             if b == a {
@@ -183,7 +200,7 @@ fn bk_matches_edmonds_karp_on_random_grids() {
                 }
             }
 
-            let res0 = f.res.clone();
+            let res0 = caps.clone();
             let t0 = f.t.clone();
             let bk = f.max_flow();
             let ek = edmonds_karp(w, h, &res0, &t0);
@@ -201,17 +218,61 @@ fn bk_matches_edmonds_karp_on_random_grids() {
 }
 
 /// A hand-checked bottleneck: source seed and sink seed joined by a single 3-cell bridge of
-/// capacities 5,2,9 → the min-cut is the middle arc, value 2.
+/// capacities 5,2,9 → the min-cut is the middle arc, value 2. Built through [`Flow::build`],
+/// so it also pins the general-graph door the region cut uses (`§8`) — a chain is not a grid.
 #[test]
 fn bk_finds_the_hand_computed_bottleneck() {
-    let (w, h) = (4, 1);
-    let mut f = GridFlow::new(w, h);
-    f.set_nlink(0, 0, 5); // 0-1
-    f.set_nlink(1, 0, 2); // 1-2  ← the throat
-    f.set_nlink(2, 0, 9); // 2-3
+    let mut f = Flow::build(4, [(0, 1, 5), (1, 2, 2), (2, 3, 9)]);
     f.set_tlink(0, 100, 0);
     f.set_tlink(3, 0, 100);
     assert_eq!(f.max_flow(), 2);
+}
+
+/// The general graph is not a grid, and the CSR must survive **irregular degree** — the whole
+/// reason the region graph needs it (a region can border two neighbours or twenty). A star
+/// whose centre is the only path from source to sink: the cut is the cheaper of its two
+/// spokes, which no 4-neighbour layout could even represent at this degree.
+#[test]
+fn bk_cuts_a_high_degree_star() {
+    // 0 = source seed · 1..=5 = leaves into the hub 6 · 7 = sink seed.
+    let mut edges = vec![(6u32, 7u32, 3i32)]; // hub → sink, the throat
+    for leaf in 1..=5u32 {
+        edges.push((0, leaf, 10));
+        edges.push((leaf, 6, 10));
+    }
+    let mut f = Flow::build(8, edges);
+    f.set_tlink(0, 100, 0);
+    f.set_tlink(7, 0, 100);
+    assert_eq!(
+        f.max_flow(),
+        3,
+        "o gargalo e' o arco do hub para o sumidouro"
+    );
+    let side = f.source_side();
+    assert!(side[0] && side[6] && !side[7], "o corte isola o sumidouro");
+}
+
+/// The `V_pq` law of `09 §3` in grid layout (`4·i + d`), for the oracle — an **independent
+/// restatement**, deliberately not a call into `lazybrush_binary`.
+fn grid_caps(g: &Grid, v_white: i32, v_ink: i32) -> Vec<i32> {
+    let (w, h) = (g.w, g.h);
+    let is_ink = |i: usize| g.flags[i] & ph2d_flip_fill::BOUNDARY != 0;
+    let mut caps = vec![0i32; 4 * w * h];
+    for i in 0..w * h {
+        for d in [0usize, 2] {
+            let Some(q) = neighbour(w, h, i, d) else {
+                continue;
+            };
+            let c = if is_ink(i) || is_ink(q) {
+                v_ink
+            } else {
+                v_white
+            };
+            caps[4 * i + d] = c;
+            caps[4 * q + opp(d)] = c;
+        }
+    }
+    caps
 }
 
 /// BK ≡ the oracle on the real `lazybrush_binary` graph over a product `Grid`: a box, seed
@@ -234,7 +295,10 @@ fn bk_cuts_a_real_boxed_grid_like_the_reference() {
     let outside = g.w + 1; // (1,1): in the margin, outside the box, not ink
 
     let mut f = lazybrush_binary(&g, &[inside], &[outside], 8, 1);
-    let res0 = f.res.clone();
+    // O oráculo recebe as capacidades em layout de GRADE, **re-enunciadas aqui** a partir da
+    // lei do `09 §3` (tinta barata, papel caro). Lê-las de dentro do `Flow` seria pedir ao
+    // motor a resposta que o oráculo existe para conferir.
+    let res0 = grid_caps(&g, 8, 1);
     let t0 = f.t.clone();
     let bk = f.max_flow();
     let ek = edmonds_karp(g.w, g.h, &res0, &t0);

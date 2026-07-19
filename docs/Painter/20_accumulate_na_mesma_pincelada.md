@@ -111,3 +111,67 @@ sobre a demora (§6).
 
 O que **não** recomendo é a versão barata (tirar o `clamp` / trocar `max` por `+=`): ela entrega o efeito
 pedido e traz de volta, de graça, as três doenças que esta linha passou o mês curando.
+
+---
+
+## 9. ⚠️ CORREÇÃO ao §5 — o envelope não guarda ALTURA, guarda um VENCEDOR
+
+Escrito depois de ler o kernel para implementar. O §5 dizia *"o maquinário já existe: a integral cavalga a
+mesma varredura"* — verdade, e insuficiente. O que o §5 não sabia:
+
+`accumulate_dab_height` **não envelopa altura**. Ele envelopa **carga de tinta** (`fields.paint[i]`) e
+guarda, por texel, os **ingredientes do dab vencedor** (grain, raio, cobertura). A altura é **derivada
+depois**, de `derive_height`. O comentário no código diz exatamente por que:
+
+> *"Enveloping the paint rather than the height is what makes every knob live: the winner is then chosen by
+> a quantity that no setting can change, so re-deriving the relief at a new Body / Source / Depth cannot
+> silently re-shuffle which dab shaped which pixel."*
+
+**É isso que mantém Depth, Body e Source vivos DEPOIS do traço.** Uma integral que somasse *altura* assaria
+o Depth no buffer e mataria essa propriedade — que é uma das mais caras do módulo.
+
+### 9.1 A correção da fórmula: **acumule a CARGA, derive a altura depois**
+
+A integral não deve ser sobre altura, e sim sobre a mesma grandeza que o envelope já usa:
+
+```text
+carga(p)  =  ∫ (silhueta × cobertura)(dist(p, caminho(s)))  ds  /  NORM
+altura    =  derive_height(carga, ingredientes)          ← inalterado, e portanto os knobs seguem vivos
+```
+
+Mesmo buffer, mesma derivação a jusante, knobs vivos. `NORM = 2ρ·∫₀¹falloff` faz **uma passada reta valer
+exatamente uma passada de hoje** — o que torna o toggle honesto (OFF e ON coincidem no caso simples) e é o
+gate mais forte que esta feature pode ter.
+
+Ainda assim é cirurgia: o guard `if m <= fields.paint[i] { continue; }` é o coração do winner-takes-all, e
+em modo Accumulate todo dab contribui. Os ingredientes continuam sendo os do **vencedor por carga** (a
+forma vem do dab mais carregado; a quantidade vem da integral) — e essa separação precisa de gate próprio.
+
+### 9.2 A alternativa que evita a cirurgia: **PASSE**, não dab
+
+Uma segunda leitura, possivelmente melhor como v1: acumular por **passe** em vez de por dab. Quando o
+pincel volta sobre terreno que ele mesmo já cobriu *neste* traço, **commita o envelope e começa outro** —
+um "pen-up automático".
+
+* Reusa o commit que já existe (o pen-up já faz exatamente isso).
+* Preserva **tudo**: o envelope dentro do passe, o winner-takes-all, a independência de espaçamento.
+* Dá ao artista precisamente o que ele pediu: esfregar vai e volta constrói.
+* O custo se desloca para **um** problema: *"o pincel voltou?"* — critério local (o texel foi coberto por
+  um dab distante ao longo do arco, não por um vizinho de amostragem), e é o mesmo tipo de discriminação
+  que a cápsula já faz.
+
+⚠️ Uma curva **auto-intersectante** num shape editor passaria a acumular no re-stamp — precisa ser
+verificado contra I2, e é a razão de isto não ser obviamente mais barato.
+
+## 10. Recomendação revista
+
+**§9.1 (acumular a carga) é a lei certa; §9.2 (passe) é provavelmente o v1 certo** — entrega o efeito sem
+tocar o winner-takes-all, e a integral pode vir depois como refinamento de qualidade.
+
+**Não comecei a cirurgia**: `accumulate_dab_height` é a função mais cicatrizada do módulo (a cápsula, as
+costelas do espaçamento, a lei do vencedor-por-carga — três smokes reprovados moram nela), a mudança altera
+a aparência de **toda arte já pintada**, e o §9 mostrou que o desenho aprovado no §5 estava incompleto.
+Começá-la agora e entregá-la pela metade é exatamente o que esta linha recusou três vezes hoje, e pelo
+mesmo motivo.
+
+**O que falta para eu construir:** a escolha entre §9.1 e §9.2 — e a do §6 (arco puro vs tempo) segue de pé.

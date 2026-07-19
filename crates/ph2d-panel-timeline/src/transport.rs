@@ -67,7 +67,11 @@ enum Item {
     Speed,
 }
 
-const ITEMS: [Item; 14] = [
+// ⚠️ A contagem se CONTA, não se escolhe: a `main` trazia 13, a `line/physics`
+// acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
+// MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
+// dos dois lados do conflito.
+const ITEMS: [Item; 15] = [
     Item::Tabs,
     Item::Crumbs,
     Item::Clips,

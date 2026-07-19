@@ -120,6 +120,10 @@ mod tests;
 #[path = "flip_fill_curve_route_tests.rs"]
 mod curve_route_tests;
 
+#[cfg(test)]
+#[path = "flip_fill_identity_tests.rs"]
+mod identity_tests;
+
 /// **A fronteira feita das CURVAS**, quando ela serve — a fatia R1 da wave
 /// `docs/Flip/10_regiao_por_curvas.md`.
 ///

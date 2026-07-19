@@ -117,7 +117,7 @@ fatiamento do §5 manter os dois vivos até a última fatia.
 | **R0** ✅ | o **motor** de arranjo sobre polilinhas: interseções + grafo + walk de face. Sem UI, sem integração. | `cargo test -p ph2d-flip-fill arrange` |
 | **R1** ✅ | o balde **escolhe** a rota: se o clique cai numa face limitada do arranjo, usa a geometria dela; senão, o caminho de hoje. Sem apagar nada. | preencher a grade do smoke e ver os vértices do fill **em cima** dos da linha |
 | **R2** ✅ (de graça) | a **dilatação recua** onde a rota nova serve (não há erro para compensar) | a franja some estruturalmente, não por constante |
-| **R3** | aposentar o que ficou órfão (o `filled_shape_target` vira caso particular; a família da margem morre) | LOC apagada; gates que perderam o objeto |
+| ~~**R3**~~ | ~~aposentar o `filled_shape_target`~~ — **REVOGADA por medição** (§12): a família da margem morreu no BUGS #22, mas o ramo do traço próprio entrega uma propriedade que a rota das curvas não tem | virou: **PROTEGER** a propriedade com gates |
 
 **R0 é a fatia que decide a wave.** Se o motor não sair robusto em `f32` sobre arte de mão,
 o resto não existe — e o custo até ali é contido.
@@ -297,3 +297,57 @@ módulo vizinho. Um plano cujo alvo é um relato de smoke precisa de um critéri
 relato**, não só o mecanismo que se decidiu construir.
 
 Detalhe completo: `BUGS_flip.md` #22.
+
+---
+
+## §12 — A fatia R3 foi REVOGADA por medição (2026-07-18)
+
+A R3 propunha aposentar o `filled_shape_target` alegando que ele *"virou caso particular"* da
+lei geral. A alegação vale para a **DILATAÇÃO** — a rota das curvas põe a fronteira no eixo,
+logo `s = 0`, e há gate provando (`on_the_curve_route_there_is_nothing_left_to_dilate`).
+
+**Ela não vale para a IDENTIDADE DOS VÉRTICES.** O `filled_shape_target` põe o `fill` no
+**próprio traço**; `curve_region` *deriva* a fronteira dos vértices das linhas e o
+`fill_stroke` os **COPIA** para um traço novo. Um snapshot não é uma identidade compartilhada.
+
+Medido na MESMA arte (forma fechada de mão, linha de 0,4), com o ramo ligado e desligado:
+
+| gesto | traço próprio | curvas, nada selecionado | curvas, **só a linha selecionada** |
+|---|---|---|---|
+| Push | 0,0000 | 0,0000 | **2,1397** |
+| Grab | 0,0000 | 0,0000 | **2,3134** |
+| Smooth | 0,0000 | 0,0000 | **0,8972** |
+| Pinch | 0,0000 | 0,0000 | **0,3344** |
+| Twist | 0,0000 | 0,0000 | **0,1604** |
+
+Até **5,8 larguras de linha** de descolamento. O mecanismo é o **auto-masking do W6**:
+`Session::begin` filtra por `!any_selected || st.selected`, então com a linha selecionada uma
+região que seja traço à parte sai da máscara e fica para trás. Na rota do traço próprio não há
+o que mascarar — a cor é um CAMPO do traço selecionado.
+
+Mais: preencher pela rota das curvas **desloca o índice do line-art**, e o `tween_drawing`
+pareia POR ÍNDICE — preencher uma chave e não a outra parearia LINHA com REGIÃO.
+
+### O que a R3 virou
+
+**Proteger a propriedade**, não apagar o ramo: `shells/desktop/src/flip_fill_identity_tests.rs`
+(5 gates; 3 sangram quando o ramo é desligado). Para de fato substituir o ramo um dia, a rota
+das curvas precisaria de **fonte ≠ cozido no nível da REGIÃO** — a costura que o ADR-0121 já
+construiu para as Live Corners: guardar a *referência* (traço, vértice) de onde cada ponto veio
+e **re-cozer** quando a arte muda, em vez de guardar coordenadas. É projeto com aceitação
+própria.
+
+### Duas lições de método, e a segunda foi paga na hora
+
+> **1. Uma nota de plano é uma HIPÓTESE, não uma autorização.** A R3 foi escrita quando o
+> `filled_shape_target` parecia um ramo especial da dilatação. Ela envelheceu para uma
+> instrução que teria removido uma propriedade aprovada em smoke — e o único gate próximo
+> pinava que a **rota dispara**, ou seja, seria apagado junto com ela e o produto ficaria
+> verde. **Um gate que mora dentro do que ele defende não defende nada.**
+
+> **2. A 1ª medição desta seção estava ERRADA e quase virou a história oficial.** Ela comparou
+> a rota do traço próprio numa FORMA FECHADA com a rota das curvas numa CÉLULA DE GRADE — arte
+> onde a primeira nunca dispara. O número saía do *fixture*, não da rota, e a conclusão
+> (*"o Smooth é o que quebra"*) era falsa: sem seleção **todos** os pincéis empatam em zero, e
+> o discriminador é a SELEÇÃO. **Comparar duas rotas exige a mesma arte** — senão você mede a
+> diferença entre as fixtures e a chama de diferença entre os caminhos.

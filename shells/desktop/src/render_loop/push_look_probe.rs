@@ -1,5 +1,5 @@
 //! RENDER-AND-LOOK probe for the Push phase (the handoff's explicit method: start by rendering and
-//! looking, not from theory). Writes lit PNGs of deposit-Push strokes — plus the Scrape+Conserve
+//! looking, not from theory). Writes lit PNGs of deposit-Push strokes — plus the plain Scrape
 //! reference whose drawing Enio approved — to `PH2D_PUSH_LOOK_DIR`. Diagnostic, `#[ignore]`d.
 
 use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -158,12 +158,11 @@ fn probe_push_render_and_look() {
     lay_ground(&mut t);
     save(&mut t, &dir, "5c_sphere_ground_only", size);
 
-    // 6. THE REFERENCE: Scrape + Conserve through the same ground (the drawing Enio approved).
+    // 6. THE REFERENCE: a plain Scrape through the same ground.
     let mut t = tool(size);
     lay_ground(&mut t);
     t.set_paint_tool_mode("sculpt");
-    t.set_sculpt_mode(3); // Scrape
-    t.toggle_sculpt_conserve();
+    t.set_sculpt_mode(3);
     t.set_brush_size_px(24.0);
     t.on_canvas_pointer(cp([200.0, 60.0], PointerPhase::Down));
     for i in 1u8..=10 {

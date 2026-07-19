@@ -319,29 +319,16 @@ pub(crate) struct SculptState {
     /// the new start angle, instead of remembering one from a shape the artist has since redrawn.
     pub(crate) locked_dir: Option<[f32; 2]>,
 
-    /// **Conserve** (W5, plan §6) — where does the scraped paint go? On: the volume the down-only verbs
-    /// (Scrape / Chisel) take off piles up on the spatula's rim as a *bow wave*, instead of being deleted
-    /// the way Blender deletes it. Off (default): today's non-conservative behaviour, byte for byte —
-    /// the drawing of the pile is unproven until Enio's smoke, so it is opt-in.
-    pub(crate) conserve: bool,
-    /// The bow-wave field — the removed volume, banked onto the rim, accumulated **per dab** exactly the
-    /// way `plane_sum` is (a function of the dab list; the shape editors rebuild it every re-stamp) —
-    /// and only while the flag is ARMED, so an unarmed Scrape pays nothing. The render ADDS it after the
-    /// verb's delta; on an open shape the checkbox stays live because its toggle re-stamps (the Rake's
-    /// own pattern).
+    /// The previous dab's centre this gesture — **the stroke's direction, taken from the path itself.**
     ///
-    /// `Arc` for the same reason the others are: the undo snapshot must be a refcount bump. Empty outside
-    /// the plane family. It is NOT derived from `pre` (it is derived from the dabs), so — like
-    /// `plane_sum`, and per §10.4 — it rides [`crate::undo::SculptSnap`].
-    pub(crate) bank: Arc<Vec<f32>>,
-    /// Per-dab rim-weight scratch for [`ph2d_painter_brush::height_push::bank_dab_push`] — caller-owned so
-    /// a hot stroke allocates nothing. Never read across dabs; never snapshotted.
-    pub(crate) bank_scratch: Vec<f32>,
-    /// The previous dab's centre this gesture — gives the bank its direction of travel (the bow wave banks
-    /// BESIDE the blade, not ahead of it: banking radially leaves half the pile inside the channel the
-    /// next dab is about to cut — the deposit's own measured lesson). Session state; dies with the gesture
-    /// and on every re-stamp.
-    pub(crate) last_bank_center: Option<[f32; 2]>,
+    /// Born for the Conserve bank (which needed to know which way the blade travelled) and outlived it:
+    /// the Chisel's V is folded about this axis, because [`ph2d_painter_brush::Dab::dir`] is the *smoothed*
+    /// tangent the Rake texture rides, and a smoothed tangent TRAILS — measured, up to 52° behind at a
+    /// 60-px brush, which is what *"Rake não consegue rotacionar o brush"* looks like. Dab centres are
+    /// exact samples of the path, so a difference between two of them trails by half a dab SPACING.
+    ///
+    /// On the STATE, not on the batch, so the axis is continuous across pointer events.
+    pub(crate) last_dab_center: Option<[f32; 2]>,
 
     /// `Σ w·plane_d(i)` over the stroke's dabs — the **plane family's** per-texel target, un-normalised.
     ///
@@ -417,10 +404,7 @@ impl Default for SculptState {
             // seams and it costs 7.30 ms vs a kill of 8. Gold standard = the TRUE BALL, proven: handoff §8.
             smooth_norm: 0.0,
             rake: true, // the groove follows the stroke — what a knife dragged through paint does
-            conserve: false, // opt-in until the bow wave's DRAWING survives a smoke (plan §6)
-            bank: Arc::new(Vec::new()),
-            bank_scratch: Vec::new(),
-            last_bank_center: None,
+            last_dab_center: None,
             locked_dir: None,
             pre: Arc::new(Vec::new()),
             amount: Arc::new(Vec::new()),
@@ -438,25 +422,7 @@ impl Default for SculptState {
     }
 }
 
-impl SculptMode {
-    /// The verbs the **Conserve** flag applies to — the pure REMOVERS, whose taken volume has one honest
-    /// destination (the rim). Flatten moves volume both ways and Fill only adds; conserving those needs a
-    /// design for where the *added* volume comes FROM, which is a decision, not a flag (plan §6 names
-    /// Scrape; the Chisel is Scrape with a folded blade).
-    pub(super) fn conserves(self) -> bool {
-        matches!(self, SculptMode::Scrape | SculptMode::Chisel)
-    }
-}
-
 impl SculptState {
-    /// **The one door for "is the bow wave on?"** — the flag AND a verb it governs. Both the dab
-    /// accumulation (the bite + bank) and the render (the `+ bank` term) ask HERE: two copies of this
-    /// predicate would diverge, and the half that drifted would either tax unarmed strokes or leak the
-    /// pile past its flag.
-    pub(super) fn conserve_active(&self) -> bool {
-        self.conserve && self.mode_enum().conserves()
-    }
-
     /// The kernel radius in px (`1..=SCULPT_RADIUS_MAX_PX`). Never 0 — a zero-radius blur is a no-op, and
     /// a control whose bottom end silently does nothing is a control that lies.
     pub(super) fn radius_px(&self) -> u32 {
@@ -632,16 +598,8 @@ impl PainterTool {
 
     /// Toggle the Chisel's **Rake**. Re-stamps: the V's axis is baked into `plane_sum` as each dab lands, so
     /// only a re-stamp can turn the knife (the same reason the Angle slider re-stamps).
-    /// Toggle **Conserve** (W5): whether the down-only verbs bank the volume they remove onto the rim.
-    /// Live on an open shape the way the Rake is: the bank is baked into the ACCUMULATION (only armed
-    /// strokes pay the bite — unarmed Scrape costs what it always cost), so the toggle re-stamps the
-    /// standing shape and the pile materialises — or vanishes — with the flag.
-    pub fn toggle_sculpt_conserve(&mut self) {
-        self.paint.sculpt.conserve = !self.paint.sculpt.conserve;
-        self.refill_open_shape(); // the bank is a fact about the (armed) dab list; only a re-stamp changes it
-        self.refresh_live_sculpt();
-    }
-
+    /// Toggle **Rake** — whether the Chisel's V follows the stroke live, or holds the angle it entered
+    /// at. Both modes read the stroke; the difference is WHEN (see [`SculptState::last_dab_center`]).
     pub fn toggle_sculpt_rake(&mut self) {
         self.paint.sculpt.rake = !self.paint.sculpt.rake;
         self.paint.sculpt.locked_dir = None; // re-aim: the lock belongs to the stroke, not to the checkbox

@@ -419,18 +419,17 @@ pergunta e sangra sozinha:
   percorrer o plano"*);
 - janela crescida 400 px **constantes** ⇒ razão **1,00×, passa**; o **kill** dispara em 47 ms.
 
-### 9.8 Conserve p/ Flatten/Fill — construído, smokado e REMOVIDO no mesmo dia
+### 9.8 CONSERVE FOI REMOVIDO INTEIRO — e o achado que sobrevive a ele
 
-Fica registrado porque a lei era boa e alguém vai querer reconstruí-la.
+Ordem do Enio (2026-07-18): *"retire conserve de scrape também / de chisel tb / de tudo"*. Saíram o flag, o
+checkbox (`PAINTER_SCULPT_CONSERVE`), o `bank`/`bank_scratch`, o `PlaneBite`, o `conserve_active`, o
+`SculptSnap.bank` e os gates. **`bank_dab_push` FICA** — é o motor do **Push do depósito** (aprovado), que
+passa a ser seu único chamador.
 
-**A lei generalizava:** *Conserve = a variação LÍQUIDA de volume do traço é zero; o aro liquida a diferença
-com o SINAL do ledger* — Scrape sempre foi o caso de ledger negativo (crista); Fill/Clay têm ledger
-positivo e ganhavam **fosso**. O ledger fechava em ±0,0 em todos os casos.
-
-**O smoke reprovou** (Enio): *"Conserve com fosso muito profundo e exagerado"* (Push e Inflate OK). Ele
-perguntou se cabia um slider de intensidade com default 50%.
-
-**Medido, o slider não resolve — e é por isso que a remoção foi a resposta:**
+**Como chegou aqui.** Scrape/Chisel foram aprovados em 16/07. A extensão a Flatten/Fill (18/07)
+generalizou a lei corretamente — *variação líquida zero, o aro liquida a diferença com o SINAL do ledger*,
+logo adicionadores ganham **fosso** — e o ledger fechava em ±0,0. O smoke reprovou (*"fosso muito profundo
+e exagerado"*), e a medição matou o slider que salvaria:
 
 | Offset | o verbo adiciona | fosso mais fundo | slider que igualaria o verbo |
 |---|---|---|---|
@@ -438,60 +437,55 @@ perguntou se cabia um slider de intensidade com default 50%.
 | 0,65 | 405,1 | 2,0× | **49%** |
 | 0,75 | 632,9 | 2,5× | **40%** |
 
-**O valor certo do slider é função de OUTRO knob.** Um controle que se re-calibra a cada toque no Offset
-não é controle, é calibração de um bug de design.
+**O valor certo é função de OUTRO knob.** A causa: o **Offset é o botão de volume** e Clay é o artista
+adicionando massa *de propósito* — conservar isso é a ferramenta desfazendo a intenção; e no centro o
+Flatten **já é conservativo por construção**. Inerte onde era seguro, nocivo onde era vivo.
 
-**A causa, que a medição já nomeara e eu não levei às últimas consequências:** o **Offset é o botão de
-volume**, e Clay é o artista *adicionando massa de propósito*. Conservar isso é a ferramenta desfazendo a
-intenção. E no centro — onde conservar seria inofensivo — o Flatten **já é conservativo por construção**
-(+1,2%; o ajuste LSQ passa pelo centroide). Então o flag é **inerte onde é seguro e nocivo onde é vivo**.
+#### ⚠️ O achado que vale para QUALQUER operação futura que RETIRE matéria pelo aro
 
-**Se alguém retomar:** o slider não é o caminho. O desenho principiado é **isentar o Offset da mordida** —
-conservar só a redistribuição e tratar a elevação rígida como massa que o artista carregou na espátula.
-Mas isso deixa o flag quase inerte no Offset alto, que é onde ele foi pedido; provavelmente a conclusão
-correta é que **Flatten e Fill simplesmente não querem este flag**.
+O aro **prefere texels não-pintados** (`1 − paint`, para a crista não empilhar no próprio canal). Invertido
+o sinal, esse mesmo fator guia o saque **para fora da tinta**: **83% caía em tela nua** com o ledger lendo
+±0,0 — e relevo sob cobertura zero **não renderiza**. Ledger verde sobre mentira visível.
 
-**O achado do `Supply` vale ser preservado, porque é reutilizável.** O aro **prefere texels não-pintados**
-(`1 − paint`, para a crista não empilhar no próprio canal) e, invertido o sinal, esse mesmo fator guia um
-saque para **fora da tinta**: **83% do saque caía em tela nua** com o ledger lendo ±0,0 — e relevo sob
-cobertura zero **não renderiza**. Ledger verde sobre mentira visível. A cura era pesar o saque por
-`altura × cobertura` (a grandeza que a LUZ integra); relevo sozinho ainda deixava **56%** no invisível
-(o depósito espalha altura num halo mais largo que a tinta). **83% → 56% → 0%.** Qualquer operação futura
-que RETIRE matéria via o aro precisa disso.
+A cura era pesar o saque pelo que está de fato lá: **altura × cobertura**, a grandeza que a LUZ integra.
+Relevo sozinho **não basta e foi medido** (o depósito espalha altura num halo mais largo que a tinta):
+ainda 56% no invisível. **83% → 56% → 0%.**
 
-Revertido junto: `Travel`, `Supply`, os 3 gates e o split `sculpt_conserve.rs`. **Conserve permanece em
-Scrape/Chisel** (smoke aprovado 2026-07-16).
+#### O que sobreviveu de propósito
 
-### 9.9 A cura do BANCO — FECHADA POR MEDIÇÃO (o item não existia)
+`last_bank_center` → **`last_dab_center`**. Nasceu para dar direção ao banco e ficou por outro motivo: é o
+**eixo do V do Chisel** (§9.9). Renomeado porque um nome que cita um sistema morto mente.
 
-O último item da fila dizia: *"cada dab ainda normaliza o próprio aro = um produto sobre a lista de dabs;
-residual 0,0286"*. Fui curá-lo e a medição o desmontou em dois passos.
+### 9.9 O eixo do Chisel vem do CAMINHO — e o gate que devia ter pego isso
 
-**1. Não é dependência de espaçamento.** A razão da ondulação entre 2 px e 1 px é **~1,0×**
-(0,91–1,21 em todos os `lat`, nos dois falloffs). Uma corrugação por-dab quase dobraria ao dobrar o
-espaçamento. **O aro já é função do caminho** — a propriedade que a "cura" ia comprar já está paga.
+Enio: *"Rake não consegue rotacionar o brush para que a vala seja sempre paralela à direção do traço"*.
 
-**2. O número vinha de ONDE foi medido.** A janela `80..110` atravessa o **fim** do traço (o traço acaba em
-x=120), onde a crista rampa de altura cheia até zero — e `trench_ripple` é **pico-a-pico**, então sobre uma
-rampa ele reporta a rampa, não uma corrugação.
+**Os dabs GIRAM — eles atrasam.** Medido contra a tangente num quarto de círculo:
 
-| | janela 80..110 | **meio 82..98** | fim 100..118 |
-|---|---|---|---|
-| Sphere lat+12 | 0,0894 | **0,0180** | 0,1585 |
-| Smooth lat+9 | 0,0170 | **0,0017** | 0,1084 |
+| raio | atraso médio | pior |
+|---|---|---|
+| 8 px | 9,3° | 14,2° |
+| 14 px | 13,3° | 16,8° |
+| 30 px | 29,3° | 41,3° |
+| 60 px | 26,6° | **52,4°** |
 
-No meio do traço o aro é essencialmente uniforme (Smooth: 0,9% da própria crista).
+Meio ângulo reto a 60 px. Isso não lê como "a faca atrasa", lê como "o Rake não gira" — e escala com o
+pincel porque a janela de suavização escala.
 
-**O que ficou no lugar da cura:** `the_rim_is_a_fact_of_the_path_not_of_the_dab_spacing` — irmão do gate do
-canal, medindo o **aro** (lat 9 e 12, fora do pincel) **mid-stroke**, com guard de presença (*"há pilha
-aqui para medir?"*). Ele pina a propriedade verdadeira no lugar onde ela é honestamente verificável, para
-o próximo leitor não re-derivar o item falso a partir da nota. A mutação que o faz sangrar é **o banco
-compositar em vez de acumular** (`plane[i]*(1−k) + k·scale`) — que É exatamente a doença que o item
-descrevia — e ela quebra a asserção de espaçamento (−0,2417 a 1px contra −0,3843 a 2px).
+**Causa:** `Dab::dir` é, por contrato, *a tangente SUAVIZADA que a textura Rake cavalga*. A textura quer a
+suavização; o eixo de um sulco não. **Não é regressão desta linha** — nenhum commit daqui tocou o motor de
+heading (`e1fa546b` só mexeu no default do Plow; `14deb079` só trocou a visibilidade de `walk_dab`).
 
-⚠️ **A lição, e ela é a mesma da §9.5:** um resíduo medido no lugar errado vira trabalho planejado, e ficou
-planejado por um ano. Duas vezes nesta jornada uma nota de trabalho aberto descreveu uma *causa* que os
-próprios números dela desmentiam.
+**Fix:** o eixo vem dos **centros dos dabs**, amostras exatas do caminho ⇒ atraso de meio espaçamento
+(~1 px). `last_dab_center` o carrega e atravessa fronteira de batch, então é contínuo entre eventos de
+ponteiro. `Dab::dir` segue como fallback e é o certo. Os 4 leitores de `Dab::dir` ficam intocados.
+
+⚠️ **PENDENTE DE SMOKE, e sei exatamente o que não provei.** Os 10 gates do Chisel passam — mas o oráculo
+do gate de curva afirma só que os sulcos *raked* e *locked* **diferem**, não que o sulco fique **paralelo**
+ao traço. Foi por isso que o defeito viveu com a suíte verde. Medi a ENTRADA (o ângulo do eixo), não a
+SAÍDA (o sulco renderizado); minha sonda para a saída emulava `prev_center` errado (lia o valor
+pós-batch) e eu a apaguei em vez de acreditar nela. **O próximo passo é o gate que mede a orientação do
+sulco renderizado contra a tangente** — é ele que fecha isto.
 
 ### 9.10 Também sobra
 

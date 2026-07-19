@@ -335,7 +335,7 @@ impl PainterTool {
                 let displaced = bite.map_or(0.0, |b| b.displaced);
                 // The bank AIMS by the path: a first dab with no predecessor still has a heading
                 // (`d.dir`, warmed up when Push > 0), and a one-pixel synthetic prev turns it into
-                // the bank's direction WITHOUT changing the sweep — the W5 Conserve paid for this
+                // the bank's direction WITHOUT changing the sweep — the (since-removed) Sculpt Conserve paid for this
                 // pattern first. Without it the pen-down dab banks a radial ring, and the stroke's
                 // start reads as a stamped cookie-cutter instead of where a blade set off.
                 let bank_hd = if hd.prev_center.is_none() && d.dir != [0.0, 0.0] {

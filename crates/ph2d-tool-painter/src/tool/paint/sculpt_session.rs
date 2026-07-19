@@ -141,11 +141,6 @@ impl PainterTool {
                 if self.paint.sculpt.plane_sum.len() != n {
                     self.paint.sculpt.plane_sum = Arc::new(vec![0.0; n]);
                 }
-                // The bow-wave field sizes with its family (W5). Always, not only when Conserve is on:
-                // the flag stays live on an open shape precisely because the bank is already there.
-                if self.paint.sculpt.bank.len() != n {
-                    self.paint.sculpt.bank = Arc::new(vec![0.0; n]);
-                }
             }
             SculptFamily::Height => {} // no target buffer exists to size
         }
@@ -192,15 +187,9 @@ impl PainterTool {
         let plane_family = self.paint.sculpt.mode_enum().family() == SculptFamily::Plane;
         let mut plane_sum = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.plane_sum));
         let mut scratch = std::mem::take(&mut self.paint.sculpt.fit_scratch);
-        // W5 — the Conserve bite + bank, counted only while the flag is ARMED: unarmed Scrape pays
-        // nothing (the bite+bank cost ~1.4 ms/move at 2048², measured — a tax on artists who never asked
-        // for physics). The checkbox stays live on an open shape the way the Rake does: its toggle
-        // re-stamps the shape (`refill_open_shape`), and the re-stamp accumulates the bank fresh.
-        let conserving = plane_family && self.paint.sculpt.conserve_active();
-        let bite_offset = self.paint.sculpt.plane_offset();
-        let mut bank = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.bank));
-        let mut bank_scratch = std::mem::take(&mut self.paint.sculpt.bank_scratch);
-        let mut prev_center = self.paint.sculpt.last_bank_center;
+        // The stroke's own direction, carried across batches — the Chisel's V axis
+        // (see `SculptState::last_dab_center`).
+        let mut prev_center = self.paint.sculpt.last_dab_center;
         let pre = Arc::clone(&self.paint.sculpt.pre);
         // **Rake OFF: the knife enters at the angle the stroke started in, and holds it.** Lock on the first
         // dab of the gesture that HAS a heading — not on the pen-down dab, whose heading is `[0, 0]` until
@@ -216,11 +205,6 @@ impl PainterTool {
         // The Chisel's tilt — `tan(angle)`, and exactly `0` in every other verb, so the `+ tilt·|lateral|`
         // term vanishes and Flatten / Scrape / Fill stay byte-for-byte the Wave 2 kernel. Computed ONCE, here.
         let chisel_tilt = self.paint.sculpt.chisel_tilt();
-        // The Conserve's bank shares the deposit's motor, so its ridge anchors at the same body edge:
-        // where the sculpt brush's paint stops carrying a body, not the geometric rim. Stroke-constant
-        // (falloff / hardness / Shape), so resolved once. The default sculpt brush is a SOFT `Smooth`,
-        // so this DOES move the approved drawing inward — a re-smoke is declared in the handoff.
-        let rim_t0 = ph2d_painter_brush::height_push::rim_t0(brush, shape_active);
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -268,7 +252,6 @@ impl PainterTool {
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
             };
-            let mut displaced = 0.0f32;
             let hit = if plane_family {
                 // The plane is fitted to `pre`, the FROZEN surface — never to the live one. Fitting to the
                 // live relief would let each dab flatten what the previous dab already flattened, and the
@@ -280,10 +263,6 @@ impl PainterTool {
                         plane_sum: &mut plane_sum,
                         pre: &pre,
                         scratch: &mut scratch,
-                        bite: conserving.then_some(ph2d_painter_brush::sculpt::PlaneBite {
-                            offset: bite_offset,
-                            displaced: &mut displaced,
-                        }),
                     },
                     // The V's axis — the stroke's direction while **Rake** is on (so the groove curves
                     // with the hand), or the heading it entered at while it is off. One function answers
@@ -299,9 +278,8 @@ impl PainterTool {
                     //
                     // The dab centres are exact samples of the path, so the difference between two of them
                     // trails by half a dab SPACING (~1 px) instead of ~1 radius. `prev_center` is already
-                    // maintained here for the Conserve bank, and it already survives batch boundaries via
-                    // `last_bank_center` — so the axis is continuous across pointer events, which a
-                    // per-batch estimate would not be.
+                    // maintained on the state (`last_dab_center`), so it survives batch boundaries and the
+                    // axis is continuous across pointer events — which a per-batch estimate would not be.
                     //
                     // `Dab::dir` remains the fallback, and it is the RIGHT one: on the first dab of a
                     // stroke there is no previous centre, and the heading warm-up exists precisely so that
@@ -335,47 +313,12 @@ impl PainterTool {
                 };
                 touched = Some(touched.map_or(rect, |acc| super::union_region(acc, rect)));
             }
-            // W5: what the bite took, the rim gets — the deposit's own conservative banking, reused as
-            // is. The dab handed to it carries a synthetic one-px sweep along the dab's OWN heading, so
-            // the bank's lateral lobe knows which way the blade travels (banking radially leaves half
-            // the pile inside the channel the next dab is about to cut — measured on the deposit). The
-            // rim's DirtyRect is unioned into `touched`, so the render's window — and the session bbox
-            // the restores cover — reach every texel the bank wrote.
-            if conserving && displaced > 0.0 {
-                let bank_dab = ph2d_painter_brush::height::HeightDab {
-                    prev_center: (d.dir != [0.0, 0.0])
-                        .then_some([d.center[0] - d.dir[0], d.center[1] - d.dir[1]])
-                        .or(prev_center),
-                    ..hd
-                };
-                if let (Some(r), _carried) = ph2d_painter_brush::height_push::bank_dab_push(
-                    &mut bank,
-                    &amount,
-                    &mut bank_scratch,
-                    w,
-                    h,
-                    &bank_dab,
-                    rim_t0,
-                    displaced,
-                    0.0, // Conserve sheds purely laterally (no bow wave); the anchor is the body edge
-                ) {
-                    let rect = Region {
-                        x: r.x,
-                        y: r.y,
-                        w: r.w,
-                        h: r.h,
-                    };
-                    touched = Some(touched.map_or(rect, |acc| super::union_region(acc, rect)));
-                }
-            }
             prev_center = Some(d.center);
         }
         *Arc::make_mut(&mut self.paint.sculpt.amount) = amount;
         *Arc::make_mut(&mut self.paint.sculpt.plane_sum) = plane_sum;
-        *Arc::make_mut(&mut self.paint.sculpt.bank) = bank;
         self.paint.sculpt.fit_scratch = scratch; // hand the buffer back so the next batch reuses it
-        self.paint.sculpt.bank_scratch = bank_scratch;
-        self.paint.sculpt.last_bank_center = prev_center;
+        self.paint.sculpt.last_dab_center = prev_center;
         if let Some(rect) = touched {
             self.paint.sculpt.bbox = Some(
                 self.paint
@@ -409,10 +352,6 @@ impl PainterTool {
             pre_cover: Arc::clone(&self.paint.sculpt.pre_cover),
             pre_mats: Arc::clone(&self.paint.sculpt.pre_mats),
             pre_rgba: Arc::clone(&self.paint.sculpt.pre_rgba),
-            // The bow wave rides too, and for `plane_sum`'s exact reason: it is derived from the DAB
-            // LIST, which the restore cannot rebuild (§10.4 — ao adicionar um plano, adicione-o ao
-            // snapshot no MESMO commit).
-            bank: Arc::clone(&self.paint.sculpt.bank),
             layer: self.paint.sculpt.layer,
             bbox: self.paint.sculpt.bbox,
         }
@@ -430,7 +369,6 @@ impl PainterTool {
         self.paint.sculpt.pre_cover = s.pre_cover;
         self.paint.sculpt.pre_mats = s.pre_mats;
         self.paint.sculpt.pre_rgba = s.pre_rgba;
-        self.paint.sculpt.bank = s.bank;
         self.paint.sculpt.layer = s.layer;
         self.paint.sculpt.bbox = s.bbox;
         self.paint.sculpt.memo = Vec::new();
@@ -452,9 +390,7 @@ impl PainterTool {
         self.paint.sculpt.pre = Arc::new(Vec::new());
         self.paint.sculpt.amount = Arc::new(Vec::new());
         self.paint.sculpt.plane_sum = Arc::new(Vec::new());
-        self.paint.sculpt.bank = Arc::new(Vec::new());
-        self.paint.sculpt.bank_scratch = Vec::new();
-        self.paint.sculpt.last_bank_center = None;
+        self.paint.sculpt.last_dab_center = None;
         self.paint.sculpt.fit_scratch = Vec::new();
         self.paint.sculpt.memo = Vec::new();
         self.paint.sculpt.memo_done = Vec::new();
@@ -477,7 +413,7 @@ impl PainterTool {
     /// eventual answer is a *bow wave*: the volume the spatula takes off piles up at its edge.
     ///
     /// The scope decision was: ship the **non-conservative** Scrape (Blender's), *but have the kernel
-    /// compute the displaced volume and throw it away explicitly* — so W5's Conserve is a **flag**, not a
+    /// compute the displaced volume and throw it away explicitly* — so conservation would be a **flag**, not a
     /// rewrite. This is that computation, and gating it now (`the_scrape_reports_the_volume_it_removed`) is
     /// what makes it a fact rather than a promise: the number is checked against the relief that actually
     /// moved, today, while the code that moved it is still under my hand.
@@ -567,16 +503,7 @@ impl PainterTool {
                 *p = 0.0;
             }
         });
-        // …and the bow wave with it — it is a fact about the dab list, like `plane_sum` (and like the
-        // knife's lock below): a shape editor rebuilds the list from scratch every frame, so a bank that
-        // survived the reset would pile the SAME removal again on every re-stamp.
-        let bank = Arc::make_mut(&mut self.paint.sculpt.bank);
-        super::impasto_settle::for_each_in(rect, w, |i| {
-            if let Some(b) = bank.get_mut(i) {
-                *b = 0.0;
-            }
-        });
-        self.paint.sculpt.last_bank_center = None;
+        self.paint.sculpt.last_dab_center = None;
         self.paint.sculpt.bbox = None;
         if let Some(r) = super::region::grow_region(rect, 1, w, self.source_size.1) {
             self.mark_dirty(r);

@@ -262,7 +262,7 @@ fn the_plane_offset_gives_the_spatula_its_bite() {
 /// Doc 18 §6 leaves the bifurcation open — *where does the scraped paint go?* Blender deletes it; paint does
 /// not do that, and we own a conservative displacement engine already. The scope decision was to ship the
 /// non-conservative Scrape **but compute the displaced volume and discard it explicitly**, so that W5's
-/// Conserve (the bow wave) is a *flag* rather than a rewrite.
+/// a conserving variant would be a *flag* rather than a rewrite.
 ///
 /// This is what turns that from a promise into a fact: the number is checked against the relief that
 /// actually moved, now, while the code that moved it is under my hand. A volume computed in Wave 5 against a
@@ -301,7 +301,7 @@ fn the_scrape_reports_the_volume_it_removed() {
     assert!(
         (reported - truth).abs() < 1e-3 * truth.abs().max(1.0),
         "the kernel says it displaced {reported:.4} loads·texels; the relief says {truth:.4}. Wave 5's \
-         Conserve is supposed to be a FLAG on top of this number — a wrong number makes it a rewrite."
+         conservation would be a FLAG on top of this number — a wrong number makes it a rewrite."
     );
     assert!(
         reported < 0.0,

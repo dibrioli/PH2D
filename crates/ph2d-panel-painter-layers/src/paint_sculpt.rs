@@ -70,20 +70,6 @@ pub(crate) fn paint_sculpt_section(
                     brush.sculpt_rake,
                 );
             }
-            // **Conserve** (W5): only the verbs it governs get the row — the tool says which
-            // (`sculpt_conserves`), the panel never keeps its own copy of the verb list.
-            if brush.sculpt_conserves {
-                y = crate::paint_brush_top::paint_checkbox_row(
-                    ctx,
-                    theme,
-                    x,
-                    content_w,
-                    y,
-                    core_ids::PAINTER_SCULPT_CONSERVE,
-                    "Conserve",
-                    brush.sculpt_conserve,
-                );
-            }
             y
         }
         2 => {

@@ -309,8 +309,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // `None => false`, the Down never activates it and the Click never happens. That is exactly how the
         // Impasto light rig shipped inert, on this same line, four days ago.
         ph2d_editor_core::ids::PAINTER_SCULPT_RAKE,
-        // Sculpt card: the Conserve toggle (W5 — the bow wave). Same registration law as the Rake.
-        ph2d_editor_core::ids::PAINTER_SCULPT_CONSERVE,
         // Sculpt card: the Filter Layer action button (W5b — the verb applied to the whole layer).
         ph2d_editor_core::ids::PAINTER_SCULPT_FILTER,
         ph2d_editor_core::ids::PAINTER_SCULPT_FILTER_STROKE,

@@ -110,11 +110,6 @@ pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 /// loaded, governing something else. The chisel's V has an axis whether or not the brush has a picture.
 pub const PAINTER_SCULPT_RAKE: NodeId = hash_node_id("painter_sculpt.rake");
 
-/// **Conserve** (W5, plan §6) — the down-only verbs (Scrape / Chisel) bank the volume they remove onto
-/// the spatula's rim as a *bow wave*, instead of deleting it the way Blender deletes it. Paint is a
-/// substance; the flag is opt-in until the pile's drawing survives a smoke.
-pub const PAINTER_SCULPT_CONSERVE: NodeId = hash_node_id("painter_sculpt.conserve");
-
 /// **Filter Layer** (W5b, plan §8) — apply the selected verb to the WHOLE layer at once, with no stroke
 /// (Blender's *Mesh Filter*). A button, not a mode: the verb chips and the verb's own knob already say
 /// *what* and *how much*; this says *everywhere*. Offered only for the verbs whose target is a function of
@@ -134,7 +129,7 @@ pub const PAINTER_SCULPT_FILTER_STROKE: NodeId = hash_node_id("painter_sculpt.fi
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 12] = [
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 11] = [
     PAINTER_SCULPT_MODE_IDS[0],
     PAINTER_SCULPT_MODE_IDS[1],
     PAINTER_SCULPT_MODE_IDS[2],
@@ -144,7 +139,6 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 12] = [
     PAINTER_SCULPT_MODE_IDS[6],
     PAINTER_SCULPT_MODE_IDS[7],
     PAINTER_SCULPT_RAKE,
-    PAINTER_SCULPT_CONSERVE,
     PAINTER_SCULPT_FILTER,
     PAINTER_SCULPT_FILTER_STROKE,
 ];

@@ -86,8 +86,8 @@ fn forward_weight(dx: f32, dy: f32, dir: Option<[f32; 2]>) -> f32 {
 /// landed ahead; 16% fossilised inside the swath — MUT S, quantified). So the wave is carried as a
 /// session SCALAR and painted as a lobe at the CURRENT tip ([`wave_lobe`]), exactly removable,
 /// finally resting at the stroke's frontier — which is where IMPaSTo (NPAR 2004, `v_p = −c∇p`)
-/// puts it. The Sculpt's Conserve passes `0.0`: all paint sheds laterally, byte-identical to its
-/// approved drawing. // CLAMP-OK
+/// puts it. (A caller that wants purely lateral shedding passes `0.0`; the Sculpt's Conserve did, until
+/// it was removed on 2026-07-18 — the deposit's Push is the only caller now.) // CLAMP-OK
 pub const DEPOSIT_FORWARD_SHARE: f32 = 0.6;
 
 /// The rim's profile: how the displaced paint banks up outside the cut, as a function of `u` — the
@@ -127,9 +127,9 @@ pub fn push_rim_weight(u: f32) -> f32 {
 /// A **Shape** silhouette (Image or procedural) has no radial body edge — a stamp keeps its hard edge
 /// by definition — so the anchor stays at the geometric rim there, byte-identical to a stamped dab.
 ///
-/// **One door for BOTH kernels** ([`bank_dab_push`] and [`wave_lobe`]) and BOTH callers (the deposit's
-/// Push and the Sculpt's Conserve, which share this motor): a second copy of "where does the rim
-/// start" would let the lateral bank and the forward lobe be born on different circles. Hoist it once
+/// **One door for BOTH kernels** ([`bank_dab_push`] and [`wave_lobe`]): a second copy of "where does the
+/// rim start" would let the lateral bank and the forward lobe be born on different circles. (It served two
+/// callers until the Sculpt's Conserve was removed on 2026-07-18; the reason survives the second caller.) Hoist it once
 /// per stroke — the falloff, hardness and Shape state do not change mid-stroke.
 #[must_use]
 pub fn rim_t0(spec: &crate::BrushSpec, has_shape: bool) -> f32 {
@@ -195,7 +195,7 @@ pub struct PushBite<'a> {
 /// shoved against the canvas edge lands in whatever rim is left instead of vanishing.
 /// `forward_share` splits the displaced volume: `share × displaced` is RETURNED to the caller
 /// (the bow wave's cargo, painted by [`wave_lobe`] at the tip), the rest banks laterally here.
-/// `0.0` reproduces the purely lateral banking bit for bit (the Conserve's approved drawing). A
+/// `0.0` reproduces the purely lateral banking bit for bit. A
 /// directionless dab (a tap) always banks everything radially — a pressed stamp has no "ahead".
 /// `t0` is the rim's inner anchor ([`rim_t0`]): the ridge rises from where the paint's body ends,
 /// not from the dab's geometric rim. Returns the banked rect and the carried volume.

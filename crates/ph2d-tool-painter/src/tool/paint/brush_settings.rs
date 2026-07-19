@@ -147,13 +147,6 @@ pub struct BrushSettings {
     /// Chisel **Rake** — does the V follow the direction of the stroke? (Default on.) Shown only for the
     /// Chisel, the one verb with an axis.
     pub sculpt_rake: bool,
-    /// **Conserve** (W5) — the down-only verbs bank the removed volume on the rim (the bow wave).
-    /// Painted on the Scrape and Chisel cards only: the pure removers, the verbs the flag governs.
-    pub sculpt_conserve: bool,
-    /// Whether the ACTIVE verb is one the Conserve flag governs (`SculptMode::conserves`) — projected
-    /// here so the panel asks the tool instead of keeping its own copy of the verb list (two doors to
-    /// the same question diverge).
-    pub sculpt_conserves: bool,
     /// Whether the ACTIVE verb can be applied to the whole layer (`SculptMode::filters_layer`) — the
     /// **Filter Layer** button is painted only then. Same law as `sculpt_conserves` above: the panel asks
     /// the tool which verbs qualify instead of keeping a second copy of the list.

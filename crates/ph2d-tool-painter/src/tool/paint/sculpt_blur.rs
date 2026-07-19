@@ -237,20 +237,15 @@ impl PainterTool {
 
         let offset = self.paint.sculpt.plane_offset();
         let depth = self.paint.sculpt.depth();
-        // W5: the bow wave lands only when the verb removes AND the artist armed the flag — the SAME
-        // door the accumulation asks (`conserve_active`), so the two sides cannot disagree.
-        let conserve = self.paint.sculpt.conserve_active();
         let pre = Arc::clone(&self.paint.sculpt.pre);
         let amount = std::mem::take(&mut self.paint.sculpt.amount);
         let plane_sum = std::mem::take(&mut self.paint.sculpt.plane_sum);
-        let bank = std::mem::take(&mut self.paint.sculpt.bank);
         let memo = std::mem::take(&mut self.paint.sculpt.memo);
         let mut moved: Option<Region> = None;
         {
             let Some(entry) = self.heights.get_mut(&layer) else {
                 self.paint.sculpt.amount = amount;
                 self.paint.sculpt.plane_sum = plane_sum;
-                self.paint.sculpt.bank = bank;
                 self.paint.sculpt.memo = memo;
                 return;
             };
@@ -267,7 +262,6 @@ impl PainterTool {
             if target.len() != n || !family_ready {
                 self.paint.sculpt.amount = amount;
                 self.paint.sculpt.plane_sum = plane_sum;
-                self.paint.sculpt.bank = bank;
                 self.paint.sculpt.memo = memo;
                 return;
             }
@@ -276,11 +270,8 @@ impl PainterTool {
                 for x in rect.x..rect.x + rect.w {
                     let i = row + x as usize;
                     let a = amount[i];
-                    // W5: a rim texel the brush never touched can still carry the bow wave — the bank is
-                    // its only term (`k = 0` drops the verb's delta below), so the guard admits it.
-                    let bank_v = if conserve { bank[i] } else { 0.0 };
-                    if a <= 0.0 && bank_v == 0.0 {
-                        continue; // untouched and nothing banked: its relief is still `pre`
+                    if a <= 0.0 {
+                        continue; // untouched: its relief is still `pre`
                     }
                     // The brush's Strength and Flow are ALREADY in here (they are folded into the dab's
                     // coverage as it accumulates — `ph2d_painter_brush::sculpt`). Scaling by them again
@@ -302,7 +293,6 @@ impl PainterTool {
                     // `k ≤ 1`, so however long the artist dwells the coat never passes one Depth. Inflate's
                     // is the same, scaled by the surface's own `n_z` — see `inflate_nz`.
                     let toward = match mode {
-                        _ if a <= 0.0 => p, // bank-only rim texel: no target, delta 0, the bank is all
                         SculptMode::Smooth => memo[i],
                         SculptMode::Sharpen => p + p - memo[i],
                         SculptMode::Flatten
@@ -332,7 +322,7 @@ impl PainterTool {
                     // (`impasto_ceiling::soft_ceiling`) — clamping the stored relief here is what turned a sculpted
                     // mound into a dead flat mesa two strokes in, because every value above it became the
                     // same value and a constant has no slope for the light to read.
-                    let next = (p + k * delta + bank_v).clamp(-H_MAX, H_MAX);
+                    let next = (p + k * delta).clamp(-H_MAX, H_MAX);
                     if (next - target[i]).abs() > impasto_settle::RELIEF_EPS {
                         let rr = Region { x, y, w: 1, h: 1 };
                         moved = Some(moved.map_or(rr, |acc| super::union_region(acc, rr)));
@@ -343,7 +333,6 @@ impl PainterTool {
         }
         self.paint.sculpt.amount = amount;
         self.paint.sculpt.plane_sum = plane_sum;
-        self.paint.sculpt.bank = bank;
         self.paint.sculpt.memo = memo;
 
         if let Some(m) = moved {

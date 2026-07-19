@@ -189,7 +189,7 @@ fn the_ploughed_paint_waits_at_the_strokes_frontier() {
     );
 
     // The presence sibling: with the share at 0 the old, purely lateral drawing must come back —
-    // this pins that the wave is OPT-IN plumbing, and keeps the baseline the Conserve relies on.
+    // this pins that the wave is OPT-IN plumbing.
     let (plane0, f0, l0, r0, t0_0) = ploughed_plane(0.0, 12);
     let (ahead0, _, lateral0, _) = plough_zones(&plane0, f0, l0, t0_0 * r0);
     assert!(

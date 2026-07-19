@@ -139,8 +139,6 @@ impl PainterTool {
             sculpt_radius: self.paint.sculpt.radius_norm,
             sculpt_radius_px: self.sculpt_radius_px() as f32,
             sculpt_rake: self.sculpt_rake(),
-            sculpt_conserve: self.paint.sculpt.conserve,
-            sculpt_conserves: self.paint.sculpt.mode_enum().conserves(),
             sculpt_filters: self.paint.sculpt.mode_enum().filters_layer(),
             sculpt_can_filter_stroke: self.can_filter_last_stroke(),
             sculpt_smooth: self.sculpt_smooth(),

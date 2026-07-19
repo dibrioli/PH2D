@@ -115,8 +115,8 @@ fatiamento do §5 manter os dois vivos até a última fatia.
 | fatia | entrega | como se vê |
 |---|---|---|
 | **R0** ✅ | o **motor** de arranjo sobre polilinhas: interseções + grafo + walk de face. Sem UI, sem integração. | `cargo test -p ph2d-flip-fill arrange` |
-| **R1** | o balde **escolhe** a rota: se o clique cai numa face limitada do arranjo, usa a geometria dela; senão, o caminho de hoje. Sem apagar nada. | preencher a grade do smoke e ver os vértices do fill **em cima** dos da linha |
-| **R2** | a **dilatação recua** onde a rota nova serve (não há erro para compensar) | a franja some estruturalmente, não por constante |
+| **R1** ✅ | o balde **escolhe** a rota: se o clique cai numa face limitada do arranjo, usa a geometria dela; senão, o caminho de hoje. Sem apagar nada. | preencher a grade do smoke e ver os vértices do fill **em cima** dos da linha |
+| **R2** ✅ (de graça) | a **dilatação recua** onde a rota nova serve (não há erro para compensar) | a franja some estruturalmente, não por constante |
 | **R3** | aposentar o que ficou órfão (o `filled_shape_target` vira caso particular; a família da margem morre) | LOC apagada; gates que perderam o objeto |
 
 **R0 é a fatia que decide a wave.** Se o motor não sair robusto em `f32` sobre arte de mão,
@@ -213,3 +213,55 @@ proíbe; o que não se pode é *não medir*, e está medido.
 
 Ela é motor puro: não toca no balde, não muda um pixel do produto. A R1 é quem escolhe a
 rota — e é lá que a arte muda e o smoke decide.
+
+---
+
+## §10 — R1: FECHADA (2026-07-18) — e a R2 veio junto, de graça
+
+`flip_fill_target::curve_region` é a porta: o **raster escolhe** a região (é ele que aguenta
+arte imperfeita), o **arranjo desenha** a fronteira dela. Medido na grade de mão:
+
+| rota | pontos | **em cima de um vértice de linha** | dist. máx à linha |
+|---|---|---|---|
+| vetorizada (antes) | 52 | **0** | 0,0077 |
+| **curvas (agora)** | 81 | **77** | **0,0000** |
+
+Os 4 que não são vértice são as **interseções** — e essas caem exatamente sobre as duas
+linhas que se cruzam. É a frase do Enio cumprida ao pé da letra.
+
+**A R2 saiu de graça, e isso valida o desenho:** a dilatação é `w + 2s`, e nesta rota o
+contorno **É** o eixo ⇒ `s = 0` por construção ⇒ a largura é exatamente `w`. Sem margem,
+sem compensação, sem constante para calibrar. Há gate pinando isso (`on_the_curve_route_the_dilation_is_just_the_line_width`).
+
+### As QUATRO recusas, e por que cada uma existe
+
+| # | recusa | o que aconteceria sem ela |
+|---|---|---|
+| 0 | **Grow ≠ 0** | o slider seria **engolido em silêncio** — a rota põe a fronteira no eixo, e Grow é por definição um deslocamento a partir dele |
+| 1 | a região tem **buracos** | o motor devolve só o anel externo; a cor cobriria o buraco de um donut |
+| 2 | os dois anéis **não se abraçam** | o **Trap** seria engolido igual ao Grow: ele confina o raster a uma câmara, e o arranjo vê as duas como uma face só |
+| 3 | anel degenerado | — |
+
+⚠️ **As recusas 0 e 2 não estavam no plano.** Elas apareceram porque as mutações
+sobreviveram, e as duas são a MESMA doença: *um controle do usuário sendo descartado a
+jusante* — [[feedback_a_parameter_that_changes_nothing_is_discarded_downstream]], que esta
+linha já tinha pago uma vez com Gap/Trap.
+
+### Três fixtures minhas que não continham o fenômeno (na MESMA fatia)
+
+1. **Grade de retas perfeitas**: o contorno vetorizado de um quadrado alinhado aos eixos já
+   colapsa em 4 cantos exatos ⇒ as duas rotas dão o mesmo, e a mutação que **desliga a rota
+   inteira** passava verde. Curou com arte trêmula.
+2. **Distância à linha como oráculo**: não separa (0,0000 contra 0,0077, e o BUGS #14 é
+   quem garante que a rota velha também fica sobre o eixo). O discriminador é **coincidir
+   com um vértice**: 77 contra 0.
+3. **`trap: 2.0`** "porque 2 > 1": o `trap` vira px de BUFFER, e o pescoço de 1 unidade
+   mede **100** deles — a bola passava folgada e o gate acusou um bug inexistente. Números
+   do PRODUTO, sempre.
+
+### Aberto
+
+- **Buracos** (recusa 1): o walk já produz as faces internas; falta associá-las ao anel.
+  Enquanto isso, um donut usa a rota velha — correto, só não é o ideal.
+- **R3** (aposentar o `filled_shape_target` e a família da margem) só depois de o smoke
+  aprovar a R1.

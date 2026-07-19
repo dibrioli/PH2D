@@ -29,7 +29,7 @@ use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
 use crate::flip_fill_dilate::{boundaries, fill_stroke};
-use crate::flip_fill_target::filled_shape_target;
+use crate::flip_fill_target::{curve_region, filled_shape_target};
 
 /// O traço invisível que fecha um vão — persistente, sem cor, sem preenchimento.
 fn closure_stroke(a: Vec2, b: Vec2) -> FlipStroke {
@@ -254,6 +254,20 @@ pub(crate) fn fill_click(
         return Ok(());
     }
 
+    // ⬛ **A REGIÃO POR CURVAS** (wave `docs/Flip/10`, fatia R1): quando dá, a fronteira
+    // NÃO é vetorizada — ela é feita dos vértices das próprias linhas.
+    //
+    // É a extensão do que o `filled_shape_target` acima já faz para UMA forma, agora para
+    // a região delimitada por VÁRIAS (o caso do smoke do Enio: *"a malha que o fill cria
+    // não usa os vertex das linhas"*). A divisão de trabalho é a do §3 do plano: o
+    // **raster escolheu** a região (é ele que aguenta arte imperfeita) e o **arranjo
+    // desenha** a fronteira dela.
+    //
+    // Os fechamentos que o solver usou entram como linhas — senão a face não fecha, e o
+    // Gap Closure do usuário não teria efeito nesta rota.
+    let outer =
+        curve_region(&strokes, &r, local, hug_tol, params.grow).unwrap_or_else(|| r.outer.clone());
+
     // A dilatação sai da ARTE (a espessura do line-art que delimita a região), não de
     // um parâmetro: é isso que faz a cor encaixar na linha sem o usuário ajustar nada.
     //
@@ -278,8 +292,8 @@ pub(crate) fn fill_click(
     // medido na mesma unidade da geometria. Não sobrou grandeza de TELA neste caminho,
     // então não há fronteira px↔mundo para alguém esquecer de atravessar — que foi
     // exatamente o BUGS #20.
-    let widths = ph2d_flip_fill::contour_widths(&strokes, &r.outer);
-    let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, &widths);
+    let widths = ph2d_flip_fill::contour_widths(&strokes, &outer);
+    let stroke = fill_stroke(&outer, r.holes, color, 1.0, &widths);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.
     for c in &r.closures {

@@ -82,7 +82,11 @@ pub(crate) fn filled_shape_target(
 }
 
 /// A maior distância de um ponto de `pts` ao anel `ring` (segmentos, fecho implícito).
-fn max_dist_to_ring(pts: &[Vec2], ring: &[Vec2]) -> f32 {
+///
+/// `pub(crate)` porque a R1 da wave da região-por-curvas faz a MESMA pergunta — *"estas
+/// duas descrições são da mesma fronteira?"* — entre o anel do raster e o do arranjo. Uma
+/// 2ª cópia derivaria, e o critério de abraço já custou caro uma vez (BUGS #19).
+pub(crate) fn max_dist_to_ring(pts: &[Vec2], ring: &[Vec2]) -> f32 {
     let n = ring.len();
     if n < 2 {
         return f32::INFINITY;
@@ -111,3 +115,64 @@ fn max_dist_to_ring(pts: &[Vec2], ring: &[Vec2]) -> f32 {
 #[cfg(test)]
 #[path = "flip_fill_target_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "flip_fill_curve_route_tests.rs"]
+mod curve_route_tests;
+
+/// **A fronteira feita das CURVAS**, quando ela serve — a fatia R1 da wave
+/// `docs/Flip/10_regiao_por_curvas.md`.
+///
+/// Devolve o anel do arranjo planar (vértices das próprias linhas + as interseções) se, e
+/// só se, ele descreve **a mesma região** que o raster escolheu. Senão, `None`, e o
+/// chamador fica com o contorno vetorizado de sempre.
+///
+/// # As três recusas, e por que cada uma
+///
+/// 0. **O usuário mexeu no GROW.** Ele é, por definição, um deslocamento a partir do
+///    eixo (BUGS #13/#14) — e esta rota põe a fronteira **exatamente** no eixo. Não há
+///    como honrar os dois. Recusar devolve o caso ao caminho que sabe deslocar; **aceitar
+///    seria ignorar um slider em silêncio**, que é o defeito que a memória
+///    `feedback_a_parameter_that_changes_nothing_is_discarded_downstream` descreve — e
+///    era o que estava acontecendo aqui até um gate perguntar (o `style` de teste já vinha
+///    com `grow: 2.0` e a rota disparava assim mesmo, jogando o valor fora).
+/// 1. **A região tem BURACOS.** O motor da R0 devolve só o anel externo; entregar o anel
+///    sem os buracos pintaria por cima deles. Um donut é um caso legítimo e comum, e
+///    perdê-lo em silêncio seria pior que não usar a rota. (Buracos são trabalho de uma
+///    fatia própria — o walk já os produz como faces separadas, falta associá-los.)
+/// 2. **Os dois anéis não se ABRAÇAM.** O arranjo acha a face que contém o clique; o
+///    raster acha a região que o flood alcançou. Elas quase sempre coincidem — mas se a
+///    tinta rala deixou o flood escapar por onde o arranjo vê parede (ou o contrário), as
+///    duas respostas são de regiões DIFERENTES, e pintar a do arranjo seria pintar o que o
+///    usuário não pediu.
+/// 3. **O anel é degenerado** (< 3 pontos ou área ~zero).
+///
+/// ⚠️ A comparação é nos **DOIS sentidos**, pela lição do BUGS #19: um sentido só aceita
+/// um anel que acompanha só um PEDAÇO do outro.
+pub(crate) fn curve_region(
+    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
+    solved: &ph2d_flip_fill::FillResult,
+    click: Vec2,
+    hug_tol: f32,
+    grow: i32,
+) -> Option<Vec<Vec2>> {
+    if grow != 0 {
+        return None; // recusa 0
+    }
+    if !solved.holes.is_empty() {
+        return None; // recusa 1
+    }
+    // Os fechamentos de gap viram linhas de largura zero: eles delimitam, mas não são tinta
+    // (é o mesmo papel que já têm no documento).
+    let mut lines: Vec<(Vec<Vec2>, Vec<f32>, bool)> = strokes.to_vec();
+    for c in &solved.closures {
+        lines.push((vec![c.a, c.b], vec![0.0, 0.0], false));
+    }
+    let region = ph2d_flip_fill::region_at(&lines, click)?;
+    if region.outer.len() < 3 || ring_area(&region.outer).abs() <= 0.0 {
+        return None; // recusa 3
+    }
+    let hug = max_dist_to_ring(&region.outer, &solved.outer)
+        .max(max_dist_to_ring(&solved.outer, &region.outer));
+    (hug <= hug_tol).then_some(region.outer) // recusa 2
+}

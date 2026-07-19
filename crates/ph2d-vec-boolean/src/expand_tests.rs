@@ -6,7 +6,7 @@
 
 use super::*;
 use kurbo::ParamCurve;
-use ph2d_vec_scene::{Contour, Rgba8, VecVertex};
+use ph2d_vec_scene::{Contour, Rgba8, VecVertex, WidthProfile};
 
 fn v(x: f64, y: f64) -> VecVertex {
     VecVertex::corner([x, y])
@@ -326,4 +326,197 @@ fn the_cap_style_reaches_the_bake() {
         "round {round}: dois meio-discos de raio 1 somam π"
     );
     assert!((sq - 24.0).abs() < 0.01, "square {sq}: dois quadrados 2×1");
+}
+
+// ───────────────────────────── Power Stroke ─────────────────────────────
+
+/// Um perfil que afina nas duas pontas e engrossa no meio — o caso canônico.
+const TAPER: WidthProfile = WidthProfile {
+    start: 0.25,
+    mid: 2.0,
+    end: 0.25,
+    position: 0.5,
+};
+
+/// **O traço FICA MAIS GROSSO onde o perfil manda.** O oráculo é a espessura MEDIDA na
+/// tinta: uma vertical no meio da linha atravessa mais tinta que uma perto da ponta. Um
+/// gate que reafirmasse `profile.at()` seria verde com o motor desligado.
+#[test]
+fn the_ink_is_thicker_where_the_profile_says() {
+    let line = stroked(open_line(20.0), 1.0);
+    let out = power_stroke(&line, &TAPER);
+    assert_eq!(out.len(), 1, "uma forma");
+    let bez = crate::to_bez_with(&out[0], Closing::Always);
+    // Quanta tinta uma vertical em `x` atravessa (a altura da caixa da forma ali é uma
+    // aproximação honesta: a linha é horizontal, então a tinta é simétrica em torno dela).
+    let thickness_at = |x: f64| {
+        let mut lo = f64::MAX;
+        let mut hi = f64::MIN;
+        for seg in bez.segments() {
+            for k in 0..=64 {
+                let p = seg.eval(f64::from(k) / 64.0);
+                if (p.x - x).abs() < 0.15 {
+                    lo = lo.min(p.y);
+                    hi = hi.max(p.y);
+                }
+            }
+        }
+        hi - lo
+    };
+    let (mid, near_end) = (thickness_at(10.0), thickness_at(1.0));
+    assert!(
+        mid > near_end * 3.0,
+        "meio {mid:.3} vs perto da ponta {near_end:.3}: o perfil não chegou na tinta"
+    );
+    // O meio pede 2.0 × a largura 1.0 = 2.0 de espessura.
+    assert!(
+        (mid - 2.0).abs() < 0.15,
+        "espessura no meio {mid:.3} (o perfil pede 2.0)"
+    );
+}
+
+/// **Um perfil UNIFORME não é uma operação** — é o Outline Stroke, e ter dois botões que
+/// produzem a mesma saída é pior que ter um.
+#[test]
+fn a_uniform_profile_is_not_an_operation() {
+    let line = stroked(open_line(10.0), 2.0);
+    assert!(power_stroke(&line, &WidthProfile::UNIFORM).is_empty());
+}
+
+/// Sem traço não há largura a variar.
+#[test]
+fn a_path_without_a_stroke_has_no_width_to_vary() {
+    assert!(power_stroke(&square(10.0), &TAPER).is_empty());
+}
+
+/// **A tinta é UMA peça só, sem buracos** — a união dos discos é conexa por construção, e é
+/// isso que separa este método do offset ingênuo (que se auto-cruza e deixa laços).
+/// Fixture com curvatura que MUDA DE SINAL, que é onde um offsetter falharia.
+#[test]
+fn the_ink_is_one_connected_piece_with_no_loops() {
+    let mut verts = Vec::new();
+    for i in 0..5 {
+        let x = f64::from(i) * 2.0;
+        let y = if i % 2 == 0 { -1.0 } else { 1.0 };
+        let mut vt = v(x, y);
+        vt.in_handle = [x - 0.9, y];
+        vt.out_handle = [x + 0.9, y];
+        verts.push(vt);
+    }
+    let sine = stroked(
+        VecPath {
+            verts,
+            closed: false,
+            ..VecPath::default()
+        },
+        0.6,
+    );
+    let out = power_stroke(&sine, &TAPER);
+    assert_eq!(out.len(), 1, "a tinta é uma peça só");
+    assert!(
+        out[0].subpaths.is_empty(),
+        "sobrou um laço como buraco — a união dos discos não pode produzir isso"
+    );
+    assert!(total_area(&out) > 1.0, "área {}", total_area(&out));
+}
+
+/// **Num contorno FECHADO a tinta é um anel** — tem buraco, e o buraco é o miolo da forma.
+/// É o mesmo que um traço uniforme faz; o que muda é a espessura do anel ao longo dele.
+#[test]
+fn stroking_a_closed_contour_leaves_a_ring() {
+    let out = power_stroke(&stroked(square(10.0), 1.0), &TAPER);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].subpaths.len(), 1, "o anel tem o miolo como buraco");
+}
+
+/// A forma assada é preenchida com a cor do traço e não tem traço — a MESMA lei do Outline
+/// Stroke, pela mesma porta (`ink_style`).
+#[test]
+fn the_baked_ink_carries_the_strokes_colour() {
+    let out = power_stroke(&stroked(open_line(10.0), 1.0), &TAPER);
+    assert_eq!(out[0].fill, Some(Paint::Solid(Rgba8::new(10, 20, 30, 255))));
+    assert_eq!(out[0].stroke, None);
+}
+
+/// **Um perfil que zera afina a tinta ATÉ NADA na ponta** — a linha vira um bico, que é o
+/// traço de nanquim que o artista quer.
+///
+/// ⚠️ O oráculo é a ESPESSURA, não a posição onde a tinta começa. A 1ª versão deste gate
+/// exigia que a tinta *recuasse* (`x0 > 0.5`) e nasceu vermelha em `x0 = −0.001` — mas o
+/// código estava certo: um perfil que chega a zero **suavemente** não trunca a linha, ele a
+/// adelgaça, e a primeira fatia ainda tem os 0,0007 de largura que o perfil de facto pede
+/// ali. Era o gate que descrevia um bico truncado em vez do bico real.
+#[test]
+fn a_profile_that_reaches_zero_tapers_the_ink_to_a_point() {
+    let zero_start = WidthProfile {
+        start: 0.0,
+        mid: 2.0,
+        end: 2.0,
+        position: 0.5,
+    };
+    let out = power_stroke(&stroked(open_line(20.0), 1.0), &zero_start);
+    assert_eq!(out.len(), 1);
+    let bez = crate::to_bez_with(&out[0], Closing::Always);
+    let thickness_at = |x: f64| {
+        let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+        for seg in bez.segments() {
+            for k in 0..=64 {
+                let p = seg.eval(f64::from(k) / 64.0);
+                if (p.x - x).abs() < 0.2 {
+                    lo = lo.min(p.y);
+                    hi = hi.max(p.y);
+                }
+            }
+        }
+        hi - lo
+    };
+    let (tip, body) = (thickness_at(0.15), thickness_at(10.0));
+    assert!(
+        tip < 0.1,
+        "o bico mede {tip:.4} de espessura — devia ser ~0 (o perfil zera ali)"
+    );
+    assert!(
+        body > 1.5,
+        "o corpo mede {body:.3} — devia ser ~2 (o perfil pede 2× a largura 1)"
+    );
+}
+
+/// **Um trecho de largura EXATAMENTE zero não vira lasca.** Um contorno LONGO de área NULA é
+/// precisamente a lasca que o Shape Builder já pagou para aprender a reconhecer: sem área não
+/// há preenchimento, então ela pinta como uma LINHA solta que o artista não desenhou.
+///
+/// ⚠️ **Quem defende isto é o SWEEP, não o `w <= MIN_TOL` do laço.** Este gate nasceu de uma
+/// mutação sobrevivente e eu supus que o guard fosse a defesa; construí a fixture que faltava
+/// (um perfil plano em zero, que os perfis *afinantes* nunca produzem) e a mutação
+/// **continuou passando** — a kurbo devolve um contorno degenerado com largura `0` e o
+/// linesweeper o descarta por conta própria. O guard ficou, e é CUSTO (9% medido); a
+/// propriedade que este gate pina é da pipeline.
+#[test]
+fn a_stretch_of_exactly_zero_width_produces_no_sliver() {
+    let flat_zero = WidthProfile {
+        start: 0.0,
+        mid: 0.0,
+        end: 2.0,
+        position: 0.5,
+    };
+    let out = power_stroke(&stroked(open_line(20.0), 1.0), &flat_zero);
+    assert!(!out.is_empty(), "a metade grossa continua sendo tinta");
+    for p in &out {
+        let b = bbox(p);
+        let density = crate::area(p) / (b.width() * b.height()).max(1e-12);
+        assert!(
+            density > 0.05,
+            "saiu uma peça de densidade {density:.4} (área {:.6} numa caixa {:.2}×{:.2}) — \
+             é uma lasca, e ela pinta como uma linha solta",
+            crate::area(p),
+            b.width(),
+            b.height()
+        );
+    }
+    // E a tinta começa depois da metade: a 1ª metade do perfil é zero.
+    let left = out.iter().map(|p| bbox(p).x0).fold(f64::MAX, f64::min);
+    assert!(
+        left > 8.0,
+        "a tinta começa em x={left:.2} (o zero vai até 10)"
+    );
 }

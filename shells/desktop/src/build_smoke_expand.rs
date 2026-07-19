@@ -1,13 +1,14 @@
 //! A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 //! Módulo irmão de `build_smoke` (teto de 600 LOC).
 //!
-//! A cena responde às três perguntas que o Expand faz, uma forma para cada:
+//! A cena responde às quatro perguntas que o Expand faz, uma forma para cada:
 //!
 //! 1. **um traço puro** (sem preenchimento) — Outline Stroke o consome e devolve a forma;
 //! 2. **traço + preenchimento** — Outline Stroke tem de deixar DOIS objetos, e o miolo fica
 //!    com a cor dele;
 //! 3. **um donut** (compound) — Offset Path tem de crescer a borda e ENCOLHER o furo, que é
-//!    a metade que uma implementação ingênua erra em silêncio.
+//!    a metade que uma implementação ingênua erra em silêncio;
+//! 4. **um arco aberto** — Power Stroke, a largura variando ao longo dele (a caligrafia).
 
 use crate::build_smoke::shape;
 use ph2d_vec_scene::{Contour, Rgba8, ShapeKind, StrokeSpec, VecVertex};
@@ -26,7 +27,7 @@ fn square_at(c: [f64; 2], s: f64) -> Vec<VecVertex> {
 }
 
 impl crate::App {
-    /// Frame 3: monta as três formas e entra no modo Select (é nele que o artista escolhe o
+    /// Frame 3: monta as quatro formas e entra no modo Select (é nele que o artista escolhe o
     /// que vai converter — os comandos agem sobre a SELEÇÃO).
     pub(crate) fn smoke_expand_build(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
@@ -80,6 +81,27 @@ impl crate::App {
             p.fill_rule = ph2d_vec_scene::FillRule::EvenOdd;
         }
 
+        // (4) Um arco aberto, só traço — o caso do Power Stroke (a caligrafia).
+        let arc = scene.push_path(ph2d_vec_scene::VecPath {
+            verts: [
+                ([-4.0, -2.6], [-4.0, -2.6], [-2.4, -3.6]),
+                ([0.0, -2.4], [-1.6, -3.4], [1.6, -3.4]),
+                ([4.0, -2.6], [2.4, -3.6], [4.0, -2.6]),
+            ]
+            .map(|(a, i, o)| ph2d_vec_scene::VecVertex {
+                anchor: a,
+                in_handle: i,
+                out_handle: o,
+                ..ph2d_vec_scene::VecVertex::corner(a)
+            })
+            .to_vec(),
+            closed: false,
+            ..ph2d_vec_scene::VecPath::default()
+        });
+        if let Some(p) = scene.path_mut(arc) {
+            p.stroke = Some(StrokeSpec::new(Rgba8::new(150, 110, 220, 255), 0.35));
+        }
+
         self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
     }
 
@@ -109,7 +131,11 @@ impl crate::App {
              \x20 3) Selecione o DONUT verde, ponha **Offset** em ~+0.4 e clique **Offset\n\
              \x20    Path**: a borda cresce e o FURO encolhe. Depois experimente negativo, e\n\
              \x20    troque **Join** para Round (a quina vira arco) e Bevel (corte reto).\n\
-             \x20 4) Ctrl+Z uma vez desfaz o comando INTEIRO."
+             \x20 4) O ARCO roxo embaixo é para o **Power Stroke**: selecione-o e clique.\n\
+             \x20    A linha afina nas pontas e engrossa no meio (o perfil default). Mexa em\n\
+             \x20    **W Start / W Mid / W End** e refaça — `W Pos` move onde o grosso senta.\n\
+             \x20    Com os três em 1.00 o botão não faz nada de propósito: aí é Outline Stroke.\n\
+             \x20 5) Ctrl+Z uma vez desfaz o comando INTEIRO."
         );
     }
 }

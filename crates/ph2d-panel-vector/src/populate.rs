@@ -20,9 +20,10 @@ use ph2d_tool_vector::params::{
     OFFSET_DEFAULT, OFFSET_SLIDER_OFFSET, OFFSET_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
     TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
     TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET,
-    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, offset_to_slider,
-    text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
-    text_weight_to_slider,
+    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, WPROFILE_DEFAULT_END,
+    WPROFILE_DEFAULT_MID, WPROFILE_DEFAULT_POS, WPROFILE_DEFAULT_START, WPROFILE_SLIDER_OFFSET,
+    WPROFILE_SLIDER_SCALE, offset_to_slider, text_line_height_to_slider, text_size_to_slider,
+    text_tracking_to_slider, text_weight_to_slider, wprofile_to_slider,
 };
 use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, px_to_slider};
@@ -395,6 +396,44 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_EXPAND_JOIN_BEVEL);
     button(store, ids::VECTOR_EXPAND_OFFSET_PATH);
     button(store, ids::VECTOR_EXPAND_OUTLINE_STROKE);
+    button(store, ids::VECTOR_EXPAND_POWER_STROKE);
+    for (slider, chip, default) in [
+        (
+            ids::VECTOR_EXPAND_W_START,
+            ids::VECTOR_EXPAND_W_START_NUM,
+            WPROFILE_DEFAULT_START,
+        ),
+        (
+            ids::VECTOR_EXPAND_W_MID,
+            ids::VECTOR_EXPAND_W_MID_NUM,
+            WPROFILE_DEFAULT_MID,
+        ),
+        (
+            ids::VECTOR_EXPAND_W_END,
+            ids::VECTOR_EXPAND_W_END_NUM,
+            WPROFILE_DEFAULT_END,
+        ),
+    ] {
+        slider_chip(
+            store,
+            slider,
+            chip,
+            wprofile_to_slider(default),
+            default,
+            WPROFILE_SLIDER_SCALE,
+            WPROFILE_SLIDER_OFFSET,
+        );
+    }
+    // A posição já É uma fração `0..1`: mapa identidade.
+    slider_chip(
+        store,
+        ids::VECTOR_EXPAND_W_POS,
+        ids::VECTOR_EXPAND_W_POS_NUM,
+        WPROFILE_DEFAULT_POS as f32,
+        WPROFILE_DEFAULT_POS,
+        1.0,
+        0.0,
+    );
     slider_chip(
         store,
         ids::VECTOR_EXPAND_OFFSET,

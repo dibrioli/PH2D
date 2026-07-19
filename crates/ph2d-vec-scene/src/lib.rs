@@ -158,6 +158,11 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 mod stroke_style;
 pub use stroke_style::{LineCap, LineJoin, StrokeSpec};
 
+/// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
+/// do caminho, e é o que separa um desenho de um diagrama.
+pub mod width_profile;
+pub use width_profile::WidthProfile;
+
 /// **O que um traço DESENHA** — a porta única, com dois consumidores: quem pinta
 /// (`ph2d-vec-render`) e quem assa (`ph2d_vec_boolean::outline_stroke`).
 mod stroke_plan;

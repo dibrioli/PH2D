@@ -39,8 +39,10 @@
 
 use kurbo::{BezPath, Cap, Join, PathEl, Point, Shape, Stroke, StrokeOpts};
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
+use ph2d_vec_scene::fx_trim::TrimSpec;
 use ph2d_vec_scene::{
-    FillRule, LineCap, LineJoin, Paint, StrokePiece, StrokeSpec, VecPath, stroke_plan,
+    FillRule, LineCap, LineJoin, Paint, StrokePiece, StrokeSpec, VecPath, WidthProfile, fx_trim,
+    stroke_plan,
 };
 
 use crate::{Closing, binary_grouped, compound_from, flatten_groups, to_bez_with};
@@ -149,9 +151,14 @@ fn join_of(j: LineJoin) -> Join {
 
 /// O traço de `bez` com `pen`, como conjunto.
 fn penned(bez: &BezPath, pen: &Stroke) -> Option<Region> {
+    Region::of(&penned_outline(bez, pen), LsFillRule::NonZero)
+}
+
+/// O CONTORNO cru do traço, já com a emenda soldada mas **sem passar pelo sweep** — para quem
+/// vai acumular muitos e regularizar uma vez só ([`power_stroke`]).
+fn penned_outline(bez: &BezPath, pen: &Stroke) -> BezPath {
     let tol = tolerance(bez);
-    let outline = kurbo::stroke(bez, pen, &StrokeOpts::default(), tol);
-    Region::of(&weld_seams(&outline, tol), LsFillRule::NonZero)
+    weld_seams(&kurbo::stroke(bez, pen, &StrokeOpts::default(), tol), tol)
 }
 
 /// **Solda a emenda de cada contorno**: o último ponto vira EXATAMENTE o primeiro quando já
@@ -269,18 +276,128 @@ pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
             },
         });
     }
-    let Some(acc) = acc else {
-        return Vec::new();
-    };
-    // A forma resultante é PREENCHIDA com a cor que o traço tinha, e não tem traço: ela É o
-    // traço. Deixar o traço no resultado o desenharia uma segunda vez, agora em volta de si
-    // mesmo, engordando o desenho no clique que não devia mudar nada.
-    let style = VecPath {
+    match acc {
+        Some(acc) => acc.into_paths(&ink_style(&s)),
+        None => Vec::new(),
+    }
+}
+
+/// O estilo de uma forma que **É** o traço: preenchida com a cor dele, e sem traço.
+///
+/// Deixar o traço no resultado o desenharia uma segunda vez, agora em volta de si mesmo,
+/// engordando o desenho no clique que não devia mudar nada. Porta única porque os dois
+/// comandos que assam tinta ([`outline_stroke`] e [`power_stroke`]) têm de responder igual.
+fn ink_style(s: &StrokeSpec) -> VecPath {
+    VecPath {
         fill: Some(Paint::Solid(s.color)),
         stroke: None,
         ..VecPath::default()
+    }
+}
+
+/// Em quantas fatias de arco cada contorno é cortado para o [`power_stroke`].
+///
+/// **O número é MEDIDO** (`tests/measure_power_stroke.rs`), e há DUAS grandezas porque há
+/// dois modos de falha. O TEMPO — é um comando de edição, e o que importa é ficar abaixo do
+/// limiar em que um clique deixa de parecer instantâneo. E o DEGRAU — o quanto a largura
+/// salta entre duas fatias vizinhas no ponto mais inclinado do perfil, que é o serrilhado
+/// que se VÊ no contorno. Senoide de 4 cúbicas, perfil `0.2 → 2.0 → 0.2`, release:
+///
+/// | fatias |  8   |  16  |  32  |  64  | 128  |
+/// |--------|------|------|------|------|------|
+/// | ms     | 5,7  | 9,3  | 17,7 | 42,5 |107,6 |
+/// | degrau |33,0% |16,8% | 8,4% | 4,2% | 2,1% |
+///
+/// **64**: o degrau cai para 4,2% da largura de pico — num traço de 20 px isso é 0,84 px, na
+/// ordem do antialias — e 42,5 ms continua sendo um clique (o limiar do "instantâneo" está
+/// perto de 100 ms). Dobrar para 128 corta o degrau pela metade e custa 2,5× o tempo; o
+/// joelho está aqui.
+///
+/// ⚠️ A convergência é de PRIMEIRA ordem e lenta: a área ainda anda ~2% entre 64 e o limite.
+/// Isto é do método (fatias de largura constante), não de um bug — quem quiser exato terá de
+/// escrever o offsetter analítico que a pesquisa do módulo diz que ninguém tem.
+const PIECES: usize = 64;
+
+/// **Power Stroke** — o traço com largura VARIÁVEL, assado em forma preenchida.
+///
+/// # Um traço de largura variável é a UNIÃO DOS DISCOS
+///
+/// A pesquisa do módulo avisa que o offset exato de uma cúbica é uma curva analítica de grau
+/// 10, que nem a kurbo nem a Skia oferecem, e que o offset ingênuo cria **cúspides** onde a
+/// largura cresce mais rápido que o raio de curvatura. Escrever esse offsetter é a parte
+/// cara — e é desnecessária.
+///
+/// Porque a definição do traço não é "duas curvas paralelas": é o conjunto varrido por um
+/// **disco de raio `w(s)/2`** deslizando pelo caminho. Então fatiar o caminho por arco,
+/// traçar cada fatia com largura CONSTANTE e **ponta redonda**, e unir tudo, é uma
+/// discretização direta dessa definição — que converge com o número de fatias e onde as
+/// cúspides simplesmente não existem, porque a união de discos não tem como se auto-cruzar
+/// mal. É a mesma redução do [`offset_path`]: a pergunta difícil cai na booleana que já
+/// existe, e não há geometria nova.
+///
+/// A ponta redonda não é escolha estética: é o disco. Uma ponta reta deixaria facetas nas
+/// emendas entre fatias.
+///
+/// Devolve vazio sem traço, com perfil UNIFORME (aí o comando é o [`outline_stroke`], e ter
+/// dois botões para a mesma saída seria pior que ter um), ou se o sweep falhar.
+#[must_use]
+pub fn power_stroke(path: &VecPath, profile: &WidthProfile) -> Vec<VecPath> {
+    let Some(s) = path.stroke.filter(|_| !profile.is_uniform()) else {
+        return Vec::new();
     };
-    acc.into_paths(&style)
+    let cooked = path.cooked();
+    // ⚠️ **UMA varredura, não uma união por fatia.** As fatias são acumuladas num `BezPath` só
+    // e regularizadas de uma vez. É seguro porque todas saem do MESMO caminho percorrido no
+    // MESMO sentido, então os contornos delas têm a mesma orientação e o `NonZero` as soma em
+    // vez de as cancelar — e isso foi MEDIDO, não deduzido: as duas rotas dão a mesma área
+    // até a 4ª decimal em 8/16/32/64/128 fatias. O fold por fatia custava **3,5× mais**
+    // (62,7 ms contra 17,7 a 32 fatias), porque cada união varre tudo o que já acumulou.
+    let mut ink = BezPath::new();
+    for c in 0..cooked.contour_count() {
+        let Some((verts, closed)) = cooked.contour(c) else {
+            continue;
+        };
+        for i in 0..PIECES {
+            #[allow(clippy::cast_precision_loss)]
+            let (a, b) = (i as f64 / PIECES as f64, (i + 1) as f64 / PIECES as f64);
+            // O Trim é a porta que já sabe recortar um intervalo de ARCO — e por ser a mesma
+            // que o efeito usa, a fatia daqui e a que o artista vê no Trim Path concordam.
+            let (pv, pc) = fx_trim::trim_contour(
+                verts,
+                closed,
+                &TrimSpec {
+                    start: a,
+                    end: b,
+                    offset: 0.0,
+                },
+            );
+            if pv.len() < 2 {
+                continue;
+            }
+            // A largura do MEIO da fatia: é o valor que menos erra sobre o intervalo inteiro
+            // (a borda erraria sempre para um dos lados, e o degrau dobraria).
+            let w = s.width * profile.at((a + b) * 0.5);
+            // Fatia sem tinta: o perfil é exatamente zero aqui. ⚠️ É **CUSTO, não correção**
+            // — a kurbo devolve um contorno degenerado de 7 elementos mesmo com largura `0`
+            // (medido), mas o sweep o descarta sozinho, e apagar este `continue` não muda a
+            // saída de nenhum gate (mutação testada). O que ele poupa é trabalho: 11,99 ms
+            // contra 13,13 num perfil cuja metade é plana em zero.
+            if w <= MIN_TOL {
+                continue;
+            }
+            let piece = VecPath {
+                verts: pv,
+                closed: pc,
+                ..VecPath::default()
+            };
+            let pen = Stroke::new(w).with_caps(Cap::Round).with_join(Join::Round);
+            ink.extend(penned_outline(&to_bez_with(&piece, Closing::AsDrawn), &pen).iter());
+        }
+    }
+    match Region::of(&ink, LsFillRule::NonZero).filter(|r| !r.is_empty()) {
+        Some(acc) => acc.into_paths(&ink_style(&s)),
+        None => Vec::new(),
+    }
 }
 
 /// **Offset Path** — a forma cresce (`d > 0`) ou encolhe (`d < 0`) por `d`, com quinas em

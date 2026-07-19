@@ -8,15 +8,20 @@
 //! é outra coisa e que o artista consegue pedindo Union antes.
 
 use ph2d_vec_edit::{History, PenTool};
-use ph2d_vec_scene::{LineJoin, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
+use ph2d_vec_scene::{
+    LineJoin, VecPathId, VecScene, VecXforms, WidthProfile, bake_xform, xform_of,
+};
 
 /// Qual comando o clique pediu.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+// Sem `Eq`: o perfil carrega `f64`. `PartialEq` basta — ninguém usa isto como chave.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Expand {
     /// A borda anda `d` (negativo encolhe), com quinas em `join`.
     Offset { join: LineJoin },
     /// O traço vira forma preenchida.
     OutlineStroke,
+    /// O traço vira forma preenchida com a largura VARIANDO pelo `profile` — o Power Stroke.
+    PowerStroke { profile: WidthProfile },
 }
 
 /// O id do painel → o comando, ou `None` se o id não é nosso. Porta única: o dreno pergunta
@@ -35,6 +40,12 @@ pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
         })
     } else if id == ph2d_editor::ids::VECTOR_EXPAND_OUTLINE_STROKE {
         Some(Expand::OutlineStroke)
+    } else if id == ph2d_editor::ids::VECTOR_EXPAND_POWER_STROKE {
+        // O perfil vem dos sliders, e quem os lê é a `render_loop` (é ela que tem o store).
+        // Aqui só se diz QUAL comando é; o `profile` é preenchido lá, como o `d` do offset.
+        Some(Expand::PowerStroke {
+            profile: WidthProfile::UNIFORM,
+        })
     } else {
         None
     }
@@ -83,6 +94,7 @@ pub(crate) fn apply_vec_expand(
         let results = match cmd {
             Expand::Offset { join } => ph2d_vec_boolean::offset_path(&world, d, join),
             Expand::OutlineStroke => ph2d_vec_boolean::outline_stroke(&world),
+            Expand::PowerStroke { profile } => ph2d_vec_boolean::power_stroke(&world, &profile),
         };
         if results.is_empty() {
             continue; // nada a fazer nesta forma (sem traço, offset que a some)
@@ -92,7 +104,9 @@ pub(crate) fn apply_vec_expand(
         // O Outline Stroke converte o TRAÇO. Se a forma também tinha PREENCHIMENTO, essa
         // região continua existindo e fica no lugar dela, agora sem traço — é o grupo de
         // dois objetos que o Illustrator produz. Sem fill não sobra nada da original.
-        let keep_fill = cmd == Expand::OutlineStroke && src.fill.is_some();
+        // Os dois comandos que assam TINTA convertem o traço e deixam o miolo em paz.
+        let bakes_ink = matches!(cmd, Expand::OutlineStroke | Expand::PowerStroke { .. });
+        let keep_fill = bakes_ink && src.fill.is_some();
         scene.remove_path(src.id);
         let mut at = z;
         if keep_fill {

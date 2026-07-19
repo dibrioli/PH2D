@@ -295,6 +295,19 @@ pub const VECTOR_EXPAND_JOIN_ROUND: NodeId = hash_node_id("vector.expand.join.ro
 pub const VECTOR_EXPAND_JOIN_BEVEL: NodeId = hash_node_id("vector.expand.join.bevel");
 pub const VECTOR_EXPAND_OFFSET_PATH: NodeId = hash_node_id("vector.expand.offset_path");
 pub const VECTOR_EXPAND_OUTLINE_STROKE: NodeId = hash_node_id("vector.expand.outline_stroke");
+// **Power Stroke** — a largura VARIA ao longo do caminho. Três valores de controle + onde o
+// do meio senta: é o *perfil* que o Illustrator vende pronto, e cobre o caso de 90%
+// (afina-no-fim, afina-nos-dois, engrossa-no-meio). As alças arrastáveis na linha são um
+// gesto de canvas, outra wave — esta os antecede sem os bloquear.
+pub const VECTOR_EXPAND_W_START: NodeId = hash_node_id("vector.expand.w_start");
+pub const VECTOR_EXPAND_W_START_NUM: NodeId = hash_node_id("vector.expand.w_start_num");
+pub const VECTOR_EXPAND_W_MID: NodeId = hash_node_id("vector.expand.w_mid");
+pub const VECTOR_EXPAND_W_MID_NUM: NodeId = hash_node_id("vector.expand.w_mid_num");
+pub const VECTOR_EXPAND_W_END: NodeId = hash_node_id("vector.expand.w_end");
+pub const VECTOR_EXPAND_W_END_NUM: NodeId = hash_node_id("vector.expand.w_end_num");
+pub const VECTOR_EXPAND_W_POS: NodeId = hash_node_id("vector.expand.w_pos");
+pub const VECTOR_EXPAND_W_POS_NUM: NodeId = hash_node_id("vector.expand.w_pos_num");
+pub const VECTOR_EXPAND_POWER_STROKE: NodeId = hash_node_id("vector.expand.power_stroke");
 
 // ── Vertex type (ADR-0108 Fase 1 — rich handle editing) ──────────────────────
 // Retype the SELECTED vertex (Corner cusp / Smooth colinear / Symmetric mirror).

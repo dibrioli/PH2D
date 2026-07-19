@@ -443,6 +443,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // Expand: os dois COMANDOS (a junção não vem aqui — é panel-local).
         || id == ids::VECTOR_EXPAND_OFFSET_PATH
         || id == ids::VECTOR_EXPAND_OUTLINE_STROKE
+        || id == ids::VECTOR_EXPAND_POWER_STROKE
         || id == ids::VECTOR_FILL_RULE_NONZERO
         || id == ids::VECTOR_FILL_RULE_EVENODD
         || id == ids::VECTOR_SNAP_OFF

@@ -2763,6 +2763,31 @@ impl crate::App {
                     .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT, |(_, v)| {
                         ph2d_tool_vector::params::slider_to_offset(v)
                     });
+                // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
+                // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
+                // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
+                // lugar decidindo o que o artista já arrastou.
+                let wp = |id, default: f64| {
+                    hero.store.slider(id).map_or(default, |(_, v)| {
+                        ph2d_tool_vector::params::slider_to_wprofile(v)
+                    })
+                };
+                let cmd = match cmd {
+                    crate::vec_expand::Expand::PowerStroke { .. } => {
+                        crate::vec_expand::Expand::PowerStroke {
+                            profile: ph2d_vec_scene::WidthProfile {
+                                start: wp(ph2d_editor::ids::VECTOR_EXPAND_W_START, 0.25),
+                                mid: wp(ph2d_editor::ids::VECTOR_EXPAND_W_MID, 1.6),
+                                end: wp(ph2d_editor::ids::VECTOR_EXPAND_W_END, 0.25),
+                                position: hero
+                                    .store
+                                    .slider(ph2d_editor::ids::VECTOR_EXPAND_W_POS)
+                                    .map_or(0.5, |(_, v)| f64::from(v)),
+                            },
+                        }
+                    }
+                    other => other,
+                };
                 crate::vec_expand::apply_vec_expand(
                     vec_scene,
                     &mut self.vec_history,

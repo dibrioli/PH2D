@@ -5,7 +5,7 @@
 //! que o gesto inteiro custa **UM** Ctrl+Z.
 
 use super::*;
-use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex};
+use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex, WidthProfile};
 
 fn square(s: f64) -> VecPath {
     VecPath {
@@ -186,4 +186,57 @@ fn the_result_keeps_the_z_of_the_shape_it_replaced() {
         (a - 144.0).abs() < 1.0,
         "o do MEIO é o offsetado (area {a})"
     );
+}
+
+/// **O Power Stroke chega ao documento pelo mesmo caminho dos outros dois** — mesmo dreno,
+/// mesmo undo, mesma regra do miolo. O que ele produz está gateado no motor; o que se prova
+/// AQUI é que o comando existe na shell e assa a seleção.
+#[test]
+fn the_power_stroke_command_bakes_the_selection() {
+    let taper = WidthProfile {
+        start: 0.25,
+        mid: 2.0,
+        end: 0.25,
+        position: 0.5,
+    };
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(VecPath {
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::corner([20.0, 0.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    })]);
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &xf,
+        Expand::PowerStroke { profile: taper },
+        0.0,
+    );
+    assert_eq!(scene.paths().len(), 1, "o traço virou UMA forma");
+    assert_eq!(scene.paths()[0].stroke, None, "…e ela É o traço");
+    assert!(
+        hist.undo(&scene).is_some(),
+        "o gesto tem de custar um passo de undo"
+    );
+}
+
+/// **Um perfil UNIFORME não gasta um passo de undo** — o motor recusa (é o Outline Stroke), e
+/// o comando não pode registar uma edição que não aconteceu.
+#[test]
+fn a_uniform_power_stroke_records_nothing() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &xf,
+        Expand::PowerStroke {
+            profile: WidthProfile::UNIFORM,
+        },
+        0.0,
+    );
+    assert!(hist.undo(&scene).is_none());
 }

@@ -1451,6 +1451,7 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
     for (id, name, forwards) in [
         (ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", true),
         (ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", true),
+        (ids::VECTOR_EXPAND_POWER_STROKE, "Power Stroke", true),
         (ids::VECTOR_EXPAND_JOIN_MITER, "Join Miter", false),
         (ids::VECTOR_EXPAND_JOIN_ROUND, "Join Round", false),
         (ids::VECTOR_EXPAND_JOIN_BEVEL, "Join Bevel", false),

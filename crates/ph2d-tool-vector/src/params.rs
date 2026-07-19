@@ -282,6 +282,39 @@ pub fn offset_to_slider(d: f64) -> f32 {
     ((d.clamp(OFFSET_MIN, OFFSET_MAX) - OFFSET_MIN) / (OFFSET_MAX - OFFSET_MIN)) as f32
 }
 
+/// **Power Stroke** — os multiplicadores do perfil de largura.
+///
+/// `0` é alcançável e significa **sem tinta ali** (o traço vira um bico, que é o desenho a
+/// nanquim que a feature existe para dar). O teto `3` é ergonômico: o perfil MULTIPLICA a
+/// largura que o artista já escolheu no slider de Width, e triplicá-la cobre o gesto de
+/// engrossar sem que o slider fique inutilizável na faixa fina, que é onde ele mora.
+pub const WPROFILE_MIN: f64 = 0.0;
+pub const WPROFILE_MAX: f64 = 3.0;
+pub const WPROFILE_SLIDER_SCALE: f32 = (WPROFILE_MAX - WPROFILE_MIN) as f32;
+pub const WPROFILE_SLIDER_OFFSET: f32 = WPROFILE_MIN as f32;
+
+/// O perfil DEFAULT do Power Stroke: afina nas duas pontas e engrossa no meio.
+///
+/// Não é neutro de propósito — o botão RECUSA o perfil uniforme (aí a operação é o Outline
+/// Stroke), então nascer em `1·1·1` daria um botão que não faz nada no primeiro clique. Este
+/// perfil é a pincelada de nanquim, que é o que a feature existe para dar.
+pub const WPROFILE_DEFAULT_START: f64 = 0.25;
+pub const WPROFILE_DEFAULT_MID: f64 = 1.6;
+pub const WPROFILE_DEFAULT_END: f64 = 0.25;
+/// Onde o ponto grosso senta, em fração de ARCO. No meio.
+pub const WPROFILE_DEFAULT_POS: f64 = 0.5;
+
+/// Normalized track `0..=1` → multiplicador `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_wprofile(track: f32) -> f64 {
+    WPROFILE_MIN + f64::from(track.clamp(0.0, 1.0)) * (WPROFILE_MAX - WPROFILE_MIN)
+}
+/// Multiplicador → normalized track (inverse of [`slider_to_wprofile`]).
+#[must_use]
+pub fn wprofile_to_slider(m: f64) -> f32 {
+    ((m.clamp(WPROFILE_MIN, WPROFILE_MAX) - WPROFILE_MIN) / (WPROFILE_MAX - WPROFILE_MIN)) as f32
+}
+
 /// Minimum / maximum polygon sides (inclusive range the Sides slider spans).
 pub const SIDES_MIN: u32 = 3;
 pub const SIDES_MAX: u32 = 12;

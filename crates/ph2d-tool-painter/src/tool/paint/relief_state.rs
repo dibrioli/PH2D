@@ -26,6 +26,15 @@ pub(super) struct ReliefState {
     /// **Impasto** per-stroke PAINT envelope (f32, `0..1`, by `max` — the heaviest dab owns the pixel,
     /// so one pass leaves one thickness). Both the stroke's coverage (what the light weighs its shading
     /// by; merged into the layer's `covers` at stroke end) and the first ingredient of the relief.
+    /// **Accumulate** — a soma, ao longo do CAMINHO, do perfil que o traço depositou, sem o Depth.
+    ///
+    /// Vazio (e nunca alocado) enquanto `BrushSpec::accumulate` está desmarcado: aí o relevo é o envelope
+    /// de sempre, ao bit. Marcado, cada dab soma `perfil · Δs / NORM` aqui e a altura é `depth · accum`.
+    ///
+    /// **Sem o Depth de propósito**, e é o que mantém o Depth VIVO depois do traço: `derive_height` é um
+    /// múltiplo de `depth`, então guardar o resto deixa o slider re-derivar a altura como sempre fez.
+    /// Transiente como o [`Self::stroke_paint`] — reconstruído da lista de dabs, logo não viaja no undo.
+    pub(super) stroke_accum: Vec<f32>,
     pub(super) stroke_paint: Vec<f32>,
     /// **Impasto** per-stroke DISPLACEMENT at `Push = 1` (f32, `w*h`; `ph2d_painter_brush::height_push`)
     /// — negative where the brush took paint, positive where it banked it, summing to zero. Linear in
@@ -64,6 +73,12 @@ pub(super) struct ReliefState {
     /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12). Storing the
     /// HEIGHT instead bakes Body and Depth Source into it, leaving nothing to re-derive them from — the
     /// first cut's bug. Empty ⇒ nothing live.
+    /// O acumulador do **Accumulate**, do lado COMMITTED — irmão do [`Self::live_paint`].
+    ///
+    /// Vazio quando o traço foi feito com o checkbox desmarcado, e aí a re-derivação usa o caminho de
+    /// sempre. Cheio, ele É a altura (sem o Depth), e a re-derivação multiplica pelo Depth vivo em vez
+    /// de recomputar o perfil — que é o que faz o slider seguir vivo sobre um traço acumulado.
+    pub(super) live_accum: Vec<f32>,
     pub(super) live_paint: Vec<f32>,
     /// That stroke's grain plane — the second ingredient (see [`Self::stroke_grain`]).
     pub(super) live_grain: Vec<u8>,

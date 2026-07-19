@@ -22,6 +22,7 @@ impl PainterTool {
             return;
         }
         let paint = std::mem::take(&mut self.paint.relief.stroke_paint);
+        let accum = std::mem::take(&mut self.paint.relief.stroke_accum);
         let grain = std::mem::take(&mut self.paint.relief.stroke_grain);
         let film = std::mem::take(&mut self.paint.relief.stroke_film);
         let radius = std::mem::take(&mut self.paint.relief.stroke_radius);
@@ -122,6 +123,7 @@ impl PainterTool {
         self.paint.relief.live_relief_rect = Some(rect);
         self.paint.relief.live_relief_layer = Some(active);
         self.paint.relief.live_paint = paint;
+        self.paint.relief.live_accum = accum;
         self.paint.relief.live_grain = grain;
         self.paint.relief.live_radius = radius;
         // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
@@ -166,7 +168,14 @@ impl PainterTool {
         for_each_in(rect, w, |i| {
             let g = f32::from(self.paint.relief.live_grain[i]) / 255.0;
             spec_i.radius_px = self.paint.relief.live_radius[i];
-            field.push(derive_height(&spec_i, self.paint.relief.live_paint[i], g));
+            // **Accumulate**: a altura já foi integrada ao longo do caminho, sem o Depth — aqui só o
+            // Depth vivo entra. Re-derivar o perfil aqui jogaria a integral fora e devolveria o
+            // envelope, que foi exatamente o bug que este ramo existe para não ter.
+            if let Some(a) = self.paint.relief.live_accum.get(i) {
+                field.push(spec_i.effective_impasto_depth() * *a);
+            } else {
+                field.push(derive_height(&spec_i, self.paint.relief.live_paint[i], g));
+            }
         });
 
         // 2. Settle it. The window's border is zero (it was grown by the blur's reach), so the settle's
@@ -328,6 +337,7 @@ impl PainterTool {
     /// Forget the live stroke — its ground is no longer valid (an erase, an undo, a fresh document).
     pub(crate) fn drop_live_relief(&mut self) {
         self.paint.relief.live_paint = Vec::new();
+        self.paint.relief.live_accum = Vec::new();
         self.paint.relief.live_grain = Vec::new();
         self.paint.relief.live_radius = Vec::new();
         self.paint.relief.live_push = Vec::new();

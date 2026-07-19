@@ -89,14 +89,16 @@ impl PainterTool {
             }
         }
         let (mut field, mut cover) = erase_buffers.unwrap_or_default();
-        let (mut paint, mut grain, mut film, mut radius) = if erasing {
-            (Vec::new(), Vec::new(), Vec::new(), Vec::new())
+        let want_accum = !erasing && self.paint.brush.accumulate;
+        let (mut paint, mut grain, mut film, mut radius, mut accum) = if erasing {
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new())
         } else {
             let mut h = std::mem::take(&mut self.paint.relief.stroke_height);
             let mut p = std::mem::take(&mut self.paint.relief.stroke_paint);
             let mut g = std::mem::take(&mut self.paint.relief.stroke_grain);
             let mut f = std::mem::take(&mut self.paint.relief.stroke_film);
             let mut r = std::mem::take(&mut self.paint.relief.stroke_radius);
+            let mut acc = std::mem::take(&mut self.paint.relief.stroke_accum);
             // Lazily sized by the first dab of the stroke; zero cost for a document nobody sculpts.
             if h.len() != n {
                 h = vec![0.0; n];
@@ -113,8 +115,17 @@ impl PainterTool {
             if r.len() != n {
                 r = vec![0.0; n];
             }
+            // **Accumulate** só paga quando está marcado — desmarcado, o plano nem existe, e o kernel
+            // toma o ramo do envelope (`accum: None`), que é o código de sempre.
+            if want_accum {
+                if acc.len() != n {
+                    acc = vec![0.0; n];
+                }
+            } else {
+                acc = Vec::new();
+            }
             field = h;
-            (p, g, f, r)
+            (p, g, f, r, acc)
         };
         // The displacement's own plane, and the GROUND it bites into — the layer's relief as the stroke
         // found it. Recorded whenever there IS paint to shove, NOT only when the knob is up: Push has to
@@ -330,6 +341,9 @@ impl PainterTool {
                     grain: &mut grain,
                     film: &mut film,
                     radius: &mut radius,
+                    // `Some` SÓ com o checkbox marcado — é o que faz o desmarcado ser o caminho de
+                    // sempre, ao bit, por construção e não por acordo.
+                    accum: want_accum.then_some(&mut accum[..]),
                 };
                 let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
                 let displaced = bite.map_or(0.0, |b| b.displaced);
@@ -468,6 +482,7 @@ impl PainterTool {
             self.paint.relief.stroke_grain = grain;
             self.paint.relief.stroke_film = film;
             self.paint.relief.stroke_radius = radius;
+            self.paint.relief.stroke_accum = accum;
         }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -484,6 +499,7 @@ impl PainterTool {
         self.paint.relief.stroke_grain.clear();
         self.paint.relief.stroke_film.clear();
         self.paint.relief.stroke_radius.clear();
+        self.paint.relief.stroke_accum.clear();
         self.paint.relief.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
         self.paint.relief.stroke_wave.clear(); // the wave is a fact about the dab list; it restarts with it
         self.paint.relief.stroke_relief_bbox = None; // the commit's window is per-stroke too

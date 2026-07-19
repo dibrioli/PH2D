@@ -267,7 +267,7 @@ fn paint_lane(
             (x1 - x0).max(0.0),
             (row.h - STRIP_PAD_Y * 2.0).max(0.0),
         );
-        paint_strip(ctx, theme, view, body, s, dim);
+        paint_strip(ctx, theme, view, body, s, dim, index);
         boxes.push((s, body));
     }
     ctx.scene.pop_layer();

@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips};
+use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips, strip_grips};
 
 /// Last registration wins, so this is what a click at `(x, y)` resolves to.
 fn hit(plan: &[(u64, u8, Rect)], x: f32, y: f32) -> Option<(u64, u8)> {
@@ -350,4 +350,69 @@ fn the_grip_rides_the_wedge_tip() {
         (a.x - (body.x + 50.0)).abs() < 1e-4,
         "a alça tem de estar NA ponta da cunha, não no repouso: {a:?}"
     );
+}
+
+/// **Uma alça de fade um pouco PARA FORA da strip continua agarrável** (Enio, 2026-07-19:
+/// *"a alça do fade não pode ser movida se ficar um pouco para fora da strip"*).
+///
+/// Um `lead` menor que a largura da própria alça punha o grip em cima da quina da PRÓPRIA
+/// strip, e o `hit_plan` DERRUBA toda alça que cobre uma quina — então o artista via a alça
+/// e não conseguia pegá-la (e alargar as quinas para 12 px piorou isso). O grip agora para
+/// na borda do corpo: a quina fica inteira DENTRO, a alça inteira FORA, e as duas se
+/// registram.
+#[test]
+fn an_outward_fade_grip_just_past_the_edge_is_still_grabbable() {
+    let body = Rect::new(150.0, 60.0, 100.0, 20.0); // [150, 250)
+    // Um lead de 3 px — bem menor que a largura da alça.
+    let (a, b) = strip_grips(body, 3.0, 0.0, 0.0, 3.0).expect("grips");
+    assert!(
+        a.x + a.w <= body.x + 1e-3,
+        "o grip de entrada fica FORA do corpo: {a:?}"
+    );
+    assert!(
+        b.x >= body.x + body.w - 1e-3,
+        "o grip de saída fica FORA do corpo: {b:?}"
+    );
+
+    let eases = vec![(1, EASE_IN, a, false), (1, EASE_OUT, b, false)];
+    let plan = hit_plan(&[(1, body)], &eases, band());
+    assert!(
+        plan.iter().any(|(_, e, _)| *e == EASE_IN),
+        "a alça de entrada tem de estar REGISTRADA (não derrubada pela quina): {plan:?}"
+    );
+    assert!(
+        plan.iter().any(|(_, e, _)| *e == EASE_OUT),
+        "a alça de saída tem de estar REGISTRADA: {plan:?}"
+    );
+    // …e as quinas seguem inteiras — a alça não roubou o trim.
+    assert_eq!(
+        hit(&plan, 155.0, 77.0),
+        Some((1, 0)),
+        "trim do início intacto"
+    );
+    assert_eq!(hit(&plan, 245.0, 77.0), Some((1, 1)), "trim do fim intacto");
+}
+
+/// **O código que o REALCE pergunta é o que o hit index REGISTRA.** O hover pinta a quina em
+/// Accent quando o ponteiro está nela, resolvendo o id por `corner_hit_edge`; se esse
+/// mapeamento divergir do que o `hit_plan` arquiva, uma quina acende pelo alvo da vizinha —
+/// o gizmo mentindo sobre o que o clique vai fazer.
+#[test]
+fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
+    let body = Rect::new(150.0, 60.0, 100.0, 20.0);
+    let plan = hit_plan(&[(1, body)], &[], band());
+    for (stretch, edge, x, y) in [
+        (true, 0u8, 152.0, 62.0),  // topo-esquerda: stretch-start
+        (true, 1u8, 248.0, 62.0),  // topo-direita: stretch-end
+        (false, 0u8, 152.0, 77.0), // base-esquerda: trim-start
+        (false, 1u8, 248.0, 77.0), // base-direita: trim-end
+    ] {
+        let registered = hit(&plan, x, y).expect("a quina está registrada").1;
+        assert_eq!(
+            crate::strip_paint::corner_hit_edge(stretch, edge),
+            registered,
+            "o realce da quina (stretch={stretch}, edge={edge}) pergunta por um código \
+             diferente do que o hit_plan registrou"
+        );
+    }
 }

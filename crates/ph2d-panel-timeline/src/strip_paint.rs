@@ -10,6 +10,7 @@
 
 use std::borrow::Cow;
 
+use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
@@ -18,7 +19,7 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke};
 
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_BAR_W, blend_px, strip_grips};
+use crate::stack_ease_grip::{EASE_BAR_W, EASE_IN, EASE_OUT, blend_px, strip_grips};
 use crate::stack_lane_paint::EDGE_W;
 
 /// Below this, a rate is real time and the strip says nothing about it.
@@ -46,6 +47,21 @@ const fn corner_token(stretch: bool) -> ColorToken {
         ColorToken::Success
     } else {
         ColorToken::Danger
+    }
+}
+
+/// A corner's **hit code** — the `edge` that `hit_plan` registers for it: the GREEN stretch
+/// pair is `5`/`6`, the RED trim pair is `0`/`1`.
+///
+/// It exists so the hover highlight asks about the very target the click would land on. The
+/// mapping is written ONCE here; painting a corner under one code while the hit index files
+/// it under another is exactly how a gizmo lights up and then does its neighbour's job.
+pub(crate) const fn corner_hit_edge(stretch: bool, edge: u8) -> u8 {
+    match (stretch, edge) {
+        (true, 0) => 5,
+        (true, _) => 6,
+        (false, 0) => 0,
+        (false, _) => 1,
     }
 }
 
@@ -81,6 +97,10 @@ pub(crate) fn mark_bar(
 }
 
 /// One strip: its box, its name, the fade areas, and the four corner gizmos.
+///
+/// `lane` is here only so the painter can ask **which grip the pointer is on** — the hit
+/// ids are keyed by `(lane, strip, edge)`, so a handle cannot light up without being the
+/// very target that would receive the click.
 pub(crate) fn paint_strip(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -88,7 +108,15 @@ pub(crate) fn paint_strip(
     body: Rect,
     s: &ph2d_timeline::StripView,
     dim: bool,
+    lane: usize,
 ) {
+    // **The hot grip** — read ONCE, before the scene borrows start. `hot_id` is the store's
+    // own answer to "what is under the pointer", the same one the click will use, so the
+    // highlight cannot disagree with what actually gets grabbed.
+    let hot = ctx.host.store().hot_id();
+    let is_hot = |edge: u8| -> bool {
+        !dim && hot == Some(ids::timeline_strip_hit_id(lane as u64, s.id.0, edge))
+    };
     fill_rounded_rect(
         ctx.scene,
         body,
@@ -169,13 +197,15 @@ pub(crate) fn paint_strip(
     // **The four corner gizmos** — GREEN top = stretch (retime), RED bottom = trim (cut).
     // The colour IS the operation, so the artist never wonders which corner does what.
     for (stretch, edge) in CORNERS {
-        paint_corner(
-            ctx,
-            body,
-            edge == 0,
-            stretch,
-            resolve(corner_token(stretch), theme),
-        );
+        // Hovered corner lights up in Accent. The colour still says WHICH operation at
+        // rest (green stretch / red trim); the hover says WHICH ONE you are about to get,
+        // which is the thing four grips crowded into two quinas cannot say otherwise.
+        let colour = if is_hot(corner_hit_edge(stretch, edge)) {
+            ColorToken::Accent
+        } else {
+            corner_token(stretch)
+        };
+        paint_corner(ctx, body, edge == 0, stretch, resolve(colour, theme));
     }
 
     // **The fade handle: a traço with two little arrows** (Enio, 2026-07-16) — a vertical
@@ -189,10 +219,17 @@ pub(crate) fn paint_strip(
         blend_px(view, s.t_start, s.blend_out),
         blend_px(view, s.t_end, s.lead_out),
     ) {
-        for (g, locked, at_left) in [(a, s.ease_locked_in, true), (b, s.ease_locked_out, false)] {
+        for (g, locked, at_left, edge) in [
+            (a, s.ease_locked_in, true, EASE_IN),
+            (b, s.ease_locked_out, false, EASE_OUT),
+        ] {
             let color = resolve(
                 if locked || dim {
                     ColorToken::Border
+                } else if is_hot(edge) {
+                    // A LOCKED grip never lights up: it takes no hit, and a control that
+                    // glows under the pointer and then refuses the drag is a control that lies.
+                    ColorToken::Accent
                 } else {
                     ColorToken::TimelinePlayhead
                 },

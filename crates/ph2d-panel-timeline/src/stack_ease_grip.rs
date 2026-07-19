@@ -117,20 +117,25 @@ pub(crate) fn strip_grips(
         if lead_in_px > 0.0 { 0.0 } else { in_px },
         if lead_out_px > 0.0 { 0.0 } else { out_px },
     )?;
+    // ⚠️ An outward grip **never crosses back INTO the body**. It rides the wedge's outer
+    // tip, but its inner edge stops at the strip's edge: a lead SMALLER than the grip
+    // would otherwise put the handle on top of this strip's own corner, and `hit_plan`
+    // DROPS any fade grip that covers a corner — so a handle the artist can SEE would be
+    // one they cannot grab (Enio, 2026-07-19: *"a alça do fade não pode ser movida se
+    // ficar um pouco para fora da strip"*). Clamping keeps both grabbable: the corner
+    // keeps its full width inside, the fade keeps its full width outside.
     let fade_in = if lead_in_px > 0.0 {
-        Rect::new(body.x - lead_in_px, body.y, EASE_W, body.h)
+        let x = (body.x - lead_in_px).min(body.x - EASE_W);
+        Rect::new(x, body.y, EASE_W, body.h)
     } else {
         in_base
     };
     let fade_out = if lead_out_px > 0.0 {
-        // The grip's RIGHT edge lands on the wedge's outer tip (`t_end + lead_out`), so
-        // the bar (drawn at `g.x + g.w`) marks the tip — the mirror of the fade-in's `g.x`.
-        Rect::new(
-            body.x + body.w + lead_out_px - EASE_W,
-            body.y,
-            EASE_W,
-            body.h,
-        )
+        // Mirror: the grip's RIGHT edge rides the tip (`t_end + lead_out`), and its LEFT
+        // edge stops at the strip's end.
+        let right = body.x + body.w;
+        let x = (right + lead_out_px - EASE_W).max(right);
+        Rect::new(x, body.y, EASE_W, body.h)
     } else {
         out_base
     };

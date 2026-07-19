@@ -1796,3 +1796,192 @@ fn readback_tap_cost_probe() {
     eprintln!("  (60 fps budget = 16.7 ms/frame. 'tap total' is what a GPU-sim +");
     eprintln!("   CPU-tail graph would pay per tick BEFORE the CPU tail runs.)");
 }
+
+/// **Is a BOUNDED readback the same animal as a full one?** — the measurement the
+/// "readback is negative" conclusion never took.
+///
+/// `readback_tap_cost_probe` pulls the ENTIRE instance buffer and reports 268 ms
+/// at 4,19 M, which is worse than cooking the whole thing on the CPU. That number
+/// is true and it is the reason nothing streams results back on the hot path.
+///
+/// But the graph panel does not want the whole buffer. Its four consumers of the
+/// CPU memo want: a COUNT (already published by `CookShape`, no readback), a
+/// 48-point postage stamp, a change digest, and a one-node probe. Forty-eight
+/// elements is 1,5 KB — four orders of magnitude off the number the conclusion
+/// was measured at, and *"readback is negative"* is a claim about a SIZE
+/// ([[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]]).
+///
+/// The suspicion this has to settle is that the cost is not bytes at all but the
+/// **map + poll stall**, which a small pull pays in full. So the probe measures
+/// both against the same cooked frame: `full` (every element) and `head` (the
+/// first 48), at four window sizes. If `head` is flat across the sweep, the cost
+/// is the stall and the size is irrelevant; if it tracks `full`, it is bandwidth.
+///
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_sim --release -- --ignored --nocapture bounded_readback_cost_probe
+#[test]
+#[ignore = "perf probe; requires a GPU adapter"]
+fn bounded_readback_cost_probe() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 30;
+    const HEAD: usize = 48; // PREVIEW_POINTS, the panel's postage stamp
+    let forces: &[(&str, &[(&str, f32)])] = &[
+        (
+            "force.wind",
+            &[("angle", 270.0), ("strength", 26.0), ("gust", 0.0)],
+        ),
+        ("force.drag", &[("coefficient", 0.12)]),
+    ];
+    let stride = std::mem::size_of::<RenderInstance>();
+    eprintln!(
+        "  RenderInstance = {stride} B · head = {HEAD} elements = {} B",
+        HEAD * stride
+    );
+    eprintln!("  window │  full ms │  head ms │ full MB │   ratio │ cook ms │ cook+tap │ tap cost");
+    for &want in &[65536.0f32, 262144.0, 1048576.0, 4194304.0] {
+        let (mut g, _, out) = emitter_sim(&reg, want, forces);
+        let em = emitter_of(&g);
+        g.set_param(em, "rate", want / (TICKS as f32 * FIXED_DT as f32));
+        let plan = plan(&g, &reg, &reg, out);
+        if !plan.is_fully_gpu() {
+            eprintln!("  {want:>6} │ NOT FULLY GPU — {:?}", plan.boundaries);
+            continue;
+        }
+        let mut gc = GpuCook::new();
+        for t in 0..=TICKS {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+
+        let inst = gc.instances().expect("cooked");
+        let n = inst.len() as usize;
+        let head = HEAD.min(n);
+        const PULLS: u32 = 5;
+
+        let _ = read_instances(&gpu, inst); // warm the staging path
+        let t0 = std::time::Instant::now();
+        for _ in 0..PULLS {
+            let _ = read_instances(&gpu, inst);
+        }
+        let full_ms = t0.elapsed().as_secs_f64() * 1000.0 / PULLS as f64;
+
+        let _ = read_head(&gpu, inst, head); // warm
+        let t1 = std::time::Instant::now();
+        for _ in 0..PULLS {
+            let v = read_head(&gpu, inst, head);
+            assert_eq!(v.len(), head);
+        }
+        let head_ms = t1.elapsed().as_secs_f64() * 1000.0 / PULLS as f64;
+
+        // ⚠️ The two numbers above are taken on an already-DRAINED device, and
+        // that is not where a panel would tap. In a live frame the cook has just
+        // been submitted and is still in flight, so the tap's `poll(wait)` drains
+        // IT too — the stall is not the tap's 0,023 ms, it is however much cook
+        // is left. Measured here by submitting a fresh tick and tapping without
+        // polling first, which is exactly the shape of the frame.
+        let t2 = std::time::Instant::now();
+        for k in 0..PULLS {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: (TICKS + 1 + k as u64) as f64 * FIXED_DT,
+                    tick: Some(TICKS + 1 + k as u64),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let inst = gc.instances().expect("cooked");
+            let v = read_head(&gpu, inst, head);
+            assert_eq!(v.len(), head);
+        }
+        let inflight_ms = t2.elapsed().as_secs_f64() * 1000.0 / PULLS as f64;
+
+        // The control: the same cooks with NO tap, so the tap's share is the
+        // difference and not the whole frame ([[feedback_absence_gate_needs_a_presence_sibling]]).
+        let t3 = std::time::Instant::now();
+        for k in 0..PULLS {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: (TICKS + 100 + k as u64) as f64 * FIXED_DT,
+                    tick: Some(TICKS + 100 + k as u64),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let cook_ms = t3.elapsed().as_secs_f64() * 1000.0 / PULLS as f64;
+
+        let mb = (n * stride) as f64 / 1e6;
+        eprintln!(
+            "  {n:>7} │ {full_ms:8.3} │ {head_ms:8.3} │ {mb:7.2} │ {:7.1}x │ {cook_ms:8.3} │ {inflight_ms:8.3} │ {:+8.3}",
+            full_ms / head_ms.max(1e-9),
+            inflight_ms - cook_ms
+        );
+    }
+}
+
+/// Pull the first `n` instances — the bounded tap the probe above measures.
+/// Deliberately a plain prefix copy and not a strided gather: this isolates the
+/// map+poll STALL from the byte cost, which is the question.
+fn read_head(
+    gpu: &ph2d_gpu::GpuContext,
+    instances: &ph2d_gpu_cook::GpuInstances,
+    n: usize,
+) -> Vec<RenderInstance> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let bytes = (n * std::mem::size_of::<RenderInstance>()) as u64;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("bounded readback probe"),
+        size: bytes,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    encoder.copy_buffer_to_buffer(instances.buffer(), 0, &staging, 0, bytes);
+    gpu.queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv().expect("callback").expect("map");
+    let out: Vec<RenderInstance> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    staging.unmap();
+    out
+}

@@ -614,8 +614,57 @@ diferentes agora:
 2. **MEDIR a fatia B.** A paridade de 2 costuras está gateada; o **ganho** não. Um
    documento de 2 costuras na GPU contra a CPU pura é a medição que falta, e o §0.0
    cobra número.
-3. **(A) GPU por default** — segue bloqueada pela Fase 4 (readouts/preview do
-   painel), que é a última coisa entre os 4,19 M partículas e um usuário.
+3. **(A) GPU por default — DESBLOQUEADA por medição (2026-07-18).** Era a última
+   coisa entre os 4,19 M partículas e um usuário, e o que a segurava era uma nota
+   **verdadeira sobre o número errado**.
+
+   O `motion_bridge_gpu.rs` confessa o bloqueio: *"the graph panel's
+   readouts/probe read the CPU memo, which the fully-GPU path doesn't feed"*, e o
+   `debug_read.rs` dizia **"nothing on a frame path may call this"** citando os
+   268 ms do `readback_tap_cost_probe`. Só que esse probe puxa o **buffer
+   INTEIRO**, e o painel não quer o buffer inteiro: os quatro consumidores dele do
+   memo são uma CONTAGEM (já publicada pelo `CookShape`, sem readback nenhum), um
+   selo de 48 pontos, um digest de mudança e a sonda de um nó. **Quarenta e oito
+   elementos são 1,5 KB** — quatro ordens de grandeza longe do número em que a
+   conclusão foi medida.
+
+   `bounded_readback_cost_probe` (novo) mede as duas coisas contra o MESMO frame
+   cozido, e a suspeita que ele tinha de derrubar era que o custo fosse o **stall
+   do map+poll**, que um pull pequeno paga inteiro:
+
+   | janela | pull cheio | pull de 48 | razão | cook | cook+tap | **custo do tap** |
+   |---:|---:|---:|---:|---:|---:|---:|
+   | 65.536 | 0,988 ms | 0,022 | 44,5× | 0,134 | 0,206 | **+0,072** |
+   | 262.144 | 11,084 | 0,022 | 495× | 0,438 | 0,513 | **+0,075** |
+   | 1.048.576 | 70,770 | 0,022 | 3.156× | 1,681 | 1,903 | **+0,222** |
+   | 4.194.304 | 297,205 | **0,023** | **12.733×** | 6,989 | 7,064 | **+0,075** |
+
+   **O pull limitado é PLANO** em todo tamanho de janela ⇒ o custo é largura de
+   banda, não o stall. E as duas colunas da direita respondem a pergunta que a
+   primeira medição **não podia**: elas tapam logo depois de submeter um cook,
+   sem drenar antes — a forma real do frame, onde o `poll(wait)` do tap drena o
+   cook junto. Mesmo assim o **delta é ~0,08 ms**, 1% do cook de 4,19 M e **0,5%
+   de um frame de 60 fps**. (A coluna de controle existe porque sem ela o número
+   seria o frame inteiro, não a parte do tap.)
+
+   ⇒ **A regra não é "nada no frame pode fazer readback". É: nada no frame pode
+   fazer readback ILIMITADO.** A nota do `debug_read.rs` foi corrigida para dizer
+   isso; o módulo segue gates-only pelo OUTRO motivo (puxa colunas inteiras e
+   precisa do `retain_streams_for_debug`, que pina buffers contra o `reclaim`).
+
+   **O que falta construir** (bem especificado, nada bloqueado):
+   - um **tap limitado** de primeira classe (`tap.rs`), fora do `debug_read`: um
+     passe de gather ESTRIDADO (o selo do painel subamostra por passada — pegar os
+     48 PRIMEIROS de uma espiral de 5.000 destrói a forma, e o docstring do
+     `PREVIEW_POINTS` já diz isso) escrevendo num buffer pequeno, **um submit, um
+     map**, sem pinar nada;
+   - a costura no `motion_bridge_readout.rs`: a **CONTAGEM sai do `CookShape`**
+     (exata — é o que dimensionou o dispatch) e os **VALORES do tap** (subamostra).
+     São duas fontes para uma resposta, e é honesto: o caminho CPU **já**
+     subamostra a 48 (`DIGEST_SAMPLES`/`PREVIEW_POINTS`), então o tap entrega
+     exatamente a informação que o painel já usa. ⚠️ Handing o painel um `Stream`
+     de 48 elementos e deixando o `readout_of` contá-lo diria **"48 inst"** num
+     grafo de 4,19 M — a contagem TEM de vir do `CookShape`.
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 

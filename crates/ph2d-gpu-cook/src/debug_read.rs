@@ -13,10 +13,26 @@
 //! production that is a leak of the whole graph's intermediates, every frame. So
 //! retention is **off by default** and a gate turns it on for itself.
 //!
-//! And it stays a *gate* tool on purpose: the measured cost of pulling real data
-//! back is the reason this engine is built the way it is (`readback_tap_cost_probe`
-//! — 268 ms for 4,19 M, worse than computing the whole thing on the CPU). Nothing
-//! on a frame path may call this.
+//! And it stays a *gate* tool on purpose — but be precise about WHY, because the
+//! short version of this note was wrong in a way that blocked real work.
+//!
+//! What is measured-negative is pulling **the whole buffer**: `readback_tap_cost_probe`
+//! reports 268-297 ms for 4,19 M instances, worse than computing the entire thing
+//! on the CPU. That is a statement about a SIZE, and it was being read as a
+//! statement about readback as such — which kept the graph panel's readouts off a
+//! GPU-resident frame and `PH2D_GPU_COOK` opt-in behind them.
+//!
+//! A **bounded** pull is a different animal, and `bounded_readback_cost_probe`
+//! measures it: 48 elements costs **0,022-0,023 ms flat at every window size**
+//! (12 732x cheaper than the full pull at 4,19 M), and **+0,075 ms** when taken
+//! *in flight*, on top of a 6,989 ms cook — 1% of it, 0,5% of a 60 fps frame. The
+//! cost is bandwidth, not the map+poll stall.
+//!
+//! So the rule is not "nothing on a frame path may read back". It is: **nothing
+//! on a frame path may read back an unbounded amount**. This module is still
+//! gates-only for the OTHER reason — it pulls whole columns and needs
+//! `retain_streams_for_debug`, which pins buffers past
+//! [`crate::BufferPool::reclaim`] ([[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]]).
 
 use crate::{GpuCook, GpuStream};
 use ph2d_gpu::GpuContext;

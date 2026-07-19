@@ -304,3 +304,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_gpu_tests.rs"]
 mod gpu_tests;
+
+#[cfg(test)]
+#[path = "motion_gpu_coverage.rs"]
+mod gpu_coverage;

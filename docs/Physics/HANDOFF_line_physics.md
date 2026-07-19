@@ -60,6 +60,7 @@
 | **W6 — A escala alcança o collider** | ✅ **INTEGRÁVEL** — smokada pelos gates (2026-07-19) | ver §W6 | a única CORREÇÃO do cardápio; `ShapeDesc::Ellipse`; **zero bump de schema** |
 | **W7 — Sensores / triggers** | ✅ **INTEGRÁVEL** — smoke `=10` (2026-07-19) | ver §W7 | o primitivo de trigger (item B); `Collider.is_sensor`; `PROJECT_SCHEMA 26→27`; o **sinal de gameplay** fica pro Enio |
 | **Weld — `FixedJoint`** | ✅ **INTEGRÁVEL** — smoke `=11` (2026-07-19) | ver §Weld | o 5º joint (polimento C do W3); trava rígido; `PROJECT_SCHEMA 27→28` |
+| **Bake — seleção de canais** | ✅ **INTEGRÁVEL** — gate + seam (2026-07-19) | ver §BakeChannels | seletor All/Position/Rotation no §11 (polimento D); layering; transiente (não salvo) |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -1905,3 +1906,42 @@ a **pinada** balança como pêndulo, lado a lado.
 **Aberto (fora de propósito, C do cardápio):** motor em mola/corda · re-escolher os
 corpos de um joint (picker de entidade) · break force no Weld (um Weld que quebra sob
 carga — nada pede ainda).
+
+---
+
+## §BakeChannels — assar um subconjunto dos canais (2026-07-19)
+
+Polimento **D** do cardápio ("escolher os canais do bake — hoje escreve X/Y/Rotation
+sempre que se movem; não há 'só a rotação'").
+
+**O quê:** um seletor **"Bake: All | Position | Rotation"** no §11 (acima do botão
+Bake, só p/ corpo Dynamic). Assa um SUBCONJUNTO dos canais de pose — o caso de
+**layering**: manter a posição animada à mão e assar só o giro da física, ou o inverso.
+
+⚠️ **Mais estreito que "canal que não se moveu é pulado"** (que o bake já faz — protege
+um canal que a sim não tocou): isto **descarta** um canal que a sim MOVEU, porque o
+artista quer possuí-lo. Um canal não assado, num corpo `Kinematic`, segue o que a cena
+diz (a animação do artista, ou o `Transform` estático).
+
+**Desenho:** `BakeChannels` (enum em `physics_bake.rs`: All/Position/Rotation +
+`channels()`/`tag`/`from_tag`) é **transiente** — não salvo, porque é como o botão se
+comporta, não o documento (classe do AutoKey/Record). Vive em `App.bake_channels`; a
+edição `PhysicsFieldEdit::BakeChannels(tag)` é **global** (roteada no render loop como o
+Bake/Join, não um edit de Collider); `bake_selection` itera `channels.channels()` em vez
+de `PoseChannel::ALL`. Seletor = `seg_row` (reusa o padrão do Kind/Layer).
+
+**Gates:** `physics_bake_tests::baking_a_channel_subset_writes_only_those_tracks` (All
+assa os 3 — o piso TOMBADO move todos, é o controle; Rotation-only assa só rotação, nem X
+nem Y; Position-only o inverso) + `seam_physics` (o sweep clica os 3 chips). **Mutação:**
+iterar `PoseChannel::ALL` escreve X/Y sob um bake de rotação-só (sangra).
+
+⚠️ **`inspector_model.rs` está a 699/700 LOC.** Esta wave o tocou (o campo
+`bake_channels_tag` + a variant `BakeChannels`), e as docs dos meus campos foram
+comprimidas p/ caber. **A próxima adição de tipo de inspector obriga o split por domínio**
+(extrair `InspectorPhysicsInfo`/`PhysicsFieldEdit`/`InspectorJointInfo`/`JointFieldEdit`
+p/ um irmão `inspector_model_physics.rs`, re-exportado) — não feito aqui porque é um
+arquivo foundational compartilhado e o split estrutural arrisca colisão de merge com
+outras linhas que tocam os tipos de inspector.
+
+**Sem smoke dedicado** (é UI + comportamento gateado; o `=7` do bake exercita o caminho,
+e o seletor é visível no §11 de qualquer corpo Dynamic). Sem bump de schema (transiente).

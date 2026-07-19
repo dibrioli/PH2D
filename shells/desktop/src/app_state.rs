@@ -444,6 +444,10 @@ pub(crate) struct App {
     /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
     /// one door, so the key and the checkbox can never disagree.
     pub(crate) show_colliders: bool,
+    /// Which pose channels the next physics Bake writes (§11). Transient — a
+    /// bake-time preference, not saved: it says how the button behaves, not what
+    /// the document is. Default `All`.
+    pub(crate) bake_channels: crate::render_loop::physics_bake::BakeChannels,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

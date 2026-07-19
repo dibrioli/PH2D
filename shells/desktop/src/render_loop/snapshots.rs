@@ -105,6 +105,9 @@ pub(super) fn publish(
     // caller (which owns the clock) and shown ON the button — see
     // `physics_bake::bake_seconds`.
     bake_seconds: f32,
+    // Which pose channels the §11 Bake selector shows as chosen (the shell's
+    // transient `bake_channels`, a global bake option).
+    bake_channels_tag: u8,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -702,7 +705,13 @@ pub(super) fn publish(
                 && sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some()
         });
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
-        super::inspector_physics::build_physics_info(sim.world(), b, can_join, bake_seconds)
+        super::inspector_physics::build_physics_info(
+            sim.world(),
+            b,
+            can_join,
+            bake_seconds,
+            bake_channels_tag,
+        )
     });
     let inspector_joint = hero
         .gizmo

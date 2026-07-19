@@ -50,6 +50,60 @@ use std::collections::BTreeMap;
 use super::record_fit::{RecSpan, simplify_recorded};
 use super::timeline_bridge::default_interp;
 
+/// Which pose channels a bake writes into the timeline.
+///
+/// The default is [`All`](BakeChannels::All) — the whole pose. The subsets exist
+/// for **layering**: bake the physics tumble onto a hand-animated position
+/// ([`Rotation`](BakeChannels::Rotation)), or the physics fall under a
+/// hand-animated spin ([`Position`](BakeChannels::Position)). A channel not
+/// baked is left alone — for a `Kinematic` body it then follows whatever the
+/// scene (the artist's own animation, or the static `Transform`) says.
+///
+/// This is *narrower* than "a channel that never moved is skipped" (which the
+/// bake already does): that protects a channel the sim had nothing to say about;
+/// this discards a channel the sim DID move because the artist wants to own it.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum BakeChannels {
+    /// X, Y and Rotation — the whole pose.
+    #[default]
+    All,
+    /// Only X and Y — keep the artist's own rotation.
+    Position,
+    /// Only Rotation — keep the artist's own position.
+    Rotation,
+}
+
+impl BakeChannels {
+    /// The channels this selection writes. `bake_selection` iterates exactly
+    /// these, so an unselected channel produces no track.
+    pub(crate) fn channels(self) -> &'static [PoseChannel] {
+        match self {
+            BakeChannels::All => &PoseChannel::ALL,
+            BakeChannels::Position => &[PoseChannel::X, PoseChannel::Y],
+            BakeChannels::Rotation => &[PoseChannel::Rotation],
+        }
+    }
+
+    /// Segmented-control tag ↔ selection, both directions in one place so a
+    /// mismatch is visible (the §11 selector paints by tag, the edit carries a
+    /// tag). Any unknown tag folds to `All` — the safe default.
+    pub(crate) fn tag(self) -> u8 {
+        match self {
+            BakeChannels::All => 0,
+            BakeChannels::Position => 1,
+            BakeChannels::Rotation => 2,
+        }
+    }
+
+    pub(crate) fn from_tag(tag: u8) -> Self {
+        match tag {
+            1 => BakeChannels::Position,
+            2 => BakeChannels::Rotation,
+            _ => BakeChannels::All,
+        }
+    }
+}
+
 /// The scene, as the timeline says it is at a given tick — the shell's answer
 /// to [`SceneAtTick`], and the only half that can give one.
 ///
@@ -237,6 +291,7 @@ pub(crate) fn bake_selection(
     entities: &[Entity],
     seconds: f64,
     fixed_dt: f64,
+    channels: BakeChannels,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> BakeOutcome {
@@ -257,7 +312,9 @@ pub(crate) fn bake_selection(
     // found it had nothing to say would leave an empty step on the stack.
     let mut work: Vec<BakedTrack> = Vec::new();
     for traj in &trajectories {
-        for channel in PoseChannel::ALL {
+        // Only the SELECTED channels. A channel the artist chose to keep is
+        // never written, even where the sim moved it (layering).
+        for &channel in channels.channels() {
             if let Some(samples) = traj.channel(channel) {
                 work.push((traj.entity.to_bits(), prop_for(channel), samples));
             }

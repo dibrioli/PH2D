@@ -1292,6 +1292,8 @@ impl crate::App {
                 // because the shell owns both the document and the clock, and
                 // shown on the button so the artist never has to guess it.
                 physics_bake::bake_seconds(&self.timeline.doc, &self.playhead) as f32,
+                // Which pose channels the Bake selector shows as chosen.
+                self.bake_channels.tag(),
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -2084,6 +2086,12 @@ impl crate::App {
                             } else {
                                 inspector_selection.clone()
                             });
+                        } else if let ph2d_editor::PhysicsFieldEdit::BakeChannels(tag) = edit {
+                            // A GLOBAL bake option, not a per-body edit (like
+                            // Bake itself): it says how the NEXT bake behaves.
+                            // No fan-out, no Collider write — just the app state
+                            // the Bake button reads.
+                            self.bake_channels = physics_bake::BakeChannels::from_tag(tag);
                         } else if inspector_selection.is_empty() {
                             physics_edits.push((entity_bits, edit));
                         } else {
@@ -4342,6 +4350,7 @@ impl crate::App {
                     &entities,
                     seconds,
                     self.fixed_step.fixed_dt(),
+                    self.bake_channels,
                     editor_queue,
                     component_registry,
                 );

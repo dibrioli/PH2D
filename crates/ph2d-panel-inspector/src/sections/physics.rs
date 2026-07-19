@@ -32,6 +32,10 @@ const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 /// `1` a sensor (trigger).
 const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 
+/// Bake channel selector labels, indexed by the tag: `0` the whole pose,
+/// `1` position only, `2` rotation only.
+const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
+
 /// The Bake button's label, carrying the range it would cover.
 ///
 /// A function rather than an inline `format!` so the claim "the button shows
@@ -267,6 +271,30 @@ fn paint_body_actions(
 ) -> f32 {
     let h = ROW_H_PX;
     let mut yy = y;
+
+    // Bake channel selector — which pose channels the bake writes (All, or one
+    // axis for layering physics onto a hand-animated channel). Offered only for
+    // a Dynamic body, the only kind that bakes. Painted here, BEFORE the
+    // `paint_at` closure below borrows `scene`/`text_system`, so it does not
+    // fight that borrow.
+    if info.kind_tag == KIND_DYNAMIC {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Bake",
+            ids::INSP_PHYS_BAKE_CH_GROUP,
+            &ids::INSP_PHYS_BAKE_CH,
+            &BAKE_CH_LABELS,
+            info.bake_channels_tag,
+        );
+    }
+
     let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {
         let rect = Rect::new(x, *yy, w, h);
         let btn = Button::new(id, label)

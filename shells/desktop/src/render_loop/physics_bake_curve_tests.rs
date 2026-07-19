@@ -14,7 +14,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 use ph2d_timeline::{PropKind, TimelineState};
 
 use super::tests::{BAKE_SECONDS, DT, baked, registry, scene, simulated};
-use super::{DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
+use super::{BakeChannels, DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
 
 /// **The bake produces a CURVE, not one key per frame.**
 ///
@@ -200,6 +200,7 @@ fn a_bake_lands_on_the_clock_of_its_entity_not_the_playhead() {
         &[ball],
         BAKE_SECONDS,
         DT,
+        BakeChannels::All,
         &queue,
         &reg,
     );

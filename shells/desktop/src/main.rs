@@ -310,6 +310,7 @@ impl App {
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,
+            bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]

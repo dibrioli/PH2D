@@ -39,6 +39,7 @@ fn with_body() -> InspectorPhysicsInfo {
         can_join: false,
         bake_seconds: 5.0,
         is_sensor: false,
+        bake_channels_tag: 0,
     }
 }
 
@@ -139,6 +140,15 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::Sensor(i == 1),
             &format!("Sensor toggle option {i}"),
+        );
+    }
+    // Bake channel selector (All / Position / Rotation) — a Dynamic body, since
+    // the selector is offered only there. Each option asserts its own tag.
+    for (i, &id) in ids::INSP_PHYS_BAKE_CH.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::BakeChannels(i as u8),
+            &format!("Bake channel option {i}"),
         );
     }
 }

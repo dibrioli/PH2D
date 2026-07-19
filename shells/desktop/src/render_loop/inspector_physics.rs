@@ -23,6 +23,7 @@ pub(crate) fn build_physics_info(
     entity_bits: u64,
     can_join: bool,
     bake_seconds: f32,
+    bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{Collider, ColliderShape, RigidBody};
     let entity = Entity::from_bits(entity_bits);
@@ -49,6 +50,7 @@ pub(crate) fn build_physics_info(
             // selection looks like.
             can_join: false,
             is_sensor: false,
+            bake_channels_tag,
         });
     };
     let (shape_tag, radius, half_x, half_y) = match col.shape {
@@ -70,6 +72,7 @@ pub(crate) fn build_physics_info(
         can_join,
         bake_seconds,
         is_sensor: col.is_sensor,
+        bake_channels_tag,
     })
 }
 
@@ -178,8 +181,10 @@ pub(crate) fn apply_physics_edit(
         // here — `Join` because fanning out would make one joint per body
         // instead of one joint, `Bake` because it would re-run the whole
         // simulation once per body and file a separate undo step each time.
-        // Reaching either arm means an interception was removed.
-        PhysicsFieldEdit::Join | PhysicsFieldEdit::Bake => {}
+        // Reaching either arm means an interception was removed. `BakeChannels`
+        // joins them: it is a GLOBAL bake option (app state), not a Collider
+        // edit, and the render loop consumes it before this fan-out.
+        PhysicsFieldEdit::Join | PhysicsFieldEdit::Bake | PhysicsFieldEdit::BakeChannels(_) => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

@@ -5,9 +5,10 @@
 >
 > ⚠️ **O nome do arquivo diz só "scale_collider" por acidente histórico — este handoff cobre a
 > JORNADA REABERTA INTEIRA:** **W6** (a escala alcança o collider, §1–§7) **+ W7 (sensores /
-> triggers, §8) + Weld (`FixedJoint`, §9)**, e mais o que o Enio pedir antes da ordem de
-> integração. Estado por-wave detalhado: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)
-> §W6/§W7/§Weld. Resumo de produto: `CLAUDE.md` §5.
+> triggers, §8) + Weld (`FixedJoint`, §9) + Bake channels (seleção de canais, §10)**, e mais o
+> que o Enio pedir antes da ordem de integração. Estado por-wave detalhado:
+> [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W6/§W7/§Weld/§BakeChannels. Resumo de
+> produto: `CLAUDE.md` §5.
 
 ## §1 — O que a wave faz (uma frase)
 
@@ -192,3 +193,36 @@ relativa; rapier `FixedJoint`). Um Pin com a rotação congelada.
 LOC-cap, node_id_collisions.
 
 **Smoke: `PH2D_PHYSICS_SMOKE=11`** (barra soldada horizontal × barra pinada balança).
+
+---
+
+# §10 — Bake: seleção de canais
+
+Polimento **D** do cardápio. Detalhe: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §BakeChannels.
+
+**O que faz:** um seletor "Bake: All | Position | Rotation" no §11 (só p/ corpo Dynamic) — assa
+um SUBCONJUNTO dos canais de pose (layering: manter a posição/rotação animada à mão e assar só
+o outro). Transiente (não salvo, roteado como o Bake/Join).
+
+**Isolamento / riscos de merge:**
+- **Contratos congelados: NENHUM.** **Foundational tocado:** `ph2d-editor-core` — `InspectorPhysicsInfo`
+  ganhou `bake_channels_tag`, `PhysicsFieldEdit` ganhou `BakeChannels(u8)`, ids `INSP_PHYS_BAKE_CH`.
+  **Panel/shell** — o seletor + a app-state + `bake_selection(channels)`.
+- ⚠️ **Sem bump de schema** (transiente, não persiste). `PROJECT_SCHEMA` fica em **28** (do Weld).
+- ⚠️ **`inspector_model.rs` está a 699/700 LOC** (esta wave o tocou; docs comprimidas p/ caber).
+  A próxima adição de tipo de inspector OBRIGA o split por domínio — ver §BakeChannels. Não feito
+  aqui (arquivo foundational compartilhado, split estrutural arrisca merge com outras linhas).
+
+**Arquivos:** `physics_bake.rs` (`BakeChannels` + `bake_selection` param) · `mod.rs` (roteia
+`BakeChannels`, passa `self.bake_channels`) · `app_state.rs`/`main.rs` (a app-state) ·
+`snapshots.rs`/`inspector_physics.rs` (thread o tag) · `inspector_model.rs` (field + variant) ·
+`ids/inspector.rs` (`INSP_PHYS_BAKE_CH`) · `sections/physics.rs` (o `seg_row`) · `populate.rs` ·
+`event_physics.rs` · `tests/seam_physics.rs`. Testes: `physics_bake_tests.rs` (+ os 3 chamadores
+de `bake_selection` ganharam `BakeChannels::All`).
+
+**Gate:** `baking_a_channel_subset_writes_only_those_tracks` (mutação: iterar `PoseChannel::ALL`
+sangra) + `seam_physics` (o sweep clica os 3 chips). Verde local: 73 bins de crate + shell
+physics/bake/inspector/project, clippy, machete, fmt, LOC/panel/node caps.
+
+**Sem smoke dedicado** — é UI + comportamento gateado; o seletor é visível no §11 de qualquer
+corpo Dynamic, e o `PH2D_PHYSICS_SMOKE=7` (bake) exercita o caminho.

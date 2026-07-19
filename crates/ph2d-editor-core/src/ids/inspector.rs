@@ -180,6 +180,14 @@ pub const INSP_PHYS_REMOVE: NodeId = hash_node_id("insp_phys_remove");
 /// the body section because it is a thing you do TO a body, next to the kind it
 /// is about to change.
 pub const INSP_PHYS_BAKE: NodeId = hash_node_id("insp_phys_bake");
+/// §11 Bake channel selector — group id + the three options (All / Position /
+/// Rotation). A GLOBAL bake option: which pose channels the Bake button writes.
+pub const INSP_PHYS_BAKE_CH_GROUP: NodeId = hash_node_id("insp_phys_bake_ch_group");
+pub const INSP_PHYS_BAKE_CH: [NodeId; 3] = [
+    hash_node_id("insp_phys_bake_ch_all"),
+    hash_node_id("insp_phys_bake_ch_position"),
+    hash_node_id("insp_phys_bake_ch_rotation"),
+];
 /// §11 Body kind segmented, indexed by `BodyKind` tag: Dynamic / Static /
 /// Kinematic. The third chip lands with W4 — it is what a **baked** body is,
 /// and offering it only to the bake would leave the artist looking at a state

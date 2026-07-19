@@ -14,7 +14,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_timeline::{PropKind, TimelineState};
 
-use super::{BakeOutcome, DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
+use super::{BakeChannels, BakeOutcome, DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
 
 /// How many Ctrl+Z presses it takes to empty the timeline's undo stack — the
 /// count as the artist experiences it. Destructive, so it is the LAST thing a
@@ -114,6 +114,7 @@ pub(super) fn baked() -> (TimelineState, SimWorld, Entity, BakeOutcome) {
         &[ball],
         BAKE_SECONDS,
         DT,
+        BakeChannels::All,
         &queue,
         &reg,
     );
@@ -203,6 +204,7 @@ fn a_whole_bake_is_a_single_undo_step() {
         &[ball],
         BAKE_SECONDS,
         DT,
+        BakeChannels::All,
         &queue,
         &reg,
     );
@@ -354,6 +356,7 @@ fn baking_a_body_that_never_moves_writes_nothing() {
         &[wall],
         BAKE_SECONDS,
         DT,
+        BakeChannels::All,
         &queue,
         &reg,
     );
@@ -436,5 +439,76 @@ fn the_default_range_outlasts_a_drop() {
         "the fixture is not a drop: it starts at {:.2} and ends at {:.2}",
         ys[0],
         ys[ys.len() - 1]
+    );
+}
+
+/// Bake the fixture writing only `channels`, and report which tracks it left.
+fn baked_with(channels: BakeChannels) -> (TimelineState, Entity) {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        BAKE_SECONDS,
+        DT,
+        channels,
+        &queue,
+        &reg,
+    );
+    (timeline, ball)
+}
+
+fn has_track(timeline: &TimelineState, ball: Entity, prop: PropKind) -> bool {
+    timeline.doc.binding_for(ball.to_bits(), prop).is_some()
+}
+
+/// **A channel subset bakes ONLY those tracks.** The fixture bounces on a
+/// TILTED floor, so all three channels move — a "Rotation only" bake must still
+/// leave X and Y untouched (the layering case: keep the hand-animated position,
+/// add the physics tumble).
+///
+/// The `All` block is the control: it proves every channel DID move, so the
+/// subsets below are actually withholding motion rather than baking channels
+/// that happened to be flat.
+///
+/// Mutation-tested: iterating `PoseChannel::ALL` instead of `channels.channels()`
+/// in `bake_selection` writes X and Y under a Rotation-only bake, and this goes
+/// red.
+#[test]
+fn baking_a_channel_subset_writes_only_those_tracks() {
+    let (all, ball) = baked_with(BakeChannels::All);
+    for p in [
+        PropKind::TranslationX,
+        PropKind::TranslationY,
+        PropKind::Rotation,
+    ] {
+        assert!(has_track(&all, ball, p), "All should have baked {p:?}");
+    }
+
+    let (rot, ball) = baked_with(BakeChannels::Rotation);
+    assert!(
+        has_track(&rot, ball, PropKind::Rotation),
+        "Rotation-only must bake the rotation track"
+    );
+    assert!(
+        !has_track(&rot, ball, PropKind::TranslationX)
+            && !has_track(&rot, ball, PropKind::TranslationY),
+        "Rotation-only wrote a position track — the channel selection was ignored"
+    );
+
+    let (pos, ball) = baked_with(BakeChannels::Position);
+    assert!(
+        has_track(&pos, ball, PropKind::TranslationX)
+            && has_track(&pos, ball, PropKind::TranslationY),
+        "Position-only must bake X and Y"
+    );
+    assert!(
+        !has_track(&pos, ball, PropKind::Rotation),
+        "Position-only wrote a rotation track — the channel selection was ignored"
     );
 }

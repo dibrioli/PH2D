@@ -129,7 +129,8 @@ fn removing_a_body_detaches_both_components() {
     );
     assert!(sim.world().get::<Collider>(e).is_none(), "Collider stayed");
 
-    let info = build_physics_info(sim.world(), e.to_bits(), false, 5.0).expect("still inspectable");
+    let info =
+        build_physics_info(sim.world(), e.to_bits(), false, 5.0, 0).expect("still inspectable");
     assert!(
         !info.has_body,
         "the panel would still show the body rows for an entity with no body"
@@ -214,7 +215,7 @@ fn making_a_body_static_stops_it_falling() {
 #[test]
 fn the_snapshot_reflects_what_was_written() {
     let (mut sim, e) = sprite_scene();
-    let empty = build_physics_info(sim.world(), e.to_bits(), false, 5.0)
+    let empty = build_physics_info(sim.world(), e.to_bits(), false, 5.0, 0)
         .expect("plain sprite is inspectable");
     assert!(
         !empty.has_body,
@@ -223,7 +224,7 @@ fn the_snapshot_reflects_what_was_written() {
 
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     apply(&mut sim, e, PhysicsFieldEdit::Friction(0.25));
-    let info = build_physics_info(sim.world(), e.to_bits(), false, 5.0).unwrap();
+    let info = build_physics_info(sim.world(), e.to_bits(), false, 5.0, 0).unwrap();
     assert!(info.has_body);
     assert_eq!(info.friction, 0.25);
     assert_eq!(info.half_x, 1.0);

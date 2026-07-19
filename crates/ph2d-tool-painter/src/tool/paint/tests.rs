@@ -18368,6 +18368,9 @@ fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
     // paid for one of those.
     let paint = |depth: f32, smoothing: f32, retune: Option<(f32, f32)>| -> Vec<f32> {
         let mut t = impasto_canvas(60);
+        // The claim is that the knobs REACH the finished stroke, so the fixture asks for that explicitly
+        // rather than riding the default (which is OFF since 2026-07-19).
+        t.paint.impasto_live_edit = true;
         let mut b = t.paint.brush;
         b.radius_px = 8.0;
         b.impasto_depth = depth;
@@ -18414,6 +18417,7 @@ fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
     // ...but a SECOND stroke ends the live edit: only the last one is re-derivable, and re-tuning must
     // never resurrect or rescale the ones before it.
     let mut t = impasto_canvas(60);
+    t.paint.impasto_live_edit = true; // the claim is about WHICH stroke is live, so live editing is on
     let mut b = t.paint.brush;
     b.radius_px = 8.0;
     b.impasto_depth = 0.5;
@@ -19024,6 +19028,10 @@ fn impasto_stroke_then_edit(
     use ph2d_painter_brush::{TextureKind, TextureMapping};
     let size = 120u32;
     let mut t = impasto_canvas(size);
+    // This helper exists to prove the knobs are LIVE, so it must ASK for live editing rather than inherit
+    // it: "Adjust Last Stroke" is the artist's default and it went OFF on 2026-07-19. The capability and
+    // the default are different claims, and only the latter belongs to `a_fresh_brush_does_not_adjust…`.
+    t.paint.impasto_live_edit = true;
     let mut b = t.paint.brush;
     b.radius_px = 24.0;
     b.hardness = 0.0;
@@ -20601,6 +20609,9 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
     // re-deriving the wrong stroke. The gate caught it; the fixture was wrong, not the tool.)
     let size = 200u32;
     let (mut t, layer) = slab_canvas(size);
+    // Claim 1 is that Push is LIVE on the finished stroke, so the fixture asks for live editing instead
+    // of inheriting it — the default is the artist's and went OFF on 2026-07-19.
+    t.paint.impasto_live_edit = true;
     let mut b = t.paint.brush;
     b.radius_px = 12.0;
     b.impasto_depth = 0.5; // a loaded brush, as an artist would hold it
@@ -21338,6 +21349,9 @@ fn a_single_lamp_shifts_brightness_never_hue() {
     // GREY paint: any hue in the output is the LIGHT's, not the pigment's — the cleanest instrument.
     let render = |color: [f32; 3]| -> Vec<u8> {
         let mut t = PainterTool::default();
+        // The lamp colour and Shine are dialled AFTER the stroke, so live editing has to be on — stated,
+        // not inherited (the default went OFF on 2026-07-19).
+        t.paint.impasto_live_edit = true;
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let b = BrushSpec {
             radius_px: 30.0,
@@ -21438,6 +21452,9 @@ fn the_glint_only_ever_adds_light() {
     let size = 140u32;
     let render = |shine: f32| -> Vec<u8> {
         let mut t = PainterTool::default();
+        // Shine is dialled AFTER the stroke, so this gate needs live editing on — stated, not inherited
+        // (the default went OFF on 2026-07-19).
+        t.paint.impasto_live_edit = true;
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let b = BrushSpec {
             radius_px: 30.0,
@@ -21541,6 +21558,11 @@ fn impasto_material_render_with(
     edit: &dyn Fn(&mut PainterTool),
 ) -> LitCanvas {
     let mut t = impasto_canvas(size);
+    // The caller dials the material through the REAL setters, AFTER the stroke — which only reaches the
+    // paint on the canvas while "Adjust Last Stroke" is on. These gates are about the material, so the
+    // harness states that premise rather than inheriting a default that is the artist's to move (it went
+    // OFF on 2026-07-19).
+    t.paint.impasto_live_edit = true;
     let mut b = t.paint.brush;
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
@@ -21957,9 +21979,11 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
             ));
         }
         t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
-        if !live_edit {
-            t.toggle_impasto_live_edit();
-        }
+        // Set the flag EXPLICITLY rather than toggling off a default: the default is the artist's, and it
+        // has already moved once (ON until 2026-07-19, OFF since). A fixture that reaches its state by
+        // toggling silently inverts the day someone flips the default, and both halves of this gate would
+        // still pass — testing the opposite claim.
+        t.paint.impasto_live_edit = live_edit;
         // The gesture the artist makes: a stroke is down, now move the sliders. One from the Body card
         // (Depth re-derives the relief) and one from the Material card (Shine re-bakes the material) —
         // the two independent choke points, so a fix to one that forgets the other goes red.
@@ -22018,6 +22042,62 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
     );
 }
 
+/// **Out of the box, finished paint is finished** — "Adjust Last Stroke" is OFF by default (Enio,
+/// 2026-07-19). The historical default was ON, which made dialling the brush in for the NEXT stroke
+/// silently rewrite the one already on the canvas.
+///
+/// This asserts the BEHAVIOUR a fresh tool has, not the flag: nobody touches `impasto_live_edit` here, so
+/// what it pins is what the artist meets. A gate on the boolean would go green again the day the field is
+/// read by one more site that forgets to honour it. It is the twin of
+/// `adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas` — that one proves the switch WORKS in
+/// both positions, this one proves which position it starts in.
+#[test]
+fn a_fresh_brush_does_not_adjust_the_last_stroke() {
+    let size = 160u32;
+    let paint = |t: &mut PainterTool| {
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.175;
+        b.color = [0.9, 0.1, 0.1];
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+    };
+
+    // The canvas as the stroke left it.
+    let baseline = {
+        let mut t = impasto_canvas(size);
+        paint(&mut t);
+        lit(&mut t)
+    };
+    // The same stroke, then the artist reaches for the sliders — with NOTHING configured.
+    let after = {
+        let mut t = impasto_canvas(size);
+        paint(&mut t);
+        t.set_brush_impasto_depth(-0.9);
+        t.set_impasto_shine(1.0);
+        lit(&mut t)
+    };
+
+    assert_eq!(
+        after, baseline,
+        "straight out of the box, moving Depth and Shine rewrote the stroke already on the canvas. \
+         'Adjust Last Stroke' is meant to start UNTICKED (Enio 2026-07-19): dialling the brush in for \
+         the next stroke must not reach back and edit the last one."
+    );
+}
+
 /// …and the toggle is **NOT destructive**: unticking it, moving sliders, then ticking it back on must
 /// leave the stroke exactly as reachable as it was. If the ingredients were dropped when the box was
 /// cleared, the artist would have silently lost the ability to edit their stroke by clicking a checkbox
@@ -22052,9 +22132,13 @@ fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
     };
 
     // The control: never toggled, one Shine edit.
+    // Both runs START ticked, and say so explicitly — the claim is about the off→on CYCLE, so the state
+    // it cycles from has to be pinned by the fixture and not inherited from a default that has moved once
+    // already (ON until 2026-07-19, OFF since).
     let control = {
         let mut t = impasto_canvas(size);
         stroke(&mut t);
+        t.paint.impasto_live_edit = true;
         t.set_impasto_shine(1.0);
         lit(&mut t)
     };
@@ -22062,6 +22146,7 @@ fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
     let cycled = {
         let mut t = impasto_canvas(size);
         stroke(&mut t);
+        t.paint.impasto_live_edit = true;
         t.toggle_impasto_live_edit(); // OFF — the stroke on the canvas is finished
         t.set_brush_impasto_depth(-0.9); // …and this must not touch it
         t.toggle_impasto_live_edit(); // back ON
@@ -22279,11 +22364,14 @@ fn undoing_a_stroke_restores_the_material_underneath_it() {
 
     // 2. A GLOSSY stroke straight across it — same place, so it overwrites the material there.
     //
-    // "Adjust Last Stroke" comes OFF first, and that is not incidental: with it ON (the default) the two
-    // setters below would re-bake the MATTE stroke to glossy before the second stroke even starts —
-    // which is precisely what that toggle is for, and it is what made the first version of this fixture
-    // lie. The paint underneath has to be finished paint, or there is nothing for the undo to give back.
-    t.toggle_impasto_live_edit();
+    // "Adjust Last Stroke" comes OFF first, and that is not incidental: with it ON the two setters below
+    // would re-bake the MATTE stroke to glossy before the second stroke even starts — which is precisely
+    // what that toggle is for, and it is what made the first version of this fixture lie. The paint
+    // underneath has to be finished paint, or there is nothing for the undo to give back.
+    //
+    // Written as an assignment, not a toggle: a toggle means "OFF" only while the default is ON, and the
+    // default is the artist's to move (it went OFF on 2026-07-19). The fixture states what it needs.
+    t.paint.impasto_live_edit = false;
     t.set_impasto_shine(1.0);
     t.set_impasto_roughness(0.0);
     stroke(&mut t, 80.0);

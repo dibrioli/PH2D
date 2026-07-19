@@ -164,7 +164,11 @@ impl Default for PaintState {
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
-            impasto_live_edit: true, // o comportamento que a secao sempre teve
+            // "Adjust Last Stroke" is OFF by default (Enio 2026-07-19). Finished paint stays finished:
+            // dialling the brush in for the NEXT stroke must not silently reach back and rewrite the one
+            // already on the canvas. The historical default was ON, which made every knob a retroactive
+            // edit — surprising in exactly the direction that costs work rather than saving it.
+            impasto_live_edit: false,
             // The rig: Enio's dialled-in key (2026-07-12, after the smoke) + three lamps switched OFF.
             impasto_rig: Default::default(),
             stroke_coverage: Vec::new(),

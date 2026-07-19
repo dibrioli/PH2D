@@ -303,6 +303,17 @@ pub struct BrushSettings {
     pub dab_flatten: f32,
     /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).
     pub dab_angle_deg: u16,
+    /// The **live orientation of the dab footprint** as a unit rotor `[cos, sin]` — the brush's own
+    /// `dab_angle_deg` composed with the **stroke-follow** rotation when a slot follows the stroke
+    /// (Shape Rake / Flow, Grain Rake) and the stroke is in flight. `[1, 0]` at Angle 0 with nothing
+    /// following, so a plain brush is unchanged.
+    ///
+    /// The brush-cursor ring draws the ellipse from THIS, not from `dab_angle_deg`, so it turns with the
+    /// stroke in real time and — because the rotor comes from the engine's own heading rather than being
+    /// re-derived from the cursor — it can never point somewhere the paint does not (Enio 2026-07-19).
+    /// Jitter Rotate is deliberately NOT in it: that is per-dab randomness, and a ring that flickered
+    /// would be reporting noise as orientation.
+    pub dab_rotor: [f32; 2],
 
     // ── Grain Colour Ramp (maps the Grain scalar to a colour when enabled) ──
     /// Whether the Color Ramp drives the paint colour.

@@ -102,6 +102,29 @@ Os `assert_ne!` que ele substitui eram satisfeitos por **0,55 %** dos texels.
    Size `[1,1]` é **bit-idêntico**.
 4. **Rake** deve seguir a curva sem atraso **e** sem tremer (as duas metades, medidas).
 
+## 7b. O GIZMO DO PINCEL GIRA (Enio, pós-smoke 2026-07-19)
+
+> *"Permite que o círculo que representa o pincel (gizmo do pincel) rotacione em tempo real conforme flow e rake."*
+
+O anel do cursor já desenhava a elipse de **Flatten & Rotate**, mas travada no `dab_angle_deg` de repouso
+— então com Rake/Flow o bico girava e o desenho dele **ficava parado**. Aim de nib caligráfico com um
+cursor que aponta para outro lugar é pior do que cursor nenhum.
+
+- O tool publica **`BrushSettings::dab_rotor`** = `Angle ∘ follow_rotor(heading VIVO do motor)`.
+- ⚠️ **O anel não deriva direção nenhuma** — ele lê o rotor que sai do **heading do próprio motor**
+  (`Stroke::heading()`, novo acessor). Uma segunda estimativa (por ex. filtrar o cursor no shell) iria
+  divergir da tinta, e quem o artista vê é o cursor.
+- ⚠️ **Jitter Rotate fica FORA de propósito**: é aleatoriedade por-dab; um anel piscando reportaria ruído
+  como mira.
+- Sem traço em voo o heading é `[0,0]` ⇒ `follow_rotor` é a identidade ⇒ o anel descansa no Angle, que é
+  exatamente o que o primeiro dab do próximo traço vai usar. Deform continua disco puro.
+
+Gates: `the_brush_ring_rotor_turns_with_the_stroke_only_when_a_slot_follows` (tool: dirige o traço real
+numa curva e exige o rotor na tangente ±8°; e **bit-idêntico ao Angle** quando nada segue) + o arch-gate
+**`the_brush_ring_wears_the_live_dab_rotor`** (shell). ⚠️ O segundo existe porque o anel é **puro desenho
+no shell**: mutar o shell para reconstruir o ângulo do `dab_angle_deg` deixa **toda a workspace verde** —
+o gate de comportamento para no valor publicado.
+
 ## 8. Smoke pedido
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && cargo run --release -p ph2d-host-desktop`
@@ -112,6 +135,8 @@ Os `assert_ne!` que ele substitui eram satisfeitos por **0,55 %** dos texels.
 2. **Follow = Rake** na mesma curva: deve girar acompanhando o traço, sem tremor entre carimbos.
 3. **Flatten & Rotate** com flatten alto + Follow ligado: o bico achatado tem de **virar com o traço**.
 4. Grain e Paper continuam funcionando; combinações Shape×Grain×Paper intactas.
+5. **O anel do cursor gira junto** com Rake/Flow (mais visível com Flatten alto, onde a elipse é óbvia);
+   com Follow=Off ele fica parado no Angle.
 
 ## 9. ⛔ NÃO integrei nem pushei (protocolo §0.7 / §0.2)
 

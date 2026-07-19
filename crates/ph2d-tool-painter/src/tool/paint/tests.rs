@@ -22905,3 +22905,67 @@ fn a_following_shape_paints_the_stroke_not_the_canvas() {
          the painting — if this residual is small the oracle cannot tell following from static ({off:.1})"
     );
 }
+
+/// **The brush-cursor ring turns with the stroke, in real time** (Enio 2026-07-19). With a slot following
+/// the stroke, the ellipse the cursor draws must wear the orientation the NEXT dab will wear — otherwise
+/// the artist is aiming a calligraphic nib with a picture of it pointing somewhere else.
+///
+/// The rotor is published by the tool (`BrushSettings::dab_rotor`) from the ENGINE's own live heading, so
+/// this also pins that the ring never re-derives a direction of its own: a second estimate would drift
+/// from the paint, and a cursor that disagrees with the mark is worse than one that does not move.
+/// Jitter Rotate is excluded on purpose — per-dab randomness in a cursor reads as flicker, not as aim.
+#[test]
+fn the_brush_ring_rotor_turns_with_the_stroke_only_when_a_slot_follows() {
+    use ph2d_painter_brush::{StrokeMethod, TextureKind};
+    const N: u32 = 96;
+    let path = |k: f32| {
+        let a = k * std::f32::consts::FRAC_PI_2;
+        [14.0 + 56.0 * a.cos(), 14.0 + 56.0 * a.sin()]
+    };
+    let tangent_deg = |k: f32| {
+        let a = k * std::f32::consts::FRAC_PI_2;
+        (a.cos()).atan2(-a.sin()).to_degrees().rem_euclid(360.0)
+    };
+    // Drive the real stroke and read the published rotor at a few points along the curve.
+    let rotors = |rake: bool| {
+        let mut t = white_canvas(N, 9.0);
+        t.paint.brush.shape.kind = TextureKind::Stripes;
+        t.paint.brush.shape.rake = rake;
+        t.paint.brush.dab_angle_deg = 0;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.on_canvas_pointer(cp(path(0.0), PointerPhase::Down));
+        let mut out = Vec::new();
+        for i in 1..=60 {
+            let k = i as f32 / 60.0;
+            t.on_canvas_pointer(cp(path(k), PointerPhase::Move));
+            if i % 10 == 0 && i >= 20 {
+                out.push((k, t.brush_settings().dab_rotor));
+            }
+        }
+        t.on_canvas_pointer(cp(path(1.0), PointerPhase::Up));
+        out
+    };
+    // FOLLOWING: the rotor tracks the path tangent all the way round.
+    for (k, r) in rotors(true) {
+        let deg = r[1].atan2(r[0]).to_degrees().rem_euclid(360.0);
+        let want = tangent_deg(k);
+        let d = (deg - want).rem_euclid(360.0);
+        let err = if d > 180.0 { 360.0 - d } else { d };
+        assert!(
+            err < 8.0,
+            "the ring must wear the stroke's orientation at k={k}: {deg:.1}deg vs tangent {want:.1}deg"
+        );
+        assert!(
+            (r[0] * r[0] + r[1] * r[1] - 1.0).abs() < 1e-3,
+            "the rotor stays unit-length"
+        );
+    }
+    // NOT FOLLOWING: the ring rests at the brush Angle, bit-for-bit, however the stroke curves.
+    for (_, r) in rotors(false) {
+        assert_eq!(
+            r,
+            ph2d_painter_brush::texture::rotate_by_degrees(0),
+            "a non-following brush's ring must not turn with the stroke"
+        );
+    }
+}

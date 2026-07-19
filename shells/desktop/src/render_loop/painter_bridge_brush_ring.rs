@@ -74,15 +74,19 @@ pub(super) fn draw_brush_ring(
                 } else {
                     f64::from(footprint_px)
                 };
-                // Minor axis = (1 − flatten) of the major; rotated by the dab angle (engine
-                // convention — `rotate_by_degrees` builds `[cos(deg), sin(deg)]`). Deform is a plain disc.
+                // Minor axis = (1 − flatten) of the major, rotated by the dab's LIVE orientation rotor
+                // (`BrushSettings::dab_rotor`): the brush Angle already turned by the stroke-follow
+                // rotation, so with Shape Rake / Flow (or Grain Rake) the ring turns WITH THE STROKE in
+                // real time, exactly like the tip it represents (Enio 2026-07-19). The rotor comes from
+                // the engine's own heading — the ring never re-derives a direction of its own, so it
+                // cannot point somewhere the paint does not. Deform is a plain, unrotated disc.
                 let m = if deform {
                     1.0
                 } else {
                     1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX))
                 };
-                let angle_deg = if deform { 0 } else { bs.dab_angle_deg };
-                let (sin_a, cos_a) = f64::from(angle_deg).to_radians().sin_cos();
+                let rotor = if deform { [1.0, 0.0] } else { bs.dab_rotor };
+                let (cos_a, sin_a) = (f64::from(rotor[0]), f64::from(rotor[1]));
                 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
                 use std::f64::consts::TAU;
                 let mut path = BezPath::new();

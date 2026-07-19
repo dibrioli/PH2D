@@ -571,6 +571,15 @@ impl Stroke {
         }
     }
 
+    /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the
+    /// next dab will be stamped with. Exposed so the brush-cursor ring can show the orientation the dab
+    /// will actually use when a slot follows the stroke — the ring reads the ENGINE's heading rather than
+    /// re-deriving one from the cursor, so it cannot point somewhere the paint does not.
+    #[must_use]
+    pub fn heading(&self) -> [f32; 2] {
+        self.heading
+    }
+
     /// Offset the dab centre by a random vector sampled uniformly inside a disc, sized by the
     /// jitter unit: `Brush` → radius `jitter × diameter`; `View` → radius `2 × jitter_absolute_px`
     /// (Blender `BKE_brush_jitter_pos`). No-op for methods that disable jitter (DragDot/Anchored).

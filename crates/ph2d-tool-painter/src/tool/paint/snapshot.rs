@@ -234,6 +234,20 @@ impl PainterTool {
             shape_layer_opacity,
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
+            // The orientation the NEXT dab will wear: the brush Angle turned by the stroke-follow rotor.
+            // Same two functions the engine composes in `BrushSpec::dab_rotor` (minus the per-dab Jitter
+            // Rotate), fed the engine's OWN live heading — no second estimate of "which way is the stroke
+            // going". No stroke in flight ⇒ `[0, 0]` ⇒ `follow_rotor` is the identity ⇒ the resting Angle,
+            // which is exactly what the first dab of the next stroke will use.
+            dab_rotor: ph2d_painter_brush::heading::rotate(
+                ph2d_painter_brush::texture::rotate_by_degrees(b.dab_angle_deg),
+                b.follow_rotor(
+                    self.paint
+                        .stroke
+                        .as_ref()
+                        .map_or([0.0, 0.0], ph2d_painter_brush::Stroke::heading),
+                ),
+            ),
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
             texture_ramp_bw: self.paint.texture_ramp_bw,
             texture_ramp_mode: ramp.color_mode.to_u8(),

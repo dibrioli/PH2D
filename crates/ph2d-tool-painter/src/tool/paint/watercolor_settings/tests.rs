@@ -154,12 +154,12 @@ fn panel_events_drive_watercolor_state() {
         TextureMapping::Random,
         "Paper mapping picked"
     );
-    // No Paper Rake / Random: the paper is the canvas-anchored substrate under the paint, so a per-dab
-    // rotation has nothing to rotate. The widgets never existed; the setters/ids that lingered "for the
-    // API" were dead plumbing and were removed (2026-07-12) — an audit had already misread them as live
-    // knobs. Rake/Random are real on the **Grain** slot, which IS a stamp.
+    // No Paper Rake: the paper is the canvas-anchored substrate under the paint, so a per-dab rotation has
+    // nothing to rotate. The widgets never existed; the setters/ids that lingered "for the API" were dead
+    // plumbing and were removed (2026-07-12) — an audit had already misread them as live knobs. Rake is
+    // real on the **Grain** slot, which IS a stamp. (Per-slot Random Angle was retired everywhere 2026-07-19.)
     assert!(
-        !t.paint.brush.paper.rake && !t.paint.brush.paper.random_angle,
+        !t.paint.brush.paper.rake,
         "the Paper slot has no per-dab rotation, and nothing can turn it on"
     );
     t.handle_panel_event(PanelEvent::SetValue(

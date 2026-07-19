@@ -134,9 +134,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE => {
                 self.toggle_brush_texture_rake();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM => {
-                self.toggle_brush_texture_random();
-            }
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_NEW => {
                 self.new_brush_texture();
             }

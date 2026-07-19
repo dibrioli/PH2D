@@ -138,7 +138,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_mapping: 0, // View Plane
     texture_angle_deg: 0,
     texture_rake: false,
-    texture_random: false,
     texture_offset: [0.0, 0.0],
     texture_size: [1.0, 1.0],
     stencil_offset: [0.0, 0.0],
@@ -153,7 +152,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     shape_has_image: false,
     shape_angle_deg: 0,
     shape_rake: false,
-    shape_random: false,
     shape_offset: [0.0, 0.0],
     shape_size: [1.0, 1.0],
     shape_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],

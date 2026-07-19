@@ -44,9 +44,8 @@ pub const PAINTER_SHAPE_RESET: NodeId = hash_node_id("painter_brush.shape_reset"
 /// Shape **Angle** slider (`0..1` track → `0..=360°`). `SetValue` → `set_brush_shape_angle_norm`.
 pub const PAINTER_SHAPE_ANGLE: NodeId = hash_node_id("painter_brush.shape_angle");
 /// Shape **Rake** toggle (silhouette rotation follows the stroke). `Click` → `toggle_brush_shape_rake`.
+/// (A random per-dab spin is the Stroke Jitter Rotate; the per-slot "Random Angle" was retired 2026-07-19.)
 pub const PAINTER_SHAPE_RAKE: NodeId = hash_node_id("painter_brush.shape_rake");
-/// Shape **Random** toggle (random silhouette rotation per dab). `Click` → `toggle_brush_shape_random`.
-pub const PAINTER_SHAPE_RANDOM: NodeId = hash_node_id("painter_brush.shape_random");
 /// Shape **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` → `set_brush_shape_offset_norm(0, ..)`.
 pub const PAINTER_SHAPE_OFFSET_X: NodeId = hash_node_id("painter_brush.shape_offset_x");
 /// Shape **Offset Y** slider (axis 1). See [`PAINTER_SHAPE_OFFSET_X`].

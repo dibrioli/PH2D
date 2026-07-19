@@ -95,7 +95,7 @@ pub fn sample_shape_silhouette_unit(
 /// byte/texel = coverage `0..=255`), for the panel's live Shape preview. Uses the SAME composition as
 /// the engine — `Image` is the sampled tip, a procedural kind is `falloff × pattern` — so the preview
 /// is faithful. `falloff_lut[i]` is the falloff weight at radial `t = i/(N−1)` (`t ∈ [0,1]`), baked by
-/// the panel from its live falloff. Static frame (Angle only; Rake / Random need a stroke direction).
+/// the panel from its live falloff. Static frame (Angle only; Rake needs a live stroke direction).
 /// Deterministic (HR-5).
 #[allow(clippy::too_many_arguments)]
 pub fn render_shape_preview(
@@ -117,7 +117,6 @@ pub fn render_shape_preview(
         mapping: TextureMapping::ViewPlane,
         angle_deg,
         rake: false,
-        random_angle: false,
         offset,
         size,
         // Shape silhouette is always ViewPlane — the stencil frame is inert here.

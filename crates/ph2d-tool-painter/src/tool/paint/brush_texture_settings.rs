@@ -57,12 +57,6 @@ impl PainterTool {
         tex.rake = !tex.rake;
     }
 
-    /// Toggle "Random" (the texture rotation is randomised per dab).
-    pub fn toggle_brush_texture_random(&mut self) {
-        let tex = &mut self.paint.brush.texture;
-        tex.random_angle = !tex.random_angle;
-    }
-
     /// Set the texture offset for `axis` (`0`=X / `1`=Y) from the `0..1` track → `[TEX_OFFSET_MIN, MAX]` (tiles).
     pub fn set_brush_texture_offset_norm(&mut self, axis: usize, t: f32) {
         if axis < 2 {

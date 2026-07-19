@@ -395,12 +395,6 @@ impl PainterTool {
         shape.rake = !shape.rake;
     }
 
-    /// Toggle Shape "Random" (the silhouette rotation is randomised per dab).
-    pub fn toggle_brush_shape_random(&mut self) {
-        let shape = &mut self.paint.brush.shape;
-        shape.random_angle = !shape.random_angle;
-    }
-
     /// Set the Shape offset for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track.
     pub fn set_brush_shape_offset_norm(&mut self, axis: usize, t: f32) {
         if axis < 2 {

@@ -131,15 +131,16 @@ pub(crate) fn paint_texture_section(
         if is_stencil {
             y = crate::paint_stencil::paint_stencil_card(ctx, theme, x, content_w, y, brush);
         }
-        // ── Rake + Random checkboxes — only the per-dab rotation mappings (Stencil has a fixed frame).
-        //    Placed under Mapping and above Angle (Enio 2026-06-24). ALSO hidden under the optical wash
-        //    (sweep 2026-07-12): with Watercolor on, the Grain slot IS the granulation map — a
-        //    canvas-anchored substrate that says where pigment settles, not a stamp carried by the dab.
-        //    There is no dab to follow, so "Rake" (rotation follows the stroke) and "Random Angle" (a fresh
-        //    angle per dab) have nothing to rotate: both were provably inert (byte-identical washes, gate
-        //    `grain_rake_and_random_are_inert_under_the_wash`). Same argument that removed them from the
-        //    **Paper** slot. Keyed off `watercolor_active` (the REAL predicate), so Eraser/Mask/Smear bring
-        //    them back — there the dab stamps again. ──
+        // ── Rake checkbox — only the per-dab rotation mappings (Stencil has a fixed frame). Placed under
+        //    Mapping and above Angle (Enio 2026-06-24). ALSO hidden under the optical wash (sweep
+        //    2026-07-12): with Watercolor on, the Grain slot IS the granulation map — a canvas-anchored
+        //    substrate that says where pigment settles, not a stamp carried by the dab. There is no dab to
+        //    follow, so "Rake" (rotation follows the stroke) has nothing to rotate — provably inert
+        //    (byte-identical washes, gate `grain_rake_is_inert_under_the_wash`). Same argument
+        //    that removed it from the **Paper** slot. Keyed off `watercolor_active` (the REAL predicate),
+        //    so Eraser/Mask/Smear bring it back — there the dab stamps again. (The per-slot "Random Angle"
+        //    was retired 2026-07-19 — the Stroke Jitter Rotate covers a random per-dab spin, and turns the
+        //    whole stamp coherently.) ──
         if mapping.uses_dab_rotation() && !brush.watercolor_active {
             y = crate::paint_brush_top::paint_checkbox_row(
                 ctx,
@@ -150,16 +151,6 @@ pub(crate) fn paint_texture_section(
                 core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
                 "Rake",
                 brush.texture_rake,
-            );
-            y = crate::paint_brush_top::paint_checkbox_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-                "Random Angle",
-                brush.texture_random,
             );
         }
         // ── Angle (whole degrees) — the TEXTURE rotation. Under Stencil it rotates the pattern WITHIN

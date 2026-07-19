@@ -1728,8 +1728,6 @@ fn panel_events_drive_shape_and_grain_depth() {
     assert_eq!(t.brush_settings().shape_angle_deg, 180, "shape angle set");
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAKE));
     assert!(t.brush_settings().shape_rake, "shape rake toggled on");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RANDOM));
-    assert!(t.brush_settings().shape_random, "shape random toggled on");
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 0.0)); // → TEX_SIZE_MIN
     assert!(
         (t.brush_settings().shape_size[0] - 0.1).abs() < 1e-4,
@@ -1762,10 +1760,7 @@ fn panel_events_drive_shape_and_grain_depth() {
     let s = t.brush_settings();
     assert!(!s.shape_has_image, "reset cleared the shape image");
     assert_eq!(s.shape_angle_deg, 0, "reset cleared the shape angle");
-    assert!(
-        !s.shape_rake && !s.shape_random,
-        "reset cleared rake/random"
-    );
+    assert!(!s.shape_rake, "reset cleared rake");
     assert_eq!(s.dab_flatten, 0.0, "reset cleared the dab flatten");
     assert_eq!(s.dab_angle_deg, 0, "reset cleared the dab angle");
 }
@@ -2078,60 +2073,6 @@ fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
     assert!(
         blue[2] > 200 && blue[0] < 80,
         "second dab is blue: {blue:?}"
-    );
-}
-
-#[test]
-fn per_layer_color_dynamic_shape_random_angle_paints() {
-    use ph2d_painter_brush::{Dab, StrokeMethod};
-    // Shape Random Angle + per-layer-colour routes to the dynamic path (per-dab rotation). Guard that it
-    // runs and paints (the cached path silently ignored the rotation).
-    let mut t = white_canvas(64, 6.0);
-    t.paint.brush.stroke_method = StrokeMethod::Space;
-    t.paint.brush.shape.random_angle = true; // routes to the dynamic path
-    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
-    t.toggle_brush_shape_per_layer_color();
-    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
-    let dab = Dab {
-        center: [32.0, 32.0],
-        radius_px: 6.0,
-        coverage: 1.0,
-        color: [0.2, 0.4, 0.6],
-        rotation: [1.0, 0.0],
-        dir: [0.0, 0.0],
-    };
-    t.stamp_dabs(&[dab]);
-    assert!(
-        px(&t, 64, 32, 32)[3] > 0,
-        "a random-angle per-layer-colour dab paints"
-    );
-}
-
-#[test]
-fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
-    use ph2d_painter_brush::{Dab, StrokeMethod, TextureKind};
-    // Grain Rake / Random Angle must work in per-layer-colour — the route used to check only Grain
-    // Jitter-Rotate, so Grain Rake/Random fell to the constant-orientation cached path. With Grain Random
-    // on, the dynamic path (per-dab Grain basis) runs and paints.
-    let mut t = white_canvas(64, 6.0);
-    t.paint.brush.stroke_method = StrokeMethod::Space;
-    t.paint.brush.texture.kind = TextureKind::Checker; // an active Grain
-    t.paint.brush.texture.random_angle = true; // Grain Random Angle
-    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
-    t.toggle_brush_shape_per_layer_color();
-    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
-    let dab = Dab {
-        center: [32.0, 32.0],
-        radius_px: 6.0,
-        coverage: 1.0,
-        color: [0.2, 0.4, 0.6],
-        rotation: [1.0, 0.0],
-        dir: [0.0, 0.0],
-    };
-    t.stamp_dabs(&[dab]);
-    assert!(
-        px(&t, 64, 32, 32)[3] > 0,
-        "a Grain-random-angle per-layer-colour dab paints"
     );
 }
 
@@ -3203,18 +3144,17 @@ fn paper_depth_and_granulation_re_render_the_wet_wash() {
 }
 
 #[test]
-fn grain_rake_and_random_are_inert_under_the_wash() {
+fn grain_rake_is_inert_under_the_wash() {
     // Enio asked to close the sweep's open findings. This one is the Grain twin of the Paper Rake removal.
     // With Watercolor on, the Grain slot IS the granulation map — a CANVAS-ANCHORED substrate saying where
     // pigment settles — not a stamp the dab carries. The composite samples it through
-    // `angle_basis(texture.angle_deg)`: no `d.dir`, no rng. So "Rake" (follow the stroke) and "Random
-    // Angle" (fresh angle per dab) have nothing to rotate, and the same checkbox meant two different things
-    // depending on the Watercolor tick — one of them being "nothing".
-    // This pins the deadness that justifies hiding them (a hidden knob must be PROVABLY inert), and it
-    // fails the day someone wires per-dab Grain frames into the wash — at which point the panel must
-    // show them again.
+    // `angle_basis(texture.angle_deg)`: no `d.dir`. So "Rake" (follow the stroke) has nothing to rotate,
+    // and the same checkbox meant two different things depending on the Watercolor tick — one being "nothing".
+    // This pins the deadness that justifies hiding it (a hidden knob must be PROVABLY inert), and it fails
+    // the day someone wires per-dab Grain frames into the wash — at which point the panel must show it again.
+    // (The per-slot "Random Angle" was retired 2026-07-19 — the Stroke Jitter Rotate covers a random spin.)
     use ph2d_painter_brush::{TextureKind, TextureSettings};
-    let wash = |rake: bool, random: bool| -> Vec<u8> {
+    let wash = |rake: bool| -> Vec<u8> {
         let mut t = white_canvas(64, 9.0);
         t.paint.brush = BrushSpec {
             radius_px: 9.0,
@@ -3230,7 +3170,6 @@ fn grain_rake_and_random_are_inert_under_the_wash() {
                 kind: TextureKind::Noise,
                 size: [6.0, 6.0],
                 rake,
-                random_angle: random,
                 ..Default::default()
             },
             ..Default::default()
@@ -3245,21 +3184,12 @@ fn grain_rake_and_random_are_inert_under_the_wash() {
         t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
         (*t.canvas_rgba).clone()
     };
-    let plain = wash(false, false);
+    let plain = wash(false);
     assert!(
         plain.chunks_exact(4).any(|p| p[0] != 255 || p[1] != 255),
         "the wash actually painted (guard against a fixture that proves nothing)"
     );
-    assert_eq!(
-        plain,
-        wash(true, false),
-        "Grain Rake is inert under the wash"
-    );
-    assert_eq!(
-        plain,
-        wash(false, true),
-        "Grain Random Angle is inert under the wash"
-    );
+    assert_eq!(plain, wash(true), "Grain Rake is inert under the wash");
 }
 
 #[test]
@@ -3462,8 +3392,7 @@ fn tiling_wrapped_copies_share_the_dabs_random_frame() {
     let brush_with_random_grain = |t: &mut PainterTool| {
         t.paint.brush.texture = TextureSettings {
             kind: TextureKind::Noise,
-            mapping: TextureMapping::ViewPlane, // dab-local ⇒ the grain rotates WITH the dab
-            random_angle: true,                 // ← the per-dab draw the copies must SHARE
+            mapping: TextureMapping::Random, // Random Offset: a per-dab rng draw the wrapped copies must SHARE
             ..t.paint.brush.texture
         };
     };
@@ -5392,10 +5321,9 @@ fn texture_setters_clamp_and_new_assigns_noise() {
     assert!((t.brush_settings().texture_size[0] - TEX_SIZE_MAX).abs() < 1e-6);
     t.set_brush_texture_size_norm(9, 0.0);
     assert!((t.brush_settings().texture_size[1] - 1.0).abs() < 1e-6);
-    // Rake / Random toggles flip.
+    // Rake toggle flips (per-slot Random Angle was retired 2026-07-19 — Jitter Rotate covers a random spin).
     t.toggle_brush_texture_rake();
-    t.toggle_brush_texture_random();
-    assert!(t.brush_settings().texture_rake && t.brush_settings().texture_random);
+    assert!(t.brush_settings().texture_rake);
 }
 
 #[test]
@@ -6009,36 +5937,20 @@ fn jitter_rotate_reaches_the_paint() {
 }
 
 #[test]
-fn shape_random_angle_reaches_the_paint() {
-    use ph2d_painter_brush::StrokeMethod;
-    let bar = directional_bar();
-    let run = |seed: u64| {
-        let mut t = white_canvas(48, 8.0);
-        t.set_brush_shape_image(bar.clone(), 8, 8);
-        t.paint.brush.stroke_method = StrokeMethod::Space;
-        t.toggle_brush_shape_random();
-        t.paint.seed = seed;
-        t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
-        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
-        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
-        (*t.canvas_rgba).clone()
-    };
-    assert_ne!(
-        run(1),
-        run(999),
-        "Shape Random Angle must vary with the seed (rotation reaches the paint)"
-    );
-}
-
-#[test]
-fn grain_random_angle_reaches_the_paint() {
+fn jitter_rotate_is_the_grains_random_spin_now_that_per_slot_random_angle_is_gone() {
+    // The per-slot "Random Angle" was retired 2026-07-19: the Stroke Jitter Rotate spins the WHOLE stamp
+    // (Shape + View-Grain together) by a random per-dab angle — the coherent superset, and more expressive
+    // (it has an amount). This pins that removing the per-slot toggle lost NO capability on the Grain: a
+    // random per-dab Grain rotation still reaches the paint through Jitter Rotate. `jitter_rotate_reaches_
+    // the_paint` above is the Shape twin. If someone re-adds a per-slot Random Angle "because we lost it",
+    // these two say we did not.
     use ph2d_painter_brush::{StrokeMethod, TextureKind};
     let run = |seed: u64| {
         let mut t = white_canvas(48, 8.0);
-        t.paint.brush.texture.kind = TextureKind::Stripes; // a directional grain
+        t.paint.brush.texture.kind = TextureKind::Stripes; // a directional grain (a spin is visible)
         t.paint.brush.texture.size = [0.5, 0.5];
         t.paint.brush.stroke_method = StrokeMethod::Space;
-        t.toggle_brush_texture_random();
+        t.set_brush_jitter_rotate(1.0);
         t.paint.seed = seed;
         t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Move));
@@ -6048,7 +5960,7 @@ fn grain_random_angle_reaches_the_paint() {
     assert_ne!(
         run(1),
         run(999),
-        "Grain Random Angle must vary with the seed (rotation reaches the paint)"
+        "Jitter Rotate spins the Grain per dab — the retired per-slot Random Angle's replacement"
     );
 }
 
@@ -17030,10 +16942,10 @@ fn impasto_on_does_not_disturb_the_pigment() {
             ..Default::default()
         };
         // A Grain that DRAWS from the rng every dab — the whole point. A static grain would make this
-        // gate vacuous: with nothing consuming the stream, a stream bug is invisible.
+        // gate vacuous: with nothing consuming the stream, a stream bug is invisible. Random Offset is the
+        // per-dab rng draw (the per-slot Random Angle was retired 2026-07-19).
         b.texture.kind = TextureKind::Noise;
-        b.texture.mapping = TextureMapping::ViewPlane;
-        b.texture.random_angle = true;
+        b.texture.mapping = TextureMapping::Random;
         arm(&mut b);
         t.paint.brush = b;
         for slot in &mut t.paint.brush_by_mode {

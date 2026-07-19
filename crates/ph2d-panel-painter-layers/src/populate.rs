@@ -300,10 +300,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Clone card: "Set Source" (arms the sample pick) + "Aligned" toggle.
         ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,
         ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_ALIGNED,
-        // Texture section: Rake / Random checkboxes (the click still forwards as a Button Click;
-        // only the VISUAL is a checkbox).
+        // Texture section: Rake checkbox (the click still forwards as a Button Click; only the VISUAL is
+        // a checkbox). The per-slot "Random Angle" was retired 2026-07-19 — the Stroke Jitter Rotate covers it.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
         // Sculpt card: the Chisel's Rake toggle (does the V follow the stroke?). Painting it and
         // hit-indexing it is NOT enough — without an `InteractiveState` from here, `is_focusable` answers
         // `None => false`, the Down never activates it and the Click never happens. That is exactly how the
@@ -315,9 +314,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
         // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
         ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,
-        // Shape section: Rake / Random checkboxes + the section reset (clears the image → falloff).
+        // Shape section: Rake checkbox + the section reset (clears the image → falloff). (Per-slot
+        // "Random Angle" retired 2026-07-19 — the Stroke Jitter Rotate covers a random per-dab spin.)
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,
         ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
         // "Use Document Layers" capture button + the Per-Layer Color mode toggle (the per-layer
         // checkboxes + swatches are factory ids, registered at paint time). Forward as a Button Click.

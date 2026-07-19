@@ -19,9 +19,8 @@ pub const PAINTER_BRUSH_TEXTURE_MAPPING: NodeId = hash_node_id("painter_brush.te
 /// Brush texture **Angle** slider (`0..1` track → `0..=360°`). `SetValue` → `set_brush_texture_angle_norm`.
 pub const PAINTER_BRUSH_TEXTURE_ANGLE: NodeId = hash_node_id("painter_brush.texture_angle");
 /// Brush texture **Rake** toggle (angle follows the stroke). `Click` → `toggle_brush_texture_rake`.
+/// (A random per-dab spin is the Stroke Jitter Rotate; the per-slot "Random Angle" was retired 2026-07-19.)
 pub const PAINTER_BRUSH_TEXTURE_RAKE: NodeId = hash_node_id("painter_brush.texture_rake");
-/// Brush texture **Random** toggle (random angle per dab). `Click` → `toggle_brush_texture_random`.
-pub const PAINTER_BRUSH_TEXTURE_RANDOM: NodeId = hash_node_id("painter_brush.texture_random");
 /// Brush texture **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` →
 /// `set_brush_texture_offset_norm(0, ..)`.
 pub const PAINTER_BRUSH_TEXTURE_OFFSET_X: NodeId = hash_node_id("painter_brush.texture_offset_x");

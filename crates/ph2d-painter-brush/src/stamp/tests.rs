@@ -376,10 +376,6 @@ fn cacheability_predicate() {
             ..view
         },
         TextureSettings { rake: true, ..view },
-        TextureSettings {
-            random_angle: true,
-            ..view
-        },
     ] {
         assert!(
             !not.is_cacheable(),

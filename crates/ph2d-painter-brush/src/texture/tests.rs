@@ -198,7 +198,6 @@ fn rake_off_ignores_the_heading_byte_identical() {
     let s = TextureSettings {
         kind: TextureKind::Noise,
         rake: false,
-        random_angle: false,
         angle_deg: 37,
         ..Default::default()
     };
@@ -256,26 +255,6 @@ fn jitter_rotate_composes_on_top_of_the_rake_heading() {
         FootprintDeform::identity(),
     );
     assert_eq!(id.u, heading, "no jitter ⇒ u is the bare rake heading");
-}
-
-#[test]
-fn random_angle_is_deterministic_per_seed_but_varies() {
-    let s = TextureSettings {
-        kind: TextureKind::Noise,
-        random_angle: true,
-        ..Default::default()
-    };
-    let (mut a1, mut a2) = (7, 7);
-    assert_eq!(
-        basis(&s, [0.0, 0.0], &mut a1),
-        basis(&s, [0.0, 0.0], &mut a2)
-    );
-    // A different seed (almost surely) gives a different rotation.
-    let mut b = 99;
-    assert_ne!(
-        basis(&s, [0.0, 0.0], &mut a1).u,
-        basis(&s, [0.0, 0.0], &mut b).u
-    );
 }
 
 // ── Mapping modes (the View/Tiled/Random behavioural distinction) ───────────────────────────
@@ -914,8 +893,8 @@ fn shape_image_rotates_with_the_basis_angle() {
 
 #[test]
 fn jitter_footprint_rotates_the_grain_deterministically_not_randomly() {
-    // Enio: "Jitter Rot shouldn't act like Random Angle." With random_angle OFF, the Grain follows the
-    // footprint — a deterministic rotation locked to the brush, NOT a per-dab random one.
+    // Enio: "Jitter Rot shouldn't act like Random Angle." The dab-angle footprint rotation is a
+    // deterministic rotation locked to the brush, NOT a per-dab random one (that is the Jitter Rotate).
     let s = TextureSettings {
         kind: TextureKind::Noise,
         mapping: TextureMapping::ViewPlane,

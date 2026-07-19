@@ -151,8 +151,9 @@ pub(crate) fn paint_shape_section(
     y
 }
 
-/// The Shape **frame** controls — Angle / Rake / Random / Offset X·Y / Size X·Y — shared by the Image
-/// and procedural branches (they rotate/offset/scale the silhouette frame either way). Returns the next `y`.
+/// The Shape **frame** controls — Rake / Angle / Offset X·Y / Size X·Y — shared by the Image and
+/// procedural branches (they rotate/offset/scale the silhouette frame either way). Returns the next `y`.
+/// (A random per-dab spin is the Stroke **Jitter Rotate**, which turns the whole stamp — Enio 2026-07-19.)
 fn paint_shape_transform_controls(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -161,7 +162,7 @@ fn paint_shape_transform_controls(
     mut y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // Rake + Random Angle (per-dab rotation), then Angle — Angle sits BELOW the toggles (Enio 2026-06-25).
+    // Rake (per-dab rotation follows the stroke), then Angle — Angle sits BELOW it (Enio 2026-06-25).
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -171,16 +172,6 @@ fn paint_shape_transform_controls(
         core_ids::PAINTER_SHAPE_RAKE,
         "Rake",
         brush.shape_rake,
-    );
-    y = paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_SHAPE_RANDOM,
-        "Random Angle",
-        brush.shape_random,
     );
     y = crate::number_field::paint_num_row(
         ctx,

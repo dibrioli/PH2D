@@ -75,11 +75,10 @@ fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
 const ALWAYS: [NodeId; 1] = [core_ids::PAINTER_BRUSH_TEXTURE_KIND];
 
 /// The gated controls — only painted once a texture kind is assigned.
-const GATED: [NodeId; 8] = [
+const GATED: [NodeId; 7] = [
     core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
     core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
     core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-    core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
     core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
     core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
     core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
@@ -119,21 +118,16 @@ fn assigned_kind_reveals_every_control() {
 fn stencil_mapping_adds_the_card_and_keeps_the_texture_transform() {
     // Stencil shows BOTH (Enio 2026-06-26): the Stencil card (the gizmo's OWN Size/Offset/Rotation)
     // AND the texture's own Angle/Offset/Size (which now tile the pattern INSIDE the rect) — they are
-    // independent. Only the per-dab Rake/Random (no fixed-frame meaning) stay hidden.
+    // independent. Only the per-dab Rake (no fixed-frame meaning) stays hidden.
     let ids = painted_hit_ids_for(BrushSettings {
         texture_kind: TextureKind::Noise.to_u8(),
         texture_mapping: TextureMapping::Stencil.to_u8(),
         ..crate::paint_brush::FALLBACK_BRUSH
     });
-    for hidden in [
-        core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-        core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-    ] {
-        assert!(
-            !ids.contains(&hidden),
-            "Stencil must hide the per-dab rotation {hidden:?}. painted = {ids:?}"
-        );
-    }
+    assert!(
+        !ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAKE),
+        "Stencil must hide the per-dab Rake. painted = {ids:?}"
+    );
     for shown in [
         core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
         // The Stencil card (the gizmo placement).

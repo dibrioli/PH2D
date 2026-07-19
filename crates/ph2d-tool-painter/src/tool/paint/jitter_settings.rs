@@ -46,13 +46,10 @@ impl PainterTool {
                 self.reset_brush_shape();
                 true
             }
-            // ── Shape section toggles (silhouette rotation follows the stroke / random per dab). ─
+            // ── Shape section toggle (silhouette rotation follows the stroke). A random per-dab spin is
+            //    the Stroke Jitter Rotate (whole stamp), not a per-slot toggle (Enio 2026-07-19). ─
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAKE => {
                 self.toggle_brush_shape_rake();
-                true
-            }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RANDOM => {
-                self.toggle_brush_shape_random();
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {

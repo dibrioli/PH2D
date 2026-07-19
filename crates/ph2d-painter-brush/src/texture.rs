@@ -7,8 +7,9 @@
 //!
 //! **Determinism (HR-5).** Transcendental-free: rotation is carried as a unit *vector*, never an
 //! angle (as in `stroke/ellipse.rs` / `stroke/polygon.rs`). **Angle** rotates `(1,0)` by repeated
-//! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent; **Random** builds
-//! a per-dab unit vector from the dep-free splitmix64 RNG. The sampler uses only `floor`/`*`/`+`/`sqrt`.
+//! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent. Per-dab random
+//! *rotation* is the Stroke **Jitter Rotate** (`extra_rot`), not a per-slot toggle. The sampler uses
+//! only `floor`/`*`/`+`/`sqrt`.
 
 pub(crate) mod patterns;
 mod shape;
@@ -281,7 +282,7 @@ impl TextureMapping {
         matches!(self, Self::Random)
     }
 
-    /// Whether the per-dab Rake / Random rotation applies (Stencil has its own fixed frame → ignores them).
+    /// Whether the per-dab Rake rotation applies (Stencil has its own fixed frame → ignores it).
     #[must_use]
     pub fn uses_dab_rotation(self) -> bool {
         !matches!(self, Self::Stencil)
@@ -312,8 +313,6 @@ pub struct TextureSettings {
     pub angle_deg: u16,
     /// **Rake**: the rotation follows the stroke direction, with [`Self::angle_deg`] composed as an offset.
     pub rake: bool,
-    /// **Random**: the rotation is randomised per dab (overrides Rake and [`Self::angle_deg`]).
-    pub random_angle: bool,
     /// Translation in tile fractions, each component in `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]`.
     pub offset: [f32; 2],
     /// Per-axis scale, each in `[`[`TEX_SIZE_MIN`]`, `[`TEX_SIZE_MAX`]`]` (`1.0` = one tile).
@@ -346,7 +345,6 @@ impl Default for TextureSettings {
             mapping: TextureMapping::ViewPlane,
             angle_deg: 0,
             rake: false,
-            random_angle: false,
             offset: [0.0, 0.0],
             size: [1.0, 1.0],
             stencil_offset: [0.0, 0.0],
@@ -370,17 +368,14 @@ impl TextureSettings {
 
     /// Stamp is dab-relative + constant across a stroke → render once into a mask + scale-blit
     /// (Blender's brush-image cache; see [`crate::stamp`]). True with no texture or a static **View**
-    /// texture; Rake / Random (per-dab rotation) and Tiled / Stencil (canvas-relative) stay per-pixel.
+    /// texture; Rake (per-dab rotation) and Tiled / Stencil (canvas-relative) stay per-pixel.
     #[must_use]
     pub fn is_cacheable(&self) -> bool {
-        !self.is_active()
-            || (matches!(self.mapping, TextureMapping::ViewPlane)
-                && !self.rake
-                && !self.random_angle)
+        !self.is_active() || (matches!(self.mapping, TextureMapping::ViewPlane) && !self.rake)
     }
 
     /// Texture is canvas-fixed + dab-independent → cache each canvas pixel once per stroke
-    /// ([`crate::stamp::blit_canvas_cached`]). Static **Tiled** / **Stencil**; Rake / Random stay per-pixel.
+    /// ([`crate::stamp::blit_canvas_cached`]). Static **Tiled** / **Stencil**; Rake stays per-pixel.
     #[must_use]
     pub fn is_canvas_cacheable(&self) -> bool {
         self.is_active()
@@ -389,7 +384,6 @@ impl TextureSettings {
                 TextureMapping::Tiled | TextureMapping::Stencil
             )
             && !self.rake
-            && !self.random_angle
     }
 }
 
@@ -444,8 +438,9 @@ impl TexDabBasis {
 }
 
 /// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back to
-/// [`TextureSettings::angle_deg`]), a splitmix64 `rng` (Random), the canvas (Stencil rect), the per-dab
-/// **Jitter Rotate** `extra_rot` (`[1,0]` = none) and the dab `footprint` (Tiled / Stencil ignore it).
+/// [`TextureSettings::angle_deg`]), a splitmix64 `rng` (Random **Offset** mapping), the canvas (Stencil
+/// rect), the per-dab **Jitter Rotate** `extra_rot` (`[1,0]` = none) and the dab `footprint` (Tiled /
+/// Stencil ignore it).
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
@@ -459,9 +454,7 @@ pub fn dab_basis(
     if s.mapping.is_stencil() {
         return stencil::stencil_basis(s, canvas);
     }
-    let base = if s.random_angle {
-        random_unit(rng)
-    } else if s.rake {
+    let base = if s.rake {
         // Rake follows the stroke heading, with Angle composed on top (empty heading ⇒ Angle alone).
         let h = normalize_or(dab_dir, [1.0, 0.0]);
         rotate(h, rotate_by_degrees(s.angle_deg))
@@ -635,21 +628,6 @@ fn normalize_or(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
     } else {
         fallback
     }
-}
-
-/// A deterministic random unit vector via rejection sampling in the unit disc (sqrt only). Bounded
-/// to a few tries; falls back to `(1, 0)` in the vanishingly unlikely all-reject case.
-fn random_unit(rng: &mut u64) -> [f32; 2] {
-    for _ in 0..8 {
-        let x = crate::jitter::next_f32(rng) * 2.0 - 1.0;
-        let y = crate::jitter::next_f32(rng) * 2.0 - 1.0;
-        let d2 = x * x + y * y;
-        if (1e-6..=1.0).contains(&d2) {
-            let inv = 1.0 / d2.sqrt();
-            return [x * inv, y * inv];
-        }
-    }
-    [1.0, 0.0]
 }
 
 #[cfg(test)]

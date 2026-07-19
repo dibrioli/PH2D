@@ -118,7 +118,8 @@ pub struct BrushSpec {
     /// [`Self::falloff`] — so a default brush is byte-identical to before. When a Shape **image** is
     /// assigned it **replaces** the falloff as the silhouette (a crisp imported tip; the falloff goes
     /// inactive in the UI). Pixels live in `PaintState` (heavy), like the Grain image. The `mapping` is
-    /// always View-plane (dab-relative); `angle_deg`/`rake`/`random_angle` rotate the tip frame.
+    /// always View-plane (dab-relative); `angle_deg`/`rake` rotate the tip frame (a random per-dab spin
+    /// is the Stroke **Jitter Rotate**, which turns the whole stamp).
     pub shape: TextureSettings,
 
     /// **Something downstream reads [`crate::Dab::dir`]** — so the stroke must settle a heading before it
@@ -551,27 +552,23 @@ impl BrushSpec {
         crate::texture::compose_shape_silhouette_kind(self.shape.kind, shape_val, falloff)
     }
 
-    /// Whether the **Shape** slot rotates its silhouette frame per dab — Rake (follows the stroke), a
-    /// per-dab Random angle, OR the Stroke **Jitter Rotate** (which spins the WHOLE dab stamp, Shape +
-    /// Grain together) — so the constant-orientation caches can't apply (each dab needs its own Shape
-    /// basis). Only meaningful when the Shape is the active silhouette. Mirrors [`Self::has_per_dab_rotation`].
+    /// Whether the **Shape** slot rotates its silhouette frame per dab — Rake (follows the stroke) OR the
+    /// Stroke **Jitter Rotate** (which spins the WHOLE dab stamp, Shape + Grain together) — so the
+    /// constant-orientation caches can't apply (each dab needs its own Shape basis). Only meaningful when
+    /// the Shape is the active silhouette. Mirrors [`Self::has_per_dab_rotation`].
     #[must_use]
     pub fn shape_has_per_dab_rotation(&self, has_shape_image: bool) -> bool {
         self.shape_silhouette_active(has_shape_image)
             && self.shape.mapping.uses_dab_rotation()
-            && (self.shape.rake
-                || self.shape.random_angle
-                || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
+            && (self.shape.rake || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
     }
 
-    /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke, or a per-dab
-    /// Random angle) — each dab needs its own Grain basis. Mirrors [`Self::shape_has_per_dab_rotation`]
-    /// for the Grain; complements [`Self::has_per_dab_rotation`] (which is the Grain **Jitter Rotate**).
+    /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke) — each dab
+    /// needs its own Grain basis. Mirrors [`Self::shape_has_per_dab_rotation`] for the Grain; complements
+    /// [`Self::has_per_dab_rotation`] (which is the Grain **Jitter Rotate**).
     #[must_use]
     pub fn grain_has_per_dab_rotation(&self) -> bool {
-        self.texture.is_active()
-            && (self.texture.rake || self.texture.random_angle)
-            && self.texture.mapping.uses_dab_rotation()
+        self.texture.is_active() && self.texture.rake && self.texture.mapping.uses_dab_rotation()
     }
 
     /// Whether the dab is eligible for the **scale-invariant cached stamp** ([`crate::stamp`]) given
@@ -585,8 +582,7 @@ impl BrushSpec {
             || (matches!(
                 self.shape.mapping,
                 crate::texture::TextureMapping::ViewPlane
-            ) && !self.shape.rake
-                && !self.shape.random_angle);
+            ) && !self.shape.rake);
         shape_static && self.texture.is_cacheable()
     }
 

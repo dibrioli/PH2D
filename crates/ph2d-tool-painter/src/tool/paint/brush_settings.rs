@@ -251,8 +251,6 @@ pub struct BrushSettings {
     pub texture_angle_deg: u16,
     /// "Rake" — the texture rotation follows the stroke direction.
     pub texture_rake: bool,
-    /// "Random" — the texture rotation is randomised per dab.
-    pub texture_random: bool,
     /// Texture offset in tile fractions, per axis (`−1..1`).
     pub texture_offset: [f32; 2],
     /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
@@ -277,8 +275,6 @@ pub struct BrushSettings {
     pub shape_angle_deg: u16,
     /// "Rake" — the Shape rotation follows the stroke direction.
     pub shape_rake: bool,
-    /// "Random" — the Shape rotation is randomised per dab.
-    pub shape_random: bool,
     /// Shape offset in tile fractions, per axis (`−1..1`).
     pub shape_offset: [f32; 2],
     /// Shape per-axis scale (`0.1..10`; `1.0` = the image fills the footprint).

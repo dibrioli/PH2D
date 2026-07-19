@@ -517,19 +517,28 @@ impl ClipLane {
     /// a real thing to want, and there is nothing behind the first strip to hold.
     ///
     /// That last clause is true of a timeline you play once, and **false of one you
-    /// loop**: what is "before the first strip" on the ruler is "after the last one"
-    /// in playback. With a loop armed the wrap put the object at the last strip's pose
-    /// one frame and at the rest pose the next, so a fade-in at the top jumped instead
-    /// of crossing from where the object actually was (Enio, 2026-07-16). Inside the
-    /// loop the lane therefore holds **what the loop's end leaves asserting** — read at
-    /// the instant the wrap happens, which is that strip's frozen last frame when it
-    /// ends inside the loop and its live pose when it straddles the end. Outside the
-    /// loop range nothing wraps and the fade-from-rest above is untouched.
+    /// loop**, where the ruler's ends are neighbours: what is "before the first strip"
+    /// is "after the last", and what is "after the last" is "before the first". So a
+    /// fade at EITHER edge of the loop crosses to the pose the loop shows at the seam
+    /// (the closing edge asks [`Self::seam_source`]; the opening edge, where nothing is
+    /// live at the head to own it, is always the loop's end), never to the rest pose or
+    /// a strip that ended before it:
+    ///
+    /// - the **opening** fade-in (nothing has ended yet) put the object at the last
+    ///   strip's pose one frame and at the rest pose the next — a jump (Enio,
+    ///   2026-07-16);
+    /// - the **closing** fade-out (the loop's last content fading out toward the wrap)
+    ///   reached the previous strip's held frame instead of the first strip's start —
+    ///   also a jump (Enio, 2026-07-19). It is the trailing ramp of the strip that ends
+    ///   latest AT or before the loop end; a strip that straddles the end fades out past
+    ///   the wrap, where the loop never reaches.
+    ///
+    /// Outside the loop range nothing wraps and the fade-from-rest above is untouched.
     ///
     /// Returns the held strip, **the clip second it is asserting**, and the weight. The
-    /// time is returned rather than re-derived by the caller because the two cases
-    /// answer it differently, and a caller that picked would be a second opinion about
-    /// which frame is being held.
+    /// time is returned rather than re-derived by the caller because the cases answer it
+    /// differently, and a caller that picked would be a second opinion about which frame
+    /// is being held.
     ///
     /// The weight is the complement of what is live, which is exactly what turns the
     /// normalized mix into a plain `lerp(held, incoming, w)` — see the tests.
@@ -544,6 +553,33 @@ impl ClipLane {
         if w <= 0.0 {
             return None;
         }
+        // **CLOSING edge of a loop.** The strip that ends latest (at or before the loop
+        // end) in its fade-OUT ramp — or the gap after it, before the wrap — crosses to
+        // the pose the loop shows at the seam ([`Self::seam_source`]), not to the strip
+        // that ended before it (Enio, 2026-07-19). A strip that STRADDLES the loop end
+        // fades out past the wrap, where the loop never reaches, so `t_end <= b` gates
+        // it out. This runs BEFORE the mid-timeline hold below, which is exactly the
+        // answer it overrides: at the trailing edge the previous strip is not the pose
+        // to reveal.
+        if let Some((a, b)) = loop_range
+            && t >= a
+            && t < b
+        {
+            let closing = self
+                .strips
+                .iter()
+                .enumerate()
+                .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))
+                .is_some_and(|(li, last)| {
+                    let bo = self.blend_out(li);
+                    bo > 0.0 && last.t_end <= b && t >= last.t_end - bo
+                });
+            if closing
+                && let Some((strip, t_clip)) = self.seam_source(a, b)
+            {
+                return Some((strip, t_clip, w));
+            }
+        }
         // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
         // sorted by START time, and a long strip can begin before a short one and
         // outlive it.
@@ -555,8 +591,11 @@ impl ClipLane {
         {
             return Some((held, held.hold_source_time(), w));
         }
-        // Nothing has ended yet. Under a loop that brackets `t`, wrap: the pose the
-        // object is coming FROM is the one the loop's end leaves behind.
+        // Nothing has ended yet — the OPENING edge. Under a loop that brackets `t`,
+        // wrap: the pose the object is coming FROM is the one the loop's end leaves
+        // behind. It keeps its own expression rather than calling `seam_source`: when
+        // nothing has ended, nothing is live at the head to own the seam, so the seam
+        // is always the loop's end — which is `seam_source`'s own fallback.
         let (a, b) = loop_range?;
         if t < a || t >= b {
             return None;
@@ -565,12 +604,46 @@ impl ClipLane {
             .strips
             .iter()
             .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
-        // Read it AT the wrap. Clamped into its own span, so this is `hold_source_time`
-        // for a strip that ended before the loop does, and its live pose for one that
-        // is still playing when the loop wraps — one expression, no branch to keep in
-        // step with the other case.
         let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
         Some((last, last.fold(elapsed), w))
+    }
+
+    /// **What the loop shows at the seam** (`b` ≡ `a`) — the pose the object rests on
+    /// across the wrap, as a `(strip, clip-time)` the evaluator can sample.
+    ///
+    /// A seamless loop needs the fade on BOTH sides of the wrap to cross to the *same*
+    /// pose, or they disagree and the loop jumps. That pose is whichever end OWNS the
+    /// seam:
+    ///
+    /// - if a strip is fully live at the head `a` (no fade-in there), its own pose there
+    ///   is the restart pose — the closing fade-out crosses to it and the loop lands on
+    ///   it;
+    /// - otherwise the head itself is fading in, and the object crosses from what the
+    ///   loop's END leaves asserting: the last strip read at `b`. This is exactly the
+    ///   opening wrap's own answer — the two share this door on purpose, so the fade-in
+    ///   and the fade-out cannot disagree about the seam.
+    ///
+    /// When both ends fade, neither owns the seam and the last strip's end is the
+    /// consistent choice both wraps reveal — the loop settles there while the weights
+    /// dip through the wrap.
+    fn seam_source(&self, a: f64, b: f64) -> Option<(&ClipStrip, f64)> {
+        let head_live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, a)).sum();
+        if head_live >= 1.0
+            && let Some(first) = self.strips.iter().find(|s| s.covers(a))
+        {
+            let elapsed = (a - first.t_start).clamp(0.0, first.span()); // CLAMP-OK: span() >= 0
+            return Some((first, first.fold(elapsed)));
+        }
+        // The head fades in (or is a gap): cross from what the loop's END leaves
+        // asserting — the last strip read at the wrap. This is the SAME pose the opening
+        // wrap reveals (`hold_at`'s last branch), so a fade-in and fade-out that meet at
+        // the seam agree on it.
+        let last = self
+            .strips
+            .iter()
+            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
+        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
+        Some((last, last.fold(elapsed)))
     }
 }
 

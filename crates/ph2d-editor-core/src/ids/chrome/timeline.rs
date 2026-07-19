@@ -41,6 +41,10 @@ pub const TIMELINE_PINGPONG: NodeId = hash_node_id("timeline.ping_pong");
 /// Speed-graph view toggle (W5) — flips every expanded graph band between the
 /// VALUE curve and the VELOCITY (speed) curve. Panel-local view state.
 pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");
+/// **Physics** arm toggle (ADR-0131) — does Play drive the rigid simulation as
+/// well as the curves? One transport, two consumers; this is which of them the
+/// clock reaches. Off by default (`TimelineFlags::simulate_physics`).
+pub const TIMELINE_PHYSICS: NodeId = hash_node_id("timeline.physics");
 
 // ── View tabs (ADR-0115 R8, amended) ─────────────────────────────────────────
 /// The tab strip itself (the `TabList` a11y parent).

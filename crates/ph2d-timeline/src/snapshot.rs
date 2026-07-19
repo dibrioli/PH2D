@@ -175,6 +175,8 @@ pub struct TimelineViewSnapshot {
     pub frame_snap: bool,
     /// Performing (record-during-play) armed.
     pub performing: bool,
+    /// The rigid simulation is armed on the transport (ADR-0131).
+    pub simulate_physics: bool,
     /// The clip stack, bottom lane first. **Empty is the norm**: a document with
     /// no stack is one whose active clip drives the scene, and the panel paints no
     /// lane rows at all.
@@ -251,6 +253,7 @@ impl TimelineViewSnapshot {
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
         self.performing = state.flags.performing;
+        self.simulate_physics = state.flags.simulate_physics;
 
         // Clips (reuse buffer): names only — the panel never touches the curves of
         // a clip it is not showing.

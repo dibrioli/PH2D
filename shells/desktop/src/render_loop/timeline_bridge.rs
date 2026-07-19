@@ -115,6 +115,9 @@ pub(crate) fn intent_for_transport(
                 }
             })
         }
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_PHYSICS => {
+            Some(I::SetSimulatePhysics(on))
+        }
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_RECORD => Some(I::SetPerforming(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),

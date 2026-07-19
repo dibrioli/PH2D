@@ -25,14 +25,24 @@ fn physics_tick(playhead: &Playhead, fixed_dt: f64) -> u64 {
 /// ticks + read poses back into `Transform`; paused = settle bodies to the
 /// authored `Transform` (read-only on `Transform`, so an idle paused frame
 /// produces no snapshot diff — the fixed-point rule).
+///
+/// `simulate` is the transport's Physics toggle
+/// (`TimelineFlags::simulate_physics`, off by default). Disarmed, the world is
+/// HELD rather than skipped — see [`PhysicsBridge::hold`], which explains why
+/// those are different things.
 pub(crate) fn dispatch(
     bridge: &mut PhysicsBridge,
     sim: &mut SimWorld,
     playhead: &Playhead,
     fixed_dt: f64,
     doc: &mut ph2d_timeline::TimelineDoc,
+    simulate: bool,
 ) {
     let target = physics_tick(playhead, fixed_dt);
+    if !simulate {
+        bridge.hold(sim, target);
+        return;
+    }
     // ⚠️ The bridge is told where the timeline puts scene-driven bodies at each
     // tick it runs. It matters on the REWIND path above all: a scrub replays
     // ticks, and a kinematic body frozen at its rest pose through that replay is

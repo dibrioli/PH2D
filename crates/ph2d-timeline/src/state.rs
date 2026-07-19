@@ -123,6 +123,27 @@ pub struct TimelineFlags {
     /// with an active manipulation gesture, never the passive pose the curve is
     /// driving. Off by default — it is a modal, explicit mode.
     pub performing: bool,
+    /// **Play drives the rigid simulation too** (ADR-0131).
+    ///
+    /// The transport is ONE clock with two consumers: the curves in this
+    /// document, and the rapier world. Left implicit they run together, and
+    /// that is a conflict rather than a feature — scrubbing to review an
+    /// animation would also drop every dynamic body a little further, so the
+    /// scene the artist is judging is never the scene they authored.
+    ///
+    /// So the two are separated at the transport, where the artist can see
+    /// which one is armed. **Off by default:** this is an animation timeline,
+    /// and the answer to "what does Play do?" has to be the same on the frame
+    /// after a project loads as it was before it was saved — a simulation that
+    /// starts itself is a scene that has already changed by the time it is
+    /// looked at. Physics is opted INTO, per session.
+    ///
+    /// ⚠️ Disarming does not freeze the objects, it stops *simulating* them:
+    /// a body whose pose the timeline drives (a baked one, W4) still follows
+    /// its curves, because those are animation. That is the whole shape of
+    /// Bake — it converts a simulation into an animation, and an animation is
+    /// exactly what plays with this off.
+    pub simulate_physics: bool,
 }
 
 impl Default for TimelineFlags {
@@ -135,6 +156,9 @@ impl Default for TimelineFlags {
             frame_snap: true,
             // Record is modal and deliberate — never armed on its own.
             performing: false,
+            // Physics is opted into: Play means "play my animation" until the
+            // artist says otherwise. See the field docs.
+            simulate_physics: false,
         }
     }
 }

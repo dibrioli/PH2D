@@ -227,3 +227,66 @@ fn a_bake_lands_on_the_entitys_clock_not_the_playheads() {
         worst / span * 100.0
     );
 }
+
+/// **A baked take PLAYS with the simulation disarmed.** (ADR-0131, the
+/// transport's Physics toggle.)
+///
+/// This is the composition the toggle exists for, and the one smoke scene 7
+/// asks the artist to perform: bake, untick Physics, press Play, and watch the
+/// same motion happen. It works because a bake turns runtime truth into
+/// ANIMATION — and animation is precisely what plays when the solver is off.
+///
+/// The loop below is the frame loop's own order: the timeline writes `Transform`
+/// first, physics is dispatched second. Disarmed, that second call must leave
+/// the pose alone, so the curve is the sole author of what the artist sees. A
+/// `hold` that read back, or that stepped, would fight the curve here — which is
+/// the shape of the bug the whole W4 hand-over exists to avoid, seen from the
+/// other side.
+#[test]
+fn a_baked_take_plays_with_the_simulation_disarmed() {
+    let (mut timeline, mut sim, ball, _outcome) = baked();
+    let mut bridge = PhysicsBridge::new();
+    let mut playhead = ph2d_core::Playhead::new(DT);
+    playhead.play();
+
+    let mut ys = Vec::new();
+    for _ in 0..ticks_for(BAKE_SECONDS, DT) {
+        playhead.advance();
+        let t = playhead.time();
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, t);
+        let driven = sim.world().get::<Transform>(ball).unwrap().translation.y;
+
+        crate::render_loop::physics_bridge::dispatch(
+            &mut bridge,
+            &mut sim,
+            &playhead,
+            DT,
+            &mut timeline.doc,
+            false,
+        );
+        let after = sim.world().get::<Transform>(ball).unwrap().translation.y;
+
+        assert_eq!(
+            after, driven,
+            "the disarmed dispatch overwrote the pose the baked curve had just \
+             written — with physics off the curve is the only author"
+        );
+        ys.push(after);
+    }
+
+    assert_eq!(
+        bridge.steps_taken(),
+        0,
+        "the solver ran while the transport's Physics toggle was off"
+    );
+    let (lo, hi) = ys
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(l, h), &y| (l.min(y), h.max(y)));
+    assert!(
+        hi - lo > 0.5,
+        "the baked take did not play with physics off: the ball covered only \
+         {:.4} m. A bake that only moves while the solver is running has not \
+         become animation.",
+        hi - lo
+    );
+}

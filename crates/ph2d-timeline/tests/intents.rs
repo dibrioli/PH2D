@@ -1255,3 +1255,41 @@ fn set_selected_rove_covers_the_selection_and_the_upsert_path_reflows() {
         "upsert reflowed to {t}, expected 2/3"
     );
 }
+
+/// **The transport's Physics arm survives the whole trip** (ADR-0131):
+/// intent → flag → the snapshot the panel paints.
+///
+/// One transport, two consumers — the curves here and the rapier world. This is
+/// the chain that carries which of them the clock reaches, and every link is a
+/// separate place to drop it. The last one is the least obvious and was in fact
+/// unguarded until a mutation said so: a panel gate that builds its own
+/// `TimelineViewSnapshot` never runs `rebuild`, so the publisher can quietly
+/// stop carrying the field while the painted switch still tests fine
+/// ([[feedback_a_green_gate_may_be_green_by_accident]]).
+#[test]
+fn arming_physics_reaches_the_snapshot_the_panel_paints() {
+    use ph2d_timeline::TimelineViewSnapshot;
+
+    let mut st = TimelineState::new();
+    let mut playhead = Playhead::default();
+
+    assert!(
+        !st.flags.simulate_physics,
+        "a fresh document must open with Play driving the animation only"
+    );
+
+    for armed in [true, false] {
+        apply_intent(&mut st, &mut playhead, I::SetSimulatePhysics(armed));
+        assert_eq!(
+            st.flags.simulate_physics, armed,
+            "SetSimulatePhysics did not reach the flag"
+        );
+
+        let mut snap = TimelineViewSnapshot::default();
+        snap.rebuild(&mut st, &playhead, false);
+        assert_eq!(
+            snap.simulate_physics, armed,
+            "the snapshot the panel paints does not carry the arm the artist set"
+        );
+    }
+}

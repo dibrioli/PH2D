@@ -75,6 +75,13 @@ impl crate::App {
         // taken while the clock runs would be a bake of a scene that has
         // already half-fallen. (A `match`, not another `!=`: with two of them
         // the next scene to want a paused clock would have to notice both.)
+        // ⚠️ ARM the transport's Physics toggle. It is off by default — Play
+        // means "play my animation" until an artist opts in — and every scene
+        // here exists to show the solver working, so shipping them disarmed
+        // would demo a frozen world and read as "physics is broken". Scene 7
+        // then asks the artist to turn it back OFF, which is the point of Bake.
+        self.timeline.flags.simulate_physics = true;
+
         self.playhead.rewind();
         if matches!(which.trim(), "3" | "7") {
             self.playhead.pause();
@@ -545,6 +552,12 @@ impl crate::App {
              Then the two things the bake is FOR:
                  · grab a key in the timeline and drag it -- the motion is yours to edit now.
                  · the baked bodies still SHOVE: they are kinematic, not ghosts.
+             And the reason the transport has a PHYSICS toggle (it is ON here only
+             because this is a physics demo; a real project opens with it off):
+                 · UNCHECK it and press Play. The baked motion still plays -- it is
+                     ANIMATION now, and that is precisely what a bake buys you.
+                 · the un-baked box keeps whatever pose it has instead of falling:
+                     one clock, and you decide whether the solver hears it.
              Range: it says 5.0s because nothing is animated yet. Arm a loop in the
              transport and the button follows it."
         );

@@ -40,6 +40,11 @@ fn transport_ids_map_to_intents() {
         intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),
         Some(TimelineIntent::SetFrameSnap(false))
     );
+    // Physics (ADR-0131): one transport, two consumers.
+    assert_eq!(
+        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_PHYSICS, true), &st, &ph),
+        Some(TimelineIntent::SetSimulatePhysics(true))
+    );
     // A non-transport id (Close is handled in the panel, not translated).
     assert_eq!(
         intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),

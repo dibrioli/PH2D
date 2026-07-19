@@ -88,6 +88,10 @@ mod painter_preview_handoff_tests;
 mod painter_preview_pipeline_tests;
 pub(crate) mod physics_bake;
 pub(crate) mod physics_bridge;
+/// The transport's Physics toggle at the seam the frame loop runs — a `hold`
+/// nobody calls is unit-green and dead in the product.
+#[cfg(test)]
+mod physics_bridge_tests;
 pub(crate) mod physics_overlay;
 mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;
@@ -1128,12 +1132,17 @@ impl crate::App {
         // sim_extract so bodies render the same frame. Runtime-truth: play
         // = N sequential steps + readback; paused = settle to the authored
         // pose (read-only on Transform → no spurious undo step when idle).
+        // ⚠️ ONE transport, two consumers — the curves and the rapier world.
+        // Which of them the clock reaches is the artist's call, armed on the
+        // transport bar and OFF by default (`TimelineFlags::simulate_physics`).
+        let simulate_physics = self.timeline.flags.simulate_physics;
         physics_bridge::dispatch(
             physics,
             sim,
             &self.playhead,
             self.fixed_step.fixed_dt(),
             &mut self.timeline.doc,
+            simulate_physics,
         );
         sim_extract::run(
             dt,

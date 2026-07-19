@@ -261,13 +261,21 @@ Bake.
 ### Smoke
 `PH2D_PHYSICS_SMOKE=7` — rampa + bola que rola + duas caixas, relógio PAUSADO: seleciona, assa, e dá play.
 
-⚠️ **"desliga a física" NÃO acontece, e não existe interruptor para isso** — o plano supunha um que o
-módulo nunca teve (física é ligada **iff** a entidade carrega `RigidBody` + `Collider`; a ausência das
-componentes *é* o desligamento). E o desligamento manual seria o desenho errado de qualquer jeito: o apply
-da timeline escreve o `Transform` e o readback da física escreve **depois**, então um corpo dinâmico
-recém-assado é sobrescrito pelo solver todo frame e o artista veria o botão Bake não fazer nada. O bake
-**entrega a pose** (`BodyKind::Kinematic` — o corpo continua no mundo e continua empurrando, mas o
-movimento vem da curva), que é o que *runtime-truth vira animação* quer dizer. Ver §W4 do tracker.
+⚠️ **O bake não "desliga a física": ele ENTREGA a pose.** O apply da timeline escreve o `Transform` e o
+readback da física escreve **depois**, então um corpo dinâmico recém-assado é sobrescrito pelo solver todo
+frame e o artista veria o botão Bake não fazer nada. Por isso o bake vira `BodyKind::Kinematic` — o corpo
+continua no mundo e continua empurrando, mas o movimento vem da curva. É o que *runtime-truth vira
+animação* quer dizer. Ver §W4 do tracker.
+
+⚠️ **CORREÇÃO (2026-07-18, W4b):** este parágrafo dizia também *"o desligamento manual seria o desenho
+errado de qualquer jeito"* e **isso passou do ponto**. Ele respondia *"o Bake deve desligar a física no
+corpo assado?"* (não — ele entrega a pose, pelo motivo acima) e enunciou a resposta como verdade sobre
+**qualquer** interruptor. São duas perguntas. A outra — *"o Play tem de dirigir o solver?"* — é do
+TRANSPORTE, não do corpo, e a resposta é **sim, o artista escolhe**: o Enio reportou o conflito (*"os
+controles de simulação e de animação parecem ser os mesmos … a simulação roda junto com a animação"*) e a
+wave **W4b** pôs o toggle **Physics** na barra da timeline, **desmarcado por padrão**. As duas decisões
+convivem sem se tocar: o toggle diz se o solver **roda**, o `Kinematic` diz quem **escreve a pose** quando
+ele roda. Ver §W4b do tracker.
 
 ### Fora
 Soft-body, fluidos, collider-gen vetorial, fratura (M13+ / linhas próprias).

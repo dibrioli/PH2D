@@ -1219,6 +1219,139 @@ começou — o tipo confuso de correto.
 
 ---
 
+# W4b — o toggle **Physics** na barra da timeline (2026-07-18, pendente smoke)
+
+> **Uma frase:** o transporte é UM relógio com DOIS consumidores — as curvas e o mundo
+> rapier — e agora o artista escolhe qual deles o Play alcança. **Desmarcado por padrão.**
+
+### O relato do Enio (o conflito era real)
+
+> *"os controles de simulação e de animação parecer ser os mesmos e na timeline o play ativa a
+> simulação física. Sendo assim temos um conflito: a simulação roda junto com a animação."*
+
+Estava certo, e o conflito não é cosmético: revisar uma animação com scrub/play também
+**derrubava mais um pouco** todo corpo dinâmico, então a cena que o artista julga nunca é
+a cena que ele autorou. O pedido: checkbox na timeline, marcado = animação **e** física
+(como estava), desmarcado = só animação. **Default desmarcado.**
+
+### ⚠️ Isto CORRIGE uma nota minha do W4 que passou do ponto
+
+O `00_plano_waves.md` §W4 dizia *"não existe interruptor … e o desligamento manual seria o
+desenho errado de qualquer jeito"*. A segunda metade estava **errada por generalizar**: ela
+respondia *"o Bake deve desligar a física no corpo assado?"* (não — ele **entrega a pose** via
+`Kinematic`, porque o readback escreve DEPOIS do apply da timeline) e enunciou isso como
+verdade sobre qualquer interruptor. São perguntas diferentes, e não se tocam:
+
+| pergunta | quem responde | resposta |
+|---|---|---|
+| o solver **roda** neste take? | o TRANSPORTE (`simulate_physics`) | o artista escolhe, off por padrão |
+| quem **escreve a pose** quando ele roda? | o CORPO (`BodyKind`) | `Kinematic` depois do bake |
+
+O plano foi corrigido no lugar, com a correção datada — nota velha que contradiz o código
+faz a próxima LLM propor desfazer o que existe.
+
+### Onde o flag mora
+
+`TimelineFlags::simulate_physics` — ao lado de `auto_key` / `frame_snap` / `performing`,
+**não serializado** (`DOC_VERSION` intacto, `PROJECT_SCHEMA` intacto). É a mesma classe:
+um *arm* de barra de transporte, por sessão. Isso dá o default pedido de graça, e dá a
+propriedade que importa mais: **a resposta a "o que o Play faz?" é a mesma no frame
+seguinte a um load que era antes do save.** Uma simulação que se arma sozinha é uma cena
+que já mudou quando você olha pra ela.
+
+⚠️ O flag vive numa crate de **outra linha** (`ph2d-timeline`). É um campo apendado a um
+struct não-serializado + um variant apendado ao `TimelineIntent` — o padrão append-only do
+ADR-0107. Sete seams, todos espelhados do **Record** (o toggle mais recente): flag ·
+intent · `intent_apply` · snapshot (campo + `rebuild`) · id + re-export · i18n · painel
+(`Item`/`ITEMS 13→14`/width/paint/`is_toggle`/`populate`) · `intent_for_transport`.
+
+### "Off" **não** é "pule o dispatch" — é `PhysicsBridge::hold`
+
+Esta é a decisão de projeto da wave, e as quatro coisas abaixo são quatro bugs distintos:
+
+1. **reconcilia** — corpo autorado com o toggle off existe, guarda o repouso onde o artista
+   o pôs, e **desenha o contorno**. Sem isso, física autorada com o toggle off é invisível
+   até ser armada, e o mundo teria de ser construído no instante em que se quer ver
+   movimento.
+2. **assenta** (`settle`) — o corpo rapier acompanha o `Transform` autorado, venha ele da
+   mão do artista ou de uma curva assada ⇒ **armar retoma do que está na tela**, a única
+   retomada que um artista consegue prever.
+3. **`last_stepped` segue o alvo** — a armadilha. Toque 10 s desarmado, arme, e a ponte
+   deveria 600 ticks: um frame simula todos e a cena chega onde ninguém pediu. Gate:
+   `arming_mid_take_resumes_it_does_not_replay_what_was_skipped` (mede **1** passo).
+4. **o ring é DESCARTADO** — todo checkpoint descreve uma corrida que acabou. Semear um
+   scrub posterior com um deles responderia com um estado de antes de o artista desarmar e
+   mexer na cena à mão — e só para os ticks que por acaso estavam em cache, então o mesmo
+   scrub discordaria de si mesmo conforme onde caísse.
+
+⚠️ **Nada em `hold` escreve `Transform`.** É exatamente o que o toggle desligado promete
+(física não contribui movimento nenhum), e é o que mantém a regra de ponto-fixo do frame
+pausado: `settle` lê a cena e escreve o mundo rapier; o `readback`, que vai no sentido
+contrário, só é alcançável pelos caminhos que dão passo.
+
+**Preço documentado:** scrubbar PARA TRÁS sobre um trecho que nunca foi simulado o replaya
+como se tivesse sido. Não há resposta melhor a dar — a trajetória daqueles ticks não existe,
+porque os ticks não rodaram.
+
+### O smoke ficaria FROZEN, e isso era o risco real do default
+
+Com o default off, **todas** as 7 cenas `PH2D_PHYSICS_SMOKE` abririam paradas e leriam como
+"a física quebrou". O prólogo do `physics_smoke.rs` arma o flag — é cena de demo de física.
+E a **cena 7 pede ao artista que o DESARME**, que é a demonstração inteira do Bake: assar
+converte simulação em **animação**, e animação é precisamente o que toca com o solver off.
+
+### Gates: 12 novos, 13 mutações, **13 sangram**
+
+| gate | arquivo | o que morre sem ele |
+|---|---|---|
+| `a_held_world_never_steps_however_far_the_clock_runs` | `ph2d-physics-ecs/tests/hold.rs` | o toggle não faz nada |
+| `arming_after_a_held_stretch_owes_one_tick_not_the_whole_span` | idem | a avalanche de catch-up |
+| `a_body_authored_while_held_is_reconciled_not_deferred` | idem | corpo invisível enquanto desarmado |
+| `the_held_world_tracks_the_pose_the_scene_authored` | idem | armar teleporta pra pose velha |
+| `holding_drops_the_checkpoints_of_a_run_that_is_over` | idem | scrub responde do cache morto |
+| `the_transport_toggle_decides_whether_play_steps_the_solver` | `render_loop/physics_bridge_tests.rs` | **o `hold` que ninguém chama** |
+| `arming_mid_take_resumes_it_does_not_replay_what_was_skipped` | idem | idem, no laço do produto |
+| `the_simulation_is_disarmed_by_default` | idem | o default que o Enio pediu |
+| `a_baked_take_plays_with_the_simulation_disarmed` | `physics_bake_curve_tests.rs` | a composição bake × toggle |
+| `the_physics_toggle_is_painted_and_clicks_through_to_the_shell` | `ph2d-panel-timeline/tests/transport_physics_seam.rs` | pintado / registrado / roteado |
+| `the_painted_switch_shows_what_the_transport_is_driving` | idem | switch que mente |
+| `arming_physics_reaches_the_snapshot_the_panel_paints` | `ph2d-timeline/tests/intents.rs` | intent → flag → snapshot |
+
+⚠️ **DOIS achados do processo de mutação, e nenhum foi "o código está certo":**
+
+- **Um "sobrevivente" era o MEU HARNESS.** O filtro `cargo test --bins timeline_bridge_tests`
+  casa com **zero** testes (o módulo é `render_loop::timeline_bridge::tests`), então o verde
+  significava *nada rodou* e eu quase o registrei como gate cego. **Busca negativa exige
+  controle positivo** ([[feedback_a_negative_search_needs_a_positive_control]]): conferido,
+  são 8 testes, e com o filtro certo a mutação sangra.
+- **Um sobrevivente era REAL, e é a armadilha de fixture de sempre.** Apagar
+  `self.simulate_physics = state.flags.simulate_physics` do `rebuild` deixava tudo verde,
+  porque o gate do painel **constrói o `TimelineViewSnapshot` à mão** e nunca chama o
+  `rebuild`. O fixture não continha o fenômeno. Gate novo (`arming_physics_reaches_the_
+  snapshot_the_panel_paints`) percorre a corrente inteira dentro da `ph2d-timeline`.
+
+### Aberto no W4b
+
+- **O flag não viaja no arquivo**, de propósito (ver acima). Se algum dia um projeto quiser
+  abrir *já* simulando, isso é `PROJECT_SCHEMA`, não `TimelineFlags`.
+- **Um corpo dinâmico não "congela" ao desarmar: ele para de ser integrado** e fica onde
+  está. Não há pose de repouso automática — Reset continua sendo o gesto para isso.
+- **Sem atalho de teclado** (o painel tem `L`, o de mundo tem `W`; o toggle não tem).
+
+### Smoke: `PH2D_PHYSICS_SMOKE=7` (a cena 7 ganhou passos novos)
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=7 cargo run -p ph2d-host-desktop
+```
+
+Faça o bake como antes; depois **desmarque Physics na barra** e dê Play: o movimento assado
+**continua tocando** (virou animação) e a caixa **não** assada para de cair. Em qualquer
+outra cena (`=1`..`=6`) o toggle nasce **marcado**, porque são demos de física.
+
+---
+
+---
+
 ## Decisões (ADR-0131, condensadas — o *porquê* está lá)
 
 - **D1** runtime-truth + bake opcional (Enio). **D2** `PhysicsWorld` transiente shell-side (precedente
@@ -1317,6 +1450,24 @@ começou — o tipo confuso de correto.
 - **`PROJECT_SCHEMA` = 16** (era 15) + tripla-pin `(16,7,8)` em `project_tests`.
 - ADR **0131** (era 0130 — renumerado na integração de 2026-07-18: a `line/gpu-nodes` reclamou o 0130 no mesmo dia).
 - ~~`PIXELS_PER_METER`~~ **NÃO existe** — D4 corrigido; reusa `ProjectSettings.pixels_per_meter`.
+
+**Alocados e CRIADOS no W4b (o toggle Physics do transporte):**
+- `ph2d-timeline` (append-only, **zero bump de schema** — nada disto é serializado):
+  campo **`TimelineFlags::simulate_physics`** (default `false`) · variant
+  **`TimelineIntent::SetSimulatePhysics(bool)`** (apendado ao fim do bloco de flags) ·
+  campo **`TimelineViewSnapshot::simulate_physics`** (+ preenchimento em `rebuild`).
+- `ph2d-editor-core`: NodeId **`TIMELINE_PHYSICS`** = `hash_node_id("timeline.physics")`
+  (bloco *Transport bar*, apendado) — re-exportado em `ph2d-panel-timeline/src/ids.rs`.
+- `ph2d-i18n`: chave **`panel.timeline.physics`** → `"Physics"`.
+- `ph2d-panel-timeline`: variant **`Item::Physics`** + **`ITEMS: [Item; 13] → [Item; 14]`**.
+- `ph2d-physics-ecs`: método público **`PhysicsBridge::hold`** (módulo novo
+  **`src/bridge/hold.rs`**, split de LOC) + método privado **`prepare`** (prólogo
+  compartilhado com o `dispatch_with_scene` — porta única).
+- Shell: parâmetro **`simulate: bool`** em `physics_bridge::dispatch` (⚠️ **assinatura
+  MUDOU** — 1 chamador, o `render_loop/mod.rs`); módulo de teste
+  **`render_loop/physics_bridge_tests`**.
+- Testes novos: `ph2d-physics-ecs/tests/hold.rs` ·
+  `ph2d-panel-timeline/tests/transport_physics_seam.rs`.
 
 **Alocados e CRIADOS no W3:**
 - `ph2d-ecs` (aditivo): **`stable_name_id`** em `name.rs` (+ re-export no `lib.rs`). O

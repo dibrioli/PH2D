@@ -50,6 +50,7 @@ fn is_chip(id: NodeId) -> bool {
 fn is_toggle(id: NodeId) -> bool {
     id == ids::TIMELINE_LOOP
         || id == ids::TIMELINE_PINGPONG
+        || id == ids::TIMELINE_PHYSICS
         || id == ids::TIMELINE_AUTOKEY
         || id == ids::TIMELINE_RECORD
         || id == ids::TIMELINE_SNAP

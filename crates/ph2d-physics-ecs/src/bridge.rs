@@ -13,6 +13,7 @@
 //!
 //! [`dispatch`]: PhysicsBridge::dispatch
 
+mod hold;
 mod joints;
 mod kinematic;
 
@@ -286,6 +287,23 @@ impl PhysicsBridge {
         self.dispatch_with_scene(sim, playing, target, &mut FrozenScene);
     }
 
+    /// Bind the queries and bring the rapier world's *structure* level with the
+    /// components — the prologue every entry point shares.
+    ///
+    /// Bodies BEFORE joints, always: a joint binds body handles and derives its
+    /// local anchors from where those bodies stand, so it cannot be built before
+    /// them (`bridge::joints`).
+    fn prepare(&mut self, sim: &mut SimWorld) {
+        if self.query.is_none() {
+            self.query = Some(sim.world_mut().query());
+        }
+        if self.joint_query.is_none() {
+            self.joint_query = Some(sim.world_mut().query());
+        }
+        self.reconcile_structure(sim);
+        self.reconcile_joints(sim);
+    }
+
     /// [`PhysicsBridge::dispatch`], told where the scene's scene-driven bodies
     /// are at each tick it runs (see [`SceneAtTick`]). The plain `dispatch` is
     /// this with nothing to consult; there is ONE implementation so the two
@@ -297,17 +315,7 @@ impl PhysicsBridge {
         target: u64,
         scene: &mut dyn SceneAtTick,
     ) {
-        if self.query.is_none() {
-            self.query = Some(sim.world_mut().query());
-        }
-        if self.joint_query.is_none() {
-            self.joint_query = Some(sim.world_mut().query());
-        }
-        self.reconcile_structure(sim);
-        // AFTER the bodies, always: a joint binds body handles and derives its
-        // local anchors from where those bodies stand, so it cannot be built
-        // before them (`bridge::joints`).
-        self.reconcile_joints(sim);
+        self.prepare(sim);
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).

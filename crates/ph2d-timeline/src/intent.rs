@@ -210,6 +210,9 @@ pub enum TimelineIntent {
     SetFrameSnap(bool),
     /// Arm/disarm performing (record-during-play, W5).
     SetPerforming(bool),
+    /// Arm/disarm the rigid simulation on the transport (ADR-0131) — see
+    /// [`crate::TimelineFlags::simulate_physics`].
+    SetSimulatePhysics(bool),
 
     // ── history ─────────────────────────────────────────────────────────────
     /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).

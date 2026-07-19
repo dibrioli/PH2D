@@ -53,13 +53,14 @@ enum Item {
     FrameChip,
     Loop,
     PingPong,
+    Physics,
     AutoKey,
     Record,
     Snap,
     Speed,
 }
 
-const ITEMS: [Item; 13] = [
+const ITEMS: [Item; 14] = [
     Item::Tabs,
     Item::Clips,
     Item::Transport,
@@ -69,6 +70,10 @@ const ITEMS: [Item; 13] = [
     Item::FrameChip,
     Item::Loop,
     Item::PingPong,
+    // Physics sits with Loop/PingPong, not with AutoKey/Record: those two arm
+    // AUTHORING (what a gesture records), while these three describe what the
+    // clock DOES when it runs — the range it covers and who it drives.
+    Item::Physics,
     Item::AutoKey,
     Item::Record,
     Item::Snap,
@@ -177,9 +182,13 @@ fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
         Item::ReverseKeys => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
         Item::TimeChip | Item::FrameChip => CHIP_LABEL_W + half + CHIP_W,
-        Item::Loop | Item::PingPong | Item::AutoKey | Item::Record | Item::Snap | Item::Speed => {
-            toggle_w()
-        }
+        Item::Loop
+        | Item::PingPong
+        | Item::Physics
+        | Item::AutoKey
+        | Item::Record
+        | Item::Snap
+        | Item::Speed => toggle_w(),
     }
 }
 
@@ -316,6 +325,20 @@ fn paint_item(
                 ids::TIMELINE_PINGPONG,
                 ph2d_i18n::tr("panel.timeline.ping_pong"),
                 snap.loop_range.is_some() && snap.loop_ping_pong,
+            );
+        }
+        // Physics (ADR-0131) — one transport, two consumers. Reads from the
+        // snapshot like every other document-backed toggle, so the painted
+        // switch cannot disagree with what the clock is actually driving.
+        Item::Physics => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_PHYSICS,
+                ph2d_i18n::tr("panel.timeline.physics"),
+                snap.simulate_physics,
             );
         }
         Item::AutoKey => {

@@ -109,6 +109,28 @@ precisa saber:
 que a allowlist do gate já documenta (um campo de rename, lanes, uma scrollbar), mas decidir isso é dos
 **donos deles** — quem quiser fechar o resto do buraco começa por aqui.
 
+### 2.4e W4b — o toggle **Physics** do transporte ⚠️ **encosta na linha da ANIMAÇÃO**
+
+Enio reportou o conflito (*"o play ativa a simulação física … a simulação roda junto com a animação"*)
+e pediu o checkbox. É a única parte desta linha que **edita crates da timeline**, então é a de maior
+risco de merge. Tudo append-only, **zero bump de schema** (nada disto é serializado).
+
+| Crate | O quê | Risco de merge |
+|---|---|---|
+| `ph2d-timeline` | campo `TimelineFlags::simulate_physics` (default **false**) · variant `TimelineIntent::SetSimulatePhysics(bool)` · campo `TimelineViewSnapshot::simulate_physics` + fill no `rebuild` | **baixo** — 3 campos/variants apendados. `DOC_VERSION` **intacto**: `TimelineFlags` não é serializado (o Record estabeleceu o precedente) |
+| `ph2d-editor-core` | `TIMELINE_PHYSICS` no bloco *Transport bar* de `ids/chrome/timeline.rs` | baixo (append) |
+| `ph2d-i18n` | `panel.timeline.physics` → `"Physics"` | baixo (append) |
+| `ph2d-panel-timeline` | `ids.rs` (re-export) · `populate.rs` (+1) · `event.rs` (`is_toggle` +1) · **`transport.rs`** | ⚠️ **`ITEMS: [Item; 13] → [Item; 14]`** — é uma **CONTAGEM COMPARTILHADA**: se outra linha também acrescentou um item de transporte, o número **se CONTA, não se escolhe** (§3.7) |
+| `shells/desktop` | `timeline_bridge.rs` (+1 braço) · `render_loop/mod.rs` (lê o flag) · `physics_smoke.rs` (arma o flag) | baixo |
+| `ph2d-physics-ecs` | **`PhysicsBridge::hold`** público (`src/bridge/hold.rs`, módulo novo por LOC) + `prepare` privado | nenhum (aditivo) |
+| `shells/desktop` | ⚠️ **`physics_bridge::dispatch` ganhou o parâmetro `simulate: bool`** | **assinatura MUDOU** — 1 chamador só (`render_loop/mod.rs`), mas um merge que traga outro chamador não compila |
+
+⚠️ **`00_plano_waves.md` §W4 foi CORRIGIDO no lugar.** Ele afirmava que *"o desligamento manual seria o
+desenho errado de qualquer jeito"* — frase minha, do W4, que generalizava demais: respondia *"o Bake
+desliga a física no corpo assado?"* (não — entrega a pose via `Kinematic`) como se valesse para qualquer
+interruptor. O toggle é do **transporte**, o `Kinematic` é do **corpo**; não se tocam. A correção está
+datada no plano, porque nota velha que contradiz o código faz a próxima LLM propor desfazer o que existe.
+
 ### 2.5 `ph2d-vector` — **1 linha, aditiva**
 `PathEl` acrescentado à lista de re-export do kurbo (`src/lib.rs:58`). **Não é a superfície congelada** —
 o gate `architecture_vector_contract_surface` escaneia só `-doc` e `-traits` (verificado, §4).
@@ -179,10 +201,14 @@ válido. Não "conserte" o hash.
 - `tests/node_id_collisions.rs` — +14 linhas, **append-only**, num conflito mantenha os dois lados.
 - `paint.rs:217` — `notes_per_section: [_; 10]` (era 9). **Se outra linha também adicionou seção, re-conte.**
 - `ph2d-vector/src/lib.rs:58` — `PathEl` na lista de re-export: mantenha os dois lados.
+- ⚠️ `ph2d-panel-timeline/src/transport.rs` — **`const ITEMS: [Item; 14]`** (era 13). Contagem
+  compartilhada com a linha da animação: se ela também acrescentou um item de transporte, **re-conte**
+  ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 
 ### 3.8 Ids novos (slugs hasheados — únicos por construção, mas a TABELA é compartilhada)
 `insp_live_physics_{section,color}` · `insp_phys_{add,remove,radius,half_x,half_y,density,restitution,friction}` ·
 `insp_phys_kind_{dynamic,static}` · `insp_phys_shape_{ball,box}`.
+Mais, do W4b: `timeline.physics` (**`TIMELINE_PHYSICS`**).
 Sem `NodeId(N)` numérico novo. **`PHYSICS_SCROLLBAR_ID = NodeId(836)` foi RESERVADO no plano mas NÃO
 usado** (o painel global não foi construído) — está livre.
 
@@ -265,6 +291,7 @@ env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop
 | `=5` | W2c: a matriz de camadas | ✅ aprovado |
 | `=6` | W3: pêndulo · corrente · ragdoll | ✅ aprovado |
 | **`=7`** | **W4: assar a sim em curvas da timeline** | ⏳ **PENDENTE** |
+| (mesma cena) | **W4b: o toggle Physics do transporte** | ⏳ **PENDENTE** |
 
 ⚠️ **A cena 7 é a única pendente**, e é a única coisa desta linha que ainda não passou pelos olhos do
 Enio. Ela nasce **PAUSADA** com a timeline aberta. O gesto: Play uma vez para ver o movimento, rebobinar,
@@ -281,6 +308,17 @@ O que ela tem de mostrar (detalhe no §W4 do tracker):
 E as duas coisas para as quais o bake existe: arrastar uma chave na timeline (o movimento agora é
 editável) e conferir que os corpos assados ainda **empurram** — são kinematic, não fantasmas.
 
+**E então o W4b, na MESMA cena** (o conflito que o Enio reportou depois do smoke do W4): na barra de
+transporte, ao lado de Loop/PingPong, há agora um toggle **Physics**.
+
+- **Desmarque-o e dê Play:** o movimento assado **continua tocando** — virou animação, e é para isso que
+  se assa. A caixa que você **não** assou fica onde está em vez de cair.
+- **Marque de volta:** a simulação volta a rodar, **de onde a cena está** — não replaya em avalanche o
+  trecho que passou desarmado (é o gate `arming_mid_take_resumes…`).
+- ⚠️ **Nas cenas `=1`..`=6` o toggle nasce MARCADO** — o `physics_smoke.rs` o arma, porque são demos de
+  física e o default do produto é **desmarcado**. Num projeto de verdade o app abre com o Play dirigindo
+  **só a animação**; física é opt-in por sessão.
+
 ### 6.4 O que NÃO foi construído (para o integrador não procurar)
 **O plano de waves está COMPLETO** — W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4, nada em aberto na
 lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no tracker:
@@ -296,24 +334,29 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 
 ## 7. Resumo para o Enio
 
-> Linha `physics` **fechada e completa** — **33 commits**, base `389676f9` = `main` atual ⇒
-> **fast-forward puro**. Todas as 8 waves do plano landaram (W0 · W1 · W1.5 · W2a · W2b · W2c ·
-> W3 · W4).
+> Linha `physics` **fechada e completa** — base `389676f9` = `main` atual ⇒ **fast-forward puro**.
+> Todas as 8 waves do plano landaram (W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4), mais a **W4b**
+> (o toggle **Physics** do transporte), pedida pelo Enio depois do smoke do W4.
 >
 > Foundational tocado: `ph2d-ecs` (`stable_name_id`, aditivo), `ph2d-editor-core` (aditivo + 1 catraca de
 > LOC), `ph2d-panel-inspector` (`paint.rs` reestruturado + 2 splits de LOC), `ph2d-anim`/`ph2d-timeline`
-> (**não modificadas** — o bake só as CHAMA), `ph2d-vector` (1 re-export), `shells/desktop`, `spike.yml`.
+> (⚠️ **modificadas no W4b** — 3 campos/variants apendados, `DOC_VERSION` intacto; antes do W4b o bake
+> só as CHAMAVA), `ph2d-panel-timeline` + `ph2d-i18n` (W4b), `ph2d-vector` (1 re-export),
+> `shells/desktop`, `spike.yml`.
 > Contratos congelados: **nenhum** (3 gates verdes).
 >
 > Colisões a grepar (§3): **`PROJECT_SCHEMA = 21`** e a **allowance de LOC 424** — os dois se **CONTAM,
 > não se escolhem** · **chrome z=300** (re-rodar o `chrome-sync`) · **tecla `B`** e **tecla `W`** ·
 > `any_live_section[;9]` e slots de nota `[;11]` · 3 variants de `EditorAction` · **`INSP_PHYS_KIND` agora
 > tem 3 entradas** na tabela de ids · e o único ponto que toca código de outra linha: `simplify_recorded`
-> saiu do `autokey_pass.rs` para `record_fit.rs` **com um parâmetro novo** (§2.4c). Os hashes C9 mudaram
-> **de propósito** e não são pinados.
+> saiu do `autokey_pass.rs` para `record_fit.rs` **com um parâmetro novo** (§2.4c) · e, do **W4b**,
+> **`ITEMS: [Item; 14]`** em `transport.rs` (contagem compartilhada, se **CONTA**) mais a assinatura de
+> `physics_bridge::dispatch`, que ganhou `simulate: bool`. Os hashes C9 mudaram **de propósito** e não
+> são pinados.
 >
-> Gate batched verde nesta árvore: **7778 testes, 0 falhas**, clippy `--all-targets` limpo,
-> `cargo check --workspace --all-targets` limpo.
+> Gate batched verde nesta árvore: **7790 testes, 0 falhas**, clippy `--all-targets` limpo,
+> `cargo fmt --all --check` limpo. (⚠️ rodados com `rustup run 1.95 cargo …`: o default do rustup se
+> perdeu nesta máquina no meio da sessão e **só a 1.95 está instalada** — é ambiente, não código.)
 >
 > ⚠️ **A auditoria de 2 lentes do W4 achou DEZ coisas e as três piores eram uma só** — `Kinematic` fez a
 > simulação depender de um fluxo de entrada por-tick, e o laço de play, o replay do scrub e o bake ainda
@@ -321,5 +364,11 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 > `SceneAtTick`. Dois dos dez eram defeitos de GATE meus, e um deles — a cobertura do
 > `architecture_panel_wiring_parity` — **precede a linha** e agora está fechado.
 >
-> Smoke: **cenas 1-6 aprovadas; a 7 (o bake) está PENDENTE** — é a única coisa da linha que ainda não
-> passou pelos olhos do Enio. Aguardo ordem de integração.
+> ⚠️ **O W4b corrige uma nota MINHA** que o plano carregava: *"o desligamento manual seria o desenho
+> errado de qualquer jeito"* generalizava uma resposta sobre o **Bake** (que entrega a pose via
+> `Kinematic`) para **qualquer** interruptor. O toggle é do **transporte**, o kind é do **corpo**. A
+> correção está datada dentro do `00_plano_waves.md`.
+>
+> Smoke: **cenas 1-6 aprovadas; a cena 7 está PENDENTE e agora cobre DUAS coisas** — o bake (W4) e o
+> toggle Physics (W4b), no mesmo gesto. É a única coisa da linha que ainda não passou pelos olhos do
+> Enio. Aguardo ordem de integração.

@@ -94,6 +94,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     toggle(store, ids::TIMELINE_LOOP, false);
     toggle(store, ids::TIMELINE_PINGPONG, false);
+    toggle(store, ids::TIMELINE_PHYSICS, false);
     toggle(store, ids::TIMELINE_AUTOKEY, false);
     toggle(store, ids::TIMELINE_RECORD, false);
     toggle(store, ids::TIMELINE_SNAP, true);

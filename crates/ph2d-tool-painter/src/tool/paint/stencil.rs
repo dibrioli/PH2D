@@ -397,6 +397,7 @@ impl PainterTool {
         // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore
         // it. (The slot round-trips the flag, but the LIVE brush is what `Stroke::new` reads.)
         self.sync_stroke_heading_need();
+        self.arm_inflate_defaults();
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
         if new_mode != PaintMode::Selection && self.paint.selection_edit_mode {

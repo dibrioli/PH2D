@@ -19,6 +19,8 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
 const SCRAPE: u8 = 3;
 const CHISEL: u8 = 5;
+const SMOOTH: u8 = 0;
+const INFLATE: u8 = 7;
 const LAYER: u8 = 6;
 
 /// **At Angle 0 the Chisel IS Scrape — byte for byte.**
@@ -541,4 +543,63 @@ fn on_a_straight_stroke_the_rake_makes_no_difference_at_all() {
     // …and the fixture cut something, or the equality above is the equality of two no-ops.
     let cut = raked.iter().filter(|v| **v != 0.0).count();
     assert!(cut > 200, "fixture: the chisel removed nothing to compare");
+}
+
+/// **Inflate arms its own defaults: falloff Sharper, shoulder 8 px** (Enio 2026-07-18).
+///
+/// The Blob offsets the surface by a ball whose radius rides the dab's weight, so the falloff IS the
+/// dome's profile — a soft shoulder spreads the ball over the whole footprint and the result reads as a
+/// swell instead of something inflated.
+///
+/// ⚠️ **`Falloff::Pow4`, whose UI name is "Sharper".** The enum also has a `Sharp`, which is a different
+/// and gentler curve (`p²` against `p⁴`); the request came in the UI's vocabulary, and picking the variant
+/// whose *identifier* matches the word would have armed the wrong one. This gate names both so the next
+/// reader does not have to re-derive which is which.
+///
+/// **Mutations that must bleed:** drop the `arm_inflate_defaults()` call from `set_sculpt_mode`; arm
+/// `Falloff::Sharp` instead of `Pow4`; leave `smooth_norm` at `0.0`.
+#[test]
+fn inflate_arms_sharper_and_an_eight_pixel_shoulder() {
+    use ph2d_painter_brush::Falloff;
+    // A plain tool, NOT `sculpt_canvas`: that fixture pins `Falloff::Constant` for its own reasons, and a
+    // fixture that overrides the very field under test cannot see the field being set.
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
+    arm_sculpt(&mut t, SMOOTH, 0.5, 1.0);
+    assert_eq!(
+        t.paint.brush.falloff,
+        Falloff::Smooth,
+        "fixture: the sculpt brush is meant to start at the factory Smooth — without that the swap below \
+         has nothing to swap and this passes on a tool that never arms anything"
+    );
+    t.set_sculpt_mode(INFLATE);
+    assert_eq!(
+        t.paint.brush.falloff,
+        Falloff::Pow4,
+        "picking Inflate did not arm the Sharper falloff. `Pow4` IS \"Sharper\" in the UI; `Falloff::Sharp` \
+         is a different curve and arming it would be the wrong default wearing the right word."
+    );
+    assert_eq!(
+        t.sculpt_smooth_px(),
+        8,
+        "Inflate's shoulder is meant to default to 8 px, not {} — the ball's hard edge is the thing it \
+         softens, and 0 ships the edge Enio rejected",
+        t.sculpt_smooth_px()
+    );
+
+    // …and a DELIBERATE choice is never overridden — the law `toggle_brush_impasto` already obeys.
+    let mut t2 = PainterTool::default();
+    t2.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
+    arm_sculpt(&mut t2, SMOOTH, 0.5, 1.0);
+    let mut b = t2.paint.brush;
+    b.falloff = Falloff::Sphere; // the artist picked this
+    t2.paint.brush = b;
+    t2.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
+    t2.set_sculpt_mode(INFLATE);
+    assert_eq!(
+        t2.paint.brush.falloff,
+        Falloff::Sphere,
+        "arming a default overrode a falloff the artist had chosen. It arms a default; it does not \
+         enforce a policy."
+    );
 }

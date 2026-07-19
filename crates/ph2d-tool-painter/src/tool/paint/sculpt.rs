@@ -402,7 +402,7 @@ impl Default for SculptState {
             angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
             // **0 — MEASURED, not the old compatibility default**: only `ρ/2` clears the Blob's torn
             // seams and it costs 7.30 ms vs a kill of 8. Gold standard = the TRUE BALL, proven: handoff §8.
-            smooth_norm: 0.0,
+            smooth_norm: 0.5, // 8 px — Inflate's default shoulder (Enio 2026-07-18)
             rake: true, // the groove follows the stroke — what a knife dragged through paint does
             last_dab_center: None,
             locked_dir: None,
@@ -540,12 +540,36 @@ impl PainterTool {
         let before = self.paint.sculpt.mode_enum().family();
         self.paint.sculpt.mode = m.min(SCULPT_MODE_COUNT - 1);
         self.sync_stroke_heading_need();
+        self.arm_inflate_defaults();
         if self.paint.sculpt.mode_enum().family() == before {
             self.refresh_live_sculpt();
         } else {
             self.drop_stale_family_target();
             self.refill_open_shape(); // rebuild the new family's target from the dabs (no-op if none open)
             self.refresh_live_sculpt();
+        }
+    }
+
+    /// **Inflate's falloff default is Sharper** (`Falloff::Pow4`; Enio 2026-07-18).
+    ///
+    /// The Blob offsets the surface by a ball whose radius rides the dab's weight, so the falloff IS the
+    /// profile of the dome: a soft shoulder spreads the ball over the whole footprint and the form reads
+    /// as a swell rather than as something inflated. `Pow4` keeps the weight high in the middle and drops
+    /// it fast, which is the shape that reads as a blob. (The knob's UI name is *Sharper* — the enum's
+    /// `Sharp` is a different, gentler curve, and picking it here would be the wrong one.)
+    ///
+    /// **Only when the falloff is still the brush's factory `Smooth`** — the same law
+    /// `toggle_brush_impasto` obeys, and for the same reason: a deliberate choice is never overridden, and
+    /// coming back to Inflate keeps whatever the artist last set. So this arms a default; it does not
+    /// enforce a policy.
+    pub(super) fn arm_inflate_defaults(&mut self) {
+        if self.paint.sculpt.mode_enum() != SculptMode::Inflate {
+            return;
+        }
+        if self.paint.brush.falloff == ph2d_painter_brush::Falloff::Smooth {
+            self.paint.brush.falloff = ph2d_painter_brush::Falloff::Pow4;
+            let slot = super::PaintMode::Sculpt.slot();
+            self.paint.brush_by_mode[slot].falloff = ph2d_painter_brush::Falloff::Pow4;
         }
     }
 

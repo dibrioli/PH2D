@@ -304,6 +304,11 @@ fn the_balls_edge_meets_the_ground_without_a_cliff() {
     // cannot stage this gate at all: its edge sources have `amount → 0`, the per-source budget already
     // strangles their reach, and the taper never gets a wall to fade — verified while mutating.)
     arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+    // ⚠️ Shoulder pinned to ZERO. Inflate's Smoothness now defaults to 8 px (Enio 2026-07-18), and
+    // the shoulder is a blur ON TOP of the ball — it legitimately writes `smooth` texels beyond it.
+    // This gate is about the BALL's own support, so it measures the ball with no shoulder; the
+    // shoulder's reach is a separate feature with its own arithmetic (`reach = ⌈ρ⌉ + smooth`).
+    t.set_sculpt_smooth(0.0);
     let mut b = t.paint.brush;
     b.radius_px = 64.0;
     b.falloff = Falloff::Constant;
@@ -375,6 +380,11 @@ fn a_weak_dabs_ball_is_small_and_its_reach_shrinks_with_it() {
     t.sync_relief_flags();
 
     arm_sculpt(&mut t, INFLATE, 0.5, 0.25); // a WEAK touch: strength 0.25
+    // ⚠️ Shoulder pinned to ZERO. Inflate's Smoothness now defaults to 8 px (Enio 2026-07-18), and
+    // the shoulder is a blur ON TOP of the ball — it legitimately writes `smooth` texels beyond it.
+    // This gate is about the BALL's own support, so it measures the ball with no shoulder; the
+    // shoulder's reach is a separate feature with its own arithmetic (`reach = ⌈ρ⌉ + smooth`).
+    t.set_sculpt_smooth(0.0);
     let mut b = t.paint.brush;
     b.radius_px = 24.0;
     b.falloff = Falloff::Constant;

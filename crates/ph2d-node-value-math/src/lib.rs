@@ -31,6 +31,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -156,6 +157,96 @@ fn combine(a: &[f32], b: &[f32], op: Op) -> Vec<f32> {
         .collect()
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`Op::apply`] under the
+/// broadcast rule.
+///
+/// **The third count law, and the first that reads more than one port.** The
+/// engine's default — *"as wide as port 0"* — is wrong here in the case the node
+/// exists for: `value.instance_field × value.lfo` is a length-N field times a
+/// length-1 one, and port 0 is whichever the artist happened to wire first. The
+/// output is `max(len_a, len_b)`, which is the same expression `combine` uses,
+/// and it has to be the same expression: two laws that disagree do not crash,
+/// they render a different number of things.
+///
+/// Both inputs are [`ColumnAccess::ReadBroadcast`], which is the `1 => v[0]` arm
+/// of the CPU's `field_at` decided per dispatch from a uniform bit — so one
+/// compiled module serves *field × field* and *field × global* alike.
+///
+/// An unconnected port is absent, reads its identity `0.0`, and that is exactly
+/// the CPU's `0 => 0.0` zero degenerate field.
+///
+/// `vm_round` is round-half-AWAY-from-zero to match Rust's `f32::round`: `op`
+/// picks a BRANCH, so a half-even disagreement would select a different
+/// operation, not shift a value by an ε.
+///
+/// The divisor guard is a branch and not a `select`, mirroring the CPU
+/// literally. Its threshold is spelled twice — [`MIN_DIVISOR`] here and the
+/// literal `1e-9` in the WGSL — because a `&'static str` cannot interpolate a
+/// Rust constant, and a THRESHOLD is the worst kind of number to spell twice: a
+/// divisor landing between two spellings takes a different arm on each side and
+/// nothing else about the graph changes. Since the language cannot pin them, a
+/// GATE does — `dividing_by_a_threshold_divisor_agrees_on_both_sides` straddles
+/// it, and it is the reason to edit both lines or neither.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let vm_a = read_a_v(i);\n\
+        let vm_b = read_b_v(i);\n\
+        let vm_op = i32(vm_round(params.op));\n\
+        var vm_r = vm_a + vm_b;\n\
+        if (vm_op == 1) {\n\
+        \x20   vm_r = vm_a - vm_b;\n\
+        } else if (vm_op == 2) {\n\
+        \x20   vm_r = vm_a * vm_b;\n\
+        } else if (vm_op == 3) {\n\
+        \x20   if (abs(vm_b) < 1e-9) { vm_r = 0.0; } else { vm_r = vm_a / vm_b; }\n\
+        } else if (vm_op == 4) {\n\
+        \x20   vm_r = min(vm_a, vm_b);\n\
+        } else if (vm_op == 5) {\n\
+        \x20   vm_r = max(vm_a, vm_b);\n\
+        }\n\
+        write_v(i, vm_r);\n",
+    wgsl_lib: "\
+        fn vm_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["op"],
+    count_law: Some(math_count),
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **How wide is the output?** — `max(len_a, len_b)`, the same expression
+/// `combine` uses. Written as a `max` over every port rather than over two named
+/// ones: the law is *"as wide as the widest input"*, and spelling it that way
+/// means it stays correct rather than merely true.
+fn math_count(ctx: &CountLawCtx<'_>) -> SourceWindow {
+    SourceWindow::of_count(ctx.inputs.iter().copied().max().unwrap_or(0) as usize)
+}
+
 struct ValueMath;
 
 impl NodeOp for ValueMath {
@@ -176,6 +267,7 @@ impl NodeOp for ValueMath {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueMath))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

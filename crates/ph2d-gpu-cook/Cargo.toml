@@ -56,6 +56,9 @@ ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
+# The value-domain combiner + router (the widest-input count law).
+ph2d-node-value-math = { path = "../ph2d-node-value-math" }
+ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
 # A VALUE producer, to gate the color-ramp refusal (its `t` port).
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 # The `id` stream the D3 refusal exists for (plan_simulation).

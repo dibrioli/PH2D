@@ -47,11 +47,15 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
+    // The value-domain combiner + router (the widest-input count law).
+    ph2d_node_value_math::register(&mut reg).unwrap();
+    ph2d_node_value_switch::register(&mut reg).unwrap();
     ph2d_node_motion_luminance::register(&mut reg).unwrap();
     ph2d_node_value_map_range::register(&mut reg).unwrap();
     ph2d_node_motion_orbit::register(&mut reg).unwrap();
     ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
+    ph2d_node_motion_spring::register(&mut reg).unwrap();
     ph2d_node_motion_look_at::register(&mut reg).unwrap();
     ph2d_node_motion_sort::register(&mut reg).unwrap();
     ph2d_node_motion_drive::register(&mut reg).unwrap();
@@ -1359,11 +1363,21 @@ fn every_channel_switching_node_claims_every_channel() {
         "motion.wiggle",
         "motion.oscillator",
         "motion.drive",
+        "motion.stagger",
+        "motion.spring",
     ] {
         for channel in [0.0, 1.0, 2.0, 3.0] {
             let mut g = Graph::new();
             let (node, out) = deformer_chain(&mut g, 8.0, ty);
             g.set_param(node, "channel", channel);
+            // ⚠️ VALIDATE, do not merely plan. A type this registry does not
+            // carry is unresolvable, `eligible` refuses it, and the plan seams
+            // there — so a node missing from `registry()` looks exactly like a
+            // node whose variants do not cover the channel. Adding `motion.spring`
+            // to this sweep failed that way first, and the failure named the
+            // channel rather than the omission.
+            g.validate(&reg)
+                .unwrap_or_else(|e| panic!("{ty} is not registered here: {e:?}"));
             let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
             assert!(
                 plan.boundaries.is_empty(),
@@ -2493,4 +2507,449 @@ fn stagger_kernel_matches_the_cpu_across_every_easing() {
     g.set_param(node, "max", 2.17);
     g.set_param(node, "ease_curve", 2.0);
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+// ── The value-domain COMBINER and ROUTER ────────────────────────────────────
+//
+// Both arrive with the engine's **third count law** (`max` over every input
+// port), and the law and the kernels land together on purpose: an engine
+// mechanism with no consumer was already built and reverted once on this line.
+
+/// A length-1 VALUE field of exactly `v` — an lfo with zero amplitude, so
+/// `waveform(..)·0 + offset` is `offset` to the bit on both paths.
+///
+/// A constant is what these gates need (a routing mistake has to be legible as a
+/// jump between named numbers, not as a small numeric drift), and this is the
+/// only VALUE producer that can be pinned to one. Each gate asserts the CPU
+/// actually produced the constant, so the trick failing would be loud rather
+/// than quietly turning the fixture into noise.
+fn const_field(g: &mut Graph, v: f32) -> NodeId {
+    let n = g.add_node("value.lfo");
+    g.set_param(n, "amplitude", 0.0);
+    g.set_param(n, "offset", v);
+    n
+}
+
+/// A length-N VALUE field that varies per element: a sawtooth swept by
+/// `phase_stagger`, remapped into `offset ± amplitude`.
+fn ramp_field(g: &mut Graph, src: NodeId, amplitude: f32, offset: f32) -> NodeId {
+    let n = g.add_node("value.lfo");
+    connect(g, src, n);
+    g.set_param(n, "wave", 3.0); // sawtooth: 2f − 1, a clean sweep
+    g.set_param(n, "period", 1.0);
+    g.set_param(n, "amplitude", amplitude);
+    g.set_param(n, "offset", offset);
+    g.set_param(n, "phase_stagger", 0.017);
+    n
+}
+
+/// Cook `sink` on both paths and return `(cpu stream, gpu cook)`, having first
+/// asserted the plan claims the chain whole.
+fn cook_both(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    g: &Graph,
+    sink: NodeId,
+) -> (ph2d_nodegraph::attr::Stream, ph2d_gpu_cook::GpuCook) {
+    g.validate(reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(g, reg, reg, sink);
+    assert!(
+        plan.is_fully_gpu(),
+        "the chain must be claimed whole: {:?}",
+        plan.boundaries
+    );
+    let mut cook = Cook::new();
+    let cpu = cook.cook(g, reg, sink, PLAYHEAD).expect("cpu cook");
+    let cpu_stream = cpu[0].as_stream().clone();
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        gpu,
+        g,
+        reg,
+        reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    (cpu_stream, gc)
+}
+
+/// **`value.math` matches the CPU in every op — and is as wide as its WIDEST
+/// input, whichever port that is.**
+///
+/// The port order is swept, and that sweep is the gate. The engine's default law
+/// is *"as wide as port 0"*, so with the length-N field on `a` it gets the right
+/// answer for the wrong reason and only the `b` ordering can tell. The node's
+/// headline use — `value.instance_field × value.lfo`, a spatial gradient
+/// modulated in time — is exactly a length-N against a length-1, and which one
+/// the artist happened to wire first is not a fact about the answer.
+///
+/// The two fields are far from zero and far from each other, so a stage that
+/// never ran (a zeroed buffer) and a stage that read the wrong port are both
+/// visible rather than hiding inside a plausible number.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_math_matches_the_cpu_in_every_op_and_takes_the_widest_input() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // 0 Add · 1 Subtract · 2 Multiply · 3 Divide · 4 Min · 5 Max — plus 4.4, and
+    // plus the HALF-INTEGERS, which are the only values that test `vm_round` at
+    // all. Rust's `f32::round` is half-AWAY-from-zero and WGSL's builtin `round`
+    // is half-to-EVEN, so they agree on 4.4 and on every integer and disagree
+    // precisely at `.5`: at `op = 0.5` one path runs Subtract and the other Add.
+    // A sweep of whole numbers leaves that swap invisible
+    // ([[feedback_a_threshold_must_live_where_the_domain_is_empty]]).
+    for op in [0.0f32, 1.0, 2.0, 3.0, 4.0, 5.0, 4.4, 0.5, 1.5, 2.5, 4.5] {
+        for wide_on_a in [true, false] {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, 11.0);
+            let wide = ramp_field(&mut g, grid, 2.5, 7.0); // per element, ≈ 4.5..9.5
+            let one = const_field(&mut g, 3.0); // one global value
+            let math = g.add_node("value.math");
+            g.set_param(math, "op", op);
+            let (a, b) = if wide_on_a { (wide, one) } else { (one, wide) };
+            g.connect(Edge {
+                from: (a, 0),
+                to: (math, 0),
+                delayed: false,
+            })
+            .unwrap();
+            g.connect(Edge {
+                from: (b, 0),
+                to: (math, 1),
+                delayed: false,
+            })
+            .unwrap();
+
+            let (cpu, gc) = cook_both(&gpu, &reg, &g, math);
+            let cpu_v = match cpu.get("v") {
+                Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+                _ => panic!("the CPU emitted no `v`"),
+            };
+            assert_eq!(
+                cpu_v.len(),
+                121,
+                "op {op} (wide on {}): the output is as wide as the WIDEST input, \
+                 not as wide as port 0",
+                if wide_on_a { "a" } else { "b" }
+            );
+            assert_eq!(
+                gc.node_count(math),
+                Some(121),
+                "op {op}: the count law must size the stage at 121 — `Some(1)` is \
+                 the default law reading port 0, which is the bug this sweep exists \
+                 for"
+            );
+            assert!(
+                cpu_v.iter().any(|v| v.abs() > 0.5),
+                "fixture check: op {op} must produce something far from zero, or a \
+                 stage that never ran would pass with an empty buffer"
+            );
+            let d = compare_column(&gpu, &gc, math, &cpu, "v");
+            eprintln!(
+                "value.math op {op} (wide on {}): max |dv| {d:e}",
+                if wide_on_a { "a" } else { "b" }
+            );
+            assert!(d < 1e-5, "op {op}: value parity |dv| = {d:e}");
+        }
+    }
+}
+
+/// **The divisor threshold is spelled twice, so a gate straddles it.**
+///
+/// `MIN_DIVISOR` is a Rust constant and the WGSL sees the literal `1e-9`,
+/// because a `&'static str` cannot interpolate one. That is the worst kind of
+/// number to spell twice: below it the quotient is `0.0` and above it it is
+/// `a/b`, so a divisor landing between two spellings takes a different arm on
+/// each path and the graph looks otherwise identical
+/// ([[feedback_a_threshold_must_live_where_the_domain_is_empty]]).
+///
+/// `a` is 1.0 and the divisors bracket the threshold by orders of magnitude, so
+/// the two arms are `0.0` and something astronomically large — the disagreement,
+/// if there is one, cannot hide under any ε.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn dividing_by_a_threshold_divisor_agrees_on_both_sides() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for divisor in [0.0f32, 1e-12, 5e-10, 1e-9, 2e-9, 1e-6, 1.0] {
+        let mut g = Graph::new();
+        let a = const_field(&mut g, 1.0);
+        let b = const_field(&mut g, divisor);
+        let math = g.add_node("value.math");
+        g.set_param(math, "op", 3.0); // Divide
+        for (src, port) in [(a, 0u16), (b, 1u16)] {
+            g.connect(Edge {
+                from: (src, 0),
+                to: (math, port),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let (cpu, gc) = cook_both(&gpu, &reg, &g, math);
+        let cpu_v = match cpu.get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("no `v`"),
+        };
+        let gpu_v = gc.read_column(&gpu, math, "v").expect("`v` reads back");
+        assert_eq!(cpu_v.len(), 1);
+        assert_eq!(gpu_v.len(), 1);
+        // The guard's whole promise: never `inf`, never `NaN`, on either path.
+        assert!(
+            cpu_v[0].is_finite() && gpu_v[0].is_finite(),
+            "divisor {divisor}: cpu {} gpu {} — the guard exists so a downstream \
+             field never sees inf/NaN",
+            cpu_v[0],
+            gpu_v[0]
+        );
+        // Both sides must take the SAME arm. Compared relatively: above the
+        // threshold the quotient is up to 1e9, where an absolute ε is meaningless.
+        let scale = cpu_v[0].abs().max(1.0);
+        let d = (cpu_v[0] - gpu_v[0]).abs() / scale;
+        eprintln!("value.math ÷{divisor}: cpu {} gpu {}", cpu_v[0], gpu_v[0]);
+        assert!(
+            d < 1e-5,
+            "divisor {divisor}: the two paths took different arms — cpu {} vs gpu {}",
+            cpu_v[0],
+            gpu_v[0]
+        );
+    }
+}
+
+/// **`value.switch` routes per element, broadcasts in both directions, and
+/// clamps the way the CPU clamps.**
+///
+/// Two cases, because the broadcast has two directions and only one of them is
+/// the common one:
+///
+/// - a length-N SELECT over length-1 sources — the per-point mux, where the
+///   selector is the wide field and the sources are held;
+/// - a length-1 SELECT over a length-N source — the whole grid switching
+///   together, where the selector is held and the source is wide.
+///
+/// The sources are 10/20/30/40 so a routing mistake is a *jump between named
+/// numbers*, never a drift that an ε could absorb — and the select sweeps past
+/// both ends of the range, so the clamp is exercised rather than assumed. The
+/// bound is 3 unconditionally on both paths: `eval` builds `N_INPUTS` fields
+/// whatever is connected, so `select = 5` with only `in0` wired reads the empty
+/// field, not `in0`.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_switch_routes_per_element_and_broadcasts_both_ways() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+
+    // ── Case 1: a wide SELECT over held sources.
+    {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 11.0);
+        // −0.6 .. 3.6: every index, and past BOTH ends of the clamp.
+        let select = ramp_field(&mut g, grid, 2.1, 1.5);
+        let sw = g.add_node("value.switch");
+        g.connect(Edge {
+            from: (select, 0),
+            to: (sw, 0),
+            delayed: false,
+        })
+        .unwrap();
+        for (k, v) in [10.0f32, 20.0, 30.0, 40.0].into_iter().enumerate() {
+            let src = const_field(&mut g, v);
+            g.connect(Edge {
+                from: (src, 0),
+                to: (sw, k as u16 + 1),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let (cpu, gc) = cook_both(&gpu, &reg, &g, sw);
+        let cpu_v = match cpu.get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("no `v`"),
+        };
+        assert_eq!(cpu_v.len(), 121, "as wide as the selector");
+        assert_eq!(gc.node_count(sw), Some(121));
+        // Fixture check: the selector must actually SELECT more than one input,
+        // or this is a broadcast test wearing a router's name.
+        let mut seen: Vec<f32> = cpu_v.clone();
+        seen.sort_by(f32::total_cmp);
+        seen.dedup();
+        assert!(
+            seen.len() >= 3,
+            "fixture check: the ramp must reach at least three inputs, saw {seen:?}"
+        );
+        let d = compare_column(&gpu, &gc, sw, &cpu, "v");
+        eprintln!("value.switch wide-select: inputs hit {seen:?}, max |dv| {d:e}");
+        assert!(d < 1e-5, "wide-select parity |dv| = {d:e}");
+    }
+
+    // ── Case 2: a held SELECT over a wide source.
+    {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 11.0);
+        let select = const_field(&mut g, 2.0); // → in2, everywhere
+        let sw = g.add_node("value.switch");
+        g.connect(Edge {
+            from: (select, 0),
+            to: (sw, 0),
+            delayed: false,
+        })
+        .unwrap();
+        let wide = ramp_field(&mut g, grid, 2.5, 7.0);
+        for (k, src) in [
+            const_field(&mut g, 10.0),
+            const_field(&mut g, 20.0),
+            wide,
+            const_field(&mut g, 40.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            g.connect(Edge {
+                from: (src, 0),
+                to: (sw, k as u16 + 1),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let (cpu, gc) = cook_both(&gpu, &reg, &g, sw);
+        let cpu_v = match cpu.get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("no `v`"),
+        };
+        assert_eq!(
+            cpu_v.len(),
+            121,
+            "as wide as the widest input — the SOURCE here, not the selector"
+        );
+        assert_eq!(gc.node_count(sw), Some(121));
+        // The held selector must have routed to the WIDE input: if it read
+        // `in0` the field would be the constant 10 everywhere.
+        let spread = cpu_v.iter().fold(f32::MIN, |m, v| m.max(*v))
+            - cpu_v.iter().fold(f32::MAX, |m, v| m.min(*v));
+        assert!(
+            spread > 1.0,
+            "fixture check: the held selector must route to the wide source \
+             (spread {spread}), or this gate is comparing two constants"
+        );
+        let d = compare_column(&gpu, &gc, sw, &cpu, "v");
+        eprintln!("value.switch held-select: spread {spread}, max |dv| {d:e}");
+        assert!(d < 1e-5, "held-select parity |dv| = {d:e}");
+    }
+}
+
+/// **The switch's rounding convention, at the only values that can show it.**
+///
+/// `select` picks a BRANCH, and Rust's `f32::round` is half-AWAY-from-zero while
+/// WGSL's builtin `round` is half-to-EVEN. They agree everywhere except `.5`, so
+/// a selector that never lands there tests the routing and not the rounding: at
+/// `select = 0.5` the CPU reads `in1` and a half-even kernel reads `in0`, and
+/// those are two *different inputs*, not two nearby numbers
+/// ([[feedback_a_threshold_must_live_where_the_domain_is_empty]]).
+///
+/// The `.5` values are reachable because [`const_field`] pins a VALUE field to an
+/// exact constant — a swept ramp would step over them.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_switch_rounds_a_half_integer_selector_the_way_the_cpu_does() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for select in [0.5f32, 1.5, 2.5, -0.5, 3.5] {
+        let mut g = Graph::new();
+        let sel = const_field(&mut g, select);
+        let sw = g.add_node("value.switch");
+        g.connect(Edge {
+            from: (sel, 0),
+            to: (sw, 0),
+            delayed: false,
+        })
+        .unwrap();
+        for (k, v) in [10.0f32, 20.0, 30.0, 40.0].into_iter().enumerate() {
+            let src = const_field(&mut g, v);
+            g.connect(Edge {
+                from: (src, 0),
+                to: (sw, k as u16 + 1),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let (cpu, gc) = cook_both(&gpu, &reg, &g, sw);
+        let cpu_v = match cpu.get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("no `v`"),
+        };
+        let gpu_v = gc.read_column(&gpu, sw, "v").expect("`v` reads back");
+        eprintln!(
+            "value.switch select {select}: cpu {} gpu {}",
+            cpu_v[0], gpu_v[0]
+        );
+        // The inputs are 10 apart, so a rounding disagreement is a 10-unit jump.
+        assert_eq!(
+            cpu_v[0], gpu_v[0],
+            "select {select}: the two paths routed to DIFFERENT inputs"
+        );
+    }
+}
+
+/// **`motion.stagger` on Rotation and Size, matching the CPU.**
+///
+/// Kept apart from the `noise`/`wiggle`/`oscillator` sweep because the stagger's
+/// magnitude knobs are `min`/`max` rather than `amplitude` — the sweep would
+/// have to special-case it, and a fixture that silently leaves a node at its
+/// defaults is a fixture that tests the node being a no-op.
+///
+/// `min ≠ max` and both far from zero, with a curve that is a BRANCH (Bounce, In
+/// Out): the easing table is the bulk of this kernel, and the default linear
+/// curve exercises none of it.
+///
+/// ⚠️ **The HALF-INTEGER curve/direction is not decoration.** `ease_curve` and
+/// `ease_dir` are rounded to pick a branch, and Rust's `f32::round` is
+/// half-AWAY-from-zero while WGSL's builtin `round` is half-to-EVEN — so they
+/// agree on every whole number and part exactly at `.5`, where `6.5` selects
+/// Bounce on one path and Back on the other. Replacing `sg_round` with the WGSL
+/// builtin **survived** a whole-number-only sweep of this gate
+/// ([[feedback_a_threshold_must_live_where_the_domain_is_empty]]).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_stagger_variants_match_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // (curve, dir): Bounce/InOut is the branchiest whole-number pair; the two
+    // `.5` pairs are what makes the rounding observable at all.
+    let easings = [(7.0f32, 2.0f32), (6.5, 2.0), (7.0, 0.5), (2.5, 1.5)];
+    for (channel, label) in [(0.0f32, "X"), (1.0, "Y"), (2.0, "Rotation"), (3.0, "Size")] {
+        for reverse in [0.0f32, 1.0] {
+            for (curve, dir) in easings {
+                let mut g = Graph::new();
+                let (node, out) = deformer_chain(&mut g, 40.0, "motion.stagger");
+                g.set_param(node, "channel", channel);
+                g.set_param(node, "min", -0.7);
+                g.set_param(node, "max", 1.9);
+                g.set_param(node, "ease_curve", curve);
+                g.set_param(node, "ease_dir", dir);
+                g.set_param(node, "reverse", reverse);
+                eprintln!("  stagger on {label} (reverse {reverse}, ease {curve}/{dir})");
+                assert_gpu_parity(&gpu, &reg, &g, out, 2);
+            }
+        }
+    }
 }

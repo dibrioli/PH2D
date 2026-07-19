@@ -493,7 +493,9 @@ ela** — que era o que o §2 mandava fazer (*"verifique antes de confiar"*) —
 verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 **COBERTURA**.
 
-**Cobertura: 20 → 30 kernels, e 4 deles de ⅖/½ para INTEIROS.**
+**Cobertura: 20 → 32 kernels, e 6 deles de ⅖/½ para INTEIROS.** (O `spring` e o
+`stagger` já contavam entre os 30 — tinham kernel, cobrindo X/Y; o lote final os
+completa e acrescenta dois nós novos.)
 
 | commit | o que |
 |---|---|
@@ -515,27 +517,100 @@ verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 | `c88f1e9a` | **A FATIA B CONSTRUÍDA** — o pump é plural (uma marcha, N entregas), o memo virou MEDIÇÃO (conta evals), (b) e (c) do mapa gateados, split `lower.rs` |
 | `a2226787` | **a fatia B MEDIDA** (o híbrido paga a partir de ~4k; sem limiar, com a tabela) + **`value.instance_field` na GPU, o 29º kernel** — o nó que a própria medição apontou |
 | `571740f1` | **`motion.drive` na GPU, o 30º** — o domínio de VALOR agora chega à tela sem CPU nenhuma (X/Y; Rot/Size/Opacity recuam por `applicable`, e o motivo é ESTRUTURAL) |
-| (este) | **BINDINGS/VARIANTES POR-PARAM no motor** (`GpuKernel::variant_by_param`) — e com ela `drive`/`oscillator`/`noise`/`wiggle` passam a cobrir **TODOS** os canais |
+| `48aee001` | **VARIANTES POR-PARAM no motor** (`GpuKernel::variant_by_param`) — e com ela `drive`/`oscillator`/`noise`/`wiggle` passam a cobrir **TODOS** os canais |
+| (este) | **a família de canais FECHA** (`spring`/`stagger` saem de X/Y para inteiros) + **`value.math` e `value.switch`** (31º e 32º) com a 3ª lei de contagem — e `applicable` fica sem sujeito vivo (kernel SINTÉTICO) |
 
-**Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
-shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada
-integrado, nada pushado** (§0.2).
+**Estado:** tudo verde — **53 gates de GPU** (34 paridade + 19 sim) na RTX, shell
+inteiro (14 binários, zero falhas), `fmt`/`clippy`/`machete`/`typos`/os **2** LOC
+caps limpos. **Nada integrado, nada pushado** (§0.2).
+
+### §4.5.1 — O lote de fechamento da cobertura (este commit)
+
+**`motion.spring` e `motion.stagger` fecham a família de canais.** Os dois eram
+os últimos presos no limite que o `variant_by_param` removeu, e o do spring era o
+caro: dentro de um laço `pre` **uma** costura faz o `plan` recusar a **simulação
+inteira**, então um spring em Rotation arrastava todas as forças do grafo de volta
+para a CPU com ele. Os kernels saíram para `kernel.rs` em cada crate (LOC), e o
+`wgsl_lib` é **uma constante lida três vezes** em vez de três cópias — a tabela de
+easing do stagger tem 90 linhas e precisaria concordar consigo mesma em três
+lugares que nenhum gate compara entre si.
+
+⚠️ **`target` e `out` são palavras RESERVADAS do WGSL.** O `sp_solve` nasceu com
+um parâmetro `target` e o naga rejeitou o módulo inteiro. Custou um minuto porque
+o `generated_wgsl_validates` parseia todo kernel registrado em `cargo test`, sem
+device — sem ele seria uma falha de runtime confusa numa máquina só.
+
+**`value.math` e `value.switch` trazem a 3ª lei de contagem**, e ela é **uma**, não
+duas: *"tão largo quanto a entrada mais larga"* (`max` sobre TODAS as portas)
+serve os dois. O `switch` inclui a porta `select` no `max` de propósito — um
+seletor animado de comprimento N sobre fontes de comprimento 1 é exatamente o mux
+por-elemento que o nó anuncia, e a saída tem de ser tão longa quanto a seleção.
+A lei pousou **junto do kernel que a consome** (motor sem consumidor já foi
+revertido uma vez nesta linha).
+
+**Fixtures que nasceram cegas e o que as abriu.** Quatro gates novos só passaram a
+medir alguma coisa depois de uma mutação sobreviver ou de uma medição:
+
+- **`sg_round`/`vm_round`/`vs_round` (meio-par vs meio-ímpar) só é observável em
+  `.5`.** A varredura de `ease_curve`/`op`/`select` era toda de inteiros, onde as
+  duas convenções concordam — trocar `sg_round` pelo `round` do WGSL
+  **SOBREVIVEU**. Com `ease_curve = 6.5` uma via escolhe Bounce e a outra Back;
+  com `op = 0.5`, Subtract e Add; com `select = 0.5`, `in1` e `in0`. São entradas
+  DIFERENTES, não números próximos.
+- **A identidade do canal Size** (`[1,1]`, nunca `[0,0]`) é lida **só quando a
+  coluna está ausente**, e o oscilador do fixture do spring a materializa ⇒ um
+  kernel declarando zero seria byte-perfeito contra a CPU. Gate irmão:
+  `a_spring_on_size_reads_unit_scale_from_an_absent_column`, atrás de uma grade
+  pelada. (No stagger o `deformer_chain` já não emite `size`, então lá a
+  identidade sempre foi exercida.)
+- **O ε de `size` no arquivo de sim era 1e-5 e não era um orçamento.** Medido:
+  **todos** os 25 gates que não dirigem size leem `max |dsize| = 0e0` — é uma
+  checagem de identidade-bit sobre a constante `DEFAULT_SIZE`. O spring em Size
+  mede `3,58e-5`, contra os `2,17e-4` que o **mesmo solver** produz em posição sob
+  o `2e-3` que o arquivo já declara. Então o valor apertado FICA onde é merecido
+  (`EPS_SIZE_UNDRIVEN`) e o campo dirigido recebe `EPS_POS` — em vez de afrouxar
+  um número para todo mundo.
+- **A varredura de canais foi RED pelo motivo errado.** `motion.spring` não estava
+  registrado no `registry()` daquele arquivo, então o nó era irresolvível e
+  *qualquer* plano costuraria ali — a mensagem acusava o canal, não a omissão. A
+  varredura agora **valida** o grafo e o erro nomeia a crate faltando.
+
+**`applicable` ficou sem sujeito vivo, e o gate agora tem um SINTÉTICO.** Com
+spring e stagger cobertos, `applicable: Some` não existe em nenhuma crate do
+repo. O `an_uncovered_param_space_puts_the_boundary_at_that_node` já tinha sido
+rebaseado do oscilador para o spring pelo mesmo motivo — duas vezes o fixture se
+dissolveu porque o trabalho de cobertura DEU CERTO. Um terceiro nó emprestado
+compraria o mesmo tanto de tempo, então o sujeito é o `HalfCovered` de
+`plan_analysis.rs`: `mode >= 0.5` é recusado por construção, o que não é um item
+de backlog que alguém possa fechar. Ganhou também o **irmão de PRESENÇA** que
+nunca teve (sem ele a asserção vale igual para um `plan` que recusa tudo). No
+arquivo de sim o controle equivalente é o `motion.sort` — permutação global
+contra um contrato por-elemento, incobrível por ESTRUTURA.
+
+**Mutações: 12, todas matam** — 11 nos kernels (variante de canal esquecida ·
+identidade Size · Size escrevendo só X · as 3 convenções de arredondamento · as 2
+leis de contagem · a guarda do divisor · o clamp do switch) e 1 no motor
+(`plan.rs` nunca consultando `applicable`, que só morre por causa do kernel
+sintético). A M5 **sobreviveu na primeira rodada** e é a que está descrita acima.
 
 **Onde o próximo agente começa.** As três alavancas do §2 estão em estados
 diferentes agora:
 
 1. **(C) COBERTURA — o multiplicador, e o caminho mais curto.**
-   Restam `value.math` e `value.switch` (o `motion.drive` pousou). ⚠️ O
-   `value.math` traz a **3ª lei de contagem** (`max(a.len, b.len)`) **junto do
-   kernel que a consome** — motor sem consumidor já foi revertido uma vez aqui.
+   A shortlist do `c2eee051` **acabou**: `value.math`, `value.switch`,
+   `motion.spring` e `motion.stagger` pousaram, e com eles a família de canais
+   fecha. **Escolher o próximo nó agora quer uma medição nova**, não esta lista —
+   o §2 manda perguntar quais nós de fato aparecem no prefixo CPU dos documentos
+   que existem, e a resposta de ontem foi `value.instance_field`/`motion.drive`
+   justamente porque foi medida.
 
-   ⚠️ **`motion.spring` e `motion.stagger` ainda são X/Y** — os dois últimos presos
-   no limite que o `variant_by_param` já removeu para os outros quatro. Não são
-   mecanicamente idênticos aos que já foram: os dois carregam ESTADO (bindings a
-   mais para replicar por variante), e por isso ficaram de fora deste lote. Quando
-   pousarem, o gate `an_uncovered_param_space_puts_the_boundary_at_that_node`
-   perde o último sujeito vivo do `applicable` e quer um kernel SINTÉTICO — está
-   escrito no próprio gate.
+   ⚠️ **Lacuna conhecida e NÃO fechada:** a mistura de comprimentos que não é
+   `1→N` (ex.: um campo de 3 contra um de 5). A CPU faz `debug_assert` e depois
+   degrada lendo elemento-a-elemento com `0.0` além do fim; a GPU chama a porta
+   ausente e lê a identidade `0.0` em TODO índice. As duas degradações são
+   diferentes nos índices `[0, min_len)`. É propriedade do `ReadBroadcast`
+   (herdada de `drive`/`look_at`, não introduzida aqui) e não há hoje mecanismo de
+   recusa com essa granularidade — `applicable` só vê params, nunca comprimentos.
 2. **MEDIR a fatia B.** A paridade de 2 costuras está gateada; o **ganho** não. Um
    documento de 2 costuras na GPU contra a CPU pura é a medição que falta, e o §0.0
    cobra número.

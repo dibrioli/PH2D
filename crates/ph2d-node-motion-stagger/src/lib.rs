@@ -24,12 +24,12 @@
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
 mod ease;
+mod kernel;
 use channel::{apply_channel_delta, falloff_at};
 use ease::ease;
 
@@ -87,105 +87,6 @@ fn stagger_delta(min: f32, max: f32, curve: i32, dir: i32, raw: f32, falloff: f3
     (min + ease(curve, dir, raw) * (max - min)) * falloff
 }
 
-/// GPU compute kernel (ADR-0126) — the WGSL port of [`ease`] + [`stagger_delta`].
-///
-/// The ramp is the element's **position in the stream**, `i/(n−1)`, so this kernel
-/// is one of the few that genuinely needs `params.count` (the engine's own uniform)
-/// rather than only its own columns. A single-element stream reads 0, matching the
-/// CPU's `n <= 1` guard — and dividing by `n−1` without it is a divide by zero.
-///
-/// The whole easing table ports verbatim: 8 curve families × 3 directions, all
-/// polynomial or `sqrt` (HR-5 — no `pow`, no transcendental), with In-Out built by
-/// reflecting the In base exactly as the CPU does. `sg_round` is half-away-from-zero
-/// because `channel`/`ease_curve`/`ease_dir` all pick BRANCHES: a half-even
-/// disagreement would select a different curve, not shift a value by an ε.
-///
-/// **Covers the X/Y channels only** (`applicable`, the `motion.oscillator`
-/// precedent): Rotation/Size write a different column.
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        var sg_raw = 0.0;\n\
-        if (params.count > 1u) {\n\
-        \x20   sg_raw = f32(i) / (f32(params.count) - 1.0);\n\
-        }\n\
-        if (params.reverse >= 0.5) { sg_raw = 1.0 - sg_raw; }\n\
-        let sg_e = sg_ease(i32(sg_round(params.ease_curve)),\n\
-        \x20   i32(sg_round(params.ease_dir)), sg_raw);\n\
-        let sg_d = (params.min + sg_e * (params.max - params.min)) * read_falloff(i);\n\
-        var sg_p = read_P(i);\n\
-        if (params.channel < 0.5) {\n\
-        \x20   sg_p.x = sg_p.x + sg_d;\n\
-        } else {\n\
-        \x20   sg_p.y = sg_p.y + sg_d;\n\
-        }\n\
-        write_P(i, sg_p);\n",
-    wgsl_lib: "\
-        fn sg_round(x: f32) -> f32 {\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn sg_bounce_out(t: f32) -> f32 {\n\
-            let n1 = 7.5625;\n\
-            let d1 = 2.75;\n\
-            if (t < 1.0 / d1) { return n1 * t * t; }\n\
-            if (t < 2.0 / d1) {\n\
-                let u = t - 1.5 / d1;\n\
-                return n1 * u * u + 0.75;\n\
-            }\n\
-            if (t < 2.5 / d1) {\n\
-                let u = t - 2.25 / d1;\n\
-                return n1 * u * u + 0.9375;\n\
-            }\n\
-            let u = t - 2.625 / d1;\n\
-            return n1 * u * u + 0.984375;\n\
-        }\n\
-        fn sg_ease_in(curve: i32, t: f32) -> f32 {\n\
-            if (curve == 1) { return t * t; }\n\
-            if (curve == 2) { return t * t * t; }\n\
-            if (curve == 3) { return t * t * t * t; }\n\
-            if (curve == 4) { return t * t * t * t * t; }\n\
-            if (curve == 5) { return 1.0 - sqrt(max(1.0 - t * t, 0.0)); }\n\
-            if (curve == 6) {\n\
-                let c1 = 1.70158;\n\
-                let c3 = c1 + 1.0;\n\
-                return c3 * t * t * t - c1 * t * t;\n\
-            }\n\
-            if (curve == 7) { return 1.0 - sg_bounce_out(1.0 - t); }\n\
-            return t;\n\
-        }\n\
-        fn sg_ease(curve: i32, dir: i32, t: f32) -> f32 {\n\
-            if (curve == 0) { return t; }\n\
-            if (dir == 1) { return 1.0 - sg_ease_in(curve, 1.0 - t); }\n\
-            if (dir == 2) {\n\
-                if (t < 0.5) { return sg_ease_in(curve, 2.0 * t) * 0.5; }\n\
-                return 1.0 - sg_ease_in(curve, 2.0 - 2.0 * t) * 0.5;\n\
-            }\n\
-            return sg_ease_in(curve, t);\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::ReadWrite,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "falloff",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Read,
-            identity: [1.0; 4],
-            port: 0,
-        },
-    ],
-    params: &["channel", "min", "max", "ease_curve", "ease_dir", "reverse"],
-    count_law: None,
-    variant_by_param: None,
-    applicable: Some(|param| {
-        let channel = param("channel").round();
-        channel == 0.0 || channel == 1.0
-    }),
-};
-
 struct MotionStagger;
 
 impl NodeOp for MotionStagger {
@@ -225,7 +126,7 @@ impl NodeOp for MotionStagger {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionStagger))?;
-    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
     // M1.R1 — UI metadata. Behaviours modify transform channels → Transform
     // (blue) for now; a dedicated Behaviour category (cyan) is a follow-up.
     reg.register_ui(

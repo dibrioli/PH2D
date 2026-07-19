@@ -26,6 +26,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -114,6 +115,106 @@ fn switch(select: &[f32], ins: &[Vec<f32>]) -> Vec<f32> {
         .collect()
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`switch`].
+///
+/// **A dynamic index over a STATIC set of readers.** The generated module names
+/// one accessor per bound port (`read_in0_v` … `read_in3_v`), so the routing is
+/// a branch over four constants rather than an indexed lookup — which is what a
+/// GPU wants anyway, and which is why `N_INPUTS` being a fixed 4 is a
+/// convenience here rather than a limitation to route around.
+///
+/// **The clamp bound is 3, unconditionally, and that is the CPU's rule**: `eval`
+/// always builds `N_INPUTS` vectors regardless of what is connected, so `last`
+/// is always `3` and a disconnected input is the empty field. Clamping to *the
+/// number of connected inputs* instead would look tidier and would be a
+/// different function — `select = 2` with only `in0` wired reads `0.0` on the
+/// CPU, not `in0`.
+///
+/// Every port is [`ColumnAccess::ReadBroadcast`], including `select`: a length-1
+/// selector switches the whole grid together (the common case) and a length-N
+/// one picks per element, and both are the same compiled module — the broadcast
+/// is a uniform bit, not a pipeline variant.
+///
+/// `vs_round` is round-half-AWAY-from-zero to match Rust's `f32::round`.
+/// `select` picks a BRANCH, so at `select = 0.5` a half-even disagreement routes
+/// a *different input* — the loudest possible way for a rounding convention to
+/// be wrong.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let vs_i = clamp(i32(vs_round(read_select_v(i))), 0, 3);\n\
+        var vs_r = read_in0_v(i);\n\
+        if (vs_i == 1) {\n\
+        \x20   vs_r = read_in1_v(i);\n\
+        } else if (vs_i == 2) {\n\
+        \x20   vs_r = read_in2_v(i);\n\
+        } else if (vs_i == 3) {\n\
+        \x20   vs_r = read_in3_v(i);\n\
+        }\n\
+        write_v(i, vs_r);\n",
+    wgsl_lib: "\
+        fn vs_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 2,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 3,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 4,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[],
+    count_law: Some(switch_count),
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **How wide is the output?** — the `max` over every port, which is the same
+/// expression `switch` computes, **`select` included**. Leaving the selector out
+/// would be the tempting simplification and it is wrong: an animated length-N
+/// selector against length-1 sources is exactly the per-element mux this node
+/// advertises, and the output has to be as long as the selection.
+fn switch_count(ctx: &CountLawCtx<'_>) -> SourceWindow {
+    SourceWindow::of_count(ctx.inputs.iter().copied().max().unwrap_or(0) as usize)
+}
+
 struct ValueSwitch;
 
 impl NodeOp for ValueSwitch {
@@ -135,6 +236,7 @@ impl NodeOp for ValueSwitch {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueSwitch))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

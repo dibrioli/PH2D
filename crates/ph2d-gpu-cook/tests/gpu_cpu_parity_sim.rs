@@ -54,6 +54,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_spring::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
+    // The uncoverable subject for the refusal control (a global permutation).
+    ph2d_node_motion_sort::register(&mut reg).unwrap();
     reg
 }
 
@@ -64,10 +66,23 @@ fn registry() -> NodeRegistry {
 /// doc opens with the warning that it **only acts on targets that CHANGE**. A
 /// spring behind a static grid is a pass-through, and every assertion below
 /// would hold with the node deleted.
+///
+/// ⚠️ **The oscillator drives the SAME `channel` the spring springs on**, which
+/// is the whole reason this takes a channel at all. A spring on Rotation behind
+/// an oscillator on Y has a target of `rot = 0` forever: it settles instantly,
+/// is a pass-through, and both the lag oracle and the parity comparison would be
+/// vacuous in the exact way this helper's doc warns about — the moving field
+/// would just be a *different* field than the one under test.
+///
+/// The Size channel takes an `offset` because its identity is unit scale and its
+/// amplitude would otherwise sweep the sprite through zero and negative every
+/// cycle. That is a fixture concern, not a physics one: a negative size is a
+/// legal number for the solver and a meaningless one to compare renders of.
 fn spring_chain(
     reg: &NodeRegistry,
     with_spring: bool,
     tension: f32,
+    channel: f32,
 ) -> (Graph, NodeId, Option<NodeId>) {
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
@@ -76,8 +91,16 @@ fn spring_chain(
     g.set_param(grid, "gap_x", 0.35);
     g.set_param(grid, "gap_y", 0.25);
     let osc = g.add_node("motion.oscillator");
-    g.set_param(osc, "channel", 1.0);
-    g.set_param(osc, "amplitude", 3.0);
+    g.set_param(osc, "channel", channel);
+    // Rotation is in DEGREES, so 3.0 would be a wobble the basis barely records;
+    // Size is centred on 4 so the sweep stays positive (see the note above).
+    let (amp, offset) = match channel as i32 {
+        2 => (30.0, 0.0),
+        3 => (3.0, 4.0),
+        _ => (3.0, 0.0),
+    };
+    g.set_param(osc, "amplitude", amp);
+    g.set_param(osc, "offset", offset);
     g.set_param(osc, "frequency", 2.0);
     let out = g.add_node("motion.output");
     edge(&mut g, grid, osc, 0, false);
@@ -85,7 +108,7 @@ fn spring_chain(
     if with_spring {
         let sp = g.add_node("motion.spring");
         spring = Some(sp);
-        g.set_param(sp, "channel", 1.0);
+        g.set_param(sp, "channel", channel);
         g.set_param(sp, "tension", tension);
         g.set_param(sp, "friction", 1.5);
         edge(&mut g, osc, sp, 0, false);
@@ -168,21 +191,49 @@ fn assert_close(what: &str, i: usize, a: f32, b: f32, eps: f32) {
     );
 }
 
+/// The size budget for a chain where **nothing drives `size`** — which was every
+/// gate in this file until the spring gained its channel variants.
+///
+/// It is not a calibrated tolerance, it is a bit-identity check wearing one:
+/// measured across all 25 undriven gates, `max |dsize|` is `0e0` on every single
+/// one, because `size` is the `DEFAULT_SIZE` uniform copied down both paths. Kept
+/// tight on purpose — a driven field's budget must not be spent where the answer
+/// is a constant ([[feedback_a_ratio_between_two_sick_channels_is_green_by_construction]]).
+const EPS_SIZE_UNDRIVEN: f32 = 1e-5;
+
 fn assert_parity(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance]) {
+    assert_parity_sized(label, cpu, gpu, EPS_SIZE_UNDRIVEN);
+}
+
+/// As [`assert_parity`], with an explicit budget for `size`.
+///
+/// A chain that actually DRIVES size wants [`EPS_POS`], the same budget this file
+/// gives a driven position, and for the same reason: both are a world-space
+/// length coming out of the same solver. Measured on the spring, whose Size and
+/// Y channels run identical arithmetic — position at tension 60 diverges
+/// `2.17e-4` and passes under `2e-3`; size diverges `3.58e-5`, six times less.
+/// Holding size to `1e-5` there would be pricing one channel 200× tighter than
+/// its twin for no reason other than that the old fixture never moved it.
+fn assert_parity_sized(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance], eps_size: f32) {
     assert_eq!(cpu.len(), gpu.len(), "instance count");
     let mut max_pos = 0.0f32;
+    let mut max_size = 0.0f32;
     for (i, (c, g)) in cpu.iter().zip(gpu).enumerate() {
         for k in 0..2 {
             assert_close("world_pos", i, c.world_pos[k], g.world_pos[k], EPS_POS);
+            assert_close("size", i, c.size[k], g.size[k], eps_size);
             max_pos = max_pos.max((c.world_pos[k] - g.world_pos[k]).abs());
-            assert_close("size", i, c.size[k], g.size[k], 1e-5);
+            max_size = max_size.max((c.size[k] - g.size[k]).abs());
         }
         for k in 0..4 {
             assert_close("tint", i, c.tint[k], g.tint[k], 1e-6);
             assert_close("basis", i, c.basis[k], g.basis[k], 1e-4);
         }
     }
-    eprintln!("{label}: {} instances, max |Δpos| = {max_pos:e}", cpu.len());
+    eprintln!(
+        "{label}: {} instances, max |dpos| = {max_pos:e}, max |dsize| = {max_size:e}",
+        cpu.len()
+    );
 }
 
 /// The largest per-element move between two lowerings of the same field.
@@ -190,6 +241,35 @@ fn max_move(a: &[RenderInstance], b: &[RenderInstance]) -> f32 {
     a.iter()
         .zip(b)
         .flat_map(|(x, y)| (0..2).map(move |k| (x.world_pos[k] - y.world_pos[k]).abs()))
+        .fold(0.0f32, f32::max)
+}
+
+/// The largest move on the RENDER field a transform `channel` lands in — the lag
+/// oracle for a spring that is not on X/Y.
+///
+/// [`max_move`] reads `world_pos`, which is the right question for two thirds of
+/// the channels and blind for the rest: a spring on Rotation could be compiled to
+/// a pass-through and `world_pos` would not budge either way, so the "it must
+/// LAG" guard that makes the parity comparison mean anything would pass on a
+/// field nothing is driving ([[reference_topic_oracle_discipline]] — ask the
+/// question of the field the node actually writes).
+fn max_channel_move(a: &[RenderInstance], b: &[RenderInstance], channel: f32) -> f32 {
+    let pick = |r: &RenderInstance| -> Vec<f32> {
+        match channel as i32 {
+            2 => r.basis.to_vec(),
+            3 => r.size.to_vec(),
+            _ => r.world_pos.to_vec(),
+        }
+    };
+    a.iter()
+        .zip(b)
+        .flat_map(|(x, y)| {
+            pick(x)
+                .into_iter()
+                .zip(pick(y))
+                .map(|(u, v)| (u - v).abs())
+                .collect::<Vec<_>>()
+        })
         .fold(0.0f32, f32::max)
 }
 
@@ -459,7 +539,7 @@ fn one_step_of_spring_matches_the_cpu() {
         return;
     };
     let reg = registry();
-    let (gt, out_t, _) = spring_chain(&reg, false, 0.0);
+    let (gt, out_t, _) = spring_chain(&reg, false, 0.0, 1.0);
     let cpu_target = cpu_ticks(&gt, &reg, out_t, 2);
 
     // BOTH sub-step regimes. `steps = ceil(dt/sqrt(STABLE/tension))`, so at the
@@ -468,7 +548,7 @@ fn one_step_of_spring_matches_the_cpu() {
     // would be green. 60 (the UI's max) is the first fixture in reach that
     // takes two ([[reference_topic_fixture_discipline]]).
     for (tension, want_steps) in [(8.0f32, 1), (60.0f32, 2)] {
-        let (gs, out_s, _) = spring_chain(&reg, true, tension);
+        let (gs, out_s, _) = spring_chain(&reg, true, tension, 1.0);
         let cpu_spring = cpu_ticks(&gs, &reg, out_s, 2);
 
         let lag = max_move(&cpu_target[2], &cpu_spring[2]);
@@ -489,33 +569,144 @@ fn one_step_of_spring_matches_the_cpu() {
     }
 }
 
+/// **A spring on Rotation and on Size now runs on the DEVICE, inside the loop.**
+///
+/// This gate used to assert the opposite (`a_spring_on_rotation_recedes_to_the_cpu`)
+/// and that assertion was right while a static binding set could not switch its
+/// output column. `GpuKernel::variant_by_param` switches it, so the fixture
+/// FLIPPED rather than being loosened — and flipping it is the point, because the
+/// old behaviour was expensive in a way local to nothing: inside a `pre` loop a
+/// single boundary makes `plan` refuse the WHOLE simulation (the two-sims rule),
+/// so a spring on Rotation dragged every force in the graph back to the CPU with
+/// it.
+///
+/// The lag guard is [`max_channel_move`] and not [`max_move`]: on these channels
+/// `world_pos` never moves, so the guard that keeps parity from comparing a
+/// pass-through to itself has to read the field the spring actually writes.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
-fn a_spring_on_rotation_recedes_to_the_cpu() {
-    // `applicable` covers X/Y only: Rotation writes `rot`, which a static
-    // binding set cannot switch to. The refusal must be visible in the PLAN —
-    // and inside a `pre` loop it is not a local one: the boundary makes the
-    // whole simulation recede (the two-sims rule), which is the honest answer
-    // and the expensive one. Gating it here is what keeps a later "just let it
-    // through" from silently animating `P` when the artist asked for `rot`.
+fn a_spring_on_rotation_and_size_matches_the_cpu_inside_the_loop() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
     let reg = registry();
-    let (mut g, out, sp) = spring_chain(&reg, true, 8.0);
+    for (channel, label) in [(2.0f32, "Rotation"), (3.0, "Size")] {
+        let (gt, out_t, _) = spring_chain(&reg, false, 0.0, channel);
+        let cpu_target = cpu_ticks(&gt, &reg, out_t, 2);
+
+        let (gs, out_s, _) = spring_chain(&reg, true, 8.0, channel);
+        let plan = plan(&gs, &reg, &reg, out_s);
+        assert!(
+            plan.is_fully_gpu(),
+            "a spring on {label} must be claimed whole — inside a `pre` loop one \
+             boundary refuses the entire simulation: {:?}",
+            plan.boundaries
+        );
+
+        let cpu_spring = cpu_ticks(&gs, &reg, out_s, 2);
+        let lag = max_channel_move(&cpu_target[2], &cpu_spring[2], channel);
+        assert!(
+            lag > MUST_MOVE,
+            "{label}: the spring must LAG its target — gap {lag} <= {MUST_MOVE}, \
+             so this compares the oscillator to itself and would pass with the \
+             spring compiled to a pass-through"
+        );
+        let gpu_out = gpu_ticks(&gpu, &gs, &reg, out_s, 2, 3);
+        eprintln!("spring on {label}: lags by {lag}");
+        // The Size channel is the first thing in this file to DRIVE size, so it
+        // takes the driven budget — see [`assert_parity_sized`] for the numbers.
+        assert_parity_sized(
+            &format!("spring on {label}"),
+            &cpu_spring[2],
+            &gpu_out,
+            EPS_POS,
+        );
+    }
+}
+
+/// **A spring on Size with no `size` upstream settles at UNIT scale, not zero.**
+///
+/// The identity layer, which the gate above cannot reach: there the oscillator
+/// materialises `size`, so the binding's `identity` is never read and a kernel
+/// declaring `[0,0]` would be byte-perfect against the CPU
+/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+///
+/// Behind a bare grid there is no `size` column, so `channel_get` returns the
+/// channel's identity — and `size`'s identity is **unit scale**, never the
+/// blanket zero the other three channels use. Get it wrong and the spring settles
+/// the sprite at scale 0: invisible, on a chain where nothing looks broken.
+///
+/// The spring is a pass-through here (a constant target seeds and never steps),
+/// and that is fine: this gate is about the number the target is READ as, which
+/// is exactly what a pass-through publishes.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_spring_on_size_reads_unit_scale_from_an_absent_column() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    let sp = g.add_node("motion.spring");
+    g.set_param(sp, "channel", 3.0); // Size
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, sp, 0, false);
+    edge(&mut g, sp, sp, 1, true);
+    edge(&mut g, sp, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let last = &cpu[2];
+    // The fixture's own premise: the CPU must publish a NON-ZERO size, or a
+    // kernel with a zero identity would agree with it and this gate would be
+    // measuring nothing.
+    assert!(
+        last.iter().all(|r| r.size[0] > 0.0 && r.size[1] > 0.0),
+        "fixture check: the CPU must settle at unit scale, not zero"
+    );
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 2);
+    assert_parity("spring on Size, absent column", last, &gpu_out);
+}
+
+/// **The control for the gate above**: the boundary mechanism still WORKS.
+///
+/// With every channel of the spring claimed, nothing in this suite would notice
+/// `plan` losing the ability to refuse at all — every `is_fully_gpu` assertion
+/// would simply keep passing.
+///
+/// So the refusal keeps a subject: `motion.sort` REORDERS the stream, and the
+/// kernel contract is per-element (`read_<col>(i)` / `write_<col>(i)`, element
+/// `i` writing row `i`). A global permutation is not expressible in it at all —
+/// uncoverable by STRUCTURE rather than by backlog, which is what a seam fixture
+/// has to rest on ([[feedback_a_seam_fixture_must_rest_on_something_uncoverable]]).
+///
+/// The graph is re-validated after the splice: an unregistered or ill-typed node
+/// also produces a refusal, and that refusal would be green here for a reason
+/// that has nothing to do with coverage.
+#[test]
+fn a_pre_loop_still_refuses_when_a_node_in_it_cannot_be_covered() {
+    let reg = registry();
+    let (mut g, out, sp) = spring_chain(&reg, true, 8.0, 1.0);
     let sp = sp.expect("the chain has a spring");
-    g.set_param(sp, "channel", 2.0); // Rotation
+    // The control, first: this chain is claimed whole before the splice.
+    assert!(plan(&g, &reg, &reg, out).is_fully_gpu());
+
+    let sort = g.add_node("motion.sort");
+    g.disconnect(out, 0)
+        .expect("the chain wired spring -> output");
+    edge(&mut g, sp, sort, 0, false);
+    edge(&mut g, sort, out, 0, false);
+    g.validate(&reg).expect("the spliced chain is well-typed");
+
     let refused = plan(&g, &reg, &reg, out);
     assert!(
         !refused.is_fully_gpu(),
-        "a spring on Rotation must leave a boundary, not write P"
-    );
-    // The control: the SAME graph on Y is claimed whole. Without this the
-    // assertion above would hold for a plan that refused everything always
-    // ([[feedback_absence_gate_needs_a_presence_sibling]]).
-    g.set_param(sp, "channel", 1.0);
-    let claimed = plan(&g, &reg, &reg, out);
-    assert!(
-        claimed.is_fully_gpu(),
-        "the same chain on Y must be claimed: {:?}",
-        claimed.boundaries
+        "an uncoverable node inside the loop must leave a boundary"
     );
 }
 

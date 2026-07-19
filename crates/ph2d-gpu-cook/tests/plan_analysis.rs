@@ -6,7 +6,80 @@
 //! chain and for each refusal reason.
 
 use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::attr::Stream;
+use ph2d_nodegraph::cook::EvalCtx;
+use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// A node whose kernel covers **half of its param space** — and nothing else.
+///
+/// It exists because `applicable` needs a live subject and **every shipping node
+/// has outgrown one**. The gate below used the oscillator until
+/// `GpuKernel::variant_by_param` let it claim every channel, then `motion.spring`
+/// for the same reason, and then the variants reached the spring too. Both
+/// rebases were the coverage work doing its job, and both were the *fixture*
+/// dissolving under the gate rather than the gate finding anything
+/// ([[feedback_a_seam_fixture_must_rest_on_something_uncoverable]]).
+///
+/// Borrowing a third node would buy the same amount of time. So the subject is
+/// SYNTHETIC: `mode >= 0.5` is refused here by construction, which is not a
+/// backlog item anybody can close. The mechanism under test — *`applicable`
+/// refuses → the boundary lands at this node → the prefix cooks on the CPU* — is
+/// engine behaviour, and it is the engine, not a node's coverage, that this gate
+/// is about.
+struct HalfCovered;
+
+static HALF_COVERED: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("test.half_covered"),
+    name: "test.half_covered",
+    inputs: &[PortSpec {
+        name: "in",
+        ty: INST_VEC2,
+    }],
+    outputs: &[PortSpec {
+        name: "out",
+        ty: INST_VEC2,
+    }],
+    effect: Effect::Pure,
+    clock: Clock::Frame,
+    params: &[ParamSpec {
+        name: "mode",
+        default: 0.0,
+    }],
+    lowerings: &[LoweringKind::Cpu],
+};
+
+impl NodeOp for HalfCovered {
+    fn manifest(&self) -> &'static NodeManifest {
+        &HALF_COVERED
+    }
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        let out: Stream = ctx.input(0).clone();
+        ctx.emit(out);
+    }
+}
+
+/// The covered half writes `P` and nothing more; the refused half is refused.
+static HALF_COVERED_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "        write_P(i, read_P(i));\n",
+    wgsl_lib: "",
+    bindings: &[ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::ReadWrite,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &["mode"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: Some(|param| param("mode") < 0.5),
+};
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
@@ -14,6 +87,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
+    reg.register(Box::new(HalfCovered)).unwrap();
+    reg.register_gpu_kernel(HALF_COVERED.id, HALF_COVERED_KERNEL);
     reg
 }
 
@@ -52,20 +127,19 @@ fn the_covered_chain_is_claimed_whole() {
 
 #[test]
 fn an_uncovered_param_space_puts_the_boundary_at_that_node() {
-    // `motion.spring` on the Rotation channel (2): its kernel only covers X/Y →
-    // `applicable` refuses → the CPU cooks the prefix, the GPU runs the suffix
-    // from the uploaded boundary stream.
+    // [`HalfCovered`] with `mode = 1` — its `applicable` refuses → the CPU cooks
+    // the prefix, the GPU runs the suffix from the uploaded boundary stream.
     //
-    // ⚠️ This used to use the OSCILLATOR, until `GpuKernel::variant_by_param` let
-    // it (and `noise`/`wiggle`/`drive`) claim every channel — the fixture's
-    // premise disappeared with the restriction it was testing. `motion.spring`
-    // has the same restriction still, so the MECHANISM (`applicable` refuses →
-    // boundary here) keeps a live subject; the day spring gets variants too, this
-    // wants a synthetic kernel rather than another node to borrow.
+    // ⚠️ The subject is SYNTHETIC on purpose, and it is the third one. This gate
+    // used the OSCILLATOR until `GpuKernel::variant_by_param` let it claim every
+    // channel, then `motion.spring` for exactly the same restriction, and then
+    // the variants reached the spring too — twice the fixture dissolved because
+    // the coverage work succeeded. See [`HalfCovered`] for why borrowing a fourth
+    // node would only reset the clock.
     let reg = registry();
     let (mut g, [grid, osc, mv, out]) = chain(&reg);
-    let sp = g.add_node("motion.spring");
-    g.set_param(sp, "channel", 2.0);
+    let sp = g.add_node("test.half_covered");
+    g.set_param(sp, "mode", 1.0);
     g.disconnect(osc, 0).expect("the chain wired grid → osc");
     for (a, b) in [(grid, sp), (sp, osc)] {
         g.connect(Edge {
@@ -79,6 +153,21 @@ fn an_uncovered_param_space_puts_the_boundary_at_that_node() {
     assert_eq!(plan.boundaries, vec![(sp, 0)]);
     let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
     assert_eq!(nodes, vec![osc, mv, out]);
+
+    // The PRESENCE sibling: the SAME graph on the covered half is claimed whole.
+    // Without it the assertion above holds just as well for a kernel that
+    // refuses unconditionally — or for a `plan` that refuses everything — and
+    // the gate would be measuring nothing
+    // ([[feedback_absence_gate_needs_a_presence_sibling]]).
+    g.set_param(sp, "mode", 0.0);
+    let claimed = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        claimed.is_fully_gpu(),
+        "the covered half must be claimed: {:?}",
+        claimed.boundaries
+    );
+    let nodes: Vec<NodeId> = claimed.stages.iter().map(|s| s.node).collect();
+    assert_eq!(nodes, vec![grid, sp, osc, mv, out]);
 }
 
 #[test]

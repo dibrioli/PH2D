@@ -5234,6 +5234,8 @@ dependencies = [
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
+ "ph2d-node-value-math",
+ "ph2d-node-value-switch",
  "ph2d-nodegraph",
  "ph2d-render",
  "wgpu",

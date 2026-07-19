@@ -538,7 +538,7 @@ pub const MAX_FX_ROWS: usize = 4;
 ///
 /// ⚠️ Estes três espelham constantes do motor (`ph2d_vec_scene::effect`), que o painel não
 /// alcança — ele vive de snapshots. Há gate a exigir que os dois lados concordem.
-pub const MAX_FX_ROW_PARAMS: usize = 4;
+pub const MAX_FX_ROW_PARAMS: usize = 6;
 
 /// **Add \<tipo\>** — o botão que põe um efeito do tipo `kind` na pilha.
 #[must_use]

@@ -277,10 +277,12 @@ mod tests {
         // cozida cresce muito e desloca-se — que é precisamente o que o assentamento lê.
         path.effects = vec![FxEntry::new(PathEffect::Repeat(
             ph2d_vec_scene::fx_repeat::RepeatSpec {
-                copies: 6.0,
+                copies_x: 3.0,
                 move_x: 120.0,
+                copies_y: 2.0,
                 move_y: 40.0,
-                rotate: 11.0,
+                spin: 11.0,
+                orbit: 7.0,
             },
         ))];
         let id = scene.push_path(path);

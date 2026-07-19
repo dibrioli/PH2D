@@ -130,10 +130,29 @@ fn arm_zigzag(fx: &mut PathEffect, c: usize) {
         z.ridges = 12.0;
     }
 }
+/// Fileira em x: só a contagem cresce.
 fn arm_repeat(fx: &mut PathEffect, c: usize) {
     fx.set(0, 1.0 + c as f64);
     fx.set(1, 100.0);
-    fx.set(3, 12.0 * c as f64);
+}
+/// GRELHA: os dois eixos ligados, o segundo a crescer.
+fn arm_grid(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 3.0);
+    fx.set(1, 100.0);
+    fx.set(2, 1.0 + c as f64);
+    fx.set(3, 100.0);
+}
+/// SPIN: fileira fixa, cada cópia gira sobre si mesma.
+fn arm_spin(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 4.0);
+    fx.set(1, 110.0);
+    fx.set(4, 15.0 * c as f64);
+}
+/// ORBIT: a mesma fileira, mas a rotação LEVA a cópia — o arranjo radial.
+fn arm_orbit(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 6.0);
+    fx.set(1, 60.0);
+    fx.set(5, 12.0 * c as f64);
 }
 fn arm_bloat(fx: &mut PathEffect, c: usize) {
     fx.set(0, -60.0 + 30.0 * c as f64);
@@ -155,10 +174,31 @@ const ROWS: &[Row] = &[
         shape: circle,
     },
     Row {
-        name: "Repeater       (1→5 cópias, Move X 100, Rotate 0→48)",
+        name: "Repeater eixo X  (1→5 cópias, Move X 100)",
         kind: 2,
         scale: 0.42,
         arm: arm_repeat,
+        shape: square,
+    },
+    Row {
+        name: "Repeater GRELHA  (3 em x · 1→5 em y)",
+        kind: 2,
+        scale: 0.30,
+        arm: arm_grid,
+        shape: square,
+    },
+    Row {
+        name: "Repeater SPIN    (4 cópias · 0→60° sobre si mesma)",
+        kind: 2,
+        scale: 0.40,
+        arm: arm_spin,
+        shape: square,
+    },
+    Row {
+        name: "Repeater ORBIT   (6 cópias · 0→48° em torno da origem)",
+        kind: 2,
+        scale: 0.30,
+        arm: arm_orbit,
         shape: square,
     },
     Row {

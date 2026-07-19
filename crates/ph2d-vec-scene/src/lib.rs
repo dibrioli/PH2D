@@ -516,7 +516,7 @@ pub struct VecPath {
 /// sentido inverso: um save v11 com um Repeater, lido por um binário v10, encontra um índice de
 /// variant que não conhece. O bump é o que transforma isso num erro de versão em vez de um
 /// postcard a falhar longe da causa. (Migração robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 12;
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 13;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

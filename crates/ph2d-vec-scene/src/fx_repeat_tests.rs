@@ -15,12 +15,13 @@ fn square() -> VecPath {
     }
 }
 
-fn spec(copies: f64, dx: f64, rot: f64) -> RepeatSpec {
+/// Uma fileira em x: `n` cópias, `dx`% de passo, com `spin` graus por cópia.
+fn spec(copies: f64, dx: f64, spin: f64) -> RepeatSpec {
     RepeatSpec {
-        copies,
+        copies_x: copies,
         move_x: dx,
-        move_y: 0.0,
-        rotate: rot,
+        spin,
+        ..RepeatSpec::default()
     }
 }
 
@@ -132,10 +133,9 @@ fn rotation_turns_about_the_shapes_centre_not_the_world_origin() {
     let out = repeat_path(
         &p,
         &RepeatSpec {
-            copies: 2.0,
-            move_x: 0.0,
-            move_y: 0.0,
-            rotate: 180.0,
+            copies_x: 2.0,
+            orbit: 180.0,
+            ..RepeatSpec::default()
         },
     );
     let (lo, hi) = bbox(&out);
@@ -192,4 +192,125 @@ fn the_copies_are_made_from_the_source_not_from_the_growing_output() {
     let p = square();
     let out = repeat_path(&p, &spec(8.0, 30.0, 0.0));
     assert_eq!(out.contour_count(), 8);
+}
+
+/// **Os dois eixos juntos dão uma GRELHA** — `nx × ny` contornos, e é isso que o Enio pediu
+/// (2026-07-18) quando falou em copiar nas duas direções.
+///
+/// No Blender uma grelha faz-se empilhando dois modificadores Array; aqui sai de um só, porque
+/// cada eixo tem a sua contagem. A contagem **é** o interruptor do eixo: `1` desliga-o.
+#[test]
+fn the_two_axes_make_a_grid() {
+    let p = square();
+    let out = repeat_path(
+        &p,
+        &RepeatSpec {
+            copies_x: 5.0,
+            move_x: 100.0,
+            copies_y: 3.0,
+            move_y: 100.0,
+            ..RepeatSpec::default()
+        },
+    );
+    assert_eq!(out.contour_count(), 15, "5 × 3");
+    let (lo, hi) = bbox(&out);
+    assert!(
+        (hi[0] - lo[0] - 200.0).abs() < 1e-6 && (hi[1] - lo[1] - 120.0).abs() < 1e-6,
+        "a grelha devia medir 5×40 por 3×40 = 200×120; mede {}×{}",
+        hi[0] - lo[0],
+        hi[1] - lo[1]
+    );
+}
+
+/// **Um eixo a 1 é um eixo DESLIGADO** — sem toggle separado, porque duas respostas a
+/// *"este eixo está ligado?"* divergem.
+#[test]
+fn an_axis_at_one_copy_is_off() {
+    let p = square();
+    let row = repeat_path(
+        &p,
+        &RepeatSpec {
+            copies_x: 4.0,
+            move_x: 100.0,
+            copies_y: 1.0,
+            move_y: 300.0, // um passo enorme que NÃO pode ser usado
+            ..RepeatSpec::default()
+        },
+    );
+    assert_eq!(row.contour_count(), 4);
+    let (lo, hi) = bbox(&row);
+    assert!(
+        (hi[1] - lo[1] - 40.0).abs() < 1e-6,
+        "o eixo y está desligado, então a fileira mede a altura de UMA forma; mede {}",
+        hi[1] - lo[1]
+    );
+}
+
+/// **Spin e Orbit são ferramentas DIFERENTES, e as duas ficam.**
+///
+/// ⚠️ A 1ª versão tinha só a órbita; a 2ª substituiu-a pelo spin. **Substituir era o erro**
+/// (Enio, 2026-07-18: *"o outro tipo de rot também era útil"*). O oráculo mostra porquê: sobre
+/// uma cópia DESLOCADA, girar sobre si mesma deixa-a onde está e girar em torno da origem
+/// leva-a para outro sítio. Num par de gates só, isto é a diferença entre um leque e um arranjo
+/// radial.
+#[test]
+fn spin_turns_in_place_and_orbit_moves_the_copy() {
+    let p = square();
+    let centre_of = |s: &RepeatSpec| -> [f64; 2] {
+        let out = repeat_path(&p, s);
+        // O centro do 2º contorno — a 1ª cópia.
+        let (v, _) = out.contour(1).expect("cópia");
+        let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+        for w in v {
+            for k in 0..2 {
+                lo[k] = lo[k].min(w.anchor[k]);
+                hi[k] = hi[k].max(w.anchor[k]);
+            }
+        }
+        [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5]
+    };
+    let base = RepeatSpec {
+        copies_x: 2.0,
+        move_x: 150.0,
+        ..RepeatSpec::default()
+    };
+    let plain = centre_of(&base);
+    let spun = centre_of(&RepeatSpec { spin: 90.0, ..base });
+    let orbited = centre_of(&RepeatSpec {
+        orbit: 90.0,
+        ..base
+    });
+
+    let d = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+    assert!(
+        d(plain, spun) < 1e-6,
+        "o SPIN roda a cópia sobre si mesma — o centro dela não pode andar ({plain:?} -> {spun:?})"
+    );
+    assert!(
+        d(plain, orbited) > 10.0,
+        "a ÓRBITA tem de LEVAR a cópia para outro sítio ({plain:?} -> {orbited:?}); se não leva, \
+         as duas rotações são a mesma e uma delas é um botão morto"
+    );
+}
+
+/// O produto dos dois eixos tem um teto próprio — o teto de UM eixo não é o teto de uma grelha.
+#[test]
+fn the_grid_has_a_ceiling_of_its_own() {
+    let p = square();
+    let out = repeat_path(
+        &p,
+        &RepeatSpec {
+            copies_x: 128.0,
+            move_x: 100.0,
+            copies_y: 128.0,
+            move_y: 100.0,
+            ..RepeatSpec::default()
+        },
+    );
+    assert!(
+        out.contour_count() <= 1024,
+        "128 × 128 seriam 16 384 contornos; ficaram {}",
+        out.contour_count()
+    );
+    assert!(out.contour_count() > 900, "e o teto não pode ser mesquinho");
 }

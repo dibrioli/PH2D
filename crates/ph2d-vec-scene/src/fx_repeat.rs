@@ -64,6 +64,24 @@ const MIN_COPIES: f64 = 1.0;
 /// Meia-volta em graus, para converter sem constante mágica.
 const HALF_TURN_DEG: f64 = 180.0;
 
+/// Teto de cópias POR EIXO. O número é medido — ver a tabela na tabela de parâmetros
+/// (`PathEffect::params`).
+const MAX_PER_AXIS: usize = 128;
+
+/// Teto do PRODUTO dos dois eixos — o teto de UM eixo não é o teto de uma grelha, porque o custo
+/// é o produto: `128 × 128` seriam 16 384 cópias.
+///
+/// **1024, e o número é MEDIDO** (CLAUDE.md §0). Silhueta de 24 âncoras, custo de `cooked()`:
+///
+/// | grelha  | 4×4  | 8×8  |16×16 |32×32 |
+/// |---------|------|------|------|------|
+/// | ms/cook |0,009 |0,037 |0,170 |0,660 |
+///
+/// Linear no número de cópias, como seria de esperar. 1024 custa 0,66 ms — já se sente num frame
+/// de 60 fps partilhado com o resto do editor, e é aí que o corte fica. ⚠️ O recurso por medir
+/// continua a ser o RENDER de 1024 contornos, não o cozimento; quem quiser subir mede ESSE.
+const MAX_TOTAL: usize = 1024;
+
 /// **A medida da forma que chega**: `(tamanho por eixo, centro)` da caixa de controle.
 ///
 /// Um eixo DEGENERADO (uma reta horizontal não tem altura) cairia num deslocamento sempre nulo,
@@ -99,33 +117,67 @@ fn measure(path: &VecPath) -> ([f64; 2], [f64; 2]) {
 /// **Os parâmetros do Repeater.** Neutro em `copies <= 1`.
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RepeatSpec {
-    /// Quantas cópias ao todo, contando o original. `1` = neutro.
-    pub copies: f64,
-    /// Deslocamento por cópia no eixo x, em **percentagem da forma** ([`FxCtx::ref_size`]).
+    /// Cópias ao longo de **x**, contando o original. `1` = este eixo não copia.
+    ///
+    /// A contagem **é** o interruptor do eixo: `1` desliga-o. Um toggle separado seria uma
+    /// segunda resposta a *"este eixo está ligado?"*, e duas respostas divergem.
+    pub copies_x: f64,
+    /// Deslocamento por cópia em x, em **percentagem da LARGURA** da forma. `100` encaixa sem
+    /// folga, `50` sobrepõe metade, `200` deixa um vão de uma forma.
     pub move_x: f64,
-    /// Idem em y.
+    /// Cópias ao longo de **y**. Com os dois eixos acima de 1, o resultado é uma **grelha**.
+    pub copies_y: f64,
+    /// Deslocamento por cópia em y, em percentagem da **ALTURA**.
     pub move_y: f64,
-    /// Rotação por cópia, em **graus**, em torno do centro da forma. Cumulativa.
-    pub rotate: f64,
+    /// **Spin** — cada cópia roda sobre o centro DELA PRÓPRIA, em graus por cópia. As cópias
+    /// ficam onde estão e viram: uma fileira continua fileira e ganha um leque.
+    pub spin: f64,
+    /// **Orbit** — cada cópia roda em torno do centro do ORIGINAL, em graus por cópia. Combinada
+    /// com deslocamento, é a espiral; é o *Object Offset* do Array do Blender.
+    ///
+    /// ⚠️ As duas rotações existem porque **fazem coisas diferentes e as duas servem** (Enio,
+    /// 2026-07-18). A 1ª versão tinha só a órbita, a 2ª substituiu-a pelo spin — e substituir era
+    /// o erro: sobre uma cópia deslocada, girar sobre si mesma e girar em torno da origem são
+    /// duas ferramentas, não duas opiniões sobre a mesma.
+    pub orbit: f64,
 }
 
 impl Default for RepeatSpec {
     fn default() -> Self {
         Self {
-            copies: 1.0,
+            copies_x: 1.0,
             move_x: 0.0,
+            copies_y: 1.0,
             move_y: 0.0,
-            rotate: 0.0,
+            spin: 0.0,
+            orbit: 0.0,
         }
     }
 }
 
 impl RepeatSpec {
-    /// Uma cópia é a forma. O neutro tem de ser no-op byte-idêntico, senão a pilha não pode
-    /// saltá-lo e o `Cow::Borrowed` morre (ADR-0132).
+    /// Uma cópia em cada eixo é a forma. O neutro tem de ser no-op byte-idêntico, senão a pilha
+    /// não pode saltá-lo e o `Cow::Borrowed` morre (ADR-0132).
     #[must_use]
     pub fn is_neutral(&self) -> bool {
-        self.copies < MIN_COPIES + 1.0
+        self.count_x() * self.count_y() <= 1
+    }
+
+    /// A contagem inteira do eixo x, saneada.
+    #[must_use]
+    pub fn count_x(&self) -> usize {
+        Self::count(self.copies_x)
+    }
+
+    /// A contagem inteira do eixo y, saneada.
+    #[must_use]
+    pub fn count_y(&self) -> usize {
+        Self::count(self.copies_y)
+    }
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    fn count(v: f64) -> usize {
+        (v.floor().max(MIN_COPIES) as usize).min(MAX_PER_AXIS)
     }
 }
 
@@ -141,6 +193,18 @@ struct Affine {
 }
 
 impl Affine {
+    /// `self ∘ rhs` — aplica `rhs` primeiro.
+    fn then(self, rhs: Self) -> Self {
+        Self {
+            a: rhs.a.mul_add(self.a, rhs.c * self.b),
+            b: rhs.b.mul_add(self.a, rhs.d * self.b),
+            c: rhs.a.mul_add(self.c, rhs.c * self.d),
+            d: rhs.b.mul_add(self.c, rhs.d * self.d),
+            tx: rhs.tx.mul_add(self.a, rhs.ty.mul_add(self.b, self.tx)),
+            ty: rhs.tx.mul_add(self.c, rhs.ty.mul_add(self.d, self.ty)),
+        }
+    }
+
     fn apply(self, p: [f64; 2]) -> [f64; 2] {
         [
             p[0].mul_add(self.a, p[1].mul_add(self.b, self.tx)),
@@ -149,34 +213,57 @@ impl Affine {
     }
 }
 
-/// **A transformação da cópia `k`**: rodada `k·θ` em torno do centro DELA, deslocada `k·d`.
+/// **A transformação da cópia `(ix, iy)`** da grelha.
 ///
-/// ⚠️ Não é `M^k`. A 1ª versão compunha a matriz consigo mesma, com a rotação ancorada no centro
-/// do ORIGINAL — matematicamente uma espiral, e visualmente as cópias **orbitam e espalham-se**
-/// em vez de ladrilhar. A folha de contacto mostrou-o à primeira. Aqui mover é mover e girar é
-/// girar cada cópia, e os dois não se contaminam: uma fileira continua fileira quando se
-/// acrescenta rotação, e ganha-se um leque.
-fn transform_for(k: usize, spec: &RepeatSpec, size: [f64; 2], center: [f64; 2]) -> Affine {
-    // `sin`/`cos` uma vez por CÓPIA (≤128), nunca por ponto.
+/// Três coisas, nesta ordem, e cada botão faz exatamente uma:
+///
+/// 1. **spin** — roda a forma sobre o centro dela própria;
+/// 2. **move** — desloca `ix` larguras em x e `iy` alturas em y;
+/// 3. **orbit** — roda o conjunto em torno do centro do ORIGINAL.
+///
+/// O índice das rotações é `ix + iy`, a distância em cópias até ao original: numa fileira é uma
+/// rampa linear, numa grelha é um gradiente diagonal. O índice linear (`iy·nx + ix`) daria um
+/// salto no fim de cada linha, que se vê.
+fn transform_for(
+    ix: usize,
+    iy: usize,
+    spec: &RepeatSpec,
+    size: [f64; 2],
+    center: [f64; 2],
+) -> Affine {
     #[allow(clippy::cast_precision_loss)]
-    let kf = k as f64;
-    let rad = spec.rotate * kf / HALF_TURN_DEG * core::f64::consts::PI;
-    let (s, c) = rad.sin_cos();
+    let (fx, fy) = (ix as f64, iy as f64);
+    let step = fx + fy;
+    let deg = |d: f64| d * step / HALF_TURN_DEG * core::f64::consts::PI;
+    // `sin`/`cos` uma vez por CÓPIA, nunca por ponto.
+    let (ss, sc) = deg(spec.spin).sin_cos();
+    let (os, oc) = deg(spec.orbit).sin_cos();
     // POR EIXO: x pela largura, y pela altura. É o que faz `100` encaixar exatamente.
     let (dx, dy) = (
-        spec.move_x / 100.0 * size[0] * kf,
-        spec.move_y / 100.0 * size[1] * kf,
+        spec.move_x / 100.0 * size[0] * fx,
+        spec.move_y / 100.0 * size[1] * fy,
     );
     let (ox, oy) = (center[0], center[1]);
-    // T(centro) ∘ R(θ) ∘ T(−centro), com a translação somada no fim.
-    Affine {
-        a: c,
-        b: -s,
-        c: s,
-        d: c,
-        tx: dx + ox - (c * ox - s * oy),
-        ty: dy + oy - s.mul_add(ox, c * oy),
-    }
+
+    // spin em torno do centro, depois translação: `p ↦ R_s(p − c) + c + d`.
+    let a1 = Affine {
+        a: sc,
+        b: -ss,
+        c: ss,
+        d: sc,
+        tx: dx + ox - (sc * ox - ss * oy),
+        ty: dy + oy - ss.mul_add(ox, sc * oy),
+    };
+    // e a órbita, também em torno do centro do ORIGINAL: `q ↦ R_o(q − c) + c`.
+    let a2 = Affine {
+        a: oc,
+        b: -os,
+        c: os,
+        d: oc,
+        tx: ox - (oc * ox - os * oy),
+        ty: oy - os.mul_add(ox, oc * oy),
+    };
+    a2.then(a1)
 }
 
 fn map_vert(v: &VecVertex, m: Affine) -> VecVertex {
@@ -203,17 +290,16 @@ pub fn repeat_path(path: &VecPath, spec: &RepeatSpec) -> VecPath {
     if spec.is_neutral() {
         return out;
     }
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let copies = spec.copies.floor().max(MIN_COPIES) as usize;
+    let (nx, ny) = (spec.count_x(), spec.count_y());
     let (size, center) = measure(path);
-    let step = transform_for(1, spec, size, center);
-    // Um passo que não move NADA (sem distância e sem ângulo) empilharia `n` cópias exatamente
-    // em cima da forma: invisível, e caro. É o neutro pela outra porta.
-    if step.tx.abs() <= EPS
-        && step.ty.abs() <= EPS
-        && (step.a - 1.0).abs() <= EPS
-        && step.b.abs() <= EPS
-    {
+    // Um passo que não move NADA (sem distância e sem ângulo) empilharia as cópias exatamente em
+    // cima da forma: invisível, e caro. É o neutro pela outra porta.
+    let step = transform_for(1, 0, spec, size, center);
+    let step_y = transform_for(0, 1, spec, size, center);
+    let inert = |m: &Affine| {
+        m.tx.abs() <= EPS && m.ty.abs() <= EPS && (m.a - 1.0).abs() <= EPS && m.b.abs() <= EPS
+    };
+    if inert(&step) && inert(&step_y) {
         return out;
     }
 
@@ -223,13 +309,23 @@ pub fn repeat_path(path: &VecPath, spec: &RepeatSpec) -> VecPath {
         .filter_map(|k| path.contour(k).map(|(v, cl)| (v.to_vec(), cl)))
         .collect();
 
-    for k in 1..copies {
-        let m = transform_for(k, spec, size, center);
-        for (verts, closed) in &source {
-            out.subpaths.push(Contour {
-                verts: verts.iter().map(|v| map_vert(v, m)).collect(),
-                closed: *closed,
-            });
+    let mut made = 1usize; // o original conta para o teto do produto
+    for iy in 0..ny {
+        for ix in 0..nx {
+            if ix == 0 && iy == 0 {
+                continue; // o original já está em `out`
+            }
+            if made >= MAX_TOTAL {
+                return out;
+            }
+            made += 1;
+            let m = transform_for(ix, iy, spec, size, center);
+            for (verts, closed) in &source {
+                out.subpaths.push(Contour {
+                    verts: verts.iter().map(|v| map_vert(v, m)).collect(),
+                    closed: *closed,
+                });
+            }
         }
     }
     out

@@ -63,7 +63,7 @@ pub struct FxParam {
 /// O teto de parâmetros por efeito — o painel registra este número de linhas, sempre, e pinta
 /// só as que o efeito de facto declara. Registrar de menos deixa um controle clicável e morto;
 /// registrar de mais é inerte. É o padrão dos presets do Envelope.
-pub const MAX_FX_PARAMS: usize = 4;
+pub const MAX_FX_PARAMS: usize = 6;
 
 /// O teto de efeitos numa pilha, pela mesma razão.
 pub const MAX_PATH_EFFECTS: usize = 4;
@@ -333,49 +333,59 @@ impl PathEffect {
             flag("Smooth"),
             flag("Rough"),
         ];
-        const REPEAT: &[FxParam] = &[
-            // **128, e o numero saiu da MEDICAO** (CLAUDE.md §0). Eu tinha escrito 32 por
-            // conforto; medido numa silhueta de 24 ancoras, o custo de `cooked()` e' linear e
-            // ridiculamente barato -- oito vezes menos que as cristas do Zig Zag no MESMO teto:
-            //
-            // | copias  |  2   |  8   |  16  |  32  |  64  | 128  |
-            // |---------|------|------|------|------|------|------|
-            // | ms/cook |0,0008|0,0042|0,0086|0,0144|0,0290|0,0614|
-            //
-            // ⚠️ **O cozimento NAO e' o recurso que limita isto** -- 0,06 ms a 128 nao limita
-            // nada. O custo por medir e' o RENDER de 128 contornos (Vello), e quem quiser subir
-            // tem de medir ESSE, nao este. 128 espelha o teto das cristas por simetria, nao por
-            // ter batido numa parede.
+        /// Um eixo de cópia: quantas, e quanto anda cada uma.
+        const fn axis(count: &'static str, mv: &'static str) -> [FxParam; 2] {
+            [
+                // **128 por eixo, e o número saiu da MEDIÇÃO** (CLAUDE.md §0): o custo de
+                // `cooked()` é linear nas cópias, medido numa silhueta de 24 âncoras —
+                //
+                // | cópias  |  2   |  8   |  16  |  32  |  64  | 128  |
+                // |---------|------|------|------|------|------|------|
+                // | ms/cook |0,0008|0,0042|0,0086|0,0144|0,0290|0,0614|
+                //
+                // ⚠️ O cozimento NÃO é o recurso que limita isto — 0,06 ms não limita nada. O
+                // custo por medir é o RENDER dos contornos. Há um teto separado no PRODUTO dos
+                // dois eixos (`MAX_TOTAL`), porque o teto de um eixo não é o teto de uma grelha.
+                FxParam {
+                    name: count,
+                    min: 1.0,
+                    max: 128.0,
+                    toggle: false,
+                    integer: true,
+                },
+                // Distâncias em PERCENTAGEM e POR EIXO — o *Relative Offset* do Array do
+                // Blender: `100` encaixa sem folga, porque x mede pela LARGURA e y pela ALTURA.
+                FxParam {
+                    name: mv,
+                    min: -200.0,
+                    max: 200.0,
+                    toggle: false,
+                    integer: false,
+                },
+            ]
+        }
+        const AX: [FxParam; 2] = axis("Copies X", "Move X");
+        const AY: [FxParam; 2] = axis("Copies Y", "Move Y");
+        /// Uma rotação por cópia, em graus.
+        const fn turn(name: &'static str) -> FxParam {
             FxParam {
-                name: "Copies",
-                min: 1.0,
-                max: 128.0,
-                toggle: false,
-                integer: true,
-            },
-            // Distancias em PERCENTAGEM da forma: `100` = uma largura-media. A mesma lei do
-            // `Size` do Zig Zag, e pela mesma razao.
-            FxParam {
-                name: "Move X",
-                min: -200.0,
-                max: 200.0,
-                toggle: false,
-                integer: false,
-            },
-            FxParam {
-                name: "Move Y",
-                min: -200.0,
-                max: 200.0,
-                toggle: false,
-                integer: false,
-            },
-            FxParam {
-                name: "Rotate",
+                name,
                 min: -180.0,
                 max: 180.0,
                 toggle: false,
                 integer: false,
-            },
+            }
+        }
+        const REPEAT: &[FxParam] = &[
+            AX[0],
+            AX[1],
+            AY[0],
+            AY[1],
+            // **Duas rotações, porque fazem coisas diferentes** (Enio, 2026-07-18). O `Spin`
+            // roda cada cópia sobre o centro dela; o `Orbit` roda-a em torno do centro do
+            // original — é o *Object Offset* do Blender, e é de onde saem as espirais.
+            turn("Spin"),
+            turn("Orbit"),
         ];
         // Um parametro cada. O Twist entrega o angulo na BORDA da forma; o Bloat e' uma
         // percentagem do raio de cada ponto (`-100` colapsa no centro, `100` duplica).
@@ -405,10 +415,12 @@ impl PathEffect {
             (Self::ZigZag(z), 1) => z.ridges,
             (Self::ZigZag(z), 2) => f64::from(u8::from(z.smooth)),
             (Self::ZigZag(z), 3) => f64::from(u8::from(z.rough_seed.is_some())),
-            (Self::Repeat(r), 0) => r.copies,
+            (Self::Repeat(r), 0) => r.copies_x,
             (Self::Repeat(r), 1) => r.move_x,
-            (Self::Repeat(r), 2) => r.move_y,
-            (Self::Repeat(r), 3) => r.rotate,
+            (Self::Repeat(r), 2) => r.copies_y,
+            (Self::Repeat(r), 3) => r.move_y,
+            (Self::Repeat(r), 4) => r.spin,
+            (Self::Repeat(r), 5) => r.orbit,
             (Self::Bloat(b), 0) => b.amount,
             _ => 0.0,
         }
@@ -436,10 +448,12 @@ impl PathEffect {
             // A seed é FIXA por enquanto: o que o artista liga é o *modo* Roughen. Um knob de
             // seed entra quando alguém quiser duas rugosidades diferentes na mesma cena.
             (Self::ZigZag(z), 3) => z.rough_seed = (v >= 0.5).then_some(1),
-            (Self::Repeat(r), 0) => r.copies = v,
+            (Self::Repeat(r), 0) => r.copies_x = v,
             (Self::Repeat(r), 1) => r.move_x = v,
-            (Self::Repeat(r), 2) => r.move_y = v,
-            (Self::Repeat(r), 3) => r.rotate = v,
+            (Self::Repeat(r), 2) => r.copies_y = v,
+            (Self::Repeat(r), 3) => r.move_y = v,
+            (Self::Repeat(r), 4) => r.spin = v,
+            (Self::Repeat(r), 5) => r.orbit = v,
             (Self::Bloat(b), 0) => b.amount = v,
             _ => {}
         }

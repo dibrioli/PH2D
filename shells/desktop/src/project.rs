@@ -91,7 +91,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ Estas entradas nasceram como v19..v21 na `line/Vector` e foram **renumeradas +3 na
 /// integração de 2026-07-19**, porque a `line/physics` bumpou três vezes na mesma jornada e o
 /// contador se **CONTA**, não se escolhe.
-const PROJECT_SCHEMA: u32 = 25;
+const PROJECT_SCHEMA: u32 = 26;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

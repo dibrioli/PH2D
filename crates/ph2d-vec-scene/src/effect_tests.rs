@@ -371,3 +371,24 @@ fn the_curve_box_hugs_the_cooked_shape_and_an_empty_one_has_none() {
         "caminho sem geometria não tem caixa"
     );
 }
+
+/// **O teto de parâmetros do motor e o do painel têm de CONCORDAR.**
+///
+/// ⚠️ O doc do `MAX_FX_ROW_PARAMS` afirmava *"há gate a exigir que os dois lados concordem"* e
+/// **não havia** (achado numa auditoria, 2026-07-18). Baixar o do painel deixaria os últimos
+/// parâmetros de um efeito registados no motor, invisíveis na tela e verdes em todo o lado — que
+/// é a definição de um botão que falta sem ninguém dar por isso.
+///
+/// A crate do motor não alcança a do painel (ela vive de snapshots), então o gate compara contra
+/// o número LITERAL, e a mensagem diz onde está o outro lado.
+#[test]
+fn the_engine_and_the_panel_agree_on_the_parameter_ceiling() {
+    // `ph2d_editor_core::ids::MAX_FX_ROW_PARAMS`, em ids/chrome/vector.rs.
+    const PANEL_MAX_FX_ROW_PARAMS: usize = 6;
+    assert_eq!(
+        MAX_FX_PARAMS, PANEL_MAX_FX_ROW_PARAMS,
+        "o motor declara {MAX_FX_PARAMS} parâmetros por efeito e o painel regista \
+         {PANEL_MAX_FX_ROW_PARAMS} (`MAX_FX_ROW_PARAMS` em ph2d-editor-core/src/ids/chrome/\
+         vector.rs). O menor dos dois é quantos o artista consegue tocar."
+    );
+}

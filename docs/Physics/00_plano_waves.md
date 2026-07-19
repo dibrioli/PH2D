@@ -273,7 +273,8 @@ corpo assado?"* (não — ele entrega a pose, pelo motivo acima) e enunciou a re
 **qualquer** interruptor. São duas perguntas. A outra — *"o Play tem de dirigir o solver?"* — é do
 TRANSPORTE, não do corpo, e a resposta é **sim, o artista escolhe**: o Enio reportou o conflito (*"os
 controles de simulação e de animação parecem ser os mesmos … a simulação roda junto com a animação"*) e a
-wave **W4b** pôs o toggle **Physics** na barra da timeline, **desmarcado por padrão**. As duas decisões
+wave **W4b** pôs o toggle **Physics** na barra da timeline, **desmarcado por padrão**. Registro completo
+(incluindo por que esta nota enganava) em [`BUGS_physics.md`](BUGS_physics.md) #1. As duas decisões
 convivem sem se tocar: o toggle diz se o solver **roda**, o `Kinematic` diz quem **escreve a pose** quando
 ele roda. Ver §W4b do tracker.
 

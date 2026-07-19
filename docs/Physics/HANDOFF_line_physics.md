@@ -5,6 +5,9 @@
 > [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) +
 > [`00_plano_waves.md`](00_plano_waves.md) antes de tocar código.
 >
+> **Bugs cuja causa ENGANAVA:** [`BUGS_physics.md`](BUGS_physics.md) — sintoma → causa-raiz →
+> tentativas que falharam → lições. Leia antes de re-diagnosticar qualquer coisa deste módulo.
+>
 > **Norte (não re-litigar):** runtime-truth + bake opcional; rígido primeiro; solver = `rapier2d 0.28`
 > (M10, já determinístico) — esta linha escreve **integração e autoria**, não solver.
 

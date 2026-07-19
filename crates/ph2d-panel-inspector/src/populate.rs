@@ -153,7 +153,11 @@ fn populate_physics(store: &mut WidgetStore) {
         (ids::INSP_PHYS_RADIUS, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
         (ids::INSP_PHYS_HALF_X, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
         (ids::INSP_PHYS_HALF_Y, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
-        (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),  // LITERAL-PX-OK: kg/m^2
+        // The capsule's STRAIGHT segment: min 0.0, not 0.001 — a zero-segment
+        // capsule is exactly a ball, which is the honest bottom of the range
+        // (and what Ball -> Capsule converts to).
+        (ids::INSP_PHYS_CAP_HALF_H, 0.25, 0.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),     // LITERAL-PX-OK: kg/m^2
         (ids::INSP_PHYS_RESTITUTION, 0.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: bounciness is 0..=1 by physics
         (ids::INSP_PHYS_FRICTION, 0.5, 0.0, 10.0, 0.01), // LITERAL-PX-OK: Coulomb coefficient, >1 is legal
         // Per-body gravity multiplier (W8). The range bounds the DRAG only — the

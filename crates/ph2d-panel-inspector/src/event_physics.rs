@@ -88,6 +88,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_RADIUS => Some(PhysicsFieldEdit::Radius(v)),
             ids::INSP_PHYS_HALF_X => Some(PhysicsFieldEdit::HalfX(v)),
             ids::INSP_PHYS_HALF_Y => Some(PhysicsFieldEdit::HalfY(v)),
+            ids::INSP_PHYS_CAP_HALF_H => Some(PhysicsFieldEdit::CapHalfHeight(v)),
             ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
             ids::INSP_PHYS_RESTITUTION => Some(PhysicsFieldEdit::Restitution(v)),
             ids::INSP_PHYS_FRICTION => Some(PhysicsFieldEdit::Friction(v)),

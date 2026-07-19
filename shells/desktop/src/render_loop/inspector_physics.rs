@@ -56,11 +56,28 @@ pub(crate) fn build_physics_info(
             is_sensor: false,
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
+            cap_half_height: 0.25,
         });
     };
-    let (shape_tag, radius, half_x, half_y) = match col.shape {
-        ColliderShape::Ball { radius } => (0u8, radius, radius, radius),
-        ColliderShape::Cuboid { half_x, half_y } => (1u8, half_x.max(half_y), half_x, half_y),
+    // Each arm also carries what the OTHER shapes' rows would seed if the artist
+    // switched — the rows for an inactive shape are not painted, so these are
+    // display seeds, and `apply_physics_edit` owns the real conversion.
+    let (shape_tag, radius, half_x, half_y, cap_half_height) = match col.shape {
+        ColliderShape::Ball { radius } => (0u8, radius, radius, radius, 0.0),
+        ColliderShape::Cuboid { half_x, half_y } => (
+            1u8,
+            half_x.max(half_y),
+            half_x,
+            half_y,
+            (half_y - half_x).max(0.0),
+        ),
+        // A capsule's own radius IS the ball radius; its box equivalent is
+        // `radius` wide and `half_height + radius` tall (the TOTAL half-extent,
+        // which is what a box would need to cover the same silhouette).
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => (2u8, radius, radius, half_height + radius, half_height),
     };
     Some(InspectorPhysicsInfo {
         entity_bits,
@@ -79,6 +96,7 @@ pub(crate) fn build_physics_info(
         is_sensor: col.is_sensor,
         bake_channels_tag,
         gravity_scale,
+        cap_half_height,
     })
 }
 
@@ -223,24 +241,78 @@ pub(crate) fn apply_physics_edit(
             let r = match cur.shape {
                 ColliderShape::Ball { radius } => radius,
                 ColliderShape::Cuboid { half_x, half_y } => half_x.min(half_y),
+                // The cap already IS a ball of this radius.
+                ColliderShape::Capsule { radius, .. } => radius,
             };
             next.shape = ColliderShape::Ball {
                 radius: r.max(1e-3),
             };
         }
-        PhysicsFieldEdit::Shape(_) => {
+        PhysicsFieldEdit::Shape(1) => {
             let (hx, hy) = match cur.shape {
                 ColliderShape::Ball { radius } => (radius, radius),
                 ColliderShape::Cuboid { half_x, half_y } => (half_x, half_y),
+                // The box that covers the capsule's silhouette: as wide as the
+                // caps, as tall as the TOTAL half-extent.
+                ColliderShape::Capsule {
+                    half_height,
+                    radius,
+                } => (radius, half_height + radius),
             };
             next.shape = ColliderShape::Cuboid {
                 half_x: hx.max(1e-3),
                 half_y: hy.max(1e-3),
             };
         }
+        PhysicsFieldEdit::Shape(2) => {
+            let (half_height, radius) = match cur.shape {
+                // A zero-segment capsule is exactly that ball, so the silhouette
+                // does not move at all on the switch.
+                ColliderShape::Ball { radius } => (0.0, radius),
+                // Radius from the SMALLER half-extent so the capsule never grows
+                // wider than the box, and the segment takes up the rest — total
+                // half-extent lands back on `half_y` exactly.
+                ColliderShape::Cuboid { half_x, half_y } => {
+                    let r = half_x.min(half_y);
+                    ((half_y - r).max(0.0), r)
+                }
+                ColliderShape::Capsule {
+                    half_height,
+                    radius,
+                } => (half_height, radius),
+            };
+            next.shape = ColliderShape::Capsule {
+                half_height: half_height.max(0.0),
+                radius: radius.max(1e-3),
+            };
+        }
+        // A tag no shape claims is DROPPED rather than folded onto a plausible
+        // neighbour — the same discipline `Kind` follows. With two shapes the
+        // old catch-all was merely redundant; with three it would be a chip that
+        // quietly selects a different shape.
+        PhysicsFieldEdit::Shape(_) => {}
+        // ⚠️ Radius must not FORCE a ball: a capsule's cap radius is the same
+        // quantity under the same name, so on a capsule this edits the caps and
+        // leaves it a capsule. Forcing `Ball` here would delete the artist's
+        // capsule the first time they touched its radius.
         PhysicsFieldEdit::Radius(v) => {
-            next.shape = ColliderShape::Ball {
-                radius: v.max(1e-3),
+            next.shape = match cur.shape {
+                ColliderShape::Capsule { half_height, .. } => ColliderShape::Capsule {
+                    half_height,
+                    radius: v.max(1e-3),
+                },
+                _ => ColliderShape::Ball {
+                    radius: v.max(1e-3),
+                },
+            };
+        }
+        // Only meaningful on a capsule, and the row is painted only there.
+        PhysicsFieldEdit::CapHalfHeight(v) => {
+            if let ColliderShape::Capsule { radius, .. } = cur.shape {
+                next.shape = ColliderShape::Capsule {
+                    half_height: v.max(0.0),
+                    radius,
+                };
             }
         }
         PhysicsFieldEdit::HalfX(v) => {

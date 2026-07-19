@@ -93,13 +93,26 @@ impl BodyKind {
 /// The collider silhouette, in **world units (meters)** — the same unit as
 /// `Transform` and the sprite's world size (there is no pixel↔meter
 /// conversion at this boundary; the world is meter-native, ADR-0131 D4).
-/// **Append-only** (Capsule/Triangle/Polygon land later).
+/// **Append-only** (Triangle/Polygon land later).
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ColliderShape {
     /// Circle of `radius` meters.
     Ball { radius: f32 },
     /// Axis-aligned box, `half_x`/`half_y` HALF-extents in meters.
     Cuboid { half_x: f32, half_y: f32 },
+    /// **Y-aligned capsule** — the character collider of 2D. A straight middle
+    /// segment of half-length `half_height`, capped by a half-disc of `radius`
+    /// at each end, so the total half-extent along Y is `half_height + radius`.
+    ///
+    /// It exists because a box catches on tile seams and ramp corners while a
+    /// capsule slides over them — the reason Unity and Godot both ship one as
+    /// the default character shape.
+    ///
+    /// **Appended**, so the postcard discriminants of `Ball`/`Cuboid` are
+    /// unchanged and every project saved before capsules existed still loads
+    /// (the `BodyKind::Kinematic` precedent — appending a variant needs no
+    /// `PROJECT_SCHEMA` bump; only reordering or inserting would).
+    Capsule { half_height: f32, radius: f32 },
 }
 
 impl Default for ColliderShape {

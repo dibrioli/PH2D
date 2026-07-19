@@ -72,6 +72,28 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
                 }
             }
         }
+        // Same uniform/non-uniform split as the ball, for the same reason: a
+        // capsule squashed on one axis has ELLIPTICAL caps, which no solver
+        // represents exactly, so it degrades to the convex `Stadium` rather
+        // than keeping circular caps that would no longer match the sprite.
+        // The straight segment always follows the Y scale; the caps follow both.
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => {
+            if sx == sy {
+                ShapeDesc::Capsule {
+                    half_height: half_height * sy,
+                    radius: radius * sx,
+                }
+            } else {
+                ShapeDesc::Stadium {
+                    half_height: half_height * sy,
+                    rx: radius * sx,
+                    ry: radius * sy,
+                }
+            }
+        }
     }
 }
 

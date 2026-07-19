@@ -20,7 +20,7 @@ use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 const KIND_LABELS: [&str; 3] = ["Dynamic", "Static", "Kinematic"];
 
 /// Collider-shape labels, indexed by `ColliderShape` tag.
-const SHAPE_LABELS: [&str; 2] = ["Ball", "Box"];
+const SHAPE_LABELS: [&str; 3] = ["Ball", "Box", "Capsule"];
 
 /// Collision-layer chip labels. Bare numbers because a layer has no meaning of
 /// its own — what it MEANS is the row it occupies in the world matrix, and that
@@ -50,10 +50,14 @@ pub fn bake_label(seconds: f32) -> String {
 /// Tag for the Dynamic body kind — the only kind with simulated motion to bake.
 const KIND_DYNAMIC: u8 = 0;
 
-/// Tag for the Ball shape — named because the painter branches on it twice
-/// and a bare `0` at a branch is the kind of thing that survives a refactor
-/// pointing at the wrong variant.
+/// Tag for the Ball shape — named because the painter branches on it and a
+/// bare `0` at a branch is the kind of thing that survives a refactor pointing
+/// at the wrong variant.
 const SHAPE_BALL: u8 = 0;
+
+/// Tag for the Capsule shape (`ColliderShape::Capsule`), named for the same
+/// reason as [`SHAPE_BALL`].
+const SHAPE_CAPSULE: u8 = 2;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_physics_section(
@@ -148,48 +152,17 @@ pub(crate) fn paint_physics_section(
         info.shape_tag,
     );
 
-    // Only the selected shape's dimensions are offered. A radius field on a
-    // box is a control that cannot do anything — worse than a missing one,
-    // because it looks like it should work.
-    if info.shape_tag == SHAPE_BALL {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Radius (m)",
-            ids::INSP_PHYS_RADIUS,
-        );
-    } else {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Half Width (m)",
-            ids::INSP_PHYS_HALF_X,
-        );
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Half Height (m)",
-            ids::INSP_PHYS_HALF_Y,
-        );
-    }
+    yy = paint_shape_dims(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        info.shape_tag,
+    );
 
     for (label, id) in [
         ("Density", ids::INSP_PHYS_DENSITY),
@@ -249,6 +222,59 @@ pub(crate) fn paint_physics_section(
     );
 
     paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)
+}
+
+/// The dimension rows of the SELECTED shape, and only those.
+///
+/// A radius field on a box is a control that cannot do anything — worse than a
+/// missing one, because it looks like it should work. Its own function because
+/// the section is at the panel crate's 200-LOC cap, and because "which numbers
+/// does this shape have" is one question that deserves one answer in one place.
+///
+/// The capsule reuses **Radius** deliberately: a cap's radius is the same
+/// quantity under the same name. Its second row is a DIFFERENT id from the box's
+/// `HALF_Y` because "half height" means the half-extent on a box and the
+/// straight segment on a capsule (the caps add `radius` on top) — one control
+/// meaning two things is the bug this section keeps writing gates against.
+#[allow(clippy::too_many_arguments)]
+fn paint_shape_dims(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    shape_tag: u8,
+) -> f32 {
+    let rows: &[(&str, ph2d_editor_core::NodeId)] = match shape_tag {
+        SHAPE_BALL => &[("Radius (m)", ids::INSP_PHYS_RADIUS)],
+        SHAPE_CAPSULE => &[
+            ("Radius (m)", ids::INSP_PHYS_RADIUS),
+            ("Half Height (m)", ids::INSP_PHYS_CAP_HALF_H),
+        ],
+        _ => &[
+            ("Half Width (m)", ids::INSP_PHYS_HALF_X),
+            ("Half Height (m)", ids::INSP_PHYS_HALF_Y),
+        ],
+    };
+    let mut yy = y;
+    for (label, id) in rows {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            *id,
+        );
+    }
+    yy
 }
 
 /// The tail of the body section: the two **Dynamic-only** field rows (Gravity

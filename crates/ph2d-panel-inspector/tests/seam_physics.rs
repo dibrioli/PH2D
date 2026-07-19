@@ -41,6 +41,7 @@ fn with_body() -> InspectorPhysicsInfo {
         is_sensor: false,
         bake_channels_tag: 0,
         gravity_scale: 1.0,
+        cap_half_height: 0.25,
     }
 }
 
@@ -214,8 +215,64 @@ fn every_dimension_field_reaches_the_bus() {
             PhysicsFieldEdit::Friction(1.5),
             "Friction",
         ),
+        (
+            ids::INSP_PHYS_CAP_HALF_H,
+            0.625,
+            PhysicsFieldEdit::CapHalfHeight(0.625),
+            "Capsule Half Height",
+        ),
     ] {
         expect(&commit(with_body(), id, v), edit, what);
+    }
+}
+
+/// **The capsule's rows are offered only for a capsule** — and the box's only
+/// for a box (W-capsule).
+///
+/// Each shape paints its OWN dimensions and no others: a Half Width box on a
+/// capsule is a control that cannot do anything, and a Half Height row that
+/// meant the box's half-extent on one shape and the capsule's straight segment
+/// on another would be one control meaning two things. The ids are distinct, so
+/// this asserts presence AND absence per shape — an absence gate without its
+/// presence sibling would stay green with nothing painted at all
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+#[test]
+fn each_shape_paints_only_its_own_dimension_rows() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // shape_tag → (radius, half_x, half_y, capsule half-height)
+    for (tag, want) in [
+        (0u8, [true, false, false, false]),
+        (1, [false, true, true, false]),
+        (2, [true, false, false, true]),
+    ] {
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(InspectorPhysicsInfo {
+            shape_tag: tag,
+            ..with_body()
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        let painted = |id| rects.iter().any(|(n, _)| *n == id);
+        let got = [
+            painted(ids::INSP_PHYS_RADIUS),
+            painted(ids::INSP_PHYS_HALF_X),
+            painted(ids::INSP_PHYS_HALF_Y),
+            painted(ids::INSP_PHYS_CAP_HALF_H),
+        ];
+        assert_eq!(
+            got, want,
+            "shape_tag={tag}: wrong dimension rows painted \
+             [radius, half_x, half_y, cap_half_height]"
+        );
     }
 }
 

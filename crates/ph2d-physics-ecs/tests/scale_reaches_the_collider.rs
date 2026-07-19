@@ -75,6 +75,46 @@ fn a_nonuniform_scale_makes_the_ball_an_ellipse() {
     );
 }
 
+/// A capsule follows the **same** uniform/non-uniform split as the ball, and for
+/// the same reason: squashed on one axis its caps are elliptical, which no
+/// solver represents exactly, so it degrades to the convex `Stadium` rather than
+/// keeping circular caps that no longer match the sprite.
+///
+/// The straight segment always follows the Y scale; the caps follow both axes.
+/// Mutation-tested: scaling the segment by `sx` swaps the two numbers, and
+/// keeping a `Capsule` under non-uniform scale loses the x/y distinction.
+#[test]
+fn a_capsule_stays_exact_when_uniform_and_becomes_a_stadium_when_not() {
+    let cap = ColliderShape::Capsule {
+        half_height: 0.6,
+        radius: 0.2,
+    };
+    // Uniform (and a uniform FLIP, which is magnitude-only) stays an exact capsule.
+    assert_eq!(
+        scaled_shape(cap, Vec2::new(2.0, 2.0)),
+        ShapeDesc::Capsule {
+            half_height: 1.2,
+            radius: 0.4,
+        }
+    );
+    assert_eq!(
+        scaled_shape(cap, Vec2::new(-2.0, -2.0)),
+        ShapeDesc::Capsule {
+            half_height: 1.2,
+            radius: 0.4,
+        }
+    );
+    // Non-uniform: segment by |sy|, caps elliptical (rx by |sx|, ry by |sy|).
+    assert_eq!(
+        scaled_shape(cap, Vec2::new(3.0, 2.0)),
+        ShapeDesc::Stadium {
+            half_height: 1.2,
+            rx: 0.6,
+            ry: 0.4,
+        }
+    );
+}
+
 /// **The regression guard.** Unit scale is `(1, 1)`, so every unscaled body —
 /// which is every body authored before this wave — resolves to *exactly* the
 /// shape it always had. A ball stays a `Ball`, not an ellipse of equal axes,

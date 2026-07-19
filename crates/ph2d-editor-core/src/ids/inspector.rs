@@ -198,15 +198,19 @@ pub const INSP_PHYS_KIND: [NodeId; 3] = [
     hash_node_id("insp_phys_kind_kinematic"),
 ];
 /// §11 Collider shape segmented, indexed by `ColliderShape` tag: Ball / Box.
-pub const INSP_PHYS_SHAPE: [NodeId; 2] = [
+pub const INSP_PHYS_SHAPE: [NodeId; 3] = [
     hash_node_id("insp_phys_shape_ball"),
     hash_node_id("insp_phys_shape_box"),
+    hash_node_id("insp_phys_shape_capsule"),
 ];
 /// §11 Ball radius, meters (shown only for the Ball shape).
 pub const INSP_PHYS_RADIUS: NodeId = hash_node_id("insp_phys_radius");
 /// §11 Box HALF-extents, meters (shown only for the Box shape).
 pub const INSP_PHYS_HALF_X: NodeId = hash_node_id("insp_phys_half_x");
 pub const INSP_PHYS_HALF_Y: NodeId = hash_node_id("insp_phys_half_y");
+/// §11 Capsule straight-segment HALF-length, meters (shown only for the Capsule
+/// shape). The capsule's total half-extent along Y is this plus the radius.
+pub const INSP_PHYS_CAP_HALF_H: NodeId = hash_node_id("insp_phys_cap_half_h");
 /// §11 Mass density (kg/m² in 2D).
 pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
 /// §11 Bounciness, `0..=1`.

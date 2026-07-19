@@ -20,7 +20,7 @@ use layers::LayerMatrix;
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
 pub use desc::{BodyDesc, BodySnapshot};
 use rapier2d::geometry::{Group, InteractionGroups};
-pub use shape::{ELLIPSE_SEGS, ShapeDesc, ellipse_vertices};
+pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
@@ -383,6 +383,27 @@ impl PhysicsWorld {
         let shape = match desc.shape {
             ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
             ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
+            // A true capsule: rapier has it natively, so a uniformly-scaled
+            // character collider is exact (and rounder than any polygon).
+            ShapeDesc::Capsule {
+                half_height,
+                radius,
+            } => ColliderBuilder::capsule_y(half_height, radius),
+            // Non-uniformly scaled capsule → elliptical caps, which no solver
+            // represents exactly; same convex-polygon treatment as the ellipse.
+            ShapeDesc::Stadium {
+                half_height,
+                rx,
+                ry,
+            } => {
+                let pts: Vec<_> = capsule_vertices(half_height, rx, ry)
+                    .into_iter()
+                    .map(|[x, y]| nalgebra::Point2::new(x, y))
+                    .collect();
+                ColliderBuilder::convex_polyline(pts).unwrap_or_else(|| {
+                    ColliderBuilder::capsule_y(half_height.max(f32::MIN_POSITIVE), rx.max(ry))
+                })
+            }
             ShapeDesc::Ellipse { rx, ry } => {
                 let pts: Vec<_> = ellipse_vertices(rx, ry)
                     .into_iter()

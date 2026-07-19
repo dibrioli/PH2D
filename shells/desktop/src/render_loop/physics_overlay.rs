@@ -34,7 +34,9 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{BodyKind, Collider, RigidBody, ShapeDesc, ellipse_vertices, scaled_shape};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, RigidBody, ShapeDesc, capsule_vertices, ellipse_vertices, scaled_shape,
+};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point, VectorScene};
 
@@ -155,6 +157,29 @@ pub(crate) fn collider_outline(
         // hull the solver sees rather than on a smoother curve outside it.
         ShapeDesc::Ellipse { rx, ry } => {
             ring(&mut path, &ellipse_vertices(rx, ry), rx);
+        }
+        // Both capsule forms trace `capsule_vertices` — the SAME function the
+        // collider is built from for the stadium, and (with `rx == ry`) the same
+        // stadium outline rapier's exact capsule has. So the wireframe never
+        // describes an edge the solver does not collide with. The spoke lands on
+        // the +x flank, which is straight at `radius` for the whole segment, so
+        // it reads as a rotation guide exactly like the circle's.
+        ShapeDesc::Capsule {
+            half_height,
+            radius,
+        } => {
+            ring(
+                &mut path,
+                &capsule_vertices(half_height, radius, radius),
+                radius,
+            );
+        }
+        ShapeDesc::Stadium {
+            half_height,
+            rx,
+            ry,
+        } => {
+            ring(&mut path, &capsule_vertices(half_height, rx, ry), rx);
         }
         ShapeDesc::Cuboid { half_x, half_y } => {
             path.move_to(place(-half_x, -half_y));

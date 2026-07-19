@@ -3,8 +3,9 @@
 //!
 //! Sibling of `ph2d_physics_c9` (which drives the raw wrapper). This one
 //! drives the same falling-circles fixture **through the ECS bridge** (plus
-//! one non-uniformly scaled ball → an ELLIPSE collider, W6, and one
-//! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8): entities carry
+//! one non-uniformly scaled ball → an ELLIPSE collider, W6, one
+//! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8, and one
+//! non-uniformly scaled CAPSULE → a STADIUM hull): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -15,7 +16,7 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 53
+//! physics-ecs-c9 body_count: 54
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
@@ -104,6 +105,33 @@ fn main() {
         },
         GravityScale(0.5),
         Transform::from_translation(Vec2::new(4.0, 6.0)),
+    ));
+
+    // One NON-uniformly scaled CAPSULE: it degrades to a `Stadium`, whose hull
+    // comes from `capsule_vertices` — our own libm tessellation, exactly like
+    // the ellipse above. That is what puts the capsule path on the cross-OS
+    // hash: an `f32::sin_cos` in there would split the three OSes in the last
+    // ulps and this is what would catch it. (A *uniform* capsule is rapier's
+    // own exact shape and carries no transcendental of ours.)
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.20,
+                radius: 0.15,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform {
+            translation: Vec2::new(-4.0, 7.0),
+            rotation: 0.0,
+            scale: Vec2::new(1.7, 1.1),
+            skew_x: 0.0,
+            skew_y: 0.0,
+        },
     ));
 
     let mut bridge = PhysicsBridge::new();

@@ -1983,3 +1983,46 @@ persistência round-trip estendida · `registers_every_physics_component` 3→4 
 
 **Ids/consts alocados:** `INSP_PHYS_GRAVITY_SCALE` · componente `ph2d::physics::GravityScale` ·
 `GravityScale::NEUTRAL = 1.0`. Smoke `=12`.
+
+## §Capsule — o collider de personagem (2026-07-19, smoke `=13`)
+
+**Terceira forma: `ColliderShape::Capsule { half_height, radius }`** (Y-alinhada). Existia só Ball e
+Cuboid; o próprio `components.rs` marcava o vão. Uma caixa engancha em emenda de tile e quina de
+rampa, uma cápsula desliza — é por isso que personagem 2D é cápsula (Unity/Godot shipam a mesma).
+
+**Y-alinhada de propósito:** é o default do `CapsuleCollider2D`/`CapsuleShape2D`, e cápsula deitada é
+cápsula em corpo rotacionado (o `Transform` já roda o collider). Um flag de eixo seria 2ª maneira de
+dizer a mesma coisa.
+
+**Duas formas, pelo precedente do W6:** escala uniforme → `ShapeDesc::Capsule` EXATA (rapier tem
+nativa); não-uniforme → `ShapeDesc::Stadium` (polígono convexo via `capsule_vertices`), porque as
+tampas viram elípticas e nenhum solver representa isso — a MESMA regra Ball→Ellipse, pelo mesmo
+motivo (o collider tem de casar com o sprite desenhado).
+
+**`capsule_vertices(half_height, rx, ry)`** é porta ÚNICA: o build do collider E o overlay traçam
+dela, então o wireframe não pode descrever borda que o solver não colide. Com `rx == ry` ela é o
+contorno da cápsula exata — é assim que o overlay desenha a `Capsule`. `libm::sincosf` (HR-5).
+
+**Sem bump de schema:** variante APENDADA em `ColliderShape` mantém os discriminantes de
+Ball/Cuboid (precedente do `BodyKind::Kinematic`). `PROJECT_SCHEMA` fica **28**.
+
+⚠️ **`Radius` não pode FORÇAR bola:** o raio da tampa é a mesma grandeza com o mesmo nome, então num
+capsule o edit muda as tampas e mantém a cápsula. Forçar `Ball` ali apagaria a cápsula do artista no
+primeiro toque no raio. E `Shape(_)` desconhecido agora é DESCARTADO (com 2 formas o catch-all era
+redundante; com 3 seria um chip que seleciona outra coisa) — a disciplina que o `Kind` já segue.
+
+⚠️ **Id próprio p/ o `half_height` da cápsula** (`INSP_PHYS_CAP_HALF_H`): "half height" é o
+half-extent numa caixa e o SEGMENTO reto numa cápsula (as tampas somam `radius` por cima). Um
+controle com dois significados é o bug que esta seção não para de gatear. O `Radius` É reusado —
+essa sim é a mesma grandeza.
+
+**Gates:** extents da cápsula e do stadium NO SIM (lidos do collider vivo) · **`a_capsule_climbs_a_step_that_stops_a_box`**
+— o gate que justifica a wave; mutação (cápsula vira caixa de mesmos extents) trava em **x = −0,13**,
+antes do degrau · `scaled_shape` uniforme/não-uniforme · seam: `each_shape_paints_only_its_own_dimension_rows`
+(presença E ausência por forma) + o sweep dos 3 chips + o commit do row novo · c9 **54 corpos** com
+um Stadium (põe a tessellation da cápsula no hash 3-OS).
+
+**LOC:** `paint_physics_section` estava no teto de 200 ⇒ as rows de dimensão viraram
+`paint_shape_dims` (uma pergunta, uma resposta). E as cenas 12+13 saíram p/ o arquivo novo
+**`physics_smoke_props.rs`** ("uma propriedade de UM corpo"), o que devolve ao `physics_smoke_rigs.rs`
+a costura limpa dele (corpos RELACIONADOS) em vez de virar despejo de overflow.

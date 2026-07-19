@@ -27,13 +27,23 @@ pub struct InspectorPhysicsInfo {
     pub has_body: bool,
     /// `0` Dynamic · `1` Static.
     pub kind_tag: u8,
-    /// `0` Ball · `1` Box.
+    /// `0` Ball · `1` Box · `2` Capsule.
     pub shape_tag: u8,
-    /// Ball radius, meters (meaningless when `shape_tag == 1`).
+    /// Ball radius, meters — and the capsule's CAP radius, which is the same
+    /// quantity under the same name (`shape_tag` `0` or `2`).
     pub radius: f32,
-    /// Box HALF-extents, meters (meaningless when `shape_tag == 0`).
+    /// Box HALF-extents, meters (meaningless unless `shape_tag == 1`).
     pub half_x: f32,
     pub half_y: f32,
+    /// Capsule STRAIGHT-segment half-length, meters (`shape_tag == 2`). The
+    /// capsule's total half-extent along Y is `cap_half_height + radius`, the
+    /// rapier decomposition — its own field rather than reusing [`half_y`],
+    /// because "half height" means a different quantity on a box than on a
+    /// capsule, and one control that means two things is the bug this section
+    /// keeps writing gates against.
+    ///
+    /// [`half_y`]: InspectorPhysicsInfo::half_y
+    pub cap_half_height: f32,
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,
@@ -89,12 +99,16 @@ pub enum PhysicsFieldEdit {
     Remove,
     /// `BodyKind` tag: `0` Dynamic · `1` Static · `2` Kinematic.
     Kind(u8),
-    /// `ColliderShape` tag: `0` Ball · `1` Box. Switching preserves the
-    /// footprint (a box becomes the ball that fits it, and back).
+    /// `ColliderShape` tag: `0` Ball · `1` Box · `2` Capsule. Switching
+    /// preserves the footprint (a box becomes the ball that fits it, and back;
+    /// a capsule keeps the box's width as its radius).
     Shape(u8),
     Radius(f32),
     HalfX(f32),
     HalfY(f32),
+    /// Capsule straight-segment half-length (see
+    /// [`InspectorPhysicsInfo::cap_half_height`]).
+    CapHalfHeight(f32),
     Density(f32),
     Restitution(f32),
     Friction(f32),

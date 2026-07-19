@@ -15,6 +15,7 @@
 //! | `10`| W7   | SENSOR (trigger): a ball passes through a sensor zone that lights up |
 //! | `11`| Weld | a bar WELDED to a hook stays rigid; a PINNED bar swings (side by side) |
 //! | `12`| W8   | four bodies, one gravity, four **Gravity Scale**s: fall / weightless / heavy / balloon |
+//! | `13`| Caps | a CAPSULE rides a stair a BOX catches on — the character shape of 2D |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -76,6 +77,7 @@ impl crate::App {
             "10" => self.physics_smoke_sensor(),
             "11" => self.physics_smoke_weld(),
             "12" => self.physics_smoke_gravity(),
+            "13" => self.physics_smoke_capsule(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -15,8 +15,13 @@
 > pincel grosso vira eixo de 2 px e a semente **degenera o corte**. E o **undo** — a deferral de
 > 1 frame do Apply caía num frame **sem input**, e o `post_frame_undo` usa `had_input` como proxy
 > de "o usuário fez algo": o frame que aplica agora se declara portador do trabalho.
-> **ABERTO:** multiframe · Apply live (re-solve por rabisco) · a **pré-segmentação por regiões**
-> (perf a 4K, `§7.1`) · **C3 (onion-fill)**.
+> **SMOKE APROVADO (2026-07-19).** ⚠️ **E a régua do caminho REAL mudou a prioridade** — a
+> pré-segmentação deixou de ser "perf a 4K" e virou o **próximo item, à frente de tudo**: ver
+> `§7.1`. Números: 4096² limpo = **3,3 s**; e dois rabiscos que atravessam a mesma linha a
+> 2048² = **157 s** (contra 361 ms limpo). O `MAX_SIDE = 4096` foi **espelhado do balde**, onde
+> é honesto (flood fill é O(N)); aqui o custo cresce ~6,3× por dobra de lado.
+> **ABERTO:** **a pré-segmentação por regiões (§8 — o próximo)** · multiframe · Apply live
+> (re-solve por rabisco, **bloqueado pela pré-segmentação**) · **C3 (onion-fill)**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >
@@ -370,6 +375,41 @@ de regiões**, e um max-flow nessa escala é **sub-milissegundo por qualquer alg
 de correção faz 128 cortes de grade de ≤100 nós em ~10 ms totais, ~80 µs cada). ⇒ **o SOLVE é
 síncrono; não pede barra.** Construir o max-flow do grafo de adjacência de regiões é trabalho
 da wave C2 — o `flow.rs` de hoje é grade-implícita (4-conexa), o de produção é grafo geral.
+
+#### ✅ MEDIDO (2026-07-19, pós-smoke) — o **CAMINHO REAL**, e o que a tabela (a) exagerava
+
+⚠️ **A tabela (a) mede um pior caso FORÇADO e não descreve o produto.** Ela roda `v_ink = 1`
+(atravessar a tinta CUSTA, então o fluxo percorre a grade inteira); o produto roda **`v_ink = 0`**
+— atravessar a tinta é de graça, e é exatamente isso que confina o corte à linha. Réguas novas
+entram pela **porta pública** `colorize()`, com a arte e os rabiscos que o produto tem
+(`lib_tests.rs::measure_the_product_colorize_cost` e irmãs):
+
+| lado da grade | 512² | 1024² | 2048² | 4096² |
+|---|---|---|---|---|
+| Apply (2 cores, rabiscos limpos) | 13,3 ms | 83,6 ms | 519 ms | **3,33 s** |
+
+Os 229 s viram **3,3 s** — 69× menos. **A conclusão não muda, e o motivo é a FORMA:** ~6,3× por
+dobra de lado (≈ `N^1,66` na área) e **segundos** no tamanho em que se desenha de verdade. O
+`MAX_SIDE = 4096` foi **espelhado do `fill_at`**, onde é honesto (flood fill é O(N)) — herdado
+por analogia para um custo que não é o mesmo ([[feedback_inherited_affordance_must_be_rederived]]).
+
+⚠️ **E há um PENHASCO, que é pior que a escala:** o custo é dominado pela **configuração das
+sementes**, não pelo tamanho. Medido a 2048², a MESMA arte:
+
+| sementes | limpas | **um** rabisco cruza a linha | **os dois** cruzam |
+|---|---|---|---|
+| 2 cores | 361 ms | 1,01 s | **157 s** |
+
+Um rabisco que atravessa a tinta pede o que a arte contradiz (*"um só rótulo dos dois lados"*
+contra *"corte aqui"*), e **dois** que se contradizem sobre a MESMA linha custam **434×** o caso
+limpo. Isso não é gesto exótico: é rabiscar solto por cima de um personagem. **Hoje o produto
+trava por minutos nesse clique**, e o smoke não o pegou porque a cena dele é limpa e pequena.
+
+⚠️ **Hipótese REFUTADA pela régua:** eu esperava que o guloso um-contra-todos fizesse o custo
+escalar com o nº de cores. Ele **cai** (2 → 172,6 s · 4 → 39,2 s · 8 → 9,0 s): cada corte
+binário a mais dá ao fluxo mais fonte e mais sumidouro, e ele termina antes. A régua fica no
+repo (`measure_the_cost_is_not_driven_by_label_count`) porque a hipótese é intuitiva demais
+para não ser reconstruída.
 
 **Conclusão para o §7.2:** o custo do Colorize **não está no corte** — está na
 **pré-segmentação (a EDT/trapped-ball)**, já medida (7,7–321,9 ms), cuja única alavanca

@@ -201,3 +201,138 @@ fn no_lines_or_no_scribbles_yields_nothing() {
     }];
     assert!(colorize(&[], &scr, 80.0).is_empty());
 }
+
+/// **A régua do CAMINHO REAL** (`--release --ignored --nocapture`).
+///
+/// A régua do `flow_tests.rs` mede um corte binário com `v_ink = 1` — um pior caso FORÇADO,
+/// onde atravessar a tinta custa e o fluxo percorre a grade inteira. O produto roda
+/// `v_ink = 0` (atravessar a tinta é de graça, e é isso que confina o corte à linha), então
+/// aquele número **não descreve o que o artista paga**. Esta régua entra pela porta pública,
+/// com a arte e os rabiscos que o produto tem, e varre até o `MAX_SIDE` que o `Grid` impõe.
+#[test]
+#[ignore = "régua de medição — rode com --release --ignored --nocapture"]
+fn measure_the_product_colorize_cost() {
+    // O `Grid` reserva `MARGIN_PX` dos dois lados e depois CLAMPA a escala em `MAX_SIDE`,
+    // então o lado pedido sai de `scale = (side - 2*margem) / vão_da_arte`.
+    let span = 0.8_f32;
+    let sides = [512_usize, 1024, 2048, 4096];
+    let strokes = boxed_with_divider(0.7, (0.45, 0.55));
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.3, 0.3), Vec2::new(0.3, 0.7)],
+            width: 0.02,
+        },
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.8, 0.3), Vec2::new(0.8, 0.7)],
+            width: 0.02,
+        },
+    ];
+    println!("\n  lado     precision      ms   regiões");
+    for side in sides {
+        let precision = (side as f32 - 40.0) / span;
+        let t = std::time::Instant::now();
+        let out = colorize(&strokes, &scribbles, precision);
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        println!("  {side:>4}²  {precision:>9.0}  {ms:>8.1}  {}", out.len());
+        assert_eq!(
+            out.len(),
+            2,
+            "a régua tem de estar medindo um corte que COLORE"
+        );
+    }
+}
+
+/// **A contagem de rótulos NÃO é o multiplicador — a régua REFUTOU a hipótese.**
+///
+/// Eu a escrevi esperando que o guloso um-contra-todos (`§3`) fizesse o Apply custar a grade
+/// VEZES o número de cores. Medido a 2048², o custo **CAI** com mais cores: 2 → 172,6 s ·
+/// 4 → 39,2 s · 8 → 9,0 s. Cada corte binário adicional dá ao fluxo mais fonte e mais
+/// sumidouro, e ele termina mais cedo; o que domina não é quantas cores há, é se as sementes
+/// **se contradizem sobre a mesma linha** (vide `measure_a_scribble_that_crosses_the_ink`).
+/// Fica como régua porque a hipótese é intuitiva e alguém vai reconstruí-la.
+#[test]
+#[ignore = "régua de medição — rode com --release --ignored --nocapture"]
+fn measure_the_cost_is_not_driven_by_label_count() {
+    let side = 2048.0_f32;
+    let precision = (side - 40.0) / 0.8;
+    let strokes = boxed_with_divider(0.7, (0.45, 0.55));
+    println!("\n  rótulos      ms");
+    for n in [2_usize, 4, 8] {
+        // Rabiscos empilhados na vertical: cada um pede a sua fatia da mesma arte.
+        let scribbles: Vec<Scribble> = (0..n)
+            .map(|k| {
+                let y = 0.15 + 0.7 * (k as f32 + 0.5) / n as f32;
+                Scribble {
+                    label: k as u16,
+                    points: vec![Vec2::new(0.3, y), Vec2::new(0.85, y)],
+                    width: 0.02,
+                }
+            })
+            .collect();
+        let t = std::time::Instant::now();
+        let out = colorize(&strokes, &scribbles, precision);
+        println!(
+            "  {n:>7}  {:>8.1}   ({} regiões)",
+            t.elapsed().as_secs_f64() * 1e3,
+            out.len()
+        );
+    }
+}
+
+/// **A régua que isola a CAUSA**: o mesmo tamanho, o mesmo número de rótulos, mudando só se
+/// o rabisco ATRAVESSA a linha. Um rabisco que cruza o divisor pede uma coisa que a arte
+/// contradiz (a semente diz "um só rótulo dos dois lados", a tinta diz "corte aqui").
+#[test]
+#[ignore = "régua de medição — rode com --release --ignored --nocapture"]
+fn measure_a_scribble_that_crosses_the_ink() {
+    let side = 2048.0_f32;
+    let precision = (side - 40.0) / 0.8;
+    let strokes = boxed_with_divider(0.7, (0.45, 0.55));
+    let scr = |crosses: bool| {
+        let x_end = if crosses { 0.85 } else { 0.6 };
+        vec![
+            Scribble {
+                label: 0,
+                points: vec![Vec2::new(0.3, 0.35), Vec2::new(x_end, 0.35)],
+                width: 0.02,
+            },
+            Scribble {
+                label: 1,
+                points: vec![Vec2::new(0.75, 0.65), Vec2::new(0.85, 0.65)],
+                width: 0.02,
+            },
+        ]
+    };
+    // O 3º caso é o que explodiu na régua de rótulos: os DOIS rabiscos reivindicam os dois
+    // lados, então as sementes se contradizem uma à outra através da mesma linha.
+    let both = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.3, 0.35), Vec2::new(0.85, 0.35)],
+            width: 0.02,
+        },
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.3, 0.65), Vec2::new(0.85, 0.65)],
+            width: 0.02,
+        },
+    ];
+    let t = std::time::Instant::now();
+    let out = colorize(&strokes, &both, precision);
+    println!(
+        "  AMBOS atravessam           →  {:>9.1} ms  ({} regiões)",
+        t.elapsed().as_secs_f64() * 1e3,
+        out.len()
+    );
+    for crosses in [false, true] {
+        let t = std::time::Instant::now();
+        let out = colorize(&strokes, &scr(crosses), precision);
+        println!(
+            "  atravessa a tinta: {crosses:>5}  →  {:>9.1} ms  ({} regiões)",
+            t.elapsed().as_secs_f64() * 1e3,
+            out.len()
+        );
+    }
+}

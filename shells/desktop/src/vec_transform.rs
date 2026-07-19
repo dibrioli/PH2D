@@ -214,7 +214,16 @@ pub(crate) fn settle_origins(
         })
         .collect();
     for (id, e) in pending {
-        let Some((lo, hi)) = scene.path_curve_bbox(id) else {
+        // ⚠️ A bbox **AUTORADA** (`path_bbox`), não a cozida.
+        //
+        // O `path_curve_bbox` passou a medir a geometria COZIDA quando os Live Path Effects
+        // entraram (ADR-0132) — o que está certo para o GIZMO, que tem de abraçar o que se vê.
+        // Para o PIVÔ está errado: o centro de um objeto é uma propriedade da identidade dele,
+        // não da aparência de hoje. Com o cozido, acrescentar um Trim ou um Repeater desloca a
+        // bbox e faz este sistema **escrever no documento** num frame que o utilizador não
+        // provocou — um escritor por-frame que reage a efeitos, que é exatamente a forma de um
+        // passo de undo espúrio (a classe que o `vec_zorder_fixpoint_tests` já apanhou uma vez).
+        let Some((lo, hi)) = scene.path_bbox(id) else {
             continue;
         };
         let center = [
@@ -264,11 +273,14 @@ mod tests {
             closed: true,
             ..ph2d_vec_scene::VecPath::default()
         };
-        path.effects = vec![FxEntry::new(PathEffect::Trim(
-            ph2d_vec_scene::fx_trim::TrimSpec {
-                start: 0.5,
-                end: 0.9,
-                offset: 0.0,
+        // ⚠️ Um REPEATER, e não um Trim: ele é o efeito que MULTIPLICA contornos, então a caixa
+        // cozida cresce muito e desloca-se — que é precisamente o que o assentamento lê.
+        path.effects = vec![FxEntry::new(PathEffect::Repeat(
+            ph2d_vec_scene::fx_repeat::RepeatSpec {
+                copies: 6.0,
+                move_x: 120.0,
+                move_y: 40.0,
+                rotate: 11.0,
             },
         ))];
         let id = scene.push_path(path);

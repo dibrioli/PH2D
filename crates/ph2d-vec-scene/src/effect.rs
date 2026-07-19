@@ -167,10 +167,12 @@ pub enum PathEffect {
     ZigZag(ZigZagSpec),
     /// N cópias com transformação cumulativa — o *Repeater*. Ver [`crate::fx_repeat`].
     Repeat(crate::fx_repeat::RepeatSpec),
-    /// Gira em torno do centro com força radial — o *Twist*. Ver [`crate::fx_warp`].
-    Twist(crate::fx_warp::TwistSpec),
     /// Puxa/empurra os pontos do centro — o *Pucker & Bloat*. Ver [`crate::fx_warp`].
     /// **Apendado por último**: postcard é posicional.
+    ///
+    /// ⚠️ Houve um `Twist` entre este e o `Repeat`, e foi **CORTADO** antes de qualquer save
+    /// existir (2026-07-18) — rasgava a geometria em toda a variante que tentei, e a razão está
+    /// no cabeçalho do [`crate::fx_warp`]. Os índices posicionais fecharam-se atrás dele.
     Bloat(crate::fx_warp::BloatSpec),
 }
 
@@ -185,7 +187,6 @@ impl PathEffect {
             Self::Trim(t) => t.is_neutral(),
             Self::ZigZag(z) => z.is_neutral(),
             Self::Repeat(r) => r.is_neutral(),
-            Self::Twist(t) => t.is_neutral(),
             Self::Bloat(b) => b.is_neutral(),
         }
     }
@@ -199,7 +200,7 @@ impl PathEffect {
     pub fn as_trim(&self) -> Option<&TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -207,7 +208,7 @@ impl PathEffect {
     pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -216,7 +217,7 @@ impl PathEffect {
     pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -224,7 +225,7 @@ impl PathEffect {
     pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Twist(_) | Self::Bloat(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) => None,
         }
     }
 
@@ -242,20 +243,14 @@ impl PathEffect {
                 }
             }
             Self::Repeat(_) => "Repeater",
-            Self::Twist(_) => "Twist",
             Self::Bloat(_) => "Pucker & Bloat",
         }
     }
 
     /// **A tabela de tipos** — o menu "Add" do painel sai daqui, então acrescentar um efeito
     /// não toca no painel. A ordem é a dos variants.
-    pub const KINDS: &'static [&'static str] = &[
-        "Trim Path",
-        "Zig Zag",
-        "Repeater",
-        "Twist",
-        "Pucker & Bloat",
-    ];
+    pub const KINDS: &'static [&'static str] =
+        &["Trim Path", "Zig Zag", "Repeater", "Pucker & Bloat"];
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -266,8 +261,7 @@ impl PathEffect {
             0 => Some(Self::Trim(TrimSpec::default())),
             1 => Some(Self::ZigZag(ZigZagSpec::default())),
             2 => Some(Self::Repeat(crate::fx_repeat::RepeatSpec::default())),
-            3 => Some(Self::Twist(crate::fx_warp::TwistSpec::default())),
-            4 => Some(Self::Bloat(crate::fx_warp::BloatSpec::default())),
+            3 => Some(Self::Bloat(crate::fx_warp::BloatSpec::default())),
             _ => None,
         }
     }
@@ -279,8 +273,7 @@ impl PathEffect {
             Self::Trim(_) => 0,
             Self::ZigZag(_) => 1,
             Self::Repeat(_) => 2,
-            Self::Twist(_) => 3,
-            Self::Bloat(_) => 4,
+            Self::Bloat(_) => 3,
         }
     }
 
@@ -386,13 +379,6 @@ impl PathEffect {
         ];
         // Um parametro cada. O Twist entrega o angulo na BORDA da forma; o Bloat e' uma
         // percentagem do raio de cada ponto (`-100` colapsa no centro, `100` duplica).
-        const TWIST: &[FxParam] = &[FxParam {
-            name: "Angle",
-            min: -360.0,
-            max: 360.0,
-            toggle: false,
-            integer: false,
-        }];
         const BLOAT: &[FxParam] = &[FxParam {
             name: "Amount",
             min: -100.0,
@@ -404,7 +390,6 @@ impl PathEffect {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
             Self::Repeat(_) => REPEAT,
-            Self::Twist(_) => TWIST,
             Self::Bloat(_) => BLOAT,
         }
     }
@@ -424,7 +409,6 @@ impl PathEffect {
             (Self::Repeat(r), 1) => r.move_x,
             (Self::Repeat(r), 2) => r.move_y,
             (Self::Repeat(r), 3) => r.rotate,
-            (Self::Twist(t), 0) => t.angle,
             (Self::Bloat(b), 0) => b.amount,
             _ => 0.0,
         }
@@ -456,7 +440,6 @@ impl PathEffect {
             (Self::Repeat(r), 1) => r.move_x = v,
             (Self::Repeat(r), 2) => r.move_y = v,
             (Self::Repeat(r), 3) => r.rotate = v,
-            (Self::Twist(t), 0) => t.angle = v,
             (Self::Bloat(b), 0) => b.amount = v,
             _ => {}
         }
@@ -486,11 +469,6 @@ impl PathEffect {
             // é uma operação sobre a coisa ladrilhada, e é isso que faz Repeater∘Repeater dar
             // uma grelha (o Blender constrói grelhas com dois modificadores Array empilhados).
             Self::Repeat(spec) => out = crate::fx_repeat::repeat_path(path, spec),
-            Self::Twist(spec) => {
-                apply_per_contour(path, &mut out, |v, c| {
-                    crate::fx_warp::twist_contour(v, c, spec, ctx)
-                });
-            }
             Self::Bloat(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
                     crate::fx_warp::bloat_contour(v, c, spec, ctx)

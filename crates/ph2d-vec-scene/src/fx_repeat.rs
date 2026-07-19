@@ -141,27 +141,6 @@ struct Affine {
 }
 
 impl Affine {
-    const IDENTITY: Self = Self {
-        a: 1.0,
-        b: 0.0,
-        c: 0.0,
-        d: 1.0,
-        tx: 0.0,
-        ty: 0.0,
-    };
-
-    /// `self ∘ rhs` — aplica `rhs` primeiro.
-    fn then(self, rhs: Self) -> Self {
-        Self {
-            a: rhs.a.mul_add(self.a, rhs.c * self.b),
-            b: rhs.b.mul_add(self.a, rhs.d * self.b),
-            c: rhs.a.mul_add(self.c, rhs.c * self.d),
-            d: rhs.b.mul_add(self.c, rhs.d * self.d),
-            tx: rhs.tx.mul_add(self.a, rhs.ty.mul_add(self.b, self.tx)),
-            ty: rhs.tx.mul_add(self.c, rhs.ty.mul_add(self.d, self.ty)),
-        }
-    }
-
     fn apply(self, p: [f64; 2]) -> [f64; 2] {
         [
             p[0].mul_add(self.a, p[1].mul_add(self.b, self.tx)),
@@ -170,14 +149,24 @@ impl Affine {
     }
 }
 
-/// O passo de uma cópia: rodar em torno do centro da entrada, depois transladar.
-fn step_of(spec: &RepeatSpec, size: [f64; 2], center: [f64; 2]) -> Affine {
-    // `sin`/`cos` UMA vez por efeito, não por ponto — o custo do Repeater é o número de pontos
-    // vezes o número de cópias, e não há razão para pagar transcendental em cada um.
-    let rad = spec.rotate / HALF_TURN_DEG * core::f64::consts::PI;
+/// **A transformação da cópia `k`**: rodada `k·θ` em torno do centro DELA, deslocada `k·d`.
+///
+/// ⚠️ Não é `M^k`. A 1ª versão compunha a matriz consigo mesma, com a rotação ancorada no centro
+/// do ORIGINAL — matematicamente uma espiral, e visualmente as cópias **orbitam e espalham-se**
+/// em vez de ladrilhar. A folha de contacto mostrou-o à primeira. Aqui mover é mover e girar é
+/// girar cada cópia, e os dois não se contaminam: uma fileira continua fileira quando se
+/// acrescenta rotação, e ganha-se um leque.
+fn transform_for(k: usize, spec: &RepeatSpec, size: [f64; 2], center: [f64; 2]) -> Affine {
+    // `sin`/`cos` uma vez por CÓPIA (≤128), nunca por ponto.
+    #[allow(clippy::cast_precision_loss)]
+    let kf = k as f64;
+    let rad = spec.rotate * kf / HALF_TURN_DEG * core::f64::consts::PI;
     let (s, c) = rad.sin_cos();
     // POR EIXO: x pela largura, y pela altura. É o que faz `100` encaixar exatamente.
-    let (dx, dy) = (spec.move_x / 100.0 * size[0], spec.move_y / 100.0 * size[1]);
+    let (dx, dy) = (
+        spec.move_x / 100.0 * size[0] * kf,
+        spec.move_y / 100.0 * size[1] * kf,
+    );
     let (ox, oy) = (center[0], center[1]);
     // T(centro) ∘ R(θ) ∘ T(−centro), com a translação somada no fim.
     Affine {
@@ -217,7 +206,7 @@ pub fn repeat_path(path: &VecPath, spec: &RepeatSpec) -> VecPath {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let copies = spec.copies.floor().max(MIN_COPIES) as usize;
     let (size, center) = measure(path);
-    let step = step_of(spec, size, center);
+    let step = transform_for(1, spec, size, center);
     // Um passo que não move NADA (sem distância e sem ângulo) empilharia `n` cópias exatamente
     // em cima da forma: invisível, e caro. É o neutro pela outra porta.
     if step.tx.abs() <= EPS
@@ -234,9 +223,8 @@ pub fn repeat_path(path: &VecPath, spec: &RepeatSpec) -> VecPath {
         .filter_map(|k| path.contour(k).map(|(v, cl)| (v.to_vec(), cl)))
         .collect();
 
-    let mut m = Affine::IDENTITY;
-    for _ in 1..copies {
-        m = step.then(m);
+    for k in 1..copies {
+        let m = transform_for(k, spec, size, center);
         for (verts, closed) in &source {
             out.subpaths.push(Contour {
                 verts: verts.iter().map(|v| map_vert(v, m)).collect(),

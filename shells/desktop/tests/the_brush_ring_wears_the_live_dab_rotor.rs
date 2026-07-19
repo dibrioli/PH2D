@@ -43,3 +43,37 @@ fn the_brush_ring_wears_the_live_dab_rotor() {
          ring pinned to it stays still while the tip it depicts turns with the stroke"
     );
 }
+
+/// **A hover must reach the painter**, or the ring can only ever aim once you have already committed.
+///
+/// The tool half is gated in `ph2d-tool-painter`
+/// (`hovering_aims_the_brush_ring_before_the_stroke_starts`), but that drives `on_canvas_hover` directly.
+/// Only the shell decides whether a real cursor move ever calls it — and `painter_canvas_move` returns
+/// early when no stroke is open, which is exactly the branch a hover lives in. Delete the call there and
+/// every test in the workspace stays green while the feature is dead in the product.
+#[test]
+fn a_hover_reaches_the_painter_when_no_stroke_is_open() {
+    let src = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src/input_dispatch/painter_canvas_input.rs"),
+    )
+    .expect("the painter canvas input source");
+    let code: String = src
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // The early-return branch for "no stroke open" must deliver the hover before it bails.
+    let at = code
+        .find("fn painter_canvas_move")
+        .expect("painter_canvas_move");
+    let body = &code[at..(at + 600).min(code.len())];
+    let bail = body.find("STROKE_ACTIVE").expect("the no-stroke guard");
+    let guard = &body[bail..];
+    let ret = guard.find("return false").expect("the early return");
+    assert!(
+        guard[..ret].contains("deliver_canvas_hover"),
+        "the no-stroke branch of `painter_canvas_move` must deliver the hover before returning, or the \
+         brush ring can never aim before the first click"
+    );
+}

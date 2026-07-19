@@ -49,6 +49,23 @@ pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
 impl PainterTool {
     /// Snapshot the active brush for the panel's Brush section.
     #[must_use]
+    /// The heading the NEXT dab would wear: the engine's own while a stroke is in flight, else the hover
+    /// preview. ⚠️ The order is load-bearing — a live stroke's heading is the one the PAINT uses, so it
+    /// must win; the hover value only fills the gap before pen-down and during the warm-up (where the
+    /// engine's heading is still `[0, 0]` and the opening dabs are being held anyway), which is what keeps
+    /// the ring from snapping to the resting Angle the moment you press.
+    fn live_heading(&self) -> [f32; 2] {
+        match self
+            .paint
+            .stroke
+            .as_ref()
+            .map(ph2d_painter_brush::Stroke::heading)
+        {
+            Some(h) if h != [0.0, 0.0] => h,
+            _ => self.paint.hover_heading,
+        }
+    }
+
     pub fn brush_settings(&self) -> BrushSettings {
         let b = &self.paint.brush;
         // Snapshot the Custom curve's control points into the Copy array (panel plots + places handles).
@@ -241,12 +258,7 @@ impl PainterTool {
             // which is exactly what the first dab of the next stroke will use.
             dab_rotor: ph2d_painter_brush::heading::rotate(
                 ph2d_painter_brush::texture::rotate_by_degrees(b.dab_angle_deg),
-                b.follow_rotor(
-                    self.paint
-                        .stroke
-                        .as_ref()
-                        .map_or([0.0, 0.0], ph2d_painter_brush::Stroke::heading),
-                ),
+                b.follow_rotor(self.live_heading()),
             ),
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
             texture_ramp_bw: self.paint.texture_ramp_bw,

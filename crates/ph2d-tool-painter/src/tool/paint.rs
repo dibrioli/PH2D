@@ -200,6 +200,11 @@ pub(crate) struct PaintState {
     dynamics: Dynamics,
     /// The stroke in progress between pointer-down and pointer-up (`None` when idle).
     stroke: Option<Stroke>,
+    /// The **hover heading** (unit vector; `[0, 0]` = none yet) and the last hover position, so the
+    /// brush-cursor ring can aim before the pen goes down. Maintained by
+    /// [`PainterTool::on_canvas_hover`], which carries the reasoning; a live stroke's heading outranks it.
+    hover_heading: [f32; 2],
+    hover_pos: Option<[f32; 2]>,
     /// Reused dab buffer so a hot pointer stream allocates nothing per sample.
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.

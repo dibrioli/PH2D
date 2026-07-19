@@ -136,6 +136,41 @@ impl PainterTool {
         self.paint.stroke = Some(stroke);
     }
 
+    /// The cursor moved over the canvas with **no button down** (image px). Advances the hover heading so
+    /// the brush-cursor ring already wears the orientation the next dab will use — a calligraphic nib is
+    /// aimed on the way in, not after you commit (Enio 2026-07-19).
+    ///
+    /// ⚠️ Deliberately **not** a `PointerPhase::Move`: a Move with no stroke open is a stray event that the
+    /// paint paths, the shape editors and the deform gizmo all have their own opinions about. This touches
+    /// exactly one field and paints nothing.
+    ///
+    /// It runs the SAME filter at the SAME length scale as the engine's own heading
+    /// ([`ph2d_painter_brush::heading::advance`] / `smooth_len`), so the ring does not jump when the stroke
+    /// takes over. Only maintained when a slot follows the stroke — a plain brush pays a bool test.
+    pub fn on_canvas_hover(&mut self, pos: [f32; 2]) {
+        if !self.paint.brush.follows_stroke() {
+            // Nothing reads it; keep the state cold so a plain brush is untouched.
+            self.paint.hover_pos = None;
+            self.paint.hover_heading = [0.0, 0.0];
+            return;
+        }
+        let prev = self.paint.hover_pos.replace(pos);
+        let Some(prev) = prev else { return };
+        let step = [pos[0] - prev[0], pos[1] - prev[1]];
+        let len = (step[0] * step[0] + step[1] * step[1]).sqrt();
+        if len <= f32::EPSILON {
+            return; // no motion: hold the established heading (the engine holds too)
+        }
+        let smooth =
+            ph2d_painter_brush::heading::smooth_len(2.0 * self.paint.brush.clamped_radius());
+        self.paint.hover_heading = ph2d_painter_brush::heading::advance(
+            self.paint.hover_heading,
+            [step[0] / len, step[1] / len],
+            len,
+            smooth,
+        );
+    }
+
     /// Extend the in-progress stroke to `ev`, stamping any dabs the spacing emits.
     /// Returns `false` if no stroke is active (a stray Move).
     pub(super) fn paint_extend(&mut self, ev: CanvasPointer) -> bool {

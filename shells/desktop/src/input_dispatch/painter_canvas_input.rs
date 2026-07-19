@@ -203,6 +203,10 @@ impl App {
     /// path samples per event) deliver immediately as before. See `HANDOFF_per_layer_color_perf` §1.R.
     pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
+            // No stroke: this is a HOVER. Feed it to the painter so the brush-cursor ring can already wear
+            // the orientation the next dab will use (Rake / Flow) before the pen goes down. It consumes
+            // nothing — panning, gizmos and every other Move consumer still see this event.
+            self.deliver_canvas_hover(px, py);
             return false;
         }
         if self.painter_coalesces_motion() {
@@ -240,6 +244,57 @@ impl App {
             .and_then(|g| g.tools.active_mut())
             .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
             .is_some_and(|p| p.coalesces_canvas_motion())
+    }
+
+    /// Deliver a **hover** (cursor moved, no button) to the painter, in image px. The minimal sibling of
+    /// [`Self::deliver_canvas_pointer`]: same screen -> image affine, but it touches no gesture state, no
+    /// modifiers, no grab tolerance and no grid snap — a hover is not a gesture, and the only thing that
+    /// reads it is the brush-cursor ring's orientation.
+    ///
+    /// ⚠️ It must stay side-effect-free and must NOT consume the event: hovering is also how you aim a pan
+    /// or a gizmo grab.
+    fn deliver_canvas_hover(&mut self, px: f32, py: f32) {
+        let Some(gfx) = self.gfx.as_mut() else { return };
+        if !gfx
+            .tools
+            .active()
+            .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        {
+            return;
+        }
+        let Some(bits) = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection) else {
+            return;
+        };
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let (Some(tr), Some(sprite)) = (
+            gfx.sim.world().get::<Transform>(entity),
+            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
+        ) else {
+            return;
+        };
+        let window_size = gfx.surface.size();
+        let camera = gfx.camera;
+        let Some(painter) = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        else {
+            return;
+        };
+        let (iw, ih) = painter.canvas_size();
+        if iw == 0 || ih == 0 {
+            return;
+        }
+        let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+            iw,
+            ih,
+            tr,
+            sprite,
+            &camera,
+            window_size,
+        );
+        let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
+        painter.on_canvas_hover([img.x as f32, img.y as f32]);
     }
 
     /// Deliver the buffered (coalesced) painter Move, if any, as one [`PointerPhase::Move`]. Called once

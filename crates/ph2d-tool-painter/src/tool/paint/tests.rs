@@ -22969,3 +22969,77 @@ fn the_brush_ring_rotor_turns_with_the_stroke_only_when_a_slot_follows() {
         );
     }
 }
+
+/// **The ring aims BEFORE you click.** Hovering — cursor moving, no button down — must already turn the
+/// brush-cursor rotor, because aiming a calligraphic nib is something you do on the way to the canvas
+/// (Enio 2026-07-19: *"permita rodar em tempo real mesmo antes de clicar"*).
+///
+/// Also pins the two halves that make it safe: a brush with nothing following is **bit-identical** to the
+/// resting Angle however you wave the cursor, and a hover with no motion holds rather than resets.
+#[test]
+fn hovering_aims_the_brush_ring_before_the_stroke_starts() {
+    use ph2d_painter_brush::TextureKind;
+    let hover_rotor = |rake: bool, dir: [f32; 2]| {
+        let mut t = white_canvas(96, 9.0);
+        t.paint.brush.shape.kind = TextureKind::Stripes;
+        t.paint.brush.shape.rake = rake;
+        t.paint.brush.dab_angle_deg = 0;
+        // A run of hover samples along `dir` — enough travel for the EMA to settle.
+        for i in 0..40u8 {
+            let k = f32::from(i) * 3.0;
+            t.on_canvas_hover([20.0 + dir[0] * k, 20.0 + dir[1] * k]);
+        }
+        t.brush_settings().dab_rotor
+    };
+    // FOLLOWING: the rotor lands on the hover direction, with no click anywhere in sight.
+    let down = hover_rotor(true, [0.0, 1.0]);
+    assert!(
+        down[0].abs() < 0.05 && (down[1] - 1.0).abs() < 0.05,
+        "hovering downward must aim the ring downward, got {down:?}"
+    );
+    let right = hover_rotor(true, [1.0, 0.0]);
+    assert!(
+        (right[0] - 1.0).abs() < 0.05 && right[1].abs() < 0.05,
+        "hovering rightward must aim the ring rightward, got {right:?}"
+    );
+    // NOT FOLLOWING: bit-identical to the resting Angle, however the cursor moves.
+    assert_eq!(
+        hover_rotor(false, [0.0, 1.0]),
+        ph2d_painter_brush::texture::rotate_by_degrees(0),
+        "a non-following brush's ring must not react to hover at all"
+    );
+}
+
+/// **A live stroke's heading BEATS the hover preview** — and the order is load-bearing. The engine's
+/// heading is the one the PAINT uses; the hover value exists only to fill the gap before pen-down and
+/// during the warm-up (where the engine's heading is still unset and the opening dabs are held anyway).
+/// Preferring the hover would let the cursor keep pointing where the artist was *approaching* from while
+/// the tip has already committed to the stroke.
+#[test]
+fn a_live_stroke_beats_the_hover_preview() {
+    use ph2d_painter_brush::{StrokeMethod, TextureKind};
+    let mut t = white_canvas(96, 9.0);
+    t.paint.brush.shape.kind = TextureKind::Stripes;
+    t.paint.brush.shape.rake = true;
+    t.paint.brush.dab_angle_deg = 0;
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    // Approach the canvas heading DOWN...
+    for i in 0..40u8 {
+        t.on_canvas_hover([20.0, 20.0 + f32::from(i) * 3.0]);
+    }
+    let aimed = t.brush_settings().dab_rotor;
+    assert!(
+        aimed[1] > 0.9,
+        "fixture: the hover should have aimed down, got {aimed:?}"
+    );
+    // ...then paint a long stroke to the RIGHT. The ring must follow the paint, not the approach.
+    t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Down));
+    for i in 1..=40u8 {
+        t.on_canvas_pointer(cp([20.0 + f32::from(i) * 1.5, 60.0], PointerPhase::Move));
+    }
+    let painting = t.brush_settings().dab_rotor;
+    assert!(
+        painting[0] > 0.9 && painting[1].abs() < 0.2,
+        "the live stroke's heading must win over the hover preview, got {painting:?}"
+    );
+}

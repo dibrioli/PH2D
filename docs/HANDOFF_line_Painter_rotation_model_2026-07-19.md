@@ -125,6 +125,33 @@ numa curva e exige o rotor na tangente ±8°; e **bit-idêntico ao Angle** quand
 no shell**: mutar o shell para reconstruir o ângulo do `dab_angle_deg` deixa **toda a workspace verde** —
 o gate de comportamento para no valor publicado.
 
+## 7c. O anel MIRA ANTES DO CLIQUE (Enio 2026-07-19)
+
+> *"Permita rodar em tempo real mesmo antes de clicar (enquanto o mouse se movimenta)."*
+
+O tool não recebia hover: o shell só entrega `PointerPhase::Move` **com um traço aberto**
+(`painter_canvas_move` retorna cedo). Nova porta **`PainterTool::on_canvas_hover(pos)`** + o irmão mínimo
+`deliver_canvas_hover` no shell (mesma afim tela→imagem, **sem** modificadores, grab-tol, grid-snap ou
+qualquer estado de gesto — e **não consome o evento**, senão pan e gizmos parariam de mirar).
+
+- ⚠️ **Não é um `Move` sintético de propósito:** um Move sem traço é um evento perdido sobre o qual as
+  rotas de pintura, os shape editors e o gizmo do Deform já têm opinião. O hover toca **um campo** e não
+  pinta nada.
+- Usa o **mesmo filtro e o mesmo comprimento de suavização** do motor (`heading::advance` / `smooth_len`),
+  então o anel não pula quando o traço assume.
+- ⚠️ **A ordem é load-bearing:** com traço em voo o heading do MOTOR vence — é o que a tinta usa. O hover
+  só preenche o vão antes do pen-down **e durante o warm-up** (onde o heading do motor ainda é `[0,0]` e
+  os dabs de abertura estão sendo segurados), que é o que impede o anel de saltar para o Angle no instante
+  em que você aperta.
+- Só é mantido quando algum slot segue o traço — pincel comum paga um teste de bool no caminho quente.
+
+Gates: `hovering_aims_the_brush_ring_before_the_stroke_starts` (aponta para baixo/direita sem clique
+nenhum; e **bit-idêntico ao Angle** quando nada segue) · `a_live_stroke_beats_the_hover_preview` (aproxima
+descendo, pinta para a direita, o anel segue a TINTA) · arch-gate `a_hover_reaches_the_painter_when_no_stroke_is_open`
+(shell). ⚠️ **Sobrevivente documentado:** tirar o early-out `follows_stroke()` do `on_canvas_hover` não
+sangra — com nada seguindo, o `follow_rotor` é a identidade de qualquer jeito, então o guard é sobre
+**custo** (um sqrt + EMA por evento de mouse no caminho quente), não sobre comportamento.
+
 ## 8. Smoke pedido
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && cargo run --release -p ph2d-host-desktop`
@@ -137,6 +164,7 @@ o gate de comportamento para no valor publicado.
 4. Grain e Paper continuam funcionando; combinações Shape×Grain×Paper intactas.
 5. **O anel do cursor gira junto** com Rake/Flow (mais visível com Flatten alto, onde a elipse é óbvia);
    com Follow=Off ele fica parado no Angle.
+6. **Antes de clicar:** mova o mouse sobre o canvas e veja o anel já mirando na direção do movimento.
 
 ## 9. ⛔ NÃO integrei nem pushei (protocolo §0.7 / §0.2)
 

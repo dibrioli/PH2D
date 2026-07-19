@@ -43,6 +43,8 @@ impl Default for PaintState {
             line_show_dimensions: true, // Line CAD dimensions on by default
             dynamics: Dynamics::default(),
             stroke: None,
+            hover_heading: [0.0, 0.0],
+            hover_pos: None,
             dabs: Vec::new(),
             seed: 0,
             tex_rng: 0,

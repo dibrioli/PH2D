@@ -29,13 +29,13 @@
 //! verdade); `Miter` deixa a quina afiada e `Bevel` a corta reta, que são os outros dois
 //! itens do diálogo do Illustrator.
 //!
-//! # A armadilha da ORIENTAÇÃO
+//! # Geometria de fora entra pelo sweep
 //!
-//! Contornos vindos da kurbo não têm orientação combinada com nada. Concatená-los num
-//! `BezPath` só e pedir `NonZero` faz dois de sentidos opostos **se cancelarem** na
-//! sobreposição — a forma ganha um buraco que ninguém pediu. Por isso todo conjunto aqui
-//! passa por [`Region`], que só se constrói através do sweep (que ORIENTA), e só se compõe
-//! por operação de conjunto (que testa cada operando por si).
+//! O contorno que a kurbo devolve é um traçado, não um conjunto: ele **se auto-intersecta**
+//! sempre que o caminho se cruza ou que a curvatura aperta mais que a largura da caneta, e
+//! não vem agrupado por containment (quem é buraco de quem). Por isso todo conjunto aqui é
+//! uma [`Region`], que só se constrói passando pelo sweep — e daí em diante `NonZero` e
+//! `EvenOdd` concordam, porque os contornos saem orientados por ele.
 
 use kurbo::{BezPath, Cap, Join, PathEl, Point, Shape, Stroke, StrokeOpts};
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
@@ -61,8 +61,8 @@ const MIN_TOL: f64 = 1e-9;
 /// containment (o de fora primeiro, os de dentro depois).
 ///
 /// Só se constrói por [`Region::of`] e só se compõe por [`Region::combine`] — as duas
-/// passam pelo sweep. É essa restrição que torna impossível a cancelação por orientação
-/// descrita no cabeçalho do módulo.
+/// passam pelo sweep, e é isso que garante que um traçado da kurbo vire um CONJUNTO antes
+/// de qualquer um perguntar o que está dentro dele.
 struct Region {
     groups: Vec<Vec<BezPath>>,
 }
@@ -78,8 +78,7 @@ impl Region {
         Some(Self { groups })
     }
 
-    /// `self` OP `other`, como conjuntos. Cada operando é testado por si, então orientações
-    /// discordantes não se cancelam.
+    /// `self` OP `other`, como conjuntos.
     fn combine(&self, other: &Self, op: BinaryOp) -> Option<Self> {
         let groups = binary_grouped(
             &flatten_groups(&self.groups),
@@ -301,33 +300,20 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin) -> Vec<VecPath> {
     let Some(region) = Region::of(&to_bez_with(path, Closing::Always), rule_of(path)) else {
         return Vec::new();
     };
-    // A banda é traçada CONTORNO A CONTORNO e unida como conjunto. Traçar todos de uma vez
-    // seria mais rápido e estaria errado: num compound os contornos correm em sentidos
-    // opostos (é assim que um buraco é um buraco), e as bandas deles se cancelariam onde se
-    // sobrepõem — exatamente na parede fina entre a borda e o furo, que é onde um offset
-    // grande é interessante.
+    // A banda: todos os contornos de uma vez.
+    //
+    // ⚠️ Eu escrevi isto CONTORNO A CONTORNO primeiro, raciocinando que num compound os
+    // contornos correm em sentidos opostos (é assim que um buraco é buraco) e que as bandas
+    // se cancelariam sob NonZero onde se sobrepõem. **Medido, não acontece**: com um donut de
+    // parede 2 e offset 2 — bandas que se cobrem inteiras — as duas versões dão exatamente a
+    // mesma área, e o furo continua furo. A defesa era um palpite meu, e um comentário que
+    // afirma um perigo que não se consegue demonstrar é pior que nenhum comentário.
+    // O que ficou do episódio é o gate de PAREDE FINA, que é a fixture que contém o
+    // fenômeno — a de parede grossa não continha (as bandas nem se encontravam).
     let pen = Stroke::new(2.0 * d.abs())
         .with_join(join_of(join))
         .with_caps(Cap::Butt);
-    let mut band: Option<Region> = None;
-    for contour in region
-        .bez()
-        .elements()
-        .split_inclusive(|e| matches!(e, kurbo::PathEl::ClosePath))
-    {
-        let one: BezPath = contour.iter().copied().collect();
-        let Some(b) = penned(&one, &pen).filter(|r| !r.is_empty()) else {
-            continue;
-        };
-        band = Some(match band {
-            None => b,
-            Some(a) => match a.combine(&b, BinaryOp::Union) {
-                Some(u) => u,
-                None => return Vec::new(),
-            },
-        });
-    }
-    let Some(band) = band else {
+    let Some(band) = penned(&region.bez(), &pen).filter(|r| !r.is_empty()) else {
         return Vec::new();
     };
     let op = if d > 0.0 {

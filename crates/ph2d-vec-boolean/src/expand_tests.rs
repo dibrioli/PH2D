@@ -31,8 +31,9 @@ fn open_line(len: f64) -> VecPath {
 }
 
 /// Um quadrado de lado `outer` com um furo quadrado de lado `inner` no centro — o
-/// **compound**, a fixture que contém o fenômeno que quase deu errado (as bandas dos dois
-/// contornos, que correm em sentidos opostos).
+/// **compound**. A espessura da parede é `(outer − inner)/2`, e é ela que decide se a
+/// fixture contém o caso interessante: só quando a parede é ≤ o offset é que as bandas dos
+/// dois contornos se cobrem.
 fn donut(outer: f64, inner: f64) -> VecPath {
     let o = (outer - inner) * 0.5;
     let (a, b) = (o, o + inner);
@@ -158,12 +159,19 @@ fn an_arc_closed_contour_survives_the_sweep() {
     );
 }
 
-/// **O compound: a borda cresce e o BURACO encolhe.** Este é o gate que a banda por-contorno
-/// existe para passar — traçar os dois contornos de uma vez os cancela na parede entre eles,
-/// e o furo some (ou vira lixo) exatamente quando o offset fica interessante.
+/// **O compound: a borda cresce e o BURACO encolhe** — as duas metades ao mesmo tempo, que é
+/// o que "crescer" significa numa forma que tem furo.
+///
+/// ⚠️ **A parede é FINA de propósito.** A 1ª versão deste gate usava um donut de parede 6
+/// com offset 2, e nessa geometria as duas bandas nem se encontram (sobra um vão de 2 entre
+/// elas): o fenômeno interessante — as bandas dos dois contornos **cobrindo-se** — não estava
+/// na fixture, e o gate ficava verde sobre qualquer coisa. Aqui a parede mede 2 e o offset é
+/// 2, então cada banda cobre a parede inteira.
+/// [[feedback_a_green_gate_may_be_green_by_accident]]
 #[test]
 fn growing_a_donut_grows_the_rim_and_shrinks_the_hole() {
-    let out = offset_path(&donut(20.0, 8.0), 2.0, LineJoin::Miter);
+    // Parede = (20−16)/2 = 2; offset 2 ⇒ as bandas se sobrepõem inteiras.
+    let out = offset_path(&donut(20.0, 16.0), 2.0, LineJoin::Miter);
     assert_eq!(out.len(), 1, "continua UMA forma");
     assert_eq!(out[0].subpaths.len(), 1, "…e continua tendo o furo");
     let b = bbox(&out[0]);
@@ -172,13 +180,27 @@ fn growing_a_donut_grows_the_rim_and_shrinks_the_hole() {
         "a borda foi a {}",
         b.width()
     );
-    // 24² menos um furo de 4²: o furo encolhe de 8 para 4 (erodir um quadrado por um disco
-    // dá um quadrado menor, com as quinas ainda afiadas).
+    // 24² menos um furo de 12²: o furo encolhe de 16 para 12 (erodir um quadrado por um
+    // disco dá um quadrado menor, com as quinas ainda afiadas).
     let a = total_area(&out);
     assert!(
-        (a - (576.0 - 16.0)).abs() < 1.0,
-        "área {a} (esperado ~560: 24² com um furo de 4²)"
+        (a - (576.0 - 144.0)).abs() < 1.0,
+        "área {a} (esperado ~432: 24² com um furo de 12²)"
     );
+}
+
+/// **Um furo pode ser ENGOLIDO.** Crescer mais que a metade do furo o fecha, e a forma passa
+/// a ser sólida — nada de um furo de área negativa ou de um contorno interno invertido.
+#[test]
+fn growing_past_the_hole_closes_it() {
+    let out = offset_path(&donut(20.0, 16.0), 9.0, LineJoin::Miter);
+    assert_eq!(out.len(), 1);
+    assert!(
+        out[0].subpaths.is_empty(),
+        "o furo de 16 crescido por 9 de cada lado tem de fechar"
+    );
+    let a = total_area(&out);
+    assert!((a - 38.0 * 38.0).abs() < 1.0, "área {a} (esperado 38²)");
 }
 
 /// Offsetar preserva o ESTILO — é a mesma arte com a borda noutro lugar, não uma forma nova.

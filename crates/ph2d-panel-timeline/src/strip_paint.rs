@@ -139,6 +139,18 @@ pub(crate) fn paint_strip(
         }
     }
 
+    // **The OUTWARD fade-out area — the travel band in the gap AFTER the strip** (Enio,
+    // 2026-07-19), the mirror of the lead-in band above. It sits to the RIGHT of the box:
+    // the clip plays to its last frame, then the object crosses from there to the next
+    // strip's start over this band.
+    if s.lead_out > 0.0 {
+        let a = view.x(s.t_end);
+        let b = view.x(s.t_end + s.lead_out);
+        if b > a {
+            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h));
+        }
+    }
+
     // **The change bars** — what each corner's last edit DID, still on screen long
     // after the pointer let go (Enio, 2026-07-16). Drawn under the brackets, in the
     // corner's own colour and on the corner's own edge, so a bar reads as that
@@ -175,6 +187,7 @@ pub(crate) fn paint_strip(
         blend_px(view, s.t_start, s.lead_in),
         blend_px(view, s.t_start, s.blend_in),
         blend_px(view, s.t_start, s.blend_out),
+        blend_px(view, s.t_end, s.lead_out),
     ) {
         for (g, locked, at_left) in [(a, s.ease_locked_in, true), (b, s.ease_locked_out, false)] {
             let color = resolve(

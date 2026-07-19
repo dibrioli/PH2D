@@ -93,27 +93,48 @@ pub(crate) fn ease_grips(body: Rect, in_px: f32, out_px: f32) -> Option<(Rect, R
     ))
 }
 
-/// Both fade grips, honouring an **outward** fade-in (`lead_px`).
+/// Both fade grips, honouring an **outward** fade on either edge (`lead_in_px`,
+/// `lead_out_px`).
 ///
-/// When `lead_px > 0` the fade-in grip sits in the GAP to the LEFT of the body — at
-/// the outer tip of the travel wedge (`t_start - lead`) — where it cannot collide with
-/// the fade-out grip, so the two are placed independently (no pairing dance). Its bar,
-/// like the inward fade-in's, marks the wedge's outer tip (`g.x`). With `lead_px == 0`
-/// this is exactly [`ease_grips`] — the inward pair, byte-for-byte unchanged.
+/// When a side's lead is `> 0` its grip sits in the GAP beyond that edge — the fade-in at
+/// `t_start - lead_in`, the fade-out at `t_end + lead_out` — where it cannot collide with
+/// the other grip, so that side is placed independently (no pairing dance). Only the sides
+/// WITHOUT an outward lead go through the inward-pair placement, which is the one that has
+/// to keep two nearly-meeting tips apart. With both leads `== 0` this is exactly
+/// [`ease_grips`] — the inward pair, byte-for-byte unchanged.
 pub(crate) fn strip_grips(
     body: Rect,
-    lead_px: f32,
+    lead_in_px: f32,
     in_px: f32,
     out_px: f32,
+    lead_out_px: f32,
 ) -> Option<(Rect, Rect)> {
-    if lead_px <= 0.0 {
-        return ease_grips(body, in_px, out_px);
-    }
-    // The fade-out at its inward spot; the fade-in is outward, so there is nothing for
-    // it to collide with (borrow the out placement from the pair, ignore the in).
-    let (_, out) = ease_grips(body, 0.0, out_px)?;
-    let fade_in = Rect::new(body.x - lead_px, body.y, EASE_W, body.h);
-    Some((fade_in, out))
+    // The inward pair still decides the width guard, and provides the grip on any side
+    // that has NO outward lead. A side WITH a lead leaves its inward slot at rest (`0.0`)
+    // in the pair — its grip is placed in the gap below, where nothing can collide.
+    let (in_base, out_base) = ease_grips(
+        body,
+        if lead_in_px > 0.0 { 0.0 } else { in_px },
+        if lead_out_px > 0.0 { 0.0 } else { out_px },
+    )?;
+    let fade_in = if lead_in_px > 0.0 {
+        Rect::new(body.x - lead_in_px, body.y, EASE_W, body.h)
+    } else {
+        in_base
+    };
+    let fade_out = if lead_out_px > 0.0 {
+        // The grip's RIGHT edge lands on the wedge's outer tip (`t_end + lead_out`), so
+        // the bar (drawn at `g.x + g.w`) marks the tip — the mirror of the fade-in's `g.x`.
+        Rect::new(
+            body.x + body.w + lead_out_px - EASE_W,
+            body.y,
+            EASE_W,
+            body.h,
+        )
+    } else {
+        out_base
+    };
+    Some((fade_in, fade_out))
 }
 
 /// Do two rects share a pixel?

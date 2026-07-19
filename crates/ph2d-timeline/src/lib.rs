@@ -29,6 +29,7 @@ pub mod graph;
 pub mod history;
 pub mod intent;
 pub mod intent_apply;
+mod intent_apply_fade;
 pub mod nest;
 pub mod nest_map;
 pub mod persist;
@@ -41,6 +42,7 @@ pub mod stack;
 pub mod stack_edit;
 mod stack_eval;
 mod stack_frames;
+mod stack_hold;
 pub mod state;
 mod strip_edge_edit;
 

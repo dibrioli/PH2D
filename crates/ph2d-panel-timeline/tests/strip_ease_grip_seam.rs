@@ -40,6 +40,7 @@ fn one_lone_strip() -> TimelineViewSnapshot {
                 blend_in: lane.blend_in(0),
                 blend_out: lane.blend_out(0),
                 lead_in: 0.0,
+                lead_out: 0.0,
                 marks: [0.0; 4],
                 ease_locked_in: lane.neighbour_reach_in(0) > 0.0,
                 ease_locked_out: lane.neighbour_reach_out(0) > 0.0,

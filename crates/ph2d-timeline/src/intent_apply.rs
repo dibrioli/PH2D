@@ -399,58 +399,23 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 s.loop_mode = loop_mode;
             }
         }),
-        // The fade the strip authors for itself (B4).
-        //
-        // **The clamp is on the SUM, not on each edge.** `weight_at` is `mixIn(t) * mixOut(t)`
-        // (Unity's shape), so two fades that OVERLAP multiply: give a 2 s strip a 2 s fade-in
-        // and a 2 s fade-out — each perfectly legal on its own — and its weight peaks at
-        // **0.25**, never reaching 1. On an `Override` lane that is a sprite permanently
-        // half-blended toward the pose below, with nothing on screen to explain why. Unity
-        // clamps the sum for exactly this reason, and so do we: a fade can take the whole
-        // strip, but the two of them cannot take it twice.
-        //
-        // It also keeps the two grips from crossing on screen — the tips can meet, never pass.
+        // Authoring a strip's fades — both live in `intent_apply_fade` (LOC cap). The inward
+        // ease and the outward lead, at either edge; each runs inside this `edit_at` bracket.
         I::SetStripEase {
             lane,
             id,
             edge,
             seconds,
         } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                let other = if edge == 0 { s.ease_out } else { s.ease_in };
-                let room = (s.span() - other.max(0.0)).max(0.0);
-                let v = seconds.clamp(0.0, room); // CLAMP-OK: 0..what the other fade left
-                if edge == 0 {
-                    s.ease_in = v;
-                    // The inward fade-in and the OUTWARD one (`lead_in`) are the same
-                    // handle on two sides of the start edge — authoring one clears the
-                    // other. Without this, dragging the fade back in from the gap left a
-                    // sliver of `lead_in`, and the grip (drawn outward whenever `lead_in`
-                    // is non-zero) stuck at the strip's tip and would not come inside
-                    // (Enio, 2026-07-16).
-                    s.lead_in = 0.0;
-                } else {
-                    s.ease_out = v;
-                }
-            }
+            crate::intent_apply_fade::set_ease(doc, host, lane, id, edge, seconds);
         }),
-        // The OUTWARD fade-in (the travel across the gap). Clamped to the gap before the
-        // strip so it never overruns the previous strip's live span, and it CLEARS the
-        // inward `ease_in`: the fade-in handle authors one side of the edge or the other,
-        // never both (the evaluator would blend against both a frozen and a live opening).
-        // The gap is read from the LANE (it needs the neighbours), so the strip index is
-        // resolved first.
-        I::SetStripLead { lane, id, seconds } => edit_at(state, host, |doc, host, _| {
-            let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) else {
-                return;
-            };
-            let Some(i) = l.index_of(id) else {
-                return;
-            };
-            let gap = l.gap_before(i);
-            let s = &mut l.strips[i];
-            s.lead_in = seconds.clamp(0.0, gap); // CLAMP-OK: 0..the empty time before it
-            s.ease_in = 0.0; // the inward fade-in and the outward one are exclusive
+        I::SetStripLead {
+            lane,
+            id,
+            edge,
+            seconds,
+        } => edit_at(state, host, |doc, host, _| {
+            crate::intent_apply_fade::set_lead(doc, host, lane, id, edge, seconds);
         }),
         I::SetStripSpeed { lane, id, speed } => edit_at(state, host, |doc, host, _| {
             if let Some(s) = doc.strip_in_mut(host, lane, id) {

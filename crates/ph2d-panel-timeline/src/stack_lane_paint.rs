@@ -285,6 +285,7 @@ fn paint_lane(
                 blend_px(view, s.t_start, s.lead_in),
                 blend_px(view, s.t_start, s.blend_in),
                 blend_px(view, s.t_start, s.blend_out),
+                blend_px(view, s.t_end, s.lead_out),
             )?;
             Some([
                 (s.id.0, EASE_IN, a, s.ease_locked_in),

@@ -54,7 +54,7 @@ pub(crate) fn apply(
                 // cannot jump on the first pixel of the drag.
                 start_ease: match edge {
                     EASE_IN => s.blend_in - s.lead_in,
-                    EASE_OUT => s.blend_out,
+                    EASE_OUT => s.blend_out - s.lead_out,
                     _ => 0.0,
                 },
             });
@@ -128,17 +128,28 @@ fn emit(
         // (`ease_locked_*`), so a drag that reaches here is always about a fade the
         // strip owns. The apply clamps to `[0, span]` anyway: the document is not a
         // place to trust the caller.
-        // The fade-out grip is inward-only. The fade-in grip's tip can cross the start
-        // edge: RIGHT of it grows `ease_in` (blend against the clip PLAYING); LEFT of it,
-        // into the gap, grows `lead_in` (the OUTWARD travel fade — blend against the clip's
-        // FROZEN first frame). One handle, two intents, the edge is the pivot.
+        // Both fade grips PIVOT on their edge (Enio: start 2026-07-16, end 2026-07-19). The
+        // tip inside the box grows the inward ease (blend against the clip PLAYING); the tip
+        // dragged OUT into the gap grows the outward lead (blend against the clip's FROZEN
+        // edge frame — the travel across the gap). One handle, two intents, the edge is the
+        // pivot; `SetStripEase`/`SetStripLead` carry the same `edge` (0 = start, 1 = end).
         EASE_OUT => {
             let tip = snapped(state, snap, b0 - (d.start_ease - dt));
-            TimelineIntent::SetStripEase {
-                lane: d.lane,
-                id: d.id,
-                edge: 1, // the document's edge vocabulary — same 0/1 as Trim and Stretch
-                seconds: (b0 - tip).max(0.0),
+            let extent = b0 - tip; // inward is positive (tip left of the end edge)
+            if extent >= 0.0 {
+                TimelineIntent::SetStripEase {
+                    lane: d.lane,
+                    id: d.id,
+                    edge: 1, // the document's edge vocabulary — same 0/1 as Trim and Stretch
+                    seconds: extent,
+                }
+            } else {
+                TimelineIntent::SetStripLead {
+                    lane: d.lane,
+                    id: d.id,
+                    edge: 1,
+                    seconds: -extent, // the tip dragged into the gap AFTER: the outward length
+                }
             }
         }
         EASE_IN => {
@@ -155,6 +166,7 @@ fn emit(
                 TimelineIntent::SetStripLead {
                     lane: d.lane,
                     id: d.id,
+                    edge: 0,
                     seconds: -extent, // the tip dragged into the gap: the outward length
                 }
             }

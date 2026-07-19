@@ -152,20 +152,21 @@ fn a_deeply_nested_but_acyclic_document_loads_fine() {
 // Persistência
 // ---------------------------------------------------------------------------
 
-/// **v8, e um v7 é recusado — não mal-lido.**
+/// **v9, e um blob mais velho é recusado — não mal-lido.**
 ///
-/// Este bump SUBSTITUI um campo (`clip: u16` → `source: StripSource`) em vez de apendar um, então
-/// os bytes de um v7 significam outra coisa a partir dali. Postcard é posicional: ler assim mesmo
-/// não daria erro, daria um documento errado.
+/// O v9 APENDA um campo (`ClipStrip.lead_out`), então um blob mais antigo tem bytes de menos e o
+/// postcard não fecha; e o v8 antes dele SUBSTITUIU um campo (`clip` → `source`), onde os bytes
+/// significam outra coisa a partir dali. Em qualquer caso, postcard é posicional: ler assim mesmo
+/// não daria erro, daria um documento errado. O gate de versão recusa tudo que não é o atual.
 #[test]
-fn the_schema_is_eight_and_a_v7_blob_is_refused() {
-    assert_eq!(DOC_VERSION, 8);
-    assert_eq!(TimelineDoc::new().version, 8);
+fn the_schema_is_nine_and_an_older_blob_is_refused() {
+    assert_eq!(DOC_VERSION, 9);
+    assert_eq!(TimelineDoc::new().version, 9);
 
     let mut bytes = TimelineDoc::new().to_bytes().unwrap();
-    bytes[0] = 7; // o version é o primeiro varint
-    let err = TimelineDoc::from_bytes(&bytes).expect_err("v7 tem de ser recusado");
-    assert!(err.contains('7') && err.contains('8'), "diz os dois: {err}");
+    bytes[0] = 8; // o version é o primeiro varint — finge um blob v8
+    let err = TimelineDoc::from_bytes(&bytes).expect_err("um blob v8 tem de ser recusado");
+    assert!(err.contains('8') && err.contains('9'), "diz os dois: {err}");
 }
 
 /// Um container e seu interior sobrevivem ao round-trip.

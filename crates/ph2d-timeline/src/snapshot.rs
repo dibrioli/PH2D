@@ -107,6 +107,12 @@ pub struct StripView {
     /// paints the span between the edge and `edge + mark` in that corner's colour, so
     /// a trim or a stretch stays legible long after the pointer let go.
     pub marks: [f64; 4],
+    /// The OUTWARD fade-OUT ("lead-out"), in seconds — the fade in the gap AFTER the strip
+    /// (the travel from this clip's last frame to the next strip's start). Mirror of
+    /// `lead_in`; the panel draws its wedge and grip to the RIGHT of the strip's box, and it
+    /// is mutually exclusive with `blend_out` (the fade-out grip is on one side of the end
+    /// edge or the other).
+    pub lead_out: f64,
 }
 
 /// One lane of the clip stack.
@@ -351,6 +357,7 @@ impl TimelineViewSnapshot {
                     blend_in: lane.blend_in(i),
                     blend_out: lane.blend_out(i),
                     lead_in: st.lead_in,
+                    lead_out: st.lead_out,
                     marks: st.marks,
                     ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,

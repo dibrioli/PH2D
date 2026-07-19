@@ -447,25 +447,29 @@ pub enum TimelineIntent {
         /// than the strip is not a fade, and a negative one is not a thing.
         seconds: f64,
     },
-    /// **The strip's OUTWARD fade-in — the "lead-in" that lives in the gap before it**
-    /// (Enio, 2026-07-16). What the fade-in corner handle authors when dragged PAST the
-    /// strip's start edge, into the empty time before it.
+    /// **The strip's OUTWARD fade — the "lead" that lives in the gap beside it** (Enio,
+    /// 2026-07-16 for the start edge, 2026-07-19 for the end). What a fade corner handle
+    /// authors when dragged PAST its edge, into the empty time beyond the strip.
     ///
-    /// It is a different blend from [`Self::SetStripEase`]'s fade-in: that one crossfades
-    /// against this clip while it PLAYS; this one crossfades against the clip's FROZEN
-    /// first frame, so the object travels from the previous strip's held pose to this
-    /// clip's start pose during the gap, and the clip then plays from frame 0 untouched
-    /// (`ClipStrip::lead_in`). Clamped to `[0, gap]` on apply — the outward fade lives in
-    /// the gap and cannot overrun the previous strip. Setting it clears the inward
-    /// `ease_in`: the fade-in handle is on one side of the edge or the other, never both.
-    /// Start edge only; the fade-out's outward twin ("release to rest") is a distinct
-    /// operation, deliberately not built here.
+    /// It is a different blend from [`Self::SetStripEase`]'s inward fade: that one
+    /// crossfades against this clip while it PLAYS; this one crossfades against the clip's
+    /// FROZEN frame at that edge, so the object travels across the gap while the clip plays
+    /// clean. At the START edge (`edge = 0`, `ClipStrip::lead_in`) it travels FROM the
+    /// previous strip's held pose TO this clip's first frame; at the END edge (`edge = 1`,
+    /// `ClipStrip::lead_out`) it travels FROM this clip's last frame TO the next strip's
+    /// start. Clamped to `[0, gap]` on apply — the outward fade lives in the gap and cannot
+    /// overrun the neighbour. Setting it clears the inward ease on the SAME edge: the fade
+    /// handle is on one side of the edge or the other, never both.
     SetStripLead {
         /// Index into the stack.
         lane: usize,
         /// Stable identity.
         id: StripId,
-        /// The outward fade-in's length in seconds (into the gap before `t_start`).
+        /// `0` = the outward fade-in (into the gap before `t_start`, `lead_in`), `1` = the
+        /// outward fade-out (into the gap after `t_end`, `lead_out`) — the same edge
+        /// vocabulary as [`Self::SetStripEase`] and [`Self::TrimStrip`].
+        edge: u8,
+        /// The outward fade's length in seconds (into the gap beside the edge).
         seconds: f64,
     },
 }

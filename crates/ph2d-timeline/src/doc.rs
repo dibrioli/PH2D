@@ -45,9 +45,12 @@ use crate::stack_frames::StackScratch;
 /// a field instead of appending one, so a v7 blob is not merely missing data — its bytes
 /// mean something else from that field on. It is rejected, which is what
 /// [`TimelineDoc::from_bytes`] has always done with a version it does not know.
+/// v9: a strip's fade-out can reach OUTWARD into the gap after it
+/// (`ClipStrip.lead_out`, appended) — the mirror of `lead_in` (Enio, 2026-07-19). `0.0` is
+/// the old behaviour byte-for-byte.
 ///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
-pub const DOC_VERSION: u32 = 8;
+pub const DOC_VERSION: u32 = 9;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

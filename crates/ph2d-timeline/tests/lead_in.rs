@@ -197,6 +197,7 @@ fn set_strip_lead_clamps_to_the_gap_and_clears_the_inward_fade() {
         TimelineIntent::SetStripLead {
             lane,
             id: b,
+            edge: 0,
             seconds: 10.0,
         },
     );
@@ -225,6 +226,7 @@ fn dragging_the_fade_back_inside_clears_the_outward_lead() {
         TimelineIntent::SetStripLead {
             lane,
             id: b,
+            edge: 0,
             seconds: 1.0,
         },
     );
@@ -243,4 +245,72 @@ fn dragging_the_fade_back_inside_clears_the_outward_lead() {
     let s = st.doc.strip(lane, b).unwrap();
     assert_eq!(s.lead_in, 0.0, "the outward lead was cleared");
     assert!((s.ease_in - 0.4).abs() < 1e-9, "the inward fade took over");
+}
+
+/// **`SetStripLead { edge: 1 }` authors `lead_out`**, clamped to the gap AFTER the strip,
+/// and CLEARS the inward `ease_out` — the mirror of the start-edge lead gate above (Enio,
+/// 2026-07-19). Closes the seam from the intent to the field the evaluator reads.
+#[test]
+fn setting_the_end_lead_authors_lead_out_clamped_to_the_gap_after() {
+    let (_sim, mut st, _bits, lane, _b) = scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    // A is the first strip [0, 2); the gap after it (up to B at 3) is 1 s.
+    let a = st.doc.stack()[lane].strips[0].id;
+    st.doc.strip_mut(lane, a).unwrap().ease_out = 0.5; // an inward fade first, to prove it clears
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripLead {
+            lane,
+            id: a,
+            edge: 1,
+            seconds: 10.0, // ask for far more than the gap
+        },
+    );
+    let s = st.doc.strip(lane, a).unwrap();
+    assert!(
+        (s.lead_out - 1.0).abs() < 1e-9,
+        "lead_out clamped to the 1 s gap after, got {}",
+        s.lead_out
+    );
+    assert_eq!(s.ease_out, 0.0, "the inward fade-out was cleared");
+}
+
+/// **Bringing the fade-out back INSIDE clears the outward `lead_out`** — one handle on two
+/// sides of the END edge, the mirror of `dragging_the_fade_back_inside_clears_the_outward_lead`.
+#[test]
+fn dragging_the_fade_out_back_inside_clears_the_lead_out() {
+    let (_sim, mut st, _bits, lane, _b) = scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    let a = st.doc.stack()[lane].strips[0].id;
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripLead {
+            lane,
+            id: a,
+            edge: 1,
+            seconds: 0.5,
+        },
+    );
+    assert!(
+        st.doc.strip(lane, a).unwrap().lead_out > 0.0,
+        "lead_out is set"
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripEase {
+            lane,
+            id: a,
+            edge: 1,
+            seconds: 0.25,
+        },
+    );
+    assert_eq!(
+        st.doc.strip(lane, a).unwrap().lead_out,
+        0.0,
+        "the inward fade-out cleared the outward lead_out"
+    );
 }

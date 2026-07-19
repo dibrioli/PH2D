@@ -453,6 +453,7 @@ mod tests {
                         blend_in: 0.0,
                         blend_out: 0.0,
                         lead_in,
+                        lead_out: 0.0,
                         ease_locked_in: false,
                         ease_locked_out: false,
                         loop_mode: StripLoop::Once,

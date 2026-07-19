@@ -29,6 +29,7 @@ fn snap() -> TimelineViewSnapshot {
                 blend_in: 0.25,
                 blend_out: 0.25,
                 lead_in: 0.0,
+                lead_out: 0.0,
                 marks: [0.0; 4],
                 ease_locked_in: false,
                 ease_locked_out: false,
@@ -365,8 +366,14 @@ fn dragging_the_fade_in_grip_into_the_gap_authors_the_outward_lead() {
     // start — an outward lead of 0.25 s, not a negative inward fade.
     let out = drag(3, 50.0);
     let lead = out.iter().find_map(|i| match i {
-        TimelineIntent::SetStripLead { lane, id, seconds } => {
+        TimelineIntent::SetStripLead {
+            lane,
+            id,
+            edge,
+            seconds,
+        } => {
             assert_eq!((*lane, *id), (0, StripId(7)));
+            assert_eq!(*edge, 0, "the START edge — this is lead_in");
             Some(*seconds)
         }
         _ => None,
@@ -410,10 +417,37 @@ fn the_fade_out_grip_grows_the_fade_by_dragging_left_and_never_goes_negative() {
          existe: {}",
         ease_of(&drag(4, 60.0))
     );
-    // …e arrastando pra FORA, passando da quina, e fade nenhuma — nunca uma negativa.
-    assert_eq!(
-        ease_of(&drag(4, 200.0)),
-        0.0,
-        "a fade nao pode ser negativa: a ponta para na quina"
+}
+
+/// **Dragging the fade-OUT grip PAST the end edge, into the gap, authors the OUTWARD
+/// fade-out (`SetStripLead { edge: 1 }`)** — the mirror of the lead-in gate above (Enio,
+/// 2026-07-19). LEFT of the edge it is the inward `SetStripEase`; the edge is the pivot,
+/// one handle two intents. This used to be a hard "zero fade" clamp; now it is `lead_out`.
+#[test]
+fn dragging_the_fade_out_grip_into_the_gap_authors_the_outward_lead_out() {
+    // The fixture's fade-out is 0.25 s; drag the tip RIGHT by 1.0 s (x = 200 at 100 px/s),
+    // which is 0.75 s PAST the end edge — an outward lead-out of 0.75 s.
+    let out = drag(4, 200.0);
+    let lead = out.iter().find_map(|i| match i {
+        TimelineIntent::SetStripLead {
+            lane,
+            id,
+            edge,
+            seconds,
+        } => {
+            assert_eq!((*lane, *id), (0, StripId(7)));
+            assert_eq!(*edge, 1, "the END edge — this is lead_out");
+            Some(*seconds)
+        }
+        _ => None,
+    });
+    assert!(
+        lead.is_some_and(|s| (s - 0.75).abs() < 1e-9),
+        "into the gap after -> SetStripLead(edge 1, 0.75): {out:?}"
+    );
+    assert!(
+        !out.iter()
+            .any(|i| matches!(i, TimelineIntent::SetStripEase { .. })),
+        "and NOT an inward SetStripEase — the tip crossed the end edge"
     );
 }

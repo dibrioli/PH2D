@@ -169,6 +169,15 @@ pub struct ClipStrip {
     /// about being permanent. Appended (`DOC_VERSION` 6 -> 7); all-zero is the old
     /// behaviour, and zero draws nothing.
     pub marks: [f64; 4],
+    /// **Outward fade-out ("lead-out"), in seconds** — the mirror of [`Self::lead_in`], in
+    /// the GAP *after* the strip (Enio, 2026-07-19). Where `ease_out` blends this clip out
+    /// while it still PLAYS (its last frames are spent in the crossfade), the lead-out lets
+    /// the clip play to its END untouched and THEN fades, in the gap, from the clip's FROZEN
+    /// LAST frame toward the next strip's start. It reaches forward from `t_end` and is
+    /// mutually exclusive with `ease_out` (the fade-out grip is on one side of the end edge
+    /// or the other). Appended (`DOC_VERSION` 8 -> 9); `0.0` is the old behaviour
+    /// byte-for-byte.
+    pub lead_out: f64,
 }
 
 /// Index into [`ClipStrip::marks`] for one corner: `stretch` picks the GREEN top
@@ -204,6 +213,7 @@ impl ClipStrip {
             ease_out: 0.0,
             lead_in: 0.0,
             marks: [0.0; 4],
+            lead_out: 0.0,
         }
     }
 
@@ -251,18 +261,29 @@ impl ClipStrip {
         (self.t_start - self.lead_in.max(0.0)).max(0.0)
     }
 
+    /// Where the outward fade-OUT reaches forward to — `t_end + lead_out`. The mirror of
+    /// [`Self::lead_start`]; equals `t_end` when there is no lead-out.
+    #[must_use]
+    pub fn lead_end(&self) -> f64 {
+        self.t_end + self.lead_out.max(0.0)
+    }
+
     /// The clip time this strip reads INCLUDING its outward lead-in.
     ///
     /// In the lead-in window `[lead_start, t_start)` it returns `src_in` — the clip's
     /// FROZEN first frame, the pose the object travels TO across the gap — regardless
-    /// of loop mode (the travel is to the first frame, not to a wrapped one). Inside
-    /// the span it is [`Self::source_time`]; outside both, `None`. This is the door the
-    /// evaluator samples through, so the lead-in window contributes a still pose, not a
-    /// negative/extrapolated time.
+    /// of loop mode (the travel is to the first frame, not to a wrapped one). In the
+    /// **lead-OUT** window `[t_end, lead_end)` it returns [`Self::hold_source_time`] — the
+    /// clip's FROZEN LAST frame, the pose the object travels FROM as it fades in the gap
+    /// after. Inside the span it is [`Self::source_time`]; outside all three, `None`. This
+    /// is the door the evaluator samples through, so both lead windows contribute a still
+    /// pose, not a negative/extrapolated time.
     #[must_use]
     pub fn source_time_with_lead(&self, t: f64) -> Option<f64> {
         if self.lead_in > 0.0 && t >= self.lead_start() && t < self.t_start {
             Some(self.src_in) // the frozen first frame — the travel target
+        } else if self.lead_out > 0.0 && t >= self.t_end && t < self.lead_end() {
+            Some(self.hold_source_time()) // the frozen last frame — travel FROM it
         } else {
             self.source_time(t)
         }
@@ -290,7 +311,7 @@ impl ClipStrip {
     ///
     /// The one place the folding lives. [`Self::source_time`] asks it for an instant
     /// inside the span and [`Self::hold_source_time`] for the span's end.
-    fn fold(&self, elapsed: f64) -> f64 {
+    pub(crate) fn fold(&self, elapsed: f64) -> f64 {
         let slice = self.slice();
         if slice <= 0.0 {
             return self.src_in; // a zero-length slice is a pose, not a clip
@@ -457,15 +478,22 @@ impl ClipLane {
     /// weight exactly at `t_start` — where the clip starts playing clean. With no lead
     /// (`lead_in == 0`) the window is `[t_start, ...]` and this is byte-for-byte the old
     /// behaviour.
+    ///
+    /// **The fade-out reaches OUTWARD by `lead_out`**, symmetrically: the ramp runs `1 -> 0`
+    /// over `[lead_end - (lead_out + blend_out), lead_end]`, so the strip stays "present" in
+    /// its lead-out window (in the gap AFTER it), holding its frozen LAST frame
+    /// ([`ClipStrip::source_time_with_lead`]) while [`Self::hold_at`] gives the complement to
+    /// the next strip's start — the object travels there across the gap. With no lead-out the
+    /// window is `[…, t_end]` and this is byte-for-byte the old behaviour.
     #[must_use]
     pub fn weight_at(&self, i: usize, t: f64) -> f64 {
         let s = &self.strips[i];
         let lead = s.lead_in.max(0.0);
-        if t < s.lead_start() || t >= s.t_end {
+        if t < s.lead_start() || t >= s.lead_end() {
             return 0.0;
         }
         let fade_in = ramp(t - s.lead_start(), lead + self.blend_in(i));
-        let fade_out = ramp(s.t_end - t, self.blend_out(i));
+        let fade_out = ramp(s.lead_end() - t, s.lead_out.max(0.0) + self.blend_out(i));
         fade_in * fade_out
     }
 
@@ -486,231 +514,21 @@ impl ClipLane {
         (s.t_start - prev_end).max(0.0)
     }
 
-    /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for
-    /// whatever coverage its live strips do not account for.
-    ///
-    /// `None` when the live strips already sum to a full 1 (a strip mid-span, or two
-    /// crossfading through their overlap: the overlap sums to exactly 1, so nothing
-    /// is held and the crossfade is untouched), or when nothing has ended yet.
-    ///
-    /// # A strip's pose does not evaporate at its edge
-    ///
-    /// Before this, a lane's answer where no strip covered was *silence* — nobody
-    /// wrote, and the object simply kept the pose it had. But a strip covering `t`
-    /// with weight 0 (the first instant of a fade-in) answered **rest**. The two
-    /// disagreed across one pixel of ruler, so a fade-in against nothing began with a
-    /// jump: the sprite sat where the previous strip left it, then snapped to the rest
-    /// pose to start the ramp it was supposed to start from *where it was* (Enio,
-    /// 2026-07-16: *"a sprite não faz a transição a partir de onde está mas pula para
-    /// mais perto da posição inicial da outra strip"* — measured at 3 units in one
-    /// frame).
-    ///
-    /// The fix is not to silence weight zero — that is what made the pose depend on
-    /// which side the playhead arrived from. It is that **the gap was never silence**:
-    /// the previous strip is still asserting its last frame, and the incoming fade
-    /// crossfades against *that*. This is Blender's `Hold` extrapolation and Unity's
-    /// clip extrapolation, and it is what makes the lone fade behave like the overlap
-    /// the animator already trusts.
-    ///
-    /// **Forward only — UNLESS a loop makes the lane cyclic.** A strip does not reach
-    /// back before it starts: fading in from the rest pose at the top of a timeline is
-    /// a real thing to want, and there is nothing behind the first strip to hold.
-    ///
-    /// That last clause is true of a timeline you play once, and **false of one you
-    /// loop**, where the ruler's ends are neighbours: what is "before the first strip"
-    /// is "after the last", and what is "after the last" is "before the first". So a
-    /// fade at EITHER edge of the loop crosses to the pose the loop shows at the seam
-    /// (the closing edge asks [`Self::seam_source`]; the opening edge, where nothing is
-    /// live at the head to own it, is always the loop's end), never to the rest pose or
-    /// a strip that ended before it:
-    ///
-    /// - the **opening** fade-in (nothing has ended yet) put the object at the last
-    ///   strip's pose one frame and at the rest pose the next — a jump (Enio,
-    ///   2026-07-16);
-    /// - the **closing** fade-out (the loop's last content fading out toward the wrap)
-    ///   reached the previous strip's held frame instead of the first strip's start —
-    ///   also a jump (Enio, 2026-07-19). It is the trailing ramp of the strip that ends
-    ///   latest AT or before the loop end; a strip that straddles the end fades out past
-    ///   the wrap, where the loop never reaches.
-    ///
-    /// Outside the loop range nothing wraps and the fade-from-rest above is untouched.
-    ///
-    /// Returns the held strip, **the clip second it is asserting**, and the weight. The
-    /// time is returned rather than re-derived by the caller because the cases answer it
-    /// differently, and a caller that picked would be a second opinion about which frame
-    /// is being held.
-    ///
-    /// The weight is the complement of what is live, which is exactly what turns the
-    /// normalized mix into a plain `lerp(held, incoming, w)` — see the tests.
+    /// The empty span AFTER strip `i` — from its end up to the start of the nearest strip
+    /// that starts at or after it. Mirror of [`Self::gap_before`]: how far a lead-OUT may
+    /// reach without overrunning the next strip's live span. `f64::INFINITY` when nothing
+    /// follows (the last strip has no neighbour to overrun).
     #[must_use]
-    pub fn hold_at(
-        &self,
-        t: f64,
-        loop_range: Option<(f64, f64)>,
-    ) -> Option<(&ClipStrip, f64, f64)> {
-        let live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, t)).sum();
-        let w = 1.0 - live;
-        if w <= 0.0 {
-            return None;
-        }
-        // **CLOSING edge of a loop.** The strip that ends latest (at or before the loop
-        // end) in its fade-OUT ramp — or the gap after it, before the wrap — crosses to
-        // the pose the loop shows at the seam ([`Self::seam_source`]), not to the strip
-        // that ended before it (Enio, 2026-07-19). A strip that STRADDLES the loop end
-        // fades out past the wrap, where the loop never reaches, so `t_end <= b` gates
-        // it out. This runs BEFORE the mid-timeline hold below, which is exactly the
-        // answer it overrides: at the trailing edge the previous strip is not the pose
-        // to reveal.
-        if let Some((a, b)) = loop_range
-            && t >= a
-            && t < b
-        {
-            let closing = self
-                .strips
-                .iter()
-                .enumerate()
-                .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))
-                .is_some_and(|(li, last)| {
-                    let bo = self.blend_out(li);
-                    bo > 0.0 && last.t_end <= b && t >= last.t_end - bo
-                });
-            if closing
-                && let Some((strip, t_clip)) = self.seam_source(a, b)
-            {
-                return Some((strip, t_clip, w));
-            }
-        }
-        // **FADE-OUT toward the NEXT strip (no loop needed).** A strip in its fade-out ramp
-        // — and the gap AFTER it, up to where the next strip starts — crosses to the NEXT
-        // strip's START, not to the rest pose (Enio, 2026-07-19: without this the object
-        // sagged to rest during the fade, then JUMPED back to the strip's held pose in the
-        // gap, then jumped again into the next strip). Now it travels to the next pose while
-        // it fades, HOLDS it through the gap, and the next strip plays from it seamlessly.
-        //
-        // Runs BEFORE the mid-timeline hold below and overrides it: the hold reveals the
-        // PREVIOUS strip (correct for a fade-IN, wrong for a fade-OUT, which reveals where
-        // the object is GOING). It only fires when the strip actually faded out
-        // (`blend_out > 0`, inside `fade_out_target`) — a hard cut with no fade keeps the
-        // gap-holds-previous behaviour, which is the author's choice.
-        if let Some(nxt) = self.fade_out_target(t) {
-            return Some((nxt, nxt.fold(0.0), w));
-        }
-        // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
-        // sorted by START time, and a long strip can begin before a short one and
-        // outlive it. This is the pose a fade-IN crosses FROM, and what a plain gap
-        // (previous strip did not fade out) holds.
-        if let Some(held) = self
+    pub fn gap_after(&self, i: usize) -> f64 {
+        let s = &self.strips[i];
+        let next_start = self
             .strips
-            .iter()
-            .filter(|s| s.t_end <= t)
-            .max_by(|a, b| a.t_end.total_cmp(&b.t_end))
-        {
-            return Some((held, held.hold_source_time(), w));
-        }
-        // Nothing has ended yet — the OPENING edge. Under a loop that brackets `t`,
-        // wrap: the pose the object is coming FROM is the one the loop's end leaves
-        // behind. It keeps its own expression rather than calling `seam_source`: when
-        // nothing has ended, nothing is live at the head to own the seam, so the seam
-        // is always the loop's end — which is `seam_source`'s own fallback.
-        let (a, b) = loop_range?;
-        if t < a || t >= b {
-            return None;
-        }
-        let last = self
-            .strips
-            .iter()
-            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
-        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
-        Some((last, last.fold(elapsed), w))
-    }
-
-    /// **What the loop shows at the seam** (`b` ≡ `a`) — the pose the object rests on
-    /// across the wrap, as a `(strip, clip-time)` the evaluator can sample.
-    ///
-    /// A seamless loop needs the fade on BOTH sides of the wrap to cross to the *same*
-    /// pose, or they disagree and the loop jumps. That pose is whichever end OWNS the
-    /// seam:
-    ///
-    /// - if a strip is fully live at the head `a` (no fade-in there), its own pose there
-    ///   is the restart pose — the closing fade-out crosses to it and the loop lands on
-    ///   it;
-    /// - otherwise the head itself is fading in, and the object crosses from what the
-    ///   loop's END leaves asserting: the last strip read at `b`. This is exactly the
-    ///   opening wrap's own answer — the two share this door on purpose, so the fade-in
-    ///   and the fade-out cannot disagree about the seam.
-    ///
-    /// When both ends fade, neither owns the seam and the last strip's end is the
-    /// consistent choice both wraps reveal — the loop settles there while the weights
-    /// dip through the wrap.
-    fn seam_source(&self, a: f64, b: f64) -> Option<(&ClipStrip, f64)> {
-        let head_live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, a)).sum();
-        if head_live >= 1.0
-            && let Some(first) = self.strips.iter().find(|s| s.covers(a))
-        {
-            let elapsed = (a - first.t_start).clamp(0.0, first.span()); // CLAMP-OK: span() >= 0
-            return Some((first, first.fold(elapsed)));
-        }
-        // The head fades in (or is a gap): cross from what the loop's END leaves
-        // asserting — the last strip read at the wrap. This is the SAME pose the opening
-        // wrap reveals (`hold_at`'s last branch), so a fade-in and fade-out that meet at
-        // the seam agree on it.
-        let last = self
-            .strips
-            .iter()
-            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
-        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
-        Some((last, last.fold(elapsed)))
-    }
-
-    /// The strip that starts NEXT after time `end` — the smallest `t_start >= end`, with
-    /// its index. `None` when nothing starts after (`end` is past the last strip).
-    ///
-    /// A strip that *overlaps* `end` (`t_start < end`) is not "next": that is a
-    /// crossfade, and [`Self::weight_at`] already handles it with complementary weights.
-    fn next_after(&self, end: f64) -> Option<(usize, &ClipStrip)> {
-        self.strips
             .iter()
             .enumerate()
-            .filter(|(_, o)| o.t_start >= end)
-            .min_by(|(_, a), (_, b)| a.t_start.total_cmp(&b.t_start))
-    }
-
-    /// **What a fade-OUT at `t` crosses TO** — the next strip, or `None`.
-    ///
-    /// It fires while a strip is in its fade-out ramp AND through the gap after it, up to
-    /// where the next strip's OWN fade-in ends:
-    /// `t ∈ [s.t_end - blend_out(s), next.t_start + blend_in(next))`. Two conditions gate
-    /// it, and both are the point:
-    ///
-    /// - `blend_out(s) > 0` — the strip actually has a fade-out. A hard cut (no fade) is
-    ///   the author saying "hold and jump", and the gap keeps holding the PREVIOUS strip.
-    /// - a `next` strip exists — there is somewhere to cross TO. The LAST strip's fade-out
-    ///   with nothing after is the loop's job (`hold_at`'s closing branch) or a fade to
-    ///   rest, not this.
-    ///
-    /// The crossed-to pose is the next strip's FROZEN first frame (`next.fold(0.0)`), the
-    /// same pose the clip shows when it starts playing — so holding it through the gap and
-    /// then playing it are the same value, and the entry is seamless.
-    ///
-    /// **The window reaches THROUGH the next strip's fade-in** (`+ blend_in(next)`), not
-    /// just up to its start. When BOTH strips fade (this one out, the next one in), the
-    /// object crosses to the next start and STAYS there while the next eases in — so the
-    /// next strip eases from its own start instead of snapping back to the previous strip
-    /// one frame after the gap. With no fade-in on the next strip, `blend_in` is 0 and the
-    /// window is exactly the gap.
-    fn fade_out_target(&self, t: f64) -> Option<&ClipStrip> {
-        self.strips
-            .iter()
-            .enumerate()
-            .filter(|(i, s)| {
-                let bo = self.blend_out(*i);
-                bo > 0.0 && t >= s.t_end - bo
-            })
-            .filter_map(|(_, s)| {
-                let (ni, nxt) = self.next_after(s.t_end)?;
-                (t < nxt.t_start + self.blend_in(ni)).then_some(nxt)
-            })
-            .min_by(|a, b| a.t_start.total_cmp(&b.t_start))
+            .filter(|(j, o)| *j != i && o.t_start >= s.t_end)
+            .map(|(_, o)| o.t_start)
+            .fold(f64::INFINITY, f64::min);
+        (next_start - s.t_end).max(0.0)
     }
 }
 

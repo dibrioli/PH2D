@@ -169,3 +169,55 @@ fn a_plain_fade_in_after_a_hard_cut_still_crosses_from_the_previous() {
         "B eases a partir do fim de A (+5), pois A não fadeou: {b_start}"
     );
 }
+
+/// **`lead_out` — o fade-out OUTWARD: o clipe toca INTEIRO e SÓ ENTÃO fadeia, no gap.** A
+/// rampa 0 → +5 com `lead_out` de 1 s (janela `[4, 5]`); B chapada (−4). No fim de A o
+/// objeto está no ÚLTIMO frame de A (+5) — o clipe tocou inteiro, ao contrário do
+/// `ease_out`, que gastaria a cauda no crossfade e já estaria em −4 ali. Depois fadeia
+/// +5 → −4 no gap, segura −4, e B toca sem salto.
+#[test]
+fn a_lead_out_plays_the_clip_fully_then_fades_in_the_gap() {
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Gap")))
+        .id()
+        .to_bits();
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    doc.rename_clip(0, "A".into());
+    key(doc, bits, PropKind::TranslationX, 0.0, 0.0);
+    key(doc, bits, PropKind::TranslationX, 4.0, 5.0); // A rampa 0 -> +5
+    let cb = doc.add_clip("B".into());
+    doc.set_active(cb);
+    key(doc, bits, PropKind::TranslationX, 0.0, -4.0);
+    key(doc, bits, PropKind::TranslationX, 4.0, -4.0);
+    doc.set_active(0);
+    let lane = doc.add_lane("Lane 1".into()).unwrap();
+    let a = doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
+    doc.add_strip(lane, cb, 6.0, 10.0); // gap [4, 6)
+    doc.strip_mut(lane, a).unwrap().lead_out = 1.0; // fade OUTWARD, em [4, 5]
+
+    let at_end = x_at(&mut sim, &mut st, bits, 4.0 - FRAME); // fim de A: último frame
+    let mid_lead = x_at(&mut sim, &mut st, bits, 4.5); // meio do lead-out
+    let after_lead = x_at(&mut sim, &mut st, bits, 5.5); // gap depois do lead-out
+    let entry = x_at(&mut sim, &mut st, bits, 6.0); // B
+
+    // O clipe tocou INTEIRO: no fim de A o objeto está no último frame (~+5), não já em B.
+    assert!(
+        (at_end - 5.0).abs() < 0.1,
+        "lead_out toca o clipe inteiro: fim de A ~ +5, não B (−4): {at_end}"
+    );
+    // …e SÓ ENTÃO fadeia para B, no gap.
+    assert!(
+        (-4.0..=5.0).contains(&mid_lead)
+            && (mid_lead - 5.0).abs() > 0.5
+            && (mid_lead + 4.0).abs() > 0.5,
+        "o lead-out fadeia +5 -> −4 no gap: {mid_lead}"
+    );
+    // Segura −4 no resto do gap e entra em B sem salto.
+    assert!(
+        (after_lead + 4.0).abs() < 1e-6 && (entry + 4.0).abs() < 1e-6,
+        "segura −4 e entra em B sem salto: {after_lead} / {entry}"
+    );
+}

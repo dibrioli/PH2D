@@ -66,6 +66,8 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // GPU/M5 (ADR-0134) — the grid-injected WGSL (the `target`/`out`/`in`
     // reserved-word trap is caught here, device-free, per handoff §0.4).
     ph2d_node_motion_boids::register(&mut reg).unwrap();
+    // The ITERATED grid kernel (Fase 5): 2 input ports ⇒ port-qualified readers.
+    ph2d_node_motion_collide::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

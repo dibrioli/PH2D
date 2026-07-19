@@ -117,7 +117,10 @@ fn how_far_does_the_flock_scale() {
     };
     let reg = registry();
     eprintln!("\nboids on the GPU — packed flock (spread OFF, SEED_SPREAD=3 fixed):");
-    eprintln!("  {:>10}  {:>10}  {:>14}", "agents", "ms/tick", "~neighbours");
+    eprintln!(
+        "  {:>10}  {:>10}  {:>14}",
+        "agents", "ms/tick", "~neighbours"
+    );
     for &count in &[4096u32, 16384, 65536, 262_144, 1_048_576] {
         let (g, out) = boids_graph(count as f32, false);
         let ms = time_step_ms(&gpu, &g, &reg, out);

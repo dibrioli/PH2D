@@ -46,6 +46,8 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod gpu;
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `spread` input (mirror of `motion.look_at::VALUE`).
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
@@ -257,6 +259,11 @@ impl NodeOp for MotionCollide {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionCollide))?;
+    // GPU/M5 (ADR-0134 Fase 5): the push-apart on the device via the spatial grid,
+    // swept `iterations` times. Only expressible because the reference became
+    // averaged Jacobi — an in-place Gauss-Seidel sweep is sequential by definition.
+    reg.register_gpu_kernel(MANIFEST.id, gpu::GPU_KERNEL);
+    reg.register_grid(MANIFEST.id, gpu::GRID);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -361,7 +368,10 @@ mod tests {
         let radius = 0.3;
         let n = 256;
         let p = crowded_cloud(n);
-        eprintln!("\nstart: min gap = {:.4}× of 2·radius", min_gap_ratio(&p, radius));
+        eprintln!(
+            "\nstart: min gap = {:.4}× of 2·radius",
+            min_gap_ratio(&p, radius)
+        );
         eprintln!("  {:>6}  {:>12}", "iters", "min gap ratio");
         for &iters in &[1usize, 2, 4, 8, 16, 32, 64] {
             let out = push_apart_free(&p, radius, iters, 1.0);
@@ -431,7 +441,10 @@ mod tests {
         let a = push_apart_free(&p, radius, 8, 1.0);
         // The cloud must actually MOVE, or "unchanged under permutation" is vacuous.
         let travel = (0..n).map(|i| dist(a[i], p[i])).fold(0.0f32, f32::max);
-        assert!(travel > 0.1, "the fixture must actually pack: travel {travel}");
+        assert!(
+            travel > 0.1,
+            "the fixture must actually pack: travel {travel}"
+        );
 
         for (step, off) in [(97usize, 13usize), (181, 7)] {
             let perm: Vec<usize> = (0..n).map(|i| (i * step + off) % n).collect();

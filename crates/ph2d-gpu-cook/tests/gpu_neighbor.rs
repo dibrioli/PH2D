@@ -148,6 +148,8 @@ fn registry() -> NodeRegistry {
             column: "P",
             port: 0,
             cell_param: "radius",
+            // A per-element probe, not a solver: one dispatch.
+            sweeps_param: None,
         },
     );
     reg

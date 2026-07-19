@@ -47,6 +47,7 @@ ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
 # GPU/M5 (ADR-0134) — the neighbourhood sim: boids on the spatial grid.
 ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
+ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }

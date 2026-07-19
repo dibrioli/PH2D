@@ -205,6 +205,13 @@ pub struct GpuCook {
 /// element — the headroom is free.
 pub(crate) const UNIFORM_BYTES: u64 = 128;
 
+/// Ceiling on a relaxation solver's sweeps (`GridSpec::sweeps_param`). It is the
+/// SAME number the CPU reference clamps to (`motion.collide::MAX_ITERATIONS`),
+/// because a divergent cap is a divergent answer: the artist drags the slider to
+/// 200, the CPU runs 64 and the device runs 200, and the parity gate — which
+/// tests at the default — stays green while the product disagrees with itself.
+pub(crate) const MAX_SWEEPS: i64 = 64;
+
 impl GpuCook {
     pub fn new() -> Self {
         Self::default()
@@ -379,33 +386,71 @@ impl GpuCook {
             // names, on the port the spec names (port 0 for a per-element node,
             // the `pre` state port for a self-loop sim).
             let grid_spec = kernels.grid(stage.ty);
-            let grid_buffers = grid_spec.map(|spec| {
-                self.build_grid(
+            // **How many sweeps?** A simulation STEP dispatches once (the tick is
+            // the iteration); a relaxation SOLVER runs its `iterations` param
+            // (`GridSpec::sweeps_param`, ADR-0134 Fase 5). Clamped to at least one
+            // so a zero/negative param is the identity dispatch, never a skipped
+            // stage that would leave the node's output undefined.
+            // ⚠️ The rounding and the clamp are the CPU's, to the letter
+            // (`motion.collide`: `round() as i64).clamp(0, MAX_ITERATIONS)`) —
+            // including that **zero sweeps is the IDENTITY**, not a skipped stage.
+            // `out` therefore starts as the base, so a zero-iteration node emits
+            // its input unchanged exactly as the reference does.
+            let sweeps = grid_spec
+                .and_then(|s| s.sweeps_param)
+                .map(|p| resolve_param(graph, stage.node, manifest, p))
+                .map_or(1i64, |v| (v.round() as i64).clamp(0, MAX_SWEEPS))
+                as u32;
+            let mut inputs = inputs;
+            let mut base = base;
+            let mut out = base.clone();
+            for _ in 0..sweeps {
+                // The grid is rebuilt from the CURRENT positions every sweep — a
+                // sweep moves the column the grid indexes, so a grid built once
+                // would answer "who was near you BEFORE you moved" (see
+                // `GridSpec::sweeps_param`).
+                let grid_buffers = grid_spec.map(|spec| {
+                    self.build_grid(
+                        gpu,
+                        &mut encoder,
+                        spec,
+                        &inputs,
+                        graph,
+                        stage.node,
+                        manifest,
+                    )
+                });
+                out = self.encode_kernel_stage(
                     gpu,
                     &mut encoder,
-                    spec,
-                    &inputs,
+                    stage_idx,
+                    kernel,
                     graph,
                     stage.node,
                     manifest,
-                )
-            });
-            let out = self.encode_kernel_stage(
-                gpu,
-                &mut encoder,
-                stage_idx,
-                kernel,
-                graph,
-                stage.node,
-                manifest,
-                window,
-                playhead,
-                &inputs,
-                base,
-                grid_spec.zip(grid_buffers.as_ref()),
-            );
-            if let Some(gb) = grid_buffers {
-                self.grid_hold.push(gb);
+                    window,
+                    playhead,
+                    &inputs,
+                    base.clone(),
+                    grid_spec.zip(grid_buffers.as_ref()),
+                );
+                if let Some(gb) = grid_buffers {
+                    self.grid_hold.push(gb);
+                }
+                // Feed this sweep's result into the next one, on the port the grid
+                // indexes. `base` follows it when that port is the output's base
+                // (port 0), so the pass-through columns ride the fresh stream
+                // instead of the stale one.
+                if sweeps > 1
+                    && let Some(port) = grid_spec.map(|s| s.port)
+                {
+                    if port < inputs.len() {
+                        inputs[port] = out.clone();
+                    }
+                    if port == 0 {
+                        base = out.clone();
+                    }
+                }
             }
             streams.insert(stage.node, out);
         }

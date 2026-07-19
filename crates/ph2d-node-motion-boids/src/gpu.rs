@@ -204,4 +204,7 @@ pub const GRID: GridSpec = GridSpec {
     column: "P",
     port: 2,
     cell_param: "radius",
+    // One dispatch per cook: boids is a simulation STEP, so the TICK already is
+    // the iteration — sweeping twice here would run two frames of flocking in one.
+    sweeps_param: None,
 };

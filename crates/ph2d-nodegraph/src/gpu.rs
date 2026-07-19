@@ -451,6 +451,23 @@ pub struct GridSpec {
     /// The param whose value is the grid cell size — the perception radius, so a
     /// 3×3 cell sweep is exactly the within-radius neighbourhood.
     pub cell_param: &'static str,
+    /// **A relaxation SOLVER sweeps more than once.** `None` = one dispatch (a
+    /// simulation *step*, like boids: the tick already is the iteration).
+    /// `Some(param)` = read that param and run the pass that many times, with the
+    /// kernel's own output fed back as the next sweep's input **on [`Self::port`]**
+    /// and the **grid REBUILT from the moved positions** each time.
+    ///
+    /// Rebuilding is not optional: a sweep moves the very column the grid indexes,
+    /// so a grid built once would, by sweep 2, be answering *"who was near you
+    /// before you moved?"* — the neighbour set would quietly go stale and the
+    /// packing would differ from the CPU's by more than an ε.
+    ///
+    /// The feedback lands on `port` because the column being relaxed is the column
+    /// being indexed — that is what makes it a neighbourhood relaxation rather than
+    /// two unrelated facts. A kernel that wants to iterate over something it does
+    /// NOT spatially index has no client yet, and inventing the contract for it
+    /// here would be speculating (ADR-0134 D2's deferral, held).
+    pub sweeps_param: Option<&'static str>,
 }
 
 /// Resolves a node type id to its registered GPU kernel — the side-channel

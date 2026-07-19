@@ -59,6 +59,7 @@ pub mod instances;
 pub mod lower;
 pub mod plan;
 pub mod ring;
+pub mod scan;
 pub mod shape;
 pub mod stream;
 pub mod tap;

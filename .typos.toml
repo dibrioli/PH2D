@@ -362,6 +362,26 @@ dependente = "dependente"
 # Termo cunhado do sculpt Inflate (`ph2d-tool-painter`): fontes que estouram o orçamento são
 # "over-reachers" (alcançam longe demais), não "over-readers".
 reachers = "reachers"
+# pt-BR da jornada de 2026-07-19 (integração de 6 linhas). Todas em doc-comment de código,
+# lidas como inglês torto pelo dicionário en-US; são as palavras portuguesas.
+#   `condicional` — a alça de raio some por uma recusa CONDICIONAL, não por um flag
+#     (`shells/desktop/src/corner_handles*.rs`, `every_host_that_rewrites_verts_*.rs`).
+#   `apender`/`Apender` — o anglicismo cunhado deste repo para "append" (postcard é
+#     posicional: APENDER um variant não move os índices anteriores). Usado assim em
+#     `project.rs` e `ph2d-vec-scene/src/lib.rs`; "anexar" perderia o sentido técnico.
+#   `continuem` — "…embora os saves antigos CONTINUEM a ler certo" (`ph2d-vec-scene`).
+#   `cruzes` — a folha de contacto do `fx_look` desenha as âncoras como CRUZES; é o que
+#     separa "a curva está errada" de "as âncoras estão no sítio errado".
+#   `flor` — o Pucker & Bloat: negativo dá a estrela de pontas, positivo dá a FLOR
+#     (`ph2d-vec-scene/src/fx_warp.rs`). É a forma que o efeito produz, não "floor"/"flow".
+#   `acessor` — "…decidir o que este ACESSOR responde" (`ph2d-vec-scene/src/effect.rs`).
+condicional = "condicional"
+apender = "apender"
+Apender = "Apender"
+continuem = "continuem"
+cruzes = "cruzes"
+flor = "flor"
+acessor = "acessor"
 
 [files]
 extend-exclude = [

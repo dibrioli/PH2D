@@ -8,7 +8,7 @@
 //! the animator drags it, and the drag has to arrive as a time on the **timeline**, because
 //! the timeline's playhead is the only one there is (ADR-0133 §1 — the parent owns the
 //! clock). Reading in one clock and writing in another is the bug this module exists to
-//! stop: with the instance starting at 4 s, dragging to the interior's second 1 seeked the
+//! stop: with the instance starting at 4 s, dragging to the interior's second 1 would seek the
 //! scene to second 1, silently leaving the container by three seconds.
 //!
 //! So the answer has to be the *relation*, not a sample of it — and once it is the relation,

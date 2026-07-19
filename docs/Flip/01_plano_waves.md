@@ -258,10 +258,11 @@ paint-behind, multiframe.
 - **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
 - **Tween v2:** matching espacial + espiral logarítmica + UI de correção de pares (04 §2).
-- **Colorize:** **C1 (Trap / trapped-ball) LANDOU** em `ph2d-flip-fill` (2026-07-18, `a6e8277a`).
-  **ABERTO — a PRÓXIMA wave:** **C2 (LazyBrush/CTG)** + **C3 (onion-fill)** — a feature de produção
-  que só o TVPaint tem (plano [`09`](09_colorize.md) §7; a crate prevista `ph2d-flip-colorize` ainda
-  não existe).
+- **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C2 — o MOTOR LazyBrush
+  LANDOU headless e gateado** (2026-07-19, crate nova `ph2d-flip-colorize`: `flow.rs` BK +
+  `colorize()`; line-art + rabiscos → geometria por região, corte hugga a tinta, vão não vaza).
+  **ABERTO:** a **FATIA C2** (gesto de rabisco + paleta + costura no shell, [`09`](09_colorize.md) §6)
+  · a **pré-segmentação por regiões** (perf a 4K, [`09`](09_colorize.md) §7.1) · **C3 (onion-fill)**.
 - **Ghost extras:** light table (marcadores fixos) + Shift & Trace (transform por ghost +
   F1/F2/F3) (04 §4).
 - ~~**Edit Mode**~~ (seleção de traço/ponto/segmento + transform): **LANDOU (W6, 2026-07-13, doc

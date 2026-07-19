@@ -5153,6 +5153,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-flip-colorize"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-flip-fill",
+]
+
+[[package]]
 name = "ph2d-flip-fill"
 version = "0.0.0"
 dependencies = [

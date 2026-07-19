@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-flip-colorize"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The COLORIZE engine of the Flip (ADR-0114, `docs/Flip/09_colorize.md`) — clean-room
+# LazyBrush (Sýkora et al., EG 2009) + trapped-ball (Zhang et al., TVCG 2009).
+#
+# Front-end NEW, back-end UNTOUCHED (`09 §2`): entra a line-art + os rabiscos coloridos,
+# sai a GEOMETRIA de cada região (o MESMO `trace_contours` do balde), então colorir herda
+# selecionar/mover/animar/undo de graça. Motor de fluxo (Boykov–Kolmogorov) próprio; a
+# pré-segmentação por regiões (a alavanca de perf a 4K, `09 §7.1`) é follow-up.
+#
+# Crate SEPARADA (isolamento, ADR-0107 · `09 §2`): membership por glob, zero edição central.
+
+[dependencies]
+# Vec2 — as posições dos pontos.
+ph2d-core = { path = "../ph2d-core" }
+# O BACK-END do balde, intocado: Grid + stroke/ink capsule + expand_under_ink +
+# trace_contours + simplify_ring. A borda de uma cor e a de um balde saem do MESMO código.
+ph2d-flip-fill = { path = "../ph2d-flip-fill" }

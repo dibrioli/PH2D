@@ -1,8 +1,11 @@
 # Flip — a wave **COLORIZE**: o plano
 
 > **Estado (2026-07-19):** a **fatia C1 (Trapped-ball, §4) LANDOU** em `ph2d-flip-fill` (2026-07-18,
-> `a6e8277a`) — **não** na crate `ph2d-flip-colorize` que este plano prevê (ver [`01_plano_waves.md`](01_plano_waves.md)).
-> **C2 (LazyBrush) + C3 (onion-fill) seguem PLANEJADAS** — a PRÓXIMA wave. Ordem do Enio, escolhida como a wave seguinte ao §4.C.
+> `a6e8277a`). **C2 — o MOTOR do LazyBrush LANDOU headless e gateado** (a crate nova
+> `ph2d-flip-colorize`: `flow.rs` BK + `lib.rs` `colorize()`; line-art + rabiscos → geometria por
+> região, o corte hugga a tinta, um vão não vaza, HR-5; gates em `lib_tests.rs`/`flow_tests.rs`).
+> **ABERTO:** a **FATIA C2** (o gesto de rabisco + paleta + costura no shell, `§6`) e a
+> **pré-segmentação por regiões** (a perf a 4K, `§7.1`); **C3 (onion-fill)** segue planejada.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >
@@ -326,7 +329,7 @@ rodada tem o direito de pedir a exceção **com esta tabela na mão**.
 
 #### ✅ MEDIDO (2026-07-19) — o corte binário, e onde o custo REALMENTE mora
 
-Régua no repo: `ph2d-flip-fill`, `flow::tests::measure_the_binary_cut_cost`
+Régua no repo: `ph2d-flip-colorize`, `flow::tests::measure_the_binary_cut_cost`
 (`--release --ignored --nocapture`), sobre um **BK clean-room** (`flow.rs` + `flow_tests.rs`,
 Boykov–Kolmogorov PAMI 2004) provado **exato** contra um Edmonds–Karp independente (128
 instâncias aleatórias + a caixa real; o corte lido pesa o fluxo ao bit — o oráculo é uma 2ª

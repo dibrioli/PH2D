@@ -1,22 +1,20 @@
-//! **Measurement prototype (Colorize C2 · `docs/Flip/09 §7.1`)** — the binary s-t
-//! min-cut on the implicit 4-connected pixel grid, the heart of LazyBrush (`09 §3`).
+//! The **binary s-t min-cut** on the implicit 4-connected pixel grid — the max-flow the
+//! Colorize LazyBrush multiway is built from (`docs/Flip/09 §3`), and the régua of `§7.1`.
 //!
 //! Clean-room **Boykov–Kolmogorov** (PAMI 2004) — the published max-flow for grid graphs
-//! of vision, which is exactly our 4-connected topology. It is the *right* algorithm to
-//! MEASURE with: on the unit-ish LazyBrush cut a generic max-flow (Dinic / push-relabel)
-//! does Θ(diameter) phases over the whole grid and is pathologically slow — and that gap
-//! is precisely the number `09 §7.1` reserves. Single-threaded and deterministic (fixed
-//! scan order, no `HashMap`, no parallelism inside a cut — HR-5: two identical clicks give
-//! the same drawing). Integer capacities ⇒ the min-cut is exact.
+//! of vision, which is exactly our 4-connected topology. On the unit-ish LazyBrush cut a
+//! generic max-flow (Dinic / push-relabel) does Θ(diameter) phases over the whole grid and
+//! is pathologically slow — that gap is precisely the number `§7.1` reserved. Single-threaded
+//! and deterministic (fixed scan order, no `HashMap`, no parallelism inside a cut — HR-5: two
+//! identical clicks give the same drawing). Integer capacities ⇒ the min-cut is exact.
 //!
-//! ⚠️ **This is a MEASUREMENT, not the shipping motor.** It answers the one question the
-//! plan reserves before any UI or ceiling (`09 §7.1`, CLAUDE.md §0.0): *how much does ONE
-//! binary cut cost on the real product grid?* — which decides whether the Colorize solve
-//! is synchronous or wears the `progress` bar (`09 §7.2` kill-criterion). No UI, no
-//! scribble gesture, no palette. When C2 is greenlit this moves to `ph2d-flip-colorize`
-//! (`09 §6`); it lives here now only to reuse [`Grid`] with zero cross-crate plumbing.
+//! ⚠️ **The pixel grid, not yet the region graph.** `§7.1` MEASURED that one raw pixel-grid
+//! cut is seconds+ at full res, so production must run the multiway over the trapped-ball
+//! *region* graph (dozens of nodes, sub-ms). This grid solver is the correct §3 LazyBrush on
+//! small art, the engine's current back-bone, and the §7.1 bench; the region reduction is the
+//! documented perf follow-up. [`GridFlow`] would generalise to a region-adjacency graph.
 
-use crate::raster::{BOUNDARY, Grid};
+use ph2d_flip_fill::{BOUNDARY, Grid};
 
 const FREE: u8 = 0;
 const S: u8 = 1; // source tree
@@ -356,9 +354,10 @@ impl GridFlow {
                 continue;
             }
             if let Some(dq) = self.try_origin(q, n)
-                && best.is_none_or(|(_, bd)| dq < bd) {
-                    best = Some((d, dq));
-                }
+                && best.is_none_or(|(_, bd)| dq < bd)
+            {
+                best = Some((d, dq));
+            }
         }
         if let Some((d, dq)) = best {
             self.parent[n] = d as i8; // n's parent is q, direction n→q = d
@@ -458,10 +457,11 @@ impl GridFlow {
             for d in 0..4 {
                 if self.res[4 * i + d] > 0
                     && let Some(q) = self.neighbour(i, d)
-                        && !side[q] {
-                            side[q] = true;
-                            stack.push(q);
-                        }
+                    && !side[q]
+                {
+                    side[q] = true;
+                    stack.push(q);
+                }
             }
         }
         side
@@ -469,31 +469,33 @@ impl GridFlow {
 }
 
 /// The LazyBrush **binary** instance on a product [`Grid`]: label A (source) vs label B
-/// (sink). `V_pq` (smoothness) is the clarity of paper between adjacent pixels — cheap to
-/// cut across ink, dear across white — so the cut is *attracted* to the middle of the
-/// line and a gap need not close (`09 §3`). `D_p` (data) is the two scribbles.
+/// (sink). `V_pq` (smoothness) is the clarity of paper between adjacent pixels — `v_ink` to
+/// cut across the line, `v_white` across paper — so the cut is *attracted* to the ink and a
+/// gap need not close (`09 §3`). `D_p` (data) is the scribble pixels, weighted `K = 2(w+h)`
+/// so no cut betrays a scribble (any boundary is bounded by the grid perimeter).
 ///
-/// ⚠️ The scribbles must be **regions, not single pixels**. A one-pixel seed makes the
-/// cheapest cut "fence off that pixel" (4·`V_white`), a degenerate answer that also makes
-/// the opposite tree flood the whole grid down long paths — neither the real LazyBrush cut
-/// nor a representative timing. A scribble wider than `perimeter / (2·V_white/V_ink)` forces
-/// the min-cut to run along the ink instead (a real region cut, with balanced trees).
+/// The two weights are the CALLER's: the engine passes `v_ink = 0` (cutting through the line
+/// is free ⇒ the flood is confined by it ⇒ a scribble colours exactly its region), while the
+/// `§7.1` bench passes `v_ink = 1` to force a non-trivial worst-case flow along the whole
+/// boundary. ⚠️ **The scribbles must be REGIONS, not single pixels** — a one-pixel seed lets
+/// the cheapest cut "fence off that pixel" (`perimeter · v_white`) instead of the region cut;
+/// a scribble whose perimeter exceeds the gap it must beat forces the real region answer.
 ///
-/// ⚠️ v1 reads `V_pq` from the `BOUNDARY` **bit**, not a coverage float: `ink.rs` marks a
-/// bit today, and the analytic-coverage `V_pq` of `09 §3.1` is a later refinement. For a
-/// *timing* measurement the graph size and the cut structure dominate, and a binary clarity
-/// is a valid, representative instance. Constants per `09 §3`: `K = 2(w+h)` dominates any
-/// boundary (whose cost is bounded by the grid perimeter), so no cut ever betrays a
-/// scribble.
+/// ⚠️ v1 reads `V_pq` from the `BOUNDARY` **bit**, not a coverage float: `ink.rs` marks a bit
+/// today, and the analytic-coverage `V_pq` of `09 §3.1` is a later refinement.
 #[must_use]
-pub fn lazybrush_binary(grid: &Grid, source: &[usize], sink: &[usize]) -> GridFlow {
+pub fn lazybrush_binary(
+    grid: &Grid,
+    source: &[usize],
+    sink: &[usize],
+    v_white: i32,
+    v_ink: i32,
+) -> GridFlow {
     let w = grid.w;
     let h = grid.h;
     let mut f = GridFlow::new(w, h);
 
     let k = 2 * (w + h) as i32; // scribble weight — dominates the perimeter (`09 §3`)
-    let v_white = 8; // clarity of paper between two non-ink pixels
-    let v_ink = 1; // cutting across ink is cheap — the cut hugs the line
 
     let is_ink = |i: usize| grid.flags[i] & BOUNDARY != 0;
     // n-links: East and South only (each undirected pair is set once).
@@ -519,5 +521,6 @@ pub fn lazybrush_binary(grid: &Grid, source: &[usize], sink: &[usize]) -> GridFl
     f
 }
 
+#[cfg(test)]
 #[path = "flow_tests.rs"]
 mod tests;

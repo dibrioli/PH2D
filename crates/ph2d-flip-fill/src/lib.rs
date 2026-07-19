@@ -38,10 +38,6 @@ mod arrange;
 mod ball;
 mod dilate;
 mod edt;
-/// Colorize C2 measurement prototype (`docs/Flip/09 §7.1`) — test-only scaffolding, not
-/// the shipping motor; see the module docs.
-#[cfg(test)]
-mod flow;
 mod gap;
 mod raster;
 mod trace;
@@ -51,7 +47,7 @@ pub use ball::{TrapBall, TrapRegion};
 pub use dilate::{contour_widths, local_line, nearest_on_axis};
 pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
-pub use raster::Grid;
+pub use raster::{BOUNDARY, FILLED, Grid, INK};
 pub use trace::{RDP_EPSILON_PX, signed_area, simplify_ring, trace_contours};
 
 use ph2d_core::Vec2;

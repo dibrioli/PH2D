@@ -9,8 +9,8 @@
 //! grid — the number `09 §7.1`/`§7.2` reserves before any UI.
 
 use super::{GridFlow, lazybrush_binary, opp};
-use crate::raster::Grid;
 use ph2d_core::Vec2;
+use ph2d_flip_fill::Grid;
 
 /// splitmix64 — the crate's deterministic PRNG idiom (HR-5), for varied fixtures without a
 /// dependency. A gate that always sees the same tiny graph proves nothing.
@@ -68,11 +68,12 @@ fn edmonds_karp(w: usize, h: usize, res0: &[i32], t0: &[i32]) -> i64 {
             for d in 0..4 {
                 if res[4 * i + d] > 0
                     && let Some(qq) = neighbour(w, h, i, d)
-                        && par[qq] == -1 {
-                            par[qq] = i as i32;
-                            pdir[qq] = d;
-                            q.push_back(qq);
-                        }
+                    && par[qq] == -1
+                {
+                    par[qq] = i as i32;
+                    pdir[qq] = d;
+                    q.push_back(qq);
+                }
             }
         }
         let Some(i) = sink else { break };
@@ -232,7 +233,7 @@ fn bk_cuts_a_real_boxed_grid_like_the_reference() {
     let inside = iy * g.w + ix;
     let outside = g.w + 1; // (1,1): in the margin, outside the box, not ink
 
-    let mut f = lazybrush_binary(&g, &[inside], &[outside]);
+    let mut f = lazybrush_binary(&g, &[inside], &[outside], 8, 1);
     let res0 = f.res.clone();
     let t0 = f.t.clone();
     let bk = f.max_flow();
@@ -303,7 +304,7 @@ fn measure_the_binary_cut_cost() {
         let mpix = (g.w * g.h) as f64 / 1.0e6;
 
         let t0 = std::time::Instant::now();
-        let mut f = lazybrush_binary(&g, &source, &sink);
+        let mut f = lazybrush_binary(&g, &source, &sink, 8, 1);
         let build = t0.elapsed().as_secs_f64() * 1000.0;
 
         let t1 = std::time::Instant::now();

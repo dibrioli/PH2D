@@ -176,25 +176,45 @@ pub(super) fn smart_connect(
     motion.pump.mark_dirty();
 }
 
+/// The probe's presentation of a [`super::readout::Reading`] — a label and a raw
+/// number, where the readout row wants a formatted string. The DECISION they
+/// share lives in `reading_of`; only this differs.
+fn reading_label(r: super::readout::Reading) -> (String, f32) {
+    match r {
+        super::readout::Reading::Value(v) => ("value".to_string(), v),
+        super::readout::Reading::Instances(n) => ("instances".to_string(), n as f32),
+    }
+}
+
+/// Fold one reading into the sparkline's ring.
+fn push_probe_sample(motion: &mut MotionState, value: f32) {
+    let ring = &mut motion.probe_ring;
+    if ring.len() >= ph2d_panel_motion_graph::PROBE_SAMPLES {
+        ring.remove(0);
+    }
+    ring.push(value);
+}
+
 /// Read the probed node and fold the reading into its ring — the sparkline's data.
-/// Called once per frame, AFTER the cook, so it reads what the graph actually
-/// produced this tick.
 ///
-/// It reuses the pump's own `Cook` (whose memo already holds this tick's results
-/// and whose `pre` feedback is the live simulation state), so probing a node costs
-/// a memo lookup, not a second evaluation of the chain — and it can never see a
-/// different tick than the render did.
+/// ⚠️ **Called once per frame BEFORE the cooks**, not after. The old note here
+/// said "AFTER the cook", and it is worth being exact because two seams turned on
+/// it: `sample_probe` runs in the snapshot block, while `cook_gpu` and the pump's
+/// `advance_or_scrub_scoped` are both further down `dispatch`. What made the CPU
+/// reading fresh anyway is that this calls `cook`, not `peek` — so on that path
+/// the probe performs the tick's FIRST evaluation and the pump then reuses the
+/// memo, which is why probing still costs one evaluation of the chain and never
+/// two. (The readout row next door peeks, and is therefore a frame behind.)
 ///
-/// **What the number is:** a VALUE stream reads out its scalar (the `v` column,
-/// first element); anything else reads out how many instances it carries. Those
-/// are the two questions an artist actually asks a wire ("what is it worth?" /
-/// "how many are there?"), and the label says which one is on screen.
+/// **What the number is** — the `v` scalar for a VALUE stream, the instance count
+/// otherwise — is decided by [`super::readout::reading_of`], shared with the
+/// readout row. The two used to decide it separately, under a comment promising
+/// they would never disagree.
 pub(super) fn sample_probe(
     motion: &mut MotionState,
     playhead: f64,
+    tapped: Option<&std::collections::BTreeMap<NodeId, ph2d_nodegraph::attr::Stream>>,
 ) -> Option<ph2d_panel_motion_graph::ProbeView> {
-    use ph2d_nodegraph::attr::Column;
-
     let node = motion.probe?;
     if motion.doc.graph.node(node).is_none() {
         // The probed node was deleted — the probe goes with it.
@@ -217,14 +237,53 @@ pub(super) fn sample_probe(
     // exact ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]);
     // that is a publish-order change, noted rather than smuggled in here.
     if motion.gpu_live {
-        // The ring is CPU history — under a GPU cook it would draw a sparkline of
-        // readings that no longer describe what is on screen.
-        motion.probe_ring.clear();
+        // **The tap answers instead** (`readout::take_tap`): 48 strided rows per
+        // staged node for a measured +0,075 ms, so the probe reads the device's
+        // real numbers rather than announcing that it cannot.
+        //
+        // ⚠️ **The count comes from `CookShape`, never from the tapped stream** —
+        // it carries 48 rows whatever the node emitted, and the probe's whole
+        // output is a number the artist quotes. Same trap as the readout row's.
+        //
+        // ⚠️ **One frame behind, and here that is a CHANGE**: the CPU branch below
+        // calls `cook`, so it is fresh, while the tap reads the previous cook.
+        // The alternative was cooking the chain on the CPU beside a GPU already
+        // drawing it (~50 ms at 1,2 M, from a `pre` state the pump never marched
+        // — a simulation that did not happen). A real reading one tick old beats
+        // both that and the blank this replaces; making it exact is the same
+        // publish-order change the note below already names.
+        let sampled = tapped.and_then(|t| t.get(&node));
+        // A node the device did not stage (a CPU boundary in a hybrid plan) still
+        // has a memo entry from the prefix cook. `peek`, never `cook` — see above.
+        let fallback = motion.pump.cook.peek(node).and_then(|o| o.first());
+        let (label, value) = match (sampled, fallback) {
+            (Some(s), _) => reading_label(super::readout::reading_of(
+                s,
+                motion.gpu_cook.node_count(node).unwrap_or(0),
+            )),
+            (None, Some(v)) => {
+                let st = v.as_stream();
+                let n = st.count() as u32;
+                reading_label(super::readout::reading_of(st, n))
+            }
+            // Staged nowhere and cooked nowhere: the node is genuinely not
+            // running. Saying so beats inventing a zero.
+            (None, None) => {
+                motion.probe_ring.clear();
+                return Some(ph2d_panel_motion_graph::ProbeView {
+                    node: node.0,
+                    label: "idle".to_string(),
+                    value: None,
+                    samples: Vec::new(),
+                });
+            }
+        };
+        push_probe_sample(motion, value);
         return Some(ph2d_panel_motion_graph::ProbeView {
             node: node.0,
-            label: "gpu".to_string(),
-            value: None,
-            samples: Vec::new(),
+            label,
+            value: Some(value),
+            samples: motion.probe_ring.clone(),
         });
     }
     let out = motion
@@ -233,21 +292,14 @@ pub(super) fn sample_probe(
         .cook(&motion.doc.graph, &motion.registry, node, playhead)
         .ok()?;
     let stream = out.first()?.as_stream();
-    let (label, value) = match stream.get("v") {
-        Some(Column::Scalar(v)) if !v.is_empty() => ("value".to_string(), v[0]),
-        _ => ("instances".to_string(), stream.count() as f32),
-    };
-
-    let ring = &mut motion.probe_ring;
-    if ring.len() >= ph2d_panel_motion_graph::PROBE_SAMPLES {
-        ring.remove(0);
-    }
-    ring.push(value);
+    let n = stream.count() as u32;
+    let (label, value) = reading_label(super::readout::reading_of(stream, n));
+    push_probe_sample(motion, value);
     Some(ph2d_panel_motion_graph::ProbeView {
         node: node.0,
         label,
         value: Some(value),
-        samples: ring.clone(),
+        samples: motion.probe_ring.clone(),
     })
 }
 

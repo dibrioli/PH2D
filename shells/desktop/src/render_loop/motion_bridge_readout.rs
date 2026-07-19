@@ -71,6 +71,32 @@ fn readout_of(outputs: &[CookValue]) -> Option<String> {
     Some(readout_text(stream, n))
 }
 
+/// **What a wire is worth** — the one question the panel asks it, in the one
+/// place that answers.
+///
+/// A VALUE stream reads out its scalar; anything else reads out how many
+/// instances it carries. Those are the two questions an artist actually asks a
+/// wire (*what is it worth?* / *how many are there?*).
+///
+/// The readout row and the probe both need this and used to decide it
+/// separately, each with its own `match stream.get("v")` — under a comment
+/// promising they would "never disagree", which is a promise a copy cannot keep
+/// ([[feedback_two_doors_to_the_same_question_diverge]]). They differ in how they
+/// PRESENT it (a formatted string vs a label and a raw `f32`), not in what it is.
+pub(super) enum Reading {
+    Value(f32),
+    Instances(u32),
+}
+
+/// `count` is the node's TRUE element count — see [`readout_text`] for why it is
+/// an argument and not `stream.count()`.
+pub(super) fn reading_of(stream: &Stream, count: u32) -> Reading {
+    match stream.get("v") {
+        Some(Column::Scalar(v)) if !v.is_empty() => Reading::Value(v[0]),
+        _ => Reading::Instances(count),
+    }
+}
+
 /// The reading, given a stream and **the element count to quote**.
 ///
 /// ⚠️ **The count is an ARGUMENT and that is the whole point.** On the CPU path it
@@ -81,12 +107,12 @@ fn readout_of(outputs: &[CookValue]) -> Option<String> {
 /// SIZED the dispatch with. Two sources, one answer, one function to write it
 /// ([[feedback_two_doors_to_the_same_question_diverge]]).
 fn readout_text(stream: &Stream, count: usize) -> String {
-    let text = match stream.get("v") {
-        Some(Column::Scalar(v)) if !v.is_empty() => format!("{:.3}", v[0]),
+    let text = match reading_of(stream, count as u32) {
+        Reading::Value(v) => format!("{v:.3}"),
         // A stream with no elements is not "0 instances" in the sense of a count — it is a
         // node that produced NOTHING, and saying so plainly beats a bare zero.
-        _ if count == 0 => "empty".to_string(),
-        _ => format!("{count} inst"),
+        Reading::Instances(0) => "empty".to_string(),
+        Reading::Instances(n) => format!("{n} inst"),
     };
     text.chars().take(MAX_LEN).collect()
 }

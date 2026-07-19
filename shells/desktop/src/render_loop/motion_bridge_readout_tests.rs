@@ -3,7 +3,7 @@
 use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::graph::{Edge, Graph, Pos};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 /// Build `grid -> output` plus an ORPHAN node wired to nothing, cook the sink exactly as
 /// the shell does, and read the snapshot the panel would receive.
@@ -344,6 +344,99 @@ fn a_value_node_has_no_postage_stamp() {
 
 // ── The GPU seam ────────────────────────────────────────────────────────────
 
+/// `grid(20x20) -> oscillator -> output`, cooked on the DEVICE twice.
+///
+/// Returns `None` when there is no adapter (CI), so each gate skips cleanly.
+///
+/// **Twice** because the tap reads the PREVIOUS cook — exactly as `Cook::peek`
+/// does on the CPU path — so a single cook would leave every reading blank for a
+/// reason that has nothing to do with the seam under test.
+///
+/// **20x20 = 400** so the 48 samples are a real subsample: `400 inst` and
+/// `48 inst` are different strings, and the stride is a real stride.
+fn gpu_driven_fixture() -> Option<(ph2d_gpu::GpuContext, MotionState, NodeId)> {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter — skipping");
+        return None;
+    };
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let osc = g.add_node("motion.oscillator");
+    let out = g.add_node("motion.output");
+    for (n, x) in [(grid, 0.0), (osc, 200.0), (out, 400.0)] {
+        g.set_pos(n, Pos { x, y: 0.0 });
+    }
+    for (a, b) in [(grid, osc), (osc, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .expect("wire");
+    }
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 1.4);
+    g.set_param(osc, "frequency", 0.8);
+    motion.doc.graph = g;
+    motion.sinks = vec![out];
+    motion.gpu_enabled = true;
+
+    let scopes = Default::default();
+    for tick in 0..2 {
+        assert!(
+            matches!(
+                super::super::gpu::cook_gpu(&mut motion, &gpu, tick, 1.0 / 60.0, &scopes),
+                super::super::gpu::GpuOutcome::Handled
+            ),
+            "the document must cook on the device, or this gate tests the CPU path"
+        );
+    }
+    assert!(motion.gpu_live, "the device drove the frame");
+    assert!(
+        motion.pump.cook.peek(osc).is_none(),
+        "the CPU memo must be EMPTY — otherwise the readings could be coming from \
+         the pump and the tap would be untested"
+    );
+    Some((gpu, motion, osc))
+}
+
+/// **The probe reads the device's real numbers** — it used to answer `"gpu"` and
+/// nothing else.
+///
+/// It could not do better honestly: with the memo empty, its `cook` is not a
+/// lookup but a full CPU evaluation of the chain beside a GPU already drawing it
+/// (~50 ms at 1,2 M, from a `pre` state the pump never marched). The tap makes
+/// the reading available for +0,075 ms instead.
+///
+/// ⚠️ Same load-bearing assertion as the card gate: the VALUE must be the exact
+/// count, not the 48 rows the tap returned. The probe's whole output is a number
+/// the artist quotes, so this is the one place it matters most.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_probe_reads_the_device_instead_of_announcing_it_cannot() {
+    let Some((gpu, mut motion, osc)) = gpu_driven_fixture() else {
+        return;
+    };
+    motion.probe = Some(osc);
+    let tapped = super::take_tap(&mut motion, &gpu).expect("a GPU frame taps");
+    let view = super::super::edit::sample_probe(&mut motion, 0.0, Some(&tapped))
+        .expect("the probe reports");
+    assert_eq!(
+        view.label, "instances",
+        "an instance stream, not a VALUE one"
+    );
+    assert_eq!(
+        view.value,
+        Some(400.0),
+        "the probe quotes the EXACT count from CookShape, never the 48 rows the \
+         tap returned"
+    );
+    assert_eq!(view.samples.len(), 1, "one reading folded into the ring");
+}
+
 /// **A GPU-driven frame fills the cards** — the seam that unblocks `PH2D_GPU_COOK`
 /// as a default.
 ///
@@ -362,57 +455,9 @@ fn a_value_node_has_no_postage_stamp() {
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count() {
-    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
-        eprintln!("no GPU adapter — skipping");
+    let Some((gpu, mut motion, osc)) = gpu_driven_fixture() else {
         return;
     };
-    let mut motion = MotionState::new();
-    let mut g = Graph::new();
-    let grid = g.add_node("motion.grid");
-    let osc = g.add_node("motion.oscillator");
-    let out = g.add_node("motion.output");
-    for (n, x) in [(grid, 0.0), (osc, 200.0), (out, 400.0)] {
-        g.set_pos(n, Pos { x, y: 0.0 });
-    }
-    for (a, b) in [(grid, osc), (osc, out)] {
-        g.connect(Edge {
-            from: (a, 0),
-            to: (b, 0),
-            delayed: false,
-        })
-        .expect("wire");
-    }
-    // 20x20 = 400: comfortably past the 48 samples, so `400 inst` and `48 inst`
-    // are different strings and the stride is a real stride.
-    g.set_param(grid, "rows", 20.0);
-    g.set_param(grid, "cols", 20.0);
-    g.set_param(osc, "channel", 1.0);
-    g.set_param(osc, "amplitude", 1.4);
-    g.set_param(osc, "frequency", 0.8);
-    motion.doc.graph = g;
-    motion.sinks = vec![out];
-    motion.gpu_enabled = true;
-
-    // Drive the REAL frame path, twice — the tap reads the PREVIOUS cook (as does
-    // the CPU memo), so a single cook would leave everything blank for a reason
-    // that has nothing to do with the seam.
-    let scopes = Default::default();
-    for tick in 0..2 {
-        assert!(
-            matches!(
-                super::super::gpu::cook_gpu(&mut motion, &gpu, tick, 1.0 / 60.0, &scopes),
-                super::super::gpu::GpuOutcome::Handled
-            ),
-            "the document must cook on the device, or this gate tests the CPU path"
-        );
-    }
-    assert!(motion.gpu_live, "the device drove the frame");
-    assert!(
-        motion.pump.cook.peek(osc).is_none(),
-        "the CPU memo must be EMPTY — otherwise the readings below could be \
-         coming from the pump and the tap would be untested"
-    );
-
     let tapped = super::take_tap(&mut motion, &gpu).expect("a GPU frame taps");
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
     stamp(&mut motion, Some(&tapped), &mut snap);

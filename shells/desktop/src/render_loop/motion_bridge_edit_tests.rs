@@ -221,14 +221,14 @@ fn the_probe_reads_the_node_it_points_at() {
     motion.doc.graph.set_param(grid, "cols", 5.0);
     motion.probe = Some(grid);
 
-    let view = edit::sample_probe(&mut motion, 0.0).expect("the probe read the node");
+    let view = edit::sample_probe(&mut motion, 0.0, None).expect("the probe read the node");
     assert_eq!(view.node, grid.0);
     assert_eq!(view.label, "instances");
     assert_eq!(view.value, Some(20.0), "a 4×5 grid carries 20 instances");
     assert_eq!(view.samples, vec![20.0], "and the ring started filling");
 
     // A second tick appends (the sparkline is a history, not a single reading).
-    let view = edit::sample_probe(&mut motion, 1.0 / 60.0).unwrap();
+    let view = edit::sample_probe(&mut motion, 1.0 / 60.0, None).unwrap();
     assert_eq!(view.samples.len(), 2);
 }
 
@@ -240,10 +240,10 @@ fn the_probe_lets_go_of_a_deleted_node() {
     motion.doc.graph = Graph::new();
     let grid = motion.doc.graph.add_node("motion.grid");
     motion.probe = Some(grid);
-    assert!(edit::sample_probe(&mut motion, 0.0).is_some());
+    assert!(edit::sample_probe(&mut motion, 0.0, None).is_some());
 
     motion.doc.graph.remove_node(grid);
-    assert!(edit::sample_probe(&mut motion, 0.0).is_none());
+    assert!(edit::sample_probe(&mut motion, 0.0, None).is_none());
     assert!(motion.probe.is_none(), "the probe let go");
 }
 
@@ -270,7 +270,7 @@ fn a_gpu_resident_cook_leaves_the_probe_with_no_reading_and_does_not_cook() {
     motion.probe_ring.push(123.0);
     motion.gpu_live = true;
 
-    let view = edit::sample_probe(&mut motion, 0.0).expect("the probe card stays put");
+    let view = edit::sample_probe(&mut motion, 0.0, None).expect("the probe card stays put");
     assert_eq!(
         view.value, None,
         "no reading, rather than a stale or invented one"
@@ -299,7 +299,7 @@ fn the_cpu_path_still_reads_and_still_fills_the_memo() {
     motion.probe = Some(grid);
     motion.gpu_live = false;
 
-    let view = edit::sample_probe(&mut motion, 0.0).expect("a reading");
+    let view = edit::sample_probe(&mut motion, 0.0, None).expect("a reading");
     assert_eq!(view.value, Some(20.0), "the CPU path still answers");
     assert!(!view.samples.is_empty(), "and still feeds the sparkline");
     assert!(

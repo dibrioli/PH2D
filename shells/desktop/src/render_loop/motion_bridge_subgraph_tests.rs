@@ -457,7 +457,7 @@ fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
     // thing at this level the HUD could possibly hang off.
     cook(&mut m, 2);
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-    snap.probe = super::edit::sample_probe(&mut m, 0.0);
+    snap.probe = super::edit::sample_probe(&mut m, 0.0, None);
     fold::fold(&m, &mut snap);
     let probe = snap.probe.expect("the probe published a reading");
     assert_eq!(probe.node, card, "the HUD is drawn beside the CARD");

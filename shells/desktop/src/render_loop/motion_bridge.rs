@@ -214,13 +214,14 @@ pub(super) fn dispatch(
         // the pump cooked, and mid-tick (a scrub lands anywhere) those two differ. Asking for
         // a time nobody cooked is how a readout starts lying.
         let cook_time = motion_time(playhead, fixed_dt);
-        let probe = motion_active
-            .then(|| edit::sample_probe(motion, cook_time))
-            .flatten();
-        // The GPU's samples for this frame's cards — see `readout::take_tap`.
-        // Taken before the snapshot borrow, like the probe above.
+        // The GPU's samples for this frame — ONE tap, feeding both the cards and
+        // the probe (see `readout::take_tap`). Taken before the snapshot borrow,
+        // and before the probe, which now reads it.
         let tapped = motion_active
             .then(|| readout::take_tap(motion, gpu))
+            .flatten();
+        let probe = motion_active
+            .then(|| edit::sample_probe(motion, cook_time, tapped.as_ref()))
             .flatten();
         ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
             let mut snap =

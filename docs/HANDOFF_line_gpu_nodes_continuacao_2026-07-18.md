@@ -719,9 +719,37 @@ diferentes agora:
    sem teste) e checa que o selo carrega a ONDA, não 48 cópias de uma linha.
    3 mutações, 3 mortas.
 
-   **O que falta para virar o default:** a decisão em si (`gpu_enabled` sai do
-   env var), a **sonda** (`edit::sample_probe` ainda lê só o memo — o tap já traz
-   os dados de que ela precisa) e um smoke do Enio.
+   **✅ A SONDA TAMBÉM LÊ O DISPOSITIVO.** Ela respondia `"gpu"` e mais nada — e
+   não podia fazer melhor com honestidade: com o memo vazio, o `cook` dela não é
+   um lookup mas uma avaliação COMPLETA da cadeia na CPU ao lado de uma GPU que já
+   está desenhando (~50 ms a 1,2 M, a partir de um estado `pre` que o pump nunca
+   marchou — uma simulação que não aconteceu). Agora lê o tap. Mesma armadilha da
+   contagem, no lugar onde ela mais importa: a saída inteira da sonda é um número
+   que o artista cita.
+
+   **Uma decisão a menos no repo:** *"o que vale este fio?"* (o escalar `v` de um
+   stream de VALOR, senão a contagem) era decidida **duas vezes** — uma no readout,
+   outra na sonda — sob um comentário prometendo que as duas "nunca discordariam",
+   que é uma promessa que uma cópia não pode cumprir. Virou
+   `readout::reading_of(stream, count) -> Reading`; as duas só diferem em como
+   APRESENTAM (string formatada vs label + `f32` cru).
+
+   ⚠️ **E a nota da sonda estava errada do mesmo jeito que a do readout:** dizia
+   *"Called once per frame, AFTER the cook"*. Ela roda **antes dos dois cooks**. O
+   que mantinha a leitura da CPU fresca não é a ordem, é o fato de ela chamar
+   `cook` e não `peek` — na CPU a sonda faz a **primeira** avaliação do tick e o
+   pump reusa o memo, e é por isso que sondar segue custando uma avaliação e nunca
+   duas. Corrigida. (Duas notas de ordem-de-frame erradas no mesmo arquivo, ambas
+   descobertas conferindo em vez de acreditar.)
+
+   Gate `the_probe_reads_the_device_instead_of_announcing_it_cannot` + o fixture
+   `gpu_driven_fixture` compartilhado com o gate dos cards. 3 mutações, 3 mortas.
+
+   **O que falta para virar o default:** só a decisão em si (`gpu_enabled` sai do
+   env var) e um smoke do Enio. ⚠️ A sonda na GPU fica **um frame atrás** (o tap lê
+   o cook anterior) enquanto na CPU é fresca — a assimetria está anotada no
+   código; torná-la exata é a mesma mudança de ordem-de-publicação que a nota já
+   nomeia, e continua não-contrabandeada.
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 

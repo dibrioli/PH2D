@@ -2702,11 +2702,25 @@ impl App {
                             // estão provados limpos por gate, então o eraser está fora deles.
                             if std::env::var_os("PH2D_CORNER_LOG").is_some()
                                 && let Some(pid) = self.vec_pen.selected()
-                                && let Some(p) = gfx.vec_scene.path(pid)
                             {
-                                let radii: Vec<f64> =
-                                    p.verts_all().map(|v| v.corner_radius).collect();
-                                eprintln!("[corner] press chamfer={chamfer} radii={radii:?}");
+                                // `shape` = a receita ainda esta' pendurada? Se ela reaparece
+                                // entre gestos, o `recook_into` reescreve `verts` e zera TODOS
+                                // os raios de uma vez -- o unico mecanismo que casa com "so' um
+                                // raio vivo por vez, com a contagem de vertices intacta".
+                                let shape = self.vec_entities.get(&pid).is_some_and(|&b| {
+                                    gfx.sim
+                                        .world()
+                                        .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(b))
+                                        .is_some()
+                                });
+                                let radii: Vec<f64> = gfx
+                                    .vec_scene
+                                    .path(pid)
+                                    .map(|p| p.verts_all().map(|v| v.corner_radius).collect())
+                                    .unwrap_or_default();
+                                eprintln!(
+                                    "[corner] PRESS chamfer={chamfer} shape={shape} radii={radii:?}"
+                                );
                             }
                             // Os hosts de RELAÇÃO (conector, morph, blend, envelope) seguem
                             // recusados: ali a geometria é uma relação, e soltá-la sem o artista
@@ -2908,6 +2922,28 @@ impl App {
                         let consumed = self.vec_pen.on_release();
                         if let Some(gfx) = self.gfx.as_mut() {
                             self.vec_history.commit_if_changed(&gfx.vec_scene);
+                        }
+                        // DIAGNÓSTICO (`PH2D_CORNER_LOG=1`): os raios LOGO APÓS o gesto. Com o
+                        // log do press, parte o report em dois — se aqui os raios anteriores já
+                        // sumiram, foi o GESTO; se estão inteiros e somem até o press seguinte,
+                        // foi um passe POR-FRAME entre os dois.
+                        if std::env::var_os("PH2D_CORNER_LOG").is_some()
+                            && self.vec_draw_config.mode.is_corner_tool()
+                            && let Some(gfx) = self.gfx.as_ref()
+                            && let Some(pid) = self.vec_pen.selected()
+                        {
+                            let shape = self.vec_entities.get(&pid).is_some_and(|&b| {
+                                gfx.sim
+                                    .world()
+                                    .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(b))
+                                    .is_some()
+                            });
+                            let radii: Vec<f64> = gfx
+                                .vec_scene
+                                .path(pid)
+                                .map(|p| p.verts_all().map(|v| v.corner_radius).collect())
+                                .unwrap_or_default();
+                            eprintln!("[corner] RELEASE shape={shape} radii={radii:?}");
                         }
                         if consumed {
                             return;

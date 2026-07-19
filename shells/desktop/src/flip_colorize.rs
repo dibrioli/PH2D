@@ -268,7 +268,18 @@ impl crate::App {
         let doc_per_px = px_to_world * obj_scale;
         let precision = 1.6 / doc_per_px.max(1e-6);
 
-        let regions: Vec<ColorRegion> = colorize(&lines, &seeds, precision);
+        // O **Trap** do painel — o MESMO knob do balde (*"a tinta é grossa assim"*), e não um
+        // segundo controle para a mesma pergunta. Ele chega em px de TELA, então atravessa as
+        // duas conversões: para unidades de documento (`doc_per_px`) e daí para px do buffer
+        // do Colorize (`precision`). Sem isso, subir a Precision encolheria a bola em silêncio
+        // — o acoplamento escondido que o BUGS #11 pagou caro para descobrir.
+        //
+        // ⚠️ É um **PISO**, não o valor final: o motor cresce a bola até os rabiscos do artista
+        // caírem em regiões distintas (`§8`), porque um raio que não separa duas cores torna a
+        // pré-segmentação incapaz de as separar, faça o corte o que fizer.
+        let trap_px = (style.trap as f32) * doc_per_px * precision;
+
+        let regions: Vec<ColorRegion> = colorize(&lines, &seeds, precision, trap_px);
         if regions.is_empty() {
             gfx.toasts.push(ph2d_editor::Toast::warning(
                 "Colorize: no regions — scribble inside the closed shapes",

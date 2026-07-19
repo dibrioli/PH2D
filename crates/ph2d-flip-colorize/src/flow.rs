@@ -32,6 +32,8 @@
 //!   index and no arithmetic — `parent_arc` for the child→parent direction, `^ 1` for
 //!   parent→child.
 
+// Só o ORÁCULO de pixels (`lazybrush_binary`) fala com a `Grid` — o solver é um grafo.
+#[cfg(test)]
 use ph2d_flip_fill::{BOUNDARY, Grid};
 
 const FREE: u8 = 0;
@@ -149,8 +151,13 @@ impl Flow {
     }
 
     /// The 4-connected pixel grid, as a graph: every East and South pair, weighted by
-    /// `cap(i, q)`. The gates and the `§7.1` bench live here; the product ships the region
-    /// graph through [`Flow::build`].
+    /// `cap(i, q)`.
+    ///
+    /// ⚠️ **Não é produto — é o ORÁCULO.** Desde a pré-segmentação (`§8`) o `colorize` corta
+    /// sobre o grafo de regiões; a instância de pixels sobrevive porque é a referência contra
+    /// a qual aquele caminho é conferido, e a `§7.1` a mede. Deixá-la compilando no binário
+    /// afirmaria que alguém a chama.
+    #[cfg(test)]
     #[must_use]
     pub fn grid_4conn(w: usize, h: usize, cap: impl Fn(usize, usize) -> i32) -> Self {
         let mut edges = Vec::with_capacity(2 * w * h);
@@ -524,6 +531,7 @@ impl Flow {
 ///
 /// ⚠️ v1 reads `V_pq` from the `BOUNDARY` **bit**, not a coverage float: `ink.rs` marks a bit
 /// today, and the analytic-coverage `V_pq` of `09 §3.1` is a later refinement.
+#[cfg(test)]
 #[must_use]
 pub fn lazybrush_binary(
     grid: &Grid,

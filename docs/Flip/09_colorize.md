@@ -20,8 +20,13 @@
 > `§7.1`. Números: 4096² limpo = **3,3 s**; e dois rabiscos que atravessam a mesma linha a
 > 2048² = **157 s** (contra 361 ms limpo). O `MAX_SIDE = 4096` foi **espelhado do balde**, onde
 > é honesto (flood fill é O(N)); aqui o custo cresce ~6,3× por dobra de lado.
-> **ABERTO:** **a pré-segmentação por regiões (§8 — o próximo)** · multiframe · Apply live
-> (re-solve por rabisco, **bloqueado pela pré-segmentação**) · **C3 (onion-fill)**.
+> **A PRÉ-SEGMENTAÇÃO LANDOU (§8, 2026-07-19)** — o corte não roda mais em pixels. **O
+> penhasco morreu: 157 s → 586 ms**, indistinguível do caso limpo (539 ms). O raio da bola
+> **não é constante**: ele cresce até os rabiscos do artista caírem em regiões distintas (as
+> duas constantes tentadas — fração da bbox e espessura da linha — foram MEDIDAS e reprovadas).
+> ⚠️ **O que sobra caro é a PARTIÇÃO** (4096² ≈ 2,6 s = EDT+BFS sobre 16 M px × 4 passes do
+> laço de raio), exatamente onde o §7.1 apontava; a alavanca é a **exceção `rayon`** — decisão
+> do Enio. **ABERTO:** paralelizar/baratear a partição · multiframe · Apply live · **C3**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >

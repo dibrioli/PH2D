@@ -9,6 +9,14 @@
 //! that contains the phenomenon.
 
 use super::{Scribble, colorize};
+
+/// O raio da bola (px de buffer) que os gates usam.
+///
+/// As fixtures têm um vão de 0,1 unidade de mundo e rodam a `precision` 80 ⇒ 8 px. A bola
+/// tem de ser mais larga que ele (diâmetro > 8) para **costurar** o vão, senão os dois lados
+/// caem na mesma região e a propriedade que estes gates medem — a fronteira colar na tinta
+/// em vez de vazar pelo vão — não tem por onde acontecer (`§8`).
+const GATE_TRAP_PX: f32 = 6.0;
 use ph2d_core::Vec2;
 use ph2d_flip_fill::{FillResult, signed_area};
 
@@ -68,7 +76,7 @@ fn the_colour_cut_hugs_the_ink_not_the_midpoint() {
             width: 0.0,
         },
     ];
-    let regions = colorize(&strokes, &scribbles, 80.0);
+    let regions = colorize(&strokes, &scribbles, 80.0, GATE_TRAP_PX);
     assert_eq!(regions.len(), 2, "two colours → two regions");
 
     let r0 = &regions.iter().find(|r| r.label == 0).expect("label 0").fill;
@@ -105,7 +113,7 @@ fn a_gap_in_the_divider_does_not_leak_the_colour() {
             width: 0.0,
         },
     ];
-    let regions = colorize(&strokes, &scribbles, 80.0);
+    let regions = colorize(&strokes, &scribbles, 80.0, GATE_TRAP_PX);
     assert_eq!(regions.len(), 2, "two comparable regions, one per side");
 
     let r0 = &regions.iter().find(|r| r.label == 0).expect("label 0").fill;
@@ -137,8 +145,8 @@ fn the_colorize_is_deterministic() {
             width: 0.0,
         },
     ];
-    let a = colorize(&strokes, &scribbles, 80.0);
-    let b = colorize(&strokes, &scribbles, 80.0);
+    let a = colorize(&strokes, &scribbles, 80.0, GATE_TRAP_PX);
+    let b = colorize(&strokes, &scribbles, 80.0, GATE_TRAP_PX);
     assert_eq!(
         a.len(),
         2,
@@ -151,13 +159,16 @@ fn the_colorize_is_deterministic() {
     }
 }
 
-/// **O que o artista PINTA é o que SEMEIA.** Um TOQUE curto com pincel grosso tem eixo de
-/// poucos pixels, e uma semente desse tamanho DEGENERA o corte: o mínimo passa a ser "cercar
-/// o pixel" (perímetro pequeno em papel caro) em vez de correr pela tinta, e a região não
-/// colore. Com a espessura semeando, o mesmo toque funciona. É o red-first do campo `width`:
-/// zerá-lo derruba a metade `fat`.
+/// **A redução por regiões CUROU a degenerescência da semente de um pixel.**
+///
+/// Antes do `§8` este gate afirmava o contrário — que um toque fino *não* colore — e estava
+/// certo sobre o grafo de PIXELS: ali o corte mais barato para uma semente de 1 px é *cercar
+/// aquele pixel* (perímetro minúsculo em papel caro) em vez de correr pela tinta. Sobre o
+/// grafo de REGIÕES esse corte não existe como opção: um pixel identifica a região dele, e a
+/// região inteira é o nó. O gate agora pina a cura, para ninguém "consertar" a largura de
+/// volta para um requisito de correção que ela deixou de ser.
 #[test]
-fn a_short_fat_dab_seeds_its_region_where_a_thin_one_degenerates() {
+fn the_region_reduction_cures_the_one_pixel_seed_degeneracy() {
     let strokes = boxed_with_divider(0.5, (0.45, 0.55));
     // Um TOQUE: dois pontos quase coincidentes — o que um clique curto de fato produz.
     let dab = |width: f32| {
@@ -174,18 +185,42 @@ fn a_short_fat_dab_seeds_its_region_where_a_thin_one_degenerates() {
             },
         ]
     };
-    let thin = colorize(&strokes, &dab(0.0), 80.0);
-    let fat = colorize(&strokes, &dab(0.12), 80.0);
+    for width in [0.0, 0.12] {
+        let out = colorize(&strokes, &dab(width), 80.0, GATE_TRAP_PX);
+        assert_eq!(
+            out.len(),
+            2,
+            "um toque de largura {width} tem de colorir os dois lados (got {})",
+            out.len()
+        );
+    }
+}
+
+/// O que a largura AINDA significa: **cobertura**. Ela decide quantas regiões o rabisco
+/// reivindica — um traço gordo o bastante para atravessar a linha reivindica os dois lados
+/// para a MESMA cor, e um fino reivindica só o lado em que o eixo caiu. Não é mais correção;
+/// é o artista dizendo, com o pincel, o quanto ele está pegando.
+#[test]
+fn the_width_decides_how_many_regions_one_scribble_claims() {
+    // Divisor SÓLIDO (vão de largura zero). Com um vão, uma cor sozinha atravessa a costura
+    // de papel de qualquer jeito — que é o comportamento certo do LazyBrush e faz a largura
+    // parar de decidir coisa alguma. A fixture tem de conter o fenômeno que ela mede.
+    let strokes = boxed_with_divider(0.5, (0.5, 0.5));
+    // Eixo à ESQUERDA do divisor, perto dele. Gordo o bastante, a cápsula alcança a direita.
+    let one = |width: f32| {
+        vec![Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.44, 0.30), Vec2::new(0.44, 0.70)],
+            width,
+        }]
+    };
+    let thin = colorize(&strokes, &one(0.0), 80.0, GATE_TRAP_PX);
+    let fat = colorize(&strokes, &one(0.24), 80.0, GATE_TRAP_PX);
+    assert_eq!(thin.len(), 1, "o eixo fino pega so o lado dele");
     assert_eq!(
         fat.len(),
         2,
-        "um toque com pincel grosso tem de colorir os dois lados (got {})",
-        fat.len()
-    );
-    assert!(
-        thin.len() < 2,
-        "se o eixo puro já colorisse, a largura não seria load-bearing (fino {})",
-        thin.len()
+        "a capsula gorda atravessa a linha e reivindica os dois lados"
     );
 }
 
@@ -193,13 +228,13 @@ fn a_short_fat_dab_seeds_its_region_where_a_thin_one_degenerates() {
 #[test]
 fn no_lines_or_no_scribbles_yields_nothing() {
     let strokes = boxed_with_divider(0.5, (0.45, 0.55));
-    assert!(colorize(&strokes, &[], 80.0).is_empty());
+    assert!(colorize(&strokes, &[], 80.0, GATE_TRAP_PX).is_empty());
     let scr = vec![Scribble {
         label: 0,
         points: vec![Vec2::new(0.5, 0.5)],
         width: 0.0,
     }];
-    assert!(colorize(&[], &scr, 80.0).is_empty());
+    assert!(colorize(&[], &scr, 80.0, GATE_TRAP_PX).is_empty());
 }
 
 /// **A régua do CAMINHO REAL** (`--release --ignored --nocapture`).
@@ -233,7 +268,7 @@ fn measure_the_product_colorize_cost() {
     for side in sides {
         let precision = (side as f32 - 40.0) / span;
         let t = std::time::Instant::now();
-        let out = colorize(&strokes, &scribbles, precision);
+        let out = colorize(&strokes, &scribbles, precision, GATE_TRAP_PX);
         let ms = t.elapsed().as_secs_f64() * 1e3;
         println!("  {side:>4}²  {precision:>9.0}  {ms:>8.1}  {}", out.len());
         assert_eq!(
@@ -272,7 +307,7 @@ fn measure_the_cost_is_not_driven_by_label_count() {
             })
             .collect();
         let t = std::time::Instant::now();
-        let out = colorize(&strokes, &scribbles, precision);
+        let out = colorize(&strokes, &scribbles, precision, GATE_TRAP_PX);
         println!(
             "  {n:>7}  {:>8.1}   ({} regiões)",
             t.elapsed().as_secs_f64() * 1e3,
@@ -320,7 +355,7 @@ fn measure_a_scribble_that_crosses_the_ink() {
         },
     ];
     let t = std::time::Instant::now();
-    let out = colorize(&strokes, &both, precision);
+    let out = colorize(&strokes, &both, precision, GATE_TRAP_PX);
     println!(
         "  AMBOS atravessam           →  {:>9.1} ms  ({} regiões)",
         t.elapsed().as_secs_f64() * 1e3,
@@ -328,11 +363,36 @@ fn measure_a_scribble_that_crosses_the_ink() {
     );
     for crosses in [false, true] {
         let t = std::time::Instant::now();
-        let out = colorize(&strokes, &scr(crosses), precision);
+        let out = colorize(&strokes, &scr(crosses), precision, GATE_TRAP_PX);
         println!(
             "  atravessa a tinta: {crosses:>5}  →  {:>9.1} ms  ({} regiões)",
             t.elapsed().as_secs_f64() * 1e3,
             out.len()
         );
     }
+}
+
+/// **Uma cor sozinha não toma a tela por um furo de agulha.**
+///
+/// Achado MEDINDO durante o `§8`: espalhar uma cor única por qualquer aresta de papel do
+/// grafo colore **94% da grade** — a linha rasterizada tem furos de um pixel, cada furo vira
+/// uma costura barata, e a cor escorre por ela para fora da caixa. Uma costura existe
+/// justamente porque a bola NÃO passou ali; atravessá-la desfaz a promessa da trapped-ball.
+/// O oráculo é a ÁREA (a aparência), não a contagem de regiões.
+#[test]
+fn one_colour_does_not_take_the_canvas_through_a_pinhole() {
+    let strokes = boxed_with_divider(0.5, (0.5, 0.5));
+    let scr = vec![Scribble {
+        label: 0,
+        points: vec![Vec2::new(0.30, 0.30), Vec2::new(0.30, 0.70)],
+        width: 0.02,
+    }];
+    let out = colorize(&strokes, &scr, 80.0, GATE_TRAP_PX);
+    let painted: f32 = out.iter().map(|r| area(&r.fill)).sum();
+    // A metade esquerda da caixa mede 0,4 x 0,8 = 0,32. A caixa inteira, 0,64. Qualquer
+    // coisa perto disso (ou acima) é a cor tendo escapado do lado em que foi pedida.
+    assert!(
+        painted > 0.15 && painted < 0.45,
+        "a cor tem de ficar na metade que o rabisco tocou (pintou {painted:.3})"
+    );
 }

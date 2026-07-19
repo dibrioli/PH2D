@@ -13,10 +13,9 @@ use ph2d_painter_brush::{
     StrokeMethod, StrokePoint,
 };
 
-/// The imported brush-texture image type (`BrushTextureImage`), split from `brush_settings` (LOC cap).
-mod brush_image;
-/// Brush + Stroke-section parameter snapshot & setters (shares `PaintState`'s private brush access).
-mod brush_settings;
+mod brush_core_settings; // Falloff/size/spacing/jitter/dash setters; split from `brush_settings` (LOC cap)
+mod brush_image; // The imported brush-texture image type (`BrushTextureImage`); split from `brush_settings`
+mod brush_settings; // Brush + Stroke-section snapshot & setters (shares `PaintState`'s private brush access)
 mod brush_texture_settings; // Grain-texture / Stencil / Dab setters; split from `brush_settings` (LOC cap)
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
@@ -43,6 +42,7 @@ mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + 
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)
 mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
 mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; its sibling is the plumbing)
+mod impasto_tool; // Impasto: the TEN tools that act on the body, as one list (Deposit · Knife · 8 verbs)
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;

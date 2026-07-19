@@ -31,6 +31,14 @@ impl PainterTool {
     pub(crate) fn route_brush_impasto_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
         match event {
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT => {
+                self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_DEPOSIT);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_TOOL_KNIFE => {
+                self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_KNIFE);
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_ENABLE => {
                 self.toggle_brush_impasto();
                 true

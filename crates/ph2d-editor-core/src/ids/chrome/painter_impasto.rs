@@ -29,6 +29,44 @@ pub const PAINTER_IMPASTO_ENABLE: NodeId = hash_node_id("painter_brush.impasto_e
 /// `Click` → `toggle_impasto_live_edit`. An editing preference, not a property of the paint: it is
 /// never baked into a pixel.
 pub const PAINTER_IMPASTO_LIVE_EDIT: NodeId = hash_node_id("painter_brush.impasto_live_edit");
+// ── The TOOL: the ten operations on the body of the paint, as one list ──────────────────────────
+//
+// Enio 2026-07-19: the Impasto tools were spread over three places (the brush panel's section, the
+// Smear's Plow row, the Sculpt card) and each was reachable in ONE paint mode. The list below is the
+// single home. ⚠️ Picking one USES it, so the group drives the paint mode — through the tool's existing
+// `set_paint_tool_mode` / `set_sculpt_mode` doors, never by writing the mode directly.
+
+/// The **Tool** segmented group — ten options, sitting directly under "Adjust Last Stroke". `Click` on an
+/// option → `set_impasto_tool`, which maps it onto `(PaintMode, SculptMode)`.
+pub const PAINTER_IMPASTO_TOOL: NodeId = hash_node_id("painter_brush.impasto_tool");
+/// **Deposit** — the brush lays body down (`PaintMode::Paint`). The tool the section was originally, and
+/// still the only one with a Depth to set.
+pub const PAINTER_IMPASTO_TOOL_DEPOSIT: NodeId = hash_node_id("painter_brush.impasto_tool_deposit");
+/// **Knife** — the Smear dragging the body that is already there (`PaintMode::Smear`); its one knob is
+/// Plow. Before the tools were unified this was a lone "Knife" card with no Material and no Lighting.
+pub const PAINTER_IMPASTO_TOOL_KNIFE: NodeId = hash_node_id("painter_brush.impasto_tool_knife");
+
+/// The ten tools in wire order: `0` Deposit · `1` Knife · `2..10` the sculpt verbs.
+///
+/// ⚠️ The eight verbs REUSE `PAINTER_SCULPT_MODE_IDS` rather than minting parallel ids. One id per tool
+/// keeps one meaning per id: "the artist asked for the Chisel". A second set would have to be kept in
+/// step with the first, and the two would answer the same question — which is how they come to disagree.
+///
+/// **The array grows, the order never shifts** (the same law the sculpt list states): the index is the
+/// wire value and the segmented control's slot, so a reorder silently re-binds muscle memory.
+pub const PAINTER_IMPASTO_TOOL_IDS: [NodeId; 10] = [
+    PAINTER_IMPASTO_TOOL_DEPOSIT,
+    PAINTER_IMPASTO_TOOL_KNIFE,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_SMOOTH,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_SHARPEN,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_FLATTEN,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_SCRAPE,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_FILL,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_CHISEL,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_LAYER,
+    super::painter_sculpt::PAINTER_SCULPT_MODE_INFLATE,
+];
+
 /// **Depth** (`-1..1`; negative CARVES into the paint). `SetValue` → `set_brush_impasto_depth`.
 pub const PAINTER_IMPASTO_DEPTH: NodeId = hash_node_id("painter_brush.impasto_depth");
 /// **Depth Source** segmented group + its two options — Uniform (a level body: the Grain textures the
@@ -127,7 +165,11 @@ pub const PAINTER_IMPASTO_LIGHT_COLOR: NodeId = hash_node_id("painter_brush.impa
 
 /// The Impasto **Click** widgets — one membership check for the panel's click forward, routed by
 /// `route_brush_impasto_event`.
-pub const PAINTER_IMPASTO_CLICKS: [NodeId; 14] = [
+/// (The eight sculpt verbs in [`PAINTER_IMPASTO_TOOL_IDS`] are absent on purpose: they are already
+/// routed by `PAINTER_SCULPT_CLICKS`, and listing them twice would be two routers for one click.)
+pub const PAINTER_IMPASTO_CLICKS: [NodeId; 16] = [
+    PAINTER_IMPASTO_TOOL_DEPOSIT,
+    PAINTER_IMPASTO_TOOL_KNIFE,
     PAINTER_IMPASTO_ENABLE,
     PAINTER_IMPASTO_LIVE_EDIT,
     PAINTER_IMPASTO_RESET,

@@ -317,6 +317,8 @@ impl PainterTool {
             impasto_plow: b.impasto_plow,
             impasto_plow_applies: self.impasto_plow_applies(),
             impasto_applies: self.impasto_applies(),
+            impasto_section_applies: self.impasto_section_applies(),
+            impasto_tool: self.impasto_tool(),
             impasto_show: self.paint.impasto_show,
             impasto_live_edit: self.paint.impasto_live_edit,
             impasto_rig: self.paint.impasto_rig,

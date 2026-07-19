@@ -113,7 +113,11 @@ impl PainterTool {
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
-                self.set_sculpt_mode(idx);
+                // Through the UNIFIED door, not straight to `set_sculpt_mode`: since the tools were
+                // gathered into one list (Enio 2026-07-19) these chips are reachable from the Impasto
+                // section in any of the three relief modes, so "pick the Chisel" has to mean *enter
+                // Sculpt and select Chisel*. `set_impasto_tool` no-ops the mode half when already there.
+                self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_SCULPT_BASE + idx);
                 true
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER => {

@@ -83,6 +83,7 @@ mod view_toggles;
 /// Snap the painter tool-rail radio back to Brush (the shell calls this when the Eyedropper's on-canvas
 /// pick completes, so the momentary tool returns to Brush automatically).
 pub use rail_painter_tools::reset_to_brush as reset_painter_rail_to_brush;
+pub use rail_painter_tools::sync_from_mode as sync_painter_rail_to_mode;
 
 /// Reflect the painter tool's current stroke method on the rail: a shape method selects the Shapes
 /// button + its shape sub-radio (a non-shape leaves the radio alone). The shell calls this on a stroke-

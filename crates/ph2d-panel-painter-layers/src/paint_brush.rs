@@ -59,15 +59,16 @@ pub(crate) fn paint_brush_body(
             ctx, theme, x, content_w, top_y, brush,
         );
     }
-    // Sculpt is the exception to the two above, and deliberately so: its card is ADDED to the brush body
-    // rather than replacing it. The sculpt rides the same dab list the colour does, so the brush's own
-    // Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke method ARE the spatula — take
-    // them off screen and you have left the artist the settings for a tool they can no longer aim. What
-    // the mode hides instead is the COLOUR half, through `paints_no_color` (see `snapshot.rs`).
-    let mut top_y = top_y;
-    if brush.is_sculpt {
-        top_y = crate::paint_sculpt::paint_sculpt_section(ctx, theme, x, content_w, top_y, brush);
-    }
+    // Sculpt is the exception to the two above, and deliberately so: its controls are ADDED to the brush
+    // body rather than replacing it. The sculpt rides the same dab list the colour does, so the brush's
+    // own Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke method ARE the spatula —
+    // take them off screen and you have left the artist the settings for a tool they can no longer aim.
+    // What the mode hides instead is the COLOUR half, through `paints_no_color` (see `snapshot.rs`).
+    //
+    // ⚠️ Its card used to be painted HERE, above everything — including the Preset row. It is not any
+    // more: the eight verbs are entries in the Impasto section's TOOL list, which is the single home for
+    // everything that acts on the paint's body (Enio 2026-07-19). Nothing replaces it at the top; the
+    // section carries it, down with Material and Lighting where the rest of the subject lives.
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
     // Keep the store's swatch colour synced to the brush colour while the picker is CLOSED, so the

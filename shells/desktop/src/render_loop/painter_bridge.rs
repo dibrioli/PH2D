@@ -356,6 +356,15 @@ pub(super) fn dispatch(
             let brush_snapshot = painter.brush_settings();
             let stroke_method_u8 = brush_snapshot.stroke_method;
             ph2d_panel_painter_layers::set_current_brush(Some(brush_snapshot));
+            // (Tool rail) The rail radio FOLLOWS the painter's mode rather than remembering which button
+            // was clicked. The Impasto section's unified TOOL list can change the mode too (picking
+            // "Chisel" there enters Sculpt), and a rail that only learned about its own clicks would go
+            // on highlighting "Brush" while the artist sculpts — two answers to "which tool am I
+            // holding?", with the wrong one on screen. Self-gating: writes only when it actually moved.
+            ph2d_editor::screens::hero::chrome::sync_painter_rail_to_mode(
+                &mut hero.store,
+                painter.paint_mode_wire(),
+            );
             // (Eyedropper) When the on-canvas colour pick completes (armed → not armed), snap the tool
             // rail radio back to Brush — the pick is a MOMENTARY tool, so its button stops looking
             // selected once a colour is sampled. Edge-detected via a static so arming the pick (which

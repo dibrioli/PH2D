@@ -60,6 +60,46 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         )));
 }
 
+/// **Snap the rail radio to the mode the painter is actually in** — the inverse of [`push_paint_mode`],
+/// and it lives beside it so the two directions of one mapping are read together.
+///
+/// ⚠️ The rail is no longer the only thing that changes the paint mode. The Painter panel's unified
+/// **Impasto TOOL** list (Enio, 2026-07-19) gathers the ten operations on the paint's body into one
+/// place, and picking one USES it — so choosing "Chisel" there enters Sculpt. Without this, the rail
+/// would go on highlighting "Brush" while the artist sculpts: two answers to *"which tool am I
+/// holding?"*, and the wrong one is the one on screen.
+///
+/// So the rail's pressed state is **derived from the published mode**, not written by whoever was
+/// clicked last. The shell calls this each frame with `PainterTool::paint_mode_wire()` — the SAME
+/// vocabulary `set_paint_tool_mode` parses, so there is one set of strings and no third spelling to
+/// drift. Modes with no rail button of their own (`fill`, `eyedropper`) leave the radio alone: they are
+/// momentary or unwired, and `reset_to_brush` already owns the Eyedropper's return.
+pub fn sync_from_mode(store: &mut crate::interaction::WidgetStore, mode: &str) {
+    let target = match mode {
+        "smear" => ids::PAINTER_RAIL_SMEAR,
+        "blur" => ids::PAINTER_RAIL_BLUR,
+        "clone" => ids::PAINTER_RAIL_CLONE,
+        "mask" => ids::PAINTER_RAIL_MASK,
+        "inpaint" => ids::PAINTER_RAIL_INPAINT,
+        "selection" => ids::PAINTER_RAIL_SELECTION,
+        "deform" => ids::PAINTER_RAIL_DEFORM,
+        "sculpt" => ids::PAINTER_RAIL_SCULPT,
+        "brush" => ids::PAINTER_RAIL_BRUSH,
+        _ => return,
+    };
+    // Only write when it actually moved: `set_radio` walks the whole group, and the Shapes / Mask group
+    // buttons carry sub-tool state that a needless rewrite every frame would stamp over.
+    if matches!(
+        store.get(target),
+        Some(InteractiveState::Button {
+            state: ButtonState::Pressed
+        })
+    ) {
+        return;
+    }
+    set_radio(store, &ids::PAINTER_RAIL_TOOL_IDS, target);
+}
+
 /// Set `target` `Pressed` and every other id in `group` `Normal` (an exclusive
 /// radio group, like the transform tools in `rail_tools.rs`).
 fn set_radio(store: &mut crate::interaction::WidgetStore, group: &[NodeId], target: NodeId) {
@@ -329,6 +369,64 @@ mod tests {
         super::reset_to_brush(&mut hero.store);
         assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
         assert!(!pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER));
+    }
+
+    /// **The rail radio FOLLOWS the painter's mode** — it is derived, not remembered.
+    ///
+    /// The Painter panel's unified Impasto TOOL list can change the paint mode (picking "Chisel" there
+    /// enters Sculpt), so a rail that only learned about its own clicks would go on highlighting the
+    /// button the artist last pressed while the canvas is holding something else. Two answers to *"which
+    /// tool am I holding?"*, with the wrong one on screen.
+    ///
+    /// The fixture starts from a rail that has been CLICKED, so the assertion is that the sync overrides
+    /// a stale pressed state — not merely that it can press a button on a fresh store.
+    ///
+    /// **Mutation that must bleed:** make `sync_from_mode` return early for every mode. Nothing else in
+    /// the workspace notices: the tool is in the right mode, the panel paints the right card, and only
+    /// the rail lies.
+    #[test]
+    fn the_rail_radio_follows_the_published_paint_mode() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        // The artist clicked Brush on the rail…
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
+        // …then picked a sculpt verb in the Impasto tool list, which put the painter in Sculpt.
+        super::sync_from_mode(&mut hero.store, "sculpt");
+        assert!(
+            pressed(&hero, ids::PAINTER_RAIL_SCULPT),
+            "the rail did not follow the painter into Sculpt — it would keep highlighting Brush while \
+             the artist sculpts"
+        );
+        assert!(
+            !pressed(&hero, ids::PAINTER_RAIL_BRUSH),
+            "…and it is a RADIO: the previous tool must let go"
+        );
+        // …and the Knife takes it to the Smear, from a mode that is not Brush.
+        super::sync_from_mode(&mut hero.store, "smear");
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SMEAR));
+        assert!(!pressed(&hero, ids::PAINTER_RAIL_SCULPT));
+    }
+
+    /// A mode with no rail button of its own leaves the radio ALONE.
+    ///
+    /// `fill` is drag-activated (the C&F button is a colour well, not a mode radio — see
+    /// `clicking_c_and_f_is_a_colour_well_not_a_fill_mode_radio`) and `eyedropper` is momentary, owned by
+    /// `reset_to_brush`. Without this, the catch-all would have to guess, and guessing here means the
+    /// radio flickering to Brush every frame the artist is mid-ColorDrop.
+    #[test]
+    fn a_mode_with_no_rail_button_leaves_the_radio_alone() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        super::super::super::left_rail::populate(&mut hero.store);
+        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SMEAR));
+        assert!(pressed(&hero, ids::PAINTER_RAIL_SMEAR));
+        for unmapped in ["fill", "eyedropper", ""] {
+            super::sync_from_mode(&mut hero.store, unmapped);
+            assert!(
+                pressed(&hero, ids::PAINTER_RAIL_SMEAR),
+                "mode {unmapped:?} has no rail button, so it must not move the radio"
+            );
+        }
     }
 
     #[test]

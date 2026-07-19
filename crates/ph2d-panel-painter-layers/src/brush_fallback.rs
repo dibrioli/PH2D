@@ -225,6 +225,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_plow: 0.0, // LITERAL-PX-OK: the knife leaves the body where it is (mirrors BrushSpec::default)
     impasto_plow_applies: false, // o fallback é o modo Paint, não o Smear
     impasto_applies: true, // plain Paint mode in the pre-publish fallback
+    impasto_section_applies: true, // the fallback is Paint, which is one of the three relief modes
+    impasto_tool: 0,   // Deposit
     impasto_show: true,
     impasto_live_edit: false, // mirrors the tool's default (Enio 2026-07-19): finished paint stays finished
     impasto_rig: ph2d_tool_painter::LightRig {

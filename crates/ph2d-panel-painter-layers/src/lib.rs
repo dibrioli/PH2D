@@ -44,6 +44,7 @@ mod paint_deform;
 mod paint_falloff;
 mod paint_impasto;
 mod paint_impasto_rig; // Impasto: the Body (per-brush) + Lighting (per-canvas) cards
+mod paint_impasto_tool;
 mod paint_inpaint;
 mod paint_mask;
 mod paint_mask_row;

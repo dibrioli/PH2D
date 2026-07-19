@@ -1,14 +1,25 @@
-//! The brush panel's **Impasto** section — the paint's own thickness, and the light that shows it
-//! (`docs/Painter/16_impasto_plano_implementacao.md`).
+//! The brush panel's **Impasto** section — the paint's own thickness, the ten tools that shape it, and
+//! the light that shows it (`docs/Painter/16_impasto_plano_implementacao.md`).
 //!
-//! Two cards, because the two halves have different owners: **Body** is per-BRUSH (how *this* brush
-//! lays paint down) and **Lighting** is per-CANVAS (one light for the whole document, like the paper
-//! colour). Mirrors `paint_watercolor.rs`; the card box itself is the shared [`crate::card`].
+//! Since 2026-07-19 this is the section's **single home** (Enio: *"os tools de Impasto estão espalhados
+//! em 3 lugares … vamos unificar"*). The order down the panel is the order of the questions:
 //!
-//! The section is **not painted at all** in the modes Impasto does not apply to — and a card that is
-//! not painted registers no hit, so its ids are inert. The predicate is `brush.impasto_applies`,
+//! 1. **Adjust Last Stroke** — does moving a knob reach the paint already on the canvas? It governs
+//!    every slider below, so it belongs to none of the boxes and sits above all of them.
+//! 2. **TOOL** — the ten operations on the body of the paint ([`crate::paint_impasto_tool`]).
+//! 3. the selected tool's properties, and no others.
+//! 4. **Material** — what the paint IS. Per-brush, baked with the deposit, so Deposit-only.
+//! 5. **Lighting** — the room. Per-CANVAS, one light for the whole document (like the paper colour), so
+//!    it is painted for EVERY tool.
+//!
+//! The card box itself is the shared [`crate::card`]; mirrors `paint_watercolor.rs`.
+//!
+//! The section is **not painted at all** in modes that do not touch relief — and a card that is not
+//! painted registers no hit, so its ids are inert. The predicate is `brush.impasto_section_applies`,
 //! published by the tool: the panel does not re-derive it (that is how a UI and its engine come to
-//! disagree about when a feature is live).
+//! disagree about when a feature is live). ⚠️ Note it is NOT `impasto_applies`, which is the narrower
+//! *does this brush deposit body?* and now gates the Deposit tool's card alone — conflating the two is
+//! precisely what used to hide the Lighting card from Sculpt and the Smear.
 
 use crate::card::{card_frame, card_row};
 use crate::number_field;
@@ -52,12 +63,11 @@ pub(crate) fn paint_impasto_section(
     // The §1.2 matrix: no card, no hit targets, no knob to be confused by. Watercolor is the one that
     // matters most — it is a separate implementation and Impasto must not so much as appear there.
     //
-    // The Smear is the exception the matrix always named: it deposits no paint, so it has no Body to
-    // configure — but it MOVES paint, so it has a knife. One row, and nothing else.
-    if brush.impasto_plow_applies {
-        return paint_plow_only(ctx, theme, x, content_w, y, &brush);
-    }
-    if !brush.impasto_applies {
+    // ONE predicate, and it is the tool's (`impasto_section_applies`): the three modes that act on the
+    // body of the paint — Paint (Deposit), Smear (Knife), Sculpt (the eight verbs). It used to be
+    // `impasto_applies`, which is `Paint` alone, and that is what left the Lighting card unreachable from
+    // the two modes that shape relief without depositing it.
+    if !brush.impasto_section_applies {
         return y;
     }
     let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
@@ -75,22 +85,9 @@ pub(crate) fn paint_impasto_section(
         return y;
     }
 
-    // Master enable — off (the default) makes a stroke byte-identical to a build with no Impasto.
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_IMPASTO_ENABLE,
-        "Enable",
-        brush.impasto,
-    );
-    if !brush.impasto {
-        return y;
-    }
-    // Governs every slider in the section (Body AND Material), so it sits at the TOP of it rather than
-    // inside one card: a control that reaches across two boxes does not belong in either.
+    // Governs every slider in the section, so it sits above the tool list rather than inside one card: a
+    // control that reaches across every box below it does not belong in any of them. Unticked by default
+    // (Enio 2026-07-19) — finished paint stays finished.
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
@@ -101,8 +98,16 @@ pub(crate) fn paint_impasto_section(
         "Adjust Last Stroke",
         brush.impasto_live_edit,
     );
-    y = paint_body_card(ctx, theme, x, content_w, y, &brush);
-    y = paint_material_card(ctx, theme, x, content_w, y, &brush);
+    // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
+    // de Adjust Last Stroke"*), then the properties of the one that is selected.
+    y = crate::paint_impasto_tool::paint_tool_card(ctx, theme, x, content_w, y, &brush);
+    let (mut y, wants_material) =
+        crate::paint_impasto_tool::paint_tool_body(ctx, theme, x, content_w, y, &brush);
+    if wants_material {
+        y = paint_material_card(ctx, theme, x, content_w, y, &brush);
+    }
+    // Lighting is last and is painted for EVERY tool: it is the canvas's, not the brush's — one light for
+    // the whole document, like the paper colour.
     paint_lighting_card(ctx, theme, x, content_w, y, &brush)
 }
 
@@ -230,8 +235,8 @@ fn paint_material_card(
     next_y
 }
 
-/// Card 1: BODY — how this brush deposits thickness (per-brush).
-fn paint_body_card(
+/// Card 1: BODY — how this brush deposits thickness (per-brush). Painted for the **Deposit** tool.
+pub(crate) fn paint_body_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -428,13 +433,17 @@ fn seg_row(
     y + used + Spacing::Xs.px()
 }
 
-/// The Smear's whole Impasto surface: **Plow**, and nothing else.
+/// The **Knife**'s card: **Plow**, and nothing else.
 ///
 /// Deliberately NOT the Body card with rows greyed out. A knife has no Depth, no Draw To and no Depth
 /// Source — showing them disabled would be showing the artist four controls to explain why three of
 /// them do not apply. (And a dimmed control is cosmetic: it still hit-registers. The rule of the house
 /// is that a control which does not apply is not painted.)
-fn paint_plow_only(
+///
+/// Until the tools were unified this function painted its own section header and the Smear got *only*
+/// this row — no Material, and no **Lighting**, so the knife could move relief the artist had no way to
+/// light. It is a card among the others now.
+pub(crate) fn paint_knife_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -442,20 +451,6 @@ fn paint_plow_only(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Impasto",
-        core_ids::PAINTER_IMPASTO_SECTION,
-        core_ids::PAINTER_IMPASTO_SECTION_COLOR,
-        core_ids::PAINTER_IMPASTO_RESET,
-    );
-    if collapsed {
-        return y;
-    }
     let (ix, iw, ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Knife", 1);
     let _ = card_row(
         ctx,
@@ -471,6 +466,5 @@ fn paint_plow_only(
         number_field::FINE_STEP,
         2,
     );
-    y = next_y;
-    y
+    next_y
 }

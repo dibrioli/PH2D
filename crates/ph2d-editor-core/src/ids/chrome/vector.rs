@@ -284,6 +284,18 @@ pub const VECTOR_BOOL_SUBTRACT: NodeId = hash_node_id("vector.bool.subtract");
 pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");
 pub const VECTOR_BOOL_EXCLUDE: NodeId = hash_node_id("vector.bool.exclude");
 
+// ── Expand: Outline Stroke + Offset Path ─────────────────────────────────────
+// Os dois são COMANDOS destrutivos sobre a seleção, irmãos das booleanas acima e
+// pelo mesmo motor (`ph2d_vec_boolean::expand`). O `join` é do OFFSET, não do
+// traço: um path pode não ter traço nenhum e ainda assim ser offsetado.
+pub const VECTOR_EXPAND_OFFSET: NodeId = hash_node_id("vector.expand.offset");
+pub const VECTOR_EXPAND_OFFSET_NUM: NodeId = hash_node_id("vector.expand.offset_num");
+pub const VECTOR_EXPAND_JOIN_MITER: NodeId = hash_node_id("vector.expand.join.miter");
+pub const VECTOR_EXPAND_JOIN_ROUND: NodeId = hash_node_id("vector.expand.join.round");
+pub const VECTOR_EXPAND_JOIN_BEVEL: NodeId = hash_node_id("vector.expand.join.bevel");
+pub const VECTOR_EXPAND_OFFSET_PATH: NodeId = hash_node_id("vector.expand.offset_path");
+pub const VECTOR_EXPAND_OUTLINE_STROKE: NodeId = hash_node_id("vector.expand.outline_stroke");
+
 // ── Vertex type (ADR-0108 Fase 1 — rich handle editing) ──────────────────────
 // Retype the SELECTED vertex (Corner cusp / Smooth colinear / Symmetric mirror).
 // A document edit (mutates the path via the shell-side PenTool), shown only when
@@ -409,6 +421,7 @@ pub const VECTOR_SECTION_SNAP: NodeId = hash_node_id("vector.section.snap");
 pub const VECTOR_SECTION_TRANSFORM: NodeId = hash_node_id("vector.section.transform");
 pub const VECTOR_SECTION_VERTEX: NodeId = hash_node_id("vector.section.vertex");
 pub const VECTOR_SECTION_BOOLEAN: NodeId = hash_node_id("vector.section.boolean");
+pub const VECTOR_SECTION_EXPAND: NodeId = hash_node_id("vector.section.expand");
 pub const VECTOR_SECTION_ALIGN: NodeId = hash_node_id("vector.section.align");
 pub const VECTOR_SECTION_ARRANGE: NodeId = hash_node_id("vector.section.arrange");
 pub const VECTOR_SECTION_PATH: NodeId = hash_node_id("vector.section.path");
@@ -641,6 +654,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_TRANSFORM,
     VECTOR_SECTION_VERTEX,
     VECTOR_SECTION_BOOLEAN,
+    VECTOR_SECTION_EXPAND,
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,
     VECTOR_SECTION_ENVELOPE,

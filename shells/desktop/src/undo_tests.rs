@@ -328,7 +328,9 @@ fn editing_an_effect_param_is_its_own_undo_step() {
     let pi = params
         .iter()
         .enumerate()
-        .find(|(i, d)| !d.toggle && (d.max - with_fx.paths()[0].effects[0].effect.get(*i)).abs() > 1e-9)
+        .find(|(i, d)| {
+            !d.toggle && (d.max - with_fx.paths()[0].effects[0].effect.get(*i)).abs() > 1e-9
+        })
         .map(|(i, _)| i)
         .expect("o Zig Zag tem um parâmetro contínuo não-neutro no máximo");
 

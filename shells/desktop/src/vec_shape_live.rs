@@ -90,7 +90,9 @@ pub(crate) fn make_committed_shape_live(
     map: &VecEntityMap,
     tool: &mut ShapeTool,
 ) {
-    let Some(id) = tool.pending_live() else { return };
+    let Some(id) = tool.pending_live() else {
+        return;
+    };
     // A entidade pode não existir no frame do commit; o pedido sobrevive para o próximo.
     let Some(&bits) = map.get(&id) else { return };
     let entity = Entity::from_bits(bits);

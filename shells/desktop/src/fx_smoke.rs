@@ -88,7 +88,13 @@ fn build_apply(app: &mut crate::App) {
     };
     let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
-    let p = shape(ShapeKind::Ellipse, [-1.6, -1.6], [1.6, 1.6], &[], [90, 150, 220]);
+    let p = shape(
+        ShapeKind::Ellipse,
+        [-1.6, -1.6],
+        [1.6, 1.6],
+        &[],
+        [90, 150, 220],
+    );
     let id = scene.push_path(p);
     // Zig Zag ATIVO: amplitude e cristas em número que a borda mostra sem dúvida. `amplitude`
     // é PERCENTAGEM da forma (100 = média de largura/altura), então 12 desenha o mesmo em

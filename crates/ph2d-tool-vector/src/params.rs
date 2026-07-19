@@ -100,114 +100,6 @@ pub fn px_to_slider(px: f64) -> f32 {
     (((px - WIDTH_MIN_PX) / (WIDTH_MAX_PX - WIDTH_MIN_PX)) as f32).clamp(0.0, 1.0)
 }
 
-/// Text glyph size in WORLD units — the Text-mode Size slider's range. The editor
-/// view is ~10 world-units tall, so 1.0 reads comfortably. Shared by the panel
-/// (seed + chip mapping) and the shell drain (track → size), like the Width family.
-pub const TEXT_SIZE_MIN: f64 = 0.05;
-pub const TEXT_SIZE_MAX: f64 = 8.0;
-/// Default glyph size for a new text session (world units).
-pub const DEFAULT_TEXT_SIZE: f64 = 1.0;
-
-/// Affine slider mapping `size = track * SCALE + OFFSET` (track `0..=1`), consumed
-/// by `WidgetStore::link_slider_number_mapped` so the size chip mirrors the slider.
-pub const TEXT_SIZE_SLIDER_SCALE: f32 = (TEXT_SIZE_MAX - TEXT_SIZE_MIN) as f32;
-pub const TEXT_SIZE_SLIDER_OFFSET: f32 = TEXT_SIZE_MIN as f32;
-
-/// Normalized slider track `0..=1` → glyph size (world units) `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_text_size(track: f32) -> f64 {
-    TEXT_SIZE_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_SIZE_MAX - TEXT_SIZE_MIN)
-}
-
-/// Glyph size (world units) → normalized slider track `0..=1` (inverse of
-/// [`slider_to_text_size`]); seeds the knob from the shell's current size.
-#[must_use]
-pub fn text_size_to_slider(size: f64) -> f32 {
-    (((size.clamp(TEXT_SIZE_MIN, TEXT_SIZE_MAX) - TEXT_SIZE_MIN) / (TEXT_SIZE_MAX - TEXT_SIZE_MIN))
-        as f32)
-        .clamp(0.0, 1.0)
-}
-
-/// Variable-font Weight (`wght` axis) — the Text-mode Weight slider's range. Inter
-/// Variable spans 100..900 (default 400), the CSS/OpenType weight scale. Shared by the
-/// panel (seed + chip mapping) and the shell drain (track → weight).
-pub const TEXT_WEIGHT_MIN: f64 = 100.0;
-pub const TEXT_WEIGHT_MAX: f64 = 900.0;
-/// Default weight for a new text session (`wght` 400 = Regular).
-pub const DEFAULT_TEXT_WEIGHT: f64 = 400.0;
-
-/// Affine slider mapping `weight = track * SCALE + OFFSET` (track `0..=1`).
-pub const TEXT_WEIGHT_SLIDER_SCALE: f32 = (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN) as f32;
-pub const TEXT_WEIGHT_SLIDER_OFFSET: f32 = TEXT_WEIGHT_MIN as f32;
-
-/// Normalized slider track `0..=1` → font weight `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_text_weight(track: f32) -> f64 {
-    TEXT_WEIGHT_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN)
-}
-
-/// Font weight → normalized slider track `0..=1` (inverse of [`slider_to_text_weight`]);
-/// seeds the knob from the shell's current weight.
-#[must_use]
-pub fn text_weight_to_slider(weight: f64) -> f32 {
-    (((weight.clamp(TEXT_WEIGHT_MIN, TEXT_WEIGHT_MAX) - TEXT_WEIGHT_MIN)
-        / (TEXT_WEIGHT_MAX - TEXT_WEIGHT_MIN)) as f32)
-        .clamp(0.0, 1.0)
-}
-
-/// Text line height (leading) as a MULTIPLE of the glyph size. 1.2 is the common
-/// default; the range spans tight (0.8) to airy (3.0). Shared by the panel (seed +
-/// chip mapping) and the shell drain (track → line height).
-pub const TEXT_LINE_HEIGHT_MIN: f64 = 0.8;
-pub const TEXT_LINE_HEIGHT_MAX: f64 = 3.0;
-/// Default line height for a new text session (1.2× the size).
-pub const DEFAULT_TEXT_LINE_HEIGHT: f64 = 1.2;
-
-/// Affine slider mapping `line_height = track * SCALE + OFFSET` (track `0..=1`).
-pub const TEXT_LINE_HEIGHT_SLIDER_SCALE: f32 = (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN) as f32;
-pub const TEXT_LINE_HEIGHT_SLIDER_OFFSET: f32 = TEXT_LINE_HEIGHT_MIN as f32;
-
-/// Normalized slider track `0..=1` → line height `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_text_line_height(track: f32) -> f64 {
-    TEXT_LINE_HEIGHT_MIN
-        + f64::from(track.clamp(0.0, 1.0)) * (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN)
-}
-
-/// Line height → normalized slider track `0..=1` (inverse of [`slider_to_text_line_height`]).
-#[must_use]
-pub fn text_line_height_to_slider(line_height: f64) -> f32 {
-    (((line_height.clamp(TEXT_LINE_HEIGHT_MIN, TEXT_LINE_HEIGHT_MAX) - TEXT_LINE_HEIGHT_MIN)
-        / (TEXT_LINE_HEIGHT_MAX - TEXT_LINE_HEIGHT_MIN)) as f32)
-        .clamp(0.0, 1.0)
-}
-
-/// Text letter-spacing (tracking) as a FRACTION of the glyph size (em), added between
-/// glyphs. 0 = the font's native spacing; negative tightens, positive opens up.
-pub const TEXT_TRACKING_MIN: f64 = -0.1;
-pub const TEXT_TRACKING_MAX: f64 = 0.5;
-/// Default tracking for a new text session (0 = native spacing).
-pub const DEFAULT_TEXT_TRACKING: f64 = 0.0;
-
-/// Affine slider mapping `tracking = track * SCALE + OFFSET` (track `0..=1`).
-pub const TEXT_TRACKING_SLIDER_SCALE: f32 = (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN) as f32;
-pub const TEXT_TRACKING_SLIDER_OFFSET: f32 = TEXT_TRACKING_MIN as f32;
-
-/// Normalized slider track `0..=1` → tracking (em fraction) `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_text_tracking(track: f32) -> f64 {
-    TEXT_TRACKING_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN)
-}
-
-/// Tracking (em fraction) → normalized slider track `0..=1` (inverse of
-/// [`slider_to_text_tracking`]).
-#[must_use]
-pub fn text_tracking_to_slider(tracking: f64) -> f32 {
-    (((tracking.clamp(TEXT_TRACKING_MIN, TEXT_TRACKING_MAX) - TEXT_TRACKING_MIN)
-        / (TEXT_TRACKING_MAX - TEXT_TRACKING_MIN)) as f32)
-        .clamp(0.0, 1.0)
-}
-
 /// Horizontal text alignment for a text block (mirror of the panel's L / C / R row).
 /// `Left` = lines start at the click origin; `Center` = centred on it; `Right` = lines
 /// end at it. Lives in the tool crate (the panel deps this, not the shell).
@@ -353,6 +245,41 @@ pub fn slider_to_gap(track: f32) -> f64 {
 #[must_use]
 pub fn gap_to_slider(m: f64) -> f32 {
     ((m.clamp(GAP_MIN, GAP_MAX) - GAP_MIN) / (GAP_MAX - GAP_MIN)) as f32
+}
+
+/// Os parâmetros de TEXTO (tamanho · peso · entrelinha · tracking) — módulo irmão pelo teto
+/// de 700 LOC deste arquivo. Uma família inteira, com os seus mapas de slider ao lado das
+/// suas faixas.
+#[path = "params_text.rs"]
+mod text;
+pub use text::*;
+
+/// **Offset Path** — a distância que a borda anda, em unidades de MUNDO.
+///
+/// Bipolar de propósito: o negativo ENCOLHE, e é a mesma operação com o sinal trocado (o
+/// diálogo do Illustrator também aceita negativo num campo só). Um par de botões
+/// "crescer/encolher" seriam dois controles para um número.
+///
+/// A faixa é ERGONÔMICA, não física: a vista do editor mede ~10 unidades de mundo de altura
+/// (o mesmo raciocínio de [`TEXT_SIZE_MAX`]), então ±4 vai de um empurrãozinho a quase a
+/// tela inteira. O motor não tem teto — quem quiser mais offseta duas vezes.
+pub const OFFSET_MIN: f64 = -4.0;
+pub const OFFSET_MAX: f64 = 4.0;
+/// Default `0.5`: visível de imediato numa forma de tamanho típico, sem estourá-la. Zero
+/// seria um botão que não faz nada no primeiro clique.
+pub const OFFSET_DEFAULT: f64 = 0.5;
+pub const OFFSET_SLIDER_SCALE: f32 = (OFFSET_MAX - OFFSET_MIN) as f32;
+pub const OFFSET_SLIDER_OFFSET: f32 = OFFSET_MIN as f32;
+
+/// Normalized track `0..=1` → offset distance `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_offset(track: f32) -> f64 {
+    OFFSET_MIN + f64::from(track.clamp(0.0, 1.0)) * (OFFSET_MAX - OFFSET_MIN)
+}
+/// Offset distance → normalized track (inverse of [`slider_to_offset`]).
+#[must_use]
+pub fn offset_to_slider(d: f64) -> f32 {
+    ((d.clamp(OFFSET_MIN, OFFSET_MAX) - OFFSET_MIN) / (OFFSET_MAX - OFFSET_MIN)) as f32
 }
 
 /// Minimum / maximum polygon sides (inclusive range the Sides slider spans).

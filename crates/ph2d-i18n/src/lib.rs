@@ -141,6 +141,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.transform" => "Transform",
         "panel.vector.section.vertex" => "Vertex",
         "panel.vector.section.boolean" => "Boolean",
+        "panel.vector.section.expand" => "Expand",
         "panel.vector.section.align" => "Align",
         "panel.vector.section.arrange" => "Arrange",
         "panel.vector.section.path" => "Path",

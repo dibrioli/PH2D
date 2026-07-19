@@ -2686,7 +2686,9 @@ impl App {
                             // à mão. Só com a quina de fato ACERTADA: congelar num clique que
                             // erra expandiria a forma sem ninguém pedir.
                             if let Some(pid) = self.vec_pen.selected()
-                                && self.vec_pen.corner_hit_at(&gfx.vec_scene, world, px_to_world)
+                                && self
+                                    .vec_pen
+                                    .corner_hit_at(&gfx.vec_scene, world, px_to_world)
                             {
                                 crate::vec_convert::freeze_shape_recipe(
                                     &mut gfx.sim,

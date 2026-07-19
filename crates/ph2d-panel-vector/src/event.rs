@@ -227,6 +227,8 @@ pub(crate) fn apply_event(
         }
         // **Opção de PONTA** (uma linha do popover de Start / End) — ver [`pick_marker`].
         WidgetEvent::Click(id) if state::marker_option(id).is_some() => pick_marker(host, id),
+        // **A junção do Offset Path** — panel-local, ver [`pick_expand_join`].
+        WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic
         // tool channel. Mode clicks land on `VectorTool::handle_panel_event`
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
@@ -350,6 +352,32 @@ fn pick_marker(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool 
     true
 }
 
+/// Grava a junção escolhida para o **Offset Path** e ENGOLE o clique.
+///
+/// Panel-local de propósito: escolher a quina não edita o documento (só o clique em "Offset
+/// Path" edita), então ela para aqui em vez de virar um `ToolPanelEvent` que a shell teria
+/// de guardar num 2º lugar — e dois lugares guardando a mesma escolha divergem.
+fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    seam_reset_button(host, id);
+    if let Some(j) = expand_join_index(id) {
+        state::set_expand_join(j);
+    }
+    true
+}
+
+/// O índice da junção do Offset Path que este id escolhe (`0` Miter · `1` Round · `2`
+/// Bevel), ou `None` se o id não é um dos três chips. Porta única: o `apply_event` a
+/// consulta para saber se ATENDE o clique, e [`pick_expand_join`] para saber o QUE gravar —
+/// duas perguntas, uma tabela.
+fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
+    match id {
+        _ if id == ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
+        _ if id == ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
+        _ if id == ids::VECTOR_EXPAND_JOIN_BEVEL => Some(2),
+        _ => None,
+    }
+}
+
 /// Ids dos botões cujo `Click` o painel apenas ENCAMINHA (`PanelEvent::Click`) para o
 /// shell/tool aplicar (modos, Cap/Join, Vertex, Boolean, Arrange, Fill kind, Align/
 /// Distribute, alinhamento de texto…). Extraído de `apply_event` para caber no teto de
@@ -412,6 +440,9 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_EXCLUDE
         || id == ids::VECTOR_COMPOUND_MAKE
         || id == ids::VECTOR_COMPOUND_RELEASE
+        // Expand: os dois COMANDOS (a junção não vem aqui — é panel-local).
+        || id == ids::VECTOR_EXPAND_OFFSET_PATH
+        || id == ids::VECTOR_EXPAND_OUTLINE_STROKE
         || id == ids::VECTOR_FILL_RULE_NONZERO
         || id == ids::VECTOR_FILL_RULE_EVENODD
         || id == ids::VECTOR_SNAP_OFF

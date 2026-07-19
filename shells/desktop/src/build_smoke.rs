@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=17` — a cena do **EXPAND**: um zig-zag só-traço, uma estrela com traço E
+//!   preenchimento, e um donut de parede fina. Outline Stroke nos dois primeiros, Offset Path no
+//!   terceiro (a borda cresce e o furo encolhe).
 //! - `PH2D_BUILD_SMOKE=16` — a cena das ferramentas de **QUINA** (Fillet / Chamfer): um retângulo
 //!   de quinas retas + uma elipse de âncoras suaves, no modo Fillet. Clique uma quina e ARRASTE
 //!   para arredondar (Fillet) ou chanfrar (Chamfer, pelo pill). Na elipse o clique transforma a
@@ -200,6 +203,10 @@ impl crate::App {
             // `build_smoke_corner_tools` (teto de LOC). Frame 3 monta, frame 4 pré-seleciona.
             3 if level == 16 => self.smoke_corner_tools_build(),
             4 if level == 16 => self.smoke_corner_tools_select(),
+            // A cena do EXPAND (Outline Stroke + Offset Path) — corpo no módulo irmão
+            // `build_smoke_expand` (teto de LOC).
+            3 if level == 17 => self.smoke_expand_build(),
+            4 if level == 17 => self.smoke_expand_select(),
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em
             // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).

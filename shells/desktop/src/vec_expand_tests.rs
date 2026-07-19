@@ -1,0 +1,189 @@
+//! Testes de [`crate::vec_expand`] — arquivo irmão.
+//!
+//! O motor está gateado na `ph2d-vec-boolean`. O que se prova AQUI é o que só existe na
+//! shell: quais paths o comando pega, em que z o resultado fica, o que sobra da original, e
+//! que o gesto inteiro custa **UM** Ctrl+Z.
+
+use super::*;
+use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex};
+
+fn square(s: f64) -> VecPath {
+    VecPath {
+        verts: [[0.0, 0.0], [s, 0.0], [s, s], [0.0, s]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
+/// Cena com os `paths` dados, todos selecionados. Sem poses (`VecXforms` vazio): a fronteira
+/// de pose já é exercida pela booleana irmã, e aqui o que se mede é o efeito no DOCUMENTO.
+fn scene_with(paths: Vec<VecPath>) -> (VecScene, History, PenTool, VecXforms) {
+    let mut scene = VecScene::new();
+    let ids: Vec<VecPathId> = paths.into_iter().map(|p| scene.push_path(p)).collect();
+    let mut pen = PenTool::default();
+    pen.select_many(&ids);
+    (scene, History::default(), pen, VecXforms::default())
+}
+
+fn stroked(mut p: VecPath) -> VecPath {
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(200, 30, 30, 255), 2.0));
+    p
+}
+
+fn filled(mut p: VecPath) -> VecPath {
+    p.fill = Some(Paint::Solid(Rgba8::new(30, 30, 200, 255)));
+    p
+}
+
+const MITER: Expand = Expand::Offset {
+    join: LineJoin::Miter,
+};
+
+/// **O id do botão diz o comando.** Um id de outra seção não é nosso — senão o dreno
+/// atenderia cliques alheios e roubaria o Union.
+#[test]
+fn the_button_ids_map_to_their_commands() {
+    assert!(matches!(
+        expand_for_id(ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH),
+        Some(Expand::Offset { .. })
+    ));
+    assert_eq!(
+        expand_for_id(ph2d_editor::ids::VECTOR_EXPAND_OUTLINE_STROKE),
+        Some(Expand::OutlineStroke)
+    );
+    assert_eq!(expand_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+    assert_eq!(expand_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
+}
+
+/// **Offsetar N formas offseta as N** — por-path, não N-ário. Uma versão que fundisse a
+/// seleção devolveria UMA forma, e o artista perderia duas.
+#[test]
+fn offsetting_three_shapes_offsets_all_three() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0); 3]);
+    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
+    assert_eq!(scene.paths().len(), 3, "as tres continuam existindo");
+    for p in scene.paths() {
+        let a = ph2d_vec_boolean::area(p);
+        assert!((a - 144.0).abs() < 1.0, "area {a} (10+2·1 ao quadrado)");
+    }
+    assert_eq!(pen.selected_paths().len(), 3, "as tres ficam selecionadas");
+}
+
+/// **UM passo de undo para o gesto inteiro**, mesmo mexendo em três formas. Um passo por
+/// forma faria "desfazer o Expand" custar tantos Ctrl+Z quantos objetos — e nada pareceria
+/// errado.
+#[test]
+fn the_whole_gesture_is_one_undo_step() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0); 3]);
+    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
+    let restored = hist.undo(&scene).expect("ha um passo a desfazer");
+    assert_eq!(restored.paths().len(), 3);
+    for p in restored.paths() {
+        let a = ph2d_vec_boolean::area(p);
+        assert!((a - 100.0).abs() < 1e-6, "voltou ao original? area {a}");
+    }
+    assert!(
+        hist.undo(&restored).is_none(),
+        "havia um SEGUNDO passo — o gesto gravou mais de um"
+    );
+}
+
+/// **Outline Stroke numa forma com preenchimento deixa DOIS objetos**: o miolo (agora sem
+/// traço) e o contorno assado por cima. Fundir os dois num só perderia uma das duas cores —
+/// e elas são diferentes justamente por serem coisas diferentes.
+#[test]
+fn outlining_a_filled_shape_keeps_the_fill_as_its_own_object() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![filled(stroked(square(10.0)))]);
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &xf,
+        Expand::OutlineStroke,
+        0.0,
+    );
+    assert_eq!(scene.paths().len(), 2, "o miolo + o contorno");
+    let base = &scene.paths()[0];
+    assert!(base.fill.is_some(), "o miolo manteve o preenchimento");
+    assert_eq!(base.stroke, None, "…e perdeu o traço, que agora é forma");
+    let ring = &scene.paths()[1];
+    assert_eq!(
+        ring.fill,
+        Some(Paint::Solid(Rgba8::new(200, 30, 30, 255))),
+        "o contorno é preenchido com a COR do traço"
+    );
+    // O anel: um quadrado de 10 com caneta de 2 mede ~4·10·2 = 80 de tinta.
+    let a = ph2d_vec_boolean::area(ring);
+    assert!((60.0..100.0).contains(&a), "area do anel {a}");
+}
+
+/// …e **sem preenchimento não sobra miolo**: a forma original era só o traço, então
+/// convertê-lo a consome. Deixar um path invisível de área zero seria lixo para o artista
+/// caçar na Hierarquia.
+#[test]
+fn outlining_a_stroke_only_shape_consumes_the_original() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &xf,
+        Expand::OutlineStroke,
+        0.0,
+    );
+    assert_eq!(scene.paths().len(), 1, "só o contorno assado");
+    assert_eq!(scene.paths()[0].stroke, None);
+}
+
+/// **Uma seleção onde nada pode ser convertido não gasta um passo de undo.** Sem isto, o
+/// artista clicaria Outline Stroke sobre formas sem traço, veria a tela igual, e o Ctrl+Z
+/// seguinte desfaria uma edição ANTERIOR que ele não pediu para desfazer.
+#[test]
+fn a_gesture_that_changes_nothing_records_nothing() {
+    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0), square(4.0)]);
+    let before = scene.paths().len();
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &xf,
+        Expand::OutlineStroke,
+        0.0,
+    );
+    assert_eq!(scene.paths().len(), before);
+    assert!(
+        hist.undo(&scene).is_none(),
+        "gravou um passo de undo para uma edição que não aconteceu"
+    );
+}
+
+/// **O resultado fica no z da original**, não salta para a frente de tudo. Uma forma que
+/// pula de camada ao ser offsetada reordena a arte por um motivo invisível.
+#[test]
+fn the_result_keeps_the_z_of_the_shape_it_replaced() {
+    let mut scene = VecScene::new();
+    let back = scene.push_path(square(4.0)); // z=0, NÃO selecionada
+    let mid = scene.push_path(square(10.0)); // z=1, a que será offsetada
+    let front = scene.push_path(square(4.0)); // z=2, NÃO selecionada
+    let mut pen = PenTool::default();
+    pen.select_many(&[mid]);
+    let mut hist = History::default();
+    apply_vec_expand(
+        &mut scene,
+        &mut hist,
+        &mut pen,
+        &VecXforms::default(),
+        MITER,
+        1.0,
+    );
+    assert_eq!(scene.paths().len(), 3);
+    assert_eq!(scene.paths()[0].id, back, "o de trás não se mexeu");
+    assert_eq!(scene.paths()[2].id, front, "o da frente não se mexeu");
+    let a = ph2d_vec_boolean::area(&scene.paths()[1]);
+    assert!(
+        (a - 144.0).abs() < 1.0,
+        "o do MEIO é o offsetado (area {a})"
+    );
+}

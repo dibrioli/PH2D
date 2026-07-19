@@ -556,7 +556,7 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        22, // +1: EFFECTS (ADR-0132, a pilha de Live Path Effects)
+        23, // +1: EXPAND (Outline Stroke + Offset Path)
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -1425,4 +1425,107 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
         );
     }
     ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+}
+
+/// **Os controles da seção Expand chegam ao seu destino quando o artista CLICA neles** —
+/// pelo caminho inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs`).
+///
+/// ⚠️ **Os dois COMANDOS e os três chips de JUNÇÃO têm destinos diferentes, e é isso que o
+/// gate afirma:** Offset Path / Outline Stroke viram `ToolPanelEvent` (a shell os aplica ao
+/// documento); a junção é **panel-local** e para no painel. Um chip que vazasse para o bus
+/// seria um segundo lugar guardando "que quina o offset faz"; um comando que NÃO vazasse
+/// seria um botão pintado e morto.
+///
+/// ⚠️ O clique é um ponteiro de verdade, nunca um `WidgetEvent` sintético: o evento
+/// fabricado pula a checagem de FOCABILIDADE no store, e um widget fora do `populate`
+/// passaria — pintado, com hit-rect, e morto sob o mouse.
+#[test]
+fn every_expand_control_reaches_its_destination_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, name, forwards) in [
+        (ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", true),
+        (ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", true),
+        (ids::VECTOR_EXPAND_JOIN_MITER, "Join Miter", false),
+        (ids::VECTOR_EXPAND_JOIN_ROUND, "Join Round", false),
+        (ids::VECTOR_EXPAND_JOIN_BEVEL, "Join Bevel", false),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| {
+                panic!("o controle {name} nao foi PINTADO com area clicavel na secao Expand")
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate` \
+             (o controle esta desenhado, mas nao existe para o dispatcher)"
+        );
+        for ev in evs {
+            let outcome = host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+            if matches!(ev, WidgetEvent::Click(c) if c == id) {
+                assert_eq!(
+                    outcome,
+                    EventOutcome::Consumed,
+                    "o Click em {name} nao foi consumido pelo `event.rs`"
+                );
+            }
+        }
+        let reached = host
+            .drained_actions()
+            .into_iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
+        assert_eq!(
+            reached, forwards,
+            "{name}: chegou ao bus = {reached}, esperado {forwards} — um COMANDO tem de \
+             chegar (senao e' botao morto) e a JUNCAO nao pode (senao seriam dois lugares \
+             guardando a mesma escolha)"
+        );
+    }
+}
+
+/// **O chip de junção clicado é o que fica selecionado.** Sem isto os três seriam
+/// consumidos, o gate acima passaria, e a escolha do artista cairia no chão — o Offset Path
+/// faria Miter para sempre.
+#[test]
+fn clicking_a_join_chip_records_that_join() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, want, name) in [
+        (ids::VECTOR_EXPAND_JOIN_ROUND, 1_u8, "Round"),
+        (ids::VECTOR_EXPAND_JOIN_BEVEL, 2, "Bevel"),
+        (ids::VECTOR_EXPAND_JOIN_MITER, 0, "Miter"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .expect("o chip foi pintado");
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert_eq!(
+            ph2d_panel_vector::expand_join(),
+            want,
+            "clicar {name} nao gravou a juncao — a shell le' `expand_join()` no comando"
+        );
+    }
 }

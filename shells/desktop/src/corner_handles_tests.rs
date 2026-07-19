@@ -30,7 +30,9 @@ use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
 
 /// Uma cena com um quadrado, a entidade dele, e o mapa path↔entidade. O `decorate` pendura
 /// nessa entidade (ou numa nova, no caso do envelope) o que a torna geometria derivada.
-fn square_with(decorate: impl FnOnce(&mut SimWorld, Entity)) -> (SimWorld, VecEntityMap, VecPathId) {
+fn square_with(
+    decorate: impl FnOnce(&mut SimWorld, Entity),
+) -> (SimWorld, VecEntityMap, VecPathId) {
     let mut scene = VecScene::new();
     let id = scene.push_path(VecPath {
         verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
@@ -54,7 +56,10 @@ fn square_with(decorate: impl FnOnce(&mut SimWorld, Entity)) -> (SimWorld, VecEn
 #[test]
 fn a_drawn_path_is_not_derived_so_the_corner_tools_may_edit_it() {
     let (sim, map, id) = square_with(|_, _| {});
-    assert!(!has_derived_verts(&sim, &map, id), "caminho desenhado é editável");
+    assert!(
+        !has_derived_verts(&sim, &map, id),
+        "caminho desenhado é editável"
+    );
 }
 
 /// **Uma FORMA VIVA é derivada.** O `vec_shape_live::recook_into` substitui `path.verts`
@@ -70,7 +75,10 @@ fn a_live_shape_is_derived_because_the_recook_would_erase_the_radius() {
             values: [0.0; ph2d_ecs::MAX_SHAPE_VALUES],
         });
     });
-    assert!(has_derived_verts(&sim, &map, id), "a receita está pendurada");
+    assert!(
+        has_derived_verts(&sim, &map, id),
+        "a receita está pendurada"
+    );
 }
 
 /// **Um CONECTOR é derivado.** O `connector_live::recook` limpa e reescreve `p.verts` a cada

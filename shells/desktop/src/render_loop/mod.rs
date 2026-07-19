@@ -1409,6 +1409,7 @@ impl crate::App {
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
+            let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
             // ADR-0128: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
             // ajusta o blend selecionado ao vivo. (O destrutivo `vec_blend::apply` sobrevive só
             // para os smokes — o painel não o alcança mais.)
@@ -1623,6 +1624,8 @@ impl crate::App {
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
+                            } else if let Some(cmd) = crate::vec_expand::expand_for_id(*id) {
+                                pending_vec_expand = Some(cmd);
                             } else if let Some(kind) =
                                 crate::input_dispatch::vec_vertex_kind_for_id(*id)
                             {
@@ -2749,6 +2752,24 @@ impl crate::App {
                     &mut self.vec_pen,
                     &xf,
                     op,
+                );
+            }
+            if let Some(cmd) = pending_vec_expand {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                // A distância vem do slider do painel — a MESMA fonte que o chip mostra.
+                let d = hero
+                    .store
+                    .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT, |(_, v)| {
+                        ph2d_tool_vector::params::slider_to_offset(v)
+                    });
+                crate::vec_expand::apply_vec_expand(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                    cmd,
+                    d,
                 );
             }
             if let Some(make) = pending_vec_compound {

@@ -16,17 +16,16 @@ use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 use ph2d_tool_vector::params::{
-    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE,
-    DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
-    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
+    DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
+    OFFSET_DEFAULT, OFFSET_SLIDER_OFFSET, OFFSET_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
     TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
     TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET,
-    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, gap_to_slider,
+    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, offset_to_slider,
     text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
     text_weight_to_slider,
 };
 use ph2d_tool_vector::shapes;
-use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, params, px_to_slider};
+use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, px_to_slider};
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
@@ -361,9 +360,15 @@ mod envelope;
 /// O registro dos widgets dos **Effects** (ADR-0132) — módulo irmão, par do `paint_effects`.
 #[path = "populate_effects.rs"]
 mod effects;
+
+/// O registro dos widgets de **ESTILO** (traço, tracejado, pontas, preenchimento) — módulo
+/// irmão pelo teto de 600 LOC deste arquivo.
+#[path = "populate_style.rs"]
+mod style;
 /// A faixa real de cada parâmetro é republicada POR FRAME (só no frame se sabe que efeito
 /// ocupa cada linha), então o `paint` chama isto no seu passe de sementes.
 pub(crate) use effects::seed_effect_ranges;
+use style::populate_style;
 
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
@@ -384,6 +389,21 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_EXCLUDE);
     button(store, ids::VECTOR_COMPOUND_MAKE);
     button(store, ids::VECTOR_COMPOUND_RELEASE);
+    // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).
+    button(store, ids::VECTOR_EXPAND_JOIN_MITER);
+    button(store, ids::VECTOR_EXPAND_JOIN_ROUND);
+    button(store, ids::VECTOR_EXPAND_JOIN_BEVEL);
+    button(store, ids::VECTOR_EXPAND_OFFSET_PATH);
+    button(store, ids::VECTOR_EXPAND_OUTLINE_STROKE);
+    slider_chip(
+        store,
+        ids::VECTOR_EXPAND_OFFSET,
+        ids::VECTOR_EXPAND_OFFSET_NUM,
+        offset_to_slider(OFFSET_DEFAULT),
+        OFFSET_DEFAULT,
+        OFFSET_SLIDER_SCALE,
+        OFFSET_SLIDER_OFFSET,
+    );
     // Fill rule (compound paths only — the row hides for a single contour).
     button(store, ids::VECTOR_FILL_RULE_NONZERO);
     button(store, ids::VECTOR_FILL_RULE_EVENODD);
@@ -411,124 +431,6 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ALIGN_BOTTOM);
     button(store, ids::VECTOR_DISTRIBUTE_H);
     button(store, ids::VECTOR_DISTRIBUTE_V);
-}
-
-/// Gradiente (Angle / Influence / Jitter), opacidades e o traço (cap/join/dash).
-fn populate_style(store: &mut WidgetStore) {
-    // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
-    slider_chip(
-        store,
-        ids::VECTOR_GRAD_ANGLE,
-        ids::VECTOR_GRAD_ANGLE_NUM,
-        0.0,
-        0.0,
-        GRAD_ANGLE_SLIDER_SCALE,
-        0.0,
-    );
-    // Multi-point Influence (track 0..1 → 0..4); seeded at the default 1.0.
-    slider_chip(
-        store,
-        ids::VECTOR_GRAD_INFLUENCE,
-        ids::VECTOR_GRAD_INFLUENCE_NUM,
-        1.0 / GRAD_INFLUENCE_SLIDER_SCALE,
-        1.0,
-        GRAD_INFLUENCE_SLIDER_SCALE,
-        0.0,
-    );
-    // Multi-point Jitter (track 0..1 → 0..1); seeded at the default 0.0 (smooth).
-    slider_chip(
-        store,
-        ids::VECTOR_GRAD_JITTER,
-        ids::VECTOR_GRAD_JITTER_NUM,
-        0.0,
-        0.0,
-        GRAD_JITTER_SLIDER_SCALE,
-        0.0,
-    );
-
-    // Stroke / Fill Opacity sliders (0..100 %) — seeded at full opacity, matching
-    // the tool's default opaque stroke/fill.
-    slider_chip(
-        store,
-        ids::VECTOR_STROKE_OPACITY,
-        ids::VECTOR_STROKE_OPACITY_NUM,
-        1.0,
-        100.0, // LITERAL-PX-OK: initial opacity display = 100 %
-        OPACITY_SLIDER_SCALE,
-        OPACITY_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_FILL_OPACITY,
-        ids::VECTOR_FILL_OPACITY_NUM,
-        1.0,
-        100.0, // LITERAL-PX-OK: initial opacity display = 100 %
-        OPACITY_SLIDER_SCALE,
-        OPACITY_SLIDER_OFFSET,
-    );
-
-    // Stroke Cap / Join segmented buttons + Dash length slider (0 px = solid).
-    button(store, ids::VECTOR_CAP_BUTT);
-    button(store, ids::VECTOR_CAP_ROUND);
-    button(store, ids::VECTOR_CAP_SQUARE);
-    button(store, ids::VECTOR_JOIN_MITER);
-    button(store, ids::VECTOR_JOIN_ROUND);
-    button(store, ids::VECTOR_JOIN_BEVEL);
-    slider_chip(
-        store,
-        ids::VECTOR_DASH,
-        ids::VECTOR_DASH_NUM,
-        0.0,
-        0.0,
-        DASH_SLIDER_SCALE,
-        DASH_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_GAP,
-        ids::VECTOR_GAP_NUM,
-        gap_to_slider(GAP_DEFAULT),
-        GAP_DEFAULT,
-        GAP_SLIDER_SCALE,
-        GAP_SLIDER_OFFSET,
-    );
-    populate_markers(store);
-}
-
-/// As **pontas do traço**: os dois chips (`Dropdown` — abrir/fechar/roda vêm de graça do
-/// dispatch genérico) + as opções do popover, uma por ponta de `ALL_MARKERS` e por slot.
-///
-/// Registradas por ÍNDICE, como as formas do catálogo: uma ponta nova entra em
-/// `ALL_MARKERS` e já nasce clicável, sem tocar aqui. Os slots existem sempre (o
-/// `populate` é estático); o PAINT decide quais registram hit.
-fn populate_markers(store: &mut WidgetStore) {
-    for slot in 0..ids::MARKER_SLOTS {
-        store.register_if_absent(
-            crate::paint_markers::marker_dd_id(slot),
-            InteractiveState::Dropdown {
-                state: DropdownState::Normal,
-                open: false,
-                selected_index: None,
-            },
-        );
-        for i in 0..ids::MAX_MARKER_OPTIONS {
-            button(store, ids::vector_marker_option_id(slot, i));
-        }
-    }
-    // **Tamanho / arredondamento** da ponta: caixas numéricas de faixa FIXA. O
-    // `set_number_range` não é opcional — sem ele o arrasto escala errado (o gotcha da caixa
-    // limitada). O valor é re-semeado com o efetivo da tool a cada frame (Fase B do paint).
-    for (id, field) in [
-        (ids::VECTOR_MARKER_SCALE, &params::MARKER_SCALE),
-        (ids::VECTOR_MARKER_ROUND, &params::MARKER_ROUND),
-    ] {
-        number_field(store, id, field.min, field.max, field.step, field.min);
-    }
-    // **Both Ends** — um botão. Registrar aqui é o que o torna clicável: pintar e dar
-    // hit-rect não basta (a gate `architecture_panel_wiring_parity` exige o registro DENTRO
-    // do `populate.rs`, e ela tem razão — sem `InteractiveState` o widget nunca é focável e
-    // Down/Up jamais disparam).
-    button(store, ids::VECTOR_MARKER_BOTH);
 }
 
 /// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.

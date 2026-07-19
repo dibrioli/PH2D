@@ -138,14 +138,28 @@ fn remove_and_reorder_reach_the_scene() {
     apply(&mut scene, id, Some(1), None, None, false);
     let first = crate::fx_bridge::stack_view(&scene, id)[0].label;
 
-    apply(&mut scene, id, None, Some((0, FxRowAction::Down)), None, false);
+    apply(
+        &mut scene,
+        id,
+        None,
+        Some((0, FxRowAction::Down)),
+        None,
+        false,
+    );
     assert_ne!(
         crate::fx_bridge::stack_view(&scene, id)[0].label,
         first,
         "o Down reordenou"
     );
 
-    apply(&mut scene, id, None, Some((0, FxRowAction::Remove)), None, false);
+    apply(
+        &mut scene,
+        id,
+        None,
+        Some((0, FxRowAction::Remove)),
+        None,
+        false,
+    );
     assert_eq!(crate::fx_bridge::stack_view(&scene, id).len(), 1);
 }
 

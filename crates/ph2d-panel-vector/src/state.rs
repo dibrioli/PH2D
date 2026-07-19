@@ -54,18 +54,6 @@ thread_local! {
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
-    static CURRENT_HAS_ENVELOPE: Cell<bool> = const { Cell::new(false) };
-    /// O GESTO da gaiola: 0 = Perspective · 1 = Mesh · 2 = Pins. Um índice, e não um espelho do
-    /// `ph2d_ecs::EnvelopeKind`: este painel não vê a crate do ECS, e a UI só precisa saber qual
-    /// chip acender.
-    static CURRENT_ENVELOPE_MODE: Cell<u8> = const { Cell::new(0) };
-    /// Os rótulos dos presets de gaiola, PUBLICADOS pelo shell (a tabela mora no
-    /// `ph2d_ecs::EnvelopeWarp`, que este painel não vê). Vazio = nenhum publicado ainda.
-    static CURRENT_ENVELOPE_PRESETS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
-    /// O índice do preset ATIVO na lista acima; `None` = a gaiola é manual (a mão a promoveu).
-    static CURRENT_ENVELOPE_WARP: Cell<Option<usize>> = const { Cell::new(None) };
-    /// A força do preset ativo, `[-1, 1]`.
-    static CURRENT_ENVELOPE_BEND: Cell<f64> = const { Cell::new(0.0) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
@@ -98,6 +86,13 @@ thread_local! {
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
     /// unfocused (gesture ended), so the shell stays stateless.
     static ROT_LAST: Cell<f64> = const { Cell::new(0.0) };
+    /// Junção das quinas do **Offset Path** (`0` Miter · `1` Round · `2` Bevel).
+    ///
+    /// Panel-local e NÃO é o join do traço: um path pode não ter traço nenhum e ainda ser
+    /// offsetado, e mesmo tendo, a quina que o traço desenha e a quina que o offset produz
+    /// são escolhas diferentes. Reaproveitar `VECTOR_JOIN_*` faria um controle mexer em
+    /// dois fatos.
+    static EXPAND_JOIN: Cell<u8> = const { Cell::new(0) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -274,6 +269,20 @@ pub(crate) fn set_rot_last(v: f64) {
     ROT_LAST.with(|c| c.set(v));
 }
 
+/// A junção escolhida para o **Offset Path** (`0` Miter · `1` Round · `2` Bevel).
+///
+/// `pub` porque a SHELL a lê no clique de Offset Path — o painel escolhe, o motor honra.
+/// Uma cópia do lado da shell seria a segunda resposta a *"que quina o offset faz?"*, e
+/// divergiria no dia em que alguém acrescentasse um estilo de junção.
+#[must_use]
+pub fn expand_join() -> u8 {
+    EXPAND_JOIN.with(Cell::get)
+}
+
+pub(crate) fn set_expand_join(v: u8) {
+    EXPAND_JOIN.with(|c| c.set(v));
+}
+
 #[must_use]
 pub fn last_content_h() -> f32 {
     LAST_CONTENT_H.with(|c| c.get())
@@ -319,53 +328,15 @@ mod effects;
 pub use effects::{FxParamView, FxRowView, set_current_effects};
 pub(crate) use effects::{has_target, kinds, stack};
 
-pub fn set_current_has_envelope(v: bool) {
-    CURRENT_HAS_ENVELOPE.with(|c| c.set(v));
-}
-
-pub(crate) fn has_envelope() -> bool {
-    CURRENT_HAS_ENVELOPE.with(Cell::get)
-}
-
-/// Publica em que **gesto** está o envelope da seleção: `0` Perspective · `1` Mesh · `2` Pins.
-///
-/// Só é lido quando [`has_envelope`] é `true` — sem envelope não há gesto a mostrar. Um índice e não
-/// um espelho do enum: este painel não vê o `ph2d-ecs`, e a UI só precisa saber qual chip acender.
-pub fn set_current_envelope_mode(v: u8) {
-    CURRENT_ENVELOPE_MODE.with(|c| c.set(v));
-}
-
-pub(crate) fn envelope_mode() -> u8 {
-    CURRENT_ENVELOPE_MODE.with(Cell::get)
-}
-
-/// Publica os presets de gaiola: os rótulos (na ordem de `ph2d_ecs::EnvelopeWarp::ALL`), qual está
-/// ativo e a força dele.
-///
-/// **O painel se auto-popula desta lista** — o mesmo idioma da rack de áudio (`set_fx_kind_names`):
-/// acrescentar um preset é uma linha na tabela do componente e **zero mudança de painel**. Uma lista
-/// escrita à mão aqui driftaria da tabela no primeiro preset novo.
-pub fn set_current_envelope_presets(labels: &[&'static str], active: Option<usize>, bend: f64) {
-    CURRENT_ENVELOPE_PRESETS.with(|c| {
-        let mut v = c.borrow_mut();
-        v.clear();
-        v.extend_from_slice(labels);
-    });
-    CURRENT_ENVELOPE_WARP.with(|c| c.set(active));
-    CURRENT_ENVELOPE_BEND.with(|c| c.set(bend));
-}
-
-pub(crate) fn envelope_presets() -> Vec<&'static str> {
-    CURRENT_ENVELOPE_PRESETS.with(|c| c.borrow().clone())
-}
-
-pub(crate) fn envelope_warp() -> Option<usize> {
-    CURRENT_ENVELOPE_WARP.with(Cell::get)
-}
-
-pub(crate) fn envelope_bend() -> f64 {
-    CURRENT_ENVELOPE_BEND.with(Cell::get)
-}
+/// O estado do **Envelope** (ADR-0129) — módulo irmão pelo mesmo teto de 600 LOC.
+#[path = "state_envelope.rs"]
+mod envelope;
+pub(crate) use envelope::{
+    envelope_bend, envelope_mode, envelope_presets, envelope_warp, has_envelope,
+};
+pub use envelope::{
+    set_current_envelope_mode, set_current_envelope_presets, set_current_has_envelope,
+};
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {

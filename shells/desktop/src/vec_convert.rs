@@ -68,9 +68,7 @@ fn drop_relation_hosts(sim: &mut SimWorld, map: &VecEntityMap, selection: &[VecP
             let w = sim.world();
             w.get::<VecConnector>(e).is_some() || w.get::<VecMorph>(e).is_some()
         };
-        if live
-            && let Ok(mut em) = sim.world_mut().get_entity_mut(e)
-        {
+        if live && let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
             em.remove::<VecConnector>();
             em.remove::<VecMorph>();
             n += 1;

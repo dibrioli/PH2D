@@ -21,6 +21,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tool_vector::params;
 use ph2d_tool_vector::params::{
     BLEND_STEPS_DEFAULT, MORPH_T_DEFAULT, blend_steps_from_track, blend_steps_to_track,
     dash_to_slider, gap_to_slider, opacity_to_slider,
@@ -189,6 +190,8 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);
         y = self.step(y, Self::boolean_section);
+        // Expand é irmã da Boolean: comandos destrutivos sobre a seleção, mesmo motor.
+        y = self.step(y, Self::expand_section);
         y = self.step(y, |b, y| b.blend_section(snap, y));
         y = self.step(y, |b, y| b.morph_section(y));
         // O Envelope fica junto dos outros deformadores não-destrutivos (Blend/Morph): os três
@@ -466,6 +469,48 @@ impl BodyCtx<'_> {
             y = self.action_button(id, label, y);
         }
         self.compound_row(y)
+    }
+
+    /// Seção **EXPAND** — Outline Stroke (o traço vira forma) + Offset Path (a borda anda).
+    ///
+    /// Irmã da Boolean logo acima: os dois são comandos DESTRUTIVOS sobre a seleção, pelo
+    /// mesmo motor. O `Join` aqui é o do OFFSET (a quina que ele produz), nunca o do traço.
+    pub(crate) fn expand_section(&mut self, y: f32) -> f32 {
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_EXPAND,
+            tr("panel.vector.section.expand"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
+        let track = self
+            .store
+            .slider(ids::VECTOR_EXPAND_OFFSET)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| params::offset_to_slider(params::OFFSET_DEFAULT));
+        let d = params::slider_to_offset(track);
+        y = self.slider_row(
+            "Offset",
+            ids::VECTOR_EXPAND_OFFSET,
+            ids::VECTOR_EXPAND_OFFSET_NUM,
+            track,
+            d,
+            &format!("{d:.2}"),
+            y,
+        );
+        let join = crate::state::expand_join();
+        y = self.segmented3(
+            "Join",
+            [
+                (ids::VECTOR_EXPAND_JOIN_MITER, "Miter", join == 0),
+                (ids::VECTOR_EXPAND_JOIN_ROUND, "Round", join == 1),
+                (ids::VECTOR_EXPAND_JOIN_BEVEL, "Bevel", join == 2),
+            ],
+            y,
+        );
+        y = self.action_button(ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", y);
+        self.action_button(ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", y)
     }
 
     /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path

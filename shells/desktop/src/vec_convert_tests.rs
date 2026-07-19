@@ -172,7 +172,9 @@ fn convert_to_curves_drops_the_relation_hosts() {
         (
             "conector",
             Box::new(|sim: &mut SimWorld, e: Entity| {
-                sim.world_mut().entity_mut(e).insert(VecConnector::between(1, 2));
+                sim.world_mut()
+                    .entity_mut(e)
+                    .insert(VecConnector::between(1, 2));
             }) as Box<dyn Fn(&mut SimWorld, Entity)>,
         ),
         (
@@ -300,7 +302,10 @@ fn repro_two_tools_on_a_live_shape_across_a_recook() {
 
     let v = &scene.path(id).unwrap().verts;
     eprintln!("r1={} r2={}", v[1].corner_radius, v[2].corner_radius);
-    assert!(v[1].corner_radius > 0.0, "a 1a quina sobreviveu ao 2o gesto");
+    assert!(
+        v[1].corner_radius > 0.0,
+        "a 1a quina sobreviveu ao 2o gesto"
+    );
     assert!(v[2].corner_radius < 0.0, "a 2a chanfrou");
 }
 

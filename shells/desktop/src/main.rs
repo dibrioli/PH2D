@@ -46,6 +46,8 @@ mod blend_live;
 mod blend_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
+/// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
+mod build_smoke_expand;
 mod chrome_hit;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
@@ -125,7 +127,13 @@ mod vec_blend;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;
+/// Diagnóstico do overlay vetorial (`PH2D_VEC_OVERLAY_DIAG=1`) — nomeia o dono de geometria fora
+/// do lugar, em vez de a adivinhar.
+mod vec_convert;
 mod vec_entities;
+/// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
+/// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
+mod vec_expand;
 mod vec_font;
 #[cfg(feature = "panel-vector")]
 mod vec_font_preview;
@@ -133,9 +141,6 @@ mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_glyph_build;
 mod vec_overlay;
-/// Diagnóstico do overlay vetorial (`PH2D_VEC_OVERLAY_DIAG=1`) — nomeia o dono de geometria fora
-/// do lugar, em vez de a adivinhar.
-mod vec_convert;
 mod vec_overlay_diag;
 mod vec_selection;
 mod vec_shape_live;

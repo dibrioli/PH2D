@@ -745,11 +745,60 @@ diferentes agora:
    Gate `the_probe_reads_the_device_instead_of_announcing_it_cannot` + o fixture
    `gpu_driven_fixture` compartilhado com o gate dos cards. 3 mutações, 3 mortas.
 
-   **O que falta para virar o default:** só a decisão em si (`gpu_enabled` sai do
-   env var) e um smoke do Enio. ⚠️ A sonda na GPU fica **um frame atrás** (o tap lê
-   o cook anterior) enquanto na CPU é fresca — a assimetria está anotada no
-   código; torná-la exata é a mesma mudança de ordem-de-publicação que a nota já
-   nomeia, e continua não-contrabandeada.
+   **✅ A ALAVANCA (A) ESTÁ FECHADA — a GPU é o DEFAULT** (`gpu_enabled_from_env`):
+   ausente = LIGADO, **`PH2D_GPU_COOK=0`** força o pump da CPU. Qualquer outro
+   valor (inclusive o `=1` que todo handoff e comando de smoke deste repo já
+   passa) segue ligando — os comandos antigos continuam valendo verbatim.
+
+   **Ligar não é a afirmação de que todo documento roda lá:** o `gpu_route` ainda
+   recusa inteiro um documento multi-sink ou com time-scopes, e o `plan` recusa
+   qualquer cadeia com um nó descoberto. Os dois caem no pump exatamente como
+   antes — é por isso que o flip é seguro e é um DEFAULT, não um requisito. E o
+   OFF fica pinado num gate porque a CPU segue sendo o caminho **canônico**
+   (ADR-0126, o replay-hash nunca roda em GPU): bissectar um bug suspeito do
+   dispositivo contra ela tem de continuar a uma env var de distância.
+
+   O gate mora na POLÍTICA (`gpu_enabled_from_env`, função pura) e não no
+   `MotionState::new()` — um teste que setasse a env var mutaria o ambiente do
+   processo que todos os outros testes do binário compartilham.
+
+   ⚠️ A sonda na GPU fica **um frame atrás** (o tap lê o cook anterior) enquanto na
+   CPU é fresca — a assimetria está anotada no código; torná-la exata é a mesma
+   mudança de ordem-de-publicação que a nota já nomeia, e continua
+   não-contrabandeada.
+
+   ### A cena de smoke: `PH2D_GPU_COOK_DEMO=6`
+
+   `motion_state_gpu_panel_demo.rs` — módulo próprio, porque responde uma pergunta
+   **diferente** das cenas vizinhas. Elas perguntam *"desenha?"*; esta pergunta
+   ***"dá para continuar vendo o que ele está fazendo?"***, que é exatamente o que
+   segurava o caminho do dispositivo como opt-in. (O split foi forçado pelo teto
+   HR-18 — 612 LOC — mas a costura é a pergunta, não a contagem de linhas.)
+
+   ```text
+     grid 512x512 ──> oscillator(Y) ─────> drive(Size) ──> output
+          │                                    ^
+          └──> instance_field ──> math(x) ──────┘
+                         lfo ──────┘
+   ```
+
+   - **262.144 instâncias** ⇒ o readout diz `262144 inst` — o número que diria
+     `48 inst` se alguém a jusante contasse as linhas do tap em vez de perguntar
+     ao `CookShape`. É a asserção que o artista faz **olhando**.
+   - **Os dois tipos de readout na tela ao mesmo tempo:** os nós de instância
+     citam contagem, os `value.*` citam escalar. O `value.lfo` está desconectado,
+     então é UMA oscilação global — o readout dele **muda a cada frame**, que é
+     também o jeito mais fácil de ver a marcha dos fios funcionando.
+   - **O `value.math` é a lei de contagem na figura**: campo de 262.144 vezes um
+     de comprimento 1, saída 262.144 — sob a lei default (*"tão largo quanto a
+     porta 0"*) seria **1**.
+   - **O `motion.drive` no canal Size** exercita as variantes por-param: Size era
+     um dos canais que recuavam para a CPU, e **um** nó recuando nesta cadeia
+     derrubaria o documento inteiro do dispositivo.
+
+   Gate `the_panel_demo_is_fully_gpu` — pina que a cena é reivindicada inteira (uma
+   fronteira aqui e o smoke estaria lendo o memo do pump, não o tap) **e** os três
+   números que o artista lê na tela.
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 

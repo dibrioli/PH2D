@@ -24,11 +24,16 @@ mod strobe;
 
 #[path = "motion_state_gpu_demos.rs"]
 mod gpu_demos;
+/// The panel scene, split out at the HR-18 cap — see the module's own note on
+/// why the seam is the QUESTION each scene answers, not the line count.
+#[path = "motion_state_gpu_panel_demo.rs"]
+mod gpu_panel_demo;
 
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
+use gpu_panel_demo::build_gpu_panel_demo_document;
 
 use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory};
@@ -98,6 +103,15 @@ pub(crate) struct MotionState {
     pub(crate) gpu_enabled: bool,
 }
 
+/// **Is the GPU cook path on?** — the policy, as a pure function of the env var,
+/// so it can be gated without a test mutating the process environment.
+///
+/// ON unless explicitly switched off. See the call site for why the default
+/// flipped and why flipping it is safe.
+pub(crate) fn gpu_enabled_from_env(var: Option<&str>) -> bool {
+    !matches!(var, Some("0"))
+}
+
 impl MotionState {
     /// Build the boot state: register every node op + the **default document** — driven by
     /// `motion.expression` formulas: on the left a **spiral** whose x/y are cos/sin
@@ -131,6 +145,10 @@ impl MotionState {
             // ADR-0130: the emitter FOUNTAIN — the id-gather (particles born/killed
             // across a sliding window, paired by arithmetic; fatia 5 tunes it live).
             Ok("5") => build_gpu_emitter_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // The PANEL scene: 262.144 instances through both domains, so every
+            // kind of card reading is on screen at once — the smoke for the GPU
+            // path becoming the default.
+            Ok("6") => build_gpu_panel_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {
@@ -150,7 +168,24 @@ impl MotionState {
             level: None,
             gpu_cook: ph2d_gpu_cook::GpuCook::new(),
             gpu_live: false,
-            gpu_enabled: std::env::var("PH2D_GPU_COOK").is_ok_and(|v| v == "1"),
+            // **ON by default** (GPU/M5, 2026-07-18). It was opt-in for one
+            // reason and the reason is gone: a GPU-resident cook does not feed
+            // the CPU memo, so the graph panel's readouts, postage stamps, wire
+            // march and probe all went blank exactly on the documents worth
+            // watching. `GpuCook::tap` now answers them for a measured +0,075 ms
+            // (`bounded_readback_cost_probe`), and the panel reads the device.
+            //
+            // Turning it on is not a claim that every document runs there:
+            // `gpu_route` still recuses a multi-sink or time-scoped document
+            // whole, and `plan` recuses any chain with an uncovered node in it.
+            // Those all fall through to the CPU pump exactly as before — which is
+            // why the flip is safe and why it is a DEFAULT rather than a
+            // requirement.
+            //
+            // `PH2D_GPU_COOK=0` forces the CPU pump: an escape for bisecting a
+            // suspected device-path bug against the canonical path, which stays
+            // the CPU's (ADR-0126 — the replay-hash never runs on a GPU).
+            gpu_enabled: gpu_enabled_from_env(std::env::var("PH2D_GPU_COOK").ok().as_deref()),
         }
     }
 

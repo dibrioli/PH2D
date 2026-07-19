@@ -8,6 +8,8 @@
 //! a path that never ran. Each one pins the plan the document is supposed to
 //! exercise: fully-GPU, hybrid, or a fully-GPU simulation LOOP.
 
+use super::gpu_enabled_from_env;
+use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::*;
 
 /// The **F1.2 hybrid smoke document really is a hybrid** (`PH2D_GPU_COOK_DEMO=2`).
@@ -324,4 +326,79 @@ fn the_emitter_fountain_demo_is_actually_dense() {
         1_200_000,
         "the fountain must run the window it advertises"
     );
+}
+
+/// **The panel demo is fully GPU** — the scene exists to prove the panel stays
+/// readable on the device, so a scene that quietly fell back to the CPU pump
+/// would smoke-test nothing at all while looking perfect.
+///
+/// It also pins the counts the artist is asked to read on screen: `262144` on the
+/// instance nodes and on `value.math`'s output. That last one is the count law —
+/// a length-262144 field times a length-1 one — and under the engine's default
+/// law (*"as wide as port 0"*) it would be `1`.
+#[test]
+fn the_panel_demo_is_fully_gpu() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_panel_demo_document(&mut doc, &registry).expect("well-typed panel demo");
+    let out = *sinks.first().expect("one sink");
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the panel scene must be claimed whole — a CPU boundary here and the \
+         smoke would be reading the pump's memo, not the tap: {:?}",
+        plan.boundaries
+    );
+
+    // The numbers the smoke asks the artist to read.
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let by_type = |ty: &str| {
+        doc.graph
+            .nodes()
+            .iter()
+            .position(|n| n.type_id() == ph2d_nodegraph::node::NodeTypeId::of(ty))
+            .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+            .unwrap_or_else(|| panic!("{ty} is in the scene"))
+    };
+    for ty in ["motion.grid", "motion.oscillator", "value.math"] {
+        let n = by_type(ty);
+        let outs = cook
+            .cook(&doc.graph, &registry, n, 0.25)
+            .unwrap_or_else(|e| panic!("{ty} cooks: {e:?}"));
+        assert_eq!(
+            outs[0].as_stream().count(),
+            262_144,
+            "{ty} must carry 262144 — it is the number the smoke reads off the \
+             card, and `value.math` carrying 1 would be the count law reading \
+             port 0 instead of the widest input"
+        );
+    }
+}
+
+/// **The GPU cook path is ON by default** (GPU/M5, 2026-07-18).
+///
+/// It was opt-in because a GPU-resident cook left the graph panel blank — no
+/// readout, no stamp, no wire march, no probe. `GpuCook::tap` answers all four
+/// for a measured +0,075 ms, so the reason expired and the default flipped.
+///
+/// The gate is on the POLICY rather than on `MotionState::new()` because a test
+/// that set `PH2D_GPU_COOK` would mutate the process environment that every other
+/// test in the binary shares.
+///
+/// ⚠️ The OFF escape is pinned too, and it is not decoration: the CPU stays the
+/// canonical path (ADR-0126 — the replay-hash never runs on a GPU), so bisecting
+/// a suspected device bug against it has to remain one env var away.
+#[test]
+fn the_gpu_path_is_on_unless_explicitly_switched_off() {
+    assert!(
+        gpu_enabled_from_env(None),
+        "absent means ON — this is the default flip"
+    );
+    assert!(!gpu_enabled_from_env(Some("0")), "`0` forces the CPU pump");
+    // Anything else is ON, including the `1` every existing handoff and smoke
+    // command in this repo already passes — those must keep working verbatim.
+    for on in ["1", "true", "yes", ""] {
+        assert!(gpu_enabled_from_env(Some(on)), "`{on}` must not disable it");
+    }
 }

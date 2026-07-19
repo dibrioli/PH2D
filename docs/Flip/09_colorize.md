@@ -4,9 +4,11 @@
 > `a6e8277a`). **C2 LANDOU (MOTOR + FATIA, pendente smoke):** o motor headless na crate nova
 > `ph2d-flip-colorize` (`flow.rs` BK + `colorize()`; corte hugga a tinta, vão não vaza, HR-5) **+**
 > o **modo Colorize clicável no shell** (7º `FlipMode`: rabiscar → **Apply** → regiões; gesto irmão
-> do Draw, commit irmão do balde). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`**.
-> **ABERTO:** overlay vivo dos rabiscos · multiframe · Apply live (re-solve por rabisco) · a
-> **pré-segmentação por regiões** (perf a 4K, `§7.1`) · **C3 (onion-fill)**.
+> do Draw, commit irmão do balde, **overlay ao vivo dos rabiscos** no mesmo slot de preview do
+> Draw). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`**. Fluxo: cor na swatch → rabisque na região →
+> troque a cor → rabisque noutra → **Apply**.
+> **ABERTO:** multiframe · Apply live (re-solve por rabisco) · a **pré-segmentação por regiões**
+> (perf a 4K, `§7.1`) · **C3 (onion-fill)**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >

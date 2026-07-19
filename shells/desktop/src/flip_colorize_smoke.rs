@@ -11,8 +11,8 @@
 //!    corte paga a largura do vão em branco em vez de contornar. É o *"um vão não precisa
 //!    fechar"* — o balde comum precisaria fechar o vão com o Gap Closure.
 //!
-//! Os rabiscos são pré-semeados (o overlay vivo é o refinamento seguinte), então o gesto a
-//! testar é **clicar Apply** — e depois **Clear** para desfazer os rabiscos sem colorir.
+//! Dois rabiscos vêm pré-semeados **e VISÍVEIS** (o overlay ao vivo), então dá para conferir
+//! o Apply de imediato — e depois rabiscar os seus, vendo a marca sair sob o cursor.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -115,16 +115,21 @@ impl crate::App {
 
         self.playhead.pause();
         eprintln!(
-            "\n[colorize-smoke] Modo Colorize, DOIS rabiscos ja semeados (vermelho esq, azul\n\
-             dir). Clique **Apply** (na secao Colorize do painel):\n\
+            "\n[colorize-smoke] Modo Colorize. Dois rabiscos ja estao na tela (vermelho esq,\n\
+             azul dir) — voce os VE porque o overlay desenha o que esta acumulado.\n\
              \n\
-             1) A FRONTEIRA entre as cores cola na LINHA em x=+1 (fora do centro) — a cor\n   \
-                da esquerda e dona de mais area. Se caisse no meio dos rabiscos (~x=0.3) o\n   \
+             COMO USAR (o fluxo real):\n\
+             1. Escolha a cor na swatch **Color** (secao Colorize do painel).\n\
+             2. **Rabisque DENTRO** de uma regiao — a marca sai sob o cursor.\n\
+             3. Troque a cor, rabisque noutra regiao. Repita.\n\
+             4. **Apply** — cada regiao vira preenchimento. **Clear** joga os rabiscos fora.\n\
+             \n\
+             CONFIRA no Apply:\n\
+             a) A FRONTEIRA entre as cores cola na LINHA em x=+1 (fora do centro) — a cor da\n   \
+                esquerda e dona de mais area. Se caisse no meio dos rabiscos (~x=0.3), o\n   \
                 corte estaria ignorando a tinta.\n\
-             2) O VAO no meio do divisor NAO vaza: a cor nao escorre de um lado ao outro.\n   \
-                (Um balde comum precisaria fechar o vao com o Gap Closure.)\n\
-             \n\
-             Depois teste **Clear**: com rabiscos frescos, ele os descarta sem colorir.\n"
+             b) O VAO no meio do divisor NAO vaza: a cor nao escorre de um lado ao outro.\n   \
+                (Um balde comum precisaria fechar o vao com o Gap Closure.)\n"
         );
     }
 }

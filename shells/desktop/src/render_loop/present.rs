@@ -25,7 +25,11 @@ impl crate::App {
     pub(super) fn run_present_phase(&mut self, cpu_start: Instant, r: f64, g: f64, b: f64) {
         // ADR-0114 W2: GPU-data do traço Flip em curso (preview ao vivo), construída
         // ANTES do borrow de `self.gfx` (lê a câmera + o gesto; devolve owned).
-        let flip_preview = self.flip_preview_data();
+        // ADR-0114 C2: no modo Colorize o "em curso" são os RABISCOS acumulados — mesmo
+        // slot, porque Draw e Colorize são modos distintos e nunca coexistem.
+        let flip_preview = self
+            .flip_preview_data()
+            .or_else(|| self.flip_colorize_preview_data());
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

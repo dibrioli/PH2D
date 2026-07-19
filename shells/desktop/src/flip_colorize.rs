@@ -7,17 +7,26 @@
 //! **Clear** descarta os rabiscos.
 //!
 //! O gesto é irmão do `flip_draw` (down/move/up → polilinha); o commit é irmão do
-//! `flip_fill` (autokey `Modify`, insere acima dos fills existentes). ⚠️ **v1 sem overlay
-//! vivo dos rabiscos** — o feedback é o resultado do Apply; desenhar os rabiscos na tela é o
-//! refinamento imediato (o `flip_draw::flip_preview_data` é o molde).
+//! `flip_fill` (autokey `Modify`, insere acima dos fills existentes); e o **overlay ao vivo**
+//! (`flip_colorize_preview_data`) usa o MESMO slot de preview do traço do Draw — sem ele o
+//! artista rabiscava às cegas, e um gesto que não deixa marca não se aprende.
+//!
+//! **O fluxo:** modo Colorize → escolha a cor na swatch **Color** → rabisque DENTRO de uma
+//! região → troque a cor → rabisque noutra → **Apply**. **Clear** joga os rabiscos fora.
 
 use crate::flip_fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
+use ph2d_flip::{FlipDrawing, FlipStroke, Point};
 use ph2d_flip_colorize::{ColorRegion, Scribble, colorize};
+use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::FlipMode;
 
 /// Distância mínima entre amostras de um rabisco (px de tela) — igual ao `flip_draw`.
 const MIN_SAMPLE_PX: f32 = 2.0;
+
+/// Espessura do rabisco no overlay (px de TELA — a espessura do Flip é absoluta). Grosso
+/// o bastante para o artista VER onde semeou, fino o bastante para não esconder a linha.
+const SCRIBBLE_WIDTH_PX: f32 = 9.0;
 
 /// Os rabiscos coloridos acumulados + o rabisco em curso. Transientes: não viajam no
 /// documento (são sementes), e o Apply/Clear os consomem.
@@ -119,6 +128,55 @@ impl crate::App {
     /// **Clear** — descarta os rabiscos acumulados.
     pub(crate) fn flip_colorize_clear(&mut self) {
         self.flip_colorize.clear();
+    }
+
+    /// GPU-data dos rabiscos acumulados (+ o em curso) pro **overlay ao vivo**.
+    ///
+    /// Sem ele o artista rabisca ÀS CEGAS — os rabiscos só existiriam no resultado do
+    /// Apply, e um gesto que não deixa marca não se aprende. Viaja pelo MESMO slot de
+    /// preview do traço do Draw (`flip_draw::flip_preview_data`): os dois nunca coexistem,
+    /// porque são MODOS diferentes — um slot, uma resposta a *"o que está em curso?"*.
+    #[must_use]
+    pub(crate) fn flip_colorize_preview_data(&self) -> Option<FlipGpuData> {
+        if !self.flip_wants_colorize() {
+            return None;
+        }
+        let live = self.flip_colorize.active && self.flip_colorize.current.len() >= 2;
+        if self.flip_colorize.scribbles.is_empty() && !live {
+            return None;
+        }
+        // MUNDO → LOCAL da camada ativa (a mesma conversão do preview do Draw; o Apply
+        // usa a MESMA `w2l`, então o que se vê é onde a semente cai).
+        let w2l = self.flip_active_world_to_local();
+        let mut d = FlipDrawing::default();
+        let committed = self.flip_colorize.scribbles.iter().map(|(c, p)| (*c, p));
+        let in_flight = live.then_some({
+            (
+                self.flip_colorize.current_color,
+                &self.flip_colorize.current,
+            )
+        });
+        for (color, pts) in committed.chain(in_flight) {
+            if pts.len() < 2 {
+                continue;
+            }
+            let c = crate::flip_draw::srgb8_to_linear(color);
+            let mut s = FlipStroke::new();
+            for p in pts {
+                let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
+                s.push_point(Point {
+                    pos: Vec2::new(l[0] as f32, l[1] as f32),
+                    width: SCRIBBLE_WIDTH_PX,
+                    opacity: 1.0,
+                    color: c,
+                });
+            }
+            d.strokes.push(s);
+        }
+        if d.strokes.is_empty() {
+            return None;
+        }
+        Some(pack_drawing(&d))
     }
 
     /// **Apply** — roda o corte LazyBrush sobre TODOS os rabiscos + a line-art e materializa

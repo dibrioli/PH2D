@@ -15,10 +15,6 @@ fn square() -> VecPath {
     }
 }
 
-fn ctx_of(p: &VecPath) -> FxCtx {
-    FxCtx::of(p)
-}
-
 fn spec(copies: f64, dx: f64, rot: f64) -> RepeatSpec {
     RepeatSpec {
         copies,
@@ -44,7 +40,7 @@ fn bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
 #[test]
 fn a_single_copy_is_a_byte_identical_no_op() {
     let p = square();
-    assert_eq!(repeat_path(&p, &spec(1.0, 50.0, 30.0), &ctx_of(&p)), p);
+    assert_eq!(repeat_path(&p, &spec(1.0, 50.0, 30.0)), p);
 }
 
 /// **Um passo que não move nada também é neutro** — `n` cópias exatamente sobrepostas seriam
@@ -52,14 +48,14 @@ fn a_single_copy_is_a_byte_identical_no_op() {
 #[test]
 fn copies_with_no_transform_are_still_a_no_op() {
     let p = square();
-    assert_eq!(repeat_path(&p, &spec(8.0, 0.0, 0.0), &ctx_of(&p)), p);
+    assert_eq!(repeat_path(&p, &spec(8.0, 0.0, 0.0)), p);
 }
 
 /// **`n` cópias produzem `n` contornos**, e o original continua a ser o primário.
 #[test]
 fn the_copies_land_as_contours_and_the_original_stays_primary() {
     let p = square();
-    let out = repeat_path(&p, &spec(4.0, 100.0, 0.0), &ctx_of(&p));
+    let out = repeat_path(&p, &spec(4.0, 100.0, 0.0));
     assert_eq!(out.contour_count(), 4, "1 original + 3 cópias");
     assert_eq!(out.verts, p.verts, "o original não pode ter-se mexido");
 }
@@ -69,9 +65,7 @@ fn the_copies_land_as_contours_and_the_original_stays_primary() {
 #[test]
 fn move_is_a_percentage_of_the_shape() {
     let p = square();
-    let ctx = ctx_of(&p);
-    assert!((ctx.ref_size - 40.0).abs() < 1e-9, "{}", ctx.ref_size);
-    let out = repeat_path(&p, &spec(4.0, 100.0, 0.0), &ctx);
+    let out = repeat_path(&p, &spec(4.0, 100.0, 0.0));
     let (lo, hi) = bbox(&out);
     assert!(
         (hi[0] - lo[0] - 160.0).abs() < 1e-6,
@@ -96,7 +90,7 @@ fn the_same_move_looks_the_same_at_any_scale() {
     };
     let ratio = |k: f64| -> f64 {
         let p = scaled(k);
-        let out = repeat_path(&p, &spec(5.0, 60.0, 0.0), &ctx_of(&p));
+        let out = repeat_path(&p, &spec(5.0, 60.0, 0.0));
         let (lo, hi) = bbox(&out);
         (hi[0] - lo[0]) / (40.0 * k)
     };
@@ -116,7 +110,7 @@ fn the_same_move_looks_the_same_at_any_scale() {
 #[test]
 fn the_transform_compounds_copy_by_copy() {
     let p = square();
-    let out = repeat_path(&p, &spec(4.0, 50.0, 0.0), &ctx_of(&p));
+    let out = repeat_path(&p, &spec(4.0, 50.0, 0.0));
     let x_of = |c: usize| out.contour(c).expect("contorno").0[0].anchor[0];
     let steps: Vec<f64> = (1..4).map(|c| x_of(c) - x_of(c - 1)).collect();
     for s in &steps {
@@ -143,7 +137,6 @@ fn rotation_turns_about_the_shapes_centre_not_the_world_origin() {
             move_y: 0.0,
             rotate: 180.0,
         },
-        &ctx_of(&p),
     );
     let (lo, hi) = bbox(&out);
     // Meia-volta em torno de (20,20) devolve o quadrado a si mesmo: a caixa não cresce.
@@ -168,7 +161,7 @@ fn a_compound_is_repeated_whole_hole_and_all() {
         closed: true,
     });
     p.fill_rule = FillRule::EvenOdd;
-    let out = repeat_path(&p, &spec(3.0, 150.0, 0.0), &ctx_of(&p));
+    let out = repeat_path(&p, &spec(3.0, 150.0, 0.0));
     assert_eq!(
         out.contour_count(),
         6,
@@ -197,6 +190,6 @@ fn a_compound_is_repeated_whole_hole_and_all() {
 #[test]
 fn the_copies_are_made_from_the_source_not_from_the_growing_output() {
     let p = square();
-    let out = repeat_path(&p, &spec(8.0, 30.0, 0.0), &ctx_of(&p));
+    let out = repeat_path(&p, &spec(8.0, 30.0, 0.0));
     assert_eq!(out.contour_count(), 8);
 }

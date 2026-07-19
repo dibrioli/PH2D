@@ -21,13 +21,38 @@
 //! múltiplo desenharia um arco de raio fixo. A espiral é o comportamento do AE, e é o que o
 //! artista espera quando mexe nos dois botões ao mesmo tempo.
 //!
-//! # As distâncias são PERCENTAGEM da forma
+//! # As distâncias são RELATIVAS e POR EIXO — o *Relative Offset* do Blender
 //!
-//! `Move X = 100` desloca cada cópia por uma largura-média da forma. É a mesma lei do `Size` do
-//! Zig Zag, e pela mesma razão: as formas da cena têm poucas unidades, então um slider em
-//! unidades de mundo é inútil (Enio, 2026-07-18).
+//! `Move X = 100` desloca cada cópia por exatamente uma **LARGURA** da forma; `Move Y = 100`,
+//! por uma **ALTURA**. Então `100` cola as cópias sem folga, `50` sobrepõe metade, `200` deixa
+//! um vão de uma forma. É o *Relative Offset Factor* do modificador **Array** do Blender, e a
+//! propriedade que o torna útil é essa: um número redondo produz um encaixe exato.
+//!
+//! ⚠️ **A 1ª versão dividia os dois eixos pela MÉDIA das dimensões** (`ref_size`), herdada do
+//! `Size` do Zig Zag. Numa forma quadrada ninguém nota; numa forma alta, `Move X = 100` desloca
+//! por `(w+h)/2` e as cópias ficam com folga ou sobrepostas — nunca encaixadas. Era o que
+//! impedia as *"combinações interessantes"* que o Enio pediu (2026-07-18).
+//!
+//! A média continua certa **para o Zig Zag**: uma amplitude é isotrópica, uma onda não tem eixo.
+//! Aqui a grandeza é *quanto mede a forma NAQUELA direção*, que é outra pergunta.
+//!
+//! # E por isso este efeito mede a sua ENTRADA, não o caminho autorado
+//!
+//! O [`FxCtx`] é medido UMA vez no caminho autorado, para que um botão signifique o mesmo
+//! independentemente da ordem da pilha. O Repeater diverge dessa lei **de propósito**: ladrilhar
+//! é uma operação sobre *a coisa que está a ser ladrilhada*, e essa é a entrada.
+//!
+//! É o que faz a GRELHA cair de graça, exatamente como no Blender — onde uma grelha é **dois
+//! modificadores Array empilhados**:
+//!
+//! ```text
+//! Repeater(Move X = 100, Copies = 5)   →  uma fileira de 5
+//! Repeater(Move Y = 100, Copies = 3)   →  três fileiras: uma grelha 5×3
+//! ```
+//!
+//! Com o `ctx` autorado, o 2º Repeater mediria a forma ORIGINAL e as fileiras sobrepor-se-iam
+//! quando o passo anterior não fosse em Y. Medindo a entrada, cada um ladrilha o que recebeu.
 
-use crate::effect::FxCtx;
 use crate::{Contour, VecPath, VecVertex};
 
 /// Abaixo disto uma distância é zero.
@@ -38,6 +63,38 @@ const MIN_COPIES: f64 = 1.0;
 
 /// Meia-volta em graus, para converter sem constante mágica.
 const HALF_TURN_DEG: f64 = 180.0;
+
+/// **A medida da forma que chega**: `(tamanho por eixo, centro)` da caixa de controle.
+///
+/// Um eixo DEGENERADO (uma reta horizontal não tem altura) cairia num deslocamento sempre nulo,
+/// e o botão daquele eixo ficaria morto — a mesma lacuna que o Blender tapa com o *Constant
+/// Offset*, que aqui não cabe no orçamento de parâmetros. Então um eixo sem extensão empresta a
+/// do outro: o controle continua vivo e o número continua a significar *"uma forma de
+/// distância"*.
+fn measure(path: &VecPath) -> ([f64; 2], [f64; 2]) {
+    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+    let mut seen = false;
+    for v in path.verts_all() {
+        for p in [v.anchor, v.in_handle, v.out_handle] {
+            seen = true;
+            for k in 0..2 {
+                lo[k] = lo[k].min(p[k]);
+                hi[k] = hi[k].max(p[k]);
+            }
+        }
+    }
+    if !seen {
+        return ([0.0; 2], [0.0; 2]);
+    }
+    let mut size = [hi[0] - lo[0], hi[1] - lo[1]];
+    let other = [size[1], size[0]];
+    for k in 0..2 {
+        if size[k] <= EPS {
+            size[k] = other[k];
+        }
+    }
+    (size, [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5])
+}
 
 /// **Os parâmetros do Repeater.** Neutro em `copies <= 1`.
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -113,15 +170,15 @@ impl Affine {
     }
 }
 
-/// O passo de uma cópia: rodar em torno de `center`, depois transladar.
-fn step_of(spec: &RepeatSpec, ctx: &FxCtx) -> Affine {
+/// O passo de uma cópia: rodar em torno do centro da entrada, depois transladar.
+fn step_of(spec: &RepeatSpec, size: [f64; 2], center: [f64; 2]) -> Affine {
     // `sin`/`cos` UMA vez por efeito, não por ponto — o custo do Repeater é o número de pontos
     // vezes o número de cópias, e não há razão para pagar transcendental em cada um.
     let rad = spec.rotate / HALF_TURN_DEG * core::f64::consts::PI;
     let (s, c) = rad.sin_cos();
-    let k = ctx.ref_size / 100.0;
-    let (dx, dy) = (spec.move_x * k, spec.move_y * k);
-    let (ox, oy) = (ctx.center[0], ctx.center[1]);
+    // POR EIXO: x pela largura, y pela altura. É o que faz `100` encaixar exatamente.
+    let (dx, dy) = (spec.move_x / 100.0 * size[0], spec.move_y / 100.0 * size[1]);
+    let (ox, oy) = (center[0], center[1]);
     // T(centro) ∘ R(θ) ∘ T(−centro), com a translação somada no fim.
     Affine {
         a: c,
@@ -152,14 +209,15 @@ fn map_vert(v: &VecVertex, m: Affine) -> VecVertex {
 /// A `fill_rule` do caminho é preservada — duas cópias sobrepostas de uma forma com buraco
 /// continuam a vazar pela regra que o artista escolheu.
 #[must_use]
-pub fn repeat_path(path: &VecPath, spec: &RepeatSpec, ctx: &FxCtx) -> VecPath {
+pub fn repeat_path(path: &VecPath, spec: &RepeatSpec) -> VecPath {
     let mut out = path.clone();
     if spec.is_neutral() {
         return out;
     }
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let copies = spec.copies.floor().max(MIN_COPIES) as usize;
-    let step = step_of(spec, ctx);
+    let (size, center) = measure(path);
+    let step = step_of(spec, size, center);
     // Um passo que não move NADA (sem distância e sem ângulo) empilharia `n` cópias exatamente
     // em cima da forma: invisível, e caro. É o neutro pela outra porta.
     if step.tx.abs() <= EPS

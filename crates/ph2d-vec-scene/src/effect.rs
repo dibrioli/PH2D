@@ -482,7 +482,10 @@ impl PathEffect {
             }
             // ⚠️ O Repeater NÃO passa pelo `apply_per_contour`: ele multiplica a forma inteira,
             // e um buraco copiado por conta própria deixaria de ser buraco.
-            Self::Repeat(spec) => out = crate::fx_repeat::repeat_path(path, spec, ctx),
+            // ⚠️ Sem `ctx`: o Repeater mede a ENTRADA dele, não o caminho autorado — ladrilhar
+            // é uma operação sobre a coisa ladrilhada, e é isso que faz Repeater∘Repeater dar
+            // uma grelha (o Blender constrói grelhas com dois modificadores Array empilhados).
+            Self::Repeat(spec) => out = crate::fx_repeat::repeat_path(path, spec),
             Self::Twist(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
                     crate::fx_warp::twist_contour(v, c, spec, ctx)

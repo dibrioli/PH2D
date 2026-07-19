@@ -50,19 +50,27 @@ fn both_neutral_points_are_byte_identical_no_ops() {
 fn the_twist_turns_without_changing_any_radius() {
     let p = square();
     let c = ctx();
-    let before = radii(&p.verts, &c);
+    // ⚠️ Emparelhar por ÍNDICE morreu quando o Twist passou a SUBDIVIDIR (um campo não-afim
+    // tem de o fazer): a saída tem mais âncoras do que a entrada. O oráculo mede o ALCANCE dos
+    // raios, que é invariante sob subdivisão — e é o que a aparência realmente promete.
+    let span = |v: &[VecVertex]| -> (f64, f64) {
+        radii(v, &c)
+            .into_iter()
+            .fold((f64::MAX, f64::MIN), |(lo, hi), r| (lo.min(r), hi.max(r)))
+    };
+    let (_, hi0) = span(&p.verts);
     let out = twist_contour(&p.verts, true, &TwistSpec { angle: 90.0 }, &c).0;
-    let after = radii(&out, &c);
-    for (i, (a, b)) in before.iter().zip(after.iter()).enumerate() {
-        assert!(
-            (a - b).abs() < 1e-9,
-            "o vértice {i} mudou de raio: {a} -> {b}. Girar não pode mexer na distância."
-        );
-    }
+    let (_, hi1) = span(&out);
     assert!(
-        out.iter()
-            .zip(&p.verts)
-            .any(|(o, q)| (o.anchor[0] - q.anchor[0]).hypot(o.anchor[1] - q.anchor[1]) > 1.0),
+        (hi1 - hi0).abs() < 1e-9,
+        "o ponto mais distante mudou de raio: {hi0} -> {hi1}. Girar não mexe na distância."
+    );
+    assert!(
+        out.iter().any(|o| {
+            p.verts
+                .iter()
+                .all(|q| (o.anchor[0] - q.anchor[0]).hypot(o.anchor[1] - q.anchor[1]) > 1.0)
+        }),
         "e alguma coisa tem de se ter MEXIDO"
     );
 }
@@ -88,16 +96,24 @@ fn the_twists_force_grows_with_distance() {
         VecVertex::corner([c.center[0] + 15.0, c.center[1]]),
     ];
     let out = twist_contour(&pts, false, &TwistSpec { angle: 60.0 }, &c).0;
-    let turned = |i: usize| -> f64 {
-        let (dx, dy) = (
-            out[i].anchor[0] - c.center[0],
-            out[i].anchor[1] - c.center[1],
-        );
-        dy.atan2(dx)
+    // O Twist subdivide, então não há correspondência 1-a-1 — mas ele PRESERVA o raio, e os
+    // raios 5 e 15 são únicos nesta fixture. Procura-se por raio, não por índice.
+    let turned = |want: f64| -> f64 {
+        let dist = |q: &VecVertex| {
+            ((q.anchor[0] - c.center[0]).hypot(q.anchor[1] - c.center[1]) - want).abs()
+        };
+        let v = out
+            .iter()
+            .min_by(|a, b| dist(a).total_cmp(&dist(b)))
+            .expect("saída não vazia");
+        (v.anchor[1] - c.center[1]).atan2(v.anchor[0] - c.center[0])
     };
-    let d0 = (out[0].anchor[0] - c.center[0]).hypot(out[0].anchor[1] - c.center[1]);
+    let d0 = out
+        .iter()
+        .map(|v| (v.anchor[0] - c.center[0]).hypot(v.anchor[1] - c.center[1]))
+        .fold(f64::MAX, f64::min);
     assert!(d0 < 1e-9, "o ponto no centro andou {d0}");
-    let (near, far) = (turned(1), turned(2));
+    let (near, far) = (turned(5.0), turned(15.0));
     assert!(near > 1e-6, "o ponto de dentro não girou nada ({near} rad)");
     assert!(
         (far / near - 3.0).abs() < 1e-6,
@@ -106,35 +122,58 @@ fn the_twists_force_grows_with_distance() {
     );
 }
 
-/// **O Bloat escala o raio pela percentagem pedida**, e o sinal decide a direção.
+/// **O Bloat move âncoras e curva em sentidos OPOSTOS** — é isso, e só isso, que o separa de
+/// uma escala.
+///
+/// ⚠️ A 1ª versão escalava âncoras e alças pelo MESMO fator, e o gate media exatamente isso:
+/// verde sobre uma escala uniforme, que é o gizmo e não um efeito (Enio, 2026-07-18:
+/// *"só aumenta e reduz a escala do objeto"*). O oráculo tem de comparar os DOIS.
 #[test]
-fn the_bloat_scales_every_radius_by_the_amount() {
-    let p = square();
+fn the_bloat_moves_anchors_and_handles_in_opposite_directions() {
     let c = ctx();
-    let before = radii(&p.verts, &c);
-    for (amount, k) in [(100.0, 2.0), (-50.0, 0.5)] {
-        let out = bloat_contour(&p.verts, true, &BloatSpec { amount }, &c).0;
-        for (a, b) in before.iter().zip(radii(&out, &c).iter()) {
-            assert!(
-                (b - a * k).abs() < 1e-9,
-                "com {amount}% o raio {a} devia virar {}, deu {b}",
-                a * k
-            );
-        }
-    }
+    // Um vértice com alça DESTACADA da âncora, senão não há como ver os dois fatores.
+    let v = VecVertex {
+        anchor: [c.center[0] + 10.0, c.center[1]],
+        in_handle: [c.center[0] + 10.0, c.center[1] - 4.0],
+        out_handle: [c.center[0] + 10.0, c.center[1] + 4.0],
+        kind: crate::VertexKind::Smooth,
+        corner_radius: 0.0,
+    };
+    let r = |p: [f64; 2]| (p[0] - c.center[0]).hypot(p[1] - c.center[1]);
+    let (a0, h0) = (r(v.anchor), r(v.out_handle));
+
+    let out = bloat_contour(
+        std::slice::from_ref(&v),
+        false,
+        &BloatSpec { amount: 50.0 },
+        &c,
+    )
+    .0;
+    let (a1, h1) = (r(out[0].anchor), r(out[0].out_handle));
+    assert!(
+        a1 < a0 && h1 > h0,
+        "bloat: a âncora tem de ir para DENTRO ({a0} -> {a1}) e a alça para FORA ({h0} -> {h1}).          Os dois no mesmo sentido são uma escala."
+    );
+
+    let out = bloat_contour(&[v], false, &BloatSpec { amount: -50.0 }, &c).0;
+    let (a2, h2) = (r(out[0].anchor), r(out[0].out_handle));
+    assert!(
+        a2 > a0 && h2 < h0,
+        "pucker: o inverso — âncora para fora ({a0} -> {a2}), alça para dentro ({h0} -> {h2})"
+    );
 }
 
-/// **O raio de quina do Bloat escala junto** — ele é um comprimento LOCAL, e o campo aqui é uma
-/// escala uniforme. Sem isto uma quina arredondada mudaria de proporção ao inflar a forma.
+/// **O raio de quina segue a ÂNCORA**, não a alça: ele é um comprimento ancorado nela, e os dois
+/// fatores divergem.
 #[test]
-fn the_bloat_scales_the_corner_radius_too() {
+fn the_bloat_scales_the_corner_radius_with_the_anchor() {
     let c = ctx();
-    let mut v = VecVertex::corner([40.0, 40.0]);
+    let mut v = VecVertex::corner([c.center[0] + 20.0, c.center[1]]);
     v.corner_radius = 6.0;
-    let out = bloat_contour(&[v], false, &BloatSpec { amount: 100.0 }, &c).0;
+    let out = bloat_contour(&[v], false, &BloatSpec { amount: -100.0 }, &c).0;
     assert!(
         (out[0].corner_radius - 12.0).abs() < 1e-9,
-        "o raio devia duplicar com a forma, deu {}",
+        "com as âncoras a duplicar, o raio devia duplicar; deu {}",
         out[0].corner_radius
     );
 }

@@ -64,7 +64,12 @@ pub(super) fn anchor_points(
 ) -> ([f32; 2], [f32; 2]) {
     (
         anchor,
-        if j.kind.is_hinge() {
+        // A shared-point joint (Pin OR Weld) anchors both bodies at the same
+        // world point — two bodies in one place is what a pin (and a weld) is.
+        // A two-ended one (Spring/Rope) anchors body B at its own centre so the
+        // ends are apart. `is_hinge` was wrong here the moment Weld arrived: a
+        // weld shares a point without being a hinge.
+        if j.kind.shares_a_point() {
             anchor
         } else {
             body_b_centre
@@ -80,6 +85,7 @@ pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2])
             JointKind::Pin => ph2d_physics::JointKind::Pin,
             JointKind::Spring => ph2d_physics::JointKind::Spring,
             JointKind::Rope => ph2d_physics::JointKind::Rope,
+            JointKind::Weld => ph2d_physics::JointKind::Weld,
         },
         anchor_a: local_a,
         anchor_b: local_b,

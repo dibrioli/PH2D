@@ -19,7 +19,7 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 3] = ["Pin", "Spring", "Rope"];
+const KIND_LABELS: [&str; 4] = ["Pin", "Spring", "Rope", "Weld"];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
@@ -30,6 +30,10 @@ const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
 const KIND_PIN: u8 = 0;
 /// Tag of the Spring kind.
 const KIND_SPRING: u8 = 1;
+/// Tag of the Rope kind. Named so the Rope branch is explicit and a Weld
+/// (tag 3) — which has no parameter rows at all — falls through to nothing
+/// instead of inheriting the Rope's "Max Length" from a bare `else`.
+const KIND_ROPE: u8 = 2;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_joint_section(
@@ -201,7 +205,7 @@ pub(crate) fn paint_joint_section(
                 id,
             );
         }
-    } else {
+    } else if info.kind_tag == KIND_ROPE {
         yy = num_row(
             scene,
             text_system,

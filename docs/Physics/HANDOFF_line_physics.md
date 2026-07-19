@@ -59,6 +59,7 @@
 | **W4 — Bake-to-timeline** | ✅ smoke aprovado | — | acopla `ph2d-anim` (outra linha) |
 | **W6 — A escala alcança o collider** | ✅ **INTEGRÁVEL** — smokada pelos gates (2026-07-19) | ver §W6 | a única CORREÇÃO do cardápio; `ShapeDesc::Ellipse`; **zero bump de schema** |
 | **W7 — Sensores / triggers** | ✅ **INTEGRÁVEL** — smoke `=10` (2026-07-19) | ver §W7 | o primitivo de trigger (item B); `Collider.is_sensor`; `PROJECT_SCHEMA 26→27`; o **sinal de gameplay** fica pro Enio |
+| **Weld — `FixedJoint`** | ✅ **INTEGRÁVEL** — smoke `=11` (2026-07-19) | ver §Weld | o 5º joint (polimento C do W3); trava rígido; `PROJECT_SCHEMA 27→28` |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -1861,3 +1862,46 @@ bloqueada por uma plataforma sólida × bola atravessa um sensor idêntico que *
 **Aberto (a próxima camada, decisão do Enio):** o **sinal de gameplay** — colisão→ação (um
 `Marker` da timeline / um callback do `ph2d-script`), cross-line, precisa do desenho do
 consumidor. O primitivo (detecção + estado consultável + viz) é o pré-requisito, e está pronto.
+
+---
+
+## §Weld — o 5º joint (`FixedJoint`, 2026-07-19, smoke `=11`)
+
+Polimento **C** do cardápio (o W3 deixou o Weld fora — *"~4 linhas e um chip,
+deliberadamente FORA: nada no smoke o exercita, e um 4º chip que a wave não fuma
+é chip shipado às cegas"*). Agora ele é fumado (`=11`).
+
+**O quê:** trava dois corpos **rigidamente** no ponto de âncora — sem translação
+NEM rotação relativa (rapier `FixedJoint`). Um Pin com a rotação congelada.
+
+**Decisões:**
+- Variant `Weld` apendado nos DOIS `JointKind` (ecs component + physics plain-data),
+  discriminante **3** (append-only; o gate `the_kind_discriminants_are_pinned_in_order`
+  o pina). `PROJECT_SCHEMA` **27 → 28** (tripla-pin `(28, 8, 13)`) — apender variant
+  não move os índices anteriores, o bump é pro caminho INVERSO (um save com Weld
+  aberto por um binário v27 morre como erro de VERSÃO, não como postcard perdido no
+  discriminante 3; mesmo raciocínio do v24 do vetor).
+- ⚠️ **A âncora deixou de key-ar em `is_hinge()`.** Um Weld **compartilha um ponto**
+  como o Pin, mas **não é hinge** — então `has_length()` não podia mais ser
+  `!is_hinge()` (senão o Weld ganhava uma length que não tem), e o anchor policy
+  não podia mais ler `is_hinge()` (senão o Weld anchorava no centro de B como um
+  Spring). Nasceu **`JointKind::shares_a_point()`** (Pin | Weld) — a pergunta que o
+  anchor policy de fato tem.
+- **Sem params:** o §12 recusa toda linha de param (o `else` de Rope virou
+  `else if KIND_ROPE`, senão o Weld herdava "Max Length"). Chip "Weld" no seletor
+  (`INSP_JOINT_KIND` [3]→[4] + label; populate/event/seam de graça).
+
+**Gates:** `ph2d-physics-ecs/tests/weld.rs::a_weld_holds_the_body_rigid_where_a_pin_would_swing`
+(behavioral, com o Pin como CONTROLE — prova que a cena não está congelada) ·
+discriminante pinado + `has_length`/`shares_a_point` (unit em `joint.rs`) ·
+`seam_joint::each_kind_paints_only_the_rows_it_uses` estendido a `0..4` (o Weld
+pinta 0 linhas de param) + `the_kind_chips_each_pick_their_own_kind` (auto). **Mutação:**
+Weld→Revolute em `spawn_joint` deixa a prancha balançar (o gate sangra).
+
+**Smoke `=11`** (`physics_smoke_rigs.rs::physics_smoke_weld`): duas barras, cada uma
+junta a um hook estático pela ponta esquerda — a **soldada** fica horizontal (rígida),
+a **pinada** balança como pêndulo, lado a lado.
+
+**Aberto (fora de propósito, C do cardápio):** motor em mola/corda · re-escolher os
+corpos de um joint (picker de entidade) · break force no Weld (um Weld que quebra sob
+carga — nada pede ainda).

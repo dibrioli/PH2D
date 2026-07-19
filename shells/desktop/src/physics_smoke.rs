@@ -13,6 +13,7 @@
 //! | `8` | W5   | PARENTED bodies: the collider is where the sprite is, at any depth |
 //! | `9` | W6   | SCALED bodies: uniform circle, non-uniform ELLIPSE, inherited parent scale |
 //! | `10`| W7   | SENSOR (trigger): a ball passes through a sensor zone that lights up |
+//! | `11`| Weld | a bar WELDED to a hook stays rigid; a PINNED bar swings (side by side) |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -72,6 +73,7 @@ impl crate::App {
             "8" => self.physics_smoke_parented(),
             "9" => self.physics_smoke_scale(),
             "10" => self.physics_smoke_sensor(),
+            "11" => self.physics_smoke_weld(),
             _ => self.physics_smoke_drop(),
         }
 

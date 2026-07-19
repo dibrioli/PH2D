@@ -10,7 +10,7 @@
 use crate::physics_smoke::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};
 use ph2d_render::Sprite;
 
 /// Scene 8's rigs: `(x, extra depth, rotation, label)`.
@@ -392,6 +392,73 @@ impl crate::App {
              at each pedestal's height) in the viewport. Its ball follows, keeps its
              collider, and still collides -- the pose is composed every frame, not
              baked at spawn."
+        );
+    }
+
+    /// **Scene 11 (Weld).** A Weld locks two bodies rigidly; a Pin lets them
+    /// swing. Two lanes, same rig: a bar joined to a static hook at its LEFT
+    /// end. On the LEFT it is a **Weld** — the bar stays horizontal, held rigid.
+    /// On the RIGHT it is a **Pin** — the bar swings down like a pendulum.
+    ///
+    /// The joint marks (amber) sit on both anchors. The difference is the whole
+    /// point: a weld that quietly became a revolute joint would let the left bar
+    /// swing too.
+    pub(crate) fn physics_smoke_weld(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A lane: a static hook at `hook_x`, a dynamic bar whose LEFT end is at
+        // the hook (centre 0.5 m to the right), and a joint of `kind` anchored
+        // at the hook. The bar hue marks weld (teal) vs pin (orange).
+        let mut lane = |hook_x: f32, kind: JointKind, tag: &str, hue: [f32; 4]| {
+            let hook = format!("{tag}Hook");
+            let bar = format!("{tag}Bar");
+            world.spawn((
+                Name::new(hook.clone()),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.06 },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(hook_x, 4.0)),
+            ));
+            world.spawn((
+                Name::new(bar.clone()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.5,
+                        half_y: 0.1,
+                    },
+                    ..Collider::default()
+                },
+                Sprite::atlas(0, [1.0, 0.2], hue),
+                Transform::from_translation(Vec2::new(hook_x + 0.5, 4.0)),
+            ));
+            world.spawn((
+                Name::new(format!("{tag}Joint")),
+                PhysicsJoint {
+                    body_a: stable_name_id(&hook),
+                    body_b: stable_name_id(&bar),
+                    kind,
+                    ..PhysicsJoint::default()
+                },
+                Transform::from_translation(Vec2::new(hook_x, 4.0)),
+            ));
+        };
+        lane(-2.5, JointKind::Weld, "Weld", [0.30, 0.80, 0.75, 1.0]);
+        lane(1.5, JointKind::Pin, "Pin", [1.0, 0.6, 0.25, 1.0]);
+
+        eprintln!(
+            "[physics-smoke 11] Two bars, each joined to a static hook at its LEFT end. \
+             LEFT (Weld): the bar stays HORIZONTAL, locked rigid. RIGHT (Pin): the bar SWINGS \
+             down like a pendulum. A weld that became a revolute joint would let the left bar \
+             swing too."
         );
     }
 }

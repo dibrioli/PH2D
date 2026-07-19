@@ -34,7 +34,8 @@
 //! `ImpulseJointSet`, so a scrub backwards carries joints with no work at all.
 
 use rapier2d::dynamics::{
-    ImpulseJointHandle, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
+    FixedJointBuilder, ImpulseJointHandle, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder,
+    SpringJointBuilder,
 };
 use rapier2d::na::{Isometry2, Point2, Vector2};
 
@@ -80,6 +81,9 @@ pub enum JointKind {
     /// **Rope** — the anchors may come as close as they like but never further
     /// apart than `max_length`. Slack below it, rigid at it.
     Rope,
+    /// **Weld** — the two bodies are locked rigidly at the anchor: no relative
+    /// translation OR rotation. rapier's `FixedJoint`.
+    Weld,
 }
 
 /// A motor driving a [`JointKind::Pin`].
@@ -244,6 +248,12 @@ impl PhysicsWorld {
                     .into()
             }
             JointKind::Rope => RopeJointBuilder::new(desc.max_length)
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b)
+                .into(),
+            // A rigid lock: the anchors coincide (shared-point policy) and no
+            // relative rotation is allowed. No tunable parameters.
+            JointKind::Weld => FixedJointBuilder::new()
                 .local_anchor1(anchor_a)
                 .local_anchor2(anchor_b)
                 .into(),

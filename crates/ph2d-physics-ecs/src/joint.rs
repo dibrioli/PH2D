@@ -50,6 +50,11 @@ pub enum JointKind {
     /// The anchors may come as close as they like but never further apart than
     /// [`PhysicsJoint::max_length`].
     Rope,
+    /// **Weld** — the two bodies are locked rigidly together at the anchor:
+    /// no relative motion, no rotation. A pin with its rotation frozen. Useful
+    /// for compound bodies and (later) breakable structures. It shares a point
+    /// like a pin but has no motor, no limits, no length.
+    Weld,
 }
 
 impl JointKind {
@@ -64,10 +69,20 @@ impl JointKind {
         matches!(self, JointKind::Pin)
     }
 
-    /// Does this kind have a length the artist tunes? A pin does not — its
-    /// length is zero by definition (the two anchors are the same place).
+    /// Does this kind have a length the artist tunes? Only Spring and Rope do —
+    /// a Pin's length is zero (the anchors coincide) and a Weld's is too (it is
+    /// rigid). **Not** `!is_hinge()`: a Weld is not a hinge but still has no
+    /// length, so the two questions had to stop sharing an answer.
     pub fn has_length(self) -> bool {
-        !self.is_hinge()
+        matches!(self, JointKind::Spring | JointKind::Rope)
+    }
+
+    /// Do the two bodies share one point (a Pin or a Weld), rather than have two
+    /// separate ends (a Spring or a Rope)? The anchor policy reads this: a
+    /// shared-point joint anchors both bodies at the same world point, a
+    /// two-ended one anchors body B at its own centre.
+    pub fn shares_a_point(self) -> bool {
+        !self.has_length()
     }
 }
 
@@ -228,6 +243,13 @@ mod tests {
             assert!(!k.is_hinge(), "{k:?} is not a hinge");
             assert!(k.has_length(), "{k:?} has a length");
         }
+        // A Weld is neither a hinge nor length-tuned — the case that broke the
+        // old `has_length == !is_hinge` shortcut — but it DOES share a point.
+        assert!(!JointKind::Weld.is_hinge());
+        assert!(!JointKind::Weld.has_length());
+        assert!(JointKind::Weld.shares_a_point());
+        assert!(JointKind::Pin.shares_a_point());
+        assert!(!JointKind::Spring.shares_a_point());
     }
 
     /// `JointKind` goes into the project file, where postcard encodes the
@@ -235,7 +257,12 @@ mod tests {
     /// anywhere but the end — silently reads every saved Spring as a Rope.
     #[test]
     fn the_kind_discriminants_are_pinned_in_order() {
-        let all = [JointKind::Pin, JointKind::Spring, JointKind::Rope];
+        let all = [
+            JointKind::Pin,
+            JointKind::Spring,
+            JointKind::Rope,
+            JointKind::Weld,
+        ];
         for (i, k) in all.iter().enumerate() {
             let bytes = postcard::to_allocvec(k).expect("encode");
             assert_eq!(

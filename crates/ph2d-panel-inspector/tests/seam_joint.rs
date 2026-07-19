@@ -229,7 +229,10 @@ fn each_kind_paints_only_the_rows_it_uses() {
     ];
     const ROPE_ONLY: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_MAX_LENGTH];
 
-    for kind in 0u8..3 {
+    // 0..4 includes Weld (kind 3), which owns NO parameter rows: it never
+    // equals an owner below, so every PIN/SPRING/ROPE row must go unpainted for
+    // it. A Weld that leaked a param row (a length, a motor) would fail here.
+    for kind in 0u8..4 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));

@@ -443,10 +443,11 @@ pub const INSP_JOINT_LIMITS_GROUP: NodeId = hash_node_id("insp_joint_limits_grou
 pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group");
 
 /// Pin · Spring · Rope. Indexed by the `JointKind` tag the snapshot carries.
-pub const INSP_JOINT_KIND: [NodeId; 3] = [
+pub const INSP_JOINT_KIND: [NodeId; 4] = [
     hash_node_id("insp_joint_kind_pin"),
     hash_node_id("insp_joint_kind_spring"),
     hash_node_id("insp_joint_kind_rope"),
+    hash_node_id("insp_joint_kind_weld"),
 ];
 
 /// Off · On, for the two Pin-only switches. Segmented rather than a checkbox

@@ -5,8 +5,9 @@
 >
 > ⚠️ **O nome do arquivo diz só "scale_collider" por acidente histórico — este handoff cobre a
 > JORNADA REABERTA INTEIRA:** **W6** (a escala alcança o collider, §1–§7) **+ W7 (sensores /
-> triggers, §8)**, e mais o que o Enio pedir antes da ordem de integração. Estado por-wave detalhado:
-> [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W6/§W7. Resumo de produto: `CLAUDE.md` §5.
+> triggers, §8) + Weld (`FixedJoint`, §9)**, e mais o que o Enio pedir antes da ordem de
+> integração. Estado por-wave detalhado: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)
+> §W6/§W7/§Weld. Resumo de produto: `CLAUDE.md` §5.
 
 ## §1 — O que a wave faz (uma frase)
 
@@ -156,3 +157,38 @@ e o solver reporta os overlaps (`bridge/triggers.rs`), o overlay acende, o Inspe
 estado é consultável (`bodies_inside`). Foundational tocado: `ph2d-physics` (aditivo). Contratos:
 nenhum. `PROJECT_SCHEMA 26→27` (tripla-pin `(27,8,13)`). 10 gates, 3 mutações. Smoke `=10`. O sinal
 de gameplay é a próxima camada, cross-line, aguardando o Enio.*
+
+---
+
+# §9 — Weld (`FixedJoint`) — o 5º joint
+
+Polimento **C** do cardápio (o W3 deixou o Weld fora por não ter smoke). Detalhe:
+[`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §Weld.
+
+**O que faz:** trava dois corpos **rigidamente** no ponto de âncora (sem translação nem rotação
+relativa; rapier `FixedJoint`). Um Pin com a rotação congelada.
+
+**Isolamento / riscos de merge:**
+- **Contratos congelados: NENHUM.** **Foundational tocado:** `ph2d-physics` (aditivo: variant
+  `JointKind::Weld` no FINAL + o arm no `spawn_joint`). **`ph2d-physics-ecs`** (variant + mapeamento
+  + o anchor policy passou a ler `shares_a_point()`) · **editor-core/panel** (chip "Weld") · shell
+  (mapeamento tag↔kind, smoke, schema).
+- ⚠️ **`PROJECT_SCHEMA` 28** (27 do W7 + 1 do Weld). **Tripla-pin `(28, 8, 13)`.** ⚠️ **O número se
+  CONTA** — se outra linha bumpar antes da integração, re-conte
+  ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). Apender um VARIANT a um enum
+  serializado bumpa pelo caminho inverso (v24 do vetor é o precedente); um `stable_type_id` novo
+  (componente novo) não bumparia — mas aqui é variant, não componente.
+- **C9:** intacto (o Weld não entra no fixture do c9).
+
+**Arquivos:** `ph2d-physics/src/world/joints.rs` (variant + `FixedJointBuilder` + arm) ·
+`ph2d-physics-ecs/src/joint.rs` (variant + `has_length` explícito + `shares_a_point` + testes) ·
+`ph2d-physics-ecs/src/bridge/joints.rs` (anchor policy + mapeamento) · `ph2d-editor-core/src/ids/inspector.rs`
+(`INSP_JOINT_KIND` [3]→[4]) · `ph2d-panel-inspector/src/sections/joint.rs` (label + `KIND_ROPE` gate) ·
+`ph2d-panel-inspector/tests/seam_joint.rs` (sweep 0..4) · `shells/desktop/src/render_loop/inspector_joint.rs`
+(tag↔kind) · `physics_smoke_rigs.rs` (`=11`) · `physics_smoke.rs` (dispatch/tabela) · `project.rs`
+(schema 28) · `project_tests.rs` (tripla-pin). Teste: `ph2d-physics-ecs/tests/weld.rs`.
+
+**Gates (ver §Weld).** Verde local: 34 bins de física, joint/panel/project, clippy, machete, fmt,
+LOC-cap, node_id_collisions.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=11`** (barra soldada horizontal × barra pinada balança).

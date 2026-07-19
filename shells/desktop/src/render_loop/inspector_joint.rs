@@ -23,6 +23,7 @@ fn kind_of(tag: u8) -> JointKind {
     match tag {
         1 => JointKind::Spring,
         2 => JointKind::Rope,
+        3 => JointKind::Weld,
         _ => JointKind::Pin,
     }
 }
@@ -32,6 +33,7 @@ fn tag_of(kind: JointKind) -> u8 {
         JointKind::Pin => 0,
         JointKind::Spring => 1,
         JointKind::Rope => 2,
+        JointKind::Weld => 3,
     }
 }
 

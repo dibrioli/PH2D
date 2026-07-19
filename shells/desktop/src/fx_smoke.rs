@@ -12,12 +12,15 @@
 //! - **A estrela mostra a JANELA.** Trim fixo de um quarto do caminho, com `offset` a girar —
 //!   o traço corre à volta da forma e **atravessa a emenda** sem tropeçar.
 //!
-//! O que NÃO há ainda é a seção "Effects" no painel: a pilha é dado de documento e esta cena
-//! escreve-a por código. Ver o handoff — a UI é o passo seguinte, e a costura de painel é a
-//! parte que a DIRETIVA manda não improvisar.
+//! A seção "Effects" no painel JÁ existe (o card por efeito + o menu Add). O nível **14** é a
+//! cena do **Apply / Convert** (2026-07-19): uma forma com um efeito ATIVO, ESTÁTICA e
+//! selecionada, para se clicar o botão **Apply Effects** (assa a pilha) ou **Convert to Curves**
+//! (que agora também assa os efeitos). Sem animação — de propósito: o nível 13 reescreve
+//! `effects` a cada frame, e por cima disso um bake nunca persistiria.
 
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::fx_trim::TrimSpec;
+use ph2d_vec_scene::fx_zigzag::ZigZagSpec;
 use ph2d_vec_scene::{Rgba8, ShapeKind, StrokeSpec, VecPathId};
 
 use crate::build_smoke::shape;
@@ -58,14 +61,63 @@ const STROKE_W: f64 = 0.06;
 static IDS: std::sync::Mutex<Vec<VecPathId>> = std::sync::Mutex::new(Vec::new());
 
 pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
-    if level != 13 {
-        return;
-    }
-    match f {
-        3 => build(app),
-        _ if f > 3 => animate(app, f - 3),
+    match level {
+        // A pilha ANIMADA (draw-on + janela a girar).
+        13 => match f {
+            3 => build(app),
+            _ if f > 3 => animate(app, f - 3),
+            _ => {}
+        },
+        // A cena do **Apply / Convert** — estática, e SELECIONA no frame 4 (depois de o `sync`
+        // ter dado entidade à forma), para o smoke ser um clique só.
+        14 => match f {
+            3 => build_apply(app),
+            4 => select_the_shape(app),
+            _ => {}
+        },
         _ => {}
     }
+}
+
+/// A cena do **Apply / Convert** (`PH2D_BUILD_SMOKE=14`): UMA elipse com um Zig Zag ATIVO, a
+/// borda visivelmente rugosa. Estática de propósito — o bake tem de PERSISTIR, e o nível 13
+/// reescreveria os `effects` a cada frame.
+fn build_apply(app: &mut crate::App) {
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let scene = &mut gfx.vec_scene;
+    let p = shape(ShapeKind::Ellipse, [-1.6, -1.6], [1.6, 1.6], &[], [90, 150, 220]);
+    let id = scene.push_path(p);
+    // Zig Zag ATIVO: amplitude e cristas em número que a borda mostra sem dúvida. `amplitude`
+    // é PERCENTAGEM da forma (100 = média de largura/altura), então 12 desenha o mesmo em
+    // qualquer escala.
+    if let Some(p) = scene.path_mut(id) {
+        p.effects = vec![FxEntry::new(PathEffect::ZigZag(ZigZagSpec {
+            amplitude: 12.0,
+            ridges: 24.0,
+            smooth: false,
+            rough_seed: None,
+        }))];
+    }
+}
+
+/// Seleciona a forma (a única da cena) — assim a seção **Effects** publica o alvo e oferece o
+/// card + **Apply Effects**, e o **Convert to Curves** fica habilitado.
+fn select_the_shape(app: &mut crate::App) {
+    let ids: Vec<VecPathId> = app
+        .gfx
+        .as_ref()
+        .map(|g| g.vec_scene.paths().iter().map(|p| p.id).collect())
+        .unwrap_or_default();
+    app.vec_pen.select_many(&ids);
+    eprintln!(
+        "[smoke] apply/convert: 1 elipse com Zig Zag ATIVO, selecionada. Na seção **Effects** \
+         clique **Apply Effects** (assa a pilha na geometria); ou **Convert to Curves** (agora \
+         também assa efeitos). O card some e a borda rugosa vira curva editável — entre no modo \
+         **Node** e veja as âncoras reais."
+    );
 }
 
 /// Monta a cena: elipse + estrela, ambas **só com traço** — um Trim revela o TRAÇO, e um

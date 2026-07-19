@@ -609,6 +609,12 @@ pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.toggle"))
 }
 
+/// **Apply** — assa a pilha inteira no seu resultado cozido (`VecScene::bake_effects`) e a
+/// esvazia: o *Expand Appearance* do Illustrator. É um botão de SEÇÃO (um por painel, não
+/// por-linha), por isso `const` e não `fn`. Só é pintado quando há pilha a assar; o mesmo bake
+/// alimenta o "Convert to Curves" sobre um caminho com efeitos.
+pub const VECTOR_FX_APPLY: NodeId = hash_node_id("vector.fx.apply");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).

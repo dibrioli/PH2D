@@ -392,3 +392,87 @@ fn the_engine_and_the_panel_agree_on_the_parameter_ceiling() {
          vector.rs). O menor dos dois é quantos o artista consegue tocar."
     );
 }
+
+/// Um quadrado com um Trim ATIVO (revela só o 1º quarto do contorno) — a cena mínima em que
+/// assar de facto MUDA a geometria.
+fn scene_with_active_trim() -> (crate::VecScene, crate::VecPathId) {
+    let mut scene = crate::VecScene::new();
+    let id = scene.push_path(square());
+    let p = scene.path_mut(id).unwrap();
+    p.effects = vec![FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec {
+        start: 0.0,
+        end: 0.25,
+        offset: 0.0,
+    }))];
+    (scene, id)
+}
+
+/// **Apply / bake:** assar a pilha congela a aparência (`verts` = cozido), esvazia a pilha, e o
+/// que se via não muda — é o *Expand Appearance*, e a base do botão **Apply** e do **Convert to
+/// Curves** sobre efeitos.
+#[test]
+fn baking_effects_freezes_the_cooked_geometry_and_clears_the_stack() {
+    let (mut scene, id) = scene_with_active_trim();
+    // O que o mundo VÊ antes de assar (o quarto revelado — mais curto que o quadrado inteiro).
+    let cooked = scene.path(id).unwrap().cooked().into_owned();
+    assert!(
+        len_of(&cooked) < len_of(&square()) * 0.5,
+        "pré-condição: o Trim tem de encurtar de facto, senão o teste não prova nada"
+    );
+
+    assert!(scene.bake_effects(id), "havia efeito ativo a assar");
+    let p = scene.path(id).unwrap();
+    assert!(p.effects.is_empty(), "a pilha tem de sair vazia depois do bake");
+    assert_eq!(p.verts, cooked.verts, "a geometria autorada vira a cozida");
+    assert_eq!(p.id, id, "o id sobrevive ao bake — assar não recria o objeto");
+    // A aparência não muda: cozinhar o assado é a identidade (a pilha já foi consumida).
+    assert_eq!(
+        p.cooked().into_owned().verts,
+        cooked.verts,
+        "assar não pode alterar o que o mundo desenha"
+    );
+}
+
+/// **O bake preserva `id`, `fill` e `stroke`** — o que o `cooked()` carrega por clonagem. Um
+/// bake que perdesse a cor seria "o efeito sumiu junto com o desenho" do ponto de vista do artista.
+#[test]
+fn baking_effects_preserves_identity_and_style() {
+    let (mut scene, id) = scene_with_active_trim();
+    let fill = Some(crate::Paint::Solid(crate::Rgba8::new(10, 20, 30, 255)));
+    let stroke = Some(crate::StrokeSpec::new(crate::Rgba8::new(9, 8, 7, 255), 3.0));
+    {
+        let p = scene.path_mut(id).unwrap();
+        p.fill = fill.clone();
+        p.stroke = stroke;
+    }
+    assert!(scene.bake_effects(id));
+    let p = scene.path(id).unwrap();
+    assert_eq!(p.fill, fill, "o fill tem de sobreviver ao bake");
+    assert_eq!(p.stroke, stroke, "o stroke tem de sobreviver ao bake");
+}
+
+/// **Idempotente, e recusa a pilha vazia.** Assar o resultado de volta é um no-op (`false`), e
+/// um caminho sem efeito nenhum não é tocado — é o que faz o botão "Apply" não ser oferecido
+/// onde não há o que assar, sem depender de o painel ter razão.
+#[test]
+fn baking_an_empty_stack_is_a_refused_no_op() {
+    let (mut scene, id) = scene_with_active_trim();
+    let baked_once = scene.bake_effects(id);
+    assert!(baked_once, "o 1º bake tinha o que assar");
+    let after = scene.path(id).unwrap().clone();
+
+    assert!(
+        !scene.bake_effects(id),
+        "a pilha já está vazia — o 2º bake não tem o que fazer"
+    );
+    assert_eq!(
+        &after,
+        scene.path(id).unwrap(),
+        "um bake recusado não pode mexer no caminho"
+    );
+
+    // Um caminho recém-criado, sem efeitos, também é recusado.
+    let mut clean = crate::VecScene::new();
+    let clean_id = clean.push_path(square());
+    assert!(!clean.bake_effects(clean_id), "sem pilha, nada a assar");
+}

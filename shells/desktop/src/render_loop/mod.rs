@@ -1438,6 +1438,8 @@ impl crate::App {
             let mut pending_fx_button: Option<(usize, crate::fx_bridge_dispatch::FxRowAction)> =
                 None;
             let mut pending_fx_param: Option<(usize, usize, f64)> = None;
+            // ADR-0132: o "Apply" assa a pilha de efeitos no cozido e a esvazia (Expand Appearance).
+            let mut pending_fx_apply = false;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1606,6 +1608,9 @@ impl crate::App {
                                     }
                                     crate::fx_bridge_dispatch::FxClick::Row(r, a) => {
                                         pending_fx_button = Some((r, a));
+                                    }
+                                    crate::fx_bridge_dispatch::FxClick::Apply => {
+                                        pending_fx_apply = true;
                                     }
                                 }
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_CLEAR_PINS {
@@ -2698,7 +2703,10 @@ impl crate::App {
             }
             // ADR-0132: a pilha de efeitos do caminho selecionado. Os dois passam pela MESMA
             // `sole_path`, entao o que a secao PINTA e o que o clique ESCREVE nao podem divergir.
-            if pending_fx_add.is_some() || pending_fx_button.is_some() || pending_fx_param.is_some()
+            if pending_fx_add.is_some()
+                || pending_fx_button.is_some()
+                || pending_fx_param.is_some()
+                || pending_fx_apply
             {
                 let sel = self.vec_pen.selected_paths().to_vec();
                 if let Some(pid) = crate::fx_bridge::sole_path(&sel) {
@@ -2708,6 +2716,7 @@ impl crate::App {
                         pending_fx_add,
                         pending_fx_button,
                         pending_fx_param,
+                        pending_fx_apply,
                     );
                 }
             }
@@ -3437,20 +3446,19 @@ impl crate::App {
                 &self.vec_shape,
             );
             // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
-            // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS só descartam
-            // o `VecShape` (a geometria já é a forma). Re-seleciona o resultado.
+            // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS descartam o
+            // `VecShape` (a geometria já é a forma); e a pilha de EFEITOS é assada no cozido
+            // (ADR-0132). A porta única (`vec_convert::to_curves`) usa o MESMO bake do botão
+            // "Apply" da seção Effects. Re-seleciona o resultado.
             if pending_vec_convert {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                let new_sel = crate::vec_text::convert_text_selection_to_curves(
-                    sim,
-                    vec_scene,
-                    &mut self.vec_entities,
-                    &sel,
-                );
-                crate::vec_shape_live::drop_shape_params(sim, &self.vec_entities, &new_sel);
+                let new_sel =
+                    crate::vec_convert::to_curves(sim, vec_scene, &mut self.vec_entities, &sel);
                 self.vec_pen.select_many(&new_sel);
             }
-            // Habilita "Convert to Curves" quando a seleção tem forma viva (`VecShape`).
+            // Habilita "Convert to Curves" quando a seleção tem forma viva (`VecShape`) OU um
+            // caminho com pilha de efeitos — os dois são o que o converter congela, e sem a 2ª
+            // metade o botão ficava desligado num caminho só-efeitos (Enio, 2026-07-19).
             #[cfg(feature = "panel-vector")]
             {
                 let convertible = self.vec_pen.selected_paths().iter().any(|id| {
@@ -3458,7 +3466,9 @@ impl crate::App {
                         sim.world()
                             .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(bits))
                             .is_some()
-                    })
+                    }) || vec_scene
+                        .path(*id)
+                        .is_some_and(|p| !p.effects.is_empty())
                 });
                 ph2d_panel_vector::set_current_convertible(convertible);
                 // ADR-0129: Expand/Release só são OFERECIDOS quando a seleção é de fato um

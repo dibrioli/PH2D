@@ -21,9 +21,9 @@ pub use ph2d_editor_core::ids::{
 };
 pub use ph2d_editor_core::ids::{MAX_ENVELOPE_PRESETS, vector_envelope_preset_id};
 pub use ph2d_editor_core::ids::{
-    MAX_FX_KINDS, MAX_FX_ROW_PARAMS, MAX_FX_ROWS, vector_fx_add_id, vector_fx_card_id,
-    vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id, vector_fx_param_num_id,
-    vector_fx_remove_id, vector_fx_toggle_id, vector_fx_up_id,
+    MAX_FX_KINDS, MAX_FX_ROW_PARAMS, MAX_FX_ROWS, VECTOR_FX_APPLY, vector_fx_add_id,
+    vector_fx_card_id, vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id,
+    vector_fx_param_num_id, vector_fx_remove_id, vector_fx_toggle_id, vector_fx_up_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,

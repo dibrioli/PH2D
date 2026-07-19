@@ -52,6 +52,12 @@ impl BodyCtx<'_> {
         for (row, fx) in stack.iter().enumerate().take(ids::MAX_FX_ROWS) {
             y = self.effect_card(row, fx, stack.len(), y);
         }
+        // **Apply**: assa a pilha inteira no cozido e a esvazia (o *Expand Appearance*). Só
+        // aparece quando há o que assar — um botão que esvazia uma pilha vazia seria inerte, e um
+        // botão inerte ensina o artista a desconfiar dos que funcionam.
+        if !stack.is_empty() {
+            y = self.action_button(ids::VECTOR_FX_APPLY, "Apply Effects", y);
+        }
         // Os "Add": um por tipo PUBLICADO. A tabela vem do motor, então um efeito novo aparece
         // aqui sem este arquivo saber que ele existe.
         if stack.len() < ids::MAX_FX_ROWS {

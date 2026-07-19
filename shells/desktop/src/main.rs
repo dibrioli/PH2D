@@ -134,6 +134,7 @@ mod vec_glyph_build;
 mod vec_overlay;
 /// Diagnóstico do overlay vetorial (`PH2D_VEC_OVERLAY_DIAG=1`) — nomeia o dono de geometria fora
 /// do lugar, em vez de a adivinhar.
+mod vec_convert;
 mod vec_overlay_diag;
 mod vec_selection;
 mod vec_shape_live;

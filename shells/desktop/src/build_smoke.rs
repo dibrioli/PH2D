@@ -6,6 +6,10 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=14` — a cena do **APPLY / CONVERT** (ADR-0132): uma elipse com um Zig Zag
+//!   ATIVO, ESTÁTICA e já selecionada. Na seção **Effects** clique **Apply Effects** (assa a
+//!   pilha na geometria); ou **Convert to Curves** (que agora também assa efeitos). O card some e
+//!   a borda rugosa vira curva editável.
 //! - `PH2D_BUILD_SMOKE=13` — a cena da **PILHA DE EFEITOS** (ADR-0132): uma elipse que se
 //!   DESENHA sozinha (o `end` do Trim sobe de 0 a 1) e uma estrela em que a janela do Trim
 //!   GIRA à volta da forma. A ponta anda a velocidade constante — é a medida por ARCO.
@@ -80,8 +84,9 @@ impl crate::App {
             return;
         }
         // A cena da PILHA de efeitos (ADR-0132), no módulo irmão `fx_smoke` — mesma razão de
-        // LOC, e mesma disciplina: o nível 13 nunca toca um braço genérico abaixo.
-        if level == 13 {
+        // LOC, e mesma disciplina: os níveis 13/14 nunca tocam um braço genérico abaixo. 13 é a
+        // pilha animada; 14 é a cena do Apply / Convert (estática).
+        if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;
         }

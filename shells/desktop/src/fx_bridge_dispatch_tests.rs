@@ -24,6 +24,11 @@ fn scene_with_square() -> (VecScene, VecPathId) {
 /// caísse no `None` seria um controle desenhado que o dispatch ignora — o botão-morto.
 #[test]
 fn every_id_the_panel_can_paint_is_classified() {
+    assert_eq!(
+        classify_click(i::VECTOR_FX_APPLY),
+        Some(FxClick::Apply),
+        "o botão Apply não é classificado — ficaria pintado e inerte"
+    );
     for k in 0..i::MAX_FX_KINDS {
         assert_eq!(
             classify_click(i::vector_fx_add_id(k)),
@@ -92,7 +97,7 @@ fn rows_and_kinds_do_not_collide() {
 fn the_add_is_applied_before_the_row_actions() {
     let (mut scene, id) = scene_with_square();
     // No MESMO frame: põe um efeito e já ajusta o parâmetro 0 dele.
-    apply(&mut scene, id, Some(0), None, Some((0, 0, 1.0)));
+    apply(&mut scene, id, Some(0), None, Some((0, 0, 1.0)), false);
     let rows = crate::fx_bridge::stack_view(&scene, id);
     assert_eq!(rows.len(), 1, "o efeito entrou");
     assert!(
@@ -106,7 +111,7 @@ fn the_add_is_applied_before_the_row_actions() {
 #[test]
 fn a_toggle_click_on_a_slider_parameter_is_refused() {
     let (mut scene, id) = scene_with_square();
-    apply(&mut scene, id, Some(0), None, None);
+    apply(&mut scene, id, Some(0), None, None, false);
     let before = crate::fx_bridge::stack_view(&scene, id);
     // O parâmetro 0 do efeito 0 é um slider (não é caixinha) — confirmado pela declaração.
     assert!(!before[0].params[0].toggle);
@@ -116,6 +121,7 @@ fn a_toggle_click_on_a_slider_parameter_is_refused() {
         None,
         Some((0, FxRowAction::Toggle(0))),
         None,
+        false,
     );
     assert_eq!(
         crate::fx_bridge::stack_view(&scene, id),
@@ -128,18 +134,18 @@ fn a_toggle_click_on_a_slider_parameter_is_refused() {
 #[test]
 fn remove_and_reorder_reach_the_scene() {
     let (mut scene, id) = scene_with_square();
-    apply(&mut scene, id, Some(0), None, None);
-    apply(&mut scene, id, Some(1), None, None);
+    apply(&mut scene, id, Some(0), None, None, false);
+    apply(&mut scene, id, Some(1), None, None, false);
     let first = crate::fx_bridge::stack_view(&scene, id)[0].label;
 
-    apply(&mut scene, id, None, Some((0, FxRowAction::Down)), None);
+    apply(&mut scene, id, None, Some((0, FxRowAction::Down)), None, false);
     assert_ne!(
         crate::fx_bridge::stack_view(&scene, id)[0].label,
         first,
         "o Down reordenou"
     );
 
-    apply(&mut scene, id, None, Some((0, FxRowAction::Remove)), None);
+    apply(&mut scene, id, None, Some((0, FxRowAction::Remove)), None, false);
     assert_eq!(crate::fx_bridge::stack_view(&scene, id).len(), 1);
 }
 
@@ -184,6 +190,7 @@ fn a_toggle_alternates_even_when_clicked_at_the_same_spot() {
             None,
             Some((0, FxRowAction::Toggle(param))),
             Some((0, param, 0.9)),
+            false,
         );
         assert_eq!(
             read(&scene),
@@ -209,10 +216,41 @@ fn a_continuous_parameter_still_takes_the_track() {
     };
     crate::fx_bridge::add(&mut scene, id, kind);
     let before = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
-    apply(&mut scene, id, None, None, Some((0, param, 0.75)));
+    apply(&mut scene, id, None, None, Some((0, param, 0.75)), false);
     let after = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
     assert!(
         (after - before).abs() > 1e-9,
         "o slider parou de receber o track ({before} -> {after})"
+    );
+}
+
+/// **O Apply (bake) chega à cena pela `apply`** — o caminho que o frame de facto percorre.
+/// Um efeito ativo na pilha; `bake=true` esvazia a pilha (o `bake_effects` congela o cozido).
+/// Sem esta fiação o botão ficaria classificado, pintado, e sem NADA a jusante — um botão-morto
+/// com o dispatch reconhecendo o clique e o largando.
+#[test]
+fn the_apply_bakes_the_stack_through_the_dispatch() {
+    let (mut scene, id) = scene_with_square();
+    // Um Zig Zag (kind 1) e um ajuste que o torna ATIVO — um efeito neutro não muda a geometria.
+    apply(&mut scene, id, Some(1), None, Some((0, 0, 1.0)), false);
+    assert_eq!(
+        crate::fx_bridge::stack_view(&scene, id).len(),
+        1,
+        "pré-condição: o efeito entrou"
+    );
+
+    // O Apply, sozinho: `bake=true`, sem add/button/param.
+    apply(&mut scene, id, None, None, None, true);
+    assert!(
+        crate::fx_bridge::stack_view(&scene, id).is_empty(),
+        "o Apply tem de esvaziar a pilha (a geometria foi congelada no cozido)"
+    );
+    // E `bake=false` NÃO assa — senão o botão Apply seria indistinguível de um Add.
+    apply(&mut scene, id, Some(1), None, Some((0, 0, 1.0)), false);
+    apply(&mut scene, id, Some(2), None, None, false);
+    assert_eq!(
+        crate::fx_bridge::stack_view(&scene, id).len(),
+        2,
+        "sem bake, os efeitos ficam vivos na pilha"
     );
 }

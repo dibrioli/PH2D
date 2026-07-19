@@ -37,7 +37,7 @@
 
 use crate::fx_trim::{self, TrimSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
-use crate::{Contour, VecPath};
+use crate::{Contour, VecPath, VecPathId, VecScene};
 
 /// **Um parâmetro de efeito, como o painel o desenha.**
 ///
@@ -548,6 +548,41 @@ pub fn run_stack(path: &VecPath, stack: &[FxEntry]) -> Option<VecPath> {
     let mut out = cur?;
     out.effects.clear();
     Some(out)
+}
+
+impl VecScene {
+    /// **Assa a pilha de Live Path Effects** (ADR-0132) do caminho `id` — substitui a geometria
+    /// autorada pela COZIDA ([`VecPath::cooked`]) e esvazia a pilha. É o *Expand Appearance* do
+    /// Illustrator / *Object to Path* do Inkscape: o que se via vira a geometria, e as features
+    /// vivas deixam de existir. Alimenta o botão **Apply** da seção Effects e o **Convert to
+    /// Curves** sobre um caminho com efeitos.
+    ///
+    /// O cozido resolve a quina (estágio zero) **antes** de rodar a pilha, então um caminho que
+    /// tenha efeito **e** raio de quina sai com os dois assados — é o que preserva a aparência,
+    /// porque os efeitos rodam sobre a geometria já arredondada. Um caminho só com quina (sem
+    /// efeito) NÃO é tocado: este é o bake da PILHA, e a alça de raio continua viva.
+    ///
+    /// `false` se o caminho sumiu ou a pilha está vazia — o botão "Apply" não é oferecido nesse
+    /// caso, mas isto não depende de o painel ter razão. **Idempotente**: assar o resultado de
+    /// volta é `false` (a pilha já está vazia). O `id`, o `fill` e o `stroke` SOBREVIVEM (o
+    /// `cooked()` os preserva por clonagem, e reforço o `id` aqui): assar não é recriar o objeto,
+    /// é congelar a aparência dele.
+    pub fn bake_effects(&mut self, id: VecPathId) -> bool {
+        let cooked = match self.path(id) {
+            Some(p) if !p.effects.is_empty() => p.cooked().into_owned(),
+            _ => return false,
+        };
+        let Some(p) = self.path_mut(id) else {
+            return false;
+        };
+        let keep_id = p.id;
+        *p = cooked;
+        p.id = keep_id;
+        // `cooked()` já esvazia a pilha quando roda algum efeito; numa pilha só de neutros ele
+        // devolve a fonte emprestada (com os efeitos ainda lá), então limpar aqui cobre os dois.
+        p.effects.clear();
+        true
+    }
 }
 
 #[cfg(test)]

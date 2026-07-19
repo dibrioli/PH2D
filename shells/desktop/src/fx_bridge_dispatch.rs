@@ -31,6 +31,8 @@ pub(crate) enum FxClick {
     Add(usize),
     /// Age sobre a linha `row`.
     Row(usize, FxRowAction),
+    /// **Apply**: assa a pilha inteira no cozido e a esvazia (o *Expand Appearance*).
+    Apply,
 }
 
 /// Classifica um clique. `None` se o id não é da seção.
@@ -40,6 +42,9 @@ pub(crate) enum FxClick {
 #[must_use]
 pub(crate) fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
     use ph2d_editor::ids as i;
+    if id == i::VECTOR_FX_APPLY {
+        return Some(FxClick::Apply);
+    }
     for k in 0..i::MAX_FX_KINDS {
         if id == i::vector_fx_add_id(k) {
             return Some(FxClick::Add(k));
@@ -84,14 +89,16 @@ pub(crate) fn classify_param(id: ph2d_editor::ids::NodeId) -> Option<(usize, usi
 /// Aplica o que o frame juntou.
 ///
 /// ⚠️ **A ordem importa**: o Add vem primeiro (a linha nova tem de existir antes de alguém
-/// mexer nela), e o Toggle é resolvido consultando a CENA — o clique não traz valor, e um
-/// parâmetro de caixinha e um slider partilham o id.
+/// mexer nela), o Toggle é resolvido consultando a CENA (o clique não traz valor, e um
+/// parâmetro de caixinha e um slider partilham o id), e o **bake vem por ÚLTIMO** — ele consome
+/// a pilha inteira, então tem de ver o que os outros três acabaram de escrever.
 pub(crate) fn apply(
     scene: &mut VecScene,
     id: VecPathId,
     add: Option<usize>,
     button: Option<(usize, FxRowAction)>,
     param: Option<(usize, usize, f64)>,
+    bake: bool,
 ) {
     if let Some(kind) = add {
         crate::fx_bridge::add(scene, id, kind);
@@ -123,6 +130,12 @@ pub(crate) fn apply(
         if !crate::fx_bridge::is_toggle(scene, id, row, p) {
             crate::fx_bridge::set_param(scene, id, row, p, track);
         }
+    }
+    // **Apply**, por último: assa a pilha (o que os outros três acabaram de escrever) no cozido
+    // e a esvazia. `bake_effects` é no-op se não houver o que assar, então o guard do chamador
+    // não precisa de ser exato. O undo captura isto pelo diff da `VecScene`, como um Add.
+    if bake {
+        scene.bake_effects(id);
     }
 }
 

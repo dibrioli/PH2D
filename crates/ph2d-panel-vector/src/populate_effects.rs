@@ -32,6 +32,9 @@ const IDENTITY_OFFSET: f32 = 0.0;
 
 /// Os widgets da seção Effects — o teto de tudo.
 pub(super) fn populate_effects(store: &mut WidgetStore) {
+    // O botão de SEÇÃO "Apply" (assa a pilha). Registado sempre; a PINTURA decide se o oferece
+    // (só há hit-rect quando a pilha não está vazia), como o resto da seção.
+    button(store, ids::VECTOR_FX_APPLY);
     for kind in 0..ids::MAX_FX_KINDS {
         button(store, ids::vector_fx_add_id(kind));
     }

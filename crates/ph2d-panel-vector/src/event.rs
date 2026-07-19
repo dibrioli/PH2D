@@ -391,6 +391,9 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BLEND_RELEASE
         || id == ids::VECTOR_MORPH_RUN
         || is_fx_button(id)
+        // O botão de SEÇÃO "Apply" (assa a pilha de efeitos). Fora daqui pintaria e estaria
+        // MORTO — a shell classifica-o via `fx_bridge_dispatch::classify_click`.
+        || id == ids::VECTOR_FX_APPLY
         || id == ids::VECTOR_ENVELOPE_RUN
         || id == ids::VECTOR_ENVELOPE_EXPAND
         || id == ids::VECTOR_ENVELOPE_RELEASE

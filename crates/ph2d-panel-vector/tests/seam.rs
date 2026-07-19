@@ -1268,6 +1268,8 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     targets.push((ids::vector_fx_down_id(0), "Down linha 0".into()));
     targets.push((ids::vector_fx_up_id(1), "Up linha 1".into()));
     targets.push((ids::vector_fx_hide_id(0), "olho linha 0".into()));
+    // O botão de SEÇÃO "Apply" — só é pintado com a pilha não-vazia (que a fixture publica).
+    targets.push((ids::VECTOR_FX_APPLY, "Apply Effects".into()));
     // A CAIXINHA: e' um botao, e tem de emitir Click como qualquer outro.
     targets.push((
         ids::vector_fx_toggle_id(0, 1),

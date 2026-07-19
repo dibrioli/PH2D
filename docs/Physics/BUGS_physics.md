@@ -12,6 +12,7 @@
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
 | [1](#bug-1--a-simulação-rodava-junto-com-a-animação-e-uma-nota-minha-dizia-que-o-interruptor-seria-o-desenho-errado) | **A sim rodava junto com a animação** — e uma nota minha dizia que o interruptor seria o desenho errado | `ph2d-timeline` (transporte) + `ph2d-physics-ecs` (ponte) | ✅ Resolvido (W4b, smoke aprovado) | 2026-07-18 |
+| [2](#bug-2--o-collider-não-estava-onde-o-sprite-estava-em-todo-corpo-filho) | **O collider não estava onde o sprite estava**, em todo corpo FILHO | `ph2d-physics-ecs` (5 sítios) + `ph2d-ecs` (o inverso) | ✅ Resolvido (W5; pendente smoke) | 2026-07-18 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -148,3 +149,151 @@ os 5 de `ph2d-physics-ecs/tests/hold.rs` · os 2 de `transport_physics_seam.rs` 
 
 `PH2D_PHYSICS_SMOKE=7` — assar, **desmarcar Physics**, dar Play: o movimento assado continua
 tocando (virou animação) e a caixa não-assada para de cair.
+
+---
+
+## Bug #2 — O collider não estava onde o sprite estava, em todo corpo FILHO
+
+**Estado:** ✅ resolvido em 2026-07-18 (W5). **Pendente de smoke** (`PH2D_PHYSICS_SMOKE=8`).
+
+### Sintoma
+
+Nenhum — e é isso que o torna caro. Parentear um objeto físico na Hierarquia (um
+gesto que o app suporta inteiro) fazia o corpo **simular num lugar e desenhar
+noutro**, sem erro, sem warning, sem nada na tela dizendo que algo estava
+errado. O que o artista via era a arte cruzando paredes que não estão ali e
+atravessando paredes que estão.
+
+Medido antes do fix, com uma sonda de 20 linhas:
+
+```
+bola autorada em LOCAL (0, 4), sob um pai em (5, 0)  ⇒  desenhada em (5, 4)
+  solver simula em      x = 0        ← leu o Transform LOCAL como se fosse mundo
+  renderizado em        x = 5        ← pai ∘ local
+```
+
+E a divergência **não é constante**: ela muda se o pai se mexe, e cresce com a
+profundidade da árvore.
+
+### Causa-raiz
+
+`Transform` é **LOCAL** e compõe com o pai (`Transform::compose`). O solver não
+tem hierarquia nenhuma: ele fala **MUNDO**. A ponte lia `&Transform` cru na
+entrada e escrevia a pose de mundo crua na saída.
+
+**Para um corpo-raiz os dois coincidem** — e é exatamente por isso que isto
+sobreviveu a quatro waves com 190 gates verdes: todo gate, toda cena de smoke e
+toda demo usavam corpos-raiz. A premissa "local == mundo" nunca foi escrita em
+lugar nenhum; ela era só verdade por acidente da fixture.
+
+### ⚠️ O comentário prometia a wave que nunca veio
+
+O `readback` dizia, em código, desde o W1:
+
+> *"Only touches root-level bodies' local Transform == world for W1 (**child
+> bodies land in W2**)."*
+
+O W2 shipou em três pedaços (W2a Inspector, W2b painel de mundo, W2c camadas) e
+**nenhum deles tocou nisto**. A nota ficou lá quatro waves, descrevendo um plano
+que ninguém executou, e lida de passagem ela *tranquiliza*: parece que alguém já
+sabe e já agendou. É a mesma classe do #1 — texto que a próxima LLM obedece — só
+que aqui o texto prometia em vez de proibir.
+
+### A armadilha do escopo: **cinco** sítios, não um
+
+O instinto é consertar o `readback` (é onde o número errado aparece). São cinco,
+e meia correção é pior que nenhuma — uma cena que compõe na entrada e atribui
+cru na saída fica **estável e errada**, derivando um offset-de-pai por frame:
+
+| sítio | direção | o que quebra sozinho |
+|---|---|---|
+| `reconcile_structure` → `body_desc` | entrada | o corpo NASCE (e repousa, e colide) nas coordenadas locais |
+| `settle` | entrada | compara pose local com corpo em mundo ⇒ todo filho parece "movido à mão" **todo frame pausado**, é teleportado e tem a velocidade zerada |
+| `drive_kinematic` | entrada | plataforma parenteada anda por um caminho que ninguém autorou — e, sendo kinematic, leva a carga junto |
+| `reconcile_joints` | entrada | a âncora do joint é um ponto do MUNDO; lida local, o pino prende onde o artista não marcou |
+| `readback` | saída | o renderer compõe o pai **de novo** ⇒ desenha em pai∘mundo |
+
+### Solução
+
+Uma lei, duas direções, **adjacentes**: `ph2d-ecs` ganhou
+`Transform::inverse_compose` — o inverso exato de `compose`, ao lado dela — e
+`parent_world_transform_into` (o caminhador de ancestrais sem alocar, com o
+existente delegando). A ponte tem **duas portas** (`bridge/space.rs`) e os cinco
+sítios passam por elas.
+
+**A álgebra do repo é invertível e isso decidiu o desenho.** `compose` soma
+rotações, multiplica escalas e cisalha com `[[1, tan sx], [tan sy, 1]]` — então
+existe inverso exato, e eu **não** precisei do compromisso "só pai rígido" que
+eu ia propor. Erro de round-trip **medido**: `6,08e-6` sobre uma varredura de
+rotações, escalas não-uniformes, escala negativa e skew nos dois eixos.
+
+⚠️ **A guarda não é um limiar, e a primeira versão estava errada.** Eu escrevi
+`if det == 0.0 { return None }` e o gate da recusa nasceu **vermelho** — em
+`f32`, um shear construído para ser singular dá `det ≈ 1e-8`, não `0.0`.
+Trocado por **"todo campo do resultado é finito?"**, que é a pergunta que o
+chamador de fato tem (*posso guardar isto?*), não precisa de número mágico, e
+ainda recusa um `NaN` que chegou na **entrada**. Um pai mal-condicionado (det
+minúsculo mas não-nulo) passa **de propósito**: as coordenadas locais saem
+enormes mas `compose` as leva de volta à pose de mundo certa, então o par é
+auto-consistente e o objeto desenha onde deve.
+
+Por que recusar importa: escrever a alternativa põe `±inf`/`NaN` num
+`Transform`, e o próprio `debug_assert` do `compose` diz o preço — **um ângulo
+corrompido envenena o `GlobalTransform` da SUBÁRVORE inteira**, com padrões de
+NaN signaling-vs-quiet que derivam entre OSes. Um corpo sob um pai escalado a
+zero corromperia a cena toda.
+
+### O que NÃO entrou, e por quê
+
+A **escala não alcança o collider** — um sprite escalado 2× tem collider do
+tamanho autorado. Isso é **pré-existente e vale para corpo-raiz também**
+(`body_desc` lê `col.shape` verbatim), então é ortogonal a esta wave: consertar
+aqui misturaria duas correções e a de escala pertence igualmente aos dois casos.
+Nomeada no tracker, não contrabandeada.
+
+### Lições
+
+1. **Uma premissa que a fixture satisfaz por acidente não é um invariante — é
+   uma coincidência com 190 gates verdes em cima.** "Local == mundo" era
+   verdade em todo teste do módulo porque todo teste usava corpo-raiz. Ao
+   escrever uma fixture, pergunte que premissa ela está *estabelecendo de
+   graça*, e faça uma que não estabeleça.
+2. **Comentário que promete uma wave futura apodrece pior que comentário
+   errado.** *"child bodies land in W2"* sobreviveu ao W2 inteiro; lido de
+   passagem, ele tranquiliza. Se a wave não pegou, a nota tem de virar item de
+   backlog com dono — ou sair.
+   → memória `feedback_stale_comment_and_dead_code_lie`.
+3. **Uma conversão de espaço tem exatamente duas direções, e as duas têm de
+   viver juntas.** Metade do fix produz um sistema *estável* e errado, que é
+   mais difícil de diagnosticar que um que explode.
+   → memória `feedback_two_doors_to_the_same_question_diverge`.
+4. **Antes de aceitar um compromisso, leia a álgebra que você já tem.** Eu ia
+   propor "só pai rígido, escala não suportada"; `compose` compõe aditivamente
+   e é invertível, então o compromisso era desnecessário.
+   → memória `feedback_the_representation_can_delete_the_special_case`.
+5. **Uma guarda de degeneração pergunta pelo RESULTADO, não pela entrada.**
+   `det == 0.0` erra por `1e-8` e é cego a `NaN` que já chegou. *"Todo campo é
+   finito?"* é a propriedade que o chamador precisa e não tem número mágico.
+   → memória `feedback_a_threshold_must_live_where_the_domain_is_empty`.
+
+### Gates que fecham este bug
+
+`a_parented_body_falls_onto_the_floor_it_is_drawn_above` ·
+`the_drawn_pose_and_the_simulated_pose_never_diverge` ·
+`a_paused_child_body_is_not_dragged_to_its_local_coordinates` ·
+`a_parented_kinematic_platform_carries_its_cargo` ·
+`a_parented_joint_anchors_where_it_is_drawn` ·
+`a_degenerate_parent_never_poisons_the_transform` ·
+`a_root_body_is_unchanged_by_the_conversion` (regressão) — mais os 5 de
+`ph2d-ecs/tests/transform_inverse.rs` e o `hot_path_no_alloc` estendido com uma
+hierarquia (sem ela, o "não aloca por frame" do caminho novo era afirmado sobre
+código que a fixture nunca entrava).
+**12 gates, 10 mutações, 10 sangram** — uma por sítio religado, mais a guarda,
+o `clear()` do scratch e a subtração de rotação do inverso.
+
+### Smoke
+
+`PH2D_PHYSICS_SMOKE=8` — três rigs, cada um com uma bola física parenteada,
+cada um sobre um pedestal **estreito**. A regressão é inconfundível por
+construção: um corpo que volte a ler a pose local como mundo cai pela linha
+`x = 0`, erra o pedestal sobre o qual foi desenhado, e some de quadro.

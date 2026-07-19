@@ -10,6 +10,7 @@
 //! | `5` | W2c  | two groups on DIFFERENT layers, for the collision matrix |
 //! | `6` | W3   | pendulum + chain + ragdoll, for the joints |
 //! | `7` | W4   | a drop to BAKE into timeline curves, then replay without physics |
+//! | `8` | W5   | PARENTED bodies: the collider is where the sprite is, at any depth |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -20,13 +21,13 @@
 //! instead of falling — the honest failure, not a hidden pre-step.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Name, Transform, stable_name_id};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
+use ph2d_ecs::{Name, Transform};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
 /// (full size) matches the collider (half-extents).
-fn spawn_floor(world: &mut bevy_ecs::world::World) {
+pub(crate) fn spawn_floor(world: &mut bevy_ecs::world::World) {
     world.spawn((
         Transform::from_translation(Vec2::new(0.0, -1.0)),
         Sprite::atlas(0, [8.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
@@ -66,6 +67,7 @@ impl crate::App {
             "5" => self.physics_smoke_layers(),
             "6" => self.physics_smoke_joints(),
             "7" => self.physics_smoke_bake(),
+            "8" => self.physics_smoke_parented(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -325,241 +327,6 @@ impl crate::App {
                · click cell (1,1) : the right group stops colliding with ITSELF.\n\
                · Inspector > Layer: select one body and move it to another layer.\n\
                · Ctrl+S, Ctrl+O   : the matrix comes back with the project."
-        );
-    }
-
-    /// **Scene 6 (W3).** The three things joints exist for, side by side: a
-    /// **pendulum**, a **chain**, and a **ragdoll**.
-    ///
-    /// Three and not one, because each answers a different question. The
-    /// pendulum says the anchor is where the artist put it (it is pinned at
-    /// the plank's END, so a version that used body centres would hang it from
-    /// its middle). The chain says links that overlap at their pins do not
-    /// fight each other. The ragdoll says limits hold — its knees only bend
-    /// one way.
-    fn physics_smoke_joints(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_floor(gfx.sim.world_mut());
-        let world = gfx.sim.world_mut();
-
-        // A static anchor body — everything hangs off one of these.
-        let hook = |world: &mut ph2d_ecs::World, name: &str, x: f32, y: f32| {
-            world.spawn((
-                Transform::from_translation(Vec2::new(x, y)),
-                Sprite::atlas(0, [0.16, 0.16], [0.75, 0.75, 0.8, 1.0]),
-                Name::new(name.to_string()),
-                RigidBody {
-                    kind: BodyKind::Static,
-                },
-                Collider {
-                    shape: ColliderShape::Ball { radius: 0.08 },
-                    ..Collider::default()
-                },
-            ));
-        };
-        let limb = |world: &mut ph2d_ecs::World,
-                    name: &str,
-                    x: f32,
-                    y: f32,
-                    hw: f32,
-                    hh: f32,
-                    hue: [f32; 4]| {
-            world.spawn((
-                Transform::from_translation(Vec2::new(x, y)),
-                Sprite::atlas(0, [hw * 2.0, hh * 2.0], hue),
-                Name::new(name.to_string()),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: hw,
-                        half_y: hh,
-                    },
-                    ..Collider::default()
-                },
-            ));
-        };
-        let pin = |world: &mut ph2d_ecs::World, name: &str, a: &str, b: &str, x: f32, y: f32| {
-            world.spawn((
-                Transform::from_translation(Vec2::new(x, y)),
-                Name::new(name.to_string()),
-                PhysicsJoint {
-                    body_a: stable_name_id(a),
-                    body_b: stable_name_id(b),
-                    ..PhysicsJoint::default()
-                },
-            ));
-        };
-
-        // --- the pendulum: pinned at the plank's LEFT END, not its centre ---
-        hook(world, "PendHook", -4.0, 4.5);
-        limb(world, "Plank", -3.4, 4.5, 0.6, 0.09, [0.95, 0.6, 0.2, 1.0]);
-        pin(world, "PendPin", "PendHook", "Plank", -4.0, 4.5);
-
-        // --- the chain: links that OVERLAP at their pins ---
-        hook(world, "ChainHook", -0.6, 4.8);
-        let mut prev = "ChainHook".to_string();
-        for i in 0..6u32 {
-            let y = 4.5 - i as f32 * 0.42;
-            let name = format!("Link{i}");
-            limb(world, &name, -0.6, y, 0.1, 0.22, [0.35, 0.75, 0.95, 1.0]);
-            pin(world, &format!("ChainPin{i}"), &prev, &name, -0.6, y + 0.24);
-            prev = name;
-        }
-
-        // --- the ragdoll: a torso on a hook, two arms, two legs with LIMITS ---
-        hook(world, "DollHook", 3.0, 5.0);
-        limb(world, "Torso", 3.0, 4.4, 0.18, 0.42, [0.9, 0.4, 0.5, 1.0]);
-        pin(world, "NeckPin", "DollHook", "Torso", 3.0, 4.82);
-        for (name, dx, hw, hh, limited) in [
-            ("ArmL", -0.3f32, 0.26f32, 0.07f32, false),
-            ("ArmR", 0.3, 0.26, 0.07, false),
-            ("LegL", -0.11, 0.08, 0.32, true),
-            ("LegR", 0.11, 0.08, 0.32, true),
-        ] {
-            let (x, y, px, py) = if limited {
-                (3.0 + dx, 3.7, 3.0 + dx, 4.02)
-            } else {
-                (3.0 + dx * 1.6, 4.6, 3.0 + dx * 0.6, 4.6)
-            };
-            limb(world, name, x, y, hw, hh, [0.9, 0.55, 0.45, 1.0]);
-            world.spawn((
-                Transform::from_translation(Vec2::new(px, py)),
-                Name::new(format!("{name}Pin")),
-                PhysicsJoint {
-                    body_a: stable_name_id("Torso"),
-                    body_b: stable_name_id(name),
-                    // A knee bends one way. Without limits the ragdoll is a
-                    // bag of sticks, which is the difference the eye reads as
-                    // "alive" versus "broken".
-                    limits_enabled: limited,
-                    limit_min: -0.15,
-                    limit_max: 1.4,
-                    ..PhysicsJoint::default()
-                },
-            ));
-        }
-
-        eprintln!(
-            "[physics-smoke 6] Three rigs, playing. Press B for the overlay: joints are the\n\
-             AMBER links (colliders stay green/cyan).\n\
-             Watch:\n  \
-               · PENDULUM (left)  : it hangs from the plank's END, not its middle, and swings.\n  \
-               · CHAIN (middle)   : six links that OVERLAP at their pins and do not fight.\n  \
-               · RAGDOLL (right)  : the legs are limited -- knees bend one way, not both.\n\
-             Then try the authoring:\n  \
-               · select the plank, Inspector > Physics Joint is NOT there (it is a body).\n  \
-               · select 'PendPin' in the Hierarchy -> the Joint section appears. Switch it to\n    \
-                 Spring: the plank starts bouncing on a spring instead of hanging rigid.\n  \
-               · select TWO bodies -> Physics Body grows a 'Join Selected Bodies' button.\n  \
-               · Ctrl+Z after any of it, and Ctrl+S / Ctrl+O: the joints survive both."
-        );
-    }
-
-    /// **Scene 7 (W4).** A drop worth baking, with the clock PAUSED.
-    ///
-    /// The whole gesture is: select, Bake, watch the curve replay. So the
-    /// scene is built to make the bake VISIBLE rather than merely correct —
-    /// bodies whose motion has shape (a bounce, a roll, a spin), because a
-    /// curve that only says "went down" proves nothing about the fit.
-    ///
-    /// Paused on purpose: the sim starts at the pose the artist sees, and
-    /// baking a scene that has already been running would bake from tick 0
-    /// anyway — the picture and the curve would disagree about where the
-    /// motion began, which is the confusing kind of correct.
-    fn physics_smoke_bake(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_floor(gfx.sim.world_mut());
-        let world = gfx.sim.world_mut();
-
-        // A ramp: a static box tilted so what lands on it ROLLS. Rotation is
-        // the third baked channel and the easiest one to get wrong in silence.
-        world.spawn((
-            Transform {
-                rotation: -0.32,
-                ..Transform::from_translation(Vec2::new(-2.2, 1.1))
-            },
-            Sprite::atlas(0, [3.2, 0.24], [0.40, 0.42, 0.48, 1.0]),
-            Name::new("Ramp".to_string()),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 1.6,
-                    half_y: 0.12,
-                },
-                ..Collider::default()
-            },
-        ));
-
-        // The ball rolls down the ramp: X, Y and rotation all move, so all
-        // three tracks are written and any one of them being wrong shows.
-        world.spawn((
-            Transform::from_translation(Vec2::new(-3.2, 2.4)),
-            Sprite::atlas(0, [0.5, 0.5], [0.95, 0.6, 0.2, 1.0]),
-            Name::new("Roller".to_string()),
-            RigidBody {
-                kind: BodyKind::Dynamic,
-            },
-            Collider {
-                shape: ColliderShape::Ball { radius: 0.25 },
-                restitution: 0.2,
-                friction: 0.7,
-                ..Collider::default()
-            },
-        ));
-
-        // Two boxes that bounce and topple — a second body to bake at the same
-        // time, which is the case where a fan-out would have shown up as three
-        // undo steps for one click.
-        for (i, x) in [1.4f32, 2.1].into_iter().enumerate() {
-            world.spawn((
-                Transform::from_translation(Vec2::new(x, 3.4 + i as f32 * 1.1)),
-                Sprite::atlas(0, [0.6, 0.6], [0.35, 0.75, 0.95, 1.0]),
-                Name::new(format!("Box{i}")),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: 0.3,
-                        half_y: 0.3,
-                    },
-                    restitution: 0.45,
-                    ..Collider::default()
-                },
-            ));
-        }
-
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("timeline", true);
-        }
-
-        eprintln!(
-            "[physics-smoke 7] A roller, a ramp and two boxes. Clock PAUSED, timeline open.
-             Press Play once to SEE the motion, then Ctrl+Z nothing -- just rewind and:
-                 1. select Roller + both boxes (marquee or Ctrl-click).
-                 2. Inspector > Physics Body > 'Bake 5.0s to Timeline'.
-             What must happen:
-                 · the timeline fills with a FEW keys per channel, in aligned columns --
-                     not one key per frame (that would be unusable, and is the bug).
-                 · the Body chip flips to KINEMATIC and the toast says so. Press B: the
-                     outlines turn VIOLET (they were cyan -- the solver no longer owns them).
-                 · press Play: the objects replay the SAME motion, now driven by the curves.
-                 · ONE Ctrl+Z removes the whole bake (all the keys, one press).
-             Then the two things the bake is FOR:
-                 · grab a key in the timeline and drag it -- the motion is yours to edit now.
-                 · the baked bodies still SHOVE: they are kinematic, not ghosts.
-             And the reason the transport has a PHYSICS toggle (it is ON here only
-             because this is a physics demo; a real project opens with it off):
-                 · UNCHECK it and press Play. The baked motion still plays -- it is
-                     ANIMATION now, and that is precisely what a bake buys you.
-                 · the un-baked box keeps whatever pose it has instead of falling:
-                     one clock, and you decide whether the solver hears it.
-             Range: it says 5.0s because nothing is animated yet. Arm a loop in the
-             transport and the button follows it."
         );
     }
 

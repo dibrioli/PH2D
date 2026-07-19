@@ -44,7 +44,10 @@ const FILE_LOC_CAP: usize = 700;
 /// A NEW entry, or raising a number, requires Coordenador sign-off + an ADR
 /// note. Keys are relative to `crates/`.
 const FILE_OVERAGE_OK: &[(&str, usize)] = &[
-    ("ph2d-ecs/src/transform.rs", 784),
+    // 784 → 768 (ADR-0131 W5): the ancestor walk + the inverse of `compose`
+    // moved to the sibling `transform_inverse.rs`. Ratcheted DOWN on the way
+    // past, which is the only direction this table is supposed to move.
+    ("ph2d-ecs/src/transform.rs", 768),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     ("ph2d-editor-core/src/paint.rs", 884),
     ("ph2d-imageio-apng/src/lib.rs", 768),

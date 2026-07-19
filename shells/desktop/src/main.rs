@@ -101,6 +101,7 @@ mod motion_state;
 mod name_unique;
 mod palette_persist;
 mod physics_smoke;
+mod physics_smoke_rigs;
 mod project;
 mod project_painter;
 mod render_loop;

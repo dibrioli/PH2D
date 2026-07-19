@@ -129,8 +129,17 @@ impl PhysicsBridge {
         self.joints_to_remove.clear();
         let at_rest = self.last_stepped == 0;
 
-        for (e, joint, transform) in q.iter(world) {
+        for (e, joint, _local) in q.iter(world) {
             self.joints_seen.push(e);
+            // The anchor is a point in the WORLD, and a joint entity can be
+            // parented like any other. Its rest-pose siblings (`bb.rest`) are
+            // world-space too, so reading this one locally would put the two
+            // halves of the same question in different spaces.
+            let transform = match super::space::world_transform(world, e, &mut self.chain) {
+                Some(t) => t,
+                None => continue,
+            };
+            let transform = &transform;
             // ⚠️ **A joint that cannot be built is only REMOVED if it was ever
             // built.** Pushing it unconditionally makes `joints_to_remove`
             // non-empty on every single frame for as long as the scene holds

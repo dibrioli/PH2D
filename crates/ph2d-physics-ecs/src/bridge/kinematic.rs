@@ -12,7 +12,7 @@
 //! everything here answers *"where does the scene say this body is?"*, which is
 //! the question `SceneAtTick` exists to ask and the replay had to learn to ask.
 
-use ph2d_ecs::{SimWorld, Transform};
+use ph2d_ecs::SimWorld;
 use ph2d_physics::PhysicsWorld;
 
 use crate::components::BodyKind;
@@ -75,7 +75,10 @@ impl PhysicsBridge {
             if b.kind != BodyKind::Kinematic {
                 continue;
             }
-            if let Some(t) = world.get::<Transform>(e) {
+            // WORLD: the scene wrote a LOCAL pose, and the solver is aimed in
+            // world space. A parented platform driven by its local coordinates
+            // would carry its cargo along a path nobody authored.
+            if let Some(t) = super::space::world_transform(world, e, &mut self.chain) {
                 let target = [t.translation.x, t.translation.y, t.rotation];
                 let start = self
                     .kin_start

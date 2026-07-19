@@ -131,6 +131,23 @@ desliga a física no corpo assado?"* (não — entrega a pose via `Kinematic`) c
 interruptor. O toggle é do **transporte**, o `Kinematic` é do **corpo**; não se tocam. A correção está
 datada no plano, porque nota velha que contradiz o código faz a próxima LLM propor desfazer o que existe.
 
+### 2.4f W5 — corpos FILHOS ⚠️ **encosta em `ph2d-ecs`, a foundational mais compartilhada**
+
+Correção de bug, não capacidade: um corpo físico parenteado **simulava num lugar e
+desenhava noutro**, em silêncio (o collider não estava sob o sprite). Detalhe:
+[`BUGS_physics.md`](BUGS_physics.md) #2.
+
+| Crate | O quê | Risco de merge |
+|---|---|---|
+| **`ph2d-ecs`** | módulo NOVO `transform_inverse.rs`: `Transform::inverse_compose` + `is_finite`, e as duas `parent_world_transform{,_into}` **MOVIDAS** de `transform.rs` para lá | ⚠️ **médio** — é um MOVE dentro da foundational mais compartilhada do repo. Os símbolos seguem re-exportados do `lib.rs`, então **nenhum chamador muda**; um merge que edite `transform.rs` na região movida conflita textualmente |
+| `ph2d-physics-ecs` | módulo NOVO `bridge/space.rs` + campo `chain`; 5 sítios religados | nenhum (só desta linha) |
+| `shells/desktop` | módulo NOVO `physics_smoke_rigs.rs` (cenas 6/7/8 movidas para lá); `spawn_floor` virou `pub(crate)` | baixo |
+| **`ph2d-editor-core`** | ⚠️ a catraca de LOC `ph2d-ecs/src/transform.rs` **BAIXOU 784 → 768** | ⚠️ **se outra linha crescer aquele arquivo, o gate fica VERMELHO no merge** — e estará certo. O número se **CONTA** (mede-se o arquivo depois do `fmt`), não se escolhe |
+
+⚠️ **`Transform` NÃO é contrato congelado** (o gate `architecture_vector_contract_surface`
+escaneia `ph2d-vector-doc`/`-traits`, não `ph2d-ecs`) e nada foi removido — só acrescentado
+e movido dentro da mesma crate, com re-export. Verificado, §4.
+
 ### 2.5 `ph2d-vector` — **1 linha, aditiva**
 `PathEl` acrescentado à lista de re-export do kurbo (`src/lib.rs:58`). **Não é a superfície congelada** —
 o gate `architecture_vector_contract_surface` escaneia só `-doc` e `-traits` (verificado, §4).
@@ -201,6 +218,9 @@ válido. Não "conserte" o hash.
 - `tests/node_id_collisions.rs` — +14 linhas, **append-only**, num conflito mantenha os dois lados.
 - `paint.rs:217` — `notes_per_section: [_; 10]` (era 9). **Se outra linha também adicionou seção, re-conte.**
 - `ph2d-vector/src/lib.rs:58` — `PathEl` na lista de re-export: mantenha os dois lados.
+- ⚠️ `crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` — a entrada
+  `ph2d-ecs/src/transform.rs` **baixou 784 → 768** (W5). Re-**MEÇA** o arquivo depois do
+  `fmt` no merge; não escolha um dos dois números.
 - ⚠️ `ph2d-panel-timeline/src/transport.rs` — **`const ITEMS: [Item; 14]`** (era 13). Contagem
   compartilhada com a linha da animação: se ela também acrescentou um item de transporte, **re-conte**
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
@@ -292,6 +312,7 @@ env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop
 | `=6` | W3: pêndulo · corrente · ragdoll | ✅ aprovado |
 | `=7` | W4: assar a sim em curvas da timeline | ✅ aprovado |
 | (mesma cena) | W4b: o toggle Physics do transporte | ✅ aprovado |
+| **`=8`** | **W5: corpos FILHOS (o collider sob o sprite)** | ⏳ **PENDENTE** |
 
 ✅ **TODAS as cenas foram aprovadas** (a 7 em 2026-07-18: *"smoke OK. Funciona muito bem"*). Ela nasce
 **PAUSADA** com a timeline aberta. O gesto: Play uma vez para ver o movimento, rebobinar,
@@ -304,6 +325,14 @@ O que ela tem de mostrar (detalhe no §W4 do tracker):
   **VIOLETA** — o solver não é mais o dono daquelas poses;
 - **Play**: os objetos repetem o MESMO movimento, agora dirigidos pelas curvas;
 - **UM** Ctrl+Z tira o bake inteiro (todas as chaves, uma pressionada).
+
+**Cena 8 (W5), a única pendente agora.** Três rigs — um nível, dois níveis, e um
+**rotacionado** — cada um com uma bola física parenteada, cada um sobre um pedestal
+**estreito**. Tem de mostrar: cada bola pousa no pedestal **do seu próprio rig**; a tecla
+`B` põe cada contorno exatamente sobre o seu sprite, em toda profundidade; e **arrastar um
+rig** leva a bola junto, com o collider acompanhando. A regressão é inconfundível por
+construção — um corpo que volte a ler a pose local como mundo cai pela linha `x = 0`, erra
+o pedestal sobre o qual foi desenhado, e some de quadro.
 
 E as duas coisas para as quais o bake existe: arrastar uma chave na timeline (o movimento agora é
 editável) e conferir que os corpos assados ainda **empurram** — são kinematic, não fantasmas.
@@ -337,7 +366,8 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 > Linha `physics` **fechada e completa** — **35 commits**, HEAD `25bf851e`, base `389676f9` =
 > `main` atual ⇒ **fast-forward puro**.
 > Todas as 8 waves do plano landaram (W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4), mais a **W4b**
-> (o toggle **Physics** do transporte), pedida pelo Enio depois do smoke do W4.
+> (o toggle **Physics** do transporte) e a **W5** (corpos FILHOS na hierarquia — correção de
+> bug: o collider não estava onde o sprite estava).
 >
 > Foundational tocado: `ph2d-ecs` (`stable_name_id`, aditivo), `ph2d-editor-core` (aditivo + 1 catraca de
 > LOC), `ph2d-panel-inspector` (`paint.rs` reestruturado + 2 splits de LOC), `ph2d-anim`/`ph2d-timeline`
@@ -355,7 +385,7 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 > `physics_bridge::dispatch`, que ganhou `simulate: bool`. Os hashes C9 mudaram **de propósito** e não
 > são pinados.
 >
-> Gate batched verde nesta árvore: **7790 testes, 0 falhas**, clippy `--all-targets` limpo,
+> Gate batched verde nesta árvore: **7802 testes, 0 falhas**, clippy `--all-targets` limpo,
 > `cargo fmt --all --check` limpo. (⚠️ rodados com `rustup run 1.95 cargo …`: o default do rustup se
 > perdeu nesta máquina no meio da sessão e **só a 1.95 está instalada** — é ambiente, não código.)
 >
@@ -370,9 +400,9 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 > `Kinematic`) para **qualquer** interruptor. O toggle é do **transporte**, o kind é do **corpo**. A
 > correção está datada dentro do `00_plano_waves.md`.
 >
-> Smoke: **as 7 cenas estão APROVADAS.** A 7 cobre duas coisas no mesmo gesto — o bake (W4) e o toggle
+> Smoke: **as cenas 1-7 estão APROVADAS; a 8 (W5) está PENDENTE.** A 7 cobre duas coisas no mesmo gesto — o bake (W4) e o toggle
 > Physics (W4b) — e foi aprovada em 2026-07-18 (*"smoke OK. Funciona muito bem"*). O toggle só é
 > demonstrável DEPOIS do bake (desmarca-se Physics e o movimento assado continua tocando), então a
 > aprovação dele carrega a do bake por construção.
 >
-> **Nada pendente nesta linha.** Aguardo ordem explícita de integração (CLAUDE.md §0.7).
+> Aguardo ordem explícita de integração (CLAUDE.md §0.7).

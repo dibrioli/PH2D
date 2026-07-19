@@ -23,6 +23,7 @@
 | **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |  ✅
 | **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |  ✅
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |  ✅
+| **W5** | Corpos FILHOS na hierarquia | o collider volta para debaixo do sprite | — |  ✅
 
 **Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
 (`ph2d-fluids`, M13+), collider-gen vetorial + fratura (ADR-0063, aposentada com a 0108).

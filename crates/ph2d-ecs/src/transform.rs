@@ -293,22 +293,6 @@ pub fn is_locked_for_edit(world: &World, entity: Entity) -> bool {
     false
 }
 
-pub fn parent_world_transform(world: &World, entity: Entity) -> Transform {
-    let mut chain: Vec<Transform> = Vec::new();
-    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
-    while let Some(p) = cur {
-        if let Some(t) = world.get::<Transform>(p) {
-            chain.push(*t);
-        }
-        cur = world.get::<ChildOf>(p).map(|c| c.parent());
-    }
-    let mut acc = Transform::IDENTITY;
-    for t in chain.iter().rev() {
-        acc = Transform::compose(acc, *t);
-    }
-    acc
-}
-
 /// World-space affine transform as a 3×3 column-major matrix.
 ///
 /// Computed per-frame by [`propagate_transforms`] from a chain of

@@ -53,6 +53,33 @@ fn steady_state_dispatch_does_not_grow_the_scratch() {
 
     let mut bridge = PhysicsBridge::new();
 
+    // ⚠️ A PARENTED body, so the ancestor walk W5 added is actually exercised.
+    // Without one, `chain` stays empty and its "allocates nothing per frame"
+    // claim is asserted over a code path the fixture never enters
+    // ([[feedback_absence_gate_needs_a_presence_sibling]]).
+    let rig = sim
+        .world_mut()
+        .spawn((Transform::from_translation(Vec2::new(3.0, 1.0)),))
+        .id();
+    let mid = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.5, 0.0)),
+            ph2d_ecs::ChildOf(rig),
+        ))
+        .id();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.2 },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 2.0)),
+        ph2d_ecs::ChildOf(mid),
+    ));
+
     // Warm: the only spawns (and thus the only scratch growth) happen on
     // the first tick; a few more let capacities settle.
     for tick in 1..=5u64 {

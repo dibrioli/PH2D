@@ -16,6 +16,7 @@
 mod hold;
 mod joints;
 mod kinematic;
+mod space;
 
 pub use kinematic::{FrozenScene, SceneAtTick};
 
@@ -109,6 +110,10 @@ pub struct PhysicsBridge {
     /// instead of teleporting it on the first one. Scratch: cleared and
     /// refilled per dispatch, so the steady state never reallocates.
     kin_start: Vec<(Entity, [f32; 3])>,
+    /// Ancestor chain buffer for `space::world_transform` / `write_world_pose`.
+    /// Persistent so the per-body, per-frame conversion allocates nothing
+    /// (HR-3; `hot_path_no_alloc` is the gate).
+    pub(super) chain: Vec<Transform>,
     /// New entities to spawn a body for, this frame.
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
@@ -153,6 +158,7 @@ impl PhysicsBridge {
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
             kin_start: Vec::new(),
+            chain: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
             settings: PhysicsSettings::default(),
@@ -471,9 +477,16 @@ impl PhysicsBridge {
         // other scratch fields without a borrow clash.
         let mut q = self.query.take().expect("query built in dispatch");
         let at_rest = self.last_stepped == 0;
-        for (e, rb, col, t) in q.iter(world) {
+        for (e, rb, col, _local) in q.iter(world) {
             self.seen.push(e);
-            let desc = body_desc(rb, col, t);
+            // ⚠️ WORLD, not the local `Transform` the query just handed us. The
+            // solver has no hierarchy: a body authored under a parent must be
+            // DESCRIBED where it is actually drawn, or it spawns (and rests, and
+            // collides) at its local coordinates read as world ones.
+            let Some(t) = space::world_transform(world, e, &mut self.chain) else {
+                continue;
+            };
+            let desc = body_desc(rb, col, &t);
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not
@@ -552,20 +565,28 @@ impl PhysicsBridge {
     /// `Transform` ([`Self::drive_kinematic`]), so both are skipped — asked
     /// through [`BodyKind::solver_owns_pose`], the one door, because a body
     /// that both stages claimed would have its pose written twice a tick.
-    /// Only touches root-level bodies' local Transform == world for W1
-    /// (child bodies land in W2).
-    fn readback(&self, sim: &mut SimWorld) {
+    /// ⚠️ The solver answers in WORLD space and `Transform` is LOCAL, so the
+    /// pose goes back through [`space::write_world_pose`]. Assigning it raw
+    /// works for a root (where the two coincide) and is wrong for every child:
+    /// the renderer composes the parent onto it again, so the body simulates
+    /// in one place and draws in another. A parent that cannot be inverted
+    /// (scaled to zero) leaves the `Transform` untouched rather than storing
+    /// a non-finite pose that would poison the whole subtree.
+    fn readback(&mut self, sim: &mut SimWorld) {
         let world = sim.world_mut();
         for (&e, b) in self.bodies.iter() {
             if !b.kind.solver_owns_pose() {
                 continue;
             }
-            if let Some(pose) = self.world.body_pose(b.handle)
-                && let Some(mut t) = world.get_mut::<Transform>(e)
-            {
-                t.translation.x = pose.translation.x;
-                t.translation.y = pose.translation.y;
-                t.rotation = pose.rotation.angle();
+            if let Some(pose) = self.world.body_pose(b.handle) {
+                space::write_world_pose(
+                    world,
+                    e,
+                    pose.translation.x,
+                    pose.translation.y,
+                    pose.rotation.angle(),
+                    &mut self.chain,
+                );
             }
         }
     }
@@ -585,8 +606,12 @@ impl PhysicsBridge {
     /// bake is for.)
     fn settle(&mut self, sim: &SimWorld) {
         let world = sim.world();
+        // The authored pose is LOCAL; the body lives in WORLD. Comparing the
+        // two directly would report every child body as "moved by hand" on
+        // every paused frame, teleporting it (and zeroing its velocity)
+        // forever.
         for (&e, b) in self.bodies.iter() {
-            let Some(t) = world.get::<Transform>(e) else {
+            let Some(t) = space::world_transform(world, e, &mut self.chain) else {
                 continue;
             };
             let (ax, ay, ar) = (t.translation.x, t.translation.y, t.rotation);
@@ -637,7 +662,11 @@ impl PhysicsBridge {
     /// stability rather than a flaky global allocation counter).
     #[doc(hidden)]
     pub fn scratch_capacity(&self) -> usize {
-        self.seen.capacity()
+        // Every per-frame buffer, summed — a gate that watches one of them
+        // reports "no growth" while another doubles beside it. `chain` is the
+        // ancestor walk W5 added; it grows to the deepest hierarchy once and
+        // must never grow again.
+        self.seen.capacity() + self.chain.capacity()
     }
 }
 

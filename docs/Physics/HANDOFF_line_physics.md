@@ -1355,6 +1355,113 @@ outra cena (`=1`..`=6`) o toggle nasce **marcado**, porque são demos de física
 
 ---
 
+# W5 — corpos FILHOS: o collider volta para debaixo do sprite (2026-07-18, pendente smoke)
+
+> **Uma frase:** o solver fala MUNDO e o `Transform` guarda LOCAL; para um corpo-raiz
+> os dois coincidem, e é por isso que isto atravessou quatro waves e 190 gates verdes.
+
+### O bug, medido antes de tocar em nada
+
+Parentear um objeto físico na Hierarquia — gesto que o app suporta inteiro — fazia o
+corpo **simular num lugar e desenhar noutro**, em silêncio:
+
+```
+bola em LOCAL (0, 4) sob um pai em (5, 0)  ⇒  desenhada em (5, 4)
+  solver simula em   x = 0
+  renderizado em     x = 5
+```
+
+O collider não estava onde o sprite estava. Detalhe completo, com as cinco lições:
+[`BUGS_physics.md`](BUGS_physics.md) **#2**.
+
+⚠️ **O `readback` prometia isto desde o W1** — *"child bodies land in W2"*. O W2 shipou
+em três pedaços e nenhum tocou nisto. Nota que promete wave futura apodrece pior que nota
+errada: lida de passagem, ela tranquiliza.
+
+### Cinco sítios, não um
+
+Consertar só o `readback` (onde o número errado aparece) deixaria o sistema **estável e
+errado**. Entrada: `body_desc` (nasce/repousa), `settle` (compara pose local com corpo em
+mundo ⇒ todo filho parece "movido à mão" todo frame pausado), `drive_kinematic` (a
+plataforma anda por um caminho que ninguém autorou e leva a carga), `reconcile_joints` (a
+âncora é um ponto do mundo). Saída: `readback`.
+
+### A álgebra do repo é INVERTÍVEL, e isso apagou o compromisso
+
+Eu ia propor *"só pai rígido; escala não suportada"*. Não precisou: `compose` soma
+rotações, multiplica escalas e cisalha com `[[1, tan sx], [tan sy, 1]]` ⇒ existe inverso
+exato. `Transform::inverse_compose` mora **ao lado** da lei que inverte, e o round-trip é
+a especificação inteira — erro medido **6,08e-6** sobre rotações, escala não-uniforme,
+escala negativa e skew nos dois eixos.
+
+⚠️ **A guarda de degeneração não é um limiar, e a v1 estava errada.** `det == 0.0` nasceu
+vermelha: em `f32` um shear construído para ser singular dá `det ≈ 1e-8`. Virou **"todo
+campo do resultado é finito?"** — a pergunta que o chamador tem (*posso guardar isto?*),
+sem número mágico, e que ainda recusa `NaN` vindo da **entrada**. Pai mal-condicionado
+passa de propósito (local enorme, mas `compose` o leva de volta à pose certa).
+
+### Onde mora o quê
+
+| Camada | O quê |
+|---|---|
+| `ph2d-ecs::transform_inverse` (módulo NOVO) | `Transform::inverse_compose` · `Transform::is_finite` · `parent_world_transform` + `parent_world_transform_into` (sem alocar; a versão antiga **delega**) |
+| `ph2d-physics-ecs::bridge::space` (módulo NOVO) | as **duas portas**: `world_transform` (entrada) e `write_world_pose` (saída, recusa pai não-inversível) |
+| `PhysicsBridge.chain` | buffer persistente do caminhador ⇒ zero alocação por frame |
+
+### Gates: 12 novos, 10 mutações, **10 sangram**
+
+Um por sítio religado (uma asserção só "o filho acaba no lugar certo" fica verde sobre
+quase todos), mais a guarda, o `clear()` do scratch e a subtração de rotação do inverso.
+⚠️ O `hot_path_no_alloc` **não tinha hierarquia na fixture**, então a promessa de
+zero-alloc do caminho novo era afirmada sobre código que ela nunca entrava; agora tem um
+corpo parenteado a dois níveis, e `scratch_capacity` **soma** os buffers (vigiar um
+enquanto o outro dobra ao lado é o mesmo furo).
+
+Regressão pinada: **corpo-raiz é byte-idêntico**. `compose(IDENTITY, local)` e
+`inverse_compose(IDENTITY, mundo)` são exatos, então rotear a raiz pela conversão nova
+não pode mudar nada — sem esse gate a wave poderia pagar o suporte a filhos com um drift
+silencioso no caso que é 99% das cenas.
+
+### LOC: dois tetos, os dois por SPLIT
+
+`transform.rs` estava **exatamente** na sua linha congelada (784) e meu acréscimo levou a
+907 ⇒ o irmão `transform_inverse.rs`. Como levei junto a `parent_world_transform`
+pré-existente, a catraca **BAIXOU para 768** (a única direção que aquela tabela deve
+andar). `physics_smoke.rs` foi a 704/600 ⇒ irmão `physics_smoke_rigs.rs` com as cenas
+6/7/8 — a costura é real: tudo ali precisa de uma **segunda** coisa para significar algo
+(um joint precisa de dois corpos, um bake precisa da timeline, um filho precisa de um
+ancestral).
+
+### Aberto no W5
+
+- **A escala não alcança o collider** — um sprite escalado 2× tem collider do tamanho
+  autorado. **Pré-existente e igual para corpo-raiz** (`body_desc` lê `col.shape`
+  verbatim), portanto ortogonal a esta wave; consertar aqui misturaria duas correções.
+  É wave própria, e vale para os dois casos.
+- **`GlobalTransform` não é consultado** — a ponte compõe a cadeia ela mesma, porque
+  aquele componente é `PresentComponent` (vive no mundo de apresentação, reconstruído no
+  extract) e a física roda sobre o `SimWorld`. Se algum dia a propagação publicar no sim,
+  esta é a segunda porta a fechar.
+- **O overlay de contorno** desenha do solver, que agora está certo em qualquer
+  profundidade — mas nada gateia o *desenho*; o smoke é o oráculo.
+
+### Smoke: `PH2D_PHYSICS_SMOKE=8`
+
+```
+env PH2D_PHYSICS_SMOKE=8 cargo run -p ph2d-host-desktop
+```
+
+Três rigs — um nível, dois níveis, e um **rotacionado** — cada um com uma bola física
+parenteada, cada um sobre um pedestal **estreito**. A regressão é inconfundível por
+construção: um corpo que volte a ler a pose local como mundo cai pela linha `x = 0`, erra
+o pedestal sobre o qual foi desenhado, e some de quadro. Tecla `B`: cada contorno tem de
+sentar exatamente no seu sprite, em toda profundidade. Depois **arraste um rig** no
+viewport: a bola acompanha, mantém o collider e continua colidindo.
+
+---
+
+---
+
 ## Decisões (ADR-0131, condensadas — o *porquê* está lá)
 
 - **D1** runtime-truth + bake opcional (Enio). **D2** `PhysicsWorld` transiente shell-side (precedente
@@ -1471,6 +1578,17 @@ outra cena (`=1`..`=6`) o toggle nasce **marcado**, porque são demos de física
   **`render_loop/physics_bridge_tests`**.
 - Testes novos: `ph2d-physics-ecs/tests/hold.rs` ·
   `ph2d-panel-timeline/tests/transport_physics_seam.rs`.
+
+**Alocados e CRIADOS no W5 (corpos filhos):**
+- `ph2d-ecs`: módulo NOVO **`transform_inverse.rs`** (`pub mod`) — `Transform::inverse_compose`,
+  `Transform::is_finite`, e as duas `parent_world_transform{,_into}` **movidas** para lá
+  (re-exportadas do `lib.rs`, então os chamadores não mudam).
+- `ph2d-physics-ecs`: módulo NOVO **`src/bridge/space.rs`** (privado) + campo
+  **`PhysicsBridge.chain`**. ⚠️ `scratch_capacity()` passou a **somar** os buffers.
+- `shells/desktop`: módulo NOVO **`physics_smoke_rigs.rs`** (cenas 6/7/8 movidas; `spawn_floor`
+  virou `pub(crate)`); env **`PH2D_PHYSICS_SMOKE=8`**.
+- Testes novos: `ph2d-ecs/tests/transform_inverse.rs` · `ph2d-physics-ecs/tests/child_bodies.rs`.
+- ⚠️ Catraca de LOC **BAIXADA**: `ph2d-ecs/src/transform.rs` 784 → **768**.
 
 **Alocados e CRIADOS no W3:**
 - `ph2d-ecs` (aditivo): **`stable_name_id`** em `name.rs` (+ re-export no `lib.rs`). O

@@ -167,7 +167,7 @@ fn the_bake_range_prefers_the_armed_loop_then_the_document() {
 /// door the record and the manual K already use
 /// (`feedback_derived_coordinate_seed_must_match_sample`).
 #[test]
-fn a_bake_lands_on_the_entitys_clock_not_the_playheads() {
+fn a_bake_lands_on_the_clock_of_its_entity_not_the_playhead() {
     use ph2d_anim::{AnimValue, Interp, RationalTime};
 
     let (mut sim, ball) = scene();

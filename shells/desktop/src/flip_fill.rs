@@ -234,11 +234,20 @@ pub(crate) fn fill_click(
     // que se cruza fica em **205** ε. O fosso é de 150×, e 8 deixa ~6× de folga para a
     // forma legítima sem chegar perto da quebrada.
     //
-    // ⚠️ Se a grade tiver cedido resolução ao `MAX_SIDE`, o ε efetivo é MAIOR que este —
-    // então a tolerância fica apertada demais e o critério recusa. Recusar é o lado
-    // seguro: cai no contorno vetorizado, que é o caminho que sempre funcionou.
+    // ⚠️ **A tolerância sai da resolução ENTREGUE (`r.scale`), nunca da pedida.**
+    //
+    // Elas divergem quando o `MAX_SIDE` da grade morde: ali quem cede é a RESOLUÇÃO, então
+    // o erro do contorno **para de melhorar** enquanto `params.precision` continua subindo
+    // — e uma tolerância derivada da pedida continua encolhendo contra um erro que ficou
+    // parado. Medido em 2026-07-18: acima de ~3200 px de arte na tela (2560 px no default,
+    // e só 1023 px com Precision 4,0) o critério passava a recusar SEMPRE, e a rota do
+    // arranjo — a que faz a malha do fill se apoiar nos vértices das linhas — se desligava
+    // **em silêncio**. Foi por isso que o smoke do Enio deu *"nenhuma melhoria e nenhuma
+    // mudança"*: no zoom dele a rota nunca chegou a rodar.
+    //
+    // Dois números sobre o mesmo fato, de fontes diferentes, é sempre a mesma doença.
     const HUG_TOL_EPS: f32 = 8.0; // LITERAL-PX-OK: multiplo do eps, medido (tabela acima)
-    let hug_tol = HUG_TOL_EPS * ph2d_flip_fill::RDP_EPSILON_PX / precision.max(1e-6);
+    let hug_tol = HUG_TOL_EPS * ph2d_flip_fill::RDP_EPSILON_PX / r.scale.max(1e-6);
     if let Some(i) = filled_shape_target(drawing, &r.outer, local, hug_tol) {
         // Os fechamentos de gap que a solução usou continuam valendo (o twist do Harmony).
         for c in &r.closures {

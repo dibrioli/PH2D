@@ -133,14 +133,19 @@ fn the_fill_of_a_grid_cell_rides_the_lines_themselves() {
     );
 }
 
-/// **E a dilatação encolhe para a espessura da linha, sozinha.**
+/// **E a dilatação some, sozinha: nesta rota o balde É o Draw:Filled.**
 ///
-/// A largura do contorno do fill é `w + 2s`, onde `s` é o desvio até o eixo. Nesta rota o
-/// contorno **É** o eixo, então `s = 0` por construção e a dilatação vira exatamente `w`
-/// — sem margem, sem compensação, sem constante para calibrar. É a fatia R2 do plano
-/// acontecendo de graça, e este gate é quem a pina.
+/// A largura do contorno do fill é `2s`, onde `s` é o desvio até o eixo (a lei inteira —
+/// ver o `dilate.rs`). Nesta rota o contorno **É** o eixo, feito dos próprios vértices das
+/// linhas, então `s = 0` por construção e a dilatação vira exatamente **zero**: a cor
+/// termina no eixo, que é onde o Draw:Filled a termina. Sem margem, sem compensação, sem
+/// constante para calibrar. É a fatia R2 do plano acontecendo de graça.
+///
+/// ⚠️ Este gate afirmava `w = 0,4` (a espessura da linha) até 2026-07-18, quando a
+/// medição contra o Draw:Filled condenou o termo `w`. A afirmação de hoje é mais forte, e
+/// é a que fecha a wave: **nesta rota não há nada a dilatar.**
 #[test]
-fn on_the_curve_route_the_dilation_is_just_the_line_width() {
+fn on_the_curve_route_there_is_nothing_left_to_dilate() {
     let mut d = grid_drawing();
     let st = FlipStyleSnapshot {
         grow: 0.0,
@@ -151,9 +156,9 @@ fn on_the_curve_route_the_dilation_is_just_the_line_width() {
     let f = painted(&d);
     for (i, w) in f.widths().iter().enumerate() {
         assert!(
-            (w - 0.4).abs() < 0.02,
-            "ponto {i}: a dilatação é {w}, e a linha tem 0,4 — nesta rota elas têm de ser \
-             a MESMA coisa (s = 0, sem margem)"
+            w.abs() < 0.02,
+            "ponto {i}: a dilatação é {w}, e nesta rota ela tem de ser ZERO — o anel já \
+             está sobre o eixo (0,4 = o termo `w` de volta, e a franja com ele)"
         );
     }
 }
@@ -304,6 +309,55 @@ fn the_trap_is_not_swallowed_by_the_curve_route() {
             a < 140.0,
             "a região saiu com área {a} — a caixa inteira tem 200, e o Trap deveria ter \
              confinado a cor a uma câmara (~100). A rota das curvas ignorou o slider."
+        );
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// **A tolerância do abraço segue a resolução ENTREGUE — senão a rota morre no zoom alto.**
+///
+/// O gate que faltava no smoke de 2026-07-18 (*"nenhuma melhoria e nenhuma mudança"*).
+///
+/// O `hug_tol` saía da precisão **pedida** (`style.precision / doc_per_px`) e era comparado
+/// com um erro nascido da **entregue** (`Grid::new` capa o `scale` para caber no
+/// `MAX_SIDE`). Enquanto a grade não satura os dois números coincidem e tudo funciona; a
+/// partir dali a tolerância continua encolhendo contra um erro que ficou parado, e a rota
+/// do arranjo **passa a recusar sempre, em silêncio**. Medido: acima de ~3200 px de arte
+/// na tela com o default, e já em 1023 px com Precision 4,0.
+///
+/// A fixture tem de conter o fenômeno: um `doc_per_px` pequeno o bastante para a grade
+/// SATURAR. Com a arte de ~12 unidades da grade e `MAX_SIDE = 4096`, basta pedir uma
+/// precisão acima de ~340 px de buffer por unidade.
+///
+/// Mutação que sangra: voltar a dividir pela precisão pedida — a rota recusa e o anel
+/// deixa de se apoiar nos vértices.
+#[test]
+fn the_hug_tolerance_follows_the_resolution_the_grid_delivered() {
+    let art = grid_drawing();
+    let st = FlipStyleSnapshot {
+        grow: 0.0,
+        ..style(ToolFillMode::Paint)
+    };
+
+    // `doc_per_px` minúsculo = câmera muito aproximada = precisão pedida altíssima.
+    // (0,001 pede ~1600 px de buffer por unidade; a grade entrega ~340.)
+    for doc_per_px in [0.01f32, 0.003, 0.001] {
+        let mut d = art.clone();
+        fill_click(
+            &mut d,
+            &st,
+            Vec2::new(5.0, 5.0),
+            doc_per_px,
+            &Xform::IDENTITY,
+        )
+        .expect("preenche");
+        let f = painted(&d);
+        let on_vertex = on_vertex_count(&art, f.positions());
+        assert!(
+            on_vertex >= 60,
+            "com doc_per_px={doc_per_px} a grade satura e so {on_vertex} pontos do anel \
+             pousam num vertice de linha — a rota do arranjo se recusou EM SILENCIO \
+             porque a tolerancia veio da precisao PEDIDA e o erro, da ENTREGUE"
         );
     }
 }

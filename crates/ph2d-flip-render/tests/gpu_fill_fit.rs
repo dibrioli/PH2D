@@ -14,9 +14,7 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
-use ph2d_flip_fill::{
-    FILL_TUCK_FRACTION, FillMode, FillParams, contour_widths, contour_widths_with_margin, fill_at,
-};
+use ph2d_flip_fill::{FillMode, FillParams, contour_widths, fill_at};
 use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 
 /// **A dilatação vem do PRODUTO, não daqui.**
@@ -247,7 +245,7 @@ fn render_inner(
 
 /// A cena do smoke: um círculo desenhado À MÃO (trêmulo) com linha grossa, preenchido
 /// pelo balde com os parâmetros DEFAULT do produto.
-fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
+fn scene_t(width_px: f32, hardness: f32) -> FlipDrawing {
     let (cx, cy, r) = (160.0f32, 160.0, 110.0);
     let n = 200;
     let pts: Vec<Vec2> = (0..n)
@@ -280,8 +278,8 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
     let mut d = FlipDrawing::new();
     // 1) o preenchimento (atrás), 2) o line-art (na frente) — a ordem do produto.
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
-    // **A dilatação sai da lei do produto**, com a margem que a varredura está testando.
-    let widths = contour_widths_with_margin(&lines, &res.outer, tuck);
+    // **A dilatação sai da lei do produto** — nunca de uma cópia local.
+    let widths = contour_widths(&lines, &res.outer);
     let mut f = FlipStroke::new();
     for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
@@ -311,6 +309,61 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
     }
     line.closed = true;
     line.hardness = hardness;
+    d.strokes.push(line);
+    d
+}
+
+/// Os PONTOS da arte do `scene_t`, para as cenas irmãs abaixo desenharem a MESMA linha.
+///
+/// Elas têm de compartilhar a geometria com o `scene_t`, senão a comparação mede duas
+/// artes diferentes em vez de duas ROTAS diferentes.
+fn scene_points() -> Vec<Vec2> {
+    let (cx, cy, r) = (160.0f32, 160.0, 110.0);
+    let n = 200;
+    (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32;
+            let (c, s) = unit_circle(t);
+            let h = ((i as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+            let rr = r + h * 4.0;
+            Vec2::new(cx + rr * c, cy + rr * s)
+        })
+        .collect()
+}
+
+fn scene_line(width_px: f32, hardness: f32) -> FlipStroke {
+    let mut line = FlipStroke::new();
+    for p in &scene_points() {
+        line.push_point(Point {
+            pos: *p,
+            width: width_px,
+            opacity: 1.0,
+            color: Rgba::new(0.95, 0.95, 0.96, 1.0),
+        });
+    }
+    line.closed = true;
+    line.hardness = hardness;
+    line
+}
+
+/// A MESMA arte **sem preenchimento nenhum** — o controle que diz onde a linha de fato
+/// termina, em vez de eu calcular um raio e acreditar nele.
+fn line_only_scene(width_px: f32, hardness: f32) -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    d.strokes.push(scene_line(width_px, hardness));
+    d
+}
+
+/// A MESMA arte pela rota do **Draw:Filled** — o `fill` mora no PRÓPRIO traço, então a
+/// cor é a triangulação dos pontos da linha e termina no EIXO. É a rota que o Enio
+/// aprovou, e a que a `filled_shape_target` do balde já usa para uma forma fechada.
+fn draw_filled_scene(width_px: f32, hardness: f32) -> FlipDrawing {
+    let mut line = scene_line(width_px, hardness);
+    line.fill = Some(Fill {
+        color: Rgba::new(0.78, 0.6, 0.35, 1.0),
+        opacity: 1.0,
+    });
+    let mut d = FlipDrawing::new();
     d.strokes.push(line);
     d
 }
@@ -426,11 +479,11 @@ fn scene_world_full(width_px: f32, hardness: f32, ppw: f32, tremor: bool) -> Fli
 }
 
 fn scene_h(width_px: f32, hardness: f32) -> FlipDrawing {
-    scene_t(width_px, hardness, FILL_TUCK_FRACTION)
+    scene_t(width_px, hardness)
 }
 
 fn scene(width_px: f32) -> FlipDrawing {
-    scene_t(width_px, 1.0, FILL_TUCK_FRACTION)
+    scene_t(width_px, 1.0)
 }
 
 /// Círculo sem transcendentais (HR-5 vale no teste também — e é o mesmo helper do solver).
@@ -565,164 +618,150 @@ fn look() {
     }
 }
 
-/// **O gate do encaixe: sob a linha MACIA não pode aparecer o fundo.**
+/// **A COR NÃO PASSA DA LINHA QUE O ARTISTA VÊ.**
 ///
-/// É o defeito que o smoke pegou e que só o pixel mostra. Com `hardness < 1` a linha é
-/// semi-transparente nas bordas: se a cor parar no eixo, a metade EXTERNA da linha
-/// mistura com o fundo escuro e o contorno ganha um halo sujo — a arte não fecha. Com a
-/// dilatação (o contorno do fill vestindo a espessura da linha), a linha macia mistura
-/// com a COR, e o encaixe é o do Grease Pencil.
+/// Este gate substitui um que ficou VERDE durante quatro smokes seguidos enquanto o
+/// defeito estava na tela, e ele era cego por **duas** razões independentes — as duas
+/// valem a pena registrar, porque as duas são armadilhas gerais:
 ///
-/// Mutação que sangra: zere a `width` dos pontos do contorno do fill (o 1º corte) e a
-/// contagem de pixels escuros dentro da silhueta explode.
+/// 1. **A fixture rodava com `hardness = 1.0`.** Numa linha OPACA o transbordo é
+///    identicamente zero (medido: −0,37 px) — a linha pinta por cima exatamente da faixa
+///    onde a franja mora. Era o único ponto da reta onde o defeito não pode existir.
+/// 2. **A janela de medição começava 2 px ALÉM do raio geométrico** — e o raio geométrico
+///    é o mesmo `w/2` que a dilatação perseguia. Todo o transbordo vivia *antes* do
+///    primeiro ponto amostrado: o gate media zero **por construção**, em qualquer dureza.
+///
+/// A cura das duas é a mesma: **não escolha um raio**. Renderize a cena DUAS vezes — só a
+/// linha, e a linha com a cor — e pergunte, raio a raio, se a cor aparece onde a linha
+/// sozinha já não muda o fundo. A silhueta deixa de ser um número que eu calculo e passa
+/// a ser uma medição.
 #[test]
 #[ignore = "precisa de GPU"]
-fn a_soft_line_never_shows_the_background_through_the_fill_edge() {
+fn the_colour_never_passes_the_line_the_artist_can_see() {
     let Some((device, queue)) = device() else {
         eprintln!("sem adapter: skip");
         return;
     };
-    for width_px in [8.0f32, 16.0, 32.0] {
-        let px = render(&device, &queue, &scene_h(width_px, 0.35));
-        let dark = |x: i32, y: i32| -> bool {
-            let i = ((y as u32 * W + x as u32) * 4) as usize;
-            // Cinza do fundo (r≈g≈b, escuro) — a cor e a linha são bem mais claras.
-            let (r, g, b) = (px[i] as i32, px[i + 1] as i32, px[i + 2] as i32);
-            r < 90 && (r - b).abs() < 12 && (r - g).abs() < 12
-        };
-        // Varre o ANEL da linha (do eixo até a silhueta externa): ali, com a cor por
-        // baixo, nenhum pixel pode ser fundo.
-        let mut leaks = 0;
-        for k in 0..256 {
-            let t = k as f32 / 256.0;
-            let (c, s) = unit_circle(t);
-            // o eixo está em r≈110 (±2 de tremor); a silhueta externa em 110 + w/2.
-            let from = 110.0 + 3.0;
-            let to = 110.0 + width_px * 0.5 - 2.0;
-            let mut step = from;
-            while step <= to {
-                let x = (160.0 + c * step).round() as i32;
-                let y = (160.0 + s * step).round() as i32;
-                if (0..W as i32).contains(&x) && (0..H as i32).contains(&y) && dark(x, y) {
-                    leaks += 1;
-                }
-                step += 1.0;
-            }
-        }
-        println!("linha macia {width_px}px: {leaks} pixels de FUNDO sob a linha");
-        assert_eq!(
-            leaks, 0,
-            "linha macia de {width_px}px: o fundo aparece atraves da linha em {leaks} pixels \
-             — a cor nao entrou por baixo dela (o fill nao se ajusta ao contorno)"
-        );
-    }
-}
-
-/// **A varredura que escolhe a margem** (`FILL_TUCK_PX`): dois defeitos OPOSTOS, e o
-/// valor certo é o que zera um sem acordar o outro.
-///
-/// - margem de menos → sobra um fio de linha SEM cor por baixo (com pincel macio, o
-///   fundo aparece: o "não se ajusta" do smoke);
-/// - margem demais → a cor TRANSBORDA a linha (uma orla colorida por fora do desenho —
-///   exatamente o defeito que matou o `grow = +2` default no BUGS #11).
-#[test]
-#[ignore = "diagnostico: escolhe a constante"]
-fn sweep_tuck() {
-    let Some((device, queue)) = device() else {
-        return;
-    };
-    println!("tuck |  linha | fundo sob a linha | transbordo alem dela");
-    for tuck in [0.0f32, 0.03, 0.06, 0.10, 0.15, 0.25] {
+    // ⚠️ As DURAS ficam na lista de propósito: elas são o controle. Se um dia o gate
+    // passar a falhar só nelas, o defeito é outro.
+    for hardness in [1.0f32, 0.8, 0.5, 0.35] {
         for width_px in [8.0f32, 16.0, 32.0] {
-            let px = render(&device, &queue, &scene_t(width_px, 0.35, tuck));
-            let at = |x: i32, y: i32| -> (i32, i32, i32) {
+            let with = render(&device, &queue, &scene_h(width_px, hardness));
+            let line_only = render(&device, &queue, &line_only_scene(width_px, hardness));
+
+            let at = |px: &[u8], x: i32, y: i32| -> (i32, i32, i32) {
                 let i = ((y as u32 * W + x as u32) * 4) as usize;
                 (px[i] as i32, px[i + 1] as i32, px[i + 2] as i32)
             };
+            // Fundo do render (o `clear`): escuro e neutro.
             let is_bg =
                 |c: (i32, i32, i32)| c.0 < 90 && (c.0 - c.2).abs() < 12 && (c.0 - c.1).abs() < 12;
-            // ocre puro (sem branco de linha por cima): r bem > b, e claro
-            let is_colour = |c: (i32, i32, i32)| c.0 > 120 && c.0 > c.2 + 40;
 
-            let (mut bg_under, mut spill) = (0, 0);
+            // O maior raio em que a LINHA sozinha ainda toca o fundo, e o maior em que a
+            // COR aparece. Amostragem radial fina, em 256 direções.
+            let (mut r_line, mut r_colour) = (0.0f32, 0.0f32);
             for k in 0..256 {
                 let t = k as f32 / 256.0;
-                let (c, s) = unit_circle(t);
-                // ANEL da linha: do eixo (110) à silhueta (110 + w/2).
-                let mut step = 113.0;
-                while step <= 110.0 + width_px * 0.5 - 2.0 {
+                let (c, sn) = unit_circle(t);
+                // Começa DENTRO do eixo: em dureza 1,0 a linha opaca cobre tudo a
+                // partir dele, e um `r_colour` que nunca acha cor tornaria a comparação
+                // vácua (a asserção passaria sem medir nada).
+                let mut step = 110.0 - width_px * 0.5 - 6.0;
+                while step <= 110.0 + width_px * 0.5 + 12.0 {
                     let (x, y) = (
                         (160.0 + c * step).round() as i32,
-                        (160.0 + s * step).round() as i32,
+                        (160.0 + sn * step).round() as i32,
                     );
-                    if is_bg(at(x, y)) {
-                        bg_under += 1;
+                    if (0..W as i32).contains(&x) && (0..H as i32).contains(&y) {
+                        if !is_bg(at(&line_only, x, y)) {
+                            r_line = r_line.max(step);
+                        }
+                        // "Há cor aqui" = o render COM fill difere do render SÓ com a
+                        // linha. É a pergunta exata: *o preenchimento pintou isto?*
+                        let (a, b) = (at(&with, x, y), at(&line_only, x, y));
+                        let d = (a.0 - b.0)
+                            .abs()
+                            .max((a.1 - b.1).abs())
+                            .max((a.2 - b.2).abs());
+                        if d > 8 {
+                            r_colour = r_colour.max(step);
+                        }
                     }
-                    step += 1.0;
-                }
-                // FORA da silhueta: ali não pode haver cor.
-                let mut step = 110.0 + width_px * 0.5 + 2.0;
-                while step <= 110.0 + width_px * 0.5 + 8.0 {
-                    let (x, y) = (
-                        (160.0 + c * step).round() as i32,
-                        (160.0 + s * step).round() as i32,
-                    );
-                    if is_colour(at(x, y)) {
-                        spill += 1;
-                    }
-                    step += 1.0;
+                    step += 0.25;
                 }
             }
-            println!("{tuck:>4} | {width_px:>5}px | {bg_under:>17} | {spill:>20}");
+            let excess = r_colour - r_line;
+            println!(
+                "linha {width_px:>2}px dureza {hardness:.2}: linha ate {r_line:.2},                  cor ate {r_colour:.2}, excedente {excess:+.2}px"
+            );
+            // Um pixel de folga é o anti-aliasing das duas bordas, e nada mais.
+            assert!(
+                excess <= 1.0,
+                "linha de {width_px}px com dureza {hardness}: a cor vai {excess:.2}px ALEM                  do ultimo raio em que a linha ainda e visivel — e a franja que o Enio viu                  (r_linha {r_line:.2}, r_cor {r_colour:.2})"
+            );
         }
     }
 }
 
-/// **E o defeito OPOSTO: a cor não pode transbordar a linha.**
+/// **O BALDE DESENHA O QUE O DRAW:FILLED DESENHA.**
 ///
-/// A dilatação que faz a cor encaixar por baixo do line-art é a mesma que, exagerada,
-/// a empurra para FORA dele — a orla colorida que matou o `grow = +2` default
-/// (BUGS #11). Este gate guarda esse lado; o `sweep_tuck` mostra a curva inteira.
+/// A referência não é uma regra que eu escolhi: é o desenho que o Enio aprovou.
+///
+/// > *"Diferente do Draw:Filled que faz exatamente como eu estou dizendo."*
+///
+/// O Draw:Filled põe `fill` no PRÓPRIO traço — a cor termina no eixo, zero dilatação. Este
+/// gate renderiza a mesma arte pelas duas rotas e conta os pixels que discordam. Com a lei
+/// antiga (`w + 2s`) ele nasce VERMELHO em pincel macio, com **milhares** de pixels.
 #[test]
 #[ignore = "precisa de GPU"]
-fn the_colour_never_spills_outside_the_line() {
+fn the_bucket_paints_the_shape_the_way_draw_filled_does() {
     let Some((device, queue)) = device() else {
         eprintln!("sem adapter: skip");
         return;
     };
-    for width_px in [8.0f32, 16.0, 32.0] {
-        let px = render(&device, &queue, &scene_h(width_px, 1.0));
-        let is_colour = |x: i32, y: i32| -> bool {
-            let i = ((y as u32 * W + x as u32) * 4) as usize;
-            let (r, b) = (px[i] as i32, px[i + 2] as i32);
-            r > 120 && r > b + 40
-        };
-        let mut spill = 0;
-        let mut samples = 0;
-        for k in 0..256 {
-            let t = k as f32 / 256.0;
-            let (c, s) = unit_circle(t);
-            // De 2 px além da silhueta para fora: ali só pode haver fundo.
-            let mut step = 110.0 + width_px * 0.5 + 2.0;
-            while step <= 110.0 + width_px * 0.5 + 8.0 {
-                let (x, y) = (
-                    (160.0 + c * step).round() as i32,
-                    (160.0 + s * step).round() as i32,
-                );
-                samples += 1;
-                if (0..W as i32).contains(&x) && (0..H as i32).contains(&y) && is_colour(x, y) {
-                    spill += 1;
+    for hardness in [1.0f32, 0.8, 0.5, 0.35, 0.2] {
+        for width_px in [8.0f32, 16.0, 32.0] {
+            let bucket = render(&device, &queue, &scene_h(width_px, hardness));
+            let reference = render(&device, &queue, &draw_filled_scene(width_px, hardness));
+            let mut differing = 0usize;
+            let mut worst = 0i32;
+            for i in (0..bucket.len()).step_by(4) {
+                let d = (0..3)
+                    .map(|c| (bucket[i + c] as i32 - reference[i + c] as i32).abs())
+                    .max()
+                    .unwrap_or(0);
+                worst = worst.max(d);
+                if d > 8 {
+                    differing += 1;
                 }
-                step += 1.0;
             }
+            println!(
+                "linha {width_px:>2}px dureza {hardness:.2}: pior delta {worst},                  {differing} pixels diferem do Draw:Filled"
+            );
+            // **A folga é MEDIDA, e ela é o erro de VETORIZAÇÃO do contorno** — não uma
+            // diferença de lei. O resíduo é máximo onde a linha é FINA e MACIA (ali a
+            // borda da cor fica mais exposta) e some na grossa:
+            //
+            // | dureza | 8 px | 16 px | 32 px |
+            // |---|---|---|---|
+            // | 1,00 | 0 | 0 | 0 |
+            // | 0,80 | 37 | 1 | 0 |
+            // | 0,50 | 203 | 51 | 2 |
+            // | 0,35 | 272 | 90 | 8 |
+            // | 0,20 | **314** | 135 | 23 |
+            //
+            // O limite fica em 400: 27% acima do pior observado, e **30× abaixo** do que a
+            // lei antiga produzia na mesma cena (12.223 em 32 px / 0,50). Não há como
+            // ressuscitar o termo `w` sob esta barra.
+            //
+            // ⚠️ O resíduo é do CONTORNO VETORIZADO, e a rota do arranjo (R1, no shell)
+            // o leva a zero — ali o anel É feito dos vértices das linhas, então `s = 0`
+            // por construção. Este gate mede a rota que sobra quando aquela recusa.
+            assert!(
+                differing <= 400,
+                "linha de {width_px}px dureza {hardness}: {differing} pixels diferem do                  Draw:Filled (a rota aprovada pelo Enio) — a dilatacao esta desenhando                  outra coisa"
+            );
         }
-        let pct = 100.0 * spill as f32 / samples as f32;
-        println!("linha {width_px}px: transbordo {spill}/{samples} ({pct:.1}%)");
-        assert!(
-            pct < 2.0,
-            "linha de {width_px}px: a cor vazou para FORA do contorno em {pct:.1}% do anel \
-             externo — a dilatacao esta grande demais (o defeito do BUGS #11)"
-        );
     }
 }
 
@@ -757,7 +796,7 @@ fn spiky(width_px: f32) -> FlipDrawing {
 
     let mut d = FlipDrawing::new();
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
-    let widths = contour_widths_with_margin(&lines, &res.outer, FILL_TUCK_FRACTION);
+    let widths = contour_widths(&lines, &res.outer);
     let mut f = FlipStroke::new();
     for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
@@ -1298,8 +1337,12 @@ fn probe_fit_at(
                 }
             }
         };
+        // ⚠️ **Só a metade INTERNA.** A externa é a cauda macia da linha compositando
+        // sobre o papel — o Draw:Filled faz o MESMO ali (medido: 2956 pixels numa linha
+        // de 32 px), então exigir cor lá é exigir do balde algo que a referência aprovada
+        // não faz. O defeito real é a cor ficar aquém do eixo, e ele vive aqui dentro.
         let mut step = -half_px + 1.0;
-        while step <= half_px - 1.0 {
+        while step <= -1.0 {
             probe(step, false, &mut bare);
             step += 1.0;
         }
@@ -1342,7 +1385,26 @@ fn sweep_zoom() {
     }
 }
 
-/// **A cor alcança POR BAIXO da linha, na escala do produto.**
+/// **A cor alcança o EIXO da linha, em toda a faixa de zoom** — o irmão de PRESENÇA do
+/// `the_colour_never_passes_the_line_the_artist_can_see`: um cerca a falta, o outro o
+/// excesso.
+///
+/// # Duas correções de 2026-07-18, e as duas valem registrar
+///
+/// **(a) A janela media o lado errado.** Ela varria `[eixo − w/2, eixo + w/2]` — as DUAS
+/// metades — exigindo cor sob toda a linha macia. Medido (`probe_halo_under_soft_line`),
+/// o **Draw:Filled reprova nisso**: 2956 pixels de fundo sob uma linha de 32 px. E o
+/// Draw:Filled é a rota que o Enio chama de perfeita. A metade EXTERNA é a cauda macia do
+/// traço compositando sobre o papel, de propósito; exigir cor ali era exigir do balde algo
+/// que a referência aprovada não faz — e foi essa exigência que sustentou o termo `w` da
+/// dilatação, a franja de quatro smokes. Hoje a janela é só a metade INTERNA.
+///
+/// **(b) Um irmão com fixture TRÊMULA foi tentado e descartado.** Um gate radial precisa
+/// de uma janela colada no eixo para enxergar um desvio sub-pixel; num círculo desenhado à
+/// mão o eixo ondula ±2 px, então raio fixo nenhum está do lado de dentro em todos os
+/// ângulos — ele acusava 49 pixels de "vão" que eram a cauda da linha sobre o papel. **Um
+/// eixo que ondula não admite janela de raio fixo.** Este gate usa círculo LISO e é por
+/// isso que ele funciona; não reintroduza o irmão trêmulo.
 ///
 /// O gate que pina o ganho da compensação com sinal — e ele existe porque as mutações
 /// revelaram que os outros dez **não conseguiam vê-lo**: tirar a compensação inteira
@@ -1383,9 +1445,9 @@ fn the_fill_reaches_under_the_line_at_product_scale() {
             total += bare;
         }
     }
-    println!("fundo sob a linha, somado na faixa de zoom: {total}");
+    println!("fundo aquem do eixo, somado na faixa de zoom: {total}");
     assert!(
-        total <= 280,
+        total <= 8,
         "{total} amostras de FUNDO sob a linha — a cor nao esta entrando por baixo do          line-art (158 = o que uma margem uniforme, sem compensacao, deixa)"
     );
 }

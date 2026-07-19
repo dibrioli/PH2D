@@ -1359,13 +1359,13 @@ Tínhamos. É o **#14**, e ele estava certo o tempo todo.
 
 ### O INVARIANTE (é isto que não se pode quebrar de novo)
 
-> **A referência do fill é o EIXO da linha.** A dilatação leva a cor do eixo até a **silhueta** —
-> pela espessura da linha que aquele ponto veste — **e PARA ali**. Qualquer termo que empurre a
-> cor além da silhueta é **transbordo por construção**: naquela faixa a linha já tem alpha zero,
-> então a cor cai na tela nua e o artista a vê.
+> **A referência do fill é o EIXO da linha.** A cor termina NELE.
 
-`largura = w + 2s`, e nada mais. `w` = a espessura da linha LOCAL (#20); `s` = o desvio **com
-sinal** do ponto do contorno até o eixo, que corrige o erro de vetorização.
+⚠️ **Esta seção dizia `largura = w + 2s`, e o termo `w` foi derrubado no #22** — por MEDIÇÃO
+contra o Draw:Filled, quatro horas depois de eu escrever aqui que o invariante estava fechado.
+A metade certa era *"a referência é o eixo"*; a metade errada era *"e a dilatação leva a cor
+dali até a silhueta"*. **O erro está preservado acima de propósito**: ele é a 4ª instância
+seguida da mesma doença, e apagá-lo esconderia justamente o padrão.
 
 ### A causa: duas rodadas gastas calibrando um termo que não devia existir
 
@@ -1416,3 +1416,97 @@ reclamou de halo.
 > vinha embutida num fix correto. Um invariante que vive só na prosa de um bug antigo não
 > sobrevive ao próximo fix — por isso ele agora está **em caixa alta no topo desta seção** e é
 > citado no doc da constante.
+
+
+---
+
+## #22 — A dilatação inteira era contagem dupla, e a prova estava na rota irmã
+
+**2026-07-18** · *"nenhuma melhoria e nenhuma mudança. ainda extravasa."* (Enio, 5º smoke)
+
+### O INVARIANTE (a versão que sobreviveu à medição)
+
+> **A cor do balde termina no EIXO da linha — exatamente onde o Draw:Filled a termina.**
+> A largura do anel do fill é `2s`, e `s` é **só** o erro de vetorização do contorno, com
+> sinal. Nenhum termo derivado da ESPESSURA da linha entra na conta. Onde o contorno já está
+> sobre o eixo, a largura é **zero**.
+
+### O que decidiu: a referência era o próprio produto
+
+O Enio nomeou a resposta certa dois smokes antes e eu não a li como especificação:
+
+> *"Diferente do **Draw:Filled** que faz exatamente como eu estou dizendo."*
+
+O Draw:Filled põe `fill` no PRÓPRIO traço — a cor é a triangulação dos pontos da linha, então
+ela para no eixo e a metade externa do traço composita sobre o papel. **Zero dilatação.** E é a
+mesma coisa que a rota `filled_shape_target` do balde já fazia para uma forma fechada, sem
+ninguém nunca reclamar. **Duas rotas do MESMO balde respondiam diferente à mesma pergunta, e o
+usuário já tinha dito qual estava certa.**
+
+Medido (`probe_bucket_vs_draw_filled`, pincel macio, escala do produto — pixels que diferem da
+referência em mais de 8/255):
+
+| linha | dureza | `w + 2s` (a lei do #21) | **`2s`** (a lei de hoje) |
+|---|---|---|---|
+| 8 px | 0,80 | 2.721 | **29** |
+| 16 px | 0,80 | 5.623 | **8** |
+| 32 px | 0,80 | 11.685 | **0** |
+| 32 px | 0,50 | 12.223 | **11** |
+| 32 px | 1,00 | 435 | **0** |
+
+### Por que o `w` parecia necessário: um gate que a referência aprovada REPROVAVA
+
+O termo sobreviveu a quatro rodadas porque havia um gate exigindo-o —
+`a_soft_line_never_shows_the_background_through_the_fill_edge`: sob a linha macia, nenhum
+pixel do anel `[eixo, silhueta]` podia ser fundo.
+
+A pergunta que o derrubou: **o Draw:Filled passa nesse gate?** Medido
+(`probe_halo_under_soft_line`):
+
+| rota | 16 px / dureza 0,35 | 32 px / dureza 0,35 |
+|---|---|---|
+| **Draw:Filled (a referência aprovada)** | 1005 | 2956 |
+| balde, lei nova (`2s`) | **1005** | **2956** |
+| balde, lei antiga (`w + 2s`) | 1 | 0 |
+
+A referência **reprova**, e a lei nova reproduz a referência na contagem exata. O gate estava
+descrevendo o modelo de quem o escreveu, não o requisito do produto.
+
+**E por que aquilo não é defeito:** a borda da cor pousa no eixo, e no eixo a linha está em
+opacidade CHEIA — a borda fica **escondida sob o núcleo do traço**. Era a lei antiga que a
+expunha, empurrando-a até a silhueta externa, onde a linha é transparente. A franja de cinco
+smokes era essa borda a descoberto. O gate foi reescrito para medir o lado de DENTRO (a cor
+ficar aquém do eixo, que é o defeito real do #15).
+
+### O 2º defeito, independente: a rota nova nunca rodou no zoom do Enio
+
+*"Nenhuma mudança"* tinha causa própria. O `hug_tol` — a tolerância que decide se a rota do
+arranjo governa o clique — saía da precisão **PEDIDA**, enquanto o erro do contorno nasce da
+**ENTREGUE** (o `Grid::new` capa o `scale` no `MAX_SIDE`). Enquanto a grade não satura os dois
+coincidem; a partir dali a tolerância continua encolhendo contra um erro que ficou parado, e a
+rota **se recusa em silêncio** — acima de ~3200 px de arte na tela no default, e já em 1023 px
+com Precision 4,0. O `FillResult` agora **publica a resolução entregue**, e quem tolera o erro
+a lê de lá.
+
+### As lições
+
+> **1. A referência pode já estar no produto.** Antes de inventar um limiar, pergunte se
+> alguma outra rota do mesmo sistema já responde a mesma pergunta — e se o usuário já disse
+> qual delas está certa. Um oráculo que compara com a rota aprovada vale mais que um número
+> que eu escolho.
+
+> **2. Um gate que a referência aprovada REPROVA está descrevendo o seu modelo.** É o teste
+> mais barato que existe para saber se um gate é lei ou opinião, e ele custa uma sonda. Este
+> aqui sustentou um bug por quatro rodadas de conserto.
+
+> **3. Ao 4º ajuste da mesma constante, o termo é que está errado.** As rodadas foram
+> `0,5 → 0,25 → fração 0,06 → fração 0,03 → zero`, cada uma com medição séria e tabela
+> honesta. Nenhuma perguntou **se o termo devia existir**. A margem morreu no #21 por ser
+> fração de `w`; o `w` morreu aqui pela mesma razão — e o #21 chegou a declarar o invariante
+> fechado com o termo defeituoso dentro dele.
+
+> **4. Nove gates de pixel ficam VERDES com o bug de volta.** A mutação que ressuscita o `w`
+> mata exatamente os dois gates novos e mais nenhum dos outros nove. Não era barra frouxa
+> (engordar o fill 25% mata 3 gates de unidade): era a suíte inteira medindo a rota que já
+> funcionava — **todas as 11 fixtures usavam UM traço fechado**, onde o produto vai pela rota
+> que não dilata, e `contour_widths` nunca era chamada.

@@ -2,9 +2,7 @@
 //! primeiros são BUGS #20 (a dilatação 100× grande, e a média global), o quarto é a
 //! lição do BUGS #18 (vértice contra segmento).
 
-use super::{
-    FILL_TUCK_FRACTION, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
-};
+use super::{contour_widths, local_line};
 use crate::Vec2;
 
 /// Uma linha reta horizontal em `y`, com espessura CHEIA `w`, amostrada em `n` pontos
@@ -19,81 +17,65 @@ fn line(y: f32, w: f32, x0: f32, x1: f32, n: usize) -> (Vec<Vec2>, Vec<f32>, boo
     (pts, vec![w * 0.5; n], false)
 }
 
-/// **O contorno veste a linha que ABRAÇA, não a média do desenho.**
+/// **A largura é o DESVIO, e mais nada — a espessura da linha não entra.**
 ///
-/// Este é o BUGS #20: com uma linha grossa e uma fina no mesmo desenho, a média fica
-/// entre as duas, então onde o contorno abraça a FINA a cor era desenhada larga demais
-/// e aparecia do outro lado dela. O sintoma na tela era a cor atravessando a linha fina.
+/// Este gate é o inverso exato dos dois que ele substituiu (*"o contorno veste a linha que
+/// abraça"* e *"a margem escala com a linha"*). Os dois pinavam um termo `w` que a
+/// medição contra o Draw:Filled condenou em 2026-07-18: com pincel macio ele afastava o
+/// balde da referência aprovada em **doze mil pixels**, e era contagem dupla do termo do
+/// desvio (ver o topo do `dilate.rs`).
 ///
-/// Mutação que ele mata: trocar `local_line` pela média (o código de antes) — os dois
-/// pontos passam a valer 7,0.
+/// A afirmação de hoje: um contorno pousado **em cima do eixo** ganha largura **ZERO**,
+/// e ganha zero *tanto na linha fina quanto na grossa*. A cor termina no eixo, que é onde
+/// o Draw:Filled a termina.
+///
+/// ⚠️ **A fixture contém as duas espessuras de propósito**: com uma só, ressuscitar o
+/// termo `w` daria um número que alguém poderia ler como "a compensação". Com duas, a
+/// mutação produz 2,0 num ponto e 16,0 no outro — impossível de confundir com desvio, que
+/// é o MESMO nos dois (zero).
 #[test]
-fn the_contour_wears_the_line_it_hugs_not_the_average() {
-    let strokes = vec![
-        line(0.0, 10.0, -50.0, 50.0, 8),  // grossa
-        line(100.0, 2.0, -50.0, 50.0, 8), // fina
-    ];
-    // Dois pontos de contorno: um colado na grossa, outro colado na fina.
-    let contour = [Vec2::new(0.0, 1.0), Vec2::new(0.0, 99.0)];
-    let w = contour_widths(&strokes, &contour);
-
-    let k = FILL_TUCK_FRACTION;
-    assert!(
-        (w[0] - 10.0 * (1.0 + k)).abs() < 1e-4,
-        "junto da linha GROSSA a dilatacao tem de ser 10 + margem, veio {}",
-        w[0]
-    );
-    assert!(
-        (w[1] - 2.0 * (1.0 + k)).abs() < 1e-4,
-        "junto da linha FINA a dilatacao tem de ser 2 + margem, veio {} \
-         (6 + margem = a MEDIA, que e o bug)",
-        w[1]
-    );
-    // E a média, que era a resposta antiga, é de fato diferente das duas — sem isto o
-    // gate acima passaria mesmo num desenho onde média e local coincidem.
-    let mean = mean_line_width(&strokes);
-    assert!(
-        (mean - 6.0).abs() < 1e-4,
-        "premissa do gate: a media tem de ser 6 (diferente de 10 e de 2), veio {mean}"
-    );
-}
-
-/// **A margem ESCALA com a linha** — ela é uma fração, não uma distância.
-///
-/// O smoke de 2026-07-18 (*"extrapolando um pouco da borda externa"*, traço fino, câmera
-/// perto): a margem era uma distância FIXA, e uma distância fixa é uma fração **grande**
-/// numa linha fina e desprezível numa grossa. A assinatura estava na medição do pixel e
-/// passou despercebida — o transbordo media 4 / 2 / 1 em linhas de 8 / 16 / 32 px, *pior
-/// na mais fina*, monotonicamente.
-///
-/// A grandeza certa é adimensional: o que a margem cobre é o **falloff macio do pincel**,
-/// cuja extensão é proporcional ao raio dele. De quebra, um termo sem unidade não pode
-/// sofrer o BUGS #20 — não há fronteira px↔mundo para esquecer de atravessar.
-///
-/// Mutação que ele mata: voltar a somar uma constante (`w + c`) — a razão entre a
-/// dilatação e a linha deixa de ser a mesma nas duas espessuras.
-#[test]
-fn the_margin_scales_with_the_line_it_dresses() {
-    // Duas linhas, uma 8× mais grossa que a outra, cada uma com o seu ponto de contorno
-    // EM CIMA do eixo (para isolar a margem: o termo do desvio é zero).
+fn the_width_is_the_offset_and_the_line_thickness_never_enters() {
     let thin = vec![line(0.0, 2.0, -50.0, 50.0, 8)];
     let fat = vec![line(0.0, 16.0, -50.0, 50.0, 8)];
-    let probe = [Vec2::new(0.0, 0.0)];
+    let probe = [Vec2::new(0.0, 0.0)]; // EM CIMA do eixo: desvio zero
 
     let wt = contour_widths(&thin, &probe)[0];
     let wf = contour_widths(&fat, &probe)[0];
 
-    // A dilatação RELATIVA tem de ser a mesma: é a mesma tinta, o mesmo falloff.
-    let rt = wt / 2.0;
-    let rf = wf / 16.0;
     assert!(
-        (rt - rf).abs() < 1e-4,
-        "a linha fina engorda {rt:.4}x e a grossa {rf:.4}x — uma margem FIXA faz \
-         exatamente isso, e e o que o artista ve como franja no traco fino"
+        wt.abs() < 1e-4,
+        "sobre o eixo da linha FINA a largura tem de ser ZERO; veio {wt} \
+         (2,0 = o termo `w` de volta)"
     );
     assert!(
-        (rt - (1.0 + FILL_TUCK_FRACTION)).abs() < 1e-4,
-        "e a razao e 1 + a fracao; veio {rt}"
+        wf.abs() < 1e-4,
+        "sobre o eixo da linha GROSSA a largura tem de ser ZERO; veio {wf} \
+         (16,0 = o termo `w` de volta, e a franja com ele)"
+    );
+}
+
+/// **Duas linhas de espessuras diferentes não mudam nada** — o corolário que fecha o
+/// BUGS #20 pela raiz.
+///
+/// O #20 era a dilatação usando a espessura MÉDIA do desenho: onde o contorno abraçava a
+/// linha fina, a cor saía larga demais e atravessava. O remédio da época foi perguntar
+/// qual linha o contorno veste (`local_line`). Hoje o defeito é impossível por
+/// construção — **nenhuma espessura entra na largura** —, e é isto que o gate pina.
+///
+/// `local_line` continua público e testado abaixo: ele é o oráculo de *"que linha é
+/// esta?"* para quem precisa da pergunta. Ele só não manda mais na dilatação.
+#[test]
+fn a_thick_neighbour_cannot_fatten_the_colour_over_a_thin_line() {
+    let strokes = vec![
+        line(0.0, 10.0, -50.0, 50.0, 8),  // grossa
+        line(100.0, 2.0, -50.0, 50.0, 8), // fina
+    ];
+    // Um ponto sobre cada eixo.
+    let contour = [Vec2::new(0.0, 0.0), Vec2::new(0.0, 100.0)];
+    let w = contour_widths(&strokes, &contour);
+    assert!(
+        w[0].abs() < 1e-4 && w[1].abs() < 1e-4,
+        "sobre os dois eixos a largura e ZERO nos dois; veio {w:?}"
     );
 }
 
@@ -249,35 +231,27 @@ fn a_contour_short_of_the_axis_widens_and_one_past_it_narrows() {
         v[v.len() / 2]
     };
 
-    // Margem zero: aqui se mede a COMPENSAÇÃO, não a margem. E os valores são EXATOS,
-    // não ordenações frouxas — a lei é `w + 2s`, então cada número é verificável de
-    // cabeça. (O alisamento não os move: binomial de uma constante é a constante.)
-    let short = med(&contour_widths_with_margin(&strokes, &ring_at(17.0), 0.0));
-    let on = med(&contour_widths_with_margin(&strokes, &ring_at(20.0), 0.0));
-    let past = med(&contour_widths_with_margin(&strokes, &ring_at(21.0), 0.0));
+    // Os valores são EXATOS, não ordenações frouxas — a lei é `2s`, então cada número é
+    // verificável de cabeça. (O alisamento não os move: binomial de uma constante é a
+    // constante.)
+    let short = med(&contour_widths(&strokes, &ring_at(17.0)));
+    let on = med(&contour_widths(&strokes, &ring_at(20.0)));
+    let past = med(&contour_widths(&strokes, &ring_at(21.0)));
 
-    // Em cima do eixo a lei não faz nada: a largura é a da linha, e nem um pixel a mais.
+    // Em cima do eixo a lei não faz NADA: a cor termina onde já estava.
     assert!(
-        (on - 4.0).abs() < 0.3,
-        "sobre o eixo a dilatacao e a propria linha (4,0); veio {on}"
+        on.abs() < 0.3,
+        "sobre o eixo nao ha o que corrigir: largura ZERO; veio {on}"
     );
-    // Aquém por 3: precisa alcançar 3 a mais, dos DOIS lados => 4 + 6 = 10.
+    // Aquém por 3: precisa alcançar 3 a mais, e a largura empurra dos DOIS lados => 6.
     assert!(
-        (short - 10.0).abs() < 0.3,
-        "aquem do eixo por 3, a largura tem de ser 4 + 2*3 = 10; veio {short}"
+        (short - 6.0).abs() < 0.3,
+        "aquem do eixo por 3, a largura tem de ser 2*3 = 6; veio {short}"
     );
-    // Além por 1: encolhe 2 => 4 − 2 = 2. É ESTE o ponto que a versão sem sinal errava,
-    // engordando para 6 e empurrando a cor para ainda mais longe da linha.
+    // Além do eixo: já passou. Não há anel a desenhar — e é ESTE o ponto que a versão sem
+    // sinal errava, engordando e empurrando a cor para ainda mais longe da linha.
     assert!(
-        (past - 2.0).abs() < 0.3,
-        "alem do eixo por 1, a largura tem de ser 4 - 2*1 = 2; veio {past}"
-    );
-
-    // E o piso: um contorno que passou do eixo MAIS do que a linha é grossa não tem cor
-    // nenhuma para pôr ali — largura 0, nunca negativa.
-    let way_past = med(&contour_widths_with_margin(&strokes, &ring_at(23.0), 0.0));
-    assert!(
-        way_past == 0.0,
-        "alem do eixo por mais que a meia-espessura, a largura e ZERO; veio {way_past}"
+        past == 0.0,
+        "alem do eixo a largura e ZERO (a cor ja passou); veio {past}"
     );
 }

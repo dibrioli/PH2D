@@ -44,10 +44,7 @@ mod trace;
 
 pub use arrange::{Region, region_at};
 pub use ball::{TrapBall, TrapRegion};
-pub use dilate::{
-    FILL_TUCK_FRACTION, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
-    nearest_on_axis,
-};
+pub use dilate::{contour_widths, local_line, nearest_on_axis};
 pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
 pub use raster::Grid;
@@ -152,6 +149,22 @@ pub struct FillResult {
     pub outer: Vec<Vec2>,
     /// Os buracos (anéis fechados) subtraídos dele.
     pub holes: Vec<Vec<Vec2>>,
+    /// **A resolução que a grade de fato ENTREGOU** (px de buffer por unidade de
+    /// documento) — e não a que o chamador pediu.
+    ///
+    /// As duas divergem sempre que o `MAX_SIDE` do `Grid::new` morde: ali quem cede é a
+    /// RESOLUÇÃO, então o erro do contorno vetorizado para de melhorar enquanto a
+    /// precisão *pedida* continua subindo.
+    ///
+    /// ⚠️ **Quem tolera o erro do contorno tem de derivar a tolerância DAQUI.** Medido em
+    /// 2026-07-18: o `fill_click` calculava o "abraço" da precisão pedida e o comparava
+    /// com um erro nascido da entregue — dois números sobre o mesmo fato, de fontes
+    /// diferentes. Acima de ~3200 px de arte na tela a grade saturava, a tolerância
+    /// continuava encolhendo, e a rota do arranjo (a que faz a malha do fill se apoiar nos
+    /// vértices das linhas) **se recusava em silêncio** justamente no regime de alta
+    /// precisão. O smoke do Enio caiu exatamente ali: *"nenhuma melhoria e nenhuma
+    /// mudança"*.
+    pub scale: f32,
     /// Os fechamentos de gap que a solução USOU — o chamador os materializa como traços
     /// **invisíveis persistentes** (o twist do Harmony): assim o vão fica fechado para
     /// sempre, e o re-fill (outra cor, outro quadro, amanhã) não depende de a ferramenta
@@ -350,6 +363,8 @@ pub fn fill_at(
     Ok(FillResult {
         outer,
         holes,
+        // A ENTREGUE, lida da grade depois do `Grid::new` — nunca `params.precision`.
+        scale: grid.scale,
         closures,
     })
 }

@@ -20,49 +20,53 @@
 //! resposta** e o oráculo tenha de perguntá-la em vez de respondê-la.
 //!
 //! (Irmão de `feedback_two_doors_to_the_same_question_diverge`.)
+//!
+//! **A REFERÊNCIA da dilatação é o Draw:Filled** — e ele não dilata nada.
+//!
+//! > *"Diferente do Draw:Filled que faz exatamente como eu estou dizendo."* (Enio,
+//! > 2026-07-18)
+//!
+//! O Draw:Filled põe `fill` no PRÓPRIO traço: a cor é a triangulação dos pontos da linha,
+//! então ela termina **no eixo** e a metade externa do traço composita sobre o que houver
+//! atrás. Zero dilatação — e é o desenho aprovado. É também o que a rota
+//! `filled_shape_target` do balde já fazia para UMA forma fechada, sem ninguém reclamar.
+//!
+//! A rota do contorno dilatava por `w` (a espessura da linha), levando a cor até o raio
+//! GEOMÉTRICO. Medido contra a referência (`probe_bucket_vs_draw_filled`, pincel macio,
+//! escala do produto — pior delta de canal e nº de pixels que diferem de mais de 8/255):
+//!
+//! | linha | dureza | `w + 2s` (a lei antiga) | **`2s`** (esta) |
+//! |---|---|---|---|
+//! | 8 px | 0,80 | 166 · 2.721 px | **48 · 29 px** |
+//! | 16 px | 0,80 | 166 · 5.623 px | **14 · 8 px** |
+//! | 32 px | 0,80 | 166 · 11.685 px | **3 · 0 px** |
+//! | 32 px | 0,50 | 166 · 12.223 px | **15 · 11 px** |
+//! | 32 px | 1,00 | 76 · 435 px | **0 · 0 px** |
+//!
+//! Com pincel DURO a lei nova é **byte-idêntica** ao Draw:Filled. Com pincel macio a lei
+//! antiga difere em doze mil pixels — é a franja que o Enio viu em quatro smokes seguidos.
+//!
+//! # Por que o `w` estava ali, e por que ele é contagem dupla
+//!
+//! O **BUGS #15** o introduziu para que a metade externa da linha (translúcida, num
+//! pincel macio) tivesse cor por baixo. Mas o defeito que ele curava não era a metade
+//! externa: era o **contorno caindo AQUÉM do eixo** — o traçado sai de um marching
+//! squares + RDP, então ele erra em torno do eixo, e onde ele errava para dentro sobrava
+//! um fio de linha sobre o fundo.
+//!
+//! O termo `2s` passou a curar exatamente isso, **por ponto e com sinal**. A partir dali o
+//! `w` não corrigia mais nada — só empurrava a cor além da silhueta. A tabela mostra a
+//! prova: a coluna `zero` (sem `w` E sem `2s`) é **pior** que a `2s` em toda linha do
+//! varrimento, então a compensação se paga; o `w` só transborda.
+//!
+//! É a terceira vez que este projeto paga por isto: ao acrescentar uma defesa, pergunte o
+//! que ela torna **desnecessário**. O mecanismo velho não fica errado — fica obsoleto, e
+//! obsoleto não quebra gate nenhum ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]).
+//!
+//! ⚠️ **A margem extra (`FILL_TUCK_FRACTION`) morreu junto**, e tinha de morrer: ela era
+//! uma FRAÇÃO de `w`. Sem o termo que ela multiplicava, ela não tem o que significar.
 
 use crate::Vec2;
-
-/// Margem EXTRA de dilatação, como fração da meia-espessura da linha — e ela é **ZERO**.
-///
-/// # Por que zero (Enio, 2026-07-18): a referência é o CENTRO da linha
-///
-/// > *"Porque não ter como referência o centro da linha? Já tínhamos resolvido isso."*
-///
-/// Tínhamos: é o **BUGS #14**. A geometria do fill termina no **eixo** — a única âncora
-/// imune ao zoom e à espessura — e o #15 dilata a cor do eixo para fora **pela espessura
-/// da própria linha**, para a metade externa (translúcida, num pincel macio) ter cor por
-/// baixo. Isso põe a borda da cor **exatamente na silhueta**. As duas coisas estão certas.
-///
-/// **Qualquer margem além disso é transbordo por construção** — a cor passa da silhueta,
-/// onde a linha já tem alpha zero, e aparece na tela nua. Era a franja que o Enio viu em
-/// dois smokes seguidos.
-///
-/// E ela era **contagem dupla**: a margem existia para cobrir o erro de VETORIZAÇÃO do
-/// contorno, que é exatamente o que o termo `2s` do `contour_widths` passou a fazer — por
-/// ponto, e com sinal. Manter as duas é pagar o mesmo erro duas vezes, e a segunda parcela
-/// é paga em pixels visíveis.
-///
-/// **O trade, medido** (cobertura = amostras de fundo sob a linha na faixa de zoom;
-/// transbordo = `the_colour_never_spills_outside_the_line`, 8/16/32 px):
-///
-/// | lei | cobertura | transbordo |
-/// |---|---|---|
-/// | sem compensação e sem margem (o defeito do #15) | 350 | 0,0 % |
-/// | **compensação, margem ZERO** | **224** | **0,0 / 0,0 / 0,0 %** |
-/// | margem FIXA 0,5, sem compensação (até 2026-07-18) | 158 | 0,2 / 0,1 / 0,0 % |
-/// | compensação + fração 0,03 | 156 | 0,2 / 0,1 / 0,5 % |
-/// | compensação + fração 0,06 | 116 | 0,2 / 0,3 / 4,6 % |
-///
-/// ⚠️ **A troca é real e a escolha é do Enio, não minha.** Margem some = franja some
-/// (0,0 % nas três espessuras) e a cobertura piora (224 contra 158). A compensação paga
-/// boa parte da diferença sozinha (o baseline sem ela é 350), e o resíduo se concentra no
-/// zoom BAIXO, onde a linha inteira tem 2-4 px de tela e a métrica pesa mais do que o olho.
-/// Ele viu a franja duas vezes e nunca reclamou de halo; é isso que decide.
-///
-/// A constante fica (em vez de o termo sumir do código) porque ela **é o registro da
-/// troca**: quem quiser reabri-la tem a curva acima e a varredura `sweep_tuck` no repo.
-pub const FILL_TUCK_FRACTION: f32 = 0.0; // adimensional: fracao da meia-espessura
 
 /// **A linha que este ponto do contorno está vestindo**: `(espessura, distância)`, na
 /// unidade do documento.
@@ -160,68 +164,48 @@ fn outward_normals(ring: &[Vec2]) -> Vec<Vec2> {
 
 /// **A LEI**, ponto a ponto: a largura com que cada ponto do contorno é desenhado.
 ///
-/// `largura da linha LOCAL + a margem` — a dilatação veste a linha que o contorno abraça
-/// NAQUELE ponto, e não a média do desenho: num desenho com espessuras diferentes a
-/// média fica entre elas, então onde o contorno abraça a linha FINA a cor saía larga
-/// demais e aparecia do outro lado dela (o smoke do Enio, BUGS #20).
+/// Ela tem **um termo só**, e o termo não é a espessura da linha: é o erro de VETORIZAÇÃO
+/// do contorno, com sinal. O alvo é pôr a borda da cor **no eixo** — nem aquém (sobra um
+/// fio de linha sobre o fundo) nem além (a cor transborda a silhueta).
 ///
-/// # A compensação tem SINAL, e é isso que a torna certa
+/// # Por que a largura corrige uma POSIÇÃO
 ///
-/// O contorno sai do marching squares + RDP, então ele erra em torno do eixo — às vezes
-/// caindo **para dentro** (a cor não alcança a linha, e num pincel macio o fundo aparece
-/// pelo vão), às vezes **para fora** (a cor transborda a silhueta). A distância `d` até o
-/// eixo diz **quanto**, e nunca disse **de que lado**.
-///
-/// Sem o lado, a única defesa possível era uma **margem uniforme**: dilatar o contorno
-/// inteiro o bastante para cobrir o pior caso. Ela funciona e cobra o preço em todo ponto
-/// que já estava certo — a *"referência não é o centro da linha mas a borda externa"* que
-/// o Enio viu, e a sub-cobertura ao afastar que o `sweep_zoom` mediu (41/55 amostras a
-/// 25 px/unidade). Os dois defeitos são a MESMA constante, vista dos dois lados.
+/// O anel do fill é desenhado como um traço fechado, então uma largura `W` empurra a borda
+/// externa da cor `W/2` para fora do anel. Se o anel caiu `s` aquém do eixo, `W = 2s` põe
+/// a borda exatamente nele. É por isso que um erro de posição é pago em largura.
 ///
 /// O sinal vem da geometria que já está na mão: a **normal externa do anel** contra a
 /// direção do eixo. `s = (q − p) · n_out` é positivo quando o eixo está para FORA do
-/// contorno (o contorno ficou aquém, precisa crescer) e negativo quando ficou além
-/// (precisa encolher). A meia-espessura que faz a cor pousar exatamente na silhueta é
-/// `w/2 + s`, logo a largura é **`w + 2s`** — e onde o contorno acertou o eixo (`s ≈ 0`)
-/// ela é exatamente `w`: **nem um pixel de transbordo, sem margem nenhuma**.
+/// contorno (ficou aquém, a cor precisa avançar) e negativo quando ficou além. Onde o
+/// contorno acertou o eixo (`s ≈ 0`) a largura é **zero** — e o balde desenha exatamente
+/// o que o Draw:Filled desenha.
 ///
-/// ⚠️ **A tentativa anterior (2026-07-18, revertida sem shipar) era `w + 2d`** — o mesmo
-/// termo com o sinal sempre positivo. Ela mede **pior** que a margem fixa (0,0178 contra
-/// 0,005 na mediana) porque dobra o erro exatamente nos pontos que transbordaram: metade
-/// das correções ia para o lado errado. Não era a ideia que estava errada, era o `d` nu.
+/// ⚠️ **A tentativa anterior (2026-07-18, revertida sem shipar) era `2d`** — o mesmo termo
+/// com o sinal sempre positivo. Ela mede **pior** que uma margem fixa (0,0178 contra 0,005
+/// na mediana) porque dobra o erro exatamente nos pontos que transbordaram: metade das
+/// correções ia para o lado errado. Não era a ideia que estava errada, era o `d` nu.
+///
+/// ⚠️ **E não há mais termo `w`** — ver o comentário no topo do módulo: ele curava o
+/// contorno-aquém, que é o que ESTE termo cura, e sobreviveu como contagem dupla paga em
+/// pixels visíveis.
 #[must_use]
 pub fn contour_widths(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], contour: &[Vec2]) -> Vec<f32> {
-    contour_widths_with_margin(strokes, contour, FILL_TUCK_FRACTION)
-}
-
-/// A lei com a margem **parametrizada** — ver o aviso do `margin_world`: isto é para a
-/// varredura que ESCOLHE a constante, e o produto usa `contour_widths`.
-#[must_use]
-pub fn contour_widths_with_margin(
-    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
-    contour: &[Vec2],
-    margin_fraction: f32,
-) -> Vec<f32> {
-    let fallback = mean_line_width(strokes);
     let normals = outward_normals(contour);
 
-    // Passo 1: a largura da linha e o desvio COM SINAL, ponto a ponto.
-    let mut widths = Vec::with_capacity(contour.len());
+    // Passo 1: o desvio COM SINAL até o eixo, ponto a ponto.
     let mut offsets = Vec::with_capacity(contour.len());
     for (i, &p) in contour.iter().enumerate() {
-        match nearest_on_axis(strokes, p) {
-            Some((w, q)) => {
+        // Sem linha por perto não há eixo para mirar, e portanto nada a corrigir: zero.
+        // (Antes daqui saía a espessura MÉDIA do desenho — uma dilatação larga sem uma
+        // linha que a justificasse.)
+        let s = match nearest_on_axis(strokes, p) {
+            Some((_, q)) => {
                 let n = normals[i];
-                // `s > 0`: o eixo está para FORA — o contorno ficou aquém e a cor precisa
-                // avançar. `s < 0`: o contorno passou do eixo e a cor precisa recuar.
-                widths.push(w);
-                offsets.push((q.x - p.x) * n.x + (q.y - p.y) * n.y);
+                (q.x - p.x) * n.x + (q.y - p.y) * n.y
             }
-            None => {
-                widths.push(fallback);
-                offsets.push(0.0);
-            }
-        }
+            None => 0.0,
+        };
+        offsets.push(s);
     }
 
     // Passo 2: **alisa o desvio ao longo do anel.**
@@ -236,17 +220,11 @@ pub fn contour_widths_with_margin(
     // É o mesmo binomial [1,2,1] cíclico que o `simplify_ring` já usa, pela mesma razão.
     smooth_ring(&mut offsets, OFFSET_SMOOTH_PASSES);
 
-    widths
+    offsets
         .iter()
-        .zip(&offsets)
-        .map(|(&w, &s)| {
-            // O `max(0)` não é um teto disfarçado: largura negativa não existe, e um
-            // contorno que passou do eixo mais do que a linha é grossa não tem cor
-            // nenhuma para pôr ali.
-            // A margem é FRAÇÃO da linha: numa linha fina ela é fina, numa grossa é
-            // grossa — que é o que "encostar no falloff" quer dizer.
-            (w * (1.0 + margin_fraction) + 2.0 * s).max(0.0)
-        })
+        // O `max(0)` não é um teto disfarçado: largura negativa não existe. Um contorno
+        // que passou do eixo já tem cor demais, e a resposta é não desenhar anel nenhum.
+        .map(|&s| (2.0 * s).max(0.0))
         .collect()
 }
 
@@ -286,18 +264,6 @@ fn smooth_ring(v: &mut [f32], passes: usize) {
         }
         v.copy_from_slice(&tmp);
     }
-}
-
-/// A espessura MÉDIA do line-art (unidade do documento) — o fallback de um ponto do
-/// contorno que não achou linha nenhuma. Ignora os fechamentos de gap (espessura zero).
-#[must_use]
-pub fn mean_line_width(strokes: &[(Vec<Vec2>, Vec<f32>, bool)]) -> f32 {
-    let (sum, n) = strokes
-        .iter()
-        .flat_map(|(_, half, _)| half.iter().copied())
-        .filter(|h| *h > 0.0)
-        .fold((0.0f32, 0usize), |(sum, n), h| (sum + 2.0 * h, n + 1));
-    if n == 0 { 0.0 } else { sum / n as f32 }
 }
 
 /// Os segmentos de uma polilinha — **um traço `closed` inclui a COSTURA** (último →

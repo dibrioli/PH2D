@@ -580,9 +580,25 @@ impl ClipLane {
                 return Some((strip, t_clip, w));
             }
         }
+        // **FADE-OUT toward the NEXT strip (no loop needed).** A strip in its fade-out ramp
+        // — and the gap AFTER it, up to where the next strip starts — crosses to the NEXT
+        // strip's START, not to the rest pose (Enio, 2026-07-19: without this the object
+        // sagged to rest during the fade, then JUMPED back to the strip's held pose in the
+        // gap, then jumped again into the next strip). Now it travels to the next pose while
+        // it fades, HOLDS it through the gap, and the next strip plays from it seamlessly.
+        //
+        // Runs BEFORE the mid-timeline hold below and overrides it: the hold reveals the
+        // PREVIOUS strip (correct for a fade-IN, wrong for a fade-OUT, which reveals where
+        // the object is GOING). It only fires when the strip actually faded out
+        // (`blend_out > 0`, inside `fade_out_target`) — a hard cut with no fade keeps the
+        // gap-holds-previous behaviour, which is the author's choice.
+        if let Some(nxt) = self.fade_out_target(t) {
+            return Some((nxt, nxt.fold(0.0), w));
+        }
         // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
         // sorted by START time, and a long strip can begin before a short one and
-        // outlive it.
+        // outlive it. This is the pose a fade-IN crosses FROM, and what a plain gap
+        // (previous strip did not fade out) holds.
         if let Some(held) = self
             .strips
             .iter()
@@ -644,6 +660,57 @@ impl ClipLane {
             .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
         let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
         Some((last, last.fold(elapsed)))
+    }
+
+    /// The strip that starts NEXT after time `end` — the smallest `t_start >= end`, with
+    /// its index. `None` when nothing starts after (`end` is past the last strip).
+    ///
+    /// A strip that *overlaps* `end` (`t_start < end`) is not "next": that is a
+    /// crossfade, and [`Self::weight_at`] already handles it with complementary weights.
+    fn next_after(&self, end: f64) -> Option<(usize, &ClipStrip)> {
+        self.strips
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| o.t_start >= end)
+            .min_by(|(_, a), (_, b)| a.t_start.total_cmp(&b.t_start))
+    }
+
+    /// **What a fade-OUT at `t` crosses TO** — the next strip, or `None`.
+    ///
+    /// It fires while a strip is in its fade-out ramp AND through the gap after it, up to
+    /// where the next strip's OWN fade-in ends:
+    /// `t ∈ [s.t_end - blend_out(s), next.t_start + blend_in(next))`. Two conditions gate
+    /// it, and both are the point:
+    ///
+    /// - `blend_out(s) > 0` — the strip actually has a fade-out. A hard cut (no fade) is
+    ///   the author saying "hold and jump", and the gap keeps holding the PREVIOUS strip.
+    /// - a `next` strip exists — there is somewhere to cross TO. The LAST strip's fade-out
+    ///   with nothing after is the loop's job (`hold_at`'s closing branch) or a fade to
+    ///   rest, not this.
+    ///
+    /// The crossed-to pose is the next strip's FROZEN first frame (`next.fold(0.0)`), the
+    /// same pose the clip shows when it starts playing — so holding it through the gap and
+    /// then playing it are the same value, and the entry is seamless.
+    ///
+    /// **The window reaches THROUGH the next strip's fade-in** (`+ blend_in(next)`), not
+    /// just up to its start. When BOTH strips fade (this one out, the next one in), the
+    /// object crosses to the next start and STAYS there while the next eases in — so the
+    /// next strip eases from its own start instead of snapping back to the previous strip
+    /// one frame after the gap. With no fade-in on the next strip, `blend_in` is 0 and the
+    /// window is exactly the gap.
+    fn fade_out_target(&self, t: f64) -> Option<&ClipStrip> {
+        self.strips
+            .iter()
+            .enumerate()
+            .filter(|(i, s)| {
+                let bo = self.blend_out(*i);
+                bo > 0.0 && t >= s.t_end - bo
+            })
+            .filter_map(|(_, s)| {
+                let (ni, nxt) = self.next_after(s.t_end)?;
+                (t < nxt.t_start + self.blend_in(ni)).then_some(nxt)
+            })
+            .min_by(|a, b| a.t_start.total_cmp(&b.t_start))
     }
 }
 

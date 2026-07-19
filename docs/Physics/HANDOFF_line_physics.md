@@ -1796,8 +1796,10 @@ não-uniforme + **rotação** compõe um cisalhamento que a decomposição do `w
 em `scale`+`skew`; o **skew é ignorado** (rapier não cisalha collider — a mesma limitação
 honesta que o Cuboid sempre teve).
 
-**Smoke visual (pendente — proposta):** uma cena com sprites de física escalados **uniforme**
-(deve crescer e continuar redondo/quadrado) e **não-uniforme** (o círculo deve rolar como
-ELIPSE, o box esticar per-eixo), incluindo um **parenteado** sob um pai escalado (o collider
-herda a escala do pai). Não há env de smoke dedicada ainda — os gates behavioral cobrem a
-física; o que falta é o olho. Detalhe no handoff de integração desta wave.
+**Smoke visual:** `PH2D_PHYSICS_SMOKE=9` (`shells/desktop/src/physics_smoke.rs::physics_smoke_scale`)
+— 4 bolas caem, cada uma um `Ball` escalado diferente: **círculo** de referência · **2×
+uniforme** (círculo maior, repousa mais alto) · **não-uniforme** (ELIPSE, cai deitada e
+balança) · **parenteada** sob um rig 2× (o collider herda a escala do pai). O oráculo é o
+contorno (tecla `B`, default ON): desenha a forma RESOLVIDA, então um scale→collider morto
+traçaria o raio autorado dentro de cada sprite escalado. Os gates behavioral já cobrem a
+física; a cena é para o olho.

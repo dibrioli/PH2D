@@ -11,6 +11,7 @@
 //! | `6` | W3   | pendulum + chain + ragdoll, for the joints |
 //! | `7` | W4   | a drop to BAKE into timeline curves, then replay without physics |
 //! | `8` | W5   | PARENTED bodies: the collider is where the sprite is, at any depth |
+//! | `9` | W6   | SCALED bodies: uniform circle, non-uniform ELLIPSE, inherited parent scale |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -68,6 +69,7 @@ impl crate::App {
             "6" => self.physics_smoke_joints(),
             "7" => self.physics_smoke_bake(),
             "8" => self.physics_smoke_parented(),
+            "9" => self.physics_smoke_scale(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -358,6 +360,115 @@ impl crate::App {
              open the Inspector's 'Physics Body' section, click 'Add Physics Body', then press \
              Play: it should fall and land. The collider is boxed to the sprite, so B (collider \
              outlines) should trace each sprite exactly."
+        );
+    }
+
+    /// **Scene 9 (W6).** The world scale reaches the collider. Four balls drop
+    /// onto the floor, each authored as a `Ball` but scaled differently — the
+    /// collider (and its **B** outline) must match the SCALED sprite, not the
+    /// authored radius:
+    ///
+    /// * a **reference** circle at unit scale;
+    /// * the same circle **uniformly** 2× — a bigger circle that rests HIGHER,
+    ///   because its collider grew with it;
+    /// * the same circle **non-uniformly** (wide) — an **ELLIPSE**, which lands
+    ///   on its wide side and rocks as it settles the way no circle would;
+    /// * a circle **parented** under a 2× rig — its collider inherits the
+    ///   parent's world scale (Unity/Godot), so it behaves like the uniform 2×.
+    ///
+    /// The oracle is the **B** overlay: it draws the RESOLVED shape, so a dead
+    /// scale→collider would trace authored-size wireframes floating inside the
+    /// scaled sprites. The ellipse wireframe is the headline — a `Ball` that is
+    /// drawn, and rolls, as an ellipse.
+    fn physics_smoke_scale(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A plain `Ball` sprite: a 0.6×0.6 quad over a radius-0.3 collider, so
+        // the drawing and the (unscaled) collider agree to begin with.
+        let ball = |scale: Vec2, rot: f32, x: f32, hue: [f32; 4], label: &str| {
+            (
+                Transform {
+                    translation: Vec2::new(x, 4.0),
+                    rotation: rot,
+                    scale,
+                    ..Transform::IDENTITY
+                },
+                Sprite::atlas(0, [0.6, 0.6], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.3 },
+                    restitution: 0.2,
+                    ..Collider::default()
+                },
+            )
+        };
+
+        // Reference · uniform 2× · non-uniform (wide ⇒ ellipse, dropped tilted
+        // so it visibly rocks onto its wide side).
+        world.spawn(ball(
+            Vec2::new(1.0, 1.0),
+            0.0,
+            -3.0,
+            [0.55, 0.60, 0.70, 1.0],
+            "Ball1x",
+        ));
+        world.spawn(ball(
+            Vec2::new(2.0, 2.0),
+            0.0,
+            -1.0,
+            [0.35, 0.80, 1.00, 1.0],
+            "Ball2xUniform",
+        ));
+        world.spawn(ball(
+            Vec2::new(2.2, 1.0),
+            0.5,
+            1.0,
+            [1.00, 0.55, 0.25, 1.0],
+            "BallEllipse",
+        ));
+
+        // Parented: a 2× rig (with its own small sprite so it is grabbable) and
+        // a unit-scale child ball. The child's collider inherits the rig's
+        // world scale, so it drops from world y = 4 (local 2 × parent scale 2)
+        // and rests like the uniform 2× ball — proof the WORLD scale, not the
+        // local one, reaches the collider.
+        let rig = world
+            .spawn((
+                Transform {
+                    translation: Vec2::new(3.0, 0.0),
+                    scale: Vec2::new(2.0, 2.0),
+                    ..Transform::IDENTITY
+                },
+                Sprite::atlas(0, [0.15, 0.15], [0.60, 0.95, 0.55, 1.0]),
+                Name::new("Rig2x"),
+            ))
+            .id();
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 2.0)),
+            Sprite::atlas(0, [0.6, 0.6], [0.72, 0.55, 1.00, 1.0]),
+            Name::new("BallParented"),
+            ph2d_ecs::ChildOf(rig),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.3 },
+                restitution: 0.2,
+                ..Collider::default()
+            },
+        ));
+
+        eprintln!(
+            "[physics-smoke 9] Four balls drop, each a `Ball` scaled differently. Press B for the \
+             collider outlines — each must trace its SCALED sprite: Ball1x a small circle, \
+             Ball2xUniform a bigger circle resting higher, BallEllipse an ELLIPSE (it lands wide \
+             and rocks), BallParented a bigger circle that inherited its 2x rig. A dead \
+             scale->collider would outline the authored radius inside every scaled sprite."
         );
     }
 }

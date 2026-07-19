@@ -478,6 +478,11 @@ behavioral via sim: a bola 2× repousa mais alto, a **parenteada** repousa como
 raiz 2×) · `crates/ph2d-physics/tests/ellipse_collider.rs` (AABB da elipse no
 sim + determinismo da tesselação) · `render_loop::physics_overlay` (elipse
 desenhada como elipse · o contorno cresce com a escala do PAI). **7 mutações,
-todas sangram.** Sem smoke visual dedicado ainda — a proposta é uma cena com
-sprites escalados uniforme e não-uniformemente (a elipse tem de rolar como
-elipse); ver o handoff de integração.
+todas sangram.**
+
+**Smoke:** `PH2D_PHYSICS_SMOKE=9` — 4 bolas caem, cada uma um `Ball` escalado
+diferente: círculo de referência · 2× uniforme (círculo maior, repousa mais
+alto) · não-uniforme (ELIPSE, cai deitada e balança) · **parenteada** sob um rig
+2× (herda a escala do pai). O oráculo é o contorno (tecla `B`): ele desenha a
+forma RESOLVIDA, então um scale→collider morto traçaria o raio autorado dentro
+de cada sprite escalado.

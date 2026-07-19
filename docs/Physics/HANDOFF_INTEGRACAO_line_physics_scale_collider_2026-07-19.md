@@ -44,6 +44,7 @@ collider casa com o sprite, não colapsa num círculo), **Cuboid** escala per-ei
 | `crates/ph2d-physics-ecs/src/bin/physics_ecs_c9.rs` | +1 bola não-uniformemente escalada (elipse cross-OS); doc `body_count 52` |
 | `crates/ph2d-physics-ecs/tests/scale_reaches_the_collider.rs` | **NOVO** — 6 gates (4 pure + 2 behavioral) |
 | `shells/desktop/src/render_loop/physics_overlay.rs` | `collider_outline(ShapeDesc, …)` + arm `Ellipse`; `outlines` resolve por `scaled_shape`; +2 gates |
+| `shells/desktop/src/physics_smoke.rs` | cena `PH2D_PHYSICS_SMOKE=9` (`physics_smoke_scale`) + linha na tabela + dispatch |
 | `CLAUDE.md` · `docs/Physics/{HANDOFF_line_physics,BUGS_physics}.md` | docs (esta wave) |
 
 ## §4 — Gates (todos verde local; mutação-provados)
@@ -72,15 +73,17 @@ achou um `typos` real que o handoff dizia limpo: [[feedback_ship_parity_gaps_ci_
 ⚠️ **Ambiente:** o default do rustup se perdeu nesta máquina; só o pin `1.95` está instalado.
 Rode `env RUSTUP_TOOLCHAIN=1.95 bash scripts/ship.sh` (o `ship.sh` chama `cargo` nu).
 
-## §6 — Smoke visual (pendente — não há env dedicada)
+## §6 — Smoke visual — `PH2D_PHYSICS_SMOKE=9`
 
-Os gates behavioral cobrem a FÍSICA (a bola escalada repousa mais alto; a parenteada como raiz
-2×); falta o **olho**. Proposta de cena: sprites de física escalados **uniforme** (cresce,
-continua redondo/quadrado), **não-uniforme** (o círculo rola como **ELIPSE**, o box estica
-per-eixo) e um **parenteado** sob pai escalado (o collider herda a escala do pai). O contorno
-(tecla `B`, default ON) desenha a forma resolvida — a elipse deve aparecer como elipse. Um
-`PH2D_PHYSICS_SMOKE=9` é o lugar natural (não construído — decisão de escopo: a wave é uma
-correção com prova behavioral; o Enio pode pedir a cena).
+Construído (`shells/desktop/src/physics_smoke.rs::physics_smoke_scale`). 4 bolas caem, cada uma
+um `Ball` escalado diferente: **círculo** de referência · **2× uniforme** (círculo maior,
+repousa mais alto) · **não-uniforme** (ELIPSE, cai deitada e balança — um `Ball` que rola como
+elipse) · **parenteada** sob um rig 2× (o collider herda a escala do PAI, prova a escala de
+MUNDO). O oráculo é o contorno (tecla `B`, default ON): desenha a forma RESOLVIDA, então um
+scale→collider morto traçaria o raio autorado dentro de cada sprite escalado. Os gates
+behavioral cobrem a física; a cena é para o olho. **Rodar:**
+`cd Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=9 RUSTUP_TOOLCHAIN=1.95 cargo run -p ph2d-host-desktop`
+([[feedback_run_command_include_cd]]).
 
 ## §7 — Ordem de integração
 
@@ -97,4 +100,5 @@ Ball não-uniforme = elipse (`ShapeDesc::Ellipse`, decisão do Enio). Porta úni
 (ponte + overlay). Foundational tocado: `ph2d-physics` (aditivo, append-only, c9 +1 corpo).
 Contratos congelados: nenhum. **Zero bump de schema** (o `ColliderShape` autorado não muda; a
 escala já vive no `Transform`). 10 gates novos, 7 mutações, todas sangram; batched gate verde
-local. Falta só a matriz cross-OS do `ship.sh` + o smoke visual. Aguardo ordem de integração.*
+local; smoke visual `PH2D_PHYSICS_SMOKE=9` pronto. Falta só a matriz cross-OS do `ship.sh`.
+Aguardo ordem de integração.*

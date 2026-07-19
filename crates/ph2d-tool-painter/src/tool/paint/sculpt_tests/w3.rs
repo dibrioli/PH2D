@@ -603,3 +603,90 @@ fn inflate_arms_sharper_and_an_eight_pixel_shoulder() {
          enforce a policy."
     );
 }
+
+/// The direction of the groove AT a point, read off the RENDERED relief.
+///
+/// A chisel cuts a V whose crease runs along the stroke, so from inside the trench the relief varies least
+/// **along** the groove and most **across** it. Sweeping a probe line through the point and taking the
+/// direction of least variation therefore recovers the groove's axis from the pixels themselves — no
+/// knowledge of `Dab::dir`, of `chisel_dir`, or of any intermediate the tool computed.
+///
+/// That independence is the whole point: the gate above measures that two grooves DIFFER, which a knife
+/// rotated to any wrong angle also satisfies. This measures the thing the artist actually sees.
+fn groove_angle_deg(h: &[f32], size: u32, cx: usize, cy: usize, arm: usize) -> f32 {
+    let at = |x: f32, y: f32| -> f32 {
+        let (xi, yi) = (x.round() as i64, y.round() as i64);
+        if xi < 0 || yi < 0 || xi >= i64::from(size) || yi >= i64::from(size) {
+            return 0.0;
+        }
+        h[(yi as usize) * (size as usize) + xi as usize]
+    };
+    let (mut best, mut best_var) = (0.0f32, f32::MAX);
+    // 1° steps over a half-turn: a groove has no head or tail, so θ and θ+180° are the same axis.
+    for step in 0..180 {
+        let th = (step as f32).to_radians();
+        let (dx, dy) = (th.cos(), th.sin());
+        let (mut sum, mut sum2, mut n) = (0.0f32, 0.0f32, 0.0f32);
+        for k in -(arm as i32)..=(arm as i32) {
+            let v = at(cx as f32 + dx * k as f32, cy as f32 + dy * k as f32);
+            sum += v;
+            sum2 += v * v;
+            n += 1.0;
+        }
+        let var = sum2 / n - (sum / n) * (sum / n);
+        if var < best_var {
+            best_var = var;
+            best = step as f32;
+        }
+    }
+    best
+}
+
+/// **The groove ends up PARALLEL to the stroke — measured on the pixels, not on the tool's intermediates.**
+///
+/// This is the gate that was missing while the defect lived, and the reason it lived: its neighbour
+/// `the_knife_turns_with_the_stroke_only_when_it_rakes` asserts only that the raked and locked grooves
+/// **differ**, which is equally true of a knife rotated to the wrong angle. Enio reported exactly that
+/// (*"Rake não consegue rotacionar o brush para que a vala seja sempre paralela à direção do traço"*) with
+/// the whole Chisel suite green: the axis was the SMOOTHED tangent (`Dab::dir`, which the Rake texture
+/// rides and wants), and a smoothed tangent trails — measured up to **52° behind at a 60-px brush**,
+/// because the smoothing window scales with the radius.
+///
+/// So this reads the groove's direction out of the RENDERED height and compares it to the path's own
+/// tangent. It knows nothing about `chisel_dir`, and that is what makes it an oracle rather than a mirror.
+///
+/// **Mutation that must bleed:** take the axis from `d.dir` again in `stamp_dabs_sculpt` (i.e. undo
+/// `path_axis`) — the lag returns and the assert names the angle.
+#[test]
+fn the_raked_groove_runs_parallel_to_the_stroke() {
+    let size = 200u32;
+    let curve = quarter_circle(100.0, 60.0, 55.0);
+    let (raked, _) = chisel_run(size, true, &curve);
+
+    // Sample WELL INSIDE the run: the first dabs are the heading warm-up and the last is the pen-up.
+    let mut worst = 0.0f32;
+    for k in [8usize, 12, 16] {
+        let p = curve[k];
+        let (prev, next) = (curve[k - 1], curve[k + 1]);
+        let want = (next[1] - prev[1]).atan2(next[0] - prev[0]).to_degrees();
+        let got = groove_angle_deg(&raked, size, p[0] as usize, p[1] as usize, 7);
+        // Both are AXES, not directions: fold the difference into [0, 90].
+        let mut d = (want - got).rem_euclid(180.0);
+        if d > 90.0 {
+            d = 180.0 - d;
+        }
+        assert!(
+            d < 12.0,
+            "at station {k} the stroke runs at {want:.1}° and the groove at {got:.1}° — {d:.1}° apart. \
+             The V is folded about the stroke's axis, so a groove that is not parallel to the path is a \
+             knife pointing somewhere the artist never pointed it. (`Dab::dir` is the SMOOTHED tangent \
+             and trails by roughly the brush radius; the axis has to come from the dab CENTRES.)"
+        );
+        worst = worst.max(d);
+    }
+    assert!(
+        worst > 0.0,
+        "fixture: every station measured exactly 0° off, which a groove read from real pixels does not \
+         do — the probe is reading a constant, not the relief"
+    );
+}

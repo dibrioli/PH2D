@@ -165,7 +165,7 @@ verificado contra I2, e é a razão de isto não ser obviamente mais barato.
 
 ## 10. Recomendação revista
 
-**§9.1 (acumular a carga) é a lei certa; §9.2 (passe) é provavelmente o v1 certo** — entrega o efeito sem
+⚠️ **Recomendação REVERTIDA depois de desenhar o gatilho (mesma sessão):** eu disse que o **passe** seria o v1 mais barato. É o contrário. O passe precisa de um **plano canvas-inteiro novo** (o arco da última cobertura por texel — o único jeito honesto de distinguir *"o pincel voltou"* de *"o dab vizinho"*, porque com spacing de 5-10% do raio quase todo texel já está coberto pelo dab anterior), de um **commit no meio do traço** e de acerto com o **undo** (o traço é um passo só). A integral precisa de `Δs` (**já disponível** via `prev_center`), de um normalizador e de uma mudança no envelope. **§9.1 (acumular a CARGA) é a lei certa E o v1 mais barato** — entrega o efeito sem
 tocar o winner-takes-all, e a integral pode vir depois como refinamento de qualidade.
 
 **Não comecei a cirurgia**: `accumulate_dab_height` é a função mais cicatrizada do módulo (a cápsula, as

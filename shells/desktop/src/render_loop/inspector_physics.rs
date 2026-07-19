@@ -25,11 +25,15 @@ pub(crate) fn build_physics_info(
     bake_seconds: f32,
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
-    use ph2d_physics_ecs::{Collider, ColliderShape, RigidBody};
+    use ph2d_physics_ecs::{Collider, ColliderShape, GravityScale, RigidBody};
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
     let col = world.get::<Collider>(entity);
+    // Optional per-body gravity multiplier (W8); absent = the neutral 1.0.
+    let gravity_scale = world
+        .get::<GravityScale>(entity)
+        .map_or(GravityScale::NEUTRAL, |g| g.0);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -51,6 +55,7 @@ pub(crate) fn build_physics_info(
             can_join: false,
             is_sensor: false,
             bake_channels_tag,
+            gravity_scale: GravityScale::NEUTRAL,
         });
     };
     let (shape_tag, radius, half_x, half_y) = match col.shape {
@@ -73,6 +78,7 @@ pub(crate) fn build_physics_info(
         bake_seconds,
         is_sensor: col.is_sensor,
         bake_channels_tag,
+        gravity_scale,
     })
 }
 
@@ -90,9 +96,10 @@ pub(crate) fn apply_physics_edit(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) {
-    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, GravityScale, RigidBody};
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
+    const GRAVITY_SCALE: &str = "ph2d::physics::GravityScale";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -161,6 +168,31 @@ pub(crate) fn apply_physics_edit(
             RIGID_BODY,
             &RigidBody { kind },
         );
+        return;
+    }
+    if let PhysicsFieldEdit::GravityScale(v) = edit {
+        // A RigidBody-level property (the optional `GravityScale` component),
+        // not a Collider field — so it is handled here, like `Kind`, before the
+        // collider block below. Gated on a live body: without one there is
+        // nothing to scale, and this would be a second arm that attaches an
+        // orphan component to a plain sprite.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        // Detach at the neutral 1.0 so an unscaled body carries no component
+        // (the presence-override idiom: absent = default, and a project file
+        // stays free of no-op `1.0`s). Any other value attaches/updates.
+        if v == GravityScale::NEUTRAL {
+            queue_remove(queue, registry, entity_bits, GRAVITY_SCALE);
+        } else {
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                GRAVITY_SCALE,
+                &GravityScale(v),
+            );
+        }
         return;
     }
 
@@ -236,7 +268,10 @@ pub(crate) fn apply_physics_edit(
         // the last layer.
         PhysicsFieldEdit::Layer(n) => next.layer = n.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1),
         PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
-        PhysicsFieldEdit::Add | PhysicsFieldEdit::Remove | PhysicsFieldEdit::Kind(_) => {
+        PhysicsFieldEdit::Add
+        | PhysicsFieldEdit::Remove
+        | PhysicsFieldEdit::Kind(_)
+        | PhysicsFieldEdit::GravityScale(_) => {
             unreachable!("handled above")
         }
     }

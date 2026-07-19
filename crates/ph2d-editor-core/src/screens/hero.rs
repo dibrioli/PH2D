@@ -44,9 +44,11 @@ pub mod style;
 pub mod topbar;
 
 mod inspector_model;
+mod inspector_model_physics;
 mod paint;
 
 pub use inspector_model::*;
+pub use inspector_model_physics::*;
 pub use paint::*;
 
 pub use state::{GizmoStateGroup, GridState, ImageEditState, ViewState};

@@ -213,6 +213,9 @@ pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
 pub const INSP_PHYS_RESTITUTION: NodeId = hash_node_id("insp_phys_restitution");
 /// §11 Coulomb friction.
 pub const INSP_PHYS_FRICTION: NodeId = hash_node_id("insp_phys_friction");
+/// §11 Per-body gravity multiplier (W8). Shown only for a Dynamic body — the
+/// only kind rapier applies gravity to.
+pub const INSP_PHYS_GRAVITY_SCALE: NodeId = hash_node_id("insp_phys_gravity_scale");
 /// The eight collision-layer chips (W2c). A fixed array, not runtime-hashed
 /// ids: the count is a const, so every one can be checked against the others
 /// and against all chrome by `node_id_collisions` — which does NOT see

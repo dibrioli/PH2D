@@ -560,6 +560,7 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_DENSITY, info.density),
         (ids::INSP_PHYS_RESTITUTION, info.restitution),
         (ids::INSP_PHYS_FRICTION, info.friction),
+        (ids::INSP_PHYS_GRAVITY_SCALE, info.gravity_scale),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

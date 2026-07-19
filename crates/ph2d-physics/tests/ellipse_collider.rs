@@ -34,6 +34,7 @@ fn an_ellipse_collider_has_the_authored_half_extents() {
         friction: 0.5,
         layer: 0,
         is_sensor: false,
+        gravity_scale: 1.0,
     });
 
     let (_, collider) = w

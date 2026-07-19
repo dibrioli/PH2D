@@ -23,6 +23,7 @@ fn ball(y: f32) -> BodyDesc {
         friction: 0.5,
         layer: 0,
         is_sensor: false,
+        gravity_scale: 1.0,
     }
 }
 

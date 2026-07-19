@@ -1945,3 +1945,41 @@ outras linhas que tocam os tipos de inspector.
 
 **Sem smoke dedicado** (é UI + comportamento gateado; o `=7` do bake exercita o caminho,
 e o seletor é visível no §11 de qualquer corpo Dynamic). Sem bump de schema (transiente).
+
+## §W8 — GRAVITY SCALE por corpo (2026-07-19, smoke `=12`)
+
+**Multiplicador de gravidade por corpo.** `GravityScale(f32)`, default 1.0. `0.0` sem peso · `<0`
+flutua · `>1` pesado. Row "Gravity Scale" no §11, **Dynamic-only** (rapier só aplica gravidade a
+Dynamic). Preenche um vão real: até aqui todo corpo só podia começar sob gravidade cheia.
+
+**Componente opcional, NÃO campo do `RigidBody`.** O plano (nota do W1 em `components.rs`) previa
+apendar ao `RigidBody`. Medido: `RigidBody` é literal `{ kind }` em ~80 sítios de fixtures ⇒ apendar
+campo obrigatório é churn grande e recorrente (damping/ccd/can-sleep viriam depois). Escolhido o
+idioma de presence-override do resto do Inspector (`ZIndexOverride`/`BlendMode`): ausente = default,
+presente = override. **Zero churn nos 80 sítios · zero bump de schema** (blob-key próprio, precedente
+`PhysicsJoint`) · `RigidBody` intocado (o `Kind` do apply preserva a gravidade de graça). Nota do
+plano corrigida.
+
+**`BodyDesc.gravity_scale`** (recipe de spawn) É necessário — o `rewind_to` reconstrói do descriptor,
+então sem isso o scrub perderia a gravidade. ~19 fixtures em `ph2d-physics/tests` ganharam o campo
+neutro. O `body_desc(rb, col, t, gravity_scale)` recebe o valor; a ponte (`reconcile_structure`) lê
+`world.get::<GravityScale>(e).map_or(NEUTRAL, |g| g.0)`.
+
+**Detach no 1.0:** o apply desanexa o componente no valor neutro (arquivo fica sem no-op `1.0`s), como
+os campos de ordering. `build_physics_info` lê `map_or(NEUTRAL)`.
+
+**inspector_model SPLITADO** (resolve o 699/700 do §BakeChannels): §11+§12 saíram p/
+`inspector_model_physics.rs` (irmão re-exportado, paths intactos). A churn de física agora mora num
+arquivo desta linha.
+
+**Dívida de LOC consertada de carona:** `physics_overlay.rs` (776, latente-vermelho no `file_loc_caps`
+desde o W7) → `mod tests` movido p/ `#[path]` irmão → 258/519. `physics_smoke.rs` (603 com a cena 12)
+→ cena 12 p/ `physics_smoke_rigs.rs`.
+
+**Gates:** `gravity_scale_multiplies_the_bodys_fall` (trajetória 0/1/2/-1, mut RED) ·
+`a_gravity_scale_component_is_folded_into_the_sim` (ponte lê o componente, mut RED) ·
+`gravity_scale_is_offered_and_committed_only_for_a_dynamic_body` (seam offer+honour, mut RED) ·
+persistência round-trip estendida · `registers_every_physics_component` 3→4 · c9 53 corpos.
+
+**Ids/consts alocados:** `INSP_PHYS_GRAVITY_SCALE` · componente `ph2d::physics::GravityScale` ·
+`GravityScale::NEUTRAL = 1.0`. Smoke `=12`.

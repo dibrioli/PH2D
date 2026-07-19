@@ -156,6 +156,11 @@ fn populate_physics(store: &mut WidgetStore) {
         (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),  // LITERAL-PX-OK: kg/m^2
         (ids::INSP_PHYS_RESTITUTION, 0.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: bounciness is 0..=1 by physics
         (ids::INSP_PHYS_FRICTION, 0.5, 0.0, 10.0, 0.01), // LITERAL-PX-OK: Coulomb coefficient, >1 is legal
+        // Per-body gravity multiplier (W8). The range bounds the DRAG only — the
+        // component/`BodyDesc`/rapier take any f32 (a loaded project may carry
+        // more); -10..10 covers the authoring span (balloon → 10× heavy), the
+        // same soft-UI bound `RADIUS` uses.
+        (ids::INSP_PHYS_GRAVITY_SCALE, 1.0, -10.0, 10.0, 0.1), // LITERAL-PX-OK: dimensionless gravity multiplier
     ] {
         store.register(
             id,

@@ -226,3 +226,67 @@ physics/bake/inspector/project, clippy, machete, fmt, LOC/panel/node caps.
 
 **Sem smoke dedicado** — é UI + comportamento gateado; o seletor é visível no §11 de qualquer
 corpo Dynamic, e o `PH2D_PHYSICS_SMOKE=7` (bake) exercita o caminho.
+
+---
+
+# §11 — W8: GRAVITY SCALE por corpo + o split do `inspector_model` + a dívida do `physics_overlay`
+
+Detalhe: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W8.
+
+**O que faz:** um multiplicador de gravidade POR CORPO (`GravityScale`, default 1.0). `0.0` = sem
+peso (bala, top-down) · `< 0` = flutua pra cima (balão) · `> 1` = pesado. Uma coisa que a
+gravidade GLOBAL não consegue expressar. Row "Gravity Scale" no §11, **só p/ corpo Dynamic** (rapier
+só aplica gravidade a Dynamic; row em Static/Kinematic seria controle morto).
+
+**⚠️ A DECISÃO que diverge da nota do plano:** o plano (`components.rs` doc do W1) previa gravity-scale
+como **campo apendado no `RigidBody`**. Medido: `RigidBody` é construído como literal `{ kind }` em
+**~80 sítios** (fixtures de toda wave), então apendar um campo obrigatório ali é churn grande e
+arriscado, e **recorreria** p/ cada um dos 4 campos previstos (damping/ccd/can-sleep). Escolhi o
+idioma que o resto do Inspector já usa — **componente opcional de presence-override** (como
+`ZIndexOverride`/`YSort`/`BlendMode`): ausente = default, presente = override. Custo: **zero churn**
+nos 80 sítios, **zero bump de schema** (componente novo cunha blob-key próprio — precedente do
+`PhysicsJoint`/W3), e é aditivo. O `RigidBody` fica intocado (o braço `Kind` do apply nem precisou
+mudar — trocar de kind preserva a gravidade). A nota do plano fica CORRIGIDA (ver `components.rs`).
+
+**Isolamento / riscos de merge:**
+- **Contratos congelados: NENHUM.**
+- **Foundational tocado:** `ph2d-editor-core` — **o `inspector_model.rs` FOI SPLITADO** (resolve o
+  699/700 que a §10 sinalizou): o domínio físico/joint (§11+§12) saiu p/ o módulo irmão
+  **`inspector_model_physics.rs`** (re-exportado por `screens::hero`, paths de import intactos). O
+  `InspectorPhysicsInfo` ganhou `gravity_scale`, `PhysicsFieldEdit` ganhou `GravityScale(f32)`, id
+  `INSP_PHYS_GRAVITY_SCALE`. **Vantagem de merge:** a churn de física agora vive num arquivo que ESTA
+  linha possui, longe de sprite/ordering/blend das outras linhas.
+- **`ph2d-physics-ecs`:** componente `GravityScale` novo + registro (`register_physics_components`
+  3→4, e o "count que dói"). `BodyDesc` ganhou `gravity_scale` (recipe de spawn — precisa p/ o rewind
+  re-aplicar; ~19 fixtures em `ph2d-physics/tests` ganharam `gravity_scale: 1.0`, neutro).
+- ⚠️ **Sem bump de schema.** `PROJECT_SCHEMA` fica em **28**; a tripla `(28,8,13)` intacta.
+- **`ph2d-physics`:** `BodyDesc.gravity_scale` + `spawn_body` aplica `.gravity_scale()`.
+
+**⚠️ DÍVIDA PRE-EXISTENTE consertada de carona:** `render_loop/physics_overlay.rs` estava em **776
+LOC** (556 no fork → +220 por W2a/W7 desta linha, SEM marcador) — ou seja o gate `file_loc_caps`
+(shell, cap 600) estava **latentemente VERMELHO desde o W7**, e os smokes filtrados nunca o rodaram.
+Consertado pelo padrão da casa: o `mod tests` inline (521 linhas) saiu p/ um irmão via
+**`#[path = "physics_overlay_tests.rs"]`** (mantém `tests` FILHO de `physics_overlay` ⇒ `use super::*`
+alcança os privados, zero mudança de visibilidade). `physics_overlay.rs` → **258**, o irmão → **519**,
+ambos sob o cap. Também `physics_smoke.rs` (a cena 12 nasceu lá e estourou 600→603) → a cena foi p/
+`physics_smoke_rigs.rs` (o irmão de overflow), ambos sob o cap.
+
+**Arquivos:** `ph2d-physics/src/world/desc.rs`, `world.rs`, +19 fixtures em `tests/` ·
+`ph2d-physics-ecs/src/components.rs` (`GravityScale`), `lib.rs` (registro), `scale.rs` (`body_desc`
+param), `bridge.rs` (folda o componente), `bin/physics_ecs_c9.rs` (corpo `GravityScale(0.5)`, 53
+corpos), `tests/{gravity_scale,persistence}.rs` · `ph2d-editor-core` (`inspector_model{,_physics}.rs`,
+`hero.rs`, `ids/inspector.rs`) · `ph2d-panel-inspector` (`sections/physics.rs`, `populate.rs`,
+`sync.rs`, `event_physics.rs`, `tests/seam_physics.rs`) · shell (`inspector_physics.rs`,
+`physics_smoke{,_rigs}.rs`, `physics_overlay{,_tests}.rs`).
+
+**Gates (3 mutação-provados RED→verde + 2):** `gravity_scale_multiplies_the_bodys_fall`
+(ph2d-physics, trajetória: 0/1/2/-1) · `a_gravity_scale_component_is_folded_into_the_sim`
+(ph2d-physics-ecs, a ponte LÊ o componente) · `gravity_scale_is_offered_and_committed_only_for_a_dynamic_body`
+(seam, offer+honour Dynamic-only) · round-trip de persistência estendido (o componente sobrevive a
+save/undo) · `registers_every_physics_component` 3→4 · c9 determinístico (53 corpos, hash estável).
+Verde local: suites de ph2d-physics/ph2d-physics-ecs/editor-core/panel-inspector + shell (893 testes),
+clippy `--all-targets`, machete, fmt, typos, **`file_loc_caps` (AGORA verde)**, workspace/panel/node LOC caps.
+
+**Smoke:** **`PH2D_PHYSICS_SMOKE=12`** — quatro corpos, uma gravidade, quatro destinos (normal cai ·
+azul flutua parado · vermelho cai rápido · ciano sobe). Selecione cada um e veja o row Gravity Scale
+no §11. Um multiplicador morto faz os quatro caírem juntos.

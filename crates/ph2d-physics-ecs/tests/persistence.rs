@@ -15,7 +15,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody, register_physics_components,
+    BodyKind, Collider, ColliderShape, GravityScale, PhysicsBridge, RigidBody,
+    register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -57,6 +58,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
             is_sensor: true,
             ..Collider::default()
         },
+        // The optional per-body gravity multiplier (W8) is a separate registered
+        // component; a non-neutral value must travel through the snapshot too —
+        // dropping its `reg.register` line makes the `get` below return None.
+        GravityScale(0.5),
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -85,6 +90,14 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     );
     assert!(
         matches!(col.shape, ColliderShape::Cuboid { half_x, half_y } if half_x == 3.0 && half_y == 0.5)
+    );
+    let gravity = *dst
+        .world()
+        .get::<GravityScale>(e)
+        .expect("GravityScale survived the round trip (registered?)");
+    assert_eq!(
+        gravity.0, 0.5,
+        "the per-body gravity multiplier did not survive the snapshot round trip"
     );
 }
 

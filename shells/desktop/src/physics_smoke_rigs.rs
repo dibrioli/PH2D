@@ -1,16 +1,21 @@
 //! **The smoke scenes where bodies are RELATED** — to each other, or to the
-//! Hierarchy (`PH2D_PHYSICS_SMOKE` 6, 7 and 8).
+//! Hierarchy (`PH2D_PHYSICS_SMOKE` 6, 7 and 8) — plus the overflow scenes the
+//! prologue file no longer has room for (12).
 //!
 //! Sibling of [`crate::physics_smoke`], which keeps the prologue and the scenes
 //! about a body on its own (a drop, a pile, an empty state, the world knobs).
-//! Split under the shell's 600-LOC cap, and the seam is a real one: everything
-//! here needs a SECOND thing to be meaningful — a joint needs two bodies, a bake
-//! needs the timeline, a parented body needs an ancestor.
+//! Split under the shell's 600-LOC cap; the primary seam is a real one —
+//! everything about a rig here needs a SECOND thing to be meaningful (a joint
+//! needs two bodies, a bake needs the timeline, a parented body needs an
+//! ancestor) — and the later single-body scenes land here for the honest reason
+//! that the prologue file is full.
 
 use crate::physics_smoke::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, GravityScale, JointKind, PhysicsJoint, RigidBody,
+};
 use ph2d_render::Sprite;
 
 /// Scene 8's rigs: `(x, extra depth, rotation, label)`.
@@ -459,6 +464,63 @@ impl crate::App {
              LEFT (Weld): the bar stays HORIZONTAL, locked rigid. RIGHT (Pin): the bar SWINGS \
              down like a pendulum. A weld that became a revolute joint would let the left bar \
              swing too."
+        );
+    }
+
+    /// **Scene 12 (W8).** Four bodies dropped from the same height, differing
+    /// only in per-body **Gravity Scale**. The whole point is that the same
+    /// world gravity does four different things, which no single global gravity
+    /// can express — so a dead multiplier would make all four fall together.
+    /// (Here rather than in the prologue file only because that file is full.)
+    pub(crate) fn physics_smoke_gravity(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // Same body every time (a cuboid matching the sprite quad, so the
+        // outline never disagrees with the art); the tuple's last slot is the
+        // optional `GravityScale`, absent on the control.
+        let body = |x: f32, hue: [f32; 4], label: &str| {
+            (
+                Transform::from_translation(Vec2::new(x, 2.5)),
+                Sprite::atlas(0, [0.6, 0.6], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.3,
+                    },
+                    ..Collider::default()
+                },
+            )
+        };
+        // Control: no GravityScale component → full gravity, falls and settles.
+        world.spawn(body(-3.0, [1.0, 0.55, 0.2, 1.0], "Normal (1.0)"));
+        // Weightless: hangs exactly where it was dropped.
+        world.spawn((
+            body(-1.0, [0.4, 0.6, 0.9, 1.0], "Weightless (0.0)"),
+            GravityScale(0.0),
+        ));
+        // Heavy: falls fastest, settles first.
+        world.spawn((
+            body(1.0, [0.75, 0.2, 0.2, 1.0], "Heavy (2.0)"),
+            GravityScale(2.0),
+        ));
+        // Balloon: negative scale → floats UP, off the top of the view.
+        world.spawn((
+            body(3.0, [0.45, 0.85, 0.85, 1.0], "Balloon (-0.3)"),
+            GravityScale(-0.3),
+        ));
+
+        eprintln!(
+            "[physics-smoke 12] Four bodies, one gravity, four fates: the orange one falls \
+             normally, the blue one is WEIGHTLESS (hangs in the air), the red one is HEAVY \
+             (falls fastest), the cyan one is a BALLOON (floats UP off the top). Select each \
+             and see the Gravity Scale row in §11 (Dynamic only). A dead multiplier makes all \
+             four fall together."
         );
     }
 }

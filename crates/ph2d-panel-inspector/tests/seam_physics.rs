@@ -40,6 +40,7 @@ fn with_body() -> InspectorPhysicsInfo {
         bake_seconds: 5.0,
         is_sensor: false,
         bake_channels_tag: 0,
+        gravity_scale: 1.0,
     }
 }
 
@@ -389,6 +390,61 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
         click(without_body(), ids::INSP_PHYS_BAKE).is_empty(),
         "Bake fired on an entity with no body — there is no simulation to read"
     );
+}
+
+/// **Gravity Scale is offered and honoured only for a Dynamic body** (W8).
+///
+/// rapier applies gravity to Dynamic bodies only, so a Gravity Scale row on a
+/// Static/Kinematic body would be a control that cannot do anything. Both
+/// halves have to agree, the same as Bake: the painter decides whether to OFFER
+/// the row and the event arm decides whether to HONOUR the commit, and a
+/// refusal that lives only in the paint loop is not a refusal
+/// ([[feedback_disabled_button_still_dispatches]]). The committed value is
+/// distinct (`0.3`) so a wiring mistake routing it to another field would fail.
+#[test]
+fn gravity_scale_is_offered_and_committed_only_for_a_dynamic_body() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        assert_eq!(
+            rects
+                .iter()
+                .any(|(n, _)| *n == ids::INSP_PHYS_GRAVITY_SCALE),
+            offered,
+            "kind_tag={tag}: the Gravity Scale row's presence is wrong"
+        );
+        let actions = commit(info, ids::INSP_PHYS_GRAVITY_SCALE, 0.3);
+        assert_eq!(
+            !actions.is_empty(),
+            offered,
+            "kind_tag={tag}: the event handler disagrees with the painter about \
+             whether Gravity Scale is offered"
+        );
+        if offered {
+            expect(
+                &actions,
+                PhysicsFieldEdit::GravityScale(0.3),
+                "Gravity Scale",
+            );
+        }
+    }
 }
 
 /// **Bake is neither offered nor honoured for a body with no simulated motion.**

@@ -32,6 +32,7 @@ fn body(
         friction: 0.5,
         layer: 0,
         is_sensor: false,
+        gravity_scale: 1.0,
     })
 }
 
@@ -397,6 +398,7 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             friction: 0.5,
             layer: 0,
             is_sensor: false,
+            gravity_scale: 1.0,
         });
         join(
             &mut w,

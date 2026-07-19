@@ -91,6 +91,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
             ids::INSP_PHYS_RESTITUTION => Some(PhysicsFieldEdit::Restitution(v)),
             ids::INSP_PHYS_FRICTION => Some(PhysicsFieldEdit::Friction(v)),
+            // Honoured only for a Dynamic body — the same gate the painter
+            // offers it under (rapier applies gravity to Dynamic bodies only).
+            // The row is not painted for other kinds, so this cannot fire for
+            // them, but a refusal that lives in the paint loop is not a refusal.
+            ids::INSP_PHYS_GRAVITY_SCALE if info.kind_tag == 0 => {
+                Some(PhysicsFieldEdit::GravityScale(v))
+            }
             _ => None,
         };
         if let Some(edit) = edit {

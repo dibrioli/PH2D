@@ -495,7 +495,13 @@ impl PhysicsBridge {
             let Some(t) = space::world_transform(world, e, &mut self.chain) else {
                 continue;
             };
-            let desc = crate::scale::body_desc(rb, col, &t);
+            // Optional per-body gravity multiplier (W8); absent = full gravity.
+            // Read here because this is the half holding the `World`; folded into
+            // the `BodyDesc` so it survives rewind.
+            let gravity_scale = world
+                .get::<crate::GravityScale>(e)
+                .map_or(crate::GravityScale::NEUTRAL, |g| g.0);
+            let desc = crate::scale::body_desc(rb, col, &t, gravity_scale);
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not

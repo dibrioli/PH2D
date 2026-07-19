@@ -185,3 +185,39 @@ impl Default for Collider {
 }
 
 impl SimComponent for Collider {}
+
+/// **Per-body gravity multiplier — an optional presence-override component.**
+///
+/// Absent (the common case) means full world gravity, exactly what a body did
+/// before this existed. Present, its `f32` scales the world gravity for THIS
+/// body: `0.0` weightless (a bullet, a top-down actor), `< 0` floats up (a
+/// balloon), `> 1` heavier. rapier applies gravity only to dynamic bodies, so
+/// on a `Static`/`Kinematic` body it is a no-op — the §11 row is offered for
+/// Dynamic only, where it can actually do something.
+///
+/// **Why its own component instead of a field on [`RigidBody`]** (which the W1
+/// note anticipated): `RigidBody` is constructed as a bare `{ kind }` literal at
+/// ~80 sites across every wave's fixtures, so appending a required field there
+/// is a large, risky mechanical churn — and it would recur for each of
+/// damping/ccd/can-sleep. An optional presence-override is the idiom the rest of
+/// the Inspector already uses (`ZIndexOverride`, `YSort`, `BlendMode`,
+/// `MaskInteraction`…): absent = engine default, present = override. It costs no
+/// construction-site churn, and — being a newly *registered* component keyed by
+/// its own type-name hash — it needs **no `PROJECT_SCHEMA` bump** (a new blob
+/// key is additive; old files simply lack it → default; the `PhysicsJoint`/W3
+/// precedent). Config, never live state, like every component in this file.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GravityScale(pub f32);
+
+impl GravityScale {
+    /// The value an absent component stands for — rapier's own gravity scale.
+    pub const NEUTRAL: f32 = 1.0;
+}
+
+impl Default for GravityScale {
+    fn default() -> Self {
+        GravityScale(Self::NEUTRAL)
+    }
+}
+
+impl SimComponent for GravityScale {}

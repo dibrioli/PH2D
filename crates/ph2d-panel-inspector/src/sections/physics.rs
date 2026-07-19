@@ -251,12 +251,14 @@ pub(crate) fn paint_physics_section(
     paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)
 }
 
-/// The three things you can DO to a body, under its fields: join it to another,
-/// bake its motion into curves, or take the body away.
+/// The tail of the body section: the two **Dynamic-only** field rows (Gravity
+/// Scale + the Bake channel selector) and then the three things you can DO to a
+/// body — join it to another, bake its motion into curves, or take the body away.
 ///
-/// Its own function because the section is at the panel crate's 200-LOC cap and
-/// these are the part that is a list rather than a form — each is one button,
-/// offered or not, and none of them reads a field above.
+/// Its own function because the section is at the panel crate's 200-LOC cap. The
+/// Dynamic-only rows live here (rather than up in the form) both for that reason
+/// and because they share the "offered only for a Dynamic body" gate with Bake;
+/// each button below is offered or not, and none reads a field above.
 #[allow(clippy::too_many_arguments)]
 fn paint_body_actions(
     scene: &mut VectorScene,
@@ -272,12 +274,26 @@ fn paint_body_actions(
     let h = ROW_H_PX;
     let mut yy = y;
 
-    // Bake channel selector — which pose channels the bake writes (All, or one
-    // axis for layering physics onto a hand-animated channel). Offered only for
-    // a Dynamic body, the only kind that bakes. Painted here, BEFORE the
-    // `paint_at` closure below borrows `scene`/`text_system`, so it does not
-    // fight that borrow.
+    // Gravity Scale + the Bake channel selector — both Dynamic-only (rapier
+    // applies gravity to Dynamic bodies only, and only a Dynamic body has
+    // simulated motion to bake). Painted here, BEFORE the `paint_at` closure
+    // below borrows `scene`/`text_system`, so they do not fight that borrow. A
+    // gravity-scale field on a Static/Kinematic body would be a control that
+    // cannot do anything — worse than a missing one (the section's own rule for
+    // the radius-on-a-box case).
     if info.kind_tag == KIND_DYNAMIC {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Gravity Scale",
+            ids::INSP_PHYS_GRAVITY_SCALE,
+        );
         yy = seg_row(
             scene,
             text_system,

@@ -372,6 +372,11 @@ impl PhysicsWorld {
         let body = RigidBodyBuilder::new(desc.body_type)
             .translation(Vector2::new(desc.x, desc.y))
             .rotation(desc.rotation)
+            // Per-body gravity multiplier (W8). Setting `1.0` explicitly is
+            // rapier's own default, so an unscaled body is byte-identical to
+            // before this existed; the value survives rewind because it rides
+            // the `BodyDesc` the world rebuilds from.
+            .gravity_scale(desc.gravity_scale)
             .build();
         let handle = self.bodies.insert(body);
         self.stamp_defaults(handle);

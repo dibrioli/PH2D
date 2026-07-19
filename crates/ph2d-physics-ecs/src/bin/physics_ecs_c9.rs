@@ -3,7 +3,8 @@
 //!
 //! Sibling of `ph2d_physics_c9` (which drives the raw wrapper). This one
 //! drives the same falling-circles fixture **through the ECS bridge** (plus
-//! one non-uniformly scaled ball → an ELLIPSE collider, W6): entities carry
+//! one non-uniformly scaled ball → an ELLIPSE collider, W6, and one
+//! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -14,13 +15,13 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 52
+//! physics-ecs-c9 body_count: 53
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, GravityScale, PhysicsBridge, RigidBody};
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
 const N_DYNAMIC: u32 = 50;
@@ -84,6 +85,25 @@ fn main() {
             skew_x: 0.0,
             skew_y: 0.0,
         },
+    ));
+
+    // One ball with a per-body gravity scale (W8): `GravityScale(0.5)` makes it
+    // fall at half rate. Its poses feed the hash, so the multiplier travels the
+    // deterministic path (an f32 fold in the bridge's substep integration) and
+    // CI proves it is bit-identical across the three OSes — the same guarantee
+    // the ellipse gives the tessellation. Set apart on x so it lands on the same
+    // floor without touching the grid.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        GravityScale(0.5),
+        Transform::from_translation(Vec2::new(4.0, 6.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

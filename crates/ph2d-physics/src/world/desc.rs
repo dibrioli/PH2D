@@ -54,4 +54,17 @@ pub struct BodyDesc {
     /// nothing reading them is inert, which is why this landed with the overlay
     /// + Inspector that make the detection visible (ADR-0131 W7).
     pub is_sensor: bool,
+    /// Per-body multiplier on the world gravity. `1.0` = full gravity (rapier's
+    /// own default, and what every body did before this field existed); `0.0` =
+    /// weightless (a bullet, a top-down actor); `< 0` = floats up (a balloon);
+    /// `> 1` = heavier. rapier ignores it for non-dynamic bodies, so it only
+    /// bites a `Dynamic` one.
+    ///
+    /// It lives in `BodyDesc` — the spawn recipe the world stores per body —
+    /// because `rewind_to` rebuilds the world FROM these descriptors, so a value
+    /// that were not here would be silently dropped on the first scrub, and a
+    /// gravity-scaled body would fall at full gravity after a rewind. The
+    /// authored source is the optional `GravityScale` component in
+    /// `ph2d-physics-ecs`; the bridge folds it in here (ADR-0131 W8).
+    pub gravity_scale: f32,
 }

@@ -79,8 +79,19 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// [`BodyDesc`] for `PhysicsWorld::spawn_body`. The one place ECS types meet
 /// rapier's — everything downstream is rapier-free. Lives here beside
 /// [`scaled_shape`], the door it uses for the collider shape.
-pub(crate) fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
+/// `gravity_scale` is passed in rather than read here because it comes from the
+/// **optional** [`crate::GravityScale`] component — a body without one takes the
+/// neutral `1.0` — and the bridge is the half holding the `World` to look it up.
+/// It rides the `BodyDesc` so `rewind_to`, which rebuilds from descriptors,
+/// preserves it across a scrub (ADR-0131 W8).
+pub(crate) fn body_desc(
+    rb: &RigidBody,
+    col: &Collider,
+    t: &Transform,
+    gravity_scale: f32,
+) -> BodyDesc {
     BodyDesc {
+        gravity_scale,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,

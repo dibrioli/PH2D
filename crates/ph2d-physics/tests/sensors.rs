@@ -22,6 +22,7 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         friction: 0.5,
         layer: 0,
         is_sensor,
+        gravity_scale: 1.0,
     });
 }
 

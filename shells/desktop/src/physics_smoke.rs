@@ -14,6 +14,7 @@
 //! | `9` | W6   | SCALED bodies: uniform circle, non-uniform ELLIPSE, inherited parent scale |
 //! | `10`| W7   | SENSOR (trigger): a ball passes through a sensor zone that lights up |
 //! | `11`| Weld | a bar WELDED to a hook stays rigid; a PINNED bar swings (side by side) |
+//! | `12`| W8   | four bodies, one gravity, four **Gravity Scale**s: fall / weightless / heavy / balloon |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -74,6 +75,7 @@ impl crate::App {
             "9" => self.physics_smoke_scale(),
             "10" => self.physics_smoke_sensor(),
             "11" => self.physics_smoke_weld(),
+            "12" => self.physics_smoke_gravity(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -10,9 +10,11 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
+use std::borrow::Cow;
+
 use ph2d_vec_scene::{
-    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
-    VecScene, VecViewState, VecXforms,
+    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokePiece, StrokeSpec, VecPath,
+    VecPathId, VecScene, VecViewState, VecXforms,
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
@@ -24,10 +26,6 @@ use ph2d_vector::{
 mod gradient;
 use gradient::fill_multipoint;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
-
-/// **As pontas de traço** (setas / losangos / bolinhas), likewise a sibling: a geometria é
-/// pura (`ph2d_vec_scene::marker`); aqui mora só o encurtamento da linha e a emissão.
-mod markers;
 
 /// Smart guides (o feedback visual do snap), likewise a sibling.
 mod guides;
@@ -207,29 +205,42 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
         }
     }
     if let Some(s) = path.stroke {
-        // Com PONTAS, a linha é encurtada para caber nelas — senão o traço aparece por
-        // dentro de uma seta vazada e faz uma bolha na base de uma cheia. Sem pontas
-        // (o caso de 99% dos paths) nada disto roda: `bp` vai direto.
-        //
-        // `None` = a linha é mais curta que os recuos somados (uma linha de 2 px com uma
-        // seta gorda): aí NÃO se desenha linha nenhuma — só as pontas. Cair de volta na
-        // linha inteira seria desenhar exatamente o traço que o recuo existe para
-        // esconder.
-        let line = if s.has_markers() {
-            markers::stroked_line(path, &s).map(|p| build_bezpath(&p))
-        } else {
-            Some(bp.clone())
-        };
-        if let Some(line) = line {
-            target.inner_mut().stroke(
-                &kurbo_stroke(&s),
-                transform,
-                &Brush::Solid(color(s.color)),
-                None,
-                &line,
-            );
+        // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
+        // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
+        let brush = Brush::Solid(color(s.color));
+        for piece in ph2d_vec_scene::stroke_plan(path, &s) {
+            match piece {
+                StrokePiece::Line { path: line } => {
+                    // Emprestado = a peça É o path, e `bp` já o descreve. É o caso de 99%
+                    // dos traços, e o motivo de o plano devolver `Cow`.
+                    let line_bp = match line {
+                        Cow::Borrowed(_) => bp.clone(),
+                        Cow::Owned(p) => build_bezpath(&p),
+                    };
+                    target
+                        .inner_mut()
+                        .stroke(&kurbo_stroke(&s), transform, &brush, None, &line_bp);
+                }
+                StrokePiece::Symbol { path: geo } => {
+                    target.inner_mut().stroke(
+                        &Stroke::new(s.width),
+                        transform,
+                        &brush,
+                        None,
+                        &build_bezpath(&geo),
+                    );
+                }
+                StrokePiece::Fill { path: geo } => {
+                    target.inner_mut().fill(
+                        Fill::NonZero,
+                        transform,
+                        &brush,
+                        None,
+                        &build_bezpath(&geo),
+                    );
+                }
+            }
         }
-        markers::draw(target, path, &s, transform);
     }
 }
 
@@ -370,17 +381,11 @@ pub(crate) fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
         LineJoin::Bevel => Join::Bevel,
     };
     let stroke = Stroke::new(s.width).with_caps(cap).with_join(join);
-    // `dash` carries width MULTIPLES `(dash, gap)` (width-aware — a thicker line
-    // gets proportionally longer dash + gap, so the cap projection never swallows
-    // the gap). A zero-length gap collapses to a solid look; clamp it off zero so
-    // kurbo never emits a degenerate dash element.
-    match s.dash {
-        Some((d, g)) if d > 0.0 => {
-            let dash_len = d * s.width;
-            let gap_len = (g * s.width).max(f64::EPSILON);
-            stroke.with_dashes(0.0, [dash_len, gap_len])
-        }
-        _ => stroke,
+    // Os comprimentos vêm do `StrokeSpec` (que guarda MÚLTIPLOS da largura) — porta única,
+    // porque o Outline Stroke assa o mesmo tracejado com outra versão da kurbo.
+    match s.dash_lengths() {
+        Some(d) => stroke.with_dashes(0.0, d),
+        None => stroke,
     }
 }
 

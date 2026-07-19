@@ -422,9 +422,15 @@ fn baking_effects_freezes_the_cooked_geometry_and_clears_the_stack() {
 
     assert!(scene.bake_cooked(id), "havia efeito ativo a assar");
     let p = scene.path(id).unwrap();
-    assert!(p.effects.is_empty(), "a pilha tem de sair vazia depois do bake");
+    assert!(
+        p.effects.is_empty(),
+        "a pilha tem de sair vazia depois do bake"
+    );
     assert_eq!(p.verts, cooked.verts, "a geometria autorada vira a cozida");
-    assert_eq!(p.id, id, "o id sobrevive ao bake — assar não recria o objeto");
+    assert_eq!(
+        p.id, id,
+        "o id sobrevive ao bake — assar não recria o objeto"
+    );
     // A aparência não muda: cozinhar o assado é a identidade (a pilha já foi consumida).
     assert_eq!(
         p.cooked().into_owned().verts,

@@ -152,6 +152,11 @@ pub use iso::{iso_cone, iso_cube, iso_pyramid};
 mod marker;
 pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 
+/// **O que um traço DESENHA** — a porta única, com dois consumidores: quem pinta
+/// (`ph2d-vec-render`) e quem assa (`ph2d_vec_boolean::outline_stroke`).
+mod stroke_plan;
+pub use stroke_plan::{StrokePiece, stroke_plan};
+
 /// **Onde uma linha ENCOSTA numa forma** — a borda real (o contorno achatado), não a caixa
 /// envolvente. É o que faz um conector parar na estrela em vez de por baixo dela.
 mod boundary;
@@ -286,6 +291,26 @@ impl StrokeSpec {
     #[must_use]
     pub fn has_markers(&self) -> bool {
         self.marker_start != Marker::None || self.marker_end != Marker::None
+    }
+
+    /// **O tracejado em COMPRIMENTO** — `[traço, vão]` no mesmo espaço da geometria, ou
+    /// `None` para linha contínua.
+    ///
+    /// O campo [`Self::dash`] guarda MÚLTIPLOS da largura (engrossar o traço alonga os dois
+    /// na proporção, então a projeção da ponta nunca engole o vão); quem desenha ou assa
+    /// precisa dos comprimentos. A conversão é UMA — o renderer e o Outline Stroke falam com
+    /// versões diferentes da kurbo e cada um constrói o próprio `Stroke`, mas os dois têm de
+    /// concordar sobre **quanto mede um traço**, senão a forma assada sai com o tracejado
+    /// noutra cadência que a desenhada.
+    ///
+    /// O vão é afastado do zero: um vão de comprimento nulo é um elemento degenerado para a
+    /// kurbo, e o que o usuário quis dizer com ele é "sólido".
+    #[must_use]
+    pub fn dash_lengths(&self) -> Option<[f64; 2]> {
+        match self.dash {
+            Some((d, g)) if d > 0.0 => Some([d * self.width, (g * self.width).max(f64::EPSILON)]),
+            _ => None,
+        }
     }
 }
 

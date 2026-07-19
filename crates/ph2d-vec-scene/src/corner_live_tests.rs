@@ -605,7 +605,10 @@ fn a_chamfer_is_a_straight_cut_a_round_is_an_arc_at_the_same_setback() {
     let (c_in, c_out) = split_pair(-3.0); // chanfro, MESMA magnitude
 
     // Os pontos de recuo são IDÊNTICOS — o recuo é a magnitude, o estilo não o move.
-    assert_eq!(r_in.anchor, c_in.anchor, "o chanfro recua igual ao arredondado (in)");
+    assert_eq!(
+        r_in.anchor, c_in.anchor,
+        "o chanfro recua igual ao arredondado (in)"
+    );
     assert_eq!(r_out.anchor, c_out.anchor, "idem (out)");
 
     // O chanfro é reto; o arredondado bojudo. O fosso é enorme, não ruído de ponto flutuante.
@@ -637,7 +640,10 @@ fn the_corner_sign_convention_keeps_magnitude_and_style_orthogonal() {
     assert_eq!(v.corner_radius, -4.0);
 
     v.set_corner_size(7.0); // redimensiona, estilo intacto
-    assert!(v.is_chamfer(), "arrastar a alça não pode desfazer o chanfro");
+    assert!(
+        v.is_chamfer(),
+        "arrastar a alça não pode desfazer o chanfro"
+    );
     assert_eq!(v.corner_size(), 7.0);
 
     v.set_chamfer(false); // volta a arredondado, tamanho intacto

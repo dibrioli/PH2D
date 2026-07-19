@@ -22,6 +22,11 @@ use kurbo::{BezPath, PathEl, Point, Shape};
 pub mod arrangement;
 pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 
+/// **Expand** — Outline Stroke (o traço vira forma) e Offset Path (a forma cresce). Módulo
+/// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.
+pub mod expand;
+pub use expand::{offset_path, outline_stroke};
+
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex, VertexKind};
 
@@ -104,22 +109,15 @@ pub fn apply_many(paths: &[&VecPath], op: BoolOp) -> Vec<VecPath> {
         } else {
             LsFillRule::NonZero
         };
-        let Ok(contours) = linesweeper::binary_op(&acc, &to_bez(other), rule, lop) else {
-            return Vec::new();
-        };
         // O `grouped()` já separa "de fora + os que estão dentro dele". O último
         // agrupamento do fold vira o resultado; os intermediários viram o próximo
         // acumulador — cujos contornos o linesweeper já orientou, então dali em
         // diante NonZero e EvenOdd concordam.
-        grouped = contours
-            .grouped()
-            .iter()
-            .map(|g| g.iter().map(|&i| contours[i].path.clone()).collect())
-            .collect();
-        acc = BezPath::new();
-        for c in grouped.iter().flatten() {
-            acc.extend(c.iter());
-        }
+        let Some(g) = binary_grouped(&acc, &to_bez(other), rule, lop) else {
+            return Vec::new();
+        };
+        grouped = g;
+        acc = flatten_groups(&grouped);
         acc_rule = FillRule::NonZero;
     }
     grouped
@@ -128,10 +126,44 @@ pub fn apply_many(paths: &[&VecPath], op: BoolOp) -> Vec<VecPath> {
         .collect()
 }
 
+/// **A porta única do motor**: uma operação binária, com o resultado já AGRUPADO por
+/// containment (o contorno de fora primeiro, os de dentro depois). `None` = o sweep
+/// falhou.
+///
+/// Os contornos que saem daqui vêm **orientados** pelo linesweeper — e é isso que torna
+/// `NonZero` e `EvenOdd` equivalentes a jusante. Quem constrói um conjunto a partir de
+/// geometria de fora (o [`crate::expand`], que recebe contornos da kurbo) tem de passar por
+/// aqui antes de compor, senão dois contornos de sentidos opostos se CANCELAM sob NonZero e
+/// o resultado ganha um buraco que ninguém pediu.
+pub(crate) fn binary_grouped(
+    a: &BezPath,
+    b: &BezPath,
+    rule: LsFillRule,
+    op: BinaryOp,
+) -> Option<Vec<Vec<BezPath>>> {
+    let contours = linesweeper::binary_op(a, b, rule, op).ok()?;
+    Some(
+        contours
+            .grouped()
+            .iter()
+            .map(|g| g.iter().map(|&i| contours[i].path.clone()).collect())
+            .collect(),
+    )
+}
+
+/// Os grupos de volta a um `BezPath` só — a forma que uma operação seguinte consome.
+pub(crate) fn flatten_groups(groups: &[Vec<BezPath>]) -> BezPath {
+    let mut out = BezPath::new();
+    for c in groups.iter().flatten() {
+        out.extend(c.iter());
+    }
+    out
+}
+
 /// Um grupo de contornos (o 1º é o de fora, os demais estão dentro dele) vira um
 /// `VecPath` compound com o estilo de `style`. `None` se o contorno externo
 /// degenerar.
-fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPath> {
+pub(crate) fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPath> {
     let mut it = group.iter().filter_map(verts_from_bez);
     let outer = it.next()?;
     let subpaths: Vec<Contour> = it.map(Contour::new_closed).collect();
@@ -169,6 +201,19 @@ fn is_line(a: &VecVertex, b: &VecVertex) -> bool {
     close_enough(a.out_handle, a.anchor) && close_enough(b.in_handle, b.anchor)
 }
 
+/// Como um contorno ABERTO atravessa a fronteira para a kurbo.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub(crate) enum Closing {
+    /// **Fecha sempre.** É o que uma booleana precisa: ela opera sobre REGIÕES, e a região
+    /// que um caminho aberto delimita é a do seu fechamento implícito — a mesma que o
+    /// rasterizador preenche.
+    Always,
+    /// **Como foi desenhado.** É o que um TRAÇO precisa: fechar um "C" o desenharia como um
+    /// "O", com a corda de volta que o artista nunca traçou, e com uma junção no lugar das
+    /// duas pontas.
+    AsDrawn,
+}
+
 /// `VecPath` → kurbo `BezPath`, **todos os contornos**. Um compound entra na
 /// booleana com os buracos que já tinha.
 ///
@@ -179,6 +224,11 @@ fn is_line(a: &VecVertex, b: &VecVertex) -> bool {
 /// *Smooth* com handles pendurados no meio das arestas — pontos de controle que o
 /// usuário nunca pediu. Com `line_to`, o corte de uma reta devolve retas.
 fn to_bez(path: &VecPath) -> BezPath {
+    to_bez_with(path, Closing::Always)
+}
+
+/// [`to_bez`] com a política de fechamento explícita — ver [`Closing`].
+pub(crate) fn to_bez_with(path: &VecPath, closing: Closing) -> BezPath {
     // A booleana come a geometria COZIDA — ela corta a forma que está na tela. E o
     // resultado sai com as quinas ASSADAS (os verts novos nascem com raio 0): uma
     // booleana é destrutiva por natureza, e um raio vivo não sobrevive a ela — o
@@ -187,7 +237,7 @@ fn to_bez(path: &VecPath) -> BezPath {
     let path = &*path.cooked();
     let mut bp = BezPath::new();
     for c in 0..path.contour_count() {
-        let Some((verts, _)) = path.contour(c) else {
+        let Some((verts, closed)) = path.contour(c) else {
             continue;
         };
         let Some(first) = verts.first() else {
@@ -200,6 +250,9 @@ fn to_bez(path: &VecPath) -> BezPath {
             } else {
                 bp.curve_to(kp(w[0].out_handle), kp(w[1].in_handle), kp(w[1].anchor));
             }
+        }
+        if closing == Closing::AsDrawn && !closed {
+            continue; // um contorno aberto termina onde o artista parou
         }
         if let Some(last) = verts.last().filter(|_| verts.len() >= 2) {
             // `close_path` já implica a reta de volta ao início — só o fechamento

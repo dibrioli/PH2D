@@ -1,6 +1,8 @@
 # Flip — a wave **COLORIZE**: o plano
 
-> **Estado: PLANEJADA** (2026-07-18). Ordem do Enio, escolhida como a wave seguinte ao §4.C.
+> **Estado (2026-07-19):** a **fatia C1 (Trapped-ball, §4) LANDOU** em `ph2d-flip-fill` (2026-07-18,
+> `a6e8277a`) — **não** na crate `ph2d-flip-colorize` que este plano prevê (ver [`01_plano_waves.md`](01_plano_waves.md)).
+> **C2 (LazyBrush) + C3 (onion-fill) seguem PLANEJADAS** — a PRÓXIMA wave. Ordem do Enio, escolhida como a wave seguinte ao §4.C.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >

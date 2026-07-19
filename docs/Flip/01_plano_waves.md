@@ -6,14 +6,31 @@
 > **O traço (bug aberto + fix):** [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) ·
 > **Estado da arte além do Blender:** [`04_alem_do_blender.md`](04_alem_do_blender.md).
 >
-> **Estado (2026-07-12):** W0+W1+W2 **integrados ao main** · **WT (o traço) FECHADA** (smoke
-> APROVADO pelo Enio) · **W3 (Frames · Ghost · Tween) FECHADA** — o Flip virou app de
-> ANIMAÇÃO (tira com exposição, ciclos, Ghost Frames, autokey por-tool, flip por desenho,
-> tween). Doc: [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md). Pendente o smoke.
-> **W4 (Fill) FECHADA** (doc: [`06_fill_balde.md`](06_fill_balde.md)) e **W5 (Reshape) FECHADA**
-> (doc: [`07_reshape_escultura.md`](07_reshape_escultura.md) — os 8 pincéis; T5.7 multiframe fica
-> como carry-over, depende da multi-seleção de chaves na tira). **A W6 (timeline global) está
-> ADIADA** até a timeline principal ficar pronta (Enio 2026-07-12).
+> **Estado (2026-07-19 — reconciliado contra o código; ver a tabela "O que landou" abaixo).**
+> Tudo de WT..W7 **+ Edit Mode + Colorize C1 (Trap) + Região por curvas** está **integrado ao
+> main**, com os smokes **APROVADOS pelo Enio**. O Flip é um app de ANIMAÇÃO **usável ponta-a-ponta**:
+> desenhar → frames/hold/ciclos/ghost → tween → balde → reshape → **editar/selecionar/transformar** →
+> **instância/pose de quadro** → **multiframe** → salvar. Docs por wave: WT [`03`](03_traco_rasterizacao.md) ·
+> W3 [`05`](05_frames_ghost_tween.md) · W4 [`06`](06_fill_balde.md) · W5 [`07`](07_reshape_escultura.md) ·
+> W6 Edit Mode [`08`](08_edit_mode_selecao.md) · Colorize [`09`](09_colorize.md) · Região por curvas [`10`](10_regiao_por_curvas.md).
+> **A próxima WAVE é Colorize C2 (LazyBrush)** ([`09_colorize.md`](09_colorize.md) §7). A integração
+> com a **timeline principal** segue **ADIADA** (Enio 2026-07-12) e o **export** é deferido de
+> propósito. Fila e backlog verificado:
+> [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
+
+## O que landou DESDE o snapshot de 2026-07-12 (não reconstruir — tem doc + código)
+
+> Esta seção existe porque a versão anterior deste plano parou em 2026-07-12 e **listava como
+> ABERTOS itens que já estão no código** — o modo de falha que faz a próxima LLM reconstruir o que
+> existe (o módulo de áudio já pagou por isso). Cada linha diz onde o código VIVE.
+
+| wave | o que é | landou | onde no código |
+|---|---|---|---|
+| **W5 (costura)** | modo **Sculpt** plugado no shell (tool + painel modal + gesto) | 2026-07-13 `930f4c9b` | `flip_reshape.rs`, `flip_smooth.rs` |
+| **W6 — Edit Mode** | selecionar traço/**ponto**/**segmento** + realce + **transformar (girar/escalar)** a seleção; aposenta o "alvo vivo" | 2026-07-13 | doc [`08`](08_edit_mode_selecao.md); `flip_select*.rs`, `flip_selection_gizmo.rs` (518 LOC), `flip_transform.rs`, `flip_edit_gesture.rs` |
+| **W7 — Multiframe** | **multi-seleção de chaves na tira** (`strip.selected_keys()`) · **Instance** / linked-duplicate (`FLIP_KEY_INSTANCE` + marcador `INSTANCE_DOT`) · **pose de quadro** · **régua de scrub** · **falloff temporal** visível na tira · modo **`Selected`** dos fantasmas | 2026-07-13..15 (W7.1–W7.4) | `flip_multiframe.rs`, `flip_strip.rs`, `flip_pose_gizmo.rs`; `onion.rs` (`OnionMode::Selected`) |
+| **Colorize C1 — Trap** | *trapped-ball*: o balde para de vazar por vão estreito (chip `FLIP_TRAP`) | 2026-07-18 `a6e8277a` | **em `ph2d-flip-fill`** (`ball.rs`/`edt.rs`, `Trap`), **não** na crate `ph2d-flip-colorize` que o [`09`](09_colorize.md) previa |
+| **Região por curvas** | a malha do fill nasce dos vértices das linhas; o donut (buraco = componente conexa); R3 revogada por medição | 2026-07-18 | doc [`10`](10_regiao_por_curvas.md) §11–§12; BUGS #19–#22; `flip_fill_curve_route.*`, `flip_fill_dilate.*` |
 
 ## Regras permanentes (valem em TODA task)
 
@@ -59,7 +76,7 @@
 
 ---
 
-# WT — O traço (FECHADA 2026-07-12 · pendente o smoke do Enio)
+# WT — O traço (FECHADA 2026-07-12 · smoke APROVADO)
 
 **Objetivo (batido):** a cobertura do traço é a **união global da polilinha** — a mordida
 morreu em todas as suas formas. Detalhe completo em
@@ -79,8 +96,9 @@ morreu em todas as suas formas. Detalhe completo em
 - [x] **Gate:** 15 testes GPU + 18 unit + 2 composite verdes (debug e release), **5 mutações
       provadas**, fmt/clippy/LOC limpos, suite do shell verde. Perf: 1.7 ms para um traço real
       de 4000 pontos.
-- [ ] **WT.6 — Smoke do Enio** (zigzag hardness alto/baixo, curvas densas, laço, linha fina com
-      zoom out). Kill-criteria K1-K4 no 03 §6.
+- [x] **WT.6 — Smoke do Enio APROVADO** (zigzag hardness alto/baixo, curvas densas, laço, linha
+      fina com zoom out; kill-criteria K1-K4 no 03 §6). O traço FECHOU e todas as waves seguintes
+      foram construídas sobre ele.
 
 ---
 
@@ -137,16 +155,17 @@ células de exposição, pre/post behavior).
 - [ ] **T3.9 — Marcadores fixos (light table)** — carry-over explícito (o passe de ghost já
       aceita a lista; falta a UI de marcar).
 
-**Carry-overs da W3 (conscientes, não esquecidos):** drag de célula/borda na tira (mover chave e
-esticar hold por arrasto — hoje pelos botões ◀/▶ e pela caixa Hold) · multi-seleção de chaves
-(destrava o modo `Selected` dos fantasmas, já pronto no modelo) · light table.
+**Carry-overs da W3:** **multi-seleção de chaves — LANDOU (W7.3)**: destravou o modo `Selected` dos
+fantasmas (`onion.rs` · `strip.selected_keys()`). **AINDA ABERTO:** drag de célula/borda na tira
+(mover chave e esticar hold por arrasto — hoje pelos botões ◀/▶ e pela caixa Hold) · **light table**
+(T3.9 — o passe de ghost já aceita a lista; falta a UI).
 
 **Gate W3:** smoke — 2 desenhos-chave, ghosts ligados, Add Tween, play com loop; goldens do
 onion; bench do cache.
 
 ---
 
-# W4 — Fill (balde) — FECHADA 2026-07-12 (pendente o smoke)
+# W4 — Fill (balde) — FECHADA 2026-07-12 · smoke APROVADO (âncora 2026-07-12; Região por curvas / BUGS #22 2026-07-18)
 
 **Objetivo:** balde robusto para line-art com Gap Closure interativo, resultado = GEOMETRIA.
 Referências: `02` §6 (pipeline exato + constantes) e `04` §3 (upgrades decididos).
@@ -169,19 +188,21 @@ Referências: `02` §6 (pipeline exato + constantes) e `04` §3 (upgrades decidi
       (paint-behind) / Unpaint** + **Grow/Shrink** por offset CAD do polígono (+2px default) +
       **Precision**. Fill lê camada(s) de referência (linha) — o contrato linha/cor. Aceite:
       colorir sem tocar a linha; grow mata o halo do AA.
-- [ ] **T4.5 — Fill multiframe** — **carry-over declarado**: depende da multi-seleção de chaves na
-      tira (carry-over da W3). O solver já é por-desenho; falta só o wiring.
+- [x] **T4.5 — Fill multiframe — LANDOU (W7):** a multi-seleção de chaves na tira existe e o balde
+      a consome via `flip_multiframe::targets(…, strip.selected_keys(), …)` (`flip_fill.rs:405`).
 
-**Carry-overs da W4 (conscientes):** ajuste modal ao vivo do Gap Closure (scroll + helpers nos vãos
-pendentes — o `closures()` já devolve os segmentos, falta o overlay) · modo **Radius** do Gap
-Closure · fill multiframe · **Colorize** (LazyBrush/trapped-ball) é wave própria (`04 §3`).
+**Carry-overs da W4:** **fill multiframe — LANDOU (W7)** (`flip_fill.rs:405`) · **Colorize C1 (Trap)
+— LANDOU** em `ph2d-flip-fill` (2026-07-18); **C2 (LazyBrush) + C3 (onion-fill) = a wave ABERTA**
+([`09`](09_colorize.md) §7). **AINDA ABERTO:** ajuste modal ao vivo do Gap Closure (scroll + helpers
+nos vãos pendentes — o `closures()` já devolve os segmentos, falta o overlay) · modo **Radius** do
+Gap Closure — ⚠️ **candidato a APOSENTADORIA** (o Trap responde melhor à mesma pergunta; handoff §3.3).
 
 **Gate W4:** smoke — line-art com gaps, preencher com preview dos helpers, Grow/Shrink,
 paint-behind, multiframe.
 
 ---
 
-# W5 — Reshape (escultura de traço)
+# W5 — Reshape (escultura de traço) — FECHADA 2026-07-12 · costura Sculpt no shell 2026-07-13 (`930f4c9b`) · smoke APROVADO
 
 **Objetivo:** remodelar traços com pincéis de raio+força+falloff. Referência: `02 §7`
 (os 9 pincéis com TODAS as constantes — a W5 está lá, não aqui).
@@ -199,15 +220,22 @@ paint-behind, multiframe.
 - [x] **T5.5 — Pinch + Twist** (pinch `inf²/25`; twist 1°·influence em tela). Aceite: ambos.
 - [x] **T5.6 — Randomize** (hash splitmix64 por sample, perpendicular ao movimento)
       se apertar. **Clone = comando** (paste posicionado), não brush — fora da W5.
-- [ ] **T5.7 — Reshape multiframe** (CARRY-OVER: depende da multi-seleção de chaves na tira) (o falloff já está na assinatura desde T5.1; UI de seleção
-      de frames + curva com ativo em 0.5). Opcional/carry-over.
+- [x] **T5.7 — Reshape multiframe — LANDOU (W7):** o reshape consome
+      `flip_multiframe::targets(…, strip.selected_keys(), …)` (`flip_reshape.rs:145`); o falloff
+      temporal está visível na tira (W7.4).
 
 **Gate W5:** smoke — smooth, push, grab, engrossar; constantes com a "sensação GP".
 
 ---
 
-# W6 — Integração com a Timeline principal (ADIADA — Enio 2026-07-12)
+# Timeline — integração com a timeline principal (ADIADA — Enio 2026-07-12)
 
+> ⚠️ **Colisão de número resolvida:** o rótulo **"W6" foi reatribuído ao Edit Mode** (doc
+> [`08`](08_edit_mode_selecao.md), landou 2026-07-13). Esta wave — plugar os frames do Flip na
+> `ph2d-timeline` — segue **ADIADA** e **NÃO integrou** (nenhum binding flip↔dope-sheet no código; o
+> Flip roda pela própria tira sobre o `Playhead` global). As tasks T6.1–T6.5 abaixo ficam **sem
+> número fixo** até reabrir.
+>
 > **A timeline principal ainda está em desenvolvimento.** A integração espera ela ficar pronta;
 > até lá a tira do W3 é a UI de tempo do Flip (e o playhead JÁ é o global — não há relógio a
 > reconciliar quando a hora chegar).
@@ -230,15 +258,17 @@ paint-behind, multiframe.
 - **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
 - **Tween v2:** matching espacial + espiral logarítmica + UI de correção de pares (04 §2).
-- **Colorize (wave própria):** trapped-ball ("colorir tudo") → LazyBrush/CTG com onion-fill
-  (04 §3) — a feature de produção que só o TVPaint tem.
+- **Colorize:** **C1 (Trap / trapped-ball) LANDOU** em `ph2d-flip-fill` (2026-07-18, `a6e8277a`).
+  **ABERTO — a PRÓXIMA wave:** **C2 (LazyBrush/CTG)** + **C3 (onion-fill)** — a feature de produção
+  que só o TVPaint tem (plano [`09`](09_colorize.md) §7; a crate prevista `ph2d-flip-colorize` ainda
+  não existe).
 - **Ghost extras:** light table (marcadores fixos) + Shift & Trace (transform por ghost +
   F1/F2/F3) (04 §4).
-- **Edit Mode** (seleção de traço/ponto/segmento + transform): o modelo de seleção está no
-  02 §11; é um pacote próprio pós-W5.
+- ~~**Edit Mode**~~ (seleção de traço/ponto/segmento + transform): **LANDOU (W6, 2026-07-13, doc
+  [`08`](08_edit_mode_selecao.md))** — `flip_select*.rs` + `flip_selection_gizmo.rs` + `flip_transform.rs`.
 - **2.5D multiplane** (parallax_factor por camada — ADR-0114 §Decisão 3).
-- **Instância de drawing na UI** (o modelo já suporta; entra JUNTO com o gesto + marcador
-  visual na tira — lição GPv3, 04 §5).
+- ~~**Instância de drawing na UI**~~: **LANDOU (W7.1)** — botão `FLIP_KEY_INSTANCE` + marcador
+  `INSTANCE_DOT` na tira (linked duplicate).
 - **Export/render com acúmulo** Halton+gaussiana (03 §7.3).
 - **SMAA opcional** (reference MIT) p/ fills/composição (03 §7.4).
 - **Congelar o contrato do `ph2d-flip`** (gate de superfície) quando o modelo assentar.

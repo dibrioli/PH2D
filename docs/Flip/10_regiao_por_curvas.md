@@ -1,7 +1,9 @@
 # 10 — A REGIÃO POR CURVAS: a malha do fill nasce dos vértices das linhas
 
-> **Wave proposta.** Plano escrito antes de código (regra do handoff). Ainda **não
-> aprovada** — o §7 diz o que precisa da ordem do Enio.
+> **Estado (2026-07-19):** **R0/R1/R2 LANDARAM** (2026-07-18 — §9/§10) e o **smoke foi APROVADO**
+> (§11, BUGS #22); a **R3 foi REVOGADA por medição** (§12). O balde escolhe a rota das curvas. O
+> plano abaixo vira histórico + o registro do que mudou. *(Original, superado: "Wave proposta,
+> escrita antes do código, ainda não aprovada — o §7 diz o que precisa da ordem do Enio.")*
 >
 > **Origem:** smoke de 2026-07-18, com duas fotos lado a lado. *"a malha que o fill cria
 > não usa os vertex das linhas para gerar a própria malha. Não se apoia no centro da linha

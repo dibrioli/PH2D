@@ -802,6 +802,18 @@ diferentes agora:
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 
+## §4.9 — SMOKE APROVADO e a linha FECHADA (2026-07-19)
+
+O Enio smokou a cena `PH2D_GPU_COOK_DEMO=6` com a GPU no default e **aprovou**.
+A linha está fechada; o handoff de integração é
+[`HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-19.md`](HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-19.md).
+
+Estado no fechamento: **28 commits**, a `main` **não andou** desde o fork (a
+integração é `--ff-only` limpa), **7.667 testes do workspace verdes**, 55 gates de
+GPU na RTX + 2 de seam no shell, contrato congelado **intacto** (`cook.rs` e
+`node.rs` com zero diff), `fmt`/`clippy`/`machete`/`typos`/os 2 tetos de LOC
+limpos. **Nada integrado, nada pushado.**
+
 ## §5 — Histórico (não leia salvo arqueologia)
 
 | doc | o que era |

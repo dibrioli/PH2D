@@ -27,14 +27,14 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
-use ph2d_render::Sprite;
+use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
 /// (full size) matches the collider (half-extents).
 pub(crate) fn spawn_floor(world: &mut bevy_ecs::world::World) {
     world.spawn((
         Transform::from_translation(Vec2::new(0.0, -1.0)),
-        Sprite::atlas(0, [8.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
+        Sprite::atlas(WHITE_TILE_KEY, [8.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
         Name::new("Floor"),
         RigidBody {
             kind: BodyKind::Static,
@@ -115,7 +115,7 @@ impl crate::App {
         // should not contain one to begin with.
         gfx.sim.world_mut().spawn((
             Transform::from_translation(Vec2::new(0.0, 4.0)),
-            Sprite::atlas(0, [0.6, 0.6], [1.0, 0.5, 0.2, 1.0]),
+            Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [1.0, 0.5, 0.2, 1.0]),
             Name::new("FallingSprite"),
             RigidBody {
                 kind: BodyKind::Dynamic,
@@ -167,7 +167,7 @@ impl crate::App {
             let hue = 0.25 + 0.06 * (i % 5) as f32;
             let (sprite, shape) = if i % 3 != 2 {
                 (
-                    Sprite::atlas(0, [0.56, 0.56], [1.0, hue + 0.2, hue, 1.0]),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.56, 0.56], [1.0, hue + 0.2, hue, 1.0]),
                     ColliderShape::Cuboid {
                         half_x: 0.28,
                         half_y: 0.28,
@@ -175,7 +175,7 @@ impl crate::App {
                 )
             } else {
                 (
-                    Sprite::atlas(0, [0.6, 0.6], [hue, 0.62, 0.95, 1.0]),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [hue, 0.62, 0.95, 1.0]),
                     ColliderShape::Cuboid {
                         half_x: 0.3,
                         half_y: 0.3,
@@ -243,7 +243,7 @@ impl crate::App {
             let hue = 0.25 + 0.18 * (i % 3) as f32;
             gfx.sim.world_mut().spawn((
                 Transform::from_translation(Vec2::new(x, y)),
-                Sprite::atlas(0, [s, s], [hue, 0.55, 0.85, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [s, s], [hue, 0.55, 0.85, 1.0]),
                 Name::new(format!("Body{i:02}")),
                 RigidBody {
                     kind: BodyKind::Dynamic,
@@ -302,7 +302,7 @@ impl crate::App {
                 let row = (i / 2) as f32;
                 gfx.sim.world_mut().spawn((
                     Transform::from_translation(Vec2::new(x0 + col * 0.7, 1.5 + row * 0.8)),
-                    Sprite::atlas(0, [0.5, 0.5], [hue, 0.55, 0.9, 1.0]),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [hue, 0.55, 0.9, 1.0]),
                     Name::new(format!("L{layer}_Body{i}")),
                     RigidBody {
                         kind: BodyKind::Dynamic,
@@ -356,7 +356,7 @@ impl crate::App {
             let hue = 0.3 + 0.2 * i as f32;
             gfx.sim.world_mut().spawn((
                 Transform::from_translation(Vec2::new(i as f32 * 1.8 - 1.8, 2.0 + i as f32 * 0.6)),
-                Sprite::atlas(0, [w, h], [1.0, hue, 0.35, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [w, h], [1.0, hue, 0.35, 1.0]),
                 Name::new(format!("Prop{i}")),
             ));
         }
@@ -401,7 +401,7 @@ impl crate::App {
                     scale,
                     ..Transform::IDENTITY
                 },
-                Sprite::atlas(0, [0.6, 0.6], hue),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], hue),
                 Name::new(label.to_string()),
                 RigidBody {
                     kind: BodyKind::Dynamic,
@@ -450,13 +450,13 @@ impl crate::App {
                     scale: Vec2::new(2.0, 2.0),
                     ..Transform::IDENTITY
                 },
-                Sprite::atlas(0, [0.15, 0.15], [0.60, 0.95, 0.55, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.15, 0.15], [0.60, 0.95, 0.55, 1.0]),
                 Name::new("Rig2x"),
             ))
             .id();
         world.spawn((
             Transform::from_translation(Vec2::new(0.0, 2.0)),
-            Sprite::atlas(0, [0.6, 0.6], [0.72, 0.55, 1.00, 1.0]),
+            Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [0.72, 0.55, 1.00, 1.0]),
             Name::new("BallParented"),
             ph2d_ecs::ChildOf(rig),
             RigidBody {
@@ -501,7 +501,7 @@ impl crate::App {
         let bar = |x: f32, is_sensor: bool, hue: [f32; 4], label: &str| {
             (
                 Transform::from_translation(Vec2::new(x, 1.0)),
-                Sprite::atlas(0, [1.4, 0.4], hue),
+                Sprite::atlas(WHITE_TILE_KEY, [1.4, 0.4], hue),
                 Name::new(label.to_string()),
                 RigidBody {
                     kind: BodyKind::Static,
@@ -523,7 +523,7 @@ impl crate::App {
         let ball = |x: f32, label: &str| {
             (
                 Transform::from_translation(Vec2::new(x, 4.0)),
-                Sprite::atlas(0, [0.5, 0.5], [1.0, 0.6, 0.25, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [1.0, 0.6, 0.25, 1.0]),
                 Name::new(label.to_string()),
                 RigidBody {
                     kind: BodyKind::Dynamic,

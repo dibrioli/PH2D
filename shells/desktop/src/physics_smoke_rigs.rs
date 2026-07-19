@@ -16,7 +16,7 @@ use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, GravityScale, JointKind, PhysicsJoint, RigidBody,
 };
-use ph2d_render::Sprite;
+use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// Scene 8's rigs: `(x, extra depth, rotation, label)`.
 ///
@@ -73,7 +73,7 @@ impl crate::App {
         let hook = |world: &mut ph2d_ecs::World, name: &str, x: f32, y: f32| {
             world.spawn((
                 Transform::from_translation(Vec2::new(x, y)),
-                Sprite::atlas(0, [0.16, 0.16], [0.75, 0.75, 0.8, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.16, 0.16], [0.75, 0.75, 0.8, 1.0]),
                 Name::new(name.to_string()),
                 RigidBody {
                     kind: BodyKind::Static,
@@ -93,7 +93,7 @@ impl crate::App {
                     hue: [f32; 4]| {
             world.spawn((
                 Transform::from_translation(Vec2::new(x, y)),
-                Sprite::atlas(0, [hw * 2.0, hh * 2.0], hue),
+                Sprite::atlas(WHITE_TILE_KEY, [hw * 2.0, hh * 2.0], hue),
                 Name::new(name.to_string()),
                 RigidBody {
                     kind: BodyKind::Dynamic,
@@ -207,7 +207,7 @@ impl crate::App {
                 rotation: -0.32,
                 ..Transform::from_translation(Vec2::new(-2.2, 1.1))
             },
-            Sprite::atlas(0, [3.2, 0.24], [0.40, 0.42, 0.48, 1.0]),
+            Sprite::atlas(WHITE_TILE_KEY, [3.2, 0.24], [0.40, 0.42, 0.48, 1.0]),
             Name::new("Ramp".to_string()),
             RigidBody {
                 kind: BodyKind::Static,
@@ -225,7 +225,7 @@ impl crate::App {
         // three tracks are written and any one of them being wrong shows.
         world.spawn((
             Transform::from_translation(Vec2::new(-3.2, 2.4)),
-            Sprite::atlas(0, [0.5, 0.5], [0.95, 0.6, 0.2, 1.0]),
+            Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [0.95, 0.6, 0.2, 1.0]),
             Name::new("Roller".to_string()),
             RigidBody {
                 kind: BodyKind::Dynamic,
@@ -244,7 +244,7 @@ impl crate::App {
         for (i, x) in [1.4f32, 2.1].into_iter().enumerate() {
             world.spawn((
                 Transform::from_translation(Vec2::new(x, 3.4 + i as f32 * 1.1)),
-                Sprite::atlas(0, [0.6, 0.6], [0.35, 0.75, 0.95, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [0.35, 0.75, 0.95, 1.0]),
                 Name::new(format!("Box{i}")),
                 RigidBody {
                     kind: BodyKind::Dynamic,
@@ -318,7 +318,7 @@ impl crate::App {
             // a body in the wrong space cannot land on it.
             world.spawn((
                 Transform::from_translation(Vec2::new(x, -1.0)),
-                Sprite::atlas(0, [PEDESTAL_HALF_X * 2.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [PEDESTAL_HALF_X * 2.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
                 Name::new(format!("Pedestal{label}")),
                 RigidBody {
                     kind: BodyKind::Static,
@@ -348,7 +348,7 @@ impl crate::App {
                         rotation: rot,
                         ..Transform::IDENTITY
                     },
-                    Sprite::atlas(0, [0.30, 0.30], [0.35, 0.75, 0.95, 1.0]),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.30, 0.30], [0.35, 0.75, 0.95, 1.0]),
                     Name::new(format!("Rig{label}")),
                 ))
                 .id();
@@ -367,7 +367,7 @@ impl crate::App {
             // function for why a plain `(0, DROP)` inverted the whole fixture.
             world.spawn((
                 Transform::from_translation(ball_local_offset(rot)),
-                Sprite::atlas(0, [0.5, 0.5], [0.86, 0.62, 0.30, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [0.86, 0.62, 0.30, 1.0]),
                 Name::new(format!("Ball{label}")),
                 ph2d_ecs::ChildOf(parent),
                 RigidBody {
@@ -442,7 +442,7 @@ impl crate::App {
                     },
                     ..Collider::default()
                 },
-                Sprite::atlas(0, [1.0, 0.2], hue),
+                Sprite::atlas(WHITE_TILE_KEY, [1.0, 0.2], hue),
                 Transform::from_translation(Vec2::new(hook_x + 0.5, 4.0)),
             ));
             world.spawn((
@@ -483,7 +483,7 @@ impl crate::App {
         let body = |x: f32, hue: [f32; 4], label: &str| {
             (
                 Transform::from_translation(Vec2::new(x, 2.5)),
-                Sprite::atlas(0, [0.6, 0.6], hue),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], hue),
                 Name::new(label.to_string()),
                 RigidBody {
                     kind: BodyKind::Dynamic,

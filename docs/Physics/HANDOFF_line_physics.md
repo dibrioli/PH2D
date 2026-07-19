@@ -1400,6 +1400,17 @@ campo do resultado é finito?"** — a pergunta que o chamador tem (*posso guard
 sem número mágico, e que ainda recusa `NaN` vindo da **entrada**. Pai mal-condicionado
 passa de propósito (local enorme, mas `compose` o leva de volta à pose certa).
 
+### ⚠️ Eram SEIS sítios, não cinco — o overlay é da shell
+
+O `render_loop/physics_overlay.rs` lia o `Transform` cru e desenhava cada
+contorno na pose LOCAL, enquanto o sprite vem da cadeia composta: os contornos de
+uma cena parenteada empilhavam no meio, longe das artes. Foi o que o Enio viu no
+smoke (*"os colliders estão deslocados de suas sprites"*), e é a leitura correta
+do primeiro relato dele — o que parecia "rigs sobrepostos no centro" eram os
+CONTORNOS. Porta única definitiva: **`ph2d_ecs::world_transform{,_into}`**, com o
+`bridge::space` delegando a ela. Os 12 gates do overlay eram todos corpo-raiz e
+ficaram verdes; o gate novo tem um pai.
+
 ### Onde mora o quê
 
 | Camada | O quê |

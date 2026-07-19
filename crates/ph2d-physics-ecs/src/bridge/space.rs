@@ -31,9 +31,7 @@ pub(super) fn world_transform(
     e: Entity,
     scratch: &mut Vec<Transform>,
 ) -> Option<Transform> {
-    let local = *world.get::<Transform>(e)?;
-    let parent = parent_world_transform_into(world, e, scratch);
-    Some(Transform::compose(parent, local))
+    ph2d_ecs::world_transform_into(world, e, scratch)
 }
 
 /// Store a WORLD pose the solver produced onto the entity's LOCAL `Transform`.

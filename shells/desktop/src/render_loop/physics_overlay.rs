@@ -32,7 +32,7 @@
 //! for the case where the outlines are in the way; W2 moves it into the
 //! physics panel, reading this same flag.
 
-use ph2d_ecs::{SimWorld, Transform};
+use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::Camera2d;
@@ -132,10 +132,23 @@ pub(crate) fn outlines(
     }
     let mut q = sim
         .world_mut()
-        .query::<(&RigidBody, &Collider, &Transform)>();
+        .query::<(ph2d_ecs::Entity, &RigidBody, &Collider)>();
     let world = sim.world();
+    // ⚠️ WORLD, never the raw `Transform`. The outline annotates a SPRITE, and
+    // the sprite is drawn from the composed chain — so an outline placed at the
+    // entity's LOCAL pose lands a full parent-offset away from the thing it is
+    // supposed to be describing. Under a rig at x = -3 every collider drew at
+    // x = 0 instead, so all of them piled up in the middle of the scene, far
+    // from their art. That shipped, and it is what Enio saw
+    // (`docs/Physics/BUGS_physics.md` #2 — the overlay was a SIXTH reader of
+    // "where is this body", missed when the bridge's five were converted).
+    //
+    // One scratch buffer for the whole pass, so the chain walk allocates once
+    // rather than once per body.
+    let mut chain = Vec::new();
     q.iter(world)
-        .map(|(rb, col, t)| {
+        .filter_map(|(e, rb, col)| {
+            let t = ph2d_ecs::world_transform_into(world, e, &mut chain)?;
             let path = collider_outline(
                 col.shape,
                 t.translation.x,
@@ -149,7 +162,7 @@ pub(crate) fn outlines(
                 BodyKind::Dynamic => DYNAMIC_RGBA,
                 BodyKind::Kinematic => KINEMATIC_RGBA,
             };
-            (path, rgba)
+            Some((path, rgba))
         })
         .collect()
 }
@@ -448,6 +461,65 @@ mod tests {
             outlines(true, &mut sim, &camera(), window()).len(),
             2,
             "the overlay drew nothing while switched on"
+        );
+    }
+
+    /// **A parented body's outline sits on its SPRITE, not on its local pose.**
+    ///
+    /// The outline exists to annotate the art, so it has to be where the art is
+    /// — and the art is drawn from the composed chain. Reading the raw
+    /// `Transform` puts every child's outline a full parent-offset away; under
+    /// a rig at `x = -3` they all drew at `x = 0`, so the whole scene's
+    /// colliders piled up in the middle, far from the sprites they described.
+    ///
+    /// ⚠️ Every other test in this module uses a ROOT body, where local and
+    /// world are the same thing — so all twelve of them stayed green while this
+    /// shipped. The parent is what gives the fixture teeth.
+    #[test]
+    fn a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose() {
+        use ph2d_core::Vec2;
+        use ph2d_ecs::{ChildOf, Transform};
+        use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+        const RIG_X: f32 = -3.0;
+        const LOCAL_Y: f32 = 2.0;
+
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let rig = sim
+            .world_mut()
+            .spawn((Transform::from_translation(Vec2::new(RIG_X, 0.0)),))
+            .id();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.5 },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, LOCAL_Y)),
+            ChildOf(rig),
+        ));
+
+        let drawn = outlines(true, &mut sim, &camera(), window());
+        assert_eq!(drawn.len(), 1, "expected exactly one outline");
+        let pts = points(&drawn[0].0);
+        let cx = pts.iter().map(|(x, _)| *x).sum::<f64>() / pts.len() as f64;
+
+        // The camera maps +1 world x to +100 px, with world x = 0 at screen centre.
+        let want = points(&collider_outline(
+            ColliderShape::Ball { radius: 0.5 },
+            RIG_X,
+            LOCAL_Y,
+            0.0,
+            &camera(),
+            window(),
+        ));
+        let want_cx = want.iter().map(|(x, _)| *x).sum::<f64>() / want.len() as f64;
+        assert!(
+            (cx - want_cx).abs() < 1e-3,
+            "the outline is centred at x = {cx:.1} px but its sprite is drawn at \
+             {want_cx:.1} px — it was placed at the body's LOCAL pose, a full \
+             parent-offset away from the art it annotates"
         );
     }
 

@@ -356,6 +356,39 @@ sprite): *"nada mudou aqui"*.
    o `(0, DROP)` que shipou: sangra com `BallTilted starts -1.305 m from its
    pedestal`.
 
+### ⚠️ E havia um SEXTO leitor — o overlay de contorno (2026-07-19)
+
+*"os colliders estão deslocados de suas sprites"* (Enio). Estavam.
+
+Eu enumerei cinco sítios **dentro da ponte** e converti os cinco. O
+`render_loop/physics_overlay.rs` é da SHELL e pergunta *"onde está este corpo?"*
+por conta própria — `query::<(&RigidBody, &Collider, &Transform)>()` e depois
+`t.translation.x/y` cru. Ele desenhava cada contorno na pose **LOCAL** do corpo,
+enquanto o sprite é desenhado da cadeia composta.
+
+**E isto reinterpreta o primeiro relato do Enio.** O que ele descreveu como
+*"todos os 3 rigs numa mesma posição central e afastados dos seus filhos"* não
+eram os rigs: eram os **contornos**, todos desenhados perto de `x = 0` (as
+coordenadas locais das três bolas), longe das artes em `x = −3, 0, 3`. Ele
+apontou o bug certo na primeira mensagem e eu fui atrás de visibilidade e gizmo.
+
+Fix: uma **porta única de verdade** — `ph2d_ecs::world_transform{,_into}` (a
+composição da cadeia + o local, ao lado do inverso). O `bridge::space` passou a
+**delegar** a ela, e o overlay a chama. Mutação de volta para o `Transform` cru:
+sangra com *"the outline is centred at x = 501.5 px but its sprite is drawn at
+201.5 px"* — 300 px = as 3 unidades do rig. ⚠️ **Os 12 gates existentes do
+overlay ficaram VERDES**, porque todos usam corpo-raiz; o gate novo
+(`a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose`) é o único que
+tem um pai.
+
+**Lição 9 — enumerar os leitores DENTRO de um módulo não enumera os leitores.**
+Cinco sítios na ponte pareciam a lista completa porque eu procurei onde a
+conversão *deveria* morar. Quem responde *"onde está este corpo?"* é a pergunta
+a fazer ao repo inteiro (`grep` por quem lê `Transform` **e** por quem lê o
+solver), e a resposta certa é que ninguém deveria responder duas vezes: por isso
+a porta subiu para a `ph2d-ecs`.
+→ memória `feedback_a_condition_that_enumerates_its_readers_rots`.
+
 ### Smoke
 
 `PH2D_PHYSICS_SMOKE=8` — três rigs, cada um com uma bola física parenteada,

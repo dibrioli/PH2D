@@ -61,6 +61,39 @@ pub fn parent_world_transform_into(
     acc
 }
 
+/// The entity's own pose in WORLD space: its local [`Transform`] composed with
+/// its whole ancestor chain.
+///
+/// `None` when the entity has no `Transform` — it is not placeable, so it has
+/// no world pose to give.
+///
+/// ⚠️ **Anything that computes in world space must ask THIS**, not the raw
+/// `Transform`. For a root entity the two are identical, which is exactly what
+/// makes the mistake survive: every fixture built on root entities passes, and
+/// the error appears only once something is parented — as a body that simulates
+/// in one place and draws in another, or an overlay drawn a parent-offset away
+/// from the sprite it is annotating. Both of those shipped
+/// (`docs/Physics/BUGS_physics.md` #2).
+#[must_use]
+pub fn world_transform(world: &World, entity: Entity) -> Option<Transform> {
+    world_transform_into(world, entity, &mut Vec::new())
+}
+
+/// [`world_transform`] with the ancestor buffer handed in, for callers that run
+/// per frame and must not allocate.
+#[must_use]
+pub fn world_transform_into(
+    world: &World,
+    entity: Entity,
+    scratch: &mut Vec<Transform>,
+) -> Option<Transform> {
+    let local = *world.get::<Transform>(entity)?;
+    Some(Transform::compose(
+        parent_world_transform_into(world, entity, scratch),
+        local,
+    ))
+}
+
 impl Transform {
     /// Every field is finite — no `NaN`, no `±inf`.
     ///

@@ -56,7 +56,9 @@ pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
 
-pub use crate::transform_inverse::{parent_world_transform, parent_world_transform_into};
+pub use crate::transform_inverse::{
+    parent_world_transform, parent_world_transform_into, world_transform, world_transform_into,
+};
 pub mod vec_path_ref;
 pub mod vec_shape;
 pub mod visibility;

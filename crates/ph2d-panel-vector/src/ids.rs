@@ -10,6 +10,9 @@
 /// O 6º pill de modo: **Connect** — a linha que gruda em duas formas e as segue.
 pub use ph2d_editor_core::ids::VECTOR_MODE_BUILD;
 pub use ph2d_editor_core::ids::VECTOR_MODE_CONNECT;
+/// O 9º e 10º pills de modo: **Fillet** / **Chamfer** — arredondar / chanfrar quina por
+/// clicar-e-arrastar (consolidam a alça do Node + o toggle da seção Vertex numa dupla).
+pub use ph2d_editor_core::ids::{VECTOR_MODE_CHAMFER, VECTOR_MODE_FILLET};
 /// O 8º pill de modo: **Pick Shapes** (Blend) — coleta as formas na ordem de clique.
 pub use ph2d_editor_core::ids::VECTOR_MODE_PICKBLEND;
 /// Pontas de traço (arrowheads): os dois chips + as opções do popover, por `slot`

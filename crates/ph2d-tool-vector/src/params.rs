@@ -262,6 +262,31 @@ pub enum DrawMode {
     /// escolher formas no canvas, não editar a selecionada; a ORDEM da cadeia é a de clique, não a
     /// de z.
     PickBlend,
+    /// **Fillet** (arredondar quina): pressiona sobre uma quina e arrasta — o recuo cresce com o
+    /// arrasto e a quina ARREDONDA (arco). Se o ponto clicado não é quina (é suave), a ferramenta
+    /// primeiro o transforma em quina. É o Live Corners (ADR-0121) virado ferramenta própria, com
+    /// gesto de clicar-e-arrastar, em vez de uma alça escondida no modo Node.
+    Fillet,
+    /// **Chamfer** (chanfrar quina): idêntico ao [`DrawMode::Fillet`], mas a ligação é uma RETA em
+    /// vez de arco (o SINAL do `corner_radius`, ADR-0121). O par Fillet/Chamfer consolida numa
+    /// dupla de ferramentas o que estava espalhado entre a alça do Node e o toggle da seção Vertex.
+    Chamfer,
+}
+
+impl DrawMode {
+    /// As ferramentas de QUINA (Fillet / Chamfer): clicar-e-arrastar sobre uma quina para
+    /// arredondá-la ou chanfrá-la. Uma porta única para os sítios que roteiam o gesto delas.
+    #[must_use]
+    pub fn is_corner_tool(self) -> bool {
+        matches!(self, DrawMode::Fillet | DrawMode::Chamfer)
+    }
+
+    /// A ferramenta de quina quer CHANFRO (reta) em vez de arredondado? Só faz sentido quando
+    /// [`Self::is_corner_tool`] — o `Chamfer` chanfra, todo o resto arredonda.
+    #[must_use]
+    pub fn corner_is_chamfer(self) -> bool {
+        self == DrawMode::Chamfer
+    }
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of

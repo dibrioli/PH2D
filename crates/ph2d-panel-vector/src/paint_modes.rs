@@ -83,6 +83,19 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.build"),
                 DrawMode::Build,
             ),
+            // **Fillet / Chamfer** — o 9º e 10º pills: arredondar / chanfrar quina por
+            // clicar-e-arrastar. Consolidam a alça de raio (antes escondida no Node) e o toggle
+            // Chamfer (antes na seção Vertex) numa dupla de ferramentas explícitas.
+            (
+                ids::VECTOR_MODE_FILLET,
+                tr("panel.vector.mode.fillet"),
+                DrawMode::Fillet,
+            ),
+            (
+                ids::VECTOR_MODE_CHAMFER,
+                tr("panel.vector.mode.chamfer"),
+                DrawMode::Chamfer,
+            ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

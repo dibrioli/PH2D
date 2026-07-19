@@ -39,6 +39,28 @@ pub fn retype_vertex(path: &mut VecPath, i: usize, kind: VertexKind) -> bool {
     retype_in_contour(verts, *closed, local, kind)
 }
 
+/// Torna o vértice de índice PLANO `i` uma **quina afiada**: recolhe os dois handles na
+/// âncora (zero) e marca `Corner`. É o que o [`crate::corner_live`] precisa para haver
+/// ângulo a arredondar — um vértice `Smooth` tem os handles COLINEARES, e `corner_at` não
+/// vê quina nele (não há ângulo). Recolher os handles cria a dobra; as tangentes da quina
+/// caem na cascata do `tangent_at_start`/`tangent_at_end` (um controle nulo desce para o
+/// vizinho), então a quina fica bem-definida a partir das âncoras vizinhas.
+///
+/// É a metade "primeiro transforma em quina" das ferramentas Fillet/Chamfer: quem clica um
+/// ponto suave quer arredondá-lo, e para isso ele precisa virar quina antes. Devolve `true`
+/// se algo mudou (handles já recolhidos e já `Corner` ⇒ `false`, sem passo de undo espúrio).
+#[must_use]
+pub fn make_sharp_corner(path: &mut VecPath, i: usize) -> bool {
+    let Some(v) = path.vert_mut(i) else {
+        return false;
+    };
+    let before = *v;
+    v.in_handle = v.anchor;
+    v.out_handle = v.anchor;
+    v.kind = VertexKind::Corner;
+    *v != before
+}
+
 /// [`retype_vertex`] dentro de um contorno já resolvido (índice LOCAL).
 fn retype_in_contour(verts: &mut [VecVertex], closed: bool, i: usize, kind: VertexKind) -> bool {
     let before = verts[i];

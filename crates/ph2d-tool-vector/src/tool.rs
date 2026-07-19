@@ -517,6 +517,13 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PICKBLEND => {
                 self.mode = DrawMode::PickBlend;
             }
+            // **Fillet / Chamfer** — o 9º e 10º pills. Clicar-e-arrastar sobre uma quina para
+            // arredondá-la (arco) ou chanfrá-la (reta). O gesto e a conversão vira-quina moram
+            // no shell; a tool só troca o modo, como todos os outros.
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_FILLET => self.mode = DrawMode::Fillet,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_CHAMFER => {
+                self.mode = DrawMode::Chamfer;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

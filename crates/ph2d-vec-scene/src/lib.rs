@@ -18,7 +18,9 @@ mod geometry;
 /// Re-exported only for the crate tests (de Casteljau sampling assertions).
 #[cfg(test)]
 pub(crate) use geometry::cubic_at;
-pub use geometry::{ghost_handle, nearest_point_on_path, retype_vertex, split_segment};
+pub use geometry::{
+    ghost_handle, make_sharp_corner, nearest_point_on_path, retype_vertex, split_segment,
+};
 
 /// Compound paths (contornos extras + fill rule) + o índice plano de vértice.
 mod compound;

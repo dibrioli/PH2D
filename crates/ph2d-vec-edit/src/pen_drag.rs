@@ -67,8 +67,13 @@ impl PenTool {
                 let Some(v) = path.vert_mut(g.vert) else {
                     return false;
                 };
-                // A alça muda o TAMANHO; o estilo (chanfro vs arredondado) sobrevive ao arrasto.
+                // O arrasto muda o TAMANHO. O ESTILO: `None` preserva o do vértice (a alça do
+                // Node), `Some(c)` é forçado pela ferramenta Fillet/Chamfer — aplicado DEPOIS
+                // do tamanho porque agora há magnitude, então o sinal não some no `±0`.
                 v.set_corner_size(r);
+                if let Some(c) = g.chamfer {
+                    v.set_chamfer(c);
+                }
                 return true;
             }
             let Some(v) = path.vert_mut(g.vert) else {

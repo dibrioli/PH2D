@@ -136,6 +136,10 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         // **Pick Shapes** (Blend) — coleta formas na ordem de clique. O botão dele mora na seção
         // BLEND (não nesta fileira), mas o id/seam é o mesmo.
         (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
+        // O 9º e 10º pills: **Fillet / Chamfer** (arredondar / chanfrar quina). Pintados +
+        // registrados, mas mortos se ausentes da allowlist de `event.rs` ou do switch da tool.
+        (ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
+        (ids::VECTOR_MODE_CHAMFER, DrawMode::Chamfer),
     ] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));

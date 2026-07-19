@@ -2668,6 +2668,48 @@ impl App {
                         }
                         return;
                     }
+                    // Modos **Fillet / Chamfer**: a pressão agarra a QUINA sob o cursor e arma o
+                    // arrasto de raio (o dedo dita a MAGNITUDE, a ferramenta o ESTILO). Só o press
+                    // é próprio — move e release reusam o caminho do pen (o arrasto é guiado pelo
+                    // `grab`, o release comita um passo). "Basta clicar numa quina", e um ponto
+                    // SUAVE é primeiro transformado em quina (`on_press_corner`).
+                    if self.vec_draw_config.mode.is_corner_tool() {
+                        let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
+                        let px_to_world = self.vec_px_to_world();
+                        if let Some(world) = self.vec_world_at(self.last_pointer)
+                            && let Some(gfx) = self.gfx.as_mut()
+                        {
+                            let hit_r = 12.0 * px_to_world;
+                            // (re)seleciona o path sob o cursor num acerto — o gesto vale sem
+                            // pré-selecionar; num erro mantém a seleção (uma quina do path já
+                            // selecionado ainda pega).
+                            if let Some(pid) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) {
+                                self.vec_pen.select(Some(pid));
+                            }
+                            // Forma VIVA não carrega raio por-vértice (o recook o varreria): a
+                            // MESMA exclusão da alça do Node. Sem ela o gesto "funcionaria e
+                            // esqueceria" no próximo arrasto de slider.
+                            let derived = self.vec_pen.selected().is_some_and(|pid| {
+                                crate::corner_handles::has_derived_verts(
+                                    &gfx.sim,
+                                    &self.vec_entities,
+                                    pid,
+                                )
+                            });
+                            // Um passo de undo: begin aqui, commit no release do pen (o mesmo
+                            // `commit_if_changed` do `shape_kind_for_mode().is_none()`).
+                            self.vec_history.begin(&gfx.vec_scene);
+                            if !derived {
+                                self.vec_pen.on_press_corner(
+                                    &mut gfx.vec_scene,
+                                    world,
+                                    px_to_world,
+                                    chamfer,
+                                );
+                            }
+                        }
+                        return;
+                    }
                     let shape_kind = shape_kind_for_mode(&self.vec_draw_config);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();

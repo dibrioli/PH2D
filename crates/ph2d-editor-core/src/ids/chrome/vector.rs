@@ -619,6 +619,15 @@ pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
 /// alimenta o "Convert to Curves" sobre um caminho com efeitos.
 pub const VECTOR_FX_APPLY: NodeId = hash_node_id("vector.fx.apply");
 
+// ── Ferramentas de QUINA: os pills Fillet / Chamfer (bloco APPEND-ONLY) ──────
+// Clicar-e-arrastar sobre uma quina para arredondá-la (Fillet) ou chanfrá-la (Chamfer).
+// Consolidam num par de ferramentas o que estava espalhado entre a alça de raio do Node e o
+// toggle Chamfer da seção Vertex. O gesto e a conversão "vira-quina-primeiro" vivem no shell.
+/// **Fillet** — o 9º pill de modo: arredondar quina por clicar-e-arrastar.
+pub const VECTOR_MODE_FILLET: NodeId = hash_node_id("vector.mode.fillet");
+/// **Chamfer** — o 10º pill de modo: chanfrar quina (reta) por clicar-e-arrastar.
+pub const VECTOR_MODE_CHAMFER: NodeId = hash_node_id("vector.mode.chamfer");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).

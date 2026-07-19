@@ -237,6 +237,11 @@ fn populate_shape(store: &mut WidgetStore) {
     // fileira) — registrar aqui é o que o torna clicável onde quer que seja pintado.
     button(store, ids::VECTOR_MODE_PICKBLEND);
 
+    // O 9º e 10º: **Fillet / Chamfer** (arredondar / chanfrar quina). Mesma armadilha: registrar
+    // aqui é o que os torna clicáveis — pintar e dar hit-rect não basta.
+    button(store, ids::VECTOR_MODE_FILLET);
+    button(store, ids::VECTOR_MODE_CHAMFER);
+
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
     for i in 0..shapes::SHAPES.len() {

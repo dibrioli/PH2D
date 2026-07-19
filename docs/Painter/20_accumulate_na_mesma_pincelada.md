@@ -175,3 +175,53 @@ Começá-la agora e entregá-la pela metade é exatamente o que esta linha recus
 mesmo motivo.
 
 **O que falta para eu construir:** a escolha entre §9.1 e §9.2 — e a do §6 (arco puro vs tempo) segue de pé.
+
+---
+
+## 11. O CHECKBOX JÁ EXISTE — e é isso que muda a tarefa
+
+Achado ao começar a implementar, e é o mais útil deste documento.
+
+**`BrushSpec::accumulate` já existe**, é o `BRUSH_ACCUMULATE` do Blender, e já tem tudo: campo (`spec.rs`),
+id (`PAINTER_BRUSH_ACCUMULATE`), UI pintada (`paint_brush.rs:218`), setter (`brush_settings.rs:639`) e
+leitores (`stamp_cache.rs` / `stamp_route.rs`, `accumulate_cap = !brush.accumulate && strength < 1.0`).
+
+**Ele governa a COR e nunca alcança o RELEVO.** Hoje, marcar Accumulate faz a tinta acumular opacidade e
+deixa o corpo exatamente onde estava — as duas metades da mesma tinta discordando sobre o que uma segunda
+passada significa.
+
+Logo **não há UI a construir**: nem id, nem populate, nem row, nem rota, nem seam gate. Falta a metade que
+falta — `accumulate_dab_height` honrar a flag.
+
+⚠️ **A COR acumula por DAB e o RELEVO tem de acumular por ARCO, e isso é deliberado.** A opacidade satura
+em 1, então a dependência de espaçamento dela é limitada e invisível; a altura **não tem teto**, então a
+mesma lei deixaria o Spacing visível sem limite. A assimetria precisa estar escrita ao lado do código, ou
+alguém a "conserta".
+
+## 12. Onde o acumulador mora — a última peça, e ela custa
+
+`derive_height` abre com `let m = paint.clamp(0.0, 1.0)` — **satura em 1 e não é linear em `m`**. Então:
+
+* ❌ acumular dentro de `fields.paint` **não funciona** (clampado);
+* ❌ acumular altura derivada **assa o Depth** (mata a liveness do §9);
+* ✅ acumular a **parte SEM Depth** do perfil (`derive_height` é linear em `depth`, que é multiplicador) num
+  **plano próprio**, e derivar `altura = depth · size_scale · accum[i]`.
+
+**O plano novo é o custo real, e não é a alocação: é o CICLO DE VIDA.** Pela regra §10.4 (*"ao adicionar um
+plano, adicione-o ao snapshot no MESMO commit"* — a cicatriz do `mats`, que se escondeu na tela vazia) ele
+viaja no congelamento da sessão, no restore, no commit e no undo. `HeightFields` é construído em **4
+sítios** (3 testes + `impasto.rs:327`), o que é pequeno; o ciclo de vida não é.
+
+## 13. Receita, na ordem
+
+**Não implementado.** O desenho está completo e o caminho mapeado.
+
+1. `NORM = 2ρ · média do perfil ao longo da corda` (numérico, 1× por traço) — com o gate que o justifica:
+   **uma passada reta com ON tem o mesmo pico que com OFF**. É ele que torna o toggle honesto.
+2. Branch em `accumulate_dab_height`: o ramo `false` é **o código de hoje, intocado** — byte-identidade por
+   construção, não por re-derivação que por acaso concorda (ordem do Enio).
+3. O plano `accum` + o ciclo de vida (§12), **no mesmo commit**.
+4. Gates: OFF byte-idêntico (mutação-testado) · ON acumula na 2ª passada · **independência de espaçamento**
+   (o mesmo caminho a 1 px e a 2 px) · **idempotência sob re-stamp** (shape aberto re-carimbado N frames
+   não cresce).
+

@@ -58,6 +58,7 @@
 | **W3 — Joints** | ⏭️ **A PRÓXIMA** | — | pêndulo/corrente/ragdoll; bumpa o schema **21 → 22** |
 | **W4 — Bake-to-timeline** | ✅ smoke aprovado | — | acopla `ph2d-anim` (outra linha) |
 | **W6 — A escala alcança o collider** | ✅ **INTEGRÁVEL** — smokada pelos gates (2026-07-19) | ver §W6 | a única CORREÇÃO do cardápio; `ShapeDesc::Ellipse`; **zero bump de schema** |
+| **W7 — Sensores / triggers** | ✅ **INTEGRÁVEL** — smoke `=10` (2026-07-19) | ver §W7 | o primitivo de trigger (item B); `Collider.is_sensor`; `PROJECT_SCHEMA 26→27`; o **sinal de gameplay** fica pro Enio |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -1803,3 +1804,60 @@ balança) · **parenteada** sob um rig 2× (o collider herda a escala do pai). O
 contorno (tecla `B`, default ON): desenha a forma RESOLVIDA, então um scale→collider morto
 traçaria o raio autorado dentro de cada sprite escalado. Os gates behavioral já cobrem a
 física; a cena é para o olho.
+
+---
+
+## §W7 — SENSORES / TRIGGERS (2026-07-19, smokada pelos gates + smoke `=10`)
+
+**Item (B) do cardápio** ([`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)),
+pedido pelo Enio. O `is_sensor` era só um esboço no ADR-0131 (*"waits for a consumer of its
+own"*); esta wave constrói o **primitivo de trigger**.
+
+**O quê:** um `Collider.is_sensor` que **atravessa** (sem forças de contato) mas o solver
+**reporta o que o sobrepõe**. A metade da DETECÇÃO é limpa e contida na física; o **consumidor
+de GAMEPLAY** (colisão→sinal via `ph2d-script`/`Marker` da timeline) é **outra camada, cross-line,
+decisão do Enio** — este primitivo é a fundação necessária, não trabalho jogado fora.
+
+**O consumidor VISÍVEL desta wave** (pra o sensor não ser flag morto):
+- **Overlay acende** o sensor: magenta apagado (`SENSOR_IDLE`) → brilhante (`SENSOR_ACTIVE`)
+  quando algo está dentro. O overlay resolve `triggered_sensors()` do bridge.
+- **Estado consultável:** `PhysicsBridge::{is_triggered, bodies_inside, triggered_sensors}`
+  (`BTreeMap` determinístico) — a API que o sinal de gameplay vai ler.
+- **Autoria:** toggle **"Solid | Sensor"** no Inspector §11, um `seg_row` como o Kind/Layer
+  (populate/event/seam de graça; `PhysicsFieldEdit::Sensor(bool)` + `INSP_PHYS_SENSOR`).
+
+**Decisões que decidem tudo:**
+- ⚠️ **A detecção só corre no PLAY** — o `hold` (física desarmada, W4b) **limpa** o estado: sem
+  sim não há overlap, e um trigger aceso sem nada dentro seria mentira.
+- ⚠️ **Um sensor respeita as CAMADAS** (W2c) — só detecta o que está configurado pra colidir.
+  Sai de graça: o `groups_for` já filtra o collider do sensor.
+- `world/sensors.rs::intersecting_body_pairs` é **ordenado + dedup** (o hash C9 **não** inclui
+  o trigger — só poses — mas o readout tem de ser reproduzível frame a frame).
+- `bridge/triggers.rs::rebuild_triggers` mapeia handle→entity **uma vez** por frame, e **só
+  quando há overlap** (a query vem vazia sem sensores ⇒ retorna antes de alocar).
+
+**Persistência:** `Collider.is_sensor` APENDADO ⇒ `PROJECT_SCHEMA` **26 → 27** (+ a tripla-pin
+`(27, 8, 13)` do `project_tests`). Mesmo padrão do v21 (`layer`).
+
+**LOC (splits):** `world.rs` → `world/desc.rs` (BodyDesc/BodySnapshot, saíram pra abrir espaço)
++ `world/sensors.rs` (o `intersecting_body_pairs`) · `bridge.rs` → `bridge/triggers.rs` (o
+estado de trigger) + `body_desc` **mudou-se pra `scale.rs`** (ao lado do `scaled_shape` que usa).
+
+**Gates (10 novos, 3 mutações provadas):**
+- `ph2d-physics-ecs/tests/sensors.rs` (4 behavioral): detecta+atravessa · sólido bloqueia+nunca
+  dispara · sem-sensores-sem-triggers · hold-limpa.
+- `ph2d-physics/tests/sensors.rs` (2): `intersecting_body_pairs` reporta um overlap de sensor ·
+  um par sólido **não** reporta (contato, não interseção).
+- `physics_overlay` (2): magenta idle vs active · um sensor não usa a cor do kind.
+- `seam_physics` (o sweep clica o toggle Solid/Sensor, cada lado seu bool) · `persistence`
+  (is_sensor sobrevive ao snapshot round-trip).
+- **Mutações:** spawn ignora `.sensor()` → mata detecção · `rebuild_triggers` no-op → mata o
+  trigger state · overlay idle==active → mata a cor.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=10`** (`physics_smoke.rs::physics_smoke_sensor`) — 2 pistas: bola
+bloqueada por uma plataforma sólida × bola atravessa um sensor idêntico que **acende** (tecla
+`B`). Um sensor morto bloquearia a bola como o sólido, ou nunca acenderia.
+
+**Aberto (a próxima camada, decisão do Enio):** o **sinal de gameplay** — colisão→ação (um
+`Marker` da timeline / um callback do `ph2d-script`), cross-line, precisa do desenho do
+consumidor. O primitivo (detecção + estado consultável + viz) é o pré-requisito, e está pronto.

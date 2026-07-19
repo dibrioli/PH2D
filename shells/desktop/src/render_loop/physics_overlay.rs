@@ -61,6 +61,35 @@ const DYNAMIC_RGBA: [f32; 4] = [0.35, 0.80, 1.0, 0.85]; // LITERAL-COLOR-OK: ove
 /// and Unity both give the kind its own colour for the same reason.
 const KINEMATIC_RGBA: [f32; 4] = [0.72, 0.55, 1.0, 0.85]; // LITERAL-COLOR-OK: overlay de collider
 
+/// A **sensor** (trigger) with nothing inside it — magenta, a hue no body kind
+/// or the amber joint uses, so a trigger zone never reads as a solid collider.
+/// Dim, because an empty trigger is standing information, not an event.
+const SENSOR_IDLE_RGBA: [f32; 4] = [0.95, 0.45, 0.90, 0.55]; // LITERAL-COLOR-OK: overlay de collider
+
+/// A sensor with a body inside it — the SAME magenta, bright and opaque. The
+/// jump from idle to this is the whole point of a trigger: you see it fire.
+const SENSOR_ACTIVE_RGBA: [f32; 4] = [1.0, 0.55, 0.98, 1.0]; // LITERAL-COLOR-OK: overlay de collider
+
+/// The colour of one collider outline: a sensor is magenta (bright when a body
+/// is inside it), and any solid collider is coloured by its body kind. A sensor
+/// overrides the kind colour on purpose — "is this a trigger?" is the first
+/// thing you need to know about it, ahead of who moves it.
+fn outline_rgba(is_sensor: bool, triggered: bool, kind: BodyKind) -> [f32; 4] {
+    if is_sensor {
+        if triggered {
+            SENSOR_ACTIVE_RGBA
+        } else {
+            SENSOR_IDLE_RGBA
+        }
+    } else {
+        match kind {
+            BodyKind::Static => STATIC_RGBA,
+            BodyKind::Dynamic => DYNAMIC_RGBA,
+            BodyKind::Kinematic => KINEMATIC_RGBA,
+        }
+    }
+}
+
 /// The outline of one collider, **in screen pixels**.
 ///
 /// Takes the **resolved** [`ShapeDesc`] — the same value the bridge hands
@@ -147,6 +176,7 @@ pub(crate) fn collider_outline(
 pub(crate) fn outlines(
     show: bool,
     sim: &mut SimWorld,
+    triggered: &[ph2d_ecs::Entity],
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(BezPath, [f32; 4])> {
@@ -183,11 +213,7 @@ pub(crate) fn outlines(
                 camera,
                 window,
             );
-            let rgba = match rb.kind {
-                BodyKind::Static => STATIC_RGBA,
-                BodyKind::Dynamic => DYNAMIC_RGBA,
-                BodyKind::Kinematic => KINEMATIC_RGBA,
-            };
+            let rgba = outline_rgba(col.is_sensor, triggered.contains(&e), rb.kind);
             Some((path, rgba))
         })
         .collect()
@@ -198,12 +224,13 @@ pub(super) fn draw(
     show: bool,
     sim: &mut SimWorld,
     joint_anchors: &[([f32; 2], [f32; 2])],
+    triggered: &[ph2d_ecs::Entity],
     camera: &Camera2d,
     window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    for (path, rgba) in outlines(show, sim, camera, window) {
+    for (path, rgba) in outlines(show, sim, triggered, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
@@ -239,9 +266,12 @@ mod tests {
     //! this circle actually round, in screen pixels, at this camera" is
     //! answerable headless, and the answer is what the artist sees.
 
-    use super::{DYNAMIC_RGBA, STATIC_RGBA, collider_outline, outlines};
+    use super::{
+        DYNAMIC_RGBA, SENSOR_ACTIVE_RGBA, SENSOR_IDLE_RGBA, STATIC_RGBA, collider_outline,
+        outline_rgba, outlines,
+    };
     use ph2d_host::WindowSize;
-    use ph2d_physics_ecs::{ColliderShape, ShapeDesc};
+    use ph2d_physics_ecs::{BodyKind, ColliderShape, ShapeDesc};
     use ph2d_render::Camera2d;
     use ph2d_vector::PathEl;
 
@@ -480,11 +510,11 @@ mod tests {
     fn switching_the_overlay_off_produces_nothing_to_draw() {
         let mut sim = physics_scene();
         assert!(
-            outlines(false, &mut sim, &camera(), window()).is_empty(),
+            outlines(false, &mut sim, &[], &camera(), window()).is_empty(),
             "the overlay drew while switched off"
         );
         assert_eq!(
-            outlines(true, &mut sim, &camera(), window()).len(),
+            outlines(true, &mut sim, &[], &camera(), window()).len(),
             2,
             "the overlay drew nothing while switched on"
         );
@@ -526,7 +556,7 @@ mod tests {
             ChildOf(rig),
         ));
 
-        let drawn = outlines(true, &mut sim, &camera(), window());
+        let drawn = outlines(true, &mut sim, &[], &camera(), window());
         assert_eq!(drawn.len(), 1, "expected exactly one outline");
         let pts = points(&drawn[0].0);
         let cx = pts.iter().map(|(x, _)| *x).sum::<f64>() / pts.len() as f64;
@@ -549,6 +579,68 @@ mod tests {
         );
     }
 
+    /// **A sensor is magenta, and brightens when triggered.** The colour is the
+    /// whole visible reaction of a trigger: idle vs active is how you see it
+    /// fire, and a sensor overrides its body-kind colour so "is this a trigger?"
+    /// reads first. Mutation-tested: collapsing idle and active to one colour, or
+    /// letting a sensor keep its kind colour, fails an assert here.
+    #[test]
+    fn a_sensor_is_magenta_and_brightens_when_triggered() {
+        assert_eq!(
+            outline_rgba(true, false, BodyKind::Static),
+            SENSOR_IDLE_RGBA
+        );
+        assert_eq!(
+            outline_rgba(true, true, BodyKind::Dynamic),
+            SENSOR_ACTIVE_RGBA
+        );
+        // A solid collider keeps its kind colour and is never magenta.
+        assert_eq!(outline_rgba(false, false, BodyKind::Static), STATIC_RGBA);
+        assert_ne!(
+            SENSOR_IDLE_RGBA, SENSOR_ACTIVE_RGBA,
+            "idle and active sensors must differ — the colour change IS the trigger firing"
+        );
+    }
+
+    /// The scene-level path: a sensor entity passed in `triggered` draws the
+    /// active colour, and drawing it out of `triggered` (nothing inside) draws
+    /// the idle one — proof the overlay reads the bridge's trigger state.
+    #[test]
+    fn a_triggered_sensor_outline_uses_the_active_colour() {
+        use ph2d_core::Vec2;
+        use ph2d_ecs::Transform;
+        use ph2d_physics_ecs::{Collider, RigidBody};
+
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let sensor = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 1.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ))
+            .id();
+
+        let idle = outlines(true, &mut sim, &[], &camera(), window());
+        assert_eq!(idle.len(), 1);
+        assert_eq!(idle[0].1, SENSOR_IDLE_RGBA, "an empty sensor is drawn idle");
+
+        let active = outlines(true, &mut sim, &[sensor], &camera(), window());
+        assert_eq!(
+            active[0].1, SENSOR_ACTIVE_RGBA,
+            "a triggered sensor is drawn active"
+        );
+    }
+
     /// A scene with no physics costs nothing and shows nothing — a painter or
     /// vector user must never see physics chrome appear over their artwork.
     #[test]
@@ -559,7 +651,7 @@ mod tests {
         sim.world_mut()
             .spawn((Transform::from_translation(Vec2::new(1.0, 1.0)),));
         assert!(
-            outlines(true, &mut sim, &camera(), window()).is_empty(),
+            outlines(true, &mut sim, &[], &camera(), window()).is_empty(),
             "physics chrome leaked into a scene with no bodies"
         );
     }
@@ -570,7 +662,7 @@ mod tests {
     #[test]
     fn static_and_dynamic_bodies_are_drawn_in_different_colours() {
         let mut sim = physics_scene();
-        let out = outlines(true, &mut sim, &camera(), window());
+        let out = outlines(true, &mut sim, &[], &camera(), window());
         let colours: Vec<[f32; 4]> = out.iter().map(|(_, c)| *c).collect();
         assert!(colours.contains(&STATIC_RGBA), "no static body was drawn");
         assert!(colours.contains(&DYNAMIC_RGBA), "no dynamic body was drawn");
@@ -664,7 +756,7 @@ mod tests {
             ChildOf(rig),
         ));
 
-        let drawn = outlines(true, &mut sim, &camera(), window());
+        let drawn = outlines(true, &mut sim, &[], &camera(), window());
         assert_eq!(drawn.len(), 1, "expected exactly one outline");
         let pts = points(&drawn[0].0);
         let rim = &pts[..super::CIRCLE_SEGS as usize];

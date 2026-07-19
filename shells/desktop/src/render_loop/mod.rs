@@ -3439,10 +3439,15 @@ impl crate::App {
             // touch. The anchors come from the solver, not from the joint
             // entity's Transform (see `physics_overlay::joint_marks`).
             let joint_anchors: Vec<([f32; 2], [f32; 2])> = physics.joint_anchors().collect();
+            // Sensors that have a body inside them THIS frame — the overlay
+            // lights them up. A sensor with nothing reading its overlaps would
+            // be a dead flag (W7), so the visible reaction lives here.
+            let triggered = physics.triggered_sensors();
             physics_overlay::draw(
                 self.show_colliders,
                 sim,
                 &joint_anchors,
+                &triggered,
                 camera,
                 window_size,
                 vector_scene,

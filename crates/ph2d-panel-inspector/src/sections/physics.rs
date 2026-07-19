@@ -28,6 +28,10 @@ const SHAPE_LABELS: [&str; 2] = ["Ball", "Box"];
 /// keep names in sync with a matrix that does not know about them.
 const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
+/// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
+/// `1` a sensor (trigger).
+const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
+
 /// The Bake button's label, carrying the range it would cover.
 ///
 /// A function rather than an inline `format!` so the claim "the button shows
@@ -219,6 +223,25 @@ pub(crate) fn paint_physics_section(
         &ids::INSP_PHYS_LAYER,
         &LAYER_LABELS,
         info.layer,
+    );
+
+    // Solid vs sensor. A sensor passes through and only reports overlaps, so it
+    // is a property of the collider, not a body kind — a trigger can be static,
+    // dynamic or kinematic. The overlay lights it up when a body is inside.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Trigger",
+        ids::INSP_LIVE_PHYSICS_SENSOR,
+        &ids::INSP_PHYS_SENSOR,
+        &SENSOR_LABELS,
+        u8::from(info.is_sensor),
     );
 
     paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)

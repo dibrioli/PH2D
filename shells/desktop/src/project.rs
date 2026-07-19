@@ -91,7 +91,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ Estas entradas nasceram como v19..v21 na `line/Vector` e foram **renumeradas +3 na
 /// integração de 2026-07-19**, porque a `line/physics` bumpou três vezes na mesma jornada e o
 /// contador se **CONTA**, não se escolhe.
-const PROJECT_SCHEMA: u32 = 26;
+/// v27 (ADR-0131 W7): triggers — `Collider.is_sensor` APENDADO ao component (blob novo nas
+/// linhas do `WorldSnapshot`), mesmo padrão do v21 (`layer`). Layout posicional muda: um save
+/// v26 lido como v27 leria além do fim do blob do `Collider`; um v27 lido por um binário v26 é
+/// recusado como erro de versão em vez de virar um postcard perdido.
+const PROJECT_SCHEMA: u32 = 27;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -43,5 +43,8 @@ impl PhysicsBridge {
         self.settle(sim);
         self.ring.clear();
         self.last_stepped = target;
+        // No sim ran, so there is no live overlap to report. A stale trigger
+        // state would light a sensor that nothing is inside anymore.
+        self.triggers.clear();
     }
 }

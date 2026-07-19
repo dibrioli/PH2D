@@ -1,9 +1,12 @@
-# HANDOFF de INTEGRAÇÃO — `line/physics` · W6 "a escala alcança o collider" (2026-07-19)
+# HANDOFF de INTEGRAÇÃO — `line/physics` · jornada REABERTA (2026-07-19)
 
 > Para o **agente integrador** (por ordem EXPLÍCITA do Enio; a linha não integra nem pusha
-> sozinha — CLAUDE.md §0.7). Uma wave pequena e isolada. Estado detalhado:
-> [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W6 · causa/lições:
-> [`BUGS_physics.md`](BUGS_physics.md) #3 · resumo de produto: `CLAUDE.md` §5 (entrada de física, "W6").
+> sozinha — CLAUDE.md §0.7).
+>
+> ⚠️ **O nome do arquivo diz só "scale_collider" por acidente histórico — este handoff cobre a
+> JORNADA REABERTA INTEIRA:** **W6** (a escala alcança o collider, §1–§7) **+ W7 (sensores /
+> triggers, §8)**, e mais o que o Enio pedir antes da ordem de integração. Estado por-wave detalhado:
+> [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W6/§W7. Resumo de produto: `CLAUDE.md` §5.
 
 ## §1 — O que a wave faz (uma frase)
 
@@ -102,3 +105,54 @@ Contratos congelados: nenhum. **Zero bump de schema** (o `ColliderShape` autorad
 escala já vive no `Transform`). 10 gates novos, 7 mutações, todas sangram; batched gate verde
 local; smoke visual `PH2D_PHYSICS_SMOKE=9` pronto. Falta só a matriz cross-OS do `ship.sh`.
 Aguardo ordem de integração.*
+
+---
+
+# §8 — W7: SENSORES / TRIGGERS (o primitivo)
+
+Item (B) do cardápio, pedido pelo Enio. Detalhe: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W7.
+
+**O que faz:** um `Collider.is_sensor` que **atravessa** (sem forças de contato) mas o solver
+**reporta o que o sobrepõe**. A DETECÇÃO é contida na física; o **consumidor de gameplay**
+(colisão→sinal) é outra camada, cross-line, decisão do Enio. O consumidor VISÍVEL desta wave: o
+overlay **acende** o sensor (magenta idle→bright) + estado consultável (`bodies_inside`) + toggle
+"Solid | Sensor" no Inspector §11.
+
+**Isolamento / riscos de merge:**
+- **Contratos congelados: NENHUM.** **Foundational tocado:** `ph2d-physics` (aditivo: `BodyDesc.is_sensor`
+  APENDADO ao FINAL; `intersecting_body_pairs` novo em `world/sensors.rs`; `world/desc.rs` split de LOC).
+- **`ph2d-physics-ecs`** (aditivo: `Collider.is_sensor`, trigger state em `bridge/triggers.rs`,
+  `body_desc` mudou-se pra `scale.rs`) · **`ph2d-editor-core`/`ph2d-panel-inspector`** (o toggle) ·
+  **shell** (overlay acende, Inspector, smoke, persistência).
+- ⚠️ **`PROJECT_SCHEMA` 26 → 27** (o W6 NÃO bumpou; o W7 sim, porque `is_sensor` é campo APENDADO
+  a um component serializado — mesmo padrão do v21 `layer`). **Tripla-pin `(27, 8, 13)`** no
+  `project_tests.rs`. ⚠️ **O número se CONTA:** se outra linha bumpar o schema antes da integração,
+  re-conte ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+- **C9:** o hash **não** inclui o trigger state (só poses), então o `intersecting_body_pairs` não
+  move o hash; mas o `world/desc.rs`/`world/sensors.rs` são novos módulos do mesmo crate.
+
+**Arquivos (aditivos):** `ph2d-physics`: `world/desc.rs` (novo) · `world/sensors.rs` (novo) ·
+`world.rs` (mods + `.sensor()` no spawn) · `lib.rs` re-export. `ph2d-physics-ecs`: `components.rs`
+(`is_sensor`) · `bridge.rs` (field + call, `body_desc` saiu) · `bridge/triggers.rs` (novo) ·
+`bridge/hold.rs` (clear) · `scale.rs` (`body_desc`). `ph2d-editor-core`: `inspector_model.rs`
+(`is_sensor` + `Sensor(bool)`) · `ids/inspector.rs` (`INSP_PHYS_SENSOR`). `ph2d-panel-inspector`:
+`sections/physics.rs` · `populate.rs` · `event_physics.rs` · `tests/seam_physics.rs`. shell:
+`render_loop/physics_overlay.rs` (cores + `triggered`) · `render_loop/mod.rs` (coleta `triggered`) ·
+`render_loop/inspector_physics.rs` (build + apply) · `physics_smoke.rs` (`=10`) · `project.rs`
+(schema 27) · `project_tests.rs` (tripla-pin). Testes: `ph2d-physics/tests/sensors.rs`,
+`ph2d-physics-ecs/tests/sensors.rs`, `+persistence.rs`.
+
+**Gates (10 novos, 3 mutações provadas — ver §W7 do tracker).** Verde local: 33 bins de física,
+overlay 13/13, panel seam 11/11, inspector 7/7, project 14/14, clippy `--all-targets` (física +
+editor + panel + shell), machete, fmt, LOC-cap.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=10`** (bola bloqueada por sólido × bola atravessa o sensor que acende).
+
+**Aberto (a próxima camada, decisão do Enio):** o **sinal de gameplay** — colisão→ação (um
+`Marker` da timeline / um callback do `ph2d-script`), cross-line. O primitivo é o pré-requisito.
+
+**Resumo (DIRETRIZ §1.5.9):** *W7 pronta — o primitivo de trigger: `Collider.is_sensor` atravessa
+e o solver reporta os overlaps (`bridge/triggers.rs`), o overlay acende, o Inspector autora, e o
+estado é consultável (`bodies_inside`). Foundational tocado: `ph2d-physics` (aditivo). Contratos:
+nenhum. `PROJECT_SCHEMA 26→27` (tripla-pin `(27,8,13)`). 10 gates, 3 mutações. Smoke `=10`. O sinal
+de gameplay é a próxima camada, cross-line, aguardando o Enio.*

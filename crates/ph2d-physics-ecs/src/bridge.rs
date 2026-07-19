@@ -17,6 +17,7 @@ mod hold;
 mod joints;
 mod kinematic;
 mod space;
+mod triggers;
 
 pub use kinematic::{FrozenScene, SceneAtTick};
 
@@ -24,7 +25,7 @@ use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics::{BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType};
+use ph2d_physics::{BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle};
 
 use crate::joint::PhysicsJoint;
 use joints::JointRef;
@@ -133,6 +134,11 @@ pub struct PhysicsBridge {
     /// are exactly that quantity — deterministic, and immune to the machine
     /// the test happens to run on.
     steps_taken: u64,
+    /// **Trigger state** (W7): each sensor entity → the entities inside it,
+    /// rebuilt every dispatch (`bridge::triggers`). Empty without sensors, so a
+    /// non-trigger scene pays nothing. `BTreeMap` for the determinism reason
+    /// `bodies` documents.
+    triggers: BTreeMap<Entity, Vec<Entity>>,
 }
 
 impl Default for PhysicsBridge {
@@ -162,6 +168,7 @@ impl PhysicsBridge {
             settings: PhysicsSettings::default(),
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
+            triggers: BTreeMap::new(),
         }
     }
 
@@ -380,6 +387,10 @@ impl PhysicsBridge {
                 }
             }
         }
+        // Read the sensor overlaps of the world in its final state for this
+        // frame, whichever branch produced it (`bridge::triggers`). No-op (and
+        // no alloc) when the scene has no sensors.
+        self.rebuild_triggers();
     }
 
     /// Put the world back at tick 0 and replay forward to `target`.
@@ -484,7 +495,7 @@ impl PhysicsBridge {
             let Some(t) = space::world_transform(world, e, &mut self.chain) else {
                 continue;
             };
-            let desc = body_desc(rb, col, &t);
+            let desc = crate::scale::body_desc(rb, col, &t);
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not
@@ -665,35 +676,5 @@ impl PhysicsBridge {
         // ancestor walk W5 added; it grows to the deepest hierarchy once and
         // must never grow again.
         self.seen.capacity() + self.chain.capacity()
-    }
-}
-
-/// Translate the authored components + current pose into a plain
-/// [`BodyDesc`] for `PhysicsWorld::spawn_body`. The one place ECS types
-/// meet rapier's — everything downstream is rapier-free.
-fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
-    BodyDesc {
-        body_type: match rb.kind {
-            BodyKind::Dynamic => RigidBodyType::Dynamic,
-            BodyKind::Static => RigidBodyType::Fixed,
-            // POSITION-based, not velocity-based: the scene hands us a POSE
-            // (a `Transform` a curve wrote), never a velocity. rapier derives
-            // the velocity from the pose it was aimed at, which is what makes
-            // an animated body push instead of teleport.
-            BodyKind::Kinematic => RigidBodyType::KinematicPositionBased,
-        },
-        x: t.translation.x,
-        y: t.translation.y,
-        rotation: t.rotation,
-        density: col.density,
-        restitution: col.restitution,
-        friction: col.friction,
-        layer: col.layer,
-        // `t` is the WORLD transform (composed through the parent chain), so
-        // `t.scale` is the world scale — the collider inherits a scaled
-        // parent's scale, landing where the sprite is drawn. `scaled_shape` is
-        // the one door the overlay reads too, so the wireframe cannot describe
-        // a different size than the solver simulates.
-        shape: crate::scale::scaled_shape(col.shape, t.scale),
     }
 }

@@ -12,6 +12,7 @@
 //! | `7` | W4   | a drop to BAKE into timeline curves, then replay without physics |
 //! | `8` | W5   | PARENTED bodies: the collider is where the sprite is, at any depth |
 //! | `9` | W6   | SCALED bodies: uniform circle, non-uniform ELLIPSE, inherited parent scale |
+//! | `10`| W7   | SENSOR (trigger): a ball passes through a sensor zone that lights up |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -70,6 +71,7 @@ impl crate::App {
             "7" => self.physics_smoke_bake(),
             "8" => self.physics_smoke_parented(),
             "9" => self.physics_smoke_scale(),
+            "10" => self.physics_smoke_sensor(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -469,6 +471,73 @@ impl crate::App {
              Ball2xUniform a bigger circle resting higher, BallEllipse an ELLIPSE (it lands wide \
              and rocks), BallParented a bigger circle that inherited its 2x rig. A dead \
              scale->collider would outline the authored radius inside every scaled sprite."
+        );
+    }
+
+    /// **Scene 10 (W7).** A **sensor** (trigger) detects but does not block.
+    /// Two lanes, same bar in each: on the LEFT it is a solid static platform,
+    /// on the RIGHT it is a sensor. A ball drops down each lane.
+    ///
+    /// - Left: the ball lands ON the platform and stops.
+    /// - Right: the ball passes THROUGH the sensor and continues to the floor —
+    ///   and while it overlaps, the sensor's outline (B) jumps from a dim
+    ///   magenta to a bright one. That colour change is the trigger firing.
+    ///
+    /// The magenta is the only visible reaction in this build: the trigger's
+    /// overlaps are also a queryable state (`PhysicsBridge::bodies_inside`), but
+    /// what a game DOES with them — a signal, a script — is the next layer.
+    fn physics_smoke_sensor(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A horizontal bar (static), solid on the left lane, sensor on the
+        // right. Same geometry, so the only difference the artist sees is that
+        // one blocks and one is passed through and lights up.
+        let bar = |x: f32, is_sensor: bool, hue: [f32; 4], label: &str| {
+            (
+                Transform::from_translation(Vec2::new(x, 1.0)),
+                Sprite::atlas(0, [1.4, 0.4], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.7,
+                        half_y: 0.2,
+                    },
+                    is_sensor,
+                    ..Collider::default()
+                },
+            )
+        };
+        world.spawn(bar(-2.0, false, [0.40, 0.42, 0.48, 1.0], "SolidPlatform"));
+        world.spawn(bar(2.0, true, [0.60, 0.30, 0.58, 1.0], "SensorZone"));
+
+        // A ball dropped down each lane, from the same height.
+        let ball = |x: f32, label: &str| {
+            (
+                Transform::from_translation(Vec2::new(x, 4.0)),
+                Sprite::atlas(0, [0.5, 0.5], [1.0, 0.6, 0.25, 1.0]),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    ..Collider::default()
+                },
+            )
+        };
+        world.spawn(ball(-2.0, "BallOnSolid"));
+        world.spawn(ball(2.0, "BallThroughSensor"));
+
+        eprintln!(
+            "[physics-smoke 10] Two lanes. LEFT: the ball lands on a solid platform and stops. \
+             RIGHT: the ball passes THROUGH the sensor and lands on the floor. Press B: the sensor \
+             is magenta, and it turns BRIGHT while the ball is inside it — that is the trigger \
+             firing. A dead sensor would block the ball like the solid bar, or never light up."
         );
     }
 }

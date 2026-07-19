@@ -25,6 +25,7 @@ fn box_of(side: f32) -> BodyDesc {
         restitution: 0.0,
         friction: 0.5,
         layer: 0,
+        is_sensor: false,
     }
 }
 

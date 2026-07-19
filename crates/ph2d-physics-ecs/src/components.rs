@@ -154,6 +154,14 @@ pub struct Collider {
     /// re-typed on every body — see `ph2d_physics::world::layers` for why this
     /// engine takes Unity's matrix over Godot's per-body mask pair.
     pub layer: u8,
+    /// A **sensor** (trigger): the collider passes through — no contact forces,
+    /// nothing is pushed — but the solver still reports which bodies overlap it.
+    /// **Appended** (postcard positional, so it goes last); default `false` is a
+    /// solid collider, what every body did before triggers existed. The
+    /// overlaps become a `PhysicsBridge` trigger state, made visible by the
+    /// collider overlay + the Inspector (ADR-0131 W7). A sensor still respects
+    /// the collision layers, so a trigger only detects the layers it is set to.
+    pub is_sensor: bool,
 }
 
 impl Collider {
@@ -171,6 +179,7 @@ impl Default for Collider {
             restitution: Self::DEFAULT_RESTITUTION,
             friction: Self::DEFAULT_FRICTION,
             layer: 0,
+            is_sensor: false,
         }
     }
 }

@@ -54,6 +54,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // lives in the paint loop is not a refusal
             // ([[feedback_disabled_button_still_dispatches]]).
             info.has_body.then_some(PhysicsFieldEdit::Kind(i as u8))
+        } else if let Some(i) = ids::INSP_PHYS_SENSOR.iter().position(|&o| o == id) {
+            // Two segments: `0` Solid, `1` Sensor. Gated on `has_body` like its
+            // siblings — the toggle is painted only inside the body block, and
+            // dim is not a refusal.
+            info.has_body.then_some(PhysicsFieldEdit::Sensor(i == 1))
         } else {
             ids::INSP_PHYS_SHAPE
                 .iter()

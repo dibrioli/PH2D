@@ -48,6 +48,7 @@ pub(crate) fn build_physics_info(
             // An entity with no body cannot be half of a joint, whatever the
             // selection looks like.
             can_join: false,
+            is_sensor: false,
         });
     };
     let (shape_tag, radius, half_x, half_y) = match col.shape {
@@ -68,6 +69,7 @@ pub(crate) fn build_physics_info(
         layer: col.layer,
         can_join,
         bake_seconds,
+        is_sensor: col.is_sensor,
     })
 }
 
@@ -228,6 +230,7 @@ pub(crate) fn apply_physics_edit(
         // comes through, and `groups_for` would silently fold an overflow onto
         // the last layer.
         PhysicsFieldEdit::Layer(n) => next.layer = n.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1),
+        PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
         PhysicsFieldEdit::Add | PhysicsFieldEdit::Remove | PhysicsFieldEdit::Kind(_) => {
             unreachable!("handled above")
         }

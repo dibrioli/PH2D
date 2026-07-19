@@ -38,6 +38,7 @@ fn with_body() -> InspectorPhysicsInfo {
         layer: 0,
         can_join: false,
         bake_seconds: 5.0,
+        is_sensor: false,
     }
 }
 
@@ -128,6 +129,16 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::Layer(i as u8),
             &format!("Collision layer chip {i}"),
+        );
+    }
+    // Solid | Sensor. Each side asserts its OWN boolean, so a wiring that sent
+    // both to `Sensor(false)` (or both to true) would fail — the two-way half-
+    // dead widget this whole test exists to catch.
+    for (i, &id) in ids::INSP_PHYS_SENSOR.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::Sensor(i == 1),
+            &format!("Sensor toggle option {i}"),
         );
     }
 }

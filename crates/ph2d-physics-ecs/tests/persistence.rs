@@ -52,6 +52,9 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
                 half_y: 0.5,
             },
             density: 2.0,
+            // Non-default so its survival means something (W7): the appended
+            // `is_sensor` field must travel through the snapshot like the rest.
+            is_sensor: true,
             ..Collider::default()
         },
     ));
@@ -76,6 +79,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         .expect("Collider survived the round trip (registered?)");
     assert_eq!(rb.kind, BodyKind::Static);
     assert_eq!(col.density, 2.0);
+    assert!(
+        col.is_sensor,
+        "is_sensor did not survive the snapshot round trip"
+    );
     assert!(
         matches!(col.shape, ColliderShape::Cuboid { half_x, half_y } if half_x == 3.0 && half_y == 0.5)
     );

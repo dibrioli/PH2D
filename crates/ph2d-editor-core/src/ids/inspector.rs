@@ -222,6 +222,15 @@ pub const INSP_PHYS_LAYER: [NodeId; 8] = [
     hash_node_id("insp_phys_layer_6"),
     hash_node_id("insp_phys_layer_7"),
 ];
+/// §11 Sensor (trigger) toggle — group id + the two options. A sensor passes
+/// through but reports its overlaps (W7); the overlay lights it up. Modelled as
+/// a two-segment control so it reuses the same paint/populate/event path as the
+/// Kind and Layer segments.
+pub const INSP_LIVE_PHYSICS_SENSOR: NodeId = hash_node_id("insp_live_physics_sensor");
+pub const INSP_PHYS_SENSOR: [NodeId; 2] = [
+    hash_node_id("insp_phys_sensor_solid"),
+    hash_node_id("insp_phys_sensor_trigger"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

@@ -30,9 +30,10 @@
 //! unscaled body byte-identical to before this module existed.
 
 use ph2d_core::Vec2;
-use ph2d_physics::ShapeDesc;
+use ph2d_ecs::Transform;
+use ph2d_physics::{BodyDesc, RigidBodyType, ShapeDesc};
 
-use crate::components::ColliderShape;
+use crate::components::{BodyKind, Collider, ColliderShape, RigidBody};
 
 /// Resolve an authored [`ColliderShape`] under a **world** scale into the
 /// rapier-facing [`ShapeDesc`] the solver (and the overlay) should use.
@@ -71,5 +72,37 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
                 }
             }
         }
+    }
+}
+
+/// Translate the authored components + current WORLD pose into a plain
+/// [`BodyDesc`] for `PhysicsWorld::spawn_body`. The one place ECS types meet
+/// rapier's — everything downstream is rapier-free. Lives here beside
+/// [`scaled_shape`], the door it uses for the collider shape.
+pub(crate) fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
+    BodyDesc {
+        body_type: match rb.kind {
+            BodyKind::Dynamic => RigidBodyType::Dynamic,
+            BodyKind::Static => RigidBodyType::Fixed,
+            // POSITION-based, not velocity-based: the scene hands us a POSE
+            // (a `Transform` a curve wrote), never a velocity. rapier derives
+            // the velocity from the pose it was aimed at, which is what makes
+            // an animated body push instead of teleport.
+            BodyKind::Kinematic => RigidBodyType::KinematicPositionBased,
+        },
+        x: t.translation.x,
+        y: t.translation.y,
+        rotation: t.rotation,
+        density: col.density,
+        restitution: col.restitution,
+        friction: col.friction,
+        layer: col.layer,
+        is_sensor: col.is_sensor,
+        // `t` is the WORLD transform (composed through the parent chain), so
+        // `t.scale` is the world scale — the collider inherits a scaled parent's
+        // scale, landing where the sprite is drawn. `scaled_shape` is the one
+        // door the overlay reads too, so the wireframe cannot describe a
+        // different size than the solver simulates.
+        shape: scaled_shape(col.shape, t.scale),
     }
 }

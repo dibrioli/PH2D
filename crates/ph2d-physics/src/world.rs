@@ -6,16 +6,19 @@
 
 pub mod checkpoint;
 pub mod defaults;
+pub mod desc;
 pub mod drag;
 pub mod joints;
 pub mod kinematic;
 pub mod layers;
+pub mod sensors;
 pub mod shape;
 
 use defaults::BodyDefaults;
 use layers::LayerMatrix;
-// The shape vocabulary lives in a sibling module (LOC), re-exported so callers
-// still see `ph2d_physics::ShapeDesc` / `ellipse_vertices`.
+// The descriptors and the shape vocabulary live in sibling modules (LOC),
+// re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
+pub use desc::{BodyDesc, BodySnapshot};
 use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{ELLIPSE_SEGS, ShapeDesc, ellipse_vertices};
 
@@ -29,46 +32,6 @@ use rapier2d::geometry::{
 use rapier2d::na::{Isometry2, Vector2};
 use rapier2d::pipeline::PhysicsPipeline;
 use rapier2d::prelude::nalgebra;
-
-/// Snapshot of one rigid body for hashing / inspection. Sorted by
-/// handle index in [`PhysicsWorld::body_snapshots`] so cross-OS
-/// hashing is stable.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct BodySnapshot {
-    pub handle_index: u32,
-    pub x: f32,
-    pub y: f32,
-    pub rotation: f32,
-    pub linvel_x: f32,
-    pub linvel_y: f32,
-    pub angvel: f32,
-}
-
-/// One body + its single collider, described in plain data for the ECS
-/// bridge. All lengths are world units (meters); `rotation` is radians
-/// CCW; `density` feeds rapier's mass computation (ignored for
-/// non-dynamic bodies). **Append-only:** restitution/friction/damping
-/// land as new fields with W2 (defaults preserve today's behavior).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct BodyDesc {
-    pub body_type: RigidBodyType,
-    pub x: f32,
-    pub y: f32,
-    pub rotation: f32,
-    pub density: f32,
-    pub shape: ShapeDesc,
-    /// Bounciness `0..=1`. rapier's own default is `0.0`.
-    pub restitution: f32,
-    /// Coulomb friction. rapier's own default is `0.5`.
-    pub friction: f32,
-    /// Which collision layer this body belongs to (`0..MAX_LAYERS`).
-    ///
-    /// Only the LAYER travels here — never the resulting `InteractionGroups`.
-    /// The filter is a function of `(layer, world matrix)`, and computing it in
-    /// two places is how the two would come to disagree; [`PhysicsWorld`] owns
-    /// the matrix and is the single door (see `layers`).
-    pub layer: u8,
-}
 
 pub struct PhysicsWorld {
     bodies: RigidBodySet,
@@ -433,6 +396,9 @@ impl PhysicsWorld {
             .density(desc.density)
             .restitution(desc.restitution)
             .friction(desc.friction)
+            // A sensor passes through (no contact forces) but the narrow phase
+            // still records its overlaps — read back by `intersecting_body_pairs`.
+            .sensor(desc.is_sensor)
             .build();
         let collider_handle = self
             .colliders

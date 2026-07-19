@@ -389,6 +389,11 @@ pub struct InspectorPhysicsInfo {
     /// and the event handler decides whether to HONOUR the click, and both
     /// have to read the same fact.
     pub can_join: bool,
+    /// Is this collider a **sensor** (trigger)? It passes through — no contact
+    /// forces — but the solver reports what overlaps it, and the collider
+    /// overlay lights it up when a body is inside (W7). `false` is a solid
+    /// collider.
+    pub is_sensor: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -417,6 +422,9 @@ pub enum PhysicsFieldEdit {
     Friction(f32),
     /// Move this body to a collision layer (`0..MAX_LAYERS`).
     Layer(u8),
+    /// Make this collider a sensor (`true`) or a solid collider (`false`) —
+    /// the "Solid | Sensor" toggle (W7).
+    Sensor(bool),
     /// Create a joint between the two selected bodies (W3). Carries no
     /// operands: the shell owns the selection, and a second copy of "which
     /// two" would be a second answer to a question only one half can answer.

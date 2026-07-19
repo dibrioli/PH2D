@@ -119,6 +119,7 @@ fn measure_where_damping_stops_meaning_anything() {
             restitution: 0.0,
             friction: 0.5,
             layer: 0,
+            is_sensor: false,
         });
         for _ in 0..60 {
             w.step();

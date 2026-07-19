@@ -34,7 +34,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{BodyKind, Collider, RigidBody, ShapeDesc, ellipse_vertices, scaled_shape};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point, VectorScene};
 
@@ -63,13 +63,19 @@ const KINEMATIC_RGBA: [f32; 4] = [0.72, 0.55, 1.0, 0.85]; // LITERAL-COLOR-OK: o
 
 /// The outline of one collider, **in screen pixels**.
 ///
-/// A ball also gets a **spoke** from centre to rim. Without it a rolling
-/// circle is indistinguishable from a still one — the outline is rotationally
-/// symmetric, so the very motion the collider exists to produce would be
-/// invisible. (Box2D's debug draw carries the same spoke, for the same
-/// reason.) The spoke is a second subpath, so it does not close into the rim.
+/// Takes the **resolved** [`ShapeDesc`] — the same value the bridge hands
+/// rapier ([`scaled_shape`]) — not the authored `ColliderShape`. So a
+/// non-uniformly scaled ball draws as the ELLIPSE it actually simulates, and
+/// the wireframe can never describe a size the solver does not use.
+///
+/// A round collider (ball or ellipse) also gets a **spoke** from centre to
+/// rim. Without it a rolling circle is indistinguishable from a still one —
+/// the outline is rotationally symmetric, so the very motion the collider
+/// exists to produce would be invisible. (Box2D's debug draw carries the same
+/// spoke, for the same reason.) The spoke is a second subpath, so it does not
+/// close into the rim.
 pub(crate) fn collider_outline(
-    shape: ColliderShape,
+    shape: ShapeDesc,
     x: f32,
     y: f32,
     rotation: f32,
@@ -86,25 +92,42 @@ pub(crate) fn collider_outline(
     let place =
         |lx: f32, ly: f32| to_screen(x + lx * cos_r - ly * sin_r, y + lx * sin_r + ly * cos_r);
 
+    // A ring of local points (already ordered) closed into a loop, plus the
+    // spoke to the +x rim. Shared by the circle and the ellipse so both round
+    // shapes draw the same way.
+    let ring = |path: &mut BezPath, verts: &[[f32; 2]], spoke_x: f32| {
+        for (i, [lx, ly]) in verts.iter().enumerate() {
+            let p = place(*lx, *ly);
+            if i == 0 {
+                path.move_to(p);
+            } else {
+                path.line_to(p);
+            }
+        }
+        path.close_path();
+        path.move_to(place(0.0, 0.0));
+        path.line_to(place(spoke_x, 0.0));
+    };
+
     let mut path = BezPath::new();
     match shape {
-        ColliderShape::Ball { radius } => {
-            for i in 0..CIRCLE_SEGS {
-                let a = f32::from(i as u16) * std::f32::consts::TAU / CIRCLE_SEGS as f32;
-                let (s, c) = a.sin_cos();
-                let p = place(c * radius, s * radius);
-                if i == 0 {
-                    path.move_to(p);
-                } else {
-                    path.line_to(p);
-                }
-            }
-            path.close_path();
-            // The spoke: centre → rim along the body's own x axis.
-            path.move_to(place(0.0, 0.0));
-            path.line_to(place(radius, 0.0));
+        ShapeDesc::Ball { radius } => {
+            let verts: Vec<[f32; 2]> = (0..CIRCLE_SEGS)
+                .map(|i| {
+                    let a = f32::from(i as u16) * std::f32::consts::TAU / CIRCLE_SEGS as f32;
+                    let (s, c) = a.sin_cos();
+                    [c * radius, s * radius]
+                })
+                .collect();
+            ring(&mut path, &verts, radius);
         }
-        ColliderShape::Cuboid { half_x, half_y } => {
+        // The ellipse traces the SAME polygon the collider is built from
+        // (`ellipse_vertices`), so the wireframe sits exactly on the convex
+        // hull the solver sees rather than on a smoother curve outside it.
+        ShapeDesc::Ellipse { rx, ry } => {
+            ring(&mut path, &ellipse_vertices(rx, ry), rx);
+        }
+        ShapeDesc::Cuboid { half_x, half_y } => {
             path.move_to(place(-half_x, -half_y));
             path.line_to(place(half_x, -half_y));
             path.line_to(place(half_x, half_y));
@@ -149,8 +172,11 @@ pub(crate) fn outlines(
     q.iter(world)
         .filter_map(|(e, rb, col)| {
             let t = ph2d_ecs::world_transform_into(world, e, &mut chain)?;
+            // The SAME resolution the bridge does — so the outline is drawn at
+            // the size (and shape: circle vs ellipse) the solver actually
+            // simulates under this body's world scale.
             let path = collider_outline(
-                col.shape,
+                scaled_shape(col.shape, t.scale),
                 t.translation.x,
                 t.translation.y,
                 t.rotation,
@@ -215,7 +241,7 @@ mod tests {
 
     use super::{DYNAMIC_RGBA, STATIC_RGBA, collider_outline, outlines};
     use ph2d_host::WindowSize;
-    use ph2d_physics_ecs::ColliderShape;
+    use ph2d_physics_ecs::{ColliderShape, ShapeDesc};
     use ph2d_render::Camera2d;
     use ph2d_vector::PathEl;
 
@@ -251,7 +277,7 @@ mod tests {
     #[test]
     fn a_ball_collider_is_drawn_as_a_circle_not_a_box() {
         let path = collider_outline(
-            ColliderShape::Ball { radius: 1.0 },
+            ShapeDesc::Ball { radius: 1.0 },
             0.0,
             0.0,
             0.0,
@@ -302,7 +328,7 @@ mod tests {
     #[test]
     fn a_cuboid_collider_is_drawn_as_its_four_corners() {
         let path = collider_outline(
-            ColliderShape::Cuboid {
+            ShapeDesc::Cuboid {
                 half_x: 1.0,
                 half_y: 1.0,
             },
@@ -331,7 +357,7 @@ mod tests {
     /// their unrotated positions and this goes red.
     #[test]
     fn the_outline_rotates_with_the_body() {
-        let square = ColliderShape::Cuboid {
+        let square = ShapeDesc::Cuboid {
             half_x: 1.0,
             half_y: 1.0,
         };
@@ -371,7 +397,7 @@ mod tests {
     /// sim moves it rather than staying at the origin.
     #[test]
     fn the_outline_follows_the_body_position() {
-        let ball = ColliderShape::Ball { radius: 0.5 };
+        let ball = ShapeDesc::Ball { radius: 0.5 };
         let here = points(&collider_outline(ball, 0.0, 0.0, 0.0, &camera(), window()));
         let there = points(&collider_outline(ball, 2.0, -1.0, 0.0, &camera(), window()));
         // +2 world x = +200 px; -1 world y = +100 px (screen y grows downward).
@@ -391,7 +417,7 @@ mod tests {
     /// (smoke, 2026-07-13).
     #[test]
     fn the_geometry_is_in_screen_pixels_so_the_stroke_width_is_not_scaled() {
-        let ball = ColliderShape::Ball { radius: 1.0 };
+        let ball = ShapeDesc::Ball { radius: 1.0 };
         let wide = Camera2d {
             center: [0.0, 0.0],
             height_world: 10.0,
@@ -507,7 +533,7 @@ mod tests {
 
         // The camera maps +1 world x to +100 px, with world x = 0 at screen centre.
         let want = points(&collider_outline(
-            ColliderShape::Ball { radius: 0.5 },
+            ShapeDesc::Ball { radius: 0.5 },
             RIG_X,
             LOCAL_Y,
             0.0,
@@ -551,6 +577,108 @@ mod tests {
         assert_ne!(
             STATIC_RGBA, DYNAMIC_RGBA,
             "static and dynamic share a colour — the distinction is invisible"
+        );
+    }
+
+    /// **A non-uniformly scaled ball is drawn as the ELLIPSE it simulates.**
+    ///
+    /// The bridge turns `Ball` under non-uniform scale into a `ShapeDesc::Ellipse`
+    /// (`scaled_shape`), so the outline — resolving through the same function —
+    /// has to draw an ellipse, not a circle. Mutation-tested: the ellipse arm
+    /// drawing a circle (any single radius) collapses the two extents together
+    /// and this goes red.
+    #[test]
+    fn a_nonuniform_scaled_ball_is_drawn_as_an_ellipse() {
+        // rx = 1 world unit → 100 px, ry = 2 → 200 px on this camera.
+        let path = collider_outline(
+            ShapeDesc::Ellipse { rx: 1.0, ry: 2.0 },
+            0.0,
+            0.0,
+            0.0,
+            &camera(),
+            window(),
+        );
+        let pts = points(&path);
+        // ELLIPSE_SEGS rim points + the spoke's 2.
+        let rim = &pts[..super::CIRCLE_SEGS as usize];
+        let (cx, cy) = (500.0f64, 500.0f64);
+        let radii: Vec<f64> = rim
+            .iter()
+            .map(|(x, y)| ((x - cx).powi(2) + (y - cy).powi(2)).sqrt())
+            .collect();
+        let min = radii.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max = radii.iter().cloned().fold(0.0, f64::max);
+        // A circle would have min == max. The ellipse's short axis is ~100 px
+        // (rx) and its long axis ~200 px (ry) — the extents MUST differ, and by
+        // ~2×, or the outline is describing a circle where the collider is an
+        // ellipse (the exact wireframe-lies bug this module exists to prevent).
+        assert!(
+            (min - 100.0).abs() < 0.5,
+            "the ellipse's short axis is {min} px; expected ~100 (rx = 1 unit)"
+        );
+        assert!(
+            (max - 200.0).abs() < 0.5,
+            "the ellipse's long axis is {max} px; expected ~200 (ry = 2 units)"
+        );
+    }
+
+    /// **A parented body's outline grows with its WORLD scale.**
+    ///
+    /// The collider inherits the composed parent scale (Unity/Godot do the
+    /// same), so a ball under a 2× parent draws — and simulates — at twice the
+    /// authored radius. Reading the raw local scale (which is unit here) would
+    /// leave it authored-size, so the fixture's teeth are the *parent*: every
+    /// unscaled-root test in this module stays green while this catches the
+    /// class ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    ///
+    /// Mutation-tested: dropping `t.scale` from `outlines`' `scaled_shape` call
+    /// draws the 50 px authored radius and this goes red.
+    #[test]
+    fn a_parented_bodys_outline_grows_with_its_world_scale() {
+        use ph2d_core::Vec2;
+        use ph2d_ecs::{ChildOf, Transform};
+        use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+
+        let mut sim = ph2d_ecs::SimWorld::new();
+        // A rig scaled 2× uniformly (no translation, so the outline stays
+        // centred and only its SIZE can change).
+        let rig = sim
+            .world_mut()
+            .spawn((Transform {
+                translation: Vec2::new(0.0, 0.0),
+                rotation: 0.0,
+                scale: Vec2::new(2.0, 2.0),
+                skew_x: 0.0,
+                skew_y: 0.0,
+            },))
+            .id();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.5 },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ChildOf(rig),
+        ));
+
+        let drawn = outlines(true, &mut sim, &camera(), window());
+        assert_eq!(drawn.len(), 1, "expected exactly one outline");
+        let pts = points(&drawn[0].0);
+        let rim = &pts[..super::CIRCLE_SEGS as usize];
+        let max = rim
+            .iter()
+            .map(|(x, y)| ((x - 500.0f64).powi(2) + (y - 500.0f64).powi(2)).sqrt())
+            .fold(0.0f64, f64::max);
+        // radius 0.5 × parent scale 2 = 1.0 world unit = 100 px. The authored
+        // (un-scaled) radius would be 50 px — half of what a correct read gives.
+        assert!(
+            (max - 100.0).abs() < 0.5,
+            "the outline's radius is {max} px; a radius-0.5 ball under a 2× parent \
+             must draw at 100 px — it was drawn at its authored size, so the world \
+             scale never reached the collider"
         );
     }
 }

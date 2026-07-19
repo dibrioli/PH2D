@@ -57,6 +57,7 @@
 | **W2c — Camadas de colisão** | ✅ smoke aprovado | ver §W2c | matriz no painel + camada no Inspector |
 | **W3 — Joints** | ⏭️ **A PRÓXIMA** | — | pêndulo/corrente/ragdoll; bumpa o schema **21 → 22** |
 | **W4 — Bake-to-timeline** | ✅ smoke aprovado | — | acopla `ph2d-anim` (outra linha) |
+| **W6 — A escala alcança o collider** | ✅ **INTEGRÁVEL** — smokada pelos gates (2026-07-19) | ver §W6 | a única CORREÇÃO do cardápio; `ShapeDesc::Ellipse`; **zero bump de schema** |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -1743,3 +1744,60 @@ viewport: a bola acompanha, mantém o collider e continua colidindo.
 (meu módulo, aditivo, c9 intacto) + shell (consumidor). Contratos congelados: nenhum. Colisões a grepar: ADR
 0130 · `PROJECT_SCHEMA=16`+tripla-pin (CONTAR se outra linha bumpar). 6 gates mutation-verified; batched gate
 verde. Smoke pendente: `PH2D_PHYSICS_SMOKE=1`. Aguardo ordem de integração / W1.5 / W2.*
+
+---
+
+## §W6 — A ESCALA ALCANÇA O COLLIDER (2026-07-19, smokada pelos gates)
+
+**Reaberta a linha pós-integração** (o plano original acabou; ver
+[`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)).
+O Enio escolheu do cardápio o item **(A)** — *a escala não alcança o collider*, a única
+CORREÇÃO da lista. A causa e as lições estão em [`BUGS_physics.md`](BUGS_physics.md) **#3**;
+o resumo de produto está na entrada de física do `CLAUDE.md` §5. Aqui, só o essencial de
+integração.
+
+**O quê:** um sprite escalado 2× desenhava 2× e o collider **não** — `body_desc` lia
+`col.shape` verbatim (translation + rotation, nunca scale). Agora a **escala de MUNDO**
+(`t.scale`, o `t` já é world desde o W5) alcança o collider, pela porta única
+**`ph2d_physics_ecs::scaled_shape(ColliderShape, scale) -> ShapeDesc`** — lida pela ponte
+(→ rapier) E pelo overlay (→ o wireframe), senão o contorno mentiria o tamanho.
+
+**A decisão de produto (do Enio):** Cuboid toma escala per-eixo nativamente; Ball uniforme
+fica círculo; **Ball não-uniforme vira ELIPSE** (não colapsa num círculo como a Unity) —
+variant novo **`ShapeDesc::Ellipse{rx,ry}`** (polígono convexo via `ellipse_vertices` +
+`convex_polyline`; tesselação `libm` p/ determinismo). O collider casa com o sprite.
+
+**⚠️ ZERO bump de schema:** o `ColliderShape` **autorado** não mudou (ainda Ball/Cuboid); a
+elipse é derivada só na plain-data `ShapeDesc`; a escala já vive no `Transform` persistido.
+`PROJECT_SCHEMA` intacto. Nada a CONTAR.
+
+**Arquivos (todos aditivos, isolados no módulo):**
+- `crates/ph2d-physics/src/world/shape.rs` (**novo** — `ShapeDesc` + `ELLIPSE_SEGS` +
+  `ellipse_vertices`, split de `world.rs` que bateu o teto de 700 LOC) · `world.rs` (arm
+  `Ellipse` em `spawn_body`, `pub use shape::…`) · `lib.rs` (re-export) · `Cargo.toml`
+  (`libm = "=0.2.16"`, o pin do workspace — machete/deny OK).
+- `crates/ph2d-physics-ecs/src/scale.rs` (**novo** — `scaled_shape`) · `bridge.rs`
+  (`body_desc` chama `scaled_shape`) · `lib.rs` (re-export `scaled_shape`/`ShapeDesc`/
+  `ellipse_vertices`/`ELLIPSE_SEGS`) · `bin/physics_ecs_c9.rs` (+1 bola escalada ⇒ **52
+  corpos** — o hash MUDA, e é comparado só entre OSes, nunca a um literal nem ao raw c9).
+- `shells/desktop/src/render_loop/physics_overlay.rs` (`collider_outline` recebe `ShapeDesc`,
+  arm `Ellipse`; `outlines` resolve por `scaled_shape`).
+
+**Gates (8+2 novos, 7 mutações, todas sangram):**
+`crates/ph2d-physics-ecs/tests/scale_reaches_the_collider.rs` · `crates/ph2d-physics/tests/ellipse_collider.rs`
+· `render_loop::physics_overlay::tests` (2 novos). Verde local: ambas as crates de física
+(31 bins), overlay (11/11), LOC-cap, fmt, clippy `--all-targets`, machete, typos (diff).
+
+**Contratos congelados:** nenhum tocado. **Foundational tocado:** `ph2d-physics` (meu módulo
+de física, aditivo — `ShapeDesc` é append-only, c9 intacto exceto o +1 corpo). **Colisões a
+grepar na integração:** nenhuma constante de schema mudou; o único número móvel é o
+`body_count` do c9 (51→52, só cosmético no log). **Aberto (herdado, não desta wave):** escala
+não-uniforme + **rotação** compõe um cisalhamento que a decomposição do `world_transform` põe
+em `scale`+`skew`; o **skew é ignorado** (rapier não cisalha collider — a mesma limitação
+honesta que o Cuboid sempre teve).
+
+**Smoke visual (pendente — proposta):** uma cena com sprites de física escalados **uniforme**
+(deve crescer e continuar redondo/quadrado) e **não-uniforme** (o círculo deve rolar como
+ELIPSE, o box esticar per-eixo), incluindo um **parenteado** sob um pai escalado (o collider
+herda a escala do pai). Não há env de smoke dedicada ainda — os gates behavioral cobrem a
+física; o que falta é o olho. Detalhe no handoff de integração desta wave.

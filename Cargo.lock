@@ -6727,6 +6727,7 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "dhat",
+ "libm",
  "rapier2d",
 ]
 

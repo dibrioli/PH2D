@@ -10,10 +10,14 @@ pub mod drag;
 pub mod joints;
 pub mod kinematic;
 pub mod layers;
+pub mod shape;
 
 use defaults::BodyDefaults;
 use layers::LayerMatrix;
+// The shape vocabulary lives in a sibling module (LOC), re-exported so callers
+// still see `ph2d_physics::ShapeDesc` / `ellipse_vertices`.
 use rapier2d::geometry::{Group, InteractionGroups};
+pub use shape::{ELLIPSE_SEGS, ShapeDesc, ellipse_vertices};
 
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
@@ -38,19 +42,6 @@ pub struct BodySnapshot {
     pub linvel_x: f32,
     pub linvel_y: f32,
     pub angvel: f32,
-}
-
-/// Collider silhouette for [`PhysicsWorld::spawn_body`]. Kept as plain
-/// data (no rapier types) so the ECS bridge can build one without a
-/// direct `rapier2d` dependency — rapier stays confined to this crate
-/// (SKILL §7 "don't couple public API to external types"). **Append-only:**
-/// new variants go at the END (Capsule/Triangle/… land with W2/W3).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ShapeDesc {
-    /// Circle of `radius` (world units = meters).
-    Ball { radius: f32 },
-    /// Axis-aligned box with HALF-extents (rapier convention).
-    Cuboid { half_x: f32, half_y: f32 },
 }
 
 /// One body + its single collider, described in plain data for the ECS
@@ -424,6 +415,19 @@ impl PhysicsWorld {
         let shape = match desc.shape {
             ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
             ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
+            ShapeDesc::Ellipse { rx, ry } => {
+                let pts: Vec<_> = ellipse_vertices(rx, ry)
+                    .into_iter()
+                    .map(|[x, y]| nalgebra::Point2::new(x, y))
+                    .collect();
+                // `convex_polyline` returns None only on a degenerate ring
+                // (an axis scaled to ~0). That is not a shape a real sprite
+                // produces, but a `None` here must not panic the spawn — fall
+                // back to a ball of the larger half-extent so the body still
+                // exists and collides.
+                ColliderBuilder::convex_polyline(pts)
+                    .unwrap_or_else(|| ColliderBuilder::ball(rx.max(ry).max(f32::MIN_POSITIVE)))
+            }
         };
         let collider = shape
             .density(desc.density)

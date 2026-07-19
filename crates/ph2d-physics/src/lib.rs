@@ -30,7 +30,7 @@ pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::defaults::BodyDefaults;
 pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
-pub use world::{BodyDesc, PhysicsWorld, ShapeDesc};
+pub use world::{BodyDesc, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc, ellipse_vertices};
 
 /// The checkpoint ring's stride, in ticks — the bound on how many steps a
 /// backwards scrub ever replays. See [`world::checkpoint::PhysicsCheckpointRing`]

@@ -19,13 +19,18 @@ pub mod bake;
 mod bridge;
 mod components;
 mod joint;
+mod scale;
 pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{BodyKind, Collider, ColliderShape, RigidBody};
 pub use joint::{JointKind, PhysicsJoint};
-pub use ph2d_physics::{LayerMatrix, MAX_LAYERS};
+pub use scale::scaled_shape;
+// `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
+// the shell, which only deps this crate) draws the SAME resolved shape the
+// bridge simulates — one import path, one answer.
+pub use ph2d_physics::{ELLIPSE_SEGS, LayerMatrix, MAX_LAYERS, ShapeDesc, ellipse_vertices};
 pub use settings::{
     DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,
     MAX_SLEEP_THRESHOLD, MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ,

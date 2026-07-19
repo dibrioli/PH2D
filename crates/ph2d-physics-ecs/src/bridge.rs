@@ -24,16 +24,14 @@ use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics::{
-    BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
-};
+use ph2d_physics::{BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType};
 
 use crate::joint::PhysicsJoint;
 use joints::JointRef;
 
 use crate::settings::PhysicsSettings;
 
-use crate::components::{BodyKind, Collider, ColliderShape, RigidBody};
+use crate::components::{BodyKind, Collider, RigidBody};
 
 /// The query the bridge iterates each frame. Cached (built once) because
 /// `World::query` allocates a fresh `QueryState` per call — the cached
@@ -691,9 +689,11 @@ fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
         restitution: col.restitution,
         friction: col.friction,
         layer: col.layer,
-        shape: match col.shape {
-            ColliderShape::Ball { radius } => ShapeDesc::Ball { radius },
-            ColliderShape::Cuboid { half_x, half_y } => ShapeDesc::Cuboid { half_x, half_y },
-        },
+        // `t` is the WORLD transform (composed through the parent chain), so
+        // `t.scale` is the world scale — the collider inherits a scaled
+        // parent's scale, landing where the sprite is drawn. `scaled_shape` is
+        // the one door the overlay reads too, so the wireframe cannot describe
+        // a different size than the solver simulates.
+        shape: crate::scale::scaled_shape(col.shape, t.scale),
     }
 }

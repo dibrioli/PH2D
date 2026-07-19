@@ -2,18 +2,19 @@
 //! `physics-ecs-c9` — the ECS-bridged cross-OS determinism harness.
 //!
 //! Sibling of `ph2d_physics_c9` (which drives the raw wrapper). This one
-//! drives the SAME 50-body fixture **through the ECS bridge**: entities
-//! carry `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at
-//! the tick, and reads poses back into `Transform`. The hash is over those
+//! drives the same falling-circles fixture **through the ECS bridge** (plus
+//! one non-uniformly scaled ball → an ELLIPSE collider, W6): entities carry
+//! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
+//! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
-//! meters↔rapier boundary, the readback) is bit-identical cross-OS, not
-//! just rapier's internal state (ADR-0131 D7).
+//! meters↔rapier boundary, the readback, the libm ellipse tessellation) is
+//! bit-identical cross-OS, not just rapier's internal state (ADR-0131 D7).
 //!
 //! CI runs this on Linux/macOS/Windows and compares the three hashes
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 51
+//! physics-ecs-c9 body_count: 52
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
@@ -60,6 +61,30 @@ fn main() {
             Transform::from_translation(Vec2::new(col * 0.6 - 2.7, 5.0 + row * 0.6)),
         ));
     }
+
+    // One NON-uniformly scaled ball (W6): its `Ball` resolves to an ELLIPSE
+    // (`scaled_shape`), built from `ellipse_vertices` via libm. Its poses feed
+    // the hash, so CI comparing the three OSes proves the ellipse tessellation
+    // is bit-identical cross-platform — the only ML-free transcendental on the
+    // physics path. A `f32::sin_cos` here would diverge in the last ulps and
+    // this hash would split across OSes.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform {
+            translation: Vec2::new(0.3, 8.0),
+            rotation: 0.0,
+            scale: Vec2::new(1.6, 2.4),
+            skew_x: 0.0,
+            skew_y: 0.0,
+        },
+    ));
 
     let mut bridge = PhysicsBridge::new();
     // Drive it exactly as the shell does on play: one tick forward per

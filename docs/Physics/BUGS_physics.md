@@ -13,6 +13,7 @@
 |---|---|---|---|---|
 | [1](#bug-1--a-simulação-rodava-junto-com-a-animação-e-uma-nota-minha-dizia-que-o-interruptor-seria-o-desenho-errado) | **A sim rodava junto com a animação** — e uma nota minha dizia que o interruptor seria o desenho errado | `ph2d-timeline` (transporte) + `ph2d-physics-ecs` (ponte) | ✅ Resolvido (W4b, smoke aprovado) | 2026-07-18 |
 | [2](#bug-2--o-collider-não-estava-onde-o-sprite-estava-em-todo-corpo-filho) | **O collider não estava onde o sprite estava**, em todo corpo FILHO | `ph2d-physics-ecs` (5 sítios) + `ph2d-ecs` (o inverso) | ✅ Resolvido (W5; pendente smoke) | 2026-07-18 |
+| [3](#bug-3--a-escala-não-alcançava-o-collider) | **A escala não alcançava o collider** — o sprite crescia, o corpo não | `ph2d-physics-ecs` (`body_desc`) + `ph2d-physics` (`ShapeDesc`) + overlay | ✅ Resolvido (W6; smokada pelos gates) | 2026-07-19 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -395,3 +396,88 @@ a porta subiu para a `ph2d-ecs`.
 cada um sobre um pedestal **estreito**. A regressão é inconfundível por
 construção: um corpo que volte a ler a pose local como mundo cai pela linha
 `x = 0`, erra o pedestal sobre o qual foi desenhado, e some de quadro.
+
+---
+
+## Bug #3 — A escala não alcançava o collider
+
+**Estado:** ✅ resolvido em 2026-07-19 (W6). **Smokada pelos gates** (2 behavioral
+via sim + 2 no overlay), pendente de smoke visual do Enio. Item escolhido pelo
+Enio do cardápio pós-integração — *a única CORREÇÃO da lista, não capacidade*.
+
+### Sintoma
+
+Um sprite escalado 2× desenhava 2× (o quad multiplica pela `Transform.scale`),
+mas o collider ficava do tamanho **autorado** — a bola de física de um objeto
+esticado colidia com o que o artista **não** via.
+
+### Causa-raiz
+
+`body_desc` (a única porta ECS→rapier) lia `col.shape` **verbatim**:
+`translation` e `rotation` do `Transform`, nunca `scale`. O overlay fazia o
+mesmo. Então collider e wireframe **concordavam entre si** (ambos autorados) e
+**os dois discordavam do sprite**.
+
+### ⚠️ A parte que enganava: por que atravessou a linha inteira com 190 gates verdes
+
+**Para um corpo-RAIZ, escala 1:1 é a identidade e o bug não aparece.** Toda
+fixture, cena de smoke e demo da linha usava raiz — a premissa "escala é (1,1)"
+nunca foi escrita, era **verdade por acidente do fixture**. Exatamente a doença
+do Bug #2 (child bodies), um nível adiante: *o gate que pega a classe é ter um
+**pai** na fixture*, e nenhum tinha até esta wave. → memória
+`feedback_a_condition_that_enumerates_its_readers_rots`.
+
+### A bifurcação que era decisão de PRODUTO, não de código
+
+Escala é **per-eixo** (`Transform.scale` é `Vec2`). Um **Cuboid** toma isso
+nativamente. Um **Ball** não: sob escala não-uniforme um círculo é uma **elipse**
+na tela, e o rapier não tem elipse nativa. As saídas — *colapsar num círculo*
+(Unity/Godot, com aviso) vs *construir a elipse* — mudam o que o produto FAZ, e
+o Enio escolheu a **elipse**: o collider casa com o sprite desenhado, o mesmo
+princípio do overlay (*"o collider parece redondo mas o desenho é box"*, Bug do
+W2a). Colapsar num círculo seria o collider discordando do visível — a própria
+classe de bug que a linha combate.
+
+### Solução
+
+- **`ph2d_physics_ecs::scaled_shape(ColliderShape, scale) -> ShapeDesc`** é a
+  **porta única**: a ponte (→ rapier) E o overlay (→ o wireframe) resolvem por
+  ela, então não podem divergir sobre "que tamanho/forma tem este collider".
+- O `t` do `body_desc` já é o WORLD transform (W5) ⇒ `t.scale` é a escala de
+  **mundo** ⇒ um corpo sob pai escalado herda a escala do pai (Unity/Godot).
+- **Cuboid** → `half·|s|` per-eixo. **Ball uniforme** (`|sx|==|sy|`, limiar
+  EXATO ⇒ `(1,1)` byte-idêntico a antes) → **círculo**. **Ball não-uniforme** →
+  variant novo **`ShapeDesc::Ellipse{rx,ry}`** (append-only, só na plain-data —
+  o `ColliderShape` AUTORADO **não muda**, então **zero bump de schema**; a
+  escala já vive no `Transform` persistido), realizada como **polígono convexo**
+  (`ellipse_vertices` → `convex_polyline`), tesselação por **`libm::sincosf`**
+  (determinismo cross-OS — `physics_ecs_c9` ganhou uma bola escalada).
+- O overlay traça o MESMO polígono (`ellipse_vertices`) ⇒ o wireframe senta no
+  casco que o solver de fato vê, não numa curva mais lisa por fora.
+
+### Lições
+
+**Lição 1 — um fixture só de raízes esconde toda premissa sobre a hierarquia.**
+A 2ª vez nesta linha (Bug #2 foi a 1ª). O gate desta wave inclui de propósito um
+**pai escalado** e mede a pose de **repouso** da bola parenteada.
+
+**Lição 2 — "o rapier não tem X" é uma afirmação sobre o rapier, não sobre o
+produto** (§0 do CLAUDE.md: não deixe o fallback definir o produto). O rapier
+não tem elipse; nós construímos uma. A decisão de *quando* (só não-uniforme) e
+*como* (polígono, não colapso) foi do Enio porque muda a sensação do produto.
+
+**Lição 3 — a porta única vale para as DUAS respostas ao mesmo fato.** Collider
+e wireframe são saídas diferentes (rapier plain-data vs `BezPath`), mas
+respondem à MESMA pergunta ("que forma, deste tamanho?"). `scaled_shape` +
+`ellipse_vertices` são as portas; duas cópias divergiriam num screenshot.
+
+### Gates que fecham este bug
+
+`crates/ph2d-physics-ecs/tests/scale_reaches_the_collider.rs` (4 pure + 2
+behavioral via sim: a bola 2× repousa mais alto, a **parenteada** repousa como
+raiz 2×) · `crates/ph2d-physics/tests/ellipse_collider.rs` (AABB da elipse no
+sim + determinismo da tesselação) · `render_loop::physics_overlay` (elipse
+desenhada como elipse · o contorno cresce com a escala do PAI). **7 mutações,
+todas sangram.** Sem smoke visual dedicado ainda — a proposta é uma cena com
+sprites escalados uniforme e não-uniformemente (a elipse tem de rolar como
+elipse); ver o handoff de integração.

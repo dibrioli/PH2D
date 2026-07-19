@@ -23,6 +23,12 @@ rapier2d = { version = "0.28", default-features = false, features = ["dim2", "f3
 # blake3 for hashing the deterministic state — same hash family as
 # C9 cross-OS replay (HR-5 alignment).
 blake3 = "1"
+# libm for the ONE cross-OS `sin`/`cos` (ellipse collider tessellation,
+# `ellipse_vertices`). `f32::sin_cos` is platform-math and differs in the
+# last ulps, which would break the `physics_ecs_c9` cross-OS hash; libm is
+# pure-Rust, one implementation everywhere — same discipline as `Transform`.
+# Pinned to the workspace's existing `ph2d-ecs` version.
+libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 # HR-13 declares a 20 MB physics budget; its ADR-0117 amendment says whoever

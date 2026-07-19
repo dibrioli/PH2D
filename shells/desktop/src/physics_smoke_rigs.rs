@@ -13,6 +13,42 @@ use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
 use ph2d_render::Sprite;
 
+/// Scene 8's rigs: `(x, extra depth, rotation, label)`.
+///
+/// A `const`, and reachable from a test, because the scene body itself needs a
+/// live `gfx` (GPU + window) and therefore cannot be driven headless. Everything
+/// about the scene that can be *wrong arithmetic* lives out here instead, where
+/// `the_scene_hangs_every_ball_over_its_own_pedestal` can check it.
+pub(crate) const RIGS: [(f32, u32, f32, &str); 3] = [
+    (-3.0, 0, 0.0, "One"),
+    (0.0, 1, 0.0, "Two"),
+    (3.0, 0, 0.45, "Tilted"),
+];
+
+/// How high above its pedestal each ball starts, in world metres.
+pub(crate) const DROP: f32 = 3.0;
+
+/// Half-width of a pedestal. Narrow on purpose: it is the oracle, so a ball in
+/// the wrong space cannot land on it.
+pub(crate) const PEDESTAL_HALF_X: f32 = 0.8;
+
+/// Where the ball hangs in its rig's LOCAL space: `R(-rot) · (0, DROP)`, which
+/// composes to **directly above that rig's own pedestal** whatever the rotation.
+///
+/// ⚠️ **The obvious `(0, DROP)` inverts the fixture, and this scene shipped with
+/// it.** Under a rig rotated 0.45 rad, correct composition swings the ball to
+/// `x = 1.695` — 1.3 m off its (deliberately narrow) pedestal — so it falls
+/// forever and the scene reports a regression that is not there. Meanwhile an
+/// implementation that DROPPED the parent's rotation would put it at `x = 3.0`
+/// and land it cleanly. The scene failed the fix and passed the bug.
+///
+/// Authored this way, the polarity is right: dropping the rotation is what
+/// misses ([[feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it]]).
+pub(crate) fn ball_local_offset(rot: f32) -> Vec2 {
+    let (sin_r, cos_r) = libm::sincosf(rot);
+    Vec2::new(DROP * sin_r, DROP * cos_r)
+}
+
 impl crate::App {
     /// **Scene 6 (W3).** The three things joints exist for, side by side: a
     /// **pendulum**, a **chain**, and a **ragdoll**.
@@ -272,33 +308,34 @@ impl crate::App {
         let gfx = self.gfx.as_mut().expect("gfx");
         let world = gfx.sim.world_mut();
 
-        // (rig x, extra depth, rig rotation, label)
-        let rigs = [
-            (-3.0_f32, 0_u32, 0.0_f32, "One"),
-            (0.0, 1, 0.0, "Two"),
-            (3.0, 0, 0.45, "Tilted"),
-        ];
-        for (x, depth, rot, label) in rigs {
+        for (x, depth, rot, label) in RIGS {
             // A pedestal under each rig — narrow on purpose. It is the oracle:
             // a body in the wrong space cannot land on it.
             world.spawn((
                 Transform::from_translation(Vec2::new(x, -1.0)),
-                Sprite::atlas(0, [1.6, 0.4], [0.40, 0.42, 0.48, 1.0]),
+                Sprite::atlas(0, [PEDESTAL_HALF_X * 2.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
                 Name::new(format!("Pedestal{label}")),
                 RigidBody {
                     kind: BodyKind::Static,
                 },
                 Collider {
                     shape: ColliderShape::Cuboid {
-                        half_x: 0.8,
+                        half_x: PEDESTAL_HALF_X,
                         half_y: 0.2,
                     },
                     ..Collider::default()
                 },
             ));
 
-            // The rig: a plain entity with no physics of its own, exactly like
-            // a group node an artist would parent things under.
+            // The rig: a group node an artist would parent things under. It
+            // carries NO physics — but it does carry a small SPRITE, and that is
+            // not decoration.
+            //
+            // ⚠️ A rig with only a `Transform` is invisible AND ungrabbable: the
+            // gizmo publisher reads `sprite.size`/`resolve_anchor`, so an entity
+            // with no `Sprite` publishes no `GizmoView` at all. The first cut of
+            // this scene shipped exactly that, while its own instructions told
+            // the artist to "drag a rig" — a gesture the scene made impossible.
             let mut parent = world
                 .spawn((
                     Transform {
@@ -306,6 +343,7 @@ impl crate::App {
                         rotation: rot,
                         ..Transform::IDENTITY
                     },
+                    Sprite::atlas(0, [0.30, 0.30], [0.35, 0.75, 0.95, 1.0]),
                     Name::new(format!("Rig{label}")),
                 ))
                 .id();
@@ -319,10 +357,11 @@ impl crate::App {
                     .id();
             }
 
-            // LOCAL (0, 3): directly above its own pedestal only once the rig's
-            // offset is composed in. Read as world it is above the ORIGIN.
+            // Authored through `ball_local_offset`, which composes to directly
+            // above this rig's OWN pedestal whatever its rotation is. See that
+            // function for why a plain `(0, DROP)` inverted the whole fixture.
             world.spawn((
-                Transform::from_translation(Vec2::new(0.0, 3.0)),
+                Transform::from_translation(ball_local_offset(rot)),
                 Sprite::atlas(0, [0.5, 0.5], [0.86, 0.62, 0.30, 1.0]),
                 Name::new(format!("Ball{label}")),
                 ph2d_ecs::ChildOf(parent),
@@ -353,6 +392,57 @@ impl crate::App {
              at each pedestal's height) in the viewport. Its ball follows, keeps its
              collider, and still collides -- the pose is composed every frame, not
              baked at spawn."
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DROP, PEDESTAL_HALF_X, RIGS, ball_local_offset};
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+
+    /// **Every ball starts above its OWN pedestal** — the property the whole
+    /// scene rests on, checked against the scene's own numbers.
+    ///
+    /// This gate exists because the first fix for it never reached the disk and
+    /// I "confirmed" it anyway: the probe I ran applied the offset by hand in a
+    /// throwaway file, so it proved that `R(-rot)·(0,DROP)` lands — which was
+    /// never in doubt — instead of proving that the SCENE does that
+    /// ([[feedback_harness_reproduces_mechanism_not_context]]). Reading `RIGS`
+    /// and `ball_local_offset` is what makes it a claim about the product.
+    #[test]
+    fn the_scene_hangs_every_ball_over_its_own_pedestal() {
+        for (x, _depth, rot, label) in RIGS {
+            let rig = Transform {
+                translation: Vec2::new(x, 0.0),
+                rotation: rot,
+                ..Transform::IDENTITY
+            };
+            let world =
+                Transform::compose(rig, Transform::from_translation(ball_local_offset(rot)));
+            let dx = world.translation.x - x;
+            assert!(
+                dx.abs() < PEDESTAL_HALF_X,
+                "Ball{label} starts {dx:.3} m from its pedestal (half-width \
+                 {PEDESTAL_HALF_X}) — it will fall past and the scene will report \
+                 a regression that is not there"
+            );
+            assert!(
+                (world.translation.y - DROP).abs() < 1e-3,
+                "Ball{label} starts at y = {:.3}, not {DROP} above the ground",
+                world.translation.y
+            );
+        }
+    }
+
+    /// …and the rotated rig is a rig that ROTATES — otherwise the gate above is
+    /// three copies of the trivial case and the whole point is lost.
+    #[test]
+    fn at_least_one_rig_is_actually_rotated() {
+        assert!(
+            RIGS.iter().any(|(_, _, rot, _)| rot.abs() > 0.3),
+            "no rig rotates: the scene can no longer tell composition from addition"
         );
     }
 }

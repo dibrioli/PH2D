@@ -321,6 +321,41 @@ parametriza a rotação e o gate de aterrissagem varre `[0, 0,45]`. Mutação no
 o gate de *"desenhado == simulado"* testa a direção de SAÍDA, que continua certa
 mesmo com a entrada errada. Cada camada no seu gate.
 
+### ⚠️ E o primeiro conserto NÃO CHEGOU AO DISCO — e eu o "confirmei" mesmo assim
+
+Vale mais que os dois defeitos acima, porque é sobre método.
+
+O script que aplicava os dois fixes tinha quatro hunks e um `write_text` **no
+fim**. O quarto hunk (um texto de instrução) não casou, o `assert` disparou —
+corretamente — e o script morreu **antes de escrever**. Os três primeiros hunks
+foram perdidos. Eu li o `AssertionError`, consertei só o quarto hunk num script
+seguinte, vi o `ok`, e **tratei o `ok` do segundo script como se o primeiro
+tivesse aplicado**.
+
+Aí veio o pior: rodei uma sonda que "confirmou o fix" — e a sonda era um
+**arquivo de teste separado onde eu mesmo aplicava o offset à mão**. Ela provou
+que `R(−rot)·(0,DROP)` pousa, coisa que nunca esteve em dúvida, em vez de provar
+que **a CENA faz isso**. Mediu o mecanismo, não o produto. O Enio rodou o smoke
+e viu, na tela, exatamente a geometria antiga (bola em `x = 1,695`, rigs sem
+sprite): *"nada mudou aqui"*.
+
+**Lições:**
+
+6. **Um script de edição com N hunks e um `write` no fim é atômico no sentido
+   errado:** um `assert` tardio descarta silenciosamente os hunks que já
+   passaram. Escreva incrementalmente, ou **verifique no disco depois de
+   escrever** (`grep` no arquivo, não no buffer).
+7. **Verificar uma correção num arquivo que não é o corrigido não é
+   verificação.** Se a sonda contém a mudança em vez de importá-la do produto,
+   ela só confirma a sua própria aritmética.
+   → memória `feedback_harness_reproduces_mechanism_not_context`.
+8. **Onde a cena não é dirigível headless, extraia a aritmética.** A cena precisa
+   de `gfx` (GPU + janela), então tudo nela que pode ser *conta errada* saiu para
+   `RIGS` + `ball_local_offset`, e o gate
+   `the_scene_hangs_every_ball_over_its_own_pedestal` lê **essas**. Mutação para
+   o `(0, DROP)` que shipou: sangra com `BallTilted starts -1.305 m from its
+   pedestal`.
+
 ### Smoke
 
 `PH2D_PHYSICS_SMOKE=8` — três rigs, cada um com uma bola física parenteada,

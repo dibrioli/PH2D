@@ -66,6 +66,7 @@ mod flip_entities;
 mod flip_erase;
 mod flip_fill;
 mod flip_fill_dilate;
+mod flip_fill_smoke;
 mod flip_fill_target;
 mod flip_gizmo_view;
 mod flip_layers;

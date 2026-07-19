@@ -218,9 +218,21 @@ impl BodyCtx<'_> {
 
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
     pub(crate) fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
+        self.action_button_kind(id, label, ButtonKind::Default, y)
+    }
+
+    /// The same, but with a chosen `kind` — an **Accent** button is how a *commit* action (o
+    /// "Apply" da pilha de efeitos) se destaca das edições comuns à sua volta.
+    pub(crate) fn action_button_kind(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        label: &str,
+        kind: ButtonKind,
+        y: f32,
+    ) -> f32 {
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
+        let btn = Button::new(id, label).kind(kind).state(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + Spacing::Xs.px()

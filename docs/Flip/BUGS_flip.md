@@ -1423,6 +1423,7 @@ reclamou de halo.
 ## #22 — A dilatação inteira era contagem dupla, e a prova estava na rota irmã
 
 **2026-07-18** · *"nenhuma melhoria e nenhuma mudança. ainda extravasa."* (Enio, 5º smoke)
+· **SMOKE APROVADO no mesmo dia** (*"perfeito!"*) — 6º e último da saga.
 
 ### O INVARIANTE (a versão que sobreviveu à medição)
 
@@ -1510,3 +1511,51 @@ a lê de lá.
 > (engordar o fill 25% mata 3 gates de unidade): era a suíte inteira medindo a rota que já
 > funcionava — **todas as 11 fixtures usavam UM traço fechado**, onde o produto vai pela rota
 > que não dilata, e `contour_widths` nunca era chamada.
+
+
+### A mudança de APARÊNCIA, aprovada explicitamente
+
+Este fix não corrige só um defeito: ele **muda o desenho** com pincel macio. A cauda externa da
+linha passa a misturar com o PAPEL em vez de com a cor — exatamente como no Draw:Filled, e é a
+consequência direta de a cor parar no eixo.
+
+Isso foi apresentado ao Enio como pergunta separada do defeito, junto com a alternativa
+(*"se te desagradar, o remédio não é o `w` de volta; é decidir que o Draw:Filled também está
+errado"*), e ele **aprovou** — a resposta veio no mesmo smoke que aprovou o fix.
+
+⚠️ **Registrar isto importa mais que registrar o bug.** Um desenho aprovado é uma decisão do
+dono, e sem esta linha o próximo a olhar a franja-que-não-existe-mais vai ler os 2956 pixels de
+fundo sob a linha macia (a tabela acima) como defeito pendente, e "consertar" de volta. É a
+mesma classe de cerca de Chesterton que o #21 documentou — só que agora ela protege uma
+APARÊNCIA, não um mecanismo.
+
+### O estado dos gates depois do fix
+
+| suíte | gates | nota |
+|---|---|---|
+| `ph2d-flip-fill` | 60 | a lei; 2 mutações provadas (ressuscitar `w`, matar `2s`) |
+| `gpu_fill_fit` (pixel, GPU) | 10 | 2 novos; os 8 herdados eram cegos ao defeito |
+| shell (`ph2d-host-desktop`) | 789 | inclui a tolerância da resolução entregue |
+
+Os dois gates que nasceram vermelhos e hoje seguram a lei:
+
+- **`the_colour_never_passes_the_line_the_artist_can_see`** — não escolhe raio nenhum:
+  renderiza a cena DUAS vezes (só a linha, e a linha com a cor) e pergunta, raio a raio, se a
+  cor aparece onde a linha sozinha já não muda o fundo. Foi a cura das duas cegueiras do gate
+  que ele substituiu (fixture opaca · janela ancorada no raio geométrico).
+- **`the_bucket_paints_the_shape_the_way_draw_filled_does`** — o oráculo é a referência que o
+  Enio nomeou, não uma regra minha.
+
+E o irmão de presença que impede o conserto de virar sub-cobertura:
+**`the_fill_reaches_under_the_line_at_product_scale`**, agora medindo só a metade INTERNA da
+linha e varrendo a faixa de zoom (círculo LISO — um eixo que ondula não admite janela de raio
+fixo; a tentativa com fixture trêmula foi feita, medida e descartada, e o porquê está no doc
+dele).
+
+### O que este fix ABRE
+
+Com a lei reduzida a `2s`, a rota `filled_shape_target` deixou de ser um ramo especial: ela é o
+**caso particular** em que `s = 0` por construção. O mesmo vale para a rota do arranjo (R1) —
+o gate dela agora afirma que **não há nada a dilatar**. É a fatia **R3** do plano
+(`10_regiao_por_curvas.md`) ficando barata: aposentar o ramo especial deixou de ser refactor e
+virou remoção de código que a lei já subsome.

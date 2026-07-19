@@ -265,3 +265,35 @@ linha já tinha pago uma vez com Gap/Trap.
   Enquanto isso, um donut usa a rota velha — correto, só não é o ideal.
 - **R3** (aposentar o `filled_shape_target` e a família da margem) só depois de o smoke
   aprovar a R1.
+
+---
+
+## §11 — O que o BUGS #22 mudou nesta wave (2026-07-18, smoke aprovado)
+
+A wave foi desenhada para que a fronteira do preenchimento fosse feita dos **vértices das
+linhas**. O smoke que a validaria expôs, em vez disso, um defeito que era **anterior a ela** e
+independente dela — e o fix reescreve duas premissas deste plano:
+
+**1. A fatia R2 já não tem o que fazer.** Ela previa que, com o anel sobre o eixo, a dilatação
+*"encolhe para a espessura da linha, sozinha"*. Medido contra o Draw:Filled, a espessura da
+linha nunca devia ter entrado na dilatação: a lei é `2s` (só o erro de vetorização, com sinal),
+então sobre o eixo a largura é **zero**. O gate da R1 foi reescrito para a afirmação forte —
+`on_the_curve_route_there_is_nothing_left_to_dilate`.
+
+**2. A fatia R3 ficou barata.** Aposentar o `filled_shape_target` era um refactor; agora ele é o
+**caso particular** da lei geral (`s = 0` por construção), e a família da margem
+(`FILL_TUCK_FRACTION`, `contour_widths_with_margin`, `mean_line_width`, a varredura
+`sweep_tuck`) já foi removida junto com o termo que ela multiplicava.
+
+**3. A rota do arranjo nunca tinha rodado no zoom do smoke.** O `hug_tol` vinha da precisão
+PEDIDA e o erro do contorno nasce da ENTREGUE — acima de ~3200 px de arte na tela a rota se
+recusava **em silêncio**. Era essa a metade *"nenhuma mudança"* do relato. O `FillResult` agora
+publica `scale` (a entregue), e há gate com fixture que satura a grade.
+
+⚠️ **A lição de processo para a próxima wave:** o §8 deste plano definiu critérios de morte
+para o motor do arranjo (percurso topológico sobre `f32`, perf) e **nenhum deles perguntava se
+a wave resolvia o sintoma do usuário**. Ela resolvia metade — o resto era um termo obsoleto num
+módulo vizinho. Um plano cujo alvo é um relato de smoke precisa de um critério que **meça o
+relato**, não só o mecanismo que se decidiu construir.
+
+Detalhe completo: `BUGS_flip.md` #22.

@@ -266,6 +266,8 @@ Tracker/docs do módulo nascem depois, **dentro da própria worktree**.
 
 **Operador (Enio):** o passo a passo do SEU lado (planejar linhas → abrir cada uma → intervir só nos 2 casos irredutíveis → **coletar o handoff de cada linha e, por ordem sua, abrir o agente integrador + mandar o ship**) está em [`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md).
 
+**Agente NOVO numa linha que já existe** (troca de janela de contexto, ou retomada depois de a linha ter integrado): o bloco é OUTRO — [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md). A worktree já existe (não se cria), e o risco específico dessa troca é o agente trabalhar no **primário** em vez da linha: toda janela abre na raiz, que está em `main`, e **o mesmo path relativo existe nas duas árvores** — editar `crates/…` da raiz compila e commita sem erro nenhum, e só aparece na integração. Por isso aquele bloco começa por `cd` + `pwd` + `git branch --show-current` **antes de ler qualquer arquivo**, e traz o procedimento de resgate para quando já escreveram no main.
+
 Você é `workstation`, sem bloco colado, e `git branch --show-current` devolve `main`?
 Você é uma sessão do **primário** (setup/integração/ship) — **não code em `main` no
 Modo L**; pergunte ao Enio qual é a sua linha.

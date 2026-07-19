@@ -49,6 +49,13 @@ Para cada linha, **uma janela nova** do Claude **na raiz do repo** (sempre a mes
 
 Repita por linha. Cada janela é independente; podem rodar em paralelo.
 
+⚠️ **Trocando de agente numa linha que JÁ existe** (a janela de contexto acabou, ou a linha
+volta a ser trabalhada depois de integrar): **não** use o bloco de abertura — a worktree já
+existe. Cole o de [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md).
+É o caso em que agentes já trabalharam no `main` por engano várias vezes: a janela abre na
+raiz, o mesmo path relativo existe nas duas árvores, e editar a errada **não dá erro** —
+só aparece na integração, quando a linha não tem o trabalho.
+
 ### 3. Durante a jornada — você quase não intervém
 - Cada linha commita local (`--no-verify`, fast mode), fecha o gate batched, **escreve o
   handoff de integração (DIRETRIZ §1.5.9) e reporta "linha pronta + handoff"** — e PARA.

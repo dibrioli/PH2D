@@ -1,5 +1,11 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
+> ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
+> [`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)** —
+> a linha **INTEGROU** ao `main` (as 8 waves + W4b + W5, smoke aprovado) e o **plano original acabou**.
+> Aquele doc te diz como REABRIR a linha, onde paramos e os planos a seguir. Este tracker é o estado
+> por-wave; aquele é o ponto de partida.
+>
 > **Tracker VIVO do módulo** (o `docs/HANDOFF_*` da física). Toda jornada futura **atualiza este
 > arquivo**: estado por-wave, decisões, gotchas, ids/consts alocados. LLM nova lê ISTO + a
 > [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) +

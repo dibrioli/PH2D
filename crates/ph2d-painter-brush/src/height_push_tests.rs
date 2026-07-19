@@ -59,8 +59,6 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32, f32) {
             grain: &mut grain,
             film: &mut film,
             radius: &mut radius_pl,
-
-            accum: None,
         };
         let mut bite = PushBite {
             ground: &ground,
@@ -455,8 +453,6 @@ fn ploughed_at_spacing(falloff: crate::Falloff, step: f32, count: u32) -> (Vec<f
             grain: &mut grain,
             film: &mut film,
             radius: &mut radp,
-
-            accum: None,
         };
         let mut bite = PushBite {
             ground: &ground,

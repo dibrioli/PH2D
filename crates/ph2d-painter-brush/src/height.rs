@@ -208,11 +208,6 @@ pub struct HeightFields<'a> {
     /// relevo"*. Stored per texel with the same winner as `paint`/`grain`, so every Body-card knob
     /// re-derives the stroke at the size that actually made it — and the Size slider AFTER a stroke
     /// no longer silently re-scales relief that is already on the canvas.
-    /// **Accumulate** (`BrushSpec::accumulate`) — a soma do perfil ao longo do caminho, SEM o Depth.
-    ///
-    /// `None` é o comportamento histórico e o caminho intocado: o relevo é o envelope, e uma 2ª passada
-    /// no mesmo traço não empilha. `Some` liga a integral de linha — ver [`pass_normalizer`].
-    pub accum: Option<&'a mut [f32]>,
     pub radius: &'a mut [f32],
 }
 
@@ -226,35 +221,6 @@ impl HeightFields<'_> {
             && self.film.len() >= n
             && self.radius.len() >= n
     }
-}
-
-/// Quanto UMA passada reta deposita, na unidade em que a integral soma — o divisor que faz
-/// **Accumulate ON e OFF coincidirem no caso simples**.
-///
-/// A integral acumula `perfil · Δs`, então uma passada reta sobre um texel soma
-/// `∫ perfil(dist) ds ≈ 2ρ · (perfil médio ao longo da corda)`. Dividir por isso faz essa passada valer
-/// o pico que o envelope daria — e é o que torna o toggle honesto: marcá-lo não muda um traço simples,
-/// só passa a somar quando o artista **volta por cima**.
-///
-/// Numérico e amostrado sobre a corda porque o perfil é o produto de duas curvas (o falloff e o **Body**),
-/// e a forma fechada mudaria toda vez que o Body mudasse.
-#[must_use]
-pub fn pass_normalizer(spec: &crate::BrushSpec) -> f32 {
-    const N: usize = 33;
-    let depth = spec.effective_impasto_depth();
-    if depth == 0.0 {
-        return 1.0;
-    }
-    let mut sum = 0.0f32;
-    for k in 0..N {
-        let t = (k as f32 / (N - 1) as f32) * 2.0 - 1.0;
-        let w = spec.falloff.weight(t.abs()).clamp(0.0, 1.0);
-        // A parte SEM Depth de `derive_height` — ele é um múltiplo de `depth`, então dividir recupera
-        // o resto exatamente. (Grão neutro: o normalizador descreve o pincel, não a textura do lugar.)
-        sum += derive_height(spec, w, 1.0) / depth;
-    }
-    let mean = sum / N as f32;
-    (2.0 * spec.clamped_radius().max(0.5) * mean).max(1e-6)
 }
 
 /// Deposit one dab's height into the per-stroke envelope `dst` (canvas-sized, `width × height` f32).
@@ -332,19 +298,6 @@ pub fn accumulate_dab_height(
     // as an ingredient, so flipping the source after the stroke re-carves the same grooves this dab
     // would have left. A brush with no grain pays nothing.
     let grain_active = dab.grain.is_some();
-    // **Accumulate**: o arco que ESTE dab representa, e o divisor que o converte na unidade do envelope.
-    // É `Δs` que tira o espaçamento da conta — dobrar a densidade de dabs dobra a contagem e divide o
-    // passo, e a soma converge para a mesma integral (doc 20 §5).
-    let step_len = dab
-        .prev_center
-        .map(|p| ((dab.center[0] - p[0]).powi(2) + (dab.center[1] - p[1]).powi(2)).sqrt())
-        .unwrap_or(0.0);
-    let accum_w = if fields.accum.is_some() {
-        step_len / pass_normalizer(spec)
-    } else {
-        0.0
-    };
-    let depth_now = spec.effective_impasto_depth();
     let sweep = sweep_axis(dab);
     let mut touched = false;
     for py in y0..y1 {
@@ -373,11 +326,7 @@ pub fn accumulate_dab_height(
             // then chosen by a quantity that no setting can change, so re-deriving the relief at a new
             // Body / Source / Depth cannot silently re-shuffle which dab shaped which pixel.
             let m = (w * coverage).clamp(0.0, 1.0);
-            // ── OFF: o envelope, byte a byte como sempre foi (ordem do Enio 2026-07-18). ─────────
-            //
-            // O ramo `false` é o CÓDIGO de hoje, não uma re-derivação que por acaso concorda: quem lê
-            // vê a identidade em vez de ter de confiar num gate.
-            if fields.accum.is_none() && m <= fields.paint[i] {
+            if m <= fields.paint[i] {
                 continue;
             }
             let g = if let Some(b) = dab.grain {
@@ -425,24 +374,6 @@ pub fn accumulate_dab_height(
                         b.displaced += take;
                     }
                 }
-            }
-            if let Some(acc) = fields.accum.as_deref_mut() {
-                // A integral soma a parte SEM Depth do perfil deste dab, pesada pelo arco percorrido.
-                // Guardar sem o Depth é o que mantém o slider VIVO depois do traço.
-                if depth_now != 0.0 && accum_w > 0.0 {
-                    let unit = derive_height(spec, m, f32::from(gq) / 255.0) / depth_now;
-                    acc[i] += unit * accum_w;
-                }
-                // Os INGREDIENTES seguem sendo os do dab mais carregado — a forma vem do dab que mais
-                // depositou, a quantidade vem da integral.
-                if m > fields.paint[i] {
-                    fields.paint[i] = m;
-                    fields.grain[i] = gq;
-                    fields.radius[i] = spec.radius_px;
-                }
-                fields.height[i] = depth_now * acc[i];
-                touched = true;
-                continue;
             }
             fields.paint[i] = m;
             fields.grain[i] = gq;

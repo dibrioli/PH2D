@@ -1,5 +1,11 @@
 # Handoff de INTEGRAÇÃO — `line/anim-fixes` (DIRETRIZ §1.5.9)
 
+> ⚠️ **SUBSTITUÍDO por [`HANDOFF_INTEGRACAO_line_anim_nesting_2026-07-19.md`](HANDOFF_INTEGRACAO_line_anim_nesting_2026-07-19.md).**
+> A branch continuou depois deste documento e ganhou o **nesting** (ADR-0133): são 16 commits,
+> não 4. Este arquivo segue correto para o detalhe dos 2 primeiros fixes, mas **não descreve mais
+> a linha** — integrar por ele deixaria de fora `DOC_VERSION` 7→8 e a quebra da superfície pública
+> do `ClipStrip`. Uma lista de pendências velha não é ruído: ela faz a próxima LLM integrar errado.
+
 > Duas correções pequenas e independentes, **smokadas e aprovadas pelo Enio**. A linha
 > não integra nem faz ship — este documento vai ao **agente integrador**, por ordem
 > explícita dele (CLAUDE §0.7).

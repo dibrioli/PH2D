@@ -38,6 +38,10 @@ mod arrange;
 mod ball;
 mod dilate;
 mod edt;
+/// Colorize C2 measurement prototype (`docs/Flip/09 §7.1`) — test-only scaffolding, not
+/// the shipping motor; see the module docs.
+#[cfg(test)]
+mod flow;
 mod gap;
 mod raster;
 mod trace;

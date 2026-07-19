@@ -324,12 +324,44 @@ mas a exceção é decisão do Enio, com ADR, e o precedente exigiu que as alava
 single-thread estivessem esgotadas antes. As duas acima acabaram de ser colhidas; a próxima
 rodada tem o direito de pedir a exceção **com esta tabela na mão**.
 
-#### Ainda por medir (fatia C2)
+#### ✅ MEDIDO (2026-07-19) — o corte binário, e onde o custo REALMENTE mora
 
-1. **O custo de um corte binário** nessa grade, e como escala com o nº de rótulos.
-2. Se a resposta for cara: o `04 §3` já ordena **trapped-ball ANTES do LazyBrush**, e essa
-   ordem é estrutural, não estética — a pré-segmentação transforma o corte multiway de
-   *milhões de pixels* em *dezenas de regiões*. A C1 é o que torna a C2 tratável.
+Régua no repo: `ph2d-flip-fill`, `flow::tests::measure_the_binary_cut_cost`
+(`--release --ignored --nocapture`), sobre um **BK clean-room** (`flow.rs` + `flow_tests.rs`,
+Boykov–Kolmogorov PAMI 2004) provado **exato** contra um Edmonds–Karp independente (128
+instâncias aleatórias + a caixa real; o corte lido pesa o fluxo ao bit — o oráculo é uma 2ª
+implementação da MESMA definição, não o próprio solver). Instância = as MESMAS grades do
+produto, com rabiscos-**região** (um seed de 1 px degenera o corte em "cerca o pixel").
+
+**(a) O corte sobre a GRADE DE PIXELS crua — o que NÃO se deve rodar:**
+
+| tela | grade | Mpix | fluxo | corte |
+|---|---|---|---|---|
+| 512 | 860² | 0,74 | 1636 | **0,49 s** |
+| 1080 | 1768² | 3,13 | 3448 | **6,3 s** |
+| 1920 | 3113² | 9,69 | 6140 | **23,1 s** |
+| 3840 | 4096² | 16,78 | 8104 | **229 s** |
+
+⚠️ **Teto solto:** é um BK sem o tuning de biblioteca (a heurística de distância está lá; o
+resto — gestão fina da fila ativa, anti-thrash da cascata de órfãos — é engenharia da própria
+wave C2). Mas a **FORMA** é o achado e ela é robusta: o corte cru é **super-linear e mede em
+SEGUNDOS já na menor arte**; um BK afiado melhora a constante, não a conclusão — a 4K fica em
+segundos, e **nunca em 16 ms**. Isto **confirma por medição** o que o §8 / `04 §3` já
+mandavam: **trapped-ball ANTES do LazyBrush não é otimização, é obrigatório** — o corte cru
+sobre milhões de pixels não é operação de clique.
+
+**(b) O corte sobre o GRAFO DE REGIÕES — o que o produto de fato roda:** a pré-segmentação (a
+C1/trapped-ball, medida acima: 7,7–321,9 ms) colapsa os milhões de pixels em **dezenas–centenas
+de regiões**, e um max-flow nessa escala é **sub-milissegundo por qualquer algoritmo** (o gate
+de correção faz 128 cortes de grade de ≤100 nós em ~10 ms totais, ~80 µs cada). ⇒ **o SOLVE é
+síncrono; não pede barra.** Construir o max-flow do grafo de adjacência de regiões é trabalho
+da wave C2 — o `flow.rs` de hoje é grade-implícita (4-conexa), o de produção é grafo geral.
+
+**Conclusão para o §7.2:** o custo do Colorize **não está no corte** — está na
+**pré-segmentação (a EDT/trapped-ball)**, já medida (7,7–321,9 ms), cuja única alavanca
+restante a 4K é a **exceção `rayon`** (a decisão do Enio, `§7.1` acima). O multiway guloso
+(~`n_labels` cortes sobre o grafo de regiões) fica barato porque cada corte é sobre dezenas de
+nós. **Nada do SOLVE precisa da barra de progress; a barra, se vier, é da EDT.**
 
 ### 7.2 — Kill-criterion, declarado ANTES do build (DIRETIVA §5)
 

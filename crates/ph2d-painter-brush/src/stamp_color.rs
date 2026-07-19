@@ -90,21 +90,13 @@ pub fn render_color_stamp_mask(
     let depth = spec.grain_depth();
     let footprint = spec.footprint_deform();
     // The Grain + Shape View bases (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
-    let grain_basis = crate::texture::dab_basis(
-        &spec.texture,
-        [0.0, 0.0],
-        &mut 0u64,
-        [1.0, 1.0],
-        [1.0, 0.0],
-        footprint,
-    );
-    let shape_basis = crate::texture::dab_basis(
+    let grain_basis = crate::texture::dab_basis(&spec.texture, &mut 0u64, [1.0, 1.0], footprint);
+    let shape_basis = crate::texture::shape_basis(
         &spec.shape,
-        [0.0, 0.0],
         &mut 0u64,
         [1.0, 1.0],
-        [1.0, 0.0],
         footprint,
+        crate::texture::ShapeFrame::Static,
     );
     let inv = 2.0 / size as f32;
     for j in 0..size {
@@ -182,23 +174,15 @@ pub fn render_ramp_color_stamp(
     let size = size.max(1);
     let mut data = vec![0u8; (size as usize) * (size as usize) * 4];
     let footprint = spec.footprint_deform();
-    let grain_basis = crate::texture::dab_basis(
-        &spec.texture,
-        [0.0, 0.0],
-        &mut 0u64,
-        [1.0, 1.0],
-        [1.0, 0.0],
-        footprint,
-    );
+    let grain_basis = crate::texture::dab_basis(&spec.texture, &mut 0u64, [1.0, 1.0], footprint);
     let shape_active = spec.shape_silhouette_active(shape_image.is_some());
     let shape_basis = shape_active.then(|| {
-        crate::texture::dab_basis(
+        crate::texture::shape_basis(
             &spec.shape,
-            [0.0, 0.0],
             &mut 0u64,
             [1.0, 1.0],
-            [1.0, 0.0],
             footprint,
+            crate::texture::ShapeFrame::Static,
         )
     });
     let inv = 2.0 / size as f32;

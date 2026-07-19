@@ -57,11 +57,18 @@ pub fn sample_tiled_rot_wrapped(
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let p = [px as f32 + 0.5, py as f32 + 0.5];
-    let rel = [p[0] * sx / TEX_TILE_BASE_PX, p[1] * sy / TEX_TILE_BASE_PX];
+    let rel = [p[0] / TEX_TILE_BASE_PX, p[1] / TEX_TILE_BASE_PX];
     // Rotate the tile coordinates by the Angle basis, then apply the Offset.
+    //
+    // ⚠️ The TRANSPOSE form (`+`, i.e. `R(-angle)` on the coordinate), which is what every other rotation
+    // in the engine uses — the footprint, the slot frames, the stencil rect and the pattern within it.
+    // This one was the lone outlier in the FORWARD form until 2026-07-19, so the same Angle slider turned
+    // a Tiled Grain and a Paper of the same kind in OPPOSITE directions. Rotating the lookup coordinate by
+    // `-angle` is what makes the pattern appear rotated by `+angle`; it is also Blender's convention
+    // (`BKE_brush_sample_tex_3d` negates `mtex->rot` for exactly this reason).
     let tex = [
-        rel[0] * rot[0] - rel[1] * rot[1] + s.offset[0],
-        rel[0] * rot[1] + rel[1] * rot[0] + s.offset[1],
+        (rel[0] * rot[0] + rel[1] * rot[1]) * sx + s.offset[0],
+        (-rel[0] * rot[1] + rel[1] * rot[0]) * sy + s.offset[1],
     ];
     // Hash wrap: only with no rotation (else the axis grid can't meet the axis-aligned seam) and a real
     // sprite period. Applies to the LATTICE procedurals AND the hash-jittered analytic patterns (Dots /

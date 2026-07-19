@@ -158,10 +158,8 @@ mod tests {
         let fp = spec.footprint_deform();
         let gb = crate::texture::dab_basis(
             &spec.texture,
-            [0.0, 0.0],
             &mut 0u64,
             [w as f32, h as f32],
-            [1.0, 0.0],
             crate::footprint::FootprintDeform::identity(),
         );
         let mut with_grain = base.clone();

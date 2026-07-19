@@ -270,8 +270,10 @@ fn stamp_dab_inner(
     // pixel's stroke coverage at the dab target (the tool passes it only when Accumulate is off and
     // Strength < 1, where the cap is observable); `None` ⇒ the build-up path (Accumulate ON).
     mask: Option<&mut [u8]>,
-    // Per-dab **Jitter Rotate** rotor (`[1, 0]` = none): spins the whole footprint (falloff + Shape +
-    // View-Grain) a random angle this dab. Independent of the per-slot Random Angle (pattern-within).
+    // The dab's composed footprint rotor ([`crate::BrushSpec::dab_rotor`], `[1, 0]` = none): the
+    // per-dab **Jitter Rotate** spin composed with the **stroke-follow** rotation. It spins the whole
+    // footprint — falloff + Shape + View-Grain — together, which is what keeps a following tip and the
+    // pattern inside it from disagreeing on a curve.
     dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
@@ -311,7 +313,7 @@ fn stamp_dab_inner(
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
         alpha_mode,
-        footprint: spec.footprint_deform().rotated_by(dab_rotation),
+        footprint: spec.dab_footprint(dab_rotation),
         center,
         cx,
         cy,

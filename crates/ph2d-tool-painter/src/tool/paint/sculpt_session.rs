@@ -212,24 +212,25 @@ impl PainterTool {
                 radius_px: d.radius_px,
                 ..*brush
             };
-            let fp = spec.footprint_deform().rotated_by(d.rotation);
+            let rotor = spec.dab_rotor(d);
+            let fp = spec.dab_footprint(rotor);
             let shape_basis = shape_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
+                ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
+                    ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                        arc_len: d.arc_len,
+                        unit_px: d.stroke_radius_px,
+                    },
                 )
             });
             let grain_basis = grain_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
                 )
             });

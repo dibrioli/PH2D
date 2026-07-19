@@ -54,22 +54,14 @@ pub fn render_stamp_mask(
     // stamp is an elliptical, rotated tip exactly like the per-pixel path.
     let footprint = spec.footprint_deform();
     // The View static bases (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
-    let grain_basis = crate::texture::dab_basis(
-        &spec.texture,
-        [0.0, 0.0],
-        &mut 0u64,
-        [1.0, 1.0],
-        [1.0, 0.0],
-        footprint,
-    );
+    let grain_basis = crate::texture::dab_basis(&spec.texture, &mut 0u64, [1.0, 1.0], footprint);
     let shape_basis = shape_active.then(|| {
-        crate::texture::dab_basis(
+        crate::texture::shape_basis(
             &spec.shape,
-            [0.0, 0.0],
             &mut 0u64,
             [1.0, 1.0],
-            [1.0, 0.0],
             footprint,
+            crate::texture::ShapeFrame::Static,
         )
     });
     let inv = 2.0 / size as f32;
@@ -317,10 +309,8 @@ pub fn blit_canvas_cached(
     // canvas-fixed ⇒ identity footprint — the dab flatten never deforms a canvas-locked texture).
     let basis = crate::texture::dab_basis(
         &spec.texture,
-        [0.0, 0.0],
         &mut 0u64,
         [width as f32, height as f32],
-        [1.0, 0.0],
         crate::footprint::FootprintDeform::identity(),
     );
     // The Shape silhouette frame (dab-relative; static View in this cached path — Rake/Random route to
@@ -328,13 +318,12 @@ pub fn blit_canvas_cached(
     let shape_basis = spec
         .shape_silhouette_active(shape_image.is_some())
         .then(|| {
-            crate::texture::dab_basis(
+            crate::texture::shape_basis(
                 &spec.shape,
-                [0.0, 0.0],
                 &mut 0u64,
                 [1.0, 1.0],
-                [1.0, 0.0],
                 footprint,
+                crate::texture::ShapeFrame::Static,
             )
         });
     let ctx = CanvasBlitCtx {

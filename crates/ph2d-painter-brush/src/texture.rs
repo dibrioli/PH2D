@@ -5,17 +5,23 @@
 //! mode and the `Z` axis are dropped (degenerate for raster paint). The texture multiplies the
 //! falloff mask per pixel, exactly as the falloff weight does — see [`crate::dab::stamp_dab`].
 //!
+//! **Where the rotations live.** A slot frame ([`dab_basis`]) carries the slot's **Angle** and nothing
+//! else. "Follow the stroke" (Rake / Flow) and the per-dab **Jitter Rotate** orient the DAB — one rotor,
+//! built once in [`crate::BrushSpec::dab_rotor`] and applied to the footprint every sampler reads. That is
+//! Blender's shape too (a single `brush_rotation`, applied once); ours additionally has an elliptical
+//! footprint, which Blender's texture paint does not, so the rotor lands on the frame instead of the
+//! lookup. Splitting it per slot is what let a flattened tip and the pattern inside it disagree on a curve.
+//!
 //! **Determinism (HR-5).** Transcendental-free: rotation is carried as a unit *vector*, never an
 //! angle (as in `stroke/ellipse.rs` / `stroke/polygon.rs`). **Angle** rotates `(1,0)` by repeated
-//! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent. Per-dab random
-//! *rotation* is the Stroke **Jitter Rotate** (`extra_rot`), not a per-slot toggle. The sampler uses
-//! only `floor`/`*`/`+`/`sqrt`.
+//! application of the baked 1° step [`DEG_STEP`]. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
+mod kind;
 pub(crate) mod patterns;
 mod shape;
 mod stencil;
 mod tiled;
-use crate::heading::rotate;
+pub use kind::TextureKind;
 pub use shape::{
     ImageRgb, compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
     sample_shape_rgb_unit, sample_shape_silhouette, sample_shape_silhouette_unit,
@@ -40,188 +46,6 @@ pub const TEX_TILE_BASE_PX: f32 = 256.0;
 /// `n` times — only `*`/`+` at runtime, bit-identical on every platform (mirrors
 /// `stroke/polygon.rs::POLY_STEP`); drift over ≤360 steps is deterministic + sub-`5e-5`.
 pub const DEG_STEP: [f32; 2] = [0.999_847_7, 0.017_452_406];
-
-/// The built-in texture patterns — the Blender texture set (clean-room, [`patterns`]) plus
-/// painting-useful extras. `None` = no texture assigned (the dab is unmodulated). The discriminants
-/// `0..=5` are wire-stable from the original set; new kinds append from `6`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum TextureKind {
-    /// No texture — [`sample`] returns `1.0` (full coverage), so the dab is unchanged.
-    #[default]
-    None,
-    /// Value noise (grain) — the canonical brush texture (pencil / charcoal tooth).
-    Noise,
-    /// Hard 2-colour checker — useful for reading the mapping, and a crisp pattern.
-    Checker,
-    /// Voronoi cells (F1 distance) — organic, blotchy.
-    Voronoi,
-    /// Soft parallel stripes (triangle wave) — hatching.
-    Stripes,
-    /// An imported image's luminance, supplied separately (the pixels are heavy, so they don't live
-    /// in the `Copy` settings — the caller passes an [`ImageMask`] to [`sample`]). Without one, the
-    /// texture is inert (returns `1.0`).
-    Image,
-    /// Fractal noise — soft billowy cloud field (Blender `Clouds`).
-    Clouds,
-    /// Value noise sampled through a noise-warped coordinate (Blender `Distorted Noise`).
-    DistortedNoise,
-    /// Nested interference waves — swirly organic pattern (Blender `Magic`).
-    Magic,
-    /// Turbulence-distorted veins / bands (Blender `Marble`).
-    Marble,
-    /// Ridged multifractal — sharp creases at many scales (Blender `Musgrave`).
-    Musgrave,
-    /// Concentric growth rings with light turbulence (Blender `Wood`).
-    Wood,
-    /// Thresholded fractal noise — rough plaster relief (Blender `Stucci`).
-    Stucci,
-    /// Smooth linear ramp repeating per tile (Blender `Blend`).
-    Gradient,
-    /// Fine multi-frequency grain — paper / canvas tooth for dry media.
-    Grain,
-    /// Crossed diagonal hatch lines (ink-hatch shading).
-    Crosshatch,
-    /// Soft round dots centred per tile (halftone).
-    Dots,
-    /// Thin lattice lines (mesh / graph-paper).
-    Grid,
-    /// Running-bond rectangles with mortar gaps (bricks).
-    Bricks,
-    /// Smooth horizontal bands rippled along x (water / silk).
-    Waves,
-    /// V-shaped zigzag bands.
-    Chevron,
-    /// 45°-rotated checker of diamonds (harlequin).
-    Diamonds,
-    /// Two-tone triangular tiling.
-    Triangles,
-    /// Honeycomb hexagon cells with bright rims.
-    Hexagons,
-    /// Overlapping ringed discs (fish-scale / scallops).
-    Scales,
-    /// Over-under woven bands (basketweave).
-    Weave,
-    /// **Cold-press** watercolor paper — a medium random tooth with mild laid-line fibre (the classic
-    /// "NOT" surface). Procedural height-field; feeds the watercolor granulation (`docs/Painter/10…`).
-    PaperCold,
-    /// **Rough** watercolor paper — a deep, pronounced tooth with strong fibre creases (heavy pooling).
-    PaperRough,
-    /// **Hot-press** watercolor paper — a fine, smooth grain with a soft felt mottle (minimal tooth).
-    PaperHot,
-}
-
-impl TextureKind {
-    /// Stable wire discriminant for the panel dropdown / round-trip tests.
-    #[must_use]
-    pub fn to_u8(self) -> u8 {
-        match self {
-            Self::None => 0,
-            Self::Noise => 1,
-            Self::Checker => 2,
-            Self::Voronoi => 3,
-            Self::Stripes => 4,
-            Self::Image => 5,
-            Self::Clouds => 6,
-            Self::DistortedNoise => 7,
-            Self::Magic => 8,
-            Self::Marble => 9,
-            Self::Musgrave => 10,
-            Self::Wood => 11,
-            Self::Stucci => 12,
-            Self::Gradient => 13,
-            Self::Grain => 14,
-            Self::Crosshatch => 15,
-            Self::Dots => 16,
-            Self::Grid => 17,
-            Self::Bricks => 18,
-            Self::Waves => 19,
-            Self::Chevron => 20,
-            Self::Diamonds => 21,
-            Self::Triangles => 22,
-            Self::Hexagons => 23,
-            Self::Scales => 24,
-            Self::Weave => 25,
-            Self::PaperCold => 26,
-            Self::PaperRough => 27,
-            Self::PaperHot => 28,
-        }
-    }
-
-    /// Inverse of [`Self::to_u8`]; unknown values fall back to [`Self::None`].
-    #[must_use]
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            1 => Self::Noise,
-            2 => Self::Checker,
-            3 => Self::Voronoi,
-            4 => Self::Stripes,
-            5 => Self::Image,
-            6 => Self::Clouds,
-            7 => Self::DistortedNoise,
-            8 => Self::Magic,
-            9 => Self::Marble,
-            10 => Self::Musgrave,
-            11 => Self::Wood,
-            12 => Self::Stucci,
-            13 => Self::Gradient,
-            14 => Self::Grain,
-            15 => Self::Crosshatch,
-            16 => Self::Dots,
-            17 => Self::Grid,
-            18 => Self::Bricks,
-            19 => Self::Waves,
-            20 => Self::Chevron,
-            21 => Self::Diamonds,
-            22 => Self::Triangles,
-            23 => Self::Hexagons,
-            24 => Self::Scales,
-            25 => Self::Weave,
-            26 => Self::PaperCold,
-            27 => Self::PaperRough,
-            28 => Self::PaperHot,
-            _ => Self::None,
-        }
-    }
-
-    /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 29;
-
-    /// English label for the picker (HR-15 / app-UI-english-only).
-    #[must_use]
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::None => "None",
-            Self::Noise => "Noise",
-            Self::Checker => "Checker",
-            Self::Voronoi => "Voronoi",
-            Self::Stripes => "Stripes",
-            Self::Image => "Image",
-            Self::Clouds => "Clouds",
-            Self::DistortedNoise => "Distorted Noise",
-            Self::Magic => "Magic",
-            Self::Marble => "Marble",
-            Self::Musgrave => "Musgrave",
-            Self::Wood => "Wood",
-            Self::Stucci => "Stucci",
-            Self::Gradient => "Gradient",
-            Self::Grain => "Grain",
-            Self::Crosshatch => "Crosshatch",
-            Self::Dots => "Dots",
-            Self::Grid => "Grid",
-            Self::Bricks => "Bricks",
-            Self::Waves => "Waves",
-            Self::Chevron => "Chevron",
-            Self::Diamonds => "Diamonds",
-            Self::Triangles => "Triangles",
-            Self::Hexagons => "Hexagons",
-            Self::Scales => "Scales",
-            Self::Weave => "Weave",
-            Self::PaperCold => "Paper Cold Press",
-            Self::PaperRough => "Paper Rough",
-            Self::PaperHot => "Paper Hot Press",
-        }
-    }
-}
 
 /// How texture coordinates are derived from the dab. `3D` is dropped (2D adaptation); `Stencil` is a
 /// later phase (needs a screen-space overlay), so P1 exposes View/Tiled/Random.
@@ -311,15 +135,18 @@ pub struct TextureSettings {
     pub mapping: TextureMapping,
     /// Base rotation in whole degrees, `0..=`[`TEX_ANGLE_MAX_DEG`].
     pub angle_deg: u16,
-    /// **Rake**: the rotation follows the stroke direction, with [`Self::angle_deg`] composed as an offset.
+    /// **Rake**: the DAB FRAME follows the stroke direction, with [`Self::angle_deg`] composed as an
+    /// offset within it. The flag is a request — the rotation itself is applied once, for the whole dab,
+    /// by [`crate::BrushSpec::dab_rotor`]; this slot's own frame never carries the tangent.
     pub rake: bool,
     /// **Flow** (Shape slot): lay the pattern in the STROKE's own frame — the *along* coordinate is the
     /// dab's [`crate::Dab::arc_len`] plus the pixel's projection on the tangent, the *across* coordinate is
     /// the perpendicular. This keeps the pattern's phase continuous from dab to dab, so the silhouette's
     /// lines stay parallel and follow the curve (calligraphy / textured-stroke), instead of the per-stamp
-    /// Rake that resets phase each dab and interferes on curves. Dominates [`Self::rake`] when set (Flow
-    /// carries the same tangent rotation, plus continuity). Only the Shape slot exposes it; Grain / Paper
-    /// leave it `false`. See [`crate::texture::shape`]. `[1,0]` fallback + `Angle` compose exactly as Rake.
+    /// Rake that resets phase each dab and interferes on curves. Like [`Self::rake`] it asks the DAB FRAME
+    /// to follow the stroke (same single rotor); what it adds is the arc-length, so the phase is continuous
+    /// across dabs. The two are mutually exclusive through one door (the Follow selector). Only the Shape
+    /// slot exposes it; Grain / Paper leave it `false`. See [`crate::texture::shape`].
     pub flow: bool,
     /// Translation in tile fractions, each component in `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]`.
     pub offset: [f32; 2],
@@ -429,10 +256,48 @@ pub struct TexDabBasis {
     /// Brush-dab flatten + rotate, applied to the footprint coord BEFORE this texture's own Size /
     /// rotation / Offset (so the Shape + View-Grain deform with the falloff). Identity for Tiled / Stencil.
     footprint: crate::footprint::FootprintDeform,
-    /// The dab's [`crate::Dab::arc_len`] — the along-the-stroke coordinate the Shape **Flow** mapping adds
-    /// so its pattern phase is continuous across dabs. `0` unless set via [`Self::with_arc_len`] on the
-    /// per-pixel Shape path (Flow is never cached); ignored unless the Shape's `flow` is on.
-    arc_len: f32,
+    /// The stroke frame the **Flow** mapping lays its pattern in — see [`ShapeFrame`]. Only the Shape
+    /// door ([`shape_basis`]) can supply it, so it can never be silently omitted; ignored unless `flow`.
+    frame: ShapeFrame,
+}
+
+/// The stroke facts the Shape **Flow** mapping needs to lay a pattern in the STROKE's frame rather than
+/// the dab's. There is no `Default` and no builder **on purpose**: Flow's whole promise is that the phase
+/// is continuous from dab to dab, and a caller that forgets to supply the arc-length gets a pattern that
+/// resets at every stamp — the exact artefact Flow exists to remove, failing silently with the dropdown
+/// still reading "Flow". So [`shape_basis`] takes it by value and every Shape route must answer.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ShapeFrame {
+    /// A live dab on a stroke: its [`crate::Dab::arc_len`] and the stroke's nominal dab radius
+    /// ([`crate::Dab::stroke_radius_px`]).
+    ///
+    /// ⚠️ `unit_px` **must be constant for the whole stroke.** The along-coordinate is
+    /// `(arc_len + projection) / unit_px`: the numerator is the pixel's absolute position along the path
+    /// and telescopes exactly between neighbours, so a *per-dab* divisor (the live, pressure-scaled
+    /// radius) re-phases the whole accumulated history by `arc_len · Δ(1/r)` — an error that grows the
+    /// further into the stroke you are. Measured with the shipped `size_pressure` default: 0.42 tile
+    /// units of jump between adjacent dabs, ~21 % of a Stripes period. Blender takes the same care for
+    /// its Tiled mapping, normalising by `start_pixel_radius` "so the tiling doesn't breathe with pressure".
+    Stroke {
+        /// Cumulative path length at the dab (px).
+        arc_len: f32,
+        /// The stroke-constant length one pattern tile spans (px) — the brush's nominal dab radius.
+        unit_px: f32,
+    },
+    /// No stroke: the panel preview and the scale-invariant cached stamp bake. Flow is inert here (it is
+    /// never cached — [`TextureSettings::is_cacheable`] refuses it — and a preview has no path).
+    Static,
+}
+
+impl ShapeFrame {
+    /// `(arc_len, unit_px)`, with a safe unit for the `Static` frame (Flow is inert there).
+    #[must_use]
+    fn parts(self) -> (f32, f32) {
+        match self {
+            Self::Stroke { arc_len, unit_px } => (arc_len, unit_px.max(1e-3)),
+            Self::Static => (0.0, 1.0),
+        }
+    }
 }
 
 impl TexDabBasis {
@@ -448,49 +313,30 @@ impl TexDabBasis {
             stencil_u: [1.0, 0.0],
             stencil_v: [0.0, 1.0],
             footprint: crate::footprint::FootprintDeform::identity(),
-            arc_len: 0.0,
+            frame: ShapeFrame::Static,
         }
-    }
-
-    /// Carry the dab's [`crate::Dab::arc_len`] into the frame for the Shape **Flow** mapping (the
-    /// along-the-stroke coordinate). The per-pixel Shape path calls this after [`dab_basis`]; every other
-    /// caller leaves it `0` (Flow is never cached, and Grain / Paper never flow).
-    #[must_use]
-    pub fn with_arc_len(mut self, arc_len: f32) -> Self {
-        self.arc_len = arc_len;
-        self
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back to
-/// [`TextureSettings::angle_deg`]), a splitmix64 `rng` (Random **Offset** mapping), the canvas (Stencil
-/// rect), the per-dab **Jitter Rotate** `extra_rot` (`[1,0]` = none) and the dab `footprint` (Tiled /
-/// Stencil ignore it).
+/// Resolve the per-dab texture frame: the slot's own **Angle** rotation, a splitmix64 `rng` (Random
+/// **Offset** mapping), the canvas (Stencil rect) and the dab `footprint` (Tiled / Stencil ignore it).
+///
+/// ⚠️ **The stroke tangent does not enter here.** "Follow the stroke" (Rake / Flow) orients the DAB FRAME
+/// once, in [`crate::BrushSpec::dab_footprint`], and reaches every sampler through the `footprint` — one
+/// rotation, one place, which is also Blender's model (a single `brush_rotation`, applied to the lookup,
+/// never twice). Applying it here as well would rotate a following tip by twice the tangent.
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
-    dab_dir: [f32; 2],
     rng: &mut u64,
     canvas: [f32; 2],
-    extra_rot: [f32; 2],
     footprint: crate::footprint::FootprintDeform,
 ) -> TexDabBasis {
     // Stencil = a fixed image-space rect (canvas-fixed, so no Rake/Random/Jitter and no dab flatten).
     if s.mapping.is_stencil() {
         return stencil::stencil_basis(s, canvas);
     }
-    let base = if s.rake || s.flow {
-        // Rake AND Flow follow the stroke heading — Flow is the SAME tangent rotation PLUS arc-length
-        // continuity, so it must not fall through to the static Angle (that made Flow render as Off:
-        // `u` was the fixed Angle, so the "along-the-stroke" coordinate pointed nowhere near the stroke).
-        // Angle composes on top of the heading (empty heading ⇒ Angle alone).
-        let h = normalize_or(dab_dir, [1.0, 0.0]);
-        rotate(h, rotate_by_degrees(s.angle_deg))
-    } else {
-        rotate_by_degrees(s.angle_deg)
-    };
-    // Compose the per-dab Jitter Rotate (2D rotation); `extra_rot = [1, 0]` = no jitter (bit-identical).
-    let u = rotate(base, extra_rot);
+    let u = rotate_by_degrees(s.angle_deg);
     let v = perp(u);
     let jitter = if s.mapping.randomises_offset() {
         // A full-tile random shift per dab, in tile fractions.
@@ -507,8 +353,26 @@ pub fn dab_basis(
         stencil_u: [1.0, 0.0],
         stencil_v: [0.0, 1.0],
         footprint,
-        arc_len: 0.0,
+        frame: ShapeFrame::Static,
     }
+}
+
+/// The **Shape** slot's door onto [`dab_basis`]: identical, plus the [`ShapeFrame`] the **Flow** mapping
+/// needs. Separate from [`dab_basis`] so the stroke facts are a *parameter*, not a builder a caller can
+/// forget — five Shape routes (relief, sculpt, smear, watercolor, blur/clone) once did exactly that, and
+/// the failure is silent: Flow degrades to a per-dab phase reset with the dropdown still reading "Flow".
+/// Arch-gated (`the_shape_slot_goes_through_the_shape_door`) so a new Shape route cannot use the Grain one.
+#[must_use]
+pub fn shape_basis(
+    s: &TextureSettings,
+    rng: &mut u64,
+    canvas: [f32; 2],
+    footprint: crate::footprint::FootprintDeform,
+    frame: ShapeFrame,
+) -> TexDabBasis {
+    let mut b = dab_basis(s, rng, canvas, footprint);
+    b.frame = frame;
+    b
 }
 
 /// Combine a Grain `sample` (`[0, 1]`, the paper tooth) into a dab-coverage multiplier under the
@@ -572,20 +436,27 @@ pub fn sample(
         }
     } else if s.flow {
         // FLOW (Shape slot): lay the pattern in the STROKE's own frame so its phase is CONTINUOUS from
-        // dab to dab — the lines stay parallel through curves instead of the per-stamp Rake resetting each
-        // dab. The *along* coordinate is `arc_len + projection on the tangent (u)`; the arc-length term is
-        // exactly what makes neighbouring dabs agree on the phase. The *across* coordinate is the
-        // perpendicular (v). Size is along/across the stroke (X = along, Y = across). `/r` normalises both
-        // to dab units, so the along term telescopes with the arc-length increment (spacing) between dabs.
+        // dab to dab — the lines stay parallel through a curve instead of the per-stamp Rake resetting the
+        // phase at every stamp and interfering.
+        //
+        // The frame is the dab FOOTPRINT, which already carries the stroke tangent
+        // ([`crate::BrushSpec::dab_footprint`]), so its `+x` IS the along-stroke axis and the flatten
+        // deforms the tip exactly as it deforms the falloff. `arc_len + along` is then the pixel's
+        // ABSOLUTE position along the path, which telescopes exactly between neighbouring dabs — and
+        // dividing it by the STROKE-CONSTANT `unit` is what keeps it that way (see [`ShapeFrame::Stroke`]:
+        // a per-dab radius re-phases the whole accumulated history on every pressure wobble). The slot
+        // **Angle** (`u`/`v`) rotates the pattern WITHIN the stroke frame, and Size scales AFTER the
+        // rotation (Blender's order — a non-uniform Size applied first shears instead of rotating).
         let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-        let r = radius.max(1e-3);
-        let d = [(p[0] - center[0]) / r, (p[1] - center[1]) / r];
-        let along = d[0] * b.u[0] + d[1] * b.u[1];
-        let across = d[0] * b.v[0] + d[1] * b.v[1];
+        let (arc_len, unit) = b.frame.parts();
+        let f = b
+            .footprint
+            .apply([(p[0] - center[0]) / unit, (p[1] - center[1]) / unit]);
+        let rel = [arc_len / unit + f[0], f[1]];
         [
-            (b.arc_len / r + along) * sx + s.offset[0],
-            across * sy + s.offset[1],
+            (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
+            (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
         ]
     } else {
         // Per-axis scale clamped away from zero. Size MULTIPLIES the coordinate (Blender's MTex
@@ -596,21 +467,24 @@ pub fn sample(
         let rel = match s.mapping {
             TextureMapping::Tiled => {
                 let base = TEX_TILE_BASE_PX;
-                [p[0] * sx / base, p[1] * sy / base]
+                [p[0] / base, p[1] / base]
             }
             // View / Random anchor to the dab footprint; the dab flatten/rotate deforms it FIRST so
             // the pattern flattens with the falloff (the texture's own Size stays relative to it).
             _ => {
                 let r = radius.max(1e-3);
-                let f = b
-                    .footprint
-                    .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r]);
-                [f[0] * sx, f[1] * sy]
+                b.footprint
+                    .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r])
             }
         };
+        // ⚠️ **Size scales AFTER the rotation**, i.e. along the PATTERN's own axes — Blender's order
+        // (`BKE_brush_sample_tex_3d` rotates the normalised coordinate, then `RE_texture_evaluate` applies
+        // `mtex->size`). Scaling first stretches along the CANVAS axes, so a non-uniform Size + a non-zero
+        // Angle SHEARED the pattern instead of rotating a stretched one. At Angle 0 the rotation is the
+        // identity, so both orders are bit-identical for every Size; only rotated textures move.
         [
-            rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0] + b.jitter[0],
-            rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
+            (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0] + b.jitter[0],
+            (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1] + b.jitter[1],
         ]
     };
     patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
@@ -632,11 +506,15 @@ pub fn sample_unit(
     }
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    let f = b.footprint.apply([u, v]); // dab flatten/rotate, before this texture's own Size/rotation
-    let rel = [f[0] * sx, f[1] * sy];
+    let rel = b.footprint.apply([u, v]); // dab flatten/rotate, before this texture's own Size/rotation
+    // ⚠️ **Size scales AFTER the rotation**, i.e. along the PATTERN's own axes — Blender's order
+    // (`BKE_brush_sample_tex_3d` rotates the normalised coordinate, then `RE_texture_evaluate` applies
+    // `mtex->size`). Scaling first stretches along the CANVAS axes, so a non-uniform Size + a non-zero
+    // Angle SHEARED the pattern instead of rotating a stretched one. At Angle 0 the rotation is the
+    // identity, so both orders are bit-identical for every Size; only rotated textures move.
     let tex = [
-        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
-        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
+        (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
+        (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
     ];
     patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }
@@ -666,7 +544,7 @@ fn perp(u: [f32; 2]) -> [f32; 2] {
 }
 
 /// Normalise `v`, or return `fallback` if `v` is near-zero.
-fn normalize_or(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
+pub(crate) fn normalize_or(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
     let len2 = v[0] * v[0] + v[1] * v[1];
     if len2 > 1e-12 {
         let inv = 1.0 / len2.sqrt();

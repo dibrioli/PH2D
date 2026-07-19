@@ -600,7 +600,7 @@ fn shape_image_replaces_the_falloff_with_a_crisp_silhouette() {
 #[test]
 fn shape_angle_rotates_the_silhouette() {
     use crate::ImageMask;
-    use crate::texture::{TextureKind, TextureSettings, dab_basis};
+    use crate::texture::{ShapeFrame, TextureKind, TextureSettings, shape_basis};
     let (w, h) = (48u32, 48u32);
     // A vertical-bar Shape: the central columns (x = 3,4 of 8) are white, the rest black.
     let mut lum = vec![0u8; 64];
@@ -630,13 +630,12 @@ fn shape_angle_rotates_the_silhouette() {
 
     // Angle 0: the bar runs vertically — painted ABOVE the centre, blank to the RIGHT.
     let s0 = mk(0);
-    let b0 = dab_basis(
+    let b0 = shape_basis(
         &s0.shape,
-        [0.0, 0.0],
         &mut 0u64,
         [1.0, 1.0],
-        [1.0, 0.0],
         FootprintDeform::identity(),
+        ShapeFrame::Static,
     );
     let mut a = solid(w, h, [255, 255, 255, 255]);
     stamp_dab_textured(
@@ -669,13 +668,12 @@ fn shape_angle_rotates_the_silhouette() {
 
     // Angle 90: the SAME shape now runs horizontally — the orientation flips.
     let s90 = mk(90);
-    let b90 = dab_basis(
+    let b90 = shape_basis(
         &s90.shape,
-        [0.0, 0.0],
         &mut 0u64,
         [1.0, 1.0],
-        [1.0, 0.0],
         FootprintDeform::identity(),
+        ShapeFrame::Static,
     );
     let mut c = solid(w, h, [255, 255, 255, 255]);
     stamp_dab_textured(

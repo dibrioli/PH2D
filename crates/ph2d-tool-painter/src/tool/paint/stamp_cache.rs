@@ -337,18 +337,19 @@ impl PainterTool {
             // ignores it unless that slot's Rake is on, and falls back to the base Angle for `[0, 0]`.
             // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); per-slot Random Angle
             // stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
-            let fp = spec.footprint_deform().rotated_by(d.rotation);
+            let rotor = spec.dab_rotor(d);
+            let fp = spec.dab_footprint(rotor);
             let shape_basis = shape_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
+                ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
+                    ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                        arc_len: d.arc_len,
+                        unit_px: d.stroke_radius_px,
+                    },
                 )
-                // Flow (Shape) reads the dab's arc-length as the along-the-stroke coordinate.
-                .with_arc_len(d.arc_len)
             });
             let shape_in = shape_basis
                 .as_ref()
@@ -360,10 +361,8 @@ impl PainterTool {
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
                 )
             });
@@ -381,7 +380,7 @@ impl PainterTool {
                 lut,
                 alpha_mode,
                 mask.as_deref_mut(),
-                d.rotation,
+                rotor,
             ) {
                 let rect = Region {
                     x: r.x,
@@ -452,18 +451,19 @@ impl PainterTool {
             // that slot's Rake is on, falling back to the base Angle for `[0, 0]`.
             // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); the per-slot Random
             // Angle stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
-            let fp = spec.footprint_deform().rotated_by(d.rotation);
+            let rotor = spec.dab_rotor(d);
+            let fp = spec.dab_footprint(rotor);
             let shape_basis = shape_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
+                ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
+                    ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                        arc_len: d.arc_len,
+                        unit_px: d.stroke_radius_px,
+                    },
                 )
-                // Flow (Shape) reads the dab's arc-length as the along-the-stroke coordinate.
-                .with_arc_len(d.arc_len)
             });
             let shape_in = shape_basis
                 .as_ref()
@@ -475,10 +475,8 @@ impl PainterTool {
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
                 )
             });
@@ -494,7 +492,7 @@ impl PainterTool {
                 image.as_ref(),
                 shape_in,
                 mask.as_deref_mut(),
-                d.rotation,
+                rotor,
             ) {
                 let rect = Region {
                     x: r.x,

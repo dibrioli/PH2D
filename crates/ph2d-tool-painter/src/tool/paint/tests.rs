@@ -2043,6 +2043,7 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     };
     t.stamp_dabs(&[dab(20.0)]); // batch 1 (dab A)
     t.stamp_dabs(&[dab(26.0)]); // batch 2 (dab B overlapping A's right half from the left)
@@ -2076,6 +2077,7 @@ fn per_layer_color_respects_brush_blend_mode() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     };
     t.stamp_dabs(&[dab]);
     let [r, g, b, _] = px(&t, 64, 32, 32);
@@ -2105,6 +2107,7 @@ fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     };
     t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]); // red dab
     t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]); // blue dab
@@ -2826,6 +2829,7 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     };
     let pristine = (*t.canvas_rgba).clone(); // the pre-shape the drag preview restores to
     t.stamp_dabs(&[dab]); // first fill
@@ -2866,6 +2870,7 @@ fn live_dab(x: f32) -> ph2d_painter_brush::Dab {
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     }
 }
 
@@ -3086,6 +3091,7 @@ fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 8.0,
     };
     t.stamp_dabs(&[dab(16.0, 1.0)]); // per-layer ON — this seeds `pre` (the canvas BEFORE it: all white)
     t.toggle_brush_shape_per_layer_color(); // OFF, stroke still live
@@ -3357,6 +3363,7 @@ fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 9.0,
     };
     t.stamp_dabs(&[dab(18.0), dab(46.0)]);
     assert_eq!(
@@ -3449,6 +3456,7 @@ fn tiling_wrapped_copies_share_the_dabs_random_frame() {
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 12.0,
     };
     // Reference: the same dab, centred, no tiling → the disc's own random frame.
     let mut r = white_canvas(64, 12.0);
@@ -3690,6 +3698,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 6.0,
     };
     t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]);
     t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]);
@@ -5896,6 +5905,7 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 30.0,
     };
     t.stamp_dabs(&[dab]);
     // (32,10): inside the dab radius (dy = 22 < 30) but ABOVE the rect (y < 22.4) → masked = white.
@@ -12391,6 +12401,7 @@ fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 8.0,
     };
     t.stamp_dabs(&[dab]);
     assert_ne!(
@@ -22812,77 +22823,85 @@ fn the_deposits_wave_travels_through_the_real_stroke() {
     let _ = behind;
 }
 
+/// **A following pattern is a fact of the STROKE, not of the canvas** — so rotating the whole stroke by
+/// 90 degrees must rotate the painting by 90 degrees. That is the property Enio reported missing (*"nenhum
+/// deles consegue o ângulo em direção ao traço, para que as linhas permanecessem paralelas mesmo nas
+/// curvas"*): a Shape pinned to the canvas keeps its pattern pointing the same way while the path turns
+/// under it, and on a curve the stamps cross instead of continuing.
+///
+/// The oracle is a whole-canvas comparison, which needs no feature detection and cannot be fooled by a
+/// pattern whose lines happen to run along or across the stroke. A 90-degree turn about the canvas centre
+/// maps pixel centres exactly onto pixel centres (`B[py][px]` is `A[px][N-1-py]`), so no resampling enters
+/// and the residual is only the engine's own float asymmetry.
+///
+/// ⚠️ This replaces a pair of `assert_ne!` gates. Byte-inequality is satisfied by ANY difference — and it
+/// was: with the frame stuck on the static Angle, Flow still added its arc-length term and still skipped
+/// the footprint, so the canvas always differed from both Off and Rake, and both gates passed over a Flow
+/// that rendered identically to Off. Measured, the "difference" the old gate accepted was **0.55 %** of
+/// texels. The gate measured *that something changed*; the artist measured *which way the lines point*.
 #[test]
-fn shape_flow_reaches_the_paint_and_differs_from_rake() {
-    // End-to-end wiring: the engine stamps `Dab::arc_len`, `stamp_dabs_*` carries it into the Shape basis
-    // via `with_arc_len`, and the FLOW sampler lays the pattern in the stroke frame. On a CURVE, FLOW
-    // (arc-length continuous) must reach the paint and produce a DIFFERENT result from the per-dab Rake and
-    // from the static Shape. (The sampler gate `flow_gives_adjacent_dabs_a_continuous_phase` proves it is
-    // *continuous*; this proves the whole chain reaches the canvas.)
+fn a_following_shape_paints_the_stroke_not_the_canvas() {
     use ph2d_painter_brush::{StrokeMethod, TextureKind};
-    let paint = |rake: bool, flow: bool| {
-        let mut t = white_canvas(64, 8.0);
+    const N: usize = 96;
+    // The quarter circle, and the SAME curve turned 90 degrees about the canvas centre.
+    let path = |k: f32| {
+        let a = k * std::f32::consts::FRAC_PI_2;
+        [14.0 + 56.0 * a.cos(), 14.0 + 56.0 * a.sin()]
+    };
+    let turned = |k: f32| {
+        let p = path(k);
+        [p[1], N as f32 - p[0]]
+    };
+    let paint = |rake: bool, flow: bool, turn: bool| {
+        let mut t = white_canvas(N as u32, 9.0);
         t.paint.brush.shape.kind = TextureKind::Stripes;
-        t.paint.brush.shape.size = [1.2, 1.2];
-        t.paint.brush.shape.params[1] = 0.7; // stripe frequency
+        t.paint.brush.shape.size = [2.0, 2.0];
         t.paint.brush.shape.rake = rake;
         t.paint.brush.shape.flow = flow;
         t.paint.brush.stroke_method = StrokeMethod::Space;
-        let pt = |k: f32| {
-            let a = k * std::f32::consts::FRAC_PI_2;
-            [12.0 + 40.0 * a.cos(), 12.0 + 40.0 * a.sin()]
-        };
-        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
-        for i in 1..=30 {
-            t.on_canvas_pointer(cp(pt(i as f32 / 30.0), PointerPhase::Move));
+        let at = |k: f32| if turn { turned(k) } else { path(k) };
+        t.on_canvas_pointer(cp(at(0.0), PointerPhase::Down));
+        for i in 1..=60 {
+            t.on_canvas_pointer(cp(at(i as f32 / 60.0), PointerPhase::Move));
         }
-        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
+        t.on_canvas_pointer(cp(at(1.0), PointerPhase::Up));
         (*t.canvas_rgba).clone()
     };
-    assert_ne!(
-        paint(false, true),
-        paint(false, false),
-        "FLOW must reach the paint (differs from a static Shape)"
-    );
-    assert_ne!(
-        paint(false, true),
-        paint(true, false),
-        "FLOW (arc-length) must differ from the per-dab Rake"
-    );
-}
-
-#[test]
-fn shape_flow_streams_an_image_tip_along_the_stroke() {
-    // FLOW on an IMAGE Shape streams the tip along the path (`sample_shape`'s flow branch: tile along,
-    // clamp across) — a pattern-line brush. Prove that path is live: on a curve the image FLOW reaches the
-    // paint and differs from both the static tip and the per-dab Rake (so the branch is not dead code).
-    use ph2d_painter_brush::StrokeMethod;
-    let bar = directional_bar();
-    let paint = |rake: bool, flow: bool| {
-        let mut t = white_canvas(64, 8.0);
-        t.set_brush_shape_image(bar.clone(), 8, 8);
-        t.paint.brush.shape.rake = rake;
-        t.paint.brush.shape.flow = flow;
-        t.paint.brush.stroke_method = StrokeMethod::Space;
-        let pt = |k: f32| {
-            let a = k * std::f32::consts::FRAC_PI_2;
-            [12.0 + 40.0 * a.cos(), 12.0 + 40.0 * a.sin()]
-        };
-        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
-        for i in 1..=30 {
-            t.on_canvas_pointer(cp(pt(i as f32 / 30.0), PointerPhase::Move));
+    // Mean |difference| over the painted region between the turned painting and the turn of the painting.
+    let residual = |rake: bool, flow: bool| {
+        let a = paint(rake, flow, false);
+        let b = paint(rake, flow, true);
+        let (mut sum, mut n) = (0.0f64, 0usize);
+        for py in 0..N {
+            for px in 0..N {
+                let vb = f32::from(b[(py * N + px) * 4]);
+                let va = f32::from(a[(px * N + (N - 1 - py)) * 4]);
+                // Only where SOMETHING was painted in either image (white canvas = 255).
+                if va < 250.0 || vb < 250.0 {
+                    sum += f64::from((va - vb).abs());
+                    n += 1;
+                }
+            }
         }
-        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
-        (*t.canvas_rgba).clone()
+        assert!(n > 500, "fixture painted almost nothing ({n} texels)");
+        sum / n as f64
     };
-    assert_ne!(
-        paint(false, true),
-        paint(false, false),
-        "image FLOW must reach the paint (differs from the static tip)"
+    let flow = residual(false, true);
+    let rake = residual(true, false);
+    let off = residual(false, false);
+    println!("PROBE flow={flow:.1} rake={rake:.1} off={off:.1}");
+    assert!(
+        flow < 0.35 * off,
+        "FLOW must paint the STROKE, not the canvas: turning the stroke left a residual of {flow:.1} \
+         against {off:.1} for a static Shape"
     );
-    assert_ne!(
-        paint(false, true),
-        paint(true, false),
-        "image FLOW (streamed along the stroke) must differ from per-dab Rake"
+    assert!(
+        rake < 0.35 * off,
+        "RAKE must paint the STROKE, not the canvas: residual {rake:.1} against {off:.1}"
+    );
+    assert!(
+        off > 8.0,
+        "control: a NON-following Shape is pinned to the canvas, so turning the stroke must NOT turn \
+         the painting — if this residual is small the oracle cannot tell following from static ({off:.1})"
     );
 }

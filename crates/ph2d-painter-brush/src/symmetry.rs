@@ -220,6 +220,7 @@ mod tests {
             rotation: [1.0, 0.0],
             dir: [1.0, 0.0],
             arc_len: 0.0,
+            stroke_radius_px: 10.0,
         }
     }
 

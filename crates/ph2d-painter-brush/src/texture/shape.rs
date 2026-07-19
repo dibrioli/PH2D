@@ -128,13 +128,13 @@ pub fn render_shape_preview(
         params,
     };
     // The dab flatten/rotate deforms the preview exactly as the engine deforms the dab.
-    let basis = super::dab_basis(
+    // The preview has no path, so the FLOW frame is `Static` (and `flow` is forced off above anyway).
+    let basis = super::shape_basis(
         &shape,
-        [0.0, 0.0],
         &mut 0u64,
         [1.0, 1.0],
-        [1.0, 0.0],
         footprint,
+        super::ShapeFrame::Static,
     );
     let n = falloff_lut.len().max(1);
     let (inv_w, inv_h) = (2.0 / w.max(1) as f32, 2.0 / h.max(1) as f32);
@@ -170,13 +170,19 @@ pub fn sample_shape(
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let r = radius.max(1e-3);
     if s.flow {
-        // FLOW: stream the tip ALONG the stroke — the along coordinate (arc-length + tangent projection)
-        // TILES the image (period 2, one copy per `[-1,1]` span) so the tip repeats down the path with a
-        // phase continuous across dabs; the across coordinate (perpendicular) CLAMPS to the tip, masking to
-        // the stroke width. A pattern-line brush; a non-tileable tip shows a seam (use a tileable image).
-        let d = [(p[0] - center[0]) / r, (p[1] - center[1]) / r];
-        let along = (b.arc_len / r + d[0] * b.u[0] + d[1] * b.u[1]) * sx + s.offset[0];
-        let across = (d[0] * b.v[0] + d[1] * b.v[1]) * sy + s.offset[1];
+        // FLOW: stream the tip ALONG the stroke — the along coordinate (arc-length + the pixel's position
+        // in the tangent-oriented footprint) TILES the image (period 2, one copy per `[-1,1]` span) so the
+        // tip repeats down the path with a phase continuous across dabs; the across coordinate
+        // (perpendicular) CLAMPS to the tip, masking to the stroke width. A pattern-line brush; a
+        // non-tileable tip shows a seam (use a tileable image). Same frame as the procedural sibling in
+        // [`crate::texture::sample`] — the footprint carries the tangent, the unit is stroke-constant.
+        let (arc_len, unit) = b.frame.parts();
+        let f = b
+            .footprint
+            .apply([(p[0] - center[0]) / unit, (p[1] - center[1]) / unit]);
+        let rel = [arc_len / unit + f[0], f[1]];
+        let along = (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0];
+        let across = (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1];
         if across.abs() > 1.0 {
             return 0.0; // outside the tip's height → past the stroke edge
         }
@@ -189,7 +195,7 @@ pub fn sample_shape(
     let f = b
         .footprint
         .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r]);
-    shape_value(s, b, [f[0] * sx, f[1] * sy], image)
+    shape_value(s, b, f, [sx, sy], image)
 }
 
 /// As [`sample_shape`] but at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the scale-invariant
@@ -206,7 +212,7 @@ pub fn sample_shape_unit(
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let f = b.footprint.apply([u, v]);
-    shape_value(s, b, [f[0] * sx, f[1] * sy], image)
+    shape_value(s, b, f, [sx, sy], image)
 }
 
 /// Shared core of [`sample_shape`] / [`sample_shape_unit`]: rotate the scaled footprint coord `rel`
@@ -217,11 +223,13 @@ fn shape_value(
     s: &TextureSettings,
     b: &TexDabBasis,
     rel: [f32; 2],
+    size: [f32; 2],
     image: Option<&ImageMask>,
 ) -> f32 {
+    // Size scales AFTER the rotation (Blender's order) — see the note in `crate::texture::sample`.
     let tex = [
-        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
-        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
+        (rel[0] * b.u[0] + rel[1] * b.u[1]) * size[0] + s.offset[0],
+        (rel[0] * b.v[0] + rel[1] * b.v[1]) * size[1] + s.offset[1],
     ];
     if tex[0].abs() > 1.0 || tex[1].abs() > 1.0 {
         return 0.0;
@@ -258,11 +266,10 @@ pub fn sample_shape_rgb_unit(
     }
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    let f = b.footprint.apply([u, v]);
-    let rel = [f[0] * sx, f[1] * sy];
+    let rel = b.footprint.apply([u, v]);
     let tex = [
-        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
-        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
+        (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
+        (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
     ];
     if tex[0].abs() > 1.0 || tex[1].abs() > 1.0 {
         return [0.0; 3];

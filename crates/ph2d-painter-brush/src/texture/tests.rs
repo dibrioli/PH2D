@@ -32,12 +32,62 @@ fn sample_tiled_honours_angle() {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+/// A live dab on a straight-ish stroke, for the FLOW gates: the REAL composition the product uses —
+/// `dab_rotor` (Jitter Rotate ∘ stroke-follow) → `dab_footprint` → `shape_basis` → `sample`.
+fn flow_probe(
+    shape: &TextureSettings,
+    tan: [f32; 2],
+    center: [f32; 2],
+    arc_len: f32,
+    radius_px: f32,
+    stroke_radius_px: f32,
+    px: i64,
+    py: i64,
+) -> f32 {
+    let spec = BrushSpec {
+        shape: *shape,
+        radius_px: stroke_radius_px,
+        ..BrushSpec::default()
+    };
+    let d = crate::Dab {
+        center,
+        radius_px,
+        coverage: 1.0,
+        color: [1.0; 3],
+        rotation: [1.0, 0.0],
+        dir: tan,
+        arc_len,
+        stroke_radius_px,
+    };
+    let fp = spec.dab_footprint(spec.dab_rotor(&d));
+    let b = shape_basis(
+        &spec.shape,
+        &mut 0u64,
+        [64.0, 64.0],
+        fp,
+        ShapeFrame::Stroke {
+            arc_len,
+            unit_px: stroke_radius_px,
+        },
+    );
+    sample(&spec.shape, &b, px, py, center, radius_px, None)
+}
+
 /// FLOW (Shape slot, Enio 2026-07-19): the fix for "the pattern's lines don't stay parallel through
 /// curves". A per-stamp Rake resets the pattern's phase at each dab, so neighbouring stamps disagree on the
 /// phase and interfere on curves; FLOW lays the pattern in the STROKE frame (arc-length along the path), so
-/// two adjacent dabs sample the SAME phase at a shared pixel and the lines stay continuous. This pins that
-/// property at the sampler: on a straight stroke, dab 0 (arc 0) and dab 1 (arc = spacing) must AGREE at
-/// every shared pixel under FLOW, and DIFFER without it (the phase reset FLOW exists to remove).
+/// two adjacent dabs sample the SAME phase at a shared pixel and the lines stay continuous.
+///
+/// ⚠️ **The two dabs have DIFFERENT radii**, because `Dynamics::default()` ships `size_pressure: true` and
+/// so every pen stroke varies the radius continuously. The along-coordinate's numerator is the pixel's
+/// absolute position along the path — it telescopes — so dividing it by the *live* radius re-phased the
+/// whole accumulated history by `arc_len·Δ(1/r)`, an error growing the further into the stroke you are
+/// (measured 0.42 tile units, ~21 % of a Stripes period). A constant-radius fixture cannot contain that.
+///
+/// ⚠️ And a DIAGONAL tangent, because with a rightward one the tangent equals `rotate_by_degrees(0)` and a
+/// frame that wrongly ignores the tangent is indistinguishable — the degeneracy that kept the first version
+/// of this gate green while Flow rendered as Off.
 #[test]
 fn flow_gives_adjacent_dabs_a_continuous_phase() {
     let mk = |flow: bool| TextureSettings {
@@ -46,39 +96,31 @@ fn flow_gives_adjacent_dabs_a_continuous_phase() {
         size: [1.0, 1.0],
         ..TextureSettings::default()
     };
-    let (r, spacing) = (12.0f32, 5.0f32);
-    // ⚠️ A DIAGONAL tangent on purpose: with a rightward one it equals `rotate_by_degrees(0)`, so a Flow
-    // frame that wrongly falls back to the static Angle is indistinguishable — the degeneracy that kept
-    // this gate green while Flow rendered as Off (Enio 2026-07-19). Here the two differ.
+    let (unit, spacing) = (12.0f32, 5.0f32);
     let tan = [0.6f32, 0.8];
     let c0 = [30.0f32, 30.0];
     let c1 = [30.0 + spacing * tan[0], 30.0 + spacing * tan[1]]; // one spacing ALONG the tangent
-    let val = |st: &TextureSettings, arc: f32, c: [f32; 2], px: i64, py: i64| {
-        let b = dab_basis(
-            st,
-            tan,
-            &mut 0u64,
-            [64.0, 64.0],
-            [1.0, 0.0],
-            FootprintDeform::identity(),
-        )
-        .with_arc_len(arc);
-        sample(st, &b, px, py, c, r, None)
-    };
+    // Deep into the stroke (the error scales with arc-length) and with the radius breathing, as a pen does.
+    let arc0 = 200.0f32;
+    let (r0, r1) = (unit, unit * 0.85);
     let (flow, off) = (mk(true), mk(false));
     let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
     for py in 24..=36 {
         for px in 26..=38 {
-            let f = (val(&flow, 0.0, c0, px, py) - val(&flow, spacing, c1, px, py)).abs();
+            let f = (flow_probe(&flow, tan, c0, arc0, r0, unit, px, py)
+                - flow_probe(&flow, tan, c1, arc0 + spacing, r1, unit, px, py))
+            .abs();
             flow_max = flow_max.max(f);
             // Control: the SAME two dabs with Flow off — arc is ignored, so the phase resets per stamp.
-            let o = (val(&off, 0.0, c0, px, py) - val(&off, 0.0, c1, px, py)).abs();
+            let o = (flow_probe(&off, tan, c0, arc0, r0, unit, px, py)
+                - flow_probe(&off, tan, c1, arc0 + spacing, r1, unit, px, py))
+            .abs();
             off_max = off_max.max(o);
         }
     }
     assert!(
         flow_max < 1e-3,
-        "FLOW: adjacent dabs must sample the SAME phase (continuous), max diff was {flow_max}"
+        "FLOW: adjacent dabs must sample the SAME phase (continuous) even as the radius breathes, max diff was {flow_max}"
     );
     assert!(
         off_max > 0.2,
@@ -86,85 +128,184 @@ fn flow_gives_adjacent_dabs_a_continuous_phase() {
     );
 }
 
-/// FLOW is the tangent rotation **plus** arc-length continuity — it must NOT fall through to the static
-/// Angle. It did (`dab_basis` gated the heading on `s.rake` alone), so with Follow=Flow the frame `u` was
-/// the fixed Angle: the "along-the-stroke" coordinate pointed nowhere near the stroke and **Flow rendered
-/// identically to Off** (Enio's smoke, 2026-07-19).
+/// **The stroke tangent enters a dab exactly ONCE — in the frame, never in a slot.**
 ///
-/// ⚠️ The fixture is deliberately NON-DEGENERATE: a DOWNWARD tangent with Angle `0`, so the tangent
-/// `[0,1]` differs from `rotate_by_degrees(0) = [1,0]`. The continuity gate below used a RIGHTWARD
-/// tangent, where the two coincide — which is exactly why it stayed green over the broken code.
+/// This is the whole shape of the rotation model (Blender carries one `brush_rotation` and applies it
+/// once). Following slots orient the dab FOOTPRINT via [`BrushSpec::dab_rotor`]; `dab_basis` then applies
+/// the slot's **Angle** and nothing else. Applying the tangent in both places rotates a following tip by
+/// twice the tangent; applying it in neither is the bug where Flow rendered identically to Off.
 #[test]
-fn flow_rotates_to_the_stroke_tangent_not_the_static_angle() {
+fn the_stroke_tangent_enters_the_dab_exactly_once() {
+    let follows = |shape_rake, shape_flow, grain_rake| BrushSpec {
+        shape: TextureSettings {
+            kind: TextureKind::Stripes,
+            rake: shape_rake,
+            flow: shape_flow,
+            ..TextureSettings::default()
+        },
+        texture: TextureSettings {
+            kind: TextureKind::Stripes,
+            rake: grain_rake,
+            ..TextureSettings::default()
+        },
+        ..BrushSpec::default()
+    };
+    let up = [0.0f32, 5.0]; // NOT the +x reference, so "rotated" and "not rotated" are distinguishable
+    // Each of the three following flags puts the tangent in the FRAME.
+    for (rake, flow, grain) in [
+        (true, false, false),
+        (false, true, false),
+        (false, false, true),
+    ] {
+        let rotor = follows(rake, flow, grain).follow_rotor(up);
+        assert!(
+            (rotor[0]).abs() < 1e-6 && (rotor[1] - 1.0).abs() < 1e-6,
+            "a following slot must turn the dab frame onto the tangent, got {rotor:?}"
+        );
+    }
+    // No follower ⇒ the identity, BIT-exact (a non-following brush must be untouched by this machinery).
+    assert_eq!(follows(false, false, false).follow_rotor(up), [1.0, 0.0]);
+    // An unset heading (the stroke's first dab) ⇒ the identity too, never a random opening angle.
+    assert_eq!(
+        follows(true, false, false).follow_rotor([0.0, 0.0]),
+        [1.0, 0.0]
+    );
+    // ...and the SLOT frame carries the Angle ALONE — never the tangent, or a following tip double-rotates.
     let s = TextureSettings {
         kind: TextureKind::Stripes,
+        rake: true,
         flow: true,
         angle_deg: 0,
         ..TextureSettings::default()
     };
-    let mut rng = 1;
-    let b = basis(&s, [0.0, 5.0], &mut rng); // tangent points +y
-    assert!(
-        (b.u[0] - 0.0).abs() < 1e-6 && (b.u[1] - 1.0).abs() < 1e-6,
-        "FLOW must rotate to the stroke tangent (like Rake), got u = {:?}",
-        b.u
-    );
-    // And the Angle still composes ON TOP of the heading, exactly as it does for Rake.
-    let s90 = TextureSettings { angle_deg: 90, ..s };
-    let b90 = basis(&s90, [1.0, 0.0], &mut rng); // rightward tangent + 90° ⇒ points +y
-    assert!(
-        (b90.u[0] - 0.0).abs() < 1e-3 && (b90.u[1] - 1.0).abs() < 1e-3,
-        "FLOW composes Angle on top of the heading, got u = {:?}",
-        b90.u
+    let b = dab_basis(&s, &mut 1u64, [64.0, 64.0], FootprintDeform::identity());
+    assert_eq!(
+        b.u,
+        rotate_by_degrees(0),
+        "the slot frame is Angle-only; the tangent belongs to the footprint"
     );
 }
 
-/// The `with_arc_len` builder is the ONLY channel the per-dab arc-length rides into the FLOW frame — the
-/// per-pixel Shape path calls it with `d.arc_len`. This locks that the builder stores the value AND the
-/// sampler reads it: two frames that differ ONLY in arc-length must sample different phases under FLOW
-/// (and — the control — must be byte-identical WITHOUT FLOW, since a non-Flow slot ignores arc-length).
+/// **D1 (Enio 2026-07-19): a following tip TURNS WITH THE STROKE.** The Flatten & Rotate gizmo is ours,
+/// not Blender's (its texture-paint footprint is radially symmetric, so it has no orientation to disagree
+/// about). Ours has one, and while the tangent lived in the slot rotation the elliptical nib stayed pinned
+/// to `dab_angle_deg` while the pattern inside it swung to the tangent — and because the flatten stretch
+/// sits BETWEEN the two rotations they do not commute, so a raked calligraphic nib came out sheared
+/// differently at every point of a curve. The falloff reads the same footprint, so this pins the whole tip.
 #[test]
-fn with_arc_len_moves_the_flow_phase_and_is_inert_without_flow() {
+fn a_following_tip_turns_the_flattened_footprint_with_the_stroke() {
+    let spec = BrushSpec {
+        dab_flatten: 0.8,
+        dab_angle_deg: 0,
+        shape: TextureSettings {
+            kind: TextureKind::Stripes,
+            rake: true,
+            ..TextureSettings::default()
+        },
+        ..BrushSpec::default()
+    };
+    let probe = |dir: [f32; 2]| {
+        let d = crate::Dab {
+            center: [0.0, 0.0],
+            radius_px: 10.0,
+            coverage: 1.0,
+            color: [1.0; 3],
+            rotation: [1.0, 0.0],
+            dir,
+            arc_len: 0.0,
+            stroke_radius_px: 10.0,
+        };
+        spec.dab_footprint(spec.dab_rotor(&d))
+    };
+    // A point one radius off along +y: inside a +x-major ellipse it is FAR (the minor axis is squeezed),
+    // and once the nib turns to +y it lies along the MAJOR axis and reads near the rim instead.
+    let across = probe([1.0, 0.0]).falloff_t(0.0, 1.0);
+    let along = probe([0.0, 1.0]).falloff_t(0.0, 1.0);
+    assert!(
+        across > 4.0 && (along - 1.0).abs() < 1e-4,
+        "the flattened nib must turn with the stroke: across {across}, along {along}"
+    );
+    // A brush with NOTHING following is untouched — the two headings give the identical footprint.
+    let still = BrushSpec {
+        shape: TextureSettings {
+            kind: TextureKind::Stripes,
+            ..TextureSettings::default()
+        },
+        ..spec
+    };
+    let fp = |dir: [f32; 2]| {
+        let d = crate::Dab {
+            center: [0.0, 0.0],
+            radius_px: 10.0,
+            coverage: 1.0,
+            color: [1.0; 3],
+            rotation: [1.0, 0.0],
+            dir,
+            arc_len: 0.0,
+            stroke_radius_px: 10.0,
+        };
+        still.dab_footprint(still.dab_rotor(&d))
+    };
+    assert_eq!(fp([1.0, 0.0]), fp([0.0, 1.0]));
+}
+
+/// The [`ShapeFrame`] is a **parameter of the Shape door**, not a builder — so a Shape route cannot
+/// forget it. Five routes (relief, sculpt, smear, watercolor, blur/clone) once did exactly that, and the
+/// failure is silent: `arc_len` stays `0` on every dab, so Flow degrades to the per-stamp phase reset it
+/// exists to remove while the dropdown still reads "Flow". This locks that the frame reaches the sampler
+/// (a `Static` frame and a `Stroke` frame must differ under Flow) and is inert without it.
+#[test]
+fn the_shape_frame_reaches_the_sampler_and_is_inert_without_flow() {
     let mk = |flow: bool| TextureSettings {
         kind: TextureKind::Stripes,
         flow,
         size: [1.0, 1.0],
         ..TextureSettings::default()
     };
-    let frame = |s: &TextureSettings, arc: f32| {
-        dab_basis(
-            s,
-            [1.0, 0.0],
-            &mut 0u64,
-            [64.0, 64.0],
-            [1.0, 0.0],
-            FootprintDeform::identity(),
-        )
-        .with_arc_len(arc)
+    let frame = |s: &TextureSettings, f: ShapeFrame| {
+        shape_basis(s, &mut 0u64, [64.0, 64.0], FootprintDeform::identity(), f)
     };
     let (flow, off) = (mk(true), mk(false));
     let c = [30.0f32, 30.0];
+    let stroke = ShapeFrame::Stroke {
+        arc_len: 6.0,
+        unit_px: 12.0,
+    };
     let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
     for py in 24..=36 {
         for px in 26..=38 {
             // Two frames differing ONLY in arc-length. Half a stripe period apart guarantees a big move.
-            let f = (sample(&flow, &frame(&flow, 0.0), px, py, c, 12.0, None)
-                - sample(&flow, &frame(&flow, 6.0), px, py, c, 12.0, None))
+            let f = (sample(
+                &flow,
+                &frame(&flow, ShapeFrame::Static),
+                px,
+                py,
+                c,
+                12.0,
+                None,
+            ) - sample(&flow, &frame(&flow, stroke), px, py, c, 12.0, None))
             .abs();
             flow_max = flow_max.max(f);
-            let o = (sample(&off, &frame(&off, 0.0), px, py, c, 12.0, None)
-                - sample(&off, &frame(&off, 6.0), px, py, c, 12.0, None))
+            let o = (sample(
+                &off,
+                &frame(&off, ShapeFrame::Static),
+                px,
+                py,
+                c,
+                12.0,
+                None,
+            ) - sample(&off, &frame(&off, stroke), px, py, c, 12.0, None))
             .abs();
             off_max = off_max.max(o);
         }
     }
     assert!(
         flow_max > 0.2,
-        "with_arc_len must move the FLOW phase (the sampler reads it), max move was {flow_max}"
+        "the stroke frame must move the FLOW phase (the sampler reads it), max move was {flow_max}"
     );
     assert!(
         off_max == 0.0,
-        "control: arc-length is inert without FLOW (a non-Flow slot never reads it), got {off_max}"
+        "control: the frame is inert without FLOW (a non-Flow slot never reads it), got {off_max}"
     );
 }
 
@@ -183,15 +324,8 @@ use crate::spec::BrushSpec;
 
 /// `dab_basis` with a default 64×64 canvas — the rotation / jitter tests don't depend on the canvas
 /// size (only the Stencil mapping does, and those tests pass it explicitly).
-fn basis(s: &TextureSettings, dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
-    dab_basis(
-        s,
-        dir,
-        rng,
-        [64.0, 64.0],
-        [1.0, 0.0],
-        FootprintDeform::identity(),
-    )
+fn basis(s: &TextureSettings, rng: &mut u64) -> TexDabBasis {
+    dab_basis(s, rng, [64.0, 64.0], FootprintDeform::identity())
 }
 
 /// Timing: how much does the per-pixel texture sample add to a LARGE dab stamp (the Anchored
@@ -216,14 +350,7 @@ fn perf_texture_stamp_cost_on_a_large_dab() {
     let runs = 8;
     let bench = |label: &str, spec: &BrushSpec, buf: &mut [u8]| {
         let mut rng = 1u64;
-        let b = dab_basis(
-            &spec.texture,
-            [1.0, 0.0],
-            &mut rng,
-            canvas,
-            [1.0, 0.0],
-            FootprintDeform::identity(),
-        );
+        let b = dab_basis(&spec.texture, &mut rng, canvas, FootprintDeform::identity());
         let t0 = Instant::now();
         for _ in 0..runs {
             let _ = stamp_dab_textured(
@@ -293,104 +420,236 @@ fn dab_basis_angle_is_deterministic() {
     };
     let mut r1 = 123;
     let mut r2 = 123;
-    assert_eq!(
-        basis(&s, [0.0, 0.0], &mut r1),
-        basis(&s, [0.0, 0.0], &mut r2)
+    assert_eq!(basis(&s, &mut r1), basis(&s, &mut r2));
+}
+
+/// **Rake through the real composition.** The tangent no longer appears in the slot frame (see
+/// `the_stroke_tangent_enters_the_dab_exactly_once`), so the property has to be asserted where it now
+/// lives: the SAMPLED pattern must turn with the stroke. This is the stronger oracle anyway — it is what
+/// the artist sees, and it survives the rotation moving house again.
+#[test]
+fn rake_turns_the_sampled_pattern_with_the_stroke() {
+    let spec = |rake: bool| BrushSpec {
+        shape: TextureSettings {
+            kind: TextureKind::Stripes,
+            rake,
+            angle_deg: 0,
+            size: [1.0, 1.0],
+            ..TextureSettings::default()
+        },
+        radius_px: 12.0,
+        ..BrushSpec::default()
+    };
+    let probe = |rake: bool, dir: [f32; 2], px: i64, py: i64| {
+        let sp = spec(rake);
+        let d = crate::Dab {
+            center: [30.0, 30.0],
+            radius_px: 12.0,
+            coverage: 1.0,
+            color: [1.0; 3],
+            rotation: [1.0, 0.0],
+            dir,
+            arc_len: 0.0,
+            stroke_radius_px: 12.0,
+        };
+        let fp = sp.dab_footprint(sp.dab_rotor(&d));
+        let bs = shape_basis(&sp.shape, &mut 0u64, [64.0, 64.0], fp, ShapeFrame::Static);
+        sample(&sp.shape, &bs, px, py, d.center, d.radius_px, None)
+    };
+    let (mut on_max, mut off_max) = (0.0f32, 0.0f32);
+    for py in 24..=36 {
+        for px in 24..=36 {
+            // Rake ON: a +x stroke and a +y stroke must lay the stripes differently.
+            on_max = on_max
+                .max((probe(true, [1.0, 0.0], px, py) - probe(true, [0.0, 1.0], px, py)).abs());
+            // Rake OFF: the heading must not reach the pattern AT ALL.
+            off_max = off_max
+                .max((probe(false, [1.0, 0.0], px, py) - probe(false, [0.0, 1.0], px, py)).abs());
+        }
+    }
+    assert!(
+        on_max > 0.2,
+        "Rake must turn the pattern with the stroke, max move {on_max}"
+    );
+    assert!(
+        off_max == 0.0,
+        "Rake off ⇒ the heading is inert, bit-for-bit (got {off_max})"
     );
 }
 
-#[test]
-fn rake_uses_the_stroke_tangent() {
-    let s = TextureSettings {
-        kind: TextureKind::Noise,
-        rake: true,
-        angle_deg: 0,
-        ..Default::default()
-    };
-    let mut rng = 1;
-    let b = basis(&s, [0.0, 5.0], &mut rng); // tangent points +y
-    // u should align with the (normalised) tangent.
-    assert!((b.u[0] - 0.0).abs() < 1e-6 && (b.u[1] - 1.0).abs() < 1e-6);
-}
-
+/// A degenerate heading (the stroke's first dab, before the warm-up settles) must fall back to the plain
+/// Angle frame — never to a random opening angle.
 #[test]
 fn rake_falls_back_to_angle_for_zero_tangent() {
-    let s = TextureSettings {
-        kind: TextureKind::Noise,
-        rake: true,
-        angle_deg: 0,
-        ..Default::default()
+    let sp = BrushSpec {
+        shape: TextureSettings {
+            kind: TextureKind::Noise,
+            rake: true,
+            angle_deg: 0,
+            ..TextureSettings::default()
+        },
+        ..BrushSpec::default()
     };
-    let mut rng = 1;
-    let b = basis(&s, [0.0, 0.0], &mut rng); // degenerate tangent
-    assert_eq!(b.u, [1.0, 0.0], "zero tangent ⇒ angle 0 ⇒ (1,0)");
+    assert_eq!(
+        sp.follow_rotor([0.0, 0.0]),
+        [1.0, 0.0],
+        "zero tangent ⇒ angle 0 ⇒ (1,0)"
+    );
+    assert_eq!(
+        sp.dab_footprint(sp.follow_rotor([0.0, 0.0])),
+        sp.footprint_deform(),
+        "and the frame is the plain brush footprint"
+    );
 }
 
+/// With no slot following, the per-dab heading (`Dab::dir`) must not touch the dab frame at all — the
+/// byte-identity baseline for every brush that does not ask to follow the stroke.
 #[test]
-fn rake_off_ignores_the_heading_byte_identical() {
-    // With Rake OFF the per-dab heading (Dab::dir) must not touch the texture frame at all: the frame
-    // for any heading equals the frame for a zero heading. This is the guarantee that the new heading
-    // plumbing leaves a non-Rake brush bit-for-bit unchanged (the byte-identity baseline).
+fn no_follower_ignores_the_heading_byte_identical() {
     let s = TextureSettings {
         kind: TextureKind::Noise,
         rake: false,
         angle_deg: 37,
         ..Default::default()
     };
+    let sp = BrushSpec {
+        shape: s,
+        texture: s,
+        ..BrushSpec::default()
+    };
+    assert_eq!(sp.follow_rotor([0.0, 1.0]), sp.follow_rotor([0.0, 0.0]));
     let (mut a, mut b) = (1u64, 1u64);
-    let with_heading = basis(&s, [0.0, 1.0], &mut a);
-    let zero_heading = basis(&s, [0.0, 0.0], &mut b);
-    assert_eq!(
-        with_heading, zero_heading,
-        "Rake off ⇒ the heading is ignored, frame is identical"
-    );
+    assert_eq!(basis(&s, &mut a), basis(&s, &mut b));
     // And it is the plain Angle frame, not the tangent.
-    assert_eq!(with_heading.u, rotate_by_degrees(37));
+    assert_eq!(basis(&s, &mut a).u, rotate_by_degrees(37));
 }
 
+/// **Jitter Rotate composes with the stroke-follow rotation, it does not replace it.** Both are per-dab
+/// spins of the SAME frame, so [`BrushSpec::dab_rotor`] must be their complex product — and with no
+/// jitter it must be the bare follow rotor (the no-jitter path stays bit-identical).
 #[test]
-fn jitter_rotate_composes_on_top_of_the_rake_heading() {
-    // Jitter Rotate (`extra_rot`) must compose ON TOP of the Rake base, not replace it: the final `u`
-    // equals the rake heading rotated by the jitter vector (a 2D rotation = complex multiply). Proves
-    // the new heading coexists with Jitter Rotate exactly as the old reconstructed direction did.
-    let s = TextureSettings {
-        kind: TextureKind::Noise,
-        rake: true,
-        angle_deg: 0,
-        ..Default::default()
+fn jitter_rotate_composes_on_top_of_the_follow_rotor() {
+    let sp = BrushSpec {
+        shape: TextureSettings {
+            kind: TextureKind::Noise,
+            rake: true,
+            angle_deg: 0,
+            ..TextureSettings::default()
+        },
+        ..BrushSpec::default()
     };
-    let heading = [0.0, 1.0]; // +y
+    let heading = [0.0f32, 1.0]; // +y
     let extra = rotate_by_degrees(30); // a 30° Jitter Rotate
-    let mut rng = 1;
-    let b = dab_basis(
-        &s,
-        heading,
-        &mut rng,
-        [64.0, 64.0],
-        extra,
-        FootprintDeform::identity(),
-    );
-    // Expected: heading (the rake base) complex-multiplied by `extra`.
+    let dab = |rotation: [f32; 2]| crate::Dab {
+        center: [0.0, 0.0],
+        radius_px: 10.0,
+        coverage: 1.0,
+        color: [1.0; 3],
+        rotation,
+        dir: heading,
+        arc_len: 0.0,
+        stroke_radius_px: 10.0,
+    };
+    let got = sp.dab_rotor(&dab(extra));
     let want = [
-        heading[0] * extra[0] - heading[1] * extra[1],
-        heading[0] * extra[1] + heading[1] * extra[0],
+        extra[0] * heading[0] - extra[1] * heading[1],
+        extra[0] * heading[1] + extra[1] * heading[0],
     ];
     assert!(
-        (b.u[0] - want[0]).abs() < 1e-6 && (b.u[1] - want[1]).abs() < 1e-6,
-        "jitter rotates the rake heading, not replaces it: got {:?} want {want:?}",
-        b.u
+        (got[0] - want[0]).abs() < 1e-6 && (got[1] - want[1]).abs() < 1e-6,
+        "jitter rotates the follow rotor, not replaces it: got {got:?} want {want:?}"
     );
-    // Identity jitter leaves the rake base untouched (the no-jitter path stays bit-identical).
-    let mut rng2 = 1;
-    let id = dab_basis(
-        &s,
+    assert_eq!(
+        sp.dab_rotor(&dab([1.0, 0.0])),
         heading,
-        &mut rng2,
-        [64.0, 64.0],
-        [1.0, 0.0],
-        FootprintDeform::identity(),
+        "no jitter ⇒ the bare follow rotor"
     );
-    assert_eq!(id.u, heading, "no jitter ⇒ u is the bare rake heading");
+}
+
+/// **The two canvas-fixed tiling samplers must give the SAME answer.** The Grain's `Tiled` mapping goes
+/// through [`sample`]; the watercolor Paper goes through its own [`sample_tiled`] — two doors onto one
+/// question ("where is this canvas pixel in the tile grid?"), and they disagreed on the SIGN of the Angle
+/// until 2026-07-19: `sample` rotates the coordinate by `-angle` (the transpose form every other rotation
+/// in the engine uses), `tiled.rs` rotated it by `+angle`. Same kind, same mapping, same slider ⇒ the fibre
+/// tilted opposite ways.
+///
+/// ⚠️ The sibling `sample_tiled_honours_angle` cannot catch this: it compares `sample_tiled_rot` with
+/// `sample_tiled`, which live in the SAME file and share the sign. Self-consistency is not agreement.
+#[test]
+fn the_two_tiling_samplers_agree_on_which_way_the_angle_turns() {
+    for angle_deg in [0u16, 17, 45, 90, 200] {
+        let s = TextureSettings {
+            kind: TextureKind::Stripes,
+            mapping: TextureMapping::Tiled,
+            angle_deg,
+            size: [3.0, 3.0],
+            ..TextureSettings::default()
+        };
+        let b = dab_basis(&s, &mut 0u64, [64.0, 64.0], FootprintDeform::identity());
+        for py in (0..64).step_by(7) {
+            for px in (0..64).step_by(7) {
+                let via_sample = sample(&s, &b, px, py, [32.0, 32.0], 16.0, None);
+                let via_tiled = sample_tiled(&s, px, py, None);
+                assert!(
+                    (via_sample - via_tiled).abs() < 1e-6,
+                    "the Grain-Tiled and Paper samplers must agree at angle {angle_deg} \
+                     ({px},{py}): {via_sample} vs {via_tiled}"
+                );
+            }
+        }
+    }
+}
+
+/// **A non-uniform Size + an Angle must ROTATE a stretched pattern, not SHEAR it.**
+///
+/// The oracle is the definition of "rotated": sampling with Angle `t` at a point must equal sampling with
+/// Angle `0` at that point rotated by `-t`. That holds iff the Size scales in the pattern's own frame,
+/// i.e. AFTER the rotation (Blender applies `mtex->size` inside the texture evaluation, downstream of the
+/// rotation). We scaled BEFORE it until 2026-07-19, which stretches along the CANVAS axes: `R·S` instead
+/// of `S·R`, equal only when `S` is uniform — so the defect was invisible at the default Size `[1, 1]`
+/// and at every square Size, and showed only where both knobs were off their defaults.
+#[test]
+fn a_non_uniform_size_rotates_the_pattern_instead_of_shearing_it() {
+    for angle_deg in [17u16, 45, 90] {
+        let rotated = TextureSettings {
+            kind: TextureKind::Stripes,
+            angle_deg,
+            size: [4.0, 1.0], // deliberately NON-uniform: uniform sizes commute and prove nothing
+            ..TextureSettings::default()
+        };
+        let upright = TextureSettings {
+            angle_deg: 0,
+            ..rotated
+        };
+        let br = dab_basis(
+            &rotated,
+            &mut 0u64,
+            [64.0, 64.0],
+            FootprintDeform::identity(),
+        );
+        let bu = dab_basis(
+            &upright,
+            &mut 0u64,
+            [64.0, 64.0],
+            FootprintDeform::identity(),
+        );
+        let rot = rotate_by_degrees(angle_deg);
+        let mut worst = 0.0f32;
+        for j in -8..=8 {
+            for i in -8..=8 {
+                let (u, v) = (i as f32 / 8.0, j as f32 / 8.0);
+                // The SAME point, expressed in the unrotated pattern's frame.
+                let q = [u * rot[0] + v * rot[1], -u * rot[1] + v * rot[0]];
+                let a = sample_unit(&rotated, &br, u, v, None);
+                let b = sample_unit(&upright, &bu, q[0], q[1], None);
+                worst = worst.max((a - b).abs());
+            }
+        }
+        assert!(
+            worst < 1e-5,
+            "Angle {angle_deg} must ROTATE the stretched pattern, not shear it (worst {worst})"
+        );
+    }
 }
 
 // ── Mapping modes (the View/Tiled/Random behavioural distinction) ───────────────────────────
@@ -428,8 +687,8 @@ fn random_mapping_jitters_offset_other_mappings_do_not() {
     };
     let mut s1 = 1;
     let mut s2 = 2;
-    let b1 = basis(&rnd, [0.0, 0.0], &mut s1);
-    let b2 = basis(&rnd, [0.0, 0.0], &mut s2);
+    let b1 = basis(&rnd, &mut s1);
+    let b2 = basis(&rnd, &mut s2);
     assert_ne!(
         b1.jitter, b2.jitter,
         "Random mapping randomises the per-dab offset"
@@ -441,7 +700,7 @@ fn random_mapping_jitters_offset_other_mappings_do_not() {
     };
     let mut s3 = 3;
     assert_eq!(
-        basis(&view, [0.0, 0.0], &mut s3).jitter,
+        basis(&view, &mut s3).jitter,
         [0.0, 0.0],
         "non-Random mappings have no per-dab offset"
     );
@@ -497,14 +756,7 @@ fn stencil_masks_outside_the_rect_and_is_image_fixed() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(
-        &s,
-        [0.0, 0.0],
-        &mut rng,
-        [100.0, 100.0],
-        [1.0, 0.0],
-        FootprintDeform::identity(),
-    );
+    let b = dab_basis(&s, &mut rng, [100.0, 100.0], FootprintDeform::identity());
     // A pixel far outside the rect → masked to 0.
     assert_eq!(
         sample(&s, &b, 5, 5, [5.0, 5.0], 8.0, None),
@@ -531,14 +783,7 @@ fn stencil_rect_shows_the_procedural_pattern() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(
-        &s,
-        [0.0, 0.0],
-        &mut rng,
-        [64.0, 64.0],
-        [1.0, 0.0],
-        FootprintDeform::identity(),
-    );
+    let b = dab_basis(&s, &mut rng, [64.0, 64.0], FootprintDeform::identity());
     let mut seen0 = false;
     let mut seen1 = false;
     for x in (2..62).step_by(3) {
@@ -570,14 +815,7 @@ fn stencil_texture_transform_reshapes_the_pattern_within_the_rect() {
     };
     let row = |s: &TextureSettings| -> Vec<f32> {
         let mut rng = 0;
-        let b = dab_basis(
-            s,
-            [0.0, 0.0],
-            &mut rng,
-            [64.0, 64.0],
-            [1.0, 0.0],
-            FootprintDeform::identity(),
-        );
+        let b = dab_basis(s, &mut rng, [64.0, 64.0], FootprintDeform::identity());
         (4..60)
             .step_by(2)
             .map(|x| sample(s, &b, x, 32, [32.0, 32.0], 8.0, None))
@@ -968,7 +1206,7 @@ fn stencil_image_fills_the_rect_once_at_size_one() {
         ..Default::default()
     };
     let mut rng = 0u64;
-    let b = basis(&s, [0.0, 0.0], &mut rng);
+    let b = basis(&s, &mut rng);
     let at = |x: i64| sample(&s, &b, x, 32, [32.0, 32.0], 30.0, Some(&img));
     let (l, m, r) = (at(6), at(32), at(58));
     assert!(
@@ -1007,14 +1245,7 @@ fn shape_image_rotates_with_the_basis_angle() {
     let at = |angle: u16| {
         let s = mk(angle);
         let mut rng = 0u64;
-        let b = dab_basis(
-            &s,
-            [0.0, 0.0],
-            &mut rng,
-            [64.0, 64.0],
-            [1.0, 0.0],
-            FootprintDeform::identity(),
-        );
+        let b = dab_basis(&s, &mut rng, [64.0, 64.0], FootprintDeform::identity());
         // pixel (24,32): left of centre (32,32), radius 16 → rel ≈ (-0.47, 0.03).
         sample_shape_silhouette(&s, &b, 24, 32, [32.0, 32.0], 16.0, Some(&img))
     };
@@ -1041,8 +1272,8 @@ fn jitter_footprint_rotates_the_grain_deterministically_not_randomly() {
     // Two DIFFERENT rng seeds, same footprint: identical (no per-dab randomness → not Random Angle).
     let mut ra = 1u64;
     let mut rb = 9_999u64;
-    let ba = dab_basis(&s, [0.0, 0.0], &mut ra, [64.0, 64.0], [1.0, 0.0], fp45);
-    let bb = dab_basis(&s, [0.0, 0.0], &mut rb, [64.0, 64.0], [1.0, 0.0], fp45);
+    let ba = dab_basis(&s, &mut ra, [64.0, 64.0], fp45);
+    let bb = dab_basis(&s, &mut rb, [64.0, 64.0], fp45);
     let va = sample(&s, &ba, 14, 12, center, radius, None);
     let vb = sample(&s, &bb, 14, 12, center, radius, None);
     assert!(
@@ -1051,14 +1282,7 @@ fn jitter_footprint_rotates_the_grain_deterministically_not_randomly() {
     );
     // Rotating the footprint DOES rotate the Grain (it's locked to the brush, not fixed).
     let mut rc = 1u64;
-    let b0 = dab_basis(
-        &s,
-        [0.0, 0.0],
-        &mut rc,
-        [64.0, 64.0],
-        [1.0, 0.0],
-        FootprintDeform::new(0.0, 0),
-    );
+    let b0 = dab_basis(&s, &mut rc, [64.0, 64.0], FootprintDeform::new(0.0, 0));
     let v0 = sample(&s, &b0, 14, 12, center, radius, None);
     assert!(
         (va - v0).abs() > 1e-4,

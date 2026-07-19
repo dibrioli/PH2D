@@ -89,30 +89,6 @@ pub fn advance(heading: [f32; 2], tangent: [f32; 2], step_len: f32, smooth_len: 
     }
 }
 
-/// The **low-lag Rake heading** for a dab at path position `pos`, from the PREVIOUS emitted dab's path
-/// position `prev`: `normalize(pos − prev)`. Consecutive dab centres are exact samples of the (already
-/// stabilizer-smoothed) path, so their secant trails the true tangent by only ~half a dab SPACING —
-/// unlike the length-weighted EMA in [`advance`], whose lag scales with the brush (measured **9° at
-/// radius 8, up to 52° at radius 60**, reported as *"Rake não consegue rotacionar o brush"*, Enio
-/// 2026-07-19). The Sculpt Chisel took the same cure (`path_axis`) for its groove for the same reason.
-///
-/// `prev == None` (the stroke's FIRST dab) or a zero step falls back to `smoothed` — the settled EMA the
-/// heading warm-up guarantees is already aimed. This is what keeps the first dab, and every reader that
-/// only consults the first dab's `dir` (the Push bow-wave's synthetic predecessor, the Chisel's axis
-/// fallback), **byte-identical** to before: they never see the low-lag value, only the fallback.
-/// Transcendental-free (HR-5): one `sqrt`.
-#[must_use]
-pub fn from_centers(prev: Option<[f32; 2]>, pos: [f32; 2], smoothed: [f32; 2]) -> [f32; 2] {
-    let Some(p) = prev else { return smoothed };
-    let (dx, dy) = (pos[0] - p[0], pos[1] - p[1]);
-    let len2 = dx * dx + dy * dy;
-    if len2 < 1e-8 {
-        return smoothed;
-    }
-    let inv = 1.0 / len2.sqrt();
-    [dx * inv, dy * inv]
-}
-
 #[cfg(test)]
 mod tests {
     use super::{advance, rotate, smooth_len};

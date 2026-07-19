@@ -418,8 +418,14 @@ fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
         };
         let fp = s.footprint_deform();
         let dims = [w as f32, h as f32];
-        let shape_basis = dab_basis(&s.shape, [1.0, 0.0], rng, dims, [1.0, 0.0], fp);
-        let grain_basis = dab_basis(&s.texture, [1.0, 0.0], rng, dims, [1.0, 0.0], fp);
+        let shape_basis = crate::texture::shape_basis(
+            &s.shape,
+            rng,
+            dims,
+            fp,
+            crate::texture::ShapeFrame::Static,
+        );
+        let grain_basis = dab_basis(&s.texture, rng, dims, fp);
         (s, shape_basis, grain_basis, center, radius, coverage)
     };
     // Reference: the per-dab serial kernel, RNG stream in dab order.

@@ -209,24 +209,25 @@ impl PainterTool {
                 radius_px: d.radius_px,
                 ..*brush
             };
-            let fp = spec.footprint_deform().rotated_by(d.rotation);
+            let rotor = spec.dab_rotor(d);
+            let fp = spec.dab_footprint(rotor);
             let shape_basis = shape_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
+                ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
+                    ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                        arc_len: d.arc_len,
+                        unit_px: d.stroke_radius_px,
+                    },
                 )
             });
             let grain_basis = grain_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    d.dir,
                     &mut *tex_rng,
                     [w as f32, h as f32],
-                    [1.0, 0.0],
                     fp,
                 )
             });
@@ -290,7 +291,11 @@ impl PainterTool {
                     center: tip.center,
                     radius: tip.radius,
                     coverage: 1.0,
-                    footprint: tip_spec.footprint_deform().rotated_by(tip.rotation),
+                    // The bow wave's lobe is a SYNTHETIC tip for relief displacement, not a texture
+                    // frame: it carries the dab's Jitter Rotate and deliberately NOT the stroke-follow
+                    // rotor, because its own orientation already comes from the sweep axis
+                    // (`prev_center`). Byte-identical to before the follow rotor existed.
+                    footprint: tip_spec.dab_footprint(tip.rotation),
                     prev_center: tip.prev_center,
                     shape: None,
                     grain: None,

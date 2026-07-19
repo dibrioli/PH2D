@@ -38,12 +38,14 @@ pub struct Dab {
     /// Rotate**. The stamp composes it into the texture frame; it has no effect without a texture.
     pub rotation: [f32; 2],
     /// The **stroke heading** at this dab, as a unit vector (`[0, 0]` = no heading yet, e.g. the stroke's
-    /// first dab). Computed in the engine from consecutive dab centres ([`crate::heading::from_centers`]),
-    /// so it trails the stroke by ~half a dab spacing — NOT the length-weighted EMA, whose lag scaled with
-    /// the brush and made a raked tip point a brush-width behind on a curve (Enio 2026-07-19). The first
-    /// dab falls back to the settled EMA `heading`, so readers that consult only the first dab (the Push
-    /// bow-wave, the Chisel axis) are byte-identical. The stamp feeds it to `dab_basis` as the **Rake**
-    /// direction; it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
+    /// first dab). The length-weighted EMA of the path tangent ([`crate::heading::advance`]), driven once
+    /// per flattened path chord so the smoothing length is honoured **in arc length** — which is what the
+    /// EMA's own contract promises and what its caller was not doing (it fed the within-chord remainder,
+    /// so the filter ran with a step up to 16× too small and lagged by up to 52°, reported as *"o Rake não
+    /// gira"*, Enio 2026-07-19; the cure is the caller, not the estimator — a raw one-spacing secant tracks
+    /// beautifully and is 3-5× noisier dab to dab, which a repeating pattern shows as interlacing).
+    /// [`crate::BrushSpec::dab_rotor`] turns the dab frame onto it when a slot follows the stroke; it is
+    /// IGNORED otherwise, so a non-following brush is unaffected by it.
     pub dir: [f32; 2],
     /// **Arc-length** at this dab's centre: the cumulative distance travelled along the stroke path from
     /// the pen-down (in image pixels), monotonic and continuous across segments. The Shape **Flow** mapping
@@ -51,6 +53,15 @@ pub struct Dab {
     /// dab to dab (parallel lines that follow the curve) instead of resetting per stamp. It is IGNORED
     /// unless the Shape's Flow is on, so a non-Flow brush is unaffected by it.
     pub arc_len: f32,
+    /// The stroke's **nominal dab radius** (px) — [`BrushSpec::clamped_radius`] at pen-down, constant for
+    /// the whole stroke, unlike [`Self::radius_px`] which breathes with pressure and Jitter Scale.
+    ///
+    /// It is the unit the Shape **Flow** mapping divides its along-the-stroke coordinate by, and it has to
+    /// be stroke-constant or the promise of Flow dies: the numerator is the pixel's absolute position along
+    /// the path, so a per-dab divisor re-phases the entire accumulated history by `arc_len · Δ(1/r)` every
+    /// time the pressure wobbles. It rides the DAB because the engine is the only thing that can know it
+    /// and cannot get it wrong — the same reason [`Self::arc_len`] does.
+    pub stroke_radius_px: f32,
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -103,12 +114,6 @@ pub struct Stroke {
     warm_dist: f32,
     warm_from: [f32; 2],
     warming: bool,
-    /// The previous emitted dab's path position (pre-jitter), so each dab's [`Dab::dir`] is the low-lag
-    /// **Rake** heading from consecutive centres ([`crate::heading::from_centers`]) instead of the
-    /// smoothed EMA that trails the stroke by a brush-width. `None` = no dab emitted yet (first dab of the
-    /// stroke → the settled `heading` fallback). Reset in [`Self::begin`]; the shape editors build a fresh
-    /// `Stroke` per re-stamp, so it restarts there on its own.
-    last_emit_pos: Option<[f32; 2]>,
     /// Cumulative arc-length travelled to `last_pos` (image px), stamped on each [`Dab::arc_len`] and used
     /// by the Shape **Flow** mapping as the along-the-stroke coordinate. Reset in [`Self::begin`]; the shape
     /// editors build a fresh `Stroke` per re-stamp, so it restarts from `0` there on its own.
@@ -154,7 +159,6 @@ impl Stroke {
             warm_dist: 0.0,
             warm_from: [0.0, 0.0],
             warming: false,
-            last_emit_pos: None,
             arc_len: 0.0,
         }
     }
@@ -183,7 +187,6 @@ impl Stroke {
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
-        self.last_emit_pos = None; // no dab emitted yet → the first dab's Rake falls back to the heading
         self.arc_len = 0.0; // fresh stroke → the Flow along-coordinate starts at the pen-down
         // Rake warm-up (see [`mod@self::warmup`]): hold the opening dabs until travel defines the heading.
         self.warm_buf.clear();
@@ -387,6 +390,13 @@ impl Stroke {
         // continuous across walk_space calls (the Catmull-Rom flattener calls this once per short chord).
         let base_arc = self.arc_len;
         let mut traveled = 0.0;
+        // Path length of this chord already folded into the heading EMA. The filter is length-weighted
+        // (`α = Δs/(Δs + L)`) and its contract is that behaviour is independent of how the path was
+        // chopped into steps — so it must be fed the travel that ACTUALLY elapsed, including the travel of
+        // chords that emit no dab at all. Feeding it the within-chord remainder instead (the bug until
+        // 2026-07-19) ran it with a step up to 16× too small, i.e. an effective smoothing length of ~240 px
+        // where 12 was intended, which is where the 52° of Rake lag came from.
+        let mut advanced = 0.0;
         loop {
             // **Jitter Spacing** scales each gap by the carried multiplier (`1.0` = even); a break does
             // not redraw (no wasted draw), and the next-gap draw is gated so an off brush is unchanged.
@@ -399,9 +409,12 @@ impl Stroke {
             let f = traveled / seg;
             let pos = [from[0] + dir[0] * traveled, from[1] + dir[1] * traveled];
             let pressure = lerp(self.last_pressure, target.pressure, f);
-            // Advance the heading by this dab's arc-length step (length-weighted EMA of the clean path
-            // tangent), so `dab_at` stamps an up-to-date, stable direction independent of dab density.
-            self.heading = crate::heading::advance(self.heading, dir, to_next, smooth_len);
+            // Fold in exactly the path travelled since the heading was last advanced, so the dab is
+            // stamped with the heading as of ITS position and the smoothing length is honoured in arc
+            // length, independent of dab density and of the flattener's chord size.
+            self.heading =
+                crate::heading::advance(self.heading, dir, traveled - advanced, smooth_len);
+            advanced = traveled;
             if self.spec.dash_on(self.tot_samples) {
                 let d = self.dab_at(pos, pressure, overlap, base_arc + traveled);
                 crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
@@ -415,6 +428,10 @@ impl Stroke {
             };
         }
         self.accum += seg - traveled;
+        // The rest of the chord still happened — fold it in, so a chord that emits NO dab (the common
+        // case: the Catmull-Rom flattener chops at ~3 px while the spacing can be tens of px) still steers
+        // the heading. Without this the EMA only ever saw the sub-chord slivers around the dabs it did emit.
+        self.heading = crate::heading::advance(self.heading, dir, seg - advanced, smooth_len);
         self.arc_len = base_arc + seg; // arc at `to` = arc at `from` + the full chord length
         self.last_pos = to;
         self.last_pressure = target.pressure;
@@ -491,6 +508,7 @@ impl Stroke {
             dir,
             // Anchored is a single pinned stamp — there is no travel, so the Flow along-coordinate is 0.
             arc_len: 0.0,
+            stroke_radius_px: self.spec.clamped_radius(),
         }
     }
 
@@ -539,20 +557,17 @@ impl Stroke {
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         let center = self.apply_jitter(pos, radius);
-        // The Rake heading is the low-lag direction from the previous emitted dab to this one (the
-        // smoothed `heading` is the first-dab fallback), so the texture Rake tracks the stroke instead
-        // of trailing it by a brush-width (see [`crate::heading::from_centers`]). Taken from the PATH
-        // position `pos`, not the jittered `center`, so position jitter never wobbles the heading.
-        let dir = crate::heading::from_centers(self.last_emit_pos, pos, self.heading);
-        self.last_emit_pos = Some(pos);
         Dab {
             center,
             radius_px: radius,
             coverage,
             color,
             rotation,
-            dir,
+            // The length-weighted EMA of the PATH tangent, advanced by this dab's own travel just above.
+            // Read from the path, never from the jittered `center`, so position jitter cannot wobble it.
+            dir: self.heading,
             arc_len: arc,
+            stroke_radius_px: self.spec.clamped_radius(),
         }
     }
 

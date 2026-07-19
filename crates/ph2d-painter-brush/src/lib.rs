@@ -57,6 +57,7 @@ pub mod smear;
 pub mod smear_field;
 pub mod spec;
 mod spec_default;
+mod spec_frame;
 #[cfg(test)]
 mod spec_tests;
 pub mod stamp;

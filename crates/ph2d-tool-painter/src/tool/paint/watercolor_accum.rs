@@ -150,15 +150,18 @@ impl WetShapeStamp {
         ph2d_painter_brush::footprint::FootprintDeform,
         Option<ph2d_painter_brush::texture::TexDabBasis>,
     ) {
-        let fp = self.spec.footprint_deform().rotated_by(d.rotation);
+        let rotor = self.spec.dab_rotor(d);
+        let fp = self.spec.dab_footprint(rotor);
         let basis = self.shape_active.then(|| {
-            ph2d_painter_brush::texture::dab_basis(
+            ph2d_painter_brush::texture::shape_basis(
                 &self.spec.shape,
-                d.dir,
                 rng,
                 canvas,
-                [1.0, 0.0],
                 fp,
+                ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                    arc_len: d.arc_len,
+                    unit_px: d.stroke_radius_px,
+                },
             )
         });
         (fp, basis)

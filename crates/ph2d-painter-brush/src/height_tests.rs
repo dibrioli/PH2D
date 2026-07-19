@@ -37,14 +37,8 @@ fn deposit(spec: &BrushSpec) -> Vec<f32> {
 fn deposit_fields(spec: &BrushSpec) -> (Vec<f32>, Vec<f32>, Vec<u8>) {
     let mut dst = vec![0.0f32; (W * W) as usize];
     let footprint = spec.footprint_deform();
-    let basis = crate::texture::dab_basis(
-        &spec.texture,
-        [1.0, 0.0],
-        &mut 0u64,
-        [W as f32, W as f32],
-        [1.0, 0.0],
-        footprint,
-    );
+    let basis =
+        crate::texture::dab_basis(&spec.texture, &mut 0u64, [W as f32, W as f32], footprint);
     let dab = HeightDab {
         center: [16.5, 16.5],
         radius: 12.0,

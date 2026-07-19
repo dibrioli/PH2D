@@ -118,19 +118,16 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
     let mut rng = 0u64;
     let gbasis = dab_basis(
         &spec.texture,
-        [0.0, 0.0],
         &mut rng,
         [w as f32, h as f32],
-        [1.0, 0.0],
         FootprintDeform::identity(),
     );
-    let sbasis = dab_basis(
+    let sbasis = crate::texture::shape_basis(
         &spec.shape,
-        [0.0, 0.0],
         &mut 0u64,
         [1.0, 1.0],
-        [1.0, 0.0],
         FootprintDeform::identity(),
+        crate::texture::ShapeFrame::Static,
     );
     let shape_in = ShapeInput {
         basis: &sbasis,
@@ -282,10 +279,8 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
     let mut rng = 0u64;
     let basis = dab_basis(
         &spec.texture,
-        [0.0, 0.0],
         &mut rng,
         [w as f32, h as f32],
-        [1.0, 0.0],
         FootprintDeform::identity(),
     );
     let mut a = solid(w, h, [255, 255, 255, 255]);

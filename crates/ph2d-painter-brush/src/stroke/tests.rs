@@ -54,9 +54,13 @@ fn collect_stroke(spec: BrushSpec, dynamics: Dynamics, points: &[StrokePoint]) -
 #[test]
 fn arc_len_is_the_cumulative_path_length() {
     // The Shape FLOW mapping reads `Dab::arc_len` as the along-the-stroke coordinate, so it must be the
-    // monotonic cumulative distance travelled from pen-down. On a straight horizontal stroke starting at
-    // x=0, the arc-length at each dab equals its x (no jitter ⇒ centre == path position). The first dab
-    // (pen-down) is exactly 0.
+    // monotonic cumulative distance travelled from pen-down.
+    //
+    // ⚠️ The easy leg (a straight horizontal stroke, where arc-length is numerically the x coordinate) is
+    // kept but is NOT the gate: on it, an implementation that stamped `center[0]` — or any monotone
+    // function of x — passes every assertion, and arc-length only becomes a distinct quantity on a path
+    // that curves or doubles back, which is the only regime FLOW exists to serve. The second leg DOUBLES
+    // BACK, so the displacement from the start falls while the arc-length must keep climbing.
     let dabs = collect_stroke(
         straight_spec(10.0, 0.5),
         no_dynamics(),
@@ -83,6 +87,43 @@ fn arc_len_is_the_cumulative_path_length() {
         );
         prev = d.arc_len;
     }
+
+    // Out 100 px, then back 60 — arc-length keeps growing while x comes back toward the start.
+    let back = collect_stroke(
+        BrushSpec {
+            stabilizer: 0.0,
+            ..straight_spec(10.0, 0.5)
+        },
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0), pt(40.0, 0.0, 1.0)],
+    );
+    let last = back.last().expect("dabs");
+    assert!(
+        last.arc_len > 150.0,
+        "the arc-length must count the whole path travelled (got {})",
+        last.arc_len
+    );
+    assert!(
+        last.center[0] < 45.0,
+        "...while the displacement came back (x = {})",
+        last.center[0]
+    );
+    let mut prev = -1.0;
+    for d in &back {
+        assert!(
+            d.arc_len >= prev,
+            "arc-length is monotonic even doubling back"
+        );
+        prev = d.arc_len;
+    }
+
+    // And the stroke-constant Flow unit is the brush's nominal radius on every dab, however the
+    // per-dab radius breathes (here it does not, but the two fields must not be confused).
+    assert!(
+        back.iter()
+            .all(|d| (d.stroke_radius_px - 10.0).abs() < 1e-6),
+        "the Flow unit is the stroke's nominal radius, constant for the whole stroke"
+    );
 }
 
 #[test]
@@ -1018,6 +1059,7 @@ fn circle_degenerate_axis_fills_nothing() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 1.0,
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1136,6 +1178,7 @@ fn curve_fill_needs_two_points() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
+        stroke_radius_px: 1.0,
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(
@@ -1612,4 +1655,87 @@ fn without_the_flag_the_opening_dab_is_blind() {
         "every dab of a NON-raking stroke already carries a heading, so the warm-up gate is not what was \
          starving the Chisel — and the gate above proves nothing. Go and find the real reader."
     );
+}
+
+// ── The stroke heading (texture Rake / Flow) ────────────────────────────────────────────────
+
+/// Pointer samples along a quarter circle of radius `arc_r` (centred at the origin, starting at +x and
+/// sweeping toward +y), one every `step` px of arc.
+fn quarter_circle(arc_r: f32, step: f32) -> Vec<StrokePoint> {
+    let n = ((arc_r * std::f32::consts::FRAC_PI_2) / step).ceil() as usize;
+    (0..=n)
+        .map(|i| {
+            let t = (i as f32 / n as f32) * std::f32::consts::FRAC_PI_2;
+            pt(400.0 + arc_r * t.cos(), 400.0 + arc_r * t.sin(), 1.0)
+        })
+        .collect()
+}
+
+/// The path tangent at the point of a quarter circle nearest `p` (the derivative of the parametrisation
+/// above), in degrees. Derived from GEOMETRY, not from the engine — an oracle, not a mirror.
+fn true_tangent_deg(p: [f32; 2]) -> f32 {
+    let (dx, dy) = (p[0] - 400.0, p[1] - 400.0);
+    dx.atan2(-dy).to_degrees().rem_euclid(360.0)
+}
+
+fn heading_deg(v: [f32; 2]) -> f32 {
+    v[1].atan2(v[0]).to_degrees().rem_euclid(360.0)
+}
+
+fn ang_diff(a: f32, b: f32) -> f32 {
+    let d = (a - b).rem_euclid(360.0);
+    if d > 180.0 { 360.0 - d } else { d }
+}
+
+/// **The heading is a fact of the PATH, not of the dab spacing** — and it does not lag a brush-width
+/// behind a curve.
+///
+/// [`crate::heading::advance`] is a length-weighted EMA whose docstring promises exactly this ("behaviour
+/// is independent of how the path was chopped into steps"), and its caller was breaking it: `walk_space`
+/// fed it the *within-chord remainder* while the Catmull-Rom flattener chops the path at ~3 px and the dab
+/// spacing can be tens of px, so the filter ran with a step up to 16× too small — an effective smoothing
+/// length of ~240 px where 12 was intended — and chords that emitted no dab never steered it at all.
+///
+/// The visible result was a raked tip pointing a brush-width behind the stroke, reported as *"o Rake não
+/// consegue rotacionar o brush"* (Enio 2026-07-19). ⚠️ The first cure swapped the estimator for a raw
+/// one-spacing secant; that fixed the lag and made the heading **3-5× noisier dab to dab**, which a
+/// repeating pattern shows as interlacing — a different bug with the same screenshot. The cure is the
+/// CALLER.
+///
+/// Both halves matter and the second is the one that names the mechanism: a spacing-dependent lag is the
+/// signature of the contract being violated. Mutation (feed `to_next` in-loop and drop the tail advance):
+/// worst lag 3.7° → **52.1°**, and the spacing spread 0.1° → 19.4°.
+#[test]
+fn the_heading_is_a_fact_of_the_path_not_of_the_dab_spacing() {
+    // Worst angular error against the TRUE tangent, over a quarter circle, for one (radius, spacing).
+    let worst_lag = |radius: f32, spacing: f32| {
+        let spec = BrushSpec {
+            stabilizer: 0.0,
+            ..straight_spec(radius, spacing)
+        };
+        let dabs = collect_stroke(spec, no_dynamics(), &quarter_circle(200.0, 2.0));
+        assert!(
+            dabs.len() > 5,
+            "expected a spaced stroke, got {}",
+            dabs.len()
+        );
+        dabs.iter()
+            .skip(4) // let the opening warm-up settle
+            .filter(|d| d.dir != [0.0, 0.0])
+            .fold(0.0f32, |acc, d| {
+                acc.max(ang_diff(heading_deg(d.dir), true_tangent_deg(d.center)))
+            })
+    };
+    for radius in [8.0f32, 30.0, 60.0] {
+        let dense = worst_lag(radius, 0.1);
+        let sparse = worst_lag(radius, 0.4);
+        assert!(
+            dense < 6.0 && sparse < 6.0,
+            "the heading must track the curve (r={radius}): dense {dense:.2}deg, sparse {sparse:.2}deg"
+        );
+        assert!(
+            (dense - sparse).abs() < 1.0,
+            "the heading must not depend on the dab spacing (r={radius}): dense {dense:.2}deg vs sparse {sparse:.2}deg"
+        );
+    }
 }

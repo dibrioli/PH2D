@@ -3456,19 +3456,14 @@ impl crate::App {
                     crate::vec_convert::to_curves(sim, vec_scene, &mut self.vec_entities, &sel);
                 self.vec_pen.select_many(&new_sel);
             }
-            // Habilita "Convert to Curves" quando a seleção tem forma viva (`VecShape`) OU um
-            // caminho com pilha de efeitos — os dois são o que o converter congela, e sem a 2ª
-            // metade o botão ficava desligado num caminho só-efeitos (Enio, 2026-07-19).
+            // Habilita "Convert to Curves" pela porta ÚNICA (`vec_convert::is_convertible`) — a
+            // MESMA que o conversor honra. Enumerar as fontes aqui foi o que apodreceu duas
+            // vezes: o botão ficava desligado num caminho só-efeitos e depois num só-quinas,
+            // sempre sem erro nenhum. [[feedback_a_condition_that_enumerates_its_readers_rots]]
             #[cfg(feature = "panel-vector")]
             {
                 let convertible = self.vec_pen.selected_paths().iter().any(|id| {
-                    self.vec_entities.get(id).is_some_and(|&bits| {
-                        sim.world()
-                            .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(bits))
-                            .is_some()
-                    }) || vec_scene
-                        .path(*id)
-                        .is_some_and(|p| !p.effects.is_empty())
+                    crate::vec_convert::is_convertible(sim, &self.vec_entities, vec_scene, *id)
                 });
                 ph2d_panel_vector::set_current_convertible(convertible);
                 // ADR-0129: Expand/Release só são OFERECIDOS quando a seleção é de fato um

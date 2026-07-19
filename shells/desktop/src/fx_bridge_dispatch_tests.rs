@@ -225,7 +225,7 @@ fn a_continuous_parameter_still_takes_the_track() {
 }
 
 /// **O Apply (bake) chega à cena pela `apply`** — o caminho que o frame de facto percorre.
-/// Um efeito ativo na pilha; `bake=true` esvazia a pilha (o `bake_effects` congela o cozido).
+/// Um efeito ativo na pilha; `bake=true` esvazia a pilha (o `bake_cooked` congela o cozido).
 /// Sem esta fiação o botão ficaria classificado, pintado, e sem NADA a jusante — um botão-morto
 /// com o dispatch reconhecendo o clique e o largando.
 #[test]

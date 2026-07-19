@@ -45,10 +45,15 @@ impl crate::App {
             self.vec_pen.select(Some(id));
         }
         eprintln!(
-            "[smoke] Fillet/Chamfer tools: no rail, os pills **Fillet** e **Chamfer**. \
-             Clique uma QUINA do retângulo e ARRASTE para dentro — ela arredonda (Fillet) \
-             ou chanfra (Chamfer). Na ELIPSE, clicar uma âncora a transforma em quina \
-             PRIMEIRO e então arredonda. Arrastar para FORA afia de volta."
+            "[smoke] Fillet/Chamfer + Convert to Curves.\n\
+             1) Clique uma QUINA do retângulo e ARRASTE para dentro: arredonda (Fillet) ou \
+             chanfra (Chamfer, pelo pill). Arrastar para FORA afia de volta.\n\
+             2) Na ELIPSE, clicar uma âncora a transforma em quina PRIMEIRO e então arredonda.\n\
+             3) Com a quina feita, o botão **Convert to Curves** tem de ficar DISPONÍVEL e \
+             assar o arredondamento nos vértices (e apagar-se depois — nada vivo sobrou).\n\
+             4) Desenhe um retângulo com o pill **Shape** e use o Fillet num vértice DELE: a \
+             receita da forma é congelada no gesto (a seção de parâmetros some) e a quina \
+             passa a valer — antes a ferramenta era inerte ali."
         );
     }
 }

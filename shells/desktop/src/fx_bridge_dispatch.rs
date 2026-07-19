@@ -132,10 +132,10 @@ pub(crate) fn apply(
         }
     }
     // **Apply**, por último: assa a pilha (o que os outros três acabaram de escrever) no cozido
-    // e a esvazia. `bake_effects` é no-op se não houver o que assar, então o guard do chamador
+    // e a esvazia. `bake_cooked` é no-op se não houver o que assar, então o guard do chamador
     // não precisa de ser exato. O undo captura isto pelo diff da `VecScene`, como um Add.
     if bake {
-        scene.bake_effects(id);
+        scene.bake_cooked(id);
     }
 }
 

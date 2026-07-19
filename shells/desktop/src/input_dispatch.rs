@@ -2675,9 +2675,28 @@ impl App {
                             if let Some(pid) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) {
                                 self.vec_pen.select(Some(pid));
                             }
-                            // Forma VIVA não carrega raio por-vértice (o recook o varreria): a
-                            // MESMA exclusão da alça do Node. Sem ela o gesto "funcionaria e
-                            // esqueceria" no próximo arrasto de slider.
+                            // Um passo de undo: begin aqui, commit no release do pen (o mesmo
+                            // `commit_if_changed` do `shape_kind_for_mode().is_none()`).
+                            self.vec_history.begin(&gfx.vec_scene);
+                            // **A forma VIVA congela a receita AQUI** (Enio: *"fillet e chanfer
+                            // nao funciona diretamente nos vertex das shapes"*). Um raio
+                            // por-vértice não sobrevive ao `recook_into`, então antes a
+                            // ferramenta RECUSAVA a forma — o que lê como "não funciona". Agora
+                            // ela faz, dentro do gesto, o "Convert to Curves" que o artista faria
+                            // à mão. Só com a quina de fato ACERTADA: congelar num clique que
+                            // erra expandiria a forma sem ninguém pedir.
+                            if let Some(pid) = self.vec_pen.selected()
+                                && self.vec_pen.corner_hit_at(&gfx.vec_scene, world, px_to_world)
+                            {
+                                crate::vec_convert::freeze_shape_recipe(
+                                    &mut gfx.sim,
+                                    &self.vec_entities,
+                                    pid,
+                                );
+                            }
+                            // Os hosts de RELAÇÃO (conector, morph, blend, envelope) seguem
+                            // recusados: ali a geometria é uma relação, e soltá-la sem o artista
+                            // pedir destruiria o que ele construiu. A forma viva já saiu acima.
                             let derived = self.vec_pen.selected().is_some_and(|pid| {
                                 crate::corner_handles::has_derived_verts(
                                     &gfx.sim,
@@ -2685,9 +2704,6 @@ impl App {
                                     pid,
                                 )
                             });
-                            // Um passo de undo: begin aqui, commit no release do pen (o mesmo
-                            // `commit_if_changed` do `shape_kind_for_mode().is_none()`).
-                            self.vec_history.begin(&gfx.vec_scene);
                             if !derived {
                                 self.vec_pen.on_press_corner(
                                     &mut gfx.vec_scene,

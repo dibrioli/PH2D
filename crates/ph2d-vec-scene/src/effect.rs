@@ -567,9 +567,9 @@ impl VecScene {
     /// volta é `false` (a pilha já está vazia). O `id`, o `fill` e o `stroke` SOBREVIVEM (o
     /// `cooked()` os preserva por clonagem, e reforço o `id` aqui): assar não é recriar o objeto,
     /// é congelar a aparência dele.
-    pub fn bake_effects(&mut self, id: VecPathId) -> bool {
+    pub fn bake_cooked(&mut self, id: VecPathId) -> bool {
         let cooked = match self.path(id) {
-            Some(p) if !p.effects.is_empty() => p.cooked().into_owned(),
+            Some(p) if p.has_live_geometry() => p.cooked().into_owned(),
             _ => return false,
         };
         let Some(p) = self.path_mut(id) else {
@@ -581,6 +581,11 @@ impl VecScene {
         // `cooked()` já esvazia a pilha quando roda algum efeito; numa pilha só de neutros ele
         // devolve a fonte emprestada (com os efeitos ainda lá), então limpar aqui cobre os dois.
         p.effects.clear();
+        // O cozimento zera o raio das quinas que ARREDONDOU, mas um raio autorado numa quina que
+        // não era arredondável (vizinhos colineares) sobrevive — não havia ângulo a comer. Zerá-lo
+        // torna o bake IDEMPOTENTE: sem isto o botão ficaria aceso para sempre sobre um caminho já
+        // assado, e um 2º clique não teria o que fazer.
+        p.for_each_vert_mut(|v| v.corner_radius = 0.0);
         true
     }
 }

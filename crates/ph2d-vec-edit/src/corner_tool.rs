@@ -8,7 +8,25 @@
 use crate::{Grab, Part, PenTool, corner_handle, dist2};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
+/// Raio de captura da quina, em PIXELS de tela. Um pouco mais generoso que o do nó (10 px): o
+/// alvo aqui é o PONTO da quina e o gesto começa nele. **Uma constante só** — o `on_press_corner`
+/// e o `corner_hit_at` têm de concordar, senão o shell congelaria a receita de uma forma viva
+/// num clique que o press depois recusa.
+const CORNER_HIT_PX: f64 = 12.0;
+
 impl PenTool {
+    /// **Há uma quina agarrável sob `p`?** — a MESMA busca do [`Self::on_press_corner`], sem
+    /// efeito colateral.
+    ///
+    /// O shell a consulta para decidir se congela a receita de uma forma VIVA antes do gesto:
+    /// congelar num clique que ERRA a quina expandiria a forma sem o artista pedir.
+    #[must_use]
+    pub fn corner_hit_at(&self, scene: &VecScene, p: [f64; 2], px_to_world: f64) -> bool {
+        self.selected
+            .and_then(|id| self.nearest_anchor_on(scene, id, p, CORNER_HIT_PX * px_to_world))
+            .is_some()
+    }
+
     /// Pressão primária nas ferramentas **Fillet / Chamfer**: agarra a QUINA do path
     /// selecionado sob o cursor e arma o arrasto de raio — o dedo dita a MAGNITUDE, a
     /// ferramenta dita o ESTILO (`chamfer`). É a mesma máquina do arrasto da alça de raio
@@ -30,7 +48,7 @@ impl PenTool {
         px_to_world: f64,
         chamfer: bool,
     ) -> bool {
-        let hit_r = 12.0 * px_to_world;
+        let hit_r = CORNER_HIT_PX * px_to_world;
         let Some(id) = self.selected else {
             return false;
         };

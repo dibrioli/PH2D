@@ -420,7 +420,7 @@ fn baking_effects_freezes_the_cooked_geometry_and_clears_the_stack() {
         "pré-condição: o Trim tem de encurtar de facto, senão o teste não prova nada"
     );
 
-    assert!(scene.bake_effects(id), "havia efeito ativo a assar");
+    assert!(scene.bake_cooked(id), "havia efeito ativo a assar");
     let p = scene.path(id).unwrap();
     assert!(p.effects.is_empty(), "a pilha tem de sair vazia depois do bake");
     assert_eq!(p.verts, cooked.verts, "a geometria autorada vira a cozida");
@@ -445,7 +445,7 @@ fn baking_effects_preserves_identity_and_style() {
         p.fill = fill.clone();
         p.stroke = stroke;
     }
-    assert!(scene.bake_effects(id));
+    assert!(scene.bake_cooked(id));
     let p = scene.path(id).unwrap();
     assert_eq!(p.fill, fill, "o fill tem de sobreviver ao bake");
     assert_eq!(p.stroke, stroke, "o stroke tem de sobreviver ao bake");
@@ -457,12 +457,12 @@ fn baking_effects_preserves_identity_and_style() {
 #[test]
 fn baking_an_empty_stack_is_a_refused_no_op() {
     let (mut scene, id) = scene_with_active_trim();
-    let baked_once = scene.bake_effects(id);
+    let baked_once = scene.bake_cooked(id);
     assert!(baked_once, "o 1º bake tinha o que assar");
     let after = scene.path(id).unwrap().clone();
 
     assert!(
-        !scene.bake_effects(id),
+        !scene.bake_cooked(id),
         "a pilha já está vazia — o 2º bake não tem o que fazer"
     );
     assert_eq!(
@@ -474,5 +474,5 @@ fn baking_an_empty_stack_is_a_refused_no_op() {
     // Um caminho recém-criado, sem efeitos, também é recusado.
     let mut clean = crate::VecScene::new();
     let clean_id = clean.push_path(square());
-    assert!(!clean.bake_effects(clean_id), "sem pilha, nada a assar");
+    assert!(!clean.bake_cooked(clean_id), "sem pilha, nada a assar");
 }

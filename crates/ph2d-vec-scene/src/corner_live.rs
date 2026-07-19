@@ -206,9 +206,30 @@ impl VecPath {
     /// A quina é o **estágio zero** e a pilha de efeitos ([`crate::effect`], ADR-0132) corre
     /// depois dela — nessa ordem, sempre: o raio é estado do vértice AUTORADO, e todo efeito
     /// a jusante resampleia.
+    /// **Alguma quina deste path tem raio?** (Live Corners, ADR-0121.) É a metade "quina" do
+    /// [`Self::has_live_geometry`], e a MESMA pergunta que o [`Self::cooked`] faz para decidir
+    /// se há algo a arredondar — uma 2ª cópia divergiria do cozimento.
+    #[must_use]
+    pub fn has_live_corner(&self) -> bool {
+        self.verts_all().any(|v| v.corner_size() > EPS)
+    }
+
+    /// **Este path carrega geometria VIVA** — estado não-destrutivo que o cozimento congela:
+    /// uma quina com raio (ADR-0121) ou uma pilha de efeitos (ADR-0132).
+    ///
+    /// É a porta ÚNICA de *"a fonte difere do cozido"*, e existe porque essa pergunta tinha
+    /// leitores que a ENUMERAVAM cada um por conta — o `convertible` do shell (que oferece o
+    /// "Convert to Curves") e o guard do bake. Quando a quina virou a fonte seguinte, o botão
+    /// ficou desligado num caminho só-quinas e o bake não a assava, **sem erro nenhum**.
+    /// [[feedback_a_condition_that_enumerates_its_readers_rots]]
+    #[must_use]
+    pub fn has_live_geometry(&self) -> bool {
+        self.has_live_corner() || !self.effects.is_empty()
+    }
+
     #[must_use]
     pub fn cooked(&self) -> std::borrow::Cow<'_, VecPath> {
-        let rounds = self.verts_all().any(|v| v.corner_size() > EPS);
+        let rounds = self.has_live_corner();
         if !rounds {
             // Sem quina a arredondar: a pilha (se houver) come a fonte diretamente.
             return match crate::effect::run_stack(self, &self.effects) {

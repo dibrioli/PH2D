@@ -612,7 +612,7 @@ pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.toggle"))
 }
 
-/// **Apply** — assa a pilha inteira no seu resultado cozido (`VecScene::bake_effects`) e a
+/// **Apply** — assa a pilha inteira no seu resultado cozido (`VecScene::bake_cooked`) e a
 /// esvazia: o *Expand Appearance* do Illustrator. É um botão de SEÇÃO (um por painel, não
 /// por-linha), por isso `const` e não `fn`. Só é pintado quando há pilha a assar; o mesmo bake
 /// alimenta o "Convert to Curves" sobre um caminho com efeitos.

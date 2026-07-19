@@ -11,15 +11,33 @@
 //! *Advanced Character Physics*, 2001). For each pair closer than `2·radius`, the
 //! constraint gradient is the contact normal (the unit vector between them) and the
 //! correction is half the penetration each, moved apart along that normal — so the pair
-//! ends up touching with their midpoint preserved. The projection is swept over every
-//! pair, `iterations` times (Gauss–Seidel), which lets a crowded cloud settle into a
-//! packing. A **pure relaxation of the input each cook** (no state, like the Voronoi's
-//! Lloyd), so a `radius` value input that breathes makes the packing expand and
-//! contract — deterministic and replay-safe (HR-5: arithmetic + `sqrt`, no trig).
-//! `Effect::Pure`.
+//! ends up touching with their midpoint preserved. A **pure relaxation of the input each
+//! cook** (no state, like the Voronoi's Lloyd), so a `radius` value input that breathes
+//! makes the packing expand and contract — deterministic and replay-safe (HR-5:
+//! arithmetic + `sqrt`, no trig). `Effect::Pure`.
 //!
-//! O(n²·iterations): fine at the node's element budget; the scale path (spatial hash /
-//! GPU) is `docs/plans/2026-07-gpu-resident-node-pipeline.md`.
+//! ## The sweep is AVERAGED JACOBI, not Gauss–Seidel (ADR-0134 Fase 5)
+//!
+//! Each `iterations` sweep reads ONE snapshot of the positions, accumulates every
+//! contact's requested correction per disc, and then applies the **average** of what
+//! that disc's contacts asked for (mass splitting — Macklin & Müller, *Unified Particle
+//! Physics*, 2014, which is what FleX ships). Averaging is what makes Jacobi stable:
+//! summing raw would launch a disc with many contacts across the scene, because every
+//! neighbour independently asks for the full push.
+//!
+//! It replaced an in-place Gauss–Seidel sweep, and the reason is **correctness before
+//! speed**: Gauss–Seidel mutates `q[i]`/`q[j]` inside the pair loop, so each pair sees
+//! the corrections of pairs already visited — which makes the result depend on the
+//! **index order of the stream**. Measured on a crowded cloud of 256 discs, the same
+//! SET of points merely listed in a different order packed up to **6.11 world units**
+//! apart (1018 % of a disc diameter); the artist neither controls nor sees that order.
+//! Averaged Jacobi is order-independent (measured: **0.0**), and on the shipped default
+//! of 8 iterations it also packs BETTER (min gap 0.270 vs 0.050 of the required
+//! `2·radius`; Gauss–Seidel only overtakes past ~32 iterations on a pathological cloud).
+//! It is additionally the scheme a GPU can run at all — every thread reads the same
+//! snapshot — which is what lets the spatial-grid port exist.
+//!
+//! O(n²·iterations) here; the device path (spatial hash on the GPU) is ADR-0134.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -71,7 +89,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "radius",
             default: 0.3,
         },
-        // Gauss–Seidel sweeps over all pairs (more = tighter packing).
+        // Averaged-Jacobi sweeps over all pairs (more = tighter packing).
         ParamSpec {
             name: "iterations",
             default: 8.0,
@@ -123,7 +141,14 @@ fn push_apart(
         return q;
     }
     let min_d2 = min_dist * min_dist;
+    // Averaged-Jacobi scratch, allocated ONCE: the summed correction each disc is
+    // asked for this sweep, and how many contacts asked.
+    let mut delta = vec![[0.0f32; 2]; n];
+    let mut contacts = vec![0u32; n];
     for _ in 0..iterations {
+        delta.fill([0.0, 0.0]);
+        contacts.fill(0);
+        // ── gather pass: every pair reads the SAME snapshot `q` ──
         for i in 0..n {
             for j in (i + 1)..n {
                 // Two immovable discs (or two infinitely heavy ones) have no
@@ -144,20 +169,39 @@ fn push_apart(
                 } else {
                     // Coincident: split along a deterministic axis (x for even i+j,
                     // y otherwise) so the relaxation stays replay-stable (HR-5, no rng).
+                    // ⚠️ This is the ONE order-dependent corner left, and it is
+                    // irreducible: two EXACTLY coincident points carry nothing
+                    // intrinsic to break the symmetry with, so the index is the only
+                    // handle there is. Measure-zero — any jitter escapes it.
                     if (i + j) % 2 == 0 {
                         (1.0, 0.0, min_dist)
                     } else {
                         (0.0, 1.0, min_dist)
                     }
                 };
-                // Each disc moves its SHARE of the penetration: w_i / (w_i + w_j).
-                // Both free = 0.5 each (the old, midpoint-preserving behaviour).
+                // Each disc is ASKED to move its SHARE of the penetration:
+                // w_i / (w_i + w_j). Both free = half each, so the pair's midpoint is
+                // preserved exactly as before.
                 let push_i = penetration * (w[i] / sum_w) * strength;
                 let push_j = penetration * (w[j] / sum_w) * strength;
-                q[i][0] -= nx * push_i;
-                q[i][1] -= ny * push_i;
-                q[j][0] += nx * push_j;
-                q[j][1] += ny * push_j;
+                delta[i][0] -= nx * push_i;
+                delta[i][1] -= ny * push_i;
+                delta[j][0] += nx * push_j;
+                delta[j][1] += ny * push_j;
+                contacts[i] += 1;
+                contacts[j] += 1;
+            }
+        }
+        // ── apply pass: each disc takes the AVERAGE of what its contacts asked ──
+        // Averaging (mass splitting, Macklin & Müller 2014) is what makes Jacobi
+        // stable: summing raw would launch a disc with many contacts across the
+        // scene, because every neighbour independently asks for the full push.
+        for i in 0..n {
+            let c = contacts[i];
+            if c > 0 {
+                let inv = 1.0 / c as f32;
+                q[i][0] += delta[i][0] * inv;
+                q[i][1] += delta[i][1] * inv;
             }
         }
     }
@@ -272,6 +316,142 @@ mod tests {
         strength: f32,
     ) -> Vec<[f32; 2]> {
         push_apart(p, &vec![1.0; p.len()], radius, iterations, strength)
+    }
+
+    /// A crowded cloud: `n` discs on a jittered lattice far tighter than `2·radius`,
+    /// so almost every pair starts overlapping. Deterministic (a hashed jitter), so
+    /// the measurement is reproducible.
+    fn crowded_cloud(n: usize) -> Vec<[f32; 2]> {
+        let side = (n as f32).sqrt().ceil() as usize;
+        (0..n)
+            .map(|i| {
+                let (gx, gy) = ((i % side) as f32, (i / side) as f32);
+                // splitmix-ish integer hash → jitter in [-0.5, 0.5]
+                let mut h = (i as u32).wrapping_mul(0x9e37_79b9);
+                h ^= h >> 16;
+                h = h.wrapping_mul(0x7feb_352d);
+                h ^= h >> 15;
+                let jx = (h >> 8) as f32 / 16_777_216.0 - 0.5;
+                let jy = (h & 0xffff) as f32 / 65_536.0 - 0.5;
+                // Lattice pitch 0.25 with radius 0.3 ⇒ min_dist 0.6: heavy overlap.
+                [(gx + jx) * 0.25, (gy + jy) * 0.25]
+            })
+            .collect()
+    }
+
+    /// The smallest pairwise distance in the cloud, as a FRACTION of `2·radius`.
+    /// 1.0 = the constraint is met everywhere; below 1.0 = residual overlap.
+    fn min_gap_ratio(p: &[[f32; 2]], radius: f32) -> f32 {
+        let min_dist = 2.0 * radius;
+        let mut m = f32::MAX;
+        for (i, a) in p.iter().enumerate() {
+            for b in &p[i + 1..] {
+                m = m.min(dist(*a, *b));
+            }
+        }
+        m / min_dist
+    }
+
+    /// **The measurement that decides the solver** (ADR-0134 Fase 5): packing quality
+    /// and ORDER-DEPENDENCE of the current scheme. Run:
+    ///   cargo test -p ph2d-node-motion-collide -- --ignored --nocapture
+    #[test]
+    #[ignore = "measurement, not a gate"]
+    fn measure_packing_and_order_dependence() {
+        let radius = 0.3;
+        let n = 256;
+        let p = crowded_cloud(n);
+        eprintln!("\nstart: min gap = {:.4}× of 2·radius", min_gap_ratio(&p, radius));
+        eprintln!("  {:>6}  {:>12}", "iters", "min gap ratio");
+        for &iters in &[1usize, 2, 4, 8, 16, 32, 64] {
+            let out = push_apart_free(&p, radius, iters, 1.0);
+            eprintln!("  {iters:>6}  {:>12.4}", min_gap_ratio(&out, radius));
+        }
+
+        // A REALISTIC cloud too: the brutal one above starts at 6% of the required
+        // gap, which no scheme fully resolves. This one merely overlaps.
+        let loose: Vec<[f32; 2]> = crowded_cloud(n)
+            .iter()
+            .map(|q| [q[0] * 2.0, q[1] * 2.0])
+            .collect();
+        eprintln!(
+            "\nrealistic cloud: start {:.4}  →  8 iters {:.4}  →  32 iters {:.4}",
+            min_gap_ratio(&loose, radius),
+            min_gap_ratio(&push_apart_free(&loose, radius, 8, 1.0), radius),
+            min_gap_ratio(&push_apart_free(&loose, radius, 32, 1.0), radius),
+        );
+
+        // ORDER DEPENDENCE: pack the SAME set of points presented in a different
+        // order, then un-permute and compare. A relaxation of a SET should not care
+        // how the set was listed. TWO different permutations, because a single one
+        // reading 0 could be a fixture accident rather than a property.
+        let a = push_apart_free(&p, radius, 8, 1.0);
+        let travel = (0..n).map(|i| dist(a[i], p[i])).fold(0.0f32, f32::max);
+        for (label, step, off) in [("perm A", 97usize, 13usize), ("perm B", 181, 7)] {
+            let perm: Vec<usize> = (0..n).map(|i| (i * step + off) % n).collect();
+            // A stride coprime with `n` is a bijection — assert it, so a silent
+            // non-permutation cannot make this read 0 by collapsing the comparison.
+            let mut seen = vec![false; n];
+            for &s in &perm {
+                assert!(!seen[s], "{label} is not a permutation");
+                seen[s] = true;
+            }
+            let mut shuffled = vec![[0.0f32; 2]; n];
+            for (k, &src) in perm.iter().enumerate() {
+                shuffled[k] = p[src];
+            }
+            let b = push_apart_free(&shuffled, radius, 8, 1.0);
+            let mut worst = 0.0f32;
+            for (k, &src) in perm.iter().enumerate() {
+                worst = worst.max(dist(a[src], b[k]));
+            }
+            eprintln!(
+                "order dependence ({label}): worst |Δpos| = {worst:.6} \
+                 ({:.1}% of 2·radius)  [points travelled up to {travel:.4}]",
+                100.0 * worst / (2.0 * radius)
+            );
+        }
+    }
+
+    /// **The packing is a fact about the SET, not about the listing** — the property
+    /// averaged Jacobi bought (ADR-0134 Fase 5). Pack a crowded cloud, then pack the
+    /// same points presented in a different order, un-permute, and compare.
+    ///
+    /// The in-place Gauss–Seidel this replaced fails here by **6.11 world units**
+    /// (1018 % of a disc diameter), because each pair saw the corrections of pairs
+    /// already visited. The tolerance is a tight ε rather than the exact `0.0` this
+    /// fixture happens to produce: reordering changes the ORDER of a float summation,
+    /// which is allowed to move the last bits — pinning bit-equality would be
+    /// over-fitting this cloud.
+    #[test]
+    fn the_packing_does_not_depend_on_the_order_of_the_stream() {
+        let radius = 0.3;
+        let n = 256;
+        let p = crowded_cloud(n);
+        let a = push_apart_free(&p, radius, 8, 1.0);
+        // The cloud must actually MOVE, or "unchanged under permutation" is vacuous.
+        let travel = (0..n).map(|i| dist(a[i], p[i])).fold(0.0f32, f32::max);
+        assert!(travel > 0.1, "the fixture must actually pack: travel {travel}");
+
+        for (step, off) in [(97usize, 13usize), (181, 7)] {
+            let perm: Vec<usize> = (0..n).map(|i| (i * step + off) % n).collect();
+            // Coprime stride ⇒ bijection. Asserted, so a silent non-permutation
+            // cannot make this pass by collapsing the comparison.
+            let mut seen = vec![false; n];
+            for &s in &perm {
+                assert!(!seen[s], "not a permutation");
+                seen[s] = true;
+            }
+            let shuffled: Vec<[f32; 2]> = perm.iter().map(|&src| p[src]).collect();
+            let b = push_apart_free(&shuffled, radius, 8, 1.0);
+            for (k, &src) in perm.iter().enumerate() {
+                let d = dist(a[src], b[k]);
+                assert!(
+                    d < 1e-4,
+                    "element {src} packed differently when listed at {k}: |Δ| {d}"
+                );
+            }
+        }
     }
 
     /// Two overlapping discs are pushed apart until they merely touch (distance =

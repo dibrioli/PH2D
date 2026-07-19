@@ -62,6 +62,8 @@ mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
 mod flip_autokey;
+mod flip_colorize;
+mod flip_colorize_smoke;
 mod flip_demo;
 mod flip_draw;
 mod flip_edit_gesture;
@@ -369,6 +371,9 @@ impl App {
             flip_active: false,
             flip_style: None,
             flip_draw: crate::flip_draw::FlipDraw::default(),
+            flip_colorize: crate::flip_colorize::FlipColorize::default(),
+            pending_flip_colorize_apply: false,
+            pending_flip_colorize_clear: false,
             flip_active_layer: None,
             flip_erasing: false,
             flip_strip: crate::flip_strip::FlipStrip::default(),

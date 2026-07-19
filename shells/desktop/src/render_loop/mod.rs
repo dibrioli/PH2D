@@ -597,10 +597,19 @@ impl crate::App {
         self.flip_pose_smoke();
         self.flip_edit_smoke();
         self.flip_fill_smoke();
+        self.flip_colorize_smoke();
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();
         self.build_session_upkeep();
+        // ADR-0114 C2: o Apply/Clear do Colorize marcado no frame anterior (o drain de painel
+        // roda com `self.gfx` preso; aqui, antes de bindar `gfx`, `self` está livre).
+        if std::mem::take(&mut self.pending_flip_colorize_apply) {
+            self.flip_colorize_apply();
+        }
+        if std::mem::take(&mut self.pending_flip_colorize_clear) {
+            self.flip_colorize_clear();
+        }
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -1788,6 +1797,18 @@ impl crate::App {
                             && *id == ph2d_editor::ids::VECTOR_TEXT_FONT_DD
                         {
                             pending_vec_font_pick = val.parse::<usize>().ok();
+                        }
+                        // ADR-0114 C2: Colorize Apply/Clear — mexem no buffer de rabiscos do
+                        // shell + no doc, e o `self.gfx` está preso pelo borrow deste bloco;
+                        // marca-se um pending no `self` (campo disjunto) e aplica-se no topo
+                        // do PRÓXIMO frame, com `self` livre (latência de 1 frame, imperceptível
+                        // num botão).
+                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
+                            if *id == ph2d_editor::ids::FLIP_COLORIZE_APPLY {
+                                self.pending_flip_colorize_apply = true;
+                            } else if *id == ph2d_editor::ids::FLIP_COLORIZE_CLEAR {
+                                self.pending_flip_colorize_clear = true;
+                            }
                         }
                         // ADR-0114 W2: Flip layer ops (add/delete/select/visibility/
                         // lock/reorder/opacity/blend) are DOCUMENT edits — apply to

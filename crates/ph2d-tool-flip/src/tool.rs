@@ -37,6 +37,10 @@ pub const DEFAULT_STROKE: [u8; 4] = [240, 240, 245, 255];
 /// o fundo escuro). Distinta da cor do traço de propósito: `docs/Flip/06`.
 pub const DEFAULT_FILL: [u8; 4] = [230, 190, 120, 255];
 
+/// Cor default do rabisco do Colorize (C2) — um vermelho distinto do ocre do balde,
+/// para o 1º rabisco ser visível sobre a linha e o papel.
+pub const DEFAULT_COLORIZE: [u8; 4] = [200, 90, 90, 255];
+
 /// A ferramenta Flip — só estilo de brush + modo de canvas.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlipTool {
@@ -72,6 +76,9 @@ pub struct FlipTool {
     // ── O domínio da seleção no Edit (W8): traço ou ponto. A conversão no doc é
     //    do shell; a tool só guarda a escolha.
     edit_domain: EditDomain,
+    // ── Colorize (C2). Cor PRÓPRIA que o próximo rabisco semeia; os rabiscos
+    //    acumulados moram no shell (transientes), não na tool.
+    colorize_color: [u8; 4],
 }
 
 impl Default for FlipTool {
@@ -101,6 +108,7 @@ impl Default for FlipTool {
             draw_filled: false,
             reshape: ReshapeKind::Smooth,
             edit_domain: EditDomain::Stroke,
+            colorize_color: DEFAULT_COLORIZE,
         }
     }
 }
@@ -248,6 +256,7 @@ impl FlipTool {
             grow: self.grow,
             precision: self.precision,
             trap: self.trap,
+            colorize_color: self.colorize_color,
         }
     }
 
@@ -260,6 +269,17 @@ impl FlipTool {
 
     pub fn set_fill_rgba(&mut self, c: [u8; 4]) {
         self.fill_color = c;
+    }
+
+    /// A cor do próximo rabisco do Colorize (o picker OKLCH escreve aqui quando a swatch
+    /// de Colorize está no alvo).
+    #[must_use]
+    pub fn colorize_rgba(&self) -> [u8; 4] {
+        self.colorize_color
+    }
+
+    pub fn set_colorize_rgba(&mut self, c: [u8; 4]) {
+        self.colorize_color = c;
     }
 }
 
@@ -300,6 +320,9 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_RESHAPE => self.mode = FlipMode::Reshape,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_EDIT => self.mode = FlipMode::Edit,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_COLORIZE => {
+                self.mode = FlipMode::Colorize;
+            }
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,

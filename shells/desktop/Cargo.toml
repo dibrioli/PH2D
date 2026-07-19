@@ -238,6 +238,7 @@ ph2d-flip = { path = "../../crates/ph2d-flip" }
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
+ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }
 # A escultura de traço (ADR-0114 W5) — idem: solver CPU puro, o shell traduz o gesto.
 ph2d-flip-reshape = { path = "../../crates/ph2d-flip-reshape" }
 # Texto vetorial (W1): glyph outlines (skrifa) → VecPath do motor novo. O crate é

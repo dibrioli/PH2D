@@ -40,6 +40,9 @@ pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 /// click (it moves the whole Flip object, ADR-0112). Same split as the Grease Pencil's
 /// Object Mode vs Edit Mode.
 pub const FLIP_MODE_EDIT: NodeId = hash_node_id("flip.mode.edit");
+/// Colorize: scribble colours over the line-art; the LazyBrush cut turns the scribbles
+/// into filled regions in ONE solve (COLORIZE C2 — `docs/Flip/09_colorize.md`).
+pub const FLIP_MODE_COLORIZE: NodeId = hash_node_id("flip.mode.colorize");
 /// Edit section: deletes the selected strokes.
 pub const FLIP_EDIT_DELETE: NodeId = hash_node_id("flip.edit.delete");
 /// Edit section (W8): the selection DOMAIN — whole strokes (the GP Curve domain).
@@ -105,6 +108,15 @@ pub const FLIP_PRECISION_NUM: NodeId = hash_node_id("flip.fill.precision_num");
 /// unclosed outline without the artist hunting for the gap (COLORIZE C1).
 pub const FLIP_TRAP: NodeId = hash_node_id("flip.fill.trap");
 pub const FLIP_TRAP_NUM: NodeId = hash_node_id("flip.fill.trap_num");
+
+// ── Colorize section (shown only in Colorize mode, C2 — `docs/Flip/09`) ──────
+/// Colorize-colour swatch — the colour the NEXT scribble seeds (its own palette).
+pub const FLIP_COLORIZE_SWATCH: NodeId = hash_node_id("flip.colorize.swatch");
+/// Apply: run the LazyBrush cut over the accumulated scribbles + the line-art, commit
+/// each region as a filled stroke, and clear the scribble buffer.
+pub const FLIP_COLORIZE_APPLY: NodeId = hash_node_id("flip.colorize.apply");
+/// Clear: drop the accumulated scribbles without colouring.
+pub const FLIP_COLORIZE_CLEAR: NodeId = hash_node_id("flip.colorize.clear");
 
 // ── Brush section (size / hardness / opacity / smoothing) ────────────────────
 /// Stroke width slider (track `0..1` → `1..64` px) + its px chip.

@@ -121,6 +121,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         y = b.color(&snap, y);
         y = b.erase_row(&snap, y);
         y = b.fill_section(&snap, y);
+        y = b.colorize_section(&snap, y);
         y = b.reshape_section(&snap, y);
         y = b.edit_section(&snap, y);
     }
@@ -162,6 +163,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(ids::FLIP_STROKE_SWATCH);
         store.register_picker_swatch(ids::FLIP_FILL_SWATCH);
+        store.register_picker_swatch(ids::FLIP_COLORIZE_SWATCH);
         store.set_panel_content_h(ids::FLIP_PANEL, content_h);
         store.set_panel_visible_h(ids::FLIP_PANEL, body_h);
         let max_scroll = (content_h - body_h).max(0.0);

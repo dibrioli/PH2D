@@ -29,6 +29,9 @@ pub enum FlipMode {
     /// objeto Flip inteiro. Se o clique do Select passasse a pegar traço, o usuário
     /// perderia o gizmo. É a mesma separação Object Mode × Edit Mode do Grease Pencil.
     Edit,
+    /// **Colorize**: rabisca cores sobre as linhas; o corte LazyBrush transforma os
+    /// rabiscos em regiões preenchidas num só solve (C2 — `docs/Flip/09_colorize.md`).
+    Colorize,
 }
 
 impl FlipMode {
@@ -40,13 +43,14 @@ impl FlipMode {
     /// dispara. Agora os gates varrem `ALL` e afirmam que a tabela deles a cobre INTEIRA,
     /// então o próximo modo quebra o teste no dia em que nascer — que é o único momento em
     /// que o custo de arrumar é baixo.
-    pub const ALL: [FlipMode; 6] = [
+    pub const ALL: [FlipMode; 7] = [
         FlipMode::Select,
         FlipMode::Draw,
         FlipMode::Erase,
         FlipMode::Fill,
         FlipMode::Reshape,
         FlipMode::Edit,
+        FlipMode::Colorize,
     ];
 }
 
@@ -320,6 +324,9 @@ pub struct FlipStyleSnapshot {
     /// **Trap**: raio da trapped ball em px de tela (`0` = desligado — o balde de
     /// sempre, ao bit). O shell converte para px de buffer via `precision`.
     pub trap: f64,
+    /// Cor que o PRÓXIMO rabisco do Colorize semeia (sRGB8) — paleta própria (C2),
+    /// distinta da cor do balde: cada rabisco carrega a cor com que foi desenhado.
+    pub colorize_color: [u8; 4],
 }
 
 impl Default for FlipStyleSnapshot {
@@ -349,6 +356,7 @@ impl Default for FlipStyleSnapshot {
             grow: 0.0,
             trap: 0.0,      // opt-in: o default é o balde do W4, sem mudança nenhuma
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre
+            colorize_color: [200, 90, 90, 255],
         }
     }
 }

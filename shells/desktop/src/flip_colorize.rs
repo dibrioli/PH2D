@@ -1,0 +1,218 @@
+//! ADR-0114 **C2 (Colorize)** — rabiscar cores sobre a line-art (`docs/Flip/09`).
+//!
+//! Cada rabisco é uma polilinha colorida: uma SEMENTE do corte LazyBrush, não arte. Eles
+//! acumulam num buffer transiente; **Apply** roda o motor `ph2d-flip-colorize` sobre TODOS
+//! os rabiscos + a line-art e materializa cada região como um traço preenchido — pelo MESMO
+//! `fill_stroke` do balde, então a borda de uma cor colorida e a de um balde não divergem;
+//! **Clear** descarta os rabiscos.
+//!
+//! O gesto é irmão do `flip_draw` (down/move/up → polilinha); o commit é irmão do
+//! `flip_fill` (autokey `Modify`, insere acima dos fills existentes). ⚠️ **v1 sem overlay
+//! vivo dos rabiscos** — o feedback é o resultado do Apply; desenhar os rabiscos na tela é o
+//! refinamento imediato (o `flip_draw::flip_preview_data` é o molde).
+
+use crate::flip_fill_dilate::{boundaries, fill_stroke};
+use ph2d_core::Vec2;
+use ph2d_flip_colorize::{ColorRegion, Scribble, colorize};
+use ph2d_tool_flip::FlipMode;
+
+/// Distância mínima entre amostras de um rabisco (px de tela) — igual ao `flip_draw`.
+const MIN_SAMPLE_PX: f32 = 2.0;
+
+/// Os rabiscos coloridos acumulados + o rabisco em curso. Transientes: não viajam no
+/// documento (são sementes), e o Apply/Clear os consomem.
+#[derive(Default)]
+pub(crate) struct FlipColorize {
+    /// (cor sRGB8, pontos em MUNDO). MUNDO porque a pose do objeto pode mudar entre desenhar
+    /// e aplicar; a conversão para LOCAL acontece no Apply.
+    scribbles: Vec<([u8; 4], Vec<Vec2>)>,
+    /// O rabisco em curso (MUNDO) + a cor fixada no pen-down.
+    current: Vec<Vec2>,
+    current_color: [u8; 4],
+    active: bool,
+}
+
+impl FlipColorize {
+    pub(crate) fn clear(&mut self) {
+        self.scribbles.clear();
+        self.current.clear();
+        self.active = false;
+    }
+
+    /// Semeia um rabisco pronto (pontos em MUNDO) — usado pelo smoke para demonstrar o
+    /// Apply sem o gesto interativo.
+    pub(crate) fn push_scribble(&mut self, color: [u8; 4], world_points: Vec<Vec2>) {
+        if world_points.len() >= 2 {
+            self.scribbles.push((color, world_points));
+        }
+    }
+}
+
+impl crate::App {
+    /// A tool Flip quer o canvas para RABISCAR agora? (ativa + modo Colorize.)
+    #[must_use]
+    pub(crate) fn flip_wants_colorize(&self) -> bool {
+        self.flip_active && matches!(self.flip_style.map(|s| s.mode), Some(FlipMode::Colorize))
+    }
+
+    /// Tela → mundo (o rabisco é capturado em MUNDO, como o `flip_draw`).
+    fn flip_colorize_world(&self, x: f32, y: f32) -> Option<(Vec2, f32)> {
+        let gfx = self.gfx.as_ref()?;
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+        Some((Vec2::new(w[0], w[1]), px_to_world))
+    }
+
+    /// Pen-down: começa um rabisco novo com a cor atual do Colorize.
+    pub(crate) fn flip_colorize_canvas_down(&mut self, x: f32, y: f32) -> bool {
+        if !self.flip_wants_colorize() {
+            return false;
+        }
+        let Some(style) = self.flip_style else {
+            return false;
+        };
+        let Some((w, _)) = self.flip_colorize_world(x, y) else {
+            return false;
+        };
+        self.flip_colorize.current.clear();
+        self.flip_colorize.current.push(w);
+        self.flip_colorize.current_color = style.colorize_color;
+        self.flip_colorize.active = true;
+        true
+    }
+
+    /// Pen-move: acumula amostras (só as que andaram ≥ `MIN_SAMPLE_PX`).
+    pub(crate) fn flip_colorize_canvas_move(&mut self, x: f32, y: f32) -> bool {
+        if !self.flip_colorize.active {
+            return false;
+        }
+        let Some((w, px_to_world)) = self.flip_colorize_world(x, y) else {
+            return false;
+        };
+        let min = MIN_SAMPLE_PX * px_to_world;
+        let moved = self
+            .flip_colorize
+            .current
+            .last()
+            .is_none_or(|p| (w - *p).length() >= min);
+        if moved {
+            self.flip_colorize.current.push(w);
+        }
+        true
+    }
+
+    /// Pen-up: fecha o rabisco em curso e o acumula (≥ 2 pontos).
+    pub(crate) fn flip_colorize_canvas_up(&mut self) -> bool {
+        if !self.flip_colorize.active {
+            return false;
+        }
+        self.flip_colorize.active = false;
+        let color = self.flip_colorize.current_color;
+        let pts = std::mem::take(&mut self.flip_colorize.current);
+        if pts.len() >= 2 {
+            self.flip_colorize.scribbles.push((color, pts));
+        }
+        true
+    }
+
+    /// **Clear** — descarta os rabiscos acumulados.
+    pub(crate) fn flip_colorize_clear(&mut self) {
+        self.flip_colorize.clear();
+    }
+
+    /// **Apply** — roda o corte LazyBrush sobre TODOS os rabiscos + a line-art e materializa
+    /// cada região como um traço preenchido, no desenho-alvo (autokey `Modify`, como o
+    /// balde). Consome os rabiscos.
+    pub(crate) fn flip_colorize_apply(&mut self) {
+        if self.flip_colorize.scribbles.is_empty() {
+            return;
+        }
+        let active_layer = self.flip_active_layer;
+        let w2l = self.flip_active_world_to_local();
+        let playhead = self.playhead;
+        let strip = &mut self.flip_strip;
+        let scribbles = std::mem::take(&mut self.flip_colorize.scribbles);
+
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let win = gfx.surface.size();
+        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+
+        let Some((oid, _lid, did)) = crate::flip_autokey::target_drawing(
+            &mut gfx.flip,
+            &playhead,
+            active_layer,
+            strip,
+            crate::flip_autokey::FlipEdit::Modify,
+        ) else {
+            gfx.toasts.push(ph2d_editor::Toast::warning(
+                "Colorize: the layer is locked, or has no drawing on this frame",
+            ));
+            self.title_dirty = true;
+            return;
+        };
+
+        // Rabiscos MUNDO → LOCAL, agrupados por cor: cada cor distinta é um rótulo, e o
+        // mapa rótulo→cor devolve a cor de cada região.
+        let mut palette: Vec<[u8; 4]> = Vec::new();
+        let mut seeds: Vec<Scribble> = Vec::new();
+        for (color, world_pts) in &scribbles {
+            let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
+                palette.push(*color);
+                palette.len() - 1
+            }) as u16;
+            let points: Vec<Vec2> = world_pts
+                .iter()
+                .map(|p| {
+                    let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
+                    Vec2::new(l[0] as f32, l[1] as f32)
+                })
+                .collect();
+            seeds.push(Scribble { label, points });
+        }
+
+        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+            return;
+        };
+        let lines = boundaries(drawing);
+        if lines.is_empty() {
+            gfx.toasts.push(ph2d_editor::Toast::warning(
+                "Colorize: draw the line-art first",
+            ));
+            self.title_dirty = true;
+            return;
+        }
+        // A precisão é a mesma conversão do balde (px de tela → px de buffer por unidade
+        // de documento): `precision / (px_to_world · obj_scale)`.
+        let obj_scale = w2l.mean_scale() as f32;
+        let doc_per_px = px_to_world * obj_scale;
+        let precision = 1.6 / doc_per_px.max(1e-6);
+
+        let regions: Vec<ColorRegion> = colorize(&lines, &seeds, precision);
+        if regions.is_empty() {
+            gfx.toasts.push(ph2d_editor::Toast::warning(
+                "Colorize: no regions — scribble inside the closed shapes",
+            ));
+            self.title_dirty = true;
+            return;
+        }
+
+        // Cada região entra ACIMA dos fills existentes (a cor nova cobre a velha, abaixo da
+        // linha — o `Paint` do balde), com a MESMA dilatação (contour_widths + fill_stroke).
+        let is_fill = |s: &ph2d_flip::FlipStroke| s.hide_stroke && s.fill.is_some();
+        for region in regions {
+            let color = crate::flip_draw::srgb8_to_linear(palette[region.label as usize]);
+            let widths = ph2d_flip_fill::contour_widths(&lines, &region.fill.outer);
+            let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
+            let at = drawing
+                .strokes
+                .iter()
+                .rposition(is_fill)
+                .map_or(0, |i| i + 1);
+            drawing.strokes.insert(at, stroke);
+        }
+        self.title_dirty = true;
+    }
+}

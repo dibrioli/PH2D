@@ -70,6 +70,9 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // colour-picker hit path in `pointer.rs`, same class as the Vector pair.
     ("ph2d-panel-flip", "FLIP_STROKE_SWATCH"),
     ("ph2d-panel-flip", "FLIP_FILL_SWATCH"),
+    // C2 (Colorize): a swatch da cor do rabisco — mesma classe (picker swatch,
+    // `register_picker_swatch` no paint, despachada pelo hit path do color picker).
+    ("ph2d-panel-flip", "FLIP_COLORIZE_SWATCH"),
     // Inline-rename text field: registered dynamically only while rename mode
     // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
     // Submit/Cancel arms (verified) — not a static populate widget.

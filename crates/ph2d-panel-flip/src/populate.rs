@@ -148,6 +148,11 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_FILL_PAINT);
     button(store, ids::FLIP_FILL_BEHIND);
     button(store, ids::FLIP_FILL_UNPAINT);
+    // Colorize (C2): modo + Apply/Clear. Registrados sempre, pintados só no modo
+    // Colorize; a swatch usa o dispatch de picker (register_picker_swatch no paint).
+    button(store, ids::FLIP_MODE_COLORIZE);
+    button(store, ids::FLIP_COLORIZE_APPLY);
+    button(store, ids::FLIP_COLORIZE_CLEAR);
     slider_chip(
         store,
         ids::FLIP_GAP,

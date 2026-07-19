@@ -184,6 +184,48 @@ fn the_bucket_widgets_appear_only_in_fill_mode() {
     }
 }
 
+/// A seção do Colorize (C2) é **modal**: swatch + Apply + Clear só no modo Colorize.
+/// Fora dele, clicáveis e invisíveis seriam a armadilha que a doutrina proíbe — o par
+/// ausência (Draw) + presença-com-área (Colorize) que a DIRETIVA pede.
+#[test]
+fn the_colorize_widgets_appear_only_in_colorize_mode() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    let colorize = [
+        ids::FLIP_COLORIZE_SWATCH,
+        ids::FLIP_COLORIZE_APPLY,
+        ids::FLIP_COLORIZE_CLEAR,
+    ];
+
+    // Modo Draw: o Colorize não existe na tela.
+    let mut snap = ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Draw,
+        ..Default::default()
+    };
+    ph2d_panel_flip::set_current_flip_style(Some(snap));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    for id in colorize {
+        assert!(
+            !painted.iter().any(|(w, _)| *w == id),
+            "widget do Colorize {id:?} pintado FORA do modo Colorize"
+        );
+    }
+
+    // Modo Colorize: todos existem, com área.
+    snap.mode = FlipMode::Colorize;
+    ph2d_panel_flip::set_current_flip_style(Some(snap));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    for id in colorize {
+        let hit = painted
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0);
+        assert!(
+            hit.is_some(),
+            "widget do Colorize {id:?} NAO e pintado no modo Colorize: a secao esta morta"
+        );
+    }
+}
+
 /// **Toda caixa numérica registra o seu RANGE.**
 ///
 /// Sem `set_number_range`, a caixa continua pintando, aceitando digitação e passando no
@@ -296,6 +338,12 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Strength", ids::FLIP_RS_STRENGTH),
         ("Randomize", ids::FLIP_RS_RANDOMIZE),
     ];
+    // Colorize (C2): a cor do rabisco + as ações do gesto — atributos SÓ do modo Colorize.
+    let colorize_only = [
+        ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
+        ("Colorize apply", ids::FLIP_COLORIZE_APPLY),
+        ("Colorize clear", ids::FLIP_COLORIZE_CLEAR),
+    ];
 
     // (modo, o que TEM de aparecer, o que NÃO pode aparecer)
     #[allow(clippy::type_complexity)] // (modo, o que aparece, o que NAO pode aparecer)
@@ -303,7 +351,7 @@ fn each_mode_shows_only_its_own_attributes() {
         FlipMode,
         &[(&str, ph2d_a11y::NodeId)],
         &[&[(&str, ph2d_a11y::NodeId)]],
-    ); 6] = [
+    ); 7] = [
         (
             FlipMode::Draw,
             &stroke_only,
@@ -365,6 +413,20 @@ fn each_mode_shows_only_its_own_attributes() {
             &edit_expected,
             &[&eraser_only, &bucket_only, &sculpt_only, &smoothing_only],
         ),
+        // Colorize (C2): a cor do rabisco + Apply/Clear, e NADA de traço/borracha/balde/
+        // sculpt/edit (só o `mode_row` e o `colorize_section` pintam neste modo).
+        (
+            FlipMode::Colorize,
+            &colorize_only,
+            &[
+                &stroke_only,
+                &eraser_only,
+                &bucket_only,
+                &fill_swatch,
+                &sculpt_only,
+                &edit_only,
+            ],
+        ),
     ];
 
     // A tabela tem de cobrir TODOS os modos: um modo novo que entrasse sem um caso aqui
@@ -425,6 +487,9 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         (FlipMode::Edit, true),
         (FlipMode::Fill, false),
         (FlipMode::Select, false),
+        // Colorize: o gesto é rabiscar, mas o painel não expõe Size (o rabisco é semente,
+        // não pincel) — o `brush` retorna cedo no modo Colorize.
+        (FlipMode::Colorize, false),
     ];
     assert_eq!(
         cases.len(),

@@ -63,7 +63,7 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        self.segmented(
+        y = self.segmented(
             "",
             [
                 (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
@@ -74,6 +74,17 @@ impl BodyCtx<'_> {
                 ),
                 (ids::FLIP_MODE_EDIT, "Edit", snap.mode == FlipMode::Edit),
             ],
+            y,
+        );
+        // Colorize (C2) numa 3ª fileira própria — o `segmented` não reflui, então um 7º
+        // chip numa fileira de três apertaria os rótulos.
+        self.segmented(
+            "",
+            [(
+                ids::FLIP_MODE_COLORIZE,
+                "Colorize",
+                snap.mode == FlipMode::Colorize,
+            )],
             y,
         )
     }

@@ -2032,6 +2032,11 @@ impl App {
         if self.flip_reshape_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // ADR-0114 C2: enquanto um rabisco do Colorize está aberto, cada movimento é mais
+        // uma amostra da polilinha. No-op sem gesto.
+        if self.flip_colorize_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Flip Edit Mode (ADR-0114 W6.1): enquanto um gesto de seleção está aberto, cada
         // movimento arrasta a CAIXA do marquee ou TRANSLADA a seleção. No-op sem gesto.
         if self.flip_edit_canvas_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2358,6 +2363,14 @@ impl App {
         {
             return;
         }
+        // ADR-0114 C2: o pen-UP fecha um RABISCO do Colorize e o acumula no buffer (as
+        // regiões só nascem no Apply). Como os outros UPs, vem antes dos DOWNs.
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_colorize_canvas_up()
+        {
+            return;
+        }
         // Flip W7.5: o pen-UP fecha um arrasto do gizmo de pose (o passo de undo sai
         // do diff pós-frame, como os outros gestos).
         if kind == PointerKind::Up
@@ -2390,6 +2403,16 @@ impl App {
             && on_canvas
             && !menu_open_before
             && self.flip_fill_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // ADR-0114 C2: a pen-DOWN no modo Colorize começa um RABISCO (arrasto), como o Draw.
+        if self.flip_wants_colorize()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_colorize_canvas_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

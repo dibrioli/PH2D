@@ -249,10 +249,12 @@ fn flood_assign(grid: &Grid, seeds: &[usize], k: usize, assign: &mut [Option<usi
     while let Some(i) = stack.pop() {
         for d in 0..4 {
             if let Some(q) = neighbour(grid, i, d)
-                && assign[q].is_none() && grid.flags[q] & BOUNDARY == 0 {
-                    assign[q] = Some(k);
-                    stack.push(q);
-                }
+                && assign[q].is_none()
+                && grid.flags[q] & BOUNDARY == 0
+            {
+                assign[q] = Some(k);
+                stack.push(q);
+            }
         }
     }
 }
@@ -284,11 +286,14 @@ fn regions_to_geometry(
         while let Some(i) = stack.pop() {
             for d in 0..4 {
                 if let Some(q) = neighbour(grid, i, d)
-                    && !visited[q] && assign[q] == Some(k) && grid.flags[q] & BOUNDARY == 0 {
-                        visited[q] = true;
-                        comp.push(q);
-                        stack.push(q);
-                    }
+                    && !visited[q]
+                    && assign[q] == Some(k)
+                    && grid.flags[q] & BOUNDARY == 0
+                {
+                    visited[q] = true;
+                    comp.push(q);
+                    stack.push(q);
+                }
             }
         }
         if let Some(fill) = trace_region(grid, &comp, eps) {

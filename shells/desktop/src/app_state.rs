@@ -676,6 +676,15 @@ pub(crate) struct App {
     /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
     pub(crate) flip_draw: crate::flip_draw::FlipDraw,
+    /// ADR-0114 C2 (Colorize): os rabiscos coloridos acumulados + o rabisco em curso
+    /// (transientes — sementes do corte LazyBrush, não arte). Apply os transforma em
+    /// regiões preenchidas; Clear os descarta. Ver `flip_colorize`.
+    pub(crate) flip_colorize: crate::flip_colorize::FlipColorize,
+    /// ADR-0114 C2: o botão Apply/Clear do Colorize foi clicado neste frame? O drain de
+    /// painel roda com `self.gfx` preso; o gesto real (que precisa de `self` livre) roda no
+    /// topo do frame seguinte. Falso fora do clique.
+    pub(crate) pending_flip_colorize_apply: bool,
+    pub(crate) pending_flip_colorize_clear: bool,
     /// ADR-0114 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
     /// painel). Setada pela seleção de linha no painel (drain do shell); `None`
     /// ⇒ o bake usa a camada de topo (o `flip_bridge` também destaca a de topo).

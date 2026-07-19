@@ -179,6 +179,10 @@ pub(crate) fn publish(
             (Some(id), Some(rgba)) if id == ph2d_editor::ids::FLIP_FILL_SWATCH => {
                 tool.set_fill_rgba(rgba);
             }
+            // C2: a cor do próximo rabisco do Colorize (paleta própria).
+            (Some(id), Some(rgba)) if id == ph2d_editor::ids::FLIP_COLORIZE_SWATCH => {
+                tool.set_colorize_rgba(rgba);
+            }
             _ => {}
         }
         // Seed the swatches' stored colour so the picker opens on the live colour.
@@ -186,6 +190,8 @@ pub(crate) fn publish(
             .set_widget_color(ph2d_editor::ids::FLIP_STROKE_SWATCH, tool.stroke_rgba());
         hero.store
             .set_widget_color(ph2d_editor::ids::FLIP_FILL_SWATCH, tool.fill_rgba());
+        hero.store
+            .set_widget_color(ph2d_editor::ids::FLIP_COLORIZE_SWATCH, tool.colorize_rgba());
         Some(tool.ui_snapshot())
     } else {
         None

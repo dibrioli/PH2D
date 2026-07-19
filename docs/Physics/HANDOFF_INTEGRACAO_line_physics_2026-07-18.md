@@ -363,7 +363,7 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 
 ## 7. Resumo para o Enio
 
-> Linha `physics` **fechada e completa** — **35 commits**, HEAD `25bf851e`, base `389676f9` =
+> Linha `physics` **fechada e completa** — **39 commits**, HEAD `cc0451ba`, base `389676f9` =
 > `main` atual ⇒ **fast-forward puro**.
 > Todas as 8 waves do plano landaram (W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4), mais a **W4b**
 > (o toggle **Physics** do transporte) e a **W5** (corpos FILHOS na hierarquia — correção de

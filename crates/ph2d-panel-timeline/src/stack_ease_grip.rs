@@ -14,7 +14,7 @@ use crate::graph::TimeView;
 use crate::stack_lane_paint::EDGE_W;
 
 /// Grab size of the ease handle at a strip's top corner (B4).
-pub(crate) const EASE_W: f32 = 7.0; // LITERAL-PX-OK: a pointer-sized grip, like the trim edge's
+pub(crate) const EASE_W: f32 = 12.0; // LITERAL-PX-OK: a comfortable pointer target — 7 px was too thin to click (Enio, 2026-07-19)
 /// The ease handle's resting inset from the corner, when the strip has NO fade yet.
 ///
 /// It rests just PAST the trim grip instead of on the corner, so the two grips never

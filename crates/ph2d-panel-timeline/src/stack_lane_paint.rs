@@ -30,7 +30,7 @@ use crate::{geom, ids};
 /// Vertical inset of a strip inside its row, so lanes read as separate rows.
 const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
-pub(crate) const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
+pub(crate) const EDGE_W: f32 = 12.0; // LITERAL-PX-OK: a comfortable pointer target — 6 px was too thin to click (Enio, 2026-07-19)
 /// The lane weight field's width.
 const WEIGHT_W: f32 = 38.0; // LITERAL-PX-OK: "1.00" at TypeToken::Sm, plus the field's padding
 /// How much of the label column the lane's controls take (weight + two buttons).

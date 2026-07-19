@@ -56,10 +56,11 @@ fn the_corners_split_stretch_top_from_trim_bottom_and_the_fade_grip_survives() {
     assert_eq!(hit(&plan, 248.0, 62.0), Some((1, 6)), "top-right STRETCHES");
     assert_eq!(hit(&plan, 248.0, 77.0), Some((1, 1)), "bottom-right TRIMS");
     // The fade handle rests just inside the start/end corners, and is grabbable over the
-    // WHOLE height (the smoke rule: a 7×7 tab on a 22 px strip could be seen, not grabbed).
-    assert_eq!(hit(&plan, 159.0, 62.0), Some((1, EASE_IN)), "fade-in, top");
-    assert_eq!(hit(&plan, 159.0, 77.0), Some((1, EASE_IN)), "…and bottom");
-    assert_eq!(hit(&plan, 240.0, 62.0), Some((1, EASE_OUT)), "fade-out");
+    // WHOLE height (the smoke rule: a thin tab on a short strip could be seen, not grabbed).
+    // With EDGE_W = 12 the rest fade grips sit at [162, 174] (in) and [226, 238] (out).
+    assert_eq!(hit(&plan, 168.0, 62.0), Some((1, EASE_IN)), "fade-in, top");
+    assert_eq!(hit(&plan, 168.0, 77.0), Some((1, EASE_IN)), "…and bottom");
+    assert_eq!(hit(&plan, 232.0, 62.0), Some((1, EASE_OUT)), "fade-out");
     assert_eq!(
         hit(&plan, 200.0, 70.0),
         Some((1, 2)),
@@ -86,9 +87,9 @@ fn a_fade_defined_by_a_neighbour_is_painted_but_not_grabbable() {
         "the locked fade-in grip must not be registered at all"
     );
     assert_eq!(
-        hit(&plan, 159.0, 62.0),
+        hit(&plan, 168.0, 62.0),
         Some((1, 2)),
-        "…so that corner is just the strip's body"
+        "…so where the (locked) fade-in would rest is just the strip's body"
     );
     assert!(
         plan.iter().any(|(_, e, _)| *e == EASE_OUT),

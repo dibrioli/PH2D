@@ -11,9 +11,9 @@
 | | |
 |---|---|
 | Branch | `line/physics` |
-| HEAD | `<HEAD>` |
+| HEAD | `64e41e31` + o commit que carimba este handoff — **`git rev-parse HEAD` é a fonte**; um documento que registra o próprio hash está sempre um atrás |
 | Base do fork (merge-base com `main`) | `389676f9` |
-| Commits | **<N>** |
+| Commits | **45** (`git rev-list --count main..HEAD`) |
 | Waves cobertas | W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4 (a última do plano) · **W4b** (o toggle Physics) · **W5** (corpos filhos) |
 | Smoke | **as 8 cenas APROVADAS pelo Enio** (a última em 2026-07-19) |
 | Fechada em | **2026-07-19** |
@@ -397,7 +397,7 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 
 ## 7. Resumo para o Enio
 
-> **Linha `physics` FECHADA — <N> commits, HEAD `<HEAD>`, base `389676f9` = `main` atual ⇒
+> **Linha `physics` FECHADA — 45 commits, HEAD `64e41e31`, base `389676f9` = `main` atual ⇒
 > fast-forward puro.** As 8 waves do plano (W0 · W1 · W1.5 · W2a · W2b · W2c · W3 · W4) mais duas que
 > você pediu depois do smoke: **W4b** (o toggle **Physics** no transporte) e **W5** (corpos FILHOS na
 > hierarquia). **As 8 cenas de smoke estão aprovadas** — nada pendente de olhos.

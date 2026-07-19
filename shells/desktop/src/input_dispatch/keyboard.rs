@@ -151,7 +151,11 @@ impl App {
                 self.vec_boolean(op);
                 return;
             }
+            // Mesma regra de área do bloco de clipboard acima: com o mouse SOBRE a
+            // timeline, Delete apaga o KEYFRAME (o bloco da timeline pega no fall-through),
+            // não a forma. Sobre o canvas, apaga a forma/vértice.
             if matches!(code, KeyCode::Delete | KeyCode::Backspace)
+                && !self.cursor_over_timeline()
                 && self.vec_delete_selected_vertex_or_path()
             {
                 return;
@@ -222,7 +226,16 @@ impl App {
         // em `handle_editor_key`), Ctrl+C/X/V copia/recorta/cola a SELEÇÃO (Shift+V
         // cola no lugar), Ctrl+D duplica, Ctrl+G agrupa (Shift+G desagrupa). C/X/V
         // cedem o atalho a um campo de texto focado (clipboard de texto do widget).
+        //
+        // **A ÁREA SOB O MOUSE é dona do atalho (regra do Blender).** Com o mouse SOBRE a
+        // timeline, este bloco CEDE (`!cursor_over_timeline()`): copiar/colar ali é sobre
+        // KEYFRAMES, não formas — o bloco geral da timeline (mais abaixo) pega a tecla no
+        // fall-through. Sobre o canvas, este bloco vale e copia/cola as FORMAS. Sem isto o
+        // atalho seguia a FERRAMENTA (vetor ativo ⇒ sempre formas), e copiar keyframes com
+        // o mouse na timeline copiava o desenho (Enio, 2026-07-19). Mesma regra que o
+        // `cursor_over_timeline` já aplica ao pan/zoom do meio.
         if self.vector_tool_active()
+            && !self.cursor_over_timeline()
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())

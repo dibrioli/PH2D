@@ -274,8 +274,8 @@ pub(crate) fn fill_click(
     //
     // Os fechamentos que o solver usou entram como linhas — senão a face não fecha, e o
     // Gap Closure do usuário não teria efeito nesta rota.
-    let outer =
-        curve_region(&strokes, &r, local, hug_tol, params.grow).unwrap_or_else(|| r.outer.clone());
+    let (outer, holes) = curve_region(&strokes, &r, local, hug_tol, params.grow)
+        .unwrap_or_else(|| (r.outer.clone(), r.holes.clone()));
 
     // A dilatação sai da ARTE (a espessura do line-art que delimita a região), não de
     // um parâmetro: é isso que faz a cor encaixar na linha sem o usuário ajustar nada.
@@ -302,7 +302,7 @@ pub(crate) fn fill_click(
     // então não há fronteira px↔mundo para alguém esquecer de atravessar — que foi
     // exatamente o BUGS #20.
     let widths = ph2d_flip_fill::contour_widths(&strokes, &outer);
-    let stroke = fill_stroke(&outer, r.holes, color, 1.0, &widths);
+    let stroke = fill_stroke(&outer, holes, color, 1.0, &widths);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.
     for c in &r.closures {

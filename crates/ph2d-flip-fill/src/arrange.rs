@@ -53,6 +53,15 @@ struct Seg {
     b: Vec2,
 }
 
+/// Uma face do arranjo, com a componente conexa que a produziu.
+///
+/// A componente não é enfeite: é o que separa *"esta face tem um buraco"* de *"esta face é
+/// o buraco"* — ver `components`.
+struct Face {
+    comp: usize,
+    ring: Vec<Vec2>,
+}
+
 /// Uma meia-aresta do arranjo: de `from` para `to`, carregando os pontos INTERMEDIÁRIOS
 /// (os vértices originais da linha entre as duas interseções).
 #[derive(Clone)]
@@ -298,7 +307,8 @@ fn push_pair(halves: &mut Vec<Half>, from: usize, to: usize, via: &[Vec2], nodes
 
 /// Percorre todas as faces do arranjo pela regra do half-edge: ao chegar num nó, a
 /// seguinte é a vizinha angular da gêmea.
-fn walk_faces(nodes: &[Vec2], halves: &[Half]) -> Vec<Vec<Vec2>> {
+fn walk_faces(nodes: &[Vec2], halves: &[Half]) -> Vec<Face> {
+    let comp_of = components(nodes.len(), halves);
     // Saídas por nó, ordenadas por ângulo (CCW).
     let mut out_of: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
     for (i, h) in halves.iter().enumerate() {
@@ -335,31 +345,137 @@ fn walk_faces(nodes: &[Vec2], halves: &[Half]) -> Vec<Vec<Vec2>> {
             }
         }
         if ring.len() >= 3 {
-            faces.push(ring);
+            faces.push(Face {
+                comp: comp_of[halves[start].from],
+                ring,
+            });
         }
     }
     faces
 }
 
-/// A face que contém a semente: a de MENOR área entre as que a contêm, e só se ela for
-/// limitada (área positiva na convenção do percurso).
-fn pick_face(faces: Vec<Vec<Vec2>>, seed: Vec2) -> Option<Region> {
-    let mut best: Option<(f32, Vec<Vec2>)> = None;
-    for f in faces {
-        let a = crate::signed_area(&f);
-        // A face EXTERNA percorre no sentido oposto: descartá-la é o que faz uma arte com
-        // vão devolver `None` em vez de um anel que engloba o desenho inteiro.
-        if a <= 0.0 || !contains(&f, seed) {
-            continue;
+/// **A componente conexa de cada NÓ** — e é ela que torna os buracos visíveis.
+///
+/// O percurso de half-edge nunca atravessa de uma componente para outra: ele só anda por
+/// arestas, e componentes distintas não compartilham nenhuma. Por isso uma forma fechada
+/// **solta dentro** de outra é invisível para a caminhada — a face que contém a semente é
+/// o interior da forma externa, inteiro, como se a interna não existisse. O buraco não é
+/// uma face que faltou achar: é uma **componente** que ninguém perguntou onde estava.
+fn components(node_count: usize, halves: &[Half]) -> Vec<usize> {
+    fn find(parent: &mut [usize], mut x: usize) -> usize {
+        while parent[x] != x {
+            parent[x] = parent[parent[x]]; // compressão de caminho pela metade
+            x = parent[x];
         }
-        if best.as_ref().is_none_or(|(ba, _)| a < *ba) {
-            best = Some((a, f));
+        x
+    }
+    let mut parent: Vec<usize> = (0..node_count).collect();
+    for h in halves {
+        let (a, b) = (
+            find(&mut parent, h.from),
+            find(&mut parent, halves[h.twin].from),
+        );
+        if a != b {
+            parent[a] = b;
         }
     }
-    best.map(|(_, outer)| Region {
-        outer,
-        holes: Vec::new(),
+    (0..node_count).map(|i| find(&mut parent, i)).collect()
+}
+
+/// A face que contém a semente: a de MENOR área entre as que a contêm, e só se ela for
+/// limitada (área positiva na convenção do percurso). Mais os BURACOS dela.
+fn pick_face(faces: Vec<Face>, seed: Vec2) -> Option<Region> {
+    let mut best: Option<(f32, usize, usize)> = None; // (área, componente, índice)
+    for (i, f) in faces.iter().enumerate() {
+        let a = crate::signed_area(&f.ring);
+        // A face EXTERNA percorre no sentido oposto: descartá-la é o que faz uma arte com
+        // vão devolver `None` em vez de um anel que engloba o desenho inteiro.
+        if a <= 0.0 || !contains(&f.ring, seed) {
+            continue;
+        }
+        if best.as_ref().is_none_or(|(ba, _, _)| a < *ba) {
+            best = Some((a, f.comp, i));
+        }
+    }
+    let (_, comp, idx) = best?;
+    let holes = holes_of(&faces, comp, &faces[idx].ring);
+    Some(Region {
+        outer: faces[idx].ring.clone(),
+        holes,
     })
+}
+
+/// **Os buracos da face escolhida: as OUTRAS componentes que caem dentro dela.**
+///
+/// A silhueta de uma componente é o anel da face mais NEGATIVA dela — a face ilimitada,
+/// que a percorre por fora — invertida para a convenção positiva. Uma forma solta dentro
+/// da região entra por aqui; a componente que produziu a própria face nunca entra (as
+/// faces dela já foram esculpidas pela caminhada).
+///
+/// **Só as MAXIMAIS.** Com três formas aninhadas e a semente entre a 1ª e a 2ª, a 3ª
+/// também cai dentro da face — mas ela está dentro do buraco, não na região. Uma
+/// candidata contida em outra candidata é descartada; sem isso a cor ganharia um buraco
+/// onde não há nada que a interrompa.
+fn holes_of(faces: &[Face], outer_comp: usize, outer: &[Vec2]) -> Vec<Vec<Vec2>> {
+    // A silhueta de cada componente estranha: a face de área mais negativa, invertida.
+    let mut silhouette: Vec<(usize, f32, Vec<Vec2>)> = Vec::new();
+    for f in faces {
+        // ⚠️ **Esta linha sobrevive à mutação POR CONSTRUÇÃO, e não por falta de gate.**
+        //
+        // A silhueta de uma componente envolve TODAS as faces dela, e todo vértice dela
+        // está SOBRE uma aresta que as limita — logo nenhum vértice da componente está no
+        // interior de uma face dela, e o `contains` lá embaixo já responderia "não". Não
+        // existe entrada que distinga ter e não ter este filtro.
+        //
+        // Ele fica porque a resposta "não" viria de um ponto-em-polígono avaliado
+        // exatamente sobre o anel — um caso **indefinido**, que hoje sai falso pelo jeito
+        // como o ray-casting trata `a.y == p.y`. A pergunta é topológica; responder por
+        // topologia é de graça, e não deixa a corretude pendurada numa degenerescência.
+        if f.comp == outer_comp {
+            continue;
+        }
+        let a = crate::signed_area(&f.ring);
+        // Só a face ILIMITADA da componente (área negativa) descreve a silhueta dela.
+        //
+        // ⚠️ O `>=` também descarta a área ZERO, e isso não é acidente: um rabisco ABERTO
+        // solto dentro da região é uma componente cuja única face vai e volta pela mesma
+        // linha, com área **exatamente** 0.0. Ele não interrompe a cor em pixel nenhum (é
+        // uma linha sem interior), e emiti-lo como buraco só entregaria pontos ao
+        // triangulador para descrever o vazio. Um teto de área escolhido no olho erraria
+        // nos dois sentidos; o zero exato é um fato da topologia.
+        if a >= 0.0 {
+            continue;
+        }
+        match silhouette.iter_mut().find(|(c, _, _)| *c == f.comp) {
+            Some(slot) if a < slot.1 => *slot = (f.comp, a, f.ring.clone()),
+            Some(_) => {}
+            None => silhouette.push((f.comp, a, f.ring.clone())),
+        }
+    }
+
+    let mut cands: Vec<Vec<Vec2>> = silhouette
+        .into_iter()
+        .filter_map(|(_, _, mut ring)| {
+            ring.reverse(); // a face ilimitada percorre ao contrário
+            contains(outer, ring[0]).then_some(ring)
+        })
+        .collect();
+
+    // As maximais: cai fora quem estiver dentro de outra candidata.
+    //
+    // (Componentes distintas nunca se cruzam — toda interseção vira nó, e nó funde as
+    // duas numa componente só. Então um vértice qualquer decide o aninhamento.)
+    let inside_another: Vec<bool> = cands
+        .iter()
+        .map(|c| {
+            cands
+                .iter()
+                .any(|o| !std::ptr::eq(o, c) && contains(o, c[0]))
+        })
+        .collect();
+    let mut keep = inside_another.iter();
+    cands.retain(|_| !keep.next().copied().unwrap_or(false));
+    cands
 }
 
 fn contains(ring: &[Vec2], p: Vec2) -> bool {

@@ -164,6 +164,17 @@ fn a_single_closed_shape_comes_out_of_the_same_engine() {
         n,
         "o anel tem de ser os {n} vértices do próprio traço — nem um a mais"
     );
+    // ⚠️ **E ele não tem buraco nenhum.** Sem esta linha, a defesa que impede a
+    // componente de virar buraco de si mesma ficava sem gate: a silhueta de uma
+    // componente nunca está DENTRO de uma face dela (ela as envolve todas), então a
+    // resposta certa só chegava por um `contains` avaliado exatamente SOBRE o anel — um
+    // teste de ponto-em-polígono num vértice da fronteira, que é indefinido. A defesa
+    // torna a resposta estrutural em vez de depender dessa moeda.
+    assert!(
+        r.holes.is_empty(),
+        "uma forma sozinha nao tem buraco; veio {}",
+        r.holes.len()
+    );
 }
 
 /// **A QUINA AGUDA** — a fixture que matou a abordagem anterior (BUGS #16: *"os dois lados
@@ -221,12 +232,92 @@ fn nested_shapes_pick_the_innermost_face() {
          (10.000 = o externo, que pintaria por cima do interno)"
     );
 
-    // E o clique ENTRE os dois dá o anel — a face do meio, que também é a menor que o
-    // contém.
+    // E o clique ENTRE os dois dá o ANEL: delimitado por fora pelo quadrado externo e por
+    // dentro pelo interno — que é um BURACO, não uma região que a cor pode cobrir.
     let r2 = region_at(&lines, Vec2::new(15.0, 50.0)).expect("a faixa entre os quadrados");
     let a2 = crate::signed_area(&r2.outer).abs();
     assert!(
         (a2 - 10_000.0).abs() < 1.0,
         "entre os dois, a face é delimitada pelo quadrado externo; veio {a2}"
+    );
+    assert_eq!(
+        r2.holes.len(),
+        1,
+        "a faixa entre os quadrados tem UM buraco (o quadrado interno); veio {} — \
+         sem ele a cor pinta por cima da forma de dentro",
+        r2.holes.len()
+    );
+    let ah = crate::signed_area(&r2.holes[0]).abs();
+    assert!(
+        (ah - 1_600.0).abs() < 1.0,
+        "o buraco é o quadrado interno (40x40 = 1.600); veio {ah}"
+    );
+    every_vertex_lies_on_a_line(
+        &Region {
+            outer: r2.holes[0].clone(),
+            holes: Vec::new(),
+        },
+        &lines,
+        1e-3,
+    );
+}
+
+/// **Um rabisco ABERTO solto dentro da região NÃO é buraco.**
+///
+/// Ele é uma componente cuja única face vai e volta pela mesma linha — área zero. Não
+/// interrompe a cor em pixel nenhum, e emiti-lo como buraco só entregaria pontos ao
+/// triangulador para descrever o vazio.
+///
+/// ⚠️ Este gate existe porque a regra *"toda componente estranha lá dentro é buraco"* é
+/// quase certa, e o "quase" é exatamente esta forma. Um teto de área escolhido no olho
+/// erraria nos dois sentidos; a **área ser exatamente zero** é um fato da topologia.
+#[test]
+fn an_open_squiggle_inside_the_region_is_not_a_hole() {
+    let square = line(
+        &[(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (0.0, 100.0)],
+        true,
+    );
+    let squiggle = line(&[(40.0, 40.0), (60.0, 45.0), (45.0, 60.0)], false);
+    let lines = vec![square, squiggle];
+
+    let r = region_at(&lines, Vec2::new(10.0, 10.0)).expect("o interior do quadrado");
+    assert!(
+        r.holes.is_empty(),
+        "um rabisco aberto nao tem interior: {} buraco(s) emitido(s)",
+        r.holes.len()
+    );
+}
+
+/// **Três formas aninhadas: só a VIZINHA vira buraco.**
+///
+/// Semente entre a 1ª e a 2ª. A 3ª também cai dentro da face escolhida, mas ela está
+/// dentro do BURACO, não na região — emiti-la abriria um vazio onde não há nada que
+/// interrompa a cor.
+#[test]
+fn a_shape_inside_the_hole_is_not_a_second_hole() {
+    let mk = |r: f32| -> Line {
+        line(
+            &[
+                (50.0 - r, 50.0 - r),
+                (50.0 + r, 50.0 - r),
+                (50.0 + r, 50.0 + r),
+                (50.0 - r, 50.0 + r),
+            ],
+            true,
+        )
+    };
+    let lines = vec![mk(50.0), mk(30.0), mk(10.0)];
+
+    let r = region_at(&lines, Vec2::new(5.0, 50.0)).expect("a faixa mais externa");
+    assert_eq!(
+        r.holes.len(),
+        1,
+        "só o quadrado do MEIO é buraco; o de dentro está dentro dele. Veio {} buracos",
+        r.holes.len()
+    );
+    let ah = crate::signed_area(&r.holes[0]).abs();
+    assert!(
+        (ah - 3_600.0).abs() < 1.0,
+        "o buraco é o quadrado do meio (60x60 = 3.600); veio {ah}"
     );
 }

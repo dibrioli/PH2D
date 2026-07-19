@@ -136,10 +136,13 @@ mod curve_route_tests;
 ///    `feedback_a_parameter_that_changes_nothing_is_discarded_downstream` descreve — e
 ///    era o que estava acontecendo aqui até um gate perguntar (o `style` de teste já vinha
 ///    com `grow: 2.0` e a rota disparava assim mesmo, jogando o valor fora).
-/// 1. **A região tem BURACOS.** O motor da R0 devolve só o anel externo; entregar o anel
-///    sem os buracos pintaria por cima deles. Um donut é um caso legítimo e comum, e
-///    perdê-lo em silêncio seria pior que não usar a rota. (Buracos são trabalho de uma
-///    fatia própria — o walk já os produz como faces separadas, falta associá-los.)
+/// 1. **As duas rotas discordam sobre os BURACOS.** Esta recusa já foi *"a região tem
+///    buracos"* — o motor da R0 só devolvia o anel externo, e entregá-lo sem eles pintaria
+///    por cima. Desde 2026-07-18 ele os produz (`arrange::holes_of`: um buraco é uma
+///    **componente conexa** que cai dentro da face, e a caminhada de half-edge nunca as
+///    enxerga porque nunca atravessa entre componentes). A pergunta certa deixou de ser
+///    *se* há buraco e passou a ser se as duas rotas **concordam** — em quantos, e em
+///    onde. Discordar em silêncio pintaria por cima de uma forma que devia ficar de fora.
 /// 2. **Os dois anéis não se ABRAÇAM.** O arranjo acha a face que contém o clique; o
 ///    raster acha a região que o flood alcançou. Elas quase sempre coincidem — mas se a
 ///    tinta rala deixou o flood escapar por onde o arranjo vê parede (ou o contrário), as
@@ -155,12 +158,9 @@ pub(crate) fn curve_region(
     click: Vec2,
     hug_tol: f32,
     grow: i32,
-) -> Option<Vec<Vec2>> {
+) -> Option<(Vec<Vec2>, Vec<Vec<Vec2>>)> {
     if grow != 0 {
         return None; // recusa 0
-    }
-    if !solved.holes.is_empty() {
-        return None; // recusa 1
     }
     // Os fechamentos de gap viram linhas de largura zero: eles delimitam, mas não são tinta
     // (é o mesmo papel que já têm no documento).
@@ -172,7 +172,31 @@ pub(crate) fn curve_region(
     if region.outer.len() < 3 || ring_area(&region.outer).abs() <= 0.0 {
         return None; // recusa 3
     }
+    // ⚠️ **Os BURACOS entram no abraço, não só o anel externo.** A recusa 1 (*"tem buraco?
+    // então o raster que resolva"*) existia porque o arranjo não os produzia; agora produz
+    // (`arrange::holes_of`), e a pergunta certa não é *se* há buraco, é se as duas rotas
+    // **concordam sobre eles**. Sem isto, uma região onde o raster vê um buraco e o
+    // arranjo vê outro (ou nenhum) passaria no abraço do anel externo e a cor cobriria uma
+    // forma que devia ficar de fora — em silêncio, que é a pior forma.
+    if region.holes.len() != solved.holes.len() {
+        return None; // recusa 1: as duas rotas discordam sobre QUANTOS buracos há
+    }
     let hug = max_dist_to_ring(&region.outer, &solved.outer)
         .max(max_dist_to_ring(&solved.outer, &region.outer));
-    (hug <= hug_tol).then_some(region.outer) // recusa 2
+    if hug > hug_tol {
+        return None; // recusa 2
+    }
+    // Cada buraco do raster tem de achar um par no arranjo (a ORDEM das duas listas não é
+    // a mesma: uma sai do marching squares, a outra do percurso de faces).
+    for sh in &solved.holes {
+        let near = region
+            .holes
+            .iter()
+            .map(|rh| max_dist_to_ring(sh, rh).max(max_dist_to_ring(rh, sh)))
+            .fold(f32::MAX, f32::min);
+        if near > hug_tol {
+            return None; // recusa 2b: um buraco do raster não tem correspondente
+        }
+    }
+    Some((region.outer, region.holes))
 }

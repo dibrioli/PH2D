@@ -361,3 +361,58 @@ fn the_hug_tolerance_follows_the_resolution_the_grid_delivered() {
         );
     }
 }
+
+/// A grade com uma FORMA SOLTA dentro da célula do meio — o donut.
+fn grid_with_island() -> FlipDrawing {
+    let mut d = grid_drawing();
+    let mut island = FlipStroke::new();
+    for i in 0..16 {
+        let t = i as f32 / 16.0 * std::f32::consts::TAU;
+        island.push_point(Point {
+            pos: Vec2::new(5.0 + 2.0 * t.cos(), 5.0 + 2.0 * t.sin()),
+            width: 0.4,
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    island.closed = true;
+    d.strokes.push(island);
+    d
+}
+
+/// **O DONUT: a rota das curvas carrega o buraco.**
+///
+/// Era a recusa 1 (*"tem buraco? o raster que resolva"*), e ela existia porque o motor do
+/// arranjo só devolvia o anel externo. Um buraco não é uma face que faltou achar: é uma
+/// **componente conexa** que a caminhada de half-edge nunca vê, porque ela só anda por
+/// arestas e componentes distintas não compartilham nenhuma.
+///
+/// O gate afirma as duas metades: a região SAI com um buraco, e o anel dele também se
+/// apoia nos vértices das linhas (senão teríamos curado o anel externo e deixado o buraco
+/// vetorizado — a mesma dessincronização, um nível abaixo).
+#[test]
+fn a_region_with_an_island_keeps_the_hole_and_rides_the_lines() {
+    let art = grid_with_island();
+    let mut d = art.clone();
+    let st = FlipStyleSnapshot {
+        grow: 0.0,
+        ..style(ToolFillMode::Paint)
+    };
+    fill_click(&mut d, &st, Vec2::new(2.0, 2.0), 0.01, &Xform::IDENTITY).expect("preenche");
+
+    let f = painted(&d);
+    assert_eq!(
+        f.holes.len(),
+        1,
+        "a celula com uma ilha dentro tem UM buraco; veio {} — sem ele a cor pinta por \
+         cima da forma solta",
+        f.holes.len()
+    );
+    let on_vertex = on_vertex_count(&art, &f.holes[0]);
+    assert!(
+        on_vertex >= 12,
+        "so {on_vertex} dos {} pontos do BURACO pousam num vertice de linha — o anel \
+         externo veio das curvas e o buraco ficou vetorizado",
+        f.holes[0].len()
+    );
+}

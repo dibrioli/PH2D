@@ -652,19 +652,43 @@ diferentes agora:
    isso; o módulo segue gates-only pelo OUTRO motivo (puxa colunas inteiras e
    precisa do `retain_streams_for_debug`, que pina buffers contra o `reclaim`).
 
-   **O que falta construir** (bem especificado, nada bloqueado):
-   - um **tap limitado** de primeira classe (`tap.rs`), fora do `debug_read`: um
-     passe de gather ESTRIDADO (o selo do painel subamostra por passada — pegar os
-     48 PRIMEIROS de uma espiral de 5.000 destrói a forma, e o docstring do
-     `PREVIEW_POINTS` já diz isso) escrevendo num buffer pequeno, **um submit, um
-     map**, sem pinar nada;
-   - a costura no `motion_bridge_readout.rs`: a **CONTAGEM sai do `CookShape`**
-     (exata — é o que dimensionou o dispatch) e os **VALORES do tap** (subamostra).
-     São duas fontes para uma resposta, e é honesto: o caminho CPU **já**
-     subamostra a 48 (`DIGEST_SAMPLES`/`PREVIEW_POINTS`), então o tap entrega
-     exatamente a informação que o painel já usa. ⚠️ Handing o painel um `Stream`
-     de 48 elementos e deixando o `readout_of` contá-lo diria **"48 inst"** num
-     grafo de 4,19 M — a contagem TEM de vir do `CookShape`.
+   **✅ O TAP LIMITADO ESTÁ CONSTRUÍDO** (`ph2d-gpu-cook/src/tap.rs`,
+   `GpuCook::tap(&gpu, samples) -> BTreeMap<NodeId, Stream>`):
+
+   - **Gather ESTRIDADO, nunca prefixo.** O selo do painel mostra a FORMA do que
+     um nó emite, e os 48 primeiros pontos de uma espiral de 5.000 são um arco —
+     o docstring do `PREVIEW_POINTS` já dizia isso e o amostrador da CPU estrida
+     por esse motivo. Um prefixo seria um `copy_buffer_to_buffer` e nenhum shader;
+     seria também a figura errada.
+   - **Um submit, um map**, quantos nós forem: cada coluna é um dispatch dentro do
+     MESMO encoder. Tapar por-nó seriam N sincronizações de device, e a
+     sincronização é a parte que não amortiza.
+   - **Não pina nada.** O `tap_streams` é limpo no topo de todo cook, **antes** do
+     `reclaim` — segurar um `GpuStream` é refcount nos buffers dele, e um hold que
+     sobrevivesse ao frame derrotaria a pool exatamente como o `debug_streams`
+     faz. Dentro da janela em que os buffers já estão vivos, custa zero.
+   - **`TAP_SAMPLES = 48`**, espelhando `DIGEST_SAMPLES`/`PREVIEW_POINTS`: um
+     número diferente faria as duas vias subamostrarem diferente e os digests
+     discordarem num documento que não mudou.
+
+   Gate `the_bounded_tap_reports_what_the_cpu_memo_reports` — 400 elementos **de
+   propósito** (a 48 ou menos o stride é 1 e o tap degenera em cópia de prefixo,
+   que é exatamente o bug que o gather existe para evitar); pina as DUAS metades
+   da pergunta da contagem; e mede o SPAN para provar que o tap percorre o stream.
+   ⚠️ A barra do span é o **ponto médio** entre prefixo e total, não 90% do total:
+   uma subamostra de 48 pontos de uma onda **não alcança os picos** (medido: 6,95
+   contra 8,13 do total, 3,67 do prefixo), então exigir 90% seria exigir algo
+   falso de um amostrador correto. 3 mutações, 3 mortas (prefixo · contar
+   elementos em vez de amostras · `lanes` re-derivado à mão).
+
+   **O que falta:** a costura no `motion_bridge_readout.rs`. A **CONTAGEM sai do
+   `CookShape`** (exata — é o que dimensionou o dispatch) e os **VALORES do tap**
+   (subamostra). São duas fontes para uma resposta e é honesto: o caminho CPU
+   **já** subamostra a 48, então o tap entrega exatamente a informação que o
+   painel já usa. ⚠️ Entregar ao painel um `Stream` de 48 elementos e deixar o
+   `readout_of` contá-lo diria **"48 inst"** num grafo de 4,19 M — e o gate acima
+   pina as duas metades justamente para que ninguém "simplifique" o readout em
+   perguntar ao tap.
 
 Nada aqui está bloqueado por outra coisa: escolha por retorno.
 

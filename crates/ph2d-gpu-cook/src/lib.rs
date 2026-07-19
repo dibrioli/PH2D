@@ -61,6 +61,7 @@ pub mod plan;
 pub mod ring;
 pub mod shape;
 pub mod stream;
+pub mod tap;
 
 pub use instances::GpuInstances;
 pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
@@ -154,6 +155,19 @@ pub struct GpuCook {
     /// would pin every intermediate against [`BufferPool::reclaim`].
     pub(crate) debug_retain: bool,
     pub(crate) debug_streams: BTreeMap<NodeId, GpuStream>,
+    /// Last cook's output streams, held for the frame-path [`tap`]. **Cleared at
+    /// the top of every cook, BEFORE [`BufferPool::reclaim`]** — holding a
+    /// `GpuStream` is a refcount on its buffers, so a hold that outlived the
+    /// frame would defeat the pool exactly like `debug_streams` does. Held only
+    /// across the window in which the buffers are alive anyway, it costs nothing.
+    ///
+    /// Populated unconditionally rather than behind a flag: the tap is a
+    /// *frame-path* facility (0,5% of a 60 fps frame, measured), and a flag would
+    /// mean the panel's first frame after enabling it shows the previous cook.
+    tap_streams: BTreeMap<NodeId, GpuStream>,
+    /// The tap's compute pipeline, built on first use and reused. `Option` and
+    /// not built in `new()` because `GpuCook` is `Default` and has no device.
+    tap_pipeline: Option<tap::TapPipeline>,
     /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
     /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
     /// step per tick, so the caller needs to know which one it last took; a
@@ -267,6 +281,9 @@ impl GpuCook {
         {
             self.ring.record(t, &self.prev);
         }
+        // Drop the previous frame's tap hold BEFORE reclaiming, or its refcount
+        // would keep every intermediate out of the pool for one extra frame.
+        self.tap_streams.clear();
         self.pool.reclaim();
 
         // The CPU→GPU crossings: one upload per boundary node, before anything
@@ -361,6 +378,7 @@ impl GpuCook {
         // host-side element count of every staged node, recorded once the walk is
         // done. Cheap (a map of `u32`) and honest — these ARE the dispatch sizes.
         self.shape.record(&streams);
+        self.tap_streams = streams.clone();
         if self.debug_retain {
             self.debug_streams = streams.clone();
         }

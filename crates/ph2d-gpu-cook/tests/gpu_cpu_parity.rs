@@ -2953,3 +2953,136 @@ fn the_stagger_variants_match_the_cpu() {
         }
     }
 }
+
+// ── The bounded tap ─────────────────────────────────────────────────────────
+
+/// **The tap reports what the CPU memo reports** — the gate that lets the graph
+/// panel read a GPU-resident frame.
+///
+/// A GPU cook does not feed the CPU memo, so the panel's readouts, digest, stamps
+/// and probe all go blank on exactly the documents worth watching. `GpuCook::tap`
+/// samples them back for ~0,075 ms (`bounded_readback_cost_probe`), and this is
+/// what makes the samples trustworthy: for the SAME document, every column the
+/// tap returns must match the CPU's stream at the strided indices it claims to
+/// have read.
+///
+/// ⚠️ **The stream is large on purpose.** At 48 elements or fewer the stride is 1
+/// and the tap degenerates into a prefix copy — which is precisely the bug the
+/// strided gather exists to avoid, so a small fixture would gate the one case
+/// that cannot fail ([[reference_topic_fixture_discipline]]). 400 elements makes
+/// the stride 8.
+///
+/// ⚠️ **And the COUNT is asserted to come from elsewhere.** The tapped stream
+/// carries 48 rows; a panel that counted them would print `48 inst` for a grid of
+/// 400. The count is `CookShape`'s, and this gate pins both halves so nobody
+/// "simplifies" the readout into asking the tap.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_bounded_tap_reports_what_the_cpu_memo_reports() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (osc, out) = deformer_chain(&mut g, 20.0, "motion.oscillator"); // 400 elements
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 1.7);
+    g.set_param(osc, "frequency", 0.9);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu());
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, osc, PLAYHEAD).expect("cpu cook");
+    let cpu_stream = cpu[0].as_stream();
+    assert_eq!(cpu_stream.count(), 400, "fixture: the stride must exceed 1");
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+
+    let samples = ph2d_gpu_cook::tap::TAP_SAMPLES;
+    let tapped = gc
+        .tap(&gpu, samples)
+        .expect("the tap returns the staged nodes");
+    let osc_tap = tapped.get(&osc).expect("the oscillator was staged");
+
+    // The count question, and the two different right answers to it.
+    assert_eq!(
+        osc_tap.count(),
+        samples as usize,
+        "the tap carries SAMPLES, not elements"
+    );
+    assert_eq!(
+        gc.shape().count(osc),
+        Some(400),
+        "the exact count comes from CookShape — a panel that counted the tap \
+         would print `48 inst` for a grid of 400"
+    );
+
+    // Every tapped row must be the CPU's row at the index the stride names.
+    let ph2d_nodegraph::attr::Column::Vec2(cpu_p) = cpu_stream.get("P").expect("cpu P") else {
+        panic!("P is Vec2");
+    };
+    let ph2d_nodegraph::attr::Column::Vec2(tap_p) = osc_tap.get("P").expect("tapped P") else {
+        panic!("P is Vec2");
+    };
+    let mut worst = 0.0f32;
+    for (i, t) in tap_p.iter().enumerate() {
+        let src = (i as u32 * 400) / samples;
+        let c = cpu_p[src as usize];
+        worst = worst.max((t[0] - c[0]).abs()).max((t[1] - c[1]).abs());
+    }
+    eprintln!(
+        "tap vs cpu: {} samples of 400, worst |dP| {worst:e}",
+        tap_p.len()
+    );
+    assert!(
+        worst < 2e-3,
+        "the tap must sample the same field: {worst:e}"
+    );
+
+    // The stride is REAL: sampling the front 48 of a wave would give a much
+    // narrower spread than sampling all 400. Without this the gate would pass on
+    // a prefix copy, which is the whole thing the gather exists to prevent.
+    let span = |v: &[[f32; 2]]| {
+        let (lo, hi) = v
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), p| (l.min(p[1]), h.max(p[1])));
+        hi - lo
+    };
+    let full_span = span(cpu_p);
+    let prefix_span = span(&cpu_p[..samples as usize]);
+    let tap_span = span(tap_p);
+    eprintln!("  span: full {full_span:.4} · cpu prefix {prefix_span:.4} · tapped {tap_span:.4}");
+    assert!(
+        prefix_span < full_span * 0.9,
+        "fixture check: the prefix must be visibly narrower than the whole \
+         ({prefix_span} vs {full_span}), or a prefix copy would pass this gate"
+    );
+    // The bar is the MIDPOINT between the two, not the full span. A 48-point
+    // subsample of a wave cannot land on its exact peaks — measured, the tapped
+    // span is 6,95 against a full 8,13 — so demanding 90% of the full span would
+    // be demanding something false of a correct sampler. What the gate can
+    // honestly ask is that the tap look far more like the whole than like the
+    // front (prefix 3,67), and that is what a prefix copy would fail.
+    let bar = (prefix_span + full_span) * 0.5;
+    assert!(
+        tap_span > bar,
+        "the tap must WALK the stream, not read its front: tapped span \
+         {tap_span} vs the {bar} midpoint between prefix {prefix_span} and full \
+         {full_span}"
+    );
+}

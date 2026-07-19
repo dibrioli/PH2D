@@ -162,17 +162,28 @@ fn paint_shape_transform_controls(
     mut y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // Rake (per-dab rotation follows the stroke), then Angle — Angle sits BELOW it (Enio 2026-06-25).
-    y = paint_checkbox_row(
+    // Follow (Off / Rake / Flow — how the silhouette relates to the stroke), then Angle BELOW it. Flow lays
+    // the pattern in the stroke's arc-length frame so its lines stay parallel through curves (Enio
+    // 2026-07-19); Rake rotates each stamp to the tangent; Off uses the fixed Angle.
+    let follow_name = core_ids::PAINTER_SHAPE_FOLLOW_MODES
+        .iter()
+        .find(|(v, _)| *v == brush.shape_follow)
+        .map_or("Off", |(_, n)| n);
+    let (ny, open) = crate::paint_brush::paint_dropdown_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        core_ids::PAINTER_SHAPE_RAKE,
-        "Rake",
-        brush.shape_rake,
+        "Follow",
+        core_ids::PAINTER_SHAPE_FOLLOW,
+        brush.shape_follow,
+        follow_name,
     );
+    y = ny;
+    if let Some(r) = open {
+        state::set_pending_brush_shape_follow_dd(Some((r, brush.shape_follow)));
+    }
     y = crate::number_field::paint_num_row(
         ctx,
         theme,
@@ -233,6 +244,15 @@ pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
                 TextureKind::from_u8(k).name(),
             )
         })
+        .collect()
+}
+
+/// The Shape **Follow** options (Off / Rake / Flow) for the dropdown popover — the single source is
+/// [`core_ids::PAINTER_SHAPE_FOLLOW_MODES`], so the labels never drift from the wire values.
+pub(crate) fn shape_follow_options() -> Vec<DropdownOption<u8>> {
+    core_ids::PAINTER_SHAPE_FOLLOW_MODES
+        .iter()
+        .map(|&(v, name)| DropdownOption::new(core_ids::painter_shape_follow_option_id(v), v, name))
         .collect()
 }
 

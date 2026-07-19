@@ -314,9 +314,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
         // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
         ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,
-        // Shape section: Rake checkbox + the section reset (clears the image → falloff). (Per-slot
-        // "Random Angle" retired 2026-07-19 — the Stroke Jitter Rotate covers a random per-dab spin.)
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
+        // Shape section: the section reset (clears the image → falloff). The Follow control (Off/Rake/Flow)
+        // is a Dropdown, registered above — not a Button here (Enio 2026-07-19). (Per-slot "Random Angle"
+        // retired 2026-07-19 — the Stroke Jitter Rotate covers a random per-dab spin.)
         ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
         // "Use Document Layers" capture button + the Per-Layer Color mode toggle (the per-layer
         // checkboxes + swatches are factory ids, registered at paint time). Forward as a Button Click.
@@ -421,8 +421,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_UNIT,
-        // Shape section: source picker (None/Image).
+        // Shape section: source picker (None/Image) + the Follow dropdown (Off/Rake/Flow).
         ph2d_editor_core::ids::PAINTER_SHAPE_KIND,
+        ph2d_editor_core::ids::PAINTER_SHAPE_FOLLOW,
         // Texture section: Kind picker + Mapping chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,

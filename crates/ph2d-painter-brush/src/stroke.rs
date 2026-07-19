@@ -45,6 +45,12 @@ pub struct Dab {
     /// bow-wave, the Chisel axis) are byte-identical. The stamp feeds it to `dab_basis` as the **Rake**
     /// direction; it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
     pub dir: [f32; 2],
+    /// **Arc-length** at this dab's centre: the cumulative distance travelled along the stroke path from
+    /// the pen-down (in image pixels), monotonic and continuous across segments. The Shape **Flow** mapping
+    /// uses it as the *along-the-stroke* coordinate so the silhouette pattern's phase stays continuous from
+    /// dab to dab (parallel lines that follow the curve) instead of resetting per stamp. It is IGNORED
+    /// unless the Shape's Flow is on, so a non-Flow brush is unaffected by it.
+    pub arc_len: f32,
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -103,6 +109,10 @@ pub struct Stroke {
     /// stroke → the settled `heading` fallback). Reset in [`Self::begin`]; the shape editors build a fresh
     /// `Stroke` per re-stamp, so it restarts there on its own.
     last_emit_pos: Option<[f32; 2]>,
+    /// Cumulative arc-length travelled to `last_pos` (image px), stamped on each [`Dab::arc_len`] and used
+    /// by the Shape **Flow** mapping as the along-the-stroke coordinate. Reset in [`Self::begin`]; the shape
+    /// editors build a fresh `Stroke` per re-stamp, so it restarts from `0` there on its own.
+    arc_len: f32,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -145,6 +155,7 @@ impl Stroke {
             warm_from: [0.0, 0.0],
             warming: false,
             last_emit_pos: None,
+            arc_len: 0.0,
         }
     }
 
@@ -173,6 +184,7 @@ impl Stroke {
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
         self.last_emit_pos = None; // no dab emitted yet → the first dab's Rake falls back to the heading
+        self.arc_len = 0.0; // fresh stroke → the Flow along-coordinate starts at the pen-down
         // Rake warm-up (see [`mod@self::warmup`]): hold the opening dabs until travel defines the heading.
         self.warm_buf.clear();
         self.warm_dist = 0.0;
@@ -184,13 +196,14 @@ impl Stroke {
         self.warming = self.spec.stroke_method.rake_warmup_eligible()
             && (self.spec.texture.rake
                 || self.spec.shape.rake
+                || self.spec.shape.flow
                 || self.spec.needs_heading
                 || self.spec.effective_impasto_push() > 0.0);
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
             let pr = self.method_pressure(p.pressure);
-            let dab = self.dab_at(p.pos, pr, self.method_overlap());
+            let dab = self.dab_at(p.pos, pr, self.method_overlap(), self.arc_len);
             crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
@@ -222,7 +235,13 @@ impl Stroke {
             StrokeMethod::Dots => {
                 let target = self.stabilize(avg);
                 self.advance_heading_to(target.pos); // Rake heading from the inter-dab travel (no spline)
-                self.emit_single(target.pos, self.method_pressure(target.pressure), out);
+                self.arc_len += dist(self.last_pos, target.pos); // per-event: arc grows by the inter-dab travel
+                self.emit_single(
+                    target.pos,
+                    self.method_pressure(target.pressure),
+                    self.arc_len,
+                    out,
+                );
                 self.advance_anchor(target);
             }
             // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion (Blender
@@ -231,11 +250,13 @@ impl Stroke {
             StrokeMethod::Airbrush => {
                 let target = self.stabilize(avg);
                 self.advance_heading_to(target.pos);
+                self.arc_len += dist(self.last_pos, target.pos); // track the cursor so the next tick's dab flows
                 self.advance_anchor(target);
             }
             // Drag Dot: one dab/move at the cursor; the tool restores the previous so only one follows (commits last on up).
             StrokeMethod::DragDot => {
-                self.emit_single(avg.pos, 1.0, out);
+                self.arc_len += dist(self.last_pos, avg.pos);
+                self.emit_single(avg.pos, 1.0, self.arc_len, out);
                 self.advance_anchor(avg);
             }
             // Anchored: a single stamp pinned at the press point (`last_pos`, never advanced) whose
@@ -285,7 +306,7 @@ impl Stroke {
         self.accum = 0.0;
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(pressure);
-            let d = self.dab_at(a, pr, self.method_overlap());
+            let d = self.dab_at(a, pr, self.method_overlap(), self.arc_len);
             crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
@@ -330,7 +351,7 @@ impl Stroke {
         while self.airbrush_accum_s >= rate {
             self.airbrush_accum_s -= rate;
             let pr = self.method_pressure(self.last_pressure);
-            let d = self.dab_at(self.last_pos, pr, 1.0); // per-event: no spacing attenuation
+            let d = self.dab_at(self.last_pos, pr, 1.0, self.arc_len); // per-event: no spacing attenuation
             crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
             self.tot_samples = self.tot_samples.wrapping_add(1);
             emitted += 1;
@@ -361,6 +382,10 @@ impl Stroke {
         // Smoothing length for the heading EMA, from the brush diameter (Krita's Fade is brush-relative).
         let smooth_len = crate::heading::smooth_len(2.0 * self.spec.clamped_radius());
         let overlap = self.method_overlap();
+        // Arc-length at `from` (= current cumulative to `last_pos`); each dab stamps `base_arc + traveled`,
+        // and the segment advances the accumulator by its full length so the along-stroke coordinate is
+        // continuous across walk_space calls (the Catmull-Rom flattener calls this once per short chord).
+        let base_arc = self.arc_len;
         let mut traveled = 0.0;
         loop {
             // **Jitter Spacing** scales each gap by the carried multiplier (`1.0` = even); a break does
@@ -378,7 +403,7 @@ impl Stroke {
             // tangent), so `dab_at` stamps an up-to-date, stable direction independent of dab density.
             self.heading = crate::heading::advance(self.heading, dir, to_next, smooth_len);
             if self.spec.dash_on(self.tot_samples) {
-                let d = self.dab_at(pos, pressure, overlap);
+                let d = self.dab_at(pos, pressure, overlap, base_arc + traveled);
                 crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
             }
             self.tot_samples = self.tot_samples.wrapping_add(1);
@@ -390,6 +415,7 @@ impl Stroke {
             };
         }
         self.accum += seg - traveled;
+        self.arc_len = base_arc + seg; // arc at `to` = arc at `from` + the full chord length
         self.last_pos = to;
         self.last_pressure = target.pressure;
     }
@@ -443,8 +469,8 @@ impl Stroke {
 
     /// Emit one dab at `pos`/`pressure` (the per-event methods). Per-event dabs carry no
     /// space-attenuation (that normalises *dense spacing*, which these don't have).
-    fn emit_single(&mut self, pos: [f32; 2], pressure: f32, out: &mut Vec<Dab>) {
-        let d = self.dab_at(pos, pressure, 1.0);
+    fn emit_single(&mut self, pos: [f32; 2], pressure: f32, arc: f32, out: &mut Vec<Dab>) {
+        let d = self.dab_at(pos, pressure, 1.0, arc);
         crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
@@ -463,6 +489,8 @@ impl Stroke {
             rotation: [1.0, 0.0],
             // The Rake heading is the drag direction (anchor → cursor), set by the caller.
             dir,
+            // Anchored is a single pinned stamp — there is no travel, so the Flow along-coordinate is 0.
+            arc_len: 0.0,
         }
     }
 
@@ -497,7 +525,7 @@ impl Stroke {
 
     /// Build a dab at `pos`/`pressure`, applying pressure dynamics, the space-attenuation
     /// `overlap` multiplier, and the per-dab jitter (scale / rotate / colour, then position).
-    fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32) -> Dab {
+    fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32, arc: f32) -> Dab {
         // Per-dab Scale / Rotate / Randomize-Color in a FIXED draw order, gated like position jitter
         // (Drag Dot / Anchored opt out). Drawn BEFORE the position jitter so it keeps its old slot
         // when these are off — an all-off brush draws nothing and matches the no-jitter baseline.
@@ -524,6 +552,7 @@ impl Stroke {
             color,
             rotation,
             dir,
+            arc_len: arc,
         }
     }
 

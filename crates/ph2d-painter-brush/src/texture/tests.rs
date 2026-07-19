@@ -32,6 +32,106 @@ fn sample_tiled_honours_angle() {
     }
 }
 
+/// FLOW (Shape slot, Enio 2026-07-19): the fix for "the pattern's lines don't stay parallel through
+/// curves". A per-stamp Rake resets the pattern's phase at each dab, so neighbouring stamps disagree on the
+/// phase and interfere on curves; FLOW lays the pattern in the STROKE frame (arc-length along the path), so
+/// two adjacent dabs sample the SAME phase at a shared pixel and the lines stay continuous. This pins that
+/// property at the sampler: on a straight stroke, dab 0 (arc 0) and dab 1 (arc = spacing) must AGREE at
+/// every shared pixel under FLOW, and DIFFER without it (the phase reset FLOW exists to remove).
+#[test]
+fn flow_gives_adjacent_dabs_a_continuous_phase() {
+    let mk = |flow: bool| TextureSettings {
+        kind: TextureKind::Stripes,
+        flow,
+        size: [1.0, 1.0],
+        ..TextureSettings::default()
+    };
+    let (r, spacing) = (12.0f32, 5.0f32);
+    let c0 = [30.0f32, 30.0];
+    let c1 = [30.0 + spacing, 30.0]; // one spacing along a rightward stroke
+    let val = |st: &TextureSettings, arc: f32, c: [f32; 2], px: i64, py: i64| {
+        // A straight rightward stroke ⇒ the tangent (Rake/Flow basis) is +x for both dabs.
+        let b = dab_basis(
+            st,
+            [1.0, 0.0],
+            &mut 0u64,
+            [64.0, 64.0],
+            [1.0, 0.0],
+            FootprintDeform::identity(),
+        )
+        .with_arc_len(arc);
+        sample(st, &b, px, py, c, r, None)
+    };
+    let (flow, off) = (mk(true), mk(false));
+    let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
+    for py in 24..=36 {
+        for px in 26..=38 {
+            let f = (val(&flow, 0.0, c0, px, py) - val(&flow, spacing, c1, px, py)).abs();
+            flow_max = flow_max.max(f);
+            // Control: the SAME two dabs with Flow off — arc is ignored, so the phase resets per stamp.
+            let o = (val(&off, 0.0, c0, px, py) - val(&off, 0.0, c1, px, py)).abs();
+            off_max = off_max.max(o);
+        }
+    }
+    assert!(
+        flow_max < 1e-3,
+        "FLOW: adjacent dabs must sample the SAME phase (continuous), max diff was {flow_max}"
+    );
+    assert!(
+        off_max > 0.2,
+        "control: without FLOW the phase resets per dab (the interference FLOW removes), max diff {off_max}"
+    );
+}
+
+/// The `with_arc_len` builder is the ONLY channel the per-dab arc-length rides into the FLOW frame — the
+/// per-pixel Shape path calls it with `d.arc_len`. This locks that the builder stores the value AND the
+/// sampler reads it: two frames that differ ONLY in arc-length must sample different phases under FLOW
+/// (and — the control — must be byte-identical WITHOUT FLOW, since a non-Flow slot ignores arc-length).
+#[test]
+fn with_arc_len_moves_the_flow_phase_and_is_inert_without_flow() {
+    let mk = |flow: bool| TextureSettings {
+        kind: TextureKind::Stripes,
+        flow,
+        size: [1.0, 1.0],
+        ..TextureSettings::default()
+    };
+    let frame = |s: &TextureSettings, arc: f32| {
+        dab_basis(
+            s,
+            [1.0, 0.0],
+            &mut 0u64,
+            [64.0, 64.0],
+            [1.0, 0.0],
+            FootprintDeform::identity(),
+        )
+        .with_arc_len(arc)
+    };
+    let (flow, off) = (mk(true), mk(false));
+    let c = [30.0f32, 30.0];
+    let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
+    for py in 24..=36 {
+        for px in 26..=38 {
+            // Two frames differing ONLY in arc-length. Half a stripe period apart guarantees a big move.
+            let f = (sample(&flow, &frame(&flow, 0.0), px, py, c, 12.0, None)
+                - sample(&flow, &frame(&flow, 6.0), px, py, c, 12.0, None))
+            .abs();
+            flow_max = flow_max.max(f);
+            let o = (sample(&off, &frame(&off, 0.0), px, py, c, 12.0, None)
+                - sample(&off, &frame(&off, 6.0), px, py, c, 12.0, None))
+            .abs();
+            off_max = off_max.max(o);
+        }
+    }
+    assert!(
+        flow_max > 0.2,
+        "with_arc_len must move the FLOW phase (the sampler reads it), max move was {flow_max}"
+    );
+    assert!(
+        off_max == 0.0,
+        "control: arc-length is inert without FLOW (a non-Flow slot never reads it), got {off_max}"
+    );
+}
+
 /// A hard Checker's params (Softness `0`). The engine's `TextureSettings::default()` is neutral `0.5`
 /// in every slot, which for Checker means a *soft* edge that never saturates to an exact `0`/`1`; the
 /// value-pinning tests below want the crisp pattern.

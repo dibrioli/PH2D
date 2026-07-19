@@ -3,14 +3,15 @@
 //! clicking them in the dropdown did nothing. These lock the full 9-method round-trip + distinctness.
 
 use super::decode::{
-    decode_brush_preset_option, decode_stroke_method_option, decode_texture_kind_option,
-    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
+    decode_brush_preset_option, decode_shape_follow_option, decode_stroke_method_option,
+    decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
 };
 use super::*;
 use ph2d_editor_core::ids::{
-    painter_brush_preset_option_id, painter_brush_stroke_method_option_id,
-    painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
-    painter_brush_texture_ramp_alpha_option_id,
+    PAINTER_SHAPE_FOLLOW_MODES, painter_brush_preset_option_id,
+    painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
+    painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,
+    painter_shape_follow_option_id,
 };
 use ph2d_tool_painter::{RampAlphaMode, TextureKind, TextureMapping};
 
@@ -110,6 +111,30 @@ fn every_texture_mapping_option_id_round_trips() {
         decode_texture_mapping_option(core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
         None,
         "the chip id is not an option id"
+    );
+}
+
+#[test]
+fn every_shape_follow_option_id_round_trips() {
+    // The Shape Follow dropdown (Off/Rake/Flow) — a clicked popover option must decode back to its wire
+    // value, or that option's click is silently dropped. The chip id itself must NOT decode as an option.
+    for &(v, _) in &PAINTER_SHAPE_FOLLOW_MODES {
+        assert_eq!(
+            decode_shape_follow_option(painter_shape_follow_option_id(v)),
+            Some(v),
+            "shape follow {v} did not decode back"
+        );
+    }
+    assert_eq!(
+        decode_shape_follow_option(core_ids::PAINTER_SHAPE_FOLLOW),
+        None,
+        "the chip id is not an option id"
+    );
+    // Disjoint from the sibling Shape Kind option-id space (both live in the Shape section).
+    assert_eq!(
+        decode_shape_follow_option(core_ids::painter_shape_kind_option_id(2)),
+        None,
+        "a Shape Kind option id must not decode as a Follow option"
     );
 }
 

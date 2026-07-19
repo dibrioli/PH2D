@@ -67,9 +67,10 @@ impl Stroke {
         self.accum = 0.0;
         self.tot_samples = 0;
         self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the perimeter from the start
+        self.arc_len = 0.0; // fresh fill → the Flow along-coordinate starts at the perimeter's origin
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
-            let d = self.dab_at(perim[0], pr, self.method_overlap());
+            let d = self.dab_at(perim[0], pr, self.method_overlap(), self.arc_len);
             out.push(d);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);

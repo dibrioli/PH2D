@@ -313,6 +313,14 @@ pub struct TextureSettings {
     pub angle_deg: u16,
     /// **Rake**: the rotation follows the stroke direction, with [`Self::angle_deg`] composed as an offset.
     pub rake: bool,
+    /// **Flow** (Shape slot): lay the pattern in the STROKE's own frame — the *along* coordinate is the
+    /// dab's [`crate::Dab::arc_len`] plus the pixel's projection on the tangent, the *across* coordinate is
+    /// the perpendicular. This keeps the pattern's phase continuous from dab to dab, so the silhouette's
+    /// lines stay parallel and follow the curve (calligraphy / textured-stroke), instead of the per-stamp
+    /// Rake that resets phase each dab and interferes on curves. Dominates [`Self::rake`] when set (Flow
+    /// carries the same tangent rotation, plus continuity). Only the Shape slot exposes it; Grain / Paper
+    /// leave it `false`. See [`crate::texture::shape`]. `[1,0]` fallback + `Angle` compose exactly as Rake.
+    pub flow: bool,
     /// Translation in tile fractions, each component in `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]`.
     pub offset: [f32; 2],
     /// Per-axis scale, each in `[`[`TEX_SIZE_MIN`]`, `[`TEX_SIZE_MAX`]`]` (`1.0` = one tile).
@@ -345,6 +353,7 @@ impl Default for TextureSettings {
             mapping: TextureMapping::ViewPlane,
             angle_deg: 0,
             rake: false,
+            flow: false,
             offset: [0.0, 0.0],
             size: [1.0, 1.0],
             stencil_offset: [0.0, 0.0],
@@ -371,7 +380,8 @@ impl TextureSettings {
     /// texture; Rake (per-dab rotation) and Tiled / Stencil (canvas-relative) stay per-pixel.
     #[must_use]
     pub fn is_cacheable(&self) -> bool {
-        !self.is_active() || (matches!(self.mapping, TextureMapping::ViewPlane) && !self.rake)
+        !self.is_active()
+            || (matches!(self.mapping, TextureMapping::ViewPlane) && !self.rake && !self.flow)
     }
 
     /// Texture is canvas-fixed + dab-independent → cache each canvas pixel once per stroke
@@ -384,6 +394,7 @@ impl TextureSettings {
                 TextureMapping::Tiled | TextureMapping::Stencil
             )
             && !self.rake
+            && !self.flow
     }
 }
 
@@ -418,6 +429,10 @@ pub struct TexDabBasis {
     /// Brush-dab flatten + rotate, applied to the footprint coord BEFORE this texture's own Size /
     /// rotation / Offset (so the Shape + View-Grain deform with the falloff). Identity for Tiled / Stencil.
     footprint: crate::footprint::FootprintDeform,
+    /// The dab's [`crate::Dab::arc_len`] — the along-the-stroke coordinate the Shape **Flow** mapping adds
+    /// so its pattern phase is continuous across dabs. `0` unless set via [`Self::with_arc_len`] on the
+    /// per-pixel Shape path (Flow is never cached); ignored unless the Shape's `flow` is on.
+    arc_len: f32,
 }
 
 impl TexDabBasis {
@@ -433,7 +448,17 @@ impl TexDabBasis {
             stencil_u: [1.0, 0.0],
             stencil_v: [0.0, 1.0],
             footprint: crate::footprint::FootprintDeform::identity(),
+            arc_len: 0.0,
         }
+    }
+
+    /// Carry the dab's [`crate::Dab::arc_len`] into the frame for the Shape **Flow** mapping (the
+    /// along-the-stroke coordinate). The per-pixel Shape path calls this after [`dab_basis`]; every other
+    /// caller leaves it `0` (Flow is never cached, and Grain / Paper never flow).
+    #[must_use]
+    pub fn with_arc_len(mut self, arc_len: f32) -> Self {
+        self.arc_len = arc_len;
+        self
     }
 }
 
@@ -479,6 +504,7 @@ pub fn dab_basis(
         stencil_u: [1.0, 0.0],
         stencil_v: [0.0, 1.0],
         footprint,
+        arc_len: 0.0,
     }
 }
 
@@ -541,6 +567,23 @@ pub fn sample(
             Some(t) => t,
             None => return 0.0, // outside the stencil → paint nothing
         }
+    } else if s.flow {
+        // FLOW (Shape slot): lay the pattern in the STROKE's own frame so its phase is CONTINUOUS from
+        // dab to dab — the lines stay parallel through curves instead of the per-stamp Rake resetting each
+        // dab. The *along* coordinate is `arc_len + projection on the tangent (u)`; the arc-length term is
+        // exactly what makes neighbouring dabs agree on the phase. The *across* coordinate is the
+        // perpendicular (v). Size is along/across the stroke (X = along, Y = across). `/r` normalises both
+        // to dab units, so the along term telescopes with the arc-length increment (spacing) between dabs.
+        let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        let r = radius.max(1e-3);
+        let d = [(p[0] - center[0]) / r, (p[1] - center[1]) / r];
+        let along = d[0] * b.u[0] + d[1] * b.u[1];
+        let across = d[0] * b.v[0] + d[1] * b.v[1];
+        [
+            (b.arc_len / r + along) * sx + s.offset[0],
+            across * sy + s.offset[1],
+        ]
     } else {
         // Per-axis scale clamped away from zero. Size MULTIPLIES the coordinate (Blender's MTex
         // `texvec = size · co`): a LARGER Size scales coords up → the pattern reads SMALLER / denser.

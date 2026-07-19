@@ -389,10 +389,14 @@ impl PainterTool {
             (t.clamp(0.0, 1.0) * f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
     }
 
-    /// Toggle Shape "Rake" (the silhouette rotation follows the stroke direction).
-    pub fn toggle_brush_shape_rake(&mut self) {
+    /// Set the Shape **Follow** mode (how the silhouette relates to the stroke): `0` = Off (fixed Angle),
+    /// `1` = Rake (rotate each stamp to the tangent), `2` = Flow (lay the pattern in the stroke's
+    /// arc-length frame — parallel lines through curves). The two are mutually exclusive and back the same
+    /// dropdown, so setting one clears the other from a SINGLE door (no divergent `rake`/`flow` state).
+    pub fn set_brush_shape_follow(&mut self, mode: u8) {
         let shape = &mut self.paint.brush.shape;
-        shape.rake = !shape.rake;
+        shape.rake = mode == 1;
+        shape.flow = mode == 2;
     }
 
     /// Set the Shape offset for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track.

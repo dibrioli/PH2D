@@ -560,7 +560,9 @@ impl BrushSpec {
     pub fn shape_has_per_dab_rotation(&self, has_shape_image: bool) -> bool {
         self.shape_silhouette_active(has_shape_image)
             && self.shape.mapping.uses_dab_rotation()
-            && (self.shape.rake || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
+            && (self.shape.rake
+                || self.shape.flow
+                || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
     }
 
     /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke) — each dab
@@ -582,7 +584,8 @@ impl BrushSpec {
             || (matches!(
                 self.shape.mapping,
                 crate::texture::TextureMapping::ViewPlane
-            ) && !self.shape.rake);
+            ) && !self.shape.rake
+                && !self.shape.flow);
         shape_static && self.texture.is_cacheable()
     }
 

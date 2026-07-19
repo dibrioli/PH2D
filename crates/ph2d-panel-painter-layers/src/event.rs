@@ -421,7 +421,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO
-                || id == core_ids::PAINTER_SHAPE_RAKE
                 || id == core_ids::PAINTER_SHAPE_RESET
                 || id == core_ids::PAINTER_SHAPE_USE_LAYERS
                 || id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR

@@ -46,6 +46,8 @@ pub(super) fn stencil_basis(s: &TextureSettings, canvas: [f32; 2]) -> TexDabBasi
         stencil_v: super::perp(su),
         // Stencil is canvas-fixed — the dab flatten/rotate does not deform it.
         footprint: crate::footprint::FootprintDeform::identity(),
+        // Stencil is a Grain mapping; it never flows (Flow is Shape-only).
+        arc_len: 0.0,
     }
 }
 

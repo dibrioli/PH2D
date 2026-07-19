@@ -52,6 +52,40 @@ fn collect_stroke(spec: BrushSpec, dynamics: Dynamics, points: &[StrokePoint]) -
 }
 
 #[test]
+fn arc_len_is_the_cumulative_path_length() {
+    // The Shape FLOW mapping reads `Dab::arc_len` as the along-the-stroke coordinate, so it must be the
+    // monotonic cumulative distance travelled from pen-down. On a straight horizontal stroke starting at
+    // x=0, the arc-length at each dab equals its x (no jitter ⇒ centre == path position). The first dab
+    // (pen-down) is exactly 0.
+    let dabs = collect_stroke(
+        straight_spec(10.0, 0.5),
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0)],
+    );
+    assert!(
+        dabs.len() > 5,
+        "expected a spaced stroke, got {}",
+        dabs.len()
+    );
+    assert_eq!(dabs[0].arc_len, 0.0, "pen-down dab starts the arc at 0");
+    let mut prev = -1.0;
+    for d in &dabs {
+        assert!(
+            d.arc_len >= prev,
+            "arc-length must be monotonic (got {} after {prev})",
+            d.arc_len
+        );
+        assert!(
+            (d.arc_len - d.center[0]).abs() < 0.5,
+            "on a straight x-stroke the arc-length equals x: arc {} vs x {}",
+            d.arc_len,
+            d.center[0]
+        );
+        prev = d.arc_len;
+    }
+}
+
+#[test]
 fn begin_emits_one_dab_at_down() {
     let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
     let mut out = Vec::new();
@@ -983,6 +1017,7 @@ fn circle_degenerate_axis_fills_nothing() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1100,6 +1135,7 @@ fn curve_fill_needs_two_points() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(

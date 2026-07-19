@@ -97,6 +97,16 @@ pub(crate) fn take_pending_brush_shape_kind_dd() -> Option<(Rect, u8)> {
     state::PENDING_BRUSH_SHAPE_KIND_DD.with(|c| c.take())
 }
 
+/// Stash the open Shape-section Follow dropdown (Off/Rake/Flow) for the deferred popover pass.
+pub(crate) fn set_pending_brush_shape_follow_dd(v: Option<(Rect, u8)>) {
+    state::PENDING_BRUSH_SHAPE_FOLLOW_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Shape Follow dropdown for the deferred popover.
+pub(crate) fn take_pending_brush_shape_follow_dd() -> Option<(Rect, u8)> {
+    state::PENDING_BRUSH_SHAPE_FOLLOW_DD.with(|c| c.take())
+}
+
 /// Stash the open Texture-section Mapping dropdown for the deferred popover pass.
 pub(crate) fn set_pending_brush_texture_mapping_dd(v: Option<(Rect, u8)>) {
     state::PENDING_BRUSH_TEXTURE_MAPPING_DD.with(|c| c.set(v));

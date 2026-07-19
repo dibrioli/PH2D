@@ -1726,8 +1726,11 @@ fn panel_events_drive_shape_and_grain_depth() {
     // forwards the REAL degrees now (not a 0..1 track), Enio 2026-06-25.
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 180.0));
     assert_eq!(t.brush_settings().shape_angle_deg, 180, "shape angle set");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAKE));
-    assert!(t.brush_settings().shape_rake, "shape rake toggled on");
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_FOLLOW,
+        "1".to_string(), // Rake
+    ));
+    assert_eq!(t.brush_settings().shape_follow, 1, "shape follow → Rake");
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 0.0)); // → TEX_SIZE_MIN
     assert!(
         (t.brush_settings().shape_size[0] - 0.1).abs() < 1e-4,
@@ -1760,9 +1763,44 @@ fn panel_events_drive_shape_and_grain_depth() {
     let s = t.brush_settings();
     assert!(!s.shape_has_image, "reset cleared the shape image");
     assert_eq!(s.shape_angle_deg, 0, "reset cleared the shape angle");
-    assert!(!s.shape_rake, "reset cleared rake");
+    assert_eq!(s.shape_follow, 0, "reset cleared follow → Off");
     assert_eq!(s.dab_flatten, 0.0, "reset cleared the dab flatten");
     assert_eq!(s.dab_angle_deg, 0, "reset cleared the dab angle");
+}
+
+#[test]
+fn shape_follow_dropdown_selects_off_rake_flow_mutually_exclusively() {
+    // The Follow dropdown (Off/Rake/Flow) drives the two engine flags `shape.rake`/`shape.flow` from a
+    // SINGLE control: exactly one (or neither) is on. Picking Flow must set flow and CLEAR rake; picking
+    // Rake must set rake and CLEAR flow; picking Off clears both. Drives the real panel `SelectOption`,
+    // and reads the engine flags directly (not just the snapshot) so the wiring can't be green while the
+    // engine sees the wrong state.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+    let pick = |t: &mut PainterTool, mode: &str| {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_SHAPE_FOLLOW,
+            mode.to_string(),
+        ));
+    };
+    pick(&mut t, "2"); // Flow
+    assert!(t.paint.brush.shape.flow, "Flow selected → shape.flow on");
+    assert!(!t.paint.brush.shape.rake, "Flow selected → shape.rake off");
+    assert_eq!(t.brush_settings().shape_follow, 2, "snapshot reports Flow");
+    pick(&mut t, "1"); // Rake
+    assert!(t.paint.brush.shape.rake, "Rake selected → shape.rake on");
+    assert!(
+        !t.paint.brush.shape.flow,
+        "Rake selected → shape.flow off (mutually exclusive)"
+    );
+    assert_eq!(t.brush_settings().shape_follow, 1, "snapshot reports Rake");
+    pick(&mut t, "0"); // Off
+    assert!(
+        !t.paint.brush.shape.rake && !t.paint.brush.shape.flow,
+        "Off → both flags cleared"
+    );
+    assert_eq!(t.brush_settings().shape_follow, 0, "snapshot reports Off");
 }
 
 #[test]
@@ -2004,6 +2042,7 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab(20.0)]); // batch 1 (dab A)
     t.stamp_dabs(&[dab(26.0)]); // batch 2 (dab B overlapping A's right half from the left)
@@ -2036,6 +2075,7 @@ fn per_layer_color_respects_brush_blend_mode() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab]);
     let [r, g, b, _] = px(&t, 64, 32, 32);
@@ -2064,6 +2104,7 @@ fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
         color: col,
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]); // red dab
     t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]); // blue dab
@@ -2784,6 +2825,7 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     let pristine = (*t.canvas_rgba).clone(); // the pre-shape the drag preview restores to
     t.stamp_dabs(&[dab]); // first fill
@@ -2823,6 +2865,7 @@ fn live_dab(x: f32) -> ph2d_painter_brush::Dab {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
+        arc_len: 0.0,
     }
 }
 
@@ -3042,6 +3085,7 @@ fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
         color: [0.0, 0.0, 1.0],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab(16.0, 1.0)]); // per-layer ON — this seeds `pre` (the canvas BEFORE it: all white)
     t.toggle_brush_shape_per_layer_color(); // OFF, stroke still live
@@ -3312,6 +3356,7 @@ fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab(18.0), dab(46.0)]);
     assert_eq!(
@@ -3403,6 +3448,7 @@ fn tiling_wrapped_copies_share_the_dabs_random_frame() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
+        arc_len: 0.0,
     };
     // Reference: the same dab, centred, no tiling → the disc's own random frame.
     let mut r = white_canvas(64, 12.0);
@@ -3643,6 +3689,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
         color: col,
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]);
     t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]);
@@ -5848,6 +5895,7 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab]);
     // (32,10): inside the dab radius (dy = 22 < 30) but ABOVE the rect (y < 22.4) → masked = white.
@@ -12342,6 +12390,7 @@ fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
         color: t.paint.brush.color,
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
+        arc_len: 0.0,
     };
     t.stamp_dabs(&[dab]);
     assert_ne!(
@@ -22761,4 +22810,79 @@ fn the_deposits_wave_travels_through_the_real_stroke() {
         100.0 * swath / total
     );
     let _ = behind;
+}
+
+#[test]
+fn shape_flow_reaches_the_paint_and_differs_from_rake() {
+    // End-to-end wiring: the engine stamps `Dab::arc_len`, `stamp_dabs_*` carries it into the Shape basis
+    // via `with_arc_len`, and the FLOW sampler lays the pattern in the stroke frame. On a CURVE, FLOW
+    // (arc-length continuous) must reach the paint and produce a DIFFERENT result from the per-dab Rake and
+    // from the static Shape. (The sampler gate `flow_gives_adjacent_dabs_a_continuous_phase` proves it is
+    // *continuous*; this proves the whole chain reaches the canvas.)
+    use ph2d_painter_brush::{StrokeMethod, TextureKind};
+    let paint = |rake: bool, flow: bool| {
+        let mut t = white_canvas(64, 8.0);
+        t.paint.brush.shape.kind = TextureKind::Stripes;
+        t.paint.brush.shape.size = [1.2, 1.2];
+        t.paint.brush.shape.params[1] = 0.7; // stripe frequency
+        t.paint.brush.shape.rake = rake;
+        t.paint.brush.shape.flow = flow;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        let pt = |k: f32| {
+            let a = k * std::f32::consts::FRAC_PI_2;
+            [12.0 + 40.0 * a.cos(), 12.0 + 40.0 * a.sin()]
+        };
+        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
+        for i in 1..=30 {
+            t.on_canvas_pointer(cp(pt(i as f32 / 30.0), PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        paint(false, true),
+        paint(false, false),
+        "FLOW must reach the paint (differs from a static Shape)"
+    );
+    assert_ne!(
+        paint(false, true),
+        paint(true, false),
+        "FLOW (arc-length) must differ from the per-dab Rake"
+    );
+}
+
+#[test]
+fn shape_flow_streams_an_image_tip_along_the_stroke() {
+    // FLOW on an IMAGE Shape streams the tip along the path (`sample_shape`'s flow branch: tile along,
+    // clamp across) — a pattern-line brush. Prove that path is live: on a curve the image FLOW reaches the
+    // paint and differs from both the static tip and the per-dab Rake (so the branch is not dead code).
+    use ph2d_painter_brush::StrokeMethod;
+    let bar = directional_bar();
+    let paint = |rake: bool, flow: bool| {
+        let mut t = white_canvas(64, 8.0);
+        t.set_brush_shape_image(bar.clone(), 8, 8);
+        t.paint.brush.shape.rake = rake;
+        t.paint.brush.shape.flow = flow;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        let pt = |k: f32| {
+            let a = k * std::f32::consts::FRAC_PI_2;
+            [12.0 + 40.0 * a.cos(), 12.0 + 40.0 * a.sin()]
+        };
+        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
+        for i in 1..=30 {
+            t.on_canvas_pointer(cp(pt(i as f32 / 30.0), PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_ne!(
+        paint(false, true),
+        paint(false, false),
+        "image FLOW must reach the paint (differs from the static tip)"
+    );
+    assert_ne!(
+        paint(false, true),
+        paint(true, false),
+        "image FLOW (streamed along the stroke) must differ from per-dab Rake"
+    );
 }

@@ -117,6 +117,8 @@ pub fn render_shape_preview(
         mapping: TextureMapping::ViewPlane,
         angle_deg,
         rake: false,
+        // The preview is a static frame (no stroke), so Flow (arc-length along the stroke) is inert here.
+        flow: false,
         offset,
         size,
         // Shape silhouette is always ViewPlane — the stencil frame is inert here.
@@ -167,6 +169,22 @@ pub fn sample_shape(
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let r = radius.max(1e-3);
+    if s.flow {
+        // FLOW: stream the tip ALONG the stroke — the along coordinate (arc-length + tangent projection)
+        // TILES the image (period 2, one copy per `[-1,1]` span) so the tip repeats down the path with a
+        // phase continuous across dabs; the across coordinate (perpendicular) CLAMPS to the tip, masking to
+        // the stroke width. A pattern-line brush; a non-tileable tip shows a seam (use a tileable image).
+        let d = [(p[0] - center[0]) / r, (p[1] - center[1]) / r];
+        let along = (b.arc_len / r + d[0] * b.u[0] + d[1] * b.u[1]) * sx + s.offset[0];
+        let across = (d[0] * b.v[0] + d[1] * b.v[1]) * sy + s.offset[1];
+        if across.abs() > 1.0 {
+            return 0.0; // outside the tip's height → past the stroke edge
+        }
+        let along_wrapped = along - 2.0 * ((along + 1.0) * 0.5).floor(); // period-2 wrap → [-1, 1)
+        return image
+            .map(|img| sample_image_clamped(img, along_wrapped, across))
+            .unwrap_or(0.0);
+    }
     // Dab flatten/rotate deforms the footprint first, so the Shape tip flattens with the falloff.
     let f = b
         .footprint

@@ -43,9 +43,24 @@ pub const PAINTER_SHAPE_RESET: NodeId = hash_node_id("painter_brush.shape_reset"
 
 /// Shape **Angle** slider (`0..1` track → `0..=360°`). `SetValue` → `set_brush_shape_angle_norm`.
 pub const PAINTER_SHAPE_ANGLE: NodeId = hash_node_id("painter_brush.shape_angle");
-/// Shape **Rake** toggle (silhouette rotation follows the stroke). `Click` → `toggle_brush_shape_rake`.
-/// (A random per-dab spin is the Stroke Jitter Rotate; the per-slot "Random Angle" was retired 2026-07-19.)
-pub const PAINTER_SHAPE_RAKE: NodeId = hash_node_id("painter_brush.shape_rake");
+/// Shape **Follow** dropdown — how the silhouette relates to the stroke direction: `0` = Off (the fixed
+/// [`PAINTER_SHAPE_ANGLE`]), `1` = Rake (rotate each stamp to the tangent), `2` = Flow (lay the pattern in
+/// the stroke's arc-length frame so its lines stay parallel through curves). Supersedes the old Rake
+/// checkbox (Enio 2026-07-19). `SelectOption` → `set_brush_shape_follow`. Options via
+/// [`painter_shape_follow_option_id`]. (A random per-dab spin is the Stroke Jitter Rotate; the per-slot
+/// "Random Angle" was retired 2026-07-19.)
+pub const PAINTER_SHAPE_FOLLOW: NodeId = hash_node_id("painter_brush.shape_follow");
+
+/// The three Shape **Follow** modes as `(wire value, label)` — the single source for the dropdown options
+/// and the snapshot's `shape_follow`. `0` = Off, `1` = Rake, `2` = Flow.
+pub const PAINTER_SHAPE_FOLLOW_MODES: [(u8, &str); 3] = [(0, "Off"), (1, "Rake"), (2, "Flow")];
+
+/// Derive the stable [`NodeId`] for Shape-follow option `v` (`0`/`1`/`2`) in the open dropdown popover.
+/// Only the open popover's options are hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_shape_follow_option_id(v: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shapefollowopt.{v}"))
+}
 /// Shape **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` → `set_brush_shape_offset_norm(0, ..)`.
 pub const PAINTER_SHAPE_OFFSET_X: NodeId = hash_node_id("painter_brush.shape_offset_x");
 /// Shape **Offset Y** slider (axis 1). See [`PAINTER_SHAPE_OFFSET_X`].

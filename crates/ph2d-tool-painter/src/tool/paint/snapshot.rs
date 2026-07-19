@@ -214,7 +214,14 @@ impl PainterTool {
             shape_kind: b.shape.kind.to_u8(),
             shape_has_image: self.paint.shape_image.is_some(),
             shape_angle_deg: b.shape.angle_deg,
-            shape_rake: b.shape.rake,
+            // Follow: Flow dominates Rake (Flow carries the rotation plus arc-length continuity).
+            shape_follow: if b.shape.flow {
+                2
+            } else if b.shape.rake {
+                1
+            } else {
+                0
+            },
             shape_offset: b.shape.offset,
             shape_size: b.shape.size,
             shape_params: b.shape.params,

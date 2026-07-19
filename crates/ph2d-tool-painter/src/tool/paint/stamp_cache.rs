@@ -347,6 +347,8 @@ impl PainterTool {
                     [1.0, 0.0],
                     fp,
                 )
+                // Flow (Shape) reads the dab's arc-length as the along-the-stroke coordinate.
+                .with_arc_len(d.arc_len)
             });
             let shape_in = shape_basis
                 .as_ref()
@@ -460,6 +462,8 @@ impl PainterTool {
                     [1.0, 0.0],
                     fp,
                 )
+                // Flow (Shape) reads the dab's arc-length as the along-the-stroke coordinate.
+                .with_arc_len(d.arc_len)
             });
             let shape_in = shape_basis
                 .as_ref()

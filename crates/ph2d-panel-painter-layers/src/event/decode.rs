@@ -59,6 +59,14 @@ pub(super) fn decode_shape_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| core_ids::painter_shape_kind_option_id(k) == id)
 }
 
+/// Decode a Shape **Follow** popover option id → its wire `u8` (`0` = Off, `1` = Rake, `2` = Flow).
+pub(super) fn decode_shape_follow_option(id: NodeId) -> Option<u8> {
+    core_ids::PAINTER_SHAPE_FOLLOW_MODES
+        .iter()
+        .map(|(v, _)| *v)
+        .find(|&v| core_ids::painter_shape_follow_option_id(v) == id)
+}
+
 /// Decode a Shape-ramp Interpolation popover option id → its `RampInterp` wire `u8`.
 pub(super) fn decode_shape_ramp_interp_option(id: NodeId) -> Option<u8> {
     (0..RampInterp::COUNT).find(|&i| core_ids::painter_shape_ramp_interp_option_id(i) == id)

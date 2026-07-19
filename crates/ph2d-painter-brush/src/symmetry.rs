@@ -219,6 +219,7 @@ mod tests {
             color: [0.1, 0.2, 0.3],
             rotation: [1.0, 0.0],
             dir: [1.0, 0.0],
+            arc_len: 0.0,
         }
     }
 

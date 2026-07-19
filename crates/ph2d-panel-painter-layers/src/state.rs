@@ -100,6 +100,9 @@ thread_local! {
     /// The open Shape-section source picker popover (None/Image): `(chip_rect, current_kind_u8)`.
     pub(crate) static PENDING_BRUSH_SHAPE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open Shape-section **Follow** dropdown popover (Off/Rake/Flow): `(chip_rect, current_follow_u8)`.
+    pub(crate) static PENDING_BRUSH_SHAPE_FOLLOW_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// The open Texture-section Mapping dropdown popover: `(chip_rect, current_mapping_u8)`.
     pub(crate) static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 

@@ -273,8 +273,10 @@ pub struct BrushSettings {
     pub shape_has_image: bool,
     /// Shape rotation in whole degrees (`0..=360`).
     pub shape_angle_deg: u16,
-    /// "Rake" — the Shape rotation follows the stroke direction.
-    pub shape_rake: bool,
+    /// **Follow** mode — how the silhouette relates to the stroke: `0` = Off (fixed Angle), `1` = Rake
+    /// (rotate each stamp to the tangent), `2` = Flow (lay the pattern in the stroke's arc-length frame so
+    /// its lines stay parallel through curves). Drives the panel "Follow" dropdown.
+    pub shape_follow: u8,
     /// Shape offset in tile fractions, per axis (`−1..1`).
     pub shape_offset: [f32; 2],
     /// Shape per-axis scale (`0.1..10`; `1.0` = the image fills the footprint).

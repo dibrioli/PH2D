@@ -274,6 +274,17 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
             cur,
         );
     }
+    // Shape-section Follow picker (Off / Rake / Flow).
+    if let Some((chip_rect, cur)) = state::take_pending_brush_shape_follow_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_SHAPE_FOLLOW,
+            crate::paint_shape::shape_follow_options(),
+            chip_rect,
+            cur,
+        );
+    }
     // Per-layer-colour Shape-layer blend ("B" chip) dropdown.
     if let Some((i, chip_rect, cur)) = state::take_pending_shape_blend_dd() {
         crate::paint_shape_layers::paint_shape_blend_popover(ctx, theme, i, chip_rect, cur);

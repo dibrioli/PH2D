@@ -151,7 +151,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     shape_kind: 0,
     shape_has_image: false,
     shape_angle_deg: 0,
-    shape_rake: false,
+    shape_follow: 0,
     shape_offset: [0.0, 0.0],
     shape_size: [1.0, 1.0],
     shape_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],

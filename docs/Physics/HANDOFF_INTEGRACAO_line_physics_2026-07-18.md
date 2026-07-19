@@ -290,11 +290,11 @@ env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop
 | `=4` | W2b: o painel de mundo (tecla `W`) | ✅ aprovado |
 | `=5` | W2c: a matriz de camadas | ✅ aprovado |
 | `=6` | W3: pêndulo · corrente · ragdoll | ✅ aprovado |
-| **`=7`** | **W4: assar a sim em curvas da timeline** | ⏳ **PENDENTE** |
-| (mesma cena) | **W4b: o toggle Physics do transporte** | ⏳ **PENDENTE** |
+| `=7` | W4: assar a sim em curvas da timeline | ✅ aprovado |
+| (mesma cena) | W4b: o toggle Physics do transporte | ✅ aprovado |
 
-⚠️ **A cena 7 é a única pendente**, e é a única coisa desta linha que ainda não passou pelos olhos do
-Enio. Ela nasce **PAUSADA** com a timeline aberta. O gesto: Play uma vez para ver o movimento, rebobinar,
+✅ **TODAS as cenas foram aprovadas** (a 7 em 2026-07-18: *"smoke OK. Funciona muito bem"*). Ela nasce
+**PAUSADA** com a timeline aberta. O gesto: Play uma vez para ver o movimento, rebobinar,
 selecionar o `Roller` e as duas caixas, e **Inspector › Physics Body › `Bake 5.0s to Timeline`**.
 
 O que ela tem de mostrar (detalhe no §W4 do tracker):
@@ -370,6 +370,9 @@ lista. O que ficou de fora ficou **de propósito**, e cada item tem o motivo no 
 > `Kinematic`) para **qualquer** interruptor. O toggle é do **transporte**, o kind é do **corpo**. A
 > correção está datada dentro do `00_plano_waves.md`.
 >
-> Smoke: **cenas 1-6 aprovadas; a cena 7 está PENDENTE e agora cobre DUAS coisas** — o bake (W4) e o
-> toggle Physics (W4b), no mesmo gesto. É a única coisa da linha que ainda não passou pelos olhos do
-> Enio. Aguardo ordem de integração.
+> Smoke: **as 7 cenas estão APROVADAS.** A 7 cobre duas coisas no mesmo gesto — o bake (W4) e o toggle
+> Physics (W4b) — e foi aprovada em 2026-07-18 (*"smoke OK. Funciona muito bem"*). O toggle só é
+> demonstrável DEPOIS do bake (desmarca-se Physics e o movimento assado continua tocando), então a
+> aprovação dele carrega a do bake por construção.
+>
+> **Nada pendente nesta linha.** Aguardo ordem explícita de integração (CLAUDE.md §0.7).

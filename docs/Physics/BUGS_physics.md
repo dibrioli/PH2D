@@ -11,7 +11,7 @@
 
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
-| [1](#bug-1--a-simulação-rodava-junto-com-a-animação-e-uma-nota-minha-dizia-que-o-interruptor-seria-o-desenho-errado) | **A sim rodava junto com a animação** — e uma nota minha dizia que o interruptor seria o desenho errado | `ph2d-timeline` (transporte) + `ph2d-physics-ecs` (ponte) | ✅ Resolvido (W4b; pendente smoke) | 2026-07-18 |
+| [1](#bug-1--a-simulação-rodava-junto-com-a-animação-e-uma-nota-minha-dizia-que-o-interruptor-seria-o-desenho-errado) | **A sim rodava junto com a animação** — e uma nota minha dizia que o interruptor seria o desenho errado | `ph2d-timeline` (transporte) + `ph2d-physics-ecs` (ponte) | ✅ Resolvido (W4b, smoke aprovado) | 2026-07-18 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -29,7 +29,8 @@ lá, e não repetidos aqui):
 
 ## Bug #1 — A simulação rodava junto com a animação, e uma nota minha dizia que o interruptor seria o desenho errado
 
-**Estado:** ✅ resolvido em 2026-07-18 (W4b, commit `25bf851e`; **pendente smoke**).
+**Estado:** ✅ resolvido em 2026-07-18 (W4b, commit `25bf851e`). **Smoke aprovado pelo Enio** no
+mesmo dia — *"smoke OK. Funciona muito bem"*.
 O bug de código era pequeno. O caro foi a **nota**: ela teria feito o próximo agente recusar o
 pedido do Enio como já-decidido.
 

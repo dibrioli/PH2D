@@ -48,9 +48,9 @@
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
 | **W2b — Painel global de mundo** | ✅ **INTEGRÁVEL** — smoke **APROVADO** (2026-07-18) | ver §W2b | gravidade/solver/ar/damping/sono + persistência |
-| **W2c — Camadas de colisão** | ✅ **LANDOU** (pendente smoke) | ver §W2c | matriz no painel + camada no Inspector |
+| **W2c — Camadas de colisão** | ✅ smoke aprovado | ver §W2c | matriz no painel + camada no Inspector |
 | **W3 — Joints** | ⏭️ **A PRÓXIMA** | — | pêndulo/corrente/ragdoll; bumpa o schema **21 → 22** |
-| **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
+| **W4 — Bake-to-timeline** | ✅ smoke aprovado | — | acopla `ph2d-anim` (outra linha) |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -58,7 +58,7 @@ código, nenhum contrato tocado, nenhum foundational tocado.
 
 ---
 
-## §W1 — O alicerce LANDOU (2026-07-17, pendente smoke)
+## §W1 — O alicerce LANDOU (2026-07-17, **smoke aprovado**)
 
 Um sprite com `RigidBody{Dynamic}` + `Collider` **cai e assenta** sobre um `Collider{Static}` no ECS real,
 ao dar play, e o mundo é determinístico. A ponte promoveu o wrapper M10 de dormente a **wired e global**.
@@ -139,7 +139,7 @@ do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **
 
 ---
 
-## §W1.5 — O relógio pra trás LANDOU (2026-07-18, pendente smoke)
+## §W1.5 — O relógio pra trás LANDOU (2026-07-18, **smoke aprovado**)
 
 Arrastar o playhead pra trás re-simula **bit-exato** sem custo O(t). rapier não anda pra trás (**nenhum**
 motor anda — resolução de contato não é invertível), então é GGPO save/load/advance, o mesmo desenho do
@@ -259,7 +259,7 @@ flag** — duas portas pra mesma pergunta divergem.
 
 ---
 
-## §W2 (metade) — A AUTORIA: a seção "Physics Body" no Inspector (2026-07-18, pendente smoke)
+## §W2 (metade) — A AUTORIA: a seção "Physics Body" no Inspector (2026-07-18, **smoke aprovado**)
 
 **O que mudou de verdade:** antes disto, um `RigidBody` só podia vir de uma cena de smoke — **não
 existia gesto nenhum no editor que tornasse um sprite físico**. Agora: selecione qualquer sprite → seção
@@ -582,7 +582,7 @@ o chevron SEMPRE, então um header sem id vivo desenharia um "clique pra dobrar"
 
 ---
 
-## ✅ §W2c — camadas de colisão (2026-07-18, pendente smoke)
+## ✅ §W2c — camadas de colisão (2026-07-18, **smoke aprovado**)
 
 **O modelo é o da Unity, e a escolha muda tudo.** Godot/Box2D dão a cada corpo
 um `layer` E um `mask`: flexível, sem estado global — e a regra *"bala não
@@ -642,7 +642,7 @@ redundante com os arch-gates: é a única coisa cobrindo aquele widget.
 
 ---
 
-## ✅ §W3 — joints (2026-07-18, pendente smoke)
+## ✅ §W3 — joints (2026-07-18, **smoke aprovado**)
 
 ### Um joint é uma ENTIDADE, e isso decide o resto
 
@@ -882,7 +882,7 @@ ragdoll diz que os **limites** seguram — joelhos dobram para um lado só.
   chip shipado às cegas.
 - **Motor em mola/corda** — rapier expõe; nenhum consumidor pediu.
 
-## ✅ §W4 — bake-to-timeline (2026-07-18, pendente smoke)
+## ✅ §W4 — bake-to-timeline (2026-07-18, **smoke aprovado**)
 
 ### Assar não é simular de novo — é ANOTAR
 
@@ -1222,7 +1222,7 @@ começou — o tipo confuso de correto.
 
 ---
 
-# W4b — o toggle **Physics** na barra da timeline (2026-07-18, pendente smoke)
+# W4b — o toggle **Physics** na barra da timeline (2026-07-18, **smoke aprovado**)
 
 > **Uma frase:** o transporte é UM relógio com DOIS consumidores — as curvas e o mundo
 > rapier — e agora o artista escolhe qual deles o Play alcança. **Desmarcado por padrão.**

@@ -239,3 +239,40 @@ fn a_last_strip_straddling_the_loop_end_does_not_wrap_its_fade_out() {
         "a strip que atravessa o fim do loop revela o fundo (+2), não a cabeça (−3): {x}"
     );
 }
+
+/// **O fade OUTWARD (`lead_out`) da ÚLTIMA strip também cruza para a costura do loop** (Enio,
+/// 2026-07-19): a Clip 2 (última) toca INTEIRA até seu último frame (+5) e então, no gap
+/// antes da volta, fadeia para o início da Main (−3) — em vez de segurar o próprio último
+/// frame e dar um salto na volta. É o ramo `closing` do `hold_at` passando a aceitar
+/// `lead_out`, não só `ease_out`. Sem o fix o fade de saída não fazia transição nenhuma no
+/// loop (before_wrap ficava em +5, salto de 8).
+#[test]
+fn a_lead_out_on_the_last_strip_crosses_to_the_seam_under_a_loop() {
+    let Scene {
+        mut sim,
+        mut st,
+        bits,
+    } = two_strips((-3.0, 2.0), (5.0, 5.0), 0.0, 0.0); // Main anima −3→+2, sem ease_in; Clip2 chapada +5
+    // A Clip 2 (última strip, índice 1) ganha um lead_out de 1 s, no gap [8, 9]; o loop o cobre.
+    let clip2 = st.doc.stack()[0].strips[1].id;
+    st.doc.strip_mut(0, clip2).unwrap().lead_out = 1.0;
+    st.doc.set_active_loop_for(false, Some((0.0, 9.0)));
+
+    let at_end = x_at(&mut sim, &mut st, bits, 8.0); // Clip2 tocou INTEIRA: +5
+    let before_wrap = x_at(&mut sim, &mut st, bits, 9.0 - FRAME); // fim do lead-out: ~ início da Main
+    let after_wrap = x_at(&mut sim, &mut st, bits, 0.0); // Main começa: −3
+
+    assert!(
+        (at_end - 5.0).abs() < 0.1,
+        "Clip2 toca inteira: +5 no fim, ANTES do lead-out começar: {at_end}"
+    );
+    assert!(
+        (before_wrap + 3.0).abs() < 0.2,
+        "o lead-out cruza para a costura (início da Main, −3), não segura +5: {before_wrap}"
+    );
+    let jump = (after_wrap - before_wrap).abs();
+    assert!(
+        jump < 0.5,
+        "a volta do loop é suave: {before_wrap} -> {after_wrap} (salto {jump})"
+    );
+}

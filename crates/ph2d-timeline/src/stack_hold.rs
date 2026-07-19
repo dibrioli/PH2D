@@ -78,13 +78,14 @@ impl ClipLane {
             return None;
         }
         // **CLOSING edge of a loop.** The strip that ends latest (at or before the loop
-        // end) in its fade-OUT ramp — or the gap after it, before the wrap — crosses to
-        // the pose the loop shows at the seam ([`Self::seam_source`]), not to the strip
-        // that ended before it (Enio, 2026-07-19). A strip that STRADDLES the loop end
-        // fades out past the wrap, where the loop never reaches, so `t_end <= b` gates
-        // it out. This runs BEFORE the mid-timeline hold below, which is exactly the
-        // answer it overrides: at the trailing edge the previous strip is not the pose
-        // to reveal.
+        // end) in its fade-OUT ramp — INWARD (`ease_out`, from `t_end - bo`) or OUTWARD
+        // (`lead_out`, in the gap from `t_end`) — crosses to the pose the loop shows at the
+        // seam ([`Self::seam_source`]), not to the strip that ended before it (nor, for a
+        // lead-out, to its own frozen last frame — that made the outward fade do nothing at
+        // the wrap; Enio, 2026-07-19). A strip that STRADDLES the loop end fades out past
+        // the wrap, where the loop never reaches, so `t_end <= b` gates it out. This runs
+        // BEFORE the mid-timeline hold below, which is exactly the answer it overrides: at
+        // the trailing edge the previous strip is not the pose to reveal.
         if let Some((a, b)) = loop_range
             && t >= a
             && t < b
@@ -96,7 +97,7 @@ impl ClipLane {
                 .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))
                 .is_some_and(|(li, last)| {
                     let bo = self.blend_out(li);
-                    bo > 0.0 && last.t_end <= b && t >= last.t_end - bo
+                    (bo > 0.0 || last.lead_out > 0.0) && last.t_end <= b && t >= last.t_end - bo
                 });
             if closing && let Some((strip, t_clip)) = self.seam_source(a, b) {
                 return Some((strip, t_clip, w));

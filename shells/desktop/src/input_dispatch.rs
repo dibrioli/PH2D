@@ -2694,6 +2694,20 @@ impl App {
                                     pid,
                                 );
                             }
+                            // DIAGNÓSTICO (`PH2D_CORNER_LOG=1`): os raios do path NO INSTANTE do
+                            // press. Serve para partir em dois o report *"a 1ª operação é
+                            // apagada"*: se os raios anteriores já vêm ZERADOS aqui, quem apagou
+                            // foi algo ENTRE os gestos (um passe por-frame); se vêm inteiros e
+                            // somem depois, foi o gesto. O motor e o recook da forma viva já
+                            // estão provados limpos por gate, então o eraser está fora deles.
+                            if std::env::var_os("PH2D_CORNER_LOG").is_some()
+                                && let Some(pid) = self.vec_pen.selected()
+                                && let Some(p) = gfx.vec_scene.path(pid)
+                            {
+                                let radii: Vec<f64> =
+                                    p.verts_all().map(|v| v.corner_radius).collect();
+                                eprintln!("[corner] press chamfer={chamfer} radii={radii:?}");
+                            }
                             // Os hosts de RELAÇÃO (conector, morph, blend, envelope) seguem
                             // recusados: ali a geometria é uma relação, e soltá-la sem o artista
                             // pedir destruiria o que ele construiu. A forma viva já saiu acima.

@@ -256,3 +256,50 @@ fn convert_to_curves_leaves_a_plain_path_alone() {
         "sem forma viva nem efeitos, converter não pode mexer no caminho"
     );
 }
+
+/// REPRO (Enio): fillet numa quina de uma forma VIVA, troca de ferramenta, chanfra outra — e
+/// entre as duas o frame roda o recook da receita. Se a receita não tiver sido congelada, o
+/// `recook_into` reescreve `verts` INTEIRO e o 1º raio evapora.
+#[test]
+fn repro_two_tools_on_a_live_shape_across_a_recook() {
+    use ph2d_vec_scene::ShapeKind;
+    let (mut sim, mut scene, map, id) = square_entity();
+    let e = entity_of(&map, id);
+    let shape = VecShape::Param {
+        kind: ShapeKind::Rectangle as u16,
+        w: 40.0,
+        h: 40.0,
+        values: [0.0; ph2d_ecs::MAX_SHAPE_VALUES],
+    };
+    sim.world_mut().entity_mut(e).insert(shape.clone());
+    // O frame cozinha a receita (é o que apaga tudo se a receita sobreviver).
+    crate::vec_shape_live::recook_into(&mut scene, id, &shape);
+
+    let mut pen = ph2d_vec_edit::PenTool::new();
+    pen.select(Some(id));
+    let a = scene.path(id).unwrap().verts[1].anchor;
+    let b = scene.path(id).unwrap().verts[2].anchor;
+
+    // OP 1 — Fillet na quina A (o press congela a receita).
+    crate::vec_convert::freeze_shape_recipe(&mut sim, &map, id);
+    pen.on_press_corner(&mut scene, a, 0.01, false);
+    pen.on_drag(&mut scene, [a[0] - 4.0, a[1] + 4.0], &mut |p| p);
+    pen.on_release();
+    let r1 = scene.path(id).unwrap().verts[1].corner_radius;
+    assert!(r1 > 0.0, "op1 arredondou (veio {r1})");
+
+    // O FRAME entre as duas operações: se a receita ainda estivesse lá, o recook rodaria aqui.
+    if let Some(s) = sim.world().get::<VecShape>(e).cloned() {
+        crate::vec_shape_live::recook_into(&mut scene, id, &s);
+    }
+
+    // OP 2 — Chamfer na quina B, com a OUTRA ferramenta.
+    pen.on_press_corner(&mut scene, b, 0.01, true);
+    pen.on_drag(&mut scene, [b[0] - 4.0, b[1] - 4.0], &mut |p| p);
+    pen.on_release();
+
+    let v = &scene.path(id).unwrap().verts;
+    eprintln!("r1={} r2={}", v[1].corner_radius, v[2].corner_radius);
+    assert!(v[1].corner_radius > 0.0, "a 1a quina sobreviveu ao 2o gesto");
+    assert!(v[2].corner_radius < 0.0, "a 2a chanfrou");
+}

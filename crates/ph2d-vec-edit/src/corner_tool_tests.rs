@@ -149,3 +149,29 @@ fn dragging_outward_keeps_the_corner_sharp() {
     pen.on_release();
     assert_eq!(radius(&scene, id, 1), 0.0, "arrasto para fora = quina afiada");
 }
+
+/// REPRO (Enio): fillet numa quina, troca de ferramenta, chanfra OUTRA — a 1ª sobrevive?
+#[test]
+fn repro_two_tools_two_corners() {
+    let mut scene = VecScene::new();
+    let id = square(&mut scene);
+    let mut pen = PenTool::new();
+    pen.select(Some(id));
+    // Fillet na quina 1.
+    pen.on_press_corner(&mut scene, [4.0, 0.0], PTW, false);
+    pen.on_drag(&mut scene, [3.0, 1.0], &mut nosnap);
+    pen.on_release();
+    let after_first = radius(&scene, id, 1);
+    // Chamfer na quina 2 (outra ferramenta, outra quina).
+    pen.on_press_corner(&mut scene, [4.0, 4.0], PTW, true);
+    pen.on_drag(&mut scene, [3.0, 3.0], &mut nosnap);
+    pen.on_release();
+    eprintln!(
+        "vert1 {} -> {} | vert2 {}",
+        after_first,
+        radius(&scene, id, 1),
+        radius(&scene, id, 2)
+    );
+    assert!(radius(&scene, id, 1) > 0.0, "a 1a quina (fillet) sobreviveu?");
+    assert!(radius(&scene, id, 2) < 0.0, "a 2a quina chanfrou?");
+}

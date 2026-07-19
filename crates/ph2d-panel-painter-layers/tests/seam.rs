@@ -28,7 +28,7 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_panel_painter_layers::PainterLayersPanel;
-use ph2d_panel_painter_layers::state::PainterLayersPanelState;
+use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Click the fixed "+ Layer" chrome button and prove it forwards as the
@@ -606,4 +606,58 @@ fn impasto_sliders_forward_setvalue() {
             "impasto slider {id:?} never forwarded as SetValue — seam dead. drained = {actions:?}"
         );
     }
+}
+
+/// **Com IMPASTO ligado o Accumulate não é oferecido** (Enio 2026-07-18, depois do smoke).
+///
+/// ⚠️ **E ele NÃO está morto — esta é a diferença que importa.** O irmão da aquarela
+/// (`under_the_wash_accumulate_is_inert_but_strength_is_not`) esconde um controle *provadamente inerte*;
+/// aqui o Accumulate segue governando a **cor** normalmente. O que ele não governa é o **corpo**: o
+/// relevo é um envelope por traço, então marcá-lo acumularia opacidade e deixaria a espessura onde
+/// estava — as duas metades da mesma tinta discordando sobre o que uma segunda passada significa.
+/// Estender o acúmulo ao relevo **foi construído e reprovado no smoke**, e a decisão foi não oferecer
+/// um controle que só faz metade do que promete.
+///
+/// **A consequência honesta, para quem vier depois:** com impasto ligado o cap de opacidade da cor fica
+/// preso no último valor que o artista deixou. Isso é o trade que a decisão escolhe, não um descuido.
+///
+/// Presença E ausência, porque só o par tem sentido: sem a metade da presença isto ficaria verde num
+/// painel que nunca pintou a linha em modo nenhum.
+#[test]
+fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
+    let viewport = || ph2d_editor_core::zones::Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let id = core_ids::PAINTER_BRUSH_ACCUMULATE;
+    let painted_with = |impasto: bool| {
+        let mut tool = ph2d_tool_painter::PainterTool::default();
+        tool.set_paint_tool_mode("brush");
+        if impasto {
+            tool.toggle_brush_impasto();
+        }
+        let bs = tool.brush_settings();
+        assert_eq!(
+            bs.impasto, impasto,
+            "fixture: o toggle de impasto não pegou"
+        );
+        set_current_brush(Some(bs));
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        host.paint::<PainterLayersPanel>(&mut st, viewport())
+            .iter()
+            .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+    };
+    assert!(
+        painted_with(false),
+        "sem impasto o Accumulate tem de estar na tela — se não está, a metade da ausência abaixo não \
+         prova nada (o painel poderia nunca pintar a linha)"
+    );
+    assert!(
+        !painted_with(true),
+        "com IMPASTO ligado o Accumulate continuou sendo pintado. Ali ele governa só a cor e deixa o \
+         corpo onde está, e um controle que faz metade do que promete é pior que um que falta."
+    );
 }

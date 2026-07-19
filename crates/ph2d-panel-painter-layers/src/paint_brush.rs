@@ -206,7 +206,13 @@ pub(crate) fn paint_brush_body(
     //    `watercolor_active`, not the checkbox: in Eraser/Mask/Inpaint the plain deposit runs again and
     //    Accumulate goes back to meaning something. **Strength stays** — the engine bakes it into
     //    `Dab.coverage` and the wash reads it as the deposit peak (`coverage × (1 − Dilution)`).
-    if !brush.paints_no_color() && !brush.watercolor_active {
+    //    Escondido também com **IMPASTO** ligado (Enio 2026-07-18, depois do smoke): ali ele governa
+    //    só metade da tinta. O relevo é um ENVELOPE por traço — uma passada de um pincel carregado
+    //    deixa uma espessura — então marcar Accumulate acumularia a opacidade e deixaria o CORPO
+    //    onde estava: as duas metades da mesma tinta discordando sobre o que uma segunda passada
+    //    significa. Estender o acúmulo ao relevo foi construído e **reprovado no smoke**, então a
+    //    resposta honesta é não oferecer o controle onde ele só faz metade do que promete.
+    if !brush.paints_no_color() && !brush.watercolor_active && !brush.impasto {
         y = paint_checkbox_row(
             ctx,
             theme,

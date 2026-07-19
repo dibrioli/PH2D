@@ -25,22 +25,14 @@ pub(crate) struct VecOverlayPlan {
     /// Guias de alinhamento do snap — desenhadas em TODOS os modos, inclusive o
     /// Select (gizmo-move).
     pub snap_guides: bool,
-    /// As alças de **raio de quina** (Live Corners) — só no **Node**, e é mais estreito
-    /// que o `edit`.
-    ///
-    /// No **Pen** o clique cria e edita ponto: uma alça de raio ali disputaria o pixel com
-    /// o gesto de desenhar, e arredondar quina não é o que a caneta faz. No **Shape** a
-    /// forma é PARAMÉTRICA — o raio dela é um campo do `VecShape` (o painel), não o
-    /// `corner_radius` do vértice; a geometria é re-cozida do zero a cada mudança de
-    /// parâmetro e o raio por-vértice seria varrido junto. No **Select** manda o gizmo.
-    ///
-    /// Sobra o Node — que é exatamente onde o Illustrator e o Affinity a põem.
-    pub corner_handles: bool,
-    /// A **gaiola do Envelope** (ADR-0129, Fatia 1) — só no **Node**, como a alça de raio de quina
-    /// e pela mesma razão: no Select manda o gizmo, no Pen/Shape o clique tem outro dono. Este flag
-    /// só diz que a gaiola *pode* aparecer neste modo; se a forma selecionada é de fato um envelope
-    /// é o [`crate::envelope_gesture::view`] que decide (devolve `None` quando não é).
+    /// A **gaiola do Envelope** (ADR-0129, Fatia 1) — só no **Node**: no Select manda o gizmo, no
+    /// Pen/Shape o clique tem outro dono. Este flag só diz que a gaiola *pode* aparecer neste modo;
+    /// se a forma selecionada é de fato um envelope é o [`crate::envelope_gesture::view`] que decide
+    /// (devolve `None` quando não é).
     pub envelope_cage: bool,
+    // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
+    // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
+    // clicar-e-arrastar sobre a quina). A consolidação que o Enio pediu.
 }
 
 /// A política de visibilidade dos overlays vetoriais deste frame.
@@ -58,9 +50,8 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
                 DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
             ),
         snap_guides: vector_active,
-        corner_handles: vector_active && mode == DrawMode::Node,
-        // Node-only, como a alça de raio de quina (mesma razão de modo). Se a seleção é um envelope
-        // é `envelope_gesture::view` que resolve — aqui é só a política de MODO.
+        // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
+        // `envelope_gesture::view` que resolve — aqui é só a política de MODO.
         envelope_cage: vector_active && mode == DrawMode::Node,
     }
 }
@@ -87,14 +78,21 @@ mod tests {
     fn build_mode_shows_no_node_overlays_because_it_manipulates_regions() {
         let plan = vec_overlay_plan(true, DrawMode::Build);
         assert!(!plan.edit, "sem âncoras/handles no Build");
-        assert!(!plan.corner_handles, "e sem alça de raio de quina");
         assert!(plan.snap_guides, "as guias de snap valem em todo modo");
     }
 
-    /// Nos modos de desenho/edição de nó, os dois overlays aparecem.
+    /// Nos modos de desenho/edição de nó E nas ferramentas de QUINA, os overlays de edição
+    /// aparecem. Fillet/Chamfer PRECISAM das âncoras desenhadas: são elas as quinas que se vai
+    /// clicar — sem o overlay, o alvo do gesto fica invisível.
     #[test]
-    fn draw_and_node_modes_show_both_overlays() {
-        for mode in [DrawMode::Pen, DrawMode::Node, DrawMode::Shape] {
+    fn draw_node_and_corner_tool_modes_show_edit_overlays() {
+        for mode in [
+            DrawMode::Pen,
+            DrawMode::Node,
+            DrawMode::Shape,
+            DrawMode::Fillet,
+            DrawMode::Chamfer,
+        ] {
             let plan = vec_overlay_plan(true, mode);
             assert!(plan.edit, "{mode:?} desenha âncoras/handles");
             assert!(plan.snap_guides, "{mode:?} desenha guias de snap");
@@ -107,7 +105,6 @@ mod tests {
     fn pickblend_mode_shows_no_node_overlays() {
         let plan = vec_overlay_plan(true, DrawMode::PickBlend);
         assert!(!plan.edit, "sem âncoras/handles no Pick Shapes");
-        assert!(!plan.corner_handles, "e sem alça de raio de quina");
         assert!(plan.snap_guides, "guias de snap valem em todo modo");
     }
 
@@ -117,31 +114,17 @@ mod tests {
         let plan = vec_overlay_plan(false, DrawMode::Node);
         assert!(!plan.edit);
         assert!(!plan.snap_guides);
-        assert!(!plan.corner_handles);
+        assert!(!plan.envelope_cage);
     }
 
-    /// **A alça de raio de quina é do NODE, e só dele** — mais estreita que o `edit`.
-    ///
-    /// O `Shape` é o que este teste realmente protege: uma forma paramétrica re-cozinha a
-    /// geometria INTEIRA a cada mudança de parâmetro (`recook_into` sobrescreve `verts`),
-    /// então um `corner_radius` gravado num vértice dela seria varrido no próximo arrasto
-    /// de slider — a alça funcionaria por um frame e depois "esqueceria" sozinha. O raio de
-    /// uma Live Shape é um campo DELA (o painel); o raio por-vértice é para path desenhado.
-    #[test]
-    fn the_corner_radius_handle_belongs_to_node_mode_alone() {
-        assert!(vec_overlay_plan(true, DrawMode::Node).corner_handles);
-        for mode in [DrawMode::Select, DrawMode::Pen, DrawMode::Shape] {
-            let plan = vec_overlay_plan(true, mode);
-            assert!(
-                !plan.corner_handles,
-                "{mode:?} NÃO desenha alça de raio de quina"
-            );
-        }
-    }
+    // NOTA: o teste `the_corner_radius_handle_belongs_to_node_mode_alone` saiu com o campo
+    // `corner_handles` — a alça de raio virou o par de ferramentas Fillet / Chamfer. A exclusão de
+    // forma VIVA (o que aquele teste protegia) segue viva no `has_derived_verts`, que as
+    // ferramentas de quina consultam (gate `every_host_that_rewrites_verts_faces_the_radius_handle`).
 
-    /// **A gaiola do Envelope é do NODE, e só dele** (ADR-0129 Fatia 1) — a mesma política de modo
-    /// da alça de raio de quina. Fora do Node (Select/Pen/Shape/Build/PickBlend) o clique tem outro
-    /// dono e a gaiola não pode existir; tool inativa idem.
+    /// **A gaiola do Envelope é do NODE, e só dele** (ADR-0129 Fatia 1). Fora do Node
+    /// (Select/Pen/Shape/Build/PickBlend) o clique tem outro dono e a gaiola não pode existir; tool
+    /// inativa idem.
     #[test]
     fn the_envelope_cage_belongs_to_node_mode_alone() {
         assert!(vec_overlay_plan(true, DrawMode::Node).envelope_cage);

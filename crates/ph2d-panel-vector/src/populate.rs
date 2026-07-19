@@ -35,6 +35,10 @@ const GRAD_INFLUENCE_SLIDER_SCALE: f32 = 4.0; // LITERAL-PX-OK: max IDW influenc
 /// Multi-point Jitter slider mapping: track `0..1` → `0..1` (per-texel grain).
 const GRAD_JITTER_SLIDER_SCALE: f32 = 1.0; // LITERAL-PX-OK: jitter is already a 0..1 fraction
 
+/// Os pills de modo (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
+#[path = "populate_modes.rs"]
+mod modes;
+
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
@@ -216,31 +220,8 @@ fn populate_shape(store: &mut WidgetStore) {
         WIDTH_SLIDER_OFFSET,
     );
 
-    // Modos (Select / Node / Pen / Shape / Text) + Convert. O pill **Shape** é o 5º: sem
-    // ele, escolher uma forma punha a tool em `DrawMode::Shape` e a fileira de modos
-    // ficava TODA apagada — o usuário não via em que modo estava.
-    button(store, ids::VECTOR_CONVERT_TO_CURVES);
-    button(store, ids::VECTOR_MODE_SELECT);
-    button(store, ids::VECTOR_MODE_NODE);
-    button(store, ids::VECTOR_MODE_PEN);
-    button(store, ids::VECTOR_MODE_SHAPE);
-    button(store, ids::VECTOR_MODE_TEXT);
-    // O 6º: **Connect** (a linha que gruda em duas formas). Registrar aqui é o que o
-    // torna clicável — pintar e dar hit-rect não basta.
-    button(store, ids::VECTOR_MODE_CONNECT);
-
-    // O 7º: **Build** (o Shape Builder). Mesma armadilha: registrar aqui é o que o torna
-    // clicável — pintar e dar hit-rect não basta.
-    button(store, ids::VECTOR_MODE_BUILD);
-
-    // **Pick Shapes** (Blend). É um modo de tool, mas o botão dele mora na seção BLEND (não nesta
-    // fileira) — registrar aqui é o que o torna clicável onde quer que seja pintado.
-    button(store, ids::VECTOR_MODE_PICKBLEND);
-
-    // O 9º e 10º: **Fillet / Chamfer** (arredondar / chanfrar quina). Mesma armadilha: registrar
-    // aqui é o que os torna clicáveis — pintar e dar hit-rect não basta.
-    button(store, ids::VECTOR_MODE_FILLET);
-    button(store, ids::VECTOR_MODE_CHAMFER);
+    // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
+    modes::mode_buttons(store);
 
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
@@ -391,7 +372,6 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_CORNER);
     button(store, ids::VECTOR_VERT_SMOOTH);
     button(store, ids::VECTOR_VERT_SYMMETRIC);
-    button(store, ids::VECTOR_VERT_CHAMFER);
     button(store, ids::VECTOR_VERT_DELETE);
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.

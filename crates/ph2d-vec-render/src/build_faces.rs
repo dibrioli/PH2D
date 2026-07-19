@@ -19,7 +19,7 @@
 //!
 //! ## Tudo que tem ESPESSURA é desenhado em espaço de TELA
 //!
-//! A convenção da crate (ver [`crate::draw_corner_handles`]): o ponto sobe pelo afim, a
+//! A convenção da crate (ver [`crate::draw_connector_handles`]): o ponto sobe pelo afim, a
 //! espessura NÃO. Um `Stroke::new(1.5)` sob o afim mundo→tela não é uma borda de 1,5 px —
 //! é uma borda de **1,5 unidades de MUNDO**, que no zoom default são ~150 px de tinta opaca
 //! cobrindo a arte. Era esse o "véu estranho e grande".

@@ -45,6 +45,7 @@ mod audio;
 mod blend_live;
 mod blend_smoke;
 mod build_smoke;
+mod build_smoke_corner_tools;
 mod chrome_hit;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;

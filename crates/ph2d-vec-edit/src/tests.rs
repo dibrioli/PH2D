@@ -724,7 +724,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique no vazio: nada criado, nada selecionado.
     assert_eq!(
-        pen.on_press_node(&mut scene, [90.0, 90.0], PTW, Some(PTW), false),
+        pen.on_press_node(&mut scene, [90.0, 90.0], PTW, false),
         PenClick::Ignored
     );
     assert_eq!(scene.paths().len(), before, "não criou path");
@@ -732,7 +732,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique DENTRO da forma (longe de qualquer âncora): seleciona, não cria.
     assert_eq!(
-        pen.on_press_node(&mut scene, [5.0, 5.0], PTW, Some(PTW), false),
+        pen.on_press_node(&mut scene, [5.0, 5.0], PTW, false),
         PenClick::Grabbed
     );
     assert_eq!(scene.paths().len(), before, "ainda não criou path");
@@ -740,7 +740,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique numa âncora: agarra o vértice.
     assert_eq!(
-        pen.on_press_node(&mut scene, [10.0, 0.0], PTW, Some(PTW), false),
+        pen.on_press_node(&mut scene, [10.0, 0.0], PTW, false),
         PenClick::Grabbed
     );
     assert_eq!(pen.selected_verts(), [1]);
@@ -862,46 +862,7 @@ fn joining_at_the_far_endpoint_reverses_the_consumed_path() {
     assert_eq!(a.verts[2].anchor, [10.0, 0.0], "B foi revertido na junção");
 }
 
-/// **O toggle Chamfer alterna SÓ as quinas selecionadas que têm raio, e o tamanho sobrevive.**
-/// A porta é `set_selected_corner_chamfer`; um vértice sem quina é pulado (não há o que
-/// chanfrar até haver recuo), e re-aplicar o mesmo estado é no-op (sem passo de undo).
-#[test]
-fn the_chamfer_toggle_flips_only_selected_corners_with_a_radius() {
-    use ph2d_vec_scene::{VecPath, VecVertex};
-    let mut scene = VecScene::new();
-    let mut verts: Vec<VecVertex> = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]]
-        .map(VecVertex::corner)
-        .to_vec();
-    verts[1].corner_radius = 3.0; // o vértice 1 tem quina arredondada; o 0 não tem quina
-    let id = scene.push_path(VecPath {
-        verts,
-        closed: true,
-        ..VecPath::default()
-    });
-
-    let mut pen = PenTool::new();
-    pen.select(Some(id));
-    assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5)); // sem quina
-    assert!(pen.toggle_vert_at(&scene, [4.0, 0.0], 0.5)); // com quina
-
-    // O 1º selecionado COM quina é arredondado.
-    assert_eq!(pen.selected_corner_chamfer(&scene), Some(false));
-
-    // Liga o chanfro: só o vértice COM quina muda, e o tamanho fica.
-    assert!(pen.set_selected_corner_chamfer(&mut scene, true));
-    assert!(scene.paths()[0].verts[1].is_chamfer(), "a quina virou chanfro");
-    assert_eq!(
-        scene.paths()[0].verts[1].corner_size(),
-        3.0,
-        "o toggle não pode mexer no tamanho"
-    );
-    assert_eq!(
-        scene.paths()[0].verts[0].corner_radius,
-        0.0,
-        "um vértice sem quina não é tocado"
-    );
-    assert_eq!(pen.selected_corner_chamfer(&scene), Some(true));
-
-    // Re-aplicar o MESMO estado é no-op — nada mudou, logo nenhum passo de undo.
-    assert!(!pen.set_selected_corner_chamfer(&mut scene, true));
-}
+// NOTA: o toggle Chamfer da seção Vertex foi REMOVIDO — o estilo de quina virou o par de
+// ferramentas Fillet / Chamfer (o gesto de clicar-e-arrastar). O comportamento do SINAL está
+// coberto por `corner_tool_tests` (o arrasto força o estilo) e `corner_live_tests` (o cozimento
+// reto vs arco). O gate do antigo `set_selected_corner_chamfer` saiu com a função.

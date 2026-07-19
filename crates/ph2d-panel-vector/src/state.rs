@@ -319,11 +319,6 @@ mod effects;
 pub use effects::{FxParamView, FxRowView, set_current_effects};
 pub(crate) use effects::{has_target, kinds, stack};
 
-#[path = "state_corner.rs"] // o estilo de quina (Live Corners, ADR-0121), no padrão do `effects`
-mod corner;
-pub use corner::set_current_corner_chamfer;
-pub(crate) use corner::current_corner_chamfer;
-
 pub fn set_current_has_envelope(v: bool) {
     CURRENT_HAS_ENVELOPE.with(|c| c.set(v));
 }

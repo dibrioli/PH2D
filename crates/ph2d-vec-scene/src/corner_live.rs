@@ -46,37 +46,11 @@ use crate::{VecPath, VecVertex, VertexKind};
 /// Abaixo disto (unidades de mundo) um raio / recuo / vetor é tratado como zero.
 const EPS: f64 = 1e-9;
 
-/// O raio da bolinha da alça de raio, em PIXELS de tela.
-///
-/// **Mora aqui, e não na crate de desenho nem na de edição, porque as DUAS o leem.** Quem
-/// desenha o círculo e quem o captura têm de usar o mesmo número: se divergirem, o usuário
-/// clica exatamente no meio da bolinha e não pega nada — e a tela está certa, que é o
-/// sintoma mais enlouquecedor que existe. (O `connector.rs` já escreveu essa lição; esta é
-/// a mesma, e a casa comum das duas pontas é esta crate.)
-///
-/// Em pixels e não em mundo: uma alça que encolhesse com o zoom-out ficaria impegável
-/// exatamente quando a forma fica grande.
-pub const CORNER_HANDLE_R_PX: f64 = 6.0;
-
-/// Onde a alça de uma quina AFIADA estaciona, em pixels ao longo da bissetriz. Longe o
-/// bastante da âncora para não brigar com o hit-test dela, perto o bastante para ler como
-/// "esta alça é desta quina".
-pub const CORNER_HANDLE_PARK_PX: f64 = 14.0;
-
-/// Uma alça de raio pronta para desenhar: onde ela está **no mundo**, e se a quina já
-/// está arredondada (bolinha cheia) ou ainda afiada (vazada, só estacionada).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct CornerHandleView {
-    /// O centro da bolinha, em coordenadas de MUNDO.
-    pub pos: [f64; 2],
-    /// A âncora da quina, no mundo — um fio fino liga uma à outra, e é ele que diz a
-    /// QUEM a bolinha pertence quando várias quinas estão próximas.
-    pub anchor: [f64; 2],
-    /// A quina já tem raio? (decide o preenchimento da bolinha)
-    pub rounded: bool,
-    /// O índice PLANO do vértice (o mesmo espaço de índice do hit-test e da seleção).
-    pub vert: usize,
-}
+// NOTA: as constantes `CORNER_HANDLE_R_PX` / `CORNER_HANDLE_PARK_PX` e a struct
+// `CornerHandleView` (a alça de raio na bissetriz, do modo Node) foram REMOVIDAS — o
+// arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (clicar-e-arrastar
+// sobre a quina). O que sobra deste módulo é o MOTOR da quina viva (`corner_at`/`CornerFrame`/
+// `radius_for_setback` e o cozimento), que as duas ferramentas usam.
 
 /// Uma cúbica: os quatro pontos de controle, na ordem do traçado.
 type Cubic = [[f64; 2]; 4];

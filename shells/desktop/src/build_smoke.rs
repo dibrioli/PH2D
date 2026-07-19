@@ -196,53 +196,10 @@ impl crate::App {
                      Arraste a alça de raio: o estilo sobrevive. Clique de novo p/ voltar a arco."
                 );
             }
-            // A cena das ferramentas de QUINA (Fillet / Chamfer): um retângulo de quinas RETAS e
-            // uma elipse cujas âncoras são SUAVES. Clique uma quina e ARRASTE para dentro — ela
-            // arredonda (Fillet) ou chanfra (Chamfer, trocando o pill). Na elipse o clique
-            // TRANSFORMA a âncora suave em quina primeiro, e então arredonda (o algoritmo avançado).
-            3 if level == 16 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
-                let scene = &mut gfx.vec_scene;
-                // Retângulo de quinas AFIADAS (radius 0) à esquerda.
-                scene.push_path(shape(
-                    ShapeKind::Rectangle,
-                    [-3.4, -1.2],
-                    [-1.0, 1.2],
-                    &[],
-                    [90, 150, 220],
-                ));
-                // Elipse à direita — suas âncoras são SUAVES; o clique as vira quina primeiro.
-                scene.push_path(shape(
-                    ShapeKind::Ellipse,
-                    [1.0, -1.2],
-                    [3.4, 1.2],
-                    &[],
-                    [200, 120, 80],
-                ));
-                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Fillet);
-            }
-            // Pré-seleciona o retângulo (frame 4, pós-`settle`) para as quinas já aparecerem —
-            // sem seleção, o overlay de edição não desenha as âncoras que se vai clicar.
-            4 if level == 16 => {
-                let first = self
-                    .gfx
-                    .as_ref()
-                    .expect("gfx")
-                    .vec_scene
-                    .paths()
-                    .first()
-                    .map(|p| p.id);
-                if let Some(id) = first {
-                    self.vec_pen.select(Some(id));
-                }
-                eprintln!(
-                    "[smoke] Fillet/Chamfer tools: no rail, os pills **Fillet** e **Chamfer**. \
-                     Clique uma QUINA do retângulo e ARRASTE para dentro — ela arredonda (Fillet) \
-                     ou chanfra (Chamfer). Na ELIPSE, clicar uma âncora a transforma em quina \
-                     PRIMEIRO e então arredonda. Arrastar para FORA afia de volta."
-                );
-            }
+            // A cena das ferramentas de QUINA (Fillet / Chamfer) — corpo no módulo irmão
+            // `build_smoke_corner_tools` (teto de LOC). Frame 3 monta, frame 4 pré-seleciona.
+            3 if level == 16 => self.smoke_corner_tools_build(),
+            4 if level == 16 => self.smoke_corner_tools_select(),
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em
             // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).

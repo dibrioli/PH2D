@@ -39,11 +39,9 @@ pub use guides::{Guide, draw_snap_guides, draw_text_caret};
 mod connector;
 pub use connector::{HANDLE_R_PX, draw_connector_handles, draw_connector_waypoints};
 
-/// As alças de **raio de quina** (Live Corners) — módulo irmão (LOC cap). O raio e a
-/// posição da bolinha vêm de `ph2d-vec-scene`/`ph2d-vec-edit`, as mesmas funções que o
-/// hit-test usa: aqui só se pinta.
-mod corner;
-pub use corner::draw_corner_handles;
+// NOTA: o `mod corner` (draw_corner_handles, a alça de raio na bissetriz) foi REMOVIDO — o
+// arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer no shell. O `corner.rs`
+// deste crate saiu junto.
 
 /// A **gaiola do Envelope** (ADR-0129, Fatia 1) — módulo irmão (LOC cap). Os 4 cantos que o modo
 /// Node arrasta para deformar a forma; o raio da bolinha ([`ENVELOPE_HANDLE_R_PX`]) é o mesmo que o

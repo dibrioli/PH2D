@@ -1,13 +1,14 @@
-//! Quais quinas ganham alça de raio neste frame — a política, num ponto testável.
+//! Quais quinas as ferramentas Fillet / Chamfer podem editar neste frame — a política, num
+//! ponto testável.
 //!
-//! O motor (`ph2d_vec_scene::corner_live`) sabe onde há quina; o `PenTool` sabe onde a
-//! alça é desenhada e agarrada. O que **só a shell** sabe é se a geometria daquele path é
-//! **derivada** — se algum `*_live::recook` a reescreve — e essa é a pergunta que decide se
-//! a alça pode existir. A porta é [`has_derived_verts`], e os dois lados a fazem: quem
-//! DESENHA a alça (`view`) e quem a AGARRA (`input_dispatch`). Duas portas divergiriam, e a
-//! alça ficaria invisível e ainda assim agarrável.
+//! O motor (`ph2d_vec_scene::corner_live`) sabe onde há quina; o `PenTool` sabe onde a quina
+//! é agarrada. O que **só a shell** sabe é se a geometria daquele path é **derivada** — se
+//! algum `*_live::recook` a reescreve — e essa é a pergunta que decide se o raio pode
+//! sobreviver. A porta é [`has_derived_verts`], consultada pelo press das ferramentas de
+//! quina (`input_dispatch`). (Era a mesma política da antiga alça de raio do Node, que tinha
+//! um lado de DESENHO — removido com a alça; hoje o único consumidor é o gesto das tools.)
 //!
-//! # Por que geometria DERIVADA não tem alça de raio (e o bug que isto evita)
+//! # Por que geometria DERIVADA não pode ganhar raio por-vértice (e o bug que isto evita)
 //!
 //! Uma forma paramétrica guarda uma RECEITA no `VecShape::Param` (kind + w/h + valores), e
 //! a geometria dela é **derivada**: `vec_shape_live::recook_into` reescreve `path.verts`
@@ -28,8 +29,6 @@
 //! **Convert to Curves**, que já existe e é literalmente descartar o `VecShape`.
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
-use ph2d_vec_scene::VecScene;
-use ph2d_vec_scene::corner_live::{CORNER_HANDLE_PARK_PX, CornerHandleView};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -72,30 +71,9 @@ pub(crate) fn has_derived_verts(
     crate::envelope_live::container_of(sim, bits).is_some_and(|c| c != bits)
 }
 
-/// As alças de raio a desenhar neste frame: as do path selecionado, **se ele for um
-/// caminho desenhado**. Uma forma viva devolve vazio (ver o módulo).
-#[must_use]
-pub(crate) fn view(
-    sim: &SimWorld,
-    scene: &VecScene,
-    map: &VecEntityMap,
-    selected: Option<ph2d_vec_scene::VecPathId>,
-    xforms: &ph2d_vec_scene::VecXforms,
-    px_to_world: f64,
-) -> Vec<CornerHandleView> {
-    let Some(id) = selected else {
-        return Vec::new();
-    };
-    if has_derived_verts(sim, map, id) {
-        return Vec::new();
-    }
-    ph2d_vec_edit::corner_handle::view(
-        scene,
-        id,
-        &ph2d_vec_scene::xform_of(xforms, id),
-        CORNER_HANDLE_PARK_PX * px_to_world,
-    )
-}
+// NOTA: `view` (as alças de raio a desenhar) foi REMOVIDO junto com a alça de raio do Node — o
+// arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer. O que sobrevive deste
+// módulo é a POLÍTICA `has_derived_verts`, que o press dessas ferramentas consulta.
 
 #[cfg(test)]
 #[path = "corner_handles_tests.rs"]

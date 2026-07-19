@@ -20,8 +20,8 @@ use ph2d_vector::{
 };
 
 /// Raio da bolinha do canto, em pixels — e o mesmo alcance que o hit-test do host usa (`×
-/// px_to_world`). Igual ao da alça de raio de quina (`CORNER_HANDLE_R_PX`), para as duas alças de
-/// nó pesarem o mesmo na mão.
+/// px_to_world`). O mesmo raio das outras alças de nó (`connector.rs`), para todas pesarem o
+/// mesmo na mão.
 pub const ENVELOPE_HANDLE_R_PX: f64 = 6.0;
 
 /// Espessura da aresta da gaiola e do contorno da bolinha, em pixels.

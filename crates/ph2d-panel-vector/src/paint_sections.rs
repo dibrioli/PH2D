@@ -60,7 +60,7 @@ mod envelope;
 #[path = "paint_effects.rs"]
 mod effects;
 
-/// A seção **Vertex** (tipo do vértice + Chamfer + Delete) — módulo irmão (teto de 600 LOC).
+/// A seção **Vertex** (tipo do vértice + Delete) — módulo irmão (teto de 600 LOC).
 #[path = "paint_vertex.rs"]
 mod vertex;
 

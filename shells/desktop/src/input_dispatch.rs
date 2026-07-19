@@ -226,21 +226,10 @@ pub(crate) fn apply_vec_vertex_kind(
     }
 }
 
-/// Alterna o CHANFRO da(s) quina(s) selecionada(s) (toggle Chamfer — ADR-0121). Espelho do
-/// `apply_vec_vertex_kind`: o novo estado é o oposto do atual (o SINAL do `corner_radius`), e o
-/// `vec_history` legado ganha o passo (o undo GLOBAL o captura pelo diff da cena, como sempre).
-pub(crate) fn apply_vec_corner_chamfer(
-    scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
-    pen: &mut ph2d_vec_edit::PenTool,
-) {
-    // Flip: se qualquer quina selecionada já é chanfro, o toggle a devolve a arredondada.
-    let want = !pen.selected_corner_chamfer(scene).unwrap_or(false);
-    let pre = scene.clone();
-    if pen.set_selected_corner_chamfer(scene, want) {
-        history.push_undo(pre);
-    }
-}
+// NOTA: `apply_vec_corner_chamfer` (o toggle Chamfer da seção Vertex) foi REMOVIDO — o estilo de
+// quina virou o par de ferramentas Fillet / Chamfer (o gesto de clicar-e-arrastar de
+// `on_press_corner`, roteado no `on_mouse_input` acima). O SINAL do `corner_radius` agora é
+// escrito pelo arrasto, não por um botão.
 
 /// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key),
 /// recording ONE undo step iff it removed anything. Free fn (mirror of
@@ -2751,7 +2740,6 @@ impl App {
                             // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
                             // tampouco: o snap serve a quem POSICIONA um ponto novo.
                             None if node_mode => {
-                                let selected = self.vec_pen.selected();
                                 // ADR-0129 Fatia 1: os cantos da gaiola do Envelope são
                                 // alças PRÓPRIAS no modo Node (§3.3). Hit-testa-os
                                 // PRIMEIRO; um acerto arma o arrasto do canto e PULA o pen
@@ -2769,22 +2757,13 @@ impl App {
                                 ) {
                                     // canto agarrado — o pen fica de fora
                                 } else {
-                                    // A alça de raio de quina não existe numa FORMA VIVA (o
-                                    // recook dos parâmetros varreria o raio — ver
-                                    // `crate::corner_handles`). O render já não a desenha lá;
-                                    // aqui o hit-test também não pode agarrá-la, senão o
-                                    // clique pegaria um alvo que não está na tela.
-                                    let corner_px = (!crate::corner_handles::has_derived_verts(
-                                        &gfx.sim,
-                                        &self.vec_entities,
-                                        selected.unwrap_or_default(),
-                                    ))
-                                    .then_some(px_to_world);
+                                    // Node edita âncoras/handles. Arredondar/chanfrar quina não é
+                                    // mais deste modo — virou o par Fillet/Chamfer (o hit-test aqui
+                                    // não agarra alça de raio nenhuma).
                                     self.vec_pen.on_press_node(
                                         &mut gfx.vec_scene,
                                         [w[0] as f64, w[1] as f64],
                                         px_to_world,
-                                        corner_px,
                                         alt,
                                     );
                                 }

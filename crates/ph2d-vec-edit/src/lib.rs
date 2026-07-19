@@ -31,8 +31,9 @@ pub mod corner_handle;
 /// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
 /// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
 mod pen_drag;
-use ph2d_vec_scene::corner_live::{CORNER_HANDLE_PARK_PX, CORNER_HANDLE_R_PX};
-
+/// **O press das ferramentas Fillet / Chamfer** (`on_press_corner`) — módulo irmão (LOC cap).
+/// Bloco `impl PenTool` inerente; move e release reusam o caminho do pen.
+mod corner_tool;
 use ph2d_vec_scene::{Paint, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
@@ -293,7 +294,7 @@ impl PenTool {
         }
         // hit-test para EDITAR um ponto existente. Sem alca de raio: ela e do modo
         // NODE (ADR-0112) — no Pen o clique cria e edita ponto, nao arredonda quina.
-        if let Some(g) = self.hit_test(scene, p, hit_r, None) {
+        if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
@@ -325,22 +326,18 @@ impl PenTool {
     ///
     /// Não há gizmo neste modo — as alças dele comeriam o clique do nó — então o
     /// clique no interior de uma forma nunca a transforma, só a seleciona.
-    /// `corner_px`: a escala de pixel QUANDO as alças de raio de quina valem para o path
-    /// selecionado — `None` as desliga. **Quem decide é a shell**, porque a resposta
-    /// depende do ECS, que esta crate não vê: uma **forma viva** não tem alça de raio (a
-    /// geometria dela é re-cozida dos parâmetros e varreria o raio), e o `PenTool` não tem
-    /// como saber disso sozinho. Sem esta porta, o hit-test agarraria uma alça que o render
-    /// não desenhou — um alvo FANTASMA, o pior tipo de alvo.
+    ///
+    /// Arredondar/chanfrar quina NÃO é mais deste modo — virou o par de ferramentas
+    /// Fillet/Chamfer (`on_press_corner`), então o hit-test aqui não agarra alça de raio.
     pub fn on_press_node(
         &mut self,
         scene: &mut VecScene,
         p: [f64; 2],
         px_to_world: f64,
-        corner_px: Option<f64>,
         alt: bool,
     ) -> PenClick {
         let hit_r = 10.0 * px_to_world;
-        if let Some(g) = self.hit_test(scene, p, hit_r, corner_px) {
+        if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
@@ -357,96 +354,6 @@ impl PenTool {
                 PenClick::Ignored
             }
         }
-    }
-
-    /// Pressão primária nas ferramentas **Fillet / Chamfer**: agarra a QUINA do path
-    /// selecionado sob o cursor e arma o arrasto de raio — o dedo dita a MAGNITUDE, a
-    /// ferramenta dita o ESTILO (`chamfer`). É a mesma máquina do arrasto da alça de raio
-    /// (`Part::Radius`), só semeada pela ÂNCORA em vez de uma bolinha na bissetriz; move e
-    /// release reusam o caminho do pen (`on_drag` / `on_release`) sem mudança.
-    ///
-    /// **A metade "avançada" que o Enio pediu:** se a âncora sob o cursor não é uma quina
-    /// arredondável (um ponto `Smooth` tem os handles colineares — não há ângulo), ela é
-    /// primeiro transformada em quina afiada ([`ph2d_vec_scene::make_sharp_corner`]). Quem
-    /// clica um ponto suave quer arredondá-lo, e para isso ele precisa virar quina antes.
-    ///
-    /// Opera só no path SELECIONADO: o shell (re)seleciona o path sob o cursor antes de
-    /// chamar e barra as formas VIVAS (cujo `corner_radius` o recook varreria). Devolve
-    /// `true` se agarrou uma quina (o arrasto está armado, `is_dragging` passa a valer).
-    pub fn on_press_corner(
-        &mut self,
-        scene: &mut VecScene,
-        p: [f64; 2],
-        px_to_world: f64,
-        chamfer: bool,
-    ) -> bool {
-        let hit_r = 12.0 * px_to_world;
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(vert) = self.nearest_anchor_on(scene, id, p, hit_r) else {
-            return false;
-        };
-        self.selected_paths = vec![id];
-        self.selected_verts = vec![vert];
-        // "Primeiro transforma em quina" quando o ponto é suave (sem ângulo a arredondar).
-        let is_corner = scene
-            .paths()
-            .iter()
-            .find(|pp| pp.id == id)
-            .and_then(|path| corner_handle::frame_at_flat(path, vert))
-            .is_some();
-        if !is_corner && let Some(path) = scene.path_mut(id) {
-            let _ = ph2d_vec_scene::make_sharp_corner(path, vert);
-        }
-        // O frame DEPOIS da conversão. Se ainda não há quina (vizinhos colineares), desiste.
-        let Some(frame) = scene
-            .paths()
-            .iter()
-            .find(|pp| pp.id == id)
-            .and_then(|path| corner_handle::frame_at_flat(path, vert))
-        else {
-            return false;
-        };
-        // O offset que torna o arrasto RELATIVO (ver `Grab::radius_offset`), medido AGORA.
-        let pl = self.to_local(id, p);
-        let d = [pl[0] - frame.anchor[0], pl[1] - frame.anchor[1]];
-        let proj = d[0] * frame.bisector[0] + d[1] * frame.bisector[1];
-        self.grab = Some(Grab {
-            path: id,
-            vert,
-            part: Part::Radius,
-            radius_offset: frame.setback - proj,
-            chamfer: Some(chamfer),
-        });
-        true
-    }
-
-    /// A ÂNCORA do path `id` mais próxima de `p` (mundo), dentro de `hit_r` (mundo). `None`
-    /// se o path não é agarrável ou nenhuma âncora está perto. Diferente do `hit_test`: só
-    /// ÂNCORA (as ferramentas de quina nunca agarram um handle Bézier) e só o path dado (o
-    /// shell já escolheu o alvo pelo `path_at`).
-    fn nearest_anchor_on(
-        &self,
-        scene: &VecScene,
-        id: VecPathId,
-        p: [f64; 2],
-        hit_r: f64,
-    ) -> Option<usize> {
-        if !self.view.is_pickable(id) {
-            return None;
-        }
-        let path = scene.paths().iter().find(|pp| pp.id == id)?;
-        let xf = self.xf(id);
-        let r2 = hit_r * hit_r;
-        let mut best: Option<(usize, f64)> = None;
-        for (i, v) in path.verts_all().enumerate() {
-            let d2 = dist2(p, xf.apply(v.anchor));
-            if d2 <= r2 && best.is_none_or(|(_, b)| d2 < b) {
-                best = Some((i, d2));
-            }
-        }
-        best.map(|(i, _)| i)
     }
 
     /// Solta o botão: encerra arrasto/edição. `true` se havia manipulação (o clique
@@ -639,17 +546,11 @@ impl PenTool {
     /// O raio `r` é WORLD-units (px × zoom), então a comparação acontece no mundo:
     /// cada ponto local sobe pelo afim do path dele. Assim uma forma escalada a 10×
     /// não fica com um raio de captura 10× maior — o alvo é do tamanho que se vê.
-    /// `corner_px`: a escala de pixel do mundo QUANDO as alças de raio de quina estão
-    /// vivas. `None` = ignora as alças de raio — é o que o `path_at` (seletor de
-    /// OBJETO, com tolerância escolhida pelo chamador) passa: lá o `r` não é o raio de
-    /// captura de um vértice, e uma alça de raio nunca é um "objeto sob o cursor".
-    fn hit_test(
-        &self,
-        scene: &VecScene,
-        p: [f64; 2],
-        r: f64,
-        corner_px: Option<f64>,
-    ) -> Option<Grab> {
+    ///
+    /// Agarra handle Bézier (do path selecionado) e depois ÂNCORA (de qualquer path
+    /// agarrável). A antiga alça de raio na bissetriz saiu com o modo Node de arredondar —
+    /// o gesto de quina agora é das ferramentas Fillet/Chamfer (`on_press_corner`).
+    fn hit_test(&self, scene: &VecScene, p: [f64; 2], r: f64) -> Option<Grab> {
         let r2 = r * r;
         if let Some(sel) = self.selected
             && let Some(path) = scene.paths().iter().find(|pp| pp.id == sel)
@@ -673,40 +574,6 @@ impl PenTool {
                             chamfer: None,
                         });
                     }
-                }
-            }
-            // A alça do RAIO DE QUINA, depois dos handles Bézier e antes das âncoras.
-            // Ela corre pela bissetriz — PARA DENTRO da quina —, enquanto os handles
-            // apontam para fora ao longo das tangentes, então na prática não disputam o
-            // mesmo pixel. O raio de captura é o MESMO em que a bolinha é desenhada
-            // (`CORNER_HANDLE_R_PX`): duas constantes fariam o usuário clicar no meio
-            // dela e não pegar nada.
-            if let Some(px) = corner_px {
-                let grab_r2 = (CORNER_HANDLE_R_PX * px).powi(2);
-                let park = CORNER_HANDLE_PARK_PX * px;
-                for i in 0..path.total_verts() {
-                    // O MESMO predicado do cozimento: sem quina, sem alça. Uma alça que
-                    // aparece e não faz nada é pior que alça nenhuma.
-                    let Some(frame) = corner_handle::frame_at_flat(path, i) else {
-                        continue;
-                    };
-                    let h = corner_handle::handle_pos_local(&frame, park);
-                    if dist2(p, xf.apply(h)) > grab_r2 {
-                        continue;
-                    }
-                    // O offset que torna o arrasto RELATIVO (ver `Grab::radius_offset`):
-                    // o quanto o recuo verdadeiro difere da projeção do cursor, AGORA.
-                    let pl = self.to_local(sel, p);
-                    let d = [pl[0] - frame.anchor[0], pl[1] - frame.anchor[1]];
-                    let proj = d[0] * frame.bisector[0] + d[1] * frame.bisector[1];
-                    return Some(Grab {
-                        path: sel,
-                        vert: i,
-                        part: Part::Radius,
-                        radius_offset: frame.setback - proj,
-                        // Alça do Node preserva o estilo atual da quina (não força sinal).
-                        chamfer: None,
-                    });
                 }
             }
         }
@@ -739,11 +606,6 @@ fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
 
 #[cfg(test)]
 mod tests;
-
-/// Gates da alça de raio de quina — no SEAM (pressiona, arrasta, exige a forma redonda).
-#[cfg(test)]
-#[path = "corner_handle_tests.rs"]
-mod corner_handle_tests;
 
 /// Gates das ferramentas Fillet / Chamfer (`on_press_corner` + arrasto): arredonda,
 /// chanfra, e transforma um ponto suave em quina primeiro.

@@ -22,7 +22,7 @@ impl PenTool {
     /// Um vértice de OUTRO path TROCA o alvo (a seleção de pontos é de um path só, como o resto do
     /// pen), começando a multi-seleção nele.
     pub fn toggle_vert_at(&mut self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> bool {
-        let Some(g) = self.hit_test(scene, p, hit_r, None) else {
+        let Some(g) = self.hit_test(scene, p, hit_r) else {
             return false;
         };
         if g.part != Part::Anchor {
@@ -70,7 +70,7 @@ impl PenTool {
     /// Hit-test de OBJETO: o path cujo âncora/handle OU contorno está a `hit_r` de
     /// `p` (o mais próximo). Para o Shift+clique de multi-seleção. `None` = vazio.
     pub fn path_at(&self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> Option<VecPathId> {
-        if let Some(g) = self.hit_test(scene, p, hit_r, None) {
+        if let Some(g) = self.hit_test(scene, p, hit_r) {
             return Some(g.path);
         }
         let mut best: Option<(VecPathId, f64)> = None;
@@ -277,44 +277,6 @@ impl PenTool {
         let mut changed = false;
         for &i in &self.selected_verts {
             changed |= ph2d_vec_scene::retype_vertex(path, i, kind);
-        }
-        changed
-    }
-
-    /// **O estilo de quina da seleção** (para o toggle Chamfer refletir): `None` se nenhum
-    /// vértice selecionado TEM quina (recuo > 0 — sem quina não há estilo a mostrar), senão
-    /// `Some(é_chanfro)` do PRIMEIRO que tem. O chanfro é o SINAL do `corner_radius`
-    /// (ADR-0121), lido pela porta única `VecVertex::is_chamfer`.
-    #[must_use]
-    pub fn selected_corner_chamfer(&self, scene: &VecScene) -> Option<bool> {
-        let id = self.selected?;
-        let path = scene.paths().iter().find(|p| p.id == id)?;
-        self.selected_verts
-            .iter()
-            .filter_map(|&i| path.vert(i))
-            .find(|v| v.corner_size() > 0.0)
-            .map(ph2d_vec_scene::VecVertex::is_chamfer)
-    }
-
-    /// Põe (ou tira) o CHANFRO em TODOS os vértices selecionados que TÊM quina — o tamanho do
-    /// recuo fica intacto (`set_chamfer` só mexe no sinal). Um vértice sem quina é pulado: não
-    /// há o que chanfrar até haver recuo. Devolve `true` se algo mudou (undo).
-    pub fn set_selected_corner_chamfer(&mut self, scene: &mut VecScene, chamfer: bool) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
-        let mut changed = false;
-        for &i in &self.selected_verts {
-            if let Some(v) = path.vert_mut(i)
-                && v.corner_size() > 0.0
-                && v.is_chamfer() != chamfer
-            {
-                v.set_chamfer(chamfer);
-                changed = true;
-            }
         }
         changed
     }

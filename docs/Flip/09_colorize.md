@@ -5,8 +5,16 @@
 > `ph2d-flip-colorize` (`flow.rs` BK + `colorize()`; corte hugga a tinta, vão não vaza, HR-5) **+**
 > o **modo Colorize clicável no shell** (7º `FlipMode`: rabiscar → **Apply** → regiões; gesto irmão
 > do Draw, commit irmão do balde, **overlay ao vivo dos rabiscos** no mesmo slot de preview do
-> Draw). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`**. Fluxo: cor na swatch → rabisque na região →
-> troque a cor → rabisque noutra → **Apply**.
+> Draw). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`**. Fluxo: cor na swatch → **Size** → rabisque na
+> região → troque a cor → rabisque noutra → **Apply** (Ctrl+Z desfaz).
+> **Fixes do 1º smoke (2026-07-19, `55e83cc4`):** ⚠️ o `Point.width` do Flip está em unidades de
+> **MUNDO** (`size_to_world(Size) × escala do objeto`), e um literal em px de TELA vira um borrão
+> maior que o desenho — o rabisco passa pela MESMA porta do traço do Draw. O Colorize
+> **compartilha o `FLIP_SIZE`** (regra do Erase/Sculpt), e a largura **SEMEIA**, não só desenha:
+> o `Scribble` carrega `width` e o rasterizador traça a **CÁPSULA**, senão um toque curto de
+> pincel grosso vira eixo de 2 px e a semente **degenera o corte**. E o **undo** — a deferral de
+> 1 frame do Apply caía num frame **sem input**, e o `post_frame_undo` usa `had_input` como proxy
+> de "o usuário fez algo": o frame que aplica agora se declara portador do trabalho.
 > **ABERTO:** multiframe · Apply live (re-solve por rabisco) · a **pré-segmentação por regiões**
 > (perf a 4K, `§7.1`) · **C3 (onion-fill)**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG

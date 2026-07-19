@@ -479,8 +479,11 @@ pub fn dab_basis(
     if s.mapping.is_stencil() {
         return stencil::stencil_basis(s, canvas);
     }
-    let base = if s.rake {
-        // Rake follows the stroke heading, with Angle composed on top (empty heading ⇒ Angle alone).
+    let base = if s.rake || s.flow {
+        // Rake AND Flow follow the stroke heading — Flow is the SAME tangent rotation PLUS arc-length
+        // continuity, so it must not fall through to the static Angle (that made Flow render as Off:
+        // `u` was the fixed Angle, so the "along-the-stroke" coordinate pointed nowhere near the stroke).
+        // Angle composes on top of the heading (empty heading ⇒ Angle alone).
         let h = normalize_or(dab_dir, [1.0, 0.0]);
         rotate(h, rotate_by_degrees(s.angle_deg))
     } else {

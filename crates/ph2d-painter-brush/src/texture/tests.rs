@@ -47,13 +47,16 @@ fn flow_gives_adjacent_dabs_a_continuous_phase() {
         ..TextureSettings::default()
     };
     let (r, spacing) = (12.0f32, 5.0f32);
+    // ⚠️ A DIAGONAL tangent on purpose: with a rightward one it equals `rotate_by_degrees(0)`, so a Flow
+    // frame that wrongly falls back to the static Angle is indistinguishable — the degeneracy that kept
+    // this gate green while Flow rendered as Off (Enio 2026-07-19). Here the two differ.
+    let tan = [0.6f32, 0.8];
     let c0 = [30.0f32, 30.0];
-    let c1 = [30.0 + spacing, 30.0]; // one spacing along a rightward stroke
+    let c1 = [30.0 + spacing * tan[0], 30.0 + spacing * tan[1]]; // one spacing ALONG the tangent
     let val = |st: &TextureSettings, arc: f32, c: [f32; 2], px: i64, py: i64| {
-        // A straight rightward stroke ⇒ the tangent (Rake/Flow basis) is +x for both dabs.
         let b = dab_basis(
             st,
-            [1.0, 0.0],
+            tan,
             &mut 0u64,
             [64.0, 64.0],
             [1.0, 0.0],
@@ -80,6 +83,39 @@ fn flow_gives_adjacent_dabs_a_continuous_phase() {
     assert!(
         off_max > 0.2,
         "control: without FLOW the phase resets per dab (the interference FLOW removes), max diff {off_max}"
+    );
+}
+
+/// FLOW is the tangent rotation **plus** arc-length continuity — it must NOT fall through to the static
+/// Angle. It did (`dab_basis` gated the heading on `s.rake` alone), so with Follow=Flow the frame `u` was
+/// the fixed Angle: the "along-the-stroke" coordinate pointed nowhere near the stroke and **Flow rendered
+/// identically to Off** (Enio's smoke, 2026-07-19).
+///
+/// ⚠️ The fixture is deliberately NON-DEGENERATE: a DOWNWARD tangent with Angle `0`, so the tangent
+/// `[0,1]` differs from `rotate_by_degrees(0) = [1,0]`. The continuity gate below used a RIGHTWARD
+/// tangent, where the two coincide — which is exactly why it stayed green over the broken code.
+#[test]
+fn flow_rotates_to_the_stroke_tangent_not_the_static_angle() {
+    let s = TextureSettings {
+        kind: TextureKind::Stripes,
+        flow: true,
+        angle_deg: 0,
+        ..TextureSettings::default()
+    };
+    let mut rng = 1;
+    let b = basis(&s, [0.0, 5.0], &mut rng); // tangent points +y
+    assert!(
+        (b.u[0] - 0.0).abs() < 1e-6 && (b.u[1] - 1.0).abs() < 1e-6,
+        "FLOW must rotate to the stroke tangent (like Rake), got u = {:?}",
+        b.u
+    );
+    // And the Angle still composes ON TOP of the heading, exactly as it does for Rake.
+    let s90 = TextureSettings { angle_deg: 90, ..s };
+    let b90 = basis(&s90, [1.0, 0.0], &mut rng); // rightward tangent + 90° ⇒ points +y
+    assert!(
+        (b90.u[0] - 0.0).abs() < 1e-3 && (b90.u[1] - 1.0).abs() < 1e-3,
+        "FLOW composes Angle on top of the heading, got u = {:?}",
+        b90.u
     );
 }
 

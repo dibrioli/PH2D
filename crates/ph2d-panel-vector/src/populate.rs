@@ -386,6 +386,7 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_CORNER);
     button(store, ids::VECTOR_VERT_SMOOTH);
     button(store, ids::VECTOR_VERT_SYMMETRIC);
+    button(store, ids::VECTOR_VERT_CHAMFER);
     button(store, ids::VECTOR_VERT_DELETE);
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.

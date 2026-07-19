@@ -291,6 +291,10 @@ pub const VECTOR_BOOL_EXCLUDE: NodeId = hash_node_id("vector.bool.exclude");
 pub const VECTOR_VERT_CORNER: NodeId = hash_node_id("vector.vert.corner");
 pub const VECTOR_VERT_SMOOTH: NodeId = hash_node_id("vector.vert.smooth");
 pub const VECTOR_VERT_SYMMETRIC: NodeId = hash_node_id("vector.vert.symmetric");
+/// **Chamfer** toggle (ADR-0121, 2026-07-19) — o ESTILO da quina viva do(s) vértice(s)
+/// selecionado(s): reta (chanfro) em vez de arco, de MESMO recuo. Oferecido só quando a
+/// seleção tem uma quina com raio; um `Click` que a shell alterna via o SINAL do `corner_radius`.
+pub const VECTOR_VERT_CHAMFER: NodeId = hash_node_id("vector.vert.chamfer");
 /// "Delete Node" button — removes the selected vertex (re-stitching neighbors);
 /// a document edit routed through the shell drain (mirror of the vertex-type
 /// buttons). Insert is a canvas gesture (click a segment) — no button.

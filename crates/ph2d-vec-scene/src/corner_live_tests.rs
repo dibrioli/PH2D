@@ -570,3 +570,77 @@ fn sharpening_a_path_clears_the_live_corner_radius_too() {
     assert!(scene.sharpen_path(id));
     assert_eq!(scene.path_mut(id).unwrap().verts[0].corner_radius, 0.0);
 }
+
+// ---------------------------------------------------------------- 5. o CHANFRO (chamfer)
+
+/// Cozinha um quadrado com o vértice 1 recuado por `radius` (o SINAL escolhe o estilo) e
+/// devolve os dois vértices em que a quina se partiu (índices 1 e 2 na saída: os sharp são
+/// 1-para-1, o recuado vira 2).
+fn split_pair(radius: f64) -> (VecVertex, VecVertex) {
+    let mut v = square();
+    v[1].corner_radius = radius;
+    let out = round_authored_corners(&v, true).expect("há recuo a cozinhar");
+    (out[1], out[2])
+}
+
+/// A distância do MEIO do segmento de ligação até a corda reta entre os dois pontos de recuo.
+/// Zero = reta (chanfro); positiva = arco (arredondado). Mede a APARÊNCIA, não a fórmula.
+fn bulge(a: &VecVertex, b: &VecVertex) -> f64 {
+    let mid = crate::cubic_at(a.anchor, a.out_handle, b.in_handle, b.anchor, 0.5);
+    let (p0, p3) = (a.anchor, b.anchor);
+    let chord = [p3[0] - p0[0], p3[1] - p0[1]];
+    let len = chord[0].hypot(chord[1]);
+    if len < 1e-12 {
+        return 0.0;
+    }
+    ((mid[0] - p0[0]) * chord[1] - (mid[1] - p0[1]) * chord[0]).abs() / len
+}
+
+/// **O chanfro é uma RETA; o arredondado, um ARCO — nos MESMOS pontos de recuo.** É a feature
+/// inteira (os dois modos do corner widget do Illustrator): o sinal do `corner_radius` escolhe
+/// só o traçado da ligação, e nada mais — o recuo é a magnitude, idêntico para os dois.
+#[test]
+fn a_chamfer_is_a_straight_cut_a_round_is_an_arc_at_the_same_setback() {
+    let (r_in, r_out) = split_pair(3.0); // arredondado
+    let (c_in, c_out) = split_pair(-3.0); // chanfro, MESMA magnitude
+
+    // Os pontos de recuo são IDÊNTICOS — o recuo é a magnitude, o estilo não o move.
+    assert_eq!(r_in.anchor, c_in.anchor, "o chanfro recua igual ao arredondado (in)");
+    assert_eq!(r_out.anchor, c_out.anchor, "idem (out)");
+
+    // O chanfro é reto; o arredondado bojudo. O fosso é enorme, não ruído de ponto flutuante.
+    let round_bulge = bulge(&r_in, &r_out);
+    let chamfer_bulge = bulge(&c_in, &c_out);
+    assert!(
+        chamfer_bulge < 1e-9,
+        "o chanfro tem de ser RETO (bojo medido {chamfer_bulge})"
+    );
+    assert!(
+        round_bulge > 0.3,
+        "o arredondado tem de BOJAR de verdade (bojo medido {round_bulge})"
+    );
+    assert!(all_finite(&[c_in, c_out, r_in, r_out]));
+}
+
+/// A convenção de sinal mora nas portas do `VecVertex`: magnitude e estilo são ORTOGONAIS. O
+/// arrasto (tamanho) não converte estilo, e o toggle (estilo) não muda o tamanho.
+#[test]
+fn the_corner_sign_convention_keeps_magnitude_and_style_orthogonal() {
+    let mut v = VecVertex::corner([0.0, 0.0]);
+    v.corner_radius = 4.0;
+    assert!(!v.is_chamfer());
+    assert_eq!(v.corner_size(), 4.0);
+
+    v.set_chamfer(true); // vira chanfro, tamanho intacto
+    assert!(v.is_chamfer());
+    assert_eq!(v.corner_size(), 4.0);
+    assert_eq!(v.corner_radius, -4.0);
+
+    v.set_corner_size(7.0); // redimensiona, estilo intacto
+    assert!(v.is_chamfer(), "arrastar a alça não pode desfazer o chanfro");
+    assert_eq!(v.corner_size(), 7.0);
+
+    v.set_chamfer(false); // volta a arredondado, tamanho intacto
+    assert!(!v.is_chamfer());
+    assert_eq!(v.corner_radius, 7.0);
+}

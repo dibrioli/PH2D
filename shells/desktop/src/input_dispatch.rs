@@ -226,6 +226,22 @@ pub(crate) fn apply_vec_vertex_kind(
     }
 }
 
+/// Alterna o CHANFRO da(s) quina(s) selecionada(s) (toggle Chamfer — ADR-0121). Espelho do
+/// `apply_vec_vertex_kind`: o novo estado é o oposto do atual (o SINAL do `corner_radius`), e o
+/// `vec_history` legado ganha o passo (o undo GLOBAL o captura pelo diff da cena, como sempre).
+pub(crate) fn apply_vec_corner_chamfer(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+) {
+    // Flip: se qualquer quina selecionada já é chanfro, o toggle a devolve a arredondada.
+    let want = !pen.selected_corner_chamfer(scene).unwrap_or(false);
+    let pre = scene.clone();
+    if pen.set_selected_corner_chamfer(scene, want) {
+        history.push_undo(pre);
+    }
+}
+
 /// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key),
 /// recording ONE undo step iff it removed anything. Free fn (mirror of
 /// [`apply_vec_boolean`]) so the render_loop drain can call it with destructured

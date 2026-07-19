@@ -533,6 +533,65 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
     );
 }
 
+/// **O toggle Chamfer** (ADR-0121) só é pintado quando a seleção tem uma quina com raio
+/// (`current_corner_chamfer()` é `Some`), e o Click chega ao bus pelo caminho INTEIRO (paint →
+/// hit-rect → ponteiro → dispatch → `event.rs` → bus). O gate cobre a AUSÊNCIA (sem quina, não
+/// pinta) e a PRESENÇA (com quina, pinta e despacha) — sem a 1ª metade, "não vaza" ficaria
+/// verde com a seção apagada. [[feedback_absence_gate_needs_a_presence_sibling]]
+#[test]
+fn the_chamfer_toggle_paints_and_clicks_only_with_a_corner_selected() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+
+    // A seção Vertex precisa estar visível para o toggle ser sequer alcançável.
+    ph2d_panel_vector::set_selected_vertex_type(Some(ph2d_tool_vector::VertexType::Corner));
+
+    // SEM quina com raio → o toggle não é pintado.
+    ph2d_panel_vector::set_current_corner_chamfer(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_VERT_CHAMFER)
+            .is_none(),
+        "o toggle Chamfer foi pintado sem uma quina com raio na seleção"
+    );
+
+    // COM quina → pintado, clicável, e o Click chega ao bus (a shell alterna o estilo).
+    ph2d_panel_vector::set_current_corner_chamfer(Some(false));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let r = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_VERT_CHAMFER)
+        .expect("o toggle Chamfer não foi pintado com uma quina selecionada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_VERT_CHAMFER)),
+        "o ponteiro sobre o Chamfer não virou Click — falta o registro em `populate`"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ids::VECTOR_VERT_CHAMFER
+        )),
+        "o Click do Chamfer não chegou ao bus — falta o id em `forwards_plain_click`"
+    );
+
+    // Não vazar o estado publicado (thread-local) para os outros testes.
+    ph2d_panel_vector::set_current_corner_chamfer(None);
+    ph2d_panel_vector::set_selected_vertex_type(None);
+}
+
 /// **Gate anti-cabeçalho-morto.** O collapse de uma seção é dispatch GENÉRICO e exige
 /// DOIS sites: a marca no `populate` (`mark_collapsible_section`) e o hit-rect do header
 /// no paint. Faltando a marca, `apply_click` nunca chama `toggle_collapsed` — o header

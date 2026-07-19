@@ -81,6 +81,33 @@ pub struct CornerHandleView {
 /// Uma cúbica: os quatro pontos de controle, na ordem do traçado.
 type Cubic = [[f64; 2]; 4];
 
+impl VecVertex {
+    /// **O TAMANHO da quina** — o recuo pedido, sempre `>= 0`. O recuo e a alça de raio
+    /// trabalham com esta magnitude; o SINAL (o estilo) é assunto do [`Self::is_chamfer`].
+    #[must_use]
+    pub fn corner_size(&self) -> f64 {
+        self.corner_radius.abs()
+    }
+
+    /// **A quina é um CHANFRO** (reta) em vez de arredondada? Convenção: `corner_radius < 0`.
+    #[must_use]
+    pub fn is_chamfer(&self) -> bool {
+        self.corner_radius < 0.0
+    }
+
+    /// Muda o TAMANHO da quina preservando o estilo (o sinal). É o que o arrasto da alça usa —
+    /// arrastar redimensiona, nunca converte arredondado em chanfro por acidente.
+    pub fn set_corner_size(&mut self, size: f64) {
+        self.corner_radius = if self.is_chamfer() { -size } else { size };
+    }
+
+    /// Muda o ESTILO (chanfro/arredondado) preservando o tamanho. É o que o toggle Chamfer usa.
+    pub fn set_chamfer(&mut self, chamfer: bool) {
+        let size = self.corner_size();
+        self.corner_radius = if chamfer { -size } else { size };
+    }
+}
+
 /// Arredonda as quinas de um caminho autorado, cada uma pelo `corner_radius` do seu
 /// vértice. `None` quando **não há nada a arredondar** — e aí o chamador mantém a fonte,
 /// byte-a-byte (é o que garante que um caminho sem raio nenhum não passe por conta de
@@ -93,7 +120,7 @@ type Cubic = [[f64; 2]; 4];
 #[must_use]
 pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<VecVertex>> {
     let n = verts.len();
-    if n < 3 || !verts.iter().any(|v| v.corner_radius > EPS) {
+    if n < 3 || !verts.iter().any(|v| v.corner_size() > EPS) {
         return None; // nada a arredondar → a fonte é a saída
     }
     // Os segmentos, na convenção do caminho: `seg[i]` vai do vértice `i` ao `i + 1`
@@ -106,7 +133,9 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
     // de caminho aberto) e o vértice sai cru.
     let mut want: Vec<Option<f64>> = vec![None; n];
     for (i, w) in want.iter_mut().enumerate() {
-        *w = corner_setback(&segs, i, n, closed, verts[i].corner_radius);
+        // A magnitude decide o RECUO (o mesmo para arredondado e chanfro); o sinal só escolhe
+        // o traçado da ligação (arco vs reta), lá embaixo na emissão.
+        *w = corner_setback(&segs, i, n, closed, verts[i].corner_size());
     }
 
     // Recuo → parâmetro, por ponta de segmento. `u0[i]` corta o COMEÇO de `seg[i]` (a
@@ -137,21 +166,34 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
         let inc = incoming(i, n, closed).map(|s| &subs[s]);
         let out_seg = outgoing(i, n, closed, seg_count).map(|s| &subs[s]);
         match (want[i], inc, out_seg) {
-            // Quina arredondada: o vértice único vira DOIS, ligados pela cúbica do arco.
+            // Quina com recuo: o vértice único vira DOIS, nos MESMOS pontos de recuo `p_in`/
+            // `p_out`. O estilo escolhe só a LIGAÇÃO entre eles — arco (arredondado) ou reta
+            // (chanfro). O recuo, os handles de chegada/saída e o resto são idênticos.
             (Some(_), Some(a), Some(b)) => {
                 let (p_in, p_out) = (a[3], b[0]);
-                let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
-                let (c1, c2) = fillet_handles(p_in, t_in, p_out, t_out);
+                let (out1, in2) = if verts[i].is_chamfer() {
+                    // Chanfro: a reta na forma canônica (⅓, ⅔) — afim em `t`, sem curvatura,
+                    // e a mesma forma que o resto do motor usa para um segmento reto.
+                    let third = [(p_out[0] - p_in[0]) / 3.0, (p_out[1] - p_in[1]) / 3.0];
+                    (
+                        [p_in[0] + third[0], p_in[1] + third[1]],
+                        [p_out[0] - third[0], p_out[1] - third[1]],
+                    )
+                } else {
+                    // Arredondado: o arco de handle `(4/3)·tan(α/4)·r` de sempre.
+                    let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
+                    fillet_handles(p_in, t_in, p_out, t_out)
+                };
                 out.push(VecVertex {
                     anchor: p_in,
                     in_handle: a[2],
-                    out_handle: c1,
+                    out_handle: out1,
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
                 });
                 out.push(VecVertex {
                     anchor: p_out,
-                    in_handle: c2,
+                    in_handle: in2,
                     out_handle: b[1],
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
@@ -192,7 +234,7 @@ impl VecPath {
     /// a jusante resampleia.
     #[must_use]
     pub fn cooked(&self) -> std::borrow::Cow<'_, VecPath> {
-        let rounds = self.verts_all().any(|v| v.corner_radius > EPS);
+        let rounds = self.verts_all().any(|v| v.corner_size() > EPS);
         if !rounds {
             // Sem quina a arredondar: a pilha (se houver) come a fonte diretamente.
             return match crate::effect::run_stack(self, &self.effects) {
@@ -278,7 +320,9 @@ pub fn corner_at(verts: &[VecVertex], closed: bool, i: usize) -> Option<CornerFr
     Some(CornerFrame {
         anchor: verts[i].anchor,
         bisector,
-        setback: verts[i].corner_radius / half.tan(),
+        // A alça mede a MAGNITUDE (um chanfro recua igual a um arredondado do mesmo tamanho);
+        // o estilo não muda onde a bolinha pousa.
+        setback: verts[i].corner_size() / half.tan(),
         max_setback,
         half_angle: half,
     })

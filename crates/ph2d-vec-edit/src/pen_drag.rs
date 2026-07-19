@@ -67,7 +67,8 @@ impl PenTool {
                 let Some(v) = path.vert_mut(g.vert) else {
                     return false;
                 };
-                v.corner_radius = r;
+                // A alça muda o TAMANHO; o estilo (chanfro vs arredondado) sobrevive ao arrasto.
+                v.set_corner_size(r);
                 return true;
             }
             let Some(v) = path.vert_mut(g.vert) else {

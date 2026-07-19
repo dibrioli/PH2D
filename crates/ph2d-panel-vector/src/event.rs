@@ -384,6 +384,8 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_VERT_CORNER
         || id == ids::VECTOR_VERT_SMOOTH
         || id == ids::VECTOR_VERT_SYMMETRIC
+        // O toggle Chamfer (estilo da quina) — um Click que a shell alterna.
+        || id == ids::VECTOR_VERT_CHAMFER
         || id == ids::VECTOR_VERT_DELETE
         || id == ids::VECTOR_BLEND_RUN
         || id == ids::VECTOR_BLEND_RESET_SPINE

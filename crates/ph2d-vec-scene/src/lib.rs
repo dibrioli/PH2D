@@ -437,6 +437,14 @@ pub struct VecVertex {
     /// `d`). Um vértice `Smooth`/`Symmetric` tem handles colineares por definição, logo
     /// não é quina e o cozimento o pula sozinho — o raio só morde onde há quina de
     /// verdade, sem precisar consultar o `kind`.
+    ///
+    /// ⚠️ **O SINAL carrega o ESTILO da quina** (ADR-0121, chamfer 2026-07-19): `> 0` = quina
+    /// **arredondada** (arco); `< 0` = **chanfro** (reta) de MESMA magnitude — o chanfro liga
+    /// os mesmíssimos dois pontos de recuo por uma reta em vez de um arco (os dois modos do
+    /// corner widget do Illustrator). A magnitude é o tamanho; NÃO leia o sinal cru — passe
+    /// por [`Self::corner_size`] / [`Self::is_chamfer`], que são a porta ÚNICA da convenção.
+    /// Escolher o sinal aqui (em vez de um campo novo) não muda o schema, e as operações que
+    /// já escalam o raio por um fator positivo (transform, warp) preservam o estilo de graça.
     pub corner_radius: f64,
 }
 
@@ -462,6 +470,10 @@ impl VecVertex {
             corner_radius: 0.0,
         }
     }
+
+    // A convenção de SINAL do `corner_radius` (magnitude = tamanho · sinal = estilo) mora nos
+    // acessores `corner_size`/`is_chamfer`/`set_corner_size`/`set_chamfer` em `corner_live`, ao
+    // lado do cozimento que os consome (teto de LOC deste arquivo).
 }
 
 /// Identificador estável de path dentro de uma cena.

@@ -1445,6 +1445,8 @@ impl crate::App {
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
             // ADR-0108 Fase 1: "Delete Node" button removes the selected vertex.
             let mut pending_vec_delete_vertex = false;
+            // ADR-0121: o toggle Chamfer (estilo da quina) — alterna o SINAL do corner_radius.
+            let mut pending_vec_chamfer_toggle = false;
             // ADR-0108: Arrange buttons — z-order restack + Duplicate + Flip H/V —
             // act on the selected path (document ops), applied after the drain.
             let mut pending_vec_reorder: Option<ph2d_vec_scene::ZOrder> = None;
@@ -1627,6 +1629,8 @@ impl crate::App {
                                 crate::input_dispatch::vec_vertex_kind_for_id(*id)
                             {
                                 pending_vec_vertex_kind = Some(kind);
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_CHAMFER {
+                                pending_vec_chamfer_toggle = true;
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_DELETE {
                                 pending_vec_delete_vertex = true;
                             } else if let Some(order) =
@@ -2777,6 +2781,13 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                     kind,
+                );
+            }
+            if pending_vec_chamfer_toggle {
+                crate::input_dispatch::apply_vec_corner_chamfer(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
                 );
             }
             if pending_vec_delete_vertex {

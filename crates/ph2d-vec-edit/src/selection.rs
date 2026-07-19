@@ -281,6 +281,44 @@ impl PenTool {
         changed
     }
 
+    /// **O estilo de quina da seleção** (para o toggle Chamfer refletir): `None` se nenhum
+    /// vértice selecionado TEM quina (recuo > 0 — sem quina não há estilo a mostrar), senão
+    /// `Some(é_chanfro)` do PRIMEIRO que tem. O chanfro é o SINAL do `corner_radius`
+    /// (ADR-0121), lido pela porta única `VecVertex::is_chamfer`.
+    #[must_use]
+    pub fn selected_corner_chamfer(&self, scene: &VecScene) -> Option<bool> {
+        let id = self.selected?;
+        let path = scene.paths().iter().find(|p| p.id == id)?;
+        self.selected_verts
+            .iter()
+            .filter_map(|&i| path.vert(i))
+            .find(|v| v.corner_size() > 0.0)
+            .map(ph2d_vec_scene::VecVertex::is_chamfer)
+    }
+
+    /// Põe (ou tira) o CHANFRO em TODOS os vértices selecionados que TÊM quina — o tamanho do
+    /// recuo fica intacto (`set_chamfer` só mexe no sinal). Um vértice sem quina é pulado: não
+    /// há o que chanfrar até haver recuo. Devolve `true` se algo mudou (undo).
+    pub fn set_selected_corner_chamfer(&mut self, scene: &mut VecScene, chamfer: bool) -> bool {
+        let Some(id) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.path_mut(id) else {
+            return false;
+        };
+        let mut changed = false;
+        for &i in &self.selected_verts {
+            if let Some(v) = path.vert_mut(i)
+                && v.corner_size() > 0.0
+                && v.is_chamfer() != chamfer
+            {
+                v.set_chamfer(chamfer);
+                changed = true;
+            }
+        }
+        changed
+    }
+
     /// Apaga TODOS os vértices selecionados (Delete / botão), re-costurando os
     /// vizinhos. Um contorno que fique com < 2 vértices é descartado — o buraco de
     /// um compound some; se o path inteiro esvaziar, ele é removido e a seleção

@@ -336,6 +336,14 @@ pub(super) fn dispatch(
     } else {
         None
     });
+    // O ESTILO da quina da seleção (ADR-0121): `Some(é_chanfro)` mostra o toggle Chamfer, `None`
+    // o esconde (sem quina com raio não há estilo). A mesma porta que o dispatch vai alternar.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_corner_chamfer(if vector_active {
+        pen.selected_corner_chamfer(scene)
+    } else {
+        None
+    });
 
     // Publish the selected path's anchor bbox `[x, y, w, h]` (world) so the panel
     // shows + seeds the numeric Transform fields. `None` hides the section.

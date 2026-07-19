@@ -47,8 +47,8 @@ pub mod state;
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FillKind, FontPreview, FxParamView, FxRowView, PathFillRule, TextAxisSlot, VectorPanelState,
-    last_content_h, last_visible_h, set_current_convertible, set_current_effects,
-    set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
+    last_content_h, last_visible_h, set_current_convertible, set_current_corner_chamfer,
+    set_current_effects, set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
     set_current_has_envelope, set_current_path_closed, set_current_pivot_edit,
     set_current_selection_count, set_current_shape_focus, set_current_snap, set_current_text,

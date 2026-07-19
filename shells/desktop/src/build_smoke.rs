@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=15` — a cena do **CHAMFER** (ADR-0121): um quadrado de quinas arredondadas,
+//!   no modo Node, com as 4 quinas selecionadas. Na seção **Vertex** clique **Chamfer** — cada
+//!   quina vira uma RETA de mesmo recuo. Arraste a alça de raio e o estilo sobrevive.
 //! - `PH2D_BUILD_SMOKE=14` — a cena do **APPLY / CONVERT** (ADR-0132): uma elipse com um Zig Zag
 //!   ATIVO, ESTÁTICA e já selecionada. Na seção **Effects** clique **Apply Effects** (assa a
 //!   pilha na geometria); ou **Convert to Curves** (que agora também assa efeitos). O card some e
@@ -151,6 +154,42 @@ impl crate::App {
                 eprintln!(
                     "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
                      arraste **Morph t**"
+                );
+            }
+            // A cena do CHAMFER (ADR-0121): um quadrado com quinas ARREDONDADAS, no modo Node,
+            // centrado na origem (o `settle` não o move → local == mundo, e a seleção de vértice
+            // por coordenada acerta). Só o modo Node mostra a seção Vertex + as alças de quina.
+            3 if level == 15 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                let id = scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-1.2, -1.2],
+                    [1.2, 1.2],
+                    &[],
+                    [90, 150, 220],
+                ));
+                // Todas as 4 quinas arredondadas (raio > 0). O toggle Chamfer as vira retas.
+                if let Some(p) = scene.path_mut(id) {
+                    for v in &mut p.verts {
+                        v.corner_radius = 0.4;
+                    }
+                }
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+            }
+            // Seleciona as 4 quinas (frame 4, pós-`settle`) — assim a seção Vertex + o toggle
+            // Chamfer já aparecem no primeiro olhar; um clique no toggle chanfra as quatro.
+            4 if level == 15 => {
+                let corners = [[-1.2, -1.2], [1.2, -1.2], [1.2, 1.2], [-1.2, 1.2]];
+                let scene = &self.gfx.as_ref().expect("gfx").vec_scene;
+                for c in corners {
+                    self.vec_pen.toggle_vert_at(scene, c, 0.2);
+                }
+                eprintln!(
+                    "[smoke] chamfer: quadrado arredondado, 4 quinas selecionadas no modo Node. \
+                     Na seção **Vertex** clique **Chamfer** — as quinas viram RETAS (mesmo recuo). \
+                     Arraste a alça de raio: o estilo sobrevive. Clique de novo p/ voltar a arco."
                 );
             }
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o

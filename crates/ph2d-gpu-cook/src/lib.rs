@@ -182,6 +182,16 @@ pub struct GpuCook {
     /// the tick it is asked for instead of anchoring at 0. See
     /// [`Self::reseed_from_next_tick`].
     reseed: bool,
+    /// The spatial-grid service (ADR-0134 D2), built on first use like the tap
+    /// pipeline — `Option` because `GpuCook` is `Default` and has no device.
+    grid: Option<grid::Grid>,
+    /// Transients of THIS cook's grid builds (scan scratch + cursors). Cleared at
+    /// the top of every cook, like [`Self::tap_streams`]; wgpu keeps the buffers
+    /// alive across the submit even as the next cook drops them.
+    grid_scratch: grid::GridScratch,
+    /// The grid output buffers (`starts`/`sorted`) a kernel pass binds, held for
+    /// the same window — one per grid-bearing stage this cook.
+    grid_hold: Vec<grid::GridBuffers>,
 }
 
 /// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
@@ -286,6 +296,10 @@ impl GpuCook {
         // Drop the previous frame's tap hold BEFORE reclaiming, or its refcount
         // would keep every intermediate out of the pool for one extra frame.
         self.tap_streams.clear();
+        // This cook's grid transients (ADR-0134): dropped like the tap hold, so
+        // the buffers return once the prior submit that used them has completed.
+        self.grid_hold.clear();
+        self.grid_scratch = grid::GridScratch::default();
         self.pool.reclaim();
 
         // The CPU→GPU crossings: one upload per boundary node, before anything
@@ -360,6 +374,22 @@ impl GpuCook {
             if needed > limit {
                 return Err(GpuCookError::TooManyBindings(stage.ty, needed, limit));
             }
+            // A neighbourhood kernel (ADR-0134 D2) gets its grid built into this
+            // same encoder BEFORE its pass — over the position column the spec
+            // names, on the port the spec names (port 0 for a per-element node,
+            // the `pre` state port for a self-loop sim).
+            let grid_spec = kernels.grid(stage.ty);
+            let grid_buffers = grid_spec.map(|spec| {
+                self.build_grid(
+                    gpu,
+                    &mut encoder,
+                    spec,
+                    &inputs,
+                    graph,
+                    stage.node,
+                    manifest,
+                )
+            });
             let out = self.encode_kernel_stage(
                 gpu,
                 &mut encoder,
@@ -372,7 +402,11 @@ impl GpuCook {
                 playhead,
                 &inputs,
                 base,
+                grid_spec.zip(grid_buffers.as_ref()),
             );
+            if let Some(gb) = grid_buffers {
+                self.grid_hold.push(gb);
+            }
             streams.insert(stage.node, out);
         }
 

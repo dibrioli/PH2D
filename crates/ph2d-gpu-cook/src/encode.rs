@@ -12,12 +12,13 @@
 //! the two numbers cannot be derived twice and disagree.
 
 use crate::gather::{column_present, gather_key_port, gather_prev_n};
+use crate::grid::{Grid, GridBuffers};
 use crate::plan::resolve_param;
 use crate::{
     CachedPipeline, GpuColumn, GpuCook, GpuStream, UNIFORM_BYTES, codegen, create_pipeline, stream,
 };
 use ph2d_gpu::GpuContext;
-use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, SourceWindow};
+use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, SourceWindow};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
 
@@ -39,6 +40,7 @@ impl GpuCook {
         playhead: f64,
         inputs: &[GpuStream],
         base: GpuStream,
+        grid: Option<(&GridSpec, &GridBuffers)>,
     ) -> GpuStream {
         use codegen::BindingPlan;
 
@@ -68,7 +70,13 @@ impl GpuCook {
         self.kernel_pipelines
             .entry((ty_key, sig))
             .or_insert_with(|| {
-                let src = codegen::kernel_module(kernel, bindings, &port_names, present);
+                let src = codegen::kernel_module(
+                    kernel,
+                    bindings,
+                    &port_names,
+                    grid.map(|(s, _)| s),
+                    present,
+                );
                 CachedPipeline {
                     pipeline: create_pipeline(gpu, &src, manifest.name),
                 }
@@ -106,6 +114,17 @@ impl GpuCook {
             let counts: Vec<u32> = inputs.iter().map(|s| s.count).collect();
             let at = window_at + usize::from(codegen::declares_window(&port_names)) * 8;
             uni[at..at + 4].copy_from_slice(&codegen::broadcast_mask(&counts).to_le_bytes());
+        }
+        // The grid's bucket count + cell, LAST in the layout (ADR-0134). `cell`
+        // is re-resolved here from the SAME param the build read, so the body's
+        // `grid_bucket_of` bins exactly as the build did.
+        if let Some((spec, gb)) = grid {
+            let grid_at = window_at
+                + usize::from(codegen::declares_window(&port_names)) * 8
+                + usize::from(codegen::broadcasts_anything(bindings)) * 4;
+            let cell = resolve_param(graph, node, manifest, spec.cell_param);
+            uni[grid_at..grid_at + 4].copy_from_slice(&gb.num_buckets.to_le_bytes());
+            uni[grid_at + 4..grid_at + 8].copy_from_slice(&cell.to_le_bytes());
         }
         let uniform = self.uniform_slot(gpu, stage_idx);
         gpu.queue.write_buffer(uniform, 0, &uni);
@@ -148,6 +167,21 @@ impl GpuCook {
             slot += 1;
             new_cols.push((bindings[*i].column.to_string(), col.clone()));
         }
+        // The grid arrays, appended LAST — the exact order `kernel_module` gave
+        // `grid_starts` then `grid_sorted` their slots.
+        if let Some((_, gb)) = grid {
+            entries.push(wgpu::BindGroupEntry {
+                binding: slot,
+                resource: gb.starts.as_entire_binding(),
+            });
+            slot += 1;
+            entries.push(wgpu::BindGroupEntry {
+                binding: slot,
+                resource: gb.sorted.as_entire_binding(),
+            });
+            slot += 1;
+        }
+        let _ = slot;
         let pipeline = &self
             .kernel_pipelines
             .get(&(ty_key, sig))
@@ -198,5 +232,46 @@ impl GpuCook {
             out.cols.insert(name, col);
         }
         out
+    }
+
+    /// Build the neighbourhood grid for a stage (ADR-0134 D2) into the cook's
+    /// encoder, over the position column the [`GridSpec`] names on its port. The
+    /// grid service is compiled on first use, like the tap pipeline.
+    #[allow(clippy::too_many_arguments)] // private seam of `cook`, mirrors the stage encoder
+    pub(crate) fn build_grid(
+        &mut self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        spec: &GridSpec,
+        inputs: &[GpuStream],
+        graph: &Graph,
+        node: NodeId,
+        manifest: &NodeManifest,
+    ) -> GridBuffers {
+        let n = inputs.get(spec.port).map_or(0, |s| s.count);
+        let cell = resolve_param(graph, node, manifest, spec.cell_param);
+        let pos = inputs
+            .get(spec.port)
+            .and_then(|s| s.cols.get(spec.column))
+            .map(|c| c.buffer.clone());
+        let Self {
+            grid, grid_scratch, ..
+        } = self;
+        let g = grid.get_or_insert_with(|| Grid::new(gpu));
+        match &pos {
+            Some(buf) => g.build(gpu, encoder, buf, n, cell, grid_scratch),
+            None => {
+                // No position column (tick 0 / empty `pre` state): `n` is 0, so the
+                // count/scatter passes dispatch nothing and this dummy is never
+                // read — the grid is empty and the kernel's seed branch ignores it.
+                let dummy = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ph2d-grid dummy pos"),
+                    size: 8,
+                    usage: wgpu::BufferUsages::STORAGE,
+                    mapped_at_creation: false,
+                });
+                g.build(gpu, encoder, &dummy, n, cell, grid_scratch)
+            }
+        }
     }
 }

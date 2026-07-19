@@ -22,7 +22,7 @@
 //! On a **multi-input** node every reader is qualified by port name
 //! (`read_rest_P`, `HAS_forces_vel`) — see [`accessor_suffix`].
 
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec};
 use ph2d_nodegraph::port::Dim;
 
 pub use crate::field_name::wgsl_field;
@@ -254,6 +254,7 @@ pub fn kernel_module(
     kernel: &GpuKernel,
     bindings: &[ColumnBinding],
     port_names: &[&str],
+    grid: Option<&GridSpec>,
     mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
     // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
@@ -285,6 +286,12 @@ pub fn kernel_module(
     if broadcasts_anything(bindings) {
         src.push_str("    bcast_one: u32,\n");
     }
+    // The grid's cell size and bucket count (ADR-0134 D2): CPU-known, so uniforms,
+    // and the SAME values packed into the grid-build's own uniform — the body's
+    // `grid_bucket_of` must agree bit-for-bit with the build's binning.
+    if grid.is_some() {
+        src.push_str("    grid_num_buckets: u32,\n    grid_cell: f32,\n");
+    }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
 
     // Storage bindings: reads first, then writes (stable, replayable order).
@@ -309,6 +316,20 @@ pub fn kernel_module(
             slot += 1;
         }
     }
+    // The grid's two arrays, LAST (ADR-0134 D2) — after every column binding, so
+    // adding a grid never shifts a stream binding's slot. The sequencer appends
+    // them to the bind group in the same order.
+    if grid.is_some() {
+        src.push_str(&format!(
+            "@group(0) @binding({slot}) var<storage, read> grid_starts: array<u32>;\n"
+        ));
+        slot += 1;
+        src.push_str(&format!(
+            "@group(0) @binding({slot}) var<storage, read> grid_sorted: array<u32>;\n"
+        ));
+        slot += 1;
+    }
+    let _ = slot;
     src.push('\n');
 
     // read_/write_ helpers + the HAS_ presence consts — the body's whole view
@@ -394,6 +415,22 @@ pub fn kernel_module(
                  fn gather_paired(i: u32) -> bool { _ = i; return true; }\n\n",
             );
         }
+    }
+
+    // The grid helpers (ADR-0134 D2) — the SAME binning as the build's
+    // `bucket_of` (`grid.rs`), split so the body can name a neighbour CELL (for
+    // the 3×3 sweep and the exact-cell dedup) and its bucket. The body iterates
+    // `grid_sorted[grid_starts[b] .. grid_starts[b+1]]` for each of the 9 cells.
+    if grid.is_some() {
+        src.push_str(
+            "fn grid_cell_of(p: vec2<f32>) -> vec2<i32> {\n\
+             \x20   return vec2<i32>(i32(floor(p.x / params.grid_cell)), i32(floor(p.y / params.grid_cell)));\n\
+             }\n\
+             fn grid_bucket_of(c: vec2<i32>) -> u32 {\n\
+             \x20   let h = (c.x * 73856093) ^ (c.y * 19349663);\n\
+             \x20   return bitcast<u32>(h) & (params.grid_num_buckets - 1u);\n\
+             }\n\n",
+        );
     }
 
     src.push_str(kernel.wgsl_lib);

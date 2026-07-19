@@ -426,12 +426,47 @@ impl GpuKernel {
     }
 }
 
+/// A node whose GPU kernel needs a **spatial neighbourhood grid** (ADR-0134 D2)
+/// declares one, registered on the side like the kernel itself. Before the
+/// node's kernel pass the sequencer bins `column` (a `vec2` position stream) on
+/// input `port` into a uniform grid of cell size `param(cell_param)`, and the
+/// generated module gains `grid_cell_of` / `grid_bucket_of` plus the
+/// `grid_starts` / `grid_sorted` arrays, so the body can sweep the 3×3
+/// neighbouring cells (cell = radius ⇒ the sweep covers exactly the
+/// within-radius set the CPU all-pairs sees).
+///
+/// **Pure data** (ADR-0126): the grid BUILD lives in the sequencer — identical
+/// for boids, `sim.collide` and SPH — while the node authors only its *query*
+/// (how it uses the neighbours). Declaring a grid is append-only side metadata;
+/// no kernel that lacks one changes in any way.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct GridSpec {
+    /// The stream column carrying the `vec2` positions the grid bins. It must
+    /// ALSO be a readable binding of the kernel, so the body can read a
+    /// neighbour's position (`read_<column>(j)`) to reject it by distance.
+    pub column: &'static str,
+    /// Which input port that column is read from — `0` for a per-element node,
+    /// the state/`pre` port for a self-loop sim like boids.
+    pub port: usize,
+    /// The param whose value is the grid cell size — the perception radius, so a
+    /// 3×3 cell sweep is exactly the within-radius neighbourhood.
+    pub cell_param: &'static str,
+}
+
 /// Resolves a node type id to its registered GPU kernel — the side-channel
 /// mirror of [`crate::cook::OpResolver`], implemented by the node registry.
 /// Kept as a trait so the GPU sequencer is decoupled from the registry crate
 /// exactly like the cook engine is.
 pub trait KernelResolver {
     fn gpu_kernel(&self, ty: NodeTypeId) -> Option<&GpuKernel>;
+
+    /// The neighbourhood grid this node's kernel needs, if any (ADR-0134 D2).
+    /// Default `None` — a kernel opts in by registering a [`GridSpec`], exactly
+    /// as it opts into a kernel at all; the 32 shipping kernels declare nothing
+    /// and get nothing.
+    fn grid(&self, _ty: NodeTypeId) -> Option<&GridSpec> {
+        None
+    }
 
     /// Whether this node type KEEPS the **dense id window** (ADR-0130): a source
     /// that emits one (`motion.emitter`, whose alive set is a contiguous id

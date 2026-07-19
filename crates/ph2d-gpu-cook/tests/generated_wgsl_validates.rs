@@ -77,15 +77,20 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
         let n = kernel.bindings.len().min(16);
         for mask in 0u32..(1 << n) {
-            let src =
-                ph2d_gpu_cook::codegen::kernel_module(kernel, kernel.bindings, &port_names, |b| {
+            let src = ph2d_gpu_cook::codegen::kernel_module(
+                kernel,
+                kernel.bindings,
+                &port_names,
+                reg.grid(manifest.id),
+                |b| {
                     let idx = kernel
                         .bindings
                         .iter()
                         .position(|x| std::ptr::eq(x, b))
                         .expect("binding belongs to kernel");
                     mask & (1 << idx) != 0
-                });
+                },
+            );
             validate(&format!("{} mask {mask:b}", manifest.name), &src);
             validated += 1;
         }

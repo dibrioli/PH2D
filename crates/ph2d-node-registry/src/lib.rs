@@ -13,7 +13,7 @@
 //! node is dropping a crate, never hand-editing a central list.
 
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::gpu::{GpuKernel, KernelResolver};
+use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver};
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
@@ -42,6 +42,11 @@ pub struct NodeRegistry {
     /// path); the GPU sequencer (`ph2d-gpu-cook`) resolves kernels through
     /// [`KernelResolver`].
     gpu_kernels: BTreeMap<NodeTypeId, GpuKernel>,
+    /// GPU/M5 (ADR-0134 D2) — per-type spatial-grid requirement, keyed the same
+    /// way and kept OUT of the frozen manifest like every other side channel. A
+    /// node with a neighbourhood kernel (boids, `sim.collide`, SPH) registers a
+    /// [`GridSpec`]; the sequencer builds the grid before its kernel pass.
+    grids: BTreeMap<NodeTypeId, GridSpec>,
     /// Node types that KEEP the dense id window (ADR-0130): the emitter (source)
     /// and the per-element sim transformers (integrate/spring/forces). Opt-in and
     /// default-empty, so a node keeps the window only by declaring it — see
@@ -137,6 +142,14 @@ impl NodeRegistry {
         self.gpu_kernels.insert(id, kernel);
     }
 
+    /// Declare that a node type's kernel needs a spatial neighbourhood grid
+    /// (ADR-0134 D2). Additive, last-write-wins, pure `'static` data — like
+    /// [`Self::register_gpu_kernel`]. The sequencer builds the grid over the
+    /// [`GridSpec`]'s column before the node's kernel pass.
+    pub fn register_grid(&mut self, id: NodeTypeId, grid: GridSpec) {
+        self.grids.insert(id, grid);
+    }
+
     /// Declare that a node type KEEPS the dense id window (ADR-0130): a source
     /// that emits one, or a per-element transformer that preserves it. Additive,
     /// idempotent; a node NOT declared here breaks the window and the `id`-gather
@@ -153,6 +166,10 @@ impl KernelResolver for NodeRegistry {
 
     fn keeps_dense_window(&self, ty: NodeTypeId) -> bool {
         self.dense_window_keepers.contains(&ty)
+    }
+
+    fn grid(&self, ty: NodeTypeId) -> Option<&GridSpec> {
+        self.grids.get(&ty)
     }
 }
 

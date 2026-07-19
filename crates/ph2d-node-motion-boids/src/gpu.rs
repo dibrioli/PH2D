@@ -75,6 +75,7 @@ fn count_law(ctx: &CountLawCtx<'_>) -> SourceWindow {
 /// bit-exact CPU↔GPU) + a finite guard (the `is_finite` of `crate::step`).
 const WGSL_LIB: &str = r#"
 const BOIDS_SEED_SPREAD: f32 = 3.0;
+const BOIDS_SEED_REF: f32 = 64.0;
 const BOIDS_MIN_SPEED_FRAC: f32 = 0.2;
 const BOIDS_EPS: f32 = 1e-6;
 const BOIDS_MAX_DT: f32 = 0.1;
@@ -100,10 +101,16 @@ const WGSL: &str = r#"
     let home = vec2<f32>(read_target_x_v(i), read_target_y_v(i));
     if (!HAS_state_P) {
         // SEED (tick 0 / empty pre): a hashed cloud of positions + velocities
-        // around home, matching `crate::seed` bit-for-bit (integer hash).
+        // around home, matching `crate::seed` bit-for-bit (integer hash). The
+        // half-extent is fixed, or grown with √N so a huge flock stays a bounded
+        // -density murmuration (`Params::seed_half_extent`); the one `sqrt` is
+        // the only op the two seeds diverge on, and only at `spread` on → ε.
         let seed = u32(round(max(params.seed, 0.0)));
-        let px = home.x + (boids_hash3(seed, i, 0u) - 0.5) * 2.0 * BOIDS_SEED_SPREAD;
-        let py = home.y + (boids_hash3(seed, i, 1u) - 0.5) * 2.0 * BOIDS_SEED_SPREAD;
+        let half = select(BOIDS_SEED_SPREAD,
+                          BOIDS_SEED_SPREAD * sqrt(f32(params.count) / BOIDS_SEED_REF),
+                          params.spread > 0.5);
+        let px = home.x + (boids_hash3(seed, i, 0u) - 0.5) * 2.0 * half;
+        let py = home.y + (boids_hash3(seed, i, 1u) - 0.5) * 2.0 * half;
         let vx = (boids_hash3(seed, i, 2u) - 0.5) * params.max_speed;
         let vy = (boids_hash3(seed, i, 3u) - 0.5) * params.max_speed;
         write_P(i, vec2<f32>(px, py));
@@ -184,6 +191,7 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
         "cohesion",
         "seek",
         "max_speed",
+        "spread",
     ],
     count_law: Some(count_law),
     variant_by_param: None,

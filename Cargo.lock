@@ -5215,6 +5215,7 @@ dependencies = [
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
+ "ph2d-node-motion-boids",
  "ph2d-node-motion-color-ramp",
  "ph2d-node-motion-cull",
  "ph2d-node-motion-drive",

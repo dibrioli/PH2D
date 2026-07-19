@@ -233,6 +233,99 @@ fn the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop() {
     );
 }
 
+/// The **million-boid murmuration** (`PH2D_GPU_COOK_DEMO=7`, ADR-0134) must plan
+/// as a fully-GPU LOOP — the whole claim of the neighbourhood sim. A silent CPU
+/// fallback (the route degrades by design) would look identical, just at seconds
+/// per tick instead of milliseconds, and the reviewer would sign off on a path
+/// that never ran the spatial grid at all.
+#[test]
+fn the_million_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks =
+        build_gpu_boids_demo_document(&mut doc, &registry).expect("well-typed boids demo");
+    let out = *sinks.first().expect("one sink");
+
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the boids sweep + the grid + scale must leave no boundary: {:?}",
+        plan.boundaries
+    );
+    assert!(
+        plan.drives_a_loop(),
+        "the flock's per-agent state must live on the GPU across ticks"
+    );
+    // boids + scale dispatch; `output` is a pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 2);
+
+    let node = |ty: &str| {
+        doc.graph
+            .nodes()
+            .iter()
+            .position(|n| n.type_name == ty)
+            .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+            .unwrap_or_else(|| panic!("the demo has a {ty}"))
+    };
+    let boids = node("motion.boids");
+    // `scale` is STAGED, not a boundary — the grain-shrink runs on the device.
+    // Without this the loop assertion above stays green on a demo that lost its
+    // scale and pushed the shrink (and, with it, the flock) to the CPU.
+    assert!(
+        plan.stages.iter().any(|s| s.node == node("motion.scale")),
+        "the grain scale must be claimed, not pushed to a CPU boundary"
+    );
+    // The loop head: the boids stage reads its OWN previous-tick output (the
+    // `pre` self-loop), which is what makes the flock state GPU-resident.
+    let boids_stage = plan
+        .stages
+        .iter()
+        .find(|s| s.node == boids)
+        .expect("boids is staged");
+    assert!(
+        boids_stage
+            .inputs
+            .contains(&ph2d_gpu_cook::GpuSource::Prev(boids)),
+        "the flock steps from last tick's own state, not a fresh seed each frame"
+    );
+}
+
+/// The demo really is a MILLION agents with `spread` on — the two facts that make
+/// it the neighbourhood-sim breakthrough rather than a pretty toy. Read from the
+/// params (not cooked): a 1 M CPU cook is the very `O(N²)` this demo exists to
+/// escape (~10 s), so the gate would time out proving the point. `spread` off
+/// would silently repack the flock into a fixed box → `O(N²)` on the GPU too, and
+/// the loop gate above would stay green on a demo that no longer scales.
+#[test]
+fn the_million_boid_demo_is_actually_a_million_and_spread() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    build_gpu_boids_demo_document(&mut doc, &registry).expect("well-typed boids demo");
+    let boids = doc
+        .graph
+        .nodes()
+        .iter()
+        .position(|n| n.type_name == "motion.boids")
+        .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+        .expect("the demo has a boids node");
+    let params = doc
+        .graph
+        .node_param_overrides(boids)
+        .expect("the demo sets the flock's params");
+    assert_eq!(
+        params.get("count").copied(),
+        Some(1_048_576.0),
+        "the murmuration must be the million it advertises"
+    );
+    assert!(
+        params.get("spread").copied().unwrap_or(0.0) > 0.5,
+        "spread MUST be on — without it a million agents pack into a box and the \
+         grid cannot help (O(N²)), which is the exact thing this demo disproves"
+    );
+}
+
 /// The Fase 3 **simulation** demo (`PH2D_GPU_COOK_DEMO=3`) must plan as a
 /// fully-GPU chain that DRIVES A LOOP — the whole claim of ADR-0127. Without
 /// this, the smoke could be quietly cooking on the CPU (the route falls back

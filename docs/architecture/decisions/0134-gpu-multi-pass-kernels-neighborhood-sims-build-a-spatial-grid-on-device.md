@@ -55,7 +55,7 @@ O replay-hash nunca roda na GPU (ADR-0126). O **seed do tick 0** é `hash3` **IN
 
 ### D5 — O teto se MEDE (§0.0), não se herda do fallback
 
-O slider do boids para em 500 e o `param_as_count` capa em `1<<24` — o 500 é **hint de UI** para o custo O(N²) da CPU. O caminho GPU não herda esse teto: o count real é **medido na GPU** e o número escrito com a tabela ao lado (o caso `feedback_the_ceiling_is_the_hardwares_never_the_fallbacks` — o emitter capado em 16 k com 4 M medidos). A CPU segue sendo o oráculo de paridade numa contagem que ela aguente; a GPU voa até onde a memória/banda deixar.
+O slider do boids para em 500 e o `param_as_count` capa em `1<<24` — o 500 é **hint de UI** para o custo O(N²) da CPU. O caminho GPU não herda esse teto: o count real é **medido na GPU** e o número escrito com a tabela ao lado (o caso `feedback_the_ceiling_is_the_hardwares_never_the_fallbacks` — o emitter capado em 16 k com 4 M medidos). A CPU segue sendo o oráculo de paridade numa contagem que ela aguente; a GPU voa até onde a memória/banda deixar. **MEDIDO na Fase 4** (ver a tabela): a grade entrega O(N) até ~4 M, e o teto é um par de recursos NOMEADOS e raisáveis (dispatch de bucket ~8 M · binding de instância ~11,67 M), nunca "por segurança". ⚠️ Emenda honesta: enquanto o boids declara `lowerings: [Cpu]`, o caminho vivo é a CPU, então o slider FICA em 500 até o shell cozinhar o boids na GPU — o `spread` opt-in é o que torna o cap alto seguro quando esse dia chegar.
 
 ---
 
@@ -64,8 +64,18 @@ O slider do boids para em 500 e o `param_as_count` capa em `1<<24` — o 500 é 
 1. **1a — O scan (prefix-sum) reusável na GPU.** ✅ **FEITO** (`ph2d-gpu-cook::scan`, `tests/gpu_scan.rs`, VERDE na RTX): exclusive-scan recursivo multi-nível, **bit-exato** vs a CPU até 1 M (3 níveis de recursão). O sub-componente mais difícil, isolado de propósito.
 2. **1b/2 — A GRADE (serviço multi-passe).** ✅ **FEITO** (`ph2d-gpu-cook::grid`, `tests/gpu_grid.rs`, VERDE na RTX): `clear → count (atômico) → scan → scatter (atômico)` sobre o spatial hash ⇒ `(starts, sorted)`, reusando o scan. Gate: `starts` bit-exato vs o scan da CPU + `sorted` é permutação de `0..n` + cada elemento no range do próprio bucket, até 300 k (que exercita a recursão do scan). ⚠️ **A wave descobriu que 1b e 2 eram a MESMA coisa** — a grade É a máquina multi-passe, e ela é um SERVIÇO, não um contrato geral (a emenda de D2).
 3. **3 — O passo do boids.** As 3 regras de Reynolds lendo a grade (9 células, filtro por célula exata + distância) + o branch de seed do tick 0. Paridade ε vs o all-pairs da CPU. `motion.boids` vira GPU-claimable — falta o wiring contrato/sequenciador (o nó declara "grade sobre P, cell=radius" + o query).
-5. **4 — Milhões + cap medido + demo.** Mede boids na GPU, escreve o teto com a tabela, sobe o slider para o caminho GPU, e uma cena `PH2D_GPU_COOK_DEMO` de milhões de agentes coalescendo.
-6. **5 (herança) — `sim.collide`** reusa a grade (rumo à neve e à família `sim.*`).
+4. **4 — Milhões + cap medido + demo.** ✅ **FEITO** (`tests/gpu_boids_scale.rs` + `PH2D_GPU_COOK_DEMO=7`, medido na RTX). **A medição decidiu o desenho:** o boids como o nó semeava (`SEED_SPREAD=3` fixo) empacota a milhões num box ~6×6 ⇒ a grade não ajuda ⇒ **O(N²)** (packed 1 M = **9,9 s/tick**). A cura é um modo **`spread` opt-in** (√N: o seed cresce com o count, densidade constante) — **default OFF = byte-idêntico a hoje em TODO count** (o seed do tick 0 segue bit-exato; `spread` on = 1 `sqrt` ⇒ paridade ε, gate novo). Com ele a grade entrega **O(N)**:
+
+   | agentes | packed (spread OFF) | spread ON | ns/agente |
+   |--:|--:|--:|--:|
+   | 65 536 | — | 0,70 ms | 10,7 |
+   | 262 144 | 641 ms | 2,35 ms | 9,0 |
+   | 1 048 576 | **9 922 ms** | **15,4 ms** | 14,7 |
+   | 2 097 152 | — | 43,6 ms | 20,8 |
+   | 4 194 304 | — | 115 ms | 27,5 |
+
+   **O teto se MEDE e nomeia o recurso (§0.0), e são DOIS, ambos raisáveis, nenhum silício:** (1) as passes por-BUCKET da grade despacham sobre `num_buckets = pow2(2N)` ⇒ a ~8 M são 2²⁴/256 = 65 536 workgroups, 1 além do limite de **65 535 workgroups/dimensão** (fix: dispatch 2-D em `grid.rs`); (2) o lowering vincula um buffer de `RenderInstance` (184 B) capado em **2 GiB** ⇒ **~11,67 M** agentes (`max_storage_buffer_binding_size`, requisitável rumo à VRAM). Demo: `PH2D_GPU_COOK_DEMO=7` (1 048 576 boids coalescendo, 100 % GPU sob `PH2D_GPU_COOK=1`; gates de plano irmãos). ⚠️ **O slider do boids NÃO subiu de 500 nesta linha** — o nó declara `lowerings: [Cpu]`, então o caminho VIVO do editor ainda é a CPU eval (O(N²)); subir o slider hoje travaria a CPU. O `spread` + esta tabela são a munição: **subir o cap é gatilhado por o shell consumir o cook GPU para o boids** ("quem move o número que tornava algo inalcançável tem de reconferir a nota" — §0.0). Até lá, 500 é honesto PARA A CPU.
+5. **5 (herança) — `sim.collide`** reusa a grade (rumo à neve e à família `sim.*`).
 
 ---
 

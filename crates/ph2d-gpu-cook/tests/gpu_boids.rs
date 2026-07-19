@@ -39,9 +39,16 @@ fn registry() -> NodeRegistry {
 
 /// `boids ──> output`, with the `out ──pre──> state` self-loop the editor auto-wires.
 fn boids_graph(count: f32) -> (Graph, NodeId) {
+    boids_graph_spread(count, false)
+}
+
+/// As [`boids_graph`], with the √N `spread` mode explicit — its one `sqrt` is the
+/// only place the two seeds diverge, so `spread` on is an ε seed (not bit-exact).
+fn boids_graph_spread(count: f32, spread: bool) -> (Graph, NodeId) {
     let mut g = Graph::new();
     let boids = g.add_node("motion.boids");
     g.set_param(boids, "count", count);
+    g.set_param(boids, "spread", if spread { 1.0 } else { 0.0 });
     g.set_param(boids, "seed", 1.0);
     // Non-round, non-default weights so a swapped rule can't hide behind a tidy
     // number ([[feedback_test_with_product_numbers_not_convenient_ones]]).
@@ -181,4 +188,36 @@ fn one_boids_step_matches_the_cpu_within_epsilon() {
     let cpu = cpu_ticks(&g, &reg, out, 1);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1);
     parity("one step", &cpu[1], &gpu_out, 2e-3);
+}
+
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn the_spread_seed_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    // √N spread at a count whose √(count/64) is IRRATIONAL (300/64 = 4.6875 →
+    // √ ≈ 2.165), so the CPU/GPU `sqrt` genuinely differs — this exercises the ε,
+    // where 400 (=√6.25=2.5 exact) would have hidden it at 0.
+    let (g, out) = boids_graph_spread(300.0, true);
+    let cpu = cpu_ticks(&g, &reg, out, 0);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0);
+    // Half-extent ≈ 3·√(300/64) ≈ 6.5 world units → a 1-ULP sqrt is ~1e-6.
+    parity("spread seed", &cpu[0], &gpu_out, 1e-4);
+}
+
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn one_spread_step_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_graph_spread(400.0, true);
+    let cpu = cpu_ticks(&g, &reg, out, 1);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1);
+    parity("spread step", &cpu[1], &gpu_out, 2e-3);
 }

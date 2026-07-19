@@ -28,7 +28,12 @@ mod gpu_demos;
 /// why the seam is the QUESTION each scene answers, not the line count.
 #[path = "motion_state_gpu_panel_demo.rs"]
 mod gpu_panel_demo;
+/// The million-boid murmuration (ADR-0134), split out for the same reason: it
+/// answers the interacting-sim question none of the throughput scenes can.
+#[path = "motion_state_gpu_boids_demo.rs"]
+mod gpu_boids_demo;
 
+use gpu_boids_demo::build_gpu_boids_demo_document;
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
@@ -149,6 +154,10 @@ impl MotionState {
             // kind of card reading is on screen at once — the smoke for the GPU
             // path becoming the default.
             Ok("6") => build_gpu_panel_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // ADR-0134: the million-boid MURMURATION — the interacting sim (each
+            // agent reads its neighbours) that the spatial grid lifts from a
+            // few-hundred-agent toy to 1.048.576 on the device.
+            Ok("7") => build_gpu_boids_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

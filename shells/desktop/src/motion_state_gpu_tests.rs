@@ -243,8 +243,7 @@ fn the_million_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
     let mut doc = MotionDoc::new();
-    let sinks =
-        build_gpu_boids_demo_document(&mut doc, &registry).expect("well-typed boids demo");
+    let sinks = build_gpu_boids_demo_document(&mut doc, &registry).expect("well-typed boids demo");
     let out = *sinks.first().expect("one sink");
 
     let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
@@ -288,6 +287,70 @@ fn the_million_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
             .inputs
             .contains(&ph2d_gpu_cook::GpuSource::Prev(boids)),
         "the flock steps from last tick's own state, not a fresh seed each frame"
+    );
+}
+
+/// The **breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0134 Fase 5) must plan
+/// as a fully-GPU chain — and, unlike every scene before it, one whose kernel is
+/// ITERATED. A silent CPU fallback would look identical (the CPU has packed discs
+/// since M3, just at `O(N²·iterations)`), so the plan is what has to be pinned.
+#[test]
+fn the_breathing_packing_demo_plans_as_a_fully_gpu_chain() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_collide_demo_document(&mut doc, &registry).expect("well-typed demo");
+    let out = *sinks.first().expect("one sink");
+
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the packing + its LFO must leave no boundary: {:?}",
+        plan.boundaries
+    );
+    let node = |ty: &str| {
+        doc.graph
+            .nodes()
+            .iter()
+            .position(|n| n.type_name == ty)
+            .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+            .unwrap_or_else(|| panic!("the demo has a {ty}"))
+    };
+    // The LFO must be STAGED, not a boundary: it is what makes the packing
+    // breathe, and without it a `Effect::Pure` relaxation over a static lattice
+    // re-cooks the identical picture forever — a scene that looks like a bug.
+    assert!(
+        plan.stages.iter().any(|s| s.node == node("value.lfo")),
+        "the breath must be claimed, not pushed to a CPU boundary"
+    );
+    // grid + lfo + collide dispatch; `output` is pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 3);
+}
+
+/// The packing demo really SWEEPS — `iterations` > 1 is the whole of Fase 5 (the
+/// grid is rebuilt between sweeps). Read from the params rather than cooked: the
+/// CPU reference at 262 144 discs is the very `O(N²·iterations)` this escapes.
+#[test]
+fn the_breathing_packing_demo_actually_iterates() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    build_gpu_collide_demo_document(&mut doc, &registry).expect("well-typed demo");
+    let collide = doc
+        .graph
+        .nodes()
+        .iter()
+        .position(|n| n.type_name == "motion.collide")
+        .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+        .expect("the demo has a collider");
+    let params = doc
+        .graph
+        .node_param_overrides(collide)
+        .expect("the demo sets the collider's params");
+    let iters = params.get("iterations").copied().unwrap_or(0.0);
+    assert!(
+        iters > 1.0,
+        "a single sweep would leave the iterated path (the wave's point) untested: {iters}"
     );
 }
 

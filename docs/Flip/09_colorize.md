@@ -1,5 +1,13 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **5º smoke (2026-07-20): "quase perfeito. vamos tentar melhorar."** A fronteira cai NA
+> linha e cada lobo sai com a sua cor. Ressalvas visíveis (a próxima tarefa da linha, com
+> hipóteses e diagnóstico em
+> [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md` §3](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md)):
+> o **serrilhado** da fronteira que corre ao longo da linha (não diagnosticado — medir no
+> plano `assign` antes de codar) · a **lente** pelo vão (honesta; knob = `SQUEEZE`/Trap,
+> tabela medida na const) · a **margem externa** pintada a Trap 0 (decisão de produto).
+>
 > **Estado (2026-07-20): 4º smoke reprovado ("impreciso") e FECHADO — o contestado virou
 > Voronoi POR PIXEL.** As três caras do smoke eram UMA causa dupla: (1) o Voronoi de células
 > pesava **`V_pq`**, que é custo de **CORTE** (tinta = 0) — numa métrica de DISTÂNCIA isso

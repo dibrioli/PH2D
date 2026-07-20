@@ -36,3 +36,31 @@ fn the_render_loops_settle_drawing_includes_the_offset_session() {
          na lista `drawing`."
     );
 }
+
+/// **A janela de RETUNE está costurada no frame.** O gate de unidade
+/// (`changing_the_join_after_release_retunes_the_committed_offset`) prova a máquina e o
+/// `apply` — espelhando o frame; espelho não vê a `render_loop`. Este irmão cobra o SÍTIO:
+/// o release abre a janela (`after_release`), o grab novo a limpa, e o braço `Retune`
+/// chama o `apply`. Tirar o bloco deixa os unit gates verdes e os chips mortos de novo.
+#[test]
+fn the_render_loop_drives_the_retune_window() {
+    let src = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/render_loop/mod.rs"
+    ))
+    .expect("render_loop/mod.rs");
+
+    for needle in [
+        "OffsetRetune::after_release",
+        "RetuneStep::Retune",
+        "win.apply(",
+        "self.vec_offset_retune = None",
+    ] {
+        assert!(
+            src.contains(needle),
+            "a render_loop perdeu `{needle}` — o retune de Join/Side pós-release (o pedido \
+             de 2026-07-20) não chega ao produto: o clique no chip volta a só armar o \
+             PRÓXIMO arrasto."
+        );
+    }
+}

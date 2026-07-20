@@ -2775,6 +2775,9 @@ impl crate::App {
                     });
                 if offset_grabbed {
                     if self.vec_offset_session.is_none() {
+                        // Um grab novo supersede a janela de retune do gesto anterior — o
+                        // release deste arrasto abrirá a dele.
+                        self.vec_offset_retune = None;
                         // As poses são construídas UMA vez (no grab) e congeladas na sessão — o
                         // churn do preview despawnaria as fontes e perderia a pose.
                         let xf = crate::vec_transform::build(sim, &self.vec_entities);
@@ -2786,12 +2789,32 @@ impl crate::App {
                         self.vec_offset_session = Some(sess);
                     }
                 } else if let Some(mut sess) = self.vec_offset_session.take() {
-                    // Soltou: o preview final ao `d` de soltura + recentra o slider.
+                    // Soltou: o preview final ao `d` de soltura + recentra o slider — e a
+                    // sessão vira a JANELA DE RETUNE (Join/Side ainda mexem no comitado).
                     sess.preview(vec_scene, &mut self.vec_pen, live_d);
                     hero.store.set_slider_value(
                         ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
                         ph2d_tool_vector::params::offset_to_slider(0.0),
                     );
+                    self.vec_offset_retune =
+                        crate::vec_expand::OffsetRetune::after_release(sess, live_d);
+                } else if let Some(mut win) = self.vec_offset_retune.take() {
+                    // ── Join/Side retunam o offset recém-comitado, NA HORA ──────────
+                    // O diálogo do Illustrator preview-a a quina ao vivo; aqui a "janela
+                    // do diálogo" é o intervalo até a PRÓXIMA edição — qualquer passo de
+                    // undo alheio (mover, apagar, Ctrl+Z) fecha a janela, senão o retune
+                    // restauraria a cena do grab e ENGOLIRIA a edição do artista.
+                    let knobs = crate::vec_expand::expand_knobs();
+                    match win.step(self.undo.depth(), knobs) {
+                        crate::vec_expand::RetuneStep::Dead => {}
+                        crate::vec_expand::RetuneStep::Keep => {
+                            self.vec_offset_retune = Some(win);
+                        }
+                        crate::vec_expand::RetuneStep::Retune => {
+                            win.apply(vec_scene, &mut self.vec_pen, sim, &self.vec_entities, knobs);
+                            self.vec_offset_retune = Some(win);
+                        }
+                    }
                 }
             }
             if let Some(cmd) = pending_vec_expand {

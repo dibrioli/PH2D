@@ -779,6 +779,11 @@ pub(crate) struct App {
     /// preview restaura a cena do grab e re-offseta ao `d` atual a cada frame; ao soltar, o
     /// diff do undo global fecha UM passo e o slider recentra em "sem offset". Runtime-only.
     pub(crate) vec_offset_session: Option<crate::vec_expand::OffsetSession>,
+    /// A **janela de RETUNE** do Offset — aberta no release do slider. Enquanto viva,
+    /// trocar Join (Miter/Round/Bevel) ou Side re-offseta NA HORA ao `d` comitado (o
+    /// "diálogo ainda aberto" do Illustrator); morre na primeira edição alheia (o undo
+    /// anda) ou no próximo grab. Runtime-only.
+    pub(crate) vec_offset_retune: Option<crate::vec_expand::OffsetRetune>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

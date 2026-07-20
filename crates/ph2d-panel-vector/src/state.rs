@@ -283,7 +283,9 @@ pub fn expand_join() -> u8 {
     EXPAND_JOIN.with(Cell::get)
 }
 
-pub(crate) fn set_expand_join(v: u8) {
+/// `pub` porque o gate do RETUNE (shell) precisa armar a quina sem montar o painel — o
+/// produto só escreve pelo clique nos chips.
+pub fn set_expand_join(v: u8) {
     EXPAND_JOIN.with(|c| c.set(v));
 }
 
@@ -296,7 +298,8 @@ pub fn expand_side() -> u8 {
     EXPAND_SIDE.with(Cell::get)
 }
 
-pub(crate) fn set_expand_side(v: u8) {
+/// `pub` pela razão do [`set_expand_join`].
+pub fn set_expand_side(v: u8) {
     EXPAND_SIDE.with(|c| c.set(v));
 }
 

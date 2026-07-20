@@ -91,6 +91,13 @@ fn every_host_that_writes_world_geometry_is_in_the_list() {
         .filter_map(Result::ok)
         .filter_map(|e| e.file_name().into_string().ok())
         .filter(|n| n.ends_with(".rs"))
+        // `vec_expand.rs` também força a identidade — no sentido OPOSTO ao que este gate
+        // vigia: o RETUNE do Offset devolve a entidade à identidade exatamente PARA que o
+        // `settle_origins` a re-assente neste frame (geometria de mundo re-inserida sob
+        // pose já assentada dobraria a pose — `9c0446df`). E o skip do preview VIVO dele
+        // não é por componente: é pela lista `drawing`, cobrado pelo gate irmão
+        // `the_live_offset_preview_is_a_gesture_to_the_settle`.
+        .filter(|n| n != "vec_expand.rs")
         .filter_map(|n| {
             let src = fs::read_to_string(format!("{}/src/{n}", env!("CARGO_MANIFEST_DIR"))).ok()?;
             src.contains(WORLD_GEOMETRY_MARK).then_some((n, src))

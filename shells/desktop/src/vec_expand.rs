@@ -279,6 +279,106 @@ impl OffsetSession {
     }
 }
 
+/// Os dois knobs do Offset como o PAINEL os guarda (`join`, `side`) — a chave de mudança
+/// que o retune observa. Porta única: o retune e o release leem a MESMA.
+#[must_use]
+pub(crate) fn expand_knobs() -> (u8, u8) {
+    (
+        ph2d_panel_vector::expand_join(),
+        ph2d_panel_vector::expand_side(),
+    )
+}
+
+/// O que o frame deve fazer com a janela de retune — decidido por [`OffsetRetune::step`].
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum RetuneStep {
+    /// Nada mudou — a janela segue armada.
+    Keep,
+    /// Um knob mudou e a janela é válida — re-offseta ([`OffsetRetune::apply`]).
+    Retune,
+    /// Outra edição aconteceu (o undo andou) — a janela morre: retunar por cima
+    /// restauraria a cena do grab e ENGOLIRIA a edição do artista.
+    Dead,
+}
+
+/// A **janela de RETUNE** do Offset — o "diálogo ainda aberto" do Illustrator.
+///
+/// Soltar o slider COMITA o offset, mas a escolha de quina vem depois de VER o resultado:
+/// clicar Miter/Round/Bevel (ou trocar o Side) logo após o release re-offseta NA HORA, ao
+/// MESMO `d`. A janela guarda a sessão viva (cena do grab + poses congeladas + o `d`
+/// comitado) e morre na primeira edição alheia — o oráculo é a PROFUNDIDADE do undo:
+/// qualquer passo que não seja nosso (mover, apagar, Ctrl+Z) a diverge, e retunar por
+/// cima dessa edição a engoliria em silêncio.
+pub(crate) struct OffsetRetune {
+    sess: OffsetSession,
+    /// O `d` comitado no release — todo retune re-offseta a este valor.
+    d: f64,
+    /// Os knobs `(join, side)` vistos por último — diferença = retune.
+    knobs: (u8, u8),
+    /// A profundidade do undo com o NOSSO passo já registrado. `None` = a aprender no
+    /// próximo frame (o diff registra no FIM do frame, depois deste bloco) — e é por isso
+    /// que todo retune a re-arma para `None`: o passo dele ainda não landou.
+    depth: Option<usize>,
+}
+
+impl OffsetRetune {
+    /// Abre a janela no release — `None` se o arrasto nunca churnou (não há o que retunar,
+    /// e uma janela sobre nada retunaria a cena inteira num clique de chip perdido).
+    pub(crate) fn after_release(sess: OffsetSession, d: f64) -> Option<Self> {
+        sess.churned.then(|| Self {
+            sess,
+            d,
+            knobs: expand_knobs(),
+            depth: None,
+        })
+    }
+
+    /// A máquina de UM frame: aprende a profundidade do undo, morre quando ela diverge,
+    /// retuna quando um knob mudou. Pura — o efeito fica em [`Self::apply`].
+    pub(crate) fn step(&mut self, depth_now: usize, knobs_now: (u8, u8)) -> RetuneStep {
+        match self.depth {
+            None => {
+                self.depth = Some(depth_now);
+                RetuneStep::Keep
+            }
+            Some(d0) if d0 != depth_now => RetuneStep::Dead,
+            Some(_) if knobs_now != self.knobs => RetuneStep::Retune,
+            Some(_) => RetuneStep::Keep,
+        }
+    }
+
+    /// Executa o retune: re-offseta ao `d` comitado com os knobs novos (o preview lê o
+    /// painel — a mesma porta de sempre).
+    ///
+    /// ⚠️ **As entidades do resultado voltam à IDENTIDADE antes do preview.** O release as
+    /// deixou ASSENTADAS (`Transform` = centro), e o preview re-insere geometria de MUNDO
+    /// sob os MESMOS ids (o `clone_from(&pre)` restaura o contador) — sem o reset, mundo ×
+    /// centro dobraria a pose: a lição exata do "pula pro canto direito" (`9c0446df`). O
+    /// `settle` re-assenta NESTE frame (entidade na identidade de novo) e o diff do undo
+    /// registra o passo no fim dele.
+    pub(crate) fn apply(
+        &mut self,
+        scene: &mut VecScene,
+        pen: &mut PenTool,
+        sim: &mut ph2d_ecs::SimWorld,
+        map: &crate::vec_entities::VecEntityMap,
+        knobs_now: (u8, u8),
+    ) {
+        for id in &self.sess.live {
+            if let Some(&bits) = map.get(id)
+                && let Some(mut t) = sim
+                    .world_mut()
+                    .get_mut::<ph2d_ecs::Transform>(ph2d_ecs::Entity::from_bits(bits))
+            {
+                *t = ph2d_ecs::Transform::IDENTITY;
+            }
+        }
+        self.sess.preview(scene, pen, self.d);
+        self.knobs = knobs_now;
+        self.depth = None;
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_expand_tests.rs"]
 mod tests;

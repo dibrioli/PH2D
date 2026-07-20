@@ -90,6 +90,12 @@ pub struct InspectorPhysicsInfo {
     /// like `rotation_rad`). The panel renders it as deg/s and converts at its
     /// boundary — the shell's edit and the component both stay in radians.
     pub angvel: f32,
+    /// Continuous collision detection (W-CCD): `false` discrete (rapier's default),
+    /// `true` sweeps the body's motion so a fast one does not tunnel through thin
+    /// geometry. Mirrors the presence of the optional `Ccd` marker component.
+    /// Dynamic-only, like [`gravity_scale`](InspectorPhysicsInfo::gravity_scale) —
+    /// the only kind the solver moves fast.
+    pub ccd: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -137,6 +143,10 @@ pub enum PhysicsFieldEdit {
     /// Authored initial angular velocity, in **radians/second** — the panel
     /// converts the deg/s the artist sees before emitting this (W9).
     Angvel(f32),
+    /// Continuous collision detection toggle (W-CCD). Attaches/detaches the
+    /// optional `Ccd` marker component (present = continuous, absent = discrete),
+    /// the presence-override idiom gravity and initial velocity use.
+    Ccd(bool),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

@@ -507,7 +507,12 @@ impl PhysicsBridge {
                 .get::<crate::InitialVelocity>(e)
                 .copied()
                 .unwrap_or(crate::InitialVelocity::REST);
-            let desc = crate::scale::body_desc(rb, col, &t, gravity_scale, iv.linvel, iv.angvel);
+            // Optional CCD marker (W-CCD); its PRESENCE is the flag (absent =
+            // discrete, rapier's default). Folded into the `BodyDesc` so a rewind
+            // re-arms it, exactly like the two above.
+            let ccd = world.get::<crate::Ccd>(e).is_some();
+            let desc =
+                crate::scale::body_desc(rb, col, &t, gravity_scale, iv.linvel, iv.angvel, ccd);
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not

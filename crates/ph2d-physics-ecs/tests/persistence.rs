@@ -15,8 +15,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
-    register_physics_components,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge,
+    RigidBody, register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -67,6 +67,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
             linvel: [3.0, -1.5],
             angvel: 2.0,
         },
+        // The CCD marker (W-CCD): a zero-field component whose PRESENCE is the
+        // flag must survive too — dropping its `reg.register` line makes the
+        // `get` below return None.
+        Ccd,
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -112,6 +116,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         (iv.linvel, iv.angvel),
         ([3.0, -1.5], 2.0),
         "the authored initial velocity did not survive the snapshot round trip"
+    );
+    assert!(
+        dst.world().get::<Ccd>(e).is_some(),
+        "the CCD marker did not survive the snapshot round trip (registered?)"
     );
 }
 

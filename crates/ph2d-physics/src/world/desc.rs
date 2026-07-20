@@ -82,4 +82,21 @@ pub struct BodyDesc {
     /// wheel, a thrown object tumbling. Same lifetime as [`linvel`](BodyDesc::linvel):
     /// set at build, owned by the solver after, re-armed on rewind.
     pub angvel: f32,
+    /// **Continuous collision detection.** `false` (rapier's own default, and
+    /// what every body did before this field existed) is *discrete*: the body
+    /// is only tested at each tick's end pose, so a small fast body can pass
+    /// clean THROUGH thin geometry between two ticks — at 30 m/s it moves half a
+    /// metre in a 60 Hz tick and a 0.1 m wall lands entirely inside that gap.
+    /// `true` sweeps the body's motion and stops it at the first impact instead.
+    ///
+    /// It is a spawn-time flag on the rigid body, so — like [`gravity_scale`]
+    /// and [`linvel`] — it rides the `BodyDesc` the world rebuilds from, and a
+    /// rewind to t=0 re-arms it. Distinct from the sub-stepping that fixes deep
+    /// LANDING overlap (`PhysicsWorld::DEFAULT_SUBSTEPS`): that reduces how far
+    /// inside a body is when it first touches, which no solver undoes after the
+    /// fact; this catches the collision that would otherwise be MISSED entirely.
+    ///
+    /// [`gravity_scale`]: BodyDesc::gravity_scale
+    /// [`linvel`]: BodyDesc::linvel
+    pub ccd: bool,
 }

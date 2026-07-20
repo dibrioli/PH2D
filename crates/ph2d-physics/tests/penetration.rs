@@ -46,6 +46,7 @@ fn drop_probe(world: &mut PhysicsWorld, drop_y: f32) -> (f32, u32, f32) {
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     });
     let h = world.spawn_body(BodyDesc {
         body_type: RigidBodyType::Dynamic,
@@ -64,6 +65,7 @@ fn drop_probe(world: &mut PhysicsWorld, drop_y: f32) -> (f32, u32, f32) {
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     });
     let (mut worst, mut frames) = (0.0f32, 0u32);
     for _ in 0..400 {
@@ -136,6 +138,7 @@ fn a_settled_pile_is_completely_still() {
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     });
     for i in 0..30 {
         w.spawn_body(BodyDesc {
@@ -152,6 +155,7 @@ fn a_settled_pile_is_completely_still() {
             gravity_scale: 1.0,
             linvel: [0.0, 0.0],
             angvel: 0.0,
+            ccd: false,
         });
     }
     for _ in 0..600 {
@@ -201,6 +205,7 @@ fn sub_stepping_costs_what_it_says_it_costs() {
             gravity_scale: 1.0,
             linvel: [0.0, 0.0],
             angvel: 0.0,
+            ccd: false,
         });
         for i in 0..200 {
             w.spawn_body(BodyDesc {
@@ -217,6 +222,7 @@ fn sub_stepping_costs_what_it_says_it_costs() {
                 gravity_scale: 1.0,
                 linvel: [0.0, 0.0],
                 angvel: 0.0,
+                ccd: false,
             });
         }
         w

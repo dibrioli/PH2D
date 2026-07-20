@@ -328,6 +328,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     });
     for i in 0..12 {
         described.spawn_body(BodyDesc {
@@ -344,6 +345,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             gravity_scale: 1.0,
             linvel: [0.0, 0.0],
             angvel: 0.0,
+            ccd: false,
         });
     }
 

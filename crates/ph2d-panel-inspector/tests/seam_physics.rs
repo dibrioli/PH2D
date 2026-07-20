@@ -44,6 +44,7 @@ fn with_body() -> InspectorPhysicsInfo {
         cap_half_height: 0.25,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     }
 }
 
@@ -153,6 +154,16 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::BakeChannels(i as u8),
             &format!("Bake channel option {i}"),
+        );
+    }
+    // Discrete | Continuous (W-CCD) — a Dynamic body, since the toggle is offered
+    // only there. Each side asserts its OWN boolean, so a wiring that sent both to
+    // the same value would fail (the two-way half-dead widget this test catches).
+    for (i, &id) in ids::INSP_PHYS_CCD.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::Ccd(i == 1),
+            &format!("CCD toggle option {i}"),
         );
     }
 }
@@ -574,6 +585,53 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
         PhysicsFieldEdit::Angvel(90.0_f32.to_radians()),
         "Init Spin (deg/s → rad/s)",
     );
+}
+
+/// **The CCD toggle is offered and honoured only for a Dynamic body** (W-CCD).
+///
+/// Only a body the solver moves fast can tunnel, so a Static (never moves) or
+/// Kinematic (pose-driven) body has nothing to sweep — the same Dynamic-only rule
+/// as gravity and initial velocity. Presence AND absence per kind (an absence gate
+/// alone stays green with nothing painted, [[feedback_absence_gate_needs_a_presence_sibling]]),
+/// and both halves have to agree: the painter offers the row, the event arm honours
+/// the click, and a refusal that lives only in the paint loop is not a refusal.
+#[test]
+fn ccd_is_offered_and_committed_only_for_a_dynamic_body() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic. The group id is the label
+    // owner; the two option chips are what a click lands on.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in ids::INSP_PHYS_CCD.iter() {
+            assert_eq!(
+                rects.iter().any(|(n, _)| *n == id),
+                offered,
+                "kind_tag={tag}: the CCD toggle's presence is wrong"
+            );
+            assert_eq!(
+                !click(info, id).is_empty(),
+                offered,
+                "kind_tag={tag}: the event handler disagrees with the painter about \
+                 whether CCD is offered"
+            );
+        }
+    }
 }
 
 /// **Bake is neither offered nor honoured for a body with no simulated motion.**

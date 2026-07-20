@@ -26,6 +26,7 @@ fn ball(y: f32) -> BodyDesc {
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     }
 }
 

@@ -382,6 +382,11 @@ impl PhysicsWorld {
             // because it rides the `BodyDesc`, a rewind to t=0 re-arms the launch.
             .linvel(Vector2::new(desc.linvel[0], desc.linvel[1]))
             .angvel(desc.angvel)
+            // Continuous collision detection. `false` is rapier's own default, so
+            // a body authored before this is byte-identical; enabling it makes the
+            // pipeline sweep this body's motion so a fast one does not tunnel
+            // through thin geometry. It rides the `BodyDesc`, so a rewind re-arms it.
+            .ccd_enabled(desc.ccd)
             .build();
         let handle = self.bodies.insert(body);
         self.stamp_defaults(handle);

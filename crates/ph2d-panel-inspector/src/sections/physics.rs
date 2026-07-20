@@ -32,6 +32,11 @@ const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 /// `1` a sensor (trigger).
 const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 
+/// CCD toggle labels, indexed by `ccd as u8`: `0` discrete (rapier's default),
+/// `1` continuous (sweeps the motion so a fast body does not tunnel). Unity's own
+/// vocabulary for the same control.
+const CCD_LABELS: [&str; 2] = ["Discrete", "Continuous"];
+
 /// Bake channel selector labels, indexed by the tag: `0` the whole pose,
 /// `1` position only, `2` rotation only.
 const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
@@ -351,6 +356,25 @@ fn paint_body_actions(
     // the radius-on-a-box case).
     if info.kind_tag == KIND_DYNAMIC {
         yy = paint_dynamics_rows(scene, text_system, theme, hit_index, store, x, w, yy);
+        // Collision mode: a fast Dynamic body can tunnel through thin geometry
+        // between two ticks; Continuous sweeps its motion instead. Dynamic-only,
+        // like the rows above — a Static body never moves and a Kinematic one is
+        // pose-driven, so neither tunnels under its own forces.
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Collision",
+            ids::INSP_LIVE_PHYSICS_CCD,
+            &ids::INSP_PHYS_CCD,
+            &CCD_LABELS,
+            u8::from(info.ccd),
+        );
         yy = seg_row(
             scene,
             text_system,

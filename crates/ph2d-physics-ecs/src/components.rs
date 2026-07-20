@@ -282,3 +282,27 @@ impl Default for InitialVelocity {
 }
 
 impl SimComponent for InitialVelocity {}
+
+/// **Continuous collision detection — a marker presence-override component (W-CCD).**
+///
+/// Its **presence IS the boolean**, exactly like `ph2d_ecs::Locked`: a body that
+/// carries it uses continuous detection, one that does not uses discrete (rapier's
+/// default). Unlike [`GravityScale`] and [`InitialVelocity`] there is no value to
+/// carry — CCD is on or off — so the honest representation is a marker, not a
+/// `bool` field that would always hold the same value when present. The Inspector
+/// attaches it on "Continuous" and detaches it on "Discrete", so a project file is
+/// never littered with an off-flag.
+///
+/// Why a body wants it: discrete detection only tests a body at each tick's END
+/// pose, so a small fast one can pass clean THROUGH thin geometry between two ticks
+/// (a bullet through a wall). CCD sweeps the motion and stops at the first impact.
+/// It is meaningful only for a body the solver MOVES fast — the §11 row is offered
+/// for Dynamic only, the same rule gravity and initial velocity follow.
+///
+/// The bridge reads its presence and folds the resulting flag into `BodyDesc.ccd`,
+/// so — like the two components above — it rides the spawn recipe the world
+/// rebuilds from and a rewind to t=0 re-arms it. Config, never live state.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Ccd;
+
+impl SimComponent for Ccd {}

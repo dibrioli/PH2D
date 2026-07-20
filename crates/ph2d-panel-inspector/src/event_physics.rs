@@ -59,6 +59,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // siblings — the toggle is painted only inside the body block, and
             // dim is not a refusal.
             info.has_body.then_some(PhysicsFieldEdit::Sensor(i == 1))
+        } else if let Some(i) = ids::INSP_PHYS_CCD.iter().position(|&o| o == id) {
+            // Two segments: `0` Discrete, `1` Continuous. Dynamic-only, the same
+            // gate the painter offers it under (only a body the solver moves fast
+            // can tunnel). Dim is not a refusal, so the check lives here too.
+            (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::Ccd(i == 1))
         } else if let Some(i) = ids::INSP_PHYS_BAKE_CH.iter().position(|&o| o == id) {
             // The bake channel selector — a GLOBAL option, but painted only for a
             // Dynamic body (the only kind that bakes), so honoured under the same

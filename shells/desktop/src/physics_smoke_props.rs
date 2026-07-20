@@ -10,7 +10,7 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -238,6 +238,75 @@ impl crate::App {
              tumbles in place, the green AtRest just falls. Select each and see the Init Vel / Spin \
              rows in §11. Press Play to fire them. The arrows vanish once the sim steps — a live \
              body's velocity is no longer the authored launch."
+        );
+    }
+
+    /// **Scene 15 (W-CCD).** Two identical fast balls fired at two identical thin
+    /// walls; the only difference is one has **Continuous** collision detection and
+    /// the other **Discrete** (the default). The discrete ball is moving too fast
+    /// to be tested at a pose that overlaps the wall, so it tunnels clean THROUGH
+    /// and flies off; the continuous one is swept and stopped against the wall.
+    ///
+    /// Runs PAUSED at t=0 so the two yellow launch arrows are visible (they are
+    /// identical — the difference is not the launch). Press Play to fire.
+    pub(crate) fn physics_smoke_ccd(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // One lane: a thin, tall static wall and a small ball five metres to its
+        // left, launched right at 160 m/s. `ccd` attaches the CCD marker.
+        let mut lane = |y: f32, hue: [f32; 4], label: &str, ccd: bool| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(0.0, y)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.1, 2.0], [0.40, 0.42, 0.48, 1.0]),
+                Name::new(format!("Wall {label}")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.05,
+                        half_y: 1.0,
+                    },
+                    ..Collider::default()
+                },
+            ));
+            let ball = (
+                Transform::from_translation(Vec2::new(-5.0, y)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.3, 0.3], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.15 },
+                    ..Collider::default()
+                },
+                InitialVelocity {
+                    linvel: [160.0, 0.0],
+                    angvel: 0.0,
+                },
+            );
+            // The marker's PRESENCE is the flag — attach it only on the
+            // continuous ball, exactly as the Inspector's "Continuous" chip does.
+            if ccd {
+                world.spawn((ball, Ccd));
+            } else {
+                world.spawn(ball);
+            }
+        };
+        // Top lane: continuous — stopped by the wall. Bottom: discrete — tunnels.
+        lane(3.5, [0.5, 0.85, 0.55, 1.0], "Continuous", true);
+        lane(1.0, [0.95, 0.45, 0.25, 1.0], "Discrete", false);
+
+        eprintln!(
+            "[physics-smoke 15] Paused at t=0: press B to see the two YELLOW arrows (identical — \
+             both balls launch at 160 m/s). Press Play. The GREEN Continuous ball is swept and \
+             STOPS against its wall; the ORANGE Discrete ball is moving too fast to be caught and \
+             TUNNELS clean through its wall, flying off screen. Select each and see the \
+             Collision: Discrete | Continuous row in §11 (Dynamic-only). It is fast — the story is \
+             in the end state: one wall keeps its ball, the other does not."
         );
     }
 }

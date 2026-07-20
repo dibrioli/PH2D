@@ -61,6 +61,10 @@
 | **W7 — Sensores / triggers** | ✅ **INTEGRÁVEL** — smoke `=10` (2026-07-19) | ver §W7 | o primitivo de trigger (item B); `Collider.is_sensor`; `PROJECT_SCHEMA 26→27`; o **sinal de gameplay** fica pro Enio |
 | **Weld — `FixedJoint`** | ✅ **INTEGRÁVEL** — smoke `=11` (2026-07-19) | ver §Weld | o 5º joint (polimento C do W3); trava rígido; `PROJECT_SCHEMA 27→28` |
 | **Bake — seleção de canais** | ✅ **INTEGRÁVEL** — gate + seam (2026-07-19) | ver §BakeChannels | seletor All/Position/Rotation no §11 (polimento D); layering; transiente (não salvo) |
+| **W8 — Gravity Scale por corpo** | ✅ smoke `=12` (2026-07-19) | ver §W8 | multiplicador de gravidade por corpo; componente opcional; sem bump |
+| **Capsule — collider de personagem** | ✅ smoke `=13` (2026-07-19) | ver §Capsule | 3ª forma `ColliderShape::Capsule`; uniforme exata / não-uniforme = Stadium |
+| **W9 — Velocidade inicial por corpo** | ✅ smoke `=14` (2026-07-19) | ver §W9 | lançamento linear+angular no spawn; seta amarela; sem bump |
+| **W-CCD — Detecção contínua por corpo** | ✅ **INTEGRÁVEL** — smoke `=15` (2026-07-20) | ver §W-CCD | toggle Discrete/Continuous; corpo rápido não tunela parede fina; marcador `Ccd`; sem bump |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -2066,3 +2070,51 @@ conversão) · persistência round-trip estendida · registro 4→5 · c9 **55 c
 
 **Ids/consts:** `INSP_PHYS_LINVEL_X/Y`, `INSP_PHYS_ANGVEL` · `ph2d::physics::InitialVelocity` ·
 `InitialVelocity::REST`. `PROJECT_SCHEMA` fica **28**. Smoke `=14`.
+
+---
+
+## §W-CCD — DETECÇÃO CONTÍNUA por corpo (2026-07-20, smoke `=15`)
+
+**O sequel direto do W9.** A detecção *discreta* (o default do rapier) só testa um corpo na pose de
+FIM de cada (sub-)passo, então um corpo pequeno e rápido passa **limpo através** de geometria fina
+entre dois passos — a bala que atravessa a parede. É a colisão que o jogo **PERDE**, distinta da
+sobreposição de POUSO profundo que o sub-stepping (`DEFAULT_SUBSTEPS=4`) ataca (o corpo já está dentro
+do chão no frame em que toca — `v×dt`, que nenhum solver desfaz). **CCD varre o movimento e para no
+1º impacto.** Toggle **Discrete / Continuous** no §11 (o vocabulário do Unity).
+
+**Marcador `Ccd` — a PRESENÇA é o booleano** (idioma do `ph2d_ecs::Locked`), não o `f32`-valued do
+W8/W9: um booleano não tem valor pra carregar. Registro **5→6**, blob-key próprio, **sem bump de
+schema** (fica **28**), zero churn no `RigidBody`. Attach no Continuous, detach no Discrete (arquivo
+nunca carrega off-flag). **`BodyDesc.ccd` (recipe de spawn) É preciso:** `.ccd_enabled()` no build, e
+rida no `BodyDesc` pra o **rewind re-armar** — o gate prova (scrub a t=0 + replay, o corpo marcado
+segue parado). ~22 fixtures de `ph2d-physics/tests` ganharam o campo neutro `ccd: false`.
+
+**Dynamic-only** (só a família que o solver move rápido tunela; Static não move, Kinematic é dirigido
+por pose): row `seg_row("Collision", …)` no bloco Dynamic, ao lado de Gravity Scale / Init Vel — a
+mesma regra da gravidade. Reusa o path Sensor/Bake-channel (seg de 2 opções).
+
+**O tunelamento é ALINHAMENTO-sensível (medido, não presumido):** a 80 m/s os 4 sub-passos amostram
+uma pose EXATA dentro da parede e o corpo discreto **não** tunela; 100..=600 m/s tunelam com margem
+larga (varredura no gate). O gate usa **200 m/s** (discreto termina em x≈99, contínuo em x≈−0,07); o
+smoke usa **160 m/s** (geometria de bola maior/visível, verificada por varredura). ⚠️ Não escolha um
+número "bonito" sem varrer — a ressonância dos sub-passos morde.
+
+**Determinismo:** `enhanced-determinism` está ON, então o solver de CCD (conservative advancement /
+time-of-impact) entra na garantia cross-OS. O c9 ganhou **uma bola CCD rápida contra uma parede fina**
+(o solver de CCD DE FATO roda seu sweep e o `f32` dele entra no hash) → **57 corpos** (55 + parede +
+bola), hash re-derivado (não pinado — o CI compara os 3 OSes).
+
+**Gates:** `a_discrete_body_tunnels_..._and_a_continuous_one_does_not` (wrapper, comportamental; mut
+`.ccd_enabled(desc.ccd)`→`false` faz a bola CCD tunelar a x=99, RED) · `the_bridge_makes_a_marked_body_
+continuous_and_a_rewind_re_arms_it` (ecs; marcado para, controle sem marcador tunela, scrub re-arma;
+mut ignora marcador → RED) · `ccd_is_offered_and_committed_only_for_a_dynamic_body` (seam
+presença/ausência) · CCD no sweep de `every_segmented_option_reaches_the_bus` · persistência round-trip
+estendida (marcador sobrevive) · registro 5→6 · c9 57 corpos.
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_CCD` (group) + `INSP_PHYS_CCD: [NodeId;2]` · `ph2d::physics::Ccd`.
+`PROJECT_SCHEMA` fica **28**. Smoke `=15` (pausado — B mostra as 2 setas idênticas; Play: a bola verde
+Continuous para na parede, a laranja Discrete tunela e some).
+
+**Aberto (deliberado):** CCD em corpo **Kinematic** (o rapier suporta, mas o caso reportado/canônico é
+o projétil Dynamic; nada no smoke exercita kinematic — cerca de Chesterton, como o Weld ficou fora do
+W3).

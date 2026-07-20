@@ -252,6 +252,15 @@ pub const INSP_PHYS_SENSOR: [NodeId; 2] = [
     hash_node_id("insp_phys_sensor_solid"),
     hash_node_id("insp_phys_sensor_trigger"),
 ];
+/// §11 Continuous collision detection toggle — group id + the two options
+/// (Discrete / Continuous). A Dynamic-only two-segment control (like the Sensor
+/// toggle) so it reuses the same paint/populate/event path (W-CCD). `Continuous`
+/// makes a fast body sweep its motion instead of tunnelling through thin geometry.
+pub const INSP_LIVE_PHYSICS_CCD: NodeId = hash_node_id("insp_live_physics_ccd");
+pub const INSP_PHYS_CCD: [NodeId; 2] = [
+    hash_node_id("insp_phys_ccd_discrete"),
+    hash_node_id("insp_phys_ccd_continuous"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

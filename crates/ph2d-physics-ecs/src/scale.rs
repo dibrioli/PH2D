@@ -111,6 +111,8 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// as `gravity_scale`. World axes, not the parent's local frame: the body spawns
 /// at its WORLD pose, so its launch is a world-space vector (the convention
 /// Unity/Godot expose), and it rides the `BodyDesc` so a rewind re-arms it (W9).
+/// `ccd` is the presence of the optional [`crate::Ccd`] marker (W-CCD) — passed
+/// in for the same reason, and it rides the `BodyDesc` so a rewind re-arms it too.
 pub(crate) fn body_desc(
     rb: &RigidBody,
     col: &Collider,
@@ -118,11 +120,13 @@ pub(crate) fn body_desc(
     gravity_scale: f32,
     linvel: [f32; 2],
     angvel: f32,
+    ccd: bool,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
         linvel,
         angvel,
+        ccd,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,

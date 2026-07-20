@@ -26,6 +26,7 @@ fn desc(shape: ShapeDesc, x: f32, y: f32, body_type: RigidBodyType) -> BodyDesc 
         gravity_scale: 1.0,
         linvel: [0.0, 0.0],
         angvel: 0.0,
+        ccd: false,
     }
 }
 

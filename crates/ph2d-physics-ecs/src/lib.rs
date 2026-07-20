@@ -24,7 +24,9 @@ pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
-pub use components::{BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody};
+pub use components::{
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+};
 pub use joint::{JointKind, PhysicsJoint};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
@@ -55,6 +57,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<PhysicsJoint>("ph2d::physics::PhysicsJoint");
     reg.register::<GravityScale>("ph2d::physics::GravityScale");
     reg.register::<InitialVelocity>("ph2d::physics::InitialVelocity");
+    reg.register::<Ccd>("ph2d::physics::Ccd");
 }
 
 #[cfg(test)]
@@ -68,11 +71,12 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 5);
+        assert_eq!(reg.len(), 6);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
         assert!(reg.get_by_name("ph2d::physics::GravityScale").is_some());
         assert!(reg.get_by_name("ph2d::physics::InitialVelocity").is_some());
+        assert!(reg.get_by_name("ph2d::physics::Ccd").is_some());
     }
 }

@@ -25,7 +25,9 @@ pub(crate) fn build_physics_info(
     bake_seconds: f32,
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
-    use ph2d_physics_ecs::{Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody};
+    use ph2d_physics_ecs::{
+        Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+    };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
@@ -39,6 +41,8 @@ pub(crate) fn build_physics_info(
         .get::<InitialVelocity>(entity)
         .copied()
         .unwrap_or(InitialVelocity::REST);
+    // Optional CCD marker (W-CCD); its presence is the flag, absent = discrete.
+    let ccd = world.get::<Ccd>(entity).is_some();
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -64,6 +68,7 @@ pub(crate) fn build_physics_info(
             cap_half_height: 0.25,
             linvel: InitialVelocity::REST.linvel,
             angvel: InitialVelocity::REST.angvel,
+            ccd: false,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -106,6 +111,7 @@ pub(crate) fn build_physics_info(
         cap_half_height,
         linvel: iv.linvel,
         angvel: iv.angvel,
+        ccd,
     })
 }
 
@@ -124,12 +130,13 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+        BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
     const GRAVITY_SCALE: &str = "ph2d::physics::GravityScale";
     const INITIAL_VELOCITY: &str = "ph2d::physics::InitialVelocity";
+    const CCD: &str = "ph2d::physics::Ccd";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -252,6 +259,23 @@ pub(crate) fn apply_physics_edit(
             queue_remove(queue, registry, entity_bits, INITIAL_VELOCITY);
         } else {
             queue_set(queue, registry, entity_bits, INITIAL_VELOCITY, &iv);
+        }
+        return;
+    }
+    if let PhysicsFieldEdit::Ccd(on) = edit {
+        // A RigidBody-level flag carried by the optional `Ccd` MARKER — its
+        // presence is the boolean — so it is handled here beside gravity/velocity,
+        // not on the Collider. Gated on a live body: without one there is nothing
+        // to sweep, and this would attach an orphan marker to a plain sprite.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        // Attach on Continuous, detach on Discrete — the presence-override idiom,
+        // so a project file never carries an off-flag.
+        if on {
+            queue_set(queue, registry, entity_bits, CCD, &Ccd);
+        } else {
+            queue_remove(queue, registry, entity_bits, CCD);
         }
         return;
     }
@@ -388,7 +412,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::GravityScale(_)
         | PhysicsFieldEdit::LinvelX(_)
         | PhysicsFieldEdit::LinvelY(_)
-        | PhysicsFieldEdit::Angvel(_) => {
+        | PhysicsFieldEdit::Angvel(_)
+        | PhysicsFieldEdit::Ccd(_) => {
             unreachable!("handled above")
         }
     }

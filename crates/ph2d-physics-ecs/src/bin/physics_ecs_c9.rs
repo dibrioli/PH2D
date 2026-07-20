@@ -6,7 +6,8 @@
 //! one non-uniformly scaled ball → an ELLIPSE collider, W6, one
 //! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8, and one
 //! non-uniformly scaled CAPSULE → a STADIUM hull, and one LAUNCHED ball →
-//! an `InitialVelocity`): entities carry
+//! an `InitialVelocity`, and one CCD ball launched at a thin wall → the CCD
+//! solver's sweep, W-CCD): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -17,14 +18,14 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 55
+//! physics-ecs-c9 body_count: 57
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -156,6 +157,44 @@ fn main() {
             angvel: 2.0,
         },
         Transform::from_translation(Vec2::new(-4.0, 4.0)),
+    ));
+
+    // One CCD ball (W-CCD): launched fast at a thin static wall so the CCD SOLVER
+    // actually runs its conservative-advancement / time-of-impact sweep. That puts
+    // the CCD path on the cross-OS hash — an `f32` divergence in the sweep would
+    // split the three OSes here, the same guarantee the ellipse gives the
+    // tessellation. A body without the `Ccd` marker would tunnel and never invoke
+    // the solver, so the marker is load-bearing for this coverage. Placed far off
+    // in +x, its own lane, so it does not perturb the grid.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.02,
+                half_y: 1.0,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(20.0, 8.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.05 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [80.0, 0.0],
+            angvel: 0.0,
+        },
+        Ccd,
+        Transform::from_translation(Vec2::new(19.0, 8.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

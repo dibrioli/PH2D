@@ -159,6 +159,36 @@ dos botões e mata os hit targets. Gates: o pack (`[3,3,3,1]`, contra `1+9` da r
 um flow CORRETO reprova sempre que o resto é um (10 a 3 por linha = `3+3+3+1`). O layout estava certo e o
 gate estava errado; a afirmação virou *"toda linha menos a ÚLTIMA está cheia"*.
 
+## §5c — A FACA virou modo próprio (`PaintMode::Knife`)
+
+Enio: *"o modo Smear do Impasto (knife) deve ser único e não compartilhado com o smear dos outros tipos de
+pintura já que ele afeta o Volume do impasto. Smear com botão no painel lateral é o smear dos outros modos
+de pintura."*
+
+Rodavam como **um** `PaintMode`, logo **um slot de `BrushSpec`**: o Plow que faz de uma faca uma faca
+estava também no smear comum, e mexer num movia o outro. Agora `PaintMode::Knife` (slot 11), wire
+`"knife"`, mesmo caminho de motor e **slot próprio** ⇒ Plow/Size/Spacing são dela.
+
+⚠️ **Isto reabre um default de propósito.** Enquanto a faca ERA o Smear, `impasto_plow` passou a nascer
+`1.0` (*"a faca leva a massa"*, 2026-07-18) — a medição continua válida, mas o racional é da **FACA**.
+Separados: Knife nasce `1.0`, Smear do rail volta a `0.0` (arrasta cor, deixa o corpo onde está).
+
+⚠️ **`PaintMode::smears()` é a porta única** — todo sítio que despacha o campo de smear pergunta a ela em
+vez de testar `== Smear`. Uma *enumeração* daqueles sítios é o que apodrece quando um segundo membro entra
+na família: o motor rodaria o warp para um e não para o outro, e a faca simplesmente não faria nada.
+
+⚠️ **A Faca não tem botão no rail**, de propósito (o rail é do smear comum). Então `sync_from_mode("knife")`
+deixa o rail com **nada** aceso — o artista segura uma ferramenta que aquela tira não oferece, e acender o
+parente mais próximo seria o rail nomeando a ferramenta errada.
+
+⚠️ **Achado: eu tinha criado uma segunda porta e não tinha visto.** Meu `paint_mode_wire()` duplicava o
+**`active_paint_mode_id()` que já existia** em `stencil.rs` — a mesma pergunta, duas respostas, no mesmo
+dia em que escrevi três comentários contra isso. Deletado; o shell usa a original, que ainda é melhor
+(devolve `"eraser"`, que o rail tem).
+
+E `impasto_section_applies` virou **Paint | Knife | Sculpt** — o Smear comum saiu da lista, porque não tem
+verbo nela.
+
 ## §6 — Fora de escopo, nomeado em vez de contrabandeado
 
 **O "Affect Relief" do Deform é uma QUARTA casa.** O Enio nomeou três; esta não entrou. O Deform é

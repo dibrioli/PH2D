@@ -32,7 +32,17 @@ impl Default for PaintState {
             ..base
         };
         let mut brush_by_mode = [base; PAINT_MODE_COUNT];
-        brush_by_mode[PaintMode::Smear.slot()] = dense;
+        // ⚠️ **Plow is where the two smears part company** (Enio, 2026-07-19). While the knife WAS the
+        // Smear, `impasto_plow` was made to default to 1.0 — *"a faca leva a massa"* (2026-07-18), and
+        // the measurement behind it stands. Split apart, that rationale belongs to the **Knife**, and the
+        // ordinary rail Smear goes back to dragging the colour and leaving the body where it is: it is
+        // "o smear dos outros modos de pintura", and moving impasto volume is not its job.
+        let plain_smear = BrushSpec {
+            impasto_plow: 0.0,
+            ..dense
+        };
+        brush_by_mode[PaintMode::Smear.slot()] = plain_smear;
+        brush_by_mode[PaintMode::Knife.slot()] = dense; // …and the knife keeps the 1.0 default
         brush_by_mode[PaintMode::Blur.slot()] = dense;
         brush_by_mode[PaintMode::Clone.slot()] = dense;
         brush_by_mode[PaintMode::Sculpt.slot()] = sculpt;

@@ -67,7 +67,7 @@ impl PainterTool {
     pub fn impasto_section_applies(&self) -> bool {
         matches!(
             self.paint.paint_mode,
-            PaintMode::Paint | PaintMode::Smear | PaintMode::Sculpt
+            PaintMode::Paint | PaintMode::Knife | PaintMode::Sculpt
         ) && !self.watercolor_render_active()
             && !self.paint.eraser
     }
@@ -79,7 +79,7 @@ impl PainterTool {
     #[must_use]
     pub fn impasto_tool(&self) -> u8 {
         match self.paint.paint_mode {
-            PaintMode::Smear => IMPASTO_TOOL_KNIFE,
+            PaintMode::Knife => IMPASTO_TOOL_KNIFE,
             PaintMode::Sculpt => {
                 IMPASTO_TOOL_SCULPT_BASE + self.paint.sculpt.mode.min(SCULPT_VERB_MAX)
             }
@@ -93,7 +93,7 @@ impl PainterTool {
     /// wire, and the honest failure for a garbled one is the tool the artist started with.
     pub fn set_impasto_tool(&mut self, tool: u8) {
         match tool {
-            IMPASTO_TOOL_KNIFE => self.enter_mode(PaintMode::Smear, "smear"),
+            IMPASTO_TOOL_KNIFE => self.enter_mode(PaintMode::Knife, "knife"),
             t if (IMPASTO_TOOL_SCULPT_BASE..IMPASTO_TOOL_COUNT).contains(&t) => {
                 // Order matters: enter the mode first, so `set_sculpt_mode`'s re-stamp of any open shape
                 // happens with the sculpt brush slot already loaded.
@@ -101,32 +101,6 @@ impl PainterTool {
                 self.set_sculpt_mode(t - IMPASTO_TOOL_SCULPT_BASE);
             }
             _ => self.enter_mode(PaintMode::Paint, "brush"),
-        }
-    }
-
-    /// The current paint mode as the **wire string** [`Self::set_paint_tool_mode`] parses.
-    ///
-    /// Exists so the left rail's radio can be *derived* from the mode instead of written by whoever was
-    /// clicked last: the Impasto TOOL list can now change the mode too, and two writers of one radio
-    /// disagree the moment the artist uses the one the rail does not know about. The rail's
-    /// `sync_from_mode` is the inverse of its own `push_paint_mode`, and both speak these strings — so
-    /// there is one vocabulary, not a third spelling to drift.
-    ///
-    /// ⚠️ Keep in lock-step with the parser in `set_paint_tool_mode`. `Fill` maps to `"fill"`, which that
-    /// parser folds into `Paint`; the rail leaves its radio alone for it (the Bucket is drag-activated).
-    #[must_use]
-    pub fn paint_mode_wire(&self) -> &'static str {
-        match self.paint.paint_mode {
-            PaintMode::Paint => "brush",
-            PaintMode::Smear => "smear",
-            PaintMode::Blur => "blur",
-            PaintMode::Clone => "clone",
-            PaintMode::Mask => "mask",
-            PaintMode::Inpaint => "inpaint",
-            PaintMode::Fill => "fill",
-            PaintMode::Selection => "selection",
-            PaintMode::Deform => "deform",
-            PaintMode::Sculpt => "sculpt",
         }
     }
 

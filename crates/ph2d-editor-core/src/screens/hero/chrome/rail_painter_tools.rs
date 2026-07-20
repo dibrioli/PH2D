@@ -84,7 +84,16 @@ pub fn sync_from_mode(store: &mut crate::interaction::WidgetStore, mode: &str) {
         "selection" => ids::PAINTER_RAIL_SELECTION,
         "deform" => ids::PAINTER_RAIL_DEFORM,
         "sculpt" => ids::PAINTER_RAIL_SCULPT,
+        "eraser" => ids::PAINTER_RAIL_ERASER,
         "brush" => ids::PAINTER_RAIL_BRUSH,
+        // ⚠️ The **Knife** deliberately has no rail button — the rail's Smear is the plain one, and the
+        // knife is picked from the Impasto TOOL list (Enio, 2026-07-19). So the honest rail for it is a
+        // rail with NOTHING pressed: the artist is holding a tool this strip does not offer, and lighting
+        // up its nearest relative would be the rail naming the wrong tool.
+        "knife" => {
+            set_radio(store, &ids::PAINTER_RAIL_TOOL_IDS, NodeId(0));
+            return;
+        }
         _ => return,
     };
     // Only write when it actually moved: `set_radio` walks the whole group, and the Shapes / Mask group

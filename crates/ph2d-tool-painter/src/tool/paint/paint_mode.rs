@@ -43,13 +43,39 @@ pub(crate) enum PaintMode {
     /// falloff, Shape and Grain reach it for free — and keep reaching it when someone changes them. A
     /// spatula with Grain is a textured spatula, and it costs nothing. See [`super::sculpt`].
     Sculpt,
+    /// **Knife** — the palette knife: a Smear that carries the impasto BODY, not just the colour.
+    ///
+    /// ⚠️ A mode of its own, and that is the whole point (Enio, 2026-07-19: *"o modo Smear do Impasto
+    /// (knife) deve ser único e não compartilhado com o smear dos outros tipos de pintura já que ele
+    /// afeta o Volume do impasto. Smear com botão no painel lateral é o smear dos outros modos de
+    /// pintura."*). It ran as [`PaintMode::Smear`] until then, which meant the two shared one
+    /// `BrushSpec` slot — so the Plow that makes a knife a knife was also on the ordinary smear, and
+    /// dialling either one moved the other.
+    ///
+    /// Same engine path as the Smear (ask [`PaintMode::smears`], never a bare `== Smear`); different
+    /// slot, so Plow / Size / Spacing are its own. It has **no left-rail button**: the rail's Smear is
+    /// the plain one, and the Knife is picked from the Impasto TOOL list, which is where the tools that
+    /// act on the paint's body live.
+    Knife,
 }
 
 /// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
-pub(crate) const PAINT_MODE_COUNT: usize = 10;
+pub(crate) const PAINT_MODE_COUNT: usize = 11;
 
 impl PaintMode {
+    /// Whether this mode drags canvas content along the stroke — the **smear field**.
+    ///
+    /// The ordinary [`PaintMode::Smear`] and the [`PaintMode::Knife`] are the same operation with
+    /// different settings: the knife's Plow carries the impasto body along with the pigment. Every site
+    /// that dispatches the smear asks HERE rather than testing `== Smear`, because an enumeration of
+    /// those sites is exactly what rots when a second member joins the family — the engine would run the
+    /// warp for one and not the other, and the knife would simply do nothing.
+    #[must_use]
+    pub(crate) fn smears(self) -> bool {
+        matches!(self, PaintMode::Smear | PaintMode::Knife)
+    }
+
     /// This mode's index into the per-mode brush-settings array (`0..PAINT_MODE_COUNT`). Each tool keeps
     /// its own [`ph2d_painter_brush::BrushSpec`] here when settings are NOT linked across tools.
     pub(crate) fn slot(self) -> usize {
@@ -64,6 +90,7 @@ impl PaintMode {
             PaintMode::Selection => 7,
             PaintMode::Deform => 8,
             PaintMode::Sculpt => 9,
+            PaintMode::Knife => 10,
         }
     }
 }

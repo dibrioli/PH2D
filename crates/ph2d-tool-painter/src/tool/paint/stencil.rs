@@ -359,6 +359,7 @@ impl PainterTool {
             "selection" => PaintMode::Selection,
             "deform" => PaintMode::Deform,
             "sculpt" => PaintMode::Sculpt,
+            "knife" => PaintMode::Knife,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -372,7 +373,7 @@ impl PainterTool {
         // Leaving the Smear ends its warp session for the same reason: a `disp` and a frozen `pre`
         // that belong to one tool must never be read by another, and `pre` describes a canvas that
         // the next tool's edits will move out from under it.
-        if self.paint.paint_mode == PaintMode::Smear && new_mode != PaintMode::Smear {
+        if self.paint.paint_mode.smears() && !new_mode.smears() {
             self.end_warp_session();
         }
         if self.paint.paint_mode == PaintMode::Deform && new_mode != PaintMode::Deform {
@@ -434,6 +435,7 @@ impl PainterTool {
             PaintMode::Selection => "selection",
             PaintMode::Deform => "deform",
             PaintMode::Sculpt => "sculpt",
+            PaintMode::Knife => "knife",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",
         }
@@ -443,7 +445,7 @@ impl PainterTool {
     /// incompatible brush controls (colour / blend / ramps / eraser) hide.
     #[must_use]
     pub fn is_smear_mode(&self) -> bool {
-        matches!(self.paint.paint_mode, super::PaintMode::Smear)
+        self.paint.paint_mode.smears()
     }
 
     /// Whether the active paint operation is **Blur** — the panel hides the same colour-family controls

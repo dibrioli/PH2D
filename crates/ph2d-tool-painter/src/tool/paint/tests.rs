@@ -17447,16 +17447,20 @@ fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
         assert!(!t.brush_settings().impasto_applies);
     }
 
-    // …but the SMEAR is the one exception the matrix always named: it deposits nothing and yet it MOVES
-    // paint, so it gets the knife — `Plow`, and nothing else. (Before this, the Smear dragged the colour
-    // and left the body behind: thick paint was unworkable once it landed.)
-    t.paint.paint_mode = PaintMode::Smear;
+    // …the exception the matrix always named is the one that deposits nothing and yet MOVES paint, so it
+    // gets the knife — `Plow`, and nothing else. ⚠️ **That is the KNIFE, not the Smear** (Enio,
+    // 2026-07-19: *"o modo Smear do Impasto (knife) deve ser único e não compartilhado com o smear dos
+    // outros tipos de pintura … Smear com botão no painel lateral é o smear dos outros modos de
+    // pintura"*). They were one mode until then, which meant one `BrushSpec` slot and one Plow between
+    // them; the plain smear now drags the colour and leaves the body where it is.
+    t.paint.paint_mode = PaintMode::Knife;
     assert!(
         t.impasto_plow_applies() && t.brush_settings().impasto_plow_applies,
-        "the Smear has a knife"
+        "the Knife has a knife"
     );
     for mode in [
         PaintMode::Paint,
+        PaintMode::Smear,
         PaintMode::Blur,
         PaintMode::Clone,
         PaintMode::Mask,
@@ -17466,13 +17470,13 @@ fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
         t.paint.paint_mode = mode;
         assert!(
             !t.impasto_plow_applies(),
-            "…and only the Smear does — {mode:?} has no paint to displace"
+            "…and only the Knife does — {mode:?} has no impasto volume to displace"
         );
         assert!(!t.brush_settings().impasto_plow_applies);
     }
     // The two are mutually exclusive by construction: a mode never shows both cards, so the artist is
     // never offered a Depth they cannot deposit nor a knife with nothing to push.
-    for mode in [PaintMode::Paint, PaintMode::Smear] {
+    for mode in [PaintMode::Paint, PaintMode::Knife] {
         t.paint.paint_mode = mode;
         assert!(
             t.impasto_applies() != t.impasto_plow_applies(),

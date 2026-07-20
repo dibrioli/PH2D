@@ -363,7 +363,7 @@ pub(super) fn dispatch(
             // holding?", with the wrong one on screen. Self-gating: writes only when it actually moved.
             ph2d_editor::screens::hero::chrome::sync_painter_rail_to_mode(
                 &mut hero.store,
-                painter.paint_mode_wire(),
+                painter.active_paint_mode_id(),
             );
             // (Eyedropper) When the on-canvas colour pick completes (armed → not armed), snap the tool
             // rail radio back to Brush — the pick is a MOMENTARY tool, so its button stops looking

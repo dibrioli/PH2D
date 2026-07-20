@@ -27,7 +27,7 @@ fn viewport() -> Rect {
 
 /// The three modes that act on the paint's body, by the wire string the tool's own router parses — so
 /// the fixture cannot drift from the product.
-const RELIEF_MODES: [&str; 3] = ["brush", "smear", "sculpt"];
+const RELIEF_MODES: [&str; 3] = ["brush", "knife", "sculpt"];
 
 /// A painter in `mode`, with the panel's snapshot published from it exactly as the shell does each frame.
 fn tool_in(mode: &str) -> PainterTool {
@@ -189,6 +189,51 @@ fn enabling_impasto_reaches_every_tool_not_just_the_one_in_hand() {
     }
 }
 
+/// **The Knife and the rail's Smear are two tools, and they disagree about the VOLUME.**
+///
+/// Enio, 2026-07-19: *"o modo Smear do Impasto (knife) deve ser único e não compartilhado com o smear dos
+/// outros tipos de pintura já que ele afeta o Volume do impasto. Smear com botão no painel lateral é o
+/// smear dos outros modos de pintura."*
+///
+/// They ran as one `PaintMode` until then, which meant one `BrushSpec` slot: the **Plow** that makes a
+/// knife a knife was also on the ordinary smear, and dialling either moved the other. The separation is
+/// only real if their settings are, so that is what this asserts — and `Plow` is the number the whole
+/// distinction rests on. (While the knife *was* the Smear, `impasto_plow` was defaulted to `1.0` — *"a
+/// faca leva a massa"*, and that measurement stands; split apart it belongs to the Knife, and the plain
+/// smear goes back to dragging colour and leaving the body where it is.)
+///
+/// **Mutation that must bleed:** map `IMPASTO_TOOL_KNIFE` back to `PaintMode::Smear`. The panel looks
+/// identical and the two tools silently share one set of settings again.
+#[test]
+fn the_knife_and_the_plain_smear_are_two_tools_with_two_plows() {
+    let knife = tool_in("knife").brush_settings();
+    let smear = tool_in("smear").brush_settings();
+    assert!(
+        knife.impasto_plow > 0.0,
+        "the Knife carries no body (Plow {}) — that IS the knife",
+        knife.impasto_plow
+    );
+    assert_eq!(
+        smear.impasto_plow, 0.0,
+        "the rail's Smear is ploughing the impasto. It is the smear of the OTHER painting modes: it \
+         drags the colour and leaves the body where it is."
+    );
+    // …and editing one must not reach the other: separate modes mean separate brush slots.
+    let mut tool = tool_in("knife");
+    tool.set_brush_impasto_plow(0.25);
+    assert!(
+        (tool.brush_settings().impasto_plow - 0.25).abs() < 1e-6,
+        "fixture: the Knife's Plow took the edit"
+    );
+    tool.set_paint_tool_mode("smear");
+    assert_eq!(
+        tool.brush_settings().impasto_plow,
+        0.0,
+        "dialling the Knife's Plow moved the plain Smear's too — they are sharing a slot, which is the \
+         thing that was supposed to stop"
+    );
+}
+
 /// **All ten tools are on screen, and a POINTER can pick every one of them.**
 ///
 /// ⚠️ Asserting a hit rect is not enough, and the first draft of this gate made exactly that mistake: it
@@ -294,7 +339,7 @@ fn a_tool_shows_its_own_knobs_and_no_others() {
     );
 
     // Knife: Plow yes, Depth no.
-    let tool = tool_in("smear");
+    let tool = tool_in("knife");
     let (_host, _st, rects) = painted(&tool);
     assert!(
         rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW).is_some(),
@@ -343,7 +388,7 @@ fn material_is_the_deposits_and_lighting_is_everyones() {
         rect_of(&rects, core_ids::PAINTER_IMPASTO_SHINE).is_some(),
         "fixture: the Deposit should show the Material card (else the negatives below are vacuous)"
     );
-    for mode in ["smear", "sculpt"] {
+    for mode in ["knife", "sculpt"] {
         let tool = tool_in(mode);
         let (_host, _st, rects) = painted(&tool);
         assert!(
@@ -364,7 +409,9 @@ fn material_is_the_deposits_and_lighting_is_everyones() {
 /// only half-asserted, and widening the predicate to *every* mode would pass every gate above.
 #[test]
 fn the_section_does_not_follow_modes_that_have_no_relief_verb() {
-    for mode in ["blur", "clone", "mask", "inpaint"] {
+    // ⚠️ the plain **Smear** is on this list now: since the Knife became its own mode it is the
+    // smear "dos outros modos de pintura" and has no operation on the paint's body.
+    for mode in ["smear", "blur", "clone", "mask", "inpaint"] {
         let tool = tool_in(mode);
         let (_host, _st, rects) = painted(&tool);
         assert!(

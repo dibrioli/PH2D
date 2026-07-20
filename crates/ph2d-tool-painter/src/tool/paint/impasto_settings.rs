@@ -199,7 +199,7 @@ impl PainterTool {
     /// no Depth to set, because nothing is being laid down.
     #[must_use]
     pub fn impasto_plow_applies(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::Smear)
+        matches!(self.paint.paint_mode, PaintMode::Knife)
             && !self.watercolor_render_active()
             && !self.paint.eraser
     }
@@ -221,7 +221,7 @@ impl PainterTool {
     pub fn toggle_brush_impasto(&mut self) {
         self.paint.brush.impasto = !self.paint.brush.impasto;
         let on = self.paint.brush.impasto;
-        for mode in [PaintMode::Paint, PaintMode::Smear, PaintMode::Sculpt] {
+        for mode in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
             self.paint.brush_by_mode[mode.slot()].impasto = on;
         }
         // Impasto's default falloff is **Sphere**, not the brush's factory Smooth (Enio 2026-07-17): the

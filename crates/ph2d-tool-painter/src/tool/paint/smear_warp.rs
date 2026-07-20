@@ -181,7 +181,7 @@ impl PainterTool {
     /// Close the knife's per-stroke session. Called from `close_stroke`; a no-op in every other mode
     /// because only the Smear opens a session there.
     pub(super) fn end_smear_session(&mut self) {
-        if matches!(self.paint.paint_mode, super::PaintMode::Smear) {
+        if self.paint.paint_mode.smears() {
             self.end_warp_session();
         }
     }

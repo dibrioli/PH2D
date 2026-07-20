@@ -125,7 +125,7 @@ impl PainterTool {
             self.stamp_dabs_composite(dabs);
             return;
         }
-        if matches!(self.paint.paint_mode, PaintMode::Smear) {
+        if self.paint.paint_mode.smears() {
             let (w, h) = self.source_size;
             self.stamp_dabs_smear(dabs, w, h);
             return;

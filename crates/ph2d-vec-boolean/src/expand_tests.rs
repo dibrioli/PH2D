@@ -238,6 +238,30 @@ fn the_join_reaches_the_inner_contour() {
     );
 }
 
+/// **UM CONTORNO PASSANDO POR CIMA DO OUTRO TROCA DE PAPEL — NÃO SOME** (Enio, `2026-07-20`:
+/// *"em vez de desaparecer, redesenhar dessa vez com os contornos trocados"*). Crescer o furo
+/// (`Inner`) ALÉM da borda de fora não pode dar vazio: o `EvenOdd` faz o que era buraco virar
+/// sólido (a borda interna vira a nova externa). A subtração sequencial `fora − furo` ia a
+/// VAZIO exatamente aqui — a forma "sumia"/"pulava".
+///
+/// ⚠️ O oráculo é **área não-nula APÓS o cruzamento**. A mutação que reverte para a subtração
+/// (`fora − furo`) devolve vazio e o gate sangra.
+#[test]
+fn a_contour_crossing_the_other_swaps_instead_of_vanishing() {
+    // donut 20/16 (parede 2). Inner +3 ⇒ o furo cresce a ~22 > a borda de 20 ⇒ CRUZA.
+    let out = offset_path(&donut(20.0, 16.0), 3.0, LineJoin::Round, OffsetSide::Inner);
+    let a = total_area(&out);
+    assert!(
+        !out.is_empty() && a > 10.0,
+        "o furo cruzou a borda e a forma SUMIU (área {a}) em vez de trocar os contornos"
+    );
+    // …e a forma trocada continua sendo um anel (o que era furo agora é a borda de fora).
+    assert!(
+        out.iter().any(|p| !p.subpaths.is_empty()),
+        "a forma trocada devia ser um anel (compound), não um disco sólido"
+    );
+}
+
 /// **Encolher um furo além dele mesmo o FECHA.** `Inner` com `d` negativo aperta o furo; passar
 /// da metade dele deixa a forma sólida — nada de furo invertido.
 #[test]

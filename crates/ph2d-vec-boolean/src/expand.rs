@@ -563,23 +563,31 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
         let Some((outer, holes)) = group.split_first() else {
             continue;
         };
-        let Some(mut group_r) = loop_region(outer, side.hits_outer(), d, join) else {
+        let Some(outer_r) = loop_region(outer, side.hits_outer(), d, join).filter(|r| !r.is_empty())
+        else {
             continue; // o contorno de fora sumiu ao encolher — o grupo inteiro sai
         };
+        // ⚠️ **UM contorno passando por cima do outro TROCA de papel — não some.** Junta TODOS
+        // os contornos (o de fora + cada furo, offsetados ou não) e deixa o SWEEP decidir a
+        // topologia por **EvenOdd**: um ponto está dentro sse um número ÍMPAR de contornos o
+        // cerca. É o que faz o furo, ao crescer ALÉM da borda, virar o novo contorno de fora
+        // (o que era buraco vira sólido — os "contornos trocados" que o Enio pediu), em vez de
+        // fragmentar e sumir. A subtração sequencial `fora − furos` quebrava exatamente aqui: a
+        // diferença ia a vazio e a forma "pulava"/sumia. EvenOdd é livre de orientação, então
+        // os contornos de offsets independentes compõem sem se cancelar.
+        let mut all = outer_r.bez();
         for hole in holes {
             if let Some(hr) = loop_region(hole, side.hits_inner(), d, join).filter(|r| !r.is_empty())
-                && let Some(r) = group_r.combine(&hr, BinaryOp::Difference)
             {
-                group_r = r;
+                all.extend(hr.bez().iter());
             }
         }
-        if group_r.is_empty() {
-            continue;
+        if let Some(group_r) = Region::of(&all, LsFillRule::EvenOdd).filter(|r| !r.is_empty()) {
+            acc = Some(match acc {
+                None => group_r,
+                Some(a) => a.combine(&group_r, BinaryOp::Union).unwrap_or(a),
+            });
         }
-        acc = Some(match acc {
-            None => group_r,
-            Some(a) => a.combine(&group_r, BinaryOp::Union).unwrap_or(a),
-        });
     }
     match acc {
         Some(acc) => drop_slivers(acc.into_paths(path)),

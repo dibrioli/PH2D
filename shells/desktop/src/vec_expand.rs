@@ -173,11 +173,18 @@ pub(crate) struct OffsetSession {
     pre: VecScene,
     /// Os paths selecionados no grab (a re-seleção após restaurar).
     sources: Vec<VecPathId>,
+    /// ⚠️ **As poses CONGELADAS no grab.** O preview churna a cena (remove a fonte, insere o
+    /// resultado) a cada frame, então o `vec_entities::sync` do frame seguinte DESPAWNA a
+    /// entidade da fonte — e com ela some a pose dela do mapa vivo. Reconstruir os xforms do
+    /// mapa churnado devolveria `Xform::IDENTITY` para a fonte, e o offset nasceria na origem:
+    /// a forma **pulava de lugar**. Congelar a pose no grab a mantém estável o arrasto inteiro.
+    xforms: VecXforms,
 }
 
 impl OffsetSession {
     /// Abre a sessão no grab do slider — `None` se não há forma selecionada (nada a prever).
-    pub(crate) fn begin(scene: &VecScene, pen: &PenTool) -> Option<Self> {
+    /// `xforms` são as poses no instante do grab, congeladas (ver o campo).
+    pub(crate) fn begin(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) -> Option<Self> {
         let sources: Vec<VecPathId> = pen.selected_paths().to_vec();
         sources
             .iter()
@@ -185,25 +192,20 @@ impl OffsetSession {
             .then(|| Self {
                 pre: scene.clone(),
                 sources,
+                xforms: xforms.clone(),
             })
     }
 
-    /// Restaura a cena do grab e re-offseta ao `d` atual (junção/lado lidos do painel). Sem
-    /// undo — o diff global fecha o passo ao soltar.
-    pub(crate) fn preview(
-        &self,
-        scene: &mut VecScene,
-        pen: &mut PenTool,
-        xforms: &VecXforms,
-        d: f64,
-    ) {
+    /// Restaura a cena do grab e re-offseta ao `d` atual (junção/lado lidos do painel), com as
+    /// poses CONGELADAS. Sem undo — o diff global fecha o passo ao soltar.
+    pub(crate) fn preview(&self, scene: &mut VecScene, pen: &mut PenTool, d: f64) {
         scene.clone_from(&self.pre);
         pen.select_many(&self.sources);
         let cmd = Expand::Offset {
             join: offset_join(),
             side: offset_side(),
         };
-        expand_selection(scene, pen, xforms, cmd, d);
+        expand_selection(scene, pen, &self.xforms, cmd, d);
     }
 }
 

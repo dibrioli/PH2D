@@ -252,12 +252,12 @@ fn an_offset_session_needs_a_selection() {
     scene.push_path(square(10.0));
     let empty = PenTool::default();
     assert!(
-        OffsetSession::begin(&scene, &empty).is_none(),
+        OffsetSession::begin(&scene, &empty, &VecXforms::default()).is_none(),
         "sem seleção não há sessão"
     );
-    let (scene, _h, pen, _x) = scene_with(vec![square(10.0)]);
+    let (scene, _h, pen, x) = scene_with(vec![square(10.0)]);
     assert!(
-        OffsetSession::begin(&scene, &pen).is_some(),
+        OffsetSession::begin(&scene, &pen, &x).is_some(),
         "com seleção há sessão"
     );
 }
@@ -269,16 +269,16 @@ fn an_offset_session_needs_a_selection() {
 #[test]
 fn the_live_offset_is_not_cumulative() {
     let (mut scene, _hist, mut pen, xf) = scene_with(vec![square(10.0)]);
-    let sess = OffsetSession::begin(&scene, &pen).expect("há seleção");
+    let sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
 
     let area = |scene: &VecScene| ph2d_vec_boolean::area(&scene.paths()[0]);
 
     // d=2 ⇒ quadrado 14 ⇒ área 196.
-    sess.preview(&mut scene, &mut pen, &xf, 2.0);
+    sess.preview(&mut scene, &mut pen, 2.0);
     assert!((area(&scene) - 196.0).abs() < 1.0, "d=2 → 14² ({})", area(&scene));
 
     // d=2 DE NOVO ⇒ ainda 196 (não 18²=324, que seria offsetar o resultado anterior).
-    sess.preview(&mut scene, &mut pen, &xf, 2.0);
+    sess.preview(&mut scene, &mut pen, 2.0);
     assert!(
         (area(&scene) - 196.0).abs() < 1.0,
         "o preview repetido compôs — a sessão não restaurou ({})",
@@ -286,11 +286,11 @@ fn the_live_offset_is_not_cumulative() {
     );
 
     // d=3 ⇒ 16²=256 (do ORIGINAL de 10, não do 14 do passo anterior).
-    sess.preview(&mut scene, &mut pen, &xf, 3.0);
+    sess.preview(&mut scene, &mut pen, 3.0);
     assert!((area(&scene) - 256.0).abs() < 1.0, "d=3 → 16² ({})", area(&scene));
 
     // d=0 ⇒ volta ao original (offset zero = cena do grab restaurada).
-    sess.preview(&mut scene, &mut pen, &xf, 0.0);
+    sess.preview(&mut scene, &mut pen, 0.0);
     assert!(
         (area(&scene) - 100.0).abs() < 1e-6,
         "d=0 devia devolver o original de 10² ({})",
@@ -310,8 +310,8 @@ fn the_live_preview_matches_the_committed_offset() {
 
     // Caminho ao vivo, ao mesmo `d`.
     let (mut live, _h, mut pen_l, _x) = scene_with(vec![square(10.0)]);
-    let sess = OffsetSession::begin(&live, &pen_l).unwrap();
-    sess.preview(&mut live, &mut pen_l, &xf, 2.5);
+    let sess = OffsetSession::begin(&live, &pen_l, &xf).unwrap();
+    sess.preview(&mut live, &mut pen_l, 2.5);
 
     assert_eq!(baked.paths().len(), live.paths().len());
     let (a, b) = (
@@ -320,3 +320,5 @@ fn the_live_preview_matches_the_committed_offset() {
     );
     assert!((a - b).abs() < 1e-6, "o botão deu {a}, o arrasto deu {b}");
 }
+
+

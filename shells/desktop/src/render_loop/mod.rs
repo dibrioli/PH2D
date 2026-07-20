@@ -2775,18 +2775,19 @@ impl crate::App {
                     });
                 if offset_grabbed {
                     if self.vec_offset_session.is_none() {
+                        // As poses são construídas UMA vez (no grab) e congeladas na sessão — o
+                        // churn do preview despawnaria as fontes e perderia a pose.
+                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
                         self.vec_offset_session =
-                            crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen);
+                            crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen, &xf);
                     }
                     if let Some(sess) = self.vec_offset_session.take() {
-                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                        sess.preview(vec_scene, &mut self.vec_pen, &xf, live_d);
+                        sess.preview(vec_scene, &mut self.vec_pen, live_d);
                         self.vec_offset_session = Some(sess);
                     }
                 } else if let Some(sess) = self.vec_offset_session.take() {
                     // Soltou: o preview final ao `d` de soltura + recentra o slider.
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                    sess.preview(vec_scene, &mut self.vec_pen, &xf, live_d);
+                    sess.preview(vec_scene, &mut self.vec_pen, live_d);
                     hero.store.set_slider_value(
                         ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
                         ph2d_tool_vector::params::offset_to_slider(0.0),

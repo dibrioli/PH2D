@@ -71,22 +71,32 @@ pub(super) fn sample_bilinear_grad(src: &[f32], w: usize, h: usize, fx: f32, fy:
 
 /// Sub-texel offsets of the edge-reconstruction grid (3×3, spanning ±0.667 texel). Wider than the
 /// unit ±0.5 box on purpose: the watercolor silhouette's HARDENED coverage crosses `[e0, e1]` in well
-/// under one texel (`feather` rim + `smoothstep`), so a unit box barely reaches across it — a ~1.3-texel
-/// footprint reconstructs the sub-texel step as a soft ramp of about the plain painter's edge width.
-/// `LITERAL-PX-OK`: AA reconstruction geometry.
+/// under one texel on a thin stroke (`feather` rim + `smoothstep`), so a unit box barely reaches across
+/// it — a ~1.3-texel footprint reconstructs the sub-texel step as a soft ramp of about the plain
+/// painter's edge width. `LITERAL-PX-OK`: AA reconstruction geometry.
 const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
 
-/// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)`, **anti-aliased where
-/// the edge is steep** (Enio 2026-07-20, "borda dura pixelada" em traço fino). A thin stroke's silhouette
-/// crosses the hardening window `[e0, e1]` in well under one texel, so a single sample snaps the boundary
-/// to a binary, stair-stepped edge; averaging the hardened coverage over the [`AA_SS`] sub-texel grid
-/// reconstructs it as a soft ramp, giving the boundary texels their true fractional area — real 2-D
-/// anti-aliasing (halo-free: nothing widens the window, so a fully-outside texel stays exactly 0). The
-/// grid runs **only** where the field is steep (`grad·2 > band`): a thick stroke's shallow rim — and
-/// every texel of a thick stroke's interior — takes the single sample and is **byte-identical** to the
-/// old `smoothstep(e0, e1, sample_bilinear(…))`.
+/// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)` **plus the screen-space
+/// AA alpha the composite must apply to the finished pixel** (Enio 2026-07-20, "borda dura pixelada" em
+/// traço fino). Returns `(cw, aa_alpha)`.
+///
+/// Two findings shaped this (both measured on rendered pixels):
+/// - A thin stroke's silhouette crosses the hardening window `[e0, e1]` in ~a texel, and the OPTICAL
+///   model downstream is exponential — the edge-darkening fringe + Beer–Lambert saturate to full dark
+///   at small `cw`, so even a 2-texel coverage ramp renders as a binary cliff (radius 10: `255, 190, 1`).
+///   Feeding an anti-aliased `cw` into the density is therefore NOT anti-aliasing: the exponential eats
+///   the fraction. The fraction must be applied as **linear alpha on the finished pixel** — shading may
+///   saturate all it wants; the blend against the paper is linear in coverage (the classic rasterizer
+///   split of shape × shading).
+/// - The fraction itself needs sub-texel reconstruction ([`AA_SS`] supersampling): on very thin strokes
+///   the hardened coverage jumps 0→1 inside one texel, so a single sample has no fraction to offer.
+///
+/// The whole thing is gated on the coverage steepness (`grad·4 > band`, ramping in over one octave):
+/// a thick stroke's shallow rim — and every interior texel — returns `(single_sample, 1.0)` and is
+/// **byte-identical** to the old `smoothstep(e0, e1, sample_bilinear(…))` with no alpha applied. It is
+/// also halo-free: nothing widens the window, so a fully-outside texel stays exactly `(0, …)` = paper.
 #[inline]
-pub(super) fn aa_hardened_coverage(
+pub(super) fn aa_coverage(
     src: &[f32],
     w: usize,
     h: usize,
@@ -94,19 +104,33 @@ pub(super) fn aa_hardened_coverage(
     sy: f32,
     e0: f32,
     e1: f32,
-) -> f32 {
+) -> (f32, f32) {
     let (val, grad) = sample_bilinear_grad(src, w, h, sx, sy);
-    // Shallow rim (already ≥ ~2 texels of transition): one sample, byte-identical to the old path.
-    if grad * 2.0 <= e1 - e0 {
-        return smoothstep(e0, e1, val);
+    let single = smoothstep(e0, e1, val);
+    let band = e1 - e0;
+    // Shallow rim (transition ≥ ~4 texels): one sample, no alpha — byte-identical to the old path.
+    if grad * 4.0 <= band {
+        return (single, 1.0);
     }
     let mut acc = 0.0;
+    let mut mx = single;
     for &oy in &AA_SS {
         for &ox in &AA_SS {
-            acc += smoothstep(e0, e1, sample_bilinear(src, w, h, sx + ox, sy + oy));
+            let c = smoothstep(e0, e1, sample_bilinear(src, w, h, sx + ox, sy + oy));
+            acc += c;
+            mx = mx.max(c);
         }
     }
-    acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32)
+    let ss = acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32);
+    // The rasterizer split, shape × shading: the SHADING is what the covered fraction of the texel
+    // contains — the wash a little deeper in (the MAX subsample; using the centre sample double-fades:
+    // a rim texel then renders the diluted light wash AND gets alpha-faded, while its inner neighbour
+    // is already optically saturated — the cliff just moves over by one texel). The SHAPE is the
+    // fractional area (the MEAN subsample), applied as final linear alpha.
+    // Strength ramps 0→1 over one octave of steepness past the gate, so a stroke whose radius sits
+    // at the boundary gets a partial effect instead of a per-texel on/off seam.
+    let s = (grad * 4.0 / band - 1.0).min(1.0);
+    (single + (mx - single) * s, 1.0 - (1.0 - ss) * s)
 }
 
 /// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening

@@ -369,12 +369,12 @@ impl PainterTool {
                     } else {
                         (lx, ly)
                     };
-                    // Screen-space AA (Enio 2026-07-20, "borda dura pixelada" em traço fino): a thin
-                    // stroke's silhouette crosses the hardening window in under one texel and snaps to a
-                    // stair-stepped edge; supersample the hardened coverage where the rim is steep so the
-                    // boundary texels get their true fractional area. A thick stroke's shallow rim (and
-                    // every interior texel) takes the single-sample path ⇒ byte-identical (see `aa_hardened_coverage`).
-                    let cw = aa_hardened_coverage(&cov_src, rw, rh, sx, sy, SS0, SS1);
+                    // Screen-space AA (Enio 2026-07-20, "borda dura pixelada" em traço fino): where the
+                    // silhouette is steep, `aa_alpha` < 1 carries the texel's fractional coverage and the
+                    // FINISHED pixel is lerped toward the base by it (see `aa_coverage` for why the
+                    // fraction must be final linear alpha — the optical model saturates it away as
+                    // density input). A thick stroke's shallow rim ⇒ `(single sample, 1.0)` ⇒ byte-identical.
+                    let (cw, aa_alpha) = aa_coverage(&cov_src, rw, rh, sx, sy, SS0, SS1);
                     // EDGE-2 (backrun): the WATER channel at a SERRATED coord ([`water_at`]) — a
                     // water pool is live paint-surface even where the PIGMENT coverage is zero
                     // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.
@@ -637,6 +637,20 @@ impl PainterTool {
                                 (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * mix_amt) as u8;
                         }
                     }
+                    // Screen-space AA alpha (`aa_coverage` — 1.0 everywhere but a thin stroke's steep
+                    // rim): composite the wash's target APPEARANCE over the base-over-ground appearance
+                    // by the texel's fractional silhouette coverage, in linear light and BEFORE the
+                    // un-premultiply — a byte-level lerp on the stored straight-alpha pixels broke the
+                    // flatten equality on a transparent layer (the stored L is not an appearance).
+                    // Linear on the appearance, so the fringe/Beer–Lambert saturation can't eat it.
+                    if aa_alpha < 1.0 {
+                        for c in 0..3 {
+                            let app = lut.s2l[rgb[c] as usize];
+                            let base_app = lut.s2l[base[gi + c] as usize] * ab
+                                + ground_lin[c] * (1.0 - ab);
+                            rgb[c] = lut.l2s_byte(app * aa_alpha + base_app * (1.0 - aa_alpha));
+                        }
+                    }
                     // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`), not the
                     // luminance film: the un-premultiply below needs `a ≥ 1 − T_c` on EVERY channel or
                     // the solve leaves gamut and clamps (a red wash's G/B absorb far more than the
@@ -645,7 +659,9 @@ impl PainterTool {
                     // hidden substrate with the exact alpha its appearance needs (`a_body`, 0 when body
                     // off) so a light opaque pigment un-premultiplies to its own colour, not a clamped
                     // ghost; `a_body = 0` ⇒ `cov_a = 1 − t_min` unchanged (byte-identical).
-                    let cov_a = (1.0 - t_min).max(a_body).clamp(0.0, 1.0);
+                    // The AA fraction also scales the wash's ADDED alpha (`aa_alpha` = 1.0 off the rim),
+                    // so a transparent layer's silhouette fades with its fractional coverage too.
+                    let cov_a = ((1.0 - t_min).max(a_body) * aa_alpha).clamp(0.0, 1.0);
                     let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
                     // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
                     // that the compositor will blend over that same ground — so solve the un-premultiply

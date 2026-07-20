@@ -1,18 +1,18 @@
 //! Screen-space anti-aliasing of the watercolor silhouette (thin-stroke hard-edge fix, Enio 2026-07-20).
 //!
 //! The composite hardens the feathered coverage through `smoothstep(SS0, SS1, cov)`
-//! ([`super::watercolor_render`]). That window lives in **coverage** units, so its transition width in
-//! screen texels shrinks with the brush radius; on a thin stroke the silhouette crosses it in well under
-//! a texel and snaps to a binary, stair-stepped edge (Enio's report: thin watercolor strokes have a
-//! "borda dura pixelada" while the plain painter — whose alpha is the raw soft falloff — stays smooth at
-//! any size). [`super::watercolor_field::aa_hardened_coverage`] reconstructs that sub-texel edge by
-//! averaging the hardened coverage over a sub-texel grid, gated to steep edges so a thick stroke is
-//! byte-identical.
+//! ([`super::watercolor_render`]), and the optical model downstream (edge fringe + Beer–Lambert) is
+//! exponential — on a thin stroke the *perceived* edge collapses to a binary, stair-stepped cliff even
+//! where the coverage still ramps (Enio's report: thin watercolor strokes have a "borda dura pixelada"
+//! while the plain painter — whose alpha is the raw soft falloff — stays smooth at any size).
+//! [`super::watercolor_field::aa_coverage`] answers with the rasterizer's shape × shading split: the
+//! shading may saturate, but the texel's fractional silhouette coverage is composited as **linear alpha
+//! on the finished pixel** — gated to steep edges so a thick stroke is byte-identical.
 //!
 //! These gates render real strokes (over a white opaque raster, so the silhouette AA shows as grey rim
 //! texels in RGB, not in alpha) — they contain the phenomenon, and pin the byte-identity of thick strokes.
 
-use super::watercolor_field::{aa_hardened_coverage, sample_bilinear, smoothstep};
+use super::watercolor_field::{aa_coverage, sample_bilinear, smoothstep};
 use super::*;
 use ph2d_editor_core::tool::RasterEditTool;
 
@@ -127,33 +127,76 @@ fn a_thick_watercolor_stroke_is_byte_identical() {
     );
 }
 
-/// Mechanism, unit-level: on a SHALLOW field (transition ≥ ~2 texels — the thick-stroke rim) the
-/// reconstruction is **byte-identical** to the plain `smoothstep(e0, e1, sample_bilinear(…))` — the
-/// gradient gate keeps the single-sample path. A 21-wide field ramping 0→1 has grad 0.05 ≪ band/2.
+/// Mechanism, unit-level: on a SHALLOW field (transition ≥ ~4 texels — the thick-stroke rim) the
+/// result is **byte-identical** to the plain `smoothstep(e0, e1, sample_bilinear(…))` with alpha 1.0 —
+/// the gradient gate keeps the single-sample path. A 21-wide 0→1 ramp has grad 0.05 ≪ band/4.
 #[test]
-fn aa_hardened_coverage_is_identical_on_a_shallow_edge() {
+fn aa_coverage_is_identical_on_a_shallow_edge() {
     let field: Vec<f32> = (0..21).map(|i| i as f32 / 20.0).collect(); // grad 0.05 per texel
     for i in 40..160 {
         let sx = i as f32 * 0.1; // 4.0 .. 15.9, away from the clamped borders
-        let aa = aa_hardened_coverage(&field, 21, 1, sx, 0.0, 0.12, 0.60);
+        let (cw, alpha) = aa_coverage(&field, 21, 1, sx, 0.0, 0.12, 0.60);
         let plain = smoothstep(0.12, 0.60, sample_bilinear(&field, 21, 1, sx, 0.0));
-        assert_eq!(aa.to_bits(), plain.to_bits(), "shallow edge must be untouched at sx={sx}");
+        assert_eq!(cw.to_bits(), plain.to_bits(), "shallow cw must be untouched at sx={sx}");
+        assert_eq!(alpha, 1.0, "shallow edge must carry no AA alpha at sx={sx}");
     }
 }
 
-/// Mechanism, unit-level: on a STEEP field (a 0→1 step within one texel) the reconstruction produces a
-/// genuinely intermediate coverage at the boundary — where the single-sample hardening snaps to 0 or 1.
-/// This is the anti-aliasing the thin-stroke silhouette was missing.
+/// Mechanism, unit-level: on a STEEP field (a 0→1 step within one texel) the boundary texel carries a
+/// genuinely fractional AA alpha — where the single-sample hardening snaps to 0 or 1. This fraction is
+/// applied as LINEAR alpha on the finished pixel (see `aa_coverage`), which is what survives the
+/// optical saturation that ate the density-input attempt.
 #[test]
-fn aa_hardened_coverage_softens_a_steep_step() {
+fn aa_coverage_gives_a_steep_step_fractional_alpha() {
     // A vertical field: two paper rows, then a hard step to solid — the sub-texel edge a thin rim makes.
     let field = [0.0f32, 0.0, 1.0, 1.0]; // 1×4 down the y axis
     // At the boundary texel (sy = 1.0, the last "outside" row) the single sample is exactly 0.
     let plain = smoothstep(0.12, 0.60, sample_bilinear(&field, 1, 4, 0.0, 1.0));
     assert_eq!(plain, 0.0, "single sample snaps the boundary to 0");
-    let aa = aa_hardened_coverage(&field, 1, 4, 0.0, 1.0, 0.12, 0.60);
+    let (cw, alpha) = aa_coverage(&field, 1, 4, 0.0, 1.0, 0.12, 0.60);
+    assert!(cw > 0.02, "the boundary texel must see some wash (got cw={cw})");
     assert!(
-        aa > 0.02,
-        "the reconstruction must give the boundary texel fractional coverage (got {aa})"
+        alpha < 0.98,
+        "the boundary texel must be composited fractionally (got alpha={alpha})"
     );
+    // And one row inside (sy = 2.0): solid coverage, alpha near 1 — the interior is not washed out.
+    let (cw_in, alpha_in) = aa_coverage(&field, 1, 4, 0.0, 2.0, 0.12, 0.60);
+    assert!(cw_in > 0.9, "interior stays solid (cw={cw_in})");
+    assert!(alpha_in > 0.6, "interior alpha stays high (alpha={alpha_in})");
 }
+
+/// The smoke's own case (Enio 2026-07-20, radius ~8–12): the outer edge must CLIMB — its sharpest
+/// one-texel luminance step must stay bounded. Pre-fix the profiles jump 189–250 bytes in one texel
+/// (`[255, 190, 1]` at r=10, `[255, 5]` at r=12); the first attempt (AA fed into the density) left
+/// them there because the optical model SATURATES the fraction away. The final-alpha compositing
+/// yields `[255, 130, 23]`-shaped ramps — max step ≈ 125–147, the plain painter's character.
+/// ⚠️ "a mid-grey texel exists" is NOT the oracle: the pre-fix r=10 profile contains a 190 (a light
+/// texel right before the cliff) and would pass — the cliff itself is the step size.
+#[test]
+fn a_medium_thin_stroke_edge_climbs_instead_of_jumping() {
+    let size = 128u32;
+    let cy = 64.0;
+    let pts = [[24.0, cy], [104.0, cy]];
+    for r in [8.0f32, 10.0, 12.0] {
+        let c = wc_stroke(size, r, true, 0.0, &pts);
+        let x = 64u32;
+        let prof: Vec<u8> = (46..66).map(|y| lum(&c, size, x, y)).collect();
+        // Sharpest step along the descending outer edge (down to the profile's darkest texel).
+        let dark_at = prof
+            .iter()
+            .enumerate()
+            .min_by_key(|&(_, &l)| l)
+            .map(|(i, _)| i)
+            .unwrap();
+        let max_step = prof[..=dark_at]
+            .windows(2)
+            .map(|w| (i32::from(w[0]) - i32::from(w[1])).abs())
+            .max()
+            .unwrap();
+        assert!(
+            max_step < 160,
+            "radius {r}: outer edge must climb, not jump (max step {max_step}, profile {prof:?})"
+        );
+    }
+}
+

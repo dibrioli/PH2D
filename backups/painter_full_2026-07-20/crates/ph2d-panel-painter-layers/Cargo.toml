@@ -1,0 +1,52 @@
+[package]
+name = "ph2d-panel-painter-layers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Painter layers panel — typed `Panel<State>` (ADR-0029) para Painter W3
+# (plan §6 T3.4, design 02_layers.md §2.3/§2.4).
+# Right-docked (Inspector geometry slot, mirror do painter-sidebar);
+# visível só quando Painter ativo. Lista as layers do `LayerStack`:
+# thumb + name + visibility + opacity slider + blend dropdown.
+#
+# **SCAFFOLD (Coordenador):** este crate compila + dock + chrome canon +
+# placeholder body ("No layers"). O Implementador preenche paint/event/
+# populate com as layer rows reais (ver `// TODO(impl W3.T3.4)` em paint.rs).
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# LayerStack / Layer / LayerId / LayerKind / composite — fundação W3 do
+# Painter (T3.1/T3.2). O panel lê o stack (via snapshot publicado pelo
+# shell, padrão sidebar) e renderiza as rows.
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+# BlendMode + MAX_BLEND_MODES (T3.3) chegam RE-EXPORTADOS por ph2d-tool-painter
+# (`ph2d_tool_painter::{BlendMode, MAX_BLEND_MODES}`), não via dep direto a
+# ph2d-painter-brush — que o `cargo machete` flagrou como não-usado (CI lint).
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# TextSystem::prefix_width — measure blend-mode names to pre-truncate (ellipsis)
+# the chip label, replacing the per-frame Vello clip (FPS).
+ph2d-text = { path = "../ph2d-text" }
+# Vello `Color` for data-driven fills — the Gradient Map preview bar + stop
+# handles render the user's actual gradient colors (not theme tokens), the same
+# way `widget::color_swatch` builds `Color::from_rgba8`.
+ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-host = { path = "../ph2d-host" }
+# Headless seam test (MockPanelHost): drives the real apply_event path and
+# drains the action bus to prove the panel→shell forward is alive.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# Full-registry e2e (falloff_handle_menu_e2e): install the real sibling panels
+# alongside the painter panel and dispatch the menu Click through HeroScreen, to
+# prove NO sibling panel eats `Click(CTX_MENU_FALLOFF_HANDLE_*)` before chrome.
+# (No dep cycle: none of these depend on ph2d-panel-painter-layers.)
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
+ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery" }

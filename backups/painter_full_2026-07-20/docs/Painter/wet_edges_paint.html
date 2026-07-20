@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wet Edges — estudo de pincel aquarela</title>
+<style>
+  :root{
+    --paper:#efe9dc; --ink:#171411; --panel:#211c18; --panel-2:#2a241f;
+    --line:#3a322b; --text:#ddd2c1; --muted:#928777; --amber:#d8973c;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--ink);color:var(--text);
+    font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100%;
+    -webkit-user-select:none;user-select:none;
+  }
+  header{
+    padding:14px 18px 10px;border-bottom:1px solid var(--line);
+    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  }
+  header .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);font-weight:600}
+  header h1{margin:0;font-size:15px;font-weight:500;color:var(--text)}
+  header .hint{margin-left:auto;color:var(--muted);font-size:12px}
+
+  main{flex:1;display:flex;gap:0;min-height:0}
+  .stage{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    padding:22px;min-width:0;background:radial-gradient(120% 120% at 50% 0%, #1d1916 0%, #131110 70%);
+  }
+  .paperwrap{
+    line-height:0;border-radius:3px;overflow:hidden;
+    box-shadow:0 18px 50px -18px rgba(0,0,0,.8), 0 2px 0 rgba(255,255,255,.03) inset;
+  }
+  canvas#paper{
+    display:block;width:min(78vw,900px);height:auto;cursor:crosshair;background:var(--paper);
+    touch-action:none;                 /* prevent page scroll/zoom while painting on the canvas */
+  }
+
+  aside{
+    width:248px;flex:0 0 248px;border-left:1px solid var(--line);
+    background:var(--panel);padding:16px;overflow:auto;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  .group{display:flex;flex-direction:column;gap:7px}
+  .group.off{opacity:.4}
+  .group > .lbl{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .group > .lbl b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--amber);background:transparent}
+  input[type=range]:disabled{cursor:not-allowed}
+  input[type=range]:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:6px}
+  .check{display:flex;align-items:center;gap:9px;cursor:pointer;color:var(--text);font-size:13px}
+  .check input{width:16px;height:16px;accent-color:var(--amber);cursor:pointer}
+
+  .row{display:flex;align-items:center;gap:10px}
+  .swatch{
+    width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    padding:0;overflow:hidden;cursor:pointer;display:inline-block;flex:0 0 auto;position:relative;
+  }
+  .swatch input{position:absolute;inset:-25%;width:150%;height:150%;border:none;cursor:pointer;background:none;padding:0}
+  .palette{display:flex;gap:6px;flex-wrap:wrap}
+  .palette button{width:20px;height:20px;border-radius:50%;border:1px solid rgba(255,255,255,.14);cursor:pointer;padding:0}
+
+  .toggle{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel-2)}
+  .toggle button{
+    flex:1;padding:8px 6px;background:none;border:none;color:var(--muted);cursor:pointer;
+    font:inherit;font-size:12px;letter-spacing:.02em;transition:.12s;
+  }
+  .toggle button[aria-pressed=true]{background:var(--amber);color:#1a130a;font-weight:600}
+  .toggle button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+
+  .actions{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .btn{
+    flex:1 1 70px;padding:9px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    color:var(--text);font:inherit;cursor:pointer
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line);color:var(--muted)}
+  .btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.5}
+  code{color:var(--amber);font-size:11px}
+
+  @media (max-width:740px){
+    main{flex-direction:column}
+    aside{width:auto;flex:none;border-left:none;border-top:1px solid var(--line);
+      flex-direction:row;flex-wrap:wrap;gap:14px}
+    .group{flex:1 1 150px}
+    .actions{margin-top:0;flex:1 1 100%}
+    canvas#paper{width:92vw}
+    .note{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="eyebrow">Estudo</span>
+  <h1>Wet Edges — pincel aquarela</h1>
+  <span class="hint">arraste para pintar · Ctrl/Cmd+Z desfaz</span>
+</header>
+
+<main>
+  <div class="stage">
+    <div class="paperwrap">
+      <canvas id="paper" width="900" height="600"></canvas>
+    </div>
+  </div>
+
+  <aside>
+    <div class="group">
+      <span class="lbl">Cor</span>
+      <div class="row">
+        <label class="swatch" title="Escolher cor"><input type="color" id="color" value="#3b5a72" aria-label="Cor do pincel"></label>
+        <div class="palette" id="palette"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="lbl">Modo</span>
+      <div class="toggle" id="mode" role="group" aria-label="Modo do pincel">
+        <button data-on="1" aria-pressed="true">Wet edges</button>
+        <button data-on="0" aria-pressed="false">Pincel mole</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="lbl">Tamanho <b id="vSize">46</b></span>
+      <input type="range" id="size" min="8" max="90" value="46" aria-label="Tamanho do pincel">
+    </div>
+
+    <div class="group">
+      <span class="lbl">Mistura (wet-on-wet) <b id="vSmudge">0.00</b></span>
+      <input type="range" id="smudge" min="0" max="1" step="0.01" value="0.00" aria-label="Mistura wet-on-wet">
+    </div>
+
+    <div class="group">
+      <span class="lbl">Levantar <b id="vPickup">0.50</b></span>
+      <input type="range" id="pickup" min="0" max="1" step="0.01" value="0.50" aria-label="Levantar / pickup do smudge">
+    </div>
+
+    <div class="group">
+      <label class="check"><input type="checkbox" id="realistic"> Mistura realista (RYB)</label>
+    </div>
+
+    <div class="group" data-wet>
+      <span class="lbl">Borda úmida <b id="vEdge">3.0</b></span>
+      <input type="range" id="edge" min="0" max="8" step="0.1" value="3.0" aria-label="Intensidade da borda úmida">
+    </div>
+
+    <div class="group" data-wet>
+      <span class="lbl">Espalhamento <b id="vSpread">7</b></span>
+      <input type="range" id="spread" min="1" max="24" value="7" aria-label="Espalhamento da borda">
+    </div>
+
+    <div class="group" data-wet>
+      <span class="lbl">Granulação <b id="vGran">0.30</b></span>
+      <input type="range" id="gran" min="0" max="0.8" step="0.01" value="0.30" aria-label="Granulação do pigmento">
+    </div>
+
+    <div class="group" data-wet>
+      <span class="lbl">Irregularidade <b id="vWarp">6</b></span>
+      <input type="range" id="warp" min="0" max="16" value="6" aria-label="Irregularidade da borda">
+    </div>
+
+    <div class="group" data-wet>
+      <span class="lbl">Preenchimento <b id="vFill">0.12</b></span>
+      <input type="range" id="fill" min="0" max="0.6" step="0.01" value="0.12" aria-label="Densidade do preenchimento">
+    </div>
+
+    <p class="note">Borda = <code>c·(1 − blur(c))</code>; densidade <code>D = fill·c + borda</code>; Beer-Lambert por canal em luz linear: <code>Tᵢ = pᵢ^(D·k)</code>, saída = <code>base·T + p·(1−T)</code>.</p>
+
+    <div class="actions">
+      <button class="btn" id="undo" disabled>Desfazer</button>
+      <button class="btn" id="clear">Limpar</button>
+      <button class="btn" id="save">Salvar PNG</button>
+    </div>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  // ---- constants ----
+  const PAPER=[239,233,220];
+  const DEPTH=1.2;             // optical-depth scale: T = pigment^(D·DEPTH) per channel, in linear light
+  const SS0=0.12, SS1=0.60;    // hardened-coverage smoothstep edges
+  const SOFT_DENS=0.55;        // density factor for "Pincel mole" mode
+  const COL_EPS=20;            // min color-buffer alpha to trust deposited color
+  const PAINT_LO=14, PAINT_HI=50;   // colour-distance dead-zone (paper grain) -> full RYB mixing
+  const UNDO_CAP=8;
+  // supersampling: render the internal buffers at device-pixel resolution for crisp hi-DPI.
+  // S=1 reproduces the previous behaviour exactly; pixel-length params are multiplied by S.
+  const S=Math.min(2, Math.max(1, Math.round(window.devicePixelRatio||1)));
+
+  const disp=document.getElementById('paper');
+  disp.width=900*S; disp.height=600*S;            // CSS keeps the displayed size; backing store scales with DPR
+  const dispCtx=disp.getContext('2d', {willReadFrequently:true});
+  const W=disp.width, H=disp.height;
+
+  const mk=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; return c; };
+  const committed=mk(), cCtx=committed.getContext('2d', {willReadFrequently:true});
+  const mask=mk(),      mCtx=mask.getContext('2d', {willReadFrequently:true});
+  const blur=mk(),      bCtx=blur.getContext('2d', {willReadFrequently:true});
+  const colC=mk(),      colCtx=colC.getContext('2d', {willReadFrequently:true});
+
+  // ---- sRGB <-> linear-light LUTs (byte in, byte/float out — no pow in the hot loop) ----
+  const s2l=new Float32Array(256), lnl=new Float32Array(256);
+  for(let i=0;i<256;i++){ const c=i/255;
+    const lin=c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+    s2l[i]=lin; lnl[i]=Math.log(Math.max(lin, 1e-4)); }   // ln(transmittance) per byte; clamp avoids -Inf on pure black
+  const L2S_N=4096, l2s=new Uint8Array(L2S_N+1);
+  for(let i=0;i<=L2S_N;i++){ const lin=i/L2S_N;
+    const s=lin<=0.0031308 ? lin*12.92 : 1.055*Math.pow(lin, 1/2.4)-0.055;
+    l2s[i]=Math.round(Math.min(1,Math.max(0,s))*255); }
+  function l2sByte(v){ return v<=0 ? 0 : v>=1 ? 255 : l2s[(v*L2S_N)|0]; }
+
+  // ---- state ----
+  let pigment=[59,90,114], wetEdges=true, realistic=false;
+  let size=46, edgeGain=3.0, spread=7, fillDensity=0.12, granAmt=0.30, warpAmp=6;
+  let smudge=0.0, pickup=0.5, reservoir=[0,0,0];
+
+  // ---- paper with subtle grain ----
+  function paintPaper(){
+    cCtx.fillStyle=`rgb(${PAPER[0]},${PAPER[1]},${PAPER[2]})`;
+    cCtx.fillRect(0,0,W,H);
+    const img=cCtx.getImageData(0,0,W,H), d=img.data;
+    for(let i=0;i<d.length;i+=4){ const n=(Math.random()*2-1)*6; d[i]+=n; d[i+1]+=n; d[i+2]+=n; }
+    cCtx.putImageData(img,0,0);
+    dispCtx.drawImage(committed,0,0);
+  }
+  function resetMask(){ mCtx.globalCompositeOperation='source-over'; mCtx.fillStyle='#000'; mCtx.fillRect(0,0,W,H); }
+
+  // ---- value-noise field generator (cell px features) -> Float32Array(W*H) in [0,1] ----
+  function valueNoise(cell){
+    const gw=((W/cell)|0)+2, gh=((H/cell)|0)+2, rnd=new Float32Array(gw*gh);
+    for(let i=0;i<rnd.length;i++) rnd[i]=Math.random();
+    const sm=t=>t*t*(3-2*t), out=new Float32Array(W*H);
+    for(let y=0;y<H;y++){ const fy=y/cell, y0=fy|0, ty=sm(fy-y0);
+      for(let x=0;x<W;x++){ const fx=x/cell, x0=fx|0, tx=sm(fx-x0);
+        const a=rnd[y0*gw+x0], b=rnd[y0*gw+x0+1], c=rnd[(y0+1)*gw+x0], d=rnd[(y0+1)*gw+x0+1];
+        const top=a+(b-a)*tx; out[y*W+x]=top+((c+(d-c)*tx)-top)*ty; } }
+    return out;
+  }
+  const smoothstep=(e0,e1,x)=>{ const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0))); return t*t*(3-2*t); };
+
+  // static fields, built once (feature sizes scaled by S so the look is DPR-invariant)
+  const grain=valueNoise(5*S);                       // pigment granulation
+  const warpX=new Float32Array(W*H), warpY=new Float32Array(W*H);
+  { const nA=valueNoise(22*S), nB=valueNoise(8*S), nC=valueNoise(22*S), nD=valueNoise(8*S);
+    for(let i=0;i<W*H;i++){
+      warpX[i]=((nA[i]*0.65+nB[i]*0.35)-0.5)*2;       // fractal displacement, [-1,1]
+      warpY[i]=((nC[i]*0.65+nD[i]*0.35)-0.5)*2;
+    } }
+
+  // bilinear sample of red channel from a padded getImageData buffer
+  function sampleR(arr,w,h,fx,fy){
+    if(fx<0)fx=0; else if(fx>w-1)fx=w-1;
+    if(fy<0)fy=0; else if(fy>h-1)fy=h-1;
+    const x0=fx|0, y0=fy|0, x1=x0+1<w?x0+1:x0, y1=y0+1<h?y0+1:y0;
+    const tx=fx-x0, ty=fy-y0;
+    const a=arr[(y0*w+x0)*4], b=arr[(y0*w+x1)*4], c=arr[(y1*w+x0)*4], d=arr[(y1*w+x1)*4];
+    const top=a+(b-a)*tx;
+    return (top+((c+(d-c)*tx)-top)*ty)/255;
+  }
+  function sampleCol(arr,w,h,fx,fy){ // nearest RGBA from padded colour buffer
+    const xi=fx<0?0:(fx>w-1?w-1:fx|0), yi=fy<0?0:(fy>h-1?h-1:fy|0), i=(yi*w+xi)*4;
+    return [arr[i],arr[i+1],arr[i+2],arr[i+3]];
+  }
+
+  // ---- subtractive pigment mixing (RYB / Gossett pair): blue+yellow -> green ----
+  const _ryb=[0,0,0], _rgb=[0,0,0];
+  function rgb2ryb(r,g,b){
+    const w=Math.min(r,g,b); r-=w;g-=w;b-=w;
+    const mg=Math.max(r,g,b);
+    let y=Math.min(r,g); r-=y; g-=y;
+    if(b>0&&g>0){ b*=0.5; g*=0.5; }
+    y+=g; b+=g;
+    const my=Math.max(r,y,b), n=my>0?mg/my:0;
+    _ryb[0]=r*n+w; _ryb[1]=y*n+w; _ryb[2]=b*n+w;
+  }
+  function ryb2rgb(r,y,b){
+    const w=Math.min(r,y,b); r-=w;y-=w;b-=w;
+    const my=Math.max(r,y,b);
+    let g=Math.min(y,b); y-=g; b-=g;
+    if(b>0&&g>0){ b*=2; g*=2; }
+    r+=y; g+=y;
+    const mg=Math.max(r,g,b), n=mg>0?my/mg:0;
+    _rgb[0]=r*n+w; _rgb[1]=g*n+w; _rgb[2]=b*n+w;
+  }
+  function mixRYB(ar,ag,ab,br,bg,bb,t){ // 0..1 inputs -> _rgb (0..1)
+    rgb2ryb(ar,ag,ab); const a0=_ryb[0],a1=_ryb[1],a2=_ryb[2];
+    rgb2ryb(br,bg,bb); const b0=_ryb[0],b1=_ryb[1],b2=_ryb[2];
+    ryb2rgb(a0+(b0-a0)*t, a1+(b1-a1)*t, a2+(b2-a2)*t);
+  }
+  function mix255(A,B,t){ // new [r,g,b] in 0..255 (used per dab, not per pixel)
+    if(!realistic) return [A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,A[2]+(B[2]-A[2])*t];
+    mixRYB(A[0]/255,A[1]/255,A[2]/255,B[0]/255,B[1]/255,B[2]/255,t);
+    return [_rgb[0]*255,_rgb[1]*255,_rgb[2]*255];
+  }
+
+  // ---- stroke state: cumulative bbox (for bake) + per-frame dirty bbox (for live redraw) ----
+  let drawing=false, activeId=null, baseData=null, lastX=0, lastY=0, pending=false;
+  let cMinX=0,cMinY=0,cMaxX=0,cMaxY=0;      // cumulative
+  let fMinX=Infinity,fMinY=Infinity,fMaxX=-Infinity,fMaxY=-Infinity; // per-frame
+  function resetFrame(){ fMinX=Infinity;fMinY=Infinity;fMaxX=-Infinity;fMaxY=-Infinity; }
+  function expand(x,y,pad){
+    const a=x-pad,b=x+pad,c=y-pad,d=y+pad;
+    if(a<cMinX)cMinX=a; if(b>cMaxX)cMaxX=b; if(c<cMinY)cMinY=c; if(d>cMaxY)cMaxY=d;
+    if(a<fMinX)fMinX=a; if(b>fMaxX)fMaxX=b; if(c<fMinY)fMinY=c; if(d>fMaxY)fMaxY=d;
+  }
+
+  function sampleCanvas(x,y){ // colour currently on display under the brush
+    const ix=Math.max(0,Math.min(W-1,x|0)), iy=Math.max(0,Math.min(H-1,y|0));
+    const d=dispCtx.getImageData(ix,iy,1,1).data; return [d[0],d[1],d[2]];
+  }
+
+  function stampCoverage(x,y,r){
+    const g=mCtx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba(255,255,255,1)');
+    g.addColorStop(0.62,'rgba(255,255,255,0.92)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    mCtx.globalCompositeOperation='lighten';        // coverage as max (one wet pass)
+    mCtx.fillStyle=g; mCtx.beginPath(); mCtx.arc(x,y,r,0,Math.PI*2); mCtx.fill();
+  }
+  function stampColor(x,y,r,c){
+    const cs=`${c[0]|0},${c[1]|0},${c[2]|0}`;
+    const g=colCtx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,`rgba(${cs},1)`); g.addColorStop(0.62,`rgba(${cs},0.92)`); g.addColorStop(1,`rgba(${cs},0)`);
+    colCtx.globalCompositeOperation='source-over';  // recent dab wins on overlap (carries colour)
+    colCtx.fillStyle=g; colCtx.beginPath(); colCtx.arc(x,y,r,0,Math.PI*2); colCtx.fill();
+  }
+  function placeDab(x,y,r,srcCol){
+    let col=pigment;
+    if(smudge>0){                                   // wet-on-wet: lift + mix
+      const c=srcCol||sampleCanvas(x,y);
+      for(let k=0;k<3;k++) reservoir[k]+=(c[k]-reservoir[k])*pickup;   // pick up canvas colour
+      col=mix255(pigment,reservoir,smudge);                            // mix fresh vs picked-up
+    }
+    stampCoverage(x,y,r); stampColor(x,y,r,col);
+    expand(x,y, r+spread*S+4);
+  }
+  function segment(x0,y0,x1,y1,r){
+    const dx=x1-x0, dy=y1-y0, dist=Math.hypot(dx,dy);
+    const step=Math.max(1, r*0.22), n=Math.max(1, Math.floor(dist/step));
+    const src=smudge>0?sampleCanvas(x1,y1):null;    // one readback per segment, reused across dabs
+    for(let i=1;i<=n;i++){ const t=i/n; placeDab(x0+dx*t, y0+dy*t, r, src); }
+  }
+
+  // ---- composite a region [x0..x1)x[y0..y1) over the frozen base; returns ImageData + offset ----
+  function composite(x0,y0,x1,y1){
+    const wp=Math.ceil(warpAmp*S);
+    // output pixels that changed = changed-coverage region expanded by the warp displacement
+    const ox0=Math.max(0,Math.floor(x0)-wp), oy0=Math.max(0,Math.floor(y0)-wp);
+    const ox1=Math.min(W,Math.ceil(x1)+wp),  oy1=Math.min(H,Math.ceil(y1)+wp);
+    const ow=ox1-ox0, oh=oy1-oy0;
+    if(ow<=0||oh<=0) return null;
+
+    if(wetEdges){ bCtx.clearRect(0,0,W,H); bCtx.filter=`blur(${spread*S}px)`; bCtx.drawImage(mask,0,0); bCtx.filter='none'; }
+
+    const pad=wp+1;                                  // read window must cover the warped sample positions
+    const rx0=Math.max(0,ox0-pad), ry0=Math.max(0,oy0-pad);
+    const rx1=Math.min(W,ox1+pad), ry1=Math.min(H,oy1+pad);
+    const rw=rx1-rx0, rh=ry1-ry0;
+    const m =mCtx.getImageData(rx0,ry0,rw,rh).data;
+    const bl=wetEdges?bCtx.getImageData(rx0,ry0,rw,rh).data:null;
+    const cm=colCtx.getImageData(rx0,ry0,rw,rh).data;
+    const out=dispCtx.createImageData(ow,oh), o=out.data;
+    const [pr,pg,pb]=pigment, wamp=warpAmp*S;
+
+    for(let yy=0; yy<oh; yy++){
+      for(let xx=0; xx<ow; xx++){
+        const li=(yy*ow+xx)*4;
+        const gx=ox0+xx, gy=oy0+yy, gi=(gy*W+gx)*4, wi=gy*W+gx;
+        const lx=gx-rx0, ly=gy-ry0;
+        let D, sx, sy;
+        if(wetEdges){
+          sx=lx+warpX[wi]*wamp; sy=ly+warpY[wi]*wamp;          // organic boundary
+          const cw=smoothstep(SS0,SS1, sampleR(m,rw,rh,sx,sy));
+          if(cw<=0){ o[li]=baseData[gi];o[li+1]=baseData[gi+1];o[li+2]=baseData[gi+2];o[li+3]=255; continue; }
+          const inner=Math.min(1, sampleR(bl,rw,rh,sx,sy));    // ~1 deep inside, ->0 at rim
+          let edge=cw*(1-inner)*edgeGain; if(edge>1)edge=1;    // pigment pooled at receding front
+          const tex=1+(grain[wi]-0.5)*2*granAmt;               // pigment granulation
+          D=(cw*fillDensity+edge)*tex; if(D<0)D=0;
+        } else {
+          sx=lx; sy=ly;
+          const cov=m[(ly*rw+lx)*4]/255;
+          if(cov<=0){ o[li]=baseData[gi];o[li+1]=baseData[gi+1];o[li+2]=baseData[gi+2];o[li+3]=255; continue; }
+          D=cov*SOFT_DENS;
+        }
+        // pigment colour from deposited (smudged) buffer; fall back to brush at faint edges
+        const sc=sampleCol(cm,rw,rh,sx,sy);
+        const cr=sc[3]>COL_EPS?sc[0]:pr, cg=sc[3]>COL_EPS?sc[1]:pg, cb=sc[3]>COL_EPS?sc[2]:pb;
+        const b0=baseData[gi], b1=baseData[gi+1], b2=baseData[gi+2];
+        // --- per-channel Beer-Lambert in LINEAR light ---
+        // transmittance Tᵢ = pigmentᵢ^(D·DEPTH); channels the pigment absorbs darken first → hue shifts with thickness
+        const od=D*DEPTH;
+        const T0=Math.exp(lnl[cr]*od), T1=Math.exp(lnl[cg]*od), T2=Math.exp(lnl[cb]*od);
+        const x0=l2sByte(s2l[b0]*T0+s2l[cr]*(1-T0));   // base attenuated + pigment scattered, then back to sRGB
+        const x1=l2sByte(s2l[b1]*T1+s2l[cg]*(1-T1));
+        const x2=l2sByte(s2l[b2]*T2+s2l[cb]*(1-T2));
+        if(realistic){
+          // artistic subtractive mix (RYB, sRGB) where the base is real paint; physical layering on bare paper
+          const aS=1-(0.2126*T0+0.7152*T1+0.0722*T2);   // perceptual opacity drives the mix amount
+          mixRYB(b0/255,b1/255,b2/255, cr/255,cg/255,cb/255, aS);
+          const dr=b0-PAPER[0], dg=b1-PAPER[1], db=b2-PAPER[2];
+          const pw=smoothstep(PAINT_LO,PAINT_HI, Math.sqrt(dr*dr+dg*dg+db*db));
+          o[li]  =x0+(_rgb[0]*255-x0)*pw;
+          o[li+1]=x1+(_rgb[1]*255-x1)*pw;
+          o[li+2]=x2+(_rgb[2]*255-x2)*pw;
+        } else {
+          o[li]=x0; o[li+1]=x1; o[li+2]=x2;
+        }
+        o[li+3]=255;
+      }
+    }
+    return {data:out, x:ox0, y:oy0};
+  }
+
+  // live redraw of only the region painted since the last frame (bounds per-frame cost)
+  function renderFrame(){
+    if(!drawing || fMaxX<fMinX) return;   // ignore stray rAF after the stroke ended (mask is reset)
+    const r=composite(fMinX,fMinY,fMaxX,fMaxY);
+    resetFrame();
+    if(r) dispCtx.putImageData(r.data, r.x, r.y);
+  }
+  function schedule(){ if(pending) return; pending=true; requestAnimationFrame(()=>{ pending=false; renderFrame(); }); }
+
+  // ---- undo ----
+  const undoStack=[];
+  function pushUndo(snap){ undoStack.push(snap); if(undoStack.length>UNDO_CAP) undoStack.shift(); $('undo').disabled=false; }
+  function doUndo(){
+    if(!undoStack.length) return;
+    cCtx.putImageData(undoStack.pop(),0,0);
+    dispCtx.drawImage(committed,0,0);
+    if(!undoStack.length) $('undo').disabled=true;
+  }
+
+  // ---- pointer ----
+  function pos(e){ const r=disp.getBoundingClientRect();
+    return [ (e.clientX-r.left)*(W/r.width), (e.clientY-r.top)*(H/r.height) ]; }
+  function radius(e){ const p=(e.pressure&&e.pressure>0)?e.pressure:0.5; return size*(0.5+0.5*p)*S; }
+
+  disp.addEventListener('pointerdown', e=>{
+    if(drawing) return;                              // ignore extra pointers (multitouch / palm)
+    e.preventDefault(); disp.setPointerCapture(e.pointerId);
+    drawing=true; activeId=e.pointerId;
+    const snap=cCtx.getImageData(0,0,W,H);
+    baseData=snap.data; pushUndo(snap);              // pre-stroke snapshot doubles as undo point
+    colCtx.clearRect(0,0,W,H);                        // fresh colour buffer for this stroke
+    const [x,y]=pos(e); lastX=x; lastY=y;
+    reservoir=sampleCanvas(x,y);                      // reservoir starts from canvas under brush
+    cMinX=x;cMaxX=x;cMinY=y;cMaxY=y; resetFrame();
+    placeDab(x,y,radius(e), smudge>0?reservoir.slice():null); schedule();
+  });
+  disp.addEventListener('pointermove', e=>{
+    if(!drawing || e.pointerId!==activeId) return; e.preventDefault();
+    const [x,y]=pos(e); segment(lastX,lastY,x,y,radius(e)); lastX=x; lastY=y; schedule();
+  });
+  function endStroke(){
+    if(!drawing) return; drawing=false; activeId=null; resetFrame();
+    const r=composite(cMinX,cMinY,cMaxX,cMaxY);       // one final full pass for the bake
+    if(r) cCtx.putImageData(r.data, r.x, r.y);
+    resetMask(); dispCtx.drawImage(committed,0,0);
+  }
+  disp.addEventListener('pointerup',     e=>{ if(e.pointerId===activeId) endStroke(); });
+  disp.addEventListener('pointercancel', e=>{ if(e.pointerId===activeId) endStroke(); });
+  disp.addEventListener('lostpointercapture', ()=>{ if(drawing) endStroke(); }); // safety net
+
+  // ---- controls ----
+  function $(id){ return document.getElementById(id); }
+  const bind=(id,vid,fn,fmt)=>{ const el=$(id),v=$(vid);
+    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); v.textContent=fmt(el.value); }); };
+  bind('size','vSize',v=>size=v,v=>v);
+  bind('smudge','vSmudge',v=>smudge=v,v=>(+v).toFixed(2));
+  bind('pickup','vPickup',v=>pickup=v,v=>(+v).toFixed(2));
+  bind('edge','vEdge',v=>edgeGain=v,v=>(+v).toFixed(1));
+  bind('spread','vSpread',v=>spread=v,v=>v);
+  bind('gran','vGran',v=>granAmt=v,v=>(+v).toFixed(2));
+  bind('warp','vWarp',v=>warpAmp=v,v=>v);
+  bind('fill','vFill',v=>fillDensity=v,v=>(+v).toFixed(2));
+
+  $('color').addEventListener('input',e=>{
+    const h=e.target.value; pigment=[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  });
+  $('realistic').addEventListener('change',e=>{ realistic=e.target.checked; });
+
+  // quick palette (classic watercolour pigments)
+  const PAL=['#3b5a72','#7a3b3b','#4a5d3a','#6b4a7a','#b06a2c','#2b2b2b'];
+  const palWrap=$('palette');
+  PAL.forEach(c=>{ const b=document.createElement('button'); b.style.background=c; b.title=c; b.setAttribute('aria-label','Cor '+c);
+    b.addEventListener('click',()=>{ $('color').value=c; $('color').dispatchEvent(new Event('input')); });
+    palWrap.appendChild(b); });
+
+  // mode toggle — wet-only controls are disabled (not just dimmed) in soft mode
+  const modeBtns=[...$('mode').querySelectorAll('button')];
+  const wetGroups=[...document.querySelectorAll('[data-wet]')];
+  function refreshWetUI(){
+    wetGroups.forEach(g=>{ g.classList.toggle('off',!wetEdges);
+      g.querySelectorAll('input').forEach(inp=>inp.disabled=!wetEdges); });
+  }
+  modeBtns.forEach(b=>b.addEventListener('click',()=>{
+    wetEdges=b.dataset.on==='1';
+    modeBtns.forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+    refreshWetUI();
+  }));
+  refreshWetUI();
+
+  $('undo').addEventListener('click', doUndo);
+  $('clear').addEventListener('click', ()=>{ pushUndo(cCtx.getImageData(0,0,W,H)); paintPaper(); resetMask(); });
+  $('save').addEventListener('click', ()=>{
+    const a=document.createElement('a'); a.download='wet-edges.png'; a.href=committed.toDataURL('image/png'); a.click();
+  });
+  window.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && !e.shiftKey && (e.key==='z'||e.key==='Z')){ e.preventDefault(); doUndo(); }
+  });
+
+  paintPaper(); resetMask();
+})();
+</script>
+</body>
+</html>

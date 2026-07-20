@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-painter-brush"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Pure raster brush engine — a CLEAN-ROOM reimplementation of the Blender Texture
+# Paint brush (behaviour only; Blender is GPL, PH2D is proprietary — see docs/Painter/).
+# NOT a continuation of the brush engine deleted by ADR-0099; built fresh with Blender
+# as the single reference.
+#
+# Pure by design: BrushSpec + falloff + the 24 Blender brush blend modes + dab stamping
+# into an RGBA8 buffer. No UI, no editor-core, no frozen contract, no GPU — so the layer
+# host (`ph2d-tool-painter`) can depend on it and the math stays table-testable. Zero
+# dependencies on purpose (the dab blends in the layer's native space, like Blender's
+# byte texture-paint path, so no sRGB transfer is needed here).
+
+[dependencies]

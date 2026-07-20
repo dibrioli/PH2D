@@ -1,0 +1,66 @@
+[package]
+name = "ph2d-tool-painter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Painter — Stateful workhorse tool, isolated crate (ADR-0040 + ADR-0043).
+# Cascata W0 ratificada 2026-05-26 (11 ADRs 0043..0053). Esta crate
+# implementa o contrato ADR-0043 (`PainterTool` + `PainterParams` +
+# `PainterUiEdit` + `PainterUiSnapshot`).
+#
+# T1.1 skeleton: panic-com-todo!() nos métodos que precisam de brush
+# engine real (T1.4+). Pill registrada em T1.2. Brush real T1.3 ph2d-painter-brush.
+
+[features]
+# `gpu` routes the Inpaint heal (ADR-0102) through the `ph2d-inpaint` GPU compute
+# path (jump-flood NNF + voting), reconciled with the CPU reference within ε. Off
+# by default so the CPU-only build stays light; the desktop shell enables it. The
+# heal still falls back to CPU when no adapter is present OR the crop is small (GPU
+# upload/readback overhead beats CPU only above a size threshold).
+default = []
+gpu = ["dep:ph2d-gpu", "ph2d-inpaint/gpu"]
+
+[dependencies]
+# Tool trait + FloatingPanel + widgets the PainterTool builds on.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# ToolManifest + ToolHandler + Registry + Zone + McpExposure.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# BezPath for the painter icon (icon.rs).
+ph2d-vector = { path = "../ph2d-vector" }
+# Role for a11y_role no MANIFEST.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget for HR-13 boot check.
+ph2d-core = { path = "../ph2d-core" }
+# Layer blend modes + adjustment-layer effects (BlendMode / AdjustmentKind /
+# adjustment editing fns). The layers + effects surface, extracted from the
+# (deleted) brush engine.
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# Pure clean-room Blender brush engine (BrushSpec / Stroke / stamp_dab). Driven
+# from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# Content-aware heal (Inpaint paint-mode): multi-scale PatchMatch reconstruction
+# of the brushed defect region on pen-up (ADR-0102). CPU reference path; the
+# `gpu` feature turns on its GPU compute path.
+ph2d-inpaint = { path = "../ph2d-inpaint" }
+# Shared GpuContext (Device + Queue) for the `gpu`-feature Inpaint heal — a
+# process-wide headless context, created lazily (mirror of color-equalization).
+ph2d-gpu = { path = "../ph2d-gpu", optional = true }
+# Canonical sRGB↔linear byte transfer for the CPU compositor's gamma boundary.
+ph2d-color = { path = "../ph2d-color" }
+# serde for PainterParams + the layer model serialization.
+serde = { version = "1", features = ["derive"] }
+# Data-parallel watercolor composite (ADR-0109 exception to the no-rayon default): the per-pixel optical
+# reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),
+# so it distributes over the thread pool without touching deterministic replay. Used ONLY there.
+rayon = "1"
+
+[dev-dependencies]
+# O round-trip do documento pintado é provado no formato REAL do projeto (postcard, o wire canônico do
+# repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
+postcard = { version = "1", features = ["alloc"] }

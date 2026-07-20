@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PH2D Wet Paint</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="left-panel">
+      <h1 id="app-title">PH2D Wet Paint</h1>
+
+      <section class="panel-block" id="color-block">
+        <div class="block-head"><span class="block-label" data-i18n="colorHead">Color</span></div>
+        <canvas id="color-wheel" width="164" height="164"></canvas>
+        <canvas id="bright-bar" width="164" height="16"></canvas>
+        <div id="swatch-row">
+          <div id="current-swatch" title=""></div>
+          <div id="palette"></div>
+        </div>
+      </section>
+
+      <section class="panel-block" id="slider-block">
+        <div class="block-head"><span class="block-label" data-i18n="brushHead">Brush</span></div>
+      </section>
+
+      <section class="panel-block" id="shape-block">
+        <div class="block-head"><span class="block-label" data-i18n="shapeHead">Shape</span></div>
+        <div id="shape-row"></div>
+        <div id="preset-row"></div>
+      </section>
+
+      <section class="panel-block" id="tool-block">
+        <div class="block-head"><span class="block-label" data-i18n="toolsHead">Tools</span></div>
+        <div class="btn-grid" id="tool-row"></div>
+      </section>
+
+      <section class="panel-block" id="tilt-block">
+        <div class="block-head">
+          <span class="block-label" data-i18n="tilt">Tilt</span>
+          <button id="tilt-toggle" class="mini-toggle"></button>
+        </div>
+        <canvas id="tilt-dial" width="128" height="128"></canvas>
+      </section>
+
+      <section class="panel-block" id="paper-block">
+        <div class="block-head"><span class="block-label" data-i18n="paper">Paper</span></div>
+        <div class="btn-row" id="paper-row"></div>
+      </section>
+
+      <section class="panel-block" id="layer-block">
+        <div class="block-head">
+          <span class="block-label" data-i18n="layers">Layers</span>
+          <span>
+            <button id="layer-add" class="mini-btn" title="add layer">+</button>
+            <button id="layer-remove" class="mini-btn" title="remove layer">&minus;</button>
+          </span>
+        </div>
+        <div id="layer-list"></div>
+      </section>
+    </aside>
+    <div id="left-resize" title="drag to resize"></div>
+
+    <main id="center">
+      <div id="canvas-viewport">
+        <div id="canvas-wrap">
+          <canvas id="paint-canvas" width="900" height="450"></canvas>
+        </div>
+        <button id="zoom-pill" title="reset view">100%</button>
+      </div>
+      <footer id="bottom-bar">
+        <span class="bar-group">
+          <button id="btn-undo" data-i18n="undo">Undo</button>
+          <button id="btn-redo" data-i18n="redo">Redo</button>
+        </span>
+        <span class="bar-group">
+          <button id="btn-wet-canvas" data-i18n="wetCanvas">Wet canvas</button>
+          <button id="btn-dry-canvas" data-i18n="dryCanvas">Dry canvas</button>
+          <button id="btn-fast-dry" data-i18n="fastDry">Fast dry</button>
+          <button id="btn-show-wet" data-i18n="showWet">Show wet</button>
+        </span>
+        <span class="bar-group">
+          <button id="btn-clear" data-i18n="clear">Clear</button>
+          <button id="btn-save" data-i18n="savePng">Save PNG</button>
+          <label class="chk"><input type="checkbox" id="chk-paper" checked><span data-i18n="withPaper">paper</span></label>
+        </span>
+        <span class="bar-group">
+          <button id="btn-toggle-tuning" data-i18n="tuning">Tuning</button>
+          <button id="btn-lang">EN/PT</button>
+        </span>
+      </footer>
+    </main>
+
+    <aside id="right-panel">
+      <div id="right-resize" title="drag to resize"></div>
+      <div id="tuning-panel"></div>
+      <div id="exp-panel"></div>
+    </aside>
+  </div>
+
+  <div id="knob-tooltip" hidden></div>
+  <script type="module" src="js/app/main.js"></script>
+</body>
+</html>

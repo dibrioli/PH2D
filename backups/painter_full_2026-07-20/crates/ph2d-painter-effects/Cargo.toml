@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-painter-effects"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Layer blend modes + adjustment-layer effects engine. Extracted from
+# `ph2d-painter-brush` when the painting/brush engine was deleted (the
+# layers + effects subsystem is preserved as a working feature). Holds the
+# 22 canonical W3C blend modes (`blend`) and the non-destructive adjustment
+# layers — HSB/Curves/Levels/Gaussian/Bloom/S-H/etc. (`adjustments`).
+#
+# Cycle-free by construction: depends ONLY on `ph2d-color` + serde, so the
+# layer host (`ph2d-tool-painter`) and the GPU compositor parity tests
+# (`ph2d-render`) can both depend on it. `AdjustmentLayer.{id,clipped_by,mask}`
+# are raw `u64` (LayerId values) precisely so this crate does NOT depend on
+# `ph2d-tool-painter` (where `LayerId` lives) — the boundary converts.
+
+[dependencies]
+# Postcard binary serialization derives for the adjustment-layer save schema.
+serde = { version = "1", features = ["derive"] }
+# Canonical sRGB↔linear transfer + OKLab/OKLCH color types reused by the
+# adjustment kernels (blend math + composite happen in linear light).
+ph2d-color = { path = "../ph2d-color" }
+
+[dev-dependencies]
+# Round-trip serialization tests for AdjustmentLayer/AdjustmentParams.
+postcard = { version = "1", features = ["use-std"] }

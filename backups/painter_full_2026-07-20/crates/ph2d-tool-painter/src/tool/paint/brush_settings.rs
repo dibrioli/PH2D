@@ -1,0 +1,506 @@
+//! Brush/Stroke parameter snapshot & setters (the single UI-edit clamp source); a submodule of
+//! `paint`, split from `paint.rs` for the workspace LOC cap. Per-dab-jitter setters: `jitter_settings`.
+
+use super::shape_layers::MAX_SHAPE_LAYERS;
+use super::{BRUSH_COUNT_SLIDER_MAX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX};
+use ph2d_painter_brush::{FalloffPoint, MAX_FALLOFF_POINTS};
+
+/// Deform **temperament** values for [`BrushSettings::deform_temperament`]. The panel opens with `NONE`
+/// (neither segment selected) so the artist must pick — `RESHAPE` (brush) or `TRANSFORM` (gizmo).
+pub const DEFORM_TEMPERAMENT_NONE: u8 = 0;
+pub const DEFORM_TEMPERAMENT_RESHAPE: u8 = 1;
+pub const DEFORM_TEMPERAMENT_TRANSFORM: u8 = 2;
+
+// `BrushTextureImage` lives in the sibling `brush_image` module (LOC cap); re-exported so the existing
+// `super::brush_settings::BrushTextureImage` import paths stay stable.
+pub(super) use super::brush_image::BrushTextureImage;
+
+/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto it.
+/// Transcendental-free (abs/signum/mul + the `tan(22.5°)`/`tan(67.5°)`/`√½` constants) for HR-5.
+pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
+    const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
+    const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2; // √½
+    let dx = cursor[0] - anchor[0];
+    let dy = cursor[1] - anchor[1];
+    let (adx, ady) = (dx.abs(), dy.abs());
+    // The snapped unit direction (one of the 8 rays).
+    let (ux, uy) = if ady <= adx * TAN_22_5 {
+        (dx.signum(), 0.0) // horizontal
+    } else if ady >= adx * TAN_67_5 {
+        (0.0, dy.signum()) // vertical
+    } else {
+        (dx.signum() * DIAG, dy.signum() * DIAG) // diagonal
+    };
+    // Project the cursor onto the ray (dot product = signed distance along the unit direction).
+    let proj = dx * ux + dy * uy;
+    [anchor[0] + ux * proj, anchor[1] + uy * proj]
+}
+
+/// A compact snapshot of the active brush for the layers panel's Brush section, published each frame
+/// by the shell bridge — the panel reads it to position the size/colour sliders + blend chip.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BrushSettings {
+    /// Radius in image pixels (UI label "Size").
+    pub size_px: f32,
+    /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so small brushes get more).
+    pub size_norm: f32,
+    /// Overall opacity, `0..1` (UI "Strength").
+    pub strength: f32,
+    /// Distance-falloff preset ([`ph2d_painter_brush::Falloff::to_u8`]) — the dab profile (replaces Hardness); [`ph2d_painter_brush::Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
+    pub falloff: u8,
+    /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), first [`Self::falloff_len`] valid, ascending by distance; panel plots + drags by stable id.
+    pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],
+    /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
+    pub falloff_len: u8,
+    /// Straight-RGB paint colour in `[0, 1]`.
+    pub color: [f32; 3],
+    /// Blend-mode wire discriminant ([`ph2d_painter_brush::BrushBlend::to_u8`]).
+    pub blend: u8,
+    /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
+    pub eraser: bool,
+    /// Active-op flags: **Smear**/**Blur**/**Clone** process pixels (no colour → hide colour controls +
+    /// incremental-only methods; [`Self::paints_no_color`]); **Mask** paints a grayscale value (keeps all methods).
+    pub is_smear: bool,
+    pub is_blur: bool,
+    pub is_clone: bool,
+    pub is_mask: bool,
+    /// **Inpaint** heal mode — shows the Inpaint card (Patch Size / Quality / Search) + hides colour/Strength.
+    pub is_inpaint: bool,
+    /// **Selection** mode — the panel shows ONLY the selection section (ADR-0103): mode (`0` Automatic /
+    /// `1` Freehand / `2` Rectangle / `3` Ellipse) · boolean op (`0` New / `1` Add / `2` Remove) · Automatic
+    /// threshold · Feather amount (all `0..1`) · Edit-Selection toggle.
+    pub is_selection: bool,
+    pub selection_mode: u8,
+    pub selection_op: u8,
+    pub selection_threshold: f32,
+    /// Free (lasso) path **Stabilization** amount (`0..1`) — shown only in Freehand mode.
+    pub selection_stabilizer: f32,
+    pub selection_feather: f32,
+    pub selection_edit: bool,
+    pub selection_overlay_opacity: f32,
+    /// **Deform** (Liquify) mode — the panel shows ONLY the deform section (mode-exclusive, like Selection):
+    /// sub-mode segmented (`0` Push · `1` Twist · `2` Pinch · `3` Wrinkle · `4` Fold · `5` Reconstruct) ·
+    /// Size/Pressure/Distortion/Momentum/Strength (all `0..1`; Strength `0.5`-centred bipolar).
+    /// Distortion/Momentum are hidden in Reconstruct. Deform is confined to the active selection (or the
+    /// whole sprite when none) automatically — no Freeze toggle.
+    pub is_deform: bool,
+    pub deform_mode: u8,
+    pub deform_size_norm: f32,
+    /// Deform brush radius in image px (mapped from [`Self::deform_size_norm`]) — the cursor ring reads this
+    /// so the on-canvas ring shows the DEFORM footprint, not the paint brush's.
+    pub deform_size_px: f32,
+    pub deform_pressure: f32,
+    pub deform_distortion: f32,
+    pub deform_momentum: f32,
+    pub deform_strength: f32,
+    /// **Temperament** (Wave 2): `0` none picked · `1` Reshape (brush) · `2` Transform (gizmo) — see the
+    /// `DEFORM_TEMPERAMENT_*` consts. Opens at `NONE` each time the panel is entered so the artist must
+    /// choose; decides which body the mode-exclusive Deform section shows.
+    pub deform_temperament: u8,
+    /// Transform sub-mode (`0` Uniform aspect-locked · `1` Free independent axes) — only shown in Transform.
+    pub deform_transform_mode: u8,
+    /// **Affect Relief** (W4): the warp advects the impasto planes with the pixels. Painted only when
+    /// [`Self::deform_layer_has_relief`] — a toggle over a plane that does not exist would be a control
+    /// that silently does nothing.
+    pub deform_affect_relief: bool,
+    /// Whether the ACTIVE layer carries impasto relief — decides whether the Affect Relief row exists.
+    pub deform_layer_has_relief: bool,
+    /// **Sculpt** mode — the panel ADDS the Sculpt card (it does NOT swap the body out, the way Deform
+    /// does). That difference is the design, not an oversight: the sculpt rides the same dab list the
+    /// colour does, so the brush's own Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke
+    /// method ARE its controls and must stay on screen (`docs/Painter/18…` §10.1). What it hides instead is
+    /// the COLOUR half (via [`Self::paints_no_color`]) — a tool that lays no pigment has no use for it.
+    pub is_sculpt: bool,
+    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen · `2` Flatten · `3` Scrape · `4` Fill · `5` Chisel ·
+    /// `6` Layer · `7` Inflate).
+    pub sculpt_mode: u8,
+    /// Which knob row the card must paint: `0` Radius (Smooth family) · `1` Offset (Plane) · `2` Depth
+    /// (Height). The card shows the knobs the active verb USES and no others — a knob that does nothing to
+    /// the tool in your hand is a knob that lies.
+    pub sculpt_knob_family: u8,
+    /// Whether the sub-mode is the **Chisel** — the one verb with two knobs (Offset *and* Angle).
+    pub sculpt_is_chisel: bool,
+    /// Sculpt kernel Radius, `0..1` track (mapped to `1..=16` px by the tool — small on purpose: smoothing
+    /// at a large scale is Flatten, which is a different kernel, not a bigger blur). Smooth family.
+    pub sculpt_radius: f32,
+    /// The kernel Radius in px, as the artist would read it off the chip.
+    pub sculpt_radius_px: f32,
+    /// Plane **Offset**, `0..1` track (`0.5` = the plane sits on the surface it was fitted to). Plane family.
+    pub sculpt_offset: f32,
+    /// The plane Offset in paint-loads (`−1..=+1`), as the artist would read it off the chip.
+    pub sculpt_offset_loads: f32,
+    /// **Depth**, `0..1` track (`0.5` = zero). Height family (Layer / Inflate).
+    pub sculpt_depth: f32,
+    /// The Depth in paint-loads (`−1..=+1`), as the artist would read it off the chip.
+    pub sculpt_depth_loads: f32,
+    /// Chisel **Angle**, `0..1` track (`0` = the flat knife, i.e. Scrape).
+    pub sculpt_angle: f32,
+    /// The Chisel Angle in degrees (`0..=60`), as the artist would read it off the chip.
+    pub sculpt_angle_deg: f32,
+    /// Chisel **Rake** — does the V follow the direction of the stroke? (Default on.) Shown only for the
+    /// Chisel, the one verb with an axis.
+    pub sculpt_rake: bool,
+    /// Whether the ACTIVE verb can be applied to the whole layer (`SculptMode::filters_layer`) — the
+    /// **Filter Layer** button is painted only then. Same law as `sculpt_conserves` above: the panel asks
+    /// the tool which verbs qualify instead of keeping a second copy of the list.
+    pub sculpt_filters: bool,
+    /// Whether the **Filter Stroke** button has anything to act on: the verb reshapes AND there is a last
+    /// stroke on THIS layer to scope it to (`PainterTool::can_filter_last_stroke`). The card paints the
+    /// second button only then — the first stroke of a session has no predecessor to filter.
+    pub sculpt_can_filter_stroke: bool,
+    /// Inflate **Smoothness** (Radius), `0..1` track — softens the ball's hard edge. Shown only for Inflate.
+    pub sculpt_smooth: f32,
+    /// The Smoothness in texels (`0..16`), as the chip reads it.
+    pub sculpt_smooth_px: u32,
+    /// Whether the active verb is **Inflate** (shows Depth + Smoothness).
+    pub sculpt_is_inflate: bool,
+    /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
+    /// boundary; only meaningful (and shown) in Edit mode.
+    pub selection_offset: f32,
+    /// Inpaint **Patch Size** slider track (`0..1`; chip shows the mapped `2..6` patch radius).
+    pub inpaint_patch: f32,
+    /// Inpaint **Quality** slider track (`0..1`; chip shows the mapped `3..12` EM iterations).
+    pub inpaint_quality: f32,
+    /// Inpaint **Search** slider track (`0..1`; chip shows the mapped `50..300` % context margin).
+    pub inpaint_search: f32,
+    /// Mask sub-brush (`0` Paint/`1` Erase/`2` Blur/`3` Smear) + overlay-tint colour index (`0` gray + 4 fluorescent).
+    pub mask_brush: u8,
+    pub mask_overlay_color: u8,
+    /// Clone flags: source sampled? · **Aligned** (offset persists across strokes)? · "Set Source" armed?
+    pub clone_has_source: bool,
+    pub clone_aligned: bool,
+    pub clone_sample_armed: bool,
+    /// **Composite Brush** on: the Strength slider hides + the 3-layer stack card shows (panel).
+    pub composite_enabled: bool,
+    /// Composite stack op per position `[layer1, layer2, layer3]` (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur).
+    pub composite_ops: [u8; 3],
+    /// Composite stack Strength per position `[layer1, layer2, layer3]` (`0..1`).
+    pub composite_strength: [f32; 3],
+    /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
+    pub tiling: [bool; 2],
+    /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).
+    pub repeat_image: bool,
+
+    // ── Symmetry (drawing mirror / radial; section above Tiling). `symmetry_axis` = `MirrorAxis::to_u8`
+    //    (0 X / 1 Y / 2 Custom); segments 3..12; the two `*_pick_*` flags = a canvas pick mode is armed. ──
+    pub symmetry_enabled: bool,
+    pub symmetry_circular: bool,
+    pub symmetry_axis: u8,
+    pub symmetry_segments: u32,
+    pub symmetry_pick_line: bool,
+    pub symmetry_pick_center: bool,
+
+    // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
+    /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
+    pub stroke_method: u8,
+    /// Multi-shape **Operation** the next shape is created with (`0`=Overlay `1`=Add `2`=Remove) — the
+    /// selected segment of the Stroke OPERATION card. See `tool::paint::stroke_multi::StrokeOp`.
+    pub stroke_op_mode: u8,
+    /// Spacing as a fraction of diameter (`0.10` = 10%); the slider track is this value.
+    pub spacing: f32,
+    /// **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for the shape editors.
+    pub offset: f32,
+    /// **Trim** the offset's self-intersections (Offset card checkbox).
+    pub offset_trim: bool,
+    /// Whether the Simplify button shows: a curve is editing AND (Free Hand, or the user has added a point).
+    pub can_simplify: bool,
+    /// A curve with points is being edited (Curve / Free Hand / converted shape) — gates the Save-As-Object button.
+    pub has_drawn_curve: bool,
+    /// "Adjust Strength for Spacing" on/off.
+    pub space_attenuation: bool,
+    /// **Accumulate** on/off: off (default) caps a stroke at Strength.
+    pub accumulate: bool,
+    /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
+    /// tool independent. Drives the checkbox at the top of the brush panel.
+    pub link_shared: bool,
+    /// Line "Dimensions" on/off: show the live dx/dy + corner angles while drawing a Line. Drives the
+    /// checkbox below the Stroke Method dropdown (Line method only).
+    pub line_show_dimensions: bool,
+    /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
+    pub jitter: f32,
+    /// Absolute jitter in pixels — the Jitter slider under the View unit.
+    pub jitter_absolute_px: f32,
+    /// Jitter-unit wire discriminant ([`ph2d_painter_brush::JitterUnit::to_u8`]; `0` = Brush, `1` = View).
+    pub jitter_unit: u8,
+    /// Dash on-fraction (`0..1`).
+    pub dash_ratio: f32,
+    /// Dash period in dab-slots.
+    pub dash_samples: u32,
+    /// Input-samples averaging window (`>= 1`).
+    pub input_samples: u32,
+    /// Stroke stabilizer intensity, `0..1` (the "how regular" knob).
+    pub stabilizer: f32,
+    /// Airbrush "Rate" — emission period in seconds (Airbrush only; track via `BRUSH_AIRBRUSH_RATE_*_S`).
+    pub airbrush_rate_s: f32,
+    /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor, not grows from the anchor).
+    pub edge_to_edge: bool,
+
+    // ── Texture section (the brush texture mask; raw values — the panel maps to slider tracks) ──
+    /// Texture kind wire discriminant ([`TextureKind::to_u8`]; `0` = None = no texture assigned).
+    pub texture_kind: u8,
+    /// Texture mapping wire discriminant ([`TextureMapping::to_u8`]).
+    pub texture_mapping: u8,
+    /// Texture rotation in whole degrees (`0..=360`).
+    pub texture_angle_deg: u16,
+    /// "Rake" — the texture rotation follows the stroke direction.
+    pub texture_rake: bool,
+    /// Texture offset in tile fractions, per axis (`−1..1`).
+    pub texture_offset: [f32; 2],
+    /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
+    pub texture_size: [f32; 2],
+    /// **Stencil** rect centre, per axis (`−1..1`) — the gizmo placement, independent of the texture tiling.
+    pub stencil_offset: [f32; 2],
+    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`, default `0.5`); Stencil mapping only.
+    pub stencil_size: [f32; 2],
+    /// **Stencil** rect rotation in whole degrees (`0..=360`). Independent of [`Self::texture_angle_deg`].
+    pub stencil_angle_deg: u16,
+    /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (`param_specs`).
+    pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+    /// **Grain Depth** (`0..1`; `1` = full bite, the default). How strongly the Grain modulates.
+    pub grain_depth: f32,
+
+    // ── Shape section (the silhouette tip; the falloff is its procedural default) ──
+    /// Shape **source** kind (`TextureKind::to_u8`): `None` falloff · `Image` replaces it · procedural is masked. Drives the panel "Texture" picker.
+    pub shape_kind: u8,
+    /// Whether a Shape **image** is assigned (meaningful only when [`Self::shape_kind`] is `Image`).
+    pub shape_has_image: bool,
+    /// Shape rotation in whole degrees (`0..=360`).
+    pub shape_angle_deg: u16,
+    /// **Follow** mode — how the silhouette relates to the stroke: `0` = Off (fixed Angle), `1` = Rake
+    /// (rotate each stamp to the tangent), `2` = Flow (lay the pattern in the stroke's arc-length frame so
+    /// its lines stay parallel through curves). Drives the panel "Follow" dropdown.
+    pub shape_follow: u8,
+    /// Shape offset in tile fractions, per axis (`−1..1`).
+    pub shape_offset: [f32; 2],
+    /// Shape per-axis scale (`0.1..10`; `1.0` = the image fills the footprint).
+    pub shape_size: [f32; 2],
+    /// Procedural Shape per-pattern params (Contrast / Brightness + the kind's knob, `[0,1]`) — the Grain's `texture_params` twin for the Shape slot.
+    pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+    /// Number of captured Shape layers (`0` = single-image / falloff; `> 1` shows the Per-Layer Color UI).
+    pub shape_layer_count: u8,
+    /// Capturable layers in the active document (visible top-level rasters); "Use Document Layers" shows when `> 1`.
+    pub document_layer_count: u8,
+    /// "Per-Layer Color" mode — each Shape layer paints its own colour, higher above lower; hides the ramp.
+    pub shape_per_layer_color: bool,
+    /// Per-layer "use a custom colour" toggle (entries `0..shape_layer_count` valid).
+    pub shape_layer_color_on: [bool; MAX_SHAPE_LAYERS],
+    /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`. With the
+    /// checkbox OFF (default) the layer paints its own captured texture colour instead.
+    pub shape_layer_color: [[f32; 3]; MAX_SHAPE_LAYERS],
+    /// Per-layer blend mode ([`ph2d_painter_effects::BlendMode`] discriminant; the "B" chip).
+    pub shape_layer_blend: [u8; MAX_SHAPE_LAYERS],
+    /// Per-layer **opacity** `0..1` — a BRUSH-only scale on that layer's tip contribution (the numeric
+    /// box), seeded from the captured document layer's opacity. Does NOT edit the painted document.
+    pub shape_layer_opacity: [f32; MAX_SHAPE_LAYERS],
+    /// **Dab Flatten** (`0..1`; `0` = round) — the Shape gizmo squishes the dab footprint into an ellipse.
+    pub dab_flatten: f32,
+    /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).
+    pub dab_angle_deg: u16,
+    /// The **live orientation of the dab footprint** as a unit rotor `[cos, sin]` — the brush's own
+    /// `dab_angle_deg` composed with the **stroke-follow** rotation when a slot follows the stroke
+    /// (Shape Rake / Flow, Grain Rake) and the stroke is in flight. `[1, 0]` at Angle 0 with nothing
+    /// following, so a plain brush is unchanged.
+    ///
+    /// The brush-cursor ring draws the ellipse from THIS, not from `dab_angle_deg`, so it turns with the
+    /// stroke in real time and — because the rotor comes from the engine's own heading rather than being
+    /// re-derived from the cursor — it can never point somewhere the paint does not (Enio 2026-07-19).
+    /// Jitter Rotate is deliberately NOT in it: that is per-dab randomness, and a ring that flickered
+    /// would be reporting noise as orientation.
+    pub dab_rotor: [f32; 2],
+
+    // ── Grain Colour Ramp (maps the Grain scalar to a colour when enabled) ──
+    /// Whether the Color Ramp drives the paint colour.
+    pub texture_ramp_enabled: bool,
+    /// **B&W** filter: desaturate the ramp to luminance (paint + display).
+    pub texture_ramp_bw: bool,
+    /// Ramp colour-interpolation space (`RampColorMode::to_u8`).
+    pub texture_ramp_mode: u8,
+    /// Ramp interpolation mode (`RampInterp::to_u8`).
+    pub texture_ramp_interp: u8,
+    /// Ramp stops `(pos, r, g, b, a, id)` display sRGB, first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`.
+    pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
+    pub texture_ramp_stop_count: u8,
+    /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
+    pub texture_ramp_alpha_mode: u8,
+
+    // ── Shape Colour Ramp — colour twin of the Grain ramp (same fields). B&W off = owns colour, on = tone. ──
+    pub shape_color_ramp_enabled: bool,
+    pub shape_color_ramp_bw: bool,
+    pub shape_color_ramp_mode: u8,
+    pub shape_color_ramp_interp: u8,
+    pub shape_color_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
+    pub shape_color_ramp_stop_count: u8,
+    pub shape_color_ramp_alpha_mode: u8,
+
+    /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
+    pub color_jitter_enabled: bool,
+    pub color_jitter: [f32; 3],
+    pub jitter_scale: f32,
+    pub jitter_rotate: f32,
+    pub jitter_spacing: f32,
+
+    // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
+    /// Master enable for the Watercolor section (edge darkening + granulation + pigment).
+    pub watercolor: bool,
+    /// Whether the **optical wash actually runs** — `watercolor` AND the plain Paint mode AND not Eraser
+    /// (`PainterTool::watercolor_render_active`). The checkbox alone is NOT enough: with Eraser / Mask /
+    /// Smear / Blur / Clone / Inpaint the deposit falls back to the plain stamp path even with Watercolor
+    /// ticked. Every stroke method DOES wash (the shape editors run the optics through
+    /// `stamp_drag_preview_watercolor`), so this is about the MODE, not the method. The panel reads this
+    /// instead of re-deriving the predicate — one source of truth for "is the wash the thing painting?".
+    pub watercolor_active: bool,
+    /// Shape "Automatic" (watercolor): true = built-in feather silhouette; false = the Shape
+    /// section drives the watercolor stamp (doc 13 #1).
+    pub watercolor_shape_auto: bool,
+    /// **Edge** darkening gain (`0..`) — the wet-edge "fringe" pooled at stroke boundaries.
+    pub edge_gain: f32,
+    /// **Spread** (canvas px) — blur radius of the coverage feeding the edge-darkening pass.
+    pub edge_spread: f32,
+    /// **Smooth Edges** — screen-space AA of the wash silhouette (BUGS #16); off = the pre-AA hard edge.
+    pub smooth_edges: bool,
+    /// **Granulation** (`0..1`) — non-linear gate of deposition into the paper-tooth valleys.
+    pub granulation: f32,
+    /// **Pigment** — subtractive (Kubelka–Munk) wet-on-wet colour mixing toggle.
+    pub pigment: bool,
+    /// **Mix** (`0..1`) — how much the subtractive pigment path is applied.
+    pub pigment_mix: f32,
+    /// **Fill** (`0..1`) — interior density of the optical wash (render-path `fillDensity`).
+    pub fill: f32,
+    /// **Depth** (`> 0`) — Beer–Lambert optical-depth scale (render-path `DEPTH`).
+    pub depth: f32,
+    /// **Opacity** (`0..1`) — pigment body / hiding power: lays the pigment's own colour so light-valued
+    /// pigments deposit at their hue instead of near-invisible pure Beer–Lambert tinting (#17). `0` = off.
+    pub opacity: f32,
+    /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
+    pub warp: f32,
+    /// **Smudge** (`0..1`) — Wet Mix amount (mixer-brush lift+carry vs fresh pigment).
+    pub wet_smudge: f32,
+    /// **Wet** (`0..1`) — wet-on-wet rewetting: lift + dissolve + pool, per-pixel in the composite.
+    pub wet_rewet: f32,
+    /// **Charge** (`0..1`) — Wet Mix fresh-paint reserve; `1` = pure fresh (mixer off), `<1` picks up.
+    pub wet_charge: f32,
+    /// **Dilution** (`0..1`) — Wet Mix water: thins the deposit (`flow = 1 − dilution`).
+    pub wet_dilution: f32,
+    /// **Pull** (`0..1`) — Wet Mix colour-carry / smudge length (inert unless `wet_charge < 1`).
+    pub wet_pull: f32,
+    /// **Drying Time** in SECONDS (`2..60 s`) — CANVAS-level, not a brush param (carried in this
+    /// display snapshot for the Wetness card's slider read-back). Doc 13 #11.
+    pub dry_time_s: f32,
+    /// **Wetness Preview** strength (`0..1`, `0` = off) — CANVAS-level display setting carried for the
+    /// Wetness card's slider read-back; the shell paints the on-canvas damp veil at this max alpha. #12a.
+    pub wet_preview: f32,
+    /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
+    pub paper_kind: u8,
+    /// **Paper** slot Mapping (`TextureMapping` wire u8).
+    pub paper_mapping: u8,
+    /// **Paper** slot Angle in whole degrees (fibre orientation).
+    pub paper_angle: u16,
+    /// **Paper** slot Offset (x, y).
+    pub paper_offset: [f32; 2],
+    /// **Paper** slot Size (x, y), each `0.1..100`.
+    pub paper_size: [f32; 2],
+    /// **Paper Depth** (`0..1`) — how strongly the paper tooth textures the wash.
+    pub paper_depth: f32,
+    /// **Paper** per-pattern params (Contrast / Brightness / kind knobs).
+    pub paper_params: [f32; 6],
+    /// **Granulation "Same as Paper"** — when true the granulation settles into the paper's own tooth
+    /// (the Grain slot texture is ignored). Shown in the Grain section in watercolor mode.
+    pub granulation_use_paper: bool,
+    /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
+    /// the backdrop under the active layer is transparent. Tool-global (`PaintState`), not per-brush.
+    pub paper_color: [f32; 3],
+
+    // ── Impasto section (paint thickness + relief; `docs/Painter/16_impasto_plano_implementacao.md`) ──
+    /// Master enable for the **Impasto** section. Off ⇒ every field below is inert and the brush is
+    /// byte-identical to a build without impasto.
+    pub impasto: bool,
+    /// **Depth** (`-1..1`) — thickness one full-coverage dab lays down. Negative carves into the paint.
+    pub impasto_depth: f32,
+    /// **Smooth Edges** — screen-space AA of the film silhouette (BUGS #16); off = the pre-AA hard edge.
+    pub impasto_smooth_edges: bool,
+    /// **Depth Source** (`DepthSource` wire u8): `0` Uniform · `1` Grain · `2` Shape.
+    pub impasto_source: u8,
+    /// **Draw To** (`DrawTo` wire u8): `0` Color + Depth · `1` Color · `2` Depth.
+    pub impasto_draw_to: u8,
+    /// **Smoothing** (`0..1`) — how much the deposited relief is settled before it is lit.
+    pub impasto_smoothing: f32,
+    /// **Body** (`0..1`) — the relief's cross-section: `1` = level film with a wall, `0` = the
+    /// silhouette's own profile (perfectly rounded).
+    pub impasto_body: f32,
+    /// **Push** (`0..1`) — volume conservation: how much of the paint already on the canvas this brush
+    /// shoves aside as it passes (it stands up as a ridge along the stroke's edges).
+    pub impasto_push: f32,
+    /// **Plow** (`0..1`) — how strongly the Smear drags EXISTING relief (the palette knife).
+    pub impasto_plow: f32,
+    /// Whether the **Plow** row applies (`PainterTool::impasto_plow_applies`): the Smear, and only it.
+    /// Published by the tool for the same reason `impasto_applies` is — a panel that re-derives the
+    /// predicate is a panel that will one day disagree with the engine about when the knife is live.
+    pub impasto_plow_applies: bool,
+    /// Whether the Impasto section APPLIES in the current mode (`PainterTool::impasto_applies`) — the
+    /// §1.2 matrix, published as ONE predicate instead of re-derived in the panel. False under the
+    /// Watercolor wash / Eraser / Mask / Inpaint / Smear / Blur / Clone, where the card is not painted
+    /// and its ids are therefore never hit-registered. (The panel re-deriving this disjunction for
+    /// itself is exactly how a UI and its engine come to disagree about when a feature is live.)
+    pub impasto_applies: bool,
+    /// Whether the Impasto **section** applies at all (`PainterTool::impasto_section_applies`) — the
+    /// three modes that act on the body of the paint: `Paint` (Deposit), `Smear` (Knife) and `Sculpt`
+    /// (the eight verbs). Wider than [`Self::impasto_applies`], which answers the narrower *does this
+    /// brush DEPOSIT body?* and still gates the Deposit card alone.
+    ///
+    /// Before the tools were unified (Enio 2026-07-19) there was no such predicate, and the section
+    /// tracked `impasto_applies` — so the **Lighting** card was reachable in `Paint` and nowhere else,
+    /// leaving Sculpt with no way to light the relief it exists to shape.
+    pub impasto_section_applies: bool,
+    /// Which of the ten Impasto tools is in the artist's hand (`PainterTool::impasto_tool`): `0`
+    /// Deposit · `1` Knife · `2..10` the sculpt verbs in `SculptMode` order. A pure function of the
+    /// modes, never a stored field — the left rail can change the mode without going near this list,
+    /// so a second copy would be a second answer to "which tool?".
+    pub impasto_tool: u8,
+    /// **Show Impasto** — canvas-level: is the relief lit? (Not a brush property; carried in this
+    /// display snapshot for the Lighting card's read-back, like `dry_time_s` / `wet_preview`.)
+    pub impasto_show: bool,
+    /// **Adjust Last Stroke** — whether the sliders re-derive the stroke already on the canvas.
+    /// Tool-global (an editing preference), not per-brush and never baked.
+    pub impasto_live_edit: bool,
+    /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps + which one the card is editing. The panel
+    /// paints the SELECTED lamp's knobs, so the row count never grows with the rig (Krita's Phong
+    /// Bumpmap shows all four at once: 24 controls, and `docs/Painter/17_..._pesquisa2.md` §2.4 files it
+    /// under "o conto-moral do excesso").
+    pub impasto_rig: crate::tool::paint::impasto_rig::LightRig,
+    /// **Shine** (`0..1`, specular strength) — canvas-level.
+    pub impasto_shine: f32,
+    /// **Roughness** (`0..1`) — how BROAD the highlight is (`0` glossy … `1` matte). Per-BRUSH: the
+    /// material is a property of the paint, so it is baked into the canvas with the stroke.
+    pub impasto_roughness: f32,
+    /// **Metallic** (`0..1`) — whose colour the highlight takes: the lamp's (`0`) or the paint's (`1`).
+    pub impasto_metallic: f32,
+    /// **Wax** (`0..1`) — the soft terminator (wrap lighting; the honest half of "SSS").
+    pub impasto_wax: f32,
+    /// **Wax Colour** — the filter on the scattered light. White = the paint scatters its own colour.
+    pub impasto_wax_color: [f32; 3],
+}
+
+/// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
+/// shows the first this-many — more than enough for hand-authored gradients).
+pub const PANEL_RAMP_STOPS: usize = 16;
+
+/// Map a radius in pixels onto the size slider's `0..1` track (inverse of [`size_norm_to_px`]).
+/// Squared track → finer control at small sizes.
+pub(super) fn size_px_to_norm(px: f32) -> f32 {
+    let span = BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX;
+    ((px - BRUSH_SIZE_MIN_PX) / span).clamp(0.0, 1.0).sqrt()
+}
+
+/// Map the size slider's `0..1` track onto a radius in pixels.
+pub(super) fn size_norm_to_px(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    BRUSH_SIZE_MIN_PX + t * t * (BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX)
+}
+
+/// Map a slider's `0..1` track onto a count in `1..=BRUSH_COUNT_SLIDER_MAX` (Input Samples /
+/// Dash Length). Inverse of `count_to_norm` in the panel.
+pub(super) fn count_from_norm(t: f32) -> u32 {
+    let span = (BRUSH_COUNT_SLIDER_MAX - 1) as f32;
+    1 + (t.clamp(0.0, 1.0) * span).round() as u32
+}

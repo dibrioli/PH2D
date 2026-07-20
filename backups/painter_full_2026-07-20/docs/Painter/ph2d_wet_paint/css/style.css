@@ -1,0 +1,356 @@
+/* PH2D Wet Paint - dark, minimal, professional. */
+
+:root {
+  --bg: #16181c;
+  --panel: #1e2127;
+  --panel-2: #23262d;
+  --line: #2e323a;
+  --text: #cfd3da;
+  --text-dim: #8a9099;
+  --accent: #4c8ed9;
+  --accent-2: #6aa5e8;
+  --warn: #d96a5a;
+  --radius: 8px;
+  --gap-s: 4px;   /* inside a control group */
+  --gap-m: 8px;   /* between rows inside a section */
+  --gap-l: 10px;  /* between sections */
+  --ctl-h: 26px;  /* uniform control height inside grouped grids */
+  --left-w: 208px; /* left-panel width; the resize grip drags this (JS clamps 180-420) */
+  font-size: 13px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* position:relative makes #app the containing block for #left-resize, so the
+   grip is anchored to the panel's right edge and does NOT scroll with the
+   panel's content or get clipped by its overflow. */
+#app { display: flex; height: 100vh; position: relative; }
+
+/* ---------- left panel ---------- */
+
+#left-panel {
+  width: var(--left-w);   /* the resize grip drags this via --left-w */
+  min-width: 180px;
+  flex: none;             /* never let flex stretch/shrink the chosen width */
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  overflow-x: hidden; /* nothing may ever scroll or poke out sideways */
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-l);
+}
+
+/* Resize grip on the left panel's right edge - mirrors #right-resize.
+   Sits on the panel/center seam (not over the panel's scrollbar), spans the
+   full viewport height, and stays put while the panel scrolls. */
+#left-resize {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: var(--left-w);
+  margin-left: -2px;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 6;
+}
+#left-resize:hover { background: var(--accent); opacity: 0.5; }
+/* Every child of the panel (and of each section) may shrink below its
+   content width - this is what lets grid/flex tracks actually clamp
+   long-label buttons instead of being pushed apart by them. */
+#left-panel > *, .panel-block, .panel-block > * { min-width: 0; }
+
+#app-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.panel-block {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+}
+
+.block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.block-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+#color-wheel { display: block; margin: 0 auto; cursor: crosshair; }
+#bright-bar { display: block; margin: 6px auto 0; cursor: ew-resize; border-radius: 4px; }
+
+#swatch-row { display: flex; gap: 6px; margin-top: 8px; align-items: flex-start; }
+#current-swatch {
+  width: 34px; height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  flex: none;
+}
+#palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: 1; }
+.pal-swatch {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.pal-swatch:hover { outline: 1px solid var(--accent); }
+
+/* sliders */
+.ctl-slider { margin-bottom: 6px; }
+.ctl-slider label {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text-dim); margin-bottom: 2px;
+}
+.ctl-slider input[type=range] { width: 100%; accent-color: var(--accent); height: 18px; }
+
+/* Control groups read as tidy grids: minmax(0, 1fr) tracks (a track can
+   clamp its button; 1fr alone cannot - the item's min-width:auto would win
+   and push the grid past the panel edge, which was the overflow bug). */
+.btn-row { display: flex; gap: var(--gap-s); flex-wrap: wrap; }
+.btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-s); }
+#shape-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-s); }
+#preset-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-s); margin-top: var(--gap-s); }
+#paper-row { display: grid; grid-template-columns: 1fr; gap: var(--gap-s); } /* PT names are long: one full-width button per row */
+/* An odd trailing button spans the full grid width instead of dangling. */
+#tool-row button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+#shape-row button, #preset-row button, #paper-row button, .btn-grid button {
+  height: var(--ctl-h);
+  padding: 0 8px;
+}
+
+button {
+  background: #2a2e36;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  /* Long PT labels ellipsize inside their cell; they never widen it.
+     applyStatic() mirrors each label into title, so the full name is
+     always hoverable. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button:hover { background: #333842; }
+button:disabled { opacity: 0.4; cursor: default; }
+button.on { background: var(--accent); border-color: var(--accent-2); color: #fff; }
+.mini-btn { padding: 1px 7px; font-size: 12px; }
+.mini-toggle { padding: 2px 10px; font-size: 11px; }
+.mini-toggle.on { background: var(--accent); color: #fff; }
+
+/* Range inputs have a large intrinsic min-content width; without this a
+   grid/flex track could never shrink them and would overflow instead. */
+input[type=range] { min-width: 0; }
+
+#tilt-dial { display: block; margin: 0 auto; cursor: pointer; }
+
+/* layers */
+#layer-list { display: flex; flex-direction: column; gap: var(--gap-s); }
+.layer-item {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  background: #262a31;
+}
+.layer-item.active { border-color: var(--accent); background: #2b3340; }
+.layer-item .eye { flex: none; cursor: pointer; width: 18px; text-align: center; opacity: 0.9; }
+.layer-item .eye.off { opacity: 0.25; }
+.layer-item .lname {
+  flex: 1; font-size: 12px;
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.layer-item input[type=range] { flex: none; width: 56px; accent-color: var(--accent); }
+
+/* ---------- center ---------- */
+
+#center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+#canvas-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, #1d2025 0%, #141619 100%);
+}
+#canvas-wrap {
+  position: absolute;
+  transform-origin: 0 0;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+}
+#paint-canvas {
+  display: block;
+  background: #f4f2ec;
+  touch-action: none;
+}
+#zoom-pill {
+  position: absolute;
+  right: 12px; top: 10px;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 11px;
+  background: rgba(30, 33, 39, 0.85);
+}
+
+#bottom-bar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 7px 10px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.bar-group { display: flex; gap: var(--gap-s); align-items: center; min-width: 0; }
+.bar-group + .bar-group { padding-left: 14px; border-left: 1px solid var(--line); }
+#bottom-bar button { flex: none; }
+.chk { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--text-dim); }
+.chk input { accent-color: var(--accent); }
+
+/* ---------- right panel (tuning) ---------- */
+
+#right-panel {
+  width: 300px;
+  min-width: 180px;
+  max-width: 560px;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 10px 10px 24px;
+}
+#right-panel > *, .tune-group, .tune-body, .tune-body > * { min-width: 0; }
+#right-panel.collapsed { display: none; }
+#right-resize {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 5;
+}
+#right-resize:hover { background: var(--accent); opacity: 0.5; }
+
+.tune-group { margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.tune-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 6px;
+  min-width: 0;
+  background: var(--panel-2);
+  padding: 5px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.tune-head > span:first-child {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tune-head .grp-actions { display: flex; gap: 6px; align-items: center; min-width: 0; flex: none; }
+/* The paper-visibility master slider in the group header shrinks first so
+   the header always fits the panel's 180 px minimum. */
+.grp-actions input[type=range] { width: 56px; flex: 0 1 32px; }
+.tune-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+.tune-group.closed .tune-body { display: none; }
+
+/* label spans the row; below it: slider (shrinkable) | numeric | reset.
+   minmax(0, 1fr) lets the slider track collapse at the 180 px panel minimum
+   (a plain 1fr would bottom out at the range input's intrinsic width and
+   overflow instead). */
+.knob-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 20px; gap: 5px; align-items: center; }
+.knob-row .kl {
+  grid-column: 1 / 4;
+  font-size: 11px; color: var(--text-dim);
+  display: flex; justify-content: space-between; gap: 6px;
+  min-width: 0;
+  cursor: help;
+}
+.knob-row .kl span:first-child {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.knob-row .kl span:last-child { flex: none; }
+.knob-row input[type=range] { width: 100%; accent-color: var(--accent); height: 14px; }
+.knob-row input[type=number] {
+  width: 100%;
+  background: #14161a;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 4px;
+  font-family: inherit;
+}
+.knob-reset {
+  padding: 0; width: 20px; height: 20px; font-size: 11px; line-height: 1;
+  color: var(--text-dim);
+}
+.knob-reset.off-default { background: #4a2b28; border-color: var(--warn); color: #f0b0a6; }
+
+#exp-panel .chk { padding: 3px 0; }
+.exp-note { font-size: 11px; color: var(--text-dim); padding: 4px 0; line-height: 1.4; }
+
+/* tooltip */
+#knob-tooltip {
+  position: fixed;
+  z-index: 50;
+  max-width: 320px;
+  background: #101216;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+}
+#knob-tooltip .tt-title { font-weight: 600; margin-bottom: 4px; }
+#knob-tooltip .tt-recipe { color: var(--text-dim); margin-top: 5px; font-style: italic; }
+#knob-tooltip .tt-corr { margin-top: 6px; display: flex; gap: 5px; }
+.corr-letter {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  text-align: center;
+  line-height: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+.corr-D { background: #b0713a; }
+.corr-A { background: #3a7db0; }
+.corr-F { background: #52a06a; }
+.corr-R { background: #8f6ac2; }
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #33383f; border-radius: 5px; }
+::-webkit-scrollbar-track { background: transparent; }

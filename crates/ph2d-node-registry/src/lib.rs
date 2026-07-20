@@ -13,7 +13,7 @@
 //! node is dropping a crate, never hand-editing a central list.
 
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver};
+use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver, StateSelect};
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
@@ -47,6 +47,10 @@ pub struct NodeRegistry {
     /// node with a neighbourhood kernel (boids, `sim.collide`, SPH) registers a
     /// [`GridSpec`]; the sequencer builds the grid before its kernel pass.
     grids: BTreeMap<NodeTypeId, GridSpec>,
+    /// GPU/M5 (ADR-0135) — per-type state-loop select (a `sim.zone`), the
+    /// device mirror of the zone's `started ? state : init`. Same side-channel
+    /// shape as `grids`; a node opts in with a [`StateSelect`].
+    state_selects: BTreeMap<NodeTypeId, StateSelect>,
     /// Node types that KEEP the dense id window (ADR-0130): the emitter (source)
     /// and the per-element sim transformers (integrate/spring/forces). Opt-in and
     /// default-empty, so a node keeps the window only by declaring it — see
@@ -150,6 +154,14 @@ impl NodeRegistry {
         self.grids.insert(id, grid);
     }
 
+    /// Declare a node a **state-loop select** (a `sim.zone`, ADR-0135). Pair it
+    /// with `register_gpu_kernel(id, GpuKernel::PASSTHROUGH)` so the plan claims
+    /// the node; the sequencer then forwards `init` before the loop has state and
+    /// `state` after, stripping the [`StateSelect::transients`].
+    pub fn register_state_select(&mut self, id: NodeTypeId, select: StateSelect) {
+        self.state_selects.insert(id, select);
+    }
+
     /// Declare that a node type KEEPS the dense id window (ADR-0130): a source
     /// that emits one, or a per-element transformer that preserves it. Additive,
     /// idempotent; a node NOT declared here breaks the window and the `id`-gather
@@ -166,6 +178,10 @@ impl KernelResolver for NodeRegistry {
 
     fn keeps_dense_window(&self, ty: NodeTypeId) -> bool {
         self.dense_window_keepers.contains(&ty)
+    }
+
+    fn state_select(&self, ty: NodeTypeId) -> Option<&StateSelect> {
+        self.state_selects.get(&ty)
     }
 
     fn grid(&self, ty: NodeTypeId) -> Option<&GridSpec> {

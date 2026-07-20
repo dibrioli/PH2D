@@ -175,6 +175,96 @@ fn a_cpu_node_inside_the_loop_refuses_the_whole_claim() {
 }
 
 #[test]
+fn a_partly_covered_sim_zone_keeps_its_render_suffix_on_the_gpu() {
+    // The RETREAT (ADR-0135). A `sim.zone` whose interior has an uncovered
+    // node cannot be claimed WHOLE — the loop recedes to the pump (else two
+    // simulations of one state, the refusal above). But the render chain
+    // DOWNSTREAM of the zone is ordinary per-element work and stays on the GPU:
+    // the plan forbids the zone (making it a boundary) and re-plans, rather than
+    // refusing the whole plan to `(sink, 0)`. Refusing whole would drop the
+    // suffix for nothing — regressing the boot snow from hybrid to full-CPU,
+    // measured in `motion_gpu_coverage`.
+    let mut reg = registry();
+    ph2d_node_sim_zone::register(&mut reg).unwrap();
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_motion_move::register(&mut reg).unwrap();
+    nokernel::register(&mut reg);
+
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    let step = g.add_node("sim.step");
+    let alien = g.add_node("test.nokernel"); // the uncoverable node inside the loop
+    let mv = g.add_node("motion.move"); // the render suffix (dispatches)
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, zone, 0, false); // grid → zone.init
+    edge(&mut g, zone, wind, 0, true); // zone.out --pre--> wind (state entry)
+    edge(&mut g, wind, step, 0, false);
+    edge(&mut g, step, alien, 0, false);
+    edge(&mut g, alien, zone, 1, false); // interior tail (through the alien) → zone.state
+    edge(&mut g, zone, mv, 0, false); // zone.out → move → output (the suffix)
+    edge(&mut g, mv, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+
+    let p = plan(&g, &reg, &reg, out);
+    assert!(!p.is_fully_gpu(), "the alien in the loop leaves a boundary");
+    assert_eq!(
+        p.dispatching_stages(&reg),
+        1,
+        "the render suffix (move) must still dispatch — the retreat keeps it, and \
+         a refuse-to-(sink,0) would drop it to 0"
+    );
+    assert!(
+        !p.stages.iter().any(|s| s.node == zone || s.node == step),
+        "the sim recedes to the pump: neither the zone nor its integrator is staged"
+    );
+    assert!(
+        p.boundaries.iter().any(|(n, _)| *n == zone),
+        "the boundary lands on the zone the retreat forbade, not on the sink"
+    );
+    assert!(!p.drives_a_loop(), "no sim state lives on the GPU");
+}
+
+#[test]
+fn a_fully_covered_sim_zone_loop_is_claimed_whole() {
+    // The CONTROL for the retreat: with every interior node covered, the zone IS
+    // claimed and the whole loop runs on the GPU. Without this, the gate above
+    // would pass with the plan forbidding the zone UNCONDITIONALLY — the retreat
+    // would have quietly become "never claim a sim.zone", which is the opposite
+    // of the feature ([[feedback_a_negative_search_needs_a_positive_control]]).
+    let mut reg = registry();
+    ph2d_node_sim_zone::register(&mut reg).unwrap();
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_sim_collide::register(&mut reg).unwrap();
+
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    let step = g.add_node("sim.step");
+    let ground = g.add_node("sim.collide");
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, zone, 0, false);
+    edge(&mut g, zone, out, 0, false);
+    edge(&mut g, zone, wind, 0, true); // the state entry
+    edge(&mut g, wind, step, 0, false);
+    edge(&mut g, step, ground, 0, false);
+    edge(&mut g, ground, zone, 1, false);
+    g.validate(&reg).expect("well-typed");
+
+    let p = plan(&g, &reg, &reg, out);
+    assert!(p.is_fully_gpu(), "boundaries: {:?}", p.boundaries);
+    assert!(p.drives_a_loop(), "the zone's state loop lives on the GPU");
+    // grid + wind + sim.step + sim.collide dispatch; zone + output are passes.
+    assert_eq!(p.dispatching_stages(&reg), 4);
+    assert!(
+        p.stages.iter().any(|s| s.node == zone),
+        "the zone IS staged (as a conditional passthrough)"
+    );
+}
+
+#[test]
 fn an_unprovable_shape_refuses_a_kernel_that_names_a_column() {
     // Layer 3, ISOLATED. `test.refuser` names `id` on its input but has no `pre`
     // loop, so the whole-claim refusal of the previous test cannot reach it: the

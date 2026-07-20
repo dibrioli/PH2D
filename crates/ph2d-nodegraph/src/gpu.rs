@@ -470,6 +470,30 @@ pub struct GridSpec {
     pub sweeps_param: Option<&'static str>,
 }
 
+/// A **simulation-zone** container on the GPU (ADR-0135). A `sim.zone` holds
+/// no per-element kernel; it is a **conditional passthrough** — it forwards its
+/// INIT port until it has state, then its STATE port. That is the device mirror
+/// of the CPU zone's `if ctx.started() { input(state) } else { input(init) }`,
+/// where "started" is whether the node fed a `pre` edge last tick (its
+/// [`GpuStream`](crate) prev exists), exactly the CPU's `prev_outputs.contains`.
+///
+/// **Pure data** (ADR-0126), declared on the side like a [`GridSpec`]: the node
+/// registers [`GpuKernel::PASSTHROUGH`] (so the plan claims it, and no compute
+/// pass is emitted) plus this, and the sequencer does the select. Append-only —
+/// no node that lacks one changes.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct StateSelect {
+    /// The port carrying the seed population — forwarded before the loop has run.
+    pub init_port: usize,
+    /// The port carrying last tick's evolved state — forwarded once started.
+    pub state_port: usize,
+    /// Scratch columns the state must NOT carry across the loop. A force
+    /// accumulates `accel` each tick and the integrator consumes it, so a zone
+    /// that kept it would re-apply a stale acceleration forever; `falloff` is the
+    /// same kind of per-tick mask. The CPU zone's `store()` strips exactly these.
+    pub transients: &'static [&'static str],
+}
+
 /// Resolves a node type id to its registered GPU kernel — the side-channel
 /// mirror of [`crate::cook::OpResolver`], implemented by the node registry.
 /// Kept as a trait so the GPU sequencer is decoupled from the registry crate
@@ -482,6 +506,14 @@ pub trait KernelResolver {
     /// as it opts into a kernel at all; the 32 shipping kernels declare nothing
     /// and get nothing.
     fn grid(&self, _ty: NodeTypeId) -> Option<&GridSpec> {
+        None
+    }
+
+    /// The state-loop select this node is (a `sim.zone`), if any (ADR-0135).
+    /// Default `None` — a node opts in by registering a [`StateSelect`] alongside
+    /// its [`GpuKernel::PASSTHROUGH`]; every other node is a plain passthrough or
+    /// a compute kernel and gets nothing.
+    fn state_select(&self, _ty: NodeTypeId) -> Option<&StateSelect> {
         None
     }
 

@@ -31,6 +31,7 @@ use super::gpu_demos::{
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
+use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Graph, NodeId};
@@ -63,10 +64,10 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // The real one: the boot document (snow `sim.zone` sim) — what every user
     // sees on launch, and the only graph here an artist could have authored.
     push("boot (snow sim.zone)", &|d| build_default_document(d, reg));
-    push("demo=1 grid→osc→move", &|d| {
+    push("demo=1 grid->osc->move", &|d| {
         build_gpu_demo_document(d, reg)
     });
-    push("demo=2 grid→sort→osc→scale", &|d| {
+    push("demo=2 grid->sort->osc->scale", &|d| {
         build_gpu_hybrid_demo_document(d, reg)
     });
     push("demo=3 sim vortex loop", &|d| {
@@ -80,6 +81,9 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     });
     push("demo=6 panel value branch", &|d| {
         build_gpu_panel_demo_document(d, reg)
+    });
+    push("demo=10 sim.zone snow globe", &|d| {
+        build_gpu_zone_demo_document(d, reg)
     });
     out
 }

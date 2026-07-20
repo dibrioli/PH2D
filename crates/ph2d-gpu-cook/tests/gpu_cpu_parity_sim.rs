@@ -56,6 +56,11 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
     // The uncoverable subject for the refusal control (a global permutation).
     ph2d_node_motion_sort::register(&mut reg).unwrap();
+    // GPU/M5 (ADR-0135) — the sim-zone family: the state loop, its own
+    // integrator (reads a per-element clock column) and its static collider.
+    ph2d_node_sim_zone::register(&mut reg).unwrap();
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_sim_collide::register(&mut reg).unwrap();
     reg
 }
 
@@ -181,6 +186,68 @@ fn sim_chain(reg: &NodeRegistry, forces: &[(&str, &[(&str, f32)])]) -> (Graph, N
     }
     g.validate(reg).expect("well-typed");
     (g, ig, out)
+}
+
+/// A fixed-population **simulation zone** (ADR-0135): a grid seeds the
+/// population once through `zone.init`, and the interior — `wind → sim.step →
+/// sim.collide` on the zone's `pre` state loop — falls it under gravity and
+/// bounces it off a static collider. No birth/death, so the whole loop is
+/// coverable and runs 100% on the device.
+///
+/// ```text
+///   grid ──> zone.init                 zone.out ──> output
+///            zone.out ⊙──pre──> wind → sim.step → sim.collide ──> zone.state
+/// ```
+///
+/// The `pre` edge is `zone.out --pre--> wind` and the forward tail is
+/// `sim.collide → zone.state`, exactly the topology the editor's plumbing wires
+/// (and `sim.zone`'s own tests use). With `sea`, a `force.buoyancy` is spliced
+/// between the wind and the step — the extra force accumulating into the same
+/// `accel` the step consumes, which is the demo's snow-into-the-sea physics.
+/// 40×40 = 1600 instances.
+fn zone_chain(
+    reg: &NodeRegistry,
+    collide: &[(&str, f32)],
+    sea: Option<&[(&str, f32)]>,
+) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 40.0);
+    g.set_param(grid, "cols", 40.0);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    // Gravity: 270 deg = straight down (y-up), strong enough that the fall clears
+    // the ε floor in a few ticks and reaches the collider.
+    g.set_param(wind, "angle", 270.0);
+    g.set_param(wind, "strength", 8.0);
+    let step = g.add_node("sim.step");
+    let ground = g.add_node("sim.collide");
+    for (k, v) in collide {
+        g.set_param(ground, *k, *v);
+    }
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, zone, 0, false); // grid → zone.init
+    edge(&mut g, zone, out, 0, false); // zone.out → output (render)
+    edge(&mut g, zone, wind, 0, true); // zone.out --pre--> wind (the state entry)
+    // The interior: wind [→ buoyancy] → sim.step → sim.collide → zone.state.
+    let last_force = match sea {
+        Some(params) => {
+            let sea = g.add_node("force.buoyancy");
+            for (k, v) in params {
+                g.set_param(sea, *k, *v);
+            }
+            edge(&mut g, wind, sea, 0, false);
+            sea
+        }
+        None => wind,
+    };
+    edge(&mut g, last_force, step, 0, false);
+    edge(&mut g, step, ground, 0, false);
+    edge(&mut g, ground, zone, 1, false); // interior tail → zone.state
+    g.validate(reg).expect("well-typed");
+    (g, out)
 }
 
 fn assert_close(what: &str, i: usize, a: f32, b: f32, eps: f32) {
@@ -671,6 +738,138 @@ fn a_spring_on_size_reads_unit_scale_from_an_absent_column() {
     );
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 2);
     assert_parity("spring on Size, absent column", last, &gpu_out);
+}
+
+/// **The sim-zone family on the device** (ADR-0135): a fixed-population
+/// `sim.zone` — `grid → zone`, interior `zone --pre--> wind → sim.step →
+/// sim.collide → zone.state` — cooked tick for tick on both paths and reconciled.
+///
+/// This is the FIRST time a sim runs on the GPU through a `sim.zone` rather than a
+/// bare `motion.integrate` self-loop, and it exercises three new things at once:
+///
+/// - **the zone select** — on tick 0 the zone forwards its INIT port (the grid);
+///   from tick 1 its STATE port (the interior). A select stuck on `init` would
+///   leave the GPU frozen at the lattice while the CPU falls (the `MUST_MOVE`
+///   check below fails); a select stuck on `state` would read the empty interior
+///   on tick 0 and the population would be zero forever (the count assert in
+///   `gpu_ticks` fires). Both mutations die here.
+/// - **`sim.step`** — the per-element integrator that reads its own clock column
+///   `sim_t` (so a fresh element STARTS at `dt = 0` rather than leaping) — proven
+///   by the fall matching over the whole run.
+/// - **`sim.collide`** — the static-shape response, on all three shapes. Each is
+///   compared against a **free-fall baseline** (a collider placed where it never
+///   contacts): if a shape's branch were dead in the fixture, its frame would
+///   equal free-fall and the `collider did nothing` assert would fire. That is
+///   what makes each shape's parity non-vacuous, not a snapshot of where the
+///   elements happen to be.
+///
+/// Parity is ε (FMA on the device, not a sum-order divergence — these are
+/// per-element kernels), reconciled by the same [`EPS_POS`] the Fase 2 kernels
+/// carry.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_sim_zone_falls_and_collides_on_the_device_matching_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    // The free-fall baseline: a floor so far below that no element ever contacts
+    // it, so `sim.collide` is a no-op. Every case below must differ from THIS.
+    let (gf, of) = zone_chain(&reg, &[("shape", 0.0), ("height", -1.0e6)], None);
+    let freefall = cpu_ticks(&gf, &reg, of, TICKS);
+    // The fall itself must be real, or every comparison is vacuous.
+    assert!(
+        max_move(&freefall[0], &freefall[TICKS as usize]) > MUST_MOVE,
+        "fixture check: gravity must move the field"
+    );
+
+    // The strobe's shallow sea (doc 52), so the demo's exact physics is under test:
+    // a flake falls, punches the surface, taps the bed, and floats on the swell.
+    let sea: &[(&str, f32)] = &[
+        ("level", -0.5),
+        ("density", 14.0),
+        ("depth", 0.3),
+        ("drag", 5.0),
+        ("wave_amplitude", 0.14),
+        ("wave_length", 2.4),
+        ("wave_speed", 0.5),
+    ];
+
+    // Non-round collider params so a swapped term cannot hide behind a tidy number.
+    // `want` is grid + wind [+ buoyancy] + sim.step + sim.collide — zone/output pass.
+    for (label, params, with_sea, want) in [
+        // Floor at y = -3: the fall is caught and the pile bounces and settles.
+        (
+            "floor",
+            &[
+                ("shape", 0.0),
+                ("height", -3.0),
+                ("restitution", 0.35),
+                ("friction", 0.15),
+            ][..],
+            None,
+            4,
+        ),
+        // Disc obstacle (a solid dome elements are pushed OUT of).
+        (
+            "disc",
+            &[
+                ("shape", 1.0),
+                ("center_x", 0.0),
+                ("center_y", -4.0),
+                ("radius", 3.5),
+                ("restitution", 0.4),
+                ("friction", 0.2),
+            ][..],
+            None,
+            4,
+        ),
+        // Bowl (elements are pushed IN — a basin that catches the fall).
+        (
+            "bowl",
+            &[
+                ("shape", 2.0),
+                ("center_x", 0.0),
+                ("center_y", 2.0),
+                ("radius", 6.0),
+                ("restitution", 0.25),
+                ("friction", 0.3),
+            ][..],
+            None,
+            4,
+        ),
+        // The demo's physics: gravity + the shallow SEA + a floor bed. `buoyancy`
+        // accumulates into the same `accel` the step consumes — the composition
+        // that the demo (`=10`) shows and that no `integrate` gate exercises.
+        (
+            "sea+bed",
+            &[
+                ("shape", 0.0),
+                ("height", -1.1),
+                ("restitution", 0.25),
+                ("friction", 0.35),
+            ][..],
+            Some(sea),
+            5,
+        ),
+    ] {
+        let (g, out) = zone_chain(&reg, params, with_sea);
+        let cpu = cpu_ticks(&g, &reg, out, TICKS);
+        let gpu_out = gpu_ticks(&gpu, &g, &reg, out, TICKS, want);
+        assert_parity(
+            &format!("sim.zone / {label}"),
+            &cpu[TICKS as usize],
+            &gpu_out,
+        );
+        assert!(
+            max_move(&cpu[TICKS as usize], &freefall[TICKS as usize]) > MUST_MOVE,
+            "case `{label}` did nothing: its frame equals free-fall, so a branch is \
+             dead in the fixture and the parity above proves nothing"
+        );
+    }
 }
 
 /// **The control for the gate above**: the boundary mechanism still WORKS.

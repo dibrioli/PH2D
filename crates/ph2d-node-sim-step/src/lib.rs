@@ -44,6 +44,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -78,6 +79,114 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The WGSL port of [`step`], element for element (ADR-0135 — the sim-zone
+/// family on the GPU). Unlike `motion.integrate` there is no `rest` chain and no
+/// id-gather: inside a zone **the stream IS the state**, so this is a single-port
+/// kernel reading its own columns and writing them back.
+///
+/// **The clock is per-element** (`read_sim_t(i)`, not element 0's): a zone that
+/// spawns carries newborns with no `sim_t` beside veterans that have one, and the
+/// step ages each by *its own* `dt`. When the column is absent entirely,
+/// `HAS_sim_t` is false and every element falls back to `params.playhead` ⇒
+/// `dt = 0` ⇒ a fresh element STARTS rather than leaping (the `scalar_col` →
+/// `None` → `0.0` path on the CPU).
+///
+/// **The finiteness guard keeps the OLD value**, not a zero: a diverged element
+/// resets to where it was rather than NaN-poisoning the zone — so `out_*` seed
+/// from `read_*(i)` and are only overwritten when the new state is finite, exactly
+/// as the CPU's `if …all(is_finite) { vel[i] = v; p[i] = q; }`.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let st_t_prev = select(params.playhead, read_sim_t(i), HAS_sim_t);\n\
+        let st_dt = clamp(params.playhead - st_t_prev, 0.0, STEP_MAX_DT);\n\
+        let st_w = read_inv_mass(i);\n\
+        var st_v = read_vel(i);\n\
+        var st_q = read_P(i);\n\
+        let st_a = read_accel(i);\n\
+        // Semi-implicit: velocity first, then position with the NEW velocity.\n\
+        st_v = st_v + st_a * st_dt * st_w;\n\
+        // Linear damping — first-order equivalent of `damping^dt`, transcendental-free.\n\
+        let st_keep = 1.0 - (1.0 - params.damping) * st_dt;\n\
+        st_v = st_v * st_keep;\n\
+        st_q = st_q + st_v * st_dt * st_w;\n\
+        var st_out_v = read_vel(i);\n\
+        var st_out_q = read_P(i);\n\
+        if (step_finite(st_v) && step_finite(st_q)) {\n\
+        \x20   st_out_v = st_v;\n\
+        \x20   st_out_q = st_q;\n\
+        }\n\
+        write_P(i, st_out_q);\n\
+        write_vel(i, st_out_v);\n\
+        // The step owns the clock, so the step owns the ageing (doc 50).\n\
+        write_age(i, read_age(i) + st_dt);\n\
+        write_sim_t(i, params.playhead);\n",
+    wgsl_lib: "\
+        const STEP_MAX_DT: f32 = 0.05;\n\
+        // WGSL has no `isFinite`; `abs(x) <= F32_MAX` is exactly \"not NaN and not\n\
+        // infinite\" (every compare against NaN is false, an inf exceeds the max),\n\
+        // per-lane rather than through `max()` whose NaN behaviour is undefined.\n\
+        const STEP_F32_MAX: f32 = 3.4028235e38;\n\
+        fn step_finite(v: vec2<f32>) -> bool {\n\
+        \x20   return abs(v.x) <= STEP_F32_MAX && abs(v.y) <= STEP_F32_MAX;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // The state's own clock, from which `dt` is derived — per element, like
+        // the CPU's `t_prev[i]`. Absent → `HAS_sim_t` false → `params.playhead`
+        // (`dt = 0`), matching `scalar_col`'s `None`.
+        ColumnBinding {
+            column: "sim_t",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // A row with no `age` is newborn: identity 0.
+        ColumnBinding {
+            column: "age",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // Transient: eaten here so every tick starts from zero acceleration —
+        // without this the same force would re-apply forever, one tick out of date.
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // Absent = every element free (`w = 1`); `·1.0` is exact, so a pre-pin
+        // graph integrates identically.
+        ColumnBinding {
+            column: "inv_mass",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["damping"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 fn vec2_col(s: &Stream, name: &str, n: usize) -> Vec<[f32; 2]> {
@@ -174,6 +283,7 @@ impl NodeOp for SimStep {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimStep))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

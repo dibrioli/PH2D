@@ -127,6 +127,64 @@ congelado intacto.
 
 ---
 
+## §1.5 — A FAMÍLIA `sim.zone` NA GPU ([ADR-0135](architecture/decisions/0135-gpu-sim-zone-is-a-conditional-passthrough-and-a-partial-claim-retreats.md), esta sessão 2026-07-20)
+
+O **item 1 do §2** (`sim.zone` como escopo de cook) foi ATACADO, e a medição
+mudou a forma dele — leia antes de continuar.
+
+**O que o censo mediu (o método do §0.0):** a neve de boot é `HYBRID` com a
+fronteira EM `sim.zone`, e o interior dela carrega a família que **MUDA CONTAGEM**
+(`sim.spawn`/`lifetime`/`cull`/`combine`) + o text-param `value.attribute`, nenhum
+com kernel. Como `zone.out` alimenta uma aresta `pre`, a regra `sim_state_on_gpu`
+(ADR-0127) **PROÍBE** a neve de ir 100%-GPU até que essa família inteira tenha
+kernel. ⇒ *"a NEVE de graça"* que o item 1 prometia **não é de graça** — é a
+próxima fatia (a classe que muda contagem). O que ESTA fatia entrega é a
+**CAPACIDADE** + um demo que a prova.
+
+**Entregue (tudo em kernels/metadado lateral, contrato congelado intacto):**
+- **`sim.zone` é um PASSTHROUGH CONDICIONAL** — `StateSelect` lateral (como
+  `GridSpec`): forward do `init` até ter estado, do `state` depois; "started" =
+  `GpuCook::prev.contains(zone)`. Registra `GpuKernel::PASSTHROUGH` (o plano o
+  reivindica, zero passe). Transientes tirados pela MESMA `TRANSIENTS` do `store()`
+  da CPU.
+- **`sim.step`** (integrador por-elemento; lê o relógio-coluna `sim_t` por
+  elemento) e **`sim.collide`** (resposta estática Floor/Disc/Bowl) — transcrições
+  de porta única, gabarito `motion.integrate`/`force.buoyancy`.
+- **O plano RECUA num claim PARCIAL** (`plan_forbidding` + `forbidden`): a zona
+  vira fronteira, o laço recua ao pump, e a cadeia de RENDER a jusante fica na GPU.
+  Sem isso a neve REGREDIRIA de `HYBRID`(2) para `CPU`(0). Medido: o censo mostra a
+  neve **idêntica** (fronteira `sim.zone`, 2 stages) — só o rótulo muda para
+  `[refused-despite-kernel]`.
+- **Demo `PH2D_GPU_COOK_DEMO=10`** — a neve de **população fixa** (grid → zone,
+  interior `wind → buoyancy → sim.step → sim.collide`) 100% na GPU, ~262k flocos.
+
+**Gates (verdes na RTX):** paridade `sim.zone` 4 casos (floor **1,7e-6** · disc
+**5,7e-6** · bowl **2,1e-6** · sea+bed) vs CPU, cada colisor contra uma linha de
+QUEDA-LIVRE (senão ramo morto passa vacuamente); **3 mutações mortas** (select
+sempre-init · sempre-state · collide neutralizado). Plano: `a_partly_covered_
+sim_zone_keeps_its_render_suffix_on_the_gpu` (o recuo, mutação-testado) +
+`a_fully_covered_sim_zone_loop_is_claimed_whole` (o controle POSITIVO) +
+`the_zone_demo_document_plans_as_a_fully_gpu_loop`. WGSL device-free valida os 2
+kernels na varredura de presença.
+
+**⚠️ Dívida herdada que o fechamento greenou (não era desta sessão):** o
+`cargo test --workspace` estava VERMELHO no HEAD `dc012584` em DOIS gates que a
+suíte do shell (865) não roda — `no_tofu_glyphs` (setas `→` em strings de
+`demo=1/2` e do gate de boids) e `file_loc_caps` (`motion_state_gpu_tests.rs`
+**661 > 600** no HEAD). Corrigi: setas → `->`, `FleX` no allowlist de `typos`
+(`.typos.toml` `extend-identifiers`), e SPLIT dos gates de vizinhança para
+`motion_state_gpu_neighbour_tests.rs` (460 + 269). O lane do shell **não** rodava
+`ph2d-editor-core`. (Também: `gpu_boids_scale.rs` não estava `fmt`-limpo no HEAD —
+o `cargo fmt --all` o reformatou, mudança só de whitespace.)
+
+**Aberto (a NEVE de verdade):** a família que muda contagem na GPU —
+`sim.spawn`/`sim.lifetime`/`motion.cull`/`motion.combine` (a classe adiada 3× na
+linha; `trail` foi excluído por ela) + `value.attribute` (text-param) +
+`motion.color_ramp`.t. **Só quando TODOS tiverem kernel** a neve de artista vira
+GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado.
+
+---
+
 ## §2 — Os planos a seguir (ranqueados; MEÇA antes de escolher)
 
 ⚠️ **O que esta jornada demonstrou, mas NÃO fez:** os milhões interagindo estão
@@ -136,7 +194,7 @@ prefixo CPU. Fechar isso é o item 1, e é o que transforma a capacidade em prod
 
 | # | trabalho | classe | o que destrava | o que MEDIR antes |
 |---|---|---|---|---|
-| 1 | **`sim.zone` como escopo de cook** | **estrutural** | a NEVE na GPU: `sim.step`+`sim.collide` de graça (hoje `dt≡0` fora da zone ⇒ o kernel nunca roda) + `sim.spawn`/`lifetime`/`distribute_poisson`/`combine` no mesmo doc | é um LAÇO/escopo, não um map — leia como `cook_scoped`/`time_remap` já fazem escopo (era o item #3 do menu anterior; a grade que faltava pro `sim.collide` de vizinhança já EXISTE) |
+| 1 | **A NEVE na GPU: a família que MUDA CONTAGEM** (`sim.spawn`/`lifetime`/`cull`/`combine` + `value.attribute` + `color_ramp.t`) | **estrutural, GRANDE** | a neve de ARTISTA 100%-GPU | ✅ **A FUNDAÇÃO LANDOU** (§1.5 · ADR-0135): `sim.zone`/`sim.step`/`sim.collide` na GPU + o recuo. **Falta a classe que muda contagem** — a que a linha adiou 3× (`trail`). O `sim_state_on_gpu` exige o laço INTEIRO, então nada aquém disso move a neve. MEÇA: o custo de reimplementar spawn/cull (contagem dinâmica) na GPU — é onde mora o trabalho |
 | 2 | **subir os 2 tetos MEDIDOS** (§0.0: quem move o número reconfere a nota) | polimento de escala | boids/collide acima de ~4–8M | os dois já estão medidos e nomeados: (a) dispatch por-bucket sobre `pow2(2N)` bate 65 535 workgroups/dim a ~8M → **dispatch 2-D em `grid.rs`**; (b) binding de `RenderInstance` (184 B) capado em 2 GiB → ~11,67M → **requisitar `max_storage_buffer_binding_size` maior** |
 | 3 | **o cull do `motion.boids`** (~20%, medido, NÃO aplicado) | polimento | ~20% no boids | ⚠️ **NÃO é o mesmo cull do collide** — o boids varre 3×3 FIXO (`cell=radius` exato, sem `ceil` variável), então não tem o degrau; a técnica se aplica mas é outra wave, nomeada de propósito no commit `2d0297c0` |
 | 4 | **próximo kernel de cobertura** | incremental | mais grafos 100% GPU | re-meça qual nó aparece no prefixo CPU de docs reais (o método do censo) |

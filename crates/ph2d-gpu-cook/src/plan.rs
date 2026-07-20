@@ -177,7 +177,15 @@ fn eligible(
     kernels: &dyn KernelResolver,
     node: NodeId,
     claimed: &BTreeSet<NodeId>,
+    forbidden: &BTreeSet<NodeId>,
 ) -> bool {
+    // A node the RETREAT forbade (`plan`): a partially-claimed sim loop drops its
+    // `pre`-source here so the loop recedes to the pump while a render suffix
+    // stays on the GPU. Ineligible = a boundary, exactly what the zone was before
+    // it had a kernel.
+    if forbidden.contains(&node) {
+        return false;
+    }
     let Some(inst) = graph.node(node) else {
         return false;
     };
@@ -311,6 +319,9 @@ struct Walk<'a> {
     /// eligibility is settled before `accept`, "claimed" is never withdrawn:
     /// at the end this set is exactly `stages`.
     claimed: BTreeSet<NodeId>,
+    /// Nodes the retreat forced to be boundaries (see [`plan`]). Empty on the
+    /// first pass.
+    forbidden: &'a BTreeSet<NodeId>,
 }
 
 impl Walk<'_> {
@@ -340,7 +351,16 @@ impl Walk<'_> {
             return GpuSource::Prev(src);
         }
         match self.graph.node(src).map(|i| i.type_id()) {
-            Some(ty) if eligible(self.graph, self.ops, self.kernels, src, &self.claimed) => {
+            Some(ty)
+                if eligible(
+                    self.graph,
+                    self.ops,
+                    self.kernels,
+                    src,
+                    &self.claimed,
+                    self.forbidden,
+                ) =>
+            {
                 self.accept(src, ty);
                 GpuSource::Stage(src)
             }
@@ -361,9 +381,21 @@ pub fn plan(
     kernels: &dyn KernelResolver,
     sink: NodeId,
 ) -> GpuPlan {
+    plan_forbidding(graph, ops, kernels, sink, &BTreeSet::new())
+}
+
+/// [`plan`], with a set of nodes forced to be boundaries — the retreat mechanism
+/// (see the `sim_state_on_gpu` handling below). The public entry is the empty set.
+fn plan_forbidding(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    sink: NodeId,
+    forbidden: &BTreeSet<NodeId>,
+) -> GpuPlan {
     let claimed = BTreeSet::new();
     let sink_ty = match graph.node(sink).map(|i| i.type_id()) {
-        Some(ty) if eligible(graph, ops, kernels, sink, &claimed) => ty,
+        Some(ty) if eligible(graph, ops, kernels, sink, &claimed, forbidden) => ty,
         // The sink itself is CPU: nothing to claim. (`dispatching_stages` is 0,
         // so the caller's route recuses whole.)
         _ => {
@@ -380,23 +412,41 @@ pub fn plan(
         stages: Vec::new(),
         boundaries: Vec::new(),
         claimed,
+        forbidden,
     };
     walk.accept(sink, sink_ty);
 
     // A staged node that feeds a `pre` edge owns simulation state. If the plan
-    // ALSO leaves a CPU boundary, the caller will cook that boundary on the
+    // ALSO leaves a CPU boundary, the caller would cook that boundary on the
     // pump — and the pump, to do so, re-cooks this node's chain with ITS OWN
     // `prev`. That is two simulations of one state: the GPU would integrate an
     // `accel` computed from the CPU's divergent trajectory, every tick. The
     // node's own loop being GPU-resident is not enough (a force node without a
-    // kernel puts the boundary INSIDE the loop). Refuse the claim whole; the
-    // CPU already runs this document correctly.
-    let sim_state_on_gpu = walk
+    // kernel puts the boundary INSIDE the loop).
+    let pre_sources_on_gpu: BTreeSet<NodeId> = walk
         .graph
         .edges()
         .iter()
-        .any(|e| e.delayed && walk.claimed.contains(&e.from.0));
-    if sim_state_on_gpu && !walk.boundaries.is_empty() {
+        .filter(|e| e.delayed && walk.claimed.contains(&e.from.0))
+        .map(|e| e.from.0)
+        .collect();
+    if !pre_sources_on_gpu.is_empty() && !walk.boundaries.is_empty() {
+        // RETREAT, not refuse-whole. Forbid the staged `pre`-sources and re-plan:
+        // the sim loop recedes to the pump (its container — a `sim.zone` — becomes
+        // a boundary), while any render suffix DOWNSTREAM of the loop stays on the
+        // GPU. That preserves the hybrid a partially-covered sim document had
+        // before its zone was claimable — the boot snow renders its final
+        // population on the device even though the count-changing interior cooks
+        // on the CPU. A refuse-to-`(sink, 0)` would drop that suffix for nothing.
+        let mut next = forbidden.clone();
+        let grew = pre_sources_on_gpu
+            .iter()
+            .fold(false, |g, n| next.insert(*n) | g);
+        if grew {
+            return plan_forbidding(graph, ops, kernels, sink, &next);
+        }
+        // No progress possible (a forbidden node still staged — cannot happen,
+        // `eligible` refuses it): fall back to the whole refusal.
         return GpuPlan {
             boundaries: vec![(sink, 0)],
             stages: Vec::new(),

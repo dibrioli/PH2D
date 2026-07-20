@@ -42,6 +42,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -103,6 +104,102 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The WGSL port of [`contact`] + [`respond`], element for element (ADR-0135 —
+/// the sim-zone family on the GPU). Single-port, no clock, no grid: it reads `P`
+/// and `vel` off the state and writes them back. The shape is a **uniform branch**
+/// (every element shares the `shape` param), so it is coherent on the device.
+///
+/// The param clamps are the kernel's own (`radius.max(0)`, restitution/friction
+/// clamped to `[0,1]`) — a clamp that lives only on the CPU is a divergence waiting
+/// for a slider at its edge. Position is pushed out **unconditionally**; only the
+/// velocity reflection is gated on `vn < 0` (already leaving ⇒ do not re-reflect,
+/// the classic collider buzz), and the whole response is dropped when non-finite.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let sc_shape = i32(round(params.shape));\n\
+        let sc_c = vec2<f32>(params.center_x, params.center_y);\n\
+        let sc_radius = max(params.radius, 0.0);\n\
+        let sc_rest = clamp(params.restitution, 0.0, 1.0);\n\
+        let sc_fric = clamp(params.friction, 0.0, 1.0);\n\
+        let sc_p = read_P(i);\n\
+        let sc_v = read_vel(i);\n\
+        var sc_hit = false;\n\
+        var sc_n = vec2<f32>(0.0, 1.0);\n\
+        var sc_depth = 0.0;\n\
+        if (sc_shape == SC_DISC || sc_shape == SC_BOWL) {\n\
+        \x20   let sc_d = sc_p - sc_c;\n\
+        \x20   let sc_dist = sqrt(sc_d.x * sc_d.x + sc_d.y * sc_d.y);\n\
+        \x20   // Dead centre has no way out: pick up rather than divide by zero.\n\
+        \x20   var sc_dir = vec2<f32>(0.0, 1.0);\n\
+        \x20   if (sc_dist > SC_EPS) { sc_dir = sc_d / sc_dist; }\n\
+        \x20   if (sc_shape == SC_DISC) {\n\
+        \x20       if (sc_dist < sc_radius) { sc_hit = true; sc_n = sc_dir; sc_depth = sc_radius - sc_dist; }\n\
+        \x20   } else {\n\
+        \x20       if (sc_dist > sc_radius) { sc_hit = true; sc_n = -sc_dir; sc_depth = sc_dist - sc_radius; }\n\
+        \x20   }\n\
+        } else {\n\
+        \x20   // The floor: the world is everything above `height`, so out is up.\n\
+        \x20   if (sc_p.y < params.height) { sc_hit = true; sc_n = vec2<f32>(0.0, 1.0); sc_depth = params.height - sc_p.y; }\n\
+        }\n\
+        var sc_out_p = sc_p;\n\
+        var sc_out_v = sc_v;\n\
+        if (sc_hit) {\n\
+        \x20   let sc_rp = sc_p + sc_n * sc_depth;\n\
+        \x20   var sc_rv = sc_v;\n\
+        \x20   let sc_vn = dot(sc_rv, sc_n);\n\
+        \x20   // Already leaving (or sliding): touching must not change it.\n\
+        \x20   if (sc_vn < 0.0) {\n\
+        \x20       let sc_bounce = (1.0 + sc_rest) * sc_vn;\n\
+        \x20       let sc_reflected = sc_rv - sc_bounce * sc_n;\n\
+        \x20       let sc_vn_out = dot(sc_reflected, sc_n);\n\
+        \x20       let sc_tangent = sc_reflected - sc_vn_out * sc_n;\n\
+        \x20       sc_rv = sc_vn_out * sc_n + sc_tangent * (1.0 - sc_fric);\n\
+        \x20   }\n\
+        \x20   if (collide_finite(sc_rp) && collide_finite(sc_rv)) {\n\
+        \x20       sc_out_p = sc_rp;\n\
+        \x20       sc_out_v = sc_rv;\n\
+        \x20   }\n\
+        }\n\
+        write_P(i, sc_out_p);\n\
+        write_vel(i, sc_out_v);\n",
+    wgsl_lib: "\
+        const SC_DISC: i32 = 1;\n\
+        const SC_BOWL: i32 = 2;\n\
+        const SC_EPS: f32 = 1.1920929e-7;\n\
+        const SC_F32_MAX: f32 = 3.4028235e38;\n\
+        fn collide_finite(v: vec2<f32>) -> bool {\n\
+        \x20   return abs(v.x) <= SC_F32_MAX && abs(v.y) <= SC_F32_MAX;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[
+        "shape",
+        "height",
+        "center_x",
+        "center_y",
+        "radius",
+        "restitution",
+        "friction",
+    ],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// The contact at `p`: the outward unit normal, and how deep inside the surface it is.
@@ -241,6 +338,7 @@ impl NodeOp for SimCollide {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimCollide))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

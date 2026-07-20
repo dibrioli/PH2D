@@ -68,6 +68,10 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_boids::register(&mut reg).unwrap();
     // The ITERATED grid kernel (Fase 5): 2 input ports ⇒ port-qualified readers.
     ph2d_node_motion_collide::register(&mut reg).unwrap();
+    // GPU/M5 (ADR-0134) — the sim-zone family: the per-element integrator that
+    // reads its own clock column, and the static-shape collider.
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_sim_collide::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

@@ -53,6 +53,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{GpuKernel, StateSelect};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -155,6 +156,20 @@ impl NodeOp for SimZone {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimZone))?;
+    // GPU (ADR-0135): the zone is a conditional passthrough. The PASSTHROUGH
+    // kernel makes the plan claim it (no compute pass emitted); the `StateSelect`
+    // tells the sequencer to forward `init` before the loop has state and `state`
+    // after, stripping the SAME `TRANSIENTS` the CPU `store()` strips (one list,
+    // two consumers — they cannot drift).
+    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_state_select(
+        MANIFEST.id,
+        StateSelect {
+            init_port: IN_INIT,
+            state_port: IN_STATE,
+            transients: &TRANSIENTS,
+        },
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

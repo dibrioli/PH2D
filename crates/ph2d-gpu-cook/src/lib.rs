@@ -342,6 +342,28 @@ impl GpuCook {
             // Port 0 is the base the output rides on (`ColumnBinding::port`).
             let base = inputs.first().cloned().unwrap_or_default();
 
+            // A `sim.zone` is a conditional passthrough (ADR-0135): forward the
+            // INIT port until the loop has state, the STATE port after, stripping
+            // the transients the state must not carry. "Started" is whether last
+            // tick populated this node's `prev` — it feeds a `pre` edge, so after
+            // tick 0 it always has — mirroring the CPU zone's `ctx.started()`
+            // (`prev_outputs.contains_key`). Intercepted BEFORE the passthrough
+            // branch, which would forward port 0 (init) unconditionally.
+            if let Some(sel) = kernels.state_select(stage.ty) {
+                let started = self.prev.contains_key(&stage.node);
+                let port = if started {
+                    sel.state_port
+                } else {
+                    sel.init_port
+                };
+                let mut out = inputs.get(port).cloned().unwrap_or_default();
+                for t in sel.transients {
+                    out.cols.remove(*t);
+                }
+                streams.insert(stage.node, out);
+                continue;
+            }
+
             let Some(kernel) = kernels.gpu_kernel(stage.ty) else {
                 // The registry changed under a stale plan; treat as pass-through
                 // rather than dispatch garbage — the next frame replans.

@@ -298,29 +298,51 @@ fn what_boid_count_leaves_headroom() {
     let reg = registry();
     const TICKS: u64 = 600;
     eprintln!("\nboids clustered peak vs count (shipped forces, 600 ticks in):");
-    eprintln!("  {:>10}  {:>10}  {:>10}  {:>10}", "agents", "start ms", "peak ms", "% of 16.7");
+    eprintln!(
+        "  {:>10}  {:>10}  {:>10}  {:>10}",
+        "agents", "start ms", "peak ms", "% of 16.7"
+    );
     for &n in &[262_144u32, 524_288, 786_432, 1_048_576] {
         let (g, out) = boids_graph_tuned(n as f32, 2.0, 1.6, 1.4, 0.6, 0.35, 5.0);
         let plan = plan(&g, &reg, &reg, out);
         assert!(plan.is_fully_gpu());
         let mut gc = GpuCook::new();
         let cook = |gc: &mut GpuCook, t: u64| {
-            gc.cook(&gpu, &g, &reg, &reg, &plan, &[],
-                CookClock { playhead: t as f64 * FIXED_DT, tick: Some(t) },
-                DEFAULT_UV, DEFAULT_SIZE).expect("gpu cook");
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         };
         cook(&mut gc, 0);
         // start cost (first 30 ticks) vs clustered cost (30 ticks at the end)
         let time = |gc: &mut GpuCook, a: u64, b: u64| {
             let start = Instant::now();
-            for t in a..b { cook(gc, t); }
+            for t in a..b {
+                cook(gc, t);
+            }
             start.elapsed().as_secs_f64() * 1e3 / (b - a) as f64
         };
         let start_ms = time(&mut gc, 1, 31);
-        for t in 31..(TICKS - 30) { cook(&mut gc, t); }
+        for t in 31..(TICKS - 30) {
+            cook(&mut gc, t);
+        }
         let peak_ms = time(&mut gc, TICKS - 30, TICKS);
-        eprintln!("  {n:>10}  {start_ms:>10.2}  {peak_ms:>10.2}  {:>9.0}%", peak_ms / 16.67 * 100.0);
+        eprintln!(
+            "  {n:>10}  {start_ms:>10.2}  {peak_ms:>10.2}  {:>9.0}%",
+            peak_ms / 16.67 * 100.0
+        );
     }
     eprintln!(
         "\n(the demo must hold 60 fps at its PEAK, not at rest; the % is the cook\n\
@@ -351,7 +373,16 @@ fn where_does_the_flock_settle() {
     let cands = [
         ("1M seek0 r2.0", 1_048_576.0, 2.0, 2.4, 1.4, 0.6, 0.0, 5.0),
         ("1M seek0 r1.5", 1_048_576.0, 1.5, 2.4, 1.4, 0.6, 0.0, 5.0),
-        ("1M sk.005 r1.5", 1_048_576.0, 1.5, 4.0, 1.4, 0.3, 0.005, 5.0),
+        (
+            "1M sk.005 r1.5",
+            1_048_576.0,
+            1.5,
+            4.0,
+            1.4,
+            0.3,
+            0.005,
+            5.0,
+        ),
     ];
     eprintln!("\nboids ms/tick to equilibrium (windows of {WIN} ticks):");
     for (label, n, r, sep, al, co, sk, ms) in cands {
@@ -384,7 +415,10 @@ fn where_does_the_flock_settle() {
             for t in (w * WIN + 1)..=((w + 1) * WIN) {
                 cook(&mut gc, t);
             }
-            eprint!("  {:>7.2}", start.elapsed().as_secs_f64() * 1e3 / WIN as f64);
+            eprint!(
+                "  {:>7.2}",
+                start.elapsed().as_secs_f64() * 1e3 / WIN as f64
+            );
         }
         eprintln!();
     }
@@ -486,7 +520,10 @@ fn does_an_orbiting_target_bound_the_gather() {
             for t in (w * WIN + 1)..=((w + 1) * WIN) {
                 cook(&mut gc, t);
             }
-            eprint!("  {:>7.2}", start.elapsed().as_secs_f64() * 1e3 / WIN as f64);
+            eprint!(
+                "  {:>7.2}",
+                start.elapsed().as_secs_f64() * 1e3 / WIN as f64
+            );
         }
         eprintln!();
     }

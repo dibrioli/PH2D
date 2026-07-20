@@ -24,6 +24,11 @@ extend-ignore-identifiers-re = [
     "^pn$",
 ]
 
+[default.extend-identifiers]
+# NVIDIA FleX (the position-based-dynamics solver `motion.collide` cites for its
+# averaged Jacobi push-apart). Checked as a whole so it is not split into `Fle`.
+FleX = "FleX"
+
 [default.extend-words]
 exclusivos = "exclusivos"  # pt-BR (comentario de codigo)
 respondendo = "respondendo"  # pt-BR (comentario de codigo)

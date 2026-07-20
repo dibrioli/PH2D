@@ -150,7 +150,12 @@ pub fn nearest_on_axis_indexed(
 /// O sinal sai da área com sinal (a orientação do anel), e não de um chute geométrico
 /// tipo *"para longe do centroide"* — que só funciona em forma convexa, e uma região
 /// preenchida à mão raramente é.
-fn outward_normals(ring: &[Vec2]) -> Vec<Vec2> {
+///
+/// `pub` desde o 6º smoke do Colorize: o snap da borda ao eixo empurra os trechos
+/// colados na linha até a face OPOSTA (a sobreposição sob a linha que o crave sempre
+/// deu), e a direção do empurrão é ESTA normal — uma 2ª cópia da convenção divergiria
+/// (o gate `the_outward_normal_points_away` pina a convenção aqui).
+pub fn outward_normals(ring: &[Vec2]) -> Vec<Vec2> {
     let n = ring.len();
     // Área positiva = uma orientação; negativa = a outra. Qual delas é "anti-horária"
     // depende do eixo y apontar para cima ou para baixo, e este documento usa y para

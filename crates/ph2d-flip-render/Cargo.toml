@@ -38,3 +38,6 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # O balde: o teste de ENCAIXE rasteriza a cena real (o fill que o solver devolve + a
 # linha por cima) e mede o vão entre a cor e o contorno.
 ph2d-flip-fill = { path = "../ph2d-flip-fill" }
+# O Colorize: a sonda visual do zíper (6º smoke) rasteriza as regiões que o colorize
+# devolve numa arte de MÃO (densa + ruidosa) — o pixel é o oráculo.
+ph2d-flip-colorize = { path = "../ph2d-flip-colorize" }

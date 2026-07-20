@@ -815,6 +815,7 @@ fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
         |p: Vec2| (0.8..1.2).contains(&p.x) && (1.1..2.3).contains(&p.y.abs());
     let step = 1.0 / precision; // ~1 px
     for label in [0u16, 1u16] {
+        let mut devs: Vec<f32> = Vec::new();
         let mut worst = 0.0f32;
         let mut worst_at = Vec2::new(0.0, 0.0);
         let mut samples = 0usize;
@@ -840,6 +841,7 @@ fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
                             worst = d;
                             worst_at = p;
                         }
+                        devs.push(d);
                         samples += 1;
                     }
                 }
@@ -850,17 +852,251 @@ fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
             "controle positivo: a borda do rotulo {label} tem de atravessar a janela \
              (só {samples} amostras — a fixture não contém o fenômeno)"
         );
-        let px = worst * precision;
+        let _ = worst_at;
+        let (mn, mx) = devs
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
+        let (mn_px, mx_px) = (mn * precision, mx * precision);
         if std::env::var("PH2D_GATE_DUMP").is_ok() {
-            eprintln!("[dump] label {label}: pior {px:.2} px em ({:.3}, {:.3})", worst_at.x, worst_at.y);
+            eprintln!("[dump] label {label}: dev [{mn_px:.2}, {mx_px:.2}] px");
         }
-        // Barra 0,5 px: pós-fix mede 0,02/0,00 px (25× abaixo); pré-fix, 1,95 px (4× acima).
+        // (a) SEGUE a linha: o desvio ao eixo é ~constante (spread pequeno). Uma corda que
+        //     ignora a onda ou um zigue-zague de extremos (5º smoke) espalham 2-4 px.
         assert!(
-            px <= 0.5,
-            "a borda do rotulo {label} tem de SEGUIR a linha ondulada: pior desvio ao eixo \
-             = {px:.2} px (corda que ignora a onda ou zigue-zague de extremos — o serrilhado \
-             do 5º smoke)"
+            mx_px - mn_px <= 1.5,
+            "a borda do rotulo {label} tem de SEGUIR a linha ondulada: desvio ao eixo \
+             espalhado em [{mn_px:.2}, {mx_px:.2}] px (o serrilhado do 5º smoke)"
         );
+        // (b) SOBREPÕE: a borda cruza ATÉ A FACE OPOSTA (~2 px além do eixo) — bordas que
+        //     apenas ENCOSTAM no eixo rasterizam com costura aberta (o zíper do 6º smoke:
+        //     dois polígonos adjacentes quantizam a aresta cada um por si).
+        assert!(
+            mn_px >= 0.8 && mx_px <= 3.5,
+            "a borda do rotulo {label} tem de SOBREPOR ~2 px além do eixo, nunca só \
+             encostar (dev [{mn_px:.2}, {mx_px:.2}] px — o zíper do 6º smoke)"
+        );
+    }
+}
+
+/// 🔴 **Uma cor que inunda os DOIS lados de uma linha cobre a linha por baixo — sem
+/// fenda** (6º smoke, foto 2: o divisor virava uma corrente escura em zigue-zague quando o
+/// vermelho vazava pelo vão e abraçava o traço).
+///
+/// O `expand_under_ink` só entra em pixels `INK` (o filamento do eixo); o aro de AA da
+/// PAREDE ficava sem preencher, e a região que abraça a linha ganhava uma FENDA suja de
+/// ~1 px que o traçador percorria em dupla-visita — qualquer destino dela é artefato de
+/// winding na tela. Com `close_wall_slits`, parede com a MESMA cor dos dois lados é
+/// INTERIOR: o anel da região nem passa perto do divisor.
+///
+/// Mutação que sangra: apagar o `close_wall_slits` do `trace_region` (o anel volta a
+/// percorrer a fenda — dezenas de vértices na banda).
+#[test]
+fn one_colour_flooding_both_sides_covers_the_wall_without_a_slit() {
+    let hand = |pts: &[Vec2], seed: usize| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        pts.iter()
+            .enumerate()
+            .map(|(i, p)| Vec2::new(p.x + h(i + seed) * 0.05, p.y + h(i + seed + 91) * 0.05))
+            .collect()
+    };
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b, s, n) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize, 24usize),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7, 24),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13, 24),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29, 24),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41, 41),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53, 53),
+    ] {
+        let pts = hand(&seg_(a, b, n), s);
+        let m = pts.len();
+        strokes.push((pts, vec![0.13; m], false));
+    }
+    // UM rabisco só: o vermelho vaza pelo vão e abraça o divisor pelos dois lados.
+    let scribbles = vec![Scribble {
+        label: 0,
+        points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+        width: 0.15,
+    }];
+    let regions = colorize(&strokes, &scribbles, 80.0, 0.0);
+    assert!(!regions.is_empty(), "a cor tem de existir");
+    // Nenhum vértice de anel algum na banda do divisor, LONGE do vão (o traço é interior).
+    let near_divider = |p: Vec2| (0.9..1.1).contains(&p.x) && (0.8..2.3).contains(&p.y.abs());
+    let offenders: usize = regions
+        .iter()
+        .flat_map(|r| std::iter::once(&r.fill.outer).chain(r.fill.holes.iter()))
+        .flat_map(|ring| ring.iter())
+        .filter(|p| near_divider(**p))
+        .count();
+    assert_eq!(
+        offenders, 0,
+        "a linha abraçada pela mesma cor é INTERIOR — o anel não pode percorrer uma fenda \
+         sobre o divisor ({offenders} vertices na banda)"
+    );
+}
+
+/// 🔬 **Sonda do ZÍPER** (6º smoke, 2026-07-20: "ainda não perfeito" — dentes finos e
+/// REGULARES alternando as duas cores em cima do divisor, mais fortes perto da lente).
+/// Reproduz a cena do smoke na precisão do PRODUTO (~128 = 1,6/doc_per_px no zoom da foto)
+/// e caça o zíper na GEOMETRIA final: caminha a borda de cada cor perto do divisor e
+/// imprime os trechos onde o desvio ao eixo TROCA DE SINAL em sequência (a assinatura do
+/// zíper — o tremor da mão não alterna a cada ~2 px).
+#[test]
+#[ignore = "sonda de diagnóstico — rode com --release --ignored --nocapture"]
+fn probe_the_zipper_on_the_divider() {
+    let hand = |pts: &[Vec2], seed: usize| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        pts.iter()
+            .enumerate()
+            .map(|(i, p)| Vec2::new(p.x + h(i + seed) * 0.05, p.y + h(i + seed + 91) * 0.05))
+            .collect()
+    };
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b, s, n) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize, 24usize),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7, 24),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13, 24),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29, 24),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41, 41),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53, 53),
+    ] {
+        let pts = hand(&seg_(a, b, n), s);
+        let m = pts.len();
+        strokes.push((pts, vec![0.13; m], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    // A arte de MÃO REAL: pontos na taxa do ponteiro (~2,5 px) com ruído de ±1,3 px — o
+    // que um arrasto de mouse de fato produz (o `hand()` de 41 pontos é limpo demais).
+    let noisy = |pts: &[Vec2], seed: usize, step: f32, jitter: f32| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        let mut out = Vec::new();
+        let mut k = 0usize;
+        for w in pts.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let d = Vec2::new(b.x - a.x, b.y - a.y);
+            let len = (d.x * d.x + d.y * d.y).sqrt();
+            let n = (len / step).ceil().max(1.0) as usize;
+            for s in 0..n {
+                let t = s as f32 / n as f32;
+                let p = Vec2::new(a.x + d.x * t, a.y + d.y * t);
+                out.push(Vec2::new(
+                    p.x + h(k + seed) * jitter,
+                    p.y + h(k + seed + 91) * jitter,
+                ));
+                k += 1;
+            }
+        }
+        out.push(*pts.last().expect("polyline"));
+        out
+    };
+    let noisy_strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = strokes
+        .iter()
+        .enumerate()
+        .map(|(i, (pts, _, closed))| {
+            let np = noisy(pts, i * 977, 0.02, 0.02);
+            let m = np.len();
+            (np, vec![0.13; m], *closed)
+        })
+        .collect();
+
+    for (name, art, precision) in [
+        ("limpo@128", &strokes, 128.0f32),
+        ("limpo@400", &strokes, 400.0),
+        ("MÃO@128", &noisy_strokes, 128.0),
+    ] {
+        let regions = colorize(art, &scribbles, precision, 0.0);
+        let dividers: Vec<&[Vec2]> = art[4..6].iter().map(|(p, ..)| p.as_slice()).collect();
+        // Desvio COM SINAL ao eixo do divisor: >0 = à direita.
+        let sdist = |p: Vec2| -> f32 {
+            let mut best = f32::MAX;
+            let mut sign = 1.0f32;
+            for pts in &dividers {
+                for w in pts.windows(2) {
+                    let (a, b) = (w[0], w[1]);
+                    let ab = Vec2::new(b.x - a.x, b.y - a.y);
+                    let l2 = ab.x * ab.x + ab.y * ab.y;
+                    let t = if l2 <= 0.0 {
+                        0.0
+                    } else {
+                        (((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2).clamp(0.0, 1.0)
+                    };
+                    let (dx, dy) = (p.x - (a.x + t * ab.x), p.y - (a.y + t * ab.y));
+                    let d = (dx * dx + dy * dy).sqrt();
+                    if d < best {
+                        best = d;
+                        sign = (ab.x * dy - ab.y * dx).signum();
+                    }
+                }
+            }
+            best * sign
+        };
+        println!("\n== {name} (precision {precision}) ==");
+        for r in &regions {
+            for (ri, ring) in std::iter::once(&r.fill.outer)
+                .chain(r.fill.holes.iter())
+                .enumerate()
+            {
+                // Vértices do anel perto do divisor, com desvio assinado em px.
+                let n = ring.len();
+                let mut runs = 0usize;
+                let mut prev_sign = 0.0f32;
+                let mut zipper: Vec<(f32, f32, f32)> = Vec::new(); // (y, x, dev_px)
+                for i in 0..n {
+                    let p = ring[i];
+                    if !(0.7..1.3).contains(&p.x) || p.y.abs() > 2.4 {
+                        prev_sign = 0.0;
+                        continue;
+                    }
+                    let dev = sdist(p) * precision;
+                    if dev.abs() > 1.0 && prev_sign != 0.0 && dev.signum() != prev_sign {
+                        runs += 1;
+                        zipper.push((p.y, p.x, dev));
+                    }
+                    if dev.abs() > 1.0 {
+                        prev_sign = dev.signum();
+                    }
+                }
+                if runs > 0 {
+                    println!(
+                        "  label {} anel {} ({} verts): {} TROCAS de lado > 1px",
+                        r.label,
+                        if ri == 0 { "outer" } else { "hole" },
+                        n,
+                        runs
+                    );
+                    for (y, x, d) in zipper.iter().take(12) {
+                        println!("    ({y:+.3}, {x:+.3}) dev {d:+.1}px");
+                    }
+                }
+            }
+        }
     }
 }
 

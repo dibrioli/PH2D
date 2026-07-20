@@ -1,7 +1,32 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite): o 6º smoke ("ainda não perfeito") FECHOU — a borda não fica
+> NO eixo, ela ATRAVESSA até a face oposta; e parede abraçada pela mesma cor é INTERIOR.**
+> As duas fotos eram dois mecanismos, ambos reproduzidos PIXEL a pixel numa sonda de
+> render nova (`gpu_colorize_look.rs`, arte de MÃO: pontos na taxa do ponteiro + ruído —
+> a arte sintética de 41 pontos limpos NÃO contém os fenômenos): **(1) o zíper na costura
+> vermelho/azul** — o snap v1 cravava as DUAS bordas exatamente no eixo (a mesma curva a
+> 0,03 px, medido) e dois polígonos ADJACENTES rasterizam a aresta cada um por si: as
+> diferenças de quantização de 1 px alternam. ⚠️ O produto shipado nunca teve isso porque o
+> crave levava cada fill ATRAVÉS da tinta — os fills se SOBREPUNHAM sob a linha; o v1
+> destruiu a sobreposição ao "corrigir" para o eixo. Fix: o empurrão de [`PUSH_PX`]=2 px
+> além do eixo pela perp do SEGMENTO do eixo (⚠️ nunca pela normal da CADEIA — ruidosa, o
+> empurrão espalhava ±2 px e o anel se autocruzava; a normal do anel entra só como SINAL) +
+> endereço POR VÉRTICE no caminhar (a perp do segmento errado subcortava a mitra: dev 0,24
+> onde a lei pede 2). **(2) a corrente escura em zigue-zague na própria linha** (foto 2,
+> cor única inundando os dois lados) — o `expand_under_ink` só entra em pixels `INK` e o
+> aro de AA da PAREDE ficava sem preencher: a região que abraça a linha ganhava uma FENDA
+> suja de ~1 px, dupla-visita do traçador, e qualquer destino dela (coincidente, empurrada)
+> é artefato de winding. Fix: `close_wall_slits` — parede com a MESMA cor dos dois lados é
+> preenchida (interior); costura entre DUAS cores e borda contra fundo intactas. Gates:
+> claims novas no gate do serrilhado (SEGUE: spread ≤1,5 px · SOBREPÕE: dev ∈ [0,8; 3,5] px
+> — medido [0,81; 2,03] nos dois lados) + `one_colour_flooding_both_sides_covers_the_wall_
+> without_a_slit` (mutação: 245 vértices na banda); mutações A/B sangram. Divergência mútua
+> das bordas na costura: era média 1,6 / pior 15 px ⇒ **2,1 / 2,5 px uniformes** (= a
+> sobreposição projetada). Perf intacta (4096² = 1,70 s). Suíte: 25 verdes.
+>
 > **Estado (2026-07-20, tarde): o SERRILHADO do 5º smoke FECHOU — a borda sobre a tinta
-> agora É o eixo (`snap.rs`).** O diagnóstico prescrito no handoff rodou e inocentou o
+> segue o eixo (`snap.rs`).** O diagnóstico prescrito no handoff rodou e inocentou o
 > Voronoi: o plano `assign` e o plano de pixels pós-`expand_under_ink` são **lisos e
 > SIMÉTRICOS** (rugosidade 0,08-0,21 px, os dois lados idênticos — sonda
 > `probe_the_sawtooth_boundary_along_the_divider`). A serra nascia na **VETORIZAÇÃO**: a

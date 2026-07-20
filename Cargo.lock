@@ -5175,6 +5175,7 @@ dependencies = [
  "image",
  "ph2d-core",
  "ph2d-flip",
+ "ph2d-flip-colorize",
  "ph2d-flip-fill",
  "ph2d-gpu",
  "ph2d-painter-effects",

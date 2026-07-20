@@ -398,9 +398,53 @@ fn regions_to_geometry(
     out
 }
 
+/// **Parede com tinta dos DOIS lados é INTERIOR** (6º smoke, foto 2 — o zigue-zague na
+/// própria linha quando uma cor inunda os dois lados de um traço).
+///
+/// O `expand_under_ink` só entra em pixels com flag `INK` (o filamento do eixo, raio 0);
+/// a PAREDE (`BOUNDARY`, com +0,5 px de AA) tem um aro que ele nunca preenche. Quando a
+/// MESMA região abraça os dois lados de uma linha, sobra uma FENDA suja de ~1 px ao longo
+/// dos aros — o traçador a percorre em dupla-visita, e qualquer destino que se dê a essa
+/// fenda vira artefato de winding (coincidente = zíper de quantização; empurrada = faixa
+/// de winding 0 = a corrente escura da foto). A fenda não se conserta: ela deixa de
+/// existir — pixel de parede ensanduichado por `FILLED` em qualquer par de direções
+/// opostas é preenchido. Uma parede com cor de UM lado só (a costura entre duas cores, a
+/// borda contra o fundo) não é tocada.
+fn close_wall_slits(grid: &mut Grid) {
+    let (w, h) = (grid.w, grid.h);
+    for _ in 0..AXIS_COVER_PASSES {
+        let src = grid.flags.clone();
+        let mut changed = false;
+        for y in 1..h.saturating_sub(1) {
+            for x in 1..w.saturating_sub(1) {
+                let i = y * w + x;
+                if src[i] & FILLED != 0 || src[i] & BOUNDARY == 0 {
+                    continue;
+                }
+                let f = |dx: i32, dy: i32| -> bool {
+                    let j = (y as i32 + dy) as usize * w + (x as i32 + dx) as usize;
+                    src[j] & FILLED != 0
+                };
+                let sandwiched = (f(-1, 0) && f(1, 0))
+                    || (f(0, -1) && f(0, 1))
+                    || (f(-1, -1) && f(1, 1))
+                    || (f(1, -1) && f(-1, 1));
+                if sandwiched {
+                    grid.flags[i] |= FILLED;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
 /// Vectorize one connected region: mark it `FILLED`, crave the border onto the axis
-/// (`expand_under_ink`, so two colours meet AT the line — no gap between them), trace,
-/// snap the ink-hugging stretches onto the exact axis (`snap.rs` — the 5th-smoke sawtooth),
+/// (`expand_under_ink`, so two colours meet AT the line — no gap between them), close the
+/// wall slits (same colour on both faces ⇒ the wall is interior), trace, snap the
+/// ink-hugging stretches onto the line (`snap.rs` — the 5th/6th-smoke sawtooth/zipper),
 /// and clear `FILLED` for the next region. The largest ring is the outer, opposite-signed
 /// rings are its holes — the exact `fill_at` classification.
 fn trace_region(
@@ -417,6 +461,7 @@ fn trace_region(
         grid.flags[i] |= FILLED;
     }
     grid.expand_under_ink(AXIS_COVER_PASSES);
+    close_wall_slits(grid);
 
     let mut rings: Vec<Vec<Vec2>> = trace_contours(grid)
         .into_iter()

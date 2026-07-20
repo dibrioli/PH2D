@@ -354,6 +354,69 @@ fn the_breathing_packing_demo_actually_iterates() {
     );
 }
 
+/// The SWEEP demo (`=9`) plans on the device end to end — the same claim as `=8`,
+/// because it is the same chain with a different LFO shape.
+#[test]
+fn the_spread_sweep_demo_plans_as_a_fully_gpu_chain() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_sweep_demo_document(&mut doc, &registry).expect("well-typed demo");
+    let out = *sinks.first().expect("one sink");
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the sweep + its LFO must leave no boundary: {:?}",
+        plan.boundaries
+    );
+}
+
+/// The SWEEP is what makes `=9` a diagnostic instead of a second breathing blob:
+/// a slow LINEAR (triangle) ramp WIDE enough to cross several reach boundaries. If
+/// the LFO were the default sine, or too narrow to cross a boundary, the meter
+/// could not show a step's presence or absence — the whole point of the scene.
+///
+/// The reach boundaries are at `spread` = 0.5, 1.0, 1.5, 2.0, …; the range must
+/// span at least two of them, and the wave must be Triangle (linear, no jump).
+#[test]
+fn the_spread_sweep_is_linear_and_crosses_reach_boundaries() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    build_gpu_sweep_demo_document(&mut doc, &registry).expect("well-typed demo");
+    let params = |ty: &str| {
+        let id = doc
+            .graph
+            .nodes()
+            .iter()
+            .position(|n| n.type_name == ty)
+            .map(|i| ph2d_nodegraph::graph::NodeId(i as u32))
+            .unwrap_or_else(|| panic!("the demo has a {ty}"));
+        doc.graph
+            .node_param_overrides(id)
+            .unwrap_or_else(|| panic!("{ty} has params"))
+            .clone()
+    };
+    let lfo = params("value.lfo");
+    // Triangle = wave 1 (linear ramp, no jump) — a sine's changing speed would
+    // smear a step, a saw's reset would pop.
+    assert_eq!(
+        lfo.get("wave").copied().unwrap_or(0.0),
+        1.0,
+        "the sweep must be a linear triangle so a cost step reads as a hitch"
+    );
+    let offset = lfo.get("offset").copied().unwrap_or(0.0);
+    let amplitude = lfo.get("amplitude").copied().unwrap_or(0.0);
+    let (lo, hi) = (offset - amplitude, offset + amplitude);
+    // Count the reach boundaries strictly inside the swept range.
+    let crossings = (1..=8).map(|k| 0.5 * k as f32).filter(|b| *b > lo && *b < hi).count();
+    assert!(
+        crossings >= 2,
+        "the sweep {lo:.2}..{hi:.2} must cross ≥2 reach boundaries so the meter can \
+         show a staircase's presence or absence; it crosses {crossings}"
+    );
+}
+
 /// The demo really is a MILLION agents with `spread` on — the two facts that make
 /// it the neighbourhood-sim breakthrough rather than a pretty toy. Read from the
 /// params (not cooked): a 1 M CPU cook is the very `O(N²)` this demo exists to

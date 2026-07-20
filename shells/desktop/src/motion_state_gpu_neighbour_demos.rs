@@ -213,3 +213,83 @@ pub(super) fn build_gpu_collide_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// **The spread SWEEP** (`PH2D_GPU_COOK_DEMO=9`, ADR-0134 Fase 5) — the DIAGNOSTIC
+/// scene, built because `=8` is a poor instrument for judging a PERFORMANCE fix.
+///
+/// A breathing blob hides frame time: the packing looks the same whether the cook
+/// costs 4 ms or 14, so all you can feel is gross jank. This scene turns the cost
+/// into something you can WATCH — on the very GPU-utilisation meter that surfaced
+/// the report. Same `grid → collide → output`, but the `value.lfo` is a **slow,
+/// LINEAR triangle** (not the fast sine of `=8`) that sweeps `spread` from ~0.3 to
+/// ~2.5 and back over 12 s.
+///
+/// Why linear-and-wide makes the two fixes legible:
+/// - **The reach-boundary step (the kernel fix).** The swept neighbourhood is
+///   `ceil(2·spread)` cells across, so its size steps at `spread` = 0.5, 1.0, 1.5,
+///   2.0 — FOUR boundaries inside this sweep, at EVEN spacing in time because the
+///   ramp is linear. Before the fix, the GPU meter would climb the sweep in four
+///   distinct STAIRSTEPS (and back down); after it, the meter is a smooth mountain.
+///   A staircase vs. a mountain is a signature you can read at a glance, and its
+///   absence is the proof. (A fast sine centred on 1.0 crosses one boundary four
+///   times per cycle at high speed — a buzz you cannot localise.)
+/// - **The honest area-cost (the sizing question).** As the ramp climbs toward
+///   spread 2.5 the discs' contact radius grows, so the meter rises — smoothly, a
+///   slope not a cliff. That is the real cost of the knob, made visible as a
+///   gradual rise rather than a mysterious drop.
+///
+/// 129.600 discs (same as `=8`) keeps the whole sweep inside a 60 fps frame
+/// (measured: ~2,5 ms at the valley, ~10 ms at the peak of this range), so the
+/// meter swings through a wide, readable band without pinning at either rail.
+pub(super) fn build_gpu_sweep_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+
+    let src = g.add_node("motion.grid");
+    g.set_param(src, "rows", 360.0);
+    g.set_param(src, "cols", 360.0);
+    g.set_param(src, "gap_x", 0.25);
+    g.set_param(src, "gap_y", 0.25);
+
+    let col = g.add_node("motion.collide");
+    g.set_param(col, "radius", 0.3);
+    g.set_param(col, "iterations", 8.0);
+    g.set_param(col, "strength", 1.0);
+
+    // The sweep: a SLOW, LINEAR triangle. `wave 1` = Triangle (no jump, unlike Saw),
+    // so the ramp rate is constant and any step in cost reads as a hitch at a fixed
+    // phase — not confounded by a sine's changing speed. offset 1.4 ± amplitude 1.1
+    // ⇒ spread ∈ [0.3, 2.5], crossing the reach boundaries at 0.5/1.0/1.5/2.0. A
+    // long period so the eye (and the meter) can follow it.
+    let lfo = g.add_node("value.lfo");
+    g.set_param(lfo, "wave", 1.0);
+    g.set_param(lfo, "period", 12.0);
+    g.set_param(lfo, "amplitude", 1.1);
+    g.set_param(lfo, "offset", 1.4);
+
+    let out = g.add_node("motion.output");
+    for (i, n) in [src, col, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 200.0,
+                y: 120.0,
+            },
+        );
+    }
+    g.set_pos(lfo, Pos { x: 80.0, y: 300.0 });
+
+    for (from, to, port) in [(src, col, 0), (lfo, col, 1), (col, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

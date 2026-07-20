@@ -37,7 +37,9 @@ use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
-use gpu_neighbour_demos::{build_gpu_boids_demo_document, build_gpu_collide_demo_document};
+use gpu_neighbour_demos::{
+    build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
+};
 use gpu_panel_demo::build_gpu_panel_demo_document;
 
 use ph2d_eval_motion::MotionCookPump;
@@ -161,6 +163,11 @@ impl MotionState {
             // ADR-0134 Fase 5: the breathing PACKING — the second grid client,
             // and the first ITERATED kernel (the grid is rebuilt per sweep).
             Ok("8") => build_gpu_collide_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // ADR-0134 Fase 5: the spread SWEEP — the diagnostic scene. A slow,
+            // linear triangle sweep of `spread` so the GPU meter shows a smooth
+            // mountain (the cost is a function of the packing, no reach-boundary
+            // step) rather than a staircase.
+            Ok("9") => build_gpu_sweep_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

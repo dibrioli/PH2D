@@ -86,6 +86,13 @@ Perfis (borda superior, papel→corpo): r=10 `255,190,1` → `255,188,84,5`; r=4
 `255,222,170,118,61,25` (fringe preservado). Perf: pior caso patológico (dilution 0.6 + warp 48 +
 r40) ≈ 4,7 ms/composite, sob a barra de 8 ms.
 
+**Desfecho (ideia do Enio, mesmo dia): os DOIS modos coexistem** — checkbox **Smooth Edges** no card
+Wash (`BrushSpec::smooth_edges`, default **true**). OFF restaura o hard edge pré-AA **byte a byte** —
+o fingerprint original (`0xc5ebf8cf645fb6f6`), aposentado quando o AA virou universal, voltou como o
+oráculo do modo duro (`smooth_edges_off_is_the_pre_aa_render_byte_for_byte`; a mutação "render ignora
+o flag" sangra nele). O modo é lido UMA vez por composite (mistura por-dono costuraria o rim onde
+duas silhuetas se encontram).
+
 ### Lições generalizáveis
 
 1. **Uma melhoria medida num estágio intermediário é invisível se um estágio NÃO-LINEAR a jusante a

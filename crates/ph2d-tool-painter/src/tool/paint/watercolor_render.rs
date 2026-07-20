@@ -204,6 +204,10 @@ impl PainterTool {
         let fill = brush.fill.clamp(0.0, 1.0);
         let depth = brush.depth.max(0.0);
         let edge_gain = brush.edge_gain.max(0.0);
+        // "Smooth Edges" (BUGS #16): the AA mode is read ONCE per composite from the live brush —
+        // the whole union renders consistently (a per-owner mix would seam at the rim where two
+        // strokes' silhouettes meet); committed washes keep the bytes they baked with.
+        let smooth_edges = brush.smooth_edges;
         // Interior-thinning multiplier: 1.0 at/below the reference Spread, rising with Spread.
         let spread_thin = (1.0 + (spread as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
             .min(SPREAD_THIN_MAX);
@@ -377,22 +381,31 @@ impl PainterTool {
                     // The subsample positions route through the FULL Ragged-Edge warp (evaluated at
                     // sub-texel OUTPUT offsets — `pos(0,0)` is exactly `(sx, sy)`), so a strong warp's
                     // serrated boundary anti-aliases too instead of jumping the band between texels.
-                    let (cw, aa_alpha) = aa_coverage(
-                        &cov_src,
-                        rw,
-                        rh,
-                        |ox, oy| {
-                            if st_warp > 0.0 {
-                                let (wx, wy) =
-                                    warp_offset(gx as f32 + ox, gy as f32 + oy, noise_tile);
-                                (lx + ox + wx * st_warp, ly + oy + wy * st_warp)
-                            } else {
-                                (lx + ox, ly + oy)
-                            }
-                        },
-                        SS0,
-                        SS1,
-                    );
+                    // "Smooth Edges" off = the single-sample pre-AA hard edge, byte-for-byte — the
+                    // two looks coexist as a brush mode (Enio 2026-07-20, smooth is the default).
+                    let (cw, aa_alpha) = if smooth_edges {
+                        aa_coverage(
+                            &cov_src,
+                            rw,
+                            rh,
+                            |ox, oy| {
+                                if st_warp > 0.0 {
+                                    let (wx, wy) =
+                                        warp_offset(gx as f32 + ox, gy as f32 + oy, noise_tile);
+                                    (lx + ox + wx * st_warp, ly + oy + wy * st_warp)
+                                } else {
+                                    (lx + ox, ly + oy)
+                                }
+                            },
+                            SS0,
+                            SS1,
+                        )
+                    } else {
+                        (
+                            smoothstep(SS0, SS1, sample_bilinear(&cov_src, rw, rh, sx, sy)),
+                            1.0,
+                        )
+                    };
                     // EDGE-2 (backrun): the WATER channel at a SERRATED coord ([`water_at`]) — a
                     // water pool is live paint-surface even where the PIGMENT coverage is zero
                     // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.

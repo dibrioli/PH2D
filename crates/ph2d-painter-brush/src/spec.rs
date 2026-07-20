@@ -191,6 +191,11 @@ pub struct BrushSpec {
     /// **Edge spread**: blur radius (canvas px) of the coverage used by the edge-darkening pass — a
     /// wider spread makes a softer, thicker rim. Only read when [`Self::watercolor`] is on.
     pub edge_spread: f32,
+    /// **Smooth Edges** (Enio 2026-07-20): screen-space anti-aliasing of the wash silhouette — the
+    /// fractional-coverage alpha compositing of `aa_coverage` (BUGS #16). Default `true` (the smooth
+    /// look is the standard); `false` restores the pre-AA hard/serrated edge byte-for-byte, kept as a
+    /// deliberate style. Only read when [`Self::watercolor`] is on.
+    pub smooth_edges: bool,
     /// **Granulation**, `0..1`: how strongly the Grain sample gates deposition into the paper tooth's
     /// valleys (a non-linear gate, vs the linear [`Self::grain_depth`] multiply). `0` = the historical
     /// linear multiply (byte-identical). Pairs with a canvas-anchored Grain (`Tiled` + `Grain` kind).

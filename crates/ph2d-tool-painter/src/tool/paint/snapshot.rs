@@ -284,6 +284,7 @@ impl PainterTool {
             watercolor_shape_auto: b.watercolor_shape_auto,
             edge_gain: b.edge_gain,
             edge_spread: b.edge_spread,
+            smooth_edges: b.smooth_edges,
             granulation: b.granulation,
             pigment: b.pigment,
             pigment_mix: b.pigment_mix,

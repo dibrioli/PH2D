@@ -64,6 +64,7 @@ impl Default for BrushSpec {
             watercolor: false,
             edge_gain: 1.5,
             edge_spread: 7.0,
+            smooth_edges: true,
             granulation: 0.3,
             pigment: false,
             pigment_mix: 0.5,

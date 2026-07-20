@@ -65,6 +65,10 @@ impl PainterTool {
                 self.toggle_granulation_use_paper();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_SMOOTH_EDGES => {
+                self.toggle_smooth_edges();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RESET => {
                 self.reset_brush_paper();
                 true
@@ -393,6 +397,14 @@ impl PainterTool {
 
     /// Toggle **Granulation "Same as Paper"** — on = the granulation settles into the paper's own tooth
     /// (the Grain slot texture is ignored); off = the **Grain** slot IS the granulation map.
+    /// Toggle **Smooth Edges** — the screen-space AA of the wash silhouette (BUGS #16). Off restores
+    /// the pre-AA hard/serrated edge byte-for-byte (a deliberate style, gate-pinned). Like the other
+    /// Wash params (Edge/Ragged Edge), the mode is read at composite time: the live session shows it
+    /// on the next stroke/frame; committed washes keep the bytes they baked with.
+    pub fn toggle_smooth_edges(&mut self) {
+        self.paint.brush.smooth_edges = !self.paint.brush.smooth_edges;
+    }
+
     pub fn toggle_granulation_use_paper(&mut self) {
         self.paint.brush.granulation_use_paper = !self.paint.brush.granulation_use_paper;
     }
@@ -405,6 +417,7 @@ impl PainterTool {
         b.watercolor = d.watercolor;
         b.edge_gain = d.edge_gain;
         b.edge_spread = d.edge_spread;
+        b.smooth_edges = d.smooth_edges;
         b.granulation = d.granulation;
         b.pigment = d.pigment;
         b.pigment_mix = d.pigment_mix;

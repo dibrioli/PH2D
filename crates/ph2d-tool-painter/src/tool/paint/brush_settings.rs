@@ -357,6 +357,8 @@ pub struct BrushSettings {
     pub edge_gain: f32,
     /// **Spread** (canvas px) — blur radius of the coverage feeding the edge-darkening pass.
     pub edge_spread: f32,
+    /// **Smooth Edges** — screen-space AA of the wash silhouette (BUGS #16); off = the pre-AA hard edge.
+    pub smooth_edges: bool,
     /// **Granulation** (`0..1`) — non-linear gate of deposition into the paper-tooth valleys.
     pub granulation: f32,
     /// **Pigment** — subtractive (Kubelka–Munk) wet-on-wet colour mixing toggle.

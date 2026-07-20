@@ -177,7 +177,7 @@ fn paint_wash_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 6);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 7);
     ry = card_row(
         ctx,
         theme,
@@ -248,7 +248,7 @@ fn paint_wash_card(
         number_field::SIZE_STEP,
         1,
     );
-    let _ = card_row(
+    ry = card_row(
         ctx,
         theme,
         ix,
@@ -261,6 +261,18 @@ fn paint_wash_card(
         WARP_MAX,
         number_field::SIZE_STEP,
         1,
+    );
+    // Smooth Edges (BUGS #16): screen-space AA of the silhouette — the default look; off restores
+    // the pre-AA hard/serrated edge as a deliberate style.
+    let _ = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        core_ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
+        "Smooth Edges",
+        brush.smooth_edges,
     );
     next_y
 }

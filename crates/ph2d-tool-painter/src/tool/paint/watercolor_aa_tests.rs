@@ -56,6 +56,65 @@ fn wc_stroke(size: u32, radius: f32, watercolor: bool, warp: f32, pts: &[[f32; 2
     t.canvas_rgba.to_vec()
 }
 
+/// [`wc_stroke`] with **Smooth Edges OFF** — the pre-AA hard-edge mode kept as a deliberate style.
+fn wc_stroke_hard(size: u32, radius: f32, warp: f32, pts: &[[f32; 2]]) -> Vec<u8> {
+    let mut t = wc_tool(size, radius, true, warp);
+    t.paint.brush.smooth_edges = false;
+    for slot in &mut t.paint.brush_by_mode {
+        slot.smooth_edges = false;
+    }
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for p in &pts[1..] {
+        t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
+    t.canvas_rgba.to_vec()
+}
+
+/// Tool half of the checkbox seam (the panel half is seam.rs's `PAINTER_WATERCOLOR_CLICKS` sweep):
+/// the forwarded Click reaches `route_brush_watercolor_event` and flips the mode both ways.
+#[test]
+fn the_smooth_edges_click_flips_the_mode() {
+    let mut t = wc_tool(16, 4.0, true, 0.0);
+    assert!(t.paint.brush.smooth_edges, "default is smooth");
+    let ev = ph2d_editor_core::tool::PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
+    );
+    assert!(
+        t.route_brush_watercolor_event(&ev),
+        "click must be consumed"
+    );
+    assert!(!t.paint.brush.smooth_edges, "first click turns the AA off");
+    assert!(t.route_brush_watercolor_event(&ev));
+    assert!(t.paint.brush.smooth_edges, "second click turns it back on");
+}
+
+/// The two edge modes coexist behind the Wash card's "Smooth Edges" checkbox (Enio 2026-07-20 — the
+/// smooth look is the DEFAULT). OFF must reproduce the pre-AA render **byte-for-byte**: this is the
+/// exact whole-canvas fingerprint the original `a_thick_watercolor_stroke_is_byte_identical` gate
+/// pinned before the AA existed, resurrected as the hard-mode oracle.
+#[test]
+fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
+    assert!(
+        BrushSpec::default().smooth_edges,
+        "Smooth Edges must be the default mode"
+    );
+    let pts = [[70.0, 128.0], [186.0, 128.0]];
+    let hard = wc_stroke_hard(256, 40.0, 6.0, &pts);
+    assert_eq!(
+        canvas_hash(&hard),
+        0xc5ebf8cf645fb6f6,
+        "Smooth Edges OFF must render the pre-AA composite byte-for-byte"
+    );
+    // And the two modes genuinely differ where the AA lives (the rim) — the checkbox is not dead.
+    let smooth = wc_stroke(256, 40.0, true, 6.0, &pts);
+    assert_ne!(
+        canvas_hash(&smooth),
+        canvas_hash(&hard),
+        "the two edge modes must produce different rims"
+    );
+}
+
 fn lum(canvas: &[u8], size: u32, x: u32, y: u32) -> u8 {
     let i = ((y * size + x) * 4) as usize;
     canvas[i].max(canvas[i + 1]).max(canvas[i + 2])

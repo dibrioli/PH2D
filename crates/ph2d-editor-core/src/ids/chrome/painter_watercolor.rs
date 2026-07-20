@@ -137,6 +137,12 @@ pub fn painter_paper_mapping_option_id(m: u8) -> NodeId {
 /// slot IS the granulation map). `Click` → `toggle_granulation_use_paper`.
 pub const PAINTER_WATERCOLOR_GRAN_SAME: NodeId = hash_node_id("painter_brush.watercolor_gran_same");
 
+/// **Smooth Edges** toggle (Wash card): screen-space AA of the wash silhouette (BUGS #16). On by
+/// default; off restores the pre-AA hard/serrated edge as a deliberate style. `Click` →
+/// `toggle_smooth_edges`.
+pub const PAINTER_WATERCOLOR_SMOOTH_EDGES: NodeId =
+    hash_node_id("painter_brush.watercolor_smooth_edges");
+
 /// Derive the stable [`NodeId`] for **Paper** kind option `k` in the open Paper dropdown popover
 /// (its own id namespace so it never collides with the Grain kind picker). Mirror of
 /// `painter_brush_texture_kind_option_id`.
@@ -156,10 +162,11 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
 /// into a trap (an audit read the leftover setters as live knobs). Removed 2026-07-12 — the per-dab
 /// rake/random live on the **Grain** slot, which is a stamp. `TextureSettings::rake` itself stays: it is
 /// shared with Shape/Grain, where it is real.
-pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 7] = [
     PAINTER_WATERCOLOR_ENABLE,
     PAINTER_WATERCOLOR_RESET,
     PAINTER_WATERCOLOR_GRAN_SAME,
+    PAINTER_WATERCOLOR_SMOOTH_EDGES,
     PAINTER_WATERCOLOR_PAPER_RESET,
     PAINTER_WATERCOLOR_DRY_NOW,
     PAINTER_WATERCOLOR_WET_NOW,

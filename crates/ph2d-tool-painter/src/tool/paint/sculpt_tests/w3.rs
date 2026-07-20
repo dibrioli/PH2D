@@ -642,15 +642,16 @@ fn every_impasto_tool_is_born_with_its_own_falloff() {
              the next verb's default)"
         );
     }
-    // The Knife arms Sphere on the mode switch — the smear handoff's "agulha do pincel padrão",
-    // closed as a default: measured trail width 4 px under Smooth vs 12 px under Sphere (knife 16).
+    // The Knife arms Smoother on the mode switch — the smear handoff's "agulha do pincel padrão",
+    // closed as a default (trail 6 px vs the old Smooth's 4-px needle; Sphere's 12 was traded away
+    // for the soft rim — Enio 2026-07-20, "Knife Smoother").
     let mut k = PainterTool::default();
     k.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
     k.set_paint_tool_mode("knife");
     assert_eq!(
         k.paint.brush.falloff,
-        Falloff::Sphere,
-        "entering the Knife did not arm Sphere — the needle-trail default the smear handoff left open"
+        Falloff::Smoother,
+        "entering the Knife did not arm Smoother — the needle-trail default the smear handoff left open"
     );
 }
 

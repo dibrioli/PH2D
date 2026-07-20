@@ -554,11 +554,13 @@ impl PainterTool {
     /// qual falloff mais adequado para cada um dos tools do impasto"* — Deposit = Sphere and
     /// Inflate = Sharper were his own picks and are not touched; the rest were measured):
     ///
-    /// - **Knife → Sphere.** The falloff is the smear field's TRANSPORT weight, and the smear
-    ///   handoff left "a agulha do pincel padrão" open as a product decision: measured trail width
-    ///   under a 16 px knife — Smooth **4 px** (the needle) · Smoother 6 · InvSquare 8 ·
-    ///   **Sphere 12** · Constant 22 (over-wide, no feather) · Linear dies at 0. Sphere carries the
-    ///   body at ¾ of the brush and keeps the feathered edge.
+    /// - **Knife → Smoother** (Enio 2026-07-20, after the Sphere scales round: "Knife Smoother").
+    ///   The falloff is the smear field's TRANSPORT weight, and the smear handoff left "a agulha do
+    ///   pincel padrão" open as a product decision: measured trail width under a 16 px knife —
+    ///   Smooth **4 px** (the needle) · **Smoother 6** · InvSquare 8 · Sphere 12 · Constant 22
+    ///   (over-wide, no feather) · Linear dies at 0. Sphere carried the widest body and was the
+    ///   first pick; Enio traded the width for the soft rim (the same scales concern as the plane
+    ///   family). Smoother still lifts the trail 1.5× over the old Smooth needle.
     /// - **Flatten / Scrape / Fill / Chisel / Layer → Smoother.** Sphere measured best on the tap
     ///   (core residual 52% vs Smooth's 66%) and was the first pick — and the smoke rejected it:
     ///   *"cria escamas e degraus"* (Enio 2026-07-20, Chisel/Flatten/Scrape in the screenshot). The
@@ -584,7 +586,7 @@ impl PainterTool {
     pub(super) fn arm_tool_falloff_defaults(&mut self) {
         use ph2d_painter_brush::Falloff;
         let want = match self.paint.paint_mode {
-            super::PaintMode::Knife => Falloff::Sphere,
+            super::PaintMode::Knife => Falloff::Smoother,
             super::PaintMode::Sculpt => match self.paint.sculpt.mode_enum() {
                 SculptMode::Smooth | SculptMode::Sharpen => Falloff::Smooth,
                 SculptMode::Inflate => Falloff::Pow4,

@@ -190,3 +190,33 @@ fn the_impasto_smooth_edges_click_flips_the_mode() {
         "second click turns it back on"
     );
 }
+
+/// Toggling **Repeat Image** hands the preview slot to the other producer (`gpu_eligible` refuses
+/// while the tile preview is on), so the toggle must leave the composite DIRTY — the incoming
+/// producer publishes the very next frame. Without it the handoff waited for the next stroke: the
+/// painting vanished on the toggle and the tiles only appeared after the first dab (Enio 2026-07-20).
+/// The fixture is the reported shape exactly: paint, drain (clean), toggle → a drain must produce.
+#[test]
+fn toggling_repeat_image_reprimes_the_preview() {
+    let mut t = imp_tool(64, 6.0);
+    t.on_canvas_pointer(cp([20.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+    assert!(
+        t.take_preview_arc().is_some(),
+        "fixture: the stroke dirtied the preview"
+    );
+    assert!(t.take_preview_arc().is_none(), "fixture: drained clean");
+    t.toggle_repeat_image();
+    assert!(
+        t.take_preview_arc().is_some(),
+        "toggling Repeat Image ON must re-prime the preview (the CPU producer takes over NOW, \
+         not at the next stroke)"
+    );
+    assert!(t.take_preview_arc().is_none(), "drained clean again");
+    t.toggle_repeat_image();
+    assert!(
+        t.take_preview_arc().is_some(),
+        "toggling it OFF hands the slot back — the outgoing frame must re-prime just the same"
+    );
+}

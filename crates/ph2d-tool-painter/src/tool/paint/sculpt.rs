@@ -559,12 +559,17 @@ impl PainterTool {
     ///   under a 16 px knife — Smooth **4 px** (the needle) · Smoother 6 · InvSquare 8 ·
     ///   **Sphere 12** · Constant 22 (over-wide, no feather) · Linear dies at 0. Sphere carries the
     ///   body at ¾ of the brush and keeps the feathered edge.
-    /// - **Flatten / Scrape / Fill / Chisel / Layer → Sphere.** The plane family wants the plateau:
-    ///   a single Flatten TAP on grain relief leaves **52%** of the core residual under Sphere vs
-    ///   66% under Smooth (80% under Sharp) — Sphere actually flattens where the artist tapped. A
-    ///   dragged stroke saturates every falloff's core alike (the `k` clamp), so the tap and the
-    ///   stroke's edge feather are where the choice lives. Layer joins them because a coat of paint
-    ///   is a SLAB — the dome profile is Inflate's job.
+    /// - **Flatten / Scrape / Fill / Chisel / Layer → Smoother.** Sphere measured best on the tap
+    ///   (core residual 52% vs Smooth's 66%) and was the first pick — and the smoke rejected it:
+    ///   *"cria escamas e degraus"* (Enio 2026-07-20, Chisel/Flatten/Scrape in the screenshot). The
+    ///   scales are structural: the sculpt's `k` is a **SUM** of per-dab contributions (deliberate —
+    ///   dwelling deepens, "the whole feel of the tool"), and in the ramp band where `k < 1` every
+    ///   capsule boundary of a cliff-rimmed falloff crosses as a visible step; the capsule sweep in
+    ///   `walk_dab` cannot help, because the arcs live in the SUM's level sets, not in the union's
+    ///   outline. The deep fix would be a per-stroke ENVELOPE (max) — the deposit's law — but that
+    ///   retires the dwell design; Enio chose the softer rim instead ("senão melhor colocar um com
+    ///   bordas mais macias como smoother"). Smoother's C² shoulders keep the sum's level sets
+    ///   smooth at both ends of the ramp.
     /// - **Smooth / Sharpen → Smooth** (the factory). Diffusion verbs want the feathered profile —
     ///   a plateau would draw the blur's own boundary as a visible ring.
     /// - **Inflate → Sharper** (`Falloff::Pow4`; Enio 2026-07-18). The Blob offsets the surface by
@@ -583,7 +588,7 @@ impl PainterTool {
             super::PaintMode::Sculpt => match self.paint.sculpt.mode_enum() {
                 SculptMode::Smooth | SculptMode::Sharpen => Falloff::Smooth,
                 SculptMode::Inflate => Falloff::Pow4,
-                _ => Falloff::Sphere, // the plane family + Layer
+                _ => Falloff::Smoother, // the plane family + Layer (the k-sum scales under a cliff rim)
             },
             // Paint's own arm (Deposit → Sphere) lives in `toggle_brush_impasto`; every other mode
             // has no impasto verb to speak for.

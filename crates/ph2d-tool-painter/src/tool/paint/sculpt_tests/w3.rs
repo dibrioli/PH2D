@@ -625,15 +625,15 @@ fn every_impasto_tool_is_born_with_its_own_falloff() {
         "Smooth verb keeps the soft profile"
     );
     for (verb, want) in [
-        (FLATTEN, Falloff::Sphere),
-        (SCRAPE, Falloff::Sphere),
-        (FILL, Falloff::Sphere),
-        (CHISEL, Falloff::Sphere),
-        (LAYER, Falloff::Sphere),
+        (FLATTEN, Falloff::Smoother),
+        (SCRAPE, Falloff::Smoother),
+        (FILL, Falloff::Smoother),
+        (CHISEL, Falloff::Smoother),
+        (LAYER, Falloff::Smoother),
         (INFLATE, Falloff::Pow4),
         // …and back down: an ARMED default is re-armable, verb after verb.
         (SHARPEN, Falloff::Smooth),
-        (FLATTEN, Falloff::Sphere),
+        (FLATTEN, Falloff::Smoother),
     ] {
         t.set_sculpt_mode(verb);
         assert_eq!(

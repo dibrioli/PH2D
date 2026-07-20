@@ -153,9 +153,14 @@ impl PainterTool {
     }
 
     /// Toggle **Repeat Image** — the on-canvas 3×3 tile preview (the shell draws the sprite repeated
-    /// in all 8 neighbour directions). Plain state; the shell reads [`Self::repeat_image`] each frame.
+    /// in all 8 neighbour directions). The shell reads [`Self::repeat_image`] each frame — and the
+    /// toggle also flips WHICH producer owns the preview slot (the GPU refuses while the tile
+    /// preview is on, `gpu_eligible`), so the composite is invalidated to make the incoming producer
+    /// publish immediately. Without it the handoff waited for the next stroke: the painting VANISHED
+    /// on the toggle and the tiles only appeared after the first dab (Enio 2026-07-20).
     pub fn toggle_repeat_image(&mut self) {
         self.paint.repeat_image = !self.paint.repeat_image;
+        self.invalidate_composite();
     }
 
     /// Whether the Repeat-Image tile preview is on.

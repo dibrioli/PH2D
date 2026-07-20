@@ -25,10 +25,18 @@ impl PainterTool {
         let new = new_mode.slot();
         self.paint.brush_by_mode[old] = self.paint.brush; // save this tool's edits
         self.paint.brush = self.paint.brush_by_mode[new]; // restore the target tool's settings
-        // Falloff provenance for the freshly loaded brush: the factory `Smooth` is presumed armable
-        // (the pre-existing ambiguity — an explicit artist Smooth is indistinguishable from factory);
-        // anything else in a slot is presumed the artist's until an arm installs over it.
-        self.paint.falloff_armed = self.paint.brush.falloff == ph2d_painter_brush::Falloff::Smooth;
+        // Falloff provenance for the freshly loaded brush: any value the arming TABLE can install
+        // (factory Smooth + Smoother/Sphere/Pow4) is presumed armable, so re-entering a mode keeps
+        // its verbs re-armable; anything else in a slot is presumed the artist's. The ambiguity —
+        // an explicit artist pick OF a default value is indistinguishable from an armed one across
+        // a mode switch — is inherited from the old single-verb law and accepted.
+        self.paint.falloff_armed = matches!(
+            self.paint.brush.falloff,
+            ph2d_painter_brush::Falloff::Smooth
+                | ph2d_painter_brush::Falloff::Smoother
+                | ph2d_painter_brush::Falloff::Sphere
+                | ph2d_painter_brush::Falloff::Pow4
+        );
     }
 
     /// Whether brush settings are currently linked across tools (the "Sync with other tools" checkbox).

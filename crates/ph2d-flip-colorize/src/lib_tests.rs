@@ -18,7 +18,7 @@ use super::{ColorRegion, Scribble, colorize};
 /// em vez de vazar pelo vão — não tem por onde acontecer (`§8`).
 const GATE_TRAP_PX: f32 = 6.0;
 use ph2d_core::Vec2;
-use ph2d_flip_fill::{FillResult, signed_area};
+use ph2d_flip_fill::{BOUNDARY, FillResult, Grid, signed_area};
 
 /// A closed box with an internal vertical divider at `divider_x`, broken by a gap
 /// `(gap.0, gap.1)` in the middle — the line-art the colour cut must respect.
@@ -482,13 +482,13 @@ fn the_colour_does_not_escape_the_box() {
     );
 }
 
-/// **REPRO do 3º smoke (2026-07-19): 4 cores num blob ABERTO, sem uma linha entre elas.**
-/// O produto pintou tudo da 1ª cor. É o caso fundamental do LazyBrush: várias cores numa só
-/// região, o corte divide pelo MEIO (não há tinta a que colar). A redução por regiões colapsa
-/// o blob num nó só e perde essa divisão.
+/// **4 cores num blob ABERTO viram FAIXAS PARELHAS** (3º smoke, 2026-07-19). Sem uma linha
+/// entre as cores não há tinta a que colar, e o meio geométrico é a resposta honesta — quatro
+/// rabiscos parelhos têm de render quatro faixas parelhas, nunca a 1ª cor levando tudo (o
+/// bug original) nem uma cor do meio espremida (o guloso e o min-cut de Potts, ambos medidos
+/// e reprovados — vide `solve`).
 #[test]
-#[ignore = "repro — rode com --ignored --nocapture"]
-fn repro_four_colours_in_one_open_blob() {
+fn four_colours_in_an_open_blob_split_into_even_bands() {
     // Um octógono ABERTO (sem divisores internos), bbox ~[-4,4]x[-3,3].
     let ring: Vec<Vec2> = (0..8)
         .map(|k| {
@@ -510,6 +510,285 @@ fn repro_four_colours_in_one_open_blob() {
     for r in &out {
         *by_label.entry(r.label).or_default() += area(&r.fill);
     }
-    println!("  areas por cor: {by_label:?}");
-    println!("  -> {} cores sobreviveram", by_label.len());
+    assert_eq!(by_label.len(), 4, "as quatro cores tem de sobreviver");
+    let (lo, hi) = by_label
+        .values()
+        .fold((f32::MAX, f32::MIN), |(l, h), &a| (l.min(a), h.max(a)));
+    assert!(
+        hi / lo < 1.8,
+        "faixas parelhas: a maior nao pode passar de ~1,8x a menor (areas {by_label:?})"
+    );
+}
+
+/// 🔴 **A fronteira de um componente CONTESTADO cai NA TINTA, não no meio dos rabiscos**
+/// (4º smoke, 2026-07-20: a caixa com divisor saía com a fronteira numa reta vertical no meio
+/// do papel, à ESQUERDA da linha — o Voronoi de células pesava `V_pq`, que é custo de CORTE:
+/// tinta de graça = a linha era invisível para a frente).
+///
+/// Mesma arte do gate irmão (`the_colour_cut_hugs_the_ink_not_the_midpoint`: divisor
+/// fora-do-centro em x=0,7, vão no meio), mas com **Trap 0** — o vão não é costurado, a caixa
+/// inteira é UM componente contestado, e é o caminho do VORONOI (não o do preenchimento) que
+/// tem de colar na linha. A tinta é INTRANSPONÍVEL para a frente: quem quer o outro lado paga
+/// a volta pelo vão, e longe do vão cada lado pertence a quem está nele.
+///
+/// O filtro em `y` exclui a vizinhança do vão de propósito: ali a disputa é honesta (não há
+/// tinta), e o que o gate afirma é o comportamento LONGE dele.
+#[test]
+fn a_contested_boundary_lands_on_the_ink_not_between_the_scribbles() {
+    let strokes = boxed_with_divider(0.7, (0.45, 0.55));
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.25, 0.3), Vec2::new(0.25, 0.7)],
+            width: 0.0,
+        },
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.85, 0.3), Vec2::new(0.85, 0.7)],
+            width: 0.0,
+        },
+    ];
+    // Precisão 400 ⇒ grade ~360 px. ⚠️ Load-bearing: numa grade ≤ 160 px a célula da
+    // sobre-segmentação antiga tinha 1 px e o defeito não existia — o fixture tem de conter
+    // o fenômeno do produto (célula > 1 cavalgando a linha).
+    let regions = colorize(&strokes, &scribbles, 400.0, 0.0); // Trap 0: nada costurado.
+    let r0 = &regions.iter().find(|r| r.label == 0).expect("label 0").fill;
+    let b = r0
+        .outer
+        .iter()
+        .filter(|p| p.y < 0.35 || p.y > 0.65)
+        .fold(f32::MIN, |m, p| m.max(p.x));
+    assert!(
+        (0.63..=0.77).contains(&b),
+        "longe do vao, a cor esquerda tem de alcancar a linha em 0,7 — nao parar no meio \
+         dos rabiscos (max_x filtrado = {b})"
+    );
+}
+
+/// 🔴 **Uma cor não sangra através da linha que divide dois cômodos** (4º smoke: nos lobos do
+/// blob, o teal atravessava a linha para dentro do lobo vermelho). Planta: duas salas lado a
+/// lado abertas para um corredor embaixo — UM componente contestado. O rabisco da direita fica
+/// COLADO na parede; com a tinta transponível (o bug), ele reivindica uma tira da sala
+/// esquerda através da parede. Com a tinta intransponível, o caminho dele até lá é a volta
+/// pelo corredor, e a sala esquerda pertence a quem está nela.
+#[test]
+fn a_colour_does_not_bleed_across_the_wall_between_two_rooms() {
+    let strokes = vec![
+        (
+            vec![
+                Vec2::new(0.1, 0.1),
+                Vec2::new(0.9, 0.1),
+                Vec2::new(0.9, 0.9),
+                Vec2::new(0.1, 0.9),
+            ],
+            vec![0.0; 4],
+            true,
+        ),
+        // A parede interna: desce de y=0,1 até 0,62 — o corredor [0,62..0,9] fica aberto.
+        (
+            vec![Vec2::new(0.5, 0.1), Vec2::new(0.5, 0.62)],
+            vec![0.0; 2],
+            false,
+        ),
+    ];
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.18, 0.3), Vec2::new(0.18, 0.45)],
+            width: 0.0,
+        },
+        // Colado na parede, do lado direito — o pior caso para o sangramento.
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.54, 0.3), Vec2::new(0.54, 0.45)],
+            width: 0.0,
+        },
+    ];
+    // Precisão 400: grade > 160 px, o regime onde a célula antiga cavalgava a parede.
+    let regions = colorize(&strokes, &scribbles, 400.0, 0.0);
+    let r1 = &regions.iter().find(|r| r.label == 1).expect("label 1").fill;
+    // Dentro da SALA (y < 0,55, longe da boca do corredor), a cor da direita nunca aparece à
+    // esquerda da parede (x=0,5).
+    let min_x = r1
+        .outer
+        .iter()
+        .filter(|p| p.y < 0.55)
+        .fold(f32::MAX, |m, p| m.min(p.x));
+    assert!(
+        min_x >= 0.44,
+        "a cor da direita sangrou atraves da parede para a sala esquerda (min_x = {min_x})"
+    );
+}
+
+/// **O pedágio de aperto segura a cor rival na banda do VÃO.** Sem ele (`SQUEEZE = 0`,
+/// medido na tabela de `voronoi.rs`), a cor cuja semente está perto do vão vence a corrida
+/// geodésica e (a) pinta uma película de ~8 px na face ALHEIA do divisor, empurrando a cor
+/// da esquerda para 0,679 em vez de 0,697, e (b) se espalha PELO LADO ALHEIO até y bem fora
+/// do vão (min_x longe do vão = 0,576). Com o pedágio, fora da banda do vão a cor rival
+/// simplesmente não existe à esquerda da linha (0,702 = a própria linha).
+///
+/// Mutação que sangra: `SQUEEZE = 0` (ou apagar o `toll` da relaxação).
+#[test]
+fn the_squeeze_toll_keeps_the_rival_inside_the_gap_band() {
+    let strokes = boxed_with_divider(0.7, (0.45, 0.55));
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.25, 0.3), Vec2::new(0.25, 0.7)],
+            width: 0.0,
+        },
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.85, 0.3), Vec2::new(0.85, 0.7)],
+            width: 0.0,
+        },
+    ];
+    let regions = colorize(&strokes, &scribbles, 400.0, 0.0);
+    let spread = regions
+        .iter()
+        .filter(|r| r.label == 1)
+        .flat_map(|r| r.fill.outer.iter())
+        .filter(|p| p.y < 0.35 || p.y > 0.65)
+        .fold(f32::MAX, |m, p| m.min(p.x));
+    assert!(
+        spread >= 0.68,
+        "longe do vao, a cor da direita nao pode existir a esquerda da linha (min_x = {spread})"
+    );
+}
+
+/// **Uma linha DIAGONAL é parede, não peneira.** A frente do Voronoi anda em 8 vizinhanças
+/// (o chanfro 5/7 que deixa as faixas retas), e um passo diagonal entre dois pixels de tinta
+/// diagonais escorregaria POR DENTRO da linha — a mesma linha que o flood de componentes
+/// (4-conexo) trata como parede. As duas leis têm de concordar: o passo diagonal com tinta
+/// nos DOIS cantos é recusado.
+///
+/// ⚠️ Este é o pin de PRODUTO (a cápsula rasterizada a 45° sai 4-conexa, então a recusa do
+/// canto raramente dispara aqui); quem carrega a mutação da recusa é o gate isolado
+/// `a_diagonal_pinch_is_sealed_even_with_zero_toll`, sobre uma corrente diagonal PURA.
+#[test]
+fn a_diagonal_line_is_a_wall_not_a_sieve() {
+    let strokes = vec![
+        (
+            vec![
+                Vec2::new(0.1, 0.1),
+                Vec2::new(0.9, 0.1),
+                Vec2::new(0.9, 0.9),
+                Vec2::new(0.1, 0.9),
+            ],
+            vec![0.0; 4],
+            true,
+        ),
+        // O divisor diagonal (x=y), partido por um vão no meio.
+        (
+            vec![Vec2::new(0.1, 0.1), Vec2::new(0.44, 0.44)],
+            vec![0.0; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(0.56, 0.56), Vec2::new(0.9, 0.9)],
+            vec![0.0; 2],
+            false,
+        ),
+    ];
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: vec![Vec2::new(0.62, 0.3), Vec2::new(0.7, 0.38)],
+            width: 0.0,
+        },
+        Scribble {
+            label: 1,
+            points: vec![Vec2::new(0.3, 0.62), Vec2::new(0.38, 0.7)],
+            width: 0.0,
+        },
+    ];
+    let regions = colorize(&strokes, &scribbles, 400.0, 0.0);
+    let r0 = &regions.iter().find(|r| r.label == 0).expect("label 0").fill;
+    // Longe do vão (|p − centro| > 0,15), a cor de baixo-direita nunca cruza para y > x.
+    let worst = r0
+        .outer
+        .iter()
+        .filter(|p| {
+            let (dx, dy) = (p.x - 0.5, p.y - 0.5);
+            dx * dx + dy * dy > 0.15 * 0.15
+        })
+        .fold(f32::MIN, |m, p| m.max(p.y - p.x));
+    assert!(
+        worst <= 0.08,
+        "a cor atravessou a linha diagonal fora do vao (max(y-x) filtrado = {worst})"
+    );
+}
+
+/// **A camada dura, sozinha: tinta é PAREDE mesmo com pedágio zero.** O pedágio de aperto
+/// (`SQUEEZE/(1+d²)`) também encarece a tinta, então nas grades pequenas dos gates acima as
+/// duas camadas se cobrem — mutar só a recusa `!is_ink` do `member` fica verde
+/// ([[feedback_layered_defenses_need_per_layer_gates]]). Mas as camadas DIVERGEM num canvas
+/// grande: um desvio mais longo que `SQUEEZE/STEP ≈ 820 px` por pixel de tinta tornaria
+/// ATRAVESSAR a linha mais barato que contorná-la, e a cor cruzaria uma linha SÓLIDA — o
+/// contrato que a linha é. Este gate isola a camada: EDT fabricada longe-de-tudo (pedágio
+/// 0 em toda parte) e uma parede de tinta no meio — só a recusa dura segura a frente.
+///
+/// Mutação que sangra: `member` sem o `!is_ink` (a frente entra na tinta e sai do outro lado).
+#[test]
+fn ink_is_a_wall_even_with_zero_toll() {
+    let mut g = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(30.0, 30.0), 1.0, 4, 4096);
+    let (w, h) = (g.w, g.h);
+    for y in 0..h {
+        g.flags[y * w + 15] |= BOUNDARY; // a parede: coluna sólida, sem vão
+    }
+    let seg = super::segment::Segmentation {
+        component: vec![0; w * h], // UM componente à força: só a lei da tinta separa
+        count: 1,
+        ink_dist2: vec![1_000_000; w * h], // "longe de tudo" ⇒ pedágio 0 em toda parte
+    };
+    let labels = vec![(0u16, vec![10 * w + 5])];
+    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2);
+    let mut assign = vec![None; w * h];
+    super::voronoi::claim(&g, &seg, 0, &labels, &mut scratch, &mut assign);
+    assert_eq!(
+        assign[12 * w + 5],
+        Some(0),
+        "controle positivo: a frente tem de correr no lado semeado"
+    );
+    assert_eq!(
+        assign[10 * w + 25],
+        None,
+        "a frente atravessou uma parede solida de tinta"
+    );
+}
+
+/// **A recusa do canto, sozinha: uma corrente DIAGONAL pura é selada.** Irmão do gate acima,
+/// para a lei 2 de `voronoi.rs`: dois pixels de tinta em diagonal não são 8-adjacentes, e o
+/// passo diagonal da frente passaria POR ENTRE eles — a peneira. A corrente vai de canto a
+/// canto (não há volta por fora), o pedágio é zero (EDT fabricada): só a recusa do canto
+/// duplo separa os dois triângulos.
+///
+/// Mutação que sangra: apagar o `continue` do canto duplo em `voronoi::claim`.
+#[test]
+fn a_diagonal_pinch_is_sealed_even_with_zero_toll() {
+    let mut g = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(30.0, 30.0), 1.0, 4, 4096);
+    let (w, h) = (g.w, g.h);
+    let side = w.min(h);
+    for j in 0..side {
+        g.flags[j * w + j] |= BOUNDARY; // a corrente diagonal pura, canto a canto
+    }
+    let seg = super::segment::Segmentation {
+        component: vec![0; w * h],
+        count: 1,
+        ink_dist2: vec![1_000_000; w * h],
+    };
+    let labels = vec![(0u16, vec![5 * w + 20])]; // semente no triangulo x > y
+    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2);
+    let mut assign = vec![None; w * h];
+    super::voronoi::claim(&g, &seg, 0, &labels, &mut scratch, &mut assign);
+    assert_eq!(
+        assign[3 * w + 25],
+        Some(0),
+        "controle positivo: a frente corre no proprio triangulo"
+    );
+    assert_eq!(
+        assign[20 * w + 5],
+        None,
+        "a frente escorreu POR DENTRO da corrente diagonal (a peneira)"
+    );
 }

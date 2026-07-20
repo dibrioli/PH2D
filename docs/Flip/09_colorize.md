@@ -1,6 +1,31 @@
 # Flip — a wave **COLORIZE**: o plano
 
-> **Estado (2026-07-19):** a **fatia C1 (Trapped-ball, §4) LANDOU** em `ph2d-flip-fill` (2026-07-18,
+> **Estado (2026-07-20): 4º smoke reprovado ("impreciso") e FECHADO — o contestado virou
+> Voronoi POR PIXEL.** As três caras do smoke eram UMA causa dupla: (1) o Voronoi de células
+> pesava **`V_pq`**, que é custo de **CORTE** (tinta = 0) — numa métrica de DISTÂNCIA isso
+> torna a linha *invisível* para a frente, e a fronteira caía numa reta no meio dos rabiscos
+> em vez de na linha (medido no gate: `max_x = 0,575` contra a linha em `0,7`); (2) uma
+> **célula > 1 px cavalgava a linha** — um nó com papel dos DOIS lados da tinta, por onde a
+> cor vazava (o teal dentro do lobo vermelho) e de onde vinha a escada. ⚠️ Os gates da época
+> ficaram verdes porque a precisão 80 dava grade de ~104 px ⇒ **célula de 1 px** — o regime
+> em que o defeito não existe; os gates novos rodam a precisão 400 (célula 3 px, o regime do
+> produto) e nasceram VERMELHOS. **O desenho novo (`voronoi.rs`, 3 leis):** a **tinta é
+> INTRANSPONÍVEL** (a frente anda só por papel ⇒ cada lado da linha pertence a quem está
+> nele; o casamento com a linha num componente contestado vem daqui, não de um peso) ·
+> **chanfro 5/7** por pixel (faixas retas; o passo diagonal com tinta nos dois cantos é
+> recusado, senão uma linha diagonal vira peneira) · **pedágio de APERTO**
+> `SQUEEZE/(1+d²)` (a trapped-ball em forma contínua: vão estreito quase sela, vão largo é
+> passagem honesta — e mata a *película* que uma semente colada na linha pintava na face
+> alheia). `SQUEEZE = 4096` **medido** (tabela na const). As **células e o grafo de arestas
+> MORRERAM** (`segment()` devolve só componentes + a EDT); o gate da identidade de corte
+> morreu com eles. Mutações: 3/3 sangram (canto diagonal · tinta intransponível · pedágio) —
+> ⚠️ as duas primeiras exigiram **gates isolados com EDT fabricada** (pedágio 0): com o
+> pedágio vivo as camadas se cobrem e mutar UMA fica verde
+> (`feedback_layered_defenses_need_per_layer_gates`). Perf: 4096² pior caso (caixa inteira
+> contestada) = **1,70 s** (era 1,44 com células; 512² = 15 ms · 1024² = 67 ms · 2048² =
+> 348 ms). Suíte: 23 verdes.
+>
+> **Estado anterior (2026-07-19):** a **fatia C1 (Trapped-ball, §4) LANDOU** em `ph2d-flip-fill` (2026-07-18,
 > `a6e8277a`). **C2 LANDOU (MOTOR + FATIA, pendente smoke):** o motor headless na crate nova
 > `ph2d-flip-colorize` (`flow.rs` BK + `colorize()`; corte hugga a tinta, vão não vaza, HR-5) **+**
 > o **modo Colorize clicável no shell** (7º `FlipMode`: rabiscar → **Apply** → regiões; gesto irmão

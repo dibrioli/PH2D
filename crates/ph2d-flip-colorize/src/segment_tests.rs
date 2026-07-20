@@ -1,16 +1,14 @@
-//! Gates da pré-segmentação (`docs/Flip/09 §8`).
+//! Gates da partição trapped-ball (`docs/Flip/09 §8`).
 //!
-//! O load-bearing é `a_region_cut_weighs_exactly_what_the_pixel_cut_weighs`: ele é a
-//! afirmação de CORREÇÃO da wave inteira — se ela vale, trocar a grade pelo grafo de regiões
-//! é uma restrição do mesmo problema, e o corte que sai é um corte LazyBrush de verdade, só
-//! que achado em milissegundos. Se ela não vale, o motor é rápido resolvendo outra coisa.
+//! O load-bearing é `the_ball_seams_a_gap_narrower_than_its_diameter`: a costura é o que dá
+//! ao Colorize a promessa "atravessa vãos até `2·trap_px` e não mais". (O gate da identidade
+//! de corte `a_region_cut_weighs_exactly_what_the_pixel_cut_weighs` morreu com o grafo de
+//! arestas no 4º smoke, 2026-07-20 — o solver contestado virou Voronoi por pixel e não
+//! consome grafo nenhum; ver o topo de `segment.rs`.)
 
 use super::{NO_REGION, segment};
 use ph2d_core::Vec2;
-use ph2d_flip_fill::{BOUNDARY, Grid};
-
-const V_WHITE: i32 = 8;
-const V_INK: i32 = 1; // > 0 aqui de propósito: com 0 a metade "através da tinta" some.
+use ph2d_flip_fill::Grid;
 
 /// Uma grade em que **1 unidade de mundo = 1 pixel** (`scale = 1`), para os números do gate
 /// serem os números do fenômeno e não uma conversão.
@@ -43,139 +41,63 @@ fn px(g: &Grid, x: f32, y: f32) -> usize {
     iy * g.w + ix
 }
 
-/// **A afirmação de correção da wave.** Para uma partição QUALQUER das regiões em dois
-/// lados, o peso do corte lido no grafo de regiões é igual, ao inteiro, ao peso do mesmo
-/// corte somado pixel a pixel na grade. As duas contas são independentes — a segunda não
-/// olha `edges`, ela reconstrói o `V_pq` de cada par adjacente.
-#[test]
-fn a_region_cut_weighs_exactly_what_the_pixel_cut_weighs() {
-    let g = boxed(64.0, 10.0);
-    // Raio 8 (diâmetro 16 > vão 10) ⇒ a bola COSTURA o vão e a arte rende ≥ 3 regiões
-    // (esquerda, direita, fora). Com raio 3 ela atravessa e sobram 2 — a identidade valeria
-    // ali também, mas sobre uma partição sem a costura que a wave existe para produzir: a
-    // fixture tem de conter o fenômeno.
-    let seg = segment(&g, 8.0, V_WHITE, V_INK);
-    assert!(
-        seg.count >= 3,
-        "a arte tem de render >= 3 regioes, deu {}",
-        seg.count
-    );
-
-    // Varre várias bipartições (inclusive as degeneradas) — uma só poderia estar certa por
-    // acidente de simetria. Com a subdivisão em células há muitas super-regiões; testamos as
-    // 6 primeiras contra o resto (64 bipartições), que já é arbitrário o bastante — a
-    // propriedade vale para QUALQUER bipartição.
-    for mask in 0u32..(1u32 << 6) {
-        let side_of = |r: u32| r < 6 && (mask >> r) & 1 == 1;
-
-        // (a) pelo grafo de regiões.
-        let by_graph: i64 = seg
-            .edges
-            .iter()
-            .filter(|&&(a, b, _)| side_of(a) != side_of(b))
-            .map(|&(_, _, c)| i64::from(c))
-            .sum();
-
-        // (b) pixel a pixel, re-enunciando a lei — sem consultar `edges`.
-        let is_ink = |i: usize| g.flags[i] & BOUNDARY != 0;
-        let mut by_pixels: i64 = 0;
-        for i in 0..g.w * g.h {
-            let ri = seg.region[i];
-            if ri == NO_REGION {
-                continue;
-            }
-            for q in [
-                (i % g.w + 1 < g.w).then_some(i + 1),
-                (i / g.w + 1 < g.h).then_some(i + g.w),
-            ]
-            .into_iter()
-            .flatten()
-            {
-                let rq = seg.region[q];
-                if rq == NO_REGION || rq == ri || side_of(ri) == side_of(rq) {
-                    continue;
-                }
-                by_pixels += i64::from(if is_ink(i) || is_ink(q) {
-                    V_INK
-                } else {
-                    V_WHITE
-                });
-            }
-        }
-        assert_eq!(
-            by_graph, by_pixels,
-            "o corte de regioes tem de pesar o corte de pixels (mask {mask:b})"
-        );
-    }
-}
-
-/// **A costura do vão** — a propriedade que dá ao corte por onde passar. Uma bola mais larga
-/// que o vão não o atravessa, então os dois lados caem em regiões DIFERENTES e o corte pode
-/// separá-los pagando papel. Uma bola que cabe no vão passa, e os dois lados são a MESMA
-/// região — nesse caso nada, nem o LazyBrush, separa as cores por ali.
+/// **A costura do vão** — a promessa do Trap. Uma bola mais larga que o vão não o atravessa,
+/// então os dois lados caem em componentes DIFERENTES (cada um é preenchido com a sua cor,
+/// colada na linha). Uma bola que cabe no vão passa, e os dois lados são o MESMO componente —
+/// nesse caso a disputa é do Voronoi, e é honesto que seja.
 #[test]
 fn the_ball_seams_a_gap_narrower_than_its_diameter() {
     let g = boxed(64.0, 10.0);
     let mid = 32.0;
     let (left, right) = (px(&g, 20.0, mid), px(&g, 44.0, mid));
 
-    // ⚠️ A costura é uma propriedade do COMPONENTE (a topologia da tinta), não da super-região
-    // (célula): duas células distantes caem em células diferentes de qualquer jeito, então a
-    // pergunta "a bola costurou?" é sobre `component`, não `region`.
-    //
     // Bola de raio 8 (diâmetro 16 > vão 10): não passa ⇒ costura ⇒ componentes diferentes.
-    let seamed = segment(&g, 8.0, V_WHITE, V_INK);
+    let seamed = segment(&g, 8.0);
     assert_ne!(
         seamed.component[left], seamed.component[right],
         "a bola larga tem de costurar o vao"
     );
 
     // Bola de raio 2 (diâmetro 4 < vão 10): passa ⇒ MESMO componente.
-    let open = segment(&g, 2.0, V_WHITE, V_INK);
+    let open = segment(&g, 2.0);
     assert_eq!(
         open.component[left], open.component[right],
         "a bola que cabe no vao NAO costura — e e' honesto que nao costure"
     );
 }
 
-/// Toda a grade é atribuída: papel, papel fino e **a tinta**. A tinta importa — sem ela duas
-/// regiões separadas por uma linha grossa não seriam adjacentes em lugar nenhum, e a aresta
-/// barata que o corte precisa não existiria.
+/// Toda a grade é atribuída: papel, papel fino e **a tinta**. A tinta importa — é ela que
+/// deixa o preenchimento de um componente de uma cor só cobrir a arte até a linha (o
+/// `expand_under_ink` do traçado precisa de dono dos dois lados).
 #[test]
-fn every_pixel_lands_in_a_region_including_the_ink() {
+fn every_pixel_lands_in_a_component_including_the_ink() {
     let g = boxed(64.0, 10.0);
-    let seg = segment(&g, 5.0, V_WHITE, V_INK);
+    let seg = segment(&g, 5.0);
     assert!(
-        seg.region.iter().all(|&r| r != NO_REGION),
-        "sobrou pixel sem regiao"
-    );
-    // E existe ao menos uma aresta cujo peso denuncia travessia de TINTA (múltiplo de
-    // V_INK e não de V_WHITE seria frágil; basta que a soma total não seja divisível por
-    // V_WHITE, o que só acontece se pares de tinta contribuíram).
-    let total: i64 = seg.edges.iter().map(|&(_, _, c)| i64::from(c)).sum();
-    assert!(
-        total % i64::from(V_WHITE) != 0,
-        "nenhuma fronteira atravessou tinta — a linha nao esta no grafo"
+        seg.component.iter().all(|&r| r != NO_REGION),
+        "sobrou pixel sem componente"
     );
 }
 
 /// Bola grande demais para a arte: a resposta honesta é o papel inteiro (o comportamento de
-/// antes da trapped-ball), **nunca** "sem regiões" — que apagaria o Colorize em silêncio.
+/// antes da trapped-ball), **nunca** "sem componentes" — que apagaria o Colorize em silêncio.
 #[test]
 fn an_oversized_ball_falls_back_to_the_whole_paper() {
     let g = boxed(64.0, 10.0);
-    let seg = segment(&g, 500.0, V_WHITE, V_INK);
-    assert!(seg.count >= 1, "a bola gigante nao pode zerar as regioes");
-    assert!(seg.region.iter().all(|&r| r != NO_REGION));
+    let seg = segment(&g, 500.0);
+    assert!(
+        seg.count >= 1,
+        "a bola gigante nao pode zerar os componentes"
+    );
+    assert!(seg.component.iter().all(|&r| r != NO_REGION));
 }
 
 /// Determinismo (HR-5): dois cliques idênticos dão o mesmo desenho, incluindo os IDs.
 #[test]
 fn the_partition_is_deterministic() {
     let g = boxed(64.0, 10.0);
-    let a = segment(&g, 5.0, V_WHITE, V_INK);
-    let b = segment(&g, 5.0, V_WHITE, V_INK);
+    let a = segment(&g, 5.0);
+    let b = segment(&g, 5.0);
     assert_eq!(a.count, b.count);
-    assert_eq!(a.region, b.region);
-    assert_eq!(a.edges, b.edges);
+    assert_eq!(a.component, b.component);
 }

@@ -14,15 +14,15 @@
 //! The two scenes are the two SHAPES that neighbourhood work comes in, which is
 //! why they sit together — and why the second one matters as much as the first:
 //!
-//! - **`=7`, the murmuration** — a simulation STEP. `boids(262.144, spread √N)
-//!   → scale → output` with the loop `output ──pre──> boids.state`; the tick IS
-//!   the iteration, so it dispatches once per frame. **Spread ON is load-bearing**,
-//!   not decoration: the node's default seed packs the flock into a fixed ~6×6 box,
-//!   and a quarter million agents in a handful of cells is back to `O(N²)` (the
-//!   grid cannot help a crowd that dense). And the FORCES are part of the sizing:
-//!   the cost that matters is the EQUILIBRIUM (the settled flock), set by
-//!   seek-vs-separation — see the measured table in
-//!   `build_gpu_boids_demo_document` (~2,5 ms at rest, 5,3–6,3 ms settled).
+//! - **`=7`, the murmuration** — a simulation STEP. `boids(1.048.576, spread √N,
+//!   seek 0) → scale → output` with the loop `output ──pre──> boids.state`; the
+//!   tick IS the iteration, so it dispatches once per frame. **Spread ON is
+//!   load-bearing** (the seed must not pack into a box) and **seek 0 is what lets
+//!   a MILLION hold 60 fps**: any global attractor turns superlinear at this
+//!   count (its pull compresses the core with the whole swarm's weight — even
+//!   seek 0.005 measured 26–30 ms/tick settled), while a pure local murmuration
+//!   can only loosen (9,9 → 5,4 ms over 160 s, monotonically down). The measured
+//!   saga is in `build_gpu_boids_demo_document`.
 //! - **`=8`, the breathing packing** — a relaxation SOLVER. `grid(360²) → collide
 //!   → output` with an LFO on `spread`; it sweeps `iterations` times per cook, and
 //!   the sequencer REBUILDS the grid between sweeps because each sweep moves the
@@ -45,10 +45,10 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
-/// **The murmuration** (`PH2D_GPU_COOK_DEMO=7`) — the ready-to-smoke scene for the
-/// neighbourhood sim on the device (ADR-0134). Returns the sink. (A quarter
-/// million agents with forces tuned for a bounded EQUILIBRIUM; the ceiling is
-/// millions — see `count` below.)
+/// **The million-boid murmuration** (`PH2D_GPU_COOK_DEMO=7`) — the ready-to-smoke
+/// scene for the neighbourhood sim on the device (ADR-0134). Returns the sink.
+/// (The million holds 60 fps because there is NO global attractor — see `count`
+/// below for the three measured rounds that led here.)
 pub(super) fn build_gpu_boids_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -57,43 +57,41 @@ pub(super) fn build_gpu_boids_demo_document(
     let g = &mut doc.graph;
 
     let boids = g.add_node("motion.boids");
-    // 262.144 agents, and the FORCES are part of the sizing — the cost of a flock
-    // is its EQUILIBRIUM density, and that is set by seek-vs-separation, not by
-    // the count alone. Two rounds of Enio's smoke taught this the hard way:
+    // 2²⁰ = 1.048.576 agents, and the key that makes a MILLION hold 60 fps is
+    // `seek = 0`. Three rounds of Enio's smoke, all measured to equilibrium
+    // (`gpu_boids_scale.rs::where_does_the_flock_settle`), built this table:
     //
-    // 1. "queda de FPS quando boids se aproximam" — measured 600 ticks in, resized
-    //    1 M → 524 k. ⚠️ That window was read off a curve STILL CLIMBING — the
-    //    fixture did not contain the phenomenon (the settled flock).
-    // 2. "até metade se juntar rodou bem, depois queda grave" — the missing half.
-    //    Measured to EQUILIBRIUM (4800 ticks = 80 s), 262 144 agents, ms/tick:
+    // 1. "queda de FPS quando boids se aproximam" — resized 1 M → 524 k off a
+    //    600-tick window. ⚠️ The curve was STILL CLIMBING; the fixture did not
+    //    contain the settled flock.
+    // 2. "até metade se juntar, depois queda grave" — measured to 80 s at 262 k:
+    //    seek 0.35 plateaus at 28,5 ms (a dense ball parked on the target, at ANY
+    //    count); an ORBITING target was refuted (the flock rides it as a dense
+    //    comet); seek 0.02 + sep 3.0 settles at 5,3–6,3 ms. Shipped that, at 262 k.
+    // 3. "tente 1 milhão" — and at 1 M the attractor law turns SUPERLINEAR: the
+    //    pull compresses the core with the whole swarm's weight, so the same
+    //    seek 0.02 tuning plateaus at 74–80 ms, sep 4.0 at ~50, and even
+    //    seek 0.005 at 26–30. **No attractor fits a million.** With `seek = 0`
+    //    (a pure local murmuration — real starlings have no global target) the
+    //    density can only FALL: measured over 160 s, r 1.5 runs 9,9 → 5,4 ms and
+    //    r 2.0 runs 13,9 → 5,8, both monotonically DOWN — the worst frame is the
+    //    opening one, and it improves from there.
     //
-    //      seek 0.35 (old)        climbs to 28,5 and PLATEAUS — a dense ball
-    //                             parked on the static target (124+ % of a frame)
-    //      orbiting target        26,5 — REFUTED: the flock converges onto the
-    //                             moving target and rides it as a dense comet
-    //      seek 0.05, sep 2.4     9,4 — bounded
-    //      seek 0.02, sep 3.0     5,3–6,3 — bounded, breathing gently  ← shipped
-    //
-    // With the shipped tuning the equilibrium costs ≤38 % of a 60 fps frame and
-    // holds there indefinitely (verified through 80 s). At 524 k even the best
-    // tuning plateaus ~12 ms + render on top — no headroom, so the count came
-    // down too. The ceiling stays MILLIONS (raise `count` — 4 M sims at 3,6 ms
-    // when density is bounded); the DEMO is sized to never stutter doing the
-    // thing it exists to show.
-    g.set_param(boids, "count", 262_144.0);
+    // Shipped: 1 M, seek 0, radius 1.5 — opening ≈10 ms (60 % of a frame, the
+    // safe side of r 2.0's 84 % first window), falling for as long as you watch.
+    // The swarm slowly disperses instead of balling up; that IS the murmuration.
+    g.set_param(boids, "count", 1_048_576.0);
     // Load-bearing: without it the agents SEED into a fixed box and the grid
     // cannot help (O(N²)). √N holds the seed density → the grid starts O(N);
-    // the forces below are what keep it O(N) once settled.
+    // `seek = 0` is what keeps it O(N) forever after.
     g.set_param(boids, "spread", 1.0);
-    g.set_param(boids, "radius", 2.0);
-    // The equilibrium knobs (see the table above): separation pushes the settled
-    // spacing OPEN, seek is a global attractor whose strength sets how dense the
-    // flock parks. 0.35 collapsed at ANY count; 0.02 is just enough to keep the
-    // murmuration on screen without ever packing it.
-    g.set_param(boids, "separation", 3.0);
+    g.set_param(boids, "radius", 1.5);
+    g.set_param(boids, "separation", 2.4);
     g.set_param(boids, "alignment", 1.4);
-    g.set_param(boids, "cohesion", 0.4);
-    g.set_param(boids, "seek", 0.02);
+    g.set_param(boids, "cohesion", 0.6);
+    // ⚠️ ZERO is load-bearing at this count — see round 3 above. Even 0.005
+    // measured 26–30 ms; the gate pins it.
+    g.set_param(boids, "seek", 0.0);
     g.set_param(boids, "max_speed", 5.0);
     g.set_param(boids, "seed", 7.0);
 

@@ -449,27 +449,39 @@ fn the_boid_demo_is_a_large_spread_flock_sized_for_headroom() {
         .node_param_overrides(boids)
         .expect("the demo sets the flock's params");
     let count = params.get("count").copied().unwrap_or(0.0);
-    // A genuinely large swarm (≥256 k = ~1000× the classic toy), but sized so the
-    // SETTLED flock fits a 60 fps frame (measured to equilibrium in
-    // `gpu_boids_scale.rs::where_does_the_flock_settle` — the demo's comment
-    // carries the table). The first resize (1 M → 524 k) was read off a curve
-    // still climbing; the equilibrium is the honest number.
+    // A genuinely large swarm, sized so the SETTLED flock fits a 60 fps frame
+    // (measured to equilibrium in `gpu_boids_scale.rs::where_does_the_flock_settle`
+    // — the demo's comment carries the three-round table).
     assert!(
-        (262_144.0..=524_288.0).contains(&count),
+        (262_144.0..=1_048_576.0).contains(&count),
         "the flock must be large but its EQUILIBRIUM must fit a 60 fps frame; \
          count = {count}"
     );
-    // The equilibrium is set by seek-vs-separation, not by the count: seek 0.35
-    // collapsed into a 28,5 ms ball at 262 k (and an ORBITING target was measured
-    // and refuted — the flock rides it as a dense comet). Pin the attractor weak
-    // and the spacing open so nobody cranks the collapse back in.
+    // The settled density is set by the ATTRACTOR, and the law is superlinear in
+    // the count: at 262 k a seek of 0.02 settles at 5–6 ms, but at a million the
+    // same pull compresses the core with the whole swarm's weight — seek 0.02
+    // measured 74–80 ms settled, and even 0.005 measured 26–30. Above the
+    // half-million the only measured tuning that holds a frame is NO attractor
+    // (density can then only fall: 9,9 → 5,4 ms over 160 s).
     let seek = params.get("seek").copied().unwrap_or(0.0);
     let separation = params.get("separation").copied().unwrap_or(0.0);
+    if count > 524_288.0 {
+        assert!(
+            seek == 0.0,
+            "no attractor fits a million: seek {seek} was measured to settle \
+             over a frame (0.005 → 26–30 ms; 0.02 → 74–80 ms)"
+        );
+    } else {
+        assert!(
+            seek <= 0.05,
+            "seek {seek} collapses the flock into a dense ball at any count \
+             (measured: 0.35 plateaus at 28,5 ms for 262 k agents)"
+        );
+    }
     assert!(
-        seek <= 0.05 && separation >= 2.4,
-        "the settled density is seek-vs-separation: seek {seek} / separation \
-         {separation} would collapse the flock into a dense ball at ANY count \
-         (measured: seek 0.35 plateaus at 28,5 ms for 262 k agents)"
+        separation >= 2.4,
+        "separation {separation} lets the settled spacing close up; ≥2.4 is the \
+         measured floor for a bounded murmuration"
     );
     assert!(
         params.get("spread").copied().unwrap_or(0.0) > 0.5,

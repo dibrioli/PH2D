@@ -344,18 +344,18 @@ fn where_does_the_flock_settle() {
         return;
     };
     let reg = registry();
-    const N: f32 = 262_144.0;
-    const TICKS: u64 = 4800;
-    const WIN: u64 = 480;
+    const TICKS: u64 = 9600;
+    const WIN: u64 = 960;
 
-    // (label, radius, separation, alignment, cohesion, seek, max_speed)
+    // (label, count, radius, separation, alignment, cohesion, seek, max_speed)
     let cands = [
-        ("sk.02 sep3.0", 2.0, 3.0, 1.4, 0.4, 0.02, 5.0),
-        ("sk.05 sep2.4", 2.0, 2.4, 1.4, 0.5, 0.05, 5.0),
+        ("1M seek0 r2.0", 1_048_576.0, 2.0, 2.4, 1.4, 0.6, 0.0, 5.0),
+        ("1M seek0 r1.5", 1_048_576.0, 1.5, 2.4, 1.4, 0.6, 0.0, 5.0),
+        ("1M sk.005 r1.5", 1_048_576.0, 1.5, 4.0, 1.4, 0.3, 0.005, 5.0),
     ];
-    eprintln!("\nboids ms/tick to equilibrium ({N} agents, windows of {WIN} ticks):");
-    for (label, r, sep, al, co, sk, ms) in cands {
-        let (g, out) = boids_graph_tuned(N, r, sep, al, co, sk, ms);
+    eprintln!("\nboids ms/tick to equilibrium (windows of {WIN} ticks):");
+    for (label, n, r, sep, al, co, sk, ms) in cands {
+        let (g, out) = boids_graph_tuned(n, r, sep, al, co, sk, ms);
         let plan = plan(&g, &reg, &reg, out);
         assert!(plan.is_fully_gpu());
         let mut gc = GpuCook::new();

@@ -698,3 +698,7 @@ mod tests;
 // worth of gates appended to that is a wave's worth of gates nobody can find again.
 #[cfg(test)]
 mod sculpt_tests;
+
+// Screen-space anti-aliasing of the thin-stroke watercolor silhouette (own file, same rationale).
+#[cfg(test)]
+mod watercolor_aa_tests;

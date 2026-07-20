@@ -42,6 +42,73 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
     top + (bot - top) * ty
 }
 
+/// Bilinear sample **plus** the field's screen-space gradient magnitude at `(fx, fy)`, in field units
+/// per texel — the `fwidth` estimate `|∂/∂x| + |∂/∂y|` of the same bilinear patch (reads the SAME four
+/// texels as [`sample_bilinear`], value bit-identical to it). [`aa_hardened_coverage`] uses the gradient
+/// to decide whether an edge is steep enough to need supersampling.
+#[inline]
+pub(super) fn sample_bilinear_grad(src: &[f32], w: usize, h: usize, fx: f32, fy: f32) -> (f32, f32) {
+    let fx = fx.clamp(0.0, (w - 1) as f32);
+    let fy = fy.clamp(0.0, (h - 1) as f32);
+    let x0 = fx.floor() as usize;
+    let y0 = fy.floor() as usize;
+    let x1 = (x0 + 1).min(w - 1);
+    let y1 = (y0 + 1).min(h - 1);
+    let tx = fx - x0 as f32;
+    let ty = fy - y0 as f32;
+    let a = src[y0 * w + x0];
+    let b = src[y0 * w + x1];
+    let c = src[y1 * w + x0];
+    let d = src[y1 * w + x1];
+    let top = a + (b - a) * tx;
+    let bot = c + (d - c) * tx;
+    let val = top + (bot - top) * ty;
+    // Analytic gradient of the bilinear interpolant, per texel (∂x holds y, ∂y holds x).
+    let dcdx = (b - a) * (1.0 - ty) + (d - c) * ty;
+    let dcdy = (c - a) * (1.0 - tx) + (d - b) * tx;
+    (val, dcdx.abs() + dcdy.abs())
+}
+
+/// Sub-texel offsets of the edge-reconstruction grid (3×3, spanning ±0.667 texel). Wider than the
+/// unit ±0.5 box on purpose: the watercolor silhouette's HARDENED coverage crosses `[e0, e1]` in well
+/// under one texel (`feather` rim + `smoothstep`), so a unit box barely reaches across it — a ~1.3-texel
+/// footprint reconstructs the sub-texel step as a soft ramp of about the plain painter's edge width.
+/// `LITERAL-PX-OK`: AA reconstruction geometry.
+const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
+
+/// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)`, **anti-aliased where
+/// the edge is steep** (Enio 2026-07-20, "borda dura pixelada" em traço fino). A thin stroke's silhouette
+/// crosses the hardening window `[e0, e1]` in well under one texel, so a single sample snaps the boundary
+/// to a binary, stair-stepped edge; averaging the hardened coverage over the [`AA_SS`] sub-texel grid
+/// reconstructs it as a soft ramp, giving the boundary texels their true fractional area — real 2-D
+/// anti-aliasing (halo-free: nothing widens the window, so a fully-outside texel stays exactly 0). The
+/// grid runs **only** where the field is steep (`grad·2 > band`): a thick stroke's shallow rim — and
+/// every texel of a thick stroke's interior — takes the single sample and is **byte-identical** to the
+/// old `smoothstep(e0, e1, sample_bilinear(…))`.
+#[inline]
+pub(super) fn aa_hardened_coverage(
+    src: &[f32],
+    w: usize,
+    h: usize,
+    sx: f32,
+    sy: f32,
+    e0: f32,
+    e1: f32,
+) -> f32 {
+    let (val, grad) = sample_bilinear_grad(src, w, h, sx, sy);
+    // Shallow rim (already ≥ ~2 texels of transition): one sample, byte-identical to the old path.
+    if grad * 2.0 <= e1 - e0 {
+        return smoothstep(e0, e1, val);
+    }
+    let mut acc = 0.0;
+    for &oy in &AA_SS {
+        for &ox in &AA_SS {
+            acc += smoothstep(e0, e1, sample_bilinear(src, w, h, sx + ox, sy + oy));
+        }
+    }
+    acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32)
+}
+
 /// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening
 /// bias); deterministic. **Parallel (ADR-0109 exception):** each pass distributes over its
 /// INDEPENDENT axis with the serial prefix origin ⇒ bit-identical at any thread count; the

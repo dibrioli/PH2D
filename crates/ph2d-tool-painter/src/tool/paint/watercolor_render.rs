@@ -369,7 +369,12 @@ impl PainterTool {
                     } else {
                         (lx, ly)
                     };
-                    let cw = smoothstep(SS0, SS1, sample_bilinear(&cov_src, rw, rh, sx, sy));
+                    // Screen-space AA (Enio 2026-07-20, "borda dura pixelada" em traço fino): a thin
+                    // stroke's silhouette crosses the hardening window in under one texel and snaps to a
+                    // stair-stepped edge; supersample the hardened coverage where the rim is steep so the
+                    // boundary texels get their true fractional area. A thick stroke's shallow rim (and
+                    // every interior texel) takes the single-sample path ⇒ byte-identical (see `aa_hardened_coverage`).
+                    let cw = aa_hardened_coverage(&cov_src, rw, rh, sx, sy, SS0, SS1);
                     // EDGE-2 (backrun): the WATER channel at a SERRATED coord ([`water_at`]) — a
                     // water pool is live paint-surface even where the PIGMENT coverage is zero
                     // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.

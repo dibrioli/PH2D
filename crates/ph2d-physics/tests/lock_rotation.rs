@@ -39,6 +39,7 @@ fn rotation_after_spin(lock: bool) -> f32 {
         angvel: 5.0,
         ccd: false,
         lock_rotation: lock,
+        offset: [0.0, 0.0],
     });
     for _ in 0..30 {
         w.step();

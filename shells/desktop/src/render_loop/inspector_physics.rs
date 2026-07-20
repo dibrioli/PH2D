@@ -72,6 +72,7 @@ pub(crate) fn build_physics_info(
             angvel: InitialVelocity::REST.angvel,
             ccd: false,
             lock_rotation: false,
+            offset: [0.0, 0.0],
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -116,6 +117,7 @@ pub(crate) fn build_physics_info(
         angvel: iv.angvel,
         ccd,
         lock_rotation,
+        offset: col.offset,
     })
 }
 
@@ -418,6 +420,10 @@ pub(crate) fn apply_physics_edit(
                 };
             }
         }
+        // Collider offset — a signed position, so no clamp (either direction is
+        // legal). Writes the ONE axis the edit names; the other is left as it was.
+        PhysicsFieldEdit::OffsetX(v) => next.offset[0] = v,
+        PhysicsFieldEdit::OffsetY(v) => next.offset[1] = v,
         PhysicsFieldEdit::Density(v) => next.density = v.max(0.0),
         PhysicsFieldEdit::Restitution(v) => next.restitution = v.clamp(0.0, 1.0),
         PhysicsFieldEdit::Friction(v) => next.friction = v.max(0.0),

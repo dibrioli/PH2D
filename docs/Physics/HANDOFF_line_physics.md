@@ -66,6 +66,7 @@
 | **W9 — Velocidade inicial por corpo** | ✅ smoke `=14` (2026-07-19) | ver §W9 | lançamento linear+angular no spawn; seta amarela; sem bump |
 | **W-CCD — Detecção contínua por corpo** | ✅ **INTEGRÁVEL** — smoke `=15` (2026-07-20) | ver §W-CCD | toggle Discrete/Continuous; corpo rápido não tunela parede fina; marcador `Ccd`; sem bump |
 | **W-LockRot — Freeze Rotation por corpo** | ✅ **INTEGRÁVEL** — smoke `=16` (2026-07-20) | ver §W-LockRot | toggle Rotation Free/Locked; personagem não tomba; marcador `LockRotation`; sem bump |
+| **W-Offset — Offset do collider por corpo** | ✅ **INTEGRÁVEL** — smoke `=17` (2026-07-20) | ver §W-Offset | Offset X/Y; collider nos pés, não no centro; campo no `Collider`; **bump 28→29** |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -2158,3 +2159,42 @@ corpos divergem).
 **Aberto (deliberado):** **Freeze Position X/Y** (o resto do `RigidbodyConstraints2D` — `enabled_translations`
 do rapier): controle mais raro (trilhos/pinos), família própria, e o Godot ship `lock_rotation` standalone
 de propósito. Adicionar quando um caso de trilho aparecer.
+
+---
+
+## §W-Offset — OFFSET do collider por corpo (2026-07-20, smoke `=17`)
+
+**O collider quase nunca fica centrado no sprite.** A hitbox dos pés fica abaixo, a de um projétil na
+ponta. Até aqui o collider nascia colado ao centro do sprite. Agora **Offset X/Y** no §11 (o
+`Collider2D.offset` do Unity) o desloca.
+
+**Campo no `Collider`, NÃO componente opcional** — offset é propriedade intrínseca do collider (como
+restituição/atrito/layer/sensor foram apendados). ⚠️ **Isso BUMPA o schema (28→29)**: postcard é
+posicional, apendar campo ao `Collider` muda o layout. Tripla-pin `(29, 8, 13)`. É o oposto dos 4
+marcadores anteriores (componente próprio → sem bump); a escolha é semântica, não de conveniência.
+
+**`BodyDesc.offset` → `ColliderBuilder::translation`** (posição do collider relativa ao corpo; rapier
+rotaciona COM o corpo — a foot-box de um personagem girado gira junto). Rida no recipe pro rewind
+preservar. ⚠️ **Escala SINCADA (signed), não `abs`:** diferente das half-extents (tamanho, sempre +), o
+offset é uma POSIÇÃO, então um flip (`scale.x<0`) o **espelha** pro outro lado (`scale.rs`:
+`offset[0]*t.scale.x`). ~25 fixtures de `ph2d-physics/tests` ganharam `offset: [0.0, 0.0]`.
+
+**O overlay É a única forma de VER o offset** (a lição da seta de velocidade). O contorno é desenhado no
+offset (escala sincada + rotação do corpo, os MESMOS que a ponte manda pro solver — `physics_overlay.rs`
+`outlines`), senão o wireframe descreveria o collider onde ele NÃO está. **Não é Dynamic-only** (qualquer
+collider — static/kinematic — pode ter offset): rows `num_row` "Offset X/Y (m)" com as dims de forma.
+
+**Gates:** `a_collider_offset_moves_where_the_body_rests` (wrapper; collider +2m acima → corpo repousa 2m
+abaixo; mut `.translation`→zero, RED) · `the_bridge_folds_the_collider_offset_and_a_rewind_preserves_it`
+(ecs; mut scale ignora offset, RED) · `scale::tests` **the_collider_offset_scales_with_the_body** +
+**a_flip_mirrors_the_collider_offset** (unit direto no `body_desc` — o mirror é a parte fácil de errar) ·
+`an_offset_collider_outline_sits_where_the_collider_is` (overlay: desloca +100px E rotaciona 90°; mut
+tira o offset, RED — bbox-center, não point-mean, por causa do raio do spoke) · Offset X/Y no sweep de
+`every_dimension_field_reaches_the_bus` · persistência round-trip · c9 **59 corpos** (um offset).
+
+**Ids/consts:** `INSP_PHYS_OFFSET_X/Y` · `Collider.offset` · `BodyDesc.offset`. `PROJECT_SCHEMA` **29**.
+Smoke `=17` (pausado; Play: o personagem verde com collider nos PÉS fica de pé no chão, o laranja com
+collider CENTRADO afunda até a cintura — o collider centrado é o que repousa no chão).
+
+**Aberto (deliberado):** **rotação do collider** relativa ao corpo (o `Collider2D` não tem, mas rapier
+aceita) e **múltiplos colliders por corpo** (composite — feature maior). Nada pede ainda.

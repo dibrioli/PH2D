@@ -54,6 +54,11 @@ pub struct InspectorPhysicsInfo {
     /// Splitting it this way is the whole point: the rule is authored once,
     /// and a body only says where it belongs.
     pub layer: u8,
+    /// Collider offset (meters, local axes) — the collider's centre relative to
+    /// the sprite. `[0, 0]` is centred; a non-zero value places the collider off
+    /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors
+    /// `Collider.offset`. Not Dynamic-only — any collider can be offset.
+    pub offset: [f32; 2],
     /// How many seconds a Bake would cover, resolved by the shell (W4): the
     /// armed loop if there is one, else the document's extent, else the
     /// measured default.
@@ -128,6 +133,10 @@ pub enum PhysicsFieldEdit {
     /// Capsule straight-segment half-length (see
     /// [`InspectorPhysicsInfo::cap_half_height`]).
     CapHalfHeight(f32),
+    /// Collider offset from the sprite centre, meters (local axes). Read-modify-
+    /// write on `Collider.offset`; not Dynamic-only.
+    OffsetX(f32),
+    OffsetY(f32),
     Density(f32),
     Restitution(f32),
     Friction(f32),

@@ -114,4 +114,17 @@ pub struct BodyDesc {
     /// [`gravity_scale`]: BodyDesc::gravity_scale
     /// [`angvel`]: BodyDesc::angvel
     pub lock_rotation: bool,
+    /// **Collider offset** — the collider's position relative to the body, in
+    /// world units, along the body's LOCAL axes. `[0, 0]` (the default, and what
+    /// every collider did before this field existed) centres the collider on the
+    /// body; a non-zero offset places it elsewhere — the feet of a character below
+    /// its sprite centre, the tip of a projectile ahead of it.
+    ///
+    /// It becomes the collider's translation relative to its rigid body, so rapier
+    /// rotates it WITH the body (a rotated character's foot-box rotates too). The
+    /// caller is expected to have already folded the body's scale into it (a scaled
+    /// sprite's offset scales with it, and a flipped one mirrors); the world does
+    /// not see the `Transform`. It rides the `BodyDesc` the world rebuilds from, so
+    /// a rewind preserves it.
+    pub offset: [f32; 2],
 }

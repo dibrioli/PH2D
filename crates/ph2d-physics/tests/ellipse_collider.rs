@@ -39,6 +39,7 @@ fn an_ellipse_collider_has_the_authored_half_extents() {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     });
 
     let (_, collider) = w

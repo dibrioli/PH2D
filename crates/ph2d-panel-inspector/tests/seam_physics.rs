@@ -46,6 +46,7 @@ fn with_body() -> InspectorPhysicsInfo {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     }
 }
 
@@ -242,6 +243,18 @@ fn every_dimension_field_reaches_the_bus() {
             0.625,
             PhysicsFieldEdit::CapHalfHeight(0.625),
             "Capsule Half Height",
+        ),
+        (
+            ids::INSP_PHYS_OFFSET_X,
+            0.375,
+            PhysicsFieldEdit::OffsetX(0.375),
+            "Collider Offset X",
+        ),
+        (
+            ids::INSP_PHYS_OFFSET_Y,
+            -0.875,
+            PhysicsFieldEdit::OffsetY(-0.875),
+            "Collider Offset Y",
         ),
         (
             ids::INSP_PHYS_LINVEL_X,

@@ -56,6 +56,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
             // Non-default so its survival means something (W7): the appended
             // `is_sensor` field must travel through the snapshot like the rest.
             is_sensor: true,
+            // Non-default collider offset (W-Offset): the appended `offset` field
+            // must round-trip too — a save that dropped it would centre every
+            // authored foot-box on the sprite.
+            offset: [0.7, -0.3],
             ..Collider::default()
         },
         // The optional per-body gravity multiplier (W8) is a separate registered
@@ -99,6 +103,11 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert!(
         col.is_sensor,
         "is_sensor did not survive the snapshot round trip"
+    );
+    assert_eq!(
+        col.offset,
+        [0.7, -0.3],
+        "the collider offset did not survive the snapshot round trip"
     );
     assert!(
         matches!(col.shape, ColliderShape::Cuboid { half_x, half_y } if half_x == 3.0 && half_y == 0.5)

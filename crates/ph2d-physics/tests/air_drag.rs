@@ -31,6 +31,7 @@ fn box_of(side: f32) -> BodyDesc {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     }
 }
 

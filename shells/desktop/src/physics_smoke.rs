@@ -19,6 +19,7 @@
 //! | `14`| W9   | LAUNCHED bodies: initial velocity (arc / spin / rest), arrows shown paused |
 //! | `15`| W-CCD| CONTINUOUS vs discrete: two fast balls at two thin walls, one tunnels one is stopped |
 //! | `16`| W-LockRot| FREEZE ROTATION: two boxes on mirror slopes, the free one tumbles, the locked one stays upright |
+//! | `17`| W-Offset| COLLIDER OFFSET: two characters, one with a foot-offset collider stands, the centred one sinks |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -84,6 +85,7 @@ impl crate::App {
             "14" => self.physics_smoke_launch(),
             "15" => self.physics_smoke_ccd(),
             "16" => self.physics_smoke_lock_rotation(),
+            "17" => self.physics_smoke_offset(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -101,7 +103,7 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
 
         self.playhead.rewind();
-        if matches!(which.trim(), "3" | "7" | "14" | "15" | "16") {
+        if matches!(which.trim(), "3" | "7" | "14" | "15" | "16" | "17") {
             self.playhead.pause();
         } else {
             self.playhead.play();

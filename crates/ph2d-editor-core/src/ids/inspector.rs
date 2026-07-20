@@ -211,6 +211,11 @@ pub const INSP_PHYS_HALF_Y: NodeId = hash_node_id("insp_phys_half_y");
 /// §11 Capsule straight-segment HALF-length, meters (shown only for the Capsule
 /// shape). The capsule's total half-extent along Y is this plus the radius.
 pub const INSP_PHYS_CAP_HALF_H: NodeId = hash_node_id("insp_phys_cap_half_h");
+/// §11 Collider offset from the sprite centre, meters (local axes). Not
+/// Dynamic-only — any collider can be offset (a character's feet, an off-centre
+/// hitbox). The overlay draws the outline there so the offset is visible.
+pub const INSP_PHYS_OFFSET_X: NodeId = hash_node_id("insp_phys_offset_x");
+pub const INSP_PHYS_OFFSET_Y: NodeId = hash_node_id("insp_phys_offset_y");
 /// §11 Mass density (kg/m² in 2D).
 pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
 /// §11 Bounciness, `0..=1`.

@@ -402,4 +402,62 @@ impl crate::App {
              §11 (Dynamic-only). Press B to see the collider outlines."
         );
     }
+
+    /// **Scene 17 (W-Offset).** Two tall "character" sprites dropped on a floor;
+    /// the only difference is where the collider sits. The GREEN one has its box
+    /// collider offset down to its FEET, so it comes to rest standing ON the floor;
+    /// the ORANGE one's collider is centred on the sprite, so the sprite SINKS to
+    /// its waist (its middle rests on the floor, the legs go through it). That is
+    /// what a collider offset is for — the collider is almost never centred on the
+    /// art.
+    ///
+    /// Runs PAUSED at t=0 (press B to see the outlines in their two places). Play
+    /// to drop them.
+    pub(crate) fn physics_smoke_offset(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A tall character sprite with a foot-sized box collider at `offset`.
+        let mut character = |x: f32, offset: [f32; 2], hue: [f32; 4], label: &str| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 3.0)),
+                // 0.6 × 1.6 — clearly taller than the little foot collider.
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 1.6], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    // A foot-sized box: full width, short.
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.2,
+                    },
+                    // Freeze rotation so the tall sprite does not tip over on
+                    // landing — this scene is about WHERE the collider is, not spin.
+                    offset,
+                    ..Collider::default()
+                },
+                LockRotation,
+            ));
+        };
+        // Collider at the FEET (0.6 below centre): the sprite stands on the floor.
+        character(
+            -1.5,
+            [0.0, -0.6],
+            [0.5, 0.85, 0.55, 1.0],
+            "Grounded (foot offset)",
+        );
+        // Collider CENTRED: the sprite sinks to its waist.
+        character(1.5, [0.0, 0.0], [0.95, 0.45, 0.25, 1.0], "Sunk (centred)");
+
+        eprintln!(
+            "[physics-smoke 17] Paused at t=0: press B to see the two collider outlines — the GREEN \
+             character's box is at its FEET, the ORANGE one's is at its CENTRE. Press Play. The \
+             GREEN one lands standing ON the floor; the ORANGE one SINKS to its waist because its \
+             collider (its middle) is what rests on the floor. Select each and see the Offset X/Y \
+             rows in §11. The collider is almost never centred on the art — that is why offset exists."
+        );
+    }
 }

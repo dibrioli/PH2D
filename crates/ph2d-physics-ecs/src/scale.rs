@@ -159,5 +159,67 @@ pub(crate) fn body_desc(
         // door the overlay reads too, so the wireframe cannot describe a
         // different size than the solver simulates.
         shape: scaled_shape(col.shape, t.scale),
+        // The collider offset scaled into world units. **Signed** scale, not
+        // `abs`: unlike the shape's half-extents (a size, always positive), the
+        // offset is a POSITION, so a flip (`scale.x < 0`) must MIRROR it to the
+        // other side — the foot-box of a flipped character moves with the flip.
+        // rapier then rotates this relative translation with the body; the overlay
+        // reads `col.offset` through the same signed scale so the two agree.
+        offset: [col.offset[0] * t.scale.x, col.offset[1] * t.scale.y],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn desc_with(scale: Vec2, offset: [f32; 2]) -> BodyDesc {
+        let rb = RigidBody {
+            kind: BodyKind::Dynamic,
+        };
+        let col = Collider {
+            shape: ColliderShape::Ball { radius: 0.5 },
+            offset,
+            ..Collider::default()
+        };
+        let t = Transform {
+            translation: Vec2::new(0.0, 0.0),
+            rotation: 0.0,
+            scale,
+            skew_x: 0.0,
+            skew_y: 0.0,
+        };
+        body_desc(&rb, &col, &t, 1.0, [0.0, 0.0], 0.0, false, false)
+    }
+
+    #[test]
+    fn the_collider_offset_scales_with_the_body() {
+        // Unit scale is byte-identical to the authored offset.
+        assert_eq!(
+            desc_with(Vec2::new(1.0, 1.0), [0.7, -0.3]).offset,
+            [0.7, -0.3]
+        );
+        // A 2×/3× scale scales the offset the same amount (it is a position in the
+        // body's local frame, so it grows with the body — Unity does the same).
+        assert_eq!(
+            desc_with(Vec2::new(2.0, 3.0), [1.0, 1.0]).offset,
+            [2.0, 3.0]
+        );
+    }
+
+    #[test]
+    fn a_flip_mirrors_the_collider_offset() {
+        // ⚠️ SIGNED scale, not `abs`: a flip (`scale.x < 0`) MIRRORS the offset to
+        // the other side — the foot-box of a flipped character moves with it. Using
+        // `abs` (like the shape's half-extents do) would leave the offset on the
+        // original side, and the collider would sit on the wrong half of the flip.
+        assert_eq!(
+            desc_with(Vec2::new(-1.0, 1.0), [1.0, 0.0]).offset,
+            [-1.0, 0.0]
+        );
+        assert_eq!(
+            desc_with(Vec2::new(1.0, -1.0), [0.0, 1.0]).offset,
+            [0.0, -1.0]
+        );
     }
 }

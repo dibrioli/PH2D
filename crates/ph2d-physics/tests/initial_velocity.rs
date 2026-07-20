@@ -23,6 +23,7 @@ fn ball(x: f32, y: f32, linvel: [f32; 2], angvel: f32) -> BodyDesc {
         angvel,
         ccd: false,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     }
 }
 

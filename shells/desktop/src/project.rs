@@ -100,7 +100,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// lido CERTO; o bump existe pro caminho INVERSO — um save com um Weld, aberto por um binário v27,
 /// morre como erro de VERSÃO em vez de como um postcard perdido no discriminante 3 desconhecido
 /// (mesmo raciocínio do v24, os variants do vetor).
-const PROJECT_SCHEMA: u32 = 28;
+const PROJECT_SCHEMA: u32 = 29;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

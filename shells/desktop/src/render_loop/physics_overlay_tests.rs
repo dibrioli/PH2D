@@ -458,6 +458,87 @@ fn a_nonuniform_scaled_ball_is_drawn_as_an_ellipse() {
     );
 }
 
+/// **A collider offset moves the outline off the sprite centre — and rotates
+/// with the body** (W-Offset).
+///
+/// The offset is the collider's position relative to the sprite (a character's
+/// feet below its art), and the outline is the only way the artist SEES it. It
+/// is applied in `outlines` (not `collider_outline`), folding the body's signed
+/// scale and rotation exactly as the bridge does for the solver — so the
+/// wireframe sits where the collider actually is. Mutation-tested: dropping the
+/// `+ wox`/`+ woy` from the centre draws the outline on the sprite, and the
+/// shifted-centre assertion goes red.
+#[test]
+fn an_offset_collider_outline_sits_where_the_collider_is() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+
+    // The outline's centre, in screen px, for a ball at the origin with the given
+    // collider offset and body rotation.
+    let centre = |offset: [f32; 2], rotation: f32| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.5 },
+                offset,
+                ..Collider::default()
+            },
+            Transform {
+                translation: Vec2::new(0.0, 0.0),
+                rotation,
+                scale: Vec2::new(1.0, 1.0),
+                skew_x: 0.0,
+                skew_y: 0.0,
+            },
+        ));
+        let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
+        assert_eq!(drawn.len(), 1, "expected exactly one outline");
+        let pts = points(&drawn[0].0);
+        // Bounding-box centre, not the point-MEAN: the ball's outline carries a
+        // spoke (centre → +x rim) whose two extra points would skew a mean toward
+        // +x. The spoke lives inside the circle's bbox, so the bbox centre is the
+        // true collider centre.
+        let xs: Vec<f64> = pts.iter().map(|(x, _)| *x).collect();
+        let ys: Vec<f64> = pts.iter().map(|(_, y)| *y).collect();
+        let bbox_mid = |v: &[f64]| {
+            let lo = v.iter().cloned().fold(f64::INFINITY, f64::min);
+            let hi = v.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            (lo + hi) * 0.5
+        };
+        (bbox_mid(&xs), bbox_mid(&ys))
+    };
+
+    // Centred: the outline is at the screen centre (world origin).
+    let (cx0, cy0) = centre([0.0, 0.0], 0.0);
+    assert!(
+        (cx0 - 500.0).abs() < 1e-3 && (cy0 - 500.0).abs() < 1e-3,
+        "a centred collider's outline is not at the screen centre: ({cx0}, {cy0})"
+    );
+
+    // Offset +1 world unit in x, no rotation: the outline shifts +100 px right.
+    let (cx1, cy1) = centre([1.0, 0.0], 0.0);
+    assert!(
+        (cx1 - 600.0).abs() < 1e-3 && (cy1 - 500.0).abs() < 1e-3,
+        "a +1 x collider offset should draw the outline 100 px right of centre, \
+         but it is at ({cx1}, {cy1}) — the offset did not reach the overlay"
+    );
+
+    // The SAME offset under a 90° body rotation rotates to world +y (up), which is
+    // screen y = 400. This is the property that makes a rotated character's
+    // foot-box turn with it — the offset is in the body's local frame.
+    let (cx2, cy2) = centre([1.0, 0.0], std::f32::consts::FRAC_PI_2);
+    assert!(
+        (cx2 - 500.0).abs() < 1e-2 && (cy2 - 400.0).abs() < 1e-2,
+        "a +1 x offset under a 90° rotation should draw the outline at screen \
+         (500, 400) — up — but it is at ({cx2}, {cy2}); the offset is not \
+         rotating with the body"
+    );
+}
+
 /// **A parented body's outline grows with its WORLD scale.**
 ///
 /// The collider inherits the composed parent scale (Unity/Godot do the

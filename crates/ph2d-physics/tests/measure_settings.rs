@@ -125,6 +125,7 @@ fn measure_where_damping_stops_meaning_anything() {
             angvel: 0.0,
             ccd: false,
             lock_rotation: false,
+            offset: [0.0, 0.0],
         });
         for _ in 0..60 {
             w.step();

@@ -175,6 +175,15 @@ pub struct Collider {
     /// collider overlay + the Inspector (ADR-0131 W7). A sensor still respects
     /// the collision layers, so a trigger only detects the layers it is set to.
     pub is_sensor: bool,
+    /// **Collider offset** — the collider's centre relative to the body, in world
+    /// units along the body's LOCAL axes (Unity's `Collider2D.offset`). `[0, 0]`
+    /// (the default) centres it on the sprite; a non-zero value places it
+    /// elsewhere — the feet of a character below its sprite, an off-centre hitbox.
+    /// **Appended** (postcard positional, so it goes last); `[0, 0]` is what every
+    /// collider did before this field existed. The bridge folds the body's scale
+    /// into it on the way to rapier (a scaled sprite's offset scales, a flipped one
+    /// mirrors), and the overlay draws the outline there so the offset is visible.
+    pub offset: [f32; 2],
 }
 
 impl Collider {
@@ -193,6 +202,7 @@ impl Default for Collider {
             friction: Self::DEFAULT_FRICTION,
             layer: 0,
             is_sensor: false,
+            offset: [0.0, 0.0],
         }
     }
 }

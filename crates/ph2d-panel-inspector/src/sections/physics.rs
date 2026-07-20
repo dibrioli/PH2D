@@ -173,6 +173,27 @@ pub(crate) fn paint_physics_section(
         info.shape_tag,
     );
 
+    // Collider offset from the sprite centre — a collider-geometry property (not
+    // Dynamic-only), so it sits with the shape dimensions rather than the dynamics
+    // block. The overlay draws the outline here so the offset is visible.
+    for (label, id) in [
+        ("Offset X (m)", ids::INSP_PHYS_OFFSET_X),
+        ("Offset Y (m)", ids::INSP_PHYS_OFFSET_Y),
+    ] {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            id,
+        );
+    }
+
     for (label, id) in [
         ("Density", ids::INSP_PHYS_DENSITY),
         ("Bounce", ids::INSP_PHYS_RESTITUTION),

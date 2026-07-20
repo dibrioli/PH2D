@@ -558,6 +558,8 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_HALF_X, info.half_x),
         (ids::INSP_PHYS_HALF_Y, info.half_y),
         (ids::INSP_PHYS_CAP_HALF_H, info.cap_half_height),
+        (ids::INSP_PHYS_OFFSET_X, info.offset[0]),
+        (ids::INSP_PHYS_OFFSET_Y, info.offset[1]),
         (ids::INSP_PHYS_DENSITY, info.density),
         (ids::INSP_PHYS_RESTITUTION, info.restitution),
         (ids::INSP_PHYS_FRICTION, info.friction),

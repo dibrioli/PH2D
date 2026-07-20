@@ -159,6 +159,10 @@ fn populate_physics(store: &mut WidgetStore) {
         // capsule is exactly a ball, which is the honest bottom of the range
         // (and what Ball -> Capsule converts to).
         (ids::INSP_PHYS_CAP_HALF_H, 0.25, 0.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        // Collider offset (signed — the offset is a POSITION, can go either way).
+        // Bounds the drag only; the component/BodyDesc take any f32.
+        (ids::INSP_PHYS_OFFSET_X, 0.0, -1000.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_OFFSET_Y, 0.0, -1000.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
         // Initial velocity (W9): signed. The range bounds the DRAG only —
         // the component/BodyDesc/rapier take any f32 — so it spans a sane
         // authoring range around zero, like gravity scale does.

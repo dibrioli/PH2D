@@ -7,8 +7,9 @@
 //! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8, and one
 //! non-uniformly scaled CAPSULE → a STADIUM hull, and one LAUNCHED ball →
 //! an `InitialVelocity`, one CCD ball launched at a thin wall → the CCD
-//! solver's sweep, W-CCD, and one ROTATION-LOCKED spinning box → the frozen
-//! angular DOF, W-LockRot): entities carry
+//! solver's sweep, W-CCD, one ROTATION-LOCKED spinning box → the frozen
+//! angular DOF, W-LockRot, and one OFFSET collider → the collider translation,
+//! W-Offset): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -19,7 +20,7 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 58
+//! physics-ecs-c9 body_count: 59
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
@@ -221,6 +222,24 @@ fn main() {
         },
         LockRotation,
         Transform::from_translation(Vec2::new(-8.0, 8.0)),
+    ));
+
+    // One body with an OFFSET collider (W-Offset): its collider sits off the body
+    // centre, so `BodyDesc.offset` folds into rapier's collider translation and
+    // changes where the body rests — an `f32` on the deterministic path that CI
+    // proves is bit-identical cross-OS. Off in its own lane so it settles alone.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            offset: [0.0, 0.4],
+            ..Collider::default()
+        },
+        // Far left, clear of the CCD ball's rightward flight and the spinning box.
+        Transform::from_translation(Vec2::new(-15.0, 3.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

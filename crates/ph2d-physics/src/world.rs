@@ -443,6 +443,11 @@ impl PhysicsWorld {
             // A sensor passes through (no contact forces) but the narrow phase
             // still records its overlaps — read back by `intersecting_body_pairs`.
             .sensor(desc.is_sensor)
+            // The collider's position relative to its body. `[0, 0]` centres it on
+            // the body (rapier's default, byte-identical to before this existed);
+            // rapier rotates this translation with the body, so an offset foot-box
+            // turns with the character. Scale is already folded in by the caller.
+            .translation(Vector2::new(desc.offset[0], desc.offset[1]))
             .build();
         let collider_handle = self
             .colliders

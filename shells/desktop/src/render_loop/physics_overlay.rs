@@ -296,13 +296,22 @@ pub(crate) fn outlines(
         let Some(t) = ph2d_ecs::world_transform_into(world, e, &mut chain) else {
             continue;
         };
+        // The collider offset, placed exactly where the solver puts it. The
+        // bridge folds the body's SIGNED scale into the offset (a flip mirrors it)
+        // and rapier rotates the result with the body; the overlay does the same
+        // so the wireframe sits on the collider, not the sprite centre. Reading
+        // `col.offset` any other way here is how the outline and the solver would
+        // come to disagree about WHERE the collider is.
+        let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
+        let (sin_r, cos_r) = t.rotation.sin_cos();
+        let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
         // The SAME resolution the bridge does — so the outline is drawn at the
         // size (and shape: circle vs ellipse) the solver actually simulates
         // under this body's world scale.
         let path = collider_outline(
             scaled_shape(col.shape, t.scale),
-            t.translation.x,
-            t.translation.y,
+            t.translation.x + wox,
+            t.translation.y + woy,
             t.rotation,
             camera,
             window,

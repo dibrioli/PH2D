@@ -48,6 +48,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     });
 
     // A small ball, one metre to the LEFT, launched right at `speed` m/s. At
@@ -70,6 +71,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         angvel: 0.0,
         ccd,
         lock_rotation: false,
+        offset: [0.0, 0.0],
     });
 
     // 30 ticks = 0.5 s: at 80 m/s the ball would travel 40 m unobstructed, so a

@@ -128,6 +128,37 @@ Doc corrigido; o guard **fica**, porque torna este call site robusto contra a fo
 função já carrega três vezes — o próximo escrito sem `old != new` dispararia numa troca de verbo, e *esse*
 seria o bug que o parágrafo original descrevia.
 
+## §5b — Segunda rodada (mesmo dia, pós-screenshot do Enio)
+
+**(1) `Enable` subiu para o TOPO da seção.** Enio: *"já que ele é quem habilita esse modo de pintura"*, e
+*"esse card só aparece se enable de Impasto estiver checado"*. Ele agora é a primeira linha e gateia tudo
+abaixo — **exceto o Lighting**, e essa exemption É a lei que a reorganização inteira defende: `Enable`
+diz se *este pincel* deposita corpo, `Show Impasto` diz se o *canvas* revela o corpo que já está na
+pintura. O motor concorda — `impasto_visible()` lê `impasto_show` + "existe relevo", **nunca**
+`brush.impasto` (o único leitor do Enable é `impasto.rs:44`, e já vem ANDado com `PaintMode::Paint`).
+
+**(2) O bug que o gating expôs, MEDIDO antes de curar.** Cada modo tem `BrushSpec` próprio, então o
+Enable era por-slot. Com ele gateando a lista: tique no Deposit → clique **Knife** → `switch_brush_slot`
+carrega o `impasto` do Smear (`false`) → a seção colapsa **e leva embora a lista de onde você acabou de
+clicar**. Medido: `Deposit true → Knife false → Chisel false`. Cura: `toggle_brush_impasto` escreve nos
+**três slots de relevo** — os três tools são UM assunto, e "estou trabalhando com corpo" não pode ser
+verdade do pincel e falso da faca na mesma mão. Depois: `true → true → true`. Modos sem verbo na lista
+ficam intocados (é o master do assunto, não um global).
+
+**(3) O wrap dos botões era END-DEMOTION.** Screenshot do Enio: `Deposit | Knife | Smooth` na primeira
+linha e **sete botões empilhados um por linha**, cada um esticado de borda a borda. A regra do widget
+compartilhado era *"cabe o prefixo na primeira linha, cada sobra ganha uma linha inteira"* — e ela
+**concorda com flow-wrap sempre que há 0 ou 1 sobra**, que é todo grupo de 2-4 opções do app. Por isso a
+diferença ficou invisível até chegar uma lista de **dez**. Agora é flow greedy (`segmented_row_counts`),
+e ⚠️ **paint e measure passaram a CHAMAR a mesma função** em vez de implementarem a regra duas vezes —
+container medido por uma regra e preenchido por outra é exatamente como a próxima seção pinta por cima
+dos botões e mata os hit targets. Gates: o pack (`[3,3,3,1]`, contra `1+9` da regra velha) + a
+**equivalência dos grupos curtos**, que é o que torna seguro mexer num widget que 8 painéis usam.
+
+⚠️ **Um oráculo meu nasceu errado:** o gate do pack exigia `n > 1` em toda linha após a primeira — o que
+um flow CORRETO reprova sempre que o resto é um (10 a 3 por linha = `3+3+3+1`). O layout estava certo e o
+gate estava errado; a afirmação virou *"toda linha menos a ÚLTIMA está cheia"*.
+
 ## §6 — Fora de escopo, nomeado em vez de contrabandeado
 
 **O "Affect Relief" do Deform é uma QUARTA casa.** O Enio nomeou três; esta não entrou. O Deform é

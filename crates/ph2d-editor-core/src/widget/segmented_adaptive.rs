@@ -103,9 +103,12 @@ pub fn measure_segmented_adaptive(
 }
 
 /// The height [`paint_segmented_group_adaptive`] will use for `labels` at width `rect_w` / row height
-/// `row_h` — MEASURE before sizing a container so it adapts to the reflow on a narrow panel. Mirrors the
-/// paint fn's END-demotion rule (each demoted button gets its own full-width row). Lives here (not in
-/// `panel_chrome`) to keep that shared-chrome file under its LOC cap.
+/// `row_h` — MEASURE before sizing a container so it adapts to the reflow on a narrow panel.
+///
+/// It does not *mirror* the paint fn's wrap any more, it **shares** it: both ask
+/// [`segmented_row_counts`]. Two copies of one layout rule is how a container comes to be measured by one
+/// and filled by the other. Lives here (not in `panel_chrome`) to keep that shared-chrome file under its
+/// LOC cap.
 fn measure_segmented_group_adaptive(
     rect_w: f32,
     row_h: f32,
@@ -116,28 +119,109 @@ fn measure_segmented_group_adaptive(
     if n == 0 {
         return 0.0;
     }
-    let gap = segmented_gap();
+    let widths = segmented_natural_widths(labels, text_system);
+    let rows = segmented_row_counts(rect_w, &widths).len();
+    let row_gap = Spacing::Xs.px();
+    row_h * rows as f32 + row_gap * (rows as f32 - 1.0)
+}
+
+/// Each label's natural width — the text plus the canonical breathing room. The paint side and the
+/// measure side must agree to the pixel, so they both come here.
+pub(crate) fn segmented_natural_widths(labels: &[&str], text_system: &mut TextSystem) -> Vec<f32> {
     let font_size = TypeToken::Sm.px();
     let pad_inside = Spacing::Lg.px() * 2.0;
-    let widths: Vec<f32> = labels
+    labels
         .iter()
         .map(|label| text_system.layout(label, font_size, f32::INFINITY).width() + pad_inside)
-        .collect();
-    let mut top_n = n;
-    while top_n > 1 {
-        let total: f32 = widths[..top_n].iter().sum::<f32>() + gap * (top_n as f32 - 1.0);
-        if total <= rect_w {
-            break;
+        .collect()
+}
+
+/// **How the group wraps: how many buttons on each row.** Greedy flow — fill a row with as many as fit
+/// at their natural widths, then start the next.
+///
+/// ⚠️ This replaced an **END-demotion** rule (fit a prefix in the top row, then give every leftover a
+/// full-width row of its own). The two agree wherever there are 0 or 1 leftovers, which is every group
+/// of two to four options in the app — so the difference was invisible until a list of **ten** arrived
+/// (the Impasto TOOL list) and rendered as three across the top and seven stacked one per line, each
+/// stretched edge to edge. Enio, 2026-07-19: *"deve organizar os botões como na primeira linha de
+/// botões, quantos couberem por linha e não um por linha."*
+///
+/// ⚠️ **Both the painter and the measurer call this**, and that is structural rather than tidy: they used
+/// to implement the wrap twice, and a container measured by one rule and filled by another is how the
+/// next section quietly paints over these buttons and kills their hit targets
+/// (`seam_impasto_rig.rs::no_impasto_widget_loses_its_hit_to_the_section_below`).
+///
+/// A label wider than the whole row still gets a row — never an empty one, or the walk would not
+/// terminate.
+pub(crate) fn segmented_row_counts(rect_w: f32, widths: &[f32]) -> Vec<usize> {
+    let gap = segmented_gap();
+    let mut rows = Vec::new();
+    let mut i = 0;
+    while i < widths.len() {
+        let mut n = 0usize;
+        let mut used = 0.0f32;
+        while i + n < widths.len() {
+            let extra = widths[i + n] + if n > 0 { gap } else { 0.0 };
+            if n > 0 && used + extra > rect_w {
+                break;
+            }
+            used += extra;
+            n += 1;
         }
-        top_n -= 1;
+        let n = n.max(1);
+        rows.push(n);
+        i += n;
     }
-    let row_gap = Spacing::Xs.px();
-    row_h + (n - top_n) as f32 * (row_gap + row_h)
+    rows
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **The group WRAPS by flowing, not by stacking leftovers one per line.**
+    ///
+    /// Enio, 2026-07-19, on the ten-button Impasto TOOL list: *"deve organizar os botões como na primeira
+    /// linha de botões, quantos couberem por linha e não um por linha."* The old rule fit a prefix in the
+    /// top row and gave every leftover a full-width row of its own — three across the top and seven
+    /// stacked.
+    ///
+    /// The widths here are the unit the layout actually works in, so the gate needs no text system.
+    #[test]
+    fn a_long_group_packs_every_row_instead_of_stacking_leftovers() {
+        let w = [60.0f32; 10];
+        let rows = segmented_row_counts(200.0, &w);
+        // Three fit per row, so ten land as 3+3+3+1 — four rows, where the old rule gave 1 + 9 = ten.
+        assert_eq!(rows, vec![3, 3, 3, 1], "ten 60px buttons in a 200px row");
+        // The claim stated so it cannot pass by accident: every row but the LAST is packed. (My first
+        // draft demanded `n > 1` on every row after the first, which a correct flow fails whenever the
+        // remainder is one — the gate was wrong, not the layout.)
+        let (last, packed) = rows.split_last().expect("non-empty");
+        assert!(
+            packed.iter().all(|&n| n == packed[0]),
+            "a row before the last is under-filled — that is the stacking this replaced: {rows:?}"
+        );
+        assert!(*last <= packed[0], "the remainder cannot exceed a full row");
+        assert_eq!(
+            rows.iter().sum::<usize>(),
+            10,
+            "every button lands exactly once"
+        );
+    }
+
+    /// **…and the small groups are UNCHANGED**, which is what makes it safe to change a widget the whole
+    /// app shares. Flow and end-demotion agree wherever there are 0 or 1 leftovers, and every other
+    /// adaptive segmented in the app (Deform, Selection, Draw To, Depth source, …) is two to four options.
+    /// So this pins the equivalence rather than trusting it.
+    #[test]
+    fn short_groups_wrap_exactly_as_they_did_before() {
+        // Everything fits: one row.
+        assert_eq!(segmented_row_counts(400.0, &[60.0, 60.0, 60.0]), vec![3]);
+        // One leftover: a first row plus a row of one — identical under both rules.
+        assert_eq!(segmented_row_counts(130.0, &[60.0, 60.0, 60.0]), vec![2, 1]);
+        // A label wider than the row still gets a row of its own, and the walk terminates.
+        assert_eq!(segmented_row_counts(50.0, &[500.0, 500.0]), vec![1, 1]);
+    }
 
     fn fixture() -> SegmentedAdaptive {
         SegmentedAdaptive::new(

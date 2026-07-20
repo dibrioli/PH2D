@@ -205,8 +205,25 @@ impl PainterTool {
     }
 
     /// Toggle the section's master switch.
+    ///
+    /// ⚠️ **It is written to all three relief slots, because it is the SUBJECT's switch and not one
+    /// tool's** (Enio, 2026-07-19: *"é quem habilita esse modo de pintura"*, and the TOOL card is painted
+    /// only while it is ticked). Each paint mode keeps its own `BrushSpec`, so without this the flag was
+    /// per-slot — and once it gates the tool list, that is a trap with a measured shape: tick Enable in
+    /// the Deposit, click **Knife**, and `switch_brush_slot` loads the Smear's own `impasto` (`false`),
+    /// which collapses the section to a lone checkbox *and takes away the list you just clicked from*.
+    /// Measured before the fix: `Deposit true → Knife false → Chisel false`.
+    ///
+    /// The three tools are one subject: ticking the box says "I am working with body", which cannot
+    /// sensibly be true of the brush and false of the knife in the artist's own hand. Modes that have no
+    /// verb on that list keep their own flag untouched — this is the impasto subject's master, not a
+    /// global.
     pub fn toggle_brush_impasto(&mut self) {
         self.paint.brush.impasto = !self.paint.brush.impasto;
+        let on = self.paint.brush.impasto;
+        for mode in [PaintMode::Paint, PaintMode::Smear, PaintMode::Sculpt] {
+            self.paint.brush_by_mode[mode.slot()].impasto = on;
+        }
         // Impasto's default falloff is **Sphere**, not the brush's factory Smooth (Enio 2026-07-17): the
         // hemispherical shoulder reads as rounded body under the impasto light, where Smooth's flat plateau
         // lights like a sticker. Only switched when the falloff is still that factory Smooth, so a deliberate

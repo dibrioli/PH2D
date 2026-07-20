@@ -47,6 +47,11 @@ fn tool_in_sculpt() -> PainterTool {
 /// a sweep that forgot this would be pressing for a knob that lies.
 fn tool_in_sculpt_mode(mode: Option<u8>) -> PainterTool {
     let mut tool = PainterTool::default();
+    // Impasto's **Enable** gates the whole section, and the verbs live inside it since the tools were
+    // unified (Enio, 2026-07-19: *"esse card só aparece se enable de Impasto estiver checado"*). The
+    // fixture ticks it because the artist has to — without this the card is not painted and every
+    // assertion below would be measuring an empty panel.
+    tool.toggle_brush_impasto();
     tool.set_paint_tool_mode("sculpt");
     if let Some(m) = mode {
         tool.set_sculpt_mode(m);

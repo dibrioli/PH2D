@@ -85,9 +85,31 @@ pub(crate) fn paint_impasto_section(
         return y;
     }
 
-    // Governs every slider in the section, so it sits above the tool list rather than inside one card: a
-    // control that reaches across every box below it does not belong in any of them. Unticked by default
-    // (Enio 2026-07-19) — finished paint stays finished.
+    // **Enable** is the section's master and is painted FIRST, because that is its rank (Enio,
+    // 2026-07-19: *"é quem habilita esse modo de pintura"*). It briefly lived inside the Deposit card —
+    // the one tool whose engine actually reads it — and that put the switch for the whole subject below
+    // the list of things it governs.
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_IMPASTO_ENABLE,
+        "Enable",
+        brush.impasto,
+    );
+    if !brush.impasto {
+        // ⚠️ …but the LIGHT survives it, and that exemption is the whole reason this section was
+        // reorganised. `Enable` says whether *this brush* lays body; `Show Impasto` says whether the
+        // *canvas* reveals the body already in the painting. Turning your brush off must not blind you to
+        // work you have already done — and the light is not gated by this flag in the engine either
+        // (`impasto_visible` reads `impasto_show` and whether any relief exists, never `brush.impasto`).
+        return paint_lighting_card(ctx, theme, x, content_w, y, &brush);
+    }
+    // Governs every slider below it, so it sits outside the boxes rather than inside one: a control that
+    // reaches across every card does not belong in any of them. Unticked by default (Enio 2026-07-19) —
+    // finished paint stays finished.
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,

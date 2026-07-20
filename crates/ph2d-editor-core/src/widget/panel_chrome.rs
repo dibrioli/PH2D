@@ -251,73 +251,41 @@ pub fn paint_segmented_group_adaptive(
         return 0.0;
     }
     let gap = segmented_gap();
-    let font_size = TypeToken::Sm.px();
-    let pad_inside = Spacing::Lg.px() * 2.0; // canonical breathing room
-
-    // Measure each label's natural width (text + breathing room).
-    let widths: Vec<f32> = segments
-        .iter()
-        .map(|(label, _, _)| {
-            text_system.layout(label, font_size, f32::INFINITY).width() + pad_inside
-        })
-        .collect();
-
-    // Find how many buttons fit in the top row at their natural widths
-    // (with gaps). Demote from the END until the prefix fits.
-    let mut top_n = n;
-    while top_n > 1 {
-        let total: f32 = widths[..top_n].iter().sum::<f32>() + gap * (top_n as f32 - 1.0);
-        if total <= rect.w {
-            break;
-        }
-        top_n -= 1;
-    }
+    let labels: Vec<&str> = segments.iter().map(|(l, _, _)| *l).collect();
+    let widths = super::segmented_adaptive::segmented_natural_widths(&labels, text_system);
+    // ONE answer to "how does this group wrap", shared with the measurer. See `segmented_row_counts`:
+    // greedy flow, so a long list packs every row instead of stacking one button per line.
+    let rows = super::segmented_adaptive::segmented_row_counts(rect.w, &widths);
 
     let row_h = rect.h;
     let row_gap = Spacing::Xs.px();
-
-    // Top row: equal widths summing to rect.w (canonical look —
-    // when N buttons fit, they share width evenly per
-    // `paint_segmented_group`).
-    let top_seg_w = ((rect.w - gap * (top_n as f32 - 1.0)) / top_n as f32).max(0.0);
-    for (i, (label, selected, id)) in segments[..top_n].iter().enumerate() {
-        let seg = Rect::new(
-            rect.x + (top_seg_w + gap) * i as f32,
-            rect.y,
-            top_seg_w,
-            row_h,
-        );
-        paint_segmented_button(
-            seg,
-            label,
-            *selected,
-            seg_state(*id),
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(*id, seg);
+    let mut y = rect.y;
+    let mut i = 0usize;
+    for (r, count) in rows.iter().enumerate() {
+        if r > 0 {
+            y += row_h + row_gap;
+        }
+        // Within a row the buttons share the width evenly — the canonical segmented look
+        // (`paint_segmented_group`), so a half-full last row reads as part of the same control.
+        let seg_w = ((rect.w - gap * (*count as f32 - 1.0)) / *count as f32).max(0.0);
+        for k in 0..*count {
+            let (label, selected, id) = segments[i + k];
+            let seg = Rect::new(rect.x + (seg_w + gap) * k as f32, y, seg_w, row_h);
+            paint_segmented_button(
+                seg,
+                label,
+                selected,
+                seg_state(id),
+                scene,
+                text_system,
+                theme,
+            );
+            hit_index.register(id, seg);
+        }
+        i += count;
     }
 
-    // Demoted buttons: each on its own row at full rect.w.
-    let mut y = rect.y + row_h;
-    for (label, selected, id) in &segments[top_n..] {
-        y += row_gap;
-        let seg = Rect::new(rect.x, y, rect.w, row_h);
-        paint_segmented_button(
-            seg,
-            label,
-            *selected,
-            seg_state(*id),
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(*id, seg);
-        y += row_h;
-    }
-
-    y - rect.y
+    y + row_h - rect.y
 }
 
 /// Outer corner radius of every panel rect (Inspector, Hierarchy,

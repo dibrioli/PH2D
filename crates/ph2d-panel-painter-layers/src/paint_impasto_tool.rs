@@ -113,27 +113,13 @@ pub(crate) fn paint_tool_body(
     brush: &BrushSettings,
 ) -> (f32, bool) {
     match brush.impasto_tool {
-        TOOL_DEPOSIT => {
-            // The **Enable** switch is the Deposit's, not the section's: off, a stroke is byte-identical
-            // to a build with no Impasto at all. It used to gate the whole section — which also took the
-            // Lighting card away, so "this brush lays no body" silently meant "and you cannot light
-            // anyone else's either".
-            let mut y = crate::paint_brush_top::paint_checkbox_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                core_ids::PAINTER_IMPASTO_ENABLE,
-                "Enable",
-                brush.impasto,
-            );
-            if !brush.impasto {
-                return (y, false);
-            }
-            y = crate::paint_impasto::paint_body_card(ctx, theme, x, content_w, y, brush);
-            (y, true)
-        }
+        // The Deposit's own card is the Body — **Enable** is not here: it is the section's master and is
+        // painted at the top by [`crate::paint_impasto`], above everything it governs (Enio, 2026-07-19).
+        // Nothing below is reached with it unticked.
+        TOOL_DEPOSIT => (
+            crate::paint_impasto::paint_body_card(ctx, theme, x, content_w, y, brush),
+            true,
+        ),
         TOOL_KNIFE => (
             crate::paint_impasto::paint_knife_card(ctx, theme, x, content_w, y, brush),
             false,

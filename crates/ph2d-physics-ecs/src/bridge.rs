@@ -501,7 +501,13 @@ impl PhysicsBridge {
             let gravity_scale = world
                 .get::<crate::GravityScale>(e)
                 .map_or(crate::GravityScale::NEUTRAL, |g| g.0);
-            let desc = crate::scale::body_desc(rb, col, &t, gravity_scale);
+            // Optional authored initial velocity (W9); absent = at rest. Folded
+            // into the `BodyDesc` for the same reason — a rewind re-arms it.
+            let iv = world
+                .get::<crate::InitialVelocity>(e)
+                .copied()
+                .unwrap_or(crate::InitialVelocity::REST);
+            let desc = crate::scale::body_desc(rb, col, &t, gravity_scale, iv.linvel, iv.angvel);
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not

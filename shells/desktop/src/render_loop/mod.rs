@@ -3451,8 +3451,14 @@ impl crate::App {
             // lights them up. A sensor with nothing reading its overlaps would
             // be a dead flag (W7), so the visible reaction lives here.
             let triggered = physics.triggered_sensors();
+            // The initial-velocity arrow is only truthful before the sim steps:
+            // once a body has moved, its live velocity is no longer the authored
+            // launch. `last_stepped() == 0` is exactly "the bodies are at their
+            // authored rest", the same fact the bridge uses to decide a respawn.
+            let velocity_at_rest = physics.last_stepped() == 0;
             physics_overlay::draw(
                 self.show_colliders,
+                velocity_at_rest,
                 sim,
                 &joint_anchors,
                 &triggered,

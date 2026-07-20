@@ -15,7 +15,7 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, GravityScale, PhysicsBridge, RigidBody,
+    BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
     register_physics_components,
 };
 
@@ -62,6 +62,11 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         // component; a non-neutral value must travel through the snapshot too —
         // dropping its `reg.register` line makes the `get` below return None.
         GravityScale(0.5),
+        // Initial velocity (W9), same story — a non-rest value must round-trip.
+        InitialVelocity {
+            linvel: [3.0, -1.5],
+            angvel: 2.0,
+        },
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -98,6 +103,15 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert_eq!(
         gravity.0, 0.5,
         "the per-body gravity multiplier did not survive the snapshot round trip"
+    );
+    let iv = *dst
+        .world()
+        .get::<InitialVelocity>(e)
+        .expect("InitialVelocity survived the round trip (registered?)");
+    assert_eq!(
+        (iv.linvel, iv.angvel),
+        ([3.0, -1.5], 2.0),
+        "the authored initial velocity did not survive the snapshot round trip"
     );
 }
 

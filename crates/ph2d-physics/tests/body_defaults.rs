@@ -24,6 +24,8 @@ fn ball(y: f32) -> BodyDesc {
         layer: 0,
         is_sensor: false,
         gravity_scale: 1.0,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
     }
 }
 

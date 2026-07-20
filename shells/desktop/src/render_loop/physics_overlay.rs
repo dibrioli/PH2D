@@ -192,14 +192,81 @@ pub(crate) fn collider_outline(
     path
 }
 
+/// The **initial-velocity arrow** — a launch the artist armed but cannot see,
+/// because a still body at t=0 is not moving. Yellow, a hue no collider or joint
+/// uses. Only linear velocity is drawn (an angular spin has no direction to point).
+const VELOCITY_RGBA: [f32; 4] = [0.96, 0.92, 0.26, 0.95]; // LITERAL-COLOR-OK: overlay de velocidade inicial
+
+/// How far ahead the arrow reaches, in seconds of travel: the tip is where the
+/// body would be a quarter-second after launch. A time, not a raw length, so the
+/// arrow scales with the world like the collider does — faster is longer.
+const ARROW_SECONDS: f32 = 0.25;
+
+/// Arrowhead length, screen px — chrome, constant size like the outline stroke.
+const ARROW_HEAD_PX: f64 = 9.0; // LITERAL-PX-OK: chrome de overlay
+
+/// The arrow for one body's authored initial velocity, **in screen pixels**, or
+/// `None` if the launch is (near) zero — a still body draws no arrow.
+///
+/// Built in screen space on purpose (the module's rule — see the header): the
+/// shaft is the world launch vector projected through the camera, so its length
+/// tracks speed and zoom, but the arrowhead is a constant-size screen ornament,
+/// so it never balloons the way a world-space stroke width would.
+fn initial_velocity_arrow(
+    cx: f32,
+    cy: f32,
+    linvel: [f32; 2],
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    if linvel[0].hypot(linvel[1]) < 1e-3 {
+        return None;
+    }
+    let to_screen = |wx: f32, wy: f32| {
+        let (sx, sy) = camera.world_to_screen([wx, wy], window);
+        Point::new(f64::from(sx), f64::from(sy))
+    };
+    let tail = to_screen(cx, cy);
+    let tip = to_screen(
+        cx + linvel[0] * ARROW_SECONDS,
+        cy + linvel[1] * ARROW_SECONDS,
+    );
+    let (dx, dy) = (tip.x - tail.x, tip.y - tail.y);
+    let len = dx.hypot(dy);
+
+    let mut path = BezPath::new();
+    path.move_to(tail);
+    path.line_to(tip);
+    if len > 1e-6 {
+        // Head: two barbs from the tip, back along the shaft rotated ±25°.
+        let (bx, by) = (-dx / len, -dy / len);
+        let (s, c) = (25.0_f64).to_radians().sin_cos();
+        for sign in [1.0, -1.0] {
+            let (rx, ry) = (bx * c - by * (sign * s), bx * (sign * s) + by * c);
+            path.move_to(tip);
+            path.line_to(Point::new(
+                tip.x + rx * ARROW_HEAD_PX,
+                tip.y + ry * ARROW_HEAD_PX,
+            ));
+        }
+    }
+    Some(path)
+}
+
 /// **What to draw, decided once.** Pure: the toggle and the "is there any
 /// physics here at all" question are answered here and returned as data, not
 /// resolved inside a paint loop. That is the repo's `hit_plan` shape — a
 /// refusal that lives in a loop cannot be tested, and an overlay that quietly
 /// draws when it was switched off is exactly the kind of thing nobody notices
 /// until it is in a screenshot.
+/// `show_velocity` adds the initial-velocity arrow to each body that has a
+/// launch armed. It is separate from `show` because the arrow is only truthful
+/// while the bodies are at their AUTHORED rest (before the sim steps): once a
+/// body has moved, its live velocity is no longer the authored one, so the
+/// caller passes `false` while the clock is running.
 pub(crate) fn outlines(
     show: bool,
+    show_velocity: bool,
     sim: &mut SimWorld,
     triggered: &[ph2d_ecs::Entity],
     camera: &Camera2d,
@@ -224,29 +291,44 @@ pub(crate) fn outlines(
     // One scratch buffer for the whole pass, so the chain walk allocates once
     // rather than once per body.
     let mut chain = Vec::new();
-    q.iter(world)
-        .filter_map(|(e, rb, col)| {
-            let t = ph2d_ecs::world_transform_into(world, e, &mut chain)?;
-            // The SAME resolution the bridge does — so the outline is drawn at
-            // the size (and shape: circle vs ellipse) the solver actually
-            // simulates under this body's world scale.
-            let path = collider_outline(
-                scaled_shape(col.shape, t.scale),
-                t.translation.x,
-                t.translation.y,
-                t.rotation,
-                camera,
-                window,
-            );
-            let rgba = outline_rgba(col.is_sensor, triggered.contains(&e), rb.kind);
-            Some((path, rgba))
-        })
-        .collect()
+    let mut out = Vec::new();
+    for (e, rb, col) in q.iter(world) {
+        let Some(t) = ph2d_ecs::world_transform_into(world, e, &mut chain) else {
+            continue;
+        };
+        // The SAME resolution the bridge does — so the outline is drawn at the
+        // size (and shape: circle vs ellipse) the solver actually simulates
+        // under this body's world scale.
+        let path = collider_outline(
+            scaled_shape(col.shape, t.scale),
+            t.translation.x,
+            t.translation.y,
+            t.rotation,
+            camera,
+            window,
+        );
+        out.push((
+            path,
+            outline_rgba(col.is_sensor, triggered.contains(&e), rb.kind),
+        ));
+        // The armed launch, when the bodies are at rest (so `t` is the authored
+        // position the arrow springs from). Absent component = no arrow.
+        if show_velocity
+            && let Some(iv) = world.get::<ph2d_physics_ecs::InitialVelocity>(e)
+            && let Some(arrow) =
+                initial_velocity_arrow(t.translation.x, t.translation.y, iv.linvel, camera, window)
+        {
+            out.push((arrow, VELOCITY_RGBA));
+        }
+    }
+    out
 }
 
 /// Paint them. No-op when [`outlines`] returns nothing.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw(
     show: bool,
+    show_velocity: bool,
     sim: &mut SimWorld,
     joint_anchors: &[([f32; 2], [f32; 2])],
     triggered: &[ph2d_ecs::Entity],
@@ -255,7 +337,7 @@ pub(super) fn draw(
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    for (path, rgba) in outlines(show, sim, triggered, camera, window) {
+    for (path, rgba) in outlines(show, show_velocity, sim, triggered, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,

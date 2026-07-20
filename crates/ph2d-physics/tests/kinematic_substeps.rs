@@ -32,6 +32,8 @@ fn kinematic_at(world: &mut PhysicsWorld, x: f32, y: f32) -> ph2d_physics::Rigid
         layer: 0,
         is_sensor: false,
         gravity_scale: 1.0,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
         shape: ShapeDesc::Cuboid {
             half_x: 1.0,
             half_y: 0.2,
@@ -142,6 +144,8 @@ fn a_rotation_across_the_branch_cut_takes_the_short_way() {
             layer: 0,
             is_sensor: false,
             gravity_scale: 1.0,
+            linvel: [0.0, 0.0],
+            angvel: 0.0,
             shape: ShapeDesc::Cuboid {
                 half_x: 1.0,
                 half_y: 0.2,
@@ -194,6 +198,8 @@ fn the_aim_of_a_body_that_cannot_use_it_is_refused() {
         layer: 0,
         is_sensor: false,
         gravity_scale: 1.0,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
         shape: ShapeDesc::Ball { radius: 0.25 },
     });
     let kinematic = kinematic_at(&mut world, 0.0, 0.0);
@@ -277,6 +283,8 @@ fn a_world_with_no_kinematic_body_is_untouched() {
             layer: 0,
             is_sensor: false,
             gravity_scale: 1.0,
+            linvel: [0.0, 0.0],
+            angvel: 0.0,
             shape: ShapeDesc::Ball { radius: 0.25 },
         });
         let mut out = Vec::new();

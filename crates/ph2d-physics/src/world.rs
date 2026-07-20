@@ -377,6 +377,11 @@ impl PhysicsWorld {
             // before this existed; the value survives rewind because it rides
             // the `BodyDesc` the world rebuilds from.
             .gravity_scale(desc.gravity_scale)
+            // Initial velocity (W9), applied at build. `[0,0]`/`0` is rapier's
+            // own default, so a body authored before this is byte-identical; and
+            // because it rides the `BodyDesc`, a rewind to t=0 re-arms the launch.
+            .linvel(Vector2::new(desc.linvel[0], desc.linvel[1]))
+            .angvel(desc.angvel)
             .build();
         let handle = self.bodies.insert(body);
         self.stamp_defaults(handle);

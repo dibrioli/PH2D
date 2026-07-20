@@ -42,6 +42,8 @@ fn with_body() -> InspectorPhysicsInfo {
         bake_channels_tag: 0,
         gravity_scale: 1.0,
         cap_half_height: 0.25,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
     }
 }
 
@@ -220,6 +222,18 @@ fn every_dimension_field_reaches_the_bus() {
             0.625,
             PhysicsFieldEdit::CapHalfHeight(0.625),
             "Capsule Half Height",
+        ),
+        (
+            ids::INSP_PHYS_LINVEL_X,
+            3.5,
+            PhysicsFieldEdit::LinvelX(3.5),
+            "Init Vel X",
+        ),
+        (
+            ids::INSP_PHYS_LINVEL_Y,
+            -2.0,
+            PhysicsFieldEdit::LinvelY(-2.0),
+            "Init Vel Y",
         ),
     ] {
         expect(&commit(with_body(), id, v), edit, what);
@@ -502,6 +516,64 @@ fn gravity_scale_is_offered_and_committed_only_for_a_dynamic_body() {
             );
         }
     }
+}
+
+/// **The three initial-velocity rows are offered and honoured only for a Dynamic
+/// body, and the angular one converts deg/s → rad/s at the panel boundary** (W9).
+///
+/// Static/Kinematic bodies don't move under forces, so the launch is meaningless
+/// there — the same Dynamic-only rule as gravity. Presence AND absence per kind
+/// (an absence gate alone stays green with nothing painted). The angular commit
+/// asserts the conversion: the panel shows deg/s, the component takes radians, so
+/// a wiring that forgot the conversion would ship a body spinning 57× too fast.
+#[test]
+fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let rows = [
+        ids::INSP_PHYS_LINVEL_X,
+        ids::INSP_PHYS_LINVEL_Y,
+        ids::INSP_PHYS_ANGVEL,
+    ];
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let painted = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for id in rows {
+            assert_eq!(
+                painted.iter().any(|(n, _)| *n == id),
+                offered,
+                "kind_tag={tag}: an initial-velocity row's presence is wrong"
+            );
+            assert_eq!(
+                !commit(info, id, 1.0).is_empty(),
+                offered,
+                "kind_tag={tag}: the event handler disagrees with the painter about \
+                 an initial-velocity row"
+            );
+        }
+    }
+
+    // The angular commit converts: 90 deg/s in → Angvel(π/2) out.
+    expect(
+        &commit(with_body(), ids::INSP_PHYS_ANGVEL, 90.0),
+        PhysicsFieldEdit::Angvel(90.0_f32.to_radians()),
+        "Init Spin (deg/s → rad/s)",
+    );
 }
 
 /// **Bake is neither offered nor honoured for a body with no simulated motion.**

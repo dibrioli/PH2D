@@ -9,7 +9,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, GravityScale, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 use crate::physics_smoke::spawn_floor;
@@ -165,6 +167,77 @@ impl crate::App {
              (falls fastest), the cyan one is a BALLOON (floats UP off the top). Select each \
              and see the Gravity Scale row in §11 (Dynamic only). A dead multiplier makes all \
              four fall together."
+        );
+    }
+
+    /// **Scene 14 (W9).** Three balls LAUNCHED from the same spot at t=0, each
+    /// with a different authored initial velocity — one arcs over a wall, one
+    /// spins in place, one is at rest for contrast. Until this, a body could only
+    /// start still; the earlier scenes had to tilt gravity to fake a push.
+    ///
+    /// Runs PAUSED at t=0 so the yellow velocity arrows are visible before Play:
+    /// press Play to fire them. Arm the transport's Physics toggle first.
+    pub(crate) fn physics_smoke_launch(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A wall to arc over, so the launch is legible as a trajectory.
+        world.spawn((
+            Transform::from_translation(Vec2::new(2.0, 0.4)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.3, 2.0], [0.40, 0.42, 0.48, 1.0]),
+            Name::new("Wall"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.15,
+                    half_y: 1.0,
+                },
+                ..Collider::default()
+            },
+        ));
+
+        let ball = |x: f32, hue: [f32; 4], label: &str| {
+            (
+                Transform::from_translation(Vec2::new(x, 0.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.4, 0.4], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.2 },
+                    ..Collider::default()
+                },
+            )
+        };
+        // Projectile: up and to the right, arcs over the wall.
+        world.spawn((
+            ball(-1.0, [1.0, 0.55, 0.2, 1.0], "Projectile"),
+            InitialVelocity {
+                linvel: [5.0, 6.0],
+                angvel: 0.0,
+            },
+        ));
+        // Spinner: no travel, just tumbles (watch its rotation guide whirl).
+        world.spawn((
+            ball(-3.0, [0.4, 0.6, 0.9, 1.0], "Spinner"),
+            InitialVelocity {
+                linvel: [0.0, 0.0],
+                angvel: 12.0,
+            },
+        ));
+        // At rest: no component — falls straight, for contrast.
+        world.spawn(ball(-4.0, [0.5, 0.85, 0.55, 1.0], "AtRest"));
+
+        eprintln!(
+            "[physics-smoke 14] Paused at t=0: press B to see the YELLOW initial-velocity arrows. \
+             The orange Projectile is launched up-and-right (arcs over the wall), the blue Spinner \
+             tumbles in place, the green AtRest just falls. Select each and see the Init Vel / Spin \
+             rows in §11. Press Play to fire them. The arrows vanish once the sim steps — a live \
+             body's velocity is no longer the authored launch."
         );
     }
 }

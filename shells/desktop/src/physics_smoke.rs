@@ -16,6 +16,7 @@
 //! | `11`| Weld | a bar WELDED to a hook stays rigid; a PINNED bar swings (side by side) |
 //! | `12`| W8   | four bodies, one gravity, four **Gravity Scale**s: fall / weightless / heavy / balloon |
 //! | `13`| Caps | a CAPSULE rides a stair a BOX catches on — the character shape of 2D |
+//! | `14`| W9   | LAUNCHED bodies: initial velocity (arc / spin / rest), arrows shown paused |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -78,6 +79,7 @@ impl crate::App {
             "11" => self.physics_smoke_weld(),
             "12" => self.physics_smoke_gravity(),
             "13" => self.physics_smoke_capsule(),
+            "14" => self.physics_smoke_launch(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -95,7 +97,7 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
 
         self.playhead.rewind();
-        if matches!(which.trim(), "3" | "7") {
+        if matches!(which.trim(), "3" | "7" | "14") {
             self.playhead.pause();
         } else {
             self.playhead.play();

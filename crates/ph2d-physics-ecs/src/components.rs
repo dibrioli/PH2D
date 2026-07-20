@@ -234,3 +234,51 @@ impl Default for GravityScale {
 }
 
 impl SimComponent for GravityScale {}
+
+/// **Authored initial velocity — an optional presence-override component (W9).**
+///
+/// Absent (the common case) means the body starts at rest, what every body did
+/// before this existed. Present, `linvel` (m/s, WORLD axes) and `angvel` (rad/s,
+/// CCW) are applied at SPAWN: a launched projectile, a ball kicked at t=0, a
+/// spinning wheel. Until this, a body could only start still — which is why the
+/// smoke scenes had to tilt gravity to fake a push.
+///
+/// It is the same idiom as [`GravityScale`], and its authored value is folded
+/// into `BodyDesc` by the bridge so a rewind to t=0 re-arms the same launch —
+/// initial velocity is part of the spawn recipe, not a per-frame force.
+///
+/// **World axes, not the parent's local frame**: the body spawns at its world
+/// pose (the bridge composes the parent chain for position), so its launch is a
+/// world-space vector — the convention Unity's `Rigidbody2D.linearVelocity` and
+/// Godot's `linear_velocity` expose. Config, never live solver velocity (that
+/// changes every tick and would make each frame an undo step — the rule this
+/// whole file rests on).
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct InitialVelocity {
+    pub linvel: [f32; 2],
+    pub angvel: f32,
+}
+
+impl InitialVelocity {
+    /// The value an absent component stands for — a body at rest.
+    pub const REST: InitialVelocity = InitialVelocity {
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
+    };
+
+    /// Is this the rest value? Used to DETACH the component at rest, so an
+    /// unmoved body carries none (the presence-override idiom, and a project file
+    /// stays free of no-op zeros).
+    #[must_use]
+    pub fn is_rest(self) -> bool {
+        self == Self::REST
+    }
+}
+
+impl Default for InitialVelocity {
+    fn default() -> Self {
+        Self::REST
+    }
+}
+
+impl SimComponent for InitialVelocity {}

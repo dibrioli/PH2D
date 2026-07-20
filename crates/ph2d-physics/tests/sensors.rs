@@ -23,6 +23,8 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         layer: 0,
         is_sensor,
         gravity_scale: 1.0,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
     });
 }
 

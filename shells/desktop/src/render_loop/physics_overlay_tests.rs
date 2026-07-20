@@ -254,11 +254,11 @@ fn physics_scene() -> ph2d_ecs::SimWorld {
 fn switching_the_overlay_off_produces_nothing_to_draw() {
     let mut sim = physics_scene();
     assert!(
-        outlines(false, &mut sim, &[], &camera(), window()).is_empty(),
+        outlines(false, false, &mut sim, &[], &camera(), window()).is_empty(),
         "the overlay drew while switched off"
     );
     assert_eq!(
-        outlines(true, &mut sim, &[], &camera(), window()).len(),
+        outlines(true, false, &mut sim, &[], &camera(), window()).len(),
         2,
         "the overlay drew nothing while switched on"
     );
@@ -300,7 +300,7 @@ fn a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose() {
         ChildOf(rig),
     ));
 
-    let drawn = outlines(true, &mut sim, &[], &camera(), window());
+    let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
     assert_eq!(drawn.len(), 1, "expected exactly one outline");
     let pts = points(&drawn[0].0);
     let cx = pts.iter().map(|(x, _)| *x).sum::<f64>() / pts.len() as f64;
@@ -374,11 +374,11 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         ))
         .id();
 
-    let idle = outlines(true, &mut sim, &[], &camera(), window());
+    let idle = outlines(true, false, &mut sim, &[], &camera(), window());
     assert_eq!(idle.len(), 1);
     assert_eq!(idle[0].1, SENSOR_IDLE_RGBA, "an empty sensor is drawn idle");
 
-    let active = outlines(true, &mut sim, &[sensor], &camera(), window());
+    let active = outlines(true, false, &mut sim, &[sensor], &camera(), window());
     assert_eq!(
         active[0].1, SENSOR_ACTIVE_RGBA,
         "a triggered sensor is drawn active"
@@ -395,7 +395,7 @@ fn a_scene_without_bodies_draws_no_physics_chrome() {
     sim.world_mut()
         .spawn((Transform::from_translation(Vec2::new(1.0, 1.0)),));
     assert!(
-        outlines(true, &mut sim, &[], &camera(), window()).is_empty(),
+        outlines(true, false, &mut sim, &[], &camera(), window()).is_empty(),
         "physics chrome leaked into a scene with no bodies"
     );
 }
@@ -406,7 +406,7 @@ fn a_scene_without_bodies_draws_no_physics_chrome() {
 #[test]
 fn static_and_dynamic_bodies_are_drawn_in_different_colours() {
     let mut sim = physics_scene();
-    let out = outlines(true, &mut sim, &[], &camera(), window());
+    let out = outlines(true, false, &mut sim, &[], &camera(), window());
     let colours: Vec<[f32; 4]> = out.iter().map(|(_, c)| *c).collect();
     assert!(colours.contains(&STATIC_RGBA), "no static body was drawn");
     assert!(colours.contains(&DYNAMIC_RGBA), "no dynamic body was drawn");
@@ -500,7 +500,7 @@ fn a_parented_bodys_outline_grows_with_its_world_scale() {
         ChildOf(rig),
     ));
 
-    let drawn = outlines(true, &mut sim, &[], &camera(), window());
+    let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
     assert_eq!(drawn.len(), 1, "expected exactly one outline");
     let pts = points(&drawn[0].0);
     let rim = &pts[..super::CIRCLE_SEGS as usize];

@@ -217,6 +217,12 @@ pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
 pub const INSP_PHYS_RESTITUTION: NodeId = hash_node_id("insp_phys_restitution");
 /// §11 Coulomb friction.
 pub const INSP_PHYS_FRICTION: NodeId = hash_node_id("insp_phys_friction");
+/// §11 Authored initial linear velocity, world axes, m/s (W9). Dynamic-only.
+pub const INSP_PHYS_LINVEL_X: NodeId = hash_node_id("insp_phys_linvel_x");
+pub const INSP_PHYS_LINVEL_Y: NodeId = hash_node_id("insp_phys_linvel_y");
+/// §11 Authored initial angular velocity. Shown as deg/s; the panel converts
+/// to the component's radians at its boundary.
+pub const INSP_PHYS_ANGVEL: NodeId = hash_node_id("insp_phys_angvel");
 /// §11 Per-body gravity multiplier (W8). Shown only for a Dynamic body — the
 /// only kind rapier applies gravity to.
 pub const INSP_PHYS_GRAVITY_SCALE: NodeId = hash_node_id("insp_phys_gravity_scale");

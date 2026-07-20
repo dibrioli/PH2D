@@ -157,7 +157,13 @@ fn populate_physics(store: &mut WidgetStore) {
         // capsule is exactly a ball, which is the honest bottom of the range
         // (and what Ball -> Capsule converts to).
         (ids::INSP_PHYS_CAP_HALF_H, 0.25, 0.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
-        (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),     // LITERAL-PX-OK: kg/m^2
+        // Initial velocity (W9): signed. The range bounds the DRAG only —
+        // the component/BodyDesc/rapier take any f32 — so it spans a sane
+        // authoring range around zero, like gravity scale does.
+        (ids::INSP_PHYS_LINVEL_X, 0.0, -100.0, 100.0, 0.1), // LITERAL-PX-OK: m/s
+        (ids::INSP_PHYS_LINVEL_Y, 0.0, -100.0, 100.0, 0.1), // LITERAL-PX-OK: m/s
+        (ids::INSP_PHYS_ANGVEL, 0.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s
+        (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),   // LITERAL-PX-OK: kg/m^2
         (ids::INSP_PHYS_RESTITUTION, 0.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: bounciness is 0..=1 by physics
         (ids::INSP_PHYS_FRICTION, 0.5, 0.0, 10.0, 0.01), // LITERAL-PX-OK: Coulomb coefficient, >1 is legal
         // Per-body gravity multiplier (W8). The range bounds the DRAG only — the

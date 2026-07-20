@@ -106,14 +106,23 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// neutral `1.0` — and the bridge is the half holding the `World` to look it up.
 /// It rides the `BodyDesc` so `rewind_to`, which rebuilds from descriptors,
 /// preserves it across a scrub (ADR-0131 W8).
+/// `linvel`/`angvel` are the authored INITIAL velocity (world axes), from the
+/// optional [`crate::InitialVelocity`] component — passed in for the same reason
+/// as `gravity_scale`. World axes, not the parent's local frame: the body spawns
+/// at its WORLD pose, so its launch is a world-space vector (the convention
+/// Unity/Godot expose), and it rides the `BodyDesc` so a rewind re-arms it (W9).
 pub(crate) fn body_desc(
     rb: &RigidBody,
     col: &Collider,
     t: &Transform,
     gravity_scale: f32,
+    linvel: [f32; 2],
+    angvel: f32,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
+        linvel,
+        angvel,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,

@@ -562,6 +562,9 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_RESTITUTION, info.restitution),
         (ids::INSP_PHYS_FRICTION, info.friction),
         (ids::INSP_PHYS_GRAVITY_SCALE, info.gravity_scale),
+        (ids::INSP_PHYS_LINVEL_X, info.linvel[0]),
+        (ids::INSP_PHYS_LINVEL_Y, info.linvel[1]),
+        (ids::INSP_PHYS_ANGVEL, info.angvel.to_degrees()),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

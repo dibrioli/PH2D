@@ -25,7 +25,7 @@ pub(crate) fn build_physics_info(
     bake_seconds: f32,
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
-    use ph2d_physics_ecs::{Collider, ColliderShape, GravityScale, RigidBody};
+    use ph2d_physics_ecs::{Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody};
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
@@ -34,6 +34,11 @@ pub(crate) fn build_physics_info(
     let gravity_scale = world
         .get::<GravityScale>(entity)
         .map_or(GravityScale::NEUTRAL, |g| g.0);
+    // Optional authored initial velocity (W9); absent = at rest.
+    let iv = world
+        .get::<InitialVelocity>(entity)
+        .copied()
+        .unwrap_or(InitialVelocity::REST);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -57,6 +62,8 @@ pub(crate) fn build_physics_info(
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
+            linvel: InitialVelocity::REST.linvel,
+            angvel: InitialVelocity::REST.angvel,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -97,6 +104,8 @@ pub(crate) fn build_physics_info(
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
+        linvel: iv.linvel,
+        angvel: iv.angvel,
     })
 }
 
@@ -114,10 +123,13 @@ pub(crate) fn apply_physics_edit(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) {
-    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, GravityScale, RigidBody};
+    use ph2d_physics_ecs::{
+        BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+    };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
     const GRAVITY_SCALE: &str = "ph2d::physics::GravityScale";
+    const INITIAL_VELOCITY: &str = "ph2d::physics::InitialVelocity";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -210,6 +222,36 @@ pub(crate) fn apply_physics_edit(
                 GRAVITY_SCALE,
                 &GravityScale(v),
             );
+        }
+        return;
+    }
+    if let PhysicsFieldEdit::LinvelX(_)
+    | PhysicsFieldEdit::LinvelY(_)
+    | PhysicsFieldEdit::Angvel(_) = edit
+    {
+        // Initial velocity (W9): another RigidBody-level, optional
+        // presence-override component, so it is handled here beside gravity.
+        // Read-modify-write the ONE axis the edit names — a partial write would
+        // drop the other two — off the current component or REST if absent.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        let mut iv = world
+            .get::<InitialVelocity>(entity)
+            .copied()
+            .unwrap_or(InitialVelocity::REST);
+        match edit {
+            PhysicsFieldEdit::LinvelX(v) => iv.linvel[0] = v,
+            PhysicsFieldEdit::LinvelY(v) => iv.linvel[1] = v,
+            PhysicsFieldEdit::Angvel(v) => iv.angvel = v,
+            _ => unreachable!(),
+        }
+        // Detach at rest so a still body carries no component — the same
+        // idiom as gravity, and it keeps the project file free of no-op zeros.
+        if iv.is_rest() {
+            queue_remove(queue, registry, entity_bits, INITIAL_VELOCITY);
+        } else {
+            queue_set(queue, registry, entity_bits, INITIAL_VELOCITY, &iv);
         }
         return;
     }
@@ -343,7 +385,10 @@ pub(crate) fn apply_physics_edit(
         PhysicsFieldEdit::Add
         | PhysicsFieldEdit::Remove
         | PhysicsFieldEdit::Kind(_)
-        | PhysicsFieldEdit::GravityScale(_) => {
+        | PhysicsFieldEdit::GravityScale(_)
+        | PhysicsFieldEdit::LinvelX(_)
+        | PhysicsFieldEdit::LinvelY(_)
+        | PhysicsFieldEdit::Angvel(_) => {
             unreachable!("handled above")
         }
     }

@@ -67,4 +67,19 @@ pub struct BodyDesc {
     /// authored source is the optional `GravityScale` component in
     /// `ph2d-physics-ecs`; the bridge folds it in here (ADR-0131 W8).
     pub gravity_scale: f32,
+    /// **Initial linear velocity** (m/s, world axes), applied at SPAWN. `[0, 0]`
+    /// = at rest, what every body did before this existed. A launched projectile,
+    /// a ball kicked at t=0 — until this, a body could only start still, which is
+    /// why the smoke scenes had to tilt gravity to fake a push.
+    ///
+    /// It is applied when the body is BUILT and then owned by the solver, never
+    /// re-applied per tick (that would re-launch it every frame). But it lives in
+    /// `BodyDesc` — the spawn recipe `rewind_to` rebuilds from — precisely so a
+    /// scrub back to t=0 re-arms the same launch, exactly like `gravity_scale`.
+    /// The authored source is the optional `InitialVelocity` component (W9).
+    pub linvel: [f32; 2],
+    /// **Initial angular velocity** (rad/s, CCW), applied at spawn — a spinning
+    /// wheel, a thrown object tumbling. Same lifetime as [`linvel`](BodyDesc::linvel):
+    /// set at build, owned by the solver after, re-armed on rewind.
+    pub angvel: f32,
 }

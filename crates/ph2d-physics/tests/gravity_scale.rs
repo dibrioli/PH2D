@@ -39,6 +39,8 @@ fn gravity_scale_multiplies_the_bodys_fall() {
         layer: 0,
         is_sensor: false,
         gravity_scale: scale,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
     };
     // Spaced 3 m apart (radius 0.5) so no two ever collide — this is free fall.
     let control = w.spawn_body(ball(0.0, 1.0));

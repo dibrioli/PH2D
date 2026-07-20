@@ -277,6 +277,48 @@ fn paint_shape_dims(
     yy
 }
 
+/// The **Dynamic-only** dynamics fields: the gravity multiplier and the authored
+/// initial velocity (linear X/Y + angular).
+///
+/// All four are meaningless on a Static body (it never moves under forces) or a
+/// Kinematic one (its motion is driven by curves), so the section offers them
+/// only for a Dynamic body — a control that cannot do anything is worse than a
+/// missing one, the rule this section keeps. Its own function so the caller stays
+/// under the panel's 200-LOC cap, beside `paint_shape_dims` for the same reason.
+#[allow(clippy::too_many_arguments)]
+fn paint_dynamics_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let mut yy = y;
+    for (label, id) in [
+        ("Gravity Scale", ids::INSP_PHYS_GRAVITY_SCALE),
+        ("Init Vel X (m/s)", ids::INSP_PHYS_LINVEL_X),
+        ("Init Vel Y (m/s)", ids::INSP_PHYS_LINVEL_Y),
+        ("Init Spin (deg/s)", ids::INSP_PHYS_ANGVEL),
+    ] {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            id,
+        );
+    }
+    yy
+}
+
 /// The tail of the body section: the two **Dynamic-only** field rows (Gravity
 /// Scale + the Bake channel selector) and then the three things you can DO to a
 /// body — join it to another, bake its motion into curves, or take the body away.
@@ -308,18 +350,7 @@ fn paint_body_actions(
     // cannot do anything — worse than a missing one (the section's own rule for
     // the radius-on-a-box case).
     if info.kind_tag == KIND_DYNAMIC {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Gravity Scale",
-            ids::INSP_PHYS_GRAVITY_SCALE,
-        );
+        yy = paint_dynamics_rows(scene, text_system, theme, hit_index, store, x, w, yy);
         yy = seg_row(
             scene,
             text_system,

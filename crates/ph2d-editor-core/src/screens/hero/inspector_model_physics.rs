@@ -82,6 +82,14 @@ pub struct InspectorPhysicsInfo {
     /// component — absent means `1.0`. Offered only for a Dynamic body, the
     /// only kind rapier applies gravity to.
     pub gravity_scale: f32,
+    /// Authored INITIAL linear velocity (m/s, world axes), applied at spawn (W9).
+    /// Mirrors the optional `InitialVelocity` component — absent means `[0, 0]`.
+    /// Dynamic-only, like [`gravity_scale`](InspectorPhysicsInfo::gravity_scale).
+    pub linvel: [f32; 2],
+    /// Authored INITIAL angular velocity, in **radians/second** (component-native,
+    /// like `rotation_rad`). The panel renders it as deg/s and converts at its
+    /// boundary — the shell's edit and the component both stay in radians.
+    pub angvel: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -121,6 +129,14 @@ pub enum PhysicsFieldEdit {
     /// unscaled body carries no component (the presence-override idiom the
     /// ordering fields use).
     GravityScale(f32),
+    /// Authored initial linear velocity, X axis, m/s (W9). Read-modify-write on
+    /// the optional `InitialVelocity` component; detached when it returns to rest.
+    LinvelX(f32),
+    /// Authored initial linear velocity, Y axis, m/s (W9).
+    LinvelY(f32),
+    /// Authored initial angular velocity, in **radians/second** — the panel
+    /// converts the deg/s the artist sees before emitting this (W9).
+    Angvel(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

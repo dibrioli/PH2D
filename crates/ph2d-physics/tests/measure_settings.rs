@@ -121,6 +121,8 @@ fn measure_where_damping_stops_meaning_anything() {
             layer: 0,
             is_sensor: false,
             gravity_scale: 1.0,
+            linvel: [0.0, 0.0],
+            angvel: 0.0,
         });
         for _ in 0..60 {
             w.step();

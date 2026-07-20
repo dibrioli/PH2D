@@ -2026,3 +2026,43 @@ um Stadium (põe a tessellation da cápsula no hash 3-OS).
 `paint_shape_dims` (uma pergunta, uma resposta). E as cenas 12+13 saíram p/ o arquivo novo
 **`physics_smoke_props.rs`** ("uma propriedade de UM corpo"), o que devolve ao `physics_smoke_rigs.rs`
 a costura limpa dele (corpos RELACIONADOS) em vez de virar despejo de overflow.
+
+## §W9 — VELOCIDADE INICIAL por corpo (2026-07-19, smoke `=14`)
+
+**Velocidade inicial autorada (linear + angular), aplicada no SPAWN.** Até aqui todo corpo começava
+parado — o vão que fez as cenas de smoke inclinarem a gravidade pra fingir um empurrão (2× nesta
+jornada). Um projétil, uma bola chutada em t=0, uma roda girando. `linvel` (m/s, eixos de MUNDO) +
+`angvel` (rad/s).
+
+**Componente opcional `InitialVelocity`, o padrão do W8** (`GravityScale`): ausente = repouso,
+presence-override, **zero churn no `RigidBody`, sem bump de schema** (blob-key próprio; registro
+4→5). **`BodyDesc.linvel/angvel` (recipe de spawn) É preciso:** aplicada no BUILD e depois é do
+solver (nunca re-aplicada por tick — isso re-lançaria), mas rida no `BodyDesc` pra o **rewind
+re-armar o lançamento** (o gate prova: scrub a t=0 + replay reproduz a trajetória). ~21 fixtures de
+`ph2d-physics/tests` ganharam os 2 campos neutros.
+
+**Eixos de MUNDO, não do pai:** o corpo nasce na pose de mundo (a ponte compõe a cadeia), então o
+lançamento é um vetor de mundo — a convenção do `Rigidbody2D.linearVelocity`/`linear_velocity`. Detach
+no repouso.
+
+**Angular em deg/s na UI, rad/s no componente** (como `rotation_rad`): a conversão mora na fronteira
+do painel (sync deg←rad, event deg→rad). Gate `initial_velocity_is_offered_..._dynamic_body` prova a
+conversão (90 deg/s → `Angvel(π/2)`) — esquecê-la giraria o corpo 57× rápido demais.
+
+**A SETA de velocidade no overlay** (amarela): um lançamento armado não se vê num corpo parado. Só
+enquanto `last_stepped() == 0` (bodies na pose autorada) — depois que a sim anda, a velocidade viva
+não é mais o lançamento autorado, então some. Construída em ESPAÇO DE TELA (a regra do módulo): haste
+= vetor projetado (escala com zoom/velocidade), cabeça = ornamento de tamanho fixo. Só linear (spin
+não tem direção pra apontar).
+
+**Rows Dynamic-only** (Init Vel X/Y + Init Spin): velocidade é inerte em Static (não move sob força) e
+Kinematic (dirigido por curvas) — a mesma regra da gravidade. `paint_dynamics_rows` extraído (a fn no
+teto de 200). Cena 14 nasceu em `physics_smoke_props.rs`, **pausada** (pra ver as setas antes do Play).
+
+**Gates:** `initial_velocity_launches_and_spins` (trajetória, mut RED) ·
+`the_bridge_launches_..._and_a_rewind_re_arms_it` (fold + re-arm no scrub, mut RED) ·
+`initial_velocity_is_offered_and_committed_only_for_a_dynamic_body` (seam presença/ausência +
+conversão) · persistência round-trip estendida · registro 4→5 · c9 **55 corpos** com um lançado.
+
+**Ids/consts:** `INSP_PHYS_LINVEL_X/Y`, `INSP_PHYS_ANGVEL` · `ph2d::physics::InitialVelocity` ·
+`InitialVelocity::REST`. `PROJECT_SCHEMA` fica **28**. Smoke `=14`.

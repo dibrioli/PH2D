@@ -99,6 +99,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_GRAVITY_SCALE if info.kind_tag == 0 => {
                 Some(PhysicsFieldEdit::GravityScale(v))
             }
+            // Initial velocity (W9), Dynamic-only like gravity. Angular is
+            // displayed in deg/s and converted to the component's radians here.
+            ids::INSP_PHYS_LINVEL_X if info.kind_tag == 0 => Some(PhysicsFieldEdit::LinvelX(v)),
+            ids::INSP_PHYS_LINVEL_Y if info.kind_tag == 0 => Some(PhysicsFieldEdit::LinvelY(v)),
+            ids::INSP_PHYS_ANGVEL if info.kind_tag == 0 => {
+                Some(PhysicsFieldEdit::Angvel(v.to_radians()))
+            }
             _ => None,
         };
         if let Some(edit) = edit {

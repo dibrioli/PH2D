@@ -238,3 +238,113 @@ pub fn film_opacity(d: f32) -> f32 {
 pub fn solid_paint(sil: f32, dynamics: f32) -> f32 {
     (dynamics * film_of(sil)).clamp(0.0, 1.0)
 }
+
+// ── Screen-space AA of the film silhouette (BUGS #16, impasto half — Enio 2026-07-20) ──────────────
+
+/// Sub-texel offsets of the AA reconstruction grid (3×3, ±0.667 texel) — the same grid the
+/// watercolor AA settled on (`watercolor_field::AA_SS`): wider than the unit box so a footprint of
+/// ~1.3 texels reconstructs a sub-texel film step as a soft ramp. `LITERAL-PX-OK`: AA geometry.
+const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
+
+/// Screen-space anti-aliasing of the film's silhouette, hoisted **once per dab**.
+///
+/// The film's transition occupies a FIXED interval of `t = distance/radius` (a property of the
+/// falloff shape), so its screen width shrinks with the radius: a thin impasto stroke's edge crosses
+/// it in well under a texel and snaps to a binary stair-step — the impasto half of the watercolor's
+/// "borda dura pixelada" (BUGS #16; measured: radius 10 jumps `255 → 0` in one texel). Unlike the
+/// watercolor, the impasto pigment's alpha **composites linearly** — so the film's fractional
+/// texel-area coverage can replace `film_of(sil)` directly, in BOTH consumers (the pigment funnel in
+/// `dab.rs` and the light's coverage envelope in `height.rs`), and the invariant the film exists for
+/// — pigment support == lit region — holds texel-for-texel by construction.
+///
+/// `None` (checkbox off / no body laid / a Shape image tip) = the callers keep the single-sample
+/// `film_of`, byte-for-byte. A Shape image is a STAMP and its edge is hard by design (the same
+/// precedent as `body_edge_t` / `rim_t0`: an image tip has no radial body edge).
+pub struct FilmAa {
+    /// `t` below which the film is solidly 1 for every subsample (band start − sub-texel reach).
+    t_lo: f32,
+    /// `t` above which the film is solidly 0 for every subsample (band end + sub-texel reach).
+    t_hi: f32,
+}
+
+impl FilmAa {
+    /// Build the per-dab AA plan, or `None` when the single-sample path applies (see type docs).
+    #[must_use]
+    pub fn for_dab(spec: &crate::BrushSpec, shape_active: bool, radius: f32) -> Option<Self> {
+        if !spec.film_aa_wanted(shape_active) || radius <= 0.0 {
+            return None;
+        }
+        // Sub-texel reach in `t` units: the grid's diagonal extent (0.667·√2 texels) over the radius.
+        let reach_t = 0.943 / radius; // LITERAL-PX-OK: 0.667·√2, the AA grid's diagonal reach
+        // The band's inner edge is where the film SATURATES, not where it reaches `W_SOLID`:
+        // `film_of` is sub-quantum from 1.0 (< 1/512 in u8) by sil ≈ 0.58, well before the body is
+        // solid at 0.75 — supersampling the stretch between the two averages a constant, and at a
+        // big radius that stretch is most of the ring (Sphere r=100: 28 → 12.5 texels, measured
+        // ~+2 ms/move of pure waste in the perf kill gate).
+        const FILM_SATURATED_SIL: f32 = 0.58; // LITERAL-PX-OK: film_of ≥ 1 − 5.2e-4 here (u8-exact)
+        let (t_solid, t_tail) = if matches!(spec.falloff, crate::Falloff::Custom) {
+            // A Custom curve need not be monotone, so a bisection could find A crossing instead of
+            // THE band — take the whole dab as the band (correct, just unhoisted).
+            (0.0, 1.0)
+        } else {
+            (cross_t(spec, FILM_SATURATED_SIL), cross_t(spec, W_TAIL))
+        };
+        Some(Self {
+            t_lo: t_solid - reach_t,
+            t_hi: t_tail + reach_t,
+        })
+    }
+
+    /// The film at a texel: outside the rim band, exactly `film_of(sil_centre)` — the old single
+    /// sample, byte-identical for the whole interior and exterior; inside, the **mean of `film_of`
+    /// over the sub-texel grid** — the texel's fractional area under the film. `sil_at(ox, oy)` is
+    /// the caller's own silhouette chain evaluated at the sub-texel offset, so the fraction follows
+    /// whatever geometry the caller stamps (disc or swept capsule) with no second formula.
+    #[inline]
+    #[must_use]
+    pub fn film_at(&self, t: f32, sil_centre: f32, sil_at: impl Fn(f32, f32) -> f32) -> f32 {
+        if t <= self.t_lo || t >= self.t_hi {
+            return film_of(sil_centre);
+        }
+        let mut acc = 0.0;
+        for &oy in &AA_SS {
+            for &ox in &AA_SS {
+                acc += film_of(sil_at(ox, oy));
+            }
+        }
+        let frac = acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32);
+        // The toe is cut at two u8 quanta, at the DOOR: below it the pigment blend and the film
+        // byte quantize INDEPENDENTLY (one rounds to nothing, the other to 1) and the light shades
+        // bare canvas — the support equality the film exists for, broken by rounding. Both
+        // consumers inherit the same cut, so the supports stay one set.
+        if frac < 2.0 / 255.0 { 0.0 } else { frac }
+    }
+
+    /// Whether the AA is active for this dab — the bbox pads by one texel so the outermost
+    /// fractional ring is not clipped at small radii (a texel whose CENTRE lies past the geometric
+    /// rim can still be partially covered).
+    #[must_use]
+    pub fn pad_px(aa: &Option<Self>) -> f32 {
+        if aa.is_some() { 1.0 } else { 0.0 }
+    }
+}
+
+/// The `t` where [`crate::BrushSpec::falloff_weight`] crosses `v` — the [`body_edge_t`] bisection,
+/// generalised to any threshold (same hard-tip probe, same convergence: ~6e-8 of `t`).
+fn cross_t(spec: &crate::BrushSpec, v: f32) -> f32 {
+    const RIM_PROBE: f32 = 0.999;
+    if spec.falloff_weight(RIM_PROBE) >= v {
+        return 1.0; // hard tip: the body reaches the geometric rim, the crossing IS t = 1
+    }
+    let mut lo = 0.0f32;
+    let mut hi = 1.0f32;
+    for _ in 0..24 {
+        let mid = 0.5 * (lo + hi);
+        if spec.falloff_weight(mid) >= v {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}

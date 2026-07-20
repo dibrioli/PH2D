@@ -310,6 +310,7 @@ impl PainterTool {
             paper_color: self.paint.paper_color,
             impasto: b.impasto,
             impasto_depth: b.impasto_depth,
+            impasto_smooth_edges: b.impasto_smooth_edges,
             impasto_source: b.impasto_source.to_u8(),
             impasto_draw_to: b.impasto_draw_to.to_u8(),
             impasto_smoothing: b.impasto_smoothing,

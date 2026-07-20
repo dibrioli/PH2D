@@ -271,7 +271,7 @@ pub(crate) fn paint_body_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 6);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 7);
     ry = card_row(
         ctx,
         theme,
@@ -347,7 +347,7 @@ pub(crate) fn paint_body_card(
         ],
         brush.impasto_source as usize,
     );
-    let _ = seg_row(
+    ry = seg_row(
         ctx,
         theme,
         ix,
@@ -361,6 +361,18 @@ pub(crate) fn paint_body_card(
             (core_ids::PAINTER_IMPASTO_DRAW_DEPTH, "Depth"),
         ],
         brush.impasto_draw_to as usize,
+    );
+    // Smooth Edges (BUGS #16, impasto half): screen-space AA of the film silhouette — the default
+    // look; off restores the pre-AA hard stair-stepped edge as a deliberate style.
+    let _ = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        core_ids::PAINTER_IMPASTO_SMOOTH_EDGES,
+        "Smooth Edges",
+        brush.impasto_smooth_edges,
     );
     next_y
 }

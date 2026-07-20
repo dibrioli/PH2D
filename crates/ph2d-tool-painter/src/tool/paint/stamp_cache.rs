@@ -313,7 +313,13 @@ impl PainterTool {
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         // Accumulate OFF (Strength < 1) caps each pixel's stroke coverage at Strength — thread the
         // per-stroke mask so a Color-Ramp stroke honours Accumulate too (Enio 2026-06-25).
-        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        let accumulate_cap = !brush.accumulate
+            && (brush.strength < 1.0
+                // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the
+                // old premise ("the cap is observable only under Strength < 1") is false once a
+                // texel's target alpha is fractional at full strength, because overlapping dabs
+                // would build the rim right back to a hard edge (measured: 0.64 -> 0.94).
+                || brush.film_aa_wanted(brush.shape.is_active()));
         if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,
@@ -425,7 +431,13 @@ impl PainterTool {
         // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
         // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
-        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        let accumulate_cap = !brush.accumulate
+            && (brush.strength < 1.0
+                // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the
+                // old premise ("the cap is observable only under Strength < 1") is false once a
+                // texel's target alpha is fractional at full strength, because overlapping dabs
+                // would build the rim right back to a hard edge (measured: 0.64 -> 0.94).
+                || brush.film_aa_wanted(brush.shape.is_active()));
         if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,

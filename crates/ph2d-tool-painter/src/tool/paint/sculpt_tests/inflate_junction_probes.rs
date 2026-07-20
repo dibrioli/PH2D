@@ -152,10 +152,12 @@ fn the_inflate_fills_the_junctions_armpit_no_gash() {
     let (cx, cy) = (CX as u32, CY as u32);
     let diag = |cov: &[u8], k: u32| cov[((cy + k) * SIZE + (cx + k)) as usize];
 
-    let before_bare = (15..31).filter(|&k| diag(&cov0, k) >= 40).count();
+    // `16..`: the film's screen-space AA (BUGS #16) legitimately lays a fractional rim one texel
+    // past the hard edge, and the k = 15 texel now grazes it — the bare run starts one texel out.
+    let before_bare = (16..31).filter(|&k| diag(&cov0, k) >= 40).count();
     assert!(
         before_bare == 0,
-        "fixture: the armpit diagonal is not bare before Inflate ({before_bare} covered of 16) — the gash \
+        "fixture: the armpit diagonal is not bare before Inflate ({before_bare} covered of 15) — the gash \
          cannot form here, so this gate proves nothing"
     );
     // The corner FILLET: the closing fills the inner corner (where the gash was), tapering out toward the

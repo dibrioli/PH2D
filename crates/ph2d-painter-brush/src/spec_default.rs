@@ -90,6 +90,7 @@ impl Default for BrushSpec {
             // params below carry sensible *when-enabled* values (a visible ridge the moment the
             // artist ticks the box), not neutral zeros. `impasto_off_is_byte_identical` locks that.
             impasto: false,
+            impasto_smooth_edges: true,
             // Enio's dialled-in defaults (2026-07-12, after the smoke): thick paint (Depth 1) whose
             // relief OBEYS the falloff (Body 0 — the rounded ridge he asked back for), settled soft
             // (Smoothing 1). They are the artist's numbers, not the engine's: the `impasto` gate below

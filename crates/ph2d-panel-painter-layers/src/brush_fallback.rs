@@ -218,10 +218,11 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // when-enabled defaults (mirrors BrushSpec::default).
     impasto: false,
     impasto_depth: 1.0, // LITERAL-PX-OK: default relief depth (mirrors BrushSpec::default)
-    impasto_source: 0,  // Uniform (DepthSource wire 0)
-    impasto_draw_to: 0, // Color + Depth (DrawTo wire 0)
+    impasto_smooth_edges: true,
+    impasto_source: 0,      // Uniform (DepthSource wire 0)
+    impasto_draw_to: 0,     // Color + Depth (DrawTo wire 0)
     impasto_smoothing: 1.0, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
-    impasto_body: 0.0,  // LITERAL-PX-OK: the relief obeys the falloff (mirrors BrushSpec::default)
+    impasto_body: 0.0, // LITERAL-PX-OK: the relief obeys the falloff (mirrors BrushSpec::default)
     impasto_push: 0.0,
     impasto_plow: 0.0, // LITERAL-PX-OK: the knife leaves the body where it is (mirrors BrushSpec::default)
     impasto_plow_applies: false, // o fallback é o modo Paint, não o Smear

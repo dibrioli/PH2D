@@ -167,7 +167,14 @@ pub const PAINTER_IMPASTO_LIGHT_COLOR: NodeId = hash_node_id("painter_brush.impa
 /// `route_brush_impasto_event`.
 /// (The eight sculpt verbs in [`PAINTER_IMPASTO_TOOL_IDS`] are absent on purpose: they are already
 /// routed by `PAINTER_SCULPT_CLICKS`, and listing them twice would be two routers for one click.)
-pub const PAINTER_IMPASTO_CLICKS: [NodeId; 16] = [
+/// **Smooth Edges** toggle (Body card): screen-space AA of the film silhouette (BUGS #16,
+/// impasto half). On by default; off restores the pre-AA hard stair-stepped edge as a
+/// deliberate style — the pair of the watercolor's Wash-card toggle. `Click` →
+/// `toggle_impasto_smooth_edges`.
+pub const PAINTER_IMPASTO_SMOOTH_EDGES: NodeId = hash_node_id("painter_brush.impasto_smooth_edges");
+
+pub const PAINTER_IMPASTO_CLICKS: [NodeId; 17] = [
+    PAINTER_IMPASTO_SMOOTH_EDGES,
     PAINTER_IMPASTO_TOOL_DEPOSIT,
     PAINTER_IMPASTO_TOOL_KNIFE,
     PAINTER_IMPASTO_ENABLE,

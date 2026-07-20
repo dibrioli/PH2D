@@ -417,6 +417,8 @@ pub struct BrushSettings {
     pub impasto: bool,
     /// **Depth** (`-1..1`) — thickness one full-coverage dab lays down. Negative carves into the paint.
     pub impasto_depth: f32,
+    /// **Smooth Edges** — screen-space AA of the film silhouette (BUGS #16); off = the pre-AA hard edge.
+    pub impasto_smooth_edges: bool,
     /// **Depth Source** (`DepthSource` wire u8): `0` Uniform · `1` Grain · `2` Shape.
     pub impasto_source: u8,
     /// **Draw To** (`DrawTo` wire u8): `0` Color + Depth · `1` Color · `2` Depth.

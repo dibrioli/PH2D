@@ -17620,10 +17620,36 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
     // back to the previous dab's centre, and if that sweep ever overshoots the paint it lays relief — and
     // shadow — on canvas the stroke never touched (26 px of it, the first time). That is bare paper: ink
     // exactly zero. `jitter_spacing` is here to stretch the sweep and hunt for it.
+    // The film's screen-space AA (BUGS #16) adds one more case the green-channel proxy misfiles: a
+    // RIM texel fractionally covered (~3%) whose pigment lands in a grain VALLEY quantizes to
+    // nothing while the film (which excludes the grain by design) keeps a few levels — thin paint
+    // again, adjacent to the stroke. True sweep overshoot lays relief on canvas the brush never went
+    // NEAR (a 26 px swath, the first time), so the bare test also requires every 8-neighbour bare.
+    let g_at = |i: usize| canvas[i + 1];
+    let stride4 = 200usize * 4;
     let (mut faint, mut drifted, mut worst) = (0u32, 0u32, 0i32);
     for i in (0..canvas.len()).step_by(4) {
         if canvas[i + 1] != 255 {
             continue; // the brush left pigment here — however little. The light SHOULD model it.
+        }
+        let (x, y) = ((i / 4) % 200, (i / 4) / 200);
+        if x == 0 || y == 0 || x == 199 || y == 199 {
+            continue;
+        }
+        let near_paint = [
+            i - 4,
+            i + 4,
+            i - stride4,
+            i + stride4,
+            i - stride4 - 4,
+            i - stride4 + 4,
+            i + stride4 - 4,
+            i + stride4 + 4,
+        ]
+        .iter()
+        .any(|&j| g_at(j) != 255);
+        if near_paint {
+            continue; // the stroke's own AA rim — thin paint, not paper
         }
         faint += 1;
         let d = (i32::from(litc[i + 1]) - i32::from(unlit[i + 1])).abs();
@@ -19187,9 +19213,13 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
     let (matte, h, cov) = paint_with(0.0);
     let (glossy, _, _) = paint_with(1.0);
 
-    // 1. The glint is VISIBLE. (RED with the glint gated to the plateau: the brightest gain was 1.)
+    // 1. The glint is VISIBLE — on SOLID paint (the film AA's fractional rim texels scale the light
+    // by their coverage, so a rim glint is legitimately dimmer; the claim is about the wall's body).
     let (mut best, mut best_i) = (0i32, 0usize);
     for i in (0..matte.len()).step_by(4) {
+        if cov.get(i / 4).copied().unwrap_or(0) != 255 {
+            continue;
+        }
         let gain = i32::from(glossy[i + 1]) - i32::from(matte[i + 1]); // green: the pigment is red
         if gain > best {
             best = gain;
@@ -21894,7 +21924,7 @@ fn wax_bleeds_the_paints_own_colour_into_the_shadow() {
     let size = 160u32;
     // Shine 0 throughout: the glint is a separate term with its own gates, and a white highlight would
     // drown the very chroma this gate is measuring.
-    let (dry, h, _) = impasto_material_render(size, &|t| {
+    let (dry, h, cov) = impasto_material_render(size, &|t| {
         t.set_impasto_shine(0.0);
         t.set_impasto_wax(0.0);
     });
@@ -21907,6 +21937,14 @@ fn wax_bleeds_the_paints_own_colour_into_the_shadow() {
     for y in 1..(size as usize - 1) {
         for x in 1..(size as usize - 1) {
             let p = y * w + x;
+            // SOLID paint only: the film's screen-space AA (BUGS #16) leaves the rim texels pale
+            // pink (fractional paint over white paper), whose near-neutral albedo gains red≈blue by
+            // construction — a population that dilutes the aggregate the claim is measured on
+            // (2.56:1 → 1.56:1) without touching the tint mechanism. The claim is about light
+            // scattered through PAINT, so it is asserted where the paint is whole.
+            if cov.get(p).copied().unwrap_or(0) != 255 {
+                continue;
+            }
             let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
             if dhy <= 0.0 {
                 continue; // the flank turned AWAY from the lamp: where the scattered light shows

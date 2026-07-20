@@ -43,6 +43,10 @@ impl PainterTool {
                 self.toggle_brush_impasto();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SMOOTH_EDGES => {
+                self.toggle_impasto_smooth_edges();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_RESET => {
                 self.reset_brush_impasto();
                 true
@@ -218,6 +222,14 @@ impl PainterTool {
     /// sensibly be true of the brush and false of the knife in the artist's own hand. Modes that have no
     /// verb on that list keep their own flag untouched — this is the impasto subject's master, not a
     /// global.
+    /// Toggle **Smooth Edges** — the screen-space AA of the film silhouette (BUGS #16, impasto
+    /// half). Off restores the pre-AA hard stair-stepped edge byte-for-byte (a deliberate style,
+    /// gate-pinned by four whole-canvas fingerprints); the mode is read per dab, so the next stroke
+    /// wears the new edge and committed strokes keep the bytes they were painted with.
+    pub fn toggle_impasto_smooth_edges(&mut self) {
+        self.paint.brush.impasto_smooth_edges = !self.paint.brush.impasto_smooth_edges;
+    }
+
     pub fn toggle_brush_impasto(&mut self) {
         self.paint.brush.impasto = !self.paint.brush.impasto;
         let on = self.paint.brush.impasto;
@@ -429,6 +441,7 @@ impl PainterTool {
         let b = &mut self.paint.brush;
         b.impasto = d.impasto;
         b.impasto_depth = d.impasto_depth;
+        b.impasto_smooth_edges = d.impasto_smooth_edges;
         b.impasto_source = d.impasto_source;
         b.impasto_draw_to = d.impasto_draw_to;
         b.impasto_smoothing = d.impasto_smoothing;

@@ -291,11 +291,22 @@ fn stamp_dab_inner(
     let radius = spec.clamped_radius();
     let (cx, cy) = (center[0], center[1]);
 
+    // Screen-space AA of the film silhouette (BUGS #16, impasto half) — hoisted once per dab;
+    // `None` = the single-sample `film_of` path, byte-identical (checkbox off / no body / Shape tip).
+    let film_aa = crate::height_film::FilmAa::for_dab(
+        spec,
+        shape.filter(|_| spec.shape.is_active()).is_some(),
+        radius,
+    );
+    // The AA's outermost fractional ring can live one texel past the geometric rim (a texel whose
+    // CENTRE is outside can still be partially covered) — pad the bbox so it is not clipped.
+    let aa_pad = crate::height_film::FilmAa::pad_px(&film_aa);
+
     // Bounding box of the dab, clamped to the canvas (half-open on the max side).
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    let x0 = (cx - radius - aa_pad).floor().max(0.0) as i64;
+    let y0 = (cy - radius - aa_pad).floor().max(0.0) as i64;
+    let x1 = ((cx + radius + aa_pad).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + radius + aa_pad).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
@@ -324,6 +335,7 @@ fn stamp_dab_inner(
         x0,
         x1,
         stride,
+        film_aa,
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every
@@ -478,6 +490,9 @@ struct DabCtx<'a> {
     x0: i64,
     x1: i64,
     stride: usize,
+    /// Screen-space AA of the film silhouette (BUGS #16) — `None` = single-sample `film_of`,
+    /// byte-identical. Hoisted per dab in [`stamp_dab_pixels`].
+    film_aa: Option<crate::height_film::FilmAa>,
 }
 
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
@@ -500,10 +515,24 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
             // lays no body. Applied to the SILHOUETTE — before the Grain, before the dynamics — so every
             // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.
-            let w = crate::height::film_coverage(
-                ctx.spec.deposits_height(),
-                silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
-            );
+            // With Smooth Edges ([`crate::height_film::FilmAa`], BUGS #16) the film at a rim texel is
+            // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
+            let w = match &ctx.film_aa {
+                Some(aa) => aa.film_at(
+                    t,
+                    silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+                    |ox, oy| {
+                        ctx.spec.falloff_weight(
+                            ctx.footprint
+                                .falloff_t((dx + ox) * ctx.inv_radius, (dy + oy) * ctx.inv_radius),
+                        )
+                    },
+                ),
+                None => crate::height::film_coverage(
+                    ctx.spec.deposits_height(),
+                    silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+                ),
+            };
             // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only
             // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {
@@ -582,18 +611,33 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     // grain texel tops at `g·Strength` however many dabs cross it (`w` builds toward the
                     // cap). `g = 1` (no texture) ⇒ byte-identical to the old flat cap (Enio 2026-06-27).
                     //
-                    //
-                    // The FILM needs nothing here: `w` is already the reshaped silhouette, so at the rim it
-                    // is exactly zero and `add = w · (cap − m)` adds exactly nothing — the cut survives the
-                    // build-toward-a-cap model for free.
+                    // Under the film's screen-space AA (BUGS #16) `w` at a rim texel is its fractional
+                    // AREA, and the plain build-up would converge it right back to a hard edge (measured:
+                    // 0.64 → 0.94 over a stroke's overlapping dabs). The AA branch caps the texel at the
+                    // film's AREA (`w·coverage`) while the per-dab opacity still builds WITHIN it — and
+                    // at `cap = 1` (the whole interior at full pressure) `add = a_dab·(1 − m)` and
+                    // `a = add/(1 − m) = a_dab`, the EXACT maskless alpha sequence: the interior is
+                    // byte-identical, mask or no mask. (The first arming attempt jumped every texel to
+                    // `w·g·cov` — which silently enforced the Grain cap on full-strength strokes and
+                    // shifted every grain-textured interior; caught by the wax/shine material gates.)
+                    // Without AA the old premise holds: the hard film's rim `w` is exactly zero, so the
+                    // cut survives the build model for free.
                     Some(m_buf) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
                         let m = f32::from(m_buf[mi]) / 255.0;
-                        let cap = (g * ctx.coverage).min(1.0);
-                        if m >= cap {
-                            continue; // already at this texel's weighted cap
-                        }
-                        let add = w * (cap - m);
+                        let add = if ctx.film_aa.is_some() {
+                            let cap = (w * ctx.coverage).min(1.0);
+                            if m >= cap {
+                                continue; // the film's area is fully laid here
+                            }
+                            (w * g * ctx.coverage) * (1.0 - m / cap.max(1e-4))
+                        } else {
+                            let cap = (g * ctx.coverage).min(1.0);
+                            if m >= cap {
+                                continue; // already at this texel's weighted cap
+                            }
+                            w * (cap - m)
+                        };
                         m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
                         let a = add / (1.0 - m).max(1e-4);
                         if ctx.preserve_alpha { a * prev[3] } else { a }

@@ -291,6 +291,13 @@ pub struct BrushSpec {
     /// [`Self::opacity`] already belong to the *watercolor* optics — a bare `depth` here would have
     /// collided with the Beer–Lambert one and quietly crossed the two systems.)
     pub impasto: bool,
+    /// **Smooth Edges** (Enio 2026-07-20, the impasto half of BUGS #16): screen-space AA of the film
+    /// silhouette ([`crate::height_film::FilmAa`]) — the fractional texel-area coverage replaces the
+    /// hardened `film_of` in both the pigment funnel and the light's coverage envelope. Default
+    /// `true`; `false` restores the pre-AA hard stair-stepped edge byte-for-byte (a deliberate
+    /// style, the pair of the watercolor's [`Self::smooth_edges`]). Only read when the brush
+    /// [`Self::deposits_height`].
+    pub impasto_smooth_edges: bool,
     /// **Depth**, `-1..1` — how much thickness one full-coverage dab lays down, in the height field's
     /// own units. Signed: positive **lifts** paint off the canvas, negative **carves** into it (the
     /// Painter "Negative Depth"). `0` = flat (no relief), so the pass is inert even with the master
@@ -591,7 +598,21 @@ impl BrushSpec {
                 crate::texture::TextureMapping::ViewPlane
             ) && !self.shape.rake
                 && !self.shape.flow);
-        shape_static && self.texture.is_cacheable()
+        // Film AA (BUGS #16) is measured in CANVAS texels, and the cached mask is radius-independent —
+        // a baked AA rim would be wrong at every other radius, so an AA'd film routes per-pixel.
+        shape_static
+            && self.texture.is_cacheable()
+            && !self.film_aa_wanted(self.shape_silhouette_active(has_shape_image))
+    }
+
+    /// Whether the film's screen-space AA ([`crate::height_film::FilmAa`], BUGS #16) applies to this
+    /// brush's dabs — the ONE door every consumer asks (the dab/height kernels build the plan from
+    /// it, the stamp route refuses the radius-independent cached mask, and the Accumulate-OFF cap
+    /// arms so overlapping dabs can't build a rim texel past its area fraction). A Shape silhouette
+    /// is a STAMP and keeps its hard edge by design (the `body_edge_t` precedent).
+    #[must_use]
+    pub fn film_aa_wanted(&self, shape_active: bool) -> bool {
+        self.impasto_smooth_edges && self.deposits_height() && !shape_active
     }
 
     /// Distance between dab centres in pixels, derived from spacing × diameter.

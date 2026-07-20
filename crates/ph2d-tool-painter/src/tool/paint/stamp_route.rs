@@ -336,7 +336,13 @@ impl PainterTool {
         let per_dab_rotation =
             brush.has_per_dab_rotation() || brush.shape_has_per_dab_rotation(has_shape_image);
         // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
-        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        let accumulate_cap = !brush.accumulate
+            && (brush.strength < 1.0
+                // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the
+                // old premise ("the cap is observable only under Strength < 1") is false once a
+                // texel's target alpha is fractional at full strength, because overlapping dabs
+                // would build the rim right back to a hard edge (measured: 0.64 -> 0.94).
+                || brush.film_aa_wanted(brush.shape.is_active()));
         // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
         // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
         // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the

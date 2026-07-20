@@ -93,6 +93,37 @@ oráculo do modo duro (`smooth_edges_off_is_the_pre_aa_render_byte_for_byte`; a 
 o flag" sangra nele). O modo é lido UMA vez por composite (mistura por-dono costuraria o rim onde
 duas silhuetas se encontram).
 
+### A metade do IMPASTO (mesmo dia, `impasto_smooth_edges` + checkbox no card Body)
+
+O filme do impasto (`height_film::film_of`) endurece a silhueta numa banda FIXA de `t` ⇒ binário em
+todo raio (r=10 saltava `255→0`; r=20 `255→226→2`). Diferenças estruturais que mudaram a cura:
+
+- **O alpha do pigmento compõe LINEARMENTE** (sem Beer–Lambert) ⇒ a fração de área entra direto no
+  `w` — mas tem de atravessar a **porta única** (`FilmAa::film_at` em `height_film.rs`) nos DOIS
+  consumidores (funil do pigmento em `dab.rs` + envelope de cobertura da luz em `height.rs`, cada um
+  com a própria cadeia de silhueta — disco vs cápsula varrida) ⇒ pigmento e luz concordam sobre onde
+  a tinta termina por construção. A banda é resolvida por **bissecção por-dab** (o padrão
+  `body_edge_t`); Shape image fica duro por design (o precedente do carimbo).
+- **O build-up entre dabs re-satura a fração** (0.64→0.94 com dabs a 1px) — o cap de Accumulate-OFF
+  existia mas só era armado com `Strength < 1` (premissa falsificada pelo AA). Armado sob AA com a
+  fórmula `cap = w·coverage` e `add = a_dab·(1−m/cap)`: em `cap = 1` (interior) reproduz o maskless
+  **byte a byte**; no aro capeia pela ÁREA. ⚠️ A 1ª fórmula (salto pro alvo `w·g·cov`) impôs o cap do
+  Grain a traços full-strength e mudou TODO interior granulado — os gates de material (wax/shine)
+  pegaram; a bisseção mostrou que nenhum dos 3 mecanismos era o culpado, era o ARMAR do mask.
+- **Quantização no toe**: fração < 2 quanta corta pra 0 na porta (pigmento e byte do filme
+  arredondam independentes; um vai a 0 e o outro a 1 = luz em canvas nu).
+- **Perf**: o supersampling era pago onde o filme já saturou — `film_of` é sub-quantum de 1.0 em
+  sil≈0.58, muito antes do `W_SOLID=0.75`; resolver a banda no ponto de SATURAÇÃO (não no corpo
+  sólido) cortou o anel 2.2× (r=100: 28→12.5 texels; +2.0 → +0.9-1.2 ms/move, todas as seções sob o
+  kill 8). O custo restante mora no pass de ALTURA (serial); o do pigmento é absorvido pelas bandas
+  paralelas.
+
+Oráculos do modo OFF: **4 fingerprints** pré-AA (r=4/6/10/20), byte a byte. Perfis com AA:
+r=4 `255→115→0` · r=10 `255→185→67→0` · r=20 `255→182→55→3`. Três fixtures de material foram
+**afiados** (não afrouxados): wax/shine medem em `cov==255` (a população pálida do aro diluía o
+agregado sem tocar o mecanismo) e o gate de canvas-nu exige vizinhança-8 nua (o aro AA é sempre
+adjacente a tinta; o overshoot de 26px que ele caça tem miolo cercado de nu).
+
 ### Lições generalizáveis
 
 1. **Uma melhoria medida num estágio intermediário é invisível se um estágio NÃO-LINEAR a jusante a

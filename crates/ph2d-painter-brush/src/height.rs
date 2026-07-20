@@ -284,8 +284,13 @@ pub fn accumulate_dab_height(
     }
     let radius = dab.radius.max(0.5);
     let (cx, cy) = (dab.center[0], dab.center[1]);
-    // The bbox has to cover the whole SWEPT body, not just the disc at the centre.
-    let reach = radius + sweep_len(dab);
+    // Screen-space AA of the film silhouette (BUGS #16) — the light's coverage envelope must carry
+    // the SAME fraction the pigment funnel does (`dab.rs`), or the two halves of the film disagree
+    // about where the paint ends. Hoisted per dab; `None` = single-sample, byte-identical.
+    let film_aa = crate::height_film::FilmAa::for_dab(spec, dab.shape.is_some(), radius);
+    // The bbox has to cover the whole SWEPT body, not just the disc at the centre (+ the AA's
+    // one-texel fractional ring so it is not clipped at small radii).
+    let reach = radius + sweep_len(dab) + crate::height_film::FilmAa::pad_px(&film_aa);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
@@ -307,13 +312,26 @@ pub fn accumulate_dab_height(
             let (rx, ry) = sweep_residual(dx, dy, sweep);
             let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
             let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
-            if w <= 0.0 {
+            // The film at this texel: single-sample `film_of` (byte-identical old path), or the
+            // fractional area coverage under Smooth Edges — the SAME fraction `dab.rs` gives the
+            // pigment (same door, same grid, the caller's own swept-silhouette chain).
+            let film = match &film_aa {
+                Some(aa) => aa.film_at(t, w, |ox, oy| {
+                    let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
+                    spec.falloff_weight(dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius))
+                }),
+                None => crate::height_film::film_of(w),
+            };
+            // A texel wholly outside silhouette AND film lays nothing (with AA a rim texel can carry
+            // fractional film while its CENTRE silhouette is already 0 — it must not be skipped).
+            if w <= 0.0 && film <= 0.0 {
                 continue;
             }
             let i = (py as usize) * (width as usize) + px as usize;
             // The **film's** envelope, taken FIRST and on its own: the light's coverage is a different
             // function of the dab than the relief's ingredient is, so it cannot ride the same winner.
-            let fq = (crate::height_film::solid_paint(w, coverage) * 255.0 + 0.5) as u8;
+            // `coverage · film` is exactly the old `solid_paint(w, coverage)` when `film = film_of(w)`.
+            let fq = ((coverage * film).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             if fq > fields.film[i] {
                 fields.film[i] = fq;
                 touched = true;

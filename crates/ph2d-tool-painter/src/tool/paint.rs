@@ -702,3 +702,7 @@ mod sculpt_tests;
 // Screen-space anti-aliasing of the thin-stroke watercolor silhouette (own file, same rationale).
 #[cfg(test)]
 mod watercolor_aa_tests;
+
+// Screen-space anti-aliasing of the impasto film silhouette (the impasto half of BUGS #16).
+#[cfg(test)]
+mod impasto_aa_tests;

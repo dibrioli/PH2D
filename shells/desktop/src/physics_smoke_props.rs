@@ -10,7 +10,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
+    LockPositionY, LockRotation, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -458,6 +459,103 @@ impl crate::App {
              GREEN one lands standing ON the floor; the ORANGE one SINKS to its waist because its \
              collider (its middle) is what rests on the floor. Select each and see the Offset X/Y \
              rows in §11. The collider is almost never centred on the art — that is why offset exists."
+        );
+    }
+
+    /// **Scene 18 (W-LockPos).** Three identical balls, each launched sideways at
+    /// t=0 (`InitialVelocity`); the only difference is which position axis is frozen
+    /// (Freeze Position X/Y — the rest of Unity/Godot's constraint trio, beside the
+    /// Freeze Rotation of scene 16). The GREEN one is free and ARCS down-right. The
+    /// CYAN one has **Freeze Position X**, so the sideways launch is dropped and it
+    /// falls STRAIGHT DOWN in its lane (a rail-locked actor). The ORANGE one has
+    /// **Freeze Position Y**, so gravity cannot pull it down and it GLIDES sideways
+    /// at a constant height forever (a floating platform).
+    ///
+    /// Runs PAUSED at t=0 (press B to see the outlines). Play to launch them.
+    pub(crate) fn physics_smoke_freeze_position(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A ball launched at `linvel`, optionally with a frozen X or Y axis.
+        let mut ball = |x: f32,
+                        y: f32,
+                        linvel: [f32; 2],
+                        lock_x: bool,
+                        lock_y: bool,
+                        hue: [f32; 4],
+                        label: &str| {
+            let base = (
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.3 },
+                    ..Collider::default()
+                },
+                InitialVelocity {
+                    linvel,
+                    angvel: 0.0,
+                },
+            );
+            // The markers' PRESENCE is the flag — attach only the frozen axes.
+            match (lock_x, lock_y) {
+                (false, false) => {
+                    world.spawn(base);
+                }
+                (true, false) => {
+                    world.spawn((base, LockPositionX));
+                }
+                (false, true) => {
+                    world.spawn((base, LockPositionY));
+                }
+                (true, true) => {
+                    world.spawn((base, LockPositionX, LockPositionY));
+                }
+            };
+        };
+        // GREEN free: the launch arcs it down and to the right.
+        ball(
+            -5.0,
+            4.0,
+            [3.0, 0.0],
+            false,
+            false,
+            [0.5, 0.85, 0.55, 1.0],
+            "Free",
+        );
+        // CYAN X-locked: the launch is dropped, it falls straight down at x=0.
+        ball(
+            0.0,
+            5.0,
+            [3.0, 0.0],
+            true,
+            false,
+            [0.4, 0.8, 0.95, 1.0],
+            "Freeze X",
+        );
+        // ORANGE Y-locked: gravity cannot hold it, it glides sideways at y=2.
+        ball(
+            -6.0,
+            2.0,
+            [1.5, 0.0],
+            false,
+            true,
+            [0.95, 0.55, 0.25, 1.0],
+            "Freeze Y",
+        );
+
+        eprintln!(
+            "[physics-smoke 18] Paused at t=0. Press Play. All three balls are launched sideways, \
+             but: the GREEN one is free and ARCS down-right; the CYAN one has Freeze Position X, so \
+             the sideways launch is cancelled and it falls STRAIGHT DOWN; the ORANGE one has Freeze \
+             Position Y, so gravity cannot pull it down and it GLIDES sideways at a constant height. \
+             Select each and see the Freeze X | Freeze Y rows in §11 (Dynamic-only). Press B for the \
+             collider outlines. Freeze Position is the rest of the constraint trio beside Freeze \
+             Rotation (scene 16)."
         );
     }
 }

@@ -26,7 +26,8 @@ pub(crate) fn build_physics_info(
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
-        Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation, RigidBody,
+        Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX, LockPositionY,
+        LockRotation, RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -45,6 +46,9 @@ pub(crate) fn build_physics_info(
     let ccd = world.get::<Ccd>(entity).is_some();
     // Optional LockRotation marker (Freeze Rotation); presence is the flag.
     let lock_rotation = world.get::<LockRotation>(entity).is_some();
+    // Optional Freeze Position markers (W-LockPos); each presence is a flag.
+    let lock_x = world.get::<LockPositionX>(entity).is_some();
+    let lock_y = world.get::<LockPositionY>(entity).is_some();
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -73,6 +77,8 @@ pub(crate) fn build_physics_info(
             ccd: false,
             lock_rotation: false,
             offset: [0.0, 0.0],
+            lock_x: false,
+            lock_y: false,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -118,6 +124,8 @@ pub(crate) fn build_physics_info(
         ccd,
         lock_rotation,
         offset: col.offset,
+        lock_x,
+        lock_y,
     })
 }
 
@@ -136,8 +144,8 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation,
-        RigidBody,
+        BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
+        LockPositionY, LockRotation, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -145,6 +153,8 @@ pub(crate) fn apply_physics_edit(
     const INITIAL_VELOCITY: &str = "ph2d::physics::InitialVelocity";
     const CCD: &str = "ph2d::physics::Ccd";
     const LOCK_ROTATION: &str = "ph2d::physics::LockRotation";
+    const LOCK_POSITION_X: &str = "ph2d::physics::LockPositionX";
+    const LOCK_POSITION_Y: &str = "ph2d::physics::LockPositionY";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -302,6 +312,44 @@ pub(crate) fn apply_physics_edit(
         }
         return;
     }
+    if let PhysicsFieldEdit::LockPositionX(on) = edit {
+        // Freeze Position X — another RigidBody-level marker, handled here beside the
+        // other constraints. Gated on a live body: without one there is no position
+        // to freeze, and this would attach an orphan marker to a plain sprite.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        if on {
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                LOCK_POSITION_X,
+                &LockPositionX,
+            );
+        } else {
+            queue_remove(queue, registry, entity_bits, LOCK_POSITION_X);
+        }
+        return;
+    }
+    if let PhysicsFieldEdit::LockPositionY(on) = edit {
+        // Freeze Position Y — the vertical sibling, same idiom and gate.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        if on {
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                LOCK_POSITION_Y,
+                &LockPositionY,
+            );
+        } else {
+            queue_remove(queue, registry, entity_bits, LOCK_POSITION_Y);
+        }
+        return;
+    }
 
     // Everything else edits the collider, so read the live one and write it
     // back changed — a partial write would drop the fields not being edited.
@@ -441,7 +489,9 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::LinvelY(_)
         | PhysicsFieldEdit::Angvel(_)
         | PhysicsFieldEdit::Ccd(_)
-        | PhysicsFieldEdit::LockRotation(_) => {
+        | PhysicsFieldEdit::LockRotation(_)
+        | PhysicsFieldEdit::LockPositionX(_)
+        | PhysicsFieldEdit::LockPositionY(_) => {
             unreachable!("handled above")
         }
     }

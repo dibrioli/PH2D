@@ -380,20 +380,44 @@ impl PhysicsWorld {
             // Initial velocity (W9), applied at build. `[0,0]`/`0` is rapier's
             // own default, so a body authored before this is byte-identical; and
             // because it rides the `BodyDesc`, a rewind to t=0 re-arms the launch.
-            .linvel(Vector2::new(desc.linvel[0], desc.linvel[1]))
+            //
+            // ⚠️ A LOCKED translation axis drops its velocity component. rapier's
+            // `LockedAxes` zeroes the axis's inverse mass, so no FORCE can move it
+            // (gravity on a Y-locked body does nothing) — but `RigidBodyVelocity::
+            // integrate` advances the body by its raw `linvel` WITHOUT projecting
+            // out the locked axes, so an explicitly-set initial velocity would drift
+            // a "frozen" body forever (measured: an X-locked body launched at 3 m/s
+            // slid the full 1.5 m in 0.5 s). rapier special-cases only rotation. So
+            // a frozen axis carries no velocity — Unity/Godot's Freeze Position
+            // fully pins the axis, and this makes the lock authoritative.
+            .linvel(Vector2::new(
+                if desc.lock_x { 0.0 } else { desc.linvel[0] },
+                if desc.lock_y { 0.0 } else { desc.linvel[1] },
+            ))
             .angvel(desc.angvel)
             // Continuous collision detection. `false` is rapier's own default, so
             // a body authored before this is byte-identical; enabling it makes the
             // pipeline sweep this body's motion so a fast one does not tunnel
             // through thin geometry. It rides the `BodyDesc`, so a rewind re-arms it.
             .ccd_enabled(desc.ccd)
-            // Lock rotation (Freeze Rotation). `empty()` is rapier's default, so an
-            // unlocked body is byte-identical; `ROTATION_LOCKED` pins the angular
-            // DOF so the body translates but never rotates. Rides the `BodyDesc`.
-            .locked_axes(if desc.lock_rotation {
-                LockedAxes::ROTATION_LOCKED
-            } else {
-                LockedAxes::empty()
+            // Constraints (Freeze Rotation / Position X / Position Y). Each flag ORs
+            // in its own axis of the SAME `LockedAxes` bitmask; `empty()` (no flag
+            // set) is rapier's default, so an unconstrained body is byte-identical.
+            // `ROTATION_LOCKED` pins the angular DOF, `TRANSLATION_LOCKED_X/_Y` pin a
+            // translation DOF — a body can freeze any combination. Rides the
+            // `BodyDesc`, so a rewind re-arms every locked axis.
+            .locked_axes({
+                let mut axes = LockedAxes::empty();
+                if desc.lock_rotation {
+                    axes |= LockedAxes::ROTATION_LOCKED;
+                }
+                if desc.lock_x {
+                    axes |= LockedAxes::TRANSLATION_LOCKED_X;
+                }
+                if desc.lock_y {
+                    axes |= LockedAxes::TRANSLATION_LOCKED_Y;
+                }
+                axes
             })
             .build();
         let handle = self.bodies.insert(body);

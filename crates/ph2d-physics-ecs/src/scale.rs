@@ -115,6 +115,9 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// in for the same reason, and it rides the `BodyDesc` so a rewind re-arms it too.
 /// `lock_rotation` is the presence of the optional [`crate::LockRotation`] marker —
 /// same story again (Freeze Rotation; rides the `BodyDesc` for the rewind).
+/// `lock_x`/`lock_y` are the presences of the optional [`crate::LockPositionX`]/
+/// [`crate::LockPositionY`] markers (Freeze Position) — each an independent axis of
+/// the same `LockedAxes` fold, riding the `BodyDesc` for the rewind like the rest.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -129,6 +132,8 @@ pub(crate) fn body_desc(
     angvel: f32,
     ccd: bool,
     lock_rotation: bool,
+    lock_x: bool,
+    lock_y: bool,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -136,6 +141,8 @@ pub(crate) fn body_desc(
         angvel,
         ccd,
         lock_rotation,
+        lock_x,
+        lock_y,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -189,7 +196,18 @@ mod tests {
             skew_x: 0.0,
             skew_y: 0.0,
         };
-        body_desc(&rb, &col, &t, 1.0, [0.0, 0.0], 0.0, false, false)
+        body_desc(
+            &rb,
+            &col,
+            &t,
+            1.0,
+            [0.0, 0.0],
+            0.0,
+            false,
+            false,
+            false,
+            false,
+        )
     }
 
     #[test]

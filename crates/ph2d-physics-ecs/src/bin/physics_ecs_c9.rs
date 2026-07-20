@@ -8,8 +8,9 @@
 //! non-uniformly scaled CAPSULE → a STADIUM hull, and one LAUNCHED ball →
 //! an `InitialVelocity`, one CCD ball launched at a thin wall → the CCD
 //! solver's sweep, W-CCD, one ROTATION-LOCKED spinning box → the frozen
-//! angular DOF, W-LockRot, and one OFFSET collider → the collider translation,
-//! W-Offset): entities carry
+//! angular DOF, W-LockRot, one OFFSET collider → the collider translation,
+//! W-Offset, and one X-LOCKED launched ball → the frozen translation DOF,
+//! W-LockPos): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -20,15 +21,15 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 59
+//! physics-ecs-c9 body_count: 60
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation,
-    PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
+    LockRotation, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -240,6 +241,30 @@ fn main() {
         },
         // Far left, clear of the CCD ball's rightward flight and the spinning box.
         Transform::from_translation(Vec2::new(-15.0, 3.0)),
+    ));
+
+    // One X-LOCKED launched ball (W-LockPos): fired sideways but pinned on X by the
+    // `LockPositionX` marker, so `LockedAxes::TRANSLATION_LOCKED_X` travels the
+    // deterministic path (an `f32` fold in the solver's DOF handling) and CI proves
+    // it is bit-identical cross-OS — the same guarantee the rotation lock gets. The
+    // launch would carry a free body away; the lock cancels the X component while it
+    // still falls, so its Y descent under the pinned X exercises the fold. Its own
+    // lane, far left, so it settles alone.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [6.0, 0.0],
+            angvel: 0.0,
+        },
+        LockPositionX,
+        Transform::from_translation(Vec2::new(-22.0, 6.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

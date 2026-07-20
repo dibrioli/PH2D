@@ -2156,9 +2156,9 @@ componente opcional independente; empacotar só moveria os mesmos campos atrás 
 Free tomba descendo a rampa esquerda, a verde Locked desce em pé pela direita — rampas espelhadas, os
 corpos divergem).
 
-**Aberto (deliberado):** **Freeze Position X/Y** (o resto do `RigidbodyConstraints2D` — `enabled_translations`
-do rapier): controle mais raro (trilhos/pinos), família própria, e o Godot ship `lock_rotation` standalone
-de propósito. Adicionar quando um caso de trilho aparecer.
+**~~Aberto: Freeze Position X/Y~~ → FEITO** (§W-LockPos, smoke `=18`): o resto do `RigidbodyConstraints2D`
+(Freeze Position X + Y ao lado do Freeze Rotation — o trio de constraints do Unity/Godot), mesmo
+maquinário de `LockedAxes`. Ver a entrada §W-LockPos abaixo.
 
 ---
 
@@ -2198,3 +2198,50 @@ collider CENTRADO afunda até a cintura — o collider centrado é o que repousa
 
 **Aberto (deliberado):** **rotação do collider** relativa ao corpo (o `Collider2D` não tem, mas rapier
 aceita) e **múltiplos colliders por corpo** (composite — feature maior). Nada pede ainda.
+
+---
+
+## §W-LockPos — FREEZE POSITION X/Y por corpo (2026-07-20, smoke `=18`)
+
+**O resto do trio de constraints.** Ao lado do Freeze Rotation (§W-LockRot), o Unity/Godot shipam **Freeze
+Position X** e **Freeze Position Y**. Travar X prende o corpo a um trilho (elevador, ator numa lane);
+travar Y o faz flutuar (plataforma que gravidade não puxa). Dois toggles **Freeze X / Freeze Y** no §11,
+ao lado do Rotation.
+
+**Dois marcadores `LockPositionX`/`LockPositionY` — a PRESENÇA é o booleano** (idioma do `LockRotation`/
+`Ccd`/`Locked`): dois DOFs independentes = dois marcadores. Registro **7→9**, blob-key, **sem bump** (fica
+**29** — o oposto do W-Offset, que apendou campo ao `Collider`; marcador registrado é aditivo). Attach no
+Locked, detach no Free. `BodyDesc.lock_x/lock_y` ORam no MESMO `LockedAxes` do `lock_rotation`
+(`TRANSLATION_LOCKED_X`/`_Y`), rida no recipe pro **rewind re-armar cada eixo**.
+
+⚠️ **rapier NÃO zera a velocidade inicial de um eixo de translação travado** (o gate red-first pegou): o
+`LockedAxes` zera a inversa-massa do eixo (força/gravidade não acelera — por isso o Y-locked não cai), mas
+`RigidBodyVelocity::integrate` avança o corpo pela `linvel` CRUA sem projetar os eixos travados. Medido:
+um corpo X-locked lançado a 3 m/s deslizou os 1,5 m inteiros. rapier só trata rotação assim. Então
+`spawn_body` **zera a componente travada da velocidade** (`if desc.lock_x { 0.0 }`) — um eixo congelado
+não carrega velocidade, que é o que "Freeze Position" significa no Unity/Godot, e torna o lock autoritário.
+~27 fixtures de `ph2d-physics/tests` ganharam `lock_x: false, lock_y: false`.
+
+**Dynamic-only** (só a família que o solver MOVE tem posição a travar): dois `seg_row("Freeze X"/"Freeze Y",
+["Free","Locked"])` no bloco Dynamic, entre Rotation e Bake. Reusa o path Sensor/CCD/LockRot.
+
+**Gates (todos red-first + mutação):** `an_x_locked_body_ignores_a_sideways_force` (o BIT de X: gravidade
+lateral, mut tira `TRANSLATION_LOCKED_X` → RED) · `a_y_locked_body_ignores_gravity` (o BIT de Y) ·
+`a_frozen_axis_drops_an_authored_launch_and_the_axes_are_independent` (o DROP de velocidade — mut tira o
+`if desc.lock_x{0.0}` → RED — E a independência via FORÇA: mut ORa `TRANSLATION_LOCKED` inteiro → RED; a
+independência TEM de empurrar por FORÇA, não velocidade, senão a velocidade crua atravessa o bit largo).
+⚠️ Duas camadas por eixo (bit + drop) = um gate por camada ([[feedback_layered_defenses_need_per_layer_gates]]).
+ECS: `the_bridge_pins_a_marked_body_on_x_and_a_rewind_re_arms_it` + `the_two_position_locks_are_independent`
+(mut ignora marcador → RED). Seam: `freeze_position_is_offered_and_committed_only_for_a_dynamic_body`
+(presença/ausência, X e Y varridos independentes) + no sweep de `every_segmented_option_reaches_the_bus`.
+Persistência round-trip (ambos marcadores) · registro **7→9** · c9 **60 corpos** (um X-locked lançado).
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_LOCKX`/`LOCKY` (groups) + `INSP_PHYS_LOCKX`/`LOCKY: [NodeId;2]` ·
+`ph2d::physics::LockPositionX`/`LockPositionY` · `BodyDesc.lock_x/lock_y`. `populate.rs` registra os 2
+groups (senão os toggles pintam mas ficam mortos sob o mouse — o `architecture_panel_wiring_parity` pega).
+`PROJECT_SCHEMA` fica **29**. Smoke `=18` (pausado; Play: 3 bolas lançadas de lado — a verde Free ARCA
+pra baixo-direita, a ciano Freeze-X cai RETO (o lançamento é dropado), a laranja Freeze-Y PLANA de lado à
+altura constante porque gravidade não a puxa).
+
+**Aberto (deliberado):** freeze de **rotação + posição combinados** já funciona (os 3 marcadores ORam no
+mesmo bitmask); nada mais pede. `lock_z`/2.5D fora de escopo (motor 2D).

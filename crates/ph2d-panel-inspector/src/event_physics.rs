@@ -69,6 +69,14 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // painter offers it under (only a body the solver rotates has a
             // rotation to freeze). Dim is not a refusal.
             (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::LockRotation(i == 1))
+        } else if let Some(i) = ids::INSP_PHYS_LOCKX.iter().position(|&o| o == id) {
+            // Freeze Position X — Free | Locked. Dynamic-only, the same gate the
+            // painter offers it under (only a body the solver moves has a position
+            // to freeze). Dim is not a refusal.
+            (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::LockPositionX(i == 1))
+        } else if let Some(i) = ids::INSP_PHYS_LOCKY.iter().position(|&o| o == id) {
+            // Freeze Position Y — the vertical sibling, same gate.
+            (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::LockPositionY(i == 1))
         } else if let Some(i) = ids::INSP_PHYS_BAKE_CH.iter().position(|&o| o == id) {
             // The bake channel selector — a GLOBAL option, but painted only for a
             // Dynamic body (the only kind that bakes), so honoured under the same

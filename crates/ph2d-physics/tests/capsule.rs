@@ -28,6 +28,8 @@ fn desc(shape: ShapeDesc, x: f32, y: f32, body_type: RigidBodyType) -> BodyDesc 
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
         offset: [0.0, 0.0],
     }
 }

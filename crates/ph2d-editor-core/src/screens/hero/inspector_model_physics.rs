@@ -106,6 +106,15 @@ pub struct InspectorPhysicsInfo {
     /// character stays upright, a crate does not roll. Mirrors the presence of the
     /// optional `LockRotation` marker. Dynamic-only, like the fields above.
     pub lock_rotation: bool,
+    /// Freeze Position X: `false` the horizontal DOF is free (rapier's default),
+    /// `true` pins the body's X so the solver can never move it sideways — an
+    /// elevator on a rail, a lane-locked actor. Mirrors the presence of the optional
+    /// `LockPositionX` marker. Dynamic-only, like the fields above.
+    pub lock_x: bool,
+    /// Freeze Position Y: `true` pins the body's Y so gravity cannot pull it down —
+    /// a floating platform. Mirrors the optional `LockPositionY` marker. The two
+    /// axes are independent. Dynamic-only.
+    pub lock_y: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -164,6 +173,12 @@ pub enum PhysicsFieldEdit {
     /// Lock-rotation toggle (Freeze Rotation). Attaches/detaches the optional
     /// `LockRotation` marker (present = locked, absent = free), same idiom as CCD.
     LockRotation(bool),
+    /// Freeze-Position-X toggle. Attaches/detaches the optional `LockPositionX`
+    /// marker (present = locked, absent = free), same idiom as Freeze Rotation.
+    LockPositionX(bool),
+    /// Freeze-Position-Y toggle. Attaches/detaches the optional `LockPositionY`
+    /// marker.
+    LockPositionY(bool),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

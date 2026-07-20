@@ -338,3 +338,40 @@ impl SimComponent for Ccd {}
 pub struct LockRotation;
 
 impl SimComponent for LockRotation {}
+
+/// **Lock translation on X — a marker presence-override component (W-LockPos).**
+///
+/// Its **presence IS the boolean**, exactly like [`LockRotation`] and [`Ccd`]: a
+/// body that carries it has its horizontal position pinned (Unity's "Freeze
+/// Position X", Godot's `axis_lock_linear_x`), one that does not moves freely on X
+/// (rapier's default). A boolean has no value to carry, so a marker is the honest
+/// representation.
+///
+/// Why a body wants it: an elevator that only travels vertically, a side-scroller
+/// actor held to a single lane, a platform on a rail. The body still falls,
+/// rotates and collides — the solver simply can never move it sideways. It is
+/// meaningful only for a body the solver MOVES under forces, so the §11 row is
+/// offered for Dynamic only, the same rule the other constraints follow.
+///
+/// The bridge reads its presence and folds the flag into `BodyDesc.lock_x`, which
+/// ORs into the same `LockedAxes` bitmask as [`LockRotation`]; so — like the
+/// markers above — it rides the spawn recipe the world rebuilds from and a rewind
+/// re-arms it. A body with an authored X [`InitialVelocity`] has that component
+/// dropped by the lock (there is no X DOF to carry it).
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LockPositionX;
+
+impl SimComponent for LockPositionX {}
+
+/// **Lock translation on Y — a marker presence-override component (W-LockPos).**
+///
+/// The vertical sibling of [`LockPositionX`]: its presence pins the body's Y
+/// position (Unity's "Freeze Position Y"), so gravity cannot pull it down — a
+/// floating platform, a hovering pickup that still slides horizontally. Same
+/// idiom, same `LockedAxes` fold (`BodyDesc.lock_y`), same rewind behaviour, same
+/// Dynamic-only offer. The two axes are independent — a body can lock either, both
+/// or neither.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LockPositionY;
+
+impl SimComponent for LockPositionY {}

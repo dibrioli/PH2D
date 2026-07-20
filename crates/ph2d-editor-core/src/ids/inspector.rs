@@ -275,6 +275,22 @@ pub const INSP_PHYS_LOCKROT: [NodeId; 2] = [
     hash_node_id("insp_phys_lockrot_free"),
     hash_node_id("insp_phys_lockrot_locked"),
 ];
+/// §11 Freeze-Position-X toggle — group id + the two options (Free / Locked). A
+/// Dynamic-only two-segment control (like the Lock-rotation toggle) so it reuses the
+/// same paint/populate/event path (Freeze Position, W-LockPos). `Locked` pins the
+/// body's X so the solver never moves it sideways.
+pub const INSP_LIVE_PHYSICS_LOCKX: NodeId = hash_node_id("insp_live_physics_lockx");
+pub const INSP_PHYS_LOCKX: [NodeId; 2] = [
+    hash_node_id("insp_phys_lockx_free"),
+    hash_node_id("insp_phys_lockx_locked"),
+];
+/// §11 Freeze-Position-Y toggle — group id + the two options (Free / Locked). The
+/// vertical sibling of the X toggle; `Locked` pins Y so gravity cannot pull it down.
+pub const INSP_LIVE_PHYSICS_LOCKY: NodeId = hash_node_id("insp_live_physics_locky");
+pub const INSP_PHYS_LOCKY: [NodeId; 2] = [
+    hash_node_id("insp_phys_locky_free"),
+    hash_node_id("insp_phys_locky_locked"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

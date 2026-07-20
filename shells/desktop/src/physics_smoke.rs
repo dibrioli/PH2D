@@ -20,6 +20,7 @@
 //! | `15`| W-CCD| CONTINUOUS vs discrete: two fast balls at two thin walls, one tunnels one is stopped |
 //! | `16`| W-LockRot| FREEZE ROTATION: two boxes on mirror slopes, the free one tumbles, the locked one stays upright |
 //! | `17`| W-Offset| COLLIDER OFFSET: two characters, one with a foot-offset collider stands, the centred one sinks |
+//! | `18`| W-LockPos| FREEZE POSITION: three launched balls — free arcs, X-locked drops straight, Y-locked glides level |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -86,6 +87,7 @@ impl crate::App {
             "15" => self.physics_smoke_ccd(),
             "16" => self.physics_smoke_lock_rotation(),
             "17" => self.physics_smoke_offset(),
+            "18" => self.physics_smoke_freeze_position(),
             _ => self.physics_smoke_drop(),
         }
 

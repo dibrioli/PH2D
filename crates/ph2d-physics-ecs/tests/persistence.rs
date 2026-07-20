@@ -15,8 +15,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation,
-    PhysicsBridge, RigidBody, register_physics_components,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
+    LockPositionY, LockRotation, PhysicsBridge, RigidBody, register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -78,6 +78,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         // The LockRotation marker (Freeze Rotation), same story — a zero-field
         // presence flag must round-trip.
         LockRotation,
+        // The two Freeze Position markers (W-LockPos), same story again — each an
+        // independent zero-field presence flag that must survive the snapshot.
+        LockPositionX,
+        LockPositionY,
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -136,6 +140,14 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert!(
         dst.world().get::<LockRotation>(e).is_some(),
         "the LockRotation marker did not survive the snapshot round trip (registered?)"
+    );
+    assert!(
+        dst.world().get::<LockPositionX>(e).is_some(),
+        "the LockPositionX marker did not survive the snapshot round trip (registered?)"
+    );
+    assert!(
+        dst.world().get::<LockPositionY>(e).is_some(),
+        "the LockPositionY marker did not survive the snapshot round trip (registered?)"
     );
 }
 

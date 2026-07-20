@@ -48,6 +48,8 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
         offset: [0.0, 0.0],
     });
 
@@ -71,6 +73,8 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         angvel: 0.0,
         ccd,
         lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
         offset: [0.0, 0.0],
     });
 

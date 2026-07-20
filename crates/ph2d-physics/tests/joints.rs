@@ -37,6 +37,8 @@ fn body(
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
         offset: [0.0, 0.0],
     })
 }
@@ -408,6 +410,8 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             angvel: 0.0,
             ccd: false,
             lock_rotation: false,
+            lock_x: false,
+            lock_y: false,
             offset: [0.0, 0.0],
         });
         join(

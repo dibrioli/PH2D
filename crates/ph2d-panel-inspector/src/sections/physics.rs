@@ -41,6 +41,10 @@ const CCD_LABELS: [&str; 2] = ["Discrete", "Continuous"];
 /// (rapier's default), `1` locked (the orientation is pinned — Freeze Rotation).
 const LOCKROT_LABELS: [&str; 2] = ["Free", "Locked"];
 
+/// Freeze-Position (X and Y) toggle labels, indexed by the flag: `0` free
+/// (rapier's default), `1` locked (that translation axis is pinned).
+const FREEZE_POS_LABELS: [&str; 2] = ["Free", "Locked"];
+
 /// Bake channel selector labels, indexed by the tag: `0` the whole pose,
 /// `1` position only, `2` rotation only.
 const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
@@ -417,6 +421,39 @@ fn paint_body_actions(
             &ids::INSP_PHYS_LOCKROT,
             &LOCKROT_LABELS,
             u8::from(info.lock_rotation),
+        );
+        // Freeze Position X / Y: pin a translation axis so the body is held to a
+        // rail (X) or floats against gravity (Y). Dynamic-only, the same rule as the
+        // constraints above — only a body the solver MOVES has a position to freeze.
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Freeze X",
+            ids::INSP_LIVE_PHYSICS_LOCKX,
+            &ids::INSP_PHYS_LOCKX,
+            &FREEZE_POS_LABELS,
+            u8::from(info.lock_x),
+        );
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Freeze Y",
+            ids::INSP_LIVE_PHYSICS_LOCKY,
+            &ids::INSP_PHYS_LOCKY,
+            &FREEZE_POS_LABELS,
+            u8::from(info.lock_y),
         );
         yy = seg_row(
             scene,

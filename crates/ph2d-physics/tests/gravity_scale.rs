@@ -43,6 +43,8 @@ fn gravity_scale_multiplies_the_bodys_fall() {
         angvel: 0.0,
         ccd: false,
         lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
         offset: [0.0, 0.0],
     };
     // Spaced 3 m apart (radius 0.5) so no two ever collide — this is free fall.

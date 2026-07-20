@@ -514,6 +514,11 @@ impl PhysicsBridge {
             let ccd = world.get::<crate::Ccd>(e).is_some();
             // Optional LockRotation marker (Freeze Rotation); presence is the flag.
             let lock_rotation = world.get::<crate::LockRotation>(e).is_some();
+            // Optional LockPositionX/Y markers (Freeze Position); each presence is a
+            // flag that ORs its axis into the same `LockedAxes` fold, so a rewind
+            // re-arms it exactly like the rotation lock above.
+            let lock_x = world.get::<crate::LockPositionX>(e).is_some();
+            let lock_y = world.get::<crate::LockPositionY>(e).is_some();
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -523,6 +528,8 @@ impl PhysicsBridge {
                 iv.angvel,
                 ccd,
                 lock_rotation,
+                lock_x,
+                lock_y,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
@@ -671,5 +678,4 @@ impl PhysicsBridge {
             }
         }
     }
-
 }

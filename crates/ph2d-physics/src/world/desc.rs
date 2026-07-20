@@ -127,4 +127,27 @@ pub struct BodyDesc {
     /// not see the `Transform`. It rides the `BodyDesc` the world rebuilds from, so
     /// a rewind preserves it.
     pub offset: [f32; 2],
+    /// **Lock translation on X** (Unity's "Freeze Position X", Godot's
+    /// `axis_lock_linear_x`). `false` (rapier's default, and what every body did
+    /// before this field existed) leaves the horizontal DOF free. `true` pins the
+    /// body's X position: it still falls, rotates and collides, but the solver can
+    /// never move it sideways — a rail-constrained elevator, a side-scroller actor
+    /// held to a lane.
+    ///
+    /// It ORs into the same rapier `LockedAxes` bitmask as [`lock_rotation`], applied
+    /// at build, so — like the constraints beside it — it rides the `BodyDesc` the
+    /// world rebuilds from and a rewind to t=0 re-arms it. A body with any initial
+    /// [`linvel`] on X still has that component dropped by the lock (there is no X
+    /// DOF to carry it).
+    ///
+    /// [`lock_rotation`]: BodyDesc::lock_rotation
+    /// [`linvel`]: BodyDesc::linvel
+    pub lock_x: bool,
+    /// **Lock translation on Y** (Unity's "Freeze Position Y"). `false` leaves the
+    /// vertical DOF free (rapier's default). `true` pins the body's Y position, so
+    /// gravity cannot pull it down — a floating platform, a hovering pickup that
+    /// still slides horizontally. Same lifetime and `LockedAxes` fold as [`lock_x`].
+    ///
+    /// [`lock_x`]: BodyDesc::lock_x
+    pub lock_y: bool,
 }

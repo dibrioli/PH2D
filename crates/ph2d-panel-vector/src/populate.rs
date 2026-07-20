@@ -391,6 +391,9 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_COMPOUND_MAKE);
     button(store, ids::VECTOR_COMPOUND_RELEASE);
     // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).
+    button(store, ids::VECTOR_EXPAND_SIDE_OUTER);
+    button(store, ids::VECTOR_EXPAND_SIDE_INNER);
+    button(store, ids::VECTOR_EXPAND_SIDE_BOTH);
     button(store, ids::VECTOR_EXPAND_JOIN_MITER);
     button(store, ids::VECTOR_EXPAND_JOIN_ROUND);
     button(store, ids::VECTOR_EXPAND_JOIN_BEVEL);

@@ -93,6 +93,10 @@ thread_local! {
     /// são escolhas diferentes. Reaproveitar `VECTOR_JOIN_*` faria um controle mexer em
     /// dois fatos.
     static EXPAND_JOIN: Cell<u8> = const { Cell::new(0) };
+    /// Qual contorno o **Offset Path** move (`0` Outer · `1` Inner · `2` Both). Default `2`
+    /// (Both) — num caminho sem furo é o único contorno de qualquer jeito. Panel-local, como o
+    /// `EXPAND_JOIN`: a shell o lê no clique/drag de offset e o motor o honra.
+    static EXPAND_SIDE: Cell<u8> = const { Cell::new(2) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -281,6 +285,19 @@ pub fn expand_join() -> u8 {
 
 pub(crate) fn set_expand_join(v: u8) {
     EXPAND_JOIN.with(|c| c.set(v));
+}
+
+/// Qual contorno o **Offset Path** move (`0` Outer · `1` Inner · `2` Both).
+///
+/// `pub` pela mesma razão do [`expand_join`]: a SHELL a lê no gesto de offset, e uma cópia
+/// dela do outro lado seria a segunda resposta a *"que contorno o offset move?"*.
+#[must_use]
+pub fn expand_side() -> u8 {
+    EXPAND_SIDE.with(Cell::get)
+}
+
+pub(crate) fn set_expand_side(v: u8) {
+    EXPAND_SIDE.with(|c| c.set(v));
 }
 
 #[must_use]

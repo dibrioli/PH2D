@@ -293,6 +293,11 @@ pub const VECTOR_EXPAND_OFFSET_NUM: NodeId = hash_node_id("vector.expand.offset_
 pub const VECTOR_EXPAND_JOIN_MITER: NodeId = hash_node_id("vector.expand.join.miter");
 pub const VECTOR_EXPAND_JOIN_ROUND: NodeId = hash_node_id("vector.expand.join.round");
 pub const VECTOR_EXPAND_JOIN_BEVEL: NodeId = hash_node_id("vector.expand.join.bevel");
+// **Qual contorno o Offset Path move** (`OffsetSide`) — só o de fora, só os furos, ou ambos.
+// É por-contorno, e é o que faz a quina (Round/Bevel) aparecer no furo, não só no externo.
+pub const VECTOR_EXPAND_SIDE_OUTER: NodeId = hash_node_id("vector.expand.side.outer");
+pub const VECTOR_EXPAND_SIDE_INNER: NodeId = hash_node_id("vector.expand.side.inner");
+pub const VECTOR_EXPAND_SIDE_BOTH: NodeId = hash_node_id("vector.expand.side.both");
 pub const VECTOR_EXPAND_OFFSET_PATH: NodeId = hash_node_id("vector.expand.offset_path");
 pub const VECTOR_EXPAND_OUTLINE_STROKE: NodeId = hash_node_id("vector.expand.outline_stroke");
 // **Power Stroke** — a largura VARIA ao longo do caminho. Três valores de controle + onde o

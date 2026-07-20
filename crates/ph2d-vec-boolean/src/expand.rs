@@ -40,7 +40,8 @@
 use kurbo::{BezPath, Cap, Join, PathEl, Point, Shape, Stroke, StrokeOpts, Vec2};
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 use ph2d_vec_scene::{
-    FillRule, LineCap, LineJoin, Paint, StrokePiece, StrokeSpec, VecPath, WidthProfile, stroke_plan,
+    FillRule, LineCap, LineJoin, OffsetSide, Paint, StrokePiece, StrokeSpec, VecPath, WidthProfile,
+    stroke_plan,
 };
 
 use crate::{Closing, binary_grouped, compound_from, flatten_groups, to_bez_with};
@@ -528,48 +529,90 @@ fn cap_loop(ink: &mut BezPath, c: Point, h: f64, normal: Vec2, cap: LineCap, for
     push_loop(ink, poly.into_iter());
 }
 
-/// **Offset Path** — a forma cresce (`d > 0`) ou encolhe (`d < 0`) por `d`, com quinas em
-/// `join`. Devolve vazio se `d` for ~0, se o sweep falhar, ou se a forma **desaparecer** ao
-/// encolher (o que é uma resposta correta: um traço fino encolhido de mais não sobra).
+/// **Offset Path** — move a borda da forma por `d`, com quinas em `join`, e `side` diz QUAIS
+/// contornos participam.
+///
+/// # É POR CONTORNO, e é isso que faz a quina aparecer no furo
+///
+/// Cada contorno (o de fora, e cada furo de um compound) é offsetado por conta própria: `d>0`
+/// o empurra para FORA, ao longo da sua normal externa (para longe do miolo que ele fecha);
+/// `d<0` para dentro. Um crescer arredonda as quinas CONVEXAS do contorno — e como o furo tem
+/// as suas, `d>0` num furo (Inner/Both) faz o furo crescer para dentro da tinta e **suas
+/// quinas ganham Round/Bevel**, que era o que o smoke pedia (`2026-07-20`, "round e bevel só
+/// no externo"). A versão anterior offsetava a região INTEIRA de uma vez (a Minkowski do
+/// conjunto): correta, mas `d>0` só expande a fronteira externa, então o furo — que é
+/// côncavo visto da tinta — nunca arredondava.
 ///
 /// A geometria de partida é a **cozida** e o estilo é **preservado** (≠ Outline Stroke, que
-/// produz uma forma nova): offsetar é mover a borda da mesma arte.
+/// produz uma forma nova): offsetar é mover a borda da mesma arte. Devolve vazio se `d` for
+/// ~0, se o sweep falhar, ou se a forma **desaparecer** ao encolher (resposta correta: um
+/// traço fino encolhido demais não sobra).
 #[must_use]
-pub fn offset_path(path: &VecPath, d: f64, join: LineJoin) -> Vec<VecPath> {
+pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
     if d.abs() < MIN_TOL || !d.is_finite() {
         return Vec::new();
     }
-    // Regulariza ANTES de traçar: a banda tem de ser construída sobre a fronteira real do
-    // conjunto (auto-interseções já resolvidas), senão ela descreve uma borda que a forma
-    // não tem.
+    // Regulariza ANTES de offsetar: os contornos têm de sair orientados e agrupados (quem é
+    // furo de quem), senão não dá para offsetar cada um por conta própria.
     let Some(region) = Region::of(&to_bez_with(path, Closing::Always), rule_of(path)) else {
         return Vec::new();
     };
-    // A banda: todos os contornos de uma vez.
-    //
-    // ⚠️ Eu escrevi isto CONTORNO A CONTORNO primeiro, raciocinando que num compound os
-    // contornos correm em sentidos opostos (é assim que um buraco é buraco) e que as bandas
-    // se cancelariam sob NonZero onde se sobrepõem. **Medido, não acontece**: com um donut de
-    // parede 2 e offset 2 — bandas que se cobrem inteiras — as duas versões dão exatamente a
-    // mesma área, e o furo continua furo. A defesa era um palpite meu, e um comentário que
-    // afirma um perigo que não se consegue demonstrar é pior que nenhum comentário.
-    // O que ficou do episódio é o gate de PAREDE FINA, que é a fixture que contém o
-    // fenômeno — a de parede grossa não continha (as bandas nem se encontravam).
+    let mut acc: Option<Region> = None;
+    for group in &region.groups {
+        // O grupo é `[fora, furo…]` — o linesweeper já os agrupa por containment.
+        let Some((outer, holes)) = group.split_first() else {
+            continue;
+        };
+        let Some(mut group_r) = loop_region(outer, side.hits_outer(), d, join) else {
+            continue; // o contorno de fora sumiu ao encolher — o grupo inteiro sai
+        };
+        for hole in holes {
+            if let Some(hr) = loop_region(hole, side.hits_inner(), d, join).filter(|r| !r.is_empty())
+                && let Some(r) = group_r.combine(&hr, BinaryOp::Difference)
+            {
+                group_r = r;
+            }
+        }
+        if group_r.is_empty() {
+            continue;
+        }
+        acc = Some(match acc {
+            None => group_r,
+            Some(a) => a.combine(&group_r, BinaryOp::Union).unwrap_or(a),
+        });
+    }
+    match acc {
+        Some(acc) => drop_slivers(acc.into_paths(path)),
+        None => Vec::new(),
+    }
+}
+
+/// A região que UM contorno fechado delimita, opcionalmente offsetada por `d` (com quinas em
+/// `join`). Sem offset (`offset == false`), é só a região do contorno como está.
+///
+/// O offset de um laço é a MESMA redução da booleana de antes: o traço da fronteira com
+/// largura `2|d|` é a banda, e a região `∪ banda` (crescer) ou `∖ banda` (encolher). A quina
+/// escolhe o estilo — `Round` é o offset métrico verdadeiro (o disco de verdade).
+fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Option<Region> {
+    let base = Region::of(loop_bez, LsFillRule::NonZero)?;
+    if !offset {
+        return Some(base);
+    }
     let pen = Stroke::new(2.0 * d.abs())
         .with_join(join_of(join))
         .with_caps(Cap::Butt);
-    let Some(band) = penned(&region.bez(), &pen).filter(|r| !r.is_empty()) else {
-        return Vec::new();
+    let Some(band) = penned(&base.bez(), &pen) else {
+        return None;
     };
+    if band.is_empty() {
+        return Some(base);
+    }
     let op = if d > 0.0 {
         BinaryOp::Union
     } else {
         BinaryOp::Difference
     };
-    match region.combine(&band, op) {
-        Some(r) => r.into_paths(path),
-        None => Vec::new(),
-    }
+    base.combine(&band, op)
 }
 
 #[cfg(test)]

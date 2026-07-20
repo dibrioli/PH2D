@@ -25,6 +25,38 @@ pub enum LineJoin {
     Bevel,
 }
 
+/// **Qual contorno o Offset Path move** — num compound (uma forma com furos), a borda de fora
+/// e as bordas dos furos são coisas separadas, e o artista pode querer mover só uma.
+///
+/// O offset é **por contorno**: `d > 0` empurra o contorno escolhido para FORA (ao longo da
+/// sua normal externa, para longe do miolo que ele fecha); `d < 0` para dentro. Assim a quina
+/// (Round/Bevel) aparece em QUALQUER contorno que se expanda — não só no de fora, que era a
+/// queixa do smoke (`2026-07-20`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum OffsetSide {
+    /// Só o contorno de fora. `d > 0` cresce a forma.
+    Outer,
+    /// Só os contornos de furo. `d > 0` cresce os furos (para dentro da tinta).
+    Inner,
+    /// Todos os contornos. `d > 0` expande cada um pela sua normal externa.
+    #[default]
+    Both,
+}
+
+impl OffsetSide {
+    /// Este modo move o contorno de FORA?
+    #[must_use]
+    pub fn hits_outer(self) -> bool {
+        matches!(self, OffsetSide::Outer | OffsetSide::Both)
+    }
+
+    /// Este modo move os contornos de FURO?
+    #[must_use]
+    pub fn hits_inner(self) -> bool {
+        matches!(self, OffsetSide::Inner | OffsetSide::Both)
+    }
+}
+
 /// Estilo do traço de um path: cor + largura (world-units) + ponta/junção +
 /// tracejado opcional. Substitui a tupla `(Rgba8, f64)` da Fase 0.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]

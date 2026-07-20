@@ -229,6 +229,8 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if state::marker_option(id).is_some() => pick_marker(host, id),
         // **A junção do Offset Path** — panel-local, ver [`pick_expand_join`].
         WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
+        // **O lado do Offset Path** (Outer/Inner/Both) — panel-local, ver [`pick_expand_side`].
+        WidgetEvent::Click(id) if expand_side_index(id).is_some() => pick_expand_side(host, id),
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic
         // tool channel. Mode clicks land on `VectorTool::handle_panel_event`
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
@@ -374,6 +376,26 @@ fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
         _ if id == ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
         _ if id == ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
         _ if id == ids::VECTOR_EXPAND_JOIN_BEVEL => Some(2),
+        _ => None,
+    }
+}
+
+/// **Qual contorno o Offset Path move** — panel-local, o irmão do [`pick_expand_join`].
+fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    seam_reset_button(host, id);
+    if let Some(s) = expand_side_index(id) {
+        state::set_expand_side(s);
+    }
+    true
+}
+
+/// O índice do lado do Offset (`0` Outer · `1` Inner · `2` Both), ou `None`. Porta única,
+/// como a da junção.
+fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
+    match id {
+        _ if id == ids::VECTOR_EXPAND_SIDE_OUTER => Some(0),
+        _ if id == ids::VECTOR_EXPAND_SIDE_INNER => Some(1),
+        _ if id == ids::VECTOR_EXPAND_SIDE_BOTH => Some(2),
         _ => None,
     }
 }

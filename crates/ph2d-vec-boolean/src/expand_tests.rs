@@ -6,7 +6,7 @@
 
 use super::*;
 use kurbo::ParamCurve;
-use ph2d_vec_scene::{Contour, Rgba8, VecVertex, WidthProfile};
+use ph2d_vec_scene::{Contour, OffsetSide, Rgba8, VecVertex, WidthProfile};
 
 fn v(x: f64, y: f64) -> VecVertex {
     VecVertex::corner([x, y])
@@ -70,7 +70,7 @@ fn total_area(ps: &[VecPath]) -> f64 {
 #[test]
 fn the_border_moves_exactly_the_distance_asked() {
     for d in [0.5, 2.0, 5.0] {
-        let out = offset_path(&square(10.0), d, LineJoin::Miter);
+        let out = offset_path(&square(10.0), d, LineJoin::Miter, OffsetSide::Both);
         assert_eq!(out.len(), 1, "d={d}: uma forma");
         let b = bbox(&out[0]);
         assert!(
@@ -91,7 +91,7 @@ fn the_border_moves_exactly_the_distance_asked() {
 /// onde uma implementação que só sabe crescer fica calada.
 #[test]
 fn a_negative_distance_shrinks_the_shape() {
-    let out = offset_path(&square(10.0), -2.0, LineJoin::Miter);
+    let out = offset_path(&square(10.0), -2.0, LineJoin::Miter, OffsetSide::Both);
     assert_eq!(out.len(), 1);
     let b = bbox(&out[0]);
     assert!(
@@ -105,7 +105,7 @@ fn a_negative_distance_shrinks_the_shape() {
 /// não um resíduo de área ~0 que o artista teria de caçar para apagar.
 #[test]
 fn shrinking_past_the_shape_leaves_nothing() {
-    assert!(offset_path(&square(10.0), -6.0, LineJoin::Miter).is_empty());
+    assert!(offset_path(&square(10.0), -6.0, LineJoin::Miter, OffsetSide::Both).is_empty());
 }
 
 /// **A junção `Round` é o offset MÉTRICO**: a quina vira um arco a distância exatamente `d`
@@ -128,8 +128,8 @@ fn round_joins_give_the_true_metric_offset_and_miter_gives_the_spike() {
             .flat_map(|s| (0..=16).map(move |k| dist_to_src(s.eval(f64::from(k) / 16.0))))
             .fold(0.0_f64, f64::max)
     };
-    let round = offset_path(&square(10.0), 3.0, LineJoin::Round);
-    let miter = offset_path(&square(10.0), 3.0, LineJoin::Miter);
+    let round = offset_path(&square(10.0), 3.0, LineJoin::Round, OffsetSide::Both);
+    let miter = offset_path(&square(10.0), 3.0, LineJoin::Miter, OffsetSide::Both);
     let (r, m) = (reach(&round[0]), reach(&miter[0]));
     assert!(
         (r - 3.0).abs() < 0.05,
@@ -159,55 +159,102 @@ fn an_arc_closed_contour_survives_the_sweep() {
     );
 }
 
-/// **O compound: a borda cresce e o BURACO encolhe** — as duas metades ao mesmo tempo, que é
-/// o que "crescer" significa numa forma que tem furo.
-///
-/// ⚠️ **A parede é FINA de propósito.** A 1ª versão deste gate usava um donut de parede 6
-/// com offset 2, e nessa geometria as duas bandas nem se encontram (sobra um vão de 2 entre
-/// elas): o fenômeno interessante — as bandas dos dois contornos **cobrindo-se** — não estava
-/// na fixture, e o gate ficava verde sobre qualquer coisa. Aqui a parede mede 2 e o offset é
-/// 2, então cada banda cobre a parede inteira.
-/// [[feedback_a_green_gate_may_be_green_by_accident]]
+/// **`Both` expande CADA contorno pela sua normal externa** — a borda de fora para fora, e o
+/// furo também para fora (o furo cresce). É o offset POR CONTORNO: `d>0` empurra todo contorno
+/// selecionado para longe do miolo que ele fecha.
 #[test]
-fn growing_a_donut_grows_the_rim_and_shrinks_the_hole() {
-    // Parede = (20−16)/2 = 2; offset 2 ⇒ as bandas se sobrepõem inteiras.
-    let out = offset_path(&donut(20.0, 16.0), 2.0, LineJoin::Miter);
+fn both_side_expands_every_contour_outward() {
+    // donut 20/16, offset 2, Both: fora 20→24, furo 16→20.
+    let out = offset_path(&donut(20.0, 16.0), 2.0, LineJoin::Miter, OffsetSide::Both);
     assert_eq!(out.len(), 1, "continua UMA forma");
     assert_eq!(out[0].subpaths.len(), 1, "…e continua tendo o furo");
-    let b = bbox(&out[0]);
-    assert!(
-        (b.width() - 24.0).abs() < 1e-6,
-        "a borda foi a {}",
-        b.width()
-    );
-    // 24² menos um furo de 12²: o furo encolhe de 16 para 12 (erodir um quadrado por um
-    // disco dá um quadrado menor, com as quinas ainda afiadas).
+    assert!((bbox(&out[0]).width() - 24.0).abs() < 1e-6, "fora foi a {}", bbox(&out[0]).width());
+    // 24² menos o furo crescido a 20²: 576 − 400 = 176.
     let a = total_area(&out);
+    assert!((a - 176.0).abs() < 1.0, "área {a} (esperado 176: 24² com furo de 20²)");
+}
+
+/// **`Outer` move SÓ o contorno de fora** — o furo fica onde estava. É o controle que o smoke
+/// pediu (offsetar apenas um dos contornos).
+#[test]
+fn outer_side_moves_only_the_outer_contour() {
+    let out = offset_path(&donut(20.0, 16.0), 2.0, LineJoin::Miter, OffsetSide::Outer);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].subpaths.len(), 1);
+    assert!((bbox(&out[0]).width() - 24.0).abs() < 1e-6, "fora cresceu");
+    // O furo intocado (16²): 24² − 16² = 320.
+    let a = total_area(&out);
+    assert!((a - 320.0).abs() < 1.0, "área {a} (esperado 320: 24² com furo INTOCADO de 16²)");
+}
+
+/// **`Inner` move SÓ os furos** — a borda de fora fica onde estava. Parede grossa (donut
+/// 20/10) para o furo crescido não alcançar a borda.
+#[test]
+fn inner_side_moves_only_the_holes() {
+    let out = offset_path(&donut(20.0, 10.0), 2.0, LineJoin::Miter, OffsetSide::Inner);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].subpaths.len(), 1);
+    // Fora intocado (20), furo 10→14: 20² − 14² = 400 − 196 = 204.
+    assert!((bbox(&out[0]).width() - 20.0).abs() < 1e-6, "a borda de fora não devia mexer");
+    let a = total_area(&out);
+    assert!((a - 204.0).abs() < 1.0, "área {a} (esperado 204: 20² com furo crescido a 14²)");
+}
+
+/// **A JUNÇÃO CHEGA NO CONTORNO INTERNO** — o bug que o Enio reportou (`2026-07-20`, "round e
+/// bevel só no externo"). Com `Inner` + `Round`, crescer o furo arredonda as quinas DELE: cada
+/// ponto do contorno interno fica a distância exatamente `d` do furo original (o disco), não a
+/// `d√2` (a quina afiada do `Miter`). O oráculo é a geometria do FURO, não do contorno de fora.
+#[test]
+fn the_join_reaches_the_inner_contour() {
+    // Distância de um ponto ao quadrado do furo original [5,15]² (donut 20/10).
+    let dist_to_hole = |p: kurbo::Point| {
+        let dx = (5.0 - p.x).max(0.0).max(p.x - 15.0);
+        let dy = (5.0 - p.y).max(0.0).max(p.y - 15.0);
+        dx.hypot(dy)
+    };
+    // O quanto o CONTORNO DO FURO se afasta do furo original.
+    let hole_reach = |p: &VecPath| {
+        let hole = VecPath {
+            verts: p.subpaths[0].verts.clone(),
+            closed: true,
+            ..VecPath::default()
+        };
+        crate::to_bez_with(&hole, Closing::Always)
+            .segments()
+            .flat_map(|s| (0..=16).map(move |k| dist_to_hole(s.eval(f64::from(k) / 16.0))))
+            .fold(0.0_f64, f64::max)
+    };
+    let round = offset_path(&donut(20.0, 10.0), 3.0, LineJoin::Round, OffsetSide::Inner);
+    let miter = offset_path(&donut(20.0, 10.0), 3.0, LineJoin::Miter, OffsetSide::Inner);
+    let (r, m) = (hole_reach(&round[0]), hole_reach(&miter[0]));
     assert!(
-        (a - (576.0 - 144.0)).abs() < 1.0,
-        "área {a} (esperado ~432: 24² com um furo de 12²)"
+        (r - 3.0).abs() < 0.06,
+        "Round no furo: a borda interna chega a {r} (o disco diz 3) — a quina não chegou no furo"
+    );
+    assert!(
+        (m - 3.0 * std::f64::consts::SQRT_2).abs() < 0.06,
+        "Miter no furo: o bico chega a {m} (a quina afiada diz {})",
+        3.0 * std::f64::consts::SQRT_2
     );
 }
 
-/// **Um furo pode ser ENGOLIDO.** Crescer mais que a metade do furo o fecha, e a forma passa
-/// a ser sólida — nada de um furo de área negativa ou de um contorno interno invertido.
+/// **Encolher um furo além dele mesmo o FECHA.** `Inner` com `d` negativo aperta o furo; passar
+/// da metade dele deixa a forma sólida — nada de furo invertido.
 #[test]
-fn growing_past_the_hole_closes_it() {
-    let out = offset_path(&donut(20.0, 16.0), 9.0, LineJoin::Miter);
+fn shrinking_a_hole_past_itself_closes_it() {
+    // Furo 16, encolhido por 9 de cada lado (16/2 = 8 < 9) ⇒ fecha; a borda de fora fica.
+    let out = offset_path(&donut(20.0, 16.0), -9.0, LineJoin::Miter, OffsetSide::Inner);
     assert_eq!(out.len(), 1);
-    assert!(
-        out[0].subpaths.is_empty(),
-        "o furo de 16 crescido por 9 de cada lado tem de fechar"
-    );
+    assert!(out[0].subpaths.is_empty(), "o furo apertado além de si fecha");
     let a = total_area(&out);
-    assert!((a - 38.0 * 38.0).abs() < 1.0, "área {a} (esperado 38²)");
+    assert!((a - 400.0).abs() < 1.0, "área {a} (esperado 400: o quadrado 20 sólido)");
 }
 
 /// Offsetar preserva o ESTILO — é a mesma arte com a borda noutro lugar, não uma forma nova.
 #[test]
 fn offsetting_keeps_the_art_it_was() {
     let src = stroked(square(10.0), 1.5);
-    let out = offset_path(&src, 1.0, LineJoin::Miter);
+    let out = offset_path(&src, 1.0, LineJoin::Miter, OffsetSide::Both);
     assert_eq!(out[0].stroke, src.stroke, "o traço é o mesmo");
     assert_eq!(out[0].fill, src.fill);
 }
@@ -216,8 +263,8 @@ fn offsetting_keeps_the_art_it_was() {
 /// passo de undo para não mudar nada.
 #[test]
 fn a_zero_offset_is_not_an_operation() {
-    assert!(offset_path(&square(10.0), 0.0, LineJoin::Miter).is_empty());
-    assert!(offset_path(&square(10.0), f64::NAN, LineJoin::Miter).is_empty());
+    assert!(offset_path(&square(10.0), 0.0, LineJoin::Miter, OffsetSide::Both).is_empty());
+    assert!(offset_path(&square(10.0), f64::NAN, LineJoin::Miter, OffsetSide::Both).is_empty());
 }
 
 // ───────────────────────────── Outline Stroke ─────────────────────────────

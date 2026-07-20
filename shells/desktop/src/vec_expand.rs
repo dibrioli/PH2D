@@ -9,15 +9,15 @@
 
 use ph2d_vec_edit::{History, PenTool};
 use ph2d_vec_scene::{
-    LineJoin, VecPathId, VecScene, VecXforms, WidthProfile, bake_xform, xform_of,
+    LineJoin, OffsetSide, VecPathId, VecScene, VecXforms, WidthProfile, bake_xform, xform_of,
 };
 
 /// Qual comando o clique pediu.
 // Sem `Eq`: o perfil carrega `f64`. `PartialEq` basta — ninguém usa isto como chave.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Expand {
-    /// A borda anda `d` (negativo encolhe), com quinas em `join`.
-    Offset { join: LineJoin },
+    /// A borda anda `d` (negativo encolhe), com quinas em `join`, no(s) contorno(s) `side`.
+    Offset { join: LineJoin, side: OffsetSide },
     /// O traço vira forma preenchida.
     OutlineStroke,
     /// O traço vira forma preenchida com a largura VARIANDO pelo `profile` — o Power Stroke.
@@ -32,11 +32,8 @@ pub(crate) enum Expand {
 pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
     if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH {
         Some(Expand::Offset {
-            join: match ph2d_panel_vector::expand_join() {
-                1 => LineJoin::Round,
-                2 => LineJoin::Bevel,
-                _ => LineJoin::Miter,
-            },
+            join: offset_join(),
+            side: offset_side(),
         })
     } else if id == ph2d_editor::ids::VECTOR_EXPAND_OUTLINE_STROKE {
         Some(Expand::OutlineStroke)
@@ -48,6 +45,25 @@ pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
         })
     } else {
         None
+    }
+}
+
+/// A junção do Offset, lida do PAINEL (`ph2d_panel_vector::expand_join`). Porta única: o
+/// clique e o drag ao vivo perguntam à mesma, senão divergiriam num 4º estilo de quina.
+pub(crate) fn offset_join() -> LineJoin {
+    match ph2d_panel_vector::expand_join() {
+        1 => LineJoin::Round,
+        2 => LineJoin::Bevel,
+        _ => LineJoin::Miter,
+    }
+}
+
+/// Qual contorno o Offset move, lido do PAINEL. Porta única, como a junção.
+pub(crate) fn offset_side() -> OffsetSide {
+    match ph2d_panel_vector::expand_side() {
+        0 => OffsetSide::Outer,
+        1 => OffsetSide::Inner,
+        _ => OffsetSide::Both,
     }
 }
 
@@ -92,7 +108,7 @@ pub(crate) fn apply_vec_expand(
         bake_xform(&mut world, &xform_of(xforms, src.id));
 
         let results = match cmd {
-            Expand::Offset { join } => ph2d_vec_boolean::offset_path(&world, d, join),
+            Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(&world, d, join, side),
             Expand::OutlineStroke => ph2d_vec_boolean::outline_stroke(&world),
             Expand::PowerStroke { profile } => ph2d_vec_boolean::power_stroke(&world, &profile),
         };

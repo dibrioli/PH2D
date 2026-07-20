@@ -156,7 +156,7 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-pub use stroke_style::{LineCap, LineJoin, StrokeSpec};
+pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeSpec};
 
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
 /// do caminho, e é o que separa um desenho de um diagrama.

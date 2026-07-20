@@ -1452,6 +1452,9 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
         (ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", true),
         (ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", true),
         (ids::VECTOR_EXPAND_POWER_STROKE, "Power Stroke", true),
+        (ids::VECTOR_EXPAND_SIDE_OUTER, "Side Outer", false),
+        (ids::VECTOR_EXPAND_SIDE_INNER, "Side Inner", false),
+        (ids::VECTOR_EXPAND_SIDE_BOTH, "Side Both", false),
         (ids::VECTOR_EXPAND_JOIN_MITER, "Join Miter", false),
         (ids::VECTOR_EXPAND_JOIN_ROUND, "Join Round", false),
         (ids::VECTOR_EXPAND_JOIN_BEVEL, "Join Bevel", false),
@@ -1527,6 +1530,41 @@ fn clicking_a_join_chip_records_that_join() {
             ph2d_panel_vector::expand_join(),
             want,
             "clicar {name} nao gravou a juncao — a shell le' `expand_join()` no comando"
+        );
+    }
+}
+
+/// **O chip de Side clicado é o que fica selecionado** — irmão do teste da junção. Sem isto
+/// o Offset Path faria sempre `Both`, e o controle de "só o furo / só a borda" cairia no chão.
+#[test]
+fn clicking_a_side_chip_records_that_side() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, want, name) in [
+        (ids::VECTOR_EXPAND_SIDE_OUTER, 0_u8, "Outer"),
+        (ids::VECTOR_EXPAND_SIDE_INNER, 1, "Inner"),
+        (ids::VECTOR_EXPAND_SIDE_BOTH, 2, "Both"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .expect("o chip foi pintado");
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert_eq!(
+            ph2d_panel_vector::expand_side(),
+            want,
+            "clicar {name} nao gravou o lado — a shell le' `expand_side()` no comando"
         );
     }
 }

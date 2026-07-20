@@ -39,6 +39,19 @@ impl BodyCtx<'_> {
             &format!("{d:.2}"),
             y,
         );
+        // **Qual contorno o offset move** — num compound (forma com furos), a borda de fora e
+        // os furos são coisas separadas; é o que faz a quina aparecer no furo (não só no
+        // externo). Num caminho sem furo os três dão o mesmo (só há o contorno de fora).
+        let side = crate::state::expand_side();
+        y = self.segmented3(
+            "Side",
+            [
+                (ids::VECTOR_EXPAND_SIDE_OUTER, "Outer", side == 0),
+                (ids::VECTOR_EXPAND_SIDE_INNER, "Inner", side == 1),
+                (ids::VECTOR_EXPAND_SIDE_BOTH, "Both", side == 2),
+            ],
+            y,
+        );
         let join = crate::state::expand_join();
         y = self.segmented3(
             "Join",

@@ -122,14 +122,57 @@ pub fn segment(grid: &Grid, r_px: f32, v_white: i32, v_ink: i32) -> Segmentation
         }
     }
 
-    // 4. Dilata de volta: TODO pixel restante — papel fino E tinta — vai para a região do
-    //    núcleo geodesicamente mais próximo, por uma BFS multi-fonte (O(N), determinística:
-    //    a fila nasce em ordem de índice e é FIFO).
+    // 4a. Dilata de volta **pelo PAPEL**: cada pixel de papel vai para a região do núcleo
+    //     geodesicamente mais próximo, por BFS multi-fonte (O(N), determinística: a fila
+    //     nasce em ordem de índice e é FIFO).
     //
-    //    ⚠️ A tinta também é atribuída, e isso é load-bearing: sem ela duas regiões
-    //    separadas por uma linha de 3 px de espessura não seriam 4-adjacentes por lugar
-    //    nenhum, e a adjacência *através da linha* — a que o corte precisa poder cortar de
-    //    graça — simplesmente não existiria no grafo.
+    //     ⚠️ **Só pelo papel, e isto é load-bearing.** Uma BFS que atravessasse a tinta faria
+    //     uma região ENGOLIR a área do outro lado da linha sempre que essa área não tivesse
+    //     núcleo próprio — e a margem da grade é exatamente esse caso quando a bola cresce.
+    //     Foi o bug do smoke de 2026-07-19: uma região de 54.927 px contendo o lobo esquerdo
+    //     E o lado de fora, e a cor pintando a tela inteira.
+    queue.clear();
+    for (i, &r) in region.iter().enumerate() {
+        if r != NO_REGION {
+            queue.push_back(i as u32);
+        }
+    }
+    while let Some(cf) = queue.pop_front() {
+        let c = cf as usize;
+        let id = region[c];
+        for q in neighbours(w, h, c) {
+            if region[q] == NO_REGION && !is_ink(q) {
+                region[q] = id;
+                queue.push_back(q as u32);
+            }
+        }
+    }
+
+    // 4b. **Papel que não alcançou núcleo nenhum é uma ÁREA por direito próprio.** Uma faixa
+    //     fina demais para comportar a bola continua sendo uma área separada pela linha, e a
+    //     resposta honesta é dar-lhe uma região — nunca doá-la a quem está do outro lado.
+    for start in 0..n {
+        if is_ink(start) || region[start] != NO_REGION {
+            continue;
+        }
+        let id = count;
+        count += 1;
+        region[start] = id;
+        queue.push_back(start as u32);
+        while let Some(cf) = queue.pop_front() {
+            let c = cf as usize;
+            for q in neighbours(w, h, c) {
+                if region[q] == NO_REGION && !is_ink(q) {
+                    region[q] = id;
+                    queue.push_back(q as u32);
+                }
+            }
+        }
+    }
+
+    // 4c. Por fim a TINTA, a partir do papel já atribuído. Ela precisa de região para que a
+    //     adjacência *através da linha* exista no grafo (é a aresta barata que o corte tem de
+    //     poder cortar); atribuí-la por último garante que ela nunca serve de ponte.
     queue.clear();
     for (i, &r) in region.iter().enumerate() {
         if r != NO_REGION {

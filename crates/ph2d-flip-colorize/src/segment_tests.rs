@@ -194,3 +194,41 @@ fn the_seed_weight_dominates_any_incident_cut() {
         );
     }
 }
+
+/// **Papel fino demais para a bola é uma ÁREA por direito próprio** — nunca doado a quem
+/// está do outro lado da linha.
+///
+/// Duas caixas aninhadas com um anel de 20 px entre elas, e uma bola de raio 12 (diâmetro
+/// 24 > 20): o anel não comporta a bola e portanto **não tem núcleo**. Sem a fase 4b, esses
+/// pixels sobram para a dilatação final — que atravessa a tinta — e o anel é engolido pelo
+/// miolo ou pelo lado de fora, unindo através da linha duas áreas que a linha separa.
+///
+/// ⚠️ Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE: apagar a fase 4b não quebrava nada,
+/// porque na fixture do smoke as quatro pontas da margem alcançam `30·√2 ≈ 43 px` da tinta e
+/// têm núcleo próprio. O fenômeno não estava na fixture.
+#[test]
+fn thin_paper_with_no_core_is_its_own_area() {
+    let side = 120.0;
+    let mut g = grid_px(side);
+    for (lo, hi) in [(20.0f32, 100.0f32), (40.0, 80.0)] {
+        for (p, q) in [
+            (Vec2::new(lo, lo), Vec2::new(hi, lo)),
+            (Vec2::new(hi, lo), Vec2::new(hi, hi)),
+            (Vec2::new(hi, hi), Vec2::new(lo, hi)),
+            (Vec2::new(lo, hi), Vec2::new(lo, lo)),
+        ] {
+            g.stroke_capsule(p, q, 0.0);
+        }
+    }
+    let seg = segment(&g, 12.0, V_WHITE, V_INK);
+    let ring = seg.region[px(&g, 30.0, 60.0)]; // entre as duas caixas
+    let core = seg.region[px(&g, 60.0, 60.0)]; // miolo da caixa interna
+    let out = seg.region[px(&g, 5.0, 5.0)]; // fora da externa
+    assert_ne!(ring, NO_REGION, "o anel tem de receber alguma regiao");
+    assert_ne!(ring, core, "o anel nao pode ser engolido pelo miolo");
+    assert_ne!(ring, out, "o anel nao pode ser engolido pelo lado de fora");
+    assert_ne!(
+        core, out,
+        "miolo e lado de fora estao separados por DUAS linhas"
+    );
+}

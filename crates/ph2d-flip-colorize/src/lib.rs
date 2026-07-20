@@ -324,6 +324,21 @@ fn solve(grid: &Grid, labels: &[(u16, Vec<usize>)], trap_px: f32) -> Vec<Option<
         }
     }
 
+    if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
+        let mut px_of = vec![0usize; seg.count];
+        for &r in &seg.region {
+            if r != NO_REGION {
+                px_of[r as usize] += 1;
+            }
+        }
+        for r in 0..seg.count {
+            eprintln!(
+                "[colorize]   regiao {r}: {} px, rotulo {:?}, semeada por {:?}",
+                px_of[r], region_label[r], claimed[r]
+            );
+        }
+    }
+
     // De volta aos pixels. A tinta nunca recebe cor — a linha fica por cima (`09 §2`).
     for (i, a) in assign.iter_mut().enumerate() {
         if grid.flags[i] & BOUNDARY != 0 {
@@ -359,35 +374,35 @@ fn segment_that_separates(
     labels: &[(u16, Vec<usize>)],
     trap_px: f32,
 ) -> segment::Segmentation {
-    /// Dobras de raio antes de desistir. 8 cobrem 256x do raio inicial — muito além de
+    /// Dobras de raio antes de desistir. 8 cobrem 256x o raio inicial — muito além de
     /// qualquer vão que caiba numa grade de 4096.
     const MAX_STEPS: usize = 8;
 
-    // O passo inicial: o que o artista pediu, ou um pixel. Zero não costura nada.
+    // A mais FINA que sabemos construir. Se ela já separa os rótulos, acabou — e é a melhor
+    // resposta possível, porque toda bola maior só funde mais.
     let mut r = trap_px.max(1.0);
-    let mut best = segment(grid, r, V_WHITE, V_INK);
-    let mut passes = 1usize;
+    let finest = segment(grid, r, V_WHITE, V_INK);
+    if !two_labels_share_a_region(&finest, labels) {
+        return finest;
+    }
+    // Senão, cresce até separar. ⚠️ **Não pare porque a contagem de regiões caiu**: ela cai
+    // naturalmente enquanto a bola cresce (num canto de margem o núcleo desaparece antes de
+    // qualquer vão fechar), e parar ali abandona a busca cedo demais — foi o bug do smoke de
+    // 2026-07-19, com os dois rabiscos caindo na mesma região de 4 M px e uma das cores
+    // simplesmente não existindo.
     for _ in 0..MAX_STEPS {
-        if !two_labels_share_a_region(&best, labels) {
-            break;
-        }
         r *= 2.0;
         let next = segment(grid, r, V_WHITE, V_INK);
-        passes += 1;
-        // A bola maior que a arte cai no fallback (papel inteiro) e volta a fundir tudo —
-        // aí a anterior é a melhor resposta que existe.
-        if next.count < best.count {
-            break;
+        if !two_labels_share_a_region(&next, labels) {
+            if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
+                eprintln!("[colorize] separou em r={r:.1}px, {} regioes", next.count);
+            }
+            return next;
         }
-        best = next;
     }
-    if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
-        eprintln!(
-            "[colorize] segment passes={passes} r={r:.1}px regions={}",
-            best.count
-        );
-    }
-    best
+    // Nenhum raio separou: os rabiscos estão de fato na MESMA área fechada. A resposta
+    // honesta é a partição mais FINA (a que menos funde) e a primeira reivindicação vence.
+    finest
 }
 
 /// Existe alguma região reivindicada por DOIS rótulos diferentes?

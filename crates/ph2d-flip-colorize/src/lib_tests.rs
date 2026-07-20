@@ -396,3 +396,81 @@ fn one_colour_does_not_take_the_canvas_through_a_pinhole() {
         "a cor tem de ficar na metade que o rabisco tocou (pintou {painted:.3})"
     );
 }
+
+/// **A cor não escapa da caixa** — o gate de regressão do smoke reprovado em 2026-07-19.
+///
+/// A arte é a da cena `PH2D_FLIP_COLORIZE_SMOKE=1`: caixa `[-4,4]x[-2.5,2.5]`, divisor em
+/// `x=1` com um vão LARGO (1,2 unidades) e um rabisco de cada lado. O produto pintou a GRADE
+/// INTEIRA de uma cor só. Causa: a margem da grade é estreita demais para a bola, então não
+/// tinha núcleo próprio, e a dilatação — que então atravessava a tinta — deixava a região do
+/// lobo esquerdo ENGOLIR o lado de fora (54.927 px numa grade de 99.441).
+///
+/// O oráculo é a **ÁREA pintada**, não a contagem de regiões: era assim que o defeito se via
+/// na tela, e contar regiões dava 4 (parecia plausível) enquanto a tinta cobria tudo.
+#[test]
+fn the_colour_does_not_escape_the_box() {
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5)),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5)),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5)),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5)),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6)),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5)),
+    ] {
+        let pts = seg_(a, b, 24);
+        let n = pts.len();
+        strokes.push((pts, vec![0.26; n], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    // A precisão que o shell calcula num zoom típico.
+    let out = colorize(&strokes, &scribbles, 40.0, 0.0);
+    for r in &out {
+        println!("  regiao label={} area={:.3}", r.label, area(&r.fill));
+    }
+    let labels: std::collections::BTreeSet<u16> = out.iter().map(|r| r.label).collect();
+    assert_eq!(labels.len(), 2, "as DUAS cores tem de sobreviver");
+    // A caixa mede 8 x 5 = 40; a grade, com margem, ~62. Pintar mais que a caixa é a cor
+    // tendo escapado por cima da linha.
+    let painted: f32 = out.iter().map(|r| area(&r.fill)).sum();
+    assert!(
+        painted < 42.0,
+        "a cor escapou da caixa (pintou {painted:.1} de area, a caixa tem 40)"
+    );
+    // E a fronteira entre as duas cores cola no divisor em x=1: a esquerda (5 unidades de
+    // largura) tem de ser ~5/3 da direita, não metade-a-metade.
+    let a0: f32 = out
+        .iter()
+        .filter(|r| r.label == 0)
+        .map(|r| area(&r.fill))
+        .sum();
+    let a1: f32 = out
+        .iter()
+        .filter(|r| r.label == 1)
+        .map(|r| area(&r.fill))
+        .sum();
+    let ratio = a0 / a1;
+    assert!(
+        (1.4..2.0).contains(&ratio),
+        "a fronteira tem de colar no divisor fora-do-centro (razao {ratio:.2}, esperado ~1,67)"
+    );
+}

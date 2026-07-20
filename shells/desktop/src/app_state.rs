@@ -775,6 +775,10 @@ pub(crate) struct App {
     /// "o hospedeiro se moveu" (dirigir) de "o USUÁRIO arrastou o rótulo" (absorver no offset) —
     /// um `Transform` diferente do que gravamos só pode ter vindo do gizmo. Runtime-only.
     pub(crate) vec_label_poses: crate::label_live::LabelPoses,
+    /// A **sessão VIVA do Offset Path** — presente enquanto o slider de Offset é arrastado. O
+    /// preview restaura a cena do grab e re-offseta ao `d` atual a cada frame; ao soltar, o
+    /// diff do undo global fecha UM passo e o slider recentra em "sem offset". Runtime-only.
+    pub(crate) vec_offset_session: Option<crate::vec_expand::OffsetSession>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

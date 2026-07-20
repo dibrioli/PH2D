@@ -80,9 +80,29 @@ pub(crate) fn apply_vec_expand(
     cmd: Expand,
     d: f64,
 ) {
-    // Os z's dos selecionados, de trás para a frente — mexer neles de TRÁS para a FRENTE
-    // manteria os índices válidos, mas aqui cada path é substituído no lugar (o total pode
-    // crescer), então se percorre ao contrário: da frente para trás.
+    let pre = scene.clone(); // UM passo de undo para o gesto inteiro
+    if expand_selection(scene, pen, xforms, cmd, d) {
+        history.push_undo(pre);
+        eprintln!("[ph2d-vec] expand {cmd:?}: ok");
+    } else {
+        eprintln!("[ph2d-vec] expand {cmd:?}: nada a converter na seleção");
+    }
+}
+
+/// O NÚCLEO — offseta/converte cada path selecionado no lugar (remove+insere) e re-seleciona
+/// o que saiu. Devolve `true` se mudou algo. **Sem undo**: quem chama decide (o clique/release
+/// empurra um passo; o preview ao vivo confia no diff do undo global, suprimido por
+/// `held_button` durante o arrasto). É a MESMA porta que o clique e o preview usam, senão o que
+/// o artista vê arrastando divergiria do que o botão assa.
+pub(crate) fn expand_selection(
+    scene: &mut VecScene,
+    pen: &mut PenTool,
+    xforms: &VecXforms,
+    cmd: Expand,
+    d: f64,
+) -> bool {
+    // Os z's dos selecionados, de trás para a frente — cada path é substituído no lugar (o
+    // total pode crescer), então se percorre da frente para trás.
     let mut zs: Vec<usize> = pen
         .selected_paths()
         .iter()
@@ -91,11 +111,9 @@ pub(crate) fn apply_vec_expand(
     zs.sort_unstable();
     zs.dedup();
     if zs.is_empty() {
-        eprintln!("[ph2d-vec] expand: nada selecionado");
-        return;
+        return false;
     }
 
-    let pre = scene.clone(); // UM passo de undo para o gesto inteiro
     let mut produced: Vec<VecPathId> = Vec::new();
     let mut touched = false;
     for &z in zs.iter().rev() {
@@ -138,13 +156,55 @@ pub(crate) fn apply_vec_expand(
             at += 1;
         }
     }
-    if !touched {
-        eprintln!("[ph2d-vec] expand {cmd:?}: nada a converter na seleção");
-        return;
+    if touched {
+        pen.select_many(&produced);
     }
-    history.push_undo(pre);
-    pen.select_many(&produced);
-    eprintln!("[ph2d-vec] expand {cmd:?}: ok ({} path[s])", produced.len());
+    touched
+}
+
+/// A **sessão VIVA** do Offset Path — o preview enquanto o slider de Offset é arrastado.
+///
+/// O offset é DESTRUTIVO (consome a forma), então não dá para offsetar sobre o resultado do
+/// frame anterior — seria cumulativo. A sessão guarda a cena de ANTES do arrasto e, a cada
+/// frame, a RESTAURA e re-offseta com o `d` atual. O `held_button` suprime o undo global
+/// durante o arrasto; ao soltar, o diff registra UM passo (a lição do painter, `2026-07-16`).
+pub(crate) struct OffsetSession {
+    /// A cena inteira no instante do grab — a fonte que cada frame re-offseta.
+    pre: VecScene,
+    /// Os paths selecionados no grab (a re-seleção após restaurar).
+    sources: Vec<VecPathId>,
+}
+
+impl OffsetSession {
+    /// Abre a sessão no grab do slider — `None` se não há forma selecionada (nada a prever).
+    pub(crate) fn begin(scene: &VecScene, pen: &PenTool) -> Option<Self> {
+        let sources: Vec<VecPathId> = pen.selected_paths().to_vec();
+        sources
+            .iter()
+            .any(|id| scene.paths().iter().any(|p| p.id == *id))
+            .then(|| Self {
+                pre: scene.clone(),
+                sources,
+            })
+    }
+
+    /// Restaura a cena do grab e re-offseta ao `d` atual (junção/lado lidos do painel). Sem
+    /// undo — o diff global fecha o passo ao soltar.
+    pub(crate) fn preview(
+        &self,
+        scene: &mut VecScene,
+        pen: &mut PenTool,
+        xforms: &VecXforms,
+        d: f64,
+    ) {
+        scene.clone_from(&self.pre);
+        pen.select_many(&self.sources);
+        let cmd = Expand::Offset {
+            join: offset_join(),
+            side: offset_side(),
+        };
+        expand_selection(scene, pen, xforms, cmd, d);
+    }
 }
 
 #[cfg(test)]

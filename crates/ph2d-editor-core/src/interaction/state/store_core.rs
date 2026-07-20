@@ -386,6 +386,28 @@ impl WidgetStore {
         self.active_id = id;
     }
 
+    /// Programmatically set a slider's value (clamped `0..=1`) and, if a NumberInput is
+    /// linked, its mirrored display value — WITHOUT a pointer drag.
+    ///
+    /// The shell uses this to RE-CENTER a live slider after a commit: the Offset slider, for
+    /// instance, rests at "no offset" (`d = 0`) once the offset is baked, so the next grab
+    /// starts fresh instead of jumping the shape by the last value. No-op if `id` is not a
+    /// registered slider.
+    pub fn set_slider_value(&mut self, id: NodeId, value: f32) {
+        let v = value.clamp(0.0, 1.0);
+        match self.get_mut(id) {
+            Some(InteractiveState::Slider { value: slot, .. }) => *slot = v,
+            _ => return,
+        }
+        if let Some(num) = self.linked_number(id) {
+            let (scale, offset) = self.linked_slider_mapping(num);
+            let display = f64::from(v * scale + offset);
+            if let Some(InteractiveState::NumberInput { value, .. }) = self.get_mut(num) {
+                *value = display;
+            }
+        }
+    }
+
     /// Geometry of the active widget at the moment of Down. Used by
     /// drag-handling dispatch (Slider) to compute new value.
     pub fn active_rect(&self) -> Option<Rect> {

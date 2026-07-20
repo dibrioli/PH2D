@@ -388,6 +388,7 @@ impl App {
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
+            vec_offset_session: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,

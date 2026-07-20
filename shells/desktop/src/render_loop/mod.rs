@@ -2754,6 +2754,45 @@ impl crate::App {
                     op,
                 );
             }
+            // ── Offset Path AO VIVO ──────────────────────────────────────────────
+            // Arrastar o slider de Offset previsualiza a forma offsetada a cada frame e comita
+            // ao soltar. O offset é DESTRUTIVO, então a sessão guarda a cena do grab e a
+            // re-offseta do zero por frame (`OffsetSession`). O `active_id` do store é a alça
+            // agarrada (limpa no pointer Up), então ele é o sinal de "arrastando" e de
+            // "soltou". Durante o arrasto o `held_button` suprime o undo global; ao soltar,
+            // o diff registra UM passo — e o slider RECENTRA em "sem offset" para que o próximo
+            // grab comece do zero e a forma não salte pelo valor da última vez.
+            {
+                let offset_grabbed = matches!(
+                    hero.store.active_id(),
+                    Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET
+                );
+                let live_d = hero
+                    .store
+                    .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT, |(_, v)| {
+                        ph2d_tool_vector::params::slider_to_offset(v)
+                    });
+                if offset_grabbed {
+                    if self.vec_offset_session.is_none() {
+                        self.vec_offset_session =
+                            crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen);
+                    }
+                    if let Some(sess) = self.vec_offset_session.take() {
+                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                        sess.preview(vec_scene, &mut self.vec_pen, &xf, live_d);
+                        self.vec_offset_session = Some(sess);
+                    }
+                } else if let Some(sess) = self.vec_offset_session.take() {
+                    // Soltou: o preview final ao `d` de soltura + recentra o slider.
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    sess.preview(vec_scene, &mut self.vec_pen, &xf, live_d);
+                    hero.store.set_slider_value(
+                        ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                        ph2d_tool_vector::params::offset_to_slider(0.0),
+                    );
+                }
+            }
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // A distância vem do slider do painel — a MESMA fonte que o chip mostra.
@@ -2796,6 +2835,14 @@ impl crate::App {
                     cmd,
                     d,
                 );
+                // O botão de Offset (caminho numérico: digitar `d` e clicar) recentra o slider
+                // igual ao arrasto — cada aplicação offseta pelo valor mostrado e volta a zero.
+                if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
+                    hero.store.set_slider_value(
+                        ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                        ph2d_tool_vector::params::offset_to_slider(0.0),
+                    );
+                }
             }
             if let Some(make) = pending_vec_compound {
                 crate::input_dispatch::apply_vec_compound(

@@ -132,6 +132,48 @@ fn slider_convenience_round_trip() {
     assert!((v - 0.42).abs() < f32::EPSILON);
 }
 
+/// **`set_slider_value` recentra o slider E o chip ligado.** É o que devolve o Offset ao
+/// "sem offset" após um commit: sem a segunda metade (o número), o chip mostraria o valor
+/// velho ao ser aberto para edição.
+#[test]
+fn set_slider_value_recenters_the_slider_and_its_linked_chip() {
+    let (slider, number) = (NodeId(1), NodeId(2));
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(
+        slider,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.9,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        number,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 3.2,
+            buffer: format!("{}", 3.2),
+            caret: 0,
+            last_committed: 3.2,
+            selection_anchor: None,
+        },
+    );
+    // Mapa afim `display = track * 8 - 4` (a faixa bipolar do Offset: track 0.5 ⇒ 0).
+    store.link_slider_number_mapped(slider, number, 8.0, -4.0);
+
+    store.set_slider_value(slider, 0.5);
+    let (_, v) = store.slider(slider).unwrap();
+    assert!((v - 0.5).abs() < f32::EPSILON, "o track foi para {v}");
+    assert!(
+        (store.number_value(number).unwrap() - 0.0).abs() < 1e-6,
+        "o chip devia mostrar 0 (0.5·8−4), não {:?}",
+        store.number_value(number)
+    );
+
+    // Num id que não é slider, é no-op (não entra em pânico).
+    store.set_slider_value(NodeId(99), 0.5);
+}
+
 #[test]
 fn hierarchy_parent_round_trip_and_depth() {
     let mut store = WidgetStore::with_capacity(4);

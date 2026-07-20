@@ -241,3 +241,82 @@ fn a_uniform_power_stroke_records_nothing() {
     );
     assert!(hist.undo(&scene).is_none());
 }
+
+// ───────────────────────── Offset Path ao vivo (o arrasto) ─────────────────────────
+
+/// A sessão viva só existe se há forma selecionada — arrastar o slider sem seleção não tem o
+/// que prever (e o botão também não faria nada).
+#[test]
+fn an_offset_session_needs_a_selection() {
+    let mut scene = VecScene::new();
+    scene.push_path(square(10.0));
+    let empty = PenTool::default();
+    assert!(
+        OffsetSession::begin(&scene, &empty).is_none(),
+        "sem seleção não há sessão"
+    );
+    let (scene, _h, pen, _x) = scene_with(vec![square(10.0)]);
+    assert!(
+        OffsetSession::begin(&scene, &pen).is_some(),
+        "com seleção há sessão"
+    );
+}
+
+/// **O preview ao vivo NÃO É CUMULATIVO** — a propriedade que justifica a sessão inteira. O
+/// offset é destrutivo, então re-offsetar o resultado do frame anterior somaria; a sessão
+/// RESTAURA a cena do grab a cada frame e offseta do original. Arrastar o slider de 2 para 3 e
+/// de volta a 0 tem de dar sempre o offset ABSOLUTO, nunca a soma dos passos.
+#[test]
+fn the_live_offset_is_not_cumulative() {
+    let (mut scene, _hist, mut pen, xf) = scene_with(vec![square(10.0)]);
+    let sess = OffsetSession::begin(&scene, &pen).expect("há seleção");
+
+    let area = |scene: &VecScene| ph2d_vec_boolean::area(&scene.paths()[0]);
+
+    // d=2 ⇒ quadrado 14 ⇒ área 196.
+    sess.preview(&mut scene, &mut pen, &xf, 2.0);
+    assert!((area(&scene) - 196.0).abs() < 1.0, "d=2 → 14² ({})", area(&scene));
+
+    // d=2 DE NOVO ⇒ ainda 196 (não 18²=324, que seria offsetar o resultado anterior).
+    sess.preview(&mut scene, &mut pen, &xf, 2.0);
+    assert!(
+        (area(&scene) - 196.0).abs() < 1.0,
+        "o preview repetido compôs — a sessão não restaurou ({})",
+        area(&scene)
+    );
+
+    // d=3 ⇒ 16²=256 (do ORIGINAL de 10, não do 14 do passo anterior).
+    sess.preview(&mut scene, &mut pen, &xf, 3.0);
+    assert!((area(&scene) - 256.0).abs() < 1.0, "d=3 → 16² ({})", area(&scene));
+
+    // d=0 ⇒ volta ao original (offset zero = cena do grab restaurada).
+    sess.preview(&mut scene, &mut pen, &xf, 0.0);
+    assert!(
+        (area(&scene) - 100.0).abs() < 1e-6,
+        "d=0 devia devolver o original de 10² ({})",
+        area(&scene)
+    );
+    assert_eq!(scene.paths().len(), 1, "e uma forma só");
+}
+
+/// **O preview usa a MESMA porta que o botão** — o que o artista vê arrastando é byte-a-byte o
+/// que o botão assaria no mesmo `d`. Os dois chamam `expand_selection`; um 2º caminho
+/// divergiria no dia em que o offset ganhasse um detalhe.
+#[test]
+fn the_live_preview_matches_the_committed_offset() {
+    // Caminho do botão.
+    let (mut baked, mut hist, mut pen_b, xf) = scene_with(vec![square(10.0)]);
+    apply_vec_expand(&mut baked, &mut hist, &mut pen_b, &xf, MITER, 2.5);
+
+    // Caminho ao vivo, ao mesmo `d`.
+    let (mut live, _h, mut pen_l, _x) = scene_with(vec![square(10.0)]);
+    let sess = OffsetSession::begin(&live, &pen_l).unwrap();
+    sess.preview(&mut live, &mut pen_l, &xf, 2.5);
+
+    assert_eq!(baked.paths().len(), live.paths().len());
+    let (a, b) = (
+        ph2d_vec_boolean::area(&baked.paths()[0]),
+        ph2d_vec_boolean::area(&live.paths()[0]),
+    );
+    assert!((a - b).abs() < 1e-6, "o botão deu {a}, o arrasto deu {b}");
+}

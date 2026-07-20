@@ -128,11 +128,14 @@ impl crate::App {
              \x20    modo Node e veja as âncoras: é geometria, não mais estilo.\n\
              \x20 2) Selecione a ESTRELA (tem traço amarelo + miolo azul) e clique Outline\n\
              \x20    Stroke: têm de sobrar DOIS objetos — o miolo azul e o anel amarelo.\n\
-             \x20 3) Selecione o DONUT verde, ponha **Offset** em ~+0.4 e clique **Offset\n\
-             \x20    Path**: a borda cresce e o FURO encolhe. Depois experimente negativo, e\n\
-             \x20    troque **Join** para Round (a quina vira arco) e Bevel (corte reto).\n\
-             \x20 4) O ARCO roxo embaixo é para o **Power Stroke**: selecione-o e clique.\n\
-             \x20    A linha afina nas pontas e engrossa no meio (o perfil default). Mexa em\n\
+             \x20 3) OFFSET AO VIVO: selecione o DONUT verde e ARRASTE o slider **Offset** —\n\
+             \x20    a forma muda em TEMPO REAL; ao soltar, o slider volta ao centro (0).\n\
+             \x20    - **Side**: Both expande a borda E o furo; Outer só a borda; Inner só o\n\
+             \x20      furo. Com **Inner** + **Join Round**, arraste POSITIVO: as quinas do\n\
+             \x20      FURO arredondam (o bug do smoke passado). Negativo encolhe.\n\
+             \x20    - O botão **Offset Path** ainda aplica o valor digitado no chip.\n\
+             \x20 4) O ARCO roxo embaixo é o **Power Stroke** (agora LISO, sem rugosidade):\n\
+             \x20    selecione-o e clique. Afina nas pontas e engrossa no meio. Mexa em\n\
              \x20    **W Start / W Mid / W End** e refaça — `W Pos` move onde o grosso senta.\n\
              \x20    Com os três em 1.00 o botão não faz nada de propósito: aí é Outline Stroke.\n\
              \x20 5) Ctrl+Z uma vez desfaz o comando INTEIRO."

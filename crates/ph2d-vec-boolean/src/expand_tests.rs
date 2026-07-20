@@ -168,10 +168,17 @@ fn both_side_expands_every_contour_outward() {
     let out = offset_path(&donut(20.0, 16.0), 2.0, LineJoin::Miter, OffsetSide::Both);
     assert_eq!(out.len(), 1, "continua UMA forma");
     assert_eq!(out[0].subpaths.len(), 1, "…e continua tendo o furo");
-    assert!((bbox(&out[0]).width() - 24.0).abs() < 1e-6, "fora foi a {}", bbox(&out[0]).width());
+    assert!(
+        (bbox(&out[0]).width() - 24.0).abs() < 1e-6,
+        "fora foi a {}",
+        bbox(&out[0]).width()
+    );
     // 24² menos o furo crescido a 20²: 576 − 400 = 176.
     let a = total_area(&out);
-    assert!((a - 176.0).abs() < 1.0, "área {a} (esperado 176: 24² com furo de 20²)");
+    assert!(
+        (a - 176.0).abs() < 1.0,
+        "área {a} (esperado 176: 24² com furo de 20²)"
+    );
 }
 
 /// **`Outer` move SÓ o contorno de fora** — o furo fica onde estava. É o controle que o smoke
@@ -184,7 +191,10 @@ fn outer_side_moves_only_the_outer_contour() {
     assert!((bbox(&out[0]).width() - 24.0).abs() < 1e-6, "fora cresceu");
     // O furo intocado (16²): 24² − 16² = 320.
     let a = total_area(&out);
-    assert!((a - 320.0).abs() < 1.0, "área {a} (esperado 320: 24² com furo INTOCADO de 16²)");
+    assert!(
+        (a - 320.0).abs() < 1.0,
+        "área {a} (esperado 320: 24² com furo INTOCADO de 16²)"
+    );
 }
 
 /// **`Inner` move SÓ os furos** — a borda de fora fica onde estava. Parede grossa (donut
@@ -195,9 +205,15 @@ fn inner_side_moves_only_the_holes() {
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].subpaths.len(), 1);
     // Fora intocado (20), furo 10→14: 20² − 14² = 400 − 196 = 204.
-    assert!((bbox(&out[0]).width() - 20.0).abs() < 1e-6, "a borda de fora não devia mexer");
+    assert!(
+        (bbox(&out[0]).width() - 20.0).abs() < 1e-6,
+        "a borda de fora não devia mexer"
+    );
     let a = total_area(&out);
-    assert!((a - 204.0).abs() < 1.0, "área {a} (esperado 204: 20² com furo crescido a 14²)");
+    assert!(
+        (a - 204.0).abs() < 1.0,
+        "área {a} (esperado 204: 20² com furo crescido a 14²)"
+    );
 }
 
 /// **A JUNÇÃO CHEGA NO CONTORNO INTERNO** — o bug que o Enio reportou (`2026-07-20`, "round e
@@ -269,9 +285,15 @@ fn shrinking_a_hole_past_itself_closes_it() {
     // Furo 16, encolhido por 9 de cada lado (16/2 = 8 < 9) ⇒ fecha; a borda de fora fica.
     let out = offset_path(&donut(20.0, 16.0), -9.0, LineJoin::Miter, OffsetSide::Inner);
     assert_eq!(out.len(), 1);
-    assert!(out[0].subpaths.is_empty(), "o furo apertado além de si fecha");
+    assert!(
+        out[0].subpaths.is_empty(),
+        "o furo apertado além de si fecha"
+    );
     let a = total_area(&out);
-    assert!((a - 400.0).abs() < 1.0, "área {a} (esperado 400: o quadrado 20 sólido)");
+    assert!(
+        (a - 400.0).abs() < 1.0,
+        "área {a} (esperado 400: o quadrado 20 sólido)"
+    );
 }
 
 /// Offsetar preserva o ESTILO — é a mesma arte com a borda noutro lugar, não uma forma nova.
@@ -640,4 +662,3 @@ fn a_stretch_of_exactly_zero_width_produces_no_sliver() {
         "a tinta começa em x={left:.2} (o zero vai até 10)"
     );
 }
-

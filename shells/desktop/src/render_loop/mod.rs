@@ -2781,11 +2781,11 @@ impl crate::App {
                         self.vec_offset_session =
                             crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen, &xf);
                     }
-                    if let Some(sess) = self.vec_offset_session.take() {
+                    if let Some(mut sess) = self.vec_offset_session.take() {
                         sess.preview(vec_scene, &mut self.vec_pen, live_d);
                         self.vec_offset_session = Some(sess);
                     }
-                } else if let Some(sess) = self.vec_offset_session.take() {
+                } else if let Some(mut sess) = self.vec_offset_session.take() {
                     // Soltou: o preview final ao `d` de soltura + recentra o slider.
                     sess.preview(vec_scene, &mut self.vec_pen, live_d);
                     hero.store.set_slider_value(
@@ -3676,12 +3676,22 @@ impl crate::App {
             // filhos (têm `ChildOf`) e o container (sem path, fora do mapa).
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
-            // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
-            // a ferramenta de forma. Nenhum dos dois pode ser assentado no meio.
+            // Os gestos que escrevem geometria em MUNDO a cada frame: a caneta, a
+            // ferramenta de forma — e o preview VIVO do Offset (o `clone_from(&pre)`
+            // restaura o `next_id`, então o resultado renasce com o MESMO id e a MESMA
+            // entidade todo frame; assentá-lo no frame 1 fazia os frames seguintes
+            // desenharem mundo × centro = translação DOBRADA, o "pula pro canto direito").
+            // Nenhum deles pode ser assentado no meio; o do Offset assenta no release,
+            // quando a sessão já morreu e este chain contribui vazio.
             let drawing: Vec<ph2d_vec_scene::VecPathId> =
                 [self.vec_pen.active_path(), self.vec_shape.active_path()]
                     .into_iter()
                     .flatten()
+                    .chain(
+                        self.vec_offset_session
+                            .iter()
+                            .flat_map(|s| s.live_paths().iter().copied()),
+                    )
                     .collect();
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do

@@ -46,6 +46,7 @@ mod blend_live;
 mod blend_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
+mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod chrome_hit;

@@ -25,7 +25,7 @@ pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 /// **Expand** — Outline Stroke (o traço vira forma) e Offset Path (a forma cresce). Módulo
 /// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.
 pub mod expand;
-pub use expand::{offset_path, outline_stroke, power_stroke};
+pub use expand::{MIN_OFFSET, offset_path, outline_stroke, power_stroke};
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex, VertexKind};

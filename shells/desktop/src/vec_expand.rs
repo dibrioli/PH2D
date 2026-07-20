@@ -179,6 +179,23 @@ pub(crate) struct OffsetSession {
     /// mapa churnado devolveria `Xform::IDENTITY` para a fonte, e o offset nasceria na origem:
     /// a forma **pulava de lugar**. Congelar a pose no grab a mantém estável o arrasto inteiro.
     xforms: VecXforms,
+    /// O que o ÚLTIMO preview deixou na cena — os paths VIVOS do arrasto. O `settle_origins`
+    /// tem de pulá-los como pula a caneta (são geometria de MUNDO reescrita a cada frame).
+    ///
+    /// ⚠️ Sem isto a forma **pulava para o canto direito**: o `clone_from(&pre)` restaura
+    /// também o `next_id` da cena, então o resultado renasce com o MESMO id todo frame; o
+    /// `sync` mantém a entidade do frame 1 — que o `settle` JÁ assentou (`Transform` =
+    /// centro) — e a geometria nova, de MUNDO, nunca é re-assentada (o settle só toca
+    /// entidade na identidade). Mundo × centro = translação DOBRADA, e cada re-grab
+    /// compunha mais um centro. Tratar o preview como GESTO mantém o invariante do arrasto
+    /// inteiro (geometria mundo + entidade na identidade); o assentamento acontece UMA vez,
+    /// no frame do release, quando a sessão já morreu.
+    live: Vec<VecPathId>,
+    /// O arrasto já churnou a cena? Enquanto NÃO (o grab, antes de mover), `|d| ~ 0` é
+    /// restauração pura — cena intocada, entidades vivas, release sem custo. Depois do 1º
+    /// `d` real as entidades das fontes morreram, e `|d| ~ 0` passa a mostrar cópias de
+    /// mundo (ver [`Self::preview`]).
+    churned: bool,
 }
 
 impl OffsetSession {
@@ -193,19 +210,72 @@ impl OffsetSession {
                 pre: scene.clone(),
                 sources,
                 xforms: xforms.clone(),
+                live: Vec::new(),
+                churned: false,
             })
+    }
+
+    /// Os paths que o último [`Self::preview`] deixou na cena — o `settle_origins` os pula
+    /// como pula a caneta (ver o campo `live`).
+    pub(crate) fn live_paths(&self) -> &[VecPathId] {
+        &self.live
     }
 
     /// Restaura a cena do grab e re-offseta ao `d` atual (junção/lado lidos do painel), com as
     /// poses CONGELADAS. Sem undo — o diff global fecha o passo ao soltar.
-    pub(crate) fn preview(&self, scene: &mut VecScene, pen: &mut PenTool, d: f64) {
+    ///
+    /// Uma fonte que o `expand_selection` NÃO consumiu (`results` vazio) tem três destinos, e
+    /// errar qualquer um foi bug visível:
+    /// - **zona morta antes de qualquer churn** (`|d| < MIN_OFFSET`, nada aconteceu ainda):
+    ///   cena byte-idêntica à do grab, entidades das fontes VIVAS — agarrar o slider e soltar
+    ///   sem mover não muda nem um id (e não custa um passo de undo);
+    /// - **`|d| ~ 0` DEPOIS de churnar** (o arrasto voltou ao centro): a entidade da fonte já
+    ///   morreu, então restaurá-la crua ganharia entidade nova na IDENTIDADE e a forma pularia
+    ///   para a ORIGEM (a geometria é LOCAL). Ela vira uma **cópia assada em MUNDO** — a pose
+    ///   viaja na geometria, como em todo resultado do preview;
+    /// - **aniquilada de verdade** (`|d|` grande que a some, e ela tinha área): some DESTE
+    ///   frame — o próximo `d` a restaura do `pre` como sempre. Fonte SEM área (uma linha, que
+    ///   o motor não sabe offsetar) nunca é aniquilada: vira cópia de mundo e fica visível.
+    pub(crate) fn preview(&mut self, scene: &mut VecScene, pen: &mut PenTool, d: f64) {
         scene.clone_from(&self.pre);
         pen.select_many(&self.sources);
+        if !self.churned && d.abs() < ph2d_vec_boolean::MIN_OFFSET {
+            self.live.clear();
+            return;
+        }
+        self.churned = true;
         let cmd = Expand::Offset {
             join: offset_join(),
             side: offset_side(),
         };
         expand_selection(scene, pen, &self.xforms, cmd, d);
+        let mut live: Vec<VecPathId> = pen
+            .selected_paths()
+            .iter()
+            .copied()
+            .filter(|id| !self.sources.contains(id))
+            .collect();
+        for &id in &self.sources {
+            let Some(z) = scene.paths().iter().position(|p| p.id == id) else {
+                continue; // consumida pelo expand — o resultado já está em `live`
+            };
+            let Some(src) = scene.paths().get(z).cloned() else {
+                continue;
+            };
+            // `> 0.0` é fraco de propósito, e o lado fraco é o SEGURO: uma forma de área
+            // quase-zero que "deveria" sumir vira cópia visível — nada se perde; o inverso
+            // (apagar uma linha porque o motor não a offseta) perderia arte.
+            let annihilated =
+                d.abs() >= ph2d_vec_boolean::MIN_OFFSET && ph2d_vec_boolean::area(&src).abs() > 0.0;
+            scene.remove_path(id);
+            if !annihilated {
+                let mut world = src;
+                bake_xform(&mut world, &xform_of(&self.xforms, id));
+                live.push(scene.insert_path(z, world));
+            }
+        }
+        pen.select_many(&live);
+        self.live = live;
     }
 }
 

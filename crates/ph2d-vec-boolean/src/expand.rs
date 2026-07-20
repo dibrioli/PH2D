@@ -58,6 +58,12 @@ const REL_TOL: f64 = 1e-4;
 /// zero, e tolerância zero faria a kurbo subdividir para sempre.
 const MIN_TOL: f64 = 1e-9;
 
+/// Abaixo disto, [`offset_path`] é IDENTIDADE (devolve vazio — "nada a fazer"). Público
+/// porque o preview VIVO da shell precisa da MESMA cerca: para ele, `|d|` abaixo daqui
+/// significa "mostre a forma como está", nunca "a forma sumiu" — duas cópias do número
+/// divergiriam e o preview apagaria a forma no instante do grab (o slider recentra em 0).
+pub const MIN_OFFSET: f64 = MIN_TOL;
+
 /// Um CONJUNTO de pontos: contornos já **orientados pelo sweep** e agrupados por
 /// containment (o de fora primeiro, os de dentro depois).
 ///
@@ -331,7 +337,13 @@ pub fn power_stroke(path: &VecPath, profile: &WidthProfile) -> Vec<VecPath> {
             closed,
             ..VecPath::default()
         };
-        ribbon_into(&mut ink, &to_bez_with(&piece, Closing::AsDrawn), &s, profile, closed);
+        ribbon_into(
+            &mut ink,
+            &to_bez_with(&piece, Closing::AsDrawn),
+            &s,
+            profile,
+            closed,
+        );
     }
     match Region::of(&ink, LsFillRule::NonZero).filter(|r| !r.is_empty()) {
         Some(acc) => drop_slivers(acc.into_paths(&ink_style(&s))),
@@ -478,8 +490,22 @@ fn ribbon_into(
         );
     }
     if !closed {
-        cap_loop(ink, pts[n - 1], half(n - 1), normal_at(&pts, n - 1, false), s.cap, true);
-        cap_loop(ink, pts[0], half(0), normal_at(&pts, 0, false), s.cap, false);
+        cap_loop(
+            ink,
+            pts[n - 1],
+            half(n - 1),
+            normal_at(&pts, n - 1, false),
+            s.cap,
+            true,
+        );
+        cap_loop(
+            ink,
+            pts[0],
+            half(0),
+            normal_at(&pts, 0, false),
+            s.cap,
+            false,
+        );
     }
 }
 
@@ -549,7 +575,7 @@ fn cap_loop(ink: &mut BezPath, c: Point, h: f64, normal: Vec2, cap: LineCap, for
 /// traço fino encolhido demais não sobra).
 #[must_use]
 pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
-    if d.abs() < MIN_TOL || !d.is_finite() {
+    if d.abs() < MIN_OFFSET || !d.is_finite() {
         return Vec::new();
     }
     // Regulariza ANTES de offsetar: os contornos têm de sair orientados e agrupados (quem é
@@ -563,7 +589,8 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
         let Some((outer, holes)) = group.split_first() else {
             continue;
         };
-        let Some(outer_r) = loop_region(outer, side.hits_outer(), d, join).filter(|r| !r.is_empty())
+        let Some(outer_r) =
+            loop_region(outer, side.hits_outer(), d, join).filter(|r| !r.is_empty())
         else {
             continue; // o contorno de fora sumiu ao encolher — o grupo inteiro sai
         };
@@ -577,7 +604,8 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
         // os contornos de offsets independentes compõem sem se cancelar.
         let mut all = outer_r.bez();
         for hole in holes {
-            if let Some(hr) = loop_region(hole, side.hits_inner(), d, join).filter(|r| !r.is_empty())
+            if let Some(hr) =
+                loop_region(hole, side.hits_inner(), d, join).filter(|r| !r.is_empty())
             {
                 all.extend(hr.bez().iter());
             }

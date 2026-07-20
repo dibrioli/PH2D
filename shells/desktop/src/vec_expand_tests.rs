@@ -269,13 +269,17 @@ fn an_offset_session_needs_a_selection() {
 #[test]
 fn the_live_offset_is_not_cumulative() {
     let (mut scene, _hist, mut pen, xf) = scene_with(vec![square(10.0)]);
-    let sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
 
     let area = |scene: &VecScene| ph2d_vec_boolean::area(&scene.paths()[0]);
 
     // d=2 ⇒ quadrado 14 ⇒ área 196.
     sess.preview(&mut scene, &mut pen, 2.0);
-    assert!((area(&scene) - 196.0).abs() < 1.0, "d=2 → 14² ({})", area(&scene));
+    assert!(
+        (area(&scene) - 196.0).abs() < 1.0,
+        "d=2 → 14² ({})",
+        area(&scene)
+    );
 
     // d=2 DE NOVO ⇒ ainda 196 (não 18²=324, que seria offsetar o resultado anterior).
     sess.preview(&mut scene, &mut pen, 2.0);
@@ -287,7 +291,11 @@ fn the_live_offset_is_not_cumulative() {
 
     // d=3 ⇒ 16²=256 (do ORIGINAL de 10, não do 14 do passo anterior).
     sess.preview(&mut scene, &mut pen, 3.0);
-    assert!((area(&scene) - 256.0).abs() < 1.0, "d=3 → 16² ({})", area(&scene));
+    assert!(
+        (area(&scene) - 256.0).abs() < 1.0,
+        "d=3 → 16² ({})",
+        area(&scene)
+    );
 
     // d=0 ⇒ volta ao original (offset zero = cena do grab restaurada).
     sess.preview(&mut scene, &mut pen, 0.0);
@@ -310,7 +318,7 @@ fn the_live_preview_matches_the_committed_offset() {
 
     // Caminho ao vivo, ao mesmo `d`.
     let (mut live, _h, mut pen_l, _x) = scene_with(vec![square(10.0)]);
-    let sess = OffsetSession::begin(&live, &pen_l, &xf).unwrap();
+    let mut sess = OffsetSession::begin(&live, &pen_l, &xf).unwrap();
     sess.preview(&mut live, &mut pen_l, 2.5);
 
     assert_eq!(baked.paths().len(), live.paths().len());
@@ -321,4 +329,134 @@ fn the_live_preview_matches_the_committed_offset() {
     assert!((a - b).abs() < 1e-6, "o botão deu {a}, o arrasto deu {b}");
 }
 
+// ─────────────────── O arrasto sob o FRAME real (sync + settle) ───────────────────
 
+/// Um frame do produto durante o arrasto: preview → `sync` → `settle_origins` com o
+/// `drawing` que a `render_loop` passa (os `live_paths` da sessão — o preview é GESTO).
+/// Devolve o CENTRO DESENHADO do path do preview: bbox da geometria × xform vivo — o
+/// que a tela mostra, não o que o documento guarda.
+fn drag_frame(
+    sess: &mut OffsetSession,
+    scene: &mut VecScene,
+    pen: &mut PenTool,
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &mut crate::vec_entities::VecEntityMap,
+    d: f64,
+) -> [f64; 2] {
+    sess.preview(scene, pen, d);
+    crate::vec_entities::sync(sim, scene, map);
+    let drawing: Vec<VecPathId> = sess.live_paths().to_vec();
+    crate::vec_transform::settle_origins(sim, scene, map, &drawing);
+    let live = crate::vec_transform::build(sim, map);
+    let pid = scene.paths().last().expect("o preview deixou um path").id;
+    let (lo, hi) = scene.path_bbox(pid).expect("bbox");
+    xform_of(&live, pid).apply([(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5])
+}
+
+/// Fixture posada: quadrado LOCAL centrado (como um path já assentado) cuja entidade
+/// carrega a pose `(4, 0)` — a rosquinha do smoke mora aí. Devolve tudo que o
+/// [`drag_frame`] precisa.
+#[allow(clippy::type_complexity)]
+fn posed_scene() -> (
+    VecScene,
+    PenTool,
+    ph2d_ecs::SimWorld,
+    crate::vec_entities::VecEntityMap,
+    VecXforms,
+) {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut scene = VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::rectangle([-1.0, -1.0], [1.0, 1.0]));
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform {
+                translation: ph2d_core::Vec2::new(4.0, 0.0),
+                ..ph2d_ecs::Transform::IDENTITY
+            },
+            ph2d_ecs::Name::new("S"),
+            ph2d_ecs::VecPathRef(id),
+        ))
+        .id();
+    map.insert(id, e.to_bits());
+    let mut pen = PenTool::default();
+    pen.select_many(&[id]);
+    let xf = crate::vec_transform::build(&sim, &map);
+    (scene, pen, sim, map, xf)
+}
+
+/// **O preview vivo desenha NO MESMO LUGAR todo frame.** O `clone_from(&pre)` restaura o
+/// `next_id` da cena, então o resultado renasce com o MESMO id — e a MESMA entidade — a
+/// cada frame do arrasto. Se o `settle_origins` assentar essa entidade no frame 1
+/// (`Transform` = centro), o frame 2 insere geometria de MUNDO sob uma entidade que já
+/// carrega o centro: mundo × centro = translação DOBRADA — o *"pula para o canto direito"*
+/// (Enio, 2026-07-20), e cada re-grab compunha mais um centro. O preview é um GESTO: o
+/// settle o pula, e o lugar desenhado é estável.
+#[test]
+fn the_live_preview_draws_in_the_same_place_every_frame() {
+    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    let c1 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
+    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
+    assert!(
+        (c1[0] - 4.0).abs() < 1e-3 && c1[1].abs() < 1e-3,
+        "frame 1 desenhou fora da pose da fonte: {c1:?}"
+    );
+    assert!(
+        (c2[0] - c1[0]).abs() < 1e-6 && (c2[1] - c1[1]).abs() < 1e-6,
+        "o MESMO d desenhou em lugares diferentes (frame 1 {c1:?}, frame 2 {c2:?}) — o \
+         settle assentou o preview e o frame seguinte dobrou a translação"
+    );
+}
+
+/// **Voltar o slider ao centro NO MEIO do arrasto mostra a forma NO LUGAR dela.** As
+/// entidades das fontes morrem no 1º churn, então restaurar a fonte crua (geometria LOCAL,
+/// entidade nova na IDENTIDADE) desenharia na ORIGEM — o "pula de lugar" original. Em
+/// `|d| ~ 0` pós-churn a fonte vira cópia assada em MUNDO: a pose viaja na geometria.
+#[test]
+fn returning_to_zero_mid_drag_shows_the_shape_at_its_pose() {
+    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.5);
+    let c = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.0);
+    assert_eq!(scene.paths().len(), 1, "d=0 mostra UMA forma");
+    assert!(
+        (c[0] - 4.0).abs() < 1e-3 && c[1].abs() < 1e-3,
+        "d=0 pós-churn desenhou em {c:?} — a fonte encalhada perdeu a pose (origem?)"
+    );
+}
+
+/// **Um `d` que ANIQUILA a forma a some da cena — não a encalha.** `results` vazio num `d`
+/// grande é a forma que encolheu até sumir (resposta honesta); a fonte encalhada ficaria
+/// LOCAL com entidade nova na identidade e desenharia na ORIGEM. E o `d` seguinte a
+/// restaura do `pre`, como qualquer frame.
+#[test]
+fn an_annihilating_d_removes_the_source_from_the_scene() {
+    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(2.0)]);
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    sess.preview(&mut scene, &mut pen, -100.0);
+    assert!(
+        scene.paths().is_empty(),
+        "a forma aniquilada tem de sumir DESTE frame"
+    );
+    assert!(sess.live_paths().is_empty(), "nada vivo");
+    assert!(pen.selected_paths().is_empty(), "seleção sem id morto");
+    sess.preview(&mut scene, &mut pen, 0.5);
+    assert_eq!(scene.paths().len(), 1, "o d seguinte restaura do pre");
+}
+
+/// **Agarrar o slider e soltar sem mover não muda NEM UM ID.** Todo grab começa com o
+/// slider recentrado (`d = 0`): antes de qualquer churn isso é restauração pura — sem esta
+/// zona morta, o simples toque no slider re-identificava a forma (id/nome/entidade novos)
+/// e custava um passo de undo que o artista não pediu.
+#[test]
+fn grabbing_without_moving_changes_nothing() {
+    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(3.0)]);
+    let before: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    sess.preview(&mut scene, &mut pen, 0.0);
+    let after: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    assert_eq!(before, after, "d=0 no grab tem de ser restauração pura");
+    assert!(sess.live_paths().is_empty(), "nada churnou, nada vivo");
+}

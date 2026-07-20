@@ -37,12 +37,10 @@
 //! uma [`Region`], que só se constrói passando pelo sweep — e daí em diante `NonZero` e
 //! `EvenOdd` concordam, porque os contornos saem orientados por ele.
 
-use kurbo::{BezPath, Cap, Join, PathEl, Point, Shape, Stroke, StrokeOpts};
+use kurbo::{BezPath, Cap, Join, PathEl, Point, Shape, Stroke, StrokeOpts, Vec2};
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
-use ph2d_vec_scene::fx_trim::TrimSpec;
 use ph2d_vec_scene::{
-    FillRule, LineCap, LineJoin, Paint, StrokePiece, StrokeSpec, VecPath, WidthProfile, fx_trim,
-    stroke_plan,
+    FillRule, LineCap, LineJoin, Paint, StrokePiece, StrokeSpec, VecPath, WidthProfile, stroke_plan,
 };
 
 use crate::{Closing, binary_grouped, compound_from, flatten_groups, to_bez_with};
@@ -295,48 +293,24 @@ fn ink_style(s: &StrokeSpec) -> VecPath {
     }
 }
 
-/// Em quantas fatias de arco cada contorno é cortado para o [`power_stroke`].
-///
-/// **O número é MEDIDO** (`tests/measure_power_stroke.rs`), e há DUAS grandezas porque há
-/// dois modos de falha. O TEMPO — é um comando de edição, e o que importa é ficar abaixo do
-/// limiar em que um clique deixa de parecer instantâneo. E o DEGRAU — o quanto a largura
-/// salta entre duas fatias vizinhas no ponto mais inclinado do perfil, que é o serrilhado
-/// que se VÊ no contorno. Senoide de 4 cúbicas, perfil `0.2 → 2.0 → 0.2`, release:
-///
-/// | fatias |  8   |  16  |  32  |  64  | 128  |
-/// |--------|------|------|------|------|------|
-/// | ms     | 5,7  | 9,3  | 17,7 | 42,5 |107,6 |
-/// | degrau |33,0% |16,8% | 8,4% | 4,2% | 2,1% |
-///
-/// **64**: o degrau cai para 4,2% da largura de pico — num traço de 20 px isso é 0,84 px, na
-/// ordem do antialias — e 42,5 ms continua sendo um clique (o limiar do "instantâneo" está
-/// perto de 100 ms). Dobrar para 128 corta o degrau pela metade e custa 2,5× o tempo; o
-/// joelho está aqui.
-///
-/// ⚠️ A convergência é de PRIMEIRA ordem e lenta: a área ainda anda ~2% entre 64 e o limite.
-/// Isto é do método (fatias de largura constante), não de um bug — quem quiser exato terá de
-/// escrever o offsetter analítico que a pesquisa do módulo diz que ninguém tem.
-const PIECES: usize = 64;
-
 /// **Power Stroke** — o traço com largura VARIÁVEL, assado em forma preenchida.
 ///
-/// # Um traço de largura variável é a UNIÃO DOS DISCOS
+/// # A largura variável é uma FITA de dois trilhos, não uma pilha de discos
 ///
-/// A pesquisa do módulo avisa que o offset exato de uma cúbica é uma curva analítica de grau
-/// 10, que nem a kurbo nem a Skia oferecem, e que o offset ingênuo cria **cúspides** onde a
-/// largura cresce mais rápido que o raio de curvatura. Escrever esse offsetter é a parte
-/// cara — e é desnecessária.
+/// A primeira versão fatiava o arco e unia um disco por fatia. Convergia, mas cada disco tem
+/// **ponta redonda**, e a união de discos de larguras vizinhas deixa um FESTÃO na borda — o
+/// "traço rugoso" que o smoke reprovou (`2026-07-20`). A borda de um traço de largura
+/// variável não é uma sucessão de tampas: é uma curva contínua a `w(s)/2` da linha de centro.
 ///
-/// Porque a definição do traço não é "duas curvas paralelas": é o conjunto varrido por um
-/// **disco de raio `w(s)/2`** deslizando pelo caminho. Então fatiar o caminho por arco,
-/// traçar cada fatia com largura CONSTANTE e **ponta redonda**, e unir tudo, é uma
-/// discretização direta dessa definição — que converge com o número de fatias e onde as
-/// cúspides simplesmente não existem, porque a união de discos não tem como se auto-cruzar
-/// mal. É a mesma redução do [`offset_path`]: a pergunta difícil cai na booleana que já
-/// existe, e não há geometria nova.
+/// Então o motor é o clássico do Inkscape/Illustrator: achata a linha de centro num polígono
+/// fino e, em cada ponto, desloca por `±w(s)/2` na NORMAL — dois **trilhos**, ligados por
+/// tampas nas pontas, formando UM contorno. A borda passa a seguir `w(s)` de forma lisa; não
+/// há festão porque não há tampa entre amostras. As cúspides e auto-cruzamentos (onde a
+/// curvatura aperta mais que a largura) somem no sweep, como sempre — o [`Region::of`]
+/// regulariza a fita UMA vez, e é isso que dispensa o offsetter analítico que a pesquisa do
+/// módulo diz que ninguém tem.
 ///
-/// A ponta redonda não é escolha estética: é o disco. Uma ponta reta deixaria facetas nas
-/// emendas entre fatias.
+/// É também mais barato: um polígono e um sweep, no lugar de 64 traçados-e-sweeps.
 ///
 /// Devolve vazio sem traço, com perfil UNIFORME (aí o comando é o [`outline_stroke`], e ter
 /// dois botões para a mesma saída seria pior que ter um), ou se o sweep falhar.
@@ -346,58 +320,212 @@ pub fn power_stroke(path: &VecPath, profile: &WidthProfile) -> Vec<VecPath> {
         return Vec::new();
     };
     let cooked = path.cooked();
-    // ⚠️ **UMA varredura, não uma união por fatia.** As fatias são acumuladas num `BezPath` só
-    // e regularizadas de uma vez. É seguro porque todas saem do MESMO caminho percorrido no
-    // MESMO sentido, então os contornos delas têm a mesma orientação e o `NonZero` as soma em
-    // vez de as cancelar — e isso foi MEDIDO, não deduzido: as duas rotas dão a mesma área
-    // até a 4ª decimal em 8/16/32/64/128 fatias. O fold por fatia custava **3,5× mais**
-    // (62,7 ms contra 17,7 a 32 fatias), porque cada união varre tudo o que já acumulou.
     let mut ink = BezPath::new();
     for c in 0..cooked.contour_count() {
         let Some((verts, closed)) = cooked.contour(c) else {
             continue;
         };
-        for i in 0..PIECES {
-            #[allow(clippy::cast_precision_loss)]
-            let (a, b) = (i as f64 / PIECES as f64, (i + 1) as f64 / PIECES as f64);
-            // O Trim é a porta que já sabe recortar um intervalo de ARCO — e por ser a mesma
-            // que o efeito usa, a fatia daqui e a que o artista vê no Trim Path concordam.
-            let (pv, pc) = fx_trim::trim_contour(
-                verts,
-                closed,
-                &TrimSpec {
-                    start: a,
-                    end: b,
-                    offset: 0.0,
-                },
-            );
-            if pv.len() < 2 {
-                continue;
-            }
-            // A largura do MEIO da fatia: é o valor que menos erra sobre o intervalo inteiro
-            // (a borda erraria sempre para um dos lados, e o degrau dobraria).
-            let w = s.width * profile.at((a + b) * 0.5);
-            // Fatia sem tinta: o perfil é exatamente zero aqui. ⚠️ É **CUSTO, não correção**
-            // — a kurbo devolve um contorno degenerado de 7 elementos mesmo com largura `0`
-            // (medido), mas o sweep o descarta sozinho, e apagar este `continue` não muda a
-            // saída de nenhum gate (mutação testada). O que ele poupa é trabalho: 11,99 ms
-            // contra 13,13 num perfil cuja metade é plana em zero.
-            if w <= MIN_TOL {
-                continue;
-            }
-            let piece = VecPath {
-                verts: pv,
-                closed: pc,
-                ..VecPath::default()
-            };
-            let pen = Stroke::new(w).with_caps(Cap::Round).with_join(Join::Round);
-            ink.extend(penned_outline(&to_bez_with(&piece, Closing::AsDrawn), &pen).iter());
-        }
+        let piece = VecPath {
+            verts: verts.to_vec(),
+            closed,
+            ..VecPath::default()
+        };
+        ribbon_into(&mut ink, &to_bez_with(&piece, Closing::AsDrawn), &s, profile, closed);
     }
     match Region::of(&ink, LsFillRule::NonZero).filter(|r| !r.is_empty()) {
-        Some(acc) => acc.into_paths(&ink_style(&s)),
+        Some(acc) => drop_slivers(acc.into_paths(&ink_style(&s))),
         None => Vec::new(),
     }
+}
+
+/// Remove as **lascas** de área ~nula que o sweep deixa nos PINÇOS da fita (onde a curvatura
+/// aperta mais que a largura, o trilho de dentro inverte e o motor emite um contorno
+/// degenerado de área zero — medido: a senoide adversária saía com a peça real + duas lascas
+/// pontuais). É a mesma lasca que o Shape Builder já paga para reconhecer: sem área não há
+/// preenchimento, então ela pinta como uma LINHA solta.
+///
+/// O piso é RELATIVO ao total (livre de escala) e não uma densidade: um traço fino e ondulado
+/// tem densidade baixa mas área REAL, e um piso de densidade o mataria junto com a lasca.
+fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
+    let total: f64 = paths.iter().map(crate::area).sum();
+    if total <= MIN_TOL {
+        return Vec::new();
+    }
+    paths
+        .into_iter()
+        .filter(|p| crate::area(p) > total * 1e-4)
+        .collect()
+}
+
+/// Amostras mínimas ao longo do arco. A geometria já foi capturada pelo achatamento; isto é a
+/// densidade em que o PERFIL de largura é lido — e ele varia mesmo onde a linha é RETA (o
+/// achatamento não subdivide uma reta, então uma linha reta voltava com dois pontos só e o
+/// meio grosso do perfil nunca era amostrado). 128 é folgado para o `smoothstep`, que é liso.
+const RIBBON_SAMPLES: usize = 128;
+
+/// Achata `bez` (um contorno) num polígono fino, o **densifica por arco** para amostrar o
+/// perfil de largura, e devolve os pontos + o `t` de ARCO normalizado de cada um (`0` no
+/// começo, `1` no fim). `None` se degenerar.
+///
+/// Por arco e não por parâmetro de Bézier: é a unidade em que o [`WidthProfile`] mora, a mesma
+/// do Zig Zag e do Blend — duas formas que se veem iguais têm de se comportar igual.
+fn flatten_arc(bez: &BezPath, closed: bool) -> Option<(Vec<Point>, Vec<f64>)> {
+    let tol = tolerance(bez);
+    let mut raw: Vec<Point> = Vec::new();
+    kurbo::flatten(bez.elements().iter().copied(), tol, |el| match el {
+        PathEl::MoveTo(p) if raw.is_empty() => raw.push(p),
+        PathEl::LineTo(p) => raw.push(p),
+        _ => {}
+    });
+    // Amostras coincidentes (o achatamento repete um ponto numa tangente afiada) quebram a
+    // normal por diferença — funde. No fechado, o último ponto volta ao primeiro.
+    raw.dedup_by(|a, b| (*a - *b).hypot() <= MIN_TOL);
+    if closed && raw.len() >= 2 && (raw[0] - raw[raw.len() - 1]).hypot() <= MIN_TOL {
+        raw.pop();
+    }
+    if raw.len() < 2 {
+        return None;
+    }
+    // Comprimento total do arco (o fechado inclui o segmento de volta ao início).
+    let n = raw.len();
+    let seg_count = if closed { n } else { n - 1 };
+    let total: f64 = (0..seg_count)
+        .map(|i| (raw[(i + 1) % n] - raw[i]).hypot())
+        .sum();
+    if total <= MIN_TOL {
+        return None;
+    }
+    // Densifica: nenhum vão maior que `step`. Preserva os pontos do achatamento (a geometria) e
+    // insere amostras nos trechos longos (a variação de largura).
+    #[allow(clippy::cast_precision_loss)]
+    let step = total / RIBBON_SAMPLES as f64;
+    let mut pts = Vec::with_capacity(RIBBON_SAMPLES + n);
+    let mut arc = Vec::with_capacity(RIBBON_SAMPLES + n);
+    let mut acc = 0.0;
+    for i in 0..seg_count {
+        let (a, b) = (raw[i], raw[(i + 1) % n]);
+        let seg = (b - a).hypot();
+        pts.push(a);
+        arc.push(acc / total);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let subs = (seg / step).ceil() as usize;
+        for k in 1..subs {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f64 / subs as f64;
+            pts.push(a.lerp(b, f));
+            arc.push((acc + seg * f) / total);
+        }
+        acc += seg;
+    }
+    if !closed {
+        pts.push(raw[n - 1]);
+        arc.push(1.0);
+    }
+    Some((pts, arc))
+}
+
+/// A normal unitária (perpendicular à tangente) no ponto `i` de `pts`. Cíclica quando
+/// `closed`, forward/backward nas pontas quando aberto.
+fn normal_at(pts: &[Point], i: usize, closed: bool) -> Vec2 {
+    let n = pts.len();
+    let tangent = if closed {
+        pts[(i + 1) % n] - pts[(i + n - 1) % n]
+    } else if i == 0 {
+        pts[1] - pts[0]
+    } else if i == n - 1 {
+        pts[n - 1] - pts[n - 2]
+    } else {
+        pts[i + 1] - pts[i - 1]
+    };
+    let len = tangent.hypot();
+    if len <= MIN_TOL {
+        return Vec2::new(0.0, 0.0);
+    }
+    let t = tangent / len;
+    Vec2::new(-t.y, t.x)
+}
+
+/// **A fita** de `bez`: acumula em `ink` o contorno cru (pré-sweep) dos dois trilhos a
+/// `±w(s)/2` da linha de centro, **um quadrilátero por segmento**.
+///
+/// Por quadrilátero, e não um polígono só: onde a curvatura aperta mais que a largura os
+/// trilhos se CRUZAM, e um polígono único auto-intersectante confunde o winding do `NonZero`
+/// (medido: a senoide adversária saía em 3 peças). Os quads vizinhos partilham a aresta
+/// `[esquerda_{i+1}, direita_{i+1}]` — estão COLADOS por ela, então a união é conexa mesmo
+/// quando um quad se torce. A borda externa continua sendo os trilhos (lisa, sem festão), e um
+/// contorno FECHADO vira um anel de graça (os quads ladrilham a fita; o miolo fica sem
+/// cobertura = o furo).
+fn ribbon_into(
+    ink: &mut BezPath,
+    bez: &BezPath,
+    s: &StrokeSpec,
+    profile: &WidthProfile,
+    closed: bool,
+) {
+    let Some((pts, arc)) = flatten_arc(bez, closed) else {
+        return;
+    };
+    let half = |i: usize| 0.5 * s.width * profile.at(arc[i]).max(0.0);
+    let rail = |i: usize, sign: f64| pts[i] + normal_at(&pts, i, closed) * (sign * half(i));
+    let n = pts.len();
+    let seg_count = if closed { n } else { n - 1 };
+    for i in 0..seg_count {
+        let j = (i + 1) % n;
+        push_loop(
+            ink,
+            [rail(i, 1.0), rail(j, 1.0), rail(j, -1.0), rail(i, -1.0)].into_iter(),
+        );
+    }
+    if !closed {
+        cap_loop(ink, pts[n - 1], half(n - 1), normal_at(&pts, n - 1, false), s.cap, true);
+        cap_loop(ink, pts[0], half(0), normal_at(&pts, 0, false), s.cap, false);
+    }
+}
+
+/// Emite `pts` como um subpath fechado (poligonal) em `ink`.
+fn push_loop(ink: &mut BezPath, mut pts: impl Iterator<Item = Point>) {
+    if let Some(first) = pts.next() {
+        ink.move_to(first);
+        for p in pts {
+            ink.line_to(p);
+        }
+        ink.close_path();
+    }
+}
+
+/// A **tampa** da ponta, como um contorno fechado próprio a unir com o último quad: liga o
+/// trilho de um lado ao do outro em torno do centro `c` com meia-largura `h`. `forward` = a
+/// tampa do FIM (bojo para +tangente). `normal` é a normal do centro naquele extremo.
+fn cap_loop(ink: &mut BezPath, c: Point, h: f64, normal: Vec2, cap: LineCap, forward: bool) {
+    if h <= MIN_TOL {
+        return; // ponta afilada num bico — nada a arredondar
+    }
+    // A direção do bojo é ±tangente = ∓ a perpendicular da normal (a normal aponta para o
+    // trilho esquerdo; girá-la −90° dá a tangente para a frente).
+    let dir = Vec2::new(normal.y, -normal.x) * if forward { 1.0 } else { -1.0 };
+    let mut poly: Vec<Point> = Vec::with_capacity(16);
+    // O diâmetro (a aresta que o quad já toca) + o miolo do arco/quadrado à frente.
+    poly.push(c + normal * h);
+    match cap {
+        // Butt: o quad já tem a aresta reta na ponta — não há tampa a somar.
+        LineCap::Butt => return,
+        // Square: dois cantos projetados `h` à frente.
+        LineCap::Square => {
+            poly.push(c + normal * h + dir * h);
+            poly.push(c - normal * h + dir * h);
+        }
+        // Round: semicírculo de raio `h`, amostrado. A borda macia da caligrafia.
+        LineCap::Round => {
+            const SEGS: usize = 12;
+            for k in 1..SEGS {
+                #[allow(clippy::cast_precision_loss)]
+                let theta = std::f64::consts::PI * (k as f64) / (SEGS as f64);
+                poly.push(c + (normal * theta.cos() + dir * theta.sin()) * h);
+            }
+        }
+    }
+    poly.push(c - normal * h);
+    push_loop(ink, poly.into_iter());
 }
 
 /// **Offset Path** — a forma cresce (`d > 0`) ou encolhe (`d < 0`) por `d`, com quinas em

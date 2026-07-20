@@ -389,9 +389,11 @@ fn a_path_without_a_stroke_has_no_width_to_vary() {
     assert!(power_stroke(&square(10.0), &TAPER).is_empty());
 }
 
-/// **A tinta é UMA peça só, sem buracos** — a união dos discos é conexa por construção, e é
-/// isso que separa este método do offset ingênuo (que se auto-cruza e deixa laços).
-/// Fixture com curvatura que MUDA DE SINAL, que é onde um offsetter falharia.
+/// **A tinta é UMA peça só, sem buracos** — os quads da fita partilham aresta com os vizinhos,
+/// então a união é conexa mesmo onde a curvatura aperta e os trilhos se cruzam; as lascas de
+/// área ~zero que o pinço deixa são varridas pelo [`drop_slivers`]. É isso que separa o método
+/// do offset ingênuo (que se auto-cruza e deixa laços). Fixture com curvatura que MUDA DE
+/// SINAL, que é onde um offsetter falharia — e onde o pinço de fato acontece.
 #[test]
 fn the_ink_is_one_connected_piece_with_no_loops() {
     let mut verts = Vec::new();
@@ -415,9 +417,58 @@ fn the_ink_is_one_connected_piece_with_no_loops() {
     assert_eq!(out.len(), 1, "a tinta é uma peça só");
     assert!(
         out[0].subpaths.is_empty(),
-        "sobrou um laço como buraco — a união dos discos não pode produzir isso"
+        "sobrou um laço como buraco — a fita de trilhos não pode produzir isso"
     );
     assert!(total_area(&out) > 1.0, "área {}", total_area(&out));
+}
+
+/// **A BORDA SEGUE O PERFIL, SEM FESTÃO** — o bug que o Enio reportou (`2026-07-20`, "traços
+/// rugosos"). A união de discos deixava a borda externa como uma sucessão de arcos que bojam
+/// entre os centros (medido: ~4% de ondulação da largura de pico). Os trilhos seguem o perfil
+/// direto: a borda passa a desviar bem menos que 1% dele.
+///
+/// Numa linha RETA o perfil é a ÚNICA coisa que molda a borda, então o desvio medido é o
+/// festão puro. O oráculo é a APARÊNCIA (a distância da borda ao centro), não a fórmula: um
+/// gate que reafirmasse `profile.at()` seria verde com o festão de volta.
+#[test]
+fn the_ribbon_boundary_follows_the_profile_without_ripple() {
+    let profile = WidthProfile {
+        start: 0.4,
+        mid: 2.0,
+        end: 0.4,
+        position: 0.5,
+    };
+    let (width, len) = (1.0, 20.0);
+    let out = power_stroke(&stroked(open_line(len), width), &profile);
+    assert_eq!(out.len(), 1);
+    let bez = crate::to_bez_with(&out[0], Closing::Always);
+    // A borda de cima em `x`: o maior `y` que a tinta alcança ali (a linha é horizontal em
+    // y=0, então a meia-largura de cima é esse `y`).
+    let top_at = |x: f64| {
+        let mut hi = f64::MIN;
+        for seg in bez.segments() {
+            for k in 0..=48 {
+                let p = seg.eval(f64::from(k) / 48.0);
+                if (p.x - x).abs() < 0.08 {
+                    hi = hi.max(p.y);
+                }
+            }
+        }
+        hi
+    };
+    let mut max_dev = 0.0_f64;
+    for i in 10..=190 {
+        let x = len * f64::from(i) / 200.0;
+        let predicted = 0.5 * width * profile.at(x / len);
+        let measured = top_at(x);
+        if measured > f64::MIN {
+            max_dev = max_dev.max((measured - predicted).abs());
+        }
+    }
+    assert!(
+        max_dev < 0.03,
+        "a borda desvia {max_dev:.4} do perfil — é o festão da união de discos, de volta"
+    );
 }
 
 /// **Num contorno FECHADO a tinta é um anel** — tem buraco, e o buraco é o miolo da forma.
@@ -485,12 +536,10 @@ fn a_profile_that_reaches_zero_tapers_the_ink_to_a_point() {
 /// precisamente a lasca que o Shape Builder já pagou para aprender a reconhecer: sem área não
 /// há preenchimento, então ela pinta como uma LINHA solta que o artista não desenhou.
 ///
-/// ⚠️ **Quem defende isto é o SWEEP, não o `w <= MIN_TOL` do laço.** Este gate nasceu de uma
-/// mutação sobrevivente e eu supus que o guard fosse a defesa; construí a fixture que faltava
-/// (um perfil plano em zero, que os perfis *afinantes* nunca produzem) e a mutação
-/// **continuou passando** — a kurbo devolve um contorno degenerado com largura `0` e o
-/// linesweeper o descarta por conta própria. O guard ficou, e é CUSTO (9% medido); a
-/// propriedade que este gate pina é da pipeline.
+/// ⚠️ **Quem defende isto é o `drop_slivers`** (não mais um guard no laço — a fita de trilhos
+/// não tem o `w <= MIN_TOL` que a antiga união de discos tinha). Onde o perfil é zero os dois
+/// trilhos colapsam sobre o centro, o quad tem área nula, e o sweep + o `drop_slivers` o
+/// varrem por área relativa ao total — nada de linha solta.
 #[test]
 fn a_stretch_of_exactly_zero_width_produces_no_sliver() {
     let flat_zero = WidthProfile {
@@ -520,3 +569,4 @@ fn a_stretch_of_exactly_zero_width_produces_no_sliver() {
         "a tinta começa em x={left:.2} (o zero vai até 10)"
     );
 }
+

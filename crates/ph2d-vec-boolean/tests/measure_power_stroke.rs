@@ -1,18 +1,21 @@
-//! **A medição das fatias do Power Stroke** (`PIECES`) — o número na doc de `expand.rs` é o
-//! que ISTO deu.
+//! **A medição da fita do Power Stroke** — a rugosidade da borda e o custo, agora que o motor
+//! é a fita de trilhos (`ribbon_into` / `RIBBON_SAMPLES` em `expand.rs`), não mais a união de
+//! discos.
 //!
-//! Duas grandezas, porque há dois modos de falha: o TEMPO (é um comando de edição, não um
-//! frame) e o DEGRAU — o quanto a largura salta entre fatias vizinhas no ponto mais inclinado
-//! do perfil, que é o serrilhado que se VÊ no contorno.
+//! O que MUDOU: a antiga versão fatiava o arco e unia discos, e a métrica era o *degrau* de
+//! largura entre fatias vizinhas (o serrilhado). A fita segue o perfil direto; a métrica agora
+//! é o DESVIO da borda ao perfil (o festão residual), medido numa linha reta onde o perfil é a
+//! única coisa que molda a borda. `RIBBON_SAMPLES` é `const` em `expand.rs` — para varrê-la,
+//! edite lá e re-rode isto.
 //!
-//! `#[ignore]`: é uma sonda de calibração, não um gate. Rode com
+//! `#[ignore]`: sonda de calibração, não gate. Rode com
 //! `cargo test -p ph2d-vec-boolean --release measure_power_stroke -- --ignored --nocapture`.
 
 use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex, WidthProfile};
 use std::time::Instant;
 
-/// Uma senoide de 4 cúbicas — curvatura que muda de sinal, que é onde um offset ingênuo
-/// falharia e onde as fatias têm de emendar bem.
+/// Uma senoide de 4 cúbicas — curvatura que muda de sinal, onde os trilhos se cruzam e o pinço
+/// deixa lascas (que o `drop_slivers` varre). O caso mais caro.
 fn sine() -> VecPath {
     let mut verts = Vec::new();
     for i in 0..5 {
@@ -32,24 +35,42 @@ fn sine() -> VecPath {
     p
 }
 
-/// O maior salto de largura entre duas fatias vizinhas, como FRAÇÃO da largura de pico —
-/// puramente do perfil e da contagem, sem rodar o motor.
-fn step_ratio(profile: &WidthProfile, pieces: usize) -> f64 {
-    let w = |i: usize| {
-        #[allow(clippy::cast_precision_loss)]
-        let t = (i as f64 + 0.5) / pieces as f64;
-        profile.at(t)
+fn straight(len: f64, width: f64) -> VecPath {
+    let mut p = VecPath {
+        verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([len, 0.0])],
+        closed: false,
+        ..VecPath::default()
     };
-    (1..pieces)
-        .map(|i| (w(i) - w(i - 1)).abs())
-        .fold(0.0_f64, f64::max)
-        / profile.peak()
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), width));
+    p
+}
+
+/// O maior desvio da borda de cima ao perfil, numa linha reta — o festão residual, em unidades
+/// de mundo (a linha vale 20, largura 1, pico 2 ⇒ meia-largura de pico 1.0). Lê as âncoras do
+/// polígono assado direto (o motor devolve poligonal densa; sem precisar de kurbo).
+fn ripple(out: &[VecPath], len: f64, width: f64, profile: &WidthProfile) -> f64 {
+    let pts: Vec<[f64; 2]> = out[0].verts.iter().map(|v| v.anchor).collect();
+    let top_at = |x: f64| {
+        pts.iter()
+            .filter(|p| (p[0] - x).abs() < 0.08)
+            .map(|p| p[1])
+            .fold(f64::MIN, f64::max)
+    };
+    let mut dev = 0.0_f64;
+    for i in 10..=190 {
+        let x = len * f64::from(i) / 200.0;
+        let predicted = 0.5 * width * profile.at(x / len);
+        let m = top_at(x);
+        if m > f64::MIN {
+            dev = dev.max((m - predicted).abs());
+        }
+    }
+    dev
 }
 
 #[test]
 #[ignore = "sonda de calibração — roda sob demanda, em release"]
-fn measure_power_stroke_pieces() {
-    let path = sine();
+fn measure_power_stroke_ribbon() {
     let profile = WidthProfile {
         start: 0.2,
         mid: 2.0,
@@ -57,25 +78,18 @@ fn measure_power_stroke_pieces() {
         position: 0.5,
     };
 
-    // ⚠️ O TEMPO é o da const `PIECES` EM VIGOR — este harness não a varre (ela é `const`).
-    // A coluna `ms` da tabela na doc de `expand.rs` foi levantada editando a const e
-    // re-rodando isto, uma linha por valor. A 1ª versão deste teste extrapolava supondo custo
-    // linear e errou por 8× — o custo é SUPERLINEAR, porque o sweep varre tudo o que já
-    // acumulou. Extrapolação não é medição.
+    // CUSTO no caso pior (a senoide que auto-cruza), com o `RIBBON_SAMPLES` EM VIGOR.
+    let path = sine();
     let t0 = Instant::now();
     let out = ph2d_vec_boolean::power_stroke(&path, &profile);
     let ms = t0.elapsed().as_secs_f64() * 1000.0;
-    assert!(!out.is_empty(), "o power stroke produziu geometria");
+    assert!(!out.is_empty());
     let area: f64 = out.iter().map(ph2d_vec_boolean::area).sum();
-    println!("const PIECES em vigor: {ms:.1} ms, area {area:.4}");
+    println!("senoide: {ms:.2} ms, {} peça(s), area {area:.4}", out.len());
 
-    // O DEGRAU é função só do perfil e da contagem — este, sim, se varre sem rodar o motor.
-    println!("| fatias | degrau |");
-    println!("|--------|--------|");
-    for pieces in [8_usize, 16, 32, 64, 128] {
-        println!(
-            "| {pieces:>6} | {:>5.1}% |",
-            step_ratio(&profile, pieces) * 100.0
-        );
-    }
+    // RUGOSIDADE: o desvio da borda ao perfil numa reta, com o `RIBBON_SAMPLES` em vigor.
+    let (len, width) = (20.0, 1.0);
+    let out = ph2d_vec_boolean::power_stroke(&straight(len, width), &profile);
+    let dev = ripple(&out, len, width, &profile);
+    println!("reta: desvio máx da borda ao perfil = {dev:.5} (o festão da união de discos era ~0.08)");
 }

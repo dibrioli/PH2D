@@ -601,9 +601,7 @@ fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Opti
     let pen = Stroke::new(2.0 * d.abs())
         .with_join(join_of(join))
         .with_caps(Cap::Butt);
-    let Some(band) = penned(&base.bez(), &pen) else {
-        return None;
-    };
+    let band = penned(&base.bez(), &pen)?;
     if band.is_empty() {
         return Some(base);
     }

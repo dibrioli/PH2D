@@ -100,12 +100,17 @@ pub(crate) fn paint_impasto_section(
         brush.impasto,
     );
     if !brush.impasto {
-        // ⚠️ …but the LIGHT survives it, and that exemption is the whole reason this section was
-        // reorganised. `Enable` says whether *this brush* lays body; `Show Impasto` says whether the
-        // *canvas* reveals the body already in the painting. Turning your brush off must not blind you to
-        // work you have already done — and the light is not gated by this flag in the engine either
-        // (`impasto_visible` reads `impasto_show` and whether any relief exists, never `brush.impasto`).
-        return paint_lighting_card(ctx, theme, x, content_w, y, &brush);
+        // The Lighting card is Impasto's OWN, so it goes with the rest when the section is off (Enio,
+        // 2026-07-19: *"o card Lighting é próprio de Impasto. só deve aparecer se impasto estiver ativo"*).
+        // This reverses an earlier exemption of mine — I had kept the light reachable with Enable off, on
+        // the theory that its controls belong to the canvas rather than the brush; Enio's call is that the
+        // whole card is part of the Impasto subject and hides with it.
+        //
+        // ⚠️ The light PASS is untouched and still runs: `impasto_visible` reads `impasto_show` and
+        // whether any relief exists, never `brush.impasto`. So relief already on the canvas stays lit —
+        // only its CONTROLS are hidden until Impasto is switched back on. Hiding the card is not the same
+        // as putting the light out, and the engine keeps them separate.
+        return y;
     }
     // Governs every slider below it, so it sits outside the boxes rather than inside one: a control that
     // reaches across every card does not belong in any of them. Unticked by default (Enio 2026-07-19) —

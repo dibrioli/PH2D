@@ -43,7 +43,7 @@ Uma seção, e a ordem descendo o painel é a ordem das perguntas:
   └───────────────────────────────────────┘
   ┌ <as propriedades da ferramenta selecionada, e só dela> ┐
   ┌ Material ─────────────────────────────┐  ← só no Deposit
-  ┌ Lighting ─────────────────────────────┐  ← em TODAS
+  ┌ Lighting ─────────────────────────────┐  ← toda ferramenta (mas só com Enable ON — §5d)
 ```
 
 **Material estreita, Lighting não.** Material é per-BRUSH e é assado no canvas *com o depósito*; cada
@@ -132,10 +132,7 @@ seria o bug que o parágrafo original descrevia.
 
 **(1) `Enable` subiu para o TOPO da seção.** Enio: *"já que ele é quem habilita esse modo de pintura"*, e
 *"esse card só aparece se enable de Impasto estiver checado"*. Ele agora é a primeira linha e gateia tudo
-abaixo — **exceto o Lighting**, e essa exemption É a lei que a reorganização inteira defende: `Enable`
-diz se *este pincel* deposita corpo, `Show Impasto` diz se o *canvas* revela o corpo que já está na
-pintura. O motor concorda — `impasto_visible()` lê `impasto_show` + "existe relevo", **nunca**
-`brush.impasto` (o único leitor do Enable é `impasto.rs:44`, e já vem ANDado com `PaintMode::Paint`).
+abaixo — **o Lighting incluído** (ver §5d: eu tinha isentado a luz, o Enio reverteu).
 
 **(2) O bug que o gating expôs, MEDIDO antes de curar.** Cada modo tem `BrushSpec` próprio, então o
 Enable era por-slot. Com ele gateando a lista: tique no Deposit → clique **Knife** → `switch_brush_slot`
@@ -188,6 +185,23 @@ dia em que escrevi três comentários contra isso. Deletado; o shell usa a origi
 
 E `impasto_section_applies` virou **Paint | Knife | Sculpt** — o Smear comum saiu da lista, porque não tem
 verbo nela.
+
+## §5d — O card Lighting hide com o Enable (reversão de uma isenção minha)
+
+Enio: *"o card Lighting é próprio de Impasto. só deve aparecer se impasto estiver ativo."*
+
+Na §5b(1) eu tinha **isentado** o Lighting do gate do Enable, com o raciocínio de que os controles de luz
+são do CANVAS, não do pincel, então desligar o depósito não deveria tirá-los. O Enio decidiu o contrário:
+o card Lighting é parte do assunto Impasto e some com ele. Agora o branch `!brush.impasto` retorna sem
+pintar nada além do próprio Enable.
+
+⚠️ **O passe de luz NÃO foi tocado.** `impasto_visible()` lê `impasto_show` + "existe relevo", **nunca**
+`brush.impasto` — então o relevo já pintado **continua aceso** com o Enable off; só os CONTROLES da luz
+somem até religar o Impasto. Esconder o card ≠ apagar a luz, e o motor mantém os dois separados. O gate
+`enable_off_hides_the_whole_section_but_leaves_the_way_back_on` (ex-`…but_never_the_light`) inverteu a
+afirmação e agora exige que `Show`/`Angle` sumam com o resto; a mutação que pinta Lighting no branch off
+sangra. Os gates irmãos (`the_light_switch_is_reachable_from_every_mode_that_shapes_relief`,
+`material_is_the_deposits_and_lighting_is_everyones`) testam com Enable ON e seguem válidos.
 
 ## §6 — Fora de escopo, nomeado em vez de contrabandeado
 

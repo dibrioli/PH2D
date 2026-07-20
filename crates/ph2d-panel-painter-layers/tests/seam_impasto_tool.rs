@@ -109,20 +109,23 @@ fn the_light_switch_is_reachable_from_every_mode_that_shapes_relief() {
     }
 }
 
-/// **`Enable` is the section's master, at the top — and the LIGHT survives it.**
+/// **`Enable` is the section's master, at the top, and the Lighting card hides with everything else.**
 ///
 /// Enio, 2026-07-19: *"Enable do Impasto deve ser colocado no topo da seção impasto já que ele é quem
-/// habilita esse modo de pintura."* So it ranks first and gates what follows.
+/// habilita esse modo de pintura"* and *"o card Lighting é próprio de Impasto. só deve aparecer se impasto
+/// estiver ativo"*. So Enable ranks first and gates the WHOLE section — the Lighting card included.
 ///
-/// The exemption is the point, and it is the same law the whole reorganisation turns on: `Enable` says
-/// whether *this brush* lays body, `Show Impasto` says whether the *canvas* reveals the body already in
-/// the painting. Unticking your brush must not blind you to work you have already done. The engine agrees
-/// — `impasto_visible()` reads `impasto_show` and whether any relief exists, and never `brush.impasto`.
+/// ⚠️ This reverses an earlier exemption: I had kept the light reachable with Enable off, on the theory
+/// that its controls belong to the canvas rather than the brush. Enio's call is that the Lighting card is
+/// part of the Impasto subject and hides with it. The light PASS is a separate matter and untouched —
+/// `impasto_visible()` reads `impasto_show` and whether relief exists, never `brush.impasto`, so relief
+/// already painted stays LIT; only its controls go away until Impasto is switched back on. This gate is
+/// about the CARD's visibility, which is what Enio spoke to.
 ///
-/// **Mutation that must bleed:** return `y` instead of the Lighting card from the `!brush.impasto` branch.
-/// That is the shape the section had for a year, and every other gate here stays green.
+/// **Mutation that must bleed:** paint the Lighting card from the `!brush.impasto` branch anyway. That was
+/// the shape a day earlier, and it is exactly what this reversal removes.
 #[test]
-fn enable_gates_the_tools_but_never_the_light() {
+fn enable_off_hides_the_whole_section_but_leaves_the_way_back_on() {
     let mut tool = tool_in("brush");
     tool.toggle_brush_impasto(); // …back OFF (the fixture turns it on)
     assert!(
@@ -135,22 +138,18 @@ fn enable_gates_the_tools_but_never_the_light() {
         rect_of(&rects, core_ids::PAINTER_IMPASTO_ENABLE).is_some(),
         "Enable must be painted even when it is off — it is the only way back on"
     );
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_SHOW).is_some(),
-        "with Enable unticked the artist lost 'Show Impasto'. The relief already on the canvas is still \
-         there and still lit; taking away the switch that reveals it is the same defect this section was \
-         reorganised to remove, arriving through a different door."
-    );
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_LIGHT_ANGLE).is_some(),
-        "…and the lamp with it: the Lighting card is the canvas's, not the brush's"
-    );
-    // …while everything the switch DOES govern is gone.
+    // Everything the master switch governs is gone — the Lighting card among it (Enio: the card is
+    // Impasto's own, so it only appears when Impasto is active).
     for (id, what) in [
         (core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT, "the tool list"),
         (core_ids::PAINTER_IMPASTO_LIVE_EDIT, "Adjust Last Stroke"),
         (core_ids::PAINTER_IMPASTO_DEPTH, "the Body card"),
         (core_ids::PAINTER_IMPASTO_SHINE, "the Material card"),
+        (
+            core_ids::PAINTER_IMPASTO_SHOW,
+            "the Lighting card's Show toggle",
+        ),
+        (core_ids::PAINTER_IMPASTO_LIGHT_ANGLE, "the lamp Angle"),
     ] {
         assert!(
             rect_of(&rects, id).is_none(),

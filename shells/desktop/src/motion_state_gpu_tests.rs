@@ -449,13 +449,27 @@ fn the_boid_demo_is_a_large_spread_flock_sized_for_headroom() {
         .node_param_overrides(boids)
         .expect("the demo sets the flock's params");
     let count = params.get("count").copied().unwrap_or(0.0);
-    // A genuinely large swarm (≥256 k = ~1000× the classic toy), but with headroom
-    // to GATHER inside a frame (the million did not — 124 % clustered). If someone
-    // pushes it back to a million, the clustered peak stutters again.
+    // A genuinely large swarm (≥256 k = ~1000× the classic toy), but sized so the
+    // SETTLED flock fits a 60 fps frame (measured to equilibrium in
+    // `gpu_boids_scale.rs::where_does_the_flock_settle` — the demo's comment
+    // carries the table). The first resize (1 M → 524 k) was read off a curve
+    // still climbing; the equilibrium is the honest number.
     assert!(
-        (262_144.0..=786_432.0).contains(&count),
-        "the flock must be large but sized to gather inside a 60 fps frame; the \
-         million stuttered at 124 % once clustered. count = {count}"
+        (262_144.0..=524_288.0).contains(&count),
+        "the flock must be large but its EQUILIBRIUM must fit a 60 fps frame; \
+         count = {count}"
+    );
+    // The equilibrium is set by seek-vs-separation, not by the count: seek 0.35
+    // collapsed into a 28,5 ms ball at 262 k (and an ORBITING target was measured
+    // and refuted — the flock rides it as a dense comet). Pin the attractor weak
+    // and the spacing open so nobody cranks the collapse back in.
+    let seek = params.get("seek").copied().unwrap_or(0.0);
+    let separation = params.get("separation").copied().unwrap_or(0.0);
+    assert!(
+        seek <= 0.05 && separation >= 2.4,
+        "the settled density is seek-vs-separation: seek {seek} / separation \
+         {separation} would collapse the flock into a dense ball at ANY count \
+         (measured: seek 0.35 plateaus at 28,5 ms for 262 k agents)"
     );
     assert!(
         params.get("spread").copied().unwrap_or(0.0) > 0.5,

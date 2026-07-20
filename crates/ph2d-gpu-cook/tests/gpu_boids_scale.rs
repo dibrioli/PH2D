@@ -69,6 +69,11 @@ fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
     ph2d_node_motion_boids::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
+    // For the orbiting-target measurements (`boids_graph_orbit`). ⚠️ `add_node`
+    // records a type NAME without checking it; an unregistered type surfaces
+    // only as a plan-time refusal, which reads as "the kernel receded" — it was
+    // a missing registration, diagnosed by planning a bare LFO as the sink.
+    ph2d_node_value_lfo::register(&mut reg).unwrap();
     reg
 }
 
@@ -321,4 +326,168 @@ fn what_boid_count_leaves_headroom() {
         "\n(the demo must hold 60 fps at its PEAK, not at rest; the % is the cook\n\
          alone, before the render draws a quad per agent.)"
     );
+}
+
+/// **Where does the gather SETTLE?** — the 600-tick "peak" above was read off a
+/// curve that was still CLIMBING (2.65 → 4.16 with no plateau), i.e. the fixture
+/// did not contain the phenomenon: the fully collapsed flock. Enio's second report
+/// ("fine until half gathered, then a severe drop") is the part of the curve the
+/// window never reached. This runs to equilibrium (4800 ticks = 80 s of sim) and
+/// sweeps the force that drives the collapse — `seek` is a GLOBAL attractor, so
+/// with it on, the steady state is one dense ball around the target no matter the
+/// count; separation only sets how dense.
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn where_does_the_flock_settle() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping settle measurement");
+        return;
+    };
+    let reg = registry();
+    const N: f32 = 262_144.0;
+    const TICKS: u64 = 4800;
+    const WIN: u64 = 480;
+
+    // (label, radius, separation, alignment, cohesion, seek, max_speed)
+    let cands = [
+        ("sk.02 sep3.0", 2.0, 3.0, 1.4, 0.4, 0.02, 5.0),
+        ("sk.05 sep2.4", 2.0, 2.4, 1.4, 0.5, 0.05, 5.0),
+    ];
+    eprintln!("\nboids ms/tick to equilibrium ({N} agents, windows of {WIN} ticks):");
+    for (label, r, sep, al, co, sk, ms) in cands {
+        let (g, out) = boids_graph_tuned(N, r, sep, al, co, sk, ms);
+        let plan = plan(&g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu());
+        let mut gc = GpuCook::new();
+        let cook = |gc: &mut GpuCook, t: u64| {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        cook(&mut gc, 0);
+        eprint!("  {label}");
+        for w in 0..(TICKS / WIN) {
+            let start = Instant::now();
+            for t in (w * WIN + 1)..=((w + 1) * WIN) {
+                cook(&mut gc, t);
+            }
+            eprint!("  {:>7.2}", start.elapsed().as_secs_f64() * 1e3 / WIN as f64);
+        }
+        eprintln!();
+    }
+    eprintln!("(a row that keeps climbing = collapse into one ball; a plateau = bounded density.)");
+}
+
+/// Boids with the target ORBITING (two phase-shifted LFOs into `target_x/y`) —
+/// the classic fix for the static-attractor collapse: a flock that must keep
+/// chasing never parks into the dense ball. All on the device (the LFO lowers).
+fn boids_graph_orbit(count: f32, seek: f32, orbit_r: f32, period: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let boids = g.add_node("motion.boids");
+    g.set_param(boids, "count", count);
+    g.set_param(boids, "spread", 1.0);
+    g.set_param(boids, "seed", 7.0);
+    g.set_param(boids, "radius", 2.0);
+    g.set_param(boids, "separation", 1.6);
+    g.set_param(boids, "alignment", 1.4);
+    g.set_param(boids, "cohesion", 0.6);
+    g.set_param(boids, "seek", seek);
+    g.set_param(boids, "max_speed", 5.0);
+    let lx = g.add_node("value.lfo");
+    g.set_param(lx, "period", period);
+    g.set_param(lx, "amplitude", orbit_r);
+    let ly = g.add_node("value.lfo");
+    g.set_param(ly, "period", period);
+    g.set_param(ly, "amplitude", orbit_r);
+    g.set_param(ly, "phase", 0.25);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(lx, boids, 0), (ly, boids, 1)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (boids, 2),
+        delayed: true,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    (g, out)
+}
+
+/// The orbit hypothesis, measured to equilibrium: does a MOVING target bound the
+/// density that a static one collapses (28.5 ms plateau at 262 k, above)?
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn does_an_orbiting_target_bound_the_gather() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping orbit measurement");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 4800;
+    const WIN: u64 = 480;
+    // (label, count, seek, orbit radius, period seconds)
+    let cands = [
+        ("262k r60 p20 ", 262_144.0, 0.35, 60.0, 20.0),
+        ("262k r120 p30", 262_144.0, 0.35, 120.0, 30.0),
+        ("524k r120 p30", 524_288.0, 0.35, 120.0, 30.0),
+    ];
+    eprintln!("\nboids ms/tick to equilibrium with an ORBITING target:");
+    for (label, n, sk, orb, per) in cands {
+        let (g, out) = boids_graph_orbit(n, sk, orb, per);
+        let plan = plan(&g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu(), "boundaries: {:?}", plan.boundaries);
+        let mut gc = GpuCook::new();
+        let cook = |gc: &mut GpuCook, t: u64| {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        cook(&mut gc, 0);
+        eprint!("  {label}");
+        for w in 0..(TICKS / WIN) {
+            let start = Instant::now();
+            for t in (w * WIN + 1)..=((w + 1) * WIN) {
+                cook(&mut gc, t);
+            }
+            eprint!("  {:>7.2}", start.elapsed().as_secs_f64() * 1e3 / WIN as f64);
+        }
+        eprintln!();
+    }
 }

@@ -44,6 +44,11 @@ pub(crate) struct FlipColorize {
     /// (cor sRGB8, pontos em MUNDO). MUNDO porque a pose do objeto pode mudar entre desenhar
     /// e aplicar; a conversão para LOCAL acontece no Apply.
     scribbles: Vec<([u8; 4], Vec<Vec2>)>,
+    /// Os rabiscos REMOVIDOS pelo Ctrl+Z (o redo local do Colorize — "undo/redo ruim", 7º
+    /// smoke): rabisco é semente transiente, fora do `ProjectState`, então o Ctrl+Z dele é
+    /// deste buffer, nunca da fila global (`undo_route::UndoOwner::Colorize`). Um rabisco
+    /// NOVO descarta os removidos (a lei de toda fila de redo); Apply e Clear também.
+    popped: Vec<([u8; 4], Vec<Vec2>)>,
     /// O rabisco em curso (MUNDO) + a cor fixada no pen-down.
     current: Vec<Vec2>,
     current_color: [u8; 4],
@@ -53,6 +58,7 @@ pub(crate) struct FlipColorize {
 impl FlipColorize {
     pub(crate) fn clear(&mut self) {
         self.scribbles.clear();
+        self.popped.clear();
         self.current.clear();
         self.active = false;
     }
@@ -62,6 +68,34 @@ impl FlipColorize {
     pub(crate) fn push_scribble(&mut self, color: [u8; 4], world_points: Vec<Vec2>) {
         if world_points.len() >= 2 {
             self.scribbles.push((color, world_points));
+            self.popped.clear();
+        }
+    }
+
+    /// Há rabisco pendente para o Ctrl+Z remover?
+    #[must_use]
+    pub(crate) fn can_undo_scribble(&self) -> bool {
+        !self.scribbles.is_empty()
+    }
+
+    /// Há rabisco removido para o Ctrl+Shift+Z devolver?
+    #[must_use]
+    pub(crate) fn can_redo_scribble(&self) -> bool {
+        !self.popped.is_empty()
+    }
+
+    /// Remove o ÚLTIMO rabisco (Ctrl+Z no modo Colorize). O overlay ao vivo é quem mostra
+    /// o efeito — a marca some da tela no mesmo frame.
+    pub(crate) fn undo_scribble(&mut self) {
+        if let Some(s) = self.scribbles.pop() {
+            self.popped.push(s);
+        }
+    }
+
+    /// Devolve o último rabisco removido (Ctrl+Shift+Z no modo Colorize).
+    pub(crate) fn redo_scribble(&mut self) {
+        if let Some(s) = self.popped.pop() {
+            self.scribbles.push(s);
         }
     }
 }
@@ -129,7 +163,8 @@ impl crate::App {
         let color = self.flip_colorize.current_color;
         let pts = std::mem::take(&mut self.flip_colorize.current);
         if pts.len() >= 2 {
-            self.flip_colorize.scribbles.push((color, pts));
+            // Pela porta única: um rabisco novo também descarta os removidos (redo local).
+            self.flip_colorize.push_scribble(color, pts);
         }
         true
     }
@@ -207,6 +242,9 @@ impl crate::App {
         let playhead = self.playhead;
         let strip = &mut self.flip_strip;
         let scribbles = std::mem::take(&mut self.flip_colorize.scribbles);
+        // O Apply consome as sementes; um redo de rabisco pós-Apply devolveria uma semente
+        // sem o contexto que a criou — a fila de removidos morre junto.
+        self.flip_colorize.popped.clear();
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -303,5 +341,58 @@ impl crate::App {
             drawing.strokes.insert(at, stroke);
         }
         self.title_dirty = true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scr(n: u8) -> ([u8; 4], Vec<Vec2>) {
+        (
+            [n, 0, 0, 255],
+            vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, f32::from(n))],
+        )
+    }
+
+    /// **A disciplina da pilha de rabiscos** ("undo/redo ruim", 7º smoke): Ctrl+Z remove o
+    /// ÚLTIMO rabisco (LIFO), Ctrl+Shift+Z o devolve na ordem, e um rabisco NOVO descarta
+    /// os removidos — a lei de toda fila de redo (agir depois de desfazer mata o refazer).
+    #[test]
+    fn scribble_undo_pops_lifo_redo_restores_and_a_new_scribble_kills_the_redo() {
+        let mut c = FlipColorize::default();
+        for n in [1u8, 2, 3] {
+            let (col, pts) = scr(n);
+            c.push_scribble(col, pts);
+        }
+        assert!(c.can_undo_scribble() && !c.can_redo_scribble());
+
+        c.undo_scribble(); // remove o 3
+        c.undo_scribble(); // remove o 2
+        assert_eq!(c.scribbles.len(), 1);
+        assert_eq!(c.scribbles[0].0[0], 1, "o mais antigo fica");
+        assert!(c.can_redo_scribble());
+
+        c.redo_scribble(); // devolve o 2
+        assert_eq!(c.scribbles.last().expect("redo").0[0], 2, "volta na ordem");
+
+        // Um rabisco NOVO mata o redo pendente (o 3 nunca mais volta).
+        let (col, pts) = scr(9);
+        c.push_scribble(col, pts);
+        assert!(!c.can_redo_scribble(), "agir depois de desfazer mata o refazer");
+
+        // Clear zera as DUAS filas.
+        c.undo_scribble();
+        c.clear();
+        assert!(!c.can_undo_scribble() && !c.can_redo_scribble());
+    }
+
+    /// **Vazio, o Colorize CEDE o atalho** — é o que deixa o Ctrl+Z pós-Apply cair no
+    /// Global (o dono do Apply). O contrato dos `can_*` é exatamente este gate de posse.
+    #[test]
+    fn an_empty_scribble_buffer_yields_the_chord() {
+        let c = FlipColorize::default();
+        assert!(!c.can_undo_scribble());
+        assert!(!c.can_redo_scribble());
     }
 }

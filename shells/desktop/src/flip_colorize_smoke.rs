@@ -124,7 +124,8 @@ impl crate::App {
                 do Size. O que voce PINTA e o que SEMEIA (um toque grosso ja pega).\n\
              3. Troque a cor, rabisque noutra regiao. Repita.\n\
              4. **Apply** — cada regiao vira preenchimento. **Clear** joga os rabiscos fora.\n\
-             5. **Ctrl+Z** desfaz o Apply inteiro (um passo).\n\
+             5. **Ctrl+Z** com rabisco pendente remove o ULTIMO rabisco (Ctrl+Shift+Z\n   \
+                devolve); depois do Apply, Ctrl+Z desfaz o Apply inteiro (um passo).\n\
              \n\
              CONFIRA no Apply:\n\
              a) A FRONTEIRA entre as cores cola na LINHA em x=+1 (fora do centro) — a cor da\n   \

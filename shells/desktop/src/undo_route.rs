@@ -22,6 +22,14 @@ pub(crate) enum UndoOwner {
     Audio,
     /// O Painter (a fila de traços dele).
     Painter,
+    /// O **Colorize do Flip com rabiscos pendentes** (7º smoke, "undo/redo ruim"): os
+    /// rabiscos são SEMENTES transientes — não entram no `ProjectState` —, então sem este
+    /// dono um Ctrl+Z no meio do rabisco caía no Global e **apagava a última edição REAL
+    /// do documento** (o traço de line-art sumia enquanto os rabiscos ficavam intactos).
+    /// Ctrl+Z remove o último rabisco; Ctrl+Shift+Z o devolve. Sem rabisco pendente (e sem
+    /// rabisco removido, no redo) ele NÃO é dono — o atalho cai no Global, que é quem
+    /// desfaz o Apply.
+    Colorize,
     /// A fila GLOBAL de objetos/hierarquia/canvas (ADR-0110+). O caso comum.
     Global,
     /// O undo de image-edit (single-level: Trim / Make Square / Bg Removal). É o
@@ -34,11 +42,18 @@ pub(crate) enum UndoOwner {
 /// Pura de propósito — é a única parte disto que dá para gatear sem uma janela, e é onde o
 /// bug moraria (um dono a mais na cadeia e o atalho some).
 #[must_use]
-pub(crate) fn undo_owner(audio_owns: bool, painter_active: bool, global_has: bool) -> UndoOwner {
+pub(crate) fn undo_owner(
+    audio_owns: bool,
+    painter_active: bool,
+    colorize_owns: bool,
+    global_has: bool,
+) -> UndoOwner {
     if audio_owns {
         UndoOwner::Audio
     } else if painter_active {
         UndoOwner::Painter
+    } else if colorize_owns {
+        UndoOwner::Colorize
     } else if global_has {
         UndoOwner::Global
     } else {
@@ -63,6 +78,15 @@ impl crate::App {
         #[cfg(not(feature = "panel-audio-editor"))]
         let audio_owns = false;
 
+        // O Colorize só é dono enquanto tem o que responder NESTA direção: rabisco
+        // pendente pro undo, rabisco removido pro redo. Vazio dos dois lados, o atalho
+        // passa direto ao Global (que é quem desfaz/refaz o Apply).
+        let colorize_owns = self.flip_wants_colorize()
+            && if redo {
+                self.flip_colorize.can_redo_scribble()
+            } else {
+                self.flip_colorize.can_undo_scribble()
+            };
         let Some(gfx) = self.gfx.as_mut() else { return };
         let painter_active = gfx
             .tools
@@ -73,7 +97,7 @@ impl crate::App {
         } else {
             self.undo.can_undo()
         };
-        match undo_owner(audio_owns, painter_active, global_has) {
+        match undo_owner(audio_owns, painter_active, colorize_owns, global_has) {
             UndoOwner::Audio =>
             {
                 #[cfg(feature = "panel-audio-editor")]
@@ -97,6 +121,13 @@ impl crate::App {
                     self.painter_redo_requested = true;
                 } else {
                     self.painter_undo_requested = true;
+                }
+            }
+            UndoOwner::Colorize => {
+                if redo {
+                    self.flip_colorize.redo_scribble();
+                } else {
+                    self.flip_colorize.undo_scribble();
                 }
             }
             // O passo é APLICADO no `post_frame_undo` (fim do frame, `self` livre e o
@@ -126,14 +157,30 @@ mod tests {
     #[test]
     fn a_focused_modal_editor_owns_the_undo_chord_and_the_button_agrees() {
         // O caso comum: o global, quando há passo.
-        assert_eq!(undo_owner(false, false, true), UndoOwner::Global);
+        assert_eq!(undo_owner(false, false, false, true), UndoOwner::Global);
         // Sem passo global, cai no image-edit (que é quem emite "Nothing to undo").
-        assert_eq!(undo_owner(false, false, false), UndoOwner::ImageEdit);
+        assert_eq!(undo_owner(false, false, false, false), UndoOwner::ImageEdit);
         // O Painter é dono da fila dele.
-        assert_eq!(undo_owner(false, true, true), UndoOwner::Painter);
+        assert_eq!(undo_owner(false, true, false, true), UndoOwner::Painter);
         // E o Audio ganha do Painter E do global: um editor modal FOCADO não pode ceder o
         // atalho — um passo a mais saltaria a cena inteira (auditoria 2026-07-11, A1).
-        assert_eq!(undo_owner(true, true, true), UndoOwner::Audio);
-        assert_eq!(undo_owner(true, false, false), UndoOwner::Audio);
+        assert_eq!(undo_owner(true, true, false, true), UndoOwner::Audio);
+        assert_eq!(undo_owner(true, false, false, false), UndoOwner::Audio);
+    }
+
+    /// **O Colorize com rabisco pendente é dono do Ctrl+Z** (7º smoke, "undo/redo ruim"):
+    /// os rabiscos são transientes (fora do `ProjectState`), então sem este dono o atalho
+    /// caía no Global e apagava a última edição REAL do documento — o artista rabiscava,
+    /// errava, pedia Ctrl+Z e via o traço de LINE-ART sumir com os rabiscos intactos. Sem
+    /// rabisco na direção pedida, ele cede — e o Global é quem desfaz o Apply.
+    #[test]
+    fn pending_scribbles_own_the_undo_chord_and_yield_when_empty() {
+        assert_eq!(undo_owner(false, false, true, true), UndoOwner::Colorize);
+        assert_eq!(undo_owner(false, false, true, false), UndoOwner::Colorize);
+        // Vazio na direção pedida: cede ao Global (o Apply é dele).
+        assert_eq!(undo_owner(false, false, false, true), UndoOwner::Global);
+        // Um editor modal focado ainda ganha (o Colorize é modo de tool, não painel modal).
+        assert_eq!(undo_owner(true, false, true, true), UndoOwner::Audio);
+        assert_eq!(undo_owner(false, true, true, true), UndoOwner::Painter);
     }
 }

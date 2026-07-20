@@ -261,6 +261,15 @@ pub const INSP_PHYS_CCD: [NodeId; 2] = [
     hash_node_id("insp_phys_ccd_discrete"),
     hash_node_id("insp_phys_ccd_continuous"),
 ];
+/// §11 Lock-rotation toggle — group id + the two options (Free / Locked). A
+/// Dynamic-only two-segment control (like the Sensor and CCD toggles) so it reuses
+/// the same paint/populate/event path (Freeze Rotation). `Locked` pins the body's
+/// orientation so it translates but never rotates.
+pub const INSP_LIVE_PHYSICS_LOCKROT: NodeId = hash_node_id("insp_live_physics_lockrot");
+pub const INSP_PHYS_LOCKROT: [NodeId; 2] = [
+    hash_node_id("insp_phys_lockrot_free"),
+    hash_node_id("insp_phys_lockrot_locked"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

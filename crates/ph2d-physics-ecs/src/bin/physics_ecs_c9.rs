@@ -6,8 +6,9 @@
 //! one non-uniformly scaled ball → an ELLIPSE collider, W6, one
 //! `GravityScale(0.5)` ball → a per-body gravity multiplier, W8, and one
 //! non-uniformly scaled CAPSULE → a STADIUM hull, and one LAUNCHED ball →
-//! an `InitialVelocity`, and one CCD ball launched at a thin wall → the CCD
-//! solver's sweep, W-CCD): entities carry
+//! an `InitialVelocity`, one CCD ball launched at a thin wall → the CCD
+//! solver's sweep, W-CCD, and one ROTATION-LOCKED spinning box → the frozen
+//! angular DOF, W-LockRot): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -18,14 +19,15 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 57
+//! physics-ecs-c9 body_count: 58
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation,
+    PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -195,6 +197,30 @@ fn main() {
         },
         Ccd,
         Transform::from_translation(Vec2::new(19.0, 8.0)),
+    ));
+
+    // One ROTATION-LOCKED box (W-LockRot): spun at t=0 but pinned by the marker,
+    // so `LockedAxes::ROTATION_LOCKED` travels the deterministic path (an `f32`
+    // fold in the solver's DOF handling) and CI proves it is bit-identical across
+    // the three OSes — the same guarantee gravity scale gets. Off in its own lane.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.25,
+                half_y: 0.25,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [0.0, 0.0],
+            angvel: 5.0,
+        },
+        LockRotation,
+        Transform::from_translation(Vec2::new(-8.0, 8.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

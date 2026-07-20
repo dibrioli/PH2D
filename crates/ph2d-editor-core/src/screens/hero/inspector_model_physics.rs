@@ -96,6 +96,11 @@ pub struct InspectorPhysicsInfo {
     /// Dynamic-only, like [`gravity_scale`](InspectorPhysicsInfo::gravity_scale) —
     /// the only kind the solver moves fast.
     pub ccd: bool,
+    /// Lock rotation (Freeze Rotation): `false` the orientation is free (rapier's
+    /// default), `true` pins it so the body translates but never rotates — a
+    /// character stays upright, a crate does not roll. Mirrors the presence of the
+    /// optional `LockRotation` marker. Dynamic-only, like the fields above.
+    pub lock_rotation: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -147,6 +152,9 @@ pub enum PhysicsFieldEdit {
     /// optional `Ccd` marker component (present = continuous, absent = discrete),
     /// the presence-override idiom gravity and initial velocity use.
     Ccd(bool),
+    /// Lock-rotation toggle (Freeze Rotation). Attaches/detaches the optional
+    /// `LockRotation` marker (present = locked, absent = free), same idiom as CCD.
+    LockRotation(bool),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

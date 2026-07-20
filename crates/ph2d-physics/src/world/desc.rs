@@ -99,4 +99,19 @@ pub struct BodyDesc {
     /// [`gravity_scale`]: BodyDesc::gravity_scale
     /// [`linvel`]: BodyDesc::linvel
     pub ccd: bool,
+    /// **Lock rotation** (Unity's "Freeze Rotation", Godot's `lock_rotation`).
+    /// `false` (rapier's default, and what every body did before this existed)
+    /// leaves the angular DOF free — a box tips and tumbles as it slides. `true`
+    /// pins the orientation: the body still translates and collides but never
+    /// rotates, so a character stays upright and a crate does not roll.
+    ///
+    /// It maps to rapier's `LockedAxes::ROTATION_LOCKED`, applied at build, and —
+    /// like [`ccd`] and [`gravity_scale`] — it rides the `BodyDesc` the world
+    /// rebuilds from, so a rewind to t=0 re-arms it. A locked body ignores any
+    /// authored [`angvel`]: with no angular DOF there is nothing to spin.
+    ///
+    /// [`ccd`]: BodyDesc::ccd
+    /// [`gravity_scale`]: BodyDesc::gravity_scale
+    /// [`angvel`]: BodyDesc::angvel
+    pub lock_rotation: bool,
 }

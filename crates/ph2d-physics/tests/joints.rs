@@ -36,6 +36,7 @@ fn body(
         linvel: [0.0, 0.0],
         angvel: 0.0,
         ccd: false,
+        lock_rotation: false,
     })
 }
 
@@ -405,6 +406,7 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             linvel: [0.0, 0.0],
             angvel: 0.0,
             ccd: false,
+            lock_rotation: false,
         });
         join(
             &mut w,

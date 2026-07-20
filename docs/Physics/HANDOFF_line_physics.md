@@ -65,6 +65,7 @@
 | **Capsule — collider de personagem** | ✅ smoke `=13` (2026-07-19) | ver §Capsule | 3ª forma `ColliderShape::Capsule`; uniforme exata / não-uniforme = Stadium |
 | **W9 — Velocidade inicial por corpo** | ✅ smoke `=14` (2026-07-19) | ver §W9 | lançamento linear+angular no spawn; seta amarela; sem bump |
 | **W-CCD — Detecção contínua por corpo** | ✅ **INTEGRÁVEL** — smoke `=15` (2026-07-20) | ver §W-CCD | toggle Discrete/Continuous; corpo rápido não tunela parede fina; marcador `Ccd`; sem bump |
+| **W-LockRot — Freeze Rotation por corpo** | ✅ **INTEGRÁVEL** — smoke `=16` (2026-07-20) | ver §W-LockRot | toggle Rotation Free/Locked; personagem não tomba; marcador `LockRotation`; sem bump |
 
 **W0 entregou:** [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
 [`00_plano_waves.md`](00_plano_waves.md) · [`01_visao.md`](01_visao.md) · este tracker. Nenhuma linha de
@@ -2118,3 +2119,42 @@ Continuous para na parede, a laranja Discrete tunela e some).
 **Aberto (deliberado):** CCD em corpo **Kinematic** (o rapier suporta, mas o caso reportado/canônico é
 o projétil Dynamic; nada no smoke exercita kinematic — cerca de Chesterton, como o Weld ficou fora do
 W3).
+
+---
+
+## §W-LockRot — FREEZE ROTATION por corpo (2026-07-20, smoke `=16`)
+
+**O bloco que todo personagem 2D precisa.** Uma caixa livre numa rampa **tomba** ao deslizar, e um
+personagem cai. Travar o DOF angular a mantém em pé — ela ainda translada e colide, só nunca gira.
+É o `lock_rotation` do Godot / "Freeze Rotation" do Unity. Toggle **Rotation: Free / Locked** no §11.
+
+**Marcador `LockRotation` — a PRESENÇA é o booleano** (idioma do `Ccd`/`Locked`): um booleano não tem
+valor a carregar. Registro **6→7**, blob-key, **sem bump** (fica **28**). Attach no Locked, detach no
+Free. `BodyDesc.lock_rotation` → `.locked_axes(LockedAxes::ROTATION_LOCKED)` no build, rida no recipe
+pra o **rewind re-armar** (gate prova: scrub a t=0 + replay, o corpo travado segue em pé). Um corpo
+travado **ignora `angvel`** (não há DOF pra girar) — foi assim que o gate ficou afiado (spawn com spin,
+livre gira, travado fica em 0). ~22 fixtures de `ph2d-physics/tests` ganharam `lock_rotation: false`.
+
+**Dynamic-only** (só a família que o solver gira sob forças tem rotação a travar): row `seg_row("Rotation",
+["Free","Locked"])` no bloco Dynamic, ao lado de CCD. Reusa o path Sensor/CCD (seg de 2 opções).
+
+**Gates:** `a_free_body_spins_and_a_rotation_locked_one_does_not` (wrapper; spin 5 rad/s → livre 2,5 rad,
+travado 0; mut `.locked_axes(...)`→`empty()` faz o travado girar, RED) · `the_bridge_pins_a_marked_body_
+and_a_rewind_re_arms_it` (ecs; marcado não gira, controle gira, scrub re-arma; mut ignora marcador → RED)
+· `lock_rotation_is_offered_and_committed_only_for_a_dynamic_body` (seam presença/ausência) · no sweep de
+`every_segmented_option_reaches_the_bus` · persistência round-trip · registro 6→7 · c9 **58 corpos** (uma
+caixa travada girando).
+
+**LOC:** o wrapper e a ponte bateram o teto de 700 (707 cada, +7 desta wave) → split em irmão: `world.rs`
+636 (tests → `world/tests.rs`), `bridge.rs` 675 (`deterministic_hash`/`scratch_capacity` → `bridge/
+diagnostics.rs`). `body_desc` chegou a 8 args → `#[allow(clippy::too_many_arguments)]` (cada flag é um
+componente opcional independente; empacotar só moveria os mesmos campos atrás de um nome).
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_LOCKROT` (group) + `INSP_PHYS_LOCKROT: [NodeId;2]` ·
+`ph2d::physics::LockRotation`. `PROJECT_SCHEMA` fica **28**. Smoke `=16` (pausado; Play: a caixa laranja
+Free tomba descendo a rampa esquerda, a verde Locked desce em pé pela direita — rampas espelhadas, os
+corpos divergem).
+
+**Aberto (deliberado):** **Freeze Position X/Y** (o resto do `RigidbodyConstraints2D` — `enabled_translations`
+do rapier): controle mais raro (trilhos/pinos), família própria, e o Godot ship `lock_rotation` standalone
+de propósito. Adicionar quando um caso de trilho aparecer.

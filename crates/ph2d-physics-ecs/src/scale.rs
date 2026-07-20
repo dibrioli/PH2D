@@ -113,6 +113,13 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// Unity/Godot expose), and it rides the `BodyDesc` so a rewind re-arms it (W9).
 /// `ccd` is the presence of the optional [`crate::Ccd`] marker (W-CCD) — passed
 /// in for the same reason, and it rides the `BodyDesc` so a rewind re-arms it too.
+/// `lock_rotation` is the presence of the optional [`crate::LockRotation`] marker —
+/// same story again (Freeze Rotation; rides the `BodyDesc` for the rewind).
+///
+/// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
+/// lock); each is an independent optional component the bridge reads and folds in,
+/// so bundling them into a struct would only move the same fields behind one name.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn body_desc(
     rb: &RigidBody,
     col: &Collider,
@@ -121,12 +128,14 @@ pub(crate) fn body_desc(
     linvel: [f32; 2],
     angvel: f32,
     ccd: bool,
+    lock_rotation: bool,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
         linvel,
         angvel,
         ccd,
+        lock_rotation,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,

@@ -37,6 +37,10 @@ const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 /// vocabulary for the same control.
 const CCD_LABELS: [&str; 2] = ["Discrete", "Continuous"];
 
+/// Lock-rotation toggle labels, indexed by `lock_rotation as u8`: `0` free
+/// (rapier's default), `1` locked (the orientation is pinned — Freeze Rotation).
+const LOCKROT_LABELS: [&str; 2] = ["Free", "Locked"];
+
 /// Bake channel selector labels, indexed by the tag: `0` the whole pose,
 /// `1` position only, `2` rotation only.
 const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
@@ -374,6 +378,24 @@ fn paint_body_actions(
             &ids::INSP_PHYS_CCD,
             &CCD_LABELS,
             u8::from(info.ccd),
+        );
+        // Freeze Rotation: pin the orientation so the body slides/falls but never
+        // tumbles. Dynamic-only, like the rows above — only a body the solver
+        // rotates under forces has a rotation to freeze.
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Rotation",
+            ids::INSP_LIVE_PHYSICS_LOCKROT,
+            &ids::INSP_PHYS_LOCKROT,
+            &LOCKROT_LABELS,
+            u8::from(info.lock_rotation),
         );
         yy = seg_row(
             scene,

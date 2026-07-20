@@ -306,3 +306,25 @@ impl SimComponent for InitialVelocity {}
 pub struct Ccd;
 
 impl SimComponent for Ccd {}
+
+/// **Lock rotation — a marker presence-override component (W-LockRot).**
+///
+/// Its **presence IS the boolean**, exactly like [`Ccd`] and `ph2d_ecs::Locked`:
+/// a body that carries it has its orientation pinned (Unity's "Freeze Rotation",
+/// Godot's `lock_rotation`), one that does not rotates freely (rapier's default).
+/// A boolean has no value to carry, so a marker is the honest representation.
+///
+/// Why a body wants it: a free box tips and tumbles as it slides down a slope,
+/// and a character falls over. Locking the angular DOF keeps it upright — it
+/// still translates and collides, it just never rotates. It is meaningful only
+/// for a body the solver MOVES under forces, so the §11 row is offered for
+/// Dynamic only, the same rule gravity / initial velocity / CCD follow.
+///
+/// The bridge reads its presence and folds the flag into `BodyDesc.lock_rotation`,
+/// so — like the components above — it rides the spawn recipe the world rebuilds
+/// from and a rewind re-arms it. A locked body ignores any authored `angvel`
+/// (`InitialVelocity`): with no angular DOF there is nothing to spin.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LockRotation;
+
+impl SimComponent for LockRotation {}

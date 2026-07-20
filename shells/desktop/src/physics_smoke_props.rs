@@ -10,7 +10,7 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -307,6 +307,99 @@ impl crate::App {
              TUNNELS clean through its wall, flying off screen. Select each and see the \
              Collision: Discrete | Continuous row in §11 (Dynamic-only). It is fast — the story is \
              in the end state: one wall keeps its ball, the other does not."
+        );
+    }
+
+    /// **Scene 16 (W-LockRot).** Two identical boxes on two mirror-image slopes;
+    /// the only difference is one has **Freeze Rotation** and the other does not.
+    /// Both slide down under gravity — but the free box tips over and TUMBLES down
+    /// its slope, while the locked one slides down staying perfectly UPRIGHT (the
+    /// reason a 2D character has its rotation frozen).
+    ///
+    /// Runs PAUSED at t=0. Press Play; the boxes diverge (free left, locked right)
+    /// so they never meet.
+    pub(crate) fn physics_smoke_lock_rotation(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+
+        // A wide floor well below the slopes, so a tumbled box has somewhere to land.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, -3.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [40.0, 0.4], [0.30, 0.32, 0.38, 1.0]),
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 20.0,
+                    half_y: 0.2,
+                },
+                friction: 0.4,
+                ..Collider::default()
+            },
+        ));
+
+        // A 32° ramp (`deg` sign sets which way is downhill) and a box resting on
+        // its upper end. `lock` freezes the box's rotation.
+        let mut slope = |cx: f32, deg: f32, box_x: f32, hue: [f32; 4], label: &str, lock: bool| {
+            let rot = deg.to_radians();
+            world.spawn((
+                Transform {
+                    translation: Vec2::new(cx, 1.0),
+                    rotation: rot,
+                    scale: Vec2::new(1.0, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+                Sprite::atlas(WHITE_TILE_KEY, [6.0, 0.3], [0.40, 0.42, 0.48, 1.0]),
+                Name::new(format!("Ramp {label}")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 0.15,
+                    },
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+            ));
+            let body = (
+                Transform::from_translation(Vec2::new(box_x, 2.4)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.3,
+                    },
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+            );
+            // The marker's PRESENCE is the flag — attach it only on the locked box.
+            if lock {
+                world.spawn((body, LockRotation));
+            } else {
+                world.spawn(body);
+            }
+        };
+        // Left slope tilts down-left: the ORANGE Free box slides left and tumbles.
+        slope(-3.0, 32.0, -1.5, [0.95, 0.45, 0.25, 1.0], "Free", false);
+        // Right slope tilts down-right: the GREEN Locked box slides right, upright.
+        slope(3.0, -32.0, 1.5, [0.5, 0.85, 0.55, 1.0], "Locked", true);
+
+        eprintln!(
+            "[physics-smoke 16] Paused at t=0. Press Play. Both boxes slide down their slopes, but \
+             the ORANGE Free box (left) TIPS OVER and tumbles down; the GREEN Locked box (right) \
+             slides down staying perfectly UPRIGHT — that is Freeze Rotation, the reason a 2D \
+             character does not fall over. Select each and see the Rotation: Free | Locked row in \
+             §11 (Dynamic-only). Press B to see the collider outlines."
         );
     }
 }

@@ -26,6 +26,7 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         linvel: [0.0, 0.0],
         angvel: 0.0,
         ccd: false,
+        lock_rotation: false,
     });
 }
 

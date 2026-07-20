@@ -45,6 +45,7 @@ fn with_body() -> InspectorPhysicsInfo {
         linvel: [0.0, 0.0],
         angvel: 0.0,
         ccd: false,
+        lock_rotation: false,
     }
 }
 
@@ -164,6 +165,14 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::Ccd(i == 1),
             &format!("CCD toggle option {i}"),
+        );
+    }
+    // Free | Locked (Freeze Rotation) — Dynamic-only, each side its own boolean.
+    for (i, &id) in ids::INSP_PHYS_LOCKROT.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::LockRotation(i == 1),
+            &format!("Lock-rotation toggle option {i}"),
         );
     }
 }
@@ -629,6 +638,52 @@ fn ccd_is_offered_and_committed_only_for_a_dynamic_body() {
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  whether CCD is offered"
+            );
+        }
+    }
+}
+
+/// **The Lock-rotation toggle is offered and honoured only for a Dynamic body**
+/// (Freeze Rotation, W-LockRot).
+///
+/// Only a body the solver rotates under forces has a rotation to freeze, so a
+/// Static (never moves) or Kinematic (pose-driven) body has nothing to lock — the
+/// same Dynamic-only rule as gravity / velocity / CCD. Presence AND absence per
+/// kind, and both halves have to agree (the painter offers, the event arm honours;
+/// a refusal that lives only in the paint loop is not a refusal).
+#[test]
+fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in ids::INSP_PHYS_LOCKROT.iter() {
+            assert_eq!(
+                rects.iter().any(|(n, _)| *n == id),
+                offered,
+                "kind_tag={tag}: the Lock-rotation toggle's presence is wrong"
+            );
+            assert_eq!(
+                !click(info, id).is_empty(),
+                offered,
+                "kind_tag={tag}: the event handler disagrees with the painter about \
+                 whether Lock-rotation is offered"
             );
         }
     }

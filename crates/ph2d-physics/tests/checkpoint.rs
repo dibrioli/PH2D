@@ -329,6 +329,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         linvel: [0.0, 0.0],
         angvel: 0.0,
         ccd: false,
+        lock_rotation: false,
     });
     for i in 0..12 {
         described.spawn_body(BodyDesc {
@@ -346,6 +347,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             linvel: [0.0, 0.0],
             angvel: 0.0,
             ccd: false,
+            lock_rotation: false,
         });
     }
 

@@ -138,6 +138,7 @@ fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_LAYER);
     register_button_ids(store, &ids::INSP_PHYS_SENSOR);
     register_button_ids(store, &ids::INSP_PHYS_CCD);
+    register_button_ids(store, &ids::INSP_PHYS_LOCKROT);
     register_button_ids(store, &ids::INSP_PHYS_BAKE_CH);
     register_button_ids(
         store,

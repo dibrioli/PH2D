@@ -22,6 +22,9 @@ const CHISEL: u8 = 5;
 const SMOOTH: u8 = 0;
 const INFLATE: u8 = 7;
 const LAYER: u8 = 6;
+const SHARPEN: u8 = 1;
+const FLATTEN: u8 = 2;
+const FILL: u8 = 4;
 
 /// **At Angle 0 the Chisel IS Scrape — byte for byte.**
 ///
@@ -591,16 +594,63 @@ fn inflate_arms_sharper_and_an_eight_pixel_shoulder() {
     let mut t2 = PainterTool::default();
     t2.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
     arm_sculpt(&mut t2, SMOOTH, 0.5, 1.0);
-    let mut b = t2.paint.brush;
-    b.falloff = Falloff::Sphere; // the artist picked this
-    t2.paint.brush = b;
-    t2.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
+    // The artist's pick goes through the REAL setter — it is the setter that records the falloff as
+    // deliberately chosen (`falloff_armed = false`), which is what the arming law honours. A direct
+    // field write models nothing the product can do.
+    t2.set_brush_falloff(Falloff::Sphere.to_u8());
+    t2.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = t2.paint.brush;
     t2.set_sculpt_mode(INFLATE);
     assert_eq!(
         t2.paint.brush.falloff,
         Falloff::Sphere,
         "arming a default overrode a falloff the artist had chosen. It arms a default; it does not \
          enforce a policy."
+    );
+}
+
+/// **Every impasto tool is born with the falloff its verb wants** (Enio 2026-07-20). The table and
+/// the measurements behind it live on `arm_tool_falloff_defaults`; this gate walks the VERBS through
+/// the real seam (`set_sculpt_mode`) and the KNIFE through the real mode switch, asserting each arm —
+/// and that an armed default is re-armable (Flatten's Sphere gives way to Inflate's Sharper) while an
+/// artist's pick still survives every switch (the sibling assertion above).
+#[test]
+fn every_impasto_tool_is_born_with_its_own_falloff() {
+    use ph2d_painter_brush::Falloff;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
+    arm_sculpt(&mut t, SMOOTH, 0.5, 1.0);
+    assert_eq!(
+        t.paint.brush.falloff,
+        Falloff::Smooth,
+        "Smooth verb keeps the soft profile"
+    );
+    for (verb, want) in [
+        (FLATTEN, Falloff::Sphere),
+        (SCRAPE, Falloff::Sphere),
+        (FILL, Falloff::Sphere),
+        (CHISEL, Falloff::Sphere),
+        (LAYER, Falloff::Sphere),
+        (INFLATE, Falloff::Pow4),
+        // …and back down: an ARMED default is re-armable, verb after verb.
+        (SHARPEN, Falloff::Smooth),
+        (FLATTEN, Falloff::Sphere),
+    ] {
+        t.set_sculpt_mode(verb);
+        assert_eq!(
+            t.paint.brush.falloff, want,
+            "verb {verb}: the arm did not install its falloff (an armed default must give way to \
+             the next verb's default)"
+        );
+    }
+    // The Knife arms Sphere on the mode switch — the smear handoff's "agulha do pincel padrão",
+    // closed as a default: measured trail width 4 px under Smooth vs 12 px under Sphere (knife 16).
+    let mut k = PainterTool::default();
+    k.set_source(vec![255u8; 120 * 120 * 4], 120, 120);
+    k.set_paint_tool_mode("knife");
+    assert_eq!(
+        k.paint.brush.falloff,
+        Falloff::Sphere,
+        "entering the Knife did not arm Sphere — the needle-trail default the smear handoff left open"
     );
 }
 

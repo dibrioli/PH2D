@@ -64,6 +64,7 @@ impl Default for PaintState {
             mask_brush: 0,         // Paint (conceal) — the default mask sub-brush
             mask_overlay_color: 0, // dark gray overlay by default
             eyedropper_armed: false,
+            falloff_armed: false,
             mask_scratch_rgba: Arc::new(Vec::new()),
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),

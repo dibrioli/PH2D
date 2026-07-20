@@ -18,6 +18,9 @@ impl PainterTool {
     /// the editable `Custom` curve ([`Self::set_brush_falloff_point`]).
     pub fn set_brush_falloff(&mut self, preset: u8) {
         self.paint.brush.falloff = Falloff::from_u8(preset);
+        // The artist spoke: no tool-default arm may override this falloff from here on
+        // (`arm_tool_falloff_defaults` — the provenance half of the arming law).
+        self.paint.falloff_armed = false;
     }
 
     /// Move `Custom` falloff control point `id` to `(distance, strength)` in `[0, 1]²` — may pass its

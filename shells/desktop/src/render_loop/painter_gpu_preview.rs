@@ -146,6 +146,15 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.preview_is_trivial_stack() && !painter.impasto_visible() {
         return None;
     }
+    // Repeat Image draws the 3×3 tile preview from the CPU composite (`PainterPreview` — the GPU
+    // slot has no CPU bytes to blit), and when the GPU owns the slot the bridge clears that cache:
+    // the 8 neighbour tiles silently vanish (Enio 2026-07-20, "em impasto Tiling as imagens
+    // repetidas desaparecem" — impasto because the GPU light pass made relief documents
+    // GPU-eligible, but any GPU-owned stack loses the tiles the same way). While the artist is
+    // LOOKING at the tiling preview, the CPU lane must produce.
+    if painter.repeat_image() {
+        return None;
+    }
     super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
 }
 
@@ -433,6 +442,30 @@ mod tests {
              the flatten, must reject it)"
         );
         assert!(gpu_eligible(&t).is_none(), "trivial stack must stay CPU");
+    }
+
+    /// **Repeat Image keeps the CPU producer** (Enio 2026-07-20, "em impasto Tiling as imagens
+    /// repetidas desaparecem"): the 3×3 tile preview blits the CPU composite (`PainterPreview`),
+    /// and when the GPU owns the slot the bridge clears that cache — the tiles silently vanish.
+    /// The fixture is the sculpted document (GPU-eligible since the light port — exactly the case
+    /// the report came from); the presence half proves the refusal is the TOGGLE's, not the stack's.
+    #[test]
+    fn repeat_image_keeps_the_cpu_producer() {
+        let mut t = sculpted_tool();
+        assert!(
+            gpu_eligible(&t).is_some(),
+            "precondition: the sculpted document is GPU-eligible with Repeat Image off"
+        );
+        t.toggle_repeat_image();
+        assert!(
+            gpu_eligible(&t).is_none(),
+            "with Repeat Image on the CPU lane must produce (the tile preview blits its bytes)"
+        );
+        t.toggle_repeat_image();
+        assert!(
+            gpu_eligible(&t).is_some(),
+            "toggling Repeat Image back off returns the slot to the GPU"
+        );
     }
 
     #[test]

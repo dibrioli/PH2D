@@ -540,7 +540,7 @@ impl PainterTool {
         let before = self.paint.sculpt.mode_enum().family();
         self.paint.sculpt.mode = m.min(SCULPT_MODE_COUNT - 1);
         self.sync_stroke_heading_need();
-        self.arm_inflate_defaults();
+        self.arm_tool_falloff_defaults();
         if self.paint.sculpt.mode_enum().family() == before {
             self.refresh_live_sculpt();
         } else {
@@ -550,26 +550,52 @@ impl PainterTool {
         }
     }
 
-    /// **Inflate's falloff default is Sharper** (`Falloff::Pow4`; Enio 2026-07-18).
+    /// **Every impasto tool is born with the falloff its verb wants** (Enio 2026-07-20: *"descobrir
+    /// qual falloff mais adequado para cada um dos tools do impasto"* — Deposit = Sphere and
+    /// Inflate = Sharper were his own picks and are not touched; the rest were measured):
     ///
-    /// The Blob offsets the surface by a ball whose radius rides the dab's weight, so the falloff IS the
-    /// profile of the dome: a soft shoulder spreads the ball over the whole footprint and the form reads
-    /// as a swell rather than as something inflated. `Pow4` keeps the weight high in the middle and drops
-    /// it fast, which is the shape that reads as a blob. (The knob's UI name is *Sharper* — the enum's
-    /// `Sharp` is a different, gentler curve, and picking it here would be the wrong one.)
+    /// - **Knife → Sphere.** The falloff is the smear field's TRANSPORT weight, and the smear
+    ///   handoff left "a agulha do pincel padrão" open as a product decision: measured trail width
+    ///   under a 16 px knife — Smooth **4 px** (the needle) · Smoother 6 · InvSquare 8 ·
+    ///   **Sphere 12** · Constant 22 (over-wide, no feather) · Linear dies at 0. Sphere carries the
+    ///   body at ¾ of the brush and keeps the feathered edge.
+    /// - **Flatten / Scrape / Fill / Chisel / Layer → Sphere.** The plane family wants the plateau:
+    ///   a single Flatten TAP on grain relief leaves **52%** of the core residual under Sphere vs
+    ///   66% under Smooth (80% under Sharp) — Sphere actually flattens where the artist tapped. A
+    ///   dragged stroke saturates every falloff's core alike (the `k` clamp), so the tap and the
+    ///   stroke's edge feather are where the choice lives. Layer joins them because a coat of paint
+    ///   is a SLAB — the dome profile is Inflate's job.
+    /// - **Smooth / Sharpen → Smooth** (the factory). Diffusion verbs want the feathered profile —
+    ///   a plateau would draw the blur's own boundary as a visible ring.
+    /// - **Inflate → Sharper** (`Falloff::Pow4`; Enio 2026-07-18). The Blob offsets the surface by
+    ///   a ball whose radius rides the dab's weight, so the falloff IS the dome's profile. (The
+    ///   knob's UI name is *Sharper* — the enum's `Sharp` is a different, gentler curve.)
     ///
-    /// **Only when the falloff is still the brush's factory `Smooth`** — the same law
-    /// `toggle_brush_impasto` obeys, and for the same reason: a deliberate choice is never overridden, and
-    /// coming back to Inflate keeps whatever the artist last set. So this arms a default; it does not
-    /// enforce a policy.
-    pub(super) fn arm_inflate_defaults(&mut self) {
-        if self.paint.sculpt.mode_enum() != SculptMode::Inflate {
-            return;
-        }
-        if self.paint.brush.falloff == ph2d_painter_brush::Falloff::Smooth {
-            self.paint.brush.falloff = ph2d_painter_brush::Falloff::Pow4;
-            let slot = super::PaintMode::Sculpt.slot();
-            self.paint.brush_by_mode[slot].falloff = ph2d_painter_brush::Falloff::Pow4;
+    /// **An arm never overrides the artist** — the provenance flag (`falloff_armed`) records whether
+    /// the live falloff was installed by an arm (re-armable on the next verb) or chosen by the
+    /// artist (kept, verb after verb). The factory `Smooth` is presumed armable on a slot load —
+    /// the one pre-existing ambiguity (an explicit artist Smooth is indistinguishable), inherited
+    /// from the old single-verb law.
+    pub(super) fn arm_tool_falloff_defaults(&mut self) {
+        use ph2d_painter_brush::Falloff;
+        let want = match self.paint.paint_mode {
+            super::PaintMode::Knife => Falloff::Sphere,
+            super::PaintMode::Sculpt => match self.paint.sculpt.mode_enum() {
+                SculptMode::Smooth | SculptMode::Sharpen => Falloff::Smooth,
+                SculptMode::Inflate => Falloff::Pow4,
+                _ => Falloff::Sphere, // the plane family + Layer
+            },
+            // Paint's own arm (Deposit → Sphere) lives in `toggle_brush_impasto`; every other mode
+            // has no impasto verb to speak for.
+            _ => return,
+        };
+        let cur = self.paint.brush.falloff;
+        let armable = self.paint.falloff_armed || cur == Falloff::Smooth;
+        if armable && cur != want {
+            self.paint.brush.falloff = want;
+            let slot = self.paint.paint_mode.slot();
+            self.paint.brush_by_mode[slot].falloff = want;
+            self.paint.falloff_armed = true;
         }
     }
 

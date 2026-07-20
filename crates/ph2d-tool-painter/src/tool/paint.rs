@@ -235,6 +235,11 @@ pub(crate) struct PaintState {
     mask_overlay_color: u8,
     /// **Eyedropper** armed: the next canvas Down samples the composited pixel into the brush colour, then disarms. [`eyedropper`].
     eyedropper_armed: bool,
+    /// Whether the LIVE brush's falloff was installed by a tool-default ARM (never by the artist) —
+    /// the provenance that lets a verb switch re-arm its own default without ever overriding a
+    /// deliberate choice (`arm_tool_falloff_defaults`). Cleared by the artist's falloff setter;
+    /// re-presumed on a brush-slot switch from the factory value.
+    falloff_armed: bool,
     /// **Mask** brush transient scratch (tool-side mask for `mask_scratch_target`, white=reveal; NOT a stack layer). [`mask`].
     mask_scratch_rgba: Arc<Vec<u8>>,
     mask_scratch_target: Option<crate::layers::LayerId>,

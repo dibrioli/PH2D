@@ -25,6 +25,10 @@ impl PainterTool {
         let new = new_mode.slot();
         self.paint.brush_by_mode[old] = self.paint.brush; // save this tool's edits
         self.paint.brush = self.paint.brush_by_mode[new]; // restore the target tool's settings
+        // Falloff provenance for the freshly loaded brush: the factory `Smooth` is presumed armable
+        // (the pre-existing ambiguity — an explicit artist Smooth is indistinguishable from factory);
+        // anything else in a slot is presumed the artist's until an arm installs over it.
+        self.paint.falloff_armed = self.paint.brush.falloff == ph2d_painter_brush::Falloff::Smooth;
     }
 
     /// Whether brush settings are currently linked across tools (the "Sync with other tools" checkbox).

@@ -14,14 +14,15 @@
 //! The two scenes are the two SHAPES that neighbourhood work comes in, which is
 //! why they sit together — and why the second one matters as much as the first:
 //!
-//! - **`=7`, the murmuration** — a simulation STEP. `boids(1.048.576, spread √N)
+//! - **`=7`, the murmuration** — a simulation STEP. `boids(524.288, spread √N)
 //!   → scale → output` with the loop `output ──pre──> boids.state`; the tick IS
 //!   the iteration, so it dispatches once per frame. **Spread ON is load-bearing**,
 //!   not decoration: the node's default seed packs the flock into a fixed ~6×6 box,
-//!   and a million agents in a handful of cells is back to `O(N²)` (measured:
-//!   ~10 s/tick — the grid cannot help a crowd that dense). Spread grows the seed
+//!   and half a million agents in a handful of cells is back to `O(N²)` (measured:
+//!   seconds/tick — the grid cannot help a crowd that dense). Spread grows the seed
 //!   cloud with √N so the agents-per-cell stays a lively murmuration and the grid
-//!   stays `O(N)` (~15,5 ms/tick).
+//!   stays `O(N)` (~5 ms at rest, ~7,6 ms fully clustered — see the count sizing in
+//!   `build_gpu_boids_demo_document`, the same headroom question as `=8`).
 //! - **`=8`, the breathing packing** — a relaxation SOLVER. `grid(360²) → collide
 //!   → output` with an LFO on `spread`; it sweeps `iterations` times per cook, and
 //!   the sequencer REBUILDS the grid between sweeps because each sweep moves the
@@ -44,8 +45,9 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
-/// **The million-boid murmuration** (`PH2D_GPU_COOK_DEMO=7`) — the ready-to-smoke
-/// scene for the neighbourhood sim on the device (ADR-0134). Returns the sink.
+/// **The murmuration** (`PH2D_GPU_COOK_DEMO=7`) — the ready-to-smoke scene for the
+/// neighbourhood sim on the device (ADR-0134). Returns the sink. (Half a million
+/// agents, sized for headroom; the ceiling is millions — see `count` below.)
 pub(super) fn build_gpu_boids_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -54,10 +56,25 @@ pub(super) fn build_gpu_boids_demo_document(
     let g = &mut doc.graph;
 
     let boids = g.add_node("motion.boids");
-    // 2²⁰ = 1.048.576 agents. The grid keeps this O(N) at ~15.5 ms/tick on the
-    // RTX; the ceiling above is the instance-buffer binding (~11.67 M), never the
-    // count the CPU reference could bear — that path only computes the same answer.
-    g.set_param(boids, "count", 1_048_576.0);
+    // 2¹⁹ = 524.288 agents. ⚠️ SIZED FOR THE FLOCK'S OWN MOVE, not for rest —
+    // the same lesson as the packing demo (`=8`). The grid is O(N) only while
+    // density is bounded (Fase 4), and a flock's headline act is to GATHER, which
+    // packs cells tighter and raises the cost. Measured, shipped forces, 600 ticks
+    // in (the flock fully clustered), cook alone before the render draws a quad per
+    // agent:
+    //
+    //     agents    at rest   clustered peak   % of a 60 fps frame
+    //   262 144      2.5 ms      4.4 ms          26 %
+    //   524 288      4.9 ms      7.6 ms          45 %
+    //   786 432     10.1 ms     13.4 ms          80 %
+    //   1 048 576   16.3 ms     20.7 ms         124 %   ← the stutter Enio saw
+    //
+    // The million fits at rest (16 ms) and blows the frame when it clusters (21 ms),
+    // leaving nothing for the render. 524 288 peaks at 45 %, holding 60 fps through
+    // the gather with half the frame free — and it is still ~30× what boids could
+    // do before the grid. The ceiling stays MILLIONS (raise `count`); the DEMO is
+    // sized to never stutter doing the thing it exists to show.
+    g.set_param(boids, "count", 524_288.0);
     // Load-bearing: without it a million agents pack into a fixed box and the grid
     // cannot help (O(N²), ~10 s/tick). √N holds the density → the grid stays O(N).
     g.set_param(boids, "spread", 1.0);

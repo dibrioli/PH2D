@@ -156,9 +156,10 @@ impl MotionState {
             // kind of card reading is on screen at once — the smoke for the GPU
             // path becoming the default.
             Ok("6") => build_gpu_panel_demo_document(&mut doc, &registry).unwrap_or_default(),
-            // ADR-0134: the million-boid MURMURATION — the interacting sim (each
-            // agent reads its neighbours) that the spatial grid lifts from a
-            // few-hundred-agent toy to 1.048.576 on the device.
+            // ADR-0134: the MURMURATION — the interacting sim (each agent reads its
+            // neighbours) that the spatial grid lifts from a few-hundred-agent toy
+            // to a swarm on the device (524.288, sized so it never stutters when the
+            // flock gathers; the ceiling is millions).
             Ok("7") => build_gpu_boids_demo_document(&mut doc, &registry).unwrap_or_default(),
             // ADR-0134 Fase 5: the breathing PACKING — the second grid client,
             // and the first ITERATED kernel (the grid is rebuilt per sweep).

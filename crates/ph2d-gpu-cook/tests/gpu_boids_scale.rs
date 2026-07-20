@@ -159,3 +159,166 @@ fn how_far_does_the_flock_scale() {
          ceiling is whatever ms/tick the frame budget allows — all §0.0 numbers.)"
     );
 }
+
+/// A boids graph with the FULL tuning exposed, plus the `pre` self-loop — the
+/// exact shape of `PH2D_GPU_COOK_DEMO=7`, so the measurement below can sweep the
+/// forces that decide how tight the flock packs.
+#[allow(clippy::too_many_arguments)]
+fn boids_graph_tuned(
+    count: f32,
+    radius: f32,
+    separation: f32,
+    alignment: f32,
+    cohesion: f32,
+    seek: f32,
+    max_speed: f32,
+) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let boids = g.add_node("motion.boids");
+    g.set_param(boids, "count", count);
+    g.set_param(boids, "spread", 1.0);
+    g.set_param(boids, "seed", 7.0);
+    g.set_param(boids, "radius", radius);
+    g.set_param(boids, "separation", separation);
+    g.set_param(boids, "alignment", alignment);
+    g.set_param(boids, "cohesion", cohesion);
+    g.set_param(boids, "seek", seek);
+    g.set_param(boids, "max_speed", max_speed);
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (boids, 2),
+        delayed: true,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    (g, out)
+}
+
+/// **Does the flock stutter as it GATHERS?** (Enio's `=7` report, 2026-07-19) — the
+/// boids grid is `O(N)` only while density is bounded (Fase 4). `time_step_ms`
+/// above times the FIRST few ticks, when the seed cloud is still spread; this runs
+/// the sim FORWARD and reports ms/tick in windows, so the climb (or its absence) is
+/// visible. Then it sweeps the two forces that set the packing — a stronger
+/// `separation` holds the spacing near `radius` (⇒ ~O(1) per cell), a weaker `seek`
+/// stops pulling everyone into one clump.
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn does_the_flock_stutter_as_it_gathers() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping boids-gather measurement");
+        return;
+    };
+    let reg = registry();
+    // 262 144, not a million: the same density LAW, fast enough to run 600 ticks
+    // per candidate. The absolute budget is confirmed at 1 M on the winner below.
+    const N: f32 = 262_144.0;
+    const TICKS: u64 = 600;
+    const WIN: u64 = 120;
+
+    // (label, radius, separation, alignment, cohesion, seek, max_speed)
+    let cands = [
+        ("shipped  ", 2.0, 1.6, 1.4, 0.6, 0.35, 5.0),
+        ("sep 2.4  ", 2.0, 2.4, 1.4, 0.5, 0.20, 5.0),
+        ("sep 3.0  ", 2.0, 3.0, 1.2, 0.4, 0.12, 5.0),
+    ];
+
+    eprintln!("\nboids ms/tick as the flock evolves ({N} agents, windows of {WIN} ticks):");
+    eprint!("  {:<10}", "tuning");
+    for w in 0..(TICKS / WIN) {
+        eprint!("  t{:>3}-{:<3}", w * WIN, (w + 1) * WIN);
+    }
+    eprintln!("   {:>8}", "peak");
+
+    for (label, r, sep, al, co, sk, ms) in cands {
+        let (g, out) = boids_graph_tuned(N, r, sep, al, co, sk, ms);
+        let plan = plan(&g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu());
+        let mut gc = GpuCook::new();
+        let cook = |gc: &mut GpuCook, t: u64| {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        cook(&mut gc, 0); // warm pipelines + seed
+        eprint!("  {label:<10}");
+        let mut peak = 0.0f64;
+        for w in 0..(TICKS / WIN) {
+            let start = Instant::now();
+            for t in (w * WIN + 1)..=((w + 1) * WIN) {
+                cook(&mut gc, t);
+            }
+            let ms = start.elapsed().as_secs_f64() * 1e3 / WIN as f64;
+            peak = peak.max(ms);
+            eprint!("  {ms:>8.2}");
+        }
+        eprintln!("   {peak:>8.2}");
+    }
+    eprintln!(
+        "\n(a rising row = the flock packing tighter and dragging the grid toward\n\
+         O(N²); a flat row = the packing held open. The peak is what the frame\n\
+         budget must absorb.)"
+    );
+}
+
+/// **What count leaves headroom for the flock to GATHER?** — the `=7` fix, the same
+/// question the `=8` sizing answered. The million was sized for the SPREAD cost;
+/// this measures the CLUSTERED peak (600 ticks in) per count, so the demo can be
+/// sized to hold 60 fps while doing its headline move.
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn what_boid_count_leaves_headroom() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping boids headroom measurement");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 600;
+    eprintln!("\nboids clustered peak vs count (shipped forces, 600 ticks in):");
+    eprintln!("  {:>10}  {:>10}  {:>10}  {:>10}", "agents", "start ms", "peak ms", "% of 16.7");
+    for &n in &[262_144u32, 524_288, 786_432, 1_048_576] {
+        let (g, out) = boids_graph_tuned(n as f32, 2.0, 1.6, 1.4, 0.6, 0.35, 5.0);
+        let plan = plan(&g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu());
+        let mut gc = GpuCook::new();
+        let cook = |gc: &mut GpuCook, t: u64| {
+            gc.cook(&gpu, &g, &reg, &reg, &plan, &[],
+                CookClock { playhead: t as f64 * FIXED_DT, tick: Some(t) },
+                DEFAULT_UV, DEFAULT_SIZE).expect("gpu cook");
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        cook(&mut gc, 0);
+        // start cost (first 30 ticks) vs clustered cost (30 ticks at the end)
+        let time = |gc: &mut GpuCook, a: u64, b: u64| {
+            let start = Instant::now();
+            for t in a..b { cook(gc, t); }
+            start.elapsed().as_secs_f64() * 1e3 / (b - a) as f64
+        };
+        let start_ms = time(&mut gc, 1, 31);
+        for t in 31..(TICKS - 30) { cook(&mut gc, t); }
+        let peak_ms = time(&mut gc, TICKS - 30, TICKS);
+        eprintln!("  {n:>10}  {start_ms:>10.2}  {peak_ms:>10.2}  {:>9.0}%", peak_ms / 16.67 * 100.0);
+    }
+    eprintln!(
+        "\n(the demo must hold 60 fps at its PEAK, not at rest; the % is the cook\n\
+         alone, before the render draws a quad per agent.)"
+    );
+}

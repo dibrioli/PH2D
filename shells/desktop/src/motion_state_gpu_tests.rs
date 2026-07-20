@@ -233,13 +233,13 @@ fn the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop() {
     );
 }
 
-/// The **million-boid murmuration** (`PH2D_GPU_COOK_DEMO=7`, ADR-0134) must plan
+/// The **murmuration** (`PH2D_GPU_COOK_DEMO=7`, ADR-0134) must plan
 /// as a fully-GPU LOOP — the whole claim of the neighbourhood sim. A silent CPU
 /// fallback (the route degrades by design) would look identical, just at seconds
 /// per tick instead of milliseconds, and the reviewer would sign off on a path
 /// that never ran the spatial grid at all.
 #[test]
-fn the_million_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
+fn the_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
     let mut doc = MotionDoc::new();
@@ -417,14 +417,22 @@ fn the_spread_sweep_is_linear_and_crosses_reach_boundaries() {
     );
 }
 
-/// The demo really is a MILLION agents with `spread` on — the two facts that make
-/// it the neighbourhood-sim breakthrough rather than a pretty toy. Read from the
-/// params (not cooked): a 1 M CPU cook is the very `O(N²)` this demo exists to
-/// escape (~10 s), so the gate would time out proving the point. `spread` off
-/// would silently repack the flock into a fixed box → `O(N²)` on the GPU too, and
-/// the loop gate above would stay green on a demo that no longer scales.
+/// The demo really is a HUGE flock with `spread` on — the two facts that make it
+/// the neighbourhood-sim breakthrough rather than a pretty toy. Read from the
+/// params (not cooked): a 500 k CPU cook is the very `O(N²)` this demo exists to
+/// escape (seconds/tick), so the gate would time out proving the point. `spread`
+/// off would silently repack the flock into a fixed box → `O(N²)` on the GPU too,
+/// and the loop gate above would stay green on a demo that no longer scales.
+///
+/// ⚠️ The count is 524 288, NOT a million, and that is the fix — a flock's headline
+/// act is to GATHER, which packs cells and raises the cost, and the million spent
+/// 124 % of a 60 fps frame once clustered (Enio's stutter report). The floor here
+/// keeps it a genuinely large swarm — anything this size is far past the
+/// few-hundred-agent toy the grid replaces, and the ceiling stays millions (the
+/// `count` is the only thing between this and them). See the measured table in
+/// `build_gpu_boids_demo_document`.
 #[test]
-fn the_million_boid_demo_is_actually_a_million_and_spread() {
+fn the_boid_demo_is_a_large_spread_flock_sized_for_headroom() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
     let mut doc = MotionDoc::new();
@@ -440,15 +448,19 @@ fn the_million_boid_demo_is_actually_a_million_and_spread() {
         .graph
         .node_param_overrides(boids)
         .expect("the demo sets the flock's params");
-    assert_eq!(
-        params.get("count").copied(),
-        Some(1_048_576.0),
-        "the murmuration must be the million it advertises"
+    let count = params.get("count").copied().unwrap_or(0.0);
+    // A genuinely large swarm (≥256 k = ~1000× the classic toy), but with headroom
+    // to GATHER inside a frame (the million did not — 124 % clustered). If someone
+    // pushes it back to a million, the clustered peak stutters again.
+    assert!(
+        (262_144.0..=786_432.0).contains(&count),
+        "the flock must be large but sized to gather inside a 60 fps frame; the \
+         million stuttered at 124 % once clustered. count = {count}"
     );
     assert!(
         params.get("spread").copied().unwrap_or(0.0) > 0.5,
-        "spread MUST be on — without it a million agents pack into a box and the \
-         grid cannot help (O(N²)), which is the exact thing this demo disproves"
+        "spread MUST be on — without it the flock packs into a box and the grid \
+         cannot help (O(N²)), which is the exact thing this demo disproves"
     );
 }
 

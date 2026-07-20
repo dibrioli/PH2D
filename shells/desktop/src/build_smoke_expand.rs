@@ -12,6 +12,14 @@
 
 use crate::build_smoke::shape;
 use ph2d_vec_scene::{Contour, Rgba8, ShapeKind, StrokeSpec, VecVertex};
+use std::cell::Cell;
+
+thread_local! {
+    /// Onde o nível 18 agarrou o slider (tela) — o arrasto move a partir daqui.
+    static GRAB: Cell<(f32, f32)> = const { Cell::new((0.0, 0.0)) };
+    /// O instante do frame anterior — mede o CUSTO de frame do roteiro (a queda de FPS).
+    static LAST_T: Cell<Option<std::time::Instant>> = const { Cell::new(None) };
+}
 
 /// Um quadrado de lado `s` centrado em `c`, em sentido CCW.
 fn square_at(c: [f64; 2], s: f64) -> Vec<VecVertex> {
@@ -140,5 +148,104 @@ impl crate::App {
              \x20    Com os três em 1.00 o botão não faz nada de propósito: aí é Outline Stroke.\n\
              \x20 5) Ctrl+Z uma vez desfaz o comando INTEIRO."
         );
+    }
+
+    /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (diagnóstico do
+    /// report de 2026-07-20: "queda de FPS + Round→Bevel não retuna"). Agarra o slider de
+    /// Offset com o PONTEIRO, arrasta por frames, solta, clica Round, clica Bevel — e loga
+    /// por frame: custo do frame, profundidade do undo, janela viva, join do painel, área.
+    pub(crate) fn smoke_expand_retune_drive(&mut self, f: u32) {
+        // Telemetria de TODO frame do roteiro (o FPS é o 1º sintoma).
+        let dt_ms = LAST_T.with(|c| {
+            let now = std::time::Instant::now();
+            let dt = c.get().map_or(0.0, |t| t.elapsed().as_secs_f64() * 1e3);
+            c.set(Some(now));
+            dt
+        });
+        if (9..=110).contains(&f) {
+            // VERTS, não área: a área a `Both` é CEGA por construção (o arredondamento
+            // perde (4−π)d² na borda e ganha o MESMO no furo — cancela exato).
+            let (paths, verts) = self.gfx.as_ref().map_or((0, 0), |g| {
+                let v: usize = g
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| {
+                        p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>()
+                    })
+                    .sum();
+                (g.vec_scene.paths().len(), v)
+            });
+            eprintln!(
+                "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} paths={paths} verts={verts}",
+                self.undo.depth(),
+                u8::from(self.vec_offset_retune.is_some()),
+                ph2d_panel_vector::expand_join(),
+            );
+        }
+        match f {
+            // A seção Expand mora abaixo da dobra: ROLA o painel (roda, caminho real) até o
+            // slider entrar no hit-index. O cursor precisa estar SOBRE o painel para a roda
+            // ser dele — o painel docado fica na borda direita.
+            5..=7
+                if self
+                    .smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                    .is_none() =>
+            {
+                let win = self.gfx.as_ref().map(|g| g.surface.size());
+                if let Some(w) = win {
+                    let (px, py) = (w.width as f32 - 120.0, w.height as f32 * 0.5);
+                    self.smoke_pointer_move(px, py);
+                    self.on_mouse_wheel(winit::event::MouseScrollDelta::LineDelta(0.0, -24.0));
+                }
+            }
+            // ROUND ANTES do arrasto — o fluxo do report (e o caso caro: o preview por
+            // frame produz arcos, e é o custo DELES que a queda de FPS acusa).
+            8 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_ROUND) {
+                Some((x, y)) => {
+                    eprintln!("[retune-smoke] clique ROUND (pré-drag) em ({x}, {y})");
+                    self.smoke_click_screen(x, y);
+                }
+                None => eprintln!("[retune-smoke] chip ROUND fora do hit-index"),
+            },
+            // Agarra o slider de Offset no centro (d=0) e segura.
+            10 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET) {
+                Some((x, y)) => {
+                    GRAB.with(|c| c.set((x, y)));
+                    eprintln!("[retune-smoke] slider em ({x}, {y}) — DOWN");
+                    self.smoke_pointer_down(x, y);
+                }
+                None => eprintln!("[retune-smoke] slider FORA do hit-index — roteiro morto"),
+            },
+            // Arrasta 120 px para a direita, 4 px/frame — o dt DESTES frames é o FPS do
+            // preview vivo.
+            11..=40 => {
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + ((f - 10) * 4) as f32, y);
+            }
+            41 => {
+                eprintln!("[retune-smoke] UP (release — a janela de retune abre aqui)");
+                self.smoke_pointer_up();
+            }
+            // O retune Round→Bevel — o que o report diz que não funcionou. Verts têm de
+            // DESPENCAR (arcos → chanfros retos).
+            60 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_BEVEL) {
+                Some((x, y)) => {
+                    eprintln!("[retune-smoke] clique BEVEL em ({x}, {y})");
+                    self.smoke_click_screen(x, y);
+                }
+                None => eprintln!("[retune-smoke] chip BEVEL fora do hit-index"),
+            },
+            // …e Bevel→Miter (verts caem de novo: os chanfros somem).
+            80 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_MITER) {
+                Some((x, y)) => {
+                    eprintln!("[retune-smoke] clique MITER em ({x}, {y})");
+                    self.smoke_click_screen(x, y);
+                }
+                None => eprintln!("[retune-smoke] chip MITER fora do hit-index"),
+            },
+            100 => eprintln!("[retune-smoke] fim do roteiro — feche a janela"),
+            _ => {}
+        }
     }
 }

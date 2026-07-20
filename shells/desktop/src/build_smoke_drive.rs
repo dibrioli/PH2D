@@ -91,6 +91,53 @@ impl crate::App {
         );
     }
 
+    /// Onde um widget está na TELA — varre o hit-index inteiro. `None` = não pintado/clicável.
+    pub(crate) fn smoke_find_widget(&self, id: ph2d_editor::NodeId) -> Option<(f32, f32)> {
+        let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref())?;
+        let win = self.gfx.as_ref().map(|g| g.surface.size())?;
+        for y in (0..win.height).step_by(3) {
+            for x in (0..win.width).step_by(3) {
+                if hero.hit_index.hit(x as f32, y as f32) == Some(id) {
+                    return Some((x as f32, y as f32));
+                }
+            }
+        }
+        None
+    }
+
+    /// As três metades de um arrasto, pelo caminho do winit — para roteiros que seguram o
+    /// botão POR FRAMES (um slider não se testa com press+release no mesmo evento).
+    pub(crate) fn smoke_pointer_down(&mut self, x: f32, y: f32) {
+        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
+            f64::from(x),
+            f64::from(y),
+        ));
+        self.on_mouse_input(
+            winit::event::ElementState::Pressed,
+            winit::event::MouseButton::Left,
+        );
+    }
+
+    pub(crate) fn smoke_pointer_move(&mut self, x: f32, y: f32) {
+        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
+            f64::from(x),
+            f64::from(y),
+        ));
+    }
+
+    pub(crate) fn smoke_pointer_up(&mut self) {
+        self.on_mouse_input(
+            winit::event::ElementState::Released,
+            winit::event::MouseButton::Left,
+        );
+    }
+
+    /// Clique em coordenada de TELA (o [`Self::smoke_click`] fala mundo).
+    pub(crate) fn smoke_click_screen(&mut self, x: f32, y: f32) {
+        self.smoke_pointer_down(x, y);
+        self.smoke_pointer_up();
+    }
+
     pub(crate) fn smoke_state(&mut self, when: &str) {
         let n = self.gfx.as_ref().map_or(0, |g| g.vec_scene.paths().len());
         eprintln!(

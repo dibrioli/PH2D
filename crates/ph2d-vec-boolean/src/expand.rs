@@ -623,21 +623,43 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
     }
 }
 
+/// Achata `bez` em RETAS na tolerância da forma — o preço que faz o Offset AO VIVO caber
+/// num frame.
+///
+/// O sweep sobre CÚBICAS é caro: na rosquinha do smoke com quina **Round** (a banda vira
+/// arcos), `offset_path` custava **19–43 ms** contra ~1 ms do Miter/Bevel (medido, debug) —
+/// o arrasto caía a ~12 fps ("severa queda de FPS", Enio 2026-07-20). Sobre retas o mesmo
+/// sweep custa ~1 ms. É a MESMA moeda do power stroke (o ribbon achata e varre uma vez): o
+/// erro fica na [`tolerance`] relativa, ~4 ordens abaixo do que a forma mede — e o output
+/// do sweep já fragmentava os arcos em centenas de verts de qualquer jeito.
+fn flat_lines(bez: &BezPath) -> BezPath {
+    let tol = tolerance(bez);
+    let mut out = BezPath::new();
+    kurbo::flatten(bez.iter(), tol, |el| out.push(el));
+    out
+}
+
 /// A região que UM contorno fechado delimita, opcionalmente offsetada por `d` (com quinas em
 /// `join`). Sem offset (`offset == false`), é só a região do contorno como está.
 ///
 /// O offset de um laço é a MESMA redução da booleana de antes: o traço da fronteira com
 /// largura `2|d|` é a banda, e a região `∪ banda` (crescer) ou `∖ banda` (encolher). A quina
 /// escolhe o estilo — `Round` é o offset métrico verdadeiro (o disco de verdade).
+///
+/// ⚠️ Tudo que entra num sweep aqui passa por [`flat_lines`] — este caminho roda POR FRAME
+/// no arrasto do slider, e cúbica no sweep não cabe num frame (ver o doc do `flat_lines`).
 fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Option<Region> {
-    let base = Region::of(loop_bez, LsFillRule::NonZero)?;
+    let base = Region::of(&flat_lines(loop_bez), LsFillRule::NonZero)?;
     if !offset {
         return Some(base);
     }
     let pen = Stroke::new(2.0 * d.abs())
         .with_join(join_of(join))
         .with_caps(Cap::Butt);
-    let band = penned(&base.bez(), &pen)?;
+    let band = Region::of(
+        &flat_lines(&penned_outline(&base.bez(), &pen)),
+        LsFillRule::NonZero,
+    )?;
     if band.is_empty() {
         return Some(base);
     }

@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=18` — a MESMA cena do 17, com o roteiro do **RETUNE auto-dirigido**
+//!   (diagnóstico): rola o painel, clica Round, arrasta o slider de Offset com o ponteiro,
+//!   solta, clica Bevel e Miter — e loga por frame o custo, o undo, a janela e os verts.
 //! - `PH2D_BUILD_SMOKE=17` — a cena do **EXPAND**: um zig-zag só-traço, uma estrela com traço E
 //!   preenchimento, e um donut de parede fina. Outline Stroke nos dois primeiros, Offset Path no
 //!   terceiro (a borda cresce e o furo encolhe).
@@ -209,6 +212,21 @@ impl crate::App {
             // `build_smoke_expand` (teto de LOC).
             3 if level == 17 => self.smoke_expand_build(),
             4 if level == 17 => self.smoke_expand_select(),
+            // Nível 18 = a cena do 17 com o roteiro do RETUNE auto-dirigido (diagnóstico).
+            3 if level == 18 => self.smoke_expand_build(),
+            4 if level == 18 => {
+                // O alvo do offset é o DONUT (a 3ª forma).
+                let donut = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .get(2)
+                    .map(|p| p.id);
+                self.vec_pen.select(donut);
+            }
+            f18 if level == 18 && f18 >= 5 => self.smoke_expand_retune_drive(f18),
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em
             // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).

@@ -1,0 +1,225 @@
+# HANDOFF (continuação) — `line/gpu-nodes` · ADR-0134 (a grade de vizinhança) · 2026-07-20
+
+> **Para o próximo agente desta linha.** Você está ASSUMINDO uma linha que já
+> existe. Antes de ler qualquer código, faça a **FASE 0** do bloco de troca
+> ([`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)):
+>
+> ```
+> cd Worktrees/line-gpu-nodes && pwd && git branch --show-current
+> ```
+> `pwd` TEM de terminar em `/Worktrees/line-gpu-nodes` e a branch TEM de ser
+> `line/gpu-nodes`. Deu `main`? Você está na árvore errada — **PARE**. O mesmo path
+> relativo existe nas duas árvores e editar a de `main` compila e commita sem um
+> erro (é o modo de falha que este doc inteiro existe pra evitar).
+>
+> ⚠️ **ESTA JORNADA NÃO INTEGROU.** Diferente do handoff anterior
+> ([`_2026-07-19.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-19.md)), que abriu
+> com `line == main`, agora a linha está à frente do main — **rode
+> `git log --oneline main..HEAD` para o número e a lista exatos** (do `a7f2a0fb`, o
+> commit deste handoff anterior, até o topo; ~19 commits ao escrever isto). Todos
+> smokados e **aprovados pelo Enio**, **aguardando ordem de integração** (que é do
+> Enio, via agente integrador — CLAUDE.md §0.7). O `git rebase main` da FASE 1 só é
+> preciso
+> se o Enio integrar OUTRA linha antes de você continuar; se ninguém integrou nada,
+> o main não andou e você continua direto.
+>
+> **Este doc é o estado + os planos DESTA jornada (ADR-0134).** A história do
+> pipeline GPU que já estava no main (os 32 kernels, o tap, o flip do default) mora
+> no [`_2026-07-19.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-19.md) — leia-o
+> se precisar do motor por baixo. O **porquê** de cada decisão desta jornada está no
+> [ADR-0134](architecture/decisions/0134-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md)
+> e nas mensagens de commit (elas são o diário — `git show <sha>`).
+
+---
+
+## §0 — Os inegociáveis DESTA linha (memorize antes de tocar em nada)
+
+As 5 leis do handoff anterior CONTINUAM valendo (CPU canônica · gate=auditoria ·
+meça antes de limitar · `target`/`out`/`in` são reservadas do WGSL · a contagem vem
+do `CookShape`). Esta jornada pagou **quatro leis novas**, todas com bug ou com
+smoke reprovado:
+
+1. **A grade é O(N) SÓ sob densidade limitada — e isso vale pelos DOIS lados.** É a
+   lei central da vizinhança na GPU. Ela aparece quando a **multidão adensa** (o
+   bando do boids se juntando) E quando o **alcance estica** (o `spread` do collide
+   subindo) — são a mesma frase medida por dois eixos. Corolário que custou dois
+   smokes: **o custo de uma simulação de vizinhança é o ESTADO DE EQUILÍBRIO, não o
+   de arranque.** Uma janela de 600 ticks pegou uma curva ainda SUBINDO e eu chamei
+   o último ponto de "pico" — a fixture não continha o fenômeno (o bando assentado).
+   **Meça até o platô** (`gpu_boids_scale.rs::where_does_the_flock_settle` roda
+   4800–9600 ticks de propósito).
+
+2. **`GridSpec.sweeps_param` é o 1º kernel ITERADO, e a grade é reconstruída A CADA
+   varredura.** Uma varredura move a própria coluna que a grade indexa; uma grade
+   construída uma vez responderia *"quem estava perto de você ANTES de você se
+   mover?"*. O laço mora no **cook** (`ph2d-gpu-cook/src/lib.rs`, `MAX_SWEEPS`), não
+   no `encode_kernel_stage` (que guarda o layout delicado do uniform). `None` = um
+   dispatch (o tick JÁ é a iteração: boids); `Some(param)` = varre N vezes.
+
+3. **A referência CPU mudou por MÉRITO PRÓPRIO, e só então o port existiu.** O
+   `motion.collide` era Gauss-Seidel in-place (sequencial ⇒ inportável), e isso
+   fazia o empacotamento **depender da ORDEM de listagem do stream** (medido: 6,11
+   unidades de mundo, 1018% de um diâmetro — o artista não controla nem vê essa
+   ordem). Virou **Jacobi mediado** (mass splitting, Macklin & Müller 2014) primeiro
+   pela correção, depois pela portabilidade. **Nunca porte um kernel mudando a
+   semântica em silêncio pra caber na GPU** — se a CPU precisa mudar, mude-a pelo
+   motivo dela, com gate próprio, antes.
+
+4. **Uma cura de perf da GPU pode não caber na GPU — e a alternativa é a CENA.** Os
+   dois reports de FPS do Enio se resolveram FORA do kernel: o degrau do LFO era um
+   `ceil` (o `reach` é o PIOR caso; cull por-disco), mas o "amplitude alta trava" e
+   o "boids travam ao se juntar" eram **trabalho honesto** — a resposta foi
+   redimensionar a CENA (contagem, forças), não otimizar o motor. ⚠️ **A cura do
+   degrau NÃO podia vir do host:** o `spread` é uma COLUNA (o `value.lfo` tem kernel
+   GPU), então o valor nunca existe fora do dispositivo e dimensionar a célula por
+   ele exigiria o readback que o `grid.rs` existe pra evitar. A pergunta é feita
+   **por disco, dentro do kernel**.
+
+---
+
+## §1 — Onde paramos (ADR-0134, tudo em 19 commits locais, NÃO integrado)
+
+**A linha entregou a GRADE ESPACIAL na GPU e os DOIS primeiros clientes dela** — a
+capacidade que não existia em lugar nenhum: **interação de vizinhança a milhões**. A
+grade é um counting-sort (`clear → count → scan → scatter`) sobre um spatial hash,
+um **serviço do sequenciador** (D2), não um kernel de boids. Fases fechadas:
+
+| fase | o que entregou | commit |
+|---|---|---|
+| censo | qual nó está no prefixo CPU dos docs REAIS (re-medido) | `b685beed` |
+| ADR-0134 | a decisão inteira (grade=serviço, hash não bounded, CPU canônica) | `bc4d04e6` |
+| 1a | o **scan** (prefix-sum) reusável na GPU, bit-exato | `8477cac5` |
+| 1b/2 | a **grade** (spatial hash), gateada, bit-exata na RTX | `39ee06ee` |
+| 3 | a grade se liga ao cook do nó | `77ed563a` |
+| 3b | o **BOIDS** na GPU (seed bit-exato, passo ε) | `5a3b3c17` |
+| 4 | boids a **MILHÕES**: modo `spread √N` + teto MEDIDO + demo `=7` | `9e4d955d` |
+| 5 | o **PUSH-APART** (`motion.collide`) na GPU: o 1º kernel ITERADO | `f9519620`+`9595ff1f` |
+
+**As três cenas de smoke novas** (`shells/desktop/src/motion_state_gpu_neighbour_demos.rs`),
+todas rodam sob `PH2D_GPU_COOK=1`:
+
+- **`=7`, a murmuração** — `boids(1.048.576, spread √N, seek 0) → scale → output`, o
+  laço `output ──pre──> boids.state`. O tick É a iteração (1 dispatch/frame).
+- **`=8`, o empacotamento que respira** — `grid(360²) → collide → output` com um
+  `value.lfo` no `spread`. O 1º kernel iterado (grade reconstruída por varredura).
+- **`=9`, a varredura DIAGNÓSTICA** — igual ao `=8`, mas o LFO é uma **triangle
+  linear e lenta** (0.3→2.5) pra o custo virar **montanha suave** no medidor de GPU
+  em vez de bolha que esconde o frame-time.
+
+**Os quatro smokes do Enio, todos APROVADOS** (a saga completa nas mensagens de
+commit — cada uma nomeia o que foi medido e o que foi reprovado):
+
+| report do Enio | causa | resposta | commit |
+|---|---|---|---|
+| "queda de FPS nos valores +positivos do LFO" | degrau: `reach=ceil(2·spread)` pula 2→3 em spread 1 | **cull de célula por-disco** no kernel (7,58→13,08 ms → plano) | `2d0297c0` |
+| "amplitude do LFO despenca o FPS" | trabalho honesto (área do contato ∝ spread²) | redimensionou a cena `=8` (512²→360²) | `3dfbaa55` |
+| "queda quando boids se aproximam" | densidade (§0.1) | 1M→524k, e depois **o EQUILÍBRIO** (§0.1) | `73e4d45b`+`7f892ee7` |
+| "tente 1 milhão" | atrator é SUPERLINEAR no count | **`seek = 0`** (murmuração pura, densidade só cai) | `168bcc7e` |
+
+**Duas capacidades de MOTOR novas** (append-only em `ph2d-nodegraph/src/gpu.rs`):
+- `GridSpec` + `GridSpec.sweeps_param` — a grade de vizinhança como serviço (§0.2).
+- (o resto do contrato — `count_law`, `ReadBroadcast`, `variant_by_param` — é da
+  jornada anterior).
+
+**Estado dos gates:** todo o lane GPU verde na RTX (paridade collide 0/1 varredura
+= bit-exata, 8 = 2,4e-7); a suíte do shell **865 passed, 0 failed**; contrato
+congelado intacto.
+
+---
+
+## §2 — Os planos a seguir (ranqueados; MEÇA antes de escolher)
+
+⚠️ **O que esta jornada demonstrou, mas NÃO fez:** os milhões interagindo estão
+provados nos demos `=7`/`=8`, mas **nenhum documento de ARTISTA usa a grade ainda**.
+O boids/collide são payloads canônicos; o documento real (a neve de boot) segue no
+prefixo CPU. Fechar isso é o item 1, e é o que transforma a capacidade em produto.
+
+| # | trabalho | classe | o que destrava | o que MEDIR antes |
+|---|---|---|---|---|
+| 1 | **`sim.zone` como escopo de cook** | **estrutural** | a NEVE na GPU: `sim.step`+`sim.collide` de graça (hoje `dt≡0` fora da zone ⇒ o kernel nunca roda) + `sim.spawn`/`lifetime`/`distribute_poisson`/`combine` no mesmo doc | é um LAÇO/escopo, não um map — leia como `cook_scoped`/`time_remap` já fazem escopo (era o item #3 do menu anterior; a grade que faltava pro `sim.collide` de vizinhança já EXISTE) |
+| 2 | **subir os 2 tetos MEDIDOS** (§0.0: quem move o número reconfere a nota) | polimento de escala | boids/collide acima de ~4–8M | os dois já estão medidos e nomeados: (a) dispatch por-bucket sobre `pow2(2N)` bate 65 535 workgroups/dim a ~8M → **dispatch 2-D em `grid.rs`**; (b) binding de `RenderInstance` (184 B) capado em 2 GiB → ~11,67M → **requisitar `max_storage_buffer_binding_size` maior** |
+| 3 | **o cull do `motion.boids`** (~20%, medido, NÃO aplicado) | polimento | ~20% no boids | ⚠️ **NÃO é o mesmo cull do collide** — o boids varre 3×3 FIXO (`cell=radius` exato, sem `ceil` variável), então não tem o degrau; a técnica se aplica mas é outra wave, nomeada de propósito no commit `2d0297c0` |
+| 4 | **próximo kernel de cobertura** | incremental | mais grafos 100% GPU | re-meça qual nó aparece no prefixo CPU de docs reais (o método do censo) |
+| 5 | **Voronoi (JFA)** / **soft_body-verlet (XPBD)** | **grande** | os outros O(N²) de simulação | cada um é um algoritmo GPU PRÓPRIO — NÃO reusa a grade de vizinhança; território de maior ambição e o mais longe |
+
+**⚠️ Otimizações MEDIDAS e REPROVADAS nesta jornada (não re-derive):**
+- **collide, teste-mais-barato-primeiro** no laço interno → 6,47→6,45 ms. O kernel é
+  **memory-bound** na leitura das posições dos vizinhos; reordenar aritmética não
+  compra nada. Registrado em `gpu_collide.rs::what_does_the_breath_cost`.
+- **collide, thread em ordem de grade** (`me = grid_sorted[i]`) → 6,24 ms e PIOR na
+  escala (1M: 36,9→43,6). O `motion.grid` já emite o lattice row-major ⇒ a ordem de
+  índice JÁ é espacialmente coerente; a permutação só espalha as escritas.
+- **boids, alvo ORBITANTE** pra limitar o colapso → REFUTADO (o bando converge no
+  alvo móvel e o cavalga como um cometa denso; a órbita só atrasa). Registrado em
+  `gpu_boids_scale.rs::does_an_orbiting_target_bound_the_gather`.
+
+---
+
+## §3 — Mapa de onde as coisas moram (só o que ESTA jornada tocou)
+
+| você quer… | está em |
+|---|---|
+| a grade espacial (clear/count/scan/scatter, o hash CPU↔GPU) | `crates/ph2d-gpu-cook/src/grid.rs` |
+| o laço de varredura + `MAX_SWEEPS` (o 1º kernel iterado) | `crates/ph2d-gpu-cook/src/lib.rs` (procure `sweeps`) |
+| `GridSpec` + `sweeps_param` (o contrato da grade) | `crates/ph2d-nodegraph/src/gpu.rs` |
+| o kernel do BOIDS (varredura 3×3 fixa, seed √N) | `crates/ph2d-node-motion-boids/src/{lib,gpu}.rs` |
+| o kernel do COLLIDE (gather, cull de célula, GridSpec com sweeps) | `crates/ph2d-node-motion-collide/src/{lib,gpu}.rs` |
+| as 3 cenas de smoke (`=7`/`=8`/`=9`) | `shells/desktop/src/motion_state_gpu_neighbour_demos.rs` |
+| a rota das cenas no shell | `shells/desktop/src/motion_state.rs` (arms `Ok("7"/"8"/"9")`) |
+| os gates das cenas (plano GPU + a varredura é linear/cruza fronteiras) | `shells/desktop/src/motion_state_gpu_tests.rs` |
+| as MEDIÇÕES do boids (equilíbrio, headroom, órbita — todas `#[ignore]`) | `crates/ph2d-gpu-cook/tests/gpu_boids_scale.rs` |
+| a paridade + o gate do degrau + a medição da respiração do collide | `crates/ph2d-gpu-cook/tests/gpu_collide.rs` |
+
+⚠️ **Como rodar uma medição** (elas são `#[ignore]` e precisam da RTX, `--release`,
+serial senão contaminam a GPU uma da outra):
+
+```bash
+cargo test -p ph2d-gpu-cook --test gpu_boids_scale --release -- \
+  --ignored --nocapture --test-threads=1 where_does_the_flock_settle
+```
+
+---
+
+## §4 — Ao fechar a próxima fatia (o protocolo)
+
+Inner loop = **só `cargo check -p <crate>`**. No fechamento, 1× sobre o diff:
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes
+cargo fmt --all                       # ANTES de medir LOC (fmt re-expande)
+cargo clippy --workspace --all-targets
+cargo machete                         # ⚠️ chave DUPLICADA de Cargo.toml mata no parse
+typos
+cargo test --workspace
+cargo test -p ph2d-gpu-cook --release -- --ignored           # os gates de GPU (RTX)
+cargo test -p ph2d-host-desktop --release -- --ignored       # inclui os seams do painel
+```
+
+**Regras que esta jornada re-confirmou:**
+- **`cp <arquivo> /tmp/…` IMEDIATAMENTE antes de cada mutação** — nunca `git checkout`
+  (apaga a feature) nem reusar um backup de dois edits atrás.
+- **Um pipe mascara o exit code** (`| grep`): capture o `$?` ou leia o log cru. Um
+  grep filtrado devolveu vazio e escondeu um erro de compilação nesta jornada — o
+  `gpu_neighbor.rs` era um 3º sítio de `GridSpec` sem `sweeps_param`.
+- **Uma busca NEGATIVA precisa de controle POSITIVO.** O `registry()` do
+  `gpu_boids_scale` não registrava o `value.lfo`; `add_node` aceita QUALQUER nome e
+  a recusa só aparece no `plan` (lendo como "o kernel recedeu" quando era registro
+  faltando). Diagnosticado planando um LFO puro como sink.
+
+**Depois:** feche o módulo, atualize/escreva o handoff de integração
+(DIRETRIZ §1.5.9 — já há um `HANDOFF_INTEGRACAO_line_gpu_nodes_*` do fechamento
+anterior; a ordem de integração é do Enio) e **PARE**. Você **não integra e não
+pusha** (CLAUDE.md §0.7).
+
+**Commit:** `git commit --no-verify -F <arquivo>` (⚠️ crase na mensagem = execução
+de comando).
+
+---
+
+## §5 — Como reportar sua abertura (FASE 0, passo 8)
+
+> "Assumi `line/gpu-nodes` em `Worktrees/line-gpu-nodes` (HEAD `<sha>`). ADR-0134
+> fechado: a grade espacial na GPU + boids/collide a milhões (fases 1–5), 3 demos
+> (`=7`/`=8`/`=9`) smokados e aprovados, **19 commits locais aguardando integração**
+> do Enio. Próximo passo em aberto: `sim.zone` como escopo de cook (a NEVE na GPU) —
+> §2. Aguardo a tarefa." — e **PARE**.

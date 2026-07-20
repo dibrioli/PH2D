@@ -44,10 +44,16 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
 
 /// Bilinear sample **plus** the field's screen-space gradient magnitude at `(fx, fy)`, in field units
 /// per texel — the `fwidth` estimate `|∂/∂x| + |∂/∂y|` of the same bilinear patch (reads the SAME four
-/// texels as [`sample_bilinear`], value bit-identical to it). [`aa_hardened_coverage`] uses the gradient
-/// to decide whether an edge is steep enough to need supersampling.
+/// texels as [`sample_bilinear`], value bit-identical to it). [`aa_coverage`] uses the gradient to
+/// decide whether the neighbourhood is a transition at all (flat ⇒ single sample, byte-identical).
 #[inline]
-pub(super) fn sample_bilinear_grad(src: &[f32], w: usize, h: usize, fx: f32, fy: f32) -> (f32, f32) {
+pub(super) fn sample_bilinear_grad(
+    src: &[f32],
+    w: usize,
+    h: usize,
+    fx: f32,
+    fy: f32,
+) -> (f32, f32) {
     let fx = fx.clamp(0.0, (w - 1) as f32);
     let fy = fy.clamp(0.0, (h - 1) as f32);
     let x0 = fx.floor() as usize;
@@ -91,46 +97,64 @@ const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
 /// - The fraction itself needs sub-texel reconstruction ([`AA_SS`] supersampling): on very thin strokes
 ///   the hardened coverage jumps 0→1 inside one texel, so a single sample has no fraction to offer.
 ///
-/// The whole thing is gated on the coverage steepness (`grad·4 > band`, ramping in over one octave):
-/// a thick stroke's shallow rim — and every interior texel — returns `(single_sample, 1.0)` and is
-/// **byte-identical** to the old `smoothstep(e0, e1, sample_bilinear(…))` with no alpha applied. It is
-/// also halo-free: nothing widens the window, so a fully-outside texel stays exactly `(0, …)` = paper.
+/// The treatment applies to **every transition** (thick strokes included — the second smoke's order:
+/// the saturation steepens the thick rim's perceived edge too, and the AA'd thin strokes came out
+/// "melhores que traços grossos"); only a genuinely FLAT neighbourhood (`grad == 0`: the wash's
+/// interior plateau, open paper) takes the single sample and is byte-identical. It is halo-free:
+/// nothing widens the window, so a fully-outside texel stays exactly `(0, …)` = paper.
+/// `pos(ox, oy)` maps a sub-texel OUTPUT offset to the coverage-space sample position — the caller
+/// routes it through the full Ragged-Edge warp (`pos(0,0)` must be the pixel's own warped centre), so
+/// the supersamples span the output texel's TRUE footprint. Offsetting in warped space instead reads
+/// a footprint far too small under a strong warp (adjacent output texels' warped positions sit up to
+/// `1 + amp·0.19` texels apart — measured over a 300² sweep of `warp_offset`), and the serrated edge
+/// stayed binary: warp 48 posted 226 cliffs, warp 32 posted 75, with the flat fixtures all green.
+/// Routing the taps through the warp took both to zero. (A four-probe "rescue" for centres landing on
+/// flat spots was built alongside and MEASURED DEAD — the feather's plateau scallop keeps `grad > 0`
+/// across virtually the whole wash, so the gradient gate already fires everywhere it matters.)
 #[inline]
 pub(super) fn aa_coverage(
     src: &[f32],
     w: usize,
     h: usize,
-    sx: f32,
-    sy: f32,
+    pos: impl Fn(f32, f32) -> (f32, f32),
     e0: f32,
     e1: f32,
 ) -> (f32, f32) {
+    let (sx, sy) = pos(0.0, 0.0);
     let (val, grad) = sample_bilinear_grad(src, w, h, sx, sy);
     let single = smoothstep(e0, e1, val);
-    let band = e1 - e0;
-    // Shallow rim (transition ≥ ~4 texels): one sample, no alpha — byte-identical to the old path.
-    if grad * 4.0 <= band {
+    // Flat field (the wash interior's plateau, open paper): one sample, no alpha — byte-identical.
+    // Every TRANSITION gets the treatment (Enio 2026-07-20 pós-smoke: os finos ficaram "melhores que
+    // traços grossos" — the optical saturation steepens the thick rim too, so the AA is for every
+    // stroke, not a thin-stroke rescue; the original steepness gate was retired on that order).
+    if grad <= 0.0 {
         return (single, 1.0);
     }
     let mut acc = 0.0;
     let mut mx = single;
     for &oy in &AA_SS {
         for &ox in &AA_SS {
-            let c = smoothstep(e0, e1, sample_bilinear(src, w, h, sx + ox, sy + oy));
+            let (tx, ty) = pos(ox, oy);
+            let c = smoothstep(e0, e1, sample_bilinear(src, w, h, tx, ty));
             acc += c;
             mx = mx.max(c);
         }
     }
     let ss = acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32);
+    if mx <= 0.0 {
+        // Wholly outside the silhouette: nothing to fade (cw = 0 early-outs downstream anyway).
+        return (single, 1.0);
+    }
     // The rasterizer split, shape × shading: the SHADING is what the covered fraction of the texel
     // contains — the wash a little deeper in (the MAX subsample; using the centre sample double-fades:
     // a rim texel then renders the diluted light wash AND gets alpha-faded, while its inner neighbour
     // is already optically saturated — the cliff just moves over by one texel). The SHAPE is the
-    // fractional area (the MEAN subsample), applied as final linear alpha.
-    // Strength ramps 0→1 over one octave of steepness past the gate, so a stroke whose radius sits
-    // at the boundary gets a partial effect instead of a per-texel on/off seam.
-    let s = (grad * 4.0 / band - 1.0).min(1.0);
-    (single + (mx - single) * s, 1.0 - (1.0 - ss) * s)
+    // fractional area **relative to the wash level present** (mean ÷ max): a diluted wash's body sits
+    // mid-band, where the feather's plateau scallop keeps a tiny gradient alive — the raw mean would
+    // alpha-fade the whole interior (~0.8) and stair-step the owner junction (the cross gate caught
+    // it); against the local max the interior ratios to ~1 while a true silhouette edge stays the
+    // honest fraction. At a full-strength rim `mx ≈ 1`, so this is the approved thin-stroke fade.
+    (mx, ss / mx)
 }
 
 /// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening

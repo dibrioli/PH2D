@@ -7,10 +7,11 @@
 //! while the plain painter — whose alpha is the raw soft falloff — stays smooth at any size).
 //! [`super::watercolor_field::aa_coverage`] answers with the rasterizer's shape × shading split: the
 //! shading may saturate, but the texel's fractional silhouette coverage is composited as **linear alpha
-//! on the finished pixel** — gated to steep edges so a thick stroke is byte-identical.
+//! on the finished pixel**. The second smoke extended it to EVERY transition (thick strokes included —
+//! "os finos ficaram melhores que traços grossos"); the untouched domain is the flat interior/paper.
 //!
 //! These gates render real strokes (over a white opaque raster, so the silhouette AA shows as grey rim
-//! texels in RGB, not in alpha) — they contain the phenomenon, and pin the byte-identity of thick strokes.
+//! texels in RGB, not in alpha) — they contain the phenomenon, and pin the interior's byte-identity.
 
 use super::watercolor_field::{aa_coverage, sample_bilinear, smoothstep};
 use super::*;
@@ -113,32 +114,79 @@ fn a_thin_watercolor_stroke_edge_is_antialiased() {
     );
 }
 
-/// The "sem prejuízo ao que já conseguimos" promise: a THICK watercolor stroke (radius 40) is
-/// **byte-identical** to the pre-fix render — its shallow coverage rim never trips the gradient gate,
-/// so every texel takes the single-sample path. Fingerprint pinned from the pre-fix code.
+/// The second smoke's order (Enio 2026-07-20, "os finos ficaram melhores que traços grossos —
+/// expandir para todos"): a THICK stroke's outer edge must climb too. The optical saturation
+/// steepened the shallow rim just the same — pre-extension the r=40 edge jumped 158 bytes in one
+/// texel (`255 → 97 → 30`); with the AA on every transition it climbs `255 → 222 → 170 → 118 → 61`
+/// (max step ≈ 57), the dark fringe still present past it.
 #[test]
-fn a_thick_watercolor_stroke_is_byte_identical() {
+fn a_thick_stroke_edge_climbs_too() {
     let pts = [[70.0, 128.0], [186.0, 128.0]];
-    let canvas = wc_stroke(256, 40.0, true, 6.0, &pts);
-    assert_eq!(
-        canvas_hash(&canvas),
-        0xc5ebf8cf645fb6f6,
-        "the thick watercolor stroke must render byte-for-byte as before the AA fix"
+    let c = wc_stroke(256, 40.0, true, 6.0, &pts);
+    let prof: Vec<u8> = (78..108).map(|y| lum(&c, 256, 128, y)).collect();
+    let dark_at = prof
+        .iter()
+        .enumerate()
+        .min_by_key(|&(_, &l)| l)
+        .map(|(i, _)| i)
+        .unwrap();
+    let max_step = prof[..=dark_at]
+        .windows(2)
+        .map(|w| (i32::from(w[0]) - i32::from(w[1])).abs())
+        .max()
+        .unwrap();
+    assert!(
+        max_step < 120,
+        "thick outer edge must climb, not jump (max step {max_step}, profile {prof:?})"
     );
 }
 
-/// Mechanism, unit-level: on a SHALLOW field (transition ≥ ~4 texels — the thick-stroke rim) the
-/// result is **byte-identical** to the plain `smoothstep(e0, e1, sample_bilinear(…))` with alpha 1.0 —
-/// the gradient gate keeps the single-sample path. A 21-wide 0→1 ramp has grad 0.05 ≪ band/4.
+/// The "sem prejuízo" promise, re-scoped by the same order: the AA touches ONLY transitions — the
+/// wash's INTERIOR (a flat plateau, `grad == 0`) renders byte-for-byte as the pre-AA composite.
+/// The pinned hash was verified equal under the AA build and under a forced single-sample build.
 #[test]
-fn aa_coverage_is_identical_on_a_shallow_edge() {
-    let field: Vec<f32> = (0..21).map(|i| i as f32 / 20.0).collect(); // grad 0.05 per texel
-    for i in 40..160 {
-        let sx = i as f32 * 0.1; // 4.0 .. 15.9, away from the clamped borders
-        let (cw, alpha) = aa_coverage(&field, 21, 1, sx, 0.0, 0.12, 0.60);
-        let plain = smoothstep(0.12, 0.60, sample_bilinear(&field, 21, 1, sx, 0.0));
-        assert_eq!(cw.to_bits(), plain.to_bits(), "shallow cw must be untouched at sx={sx}");
-        assert_eq!(alpha, 1.0, "shallow edge must carry no AA alpha at sx={sx}");
+fn the_wash_interior_is_untouched_by_the_aa() {
+    let pts = [[70.0, 128.0], [186.0, 128.0]];
+    let c = wc_stroke(256, 40.0, true, 6.0, &pts);
+    // Interior region well away from any rim: x 100..156, y 112..144.
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for y in 112u32..144 {
+        for x in 100u32..156 {
+            let i = ((y * 256 + x) * 4) as usize;
+            for c4 in 0..4 {
+                h ^= c[i + c4] as u64;
+                h = h.wrapping_mul(0x0100_0000_01b3);
+            }
+        }
+    }
+    assert_eq!(
+        h, 0xc652538dc546d40b,
+        "the wash interior must stay byte-identical to the pre-AA composite"
+    );
+}
+
+/// Mechanism, unit-level: on a FLAT field (the wash's interior plateau, open paper — `grad == 0`)
+/// the result is **byte-identical** to the plain `smoothstep(e0, e1, sample_bilinear(…))` with
+/// alpha 1.0 — no supersampling, no fade. This is the identity domain left after the second smoke
+/// extended the AA to every transition.
+#[test]
+fn aa_coverage_is_identical_on_a_flat_field() {
+    for level in [0.0f32, 0.12, 0.36, 0.60, 1.0] {
+        let field = vec![level; 6 * 6];
+        for i in 0..40 {
+            let sx = 1.0 + i as f32 * 0.1; // 1.0 .. 4.9, inside the field
+            let (cw, alpha) = aa_coverage(&field, 6, 6, |ox, oy| (sx + ox, 2.5 + oy), 0.12, 0.60);
+            let plain = smoothstep(0.12, 0.60, sample_bilinear(&field, 6, 6, sx, 2.5));
+            assert_eq!(
+                cw.to_bits(),
+                plain.to_bits(),
+                "flat cw must be untouched at level={level} sx={sx}"
+            );
+            assert_eq!(
+                alpha, 1.0,
+                "flat field must carry no AA alpha at level={level}"
+            );
+        }
     }
 }
 
@@ -153,16 +201,22 @@ fn aa_coverage_gives_a_steep_step_fractional_alpha() {
     // At the boundary texel (sy = 1.0, the last "outside" row) the single sample is exactly 0.
     let plain = smoothstep(0.12, 0.60, sample_bilinear(&field, 1, 4, 0.0, 1.0));
     assert_eq!(plain, 0.0, "single sample snaps the boundary to 0");
-    let (cw, alpha) = aa_coverage(&field, 1, 4, 0.0, 1.0, 0.12, 0.60);
-    assert!(cw > 0.02, "the boundary texel must see some wash (got cw={cw})");
+    let (cw, alpha) = aa_coverage(&field, 1, 4, |ox, oy| (ox, 1.0 + oy), 0.12, 0.60);
+    assert!(
+        cw > 0.02,
+        "the boundary texel must see some wash (got cw={cw})"
+    );
     assert!(
         alpha < 0.98,
         "the boundary texel must be composited fractionally (got alpha={alpha})"
     );
     // And one row inside (sy = 2.0): solid coverage, alpha near 1 — the interior is not washed out.
-    let (cw_in, alpha_in) = aa_coverage(&field, 1, 4, 0.0, 2.0, 0.12, 0.60);
+    let (cw_in, alpha_in) = aa_coverage(&field, 1, 4, |ox, oy| (ox, 2.0 + oy), 0.12, 0.60);
     assert!(cw_in > 0.9, "interior stays solid (cw={cw_in})");
-    assert!(alpha_in > 0.6, "interior alpha stays high (alpha={alpha_in})");
+    assert!(
+        alpha_in > 0.6,
+        "interior alpha stays high (alpha={alpha_in})"
+    );
 }
 
 /// The smoke's own case (Enio 2026-07-20, radius ~8–12): the outer edge must CLIMB — its sharpest
@@ -200,3 +254,22 @@ fn a_medium_thin_stroke_edge_climbs_instead_of_jumping() {
     }
 }
 
+/// The Ragged-Edge case (Enio 2026-07-20, "Ragged Edge alto provoca o mesmo problema"): a strong
+/// warp moves ADJACENT output texels' sample positions up to `1 + amp·0.19` texels apart, jumping
+/// the whole hardening band — the serrated boundary runs between texels whose centres both sample
+/// FLAT regions, so the gradient gate alone never fires (measured: warp 48 posted 226 cliffs, warp
+/// 32 posted 75, with every other gate green). The dilated four-probe rescue + warp-routed
+/// subsamples take both to zero.
+#[test]
+fn a_high_ragged_edge_stroke_is_antialiased_too() {
+    for warp in [32.0f32, 48.0] {
+        let pts = [[30.0, 30.0], [150.0, 150.0]];
+        let c = wc_stroke(192, 10.0, true, warp, &pts);
+        let cliffs = count_cliffs(&c, 192);
+        assert!(
+            cliffs < 30,
+            "warp {warp}: the serrated edge must be anti-aliased (cliffs = {cliffs}; \
+             the gradient gate alone leaves 75-226)"
+        );
+    }
+}

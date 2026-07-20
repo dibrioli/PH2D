@@ -22,8 +22,86 @@
 | [13](#bug-13--varredura-a-família-do-12-o-guard-que-pergunta-existe-em-vez-de-que-forma-tem) | **Varredura**: +1 PANIC (trocar de sprite com tinta molhada) + 4 vazamentos silenciosos entre sprites | Lifecycle de rebind de documento · compositor · aquarela | ✅ 3 fixes (RED verificado em cada) | 2026-07-12 |
 | [15](#bug-15--impasto-os-chips-do-rig-de-luzes-pintam-e-não-clicam-aberto) | **Impasto**: os chips do rig de luzes **pintam e não clicam** (nem o checkbox) | Seam da UI (painel ↔ tool) — **não** a matemática | 🔎 **ABERTO** (fila: amanhã, gate do seam PRIMEIRO) | 2026-07-12 |
 | [14](#bug-14--impasto-a-tinta-extravasava-o-relevo-o-suporte-batia-e-a-foto-estava-errada) | **Impasto**: "a tinta extravasa o relevo" — 3 rodadas; o gate ficava **verde** e a foto do Enio, errada | Depósito de pigmento (alpha do dab) × corpo × luz | ✅ Resolvido (o FILME + opacidade Beer-Lambert; névoa 52% → 13,5%) | 2026-07-12 |
+| [16](#bug-16--aquarela-borda-dura-pixelada-o-aa-alimentado-na-densidade-era-comido-pela-saturação-óptica) | **Aquarela**: "borda dura pixelada" em traço fino — o 1º fix foi verde nos gates e invisível no produto | Watercolor composite (hardening + óptica exponencial) | ✅ Resolvido (forma × sombreamento: fração como ALPHA linear na aparência; estendido a todo traço + Ragged Edge alto) | 2026-07-20 |
 
-## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (ABERTO)
+## Bug #16 — Aquarela: "borda dura pixelada" — o AA alimentado na DENSIDADE era comido pela saturação óptica
+
+**Área:** watercolor composite (`watercolor_render.rs` / `watercolor_field.rs::aa_coverage`).
+**Estado:** ✅ Resolvido (smoke Enio 2026-07-20: *"Traços finos perfeitos!"* → estendido a todo traço
+por ordem; Ragged Edge alto fechado na mesma rodada). Gates em `watercolor_aa_tests.rs`.
+
+### Sintoma (Enio, 2026-07-20, screenshots)
+
+Traço **fino** de aquarela (e de impasto) com borda dura serrilhada ("pixelada"), enquanto o painter
+simples tem borda perfeita em qualquer tamanho. Traço grosso parecia bom em todos os modos.
+
+### Causa-raiz (em camadas — cada rodada descobriu uma)
+
+1. **O hardening mora em espaço de COBERTURA** (`smoothstep(SS0=0.12, SS1=0.60, cov)`): a largura da
+   transição em texels de tela é proporcional ao raio — num traço fino a silhueta cruza a janela em
+   menos de um texel e vira degrau binário. O painter simples usa o falloff cru como alpha
+   (rampa ≈ 0.4·raio texels, sempre ≥ 1 texel → AA sub-pixel de graça).
+2. **A óptica a jusante é EXPONENCIAL** (fringe `edge_gain·(cw−inner)` + Beer–Lambert): satura o
+   escuro logo acima de `cw≈0.2`. MEDIDO no raio 10: a cobertura tem rampa de ~2 texels e a borda
+   ainda renderiza `255, 190, 1` — binária. **Alimentar a fração de AA na densidade não é AA**: o
+   exponencial come a fração.
+3. **Ragged Edge alto** (warp até 48): o warp desloca as posições de amostragem de pixels VIZINHOS em
+   até `1 + amp·0.19` texels (medido) — a banda inteira do hardening é saltada entre dois pixels, e
+   nenhum centro amostrado jamais vê gradiente. Warp 48 = 226 cliffs com todo o resto verde.
+
+### Tentativas que falharam (não repetir)
+
+- **v1 — supersampling da cobertura alimentado na densidade** (commit `4783ddf2`): gates verdes
+  (fixture raio 4, métrica de cliffs), produto inalterado ("nenhuma melhoria"). Dois erros: o gate de
+  steepness não disparava no raio do produto (~10), e a fração morria na saturação. Lição dupla:
+  *teste com os números do PRODUTO* e *o oráculo tem de ser a aparência final*.
+- **v2a — alpha com sombreamento da amostra central**: double-fade — o texel do aro renderiza o wash
+  DILUÍDO e ainda leva alpha, enquanto o vizinho interno já saturou: o penhasco só muda de lugar
+  (`255, 223, 28`).
+- **lerp de BYTES no pixel armazenado**: quebrou `flatten(camada transparente sobre branco) ==
+  pintar no branco` (o gate `watercolor_ground_*` pegou) — o L straight-alpha não é aparência; o AA
+  tem de compor em luz linear ANTES do un-premultiply.
+- **alpha = média crua dos subsamples**: com Dilution o corpo inteiro senta no meio da banda e o
+  scallop do feather (platô 0.92→1.0) mantém `grad>0` em todo o interior → o corpo desbotava (~0.8)
+  e a junção de donos degrauzava (o gate da cruz pegou: 42 vs limite 15).
+- **probe dilatado de resgate para centros em região chata** (Ragged Edge): construído e MEDIDO
+  MORTO — o mesmo scallop garante `grad>0` em praticamente todo o wash; removido (código morto com
+  docstring confiante vira mentira).
+
+### Solução (o split clássico de rasterizador: forma × sombreamento)
+
+`aa_coverage` devolve `(cw, aa_alpha)` por texel de transição (`grad>0`; platô saturado/papel ficam
+amostra única = byte-idênticos):
+
+- **Sombreamento** = o wash da fração coberta (o **MAX** dos 9 subsamples ±0.667 texel) — pode
+  saturar à vontade.
+- **Forma** = fração de área **relativa ao nível de wash presente** (`média ÷ máx` — a razão leva o
+  interior diluído a ~1 e deixa a borda verdadeira fracionária).
+- O alpha compõe a **APARÊNCIA** (wash-sobre-ground vs base-sobre-ground) em luz linear, antes do
+  un-premultiply; `cov_a` escala junto (a silhueta alfa da camada transparente desvanece igual).
+- **Os subsamples atravessam o warp COMPLETO** (avaliado em sub-offsets de OUTPUT): warp 48 cliffs
+  226 → 0. Offsetar em espaço já-warpado lê um footprint até `1+amp·0.19`× pequeno demais.
+
+Perfis (borda superior, papel→corpo): r=10 `255,190,1` → `255,188,84,5`; r=40 `255,97,30` →
+`255,222,170,118,61,25` (fringe preservado). Perf: pior caso patológico (dilution 0.6 + warp 48 +
+r40) ≈ 4,7 ms/composite, sob a barra de 8 ms.
+
+### Lições generalizáveis
+
+1. **Uma melhoria medida num estágio intermediário é invisível se um estágio NÃO-LINEAR a jusante a
+   satura.** Aplique a correção depois do estágio saturante (alpha linear na aparência final) e
+   gateie nos PIXELS renderizados, nunca na grandeza intermediária.
+2. **AA é forma × sombreamento**: a fração de cobertura nunca deve modular a substância (densidade,
+   pigmento) — só a mistura final. Modular substância = double-fade ou saturação.
+3. **O fixture tem de usar os números do produto** (raio ~10 do smoke, não o raio 4 conveniente) — o
+   v1 foi verde por medir onde o bug não morava.
+4. **"Existe texel cinza" não é oráculo de AA** — o pré-fix tinha um 190 antes do penhasco e passaria;
+   o oráculo é o TAMANHO DO DEGRAU máximo na descida.
+5. **Um remap não adiciona resolução espacial**: alargar a janela do smoothstep não cria um segundo
+   texel de rampa; só supersampling (ou alpha por fração de área) cria.
+6. **Deslocamento por-pixel (warp) quebra gates de gradiente**: quando a amostragem é warpada, os
+   subsamples têm de atravessar o MESMO warp em offsets de output — e o gate de "onde preciso de AA"
+   pode nunca ver a borda que corre ENTRE os centros amostrados.
 
 **Área:** seam da UI (painel `ph2d-panel-painter-layers` ↔ `ph2d-tool-painter`). **Não** é a matemática
 do rig — essa tem 6 gates e 3 mutações vermelhas (`16_impasto_plano_implementacao.md` §18).

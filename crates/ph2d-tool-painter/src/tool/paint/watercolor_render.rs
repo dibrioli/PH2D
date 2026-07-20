@@ -369,12 +369,30 @@ impl PainterTool {
                     } else {
                         (lx, ly)
                     };
-                    // Screen-space AA (Enio 2026-07-20, "borda dura pixelada" em traço fino): where the
-                    // silhouette is steep, `aa_alpha` < 1 carries the texel's fractional coverage and the
-                    // FINISHED pixel is lerped toward the base by it (see `aa_coverage` for why the
+                    // Screen-space AA (Enio 2026-07-20, "borda dura pixelada"): on every silhouette
+                    // transition `aa_alpha` < 1 carries the texel's fractional coverage and the wash's
+                    // APPEARANCE is lerped toward the base by it below (see `aa_coverage` for why the
                     // fraction must be final linear alpha — the optical model saturates it away as
-                    // density input). A thick stroke's shallow rim ⇒ `(single sample, 1.0)` ⇒ byte-identical.
-                    let (cw, aa_alpha) = aa_coverage(&cov_src, rw, rh, sx, sy, SS0, SS1);
+                    // density input). Flat interior/paper ⇒ `(single sample, 1.0)` ⇒ byte-identical.
+                    // The subsample positions route through the FULL Ragged-Edge warp (evaluated at
+                    // sub-texel OUTPUT offsets — `pos(0,0)` is exactly `(sx, sy)`), so a strong warp's
+                    // serrated boundary anti-aliases too instead of jumping the band between texels.
+                    let (cw, aa_alpha) = aa_coverage(
+                        &cov_src,
+                        rw,
+                        rh,
+                        |ox, oy| {
+                            if st_warp > 0.0 {
+                                let (wx, wy) =
+                                    warp_offset(gx as f32 + ox, gy as f32 + oy, noise_tile);
+                                (lx + ox + wx * st_warp, ly + oy + wy * st_warp)
+                            } else {
+                                (lx + ox, ly + oy)
+                            }
+                        },
+                        SS0,
+                        SS1,
+                    );
                     // EDGE-2 (backrun): the WATER channel at a SERRATED coord ([`water_at`]) — a
                     // water pool is live paint-surface even where the PIGMENT coverage is zero
                     // (pure water, Dilution 1), so the early-out only fires where BOTH are dry.
@@ -646,8 +664,8 @@ impl PainterTool {
                     if aa_alpha < 1.0 {
                         for c in 0..3 {
                             let app = lut.s2l[rgb[c] as usize];
-                            let base_app = lut.s2l[base[gi + c] as usize] * ab
-                                + ground_lin[c] * (1.0 - ab);
+                            let base_app =
+                                lut.s2l[base[gi + c] as usize] * ab + ground_lin[c] * (1.0 - ab);
                             rgb[c] = lut.l2s_byte(app * aa_alpha + base_app * (1.0 - aa_alpha));
                         }
                     }

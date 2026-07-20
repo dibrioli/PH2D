@@ -44,7 +44,7 @@ mod trace;
 
 pub use arrange::{Region, region_at};
 pub use ball::{TrapBall, TrapRegion};
-pub use dilate::{contour_widths, local_line, nearest_on_axis};
+pub use dilate::{contour_widths, local_line, nearest_on_axis, nearest_on_axis_indexed};
 pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
 pub use raster::{BOUNDARY, FILLED, Grid, INK};

@@ -45,6 +45,7 @@ use ph2d_flip_fill::{
 #[cfg(test)]
 mod flow;
 mod segment;
+mod snap;
 mod voronoi;
 use segment::{NO_REGION, segment};
 
@@ -139,11 +140,13 @@ pub fn colorize(
         return Vec::new();
     }
 
-    // 4. O multiway guloso (`09 §3`): índice de rótulo por pixel.
-    let assign = solve(&grid, &labels, trap_px);
+    // 4. O multiway guloso (`09 §3`): índice de rótulo por pixel. A EDT sai junto — o
+    //    `snap` a usa de pré-filtro (a mesma da partição, nunca uma 2ª porta).
+    let (assign, ink_dist2) = solve(&grid, &labels, trap_px);
 
-    // 5. Vetoriza por REGIÃO conexa — o back-end, intocado (`09 §2`).
-    let out = regions_to_geometry(&mut grid, &labels, &assign);
+    // 5. Vetoriza por REGIÃO conexa — o back-end do balde, com as bordas sobre a tinta
+    //    cravadas no EIXO (`snap.rs` — o serrilhado do 5º smoke).
+    let out = regions_to_geometry(&mut grid, &labels, &assign, &ink_dist2, strokes);
     if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
         let assigned = assign.iter().filter(|a| a.is_some()).count();
         eprintln!(
@@ -273,13 +276,17 @@ fn group_scribbles(grid: &Grid, scribbles: &[Scribble]) -> Vec<(u16, Vec<usize>)
 ///   cavalga a linha (a cor vaza por dentro do nó) e `V_pq` numa métrica é a direção errada
 ///   (tinta de graça = linha invisível; a fronteira caía no meio dos rabiscos, `max_x`
 ///   medido `0,575` contra a linha em `0,7`).
-fn solve(grid: &Grid, labels: &[(u16, Vec<usize>)], trap_px: f32) -> Vec<Option<usize>> {
+fn solve(
+    grid: &Grid,
+    labels: &[(u16, Vec<usize>)],
+    trap_px: f32,
+) -> (Vec<Option<usize>>, Vec<u32>) {
     let n = grid.w * grid.h;
     let mut assign: Vec<Option<usize>> = vec![None; n];
 
     let seg = segment(grid, trap_px);
     if seg.count == 0 {
-        return assign;
+        return (assign, seg.ink_dist2);
     }
 
     // As cores que semeiam cada componente (ordem estável: `labels` preserva a chegada).
@@ -339,7 +346,7 @@ fn solve(grid: &Grid, labels: &[(u16, Vec<usize>)], trap_px: f32) -> Vec<Option<
         }
         eprintln!("[colorize]   pixels por rotulo: {px_of:?}");
     }
-    assign
+    (assign, seg.ink_dist2)
 }
 
 /// Split the labelled pixels into connected regions and vectorize each through the untouched
@@ -348,6 +355,8 @@ fn regions_to_geometry(
     grid: &mut Grid,
     labels: &[(u16, Vec<usize>)],
     assign: &[Option<usize>],
+    ink_dist2: &[u32],
+    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
 ) -> Vec<ColorRegion> {
     let n = grid.w * grid.h;
     let mut visited = vec![false; n];
@@ -379,7 +388,7 @@ fn regions_to_geometry(
                 }
             }
         }
-        if let Some(fill) = trace_region(grid, &comp, eps) {
+        if let Some(fill) = trace_region(grid, &comp, eps, ink_dist2, strokes) {
             out.push(ColorRegion {
                 label: labels[k].0,
                 fill,
@@ -390,10 +399,17 @@ fn regions_to_geometry(
 }
 
 /// Vectorize one connected region: mark it `FILLED`, crave the border onto the axis
-/// (`expand_under_ink`, so two colours meet AT the line — no gap between them), trace, and
-/// clear `FILLED` for the next region. The largest ring is the outer, opposite-signed rings
-/// are its holes — the exact `fill_at` classification.
-fn trace_region(grid: &mut Grid, comp: &[usize], eps: f32) -> Option<FillResult> {
+/// (`expand_under_ink`, so two colours meet AT the line — no gap between them), trace,
+/// snap the ink-hugging stretches onto the exact axis (`snap.rs` — the 5th-smoke sawtooth),
+/// and clear `FILLED` for the next region. The largest ring is the outer, opposite-signed
+/// rings are its holes — the exact `fill_at` classification.
+fn trace_region(
+    grid: &mut Grid,
+    comp: &[usize],
+    eps: f32,
+    ink_dist2: &[u32],
+    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
+) -> Option<FillResult> {
     for f in &mut grid.flags {
         *f &= !FILLED;
     }
@@ -405,6 +421,7 @@ fn trace_region(grid: &mut Grid, comp: &[usize], eps: f32) -> Option<FillResult>
     let mut rings: Vec<Vec<Vec2>> = trace_contours(grid)
         .into_iter()
         .map(|r| simplify_ring(&r, eps, 2))
+        .map(|r| snap::snap_ring_to_axis(strokes, ink_dist2, grid, &r))
         .filter(|r| r.len() >= 3)
         .collect();
 

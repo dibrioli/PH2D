@@ -95,8 +95,23 @@ pub fn local_line(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], p: Vec2) -> Option<(f
 /// **de que lado**. Quem quer o sinal precisa de `q`.
 #[must_use]
 pub fn nearest_on_axis(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], p: Vec2) -> Option<(f32, Vec2)> {
-    let mut best: Option<(f32, f32, Vec2)> = None; // (dist, largura, q)
-    for (pts, half, closed) in strokes {
+    nearest_on_axis_indexed(strokes, p).map(|(w, q, ..)| (w, q))
+}
+
+/// [`nearest_on_axis`] com o ENDEREÇO do ponto: `(espessura, q, índice do traço, índice do
+/// segmento)`.
+///
+/// Quem precisa disto é quem CAMINHA o eixo — o snap do Colorize: a projeção euclidiana
+/// sozinha **pula o fundo de um V** do eixo (do lado côncavo de uma dobra, o ponto mais
+/// próximo salta por cima do fundo), então seguir a linha exige saber ENTRE quais vértices
+/// dela o `q` caiu. Irmã append-only da porta acima — a busca é UMA (esta); a outra delega.
+#[must_use]
+pub fn nearest_on_axis_indexed(
+    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
+    p: Vec2,
+) -> Option<(f32, Vec2, usize, usize)> {
+    let mut best: Option<(f32, f32, Vec2, usize, usize)> = None; // (dist, largura, q, traço, seg)
+    for (si, (pts, half, closed)) in strokes.iter().enumerate() {
         // ⚠️ **Distância ao SEGMENTO, nunca ao VÉRTICE.** O eixo é a polilinha, não a
         // nuvem de pontos dela: um ponto do contorno pousado exatamente sobre o eixo,
         // mas no meio de dois vértices, fica a até meia-amostragem do vértice mais
@@ -122,12 +137,12 @@ pub fn nearest_on_axis(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], p: Vec2) -> Opti
                 half.get((i + 1) % n.max(1)).copied().unwrap_or(0.0),
             );
             let w = 2.0 * (ha + (hb - ha) * t);
-            if w > 0.0 && best.is_none_or(|(bd, _, _)| d < bd) {
-                best = Some((d, w, Vec2::new(a.x + t * ab.x, a.y + t * ab.y)));
+            if w > 0.0 && best.is_none_or(|(bd, ..)| d < bd) {
+                best = Some((d, w, Vec2::new(a.x + t * ab.x, a.y + t * ab.y), si, i));
             }
         }
     }
-    best.map(|(_, w, q)| (w, q))
+    best.map(|(_, w, q, si, i)| (w, q, si, i))
 }
 
 /// A **normal EXTERNA** do anel em cada vértice, na ordem dos pontos.

@@ -1,12 +1,32 @@
 # Flip — a wave **COLORIZE**: o plano
 
-> **5º smoke (2026-07-20): "quase perfeito. vamos tentar melhorar."** A fronteira cai NA
-> linha e cada lobo sai com a sua cor. Ressalvas visíveis (a próxima tarefa da linha, com
-> hipóteses e diagnóstico em
-> [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md` §3](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md)):
-> o **serrilhado** da fronteira que corre ao longo da linha (não diagnosticado — medir no
-> plano `assign` antes de codar) · a **lente** pelo vão (honesta; knob = `SQUEEZE`/Trap,
-> tabela medida na const) · a **margem externa** pintada a Trap 0 (decisão de produto).
+> **Estado (2026-07-20, tarde): o SERRILHADO do 5º smoke FECHOU — a borda sobre a tinta
+> agora É o eixo (`snap.rs`).** O diagnóstico prescrito no handoff rodou e inocentou o
+> Voronoi: o plano `assign` e o plano de pixels pós-`expand_under_ink` são **lisos e
+> SIMÉTRICOS** (rugosidade 0,08-0,21 px, os dois lados idênticos — sonda
+> `probe_the_sawtooth_boundary_along_the_divider`). A serra nascia na **VETORIZAÇÃO**: a
+> amplitude do tremor de mão (±2 px @80) senta exatamente no ε=1,25 px do RDP, e cada anel
+> caía por sorte num de dois regimes — **corda reta que ignora a onda** (o lado "liso" da
+> foto, que na verdade desviava até 1,95 px) ou **zigue-zague com vértices só nos extremos**
+> (os "dentes regulares" visíveis sob a saia translúcida do pincel macio). Fix
+> (`snap_ring_to_axis`): pós-RDP, cada segmento do anel é amostrado a 1 px; amostra a ≤4 px
+> do eixo de linha visível **crava no eixo** (`nearest_on_axis_indexed`, a MESMA busca da
+> dilatação — ganhou a irmã indexada, append-only) e cravadas consecutivas do mesmo traço
+> **caminham os vértices do eixo** entre elas — ⚠️ a projeção euclidiana sozinha **pula o
+> fundo de um V** (medido: 0,98 px de resíduo SÓ do lado côncavo de cada dobra; o convexo
+> segue de graça — a mesma assimetria, um nível abaixo). Resultado: **pior desvio ao eixo
+> 1,95 px → 0,02 px**, os dois lados na MESMA curva (a linha desenhada). Gate red-first
+> `the_colour_edge_follows_a_wavy_line_without_sawtooth` (arte do smoke com o tremor real +
+> larguras reais — ⚠️ com largura 0 o `nearest_on_axis` não veste nada e o fenômeno some;
+> oráculo de aparência com distância-ao-eixo própria, janela |y|∈[1,1;2,3] que EXCLUI a
+> reatacagem da lente ~14 px, que é §3.2); mutações 3/3 sangram (snap inteiro 1,95 · sem o
+> caminhar 0,63 · decimação grossa 0,88 — barra 0,5). Perf intacta (4096² = 1,61 s).
+> Suíte: 24 verdes. **Abertas:** a **lente** pelo vão (honesta; knob = `SQUEEZE`/Trap,
+> tabela medida na const) · a **margem externa** pintada a Trap 0 (decisão de produto) —
+> [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md` §3](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md).
+>
+> **5º smoke (2026-07-20, manhã): "quase perfeito. vamos tentar melhorar."** A fronteira cai
+> NA linha e cada lobo sai com a sua cor. As três ressalvas viraram o parágrafo acima.
 >
 > **Estado (2026-07-20): 4º smoke reprovado ("impreciso") e FECHADO — o contestado virou
 > Voronoi POR PIXEL.** As três caras do smoke eram UMA causa dupla: (1) o Voronoi de células

@@ -719,6 +719,403 @@ fn a_diagonal_line_is_a_wall_not_a_sieve() {
     );
 }
 
+/// 🔴 **A borda da cor SEGUE a linha ondulada — sem dentes de serra** (5º smoke, 2026-07-20,
+/// handoff §3.1: onde a fronteira azul/vermelho corre AO LONGO do divisor ondulado, o lado
+/// azul mostrava dentes regulares de ~5-10 px e o vermelho saía liso).
+///
+/// A sonda (`probe_the_sawtooth_boundary_along_the_divider`) inocentou o Voronoi e o
+/// `expand_under_ink` — o plano de pixels é liso e simétrico (rugosidade 0,2 px, os dois
+/// lados idênticos). A serra nasce na VETORIZAÇÃO: a amplitude da onda da linha (±2 px a
+/// precisão 80) senta exatamente no ε=1,25 px do RDP, então cada anel cai por sorte num de
+/// dois regimes — corda reta que IGNORA a onda (o vermelho: 0 vértices na banda) ou
+/// zigue-zague com vértices só nos extremos (o azul: x oscilando 0,989↔1,025) — e o
+/// zigue-zague fica visível sob a saia translúcida do pincel macio.
+///
+/// O oráculo é a APARÊNCIA, independente do mecanismo do fix: a borda de CADA cor,
+/// amostrada a ~1 px na janela do divisor (longe do vão), tem de ficar colada no EIXO da
+/// linha — a distância é medida por ponto-a-segmento local contra as polilinhas do divisor,
+/// nunca pela função que o fix usa (oráculo, não espelho).
+///
+/// ⚠️ As larguras são as REAIS (meia-largura 0,13, como `boundaries()` entrega) — com
+/// largura 0 o `nearest_on_axis` não tem linha para vestir e o fenômeno do produto some.
+///
+/// Mutação que sangra: neutralizar o snap (devolver o anel intocado) — o vermelho volta a
+/// cortar a onda em corda e o azul a serrar.
+#[test]
+fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
+    let hand = |pts: &[Vec2], seed: usize| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        pts.iter()
+            .enumerate()
+            .map(|(i, p)| Vec2::new(p.x + h(i + seed) * 0.05, p.y + h(i + seed + 91) * 0.05))
+            .collect()
+    };
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b, s, n) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize, 24usize),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7, 24),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13, 24),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29, 24),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41, 41),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53, 53),
+    ] {
+        let pts = hand(&seg_(a, b, n), s);
+        let m = pts.len();
+        strokes.push((pts, vec![0.13; m], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    let precision = 80.0f32;
+    let regions = colorize(&strokes, &scribbles, precision, 0.0);
+
+    // O eixo do divisor: as duas polilinhas trêmulas (índices 4 e 5 acima).
+    let dividers: Vec<&[Vec2]> = strokes[4..6].iter().map(|(p, ..)| p.as_slice()).collect();
+    let dist_to_axis = |p: Vec2| -> f32 {
+        let mut best = f32::MAX;
+        for pts in &dividers {
+            for w in pts.windows(2) {
+                let (a, b) = (w[0], w[1]);
+                let ab = Vec2::new(b.x - a.x, b.y - a.y);
+                let l2 = ab.x * ab.x + ab.y * ab.y;
+                let t = if l2 <= 0.0 {
+                    0.0
+                } else {
+                    (((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2).clamp(0.0, 1.0)
+                };
+                let (dx, dy) = (p.x - (a.x + t * ab.x), p.y - (a.y + t * ab.y));
+                best = best.min((dx * dx + dy * dy).sqrt());
+            }
+        }
+        best
+    };
+    // A janela do divisor, LONGE do vão e das paredes: x∈[0.8,1.2], 1.1≤|y|≤2.3.
+    // ⚠️ O corte em 1.1 (não 0.75) exclui a REATACAGEM da lente: na boca do vão a
+    // fronteira volta do bojo para a linha por caminho geodésico honesto (desvios de
+    // ~14 px que são a LENTE, §3.2 — outro fenômeno, outra decisão), e este gate mede o
+    // SERRILHADO de quem já está colado na linha.
+    let in_window =
+        |p: Vec2| (0.8..1.2).contains(&p.x) && (1.1..2.3).contains(&p.y.abs());
+    let step = 1.0 / precision; // ~1 px
+    for label in [0u16, 1u16] {
+        let mut worst = 0.0f32;
+        let mut worst_at = Vec2::new(0.0, 0.0);
+        let mut samples = 0usize;
+        // A costura pode viver no OUTER ou num HOLE (nesta arte o vermelho engole a margem
+        // externa — §3.3 — e o divisor vira parede de um furo dele).
+        for ring in regions
+            .iter()
+            .filter(|r| r.label == label)
+            .flat_map(|r| std::iter::once(&r.fill.outer).chain(r.fill.holes.iter()))
+        {
+            let n = ring.len();
+            for i in 0..n {
+                let (a, b) = (ring[i], ring[(i + 1) % n]);
+                let d = Vec2::new(b.x - a.x, b.y - a.y);
+                let len = (d.x * d.x + d.y * d.y).sqrt();
+                let steps = (len / step).ceil().max(1.0) as usize;
+                for s in 0..steps {
+                    let t = s as f32 / steps as f32;
+                    let p = Vec2::new(a.x + d.x * t, a.y + d.y * t);
+                    if in_window(p) {
+                        let d = dist_to_axis(p);
+                        if d > worst {
+                            worst = d;
+                            worst_at = p;
+                        }
+                        samples += 1;
+                    }
+                }
+            }
+        }
+        assert!(
+            samples > 50,
+            "controle positivo: a borda do rotulo {label} tem de atravessar a janela \
+             (só {samples} amostras — a fixture não contém o fenômeno)"
+        );
+        let px = worst * precision;
+        if std::env::var("PH2D_GATE_DUMP").is_ok() {
+            eprintln!("[dump] label {label}: pior {px:.2} px em ({:.3}, {:.3})", worst_at.x, worst_at.y);
+        }
+        // Barra 0,5 px: pós-fix mede 0,02/0,00 px (25× abaixo); pré-fix, 1,95 px (4× acima).
+        assert!(
+            px <= 0.5,
+            "a borda do rotulo {label} tem de SEGUIR a linha ondulada: pior desvio ao eixo \
+             = {px:.2} px (corda que ignora a onda ou zigue-zague de extremos — o serrilhado \
+             do 5º smoke)"
+        );
+    }
+}
+
+/// 🔬 **Sonda do SERRILHADO** (handoff 2026-07-20 §3.1 — 5º smoke: onde a fronteira
+/// azul/vermelho corre AO LONGO do divisor ondulado, o lado azul mostra dentes de serra
+/// regulares; o vermelho é liso). A sonda responde UMA pergunta: **a serra nasce no plano
+/// `assign` (métrica/pedágio do Voronoi) ou só na geometria (traçado/RDP)?**
+///
+/// Imprime, por linha da grade e por lado, o desvio da fronteira contra o EIXO da tinta —
+/// no `assign` e na geometria final — com o divisor RETO como controle (uma serra que só
+/// existe no ondulado é função da onda; uma que existe nos dois é da métrica).
+#[test]
+#[ignore = "sonda de diagnóstico — rode com --release --ignored --nocapture"]
+fn probe_the_sawtooth_boundary_along_the_divider() {
+    // O tremor do smoke (`flip_colorize_smoke::hand`), determinístico.
+    let hand = |pts: &[Vec2], seed: usize| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        pts.iter()
+            .enumerate()
+            .map(|(i, p)| Vec2::new(p.x + h(i + seed) * 0.05, p.y + h(i + seed + 91) * 0.05))
+            .collect()
+    };
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let art = |wavy: bool| -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+        let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+        for (a, b, s) in [
+            (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize),
+            (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7),
+            (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13),
+            (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29),
+        ] {
+            let pts = if wavy { hand(&seg_(a, b, 24), s) } else { seg_(a, b, 24) };
+            let n = pts.len();
+            strokes.push((pts, vec![0.0; n], false));
+        }
+        for (a, b, s, n) in [
+            (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41usize, 41usize),
+            (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53, 53),
+        ] {
+            let pts = if wavy { hand(&seg_(a, b, n), s) } else { seg_(a, b, n) };
+            let m = pts.len();
+            strokes.push((pts, vec![0.0; m], false));
+        }
+        strokes
+    };
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+
+    for (name, wavy, precision) in [
+        ("RETO   @40", false, 40.0f32),
+        ("ONDULADO@40", true, 40.0),
+        ("ONDULADO@80", true, 80.0),
+    ] {
+        let strokes = art(wavy);
+        // Replica os passos 1–3 do `colorize` para expor o plano `assign` (sonda, não produto).
+        let mut lo = Vec2::splat(f32::INFINITY);
+        let mut hi = Vec2::splat(f32::NEG_INFINITY);
+        for (pts, _, _) in &strokes {
+            for p in pts {
+                lo = lo.min(*p);
+                hi = hi.max(*p);
+            }
+        }
+        for s in &scribbles {
+            for &p in &s.points {
+                lo = lo.min(p);
+                hi = hi.max(p);
+            }
+        }
+        let mut grid = Grid::new(lo, hi, precision, super::MARGIN_PX, super::MAX_SIDE);
+        for (pts, _, closed) in &strokes {
+            let n = pts.len();
+            let last = if *closed { n } else { n - 1 };
+            for i in 0..last {
+                let (a, b) = (pts[i], pts[(i + 1) % n]);
+                grid.stroke_capsule(a, b, 0.0);
+                grid.ink_capsule(a, b, 0.0);
+            }
+        }
+        let labels = super::group_scribbles(&grid, &scribbles);
+        let (assign, _) = super::solve(&grid, &labels, 0.0);
+
+        // Por linha: eixo da tinta do divisor (média das colunas de BOUNDARY na banda
+        // x∈[0.5,1.5]) e as fronteiras vermelha (máx x de 0) / azul (mín x de 1) na banda.
+        let (w, h) = (grid.w, grid.h);
+        let gscale = grid.scale;
+        let to_world = move |x: usize| lo.x - super::MARGIN_PX as f32 / gscale + x as f32 / gscale;
+        let col_of = |wx: f32| ((wx - lo.x) * gscale) as i64 + super::MARGIN_PX as i64;
+        let (band_lo, band_hi) = (col_of(0.5).max(0) as usize, (col_of(1.5) as usize).min(w - 1));
+        let mut rows: Vec<(usize, f32, f32, f32)> = Vec::new(); // (y, ink, red, blue) em mundo
+        for y in 0..h {
+            let wy = lo.y - super::MARGIN_PX as f32 / grid.scale + y as f32 / grid.scale;
+            // Longe do vão (|y|<0.75) e das bordas da caixa.
+            if !((-2.3..-0.75).contains(&wy) || (0.75..2.3).contains(&wy)) {
+                continue;
+            }
+            let (mut ink_sum, mut ink_n) = (0.0f32, 0usize);
+            let (mut red, mut blue) = (f32::MIN, f32::MAX);
+            for x in band_lo..=band_hi {
+                let i = y * w + x;
+                if grid.flags[i] & BOUNDARY != 0 {
+                    ink_sum += to_world(x);
+                    ink_n += 1;
+                }
+                match assign[i] {
+                    Some(0) => red = red.max(to_world(x)),
+                    Some(1) => blue = blue.min(to_world(x)),
+                    _ => {}
+                }
+            }
+            if ink_n > 0 && red > f32::MIN && blue < f32::MAX {
+                rows.push((y, ink_sum / ink_n as f32, red, blue));
+            }
+        }
+
+        // A geometria final, pela porta pública.
+        let regions = colorize(&strokes, &scribbles, precision, 0.0);
+        let edge_of = |label: u16, blue_side: bool| -> Vec<(f32, f32)> {
+            let mut pts: Vec<(f32, f32)> = regions
+                .iter()
+                .filter(|r| r.label == label)
+                .flat_map(|r| r.fill.outer.iter())
+                .filter(|p| (0.5..1.5).contains(&p.x))
+                .filter(|p| (-2.3..-0.75).contains(&p.y) || (0.75..2.3).contains(&p.y))
+                .map(|p| (p.y, p.x))
+                .collect();
+            pts.sort_by(|a, b| a.0.total_cmp(&b.0));
+            let _ = blue_side;
+            pts
+        };
+        let red_geo = edge_of(0, false);
+        let blue_geo = edge_of(1, true);
+
+        // Resumo: desvio (fronteira − eixo) por linha → rugosidade = média |Δ desvio| entre
+        // linhas consecutivas + pico-a-pico, em PX DA GRADE (o que se vê).
+        let stats = move |dev: &[f32]| -> (f32, f32) {
+            if dev.len() < 2 {
+                return (0.0, 0.0);
+            }
+            let px = gscale;
+            let rough = dev.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>()
+                / (dev.len() - 1) as f32;
+            let (mn, mx) = dev
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
+            (rough * px, (mx - mn) * px)
+        };
+        let red_dev: Vec<f32> = rows.iter().map(|(_, ink, red, _)| red - ink).collect();
+        let blue_dev: Vec<f32> = rows.iter().map(|(_, ink, _, blue)| blue - ink).collect();
+        let (rr, rp) = stats(&red_dev);
+        let (br, bp) = stats(&blue_dev);
+        // Rugosidade das bordas da GEOMETRIA: desvio de x entre vértices consecutivos em y.
+        let geo_stats = |pts: &[(f32, f32)]| -> (f32, f32, usize) {
+            if pts.len() < 2 {
+                return (0.0, 0.0, pts.len());
+            }
+            let px = gscale;
+            let xs: Vec<f32> = pts.iter().map(|p| p.1).collect();
+            let rough = xs.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>()
+                / (xs.len() - 1) as f32;
+            let (mn, mx) = xs
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
+            (rough * px, (mx - mn) * px, pts.len())
+        };
+        let (grr, grp, grn) = geo_stats(&red_geo);
+        let (gbr, gbp, gbn) = geo_stats(&blue_geo);
+        println!(
+            "\n== {name} · grade {}x{} ==\n\
+             assign  VERMELHO: rugosidade {rr:.2} px · pico-a-pico {rp:.1} px\n\
+             assign  AZUL    : rugosidade {br:.2} px · pico-a-pico {bp:.1} px\n\
+             geom    VERMELHO: rugosidade {grr:.2} px · pico-a-pico {grp:.1} px · {grn} vertices na banda\n\
+             geom    AZUL    : rugosidade {gbr:.2} px · pico-a-pico {gbp:.1} px · {gbn} vertices na banda",
+            grid.w, grid.h
+        );
+        // As primeiras 30 linhas, cruas, para VER a forma da serra.
+        for (y, ink, red, blue) in rows.iter().take(30) {
+            println!(
+                "  y={y:>4}  eixo {ink:+.3}  verm {:+.3} ({:+.1}px)  azul {:+.3} ({:+.1}px)",
+                red,
+                (red - ink) * grid.scale,
+                blue,
+                (blue - ink) * grid.scale
+            );
+        }
+        // Os vértices CRUS da borda azul na metade de cima, LONGE do vão (y ∈ [1.0, 2.3]) —
+        // se a serra é do traçado, ela aparece aqui como x oscilando.
+        let far: Vec<(f32, f32)> = blue_geo
+            .iter()
+            .copied()
+            .filter(|p| (1.0..2.3).contains(&p.0))
+            .collect();
+        println!("  vertices AZUIS longe do vao (y, x):");
+        for (y, x) in &far {
+            println!("    ({y:+.3}, {x:+.3})");
+        }
+        let far_red: Vec<(f32, f32)> = red_geo
+            .iter()
+            .copied()
+            .filter(|p| (1.0..2.3).contains(&p.0))
+            .collect();
+        println!("  vertices VERMELHOS longe do vao (y, x): {far_red:?}");
+
+        // O plano de PIXELS que o traçador VÊ: replica o trace_region (FILLED + expand)
+        // e mede a fronteira por linha — a serra nasce aqui ou no smooth+RDP?
+        use ph2d_flip_fill::FILLED;
+        for (label, side_name) in [(0usize, "VERMELHO"), (1usize, "AZUL")] {
+            for f in &mut grid.flags {
+                *f &= !FILLED;
+            }
+            for (i, a) in assign.iter().enumerate() {
+                if *a == Some(label) && grid.flags[i] & BOUNDARY == 0 {
+                    grid.flags[i] |= FILLED;
+                }
+            }
+            grid.expand_under_ink(super::AXIS_COVER_PASSES);
+            let mut devs: Vec<f32> = Vec::new();
+            for &(y, ink, ..) in &rows {
+                let mut edge = if label == 0 { f32::MIN } else { f32::MAX };
+                for x in band_lo..=band_hi {
+                    if grid.flags[y * w + x] & FILLED != 0 {
+                        let wx = to_world(x);
+                        edge = if label == 0 { edge.max(wx) } else { edge.min(wx) };
+                    }
+                }
+                if edge.abs() != f32::MAX {
+                    devs.push(edge - ink);
+                }
+            }
+            let (rough, p2p) = stats(&devs);
+            println!(
+                "  PIXEL pos-expand {side_name}: rugosidade {rough:.2} px · pico-a-pico {p2p:.1} px · {} linhas",
+                devs.len()
+            );
+        }
+    }
+}
+
 /// **A camada dura, sozinha: tinta é PAREDE mesmo com pedágio zero.** O pedágio de aperto
 /// (`SQUEEZE/(1+d²)`) também encarece a tinta, então nas grades pequenas dos gates acima as
 /// duas camadas se cobrem — mutar só a recusa `!is_ink` do `member` fica verde

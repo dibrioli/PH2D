@@ -12,8 +12,9 @@
 //! (Ele segue mais simples que o do Painter: não passa por afim de objeto nem espaço de
 //! imagem — só pelo zoom.)
 //!
-//! Modos: **Draw** (a espessura do traço), **Erase** (o raio da borracha) e **Sculpt**
-//! (o raio do pincel de escultura) — os três usam o mesmo Size. Em **Select** e
+//! Modos: **Draw** (a espessura do traço), **Erase** (o raio da borracha), **Sculpt** (o raio
+//! do pincel de escultura) e **Colorize** (a espessura do rabisco — o mesmo Size do pincel, e
+//! como o rabisco SEMEIA pela cápsula, o anel mostra o quanto ele vai pegar). Em **Select** e
 //! **Fill** não há anel: não há raio nenhum em jogo, e um anel ali seria uma mentira.
 
 use ph2d_editor::HeroScreen;
@@ -88,7 +89,10 @@ pub(crate) fn ring_radius(style: Option<FlipStyleSnapshot>, px_per_world: f64) -
     // o ponto inteiro de ter um anel.
     let size = match style.mode {
         FlipMode::Erase => style.erase_px,
-        FlipMode::Draw | FlipMode::Reshape => style.width_px,
+        // Colorize usa o MESMO Size do pincel (a espessura do rabisco); o anel mostra o
+        // tamanho da cápsula que vai semear — sem ele o pincel de Colorize não tinha círculo
+        // no canvas (report do Enio 2026-07-19).
+        FlipMode::Draw | FlipMode::Reshape | FlipMode::Colorize => style.width_px,
         _ => return None,
     };
     // **Mundo → TELA** (§4.C.6): o Size mede o MUNDO, e o anel promete o que vai
@@ -126,6 +130,7 @@ mod tests {
             (FlipMode::Draw, true),
             (FlipMode::Erase, true),
             (FlipMode::Reshape, true),
+            (FlipMode::Colorize, true),
             (FlipMode::Fill, false),
             (FlipMode::Select, false),
         ] {

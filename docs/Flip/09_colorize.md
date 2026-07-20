@@ -20,13 +20,22 @@
 > `§7.1`. Números: 4096² limpo = **3,3 s**; e dois rabiscos que atravessam a mesma linha a
 > 2048² = **157 s** (contra 361 ms limpo). O `MAX_SIDE = 4096` foi **espelhado do balde**, onde
 > é honesto (flood fill é O(N)); aqui o custo cresce ~6,3× por dobra de lado.
-> **A PRÉ-SEGMENTAÇÃO LANDOU (§8, 2026-07-19)** — o corte não roda mais em pixels. **O
-> penhasco morreu: 157 s → 586 ms**, indistinguível do caso limpo (539 ms). O raio da bola
-> **não é constante**: ele cresce até os rabiscos do artista caírem em regiões distintas (as
-> duas constantes tentadas — fração da bbox e espessura da linha — foram MEDIDAS e reprovadas).
-> ⚠️ **O que sobra caro é a PARTIÇÃO** (4096² ≈ 2,6 s = EDT+BFS sobre 16 M px × 4 passes do
-> laço de raio), exatamente onde o §7.1 apontava; a alavanca é a **exceção `rayon`** — decisão
-> do Enio. **ABERTO:** paralelizar/baratear a partição · multiframe · Apply live · **C3**.
+> **A PRÉ-SEGMENTAÇÃO LANDOU (§8, 2026-07-19)** — o corte não roda mais em pixels; a arte vira
+> componentes estanques (trapped-ball) subdivididos em **células**. **O penhasco morreu: 157 s
+> → 586 ms.** **3º smoke reprovado e fechado (mesmo dia):** 4 cores num blob ABERTO saíam de
+> UMA cor só — um componente aberto é um nó, e o corte não parte um nó. Fix em 3 partes: (1) o
+> componente é **ladrilhado em células**; (2) **subdivisão CONDICIONAL** — um componente de uma
+> cor é PREENCHIDO (cola na linha de graça), só um contestado é dividido (isso mata a
+> degenerescência da semente fina); (3) o contestado usa **Voronoi geodésico**, não o min-cut.
+> ⚠️ **Os três solvers foram MEDIDOS**: guloso espreme o meio (`[856,128,128,856]`), o min-cut
+> de Potts **encolhe** a cor de semente fina (`[2131,128,2991,909]` — minimizar Potts é
+> minimizar fronteira), o Voronoi dá faixas parelhas (`[1509,1544,1606,1447]`). O casamento com
+> a linha vem do **preenchimento por-componente**; colar num vão aberto é o knob **Trap**.
+> ⚠️ **Consequência: o min-cut de fluxo (`flow.rs`) saiu do produto e virou `#[cfg(test)]`** (a
+> referência BK≡Edmonds-Karp). **Anel do pincel no Colorize** (`flip_cursor.rs`): o `ring_radius`
+> devolvia `None` no `_` — agora Colorize desenha o anel (o mesmo Size). **O que sobra caro é a
+> PARTIÇÃO** (4096² ≈ 1,44 s); alavanca = **exceção `rayon`**, decisão do Enio.
+> **ABERTO:** baratear a partição · multiframe · Apply live · **C3**.
 > Clean-room de **LazyBrush** (Sýkora et al., EG 2009) + **trapped-ball** (Zhang et al., TVCG
 > 2009), sobre o solver de fill do W4 ([`06_fill_balde.md`](06_fill_balde.md)).
 >

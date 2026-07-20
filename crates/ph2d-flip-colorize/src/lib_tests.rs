@@ -8,7 +8,7 @@
 //! gates pin the WIRING — energy assembly, the guloso multiway, the geometry — on a fixture
 //! that contains the phenomenon.
 
-use super::{Scribble, colorize};
+use super::{ColorRegion, Scribble, colorize};
 
 /// O raio da bola (px de buffer) que os gates usam.
 ///
@@ -442,35 +442,74 @@ fn the_colour_does_not_escape_the_box() {
             width: 0.15,
         },
     ];
-    // A precisão que o shell calcula num zoom típico.
+    let ratio_of = |out: &[ColorRegion]| -> (f32, f32, f32) {
+        let a0: f32 = out
+            .iter()
+            .filter(|r| r.label == 0)
+            .map(|r| area(&r.fill))
+            .sum();
+        let a1: f32 = out
+            .iter()
+            .filter(|r| r.label == 1)
+            .map(|r| area(&r.fill))
+            .sum();
+        (a0, a1, a0 + a1)
+    };
+
+    // (1) ESCAPE — a cor NÃO vaza para fora da caixa (o bug do smoke reprovado). Vale com o
+    //     Trap no default (0): mesmo sem fechar o vão, a cor fica confinada ao componente.
     let out = colorize(&strokes, &scribbles, 40.0, 0.0);
-    for r in &out {
-        println!("  regiao label={} area={:.3}", r.label, area(&r.fill));
-    }
     let labels: std::collections::BTreeSet<u16> = out.iter().map(|r| r.label).collect();
     assert_eq!(labels.len(), 2, "as DUAS cores tem de sobreviver");
-    // A caixa mede 8 x 5 = 40; a grade, com margem, ~62. Pintar mais que a caixa é a cor
-    // tendo escapado por cima da linha.
-    let painted: f32 = out.iter().map(|r| area(&r.fill)).sum();
+    let (.., painted) = ratio_of(&out);
     assert!(
         painted < 42.0,
         "a cor escapou da caixa (pintou {painted:.1} de area, a caixa tem 40)"
     );
-    // E a fronteira entre as duas cores cola no divisor em x=1: a esquerda (5 unidades de
-    // largura) tem de ser ~5/3 da direita, não metade-a-metade.
-    let a0: f32 = out
-        .iter()
-        .filter(|r| r.label == 0)
-        .map(|r| area(&r.fill))
-        .sum();
-    let a1: f32 = out
-        .iter()
-        .filter(|r| r.label == 1)
-        .map(|r| area(&r.fill))
-        .sum();
+
+    // (2) HUG — a fronteira cola no divisor fora-do-centro (x=+1 ⇒ esquerda:direita = 5:3 ≈
+    //     1,67). Num único componente aberto o Voronoi parte no MEIO dos rabiscos; colar na
+    //     LINHA é o que o **Trap** faz — fecha o vão de 1,2 unidades (48 px a esta precisão),
+    //     separando em dois componentes de uma cor cada, que são PREENCHIDOS até a tinta.
+    //     Isto testa o mecanismo REAL de hug (o knob), não uma promessa que o corte não cumpre.
+    let seam_trap = 26.0; // raio > metade do vão (24) ⇒ a bola não passa ⇒ costura
+    let hugged = colorize(&strokes, &scribbles, 40.0, seam_trap);
+    let (a0, a1, _) = ratio_of(&hugged);
     let ratio = a0 / a1;
     assert!(
         (1.4..2.0).contains(&ratio),
-        "a fronteira tem de colar no divisor fora-do-centro (razao {ratio:.2}, esperado ~1,67)"
+        "com o vao fechado (Trap) a fronteira tem de colar no divisor (razao {ratio:.2}, ~1,67)"
     );
+}
+
+/// **REPRO do 3º smoke (2026-07-19): 4 cores num blob ABERTO, sem uma linha entre elas.**
+/// O produto pintou tudo da 1ª cor. É o caso fundamental do LazyBrush: várias cores numa só
+/// região, o corte divide pelo MEIO (não há tinta a que colar). A redução por regiões colapsa
+/// o blob num nó só e perde essa divisão.
+#[test]
+#[ignore = "repro — rode com --ignored --nocapture"]
+fn repro_four_colours_in_one_open_blob() {
+    // Um octógono ABERTO (sem divisores internos), bbox ~[-4,4]x[-3,3].
+    let ring: Vec<Vec2> = (0..8)
+        .map(|k| {
+            let a = std::f32::consts::TAU * k as f32 / 8.0;
+            Vec2::new(4.0 * a.cos(), 3.0 * a.sin())
+        })
+        .collect();
+    let n = ring.len();
+    let strokes = vec![(ring, vec![0.0; n], true)];
+    // Quatro rabiscos verticais, um por cor, espalhados no interior.
+    let scr = |x: f32, label: u16| Scribble {
+        label,
+        points: vec![Vec2::new(x, -1.5), Vec2::new(x, 1.5)],
+        width: 0.15,
+    };
+    let scribbles = vec![scr(-2.4, 0), scr(-0.8, 1), scr(0.8, 2), scr(2.4, 3)];
+    let out = colorize(&strokes, &scribbles, 40.0, 0.0);
+    let mut by_label: std::collections::BTreeMap<u16, f32> = std::collections::BTreeMap::new();
+    for r in &out {
+        *by_label.entry(r.label).or_default() += area(&r.fill);
+    }
+    println!("  areas por cor: {by_label:?}");
+    println!("  -> {} cores sobreviveram", by_label.len());
 }

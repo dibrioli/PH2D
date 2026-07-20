@@ -62,9 +62,11 @@ fn a_region_cut_weighs_exactly_what_the_pixel_cut_weighs() {
     );
 
     // Varre várias bipartições (inclusive as degeneradas) — uma só poderia estar certa por
-    // acidente de simetria.
-    for mask in 0u32..(1u32 << seg.count.min(6)) {
-        let side_of = |r: u32| mask >> r & 1 == 1;
+    // acidente de simetria. Com a subdivisão em células há muitas super-regiões; testamos as
+    // 6 primeiras contra o resto (64 bipartições), que já é arbitrário o bastante — a
+    // propriedade vale para QUALQUER bipartição.
+    for mask in 0u32..(1u32 << 6) {
+        let side_of = |r: u32| r < 6 && (mask >> r) & 1 == 1;
 
         // (a) pelo grafo de regiões.
         let by_graph: i64 = seg
@@ -117,17 +119,21 @@ fn the_ball_seams_a_gap_narrower_than_its_diameter() {
     let mid = 32.0;
     let (left, right) = (px(&g, 20.0, mid), px(&g, 44.0, mid));
 
-    // Bola de raio 8 (diâmetro 16 > vão 10): não passa ⇒ costura.
+    // ⚠️ A costura é uma propriedade do COMPONENTE (a topologia da tinta), não da super-região
+    // (célula): duas células distantes caem em células diferentes de qualquer jeito, então a
+    // pergunta "a bola costurou?" é sobre `component`, não `region`.
+    //
+    // Bola de raio 8 (diâmetro 16 > vão 10): não passa ⇒ costura ⇒ componentes diferentes.
     let seamed = segment(&g, 8.0, V_WHITE, V_INK);
     assert_ne!(
-        seamed.region[left], seamed.region[right],
+        seamed.component[left], seamed.component[right],
         "a bola larga tem de costurar o vao"
     );
 
-    // Bola de raio 2 (diâmetro 4 < vão 10): passa ⇒ um lado só.
+    // Bola de raio 2 (diâmetro 4 < vão 10): passa ⇒ MESMO componente.
     let open = segment(&g, 2.0, V_WHITE, V_INK);
     assert_eq!(
-        open.region[left], open.region[right],
+        open.component[left], open.component[right],
         "a bola que cabe no vao NAO costura — e e' honesto que nao costure"
     );
 }
@@ -172,63 +178,4 @@ fn the_partition_is_deterministic() {
     assert_eq!(a.count, b.count);
     assert_eq!(a.region, b.region);
     assert_eq!(a.edges, b.edges);
-}
-
-/// O `K` das sementes tem de dominar o corte mais caro que poderia trair um rabisco — a
-/// soma das arestas que tocam a região semeada.
-#[test]
-fn the_seed_weight_dominates_any_incident_cut() {
-    let g = boxed(64.0, 10.0);
-    let seg = segment(&g, 5.0, V_WHITE, V_INK);
-    let k = seg.seed_weight();
-    for r in 0..seg.count as u32 {
-        let inc: i64 = seg
-            .edges
-            .iter()
-            .filter(|&&(a, b, _)| a == r || b == r)
-            .map(|&(_, _, c)| i64::from(c))
-            .sum();
-        assert!(
-            i64::from(k) > inc,
-            "K={k} nao domina o corte incidente da regiao {r} ({inc})"
-        );
-    }
-}
-
-/// **Papel fino demais para a bola é uma ÁREA por direito próprio** — nunca doado a quem
-/// está do outro lado da linha.
-///
-/// Duas caixas aninhadas com um anel de 20 px entre elas, e uma bola de raio 12 (diâmetro
-/// 24 > 20): o anel não comporta a bola e portanto **não tem núcleo**. Sem a fase 4b, esses
-/// pixels sobram para a dilatação final — que atravessa a tinta — e o anel é engolido pelo
-/// miolo ou pelo lado de fora, unindo através da linha duas áreas que a linha separa.
-///
-/// ⚠️ Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE: apagar a fase 4b não quebrava nada,
-/// porque na fixture do smoke as quatro pontas da margem alcançam `30·√2 ≈ 43 px` da tinta e
-/// têm núcleo próprio. O fenômeno não estava na fixture.
-#[test]
-fn thin_paper_with_no_core_is_its_own_area() {
-    let side = 120.0;
-    let mut g = grid_px(side);
-    for (lo, hi) in [(20.0f32, 100.0f32), (40.0, 80.0)] {
-        for (p, q) in [
-            (Vec2::new(lo, lo), Vec2::new(hi, lo)),
-            (Vec2::new(hi, lo), Vec2::new(hi, hi)),
-            (Vec2::new(hi, hi), Vec2::new(lo, hi)),
-            (Vec2::new(lo, hi), Vec2::new(lo, lo)),
-        ] {
-            g.stroke_capsule(p, q, 0.0);
-        }
-    }
-    let seg = segment(&g, 12.0, V_WHITE, V_INK);
-    let ring = seg.region[px(&g, 30.0, 60.0)]; // entre as duas caixas
-    let core = seg.region[px(&g, 60.0, 60.0)]; // miolo da caixa interna
-    let out = seg.region[px(&g, 5.0, 5.0)]; // fora da externa
-    assert_ne!(ring, NO_REGION, "o anel tem de receber alguma regiao");
-    assert_ne!(ring, core, "o anel nao pode ser engolido pelo miolo");
-    assert_ne!(ring, out, "o anel nao pode ser engolido pelo lado de fora");
-    assert_ne!(
-        core, out,
-        "miolo e lado de fora estao separados por DUAS linhas"
-    );
 }

@@ -8,32 +8,37 @@
 //! `trace_contours`/`simplify_ring` do balde, então a borda de uma cor e a de um balde não
 //! podem divergir, e colorir herda selecionar/mover/animar/undo de graça.
 //!
-//! ## O modelo (`09 §3`)
+//! ## O modelo (`09 §3` + `§8`) — o que de fato roda
 //!
-//! Um **Potts multiway cut** sobre a grade de pixels: `V_pq` (suavidade) = a clareza do papel
-//! entre `p` e `q` (barato cortar dentro da tinta, caro no branco) ⇒ a fronteira é *atraída*
-//! para o meio da linha, e **um vão não precisa fechar** (passar por ele custa a largura dele
-//! em branco). `D_p` (dados) = o rabisco. O multiway é resolvido **guloso um-contra-todos**
-//! (uma sequência de cortes BINÁRIOS — `flow.rs`), que é 9–18× o α-expansion com ΔE ≤ 0,04%.
+//! O LazyBrush original é um **Potts multiway cut** sobre pixels, cuja fronteira é atraída
+//! para a linha. A `§7.1` MEDIU esse corte cru: **3,3 s a 4096²**, e **157 s** quando dois
+//! rabiscos se contradizem sobre a mesma linha. Então o pipeline é outro, em três passos
+//! (`solve`):
 //!
-//! ⚠️ **O corte NÃO roda na grade de pixels** (`§8`, `segment.rs`). Ele rodava, e a `§7.1`
-//! mediu o preço: **3,3 s a 4096²**, e **157 s** quando dois rabiscos se contradiziam sobre a
-//! mesma linha — um clique que trava por minutos. Hoje a arte é primeiro particionada em
-//! regiões estanques (trapped-ball) e o corte roda sobre esse grafo, de centenas de nós.
-//! Medido: o penhasco virou **586 ms**, indistinguível do caso limpo (539 ms).
+//! 1. **Partição trapped-ball** (`segment.rs`): a arte vira componentes estanques (a bola de
+//!    raio `trap_px` fecha os vãos), cada componente subdividido em CÉLULAS.
+//! 2. **Um componente de UMA cor é PREENCHIDO** — o contorno da cor cola na linha de graça
+//!    (o flood de papel não atravessa tinta). É daqui que vem o casamento com o line-art.
+//! 3. **Um componente CONTESTADO (≥2 cores)** — um blob aberto sem linha entre as cores — é
+//!    dividido por **Voronoi geodésico** entre os rabiscos: faixas parelhas, a fronteira no
+//!    meio (não há tinta a que colar). Fechar um vão para colar na linha é o knob **Trap**.
 //!
-//! ⚠️ **O que sobra caro é a PARTIÇÃO, não o corte** — 4096² ainda custa ~2,6 s, e é EDT +
-//! BFS sobre 16 M pixels (a `§7.1` já apontava para cá). A alavanca nomeada é a exceção
-//! `rayon`, que é decisão do Enio.
+//! ⚠️ **O min-cut de fluxo (`flow.rs`) NÃO é o produto** — é a referência (oráculo `#[cfg(test)]`,
+//! provada `BK ≡ Edmonds–Karp`). Ele foi medido e reprovado como solver do produto: o guloso
+//! um-contra-todos espreme as cores do meio, e o min-cut de Potts *encolhe* uma cor de semente
+//! fina (minimizar a energia de Potts É minimizar fronteira). Detalhe em `voronoi_contested_component`.
+//!
+//! ⚠️ **O custo restante é a PARTIÇÃO** — 4096² ≈ 1,5 s, EDT + BFS sobre 16 M pixels (a `§7.1`
+//! já apontava para cá). A alavanca nomeada é a exceção `rayon`, decisão do Enio.
 
 use ph2d_core::Vec2;
 use ph2d_flip_fill::{
     BOUNDARY, FILLED, FillResult, Grid, RDP_EPSILON_PX, signed_area, simplify_ring, trace_contours,
 };
 
+#[cfg(test)]
 mod flow;
 mod segment;
-use flow::Flow;
 use segment::{NO_REGION, segment};
 
 // Mirram o `fill_at` (`09 §2.1` — MESMO raster, MESMO back-end).
@@ -245,98 +250,92 @@ fn group_scribbles(grid: &Grid, scribbles: &[Scribble]) -> Vec<(u16, Vec<usize>)
     out
 }
 
-/// The guloso multiway (`09 §3`), run over the **trapped-ball region graph** (`§8`): for each
-/// label, one binary cut (its regions vs the union of the others), first-claim wins. Returns
-/// the label INDEX per pixel, or `None` (ink/unassigned).
+/// Colore o line-art (`09 §3`). **A subdivisão em células é CONDICIONAL**, e essa é a espinha:
 ///
-/// ⚠️ **The cut does not run on pixels.** `§7.1` measured the pixel instance at 3,3 s on a
-/// 4096² grid, and at **157 s** when two scribbles contradict each other across one line. The
-/// region graph has hundreds of nodes instead of millions, and `segment` guarantees a cut on
-/// it weighs exactly what the corresponding pixel cut would — so this is the same answer,
-/// found in the time a click is allowed to take.
+/// - Um **componente estanque com UMA cor** é PREENCHIDO inteiro — sem corte. O contorno da
+///   cor já cola na linha de graça, porque o componente nasceu de um flood de papel que não
+///   atravessa tinta (`segment` §4a). Preencher em vez de cortar mata a *degenerescência da
+///   semente fina*: um corte binário sobre uma célula pequena prefere **cercar a semente**
+///   (perímetro barato) a achar a fronteira real, e uma pincelada fina cairia nessa cilada.
+/// - Um **componente contestado por ≥2 cores** — o caso do 3º smoke, quatro cores num blob
+///   aberto sem uma linha entre elas — é subdividido em células e **cortado** (LazyBrush): sem
+///   tinta a que colar, a fronteira cai no MEIO. O corte roda sobre as células DAQUELE
+///   componente, então é barato (dezenas–centenas de nós) e só paga onde de fato há disputa.
+///
+/// ⚠️ **Nunca sobre a grade de pixels.** `§7.1` mediu 3,3 s a 4096² e **157 s** com dois
+/// rabiscos se contradizendo sobre uma linha. Aqui o corte é local ao componente contestado.
 fn solve(grid: &Grid, labels: &[(u16, Vec<usize>)], trap_px: f32) -> Vec<Option<usize>> {
     let n = grid.w * grid.h;
     let mut assign: Vec<Option<usize>> = vec![None; n];
 
-    let seg = segment_that_separates(grid, labels, trap_px);
+    let seg = segment(grid, trap_px, V_WHITE, V_INK);
     if seg.count == 0 {
         return assign;
     }
-    let k_weight = seg.seed_weight();
 
-    // Os rabiscos, traduzidos de pixels para REGIÕES. Primeira reivindicação vence — e é
-    // determinístico porque `labels` já está em ordem estável. Um rabisco que atravessa a
-    // linha reivindica os dois lados: é ele quem gerava o penhasco de 157 s, e agora é só
-    // uma região a mais na lista de sementes.
-    let mut seeds_of: Vec<Vec<u32>> = vec![Vec::new(); labels.len()];
+    // O componente de cada célula (uma célula nunca cruza componente, por construção).
+    let mut cell_comp: Vec<u32> = vec![NO_REGION; seg.count];
+    for i in 0..n {
+        let r = seg.region[i];
+        if r != NO_REGION {
+            cell_comp[r as usize] = seg.component[i];
+        }
+    }
+    let comp_count = seg
+        .component
+        .iter()
+        .filter(|&&c| c != NO_REGION)
+        .fold(0u32, |m, &c| m.max(c + 1)) as usize;
+
+    // As cores que semeiam cada componente, e a célula-semente de cada (cor, componente).
+    // Primeira reivindicação de uma célula vence (determinístico: `labels` é ordem estável).
+    let mut comp_labels: Vec<Vec<usize>> = vec![Vec::new(); comp_count];
     let mut claimed: Vec<Option<usize>> = vec![None; seg.count];
     for (k, (_, pixels)) in labels.iter().enumerate() {
         for &p in pixels {
             let r = seg.region[p];
-            if r == NO_REGION {
+            if r == NO_REGION || claimed[r as usize].is_some() {
                 continue;
             }
-            if claimed[r as usize].is_none() {
-                claimed[r as usize] = Some(k);
-                seeds_of[k].push(r);
+            claimed[r as usize] = Some(k);
+            let c = cell_comp[r as usize] as usize;
+            if !comp_labels[c].contains(&k) {
+                comp_labels[c].push(k);
             }
         }
     }
 
-    // O rótulo de cada REGIÃO; depois ele é espalhado para os pixels dela.
     let mut region_label: Vec<Option<usize>> = vec![None; seg.count];
-
-    if labels.len() == 1 {
-        // **Uma cor colore exatamente as regiões que ela toca — e não atravessa costura.**
-        //
-        // Sem um segundo rabisco não há contra quem cortar, e o mínimo do LazyBrush fica
-        // degenerado (custa 0 pôr TUDO do lado da fonte). Espalhar por qualquer aresta de
-        // papel foi MEDIDO e é o vazamento clássico: uma linha com um furo de um pixel vira
-        // uma costura de peso baixo, e a cor toma a grade inteira (94% dela, no gate). Uma
-        // costura existe precisamente porque a bola NÃO passou ali — tratá-la como caminho
-        // aberto desfaz a única promessa da trapped-ball.
-        for &r in &seeds_of[0] {
-            region_label[r as usize] = Some(0);
-        }
-    } else {
-        for (k, seeds) in seeds_of.iter().enumerate() {
-            if seeds.is_empty() {
-                continue;
-            }
-            let mut f = Flow::build(seg.count, seg.edges.iter().copied());
-            for &r in seeds {
-                f.set_tlink(r as usize, k_weight, 0);
-            }
-            for (j, other) in seeds_of.iter().enumerate() {
-                if j == k {
-                    continue;
-                }
-                for &r in other {
-                    f.set_tlink(r as usize, 0, k_weight);
+    for (comp, ls) in comp_labels.iter().enumerate() {
+        match ls.as_slice() {
+            [] => {}
+            // UMA cor: preenche o componente inteiro (a linha já é respeitada — §4a).
+            &[only] => {
+                for (cell, &cc) in cell_comp.iter().enumerate() {
+                    if cc as usize == comp {
+                        region_label[cell] = Some(only);
+                    }
                 }
             }
-            f.max_flow();
-            for (r, &on) in f.source_side().iter().enumerate() {
-                if on && region_label[r].is_none() {
-                    region_label[r] = Some(k);
-                }
-            }
+            // ≥2 cores: corta as células DESTE componente (LazyBrush, fronteira no meio).
+            _ => voronoi_contested_component(&seg, &cell_comp, comp, &claimed, &mut region_label),
         }
     }
 
     if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
-        let mut px_of = vec![0usize; seg.count];
-        for &r in &seg.region {
-            if r != NO_REGION {
-                px_of[r as usize] += 1;
+        let mut px_of = vec![0usize; labels.len()];
+        for &rl in &region_label {
+            if let Some(k) = rl {
+                // conta CÉLULAS por rótulo (proxy da área)
+                px_of[k] += 1;
             }
         }
-        for r in 0..seg.count {
-            eprintln!(
-                "[colorize]   regiao {r}: {} px, rotulo {:?}, semeada por {:?}",
-                px_of[r], region_label[r], claimed[r]
-            );
+        for (comp, ls) in comp_labels.iter().enumerate() {
+            if !ls.is_empty() {
+                eprintln!("[colorize]   componente {comp}: cores {ls:?}");
+            }
         }
+        eprintln!("[colorize]   celulas por rotulo: {px_of:?}");
     }
 
     // De volta aos pixels. A tinta nunca recebe cor — a linha fica por cima (`09 §2`).
@@ -352,76 +351,85 @@ fn solve(grid: &Grid, labels: &[(u16, Vec<usize>)], trap_px: f32) -> Vec<Option<
     assign
 }
 
-/// **O raio da bola não é um palpite — é o menor que mantém os rabiscos do artista
-/// separados.**
+/// Divide UM componente contestado (≥2 cores) entre as cores, por **Voronoi geodésico**: cada
+/// célula recebe o rótulo do rabisco mais próximo, na métrica das arestas do grafo (`V_pq`).
 ///
-/// A pré-segmentação só serve ao corte se a partição tiver uma costura por onde ele possa
-/// passar. Escolher esse raio por constante foi tentado e MEDIDO como o modelo errado: o que
-/// ele precisa vencer é metade do VÃO, e vãos não escalam com nada que a arte ofereça (nem
-/// com a bbox — a fração que servia ao smoke quebrava as fixtures — nem com a espessura da
-/// linha: no smoke o traço mede 0,26 e o vão 1,2).
+/// ⚠️ **Por que Voronoi, e não o min-cut do LazyBrush.** Dois atalhos foram MEDIDOS e
+/// reprovados, e o próprio min-cut também:
+/// - **guloso um-contra-todos** — *espreme as cores do meio* (`[856,128,128,856]` no blob de
+///   4 cores: a externa reivindica primeiro até o vizinho e a do meio fica com uma tira);
+/// - **min-cut de Potts** (α-expansion) — ⚠️ **minimizar a energia de Potts É minimizar o
+///   comprimento total de fronteira**, e o mínimo de verdade *encolhe uma cor do meio com
+///   semente fina* (o perímetro de um blobinho custa menos que duas cordas), dando
+///   `[2131,128,2991,909]` — o oposto do que o artista, vendo quatro rabiscos parelhos,
+///   espera. Só uma semente GORDA fixaria uma faixa gorda.
 ///
-/// Mas a informação existe e é do próprio artista: **se dois rótulos caem na MESMA região, a
-/// partição é grossa demais**, porque nenhuma escolha do corte poderá separá-los. Então a
-/// bola cresce até isso deixar de acontecer. O `trap` do painel entra como PISO (o artista
-/// dizendo *"vãos até aqui estão fechados"*), nunca como teto.
-///
-/// Termina em `MAX_STEPS` dobras, e a saída é sempre uma partição válida: quando nem a maior
-/// bola separa dois rótulos, eles estão de fato na mesma área fechada e a primeira
-/// reivindicação vence — que é a resposta honesta, não um laço infinito.
-fn segment_that_separates(
-    grid: &Grid,
-    labels: &[(u16, Vec<usize>)],
-    trap_px: f32,
-) -> segment::Segmentation {
-    /// Dobras de raio antes de desistir. 8 cobrem 256x o raio inicial — muito além de
-    /// qualquer vão que caiba numa grade de 4096.
-    const MAX_STEPS: usize = 8;
+/// O Voronoi dá **faixas parelhas** (a expectativa), é **confinado** (a cor não vaza — só
+/// atribuo as células DESTE componente) e é determinístico. O casamento com a LINHA de um
+/// **line-art de verdade** não vem daqui: vem do preenchimento por-componente (uma cor numa
+/// região delimitada cola na tinta de graça, §4a). Este caminho só decide um componente que
+/// tem ≥2 cores E nenhuma linha as separando — em geral um blob aberto, onde a fronteira é
+/// arbitrária e o meio geométrico é a resposta honesta. Fechar um vão para colar na linha é o
+/// que o knob **Trap** faz (separa em componentes de uma cor → preenchidos → colados).
+fn voronoi_contested_component(
+    seg: &segment::Segmentation,
+    cell_comp: &[u32],
+    comp: usize,
+    claimed: &[Option<usize>],
+    region_label: &mut [Option<usize>],
+) {
+    use std::cmp::Reverse;
+    use std::collections::BinaryHeap;
 
-    // A mais FINA que sabemos construir. Se ela já separa os rótulos, acabou — e é a melhor
-    // resposta possível, porque toda bola maior só funde mais.
-    let mut r = trap_px.max(1.0);
-    let finest = segment(grid, r, V_WHITE, V_INK);
-    if !two_labels_share_a_region(&finest, labels) {
-        return finest;
-    }
-    // Senão, cresce até separar. ⚠️ **Não pare porque a contagem de regiões caiu**: ela cai
-    // naturalmente enquanto a bola cresce (num canto de margem o núcleo desaparece antes de
-    // qualquer vão fechar), e parar ali abandona a busca cedo demais — foi o bug do smoke de
-    // 2026-07-19, com os dois rabiscos caindo na mesma região de 4 M px e uma das cores
-    // simplesmente não existindo.
-    for _ in 0..MAX_STEPS {
-        r *= 2.0;
-        let next = segment(grid, r, V_WHITE, V_INK);
-        if !two_labels_share_a_region(&next, labels) {
-            if std::env::var("PH2D_COLORIZE_LOG").is_ok() {
-                eprintln!("[colorize] separou em r={r:.1}px, {} regioes", next.count);
-            }
-            return next;
+    // Reindexação local + adjacência interna ao componente.
+    let mut local: Vec<u32> = vec![u32::MAX; seg.count];
+    let mut cells: Vec<usize> = Vec::new();
+    for (cell, &cc) in cell_comp.iter().enumerate() {
+        if cc as usize == comp {
+            local[cell] = cells.len() as u32;
+            cells.push(cell);
         }
     }
-    // Nenhum raio separou: os rabiscos estão de fato na MESMA área fechada. A resposta
-    // honesta é a partição mais FINA (a que menos funde) e a primeira reivindicação vence.
-    finest
-}
+    let m = cells.len();
+    let mut adj: Vec<Vec<(u32, i64)>> = vec![Vec::new(); m];
+    for &(a, b, w) in &seg.edges {
+        let (la, lb) = (local[a as usize], local[b as usize]);
+        if la != u32::MAX && lb != u32::MAX {
+            adj[la as usize].push((lb, i64::from(w)));
+            adj[lb as usize].push((la, i64::from(w)));
+        }
+    }
 
-/// Existe alguma região reivindicada por DOIS rótulos diferentes?
-fn two_labels_share_a_region(seg: &segment::Segmentation, labels: &[(u16, Vec<usize>)]) -> bool {
-    let mut owner: Vec<Option<usize>> = vec![None; seg.count];
-    for (k, (_, pixels)) in labels.iter().enumerate() {
-        for &p in pixels {
-            let r = seg.region[p];
-            if r == NO_REGION {
-                continue;
-            }
-            match owner[r as usize] {
-                None => owner[r as usize] = Some(k),
-                Some(j) if j != k => return true,
-                Some(_) => {}
+    // Multi-fonte Dijkstra: as sementes partem com distância 0 carregando o rótulo. O `done`
+    // fixa o 1º (menor) que chega; empate resolve por rótulo então célula (HR-5, na ordem do
+    // heap `(dist, label, cell)`).
+    let mut done = vec![false; m];
+    let mut label = vec![usize::MAX; m];
+    let mut heap: BinaryHeap<Reverse<(i64, usize, u32)>> = BinaryHeap::new();
+    for (li, &cell) in cells.iter().enumerate() {
+        if let Some(k) = claimed[cell] {
+            heap.push(Reverse((0, k, li as u32)));
+        }
+    }
+    while let Some(Reverse((d, k, li))) = heap.pop() {
+        let li = li as usize;
+        if done[li] {
+            continue;
+        }
+        done[li] = true;
+        label[li] = k;
+        for &(nb, w) in &adj[li] {
+            if !done[nb as usize] {
+                heap.push(Reverse((d + w, k, nb)));
             }
         }
     }
-    false
+
+    for (li, &cell) in cells.iter().enumerate() {
+        if label[li] != usize::MAX {
+            region_label[cell] = Some(label[li]);
+        }
+    }
 }
 
 /// Split the labelled pixels into connected regions and vectorize each through the untouched

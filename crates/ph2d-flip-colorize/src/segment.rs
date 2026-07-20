@@ -26,17 +26,44 @@
 //! Uma região a mais só dá ao corte mais liberdade — ele pode reunir as duas de graça se
 //! quiser. Já duas áreas que o artista quer de cores diferentes, fundidas numa região só,
 //! **nunca mais podem ser separadas**. Por isso a erosão erra para o lado fino.
+//!
+//! # Por que os COMPONENTES são SUBDIVIDIDOS em células (o 3º smoke)
+//!
+//! Um componente estanque grande é UM nó, e o corte não pode partir um nó. Então quando o
+//! artista rabisca **quatro cores numa área aberta sem uma linha entre elas** — o 3º smoke de
+//! 2026-07-19 — os quatro rabiscos caem no mesmo nó e a primeira reivindicação leva o desenho
+//! inteiro. Mas o LazyBrush *tem* resposta para isso: sem tinta a que colar, a fronteira entre
+//! duas cores cai no **MEIO**. Para o corte poder produzir esse meio, todo componente é
+//! ladrilhado numa grade de células (uma sobre-segmentação, e sobre-segmentar é seguro).
+//!
+//! A fronteira de cor numa área aberta é **arbitrária** (nada a que colar), então a resolução
+//! grossa de uma célula é honesta ali. Onde a precisão importa — na tinta — as fronteiras dos
+//! COMPONENTES já são pixel-tight (seguem a linha), e o corte prefere correr por elas porque
+//! atravessar tinta custa `V_INK = 0`. Célula fina perto da linha seria precisão desperdiçada.
 
 use ph2d_flip_fill::{BOUNDARY, Grid, sq_distance_to_set};
 
 /// O pixel não pertence a região nenhuma (a grade não tem papel alcançável).
 pub const NO_REGION: u32 = u32::MAX;
 
+/// O maior número de células por eixo (a sobre-segmentação de uma área aberta).
+///
+/// ⚠️ Cap, e MEDIDO no que ele governa: o custo do corte cresce com o número de nós, e a
+/// resolução da fronteira de cor numa área aberta cresce com ele. `160` dá células de ~2 px a
+/// 380² (o smoke, liso) e ~26 px a 4096² (grosso, mas ali a fronteira é arbitrária e o custo
+/// já é dominado pela EDT). O corte sobre ≤160² = 25.600 nós é sub-10 ms.
+const MAX_CELLS_PER_AXIS: usize = 160;
+
 /// A partição da grade em regiões, mais o grafo de adjacência que o corte consome.
 pub struct Segmentation {
-    /// `region[i]` = a região do pixel `i`, ou [`NO_REGION`].
+    /// `region[i]` = a **super-região** (célula) do pixel `i`, ou [`NO_REGION`]. É o nó do
+    /// grafo do corte — um componente estanque subdividido em células (ver o topo do módulo).
     pub region: Vec<u32>,
-    /// Quantas regiões (os ids são `0..count`).
+    /// `component[i]` = o **componente estanque** do pixel `i` (a topologia da TINTA, antes da
+    /// subdivisão em células), ou [`NO_REGION`]. É o que responde *"a linha separa estes dois
+    /// pontos?"* — a pergunta que a célula, sendo uma grade arbitrária, não responde.
+    pub component: Vec<u32>,
+    /// Quantas super-regiões (os ids de `region` são `0..count`).
     pub count: usize,
     /// Arestas `(a, b, peso)` com `a < b`, **coalescidas**, peso > 0.
     ///
@@ -46,27 +73,6 @@ pub struct Segmentation {
     /// par 0/0 não pode ganhar residual, porque empurrar fluxo por ele exigiria que ele já
     /// tivesse residual.
     pub edges: Vec<(u32, u32, i32)>,
-}
-
-impl Segmentation {
-    /// O maior peso total incidente a um nó — o piso de `K` para que **nenhum corte traia um
-    /// rabisco** (`09 §3`).
-    ///
-    /// O `K = 2(w+h)` da versão de pixels era o perímetro da grade, um limite para o corte
-    /// mais caro possível *ali*. Aqui o limite certo é local e muito menor: separar uma
-    /// região do resto custa, no máximo, a soma das arestas que a tocam.
-    #[must_use]
-    pub fn seed_weight(&self) -> i32 {
-        let mut inc = vec![0i64; self.count];
-        for &(a, b, c) in &self.edges {
-            inc[a as usize] += i64::from(c);
-            inc[b as usize] += i64::from(c);
-        }
-        let max = inc.into_iter().max().unwrap_or(0);
-        // `saturating` porque o teto é do tipo, não do desenho: um `K` truncado ainda
-        // domina todo corte que o `i32` consegue representar.
-        i32::try_from(max + 1).unwrap_or(i32::MAX)
-    }
 }
 
 /// Segmenta a grade em regiões estanques e devolve o grafo de adjacência ponderado.
@@ -190,6 +196,34 @@ pub fn segment(grid: &Grid, r_px: f32, v_white: i32, v_ink: i32) -> Segmentation
         }
     }
 
+    // 4d. **Subdivide cada componente em CÉLULAS** (ver o topo do módulo). O `component`
+    //     guarda a topologia da tinta; o `region` (super-região) é `component × célula`, e é
+    //     ele que o corte consome — assim uma área aberta é ladrilhada e o corte pode dividir
+    //     duas cores pelo meio, em vez de a 1ª reivindicação levar tudo.
+    let component = region.clone();
+    let cell = (w.max(h)).div_ceil(MAX_CELLS_PER_AXIS).max(1);
+    let cols = w.div_ceil(cell) as u64;
+    let rows = h.div_ceil(cell) as u64;
+    let cells_per_component = cols * rows;
+    // Densifica `(componente, célula)` → id denso, em ordem de índice (determinístico).
+    let mut dense: std::collections::BTreeMap<u64, u32> = std::collections::BTreeMap::new();
+    let mut super_count = 0u32;
+    for (i, r) in region.iter_mut().enumerate() {
+        if *r == NO_REGION {
+            continue;
+        }
+        let (x, y) = (i % w, i / w);
+        let cell_id = (y / cell) as u64 * cols + (x / cell) as u64;
+        let key = u64::from(*r) * cells_per_component + cell_id;
+        let id = *dense.entry(key).or_insert_with(|| {
+            let id = super_count;
+            super_count += 1;
+            id
+        });
+        *r = id;
+    }
+    count = super_count;
+
     // 5. O grafo: cada par 4-adjacente que atravessa uma fronteira de região contribui o
     //    `V_pq` DAQUELE par. A soma é o peso da aresta ⇒ o corte de regiões pesa exatamente
     //    o corte de pixels correspondente.
@@ -230,6 +264,7 @@ pub fn segment(grid: &Grid, r_px: f32, v_white: i32, v_ink: i32) -> Segmentation
 
     Segmentation {
         region,
+        component,
         count: count as usize,
         edges,
     }

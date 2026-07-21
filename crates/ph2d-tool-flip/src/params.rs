@@ -168,7 +168,15 @@ pub const GROW_MAX: f64 = 8.0;
 /// `docs/Flip/09_colorize.md` §7.1. O que limita é o SENTIDO: uma bola de raio `r` não
 /// entra numa região mais estreita que `2r`, então um Trap alto torna as regiões finas
 /// do desenho impreenchíveis (e o balde diz isso, com o erro `BallTooFat`).
-pub const TRAP_MAX_PX: f64 = 20.0;
+///
+/// **20 → 50 (6º smoke, 2026-07-20).** Enio: *"trap 0 e trap máximo vazam parecidos"*. A
+/// causa era o RANGE: uma bola de raio `r` (px de tela) sela um vão de até `2r` (px de
+/// tela), então o Trap máximo de 20 px só selava vãos ≤ 40 px — e um divisor com vão
+/// DELIBERADO desenhado num zoom aproximado tem ~100 px, que o máximo nunca alcançava, então
+/// varrer 0..20 não mudava NADA (medido: a lente fica cravada até selar, e nunca selava). O
+/// custo é O(área) — o 50 não é teto de recurso, é o alcance de selo que o vão real pede; o
+/// trade de despedaçar regiões finas segue sendo escolha do artista.
+pub const TRAP_MAX_PX: f64 = 50.0;
 /// Faixa do **Precision** (pixels do buffer por px de tela; 1 = resolução da tela).
 pub const PRECISION_MIN: f64 = 0.5;
 pub const PRECISION_MAX: f64 = 4.0;
@@ -327,6 +335,12 @@ pub struct FlipStyleSnapshot {
     /// Cor que o PRÓXIMO rabisco do Colorize semeia (sRGB8) — paleta própria (C2),
     /// distinta da cor do balde: cada rabisco carrega a cor com que foi desenhado.
     pub colorize_color: [u8; 4],
+    /// **Bleed** do Colorize (6º smoke): quão fundo uma cor entra pelo VÃO ABERTO de um
+    /// divisor (a lente). `0` = colada na linha; `1` = bojo fundo. `0.5` = o comportamento
+    /// aprovado no 5º smoke. É o controle CONTÍNUO e imune ao zoom do vazamento — o `trap`
+    /// é o selo BINÁRIO (fecha o vão de vez). O shell mapeia para o pedágio de aperto do
+    /// motor (`ph2d_flip_colorize::colorize_with`).
+    pub colorize_bleed: f64,
 }
 
 impl Default for FlipStyleSnapshot {
@@ -357,6 +371,7 @@ impl Default for FlipStyleSnapshot {
             trap: 0.0,      // opt-in: o default é o balde do W4, sem mudança nenhuma
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre
             colorize_color: [200, 90, 90, 255],
+            colorize_bleed: 0.5, // = o pedágio DEFAULT_SQUEEZE aprovado no 5º smoke
         }
     }
 }

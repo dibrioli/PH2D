@@ -56,6 +56,39 @@ fn size_slider_drag_reaches_tool() {
     );
 }
 
+/// **O slider Bleed do Colorize (6º smoke) percorre a costura inteira** — do `populate`
+/// (registro) ao `event.rs` (arm) ao `handle_panel_event` (a fração no tool). Um controle
+/// novo sem TODAS as pontas dropa o clique em silêncio; este teste dirige o evento REAL.
+#[test]
+fn colorize_bleed_slider_drag_reaches_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+
+    host.set_slider_value(ids::FLIP_COLORIZE_BLEED, 1.0);
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::FLIP_COLORIZE_BLEED),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Bleed slider — `event.rs` arm for FLIP_COLORIZE_BLEED is missing"
+    );
+    let mut forwarded = false;
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+            forwarded = true;
+        }
+    }
+    assert!(forwarded, "Bleed edit never reached the bus — the seam is dead");
+    assert!(
+        (tool.ui_snapshot().colorize_bleed - 1.0).abs() < 1e-6,
+        "slider→tool seam delivered the wrong Bleed fraction"
+    );
+}
+
 /// Clicking the Draw mode button must switch the tool's canvas mode through the
 /// seam (Select → Draw).
 #[test]
@@ -289,13 +322,17 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Erase stroke", ids::FLIP_ERASE_STROKE),
     ];
     // Os knobs do balde — exclusivos DELE. (O swatch de Fill saiu daqui: ele é
-    // compartilhado com o Edit, ver `fill_swatch`.)
+    // compartilhado com o Edit, ver `fill_swatch`. E o **Trap** saiu daqui no 6º smoke: ele
+    // é a trapped-ball, que o Colorize também usa — ver `trap_shared`. A premissa "Trap é do
+    // balde" apodreceu quando o Colorize passou a expô-lo, `feedback_the_fullest_card_premise_rots`.)
     let bucket_only = [
         ("Gap", ids::FLIP_GAP),
-        ("Trap", ids::FLIP_TRAP),
         ("Grow", ids::FLIP_GROW),
         ("Precision", ids::FLIP_PRECISION),
     ];
+    // **Trap** é compartilhado Fill + Colorize (os dois usam a bola que sela um vão): TEM de
+    // aparecer nos dois e NÃO pode vazar para os demais modos.
+    let trap_shared = [("Trap", ids::FLIP_TRAP)];
     // A cor do MIOLO: do balde (que a deposita) e do Edit (que a reescreve na seleção).
     let fill_swatch = [("Fill color", ids::FLIP_FILL_SWATCH)];
     let bucket_expected = [
@@ -338,11 +375,22 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Strength", ids::FLIP_RS_STRENGTH),
         ("Randomize", ids::FLIP_RS_RANDOMIZE),
     ];
-    // Colorize (C2): a cor do rabisco + as ações do gesto — atributos SÓ do modo Colorize.
+    // Colorize (C2): a cor do rabisco + as ações do gesto + o **Bleed** (6º smoke) —
+    // atributos SÓ do modo Colorize. (O Trap NÃO entra aqui: é compartilhado, `trap_shared`,
+    // e como o Fill também o mostra, pô-lo em `colorize_only` proibiria o Fill de exibi-lo.)
     let colorize_only = [
         ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
         ("Colorize apply", ids::FLIP_COLORIZE_APPLY),
         ("Colorize clear", ids::FLIP_COLORIZE_CLEAR),
+        ("Colorize bleed", ids::FLIP_COLORIZE_BLEED),
+    ];
+    // O que o modo Colorize TEM de mostrar: os seus próprios + o Trap compartilhado.
+    let colorize_expected = [
+        ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
+        ("Colorize apply", ids::FLIP_COLORIZE_APPLY),
+        ("Colorize clear", ids::FLIP_COLORIZE_CLEAR),
+        ("Colorize bleed", ids::FLIP_COLORIZE_BLEED),
+        ("Trap", ids::FLIP_TRAP),
     ];
 
     // (modo, o que TEM de aparecer, o que NÃO pode aparecer)
@@ -358,6 +406,7 @@ fn each_mode_shows_only_its_own_attributes() {
             &[
                 &eraser_only,
                 &bucket_only,
+                &trap_shared,
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
@@ -369,6 +418,7 @@ fn each_mode_shows_only_its_own_attributes() {
             &[
                 &stroke_only,
                 &bucket_only,
+                &trap_shared,
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
@@ -376,7 +426,7 @@ fn each_mode_shows_only_its_own_attributes() {
         ),
         (
             FlipMode::Fill,
-            &bucket_expected,
+            &bucket_expected, // inclui o Trap (compartilhado)
             &[&stroke_only, &eraser_only, &sculpt_only, &edit_only],
         ),
         // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
@@ -387,6 +437,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &stroke_only,
                 &eraser_only,
                 &bucket_only,
+                &trap_shared,
                 &fill_swatch,
                 &edit_only,
             ],
@@ -399,6 +450,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &stroke_only,
                 &eraser_only,
                 &bucket_only,
+                &trap_shared,
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
@@ -411,13 +463,21 @@ fn each_mode_shows_only_its_own_attributes() {
         (
             FlipMode::Edit,
             &edit_expected,
-            &[&eraser_only, &bucket_only, &sculpt_only, &smoothing_only],
+            &[
+                &eraser_only,
+                &bucket_only,
+                &trap_shared,
+                &sculpt_only,
+                &smoothing_only,
+            ],
         ),
         // Colorize (C2): a cor do rabisco + Apply/Clear, e NADA de traço/borracha/balde/
         // sculpt/edit (só o `mode_row` e o `colorize_section` pintam neste modo).
         (
             FlipMode::Colorize,
-            &colorize_only,
+            &colorize_expected, // os próprios + o Trap compartilhado
+            // Proíbe os knobs do balde (Gap/Grow/Precision) mas NÃO o `trap_shared` — o
+            // Colorize usa o Trap de propósito (o 6º smoke o trouxe para cá).
             &[
                 &stroke_only,
                 &eraser_only,

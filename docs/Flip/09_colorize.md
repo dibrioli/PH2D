@@ -1,5 +1,29 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite II): o VAZAMENTO pelo vão ganhou DOIS ajustes no painel do
+> Colorize (6º smoke: "trap 0 e trap máximo vazam parecidos. se há ajustes possíveis coloque
+> no painel").** Diagnóstico medido (sonda `probe_the_bleed_through_the_gap`): (a) o **Trap é
+> BINÁRIO** — a lente fica CRAVADA (`+0.69`) de trap 0 até selar, e só some quando a bola não
+> passa (raio > metade do vão); (b) o range de 20 px de tela só selava vãos ≤ 40 px, e um
+> divisor com vão deliberado num zoom aproximado tem ~100 px ⇒ **nem o máximo selava**, então
+> varrer 0..20 não mudava NADA (o que o Enio viu); (c) o Trap nem estava no painel do
+> Colorize — morava só no do Fill, embora o Apply o lesse. Dois fixes: **(1) o pedágio de
+> aperto `SQUEEZE` (antes const escondida) virou o slider `Bleed`** — o controle CONTÍNUO e
+> imune ao zoom do vazamento (lente `+0.29` a `+0.94` medida; `0.5` = o pedágio aprovado no
+> 5º smoke). `colorize_with(squeeze)` é a porta nova; `colorize()` fica estável no default;
+> `squeeze_from_bleed` mapeia o slider (log na percepção, **inteiro por dentro** — HR-5, sem
+> transcendental; ring do Dial dimensionado por `squeeze/2`, default 4096 ⇒ 2056 baldes,
+> MENOR que antes). **(2) `TRAP_MAX_PX` 20 → 50** (medido; não é teto de recurso — a EDT é
+> O(área)) e o **Trap + Bleed foram para o painel do Colorize** (o Trap é compartilhado
+> Fill+Colorize agora). Gates: `the_bleed_slider_maps_to_the_squeeze_toll` (0.5→default,
+> direção, monotônico) · `the_bleed_moves_the_lens_through_an_open_gap` (Δ>0,5 unidade,
+> mutação: ignorar o squeeze) · `the_trap_is_binary_the_bleed_is_continuous` (o report do
+> Enio pinado) · seam do painel (dirige o slider real) + tool (`SetValue`→fração) + o gate
+> modal REESTRUTURADO (o Trap saiu de `bucket_only`, virou `trap_shared` — a premissa "Trap é
+> do balde" apodreceu, `feedback_the_fullest_card_premise_rots`). Mutações 2/2 sangram.
+> Suíte motor 28 · tool 16 · painel 23. **Smoke: mexa no Bleed (a lente encolhe/cresce) e no
+> Trap (fecha o vão de vez).**
+>
 > **Estado (2026-07-20, noite): o 6º smoke ("ainda não perfeito") FECHOU — a borda não fica
 > NO eixo, ela ATRAVESSA até a face oposta; e parede abraçada pela mesma cor é INTERIOR.**
 > As duas fotos eram dois mecanismos, ambos reproduzidos PIXEL a pixel numa sonda de

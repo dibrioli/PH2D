@@ -153,6 +153,19 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_MODE_COLORIZE);
     button(store, ids::FLIP_COLORIZE_APPLY);
     button(store, ids::FLIP_COLORIZE_CLEAR);
+    // Bleed (6º smoke): quão fundo a cor entra pelo vão aberto (a lente). `0.5` = o pedágio
+    // aprovado no 5º smoke. É o controle CONTÍNUO do vazamento; o Trap (reusado no Colorize)
+    // é o selo BINÁRIO. Faixa 0..1 (fração), step contínuo.
+    slider_chip(
+        store,
+        ids::FLIP_COLORIZE_BLEED,
+        ids::FLIP_COLORIZE_BLEED_NUM,
+        0.5,   // track (= a fração `colorize_bleed`); meio = DEFAULT_SQUEEZE
+        50.0,  // display: mostra em %
+        100.0, // scale: track 0..1 → 0..100 %
+        0.0,
+        1.0, // step: % inteiro
+    );
     slider_chip(
         store,
         ids::FLIP_GAP,

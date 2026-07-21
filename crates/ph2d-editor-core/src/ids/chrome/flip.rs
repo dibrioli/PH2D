@@ -117,6 +117,12 @@ pub const FLIP_COLORIZE_SWATCH: NodeId = hash_node_id("flip.colorize.swatch");
 pub const FLIP_COLORIZE_APPLY: NodeId = hash_node_id("flip.colorize.apply");
 /// Clear: drop the accumulated scribbles without colouring.
 pub const FLIP_COLORIZE_CLEAR: NodeId = hash_node_id("flip.colorize.clear");
+/// **Bleed** slider (6º smoke) + its chip: how deep a colour reaches through an OPEN gap in
+/// a divider (the lens). `0` = hugs the line, `1` = deep bulge — the CONTINUOUS,
+/// zoom-immune leak control (a distance-to-ink metric), where the Trap is the BINARY seal.
+/// The Colorize section reuses `FLIP_TRAP` for the seal (it drives the same `style.trap`).
+pub const FLIP_COLORIZE_BLEED: NodeId = hash_node_id("flip.colorize.bleed");
+pub const FLIP_COLORIZE_BLEED_NUM: NodeId = hash_node_id("flip.colorize.bleed_num");
 
 // ── Brush section (size / hardness / opacity / smoothing) ────────────────────
 /// Stroke width slider (track `0..1` → `1..64` px) + its px chip.

@@ -7,7 +7,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::ColorToken;
-use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot, px_to_slider};
+use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot, TRAP_MAX_PX, px_to_slider};
 
 impl BodyCtx<'_> {
     /// **Colorize section** (C2) — a paleta do rabisco + as ações do gesto.
@@ -72,6 +72,45 @@ impl BodyCtx<'_> {
             track,
             px,
             &px_display,
+            y,
+        );
+
+        // ── O vazamento pelo VÃO ABERTO de um divisor (6º smoke) ──────────────────────
+        //
+        // Dois ajustes, dois mecanismos. **Trap** SELA o vão (bola que não passa por um
+        // vão < 2r ⇒ dois cômodos, cada um com a sua cor até a linha) — o MESMO knob do
+        // balde, que o Colorize já lia mas não expunha aqui. **Bleed** regula, quando o vão
+        // fica ABERTO, quão fundo a cor entra (a lente) — contínuo e imune ao zoom. Selar vs.
+        // regular: os dois coexistem de propósito.
+        let track = self
+            .store
+            .slider(ids::FLIP_TRAP)
+            .map(|(_, v)| v)
+            .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
+        let trap = f64::from(track) * TRAP_MAX_PX;
+        y = self.slider_row(
+            "Trap",
+            ids::FLIP_TRAP,
+            ids::FLIP_TRAP_NUM,
+            track,
+            trap,
+            &format!("{}", trap.round() as i64),
+            y,
+        );
+        // Bleed: o track (0..1) É a fração `colorize_bleed`; o chip mostra a %.
+        let track = self
+            .store
+            .slider(ids::FLIP_COLORIZE_BLEED)
+            .map(|(_, v)| v)
+            .unwrap_or(snap.colorize_bleed as f32);
+        let pct = f64::from(track) * 100.0;
+        y = self.slider_row(
+            "Bleed",
+            ids::FLIP_COLORIZE_BLEED,
+            ids::FLIP_COLORIZE_BLEED_NUM,
+            track,
+            pct,
+            &format!("{}", pct.round() as i64),
             y,
         );
 

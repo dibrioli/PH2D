@@ -79,6 +79,9 @@ pub struct FlipTool {
     // ── Colorize (C2). Cor PRÓPRIA que o próximo rabisco semeia; os rabiscos
     //    acumulados moram no shell (transientes), não na tool.
     colorize_color: [u8; 4],
+    /// **Bleed** (6º smoke): quão fundo a cor entra pelo VÃO ABERTO (a lente). `0..1`,
+    /// `0.5` = o pedágio aprovado no 5º smoke. Ver `FlipStyleSnapshot::colorize_bleed`.
+    colorize_bleed: f64,
 }
 
 impl Default for FlipTool {
@@ -109,6 +112,7 @@ impl Default for FlipTool {
             reshape: ReshapeKind::Smooth,
             edit_domain: EditDomain::Stroke,
             colorize_color: DEFAULT_COLORIZE,
+            colorize_bleed: 0.5,
         }
     }
 }
@@ -257,6 +261,7 @@ impl FlipTool {
             precision: self.precision,
             trap: self.trap,
             colorize_color: self.colorize_color,
+            colorize_bleed: self.colorize_bleed,
         }
     }
 
@@ -372,6 +377,11 @@ impl Tool for FlipTool {
             PanelEvent::SetValue(id, v) if id == ids::FLIP_TRAP => {
                 self.trap = v.clamp(0.0, 1.0) * TRAP_MAX_PX;
             }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_COLORIZE_BLEED => {
+                // O track (0..1) É a fração `colorize_bleed` — o shell a mapeia para o
+                // pedágio de aperto do motor (`squeeze_from_bleed`).
+                self.colorize_bleed = v.clamp(0.0, 1.0);
+            }
             // Sub-modo da borracha.
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_HARD => self.erase = EraseMode::Hard,
@@ -451,6 +461,41 @@ mod tests {
         // A layer-op id (document edit) is ignored by the tool.
         t.handle_panel_event(PanelEvent::Click(ids::FLIP_LAYER_ADD));
         assert_eq!(t.mode(), FlipMode::Erase, "layer op didn't touch the tool");
+    }
+
+    /// **O slider Bleed do Colorize chega à tool** (6º smoke): o `SetValue` do
+    /// `FLIP_COLORIZE_BLEED` grava a fração `colorize_bleed` (`0..1`), que o shell mapeia
+    /// para o pedágio de aperto do motor. Trap e Bleed são knobs INDEPENDENTES.
+    #[test]
+    fn the_colorize_bleed_slider_reaches_the_tool() {
+        let mut t = FlipTool::new();
+        assert!(
+            (t.ui_snapshot().colorize_bleed - 0.5).abs() < 1e-9,
+            "o Bleed nasce no meio (o pedágio DEFAULT do 5º smoke)"
+        );
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_COLORIZE_BLEED, 0.8));
+        assert!((t.ui_snapshot().colorize_bleed - 0.8).abs() < 1e-9);
+        // Fora de [0,1] é clampado (o slider nunca sai, mas a porta se defende).
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_COLORIZE_BLEED, 5.0));
+        assert!((t.ui_snapshot().colorize_bleed - 1.0).abs() < 1e-9);
+        // O Trap é independente: mexer no Bleed não o move.
+        assert_eq!(t.ui_snapshot().trap, 0.0, "o Bleed nao pode tocar o Trap");
+    }
+
+    /// **O Trap máximo (6º smoke: 20 → 50) chega à tool** — o range que faltava para selar
+    /// o vão que o Enio de fato desenha (~100 px de tela ⇒ slider ~50).
+    #[test]
+    fn the_trap_slider_reaches_fifty_at_full_track() {
+        let mut t = FlipTool::new();
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_TRAP, 1.0));
+        assert!(
+            (t.ui_snapshot().trap - crate::params::TRAP_MAX_PX).abs() < 1e-9,
+            "o Trap no fim do slider tem de valer TRAP_MAX_PX"
+        );
+        assert!(
+            t.ui_snapshot().trap >= 50.0,
+            "o range aumentado (50) e o que sela o vao grande do 6o smoke"
+        );
     }
 
     // ── §4.C — os links da borracha (Unified Paint Settings do Blender) ───────────

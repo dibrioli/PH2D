@@ -8,7 +8,170 @@
 //! gates pin the WIRING — energy assembly, the guloso multiway, the geometry — on a fixture
 //! that contains the phenomenon.
 
-use super::{ColorRegion, Scribble, colorize};
+use super::{ColorRegion, DEFAULT_SQUEEZE, Scribble, colorize, colorize_with, squeeze_from_bleed};
+
+/// **O slider Bleed mapeia no pedágio de aperto** (6º smoke): `0.5` devolve o
+/// [`DEFAULT_SQUEEZE`] EXATO (o meio do slider = o comportamento aprovado no 5º smoke),
+/// `0` cola (pedágio alto), `1` vaza (pedágio baixo), e é MONOTÔNICO decrescente. Sem
+/// transcendental (HR-5): exato nas oitavas, interpolado entre elas.
+///
+/// Mutação que sangra: inverter o `(1.0 - bleed)` (a direção do slider).
+#[test]
+fn the_bleed_slider_maps_to_the_squeeze_toll() {
+    assert_eq!(
+        squeeze_from_bleed(0.5),
+        DEFAULT_SQUEEZE,
+        "o meio do slider tem de devolver o pedágio DEFAULT (o 5º smoke), exato"
+    );
+    // Direção: bleed alto = vaza = pedágio BAIXO; bleed baixo = cola = pedágio ALTO.
+    assert!(
+        squeeze_from_bleed(1.0) < squeeze_from_bleed(0.0),
+        "Bleed 1 (vaza) tem de dar pedágio menor que Bleed 0 (cola)"
+    );
+    // Monotônico (decrescente) e dentro da faixa medida [2⁸, 2¹⁶].
+    let mut prev = u32::MAX;
+    for i in 0..=10 {
+        let sq = squeeze_from_bleed(i as f32 / 10.0);
+        assert!(sq < prev, "o pedágio tem de cair a cada passo de Bleed");
+        assert!((256..=65536).contains(&sq), "fora da faixa medida: {sq}");
+        prev = sq;
+    }
+    // Clamp: fora de [0,1] não estoura.
+    assert_eq!(squeeze_from_bleed(-1.0), squeeze_from_bleed(0.0));
+    assert_eq!(squeeze_from_bleed(2.0), squeeze_from_bleed(1.0));
+}
+
+/// 🔴 **O Bleed MOVE a lente — o ajuste que o Trap não dava** (6º smoke: *"trap 0 e trap
+/// máximo vazam parecidos. se há ajustes possíveis coloque no painel"*).
+///
+/// Na cena do smoke (divisor fora-do-centro em x=1 com vão aberto, um rabisco de cada lado),
+/// a LENTE é o menor `x` que a cor da DIREITA alcança à esquerda do divisor. Com o Bleed
+/// baixo (cola) ela fica perto da linha; com o Bleed alto (vaza) ela entra fundo. É o
+/// controle CONTÍNUO que funciona com o vão ABERTO — onde o Trap, binário, não muda nada até
+/// selar (pinado no gate irmão `the_trap_is_binary_the_bleed_is_continuous`).
+///
+/// Mutação que sangra: ignorar o `squeeze` no `Scratch::new` (a lente para de responder).
+#[test]
+fn the_bleed_moves_the_lens_through_an_open_gap() {
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5)),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5)),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5)),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5)),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6)),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5)),
+    ] {
+        let pts = seg_(a, b, 24);
+        let n = pts.len();
+        strokes.push((pts, vec![0.26; n], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    let lens = |bleed: f32| -> f32 {
+        let sq = squeeze_from_bleed(bleed);
+        colorize_with(&strokes, &scribbles, 40.0, 0.0, sq)
+            .iter()
+            .filter(|r| r.label == 1)
+            .flat_map(|r| r.fill.outer.iter())
+            .fold(f32::MAX, |m, p| m.min(p.x))
+    };
+    let (deep, mid, hug) = (lens(1.0), lens(0.5), lens(0.0));
+    // Vaza (bleed 1) entra MAIS fundo (min_x menor) que cola (bleed 0); o meio fica entre.
+    assert!(
+        deep < mid - 0.05 && mid < hug - 0.05,
+        "o Bleed tem de mover a lente: vaza {deep:.3} < meio {mid:.3} < cola {hug:.3}"
+    );
+    // E a amplitude é VISÍVEL (não sub-pixel): pelo menos meia unidade de mundo do vazado ao
+    // colado (o Trap, binário, dá zero até selar).
+    assert!(
+        hug - deep > 0.5,
+        "a faixa do Bleed tem de ser ampla o bastante para valer um slider (Δ={:.3})",
+        hug - deep
+    );
+}
+
+/// **O Trap é BINÁRIO; o Bleed é CONTÍNUO** — por que os DOIS estão no painel (6º smoke).
+///
+/// O Enio viu *"trap 0 e trap máximo vazam parecidos"*: enquanto o Trap não SELA o vão, ele
+/// não muda a lente NADA (a bola ou passa ou não passa). O Bleed, no mesmo vão aberto, varia
+/// a lente continuamente. Este gate pina a diferença de NATUREZA — é o que justifica dois
+/// controles em vez de um.
+#[test]
+fn the_trap_is_binary_the_bleed_is_continuous() {
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5)),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5)),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5)),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5)),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6)),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5)),
+    ]
+    .into_iter()
+    .map(|(a, b)| {
+        let pts = seg_(a, b, 24);
+        let n = pts.len();
+        (pts, vec![0.26; n], false)
+    })
+    .collect();
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    let lens_trap = |trap: f32| -> f32 {
+        colorize_with(&strokes, &scribbles, 40.0, trap, DEFAULT_SQUEEZE)
+            .iter()
+            .filter(|r| r.label == 1)
+            .flat_map(|r| r.fill.outer.iter())
+            .fold(f32::MAX, |m, p| m.min(p.x))
+    };
+    // Gap 1,2 doc = 48 px de buffer a esta precisão ⇒ sela em raio > 24. Abaixo disso, a
+    // lente é IDÊNTICA (o Trap não faz nada — o que o Enio viu).
+    assert_eq!(
+        lens_trap(6.0),
+        lens_trap(18.0),
+        "o Trap ABAIXO do selo tem de dar a MESMA lente (binário — o report do Enio)"
+    );
+    // Acima do selo, a lente some (a cor não entra mais pelo vão — vira dois componentes).
+    assert!(
+        lens_trap(30.0) > lens_trap(18.0) + 0.1,
+        "o Trap ACIMA do selo tem de fechar a lente (a cor cola no divisor)"
+    );
+}
 
 /// O raio da bola (px de buffer) que os gates usam.
 ///
@@ -395,6 +558,85 @@ fn one_colour_does_not_take_the_canvas_through_a_pinhole() {
         painted > 0.15 && painted < 0.45,
         "a cor tem de ficar na metade que o rabisco tocou (pintou {painted:.3})"
     );
+}
+
+/// 🔬 **Sonda do VAZAMENTO** (6º smoke: "trap 0 e trap máximo vazam parecidos. se há ajustes
+/// possíveis coloque no painel"). Varre o Trap (raio da bola, px de buffer) e o `SQUEEZE`
+/// (pedágio de aperto, via `PH2D_COLORIZE_SQUEEZE`) na cena do smoke, medindo:
+///   · quantas regiões / a fronteira colou na linha? (o Trap SELOU o vão?)
+///   · a LENTE — o quão fundo o azul entra pelo vão (min_x do azul).
+#[test]
+#[ignore = "sonda de diagnóstico — rode com --release --ignored --nocapture"]
+fn probe_the_bleed_through_the_gap() {
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5)),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5)),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5)),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5)),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6)),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5)),
+    ] {
+        let pts = seg_(a, b, 24);
+        let n = pts.len();
+        strokes.push((pts, vec![0.26; n], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    let precision = 40.0f32;
+    // gap 1,2 doc → 48 px de buffer a esta precisão; a bola sela quando o raio > 24.
+    let measure = |trap: f32, squeeze: u32| -> (usize, f32, f32) {
+        let regions = super::colorize_with(&strokes, &scribbles, precision, trap, squeeze);
+        // A LENTE: o menor x que o AZUL alcança (o bojo entra pela esquerda do divisor x=1).
+        let lens = regions
+            .iter()
+            .filter(|r| r.label == 1)
+            .flat_map(|r| r.fill.outer.iter())
+            .fold(f32::MAX, |m, p| m.min(p.x));
+        // A FRONTEIRA longe do vão: o maior x que o VERMELHO alcança (cola na linha = ~1,0).
+        let front = regions
+            .iter()
+            .filter(|r| r.label == 0)
+            .flat_map(|r| r.fill.outer.iter())
+            .filter(|p| p.y.abs() > 1.2)
+            .fold(f32::MIN, |m, p| m.max(p.x));
+        (regions.len(), lens, front)
+    };
+
+    println!("\n=== VARRE O TRAP (px de buffer; sela em >24) ===");
+    println!("  trap_px  regiões   lente(min_x azul)   fronteira(max_x verm, |y|>1.2)");
+    for trap in [0.0f32, 6.0, 12.0, 18.0, 24.0, 30.0, 40.0] {
+        let (n, lens, front) = measure(trap, super::DEFAULT_SQUEEZE);
+        println!(
+            "  {trap:>6.0}  {n:>6}    {lens:>+13.3}      {front:>+13.3}   (slider≈{:.0}px)",
+            trap / 1.6
+        );
+    }
+    println!("\n=== VARRE O SQUEEZE (Bleed; trap 0) ===");
+    println!("  squeeze  lente(min_x azul)");
+    for sq in [256u32, 1024, 4096, 16384, 32768, 65536, 131072] {
+        let (_, lens, _) = measure(0.0, sq);
+        println!("  {sq:>7}  {lens:>+13.3}");
+    }
+    println!("\nNota: o produto faz trap_px_buffer = slider × 1.6 (o doc_per_px cancela).");
 }
 
 /// **A cor não escapa da caixa** — o gate de regressão do smoke reprovado em 2026-07-19.
@@ -1194,7 +1436,7 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
             }
         }
         let labels = super::group_scribbles(&grid, &scribbles);
-        let (assign, _) = super::solve(&grid, &labels, 0.0);
+        let (assign, _) = super::solve(&grid, &labels, 0.0, super::DEFAULT_SQUEEZE);
 
         // Por linha: eixo da tinta do divisor (média das colunas de BOUNDARY na banda
         // x∈[0.5,1.5]) e as fronteiras vermelha (máx x de 0) / azul (mín x de 1) na banda.
@@ -1375,7 +1617,7 @@ fn ink_is_a_wall_even_with_zero_toll() {
         ink_dist2: vec![1_000_000; w * h], // "longe de tudo" ⇒ pedágio 0 em toda parte
     };
     let labels = vec![(0u16, vec![10 * w + 5])];
-    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2);
+    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2, super::DEFAULT_SQUEEZE);
     let mut assign = vec![None; w * h];
     super::voronoi::claim(&g, &seg, 0, &labels, &mut scratch, &mut assign);
     assert_eq!(
@@ -1411,7 +1653,7 @@ fn a_diagonal_pinch_is_sealed_even_with_zero_toll() {
         ink_dist2: vec![1_000_000; w * h],
     };
     let labels = vec![(0u16, vec![5 * w + 20])]; // semente no triangulo x > y
-    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2);
+    let mut scratch = super::voronoi::Scratch::new(&seg.ink_dist2, super::DEFAULT_SQUEEZE);
     let mut assign = vec![None; w * h];
     super::voronoi::claim(&g, &seg, 0, &labels, &mut scratch, &mut assign);
     assert_eq!(

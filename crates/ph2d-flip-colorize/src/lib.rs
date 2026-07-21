@@ -84,15 +84,75 @@ pub struct ColorRegion {
     pub fill: FillResult,
 }
 
+/// O pedágio de aperto DEFAULT (`Bleed` no painel do Colorize) — o comportamento aprovado no
+/// 5º smoke. [`colorize`] o usa; [`colorize_with`] aceita outro (o slider Bleed, 6º smoke).
+pub use voronoi::DEFAULT_SQUEEZE;
+
+/// **O slider Bleed → o pedágio de aperto** (`squeeze` de [`colorize_with`]).
+///
+/// `bleed ∈ [0,1]`: **`0` = colado** na linha (pedágio alto, a cor mal entra pelo vão),
+/// **`1` = bojo fundo** (pedágio baixo). **`0.5` devolve o [`DEFAULT_SQUEEZE`] exato** — o
+/// comportamento aprovado no 5º smoke, no meio do slider.
+///
+/// Log na perceção (cada meia-oitava dobra a resistência), mas **inteiro por dentro** (sem
+/// transcendental — HR-5): a parte inteira do expoente é um `shift`, e `2^frac` é
+/// interpolado LINEARMENTE entre as oitavas (erro ≤ 6 % no meio de uma oitava, invisível no
+/// vazamento; e **exato** nas oitavas, onde `0.5` cai). Faixa `2⁸..2¹⁶` = a faixa medida na
+/// doc de [`colorize_with`] (abaixo de 2⁸ a película volta; acima de 2¹⁶ satura).
+#[must_use]
+pub fn squeeze_from_bleed(bleed: f32) -> u32 {
+    // e ∈ [8, 16]; squeeze = 2^e. bleed alto ⇒ e baixo ⇒ pedágio baixo ⇒ vaza.
+    let e = (8.0 + (1.0 - bleed.clamp(0.0, 1.0)) * 8.0).clamp(8.0, 16.0);
+    let k = e.floor();
+    let frac = e - k; // ∈ [0, 1)
+    let base = 1u32 << (k as u32); // 2^floor(e)
+    base + (base as f32 * frac) as u32
+}
+
 /// **Colorize:** line-art (as mesmas polilinhas de fronteira do balde) + rabiscos coloridos
 /// → uma região de geometria por área conexa, cada uma com o rótulo que o corte LazyBrush
 /// lhe deu. Vazio se não há linha OU não há rabisco.
+///
+/// Esta é a porta ESTÁVEL (pedágio de aperto no default). O 6º smoke expôs o vazamento pelo
+/// vão como ajuste de painel — quem passa outro pedágio usa [`colorize_with`].
 #[must_use]
 pub fn colorize(
     strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
     scribbles: &[Scribble],
     precision: f32,
     trap_px: f32,
+) -> Vec<ColorRegion> {
+    colorize_with(strokes, scribbles, precision, trap_px, DEFAULT_SQUEEZE)
+}
+
+/// [`colorize`] com o **pedágio de aperto** (`squeeze`) explícito — o slider **Bleed** do
+/// painel (6º smoke, 2026-07-20: *"trap 0 e trap máximo vazam parecidos. se há ajustes
+/// possíveis coloque no painel"*).
+///
+/// O `squeeze` regula quão fundo uma cor entra pelo VÃO ABERTO de um divisor (a lente): mais
+/// alto = mais colada à linha, mais baixo = bojo mais fundo. É o controle CONTÍNUO e imune ao
+/// zoom (uma métrica sobre a distância à tinta), ao contrário do `trap_px`, que é BINÁRIO
+/// (sela o vão ou não). Medido na cena do smoke (precisão 40, gap 1,2 doc; a lente é o menor
+/// `x` que o azul alcança à esquerda do divisor em `x=1`):
+///
+/// | squeeze | lente (min_x azul) |
+/// |--------:|-------------------:|
+/// |     256 |             ~+0,30 |
+/// |    1024 |              +0,39 |
+/// |  *4096* |              +0,69 |
+/// |   16384 |              +0,865 |
+/// |   32768 |              +0,89 |
+/// |  131072 |         +0,94 (satura) |
+///
+/// O `trap_px` cava o vão de vez (dois componentes de uma cor cada); o `squeeze` o mantém
+/// aberto e só encarece a travessia. Os dois coexistem no painel — sela vs. regula.
+#[must_use]
+pub fn colorize_with(
+    strokes: &[(Vec<Vec2>, Vec<f32>, bool)],
+    scribbles: &[Scribble],
+    precision: f32,
+    trap_px: f32,
+    squeeze: u32,
 ) -> Vec<ColorRegion> {
     if strokes.is_empty() || scribbles.is_empty() {
         return Vec::new();
@@ -142,7 +202,7 @@ pub fn colorize(
 
     // 4. O multiway guloso (`09 §3`): índice de rótulo por pixel. A EDT sai junto — o
     //    `snap` a usa de pré-filtro (a mesma da partição, nunca uma 2ª porta).
-    let (assign, ink_dist2) = solve(&grid, &labels, trap_px);
+    let (assign, ink_dist2) = solve(&grid, &labels, trap_px, squeeze);
 
     // 5. Vetoriza por REGIÃO conexa — o back-end do balde, com as bordas sobre a tinta
     //    cravadas no EIXO (`snap.rs` — o serrilhado do 5º smoke).
@@ -280,6 +340,7 @@ fn solve(
     grid: &Grid,
     labels: &[(u16, Vec<usize>)],
     trap_px: f32,
+    squeeze: u32,
 ) -> (Vec<Option<usize>>, Vec<u32>) {
     let n = grid.w * grid.h;
     let mut assign: Vec<Option<usize>> = vec![None; n];
@@ -328,7 +389,7 @@ fn solve(
 
     // ≥2 cores: o Voronoi por pixel, só nos componentes disputados (rascunho reutilizado).
     if !contested.is_empty() {
-        let mut scratch = voronoi::Scratch::new(&seg.ink_dist2);
+        let mut scratch = voronoi::Scratch::new(&seg.ink_dist2, squeeze);
         for &c in &contested {
             voronoi::claim(grid, &seg, c, labels, &mut scratch, &mut assign);
         }

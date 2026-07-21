@@ -62,31 +62,43 @@ const STEP_DIAG: u32 = 7;
 /// 16384 compra ~6 px de lente por +0,09 de desvio no blob — passou do joelho. O pedágio
 /// decai com d² ⇒ no miolo de um blob é zero, e no meio de um vão LARGO (48 px, o smoke da
 /// caixa) vale `4096/577 ≈ 7` ≈ um passo: passagem honesta.
-const SQUEEZE: u32 = 4096;
+/// O pedágio de aperto DEFAULT (`Bleed` no painel do Colorize) — o comportamento aprovado
+/// no 5º smoke. O painel expõe uma faixa em torno dele (ver [`crate::DEFAULT_SQUEEZE`]); a
+/// tabela medida na doc de [`crate::colorize`] mostra a lente por valor.
+pub const DEFAULT_SQUEEZE: u32 = 4096;
 
 /// Rascunho reutilizado entre componentes contestados (os planos são O(grade)).
 pub(crate) struct Scratch {
     dist: Vec<u32>,
     lab: Vec<u32>,
-    /// O pedágio por pixel, pré-computado da EDT da partição (u16: máx = `SQUEEZE` ≤ 65535).
+    /// O pedágio por pixel, pré-computado da EDT da partição (u16: o produto satura em ~2¹⁷).
     toll: Vec<u16>,
-    /// A fila de baldes de Dial: `dist % ring` indexa; `ring > STEP_DIAG + SQUEEZE`.
+    /// A fila de baldes de Dial: `dist % ring` indexa; `ring > STEP_DIAG + squeeze`.
     buckets: Vec<Vec<u32>>,
 }
 
 impl Scratch {
-    pub(crate) fn new(ink_dist2: &[u32]) -> Self {
+    pub(crate) fn new(ink_dist2: &[u32], squeeze: u32) -> Self {
         let n = ink_dist2.len();
-        // Divisão INTEIRA de propósito (HR-5: nenhum float na métrica).
+        // Divisão INTEIRA de propósito (HR-5: nenhum float na métrica). O `toll` é u16, mas o
+        // `squeeze` pode passar de 65535 (o painel vai até ~131072); o clamp mantém a
+        // representação sã sem estreitar a faixa útil (no meio de um vão de 48 px, `d² ≈ 576`,
+        // então `toll = squeeze/577` cabe em u16 muito além do teto do slider).
         let toll = ink_dist2
             .iter()
-            .map(|&sq| (SQUEEZE / (1 + sq)) as u16)
+            .map(|&sq| (squeeze / (1 + sq)).min(u32::from(u16::MAX)) as u16)
             .collect();
+        // O ring do Dial só precisa ser maior que o maior INCREMENTO único (`base + toll`).
+        // O `toll` de um pixel de PAPEL é `squeeze/(1+d²)` com `d² ≥ 1` (papel colado na
+        // linha tem `d = 1`), logo o teto é `squeeze/2` (clampado ao u16). Dimensionar por
+        // aqui, e não pelo `squeeze` bruto, mantém o ring justo (default 4096 ⇒ 2056 baldes,
+        // MENOR que os 4104 de antes; slider no máximo ⇒ ~16 k).
+        let max_toll = (squeeze / 2).min(u32::from(u16::MAX));
         Scratch {
             dist: vec![u32::MAX; n],
             lab: vec![u32::MAX; n],
             toll,
-            buckets: vec![Vec::new(); (STEP_DIAG + SQUEEZE) as usize + 1],
+            buckets: vec![Vec::new(); (max_toll + STEP_DIAG) as usize + 1],
         }
     }
 }

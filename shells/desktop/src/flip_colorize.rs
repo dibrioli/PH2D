@@ -17,7 +17,7 @@
 use crate::flip_fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, Point};
-use ph2d_flip_colorize::{ColorRegion, Scribble, colorize};
+use ph2d_flip_colorize::{ColorRegion, Scribble};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vec_scene::Xform;
@@ -317,7 +317,13 @@ impl crate::App {
         // pré-segmentação incapaz de as separar, faça o corte o que fizer.
         let trap_px = (style.trap as f32) * doc_per_px * precision;
 
-        let regions: Vec<ColorRegion> = colorize(&lines, &seeds, precision, trap_px);
+        // O **Bleed** (6º smoke): o slider 0..1 vira o pedágio de aperto do motor. É o
+        // controle CONTÍNUO do vazamento pelo vão — imune ao zoom (métrica de distância à
+        // tinta), ao contrário do Trap, que é binário. `0.5` = o pedágio aprovado no 5º smoke.
+        let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
+
+        let regions: Vec<ColorRegion> =
+            ph2d_flip_colorize::colorize_with(&lines, &seeds, precision, trap_px, squeeze);
         if regions.is_empty() {
             gfx.toasts.push(ph2d_editor::Toast::warning(
                 "Colorize: no regions — scribble inside the closed shapes",

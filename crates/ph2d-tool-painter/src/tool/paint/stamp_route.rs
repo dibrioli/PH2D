@@ -97,8 +97,11 @@ impl PainterTool {
         // (refcount 2 ⇒ clone ⇒ new pointer), and the canvas-identity guard
         // reads the new Arc as a foreign mutation — under a selection the
         // water would never live past one batch, which is the mode's whole
-        // point. Found by a surviving mutation (W2.5).
-        if self.paint.paint_mode == PaintMode::WetPaint {
+        // point. Found by a surviving mutation (W2.5). The predicate is the
+        // SAME one the route arm asks (`wet_owns_the_dabs`): the sessionless
+        // wet eraser (W2.6) falls through to the normal eraser below, and
+        // must go through the wrapper with it.
+        if self.wet_owns_the_dabs() {
             self.stamp_dabs_routed(dabs);
             return;
         }
@@ -270,8 +273,10 @@ impl PainterTool {
         // Before even the impasto height pass: in this mode the dabs are not the final paint (the
         // pigment FLOWS), so relief laid on the dab footprint would outlive paint that moved away.
         // Hanging off this choke point is what hands Symmetry / Tiling / pressure / the stroke
-        // engine to the fluid for free — the same argument as the Sculpt arm below.
-        if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+        // engine to the fluid for free — the same argument as the Sculpt arm below. The predicate
+        // is shared with `stamp_dabs`' wrapper bypass: the sessionless wet eraser (W2.6) is NOT
+        // owned and falls through to the normal eraser (it erases the BAKED canvas).
+        if self.wet_owns_the_dabs() {
             self.stamp_dabs_wetpaint(dabs, &brush);
             return;
         }

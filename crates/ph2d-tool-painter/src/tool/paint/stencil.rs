@@ -361,6 +361,13 @@ impl PainterTool {
             "sculpt" => PaintMode::Sculpt,
             "knife" => PaintMode::Knife,
             "wetpaint" => PaintMode::WetPaint,
+            // "eraser" INSIDE Wet Paint STAYS in Wet Paint (W2.6): the fluid
+            // engine has its own eraser (`Tool::Erase`) and leaving the mode
+            // would BAKE the very painting the artist is trying to correct —
+            // the water must survive its eraser (Rebelle's semantics). The
+            // same-mode transition skips every teardown below (`old != new`
+            // guards), so the session lives on.
+            "eraser" if self.paint.paint_mode == PaintMode::WetPaint => PaintMode::WetPaint,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -442,6 +449,9 @@ impl PainterTool {
             PaintMode::Deform => "deform",
             PaintMode::Sculpt => "sculpt",
             PaintMode::Knife => "knife",
+            // The wet eraser is still the ERASER in the artist's hand — the
+            // rail radio must light that chip, not "wetpaint" (W2.6).
+            PaintMode::WetPaint if self.paint.eraser => "eraser",
             PaintMode::WetPaint => "wetpaint",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",

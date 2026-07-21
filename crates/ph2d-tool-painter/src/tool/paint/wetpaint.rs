@@ -94,6 +94,22 @@ struct Lane {
 }
 
 impl PainterTool {
+    /// Whether the WET module owns this batch of dabs — the ONE routing
+    /// question, asked by BOTH `stamp_dabs` (to bypass the snapshot/restore
+    /// wrapper, which would kill the session — see W2.5) and
+    /// `stamp_dabs_inner` (to enter the wet arm). Two copies of this
+    /// condition would diverge, and the diverged half is a canvas gate that
+    /// either leaks or kills the water.
+    ///
+    /// Wet Paint owns everything in its mode EXCEPT the eraser with no live
+    /// session (W2.6): the wet eraser erases the FLUID, and with no session
+    /// there is nothing wet — those dabs fall through to the normal eraser
+    /// and erase the BAKED canvas instead (which is what is visibly there).
+    pub(super) fn wet_owns_the_dabs(&self) -> bool {
+        matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && (!self.paint.eraser || self.paint.wetpaint.session.is_some())
+    }
+
     /// The Wet Paint dab route ([`Self::stamp_dabs_inner`] arm). The dab list
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
@@ -111,7 +127,16 @@ impl PainterTool {
             return;
         }
         self.wetpaint_guard();
+        // The wet ERASER (W2.6) erases the FLUID and only the fluid: with no
+        // live session there is nothing wet, and the routing predicate
+        // (`wet_owns_the_dabs`) already sent those dabs to the normal
+        // eraser — this early-out only covers the guard killing the session
+        // between the route decision and here (the batch then does nothing).
+        let erasing = self.paint.eraser;
         if self.paint.wetpaint.session.is_none() {
+            if erasing {
+                return;
+            }
             self.paint.wetpaint.session = Some(WetSession {
                 engine: Engine::new(w as usize, h as usize),
                 base: Arc::clone(&self.canvas_rgba),
@@ -161,6 +186,15 @@ impl PainterTool {
         if !sess.stroke_open {
             sess.stroke_open = true;
             sess.lanes.clear();
+            // The eraser is LANE-LESS (a direct grid op, no trail) — open one
+            // direct stroke so the sim pauses under the gesture as usual.
+            if erasing && let Some(d0) = dabs.first() {
+                sess.engine.begin_direct_stroke(
+                    0,
+                    f64::from(d0.center[0]) + 1.0,
+                    f64::from(d0.center[1]) + 1.0,
+                );
+            }
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
         for (didx, d) in dabs.iter().enumerate() {
@@ -172,39 +206,46 @@ impl PainterTool {
             // a Tiling wrap born mid-stroke at the sprite edge. Near a radial
             // centre the copies converge and may swap lanes; there their
             // positions coincide, so a swap deposits the same paint.
-            let thr = d.radius_px.max(4.0);
-            let mut best = thr * thr;
-            let mut lane = None;
-            for (i, l) in sess.lanes.iter().enumerate() {
-                let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
-                let d2 = ddx * ddx + ddy * ddy;
-                if d2 <= best {
-                    best = d2;
-                    lane = Some(i);
+            // The ERASER skips the lanes entirely — every copy just erases
+            // where it lands.
+            let li = if erasing {
+                0
+            } else {
+                let thr = d.radius_px.max(4.0);
+                let mut best = thr * thr;
+                let mut lane = None;
+                for (i, l) in sess.lanes.iter().enumerate() {
+                    let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
+                    let d2 = ddx * ddx + ddy * ddy;
+                    if d2 <= best {
+                        best = d2;
+                        lane = Some(i);
+                    }
                 }
-            }
-            let li = match lane {
-                Some(i) => {
-                    sess.engine.direct_segment(i, f64::from(best.sqrt()));
-                    i
-                }
-                None => {
-                    let i = sess.lanes.len();
-                    // The DAB's colour, not the brush's: Randomize is already
-                    // resolved per dab by the stroke engine (W2.2).
-                    sess.engine.color = ink(d.color);
-                    sess.engine
-                        .begin_direct_stroke(i, f64::from(x) + 1.0, f64::from(y) + 1.0);
-                    sess.lanes.push(Lane {
-                        pos: d.center,
-                        ink: d.color,
-                    });
-                    i
+                match lane {
+                    Some(i) => {
+                        sess.engine.direct_segment(i, f64::from(best.sqrt()));
+                        i
+                    }
+                    None => {
+                        let i = sess.lanes.len();
+                        // The DAB's colour, not the brush's: Randomize is
+                        // already resolved per dab by the stroke engine
+                        // (W2.2).
+                        sess.engine.color = ink(d.color);
+                        sess.engine
+                            .begin_direct_stroke(i, f64::from(x) + 1.0, f64::from(y) + 1.0);
+                        sess.lanes.push(Lane {
+                            pos: d.center,
+                            ink: d.color,
+                        });
+                        i
+                    }
                 }
             };
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
-            if d.color != sess.lanes[li].ink {
+            if !erasing && d.color != sess.lanes[li].ink {
                 sess.engine.set_stroke_color(li, ink(d.color));
                 sess.lanes[li].ink = d.color;
             }
@@ -281,6 +322,23 @@ impl PainterTool {
                     ))
                 }
             });
+            let grain_arg = grain.as_mut().map(|g| g as &mut dyn FnMut(i32, i32) -> f64);
+            if erasing {
+                // W2.6: the same §9 mapping, routed to the engine's ERASER —
+                // silhouette and grain shape the erase exactly as they shape
+                // the deposit.
+                sess.engine.dispatch_pressure_dab_erase(
+                    f64::from(x) + 1.0,
+                    f64::from(y) + 1.0,
+                    b,
+                    f64::from(d.dir[0]),
+                    f64::from(d.dir[1]),
+                    f64::from(d.radius_px),
+                    Some(&mut sil),
+                    grain_arg,
+                );
+                continue;
+            }
             sess.engine.dispatch_pressure_dab_lane(
                 li,
                 f64::from(x) + 1.0,
@@ -290,7 +348,7 @@ impl PainterTool {
                 f64::from(d.dir[1]),
                 f64::from(d.radius_px),
                 Some(&mut sil),
-                grain.as_mut().map(|g| g as &mut dyn FnMut(i32, i32) -> f64),
+                grain_arg,
             );
             sess.lanes[li].pos = d.center;
         }

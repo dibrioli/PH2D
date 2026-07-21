@@ -570,6 +570,90 @@ fn alpha_lock_pins_the_wet_silhouette_to_the_existing_paint() {
     assert!(painted_opaque, "the opaque half took no colour at all");
 }
 
+/// SEAM (W2.6): the wet ERASER lifts the FLUID and the water survives — the
+/// "eraser" wire inside Wet Paint keeps the mode (leaving would BAKE the
+/// painting being corrected), and the dabs route to the engine's
+/// `Tool::Erase`. Mutations that bleed it: the wire arm mapping "eraser" to
+/// `Paint` again (the teardown kills the session → the survival assert), or
+/// the erase branch dispatching the PAINT door (mass rises instead of
+/// falling).
+#[test]
+fn the_wet_eraser_lifts_the_fluid_and_the_water_survives() {
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    let before = susp_in_columns(&t, 1, 200);
+    assert!(
+        before > 1000.0,
+        "fixture: the wet stroke deposited ({before})"
+    );
+    t.set_paint_tool_mode("eraser");
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "arming the eraser must NOT bake the wet session"
+    );
+    assert!(t.paint.eraser, "the eraser override is armed");
+    // CANVAS-side oracle: what the artist SEES must lighten too — a grid
+    // that empties while the screen keeps the paint is the dropped
+    // `merge_dirty` (a mutation that survived the grid-only oracle).
+    let canvas_dev =
+        |t: &PainterTool| -> u64 { t.canvas_rgba.iter().map(|&b| u64::from(255 - b)).sum() };
+    let dev_before = canvas_dev(&t);
+    // Erase over the same path — removal is MULTIPLICATIVE through the
+    // bristle sieve (mostly near-zero felt), so it is gradual by the
+    // reference's design; several passes accumulate it. The FEEL of the
+    // default force is the smoke's judgement, not this gate's — here the
+    // semantics: mass falls, never rises.
+    for _ in 0..8 {
+        stroke_across(&mut t);
+    }
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "the eraser stroke killed the session"
+    );
+    let after = susp_in_columns(&t, 1, 200);
+    assert!(
+        after < before * 0.6,
+        "the wet eraser did not lift the fluid ({before} -> {after})"
+    );
+    assert!(
+        canvas_dev(&t) < dev_before,
+        "the grid emptied but the SCREEN kept the paint — the erase never composited"
+    );
+}
+
+/// SEAM (W2.6): the wet eraser with NO live session falls through to the
+/// normal eraser and erases the BAKED canvas (what is visibly there) —
+/// without building a session. Mutation that bleeds it: `wet_owns_the_dabs`
+/// losing its session half (the dabs enter the wet arm, which has nothing
+/// wet to erase, and the baked paint survives untouched).
+#[test]
+fn the_sessionless_wet_eraser_erases_the_baked_canvas() {
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    t.set_paint_tool_mode("brush"); // bake: the session ends
+    t.set_paint_tool_mode("wetpaint"); // back in wet, nothing wet yet
+    assert!(t.paint.wetpaint.session.is_none(), "fixture: no session");
+    t.set_paint_tool_mode("eraser"); // stays in Wet Paint (the W2.6 wire)
+    let alpha_sum = |t: &PainterTool| -> u64 {
+        t.canvas_rgba
+            .chunks_exact(4)
+            .map(|px| u64::from(px[3]))
+            .sum()
+    };
+    let before = alpha_sum(&t);
+    for _ in 0..2 {
+        stroke_across(&mut t);
+    }
+    assert!(
+        alpha_sum(&t) < before,
+        "the baked paint was not erased (erase-alpha never ran)"
+    );
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "the fall-through must not build a wet session"
+    );
+}
+
 /// Entering Wet Paint must NOT take the Impasto section away (Enio, W1
 /// smoke: "uma das regras era não afetar o que já existia") — the section
 /// hosts the ten-tool list and the canvas's Lighting. And the radio must

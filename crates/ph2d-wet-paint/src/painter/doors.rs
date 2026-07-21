@@ -159,6 +159,41 @@ impl Engine {
         }
     }
 
+    /// §9 with real pressure + radius, routed to the ERASER
+    /// ([`crate::tools::apply_erase`]) — LANE-LESS: erase is a direct grid op
+    /// (no trail window), so every symmetry/tiling copy simply erases where
+    /// it lands. `sil`/`grain` exactly as in the paint door; the host gates
+    /// the sim by opening a direct stroke around the gesture as usual.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dispatch_pressure_dab_erase(
+        &mut self,
+        x: f64,
+        y: f64,
+        b: f64,
+        dir_x: f64,
+        dir_y: f64,
+        r: f64,
+        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    ) {
+        let p = self.sim.gather_params(&self.tuning);
+        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        self.texture();
+        let tex = self.brush_tex.take().unwrap();
+        let erase = self.sliders.erase;
+        let layer = &mut self.layers[self.active_layer];
+        let rect = match sil {
+            Some(sil) => {
+                crate::tools::apply_erase_shaped(&mut layer.grid, &p, &tex, &dab, erase, sil, grain)
+            }
+            None => crate::tools::apply_erase(&mut layer.grid, &p, &tex, &dab, erase),
+        };
+        self.brush_tex = Some(tex);
+        if let Some(rc) = rect {
+            self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);
+        }
+    }
+
     /// End a real-dab stroke: every lane's tip remainder is dropped by
     /// design, mirroring the tail of the engine's `end_stroke`. The lane pool
     /// stays allocated for the next stroke of the session.

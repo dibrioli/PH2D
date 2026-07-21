@@ -4,7 +4,7 @@
 //! brushable area (the stamp iterator enforces it) and expand the active
 //! bbox.
 
-use crate::brush::for_each_stamp_pixel;
+use crate::brush::{for_each_stamp_pixel, for_each_stamp_pixel_shaped};
 use crate::grid::{Grid, wet_byte_from_paper};
 use crate::jsmath::js_round;
 use crate::opacity::alpha_of_mass;
@@ -35,6 +35,34 @@ pub fn apply_erase(
     dab: &Dab,
     erase_slider: f64,
 ) -> Option<TouchedRect> {
+    apply_erase_impl(g, p, tex, dab, erase_slider, None, None)
+}
+
+/// [`apply_erase`] with the HOST's silhouette + optional grain (the shaped
+/// product door, twin of `Trail::accumulate_paint_shaped`): `sil` replaces
+/// the internal falloff + footprint, `grain` replaces the bristle. ONE pixel
+/// body serves both faces — `apply_erase` delegates with `None`s.
+pub fn apply_erase_shaped(
+    g: &mut Grid,
+    p: &Params,
+    tex: &[f32],
+    dab: &Dab,
+    erase_slider: f64,
+    sil: &mut dyn FnMut(i32, i32) -> f64,
+    grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+) -> Option<TouchedRect> {
+    apply_erase_impl(g, p, tex, dab, erase_slider, Some(sil), grain)
+}
+
+fn apply_erase_impl(
+    g: &mut Grid,
+    p: &Params,
+    tex: &[f32],
+    dab: &Dab,
+    erase_slider: f64,
+    sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+) -> Option<TouchedRect> {
     let gate = p.k(Knob::PaperGate);
     let pig_cap = p.k(Knob::GateSaturation);
     let force = p.k(Knob::Eraser) * erase_slider;
@@ -51,51 +79,60 @@ pub fn apply_erase(
         ..
     } = g;
     let _ = s;
-    for_each_stamp_pixel(
-        *s,
-        *w,
-        *h,
-        tex,
-        dab.x,
-        dab.y,
-        dab.r,
-        TOOL_HARDNESS,
-        dab.shape,
-        dab.dir_x,
-        dab.dir_y,
-        |i, _x, _y, fall, texv| {
-            let mut stamp = fall * texv * clamp_i;
-            if stamp > 1.0 {
-                stamp = 1.0;
-            }
-            let tooth = if (susp[i] as f64 + sett[i] as f64) < pig_cap {
-                paper[i] as f64
-            } else {
-                0.45
-            };
-            let mut gg = stamp - (1.0 - tooth) * gate;
-            if gg <= 0.0 {
-                return;
-            }
-            if gg > 1.0 {
-                gg = 1.0;
-            }
-            let k = 1.0 - force * gg;
-            if k <= 0.0 {
-                return; // never wipe a cell outright
-            }
-            susp[i] = (susp[i] as f64 * k) as f32;
-            film[i] = (film[i] as f64 * k) as f32;
-            if (susp[i] as f64) < 1.0 {
-                susp[i] = 0.0; // stale color bytes may remain; mass 0 hides them
-            }
-            sett[i] = (sett[i] as f64 * k) as f32;
-            if (sett[i] as f64) < 1.0 {
-                sett[i] = 0.0;
-            }
-            touched = true;
-        },
-    );
+    let body = |i: usize, _x: i32, _y: i32, fall: f64, texv: f64| {
+        let mut stamp = fall * texv * clamp_i;
+        if stamp > 1.0 {
+            stamp = 1.0;
+        }
+        let tooth = if (susp[i] as f64 + sett[i] as f64) < pig_cap {
+            paper[i] as f64
+        } else {
+            0.45
+        };
+        let mut gg = stamp - (1.0 - tooth) * gate;
+        if gg <= 0.0 {
+            return;
+        }
+        if gg > 1.0 {
+            gg = 1.0;
+        }
+        let k = 1.0 - force * gg;
+        if k <= 0.0 {
+            return; // never wipe a cell outright
+        }
+        susp[i] = (susp[i] as f64 * k) as f32;
+        film[i] = (film[i] as f64 * k) as f32;
+        if (susp[i] as f64) < 1.0 {
+            susp[i] = 0.0; // stale color bytes may remain; mass 0 hides them
+        }
+        sett[i] = (sett[i] as f64 * k) as f32;
+        if (sett[i] as f64) < 1.0 {
+            sett[i] = 0.0;
+        }
+        touched = true;
+    };
+    match sil {
+        Some(sil) => {
+            for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, grain, body);
+        }
+        None => {
+            debug_assert!(grain.is_none(), "grain override requires the shaped path");
+            for_each_stamp_pixel(
+                *s,
+                *w,
+                *h,
+                tex,
+                dab.x,
+                dab.y,
+                dab.r,
+                TOOL_HARDNESS,
+                dab.shape,
+                dab.dir_x,
+                dab.dir_y,
+                body,
+            );
+        }
+    }
     if touched {
         let r = rect_around(g, dab.x, dab.y, dab.r);
         expand_to(g, &r);

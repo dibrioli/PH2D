@@ -2844,6 +2844,26 @@ força **+ `Drag = 4`**). Medido em t = 5 s: no vento a caixa média já estava 
 ainda está **atravessando a poça** (y = 0,87 e caindo), a pequena **flutua na superfície** (2,23) e a pesada
 chega ao chão. É a descida lenta que lê como líquido.
 
+### ⚠️ "Como eu criaria uma zona de água só com a UI?" — o gesto composto virou gate
+
+Pergunta do Enio no smoke do `=26`, e ela expôs um buraco real: **cada edit tinha gate, o GESTO não tinha
+nenhum**. Um controle pode estar vivo e a sequência ainda não levar a lugar nenhum — uma row que só aparece
+depois de outra, um default que atrapalha, um passo que exige digitar um número que o artista não tem como saber.
+
+O caminho, dirigido pela costura real (`build_physics_info` → `apply_physics_edit`) e agora pinado em
+`a_water_zone_is_authorable_with_ui_gestures_alone`:
+
+1. o artista posiciona um retângulo de 2 × 3 m (um sprite — que também dá à piscina a cor translúcida);
+2. **Add Physics Body** → o collider nasce **1,00 × 1,50**, a caixa do sprite: *nenhuma dimensão digitada*;
+3. **Kind = Static** (uma piscina não cai);
+4. **Trigger = Sensor** (dá para entrar nela) — é este passo que faz as rows **Force/Drag** serem oferecidas;
+5. **Force Y = 3,5** e **Drag = 4**.
+
+**Cinco gestos, zero código.** O oráculo não é "os componentes existem": é **a caixa que caiu na piscina estar
+visivelmente mais alta que a idêntica que caiu ao lado** depois de 3 s (medido **0,44 vs −1,70**). A mutação que
+sangra é o `Add` voltar ao fallback de 0,5 m — porque aí o passo 2 passa a exigir que o artista descubra e digite
+as dimensões, e o gesto deixa de ser um gesto.
+
 ### Aberto no W-AreaDrag
 
 Empuxo de verdade (hoje "flutuar" é uma força constante para cima vencendo o peso — um empuxo real dependeria

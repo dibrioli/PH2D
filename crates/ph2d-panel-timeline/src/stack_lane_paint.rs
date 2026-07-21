@@ -48,30 +48,50 @@ const WEIGHT_DECIMALS: usize = 2; // LITERAL-PX-OK: 1% resolution needs two
 /// containers nest by pressing the second one twice.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
     let gap = Spacing::Sm.px() * 0.5;
-    let w = ((header.w - gap) * 0.5).max(0.0);
-    for (i, (id, key)) in [
-        (ids::TIMELINE_ADD_LANE, "panel.timeline.add_lane"),
-        (ids::TIMELINE_ADD_CONTAINER, "panel.timeline.add_container"),
-    ]
-    .into_iter()
-    .enumerate()
+    let labels = [
+        ph2d_i18n::tr("panel.timeline.add_lane"),
+        ph2d_i18n::tr("panel.timeline.add_container"),
+    ];
+    let widths = add_widths(header.w, gap, [&labels[0], &labels[1]]);
+    let mut x = header.x;
+    for ((id, label), w) in [ids::TIMELINE_ADD_LANE, ids::TIMELINE_ADD_CONTAINER]
+        .into_iter()
+        .zip(labels.iter())
+        .zip(widths)
     {
-        #[expect(clippy::cast_precision_loss, reason = "i is 0 or 1")]
-        let rect = Rect::new(header.x + i as f32 * (w + gap), header.y, w, header.h);
+        let rect = Rect::new(x, header.y, w, header.h);
         let st = ctx
             .host
             .store()
             .button_state(id)
             .unwrap_or(ButtonState::Normal);
         paint_button(
-            &Button::new(id, ph2d_i18n::tr(key)).state(st),
+            &Button::new(id, label.to_string()).state(st),
             rect,
             ctx.scene,
             ctx.text_system,
             theme,
         );
         ctx.host.hit_index_mut().register(id, rect);
+        x += w + gap;
     }
+}
+
+/// **How the ADD header splits between its two buttons** — by each label's LENGTH, never
+/// 50/50.
+///
+/// An even split gives "+ Lane" and "+ Container" the same box while one label is nearly
+/// twice the other: at the column's floor the long one was crushed down to a bare "+"
+/// (Enio's screenshot, 2026-07-20). Splitting by character share puts the room where the
+/// text is, reads from the SAME strings the buttons paint (a hand-tuned ratio would drift
+/// the day a label changes), and is pure so the fit is testable without a text system.
+pub(crate) fn add_widths(header_w: f32, gap: f32, labels: [&str; 2]) -> [f32; 2] {
+    let total = (header_w - gap).max(0.0);
+    let chars = labels.map(|l| l.chars().count().max(1));
+    #[expect(clippy::cast_precision_loss, reason = "label lengths are tiny")]
+    let share = chars[0] as f32 / (chars[0] + chars[1]) as f32;
+    let first = total * share;
+    [first, total - first]
 }
 
 /// Paint every lane of the clip stack, above the Summary channel and the tracks.

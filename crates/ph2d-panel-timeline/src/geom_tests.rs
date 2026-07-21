@@ -187,13 +187,19 @@ fn corners_are_registered_after_the_edges_they_overlap() {
 /// Squeezed to the track-row minimum that surface is 0 px wide (the menu
 /// becomes unreachable) and the weight field lands 38 px off the panel's left
 /// edge.
+///
+/// And with NO lanes the Arrange column still holds the "+ Lane"/"+ Container"
+/// header — the two buttons that create the first lane. The old lanes-only floor
+/// let an empty-stack Arrange squeeze to the track-row minimum and crushed
+/// "+ Container" down to a bare "+" (Enio's screenshot, 2026-07-20): the floor
+/// follows the TAB, because the header lives on the tab, not on the lanes.
 #[test]
 fn the_label_column_cannot_be_squeezed_below_what_a_lane_row_needs() {
     let mut snap = TimelineViewSnapshot::default();
     assert_eq!(
         min_label_w(&snap, A),
-        MIN_LABEL_W,
-        "no lanes: the old minimum"
+        MIN_LANE_LABEL_W,
+        "no lanes yet, but Arrange still shows the ADD header"
     );
 
     snap.lanes.push(lane());

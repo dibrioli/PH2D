@@ -225,6 +225,13 @@ impl Playhead {
         self.loop_range
     }
 
+    /// Whether the armed loop travels back and forth ([`LoopMode::PingPong`]) — what a
+    /// transport toggle mirrors when it reads THIS clock rather than a document.
+    #[must_use]
+    pub fn is_ping_pong(&self) -> bool {
+        matches!(self.loop_mode, LoopMode::PingPong)
+    }
+
     /// Start advancing.
     pub fn play(&mut self) {
         self.playing = true;

@@ -78,14 +78,28 @@ pub(crate) fn intent_for_transport(
     // a fresh clip's duration is 0, which would pin both at t = 0 for every hand-keyed
     // animation.
     let duration = || timeline.doc.view_end_seconds(timeline.keys_mode);
+    // **Inside a container, "the whole thing" is the walked-into INSTANCE** — its scene
+    // window, leads included (`entry_reach`, the same door entering arms the loop
+    // through). Go-to-start/end land on its edges, and the Loop/PingPong toggles bracket
+    // it on the TRANSPORT only ([`TimelineIntent::SetTransportLoop`]): the document's
+    // loop is the SCENE's, and a toggle flipped while visiting an instance must not
+    // rewrite it (Enio, 2026-07-20). `None` at the root, or on a stale walk — then every
+    // arm below falls back to the scene behaviour it always had.
+    let reach = (!timeline.keys_mode && !timeline.edit_path.is_empty())
+        .then(|| ph2d_timeline::entry_reach(&timeline.doc, &timeline.edit_path))
+        .flatten();
     match *ev {
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
-        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
+        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => {
+            Some(I::Scrub(reach.map_or(0.0, |(lo, _)| lo)))
+        }
         PanelEvent::Click(id) if id == ids::TIMELINE_ADD_MARKER => Some(I::AddMarker {
             t_seconds: playhead.time(),
             label: format!("M{}", timeline.doc.markers().len() + 1),
         }),
-        PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => Some(I::Scrub(duration())),
+        PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => {
+            Some(I::Scrub(reach.map_or_else(duration, |(_, hi)| hi)))
+        }
         PanelEvent::Click(id) if id == ids::TIMELINE_PREV_FRAME => {
             Some(I::SeekFrame(playhead.frame(fps) - 1))
         }
@@ -103,6 +117,15 @@ pub(crate) fn intent_for_transport(
         // anyone has to remember to enforce.
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP || id == ids::TIMELINE_PINGPONG => {
             let ping_pong = id == ids::TIMELINE_PINGPONG;
+            // Inside a container the toggle brackets the INSTANCE, transport-only (see
+            // `reach` above): on = its reach, off = no loop; leaving re-installs the
+            // scene's own loop (`on_nav_change`).
+            if let Some((lo, hi)) = reach {
+                return Some(I::SetTransportLoop {
+                    range: on.then_some((lo, hi)),
+                    ping_pong: on && ping_pong,
+                });
+            }
             Some(if on {
                 I::SetLoop {
                     range: Some((0.0, duration().max(1.0 / fps.max(1.0)))),

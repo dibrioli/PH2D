@@ -213,6 +213,22 @@ pub enum TimelineIntent {
     /// Arm/disarm the rigid simulation on the transport (ADR-0131) — see
     /// [`crate::TimelineFlags::simulate_physics`].
     SetSimulatePhysics(bool),
+    /// **Arm/clear the TRANSPORT's loop, leaving the document alone** — what the Loop and
+    /// PingPong toggles mean INSIDE a container (Enio, 2026-07-20: *"o loop dentro do
+    /// container deve se ajustar automaticamente quando ligado às strips"*).
+    ///
+    /// In there the thing being cycled is the walked-into instance
+    /// ([`crate::entry_reach`]), which is a fact about the SESSION's navigation, not about
+    /// the document: writing [`TimelineIntent::SetLoop`] instead would overwrite the
+    /// SCENE's authored loop with an instance window, and leaving the container would
+    /// reveal the damage. The transport-only arm is the same instrument entering already
+    /// uses (`on_nav_change`); leaving re-installs the document's loop.
+    SetTransportLoop {
+        /// `[start, end)` in TIMELINE seconds; `None` clears the transport loop.
+        range: Option<(f64, f64)>,
+        /// Play back and forth instead of jumping to the start.
+        ping_pong: bool,
+    },
 
     // ── history ─────────────────────────────────────────────────────────────
     /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).

@@ -121,3 +121,67 @@ fn the_arrange_map_holds_in_the_gaps_and_the_marker_stays_honest() {
     assert!((m.t1 - 2.0).abs() < 1e-9, "still [0,2), not [4,6)");
     assert_eq!(snap.host_time, None);
 }
+
+/// **The loop braces inside a container are the TRANSPORT's, mapped to the interior** —
+/// never the document's scene loop drawn raw on the interior axis (Enio's screenshot,
+/// 2026-07-20: braces spanning 0..10.8 over a 2 s interior). The document loop is a
+/// DECOY here on purpose: a display that reads it bleeds.
+#[test]
+fn the_loop_braces_inside_are_the_transports_mapped_to_the_interior() {
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    let e = 7u64;
+    doc.rename_clip(0, "Step".to_string());
+    key(doc, e, PropKind::TranslationX, 0.0, -2.0);
+    key(doc, e, PropKind::TranslationX, 2.0, 0.0);
+    let walk = doc.add_container("Walk".to_string());
+    let host = StackHost::Container(walk);
+    let inner = doc.add_lane_in(host, "Steps".to_string()).unwrap();
+    doc.add_strip_to(host, inner, StripSource::Clip(0), 0.0, 2.0)
+        .unwrap();
+    let lane = doc.add_lane("Timeline".to_string()).unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(walk).unwrap()),
+            4.0,
+            6.0,
+        )
+        .unwrap();
+    doc.set_active_loop_for(false, Some((0.0, 20.0))); // o decoy: o loop da CENA
+    st.edit_path.push(EnterStep {
+        container: walk,
+        lane,
+        strip,
+    });
+
+    let mut playhead = Playhead::new(1.0 / 60.0);
+    // ⚠️ Um SUBCONJUNTO PRÓPRIO da janela [4,6], de propósito: com o loop do transporte
+    // igual à janela, o decoy do doc (0,20) CLAMPADO pelo mapa dava as MESMAS chaves
+    // (0,2) e a mutação "ler o doc" ficou verde — o fixture não continha o fenômeno
+    // ([[feedback_a_green_gate_may_be_green_by_accident]]).
+    playhead.set_loop(4.5, 5.5);
+    playhead.seek(5.0);
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &playhead, false);
+    assert_eq!(
+        snap.loop_range,
+        Some((0.5, 1.5)),
+        "as chaves são o loop do TRANSPORTE no relógio do interior — não o (0,20) do doc"
+    );
+    assert!(!snap.loop_ping_pong);
+
+    // O modo do transporte também é o exibido.
+    playhead.set_loop_mode(ph2d_core::LoopMode::PingPong);
+    snap.rebuild(&mut st, &playhead, false);
+    assert!(snap.loop_ping_pong, "ping-pong do relógio, não do doc");
+
+    // E na aba KEYS o loop volta a ser o do documento (o relógio dali é o do clip).
+    snap.rebuild(&mut st, &playhead, true);
+    assert_eq!(
+        snap.loop_range,
+        st.doc.active_loop_for(true),
+        "a Keys mostra o loop do clip, como sempre"
+    );
+}

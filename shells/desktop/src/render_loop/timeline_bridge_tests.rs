@@ -367,3 +367,99 @@ fn a_stale_walk_leaves_the_transport_as_it_stands() {
     assert_eq!(ph.loop_range(), Some((0.0, 20.0)), "loop untouched");
     assert!((ph.time() - 5.0).abs() < 1e-9, "playhead untouched");
 }
+
+/// **Dentro de um container, Loop/PingPong/ir-ao-início/ir-ao-fim falam da INSTÂNCIA** —
+/// transporte-apenas, o documento fica de fora (Enio, 2026-07-20: *"o loop dentro do
+/// container deve se ajustar automaticamente quando ligado às strips"*). Escrever
+/// `SetLoop` dali reescreveria o loop autorado da CENA com a janela de uma instância, e
+/// sair do container revelaria o estrago.
+#[test]
+fn inside_a_container_the_loop_toggles_bracket_the_instance_on_the_transport() {
+    let (mut st, step) = nav_scene();
+    st.edit_path = vec![step];
+    let ph = Playhead::new(1.0 / 60.0);
+    let ev = |on| PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_LOOP, on);
+
+    assert_eq!(
+        intent_for_transport(&ev(true), &st, &ph),
+        Some(TimelineIntent::SetTransportLoop {
+            range: Some((3.0, 12.5)), // o alcance da instância, leads incluídos
+            ping_pong: false,
+        }),
+    );
+    assert_eq!(
+        intent_for_transport(&ev(false), &st, &ph),
+        Some(TimelineIntent::SetTransportLoop {
+            range: None,
+            ping_pong: false,
+        }),
+    );
+    assert_eq!(
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_PINGPONG, true),
+            &st,
+            &ph
+        ),
+        Some(TimelineIntent::SetTransportLoop {
+            range: Some((3.0, 12.5)),
+            ping_pong: true,
+        }),
+    );
+    assert_eq!(
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_START),
+            &st,
+            &ph
+        ),
+        Some(TimelineIntent::Scrub(3.0)),
+        "ir ao início vai ao início da instância"
+    );
+    assert_eq!(
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_END),
+            &st,
+            &ph
+        ),
+        Some(TimelineIntent::Scrub(12.5)),
+        "ir ao fim vai ao fim do alcance dela"
+    );
+
+    // Na RAIZ nada muda: o toggle segue escrevendo o loop do DOCUMENTO.
+    st.edit_path.clear();
+    assert!(
+        matches!(
+            intent_for_transport(&ev(true), &st, &ph),
+            Some(TimelineIntent::SetLoop { range: Some(_), ping_pong: false })
+        ),
+        "na cena o Loop é do documento, como sempre"
+    );
+}
+
+/// **`SetTransportLoop` arma o RELÓGIO e não toca o documento** — a metade que protege o
+/// loop autorado da cena.
+#[test]
+fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
+    let (mut st, _step) = nav_scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    let before = st.doc.active_loop_for(false);
+    ph2d_timeline::apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetTransportLoop {
+            range: Some((2.0, 5.0)),
+            ping_pong: true,
+        },
+    );
+    assert_eq!(ph.loop_range(), Some((2.0, 5.0)));
+    assert!(ph.is_ping_pong());
+    assert_eq!(st.doc.active_loop_for(false), before, "o documento fica de fora");
+    ph2d_timeline::apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetTransportLoop {
+            range: None,
+            ping_pong: false,
+        },
+    );
+    assert_eq!(ph.loop_range(), None, "off limpa o relógio");
+}

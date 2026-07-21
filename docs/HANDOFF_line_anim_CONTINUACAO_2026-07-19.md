@@ -204,3 +204,22 @@ aba Keys; a régua arrasta em qualquer instante; o loop vira a janela da instân
    fato da régua do ARRANGE; na Keys cala (a trilha fica: é navegação).
 
 Gates: 2 novos no `nesting_seam.rs` + 1 no `breadcrumb.rs`; mutações 3/3 sangram.
+
+### Adendo 2 (mesma sessão): '+ Container' esmagado + o loop DENTRO do container
+
+- **"+ Container some se o painel for estreito"** — duas causas: o header dos ADDs rachava
+  50/50 (o rótulo 2× maior perdia) e o piso da coluna no Arrange perguntava "há lanes?"
+  quando o header vive na ABA (é como se cria a primeira lane). `stack_add_header.rs`
+  (split de LOC, 609→555) racha pela fração de caracteres dos MESMOS strings pintados;
+  piso por aba flipado red-first. Commits `83a7d762`/`052063a5`.
+- **"o loop dentro do container deve se ajustar automaticamente quando ligado às strips"**
+  — dentro, Loop/PingPong agem SÓ no TRANSPORTE (`TimelineIntent::SetTransportLoop`,
+  apendado): ligar abraça o `entry_reach` da instância entrada (a MESMA porta do enter),
+  desligar limpa; o loop do DOC é o da CENA e nunca é tocado de dentro (sair o reinstala,
+  `on_nav_change`). GO_START/GO_END dentro vão às bordas da instância. E a VISTA: as
+  chaves + o estado do toggle dentro do Arrange leem o PLAYHEAD mapeado pro interior — a
+  screenshot mostrava o loop da cena desenhado CRU no eixo do interior (0..10,8 sobre 2 s).
+  `Playhead::is_ping_pong` novo (ph2d-core, apendado). ⚠️ A mutação "vista lê o doc"
+  SOBREVIVEU à 1ª rodada — o decoy clampado colidia com o valor certo; o fixture virou
+  subconjunto próprio da janela ([[feedback_a_green_gate_may_be_green_by_accident]]).
+  Gates: 2 no bridge + 1 apply + 1 display; mutações 3/3 sangram.

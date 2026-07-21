@@ -48,6 +48,20 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             state.doc.set_active_ping_pong_for(keys, ping_pong);
             sync_loop(&state.doc, playhead, keys);
         }
+        // Transport-only: the clock is armed, the DOCUMENT is not touched — see the
+        // intent's doc for why (inside a container the cycled thing is the walked-into
+        // instance, a navigation fact, and the scene's authored loop must survive it).
+        I::SetTransportLoop { range, ping_pong } => {
+            match range {
+                Some((a, b)) => playhead.set_loop(a, b),
+                None => playhead.clear_loop(),
+            }
+            playhead.set_loop_mode(if ping_pong {
+                ph2d_core::LoopMode::PingPong
+            } else {
+                ph2d_core::LoopMode::Wrap
+            });
+        }
 
         // authoring (undoable)
         I::Bind { entity, prop } => edit(state, |doc, _| {

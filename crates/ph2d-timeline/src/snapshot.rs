@@ -342,6 +342,21 @@ impl TimelineViewSnapshot {
                 let t = playhead.time();
                 (t >= m.t0 && t <= m.t1).then(|| m.local_time(t))
             });
+            // **The loop braces in here are the TRANSPORT's, mapped to the interior.**
+            // The document's Arrange loop is a SCENE fact; drawn raw on the interior's
+            // axis it spanned 0..10.8 over a 2 s interior (Enio's screenshot,
+            // 2026-07-20) — the same read-in-one-clock-write-in-another disease the
+            // ruler had. And the transport is the truth in here: entering brackets the
+            // instance on the playhead (`on_nav_change`), the toggles re-arm it
+            // (`SetTransportLoop`), and the document is deliberately untouched. The
+            // mapping clamps: the visible braces are the part of the loop that is HERE.
+            self.loop_range = self.host_map.and_then(|m| {
+                playhead.loop_range().and_then(|(a, b)| {
+                    let (la, lb) = (m.local_time(a), m.local_time(b));
+                    (lb > la).then_some((la, lb))
+                })
+            });
+            self.loop_ping_pong = self.loop_range.is_some() && playhead.is_ping_pong();
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host()).unwrap_or(&[]);
         self.lanes.clear();

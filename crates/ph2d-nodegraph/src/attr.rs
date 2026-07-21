@@ -85,6 +85,21 @@ pub enum Column {
 }
 
 impl Column {
+    /// The heap bytes this column's data occupies — the honest input to a
+    /// byte-budgeted cache (ADR-0137: a checkpoint ring capped by COUNT is a
+    /// multiplier, the ADR-0117 class). An estimate by design: capacity slack
+    /// and allocator overhead are not counted, which errs on the small side —
+    /// the direction a budget must NOT err — so callers pad their budgets, not
+    /// this number.
+    pub fn approx_bytes(&self) -> usize {
+        match self {
+            Column::Scalar(v) => v.len() * 4,
+            Column::Vec2(v) => v.len() * 8,
+            Column::Vec3(v) => v.len() * 12,
+            Column::Vec4(v) => v.len() * 16,
+        }
+    }
+
     pub fn len(&self) -> usize {
         match self {
             Column::Scalar(v) => v.len(),
@@ -165,6 +180,11 @@ impl Stream {
     }
 
     /// Deterministic iteration over `(name, column)` pairs.
+    /// The stream's column data in bytes — see [`Column::approx_bytes`].
+    pub fn approx_bytes(&self) -> usize {
+        self.columns().map(|(_, c)| c.approx_bytes()).sum()
+    }
+
     pub fn columns(&self) -> impl Iterator<Item = (&String, &Column)> {
         self.attrs.iter()
     }

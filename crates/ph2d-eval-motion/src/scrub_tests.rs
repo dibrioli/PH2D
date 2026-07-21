@@ -126,25 +126,15 @@ fn a_plain_pump_at_a_past_tick_reads_the_future() {
     );
 }
 
-/// **MEASUREMENT (2026-07-20 audit): looped playback starves the ring, forever.**
-/// Run alone: `cargo test -p ph2d-eval-motion loop_wrap -- --ignored --nocapture`.
-///
-/// `CheckpointRing::record` only appends STRICTLY FORWARD ticks (`tick <= back`
-/// is skipped as "already covered"), and eviction drops the OLDEST — so after
-/// playing past a loop's end, the ring's window sits at the loop's TAIL and a
-/// wrap to `lo` finds nothing at or before it: seed anchor, full re-sim from
-/// tick 0. The re-sim records NOTHING (every tick is ≤ the ring's back), and
-/// the forward play after the wrap records nothing either (same rule) — so
-/// EVERY wrap of a loop longer than the eviction horizon re-sims the whole
-/// history in one frame, at O(loop position) evals, forever. The GPU ring
-/// (`ph2d-gpu-cook::ring`) shares both rules and the same starvation.
-///
-/// This is a MEASUREMENT, not a red gate: the fix is an eviction/backfill
-/// policy decision (it interacts with the ring's named follow-ups — byte cap,
-/// coarse stride) and is handed to the next fatia with these numbers.
+/// **The O(1) loop-wrap gate** — the 2026-07-20 audit's measurement, FLIPPED
+/// (ADR-0137). The old ring recorded only strictly-forward ticks and evicted
+/// the oldest, so every wrap of a loop re-simmed the whole history, forever
+/// (measured here: lap 1 = 101 evals, lap 2 = 101 AGAIN). With backfill the
+/// first lap's re-sim rebuilds coverage as it goes, and lap 2 anchors on it:
+/// the wrap costs the ONE eval of the target frame. This ran `#[ignore]`d as a
+/// measurement while the pathology was named-not-fixed; it is a plain gate now.
 #[test]
-#[ignore = "measurement — run alone with --nocapture"]
-fn loop_wrap_resims_the_whole_history_every_wrap() {
+fn a_loop_wrap_anchors_on_the_previous_laps_backfill() {
     use std::sync::atomic::{AtomicUsize, Ordering};
     static EVALS: AtomicUsize = AtomicUsize::new(0);
 
@@ -211,21 +201,51 @@ fn loop_wrap_resims_the_whole_history_every_wrap() {
         cost
     };
 
-    let first = wrap(&mut pump, "wrap 1 (expected: seed re-sim, ~101)");
+    let first = wrap(&mut pump, "wrap 1 (the lap that backfills)");
+    // The FIRST wrap may legitimately re-sim (the history was never anchored —
+    // playing 0..=400 forward recorded it, so with backfill even lap 1 is
+    // cheap; the bound below only assumes the ring KEPT tick-100 coverage).
     for t in 101..=400u64 {
         pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
     }
-    let second = wrap(&mut pump, "wrap 2 (a learning ring would be O(1))");
-    eprintln!(
-        "loop-wrap starvation: first wrap {first} evals, second wrap {second} \
-         evals — a ring that could backfill would make the second ~1"
-    );
-    // Pin only the FACT the report cites (the pathology exists today); the fix
-    // flips this to a small constant and rewrites this measurement into a gate.
+    let second = wrap(&mut pump, "wrap 2 (anchored by lap 1's coverage)");
+    eprintln!("loop-wrap: first {first} evals, second {second} evals");
+    // The O(1) claim, on BOTH laps: forward play 0..=400 already recorded every
+    // tick (backfill admits them all under the entry backstop), so each wrap
+    // anchors AT tick 100 and pays exactly the target frame's eval. `> 90` was
+    // the audit's starvation measurement; a regression to eviction-by-oldest or
+    // forward-only recording sends this straight back to ~101.
     assert!(
-        second > 90,
-        "the second wrap re-simmed {second} evals — if this dropped, the ring \
-         learned to backfill: turn this measurement into the O(1) gate"
+        first <= 2 && second <= 2,
+        "a wrap must anchor on recorded coverage, not re-sim the history \
+         (first {first}, second {second} evals — the pre-ADR-0137 ring paid 101)"
+    );
+
+    // PHASE 2 — the EVICTION regime (the original disease needed it: capacity
+    // 300 under a 401-tick history is what starved the old ring, and a fixture
+    // whose entries all fit would stay green with backfill deleted). Squeeze
+    // the budget so the march MUST evict, re-run the laps, and bound the wrap
+    // by the ring's RESOLUTION over the span — never by the loop's position.
+    let mut pump = MotionCookPump::new();
+    // The counting state is one Vec2 element (~8 B/checkpoint): 200 B ≈ 25
+    // anchors over 401 ticks ⇒ eviction bites hard (half protected-recent,
+    // half thinned history ⇒ history gap ≈ 33).
+    pump.set_ring_budget(200);
+    for t in 0..=400u64 {
+        pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
+    }
+    let lap1 = wrap(&mut pump, "squeezed wrap 1");
+    for t in 101..=400u64 {
+        pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
+    }
+    let lap2 = wrap(&mut pump, "squeezed wrap 2");
+    // ~12 anchors thinned over [0, 400] ⇒ gap ≈ 33; generous slack to 60 so
+    // the bound is about the SHAPE (resolution vs position), not the constant.
+    // The pre-ADR-0137 ring paid the loop's POSITION here: 101 evals, forever.
+    assert!(
+        lap1 <= 60 && lap2 <= 60,
+        "under eviction the wrap is bounded by ring resolution, not loop \
+         position (laps {lap1}/{lap2} evals; starved = 101)"
     );
 }
 

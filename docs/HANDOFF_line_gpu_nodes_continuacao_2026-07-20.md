@@ -197,6 +197,31 @@ GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado
 
 ---
 
+> **⚠️ A REFORMA DO RING LANDOU (2026-07-21 — o C1 da fila §E, ADR-0137):** o
+> loop que re-simulava a história INTEIRA a cada volta (a medição da auditoria:
+> 101/101 evals, ~80 s/volta na neve CPU) fechou nos DOIS rings com UMA política:
+> **backfill ordenado** (grava-se o que não está presente, em qualquer direção —
+> os call sites do replay sempre existiram; a regra "estritamente à frente" era
+> quem os matava) + **evicção por gap-mínimo** (a vítima é a âncora mais
+> redundante — a história adelgaça em RESOLUÇÃO, nunca amputada do lado que o
+> wrap precisa) + **orçamento em BYTES no ring CPU** (`CookCheckpoint::approx_bytes`;
+> o cap por contagem era a classe ADR-0117 — §B2) com `MAX_ENTRIES` como backstop
+> de custo de insert. ⚠️ **A meia-divisão da janela protegida é estrutural**: a
+> 1ª versão protegia as 300 entradas mais novas por contagem pura e a fase
+> espremida do gate O(1) starvou 101/101 DE NOVO (com poucas entradas a proteção
+> engolia o ring e sobrava o fallback oldest-first — a doença vestida de
+> reforma); protegido = `min(RECENT_DENSE, n/2)`. **A medição virou o gate**
+> (`a_loop_wrap_anchors_on_the_previous_laps_backfill`, sem `#[ignore]`): fase
+> default **1/1 evals**, fase espremida **3/23** (limitada pela RESOLUÇÃO do
+> ring, não pela posição do loop) — eram 101/101 nas duas. GPU: gate de
+> dispositivo com orçamento espremido (`a_gpu_loop_wrap_replays_at_most...`,
+> âncora ≥ 40 nunca o seed + bound dinâmico por `ring_stats`) — a 1ª versão
+> exigia 1 stride e o thinning a refutou honestamente (cobertura uniforme é a
+> promessa, não densidade no loop). Pump ganhou `set_ring_budget` (espelho do
+> GPU). Pump e sequencer: **zero linhas mudadas** — a reforma mora nos dois
+> tipos de ring. **5 mutações verde→RED→verde** (should_record ×2, admissão do
+> record, vítima ×2).
+
 > **⚠️ A FAMÍLIA QUE MUDA CONTAGEM LANDOU (2026-07-20/21, mesma sessão da
 > auditoria — o item 1 da fila §E, ADR-0136)** — a NEVE de artista agora reclama
 > o laço inteiro na GPU: `sim.spawn` (rows-gather com lei de contagem `dt`-aware,

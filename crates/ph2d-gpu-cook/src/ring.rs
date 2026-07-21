@@ -17,12 +17,24 @@
 //!
 //! ## Bytes, not ticks
 //!
-//! The CPU ring is dense and bounded by a COUNT (`RECENT_CAPACITY = 300`) —
+//! The CPU ring used to be bounded by a COUNT (`RECENT_CAPACITY = 300`) —
 //! sound when the state is small, and exactly the shape ADR-0117 named as the
 //! bug it was: a count is a **multiplier**, not a ceiling. 300 checkpoints of a
-//! 2M-element sim is ~24 GB. So this ring bounds the thing that actually runs
-//! out ([`RING_BYTES`]), and a scene big enough to fill it with one checkpoint
-//! simply keeps one.
+//! 2M-element sim is ~24 GB. This ring always bounded the thing that actually
+//! runs out ([`RING_BYTES`]) — and ADR-0137 brought the CPU ring to the same
+//! rule (`CPU_RING_BYTES`). A scene big enough to fill the budget with one
+//! checkpoint simply keeps one.
+//!
+//! ## Backfill + min-gap thinning (ADR-0137)
+//!
+//! Recording used to be strictly forward with oldest-first eviction — which a
+//! LOOP turns into a permanent trap (the audit's §A2: after playing past the
+//! loop's end, every wrap re-simmed the whole history and recorded none of it).
+//! Now any on-stride tick not already present records (inserted in order — the
+//! cook's replay ticks rebuild coverage), and the eviction victim is the entry
+//! whose removal creates the SMALLEST neighbour gap, never the newest and never
+//! the just-recorded: history thins in resolution instead of being amputated
+//! from the side the next wrap needs.
 //!
 //! ## Missing the window is not an error
 //!
@@ -98,27 +110,54 @@ impl GpuCheckpointRing {
     }
 
     /// Would [`Self::record`] keep a checkpoint for `tick`? Only one on the
-    /// [`RING_STRIDE`] grid, and only a strictly forward one: a re-simmed tick
-    /// already in the window is identical by determinism (same device, same
-    /// graph), so it is skipped rather than duplicated — the CPU ring's rule.
+    /// [`RING_STRIDE`] grid, and only a tick not already present — a re-simmed
+    /// tick in the window is identical by determinism (same device, same graph)
+    /// and is skipped rather than duplicated; any ABSENT on-grid tick records,
+    /// in either direction (the backfill, ADR-0137 — "strictly forward" was
+    /// what starved every loop wrap).
     pub fn should_record(&self, tick: u64) -> bool {
-        tick.is_multiple_of(RING_STRIDE) && self.entries.last().is_none_or(|(t, _, _)| tick > *t)
+        tick.is_multiple_of(RING_STRIDE)
+            && self
+                .entries
+                .binary_search_by_key(&tick, |(t, _, _)| *t)
+                .is_err()
     }
 
-    /// Record the state to cook `tick` from. Evicts the oldest while over
-    /// budget — never the one just recorded, so a scene whose single checkpoint
-    /// exceeds the cap still scrubs to the last anchor rather than keeping
-    /// nothing.
+    /// Record the state to cook `tick` from, inserted in tick order (the
+    /// backfill — a replayed tick behind the window is coverage the next wrap
+    /// anchors on). Past the budget, evicts by min-gap thinning
+    /// ([`Self::thinning_victim`]) — never the one just recorded, so a scene
+    /// whose single checkpoint exceeds the cap still scrubs to the last anchor
+    /// rather than keeping nothing.
     pub fn record(&mut self, tick: u64, state: &State, last_playhead: Option<f64>) {
         if !self.should_record(tick) {
             return;
         }
+        let at = self.entries.partition_point(|(t, _, _)| *t < tick);
         self.bytes += state_bytes(state);
-        self.entries.push((tick, state.clone(), last_playhead));
+        self.entries
+            .insert(at, (tick, state.clone(), last_playhead));
         while self.entries.len() > 1 && self.bytes > self.budget {
-            let (_, old, _) = self.entries.remove(0);
+            let victim = self.thinning_victim(tick);
+            let (_, old, _) = self.entries.remove(victim);
             self.bytes = self.bytes.saturating_sub(state_bytes(&old));
         }
+    }
+
+    /// The thinning victim (ADR-0137): the evictable entry whose removal
+    /// creates the smallest neighbour gap — the most redundant anchor. The
+    /// NEWEST entry and the just-recorded tick are protected (the recent
+    /// scrub's anchor, and the admission rule above); when only those remain,
+    /// fall back to the oldest that is not the newcomer.
+    fn thinning_victim(&self, just_recorded: u64) -> usize {
+        let n = self.entries.len();
+        let candidate = (0..n - 1) // n-1: the newest entry is protected
+            .filter(|&i| self.entries[i].0 != just_recorded)
+            .min_by_key(|&i| {
+                let left = if i == 0 { 0 } else { self.entries[i - 1].0 };
+                self.entries[i + 1].0 - left
+            });
+        candidate.unwrap_or_else(|| usize::from(self.entries[0].0 == just_recorded))
     }
 
     /// The anchor to scrub from for `target`: the newest checkpoint at or before
@@ -164,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn only_forward_ticks_on_the_stride_grid_are_recorded() {
+    fn on_grid_absent_ticks_record_and_present_ones_do_not() {
         let mut r = GpuCheckpointRing::default();
         assert!(r.should_record(0));
         assert!(!r.should_record(1), "off the stride grid");
@@ -179,6 +218,76 @@ mod tests {
         assert!(!r.should_record(0));
         r.record(RING_STRIDE, &state(), None);
         assert_eq!(r.len(), 2, "a re-simmed tick must not duplicate");
+    }
+
+    /// The backfill (ADR-0137): an on-grid tick BEHIND the window records —
+    /// sorted in, anchorable at once. The strictly-forward rule this replaces
+    /// is what made every loop wrap re-sim the whole history, forever.
+    #[test]
+    fn a_replayed_tick_behind_the_window_backfills_and_anchors() {
+        let mut r = GpuCheckpointRing::default();
+        r.record(10 * RING_STRIDE, &state(), None);
+        r.record(11 * RING_STRIDE, &state(), None);
+        assert!(
+            r.should_record(2 * RING_STRIDE),
+            "behind the window and absent — wanted"
+        );
+        r.record(2 * RING_STRIDE, &state(), Some(0.25));
+        assert_eq!(
+            r.anchor_at_or_before(3 * RING_STRIDE).0,
+            2 * RING_STRIDE,
+            "the backfilled anchor serves the next wrap"
+        );
+        assert_eq!(
+            r.anchor_at_or_before(3 * RING_STRIDE).2,
+            Some(0.25),
+            "…with its clock"
+        );
+    }
+
+    /// Min-gap thinning (ADR-0137): past the budget the victim is the most
+    /// REDUNDANT anchor, never the newest and never the just-recorded — the
+    /// oldest-first rule this replaces amputated exactly the anchors a loop's
+    /// next wrap needs.
+    #[test]
+    fn thinning_evicts_the_most_redundant_anchor_not_the_oldest() {
+        let mut r = GpuCheckpointRing::default();
+        r.set_budget(0);
+        // With a zero budget every insert triggers eviction down to one entry —
+        // record widely-spaced history plus a redundant middle anchor and
+        // verify WHO survives each squeeze.
+        // Zero-byte states never exceed a 0 budget (0 > 0 is false), so nothing
+        // evicts by pressure here: exercise the VICTIM CHOICE directly.
+        // Entries [5S, 6S, 8S]: removing 5S creates gap 6S−0 (the virtual seed
+        // is the left neighbour); removing 6S creates gap 8S−5S = 3S — the
+        // middle is the most redundant.
+        r.record(5 * RING_STRIDE, &state(), None);
+        r.record(6 * RING_STRIDE, &state(), None);
+        r.record(8 * RING_STRIDE, &state(), None);
+        assert_eq!(r.len(), 3);
+        let victim = r.thinning_victim(8 * RING_STRIDE);
+        assert_eq!(
+            r.entries[victim].0,
+            6 * RING_STRIDE,
+            "the middle anchor is the most redundant (smallest created gap)"
+        );
+        let protected = r.thinning_victim(5 * RING_STRIDE);
+        assert_ne!(
+            r.entries[protected].0,
+            8 * RING_STRIDE,
+            "the newest entry is never the victim"
+        );
+        // …and an anchor AT tick 0 is always redundant against the virtual
+        // seed: [0, 5S, 8S] evicts 0 (created gap 5S beats 8S−0).
+        let mut r2 = GpuCheckpointRing::default();
+        r2.record(0, &state(), None);
+        r2.record(5 * RING_STRIDE, &state(), None);
+        r2.record(8 * RING_STRIDE, &state(), None);
+        assert_eq!(
+            r2.entries[r2.thinning_victim(8 * RING_STRIDE)].0,
+            0,
+            "tick 0 duplicates the implicit seed — the cheapest anchor to shed"
+        );
     }
 
     #[test]

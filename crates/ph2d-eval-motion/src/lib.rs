@@ -42,7 +42,7 @@ use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
 
 mod checkpoint;
-pub use checkpoint::{CheckpointRing, RECENT_CAPACITY};
+pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
 mod lower;
 pub use lower::{
@@ -142,6 +142,13 @@ impl MotionCookPump {
     /// **invalidates the scrub cache**: the recorded checkpoints are the sim of
     /// the OLD graph, so a later scrub must re-sim from the tick-0 seed under the
     /// edited graph (Blender/Houdini "edit invalidates the cache").
+    /// Retune the scrub ring's byte budget (default `CPU_RING_BYTES`) — the
+    /// mirror of `GpuCook::set_ring_budget`, and what lets a gate squeeze the
+    /// ring into the eviction regime a real heavy scene lives in (ADR-0137).
+    pub fn set_ring_budget(&mut self, bytes: usize) {
+        self.ring.set_budget(bytes);
+    }
+
     pub fn mark_dirty(&mut self) {
         self.dirty = true;
         self.ring.clear();

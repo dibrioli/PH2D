@@ -518,6 +518,92 @@ fn the_compaction_seam_cost_probe() {
     eprintln!("  seam cost: {:.3} ms", report[1].1 - report[0].1);
 }
 
+/// **A loop wrap anchors on thinned coverage — on the DEVICE, under a squeezed
+/// budget** (ADR-0137). The starvation composed three rules (forward-only
+/// recording, oldest-first eviction, seed-anchor wraps) into "every lap re-sims
+/// the whole history"; this drives the product sequence — march, wrap, march,
+/// wrap — with a budget small enough to force eviction, and asserts the SECOND
+/// wrap's replay is bounded by the ring's RESOLUTION (`span / entries`, plus a
+/// stride of slack), never by the loop's POSITION. That is the ADR's exact
+/// promise for the over-budget regime: history degrades in resolution, not by
+/// amputation — the first cut of this gate demanded one-stride anchoring and
+/// the thinning refuted it honestly (uniform spread beats dense-at-the-loop
+/// when the budget cannot hold both). The CPU twin is `ph2d-eval-motion`'s
+/// O(1) gate; this one proves the GPU ring's copy of the policy against the
+/// real cook.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_gpu_loop_wrap_replays_at_most_a_stride_under_a_squeezed_budget() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // The zone loop from the seam probe: 64x64 seed, no births (stable field).
+    let mut g = Graph::new();
+    let seed = grid(&mut g, 64.0, 64.0);
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    g.set_param(wind, "strength", 0.4);
+    let step = g.add_node("sim.step");
+    let out = g.add_node("motion.output");
+    connect(&mut g, seed, zone, 0, false);
+    connect(&mut g, zone, wind, 0, true);
+    connect(&mut g, wind, step, 0, false);
+    connect(&mut g, step, zone, 1, false);
+    connect(&mut g, zone, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    let p = plan(&g, &reg, &reg, out);
+    assert!(p.is_fully_gpu() && p.drives_a_loop());
+
+    let mut gc = GpuCook::new();
+    // A 64x64 zone state is a few hundred KB; budget ~6 checkpoints so the
+    // 0..=200 march MUST evict — the exact regime the old ring starved in.
+    gc.set_ring_budget(2 * 1024 * 1024);
+    let march = |gc: &mut GpuCook, from: u64, to: u64| {
+        for t in from..=to {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &p,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+    };
+    march(&mut gc, 0, 200);
+    // Lap 1's wrap to tick 60: replay whatever it costs, but RECORD as it goes.
+    let anchor1 = gc.rewind_for(60);
+    march(&mut gc, anchor1, 200);
+    // Lap 2's wrap: bounded by the ring's RESOLUTION over the marched span.
+    let (entries, bytes) = gc.ring_stats();
+    let anchor2 = gc.rewind_for(60);
+    let gap_bound = 200 / entries.max(1) as u64 + 8;
+    eprintln!(
+        "loop wrap anchors: lap 1 at {anchor1}, lap 2 at {anchor2} \
+         ({entries} entries, {bytes} B, resolution bound {gap_bound})"
+    );
+    assert!(
+        anchor2 >= 40,
+        "the wrap must anchor on kept coverage, never back at the seed \
+         (anchored at {anchor2} — the pre-ADR-0137 ring answered 0, forever)"
+    );
+    assert!(
+        60 - anchor2 <= gap_bound,
+        "the replay is bounded by resolution, not by the loop's position \
+         (anchored at {anchor2}, bound {gap_bound})"
+    );
+    march(&mut gc, anchor2, 60); // leave the sim consistent at the target
+}
+
 /// **The birth zone, whole, on the device** — the miniature of the snow's
 /// structure: spawn feeds combine feeds the state loop, lifetime reaps inside
 /// it, and the population breathes (grows while young, sheds as flakes age

@@ -40,6 +40,18 @@ pub enum CookValue {
     Opaque(Arc<dyn Any + Send + Sync>),
 }
 
+impl CookValue {
+    /// The value's stream bytes ([`Stream::approx_bytes`]); an `Opaque` payload
+    /// is type-erased and counts 0 — a budget that cannot see a cost must not
+    /// invent one, and no motion checkpoint carries opaque state today.
+    pub fn approx_bytes(&self) -> usize {
+        match self {
+            CookValue::Instances(s) => s.approx_bytes(),
+            CookValue::Empty | CookValue::Opaque(_) => 0,
+        }
+    }
+}
+
 impl std::fmt::Debug for CookValue {
     /// An `Opaque` payload is type-erased, so it prints as a placeholder — the
     /// substrate cannot know the domain type. `Empty`/`Instances` print fully.

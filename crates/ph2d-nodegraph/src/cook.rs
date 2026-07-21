@@ -343,6 +343,19 @@ pub struct CookCheckpoint {
     prev_playhead: Option<f64>,
 }
 
+impl CookCheckpoint {
+    /// The checkpoint's stream bytes — what a byte-budgeted ring charges for
+    /// holding it (ADR-0137). See [`crate::attr::Column::approx_bytes`] for
+    /// what "approx" means and which way it errs.
+    pub fn approx_bytes(&self) -> usize {
+        self.prev_outputs
+            .values()
+            .flat_map(|vs| vs.iter())
+            .map(CookValue::approx_bytes)
+            .sum()
+    }
+}
+
 /// Incremental cook engine. Holds the memo cache and the previous-tick snapshot
 /// across cooks; reusing the same `Cook` across frames is what makes
 /// re-evaluation cheap and `pre` feedback work.

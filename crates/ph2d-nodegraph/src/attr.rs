@@ -125,10 +125,16 @@ impl Column {
 
 /// A stream of `count` elements with named typed columns. An empty stream
 /// (`count == 0`, no columns) is the value of an unconnected input.
+/// **Cloning a `Stream` is a refcount, not a copy** (ADR-0138): the columns
+/// live behind `Arc`, so the sim loop's per-tick snapshots (`Cook::checkpoint`,
+/// `advance_tick`'s prev, the pump's boundary hand-off) share data instead of
+/// re-copying the whole field. Sound because nothing mutates a `Column` in
+/// place — the API has no `get_mut`, and every writer builds a fresh column and
+/// [`Stream::set`]s it (the same immutability the GPU side's buffers rely on).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Stream {
     count: usize,
-    attrs: BTreeMap<String, Column>,
+    attrs: BTreeMap<String, std::sync::Arc<Column>>,
 }
 
 impl Stream {
@@ -172,11 +178,11 @@ impl Stream {
             self.count,
             "column length must equal stream element count"
         );
-        self.attrs.insert(name.into(), col);
+        self.attrs.insert(name.into(), std::sync::Arc::new(col));
     }
 
     pub fn get(&self, name: &str) -> Option<&Column> {
-        self.attrs.get(name)
+        self.attrs.get(name).map(std::sync::Arc::as_ref)
     }
 
     /// Deterministic iteration over `(name, column)` pairs.
@@ -186,7 +192,7 @@ impl Stream {
     }
 
     pub fn columns(&self) -> impl Iterator<Item = (&String, &Column)> {
-        self.attrs.iter()
+        self.attrs.iter().map(|(n, c)| (n, c.as_ref()))
     }
 }
 
@@ -210,6 +216,31 @@ mod tests {
     fn mismatched_column_length_panics() {
         let mut s = Stream::new(3);
         s.set("bad", Column::Scalar(vec![1.0])); // len 1 != count 3
+    }
+
+    /// **Cloning shares, writing replaces** (ADR-0138): the clone's columns are
+    /// the SAME allocations (a refcount, not a copy — what makes the sim loop's
+    /// per-tick snapshots cheap), and a `set` on the clone swaps in a fresh
+    /// column without touching the original. A `Stream` whose clone deep-copied
+    /// would fail the pointer identity here — the exact regression this pins.
+    #[test]
+    fn cloning_a_stream_shares_columns_and_writing_replaces_them() {
+        let a = Stream::new(2).with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0]]));
+        let mut b = a.clone();
+        assert!(
+            std::ptr::eq(a.get("P").unwrap(), b.get("P").unwrap()),
+            "a cloned column must be the same allocation"
+        );
+        b.set("P", Column::Vec2(vec![[9.0, 9.0], [8.0, 8.0]]));
+        assert!(
+            !std::ptr::eq(a.get("P").unwrap(), b.get("P").unwrap()),
+            "writing un-shares"
+        );
+        assert_eq!(
+            a.get("P").unwrap(),
+            &Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0]]),
+            "the original is untouched"
+        );
     }
 
     #[test]

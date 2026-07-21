@@ -197,6 +197,18 @@ GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado
 
 ---
 
+> **⚠️ AS COLUNAS DO STREAM VIRARAM Arc (2026-07-21 — o C2 da fila §E,
+> ADR-0138):** `Stream.attrs: BTreeMap<String, Arc<Column>>` — cirurgia
+> API-estável (`get`/`columns` seguem `&Column`; **zero fallout no workspace**).
+> Todo `Stream::clone` do laço de sim (checkpoint denso do ring, prev do
+> `advance_tick`, boundary do pump) virou refcount; sólido porque nada muta
+> `Column` in place (sem `get_mut`; todo escritor `set`a coluna fresca). Gate
+> mutação-testado pina clone-compartilha + write-des-compartilha. **Medido:**
+> CPU da zona 262k **22,31 → ~18,4 ms/tick** quente (−17%; ruído 27–49 sob
+> carga, documentado no ADR); o resto do custo é construção por-elemento
+> (`par_build`), não cópia. Um `share_from` sem consumidor foi escrito e
+> REMOVIDO na mesma sessão (API morta mente).
+
 > **⚠️ A REFORMA DO RING LANDOU (2026-07-21 — o C1 da fila §E, ADR-0137):** o
 > loop que re-simulava a história INTEIRA a cada volta (a medição da auditoria:
 > 101/101 evals, ~80 s/volta na neve CPU) fechou nos DOIS rings com UMA política:

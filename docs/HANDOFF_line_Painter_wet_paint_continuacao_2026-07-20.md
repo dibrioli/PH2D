@@ -214,6 +214,19 @@ ter emenda. 2 gates mutation-tested (cobertura do plano + vales do Checker rejei
 contra controle sem alinhamento). ⚠️ Smoke junto do lote (armar um Paper e ver a granulação
 do fluido seguir o padrão).
 
+**W2.8 — NÃO construído: é um FORK DE PRODUTO, decisão do Enio (2026-07-21).** Hoje em modo wet
+os shape editors e os métodos não-cumulativos (DragDot/Anchored/Line) **não desenham nada** (a
+rota wet recusa e os dabs morrem — nem preview flat existe). As duas saídas:
+**(1) INTEGRAR** — preview FLAT pela rota de cor normal (a maquinaria dos editors intacta) e,
+no Apply/pen-up, descascar o flat e depositar a lista final de dabs UMA vez pelo engine (o
+fluido então escoa). Custo: o salto visual flat→fluido no Apply, e mexer na dança
+`drag_preview`/`commit_drag_preview` (o commit hoje não tem "stamp final" — o último re-stamp
+do preview É o commit). **(2) ESCONDER (lei #3)** — em modo wet só métodos cumulativos e mão
+livre (o idioma do Rebelle, que não tem shape tools); os métodos/editors incompatíveis somem
+do painel no W3, com gates de presença E ausência. A (2) dissolve o W2.8 dentro do W3 e é a
+recomendação (um preview que mente sobre o resultado é pior que um método ausente); a (1) é
+construível se o Enio quiser shapes no fluido.
+
 **W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
@@ -233,9 +246,7 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
-**W2 restante:** W2.8 shape editors (depósito 1× no Apply — os
-sítios de commit em `curve_commit`/`stroke_multi`; hoje recusados por `live_gesture`+métodos
-cumulativos).
+**W2 restante:** só o W2.8, e ele virou FORK do Enio (ver bloco W2.8 acima) — a saída (2) o dissolve no W3.
 
 ## §2.5 — W1 (histórico do andamento; superado pelo §2.4)
 

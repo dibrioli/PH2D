@@ -235,6 +235,21 @@ arm do smoke" está FEITO. Rotas: `route_brush_wetpaint_event` no `handle_panel_
 populate (clicks + `mark_collapsible_section` + swatch). 5 gates (round-trips
 selection/eraser/smear red-first sobre o bug + panel Click); 4 mutações sangram.
 
+**O SMOKE DO LOTE (2026-07-21): W2.4/2.5 OK; dois reprovados, os dois FECHARAM (`8127c06d`):**
+(a) *"não consigo sair do modo wet"* — **o Enable estava MORTO sob o mouse**: pintado,
+registrado, e AUSENTE da **allowlist de forward** do `event.rs` do painel (o clique morria
+antes do bus; sem desarmar, não há saída pelo caminho que eu mesmo indiquei). ⚠️ **Meu gate do
+checkbox era SINTÉTICO** (`handle_panel_event` direto pula o forward — a cegueira exata que o
+header do `seam.rs` descreve) e ficou verde sobre o defeito. Fix: `PAINTER_WETPAINT_CLICKS` na
+allowlist + **gate de seam pelo `apply_event` REAL** (red-first: reinstalar o defeito o derruba
+sozinho) + **gate-matriz** no tool (todo wire não-brush sai do wet, um a um — o rail sempre
+soube sair; a porta morta era o checkbox). (b) *"Paper não aparece no wet"* — a seção Paper só
+pintava sob watercolor ⇒ o W2.7 era **inalcançável à mão**; agora `brush.watercolor ||
+brush.wetpaint` a oferece, com gate de presença E ausência (Paper oculto no brush comum —
+*"deve ser assim mesmo"*, confirmado). (c) *"onde ativo a borracha?"* — resposta de produto,
+não de código: é o **chip Eraser do rail** (com água viva ele levanta o FLUIDO — remoção
+multiplicativa, gradual; sem sessão apaga o baked). 4 mutações novas, cada uma sangra só o seu.
+
 **W2.8 — NÃO construído: é um FORK DE PRODUTO, decisão do Enio (2026-07-21).** Hoje em modo wet
 os shape editors e os métodos não-cumulativos (DragDot/Anchored/Line) **não desenham nada** (a
 rota wet recusa e os dabs morrem — nem preview flat existe). As duas saídas:

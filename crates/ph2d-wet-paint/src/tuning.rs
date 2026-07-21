@@ -232,12 +232,21 @@ impl Tuning {
         self.set(knob, KNOB_DEFS[knob as usize].default)
     }
 
-    pub fn reset_group(&mut self, group: KnobGroup) {
+    /// Reset every knob of a group. Returns the defs that actually changed —
+    /// the caller MUST act on their `rebuild` kinds exactly as it would for
+    /// single `set` calls (the JS fires onChange per knob; swallowing these
+    /// left stale brush textures / unbaked paper — port-verify finding).
+    #[must_use = "act on the rebuild kinds of the changed knobs"]
+    pub fn reset_group(&mut self, group: KnobGroup) -> Vec<&'static KnobDef> {
+        let mut changed = Vec::new();
         for d in KNOB_DEFS.iter() {
             if d.group == group {
-                self.set(d.knob, d.default);
+                if let Some(def) = self.set(d.knob, d.default) {
+                    changed.push(def);
+                }
             }
         }
+        changed
     }
 
     pub fn is_default(&self, knob: Knob) -> bool {

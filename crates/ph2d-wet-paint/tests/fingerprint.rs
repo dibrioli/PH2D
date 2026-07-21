@@ -66,4 +66,13 @@ fn scripted_session_fingerprint_is_stable() {
     assert_eq!(fp, PINNED, "session fingerprint drifted: {fp:#018x}");
 }
 
-const PINNED: u64 = 0x1d26_6795_d687_a4c4;
+// Pin history — every move names the SEMANTIC change that justified it:
+// 0x1d26_6795_d687_a4c4  first straight port (survived the drying-locals,
+//                        flow row-slice and interleaved-color rewrites —
+//                        those were layout, not simulation).
+// 0x6097_a692_a23d_bd5f  the port-verify parity FIXES (both move the Rust
+//                        TOWARD the JS): advect's `film[i] += q00+q10+q01+q11`
+//                        sums the q's before adding to the cell, and the
+//                        paper lattices are Float32Array (each rng draw
+//                        rounds to f32 before the noise sampler reads it).
+const PINNED: u64 = 0x6097_a692_a23d_bd5f;

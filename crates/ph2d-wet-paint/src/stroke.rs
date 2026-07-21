@@ -80,6 +80,9 @@ impl Stroke {
         self.dir_x = 0.0;
         self.dir_y = 0.0;
         self.first_dab_done = false;
+        // JS `Math.max(0.5, spacing || 2)`: a falsy spacing (0 or NaN) falls
+        // back to the default 2 BEFORE the floor (port-verify finding).
+        let spacing = if spacing == 0.0 || spacing.is_nan() { 2.0 } else { spacing };
         self.spacing = spacing.max(0.5);
     }
 

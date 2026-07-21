@@ -177,12 +177,26 @@ impl Engine {
     /// Write a knob and react to what it invalidates (the JS onChange).
     pub fn set_knob(&mut self, knob: Knob, v: f64) {
         if let Some(def) = self.tuning.set(knob, v) {
-            match def.rebuild {
-                Some(Rebuild::Brush) => self.brush_tex = None, // lazy rebuild
-                Some(Rebuild::Paper) => self.paper_dirty = true, // re-bake on release
-                Some(Rebuild::Render) => self.mark_dirty_full(),
-                None => {}
-            }
+            self.react_to_knob_change(def);
+        }
+    }
+
+    fn react_to_knob_change(&mut self, def: &'static crate::tuning::KnobDef) {
+        match def.rebuild {
+            Some(Rebuild::Brush) => self.brush_tex = None, // lazy rebuild
+            Some(Rebuild::Paper) => self.paper_dirty = true, // re-bake on release
+            Some(Rebuild::Render) => self.mark_dirty_full(),
+            None => {}
+        }
+    }
+
+    /// Reset a whole knob group, reacting to every changed knob exactly as
+    /// [`Engine::set_knob`] would — the JS fires onChange per knob from
+    /// resetGroup; dropping those left a stale brush texture / unbaked paper
+    /// (port-verify finding). The panel's group-reset button goes HERE.
+    pub fn reset_knob_group(&mut self, group: crate::tuning::KnobGroup) {
+        for def in self.tuning.reset_group(group) {
+            self.react_to_knob_change(def);
         }
     }
 

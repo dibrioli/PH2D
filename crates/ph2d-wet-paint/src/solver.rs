@@ -697,7 +697,11 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
             g.film[i10] = (f10 - q10) as f32;
             g.film[i01] = (f01 - q01) as f32;
             g.film[i11] = (f11 - q11) as f32;
-            g.film[i] = (g.film[i] as f64 + q00 + q10 + q01 + q11) as f32;
+            // JS `film[i] += q00 + q10 + q01 + q11`: the RHS sums FIRST, then
+            // adds to the cell — a different f64 rounding than left-to-right
+            // from the cell (port-verify finding, bit-parity).
+            let q_sum = q00 + q10 + q01 + q11;
+            g.film[i] = (g.film[i] as f64 + q_sum) as f32;
             i += 1;
         }
     }

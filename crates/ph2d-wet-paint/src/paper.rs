@@ -108,7 +108,8 @@ impl Default for PaperKnobs {
 }
 
 /// Seamless bilinear value-noise from an n x n lattice, sampled at tile (x,y).
-fn lattice_noise(values: &[f64], n: usize, x: usize, y: usize) -> f64 {
+/// The lattice is f32 (the JS Float32Array); the blend runs in f64.
+fn lattice_noise(values: &[f32], n: usize, x: usize, y: usize) -> f64 {
     let fx = (x as f64 / TS as f64) * n as f64;
     let fy = (y as f64 / TS as f64) * n as f64;
     let x0 = fx as usize;
@@ -117,10 +118,10 @@ fn lattice_noise(values: &[f64], n: usize, x: usize, y: usize) -> f64 {
     let ty = fy - y0 as f64;
     let x1 = (x0 + 1) % n;
     let y1 = (y0 + 1) % n;
-    let v00 = values[y0 * n + x0];
-    let v10 = values[y0 * n + x1];
-    let v01 = values[y1 * n + x0];
-    let v11 = values[y1 * n + x1];
+    let v00 = values[y0 * n + x0] as f64;
+    let v10 = values[y0 * n + x1] as f64;
+    let v01 = values[y1 * n + x0] as f64;
+    let v11 = values[y1 * n + x1] as f64;
     let a = v00 + (v10 - v00) * tx;
     let b = v01 + (v11 - v01) * tx;
     a + (b - a) * ty
@@ -139,14 +140,17 @@ pub fn generate_paper_tile(preset: PaperPreset, sheet_index: u32, knobs: PaperKn
 
     // -- component 1+2: a faint large-scale undulation (6x6 lattice) and a
     //    fine 2-px tooth (256x256 lattice), both seamless.
-    let mut big = [0.0f64; 36];
+    // The JS keeps both lattices in Float32Array: every rng draw ROUNDS to
+    // f32 before the noise sampler reads it (port-verify finding — keeping
+    // f64 here shifted every tile texel).
+    let mut big = [0.0f32; 36];
     for v in big.iter_mut() {
-        *v = rng.next();
+        *v = rng.next() as f32;
     }
     const FINE: usize = 256;
-    let mut fine = vec![0.0f64; FINE * FINE];
+    let mut fine = vec![0.0f32; FINE * FINE];
     for v in fine.iter_mut() {
-        *v = rng.next();
+        *v = rng.next() as f32;
     }
     let sparkle_seed = seed ^ 0x5f37_59df;
     for y in 0..TS {
@@ -221,7 +225,8 @@ pub fn generate_paper_tile(preset: PaperPreset, sheet_index: u32, knobs: PaperKn
         variance += d * d;
     }
     let std = (variance / t.len() as f64).sqrt();
-    let std = if std == 0.0 { 1.0 } else { std };
+    // JS `|| 1`: falsy remap — both 0 AND NaN become 1 (port-verify finding).
+    let std = if std == 0.0 || std.is_nan() { 1.0 } else { std };
     let gain = (p.std * knobs.contrast) / std;
     for v in t.iter_mut() {
         let nv = p.mean + (*v as f64 - mean) * gain;

@@ -27,14 +27,15 @@ const fn build_table() -> [f32; OPACITY_TABLE_MAX + 1] {
 
 static OPACITY: [f32; OPACITY_TABLE_MAX + 1] = build_table();
 
-/// Opacity lookup: truncate mass to int, clamp into the table.
+/// Opacity lookup: truncate mass to int (JS `m | 0` — ToInt32 WRAPS, it
+/// never saturates; port-verify finding), clamp into the table.
 #[inline]
 pub fn alpha_of_mass(m: f64) -> f64 {
-    let i = m as i64;
+    let i = crate::jsmath::to_int32_wrapping(m);
     if i <= 0 {
         return 0.0;
     }
-    if i >= OPACITY_TABLE_MAX as i64 {
+    if i >= OPACITY_TABLE_MAX as i32 {
         return 1.0;
     }
     OPACITY[i as usize] as f64

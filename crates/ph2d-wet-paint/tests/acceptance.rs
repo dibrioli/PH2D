@@ -39,6 +39,7 @@ fn t01_02_pressure_fade_in_and_porous_deposit() {
         early_mean < 0.7 * steady,
         "early mean {early_mean:.2} !< 70% of steady {steady:.2}"
     );
+    assert!(p.iter().all(|v| !v.is_nan()), "NaN pressure recorded");
     let max_p = p.iter().cloned().fold(f64::MIN, f64::max);
     assert!(max_p <= 7.34, "max pressure {max_p:.3} > 7.34");
 
@@ -261,7 +262,8 @@ fn t08_tuning_registry() {
     t.set_by_key("leveling", 1.7);
     t.set_by_key("gravity", 0.03);
     t.set_by_key("brake", 0.1);
-    t.reset_group(ph2d_wet_paint::tuning::KnobGroup::Physics);
+    let changed = t.reset_group(ph2d_wet_paint::tuning::KnobGroup::Physics);
+    assert_eq!(changed.len(), 3, "3 knobs were off-default; each must report");
     assert!(
         t.get(Knob::Leveling) == 0.5 && t.get(Knob::Gravity) == 0.005 && t.get(Knob::Brake) == 1.5,
         "group reset did not restore defaults"
@@ -303,7 +305,9 @@ fn wet_front_max_y(e: &Engine) -> usize {
     let mut max_y = 0;
     for y in 1..=g.h {
         for x in 1..=g.w {
-            if g.film[x + y * g.s] > 0.1 {
+            // The JS compares the widened f32 against f64 0.1 — a cell at
+            // exactly 0.1f32 (0.10000000149...) counts as wet.
+            if g.film[x + y * g.s] as f64 > 0.1 {
                 max_y = y;
                 break;
             }

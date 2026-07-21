@@ -151,17 +151,63 @@ fn how_far_does_the_flock_scale() {
     //   2. The lowering binds a `RenderInstance` (184 B) buffer, capped at 2 GiB
     //      by default → 2·1024³/184 ≈ 11.67 M agents (`max_storage_buffer_binding
     //      _size`, a requestable limit, adapter-permitting toward VRAM).
-    for &count in &[65536u32, 262_144, 1_048_576, 2_097_152, 4_194_304] {
+    eprintln!(
+        "  adapter: max_storage_buffer_binding_size {} · max_buffer_size {} · \
+         max wg/dim {}",
+        gpu.device.limits().max_storage_buffer_binding_size,
+        gpu.device.limits().max_buffer_size,
+        gpu.device.limits().max_compute_workgroups_per_dimension,
+    );
+    for &count in &[
+        65536u32, 262_144, 1_048_576, 2_097_152, 4_194_304, 8_388_608,
+    ] {
         let (g, out) = boids_graph(count as f32, true);
         let ms = time_step_ms(&gpu, &g, &reg, out);
         let ns_each = ms * 1e6 / count as f64;
         eprintln!("  {count:>10}  {ms:>10.3}  {ns_each:>10.2}");
     }
+    // Past the instance-binding wall the cook must REFUSE, never panic: the
+    // RTX adapter advertises max_storage_buffer_binding_size = 2 GiB − 4 (the
+    // context already requests the adapter's max — this is the driver's own
+    // cap, MEASURED, not a wgpu default), and 12,58 M × 184 B = 2,87 GiB. The
+    // un-guarded version died in `create_bind_group` validation — a production
+    // panic in the sweep's own first run.
+    {
+        let count = 12_582_912u32;
+        let (g, out) = boids_graph(count as f32, true);
+        let p = plan(&g, &reg, &reg, out);
+        let mut gc = GpuCook::new();
+        let err = gc
+            .cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &p,
+                &[],
+                CookClock {
+                    playhead: 0.0,
+                    tick: Some(0),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect_err("12,58 M instances must refuse, not panic");
+        assert!(
+            matches!(err, ph2d_gpu_cook::GpuCookError::BindingTooLarge { .. }),
+            "the named wall, not some other failure: {err:?}"
+        );
+        eprintln!("  {count:>10}  REFUSED (BindingTooLarge — the adapter's 2 GiB−4 binding cap)");
+    }
     eprintln!(
-        "\n(near-constant ns/agent = O(N): the grid delivers millions. Above ~4 M\n\
-         the grid's bucket dispatch is the first ceiling (~8 M), then the instance\n\
-         binding (~11.67 M) — both raisable, neither silicon. The interactive\n\
-         ceiling is whatever ms/tick the frame budget allows — all §0.0 numbers.)"
+        "\n(the grid delivers millions; ns/agent grows memory-bound at scale.\n\
+         The old first ceiling — the bucket scan's 65 535 workgroups/dim at\n\
+         ~8 M — FELL to the 2-D dispatch (gate in gpu_scan.rs). The walls that\n\
+         stand: the instance binding at ≈ 11,67 M (the ADAPTER's 2 GiB−4 —\n\
+         measured; raising it means splitting the lowering binding, a named\n\
+         follow-up) and, at ~16,7 M, the element dispatches' 65 535·256\n\
+         converging with ID_WRAP = 2²⁴ — the identity representation's own\n\
+         edge. Interactive ceiling = the frame budget — all §0.0 numbers.)"
     );
 }
 

@@ -53,6 +53,7 @@ pub mod codegen;
 mod count;
 pub mod debug_read;
 mod encode;
+pub mod error;
 pub mod field_name;
 mod gather;
 pub mod grid;
@@ -68,6 +69,7 @@ mod stream_op;
 pub mod tap;
 
 pub use debug_read::read_instances;
+pub use error::GpuCookError;
 pub use instances::GpuInstances;
 pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
 pub use ring::GpuCheckpointRing;
@@ -80,46 +82,7 @@ use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_nodegraph::node::NodeTypeId;
 use std::collections::{BTreeMap, BTreeSet};
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum GpuCookError {
-    /// `plan.boundaries` and the `boundary_streams` argument disagree — the
-    /// caller cooked (or skipped) the CPU prefix against a stale plan.
-    BoundaryMismatch,
-    /// A stage's kernel needs more storage bindings than the device allows
-    /// (`max_storage_buffers_per_shader_stage`): `(node type, needed, limit)`.
-    ///
-    /// A kernel binds one buffer per column it touches, which is a fact about
-    /// the STREAM, not the graph — so [`plan`], which never sees a device or a
-    /// stream, cannot refuse it. The check lives here because the alternative is
-    /// not a wrong answer but a **crash**: `create_compute_pipeline` reports an
-    /// over-limit layout through the device's error scope, i.e. a panic, not a
-    /// `Result`. The caller falls back to the CPU for the frame.
-    TooManyBindings(NodeTypeId, u32, u32),
-    /// A broadcast port carries its column at a length the dispatch can neither
-    /// pair per-element nor pin to row 0 — neither the dispatch length, nor 1,
-    /// nor empty (e.g. a 3-element value field aimed at a 5-element flock).
-    ///
-    /// Judged ABSENT, the kernel would read the identity at EVERY index while
-    /// the CPU reads the real rows it has (`target_at`'s `_` arm) — a SHAPE
-    /// divergence, not an ε. Like the binding limit, it is a fact about the
-    /// STREAM (lengths exist only at cook time; the plan's `applicable` sees
-    /// params alone), so the refusal lives here and the caller falls back to
-    /// the CPU, which is canonical.
-    BroadcastLengthMismatch {
-        ty: NodeTypeId,
-        port: usize,
-        len: u32,
-        count: u32,
-    },
-    /// A registered [`ph2d_nodegraph::gpu::StreamOp`] and its kernel disagree —
-    /// a compact predicate that wrote no `cp_keep`, a source-rows kernel that
-    /// wrote no `cp_rows`. An authoring bug in the node's own crate (its gates
-    /// catch it); production refuses the frame and the CPU stays canonical.
-    MalformedStreamOp(NodeTypeId),
-}
 
 /// When a cook happens: the continuous `playhead` the kernels see, and the
 /// fixed `tick` it stands on.
@@ -638,6 +601,19 @@ impl GpuCook {
             .cloned()
             .unwrap_or_default();
         let count = sink_stream.count;
+        // The instance buffer is the one binding that can outgrow the device's
+        // storage-binding limit below the id ceiling (184 B × count; every
+        // stream column caps at 16 B × ID_WRAP ≈ 268 MB). Refuse BEFORE the
+        // bind group turns it into a validation panic.
+        let instance_bytes =
+            u64::from(count) * std::mem::size_of::<ph2d_render::RenderInstance>() as u64;
+        let binding_limit = u64::from(gpu.device.limits().max_storage_buffer_binding_size);
+        if instance_bytes > binding_limit {
+            return Err(GpuCookError::BindingTooLarge {
+                bytes: instance_bytes,
+                limit: binding_limit,
+            });
+        }
         self.encode_lowering(
             gpu,
             &mut encoder,

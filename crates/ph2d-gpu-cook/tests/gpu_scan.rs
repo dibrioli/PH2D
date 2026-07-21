@@ -99,3 +99,28 @@ fn gpu_exclusive_scan_matches_the_cpu_bit_for_bit() {
         assert_eq!(gpu_out, cpu, "exclusive scan mismatch at len {len}");
     }
 }
+
+/// **The scan past the dispatch-dimension limit** (the tetos slice, §0.0): a
+/// bucket scan at 8 M elements is `2²⁴ + 1` entries = 65 537 blocks — past the
+/// 65 535 workgroups-per-dimension cap that was the sim's first ceiling. The
+/// 2-D dispatch folds the blocks into a rectangle and the kernels linearise
+/// the workgroup id; this drives the EXACT product shape and reconciles it
+/// bit-for-bit against the CPU oracle (integer scan — no ε).
+///
+/// The small-size sweep above cannot catch a broken fold: every length it
+/// tries fits one dimension, so `dispatch_2d` degenerates to the old shape.
+#[test]
+#[ignore = "needs a GPU adapter; ~130 MB of buffers"]
+fn the_scan_survives_past_the_dispatch_dimension_limit() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_scan");
+        return;
+    };
+    // 2²⁴ + 1: the `num_buckets + 1` of an 8 M-element neighbourhood grid.
+    let len = (1usize << 24) + 1;
+    let input = sample(len);
+    let cpu = cpu_exclusive(&input);
+    let gpu_out = gpu_scan(&gpu, &input);
+    assert_eq!(gpu_out, cpu, "exclusive scan mismatch at len {len}");
+    eprintln!("scan of {len} entries (65 537 blocks, 2-D dispatch) bit-exact");
+}

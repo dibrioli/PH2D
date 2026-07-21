@@ -197,6 +197,25 @@ GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado
 
 ---
 
+> **⚠️ OS DOIS TETOS MEDIDOS (2026-07-21 — item 4 da fila §E; §0.0: quem move o
+> número reconfere a nota):** (a) **o teto do scan de buckets CAIU** — o único
+> dispatch por-bucket era o `Scan::exclusive` dos `starts` (count/scatter são
+> por-elemento; o clear é `clear_buffer`), e a 8M elementos são 2²⁴+1 entradas =
+> 65 537 blocos > 65 535/dim. Fix: **dispatch 2-D** (`dispatch_2d` no scan; os
+> kernels linearizam o workgroup id via `num_workgroups` e o guard de blocos
+> deriva de `u.n` — uniform intocado). Gate na forma exata do produto
+> (`the_scan_survives_past_the_dispatch_dimension_limit`, 2²⁴+1 bit-exato;
+> mutação clamp-1D sangra). **Boids a 8M MEDIDO: 288 ms/tick** (ns/agent cresce
+> memory-bound: 14→34 ns de 1M a 8M). (b) **o binding de instância NÃO é
+> elevável por request**: o context JÁ pede o máximo do adapter e o RTX anuncia
+> **2 GiB−4** ⇒ ≈11,67M instâncias. A 1ª rodada do sweep a 12,58M achou um
+> **PANIC de produção** (validação do `create_bind_group` — nenhuma porta de
+> recusa cobria TAMANHO de binding, só contagem): porta nova
+> `GpuCookError::BindingTooLarge` antes do lowering, e a linha 12,58M do sweep
+> virou a asserção da recusa limpa. Subir esse teto = **dividir o binding do
+> lowering em chunks** (follow-up nomeado, não request). As paredes que ficam
+> convergem em ~16,7M: dispatch por-elemento 65 535·256 e o próprio ID_WRAP=2²⁴.
+
 > **⚠️ AS COLUNAS DO STREAM VIRARAM Arc (2026-07-21 — o C2 da fila §E,
 > ADR-0138):** `Stream.attrs: BTreeMap<String, Arc<Column>>` — cirurgia
 > API-estável (`get`/`columns` seguem `&Column`; **zero fallout no workspace**).

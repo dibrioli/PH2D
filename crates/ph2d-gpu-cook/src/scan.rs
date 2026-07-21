@@ -44,11 +44,17 @@ fn block_wgsl() -> &'static str {
              @group(0) @binding(2) var<storage, read_write> block_sums: array<u32>;\n\
              var<workgroup> temp: array<u32, {WG}u>;\n\
              @compute @workgroup_size({WG})\n\
-             fn main(@builtin(global_invocation_id) gid: vec3<u32>,\n\
-                     @builtin(local_invocation_id) lid_v: vec3<u32>,\n\
-                     @builtin(workgroup_id) wid_v: vec3<u32>) {{\n\
+             fn main(@builtin(local_invocation_id) lid_v: vec3<u32>,\n\
+                     @builtin(workgroup_id) wid_v: vec3<u32>,\n\
+                     @builtin(num_workgroups) nw: vec3<u32>) {{\n\
              \x20   let lid = lid_v.x;\n\
-             \x20   let i = gid.x;\n\
+             \x20   // 2-D dispatch (ADR-0136 line, tetos §0.0): a bucket scan at 8 M\n\
+             \x20   // elements is 2^24+1 entries = 65 537 blocks, past the 65 535\n\
+             \x20   // per-dimension limit — the workgroup id is linearised from the\n\
+             \x20   // grid instead, and the padding blocks of the rectangle bail out.\n\
+             \x20   let wid = wid_v.x + wid_v.y * nw.x;\n\
+             \x20   if (wid >= (u.n + {WG}u - 1u) / {WG}u) {{ return; }}\n\
+             \x20   let i = wid * {WG}u + lid;\n\
              \x20   // Guarded read (WGSL `select` is not short-circuit — it would read OOB).\n\
              \x20   var v = 0u;\n\
              \x20   if (i < u.n) {{ v = data[i]; }}\n\
@@ -64,7 +70,7 @@ fn block_wgsl() -> &'static str {
              \x20   workgroupBarrier();\n\
              \x20   // Exclusive = inclusive - own value; the last lane emits the block total.\n\
              \x20   if (i < u.n) {{ data[i] = temp[lid] - v; }}\n\
-             \x20   if (lid == {WG}u - 1u) {{ block_sums[wid_v.x] = temp[{WG}u - 1u]; }}\n\
+             \x20   if (lid == {WG}u - 1u) {{ block_sums[wid] = temp[{WG}u - 1u]; }}\n\
              }}\n"
         )
     })
@@ -78,10 +84,12 @@ fn add_wgsl() -> &'static str {
              @group(0) @binding(1) var<storage, read_write> data: array<u32>;\n\
              @group(0) @binding(2) var<storage, read> block_sums: array<u32>;\n\
              @compute @workgroup_size({WG})\n\
-             fn main(@builtin(global_invocation_id) gid: vec3<u32>,\n\
-                     @builtin(workgroup_id) wid_v: vec3<u32>) {{\n\
-             \x20   let i = gid.x;\n\
-             \x20   if (i < u.n) {{ data[i] = data[i] + block_sums[wid_v.x]; }}\n\
+             fn main(@builtin(local_invocation_id) lid_v: vec3<u32>,\n\
+                     @builtin(workgroup_id) wid_v: vec3<u32>,\n\
+                     @builtin(num_workgroups) nw: vec3<u32>) {{\n\
+             \x20   let wid = wid_v.x + wid_v.y * nw.x;\n\
+             \x20   let i = wid * {WG}u + lid_v.x;\n\
+             \x20   if (i < u.n) {{ data[i] = data[i] + block_sums[wid]; }}\n\
              }}\n"
         )
     })
@@ -202,7 +210,22 @@ impl Scan {
         });
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups(num_blocks, 1, 1);
+        // 2-D shape past the per-dimension limit; the kernels linearise the
+        // workgroup id and bail out of the rectangle's padding blocks.
+        let (x, y) = dispatch_2d(num_blocks);
+        pass.dispatch_workgroups(x, y, 1);
+    }
+}
+
+/// The 65 535-per-dimension limit is a DISPATCH-SHAPE limit, not a work limit:
+/// fold `blocks` into an `(x, y)` rectangle that covers it (`x·y ≥ blocks`,
+/// both ≤ 65 535). Kernels linearise `wid = x + y·nw.x` and guard the padding.
+pub(crate) fn dispatch_2d(blocks: u32) -> (u32, u32) {
+    const MAX_DIM: u32 = 65_535;
+    if blocks <= MAX_DIM {
+        (blocks.max(1), 1)
+    } else {
+        (MAX_DIM, blocks.div_ceil(MAX_DIM))
     }
 }
 

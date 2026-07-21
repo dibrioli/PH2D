@@ -150,10 +150,14 @@ impl crate::App {
         );
     }
 
-    /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (diagnóstico do
-    /// report de 2026-07-20: "queda de FPS + Round→Bevel não retuna"). Agarra o slider de
-    /// Offset com o PONTEIRO, arrasta por frames, solta, clica Round, clica Bevel — e loga
-    /// por frame: custo do frame, profundidade do undo, janela viva, join do painel, área.
+    /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (a ferramenta que
+    /// decodificou o report de 2026-07-20: "queda de FPS + não muda para Miter/Bevel").
+    /// Na ORDEM do report: arrasta com o Miter default (segura ~2 s por fase, pra dar
+    /// tempo de screenshot), solta, e retuna Round → Bevel → Miter com cliques de timing
+    /// REAL (Down e Up em frames separados). Loga por frame: custo, profundidade do undo,
+    /// janela viva, join do painel, VERTS (o oráculo dos retunes) e a LARGURA do bbox
+    /// (o oráculo do arrasto — verts é CEGO ao Miter/Bevel, cuja topologia não muda
+    /// com `d`).
     pub(crate) fn smoke_expand_retune_drive(&mut self, f: u32) {
         // Telemetria de TODO frame do roteiro (o FPS é o 1º sintoma).
         let dt_ms = LAST_T.with(|c| {
@@ -162,10 +166,14 @@ impl crate::App {
             c.set(Some(now));
             dt
         });
-        if (9..=110).contains(&f) {
+        if (9..=520).contains(&f) && (f.is_multiple_of(10) || f <= 30) {
             // VERTS, não área: a área a `Both` é CEGA por construção (o arredondamento
             // perde (4−π)d² na borda e ganha o MESMO no furo — cancela exato).
-            let (paths, verts) = self.gfx.as_ref().map_or((0, 0), |g| {
+            // ⚠️ E BBOX, porque verts é CEGO ao Miter/Bevel: a topologia deles não muda
+            // com `d` (um quadrado mitrado tem 4 quinas em qualquer offset), então só o
+            // Round "mexe" na contagem — um preview CONGELADO em Miter seria verde de
+            // verts. A largura do bbox cresce com `d` em qualquer join vivo.
+            let (paths, verts, bw) = self.gfx.as_ref().map_or((0, 0, 0.0), |g| {
                 let v: usize = g
                     .vec_scene
                     .paths()
@@ -174,13 +182,32 @@ impl crate::App {
                         p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>()
                     })
                     .sum();
-                (g.vec_scene.paths().len(), v)
+                let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+                for p in g.vec_scene.paths() {
+                    for vx in &p.verts {
+                        lo = lo.min(vx.anchor[0]);
+                        hi = hi.max(vx.anchor[0]);
+                    }
+                }
+                (g.vec_scene.paths().len(), v, (hi - lo).max(0.0))
             });
+            let d = self.gfx.as_ref().and_then(|g| {
+                let hero = g.hero_screen.as_ref()?;
+                let (_, v) = hero.store.slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)?;
+                Some(ph2d_tool_vector::params::slider_to_offset(v))
+            });
+            let active = self
+                .gfx
+                .as_ref()
+                .and_then(|g| g.hero_screen.as_ref())
+                .and_then(|h| h.store.active_id())
+                .map_or("-".into(), |id| format!("{id:?}"));
             eprintln!(
-                "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} paths={paths} verts={verts}",
+                "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} d={} paths={paths} verts={verts} bw={bw:.3} active={active}",
                 self.undo.depth(),
                 u8::from(self.vec_offset_retune.is_some()),
                 ph2d_panel_vector::expand_join(),
+                d.map_or("?".into(), |d| format!("{d:.3}")),
             );
         }
         match f {
@@ -199,15 +226,9 @@ impl crate::App {
                     self.on_mouse_wheel(winit::event::MouseScrollDelta::LineDelta(0.0, -24.0));
                 }
             }
-            // ROUND ANTES do arrasto — o fluxo do report (e o caso caro: o preview por
-            // frame produz arcos, e é o custo DELES que a queda de FPS acusa).
-            8 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_ROUND) {
-                Some((x, y)) => {
-                    eprintln!("[retune-smoke] clique ROUND (pré-drag) em ({x}, {y})");
-                    self.smoke_click_screen(x, y);
-                }
-                None => eprintln!("[retune-smoke] chip ROUND fora do hit-index"),
-            },
+            // SEM pré-clique de join — o arrasto sai com o MITER default, que é o fluxo do
+            // report ("muda em tempo real para round mas não muda para Miter e Bevel"): o
+            // Round dele é o 1º RETUNE, não o join do arrasto.
             // Agarra o slider de Offset no centro (d=0) e segura.
             10 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET) {
                 Some((x, y)) => {
@@ -217,34 +238,60 @@ impl crate::App {
                 }
                 None => eprintln!("[retune-smoke] slider FORA do hit-index — roteiro morto"),
             },
-            // Arrasta 120 px para a direita, 4 px/frame — o dt DESTES frames é o FPS do
-            // preview vivo.
-            11..=40 => {
+            // Arrasta 68 px para a direita, 4 px/frame — o grab caiu na BORDA esquerda do
+            // track (d≈−3.9), então 68 px param em d≈+1.3: um offset MODERADO, com as
+            // quinas do resultado DENTRO do viewport. ⚠️ De propósito: a d≈4 a forma
+            // estoura a tela e as quinas — onde o join mora — saem de vista, então NENHUM
+            // retune muda um pixel visível (foi metade do report de 2026-07-20); o regime
+            // extremo é coberto pelo gate determinístico do motor
+            // (`an_offset_past_the_shapes_death_leaves_no_phantom`), não por este smoke.
+            11..=27 => {
                 let (x, y) = GRAB.with(Cell::get);
                 self.smoke_pointer_move(x + ((f - 10) * 4) as f32, y);
             }
-            41 => {
+            // Segura o arrasto parado até f=115 (~2 s) — janela para o screenshot do
+            // preview VIVO; solta em f=116. ⚠️ A posição é REAFIRMADA todo frame: o
+            // desktop é vivo e o cursor FÍSICO também fala — o KWin reposiciona a janela
+            // recém-aberta sob o cursor parado e isso emite `CursorMoved` REAIS, que o
+            // slider ativo obedece (um hold sem re-assert já foi teleportado a d=−4 pelo
+            // cursor físico em x≈400, e a investigação perseguiu um fantasma de app que
+            // era do AMBIENTE).
+            28..=115 => {
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + 68.0, y);
+            }
+            116 => {
                 eprintln!("[retune-smoke] UP (release — a janela de retune abre aqui)");
                 self.smoke_pointer_up();
             }
-            // O retune Round→Bevel — o que o report diz que não funcionou. Verts têm de
-            // DESPENCAR (arcos → chanfros retos).
-            60 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_BEVEL) {
-                Some((x, y)) => {
-                    eprintln!("[retune-smoke] clique BEVEL em ({x}, {y})");
-                    self.smoke_click_screen(x, y);
+            // Retunes 1..3 na ordem do report: Miter→ROUND (o único que o report diz
+            // FUNCIONAR — verts sobem, quinas → arcos), Round→BEVEL (o report diz que NÃO
+            // muda — verts têm de despencar) e Bevel→MITER (o outro que "não muda").
+            //
+            // ⚠️ Cada clique é Down num frame e Up TRÊS frames depois — o timing de um
+            // mouse REAL. `smoke_click_screen` (down+up no MESMO frame) não contém a
+            // corrida que um clique humano contém: entre o Down e o Up o `held_button`
+            // suprime o diff do undo, e a janela de retune aprende a profundidade por
+            // frame — um passo que registre um frame "tarde" a mataria em silêncio.
+            170 | 290 | 410 => {
+                let (id, name) = match f {
+                    170 => (ph2d_editor::ids::VECTOR_EXPAND_JOIN_ROUND, "ROUND"),
+                    290 => (ph2d_editor::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL"),
+                    _ => (ph2d_editor::ids::VECTOR_EXPAND_JOIN_MITER, "MITER"),
+                };
+                match self.smoke_find_widget(id) {
+                    Some((x, y)) => {
+                        eprintln!("[retune-smoke] DOWN {name} em ({x}, {y})");
+                        self.smoke_pointer_down(x, y);
+                    }
+                    None => eprintln!("[retune-smoke] chip {name} fora do hit-index"),
                 }
-                None => eprintln!("[retune-smoke] chip BEVEL fora do hit-index"),
-            },
-            // …e Bevel→Miter (verts caem de novo: os chanfros somem).
-            80 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_MITER) {
-                Some((x, y)) => {
-                    eprintln!("[retune-smoke] clique MITER em ({x}, {y})");
-                    self.smoke_click_screen(x, y);
-                }
-                None => eprintln!("[retune-smoke] chip MITER fora do hit-index"),
-            },
-            100 => eprintln!("[retune-smoke] fim do roteiro — feche a janela"),
+            }
+            173 | 293 | 413 => {
+                eprintln!("[retune-smoke] UP do chip");
+                self.smoke_pointer_up();
+            }
+            520 => eprintln!("[retune-smoke] fim do roteiro — feche a janela"),
             _ => {}
         }
     }

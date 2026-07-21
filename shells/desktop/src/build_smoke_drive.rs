@@ -132,11 +132,9 @@ impl crate::App {
         );
     }
 
-    /// Clique em coordenada de TELA (o [`Self::smoke_click`] fala mundo).
-    pub(crate) fn smoke_click_screen(&mut self, x: f32, y: f32) {
-        self.smoke_pointer_down(x, y);
-        self.smoke_pointer_up();
-    }
+    // (`smoke_click_screen` — down+up no MESMO frame — foi removido de propósito: um
+    // clique humano tem Down e Up em frames SEPARADOS, e o atalho não contém as corridas
+    // que um clique real contém; todo roteiro clica por `smoke_pointer_down` + `_up`.)
 
     pub(crate) fn smoke_state(&mut self, when: &str) {
         let n = self.gfx.as_ref().map_or(0, |g| g.vec_scene.paths().len());

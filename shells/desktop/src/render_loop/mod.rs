@@ -2806,7 +2806,16 @@ impl crate::App {
                     // restauraria a cena do grab e ENGOLIRIA a edição do artista.
                     let knobs = crate::vec_expand::expand_knobs();
                     match win.step(self.undo.depth(), knobs) {
-                        crate::vec_expand::RetuneStep::Dead => {}
+                        // A morte é INTENCIONAL (retunar por cima engoliria a edição), mas
+                        // não pode ser MUDA: um chip clicado depois dela "não faz nada", e
+                        // sem este log o report vira "Join não funciona" sem pista
+                        // (2026-07-20 — a falha silenciosa custou uma investigação inteira).
+                        crate::vec_expand::RetuneStep::Dead => {
+                            eprintln!(
+                                "[ph2d-vec] janela de retune fechou (o undo andou) — \
+                                 os chips de Join/Side voltam a armar só o próximo arrasto"
+                            );
+                        }
                         crate::vec_expand::RetuneStep::Keep => {
                             self.vec_offset_retune = Some(win);
                         }

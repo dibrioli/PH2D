@@ -32,30 +32,45 @@ era o BUG REAL, no **MOTOR**, no `d` extremo:
   `an_offset_past_the_shapes_death_leaves_no_phantom` (ausência + identidade do
   cancelamento + PRESENÇA do legítimo), 3 mutações, 3/3 sangram. Sonda `--ignored`:
   `probe_offset_extreme_d`.
-- **A queda de FPS é o BUILD DEBUG — MEDIDO em `--release` (`6831b43d`+`<este>`):** o
-  arrasto vivo custa **0.8–1.5 ms/frame em release** (60 fps+; os frames de 16.7 ms são
-  vsync ocioso), e o motor no pior caso (Round, `d=4`, `--release`) é **1.5 ms** (Miter/
-  Bevel ~0.1 ms). Em **debug** o mesmo arrasto é 8–26 ms — e o Enio smoke-testa em debug
-  (`cargo run` sem `--release`), então o "trava" é o build, não o produto. **Sonda:
-  `probe_offset_cost_on_the_d_ladder` (`--release --ignored`).** ⚠️ Eu falhei em pôr
-  `--release` na instrução de smoke — a MESMA lição do áudio W7 (*"`--release` não é
-  preferência"*). **O smoke agora exige `--release`** (ver §3).
-  - **Desperdício real eliminado (o memo do preview):** o preview roda TODO frame enquanto
-    o slider está agarrado, mesmo com o mouse PARADO — e re-clonava a cena INTEIRA
-    (`clone_from(&pre)` = **O(cena toda)**, não O(seleção)) + re-rodava o sweep à toa.
-    Numa cena grande o preço por frame não é do offset, é da CÓPIA. `OffsetSession.last`
-    memoiza `(d, knobs)`: frame sem mudança pula o trabalho inteiro. Gate
-    `an_unchanged_offset_frame_is_memoized` (mutação neutraliza o memo → sangra); o guard
-    do double-pose foi retunado para `d` VARIÁVEL (0.3→0.4) pra não medir o memo em vez da
-    costura settle↔re-derive que ele guarda.
+- **A queda de FPS é o BUILD DEBUG — MEDIDO em `--release` (`6831b43d`):** o arrasto vivo
+  custa **0.8–1.5 ms/frame em release** (60 fps+; os frames de 16.7 ms são vsync ocioso),
+  e o motor no pior caso (Round, `d=4`, `--release`) é **1.5 ms** (Miter/Bevel ~0.1 ms).
+  Em **debug** o mesmo arrasto é 8–26 ms — e o Enio smoke-testa em debug (`cargo run` sem
+  `--release`, visto no terminal dele), então o "trava" é o build, não o produto. **Sonda:
+  `probe_offset_cost_on_the_d_ladder` (`--release --ignored`).** A MESMA lição do áudio W7
+  (*"`--release` não é preferência"*). **O smoke agora exige `--release`** (ver §3).
+  - ⛔ **O MEMO DO PREVIEW FOI CONSTRUÍDO (`726c7723`) e REVERTIDO (`43a6f4d0`).** Ele
+    memoizava `(d, knobs)` p/ pular o re-clone+re-offset em frames de mesmo `d` (held-still
+    numa cena grande, onde o `clone_from` é O(cena toda)). O Enio reportou regressão:
+    *"melhorou FPS mas regrediu: Round para Bevel ou Miter não muda mais"*. **Não consegui
+    inocentar o memo** — o retune FUNCIONA com ele no teste de cadeia determinístico E no
+    smoke (vários runs), e as falhas que vi foram a interferência do AMBIENTE (§1, WM ×
+    cursor físico → passo de undo espúrio → janela de retune morre), pré-existente. Mas
+    correção > otimização, e o ganho de FPS que o Enio viu **não era o memo** (o memo só
+    ajuda held-still; o nível 18 é arrasto ATIVO, onde ele nunca dispara — veio do
+    `flat_lines`/fix do fantasma, menos verts) ⇒ reverter não custou FPS. **Não
+    reconstrua sem uma reprodução do que ele quebra.**
+  - **FICOU o gate `a_chain_of_retunes_changes_the_shape_at_every_step`** (guarda
+    PERMANENTE do retune — o antigo só provava UMA troca; este prova Round→Bevel→Miter,
+    cada um mudando, e espelha o frame "aprende-depth" que o app real tem entre o `apply` e
+    o clique seguinte). E o **log de `RetuneStep::Dead`** (a janela que fecha em silêncio
+    agora avisa — é o instrumento pra diagnosticar se o "não muda" persistir).
+  - **A janela de retune é FRÁGIL a passos de undo espúrios** (design de `8c92bf46`): ela
+    morre no oráculo da profundidade do undo, e QUALQUER passo entre a aprendizagem e o
+    clique a mata em silêncio. O `settle_origins` roda todo frame; se ele produzir um
+    `Transform` levemente diferente (jitter de f64) a `WorldSnapshot` muda → passo espúrio
+    → morte. **NÃO investiguei a fundo** — se o Enio confirmar "não muda" no build
+    revertido, este é o próximo suspeito (o log de Dead dirá se é isso). Tornar a janela
+    robusta (só morrer em edição REAL, não em re-assentamento) é wave própria.
   - **Decisão de produto pendente (faixa do slider):** ±4 unidades de MUNDO sobre ~115 px
     de track (~60 px além do centro satura; clique no track TELEPORTA para ±4). Racional
-    em `params.rs` ("a vista mede ~10 unidades") é honesto mas produz gesto grosso e
-    formas-balão; faixa RELATIVA à seleção é a alternativa.
-  - **ABERTO (não construído — release não o exige):** durante o arrasto ATIVO (d muda por
-    frame) o memo não ajuda e o `clone_from` segue O(cena toda); só a seleção muda. Clonar
-    só os paths selecionados seria O(seleção), útil numa cena grande em debug — mas a
-    medição de release diz que o produto não precisa. Nomeado, não contrabandeado.
+    em `params.rs` ("a vista mede ~10 unidades") produz gesto grosso e formas-balão; faixa
+    RELATIVA à seleção é a alternativa.
+  - ⚠️ **No `d` extremo os joins CONVERGEM por correção** (`drop_phantoms`, §1): a `d=+4` os
+    três dão a MESMA área (19.8) — Round mantém arcos (264 verts), mas Bevel (16) e Miter
+    (8) ficam quase idênticos (o chanfro é minúsculo perto do offset gigante). Se o Enio
+    testar a `d` grande, "Bevel ou Miter não muda" ENTRE SI é o comportamento CORRETO
+    (eles convergem); só Round→Bevel/Miter deve mudar (arcos somem).
 - **A morte da janela de retune era MUDA** (`RetuneStep::Dead => {}`) — agora LOGA.
 - **A dança de layout do painel (ABERTO, decisão de produto):** quando o resultado do
   offset morre (aniquilação), a seleção esvazia, a seção TRANSFORM some e **os chips de

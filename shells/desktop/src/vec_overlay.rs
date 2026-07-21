@@ -30,25 +30,50 @@ pub(crate) struct VecOverlayPlan {
     /// se a forma selecionada é de fato um envelope é o [`crate::envelope_gesture::view`] que decide
     /// (devolve `None` quando não é).
     pub envelope_cage: bool,
+    /// As alças que dizem **"esta geometria é SUA, edite-a"** — âncoras/handles de nó e
+    /// alças de gradiente. É o `edit` MENOS o intervalo em que um preview de Offset está
+    /// reescrevendo a cena.
+    ///
+    /// ⚠️ **Por que separado do `edit`:** enquanto o arrasto do Offset ou a janela de
+    /// Corner/Side vivem, a geometria na cena é **TRANSIENTE** — todo clique de Corner a
+    /// re-deriva da fonte congelada (`clone_from(&pre)`). Uma âncora ali é uma alça que o
+    /// próximo clique APAGA (arrastá-la é trabalho que evapora), e — pior — ela anuncia
+    /// *"já virou sua geometria"*: o report do Enio (2026-07-21) é exatamente esse,
+    /// *"no momento que aperto Round a curva já tem todos os vertex novos criados antes
+    /// de apertar apply"*. O desenho da forma continua (é o preview); a decoração de nó
+    /// espera o **Apply Offset**.
+    ///
+    /// O `edit` **não** é derrubado junto porque ele também gateia o marquee e a gaiola
+    /// do envelope, que seguem sendo gestos legítimos com um preview aberto.
+    pub authored_handles: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
     // clicar-e-arrastar sobre a quina). A consolidação que o Enio pediu.
 }
 
 /// A política de visibilidade dos overlays vetoriais deste frame.
+///
+/// `offset_previewing` = há arrasto de Offset em curso OU a janela de Corner/Side aberta
+/// (ver [`VecOverlayPlan::authored_handles`]).
 #[must_use]
-pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
+pub(crate) fn vec_overlay_plan(
+    vector_active: bool,
+    mode: DrawMode,
+    offset_previewing: bool,
+) -> VecOverlayPlan {
+    let edit = vector_active
+        && !matches!(
+            mode,
+            DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
+        );
     VecOverlayPlan {
+        authored_handles: edit && !offset_previewing,
         // O **Build** também fica de fora, e pela mesma razão do Select: o que ele
         // manipula é a REGIÃO, não a âncora. Âncoras e handles por cima de um emaranhado
         // de formas sobrepostas só atrapalham a leitura das faces — que é a única coisa
         // que o artista precisa enxergar ali. O **Pick Shapes** (Blend) idem: o que se
         // manipula é a LISTA de formas, não os nós de uma delas.
-        edit: vector_active
-            && !matches!(
-                mode,
-                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
-            ),
+        edit,
         snap_guides: vector_active,
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
         // `envelope_gesture::view` que resolve — aqui é só a política de MODO.
@@ -64,7 +89,7 @@ mod tests {
     /// forma), mas os overlays de edição de nó NÃO — lá quem fala é o gizmo.
     #[test]
     fn select_mode_shows_snap_guides_but_not_edit_overlays() {
-        let plan = vec_overlay_plan(true, DrawMode::Select);
+        let plan = vec_overlay_plan(true, DrawMode::Select, false);
         assert!(
             plan.snap_guides,
             "guia de snap no Select (gizmo-move encaixa)"
@@ -76,7 +101,7 @@ mod tests {
     /// nós por cima de formas sobrepostas esconde exatamente o que o artista precisa ver.
     #[test]
     fn build_mode_shows_no_node_overlays_because_it_manipulates_regions() {
-        let plan = vec_overlay_plan(true, DrawMode::Build);
+        let plan = vec_overlay_plan(true, DrawMode::Build, false);
         assert!(!plan.edit, "sem âncoras/handles no Build");
         assert!(plan.snap_guides, "as guias de snap valem em todo modo");
     }
@@ -93,7 +118,7 @@ mod tests {
             DrawMode::Fillet,
             DrawMode::Chamfer,
         ] {
-            let plan = vec_overlay_plan(true, mode);
+            let plan = vec_overlay_plan(true, mode, false);
             assert!(plan.edit, "{mode:?} desenha âncoras/handles");
             assert!(plan.snap_guides, "{mode:?} desenha guias de snap");
         }
@@ -103,7 +128,7 @@ mod tests {
     /// formas, não os nós de uma. O realce das escolhidas + a prévia do spine vêm de outro passe.
     #[test]
     fn pickblend_mode_shows_no_node_overlays() {
-        let plan = vec_overlay_plan(true, DrawMode::PickBlend);
+        let plan = vec_overlay_plan(true, DrawMode::PickBlend, false);
         assert!(!plan.edit, "sem âncoras/handles no Pick Shapes");
         assert!(plan.snap_guides, "guias de snap valem em todo modo");
     }
@@ -111,7 +136,7 @@ mod tests {
     /// Tool inativa: nenhum overlay vetorial (o canvas é de outra ferramenta).
     #[test]
     fn inactive_tool_draws_no_vector_overlays() {
-        let plan = vec_overlay_plan(false, DrawMode::Node);
+        let plan = vec_overlay_plan(false, DrawMode::Node, false);
         assert!(!plan.edit);
         assert!(!plan.snap_guides);
         assert!(!plan.envelope_cage);
@@ -127,7 +152,7 @@ mod tests {
     /// inativa idem.
     #[test]
     fn the_envelope_cage_belongs_to_node_mode_alone() {
-        assert!(vec_overlay_plan(true, DrawMode::Node).envelope_cage);
+        assert!(vec_overlay_plan(true, DrawMode::Node, false).envelope_cage);
         for mode in [
             DrawMode::Select,
             DrawMode::Pen,
@@ -136,13 +161,40 @@ mod tests {
             DrawMode::PickBlend,
         ] {
             assert!(
-                !vec_overlay_plan(true, mode).envelope_cage,
+                !vec_overlay_plan(true, mode, false).envelope_cage,
                 "{mode:?} NÃO desenha a gaiola do envelope"
             );
         }
         assert!(
-            !vec_overlay_plan(false, DrawMode::Node).envelope_cage,
+            !vec_overlay_plan(false, DrawMode::Node, false).envelope_cage,
             "tool inativa não desenha a gaiola"
         );
+    }
+
+    /// **Um preview de Offset NÃO ganha alças de autoria.** Enquanto o arrasto ou a janela
+    /// de Corner/Side vivem, a geometria na cena é transiente (todo Corner a re-deriva da
+    /// fonte): uma âncora ali é uma alça que o próximo clique apaga, e ela ANUNCIA que a
+    /// curva já foi assada — o report do Enio de 2026-07-21. O `edit` **fica**: o marquee e
+    /// a gaiola do envelope seguem legítimos com um preview aberto.
+    #[test]
+    fn an_offset_preview_draws_no_authored_handles() {
+        for mode in [DrawMode::Pen, DrawMode::Node] {
+            let live = vec_overlay_plan(true, mode, true);
+            assert!(
+                !live.authored_handles,
+                "{mode:?}: o preview de Offset não pode desenhar âncoras/alças — elas \
+                 evaporam no próximo Corner e dizem 'já é sua geometria'"
+            );
+            assert!(
+                live.edit,
+                "{mode:?}: o marquee/gaiola seguem vivos durante o preview"
+            );
+            let settled = vec_overlay_plan(true, mode, false);
+            assert!(
+                settled.authored_handles,
+                "{mode:?}: consolidado (sem preview), as âncoras VOLTAM — o gate mede \
+                 presença E ausência"
+            );
+        }
     }
 }

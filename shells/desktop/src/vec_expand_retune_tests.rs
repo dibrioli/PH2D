@@ -185,3 +185,85 @@ fn a_drag_that_never_churned_opens_no_retune_window() {
         "grab-e-solta sem mover não deixa janela armada"
     );
 }
+
+/// **Cada preview re-deriva da FONTE, nunca do preview anterior** — a frase do Enio
+/// (2026-07-21): *"a idéia é bevel desfazer round e aplicar bevel"*. O oráculo NÃO é "os
+/// dois diferem" (isso o gate da cadeia já diz, e passaria mesmo compondo): é a
+/// IDENTIDADE com um Bevel **fresco da forma pristina**, âncora a âncora.
+///
+/// A composição é a hipótese que o artista tem quando VÊ os anchors do resultado no
+/// documento (Round deixa ~dezenas de âncoras nos arcos): se o Bevel os chanfrasse, o
+/// resultado teria a contagem do Round, não a do Bevel. Este gate é a resposta.
+#[test]
+fn each_preview_re_derives_from_the_source_never_from_the_previous_preview() {
+    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
+    ph2d_panel_vector::set_expand_join(0);
+    ph2d_panel_vector::set_expand_side(2);
+    let d = 0.5;
+
+    // O que um Bevel SOZINHO produz a partir da fonte pristina (o mundo assado, como o
+    // `expand_selection` faz) — o oráculo, computado FORA do caminho do preview.
+    let src_id = scene.paths()[0].id;
+    let mut world = scene.paths()[0].clone();
+    ph2d_vec_scene::bake_xform(&mut world, &xform_of(&xf, src_id));
+    let fresh =
+        ph2d_vec_boolean::offset_path(&world, d, LineJoin::Bevel, ph2d_vec_scene::OffsetSide::Both);
+    let fresh_anchors: Vec<[f64; 2]> = fresh
+        .iter()
+        .flat_map(|p| p.verts.iter().map(|v| v.anchor))
+        .collect();
+
+    // O caminho REAL: arrasta, solta, Round, depois Bevel.
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, d);
+    sess.preview(&mut scene, &mut pen, d);
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    let mut win = OffsetRetune::after_release(sess, d).expect("churnou");
+    assert_eq!(win.step(7, expand_knobs()), RetuneStep::Keep);
+
+    for join in [1u8, 2u8] {
+        assert_eq!(
+            win.step(7, expand_knobs()),
+            RetuneStep::Keep,
+            "aprende depth"
+        );
+        ph2d_panel_vector::set_expand_join(join);
+        let k = expand_knobs();
+        assert_eq!(win.step(7, k), RetuneStep::Retune, "join {join}");
+        win.apply(&mut scene, &mut pen, &mut sim, &map, k);
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+        if join == 1 {
+            // O Round de fato materializa MUITAS âncoras (é o que o artista vê no Node).
+            let n: usize = scene.paths().iter().map(|p| p.verts.len()).sum();
+            assert!(n > 8, "o Round tem de deixar arcos (âncoras: {n})");
+        }
+    }
+
+    // Depois de Round→Bevel a cena tem de ser o Bevel FRESCO, âncora a âncora.
+    let live = crate::vec_transform::build(&sim, &map);
+    let got: Vec<[f64; 2]> = scene
+        .paths()
+        .iter()
+        .flat_map(|p| {
+            let x = xform_of(&live, p.id);
+            p.verts.iter().map(move |v| x.apply(v.anchor))
+        })
+        .collect();
+    assert_eq!(
+        got.len(),
+        fresh_anchors.len(),
+        "o Bevel depois do Round tem {} âncoras; um Bevel fresco tem {} — o preview \
+         COMPÔS sobre o anterior em vez de re-derivar da fonte",
+        got.len(),
+        fresh_anchors.len()
+    );
+    for (g, f) in got.iter().zip(&fresh_anchors) {
+        assert!(
+            (g[0] - f[0]).abs() < 1e-6 && (g[1] - f[1]).abs() < 1e-6,
+            "âncora {g:?} ≠ {f:?} — o Bevel não saiu da forma pristina"
+        );
+    }
+    ph2d_panel_vector::set_expand_join(0);
+}

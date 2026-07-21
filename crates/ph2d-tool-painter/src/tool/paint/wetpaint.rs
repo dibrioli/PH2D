@@ -71,6 +71,9 @@ pub(crate) struct WetPaintState {
     /// never run `paint_begin` at all, so the flag is exactly "dabs are the
     /// artist's hand, once".
     pub(super) live_gesture: bool,
+    /// The authored knob values (W3) — survive the session, the mode and the
+    /// tool round-trips; the section reset restores [`WetKnobs::default`].
+    pub(super) knobs: WetKnobs,
 }
 
 pub(super) struct WetSession {
@@ -104,6 +107,11 @@ pub(super) struct WetSession {
     /// ignored until the bake (Enio 2026-07-21, "os ajustes ... não estão
     /// sendo levados em consideração").
     paper_key: Option<PaperKey>,
+    /// The [`WetKnobs`] last pushed into the engine — starts at the defaults
+    /// (the engine boots with exactly them, gate-pinned) and the reconcile
+    /// pushes the authored values when they differ. Same law as `paper_key`:
+    /// the knobs are authored state, the session is not.
+    applied_knobs: WetKnobs,
 }
 
 /// Everything the paper seed reads — the reconcile re-seeds exactly when one
@@ -118,6 +126,31 @@ struct PaperKey {
     period: [f32; 2],
 }
 
+impl WetSession {
+    /// Push the authored knobs into the engine when they moved (W3). ONE
+    /// door for the stamp AND the tick — Dry Speed and Gravity act on water
+    /// already sitting on the canvas, so a knob must land while the sim
+    /// runs, not only at the next stroke. Unchanged knobs cost one struct
+    /// compare. The tuning knobs go through `Engine::set_knob` (the door
+    /// that reacts to what a knob invalidates); none of the seven carries a
+    /// rebuild kind today, but the door stays the law.
+    fn reconcile_knobs(&mut self, knobs: WetKnobs) {
+        if self.applied_knobs == knobs {
+            return;
+        }
+        use ph2d_wet_paint::tuning::Knob;
+        self.engine.sliders.water = knobs.water;
+        self.engine.sliders.erase = knobs.erase;
+        self.engine.set_knob(Knob::PigmentPerDab, knobs.pigment);
+        self.engine.set_knob(Knob::Pickup, knobs.pickup);
+        self.engine.set_knob(Knob::Evaporation, knobs.dry_speed);
+        self.engine
+            .set_knob(Knob::EdgeDarkening, knobs.edge_darkening);
+        self.engine.set_knob(Knob::Gravity, knobs.gravity);
+        self.applied_knobs = knobs;
+    }
+}
+
 /// One replication lane of the open stroke — see [`WetSession::lanes`].
 struct Lane {
     pos: [f32; 2],
@@ -125,56 +158,6 @@ struct Lane {
 }
 
 impl PainterTool {
-    /// The Wet Paint checkbox's setter (the panel's Enable + the smoke's
-    /// arm). Arming while holding the plain Brush enters the mode on the
-    /// spot; disarming while wet exits to the plain Brush — and the exit's
-    /// teardown ends the session, which IS the bake. From any other tool
-    /// the flag just flips: the next `"brush"` honours it.
-    pub fn set_wetpaint_armed(&mut self, on: bool) {
-        if self.paint.wetpaint.armed == on {
-            return;
-        }
-        self.paint.wetpaint.armed = on;
-        match self.paint.paint_mode {
-            PaintMode::Paint if on && !self.paint.eraser => self.set_paint_tool_mode("brush"),
-            PaintMode::WetPaint if !on => self.set_paint_tool_mode("brush"),
-            _ => {}
-        }
-    }
-
-    /// The checkbox Click ([`ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE`]).
-    pub fn toggle_wetpaint_armed(&mut self) {
-        self.set_wetpaint_armed(!self.paint.wetpaint.armed);
-    }
-
-    /// The section reset — the Watercolor reset's exact semantics: restore
-    /// the section's defaults INCLUDING the enable. Today the section is
-    /// only the enable; the W3 knobs join here.
-    pub fn reset_brush_wetpaint(&mut self) {
-        self.set_wetpaint_armed(false);
-    }
-
-    /// Route the Wet Paint section controls (Enable + reset) from the layers
-    /// panel's generic channel — sibling of `route_brush_watercolor_event`.
-    pub(crate) fn route_brush_wetpaint_event(
-        &mut self,
-        event: &ph2d_editor_core::tool::PanelEvent,
-    ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
-        use ph2d_editor_core::tool::PanelEvent;
-        match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_ENABLE => {
-                self.toggle_wetpaint_armed();
-                true
-            }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_RESET => {
-                self.reset_brush_wetpaint();
-                true
-            }
-            _ => false,
-        }
-    }
-
     /// Whether the WET module owns this batch of dabs — the ONE routing
     /// question, asked by BOTH `stamp_dabs` (to bypass the snapshot/restore
     /// wrapper, which would kill the session — see W2.5) and
@@ -200,10 +183,7 @@ impl PainterTool {
         // the CUMULATIVE stroke methods — DragDot/Anchored/Line re-stamp a
         // moving shape every preview frame, which against a non-idempotent
         // fluid deposit would pile paint while the artist just looks (W2).
-        let cumulative = matches!(
-            brush.stroke_method,
-            StrokeMethod::Dots | StrokeMethod::Airbrush | StrokeMethod::Space
-        );
+        let cumulative = brush.stroke_method.is_incremental();
         if dabs.is_empty() || w == 0 || h == 0 || !self.paint.wetpaint.live_gesture || !cumulative {
             return;
         }
@@ -228,6 +208,7 @@ impl PainterTool {
                 lanes: Vec::new(),
                 stroke_open: false,
                 paper_key: None,
+                applied_knobs: WetKnobs::default(),
             });
         }
         // Take the session out so the prep below can borrow `self.paint`'s
@@ -275,6 +256,8 @@ impl PainterTool {
             }
             sess.paper_key = want;
         }
+        // ── The W3 knobs — same reconcile law as the paper. ────────────────
+        sess.reconcile_knobs(self.paint.wetpaint.knobs);
         // ── The dab's SILHOUETTE — the painter's, not the engine's ─────────
         // `silhouette_at` is the single source of the dab's shape (falloff ×
         // Shape image/procedural × flatten/rotate footprint); the engine's
@@ -500,9 +483,13 @@ impl PainterTool {
             return;
         }
         self.wetpaint_guard();
+        let knobs = self.paint.wetpaint.knobs;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
+        // Knobs land while the water SITS too (Dry Speed / Gravity are sim
+        // forces): the tick reconciles with the same door as the stamp.
+        sess.reconcile_knobs(knobs);
         sess.acc += dt_s;
         let mut steps = 0;
         while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS {

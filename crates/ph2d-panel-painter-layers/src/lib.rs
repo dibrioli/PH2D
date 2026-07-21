@@ -73,6 +73,7 @@ mod populate_sections;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;
+pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,

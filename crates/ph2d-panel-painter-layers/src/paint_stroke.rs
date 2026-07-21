@@ -544,13 +544,9 @@ fn stroke_method_options() -> Vec<DropdownOption<u8>> {
     // dropped from the menu. Clone ALSO gets Anchored (a stationary growing stamp — it clones fine
     // without motion, unlike Smear); it re-stamps through the same clone dispatch via the preview path.
     let brush = crate::state::current_brush();
-    let methods: &[u8] = if brush.is_some_and(|b| b.is_clone) {
-        &[0, 1, 3, 4]
-    } else if brush.is_some_and(|b| b.paints_no_color()) {
-        &[0, 1, 3]
-    } else {
-        &[0, 4, 3, 1, 2, 5, 6, 7, 8, 9]
-    };
+    // The narrowing law (Smear/Blur/Clone incremental-only · Wet Paint incremental-only,
+    // law #3) lives in `crate::stroke_method_offer` — pure and gate-tested from `tests/`.
+    let methods: &[u8] = crate::stroke_method_offer::offered_stroke_methods(brush.as_ref());
     methods
         .iter()
         .map(|&m| {

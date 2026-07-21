@@ -36,7 +36,18 @@ pub(crate) fn paint_appearance_sections(
         // Wet Paint FIRST — like Watercolor it is a switch that reinterprets the deposit
         // (the fluid engine takes over), so it sits at the head of the appearance half.
         y = crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush);
-        y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
+        // The Watercolor section HIDES while Wet Paint is armed (law #3 — hidden, never
+        // dimmed): its optics reinterpret the DIGITAL deposit, and in wet mode the fluid
+        // engine owns the deposit outright — two wet-media switches over one brush would
+        // be two answers to "what does this stroke do". Inert by construction too: the wet
+        // slot's `watercolor` flag can only be toggled through this section, which is
+        // never painted while armed. (Impasto stays — its Lighting card is the CANVAS's,
+        // gate-pinned reachable in wet.)
+        if !brush.wetpaint {
+            y = crate::paint_watercolor::paint_watercolor_section(
+                ctx, theme, x, content_w, y, brush,
+            );
+        }
         y = crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush);
     }
 

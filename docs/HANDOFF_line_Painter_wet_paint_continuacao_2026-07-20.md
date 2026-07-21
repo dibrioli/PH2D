@@ -310,6 +310,45 @@ o gate que faltava); tirar só o braço `rebake_paper` derruba só o do desarme.
 
 **W2 restante:** só o W2.8, e ele virou FORK do Enio (ver bloco W2.8 acima) — a saída (2) o dissolve no W3.
 
+**W3 LANDOU (2026-07-21) — os knobs curados + os incompatíveis ESCONDIDOS (a saída 2 do fork,
+executada):** a seção Wet Paint ganhou **7 knobs** curados da tabela §16 do SPEC (o resto segue
+constante nomeada do engine): **Water** (`sliders.water`) · **Pigment** (`PigmentPerDab`) ·
+**Pickup** · **Dry Speed** (`Evaporation`) · **Edge Darkening** · **Gravity** · **Erase
+Strength** (`sliders.erase` — o slider prometido no W2.6). **A espinha é o MESMO reconcile do
+Paper:** os valores são estado AUTORADO (`WetPaintState.knobs: WetKnobs` — a sessão é
+display-state e morre em qualquer mutação alheia; knob morando no engine esqueceria a si mesmo
+a cada undo); a sessão guarda `applied_knobs` e reconcilia **no batch E no tick** (Dry
+Speed/Gravity agem sobre água que JÁ está na tela — só-no-próximo-traço leria como knob morto).
+⚠️ **`WetKnobs` fala `f64` de propósito** (a precisão do engine): `f64::from(0.4f32)` =
+`0.4000000059604645` ≠ o boot `0.4` do engine — em f32 a equivalência de boot seria só
+aproximada e o reconcile empurraria ruído de representação em knob NÃO tocado na primeira vez
+que outro se movesse; o gate `the_engine_boots_with_the_knob_defaults` pina a equivalência
+EXATA (mutação de drift no DEFAULT sangra). Rota: `PanelEvent::SetValue` por
+`PAINTER_WETPAINT_FIELDS` (espelho dos WATERCOLOR_FIELDS — `number_field::is_param_field` +
+populate + `card_row`); reset da seção = knobs→DEFAULT + desarme. **Lei #3 executada em DOIS
+esconderijos, com presença E ausência gateadas:** (a) a **seção Watercolor SOME com o wet
+armado** (dois interruptores wet-media sobre um pincel = duas respostas a "o que este traço
+faz"; inerte por construção — o flag `watercolor` do slot wet só é togglável pela seção que
+nunca pinta); (b) o **dropdown Method só oferece os INCREMENTAIS** (Dots/Airbrush/Space) com o
+wet armado — o predicado novo **`StrokeMethod::is_incremental`** é a porta única (a mesma
+pergunta vivia em 3 cópias: o menu do Smear/Clone, o `cumulative` da rota wet e a coerção), e a
+decisão do menu virou **`stroke_method_offer::offered_stroke_methods`** (função pura, módulo
+novo — `paint_stroke.rs` está a 596/600). **E o cinto:** entrar no modo wet **COERCE** método
+não-incremental do slot para Space via `set_brush_stroke_method` (que também baka o shape set
+aberto — é o que entrar no wet significa); o menu esconde, o cinto pega as portas que o menu
+não possui (undo restaurando shape edit, slots de sessões antigas). **9 gates novos** (5 tool +
+4 painel, o de SetValue pelo seam REAL `apply_panel_event` — a lição do checkbox morto) e **9
+mutações, 9 sangram só as suas** (reconcile mudo · tick sem reconcile · reset sem knobs ·
+DEFAULT driftado · coerção fora · watercolor sempre pinta · rows incondicionais · braço wet
+fora do offer · FIELDS fora do is_param_field). LOC: `wetpaint.rs` estourou (754) ⇒ split
+**`wetpaint_settings.rs`** (o estado autorado + rotas; espelho do `watercolor_settings.rs`);
+`paint.rs` voltou a **700 EXATOS** (2 pares de `pub use` fundidos); `event.rs` do painel a
+**600 exatos** (o aviso da allowlist mora no doc do `PAINTER_WETPAINT_CLICKS`). **Smoke do
+W3:** armar o wet → 7 rows na seção; Watercolor some; Method só com 3 opções; girar Dry
+Speed/Gravity com água viva deve responder na hora; Erase Strength dirige a borracha; Reset
+devolve tudo e desarma. **Aberto pós-W3:** o gap documentado do undo-restaura-shape-edit em
+modo wet (o cinto coerce na PRÓXIMA entrada, não no restore em si).
+
 ## §2.5 — W1 (histórico do andamento; superado pelo §2.4)
 
 - **Inc.1 COMMITADO (`c329d126`)**: `PaintMode::WetPaint` (slot 11, `PAINT_MODE_COUNT` 12) + as

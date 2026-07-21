@@ -1094,3 +1094,158 @@ fn the_shapes_tone_knobs_shift_the_wet_silhouette() {
          knob never reached the wet silhouette (default {holed_default}, bright {holed_bright})"
     );
 }
+
+// ── W3 — the curated knobs + the incompatible-method coercion ─────────────
+
+/// The engine BOOTS with exactly [`WetKnobs::DEFAULT`] — the equivalence the
+/// reconcile's early-return rests on: if the two drift, every fresh session
+/// is silently reconciled away from the very defaults it booted with (or
+/// worse, isn't — and the panel shows numbers the engine never had).
+/// Mutation that bleeds it: any drifted field in `WetKnobs::DEFAULT`.
+#[test]
+fn the_engine_boots_with_the_knob_defaults() {
+    use ph2d_wet_paint::tuning::Knob;
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+    let d = WetKnobs::default();
+    let e = &sess.engine;
+    assert_eq!(e.sliders.water, f64::from(d.water));
+    assert_eq!(e.sliders.erase, f64::from(d.erase));
+    assert_eq!(e.tuning.get(Knob::PigmentPerDab), f64::from(d.pigment));
+    assert_eq!(e.tuning.get(Knob::Pickup), f64::from(d.pickup));
+    assert_eq!(e.tuning.get(Knob::Evaporation), f64::from(d.dry_speed));
+    assert_eq!(
+        e.tuning.get(Knob::EdgeDarkening),
+        f64::from(d.edge_darkening)
+    );
+    assert_eq!(e.tuning.get(Knob::Gravity), f64::from(d.gravity));
+}
+
+/// A turned knob reaches the LIVE engine — through the panel's own channel
+/// (`SetValue`), at the next dab batch AND at the bare tick (Dry Speed and
+/// Gravity act on water already sitting on the canvas; a knob that only
+/// lands on the next stroke would read as dead while the water visibly
+/// flows). Mutations that bleed it: the reconcile body dropped (stamp half),
+/// the tick's reconcile call dropped (tick half).
+#[test]
+fn a_turned_knob_reaches_the_live_engine() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_wet_paint::tuning::Knob;
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    assert!(
+        t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+            core_ids::PAINTER_WETPAINT_PIGMENT,
+            1200.0
+        )),
+        "the Pigment SetValue was not consumed by the wet route"
+    );
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_WETPAINT_WATER,
+        0.25
+    )));
+    // The stamp door: the next batch reconciles.
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Up));
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect("session");
+        assert_eq!(sess.engine.tuning.get(Knob::PigmentPerDab), 1200.0);
+        assert_eq!(sess.engine.sliders.water, 0.25);
+    }
+    // The tick door: no stroke — the knob still lands while the water sits.
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_WETPAINT_DRY_SPEED,
+        4.0
+    )));
+    t.wetpaint_tick(0.05);
+    let sess = t.paint.wetpaint.session.as_ref().expect("session");
+    assert_eq!(
+        sess.engine.tuning.get(Knob::Evaporation),
+        4.0,
+        "the tick never reconciled — a knob turned while the water flows is dead \
+         until the next stroke"
+    );
+}
+
+/// The knobs are AUTHORED state: they survive the session (which is
+/// display-state and dies on any tool switch) and the round-trip — the new
+/// session's engine carries them from its first batch. Mutation that bleeds
+/// it: knobs stored on the session instead of `WetPaintState`.
+#[test]
+fn the_knobs_survive_the_session_and_the_tool_round_trip() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_wet_paint::tuning::Knob;
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_WETPAINT_PIGMENT,
+        1500.0
+    )));
+    t.set_paint_tool_mode("smear"); // session dies (ending is the bake)
+    assert!(t.paint.wetpaint.session.is_none());
+    t.set_paint_tool_mode("brush"); // armed ⇒ back to the fluid
+    stroke_across(&mut t);
+    let sess = t.paint.wetpaint.session.as_ref().expect("a fresh session");
+    assert_eq!(
+        sess.engine.tuning.get(Knob::PigmentPerDab),
+        1500.0,
+        "the authored knob did not survive the session round-trip"
+    );
+}
+
+/// The section reset restores the knob DEFAULTS (and disarms — the enable is
+/// part of the section's defaults, gated elsewhere). Mutation that bleeds
+/// it: `reset_brush_wetpaint` losing the knobs line.
+#[test]
+fn the_wet_section_reset_restores_the_knob_defaults() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = tool_in_mode("wetpaint");
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        core_ids::PAINTER_WETPAINT_GRAVITY,
+        0.03
+    )));
+    assert_ne!(t.wet_knobs(), WetKnobs::default());
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(core_ids::PAINTER_WETPAINT_RESET)));
+    assert_eq!(
+        t.wet_knobs(),
+        WetKnobs::default(),
+        "the section reset left the knobs authored"
+    );
+}
+
+/// Entering Wet Paint COERCES a non-incremental stroke method to Space: the
+/// fluid deposit is not idempotent, so the re-stamping methods paint NOTHING
+/// through the wet route — a brush that silently does nothing is the exact
+/// shape of bug this line keeps finding. The panel hides those options while
+/// armed (law #3); this is the belt for the doors the menu does not own.
+/// Mutation that bleeds it: the coercion arm dropped from
+/// `set_paint_tool_mode`.
+#[test]
+fn entering_wet_coerces_a_non_incremental_method_to_space() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Door 1: arming from the plain Brush with a Line method in hand.
+    let mut t = tool_in_mode("brush");
+    t.set_brush_stroke_method(StrokeMethod::Line.to_u8());
+    assert_eq!(t.paint.brush.stroke_method, StrokeMethod::Line);
+    t.set_wetpaint_armed(true);
+    assert_eq!(
+        t.paint.brush.stroke_method,
+        StrokeMethod::Space,
+        "arming with a shape method left a brush that paints nothing"
+    );
+    // Door 2: re-entering the mode with a dirty WET slot.
+    let mut t = tool_in_mode("wetpaint");
+    t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
+    t.set_paint_tool_mode("smear");
+    t.set_paint_tool_mode("brush"); // armed ⇒ wet again
+    assert_eq!(
+        t.paint.brush.stroke_method,
+        StrokeMethod::Space,
+        "re-entering wet kept the non-incremental method in the wet slot"
+    );
+}

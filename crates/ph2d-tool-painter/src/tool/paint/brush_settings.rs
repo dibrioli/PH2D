@@ -345,6 +345,8 @@ pub struct BrushSettings {
     /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the
     /// Brush IS the fluid and "brush" always returns to Wet Paint.
     pub wetpaint: bool,
+    /// The W3 curated knob values (authored, tool-global — `WetPaintState::knobs`).
+    pub wet_knobs: crate::WetKnobs,
 
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).

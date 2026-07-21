@@ -186,6 +186,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Watercolor section — the `watercolor` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
     wetpaint: false,
+    wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
     watercolor: false,
     watercolor_active: false,
     watercolor_shape_auto: true,

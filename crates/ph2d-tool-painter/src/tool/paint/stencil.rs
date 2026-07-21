@@ -420,6 +420,19 @@ impl PainterTool {
         // the checkbox / its reset disarm), exactly like Watercolor's flag.
         if new_mode == PaintMode::WetPaint {
             self.paint.wetpaint.armed = true;
+            // Wet Paint only deposits through the CUMULATIVE stroke methods
+            // (Dots / Airbrush / Space — the fluid deposit is not idempotent,
+            // so the re-stamping methods are refused by the route). A wet
+            // slot holding a non-cumulative method would be a brush that
+            // paints NOTHING with no error — so entering the mode coerces it
+            // to the default Space, through the method setter (which also
+            // bakes any open shape set, exactly what entering wet means).
+            // The panel's Method dropdown hides those options while armed
+            // (law #3); this is the belt for the doors the dropdown does not
+            // own (undo restoring a shape edit, older sessions' slots).
+            if !self.paint.brush.stroke_method.is_incremental() {
+                self.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::Space.to_u8());
+            }
         }
         // The brush slot has just been swapped underneath us, so the "does anything read `Dab::dir`?" answer
         // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore

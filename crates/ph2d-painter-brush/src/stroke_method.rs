@@ -91,6 +91,18 @@ impl StrokeMethod {
         matches!(self, Self::Space)
     }
 
+    /// The **incremental** methods — one dab appended per processed sample, never a re-stamp of
+    /// already-emitted geometry (Dots / Airbrush / Space). These are the only methods a
+    /// NON-IDEMPOTENT deposit can accept: the shape editors and the interactive methods re-emit
+    /// their whole dab list every preview frame, which against a fluid / accumulating target
+    /// would pile paint while the artist just looks. One predicate on purpose — the Smear /
+    /// Blur / Clone menu narrowing, the Wet Paint dab route and the Wet Paint entry coercion all
+    /// ask THIS question, and three private copies of the set would drift.
+    #[must_use]
+    pub fn is_incremental(self) -> bool {
+        matches!(self, Self::Dots | Self::Airbrush | Self::Space)
+    }
+
     /// Whether this method only ever shows the **latest** pointer position, so a host may coalesce a burst
     /// of raw pointer Moves into ONE delivery per frame with zero visible change.
     ///

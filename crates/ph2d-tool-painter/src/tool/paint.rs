@@ -31,7 +31,7 @@ mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay s
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
-pub use stroke_multi::StrokeOpBadge;
+pub use self::{stroke_multi::StrokeOpBadge, wetpaint_settings::WetKnobs};
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
@@ -94,9 +94,9 @@ pub(crate) use symmetry::SymmetryPick;
 mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
+mod wetpaint_settings; // Wet Paint authored state (checkbox + W3 knobs + routing) — LOC-cap sibling
+pub use self::{curve_gizmo::TransformGizmo, curve_tangent::TangentHandles};
 pub use curve::CurveOverlay;
-pub use curve_gizmo::TransformGizmo;
-pub use curve_tangent::TangentHandles;
 /// The Ellipse stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod ellipse;
 pub use ellipse::EllipseOverlay;

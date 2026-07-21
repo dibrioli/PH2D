@@ -236,7 +236,7 @@ pub use paint::{
     DEFORM_TEMPERAMENT_TRANSFORM, DeformGizmoView, EllipseOverlay, FilterScope, ImpastoLight,
     LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS,
     PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview,
-    StrokeOpBadge, TangentHandles, TransformGizmo, brush_falloff_weight_at,
+    StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs, brush_falloff_weight_at,
 };
 mod runtime;
 mod trait_impls;

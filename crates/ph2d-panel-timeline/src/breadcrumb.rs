@@ -112,7 +112,12 @@ pub(crate) fn trail(snap: &TimelineViewSnapshot) -> Vec<(usize, String)> {
 /// ruler already refuses to draw a playhead there ([`crate::ruler_clock`]); an absent marker
 /// with no explanation reads as broken, and naming the refusal is this module's whole idiom.
 pub(crate) fn status(snap: &TimelineViewSnapshot) -> Option<Status> {
-    if snap.crumbs.is_empty() {
+    if snap.crumbs.is_empty() || snap.keys_mode {
+        // The readout states a fact about the ARRANGE ruler (where the instance plays on
+        // it). On the Keys tab that ruler is not on screen and the host readouts publish
+        // `None` — printing "not playing here" there was a wrong statement standing next
+        // to a clip that plays fine (Enio's screenshot, 2026-07-20). The TRAIL stays: it
+        // is navigation, and clicking it is the way back to Arrange.
         return None;
     }
     Some(
@@ -262,6 +267,18 @@ mod tests {
             text.contains("4.00") && text.contains("12.00"),
             "the readout has to carry both ends, got {text:?}"
         );
+    }
+
+    /// **On the Keys tab the readout is SILENT** — it states a fact about the Arrange
+    /// ruler, which is not on screen there; "not playing here" beside a clip that plays
+    /// fine was a wrong statement (Enio's screenshot, 2026-07-20). The trail still paints.
+    #[test]
+    fn the_status_is_silent_on_the_keys_tab() {
+        let mut s = snap(true, None);
+        s.keys_mode = true;
+        assert_eq!(status(&s), None);
+        s.keys_mode = false;
+        assert_eq!(status(&s), Some(Status::NotPlaying), "de volta ao Arrange, ele fala");
     }
 
     /// **When it is not playing here, the readout SAYS so.**

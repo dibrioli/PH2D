@@ -354,6 +354,7 @@ fn scrubbing_inside_a_container_seeks_the_timeline_second_not_the_local_one() {
     let mut state = TimelinePanelState {
         view_start_s: 0.0,
         view_span_s: 8.0, // a régua mostra os 8 s do INTERIOR
+        tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
         ..TimelinePanelState::default()
     };
     host.set_slider_value(ids::TIMELINE_RULER, 0.5);
@@ -383,6 +384,7 @@ fn scrubbing_at_the_scene_root_still_seeks_the_raw_second() {
     let mut state = TimelinePanelState {
         view_start_s: 0.0,
         view_span_s: 8.0,
+        tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
         ..TimelinePanelState::default()
     };
     host.set_slider_value(ids::TIMELINE_RULER, 0.5);
@@ -419,6 +421,7 @@ fn without_an_inverse_the_scrub_seeks_nowhere() {
     let mut state = TimelinePanelState {
         view_start_s: 0.0,
         view_span_s: 8.0,
+        tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
         ..TimelinePanelState::default()
     };
     host.set_slider_value(ids::TIMELINE_RULER, 0.5);
@@ -569,4 +572,128 @@ fn a_deep_trail_paints_a_clickable_segment_for_every_level() {
         "na raiz a trilha não paga um pixel"
     );
     set_current_timeline(None);
+}
+
+/// **Na aba KEYS dentro de um container, a régua scrubba o relógio do CLIP — valor CRU.**
+///
+/// O braço do scrub perguntava só à trilha ("estou dentro?") e ao mapa; na Keys a trilha
+/// está cheia e os readouts do host publicam `None` (são Arrange-only desde o fix do panic)
+/// ⇒ o gesto era ENGOLIDO e o playhead congelava (Enio, 2026-07-20: *"ao pular de jump para
+/// keys, não consigo mover playhead"*). A pergunta é da ABA: a régua da Keys nem tem mapa a
+/// aplicar.
+#[test]
+fn the_keys_ruler_scrubs_raw_inside_a_container() {
+    use ph2d_panel_timeline::tab::Tab;
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("Walk".into());
+    doc.add_lane_in(StackHost::Container(c), "in".into())
+        .unwrap();
+    doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 8.0)
+        .unwrap();
+    let lane = doc.add_lane("L".into()).unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(c).unwrap()),
+            4.0,
+            12.0,
+        )
+        .unwrap();
+    let mut st = ph2d_timeline::TimelineState::new();
+    st.doc = doc;
+    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
+    let mut snap = TimelineViewSnapshot::default();
+    // A publicação da ABA KEYS: o relógio passado é o do clip, keys_mode = true.
+    snap.rebuild(&mut st, &ph2d_core::Playhead::default(), true);
+    assert!(!snap.crumbs.is_empty() && snap.host_map.is_none(), "a armação do bug");
+    set_current_timeline(Some(snap));
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        view_start_s: 0.0,
+        view_span_s: 8.0,
+        tab: Tab::Keys,
+        ..TimelinePanelState::default()
+    };
+    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+    );
+    let events = timeline_events(&mut host);
+    set_current_timeline(None);
+    assert_eq!(
+        events,
+        vec![ph2d_editor_core::tool::PanelEvent::SetValue(
+            ids::TIMELINE_RULER,
+            4.0
+        )],
+        "na Keys o segundo 4 da régua É o segundo 4 do clip — engolir o gesto congela o playhead"
+    );
+}
+
+/// **Clicar na trilha VOLTA para o Arrange** — inclusive no segmento onde você já está.
+///
+/// O pop do segmento final é no-op de propósito; sem a troca de aba o clique não fazia NADA
+/// na Keys, e não havia caminho direto de volta ao interior (Enio, 2026-07-20: *"em keys não
+/// consigo voltar direto para Jump"*). Todo lugar que a trilha nomeia é um lugar do Arrange.
+#[test]
+fn clicking_the_trail_from_keys_lands_on_arrange() {
+    use ph2d_panel_timeline::tab::Tab;
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("Jump".into());
+    doc.add_lane_in(StackHost::Container(c), "in".into())
+        .unwrap();
+    let lane = doc.add_lane("L".into()).unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(c).unwrap()),
+            0.0,
+            2.0,
+        )
+        .unwrap();
+    let mut st = ph2d_timeline::TimelineState::new();
+    st.doc = doc;
+
+    // Entra pelo GESTO real (menu do strip), como o gate de dois níveis.
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
+    set_current_timeline(Some(snap));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    park_strip_menu(&mut host, strip);
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_STRIP_ENTER),
+    );
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(c)
+    );
+
+    // Na Keys, o clique no segmento FINAL ("Jump") não muda a profundidade — muda a ABA.
+    state.tab = Tab::Keys;
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_CRUMB[1]),
+    );
+    assert_eq!(state.tab, Tab::Arrange, "o caminho de volta ao interior");
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(c),
+        "o segmento final não sai do container"
+    );
+
+    // E o "Scene" da Keys leva à CENA do Arrange.
+    state.tab = Tab::Keys;
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_CRUMB[0]),
+    );
+    set_current_timeline(None);
+    assert_eq!(state.tab, Tab::Arrange);
+    assert_eq!(ph2d_panel_timeline::state::edit_host(), StackHost::Document);
 }

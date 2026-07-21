@@ -84,19 +84,29 @@ pub(crate) fn apply_event(
                 .unwrap_or(0.0);
             let local = state.view_start_s + v * state.view_span_s;
             // **A régua lê num relógio e escreve noutro, e a conversão mora aqui.**
-            // Dentro de um container o eixo é o INTERIOR (é como as lanes estão dispostas),
-            // mas o playhead que o arrasto busca é o da TIMELINE — o único que existe
-            // (ADR-0133 §1). Sem converter, com a instância em 4 s, arrastar até o segundo 1
-            // do interior buscava o segundo 1 da CENA: três segundos fora do container.
+            // No ARRANGE dentro de um container o eixo é o INTERIOR (é como as lanes estão
+            // dispostas), mas o playhead que o arrasto busca é o da TIMELINE — o único que
+            // existe (ADR-0133 §1). Sem converter, com a instância em 4 s, arrastar até o
+            // segundo 1 do interior buscava o segundo 1 da CENA: três segundos fora.
+            //
+            // ⚠️ A pergunta é da ABA, não só da trilha: na aba KEYS a régua é o relógio do
+            // CLIP e o valor cru já é o eixo — o mapa do container nem se aplica. Perguntar
+            // só à trilha engolia o scrub da Keys dentro de um container (crumbs cheios +
+            // `host_map` None em keys_mode) e o playhead congelava (Enio, 2026-07-20:
+            // *"ao pular de jump para keys, não consigo mover playhead"*).
             let snap = crate::state::current_snapshot();
-            let time = match (snap.crumbs.is_empty(), snap.host_map) {
-                (true, _) => local, // na cena o eixo JÁ é a timeline
-                (false, Some(m)) => m.host_time(local),
-                // Sem inverso não há para onde buscar. `clock_for` já nem registra o hit
-                // neste caso; a recusa está repetida aqui porque as duas camadas protegem
-                // coisas diferentes — a de lá não OFERECE o controle, a daqui não INVENTA
-                // um segundo se alguém voltar a oferecê-lo ([[feedback_layered_defenses_need_per_layer_gates]]).
-                (false, None) => return EventOutcome::Consumed,
+            let time = if !state.tab.shows_lanes() || snap.crumbs.is_empty() {
+                local // Keys = relógio do clip · cena raiz = timeline: o eixo JÁ é o valor
+            } else {
+                match snap.host_map {
+                    Some(m) => m.host_time(local),
+                    // Sem inverso não há para onde buscar. `clock_for` já nem registra o
+                    // hit neste caso; a recusa está repetida aqui porque as duas camadas
+                    // protegem coisas diferentes — a de lá não OFERECE o controle, a daqui
+                    // não INVENTA um segundo se alguém voltar a oferecê-lo
+                    // ([[feedback_layered_defenses_need_per_layer_gates]]).
+                    None => return EventOutcome::Consumed,
+                }
             };
             host.bus_mut()
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::SetValue(
@@ -238,7 +248,7 @@ fn stack_event(
     host: &mut dyn PanelHostInternal,
 ) -> Option<EventOutcome> {
     match ev {
-        WidgetEvent::Click(id) => stack_click(id)
+        WidgetEvent::Click(id) => stack_click(state, id)
             .or_else(|| strip_menu_click(id, host))
             .or_else(|| lane_menu_click(id, host)),
         // Grabbing (or clicking into) the weight field OPENS the undo bracket.
@@ -423,7 +433,7 @@ fn strip_menu_click(
 
 /// The clip stack's chrome (ADR-0115): "+ Lane", and each lane's mute and
 /// "+ Strip". `None` means "not one of ours" — the caller falls through.
-fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
+fn stack_click(state: &mut TimelinePanelState, id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
     if id == ids::TIMELINE_ADD_LANE {
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddLane);
         return Some(EventOutcome::Consumed);
@@ -442,6 +452,14 @@ fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
         // the same list, so a segment can never pop somewhere other than what it shows.
         if let Some(d) = crate::breadcrumb::depth_of_slot(depth, crate::state::edit_path().len()) {
             crate::state::pop_to_depth(d);
+        }
+        // Every place the trail names is an ARRANGE place, so clicking one also lands the
+        // panel on the Arrange tab. It is what makes the trail a way BACK from the Keys tab
+        // (Enio, 2026-07-20: *"em keys não consigo voltar direto para Jump"*): the trailing
+        // segment's pop is a no-op, and without the tab switch the click did nothing at all.
+        if state.tab != crate::tab::Tab::Arrange {
+            state.tab = crate::tab::Tab::Arrange;
+            crate::state::drop_row_gestures(state);
         }
         return Some(EventOutcome::Consumed);
     }

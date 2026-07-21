@@ -187,3 +187,20 @@ ph2d-panel-timeline + bridge (37) verdes.
 **Smoke sugerido:** o MESMO `PH2D_NEST_SMOKE=2` — agora: entrar no Jump não pode panicar na
 aba Keys; a régua arrasta em qualquer instante; o loop vira a janela da instância entrada
 (com as fades) e volta ao da cena ao sair; o Loop da barra na cena cobre até 10,5 s.
+
+### Adendo (mesma sessão): a aba Keys dentro do container — 3 fixes do re-smoke
+
+1. **"em keys não consigo voltar direto para Jump"** — clicar em QUALQUER segmento da
+   trilha agora aterrissa no **Arrange** daquele nível (o pop do segmento final é no-op de
+   propósito; sem a troca de aba o clique não fazia nada). Todo lugar que a trilha nomeia é
+   um lugar do Arrange.
+2. **"ao pular de jump para keys, não consigo mover playhead"** — a conversão do scrub da
+   régua perguntava só à trilha+mapa; na Keys dentro de um container (crumbs cheios,
+   `host_map` None desde o fix do panic) o gesto era ENGOLIDO. A pergunta é da ABA: na Keys
+   a régua é o relógio do clip e o valor cru já é o eixo. ⚠️ Dois gates antigos do scrub
+   passavam com `TimelinePanelState::default()` (aba default = Keys) só porque o código
+   nunca perguntava a aba — as fixtures agora declaram `Tab::Arrange`.
+3. **O readout "not playing here" MENTIA na Keys** (screenshot do Enio) — `status()` é um
+   fato da régua do ARRANGE; na Keys cala (a trilha fica: é navegação).
+
+Gates: 2 novos no `nesting_seam.rs` + 1 no `breadcrumb.rs`; mutações 3/3 sangram.

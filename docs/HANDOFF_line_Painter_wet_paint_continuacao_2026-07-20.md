@@ -124,7 +124,29 @@ seção Impasto — uma das regras era não afetar o que já existia"* · **"W1 
   Tool: `d.color` por dab com detector de mudança (sem jitter ⇒ zero chamadas; a cor de início
   de traço também vem de `dabs[0].color` agora, não do brush).
 
-**W2.3 (PRÓXIMO) — silhueta/Shape/Falloff/Flatten&Rotate, o desenho reconhecido:** o stamp do
+**W2.3a (`2e88f4cb`) — "Simetria Circular não está correta" (report do Enio) FECHADO — RE-SMOKE
+PENDENTE:** causa estrutural: o trail é UMA janela 123² ancorada no 1º dab — a lista intercalada
+de cópias (symmetry/tiling) tinha toda cópia fora da janela **descartada em silêncio** e o chord
+entre cópias era lixo. ⚠️ **Meus gates do W2.1 eram verdes POR ACIDENTE** (janelas alternando
+âncoras salvavam metade da massa de cada lado — a RAZÃO passava sobre traço meio-descartado; a
+lição [[feedback_a_green_gate_may_be_green_by_accident]] na prática). Cura: **portas por RAIA**
+no engine (`painter/doors.rs`: pool `lane_trails`, raia pode nascer no meio do traço — wrap de
+Tiling na borda; §9 extraído p/ `pressure_dab` compartilhado, split byte-idêntico provado pelo
+fingerprint) + **pareamento geométrico** no tool (vizinho mais próximo dentro do raio; perto do
+centro radial as cópias convergem e trocar de raia é inofensivo — as posições coincidem).
+Oráculos endurecidos: circular 6 setores (cada ≥ 0,5× o máx) · espelho ganhou o **oráculo
+ABSOLUTO** (lado original ≥ 0,8× um traço solo — a razão sozinha era verde sob o bug) · tiling
+0,1→0,5. Mutação tudo-na-raia-0: os 3 sangram.
+
+**W2.3b (PRÓXIMO) — silhueta/Shape/Falloff/Flatten&Rotate, o desenho reconhecido:**
+`for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
+`sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
+`Trail::accumulate_paint_shaped` (corpo único — closure nomeada passada a um dos 2 iteradores) +
+`dispatch_pressure_dab_lane` ganhar a variante shaped; (b) tool constrói a closure por dab do
+padrão do impasto (`impasto.rs:207-240`: `spec` com radius do dab → `dab_rotor` → `dab_footprint`
+→ `shape_basis` com `ShapeFrame::Stroke` + `tex_rng` via `dab_rng.enter(&groups, di)` →
+`ShapeInput{basis, image, ramp_lut}`; por pixel `t = fp.falloff_t(dx/r, dy/r)` →
+`silhouette_at(&spec, shape, t, px, py, center, r)`; célula−1 = px do painter). o stamp do
 engine é `for_each_stamp_pixel` (`brush.rs:169`) — `fall = radial_falloff(d², hardness)` +
 footprint elíptico interno (`BrushShape::axes`) + `texv = sample_bristle(tile wrap, coords
 ROTADAS)`. A composição: **`fall`+footprint cedem à silhueta do PAINTER** (`silhouette_at`:

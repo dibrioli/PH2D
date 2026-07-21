@@ -56,6 +56,37 @@
   criar o estado (lição §10.4 do impasto). O que capturar: `snapshot_grid` já existe na crate.
 - Smoke: cada wave entrega cena `PH2D_WETPAINT_SMOKE=N` auto-play.
 
+## §2.5 — W1 EM ANDAMENTO: o que já entrou + o reconhecimento feito
+
+- **Inc.1 COMMITADO (`c329d126`)**: `PaintMode::WetPaint` (slot 11, `PAINT_MODE_COUNT` 12) + as
+  DUAS portas de wire-string (`set_paint_tool_mode("wetpaint")` / `active_paint_mode_id()`).
+  Nada seleciona o modo ainda (sem UI, sem smoke) — em modo WetPaint hoje os dabs caem nas rotas
+  normais de cor; a rota própria é o próximo incremento.
+- **Decisão de desenho (documente no gate)**: SEM `BrushSpec::wetpaint` — o modo É o switch
+  (precedente Knife; um flag por cima do modo seria 2ª porta pra mesma pergunta). O contrato
+  "OFF byte-idêntico" vira: (a) arch-gate "nenhum outro modo alcança o engine wet" (irmão de
+  `no_other_paint_mode_touches_the_relief`) + (b) fingerprint de pintura normal antes/depois.
+- **O modelo de display é o do watercolor, generalizado** (`watercolor_render.rs:47` é o molde):
+  sessão congela a base (`Arc` dos pixels pré-sessão, padrão `wet_session_base`); cada frame
+  recompõe SÓ o dirty rect — para o wet paint: `render_pigment_only` do engine (RGBA straight
+  sobre transparente) alpha-over a base, escrito em `canvas_rgba`. Commit da sessão derruba a
+  base (dentro da transação de undo). A sessão do wet paint atravessa TRAÇOS (a água segue viva)
+  — decidir o gatilho de commit: secou-completamente / troca de layer / troca de modo / Apply.
+- **`Dab` do painter** (`ph2d-painter-brush/src/stroke.rs:27`): `center [f32;2]` · `radius_px` ·
+  `coverage` (strength×pressão) · `color [f32;3]` (Randomize já resolvido!) · `rotation` ·
+  `dir` · `arc_len` · `stroke_radius_px`. Mapeamento pro engine: center→(x,y), radius_px→r,
+  coverage→intensity (o §9 do SPEC vira: pressão REAL já embutida em coverage), color→cor do
+  dab (o trail do engine usa a cor por-célula — Randomize de graça).
+- **A sessão mora em módulo IRMÃO novo** (`tool/paint/wetpaint.rs` + `wetpaint_session.rs` se
+  crescer): `paint.rs` está a 713 linhas com teto congelado — só cabe o campo
+  `wetpaint: WetPaintState` no struct (e talvez precise re-ancorar um doc-comment pra caber).
+- **Rota**: em `stamp_dabs_inner` (`stamp_route.rs:250`), logo após o braço do Sculpt:
+  `if matches!(self.paint.paint_mode, PaintMode::WetPaint) { self.stamp_dabs_wetpaint(dabs, &brush); return; }` —
+  antes das rotas de cor. O tick: `paint_tick` (`stroke_lifecycle.rs:215`) ganha
+  `self.wetpaint_tick(dt_s)` ao lado do `dry_canvas_wet` (acumulador 40 Hz, clamp 5 passos).
+- **Undo §10.4**: o grid da sessão entra no `ModelSnapshot` NO MESMO commit que criar o estado
+  (o bug do `mats` se escondia na tela vazia — teste onde o fato pode ser CONTRADITO).
+
 ## §3 — W2/W3 (depois)
 
 W2 = integração total recurso a recurso com gate de seam cada (Shape/Grain/Paper/Falloff/Blend/

@@ -48,6 +48,10 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
             core_ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
         ),
         (
+            core_ids::PAINTER_WETPAINT_SECTION,
+            core_ids::PAINTER_WETPAINT_SECTION_COLOR,
+        ),
+        (
             core_ids::PAINTER_WATERCOLOR_SECTION,
             core_ids::PAINTER_WATERCOLOR_SECTION_COLOR,
         ),

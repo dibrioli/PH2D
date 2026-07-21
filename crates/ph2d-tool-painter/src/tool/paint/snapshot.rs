@@ -279,6 +279,7 @@ impl PainterTool {
             jitter_scale: b.jitter_scale,
             jitter_rotate: b.jitter_rotate,
             jitter_spacing: b.jitter_spacing,
+            wetpaint: self.paint.wetpaint.armed,
             watercolor: b.watercolor,
             watercolor_active: self.watercolor_render_active(),
             watercolor_shape_auto: b.watercolor_shape_auto,

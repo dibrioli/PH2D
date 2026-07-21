@@ -86,11 +86,13 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {
         return;
     }
-    // The mode itself (see the module doc for why this one IS armed in code),
-    // then a size in the engine's native dab range and a pigment you can see
-    // on white. Everything else is the shipped default — if a default is bad,
-    // the smoke says so instead of hiding it.
-    painter.set_paint_tool_mode("wetpaint");
+    // Arm through the PRODUCT door — the Wet Paint checkbox (`set_wetpaint_armed`,
+    // the same setter the panel's Enable drives), so the smoke exercises what the
+    // artist has: the checkbox reads ON, and tool round-trips return to the fluid.
+    // Then a size in the engine's native dab range and a pigment you can see on
+    // white. Everything else is the shipped default — if a default is bad, the
+    // smoke says so instead of hiding it.
+    painter.set_wetpaint_armed(true);
     painter.set_brush_size_px(24.0);
     painter.set_brush_color_srgb8([30, 90, 200]); // a wet ultramarine
     println!("PH2D_WETPAINT_SMOKE: brush armed (Wet Paint mode) — drag on the canvas.");

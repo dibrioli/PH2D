@@ -185,6 +185,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     jitter_spacing: 0.0,
     // Watercolor section — the `watercolor` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
+    wetpaint: false,
     watercolor: false,
     watercolor_active: false,
     watercolor_shape_auto: true,

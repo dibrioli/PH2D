@@ -707,8 +707,8 @@ fn the_wet_eraser_lifts_the_fluid_and_the_water_survives() {
 fn the_sessionless_wet_eraser_erases_the_baked_canvas() {
     let mut t = tool_in_mode("wetpaint");
     stroke_across(&mut t);
-    t.set_paint_tool_mode("brush"); // bake: the session ends
-    t.set_paint_tool_mode("wetpaint"); // back in wet, nothing wet yet
+    t.set_wetpaint_armed(false); // bake: unchecking exits and ends the session
+    t.set_wetpaint_armed(true); // back in wet, nothing wet yet
     assert!(t.paint.wetpaint.session.is_none(), "fixture: no session");
     t.set_paint_tool_mode("eraser"); // stays in Wet Paint (the W2.6 wire)
     let alpha_sum = |t: &PainterTool| -> u64 {
@@ -728,6 +728,116 @@ fn the_sessionless_wet_eraser_erases_the_baked_canvas() {
     assert!(
         t.paint.wetpaint.session.is_none(),
         "the fall-through must not build a wet session"
+    );
+}
+
+/// THE CHECKBOX (Enio 2026-07-21): the Wet Paint arm survives tool
+/// round-trips — *"se saio do brush para a borracha ou para a seleção, ao
+/// voltar não estou mais no modo wet"*. Armed, every return to "brush" is
+/// the FLUID, until the checkbox unchecks. Mutation that bleeds it: the
+/// `"brush"` wire arm dropped from `set_paint_tool_mode` (the selection
+/// round-trip lands in the plain digital brush — the reported bug).
+#[test]
+fn the_wet_checkbox_survives_the_tool_round_trips() {
+    let mut t = tool_in_mode("brush");
+    t.set_wetpaint_armed(true);
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "arming from the Brush must enter the fluid on the spot"
+    );
+    // The reported round-trip: selection and back.
+    t.set_paint_tool_mode("selection");
+    t.set_paint_tool_mode("brush");
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "back from Selection, the brush forgot it was wet (the reported bug)"
+    );
+    // And the eraser round-trip (W2.6 keeps the mode; leaving eraser to
+    // brush must stay wet too).
+    t.set_paint_tool_mode("eraser");
+    t.set_paint_tool_mode("brush");
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "back from the eraser, the brush forgot it was wet"
+    );
+    // A foreign tool that is not paint at all: smear and back.
+    t.set_paint_tool_mode("smear");
+    t.set_paint_tool_mode("brush");
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "back from Smear, the brush forgot it was wet"
+    );
+}
+
+/// Entering the mode by ANY door arms the checkbox — a checkbox reading OFF
+/// while the paint is wet is a lying radio. Mutation that bleeds it: the
+/// arming line dropped from `set_paint_tool_mode`.
+#[test]
+fn entering_wet_by_any_door_arms_the_checkbox() {
+    let t = tool_in_mode("wetpaint"); // the direct wire (the smoke's old door)
+    assert!(
+        t.paint.wetpaint.armed,
+        "the wire entered wet with the checkbox OFF"
+    );
+}
+
+/// Unchecking exits to the plain Brush and the exit IS the bake: session
+/// gone, pixels exactly as composited. Mutation that bleeds it: the disarm
+/// arm of `set_wetpaint_armed` not leaving the mode.
+#[test]
+fn disarming_the_checkbox_exits_and_bakes() {
+    let mut t = tool_in_mode("wetpaint");
+    stroke_across(&mut t);
+    assert!(t.paint.wetpaint.session.is_some());
+    let painted = Arc::clone(&t.canvas_rgba);
+    t.set_wetpaint_armed(false);
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::Paint),
+        "unchecking must return to the plain Brush"
+    );
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "unchecking must end the session (the bake)"
+    );
+    assert_eq!(
+        &*painted, &*t.canvas_rgba,
+        "the bake moved pixels — ending must be a stop"
+    );
+}
+
+/// The SEAM: the panel's Enable checkbox drives the arm over the frozen
+/// `PanelEvent` channel — click on, the Brush becomes the fluid; click off,
+/// it returns. And the section RESET disarms too (the Watercolor reset's
+/// semantics). Mutation that bleeds it: the `route_brush_wetpaint_event`
+/// call dropped from `handle_panel_event`.
+#[test]
+fn the_panels_enable_checkbox_drives_the_wet_arm() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = tool_in_mode("brush");
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
+    ));
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "the Enable click never reached the arm"
+    );
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
+    ));
+    assert!(
+        matches!(t.paint.paint_mode, PaintMode::Paint),
+        "the second click never disarmed"
+    );
+    // Reset = restore defaults INCLUDING the enable.
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
+    ));
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_WETPAINT_RESET,
+    ));
+    assert!(
+        !t.paint.wetpaint.armed && matches!(t.paint.paint_mode, PaintMode::Paint),
+        "the section reset must disarm"
     );
 }
 
@@ -761,7 +871,9 @@ fn leaving_the_mode_bakes_by_simply_stopping() {
     stroke_across(&mut t);
     assert!(t.paint.wetpaint.session.is_some());
     let painted = Arc::clone(&t.canvas_rgba);
-    t.set_paint_tool_mode("brush");
+    // "brush" no longer LEAVES the mode (the checkbox keeps it wet — the
+    // 2026-07-21 law); a real exit is any other tool, or disarming.
+    t.set_paint_tool_mode("smear");
     assert!(
         t.paint.wetpaint.session.is_none(),
         "mode exit must end the wet session"

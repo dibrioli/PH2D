@@ -340,6 +340,12 @@ pub struct BrushSettings {
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,
 
+    // ── Wet Paint section (the fluid engine, ADR-0134) ──
+    /// The Wet Paint **Enable** checkbox — the ARMED state (`WetPaintState::armed`, not a
+    /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the
+    /// Brush IS the fluid and "brush" always returns to Wet Paint.
+    pub wetpaint: bool,
+
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).
     pub watercolor: bool,

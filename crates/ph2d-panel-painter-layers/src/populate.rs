@@ -364,6 +364,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Watercolor section: the Enable master toggle + the section reset + the Grain-section
         // "Same as Paper" toggle + the Paper section reset. (Pigment merged into the Mix slider; Paper
         // Rake/Random dropped from the UI — redesign 2026-07-07.)
+        // Wet Paint section: the Enable master toggle (the persistent ARM) + the section reset.
+        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
+        ph2d_editor_core::ids::PAINTER_WETPAINT_RESET,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
         // Shape section's watercolor "Automatic" toggle (doc 13 #1).
         ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,

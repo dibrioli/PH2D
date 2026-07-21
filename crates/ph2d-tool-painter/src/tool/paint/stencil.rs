@@ -368,6 +368,13 @@ impl PainterTool {
             // same-mode transition skips every teardown below (`old != new`
             // guards), so the session lives on.
             "eraser" if self.paint.paint_mode == PaintMode::WetPaint => PaintMode::WetPaint,
+            // With the Wet Paint checkbox ARMED, "brush" IS the fluid — this
+            // is what makes the arm survive tool round-trips (eraser /
+            // selection / smear and back), the Watercolor/Impasto pattern
+            // (Enio 2026-07-21). Only the explicit "brush" wire: eyedropper
+            // stays a momentary Paint, and unknown wires keep their
+            // conservative fallback.
+            "brush" if self.paint.wetpaint.armed => PaintMode::WetPaint,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -407,6 +414,13 @@ impl PainterTool {
             self.wetpaint_end_session();
         }
         self.paint.paint_mode = new_mode;
+        // Entering Wet Paint by ANY door arms the checkbox — painting wet
+        // with the Enable reading OFF would be a lying checkbox. Leaving
+        // does NOT disarm (the arm is the persistent authored state; only
+        // the checkbox / its reset disarm), exactly like Watercolor's flag.
+        if new_mode == PaintMode::WetPaint {
+            self.paint.wetpaint.armed = true;
+        }
         // The brush slot has just been swapped underneath us, so the "does anything read `Dab::dir`?" answer
         // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore
         // it. (The slot round-trips the flag, but the LIVE brush is what `Stroke::new` reads.)
@@ -450,9 +464,13 @@ impl PainterTool {
             PaintMode::Sculpt => "sculpt",
             PaintMode::Knife => "knife",
             // The wet eraser is still the ERASER in the artist's hand — the
-            // rail radio must light that chip, not "wetpaint" (W2.6).
+            // rail radio must light that chip, not the brush (W2.6).
             PaintMode::WetPaint if self.paint.eraser => "eraser",
-            PaintMode::WetPaint => "wetpaint",
+            // Wet Paint is the BRUSH's flavour (the checkbox, like
+            // Watercolor) — the rail lights Brush, and a momentary
+            // capture/restore round-trips through "brush" back into the
+            // fluid because the arm persists.
+            PaintMode::WetPaint => "brush",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",
         }

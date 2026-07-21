@@ -54,6 +54,15 @@ const WET_MAX_STEPS: usize = 5;
 
 #[derive(Default)]
 pub(crate) struct WetPaintState {
+    /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
+    /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the
+    /// `"brush"` wire resolves to [`PaintMode::WetPaint`], so leaving to the
+    /// eraser / selection / any tool and coming back returns to the FLUID
+    /// instead of the plain digital brush. One fact, mode-independent, not a
+    /// `BrushSpec` field (per-slot copies of one truth would disagree).
+    /// Entering the mode by ANY door arms it — a checkbox that reads OFF
+    /// while the paint is wet would be the lying radio this file refuses.
+    pub(super) armed: bool,
     /// The live session; `None` until the first Wet Paint dab lands.
     pub(super) session: Option<WetSession>,
     /// A live freehand paint GESTURE is open (`paint_begin` .. pen-up). This —
@@ -94,6 +103,56 @@ struct Lane {
 }
 
 impl PainterTool {
+    /// The Wet Paint checkbox's setter (the panel's Enable + the smoke's
+    /// arm). Arming while holding the plain Brush enters the mode on the
+    /// spot; disarming while wet exits to the plain Brush — and the exit's
+    /// teardown ends the session, which IS the bake. From any other tool
+    /// the flag just flips: the next `"brush"` honours it.
+    pub fn set_wetpaint_armed(&mut self, on: bool) {
+        if self.paint.wetpaint.armed == on {
+            return;
+        }
+        self.paint.wetpaint.armed = on;
+        match self.paint.paint_mode {
+            PaintMode::Paint if on && !self.paint.eraser => self.set_paint_tool_mode("brush"),
+            PaintMode::WetPaint if !on => self.set_paint_tool_mode("brush"),
+            _ => {}
+        }
+    }
+
+    /// The checkbox Click ([`ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE`]).
+    pub fn toggle_wetpaint_armed(&mut self) {
+        self.set_wetpaint_armed(!self.paint.wetpaint.armed);
+    }
+
+    /// The section reset — the Watercolor reset's exact semantics: restore
+    /// the section's defaults INCLUDING the enable. Today the section is
+    /// only the enable; the W3 knobs join here.
+    pub fn reset_brush_wetpaint(&mut self) {
+        self.set_wetpaint_armed(false);
+    }
+
+    /// Route the Wet Paint section controls (Enable + reset) from the layers
+    /// panel's generic channel — sibling of `route_brush_watercolor_event`.
+    pub(crate) fn route_brush_wetpaint_event(
+        &mut self,
+        event: &ph2d_editor_core::tool::PanelEvent,
+    ) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_ENABLE => {
+                self.toggle_wetpaint_armed();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_RESET => {
+                self.reset_brush_wetpaint();
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// Whether the WET module owns this batch of dabs — the ONE routing
     /// question, asked by BOTH `stamp_dabs` (to bypass the snapshot/restore
     /// wrapper, which would kill the session — see W2.5) and

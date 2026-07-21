@@ -33,6 +33,9 @@ pub(crate) fn paint_appearance_sections(
     //    `docs/Painter/08_…`. ──
     if !brush.is_inpaint {
         y = sep(ctx.scene, theme, x, content_w, y);
+        // Wet Paint FIRST — like Watercolor it is a switch that reinterprets the deposit
+        // (the fluid engine takes over), so it sits at the head of the appearance half.
+        y = crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush);
         y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
         y = crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush);
     }

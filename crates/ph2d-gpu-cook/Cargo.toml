@@ -53,6 +53,10 @@ ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-sim-collide = { path = "../ph2d-node-sim-collide" }
+# ADR-0136 — the count-changing family (compaction / birth / concat).
+ph2d-node-sim-lifetime = { path = "../ph2d-node-sim-lifetime" }
+ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
+ph2d-node-motion-combine = { path = "../ph2d-node-motion-combine" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }

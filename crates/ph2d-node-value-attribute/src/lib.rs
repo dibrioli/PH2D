@@ -35,6 +35,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{GpuKernel, StreamOp};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -124,6 +125,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueAttribute))?;
+    // ADR-0136: the column's NAME is a text param — dynamic, inexpressible as a
+    // static binding — so the projection runs in the sequencer's machinery
+    // (`StreamOp::Project`), which resolves the name against the live stream's
+    // column map and replays [`field`]'s exact ladder (copy / length / zeros).
+    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::Project {
+            text_param: ATTR_KEY,
+            mode_param: "mode",
+        },
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

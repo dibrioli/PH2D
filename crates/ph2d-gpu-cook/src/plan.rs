@@ -121,6 +121,40 @@ fn output_shape(
             }
         },
     };
+    // A structural stream op (ADR-0136) reshapes the output wholesale — the
+    // binding rules below describe a per-element MAP, which these are not.
+    match kernels.stream_op(inst.type_id()) {
+        Some(ph2d_nodegraph::gpu::StreamOp::Project { .. }) => {
+            // One `v` column, whatever the input carried (the CPU emits exactly
+            // that, zeros included). Never a dense window: `v` is a value field.
+            let mut cols = BTreeSet::new();
+            cols.insert("v");
+            return Some(Shape { cols, dense: false });
+        }
+        Some(ph2d_nodegraph::gpu::StreamOp::Concat { ports }) => {
+            // The union of the connected ports' provable shapes. An input the
+            // plan cannot derive refuses the whole answer — a zero-filled column
+            // is still a column, so guessing under-reports. This OVER-approximates
+            // at runtime (an empty input's columns are skipped by the CPU's
+            // non-empty rule), which errs in the refusing direction.
+            let mut cols = BTreeSet::new();
+            for p in *ports {
+                match graph.input_edge(node, *p) {
+                    None => {}
+                    Some((_, _, true)) => return None,
+                    Some((src, _, false)) => {
+                        cols.extend(output_shape(graph, ops, kernels, src, budget)?.cols);
+                    }
+                }
+            }
+            return Some(Shape { cols, dense: false });
+        }
+        // Compact: the base's columns survive (filtered, not reshaped) and the
+        // node's own kernel writes ride on top — the plain rules below.
+        // SourceRows: the base IS the template whose columns the newborns
+        // inherit, plus the kernel's writes; `cp_rows` is popped after the loop.
+        Some(_) | None => {}
+    }
     // The set this node will ACTUALLY bind — a param-dependent kernel writes a
     // different column per param, and deriving the shape from the default set
     // would predict columns the dispatch never produces.
@@ -135,6 +169,8 @@ fn output_shape(
             cols.insert(b.column);
         }
     }
+    // A SourceRows kernel's rows column is machinery, never output (ADR-0136).
+    cols.remove(ph2d_nodegraph::gpu::ROWS_COL);
     // The dense id window (ADR-0130) flows on the port-0 base: a source that
     // emits one keeps it unconditionally (`inputs.is_empty()`), a transformer
     // only if it preserves AND its base already was dense. Anything that does not
@@ -386,6 +422,43 @@ pub fn plan(
 
 /// [`plan`], with a set of nodes forced to be boundaries — the retreat mechanism
 /// (see the `sim_state_on_gpu` handling below). The public entry is the empty set.
+/// Is this boundary node's transitive input chain **STATIC** — every node
+/// `Effect::Pure`, no delayed edge, no driven param anywhere in it? Pure is "no
+/// state, no time: same inputs → same output" (the enum's contract, which every
+/// playhead-reader honours by declaring `Temporal` — the LFO, the oscillator,
+/// the wiggle all do), so a static chain is a CONSTANT per param set.
+///
+/// Driven params are refused **conservatively**: the driver is a wire into
+/// another subtree that may be temporal, and chasing it buys nothing today — a
+/// template with a driven param simply keeps the pre-ADR-0136 retreat.
+fn boundary_is_static(graph: &Graph, ops: &dyn OpResolver, node: NodeId) -> bool {
+    let mut seen: BTreeSet<NodeId> = BTreeSet::new();
+    let mut stack = vec![node];
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        let Some(op) = graph.node(n).and_then(|i| ops.resolve(i.type_id())) else {
+            return false; // unknown node: assume the worst, keep the retreat
+        };
+        if op.manifest().effect != ph2d_nodegraph::effect::Effect::Pure {
+            return false;
+        }
+        if graph.param_sources(n).is_some_and(|s| !s.is_empty()) {
+            return false;
+        }
+        for port in 0..op.manifest().inputs.len() {
+            if let Some((src, _, delayed)) = graph.input_edge(n, port) {
+                if delayed {
+                    return false;
+                }
+                stack.push(src);
+            }
+        }
+    }
+    true
+}
+
 fn plan_forbidding(
     graph: &Graph,
     ops: &dyn OpResolver,
@@ -430,7 +503,20 @@ fn plan_forbidding(
         .filter(|e| e.delayed && walk.claimed.contains(&e.from.0))
         .map(|e| e.from.0)
         .collect();
-    if !pre_sources_on_gpu.is_empty() && !walk.boundaries.is_empty() {
+    // **A STATIC boundary does not evict the loop** (ADR-0136 §5). The retreat
+    // below guards against two simulations of one state — the pump re-cooking a
+    // boundary's chain with its own `prev`. A chain that is all `Effect::Pure`
+    // with no delayed edges and no driven params HAS no prev and reads no clock
+    // (`Pure` is "no state, no time" by the enum's own contract): it is a
+    // constant, and the pump re-evaluating a constant is not a second simulation
+    // of anything. This is what lets a `motion.distribute_poisson` template — an
+    // inherently sequential algorithm that will never have a kernel — feed a
+    // GPU-resident sim without dragging the whole loop back to the pump.
+    let every_boundary_is_static = walk
+        .boundaries
+        .iter()
+        .all(|(n, _)| boundary_is_static(graph, ops, *n));
+    if !pre_sources_on_gpu.is_empty() && !walk.boundaries.is_empty() && !every_boundary_is_static {
         // RETREAT, not refuse-whole. Forbid the staged `pre`-sources and re-plan:
         // the sim loop recedes to the pump (its container — a `sim.zone` — becomes
         // a boundary), while any render suffix DOWNSTREAM of the loop stays on the

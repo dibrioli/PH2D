@@ -13,7 +13,7 @@
 //! node is dropping a crate, never hand-editing a central list.
 
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver, StateSelect};
+use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver, StateSelect, StreamOp};
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
@@ -56,6 +56,10 @@ pub struct NodeRegistry {
     /// default-empty, so a node keeps the window only by declaring it — see
     /// [`KernelResolver::keeps_dense_window`].
     dense_window_keepers: std::collections::BTreeSet<NodeTypeId>,
+    /// GPU/M5 (ADR-0136) — per-type structural stream operation (compact /
+    /// source-rows / concat / project), the count-changing family's side channel.
+    /// Same shape as `grids`; a node opts in with a [`StreamOp`].
+    stream_ops: BTreeMap<NodeTypeId, StreamOp>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -169,6 +173,15 @@ impl NodeRegistry {
     pub fn register_dense_window(&mut self, id: NodeTypeId) {
         self.dense_window_keepers.insert(id);
     }
+
+    /// Declare this node type's structural stream operation (ADR-0136), paired
+    /// with `register_gpu_kernel` exactly like a grid: a `Compact` node's kernel
+    /// is its post-filter epilogue (or `PASSTHROUGH`), a `SourceRows` node's
+    /// kernel writes the rows column, `Concat`/`Project` pair with `PASSTHROUGH`
+    /// so the plan claims them.
+    pub fn register_stream_op(&mut self, id: NodeTypeId, op: StreamOp) {
+        self.stream_ops.insert(id, op);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
@@ -186,6 +199,10 @@ impl KernelResolver for NodeRegistry {
 
     fn grid(&self, ty: NodeTypeId) -> Option<&GridSpec> {
         self.grids.get(&ty)
+    }
+
+    fn stream_op(&self, ty: NodeTypeId) -> Option<&StreamOp> {
+        self.stream_ops.get(&ty)
     }
 }
 

@@ -17,6 +17,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{GpuKernel, StreamOp};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -141,6 +142,16 @@ impl NodeOp for MotionCombine {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionCombine))?;
+    // ADR-0136: concatenation is `copy_buffer_to_buffer` + zero-fill in the
+    // sequencer — no shader, so the kernel is the passthrough (it makes the
+    // plan claim the node; the `StreamOp::Concat` is what runs).
+    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::Concat {
+            ports: &[0, 1, 2, 3],
+        },
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

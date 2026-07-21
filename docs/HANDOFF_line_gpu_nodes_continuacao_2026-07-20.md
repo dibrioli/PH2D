@@ -197,6 +197,33 @@ GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado
 
 ---
 
+> **⚠️ A FAMÍLIA QUE MUDA CONTAGEM LANDOU (2026-07-20/21, mesma sessão da
+> auditoria — o item 1 da fila §E, ADR-0136)** — a NEVE de artista agora reclama
+> o laço inteiro na GPU: `sim.spawn` (rows-gather com lei de contagem `dt`-aware,
+> **C3 executado**: o ordinal envelopa em `ID_WRAP` na CPU também) ·
+> `sim.lifetime`/`motion.cull` (**compaction ordem-preservante**: predicado →
+> `Scan::exclusive` → scatter de rows → gather genérico; a contagem volta ao host
+> num readback de 8 bytes — **seam MEDIDO: 0,225 ms, constante em N**) ·
+> `motion.combine` (`copy_buffer_to_buffer` + zero-fill, zero shader) ·
+> `value.attribute` (o text-param resolvido em runtime contra o mapa da stream) ·
+> `motion.color_ramp.t` (RefuseIfPresent → ReadBroadcast; **bug de CPU achado no
+> port**: campo de comprimento 1 não broadcastava — só o elemento 0 coloria).
+> **E o 7º órfão que a fila não enumerava:** o template da neve é
+> `motion.distribute_poisson` (Bridson, sequencial por natureza — nunca terá
+> kernel) ⇒ **o retreat agora distingue boundary ESTÁTICO de TEMPORAL** (§5 do
+> ADR): chain todo-`Pure` sem `pre` e sem param dirigido é constante, o laço fica
+> reclamado e a ponte marcha o híbrido-com-laço. Censo do boot doc: **14 estágios
+> GPU, 1 boundary (o poisson)**. Infra nova: `StreamOp` (4º canal side-metadata
+> do `KernelResolver`, padrão grid/state_select) + `CountLawCtx.dt` (a MESMA
+> expressão do `EvalCtx::dt`; o ring restaura `last_playhead` como o checkpoint
+> CPU restaura `prev_playhead`) + `window_src_n` no uniform. Gates: 8 de
+> dispositivo (`gpu_stream_ops.rs`, incluindo o **laço de nascimento e2e** — 90
+> ticks, contagem comparada POR TICK) + sweep WGSL agora varre PREDICADOS +
+> 3 de plano + neve pinada no shell; **7 mutações verde→RED→verde** (uma achou
+> gate vácuo: paridade de emitter em t=0 compara vazio com vazio — fortalecido).
+> `motion.trail` fica para a fatia seguinte (compõe destas primitivas; não está
+> no grafo da neve).
+
 > **⚠️ A GRANDE AUDITORIA RODOU (2026-07-20, sessão seguinte)** — relatório em
 > [`HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md`](HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md):
 > broadcast misto agora RECUSA ao cook (consertado + mutação-testado) · o

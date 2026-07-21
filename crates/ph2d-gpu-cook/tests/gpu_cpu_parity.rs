@@ -64,6 +64,8 @@ fn registry() -> NodeRegistry {
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
+    // The test-local kernel-less fixtures the seam gates rest on.
+    nokernel_fixture::register(&mut reg);
     reg
 }
 
@@ -596,7 +598,11 @@ fn a_gradient_tint_keys_positionally_when_index_is_absent() {
     let reg = registry();
     let mut g = Graph::new();
     let grid = grid_node(&mut g, 160.0);
-    let cull = g.add_node("motion.cull");
+    // The CPU boundary. This used to be `motion.cull` "because it has no
+    // kernel" — ADR-0136 gave it one and the premise died loudly, as the
+    // uncoverable-fixture doc promises. A test-local node can never gain a
+    // kernel, so the seam rests on structure again.
+    let cull = g.add_node("test.inst_nokernel");
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 1.0); // Gradient
     g.set_param(tint, "r", 0.31);
@@ -955,12 +961,13 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
 }
 
 #[test]
-fn a_connected_t_keeps_the_color_ramp_on_the_cpu() {
-    // The refusal (no device needed). The kernel only claims the positional key;
-    // a `t` field is a length this plan cannot prove, and answering with the
-    // index instead of the field would be a silently different colour.
-    // `value.instance_field` is in `registry()` now that it has a kernel — it used
-    // to be registered here, locally, because nothing else needed it.
+fn a_connected_t_is_claimed_since_the_broadcast_reader_exists() {
+    // This gate used to pin the OPPOSITE — `RefuseIfPresent` kept a connected
+    // `t` on the CPU because a wrong-length field would be silently judged
+    // absent. ADR-0136 retired the refusal: the `t` binding is `ReadBroadcast`
+    // (the `0/1/n` ladder, with mixed lengths REFUSED at cook time by
+    // `BroadcastLengthMismatch`), so the wired ramp is claimable and the plan
+    // must claim it — the snow's colour chain depends on exactly this.
     let reg = registry();
     let mut g = Graph::new();
     let grid = grid_node(&mut g, 8.0);
@@ -995,8 +1002,12 @@ fn a_connected_t_keeps_the_color_ramp_on_the_cpu() {
 
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
     assert!(
-        !plan.stages.iter().any(|s| s.node == cr),
-        "a connected `t` must keep the ramp on the CPU"
+        plan.stages.iter().any(|s| s.node == cr),
+        "a connected `t` must be claimed now that the broadcast reader exists"
+    );
+    assert!(
+        plan.boundaries.is_empty(),
+        "the whole chain has kernels — no boundary expected"
     );
 
     // …and the SAME graph without the `t` wire is claimed — otherwise this would
@@ -1786,13 +1797,100 @@ fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
 /// the best possible reason. A seam fixture built on "uncovered so far" erodes
 /// every time coverage advances, and the pressure then is to weaken the gate.
 ///
-/// `value.attribute` names its column with a **text param**, and
-/// `ColumnBinding.column` is `&'static str` — so it is uncoverable by structure,
-/// not by backlog. If that ever changes, these fixtures should break loudly.
+/// `value.attribute` held this seat while its text param was inexpressible as
+/// a static binding; ADR-0136's `StreamOp::Project` covered it anyway (the
+/// sequencer resolves the name at cook time) and these fixtures broke loudly,
+/// exactly as promised. The only node coverage can NEVER reach is one that
+/// does not exist outside this file — so the seam now rests on a test-local
+/// kernel-less node whose eval mirrors `value.attribute`'s ladder.
 fn uncoverable_value_node(g: &mut Graph, attr: &str) -> NodeId {
-    let n = g.add_node("value.attribute");
+    let n = g.add_node("test.value_nokernel");
     g.set_text_param(n, "attr", attr.to_string());
     n
+}
+
+/// The test-local kernel-less nodes the seam fixtures rest on (see
+/// [`uncoverable_value_node`]): an INST pass-through and a VALUE projector,
+/// neither of which any registry outside this file will ever cover.
+mod nokernel_fixture {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use ph2d_nodegraph::cook::EvalCtx;
+    use ph2d_nodegraph::effect::Effect;
+    use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+    const INST: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+    const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+
+    static INST_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.inst_nokernel"),
+        name: "test.inst_nokernel",
+        inputs: &[PortSpec {
+            name: "in",
+            ty: INST,
+        }],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct InstOp;
+    impl NodeOp for InstOp {
+        fn manifest(&self) -> &'static NodeManifest {
+            &INST_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            let out = ctx.input(0).clone();
+            ctx.emit(out);
+        }
+    }
+
+    static VALUE_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.value_nokernel"),
+        name: "test.value_nokernel",
+        inputs: &[PortSpec {
+            name: "in",
+            ty: INST,
+        }],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: VALUE,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct ValueOp;
+    impl NodeOp for ValueOp {
+        fn manifest(&self) -> &'static NodeManifest {
+            &VALUE_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            // `value.attribute`'s ladder, scalar arm only — what the two-seam
+            // fixtures feed the look_at with (`Index`/`Count`).
+            let name = ctx.text_param("attr").unwrap_or("").to_string();
+            let out = {
+                let input = ctx.input(0);
+                let n = input.count();
+                let v = match input.get(&name) {
+                    Some(Column::Scalar(v)) if v.len() == n => v.clone(),
+                    _ => vec![0.0; n],
+                };
+                Stream::new(n).with("v", Column::Scalar(v))
+            };
+            ctx.emit(out);
+        }
+    }
+
+    pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {
+        reg.register(Box::new(InstOp)).unwrap();
+        reg.register(Box::new(ValueOp)).unwrap();
+    }
 }
 
 /// **TWO CPU seams, one march, and the same picture the CPU draws** — slice B,

@@ -57,12 +57,14 @@ pub mod field_name;
 mod gather;
 pub mod grid;
 pub mod instances;
+mod lifecycle;
 pub mod lower;
 pub mod plan;
 pub mod ring;
 pub mod scan;
 pub mod shape;
 pub mod stream;
+mod stream_op;
 pub mod tap;
 
 pub use debug_read::read_instances;
@@ -112,6 +114,11 @@ pub enum GpuCookError {
         len: u32,
         count: u32,
     },
+    /// A registered [`ph2d_nodegraph::gpu::StreamOp`] and its kernel disagree —
+    /// a compact predicate that wrote no `cp_keep`, a source-rows kernel that
+    /// wrote no `cp_rows`. An authoring bug in the node's own crate (its gates
+    /// catch it); production refuses the frame and the CPU stays canonical.
+    MalformedStreamOp(NodeTypeId),
 }
 
 /// When a cook happens: the continuous `playhead` the kernels see, and the
@@ -192,6 +199,14 @@ pub struct GpuCook {
     /// step per tick, so the caller needs to know which one it last took; a
     /// stateless plan never reads this.
     last_tick: Option<u64>,
+    /// The playhead of the last cook — the GPU mirror of `Cook::prev_playhead`,
+    /// and computed into a count law's `dt` by **the same expression** the CPU's
+    /// `EvalCtx::dt` uses (`map_or(0.0, |p| playhead - p)`), so a birth law
+    /// (`sim.spawn`, ADR-0136) counts the same births on both sides. `None`
+    /// after a seed (`dt = 0` — nothing is born on a tick with no history);
+    /// restored through the scrub ring like the CPU checkpoint restores its
+    /// `prev_playhead`.
+    last_playhead: Option<f64>,
     /// The backwards-scrub ring (D5): past states, held by refcount, on the
     /// device. See [`ring`].
     ring: GpuCheckpointRing,
@@ -209,6 +224,14 @@ pub struct GpuCook {
     /// The grid output buffers (`starts`/`sorted`) a kernel pass binds, held for
     /// the same window — one per grid-bearing stage this cook.
     grid_hold: Vec<grid::GridBuffers>,
+    /// The structural stream-op pipelines (ADR-0136), built on first use like
+    /// the tap and the grid — `Option` because `GpuCook` is `Default`.
+    stream_op_pipes: Option<stream_op::StreamOpPipes>,
+    /// Stream-op transients that must outlive THIS cook's final submit (the
+    /// post-compaction gathers' uniforms and rows buffers). Cleared at the top
+    /// of every cook, like [`Self::grid_hold`].
+    stream_op_hold: Vec<wgpu::Buffer>,
+    stream_op_hold_bufs: Vec<std::sync::Arc<wgpu::Buffer>>,
 }
 
 /// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
@@ -321,8 +344,12 @@ impl GpuCook {
             && plan.drives_a_loop()
             && self.ring.should_record(t)
         {
-            self.ring.record(t, &self.prev);
+            self.ring.record(t, &self.prev, self.last_playhead);
         }
+        // The ROOT clock's step — the same expression as the CPU's `EvalCtx::dt`
+        // (`prev_playhead.map_or(0.0, |p| playhead - p)`), for the count laws
+        // that need one (`sim.spawn`, ADR-0136).
+        let dt = self.last_playhead.map_or(0.0, |p| playhead - p);
         // Drop the previous frame's tap hold BEFORE reclaiming, or its refcount
         // would keep every intermediate out of the pool for one extra frame.
         self.tap_streams.clear();
@@ -330,6 +357,9 @@ impl GpuCook {
         // the buffers return once the prior submit that used them has completed.
         self.grid_hold.clear();
         self.grid_scratch = grid::GridScratch::default();
+        // The stream-op transients (ADR-0136), same window.
+        self.stream_op_hold.clear();
+        self.stream_op_hold_bufs.clear();
         self.pool.reclaim();
 
         // The CPU→GPU crossings: one upload per boundary node, before anything
@@ -349,7 +379,7 @@ impl GpuCook {
         // named each input's source, so this is a lookup, never a search.
         let mut streams: BTreeMap<NodeId, GpuStream> = BTreeMap::new();
         for (stage_idx, stage) in plan.stages.iter().enumerate() {
-            let inputs: Vec<GpuStream> = stage
+            let mut inputs: Vec<GpuStream> = stage
                 .inputs
                 .iter()
                 .map(|src| match src {
@@ -363,7 +393,7 @@ impl GpuCook {
                 })
                 .collect();
             // Port 0 is the base the output rides on (`ColumnBinding::port`).
-            let base = inputs.first().cloned().unwrap_or_default();
+            let mut base = inputs.first().cloned().unwrap_or_default();
 
             // A `sim.zone` is a conditional passthrough (ADR-0135): forward the
             // INIT port until the loop has state, the STATE port after, stripping
@@ -393,16 +423,83 @@ impl GpuCook {
                 streams.insert(stage.node, base);
                 continue;
             };
-            if kernel.is_passthrough() {
-                streams.insert(stage.node, base);
-                continue;
-            }
             let manifest = ops
                 .resolve(stage.ty)
                 .expect("planned nodes resolve")
                 .manifest();
-            let window =
-                count::stage_window(kernel, graph, stage.node, manifest, &inputs, clock.playhead);
+            // The structural stream ops (ADR-0136), intercepted BEFORE the
+            // passthrough branch — a Concat/Project registers PASSTHROUGH, and
+            // that branch would forward port 0 instead.
+            let mut source_port: Option<usize> = None;
+            match kernels.stream_op(stage.ty) {
+                Some(ph2d_nodegraph::gpu::StreamOp::Concat { ports }) => {
+                    let out = self.encode_concat(gpu, &mut encoder, ports, &inputs);
+                    streams.insert(stage.node, out);
+                    continue;
+                }
+                Some(ph2d_nodegraph::gpu::StreamOp::Project {
+                    text_param,
+                    mode_param,
+                }) => {
+                    let out = self.encode_project(
+                        gpu,
+                        &mut encoder,
+                        graph,
+                        stage.node,
+                        manifest,
+                        text_param,
+                        mode_param,
+                        &inputs,
+                    );
+                    streams.insert(stage.node, out);
+                    continue;
+                }
+                Some(ph2d_nodegraph::gpu::StreamOp::Compact { port, predicate }) => {
+                    // Filter the port's stream BEFORE the node's own kernel — the
+                    // kernel (`sim.lifetime`'s `life` writer) runs on survivors.
+                    // The predicate gets its own uniform slot, disjoint from the
+                    // stage range and the lowering's (`plan.stages.len()`).
+                    let compacted = self.encode_compact(
+                        gpu,
+                        &mut encoder,
+                        plan.stages.len() + 1 + stage_idx,
+                        predicate,
+                        graph,
+                        stage.node,
+                        manifest,
+                        playhead,
+                        &inputs,
+                        *port,
+                    )?;
+                    if *port < inputs.len() {
+                        inputs[*port] = compacted.clone();
+                    }
+                    if *port == 0 {
+                        base = compacted;
+                    }
+                }
+                Some(ph2d_nodegraph::gpu::StreamOp::SourceRows { port }) => {
+                    // The kernel writes ROWS_COL + its own columns on a FRESH
+                    // base — riding the template would hand the output the
+                    // template's other columns un-gathered, at template length.
+                    base = GpuStream::default();
+                    source_port = Some(*port);
+                }
+                None => {}
+            }
+            if kernel.is_passthrough() {
+                streams.insert(stage.node, base);
+                continue;
+            }
+            let window = count::stage_window(
+                kernel,
+                graph,
+                stage.node,
+                manifest,
+                &inputs,
+                clock.playhead,
+                dt,
+            );
             let count = window.count.min(u32::MAX as usize) as u32;
             if count == 0 {
                 streams.insert(stage.node, GpuStream::default());
@@ -465,8 +562,6 @@ impl GpuCook {
                 .map(|p| resolve_param(graph, stage.node, manifest, p))
                 .map_or(1i64, |v| (v.round() as i64).clamp(0, MAX_SWEEPS))
                 as u32;
-            let mut inputs = inputs;
-            let mut base = base;
             let mut out = base.clone();
             for _ in 0..sweeps {
                 // The grid is rebuilt from the CURRENT positions every sweep — a
@@ -488,6 +583,7 @@ impl GpuCook {
                     gpu,
                     &mut encoder,
                     stage_idx,
+                    0,
                     kernel,
                     graph,
                     stage.node,
@@ -515,6 +611,12 @@ impl GpuCook {
                         base = out.clone();
                     }
                 }
+            }
+            // A SourceRows kernel wrote its rows; gather the template's other
+            // columns at them so the newborns inherit the whole vocabulary
+            // (ADR-0136 — the CPU's `newborns` copies every column but `id`).
+            if let Some(p) = source_port {
+                out = self.encode_source_gather(gpu, &mut encoder, out, inputs.get(p), count);
             }
             streams.insert(stage.node, out);
         }
@@ -563,95 +665,11 @@ impl GpuCook {
             .map(|(node, s)| (*node, s.clone()))
             .collect();
         self.last_tick = tick;
+        self.last_playhead = Some(playhead);
 
         // Drop the frame's streams so the pool can reclaim next cook.
         drop(streams);
         Ok(count)
-    }
-
-    /// Forget the simulation state AND its scrub history — the next cook seeds
-    /// from scratch, exactly as at tick 0 (when the `pre` edge reads Empty).
-    ///
-    /// Call this when the **graph changes**: a cached state is a function of the
-    /// graph that produced it, so an edit invalidates every checkpoint (the
-    /// Blender/Houdini semantics the CPU ring already follows — its `clear` has
-    /// the same trigger). It also releases the ring's pinned VRAM.
-    pub fn forget_state(&mut self) {
-        self.prev.clear();
-        self.last_tick = None;
-        self.ring.clear();
-        self.reseed = false;
-    }
-
-    /// Drop the sim state and **restart it AT the next tick cooked**, rather than
-    /// re-deriving the history the old parameters produced.
-    ///
-    /// This is the **live-edit** invalidation (ADR-0130 D7), and it exists because
-    /// [`Self::forget_state`] is the wrong one for an edit in flight.
-    /// `forget_state` means *"this state is invalid, re-derive it"* — and
-    /// [`Self::rewind_for`] honours that by anchoring an empty ring at tick 0, so
-    /// the caller re-cooks `0..=target`. For a discrete edit that is one honest
-    /// bake (Blender/Houdini re-bake a sim when you edit it). For a param a user
-    /// is **holding and dragging**, it is `O(current tick)` re-simulated EVERY
-    /// FRAME — which is not a bake, it is a freeze (the smoke: *"re-bake travado"*).
-    ///
-    /// An artist dragging an emitter's `rate` is asking *"what does it look like
-    /// with THIS rate?"*, not *"replay the last forty seconds with it"*. So the
-    /// honest answer is a fountain that RESTARTS: seed at the tick on screen and
-    /// step forward from there, `O(1)` per edit. The scrub ring is dropped too —
-    /// its checkpoints are the old params' sim, and a scrub through them would
-    /// show a history this document never had.
-    pub fn reseed_from_next_tick(&mut self) {
-        self.prev.clear();
-        self.ring.clear();
-        self.last_tick = None;
-        self.reseed = true;
-    }
-
-    /// Rewind (if needed) so that cooking `first..=target` in order stands the
-    /// sim at `target`; returns that first tick. Call BEFORE the march.
-    ///
-    /// Forward — the overwhelming case, one tick per frame — this is
-    /// `last_tick + 1` and touches nothing. Backwards (a scrub), it restores the
-    /// newest checkpoint at or before the target and hands back its tick to
-    /// re-sim from: **GGPO save/load/advance, without leaving the device**
-    /// (ADR-0127 D5). A target the ring no longer covers anchors at the tick-0
-    /// seed and re-sims forward, which is slow but always right — and is the CPU
-    /// ring's own answer to the same question.
-    ///
-    /// Without this, a backwards scrub would cook `target` against the state of
-    /// a LATER tick: `dt` would clamp to zero (the integrator's guard) so nothing
-    /// would explode — it would just quietly show the future's pose and call it
-    /// the past.
-    pub fn rewind_for(&mut self, target: u64) -> u64 {
-        // A LIVE EDIT invalidated the sim (D7): seed AT the target — do NOT
-        // re-derive the history the old params produced. One cook, not `target`
-        // of them; see [`Self::reseed_from_next_tick`] for why that distinction
-        // is the difference between a bake and a freeze.
-        if std::mem::take(&mut self.reseed) {
-            self.prev.clear();
-            self.last_tick = None;
-            return target;
-        }
-        match self.last_tick {
-            Some(t) if target > t => t + 1,
-            _ => {
-                let (anchor, state) = self.ring.anchor_at_or_before(target);
-                self.prev = state;
-                self.last_tick = None;
-                anchor
-            }
-        }
-    }
-
-    /// Retune the scrub ring's VRAM cap (default [`ring::RING_BYTES`]).
-    pub fn set_ring_budget(&mut self, bytes: u64) {
-        self.ring.set_budget(bytes);
-    }
-
-    /// Checkpoints the scrub ring holds, and the VRAM they pin (an upper bound).
-    pub fn ring_stats(&self) -> (usize, u64) {
-        (self.ring.len(), self.ring.bytes())
     }
 }
 

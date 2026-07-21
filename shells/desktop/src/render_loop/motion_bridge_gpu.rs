@@ -193,24 +193,50 @@ pub(super) fn cook_gpu(
             // lives in one place, and duplicating it here would be a second
             // opinion about what a complete hand-off is.
             if !handed.is_empty() {
-                motion.gpu_live = motion
-                    .gpu_cook
-                    .cook(
-                        gpu,
-                        &motion.doc.graph,
-                        &motion.registry,
-                        &motion.registry,
-                        &plan,
-                        &handed,
-                        // A hybrid plan never drives a loop: a staged `pre`
-                        // source plus a boundary is refused whole at plan time
-                        // (it would be two sims of one state), so there is no
-                        // sequence to keep here.
-                        ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
-                        motion.default_uv_rect,
-                        motion.default_size,
-                    )
-                    .is_ok();
+                if plan.drives_a_loop() {
+                    // A hybrid plan CAN drive a loop since ADR-0136 §5 — but only
+                    // when every boundary is STATIC (a temporal one still retreats
+                    // at plan time, because that would be two sims of one state).
+                    // A static boundary is a constant, so the SAME hand-off serves
+                    // every marched tick, and the loop keeps its sequence exactly
+                    // like the FullyGpu arm: rewind if owed, then march.
+                    let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
+                    motion.gpu_live = ticks.iter().all(|&tick| {
+                        motion
+                            .gpu_cook
+                            .cook(
+                                gpu,
+                                &motion.doc.graph,
+                                &motion.registry,
+                                &motion.registry,
+                                &plan,
+                                &handed,
+                                ph2d_gpu_cook::CookClock {
+                                    playhead: tick as f64 * fixed_dt,
+                                    tick: Some(tick),
+                                },
+                                motion.default_uv_rect,
+                                motion.default_size,
+                            )
+                            .is_ok()
+                    });
+                } else {
+                    motion.gpu_live = motion
+                        .gpu_cook
+                        .cook(
+                            gpu,
+                            &motion.doc.graph,
+                            &motion.registry,
+                            &motion.registry,
+                            &plan,
+                            &handed,
+                            // A stateless hybrid: nothing to sequence.
+                            ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
+                            motion.default_uv_rect,
+                            motion.default_size,
+                        )
+                        .is_ok();
+                }
             }
             // The pump was marched to the boundary this frame regardless of the
             // GPU result — do NOT also run the sink loop (it would early-return on

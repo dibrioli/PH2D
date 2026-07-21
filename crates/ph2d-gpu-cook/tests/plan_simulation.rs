@@ -511,6 +511,170 @@ fn a_bare_grid_carries_no_dense_window() {
 // ── fixtures ──────────────────────────────────────────────────────────────
 
 /// A node with an op but no kernel: the CPU can cook it, the GPU cannot claim it.
+/// ADR-0136 §5 — **a STATIC boundary does not evict the loop.** The retreat
+/// exists to prevent two simulations of one state; a boundary whose chain is
+/// all-`Pure` with no delayed edges holds no state and reads no clock (the
+/// `Effect` contract), so the pump re-evaluating it is not a second simulation
+/// of anything. This is the `motion.distribute_poisson` template shape — an
+/// inherently sequential algorithm that will never have a kernel — feeding the
+/// snow's GPU loop.
+#[test]
+fn a_static_boundary_template_keeps_the_loop_claimed() {
+    let mut reg = registry();
+    ph2d_node_sim_zone::register(&mut reg).unwrap();
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
+    nokernel::register(&mut reg); // Pure, kernel-less: the poisson stand-in
+
+    let (g, zone, alien) = birth_zone(&mut reg, "test.nokernel");
+    let out = sink_of(&g);
+    let p = plan(&g, &reg, &reg, out);
+    assert!(
+        p.drives_a_loop(),
+        "the loop must STAY claimed over a static boundary (ADR-0136 §5)"
+    );
+    assert!(
+        p.stages.iter().any(|s| s.node == zone),
+        "the zone is staged — the sim lives on the device"
+    );
+    assert!(
+        p.boundaries.iter().any(|(n, _)| *n == alien),
+        "the static template is the boundary the pump keeps cooking"
+    );
+}
+
+/// The CONTROL for the gate above: a TEMPORAL kernel-less boundary still
+/// retreats — without it, the static allowance could quietly become "any
+/// boundary keeps the loop", which is the two-sims divergence coming back
+/// ([[feedback_a_negative_search_needs_a_positive_control]]).
+#[test]
+fn a_temporal_boundary_still_retreats_the_loop() {
+    let mut reg = registry();
+    ph2d_node_sim_zone::register(&mut reg).unwrap();
+    ph2d_node_sim_step::register(&mut reg).unwrap();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
+    temporal_nokernel::register(&mut reg);
+
+    let (g, zone, _alien) = birth_zone(&mut reg, "test.temporal_nokernel");
+    let out = sink_of(&g);
+    let p = plan(&g, &reg, &reg, out);
+    assert!(
+        !p.drives_a_loop(),
+        "a clock-reading boundary must still evict the loop (two sims of one state)"
+    );
+    assert!(
+        !p.stages.iter().any(|s| s.node == zone),
+        "the sim recedes to the pump"
+    );
+}
+
+/// The **whole count-changing family in one chain, claimed whole** (ADR-0136):
+/// template → spawn (SourceRows) → combine (Concat) → lifetime (Compact +
+/// epilogue) → cull (Compact) → output. No boundary, every structural node
+/// staged — the plan-level fact the snow depends on before any device runs.
+#[test]
+fn the_count_changing_family_is_claimed_whole() {
+    let mut reg = registry();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
+    ph2d_node_sim_lifetime::register(&mut reg).unwrap();
+    ph2d_node_motion_cull::register(&mut reg).unwrap();
+
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let spawn = g.add_node("sim.spawn");
+    let comb = g.add_node("motion.combine");
+    let life = g.add_node("sim.lifetime");
+    let cull = g.add_node("motion.cull");
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, spawn, 0, false);
+    edge(&mut g, spawn, comb, 0, false);
+    edge(&mut g, comb, life, 0, false);
+    edge(&mut g, life, cull, 0, false);
+    edge(&mut g, cull, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+
+    let p = plan(&g, &reg, &reg, out);
+    assert!(p.is_fully_gpu(), "boundaries: {:?}", p.boundaries);
+    for (label, n) in [
+        ("spawn", spawn),
+        ("combine", comb),
+        ("lifetime", life),
+        ("cull", cull),
+    ] {
+        assert!(
+            p.stages.iter().any(|s| s.node == n),
+            "{label} must be staged"
+        );
+    }
+}
+
+/// The birth-zone fixture the two boundary gates share: a fully covered zone
+/// loop whose spawn TEMPLATE is fed by `template_ty` — the node under test.
+/// Returns `(graph, zone, template-chain node)`; the sink is [`sink_of`].
+fn birth_zone(reg: &mut NodeRegistry, template_ty: &str) -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let alien = g.add_node(template_ty);
+    let spawn = g.add_node("sim.spawn");
+    let comb = g.add_node("motion.combine");
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    let step = g.add_node("sim.step");
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, alien, 0, false); // grid → template node (the boundary)
+    edge(&mut g, alien, spawn, 0, false); // template → spawn
+    edge(&mut g, zone, comb, 0, true); // zone.out --pre--> combine.in0 (state)
+    edge(&mut g, spawn, comb, 1, false); // newborns → combine.in1
+    edge(&mut g, comb, wind, 0, false);
+    edge(&mut g, wind, step, 0, false);
+    edge(&mut g, step, zone, 1, false); // interior tail → zone.state
+    edge(&mut g, zone, out, 0, false);
+    g.validate(reg).expect("well-typed");
+    (g, zone, alien)
+}
+
+/// The output node of a [`birth_zone`] graph (added last).
+fn sink_of(g: &Graph) -> NodeId {
+    g.nodes().last().expect("non-empty").id
+}
+
+/// `test.temporal_nokernel` — Pure's opposite for the boundary gates: reads the
+/// clock (declares `Temporal`), registers no kernel.
+mod temporal_nokernel {
+    use ph2d_nodegraph::attr::Stream;
+    use ph2d_nodegraph::cook::EvalCtx;
+    use ph2d_nodegraph::effect::Effect;
+    use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+    const T: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+    static MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.temporal_nokernel"),
+        name: "test.temporal_nokernel",
+        inputs: &[PortSpec { name: "in", ty: T }],
+        outputs: &[PortSpec { name: "out", ty: T }],
+        effect: Effect::Temporal,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Op;
+    impl NodeOp for Op {
+        fn manifest(&self) -> &'static NodeManifest {
+            &MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(Stream::new(ctx.input(0).count()));
+        }
+    }
+    pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {
+        reg.register(Box::new(Op)).unwrap();
+    }
+}
+
 mod nokernel {
     use ph2d_nodegraph::attr::Stream;
     use ph2d_nodegraph::cook::EvalCtx;

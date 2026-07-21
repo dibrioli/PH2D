@@ -79,6 +79,15 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // hand-enumerated list rots — [[feedback_a_condition_that_enumerates_its_readers_rots]]).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
+    // ADR-0136 — the count-changing family. `sim.spawn`'s rows kernel is its
+    // registered kernel (swept by the loop below); combine/attribute register
+    // passthroughs (nothing to sweep); cull/lifetime carry their real WGSL in
+    // the COMPACT PREDICATE, swept by the dedicated loop after this one.
+    ph2d_node_motion_cull::register(&mut reg).unwrap();
+    ph2d_node_sim_lifetime::register(&mut reg).unwrap();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
+    ph2d_node_value_attribute::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {
@@ -111,6 +120,44 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
             validated += 1;
         }
     }
+    // A compact node's REAL WGSL is its predicate (ADR-0136) — a kernel like
+    // any other, dispatched by `encode_kernel_stage`, and therefore due exactly
+    // this sweep: the cull predicate shipped with unqualified accessor names
+    // (`read_v` on a two-port node) and only THIS class of gate can catch that
+    // without an adapter.
+    let mut predicates = 0usize;
+    for manifest in reg.manifests() {
+        let Some(ph2d_nodegraph::gpu::StreamOp::Compact { predicate, .. }) =
+            reg.stream_op(manifest.id)
+        else {
+            continue;
+        };
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+        let n = predicate.bindings.len().min(16);
+        for mask in 0u32..(1 << n) {
+            let src = ph2d_gpu_cook::codegen::kernel_module(
+                predicate,
+                predicate.bindings,
+                &port_names,
+                None,
+                |b| {
+                    let idx = predicate
+                        .bindings
+                        .iter()
+                        .position(|x| std::ptr::eq(x, b))
+                        .expect("binding belongs to predicate");
+                    mask & (1 << idx) != 0
+                },
+            );
+            validate(&format!("{} predicate mask {mask:b}", manifest.name), &src);
+            predicates += 1;
+        }
+    }
+    assert!(
+        predicates >= 8,
+        "the compact predicates must be swept (cull 3 bindings + lifetime 3), got {predicates}"
+    );
+
     // Grid (3 bindings → 8) + oscillator (2 → 4) + move (2 → 4) + the Fase 2
     // deformers transform/rotate/scale (2 → 4 each). If a kernel is added or
     // gains a binding this grows — the assert is a floor, not a pin.

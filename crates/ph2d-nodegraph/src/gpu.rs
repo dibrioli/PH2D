@@ -200,6 +200,8 @@ pub struct ColumnBinding {
     pub port: usize,
 }
 
+pub use crate::stream_op_meta::{KEEP_FLAG_COL, ROWS_COL, StreamOp};
+
 /// Everything a node's **count law** may look at. Dispatch size must be known
 /// host-side, so this is evaluated on the CPU at cook time.
 ///
@@ -219,6 +221,15 @@ pub struct CountLawCtx<'a> {
     pub param: &'a dyn Fn(&str) -> f32,
     /// The cook's playhead, in seconds.
     pub playhead: f64,
+    /// The ROOT clock's step since the previous cook — **the same expression as
+    /// the CPU's `EvalCtx::dt`** (`prev_playhead.map_or(0.0, |p| playhead - p)`),
+    /// computed by the sequencer from its own last cooked playhead and restored
+    /// through the scrub ring exactly like the CPU checkpoint restores
+    /// `prev_playhead`. `0.0` on the first cook after a seed, which is what makes
+    /// a birth law emit nothing on the tick it has no history for (`sim.spawn`'s
+    /// documented seed behaviour). Earned its place by `sim.spawn`, whose count
+    /// is `floor(rate·t) − floor(rate·(t−dt))` (ADR-0136).
+    pub dt: f64,
 }
 
 /// **How many elements does this node emit?** — asked once per stage, answered
@@ -514,6 +525,14 @@ pub trait KernelResolver {
     /// its [`GpuKernel::PASSTHROUGH`]; every other node is a plain passthrough or
     /// a compute kernel and gets nothing.
     fn state_select(&self, _ty: NodeTypeId) -> Option<&StateSelect> {
+        None
+    }
+
+    /// The structural stream operation this node is (ADR-0136), if any. Default
+    /// `None` — a node opts in by registering a [`StreamOp`] alongside its
+    /// kernel, exactly like a [`GridSpec`]; every per-element node declares
+    /// nothing and nothing about it changes.
+    fn stream_op(&self, _ty: NodeTypeId) -> Option<&StreamOp> {
         None
     }
 

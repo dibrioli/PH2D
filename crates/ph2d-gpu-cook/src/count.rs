@@ -42,6 +42,7 @@ pub(crate) fn stage_window(
     manifest: &'static NodeManifest,
     inputs: &[GpuStream],
     playhead: f64,
+    dt: f64,
 ) -> SourceWindow {
     let Some(law) = kernel.count_law else {
         // The default law: the output rides port 0 (`ColumnBinding::port`), so it
@@ -55,5 +56,6 @@ pub(crate) fn stage_window(
         inputs: &counts,
         param: &param,
         playhead,
+        dt,
     })
 }

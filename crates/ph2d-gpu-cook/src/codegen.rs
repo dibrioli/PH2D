@@ -234,14 +234,31 @@ pub fn broadcast_mask(counts: &[u32]) -> u32 {
 /// A **generator** (no input ports) is the one kind of node that has a window:
 /// its elements are minted, so their spawn identity and age are facts only the
 /// host knows. A transformer INHERITS its elements — it has no window of its own
-/// to be told about, whatever count law it declares.
+/// to be told about.
+///
+/// **Or a kernel with its own count law** (ADR-0136): `sim.spawn` HAS an input
+/// (the template it gathers from) but its elements are minted all the same — the
+/// count law that sizes the dispatch is the same expression that knows where the
+/// identity window begins, so a law implies a window. Kernels with a law that
+/// never read the window (`value.lfo`) carry two unused uniform floats, which is
+/// the price of the layout question having exactly one answer.
 ///
 /// A playhead-dependent generator is TOLD its window instead of re-deriving it:
 /// `floor(t·rate)` recomputed in WGSL is `f32`, and past 2²⁴ it skips integers,
 /// so the identity the whole gather rests on would quietly stop being a
 /// bijection. The CPU computes these in `f64` (`SourceWindow`).
-pub fn declares_window(port_names: &[&str]) -> bool {
-    port_names.is_empty()
+pub fn declares_window(has_count_law: bool, port_names: &[&str]) -> bool {
+    port_names.is_empty() || has_count_law
+}
+
+/// Does the module also carry `window_src_n` — input port 0's element count?
+/// Only a minted-window kernel WITH inputs wants it (ADR-0136: `sim.spawn`'s
+/// slot arithmetic is `id % template_n`, and the template's length is a fact
+/// only the host knows — `arrayLength` lies, the pool rounds buffers up).
+/// Same one-answer discipline as [`declares_window`]: asked by the codegen that
+/// declares the field and the sequencer that packs it.
+pub fn declares_src_n(has_count_law: bool, port_names: &[&str]) -> bool {
+    has_count_law && !port_names.is_empty()
 }
 
 /// Generate the full compute module for `kernel` against a concrete input
@@ -280,8 +297,11 @@ pub fn kernel_module(
     if gather_on {
         src.push_str("    gather_prev_n: u32,\n");
     }
-    if declares_window(port_names) {
+    if declares_window(kernel.count_law.is_some(), port_names) {
         src.push_str("    window_first: u32,\n    window_age: f32,\n");
+    }
+    if declares_src_n(kernel.count_law.is_some(), port_names) {
+        src.push_str("    window_src_n: u32,\n");
     }
     if broadcasts_anything(bindings) {
         src.push_str("    bcast_one: u32,\n");

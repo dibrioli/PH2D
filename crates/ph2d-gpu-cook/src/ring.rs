@@ -58,9 +58,14 @@ pub const RING_BYTES: u64 = 128 * 1024 * 1024;
 /// which asked for sparse).
 pub const RING_STRIDE: u64 = 8;
 
-/// A bounded ring of `(tick, state-before-that-tick)`, newest at the back.
+/// A bounded ring of `(tick, state-before-that-tick, the previous cooked
+/// playhead)`, newest at the back. The playhead rides along because a birth law
+/// derives `dt` from it (ADR-0136): the CPU checkpoint restores `prev_playhead`
+/// for exactly the same reason, and a scrub that seeded the state but not the
+/// clock would cook its first replayed tick with `dt = 0` and silently skip
+/// that tick's births.
 pub struct GpuCheckpointRing {
-    entries: Vec<(u64, State)>,
+    entries: Vec<(u64, State, Option<f64>)>,
     bytes: u64,
     budget: u64,
 }
@@ -97,21 +102,21 @@ impl GpuCheckpointRing {
     /// already in the window is identical by determinism (same device, same
     /// graph), so it is skipped rather than duplicated — the CPU ring's rule.
     pub fn should_record(&self, tick: u64) -> bool {
-        tick.is_multiple_of(RING_STRIDE) && self.entries.last().is_none_or(|(t, _)| tick > *t)
+        tick.is_multiple_of(RING_STRIDE) && self.entries.last().is_none_or(|(t, _, _)| tick > *t)
     }
 
     /// Record the state to cook `tick` from. Evicts the oldest while over
     /// budget — never the one just recorded, so a scene whose single checkpoint
     /// exceeds the cap still scrubs to the last anchor rather than keeping
     /// nothing.
-    pub fn record(&mut self, tick: u64, state: &State) {
+    pub fn record(&mut self, tick: u64, state: &State, last_playhead: Option<f64>) {
         if !self.should_record(tick) {
             return;
         }
         self.bytes += state_bytes(state);
-        self.entries.push((tick, state.clone()));
+        self.entries.push((tick, state.clone(), last_playhead));
         while self.entries.len() > 1 && self.bytes > self.budget {
-            let (_, old) = self.entries.remove(0);
+            let (_, old, _) = self.entries.remove(0);
             self.bytes = self.bytes.saturating_sub(state_bytes(&old));
         }
     }
@@ -119,12 +124,12 @@ impl GpuCheckpointRing {
     /// The anchor to scrub from for `target`: the newest checkpoint at or before
     /// it, or `(0, empty)` — the tick-0 seed — when the target predates the
     /// window. The caller restores the state and re-cooks `anchor..=target`.
-    pub fn anchor_at_or_before(&self, target: u64) -> (u64, State) {
+    pub fn anchor_at_or_before(&self, target: u64) -> (u64, State, Option<f64>) {
         self.entries
             .iter()
             .rev()
-            .find(|(t, _)| *t <= target)
-            .map(|(t, s)| (*t, s.clone()))
+            .find(|(t, _, _)| *t <= target)
+            .map(|(t, s, p)| (*t, s.clone(), *p))
             .unwrap_or_default()
     }
 
@@ -163,16 +168,16 @@ mod tests {
         let mut r = GpuCheckpointRing::default();
         assert!(r.should_record(0));
         assert!(!r.should_record(1), "off the stride grid");
-        r.record(0, &state());
-        r.record(1, &state());
+        r.record(0, &state(), None);
+        r.record(1, &state(), None);
         assert_eq!(r.len(), 1, "the off-grid tick pins nothing");
-        r.record(RING_STRIDE, &state());
+        r.record(RING_STRIDE, &state(), None);
         assert!(
             !r.should_record(RING_STRIDE),
             "already covered — determinism"
         );
         assert!(!r.should_record(0));
-        r.record(RING_STRIDE, &state());
+        r.record(RING_STRIDE, &state(), None);
         assert_eq!(r.len(), 2, "a re-simmed tick must not duplicate");
     }
 
@@ -180,7 +185,7 @@ mod tests {
     fn the_anchor_is_the_newest_checkpoint_at_or_before_the_target() {
         let mut r = GpuCheckpointRing::default();
         for k in 0..4u64 {
-            r.record(k * RING_STRIDE, &state());
+            r.record(k * RING_STRIDE, &state(), None);
         }
         let s = RING_STRIDE;
         assert_eq!(
@@ -201,17 +206,30 @@ mod tests {
         let mut r = GpuCheckpointRing::default();
         // A window that starts well past tick 4.
         for t in [10 * RING_STRIDE, 11 * RING_STRIDE] {
-            r.record(t, &state());
+            r.record(t, &state(), None);
         }
-        let (tick, s) = r.anchor_at_or_before(4);
+        let (tick, s, _) = r.anchor_at_or_before(4);
         assert_eq!(tick, 0, "fall back to the seed and re-sim forward");
         assert!(s.is_empty(), "no state = what `pre` reads at tick 0");
+    }
+
+    /// The anchor restores the CLOCK with the state (ADR-0136): a birth law
+    /// derives `dt` from the previous playhead, and a scrub that seeded only
+    /// the streams would skip its first replayed tick's births — the CPU
+    /// checkpoint restores `prev_playhead` for exactly this.
+    #[test]
+    fn the_anchor_carries_the_previous_playhead() {
+        let mut r = GpuCheckpointRing::default();
+        r.record(0, &state(), None);
+        r.record(RING_STRIDE, &state(), Some(0.1166));
+        assert_eq!(r.anchor_at_or_before(RING_STRIDE + 3).2, Some(0.1166));
+        assert_eq!(r.anchor_at_or_before(0).2, None, "the seed has no history");
     }
 
     #[test]
     fn clearing_releases_everything() {
         let mut r = GpuCheckpointRing::default();
-        r.record(0, &state());
+        r.record(0, &state(), None);
         r.clear();
         assert!(r.is_empty() && r.bytes() == 0);
         assert!(r.should_record(0), "a cleared ring re-records from scratch");

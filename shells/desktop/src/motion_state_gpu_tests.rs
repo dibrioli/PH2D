@@ -458,3 +458,62 @@ fn the_gpu_path_is_on_unless_explicitly_switched_off() {
         assert!(gpu_enabled_from_env(Some(on)), "`{on}` must not disable it");
     }
 }
+
+/// **The boot snow claims its loop over the static poisson (ADR-0136).** The
+/// artist document the app opens with: birth (`sim.spawn` + `motion.combine`),
+/// two deaths (`sim.lifetime`, `motion.falloff` + `motion.cull`), the age chain
+/// (`value.attribute` → `motion.color_ramp.t`) and the world (`sim.step` +
+/// `sim.collide` + forces) must ALL be staged, the plan must drive the loop on
+/// the device, and the ONE boundary left is `motion.distribute_poisson` — a
+/// static template (Bridson is sequential by nature; the plan keeps it on the
+/// pump because a constant is not a second simulation of anything).
+///
+/// This is the plan-shape half of the slice's goal; the device half is
+/// `gpu_stream_ops::the_birth_zone_loop_lives_and_dies_on_the_device_matching_the_cpu`.
+#[test]
+fn the_boot_snow_claims_the_loop_and_only_the_poisson_stays_cpu() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+    let mut doc = ph2d_motion_doc::MotionDoc::new();
+    let sinks = build_default_document(&mut doc, &reg).expect("the boot document builds");
+    let g = &doc.graph;
+
+    // The snow's render sink is the one whose plan drives the sim loop.
+    let mut looped = 0usize;
+    for sink in &sinks {
+        let plan = ph2d_gpu_cook::plan(g, &reg, &reg, *sink);
+        if !plan.drives_a_loop() {
+            continue;
+        }
+        looped += 1;
+        for (n, _) in &plan.boundaries {
+            let ty = g.node(*n).expect("boundary exists").type_name.as_str();
+            assert_eq!(
+                ty, "motion.distribute_poisson",
+                "the only CPU node left in the snow is the static template, found `{ty}`"
+            );
+        }
+        assert!(
+            !plan.boundaries.is_empty(),
+            "the poisson template must be a boundary (it has no kernel by design)"
+        );
+        // Every count-changing family member is STAGED — the claim is whole.
+        for ty in [
+            "sim.spawn",
+            "motion.combine",
+            "sim.lifetime",
+            "motion.cull",
+            "value.attribute",
+            "motion.color_ramp",
+            "sim.zone",
+        ] {
+            assert!(
+                plan.stages
+                    .iter()
+                    .any(|s| g.node(s.node).is_some_and(|i| i.type_name == ty)),
+                "`{ty}` must be staged in the snow's plan"
+            );
+        }
+    }
+    assert_eq!(looped, 1, "exactly one sink drives the snow's sim loop");
+}

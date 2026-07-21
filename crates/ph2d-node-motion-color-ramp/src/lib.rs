@@ -143,14 +143,24 @@ fn build_ramp(preset: i64, a: [f32; 4], b: [f32; 4], interp: RampInterp) -> Colo
 fn colorize(n: usize, ramp: &ColorRamp, t_field: &[f32]) -> Vec<[f32; 4]> {
     (0..n)
         .map(|i| {
-            let t = if t_field.is_empty() {
-                if n <= 1 {
-                    0.0
-                } else {
-                    i as f32 / (n as f32 - 1.0)
+            // The value-field convention, `motion.look_at::target_at`'s `0/1/n`
+            // ladder: absent -> the positional key; **length 1 -> BROADCAST**
+            // (one global `t` colours the whole set — a `value.lfo` unconnected
+            // is exactly that); else per-element, zero-padded. This node used to
+            // skip the broadcast arm and paint everything but element 0 with
+            // `t = 0` the moment a global value drove it (found porting the `t`
+            // path to the GPU, ADR-0136 — the kernel's broadcast reader IS the
+            // ladder, and the CPU had to be the canon it mirrors).
+            let t = match t_field.len() {
+                0 => {
+                    if n <= 1 {
+                        0.0
+                    } else {
+                        i as f32 / (n as f32 - 1.0)
+                    }
                 }
-            } else {
-                t_field.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0)
+                1 => t_field[0].clamp(0.0, 1.0), // CLAMP-OK: ramp key
+                _ => t_field.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0),
             };
             ramp.eval(t)
         })
@@ -174,14 +184,13 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// const closes it: the body asks whether the column was really there, and takes
 /// the CPU's other branch when it was not (see [`GpuKernel`]).
 ///
-/// **`t` connected keeps the node on the CPU** (the `v` refusal below). Not
-/// because the maths is hard — because the ANSWER would differ: the CPU reads
-/// `t_field[i]` and pads a short field with `0.0`, while this engine calls a
-/// column of the wrong length absent, which here would silently mean "use the
-/// positional key" instead. The plan cannot prove the lengths match (a `t` chain
-/// may root at another generator), so it recedes — the default of ADR-0127 D3.
-/// It costs nothing today: every `value.*` node is CPU-only, so a connected `t`
-/// is already a boundary.
+/// **`t` connected rides the broadcast reader** (ADR-0136 — this note used to
+/// refuse it, and the refusal predated the machinery that makes it honest).
+/// `ReadBroadcast` pairs a per-element field positionally and pins a length-1
+/// field to row 0 — the CPU's `0/1/n` ladder — and a field at any OTHER length
+/// is REFUSED at cook time (`BroadcastLengthMismatch`), never silently judged
+/// absent: the exact divergence the old refusal guarded against now has its own
+/// fence, one level down, for every broadcast port at once.
 ///
 /// **HR-5:** the interpolation is this crate's `lerp` (`a + (b − a)·t`), NOT
 /// WGSL's `mix` (`a·(1 − t) + b·t`) — same value, different expression, and
@@ -193,9 +202,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let cr_a = vec4<f32>(params.a_r, params.a_g, params.a_b, 1.0);\n\
         let cr_b = vec4<f32>(params.b_r, params.b_g, params.b_b, 1.0);\n\
-        // `t` unconnected → the normalised index (the gradient laid across the set).\n\
+        // `t` connected → the value field (per-element, or row 0 broadcast);\n\
+        // unconnected → the normalised index (the gradient across the set).\n\
         var cr_t = 0.0;\n\
-        if (params.count > 1u) {\n\
+        if (HAS_t_v) {\n\
+        \x20   cr_t = clamp(read_t_v(i), 0.0, 1.0);\n\
+        } else if (params.count > 1u) {\n\
         \x20   cr_t = f32(i) / (f32(params.count) - 1.0);\n\
         }\n\
         write_tint(i, cr_eval(\n\
@@ -281,11 +293,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
         ColumnBinding {
-            // See the doc above: a connected `t` is a shape this kernel cannot
-            // answer for, so it keeps the whole node on the CPU.
+            // The `t` field (port 1): per-element or a length-1 broadcast — see
+            // the doc above. Absent reads the identity, and `HAS_v` routes the
+            // body to the positional key instead (the CPU's empty-field arm).
             column: VALUE_COL,
             dim: Dim::Scalar,
-            access: ColumnAccess::RefuseIfPresent,
+            access: ColumnAccess::ReadBroadcast,
             identity: [0.0; 4],
             port: 1,
         },
@@ -389,6 +402,30 @@ const fn chan(param: &'static str, label: &'static str) -> ParamUiHint {
 
 #[cfg(test)]
 mod tests {
+    /// **A length-1 `t` field is a BROADCAST** — the value convention's `0/1/n`
+    /// ladder (`motion.look_at::target_at` is the canon). This node used to
+    /// take the `_` arm for it: element 0 got the value and every other element
+    /// got `t = 0`, so a `value.lfo` driving the ramp coloured exactly one
+    /// spark (found porting the `t` path to the GPU, ADR-0136).
+    #[test]
+    fn a_length_one_t_field_broadcasts_to_every_element() {
+        let ramp = super::build_ramp(3, [0.0; 4], [0.0; 4], super::RampInterp::Linear); // grayscale
+        let tinted = super::colorize(5, &ramp, &[0.75]);
+        for (i, c) in tinted.iter().enumerate() {
+            assert_eq!(
+                c, &tinted[0],
+                "element {i} must wear the SAME broadcast colour"
+            );
+        }
+        // …and the broadcast value is the field's, not the positional key: the
+        // grayscale ramp at t = 0.75 is 0.75 grey, not black.
+        assert!(
+            (tinted[0][0] - 0.75).abs() < 1e-6,
+            "broadcast t = 0.75 on grayscale: got {:?}",
+            tinted[0]
+        );
+    }
+
     use super::*;
 
     /// Grayscale by normalised index: the first element is black, the last is white, and

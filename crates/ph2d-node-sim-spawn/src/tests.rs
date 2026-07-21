@@ -13,6 +13,60 @@ fn registry() -> NodeRegistry {
 
 const FPS: f64 = 60.0;
 
+/// **The ordinal WRAPS at `ID_WRAP` (ADR-0136, the audit's C3).** The id is
+/// stored as `f32`, whose integers collapse past 2²⁴ — un-wrapped, the CPU
+/// would stamp ids the representation cannot hold while the GPU (whose window
+/// arrives wrapped by contract) stamps wrapped ones: two answers to "who is
+/// this newborn?". The wrap must happen at the ONE observable point, so the
+/// slot draw and the stamped id agree with the device bit for bit.
+#[test]
+fn the_birth_ordinal_wraps_at_the_representable_ceiling() {
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::gpu::ID_WRAP;
+    // A playhead deep enough that the raw ordinal passes 2²⁴ (rate 4M/s ⇒ ~4.2 s
+    // — the audit's own arithmetic: at millions per second the wrap is SECONDS).
+    let rate = 4_000_000.0_f64;
+    let t = 4.3_f64;
+    let raw = born_in(rate, t, 1.0 / FPS);
+    assert!(
+        raw.start > ID_WRAP,
+        "fixture: the raw ordinal must be past 2^24"
+    );
+
+    // The node, on the real cook path: template → spawn at that playhead.
+    let reg = registry();
+    let mut g = Graph::new();
+    let tpl = g.add_node("motion.grid");
+    g.set_param(tpl, "rows", 2.0);
+    g.set_param(tpl, "cols", 2.0);
+    let sp = g.add_node("sim.spawn");
+    g.set_param(sp, "rate", rate as f32);
+    g.connect(Edge {
+        from: (tpl, 0),
+        to: (sp, 0),
+        delayed: false,
+    })
+    .unwrap();
+    assert!(g.validate(&reg).is_ok());
+    let mut cook = Cook::new();
+    // Two cooks: the first has no history (dt = 0, nothing born).
+    cook.cook(&g, &reg, sp, t - 1.0 / FPS).expect("warm-up");
+    cook.advance_tick(&g, &reg, t - 1.0 / FPS).expect("tick");
+    let out = cook.cook(&g, &reg, sp, t).expect("cooks");
+    let stream = out[0].as_stream();
+    assert!(stream.count() > 0, "fixture: births must happen");
+    let Some(Column::Scalar(ids)) = stream.get("id") else {
+        panic!("newborns carry an id column");
+    };
+    for id in ids {
+        assert!(
+            *id >= 0.0 && (*id as u32) < ID_WRAP,
+            "id {id} escaped the wrap — past 2^24 the f32 lattice collapses ids"
+        );
+        assert_eq!(*id, (*id as u32) as f32, "every id is an exact f32 integer");
+    }
+}
+
 /// Every id born over `secs` seconds of 60 fps ticks.
 fn run(rate: f64, secs: f64) -> Vec<u32> {
     let ticks = (secs * FPS) as u64;

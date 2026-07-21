@@ -54,6 +54,9 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{
+    ColumnAccess, ColumnBinding, GpuKernel, ID_WRAP, ROWS_COL, SourceWindow, StreamOp,
+};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -190,6 +193,83 @@ fn gather(col: &Column, rows: &[usize]) -> Column {
     }
 }
 
+/// The GPU kernel (ADR-0136, `StreamOp::SourceRows`): output element `i` IS
+/// newborn `window_first + i`. The kernel writes the newborn's identity and the
+/// TEMPLATE ROW it is born from ([`ROWS_COL`]); the sequencer then gathers every
+/// other template column at those rows — the newborn inherits the whole
+/// vocabulary without this kernel enumerating a single column, exactly like the
+/// CPU's [`newborns`].
+///
+/// The id wraps at [`ID_WRAP`] — and so does the CPU's, at the SAME single
+/// point (`eval` wraps the ordinal before slotting and stamping), so both sides
+/// hash and write the same number. `window_first` arrives already wrapped (the
+/// count law's `f64` arithmetic, the emitter's pattern — ADR-0130).
+///
+/// [`slot`]'s expressions, verbatim: the scatter draw is the same avalanche
+/// hash (`sp_hash3`, bit-exact in u32), `u32(draw · n) % n` is Rust's
+/// `as usize % n`, round-robin is `id % n`. `rate` is NOT a kernel param — only
+/// the count law (host-side, `f64`) reads it.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let sp_id = (params.window_first + i) % 16777216u;\n\
+        var sp_row: u32 = 0u;\n\
+        if (params.window_src_n > 0u) {\n\
+        \x20   if (params.scatter >= 0.5) {\n\
+        \x20       let sp_draw = sp_rand01(u32(max(params.seed, 0.0)), sp_id, 7u);\n\
+        \x20       sp_row = u32(sp_draw * f32(params.window_src_n)) % params.window_src_n;\n\
+        \x20   } else {\n\
+        \x20       sp_row = sp_id % params.window_src_n;\n\
+        \x20   }\n\
+        }\n\
+        write_cp_rows(i, f32(sp_row));\n\
+        write_id(i, f32(sp_id));\n",
+    wgsl_lib: "\
+        fn sp_hash3(a: u32, b: u32, lane: u32) -> f32 {\n\
+            var h: u32 = a * 0x9e3779b9u + b * 0x85ebca6bu + lane * 0xc2b2ae35u;\n\
+            h = h ^ (h >> 16u);\n\
+            h = h * 0x7feb352du;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x846ca68bu;\n\
+            h = h ^ (h >> 16u);\n\
+            return f32(h >> 8u) / f32(16777216u);\n\
+        }\n\
+        fn sp_rand01(seed: u32, id: u32, lane: u32) -> f32 {\n\
+            return sp_hash3(seed, id, lane);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: ROWS_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["scatter", "seed"],
+    // The SAME `born_in` the CPU `eval` runs, in the same `f64` — this is why
+    // `CountLawCtx` carries `dt` (ADR-0136). The window's `first` is wrapped
+    // here, once, in integer arithmetic (the emitter's rule: the kernel is TOLD
+    // the window, never re-derives it).
+    count_law: Some(|c| {
+        let rate = (c.param)("rate") as f64;
+        let born = born_in(rate, c.playhead, c.dt);
+        SourceWindow {
+            count: born.len(),
+            first: born.start % ID_WRAP,
+            age_first: 0.0,
+        }
+    }),
+    variant_by_param: None,
+    applicable: None,
+};
+
 struct SimSpawn;
 
 impl NodeOp for SimSpawn {
@@ -203,7 +283,18 @@ impl NodeOp for SimSpawn {
         let seed = ctx.param("seed").max(0.0) as u32;
         // `dt` comes from the ENGINE (`EvalCtx::dt` — doc 49): this node holds no state, so it
         // has no clock column of its own to subtract from, and it must not invent one.
-        let ids: Vec<u32> = born_in(rate, ctx.playhead(), ctx.dt()).collect();
+        //
+        // The ordinal WRAPS at `ID_WRAP` (ADR-0136, the audit's C3): the id is
+        // stored as `f32`, whose integers collapse past 2²⁴ — at the millions-per-
+        // second a big sim runs, that is seconds, not days (the contract's own
+        // arithmetic on `SourceWindow`). Wrapped HERE, at the single point the
+        // ordinal becomes observable, so the slot draw, the stamped id and the GPU
+        // kernel (told a wrapped `window_first`) all see the same number. The wrap
+        // is invisible to consumers: identity is only ever read as a DIFFERENCE
+        // inside one window, orders of magnitude narrower than the period.
+        let ids: Vec<u32> = born_in(rate, ctx.playhead(), ctx.dt())
+            .map(|k| k % ID_WRAP)
+            .collect();
         let out = newborns(ctx.input(0), &ids, scatter, seed);
         ctx.emit(out);
     }
@@ -211,6 +302,11 @@ impl NodeOp for SimSpawn {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimSpawn))?;
+    // ADR-0136: the kernel mints rows + ids; the SourceRows machinery gathers
+    // the template's columns. NOT `register_dense_window`: a spawn's output ids
+    // are this tick's window only — downstream state pairing is the zone's job.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows { port: 0 });
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -212,6 +212,7 @@ fn a_dead_or_absurd_emitter_yields_an_empty_stream_not_a_panic() {
             inputs: &[],
             param: &|_| 1e9,
             playhead: 10.0,
+            dt: 0.0,
         })
         .count,
         MAX_ALIVE,

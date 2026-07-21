@@ -35,6 +35,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, KEEP_FLAG_COL, StreamOp};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -140,6 +141,108 @@ fn gather(col: &Column, keep: &[usize]) -> Column {
     }
 }
 
+/// The WGSL mirror of [`life_of`], shared verbatim by the predicate and the
+/// epilogue (ADR-0136 — seed and sample must be the same function, here twice
+/// over: who DIES and how far through life a survivor is must agree on the
+/// span, or an element could die at `life < 1`). The hash is the emitter's
+/// avalanche, bit-exact in WGSL (u32 wrapping arithmetic, 24 mantissa bits).
+/// The param guards are the CPU `eval`'s own (`max(0)`, `clamp(0,1)`), applied
+/// in-kernel because uniforms carry the RAW params.
+const LIFE_LIB: &str = "    fn lf_hash3(a: u32, b: u32, lane: u32) -> f32 {
+        var h: u32 = a * 0x9e3779b9u + b * 0x85ebca6bu + lane * 0xc2b2ae35u;
+        h = h ^ (h >> 16u);
+        h = h * 0x7feb352du;
+        h = h ^ (h >> 15u);
+        h = h * 0x846ca68bu;
+        h = h ^ (h >> 16u);
+        return f32(h >> 8u) / f32(16777216u);
+    }
+    fn lf_span(id: f32, life_p: f32, variance_p: f32, seed_p: f32) -> f32 {
+        let life = max(life_p, 0.0);
+        let variance = clamp(variance_p, 0.0, 1.0);
+        if (variance <= 0.0) { return life; }
+        let seed = u32(max(seed_p, 0.0));
+        let d = lf_hash3(seed, u32(max(id, 0.0)), 11u) * 2.0 - 1.0;
+        return max(life * (1.0 + variance * d), life * 0.1);
+    }
+";
+
+/// The GPU predicate (ADR-0136): survives ⇔ `age < span`, [`reap`]'s own test.
+/// Absent `age`/`id` read `0` — the CPU's `scalar()` zero-fill.
+const GPU_PREDICATE: GpuKernel = GpuKernel {
+    wgsl: "        let lf_sp = lf_span(read_id(i), params.life, params.variance, params.seed);
+        write_cp_keep(i, select(0.0, 1.0, read_age(i) < lf_sp));
+",
+    wgsl_lib: LIFE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "age",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: KEEP_FLAG_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["life", "variance", "seed"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// The node's own kernel — the EPILOGUE, an ordinary per-element pass over the
+/// compacted survivors: `life = clamp(age / span, 0, 1)`, [`reap`]'s survivor
+/// arm. Every survivor's span is positive (a zero span died at the predicate),
+/// so the division is total here.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "        let lf_sp = lf_span(read_id(i), params.life, params.variance, params.seed);
+        write_life(i, clamp(read_age(i) / lf_sp, 0.0, 1.0));
+",
+    wgsl_lib: LIFE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "age",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // Written fresh for the survivors — the CPU skips copying any
+            // pre-existing `life` and writes its own (`ours to write`).
+            column: "life",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["life", "variance", "seed"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 struct SimLifetime;
 
 impl NodeOp for SimLifetime {
@@ -158,6 +261,16 @@ impl NodeOp for SimLifetime {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimLifetime))?;
+    // ADR-0136: compact by the predicate, then run the epilogue on the
+    // survivors. NOT `register_dense_window` — a reaper breaks the window.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::Compact {
+            port: 0,
+            predicate: GPU_PREDICATE,
+        },
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

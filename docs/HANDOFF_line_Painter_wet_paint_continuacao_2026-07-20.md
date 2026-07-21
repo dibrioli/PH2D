@@ -166,6 +166,23 @@ vetoed/kept/mass — o kept-count mata o dim global). ⚠️ O fmt-sweep é dív
 nunca passou pelo fmt PINADO 1.95; `--no-verify` pulava o hook) — commit separado, zero lógica.
 ⚠️ Smoke do W2.4 pendente junto do lote (Grain procedural/imagem num traço wet).
 
+**W2.5 LANDOU (`50df3c2f`) — Selection/protection/alpha-lock confinam o depósito wet:** os gates
+são aplicados no ÚNICO ponto onde o módulo escreve o canvas (`wetpaint_composite`): keep-lerp
+para a base congelada via `splat_keep` (a lei do composite watercolor — garantia dura
+independente de onde a água chegou; a sim NÃO é gateada de propósito, o fluido flui) + pin de α
+no alpha-lock. A referência de α é `sess.base`, servida pela cadeia do `wet_splat_gates` (braço
+novo wet-session ANTES do wet_session_base — porta única, nunca 2ª porta). ⚠️ **O achado da
+mutação sobrevivente (2 gates nasceram verdes sob mutação):** o wrapper snapshot/restore do
+`stamp_dabs` já confinava o stamp E MATAVA a sessão a cada batch sob seleção — `restore_*` roda
+`Arc::make_mut` num canvas cujo Arc a sessão também segura (refcount 2 ⇒ clone ⇒ ponteiro novo)
+e o guard de identidade lê como mutação estrangeira ⇒ **sob seleção a água nunca vivia além de
+um batch**, com todo assert de pixel verde. Fix: o braço WetPaint desvia do wrapper (o
+watercolor já desviava pelo mesmo motivo) e os 2 gates ganharam **asserts de sobrevivência da
+sessão**. 3 gates novos (`the_selection_confines…` · `the_protection_mask_freezes…` ·
+`alpha_lock_pins_the_wet_silhouette…`, este com fixture meio-transparente); 4 mutações
+(gsel · gprot · α-pin · desvio de rota), cada uma sangra SÓ o próprio gate. ⚠️ Smoke junto
+do lote (selecionar metade + traço wet cruzando; alpha-lock numa camada com transparência).
+
 **W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
@@ -185,8 +202,7 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
-**W2 restante:** W2.5 Selection/alpha-lock (keep-lerp no MEU composite — o modelo
-`splat_keep`) · W2.6 Eraser→`Tool::Erase` (o engine já o tem; `paint.eraser` em modo wet roteia
+**W2 restante:** W2.6 Eraser→`Tool::Erase` (o engine já o tem; `paint.eraser` em modo wet roteia
 tool_override) · W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
 do painter nos 3 do engine é o v1 honesto?) · W2.8 shape editors (depósito 1× no Apply — os
 sítios de commit em `curve_commit`/`stroke_multi`; hoje recusados por `live_gesture`+métodos

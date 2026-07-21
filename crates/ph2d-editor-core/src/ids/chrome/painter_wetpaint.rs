@@ -23,3 +23,8 @@ pub const PAINTER_WETPAINT_RESET: NodeId = hash_node_id("painter_brush.wetpaint_
 /// leaves every stroke byte-identical to a plain brush; on, the Brush IS the fluid, and the arm
 /// persists across tool switches so "brush" always returns to Wet Paint until unchecked.
 pub const PAINTER_WETPAINT_ENABLE: NodeId = hash_node_id("painter_brush.wetpaint_enable");
+
+/// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
+/// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
+/// mouse) and for the populate loop.
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 2] = [PAINTER_WETPAINT_ENABLE, PAINTER_WETPAINT_RESET];

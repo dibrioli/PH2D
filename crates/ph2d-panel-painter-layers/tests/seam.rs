@@ -661,3 +661,37 @@ fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
          corpo onde está, e um controle que faz metade do que promete é pior que um que falta."
     );
 }
+
+/// DEFECT REPRO (Enio 2026-07-21, "não consigo sair do modo wet"): the Wet
+/// Paint **Enable** checkbox shipped painted + registered but ABSENT from the
+/// `event.rs` click allowlist — dead under the mouse, so the artist could
+/// never disarm. The tool-side gate stayed green because it drove
+/// `handle_panel_event` directly (a synthetic event skips the forward — the
+/// exact blind spot this file's header describes). This clicks the REAL
+/// panel seam for both wet clicks.
+#[test]
+fn wetpaint_enable_and_reset_clicks_forward_through_the_panel() {
+    for clicked in [
+        core_ids::PAINTER_WETPAINT_ENABLE,
+        core_ids::PAINTER_WETPAINT_RESET,
+    ] {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut panel_state = PainterLayersPanelState;
+        let outcome = host
+            .apply_panel_event::<PainterLayersPanel>(&mut panel_state, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "panel ignored the wet click {clicked:?} — the `event.rs` allowlist arm is missing \
+             (the checkbox is dead under the mouse)"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "wet click {clicked:?} never reached the bus. drained = {actions:?}"
+        );
+    }
+}

@@ -68,9 +68,11 @@ pub(crate) fn paint_appearance_sections(
             );
         }
 
-        // ── Watercolor **Paper** section (the substrate) — ABOVE Grain, watercolor mode only. In
-        //    watercolor the Grain slot IS the granulation map (`docs/Painter/10…` §5). ──
-        if brush.watercolor {
+        // ── The **Paper** section (the substrate) — ABOVE Grain; watercolor mode AND Wet Paint
+        //    (W2.7: the armed Paper slot seeds the fluid engine's tooth plane at session birth —
+        //    without the section the wet artist has no door to arm a paper). Hidden for the plain
+        //    brush / Impasto, which read no substrate (Enio 2026-07-21: "deve ser assim mesmo"). ──
+        if brush.watercolor || brush.wetpaint {
             y = sep(ctx.scene, theme, x, content_w, y);
             y = crate::paint_watercolor_paper::paint_paper_section(
                 ctx, theme, x, content_w, y, brush,

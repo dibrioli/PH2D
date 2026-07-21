@@ -435,6 +435,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
                 || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
+                // Wet Paint section: the Enable master toggle (the ARM) + the section reset.
+                // ⚠️ This allowlist is the panel's click FORWARD — an id painted + registered but
+                // absent here is a checkbox dead under the mouse, which is exactly how the wet
+                // Enable shipped unable to disarm (Enio 2026-07-21, "não consigo sair do modo wet").
+                || core_ids::PAINTER_WETPAINT_CLICKS.contains(&id)
                 // Watercolor section: Wet-edges + Pigment toggles + the section reset.
                 || core_ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
                 // Impasto: Enable + the section reset + Depth-Source / Draw-To segments + Show Impasto.

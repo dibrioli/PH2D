@@ -279,13 +279,28 @@ pub fn render_region(
 /// straight-alpha compositing, over-composited across visible layers.
 pub fn render_pigment_only(layers: &[RenderLayer<'_>], out: &mut [u8]) {
     let g0 = layers[0].grid;
+    render_pigment_only_region(layers, 1, 1, g0.w, g0.h, out);
+}
+
+/// The region form of [`render_pigment_only`] (the product's dirty-rect
+/// composite; the full render above is a thin wrapper so there is exactly ONE
+/// per-cell body to diverge). Cell coords, inclusive, [1..W] x [1..H]; `out`
+/// is the FULL W*H*4 canvas — only the rect's pixels are written.
+pub fn render_pigment_only_region(
+    layers: &[RenderLayer<'_>],
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    out: &mut [u8],
+) {
+    let g0 = layers[0].grid;
     let s = g0.s;
     let w = g0.w;
-    let h = g0.h;
-    for cy in 1..=h {
-        let mut i = 1 + cy * s;
-        let mut o = (cy - 1) * w * 4;
-        for _cx in 1..=w {
+    for cy in y0..=y1 {
+        let mut i = x0 + cy * s;
+        let mut o = ((cy - 1) * w + (x0 - 1)) * 4;
+        for _cx in x0..=x1 {
             // Accumulate premultiplied, then unpremultiply at the end.
             let (mut pr, mut pg, mut pb, mut pa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
             for layer in layers.iter().filter(|l| l.visible) {

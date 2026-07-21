@@ -237,6 +237,24 @@ impl Engine {
     // -----------------------------------------------------------------------
 
     fn dispatch_dab(&mut self, x: f64, y: f64, b: f64, dir_x: f64, dir_y: f64) {
+        let r = 2.0 + self.sliders.size * 33.0;
+        self.dispatch_pressure_dab(x, y, b, dir_x, dir_y, r);
+    }
+
+    /// Product door: SPEC §9's dab-parameter mapping with the two host
+    /// substitutions — REAL pressure `b` (the synthetic §8 recurrence's
+    /// output range, ~0..10) and a REAL radius `r` (px) instead of the Size
+    /// slider's `2 + size*33`. The engine's own [`Self::dispatch_dab`] is a
+    /// thin wrapper, so there is exactly one §9 to diverge.
+    pub fn dispatch_pressure_dab(
+        &mut self,
+        x: f64,
+        y: f64,
+        b: f64,
+        dir_x: f64,
+        dir_y: f64,
+        r: f64,
+    ) {
         let p = self.sim.gather_params(&self.tuning);
         let s = self.sliders;
         let pressure_base = 0.2 + 0.7 * s.pressure; // even minimum pressure deposits
@@ -248,7 +266,6 @@ impl Engine {
         // denser.
         let water_amount =
             (2.0 * water_unit * water_unit) / (pressure_base + 0.01) * p.k(Knob::WaterPerDab);
-        let r = 2.0 + s.size * 33.0;
         let mut h = 0.5 * b;
         if h < 1.0 {
             h = 1.0;
@@ -364,6 +381,34 @@ impl Engine {
         self.trail.start_stroke(x, y, self.color, mode);
         let spacing = self.tuning.get(Knob::Spacing);
         self.stroke.begin(x, y, spacing);
+    }
+
+    /// Product door: begin a stroke fed by REAL dabs from the host's stroke
+    /// engine — the synthetic §8 pressure recurrence and the engine's own
+    /// spacing are bypassed; §9's mapping still runs per dab in
+    /// [`Self::dispatch_pressure_dab`]. No history capture (the host owns
+    /// undo); the trail starts exactly as [`Self::pointer_down`] starts it.
+    pub fn begin_direct_stroke(&mut self, x: f64, y: f64) {
+        self.stroke_down = true;
+        self.has_prev_dab = false;
+        let mode = if self.tool == Tool::Blend { TrailMode::Blend } else { TrailMode::Paint };
+        self.trail.start_stroke(x, y, self.color, mode);
+    }
+
+    /// Product door: the host's path advanced by `chord` px — rolls the
+    /// trail's deposit window exactly as the engine's own Segment events do.
+    pub fn direct_segment(&mut self, chord: f64) {
+        if self.tool == Tool::Paint || self.tool == Tool::Blend {
+            let spacing = self.tuning.get(Knob::Spacing);
+            self.trail.on_segment(chord, spacing);
+        }
+    }
+
+    /// Product door: end a real-dab stroke. The trail's tip remainder is
+    /// dropped by design, mirroring the tail of the engine's `end_stroke`.
+    pub fn end_direct_stroke(&mut self) {
+        self.stroke_down = false;
+        self.trail.drop_remainder();
     }
 
     /// One per 40 Hz step while down.

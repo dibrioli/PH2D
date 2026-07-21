@@ -1,5 +1,33 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite VI): o selo virou um DEGRAU** (report do Enio: *"o bleed baixo
+> está tirando tinta das quinas antes de resolver o vazamento"*, com a LENTE ainda na tela).
+> **O diagnóstico que importa está na palavra "antes":** a trapped-ball é **BINÁRIA** (o próprio
+> report que abriu esta saga — *"trap 0 e trap máximo vazam parecidos"* — e o gate
+> `the_trap_is_binary_the_bleed_is_continuous` o pina), então uma **rampa** sobre ela entrega, em
+> toda a faixa do meio, **só o efeito colateral**: a bola já é grande o bastante para erodir a
+> arte e ainda pequena demais para fechar o vão. `seal_from_bleed` virou um **degrau**
+> (`bleed ≤ 0.15` ⇒ raio cheio; acima ⇒ **a bola não existe**) — ou o vão está aberto e a arte
+> está intocada, ou ele está selado. **Não há "antes".** Gate `the_seal_is_a_step_not_a_ramp`
+> (varre o slider inteiro; mutação = voltar à rampa ⇒ raio intermediário ⇒ RED).
+>
+> ⚠️ **NÃO REPRODUZI as quinas comidas headless** — 3 fixtures (tremor real do smoke · vão de
+> quina DELIBERADO de 0.2 doc · varredura de raio 16→160 a precisão 40/80/160), ponto-em-polígono
+> nas duas quinas esquerdas: **cobertas em todo raio**, e o contorno chega a `(-4.01, 2.52)`. Se
+> o re-smoke ainda mostrar os triângulos, o mecanismo está a JUSANTE do `colorize_with` (o
+> `contour_widths`/`fill_stroke` do shell, ou o `snap.rs`) e o próximo passo é RENDER-AND-LOOK.
+>
+> ⛔ **TENTADO, MEDIDO e REVERTIDO — a dilatação watershed (widest-first).** Teoria: o passo 4a
+> do `segment.rs` atribui cada papel ao núcleo mais próximo **pelo PAPEL**, e papel atravessa um
+> vão que a BOLA não atravessa ⇒ o vão vira atalho e quem está mais perto dele ganha o outro
+> lado. Troquei a BFS cega por uma **fila hierárquica descendente em distância-à-tinta**
+> (Beucher–Meyer), que faz cada núcleo reivindicar a vizinhança LARGA antes de qualquer frente
+> espremer-se pela garganta. **Compilou, 30 gates verdes — e mudou NADA de mensurável:** os dois
+> fixtures deram resultado IDÊNTICO com a mutação de prioridade plana (= a BFS antiga). Custo
+> medido: **4096² 1726 → 1962 ms (+19%)**. Mudança sem benefício demonstrável e com custo medido
+> **não entra** (CLAUDE.md §0.0: meça antes). Fica registrado para ninguém reconstruir às cegas —
+> se um dia um fixture EXIBIR o atalho pelo vão, a receita está aqui.
+>
 > **Estado (2026-07-20, noite V): a EXTRAPOLAÇÃO do selo FECHOU** (report do Enio: *"Antes o
 > trap controlava a extrapolação para fora do retângulo. Agora nada tira a extrapolação"*). O
 > selo do `Bleed 0` alimenta um raio de trapped-ball que **cresce com a precisão** (o zoom), e a

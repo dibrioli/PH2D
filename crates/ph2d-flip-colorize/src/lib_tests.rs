@@ -267,6 +267,41 @@ fn the_bleed_zero_seals_the_gap() {
     );
 }
 
+/// 🔴 **O selo é um DEGRAU, nunca uma rampa** (report do Enio 2026-07-20: *"o bleed baixo está
+/// tirando tinta das quinas antes de resolver o vazamento"* — com a lente AINDA na tela).
+///
+/// A trapped-ball é **binária**: abaixo do raio que sela o vão ela não muda a lente NADA (o
+/// gate irmão `the_trap_is_binary_the_bleed_is_continuous` pina isso), mas **já erode a arte**
+/// — as quinas. Então uma RAMPA sobre ela entrega, na faixa do meio, só o efeito colateral: a
+/// bola grande o bastante para comer a quina e pequena demais para fechar o vão. O degrau
+/// apaga essa zona — ou o vão está aberto e **a bola não existe** (`0`), ou está selado
+/// (`SEAL_DOC`). Nunca um raio intermediário, que é puro dano.
+///
+/// Mutação que sangra: voltar à rampa (`((KNEE-b)/KNEE).max(0) * SEAL_DOC`) ⇒ aparecem raios
+/// intermediários.
+#[test]
+fn the_seal_is_a_step_not_a_ramp() {
+    // Varre o slider inteiro: todo valor devolve OU zero OU o raio cheio, nada entre.
+    let full = seal_from_bleed(0.0);
+    assert!(full > 0.0, "o Bleed 0 tem de selar");
+    for i in 0..=1000 {
+        let b = i as f32 / 1000.0;
+        let s = seal_from_bleed(b);
+        assert!(
+            s == 0.0 || (s - full).abs() < 1e-6,
+            "raio INTERMEDIÁRIO em bleed={b:.3}: {s} (nem 0 nem {full}) — \
+             é a zona que só entrega dano: erode a quina sem fechar o vão"
+        );
+    }
+    // E é monotônico no sentido certo: selado embaixo, aberto em cima.
+    assert_eq!(seal_from_bleed(1.0), 0.0, "Bleed 1 = vão ABERTO, sem bola");
+    assert_eq!(
+        seal_from_bleed(0.5),
+        0.0,
+        "o meio (5º smoke) não carrega bola"
+    );
+}
+
 /// 🔴 **O selo do `Bleed 0` NÃO extrapola para fora do retângulo** (report do Enio 2026-07-20:
 /// *"Antes o trap controlava a extrapolação para fora do retangulo. Agora nada tira a
 /// extrapolação"*).

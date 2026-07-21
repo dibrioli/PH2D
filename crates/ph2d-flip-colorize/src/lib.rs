@@ -128,23 +128,35 @@ pub fn squeeze_from_bleed(bleed: f32) -> u32 {
 /// — sem isso, a bola grande engolia o FUNDO (o vão de fora da caixa), e a cor extrapolava para
 /// além do retângulo (regressão do 1º selo, precisão alta = margem fina demais para a bola).
 ///
-/// `bleed ∈ [0,1]`: **`0` = sela** (raio `MAX_SEAL_DOC`, fecha vãos até `2·1.0 = 2` unidades);
-/// **acima do joelho (`0.5`) = `0`** (vão ABERTO, o [`squeeze_from_bleed`] regula a seepage — o
-/// 5º smoke intacto). Entre eles o raio cresce à medida que o Bleed cai. Em DOC units porque um
-/// vão é grandeza do documento; o chamador multiplica pela precisão (px/unidade), como o Trap.
+/// ⚠️ **É um DEGRAU, não uma rampa, e a razão é medida:** a trapped-ball é **BINÁRIA** (o
+/// report do Enio que abriu isto: *"trap 0 e trap máximo vazam parecidos"* — ela sela o vão ou
+/// não sela, e abaixo do selo não muda NADA). Uma rampa sobre um controle binário entrega, na
+/// faixa do meio, **só os efeitos colaterais**: a bola já é grande o bastante para erodir a
+/// arte (as QUINAS) e ainda pequena demais para fechar o vão — exatamente o que o Enio viu
+/// (*"o bleed baixo está tirando tinta das quinas antes de resolver o vazamento"*, com a lente
+/// ainda na tela). O degrau apaga essa zona: ou o vão está ABERTO e a bola não existe, ou ele
+/// está SELADO. Não há "antes".
+///
+/// `bleed ∈ [0,1]`: **`≤ 0.15` = sela** (raio `SEAL_DOC`, fecha vãos até `2·1.0 = 2` unidades);
+/// **acima = `0`** (vão ABERTO, a bola some, o [`squeeze_from_bleed`] regula a seepage — o 5º
+/// smoke intacto). Em DOC units porque um vão é grandeza do documento; o chamador multiplica
+/// pela precisão (px/unidade), como o Trap.
 ///
 /// ⚠️ **Trade medido:** a trapped-ball com raio grande também erode as câmaras, então uma
-/// região mais estreita que `2·MAX_SEAL_DOC` colapsa no `Bleed 0` (sub-segmentar é PERDA). Por
-/// isso `MAX_SEAL_DOC` é conservador (1 unidade) — sela o vão deliberado sem comer arte fina; o
+/// região mais estreita que `2·SEAL_DOC` colapsa quando o selo engaja (sub-segmentar é PERDA).
+/// Por isso `SEAL_DOC` é conservador (1 unidade) — sela o vão deliberado sem comer arte fina; o
 /// artista que precisa de mais sobe o **Trap** de propósito.
 #[must_use]
 pub fn seal_from_bleed(bleed: f32) -> f32 {
-    /// Abaixo deste Bleed o selo começa a engajar (acima, vão aberto — só squeeze).
-    const KNEE: f32 = 0.5;
-    /// O raio de selagem em `bleed = 0` (DOC units): fecha vãos até `2·1.0 = 2` unidades.
-    const MAX_SEAL_DOC: f32 = 1.0;
-    let b = bleed.clamp(0.0, 1.0);
-    ((KNEE - b) / KNEE).max(0.0) * MAX_SEAL_DOC
+    /// Abaixo deste Bleed o selo ENGAJA (acima, vão aberto — só o squeeze regula).
+    const KNEE: f32 = 0.15;
+    /// O raio de selagem quando engaja (DOC units): fecha vãos até `2·1.0 = 2` unidades.
+    const SEAL_DOC: f32 = 1.0;
+    if bleed.clamp(0.0, 1.0) <= KNEE {
+        SEAL_DOC
+    } else {
+        0.0
+    }
 }
 
 /// **Colorize:** line-art (as mesmas polilinhas de fronteira do balde) + rabiscos coloridos

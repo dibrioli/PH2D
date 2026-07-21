@@ -393,59 +393,23 @@ fn posed_scene() -> (
 /// carrega o centro: mundo × centro = translação DOBRADA — o *"pula para o canto direito"*
 /// (Enio, 2026-07-20), e cada re-grab compunha mais um centro. O preview é um GESTO: o
 /// settle o pula, e o lugar desenhado é estável.
-///
-/// ⚠️ Os dois frames usam `d` DIFERENTE (0.3 → 0.4) de propósito: o memo do preview
-/// (`OffsetSession::last`) pula um frame de `d` IGUAL, então um teste com o mesmo `d`
-/// testaria o memo, não a costura settle↔re-derive que ESTE gate guarda. O offset cresce
-/// simétrico em torno do centro, então o centro fica em `(4,0)` para qualquer `d` — o que
-/// muda entre os frames é o TAMANHO, e é a re-inserção sob o mesmo id (com o settle
-/// pulando-a como gesto) que tem de manter o centro parado.
 #[test]
 fn the_live_preview_draws_in_the_same_place_every_frame() {
     let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
     let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
     let c1 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
-    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.4);
+    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
     assert!(
         (c1[0] - 4.0).abs() < 1e-3 && c1[1].abs() < 1e-3,
         "frame 1 desenhou fora da pose da fonte: {c1:?}"
     );
     assert!(
-        (c2[0] - 4.0).abs() < 1e-3 && c2[1].abs() < 1e-3,
-        "o frame seguinte (d novo, re-derivado sob o mesmo id) desenhou em {c2:?} — o \
-         settle assentou o preview e a translação dobrou"
+        (c2[0] - c1[0]).abs() < 1e-6 && (c2[1] - c1[1]).abs() < 1e-6,
+        "o MESMO d desenhou em lugares diferentes (frame 1 {c1:?}, frame 2 {c2:?}) — o \
+         settle assentou o preview e o frame seguinte dobrou a translação"
     );
 }
 
-/// **Um frame cujo `d` e knobs não mudaram é MEMOIZADO — não re-clona a cena nem re-offseta.**
-/// O preview roda todo frame enquanto o slider está agarrado, mesmo com o mouse parado; o
-/// `clone_from(&pre)` custa O(cena TODA), então segurar o slider re-copiava a cena inteira e
-/// re-rodava o sweep à toa (a queda de FPS ao pausar o arrasto numa cena grande, 2026-07-20).
-/// O `preview` devolve `true` quando re-derivou, `false` quando pulou.
-#[test]
-fn an_unchanged_offset_frame_is_memoized() {
-    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(10.0)]);
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-
-    assert!(sess.preview(&mut scene, &mut pen, 2.0), "1º frame re-deriva");
-    let area = ph2d_vec_boolean::area(&scene.paths()[0]);
-    assert!(
-        !sess.preview(&mut scene, &mut pen, 2.0),
-        "o MESMO d tem de ser memoizado (pulado)"
-    );
-    assert!(
-        (ph2d_vec_boolean::area(&scene.paths()[0]) - area).abs() < 1e-9,
-        "o frame memoizado deixou a cena EXATAMENTE como estava"
-    );
-    assert!(
-        sess.preview(&mut scene, &mut pen, 3.0),
-        "um d NOVO re-deriva"
-    );
-    assert!(
-        !sess.preview(&mut scene, &mut pen, 3.0),
-        "…e o memo volta a valer no novo d"
-    );
-}
 
 /// **Voltar o slider ao centro NO MEIO do arrasto mostra a forma NO LUGAR dela.** As
 /// entidades das fontes morrem no 1º churn, então restaurar a fonte crua (geometria LOCAL,
@@ -556,6 +520,74 @@ fn changing_the_join_after_release_retunes_the_committed_offset() {
     assert!(
         (c[0] - 4.0).abs() < 1e-3 && c[1].abs() < 1e-3,
         "o retune moveu a forma (pose dobrada?): {c:?}"
+    );
+    ph2d_panel_vector::set_expand_join(0);
+}
+
+/// **Uma CADEIA de retunes muda a forma em CADA passo** (Round → Bevel → Miter), não só no
+/// primeiro. O memo do preview (`OffsetSession::last`) pula frames de `(d, knobs)` iguais;
+/// se o `apply` não invalidasse o memo, o 2º retune em diante casaria a chave antiga e
+/// PULARIA — a forma travaria no 1º join (o report de 2026-07-20, "Round para Bevel ou
+/// Miter não muda mais"). O oráculo é VERTS (Round=arcos, Bevel=chanfro, Miter=quina): os
+/// três têm de ser DISTINTOS. `depth` é passado estável (a morte da janela é gateada à
+/// parte); aqui prova-se só que o retune re-deriva a cada troca.
+#[test]
+fn a_chain_of_retunes_changes_the_shape_at_every_step() {
+    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
+    // Estado inicial dos chips: Miter/Both. Restaura no fim (outros gates deste arquivo
+    // computam áreas para Miter).
+    ph2d_panel_vector::set_expand_join(0);
+    ph2d_panel_vector::set_expand_side(2);
+
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+    drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.5);
+    sess.preview(&mut scene, &mut pen, 0.5);
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    let mut win = OffsetRetune::after_release(sess, 0.5).expect("churnou");
+    assert_eq!(win.step(7, expand_knobs()), RetuneStep::Keep, "frame 1 aprende");
+
+    let verts = |scene: &VecScene| -> usize {
+        scene.paths().iter().map(|p| p.verts.len()).sum()
+    };
+    // Aplica um join e devolve os verts do resultado.
+    let retune_to = |join: u8,
+                         win: &mut OffsetRetune,
+                         scene: &mut VecScene,
+                         pen: &mut PenTool,
+                         sim: &mut ph2d_ecs::SimWorld,
+                         map: &mut crate::vec_entities::VecEntityMap|
+     -> usize {
+        // ⚠️ O frame "aprende" que o app real SEMPRE tem: o `apply` do retune anterior
+        // re-armou `depth = None`, e a próxima `step` (frame ocioso, knobs ainda os
+        // antigos) o re-aprende (Keep) ANTES de qualquer troca. Sem espelhar esse frame o
+        // teste bate no `None => Keep` e não representa a sequência do produto.
+        assert_eq!(
+            win.step(7, expand_knobs()),
+            RetuneStep::Keep,
+            "o frame de aprender-depth pós-apply"
+        );
+        ph2d_panel_vector::set_expand_join(join);
+        let k = expand_knobs();
+        assert_eq!(win.step(7, k), RetuneStep::Retune, "join {join}: knob mudou = retune");
+        win.apply(scene, pen, sim, map, k);
+        crate::vec_entities::sync(sim, scene, map);
+        verts(scene)
+    };
+
+    let round = retune_to(1, &mut win, &mut scene, &mut pen, &mut sim, &mut map);
+    let bevel = retune_to(2, &mut win, &mut scene, &mut pen, &mut sim, &mut map);
+    let miter = retune_to(0, &mut win, &mut scene, &mut pen, &mut sim, &mut map);
+
+    assert!(
+        round > 12,
+        "Round devia produzir ARCOS (muitos verts), deu {round} — o retune pulou?"
+    );
+    assert_ne!(round, bevel, "Round→Bevel não mudou os verts ({round})");
+    assert_ne!(bevel, miter, "Bevel→Miter não mudou os verts ({bevel})");
+    assert!(
+        miter < bevel && bevel < round,
+        "a ordem de verts esperada é Miter < Bevel < Round (deu {miter} < {bevel} < {round})"
     );
     ph2d_panel_vector::set_expand_join(0);
 }

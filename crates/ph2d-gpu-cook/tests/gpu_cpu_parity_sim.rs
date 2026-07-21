@@ -61,6 +61,9 @@ fn registry() -> NodeRegistry {
     ph2d_node_sim_zone::register(&mut reg).unwrap();
     ph2d_node_sim_step::register(&mut reg).unwrap();
     ph2d_node_sim_collide::register(&mut reg).unwrap();
+    // Render transforms the demo=10 scene uses (lift + shrink).
+    ph2d_node_motion_move::register(&mut reg).unwrap();
+    ph2d_node_motion_scale::register(&mut reg).unwrap();
     reg
 }
 
@@ -364,6 +367,170 @@ fn cpu_ticks(g: &Graph, reg: &NodeRegistry, out: NodeId, ticks: u64) -> Vec<Vec<
         frames.push(lowered);
     }
     frames
+}
+
+/// DIAGNOSTIC (`PH2D_GPU_COOK_DEMO=10` FPS report): build the demo document at
+/// its shipped scale and MEASURE the GPU cook, the CPU cook, and whether the
+/// field stays bounded. Run:
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_sim --release -- \
+///     --ignored --nocapture --test-threads=1 the_zone_demo_scale_cook_cost
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_zone_demo_scale_cook_cost() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // The demo, verbatim: grid 256x1024 → move → zone, interior wind → buoyancy →
+    // sim.step → sim.collide, render → scale → output.
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 256.0);
+    g.set_param(grid, "cols", 1024.0);
+    g.set_param(grid, "gap_x", 0.03);
+    g.set_param(grid, "gap_y", 0.05);
+    let lift = g.add_node("motion.move");
+    g.set_param(lift, "dy", 9.0);
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    g.set_param(wind, "angle", 270.0);
+    g.set_param(wind, "strength", 4.0);
+    g.set_param(wind, "gust", 0.35);
+    let sea = g.add_node("force.buoyancy");
+    for (k, v) in [
+        ("level", -0.5),
+        ("density", 14.0),
+        ("depth", 0.3),
+        ("drag", 5.0),
+        ("wave_amplitude", 0.14),
+        ("wave_length", 2.4),
+        ("wave_speed", 0.5),
+    ] {
+        g.set_param(sea, k, v);
+    }
+    let step = g.add_node("sim.step");
+    let bed = g.add_node("sim.collide");
+    g.set_param(bed, "shape", 0.0);
+    g.set_param(bed, "height", -1.1);
+    g.set_param(bed, "restitution", 0.25);
+    g.set_param(bed, "friction", 0.35);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.06);
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, lift, 0, false);
+    edge(&mut g, lift, zone, 0, false);
+    edge(&mut g, zone, scale, 0, false);
+    edge(&mut g, scale, out, 0, false);
+    edge(&mut g, zone, wind, 0, true);
+    edge(&mut g, wind, sea, 0, false);
+    edge(&mut g, sea, step, 0, false);
+    edge(&mut g, step, bed, 0, false);
+    edge(&mut g, bed, zone, 1, false);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu(), "NOT fully GPU: {:?}", plan.boundaries);
+    eprintln!(
+        "\n=== demo=10 scale (262144 elements) ===\nfully_gpu={} dispatching={}",
+        plan.is_fully_gpu(),
+        plan.dispatching_stages(&reg),
+    );
+
+    // GPU: warm up 30 ticks (past the fall), then time 60 steady-state ticks.
+    let mut gc = GpuCook::new();
+    let cook = |gc: &mut GpuCook, t: u64| {
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: t as f64 * FIXED_DT,
+                tick: Some(t),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    };
+    for t in 0..=200 {
+        cook(&mut gc, t);
+    }
+    let n0 = std::time::Instant::now();
+    for t in 201..=260 {
+        cook(&mut gc, t);
+    }
+    let gpu_ms = n0.elapsed().as_secs_f64() * 1000.0 / 60.0;
+
+    // Bounded? A settled snow field should sit within a few units of the sea.
+    let frame = read_instances(&gpu, gc.instances().expect("cooked"));
+    let (mut maxabs, mut nonfinite) = (0.0f32, 0usize);
+    for r in &frame {
+        for k in 0..2 {
+            if !r.world_pos[k].is_finite() {
+                nonfinite += 1;
+            } else {
+                maxabs = maxabs.max(r.world_pos[k].abs());
+            }
+        }
+    }
+
+    // CPU, one steady-state tick, for the ratio.
+    let cpu = cpu_ticks(&g, &reg, out, 205);
+    let c0 = std::time::Instant::now();
+    let _ = cpu_ticks(&g, &reg, out, 205);
+    let cpu_ms = c0.elapsed().as_secs_f64() * 1000.0 / 206.0;
+    let _ = cpu;
+
+    eprintln!(
+        "GPU cook {gpu_ms:.3} ms/tick · CPU cook ~{cpu_ms:.3} ms/tick · \
+         max|pos| {maxabs:.2} · non-finite {nonfinite} of {} lanes",
+        frame.len() * 2
+    );
+    assert_eq!(nonfinite, 0, "the sim exploded to NaN/inf");
+
+    // Replicate the SHELL's exact forward-play loop: each frame cooks the range
+    // `rewind_for(target)..=target`. If that is 1 tick/frame the demo is cheap; if
+    // it re-cooks the whole history every frame, THAT is the FPS drop (and my
+    // direct-cook timing above would never have shown it).
+    let mut sc = GpuCook::new();
+    let mut total = 0u64;
+    let mut worst = 0u64;
+    let f0 = std::time::Instant::now();
+    for target in 0..=60u64 {
+        let lo = sc.rewind_for(target);
+        let n = target - lo + 1;
+        total += n;
+        worst = worst.max(n);
+        for t in lo..=target {
+            sc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+    let shell_ms = f0.elapsed().as_secs_f64() * 1000.0 / 61.0;
+    eprintln!(
+        "SHELL loop: {total} cooks over 61 frames ({:.1}/frame, worst {worst}) · \
+         {shell_ms:.3} ms/frame",
+        total as f64 / 61.0
+    );
 }
 
 /// Cook `ticks` ticks on the GPU, returning the LAST tick's lowering. Asserts

@@ -156,7 +156,18 @@ próxima fatia (a classe que muda contagem). O que ESTA fatia entrega é a
   neve **idêntica** (fronteira `sim.zone`, 2 stages) — só o rótulo muda para
   `[refused-despite-kernel]`.
 - **Demo `PH2D_GPU_COOK_DEMO=10`** — a neve de **população fixa** (grid → zone,
-  interior `wind → buoyancy → sim.step → sim.collide`) 100% na GPU, ~262k flocos.
+  interior `wind → buoyancy → sim.step → sim.collide`) 100% na GPU.
+
+**⚠️ SMOKE (Enio, 2026-07-20): *"profunda queda de fps"* — e a causa NÃO era o
+cook.** Medido (`the_zone_demo_scale_cook_cost`, RTX): a 262.144 flocos o cook GPU
+custa **0,5 ms/tick** (1 tick/frame, campo limitado, zero NaN); rodei o app com o
+tool Motion forçado ativo e o roteador reportou **`FullyGpu`, 0 fallthrough, ~58
+fps** já no zoom default. ⇒ o cook está a 3% de um frame; a queda é o **RENDER** de
+262 k instâncias quando todas ficam visíveis (zoom out) + o overdraw do
+empacotamento na água. É a lição do ADR-0134 (o teto da MÁQUINA ≠ o tamanho de uma
+DEMO): o count é um **orçamento de RENDER**, não do cook. **Demo reduzido a
+64×1024 = 65.536** (4×, folga de render); o teto do cook segue em MILHÕES (a classe
+4,19 M-em-3,6 ms), alcançável subindo `rows`/`cols`. **Aguardando re-smoke.**
 
 **Gates (verdes na RTX):** paridade `sim.zone` 4 casos (floor **1,7e-6** · disc
 **5,7e-6** · bowl **2,1e-6** · sea+bed) vs CPU, cada colisor contra uma linha de

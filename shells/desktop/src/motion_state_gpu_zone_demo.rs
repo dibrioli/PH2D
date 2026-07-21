@@ -35,7 +35,7 @@
 //! Under `PH2D_GPU_COOK=1` (the default) the chain is claimed with no boundary —
 //! grid, lift, both forces, the step, the collide and the render `scale` all on
 //! the device, zero readback. It auto-plays on tool entry; zoom out and watch a
-//! quarter-million flakes fall into the sea and ride the swell.
+//! the flakes fall into the sea and ride the swell.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -51,13 +51,16 @@ pub(super) fn build_gpu_zone_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
 
-    // 256 × 1024 = 262.144 flakes — the panel demo's count, and ~40× what this
-    // kind of sim reached on the CPU pump. A wide, shallow band so it reads as a
-    // fall of snow rather than a descending cube; the ceiling is millions (a
-    // per-element sim is the 4,19 M-in-3,6 ms class), and the artist raises
-    // `rows`/`cols` to get there.
+    // 64 × 1024 = 65.536 flakes — a wide, shallow band that reads as a fall of
+    // snow. ⚠️ The count is a RENDER budget, not the cook's: the GPU cook of this
+    // scene is **0,5 ms** even at 262.144 (measured, `the_zone_demo_scale_cook_cost`),
+    // but a demo that fills the frame RENDERING a quarter-million packed quads has
+    // nothing left when the artist zooms out (Enio, 2026-07-20: *"profunda queda de
+    // fps"* — measured ~58 fps at 262 k before the drop). Sized for headroom like
+    // the `=8` collide demo; the cook's ceiling is millions (the 4,19 M-in-3,6 ms
+    // class), reached by raising `rows`/`cols`.
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 256.0);
+    g.set_param(grid, "rows", 64.0);
     g.set_param(grid, "cols", 1024.0);
     g.set_param(grid, "gap_x", 0.03);
     g.set_param(grid, "gap_y", 0.05);
@@ -99,7 +102,7 @@ pub(super) fn build_gpu_zone_demo_document(
     g.set_param(bed, "restitution", 0.25);
     g.set_param(bed, "friction", 0.35);
 
-    // Grains, not blobs: 262.144 unit quads would be a solid sheet.
+    // Grains, not blobs: unit quads would be a solid sheet.
     let scale = g.add_node("motion.scale");
     g.set_param(scale, "amount", 0.06);
 

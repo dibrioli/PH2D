@@ -168,4 +168,24 @@ pub struct BodyDesc {
     /// live — `None` means density is the source, `Some` means it is not (the
     /// Auto/Manual mode the Inspector exposes, never both at once).
     pub mass_override: Option<f32>,
+    /// **Dominance group** — a collision PRIORITY (rapier's `dominance_group`,
+    /// Box2D's dominance). `0` (the default, and what every body did before this
+    /// existed) is the neutral group. When two bodies collide, the one with the
+    /// STRICTLY higher dominance is treated as having infinite mass by the lower one:
+    /// it bulldozes through and is never pushed back, while still falling under
+    /// gravity and colliding normally with equal-or-higher peers. Equal dominance is
+    /// an ordinary collision.
+    ///
+    /// It is orthogonal to mass: a LIGHT body with high dominance shoves a HEAVY one
+    /// with low dominance — the unstoppable mover, the boss, the player that pushes
+    /// debris but is never shoved by it. Static/Kinematic bodies sit at the maximum
+    /// (`i8::MAX + 1`), so a dynamic body never pushes them — consistent with their
+    /// infinite mass.
+    ///
+    /// It maps to `RigidBodyBuilder::dominance_group`, set at build, so — like the
+    /// flags around it — it rides the `BodyDesc` the world rebuilds from and a rewind
+    /// re-arms it. It bites only a dynamic body (a non-dynamic one is already at the
+    /// max), which is why the §11 row is Dynamic-only. The authored source is the
+    /// optional `Dominance` component (attached only when non-zero).
+    pub dominance: i8,
 }

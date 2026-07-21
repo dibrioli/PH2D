@@ -51,6 +51,7 @@ fn with_body() -> InspectorPhysicsInfo {
         lock_y: false,
         mass_manual: false,
         mass: 1.0,
+        dominance: 0,
     }
 }
 
@@ -634,6 +635,55 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
         &commit(with_body(), ids::INSP_PHYS_ANGVEL, 90.0),
         PhysicsFieldEdit::Angvel(90.0_f32.to_radians()),
         "Init Spin (deg/s → rad/s)",
+    );
+}
+
+/// **The Dominance row is offered and honoured only for a Dynamic body, and the
+/// widget's float is rounded to the i8 priority** (W-Dominance).
+///
+/// A non-dynamic body is already at the maximum dominance, so the row would be a
+/// control that cannot do anything — the same Dynamic-only rule as gravity/velocity.
+/// Presence AND absence per kind, and the commit asserts the conversion: the widget
+/// is a float, the edit is an `i8`, so `5.0` in becomes `Dominance(5)` out.
+#[test]
+fn dominance_is_offered_and_committed_only_for_a_dynamic_body() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        assert_eq!(
+            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_DOMINANCE),
+            offered,
+            "kind_tag={tag}: the Dominance row's presence is wrong"
+        );
+        assert_eq!(
+            !commit(info, ids::INSP_PHYS_DOMINANCE, 5.0).is_empty(),
+            offered,
+            "kind_tag={tag}: the event handler disagrees with the painter about \
+             whether Dominance is offered"
+        );
+    }
+    // The commit rounds the float to the i8 priority: 5.0 in → Dominance(5) out.
+    expect(
+        &commit(with_body(), ids::INSP_PHYS_DOMINANCE, 5.0),
+        PhysicsFieldEdit::Dominance(5),
+        "Dominance (float → i8)",
     );
 }
 

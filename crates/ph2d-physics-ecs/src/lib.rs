@@ -25,8 +25,8 @@ pub mod settings;
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
-    LockPositionY, LockRotation, MassOverride, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, RigidBody,
 };
 pub use joint::{JointKind, PhysicsJoint};
 pub use scale::scaled_shape;
@@ -63,6 +63,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<LockPositionX>("ph2d::physics::LockPositionX");
     reg.register::<LockPositionY>("ph2d::physics::LockPositionY");
     reg.register::<MassOverride>("ph2d::physics::MassOverride");
+    reg.register::<Dominance>("ph2d::physics::Dominance");
 }
 
 #[cfg(test)]
@@ -76,7 +77,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 10);
+        assert_eq!(reg.len(), 11);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -87,5 +88,6 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::LockPositionX").is_some());
         assert!(reg.get_by_name("ph2d::physics::LockPositionY").is_some());
         assert!(reg.get_by_name("ph2d::physics::MassOverride").is_some());
+        assert!(reg.get_by_name("ph2d::physics::Dominance").is_some());
     }
 }

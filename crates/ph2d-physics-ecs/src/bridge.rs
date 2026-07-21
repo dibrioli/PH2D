@@ -523,6 +523,9 @@ impl PhysicsBridge {
             // (`None` = auto, density-derived). Folded into the `BodyDesc` so a
             // rewind re-arms it, exactly like gravity scale.
             let mass_override = world.get::<crate::MassOverride>(e).map(|m| m.0);
+            // Optional Dominance (W-Dominance); its VALUE is the collision priority
+            // (absent = neutral `0`). Folded in and rides the `BodyDesc` for rewind.
+            let dominance = world.get::<crate::Dominance>(e).map_or(0, |d| d.0);
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -535,6 +538,7 @@ impl PhysicsBridge {
                 lock_x,
                 lock_y,
                 mass_override,
+                dominance,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),

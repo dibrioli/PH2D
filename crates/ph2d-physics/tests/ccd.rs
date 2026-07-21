@@ -51,6 +51,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
     });
 
@@ -77,6 +78,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
     });
 

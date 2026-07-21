@@ -127,6 +127,12 @@ pub struct InspectorPhysicsInfo {
     /// `MassOverride` component's value). Meaningless in Auto mode, where Density is
     /// the live control instead.
     pub mass: f32,
+    /// Dominance group — a collision priority (`0` neutral). A higher value bulldozes
+    /// lower ones (infinite relative mass to them) while still falling and colliding
+    /// normally with peers. Mirrors the optional `Dominance` component — absent means
+    /// `0`. Dynamic-only, like gravity/velocity (a non-dynamic body is already at the
+    /// max).
+    pub dominance: i8,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -198,6 +204,10 @@ pub enum PhysicsFieldEdit {
     /// The explicit mass, kg (only meaningful in Manual mode). Updates the
     /// `MassOverride` component's value.
     Mass(f32),
+    /// Dominance group (collision priority). Attaches/updates the optional
+    /// `Dominance` component, or detaches it at the neutral `0` — the presence-
+    /// override idiom. The panel rounds the widget's float to this `i8`.
+    Dominance(i8),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

@@ -128,6 +128,7 @@ fn measure_where_damping_stops_meaning_anything() {
             lock_x: false,
             lock_y: false,
             mass_override: None,
+            dominance: 0,
             offset: [0.0, 0.0],
         });
         for _ in 0..60 {

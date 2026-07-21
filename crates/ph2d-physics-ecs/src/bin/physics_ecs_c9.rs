@@ -10,8 +10,9 @@
 //! solver's sweep, W-CCD, one ROTATION-LOCKED spinning box → the frozen
 //! angular DOF, W-LockRot, one OFFSET collider → the collider translation,
 //! W-Offset, one X-LOCKED launched ball → the frozen translation DOF,
-//! W-LockPos, and one HEAVY ball with a manual mass override → the collider
-//! mass property, W-Mass): entities carry
+//! W-LockPos, one HEAVY ball with a manual mass override → the collider mass
+//! property, W-Mass, and one LIGHT high-dominance ball plowing a heavy one → the
+//! contact-solver dominance path, W-Dominance): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -22,15 +23,15 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 61
+//! physics-ecs-c9 body_count: 63
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
-    LockRotation, MassOverride, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockRotation, MassOverride, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -285,6 +286,40 @@ fn main() {
         },
         MassOverride(20.0),
         Transform::from_translation(Vec2::new(-28.0, 5.0)),
+    ));
+
+    // One LIGHT high-dominance ball (W-Dominance): `Dominance(5)` launched into a
+    // heavy neutral ball, so the dominance path (rapier's `relative_dominance` in the
+    // contact solver) travels the deterministic hash — an `f32` fold CI proves is
+    // bit-identical cross-OS, the same guarantee mass gets. It plows through the heavy
+    // one instead of bouncing. Its own lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.2 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [5.0, 0.0],
+            angvel: 0.0,
+        },
+        Dominance(5),
+        Transform::from_translation(Vec2::new(-34.0, 5.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        MassOverride(30.0),
+        Transform::from_translation(Vec2::new(-32.0, 5.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

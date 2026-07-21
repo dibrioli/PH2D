@@ -355,6 +355,9 @@ fn paint_dynamics_rows(
         ("Init Vel X (m/s)", ids::INSP_PHYS_LINVEL_X),
         ("Init Vel Y (m/s)", ids::INSP_PHYS_LINVEL_Y),
         ("Init Spin (deg/s)", ids::INSP_PHYS_ANGVEL),
+        // Dominance (collision priority): a higher value bulldozes lower ones.
+        // Dynamic-only like the rest — a non-dynamic body is already at the max.
+        ("Dominance", ids::INSP_PHYS_DOMINANCE),
     ] {
         yy = num_row(
             scene,

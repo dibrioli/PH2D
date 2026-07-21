@@ -184,6 +184,11 @@ fn populate_physics(store: &mut WidgetStore) {
         // more); -10..10 covers the authoring span (balloon → 10× heavy), the
         // same soft-UI bound `RADIUS` uses.
         (ids::INSP_PHYS_GRAVITY_SCALE, 1.0, -10.0, 10.0, 0.1), // LITERAL-PX-OK: dimensionless gravity multiplier
+        // Dominance (W-Dominance): a signed integer collision priority, step 1. The
+        // range bounds the DRAG only — the component/BodyDesc take any i8, and the
+        // event arm rounds+clamps; -10..10 covers the authoring span (rapier's i8
+        // allows ±127, but a legible priority is a small number).
+        (ids::INSP_PHYS_DOMINANCE, 0.0, -10.0, 10.0, 1.0), // LITERAL-PX-OK: integer collision priority
     ] {
         store.register(
             id,

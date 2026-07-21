@@ -22,6 +22,7 @@
 //! | `17`| W-Offset| COLLIDER OFFSET: two characters, one with a foot-offset collider stands, the centred one sinks |
 //! | `18`| W-LockPos| FREEZE POSITION: three launched balls — free arcs, X-locked drops straight, Y-locked glides level |
 //! | `19`| W-Mass| MANUAL MASS: a heavy (30 kg override) ball plows through a row of pins; the same-size light ball stops |
+//! | `20`| W-Dominance| DOMINANCE: a LIGHT high-dominance ball plows through heavy balls; the neutral light one bounces |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -90,6 +91,7 @@ impl crate::App {
             "17" => self.physics_smoke_offset(),
             "18" => self.physics_smoke_freeze_position(),
             "19" => self.physics_smoke_mass(),
+            "20" => self.physics_smoke_dominance(),
             _ => self.physics_smoke_drop(),
         }
 

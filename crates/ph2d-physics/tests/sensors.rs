@@ -30,6 +30,7 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
     });
 }

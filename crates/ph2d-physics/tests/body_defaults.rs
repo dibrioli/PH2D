@@ -31,6 +31,7 @@ fn ball(y: f32) -> BodyDesc {
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
     }
 }

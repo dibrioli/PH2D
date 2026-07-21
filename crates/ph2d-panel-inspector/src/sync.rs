@@ -568,6 +568,7 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_LINVEL_X, info.linvel[0]),
         (ids::INSP_PHYS_LINVEL_Y, info.linvel[1]),
         (ids::INSP_PHYS_ANGVEL, info.angvel.to_degrees()),
+        (ids::INSP_PHYS_DOMINANCE, f32::from(info.dominance)),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

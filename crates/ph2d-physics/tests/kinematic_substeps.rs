@@ -39,6 +39,7 @@ fn kinematic_at(world: &mut PhysicsWorld, x: f32, y: f32) -> ph2d_physics::Rigid
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
         shape: ShapeDesc::Cuboid {
             half_x: 1.0,
@@ -157,6 +158,7 @@ fn a_rotation_across_the_branch_cut_takes_the_short_way() {
             lock_x: false,
             lock_y: false,
             mass_override: None,
+            dominance: 0,
             offset: [0.0, 0.0],
             shape: ShapeDesc::Cuboid {
                 half_x: 1.0,
@@ -217,6 +219,7 @@ fn the_aim_of_a_body_that_cannot_use_it_is_refused() {
         lock_x: false,
         lock_y: false,
         mass_override: None,
+        dominance: 0,
         offset: [0.0, 0.0],
         shape: ShapeDesc::Ball { radius: 0.25 },
     });
@@ -308,6 +311,7 @@ fn a_world_with_no_kinematic_body_is_untouched() {
             lock_x: false,
             lock_y: false,
             mass_override: None,
+            dominance: 0,
             offset: [0.0, 0.0],
             shape: ShapeDesc::Ball { radius: 0.25 },
         });

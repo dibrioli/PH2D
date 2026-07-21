@@ -136,6 +136,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_ANGVEL if info.kind_tag == 0 => {
                 Some(PhysicsFieldEdit::Angvel(v.to_radians()))
             }
+            // Dominance (W-Dominance), Dynamic-only like gravity/velocity. The widget
+            // is a float; dominance is an i8 priority, so round and clamp to i8 range
+            // at the panel boundary (the shell's edit and the component stay i8).
+            ids::INSP_PHYS_DOMINANCE if info.kind_tag == 0 => {
+                let d = v.round().clamp(f32::from(i8::MIN), f32::from(i8::MAX)) as i8;
+                Some(PhysicsFieldEdit::Dominance(d))
+            }
             _ => None,
         };
         if let Some(edit) = edit {

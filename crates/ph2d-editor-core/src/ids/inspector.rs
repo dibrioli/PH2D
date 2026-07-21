@@ -303,6 +303,9 @@ pub const INSP_PHYS_MASSMODE: [NodeId; 2] = [
 ];
 /// §11 Mass (kg) NumberInput — the live control in Manual mode (W-Mass).
 pub const INSP_PHYS_MASS: NodeId = hash_node_id("insp_phys_mass");
+/// §11 Dominance (collision priority) NumberInput — Dynamic-only (W-Dominance). A
+/// higher value bulldozes lower-dominance bodies; `0` is neutral.
+pub const INSP_PHYS_DOMINANCE: NodeId = hash_node_id("insp_phys_dominance");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

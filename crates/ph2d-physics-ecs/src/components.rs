@@ -191,6 +191,31 @@ impl Collider {
     /// rather than a number repeated at each call site.
     pub const DEFAULT_RESTITUTION: f32 = 0.0;
     pub const DEFAULT_FRICTION: f32 = 0.5;
+
+    /// The **auto mass** of this collider — `density × area` of the AUTHORED shape,
+    /// the same `mass = density × area` rapier derives for a body without a
+    /// [`MassOverride`]. Used to SEED the Manual-mode mass in the Inspector so it does
+    /// not jump when the artist flips Auto→Manual (W-Mass).
+    ///
+    /// It ignores world scale (the seed is for the common unscaled body and is only a
+    /// starting value the artist tunes); the true scaled mass would mean re-deriving
+    /// rapier's computation in a second place. `min 1e-3` so a degenerate shape never
+    /// seeds a zero mass.
+    #[must_use]
+    pub fn auto_mass(&self) -> f32 {
+        use std::f32::consts::PI;
+        let area = match self.shape {
+            ColliderShape::Ball { radius } => PI * radius * radius,
+            ColliderShape::Cuboid { half_x, half_y } => 4.0 * half_x * half_y,
+            // A capsule: the straight rectangle (2·radius wide, 2·half_height tall)
+            // plus the two caps, which together form one full disc of the cap radius.
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            } => 4.0 * half_height * radius + PI * radius * radius,
+        };
+        (self.density * area).max(1e-3)
+    }
 }
 
 impl Default for Collider {
@@ -401,3 +426,30 @@ impl SimComponent for LockPositionY {}
 pub struct MassOverride(pub f32);
 
 impl SimComponent for MassOverride {}
+
+/// **Dominance group — an optional VALUED presence-override component (W-Dominance).**
+///
+/// Absent (the common case) means the neutral group `0`, exactly what every body did
+/// before this existed. Present, its `i8` is a collision PRIORITY: when two bodies
+/// collide, the STRICTLY higher-dominance one is treated as infinite mass by the
+/// lower — it bulldozes through and is never pushed back, while still falling under
+/// gravity and colliding normally with equal-or-higher peers (rapier's
+/// `dominance_group`, Box2D's dominance).
+///
+/// **It is orthogonal to mass**: a LIGHT body with high dominance shoves a HEAVY one
+/// with the default — the unstoppable mover, the boss, the player that pushes debris
+/// but is never shoved by it. It expresses a middle ground no body KIND can: unlike a
+/// Static/Kinematic body (which also pushes everything) a high-dominance Dynamic body
+/// still falls and reacts to its peers. Static/Kinematic bodies sit at the maximum, so
+/// a dynamic body never shoves them — consistent with their infinite mass.
+///
+/// Same idiom as [`GravityScale`] — a valued override most bodies do not carry, so
+/// absent = the neutral default and the Inspector detaches it at `0` (a project file
+/// stays free of the no-op). A newly registered component keyed by its type-name hash,
+/// so **no `PROJECT_SCHEMA` bump**. It rides the `BodyDesc` the world rebuilds from, so
+/// a rewind re-arms it, and it bites only a Dynamic body (a non-dynamic one is already
+/// at the max), which is why the §11 row is Dynamic-only. Config, never live state.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Dominance(pub i8);
+
+impl SimComponent for Dominance {}

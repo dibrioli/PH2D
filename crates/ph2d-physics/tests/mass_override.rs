@@ -38,6 +38,7 @@ fn mass_of(mass_override: Option<f32>) -> f32 {
         lock_x: false,
         lock_y: false,
         mass_override,
+        dominance: 0,
     });
     w.bodies().get(h).expect("body exists").mass()
 }
@@ -99,6 +100,7 @@ fn a_heavier_body_dominates_a_head_on_collision() {
             lock_x: false,
             lock_y: false,
             mass_override: mover_mass,
+            dominance: 0,
         });
         // Target: light (auto mass ≈ 0.196), at rest in the mover's path.
         w.spawn_body(BodyDesc {
@@ -121,6 +123,7 @@ fn a_heavier_body_dominates_a_head_on_collision() {
             lock_x: false,
             lock_y: false,
             mass_override: None,
+            dominance: 0,
         });
         for _ in 0..60 {
             w.step();

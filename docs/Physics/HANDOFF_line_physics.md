@@ -2289,4 +2289,48 @@ registra o group + a range de MASS (min 0.001 — massa deve ser positiva). `PRO
 mas auto-massa PARA no 1º pino; flipe a pesada pra Auto e ela para igual).
 
 **Aberto (deliberado):** damping/drag por-corpo (precisa de modo de combinação com o global — `damp_mode` do
-Godot) · dominance/collision-priority (nicho). Nada pede.
+Godot).
+
+---
+
+## §W-Dominance — DOMINANCE / prioridade de colisão por corpo (2026-07-20, smoke `=20`)
+
+**O contraponto da massa.** Dominance é uma PRIORIDADE de colisão (rapier `dominance_group`, Box2D): o corpo
+de dominância ESTRITAMENTE maior é tratado como massa infinita pelo menor — **atropela e nunca é empurrado
+de volta**, enquanto ainda cai sob gravidade e colide normalmente com pares iguais/maiores. ⚠️ **É ortogonal
+à massa:** um corpo LEVE com dominância alta empurra um PESADO neutro — o que a massa sozinha NÃO faz. Expressa
+um meio-termo que nenhum KIND consegue: diferente de Static/Kinematic (que também empurram tudo) um Dynamic
+de dominância alta ainda cai e reage aos pares. Static/Kinematic ficam no máximo (`i8::MAX+1`), então um
+dinâmico nunca os empurra — consistente com massa infinita. Row **Dominance** no §11, Dynamic-only.
+
+**Componente VALUADO opcional `Dominance(i8)`** (idioma do `GravityScale`): ausente = neutro `0`, presente =
+prioridade. Registro **10→11**, blob-key, **sem bump** (fica **29**). `BodyDesc.dominance: i8` →
+`RigidBodyBuilder::dominance_group`, rida no recipe pro rewind. Detach em 0 (arquivo livre de no-op). O painel
+converte o float do widget → i8 (round+clamp) na fronteira do event. ~30 fixtures de `ph2d-physics/tests`
+ganharam `dominance: 0`.
+
+**Gates (red-first + mutação):** wrapper `a_light_high_dominance_body_plows_through_a_heavy_one` (o teste que
+a MASSA não reproduz: mover leve Dominância 5 atravessa alvo pesado 20 kg; neutro quica; mut tira
+`.dominance_group` → RED) + `the_dominance_group_reaches_the_body` (readback direto `RigidBody::
+dominance_group()`). ECS `the_bridge_folds_dominance_and_a_rewind_preserves_it` (mover leve `Dominance(5)` ara
+o pesado e passa de x=1,5; mut bridge ignora → quica pra x=0,02 = RED; + controle neutro + rewind). Seam
+`dominance_is_offered_and_committed_only_for_a_dynamic_body` (presença/ausência + conversão 5.0→`Dominance(5)`).
+Persistência round-trip · registro **10→11** · c9 **63 corpos** (mover leve dominante + alvo pesado — a
+dominância só percorre o solver de contato se COLIDIR).
+
+**⚠️ LOC — DOIS splits, e a lição:** rodei o gate errado nas 2 waves anteriores. O `architecture_workspace_
+file_loc_cap` varre `crates/*/src`, NÃO `shells/`; a shell tem gate PRÓPRIO **`shells/desktop/tests/
+file_loc_caps.rs`** (HR-18, cap 600). A wave da Massa deixou `physics_smoke_props.rs` em 643 > 600 sem eu ver
+(rodei só o gate de crates). Fix: (1) `physics_smoke_props.rs` 717 → split, cenas 19 (Mass) + 20 (Dominance)
+foram pro irmão **`physics_smoke_collision.rs`** (a costura é real — as duas lançam um mover numa fila e variam
+o que faz atravessar: PESO vs PRIORIDADE); 561 agora. (2) `inspector_physics.rs` 607 → o helper `shape_mass`
+virou **`Collider::auto_mass()`** em `ph2d-physics-ecs` (o lar natural — a massa auto é propriedade do collider);
+582 agora. **A partir daqui o `file_loc_caps` da shell entra no gate de fechamento.**
+
+**Ids/consts:** `INSP_PHYS_DOMINANCE` (NumberInput) · `ph2d::physics::Dominance` · `BodyDesc.dominance` ·
+`Collider::auto_mass`. `populate.rs` registra a range (-10..10, step 1; o componente/desc tomam qualquer i8).
+`PROJECT_SCHEMA` fica **29**. Smoke `=20` (2 lanes: mover LEVE Dominância 5 ara a fila de pesados e segue; o
+neutro do mesmo tamanho QUICA no 1º).
+
+**Aberto (deliberado):** damping/drag por-corpo (precisa de modo de combinação com o global — `damp_mode` do
+Godot); é a única propriedade "padrão" (Unity/Godot) que falta. Nada mais pede.

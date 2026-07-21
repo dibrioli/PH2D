@@ -121,6 +121,8 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `mass_override` is the optional [`crate::MassOverride`] component's value (`Some`
 /// = explicit kg, ignoring density; `None` = auto mass) — a VALUED override like
 /// `gravity_scale`, folded in here and riding the `BodyDesc` for the rewind.
+/// `dominance` is the optional [`crate::Dominance`] component's value (`0` = neutral)
+/// — the collision priority, folded in and riding the `BodyDesc` for the rewind.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -138,6 +140,7 @@ pub(crate) fn body_desc(
     lock_x: bool,
     lock_y: bool,
     mass_override: Option<f32>,
+    dominance: i8,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -148,6 +151,7 @@ pub(crate) fn body_desc(
         lock_x,
         lock_y,
         mass_override,
+        dominance,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -213,6 +217,7 @@ mod tests {
             false,
             false,
             None,
+            0,
         )
     }
 

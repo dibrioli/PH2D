@@ -377,6 +377,11 @@ impl PhysicsWorld {
             // before this existed; the value survives rewind because it rides
             // the `BodyDesc` the world rebuilds from.
             .gravity_scale(desc.gravity_scale)
+            // Dominance group (collision priority). `0` is rapier's own default, so a
+            // body authored before this is byte-identical; a higher value makes this
+            // body bulldoze lower-dominance ones (infinite relative mass to them). It
+            // rides the `BodyDesc`, so a rewind re-arms it.
+            .dominance_group(desc.dominance)
             // Initial velocity (W9), applied at build. `[0,0]`/`0` is rapier's
             // own default, so a body authored before this is byte-identical; and
             // because it rides the `BodyDesc`, a rewind to t=0 re-arms the launch.

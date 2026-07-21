@@ -15,8 +15,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
-    LockPositionY, LockRotation, MassOverride, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, PhysicsBridge, RigidBody,
     register_physics_components,
 };
 
@@ -85,6 +85,8 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         LockPositionY,
         // The mass override (W-Mass): a VALUED component whose f32 must round-trip.
         MassOverride(7.5),
+        // The dominance (W-Dominance): a VALUED i8 that must round-trip.
+        Dominance(5),
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -159,6 +161,14 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert_eq!(
         mass.0, 7.5,
         "the mass override did not survive the snapshot round trip"
+    );
+    let dominance = *dst
+        .world()
+        .get::<Dominance>(e)
+        .expect("Dominance survived the round trip (registered?)");
+    assert_eq!(
+        dominance.0, 5,
+        "the dominance did not survive the snapshot round trip"
     );
 }
 

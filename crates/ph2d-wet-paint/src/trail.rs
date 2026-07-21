@@ -14,7 +14,7 @@
 //! Blend mode reuses the window plumbing with a saturating mask and re-mixes
 //! both pigment layers toward the window averages (dry paint included).
 
-use crate::brush::{BrushShape, for_each_stamp_pixel};
+use crate::brush::{BrushShape, for_each_stamp_pixel, for_each_stamp_pixel_shaped};
 use crate::grid::{Grid, wet_byte_from_paper};
 use crate::jsmath::js_round;
 use crate::opacity::alpha_of_mass;
@@ -191,6 +191,36 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
     ) -> bool {
+        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, None)
+    }
+
+    /// [`Self::accumulate_paint`] with the HOST's silhouette (the shaped
+    /// product door): `sil(x, y)` replaces the engine's falloff + footprint,
+    /// the bristle stays as the texture factor. ONE pixel body serves both
+    /// faces (`accumulate_paint` delegates with `None` — the fingerprint
+    /// pins that the port's own path did not move a bit).
+    pub fn accumulate_paint_shaped(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        ext_bypass: bool,
+        sil: &mut dyn FnMut(i32, i32) -> f64,
+    ) -> bool {
+        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, Some(sil))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn accumulate_paint_impl(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        ext_bypass: bool,
+        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    ) -> bool {
         if self.dab_count == 0 {
             // the window's first dab anchors it
             self.anchor_x = js_round(dab.x) as i32;
@@ -217,61 +247,69 @@ impl Trail {
             wet,
             ..
         } = g;
-        for_each_stamp_pixel(
-            *s,
-            *w,
-            *h,
-            tex,
-            dab.x,
-            dab.y,
-            dab.r,
-            dab.hardness,
-            dab.shape,
-            dab.dir_x,
-            dab.dir_y,
-            |i, x, y, fall, texv| {
-                let mut stamp = fall * texv * dab.intensity;
-                if stamp > 1.0 {
-                    stamp = 1.0;
-                }
-                if stamp <= 0.0 {
-                    return;
-                }
-                // Paper gate: tooth peaks always take pigment, valleys reject
-                // it — that per-pixel pass/reject IS the granulation. Heavily
-                // loaded cells read a flat 0.45 tooth (the grain is buried).
-                let tooth = if (susp[i] as f64 + sett[i] as f64) < pig_cap {
-                    paper[i] as f64
-                } else {
-                    0.45
-                };
-                let mut deposit = stamp - (1.0 - tooth) * gate;
-                if !ext_bypass {
-                    // Dry-brush extension: raise the gate subtraction.
-                    deposit -= dab.dry_gate * ext_dry_brush * 0.6;
-                }
-                if deposit <= 0.0 {
-                    return;
-                }
-                if !ext_bypass {
-                    // Wet-edge softening extension: thin the rim on wet paper.
-                    let softness = (film[i] as f64 / 3.0).min(1.0) * ext_wet_soften;
-                    deposit *= 1.0 - softness * (1.0 - fall);
-                }
-                // Wetness seed: OVERWRITE (not max) — repainting can dry the
-                // byte back down.
-                wet[i] = wet_byte_from_paper(tooth);
-                let lx = x - anchor_x + TRAIL_HALF;
-                let ly = y - anchor_y + TRAIL_HALF;
-                if lx < 0 || lx >= TRAIL_SIZE || ly < 0 || ly >= TRAIL_SIZE {
-                    return;
-                }
-                let l = (lx + ly * TRAIL_SIZE) as usize;
-                pig[l] = (pig[l] as f64 + deposit * gain) as f32;
-                water[l] = (water[l] as f64 + deposit * dab.water_amount) as f32;
-                touch_ext(&mut ext, lx, ly);
-            },
-        );
+        let body = |i: usize, x: i32, y: i32, fall: f64, texv: f64| {
+            let mut stamp = fall * texv * dab.intensity;
+            if stamp > 1.0 {
+                stamp = 1.0;
+            }
+            if stamp <= 0.0 {
+                return;
+            }
+            // Paper gate: tooth peaks always take pigment, valleys reject
+            // it — that per-pixel pass/reject IS the granulation. Heavily
+            // loaded cells read a flat 0.45 tooth (the grain is buried).
+            let tooth = if (susp[i] as f64 + sett[i] as f64) < pig_cap {
+                paper[i] as f64
+            } else {
+                0.45
+            };
+            let mut deposit = stamp - (1.0 - tooth) * gate;
+            if !ext_bypass {
+                // Dry-brush extension: raise the gate subtraction.
+                deposit -= dab.dry_gate * ext_dry_brush * 0.6;
+            }
+            if deposit <= 0.0 {
+                return;
+            }
+            if !ext_bypass {
+                // Wet-edge softening extension: thin the rim on wet paper.
+                let softness = (film[i] as f64 / 3.0).min(1.0) * ext_wet_soften;
+                deposit *= 1.0 - softness * (1.0 - fall);
+            }
+            // Wetness seed: OVERWRITE (not max) — repainting can dry the
+            // byte back down.
+            wet[i] = wet_byte_from_paper(tooth);
+            let lx = x - anchor_x + TRAIL_HALF;
+            let ly = y - anchor_y + TRAIL_HALF;
+            if lx < 0 || lx >= TRAIL_SIZE || ly < 0 || ly >= TRAIL_SIZE {
+                return;
+            }
+            let l = (lx + ly * TRAIL_SIZE) as usize;
+            pig[l] = (pig[l] as f64 + deposit * gain) as f32;
+            water[l] = (water[l] as f64 + deposit * dab.water_amount) as f32;
+            touch_ext(&mut ext, lx, ly);
+        };
+        match sil {
+            Some(sil) => {
+                for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, body);
+            }
+            None => {
+                for_each_stamp_pixel(
+                    *s,
+                    *w,
+                    *h,
+                    tex,
+                    dab.x,
+                    dab.y,
+                    dab.r,
+                    dab.hardness,
+                    dab.shape,
+                    dab.dir_x,
+                    dab.dir_y,
+                    body,
+                );
+            }
+        }
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
         self.dab_count += 1;
         self.dab_count > self.window_size

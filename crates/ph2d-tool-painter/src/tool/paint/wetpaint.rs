@@ -120,7 +120,24 @@ impl PainterTool {
                 stroke_open: false,
             });
         }
-        let sess = self.paint.wetpaint.session.as_mut().expect("ensured above");
+        // Take the session out so the prep below can borrow `self.paint`'s
+        // Shape state alongside it (disjoint in fact, not in the borrow
+        // checker's eyes); restored before the composite.
+        let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
+        let sess = &mut taken;
+        // ── The dab's SILHOUETTE — the painter's, not the engine's ─────────
+        // `silhouette_at` is the single source of the dab's shape (falloff ×
+        // Shape image/procedural × flatten/rotate footprint); the engine's
+        // internal falloff/footprint step aside per dab via the shaped door,
+        // and the bristle texture stays as the fluid's default grain (W2.3b).
+        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
+            && self.paint.shape_color_ramp_bw)
+            .then_some(self.paint.shape_ramp_lut.as_slice());
+        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
+        let groups = self.paint.dab_groups.clone();
+        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
+        let canvas_wh = [w as f32, h as f32];
         // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
         // writes plane values straight through `clamp_u8`); the dab stores sRGB 0..1. Passing the
         // normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
@@ -136,7 +153,7 @@ impl PainterTool {
             sess.lanes.clear();
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
-        for d in dabs {
+        for (didx, d) in dabs.iter().enumerate() {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
             // last position is within its own radius (consecutive dabs of one
@@ -182,6 +199,53 @@ impl PainterTool {
                 sess.lanes[li].ink = d.color;
             }
             let b = ((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0;
+            // Per-dab silhouette closure — the impasto walk's exact recipe
+            // (spec at the dab's radius → rotor → footprint → Shape basis in
+            // the stroke frame), evaluated per engine cell (cell − 1 = px).
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                ..*brush
+            };
+            let rotor = spec.dab_rotor(d);
+            let fp = spec.dab_footprint(rotor);
+            let dab_index = didx;
+            let tex_rng = dab_rng.enter(&groups, dab_index);
+            let shape_basis = shape_active.then(|| {
+                ph2d_painter_brush::texture::shape_basis(
+                    &spec.shape,
+                    &mut *tex_rng,
+                    canvas_wh,
+                    fp,
+                    ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                        arc_len: d.arc_len,
+                        unit_px: d.stroke_radius_px,
+                    },
+                )
+            });
+            let shape_input = shape_basis
+                .as_ref()
+                .map(|sb| ph2d_painter_brush::ShapeInput {
+                    basis: sb,
+                    image: shape_image.as_ref(),
+                    ramp_lut: shape_ramp_lut,
+                });
+            let inv_r = 1.0 / d.radius_px.max(0.01);
+            let mut sil = |cx: i32, cy: i32| -> f64 {
+                let px = i64::from(cx) - 1;
+                let py = i64::from(cy) - 1;
+                let ddx = (px as f32 + 0.5) - d.center[0];
+                let ddy = (py as f32 + 0.5) - d.center[1];
+                let t = fp.falloff_t(ddx * inv_r, ddy * inv_r);
+                f64::from(ph2d_painter_brush::dab::silhouette_at(
+                    &spec,
+                    shape_input,
+                    t,
+                    px,
+                    py,
+                    d.center,
+                    d.radius_px,
+                ))
+            };
             sess.engine.dispatch_pressure_dab_lane(
                 li,
                 f64::from(x) + 1.0,
@@ -190,9 +254,11 @@ impl PainterTool {
                 f64::from(d.dir[0]),
                 f64::from(d.dir[1]),
                 f64::from(d.radius_px),
+                Some(&mut sil),
             );
             sess.lanes[li].pos = d.center;
         }
+        self.paint.wetpaint.session = Some(taken);
         self.wetpaint_composite();
     }
 
@@ -423,6 +489,48 @@ mod tests {
         assert!(
             right > left * 0.75 && right < left * 1.33,
             "the mirrored deposit is missing or lopsided (left {left}, right {right})"
+        );
+    }
+
+    /// SEAM (W2.3b): the painter's SILHOUETTE drives the wet stamp — a
+    /// flattened dab (Flatten & Rotate) deposits a thin BAND, not the round
+    /// disc the engine's internal footprint would lay. Mutation that bleeds
+    /// it: passing `None` instead of the silhouette closure to the shaped
+    /// door (the deposit's vertical extent balloons back to the full disc).
+    #[test]
+    fn the_flattened_dab_deposits_a_band_not_a_disc() {
+        let extent_of = |flatten: f32| -> (usize, f64) {
+            let mut t = tool_in_mode("wetpaint");
+            t.paint.brush.dab_flatten = flatten;
+            t.paint.brush.radius_px = 14.0;
+            for slot in &mut t.paint.brush_by_mode {
+                slot.dab_flatten = flatten;
+                slot.radius_px = 14.0;
+            }
+            stroke_across(&mut t);
+            let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+            let g = &sess.engine.layers[0].grid;
+            // Vertical extent: rows carrying real suspended mass.
+            let mut rows = 0usize;
+            let mut total = 0.0f64;
+            for gy in 1..=g.h {
+                let m: f64 = (1..=g.w).map(|gx| f64::from(g.susp[gx + gy * g.s])).sum();
+                total += m;
+                if m > 200.0 {
+                    rows += 1;
+                }
+            }
+            (rows, total)
+        };
+        let (round_rows, round_mass) = extent_of(0.0);
+        let (flat_rows, flat_mass) = extent_of(0.92);
+        assert!(
+            round_mass > 1000.0 && flat_mass > 500.0,
+            "a fixture deposited nothing"
+        );
+        assert!(
+            flat_rows * 2 < round_rows,
+            "flatten never reached the fluid (flat {flat_rows} rows vs round {round_rows})"
         );
     }
 

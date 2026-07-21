@@ -103,6 +103,11 @@ impl Engine {
 
     /// §9 with real pressure + real radius, deposited through the LANE's
     /// trail (Paint mode's arm; the engine's own tools keep `self.trail`).
+    /// `sil`: the host's per-dab silhouette (falloff × Shape × footprint) —
+    /// `Some` routes the deposit through the shaped stamp (the engine's own
+    /// falloff/footprint step aside; the bristle stays); `None` = the
+    /// engine's round stamp.
+    #[allow(clippy::too_many_arguments)]
     pub fn dispatch_pressure_dab_lane(
         &mut self,
         lane: usize,
@@ -112,6 +117,7 @@ impl Engine {
         dir_x: f64,
         dir_y: f64,
         r: f64,
+        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
         let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
@@ -126,7 +132,13 @@ impl Engine {
             self.brush_tex = Some(tex);
             return;
         };
-        let rect = if trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass) {
+        let full = match sil {
+            Some(sil) => {
+                trail.accumulate_paint_shaped(&mut layer.grid, &p, &tex, &dab, ext_bypass, sil)
+            }
+            None => trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass),
+        };
+        let rect = if full {
             trail.transfer_paint(&mut layer.grid, &p)
         } else {
             None

@@ -80,14 +80,14 @@ fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
     for k in 1..=20 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None);
         prev = x;
     }
     e.set_stroke_color(0, [20.0, 220.0, 20.0]); // dip in green
     for k in 21..=40 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None);
         prev = x;
     }
     e.end_direct_stroke();
@@ -143,7 +143,7 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
         let chord = ((x - prev.0).powi(2) + (y - prev.1).powi(2)).sqrt();
         e.direct_segment(0, chord);
         // Real pressure (host units mapped to the §8 range) + real radius.
-        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0);
+        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0, None);
         prev = (x, y);
     }
     e.end_direct_stroke();

@@ -183,6 +183,23 @@ sessão**. 3 gates novos (`the_selection_confines…` · `the_protection_mask_fr
 (gsel · gprot · α-pin · desvio de rota), cada uma sangra SÓ o próprio gate. ⚠️ Smoke junto
 do lote (selecionar metade + traço wet cruzando; alpha-lock numa camada com transparência).
 
+**W2.6 LANDOU (`5ae1b48b`) — o eraser em modo wet apaga o FLUIDO e a água sobrevive:** o wire
+`"eraser"` dentro de WetPaint **FICA em WetPaint** (a exceção nova no `set_paint_tool_mode`;
+sair do modo bakearia a pintura que o artista quer corrigir — semântica Rebelle) e os dabs
+roteiam para `dispatch_pressure_dab_erase` (porta nova no engine: `apply_erase_shaped`, o corpo
+único do `apply_erase` com silhueta + Grain — o erase veste a MESMA forma que o depósito;
+lane-less: op direta de grid, cada cópia de Symmetry/Tiling apaga onde pousa; o sim pausa por
+um direct stroke aberto no gesto). **Sem sessão viva não há nada molhado** ⇒ cai para o eraser
+normal e apaga o BAKED (o que está visível) — e a pergunta *"o wet é dono destes dabs?"* virou
+**porta única `wet_owns_the_dabs`**, perguntada pelo desvio do wrapper (W2.5) E pelo braço de
+rota (duas cópias divergiriam e a metade divergida é gate de canvas que vaza ou mata a água).
+O rádio do rail acende **"eraser"** (braço novo no `active_paint_mode_id`). 2 gates; **5
+mutações sangram** — a que quase passou: derrubar o `merge_dirty` da porta de erase deixa o
+GRID esvaziando e a **TELA parada** (o composite nunca repinta), e sobreviveu ao oráculo
+só-grid ⇒ o gate ganhou o oráculo do CANVAS (`canvas_dev` estritamente decrescente).
+⚠️ Decisões pro smoke do Enio: o wire mantém o modo (vetável) · a força default do erase é a
+do reference (slider `erase 0.4` — knob de painel é W3) · sem sessão apaga o baked (fall-through).
+
 **W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
@@ -202,8 +219,7 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
-**W2 restante:** W2.6 Eraser→`Tool::Erase` (o engine já o tem; `paint.eraser` em modo wet roteia
-tool_override) · W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
+**W2 restante:** W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
 do painter nos 3 do engine é o v1 honesto?) · W2.8 shape editors (depósito 1× no Apply — os
 sítios de commit em `curve_commit`/`stroke_multi`; hoje recusados por `live_gesture`+métodos
 cumulativos).

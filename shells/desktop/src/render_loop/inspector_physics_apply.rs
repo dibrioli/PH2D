@@ -27,23 +27,18 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
-        GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
-        MaterialCombine, OneWayPlatform, RigidBody,
+        AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
+        Dominance, GravityScale, InitialVelocity, MassOverride, MaterialCombine, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
     const GRAVITY_SCALE: &str = "ph2d::physics::GravityScale";
     const INITIAL_VELOCITY: &str = "ph2d::physics::InitialVelocity";
-    const CCD: &str = "ph2d::physics::Ccd";
-    const LOCK_ROTATION: &str = "ph2d::physics::LockRotation";
-    const LOCK_POSITION_X: &str = "ph2d::physics::LockPositionX";
-    const LOCK_POSITION_Y: &str = "ph2d::physics::LockPositionY";
     const MASS_OVERRIDE: &str = "ph2d::physics::MassOverride";
     const DOMINANCE: &str = "ph2d::physics::Dominance";
     const MATERIAL_COMBINE: &str = "ph2d::physics::MaterialCombine";
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
-    const ONE_WAY: &str = "ph2d::physics::OneWayPlatform";
+    const AREA_EFFECTOR: &str = "ph2d::physics::AreaEffector";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -169,76 +164,20 @@ pub(crate) fn apply_physics_edit(
         }
         return;
     }
-    if let PhysicsFieldEdit::Ccd(on) = edit {
-        // A RigidBody-level flag carried by the optional `Ccd` MARKER — its
-        // presence is the boolean — so it is handled here beside gravity/velocity,
-        // not on the Collider. Gated on a live body: without one there is nothing
-        // to sweep, and this would attach an orphan marker to a plain sprite.
-        if world.get::<RigidBody>(entity).is_none() {
-            return;
-        }
-        // Attach on Continuous, detach on Discrete — the presence-override idiom,
-        // so a project file never carries an off-flag.
-        if on {
-            queue_set(queue, registry, entity_bits, CCD, &Ccd);
-        } else {
-            queue_remove(queue, registry, entity_bits, CCD);
-        }
+    // The five flags whose PRESENCE is their value (CCD, Freeze Rotation, Freeze
+    // Position X/Y, One-Way). They differed only in a name and a unit struct, so they
+    // live together in one table now — see `inspector_physics_markers`.
+    if super::inspector_physics_markers::apply_marker_edit(
+        world,
+        entity,
+        entity_bits,
+        edit,
+        queue,
+        registry,
+    ) {
         return;
     }
-    if let PhysicsFieldEdit::LockRotation(on) = edit {
-        // Another RigidBody-level marker (Freeze Rotation), handled here beside CCD.
-        // Gated on a live body: without one there is no rotation to freeze, and
-        // this would attach an orphan marker to a plain sprite.
-        if world.get::<RigidBody>(entity).is_none() {
-            return;
-        }
-        // Attach on Locked, detach on Free — the presence-override idiom.
-        if on {
-            queue_set(queue, registry, entity_bits, LOCK_ROTATION, &LockRotation);
-        } else {
-            queue_remove(queue, registry, entity_bits, LOCK_ROTATION);
-        }
-        return;
-    }
-    if let PhysicsFieldEdit::LockPositionX(on) = edit {
-        // Freeze Position X — another RigidBody-level marker, handled here beside the
-        // other constraints. Gated on a live body: without one there is no position
-        // to freeze, and this would attach an orphan marker to a plain sprite.
-        if world.get::<RigidBody>(entity).is_none() {
-            return;
-        }
-        if on {
-            queue_set(
-                queue,
-                registry,
-                entity_bits,
-                LOCK_POSITION_X,
-                &LockPositionX,
-            );
-        } else {
-            queue_remove(queue, registry, entity_bits, LOCK_POSITION_X);
-        }
-        return;
-    }
-    if let PhysicsFieldEdit::LockPositionY(on) = edit {
-        // Freeze Position Y — the vertical sibling, same idiom and gate.
-        if world.get::<RigidBody>(entity).is_none() {
-            return;
-        }
-        if on {
-            queue_set(
-                queue,
-                registry,
-                entity_bits,
-                LOCK_POSITION_Y,
-                &LockPositionY,
-            );
-        } else {
-            queue_remove(queue, registry, entity_bits, LOCK_POSITION_Y);
-        }
-        return;
-    }
+
     if let PhysicsFieldEdit::MassMode(manual) = edit {
         // Mass source (W-Mass): another RigidBody-level, optional presence-override
         // component (`MassOverride`), handled here beside the constraints. Gated on a
@@ -384,21 +323,34 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
-    if let PhysicsFieldEdit::OneWay(on) = edit {
-        // One-way (jump-through) platform (W-OneWay): a collider-level flag carried by
-        // the optional `OneWayPlatform` MARKER — its presence is the boolean. Gated on a
-        // live body: without one there is no collider to make one-way, and this would
-        // attach an orphan marker to a plain sprite. NOT Dynamic-only — a platform is
-        // usually Static, which is the whole point of the feature.
-        if world.get::<RigidBody>(entity).is_none() {
+    if let PhysicsFieldEdit::ForceX(_) | PhysicsFieldEdit::ForceY(_) = edit {
+        // Force zone (W-Area): a per-collider push carried by the optional
+        // `AreaEffector`, read-modify-write so editing one axis keeps the other.
+        // ⚠️ Gated on the collider being a SENSOR, not on a body kind — the narrow
+        // phase records an overlap only for a sensor, so on a solid collider this
+        // would be a number the artist authored and nothing would ever read.
+        let Some(col) = world.get::<Collider>(entity).copied() else {
+            return;
+        };
+        if !col.is_sensor {
             return;
         }
-        // Attach on On, detach on Off — the presence-override idiom, so a project file
-        // never carries an off-flag.
-        if on {
-            queue_set(queue, registry, entity_bits, ONE_WAY, &OneWayPlatform);
+        let mut a = world
+            .get::<AreaEffector>(entity)
+            .copied()
+            .unwrap_or_default();
+        match edit {
+            // Signed: a wind blows either way, so no clamp.
+            PhysicsFieldEdit::ForceX(v) => a.force[0] = v,
+            PhysicsFieldEdit::ForceY(v) => a.force[1] = v,
+            _ => unreachable!(),
+        }
+        // Detach at neutral (zero on both axes) so an area that pushes nothing carries
+        // no component — the presence-override idiom.
+        if a.is_neutral() {
+            queue_remove(queue, registry, entity_bits, AREA_EFFECTOR);
         } else {
-            queue_remove(queue, registry, entity_bits, ONE_WAY);
+            queue_set(queue, registry, entity_bits, AREA_EFFECTOR, &a);
         }
         return;
     }
@@ -552,7 +504,9 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::LinearDamping(_)
         | PhysicsFieldEdit::AngularDamping(_)
         | PhysicsFieldEdit::DampMode(_)
-        | PhysicsFieldEdit::OneWay(_) => {
+        | PhysicsFieldEdit::OneWay(_)
+        | PhysicsFieldEdit::ForceX(_)
+        | PhysicsFieldEdit::ForceY(_) => {
             unreachable!("handled above")
         }
     }

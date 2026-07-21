@@ -205,14 +205,18 @@ const ARROW_SECONDS: f32 = 0.25;
 /// Arrowhead length, screen px — chrome, constant size like the outline stroke.
 const ARROW_HEAD_PX: f64 = 9.0; // LITERAL-PX-OK: chrome de overlay
 
-/// The arrow for one body's authored initial velocity, **in screen pixels**, or
-/// `None` if the launch is (near) zero — a still body draws no arrow.
+/// An arrow for one **velocity** at one world point, in screen pixels, or `None` if
+/// it is (near) zero — a still body draws no arrow.
 ///
 /// Built in screen space on purpose (the module's rule — see the header): the
-/// shaft is the world launch vector projected through the camera, so its length
+/// shaft is the world vector projected through the camera, so its length
 /// tracks speed and zoom, but the arrowhead is a constant-size screen ornament,
 /// so it never balloons the way a world-space stroke width would.
-fn initial_velocity_arrow(
+///
+/// Two callers: the authored launch, and the force zone below — which converts its
+/// newtons into the velocity they would give a reference body, so both arrows are
+/// read against the SAME ruler instead of inventing a second one.
+fn velocity_arrow(
     cx: f32,
     cy: f32,
     linvel: [f32; 2],
@@ -251,6 +255,34 @@ fn initial_velocity_arrow(
         }
     }
     Some(path)
+}
+
+/// The force-zone arrow — **orange**, a hue no collider, joint or launch uses.
+const EFFECTOR_RGBA: [f32; 4] = [1.0, 0.62, 0.16, 0.95]; // LITERAL-COLOR-OK: overlay de campo de forca
+
+/// The mass a force is drawn AGAINST, in kg.
+///
+/// A force is not a length, so any arrow for it is a statement about SOME body — that
+/// is what "resisted by mass" means, and it is the feature, not a wart. One kilogram
+/// is the honest reference: at 1 kg the newtons ARE the acceleration, so the arrow
+/// reads directly off the number in the row.
+const EFFECTOR_REFERENCE_KG: f32 = 1.0;
+
+/// The arrow for one force zone's push. `None` for a zone that pushes nothing.
+///
+/// The force is converted into the velocity it would give the reference body in
+/// [`ARROW_SECONDS`], and then drawn by the SAME function the launch arrow uses —
+/// so the two are read against one ruler. A second length scale would be a second
+/// answer to "how long is a strong one".
+fn effector_arrow(
+    cx: f32,
+    cy: f32,
+    force: [f32; 2],
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let k = ARROW_SECONDS / EFFECTOR_REFERENCE_KG;
+    velocity_arrow(cx, cy, [force[0] * k, force[1] * k], camera, window)
 }
 
 /// **What to draw, decided once.** Pure: the toggle and the "is there any
@@ -325,9 +357,29 @@ pub(crate) fn outlines(
         if show_velocity
             && let Some(iv) = world.get::<ph2d_physics_ecs::InitialVelocity>(e)
             && let Some(arrow) =
-                initial_velocity_arrow(t.translation.x, t.translation.y, iv.linvel, camera, window)
+                velocity_arrow(t.translation.x, t.translation.y, iv.linvel, camera, window)
         {
             out.push((arrow, VELOCITY_RGBA));
+        }
+        // The force zone's push — WHICH WAY DOES THIS BLOW, and how hard. A zone is a
+        // sensor, so it is already magenta; the arrow is what makes it a *directed*
+        // area rather than a region that merely notices things.
+        //
+        // Unlike the launch above it is drawn whether or not the clock is running: a
+        // force is a property of the AREA, authored once, and it does not stop being
+        // true because the simulation started (the launch arrow is hidden while
+        // playing precisely because it stops being true the moment the body moves).
+        if show
+            && let Some(a) = world.get::<ph2d_physics_ecs::AreaEffector>(e)
+            && let Some(arrow) = effector_arrow(
+                t.translation.x + wox,
+                t.translation.y + woy,
+                a.force,
+                camera,
+                window,
+            )
+        {
+            out.push((arrow, EFFECTOR_RGBA));
         }
     }
     out
@@ -371,3 +423,7 @@ pub(super) fn draw(
 #[cfg(test)]
 #[path = "physics_overlay_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "physics_overlay_scene_tests.rs"]
+mod scene_tests;

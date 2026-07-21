@@ -199,6 +199,11 @@ fn populate_physics(store: &mut WidgetStore) {
         // a coefficient past 10 is essentially "instant stop".
         (ids::INSP_PHYS_LINEAR_DAMPING, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: linear drag coefficient
         (ids::INSP_PHYS_ANGULAR_DAMPING, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: angular drag coefficient
+        // Force zone (W-Area): newtons, signed (a wind blows either way). The range
+        // is generous because it is weighed against a body's MASS — a 20 kg crate
+        // needs ~200 N just to hold it against gravity.
+        (ids::INSP_PHYS_FORCE_X, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
+        (ids::INSP_PHYS_FORCE_Y, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
     ] {
         store.register(
             id,

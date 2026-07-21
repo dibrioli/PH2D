@@ -372,3 +372,119 @@ fn damping_read_modify_writes_and_detaches_only_at_the_mode_aware_neutral() {
         "zero drag + Combine is the world default — the component must detach"
     );
 }
+
+/// **The force zone: read-modify-write, detach at neutral, and REFUSED on a solid
+/// collider** (W-Area).
+///
+/// The refusal is the half worth the gate. Every other §11 write is gated on the body
+/// KIND or on a body existing at all; this one is gated on another CONTROL, and a
+/// force authored onto a solid collider would be a number the narrow phase never
+/// reads — saved to the project, shown in no row, doing nothing.
+#[test]
+fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
+    use ph2d_physics_ecs::AreaEffector;
+
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+
+    // SOLID (what Add produces): the edit is refused outright.
+    apply(&mut sim, e, PhysicsFieldEdit::ForceX(5.0));
+    assert!(
+        sim.world().get::<AreaEffector>(e).is_none(),
+        "a Force edit on a SOLID collider must be refused — the narrow phase records \
+         no overlap for it, so the force would be authored and inert"
+    );
+
+    // Make it a sensor: now the same edit lands.
+    apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
+    apply(&mut sim, e, PhysicsFieldEdit::ForceX(5.0));
+    assert_eq!(
+        sim.world().get::<AreaEffector>(e).copied(),
+        Some(AreaEffector { force: [5.0, 0.0] }),
+        "setting Force X on a sensor should attach the component"
+    );
+
+    // The other axis must PRESERVE the first — they share one component.
+    apply(&mut sim, e, PhysicsFieldEdit::ForceY(-2.0));
+    assert_eq!(
+        sim.world().get::<AreaEffector>(e).map(|a| a.force),
+        Some([5.0, -2.0]),
+        "setting Force Y must not reset Force X"
+    );
+
+    // Back to zero on both axes: an area that pushes nothing carries no component.
+    apply(&mut sim, e, PhysicsFieldEdit::ForceX(0.0));
+    apply(&mut sim, e, PhysicsFieldEdit::ForceY(0.0));
+    assert!(
+        sim.world().get::<AreaEffector>(e).is_none(),
+        "a zero force is neutral — the component must detach"
+    );
+}
+
+/// **The five presence-is-the-value markers, through the one table that now serves
+/// them all** (`inspector_physics_markers`, split out in W-Area).
+///
+/// They had no shell-level gate at all before the split — each was proven only at the
+/// panel seam, which stops at the bus. A refactor with no gate is a claim, so this is
+/// the sweep: every marker attaches on, detaches off, and is refused on a plain sprite.
+#[test]
+fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
+    use ph2d_physics_ecs::{Ccd, LockPositionX, LockPositionY, LockRotation, OneWayPlatform};
+
+    // (edit builder, "is it attached?" probe, name for the message)
+    type Probe = (
+        fn(bool) -> PhysicsFieldEdit,
+        fn(&SimWorld, Entity) -> bool,
+        &'static str,
+    );
+    const PROBES: [Probe; 5] = [
+        (
+            PhysicsFieldEdit::Ccd,
+            |s, e| s.world().get::<Ccd>(e).is_some(),
+            "Ccd",
+        ),
+        (
+            PhysicsFieldEdit::LockRotation,
+            |s, e| s.world().get::<LockRotation>(e).is_some(),
+            "LockRotation",
+        ),
+        (
+            PhysicsFieldEdit::LockPositionX,
+            |s, e| s.world().get::<LockPositionX>(e).is_some(),
+            "LockPositionX",
+        ),
+        (
+            PhysicsFieldEdit::LockPositionY,
+            |s, e| s.world().get::<LockPositionY>(e).is_some(),
+            "LockPositionY",
+        ),
+        (
+            PhysicsFieldEdit::OneWay,
+            |s, e| s.world().get::<OneWayPlatform>(e).is_some(),
+            "OneWayPlatform",
+        ),
+    ];
+
+    for (make, present, name) in PROBES {
+        // On a plain sprite: refused, so no orphan marker is ever written.
+        let (mut bare, b) = sprite_scene();
+        apply(&mut bare, b, make(true));
+        assert!(
+            !present(&bare, b),
+            "{name} was attached to a sprite with NO body — an orphan marker the §11 \
+             section cannot show and the project file would carry forever"
+        );
+
+        let (mut sim, e) = sprite_scene();
+        apply(&mut sim, e, PhysicsFieldEdit::Add);
+        assert!(!present(&sim, e), "{name}: a fresh body must carry none");
+        apply(&mut sim, e, make(true));
+        assert!(present(&sim, e), "{name} did not attach when switched on");
+        apply(&mut sim, e, make(false));
+        assert!(
+            !present(&sim, e),
+            "{name} did not DETACH when switched off — a project file would carry an \
+             off-flag, and the presence-override idiom would be broken for it"
+        );
+    }
+}

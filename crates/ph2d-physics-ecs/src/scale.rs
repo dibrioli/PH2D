@@ -150,6 +150,10 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `replace: true`, the one door) and riding the `BodyDesc` for the rewind.
 /// `one_way` is the PRESENCE of the optional [`crate::OneWayPlatform`] marker — the
 /// collider is solid only from its local +Y side; rides the `BodyDesc` for the rewind.
+/// `effector` is the optional [`crate::AreaEffector`] component's force in newtons
+/// (absent = a body that pushes nothing) — the force zone, riding the `BodyDesc` for
+/// the rewind like the rest. The wrapper is the half that refuses it on a solid
+/// collider (`effector::zone_force`), so this stays a plain hand-off.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -171,6 +175,7 @@ pub(crate) fn body_desc(
     material: MaterialCombine,
     damping: Option<DampingOverride>,
     one_way: bool,
+    effector: Option<[f32; 2]>,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -195,6 +200,7 @@ pub(crate) fn body_desc(
             replace: matches!(d.mode, DampMode::Replace),
         }),
         one_way,
+        effector,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -264,6 +270,7 @@ mod tests {
             MaterialCombine::default(),
             None,
             false,
+            None,
         )
     }
 

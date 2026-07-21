@@ -241,14 +241,21 @@ const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 const ONEWAY_LABELS: [&str; 2] = ["Off", "On"];
 
 /// The per-collider COLLISION rules: which layer it is on, whether it is solid or a
-/// trigger, and — if solid — which side it is solid from (one-way).
+/// trigger, and then the one question that follows from THAT answer — a solid collider
+/// asks *from which side* (one-way), a sensor asks *with what force* (the force zone).
 ///
-/// Three questions about one collider, so they paint together. **None is
-/// Dynamic-only:** the layer is a filter, a trigger is commonly Static scenery, and a
-/// jump-through platform is almost always Static — gating any of them on Dynamic would
-/// delete the control from its own use case. Split here so `paint_physics_section`
-/// stays under the panel's 200-LOC fn cap; the selections read straight off the
-/// snapshot, so there is nothing to sync.
+/// ⚠️ **Those last two are mutually exclusive, and that is physics, not layout.** A
+/// one-way platform is realised by modifying solver CONTACTS, and a sensor generates
+/// none; a force zone is realised from the narrow phase's INTERSECTION graph, which
+/// only records a pair when one side is a sensor. Each control is dead in the other
+/// mode, so each is offered only in its own — the first §11 controls gated on another
+/// CONTROL rather than on `kind_tag`.
+///
+/// **None is Dynamic-only:** the layer is a filter, a trigger is commonly Static
+/// scenery, a jump-through platform is almost always Static and so is a wind column —
+/// gating any of them on Dynamic would delete the control from its own use case. Split
+/// here so `paint_physics_section` stays under the panel's 200-LOC fn cap; the
+/// selections read straight off the snapshot, so only the force numbers are synced.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_collision_rows(
     scene: &mut VectorScene,
@@ -281,13 +288,6 @@ pub(super) fn paint_collision_rows(
             &SENSOR_LABELS[..],
             u8::from(is_sensor),
         ),
-        (
-            "One-Way",
-            ids::INSP_LIVE_PHYSICS_ONEWAY,
-            &ids::INSP_PHYS_ONEWAY[..],
-            &ONEWAY_LABELS[..],
-            u8::from(one_way),
-        ),
     ] {
         yy = seg_row(
             scene,
@@ -303,6 +303,45 @@ pub(super) fn paint_collision_rows(
             opts,
             labels,
             sel,
+        );
+    }
+    if is_sensor {
+        // A SENSOR: what force does this area apply to whatever is inside it? Wind,
+        // an updraft, a conveyor. Newtons, so it is resisted by mass — the number an
+        // artist tunes against a body's own weight.
+        for (label, id) in [
+            ("Force X (N)", ids::INSP_PHYS_FORCE_X),
+            ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
+        ] {
+            yy = num_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                label,
+                id,
+            );
+        }
+    } else {
+        // A SOLID collider: which side is it solid from?
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "One-Way",
+            ids::INSP_LIVE_PHYSICS_ONEWAY,
+            &ids::INSP_PHYS_ONEWAY,
+            &ONEWAY_LABELS,
+            u8::from(one_way),
         );
     }
     yy

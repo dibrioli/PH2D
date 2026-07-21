@@ -54,6 +54,7 @@ fn platform_and_ball(
         material: Default::default(),
         damping: None,
         one_way,
+        effector: None,
     };
     let platform = base(
         RigidBodyType::Fixed,

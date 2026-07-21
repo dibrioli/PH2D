@@ -13,8 +13,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, CombineRule, Dominance, InitialVelocity, MassOverride,
-    MaterialCombine, OneWayPlatform, RigidBody,
+    AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, Dominance, InitialVelocity,
+    MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -326,6 +326,140 @@ impl crate::App {
              LEFT platform and see One-Way = On in §11 (offered for ANY body kind, not Dynamic-only \
              -- both platforms here are Static, which is the whole reason it is a collider property). \
              Turn it Off to watch its ball bonk like the right one. Press B for the collider outlines."
+        );
+    }
+
+    /// **Scene 24 (W-Area).** The force zone — an area that PUSHES what is inside it.
+    ///
+    /// LEFT: an **updraft**, one tall sensor with `Force Y = +3.5 N`, and three boxes
+    /// of different size dropped into it. The same force does three different things,
+    /// because a force is **resisted by mass**: the small box (0.16 kg) rockets up, the
+    /// middle one (0.36 kg) very nearly hovers — its weight is 3.53 N — and the big one
+    /// (0.81 kg) sinks straight through at about half speed. That spread IS the
+    /// feature: an *acceleration* zone would move all three identically, and it would
+    /// also be a second answer to what Gravity Scale already says about one body.
+    ///
+    /// RIGHT: a **conveyor**, a flat sensor lying on the floor with `Force X = +2 N`,
+    /// carrying a crate that was standing still on it.
+    ///
+    /// Runs PAUSED at t=0. Play. Then select either zone: §11 shows **Trigger = Sensor**
+    /// and the two **Force** rows — and if you switch Trigger to **Solid**, the Force
+    /// rows VANISH and One-Way appears in their place. That swap is the wave's rule made
+    /// visible: a force zone is read from the narrow phase's *intersection* graph (which
+    /// only exists for a sensor) and a one-way platform from its *contacts* (which only
+    /// exist for a solid), so each control is dead in the other mode and neither is
+    /// offered there. Press **B** for the collider outlines; the orange arrow on each
+    /// zone is its push.
+    pub(crate) fn physics_smoke_area(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // ── The updraft column ──────────────────────────────────────────────
+        // A SENSOR, so bodies fall INTO it instead of landing on it. The arrow the
+        // overlay draws on it is the only thing that distinguishes a zone that pushes
+        // from a sensor that merely notices.
+        world.spawn((
+            Transform::from_translation(Vec2::new(-2.6, 1.6)),
+            Sprite::atlas(WHITE_TILE_KEY, [3.2, 6.0], [0.45, 0.80, 0.95, 0.22]),
+            Name::new("Updraft"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.6,
+                    half_y: 3.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            AreaEffector { force: [0.0, 3.5] },
+        ));
+
+        // Three boxes, same density, three sizes ⇒ three masses. Dropped side by side
+        // into the column, far enough apart that they never touch each other — what is
+        // being compared is how each answers the SAME force, not what they do to one
+        // another.
+        for (x, half, hue, tag) in [
+            (-3.8f32, 0.20f32, [0.95, 0.90, 0.35, 1.0], "Light 0.16kg"),
+            (-2.6f32, 0.30f32, [0.95, 0.62, 0.25, 1.0], "Middle 0.36kg"),
+            (-1.4f32, 0.45f32, [0.90, 0.35, 0.30, 1.0], "Heavy 0.81kg"),
+        ] {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 4.2)),
+                Sprite::atlas(WHITE_TILE_KEY, [half * 2.0, half * 2.0], hue),
+                Name::new(tag),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: half,
+                        half_y: half,
+                    },
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        // ── The conveyor ────────────────────────────────────────────────────
+        // Flat, lying ON the floor: a crate standing still in it is carried along.
+        // ⚠️ This is why the zone's impulse WAKES the body it touches — a crate that
+        // has settled and fallen asleep is exactly the case a conveyor exists for.
+        world.spawn((
+            Transform::from_translation(Vec2::new(2.0, -0.55)),
+            Sprite::atlas(WHITE_TILE_KEY, [2.0, 0.5], [0.45, 0.95, 0.60, 0.22]),
+            Name::new("Conveyor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 0.25,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            // ⚠️ MEASURED, not guessed: 2 N on a 0.36 kg crate is 5.6 m/s², and the
+            // floor's friction takes 4.4 of that back, so it creeps along the belt and
+            // coasts to a stop at x ≈ 3.85 — just inside the floor's edge at 4.0. The
+            // first pass used 6 N and threw the crate off the world in under a second,
+            // which demonstrates the feature by making it impossible to look at.
+            AreaEffector { force: [2.0, 0.0] },
+        ));
+        world.spawn((
+            Transform::from_translation(Vec2::new(1.2, -0.5)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [0.85, 0.85, 0.90, 1.0]),
+            Name::new("Crate"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.3,
+                    half_y: 0.3,
+                },
+                friction: 0.4,
+                ..Collider::default()
+            },
+        ));
+
+        eprintln!(
+            "[physics-smoke 24] Paused at t=0. Press Play. LEFT: an UPDRAFT (blue sensor, Force Y = \
+             +3.5 N) with three boxes of the same material and three different SIZES dropped into \
+             it. One force, three outcomes, because a force is resisted by MASS: the small yellow \
+             box rockets up, the middle orange one nearly HOVERS (its weight is 3.53 N), the big \
+             red one sinks through at about half speed. RIGHT: a CONVEYOR (green sensor, Force X = \
+             +2 N) lying on the floor carries a crate that was standing still, then lets it coast to \
+             a stop. Select either zone: \
+             Section 11 shows Trigger = Sensor plus two Force rows -- switch Trigger to Solid and \
+             the Force rows VANISH and One-Way takes their place, because a force zone is read from \
+             the narrow phase's INTERSECTION graph (sensors only) and a one-way platform from its \
+             CONTACTS (solids only), so each control is dead in the other mode. Press B for the \
+             collider outlines; the orange arrow on each zone is its push."
         );
     }
 }

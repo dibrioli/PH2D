@@ -25,9 +25,9 @@ pub mod settings;
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
-    BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
-    GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
-    MaterialCombine, OneWayPlatform, RigidBody,
+    AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
+    Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
+    MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
 pub use joint::{JointKind, PhysicsJoint};
 pub use scale::scaled_shape;
@@ -68,6 +68,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<MaterialCombine>("ph2d::physics::MaterialCombine");
     reg.register::<DampingOverride>("ph2d::physics::DampingOverride");
     reg.register::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
+    reg.register::<AreaEffector>("ph2d::physics::AreaEffector");
 }
 
 #[cfg(test)]
@@ -81,7 +82,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 14);
+        assert_eq!(reg.len(), 15);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -96,5 +97,6 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::MaterialCombine").is_some());
         assert!(reg.get_by_name("ph2d::physics::DampingOverride").is_some());
         assert!(reg.get_by_name("ph2d::physics::OneWayPlatform").is_some());
+        assert!(reg.get_by_name("ph2d::physics::AreaEffector").is_some());
     }
 }

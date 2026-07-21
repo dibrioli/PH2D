@@ -16,7 +16,9 @@
 //! bouncing off the dead floor → the restitution combine rule in the contact
 //! solver, W-Material, one DAMPED launched ball → the per-body drag fold in the
 //! integrator, W-Damping, and one ball launched UP through a ONE-WAY platform → the
-//! contact-modification hook, W-OneWay): entities carry
+//! contact-modification hook, W-OneWay, and one ball falling through a WIND COLUMN →
+//! the force-zone impulse read from the narrow phase's intersection graph, W-Area):
+//! entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -27,16 +29,16 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 67
+//! physics-ecs-c9 body_count: 69
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
-    GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride, MaterialCombine,
-    OneWayPlatform, PhysicsBridge, RigidBody,
+    AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
+    Dominance, GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride,
+    MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -412,6 +414,40 @@ fn main() {
             angvel: 0.0,
         },
         Transform::from_translation(Vec2::new(-52.0, 0.0)),
+    ));
+
+    // One WIND COLUMN and the ball falling through it (W-Area): the zone is a static
+    // SENSOR carrying an `AreaEffector`, so the impulse is read back from the narrow
+    // phase's INTERSECTION graph each substep and folded into the ball's velocity —
+    // a path no other body here travels (every other fold happens before the pipeline
+    // or inside the contact solver). CI proves that `f32` fold is bit-identical
+    // cross-OS, the same guarantee gravity scale gets. Its own lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 1.0,
+                half_y: 3.0,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaEffector { force: [2.0, 0.0] },
+        Transform::from_translation(Vec2::new(-58.0, 2.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-58.0, 4.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

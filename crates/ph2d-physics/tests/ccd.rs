@@ -55,6 +55,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
         offset: [0.0, 0.0],
     });
 
@@ -85,6 +86,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
         offset: [0.0, 0.0],
     });
 

@@ -283,4 +283,26 @@ pub struct BodyDesc {
     /// the `BodyDesc` the world rebuilds from, so a rewind re-arms it. The authored
     /// source is the optional `OneWayPlatform` marker in `ph2d-physics-ecs`.
     pub one_way: bool,
+    /// **Force zone** — a constant force, in newtons (world axes), applied every
+    /// substep to every DYNAMIC body overlapping this collider (Unity's
+    /// `AreaEffector2D`, Godot's `Area2D` overrides). `None` (the default, and what
+    /// every body did before this existed) is an ordinary body that pushes nothing.
+    ///
+    /// It is a **force, not an acceleration**: the impulse `F·dt` is resisted by the
+    /// body's mass, so a leaf is carried by a wind a crate barely feels. That is the
+    /// half an artist cannot author per-body today — a per-body *acceleration* would
+    /// duplicate `gravity_scale`, which already exists.
+    ///
+    /// ⚠️ **It only bites when the collider is a SENSOR** ([`is_sensor`]): the narrow
+    /// phase records an overlap only when one side is a sensor, and a solid collider
+    /// pushes bodies OUT rather than letting them in — an area you cannot enter is not
+    /// an area. [`super::effector::zone_force`] is the single door that answers "is this
+    /// body a force zone", so the world and its gates cannot disagree.
+    ///
+    /// Like the flags around it, it rides the `BodyDesc` the world rebuilds from, so a
+    /// rewind re-arms it. The authored source is the optional `AreaEffector` component
+    /// in `ph2d-physics-ecs`.
+    ///
+    /// [`is_sensor`]: BodyDesc::is_sensor
+    pub effector: Option<[f32; 2]>,
 }

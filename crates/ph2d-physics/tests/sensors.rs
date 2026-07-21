@@ -34,6 +34,7 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
         offset: [0.0, 0.0],
     });
 }

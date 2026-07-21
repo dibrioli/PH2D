@@ -44,6 +44,7 @@ fn ball(
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
     })
 }
 

@@ -2526,3 +2526,129 @@ da plataforma VERDE e pousa em cima; a LARANJA sólida é idêntica e a bola bat
 **Aberto (deliberado):** contact events (quem bateu em quem) — precisa de um consumidor de gameplay, e a precedência
 do W7 diz que a resposta é torná-lo VISÍVEL primeiro · soft-body/fluidos/fratura seguem fora de escopo (D9) ·
 per-axis `damp_mode`.
+
+---
+
+## §W-Area — O CAMPO DE FORÇA (Area Effector, 2026-07-21, smoke `=24`)
+
+**Uma área que EMPURRA o que está dentro dela** — vento, corrente ascendente, esteira, correnteza. É a
+segunda wave de CAPACIDADE desta linha (a primeira foi o one-way): um collider **sensor** carrega um vetor de
+força em newtons, aplicado a cada sub-passo a todo corpo **dinâmico** que o sobrepõe. `AreaEffector2D` da Unity,
+os overrides de `Area2D` do Godot.
+
+**FORÇA, nunca aceleração — e é isso que decide o modelo.** O impulso `F·dt` é **resistido pela massa**, então
+uma folha é levada por um vento que um caixote mal sente. Essa assimetria É a feature; e uma zona de
+*aceleração* seria a **segunda resposta** para o que o `GravityScale` (W8) já diz sobre um corpo. A metade que
+não dá para autorar por-corpo hoje é justamente a força.
+
+**⚠️ A ZONA E A PLATAFORMA ONE-WAY FICARAM MUTUAMENTE EXCLUSIVAS, e isso é física, não layout.** Uma
+plataforma one-way é realizada modificando **CONTATOS** do solver, e um sensor não gera nenhum; uma zona de
+força é lida do grafo de **INTERSEÇÃO** da narrow phase, que só registra um par quando um dos lados é sensor.
+Cada controle é **morto** no modo do outro ⇒ cada um é oferecido só no seu: sólido pergunta *de que lado*,
+sensor pergunta *com que força*. São os primeiros controles da §11 gateados em **outro CONTROLE** e não no
+`kind_tag` — e o One-Way, que era oferecido para todo kind, agora é oferecido para todo kind **sólido**
+(o gate dele ganhou a metade nova; a mutação que a remove sangra).
+
+**⚠️ O impulso ACORDA o corpo** (o `drag` passa `false`; aqui é `true`). Uma zona que não consegue iniciar um
+corpo que já assentou e dormiu está quebrada exatamente onde um artista a usaria — a esteira sob o caixote, a
+corrente sob a caixa. O preço é que um corpo dentro de uma zona ativa não dorme, o que é honesto: ele está
+sendo empurrado.
+
+### ⚠️ TRÊS lições de FIXTURE, e as três são a mesma doença
+
+1. **Os dois CONTROLES foram atropelados pelo próprio experimento.** No wrapper, a bola "que não deve se
+   mexer" apareceu a **12,9 m** da origem: a bola de dentro da zona foi lançada e a acertou. Na ponte ECS, o
+   controle "que deve cair reto" terminou 2,7 m de lado, pelo mesmo motivo. Os dois foram para **fora do
+   caminho** — um para CIMA da coluna, o outro para **contra o vento** (a jusante não bastava; ali o caminho é
+   uma *direção*). O produto estava certo nas duas vezes.
+2. **A fixture do sono não continha o fenômeno, e DUAS mutações passaram por isso.** A primeira versão
+   spawnava a zona junto com a bola ⇒ a bola era empurrada desde o tick 1 e **nunca dormia** ⇒ tanto "o
+   impulso não acorda" quanto "força zero também registra" ficaram VERDES. A fixture agora deixa a bola
+   **assentar e dormir** (com uma asserção da própria premissa) e só então spawna a zona. Aí `wake_up: false`
+   mata o gate: o rapier **não integra corpo dormindo**, então um impulso que muda a velocidade sem acordar
+   move zero, para sempre.
+3. **O filtro `intersecting` sobreviveu a 5 gates porque toda fixture usava uma caixa.** A narrow phase
+   reporta o par assim que os **volumes limitantes** se tocam e diz à parte se as FORMAS se tocam — e para uma
+   caixa alinhada aos eixos os dois coincidem. O gate que faltava usa uma zona **REDONDA**: um corpo parado na
+   quina da AABB do círculo está 0,34 r fora do círculo, e um vento que soprasse nele estaria soprando fora da
+   própria coluna.
+
+### ⚠️ DUAS defesas em camada, medidas — e nenhuma é load-bearing para a simulação
+
+O `zone_force` recusa força zero e recusa collider sólido. **Deletar qualquer uma das duas linhas deixa todos
+os gates do wrapper verdes, e isso é esperado:** o `apply_impulse` do rapier abre com `if !impulse.is_zero()`
+(lido no fonte, não suposto), então uma força zero não acordaria nada mesmo se registrada; e o grafo de
+interseção só existe para sensor, então uma zona sólida não veria ninguém. O que elas COMPRAM: uma zona inerte
+nunca entra em `effectors`, então o passeio por sub-passo é pulado inteiro; e a metade do sensor é a **porta
+única** que as rows da §11 espelham — é lá, no seam, que a regra é observável. Mesma forma do early-out do
+`drag` e do ramo de tinta plana da luz do impasto ([[feedback_layered_defenses_need_per_layer_gates]]).
+
+**E um guard foi REMOVIDO por ser inalcançável:** eu tinha escrito "a zona não empurra a si mesma", mas
+`spawn_body` insere **um** collider por corpo, então "o outro collider do par" é sempre outro CORPO — nenhum
+gate conseguia alcançar aquela linha. Código que nenhum gate alcança é uma afirmação de que o modelo é mais
+frouxo do que é; o invariante ficou escrito onde o código se apoia nele.
+
+### O que atravessa cada camada
+
+`BodyDesc.effector: Option<[f32;2]>` (apendado) → `world/effector.rs` (`zone_force` + `apply`, chamado no laço
+de sub-passos ao lado do `drag`) → tabela `PhysicsWorld.effectors` **ordenada por handle** (um corpo em duas
+zonas sobrepostas soma os impulsos, e a ORDEM de uma soma `f32` é exatamente o que faz um hash cross-OS
+derivar — HR-5); é **config**, nada no laço a escreve, e por isso um restore de checkpoint (que troca as arenas
+de corpo/collider, não ela) a deixa válida. Componente `AreaEffector { force }`, registro **14→15**, **sem bump**
+(fica **29** — componente novo é keyed pelo hash do type-name; apendar em `Collider` seria posicional).
+`InspectorPhysicsInfo::force` + `PhysicsFieldEdit::ForceX/ForceY` + `INSP_PHYS_FORCE_X/_Y`. c9 **67→69** (a zona
++ a bola: o impulso é lido do grafo de interseção, um caminho que nenhum outro corpo do harness percorre).
+
+**A SETA no overlay** — *para que lado isto sopra?* Um sensor que empurra e um que só nota são idênticos na
+tela sem ela. Laranja (nenhum collider, joint ou lançamento usa esse tom), e desenhada **mesmo com o relógio
+rodando**: uma força é propriedade da ÁREA e não deixa de ser verdade quando a simulação começa (a seta de
+lançamento é escondida no play justamente porque deixa). Ela reusa a função da seta de velocidade convertendo
+os newtons na velocidade que dariam a **1 kg** em `ARROW_SECONDS` — uma força não é um comprimento, então
+qualquer seta para ela é uma afirmação sobre ALGUM corpo, e 1 kg é a referência honesta (a 1 kg os newtons SÃO
+a aceleração, então a seta se lê direto do número da row). Uma segunda escala de comprimento seria uma segunda
+resposta para *"quão longa é uma forte"*.
+
+### ⚠️ LOC — TRÊS splits, todos por RESPONSABILIDADE
+
+1. **`inspector_physics_apply.rs` 597/600** → os cinco braços cuja PRESENÇA é o valor (Ccd, Freeze Rotation,
+   Freeze Position X/Y, One-Way) viraram **`inspector_physics_markers.rs`**. Juntos, a duplicação ficou visível
+   e sumiu: um gate, um branch, cinco linhas (`set_or_clear`). Um sexto marker agora é uma linha, não mais
+   dezoito. **Eles não tinham gate nenhum no nível da shell** — só no seam do painel, que para no bus — então o
+   split trouxe o gate que faltava (`every_presence_marker_attaches_detaches_and_is_refused_without_a_body`);
+   refactor sem gate é uma afirmação. 516 + 114.
+2. **`components.rs` 702/700** → os **overrides opcionais** (gravity scale, velocidade inicial, os markers de
+   constraint, massa, dominance, material combine, damping, one-way, a zona) foram para
+   **`components/overrides.rs`**; o pai fica com *o que faz uma entidade ser um corpo* (`RigidBody` +
+   `Collider`, obrigatórios). 247 + 495.
+3. **`physics_overlay_tests.rs` 670/600** → a **geometria pura** ("este círculo é redondo, em pixels de tela,
+   nesta câmera") fica; o **passeio de CENA** (`outlines` sobre um `SimWorld`: cores, sensores, parentesco,
+   toggles, setas) vira **`physics_overlay_scene_tests.rs`**. Os helpers `camera()`/`window()`/`points()` ficam
+   num lugar só — duas metades não podem começar a discordar sobre o que é um pixel. 212 + 473.
+
+### Gates e mutações
+
+Wrapper (`tests/effector.rs`, 6): dentro é empurrado / fora não · **massa resiste** (o gate que diz que é
+força e não aceleração) · a zona **inicia um corpo que já tinha adormecido** · força zero é inerte E
+**byte-idêntica** a não ter zona · sai da zona ⇒ para de ser empurrado · **empurra o que sobrepõe a FORMA, não
+a bounding box**. Todos varrem `zone_first` nos dois valores — a lição do sinal do one-way, aplicada desde o
+começo. ECS (2): a ponte dobra e o **rewind re-arma** · uma zona **sólida** não empurra. Seam do painel (+1,
+23 no total) e shell (+2). **Mutações: 12 rodadas, 11 sangram**; a que sobrevive é a do guard de força zero,
+documentada acima com o mecanismo (o rapier honra o contrato duas vezes).
+
+### Smoke `=24` — e os números foram MEDIDOS, não escolhidos
+
+ESQUERDA uma **corrente ascendente** (sensor azul, `Force Y = +3,5 N`) com três caixas do mesmo material e três
+TAMANHOS: uma força, três respostas — a pequena (0,16 kg) sobe como foguete, a média (0,36 kg) quase **paira**
+(o peso dela é 3,53 N) e a grande (0,81 kg) afunda a meia velocidade. DIREITA uma **esteira** (sensor verde,
+`Force X = +2 N`) leva um caixote parado e o deixa desacelerar até parar em x ≈ 3,85. ⚠️ A primeira versão
+usava **6 N** e **jogava o caixote para fora do mundo em menos de um segundo** — demonstrar a feature tornando-a
+impossível de olhar. Selecione qualquer zona: a §11 mostra **Trigger = Sensor** + as duas rows de **Force**; vire
+Trigger para **Solid** e as rows **somem** e One-Way toma o lugar delas — a regra da wave, visível. **B** para os
+contornos.
+
+### Aberto no W-Area
+
+Falloff (hoje a força é uniforme dentro da área — Unity tem um gradiente e o Godot não) · torque de área (a
+zona empurra o centro de massa, então não faz nada girar) · arrasto de área (a diferença entre "vento" e
+"água"; o `DampingOverride` responde por-CORPO, não por-REGIÃO, então é pergunta diferente e não uma segunda
+porta) · a força é sempre em eixos de MUNDO, então rotacionar a zona não roda o vento.

@@ -93,9 +93,12 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             info.has_body
                 .then_some(PhysicsFieldEdit::FrictionCombine(i as u8))
         } else if let Some(i) = ids::INSP_PHYS_ONEWAY.iter().position(|&o| o == id) {
-            // Off | On (W-OneWay). Gated on `has_body` only — NOT Dynamic-only: it is a
-            // collider property and a platform is usually Static. Dim is not a refusal.
-            info.has_body.then_some(PhysicsFieldEdit::OneWay(i == 1))
+            // Off | On (W-OneWay). NOT Dynamic-only — it is a collider property and a
+            // platform is usually Static — but it IS solid-only: one-way works by
+            // modifying solver CONTACTS, and a sensor generates none, so the painter
+            // offers it for a solid collider alone. Dim is not a refusal, so the same
+            // condition is asked here (W-Area made this row exclusive with Force).
+            (info.has_body && !info.is_sensor).then_some(PhysicsFieldEdit::OneWay(i == 1))
         } else if let Some(i) = ids::INSP_PHYS_DAMPMODE.iter().position(|&o| o == id) {
             // Damp mode: `0` Combine, `1` Replace (W-Damping). Dynamic-only, the same
             // gate the painter offers it under (damping decays a velocity only a
@@ -177,6 +180,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_ANGULAR_DAMPING if info.kind_tag == 0 => {
                 Some(PhysicsFieldEdit::AngularDamping(v))
             }
+            // Force zone (W-Area) — gated on the collider being a SENSOR, not on the
+            // body kind: the narrow phase records an overlap only for a sensor, so the
+            // force would be inert on a solid collider. The painter offers the rows
+            // under exactly this condition, and a refusal that lives in the paint loop
+            // is not a refusal.
+            ids::INSP_PHYS_FORCE_X if info.is_sensor => Some(PhysicsFieldEdit::ForceX(v)),
+            ids::INSP_PHYS_FORCE_Y if info.is_sensor => Some(PhysicsFieldEdit::ForceY(v)),
             _ => None,
         };
         if let Some(edit) = edit {

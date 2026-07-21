@@ -157,6 +157,16 @@ pub struct InspectorPhysicsInfo {
     /// coming back down. Mirrors the presence of the optional `OneWayPlatform` marker.
     /// NOT Dynamic-only — a platform is usually Static, which is the whole point.
     pub one_way: bool,
+    /// **Force zone** (W-Area): the force in newtons, world axes, this area applies to
+    /// every dynamic body overlapping it — wind, an updraft, a conveyor. Mirrors the
+    /// optional `AreaEffector` component's `force`; absent means a body that pushes
+    /// nothing.
+    ///
+    /// ⚠️ Offered only when the collider is a **Sensor**, not by body kind: the narrow
+    /// phase records an overlap only for a sensor, and a solid collider pushes bodies
+    /// out rather than letting them in. It is the first §11 control gated on another
+    /// CONTROL rather than on `kind_tag`.
+    pub force: [f32; 2],
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -256,6 +266,14 @@ pub enum PhysicsFieldEdit {
     /// One-way (jump-through) platform toggle (W-OneWay). Attaches/detaches the optional
     /// `OneWayPlatform` marker — the presence-override idiom. NOT Dynamic-only.
     OneWay(bool),
+    /// Force-zone push, X axis, in newtons (W-Area). Read-modify-write on the optional
+    /// `AreaEffector` component, detached at neutral (zero on both axes). Honoured only
+    /// for a SENSOR collider — the same condition the painter offers it under.
+    ForceX(f32),
+    /// Force-zone push, Y axis. Sibling of [`ForceX`], on the same `AreaEffector`.
+    ///
+    /// [`ForceX`]: PhysicsFieldEdit::ForceX
+    ForceY(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

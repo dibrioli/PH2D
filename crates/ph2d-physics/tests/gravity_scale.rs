@@ -50,6 +50,7 @@ fn gravity_scale_multiplies_the_bodys_fall() {
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
         offset: [0.0, 0.0],
     };
     // Spaced 3 m apart (radius 0.5) so no two ever collide — this is free fall.

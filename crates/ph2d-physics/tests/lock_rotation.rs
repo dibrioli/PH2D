@@ -46,6 +46,7 @@ fn rotation_after_spin(lock: bool) -> f32 {
         material: Default::default(),
         damping: None,
         one_way: false,
+        effector: None,
         offset: [0.0, 0.0],
     });
     for _ in 0..30 {

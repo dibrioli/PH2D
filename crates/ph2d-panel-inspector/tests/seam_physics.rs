@@ -58,6 +58,7 @@ fn with_body() -> InspectorPhysicsInfo {
         angular_damping: 0.0,
         damp_mode_tag: 0,
         one_way: false,
+        force: [0.0, 0.0],
     }
 }
 
@@ -1182,11 +1183,108 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
         );
     }
 
+    // ⚠️ NOT offered on a SENSOR (W-Area made the two exclusive): one-way works by
+    // modifying solver CONTACTS and a sensor generates none, so the chip would be dead.
+    // Painted and dispatched are checked separately — dim is not a refusal.
+    {
+        let sensor = InspectorPhysicsInfo {
+            is_sensor: true,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(sensor));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in ids::INSP_PHYS_ONEWAY.iter() {
+            assert!(
+                !rects.iter().any(|(n, _)| *n == id),
+                "a One-Way chip was painted on a SENSOR, where it cannot do anything"
+            );
+            assert!(
+                click(sensor, id).is_empty(),
+                "a One-Way chip reached the bus on a SENSOR"
+            );
+        }
+    }
+
     // Refused on a bodyless entity — there is no collider to make one-way.
     for &id in ids::INSP_PHYS_ONEWAY.iter() {
         assert!(
             click(without_body(), id).is_empty(),
             "a One-Way chip reached the bus on an entity with no body"
+        );
+    }
+}
+
+/// **The Force rows are SENSOR-only, and each axis reaches the bus** (W-Area).
+///
+/// The first §11 control gated on another CONTROL rather than on `kind_tag`, so the
+/// sweep has to ask a question it never asked before: the same body, the same kind,
+/// two different Trigger settings. Offered for EVERY kind, because a wind column is
+/// almost always Static — the mirror of the One-Way rule, in the other mode.
+#[test]
+fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    const FORCE_IDS: [ph2d_a11y::NodeId; 2] = [ids::INSP_PHYS_FORCE_X, ids::INSP_PHYS_FORCE_Y];
+
+    for tag in [0u8, 1, 2] {
+        for is_sensor in [true, false] {
+            let info = InspectorPhysicsInfo {
+                kind_tag: tag,
+                is_sensor,
+                ..with_body()
+            };
+            let mut host = Host::with_panel::<InspectorPanel>();
+            let mut state = InspectorState::default();
+            set_current_inspector_physics(Some(info));
+            let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+            set_current_inspector_physics(None);
+            for &id in FORCE_IDS.iter() {
+                assert_eq!(
+                    rects.iter().any(|(n, _)| *n == id),
+                    is_sensor,
+                    "kind_tag={tag}, is_sensor={is_sensor}: a Force row's presence is wrong — \
+                     a force zone is usually STATIC, and it is meaningless on a solid collider"
+                );
+            }
+        }
+    }
+
+    // Each axis its own edit, on a sensor.
+    let sensor = InspectorPhysicsInfo {
+        is_sensor: true,
+        ..with_body()
+    };
+    expect(
+        &commit(sensor, ids::INSP_PHYS_FORCE_X, 12.5),
+        PhysicsFieldEdit::ForceX(12.5),
+        "Force X",
+    );
+    expect(
+        &commit(sensor, ids::INSP_PHYS_FORCE_Y, -3.25),
+        PhysicsFieldEdit::ForceY(-3.25),
+        "Force Y",
+    );
+
+    // Refused on a SOLID collider and on a bodyless entity — the narrow phase records
+    // no overlap for either, so the force would be authored and inert.
+    for &id in FORCE_IDS.iter() {
+        assert!(
+            commit(with_body(), id, 12.5).is_empty(),
+            "a Force row reached the bus on a SOLID collider, where it does nothing"
+        );
+        assert!(
+            commit(without_body(), id, 12.5).is_empty(),
+            "a Force row reached the bus on an entity with no body"
         );
     }
 }

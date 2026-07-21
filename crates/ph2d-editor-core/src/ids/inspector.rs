@@ -343,6 +343,12 @@ pub const INSP_PHYS_ONEWAY: [NodeId; 2] = [
     hash_node_id("insp_phys_oneway_off"),
     hash_node_id("insp_phys_oneway_on"),
 ];
+/// §11 Force zone (W-Area) — the push, in newtons, this SENSOR applies to whatever
+/// overlaps it. Two number rows, one per world axis. Painted only for a sensor
+/// collider: an area you cannot enter is not an area, and the narrow phase reports no
+/// overlap for a solid one. Detaches its `AreaEffector` at zero on both axes.
+pub const INSP_PHYS_FORCE_X: NodeId = hash_node_id("insp_phys_force_x");
+pub const INSP_PHYS_FORCE_Y: NodeId = hash_node_id("insp_phys_force_y");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

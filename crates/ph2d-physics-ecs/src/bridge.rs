@@ -543,6 +543,10 @@ impl PhysicsBridge {
             // collider property (a platform is usually Static), folded in and riding
             // the `BodyDesc` for the rewind like the rest.
             let one_way = world.get::<crate::OneWayPlatform>(e).is_some();
+            // Optional AreaEffector (W-Area); its VALUE is the force in newtons the
+            // zone applies to whatever overlaps it. Folded in and riding the
+            // `BodyDesc` for the rewind; the wrapper refuses it on a solid collider.
+            let effector = world.get::<crate::AreaEffector>(e).map(|a| a.force);
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -559,6 +563,7 @@ impl PhysicsBridge {
                 material,
                 damping,
                 one_way,
+                effector,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),

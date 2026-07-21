@@ -10,6 +10,7 @@ pub mod damping;
 pub mod defaults;
 pub mod desc;
 pub mod drag;
+pub mod effector;
 pub mod joints;
 pub mod kinematic;
 pub mod layers;
@@ -76,6 +77,16 @@ pub struct PhysicsWorld {
     /// kinematic bodies, which is what keeps `step` byte-identical to the one
     /// that shipped before this existed.
     kinematic_targets: Vec<(RigidBodyHandle, Isometry2<f32>, Isometry2<f32>)>,
+    /// The registered **force zones** (W-Area): a sensor body and the force, in
+    /// newtons, it applies to whatever overlaps it. Derived from `BodyDesc` at
+    /// spawn through the single door `effector::zone_force`, so it is CONFIG —
+    /// nothing in the step loop writes it, which is why a checkpoint restore
+    /// (which swaps the body/collider arenas, not this) leaves it valid.
+    ///
+    /// **Sorted by handle**: a body standing in two overlapping zones sums their
+    /// impulses, and the order of a float sum is exactly the kind of detail that
+    /// makes a cross-OS hash drift (HR-5).
+    effectors: Vec<(RigidBodyHandle, Vector2<f32>)>,
 }
 
 impl PhysicsWorld {
@@ -141,6 +152,7 @@ impl PhysicsWorld {
             layer_matrix: LayerMatrix::all(),
             air_drag: 0.0,
             kinematic_targets: Vec::new(),
+            effectors: Vec::new(),
         }
     }
 
@@ -442,6 +454,16 @@ impl PhysicsWorld {
             .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
         self.stamp_layer(collider_handle, desc.layer as usize);
+        // Force zone (W-Area). `zone_force` is the single door — it refuses a solid
+        // collider (an area you cannot enter is not an area, and the narrow phase
+        // reports no overlap for it) and a ZERO force (which would push nothing and
+        // only WAKE bodies, so registering it would not be byte-neutral). Kept sorted
+        // by handle so two overlapping zones sum in a fixed order.
+        if let Some(force) = effector::zone_force(&desc) {
+            self.effectors.push((handle, force));
+            self.effectors
+                .sort_unstable_by_key(|(h, _)| h.into_raw_parts());
+        }
         handle
     }
 
@@ -468,6 +490,11 @@ impl PhysicsWorld {
     /// Remove a body and its attached colliders (used when the ECS entity
     /// carrying it is despawned). No-op if the handle is already gone.
     pub fn remove_body(&mut self, handle: RigidBodyHandle) {
+        // A removed body is no longer a zone. Left behind, the entry would keep
+        // querying a dead collider handle every substep — harmless today (the
+        // lookup fails), and exactly the kind of stale table that stops being
+        // harmless the moment the arena reuses the index.
+        self.effectors.retain(|(h, _)| *h != handle);
         self.bodies.remove(
             handle,
             &mut self.island_manager,
@@ -524,6 +551,16 @@ impl PhysicsWorld {
                 &mut self.bodies,
                 &self.colliders,
                 self.air_drag,
+                self.integration_parameters.dt,
+            );
+            // Force zones (W-Area): a sensor's force, applied to whatever is inside
+            // it. Per SUBSTEP for the same reason as the drag above. Empty in every
+            // scene without a zone, which is what keeps this byte-identical.
+            effector::apply(
+                &mut self.bodies,
+                &self.colliders,
+                &self.narrow_phase,
+                &self.effectors,
                 self.integration_parameters.dt,
             );
             // The one-way platform hook. Installing it is byte-neutral for every scene

@@ -183,3 +183,70 @@ fn an_empty_scribble_buffer_yields_the_chord() {
     assert!(!c.can_undo_scribble());
     assert!(!c.can_redo_scribble());
 }
+
+/// 🔴 **A COSTURA do painel até o motor** (auditoria 2026-07-21): os dois sliders chegam ao
+/// `colorize` por UMA função, e ela não tinha gate NENHUM — a auditoria tirou o `.max(seal_px)`
+/// e **862 testes de shell ficaram verdes** enquanto a entrega do 6º smoke (*"Bleed 0 sela o
+/// vão"*) morria. Um motor gateado atrás de uma costura não-gateada é um motor que o produto
+/// não alcança.
+///
+/// Três leis, uma por camada:
+/// 1. **O selo do `Bleed 0` chega** (`seal_from_bleed` × precisão) — a entrega escolhida pelo
+///    Enio em 2026-07-20;
+/// 2. **o Trap chega**, e cruza a precisão (BUGS #11: sem isso subir a Precision encolheria a
+///    bola em silêncio — um raio em px de TELA lido como px de BUFFER);
+/// 3. **os dois COMPÕEM por `max`** — são a mesma grandeza (força de selagem), não duas
+///    perguntas: no Bleed 0 com Trap alto manda o Trap, e vice-versa.
+///
+/// Mutações que sangram: tirar o `.max(seal_px)` (1) · tirar o `* precision` do `trap_px` (2)
+/// · trocar o `max` pelo `seal_px` sozinho (3).
+#[test]
+fn both_sealing_sliders_reach_the_engine_and_compose() {
+    let style = |trap: f64, bleed: f64| ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Colorize,
+        trap,
+        colorize_bleed: bleed,
+        ..Default::default()
+    };
+    // A câmera do produto: 10 unidades de mundo numa janela de 1080p, objeto sem escala.
+    let (px_to_world, obj_scale) = (10.0 / 1080.0, 1.0);
+    let precision = 1.6 / (px_to_world * obj_scale);
+
+    // (1) Bleed 0, Trap 0: só o selo — e ele TEM de chegar em px de buffer.
+    let (p, trap_px) = precision_and_trap(&style(0.0, 0.0), px_to_world, obj_scale);
+    let seal = ph2d_flip_colorize::seal_from_bleed(0.0) * precision;
+    assert!(
+        seal > 0.0,
+        "controle positivo: o Bleed 0 SELA (senão nada a testar)"
+    );
+    assert!((p - precision).abs() < 1e-3, "a precisão é a do balde");
+    assert!(
+        (trap_px - seal).abs() < 1e-3,
+        "o selo do Bleed 0 tem de chegar ao motor: {trap_px} ≠ {seal}"
+    );
+
+    // (2) Bleed default (acima do joelho ⇒ sem selo), Trap 8 px de tela: o Trap sozinho,
+    //     cruzando a precisão. Um `trap_px` que não a cruzasse ficaria em 8.
+    let (_, trap_only) = precision_and_trap(&style(8.0, 0.5), px_to_world, obj_scale);
+    assert_eq!(
+        ph2d_flip_colorize::seal_from_bleed(0.5),
+        0.0,
+        "controle positivo: no Bleed default o selo não engaja"
+    );
+    assert!(
+        trap_only > 8.0 * 1.5,
+        "o Trap tem de cruzar a precisão (BUGS #11) — chegou {trap_only} px de buffer"
+    );
+
+    // (3) Os dois juntos COMPÕEM: manda o maior, nunca o último a ser escrito.
+    let (_, big_trap) = precision_and_trap(&style(8.0, 0.0), px_to_world, obj_scale);
+    assert!(
+        (big_trap - trap_only.max(seal)).abs() < 1e-3,
+        "Trap e selo compõem por max: {big_trap} ≠ max({trap_only}, {seal})"
+    );
+    let (_, small_trap) = precision_and_trap(&style(0.01, 0.0), px_to_world, obj_scale);
+    assert!(
+        (small_trap - seal).abs() < 1e-3,
+        "com Trap minúsculo manda o SELO: {small_trap} ≠ {seal}"
+    );
+}

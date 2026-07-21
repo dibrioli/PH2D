@@ -161,8 +161,8 @@ pub fn populate(store: &mut WidgetStore) {
         ids::FLIP_COLORIZE_BLEED,
         ids::FLIP_COLORIZE_BLEED_NUM,
         0.5,   // track (= a fração `colorize_bleed`); meio = DEFAULT_SQUEEZE
-        50.0,  // display: mostra em %
-        100.0, // scale: track 0..1 → 0..100 %
+        50.0,  // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
+        100.0, // LITERAL-PX-OK: escala fracao 0..1 -> 0..100 %, nao metrica de design
         0.0,
         1.0, // step: % inteiro
     );

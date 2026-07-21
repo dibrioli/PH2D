@@ -47,6 +47,7 @@ mod flow;
 mod segment;
 mod snap;
 mod voronoi;
+mod weld;
 use segment::{NO_REGION, segment};
 
 // Mirram o `fill_at` (`09 §2.1` — MESMO raster, MESMO back-end).
@@ -250,6 +251,13 @@ pub fn colorize_with(
             grid.stroke_capsule(a, b, 0.0); // a parede
             grid.ink_capsule(a, b, 0.0); // o eixo (alvo do expand_under_ink)
         }
+    }
+    // 2b. **As JUNTAS** (`weld.rs`): onde dois traços se sobrepõem na tela mas os EIXOS não
+    //     se tocam, a parede ganha o pedaço que falta. Vai pela MESMA porta do passo 2 — uma
+    //     solda é um pedaço de linha, e a tinta do artista já está por cima dela.
+    for (a, b) in weld::welds(strokes) {
+        grid.stroke_capsule(a, b, 0.0);
+        grid.ink_capsule(a, b, 0.0);
     }
 
     // 3. Os pixels dos rabiscos, agrupados por rótulo distinto; pixel de tinta não semeia cor.
@@ -638,3 +646,8 @@ mod probes;
 #[cfg(test)]
 #[path = "lib_edge_tests.rs"]
 mod edge_tests;
+
+/// Os gates da **solda das pontas** (o buraco de quina) — irmão pelo teto de LOC (700).
+#[cfg(test)]
+#[path = "lib_weld_tests.rs"]
+mod weld_tests;

@@ -351,7 +351,11 @@ fn look_at_the_zipper() {
         .map(|&p| (p, dist_to(p, &red_rings)))
         .collect();
     let stats = |label: &str, f: &dyn Fn(Vec2) -> bool| {
-        let sel: Vec<f32> = devs.iter().filter(|(p, _)| f(*p)).map(|(_, d)| *d).collect();
+        let sel: Vec<f32> = devs
+            .iter()
+            .filter(|(p, _)| f(*p))
+            .map(|(_, d)| *d)
+            .collect();
         let worst = sel.iter().fold(0.0f32, |m, &d| m.max(d));
         let mean = sel.iter().sum::<f32>() / sel.len().max(1) as f32;
         eprintln!(
@@ -377,7 +381,10 @@ fn look_at_the_zipper() {
         .filter(|p| (390.0..412.0).contains(&p.x) && (100.0..140.0).contains(&p.y))
         .collect();
     blue_v.sort_by(|a, b| a.y.total_cmp(&b.y));
-    eprintln!("  anel AZUL y∈[100,140]: {:?}", blue_v.iter().map(|p| (p.y, p.x)).collect::<Vec<_>>());
+    eprintln!(
+        "  anel AZUL y∈[100,140]: {:?}",
+        blue_v.iter().map(|p| (p.y, p.x)).collect::<Vec<_>>()
+    );
     let mut red_v: Vec<Vec2> = rings_of(0)
         .iter()
         .flatten()
@@ -385,7 +392,10 @@ fn look_at_the_zipper() {
         .filter(|p| (390.0..412.0).contains(&p.x) && (100.0..140.0).contains(&p.y))
         .collect();
     red_v.sort_by(|a, b| a.y.total_cmp(&b.y));
-    eprintln!("  anel VERM y∈[100,140]: {:?}", red_v.iter().map(|p| (p.y, p.x)).collect::<Vec<_>>());
+    eprintln!(
+        "  anel VERM y∈[100,140]: {:?}",
+        red_v.iter().map(|p| (p.y, p.x)).collect::<Vec<_>>()
+    );
     let axis_v: Vec<(f32, f32)> = lines[4]
         .0
         .iter()

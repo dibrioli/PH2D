@@ -103,7 +103,7 @@ impl BodyCtx<'_> {
             .slider(ids::FLIP_COLORIZE_BLEED)
             .map(|(_, v)| v)
             .unwrap_or(snap.colorize_bleed as f32);
-        let pct = f64::from(track) * 100.0;
+        let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fracao 0..1 -> leitura em %
         y = self.slider_row(
             "Bleed",
             ids::FLIP_COLORIZE_BLEED,

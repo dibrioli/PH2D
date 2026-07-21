@@ -18,6 +18,8 @@
 | [5](#bug-5--o-grid-do-broadphase-perdia-vizinhos-pad-simétrico--empate-não-determinístico) | O broadphase perdia vizinhos (pad simétrico) e era **não-determinístico** (empate) | `neighbors.rs` | ✅ Resolvido antes de sair do forno (pego por teste) | 2026-07-12 |
 | [15](#15--a-cor-parava-no-eixo-e-a-metade-externa-da-linha-ficava-sem-cor-por-baixo) | **O fill não se ajustava à linha** — a metade EXTERNA do traço não tinha cor por baixo | `flip_fill` + `flip-render/pack` | ✅ Resolvido (o PIXEL foi o oráculo) | 2026-07-13 |
 | [16](#16--os-vértices-do-fill-não-eram-os-da-linha-a-dessincronização-que-o-zoom-amplia) | **Os vértices do fill não eram os da linha** — dessincronização, ampliada pelo zoom | `flip_fill` (o balde) | ✅ Resolvido (a forma fechada pinta a SI MESMA) | 2026-07-13 |
+| [23](#23--a-cor-escapava-por-uma-quina-que-o-artista-via-fechada) | **A cor escapava por uma quina FECHADA na tela** — a parede é o eixo, a arte é o corpo | `ph2d-flip-colorize` (`weld.rs`) | ✅ Resolvido (solda derivada da largura, sem knob) | 2026-07-21 |
+| [24](#24--o-proxy-que-não-separava-espalhamento-e-correlação-contra-a-mediana) | **O proxy de um gate não separava** são de doente — espalhamento e correlação × MEDIANA | Ofício de gate (`lib_edge_tests.rs`) | ✅ Resolvido (oráculo re-medido, não a barra afrouxada) | 2026-07-21 |
 
 ---
 
@@ -1559,3 +1561,138 @@ Com a lei reduzida a `2s`, a rota `filled_shape_target` deixou de ser um ramo es
 o gate dela agora afirma que **não há nada a dilatar**. É a fatia **R3** do plano
 (`10_regiao_por_curvas.md`) ficando barata: aposentar o ramo especial deixou de ser refactor e
 virou remoção de código que a lei já subsome.
+
+---
+
+## #23 — A cor escapava por uma quina que o artista via FECHADA
+
+**2026-07-21** · *"mesmo problema veja as quinas"* → auditoria de 3 agentes → **smoke
+APROVADO** · e depois: *"nada tira a extrapolação"* (Enio, 6º smoke do Colorize).
+
+### O INVARIANTE
+
+> **Se a tinta que o artista pintou cobre o vão, a parede é contínua ali — porque na TELA
+> ela é.** A regra é `distância(ponta, vizinho) ≤ meia-largura(ponta) + meia-largura(vizinho)`:
+> DERIVADA da arte, sem knob, sem constante.
+
+### A causa: a parede é o EIXO, a arte é o CORPO
+
+O `colorize` rasteriza as fronteiras com **raio 0** (`stroke_capsule(a, b, 0.0)`), e essa
+escolha é deliberada e testada — a cor precisa chegar ao eixo para se enfiar por baixo da
+metade externa da linha (#14/#15). O preço nunca tinha sido nomeado: **dois traços cujos
+CORPOS pintados se sobrepõem folgado podem ter EIXOS que não se tocam.**
+
+Uma caixa desenhada à mão são QUATRO traços. Medido na cena do smoke — vão entre os eixos nas
+quatro quinas: **0,023 · 0,040 · 0,012 · 0,0045 doc**, contra **0,26 de largura de tinta**
+(2 × 0,13). Na tela: quinas fechadas, com folga de 6×. No raster: um buraco de **3,7-6,5 px**
+a partir da precisão ~80, por onde a cor escorria para a moldura de fora.
+
+⚠️ **A assimetria esquerda/direita é aritmética da fixture**, não do código — o tremor é
+determinístico e as pontas caem onde caem.
+
+### As três coisas que isto explica de uma vez
+
+1. **A extrapolação para fora do retângulo** (o report do Enio). O selo do `Bleed 0`
+   (trapped-ball) a MASCARAVA: com a bola ligada não escapava — então o defeito só aparecia
+   no **default**, que é onde o artista está.
+2. **O triângulo preto na quina** (o corte de 0,33 doc do #22-bis / auditoria): a bola selava
+   o buraco no NÚCLEO e o passo 4a, a dilatação de volta, o atravessava. Duas portas para o
+   mesmo fato. Curado com o flood de **maior gargalo**, e o buraco que ele contornava é este.
+3. **Por que nenhum ajuste de slider resolvia:** não havia número certo. Erodir o bastante
+   para tapar 6,5 px come as quinas e as câmaras estreitas — o implementador do MyPaint
+   construiu exatamente essa erosão global e a **descartou por escrito**, citando *"loss of
+   information for sharp corners"*. O nosso sintoma, nomeado antes de existir.
+
+### O que a pesquisa em fontes primárias disse (e vale para o balde também)
+
+- O **LazyBrush não fecha vão nenhum**: num min-cut o custo de atravessar branco é por pixel
+  de fronteira (`K = 2(w+h)`, derivado da imagem), então vão largo é caro *porque é largo*.
+  No nosso Dijkstra geodésico ele é barato *porque é largo* — **o pedágio saturar é a
+  assinatura de medir a grandeza errada**, não falta de tuning.
+- O **trapped-ball nunca usa UM raio**: cascata descendente `R…1` + dilatação por
+  **prioridade**. Implementamos a bola sem as duas defesas.
+- **Krita** (o mesmo LazyBrush) **não erode nada**; o número na tela é a **largura do VÃO**.
+- **6 de 6 produtos** (Krita ×2, CSP, Harmony, TVPaint, GIMP, MyPaint) expõem **UM** slider,
+  em px, nomeado pelo vão — nunca raio, nunca pedágio, nunca dois.
+
+### O fix: `weld.rs`, e ele é LOCAL
+
+Para cada **ponta de traço aberto**, o ponto mais próximo em cada outro traço (e no próprio,
+longe da ponta) cujo corpo alcança a ponta ganha um segmento de parede virtual, carimbado
+pela MESMA porta do passo 2 (parede + eixo — uma solda é um pedaço de linha, e a tinta do
+artista já está por cima dela).
+
+Local · **monotônico** (soldar não abre nada) · **efeito ZERO onde não há junta** · e o vão
+DELIBERADO do smoke (1,2 doc contra 0,26 de tinta, **4,6×**) não é tocado.
+
+Custo: 1879 ms a 4096² contra 1831 (**+2,6%**) — bbox por traço rejeita antes de varrer
+segmentos.
+
+### As lições
+
+1. **Um raster que descarta a espessura herda a obrigação de responder pela conectividade
+   que a espessura dava.** O raio 0 é certo para *onde a cor termina* e errado para *onde a
+   parede está* — duas perguntas, uma decisão, e a segunda nunca foi feita.
+2. **Um limite que nenhum valor resolve não é um limite mal ajustado: é a grandeza errada.**
+   O pedágio saturava em +0,94 e a bola comia as quinas antes de fechar o vão. Os dois
+   sintomas eram a mesma frase.
+3. **Quando um remédio MASCARA um defeito, o defeito reaparece no default.** O selo do
+   `Bleed 0` escondia a fuga; o gate `the_colour_does_not_escape_the_box` passava porque
+   **o fixture dele usa uma polilinha FECHADA** — uma caixa sem quinas, ou seja sem o
+   fenômeno. [[feedback_a_fixture_only_proves_what_it_contains]]
+4. **Dois gates nasceram VERDES sobre a regra que existiam para provar** (o padrão das
+   memórias de gate): `a_closed_stroke_has_no_loose_end` testava um anel SOZINHO — as duas
+   pontas de um anel são vizinhas pelo fechamento e a exclusão por arco já as descartava, então
+   a regra podia ser removida sem sangrar; e `a_zero_width_stroke_never_welds` era coberto por
+   um atalho `r_e <= 0` **provadamente inerte** (o teste de alcance já responde). O atalho foi
+   DELETADO — uma 2ª porta para a mesma regra é uma porta que ninguém vai lembrar de manter.
+
+### O que ficou ABERTO (e é do balde, não do Colorize)
+
+O **`fill_at`** rasteriza as fronteiras pela MESMA lei de raio 0 e tem o MESMO buraco de
+quina — ele só não aparece porque o balde tem o Gap Closure para o artista fechar à mão. A
+solda é a resposta estrutural, e ela mora numa crate que o balde não importa. **Wave própria,
+não contrabando.**
+
+---
+
+## #24 — O proxy que não separava: espalhamento e correlação contra a MEDIANA
+
+**2026-07-21** · achado fechando o #23, e é sobre a **fixture de um gate mudar de baixo dele**.
+
+O gate `the_colour_edge_follows_a_wavy_line_without_sawtooth` (do 5º smoke) afirmava *"a borda
+SEGUE a linha ondulada"* medindo o **espalhamento** do desvio ao eixo (`max − min ≤ 1,5 px`).
+Com a caixa selada pelo #23 a topologia da região mudou, e o número foi a **1,76**.
+
+**A tentação era mexer na barra. A medição mostrou que a barra nunca separou nada:**
+
+| medida | borda sã (com solda) | borda sã (pré-solda) | **mutação** (snap neutralizado) |
+|---|---|---|---|
+| espalhamento `max−min` | 1,76 | 1,22 | **2,06** |
+| correlação de FORMA com o eixo | 0,897 | — | **0,879** |
+| **mediana do desvio** | **2,00 px** | — | **0,62 px** |
+| **fração da borda ≥ 0,8 px além do eixo** | **0,97-1,00** | — | **0,29** |
+
+- O **espalhamento** põe a borda sã (1,76) e a doente (2,06) do mesmo lado da cerca.
+- A **correlação** — que eu escrevi supondo que mediria a "forma" — separa **menos ainda**
+  (0,897 × 0,879): o anel cru já acompanha a onda de longe, então correlacionar não distingue
+  *seguir* de *cruzar*.
+- A **mediana** e a **fração** separam por **3×**.
+
+### As lições
+
+1. **Estatística de POSIÇÃO robusta separou; a de FORMA, não.** O defeito do 5º smoke é a
+   borda ATRAVESSAR o eixo (corda/zigue-zague); atravessar derruba a mediana e a fração, e
+   quase não move a correlação.
+2. **Um mínimo sobre ~300 amostras reporta a pior QUINA, não a cobertura da costura.** A
+   perpendicular de um segmento não é a direção de offset numa dobra — o *undercut da mitra*,
+   que o próprio `snap.rs` documenta com o mesmo 0,24 px. Trocar mínimo por mediana não afrouxa
+   o gate: tira dele um ponto isolado que ele nunca quis medir.
+3. ⚠️ **Escrever o número esperado no comentário ANTES de medir quase virou doc mentindo:** eu
+   documentei *"segue = 0,98-0,99; mutado = 0,17-0,49"* por raciocínio. O medido foi 0,897 ×
+   0,879 — e a conclusão INVERTEU (a correlação foi descartada). O comentário só vale depois da
+   régua. [[feedback_stale_comment_and_dead_code_lie]]
+4. **Não persegui a mitra.** Ela é offset de polilinha ruidosa, que pede trim/join — a saga
+   inteira do `curve_join.rs` do Painter. Tentada, medida (limite 2,0 ⇒ mediana intacta mas
+   espalhamento 1,93 e p90 pior) e **revertida**: um módulo aprovado em smoke não é lugar de
+   contrabandear uma wave para fazer uma barra passar.

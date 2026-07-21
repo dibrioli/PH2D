@@ -137,27 +137,49 @@ fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
              (só {samples} amostras — a fixture não contém o fenômeno)"
         );
         let _ = worst_at;
-        let (mn, mx) = devs
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
-        let (mn_px, mx_px) = (mn * precision, mx * precision);
+        let mut sorted = devs.clone();
+        sorted.sort_by(f32::total_cmp);
+        let pc = |f: f32| sorted[((sorted.len() - 1) as f32 * f) as usize] * precision;
+        let (med_px, p90_px, mx_px) = (pc(0.50), pc(0.90), pc(1.0));
+        // A fração da borda que de fato ATRAVESSOU a costura (o empurrão é de 2 px).
+        let covered =
+            devs.iter().filter(|d| **d * precision >= 0.8).count() as f32 / devs.len() as f32;
         if std::env::var("PH2D_GATE_DUMP").is_ok() {
-            eprintln!("[dump] label {label}: dev [{mn_px:.2}, {mx_px:.2}] px");
+            eprintln!(
+                "[dump] label {label}: med {med_px:.2} p90 {p90_px:.2} max {mx_px:.2} px \
+                 · costurada {covered:.3} · {samples} amostras"
+            );
         }
-        // (a) SEGUE a linha: o desvio ao eixo é ~constante (spread pequeno). Uma corda que
-        //     ignora a onda ou um zigue-zague de extremos (5º smoke) espalham 2-4 px.
+        // (a) SEGUE a linha, na FACE OPOSTA: a borda cavalga o eixo deslocada de ~2 px e
+        //     fica lá — a MEDIANA do desvio é o próprio empurrão. Uma corda que ignora a
+        //     onda (5º smoke) ou um zigue-zague de extremos ATRAVESSAM o eixo, e a mediana
+        //     desaba. Medido (mutação = snap neutralizado): mediana **2,00 px** com o snap
+        //     contra **0,62 px** sem ele.
+        //
+        //     ⚠️ Os dois proxies anteriores foram MEDIDOS e reprovados nesta fixture:
+        //     o **espalhamento** `max−min ≤ 1,5 px` não separa (borda sã com uma quina
+        //     subcortada = 1,76 · corda = 2,06 — os dois lados da cerca), e a **correlação**
+        //     de forma com o eixo separa menos ainda (**0,897 sã · 0,879 mutada**): o anel
+        //     cru já acompanha a onda de longe, então correlacionar não distingue *seguir*
+        //     de *cruzar*. Estatística de POSIÇÃO robusta separa por 3×; a de FORMA, não.
         assert!(
-            mx_px - mn_px <= 1.5,
-            "a borda do rotulo {label} tem de SEGUIR a linha ondulada: desvio ao eixo \
-             espalhado em [{mn_px:.2}, {mx_px:.2}] px (o serrilhado do 5º smoke)"
+            med_px >= 1.5 && p90_px <= 3.5,
+            "a borda do rotulo {label} tem de SEGUIR a linha na face oposta: mediana \
+             {med_px:.2} px, p90 {p90_px:.2} px (o serrilhado do 5º smoke — corda ou \
+             zigue-zague atravessam o eixo e a mediana desaba)"
         );
-        // (b) SOBREPÕE: a borda cruza ATÉ A FACE OPOSTA (~2 px além do eixo) — bordas que
-        //     apenas ENCOSTAM no eixo rasterizam com costura aberta (o zíper do 6º smoke:
-        //     dois polígonos adjacentes quantizam a aresta cada um por si).
+        // (b) SOBREPÕE ao longo de TODO o trecho: bordas que apenas ENCOSTAM no eixo
+        //     rasterizam com costura aberta (o zíper do 6º smoke — dois polígonos
+        //     adjacentes quantizam a aresta cada um por si). Não é o MÍNIMO: a mitra de uma
+        //     quina do eixo subcorta pontos isolados (0,24 px medido; a perp de um segmento
+        //     não é a direção de offset numa dobra — o `snap.rs` documenta isto), e um
+        //     mínimo sobre ~300 amostras reporta a pior quina em vez da cobertura. Medido:
+        //     **0,97-1,00 são · 0,29 mutada**.
         assert!(
-            mn_px >= 0.8 && mx_px <= 3.5,
-            "a borda do rotulo {label} tem de SOBREPOR ~2 px além do eixo, nunca só \
-             encostar (dev [{mn_px:.2}, {mx_px:.2}] px — o zíper do 6º smoke)"
+            covered >= 0.90,
+            "a borda do rotulo {label} tem de SOBREPOR ~2 px além do eixo em todo o trecho, \
+             nunca só encostar (só {:.1}% das amostras cruzaram — o zíper do 6º smoke)",
+            covered * 100.0
         );
     }
 }

@@ -1,5 +1,57 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-21, tarde): A FUGA PELA QUINA FECHOU — a parede é o EIXO, e a arte é o
+> CORPO** (report do Enio: *"nada tira a extrapolação"*; era o item ABERTO nº 1 da auditoria da
+> manhã, e o smoke dela foi aprovado). Registro completo: [BUGS #23](BUGS_flip.md) e
+> [#24](BUGS_flip.md).
+>
+> **O mecanismo, numa frase:** o `colorize` rasteriza as fronteiras com **raio 0** (a escolha
+> certa e testada — a cor tem de chegar ao eixo para se enfiar sob a metade externa da linha,
+> BUGS #14/#15), mas **dois traços cujos CORPOS pintados se sobrepõem folgado podem ter EIXOS
+> que não se tocam**. Uma caixa de mão são QUATRO traços; medido, o vão entre eixos nas quinas
+> é **0,023 · 0,040 · 0,012 · 0,0045 doc** contra **0,26 de tinta** — na tela, quinas fechadas
+> com 6× de folga; no raster, um buraco de **3,7-6,5 px** a partir da precisão 80. O selo do
+> `Bleed 0` **mascarava** a fuga, então ela só aparecia no **default**, que é onde o artista
+> está.
+>
+> **O fix é LOCAL e a regra é DERIVADA** (crate `weld.rs`, o que a pesquisa em fontes primárias
+> recomendou em vez da erosão global): toda **ponta de traço aberto** ganha um segmento de
+> parede virtual até o ponto mais próximo cujo corpo pintado a alcança —
+> `d ≤ meia-largura(ponta) + meia-largura(vizinho)`. **Sem knob, sem constante, sem slider
+> novo.** Monotônico (soldar não abre nada), efeito **zero** onde não há junta, e o vão
+> DELIBERADO do smoke (1,2 doc contra 0,26 de tinta, **4,6×**) não é tocado. Cobre também a
+> junta em T e o círculo que quase se fecha (exclusão por comprimento de ARCO, não por índice).
+> Custo **+2,6%** (1879 ms a 4096² contra 1831).
+>
+> **Gate red-first** `the_colour_stays_inside_a_box_whose_corners_are_separate_strokes` — nasceu
+> vermelho com **0,341 doc** de fuga a precisão 80, e **mede o próprio vão antes de afirmar**
+> (o gate `the_colour_does_not_escape_the_box` que existia passava porque o fixture dele usa uma
+> polilinha FECHADA: uma caixa **sem quinas**, ou seja sem o fenômeno). 7 gates novos, um por
+> regra; **7 mutações, 7 sangram** — e ⚠️ **duas nasceram VERDES sobre a regra que existiam para
+> provar** (o anel sozinho não conseguia exprimir *"traço fechado não tem ponta"*; e o atalho
+> `r_e <= 0` era **provadamente inerte**, então foi DELETADO em vez de gateado).
+>
+> **A costura do shell agora tem gate** (o 2º item aberto da auditoria):
+> `both_sealing_sliders_reach_the_engine_and_compose` sobre o `precision_and_trap` — a auditoria
+> tinha tirado o `.max(seal_px)` e **862 testes de shell ficaram verdes** enquanto a entrega do
+> 6º smoke morria. Três leis (o selo chega · o Trap cruza a precisão, BUGS #11 · os dois compõem
+> por `max`), **3 mutações, 3 sangram**.
+>
+> ⚠️ **Um gate teve o ORÁCULO re-medido, não a barra afrouxada** (BUGS #24): o
+> `the_colour_edge_follows_a_wavy_line_without_sawtooth` media *espalhamento* do desvio
+> (`max−min ≤ 1,5`), e com a caixa selada foi a 1,76. Medido, o espalhamento **nunca separou**
+> (são 1,76 · doente 2,06) e a **correlação de forma separa menos ainda** (0,897 × 0,879 — eu a
+> escrevi supondo 0,98; o comentário estava mentindo antes da régua). Quem separa por 3× é a
+> **MEDIANA** do desvio (2,00 × 0,62) e a **fração da borda que cruzou a costura** (0,97-1,00 ×
+> 0,29). A mitra do offset foi tentada, medida e **revertida** — módulo aprovado em smoke não é
+> lugar de contrabandear uma wave para fazer uma barra passar.
+>
+> **Suíte: 40 no colorize (release E debug) · 894 no shell · 62 no `flip-fill` · 23 no painel ·
+> 16 na tool.** Ainda ABERTO: `trap_px` não sobrevive ao clamp de `MAX_SIDE` (bola de 21,6 doc a
+> 10× de zoom) · o re-Apply ao vivo custa 61-294 ms/frame contra o kill-criterion de 16 ms do
+> §7.2 · **o `fill_at` do BALDE tem o MESMO buraco de quina** e só não aparece porque ele tem o
+> Gap Closure manual (wave própria, não contrabando).
+
 > **Estado (2026-07-21): AUDITORIA COMPLETA (3 agentes) — a QUINA fechou, e ela era a doença
 > canônica da linha.** O Enio pediu *"levante agentes … auditoria completa com colorize
 > inclusive com pesquisa em fontes originais"*. Três frentes: caça ao defeito, pesquisa em

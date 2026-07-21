@@ -57,11 +57,18 @@ pub(crate) enum PaintMode {
     /// the plain one, and the Knife is picked from the Impasto TOOL list, which is where the tools that
     /// act on the paint's body live.
     Knife,
+    /// **Wet Paint** — the fourth paint MEDIUM (ADR-0134): a real shallow-water / capillary fluid
+    /// simulation over paper tooth (Rebelle-style), backed by the `ph2d-wet-paint` engine crate.
+    /// Suspended pigment rides the flow, settles as it dries (darkened edges), re-wets, bleeds
+    /// wet-on-wet and drips under tilt. The dab route hangs off `stamp_dabs_inner` like Sculpt
+    /// does (Symmetry / Tiling / shape editors / pressure / Jitter for free); the live water keeps
+    /// moving after pen-up through the `on_tick` heartbeat at a fixed 40 Hz accumulator.
+    WetPaint,
 }
 
 /// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
-pub(crate) const PAINT_MODE_COUNT: usize = 11;
+pub(crate) const PAINT_MODE_COUNT: usize = 12;
 
 impl PaintMode {
     /// Whether this mode drags canvas content along the stroke — the **smear field**.
@@ -91,6 +98,7 @@ impl PaintMode {
             PaintMode::Deform => 8,
             PaintMode::Sculpt => 9,
             PaintMode::Knife => 10,
+            PaintMode::WetPaint => 11,
         }
     }
 }

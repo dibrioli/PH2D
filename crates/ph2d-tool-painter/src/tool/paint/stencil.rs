@@ -360,6 +360,7 @@ impl PainterTool {
             "deform" => PaintMode::Deform,
             "sculpt" => PaintMode::Sculpt,
             "knife" => PaintMode::Knife,
+            "wetpaint" => PaintMode::WetPaint,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -436,6 +437,7 @@ impl PainterTool {
             PaintMode::Deform => "deform",
             PaintMode::Sculpt => "sculpt",
             PaintMode::Knife => "knife",
+            PaintMode::WetPaint => "wetpaint",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",
         }

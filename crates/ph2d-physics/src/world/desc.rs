@@ -5,9 +5,43 @@
 //! rapier type (`RigidBodyType`), so — unlike [`super::shape::ShapeDesc`] — it
 //! is not rapier-free; that is why they live in separate siblings.
 
-use rapier2d::dynamics::RigidBodyType;
+use rapier2d::dynamics::{CoefficientCombineRule, RigidBodyType};
 
 use super::shape::ShapeDesc;
+
+/// How the two colliders' friction and restitution coefficients are combined
+/// on contact (rapier's `CoefficientCombineRule`, Unity's `PhysicMaterial`
+/// combine). Bundled as one struct because rapier itself groups them in
+/// `ColliderMaterial`, and because appending ONE field to [`BodyDesc`] costs
+/// every fixture a single `material: Default::default()` line instead of two.
+///
+/// **The higher-priority rule of the two colliders wins** (rapier combines with
+/// `rule1.max(rule2)`, and the enum orders `Average < Min < Multiply < Max`), so
+/// a superball set to `Max` bounces off ANY floor regardless of the floor's rule
+/// — which is the whole point of exposing it: with the default `Average`, a
+/// bouncy ball on a dead floor only returns to half its drop height.
+///
+/// `Average` on both is rapier's own default, so a body authored before this
+/// existed simulates byte-identically. It rides the [`BodyDesc`] the world
+/// rebuilds from, so a rewind re-arms it.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CombineRules {
+    /// How the two colliders' restitution (bounciness) is combined.
+    pub restitution: CoefficientCombineRule,
+    /// How the two colliders' friction is combined.
+    pub friction: CoefficientCombineRule,
+}
+
+impl Default for CombineRules {
+    /// rapier's own default: both `Average`. Byte-neutral, so an unset body is
+    /// identical to before this existed.
+    fn default() -> Self {
+        Self {
+            restitution: CoefficientCombineRule::Average,
+            friction: CoefficientCombineRule::Average,
+        }
+    }
+}
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by
 /// handle index in [`crate::world::PhysicsWorld::body_snapshots`] so cross-OS
@@ -188,4 +222,15 @@ pub struct BodyDesc {
     /// max), which is why the §11 row is Dynamic-only. The authored source is the
     /// optional `Dominance` component (attached only when non-zero).
     pub dominance: i8,
+    /// **How this collider's friction and restitution combine with another's**
+    /// on contact (see [`CombineRules`]). `Default` = both `Average`, rapier's
+    /// own default and byte-identical to before this field existed.
+    ///
+    /// Unlike the flags around it this is a COLLIDER material property, not a
+    /// rigid-body one, so — like `restitution`/`friction` — it applies to every
+    /// body kind, not just Dynamic (a static floor's combine rule matters too).
+    /// It rides the `BodyDesc` the world rebuilds from, so a rewind re-arms it.
+    /// The authored source is the optional `MaterialCombine` component in
+    /// `ph2d-physics-ecs` (attached only when either rule leaves `Average`).
+    pub material: CombineRules,
 }

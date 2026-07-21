@@ -218,23 +218,21 @@ pub(crate) fn paint_physics_section(
         info.mass_manual,
     );
 
-    for (label, id) in [
-        ("Bounce", ids::INSP_PHYS_RESTITUTION),
-        ("Friction", ids::INSP_PHYS_FRICTION),
-    ] {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            id,
-        );
-    }
+    // Bounce + Friction and, right under each, how it COMBINES with the other
+    // collider on contact (W-Material). Offered for any body kind (a static floor's
+    // combine rule matters). Extracted so this fn stays under the 200-LOC cap.
+    yy = super::physics_rows::paint_material_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        info.restitution_combine_tag,
+        info.friction_combine_tag,
+    );
 
     // The per-body half of collision layers. The other half — WHICH layers
     // collide — is a world rule and lives in the Physics panel; a body only

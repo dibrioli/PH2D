@@ -27,6 +27,7 @@ fn ball(x: f32, y: f32, linvel: [f32; 2], angvel: f32) -> BodyDesc {
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
         offset: [0.0, 0.0],
     }
 }

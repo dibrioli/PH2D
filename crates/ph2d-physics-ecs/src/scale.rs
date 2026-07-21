@@ -31,9 +31,25 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
-use ph2d_physics::{BodyDesc, RigidBodyType, ShapeDesc};
+use ph2d_physics::{BodyDesc, CoefficientCombineRule, CombineRules, RigidBodyType, ShapeDesc};
 
-use crate::components::{BodyKind, Collider, ColliderShape, RigidBody};
+use crate::components::{
+    BodyKind, Collider, ColliderShape, CombineRule, MaterialCombine, RigidBody,
+};
+
+/// Map the ECS-native, serde-safe [`CombineRule`] onto rapier's
+/// `CoefficientCombineRule` — the ONE place the two enums meet, so they cannot
+/// disagree (the `BodyKind` → `RigidBodyType` discipline). The discriminants
+/// match by construction; the match is spelled out so a reordering of either
+/// enum fails to compile rather than silently remapping a rule.
+fn combine_to_rapier(r: CombineRule) -> CoefficientCombineRule {
+    match r {
+        CombineRule::Average => CoefficientCombineRule::Average,
+        CombineRule::Min => CoefficientCombineRule::Min,
+        CombineRule::Multiply => CoefficientCombineRule::Multiply,
+        CombineRule::Max => CoefficientCombineRule::Max,
+    }
+}
 
 /// Resolve an authored [`ColliderShape`] under a **world** scale into the
 /// rapier-facing [`ShapeDesc`] the solver (and the overlay) should use.
@@ -123,6 +139,9 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `gravity_scale`, folded in here and riding the `BodyDesc` for the rewind.
 /// `dominance` is the optional [`crate::Dominance`] component's value (`0` = neutral)
 /// — the collision priority, folded in and riding the `BodyDesc` for the rewind.
+/// `material` is the optional [`crate::MaterialCombine`] component (absent = both
+/// `Average`) — the collider's friction/restitution combine policy, mapped to
+/// rapier's `CoefficientCombineRule` here (the one door) and riding the `BodyDesc`.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -141,6 +160,7 @@ pub(crate) fn body_desc(
     lock_y: bool,
     mass_override: Option<f32>,
     dominance: i8,
+    material: MaterialCombine,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -152,6 +172,10 @@ pub(crate) fn body_desc(
         lock_y,
         mass_override,
         dominance,
+        material: CombineRules {
+            restitution: combine_to_rapier(material.restitution),
+            friction: combine_to_rapier(material.friction),
+        },
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -218,6 +242,7 @@ mod tests {
             false,
             None,
             0,
+            MaterialCombine::default(),
         )
     }
 

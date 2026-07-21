@@ -43,6 +43,7 @@ fn an_ellipse_collider_has_the_authored_half_extents() {
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
         offset: [0.0, 0.0],
     });
 

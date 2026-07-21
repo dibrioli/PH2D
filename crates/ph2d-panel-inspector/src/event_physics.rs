@@ -81,6 +81,17 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // Mass source: `0` Auto, `1` Manual. Dynamic-only, the same gate the
             // painter offers it under (a Static/Kinematic body has infinite mass).
             (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::MassMode(i == 1))
+        } else if let Some(i) = ids::INSP_PHYS_REST_COMBINE.iter().position(|&o| o == id) {
+            // Restitution combine (W-Material): four segments Average/Min/Multiply/Max.
+            // Gated on `has_body` like its siblings — but NOT Dynamic-only: it is a
+            // collider material property, so a static floor's rule matters too. Dim is
+            // not a refusal, so the check lives here.
+            info.has_body
+                .then_some(PhysicsFieldEdit::RestitutionCombine(i as u8))
+        } else if let Some(i) = ids::INSP_PHYS_FRIC_COMBINE.iter().position(|&o| o == id) {
+            // Friction combine — the sibling, same `has_body`-only gate.
+            info.has_body
+                .then_some(PhysicsFieldEdit::FrictionCombine(i as u8))
         } else if let Some(i) = ids::INSP_PHYS_BAKE_CH.iter().position(|&o| o == id) {
             // The bake channel selector — a GLOBAL option, but painted only for a
             // Dynamic body (the only kind that bakes), so honoured under the same
@@ -140,8 +151,15 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // is a float; dominance is an i8 priority, so round and clamp to i8 range
             // at the panel boundary (the shell's edit and the component stay i8).
             ids::INSP_PHYS_DOMINANCE if info.kind_tag == 0 => {
-                let d = v.round().clamp(f32::from(i8::MIN), f32::from(i8::MAX)) as i8;
-                Some(PhysicsFieldEdit::Dominance(d))
+                // `safe_clamp` (NaN-aware) rather than `f32::clamp`: the bounds are
+                // `i8::MIN/MAX` cast to f32 — dynamic values, not literal constants,
+                // so `arch_safe_clamp_only` requires the safe variant.
+                let clamped = ph2d_editor_core::math::safe_clamp(
+                    v.round(),
+                    f32::from(i8::MIN),
+                    f32::from(i8::MAX),
+                );
+                Some(PhysicsFieldEdit::Dominance(clamped as i8))
             }
             _ => None,
         };

@@ -133,6 +133,15 @@ pub struct InspectorPhysicsInfo {
     /// `0`. Dynamic-only, like gravity/velocity (a non-dynamic body is already at the
     /// max).
     pub dominance: i8,
+    /// How this collider's RESTITUTION combines with another's on contact
+    /// (W-Material): `0` Average · `1` Min · `2` Multiply · `3` Max. Mirrors the
+    /// optional `MaterialCombine` component's `restitution` rule — absent means
+    /// `Average`. NOT Dynamic-only: a static floor's combine rule matters too.
+    pub restitution_combine_tag: u8,
+    /// How this collider's FRICTION combines with another's — the sibling of
+    /// [`restitution_combine_tag`](InspectorPhysicsInfo::restitution_combine_tag),
+    /// from the same `MaterialCombine` component.
+    pub friction_combine_tag: u8,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -208,6 +217,15 @@ pub enum PhysicsFieldEdit {
     /// `Dominance` component, or detaches it at the neutral `0` — the presence-
     /// override idiom. The panel rounds the widget's float to this `i8`.
     Dominance(i8),
+    /// Restitution combine rule (W-Material): `0` Average · `1` Min · `2` Multiply
+    /// · `3` Max. Read-modify-write on the optional `MaterialCombine` component,
+    /// detached when both rules return to `Average` — the presence-override idiom.
+    RestitutionCombine(u8),
+    /// Friction combine rule — the sibling of [`RestitutionCombine`], on the same
+    /// `MaterialCombine` component.
+    ///
+    /// [`RestitutionCombine`]: PhysicsFieldEdit::RestitutionCombine
+    FrictionCombine(u8),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

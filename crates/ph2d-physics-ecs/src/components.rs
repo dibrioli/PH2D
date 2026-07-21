@@ -453,3 +453,99 @@ impl SimComponent for MassOverride {}
 pub struct Dominance(pub i8);
 
 impl SimComponent for Dominance {}
+
+/// **How two colliders' friction/restitution combine on contact** (Unity's
+/// `PhysicMaterial` combine, rapier's `CoefficientCombineRule`). The serde-safe
+/// mirror of that rapier enum — the physics crate carries the rapier type in
+/// `BodyDesc`, and `scale::body_desc` maps this to it, exactly as `BodyKind`
+/// maps to `RigidBodyType` (this crate stays serde-native; rapier stays over the
+/// fence).
+///
+/// **Append-only** — the discriminant is the wire value (postcard encodes it
+/// positionally), and it deliberately matches rapier's numbering
+/// (`Average` 0, `Min` 1, `Multiply` 2, `Max` 3) so the §11 segmented control's
+/// index is the tag with no remap.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CombineRule {
+    /// The two coefficients are averaged — rapier's own default.
+    #[default]
+    Average,
+    /// The smaller of the two is used.
+    Min,
+    /// The two are multiplied.
+    Multiply,
+    /// The larger of the two is used — a `Max` superball bounces off any floor.
+    Max,
+}
+
+impl CombineRule {
+    /// The `u8` this rule travels as across the UI boundary (the §11 segmented
+    /// control's index) and back. One door, both directions.
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            CombineRule::Average => 0,
+            CombineRule::Min => 1,
+            CombineRule::Multiply => 2,
+            CombineRule::Max => 3,
+        }
+    }
+
+    /// Recover a rule from its tag. `None` for a tag no variant claims — the
+    /// caller decides what to do with a value it did not expect, rather than
+    /// being handed a plausible one (the `BodyKind::from_tag` discipline).
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Option<CombineRule> {
+        match tag {
+            0 => Some(CombineRule::Average),
+            1 => Some(CombineRule::Min),
+            2 => Some(CombineRule::Multiply),
+            3 => Some(CombineRule::Max),
+            _ => None,
+        }
+    }
+}
+
+/// **Collision-material combine policy — an optional presence-override component
+/// (W-Material).**
+///
+/// Absent (the common case) means both rules are `Average`, exactly what every
+/// body did before this existed — the material basics (`Collider.restitution`
+/// and `.friction`) shipped combining by `Average`, and there was no way to
+/// author anything else. Present, it names how THIS collider's coefficients
+/// combine with another's on contact.
+///
+/// **The higher-priority rule of the two colliders wins** (rapier combines with
+/// `rule1.max(rule2)`), so a superball set to `Max` bounces off ANY floor,
+/// regardless of the floor's rule — which is the whole point: under `Average`,
+/// a Bounce = 1.0 ball on a dead floor returns to only a quarter of its drop
+/// height, and nothing on the ball alone could fix it.
+///
+/// Same idiom as [`GravityScale`] — an override most bodies do not carry — so it
+/// is a newly registered component keyed by its type-name hash (**no
+/// `PROJECT_SCHEMA` bump**) and the Inspector DETACHES it when both rules return
+/// to `Average` ([`Self::is_neutral`]), keeping a project file free of the no-op.
+/// It rides the `BodyDesc` the world rebuilds from, so a rewind re-arms it.
+///
+/// Unlike the flags in this file it is a COLLIDER material property, not a
+/// rigid-body one, so — like `restitution`/`friction` — it applies to any body
+/// kind (a static floor's rule matters), which is why the §11 rows are NOT
+/// Dynamic-only. Config, never live solver state, like every component here.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialCombine {
+    /// How this collider's restitution (bounciness) combines with another's.
+    pub restitution: CombineRule,
+    /// How this collider's friction combines with another's.
+    pub friction: CombineRule,
+}
+
+impl MaterialCombine {
+    /// Both rules `Average` (rapier's default) — the value an absent component
+    /// stands for. Used to DETACH the component so a neutral body carries none.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self == Self::default()
+    }
+}
+
+impl SimComponent for MaterialCombine {}

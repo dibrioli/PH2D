@@ -41,6 +41,7 @@ fn ball(
         lock_y: false,
         mass_override,
         dominance,
+        material: Default::default(),
     })
 }
 

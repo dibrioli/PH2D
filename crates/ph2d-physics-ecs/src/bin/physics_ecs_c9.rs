@@ -11,8 +11,10 @@
 //! angular DOF, W-LockRot, one OFFSET collider → the collider translation,
 //! W-Offset, one X-LOCKED launched ball → the frozen translation DOF,
 //! W-LockPos, one HEAVY ball with a manual mass override → the collider mass
-//! property, W-Mass, and one LIGHT high-dominance ball plowing a heavy one → the
-//! contact-solver dominance path, W-Dominance): entities carry
+//! property, W-Mass, one LIGHT high-dominance ball plowing a heavy one → the
+//! contact-solver dominance path, W-Dominance, and one MAX-combine superball
+//! bouncing off the dead floor → the restitution combine rule in the contact
+//! solver, W-Material): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -23,15 +25,15 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 63
+//! physics-ecs-c9 body_count: 64
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity,
-    LockPositionX, LockRotation, MassOverride, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, CombineRule, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockRotation, MassOverride, MaterialCombine, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -320,6 +322,30 @@ fn main() {
         },
         MassOverride(30.0),
         Transform::from_translation(Vec2::new(-32.0, 5.0)),
+    ));
+
+    // One MAX-combine superball (W-Material): restitution 1.0 with a
+    // `MaterialCombine{restitution: Max}`, dropped onto the floor. rapier combines
+    // the pair's restitution with `rule1.max(rule2)`, so the `Max` rule travels the
+    // contact solver (an `f32` fold in the restitution the impulse uses) — and CI
+    // proves it is bit-identical cross-OS, the same guarantee dominance gets. Its
+    // bounce off the dead floor is where the fold shows; without the component it
+    // would average and settle differently. Its own lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            restitution: 1.0,
+            ..Collider::default()
+        },
+        MaterialCombine {
+            restitution: CombineRule::Max,
+            friction: CombineRule::Average,
+        },
+        Transform::from_translation(Vec2::new(-40.0, 5.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

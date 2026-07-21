@@ -13,6 +13,86 @@ use super::*;
 /// density×area, the Density row) · `1` Manual (an explicit mass in kg, the Mass row).
 const MASS_MODE_LABELS: [&str; 2] = ["Auto", "Manual"];
 
+/// Combine-rule labels, indexed by `CombineRule` tag: how two colliders'
+/// friction/restitution merge on contact (Unity's `PhysicMaterial` combine).
+/// `Max` makes a superball bounce off any floor; `Average` (tag 0) is the default.
+const COMBINE_LABELS: [&str; 4] = ["Average", "Min", "Multiply", "Max"];
+
+/// The collider MATERIAL rows: **Bounce** + **Friction** (the coefficients) and,
+/// right under each, how it COMBINES with the other collider on contact — a Bounce
+/// Combine and a Friction Combine segmented control (W-Material).
+///
+/// Offered for ANY body kind, not Dynamic-only: a static floor's combine rule
+/// matters too, because rapier takes the higher-priority of the two colliders' rules
+/// (so a `Max` superball bounces off any floor). The two combine selections read
+/// straight off the snapshot, so there is nothing to sync. Split here so
+/// `paint_physics_section` stays under the panel's 200-LOC fn cap.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_material_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    restitution_combine_tag: u8,
+    friction_combine_tag: u8,
+) -> f32 {
+    let mut yy = y;
+    for (label, id) in [
+        ("Bounce", ids::INSP_PHYS_RESTITUTION),
+        ("Friction", ids::INSP_PHYS_FRICTION),
+    ] {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            id,
+        );
+    }
+    // How Bounce/Friction combine with the OTHER collider — one segmented control
+    // each, sitting right under the value it governs.
+    for (label, group, ids, tag) in [
+        (
+            "Bounce Combine",
+            ids::INSP_LIVE_PHYSICS_REST_COMBINE,
+            &ids::INSP_PHYS_REST_COMBINE,
+            restitution_combine_tag,
+        ),
+        (
+            "Friction Combine",
+            ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
+            &ids::INSP_PHYS_FRIC_COMBINE,
+            friction_combine_tag,
+        ),
+    ] {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            group,
+            ids,
+            &COMBINE_LABELS,
+            tag,
+        );
+    }
+    yy
+}
+
 /// The mass-source rows: for a Dynamic body, the **Auto | Manual** toggle plus the
 /// single live quantity row (Density in Auto, Mass in Manual); for any other kind, a
 /// plain Density row.

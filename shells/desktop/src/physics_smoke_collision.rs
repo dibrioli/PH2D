@@ -1,16 +1,19 @@
-//! **The smoke scenes where a MOVER hits a ROW** — isolating what makes a body plow
-//! through a collision (`PH2D_PHYSICS_SMOKE` 19 and 20).
+//! **The smoke scenes that author a COLLISION OUTCOME** (`PH2D_PHYSICS_SMOKE` 19,
+//! 20, 21). Each varies the ONE property that decides what a collision does.
 //!
-//! Split out of [`crate::physics_smoke_props`] for the shell's 600-LOC cap, and the
-//! seam is real: both scenes launch a mover into a row of targets and vary the ONE
-//! thing that decides whether it plows through — its WEIGHT (mass, scene 19) or its
-//! PRIORITY (dominance, scene 20). The counterpoint is the point: a heavy body plows
-//! through by mass; a LIGHT body plows through by dominance, which mass alone cannot.
+//! Split out of [`crate::physics_smoke_props`] for the shell's 600-LOC cap. Scenes
+//! 19/20 launch a mover into a row of targets and vary whether it plows THROUGH —
+//! its WEIGHT (mass, scene 19) or its PRIORITY (dominance, scene 20): a heavy body
+//! plows through by mass; a LIGHT body plows through by dominance, which mass alone
+//! cannot. Scene 21 varies how hard a body BOUNCES off a dead floor — its material
+//! COMBINE rule: a superball only bounces off a plain floor if it is told to take
+//! the MAX of the two, not the default average.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, Dominance, InitialVelocity, MassOverride, RigidBody,
+    BodyKind, Collider, ColliderShape, CombineRule, Dominance, InitialVelocity, MassOverride,
+    MaterialCombine, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -170,6 +173,81 @@ impl crate::App {
              mass dictates. Select the top mover and see Dominance = 5 in §11 (Dynamic-only); set it \
              to 0 to watch the light ball bounce like the bottom one. Dominance is a collision \
              PRIORITY — orthogonal to mass, the unstoppable mover a light body cannot be otherwise."
+        );
+    }
+
+    /// **Scene 21 (W-Material).** Two superballs (Bounce 1.0) dropped from the same
+    /// height onto the SAME plain floor (Bounce 0.0). The only difference is how each
+    /// ball's restitution COMBINES with the floor's. The TOP ball has **Bounce
+    /// Combine = Max**, so rapier takes the greater of the two coefficients (1.0) and
+    /// it bounces back near its drop height, again and again. The BOTTOM ball is
+    /// identical but leaves the default **Average**, which halves with the dead floor
+    /// (0.5) — it returns to only a quarter of the drop and dies in a couple of hops.
+    ///
+    /// This is the whole reason to expose the rule: without it, an artist who sets
+    /// Bounce = 1.0 on a ball and drops it on an ordinary floor gets a feeble bounce
+    /// and nothing on the ball alone can fix it.
+    ///
+    /// Runs PAUSED at t=0. Play; select the top ball and see **Bounce Combine = Max**
+    /// in §11 (offered for any body, not Dynamic-only). Set it to Average to watch it
+    /// die like the bottom one.
+    pub(crate) fn physics_smoke_material(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // Two superballs at the same height; only the restitution combine differs.
+        for (x, combine, hue, tag) in [
+            (
+                -1.5f32,
+                Some(CombineRule::Max),
+                [0.5, 0.85, 0.55, 1.0],
+                "Max",
+            ),
+            (1.5f32, None, [0.95, 0.55, 0.25, 1.0], "Average"),
+        ] {
+            let base = (
+                Transform::from_translation(Vec2::new(x, 3.5)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], hue),
+                Name::new(format!("{tag} Superball")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    // A perfect superball; the floor below is the DEFAULT dead one.
+                    restitution: 1.0,
+                    friction: 0.2,
+                    ..Collider::default()
+                },
+            );
+            // The combine rule is attached only when non-default (Max); the Average
+            // ball carries no component, exactly as leaving the toggle alone does.
+            match combine {
+                Some(rule) => {
+                    world.spawn((
+                        base,
+                        MaterialCombine {
+                            restitution: rule,
+                            friction: CombineRule::Average,
+                        },
+                    ));
+                }
+                None => {
+                    world.spawn(base);
+                }
+            };
+        }
+
+        eprintln!(
+            "[physics-smoke 21] Paused at t=0. Press Play. Two superballs (Bounce 1.0) dropped onto \
+             the SAME plain floor (Bounce 0.0). LEFT (GREEN) has Bounce Combine = Max: it takes the \
+             greater of the two coefficients (1.0) and bounces back near its drop height, over and \
+             over. RIGHT (ORANGE) leaves the default Average, which halves with the dead floor (0.5): \
+             it returns to a quarter of the drop and dies in a couple of hops. Select the LEFT ball \
+             and see Bounce Combine = Max in §11 (offered for any body, not Dynamic-only); set it to \
+             Average to watch it die like the right one. This is the only way to make a superball \
+             bounce off an ordinary floor."
         );
     }
 }

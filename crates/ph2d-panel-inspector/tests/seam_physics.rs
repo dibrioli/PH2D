@@ -52,6 +52,8 @@ fn with_body() -> InspectorPhysicsInfo {
         mass_manual: false,
         mass: 1.0,
         dominance: 0,
+        restitution_combine_tag: 0,
+        friction_combine_tag: 0,
     }
 }
 
@@ -962,6 +964,85 @@ fn bake_is_offered_only_for_a_body_the_solver_moves() {
             offered,
             "kind_tag={tag}: the event handler disagrees with the painter about \
              whether this body can be baked"
+        );
+    }
+}
+
+/// **The two combine controls are offered for EVERY body kind — not Dynamic-only —
+/// and each of the four options reaches the bus with its OWN tag** (W-Material).
+///
+/// This is the property that separates them from gravity/velocity/dominance: a
+/// combine rule is a collider MATERIAL property, so a static floor's rule matters
+/// too. The gate would catch a copy-paste that gated them on `kind_tag == 0` like
+/// their neighbours (they would then vanish on a Static floor — the exact body a
+/// bouncy ball lands on). Each option asserts its own tag on its own group, so a
+/// wiring that pointed both controls at one component field, or every chip at
+/// `Average`, would fail. And the bodyless entity refuses them — dim is not a
+/// refusal ([[feedback_disabled_button_still_dispatches]]).
+#[test]
+fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    // Painted for ALL three kinds — the "not Dynamic-only" property. A Static floor
+    // is exactly where a Max-combine rule earns its keep, so gating it on Dynamic
+    // would delete it from the one body the artist most needs it on.
+    for tag in [0u8, 1, 2] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in ids::INSP_PHYS_REST_COMBINE
+            .iter()
+            .chain(ids::INSP_PHYS_FRIC_COMBINE.iter())
+        {
+            assert!(
+                rects.iter().any(|(n, _)| *n == id),
+                "kind_tag={tag}: a combine-rule chip was not painted — a material \
+                 property must be offered for every body kind, not just Dynamic"
+            );
+        }
+    }
+
+    // Each option on each group dispatches its OWN tag onto its OWN edit. Distinct
+    // per index so a wiring that sent every chip to Average (or crossed the two
+    // groups) would fail.
+    for (i, &id) in ids::INSP_PHYS_REST_COMBINE.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::RestitutionCombine(i as u8),
+            &format!("Bounce Combine option {i}"),
+        );
+    }
+    for (i, &id) in ids::INSP_PHYS_FRIC_COMBINE.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::FrictionCombine(i as u8),
+            &format!("Friction Combine option {i}"),
+        );
+    }
+
+    // A combine chip on a bodyless entity is refused at the event layer — there is
+    // no collider to give a material to.
+    for &id in ids::INSP_PHYS_REST_COMBINE
+        .iter()
+        .chain(ids::INSP_PHYS_FRIC_COMBINE.iter())
+    {
+        assert!(
+            click(without_body(), id).is_empty(),
+            "a combine-rule chip reached the bus on an entity with no body"
         );
     }
 }

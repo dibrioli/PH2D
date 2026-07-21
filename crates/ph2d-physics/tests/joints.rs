@@ -41,6 +41,7 @@ fn body(
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
         offset: [0.0, 0.0],
     })
 }
@@ -416,6 +417,7 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             lock_y: false,
             mass_override: None,
             dominance: 0,
+            material: Default::default(),
             offset: [0.0, 0.0],
         });
         join(

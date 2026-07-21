@@ -45,6 +45,7 @@ mod inspector_joint;
 mod inspector_joint_tests;
 mod inspector_ordering;
 mod inspector_physics;
+mod inspector_physics_apply;
 #[cfg(test)]
 mod inspector_physics_tests;
 mod inspector_visibility;

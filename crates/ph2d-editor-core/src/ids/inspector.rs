@@ -306,6 +306,25 @@ pub const INSP_PHYS_MASS: NodeId = hash_node_id("insp_phys_mass");
 /// §11 Dominance (collision priority) NumberInput — Dynamic-only (W-Dominance). A
 /// higher value bulldozes lower-dominance bodies; `0` is neutral.
 pub const INSP_PHYS_DOMINANCE: NodeId = hash_node_id("insp_phys_dominance");
+/// §11 Restitution / Friction combine rule (W-Material): two 4-segment controls —
+/// group id + the four options (Average / Min / Multiply / Max), indexed by the
+/// `CombineRule` tag. NOT Dynamic-only — a collider material property, so it reuses
+/// the same paint/populate/event path as the Sensor/CCD/Layer segments. `Max` makes
+/// a superball bounce off any floor; `Average` (tag 0) detaches the component.
+pub const INSP_LIVE_PHYSICS_REST_COMBINE: NodeId = hash_node_id("insp_live_physics_rest_combine");
+pub const INSP_PHYS_REST_COMBINE: [NodeId; 4] = [
+    hash_node_id("insp_phys_rest_combine_average"),
+    hash_node_id("insp_phys_rest_combine_min"),
+    hash_node_id("insp_phys_rest_combine_multiply"),
+    hash_node_id("insp_phys_rest_combine_max"),
+];
+pub const INSP_LIVE_PHYSICS_FRIC_COMBINE: NodeId = hash_node_id("insp_live_physics_fric_combine");
+pub const INSP_PHYS_FRIC_COMBINE: [NodeId; 4] = [
+    hash_node_id("insp_phys_fric_combine_average"),
+    hash_node_id("insp_phys_fric_combine_min"),
+    hash_node_id("insp_phys_fric_combine_multiply"),
+    hash_node_id("insp_phys_fric_combine_max"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

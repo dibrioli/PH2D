@@ -45,6 +45,7 @@ fn pose_after(lock_x: bool, lock_y: bool, linvel: [f32; 2], gravity: [f32; 2]) -
         lock_y,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
     });
     for _ in 0..30 {
         w.step();

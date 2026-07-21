@@ -18,7 +18,7 @@ use defaults::BodyDefaults;
 use layers::LayerMatrix;
 // The descriptors and the shape vocabulary live in sibling modules (LOC),
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
-pub use desc::{BodyDesc, BodySnapshot};
+pub use desc::{BodyDesc, BodySnapshot, CombineRules};
 use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
@@ -477,6 +477,14 @@ impl PhysicsWorld {
         let collider = shape
             .restitution(desc.restitution)
             .friction(desc.friction)
+            // How this collider's restitution/friction combine with another's on
+            // contact. `Average` on both is rapier's own default (byte-identical to
+            // before this existed); `Max` makes a superball bounce off ANY floor —
+            // rapier resolves a contact with `rule1.max(rule2)`, so the more
+            // energetic of the two colliders wins. Rides the `BodyDesc`, so a rewind
+            // re-arms it.
+            .restitution_combine_rule(desc.material.restitution)
+            .friction_combine_rule(desc.material.friction)
             // A sensor passes through (no contact forces) but the narrow phase
             // still records its overlaps — read back by `intersecting_body_pairs`.
             .sensor(desc.is_sensor)

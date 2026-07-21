@@ -526,6 +526,13 @@ impl PhysicsBridge {
             // Optional Dominance (W-Dominance); its VALUE is the collision priority
             // (absent = neutral `0`). Folded in and rides the `BodyDesc` for rewind.
             let dominance = world.get::<crate::Dominance>(e).map_or(0, |d| d.0);
+            // Optional MaterialCombine (W-Material); absent = both `Average`. The
+            // collider's friction/restitution combine policy, folded in and riding
+            // the `BodyDesc` for rewind like the rest.
+            let material = world
+                .get::<crate::MaterialCombine>(e)
+                .copied()
+                .unwrap_or_default();
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -539,6 +546,7 @@ impl PhysicsBridge {
                 lock_y,
                 mass_override,
                 dominance,
+                material,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),

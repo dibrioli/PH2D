@@ -2334,3 +2334,64 @@ neutro do mesmo tamanho QUICA no 1º).
 
 **Aberto (deliberado):** damping/drag por-corpo (precisa de modo de combinação com o global — `damp_mode` do
 Godot); é a única propriedade "padrão" (Unity/Godot) que falta. Nada mais pede.
+
+## §W-Material — REGRAS DE COMBINE do material (Bounce/Friction Combine, 2026-07-20, smoke `=21`)
+
+**Completa o material físico.** `Bounce` e `Friction` já eram autorados (valores por-collider), mas sempre
+combinavam por **`Average`** — o default do rapier. Preço invisível: o artista põe **Bounce = 1.0** numa
+superball, larga num chão comum (**Bounce = 0.0**), e ela mal quica (as duas médias dão 0.5). Não havia como
+autorar *"esta bola quica em QUALQUER coisa"*. Duas seções segmentadas novas — **Bounce Combine** e **Friction
+Combine** (Average/Min/Multiply/Max) — logo abaixo de Bounce/Friction. ⚠️ **NÃO Dynamic-only** (é propriedade
+de MATERIAL do collider): o combine de um chão ESTÁTICO importa. rapier resolve um contato com
+`rule1.max(rule2)` (ordem `Average<Min<Multiply<Max`), então **a regra de MAIOR prioridade dos dois vence** —
+uma bola `Max` quica em qualquer piso, independente da regra do piso. Isso torna a feature robusta e o smoke
+determinístico (só a bola carrega a regra).
+
+**Por que ESTA wave e não o damping:** o damping por-corpo está gateado por [`defaults.rs`](../../crates/ph2d-physics/src/world/defaults.rs)
+§18-22 — exige um **modo Combine/Replace** (a doença "duas portas pro mesmo número"), é a wave mais espinhosa.
+O combine de material é o oposto: material puro de collider, **zero interação** com os defaults globais, e
+*fecha* a história de Bounce/Friction (o `PhysicMaterial` da Unity = friction + bounce + os dois combines).
+⚠️ **Não confundir os dois "combine":** o combine do material (esta wave) é como DUAS SUPERFÍCIES se combinam
+num contato; o `damp_mode` do damping é como o override por-corpo combina com o DEFAULT global. Perguntas
+diferentes.
+
+**Bundle no wrapper (`CombineRules`), componente único no ECS (`MaterialCombine`).** O `BodyDesc` ganhou UM
+campo `material: CombineRules { restitution, friction }` (carrega o `CoefficientCombineRule` do rapier — o
+BodyDesc já não é rapier-free, carrega `RigidBodyType`) em vez de dois campos flat, pelo mesmo motivo do rapier
+(`ColliderMaterial` agrupa os dois) **e** porque as ~33 fixtures de `BodyDesc {` ganham UMA linha
+`material: Default::default()` **sem import** em vez de duas linhas + import de `CoefficientCombineRule` por
+arquivo. No ECS: enum serde **`CombineRule { Average, Min, Multiply, Max }`** (discriminantes casam com o
+rapier de propósito — a seção usa o tag como índice, sem remap) + componente **`MaterialCombine { restitution,
+friction }`**. `scale::body_desc` mapeia `CombineRule → CoefficientCombineRule` (a porta única, padrão
+`BodyKind → RigidBodyType`); `combine_to_rapier` é `match` explícito (reordenar qualquer enum não compila em
+vez de remapear em silêncio). Registro **11→12**, blob-key, **sem bump** (fica **29**). Detach quando **ambos**
+voltam a Average (`is_neutral()` — arquivo livre do no-op `{Average, Average}`).
+
+**Gates (red-first + mutação):** wrapper `max_combine_bounces_off_a_dead_floor_and_min_stays_dead` (superball
+`Max` num piso morto quica de volta perto da altura de queda; `Average` volta a ~¼; `Min` fica morta; mut tira
+`.restitution_combine_rule` → `Max` colapsa em `Average`, max==average==3.535676 = RED) + `the_combine_rule_
+reaches_the_collider` (readback direto `Collider::restitution_combine_rule()`/`friction_combine_rule()`). ECS
+`the_bridge_folds_the_combine_rule_and_a_rewind_preserves_it` (apex de rebote alto pro `Max`, baixo pro neutro,
+e o rewind re-arma; mut bridge ignora o componente → apex cai = RED). Seam `combine_rules_are_offered_for_
+every_kind_and_each_option_reaches_the_bus` (⚠️ a propriedade que separa das vizinhas: pintado pra TODO kind, não
+gateado em `kind_tag==0`; cada uma das 4 opções despacha o próprio tag; refusado sem corpo). Shell `combine_rule_
+read_modify_writes_and_detaches_at_neutral` (o read-modify-write preserva a OUTRA regra; ambos Average →
+detach). c9 **63→64 corpos** (superball `Max` bate no chão — o combine só percorre o solver de contato se COLIDIR).
+
+**⚠️ LOC — split do apply + do fn do painel, e UM red LATENTE herdado:** (1) `inspector_physics.rs` bateu **634 >
+600** (HR-18) com o braço do material → o `apply_physics_edit` inteiro foi pro irmão **`inspector_physics_apply.rs`**,
+re-exportado por `inspector_physics` (caller paths intactos); build lê, o irmão escreve — as duas metades da seção.
+(2) `paint_physics_section` bateu **230 > 200** (cap de FN do painel) → o bloco de material (Bounce/Friction + os 2
+combines) virou **`physics_rows::paint_material_rows`**, ao lado do `paint_mass_source`. (3) ⚠️ **O gate
+`arch_safe_clamp_only` estava VERMELHO desde a wave da Dominance** — o clamp dela (`v.round().clamp(f32::from(i8::MIN),
+…)`) usa bounds NÃO-literais sem `safe_clamp`, e a wave da Dominance **não rodou esse gate** (mesma classe do miss do
+`file_loc_caps` que a própria Dominance documentou). Corrigido pra `ph2d_editor_core::math::safe_clamp` (NaN-aware).
+**A partir daqui o `arch_safe_clamp_only` entra no gate de fechamento.**
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_REST_COMBINE`/`INSP_PHYS_REST_COMBINE[4]` + `..._FRIC_COMBINE[4]` (segmentadas)
+· `ph2d::physics::MaterialCombine` · `CombineRule` · `BodyDesc.material` · `CombineRules`. `PhysicsFieldEdit::
+{RestitutionCombine,FrictionCombine}(u8)` · `InspectorPhysicsInfo::{restitution,friction}_combine_tag`. Smoke `=21`
+(2 superballs Bounce 1.0 no MESMO chão morto: a de `Max` quica alto repetidamente, a de `Average` morre em 2 saltos).
+
+**Aberto (deliberado):** damping/drag por-corpo — segue sendo a única propriedade "padrão" que falta, e continua
+esperando a decisão de `damp_mode` (Combine/Replace) que a `defaults.rs` exige. Nada mais pede.

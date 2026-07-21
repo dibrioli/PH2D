@@ -31,8 +31,8 @@ pub use world::defaults::BodyDefaults;
 pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{
-    BodyDesc, CAPSULE_CAP_SEGS, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc, capsule_vertices,
-    ellipse_vertices,
+    BodyDesc, CAPSULE_CAP_SEGS, CombineRules, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc,
+    capsule_vertices, ellipse_vertices,
 };
 
 /// The checkpoint ring's stride, in ticks — the bound on how many steps a
@@ -51,5 +51,7 @@ pub fn checkpoint_budget_bytes() -> usize {
 // downstream crate doesn't need a direct rapier2d dep just to
 // receive a body handle. Keeping the surface narrow per the
 // SKILL §7 anti-pattern "Acoplar API pública a tipos externos".
-pub use rapier2d::dynamics::{ImpulseJointHandle, RigidBodyHandle, RigidBodyType};
+pub use rapier2d::dynamics::{
+    CoefficientCombineRule, ImpulseJointHandle, RigidBodyHandle, RigidBodyType,
+};
 pub use rapier2d::geometry::ColliderHandle;

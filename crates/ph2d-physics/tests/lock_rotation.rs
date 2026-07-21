@@ -43,6 +43,7 @@ fn rotation_after_spin(lock: bool) -> f32 {
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
         offset: [0.0, 0.0],
     });
     for _ in 0..30 {

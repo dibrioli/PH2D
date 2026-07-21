@@ -231,3 +231,68 @@ fn the_snapshot_reflects_what_was_written() {
     assert_eq!(info.half_y, 0.5);
     assert_eq!(info.shape_tag, 1, "a Cuboid should report shape tag 1");
 }
+
+/// **A combine-rule edit read-modify-writes the ONE rule it names, and the
+/// component detaches when BOTH rules return to Average** (W-Material).
+///
+/// The two rules live on one `MaterialCombine` component, so editing Bounce
+/// Combine must preserve Friction Combine (a partial write would silently reset
+/// it), and a body that carries neither override must carry no component (the
+/// presence-override idiom — a project file free of the no-op). Two mutations
+/// this catches: dropping the read-modify-write resets the untouched rule; skipping
+/// the neutral-detach leaves a `{Average, Average}` component clinging to every body
+/// that ever touched the control.
+#[test]
+fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
+    use ph2d_physics_ecs::{CombineRule, MaterialCombine};
+
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    // No override yet: a fresh body carries no component.
+    assert!(
+        sim.world().get::<MaterialCombine>(e).is_none(),
+        "a freshly-added body should carry no MaterialCombine (Average is the default)"
+    );
+
+    // Bounce Combine → Max: the component attaches with friction still Average.
+    apply(&mut sim, e, PhysicsFieldEdit::RestitutionCombine(3));
+    assert_eq!(
+        sim.world().get::<MaterialCombine>(e).copied(),
+        Some(MaterialCombine {
+            restitution: CombineRule::Max,
+            friction: CombineRule::Average,
+        }),
+        "setting Bounce Combine = Max should attach the component with friction at Average"
+    );
+
+    // Friction Combine → Min: RESTITUTION MUST BE PRESERVED (the read-modify-write).
+    apply(&mut sim, e, PhysicsFieldEdit::FrictionCombine(1));
+    assert_eq!(
+        sim.world().get::<MaterialCombine>(e).copied(),
+        Some(MaterialCombine {
+            restitution: CombineRule::Max,
+            friction: CombineRule::Min,
+        }),
+        "setting Friction Combine must not reset the restitution rule — the two share \
+         one component and a partial write would drop the other"
+    );
+
+    // Bounce Combine back to Average: still attached (friction is not neutral).
+    apply(&mut sim, e, PhysicsFieldEdit::RestitutionCombine(0));
+    assert_eq!(
+        sim.world().get::<MaterialCombine>(e).copied(),
+        Some(MaterialCombine {
+            restitution: CombineRule::Average,
+            friction: CombineRule::Min,
+        }),
+        "with friction still Min the component must remain — only BOTH neutral detaches"
+    );
+
+    // Friction Combine back to Average: now BOTH are neutral → the component detaches.
+    apply(&mut sim, e, PhysicsFieldEdit::FrictionCombine(0));
+    assert!(
+        sim.world().get::<MaterialCombine>(e).is_none(),
+        "with both rules back at Average the component must detach — a project file \
+         should not carry a no-op {{Average, Average}}"
+    );
+}

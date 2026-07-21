@@ -32,6 +32,7 @@ fn ball(y: f32) -> BodyDesc {
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        material: Default::default(),
         offset: [0.0, 0.0],
     }
 }

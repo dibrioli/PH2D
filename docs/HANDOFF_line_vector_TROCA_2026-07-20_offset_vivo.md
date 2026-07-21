@@ -118,8 +118,32 @@ era o BUG REAL, no **MOTOR**, no `d` extremo:
 (Round armado → satura → retunes — roda sozinho); `=18` é o retune a `d` moderado;
 `=17` é a cena manual. O Enio viu os autos-dirigidos rodando e confirmou. Se um "não
 muda" voltar no fluxo MANUAL dele, os instrumentos são `PH2D_UNDO_LOG=1` + o log da
-janela de retune (`[ph2d-vec] janela de retune fechou`) — e a 1ª pergunta é se o clique
+janela de retune (`[ph2d-vec] preview de offset fechou`) — e a 1ª pergunta é se o clique
 caiu na fileira **Corner** (Expand) ou na **Join** (Stroke), as gêmeas do §1.
+
+> **⬛ 2026-07-21 — CORNER/SIDE VIRARAM PREVIEW; CONSOLIDAR É O `Apply Offset`
+> (`4574915a`).** Ordem do Enio: *"os botões Miter, Round e Bevel são previsualizações em
+> tempo real … para consolidar a curva deve-se apertar Apply Offset ou Convert to
+> Curves"*. Antes, cada clique de chip era um BAKE com passo de undo próprio (testar os
+> 3 modos = 3 Ctrl+Z). Agora: **o retune SUBSTITUI o próprio passo de undo**
+> (`ProjectUndo::forget_last` + baseline = estado-pré, ANTES do `win.apply` — o diff do
+> fim do frame re-registra UM passo pre-gesto→resultado; o oráculo de profundidade fica
+> consistente por construção, o depth nunca se move nos nossos retunes). **N retunes = 1
+> passo** · **Ctrl+Z com preview aberto cancela o offset INTEIRO** · **`Apply Offset`
+> (renomeado de "Offset Path") com preview vivo = consolidar** (fecha a janela, zero
+> mudança de cena; sem preview segue o caminho numérico) · **qualquer outra edição
+> consolida sozinha** (registra o próprio passo → Dead fecha a janela → o passo único do
+> offset fica — zero wiring, é o oráculo de sempre pagando de novo). Gates:
+> `forget_last_pops_the_step_without_restoring_or_touching_redo` +
+> `tests/a_retune_replaces_its_own_undo_step.rs` (arch-gate de ORDEM sobre o fonte —
+> a política mora no corpo do `render_frame`, que nenhum unit test alcança; irmão do
+> `the_z_projection…`). Prova viva no smoke 19: Bevel 238→34 e Miter 34→26 verts com o
+> **undo PARADO** e a janela viva. ⚠️ **Harness endurecido:** os releases dos níveis
+> 18/19 re-afirmam a posição **NO frame do up** — o cursor físico falou por último num
+> run com o desktop em uso e o release caiu em −100% (aniquilação); a mesma corrida do
+> hold, agora fechada no release. ⚠️ **LOC:** `vec_expand_tests.rs` tinha estourado o
+> teto (646/600 — o `file_loc_caps` só roda em `--tests`); a família do retune virou o
+> módulo FILHO `vec_expand_retune_tests.rs` (fixtures do pai via `use super::*`).
 
 ## §2 — O que JÁ foi consertado nesta janela (não re-derive, não re-litigue)
 

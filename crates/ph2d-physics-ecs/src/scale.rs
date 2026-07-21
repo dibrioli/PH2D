@@ -148,6 +148,8 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `damping` is the optional [`crate::DampingOverride`] component (absent = the world
 /// default drag) — mapped to `ph2d_physics::DampingDesc` here (`DampMode::Replace` →
 /// `replace: true`, the one door) and riding the `BodyDesc` for the rewind.
+/// `one_way` is the PRESENCE of the optional [`crate::OneWayPlatform`] marker — the
+/// collider is solid only from its local +Y side; rides the `BodyDesc` for the rewind.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -168,6 +170,7 @@ pub(crate) fn body_desc(
     dominance: i8,
     material: MaterialCombine,
     damping: Option<DampingOverride>,
+    one_way: bool,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -191,6 +194,7 @@ pub(crate) fn body_desc(
             angular: d.angular,
             replace: matches!(d.mode, DampMode::Replace),
         }),
+        one_way,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -259,6 +263,7 @@ mod tests {
             0,
             MaterialCombine::default(),
             None,
+            false,
         )
     }
 

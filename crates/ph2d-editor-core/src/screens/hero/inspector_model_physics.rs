@@ -152,6 +152,11 @@ pub struct InspectorPhysicsInfo {
     /// How the damping combines with the world default drag: `0` Combine (adds to it)
     /// · `1` Replace (ignores it). Mirrors the `DampingOverride` component's `mode`.
     pub damp_mode_tag: u8,
+    /// **One-way (jump-through) platform** (W-OneWay): the collider is solid only from
+    /// its local +Y side, so a body arriving from below passes through and lands on it
+    /// coming back down. Mirrors the presence of the optional `OneWayPlatform` marker.
+    /// NOT Dynamic-only — a platform is usually Static, which is the whole point.
+    pub one_way: bool,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -248,6 +253,9 @@ pub enum PhysicsFieldEdit {
     /// Damping combine mode: `0` Combine (adds to the world default) · `1` Replace
     /// (ignores it). On the same `DampingOverride` component.
     DampMode(u8),
+    /// One-way (jump-through) platform toggle (W-OneWay). Attaches/detaches the optional
+    /// `OneWayPlatform` marker — the presence-override idiom. NOT Dynamic-only.
+    OneWay(bool),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

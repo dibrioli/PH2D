@@ -267,4 +267,20 @@ pub struct BodyDesc {
     /// the world value (the `apply_to_all` clobber). The authored source is the
     /// optional `DampingOverride` component in `ph2d-physics-ecs`.
     pub damping: Option<DampingDesc>,
+    /// **One-way (jump-through) platform** — the iconic 2D platformer collider.
+    /// `false` (the default, and what every collider did before this existed) is an
+    /// ordinary solid collider, byte-identical. `true` makes the collider solid only
+    /// from its **local +Y side**: a body arriving from above lands on it, a body
+    /// arriving from below passes clean through (Godot's `one_way_collision`).
+    ///
+    /// The direction is the collider's own local up, so a ROTATED platform is one-way
+    /// along its own axis — no separate direction field to disagree with the pose.
+    ///
+    /// It is realised by rapier's `ContactModificationContext::update_as_oneway_platform`
+    /// through [`super::oneway::OneWayHooks`], which also owns the allowed/forbidden
+    /// hysteresis that keeps a body from popping. The flag reaches the hook as a bit in
+    /// the collider's `user_data` plus `ActiveHooks::MODIFY_SOLVER_CONTACTS`. It rides
+    /// the `BodyDesc` the world rebuilds from, so a rewind re-arms it. The authored
+    /// source is the optional `OneWayPlatform` marker in `ph2d-physics-ecs`.
+    pub one_way: bool,
 }

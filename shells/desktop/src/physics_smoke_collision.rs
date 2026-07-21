@@ -1,5 +1,6 @@
 //! **The smoke scenes that author a COLLISION OUTCOME** (`PH2D_PHYSICS_SMOKE` 19,
-//! 20, 21). Each varies the ONE property that decides what a collision does.
+//! 20, 21, 23). Each varies the ONE property that decides what a collision does —
+//! including, in scene 23, whether it happens at all from the side you arrive on.
 //!
 //! Split out of [`crate::physics_smoke_props`] for the shell's 600-LOC cap. Scenes
 //! 19/20 launch a mover into a row of targets and vary whether it plows THROUGH —
@@ -13,7 +14,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, CombineRule, Dominance, InitialVelocity, MassOverride,
-    MaterialCombine, RigidBody,
+    MaterialCombine, OneWayPlatform, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -248,6 +249,83 @@ impl crate::App {
              and see Bounce Combine = Max in §11 (offered for any body, not Dynamic-only); set it to \
              Average to watch it die like the right one. This is the only way to make a superball \
              bounce off an ordinary floor."
+        );
+    }
+
+    /// **Scene 23 (W-OneWay).** The jump-through platform. Two lanes, each a ball
+    /// launched straight UP at a platform hanging over it. The LEFT platform is
+    /// **One-Way**: the ball passes clean through it on the way up, then falls back and
+    /// LANDS on top. The RIGHT platform is identical but solid: the ball bonks its
+    /// underside and drops back to the floor.
+    ///
+    /// This is the iconic 2D platformer collider, and the reason it is a per-collider
+    /// property rather than a body kind: both platforms here are Static.
+    ///
+    /// Runs PAUSED at t=0. Play; select the LEFT platform and see **One-Way = On** in
+    /// §11 (offered for any body kind, not Dynamic-only). Turn it Off to watch its ball
+    /// bonk like the right one. Press **B** for the collider outlines.
+    pub(crate) fn physics_smoke_one_way(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        for (x, one_way, hue, tag) in [
+            (-2.5f32, true, [0.5, 0.85, 0.55, 1.0], "One-Way"),
+            (2.5f32, false, [0.95, 0.55, 0.25, 1.0], "Solid"),
+        ] {
+            // The platform overhead. Static — a platform is scenery, which is exactly
+            // why one-way is a COLLIDER property and not a body kind.
+            let plat = (
+                Transform::from_translation(Vec2::new(x, 1.5)),
+                Sprite::atlas(WHITE_TILE_KEY, [2.4, 0.2], hue),
+                Name::new(format!("{tag} Platform")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.2,
+                        half_y: 0.1,
+                    },
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+            );
+            if one_way {
+                world.spawn((plat, OneWayPlatform));
+            } else {
+                world.spawn(plat);
+            }
+
+            // The jumper underneath, launched straight up hard enough to clear the
+            // platform's top face.
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 0.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [0.85, 0.85, 0.9, 1.0]),
+                Name::new(format!("{tag} Jumper")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+                InitialVelocity {
+                    linvel: [0.0, 7.0],
+                    angvel: 0.0,
+                },
+            ));
+        }
+
+        eprintln!(
+            "[physics-smoke 23] Paused at t=0. Press Play. Two lanes, each a ball launched straight \
+             UP at the platform hanging over it. LEFT (GREEN) platform is One-Way: the ball passes \
+             clean THROUGH it going up, then falls back and LANDS on top of it. RIGHT (ORANGE) is \
+             identical but solid: the ball bonks the underside and drops back to the floor. Select the \
+             LEFT platform and see One-Way = On in §11 (offered for ANY body kind, not Dynamic-only \
+             -- both platforms here are Static, which is the whole reason it is a collider property). \
+             Turn it Off to watch its ball bonk like the right one. Press B for the collider outlines."
         );
     }
 }

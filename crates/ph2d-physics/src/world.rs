@@ -5,6 +5,7 @@
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
 pub mod checkpoint;
+pub mod collider_build;
 pub mod damping;
 pub mod defaults;
 pub mod desc;
@@ -12,6 +13,7 @@ pub mod drag;
 pub mod joints;
 pub mod kinematic;
 pub mod layers;
+pub mod oneway;
 pub mod sensors;
 pub mod shape;
 
@@ -435,73 +437,7 @@ impl PhysicsWorld {
         if let Some(d) = desc.damping {
             self.apply_damping_override(handle, d);
         }
-        let shape = match desc.shape {
-            ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
-            ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
-            // A true capsule: rapier has it natively, so a uniformly-scaled
-            // character collider is exact (and rounder than any polygon).
-            ShapeDesc::Capsule {
-                half_height,
-                radius,
-            } => ColliderBuilder::capsule_y(half_height, radius),
-            // Non-uniformly scaled capsule → elliptical caps, which no solver
-            // represents exactly; same convex-polygon treatment as the ellipse.
-            ShapeDesc::Stadium {
-                half_height,
-                rx,
-                ry,
-            } => {
-                let pts: Vec<_> = capsule_vertices(half_height, rx, ry)
-                    .into_iter()
-                    .map(|[x, y]| nalgebra::Point2::new(x, y))
-                    .collect();
-                ColliderBuilder::convex_polyline(pts).unwrap_or_else(|| {
-                    ColliderBuilder::capsule_y(half_height.max(f32::MIN_POSITIVE), rx.max(ry))
-                })
-            }
-            ShapeDesc::Ellipse { rx, ry } => {
-                let pts: Vec<_> = ellipse_vertices(rx, ry)
-                    .into_iter()
-                    .map(|[x, y]| nalgebra::Point2::new(x, y))
-                    .collect();
-                // `convex_polyline` returns None only on a degenerate ring
-                // (an axis scaled to ~0). That is not a shape a real sprite
-                // produces, but a `None` here must not panic the spawn — fall
-                // back to a ball of the larger half-extent so the body still
-                // exists and collides.
-                ColliderBuilder::convex_polyline(pts)
-                    .unwrap_or_else(|| ColliderBuilder::ball(rx.max(ry).max(f32::MIN_POSITIVE)))
-            }
-        };
-        // Mass source: an explicit override (`Some(m)` → `.mass(m)`, kg, ignoring
-        // density — Unity's manual mass) or auto (`None` → `.density(d)`, mass =
-        // density × area, rapier's own default and byte-identical to before this
-        // existed). Exactly one is set, never both — they are the same quantity by
-        // two roads. The angular inertia is derived from the shape either way.
-        let shape = match desc.mass_override {
-            Some(m) => shape.mass(m),
-            None => shape.density(desc.density),
-        };
-        let collider = shape
-            .restitution(desc.restitution)
-            .friction(desc.friction)
-            // How this collider's restitution/friction combine with another's on
-            // contact. `Average` on both is rapier's own default (byte-identical to
-            // before this existed); `Max` makes a superball bounce off ANY floor —
-            // rapier resolves a contact with `rule1.max(rule2)`, so the more
-            // energetic of the two colliders wins. Rides the `BodyDesc`, so a rewind
-            // re-arms it.
-            .restitution_combine_rule(desc.material.restitution)
-            .friction_combine_rule(desc.material.friction)
-            // A sensor passes through (no contact forces) but the narrow phase
-            // still records its overlaps — read back by `intersecting_body_pairs`.
-            .sensor(desc.is_sensor)
-            // The collider's position relative to its body. `[0, 0]` centres it on
-            // the body (rapier's default, byte-identical to before this existed);
-            // rapier rotates this translation with the body, so an offset foot-box
-            // turns with the character. Scale is already folded in by the caller.
-            .translation(Vector2::new(desc.offset[0], desc.offset[1]))
-            .build();
+        let collider = collider_build::build_collider(&desc);
         let collider_handle = self
             .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
@@ -590,7 +526,11 @@ impl PhysicsWorld {
                 self.air_drag,
                 self.integration_parameters.dt,
             );
-            let physics_hooks = ();
+            // The one-way platform hook. Installing it is byte-neutral for every scene
+            // without a one-way collider: rapier only calls `modify_solver_contacts`
+            // for pairs where a collider carries `MODIFY_SOLVER_CONTACTS`, which only
+            // a one-way collider sets.
+            let physics_hooks = oneway::OneWayHooks;
             let event_handler = ();
             self.physics_pipeline.step(
                 &self.gravity,

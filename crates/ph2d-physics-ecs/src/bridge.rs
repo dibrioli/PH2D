@@ -539,6 +539,10 @@ impl PhysicsBridge {
             // Folded into the `BodyDesc` for rewind, AND re-stamped each dispatch by
             // `restamp_damping` so a mid-play global-drag change cannot clobber it.
             let damping = world.get::<crate::DampingOverride>(e).copied();
+            // Optional OneWayPlatform marker (W-OneWay); its PRESENCE is the flag. A
+            // collider property (a platform is usually Static), folded in and riding
+            // the `BodyDesc` for the rewind like the rest.
+            let one_way = world.get::<crate::OneWayPlatform>(e).is_some();
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -554,6 +558,7 @@ impl PhysicsBridge {
                 dominance,
                 material,
                 damping,
+                one_way,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),

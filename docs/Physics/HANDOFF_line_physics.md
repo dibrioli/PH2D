@@ -2450,4 +2450,79 @@ Smoke `=22` (2 demos: bola VERDE de Linear Damping 4 flutua/desce como pena vs O
 Angular Damping 4 para de girar vs ORANGE que gira pra sempre, ambas hover com `GravityScale 0`).
 
 **Aberto (deliberado):** o conjunto de propriedades "padrão" por-corpo (Unity/Godot) está COMPLETO. Sobram só as
-avançadas fora de escopo (soft-body, one-way platforms, contact events, per-axis damp_mode). Nada pede.
+avançadas (soft-body, contact events, per-axis damp_mode). ~~one-way platforms~~ → FEITO, §W-OneWay abaixo.
+
+## §W-OneWay — PLATAFORMA JUMP-THROUGH (one-way, 2026-07-20, smoke `=23`)
+
+**O collider icônico do platformer 2D**, e a primeira wave desta linha que adiciona uma CAPACIDADE em vez de mais
+um knob por-corpo (o conjunto padrão fechou no W-Damping). Um collider marcado one-way é sólido **só pelo lado
++Y LOCAL dele**: um corpo que chega por BAIXO atravessa limpo e depois POUSA em cima na volta. É o
+`one_way_collision` do Godot.
+
+**rapier já traz a primitiva** (`ContactModificationContext::update_as_oneway_platform`) **e a HISTERESE**
+(allowed/forbidden por manifold, que é o que impede o corpo de "pipocar" enquanto atravessa a superfície) — então
+esta wave é INTEGRAÇÃO, não solver: qual collider é plataforma, e para que lado ela é sólida. `world/oneway.rs`.
+
+**Como a flag chega ao hook.** Um `PhysicsHooks` é `&self` e só enxerga o contexto do contato, então o bit
+"este collider é plataforma" viaja no **`user_data` do próprio collider** (`ONE_WAY_BIT` — que é exatamente para
+isso que o rapier oferece `user_data`, e nada mais no repo o usava), junto de **`ActiveHooks::MODIFY_SOLVER_CONTACTS`**,
+sem o qual o hook nunca é chamado para aquele par. O `OneWayHooks` é **stateless** (⇒ `Send + Sync` de graça, e
+sem espelho da cena para envelhecer), e instalá-lo é **byte-neutro** para toda cena sem plataforma: o rapier só
+chama `modify_solver_contacts` em pares onde algum collider pediu a flag.
+
+**⚠️ A NORMAL PERMITIDA VIVE NO FRAME DO COLLIDER1 — e a plataforma pode ser o collider2.** O helper testa
+`manifold.local_n1`, a normal no espaço local do **collider1**, apontando para o exterior dele; o rapier NÃO
+ordena o par pra gente. Um `+Y` constante só está certo quando a plataforma é o collider1; passar `-Y` no outro
+caso (como o demo do rapier faz, e funciona lá porque a fixture dele é toda axis-aligned) assume em silêncio que
+os dois colliders compartilham orientação — o que uma plataforma ROTACIONADA ou um corpo girando quebram. Então a
+direção é DERIVADA, não assumida:
+
+```text
+allowed_local_n1 = R1⁻¹ · (s · platform_world_up),   s = +1 se a plataforma é o collider1
+                                                      s = −1 se é o collider2
+```
+
+Quando a plataforma É o collider1 isso reduz exatamente ao `+Y` local dela ⇒ **UMA fórmula, sem caso especial**, e
+correta para plataforma em qualquer ângulo encontrando corpo em qualquer ângulo.
+
+**⚠️ A MUTAÇÃO QUE SOBREVIVEU — a fixture não continha o fenômeno.** As 3 primeiras versões dos gates passaram de
+primeira, e apagar o flip de sinal (`let signed = world_up;`) **passou em todas**: a fixture spawnava a plataforma
+SEMPRE primeiro, então ela era sempre o collider1 e o ramo do collider2 nunca rodava. Fix: a **ordem de spawn virou
+PARÂMETRO** (`platform_first`) e os 3 testes varrem os dois. Com isso a mesma mutação mata **os três**, e
+especificamente em `platform_first=false` — a bola cai até y=−41 onde deveria pousar, e é BLOQUEADA onde deveria
+atravessar (o caso collider2 estava completamente invertido). O sinal estava certo; o que faltava era a prova.
+
+**Marker, não campo do `Collider`.** `OneWayPlatform` é marker (presença = boolean, idioma do `Ccd`/`LockRotation`):
+apendar em `Collider` seria bump de `PROJECT_SCHEMA` (postcard é POSICIONAL — foi o que `layer`/`is_sensor`/`offset`
+custaram cada um), enquanto um componente novo é keyed pelo hash do type-name e é puramente **aditivo**. Registro
+**13→14**, **sem bump** (fica **29**). ⚠️ **NÃO é Dynamic-only** — é propriedade de COLLIDER e uma plataforma é quase
+sempre **Static**, então gatear em Dynamic (copiando as vizinhas) deletaria o controle exatamente do corpo para o
+qual a feature existe. O toggle é oferecido para TODO kind, e o gate de seam pina isso.
+
+**Gates (red-first + mutação):** wrapper `a_body_from_below_passes_through_and_then_lands_on_top` (sobe atravessando,
+apex > 1, pousa em y≈0.35; controle SÓLIDO é barrado embaixo) + `a_dropped_body_lands_on_a_one_way_platform`
+(one-way não é "não-sólido") + **`the_solid_side_follows_the_platforms_own_rotation`** (plataforma de CABEÇA PARA
+BAIXO, π: sólida por baixo ⇒ o corpo largado de cima ATRAVESSA — é o teste que a matemática de direção ganha), os
+três nos DOIS spawn orders. Mutações: hooks `()` (2 morrem) · world-up hardcoded (a rotação morre) · sem o flip de
+sinal (os 3 morrem). ECS `the_bridge_folds_one_way_and_a_rewind_preserves_it` + seam
+`one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus`. c9 **65→67** (plataforma + bola: o hook roda
+DENTRO da narrow phase e limpa solver contacts, então atravessar e pousar são folds do caminho determinístico).
+
+**⚠️ LOC — DOIS splits por responsabilidade:** (1) `paint_physics_section` bateu **211 > 200** (cap de FN do painel)
+→ Layer + Trigger + One-Way viraram **`physics_rows::paint_collision_rows`** (as três são "como este collider
+participa de uma colisão": em que camada, sólido ou trigger, e de que lado). (2) `world.rs` bateu **711 > 700** → a
+metade-collider do `spawn_body` virou **`world/collider_build.rs::build_collider`** (`spawn_body` são duas perguntas
+— que CORPO é este, e que COLLIDER pendura nele; agora todo campo de `BodyDesc` que descreve a forma e a superfície
+tem um lar óbvio); 634 agora, e o split é comprovadamente behaviour-neutro (a suíte inteira segue verde).
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_ONEWAY` + `INSP_PHYS_ONEWAY[2]` · `ph2d::physics::OneWayPlatform` ·
+`BodyDesc.one_way` · `oneway::{OneWayHooks, ONE_WAY_BIT, ALLOWED_ANGLE}` · `PhysicsFieldEdit::OneWay(bool)` ·
+`InspectorPhysicsInfo::one_way`. **`ALLOWED_ANGLE = FRAC_PI_4`** e é escolha explicada: a distinção que o hook faz é
+CIMA vs BAIXO (180° de distância), então o cone só precisa separar isso, e ser generoso é o que impede um pouso
+levemente inclinado (ou um contato perto da borda, onde a normal abre em leque) de virar "proibido". O demo do
+rapier usa 0.1 rad (5,7°), afinado para caixa chata em plataforma chata. Smoke `=23` (2 lanes: bola sobe ATRAVÉS
+da plataforma VERDE e pousa em cima; a LARANJA sólida é idêntica e a bola bate embaixo).
+
+**Aberto (deliberado):** contact events (quem bateu em quem) — precisa de um consumidor de gameplay, e a precedência
+do W7 diz que a resposta é torná-lo VISÍVEL primeiro · soft-body/fluidos/fratura seguem fora de escopo (D9) ·
+per-axis `damp_mode`.

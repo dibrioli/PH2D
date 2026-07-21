@@ -23,6 +23,9 @@
 //! | `18`| W-LockPos| FREEZE POSITION: three launched balls — free arcs, X-locked drops straight, Y-locked glides level |
 //! | `19`| W-Mass| MANUAL MASS: a heavy (30 kg override) ball plows through a row of pins; the same-size light ball stops |
 //! | `20`| W-Dominance| DOMINANCE: a LIGHT high-dominance ball plows through heavy balls; the neutral light one bounces |
+//! | `21`| W-Material| BOUNCE COMBINE: a Max-combine superball bounces high off a DEAD floor; the Average one dies in 2 hops |
+//! | `22`| W-Damping| DRAG: a Linear-damped ball drifts down like a feather; an Angular-damped box winds to a stop |
+//! | `23`| W-OneWay| JUMP-THROUGH: a ball passes UP through a one-way platform then lands on top; the solid one bonks it |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -94,6 +97,7 @@ impl crate::App {
             "20" => self.physics_smoke_dominance(),
             "21" => self.physics_smoke_material(),
             "22" => self.physics_smoke_damping(),
+            "23" => self.physics_smoke_one_way(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -113,7 +117,7 @@ impl crate::App {
         self.playhead.rewind();
         if matches!(
             which.trim(),
-            "3" | "7" | "14" | "15" | "16" | "17" | "21" | "22"
+            "3" | "7" | "14" | "15" | "16" | "17" | "21" | "22" | "23"
         ) {
             self.playhead.pause();
         } else {

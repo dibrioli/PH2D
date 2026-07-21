@@ -335,6 +335,14 @@ pub const INSP_PHYS_DAMPMODE: [NodeId; 2] = [
     hash_node_id("insp_phys_dampmode_combine"),
     hash_node_id("insp_phys_dampmode_replace"),
 ];
+/// §11 One-way (jump-through) platform toggle (W-OneWay) — group id + the two options
+/// (Off / On). A COLLIDER property, so it is offered for ANY body kind: a platform is
+/// usually Static, which is exactly the case a Dynamic-only gate would delete.
+pub const INSP_LIVE_PHYSICS_ONEWAY: NodeId = hash_node_id("insp_live_physics_oneway");
+pub const INSP_PHYS_ONEWAY: [NodeId; 2] = [
+    hash_node_id("insp_phys_oneway_off"),
+    hash_node_id("insp_phys_oneway_on"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

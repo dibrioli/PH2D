@@ -43,6 +43,7 @@ fn ball(
         dominance,
         material: Default::default(),
         damping: None,
+        one_way: false,
     })
 }
 

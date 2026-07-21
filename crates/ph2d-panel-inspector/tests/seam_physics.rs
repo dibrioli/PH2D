@@ -57,6 +57,7 @@ fn with_body() -> InspectorPhysicsInfo {
         linear_damping: 0.0,
         angular_damping: 0.0,
         damp_mode_tag: 0,
+        one_way: false,
     }
 }
 
@@ -1128,6 +1129,64 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::DampMode(i as u8),
             &format!("Damp Mode option {i}"),
+        );
+    }
+}
+
+/// **The One-Way toggle is offered for EVERY body kind — not Dynamic-only — and each
+/// side reaches the bus with its own boolean** (W-OneWay).
+///
+/// A jump-through platform is a COLLIDER property and a platform is almost always
+/// **Static**, so a Dynamic-only gate copied from its neighbours would delete the
+/// control from the exact body the feature exists for. Presence per kind, plus each
+/// side asserting its OWN boolean (a wiring that sent both chips to `true` — the
+/// classic half-dead two-way widget — fails here), plus the bodyless refusal.
+#[test]
+fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    // Painted for ALL three kinds — a Static platform is the whole point.
+    for tag in [0u8, 1, 2] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in ids::INSP_PHYS_ONEWAY.iter() {
+            assert!(
+                rects.iter().any(|(n, _)| *n == id),
+                "kind_tag={tag}: a One-Way chip was not painted — a jump-through platform is \
+                 usually STATIC, so gating this on Dynamic deletes it from its own use case"
+            );
+        }
+    }
+
+    // Each side its own boolean.
+    for (i, &id) in ids::INSP_PHYS_ONEWAY.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::OneWay(i == 1),
+            &format!("One-Way toggle option {i}"),
+        );
+    }
+
+    // Refused on a bodyless entity — there is no collider to make one-way.
+    for &id in ids::INSP_PHYS_ONEWAY.iter() {
+        assert!(
+            click(without_body(), id).is_empty(),
+            "a One-Way chip reached the bus on an entity with no body"
         );
     }
 }

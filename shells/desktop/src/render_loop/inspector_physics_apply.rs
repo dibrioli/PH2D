@@ -29,7 +29,7 @@ pub(crate) fn apply_physics_edit(
     use ph2d_physics_ecs::{
         BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
         GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
-        MaterialCombine, RigidBody,
+        MaterialCombine, OneWayPlatform, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -43,6 +43,7 @@ pub(crate) fn apply_physics_edit(
     const DOMINANCE: &str = "ph2d::physics::Dominance";
     const MATERIAL_COMBINE: &str = "ph2d::physics::MaterialCombine";
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
+    const ONE_WAY: &str = "ph2d::physics::OneWayPlatform";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -383,6 +384,25 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
+    if let PhysicsFieldEdit::OneWay(on) = edit {
+        // One-way (jump-through) platform (W-OneWay): a collider-level flag carried by
+        // the optional `OneWayPlatform` MARKER — its presence is the boolean. Gated on a
+        // live body: without one there is no collider to make one-way, and this would
+        // attach an orphan marker to a plain sprite. NOT Dynamic-only — a platform is
+        // usually Static, which is the whole point of the feature.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        // Attach on On, detach on Off — the presence-override idiom, so a project file
+        // never carries an off-flag.
+        if on {
+            queue_set(queue, registry, entity_bits, ONE_WAY, &OneWayPlatform);
+        } else {
+            queue_remove(queue, registry, entity_bits, ONE_WAY);
+        }
+        return;
+    }
+
     // Everything else edits the collider, so read the live one and write it
     // back changed — a partial write would drop the fields not being edited.
     let Some(cur) = world.get::<Collider>(entity).copied() else {
@@ -531,7 +551,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::FrictionCombine(_)
         | PhysicsFieldEdit::LinearDamping(_)
         | PhysicsFieldEdit::AngularDamping(_)
-        | PhysicsFieldEdit::DampMode(_) => {
+        | PhysicsFieldEdit::DampMode(_)
+        | PhysicsFieldEdit::OneWay(_) => {
             unreachable!("handled above")
         }
     }

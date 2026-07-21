@@ -22,16 +22,6 @@ const KIND_LABELS: [&str; 3] = ["Dynamic", "Static", "Kinematic"];
 /// Collider-shape labels, indexed by `ColliderShape` tag.
 const SHAPE_LABELS: [&str; 3] = ["Ball", "Box", "Capsule"];
 
-/// Collision-layer chip labels. Bare numbers because a layer has no meaning of
-/// its own — what it MEANS is the row it occupies in the world matrix, and that
-/// is where the naming belongs. Naming them here would be a second place to
-/// keep names in sync with a matrix that does not know about them.
-const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
-
-/// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
-/// `1` a sensor (trigger).
-const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
-
 /// CCD toggle labels, indexed by `ccd as u8`: `0` discrete (rapier's default),
 /// `1` continuous (sweeps the motion so a fast body does not tunnel). Unity's own
 /// vocabulary for the same control.
@@ -234,10 +224,11 @@ pub(crate) fn paint_physics_section(
         info.friction_combine_tag,
     );
 
-    // The per-body half of collision layers. The other half — WHICH layers
-    // collide — is a world rule and lives in the Physics panel; a body only
-    // says where it belongs.
-    yy = seg_row(
+    // How this collider takes part in a collision: which LAYER it is on, whether it
+    // is solid or a TRIGGER, and — if solid — from which SIDE (one-way). Three
+    // questions about one collider, so they paint together; extracted so this fn stays
+    // under the panel's 200-LOC cap. None is Dynamic-only: a platform is Static.
+    yy = super::physics_rows::paint_collision_rows(
         scene,
         text_system,
         theme,
@@ -246,30 +237,9 @@ pub(crate) fn paint_physics_section(
         x,
         w,
         yy,
-        "Layer",
-        ids::INSP_LIVE_PHYSICS_LAYER,
-        &ids::INSP_PHYS_LAYER,
-        &LAYER_LABELS,
         info.layer,
-    );
-
-    // Solid vs sensor. A sensor passes through and only reports overlaps, so it
-    // is a property of the collider, not a body kind — a trigger can be static,
-    // dynamic or kinematic. The overlay lights it up when a body is inside.
-    yy = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        yy,
-        "Trigger",
-        ids::INSP_LIVE_PHYSICS_SENSOR,
-        &ids::INSP_PHYS_SENSOR,
-        &SENSOR_LABELS,
-        u8::from(info.is_sensor),
+        info.is_sensor,
+        info.one_way,
     );
 
     paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)

@@ -14,8 +14,9 @@
 //! property, W-Mass, one LIGHT high-dominance ball plowing a heavy one → the
 //! contact-solver dominance path, W-Dominance, one MAX-combine superball
 //! bouncing off the dead floor → the restitution combine rule in the contact
-//! solver, W-Material, and one DAMPED launched ball → the per-body drag fold in the
-//! integrator, W-Damping): entities carry
+//! solver, W-Material, one DAMPED launched ball → the per-body drag fold in the
+//! integrator, W-Damping, and one ball launched UP through a ONE-WAY platform → the
+//! contact-modification hook, W-OneWay): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -26,7 +27,7 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 65
+//! physics-ecs-c9 body_count: 67
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
@@ -35,7 +36,7 @@ use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
     BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
     GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride, MaterialCombine,
-    PhysicsBridge, RigidBody,
+    OneWayPlatform, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -375,6 +376,42 @@ fn main() {
             mode: DampMode::Combine,
         },
         Transform::from_translation(Vec2::new(-46.0, 6.0)),
+    ));
+
+    // One ONE-WAY platform + the ball launched UP through it (W-OneWay): the contact
+    // modification hook runs inside the narrow phase and CLEARS solver contacts on the
+    // forbidden side, so both the pass-through and the landing that follows are folds
+    // on the deterministic path — CI proves the hook is bit-identical cross-OS, the
+    // same guarantee the dominance solver path gets. Its own lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 1.5,
+                half_y: 0.1,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        OneWayPlatform,
+        Transform::from_translation(Vec2::new(-52.0, 2.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [0.0, 8.0],
+            angvel: 0.0,
+        },
+        Transform::from_translation(Vec2::new(-52.0, 0.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

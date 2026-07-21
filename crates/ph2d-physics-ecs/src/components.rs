@@ -629,3 +629,31 @@ impl DampingOverride {
 }
 
 impl SimComponent for DampingOverride {}
+
+/// **One-way (jump-through) platform — a marker presence-override component (W-OneWay).**
+///
+/// Its **presence IS the boolean**, exactly like [`Ccd`] and [`LockRotation`]: a collider
+/// that carries it is solid only from its **local +Y side**, so a body arriving from
+/// below passes clean through and then LANDS on it coming back down. The iconic 2D
+/// platformer collider (Godot's `one_way_collision`).
+///
+/// The direction is the collider's own local up, so a ROTATED platform is one-way along
+/// its own axis — there is no separate direction field that could disagree with the
+/// pose. It is realised by rapier's `update_as_oneway_platform` through the world's
+/// `OneWayHooks`, which also owns the hysteresis that keeps a body from popping while it
+/// straddles the surface.
+///
+/// **Why a marker and not a `Collider` field:** `Collider` is serialized POSITIONALLY by
+/// postcard, so appending to it is a `PROJECT_SCHEMA` bump (what `layer`/`is_sensor`/
+/// `offset` each cost). A newly registered component is keyed by its own type-name hash
+/// and is purely additive — **no bump** — and a boolean has no value to carry, which is
+/// what makes a marker the honest shape (the `Ccd` precedent).
+///
+/// It is a COLLIDER property, not a rigid-body one, so it applies to any body kind — and
+/// a platform is usually **Static**, which is exactly why the §11 toggle is NOT
+/// Dynamic-only. The bridge folds its presence into `BodyDesc.one_way`, so it rides the
+/// spawn recipe the world rebuilds from and a rewind re-arms it. Config, never live state.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OneWayPlatform;
+
+impl SimComponent for OneWayPlatform {}

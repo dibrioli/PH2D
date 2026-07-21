@@ -225,3 +225,85 @@ pub(super) fn paint_mass_source(
     }
     yy
 }
+
+/// Collision-layer chip labels. Bare numbers because a layer has no meaning of
+/// its own — what it MEANS is the row it occupies in the world matrix, and that
+/// is where the naming belongs. Naming them here would be a second place to
+/// keep names in sync with a matrix that does not know about them.
+const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
+
+/// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
+/// `1` a sensor (trigger).
+const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
+
+/// One-way toggle labels, indexed by `one_way as u8`: `0` an ordinary solid collider,
+/// `1` a jump-through platform (solid only from its local +Y side).
+const ONEWAY_LABELS: [&str; 2] = ["Off", "On"];
+
+/// The per-collider COLLISION rules: which layer it is on, whether it is solid or a
+/// trigger, and — if solid — which side it is solid from (one-way).
+///
+/// Three questions about one collider, so they paint together. **None is
+/// Dynamic-only:** the layer is a filter, a trigger is commonly Static scenery, and a
+/// jump-through platform is almost always Static — gating any of them on Dynamic would
+/// delete the control from its own use case. Split here so `paint_physics_section`
+/// stays under the panel's 200-LOC fn cap; the selections read straight off the
+/// snapshot, so there is nothing to sync.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_collision_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    layer: u8,
+    is_sensor: bool,
+    one_way: bool,
+) -> f32 {
+    let mut yy = y;
+    // The per-body half of collision layers. The other half — WHICH layers collide —
+    // is a world rule and lives in the Physics panel; a body only says where it belongs.
+    for (label, group, opts, labels, sel) in [
+        (
+            "Layer",
+            ids::INSP_LIVE_PHYSICS_LAYER,
+            &ids::INSP_PHYS_LAYER[..],
+            &LAYER_LABELS[..],
+            layer,
+        ),
+        (
+            "Trigger",
+            ids::INSP_LIVE_PHYSICS_SENSOR,
+            &ids::INSP_PHYS_SENSOR[..],
+            &SENSOR_LABELS[..],
+            u8::from(is_sensor),
+        ),
+        (
+            "One-Way",
+            ids::INSP_LIVE_PHYSICS_ONEWAY,
+            &ids::INSP_PHYS_ONEWAY[..],
+            &ONEWAY_LABELS[..],
+            u8::from(one_way),
+        ),
+    ] {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            group,
+            opts,
+            labels,
+            sel,
+        );
+    }
+    yy
+}

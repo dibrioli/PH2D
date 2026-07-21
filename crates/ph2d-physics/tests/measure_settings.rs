@@ -131,6 +131,7 @@ fn measure_where_damping_stops_meaning_anything() {
             dominance: 0,
             material: Default::default(),
             damping: None,
+            one_way: false,
             offset: [0.0, 0.0],
         });
         for _ in 0..60 {

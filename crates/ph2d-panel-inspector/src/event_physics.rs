@@ -92,6 +92,10 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // Friction combine — the sibling, same `has_body`-only gate.
             info.has_body
                 .then_some(PhysicsFieldEdit::FrictionCombine(i as u8))
+        } else if let Some(i) = ids::INSP_PHYS_ONEWAY.iter().position(|&o| o == id) {
+            // Off | On (W-OneWay). Gated on `has_body` only — NOT Dynamic-only: it is a
+            // collider property and a platform is usually Static. Dim is not a refusal.
+            info.has_body.then_some(PhysicsFieldEdit::OneWay(i == 1))
         } else if let Some(i) = ids::INSP_PHYS_DAMPMODE.iter().position(|&o| o == id) {
             // Damp mode: `0` Combine, `1` Replace (W-Damping). Dynamic-only, the same
             // gate the painter offers it under (damping decays a velocity only a

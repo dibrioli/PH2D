@@ -26,7 +26,8 @@ pub(crate) fn build_physics_info(
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
         Ccd, Collider, ColliderShape, DampingOverride, Dominance, GravityScale, InitialVelocity,
-        LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, RigidBody,
+        LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
+        RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -65,6 +66,9 @@ pub(crate) fn build_physics_info(
         .get::<DampingOverride>(entity)
         .copied()
         .unwrap_or_default();
+    // Optional OneWayPlatform marker (W-OneWay); its presence is the flag. A collider
+    // property, so it is read for any body kind (a platform is usually Static).
+    let one_way = world.get::<OneWayPlatform>(entity).is_some();
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -103,6 +107,7 @@ pub(crate) fn build_physics_info(
             linear_damping: 0.0,
             angular_damping: 0.0,
             damp_mode_tag: 0,
+            one_way: false,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -160,5 +165,6 @@ pub(crate) fn build_physics_info(
         linear_damping: damping.linear,
         angular_damping: damping.angular,
         damp_mode_tag: damping.mode.tag(),
+        one_way,
     })
 }

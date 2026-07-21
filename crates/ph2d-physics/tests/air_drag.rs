@@ -37,6 +37,7 @@ fn box_of(side: f32) -> BodyDesc {
         dominance: 0,
         material: Default::default(),
         damping: None,
+        one_way: false,
         offset: [0.0, 0.0],
     }
 }

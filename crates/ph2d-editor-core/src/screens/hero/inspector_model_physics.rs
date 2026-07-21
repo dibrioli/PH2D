@@ -142,6 +142,16 @@ pub struct InspectorPhysicsInfo {
     /// [`restitution_combine_tag`](InspectorPhysicsInfo::restitution_combine_tag),
     /// from the same `MaterialCombine` component.
     pub friction_combine_tag: u8,
+    /// Per-body linear damping (drag) — decays translation (W-Damping). Mirrors the
+    /// optional `DampingOverride` component's `linear`; absent means the world default.
+    /// Dynamic-only (damping decays a velocity the solver owns).
+    pub linear_damping: f32,
+    /// Per-body angular damping (drag) — decays rotation. Sibling of
+    /// [`linear_damping`](InspectorPhysicsInfo::linear_damping).
+    pub angular_damping: f32,
+    /// How the damping combines with the world default drag: `0` Combine (adds to it)
+    /// · `1` Replace (ignores it). Mirrors the `DampingOverride` component's `mode`.
+    pub damp_mode_tag: u8,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -226,6 +236,18 @@ pub enum PhysicsFieldEdit {
     ///
     /// [`RestitutionCombine`]: PhysicsFieldEdit::RestitutionCombine
     FrictionCombine(u8),
+    /// Per-body linear damping (drag), Dynamic-only (W-Damping). Read-modify-write on
+    /// the optional `DampingOverride` component, detached at neutral (zero drag +
+    /// Combine mode).
+    LinearDamping(f32),
+    /// Per-body angular damping (drag), Dynamic-only. Sibling of [`LinearDamping`], on
+    /// the same `DampingOverride` component.
+    ///
+    /// [`LinearDamping`]: PhysicsFieldEdit::LinearDamping
+    AngularDamping(f32),
+    /// Damping combine mode: `0` Combine (adds to the world default) · `1` Replace
+    /// (ignores it). On the same `DampingOverride` component.
+    DampMode(u8),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

@@ -33,6 +33,7 @@ fn desc(shape: ShapeDesc, x: f32, y: f32, body_type: RigidBodyType) -> BodyDesc 
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     }
 }

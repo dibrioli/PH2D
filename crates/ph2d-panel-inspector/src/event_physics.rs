@@ -92,6 +92,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // Friction combine — the sibling, same `has_body`-only gate.
             info.has_body
                 .then_some(PhysicsFieldEdit::FrictionCombine(i as u8))
+        } else if let Some(i) = ids::INSP_PHYS_DAMPMODE.iter().position(|&o| o == id) {
+            // Damp mode: `0` Combine, `1` Replace (W-Damping). Dynamic-only, the same
+            // gate the painter offers it under (damping decays a velocity only a
+            // Dynamic body has). Dim is not a refusal, so the check lives here.
+            (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::DampMode(i as u8))
         } else if let Some(i) = ids::INSP_PHYS_BAKE_CH.iter().position(|&o| o == id) {
             // The bake channel selector — a GLOBAL option, but painted only for a
             // Dynamic body (the only kind that bakes), so honoured under the same
@@ -160,6 +165,13 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
                     f32::from(i8::MAX),
                 );
                 Some(PhysicsFieldEdit::Dominance(clamped as i8))
+            }
+            // Per-body damping (W-Damping), Dynamic-only like gravity/velocity.
+            ids::INSP_PHYS_LINEAR_DAMPING if info.kind_tag == 0 => {
+                Some(PhysicsFieldEdit::LinearDamping(v))
+            }
+            ids::INSP_PHYS_ANGULAR_DAMPING if info.kind_tag == 0 => {
+                Some(PhysicsFieldEdit::AngularDamping(v))
             }
             _ => None,
         };

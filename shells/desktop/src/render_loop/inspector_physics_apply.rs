@@ -27,9 +27,9 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        BodyKind, Ccd, Collider, ColliderShape, CombineRule, Dominance, GravityScale,
-        InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
-        RigidBody,
+        BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
+        GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
+        MaterialCombine, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -42,6 +42,7 @@ pub(crate) fn apply_physics_edit(
     const MASS_OVERRIDE: &str = "ph2d::physics::MassOverride";
     const DOMINANCE: &str = "ph2d::physics::Dominance";
     const MATERIAL_COMBINE: &str = "ph2d::physics::MaterialCombine";
+    const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -338,6 +339,49 @@ pub(crate) fn apply_physics_edit(
         }
         return;
     }
+    if let PhysicsFieldEdit::LinearDamping(_)
+    | PhysicsFieldEdit::AngularDamping(_)
+    | PhysicsFieldEdit::DampMode(_) = edit
+    {
+        // Per-body damping (W-Damping): read-modify-write the ONE field the edit names
+        // on the optional `DampingOverride` component (a partial write would drop the
+        // others). Gated on a live body: without one there is nothing to damp, and this
+        // would attach an orphan to a plain sprite.
+        if world.get::<RigidBody>(entity).is_none() {
+            return;
+        }
+        let mut d = world
+            .get::<DampingOverride>(entity)
+            .copied()
+            .unwrap_or_default();
+        match edit {
+            // Drag coefficients are non-negative (a negative drag would ADD energy).
+            PhysicsFieldEdit::LinearDamping(v) => d.linear = v.max(0.0),
+            PhysicsFieldEdit::AngularDamping(v) => d.angular = v.max(0.0),
+            PhysicsFieldEdit::DampMode(tag) => {
+                // A tag no mode claims is DROPPED, not folded onto Combine (the
+                // `BodyKind::from_tag` discipline).
+                let Some(mode) = DampMode::from_tag(tag) else {
+                    debug_assert!(
+                        false,
+                        "§11 sent DampMode tag {tag}, which no variant claims"
+                    );
+                    return;
+                };
+                d.mode = mode;
+            }
+            _ => unreachable!(),
+        }
+        // Detach at neutral (zero drag AND Combine) so a body on the world default
+        // carries no component — the presence-override idiom. `Replace` with zero drag
+        // is NOT neutral (it forces zero damping, ignoring a world drag), so it stays.
+        if d.is_neutral() {
+            queue_remove(queue, registry, entity_bits, DAMPING_OVERRIDE);
+        } else {
+            queue_set(queue, registry, entity_bits, DAMPING_OVERRIDE, &d);
+        }
+        return;
+    }
 
     // Everything else edits the collider, so read the live one and write it
     // back changed — a partial write would drop the fields not being edited.
@@ -484,7 +528,10 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::Mass(_)
         | PhysicsFieldEdit::Dominance(_)
         | PhysicsFieldEdit::RestitutionCombine(_)
-        | PhysicsFieldEdit::FrictionCombine(_) => {
+        | PhysicsFieldEdit::FrictionCombine(_)
+        | PhysicsFieldEdit::LinearDamping(_)
+        | PhysicsFieldEdit::AngularDamping(_)
+        | PhysicsFieldEdit::DampMode(_) => {
             unreachable!("handled above")
         }
     }

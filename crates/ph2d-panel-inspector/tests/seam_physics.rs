@@ -54,6 +54,9 @@ fn with_body() -> InspectorPhysicsInfo {
         dominance: 0,
         restitution_combine_tag: 0,
         friction_combine_tag: 0,
+        linear_damping: 0.0,
+        angular_damping: 0.0,
+        damp_mode_tag: 0,
     }
 }
 
@@ -1043,6 +1046,88 @@ fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
         assert!(
             click(without_body(), id).is_empty(),
             "a combine-rule chip reached the bus on an entity with no body"
+        );
+    }
+}
+
+/// **The damping rows (2 values + the Combine|Replace mode) are Dynamic-only, and each
+/// reaches the bus with its own field** (W-Damping).
+///
+/// Damping decays a velocity only a Dynamic body has, so a Static/Kinematic body must
+/// not offer the rows — the same rule gravity/velocity follow. Presence AND absence per
+/// kind (an absence gate alone stays green with nothing painted). The two values commit
+/// distinct numbers and the two mode chips their own booleans, so a wiring that crossed
+/// them (or sent both mode chips to one value) would fail.
+#[test]
+fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        // The two number boxes AND both mode chips are painted only for a Dynamic body.
+        for &id in [
+            ids::INSP_PHYS_LINEAR_DAMPING,
+            ids::INSP_PHYS_ANGULAR_DAMPING,
+            ids::INSP_PHYS_DAMPMODE[0],
+            ids::INSP_PHYS_DAMPMODE[1],
+        ]
+        .iter()
+        {
+            assert_eq!(
+                rects.iter().any(|(n, _)| *n == id),
+                offered,
+                "kind_tag={tag}: a damping control's presence is wrong"
+            );
+        }
+        // The mode chips honour the click only for a Dynamic body.
+        for &id in ids::INSP_PHYS_DAMPMODE.iter() {
+            assert_eq!(
+                !click(info, id).is_empty(),
+                offered,
+                "kind_tag={tag}: the event handler disagrees with the painter about the \
+                 damp-mode toggle"
+            );
+        }
+        // The value commits honour only for a Dynamic body.
+        assert_eq!(
+            !commit(info, ids::INSP_PHYS_LINEAR_DAMPING, 3.0).is_empty(),
+            offered,
+            "kind_tag={tag}: Linear Damping commit / painter disagree"
+        );
+    }
+
+    // Each value commits its OWN field with its OWN number; each mode chip its OWN bool.
+    expect(
+        &commit(with_body(), ids::INSP_PHYS_LINEAR_DAMPING, 3.0),
+        PhysicsFieldEdit::LinearDamping(3.0),
+        "Linear Damping",
+    );
+    expect(
+        &commit(with_body(), ids::INSP_PHYS_ANGULAR_DAMPING, 1.25),
+        PhysicsFieldEdit::AngularDamping(1.25),
+        "Angular Damping",
+    );
+    for (i, &id) in ids::INSP_PHYS_DAMPMODE.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::DampMode(i as u8),
+            &format!("Damp Mode option {i}"),
         );
     }
 }

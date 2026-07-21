@@ -31,10 +31,13 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
-use ph2d_physics::{BodyDesc, CoefficientCombineRule, CombineRules, RigidBodyType, ShapeDesc};
+use ph2d_physics::{
+    BodyDesc, CoefficientCombineRule, CombineRules, DampingDesc, RigidBodyType, ShapeDesc,
+};
 
 use crate::components::{
-    BodyKind, Collider, ColliderShape, CombineRule, MaterialCombine, RigidBody,
+    BodyKind, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, MaterialCombine,
+    RigidBody,
 };
 
 /// Map the ECS-native, serde-safe [`CombineRule`] onto rapier's
@@ -142,6 +145,9 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `material` is the optional [`crate::MaterialCombine`] component (absent = both
 /// `Average`) — the collider's friction/restitution combine policy, mapped to
 /// rapier's `CoefficientCombineRule` here (the one door) and riding the `BodyDesc`.
+/// `damping` is the optional [`crate::DampingOverride`] component (absent = the world
+/// default drag) — mapped to `ph2d_physics::DampingDesc` here (`DampMode::Replace` →
+/// `replace: true`, the one door) and riding the `BodyDesc` for the rewind.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -161,6 +167,7 @@ pub(crate) fn body_desc(
     mass_override: Option<f32>,
     dominance: i8,
     material: MaterialCombine,
+    damping: Option<DampingOverride>,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,
@@ -176,6 +183,14 @@ pub(crate) fn body_desc(
             restitution: combine_to_rapier(material.restitution),
             friction: combine_to_rapier(material.friction),
         },
+        // The optional damping override, mapped to the wrapper's plain `DampingDesc`
+        // (the mode becomes the `replace` bool). `None` leaves the body on the world
+        // default drag. This is the single ECS→wrapper mapping for damping.
+        damping: damping.map(|d| DampingDesc {
+            linear: d.linear,
+            angular: d.angular,
+            replace: matches!(d.mode, DampMode::Replace),
+        }),
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -243,6 +258,7 @@ mod tests {
             None,
             0,
             MaterialCombine::default(),
+            None,
         )
     }
 

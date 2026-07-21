@@ -5,6 +5,7 @@
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
 pub mod checkpoint;
+pub mod damping;
 pub mod defaults;
 pub mod desc;
 pub mod drag;
@@ -18,7 +19,7 @@ use defaults::BodyDefaults;
 use layers::LayerMatrix;
 // The descriptors and the shape vocabulary live in sibling modules (LOC),
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
-pub use desc::{BodyDesc, BodySnapshot, CombineRules};
+pub use desc::{BodyDesc, BodySnapshot, CombineRules, DampingDesc};
 use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
@@ -427,6 +428,13 @@ impl PhysicsWorld {
             .build();
         let handle = self.bodies.insert(body);
         self.stamp_defaults(handle);
+        // Per-body damping override (if any), stamped AFTER the global defaults so it
+        // wins. `None` (the common case) leaves the body on the global drag, so an
+        // un-overridden body is byte-identical to before this existed. Rides the
+        // `BodyDesc`, so a rewind re-arms it.
+        if let Some(d) = desc.damping {
+            self.apply_damping_override(handle, d);
+        }
         let shape = match desc.shape {
             ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
             ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),

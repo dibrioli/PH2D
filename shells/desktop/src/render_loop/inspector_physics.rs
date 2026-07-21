@@ -25,8 +25,8 @@ pub(crate) fn build_physics_info(
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
-        Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity, LockPositionX,
-        LockPositionY, LockRotation, MassOverride, MaterialCombine, RigidBody,
+        Ccd, Collider, ColliderShape, DampingOverride, Dominance, GravityScale, InitialVelocity,
+        LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -57,6 +57,12 @@ pub(crate) fn build_physics_info(
     // collider material property, so it is read for any body kind (not Dynamic-only).
     let material = world
         .get::<MaterialCombine>(entity)
+        .copied()
+        .unwrap_or_default();
+    // Optional damping override (W-Damping); absent = the world default drag, shown as
+    // 0/0/Combine (tags). Read for any kind here; the rows are Dynamic-only in paint.
+    let damping = world
+        .get::<DampingOverride>(entity)
         .copied()
         .unwrap_or_default();
     let (Some(rb), Some(col)) = (rb, col) else {
@@ -94,6 +100,9 @@ pub(crate) fn build_physics_info(
             dominance: 0,
             restitution_combine_tag: 0,
             friction_combine_tag: 0,
+            linear_damping: 0.0,
+            angular_damping: 0.0,
+            damp_mode_tag: 0,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -148,5 +157,8 @@ pub(crate) fn build_physics_info(
         dominance,
         restitution_combine_tag: material.restitution.tag(),
         friction_combine_tag: material.friction.tag(),
+        linear_damping: damping.linear,
+        angular_damping: damping.angular,
+        damp_mode_tag: damping.mode.tag(),
     })
 }

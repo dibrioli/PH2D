@@ -144,6 +144,7 @@ fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_MASSMODE);
     register_button_ids(store, &ids::INSP_PHYS_REST_COMBINE);
     register_button_ids(store, &ids::INSP_PHYS_FRIC_COMBINE);
+    register_button_ids(store, &ids::INSP_PHYS_DAMPMODE);
     register_button_ids(store, &ids::INSP_PHYS_BAKE_CH);
     register_button_ids(
         store,
@@ -191,6 +192,12 @@ fn populate_physics(store: &mut WidgetStore) {
         // event arm rounds+clamps; -10..10 covers the authoring span (rapier's i8
         // allows ±127, but a legible priority is a small number).
         (ids::INSP_PHYS_DOMINANCE, 0.0, -10.0, 10.0, 1.0), // LITERAL-PX-OK: integer collision priority
+        // Per-body damping (drag), Dynamic-only (W-Damping). Default 0.0 (the world
+        // default drag). The drag range bounds only the scrub; the component/BodyDesc
+        // take any f32 >= 0. 0..10 mirrors the world drag's own MAX (`MAX_DAMPING`) —
+        // a coefficient past 10 is essentially "instant stop".
+        (ids::INSP_PHYS_LINEAR_DAMPING, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: linear drag coefficient
+        (ids::INSP_PHYS_ANGULAR_DAMPING, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: angular drag coefficient
     ] {
         store.register(
             id,

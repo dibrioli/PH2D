@@ -18,6 +18,65 @@ const MASS_MODE_LABELS: [&str; 2] = ["Auto", "Manual"];
 /// `Max` makes a superball bounce off any floor; `Average` (tag 0) is the default.
 const COMBINE_LABELS: [&str; 4] = ["Average", "Min", "Multiply", "Max"];
 
+/// Damping-mode toggle labels, indexed by `DampMode` tag: `0` Combine (adds to the
+/// world default drag) · `1` Replace (ignores it — Unity's absolute per-body drag).
+const DAMP_MODE_LABELS: [&str; 2] = ["Combine", "Replace"];
+
+/// The **Dynamic-only** damping rows: linear + angular drag, and the mode that says
+/// how they meet the world default drag (Combine adds, Replace ignores) (W-Damping).
+///
+/// Damping decays a velocity the solver owns, so it is meaningless on a Static
+/// (never moves) or Kinematic (pose-driven) body — the same Dynamic-only rule the
+/// gravity/velocity rows follow. Split here so the caller stays under the panel's
+/// 200-LOC fn cap; the mode selection reads straight off the snapshot, so only the
+/// two number boxes are synced.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_damping_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    damp_mode_tag: u8,
+) -> f32 {
+    let mut yy = y;
+    for (label, id) in [
+        ("Linear Damping", ids::INSP_PHYS_LINEAR_DAMPING),
+        ("Angular Damping", ids::INSP_PHYS_ANGULAR_DAMPING),
+    ] {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            id,
+        );
+    }
+    seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Damp Mode",
+        ids::INSP_LIVE_PHYSICS_DAMPMODE,
+        &ids::INSP_PHYS_DAMPMODE,
+        &DAMP_MODE_LABELS,
+        damp_mode_tag,
+    )
+}
+
 /// The collider MATERIAL rows: **Bounce** + **Friction** (the coefficients) and,
 /// right under each, how it COMBINES with the other collider on contact — a Bounce
 /// Combine and a Friction Combine segmented control (W-Material).

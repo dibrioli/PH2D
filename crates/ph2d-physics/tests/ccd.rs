@@ -53,6 +53,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
 
@@ -81,6 +82,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
 

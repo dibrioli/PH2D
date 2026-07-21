@@ -31,7 +31,7 @@ pub use world::defaults::BodyDefaults;
 pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{
-    BodyDesc, CAPSULE_CAP_SEGS, CombineRules, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc,
+    BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc,
     capsule_vertices, ellipse_vertices,
 };
 

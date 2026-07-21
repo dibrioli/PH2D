@@ -32,6 +32,7 @@ fn body(w: &mut PhysicsWorld, y: f32, body_type: RigidBodyType, is_sensor: bool)
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
 }

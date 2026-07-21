@@ -42,6 +42,7 @@ fn ball(
         mass_override,
         dominance,
         material: Default::default(),
+        damping: None,
     })
 }
 

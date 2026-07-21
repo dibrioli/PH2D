@@ -335,6 +335,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
     for i in 0..12 {
@@ -359,6 +360,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             mass_override: None,
             dominance: 0,
             material: Default::default(),
+            damping: None,
             offset: [0.0, 0.0],
         });
     }

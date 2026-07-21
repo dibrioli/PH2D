@@ -296,3 +296,79 @@ fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
          should not carry a no-op {{Average, Average}}"
     );
 }
+
+/// **A damping edit read-modify-writes the ONE field it names, and the component
+/// detaches only at the MODE-AWARE neutral** (W-Damping).
+///
+/// The three fields share one `DampingOverride`, so editing one must preserve the
+/// others. Detach is mode-aware: zero drag + `Combine` IS neutral (the body is on the
+/// world default), but zero drag + `Replace` is NOT (it forces zero damping, ignoring
+/// a world drag — a real choice). Mutations this catches: dropping the read-modify-write
+/// resets the untouched fields; treating `Replace(0,0)` as neutral throws away a
+/// deliberate "no drag, ignore the world" body.
+#[test]
+fn damping_read_modify_writes_and_detaches_only_at_the_mode_aware_neutral() {
+    use ph2d_physics_ecs::{DampMode, DampingOverride};
+
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    assert!(
+        sim.world().get::<DampingOverride>(e).is_none(),
+        "a freshly-added body should carry no DampingOverride (the world default drag)"
+    );
+
+    // Linear → 2.0: attaches, angular still 0, mode still Combine.
+    apply(&mut sim, e, PhysicsFieldEdit::LinearDamping(2.0));
+    assert_eq!(
+        sim.world().get::<DampingOverride>(e).copied(),
+        Some(DampingOverride {
+            linear: 2.0,
+            angular: 0.0,
+            mode: DampMode::Combine,
+        }),
+        "setting Linear Damping should attach the component with the others at default"
+    );
+
+    // Angular → 1.5: LINEAR MUST BE PRESERVED (the read-modify-write).
+    apply(&mut sim, e, PhysicsFieldEdit::AngularDamping(1.5));
+    assert_eq!(
+        sim.world()
+            .get::<DampingOverride>(e)
+            .map(|d| (d.linear, d.angular)),
+        Some((2.0, 1.5)),
+        "setting Angular Damping must not reset the linear one — they share one component"
+    );
+
+    // Mode → Replace: the values must be preserved.
+    apply(&mut sim, e, PhysicsFieldEdit::DampMode(1));
+    assert_eq!(
+        sim.world().get::<DampingOverride>(e).copied(),
+        Some(DampingOverride {
+            linear: 2.0,
+            angular: 1.5,
+            mode: DampMode::Replace,
+        }),
+        "setting the mode must not reset the drag values"
+    );
+
+    // Zero both drags, mode still Replace: NOT neutral (Replace(0,0) forces zero
+    // damping, ignoring a world drag), so the component STAYS.
+    apply(&mut sim, e, PhysicsFieldEdit::LinearDamping(0.0));
+    apply(&mut sim, e, PhysicsFieldEdit::AngularDamping(0.0));
+    assert_eq!(
+        sim.world().get::<DampingOverride>(e).copied(),
+        Some(DampingOverride {
+            linear: 0.0,
+            angular: 0.0,
+            mode: DampMode::Replace,
+        }),
+        "Replace(0,0) is a deliberate 'no drag, ignore the world' — it must NOT detach"
+    );
+
+    // Back to Combine: now zero drag + Combine = the world default = neutral → detach.
+    apply(&mut sim, e, PhysicsFieldEdit::DampMode(0));
+    assert!(
+        sim.world().get::<DampingOverride>(e).is_none(),
+        "zero drag + Combine is the world default — the component must detach"
+    );
+}

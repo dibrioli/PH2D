@@ -475,6 +475,20 @@ fn paint_body_actions(
             &FREEZE_POS_LABELS,
             u8::from(info.lock_y),
         );
+        // Per-body damping (drag): linear + angular + Combine|Replace mode. Dynamic-
+        // only like the rows above — damping decays a velocity only a Dynamic body
+        // has. Extracted so this fn stays under the 200-LOC cap.
+        yy = super::physics_rows::paint_damping_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            info.damp_mode_tag,
+        );
         yy = seg_row(
             scene,
             text_system,

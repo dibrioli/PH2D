@@ -93,6 +93,7 @@ impl crate::App {
             "19" => self.physics_smoke_mass(),
             "20" => self.physics_smoke_dominance(),
             "21" => self.physics_smoke_material(),
+            "22" => self.physics_smoke_damping(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -110,7 +111,10 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
 
         self.playhead.rewind();
-        if matches!(which.trim(), "3" | "7" | "14" | "15" | "16" | "17" | "21") {
+        if matches!(
+            which.trim(),
+            "3" | "7" | "14" | "15" | "16" | "17" | "21" | "22"
+        ) {
             self.playhead.pause();
         } else {
             self.playhead.play();

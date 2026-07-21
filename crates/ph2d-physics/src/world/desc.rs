@@ -43,6 +43,29 @@ impl Default for CombineRules {
     }
 }
 
+/// A per-body **damping override** (Unity's `Rigidbody2D` linear/angular drag,
+/// Godot's `linear_damp`/`angular_damp` + `damp_mode`). `linear`/`angular` are drag
+/// coefficients that decay the body's velocities each step.
+///
+/// `replace` chooses how they meet the world's [`super::BodyDefaults`] damping:
+/// `false` = **Combine** (ADD to the global default — Godot's default), `true` =
+/// **Replace** (IGNORE the global, use these outright — Unity's absolute per-body
+/// drag). With the default global drag of `0.0` the two modes coincide, so the mode
+/// only diverges once the artist authors a world drag.
+///
+/// It only bites a Dynamic body (damping decays a velocity the solver owns), and it
+/// rides the [`BodyDesc`] the world rebuilds from, so a rewind re-arms it. It is
+/// resolved against the global through the single door
+/// [`super::PhysicsWorld::apply_damping_override`], used by both spawn and the
+/// bridge's re-stamp pass so the two cannot resolve one override differently.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DampingDesc {
+    pub linear: f32,
+    pub angular: f32,
+    /// `true` = Replace (ignore the world default); `false` = Combine (add to it).
+    pub replace: bool,
+}
+
 /// Snapshot of one rigid body for hashing / inspection. Sorted by
 /// handle index in [`crate::world::PhysicsWorld::body_snapshots`] so cross-OS
 /// hashing is stable.
@@ -233,4 +256,15 @@ pub struct BodyDesc {
     /// The authored source is the optional `MaterialCombine` component in
     /// `ph2d-physics-ecs` (attached only when either rule leaves `Average`).
     pub material: CombineRules,
+    /// **Per-body damping override** (see [`DampingDesc`]). `None` (the default, and
+    /// what every body did before this existed) leaves the body on the world's
+    /// [`super::BodyDefaults`] damping — byte-identical. `Some` overrides it, resolved
+    /// against the global through [`super::PhysicsWorld::apply_damping_override`].
+    ///
+    /// Like the flags around it it rides the `BodyDesc` the world rebuilds from, so a
+    /// rewind re-arms it; unlike them it is re-stamped by the bridge each dispatch,
+    /// so a change to the GLOBAL drag mid-play cannot leave an override body wearing
+    /// the world value (the `apply_to_all` clobber). The authored source is the
+    /// optional `DampingOverride` component in `ph2d-physics-ecs`.
+    pub damping: Option<DampingDesc>,
 }

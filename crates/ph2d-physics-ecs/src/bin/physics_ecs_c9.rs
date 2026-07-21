@@ -12,9 +12,10 @@
 //! W-Offset, one X-LOCKED launched ball → the frozen translation DOF,
 //! W-LockPos, one HEAVY ball with a manual mass override → the collider mass
 //! property, W-Mass, one LIGHT high-dominance ball plowing a heavy one → the
-//! contact-solver dominance path, W-Dominance, and one MAX-combine superball
+//! contact-solver dominance path, W-Dominance, one MAX-combine superball
 //! bouncing off the dead floor → the restitution combine rule in the contact
-//! solver, W-Material): entities carry
+//! solver, W-Material, and one DAMPED launched ball → the per-body drag fold in the
+//! integrator, W-Damping): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -25,15 +26,16 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 64
+//! physics-ecs-c9 body_count: 65
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, CombineRule, Dominance, GravityScale, InitialVelocity,
-    LockPositionX, LockRotation, MassOverride, MaterialCombine, PhysicsBridge, RigidBody,
+    BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
+    GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride, MaterialCombine,
+    PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -346,6 +348,33 @@ fn main() {
             friction: CombineRule::Average,
         },
         Transform::from_translation(Vec2::new(-40.0, 5.0)),
+    ));
+
+    // One DAMPED launched ball (W-Damping): a `DampingOverride` with heavy linear +
+    // angular drag, launched into empty space. The drag decays both velocities each
+    // step (an `f32` fold in the integrator), so the override travels the deterministic
+    // hash — CI proves it is bit-identical cross-OS, the same guarantee dominance gets.
+    // It is also re-stamped each dispatch by the bridge's pass, on the same path. Its
+    // own lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [4.0, 0.0],
+            angvel: 6.0,
+        },
+        DampingOverride {
+            linear: 2.5,
+            angular: 1.5,
+            mode: DampMode::Combine,
+        },
+        Transform::from_translation(Vec2::new(-46.0, 6.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

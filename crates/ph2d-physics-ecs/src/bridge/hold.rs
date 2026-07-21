@@ -5,9 +5,56 @@
 //! place. See [`PhysicsBridge::hold`].
 
 use super::PhysicsBridge;
+use super::space;
 use ph2d_ecs::SimWorld;
 
 impl PhysicsBridge {
+    /// While paused: make every body track the authored `Transform` (and
+    /// zero its velocity), so play starts from exactly where the artist
+    /// left it. No stepping. Lives here beside [`hold`](Self::hold), its main
+    /// caller, and moved out of `bridge.rs` for the 700-LOC cap (W-Damping).
+    ///
+    /// **A drag past tick 0 is transient, and that is a decision.** The
+    /// simulation is a function of `(tick, authored rest state)`, so any
+    /// rewind — through the ring or through the rest rebuild — reproduces the
+    /// timeline as authored and drops a mid-sim nudge. Both paths discard it
+    /// identically, which is why there is no cache invalidation here: a
+    /// `ring.clear()` on a hand-move would be a defensive line protecting
+    /// nothing, and its comment would be claiming otherwise. (Unity and Godot
+    /// discard play-mode edits on stop for the same reason. Making a
+    /// mid-timeline pose *stick* is authoring a keyframe, which is what W4's
+    /// bake is for.)
+    pub(super) fn settle(&mut self, sim: &SimWorld) {
+        let world = sim.world();
+        // The authored pose is LOCAL; the body lives in WORLD. Comparing the
+        // two directly would report every child body as "moved by hand" on
+        // every paused frame, teleporting it (and zeroing its velocity)
+        // forever.
+        for (&e, b) in self.bodies.iter() {
+            let Some(t) = space::world_transform(world, e, &mut self.chain) else {
+                continue;
+            };
+            let (ax, ay, ar) = (t.translation.x, t.translation.y, t.rotation);
+            // Only teleport when the AUTHORED pose actually differs from where
+            // the body is. `set_body_pose` zeroes the velocity, so doing this
+            // unconditionally every paused frame would make Pause → Play
+            // restart the fall from a standstill. The readback writes the
+            // body's pose into `Transform` exactly, so an untouched pair
+            // compares equal; a gizmo drag makes them differ.
+            let moved_by_hand = match self.world.body_pose(b.handle) {
+                Some(pose) => {
+                    pose.translation.x != ax
+                        || pose.translation.y != ay
+                        || pose.rotation.angle() != ar
+                }
+                None => false,
+            };
+            if moved_by_hand {
+                self.world.set_body_pose(b.handle, ax, ay, ar, true);
+            }
+        }
+    }
+
     /// **The clock is running and the simulation is not** — the transport's
     /// Physics toggle is off (`TimelineFlags::simulate_physics`).
     ///

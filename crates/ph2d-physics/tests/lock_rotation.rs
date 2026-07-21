@@ -44,6 +44,7 @@ fn rotation_after_spin(lock: bool) -> f32 {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
     for _ in 0..30 {

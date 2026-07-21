@@ -56,6 +56,7 @@ fn peak_rebound_speed(rule: CoefficientCombineRule) -> f32 {
             restitution: rule,
             friction: CoefficientCombineRule::Average,
         },
+        damping: None,
     });
     // 2 s @ 60 Hz: long enough to fall from 3 m, bounce, and reach the rebound peak.
     let mut peak_up = 0.0f32;
@@ -128,6 +129,7 @@ fn the_combine_rule_reaches_the_collider() {
             restitution: CoefficientCombineRule::Max,
             friction: CoefficientCombineRule::Min,
         },
+        damping: None,
     });
     // The collider attached to this body is the last one inserted; find it.
     let body = w.bodies().get(h).expect("body exists");

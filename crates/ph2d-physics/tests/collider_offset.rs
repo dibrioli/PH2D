@@ -43,6 +43,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset: [0.0, 0.0],
     });
     let body = w.spawn_body(BodyDesc {
@@ -66,6 +67,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         mass_override: None,
         dominance: 0,
         material: Default::default(),
+        damping: None,
         offset,
     });
     for _ in 0..300 {

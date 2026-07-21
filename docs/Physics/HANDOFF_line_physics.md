@@ -2395,3 +2395,59 @@ combines) virou **`physics_rows::paint_material_rows`**, ao lado do `paint_mass_
 
 **Aberto (deliberado):** damping/drag por-corpo — segue sendo a única propriedade "padrão" que falta, e continua
 esperando a decisão de `damp_mode` (Combine/Replace) que a `defaults.rs` exige. Nada mais pede.
+
+## §W-Damping — DRAG por corpo (Linear/Angular + modo Combine/Replace, 2026-07-20, smoke `=22`)
+
+**Fecha o conjunto padrão** (Unity/Godot). Era a única propriedade que faltava, e a `defaults.rs` §18-22 já a
+tinha PROJETADO exigindo um **modo Combine/Replace** (o `damp_mode` do Godot) — *"um segundo campo que ganha em
+silêncio do global é a falha de duas-portas que este repo paga"*. Três controles no §11 (Dynamic-only): **Linear
+Damping** + **Angular Damping** (num) + **Damp Mode** (Combine|Replace). `Combine` SOMA ao drag global do mundo
+(`BodyDefaults`); `Replace` IGNORA o global e usa o override direto. ⚠️ **Com o drag global default (0) os dois
+modos COINCIDEM** — o mode só diverge quando o artista autora um drag de mundo (painel W2b). Default `Combine`
+(o do Godot). ⚠️ **Não confundir os dois "combine":** o do material (W-Material) combina 2 SUPERFÍCIES num
+contato; o `damp_mode` combina o override por-corpo com o DEFAULT global.
+
+**O clobber, e a porta única.** O drag por-corpo é o PRIMEIRO override que colide com o global: `stamp_defaults`
+(spawn) e `apply_to_all` (mudança de settings) **escrevem drag global em TODO corpo**, então mudar o drag global
+com o Play rodando **clobbaria** um corpo com override. Fix em duas peças que compartilham UMA porta
+(`PhysicsWorld::apply_damping_override`, resolve `Replace`/`Combine` vs `body_defaults` — usada por spawn E pelo
+bridge; duas cópias resolveriam diferente): (1) spawn aplica o override **DEPOIS** do `stamp_defaults`, então
+ganha do global; (2) o bridge tem um **passe de re-stamp por dispatch** (`restamp_damping`, em `prepare` após
+reconcile) que re-aplica o override de cada corpo. ⚠️ **O passe lê o `rest.damping` (config no desc), NÃO o
+componente vivo** — de propósito: a sim é função de `(tick, rest state)`, então uma EDIÇÃO do override mid-play
+é transiente (vale no próximo re-describe em repouso, como todo config por-corpo), enquanto uma mudança do drag
+GLOBAL é pega ao vivo pro modo `Combine` (o que o `apply_to_all` pretende). Ler o vivo faria os dois discordarem.
+
+**Bundle no wrapper, componente único no ECS.** `BodyDesc.damping: Option<DampingDesc { linear, angular, replace:
+bool }>` (~32 fixtures ganham `damping: None`). ECS: enum serde **`DampMode { Combine, Replace }`** (default
+Combine; tag = índice da seção) + componente **`DampingOverride { linear, angular, mode }`**. `scale::body_desc`
+mapeia `DampMode::Replace → replace:true`. Registro **12→13**, blob-key, **sem bump** (fica **29**). ⚠️ Detach é
+**MODO-AWARE**: neutro = `linear==0 && angular==0 && mode==Combine` (Combine+0 = o global = sem efeito); `Replace(0,0)`
+NÃO é neutro (força drag zero, ignorando um drag de mundo — escolha deliberada), então FICA.
+
+**Gates (red-first + mutação):** wrapper `linear_damping_slows_a_slide_and_angular_damping_slows_a_spin` (bola
+freada desliza <60% da livre; spin freado <50%; mut tira o apply do spawn → damped==undamped = RED) +
+`replace_ignores_the_world_drag_while_combine_adds_to_it` (sob drag global 3, `Replace(0)` desliza 2× o `Combine(0)`;
+mut ignora `replace` → iguais 1.5969117 = RED) + readback direto. ECS `the_bridge_folds_damping_and_a_rewind_
+preserves_it` + **`a_global_drag_change_mid_play_does_not_clobber_a_replace_override`** (o teste que PINA o passe:
+sobe o drag global mid-play, o `Replace` segue deslizando; mut tira `restamp_damping` → clobbado, replace==plain==
+3.14 = RED). Seam `damping_rows_are_dynamic_only_and_each_reaches_the_bus`. Shell `damping_read_modify_writes_and_
+detaches_only_at_the_mode_aware_neutral` (RMW preserva os outros; `Replace(0,0)` FICA, `Combine(0,0)` detacha). c9
+**64→65 corpos** (bola lançada+girando com override — o drag percorre o integrador se INTEGRAR).
+
+**⚠️ LOC — TRÊS splits por RESPONSABILIDADE (os dois primeiros são crates-core, cap 700):** (1) `world.rs` 721 →
+`apply_damping_override` foi pro irmão **`world/damping.rs`**; 694. (2) `bridge.rs` 728 → `restamp_damping` pro
+irmão **`bridge/damping.rs`** + o `settle` (pré-existente) foi pro **`bridge/hold.rs`** (é a behavior de pausa/hold
+— `settle` já era chamado por `hold`, então é move por-responsabilidade, não só por-LOC); 662. Fmt reexpande, então
+medi DEPOIS do fmt. **Um tofu pego no fechamento:** um `→` (U+2192) no eprintln do smoke 22 (o gate `no_tofu_glyphs`
+varre string literals do shell) → trocado por ASCII.
+
+**Ids/consts:** `INSP_PHYS_LINEAR_DAMPING`/`INSP_PHYS_ANGULAR_DAMPING` (num) + `INSP_LIVE_PHYSICS_DAMPMODE` +
+`INSP_PHYS_DAMPMODE[2]` (seg) · `ph2d::physics::DampingOverride` · `DampMode` · `DampingDesc` · `BodyDesc.damping`.
+`PhysicsFieldEdit::{LinearDamping,AngularDamping}(f32)`/`DampMode(u8)` · `InspectorPhysicsInfo::{linear_damping,
+angular_damping,damp_mode_tag}`. `PhysicsWorld::apply_damping_override` (porta única) · `PhysicsBridge::restamp_damping`.
+Smoke `=22` (2 demos: bola VERDE de Linear Damping 4 flutua/desce como pena vs ORANGE que cai rápido; caixa VERDE de
+Angular Damping 4 para de girar vs ORANGE que gira pra sempre, ambas hover com `GravityScale 0`).
+
+**Aberto (deliberado):** o conjunto de propriedades "padrão" por-corpo (Unity/Godot) está COMPLETO. Sobram só as
+avançadas fora de escopo (soft-body, one-way platforms, contact events, per-axis damp_mode). Nada pede.

@@ -325,6 +325,16 @@ pub const INSP_PHYS_FRIC_COMBINE: [NodeId; 4] = [
     hash_node_id("insp_phys_fric_combine_multiply"),
     hash_node_id("insp_phys_fric_combine_max"),
 ];
+/// §11 Per-body damping (drag), Dynamic-only (W-Damping): two NumberInputs (linear /
+/// angular) + a Combine|Replace mode toggle (group id + 2 options). Combine adds to
+/// the world default drag, Replace ignores it. Detaches at neutral (0 drag + Combine).
+pub const INSP_PHYS_LINEAR_DAMPING: NodeId = hash_node_id("insp_phys_linear_damping");
+pub const INSP_PHYS_ANGULAR_DAMPING: NodeId = hash_node_id("insp_phys_angular_damping");
+pub const INSP_LIVE_PHYSICS_DAMPMODE: NodeId = hash_node_id("insp_live_physics_dampmode");
+pub const INSP_PHYS_DAMPMODE: [NodeId; 2] = [
+    hash_node_id("insp_phys_dampmode_combine"),
+    hash_node_id("insp_phys_dampmode_replace"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

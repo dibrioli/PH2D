@@ -549,3 +549,83 @@ impl MaterialCombine {
 }
 
 impl SimComponent for MaterialCombine {}
+
+/// **How a per-body damping override meets the world's default drag** (Godot's
+/// `damp_mode`). `Combine` ADDS the override to the global `BodyDefaults` drag;
+/// `Replace` IGNORES the global and uses the override outright.
+///
+/// **Append-only** — the discriminant is the wire value (postcard positional).
+/// `Combine` is the default (Godot's own), and with the default global drag of `0.0`
+/// it coincides with `Replace`, so the mode only bites once the artist authors a
+/// world drag. The §11 mode toggle's index is the tag (no remap).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DampMode {
+    /// Add the override to the world default drag.
+    #[default]
+    Combine,
+    /// Use the override outright, ignoring the world default.
+    Replace,
+}
+
+impl DampMode {
+    /// The `u8` this mode travels as across the UI boundary and back (one door).
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            DampMode::Combine => 0,
+            DampMode::Replace => 1,
+        }
+    }
+
+    /// Recover a mode from its tag. `None` for a tag no variant claims (the
+    /// `BodyKind::from_tag` discipline).
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Option<DampMode> {
+        match tag {
+            0 => Some(DampMode::Combine),
+            1 => Some(DampMode::Replace),
+            _ => None,
+        }
+    }
+}
+
+/// **Per-body damping override — an optional presence-override component (W-Damping).**
+///
+/// Absent (the common case) leaves the body on the world's `BodyDefaults` drag,
+/// exactly what every body did before this existed. Present, `linear`/`angular` are
+/// drag coefficients that decay the body's velocities each step (Unity's
+/// `Rigidbody2D.linearDamping`/`angularDamping`, Godot's `linear_damp`/`angular_damp`),
+/// and `mode` chooses whether they [`DampMode::Combine`] with or [`DampMode::Replace`]
+/// the global. It only bites a Dynamic body (damping decays a velocity the solver owns),
+/// so the §11 rows are Dynamic-only.
+///
+/// Same idiom as [`GravityScale`] — an override most bodies do not carry — so it is a
+/// newly registered component keyed by its type-name hash (**no `PROJECT_SCHEMA`
+/// bump**), and the Inspector DETACHES it at neutral ([`Self::is_neutral`]). It maps to
+/// `ph2d_physics::DampingDesc` in `scale::body_desc` and rides the `BodyDesc` the world
+/// rebuilds from, so a rewind re-arms it. ⚠️ Unlike the other overrides it is ALSO
+/// re-stamped by the bridge each dispatch, so a change to the GLOBAL drag mid-play
+/// cannot leave an override body wearing the world value (the `apply_to_all` clobber).
+/// Config, never live solver state, like every component here.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct DampingOverride {
+    /// Linear drag coefficient (decays translation).
+    pub linear: f32,
+    /// Angular drag coefficient (decays rotation).
+    pub angular: f32,
+    /// Whether these combine with or replace the world default drag.
+    pub mode: DampMode,
+}
+
+impl DampingOverride {
+    /// Is this the neutral value — no effect on the body? Zero drag on both axes AND
+    /// `Combine` mode: `Combine + 0` is the global drag, i.e. no override. `Replace + 0`
+    /// is NOT neutral (it forces zero damping, ignoring a world drag — a real choice),
+    /// so it keeps the component. Used to DETACH so a neutral body carries none.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.linear == 0.0 && self.angular == 0.0 && matches!(self.mode, DampMode::Combine)
+    }
+}
+
+impl SimComponent for DampingOverride {}

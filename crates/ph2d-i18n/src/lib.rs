@@ -99,6 +99,11 @@ pub fn tr(key: &str) -> &'static str {
         // ...and when it does not play at the current second, which is WHY the playhead is
         // absent rather than broken.
         "panel.timeline.host_not_playing" => "not playing here",
+        // ...and when it plays NOWHERE, which is a different fact: the container exists and
+        // is authorable, but no strip instances it, so the ruler is counting its own seconds
+        // rather than relating them to any. Printing "plays 0.00 - 3.00" here would label the
+        // container's own axis with the scene's name.
+        "panel.timeline.host_not_placed" => "not placed",
         "panel.timeline.add_marker" => "+M",
         "panel.timeline.time_seconds" => "Time(s)",
         "panel.timeline.frame" => "Frame",
@@ -111,9 +116,11 @@ pub fn tr(key: &str) -> &'static str {
         // Says what the clock DRIVES, not what the scene contains — the scene
         // has physics bodies either way; this is whether Play steps them.
         "panel.timeline.physics" => "Physics",
-        // The two view tabs. "Keys" is the clip's dope sheet; "Arrange" is the
-        // clip stack. Named for what you SEE there, not for a mode you enter.
+        // The three view tabs, in the order things are assembled: keys make a
+        // clip, clips make a container, containers and clips make the scene.
+        // Named for what you SEE there, not for a mode you enter.
         "panel.timeline.tab.keys" => "Keys",
+        "panel.timeline.tab.containers" => "Containers",
         "panel.timeline.tab.arrange" => "Arrange",
         "panel.timeline.prop.translate_x" => "Translate X",
         "panel.timeline.prop.translate_y" => "Translate Y",

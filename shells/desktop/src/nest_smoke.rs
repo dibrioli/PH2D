@@ -207,7 +207,9 @@ impl crate::App {
         let jump = doc.add_container("Jump".to_string());
         let host = StackHost::Container(jump);
         let clip_of = |i: usize| StripSource::Clip(u16::try_from(i).expect("cabe"));
-        let body = doc.add_lane_in(host, "Body".to_string()).expect("lane Body");
+        let body = doc
+            .add_lane_in(host, "Body".to_string())
+            .expect("lane Body");
         doc.add_strip_to(host, body, clip_of(0), 0.0, 1.1)
             .expect("Rise no Body");
         // Sobreposto 0,2 s ao Rise: a sobreposição É o crossfade (ADR-0115).
@@ -254,8 +256,15 @@ impl crate::App {
         eprintln!(
             "[nest-smoke] JumpDemo: container \"Jump\" = 3 clips (Rise/Fall/Drift) em 2 lanes, \
              instanciado 3x em [0,2) [3,7) [8,10) — a do meio esticada (speed 0.5 = camera \
-             lenta). Abra L -> aba Arrange. Botao direito numa strip Jump -> \"Enter \
-             Container\": edite o pico do Rise UMA vez e os TRES pulos mudam."
+             lenta). Abra L: sao TRES abas agora, [Keys | Containers | Arrange].\n\
+             [nest-smoke]   Arrange   = a CENA (as 3 instancias). Botao direito numa strip \
+             Jump -> \"Enter Container\" leva voce para a aba Containers.\n\
+             [nest-smoke]   Containers = o INTERIOR do Jump. Edite o pico do Rise UMA vez e \
+             os TRES pulos mudam. \"+ Container\" (no cabecalho da coluna) cria um container \
+             NOVO e vazio, sem despejar nada na cena.\n\
+             [nest-smoke]   Para COLOCAR um container: volte ao Arrange, escolha \"Jump\" no \
+             dropdown de fonte (ele agora lista clips E containers) e clique no \"+\" da \
+             lane. Arraste o corpo da strip para CIMA/BAIXO para troca-la de lane."
         );
     }
 }

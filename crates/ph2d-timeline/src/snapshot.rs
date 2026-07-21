@@ -130,6 +130,19 @@ pub struct LaneView {
     pub strips: Vec<StripView>,
 }
 
+/// One container as the source dropdown sees it: what it is CALLED and how long it is.
+///
+/// The length rides along because the `+` that places an instance has to size it, and the
+/// panel must not have to reach into the document to find out — the same reason [`StripView`]
+/// carries a resolved `clip_name`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContainerView {
+    /// Author-visible name.
+    pub name: String,
+    /// Its interior's end, in its own seconds. `0.0` for an empty container.
+    pub length: f64,
+}
+
 /// The whole panel view for one frame.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimelineViewSnapshot {
@@ -196,8 +209,9 @@ pub struct TimelineViewSnapshot {
     /// Every clip's author-visible name, in document order — the selector's list.
     /// Reused across rebuilds (clear + push).
     pub clips: Vec<String>,
-    /// Every container's name, index-aligned with `TimelineDoc::containers()` (ADR-0133).
-    pub containers: Vec<String>,
+    /// Every container, index-aligned with `TimelineDoc::containers()` (ADR-0133) — the
+    /// source dropdown's other half.
+    pub containers: Vec<ContainerView>,
     /// **Where the OPEN container's own playhead stands**, in its own seconds — `None` at the
     /// scene root (there is no second clock) or when the container is not playing exactly once
     /// here ([`crate::container_playhead`]).
@@ -219,6 +233,13 @@ pub struct TimelineViewSnapshot {
     /// where the instance is not a bijection (not playing exactly once, or wrapping), and the
     /// ruler then does not scrub at all rather than seeking to a second it invented.
     pub host_map: Option<crate::ContainerMap>,
+    /// **Whether [`Self::host_map`] came from an INSTANCE** (`crate::HostClock::placed`).
+    ///
+    /// `false` means the open container is instanced nowhere, so the map is the identity over
+    /// its own extent: the interior is authorable and the ruler scrubs, but "where does this
+    /// play" has no answer. The breadcrumb's readout must print *that* rather than a scene
+    /// window which is really the container's own seconds wearing the scene's label.
+    pub host_placed: bool,
     /// **Where the animator IS** — the breadcrumb, outermost first.
     ///
     /// Empty means the document's own stack (the trail still paints its root: "Scene"). Each
@@ -314,10 +335,21 @@ impl TimelineViewSnapshot {
         // and honoured there — two would drift the first time somebody entered a container.
         self.containers.clear();
         self.containers
-            .extend(doc.containers().iter().map(|c| c.name.clone()));
+            .extend(doc.containers().iter().enumerate().map(|(i, c)| {
+                ContainerView {
+                    name: c.name.clone(),
+                    // Its own interior's end — what a strip placed on it is sized to, read
+                    // through the SAME door the scene's end comes from (`host_end_seconds`), so
+                    // a container instance cannot be born at a speed nobody asked for.
+                    length: doc
+                        .host_end_seconds(crate::StackHost::Container(i))
+                        .unwrap_or(0.0),
+                }
+            }));
         self.crumbs.clear();
         self.host_time = None;
         self.host_map = None;
+        self.host_placed = false;
         // The WHOLE path, outermost first — the trail has to say where you are, and where
         // you are is every level you walked through, not just the last one.
         for step in &state.edit_path {
@@ -337,7 +369,9 @@ impl TimelineViewSnapshot {
         // scene clock: it is drawn only while the scene playhead is inside this instance's
         // window (elsewhere the interior is not being played *here*).
         if !keys_mode && !state.edit_path.is_empty() {
-            self.host_map = crate::entry_map(doc, &state.edit_path);
+            let clock = crate::entry_clock(doc, &state.edit_path);
+            self.host_map = clock.map(|c| c.map);
+            self.host_placed = clock.is_some_and(|c| c.placed);
             self.host_time = self.host_map.and_then(|m| {
                 let t = playhead.time();
                 (t >= m.t0 && t <= m.t1).then(|| m.local_time(t))

@@ -276,7 +276,8 @@ fn nav_scene() -> (TimelineState, ph2d_timeline::EnterStep) {
     let mut st = TimelineState::new();
     let doc = &mut st.doc;
     let c = doc.add_container("C".into());
-    doc.add_lane_in(StackHost::Container(c), "l".into()).unwrap();
+    doc.add_lane_in(StackHost::Container(c), "l".into())
+        .unwrap();
     doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 2.0)
         .unwrap();
     let lane = doc.add_lane("doc".into()).unwrap();
@@ -290,9 +291,7 @@ fn nav_scene() -> (TimelineState, ph2d_timeline::EnterStep) {
         )
         .unwrap();
     {
-        let s = doc
-            .strip_in_mut(StackHost::Document, lane, strip)
-            .unwrap();
+        let s = doc.strip_in_mut(StackHost::Document, lane, strip).unwrap();
         s.lead_in = 1.0;
         s.lead_out = 0.5;
     }
@@ -302,7 +301,7 @@ fn nav_scene() -> (TimelineState, ph2d_timeline::EnterStep) {
         ph2d_timeline::EnterStep {
             container: c,
             lane,
-            strip,
+            strip: Some(strip),
         },
     )
 }
@@ -358,8 +357,11 @@ fn entering_from_outside_the_window_seeks_to_its_start() {
 #[test]
 fn a_stale_walk_leaves_the_transport_as_it_stands() {
     let (mut st, step) = nav_scene();
-    st.doc
-        .remove_strip_in(ph2d_timeline::StackHost::Document, step.lane, step.strip);
+    st.doc.remove_strip_in(
+        ph2d_timeline::StackHost::Document,
+        step.lane,
+        step.strip.unwrap(),
+    );
     let mut ph = Playhead::new(1.0 / 60.0);
     ph.set_loop(0.0, 20.0);
     ph.seek(5.0);
@@ -429,7 +431,10 @@ fn inside_a_container_the_loop_toggles_bracket_the_instance_on_the_transport() {
     assert!(
         matches!(
             intent_for_transport(&ev(true), &st, &ph),
-            Some(TimelineIntent::SetLoop { range: Some(_), ping_pong: false })
+            Some(TimelineIntent::SetLoop {
+                range: Some(_),
+                ping_pong: false
+            })
         ),
         "na cena o Loop é do documento, como sempre"
     );
@@ -452,7 +457,11 @@ fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
     );
     assert_eq!(ph.loop_range(), Some((2.0, 5.0)));
     assert!(ph.is_ping_pong());
-    assert_eq!(st.doc.active_loop_for(false), before, "o documento fica de fora");
+    assert_eq!(
+        st.doc.active_loop_for(false),
+        before,
+        "o documento fica de fora"
+    );
     ph2d_timeline::apply_intent(
         &mut st,
         &mut ph,

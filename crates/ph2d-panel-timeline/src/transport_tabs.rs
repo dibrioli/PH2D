@@ -13,9 +13,12 @@ use ph2d_tokens::{ROW_H_PX, Theme};
 use crate::ids;
 use crate::tab::Tab;
 
-/// One tab's width in the strip. Wide enough for "Arrange" at `TypeToken::Base`
-/// with the segmented pill's padding either side.
-const TAB_W: f32 = 68.0; // LITERAL-PX-OK: one view tab's width
+/// One tab's width in the strip. Wide enough for the LONGEST label — "Containers" at
+/// `TypeToken::Base` with the segmented pill's padding either side. Sized to the longest
+/// rather than the average because a segmented pill gives every cell the same box: fit the
+/// average and the long one elides, which is the "+ Container" crush one control over
+/// (Enio's screenshot, 2026-07-20) in a different widget.
+const TAB_W: f32 = 84.0; // LITERAL-PX-OK: one view tab's width
 
 /// How wide the strip paints — the single source `transport`'s flow measures
 /// against, and the same number [`paint`] lays out from.

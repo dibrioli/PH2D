@@ -22,7 +22,7 @@
 use ph2d_anim::{AnimTarget, AnimValue, Interp, KeyId, RationalTime};
 
 use crate::prop::PropKind;
-use crate::stack::{LaneMode, StripId, StripLoop};
+use crate::stack::{LaneMode, StripId, StripLoop, StripSource};
 use crate::state::SelectedKey;
 
 /// A single command from the timeline panel (or a headless test).
@@ -290,12 +290,24 @@ pub enum TimelineIntent {
     // ── the clip stack (ADR-0115 — each is one undo step) ───────────────────
     /// Append an empty lane. Refused past [`crate::MAX_LANES`].
     AddLane,
-    /// **Make a container and drop an instance of it on a new lane here** (ADR-0133).
+    /// **Make a container** — the ASSET, and nothing else (ADR-0133, amended 2026-07-21).
     ///
-    /// One intent rather than two (create, then place) because an empty container that is
-    /// nowhere is not a thing an animator asked for: the gesture is *"this part of the
-    /// timeline is a piece"*, and a container nobody instanced would be a dead entry in a
-    /// list. It lands in whichever stack is open, so containers nest by repeating it.
+    /// # Creating and placing are two acts
+    ///
+    /// The first cut created a container AND dropped an instance of it on a new lane, on the
+    /// reasoning that "an empty container that is nowhere is not a thing an animator asked
+    /// for". The consequence was the opposite of the intent: a container could not be *made*
+    /// without immediately appearing in the scene, could not be edited unless instanced, and
+    /// read as *"just another lane"* — which is exactly what Enio reported (2026-07-21:
+    /// *"não vi nenhum diferencial nos containers"*).
+    ///
+    /// So this is the "New Symbol" of Animate / "New Comp" of After Effects: the asset is
+    /// born, the **Containers** tab opens it, and placing it is the lane's `+` with the
+    /// container picked in the source dropdown. Nesting is *placing a container inside a
+    /// container* — one mechanism, not a second gesture.
+    ///
+    /// **Host-independent, deliberately**: a container is a document asset, so the stack you
+    /// happen to be looking at must not decide whose list it joins.
     AddContainer,
     /// Delete a lane and every strip on it.
     RemoveLane {
@@ -325,12 +337,18 @@ pub enum TimelineIntent {
         /// Clamped by the evaluator.
         weight: f64,
     },
-    /// Place a clip on a lane over `[t_start, t_end)`.
+    /// **Place a source on a lane** over `[t_start, t_end)` — a clip OR a container.
+    ///
+    /// It carries a [`StripSource`] rather than a clip index because *placing* is the one
+    /// gesture both kinds share (ADR-0133: a container instance IS a strip). While it took an
+    /// index, the lane's `+` could only ever put down a clip, so a container could not be
+    /// placed anywhere at all — which is what made "+ Container" have to create AND place in
+    /// one press, and containers read as lanes (Enio, 2026-07-21).
     AddStrip {
         /// Index into the stack.
         lane: usize,
-        /// Index into [`crate::TimelineDoc::clips`].
-        clip: usize,
+        /// What the strip plays.
+        source: StripSource,
         /// Where it starts, in seconds.
         t_start: f64,
         /// Where it ends, exclusive.
@@ -352,10 +370,18 @@ pub enum TimelineIntent {
         /// Stable identity of the original.
         id: StripId,
     },
-    /// **Slide a strip**, rigidly: its span moves, its content comes along.
+    /// **Slide a strip**, rigidly: its span moves, its content comes along — and it may land
+    /// on **another lane**.
+    ///
+    /// The vertical half is what makes a lane a place you can put something rather than a
+    /// place things are born: before it, the only way to move a strip between lanes was to
+    /// delete it and add a new one, which loses its identity, its fades, its speed and its
+    /// trim (Enio, 2026-07-21).
     MoveStrip {
-        /// Index into the stack.
+        /// Where the strip is NOW.
         lane: usize,
+        /// Where it should end up. Equal to `lane` for an ordinary horizontal slide.
+        to_lane: usize,
         /// Stable identity.
         id: StripId,
         /// The new start; the end follows by the span.

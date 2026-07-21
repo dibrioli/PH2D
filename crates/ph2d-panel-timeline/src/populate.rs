@@ -147,6 +147,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             selected_index: Some(0),
         },
     );
+    for id in ids::TIMELINE_CONT_OPT {
+        button(store, id);
+    }
     for id in ids::TIMELINE_CLIP_OPT {
         button(store, id);
     }

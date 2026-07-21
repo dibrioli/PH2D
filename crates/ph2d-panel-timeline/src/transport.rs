@@ -116,6 +116,8 @@ pub(crate) struct BarView {
     pub tab: Tab,
     /// Expanded graph bands plot velocity instead of value.
     pub speed_view: bool,
+    /// The container half of the source selection (`TimelinePanelState::source_container`).
+    pub source_container: Option<usize>,
 }
 
 /// Flow the transport controls beside the panel title, wrapping onto as many rows
@@ -150,7 +152,7 @@ pub(crate) fn paint_bar(
     let mut x = row.x;
 
     for item in ITEMS {
-        let w = width(item, snap);
+        let w = width(item, snap, view);
         // Does not fit? Take the next row. Never split a cluster across rows — a
         // short row reads better than a broken control.
         if x > row.x && x + w > row.x + row.w {
@@ -175,7 +177,7 @@ pub(crate) fn paint_bar(
 /// How wide `item` paints. The single source the flow measures against — every
 /// painter below lays out from these same constants, so the fit test and the
 /// pixels cannot disagree.
-fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
+fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
     let gap = Spacing::Sm.px();
     let half = gap * 0.5;
     match item {
@@ -186,7 +188,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
         // they are the two ways to get a clip, and the difference between them is
         // whether it starts empty.
         Item::Crumbs => crate::breadcrumb::width(snap),
-        Item::Clips => crate::transport_clips::width(snap),
+        Item::Clips => crate::transport_clips::width(snap, view.tab),
         // |< < >/|| > >| — five buttons, four gaps between them.
         Item::Transport => {
             let n = TRANSPORT_BTNS as f32;
@@ -232,7 +234,7 @@ fn paint_item(
     match item {
         Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab),
         Item::Crumbs => crate::breadcrumb::paint(ctx, theme, x, y, snap),
-        Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap),
+        Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap, view),
         Item::Transport => {
             // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
             // jump to end. The skip glyphs bracket the frame-steppers, as every

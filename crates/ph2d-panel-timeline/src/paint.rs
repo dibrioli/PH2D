@@ -26,6 +26,25 @@ use ph2d_tokens::{ColorToken, Theme, TypeToken};
 /// Thickness of the hairline drawn on the label/time seam.
 const SPLIT_LINE_W: f32 = 1.0; // LITERAL-PX-OK: splitter hairline width
 
+/// **The two facts the panel mirrors back to the shell each frame** — which CLOCK the
+/// timeline runs on, and which STACK is on screen.
+///
+/// One helper because they are one act (the reverse channel of the snapshot) and because
+/// `paint` is at its 200-LOC cap. Both are a REFRESH of what `state::set_tab` already
+/// published on the switch itself — the shell reads the host at the TOP of a frame, so a tab
+/// that only took effect at paint time would route one frame of edits into the stack the
+/// animator just left. This is what restores them when a hidden panel comes back.
+fn publish_view(state: &TimelinePanelState, snapshot: &ph2d_timeline::TimelineViewSnapshot) {
+    // On the Keys tab AND under a stack, the shell drives the CLIP playhead and solos the
+    // active clip. **Without a stack there is nothing to solo** — the clip IS the timeline —
+    // so keys_mode stays false and a fresh document behaves exactly as it always has (one
+    // playhead, Motion and the timeline on the same clock).
+    state::publish_keys_mode(state.tab.shows_keys() && snapshot.stacked());
+    // Arrange is always the SCENE's stack, so the breadcrumb trail does not apply there
+    // however deep the animator walked (`tab::Tab::scene_root`).
+    state::publish_scene_root(state.tab.scene_root());
+}
+
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
@@ -39,6 +58,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // A hidden panel is not editing keys: the timeline runs on its normal
         // (timeline) clock, not a soloed clip one.
         state::publish_keys_mode(false);
+        // ...nor is it inside a container. The trail survives (it comes back where it was),
+        // but a hidden panel must not leave the shell driving a container's interior.
+        state::publish_scene_root(true);
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -46,12 +68,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
-    // Mirror the tab to the shell (the reverse channel of the snapshot): on the Keys
-    // tab AND under a stack, the shell drives the CLIP playhead and solos the active
-    // clip. **Without a stack there is nothing to solo** — the clip IS the timeline —
-    // so keys_mode stays false and a fresh document behaves exactly as it always has
-    // (one playhead, Motion and the timeline on the same clock).
-    state::publish_keys_mode(state.tab.shows_keys() && snapshot.stacked());
+    publish_view(state, &snapshot);
     let viewport = ctx.layout.viewport;
     let docked = ctx.layout.timeline;
     if state.px_per_s <= 0.0 {
@@ -89,6 +106,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         transport::BarView {
             tab: state.tab,
             speed_view: state.speed_view,
+            source_container: state.source_container,
         },
     );
     let g = geom::resolve(rect, after_transport, state.label_w, min_label);
@@ -157,7 +175,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if state.tab.shows_keys() {
         tracks::paint_add_track(ctx, theme, header);
     } else {
-        crate::stack_add_header::paint_add_lane(ctx, theme, header);
+        crate::stack_add_header::paint_add_lane(ctx, theme, header, state.tab);
     }
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
@@ -280,9 +298,18 @@ fn paint_overlays(
         let dd = ph2d_editor_core::widget::Dropdown::new(
             ids::TIMELINE_CLIP_DD,
             "",
-            crate::transport_clips::clip_options(snapshot),
+            crate::transport_clips::source_options(snapshot, state.tab),
         )
-        .selected(snapshot.active_clip)
+        // The SAME two doors the chip paints from (`source_options`/`selected_source`), so
+        // the open list and the collapsed chip cannot name different things.
+        .selected(crate::transport_clips::selected_source(
+            snapshot,
+            crate::transport::BarView {
+                tab: state.tab,
+                speed_view: state.speed_view,
+                source_container: state.source_container,
+            },
+        ))
         .open(true);
         ph2d_editor_core::widget::paint_dropdown_popover(
             &dd,

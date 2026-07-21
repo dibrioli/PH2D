@@ -327,18 +327,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             let name = doc.fresh_lane_name();
             doc.add_lane_in(host, name);
         }),
-        I::AddContainer => edit_at(state, host, |doc, host, _| {
+        // The ASSET, and nothing else — see the intent's docs for why placing is a separate
+        // act. `edit`, not `edit_at`: a container belongs to the DOCUMENT's list, so the
+        // stack that happens to be open must not decide whose list it joins.
+        I::AddContainer => edit(state, |doc, _| {
             let name = doc.fresh_container_name();
-            let c = doc.add_container(name);
-            let Some(lane) = doc.add_lane_in(host, doc.fresh_lane_name()) else {
-                return; // the stack is full: the lane cap refuses, and so does this
-            };
-            let src = crate::StripSource::Container(u16::try_from(c).unwrap_or(u16::MAX));
-            // A brand-new container is EMPTY, so it has no length of its own yet. Size the
-            // instance to the active clip's length: it is the only number on screen that
-            // means "about this long", and a zero-width strip would be one nobody can grab.
-            let span = doc.end_seconds().max(1.0);
-            let _ = doc.add_strip_to(host, lane, src, 0.0, span);
+            doc.add_container(name);
         }),
         I::RemoveLane { lane } => edit_at(state, host, |doc, host, _| {
             doc.remove_lane_in(host, lane);
@@ -360,12 +354,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         }),
         I::AddStrip {
             lane,
-            clip,
+            source,
             t_start,
             t_end,
         } => edit_at(state, host, |doc, host, _| {
-            let src = crate::StripSource::Clip(u16::try_from(clip).unwrap_or(u16::MAX));
-            let _ = doc.add_strip_to(host, lane, src, t_start.max(0.0), t_end.max(0.0));
+            let _ = doc.add_strip_to(host, lane, source, t_start.max(0.0), t_end.max(0.0));
         }),
         I::RemoveStrip { lane, id } => edit_at(state, host, |doc, host, _| {
             doc.remove_strip_in(host, lane, id);
@@ -373,12 +366,13 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::DuplicateStrip { lane, id } => edit_at(state, host, |doc, host, _| {
             doc.duplicate_strip_in(host, lane, id);
         }),
-        I::MoveStrip { lane, id, t_start } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                let span = s.span();
-                s.t_start = t_start.max(0.0);
-                s.t_end = s.t_start + span; // rigid: the span rides along
-            }
+        I::MoveStrip {
+            lane,
+            to_lane,
+            id,
+            t_start,
+        } => edit_at(state, host, |doc, host, _| {
+            doc.move_strip_in(host, lane, to_lane, id, t_start.max(0.0));
         }),
         I::TrimStrip {
             lane,

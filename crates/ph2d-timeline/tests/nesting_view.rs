@@ -7,8 +7,7 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Playhead;
 use ph2d_timeline::{
-    EnterStep, PropKind, StackHost, StripSource, TimelineDoc, TimelineState,
-    TimelineViewSnapshot,
+    EnterStep, PropKind, StackHost, StripSource, TimelineDoc, TimelineState, TimelineViewSnapshot,
 };
 
 fn s(t: f64) -> RationalTime {
@@ -45,7 +44,7 @@ fn nested_state() -> (TimelineState, EnterStep) {
         EnterStep {
             container: walk,
             lane,
-            strip: first,
+            strip: Some(first),
         },
     )
 }
@@ -72,9 +71,18 @@ fn the_keys_tab_inside_a_container_does_not_panic() {
     playhead.seek(1.25);
     snap.rebuild(&mut st, &playhead, true); // keys_mode — this line panicked
 
-    assert_eq!(snap.host_time, None, "the Keys ruler is the clip's, not the host's");
-    assert_eq!(snap.host_map, None, "no Arrange map is in view on the Keys tab");
-    assert!(!snap.crumbs.is_empty(), "the trail still says where you are");
+    assert_eq!(
+        snap.host_time, None,
+        "the Keys ruler is the clip's, not the host's"
+    );
+    assert_eq!(
+        snap.host_map, None,
+        "no Arrange map is in view on the Keys tab"
+    );
+    assert!(
+        !snap.crumbs.is_empty(),
+        "the trail still says where you are"
+    );
 }
 
 /// **The Arrange snapshot's map survives every playhead position** — including the gaps
@@ -153,7 +161,7 @@ fn the_loop_braces_inside_are_the_transports_mapped_to_the_interior() {
     st.edit_path.push(EnterStep {
         container: walk,
         lane,
-        strip,
+        strip: Some(strip),
     });
 
     let mut playhead = Playhead::new(1.0 / 60.0);

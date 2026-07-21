@@ -43,7 +43,11 @@ pub enum Tab {
     /// The active clip's dope sheet + graph editor, ruled by the CLIP's clock.
     #[default]
     Keys,
-    /// The clip stack — lanes of strips, ruled by the TIMELINE's clock.
+    /// **A container's interior** — its own lanes of strips, ruled by that container's clock
+    /// (ADR-0133, amended 2026-07-21). See [`Self::shows_lanes`] for why this is not a second
+    /// Arrange.
+    Containers,
+    /// **The SCENE's stack** — the document's lanes of strips, ruled by the TIMELINE's clock.
     Arrange,
 }
 
@@ -54,9 +58,25 @@ impl Tab {
         matches!(self, Self::Keys)
     }
 
-    /// Whether the clip stack's lanes have any height here.
+    /// Whether a clip stack's lanes have any height here — **which stack** is
+    /// [`Self::scene_root`]'s question, not this one.
+    ///
+    /// Two tabs answer `true` and they are not a duplicate of each other: the LANES are the
+    /// same widget, the HOST is not. Arrange is always the document's stack; Containers is
+    /// always a container's interior. Before the split, entering a container silently
+    /// repurposed Arrange, so "what am I looking at" had no answer on screen except the
+    /// breadcrumb — and creating a container forced an instance into the scene, which is why
+    /// containers read as *"just another lane"* (Enio, 2026-07-21).
     #[must_use]
     pub fn shows_lanes(self) -> bool {
+        matches!(self, Self::Containers | Self::Arrange)
+    }
+
+    /// **Whether the stack on screen is the SCENE's.** The one door for "which host", asked
+    /// by the published edit path: `true` drops the breadcrumb trail from the publish, so
+    /// Arrange cannot show a container's lanes however deep the animator walked.
+    #[must_use]
+    pub fn scene_root(self) -> bool {
         matches!(self, Self::Arrange)
     }
 
@@ -65,16 +85,24 @@ impl Tab {
     pub fn index(self) -> usize {
         match self {
             Self::Keys => 0,
-            Self::Arrange => 1,
+            Self::Containers => 1,
+            Self::Arrange => 2,
         }
     }
 
     /// The tab at `i` in the strip, or [`Tab::Keys`] for anything else.
     #[must_use]
     pub fn from_index(i: usize) -> Self {
-        if i == 1 { Self::Arrange } else { Self::Keys }
+        match i {
+            1 => Self::Containers,
+            2 => Self::Arrange,
+            _ => Self::Keys,
+        }
     }
 }
+
+/// Every tab, in strip order — what a sweep iterates so a new one cannot be forgotten.
+pub const ALL: [Tab; 3] = [Tab::Keys, Tab::Containers, Tab::Arrange];
 
 /// The two tabs, in strip order: `(id, i18n key)`.
 ///
@@ -82,8 +110,12 @@ impl Tab {
 /// event router matches against it — a second list written by hand would drift
 /// from the one on screen, which is how a painted control ends up dispatching
 /// nothing ([[feedback_widget_is_done_when_a_test_clicks_it]]).
-pub const TABS: [(ph2d_a11y::NodeId, &str); 2] = [
+pub const TABS: [(ph2d_a11y::NodeId, &str); 3] = [
     (crate::ids::TIMELINE_TAB_KEYS, "panel.timeline.tab.keys"),
+    (
+        crate::ids::TIMELINE_TAB_CONTAINERS,
+        "panel.timeline.tab.containers",
+    ),
     (
         crate::ids::TIMELINE_TAB_ARRANGE,
         "panel.timeline.tab.arrange",
@@ -103,7 +135,7 @@ mod tests {
     /// neither (which is a blank panel).
     #[test]
     fn every_tab_shows_exactly_one_half() {
-        for tab in [Tab::Keys, Tab::Arrange] {
+        for tab in ALL {
             assert_ne!(
                 tab.shows_keys(),
                 tab.shows_lanes(),
@@ -112,14 +144,31 @@ mod tests {
         }
     }
 
+    /// **Exactly ONE tab is the scene's stack**, and it is a lanes tab.
+    ///
+    /// This is the whole difference between the Containers tab and a second Arrange: they
+    /// draw the same widget over a different HOST, and if two tabs claimed the scene root
+    /// they would be the duplicate the split exists to avoid — while if none did, the
+    /// document's own stack would be unreachable.
+    #[test]
+    fn exactly_one_tab_is_the_scene_root_and_it_shows_lanes() {
+        let roots: Vec<Tab> = ALL.into_iter().filter(|t| t.scene_root()).collect();
+        assert_eq!(roots, vec![Tab::Arrange], "got {roots:?}");
+        assert!(roots[0].shows_lanes(), "the scene root has to show lanes");
+        assert!(
+            Tab::Containers.shows_lanes() && !Tab::Containers.scene_root(),
+            "Containers draws lanes over a CONTAINER, never over the scene"
+        );
+    }
+
     #[test]
     fn the_index_round_trips_through_the_strip() {
-        for tab in [Tab::Keys, Tab::Arrange] {
+        for tab in ALL {
             assert_eq!(Tab::from_index(tab.index()), tab);
         }
         assert_eq!(
             TABS.len(),
-            2,
+            ALL.len(),
             "the strip and the enum must stay the same size"
         );
         assert_eq!(
@@ -134,6 +183,10 @@ mod tests {
     #[test]
     fn the_strips_order_is_the_enums_order() {
         assert_eq!(TABS[Tab::Keys.index()].0, crate::ids::TIMELINE_TAB_KEYS);
+        assert_eq!(
+            TABS[Tab::Containers.index()].0,
+            crate::ids::TIMELINE_TAB_CONTAINERS
+        );
         assert_eq!(
             TABS[Tab::Arrange.index()].0,
             crate::ids::TIMELINE_TAB_ARRANGE

@@ -280,6 +280,8 @@ fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
     let drag = |edge: u8| {
         Some(StripDrag {
             lane: 0,
+            start_lane: 0,
+            start_y: 0.0,
             id: StripId(7),
             edge,
             start_x: 0.0,
@@ -424,7 +426,10 @@ fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
 #[test]
 fn the_add_header_splits_by_label_not_in_half() {
     let [lane, cont] = crate::stack_add_header::add_widths(148.0, 4.0, ["+ Lane", "+ Container"]);
-    assert!((lane + cont - 144.0).abs() < 1e-3, "somam o header menos o gap");
+    assert!(
+        (lane + cont - 144.0).abs() < 1e-3,
+        "somam o header menos o gap"
+    );
     let share = f64::from(cont) / f64::from(lane + cont);
     assert!(
         (share - 11.0 / 17.0).abs() < 1e-3,

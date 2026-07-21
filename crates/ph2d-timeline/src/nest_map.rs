@@ -53,10 +53,19 @@ use crate::stack::{ClipStrip, StripLoop};
 pub struct EnterStep {
     /// The container that was opened.
     pub container: usize,
-    /// The lane (of the stack it was opened FROM) holding the entry strip.
+    /// The lane (of the stack it was opened FROM) holding the entry strip. **Ignored when
+    /// [`Self::strip`] is `None`** — there is no named instance to look up.
     pub lane: usize,
-    /// The instance the animator entered through.
-    pub strip: crate::StripId,
+    /// The instance the animator entered through — or `None` when they did not enter through
+    /// one at all (the **Containers tab** opens a container by NAME, not by walking into a
+    /// strip).
+    ///
+    /// `None` is not "no clock": it means *nobody named an instance*, so the walk falls back
+    /// to the FIRST instance of this container in the parent host — a pure function of the
+    /// document, stable at every playhead time (unlike "the instance playing NOW", which this
+    /// module's history is about). Only a container that is instanced **nowhere** has no
+    /// relation to its parent, and that case is the identity map plus `placed: false`.
+    pub strip: Option<crate::StripId>,
 }
 
 /// The affine relation between an open container's own seconds and the timeline's, over the
@@ -138,14 +147,26 @@ fn window_of(s: &ClipStrip) -> Option<(f64, f64, f64, f64)> {
 /// The entry strip one [`EnterStep`] names, verified to actually PLAY the container it
 /// claims — a stale path (the strip was deleted, or retargeted by an undo) must read as
 /// "no map", never as some other strip's window.
-fn entry_strip<'d>(doc: &'d TimelineDoc, host: crate::StackHost, step: &EnterStep) -> Option<&'d ClipStrip> {
-    let s = doc
-        .host_stack(host)?
-        .get(step.lane)?
-        .strips
-        .iter()
-        .find(|s| s.id == step.strip)?;
-    (s.source.container_index().map(usize::from) == Some(step.container)).then_some(s)
+///
+/// With no strip named ([`EnterStep::strip`] `None`) the answer is the **first** instance of
+/// the container in this host, in lane order: a container opened by name has no walk to read
+/// an instance off, and document order is the one stable answer. `None` here then means the
+/// container is instanced NOWHERE — a different fact from a stale walk, and the caller
+/// separates them.
+fn entry_strip<'d>(
+    doc: &'d TimelineDoc,
+    host: crate::StackHost,
+    step: &EnterStep,
+) -> Option<&'d ClipStrip> {
+    let lanes = doc.host_stack(host)?;
+    let plays = |s: &ClipStrip| s.source.container_index().map(usize::from) == Some(step.container);
+    match step.strip {
+        Some(id) => {
+            let s = lanes.get(step.lane)?.strips.iter().find(|s| s.id == id)?;
+            plays(s).then_some(s)
+        }
+        None => lanes.iter().flat_map(|l| &l.strips).find(|s| plays(s)),
+    }
 }
 
 /// **The map of the walked-into instance**, derived from the ENTRY PATH instead of from
@@ -159,27 +180,86 @@ fn entry_strip<'d>(doc: &'d TimelineDoc, host: crate::StackHost, step: &EnterSte
 /// inside its span), there is still no honest map, and `None` still refuses.
 #[must_use]
 pub fn entry_map(doc: &TimelineDoc, path: &[EnterStep]) -> Option<ContainerMap> {
+    entry_clock(doc, path).map(|c| c.map)
+}
+
+/// **The open container's clock, and whether it came from an instance** — the ONE walk, two
+/// facts.
+///
+/// [`entry_map`] delegates here rather than walking a second time: the readout ("plays 4.00 -
+/// 12.00" versus "not placed") and the ruler's relation are statements about the same walk,
+/// and two walks would be two answers to drift apart.
+///
+/// # The unplaced container is the identity, not a refusal
+///
+/// A container reached by NAME (the Containers tab) may be instanced nowhere. It still has an
+/// interior to author, so the honest relation is the identity over its own extent: the ruler
+/// counts the container's own seconds and scrubbing writes them straight through. Nothing is
+/// invented — [`HostClock::placed`] says the relation is to nothing, and the readout prints
+/// that instead of a scene window it does not have.
+///
+/// An unplaced level RESETS the frame of reference: everything deeper composes from the
+/// identity, because "where does this play in the scene" has no answer above it.
+#[must_use]
+pub fn entry_clock(doc: &TimelineDoc, path: &[EnterStep]) -> Option<HostClock> {
     let mut host = crate::StackHost::Document;
     let mut acc: Option<(f64, f64, f64, f64)> = None;
+    let mut placed = true;
     for step in path {
-        let s = entry_strip(doc, host, step)?;
-        let (t0, t1, u0, u1) = window_of(s)?;
-        acc = Some(match acc {
-            None => (t0, t1, u0, u1),
-            // The child's t-axis is the clock of `host` — the parent's u-axis. Remap the
-            // child's window through the parent's: the same composition `container_map`
-            // walks inward-out, here outward-in because the path is outermost-first.
-            Some((pt0, pt1, pu0, pu1)) => (
-                remap(t0, pu0, pu1, pt0, pt1),
-                remap(t1, pu0, pu1, pt0, pt1),
-                u0,
-                u1,
-            ),
-        });
+        let win = match entry_strip(doc, host, step) {
+            Some(s) => Some(window_of(s)?),
+            // A walk that NAMED a strip and cannot find it is STALE — refuse, as ever. One
+            // that named none simply has no instance: fall back to the interior's own axis.
+            None if step.strip.is_some() => return None,
+            None => None,
+        };
+        acc = match win {
+            Some((t0, t1, u0, u1)) => Some(match acc {
+                None => (t0, t1, u0, u1),
+                // The child's t-axis is the clock of `host` — the parent's u-axis. Remap the
+                // child's window through the parent's: the same composition `container_map`
+                // walks inward-out, here outward-in because the path is outermost-first.
+                Some((pt0, pt1, pu0, pu1)) => (
+                    remap(t0, pu0, pu1, pt0, pt1),
+                    remap(t1, pu0, pu1, pt0, pt1),
+                    u0,
+                    u1,
+                ),
+            }),
+            None => {
+                placed = false;
+                let e = interior_extent(doc, step.container);
+                Some((0.0, e, 0.0, e))
+            }
+        };
         host = crate::StackHost::Container(step.container);
     }
     let (t0, t1, u0, u1) = acc?;
-    (t1 > t0 && u1 > u0).then_some(ContainerMap { t0, t1, u0, u1 })
+    (t1 > t0 && u1 > u0).then_some(HostClock {
+        map: ContainerMap { t0, t1, u0, u1 },
+        placed,
+    })
+}
+
+/// The open container's clock plus the fact that makes it readable.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HostClock {
+    /// The relation between the interior's seconds and the timeline's.
+    pub map: ContainerMap,
+    /// Whether [`Self::map`] came from an INSTANCE. `false` means the container is instanced
+    /// nowhere and the map is the identity over its own extent — the interior is authorable,
+    /// but "where does it play" has no answer, and the readout must say so rather than print
+    /// a scene window that is really the container's own.
+    pub placed: bool,
+}
+
+/// The axis an UNPLACED container's ruler counts along: its own content's end, floored so the
+/// axis is never degenerate (an empty container still has to be scrubbable — it is where you
+/// put the first strip).
+fn interior_extent(doc: &TimelineDoc, container: usize) -> f64 {
+    doc.host_end_seconds(crate::StackHost::Container(container))
+        .unwrap_or(0.0)
+        .max(1.0)
 }
 
 /// **The timeline window the walked-into instance OCCUPIES**, leads included — what a
@@ -219,6 +299,8 @@ pub fn entry_reach(doc: &TimelineDoc, path: &[EnterStep]) -> Option<(f64, f64)> 
     }
     Some(match acc {
         None => (lo, hi),
-        Some((pt0, pt1, pu0, pu1)) => (remap(lo, pu0, pu1, pt0, pt1), remap(hi, pu0, pu1, pt0, pt1)),
+        Some((pt0, pt1, pu0, pu1)) => {
+            (remap(lo, pu0, pu1, pt0, pt1), remap(hi, pu0, pu1, pt0, pt1))
+        }
     })
 }

@@ -47,8 +47,8 @@ pub mod state;
 mod strip_edge_edit;
 
 pub use apply::{
-    apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead,
-    key_home, key_time, remapped_time,
+    apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time,
+    remapped_time,
 };
 pub use autokey::{AutokeyPlan, PoseSample, autokey_props, key_value_in_active_clip};
 pub use binding::{TargetBinding, WireId};
@@ -62,11 +62,11 @@ pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;
 pub use intent_apply::{apply_intent, snap_time, sync_transport_loop};
 pub use nest::{NamedContainer, StackHost};
-pub use nest_map::{ContainerMap, EnterStep, entry_map, entry_reach};
+pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};
-pub use snapshot::{KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
+pub use snapshot::{ContainerView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
 pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop, StripSource, mark_index};
 pub use stack_edit::MAX_LANES;

@@ -71,7 +71,7 @@ fn one_instance(start: f64) -> (World, TimelineDoc, u64, Vec<EnterStep>) {
     let path = vec![EnterStep {
         container: c,
         lane,
-        strip,
+        strip: Some(strip),
     }];
     (world, doc, e, path)
 }
@@ -145,7 +145,7 @@ fn with_two_instances_the_map_is_the_entered_ones() {
         .expect("uma segunda instância");
     let first_map = entry_map(&doc, &path).expect("entrada pela 1a");
     assert!((first_map.t0 - 0.0).abs() < 1e-9 && (first_map.t1 - 8.0).abs() < 1e-9);
-    path[0].strip = second;
+    path[0].strip = Some(second);
     let second_map = entry_map(&doc, &path).expect("entrada pela 2a");
     assert!(
         (second_map.t0 - 20.0).abs() < 1e-9 && (second_map.t1 - 28.0).abs() < 1e-9,
@@ -223,12 +223,12 @@ fn the_map_composes_out_to_the_timeline_at_depth() {
         EnterStep {
             container: l1,
             lane,
-            strip: outer,
+            strip: Some(outer),
         },
         EnterStep {
             container: l0,
             lane: 0,
-            strip: inner,
+            strip: Some(inner),
         },
     ];
     let map = entry_map(&doc, &path).expect("mapa do interior mais fundo");
@@ -260,19 +260,19 @@ fn a_stale_walk_has_no_map() {
     // RETARGET: o strip ainda existe, mas já não toca aquele container (virou clip). A
     // janela dele descreveria outra coisa — e é esta metade que torna a checagem de fonte
     // do `entry_strip` load-bearing (deletar o strip já falha no lookup por id).
-    doc.strip_in_mut(StackHost::Document, path[0].lane, path[0].strip)
+    doc.strip_in_mut(StackHost::Document, path[0].lane, path[0].strip.unwrap())
         .unwrap()
         .source = StripSource::Clip(0);
     assert!(
         entry_map(&doc, &path).is_none(),
         "um strip retargetado não é mais a instância que se entrou"
     );
-    doc.strip_in_mut(StackHost::Document, path[0].lane, path[0].strip)
+    doc.strip_in_mut(StackHost::Document, path[0].lane, path[0].strip.unwrap())
         .unwrap()
         .source = StripSource::Container(u16::try_from(path[0].container).unwrap());
     assert!(entry_map(&doc, &path).is_some(), "restaurado, volta");
 
-    doc.remove_strip_in(StackHost::Document, path[0].lane, path[0].strip);
+    doc.remove_strip_in(StackHost::Document, path[0].lane, path[0].strip.unwrap());
     assert!(
         entry_map(&doc, &path).is_none(),
         "sem o strip de entrada não há janela para oferecer"
@@ -320,7 +320,7 @@ fn the_entry_reach_wraps_the_instances_leads() {
     );
     {
         let st = doc
-            .strip_in_mut(StackHost::Document, path[0].lane, path[0].strip)
+            .strip_in_mut(StackHost::Document, path[0].lane, path[0].strip.unwrap())
             .unwrap();
         st.lead_in = 1.0;
         st.lead_out = 0.5;

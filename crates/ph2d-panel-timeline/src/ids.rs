@@ -29,8 +29,10 @@ pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_STRIP_LOOP, CTX_MENU_TL_STRIP_ONCE, CTX_MENU_TL_STRIP_PINGPONG,
     CTX_MENU_TL_STRIP_RESET_SPEED, TIMELINE_STRIP_MENU,
 };
-pub use ph2d_editor_core::ids::{TIMELINE_DUP_CLIP, TIMELINE_REVERSE_CLIP};
-pub use ph2d_editor_core::ids::{TIMELINE_TAB_ARRANGE, TIMELINE_TAB_KEYS, TIMELINE_TABS};
+pub use ph2d_editor_core::ids::{TIMELINE_CONT_OPT, TIMELINE_DUP_CLIP, TIMELINE_REVERSE_CLIP};
+pub use ph2d_editor_core::ids::{
+    TIMELINE_TAB_ARRANGE, TIMELINE_TAB_CONTAINERS, TIMELINE_TAB_KEYS, TIMELINE_TABS,
+};
 
 /// The "+Track" property buttons paired with their [`ph2d_timeline::PropKind`]:
 /// the six scene properties in `PropKind::ALL` order, then **Time Remap** (the

@@ -31,7 +31,7 @@ fn app_with_a_strip() -> (TimelineState, Playhead, StripId) {
         &mut ph,
         I::AddStrip {
             lane: 0,
-            clip: 0,
+            source: ph2d_timeline::StripSource::Clip(0),
             t_start: 2.0,
             t_end: 4.0,
         },

@@ -45,6 +45,125 @@ fn gesture(edge: u8, phase: GesturePhase, x: f32) -> TimelineGesture {
     with_mods(edge, phase, x, GestureMods::default())
 }
 
+/// The same document with THREE lanes — the fixture a lane-crossing drag needs, because a
+/// one-lane stack cannot tell "clamped to the only lane there is" from "never moved".
+fn snap_3_lanes() -> TimelineViewSnapshot {
+    let mut s = snap();
+    let empty = |name: &str| LaneView {
+        name: name.into(),
+        muted: false,
+        weight: 1.0,
+        mode: LaneMode::Override,
+        strips: Vec::new(),
+    };
+    s.lanes.push(empty("M"));
+    s.lanes.push(empty("R"));
+    s
+}
+
+/// Drive Begin at `(100, 0)` then End at `(x, y)` over `snap`, and return every intent.
+fn drag_xy(s: &TimelineViewSnapshot, edge: u8, x: f32, y: f32) -> Vec<TimelineIntent> {
+    let _ = state::drain_intents();
+    let mut st = TimelinePanelState::default();
+    let mut begin = gesture(edge, GesturePhase::Begin, 100.0);
+    begin.y = 0.0;
+    apply(&mut st, 100.0, s, 0, 7, edge, begin);
+    let mut end = gesture(edge, GesturePhase::End, x);
+    end.y = y;
+    apply(&mut st, 100.0, s, 0, 7, edge, end);
+    state::drain_intents()
+}
+
+/// The `to_lane` of the last `MoveStrip` a drag raised.
+fn moved_to(out: &[TimelineIntent]) -> Option<usize> {
+    out.iter().rev().find_map(|i| match i {
+        TimelineIntent::MoveStrip { to_lane, .. } => Some(*to_lane),
+        _ => None,
+    })
+}
+
+/// **A strip's body drags ACROSS LANES, one row at a time** (Enio, 2026-07-21).
+///
+/// Vertically the body was pinned, so the only way to a different lane was delete-and-re-add
+/// — which mints a new id and drops the fades, the trim and the speed. A whole row of travel
+/// is one lane, and the change happens at the halfway point, which is where the pointer
+/// visually enters the next row.
+#[test]
+fn the_body_drags_across_lanes_a_row_at_a_time() {
+    let s = snap_3_lanes();
+    let row = ph2d_tokens::ROW_H_PX;
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, 0.0)),
+        Some(0),
+        "parado = mesma lane"
+    );
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, row * 0.4)),
+        Some(0),
+        "menos de meia linha ainda é a linha de origem"
+    );
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, row * 0.6)),
+        Some(1),
+        "passou da metade: entrou na linha de baixo"
+    );
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, row * 2.0)),
+        Some(2),
+        "duas linhas"
+    );
+}
+
+/// **A troca de lane não desliga o deslize horizontal** — o corpo desliza nos DOIS eixos, e o
+/// intent carrega os dois numa edição só.
+#[test]
+fn crossing_a_lane_still_slides_in_time() {
+    let out = drag_xy(&snap_3_lanes(), 2, 200.0, ph2d_tokens::ROW_H_PX);
+    assert!(
+        out.iter().any(|i| matches!(
+            i,
+            TimelineIntent::MoveStrip { to_lane: 1, t_start, .. } if (t_start - 2.0).abs() < 1e-9
+        )),
+        "1 s à direita E uma lane abaixo, no MESMO intent: {out:?}"
+    );
+}
+
+/// **Nunca para uma lane que não existe.** O clamp é o irmão vertical do `max(0.0)` do tempo:
+/// um strip arrastado para fora da pilha ficaria inalcançável.
+#[test]
+fn a_drag_past_the_last_lane_clamps_instead_of_vanishing() {
+    let s = snap_3_lanes();
+    let row = ph2d_tokens::ROW_H_PX;
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, row * 99.0)),
+        Some(2),
+        "última lane"
+    );
+    assert_eq!(
+        moved_to(&drag_xy(&s, 2, 100.0, -row * 99.0)),
+        Some(0),
+        "primeira lane"
+    );
+    // E numa pilha de UMA lane não há para onde ir — o gate de 3 lanes acima é o que
+    // distingue este caso de "o eixo vertical não faz nada".
+    assert_eq!(moved_to(&drag_xy(&snap(), 2, 100.0, row * 3.0)), Some(0));
+}
+
+/// **Só o CORPO atravessa.** Trim, stretch e as alças de fade são gestos de UMA dimensão: o
+/// eixo vertical deles é o valor que estão autorando, não uma lane.
+#[test]
+fn only_the_body_crosses_lanes() {
+    let s = snap_3_lanes();
+    let row = ph2d_tokens::ROW_H_PX;
+    for edge in [0u8, 1, 3, 4, 5, 6] {
+        let out = drag_xy(&s, edge, 150.0, row * 2.0);
+        assert!(
+            moved_to(&out).is_none(),
+            "o gizmo {edge} não é o corpo e não pode mover de lane: {out:?}"
+        );
+    }
+}
+
 fn with_mods(edge: u8, phase: GesturePhase, x: f32, mods: GestureMods) -> TimelineGesture {
     TimelineGesture {
         surface: ph2d_a11y::NodeId(0),

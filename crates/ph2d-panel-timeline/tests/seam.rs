@@ -572,7 +572,7 @@ fn publish_one_strip() -> ph2d_timeline::StripId {
         &mut ph,
         I::AddStrip {
             lane: 0,
-            clip: 0,
+            source: ph2d_timeline::StripSource::Clip(0),
             t_start: 0.0,
             t_end: 2.0,
         },

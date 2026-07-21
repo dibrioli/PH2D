@@ -60,6 +60,15 @@ pub const TIMELINE_TAB_KEYS: NodeId = hash_node_id("timeline.tab_keys");
 /// which clip's keys the Keys tab holds — which is why ADR-0115 R8's rejection of
 /// Blender's *tweak mode* survives this amendment intact.
 pub const TIMELINE_TAB_ARRANGE: NodeId = hash_node_id("timeline.tab_arrange");
+/// **Containers** tab — a CONTAINER's interior (lanes + strips), ruled by that
+/// container's own clock (ADR-0133, amended 2026-07-21).
+///
+/// It sits between Keys and Arrange because that is the order of assembly: keys
+/// make a clip, clips make a container, containers and clips make the scene. And
+/// it is what makes the other two mean one thing each — **Arrange is always the
+/// SCENE**, so entering a container is a change of TAB, not a change of what
+/// Arrange is showing.
+pub const TIMELINE_TAB_CONTAINERS: NodeId = hash_node_id("timeline.tab_containers");
 
 // ── Clip selector (W5 / NLA step 1) ──────────────────────────────────────────
 /// The clip dropdown chip — shows the active clip's name, opens the clip list.
@@ -160,8 +169,36 @@ pub const TIMELINE_CLIP_OPT: [NodeId; 16] = [
     hash_node_id("timeline.clip_opt_15"),
 ];
 
-/// "+ Container" — make a nested container and drop an instance of it here (ADR-0133).
+/// "+ Container" — make a container and open it on the Containers tab (ADR-0133).
 pub const TIMELINE_ADD_CONTAINER: NodeId = hash_node_id("timeline.add_container");
+
+/// The source dropdown's CONTAINER half — one id per container, the sibling of
+/// [`TIMELINE_CLIP_OPT`].
+///
+/// Two arrays rather than one shared list because the id says WHICH KIND was picked: the
+/// click handler reads the kind off the array it found the id in, so a clip and a container
+/// at the same list position can never be confused for one another. It also keeps each half's
+/// cap its own — clips are capped at `MAX_CLIPS`, containers are deliberately uncapped
+/// (ADR-0133 found no resource to limit them), and this is a cap on what the DROPDOWN can
+/// offer, never on what the document may hold.
+pub const TIMELINE_CONT_OPT: [NodeId; 16] = [
+    hash_node_id("timeline.cont_opt_0"),
+    hash_node_id("timeline.cont_opt_1"),
+    hash_node_id("timeline.cont_opt_2"),
+    hash_node_id("timeline.cont_opt_3"),
+    hash_node_id("timeline.cont_opt_4"),
+    hash_node_id("timeline.cont_opt_5"),
+    hash_node_id("timeline.cont_opt_6"),
+    hash_node_id("timeline.cont_opt_7"),
+    hash_node_id("timeline.cont_opt_8"),
+    hash_node_id("timeline.cont_opt_9"),
+    hash_node_id("timeline.cont_opt_10"),
+    hash_node_id("timeline.cont_opt_11"),
+    hash_node_id("timeline.cont_opt_12"),
+    hash_node_id("timeline.cont_opt_13"),
+    hash_node_id("timeline.cont_opt_14"),
+    hash_node_id("timeline.cont_opt_15"),
+];
 
 /// Breadcrumb segments — "Scene", then one per level entered.
 ///

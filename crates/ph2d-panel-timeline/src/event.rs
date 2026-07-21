@@ -156,9 +156,20 @@ pub(crate) fn apply_event(
                 .iter()
                 .position(|(tid, _)| *tid == id)
                 .map_or(crate::tab::Tab::default(), crate::tab::Tab::from_index);
-            if want != state.tab {
-                state.tab = want;
-                crate::state::drop_row_gestures(state);
+            crate::state::set_tab(state, want);
+            // **The Containers tab always shows A container.** With no trail yet it opens
+            // the newest one — and with no container at all, `len - 1` saturates to 0, which
+            // is out of range: the tab is then empty and its only live control is
+            // "+ Container", whose new container gets exactly that index. The empty state
+            // and the first creation name the same place, so nothing has to be predicted
+            // twice.
+            if want == crate::tab::Tab::Containers && crate::state::trail_len() == 0 {
+                let n = crate::state::current_snapshot().containers.len();
+                crate::state::enter_container(ph2d_timeline::EnterStep {
+                    container: n.saturating_sub(1),
+                    lane: 0,
+                    strip: None,
+                });
             }
             EventOutcome::Consumed
         }
@@ -249,7 +260,7 @@ fn stack_event(
 ) -> Option<EventOutcome> {
     match ev {
         WidgetEvent::Click(id) => stack_click(state, id)
-            .or_else(|| strip_menu_click(id, host))
+            .or_else(|| strip_menu_click(state, id, host))
             .or_else(|| lane_menu_click(id, host)),
         // Grabbing (or clicking into) the weight field OPENS the undo bracket.
         //
@@ -348,6 +359,7 @@ fn lane_menu_click(
 /// confirm it still exists: a strip deleted between the menu opening and the row
 /// being clicked resolves to nothing. The action expires with its target.
 fn strip_menu_click(
+    state: &mut TimelinePanelState,
     id: ph2d_editor_core::NodeId,
     host: &mut dyn PanelHostInternal,
 ) -> Option<EventOutcome> {
@@ -388,8 +400,13 @@ fn strip_menu_click(
             state::enter_container(ph2d_timeline::EnterStep {
                 container: c,
                 lane,
-                strip: id_,
+                strip: Some(id_),
             });
+            // A container's interior is the **Containers** tab's half — Arrange is always
+            // the scene (`tab::Tab::scene_root`). Entering is therefore a change of TAB, and
+            // walking in without it would leave the animator on a tab that has just stopped
+            // publishing the trail: the click would do nothing visible at all.
+            crate::state::set_tab(state, crate::tab::Tab::Containers);
         }
         host.store_mut().close_context_menu();
         host.store_mut().consume_last_context_menu();
@@ -433,13 +450,24 @@ fn strip_menu_click(
 
 /// The clip stack's chrome (ADR-0115): "+ Lane", and each lane's mute and
 /// "+ Strip". `None` means "not one of ours" — the caller falls through.
-fn stack_click(state: &mut TimelinePanelState, id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
+fn stack_click(
+    state: &mut TimelinePanelState,
+    id: ph2d_editor_core::NodeId,
+) -> Option<EventOutcome> {
     if id == ids::TIMELINE_ADD_LANE {
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddLane);
         return Some(EventOutcome::Consumed);
     }
+    // **New container** — the asset, then the tab opens it. The two halves of "New Symbol".
+    //
+    // The index is not a guess: `TimelineDoc::add_container` APPENDS and refuses nothing
+    // (ADR-0133 measured no resource that justifies a cap), so the container about to be
+    // born is `containers.len()`, and a gate pins that so a future cap cannot make this
+    // silently open the wrong one.
     if id == ids::TIMELINE_ADD_CONTAINER {
+        let next = crate::state::current_snapshot().containers.len();
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddContainer);
+        crate::state::open_container_root(state, next);
         return Some(EventOutcome::Consumed);
     }
     // The breadcrumb: segment 0 is the scene root (leave everything), segment `n` pops OUT to
@@ -453,14 +481,17 @@ fn stack_click(state: &mut TimelinePanelState, id: ph2d_editor_core::NodeId) -> 
         if let Some(d) = crate::breadcrumb::depth_of_slot(depth, crate::state::edit_path().len()) {
             crate::state::pop_to_depth(d);
         }
-        // Every place the trail names is an ARRANGE place, so clicking one also lands the
-        // panel on the Arrange tab. It is what makes the trail a way BACK from the Keys tab
+        // Every segment names a STACK, so clicking one also lands the panel on the tab that
+        // shows that stack: the root is the scene (**Arrange**), every other level is a
+        // container (**Containers**). It is what makes the trail a way BACK from the Keys tab
         // (Enio, 2026-07-20: *"em keys não consigo voltar direto para Jump"*): the trailing
         // segment's pop is a no-op, and without the tab switch the click did nothing at all.
-        if state.tab != crate::tab::Tab::Arrange {
-            state.tab = crate::tab::Tab::Arrange;
-            crate::state::drop_row_gestures(state);
-        }
+        let want = if crate::state::trail_len() == 0 {
+            crate::tab::Tab::Arrange
+        } else {
+            crate::tab::Tab::Containers
+        };
+        crate::state::set_tab(state, want);
         return Some(EventOutcome::Consumed);
     }
     if let Some(lane) = ids::TIMELINE_LANE_MUTE.iter().position(|&b| b == id) {
@@ -478,20 +509,31 @@ fn stack_click(state: &mut TimelinePanelState, id: ph2d_editor_core::NodeId) -> 
     if let Some(lane) = ids::TIMELINE_LANE_ADD_STRIP.iter().position(|&b| b == id) {
         let snap = crate::state::current_snapshot();
         if lane < snap.lanes.len() {
-            // The ACTIVE clip, dropped AT THE PLAYHEAD — the clip you are looking
-            // at, where you are looking.
+            // **The ACTIVE SOURCE, dropped AT THE PLAYHEAD** — what the dropdown names, where
+            // you are looking. A clip or a container: placing is the one gesture both kinds
+            // share (ADR-0133), and it is what a container was missing.
             let t = snap.time_seconds.max(0.0);
-            // The clip's EFFECTIVE length (last key, not authored duration) — the same number
-            // `add_strip` sizes the slice to, so the strip is born at speed 1 instead of crammed.
-            // Only an empty clip (no keys) falls back to a grabbable minimum.
-            let len = if snap.clip_length_seconds > 0.0 {
-                snap.clip_length_seconds
-            } else {
-                MIN_NEW_STRIP_S
+            let (source, len) = match state.source_container {
+                Some(c) => (
+                    ph2d_timeline::StripSource::Container(u16::try_from(c).unwrap_or(u16::MAX)),
+                    snap.containers.get(c).map_or(0.0, |v| v.length),
+                ),
+                None => (
+                    ph2d_timeline::StripSource::Clip(
+                        u16::try_from(snap.active_clip).unwrap_or(u16::MAX),
+                    ),
+                    // The clip's EFFECTIVE length (last key, not authored duration) — the
+                    // same number `add_strip` sizes the slice to, so the strip is born at
+                    // speed 1 instead of crammed.
+                    snap.clip_length_seconds,
+                ),
             };
+            // Only an EMPTY source (no keys, no strips inside) falls back to a grabbable
+            // minimum: a zero-width strip is one nobody can grab to fix.
+            let len = if len > 0.0 { len } else { MIN_NEW_STRIP_S };
             crate::state::push_intent(ph2d_timeline::TimelineIntent::AddStrip {
                 lane,
-                clip: snap.active_clip,
+                source,
                 t_start: t,
                 t_end: t + len,
             });

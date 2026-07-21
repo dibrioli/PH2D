@@ -37,7 +37,7 @@ fn lane_with_strip(st: &mut TimelineState, ph: &mut Playhead, clip: usize, t0: f
         ph,
         I::AddStrip {
             lane,
-            clip,
+            source: ph2d_timeline::StripSource::Clip(u16::try_from(clip).unwrap()),
             t_start: t0,
             t_end: t1,
         },

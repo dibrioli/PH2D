@@ -17,6 +17,7 @@
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_timeline::{StripId, TimelineIntent, TimelineViewSnapshot};
+use ph2d_tokens::ROW_H_PX;
 
 use crate::state::{self, StripDrag, TimelinePanelState};
 
@@ -42,6 +43,8 @@ pub(crate) fn apply(
             state::push_intent(TimelineIntent::BeginEdit);
             state.strip_drag = Some(StripDrag {
                 lane,
+                start_lane: lane,
+                start_y: g.y,
                 id: StripId(strip),
                 edge,
                 start_x: g.x,
@@ -61,7 +64,7 @@ pub(crate) fn apply(
         }
         GesturePhase::Update | GesturePhase::End => {
             if let Some(d) = state.strip_drag {
-                emit(state, px_per_s, snap, d, g.x);
+                emit(state, px_per_s, snap, d, g.x, g.y);
             }
             if matches!(g.phase, GesturePhase::End) {
                 state.strip_drag = None;
@@ -80,11 +83,12 @@ pub(crate) fn apply(
 
 /// Turn the cursor's x into the intent this drag means.
 fn emit(
-    state: &TimelinePanelState,
+    state: &mut TimelinePanelState,
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
     d: StripDrag,
     x: f32,
+    y: f32,
 ) {
     let dt = f64::from(x - d.start_x) / px_per_s;
     let (a0, b0) = d.start_span;
@@ -171,15 +175,55 @@ fn emit(
                 }
             }
         }
-        // The body SLIDES, rigidly. Clamped at zero so a strip cannot be dragged
-        // off the front of the timeline and become unreachable.
-        _ => TimelineIntent::MoveStrip {
-            lane: d.lane,
-            id: d.id,
-            t_start: snapped(state, snap, (a0 + dt).max(0.0)),
-        },
+        // **The body SLIDES in BOTH axes**: rigidly in time, and across lanes.
+        //
+        // Vertically it was pinned, which meant the only way a strip could reach another
+        // lane was to be deleted and re-added — and a container, which could not be placed
+        // at all, had nowhere to be dragged to (Enio, 2026-07-21). Clamped at zero in time so
+        // a strip cannot be dragged off the front of the timeline and become unreachable, and
+        // clamped to the lanes that EXIST vertically for the same reason.
+        _ => {
+            let to_lane = lane_at(d, y, snap.lanes.len());
+            let intent = TimelineIntent::MoveStrip {
+                lane: d.lane,
+                to_lane,
+                id: d.id,
+                t_start: snapped(state, snap, (a0 + dt).max(0.0)),
+            };
+            // The drag now holds the lane the strip is ON, not the one it came from: the
+            // NEXT frame's intent has to name where the document has already put it.
+            if let Some(cur) = state.strip_drag.as_mut() {
+                cur.lane = to_lane;
+            }
+            intent
+        }
     };
     state::push_intent(intent);
+}
+
+/// **Which lane the pointer has carried the strip to** — a whole number of rows from where the
+/// drag began.
+///
+/// Every lane row is exactly one [`ROW_H_PX`] tall (`geom::stack_bands` lays them out from
+/// that constant), so crossing rows is arithmetic on the pointer's travel and needs no
+/// geometry threaded down here. Rounding means the strip changes lane at the halfway point,
+/// which is where the pointer visually enters the next row.
+///
+/// Measured from `start_lane`/`start_y` — the ABSOLUTE pair — never accumulated per frame: a
+/// drag that reads back its own output drifts (`arch_no_absolute_drag_pattern`).
+fn lane_at(d: StripDrag, y: f32, lanes: usize) -> usize {
+    if lanes == 0 {
+        return d.lane;
+    }
+    let rows = ((y - d.start_y) / ROW_H_PX).round();
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "rows is a small round number of lane heights"
+    )]
+    let rows = rows as i64;
+    let target = i64::try_from(d.start_lane).unwrap_or(0) + rows;
+    let last = i64::try_from(lanes - 1).unwrap_or(0);
+    usize::try_from(target.clamp(0, last)).unwrap_or(0) // CLAMP-OK: measured bounds, min<=max
 }
 
 /// The panel's grip code for a strip's fade-in (mirrors `stack_lane_paint`).

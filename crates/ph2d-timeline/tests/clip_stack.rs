@@ -330,7 +330,7 @@ mod intents {
             &mut ph,
             I::AddStrip {
                 lane: 0,
-                clip: 0,
+                source: ph2d_timeline::StripSource::Clip(0),
                 t_start: 1.0,
                 t_end: 3.0,
             },
@@ -342,6 +342,7 @@ mod intents {
             &mut ph,
             I::MoveStrip {
                 lane: 0,
+                to_lane: 0,
                 id,
                 t_start: 5.0,
             },
@@ -375,7 +376,7 @@ mod intents {
             &mut ph,
             I::AddStrip {
                 lane: 0,
-                clip: 0,
+                source: ph2d_timeline::StripSource::Clip(0),
                 t_start: 0.0,
                 t_end: 4.0,
             },
@@ -412,7 +413,7 @@ mod intents {
             &mut ph,
             I::AddStrip {
                 lane: 0,
-                clip: 0,
+                source: ph2d_timeline::StripSource::Clip(0),
                 t_start: 0.0,
                 t_end: 2.0,
             },
@@ -451,7 +452,7 @@ mod intents {
                 &mut ph,
                 I::AddStrip {
                     lane: 0,
-                    clip: 0,
+                    source: ph2d_timeline::StripSource::Clip(0),
                     t_start: a,
                     t_end: b,
                 },
@@ -463,6 +464,7 @@ mod intents {
             &mut ph,
             I::MoveStrip {
                 lane: 0,
+                to_lane: 0,
                 id: first,
                 t_start: 8.0,
             },
@@ -486,7 +488,7 @@ mod intents {
             &mut ph,
             I::AddStrip {
                 lane: 0,
-                clip: 0,
+                source: ph2d_timeline::StripSource::Clip(0),
                 t_start: 0.0,
                 t_end: 2.0,
             },
@@ -564,7 +566,7 @@ mod intents {
             &mut ph,
             I::AddStrip {
                 lane: 0,
-                clip: 0,
+                source: ph2d_timeline::StripSource::Clip(0),
                 t_start: 0.0,
                 t_end: 2.0,
             },
@@ -636,6 +638,7 @@ mod intents {
             &mut ph,
             I::MoveStrip {
                 lane: 0,
+                to_lane: 0,
                 id,
                 t_start: 4.0,
             },
@@ -821,7 +824,7 @@ fn two_fades_cannot_take_the_strip_twice() {
         &mut ph2d_core::Playhead::new(1.0 / 60.0),
         I::AddStrip {
             lane: 0,
-            clip: 0,
+            source: ph2d_timeline::StripSource::Clip(0),
             t_start: 0.0,
             t_end: 2.0,
         },

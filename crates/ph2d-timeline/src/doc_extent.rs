@@ -52,7 +52,19 @@ impl TimelineDoc {
     /// the travel the artist authored never played (Enio, 2026-07-20).
     #[must_use]
     pub fn stack_end_seconds(&self) -> Option<f64> {
-        self.stack
+        self.host_end_seconds(crate::StackHost::Document)
+    }
+
+    /// [`Self::stack_end_seconds`] for ANY stack — the document's, or a container's interior
+    /// (ADR-0133).
+    ///
+    /// The scene's answer delegates here rather than the other way round: "where does this
+    /// stack end" is one question, and a container answering it by a second rule is how an
+    /// interior's ruler comes to disagree with the scene's about the same strips. `None` for
+    /// a host that holds no strip — or that does not exist.
+    #[must_use]
+    pub fn host_end_seconds(&self, host: crate::StackHost) -> Option<f64> {
+        self.host_stack(host)?
             .iter()
             .flat_map(|l| &l.strips)
             .map(crate::ClipStrip::lead_end)

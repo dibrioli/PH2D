@@ -299,7 +299,11 @@ fn a_stack_edit_lands_in_the_container_the_animator_opened() {
 
     // Aberto: a lane vai para o container, e o documento não se move.
     // Só o CONTAINER roteia um edit; lane/strip do passo não participam do edit_host.
-    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane: 0, strip: ph2d_timeline::StripId(0) }];
+    st.edit_path = vec![ph2d_timeline::EnterStep {
+        container: c,
+        lane: 0,
+        strip: Some(ph2d_timeline::StripId(0)),
+    }];
     apply_intent(&mut st, &mut ph, TimelineIntent::AddLane);
     assert_eq!(
         st.doc.stack().len(),
@@ -343,7 +347,7 @@ fn moving_a_strip_inside_a_container_keeps_its_lane_sorted() {
         StackHost::Container(c) => vec![ph2d_timeline::EnterStep {
             container: c,
             lane: 0,
-            strip: ph2d_timeline::StripId(0),
+            strip: Some(ph2d_timeline::StripId(0)),
         }],
     };
     let mut ph = Playhead::default();
@@ -353,6 +357,7 @@ fn moving_a_strip_inside_a_container_keeps_its_lane_sorted() {
         &mut ph,
         TimelineIntent::MoveStrip {
             lane: 0,
+            to_lane: 0,
             id: a,
             t_start: 8.0,
         },

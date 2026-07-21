@@ -48,7 +48,27 @@ thread_local! {
     /// state, published to the shell like `KEYS_MODE`: a document does not remember which
     /// container was open, exactly as Animate's does not.
     static OPEN_CONTAINER: RefCell<Vec<ph2d_timeline::EnterStep>> = const { RefCell::new(Vec::new()) };
+    /// **The panel is showing the SCENE's stack** — the Arrange tab ([`crate::tab::Tab::scene_root`]).
+    /// Published every paint beside [`KEYS_MODE`], and it is what makes the trail a property of
+    /// the *Containers* tab rather than a hidden mode of Arrange: with it set, [`edit_path`]
+    /// publishes nothing however deep the animator has walked, so Arrange cannot silently
+    /// become a container's interior. Starts `false` because [`crate::tab::Tab::default`] is
+    /// Keys, which is not the scene root — and the trail is empty there anyway, so both
+    /// answers are `Document` until somebody walks somewhere.
+    static SCENE_ROOT: Cell<bool> = const { Cell::new(false) };
 }
+
+/// **Navigation** — the tab/trail publish channel, in a sibling module (LOC cap).
+///
+/// `pub use` rather than `pub mod`: `state::edit_path` is the shell's door and it must not
+/// move house because a file got long.
+#[path = "state_nav.rs"]
+mod state_nav;
+pub use state_nav::{edit_host, edit_path, keys_mode};
+pub(crate) use state_nav::{
+    enter_container, open_container_root, pop_to_depth, publish_keys_mode, publish_scene_root,
+    set_tab, trail_len,
+};
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
 /// time axis (pan + zoom). Wired in E6; `Default` satisfies the
@@ -107,6 +127,14 @@ pub struct TimelinePanelState {
     /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
     /// never saved, and never the meaning of an edit.
     pub tab: crate::tab::Tab,
+    /// **The container half of the source selection** — `Some(i)` when the source dropdown
+    /// last picked a CONTAINER, `None` when it last picked a clip (the clip half is the
+    /// document's own `active_clip`, because editing keys is an edit and has to be undoable).
+    ///
+    /// Together they answer ONE question — *what does the lane's `+` place?* — and they are
+    /// kept apart so switching tabs does not lose the other half: picking a clip in Keys must
+    /// not forget which container Arrange was about to drop.
+    pub source_container: Option<usize>,
     /// The Summary channel's column lock, toggled by its padlock. **Open by
     /// default** (Enio, 2026-07-11): clicking a key selects just that key.
     /// Close it and grabbing any single key grabs its whole time column, so
@@ -256,8 +284,15 @@ pub struct LoopDrag {
 /// reads back its own output drifts.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StripDrag {
-    /// Which lane the strip sits on.
+    /// Which lane the strip sits on **right now** — it FOLLOWS a cross-lane drag, because the
+    /// next frame's intent has to name the lane the strip has already moved to.
     pub lane: usize,
+    /// The lane it started on, and the pointer `y` it started at — the pair the row-crossing
+    /// is measured from. Absolute, never accumulated per frame, for the same reason
+    /// `start_span` is (`arch_no_absolute_drag_pattern`).
+    pub start_lane: usize,
+    /// Pointer y (global px) when the drag began.
+    pub start_y: f32,
     /// The strip's stable identity — NOT its index: the lane re-sorts as the strip
     /// crosses its neighbour, and an index-anchored drag would swap victims mid-air.
     pub id: ph2d_timeline::StripId,
@@ -374,6 +409,7 @@ impl Default for TimelinePanelState {
             expanded: Vec::new(),
             speed_view: false,
             tab: crate::tab::Tab::default(),
+            source_container: None,
             column_lock: false,
             handle_drag: None,
             anchor_drag: None,
@@ -440,58 +476,6 @@ pub fn set_current_timeline(snapshot: Option<TimelineViewSnapshot>) {
 /// The snapshot the host published this frame, or a default empty one.
 pub(crate) fn current_snapshot() -> TimelineViewSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().clone().unwrap_or_default())
-}
-
-/// Publish whether the panel is on the Keys tab (called by `paint` each frame).
-pub(crate) fn publish_keys_mode(on: bool) {
-    KEYS_MODE.with(|c| c.set(on));
-}
-
-/// **Is the timeline panel on the Keys tab?** Read by the shell to drive the CLIP
-/// playhead and solo the active clip (the AE precomp model). Reflects the panel's
-/// last paint, so it lags a tab switch by at most one frame — imperceptible, and
-/// the same latency every panel→shell mirror here already has.
-#[must_use]
-pub fn keys_mode() -> bool {
-    KEYS_MODE.with(Cell::get)
-}
-
-/// **Enter a container** (or leave, with `None`) — the breadcrumb's whole job.
-///
-/// Panel-local, and taking effect on the next frame's publish: the shell reads
-/// [`edit_host`] before draining intents, so the edit that follows a click lands in the
-/// stack the animator is looking at.
-pub(crate) fn enter_container(step: ph2d_timeline::EnterStep) {
-    OPEN_CONTAINER.with(|p| p.borrow_mut().push(step));
-}
-
-/// Pop the trail back to `depth` levels (0 = the scene root). Clicking where you already are
-/// truncates to the length it already has, which is why the trailing segment is safe to paint
-/// as part of the trail rather than special-cased.
-pub(crate) fn pop_to_depth(depth: usize) {
-    OPEN_CONTAINER.with(|p| p.borrow_mut().truncate(depth));
-}
-
-/// **How deep the animator has walked**, outermost first — read by the shell each frame and
-/// stamped onto `TimelineState::edit_path` before intents drain, the same channel
-/// [`keys_mode`] rides.
-#[must_use]
-pub fn edit_path() -> Vec<ph2d_timeline::EnterStep> {
-    OPEN_CONTAINER.with(|p| p.borrow().clone())
-}
-
-/// **Which stack an edit lands in** — the innermost of [`edit_path`]. Derived, never stored
-/// beside it: two answers to "where is the animator" would drift the first time one of them
-/// was updated alone.
-#[must_use]
-pub fn edit_host() -> ph2d_timeline::StackHost {
-    OPEN_CONTAINER.with(|p| {
-        p.borrow()
-            .last()
-            .map_or(ph2d_timeline::StackHost::Document, |step| {
-                ph2d_timeline::StackHost::Container(step.container)
-            })
-    })
 }
 
 /// Raise a dope-sheet edit intent (called by `interact` while draining gestures).

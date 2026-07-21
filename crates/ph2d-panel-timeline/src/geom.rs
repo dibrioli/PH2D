@@ -113,10 +113,12 @@ pub(crate) const MIN_LANE_LABEL_W: f32 = 148.0; // LITERAL-PX-OK: lane controls 
 /// stack it is not showing — the rule is *a column has a minimum because of what
 /// lives in it*, and a tab decides what lives in it.
 ///
-/// The Arrange floor does NOT ask whether lanes exist: the tab's header carries the
-/// "+ Lane"/"+ Container" pair even over an empty stack (they are how the first lane
-/// is made), and the lanes-only floor let exactly that state crush "+ Container"
-/// down to a bare "+" (Enio's screenshot, 2026-07-20).
+/// The lanes floor does NOT ask whether lanes exist: a lanes tab's header carries its ADD
+/// buttons even over an empty stack (they are how the first lane is made), and the
+/// lanes-only floor let exactly that state crush "+ Container" down to a bare "+" (Enio's
+/// screenshot, 2026-07-20). The pair now lives on the **Containers** tab (`stack_add_header`
+/// — Arrange makes no containers), and the floor stays shared: both lanes tabs draw the same
+/// lane rows, and it is the row controls that set the minimum.
 pub(crate) fn min_label_w(_snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     if tab.shows_lanes() {
         MIN_LANE_LABEL_W

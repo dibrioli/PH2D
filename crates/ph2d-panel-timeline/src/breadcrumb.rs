@@ -120,10 +120,15 @@ pub(crate) fn status(snap: &TimelineViewSnapshot) -> Option<Status> {
         // is navigation, and clicking it is the way back to Arrange.
         return None;
     }
-    Some(
-        snap.host_map
-            .map_or(Status::NotPlaying, |m| Status::Plays(m.t0, m.t1)),
-    )
+    Some(match snap.host_map {
+        // A container instanced NOWHERE still has a map — the identity over its own extent,
+        // which is what makes its interior authorable — but printing that as a scene window
+        // would label the container's own axis with the scene's name. Three states, because
+        // there are three facts: it plays HERE, it plays SOMEWHERE ELSE, it plays nowhere.
+        Some(m) if snap.host_placed => Status::Plays(m.t0, m.t1),
+        Some(_) => Status::NotPlaced,
+        None => Status::NotPlaying,
+    })
 }
 
 /// What the readout says. An enum rather than a string so `width` can ask whether there IS
@@ -135,6 +140,9 @@ pub(crate) enum Status {
     /// The container does not play at the current second — which is why the ruler draws no
     /// playhead.
     NotPlaying,
+    /// The container is instanced NOWHERE. Its interior is still authorable (the ruler counts
+    /// its own seconds), but there is no scene window to name.
+    NotPlaced,
 }
 
 impl Status {
@@ -145,6 +153,7 @@ impl Status {
                 ph2d_i18n::tr("panel.timeline.host_window")
             ),
             Self::NotPlaying => ph2d_i18n::tr("panel.timeline.host_not_playing").to_owned(),
+            Self::NotPlaced => ph2d_i18n::tr("panel.timeline.host_not_placed").to_owned(),
         }
     }
 }
@@ -230,6 +239,9 @@ mod tests {
             } else {
                 Vec::new()
             },
+            // A map that came from an INSTANCE — the ordinary case. The unplaced one has its
+            // own gate below, and it is a different sentence.
+            host_placed: map.is_some(),
             host_map: map,
             ..TimelineViewSnapshot::default()
         }
@@ -278,7 +290,11 @@ mod tests {
         s.keys_mode = true;
         assert_eq!(status(&s), None);
         s.keys_mode = false;
-        assert_eq!(status(&s), Some(Status::NotPlaying), "de volta ao Arrange, ele fala");
+        assert_eq!(
+            status(&s),
+            Some(Status::NotPlaying),
+            "de volta ao Arrange, ele fala"
+        );
     }
 
     /// **When it is not playing here, the readout SAYS so.**
@@ -293,6 +309,36 @@ mod tests {
             status(&s).unwrap().text(),
             Status::Plays(4.0, 12.0).text(),
             "the two states must not read the same"
+        );
+    }
+
+    /// **"Não está colocado" e "não toca aqui" são frases DIFERENTES, e as três diferem.**
+    ///
+    /// Um container aberto pela aba Containers pode não ter instância nenhuma: ele ganha o
+    /// mapa IDENTIDADE sobre a própria extensão (é o que torna o interior autorável), e ler
+    /// isso como `Plays(0, 3)` rotularia o eixo do PRÓPRIO container com o nome da cena — um
+    /// número errado apresentado como certo.
+    #[test]
+    fn a_container_that_is_placed_nowhere_says_that_and_not_a_scene_window() {
+        let mut s = snap(true, Some(map()));
+        s.host_placed = false;
+        assert_eq!(status(&s), Some(Status::NotPlaced));
+        let (placed, unplaced, absent) = (
+            Status::Plays(4.0, 12.0).text(),
+            Status::NotPlaced.text(),
+            Status::NotPlaying.text(),
+        );
+        assert_ne!(
+            unplaced, placed,
+            "colocado e não-colocado não podem coincidir"
+        );
+        assert_ne!(
+            unplaced, absent,
+            "'não colocado' (não existe instância) ≠ 'não toca aqui' (existe, noutro segundo)"
+        );
+        assert!(
+            !unplaced.contains("4.00") && !unplaced.contains("0.00"),
+            "sem instância não há janela de cena a imprimir, veio {unplaced:?}"
         );
     }
 

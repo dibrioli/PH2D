@@ -154,6 +154,43 @@ impl TimelineDoc {
         true
     }
 
+    /// **Move a strip to `t_start`, on `to_lane`** — the one door for a body slide, whichever
+    /// axis it travelled on.
+    ///
+    /// The strip is TAKEN and RE-INSERTED, never rebuilt: a strip carries identity, fades,
+    /// leads, trim marks, loop mode and speed, and "remove then add" would silently drop all
+    /// of them (and mint a new [`StripId`], breaking the drag that is still holding the old
+    /// one). Re-inserting also puts it back in `t_start` order, which is the lane's documented
+    /// invariant and what `ClipLane::blend_in` reads to find a strip's neighbour — so a slide
+    /// past a neighbour re-derives the crossfade against the right one.
+    ///
+    /// `false` when either lane, or the strip, is not there. A `to_lane` out of range is a
+    /// REFUSAL, never a silent drop: the strip stays where it is.
+    pub fn move_strip_in(
+        &mut self,
+        host: StackHost,
+        lane: usize,
+        to_lane: usize,
+        id: StripId,
+        t_start: f64,
+    ) -> bool {
+        let Some(lanes) = self.host_stack_mut(host) else {
+            return false;
+        };
+        if lane >= lanes.len() || to_lane >= lanes.len() {
+            return false;
+        }
+        let Some(i) = lanes[lane].index_of(id) else {
+            return false;
+        };
+        let mut strip = lanes[lane].strips.remove(i);
+        let span = strip.span();
+        strip.t_start = t_start;
+        strip.t_end = t_start + span; // rigid: the span rides along
+        lanes[to_lane].insert(strip);
+        true
+    }
+
     /// Copy a strip of `host`'s stack and lay the copy immediately after the original.
     ///
     /// Same rule as the document-level [`TimelineDoc::duplicate_strip`] — adjacent, never

@@ -115,6 +115,12 @@ fn entering_by_the_menu_and_leaving_by_the_crumb_is_a_round_trip() {
         StackHost::Container(0),
         "'Enter Container' tem de ENTRAR — se isto falha, a linha do menu está morta"
     );
+    assert_eq!(
+        state.tab,
+        ph2d_panel_timeline::tab::Tab::Containers,
+        "entrar é uma troca de ABA: Arrange é sempre a CENA, então sem ela o clique deixaria \
+         o artista numa aba que acabou de parar de publicar a trilha — nada visível mudaria"
+    );
 
     let _ = host
         .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[0]));
@@ -177,7 +183,11 @@ fn entering_a_container_swaps_which_lanes_the_panel_sees() {
     assert!(snap.crumbs.is_empty(), "fora: não há trilha a mostrar");
 
     // Só o CONTAINER roteia a vista; lane/strip do passo não participam aqui.
-    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane: 0, strip: ph2d_timeline::StripId(0) }];
+    st.edit_path = vec![ph2d_timeline::EnterStep {
+        container: c,
+        lane: 0,
+        strip: Some(ph2d_timeline::StripId(0)),
+    }];
     snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
     assert_eq!(snap.lanes.len(), 2, "dentro: as lanes do container");
     assert_eq!(
@@ -251,7 +261,11 @@ fn the_ruler_inside_a_container_measures_the_containers_clock() {
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
     // O passo lembra o STRIP de entrada — é dele que o mapa/marca derivam agora.
-    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
+    st.edit_path = vec![ph2d_timeline::EnterStep {
+        container: c,
+        lane,
+        strip: Some(strip),
+    }];
 
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(5.5); // meio segundo DENTRO da instância
@@ -333,7 +347,11 @@ fn open_container_at(start: f64, playhead: f64) -> ph2d_timeline::TimelineViewSn
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
     // O passo lembra o STRIP de entrada — é dele que o mapa/marca derivam agora.
-    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
+    st.edit_path = vec![ph2d_timeline::EnterStep {
+        container: c,
+        lane,
+        strip: Some(strip),
+    }];
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(playhead);
     st.doc.prime_stack(playhead);
@@ -602,11 +620,18 @@ fn the_keys_ruler_scrubs_raw_inside_a_container() {
         .unwrap();
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
+    st.edit_path = vec![ph2d_timeline::EnterStep {
+        container: c,
+        lane,
+        strip: Some(strip),
+    }];
     let mut snap = TimelineViewSnapshot::default();
     // A publicação da ABA KEYS: o relógio passado é o do clip, keys_mode = true.
     snap.rebuild(&mut st, &ph2d_core::Playhead::default(), true);
-    assert!(!snap.crumbs.is_empty() && snap.host_map.is_none(), "a armação do bug");
+    assert!(
+        !snap.crumbs.is_empty() && snap.host_map.is_none(),
+        "a armação do bug"
+    );
     set_current_timeline(Some(snap));
 
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
@@ -633,13 +658,16 @@ fn the_keys_ruler_scrubs_raw_inside_a_container() {
     );
 }
 
-/// **Clicar na trilha VOLTA para o Arrange** — inclusive no segmento onde você já está.
+/// **Cada segmento da trilha leva à ABA que mostra AQUELE stack** — container → Containers,
+/// raiz → Arrange.
 ///
 /// O pop do segmento final é no-op de propósito; sem a troca de aba o clique não fazia NADA
 /// na Keys, e não havia caminho direto de volta ao interior (Enio, 2026-07-20: *"em keys não
-/// consigo voltar direto para Jump"*). Todo lugar que a trilha nomeia é um lugar do Arrange.
+/// consigo voltar direto para Jump"*). O que mudou desde então é PARA ONDE ele volta: Arrange
+/// é sempre a CENA (`tab::Tab::scene_root`), então o interior de um container mora na aba
+/// Containers, e mandar os dois segmentos para a mesma aba faria um deles mentir.
 #[test]
-fn clicking_the_trail_from_keys_lands_on_arrange() {
+fn clicking_the_trail_from_keys_lands_on_the_tab_that_shows_that_stack() {
     use ph2d_panel_timeline::tab::Tab;
     let mut doc = TimelineDoc::new();
     let c = doc.add_container("Jump".into());
@@ -676,11 +704,13 @@ fn clicking_the_trail_from_keys_lands_on_arrange() {
 
     // Na Keys, o clique no segmento FINAL ("Jump") não muda a profundidade — muda a ABA.
     state.tab = Tab::Keys;
-    let _ = host.apply_panel_event::<TimelinePanel>(
-        &mut state,
-        WidgetEvent::Click(ids::TIMELINE_CRUMB[1]),
+    let _ = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[1]));
+    assert_eq!(
+        state.tab,
+        Tab::Containers,
+        "o interior de um container é a aba Containers — Arrange é a CENA"
     );
-    assert_eq!(state.tab, Tab::Arrange, "o caminho de volta ao interior");
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
         StackHost::Container(c),
@@ -689,10 +719,8 @@ fn clicking_the_trail_from_keys_lands_on_arrange() {
 
     // E o "Scene" da Keys leva à CENA do Arrange.
     state.tab = Tab::Keys;
-    let _ = host.apply_panel_event::<TimelinePanel>(
-        &mut state,
-        WidgetEvent::Click(ids::TIMELINE_CRUMB[0]),
-    );
+    let _ = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[0]));
     set_current_timeline(None);
     assert_eq!(state.tab, Tab::Arrange);
     assert_eq!(ph2d_panel_timeline::state::edit_host(), StackHost::Document);

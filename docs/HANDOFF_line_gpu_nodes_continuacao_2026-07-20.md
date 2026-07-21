@@ -197,6 +197,15 @@ GPU-residente (o `sim_state_on_gpu` exige o laço inteiro). É o item 1 revisado
 
 ---
 
+> **⚠️ A GRANDE AUDITORIA RODOU (2026-07-20, sessão seguinte)** — relatório em
+> [`HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md`](HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md):
+> broadcast misto agora RECUSA ao cook (consertado + mutação-testado) · o
+> loop-wrap starvation dos DOIS rings foi MEDIDO (101/101 evals — re-sim
+> completa a cada volta) · 3 varreduras de gate fechadas · CPU re-medida a
+> 22,31 ms/tick vs GPU 0,504 a 262k. **O §E do relatório re-ranqueia esta
+> fila** (a reforma do ring e as colunas Arc/COW entram entre o item 1 e os
+> tetos).
+
 ## §2 — Os planos a seguir (ranqueados; MEÇA antes de escolher)
 
 ⚠️ **O que esta jornada demonstrou, mas NÃO fez:** os milhões interagindo estão

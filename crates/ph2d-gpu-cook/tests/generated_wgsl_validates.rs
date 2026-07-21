@@ -72,6 +72,13 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // reads its own clock column, and the static-shape collider.
     ph2d_node_sim_step::register(&mut reg).unwrap();
     ph2d_node_sim_collide::register(&mut reg).unwrap();
+    // The value-domain combiner + router. They were covered by the RTX parity
+    // gates and MISSING here — so a WGSL typo in them passed `cargo test` on
+    // every deviceless lane, which is the one failure this sweep exists to
+    // catch (found by the 2026-07-20 audit; the list is hand-enumerated, and a
+    // hand-enumerated list rots — [[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    ph2d_node_value_math::register(&mut reg).unwrap();
+    ph2d_node_value_switch::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

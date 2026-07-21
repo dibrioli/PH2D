@@ -3086,3 +3086,100 @@ fn the_bounded_tap_reports_what_the_cpu_memo_reports() {
          {full_span}"
     );
 }
+
+/// **A broadcast port at a length the dispatch cannot pair REFUSES the cook**
+/// (the mixed-length hole ADR-0127 D3's docs named and nothing closed): a
+/// 9-element value field aimed at a 25-element flock is neither per-element
+/// (25) nor a global broadcast (1). `column_present` judges it absent, so the
+/// kernel would read the identity at EVERY index — while the CPU (`target_at`'s
+/// `_` arm) serves rows 0..9 and only falls back past them. Same document, two
+/// different fields, and no ε covers a SHAPE.
+///
+/// The cook now returns [`ph2d_gpu_cook::GpuCookError::BroadcastLengthMismatch`]
+/// and the bridge's `.is_ok()` route falls through to the CPU pump — the
+/// canonical answer, on both machines.
+///
+/// MUTATION: delete the `broadcast_length_mismatch` check in `GpuCook::cook`
+/// and this cook returns `Ok` (identity-everywhere, silently) — RED here.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_mixed_length_broadcast_port_refuses_the_cook_to_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let flock = grid_node(&mut g, 5.0); // 25 elements — the dispatch length
+    let small = grid_node(&mut g, 3.0); // 9 elements — the mismatched field
+    let field = g.add_node("value.instance_field");
+    connect(&mut g, small, field);
+    let la = g.add_node("motion.look_at");
+    connect(&mut g, flock, la);
+    g.connect(Edge {
+        from: (field, 0),
+        to: (la, 1), // target_x — a ReadBroadcast port
+        delayed: false,
+    })
+    .expect("target port");
+    g.validate(&reg)
+        .expect("well-typed — the artist can wire this");
+
+    // The plan CLAIMS it (lengths are a cook-time fact; `applicable` sees only
+    // params) — which is exactly why the refusal must live in the cook.
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, la);
+    assert!(plan.is_fully_gpu(), "the plan cannot see stream lengths");
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let got = gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    );
+    match got {
+        Err(ph2d_gpu_cook::GpuCookError::BroadcastLengthMismatch {
+            port, len, count, ..
+        }) => {
+            assert_eq!((port, len, count), (1, 9, 25), "the offender is named");
+        }
+        other => panic!(
+            "a mixed-length broadcast must refuse to the CPU, got {other:?} \
+             (an Ok here is the identity-everywhere divergence, dispatched)"
+        ),
+    }
+
+    // And the lengths broadcast CAN pair keep cooking: the same wiring with the
+    // field fed by the SAME grid (per-element) — the refusal must not overreach.
+    let mut g2 = Graph::new();
+    let flock2 = grid_node(&mut g2, 5.0);
+    let field2 = g2.add_node("value.instance_field");
+    connect(&mut g2, flock2, field2);
+    let la2 = g2.add_node("motion.look_at");
+    connect(&mut g2, flock2, la2);
+    g2.connect(Edge {
+        from: (field2, 0),
+        to: (la2, 1),
+        delayed: false,
+    })
+    .expect("target port");
+    let plan2 = ph2d_gpu_cook::plan(&g2, &reg, &reg, la2);
+    let mut gc2 = ph2d_gpu_cook::GpuCook::new();
+    gc2.cook(
+        &gpu,
+        &g2,
+        &reg,
+        &reg,
+        &plan2,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("a per-element field still cooks");
+}

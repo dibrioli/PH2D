@@ -109,9 +109,10 @@ pub(crate) struct MotionState {
     /// binds `gpu_cook.instances()` directly (zero readback) and
     /// `pump.instances` is stale — set/cleared by the bridge every frame.
     pub(crate) gpu_live: bool,
-    /// `PH2D_GPU_COOK=1` — the Fase 1 opt-in. The CPU pump stays the default
-    /// (it feeds the graph panel's readouts/probe and is the canonical path);
-    /// flipping the default is a Fase 4 decision, after the editor reads GPU.
+    /// The GPU cook path — **ON by default** since the editor learned to read a
+    /// GPU-resident frame (the tap feeds the readouts/probe/digest, Fase 4);
+    /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL
+    /// path either way (replay-hash, parity oracles — ADR-0126).
     pub(crate) gpu_enabled: bool,
 }
 

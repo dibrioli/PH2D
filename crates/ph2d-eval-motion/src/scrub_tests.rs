@@ -126,6 +126,109 @@ fn a_plain_pump_at_a_past_tick_reads_the_future() {
     );
 }
 
+/// **MEASUREMENT (2026-07-20 audit): looped playback starves the ring, forever.**
+/// Run alone: `cargo test -p ph2d-eval-motion loop_wrap -- --ignored --nocapture`.
+///
+/// `CheckpointRing::record` only appends STRICTLY FORWARD ticks (`tick <= back`
+/// is skipped as "already covered"), and eviction drops the OLDEST — so after
+/// playing past a loop's end, the ring's window sits at the loop's TAIL and a
+/// wrap to `lo` finds nothing at or before it: seed anchor, full re-sim from
+/// tick 0. The re-sim records NOTHING (every tick is ≤ the ring's back), and
+/// the forward play after the wrap records nothing either (same rule) — so
+/// EVERY wrap of a loop longer than the eviction horizon re-sims the whole
+/// history in one frame, at O(loop position) evals, forever. The GPU ring
+/// (`ph2d-gpu-cook::ring`) shares both rules and the same starvation.
+///
+/// This is a MEASUREMENT, not a red gate: the fix is an eviction/backfill
+/// policy decision (it interacts with the ring's named follow-ups — byte cap,
+/// coarse stride) and is handed to the next fatia with these numbers.
+#[test]
+#[ignore = "measurement — run alone with --nocapture"]
+fn loop_wrap_resims_the_whole_history_every_wrap() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static EVALS: AtomicUsize = AtomicUsize::new(0);
+
+    static MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("motion.test.counting"),
+        name: "motion.test.counting",
+        inputs: &[PortSpec {
+            name: "state",
+            ty: INST,
+        }],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST,
+        }],
+        effect: ph2d_nodegraph::effect::Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Counting;
+    impl NodeOp for Counting {
+        fn manifest(&self) -> &'static NodeManifest {
+            &MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            EVALS.fetch_add(1, Ordering::Relaxed);
+            let prev = match ctx.input(0).get("P") {
+                Some(Column::Vec2(v)) if !v.is_empty() => v[0][0],
+                _ => -1.0,
+            };
+            ctx.emit(Stream::new(1).with("P", Column::Vec2(vec![[prev + 1.0, 0.0]])));
+        }
+    }
+    struct COps;
+    impl OpResolver for COps {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            (ty == MAN.id).then_some(&Counting as &dyn NodeOp)
+        }
+    }
+
+    let mut g = Graph::new();
+    let c = g.add_node("motion.test.counting");
+    g.connect(Edge {
+        from: (c, 0),
+        to: (c, 0),
+        delayed: true,
+    })
+    .unwrap();
+    let scopes = TimeScopes::new();
+    let mut pump = MotionCookPump::new();
+    let ph = |t: u64| t as f64 * DT;
+
+    // A "loop" of [100, 400] — longer than RECENT_CAPACITY's horizon once the
+    // playhead has visited the tail. Play the first pass.
+    for t in 0..=400u64 {
+        pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
+    }
+    let wrap = |pump: &mut MotionCookPump, label: &str| {
+        let before = EVALS.load(Ordering::Relaxed);
+        pump.advance_or_scrub_scoped(&g, &COps, &[c], 100, ph, UV, SIZE, &scopes);
+        let cost = EVALS.load(Ordering::Relaxed) - before;
+        assert_eq!(frame_x(pump), 100.0, "{label}: the frame itself is right");
+        eprintln!("{label}: wrap to tick 100 cost {cost} evals");
+        cost
+    };
+
+    let first = wrap(&mut pump, "wrap 1 (expected: seed re-sim, ~101)");
+    for t in 101..=400u64 {
+        pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
+    }
+    let second = wrap(&mut pump, "wrap 2 (a learning ring would be O(1))");
+    eprintln!(
+        "loop-wrap starvation: first wrap {first} evals, second wrap {second} \
+         evals — a ring that could backfill would make the second ~1"
+    );
+    // Pin only the FACT the report cites (the pathology exists today); the fix
+    // flips this to a small constant and rewrites this measurement into a gate.
+    assert!(
+        second > 90,
+        "the second wrap re-simmed {second} evals — if this dropped, the ring \
+         learned to backfill: turn this measurement into the O(1) gate"
+    );
+}
+
 /// A graph edit invalidates the scrub cache: after `mark_dirty` the ring is
 /// cleared, so a scrub re-sims from the tick-0 seed under the current graph
 /// (Blender/Houdini "edit invalidates the cache") — still correct, just not

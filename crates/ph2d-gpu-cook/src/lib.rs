@@ -65,6 +65,7 @@ pub mod shape;
 pub mod stream;
 pub mod tap;
 
+pub use debug_read::read_instances;
 pub use instances::GpuInstances;
 pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
 pub use ring::GpuCheckpointRing;
@@ -95,6 +96,22 @@ pub enum GpuCookError {
     /// over-limit layout through the device's error scope, i.e. a panic, not a
     /// `Result`. The caller falls back to the CPU for the frame.
     TooManyBindings(NodeTypeId, u32, u32),
+    /// A broadcast port carries its column at a length the dispatch can neither
+    /// pair per-element nor pin to row 0 — neither the dispatch length, nor 1,
+    /// nor empty (e.g. a 3-element value field aimed at a 5-element flock).
+    ///
+    /// Judged ABSENT, the kernel would read the identity at EVERY index while
+    /// the CPU reads the real rows it has (`target_at`'s `_` arm) — a SHAPE
+    /// divergence, not an ε. Like the binding limit, it is a fact about the
+    /// STREAM (lengths exist only at cook time; the plan's `applicable` sees
+    /// params alone), so the refusal lives here and the caller falls back to
+    /// the CPU, which is canonical.
+    BroadcastLengthMismatch {
+        ty: NodeTypeId,
+        port: usize,
+        len: u32,
+        count: u32,
+    },
 }
 
 /// When a cook happens: the continuous `playhead` the kernels see, and the
@@ -203,7 +220,13 @@ pub struct GpuCook {
 /// field would have run off the end, writing a param into the next field's bytes
 /// and reading as plausible garbage. This is a slot, not an allocation per
 /// element — the headroom is free.
-pub(crate) const UNIFORM_BYTES: u64 = 128;
+///
+/// **`pub` for the budget gate** (the shell's `motion_gpu_kernel_budgets`): the
+/// packer (`encode_kernel_stage`) writes by offset arithmetic into a slice of
+/// exactly this size, so a registered kernel whose declared layout exceeds it
+/// PANICS at first dispatch in production — the gate refuses it at `cargo test`
+/// instead, over every kernel the registry actually carries.
+pub const UNIFORM_BYTES: u64 = 128;
 
 /// Ceiling on a relaxation solver's sweeps (`GridSpec::sweeps_param`). It is the
 /// SAME number the CPU reference clamps to (`motion.collide::MAX_ITERATIONS`),
@@ -396,6 +419,25 @@ impl GpuCook {
                 .resolve(&|name| resolve_param(graph, stage.node, manifest, name))
                 .bindings;
             let gather_port = gather_key_port(bindings, &inputs, count);
+            // A broadcast port at a length the dispatch cannot pair (neither
+            // per-element nor row-0) would be judged absent and read identity at
+            // EVERY index while the CPU reads its real rows — a shape divergence.
+            // Refuse the frame; the caller recedes to the canonical CPU (the same
+            // door as the binding limit below).
+            if let Some((port, len)) =
+                gather::broadcast_length_mismatch(gather_port, count, bindings, |b| {
+                    inputs
+                        .get(b.port)
+                        .map(|s| (s.count, s.cols.contains_key(b.column)))
+                })
+            {
+                return Err(GpuCookError::BroadcastLengthMismatch {
+                    ty: stage.ty,
+                    port,
+                    len,
+                    count,
+                });
+            }
             let needed = codegen::storage_bindings(bindings, |b| {
                 column_present(gather_port, count, &inputs, b)
             });
@@ -629,43 +671,4 @@ pub(crate) fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         })
-}
-
-/// Read the cooked instances back to the CPU — **the deliberate boundary
-/// crossing** for the parity gates and any future canonical need (ADR-0126:
-/// if the replay ever wants a value, it comes from the CPU; this readback
-/// exists to CHECK the GPU, not to feed the frame). Blocks on the GPU.
-pub fn read_instances(
-    gpu: &GpuContext,
-    instances: &GpuInstances,
-) -> Vec<ph2d_render::RenderInstance> {
-    let n = instances.len as usize;
-    if n == 0 {
-        return Vec::new();
-    }
-    let bytes = (n * std::mem::size_of::<ph2d_render::RenderInstance>()) as u64;
-    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("ph2d-gpu-cook readback"),
-        size: bytes,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut encoder = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    encoder.copy_buffer_to_buffer(&instances.buffer, 0, &staging, 0, bytes);
-    gpu.queue.submit(Some(encoder.finish()));
-    let slice = staging.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    rx.recv()
-        .expect("map_async callback ran")
-        .expect("readback map succeeded");
-    let out: Vec<ph2d_render::RenderInstance> =
-        bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
-    staging.unmap();
-    out
 }

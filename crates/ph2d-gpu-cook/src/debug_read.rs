@@ -34,7 +34,7 @@
 //! `retain_streams_for_debug`, which pins buffers past
 //! [`crate::BufferPool::reclaim`] ([[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]]).
 
-use crate::{GpuCook, GpuStream};
+use crate::{GpuCook, GpuInstances, GpuStream};
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::graph::NodeId;
 
@@ -118,4 +118,43 @@ impl GpuCook {
         staging.unmap();
         Some(out)
     }
+}
+
+/// Read the cooked instances back to the CPU — **the deliberate boundary
+/// crossing** for the parity gates and any future canonical need (ADR-0126:
+/// if the replay ever wants a value, it comes from the CPU; this readback
+/// exists to CHECK the GPU, not to feed the frame). Blocks on the GPU.
+pub fn read_instances(
+    gpu: &GpuContext,
+    instances: &GpuInstances,
+) -> Vec<ph2d_render::RenderInstance> {
+    let n = instances.len as usize;
+    if n == 0 {
+        return Vec::new();
+    }
+    let bytes = (n * std::mem::size_of::<ph2d_render::RenderInstance>()) as u64;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ph2d-gpu-cook readback"),
+        size: bytes,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    encoder.copy_buffer_to_buffer(&instances.buffer, 0, &staging, 0, bytes);
+    gpu.queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv()
+        .expect("map_async callback ran")
+        .expect("readback map succeeded");
+    let out: Vec<ph2d_render::RenderInstance> =
+        bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    staging.unmap();
+    out
 }

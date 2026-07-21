@@ -72,3 +72,126 @@ pub(crate) fn gather_prev_n(inputs: &[GpuStream], key_port: usize) -> u32 {
         .map(|(_, s)| s.count)
         .unwrap_or(0)
 }
+
+/// A broadcast port the dispatch cannot PAIR — `Some((port, len))` when a
+/// [`ph2d_nodegraph::gpu::ColumnAccess::ReadBroadcast`] binding's port carries
+/// the column at a length that is neither the dispatch length, nor exactly one,
+/// nor empty.
+///
+/// [`column_present`] would judge such a port ABSENT, so the kernel would read
+/// the declared identity at EVERY index — while the CPU (`target_at`'s `_` arm)
+/// reads the real rows it has and only falls back past them. Same document, two
+/// different fields: a SHAPE divergence, not an ε. The plan cannot refuse it
+/// (lengths are a cook-time fact, `applicable` only sees params), so the cook
+/// does — the caller falls back to the CPU, which is canonical (the same door
+/// as `TooManyBindings`).
+///
+/// `lookup` answers `(port element count, does the port carry the column?)` for
+/// a binding — a closure so the decision is testable without a device (a
+/// `GpuStream` column cannot be built without one). Ports an active id-gather
+/// length-decouples (any but the key's) are exempt, mirroring the precedence
+/// [`column_present`] gives them.
+pub(crate) fn broadcast_length_mismatch(
+    gather_port: Option<usize>,
+    count: u32,
+    bindings: &[ColumnBinding],
+    lookup: impl Fn(&ColumnBinding) -> Option<(u32, bool)>,
+) -> Option<(usize, u32)> {
+    bindings.iter().find_map(|b| {
+        if !b.access.broadcasts() {
+            return None;
+        }
+        if gather_port.is_some_and(|kp| b.port != kp) {
+            return None;
+        }
+        let (len, carries) = lookup(b)?;
+        let bad = carries && len != 0 && len != 1 && len != count;
+        bad.then_some((b.port, len))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_nodegraph::gpu::ColumnAccess;
+    use ph2d_nodegraph::port::Dim;
+
+    fn bcast(port: usize) -> ColumnBinding {
+        ColumnBinding {
+            column: "v",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port,
+        }
+    }
+
+    fn plain_read(port: usize) -> ColumnBinding {
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port,
+        }
+    }
+
+    /// The divergent case the check exists for: a broadcast port carrying the
+    /// column at a length the dispatch can neither pair per-element nor pin to
+    /// row 0. Length 3 against a dispatch of 5 — the CPU serves rows 0..3 and
+    /// falls back past them; the GPU would have served the identity everywhere.
+    #[test]
+    fn a_mixed_length_broadcast_port_is_a_mismatch() {
+        let bindings = [plain_read(0), bcast(1)];
+        let got = broadcast_length_mismatch(None, 5, &bindings, |b| match b.port {
+            1 => Some((3, true)),
+            _ => Some((5, true)),
+        });
+        assert_eq!(got, Some((1, 3)), "3 rows against a 5-wide dispatch");
+    }
+
+    /// The three lengths broadcast CAN pair — dispatch-length (per element),
+    /// exactly one (row 0 pinned) and empty (identity, the CPU's `0 =>` arm) —
+    /// and an absent column, must all pass.
+    #[test]
+    fn pairable_lengths_and_absence_are_not_mismatches() {
+        let bindings = [bcast(1)];
+        for (len, carries) in [(5, true), (1, true), (0, true), (3, false)] {
+            assert_eq!(
+                broadcast_length_mismatch(None, 5, &bindings, |_| Some((len, carries))),
+                None,
+                "len {len}, carries {carries}"
+            );
+        }
+    }
+
+    /// Only `ReadBroadcast` bindings are judged: a plain `Read` port at a
+    /// mismatched length is `column_present`'s ordinary absent-column fallback,
+    /// which both sides already agree on.
+    #[test]
+    fn a_plain_read_binding_is_never_a_mismatch() {
+        let bindings = [plain_read(0)];
+        assert_eq!(
+            broadcast_length_mismatch(None, 5, &bindings, |_| Some((3, true))),
+            None
+        );
+    }
+
+    /// Under an active id-gather the non-key ports are length-decoupled (paired
+    /// by id, ADR-0130 D4) — the same precedence `column_present` gives them, so
+    /// the mismatch check must not fire there.
+    #[test]
+    fn a_gather_decoupled_port_is_exempt() {
+        let bindings = [bcast(1)];
+        assert_eq!(
+            broadcast_length_mismatch(Some(0), 5, &bindings, |_| Some((3, true))),
+            None,
+            "port 1 is not the gather key's port 0 - length-decoupled"
+        );
+        assert_eq!(
+            broadcast_length_mismatch(Some(1), 5, &bindings, |_| Some((3, true))),
+            Some((1, 3)),
+            "the key's own port keeps the dispatch-length rule"
+        );
+    }
+}

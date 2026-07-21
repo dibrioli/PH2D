@@ -73,7 +73,7 @@ pub(super) fn gpu_route(
 
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
-/// With `PH2D_GPU_COOK=1` a single-sink, unscoped document cooks on the GPU:
+/// Unless `PH2D_GPU_COOK=0`, a single-sink, unscoped document cooks on the GPU:
 /// compute passes in one submit, the lowering writes the renderer's instance
 /// buffer directly, zero readback. **Fully-GPU** when the plan claims the whole
 /// chain; **hybrid** when a node has no kernel — the CPU prefix cooks up to that
@@ -82,8 +82,10 @@ pub(super) fn gpu_route(
 /// output stream crosses to the GPU, which runs the covered suffix. Anything the
 /// plan can't usefully claim returns [`GpuOutcome::FellThrough`] to the CPU pump.
 ///
-/// Trade-off while the flag is on: the graph panel's readouts/probe read the CPU
-/// memo, which the fully-GPU path doesn't feed — wiring those is Fase 4.
+/// The graph panel reads a GPU frame through the bounded **tap** (Fase 4,
+/// `readout::take_tap` — readouts, digest, probe), so a fully-GPU document is
+/// no longer blind in the editor; the tap is one frame behind the cook it
+/// samples (the documented ordering asymmetry vs the CPU memo).
 pub(super) fn cook_gpu(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,

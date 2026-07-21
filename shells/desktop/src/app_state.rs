@@ -428,6 +428,8 @@ pub(crate) struct App {
     /// One-shot latch for the `PH2D_IMPASTO_SMOKE` canvas (spawned on the first frame the atlas
     /// plumbing is in scope, not at init — where `atlas_asset_map` does not exist yet).
     pub(crate) impasto_smoke_done: bool,
+    /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
+    pub(crate) wetpaint_smoke_done: bool,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).

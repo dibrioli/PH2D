@@ -726,6 +726,34 @@ impl crate::App {
             }
         }
 
+        // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
+        // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::wetpaint_smoke::enabled()
+            && !std::mem::replace(&mut self.wetpaint_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::wetpaint_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Wet Paint smoke: pick the Painter tool and drag".to_string(),
+                ));
+            }
+        }
+
         // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
         // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).
         if let Some(hero) = hero_screen.as_mut()

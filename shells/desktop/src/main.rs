@@ -143,6 +143,7 @@ mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;
 mod vec_transform;
+mod wetpaint_smoke;
 mod winit_host;
 
 pub(crate) use app_state::{
@@ -294,6 +295,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,
+            wetpaint_smoke_done: false,
             stack_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,

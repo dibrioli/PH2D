@@ -187,6 +187,7 @@ pub(super) fn dispatch(
             // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
             // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
             crate::impasto_smoke::arm_brush_once(painter);
+            crate::wetpaint_smoke::arm_brush_once(painter);
             *last_painter_pushed_entity = Some(bits);
             // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
             // switching sprites never leaves a stale Fill modal floating over the new one.

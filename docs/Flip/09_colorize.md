@@ -1,5 +1,24 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite III): Trap e Bleed em TEMPO REAL depois do Apply** (6º smoke:
+> "trap e bleed não estão em tempo real após apply. faça ficar em tempo real para ajustes").
+> A última aplicação fica **VIVA** — o "ajustar a última operação" do Blender (o painel F6):
+> `LiveApply` em `flip_colorize.rs` congela `{sementes locais, paleta, alvo (oid,did), a BASE
+> do desenho antes da 1ª inserção, produced, (trap,bleed)}`, e `flip_colorize_live_adjust`
+> (prólogo do frame, ao lado do drain do Apply) re-roda o corte quando o Trap OU o Bleed muda:
+> **restaura a base congelada + reinsere** — posição-independente, sem identificar "os meus
+> strokes" (o `FlipStroke` não tem id) e sem EMPILHAR. `insert_regions`/`precision_and_trap`
+> viraram a **porta única** de Apply e re-Apply (senão os dois caminhos divergiriam). **Undo
+> sai de graça:** o arrasto do slider prende o `held_button` ⇒ o `post_frame_undo` suprime os
+> frames intermediários e o gesto inteiro vira UM passo (mecanismo do `envelope_gesture`);
+> Ctrl+Z devolve ao Trap anterior, de novo ao pré-Apply. A sessão MORRE em: novo rabisco, novo
+> Apply, Clear, sair do modo, undo (`apply_project::end_live`), ou o **guard de comprimento**
+> (`drawing.len() != base.len() + produced` ⇒ o artista editou o desenho, e restaurar a base
+> apagaria o trabalho dele ⇒ não retro-aplica). Gate headless mutation-testado
+> `the_live_reapply_replaces_the_regions_it_does_not_stack_them` (pular a restauração da base ⇒
+> `base+n1+n2` ⇒ RED). Suíte flip+undo do shell 215 verdes. **Smoke: aplique, depois ARRASTE o
+> Bleed/Trap — o corte re-roda ao vivo.**
+>
 > **Estado (2026-07-20, noite II): o VAZAMENTO pelo vão ganhou DOIS ajustes no painel do
 > Colorize (6º smoke: "trap 0 e trap máximo vazam parecidos. se há ajustes possíveis coloque
 > no painel").** Diagnóstico medido (sonda `probe_the_bleed_through_the_gap`): (a) o **Trap é

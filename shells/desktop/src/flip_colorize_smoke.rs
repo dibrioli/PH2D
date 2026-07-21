@@ -132,9 +132,11 @@ impl crate::App {
                 esquerda e dona de mais area. Se caisse no meio dos rabiscos (~x=0.3), o\n   \
                 corte estaria ignorando a tinta.\n\
              b) O VAO no meio do divisor deixa a cor entrar (a LENTE) — e' honesto (vao\n   \
-                aberto = passagem). AJUSTES no painel (6o smoke):\n   \
+                aberto = passagem). AJUSTES no painel — **AGORA EM TEMPO REAL depois do\n   \
+                Apply** (arraste o slider e o corte re-roda ao vivo, sem clicar Apply de novo):\n   \
                 · **Bleed**: quao fundo a cor entra pelo vao (continuo; sobe = cola).\n   \
-                · **Trap**: fecha o vao de vez (bola que nao passa por vao < 2r; ate 50 px).\n"
+                · **Trap**: fecha o vao de vez (bola que nao passa por vao < 2r; ate 50 px).\n   \
+                (Ctrl+Z desfaz o ajuste; de novo, o Apply. Editar o desenho encerra o ajuste.)\n"
         );
     }
 }

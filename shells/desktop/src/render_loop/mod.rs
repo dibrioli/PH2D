@@ -617,6 +617,9 @@ impl crate::App {
         if std::mem::take(&mut self.pending_flip_colorize_clear) {
             self.flip_colorize_clear();
         }
+        // ADR-0114 C2 (6º smoke): Trap/Bleed em tempo real depois do Apply. Se um dos dois
+        // mudou desde a última rodada, re-roda o corte in-place (o "ajustar a última operação").
+        self.flip_colorize_live_adjust();
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;

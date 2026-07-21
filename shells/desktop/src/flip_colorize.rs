@@ -16,11 +16,90 @@
 
 use crate::flip_fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDrawing, FlipStroke, Point};
+use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke, Point};
 use ph2d_flip_colorize::{ColorRegion, Scribble};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vec_scene::Xform;
+
+/// **A última aplicação do Colorize, VIVA** — o "ajustar a última operação" do Blender (o
+/// painel F6/redo): enquanto ela existe, mexer no **Trap** ou no **Bleed** re-roda o corte
+/// **em tempo real**, sem clicar Apply de novo (o pedido do Enio, 6º smoke). Ela morre no
+/// primeiro gesto que NÃO seja esse ajuste — novo rabisco, novo Apply, Clear, sair do modo,
+/// undo, ou o artista editar o próprio desenho (o guard de comprimento).
+///
+/// O re-Apply é *restaurar a base congelada + reinserir* — posição-independente e sem
+/// precisar identificar "os meus strokes" (o `FlipStroke` não tem id). A base é o desenho
+/// como ele estava ANTES de a 1ª aplicação inserir uma região; reinserir sobre ela reproduz
+/// o Apply com os parâmetros novos, sem empilhar.
+struct LiveApply {
+    /// Rótulo → cor (a paleta que o Apply montou dos rabiscos).
+    palette: Vec<[u8; 4]>,
+    /// As sementes já em LOCAL do desenho, congeladas no Apply — uma função pura de
+    /// `(sementes, trap, bleed)`, então o re-Apply é determinístico.
+    seeds: Vec<Scribble>,
+    /// O alvo: o objeto e o desenho onde as regiões foram escritas.
+    oid: FlipObjectId,
+    did: DrawingId,
+    /// Os strokes do desenho ANTES da 1ª inserção — a base congelada.
+    base: Vec<FlipStroke>,
+    /// Quantos strokes a última (re)inserção produziu. O **guard de segurança**: se o
+    /// desenho não é mais `base.len() + produced`, o artista editou outra coisa (nova
+    /// linha, balde, borracha) e a sessão MORRE — re-Aplicar apagaria a edição dele.
+    produced: usize,
+    /// Os últimos `(trap, bleed)` rodados — o re-Apply só dispara quando MUDAM.
+    trap: f64,
+    bleed: f64,
+}
+
+/// `(precision, trap_px)` a partir do estilo + da vista — a MESMA conversão do balde, numa
+/// porta só, para o Apply e o re-Apply ao vivo **nunca** divergirem (duas portas divergem).
+fn precision_and_trap(style: &FlipStyleSnapshot, px_to_world: f32, obj_scale: f32) -> (f32, f32) {
+    let doc_per_px = px_to_world * obj_scale;
+    // px de tela → px de buffer por unidade de documento (a precisão do balde).
+    let precision = 1.6 / doc_per_px.max(1e-6);
+    // O Trap chega em px de TELA e atravessa as duas conversões (BUGS #11: subir a
+    // Precision encolheria a bola em silêncio se ele não cruzasse `precision`).
+    let trap_px = (style.trap as f32) * doc_per_px * precision;
+    (precision, trap_px)
+}
+
+/// **A porta única que produz e insere as regiões** — o Apply e o re-Apply ao vivo chamam
+/// esta MESMA função, então a borda de uma cor colorida nunca depende de por qual caminho
+/// ela foi (re)gerada. Assume `drawing` já na base (line-art + fills pré-Colorize) e devolve
+/// quantos strokes foram inseridos.
+fn insert_regions(
+    drawing: &mut FlipDrawing,
+    palette: &[[u8; 4]],
+    seeds: &[Scribble],
+    precision: f32,
+    trap_px: f32,
+    squeeze: u32,
+) -> usize {
+    let lines = boundaries(drawing);
+    if lines.is_empty() {
+        return 0;
+    }
+    let regions: Vec<ColorRegion> =
+        ph2d_flip_colorize::colorize_with(&lines, seeds, precision, trap_px, squeeze);
+    // Cada região entra ACIMA dos fills existentes (a cor nova cobre a velha, abaixo da
+    // linha — o `Paint` do balde), com a MESMA dilatação (contour_widths + fill_stroke).
+    let is_fill = |s: &FlipStroke| s.hide_stroke && s.fill.is_some();
+    let mut produced = 0;
+    for region in regions {
+        let color = crate::flip_draw::srgb8_to_linear(palette[region.label as usize]);
+        let widths = ph2d_flip_fill::contour_widths(&lines, &region.fill.outer);
+        let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
+        let at = drawing
+            .strokes
+            .iter()
+            .rposition(is_fill)
+            .map_or(0, |i| i + 1);
+        drawing.strokes.insert(at, stroke);
+        produced += 1;
+    }
+    produced
+}
 
 /// Distância mínima entre amostras de um rabisco (px de tela) — igual ao `flip_draw`.
 const MIN_SAMPLE_PX: f32 = 2.0;
@@ -53,6 +132,8 @@ pub(crate) struct FlipColorize {
     current: Vec<Vec2>,
     current_color: [u8; 4],
     active: bool,
+    /// A última aplicação viva (Trap/Bleed em tempo real). `None` = nada a re-ajustar.
+    live: Option<LiveApply>,
 }
 
 impl FlipColorize {
@@ -61,6 +142,13 @@ impl FlipColorize {
         self.popped.clear();
         self.current.clear();
         self.active = false;
+        self.live = None;
+    }
+
+    /// Encerra o ajuste ao vivo — o desenho mudou por fora do Trap/Bleed (undo, troca de
+    /// modo, edição do artista), então a base congelada não descreve mais a realidade.
+    pub(crate) fn end_live(&mut self) {
+        self.live = None;
     }
 
     /// Semeia um rabisco pronto (pontos em MUNDO) — usado pelo smoke para demonstrar o
@@ -69,6 +157,9 @@ impl FlipColorize {
         if world_points.len() >= 2 {
             self.scribbles.push((color, world_points));
             self.popped.clear();
+            // Uma semente nova torna o resultado aplicado obsoleto: o próximo Apply é uma
+            // operação NOVA, e mexer no Trap antes dele re-rodaria sementes desatualizadas.
+            self.live = None;
         }
     }
 
@@ -292,39 +383,29 @@ impl crate::App {
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return;
         };
-        let lines = boundaries(drawing);
-        if lines.is_empty() {
+        if boundaries(drawing).is_empty() {
             gfx.toasts.push(ph2d_editor::Toast::warning(
                 "Colorize: draw the line-art first",
             ));
             self.title_dirty = true;
             return;
         }
-        // A precisão é a mesma conversão do balde (px de tela → px de buffer por unidade
-        // de documento): `precision / (px_to_world · obj_scale)`.
         let obj_scale = w2l.mean_scale() as f32;
-        let doc_per_px = px_to_world * obj_scale;
-        let precision = 1.6 / doc_per_px.max(1e-6);
 
-        // O **Trap** do painel — o MESMO knob do balde (*"a tinta é grossa assim"*), e não um
-        // segundo controle para a mesma pergunta. Ele chega em px de TELA, então atravessa as
-        // duas conversões: para unidades de documento (`doc_per_px`) e daí para px do buffer
-        // do Colorize (`precision`). Sem isso, subir a Precision encolheria a bola em silêncio
-        // — o acoplamento escondido que o BUGS #11 pagou caro para descobrir.
-        //
-        // ⚠️ É um **PISO**, não o valor final: o motor cresce a bola até os rabiscos do artista
-        // caírem em regiões distintas (`§8`), porque um raio que não separa duas cores torna a
-        // pré-segmentação incapaz de as separar, faça o corte o que fizer.
-        let trap_px = (style.trap as f32) * doc_per_px * precision;
-
-        // O **Bleed** (6º smoke): o slider 0..1 vira o pedágio de aperto do motor. É o
-        // controle CONTÍNUO do vazamento pelo vão — imune ao zoom (métrica de distância à
-        // tinta), ao contrário do Trap, que é binário. `0.5` = o pedágio aprovado no 5º smoke.
+        // ⚠️ O **Trap** é um PISO, não o valor final: o motor cresce a bola até os rabiscos do
+        // artista caírem em regiões distintas (`§8`). E o **Bleed** (6º smoke) é o controle
+        // CONTÍNUO do vazamento pelo vão (o pedágio de aperto) — imune ao zoom, ao contrário do
+        // Trap, que é binário. `precision_and_trap`/`squeeze_from_bleed` são as portas
+        // compartilhadas com o re-Apply ao vivo, senão os dois caminhos divergiriam.
+        let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
         let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
 
-        let regions: Vec<ColorRegion> =
-            ph2d_flip_colorize::colorize_with(&lines, &seeds, precision, trap_px, squeeze);
-        if regions.is_empty() {
+        // A **base congelada** — o desenho ANTES de a 1ª região entrar. É o que o re-Apply ao
+        // vivo restaura para reinserir sem empilhar (Trap/Bleed em tempo real).
+        let base = drawing.strokes.clone();
+        let produced = insert_regions(drawing, &palette, &seeds, precision, trap_px, squeeze);
+        if produced == 0 {
+            drawing.strokes = base; // nada saiu — devolve o desenho intocado
             gfx.toasts.push(ph2d_editor::Toast::warning(
                 "Colorize: no regions — scribble inside the closed shapes",
             ));
@@ -332,20 +413,87 @@ impl crate::App {
             return;
         }
 
-        // Cada região entra ACIMA dos fills existentes (a cor nova cobre a velha, abaixo da
-        // linha — o `Paint` do balde), com a MESMA dilatação (contour_widths + fill_stroke).
-        let is_fill = |s: &ph2d_flip::FlipStroke| s.hide_stroke && s.fill.is_some();
-        for region in regions {
-            let color = crate::flip_draw::srgb8_to_linear(palette[region.label as usize]);
-            let widths = ph2d_flip_fill::contour_widths(&lines, &region.fill.outer);
-            let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
-            let at = drawing
-                .strokes
-                .iter()
-                .rposition(is_fill)
-                .map_or(0, |i| i + 1);
-            drawing.strokes.insert(at, stroke);
+        // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real
+        // (`flip_colorize_live_adjust`), sem clicar Apply de novo.
+        self.flip_colorize.live = Some(LiveApply {
+            palette,
+            seeds,
+            oid,
+            did,
+            base,
+            produced,
+            trap: style.trap,
+            bleed: style.colorize_bleed,
+        });
+        self.title_dirty = true;
+    }
+
+    /// **Trap/Bleed em tempo real depois do Apply** (6º smoke, pedido do Enio: *"trap e bleed
+    /// não estão em tempo real após apply. faça ficar em tempo real para ajustes"*).
+    ///
+    /// Roda no prólogo do frame (ao lado do drain do Apply, com `self` livre). Quando o Trap
+    /// ou o Bleed mudou desde a última rodada, restaura a base congelada e reinsere as regiões
+    /// com os parâmetros novos — o "ajustar a última operação" do Blender.
+    ///
+    /// **Undo sai de graça:** um arrasto de slider mantém `held_button` preso, então o
+    /// `post_frame_undo` suprime os frames intermediários e o gesto inteiro vira UM passo (o
+    /// mesmo mecanismo do `envelope_gesture`). Desfazer devolve ao resultado do Trap anterior;
+    /// de novo, ao pré-Apply.
+    pub(crate) fn flip_colorize_live_adjust(&mut self) {
+        if self.flip_colorize.live.is_none() {
+            return;
         }
+        // Sair do modo Colorize encerra a adjustabilidade (o painel some, a base congelada
+        // deixa de descrever o que está na tela).
+        let Some(style) = self.flip_style.filter(|_| self.flip_wants_colorize()) else {
+            self.flip_colorize.end_live();
+            return;
+        };
+        let live = self.flip_colorize.live.as_ref().expect("live is Some");
+        // Só re-roda quando um dos dois de fato MUDOU (senão todo frame pagaria o corte).
+        if style.trap == live.trap && style.colorize_bleed == live.bleed {
+            return;
+        }
+        let (oid, did) = (live.oid, live.did);
+        let w2l = self.flip_active_world_to_local();
+        let obj_scale = w2l.mean_scale() as f32;
+
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let win = gfx.surface.size();
+        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+        let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
+        let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
+
+        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+            self.flip_colorize.end_live(); // o desenho-alvo sumiu (undo/delete)
+            return;
+        };
+        // **O guard de segurança:** o desenho ainda é `base + as MINHAS regiões`? Se o artista
+        // desenhou uma linha nova, encheu com o balde ou apagou algo, o comprimento muda —
+        // restaurar a base apagaria o trabalho dele. A sessão morre e o Trap novo simplesmente
+        // não retro-aplica (ele clica Apply de novo).
+        let live = self.flip_colorize.live.as_mut().expect("live is Some");
+        if drawing.strokes.len() != live.base.len() + live.produced {
+            self.flip_colorize.end_live();
+            return;
+        }
+        drawing.strokes.clone_from(&live.base);
+        live.produced = insert_regions(
+            drawing,
+            &live.palette,
+            &live.seeds,
+            precision,
+            trap_px,
+            squeeze,
+        );
+        live.trap = style.trap;
+        live.bleed = style.colorize_bleed;
+        // Como o Apply deferido: sem isto o `post_frame_undo` pularia o diff num frame sem
+        // outro input, e o ajuste ficaria fora do passo. Preso o `held_button` do arrasto, os
+        // frames intermediários seguem suprimidos — um passo por gesto.
+        self.any_input_this_frame = true;
         self.title_dirty = true;
     }
 }
@@ -353,6 +501,89 @@ impl crate::App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_flip::Rgba;
+
+    /// Uma line-art de moldura FECHADA (um quadrado de tinta grossa) — o `boundaries` traça o
+    /// laço e o `colorize_with` preenche o interior onde a semente cai.
+    fn boxed_lineart() -> FlipDrawing {
+        let mut s = FlipStroke::new();
+        for &(x, y) in &[
+            (0.0, 0.0),
+            (100.0, 0.0),
+            (100.0, 100.0),
+            (0.0, 100.0),
+            (0.0, 0.0),
+        ] {
+            s.push_point(Point {
+                pos: Vec2::new(x, y),
+                width: 4.0,
+                opacity: 1.0,
+                color: Rgba::BLACK,
+            });
+        }
+        let mut d = FlipDrawing::default();
+        d.strokes.push(s);
+        d
+    }
+
+    /// Uma semente no centro do quadrado (rótulo 0), da paleta de uma cor.
+    fn center_seed() -> (Vec<[u8; 4]>, Vec<Scribble>) {
+        (
+            vec![[220, 70, 70, 255]],
+            vec![Scribble {
+                label: 0,
+                points: vec![Vec2::new(40.0, 50.0), Vec2::new(60.0, 50.0)],
+                width: 2.0,
+            }],
+        )
+    }
+
+    /// **O re-Apply ao vivo SUBSTITUI, não empilha** — o coração do Trap/Bleed em tempo real
+    /// (6º smoke, "faça ficar em tempo real"). A operação viva restaura a base congelada e
+    /// reinsere; se ela reinserisse SEM restaurar, cada tique do slider empilharia outra pilha
+    /// de fills e a borda ficaria opaca de camadas mortas.
+    ///
+    /// Mutação que o derruba: **pular a restauração da base** antes do 2º `insert_regions` —
+    /// o desenho cresceria para `base + n1 + n2` em vez de `base + n2`.
+    #[test]
+    fn the_live_reapply_replaces_the_regions_it_does_not_stack_them() {
+        let (palette, seeds) = center_seed();
+        let base = boxed_lineart();
+        let base_len = base.strokes.len();
+
+        // 1ª aplicação (Bleed no default).
+        let mut d = base.clone();
+        let n1 = insert_regions(
+            &mut d,
+            &palette,
+            &seeds,
+            1.0,
+            2.0,
+            ph2d_flip_colorize::DEFAULT_SQUEEZE,
+        );
+        assert!(n1 >= 1, "a moldura fechada tem de dar ao menos 1 região");
+        assert_eq!(
+            d.strokes.len(),
+            base_len + n1,
+            "1ª inserção: base + regiões"
+        );
+
+        // Re-Apply ao vivo: RESTAURA a base, reinsere com outro Bleed (mais colado).
+        d.strokes.clone_from(&base.strokes);
+        let n2 = insert_regions(
+            &mut d,
+            &palette,
+            &seeds,
+            1.0,
+            2.0,
+            ph2d_flip_colorize::squeeze_from_bleed(0.0),
+        );
+        assert_eq!(
+            d.strokes.len(),
+            base_len + n2,
+            "o re-Apply SUBSTITUI (base + n2), nunca empilha (base + n1 + n2)"
+        );
+    }
 
     fn scr(n: u8) -> ([u8; 4], Vec<Vec2>) {
         (
@@ -385,7 +616,10 @@ mod tests {
         // Um rabisco NOVO mata o redo pendente (o 3 nunca mais volta).
         let (col, pts) = scr(9);
         c.push_scribble(col, pts);
-        assert!(!c.can_redo_scribble(), "agir depois de desfazer mata o refazer");
+        assert!(
+            !c.can_redo_scribble(),
+            "agir depois de desfazer mata o refazer"
+        );
 
         // Clear zera as DUAS filas.
         c.undo_scribble();

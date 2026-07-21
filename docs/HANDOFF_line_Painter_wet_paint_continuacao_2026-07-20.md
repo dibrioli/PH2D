@@ -200,6 +200,20 @@ só-grid ⇒ o gate ganhou o oráculo do CANVAS (`canvas_dev` estritamente decre
 ⚠️ Decisões pro smoke do Enio: o wire mantém o modo (vetável) · a força default do erase é a
 do reference (slider `erase 0.4` — knob de painel é W3) · sem sessão apaga o baked (fall-through).
 
+**W2.7 LANDOU (`8794734b`) — o Paper do artista dirige o TOOTH do fluido:** slot Paper armado ⇒
+o plano `paper` do engine (o input de tooth que o depósito e o `wet` byte já leem) é **SEMEADO
+no nascimento da sessão** pela lei NEUTRA do painter (`texture::sample_tiled_rot_wrapped` +
+`angle_basis` — a MESMA lei que o substrato watercolor lê, mas pela porta neutra da
+`ph2d-painter-brush`: **um papel, nunca um 2º sistema, zero acoplamento a `watercolor_*`** —
+a advertência do doc 19 honrada). Papel é SUBSTRATO: não re-semeia sob água viva; sessão nova
+lê o slot corrente. Sem slot = preset do porte, byte-idêntico. Porta nova
+`Engine::seed_paper_with` (domínio EXATO do `bake_paper`, pad ring incluso, clamp 0..1).
+⚠️ Gap v1 documentado no código: o seam-snap de Size de bitmap sob sprite-Tiling
+(`snap_slot_size`, watercolor-local) não é aplicado — procedurais fecham exato, bitmap pode
+ter emenda. 2 gates mutation-tested (cobertura do plano + vales do Checker rejeitam pigmento
+contra controle sem alinhamento). ⚠️ Smoke junto do lote (armar um Paper e ver a granulação
+do fluido seguir o padrão).
+
 **W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
@@ -219,8 +233,7 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
-**W2 restante:** W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
-do painter nos 3 do engine é o v1 honesto?) · W2.8 shape editors (depósito 1× no Apply — os
+**W2 restante:** W2.8 shape editors (depósito 1× no Apply — os
 sítios de commit em `curve_commit`/`stroke_multi`; hoje recusados por `live_gesture`+métodos
 cumulativos).
 

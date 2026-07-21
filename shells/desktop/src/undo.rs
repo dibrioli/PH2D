@@ -194,6 +194,17 @@ impl ProjectUndo {
         !self.redo.is_empty()
     }
 
+    /// Remove e devolve o passo mais recente **SEM restaurar a cena** (≠ [`Self::undo`]) e
+    /// **sem tocar o redo**. É a peça da SUBSTITUIÇÃO de passo do preview do Offset: o
+    /// retune re-offseta a cena e quer que o diff do fim do frame re-registre UM passo
+    /// sobre o MESMO estado-pré — testar Miter/Round/Bevel não pode empilhar um passo por
+    /// clique (o chamador devolve o estado-pré ao baseline; o push do fim do frame limpa o
+    /// redo como sempre).
+    #[must_use]
+    pub(crate) fn forget_last(&mut self) -> Option<ProjectState> {
+        self.undo.pop()
+    }
+
     /// Desfaz: devolve o estado anterior; empurra o `current` pro redo.
     #[must_use]
     pub(crate) fn undo(&mut self, current: ProjectState) -> Option<ProjectState> {

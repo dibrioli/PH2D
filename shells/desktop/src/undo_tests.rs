@@ -359,3 +359,42 @@ fn editing_an_effect_param_is_its_own_undo_step() {
         "o restore não devolveu o parâmetro ao valor anterior"
     );
 }
+
+/// **`forget_last` tira o passo do topo sem restaurar nada e sem tocar o redo** — a peça
+/// da substituição de passo do preview do Offset (Enio 2026-07-21: os chips de Corner
+/// testam os 3 modos SEM empilhar undo; a `render_loop` devolve o estado-pré ao baseline
+/// e o diff do fim do frame re-registra UM passo). Sem o `forget_last`, cada clique de
+/// Corner custava um Ctrl+Z — e "desfazer o offset" custava tantos passos quantos modos
+/// o artista experimentou.
+#[test]
+fn forget_last_pops_the_step_without_restoring_or_touching_redo() {
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let pre = capture(&mut sim, &vec, &reg);
+
+    let mut undo = ProjectUndo::default();
+    undo.push_undo(pre.clone());
+    // Um redo pendente (como depois de um Ctrl+Z + edição… aqui basta existir).
+    undo.redo.push(pre.clone());
+    assert_eq!(undo.depth(), 1);
+
+    let popped = undo.forget_last().expect("havia um passo");
+    assert_eq!(undo.depth(), 0, "o passo saiu da fila");
+    assert!(
+        popped == pre,
+        "o passo devolvido é o estado-pré (vai virar o baseline do re-registro)"
+    );
+    assert!(
+        undo.can_redo(),
+        "forget_last NÃO limpa o redo — quem limpa é o push do re-registro, como sempre"
+    );
+
+    // O ciclo completo da substituição: re-registrar sobre o MESMO pré mantém a
+    // profundidade — N retunes = 1 passo.
+    undo.push_undo(popped);
+    assert_eq!(
+        undo.depth(),
+        1,
+        "re-registro devolve a profundidade original"
+    );
+}

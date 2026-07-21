@@ -344,14 +344,19 @@ pub(crate) enum RetuneStep {
     Dead,
 }
 
-/// A **janela de RETUNE** do Offset — o "diálogo ainda aberto" do Illustrator.
+/// A **janela de PREVIEW** do Offset — o "diálogo ainda aberto" do Illustrator.
 ///
-/// Soltar o slider COMITA o offset, mas a escolha de quina vem depois de VER o resultado:
-/// clicar Miter/Round/Bevel (ou trocar o Side) logo após o release re-offseta NA HORA, ao
-/// MESMO `d`. A janela guarda a sessão viva (cena do grab + poses congeladas + o `d`
-/// comitado) e morre na primeira edição alheia — o oráculo é a PROFUNDIDADE do undo:
-/// qualquer passo que não seja nosso (mover, apagar, Ctrl+Z) a diverge, e retunar por
-/// cima dessa edição a engoliria em silêncio.
+/// A escolha de quina vem depois de VER o resultado (Enio 2026-07-21: *"o usuário deve
+/// ter a oportunidade de testar os 3 modos antes de aplicar"*): clicar Miter/Round/Bevel
+/// (ou trocar o Side) logo após o release re-offseta NA HORA, ao MESMO `d` — e **cada
+/// retune SUBSTITUI o próprio passo de undo** (a `render_loop` tira o passo do topo e
+/// re-arma o baseline antes do [`Self::apply`]), então testar os 3 custa ZERO passos e um
+/// Ctrl+Z devolve a cena de ANTES do offset. **Consolidar** = o botão Apply Offset (fecha
+/// a janela sem mudar um byte) ou qualquer edição seguinte (o passo único já está na
+/// fila; a janela só fecha). A janela guarda a sessão viva (cena do grab + poses
+/// congeladas + o `d` comitado) e fecha na primeira edição alheia — o oráculo é a
+/// PROFUNDIDADE do undo: qualquer passo que não seja nosso (mover, apagar, Ctrl+Z) a
+/// diverge, e retunar por cima dessa edição a engoliria em silêncio.
 pub(crate) struct OffsetRetune {
     sess: OffsetSession,
     /// O `d` comitado no release — todo retune re-offseta a este valor.

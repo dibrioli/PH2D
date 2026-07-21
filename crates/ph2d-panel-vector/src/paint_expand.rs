@@ -71,7 +71,10 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        y = self.action_button(ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", y);
+        // "Apply Offset", não "Offset Path" (Enio 2026-07-21): os chips de Corner/Side
+        // são PREVIEW do offset recém-solto — quem consolida a curva é ESTE botão (ou
+        // Convert to Curves, ou qualquer edição seguinte). O nome do botão é a promessa.
+        y = self.action_button(ids::VECTOR_EXPAND_OFFSET_PATH, "Apply Offset", y);
         y = self.action_button(ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", y);
         self.power_stroke_rows(y)
     }

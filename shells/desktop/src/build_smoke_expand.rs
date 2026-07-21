@@ -144,10 +144,14 @@ impl crate::App {
              \x20    - **Side**: Both expande a borda E o furo; Outer só a borda; Inner só o\n\
              \x20      furo. Com **Inner** + **Corner Round**, arraste POSITIVO: as quinas\n\
              \x20      do FURO arredondam (o bug do smoke passado). Negativo encolhe.\n\
-             \x20    - **Corner** (Miter/Round/Bevel) é a quina do OFFSET — a fileira\n\
-             \x20      \"Join\" lá em cima, na seção Stroke, é a quina do TRAÇO (outra\n\
-             \x20      pergunta). Logo após soltar, clicar um Corner re-offseta NA HORA.\n\
-             \x20    - O botão **Offset Path** ainda aplica o valor mostrado no chip.\n\
+             \x20    - **Corner** (Miter/Round/Bevel) e **Side** são PREVIEW ao vivo do\n\
+             \x20      offset recém-solto: teste os 3 modos à vontade — nada é consolidado\n\
+             \x20      e o undo não empilha. A fileira \"Join\" lá em cima (seção Stroke) é\n\
+             \x20      a quina do TRAÇO, outra pergunta.\n\
+             \x20    - **Apply Offset** consolida o preview (os Corners deixam de\n\
+             \x20      re-offsetar); qualquer outra edição também consolida. Sem preview\n\
+             \x20      vivo, o botão aplica o valor do chip. Ctrl+Z com o preview aberto\n\
+             \x20      cancela o offset INTEIRO, mesmo depois de testar vários Corners.\n\
              \x20 4) O ARCO roxo embaixo é o **Power Stroke** (agora LISO, sem rugosidade):\n\
              \x20    selecione-o e clique. Afina nas pontas e engrossa no meio. Mexa em\n\
              \x20    **W Start / W Mid / W End** e refaça — `W Pos` move onde o grosso senta.\n\
@@ -279,6 +283,12 @@ impl crate::App {
                 self.smoke_pointer_move(x + 200.0, y);
             }
             116 => {
+                // ⚠️ Re-afirma a posição NO frame do release: o cursor físico pode ter
+                // falado depois do último re-assert (f=115), e o up solta ONDE o ponteiro
+                // está — um release na posição do cursor real já soltou a d=−100%
+                // (aniquilação) num run em que o desktop estava em uso.
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + 200.0, y);
                 eprintln!("[retune-smoke] UP (release SATURADO — a janela de retune abre)");
                 self.smoke_pointer_up();
             }
@@ -365,6 +375,11 @@ impl crate::App {
                 self.smoke_pointer_move(x + 68.0, y);
             }
             116 => {
+                // Re-afirma a posição NO frame do release (a mesma corrida do nível 19: o
+                // up solta onde o ponteiro está, e o cursor físico pode ter falado por
+                // último).
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + 68.0, y);
                 eprintln!("[retune-smoke] UP (release — a janela de retune abre aqui)");
                 self.smoke_pointer_up();
             }

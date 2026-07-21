@@ -2803,33 +2803,64 @@ impl crate::App {
                     self.vec_offset_retune =
                         crate::vec_expand::OffsetRetune::after_release(sess, live_d);
                 } else if let Some(mut win) = self.vec_offset_retune.take() {
-                    // ── Join/Side retunam o offset recém-comitado, NA HORA ──────────
-                    // O diálogo do Illustrator preview-a a quina ao vivo; aqui a "janela
-                    // do diálogo" é o intervalo até a PRÓXIMA edição — qualquer passo de
-                    // undo alheio (mover, apagar, Ctrl+Z) fecha a janela, senão o retune
-                    // restauraria a cena do grab e ENGOLIRIA a edição do artista.
+                    // ── Corner/Side são PREVIEW do offset recém-solto (Enio 2026-07-21:
+                    // "o usuário deve ter a oportunidade de testar os 3 modos antes de
+                    // aplicar") ── cada retune re-offseta NA HORA e **SUBSTITUI o próprio
+                    // passo de undo** (ver o braço Retune): testar os 3 Corners custa ZERO
+                    // passos extras, e um Ctrl+Z devolve a cena de ANTES do offset.
+                    // Consolidar = clicar Apply Offset (fecha a janela, nada muda) ou
+                    // qualquer edição alheia (o passo único já está na fila — a janela só
+                    // fecha, via Dead).
                     let knobs = crate::vec_expand::expand_knobs();
                     match win.step(self.undo.depth(), knobs) {
-                        // A morte é INTENCIONAL (retunar por cima engoliria a edição), mas
-                        // não pode ser MUDA: um chip clicado depois dela "não faz nada", e
-                        // sem este log o report vira "Join não funciona" sem pista
+                        // O fechamento é INTENCIONAL (retunar por cima de uma edição alheia
+                        // a engoliria; e depois de um Ctrl+Z o offset nem existe mais), mas
+                        // não pode ser MUDO: um chip clicado depois dele "não faz nada", e
+                        // sem este log o report vira "Corner não funciona" sem pista
                         // (2026-07-20 — a falha silenciosa custou uma investigação inteira).
                         crate::vec_expand::RetuneStep::Dead => {
                             eprintln!(
-                                "[ph2d-vec] janela de retune fechou (o undo andou) — \
-                                 os chips de Join/Side voltam a armar só o próximo arrasto"
+                                "[ph2d-vec] preview de offset fechou (o undo andou) — o que \
+                                 está na cena fica; os chips de Corner/Side armam o próximo \
+                                 arrasto"
                             );
                         }
                         crate::vec_expand::RetuneStep::Keep => {
                             self.vec_offset_retune = Some(win);
                         }
                         crate::vec_expand::RetuneStep::Retune => {
+                            // **Substituição de passo:** o topo da fila é o passo DESTE
+                            // offset (o oráculo de profundidade acabou de conferir — depth
+                            // divergente teria caído em Dead). Ele sai da fila e o
+                            // estado-pré vira o baseline; o diff do fim do frame registra
+                            // UM passo pre-gesto → resultado novo. N retunes = 1 passo.
+                            if let Some(pre) = self.undo.forget_last() {
+                                self.undo_baseline = Some(pre);
+                            }
                             win.apply(vec_scene, &mut self.vec_pen, sim, &self.vec_entities, knobs);
                             self.vec_offset_retune = Some(win);
                         }
                     }
                 }
             }
+            // **Apply Offset com preview vivo = CONSOLIDAR, não re-offsetar.** O resultado
+            // já está na cena com o seu passo ÚNICO de undo; o clique só fecha a janela
+            // (os chips de Corner/Side deixam de re-offsetar) sem mudar um byte. Um 2º
+            // offset por cima seria o botão desfazendo a promessa de "testar antes de
+            // aplicar" (Enio 2026-07-21).
+            let pending_vec_expand = if matches!(
+                pending_vec_expand,
+                Some(crate::vec_expand::Expand::Offset { .. })
+            ) && self.vec_offset_retune.take().is_some()
+            {
+                eprintln!(
+                    "[ph2d-vec] offset consolidado — os chips de Corner/Side armam o \
+                     próximo arrasto"
+                );
+                None
+            } else {
+                pending_vec_expand
+            };
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // A distância vem do slider do painel — a MESMA fonte que o chip mostra.

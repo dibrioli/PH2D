@@ -98,6 +98,50 @@ knobs = defaults §16 do reference (painel = W3) · seção Watercolor ligável 
 ainda não é escondida (incompatível; W3, lei #3) · gatilho de commit da sessão = mutação alheia /
 troca de modo (secagem completa NÃO encerra sozinha — decisão aberta de produto).
 
+## §2.4b — SMOKE DO W1: OK (Enio) + 2 defeitos FECHADOS · W2 EM ANDAMENTO
+
+**Veredito do Enio:** *"a física do líquido funciona"* · *"A cor está preta"* · *"vc suprimiu a
+seção Impasto — uma das regras era não afetar o que já existia"* · **"W1 smoke OK. Siga w2"**.
+
+- **Cor preta FECHADA (`69da962b`)**: o engine fala sRGB **0..255** (boot `[50,140,210]`; o
+  render escreve os planos via `clamp_u8`) e o brush guarda 0..1 — faltava o ×255. ⚠️ O gate
+  novo teve o próprio oráculo corrigido: varria SÓ a linha do traço e falhou sobre produto
+  CORRETO (o trail deposita com estrutura vertical; célula-máxima estava 4 linhas abaixo) — o
+  oráculo agora varre o canvas inteiro.
+- **Seção Impasto FECHADA (mesmo commit)**: WetPaint entrou em `impasto_section_applies` — a
+  régua do Enio VENCE o precedente do watercolor ("thin paint, no body" excluiria), porque a
+  seção hoje hospeda a lista das DEZ ferramentas + o Lighting do canvas: escondê-la tira o
+  seletor de ferramenta. O radio acende NADA (`IMPASTO_TOOL_NONE` = u8::MAX, out-of-range
+  documentado do `SegmentedAdaptive`) e nenhum card de ferramenta pinta (braço `TOOL_NONE` no
+  painel) — acender Deposit seria o radio mentiroso que o rail recusou pra Faca.
+- **W2.1 (`73cfbb01`) — Symmetry/Tiling provados de graça**: 2 gates de seam (massa suspensa
+  espelhada / na borda oposta) com controle de oráculo executado (features OFF ⇒ RED nos dois).
+- **W2.2 (`e00786cf`) — Randomize Color per-dab**: porta `Engine::set_stroke_color` →
+  `Trail::set_base_color` = **RECARGA da tinta** (reservatório + planos do tip, a metade de cor
+  do `start_stroke`). ⚠️ A v1 só-reservatório foi MEDIDA INERTE: o tip só caminha pra base via
+  `Knob::TipClean`, **cujo default de boot é 0.0** — gate nasceu vermelho (219 vs 21 de verde).
+  Recarga é a semântica honesta (dab jitterado = carga nova; o suor do pickup se re-acumula).
+  Tool: `d.color` por dab com detector de mudança (sem jitter ⇒ zero chamadas; a cor de início
+  de traço também vem de `dabs[0].color` agora, não do brush).
+
+**W2.3 (PRÓXIMO) — silhueta/Shape/Falloff/Flatten&Rotate, o desenho reconhecido:** o stamp do
+engine é `for_each_stamp_pixel` (`brush.rs:169`) — `fall = radial_falloff(d², hardness)` +
+footprint elíptico interno (`BrushShape::axes`) + `texv = sample_bristle(tile wrap, coords
+ROTADAS)`. A composição: **`fall`+footprint cedem à silhueta do PAINTER** (`silhouette_at`:
+falloff × Shape image × flatten/rotate) via variante do iterador com closure
+`silhouette(dx, dy) -> f64` (0 = skip; a elipse interna vira caso default), threading por
+`Trail::accumulate_paint`/tools numa variante `_shaped` — os caminhos próprios do engine ficam
+intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Grain; W2.4 troca
+a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
+de cor já pagam.
+
+**W2 restante:** W2.4 Grain · W2.5 Selection/alpha-lock (keep-lerp no MEU composite — o modelo
+`splat_keep`) · W2.6 Eraser→`Tool::Erase` (o engine já o tem; `paint.eraser` em modo wet roteia
+tool_override) · W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
+do painter nos 3 do engine é o v1 honesto?) · W2.8 shape editors (depósito 1× no Apply — os
+sítios de commit em `curve_commit`/`stroke_multi`; hoje recusados por `live_gesture`+métodos
+cumulativos).
+
 ## §2.5 — W1 (histórico do andamento; superado pelo §2.4)
 
 - **Inc.1 COMMITADO (`c329d126`)**: `PaintMode::WetPaint` (slot 11, `PAINT_MODE_COUNT` 12) + as

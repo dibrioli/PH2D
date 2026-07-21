@@ -214,6 +214,27 @@ ter emenda. 2 gates mutation-tested (cobertura do plano + vales do Checker rejei
 contra controle sem alinhamento). ⚠️ Smoke junto do lote (armar um Paper e ver a granulação
 do fluido seguir o padrão).
 
+**O CHECKBOX LANDOU (`0317bf2d`, ordem do Enio 2026-07-21 pré-smoke — *"se saio do brush para a
+borracha ou para a seleção, ao voltar não estou mais no modo wet"*):** o arm do Wet Paint é
+**estado autorado persistente** (`WetPaintState.armed` — UM fato, independente de modo; nunca
+campo de `BrushSpec`, que por-slot teria cópias discordando), o padrão Watercolor/Impasto.
+Seção **"Wet Paint"** no painel (acima da Watercolor), com Enable
+(`PAINTER_WETPAINT_SECTION/_COLOR/_RESET/_ENABLE` em ids/chrome/`painter_wetpaint.rs`; reset =
+defaults INCLUINDO o enable — a semântica do reset do Watercolor; W3 põe os ~6 knobs nesta
+seção). As leis: **armado, o wire `"brush"` resolve pra WetPaint** (toda volta ao pincel é o
+fluido até desmarcar) · **entrar por QUALQUER porta arma** (checkbox OFF com tinta molhada =
+rádio mentiroso) · **desmarcar sai e baka** · sair pra outra ferramenta NÃO desarma (o arm é o
+autorado; só o checkbox/reset desarmam) · `active_paint_mode_id` de WetPaint virou **"brush"**
+(o rail acende Brush — wet é sabor do pincel; com eraser segue "eraser"). ⚠️ **Consequências da
+lei nova:** o wire `"brush"` JÁ NÃO SAI do modo (2 fixtures antigos atualizados — sair de
+verdade = outra ferramenta ou desmarcar) · o Deposit da lista do Impasto com wet armado é
+no-op (o checkbox governa; desarme antes) · eyedropper segue Paint momentâneo (janela curta de
+checkbox-ON-pincel-digital enquanto o picker está armado — gap conhecido). O smoke arma pela
+**porta de produto** (`set_wetpaint_armed`) — o arm em código morreu; o item do W3 "aposentar o
+arm do smoke" está FEITO. Rotas: `route_brush_wetpaint_event` no `handle_panel_event` +
+populate (clicks + `mark_collapsible_section` + swatch). 5 gates (round-trips
+selection/eraser/smear red-first sobre o bug + panel Click); 4 mutações sangram.
+
 **W2.8 — NÃO construído: é um FORK DE PRODUTO, decisão do Enio (2026-07-21).** Hoje em modo wet
 os shape editors e os métodos não-cumulativos (DragDot/Anchored/Line) **não desenham nada** (a
 rota wet recusa e os dabs morrem — nem preview flat existe). As duas saídas:

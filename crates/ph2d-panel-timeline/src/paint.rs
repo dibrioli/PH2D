@@ -107,6 +107,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             tab: state.tab,
             speed_view: state.speed_view,
             source_container: state.source_container,
+            open_container: state::open_container(),
         },
     );
     let g = geom::resolve(rect, after_transport, state.label_w, min_label);
@@ -175,7 +176,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if state.tab.shows_keys() {
         tracks::paint_add_track(ctx, theme, header);
     } else {
-        crate::stack_add_header::paint_add_lane(ctx, theme, header, state.tab);
+        // `inside` is "the open container EXISTS" — the snapshot publishes a crumb for it —
+        // not "the tab is Containers": that tab has two levels, and the ADD differs on each.
+        let inside = !snapshot.crumbs.is_empty();
+        crate::stack_add_header::paint_add_lane(ctx, theme, header, state.tab, inside);
     }
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
@@ -294,23 +298,36 @@ fn paint_overlays(
 ) {
     tracks::paint_add_track_popover(ctx, theme, o.header, state.add_track_open);
 
-    if let Some(chip) = o.clip_dd_chip.filter(|c| c.open).map(|c| c.rect) {
-        let dd = ph2d_editor_core::widget::Dropdown::new(
-            ids::TIMELINE_CLIP_DD,
-            "",
-            crate::transport_clips::source_options(snapshot, state.tab),
-        )
-        // The SAME two doors the chip paints from (`source_options`/`selected_source`), so
-        // the open list and the collapsed chip cannot name different things.
-        .selected(crate::transport_clips::selected_source(
-            snapshot,
-            crate::transport::BarView {
-                tab: state.tab,
-                speed_view: state.speed_view,
-                source_container: state.source_container,
-            },
-        ))
-        .open(true);
+    if let Some(c) = o.clip_dd_chip.filter(|c| c.open) {
+        let (chip, host) = (c.rect, c.host);
+        // The SAME doors the chip paints from, so the open list and the collapsed chip
+        // cannot name different things — and the same branch, so the list that opens is the
+        // list of the chip that was clicked.
+        let view = crate::transport::BarView {
+            tab: state.tab,
+            speed_view: state.speed_view,
+            source_container: state.source_container,
+            open_container: state::open_container(),
+        };
+        let mut dd = if host {
+            let mut d = ph2d_editor_core::widget::Dropdown::new(
+                ids::TIMELINE_HOST_DD,
+                "",
+                crate::transport_clips::host_options(snapshot),
+            );
+            if let Some(i) = view.open_container {
+                d = d.selected(i);
+            }
+            d
+        } else {
+            ph2d_editor_core::widget::Dropdown::new(
+                ids::TIMELINE_CLIP_DD,
+                "",
+                crate::transport_clips::source_options(snapshot, state.tab),
+            )
+            .selected(crate::transport_clips::selected_source(snapshot, view))
+        };
+        dd = dd.open(true);
         ph2d_editor_core::widget::paint_dropdown_popover(
             &dd,
             chip,

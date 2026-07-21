@@ -52,24 +52,31 @@ fn click_with(
     ph2d_panel_timeline::state::drain_intents()
 }
 
-/// **A tira tem TRÊS abas, e clicar em Containers abre um container.**
+/// **A aba Containers abre FORA de qualquer container** — o nível onde containers são FEITOS
+/// (Enio, 2026-07-21).
 ///
-/// A aba Containers sempre mostra UM container — sem isso ela cairia no host `Document` e
-/// desenharia as lanes da CENA sob outro nome, que é exatamente a duplicata que a divisão
-/// existe para evitar.
+/// O passo publicado aponta UMA ALÉM do fim da lista, fora de alcance de propósito: sem host
+/// não há lanes, então ela não desenha a pilha da CENA sob outro nome (a duplicata que a
+/// divisão em abas existe para evitar), e o cabeçalho oferece "+ Container" e mais nada. E é
+/// o índice que o próximo `AddContainer` vai cunhar: o estado vazio e a primeira criação
+/// nomeiam o mesmo lugar, então nada é previsto duas vezes.
 #[test]
-fn the_containers_tab_opens_a_container() {
+fn the_containers_tab_opens_outside_any_container() {
+    let snap = snapshot_with_container();
+    let n = snap.containers.len();
     let mut state = TimelinePanelState::default();
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_TAB_CONTAINERS,
-    );
+    let _ = click_with(snap, &mut state, ids::TIMELINE_TAB_CONTAINERS);
+
     assert_eq!(state.tab, Tab::Containers);
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(0),
-        "a aba tem de estar DENTRO de um container, nunca sobre a pilha da cena"
+        StackHost::Container(n),
+        "uma além do fim: nenhum container é o host, então não há lanes a mostrar"
+    );
+    assert_eq!(
+        ph2d_panel_timeline::state::open_container(),
+        Some(n),
+        "e é o índice que o próximo '+ Container' vai criar"
     );
 }
 
@@ -85,6 +92,12 @@ fn arrange_is_the_scene_however_deep_the_trail_is() {
         snapshot_with_container(),
         &mut state,
         ids::TIMELINE_TAB_CONTAINERS,
+    );
+    // Entra num container de verdade pelo picker de HOST — o controle da navegação.
+    let _ = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_HOST_OPT[0],
     );
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
@@ -208,19 +221,20 @@ fn the_lane_plus_still_places_the_active_clip_by_default() {
     );
 }
 
-/// **Escolher um container é a seleção de fonte E a navegação** — e as duas leem o mesmo
-/// número.
+/// **Escolher uma FONTE nunca viaja; o picker de HOST viaja.** Duas perguntas, dois
+/// controles.
 ///
-/// Se o chip nomeasse um container enquanto as lanes mostrassem outro, haveria duas respostas
-/// para *"onde estou"* — o defeito que esta linha já pagou com a régua congelada.
+/// Dentro do container A, escolher B na lista de FONTE tem de significar *"coloque B dentro
+/// de A"* — o oposto de *"saia de A e vá editar B"*. Um controle que fizesse as duas coisas
+/// não conseguiria expressar a primeira, que é justamente como se aninha.
 #[test]
-fn picking_a_container_selects_it_and_opens_it() {
+fn picking_a_source_never_travels_but_the_host_picker_does() {
+    let snap = snapshot_with_container();
+    let n = snap.containers.len();
     let mut state = TimelinePanelState::default();
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_TAB_CONTAINERS,
-    );
+    let _ = click_with(snap, &mut state, ids::TIMELINE_TAB_CONTAINERS);
+
+    // FONTE: seleciona, e fica onde estava.
     let _ = click_with(
         snapshot_with_container(),
         &mut state,
@@ -233,7 +247,24 @@ fn picking_a_container_selects_it_and_opens_it() {
     );
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(n),
+        "escolher uma fonte NÃO pode mudar de lugar"
+    );
+
+    // HOST: viaja.
+    let _ = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_HOST_OPT[0],
+    );
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
         StackHost::Container(0),
-        "e é o container que a aba mostra"
+        "o picker de host é quem leva você para dentro"
+    );
+    assert_eq!(
+        state.source_container,
+        Some(0),
+        "e a fonte escolhida sobrevive à viagem — são estados independentes"
     );
 }

@@ -1,136 +1,148 @@
-//! **The Arrange tab's ADD header** — "+ Lane" and "+ Container", split out of
-//! `stack_lane_paint.rs` when that file crossed the panel LOC cap (609/600) growing the
-//! label-proportional split. A unit in its own right: the header is the one part of the
-//! lane area that exists even over an EMPTY stack (it is how the first lane is made),
-//! which is also why the Arrange column floor follows the TAB (`geom::min_label_w`).
+//! **The lane area's ADD button** — exactly one, and WHICH one says where you are.
+//!
+//! Its own module (split out when `stack_lane_paint.rs` crossed the panel LOC cap): the
+//! header is the one part of the lane area that exists over an EMPTY stack, because it is how
+//! the first row is made.
+//!
+//! # One button, not two (Enio, 2026-07-21)
+//!
+//! It briefly carried "+ Lane" and "+ Container" side by side, and the pair had to be split
+//! by label length so the long one was not crushed to a bare "+". The pair was the real
+//! defect: they belong to different PLACES.
+//!
+//! - The **Containers tab, outside any container** is the level where containers are MADE:
+//!   `+ Container`. There are no lanes here to add to.
+//! - **Inside** a container — and on **Arrange** — you are looking at a stack: `+ Lane`.
+//!   Making another container from in here is not a thing anyone asked for; PLACING one is,
+//!   and that is the source dropdown plus the lane's own `+`.
+//!
+//! With one button the crush cannot happen at all: it takes the strip whole. The
+//! proportional split it replaced is gone rather than kept "just in case" — a mechanism with
+//! no caller is a mechanism that rots.
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::Theme;
 
 use crate::ids;
+use crate::tab::Tab;
 
-/// The lane tabs' ADD header: **+ Lane** always, and **+ Container** only where a container
-/// is what you would be making.
-///
-/// # Why "+ Container" is not on Arrange
-///
-/// It used to be, and it meant *"make a container AND drop an instance of it here"* — one
-/// button doing the two different acts of creating an asset and placing it. That is what made
-/// a container indistinguishable from a lane on screen (Enio, 2026-07-21). Now creating lives
-/// on the **Containers** tab (where containers live) and placing is the lane's `+` with the
-/// container picked in the source dropdown — one meaning per control, and nesting is just
-/// placing a container inside a container.
-pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect, tab: crate::tab::Tab) {
-    let gap = Spacing::Sm.px() * 0.5;
-    let labels = [
-        ph2d_i18n::tr("panel.timeline.add_lane"),
-        ph2d_i18n::tr("panel.timeline.add_container"),
-    ];
-    let widths = header_widths(header.w, gap, tab, [labels[0], labels[1]]);
-    let mut x = header.x;
-    for ((id, label), w) in [ids::TIMELINE_ADD_LANE, ids::TIMELINE_ADD_CONTAINER]
-        .into_iter()
-        .zip(labels.iter())
-        .zip(widths)
-    {
-        // Not painted AND not hit-registered: a dimmed control that still dispatches is a
-        // click that silently does nothing ([[feedback_disabled_button_still_dispatches]]).
-        if w <= 0.0 {
-            continue;
+/// What the lane area's ADD button makes here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AddKind {
+    /// A row on the stack in view.
+    Lane,
+    /// A container asset — only where containers are made.
+    Container,
+}
+
+impl AddKind {
+    /// `(id, i18n key)` — the ONE table the paint and the router read, so a button cannot be
+    /// drawn under one name and dispatch another.
+    pub(crate) fn button(self) -> (ph2d_a11y::NodeId, &'static str) {
+        match self {
+            Self::Lane => (ids::TIMELINE_ADD_LANE, "panel.timeline.add_lane"),
+            Self::Container => (ids::TIMELINE_ADD_CONTAINER, "panel.timeline.add_container"),
         }
-        let rect = Rect::new(x, header.y, w, header.h);
-        let st = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
-        paint_button(
-            &Button::new(id, label.to_string()).state(st),
-            rect,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(id, rect);
-        x += w + gap;
     }
 }
 
-/// **How the ADD header splits, per tab** — the one door the paint lays out from, and the
-/// pure function a gate can ask without a text system.
+/// **Which ADD this place offers** — the whole rule, as a pure function of the two facts the
+/// panel already has.
 ///
-/// A zero width is the refusal: the paint skips those, so "+ Container" on a tab that does
-/// not make containers is neither painted NOR hit-registered. A dimmed control that still
-/// dispatches is a click that silently does nothing
-/// ([[feedback_disabled_button_still_dispatches]]).
-pub(crate) fn header_widths(
-    header_w: f32,
-    gap: f32,
-    tab: crate::tab::Tab,
-    labels: [&str; 2],
-) -> [f32; 2] {
-    if tab == crate::tab::Tab::Containers {
-        add_widths(header_w, gap, labels)
-    } else {
-        // One button takes the strip whole.
-        [header_w, 0.0]
+/// `inside` is *"the open container exists"* (the snapshot published a breadcrumb for it),
+/// not *"the tab is Containers"*: the Containers tab has both states, and they are the two
+/// levels — the LIST of containers, and the inside of one.
+pub(crate) fn add_kind(tab: Tab, inside: bool) -> Option<AddKind> {
+    match tab {
+        // The Keys tab adds TRACKS; `tracks::paint_add_track` owns that header.
+        Tab::Keys => None,
+        Tab::Containers if !inside => Some(AddKind::Container),
+        _ => Some(AddKind::Lane),
     }
 }
 
-/// **How the ADD header splits between its two buttons** — by each label's LENGTH, never
-/// 50/50.
-///
-/// An even split gives "+ Lane" and "+ Container" the same box while one label is nearly
-/// twice the other: at the column's floor the long one was crushed down to a bare "+"
-/// (Enio's screenshot, 2026-07-20). Splitting by character share puts the room where the
-/// text is, reads from the SAME strings the buttons paint (a hand-tuned ratio would drift
-/// the day a label changes), and is pure so the fit is testable without a text system.
-pub(crate) fn add_widths(header_w: f32, gap: f32, labels: [&str; 2]) -> [f32; 2] {
-    let total = (header_w - gap).max(0.0);
-    let chars = labels.map(|l| l.chars().count().max(1));
-    #[expect(clippy::cast_precision_loss, reason = "label lengths are tiny")]
-    let share = chars[0] as f32 / (chars[0] + chars[1]) as f32;
-    let first = total * share;
-    [first, total - first]
+/// Paint the lane area's ADD button across the label column's header strip.
+pub(crate) fn paint_add_lane(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    header: Rect,
+    tab: Tab,
+    inside: bool,
+) {
+    let Some(kind) = add_kind(tab, inside) else {
+        return;
+    };
+    let (id, key) = kind.button();
+    let st = ctx
+        .host
+        .store()
+        .button_state(id)
+        .unwrap_or(ButtonState::Normal);
+    paint_button(
+        &Button::new(id, ph2d_i18n::tr(key).to_string()).state(st),
+        header,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    // Painted AND hit-registered together: the button that is not offered here is neither,
+    // so it can never be a control that clicks and does nothing
+    // ([[feedback_disabled_button_still_dispatches]]).
+    ctx.host.hit_index_mut().register(id, header);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tab::{ALL, Tab};
+    use crate::tab::ALL;
 
-    /// **"+ Container" só existe onde um container é o que você faria.**
+    /// **Cada lugar oferece UM botão, e o botão diz onde você está.**
     ///
-    /// Ele criava E colocava — os dois atos numa tecla — e era isso que tornava um container
-    /// indistinguível de uma lane na tela (Enio, 2026-07-21). Largura zero é a recusa: o
-    /// desenho pula, então o botão não é pintado NEM registrado.
+    /// A aba Containers tem DOIS estados e eles são os dois níveis: a LISTA de containers
+    /// (onde se faz um) e o INTERIOR de um (onde se fazem lanes). Oferecer "+ Container"
+    /// dentro de um container convidaria a fazer um irmão de onde você não pode colocá-lo —
+    /// colocar é o dropdown de fonte mais o `+` da lane (Enio, 2026-07-21).
     #[test]
-    fn the_container_button_lives_only_on_the_tab_that_makes_containers() {
-        for tab in ALL {
-            let [lane, cont] = header_widths(200.0, 4.0, tab, ["+ Lane", "+ Container"]);
-            assert!(lane > 0.0, "{tab:?}: '+ Lane' existe em toda aba de lanes");
-            if tab == Tab::Containers {
-                assert!(cont > 0.0, "é a aba onde containers nascem");
-            } else {
-                assert!(
-                    cont <= 0.0,
-                    "{tab:?} não faz containers — largura zero é a recusa, veio {cont}"
-                );
-            }
-        }
+    fn each_place_offers_exactly_the_add_that_belongs_to_it() {
+        assert_eq!(add_kind(Tab::Containers, false), Some(AddKind::Container));
+        assert_eq!(add_kind(Tab::Containers, true), Some(AddKind::Lane));
+        assert_eq!(add_kind(Tab::Arrange, false), Some(AddKind::Lane));
+        assert_eq!(add_kind(Tab::Arrange, true), Some(AddKind::Lane));
+        assert_eq!(add_kind(Tab::Keys, false), None, "a Keys adiciona TRACKS");
+        assert_eq!(add_kind(Tab::Keys, true), None);
     }
 
-    /// **A tira inteira é usada nos dois casos** — um botão sozinho toma a coluna, dois a
-    /// dividem pelo comprimento do rótulo. Uma sobra faria a coluna parecer quebrada.
+    /// **"+ Container" existe em exatamente UM lugar**, e "+ Lane" nunca aparece ao lado dele.
+    ///
+    /// É a lei que apagou a divisão proporcional: com um botão por lugar, o esmagamento do
+    /// rótulo longo (o report anterior do Enio) não é sequer expressável.
     #[test]
-    fn the_header_strip_is_fully_spent() {
-        let (w, gap) = (200.0, 4.0);
-        for tab in ALL {
-            let [a, b] = header_widths(w, gap, tab, ["+ Lane", "+ Container"]);
-            let used = if b > 0.0 { a + b + gap } else { a };
-            assert!((used - w).abs() < 1e-3, "{tab:?}: gastou {used} de {w}");
-        }
+    fn the_two_adds_are_never_offered_together() {
+        let places: Vec<Option<AddKind>> = ALL
+            .into_iter()
+            .flat_map(|t| [add_kind(t, false), add_kind(t, true)])
+            .collect();
+        let makers = places
+            .iter()
+            .filter(|k| **k == Some(AddKind::Container))
+            .count();
+        assert_eq!(makers, 1, "um só lugar faz containers, veio {places:?}");
+        assert!(
+            places
+                .iter()
+                .flatten()
+                .all(|k| matches!(k, AddKind::Lane | AddKind::Container)),
+            "e cada lugar oferece no máximo um"
+        );
+    }
+
+    /// **O que o botão PINTA é o que ele DESPACHA** — rótulo e id saem da mesma tabela.
+    #[test]
+    fn the_button_paints_and_dispatches_from_one_table() {
+        assert_eq!(AddKind::Lane.button().0, ids::TIMELINE_ADD_LANE);
+        assert_eq!(AddKind::Container.button().0, ids::TIMELINE_ADD_CONTAINER);
+        assert_ne!(AddKind::Lane.button().1, AddKind::Container.button().1);
     }
 }

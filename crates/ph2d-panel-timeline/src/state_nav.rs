@@ -99,6 +99,16 @@ pub fn edit_host() -> ph2d_timeline::StackHost {
         })
 }
 
+/// **Which container is open**, if any — the host picker's selection, derived from the
+/// published trail so the chip and the lanes can never name different containers.
+///
+/// `None` at the scene root AND for the Containers tab's "outside any container" level, whose
+/// step deliberately points one past the end of the container list (see the tab switch).
+#[must_use]
+pub fn open_container() -> Option<usize> {
+    edit_path().last().map(|s| s.container)
+}
+
 /// **Show `container` in the Containers tab** — the one door for "the tab is showing THIS".
 ///
 /// It REPLACES the trail rather than pushing onto it: the tab's root is a container chosen by

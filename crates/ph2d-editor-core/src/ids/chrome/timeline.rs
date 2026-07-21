@@ -172,6 +172,37 @@ pub const TIMELINE_CLIP_OPT: [NodeId; 16] = [
 /// "+ Container" — make a container and open it on the Containers tab (ADR-0133).
 pub const TIMELINE_ADD_CONTAINER: NodeId = hash_node_id("timeline.add_container");
 
+/// **The Containers tab's "which container am I editing" chip** — navigation, not source.
+///
+/// A second chip because these are two different questions, and one control cannot answer
+/// both: inside container A, picking B from the SOURCE list has to mean *"place B inside A"*,
+/// which is the opposite of *"leave A and go edit B"*. Fusing them is the same mistake
+/// "+ Container" made by creating and placing in one press.
+///
+/// Painted only on the Containers tab. Everywhere else "which stack" is not a question the
+/// view is asking: Keys is the active clip's, Arrange is always the scene's.
+pub const TIMELINE_HOST_DD: NodeId = hash_node_id("timeline.host_dd");
+
+/// Options for [`TIMELINE_HOST_DD`] — one per container, same cap rule as its siblings.
+pub const TIMELINE_HOST_OPT: [NodeId; 16] = [
+    hash_node_id("timeline.host_opt_0"),
+    hash_node_id("timeline.host_opt_1"),
+    hash_node_id("timeline.host_opt_2"),
+    hash_node_id("timeline.host_opt_3"),
+    hash_node_id("timeline.host_opt_4"),
+    hash_node_id("timeline.host_opt_5"),
+    hash_node_id("timeline.host_opt_6"),
+    hash_node_id("timeline.host_opt_7"),
+    hash_node_id("timeline.host_opt_8"),
+    hash_node_id("timeline.host_opt_9"),
+    hash_node_id("timeline.host_opt_10"),
+    hash_node_id("timeline.host_opt_11"),
+    hash_node_id("timeline.host_opt_12"),
+    hash_node_id("timeline.host_opt_13"),
+    hash_node_id("timeline.host_opt_14"),
+    hash_node_id("timeline.host_opt_15"),
+];
+
 /// The source dropdown's CONTAINER half — one id per container, the sibling of
 /// [`TIMELINE_CLIP_OPT`].
 ///

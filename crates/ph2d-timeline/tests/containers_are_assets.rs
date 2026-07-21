@@ -294,3 +294,45 @@ fn sliding_past_a_neighbour_reorders_the_lane() {
         "quem começa antes vem antes — senão o crossfade mistura com o vizinho errado"
     );
 }
+
+/// **Uma instância de container nasce em VELOCIDADE 1** — porque "quanto dura este container"
+/// tem UMA porta.
+///
+/// O painel dimensiona o span da strip nova pela extensão que o snapshot publica
+/// (`host_end_seconds`, que conta o `lead_end`) e o documento dimensiona o SLICE pela sua
+/// própria conta. Enquanto as duas discordavam — e discordavam por exatamente o lead-out da
+/// última strip de dentro — `slice != span` no nascimento, que é `speed = slice / span`: uma
+/// instância retimada por um fade que alguém autorou lá dentro semanas antes, sem nada na
+/// tela dizendo por quê.
+#[test]
+fn a_container_instance_is_born_at_speed_one() {
+    let (mut doc, walk, lane) = doc_with_container();
+    // O fade PARA FORA da última strip de dentro: conteúdo, e é onde as duas contas divergiam.
+    let inner = doc.container_stack(walk).unwrap()[0].strips[0].id;
+    doc.strip_in_mut(StackHost::Container(walk), 0, inner)
+        .unwrap()
+        .lead_out = 0.5;
+
+    let len = doc
+        .host_end_seconds(StackHost::Container(walk))
+        .expect("o container tem conteúdo");
+    assert!(
+        (len - 2.5).abs() < 1e-9,
+        "a extensão conta o lead-out (2.0 + 0.5), veio {len}"
+    );
+
+    // O painel coloca com ESTE span — é o número que ele lê do snapshot.
+    let id = doc
+        .add_strip_to(StackHost::Document, lane, src(walk), 0.0, len)
+        .unwrap();
+    let s = doc.strip_in(StackHost::Document, lane, id).unwrap();
+    assert!(
+        (s.speed - 1.0).abs() < 1e-9,
+        "duas portas para o mesmo fato ⇒ a instância nasce retimada: speed={}",
+        s.speed
+    );
+    assert!(
+        (s.slice() - s.span()).abs() < 1e-9,
+        "slice == span é o invariante da lane, e tem de ser VERDADE no nascimento"
+    );
+}

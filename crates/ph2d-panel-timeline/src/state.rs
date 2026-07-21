@@ -64,7 +64,7 @@ thread_local! {
 /// move house because a file got long.
 #[path = "state_nav.rs"]
 mod state_nav;
-pub use state_nav::{edit_host, edit_path, keys_mode};
+pub use state_nav::{edit_host, edit_path, keys_mode, open_container};
 pub(crate) use state_nav::{
     enter_container, open_container_root, pop_to_depth, publish_keys_mode, publish_scene_root,
     set_tab, trail_len,

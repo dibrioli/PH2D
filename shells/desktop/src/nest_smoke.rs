@@ -259,12 +259,15 @@ impl crate::App {
              lenta). Abra L: sao TRES abas agora, [Keys | Containers | Arrange].\n\
              [nest-smoke]   Arrange   = a CENA (as 3 instancias). Botao direito numa strip \
              Jump -> \"Enter Container\" leva voce para a aba Containers.\n\
-             [nest-smoke]   Containers = o INTERIOR do Jump. Edite o pico do Rise UMA vez e \
-             os TRES pulos mudam. \"+ Container\" (no cabecalho da coluna) cria um container \
-             NOVO e vazio, sem despejar nada na cena.\n\
-             [nest-smoke]   Para COLOCAR um container: volte ao Arrange, escolha \"Jump\" no \
-             dropdown de fonte (ele agora lista clips E containers) e clique no \"+\" da \
-             lane. Arraste o corpo da strip para CIMA/BAIXO para troca-la de lane."
+             [nest-smoke]   Containers abre FORA de qualquer container: o unico botao da \
+             coluna e' \"+ Container\" (cria um NOVO e vazio, sem despejar nada na cena). O \
+             chip da esquerda escolhe qual container editar -- pegue \"Jump\".\n\
+             [nest-smoke]   DENTRO de um container o botao vira \"+ Lane\", e o dropdown de \
+             FONTE lista clips E containers (com glifos diferentes). Edite o pico do Rise UMA \
+             vez e os TRES pulos mudam.\n\
+             [nest-smoke]   Para COLOCAR: escolha a fonte no dropdown e clique no \"+\" da \
+             lane -- vale no Arrange e dentro de um container (e' assim que se aninha). \
+             Arraste o CORPO de uma strip para CIMA/BAIXO para troca-la de lane."
         );
     }
 }

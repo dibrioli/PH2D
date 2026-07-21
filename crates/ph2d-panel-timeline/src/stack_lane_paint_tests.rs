@@ -419,21 +419,8 @@ fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
     }
 }
 
-/// **O header dos ADDs racha pelo RÓTULO, nunca 50/50** — meio a meio, "+ Container"
-/// (quase 2× o "+ Lane") era esmagado até virar um "+" nu no piso da coluna (screenshot
-/// do Enio, 2026-07-20). A fatia segue a fração de caracteres dos MESMOS strings que os
-/// botões pintam.
-#[test]
-fn the_add_header_splits_by_label_not_in_half() {
-    let [lane, cont] = crate::stack_add_header::add_widths(148.0, 4.0, ["+ Lane", "+ Container"]);
-    assert!(
-        (lane + cont - 144.0).abs() < 1e-3,
-        "somam o header menos o gap"
-    );
-    let share = f64::from(cont) / f64::from(lane + cont);
-    assert!(
-        (share - 11.0 / 17.0).abs() < 1e-3,
-        "a fatia do + Container é a fração de caracteres dele, veio {share}"
-    );
-    assert!(cont > lane, "o rótulo longo leva o espaço maior");
-}
+// ⚠️ O gate `the_add_header_splits_by_label_not_in_half` foi REMOVIDO com o mecanismo que
+// ele pinava: o header não racha mais, porque não tem mais dois botões. Cada lugar oferece
+// UM ADD (`stack_add_header::add_kind`, Enio 2026-07-21) e ele toma a tira inteira — com um
+// botão só o esmagamento do rótulo longo não é sequer expressável. Os gates que substituem
+// este vivem em `stack_add_header.rs`.

@@ -25,10 +25,13 @@ const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
 
 /// How wide the cluster paints — the single source `transport`'s flow measures against.
 pub(crate) fn width(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
-    if !shows_clip_buttons(tab) {
-        return CLIP_DD_W;
-    }
     let half = Spacing::Sm.px() * 0.5;
+    // The Containers tab leads with the chip that says WHICH container is being edited.
+    let host = if shows_host_picker(tab) {
+        CLIP_DD_W + half
+    } else {
+        0.0
+    };
     // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one clip.
     // Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16): they are the
     // two ways to get a clip, and the difference is only whether it starts empty.
@@ -37,17 +40,16 @@ pub(crate) fn width(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     } else {
         0.0
     };
-    CLIP_DD_W + half + BTN_W + half + BTN_W + half + BTN_W + half + trash
+    host + CLIP_DD_W + half + BTN_W + half + BTN_W + half + BTN_W + half + trash
 }
 
-/// **Whether the four CLIP buttons (`+`, duplicate, rename, trash) are on screen.**
+/// **Whether the "which container am I editing" chip is on screen** — the Containers tab
+/// only.
 ///
-/// They act on the ACTIVE CLIP, and the Containers tab's dropdown does not show one — a
-/// control that edits something not in view is the same defect as one that is dimmed and
-/// still dispatches. Creating a container has its own button in that tab's lane header;
-/// renaming and deleting one is a named gap, not a button pretending.
-pub(crate) fn shows_clip_buttons(tab: Tab) -> bool {
-    tab != Tab::Containers
+/// Everywhere else the question has a fixed answer the view already states: Keys is the
+/// active clip's, and Arrange is always the scene's ([`Tab::scene_root`]).
+pub(crate) fn shows_host_picker(tab: Tab) -> bool {
+    tab == Tab::Containers
 }
 
 /// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
@@ -70,6 +72,33 @@ pub(crate) fn cluster(
     let gap = Spacing::Sm.px();
     let mut x = x;
 
+    // The host picker leads: *where am I* before *what will I place*.
+    if shows_host_picker(view.tab) {
+        let hc = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
+        ctx.host.hit_index_mut().register(ids::TIMELINE_HOST_DD, hc);
+        let (st, op) = match ctx.host.store().get(ids::TIMELINE_HOST_DD) {
+            Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
+            _ => (DropdownState::Normal, false),
+        };
+        let mut hd = Dropdown::new(ids::TIMELINE_HOST_DD, "", host_options(snap))
+            .open(op)
+            .state(st);
+        if let Some(c) = view.open_container {
+            hd = hd.selected(c);
+        }
+        paint_dropdown_chip(&hd, hc, ctx.scene, ctx.text_system, theme);
+        x += CLIP_DD_W + gap * 0.5;
+        if op {
+            // Only one popover can be deferred; the open one wins. Two lists over the same
+            // pixels would fight, and the artist opened exactly one of them.
+            return Some(ClipChip {
+                rect: hc,
+                open: true,
+                host: true,
+            });
+        }
+    }
+
     let chip = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
     ctx.host
         .hit_index_mut()
@@ -83,11 +112,7 @@ pub(crate) fn cluster(
         .open(open)
         .state(state);
     paint_dropdown_chip(&dd, chip, ctx.scene, ctx.text_system, theme);
-    x += CLIP_DD_W;
-    if !shows_clip_buttons(view.tab) {
-        return Some(ClipChip { rect: chip, open });
-    }
-    x += gap * 0.5;
+    x += CLIP_DD_W + gap * 0.5;
 
     x = icon_button(ctx, theme, x, y, ids::TIMELINE_ADD_CLIP, IconId::Plus) + gap * 0.5;
     x = icon_button(ctx, theme, x, y, ids::TIMELINE_DUP_CLIP, IconId::Duplicate) + gap * 0.5;
@@ -96,45 +121,59 @@ pub(crate) fn cluster(
         icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
     }
 
-    Some(ClipChip { rect: chip, open })
+    Some(ClipChip {
+        rect: chip,
+        open,
+        host: false,
+    })
 }
 
 /// **What the dropdown offers, per tab** — the SOURCE selector (ADR-0133, amended
 /// 2026-07-21).
 ///
 /// A strip plays a clip *or* a container, so "what am I about to place" is one question with
-/// two kinds of answer. The list is a function of the tab because each tab operates on one
-/// of them and Arrange on both:
+/// two kinds of answer, and **every tab that shows LANES offers both** — a lanes tab is a
+/// surface you place things on, and both kinds are placeable (ADR-0133: a container instance
+/// IS a strip). Only **Keys** is clips-only: a container has no keys, so picking one there
+/// would be a selection that makes the view show nothing.
 ///
-/// - **Keys** — clips. A container has no keys; offering one would be a selection that makes
-///   the view show nothing.
-/// - **Containers** — containers. Picking one opens it.
-/// - **Arrange** — both, clips first. This is the half Enio asked for (*"no modo de Arrange o
-///   dropbox passa a mostrar Clip e Conteiners"*), and it is what finally lets a container be
-///   PLACED: while the lane's `+` could only put down a clip, "+ Container" had to create and
-///   place in one press, and a container was indistinguishable from a lane.
+/// ⚠️ The first cut filtered the CLIPS out of the Containers tab, reasoning that the tab is
+/// "about containers". That broke the very thing the tab is for — building a container's
+/// interior IS putting clips in its lanes (*"na aba containers o dropbox não está exibindo os
+/// clips"*, Enio 2026-07-21).
+///
+/// Which container the tab is EDITING is a different question with its own chip
+/// ([`ids::TIMELINE_HOST_DD`]): picking a SOURCE never navigates, because inside container A
+/// picking B has to mean *"place B inside A"*.
+///
+/// Each row carries the glyph of its KIND ([`CLIP_GLYPH`]/[`CONTAINER_GLYPH`]) — mixed in one
+/// list without a mark, the artist learns the kind by placing one and seeing what happens.
 ///
 /// The VALUE is the option's position in this list — `source_at` reads the kind back off the
 /// id array, never off arithmetic on the index. Each half truncates at its own id array: an
 /// option past it could be painted but never clicked.
 pub(crate) fn source_options(snap: &TimelineViewSnapshot, tab: Tab) -> Vec<DropdownOption<usize>> {
     let mut out: Vec<DropdownOption<usize>> = Vec::new();
-    if tab != Tab::Containers {
-        out.extend(
-            snap.clips
-                .iter()
-                .enumerate()
-                .take(ids::TIMELINE_CLIP_OPT.len())
-                .map(|(i, name)| DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], 0, name.clone())),
-        );
-    }
+    out.extend(
+        snap.clips
+            .iter()
+            .enumerate()
+            .take(ids::TIMELINE_CLIP_OPT.len())
+            .map(|(i, name)| {
+                DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], 0, name.clone())
+                    .with_icon(CLIP_GLYPH)
+            }),
+    );
     if tab != Tab::Keys {
         out.extend(
             snap.containers
                 .iter()
                 .enumerate()
                 .take(ids::TIMELINE_CONT_OPT.len())
-                .map(|(i, c)| DropdownOption::new(ids::TIMELINE_CONT_OPT[i], 0, c.name.clone())),
+                .map(|(i, c)| {
+                    DropdownOption::new(ids::TIMELINE_CONT_OPT[i], 0, c.name.clone())
+                        .with_icon(CONTAINER_GLYPH)
+                }),
         );
     }
     // The value IS the position, filled once the list is built — a `DropdownOption` carries
@@ -150,18 +189,35 @@ pub(crate) fn selected_source(
     snap: &TimelineViewSnapshot,
     view: crate::transport::BarView,
 ) -> usize {
-    let clips = if view.tab == Tab::Containers {
-        0
-    } else {
-        snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len())
-    };
+    let clips = snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len());
     match view.source_container {
-        // The trail wins over the remembered pick on the Containers tab: that tab shows the
-        // container it is showing, and a chip naming another one would be a second answer.
         Some(c) if view.tab != Tab::Keys => clips + c.min(ids::TIMELINE_CONT_OPT.len()),
         _ => snap.active_clip.min(clips),
     }
 }
+
+/// **The Containers tab's host list** — every container, as a place to GO rather than a thing
+/// to place. Same glyph as the source list's container half: it is the same kind of thing.
+pub(crate) fn host_options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
+    snap.containers
+        .iter()
+        .enumerate()
+        .take(ids::TIMELINE_HOST_OPT.len())
+        .map(|(i, c)| {
+            DropdownOption::new(ids::TIMELINE_HOST_OPT[i], i, c.name.clone())
+                .with_icon(CONTAINER_GLYPH)
+        })
+        .collect()
+}
+
+/// **The two kinds, told apart by a discreet glyph** (Enio, 2026-07-21).
+///
+/// One sheet against a stack of them: a clip is one animation, a container is several packed
+/// into a piece. They only have to be distinguishable from EACH OTHER — the list is where
+/// they sit side by side, and that is the whole job of the mark.
+const CLIP_GLYPH: IconId = IconId::Layer;
+/// …and the stack. See [`CLIP_GLYPH`].
+const CONTAINER_GLYPH: IconId = IconId::Layers;
 
 /// **What a picked option IS** — read off the id ARRAY it belongs to, never off arithmetic.
 ///
@@ -194,6 +250,8 @@ pub(crate) fn owns(ev: &WidgetEvent) -> bool {
         || id == ids::TIMELINE_RENAME_CLIP
         || id == ids::TIMELINE_DELETE_CLIP
         || id == ids::TIMELINE_CLIP_RENAME_INPUT
+        || id == ids::TIMELINE_HOST_DD
+        || ids::TIMELINE_HOST_OPT.contains(&id)
         || source_at(id).is_some()
 }
 
@@ -211,6 +269,23 @@ pub(crate) fn apply_event(
         // ── Source selector: picking a CLIP or a CONTAINER from the open list ────
         // The kind comes from `source_at` (which id array the option belongs to), so the two
         // halves cannot be confused for one another at the same list position.
+        // ── Host picker: WHERE the Containers tab is looking ────────────────
+        // Its own control because it answers the other question (see `TIMELINE_HOST_DD`).
+        WidgetEvent::Click(id) if ids::TIMELINE_HOST_OPT.contains(&id) => {
+            if let Some(i) = ids::TIMELINE_HOST_OPT.iter().position(|&o| o == id) {
+                state::open_container_root(state, i);
+                if let Some(InteractiveState::Dropdown {
+                    open,
+                    selected_index,
+                    ..
+                }) = host.store_mut().get_mut(ids::TIMELINE_HOST_DD)
+                {
+                    *open = false;
+                    *selected_index = Some(i);
+                }
+            }
+            EventOutcome::Consumed
+        }
         WidgetEvent::Click(id) if source_at(id).is_some() => {
             let snap = state::current_snapshot();
             let clips = if state.tab == Tab::Containers {
@@ -231,14 +306,12 @@ pub(crate) fn apply_event(
                     row = Some(index);
                 }
                 Some(Ok(index)) => {
-                    // A container. Panel-local — picking one is navigation, not an edit. On
-                    // the Containers tab it also OPENS it: the tab shows the container it
-                    // names, and a chip that named one while the lanes showed another would
-                    // be two answers to "where am I".
+                    // A container, as a thing to PLACE. Panel-local (picking a source is not
+                    // an edit) — and it deliberately does NOT navigate: inside container A,
+                    // picking B has to mean *"place B inside A"*, and a control that both
+                    // selected and travelled could not express that at all. Travelling is
+                    // the host picker's job.
                     state.source_container = Some(index);
-                    if state.tab == Tab::Containers {
-                        state::open_container_root(state, index);
-                    }
                     row = Some(clips + index);
                 }
                 None => {}
@@ -330,25 +403,27 @@ mod tests {
             .collect()
     }
 
-    /// **Cada aba oferece o que ELA opera; o Arrange oferece os dois.**
+    /// **Toda aba de LANES oferece os dois tipos; a Keys só clips.**
     ///
     /// É o pedido do Enio (*"no modo de Arrange o dropbox passa a mostrar Clip e Conteiners"*)
-    /// e também a razão de não haver estado morto: um container não tem keys e a aba
-    /// Containers não mostra clip nenhum, então oferecer o outro tipo ali seria uma seleção
-    /// que faz a vista não mostrar nada.
+    /// — e a Keys fica de fora porque um container não tem keys: escolhê-lo lá seria uma
+    /// seleção que faz a vista não mostrar nada.
+    ///
+    /// ⚠️ A primeira versão filtrava os CLIPS fora da aba Containers, raciocinando que
+    /// aquela aba "é sobre containers". Isso quebrava exatamente o que ela serve para fazer:
+    /// montar o interior de um container É pôr clips nas lanes dele (*"na aba containers o
+    /// dropbox não está exibindo os clips"*, Enio 2026-07-21). Toda aba de lanes é uma
+    /// superfície onde se COLOCA, e os dois tipos são colocáveis.
     #[test]
     fn each_tab_offers_what_it_operates_on() {
         assert_eq!(names(Tab::Keys), vec!["Main", "Run"], "Keys: só clips");
-        assert_eq!(
-            names(Tab::Containers),
-            vec!["Walk"],
-            "Containers: só containers"
-        );
-        assert_eq!(
-            names(Tab::Arrange),
-            vec!["Main", "Run", "Walk"],
-            "Arrange: os dois, clips primeiro"
-        );
+        for tab in [Tab::Containers, Tab::Arrange] {
+            assert_eq!(
+                names(tab),
+                vec!["Main", "Run", "Walk"],
+                "{tab:?}: os dois, clips primeiro"
+            );
+        }
     }
 
     /// **O VALOR de uma opção é a posição na lista PINTADA.**
@@ -374,6 +449,7 @@ mod tests {
             tab,
             speed_view: false,
             source_container: c,
+            open_container: None,
         };
         assert_eq!(
             selected_source(&s, view(Tab::Arrange, None)),
@@ -387,24 +463,49 @@ mod tests {
         );
         assert_eq!(
             selected_source(&s, view(Tab::Containers, Some(0))),
-            0,
-            "na aba Containers a lista não tem clips, então ele é a primeira linha"
+            2,
+            "a aba Containers lista clips TAMBÉM, então o container segue depois deles"
         );
     }
 
-    /// **Os quatro botões de CLIP somem onde não há clip na tela.**
+    /// **O chip de HOST só existe onde "qual container?" é pergunta** — e a barra abre
+    /// espaço para ele.
     ///
-    /// Eles agem sobre o clip ATIVO, e a aba Containers não mostra nenhum: um controle que
-    /// edita algo fora de vista é o mesmo defeito de um que está apagado e ainda despacha.
-    /// A largura tem de encolher junto, senão o fluxo reserva espaço para um vazio.
+    /// ⚠️ Substitui um gate que afirmava o oposto sobre os quatro botões de CLIP (eles
+    /// sumiam na aba Containers). Aquela decisão CAIU junto com o filtro que tirava os clips
+    /// de lá: a aba lista clips de novo, então o clip ativo está em vista e os botões dele
+    /// voltam a significar algo.
     #[test]
-    fn the_clip_buttons_leave_the_bar_where_no_clip_is_shown() {
-        assert!(!shows_clip_buttons(Tab::Containers));
-        assert!(shows_clip_buttons(Tab::Keys) && shows_clip_buttons(Tab::Arrange));
+    fn the_host_picker_only_exists_where_which_container_is_a_question() {
+        assert!(shows_host_picker(Tab::Containers));
+        assert!(!shows_host_picker(Tab::Keys) && !shows_host_picker(Tab::Arrange));
         let s = snap();
         assert!(
-            width(&s, Tab::Containers) < width(&s, Tab::Arrange),
-            "a barra tem de encolher com eles"
+            width(&s, Tab::Containers) > width(&s, Tab::Arrange),
+            "a barra tem de abrir espaço para ele"
+        );
+    }
+
+    /// **Cada linha diz de que TIPO ela é** — um glifo discreto, e os dois nunca coincidem
+    /// (Enio, 2026-07-21). Numa lista com clips e containers misturados sem marca, o artista
+    /// descobre o tipo colocando um deles e vendo o que acontece.
+    #[test]
+    fn every_row_carries_the_glyph_of_its_kind() {
+        let opts = source_options(&snap(), Tab::Arrange);
+        assert_eq!(
+            opts.iter().map(|o| o.icon).collect::<Vec<_>>(),
+            vec![Some(CLIP_GLYPH), Some(CLIP_GLYPH), Some(CONTAINER_GLYPH)],
+            "dois clips e um container"
+        );
+        assert_ne!(
+            CLIP_GLYPH, CONTAINER_GLYPH,
+            "distinguir é o trabalho inteiro"
+        );
+        // A lista de HOSTS é toda de containers, e leva o mesmo glifo: é a mesma coisa.
+        assert!(
+            host_options(&snap())
+                .iter()
+                .all(|o| o.icon == Some(CONTAINER_GLYPH))
         );
     }
 }

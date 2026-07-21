@@ -157,16 +157,16 @@ pub(crate) fn apply_event(
                 .position(|(tid, _)| *tid == id)
                 .map_or(crate::tab::Tab::default(), crate::tab::Tab::from_index);
             crate::state::set_tab(state, want);
-            // **The Containers tab always shows A container.** With no trail yet it opens
-            // the newest one — and with no container at all, `len - 1` saturates to 0, which
-            // is out of range: the tab is then empty and its only live control is
-            // "+ Container", whose new container gets exactly that index. The empty state
-            // and the first creation name the same place, so nothing has to be predicted
-            // twice.
+            // **The Containers tab opens OUTSIDE any container** — the level where containers
+            // are made (Enio, 2026-07-21). The step points ONE PAST the end of the container
+            // list, which is out of range on purpose: no host, so no lanes, so the header
+            // offers "+ Container" and nothing else. And it is the index the next
+            // `AddContainer` will mint — the empty state and the first creation name the
+            // same place, so nothing is predicted twice.
             if want == crate::tab::Tab::Containers && crate::state::trail_len() == 0 {
                 let n = crate::state::current_snapshot().containers.len();
                 crate::state::enter_container(ph2d_timeline::EnterStep {
-                    container: n.saturating_sub(1),
+                    container: n,
                     lane: 0,
                     strip: None,
                 });

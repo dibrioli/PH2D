@@ -347,6 +347,13 @@ impl TimelineDoc {
     /// inside it is still playing. A container with an empty interior is zero-length, and a
     /// strip of it would be a strip nobody can grab; that is the caller's problem to see, not
     /// a reason to invent a length.
+    ///
+    /// ⚠️ **It reads [`TimelineDoc::host_end_seconds`], the SAME door the panel sizes a new
+    /// strip's span from.** It used to fold `t_end` while that one folds `lead_end`, and the
+    /// two disagreed by exactly the last strip's outward lead-out — which is `slice != span`
+    /// at birth, i.e. a container instance born at a speed nobody asked for (`add_strip`'s
+    /// note, one level up). Two answers to "how long is this" is how a strip comes to be
+    /// retimed by a fade somebody authored inside it a week earlier.
     fn source_length(&self, source: StripSource) -> f64 {
         match source {
             StripSource::Clip(i) => {
@@ -355,13 +362,9 @@ impl TimelineDoc {
                     c.clip.duration().to_seconds().max(self.clip_end_seconds(i))
                 })
             }
-            StripSource::Container(i) => self.container_stack(i as usize).map_or(0.0, |lanes| {
-                lanes
-                    .iter()
-                    .flat_map(|l| l.strips.iter())
-                    .map(|s| s.t_end)
-                    .fold(0.0_f64, f64::max)
-            }),
+            StripSource::Container(i) => self
+                .host_end_seconds(StackHost::Container(i as usize))
+                .unwrap_or(0.0),
         }
     }
 }

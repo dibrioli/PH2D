@@ -132,6 +132,26 @@ const WGSL: &str = r#"
     for (var dy = -1; dy <= 1; dy = dy + 1) {
         for (var dx = -1; dx <= 1; dx = dx + 1) {
             let c = ci + vec2<i32>(dx, dy);
+            // The collide's per-cell cull (its `2d0297c0` mechanism), ported: a
+            // cell whose NEAREST point is already past the perception radius is
+            // skipped before touching a single boid in it. Exact, never
+            // approximate -- a neighbour needs `dsq <= r2` and every point of
+            // the cell is at least this far; the skip is STRICT `>` because the
+            // neighbour test is INCLUSIVE (`dsq > r2` skips), the mirror of the
+            // collide's `>=` whose contact is strict.
+            //
+            // MEASURED at ~6%, not the collide-context "~20%" estimate (ABA'
+            // with cooldowns, A/A' repeatable to 0,1% at scale: 1M 15,5->14,6 ·
+            // 2M 43,8->41,0 · 8M 293->274 ms/tick; non-monotonic +1% at 4M).
+            // Only the 4 CORNER cells of a 3x3 sweep are ever skippable, ~21,5%
+            // of the time each (1 - pi/4) -- that bounds the win; the collide
+            // gains more because its reach is 2-3 (25-49 cells). ⚠️ A first
+            // measurement WITHOUT cooldowns read this as -9% and nearly refuted
+            // it: three heavy sweeps back-to-back drift the GPU clock by 20%
+            // A-to-A, more than the effect under test.
+            let cl = vec2<f32>(f32(c.x), f32(c.y)) * params.grid_cell;
+            let cg = max(max(cl - pi, pi - (cl + vec2<f32>(params.grid_cell, params.grid_cell))), vec2<f32>(0.0, 0.0));
+            if (dot(cg, cg) > r2) { continue; }
             let b = grid_bucket_of(c);
             let hi = grid_starts[b + 1u];
             for (var s = grid_starts[b]; s < hi; s = s + 1u) {

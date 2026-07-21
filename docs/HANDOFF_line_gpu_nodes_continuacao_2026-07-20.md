@@ -304,6 +304,18 @@ prefixo CPU. Fechar isso é o item 1, e é o que transforma a capacidade em prod
 | 4 | **próximo kernel de cobertura** | incremental | mais grafos 100% GPU | re-meça qual nó aparece no prefixo CPU de docs reais (o método do censo) |
 | 5 | **Voronoi (JFA)** / **soft_body-verlet (XPBD)** | **grande** | os outros O(N²) de simulação | cada um é um algoritmo GPU PRÓPRIO — NÃO reusa a grade de vizinhança; território de maior ambição e o mais longe |
 
+**⚠️ O CULL DO BOIDS APLICADO — e a medição derrubou DUAS conclusões erradas
+antes da certa (2026-07-21, fecha a fila §E):** o ganho real é **~6%** (1M
+15,5→14,6 · 2M 43,8→41,0 · 8M 293→274 ms/tick; +1% não-monotônico a 4M), não
+os ~20% da estimativa do `2d0297c0` (contexto do collide, nunca medido no
+boids — só os 4 CANTOS de uma varredura 3×3 são puláveis, ~21,5% das vezes
+cada = o teto geométrico do ganho) e não os **−9% da 1ª medição**, que quase
+o refutou: três sweeps pesados costas-com-costas derivam o clock da GPU em
+**20% A-contra-A** — mais que o efeito sob medida. Método que valeu: **ABA'
+com cooldowns de 60-90 s e o probe reduzido ao sweep relevante** (A/A'
+repete a ±0,1% em escala). Paridade intocada (o cull é exato; 22 gates da
+sim suite verdes).
+
 **⚠️ Otimizações MEDIDAS e REPROVADAS nesta jornada (não re-derive):**
 - **collide, teste-mais-barato-primeiro** no laço interno → 6,47→6,45 ms. O kernel é
   **memory-bound** na leitura das posições dos vizinhos; reordenar aritmética não

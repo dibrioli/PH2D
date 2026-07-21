@@ -1249,3 +1249,92 @@ fn entering_wet_coerces_a_non_incremental_method_to_space() {
         "re-entering wet kept the non-incremental method in the wet slot"
     );
 }
+
+// ── Doc 21 (deposit-at-commit) — Stage 0 pins ─────────────────────────────
+
+/// Doc 21 G0a: `wet_owns_the_dabs` is FALSE in every non-wet mode, eraser on
+/// or off — the ownership predicate short-circuits on the MODE, so the
+/// deposit-at-commit seams cannot move one instruction outside Wet Paint.
+/// Re-run at every stage of the doc-21 diff.
+#[test]
+fn no_non_wet_mode_is_ever_owned_by_the_wet_module() {
+    for wire in [
+        "brush", "eraser", "smear", "blur", "clone", "mask", "inpaint", "fill", "selection",
+        "deform", "sculpt", "knife",
+    ] {
+        for eraser in [false, true] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+            t.set_paint_tool_mode(wire);
+            t.paint.eraser = eraser;
+            assert!(
+                !t.wet_owns_the_dabs(),
+                "non-wet wire {wire:?} (eraser {eraser}) owned by the wet module"
+            );
+        }
+    }
+}
+
+/// FNV-1a over the canvas bytes — the fingerprint the G0 diff-guard pins.
+fn canvas_fp(t: &PainterTool) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in t.canvas_rgba.iter() {
+        h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// Doc 21 G0b: the PAINT-MODE flat pipeline is byte-identical across the
+/// deposit-at-commit diff — a scripted DragDot + Anchored + Line-editor +
+/// Ellipse-with-parked-Polygon (boolean Add) session, fingerprinted after
+/// each phase. The literals are the pre-diff baseline (law #1); a legitimate
+/// future brush change re-baselines them CONSCIOUSLY — this gate exists so
+/// the doc-21 stages cannot move them silently.
+#[test]
+fn the_paint_mode_flat_pipeline_survives_the_deposit_at_commit_diff() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool_in_mode("brush");
+    // Phase 1 — DragDot: drag then release keeps only the release dab.
+    t.set_brush_stroke_method(StrokeMethod::DragDot.to_u8());
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([120.0, 40.0], PointerPhase::Up));
+    let fp1 = canvas_fp(&t);
+    // Phase 2 — Anchored: press, grow, release.
+    t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
+    t.on_canvas_pointer(cp([60.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Up));
+    let fp2 = canvas_fp(&t);
+    // Phase 3 — the Line EDITOR: two points then Enter (commit).
+    t.set_brush_stroke_method(StrokeMethod::Line.to_u8());
+    t.on_canvas_pointer(cp([20.0, 100.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 100.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([140.0, 110.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([140.0, 110.0], PointerPhase::Up));
+    t.line_commit();
+    let fp3 = canvas_fp(&t);
+    // Phase 4 — Ellipse, park it by switching to Polygon (boolean Add), draw,
+    // commit the whole set (restamp_shapes_preview + stroke_boolean path).
+    t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([95.0, 85.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([95.0, 85.0], PointerPhase::Up));
+    t.set_stroke_op_mode(1); // Add — the boolean composite path
+    t.set_brush_stroke_method(StrokeMethod::Polygon.to_u8());
+    t.on_canvas_pointer(cp([100.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([130.0, 90.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([130.0, 90.0], PointerPhase::Up));
+    t.commit_open_shape();
+    let fp4 = canvas_fp(&t);
+    assert_eq!(
+        (fp1, fp2, fp3, fp4),
+        (
+            11500148479875963709u64,
+            15307394337005168053u64,
+            553778838004119880u64,
+            17972062586509242145u64,
+        ),
+        "the Paint-mode flat pipeline moved under the doc-21 diff"
+    );
+}

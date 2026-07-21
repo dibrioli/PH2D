@@ -251,3 +251,24 @@ fn the_hosts_grain_replaces_the_bristle() {
         "a vetoed column carries deposit — the bristle spoke over the grain"
     );
 }
+
+/// The engine fact the deposit-at-commit design leans on (doc 21, G7): a
+/// SINGLE dab on a fresh direct stroke TRANSFERS to the grid — `start_stroke`
+/// resets the trail window to zero, so the first `accumulate_paint` is
+/// already past it and nothing waits for a second dab. This is the standing
+/// refutation of the "single-dab deposits vanish ⇒ engine flush door"
+/// design. Mutation that bleeds it: a window floor > 0 in `start_stroke`.
+#[test]
+fn a_single_dab_on_a_fresh_stroke_transfers_to_the_grid() {
+    let mut e = Engine::new(120, 90);
+    e.begin_direct_stroke(0, 60.0, 45.0);
+    e.dispatch_pressure_dab_lane(0, 60.0, 45.0, 5.0, 1.0, 0.0, 12.0, None, None);
+    let g = e.active_grid();
+    let mass: f64 = g.susp.iter().map(|&v| f64::from(v)).sum::<f64>()
+        + g.sett.iter().map(|&v| f64::from(v)).sum::<f64>();
+    assert!(
+        mass > 1.0,
+        "a single dab on a fresh stroke left the grid empty (mass {mass}) — \
+         the Anchored commit would deposit nothing"
+    );
+}

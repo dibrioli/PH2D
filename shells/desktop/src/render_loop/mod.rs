@@ -2767,11 +2767,14 @@ impl crate::App {
                     hero.store.active_id(),
                     Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET
                 );
-                let live_d = hero
+                // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo
+                // nasce de `fração × escala`, com a escala CONGELADA na sessão (a porta
+                // única `vec_expand::offset_scale` — report 2026-07-20, ver `params`).
+                let frac = hero
                     .store
                     .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
-                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT, |(_, v)| {
-                        ph2d_tool_vector::params::slider_to_offset(v)
+                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
+                        ph2d_tool_vector::params::slider_to_offset_frac(v)
                     });
                 if offset_grabbed {
                     if self.vec_offset_session.is_none() {
@@ -2785,16 +2788,17 @@ impl crate::App {
                             crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen, &xf);
                     }
                     if let Some(mut sess) = self.vec_offset_session.take() {
-                        sess.preview(vec_scene, &mut self.vec_pen, live_d);
+                        sess.preview(vec_scene, &mut self.vec_pen, frac * sess.scale());
                         self.vec_offset_session = Some(sess);
                     }
                 } else if let Some(mut sess) = self.vec_offset_session.take() {
                     // Soltou: o preview final ao `d` de soltura + recentra o slider — e a
                     // sessão vira a JANELA DE RETUNE (Join/Side ainda mexem no comitado).
+                    let live_d = frac * sess.scale();
                     sess.preview(vec_scene, &mut self.vec_pen, live_d);
                     hero.store.set_slider_value(
                         ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_to_slider(0.0),
+                        ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                     );
                     self.vec_offset_retune =
                         crate::vec_expand::OffsetRetune::after_release(sess, live_d);
@@ -2829,12 +2833,14 @@ impl crate::App {
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // A distância vem do slider do painel — a MESMA fonte que o chip mostra.
+                // Fração × escala da seleção ATUAL (a mesma porta que o arrasto congela).
                 let d = hero
                     .store
                     .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
-                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT, |(_, v)| {
-                        ph2d_tool_vector::params::slider_to_offset(v)
-                    });
+                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
+                        ph2d_tool_vector::params::slider_to_offset_frac(v)
+                    })
+                    * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
                 // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
                 // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
                 // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
@@ -2873,7 +2879,7 @@ impl crate::App {
                 if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
                     hero.store.set_slider_value(
                         ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_to_slider(0.0),
+                        ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                     );
                 }
             }

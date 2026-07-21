@@ -138,10 +138,16 @@ impl crate::App {
              \x20    Stroke: têm de sobrar DOIS objetos — o miolo azul e o anel amarelo.\n\
              \x20 3) OFFSET AO VIVO: selecione o DONUT verde e ARRASTE o slider **Offset** —\n\
              \x20    a forma muda em TEMPO REAL; ao soltar, o slider volta ao centro (0).\n\
+             \x20    O número é PERCENTUAL do tamanho da forma: −100 = a forma some\n\
+             \x20    garantido, +100 = ela dobra — o curso INTEIRO é útil, em qualquer\n\
+             \x20    escala de forma.\n\
              \x20    - **Side**: Both expande a borda E o furo; Outer só a borda; Inner só o\n\
-             \x20      furo. Com **Inner** + **Join Round**, arraste POSITIVO: as quinas do\n\
-             \x20      FURO arredondam (o bug do smoke passado). Negativo encolhe.\n\
-             \x20    - O botão **Offset Path** ainda aplica o valor digitado no chip.\n\
+             \x20      furo. Com **Inner** + **Corner Round**, arraste POSITIVO: as quinas\n\
+             \x20      do FURO arredondam (o bug do smoke passado). Negativo encolhe.\n\
+             \x20    - **Corner** (Miter/Round/Bevel) é a quina do OFFSET — a fileira\n\
+             \x20      \"Join\" lá em cima, na seção Stroke, é a quina do TRAÇO (outra\n\
+             \x20      pergunta). Logo após soltar, clicar um Corner re-offseta NA HORA.\n\
+             \x20    - O botão **Offset Path** ainda aplica o valor mostrado no chip.\n\
              \x20 4) O ARCO roxo embaixo é o **Power Stroke** (agora LISO, sem rugosidade):\n\
              \x20    selecione-o e clique. Afina nas pontas e engrossa no meio. Mexa em\n\
              \x20    **W Start / W Mid / W End** e refaça — `W Pos` move onde o grosso senta.\n\
@@ -150,66 +156,164 @@ impl crate::App {
         );
     }
 
-    /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (a ferramenta que
-    /// decodificou o report de 2026-07-20: "queda de FPS + não muda para Miter/Bevel").
-    /// Na ORDEM do report: arrasta com o Miter default (segura ~2 s por fase, pra dar
-    /// tempo de screenshot), solta, e retuna Round → Bevel → Miter com cliques de timing
-    /// REAL (Down e Up em frames separados). Loga por frame: custo, profundidade do undo,
-    /// janela viva, join do painel, VERTS (o oráculo dos retunes) e a LARGURA do bbox
-    /// (o oráculo do arrasto — verts é CEGO ao Miter/Bevel, cuja topologia não muda
-    /// com `d`).
-    pub(crate) fn smoke_expand_retune_drive(&mut self, f: u32) {
-        // Telemetria de TODO frame do roteiro (o FPS é o 1º sintoma).
+    /// A telemetria por-frame dos roteiros auto-dirigidos (níveis 18 e 19) — custo do
+    /// frame, profundidade do undo, janela de retune viva, join do painel, VERTS (o
+    /// oráculo dos retunes) e a LARGURA do bbox (o oráculo do arrasto).
+    ///
+    /// VERTS, não área: a área a `Both` é CEGA por construção (o arredondamento perde
+    /// (4−π)d² na borda e ganha o MESMO no furo — cancela exato). ⚠️ E BBOX, porque verts
+    /// é CEGO ao Miter/Bevel: a topologia deles não muda com `d` (um quadrado mitrado tem
+    /// 4 quinas em qualquer offset), então só o Round "mexe" na contagem — um preview
+    /// CONGELADO em Miter seria verde de verts. A largura do bbox cresce com `d` em
+    /// qualquer join vivo.
+    fn smoke_expand_telemetry(&mut self, f: u32, last: u32) {
         let dt_ms = LAST_T.with(|c| {
             let now = std::time::Instant::now();
             let dt = c.get().map_or(0.0, |t| t.elapsed().as_secs_f64() * 1e3);
             c.set(Some(now));
             dt
         });
-        if (9..=520).contains(&f) && (f.is_multiple_of(10) || f <= 30) {
-            // VERTS, não área: a área a `Both` é CEGA por construção (o arredondamento
-            // perde (4−π)d² na borda e ganha o MESMO no furo — cancela exato).
-            // ⚠️ E BBOX, porque verts é CEGO ao Miter/Bevel: a topologia deles não muda
-            // com `d` (um quadrado mitrado tem 4 quinas em qualquer offset), então só o
-            // Round "mexe" na contagem — um preview CONGELADO em Miter seria verde de
-            // verts. A largura do bbox cresce com `d` em qualquer join vivo.
-            let (paths, verts, bw) = self.gfx.as_ref().map_or((0, 0, 0.0), |g| {
-                let v: usize = g
-                    .vec_scene
-                    .paths()
-                    .iter()
-                    .map(|p| {
-                        p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>()
-                    })
-                    .sum();
-                let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
-                for p in g.vec_scene.paths() {
-                    for vx in &p.verts {
-                        lo = lo.min(vx.anchor[0]);
-                        hi = hi.max(vx.anchor[0]);
-                    }
-                }
-                (g.vec_scene.paths().len(), v, (hi - lo).max(0.0))
-            });
-            let d = self.gfx.as_ref().and_then(|g| {
-                let hero = g.hero_screen.as_ref()?;
-                let (_, v) = hero.store.slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)?;
-                Some(ph2d_tool_vector::params::slider_to_offset(v))
-            });
-            let active = self
-                .gfx
-                .as_ref()
-                .and_then(|g| g.hero_screen.as_ref())
-                .and_then(|h| h.store.active_id())
-                .map_or("-".into(), |id| format!("{id:?}"));
-            eprintln!(
-                "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} d={} paths={paths} verts={verts} bw={bw:.3} active={active}",
-                self.undo.depth(),
-                u8::from(self.vec_offset_retune.is_some()),
-                ph2d_panel_vector::expand_join(),
-                d.map_or("?".into(), |d| format!("{d:.3}")),
-            );
+        if !((9..=last).contains(&f) && (f.is_multiple_of(10) || f <= 30)) {
+            return;
         }
+        let (paths, verts, bw) = self.gfx.as_ref().map_or((0, 0, 0.0), |g| {
+            let v: usize = g
+                .vec_scene
+                .paths()
+                .iter()
+                .map(|p| p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>())
+                .sum();
+            let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+            for p in g.vec_scene.paths() {
+                for vx in &p.verts {
+                    lo = lo.min(vx.anchor[0]);
+                    hi = hi.max(vx.anchor[0]);
+                }
+            }
+            (g.vec_scene.paths().len(), v, (hi - lo).max(0.0))
+        });
+        // O slider fala FRAÇÃO da forma; o mundo-d = fração × escala da sessão (a lei da
+        // forma — ver `params::OFFSET_FRAC_MIN`). Fora de sessão loga a fração crua (o
+        // mundo-d nem existe ainda).
+        let d = self.gfx.as_ref().and_then(|g| {
+            let hero = g.hero_screen.as_ref()?;
+            let (_, v) = hero.store.slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)?;
+            let frac = ph2d_tool_vector::params::slider_to_offset_frac(v);
+            Some(match self.vec_offset_session.as_ref() {
+                Some(sess) => frac * sess.scale(),
+                None => frac,
+            })
+        });
+        let active = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.active_id())
+            .map_or("-".into(), |id| format!("{id:?}"));
+        eprintln!(
+            "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} d={} paths={paths} verts={verts} bw={bw:.3} active={active}",
+            self.undo.depth(),
+            u8::from(self.vec_offset_retune.is_some()),
+            ph2d_panel_vector::expand_join(),
+            d.map_or("?".into(), |d| format!("{d:.3}")),
+        );
+    }
+
+    /// Nível 19 — **o fluxo EXATO do report de 2026-07-20** ("se selecionar Round, não
+    /// consegue mudar"): arma ROUND **antes** do arrasto, arrasta o slider até SATURAR à
+    /// direita (o gesto natural de um polegar rápido), segura, solta, e retuna
+    /// Bevel → Miter. Com a faixa antiga (±4 unidades de MUNDO) o release caía num regime
+    /// **join-inerte** — a forma estourava a tela e as quinas (onde o join mora) saíam de
+    /// vista; à esquerda, aniquilava e os três joins produziam o mesmo nada. Com a LEI DA
+    /// FORMA (fração × maxdim/2) o saturado É "a forma dobrada": quinas na tela, e cada
+    /// retune muda pixels visíveis (verts: Round ≫ Bevel > Miter).
+    pub(crate) fn smoke_expand_saturate_drive(&mut self, f: u32) {
+        self.smoke_expand_telemetry(f, 380);
+        match f {
+            // Rola o painel até a seção Expand entrar no hit-index (mesmo caminho do 18).
+            5..=7
+                if self
+                    .smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                    .is_none() =>
+            {
+                let win = self.gfx.as_ref().map(|g| g.surface.size());
+                if let Some(w) = win {
+                    let (px, py) = (w.width as f32 - 120.0, w.height as f32 * 0.5);
+                    self.smoke_pointer_move(px, py);
+                    self.on_mouse_wheel(winit::event::MouseScrollDelta::LineDelta(0.0, -24.0));
+                }
+            }
+            // "Se selecionar Round": o chip Round (da seção EXPAND) é clicado ANTES do
+            // arrasto — o preview vivo já sai arredondando.
+            10 | 13 => {
+                if f == 10 {
+                    match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_ROUND) {
+                        Some((x, y)) => {
+                            eprintln!("[retune-smoke] DOWN ROUND (pré-arrasto) em ({x}, {y})");
+                            self.smoke_pointer_down(x, y);
+                        }
+                        None => eprintln!("[retune-smoke] chip ROUND fora do hit-index"),
+                    }
+                } else {
+                    self.smoke_pointer_up();
+                }
+            }
+            // Agarra o slider e ARRASTA ATÉ SATURAR (+200 px passa o fim do track): o
+            // gesto natural, que na faixa antiga aterrissava o artista em d=+4.
+            20 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET) {
+                Some((x, y)) => {
+                    GRAB.with(|c| c.set((x, y)));
+                    eprintln!("[retune-smoke] slider em ({x}, {y}) — DOWN (vai saturar)");
+                    self.smoke_pointer_down(x, y);
+                }
+                None => eprintln!("[retune-smoke] slider FORA do hit-index — roteiro morto"),
+            },
+            21..=45 => {
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + ((f - 20) * 8) as f32, y);
+            }
+            // Segura SATURADO (~1 s de screenshot), reafirmando a posição contra o cursor
+            // físico (a lição do KWin — ver o comentário do nível 18).
+            46..=115 => {
+                let (x, y) = GRAB.with(Cell::get);
+                self.smoke_pointer_move(x + 200.0, y);
+            }
+            116 => {
+                eprintln!("[retune-smoke] UP (release SATURADO — a janela de retune abre)");
+                self.smoke_pointer_up();
+            }
+            // Os retunes do report: Round→BEVEL e Bevel→MITER — os dois que "não mudavam".
+            170 | 290 => {
+                let (id, name) = if f == 170 {
+                    (ph2d_editor::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL")
+                } else {
+                    (ph2d_editor::ids::VECTOR_EXPAND_JOIN_MITER, "MITER")
+                };
+                match self.smoke_find_widget(id) {
+                    Some((x, y)) => {
+                        eprintln!("[retune-smoke] DOWN {name} em ({x}, {y})");
+                        self.smoke_pointer_down(x, y);
+                    }
+                    None => eprintln!("[retune-smoke] chip {name} fora do hit-index"),
+                }
+            }
+            173 | 293 => {
+                eprintln!("[retune-smoke] UP do chip");
+                self.smoke_pointer_up();
+            }
+            380 => eprintln!("[retune-smoke] fim do roteiro — feche a janela"),
+            _ => {}
+        }
+    }
+
+    /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (a ferramenta que
+    /// decodificou o report de 2026-07-20: "queda de FPS + não muda para Miter/Bevel").
+    /// Na ORDEM do report: arrasta com o Miter default (segura ~2 s por fase, pra dar
+    /// tempo de screenshot), solta, e retuna Round → Bevel → Miter com cliques de timing
+    /// REAL (Down e Up em frames separados). A telemetria é a de
+    /// [`Self::smoke_expand_telemetry`].
+    pub(crate) fn smoke_expand_retune_drive(&mut self, f: u32) {
+        self.smoke_expand_telemetry(f, 520);
         match f {
             // A seção Expand mora abaixo da dobra: ROLA o painel (roda, caminho real) até o
             // slider entrar no hit-index. O cursor precisa estar SOBRE o painel para a roda
@@ -239,12 +343,12 @@ impl crate::App {
                 None => eprintln!("[retune-smoke] slider FORA do hit-index — roteiro morto"),
             },
             // Arrasta 68 px para a direita, 4 px/frame — o grab caiu na BORDA esquerda do
-            // track (d≈−3.9), então 68 px param em d≈+1.3: um offset MODERADO, com as
-            // quinas do resultado DENTRO do viewport. ⚠️ De propósito: a d≈4 a forma
-            // estoura a tela e as quinas — onde o join mora — saem de vista, então NENHUM
-            // retune muda um pixel visível (foi metade do report de 2026-07-20); o regime
-            // extremo é coberto pelo gate determinístico do motor
-            // (`an_offset_past_the_shapes_death_leaves_no_phantom`), não por este smoke.
+            // track (−100% = morte garantida), então 68 px param em ≈+32% (d≈+0.39 no
+            // donut): um offset MODERADO, quinas do resultado DENTRO do viewport. O
+            // regime SATURADO — o gesto natural do artista, que era join-inerte na faixa
+            // antiga e virou "a forma dobrada" com a lei da forma — é o roteiro do nível
+            // 19 (`smoke_expand_saturate_drive`); a morte extrema é coberta pelo gate do
+            // motor (`an_offset_past_the_shapes_death_leaves_no_phantom`).
             11..=27 => {
                 let (x, y) = GRAB.with(Cell::get);
                 self.smoke_pointer_move(x + ((f - 10) * 4) as f32, y);

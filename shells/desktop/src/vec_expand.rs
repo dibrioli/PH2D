@@ -162,6 +162,37 @@ pub(crate) fn expand_selection(
     touched
 }
 
+/// **A escala do slider de Offset** — metade do maior lado da bbox de MUNDO da seleção.
+///
+/// O slider fala FRAÇÃO (`params::slider_to_offset_frac`) e `d = fração × esta escala`. A
+/// meia-dimensão é o que dá sentido aos DOIS extremos do curso: o inradius de qualquer
+/// forma é ≤ maxdim/2, então **−100% aniquila garantido** (não há d mais negativo que
+/// ainda mostre algo); e a +100% o eixo maior cresce exatamente 2× (**dobrar**), com as
+/// quinas — onde o join mora — na vizinhança da tela. A faixa fixa antiga (±4 de mundo)
+/// entregava o gesto natural a regimes join-inertes — o report de 2026-07-20 ("se
+/// selecionar Round, não consegue mudar"); a história completa em
+/// `params::OFFSET_FRAC_MIN`.
+///
+/// Porta ÚNICA: o arrasto vivo (via [`OffsetSession::scale`], congelada no grab) e o botão
+/// Offset Path perguntam AQUI — duas cópias divergiriam no dia em que a lei mudasse.
+/// Multi-seleção usa a bbox da UNIÃO (um slider, um número). Seleção vazia/degenerada cai
+/// em `1.0` — inerte de toda forma (`zs.is_empty()`/`results` vazio no expand).
+pub(crate) fn offset_scale(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) -> f64 {
+    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+    for id in pen.selected_paths() {
+        if let Some((l, h)) = scene.path_world_curve_bbox(xforms, *id) {
+            lo = [lo[0].min(l[0]), lo[1].min(l[1])];
+            hi = [hi[0].max(h[0]), hi[1].max(h[1])];
+        }
+    }
+    let maxdim = (hi[0] - lo[0]).max(hi[1] - lo[1]);
+    if maxdim.is_finite() && maxdim > 0.0 {
+        maxdim * 0.5
+    } else {
+        1.0
+    }
+}
+
 /// A **sessão VIVA** do Offset Path — o preview enquanto o slider de Offset é arrastado.
 ///
 /// O offset é DESTRUTIVO (consome a forma), então não dá para offsetar sobre o resultado do
@@ -196,6 +227,11 @@ pub(crate) struct OffsetSession {
     /// `d` real as entidades das fontes morreram, e `|d| ~ 0` passa a mostrar cópias de
     /// mundo (ver [`Self::preview`]).
     churned: bool,
+    /// A escala fração→mundo ([`offset_scale`]) **CONGELADA no grab, das FONTES**. O
+    /// preview churna a seleção (as fontes viram o resultado, cuja bbox CRESCE com o
+    /// próprio `d`) — recomputar por frame retro-alimentaria o mapa do slider e o mesmo
+    /// polegar valeria distâncias diferentes a cada frame.
+    scale: f64,
 }
 
 impl OffsetSession {
@@ -212,7 +248,14 @@ impl OffsetSession {
                 xforms: xforms.clone(),
                 live: Vec::new(),
                 churned: false,
+                scale: offset_scale(scene, pen, xforms),
             })
+    }
+
+    /// A escala fração→mundo do gesto (ver o campo `scale`) — quem converte o track do
+    /// slider em `d` durante o arrasto e no release pergunta AQUI.
+    pub(crate) fn scale(&self) -> f64 {
+        self.scale
     }
 
     /// Os paths que o último [`Self::preview`] deixou na cena — o `settle_origins` os pula
@@ -382,3 +425,7 @@ impl OffsetRetune {
 #[cfg(test)]
 #[path = "vec_expand_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "vec_expand_scale_tests.rs"]
+mod scale_tests;

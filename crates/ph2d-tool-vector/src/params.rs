@@ -254,32 +254,48 @@ pub fn gap_to_slider(m: f64) -> f32 {
 mod text;
 pub use text::*;
 
-/// **Offset Path** — a distância que a borda anda, em unidades de MUNDO.
+/// **Offset Path** — o slider fala **FRAÇÃO do tamanho da forma**, não unidades de mundo.
 ///
 /// Bipolar de propósito: o negativo ENCOLHE, e é a mesma operação com o sinal trocado (o
 /// diálogo do Illustrator também aceita negativo num campo só). Um par de botões
 /// "crescer/encolher" seriam dois controles para um número.
 ///
-/// A faixa é ERGONÔMICA, não física: a vista do editor mede ~10 unidades de mundo de altura
-/// (o mesmo raciocínio de [`TEXT_SIZE_MAX`]), então ±4 vai de um empurrãozinho a quase a
-/// tela inteira. O motor não tem teto — quem quiser mais offseta duas vezes.
-pub const OFFSET_MIN: f64 = -4.0;
-pub const OFFSET_MAX: f64 = 4.0;
-/// Default `0.5`: visível de imediato numa forma de tamanho típico, sem estourá-la. Zero
-/// seria um botão que não faz nada no primeiro clique.
-pub const OFFSET_DEFAULT: f64 = 0.5;
-pub const OFFSET_SLIDER_SCALE: f32 = (OFFSET_MAX - OFFSET_MIN) as f32;
-pub const OFFSET_SLIDER_OFFSET: f32 = OFFSET_MIN as f32;
+/// ⚠️ **A faixa antiga (±4 unidades de mundo, "ergonômica" pela ALTURA DA VISTA) era o bug
+/// do report de 2026-07-20** ("se selecionar Round, não consegue mudar"): o alcance útil de
+/// um offset é propriedade da FORMA, não do viewport — no donut do smoke (2,4 de lado, ~104
+/// px de track) o gesto natural SATURAVA em d=±4, e os dois extremos são regimes onde os
+/// joins não podem diferir visivelmente (à esquerda a forma ANIQUILA — três joins produzem
+/// o mesmo nada; à direita ela estoura a tela e as quinas, onde o join mora, saem de vista).
+/// A janela de retune funcionava; o dial é que entregava o artista a regimes join-inertes.
+///
+/// A faixa nova é a LEI DA FORMA: `d = fração × (maxdim/2)` da seleção, então **−100% é
+/// morte garantida** (o inradius de qualquer forma ≤ maxdim/2 — não existe d mais negativo
+/// que ainda mostre alguma coisa) **e +100% é dobrar a forma** (o eixo maior cresce
+/// exatamente 2×, com as quinas na vizinhança da tela). Todo o curso do slider é
+/// significativo, e a precisão no donut fica 3,3× mais fina (0,023 vs 0,077 unidades/px).
+/// Quem resolve fração→mundo é a shell (`vec_expand::offset_scale`, porta única, congelada
+/// na sessão do arrasto). O motor não tem teto — quem quiser mais offseta duas vezes.
+pub const OFFSET_FRAC_MIN: f64 = -1.0;
+pub const OFFSET_FRAC_MAX: f64 = 1.0;
+/// Default `+0.25` (um quarto do meio-tamanho da forma): visível de imediato em QUALQUER
+/// escala de forma — o antigo `0.5` absoluto era invisível numa forma de 100 unidades e
+/// letal numa de 0,6. Zero seria um botão que não faz nada no primeiro clique.
+pub const OFFSET_DEFAULT_FRAC: f64 = 0.25;
+/// O chip numérico mostra PERCENTUAL (−100..+100) — o mapa do store é estático, então a
+/// UI nunca precisa saber o tamanho da seleção (e o rótulo nunca mente).
+pub const OFFSET_SLIDER_SCALE: f32 = 200.0;
+pub const OFFSET_SLIDER_OFFSET: f32 = -100.0;
 
-/// Normalized track `0..=1` → offset distance `MIN..=MAX`.
+/// Normalized track `0..=1` → fração do offset `−1..=+1` (−100%..+100% do meio-tamanho).
 #[must_use]
-pub fn slider_to_offset(track: f32) -> f64 {
-    OFFSET_MIN + f64::from(track.clamp(0.0, 1.0)) * (OFFSET_MAX - OFFSET_MIN)
+pub fn slider_to_offset_frac(track: f32) -> f64 {
+    OFFSET_FRAC_MIN + f64::from(track.clamp(0.0, 1.0)) * (OFFSET_FRAC_MAX - OFFSET_FRAC_MIN)
 }
-/// Offset distance → normalized track (inverse of [`slider_to_offset`]).
+/// Fração do offset → normalized track (inverse of [`slider_to_offset_frac`]).
 #[must_use]
-pub fn offset_to_slider(d: f64) -> f32 {
-    ((d.clamp(OFFSET_MIN, OFFSET_MAX) - OFFSET_MIN) / (OFFSET_MAX - OFFSET_MIN)) as f32
+pub fn offset_frac_to_slider(frac: f64) -> f32 {
+    ((frac.clamp(OFFSET_FRAC_MIN, OFFSET_FRAC_MAX) - OFFSET_FRAC_MIN)
+        / (OFFSET_FRAC_MAX - OFFSET_FRAC_MIN)) as f32
 }
 
 /// **Power Stroke** — os multiplicadores do perfil de largura.

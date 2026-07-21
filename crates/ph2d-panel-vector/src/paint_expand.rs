@@ -28,15 +28,19 @@ impl BodyCtx<'_> {
             .store
             .slider(ids::VECTOR_EXPAND_OFFSET)
             .map(|(_, v)| v)
-            .unwrap_or_else(|| params::offset_to_slider(params::OFFSET_DEFAULT));
-        let d = params::slider_to_offset(track);
+            .unwrap_or_else(|| params::offset_frac_to_slider(params::OFFSET_DEFAULT_FRAC));
+        // O chip mostra PERCENTUAL do tamanho da forma (−100 = morte garantida, +100 =
+        // dobrar) — o mundo-d é `fração × vec_expand::offset_scale` na shell. Percentual
+        // porque o mapa do store é estático: um rótulo em unidades de mundo mentiria
+        // sempre que a seleção mudasse de tamanho.
+        let pct = params::slider_to_offset_frac(track) * 100.0;
         y = self.slider_row(
             "Offset",
             ids::VECTOR_EXPAND_OFFSET,
             ids::VECTOR_EXPAND_OFFSET_NUM,
             track,
-            d,
-            &format!("{d:.2}"),
+            pct,
+            &format!("{pct:.0}"),
             y,
         );
         // **Qual contorno o offset move** — num compound (forma com furos), a borda de fora e
@@ -52,9 +56,14 @@ impl BodyCtx<'_> {
             ],
             y,
         );
+        // ⚠️ O rótulo é **"Corner"**, não "Join": a seção Stroke, no MESMO painel, tem uma
+        // fileira "Join · Miter/Round/Bevel" IDÊNTICA (a quina do traço) — duas fileiras
+        // gêmeas para perguntas diferentes é como o clique do artista cai na errada e
+        // "não faz nada" (metade do report de 2026-07-20). "Corner" nomeia o que o
+        // artista VÊ: a quina do resultado do offset (vocabulário dos Live Corners).
         let join = crate::state::expand_join();
         y = self.segmented3(
-            "Join",
+            "Corner",
             [
                 (ids::VECTOR_EXPAND_JOIN_MITER, "Miter", join == 0),
                 (ids::VECTOR_EXPAND_JOIN_ROUND, "Round", join == 1),

@@ -17,12 +17,12 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
-    OFFSET_DEFAULT, OFFSET_SLIDER_OFFSET, OFFSET_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
+    OFFSET_DEFAULT_FRAC, OFFSET_SLIDER_OFFSET, OFFSET_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
     TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
     TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET,
     TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, WPROFILE_DEFAULT_END,
     WPROFILE_DEFAULT_MID, WPROFILE_DEFAULT_POS, WPROFILE_DEFAULT_START, WPROFILE_SLIDER_OFFSET,
-    WPROFILE_SLIDER_SCALE, offset_to_slider, text_line_height_to_slider, text_size_to_slider,
+    WPROFILE_SLIDER_SCALE, offset_frac_to_slider, text_line_height_to_slider, text_size_to_slider,
     text_tracking_to_slider, text_weight_to_slider, wprofile_to_slider,
 };
 use ph2d_tool_vector::shapes;
@@ -437,12 +437,14 @@ fn populate_ops(store: &mut WidgetStore) {
         1.0,
         0.0,
     );
+    // O chip numérico do Offset é PERCENTUAL do tamanho da seleção (−100..+100) — o mapa
+    // fica estático e o rótulo nunca mente; o mundo-d resolve na shell (`offset_scale`).
     slider_chip(
         store,
         ids::VECTOR_EXPAND_OFFSET,
         ids::VECTOR_EXPAND_OFFSET_NUM,
-        offset_to_slider(OFFSET_DEFAULT),
-        OFFSET_DEFAULT,
+        offset_frac_to_slider(OFFSET_DEFAULT_FRAC),
+        OFFSET_DEFAULT_FRAC * 100.0,
         OFFSET_SLIDER_SCALE,
         OFFSET_SLIDER_OFFSET,
     );

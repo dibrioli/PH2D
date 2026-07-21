@@ -410,7 +410,6 @@ fn the_live_preview_draws_in_the_same_place_every_frame() {
     );
 }
 
-
 /// **Voltar o slider ao centro NO MEIO do arrasto mostra a forma NO LUGAR dela.** As
 /// entidades das fontes morrem no 1º churn, então restaurar a fonte crua (geometria LOCAL,
 /// entidade nova na IDENTIDADE) desenharia na ORIGEM — o "pula de lugar" original. Em
@@ -545,18 +544,20 @@ fn a_chain_of_retunes_changes_the_shape_at_every_step() {
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
     let mut win = OffsetRetune::after_release(sess, 0.5).expect("churnou");
-    assert_eq!(win.step(7, expand_knobs()), RetuneStep::Keep, "frame 1 aprende");
+    assert_eq!(
+        win.step(7, expand_knobs()),
+        RetuneStep::Keep,
+        "frame 1 aprende"
+    );
 
-    let verts = |scene: &VecScene| -> usize {
-        scene.paths().iter().map(|p| p.verts.len()).sum()
-    };
+    let verts = |scene: &VecScene| -> usize { scene.paths().iter().map(|p| p.verts.len()).sum() };
     // Aplica um join e devolve os verts do resultado.
     let retune_to = |join: u8,
-                         win: &mut OffsetRetune,
-                         scene: &mut VecScene,
-                         pen: &mut PenTool,
-                         sim: &mut ph2d_ecs::SimWorld,
-                         map: &mut crate::vec_entities::VecEntityMap|
+                     win: &mut OffsetRetune,
+                     scene: &mut VecScene,
+                     pen: &mut PenTool,
+                     sim: &mut ph2d_ecs::SimWorld,
+                     map: &mut crate::vec_entities::VecEntityMap|
      -> usize {
         // ⚠️ O frame "aprende" que o app real SEMPRE tem: o `apply` do retune anterior
         // re-armou `depth = None`, e a próxima `step` (frame ocioso, knobs ainda os
@@ -569,7 +570,11 @@ fn a_chain_of_retunes_changes_the_shape_at_every_step() {
         );
         ph2d_panel_vector::set_expand_join(join);
         let k = expand_knobs();
-        assert_eq!(win.step(7, k), RetuneStep::Retune, "join {join}: knob mudou = retune");
+        assert_eq!(
+            win.step(7, k),
+            RetuneStep::Retune,
+            "join {join}: knob mudou = retune"
+        );
         win.apply(scene, pen, sim, map, k);
         crate::vec_entities::sync(sim, scene, map);
         verts(scene)

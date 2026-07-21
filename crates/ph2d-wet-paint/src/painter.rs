@@ -395,6 +395,14 @@ impl Engine {
         self.trail.start_stroke(x, y, self.color, mode);
     }
 
+    /// Product door: the stroke's fresh-ink colour (sRGB 0..255), settable
+    /// PER DAB — the host's Randomize Colour. Delegates to the trail's
+    /// reservoir; `self.color` follows so the next stroke starts from it.
+    pub fn set_stroke_color(&mut self, color: [f64; 3]) {
+        self.color = color;
+        self.trail.set_base_color(color);
+    }
+
     /// Product door: the host's path advanced by `chord` px — rolls the
     /// trail's deposit window exactly as the engine's own Segment events do.
     pub fn direct_segment(&mut self, chord: f64) {

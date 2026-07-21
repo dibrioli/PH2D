@@ -155,6 +155,22 @@ impl Trail {
         self.mode = mode;
     }
 
+    /// Product door: RELOAD the stroke's ink mid-stroke (the host's per-dab
+    /// Randomize Colour) — reservoir AND tip planes, exactly the colour half
+    /// of `start_stroke`. A reservoir-only swap was measured INERT: the tip
+    /// only eases toward the base at `Knob::TipClean`, whose boot default is
+    /// 0.0, so the deposit never turned. A reload is the honest semantic
+    /// anyway — each jittered dab is a fresh squeeze of paint; the pickup
+    /// dirt re-accumulates from the canvas as the stroke continues.
+    pub fn set_base_color(&mut self, color: [f64; 3]) {
+        self.base_r = color[0];
+        self.base_g = color[1];
+        self.base_b = color[2];
+        self.tip_r.fill(color[0] as f32);
+        self.tip_g.fill(color[1] as f32);
+        self.tip_b.fill(color[2] as f32);
+    }
+
     /// Frame-segment callback: size the window from the chord length.
     pub fn on_segment(&mut self, chord_len: f64, spacing: f64) {
         let cap = if self.mode == TrailMode::Blend { 4.0 } else { 2.0 };

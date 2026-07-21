@@ -51,6 +51,53 @@ fn the_region_render_is_the_full_render_where_it_is_asked() {
     assert!(full.chunks_exact(4).any(|px| px[3] > 0), "stroke deposited nothing");
 }
 
+/// Mid-stroke `set_stroke_color` swaps the FRESH INK: the half of the stroke
+/// painted after the swap deposits the new hue (the tip self-cleans toward
+/// the reservoir), while the first half keeps the old one. Mutation that
+/// bleeds it: the door writing only `engine.color` and never the trail's
+/// reservoir (the whole stroke stays the first colour).
+#[test]
+fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
+    let mut e = Engine::new(300, 120);
+    e.color = [220.0, 20.0, 20.0]; // red ink loaded
+    e.begin_direct_stroke(30.0, 60.0);
+    let mut prev = 30.0f64;
+    for k in 1..=20 {
+        let x = 30.0 + 6.0 * k as f64;
+        e.direct_segment(x - prev);
+        e.dispatch_pressure_dab(x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        prev = x;
+    }
+    e.set_stroke_color([20.0, 220.0, 20.0]); // dip in green
+    for k in 21..=40 {
+        let x = 30.0 + 6.0 * k as f64;
+        e.direct_segment(x - prev);
+        e.dispatch_pressure_dab(x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        prev = x;
+    }
+    e.end_direct_stroke();
+    // Mean deposited colour, mass-weighted, in the first vs last stroke third.
+    let g = e.active_grid();
+    let mean = |x0: usize, x1: usize| {
+        let (mut r, mut gg, mut m) = (0.0f64, 0.0f64, 0.0f64);
+        for cy in 1..=g.h {
+            for cx in x0..=x1 {
+                let i = cx + cy * g.s;
+                let w = g.susp[i] as f64;
+                r += g.susp_rgb[i][0] as f64 * w;
+                gg += g.susp_rgb[i][1] as f64 * w;
+                m += w;
+            }
+        }
+        (r / m.max(1.0), gg / m.max(1.0), m)
+    };
+    let (r0, g0, m0) = mean(30, 110);
+    let (r1, g1, m1) = mean(190, 270);
+    assert!(m0 > 1000.0 && m1 > 1000.0, "a stroke half deposited nothing ({m0}, {m1})");
+    assert!(r0 > g0 + 60.0, "the first half is not red ({r0:.0} vs {g0:.0})");
+    assert!(g1 > r1 + 20.0, "the second half never turned green ({r1:.0} vs {g1:.0})");
+}
+
 /// The direct doors deposit real paint and gate the sim exactly as the
 /// engine's own pointer path does: paused while down, running after end.
 #[test]

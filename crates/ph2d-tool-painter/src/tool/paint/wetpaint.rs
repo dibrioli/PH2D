@@ -79,6 +79,9 @@ pub(super) struct WetSession {
     acc: f32,
     /// Last dab centre of the open stroke (chord source for the trail window).
     prev: Option<[f32; 2]>,
+    /// The last fresh-ink colour sent to the engine (change detector for the
+    /// per-dab Randomize handoff — no jitter ⇒ zero calls).
+    prev_ink: [f32; 3],
     /// A direct stroke is open in the engine (pen-down .. pen-up).
     stroke_open: bool,
 }
@@ -109,25 +112,31 @@ impl PainterTool {
                 pigment: vec![0u8; w as usize * h as usize * 4],
                 acc: 0.0,
                 prev: None,
+                prev_ink: [0.0; 3],
                 stroke_open: false,
             });
         }
         let sess = self.paint.wetpaint.session.as_mut().expect("ensured above");
-        if !sess.stroke_open {
-            // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
-            // writes plane values straight through `clamp_u8`); the brush stores sRGB 0..1. Passing
-            // the normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
-            let c = brush.color;
-            sess.engine.color = [
+        // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
+        // writes plane values straight through `clamp_u8`); the dab stores sRGB 0..1. Passing the
+        // normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
+        let ink = |c: [f32; 3]| {
+            [
                 f64::from(c[0]) * 255.0,
                 f64::from(c[1]) * 255.0,
                 f64::from(c[2]) * 255.0,
-            ];
+            ]
+        };
+        if !sess.stroke_open {
+            // The DAB's colour, not the brush's: Randomize Colour is already resolved per dab by
+            // the stroke engine, so wiring `d.color` gives the jitter for free (W2.2).
+            sess.engine.color = ink(dabs[0].color);
             let p0 = dabs[0].center;
             sess.engine
                 .begin_direct_stroke(p0[0] as f64 + 1.0, p0[1] as f64 + 1.0);
             sess.stroke_open = true;
             sess.prev = None;
+            sess.prev_ink = dabs[0].color;
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
         for d in dabs {
@@ -135,6 +144,12 @@ impl PainterTool {
             if let Some(p) = sess.prev {
                 let chord = (((x - p[0]) as f64).powi(2) + ((y - p[1]) as f64).powi(2)).sqrt();
                 sess.engine.direct_segment(chord);
+            }
+            // Per-dab fresh ink (Randomize): the trail's reservoir moves, the tip self-cleans
+            // toward it — a loaded brush dipped in new paint, not a hard recolour.
+            if d.color != sess.prev_ink {
+                sess.engine.set_stroke_color(ink(d.color));
+                sess.prev_ink = d.color;
             }
             let b = ((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0;
             sess.engine.dispatch_pressure_dab(
@@ -354,6 +369,38 @@ mod tests {
         assert!(
             right > left * 0.5 && right < left * 2.0,
             "the mirrored deposit is missing or lopsided (left {left}, right {right})"
+        );
+    }
+
+    /// SEAM (W2.2): Randomize Colour reaches the wet deposit — with full Hue
+    /// jitter the per-dab `d.color` varies, the fresh-ink door follows it,
+    /// and the deposited pigment carries VISIBLY different hues along the
+    /// stroke. Mutation that bleeds it: dropping the `set_stroke_color` call
+    /// (every cell wears the first dab's colour; spread collapses).
+    #[test]
+    fn randomize_colour_reaches_the_wet_deposit() {
+        let mut t = tool_in_mode("wetpaint");
+        t.set_brush_color_jitter(0, 1.0); // full Hue jitter
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        let g = &sess.engine.layers[0].grid;
+        // Across the heavy cells, the red channel of the deposited colour
+        // must SPREAD (different dabs, different hues). A fixed-ink stroke
+        // measures a few units of spread from tip pickup; full hue jitter
+        // measures >100.
+        let (mut lo, mut hi, mut n) = (255.0f32, 0.0f32, 0usize);
+        for i in 0..g.susp.len() {
+            if g.susp[i] > 100.0 {
+                lo = lo.min(g.susp_rgb[i][0]);
+                hi = hi.max(g.susp_rgb[i][0]);
+                n += 1;
+            }
+        }
+        assert!(n > 50, "too few heavy cells to judge ({n})");
+        assert!(
+            hi - lo > 60.0,
+            "the deposit wears one hue — Randomize never reached the fluid (spread {})",
+            hi - lo
         );
     }
 

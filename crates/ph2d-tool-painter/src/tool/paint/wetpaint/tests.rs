@@ -912,3 +912,185 @@ fn leaving_the_mode_bakes_by_simply_stopping() {
         "the mode exit moved pixels — ending must be a stop"
     );
 }
+
+/// A LIVE session follows the Paper slot's adjustments (Enio 2026-07-21,
+/// "os ajustes ... não estão sendo levados em consideração"): the session
+/// spans strokes, so a seed that runs only at session birth leaves every
+/// later knob move — here Brightness, the reported one — silently inert
+/// until the bake. Brightness at max drives `apply_tone` to clamp every
+/// sample to 1.0, so the oracle is analytic: after one more stroke the
+/// whole paper plane must read 1.0. Mutation that bleeds it: gating the
+/// reconcile back on `fresh` (the original defect, reinstalled).
+#[test]
+fn a_live_session_follows_the_papers_tone_knobs() {
+    use ph2d_painter_brush::TextureKind;
+    let mut t = tool_in_mode("wetpaint");
+    t.paint.brush.paper.kind = TextureKind::Checker;
+    t.paint.brush.paper.size = [8.0, 8.0];
+    for slot in &mut t.paint.brush_by_mode {
+        slot.paper.kind = TextureKind::Checker;
+        slot.paper.size = [8.0, 8.0];
+    }
+    stroke_across(&mut t);
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        let g = &sess.engine.layers[0].grid;
+        assert!(
+            g.paper.iter().any(|&p| p < 0.5),
+            "positive control: the Checker seed must have valleys before the knob moves"
+        );
+    }
+    // The panel's own door, mid-session: Brightness (slot 1) to max.
+    t.set_brush_paper_param(1, 1.0);
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Up));
+    let sess = t.paint.wetpaint.session.as_ref().expect("session survives");
+    let g = &sess.engine.layers[0].grid;
+    assert!(
+        g.paper.iter().all(|&p| (p - 1.0).abs() < 1e-6),
+        "Brightness at max must white out the whole tooth plane mid-session — \
+         the adjustment never reached the live session"
+    );
+}
+
+/// Disarming the Paper mid-session returns the engine's own PRESET tooth —
+/// the reverse of the gate above: a slot turned OFF that leaves the old
+/// paper stuck is the same "adjustment ignored" wearing the off state.
+/// Byte-exact against a control session that never armed a paper (both
+/// planes come from the same deterministic `rebake_paper`). Mutation that
+/// bleeds it (and only it): dropping the `rebake_paper` arm of the
+/// reconcile while still updating the key.
+#[test]
+fn disarming_the_paper_mid_session_restores_the_preset_tooth() {
+    use ph2d_painter_brush::TextureKind;
+    let control = {
+        let mut t = tool_in_mode("wetpaint");
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.paper.clone()
+    };
+    let mut t = tool_in_mode("wetpaint");
+    t.paint.brush.paper.kind = TextureKind::Checker;
+    t.paint.brush.paper.size = [8.0, 8.0];
+    for slot in &mut t.paint.brush_by_mode {
+        slot.paper.kind = TextureKind::Checker;
+        slot.paper.size = [8.0, 8.0];
+    }
+    stroke_across(&mut t);
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        assert_ne!(
+            sess.engine.layers[0].grid.paper, control,
+            "positive control: the armed Checker plane must differ from the preset"
+        );
+    }
+    // The panel's own door: kind wire 0 = None (disarm).
+    t.set_brush_paper_kind(0);
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Up));
+    let sess = t.paint.wetpaint.session.as_ref().expect("session survives");
+    assert_eq!(
+        sess.engine.layers[0].grid.paper, control,
+        "disarming the Paper left the old tooth stuck in the live session"
+    );
+}
+
+/// The Grain slot's tone knobs shift the wet deposit LIVE: Brightness at
+/// max whites the grain out (`apply_tone` clamps every sample to 1.0), so
+/// the Checker's veto must vanish. Proves the influence Enio asked to
+/// verify ("confira ... se cada ajuste influencia"); the veto itself is
+/// `the_artists_grain_textures_the_wet_deposit`'s law.
+#[test]
+fn the_grains_tone_knobs_shift_the_wet_deposit() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let run = |bright: Option<f32>| -> Vec<f32> {
+        let mut t = tool_in_mode("wetpaint");
+        t.paint.brush.texture.kind = TextureKind::Checker;
+        t.paint.brush.texture.mapping = TextureMapping::Tiled;
+        t.paint.brush.grain_depth = 1.0;
+        if let Some(b) = bright {
+            t.paint.brush.texture.params[1] = b;
+        }
+        for slot in &mut t.paint.brush_by_mode {
+            slot.texture = t.paint.brush.texture;
+            slot.grain_depth = 1.0;
+        }
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let plain = {
+        let mut t = tool_in_mode("wetpaint");
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let vetoed_of = |susp: &[f32]| -> usize {
+        plain
+            .iter()
+            .zip(susp.iter())
+            .filter(|(a, b)| **a > 1.0 && **b == 0.0)
+            .count()
+    };
+    let vetoed_default = vetoed_of(&run(None));
+    let vetoed_bright = vetoed_of(&run(Some(1.0)));
+    assert!(
+        vetoed_default > 50,
+        "positive control: the default Checker grain must veto cells ({vetoed_default})"
+    );
+    assert!(
+        vetoed_bright < vetoed_default / 5,
+        "Brightness at max must white the grain out — the tone knob never reached \
+         the wet deposit (default {vetoed_default}, bright {vetoed_bright})"
+    );
+}
+
+/// The Shape slot's tone knobs shift the wet SILHOUETTE live: a procedural
+/// Shape is `falloff × pattern`, and Brightness at max whites the pattern
+/// to 1.0 — the silhouette collapses to the bare falloff and the Checker's
+/// holes close. (An IMAGE Shape has no tone knobs BY DESIGN — the panel
+/// offers the Shape Tone ramp instead, which this route already passes.)
+#[test]
+fn the_shapes_tone_knobs_shift_the_wet_silhouette() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let run = |bright: Option<f32>| -> Vec<f32> {
+        let mut t = tool_in_mode("wetpaint");
+        t.paint.brush.shape.kind = TextureKind::Checker;
+        t.paint.brush.shape.mapping = TextureMapping::Tiled;
+        if let Some(b) = bright {
+            t.paint.brush.shape.params[1] = b;
+        }
+        for slot in &mut t.paint.brush_by_mode {
+            slot.shape = t.paint.brush.shape;
+        }
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let plain = {
+        let mut t = tool_in_mode("wetpaint");
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let holed_of = |susp: &[f32]| -> usize {
+        plain
+            .iter()
+            .zip(susp.iter())
+            .filter(|(a, b)| **a > 1.0 && **b == 0.0)
+            .count()
+    };
+    let holed_default = holed_of(&run(None));
+    let holed_bright = holed_of(&run(Some(1.0)));
+    assert!(
+        holed_default > 50,
+        "positive control: the default Checker shape must hole the silhouette ({holed_default})"
+    );
+    assert!(
+        holed_bright < holed_default / 5,
+        "Brightness at max must collapse the Shape to the bare falloff — the tone \
+         knob never reached the wet silhouette (default {holed_default}, bright {holed_bright})"
+    );
+}

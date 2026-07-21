@@ -94,6 +94,28 @@ pub(super) struct WetSession {
     lanes: Vec<Lane>,
     /// A direct stroke is open in the engine (pen-down .. pen-up).
     stroke_open: bool,
+    /// What the engine's PAPER plane was last seeded from: `None` = the
+    /// engine's own preset tile (session birth / paper disarmed); `Some` =
+    /// the artist's Paper slot, keyed by everything the seed reads. The
+    /// session **reconciles** against this every dab batch — paper is
+    /// substrate under live water, but the SLOT is authored state, and the
+    /// session spans strokes: seeding only at session birth left every later
+    /// adjustment (Brightness/Contrast, any knob, the arm itself) silently
+    /// ignored until the bake (Enio 2026-07-21, "os ajustes ... não estão
+    /// sendo levados em consideração").
+    paper_key: Option<PaperKey>,
+}
+
+/// Everything the paper seed reads — the reconcile re-seeds exactly when one
+/// of these moves, and an unchanged key costs one small struct compare per
+/// batch. The image rides by its monotonic VERSION, never the `Arc` address
+/// (an address survives a content swap and a content survives an address
+/// swap — the ADR-0124 cache-identity trap).
+#[derive(Clone, Copy, PartialEq)]
+struct PaperKey {
+    tex: ph2d_painter_brush::TextureSettings,
+    image_version: u64,
+    period: [f32; 2],
 }
 
 /// One replication lane of the open stroke — see [`WetSession::lanes`].
@@ -205,6 +227,7 @@ impl PainterTool {
                 acc: 0.0,
                 lanes: Vec::new(),
                 stroke_open: false,
+                paper_key: None,
             });
         }
         // Take the session out so the prep below can borrow `self.paint`'s
@@ -213,32 +236,44 @@ impl PainterTool {
         let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
         let sess = &mut taken;
         // ── The artist's PAPER drives the engine's tooth (W2.7) ────────────
-        // Seeded ONCE, at session birth: paper is SUBSTRATE — it does not
-        // change under live water; a new session reads the current slot. The
-        // law is the painter's own canvas-fixed paper sampling (the NEUTRAL
-        // door `sample_tiled_rot_wrapped`, the same law the watercolor
-        // substrate reads — one paper, never a second system). No slot armed
-        // = the port's preset tile, byte-identical. Known v1 gap: the bitmap
-        // Size seam-snap under sprite Tiling (`snap_slot_size`) is not
-        // applied — procedurals wrap exactly; a bitmap paper may seam.
-        if fresh && brush.paper.is_active() {
-            let paper_tex = brush.paper;
-            let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
-            let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
-            let period = [
-                if self.paint.tiling[0] { w as f32 } else { 0.0 },
-                if self.paint.tiling[1] { h as f32 } else { 0.0 },
-            ];
-            sess.engine.seed_paper_with(&mut |px, py| {
-                f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
-                    &paper_tex,
-                    px,
-                    py,
-                    paper_img.as_ref(),
-                    rot,
-                    period,
-                ))
-            });
+        // RECONCILED per batch, not seeded once: paper is substrate under
+        // live water, but the SLOT is authored state and the session spans
+        // strokes — a key of everything the seed reads decides. Key moved =
+        // re-seed; slot disarmed = the engine re-bakes its own preset
+        // (`rebake_paper`); unchanged = one small struct compare. The law is
+        // the painter's own canvas-fixed paper sampling (the NEUTRAL door
+        // `sample_tiled_rot_wrapped`, the same law the watercolor substrate
+        // reads — one paper, never a second system). Known v1 gap: the
+        // bitmap Size seam-snap under sprite Tiling (`snap_slot_size`) is
+        // not applied — procedurals wrap exactly; a bitmap paper may seam.
+        let period = [
+            if self.paint.tiling[0] { w as f32 } else { 0.0 },
+            if self.paint.tiling[1] { h as f32 } else { 0.0 },
+        ];
+        let want = brush.paper.is_active().then_some(PaperKey {
+            tex: brush.paper,
+            image_version: self.paint.paper_image_version,
+            period,
+        });
+        if sess.paper_key != want {
+            if want.is_some() {
+                let paper_tex = brush.paper;
+                let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
+                let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
+                sess.engine.seed_paper_with(&mut |px, py| {
+                    f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                        &paper_tex,
+                        px,
+                        py,
+                        paper_img.as_ref(),
+                        rot,
+                        period,
+                    ))
+                });
+            } else {
+                sess.engine.rebake_paper();
+            }
+            sess.paper_key = want;
         }
         // ── The dab's SILHOUETTE — the painter's, not the engine's ─────────
         // `silhouette_at` is the single source of the dab's shape (falloff ×

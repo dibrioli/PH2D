@@ -282,6 +282,32 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
+**AUDITORIA DOS AJUSTES DE TEXTURA (2026-07-21, report do Enio: *"os ajustes para a imagem em
+paper como brilho e contraste não estão sendo levados em consideração. Confira para paper, grain
+e shape"*):** os ajustes universais são `TextureSettings.params[0..1]` (Contrast/Brightness,
+`apply_tone` em `patterns.rs:88` — TODO kind passa por ele, Image incluso). **GRAIN e SHAPE
+estavam CERTOS e são vivos por batch:** `dab::grain_at` → `texture::sample` → `sample_kind` (com
+params) e `silhouette_at` → `sample_shape_silhouette` → `sample`/`sample_kind` — o spec é relido
+a cada batch de dabs, então o knob influencia o próximo dab. ⚠️ **Cerca verificada, NÃO é bug:**
+uma Shape de **IMAGEM** não passa por `apply_tone` (`shape_value` braço Image) — e o painel **não
+oferece** Contrast/Brightness para ela (`paint_shape.rs:133`, `!is_image`): o remap tonal de
+imagem é o **Shape Tone ramp**, que a rota wet já passa (`remap_shape_value`). Consistente; nada
+a consertar. **O PAPER era o quebrado, e o defeito era o `fresh`:** o seed do W2.7 rodava SÓ no
+nascimento da sessão, e a sessão wet atravessa traços por design ⇒ com água viva, Brightness/
+Contraste (e QUALQUER knob, e trocar/desarmar o paper) nunca alcançava o plano até o bake —
+exatamente o report. **Fix: o seed virou RECONCILE por chave** (`PaperKey` = `TextureSettings` +
+`paper_image_version` + period; comparado por batch): chave moveu ⇒ re-seed; slot desarmado ⇒
+`Engine::rebake_paper()` (o preset volta — o off não pode deixar o paper velho preso); igual ⇒
+um compare de struct. A imagem entra pela **VERSÃO monotônica**, nunca pelo endereço do Arc
+(ADR-0124). O caso especial do nascimento DISSOLVEU no reconcile (`paper_key: None` = preset).
+4 gates novos: `a_live_session_follows_the_papers_tone_knobs` (red-first; oráculo analítico —
+Brightness max ⇒ `apply_tone` clampa o plano inteiro em 1.0) + `disarming_the_paper_mid_session_
+restores_the_preset_tooth` (byte-exato vs controle nunca-paperado) + os 2 de influência
+(`the_grains/shapes_tone_knobs_shift...`: Brightness max apaga o veto do Checker, `< 1/5` do
+default). **Mutações: 2/2 sangram só os seus** — reinstalar o `fresh` derruba os 2 do Paper **e o
+gate antigo do W2.7 fica VERDE sobre o defeito** (ele só testa o nascimento — a prova de que era
+o gate que faltava); tirar só o braço `rebake_paper` derruba só o do desarme. Suíte tool 766 ok.
+
 **W2 restante:** só o W2.8, e ele virou FORK do Enio (ver bloco W2.8 acima) — a saída (2) o dissolve no W3.
 
 ## §2.5 — W1 (histórico do andamento; superado pelo §2.4)

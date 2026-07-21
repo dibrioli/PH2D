@@ -13,6 +13,7 @@
 //!
 //! [`dispatch`]: PhysicsBridge::dispatch
 
+pub mod contacts;
 mod damping;
 mod diagnostics;
 mod hold;
@@ -141,6 +142,10 @@ pub struct PhysicsBridge {
     /// non-trigger scene pays nothing. `BTreeMap` for the determinism reason
     /// `bodies` documents.
     triggers: BTreeMap<Entity, Vec<Entity>>,
+    /// The pairs touching this frame (`bridge::contacts`). A flat list, not a map:
+    /// a contact is a RELATIONSHIP with no owner, unlike a trigger, which is asked
+    /// about one sensor. Cleared and refilled per dispatch; empty in free fall.
+    contacts: Vec<contacts::BodyContact>,
 }
 
 impl Default for PhysicsBridge {
@@ -171,6 +176,7 @@ impl PhysicsBridge {
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
             triggers: BTreeMap::new(),
+            contacts: Vec::new(),
         }
     }
 
@@ -394,6 +400,11 @@ impl PhysicsBridge {
         // frame, whichever branch produced it (`bridge::triggers`). No-op (and
         // no alloc) when the scene has no sensors.
         self.rebuild_triggers();
+        // And the SOLID half of the same question (`bridge::contacts`): who is
+        // actually touching whom, where, and under how much load. Read from the same
+        // final world state as the triggers, for the same reason — whichever branch
+        // above produced it. No-op (and no alloc) when nothing touches.
+        self.rebuild_contacts();
     }
 
     /// Put the world back at tick 0 and replay forward to `target`.

@@ -23,6 +23,7 @@ mod scale;
 pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
+pub use bridge::contacts::BodyContact;
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
     AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,

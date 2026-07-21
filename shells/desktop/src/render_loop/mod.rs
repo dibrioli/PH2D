@@ -95,6 +95,7 @@ pub(crate) mod physics_bridge;
 #[cfg(test)]
 mod physics_bridge_tests;
 pub(crate) mod physics_overlay;
+mod physics_overlay_contacts;
 mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
@@ -3458,11 +3459,17 @@ impl crate::App {
             // launch. `last_stepped() == 0` is exactly "the bodies are at their
             // authored rest", the same fact the bridge uses to decide a respawn.
             let velocity_at_rest = physics.last_stepped() == 0;
+            // Where bodies actually TOUCH, and how hard they press (W-Contacts). A
+            // contact exists only while two shapes meet, and nothing else on screen
+            // says whether two objects are resting on each other or just overlapping
+            // in the artist's eye.
+            let contacts = physics.contacts().to_vec();
             physics_overlay::draw(
                 self.show_colliders,
                 velocity_at_rest,
                 sim,
                 &joint_anchors,
+                &contacts,
                 &triggered,
                 camera,
                 window_size,

@@ -27,6 +27,7 @@
 //! | `22`| W-Damping| DRAG: a Linear-damped ball drifts down like a feather; an Angular-damped box winds to a stop |
 //! | `23`| W-OneWay| JUMP-THROUGH: a ball passes UP through a one-way platform then lands on top; the solid one bonks it |
 //! | `24`| W-Area| FORCE ZONE: an updraft holds a light box, hovers a middle one and loses a heavy one; a conveyor carries a crate |
+//! | `25`| W-Contacts| WHERE THEY TOUCH: white crosses on every contact, growing with the LOAD -- a stack, and a ball in a V |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -100,6 +101,7 @@ impl crate::App {
             "22" => self.physics_smoke_damping(),
             "23" => self.physics_smoke_one_way(),
             "24" => self.physics_smoke_area(),
+            "25" => self.physics_smoke_contacts(),
             _ => self.physics_smoke_drop(),
         }
 

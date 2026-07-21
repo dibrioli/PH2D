@@ -6,6 +6,7 @@
 
 pub mod checkpoint;
 pub mod collider_build;
+pub mod contacts;
 pub mod damping;
 pub mod defaults;
 pub mod desc;

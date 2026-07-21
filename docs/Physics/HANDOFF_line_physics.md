@@ -2670,3 +2670,104 @@ Falloff (hoje a força é uniforme dentro da área — Unity tem um gradiente e 
 zona empurra o centro de massa, então não faz nada girar) · arrasto de área (a diferença entre "vento" e
 "água"; o `DampingOverride` responde por-CORPO, não por-REGIÃO, então é pergunta diferente e não uma segunda
 porta) · a força é sempre em eixos de MUNDO, então rotacionar a zona não roda o vento.
+
+---
+
+## §W-Contacts — QUEM TOCA QUEM, ONDE, E SOB QUE CARGA (2026-07-21, smoke `=25`)
+
+**O canal sólido, irmão do sensor do W7.** Um sensor responde *"quem está dentro de mim"* para um collider que
+deixa passar; este responde *"em quem estou encostado"* para um que não deixa — e, ao contrário de uma
+sobreposição, um contato tem **lugar** e **carga**. Era o item que o handoff nomeava como próximo desde o
+W-OneWay, com a precedência do W7 dizendo a resposta: **torne-o VISÍVEL primeiro**.
+
+**⚠️ Read-only, e esse é o contrato inteiro.** Nada dentro do `step` chama isto. O `c9` **não ganhou corpo
+nenhum** e o hash saiu **byte-idêntico** ao da wave anterior (`c01d4c6a…`, 69 corpos) — não há nada de novo no
+caminho determinístico para provar. Há gate pedindo o hash antes e depois de uma leitura completa, sobre um
+mundo em plena colisão.
+
+**Um relatório por PAR, não por ponto de contato.** Uma caixa deitada no chão tem **dois** pontos (as duas
+quinas) e um polígono tem mais; relatar cada um responderia *"quantas quinas estão encostando"*, que é fato
+sobre tesselação, não sobre a cena. Dois objetos se tocando é UM evento. O relatório leva o ponto **mais
+profundo** (onde a colisão mais é) e o impulso **somado**.
+
+### ⚠️ O que o impulso É — e a primeira versão do gate estava perguntando a coisa errada
+
+O gate nasceu como *"cair de 6 m empurra mais forte que estar parado"*. **NÃO empurra:** medido, os dois batem
+em sete dígitos (**0,010032237 vs 0,010032236**). O `step` retorna depois de o solver já ter parado o corpo, então
+o **pico do impacto vive ENTRE os sub-passos** e sumiu antes de qualquer um poder ler. Um "impact strength" lido
+daqui seria um número que nunca fica grande.
+
+O que o número É, e é exato e útil: a **CARGA que aquele par está carregando agora**. Numa pilha de quatro caixas
+idênticas os impulsos saem **4 : 3 : 2 : 1** de baixo para cima, porque o contato de baixo segura quatro caixas e
+o de cima segura uma. **É fato sobre a CENA** (o mesmo em qualquer timestep), e é por isso que virou o oráculo —
+e é a leitura que o tamanho da marca no overlay significa.
+
+### ⚠️ A banda do quase-toque existe, foi medida, e o gate dela precisou de DUAS mutações para se provar
+
+O grafo de contato mantém o par vivo enquanto os **volumes limitantes** se tocam: dois círculos a **0,566** de
+distância (raios 0,25) são **1 par no grafo com 0 contatos ativos**, enquanto os mesmos círculos a 0,003 num eixo
+**nem estão no grafo**. Relatar o grafo cru chamaria o primeiro par de colisão.
+
+**Duas camadas honram isso e cada uma sozinha basta hoje** — a flag `has_any_active_contact` e o `?` do
+`find_deepest_contact` (sem ponto de manifold, sem relatório). Mutar **qualquer uma** deixa os 6 gates verdes;
+mutar **as DUAS** deixa o gate do quase-toque vermelho, e foi assim que ele se provou não-vazio
+([[feedback_layered_defenses_need_per_layer_gates]]). A flag fica como predicado primário porque é a afirmação
+do **próprio rapier**; o lookup apenas *por acaso* a implica, e deixaria de implicar no dia em que pontos
+especulativos forem mantidos. ⚠️ E a fixture usa corpos **REDONDOS** de propósito: para uma caixa, forma e
+volume limitante são o mesmo retângulo — é exatamente assim que o filtro de sobreposição do W-Area sobreviveu a
+cinco gates.
+
+### A metade visível: a CRUZ branca
+
+Uma cruz no ponto mais profundo, **branca** (o único valor que nenhum collider, joint ou campo usa — um toque é
+um evento *entre* duas coisas, então não pertence à cor de nenhuma), com os braços crescendo com a carga:
+**3 px** solto → **9 px** carregado, régua `LOAD_FULL_NS = 0.05` **medida** (uma caixa de 0,5 m densidade 1
+parada reporta ~0,0128; uma pilha de quatro reporta ~0,0511 embaixo). Cruz e não ponto: dois corpos assentados
+produzem contatos a milímetros um do outro, e um disco desse tamanho é uma mancha enquanto duas linhas cruzando
+ainda leem como *aqui, e aqui*. Desenhada **por cima de tudo** (é a menor marca da tela e fica exatamente SOBRE
+os contornos que descreve). Satura na régua de propósito — passado um ponto, *"muito carregado"* é a leitura útil.
+
+### Onde mora o quê
+
+`world/contacts.rs` (`ContactReport` + `PhysicsWorld::contact_reports`, ordenado por handle) →
+`bridge/contacts.rs` (`BodyContact` + `rebuild_contacts` no fim do `dispatch`, ao lado do `rebuild_triggers`) →
+`physics_overlay_contacts.rs` (`contact_marks` puro + `CONTACT_RGBA`). ⚠️ **Lista plana, não mapa** — ao
+contrário do `triggers` (`BTreeMap<sensor, dentro>`, porque um trigger é perguntado sobre UMA entidade), um
+contato **não tem dono**: é uma relação simétrica por construção, então a forma honesta é a lista de relações;
+`contact_count` varre. **Nada de componente novo, nada de `PROJECT_SCHEMA`** (um contato é estado vivo do solver,
+o oposto de config — o `canonicalize` do undo ordena por bytes de componente, e guardar isto ali faria cada frame
+virar um passo de undo).
+
+**⚠️ Um comentário mentiroso, encontrado e corrigido de passagem:** o `is_triggered` do W7 dizia *"o Inspector lê
+isto para o readout de N inside"*. **Nunca leu** — a §11 não tem row de readout, e grepar por consumidor não achou
+nenhum. Foi achado porque a wave nova enfrentou a MESMA pergunta e deu a mesma resposta (a metade visível é o
+OVERLAY). Comentário que nomeia consumidor inexistente é pior que nenhum: lê como cobertura.
+
+### Gates e mutações
+
+Wrapper 6 (par único no ponto certo · queda livre não toca nada · quase-toque · **4:3:2:1** · a leitura não move
+o mundo · sobreposição de sensor **não** é contato, com o par de interseção como controle). ECS 3 (a ponte publica
+entidades · **a lista descreve ESTE frame**, não a história — a armadilha que uma lista de "eventos" convida · a
+pilha, com o oráculo nomeando ENTIDADES e não índices: o 1º rascunho afirmava `loads[0] > loads[1] > loads[2]` e
+ficou vermelho sobre uma lista que era só a outra ordem, o que não diz nada sobre física). Overlay 3 (carga maior
+= marca maior, **e satura** · a marca senta no ponto em **pixels de tela** · o toggle desliga).
+**9 mutações, 9 sangram** (as duas camadas contam como uma, provada em conjunto).
+
+### Smoke `=25` — e o V estava de cabeça para baixo
+
+ESQUERDA uma **pilha de quatro caixas**: as cruzes crescem para baixo, 4:3:2:1, medido em cena
+(0,0511 / 0,0383 / 0,0256 / 0,0128). DIREITA uma **bola descansando num V** de duas rampas: duas marcas, uma em
+cada face inclinada, em (2,35, −0,38) e (2,65, −0,38), **0,00872 cada** — metade do peso da bola em cada rampa, e
+nenhuma delas no centro de ninguém (a bola está em 2,5; as rampas em 1,75 e 3,25). ⚠️ A primeira versão girava as
+rampas **+0,45 / −0,45** e montava um **Λ**, não um V: a bola rolava do pico e ia parar do outro lado da cena, e
+a sonda headless mostrou **um** contato onde deviam ser dois. Roda TOCANDO (o estado interessante é o assentado).
+Arquivo próprio (`physics_smoke_contacts.rs`) porque o `physics_smoke_collision` declara ser das cenas que
+*autoram um resultado de colisão* — esta não varia nada, ela **observa**.
+
+### Aberto no W-Contacts
+
+Eventos de INÍCIO/FIM (*"eles se tocaram agora"* vs *"estão se tocando"*) — é outra estrutura (precisa de
+memória entre frames) e o consumidor honesto dela é gameplay, não overlay · a força de impacto de verdade
+(exigiria acumular o pico DENTRO do laço de sub-passos: custo em toda cena para uma leitura de debug) · readout
+"Contacts: N" na §11 (a seção não tem row de readout; seria widget novo, e o W7 estabeleceu que a metade visível
+é o overlay).

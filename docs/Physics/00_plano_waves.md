@@ -25,6 +25,37 @@
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |  ✅
 | **W5** | Corpos FILHOS na hierarquia | o collider volta para debaixo do sprite | — |  ✅
 
+### ⚠️ O mapa acima FECHOU — as waves seguintes vivem no tracker
+
+**W1..W5 estão todas ✅, e o módulo continuou muito além delas.** As waves posteriores nasceram do uso (do
+smoke do Enio, de uma falta encontrada, de um bug medido) em vez de um plano escrito de antemão, e por isso
+são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cada uma com sua própria seção:
+
+| Wave | Entrega | Smoke |
+|---|---|---|
+| **W6** | a escala do `Transform` alcança o collider (ball não-uniforme → elipse) | gates |
+| **W7** | sensores / triggers | `=10` |
+| **Weld** | o 5º joint (`FixedJoint`) | `=11` |
+| **BakeChannels** | assar um subconjunto dos canais | — |
+| **W8** | gravity scale por corpo | `=12` |
+| **Capsule** | o collider de personagem | `=13` |
+| **W9** | velocidade inicial por corpo | `=14` |
+| **W-CCD** | detecção contínua por corpo | `=15` |
+| **W-LockRot** | freeze rotation | `=16` |
+| **W-Offset** | offset do collider | `=17` |
+| **W-LockPos** | freeze position X/Y | `=18` |
+| **W-Mass** | massa manual | `=19` |
+| **W-Dominance** | prioridade de colisão | `=20` |
+| **W-Material** | regras de combine (bounce/friction) | `=21` |
+| **W-Damping** | drag por corpo + modo Combine/Replace | `=22` |
+| **W-OneWay** | plataforma jump-through | `=23` |
+| **W-Area** | campo de força (área que empurra) | `=24` |
+| **W-Contacts** | quem toca quem, onde, sob que carga | `=25` |
+
+⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
+pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do
+mapa entra AQUI na mesma sessão**, com uma linha; o detalhe fica no tracker.
+
 **Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
 (`ph2d-fluids`, M13+), collider-gen vetorial + fratura (ADR-0063, aposentada com a 0108).
 

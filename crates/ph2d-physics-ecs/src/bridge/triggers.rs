@@ -52,14 +52,24 @@ impl PhysicsBridge {
     }
 
     /// Is `entity` a **sensor** with at least one body inside it right now? The
-    /// overlay reads this to light a triggered sensor up; the Inspector reads it
-    /// for the "N inside" readout.
+    /// overlay reads this to light a triggered sensor up.
+    ///
+    /// ⚠️ This used to claim the Inspector read it for an "N inside" readout. It never
+    /// did — §11 has no readout row, and grepping for a consumer found none (caught
+    /// while building the contact channel next door, which faced the same question and
+    /// gave the same answer: the visible half is the OVERLAY). A comment that names a
+    /// consumer which does not exist is worse than none, because it reads as coverage
+    /// ([[feedback_stale_comment_and_dead_code_lie]]).
     pub fn is_triggered(&self, entity: Entity) -> bool {
         self.triggers.get(&entity).is_some_and(|v| !v.is_empty())
     }
 
     /// The entities currently inside sensor `entity` (empty slice if it is not a
     /// triggered sensor). Sorted for a stable readout.
+    ///
+    /// Queryable state with no consumer in this build — deliberate, and the same
+    /// shape the contact list has: *what a game DOES with an overlap* is the next
+    /// layer, and this is the door it will come through.
     pub fn bodies_inside(&self, entity: Entity) -> &[Entity] {
         self.triggers.get(&entity).map_or(&[], Vec::as_slice)
     }

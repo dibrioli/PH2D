@@ -384,6 +384,10 @@ continuem = "continuem"
 cruzes = "cruzes"
 flor = "flor"
 acessor = "acessor"
+# pt-BR do Offset vivo (2026-07-21): os ITENS de um overlay, e os INSTRUMENTOS de
+# diagnóstico do handoff. Lidos como inglês mal escrito; são as palavras portuguesas.
+itens = "itens"
+instrumentos = "instrumentos"
 
 [files]
 extend-exclude = [

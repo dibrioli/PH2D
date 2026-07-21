@@ -199,7 +199,7 @@ pub struct TimelineState {
     /// panel knows where the animator is looking, and an edit has to land where they are
     /// looking. Session state; a document does not remember which container was open, exactly
     /// as Animate does not.
-    pub edit_path: Vec<usize>,
+    pub edit_path: Vec<crate::EnterStep>,
 }
 
 impl TimelineState {
@@ -209,8 +209,8 @@ impl TimelineState {
     pub fn edit_host(&self) -> crate::nest::StackHost {
         self.edit_path
             .last()
-            .map_or(crate::nest::StackHost::Document, |&c| {
-                crate::nest::StackHost::Container(c)
+            .map_or(crate::nest::StackHost::Document, |step| {
+                crate::nest::StackHost::Container(step.container)
             })
     }
 

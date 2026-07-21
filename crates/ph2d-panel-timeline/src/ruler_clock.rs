@@ -149,7 +149,7 @@ mod tests {
         let mut s = snap(true, 4.0, Some(2.0));
         s.crumbs = vec![(0, "Walk".into())];
         s.host_time = Some(1.0);
-        s.host_map = None; // toca duas vezes, ou dá a volta
+        s.host_map = None; // a instância dá a volta, ou a caminhada ficou obsoleta
         assert!(
             !clock_for(Tab::Arrange, &s).scrub,
             "arrastar não teria para onde buscar — o hit não pode nem existir"

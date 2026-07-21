@@ -3,8 +3,8 @@
 //!
 //! # Why a map and not just a time
 //!
-//! [`crate::container_playhead`] answers *"what second is the interior at?"*, and that was
-//! enough while the ruler only had to DRAW the playhead. But the ruler is also a control:
+//! While the ruler only had to DRAW the playhead, "what second is the interior at?" was
+//! enough. But the ruler is also a control:
 //! the animator drags it, and the drag has to arrive as a time on the **timeline**, because
 //! the timeline's playhead is the only one there is (ADR-0133 §1 — the parent owns the
 //! clock). Reading in one clock and writing in another is the bug this module exists to
@@ -15,23 +15,49 @@
 //! the second ruler (the timeline's seconds over the interior's axis) is the same object read
 //! the other way, which is why there is one of these rather than two.
 //!
-//! # When there is no map
+//! # The map is the ENTRY's (Enio, 2026-07-20)
 //!
-//! A map exists only where the instance is a **bijection** over its window:
+//! The first cut derived the map from "the sole instance playing at the current playhead
+//! time", and its refusals were honest but unusable: in every gap between instances the
+//! container plays ZERO times, so the map — and the ruler's scrub with it — flickered away
+//! while the artist stood inside; and a container instanced twice refused always. Both
+//! ambiguities are manufactured: entering happens by right-clicking a STRIP, so the
+//! instance the animator means is named by the walk itself. [`entry_map`] is that walk's
+//! map — pure in the document and the path, valid at every playhead time.
 //!
-//! - the container has to be playing **exactly once** ([`crate::stack_eval`]'s refusal — two
-//!   instances make "here" name two places);
-//! - the strip must not **wrap**. Under [`StripLoop::Loop`]/[`StripLoop::PingPong`] one
-//!   interior second recurs at several timeline seconds, and choosing one of them silently
-//!   is precisely the class of guess this module refuses everywhere else.
+//! # When there is still no map
+//!
+//! - a level of the walk **wraps** ([`StripLoop::Loop`]/[`StripLoop::PingPong`] shorter
+//!   than its span): one interior second recurs at several timeline seconds, and choosing
+//!   one silently is precisely the class of guess this module refuses everywhere else;
+//! - the walk is **stale** — its strip was deleted (or retargeted) under the open panel.
 //!
 //! There is no message for the refusal, and that is deliberate: the ruler simply does not
 //! scrub, the same way a strip too narrow to hold both grips is offered only the trim one.
 //! A control that is not offered does not owe a sentence — a control that lies does.
 
 use crate::doc::TimelineDoc;
-use crate::stack::StripLoop;
-use crate::stack_frames::{ActiveSource, ActiveStrip, StackScratch};
+use crate::stack::{ClipStrip, StripLoop};
+
+/// **One level of the animator's walk into a container** — which container was opened, and
+/// through WHICH strip.
+///
+/// The strip is the half that was missing (Enio, 2026-07-20: *"dentro do conteiner não
+/// consigo controlar/arrastar a playhead"*): entering happens by right-clicking a strip, so
+/// the INSTANCE the animator means is never ambiguous — but a path that remembered only the
+/// container had to rediscover the instance from "the sole strip playing NOW", which
+/// flickers away in every gap and refuses outright when the container is instanced more
+/// than once at the same instant. Remembering the strip makes the map a pure function of
+/// the walk, valid at every playhead time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EnterStep {
+    /// The container that was opened.
+    pub container: usize,
+    /// The lane (of the stack it was opened FROM) holding the entry strip.
+    pub lane: usize,
+    /// The instance the animator entered through.
+    pub strip: crate::StripId,
+}
 
 /// The affine relation between an open container's own seconds and the timeline's, over the
 /// window where the instance actually plays.
@@ -77,64 +103,10 @@ fn remap(x: f64, a0: f64, a1: f64, b0: f64, b1: f64) -> f64 {
     b0 + f * (b1 - b0)
 }
 
-/// **The open container's map**, or `None` when the instance is not a bijection (see the
-/// module docs).
-///
-/// Reads the scratch, so the caller must have primed it at the current playhead — the same
-/// precondition [`crate::container_playhead`] rides, and for the same reason.
-#[must_use]
-pub fn container_map(doc: &TimelineDoc, container: usize) -> Option<ContainerMap> {
-    let scratch = doc.scratch();
-    let a = crate::stack_eval::sole_container_strip_of(scratch, container).ok()?;
-    let (mut t0, mut t1, u0, u1) = strip_window(doc, scratch, a)?;
-    // Walk OUT to the timeline, composing one link at a time. At depth 1 the loop does not
-    // run at all (the strip already lives in frame 0); deeper, each parent instance trims
-    // and rescales the window its child described — which is the same composition the
-    // evaluator does inward, read backwards.
-    let mut frame = a.frame;
-    while frame != 0 {
-        let p = producer_of(scratch, frame)?;
-        // Frames are appended breadth-first, so a producer always sits at a LOWER index than
-        // what it produced. Asserting it here is what makes the walk terminate by structure
-        // rather than by a counter that would need a limit nobody measured.
-        if p.frame >= frame {
-            return None;
-        }
-        let (pt0, pt1, pu0, pu1) = strip_window(doc, scratch, p)?;
-        // `t0`/`t1` are in `frame`'s own clock — which is exactly what `p` reads.
-        t0 = remap(t0, pu0, pu1, pt0, pt1);
-        t1 = remap(t1, pu0, pu1, pt0, pt1);
-        frame = p.frame;
-    }
-    (t1 > t0 && u1 > u0).then_some(ContainerMap { t0, t1, u0, u1 })
-}
-
-/// The strip that produced `frame`, i.e. the instance this interior belongs to.
-fn producer_of(scratch: &StackScratch, frame: usize) -> Option<ActiveStrip> {
-    scratch
-        .active
-        .iter()
-        .copied()
-        .find(|a| matches!(a.source, ActiveSource::Container { frame: f, .. } if f == frame))
-}
-
-/// One strip's playing window: `(t0, t1)` in the clock of the frame it LIVES in, and
-/// `(u0, u1)` in the clock of what it READS. `None` when it is not a bijection.
-fn strip_window(
-    doc: &TimelineDoc,
-    scratch: &StackScratch,
-    a: ActiveStrip,
-) -> Option<(f64, f64, f64, f64)> {
-    let host = match scratch.frames.get(a.frame)?.container {
-        Some(c) => crate::StackHost::Container(c),
-        None => crate::StackHost::Document,
-    };
-    let s = doc
-        .host_stack(host)?
-        .get(a.lane)?
-        .strips
-        .iter()
-        .find(|s| s.id == a.id)?;
+/// The playing window of one strip, from its own fields: `(t0, t1)` in the clock of the
+/// stack it LIVES in, `(u0, u1)` in the clock of what it READS — `None` when it is not a
+/// bijection (a wrap, a pose-length slice, a non-positive speed).
+fn window_of(s: &ClipStrip) -> Option<(f64, f64, f64, f64)> {
     let (span, slice) = (s.span(), s.slice());
     if span <= 0.0 || slice <= 0.0 || s.speed <= 0.0 {
         // A zero-length slice is a POSE (`ClipStrip::fold` says so), and a pose has no axis
@@ -161,4 +133,92 @@ fn strip_window(
             (span <= pass).then_some((s.t_start, s.t_end, s.src_in, s.src_in + span * s.speed))
         }
     }
+}
+
+/// The entry strip one [`EnterStep`] names, verified to actually PLAY the container it
+/// claims — a stale path (the strip was deleted, or retargeted by an undo) must read as
+/// "no map", never as some other strip's window.
+fn entry_strip<'d>(doc: &'d TimelineDoc, host: crate::StackHost, step: &EnterStep) -> Option<&'d ClipStrip> {
+    let s = doc
+        .host_stack(host)?
+        .get(step.lane)?
+        .strips
+        .iter()
+        .find(|s| s.id == step.strip)?;
+    (s.source.container_index().map(usize::from) == Some(step.container)).then_some(s)
+}
+
+/// **The map of the walked-into instance**, derived from the ENTRY PATH instead of from
+/// "the sole strip playing now" (which this function replaced — module docs).
+///
+/// Pure in the document and the path: no scratch, no priming, and valid at every playhead
+/// time. This is what unfroze the ruler (Enio, 2026-07-20) — the scratch-derived map
+/// vanished in every gap between instances (the container plays ZERO times there) and the
+/// marker/scrub flickered with it, even though the animator had named the instance they
+/// meant by entering through it. Where the walk is stale or a level wraps (loop/ping-pong
+/// inside its span), there is still no honest map, and `None` still refuses.
+#[must_use]
+pub fn entry_map(doc: &TimelineDoc, path: &[EnterStep]) -> Option<ContainerMap> {
+    let mut host = crate::StackHost::Document;
+    let mut acc: Option<(f64, f64, f64, f64)> = None;
+    for step in path {
+        let s = entry_strip(doc, host, step)?;
+        let (t0, t1, u0, u1) = window_of(s)?;
+        acc = Some(match acc {
+            None => (t0, t1, u0, u1),
+            // The child's t-axis is the clock of `host` — the parent's u-axis. Remap the
+            // child's window through the parent's: the same composition `container_map`
+            // walks inward-out, here outward-in because the path is outermost-first.
+            Some((pt0, pt1, pu0, pu1)) => (
+                remap(t0, pu0, pu1, pt0, pt1),
+                remap(t1, pu0, pu1, pt0, pt1),
+                u0,
+                u1,
+            ),
+        });
+        host = crate::StackHost::Container(step.container);
+    }
+    let (t0, t1, u0, u1) = acc?;
+    (t1 > t0 && u1 > u0).then_some(ContainerMap { t0, t1, u0, u1 })
+}
+
+/// **The timeline window the walked-into instance OCCUPIES**, leads included — what a
+/// transport loop must bracket so everything the instance contributes actually plays.
+///
+/// Differs from [`entry_map`]'s window on both ends: the map covers where the interior
+/// MOVES (an axis to scrub), this covers where the instance is HEARD — the outward
+/// `lead_in`/`lead_out` travel, and the held tail of a strip whose source finishes early.
+/// Bracketing the map instead cut the deepest strip's fades out of the cycle, which is the
+/// scene-level bug (`stack_end_seconds`) all over again, one level down.
+///
+/// Composed through the same parent windows as the map; a parent's remap CLAMPS, so a
+/// lead that pokes out of a parent instance honestly stops at that parent's edge.
+#[must_use]
+pub fn entry_reach(doc: &TimelineDoc, path: &[EnterStep]) -> Option<(f64, f64)> {
+    let (last, outer) = path.split_last()?;
+    let mut host = crate::StackHost::Document;
+    let mut acc: Option<(f64, f64, f64, f64)> = None;
+    for step in outer {
+        let s = entry_strip(doc, host, step)?;
+        let (t0, t1, u0, u1) = window_of(s)?;
+        acc = Some(match acc {
+            None => (t0, t1, u0, u1),
+            Some((pt0, pt1, pu0, pu1)) => (
+                remap(t0, pu0, pu1, pt0, pt1),
+                remap(t1, pu0, pu1, pt0, pt1),
+                u0,
+                u1,
+            ),
+        });
+        host = crate::StackHost::Container(step.container);
+    }
+    let s = entry_strip(doc, host, last)?;
+    let (lo, hi) = (s.lead_start(), s.lead_end());
+    if hi <= lo {
+        return None;
+    }
+    Some(match acc {
+        None => (lo, hi),
+        Some((pt0, pt1, pu0, pu1)) => (remap(lo, pu0, pu1, pt0, pt1), remap(hi, pu0, pu1, pt0, pt1)),
+    })
 }

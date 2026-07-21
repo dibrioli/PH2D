@@ -371,7 +371,15 @@ fn strip_menu_click(
             .and_then(|l| l.strips.iter().find(|s| s.id == id_))
             .and_then(|s| s.container)
         {
-            state::enter_container(c);
+            // The step remembers the STRIP, not just the container: the instance the
+            // animator means is the one under this very click, and it is what keeps the
+            // interior's ruler mapped (and scrubb-able) at every playhead time
+            // (`ph2d_timeline::entry_map`).
+            state::enter_container(ph2d_timeline::EnterStep {
+                container: c,
+                lane,
+                strip: id_,
+            });
         }
         host.store_mut().close_context_menu();
         host.store_mut().consume_last_context_menu();

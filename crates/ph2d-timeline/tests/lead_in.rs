@@ -314,3 +314,23 @@ fn dragging_the_fade_out_back_inside_clears_the_lead_out() {
         "the inward fade-out cleared the outward lead_out"
     );
 }
+
+/// **The stack's "end" includes the outward fade-out** (Enio, 2026-07-20: *"o ajuste
+/// automático do loop não considera o fade para fora da última"*). A freshly armed loop
+/// and go-to-end both read `view_end_seconds`, and a lead-out reaches FORWARD past
+/// `t_end` — an end that stops at `t_end` brackets the fade out of its own loop, so the
+/// travel the artist authored never plays.
+#[test]
+fn the_stacks_end_reaches_through_the_last_strips_lead_out() {
+    let (_sim, mut st, _bits, lane, b_strip) = scene();
+    assert!(
+        (st.doc.view_end_seconds(false) - 6.0).abs() < 1e-9,
+        "without a lead the end is the last strip's t_end"
+    );
+    st.doc.strip_mut(lane, b_strip).unwrap().lead_out = 0.5;
+    assert!(
+        (st.doc.view_end_seconds(false) - 6.5).abs() < 1e-9,
+        "with a 0.5 s lead-out the end is t_end + lead_out, got {}",
+        st.doc.view_end_seconds(false)
+    );
+}

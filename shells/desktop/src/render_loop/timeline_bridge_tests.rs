@@ -267,3 +267,103 @@ fn addprop_ids_map_to_prop_kinds() {
     );
     assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
 }
+
+/// The scene of the container-navigation gates: a 2 s container instanced at `[4, 12)`
+/// (stretched 2× → speed 0.5) with a 1 s lead-in and 0.5 s lead-out, and a DOCUMENT loop
+/// over `[0, 20)`. Returns the state (path stamped empty) and the entry step.
+fn nav_scene() -> (TimelineState, ph2d_timeline::EnterStep) {
+    use ph2d_timeline::{StackHost, StripSource};
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    let c = doc.add_container("C".into());
+    doc.add_lane_in(StackHost::Container(c), "l".into()).unwrap();
+    doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 2.0)
+        .unwrap();
+    let lane = doc.add_lane("doc".into()).unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(c).unwrap()),
+            4.0,
+            12.0,
+        )
+        .unwrap();
+    {
+        let s = doc
+            .strip_in_mut(StackHost::Document, lane, strip)
+            .unwrap();
+        s.lead_in = 1.0;
+        s.lead_out = 0.5;
+    }
+    doc.set_active_loop_for(false, Some((0.0, 20.0)));
+    (
+        st,
+        ph2d_timeline::EnterStep {
+            container: c,
+            lane,
+            strip,
+        },
+    )
+}
+
+/// **Entering a container brackets the transport loop around the entered instance —
+/// leads included — and leaving re-installs the document's own loop** (Enio, 2026-07-20:
+/// *"dentro do container o loop não se ajustou automaticamente"*). Navigation never
+/// touches the DOCUMENT's loop: it is the artist's authored range, merely stepped aside
+/// from while inside.
+#[test]
+fn entering_brackets_the_loop_around_the_instance_and_leaving_restores() {
+    let (st, step) = nav_scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.seek(5.0);
+
+    on_nav_change(&st.doc, &[step], &mut ph);
+    assert_eq!(
+        ph.loop_range(),
+        Some((3.0, 12.5)),
+        "the instance's window plus its leads — bracketing only [4,12) cuts the fades"
+    );
+    assert!((ph.time() - 5.0).abs() < 1e-9, "already inside: no seek");
+    assert_eq!(
+        st.doc.active_loop_for(false),
+        Some((0.0, 20.0)),
+        "navigation is not an edit — the document loop is untouched"
+    );
+
+    on_nav_change(&st.doc, &[], &mut ph);
+    assert_eq!(
+        ph.loop_range(),
+        Some((0.0, 20.0)),
+        "leaving hands the transport back to the document's own loop"
+    );
+}
+
+/// **A playhead standing outside the entered instance is seeked to its start** — the
+/// alternative is a marker-less ruler that reads as broken (the pre-fix symptom).
+#[test]
+fn entering_from_outside_the_window_seeks_to_its_start() {
+    let (st, step) = nav_scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.seek(17.0); // beyond the instance's reach [3, 12.5]
+    on_nav_change(&st.doc, &[step], &mut ph);
+    assert!(
+        (ph.time() - 3.0).abs() < 1e-9,
+        "outside the reach the transport lands at its start, got {}",
+        ph.time()
+    );
+}
+
+/// **A stale walk leaves the transport alone** — no window, no guess.
+#[test]
+fn a_stale_walk_leaves_the_transport_as_it_stands() {
+    let (mut st, step) = nav_scene();
+    st.doc
+        .remove_strip_in(ph2d_timeline::StackHost::Document, step.lane, step.strip);
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.set_loop(0.0, 20.0);
+    ph.seek(5.0);
+    on_nav_change(&st.doc, &[step], &mut ph);
+    assert_eq!(ph.loop_range(), Some((0.0, 20.0)), "loop untouched");
+    assert!((ph.time() - 5.0).abs() < 1e-9, "playhead untouched");
+}

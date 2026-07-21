@@ -176,7 +176,8 @@ fn entering_a_container_swaps_which_lanes_the_panel_sees() {
     assert_eq!(snap.lanes.len(), 1, "fora: as lanes do documento");
     assert!(snap.crumbs.is_empty(), "fora: não há trilha a mostrar");
 
-    st.edit_path = vec![c];
+    // Só o CONTAINER roteia a vista; lane/strip do passo não participam aqui.
+    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane: 0, strip: ph2d_timeline::StripId(0) }];
     snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
     assert_eq!(snap.lanes.len(), 2, "dentro: as lanes do container");
     assert_eq!(
@@ -237,18 +238,20 @@ fn the_ruler_inside_a_container_measures_the_containers_clock() {
         .unwrap();
     // A instância começa em 5 s na timeline.
     let lane = doc.add_lane("doc".into()).unwrap();
-    doc.add_strip_to(
-        StackHost::Document,
-        lane,
-        StripSource::Container(c as u16),
-        5.0,
-        9.0,
-    )
-    .unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(c as u16),
+            5.0,
+            9.0,
+        )
+        .unwrap();
 
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    st.edit_path = vec![c];
+    // O passo lembra o STRIP de entrada — é dele que o mapa/marca derivam agora.
+    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
 
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(5.5); // meio segundo DENTRO da instância
@@ -318,17 +321,19 @@ fn open_container_at(start: f64, playhead: f64) -> ph2d_timeline::TimelineViewSn
     doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 8.0)
         .unwrap();
     let lane = doc.add_lane("L".into()).unwrap();
-    doc.add_strip_to(
-        StackHost::Document,
-        lane,
-        StripSource::Container(u16::try_from(c).unwrap()),
-        start,
-        start + 8.0,
-    )
-    .unwrap();
+    let strip = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(c).unwrap()),
+            start,
+            start + 8.0,
+        )
+        .unwrap();
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    st.edit_path = vec![c];
+    // O passo lembra o STRIP de entrada — é dele que o mapa/marca derivam agora.
+    st.edit_path = vec![ph2d_timeline::EnterStep { container: c, lane, strip }];
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(playhead);
     st.doc.prime_stack(playhead);
@@ -408,7 +413,7 @@ fn without_an_inverse_the_scrub_seeks_nowhere() {
         snap.host_map.is_some(),
         "a fixture tem de PARTIR de um mapa"
     );
-    snap.host_map = None; // toca duas vezes, ou dá a volta
+    snap.host_map = None; // a instância dá a volta, ou a caminhada ficou obsoleta
     ph2d_panel_timeline::state::set_current_timeline(Some(snap));
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState {
@@ -467,7 +472,7 @@ fn entering_two_deep_keeps_the_way_back_to_the_middle() {
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
 
-    let publish = |st: &mut ph2d_timeline::TimelineState, path: Vec<usize>| {
+    let publish = |st: &mut ph2d_timeline::TimelineState, path: Vec<ph2d_timeline::EnterStep>| {
         st.edit_path = path;
         let mut snap = TimelineViewSnapshot::default();
         snap.rebuild(st, &ph2d_core::Playhead::default(), false);

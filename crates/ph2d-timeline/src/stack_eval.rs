@@ -295,31 +295,6 @@ pub(crate) fn sole_strip_of(
     found.ok_or(KeyRefusal::NotPlaying)
 }
 
-/// The one live strip playing CONTAINER `c`, or `None` when there are zero or several.
-///
-/// The exact sibling of [`sole_strip_of`], and refusing for the exact same reason: a container
-/// playing twice makes "where am I inside it" name two places, and a ruler that picked one
-/// would draw the playhead at a second the animator is not at.
-pub(crate) fn sole_container_strip_of(
-    scratch: &StackScratch,
-    c: usize,
-) -> Result<ActiveStrip, KeyRefusal> {
-    let mut found = None;
-    for a in &scratch.active {
-        let ActiveSource::Container { frame, .. } = a.source else {
-            continue;
-        };
-        if a.held || scratch.frames.get(frame).and_then(|f| f.container) != Some(c) {
-            continue;
-        }
-        if found.is_some() {
-            return Err(KeyRefusal::PlaysTwice);
-        }
-        found = Some(*a);
-    }
-    found.ok_or(KeyRefusal::NotPlaying)
-}
-
 /// The clip time a strip is reading, run through that clip's own Time Remap for
 /// this entity — the full outer-then-inner composition (R6).
 pub(crate) fn strip_source_time(

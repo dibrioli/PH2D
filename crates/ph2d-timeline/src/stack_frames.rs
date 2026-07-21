@@ -25,13 +25,6 @@ pub(crate) struct ActiveStrip {
     pub frame: usize,
     /// Which lane it belongs to (its index in its frame's stack).
     pub lane: usize,
-    /// **Which strip it is**, by the document's own identity rather than by position.
-    ///
-    /// A resolved strip is a fact about an INSTANT; the lane it came from can be edited
-    /// between the rebuild and the read, so an index would silently name a neighbour.
-    /// [`crate::nest_map`] looks the strip back up through this to ask what the resolver
-    /// deliberately does not keep — the strip's own span and speed.
-    pub id: crate::stack::StripId,
     /// What it plays.
     pub source: ActiveSource,
     /// Its blend weight at this instant (the crossfade ramp).
@@ -191,7 +184,6 @@ impl StackScratch {
             self.active.push(ActiveStrip {
                 frame: 0,
                 lane: 0,
-                id: crate::stack::StripId(0),
                 source: ActiveSource::Clip(doc.active_index()),
                 w: 1.0,
                 t_clip: t,
@@ -288,7 +280,6 @@ impl StackScratch {
                 self.active.push(ActiveStrip {
                     frame,
                     lane: li,
-                    id: strip.id,
                     source,
                     w,
                     t_clip: t_local,
@@ -315,7 +306,6 @@ impl StackScratch {
                 self.active.push(ActiveStrip {
                     frame,
                     lane: li,
-                    id: strip.id,
                     source,
                     w,
                     t_clip: t_local,

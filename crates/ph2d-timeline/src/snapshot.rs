@@ -320,16 +320,28 @@ impl TimelineViewSnapshot {
         self.host_map = None;
         // The WHOLE path, outermost first — the trail has to say where you are, and where
         // you are is every level you walked through, not just the last one.
-        for &c in &state.edit_path {
-            if let Some(named) = doc.containers().get(c) {
-                self.crumbs.push((c, named.name.clone()));
+        for step in &state.edit_path {
+            if let Some(named) = doc.containers().get(step.container) {
+                self.crumbs.push((step.container, named.name.clone()));
             }
         }
-        if let crate::StackHost::Container(c) = state.edit_host() {
-            // The scratch was primed above (the `!keys_mode && stacked` branch), which is the
-            // same precondition `clip_playhead` rides.
-            self.host_time = crate::container_playhead(doc, c, playhead.time()).ok();
-            self.host_map = crate::container_map(doc, c);
+        // **Arrange only** — the host readouts describe the Arrange ruler; on the Keys tab
+        // they are not in view and publish `None` (asking anyway once rode an unprimed
+        // scratch and PANICKED on the first Keys click inside a container — Enio,
+        // 2026-07-20; the map is pure now, but the gate stays as the behaviour).
+        //
+        // **The map is the ENTRY path's** ([`crate::entry_map`]), not "the sole instance
+        // playing now": the animator named their instance by entering through it, so the
+        // map — and with it the ruler's scrub — holds at every playhead time instead of
+        // flickering away in the gaps between instances. The MARKER stays honest to the
+        // scene clock: it is drawn only while the scene playhead is inside this instance's
+        // window (elsewhere the interior is not being played *here*).
+        if !keys_mode && !state.edit_path.is_empty() {
+            self.host_map = crate::entry_map(doc, &state.edit_path);
+            self.host_time = self.host_map.and_then(|m| {
+                let t = playhead.time();
+                (t >= m.t0 && t <= m.t1).then(|| m.local_time(t))
+            });
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host()).unwrap_or(&[]);
         self.lanes.clear();

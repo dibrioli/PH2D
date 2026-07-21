@@ -47,7 +47,7 @@ thread_local! {
     /// Which container the animator has ENTERED, if any (ADR-0133 §5). Panel-local view
     /// state, published to the shell like `KEYS_MODE`: a document does not remember which
     /// container was open, exactly as Animate's does not.
-    static OPEN_CONTAINER: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+    static OPEN_CONTAINER: RefCell<Vec<ph2d_timeline::EnterStep>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
@@ -461,8 +461,8 @@ pub fn keys_mode() -> bool {
 /// Panel-local, and taking effect on the next frame's publish: the shell reads
 /// [`edit_host`] before draining intents, so the edit that follows a click lands in the
 /// stack the animator is looking at.
-pub(crate) fn enter_container(c: usize) {
-    OPEN_CONTAINER.with(|p| p.borrow_mut().push(c));
+pub(crate) fn enter_container(step: ph2d_timeline::EnterStep) {
+    OPEN_CONTAINER.with(|p| p.borrow_mut().push(step));
 }
 
 /// Pop the trail back to `depth` levels (0 = the scene root). Clicking where you already are
@@ -476,7 +476,7 @@ pub(crate) fn pop_to_depth(depth: usize) {
 /// stamped onto `TimelineState::edit_path` before intents drain, the same channel
 /// [`keys_mode`] rides.
 #[must_use]
-pub fn edit_path() -> Vec<usize> {
+pub fn edit_path() -> Vec<ph2d_timeline::EnterStep> {
     OPEN_CONTAINER.with(|p| p.borrow().clone())
 }
 
@@ -488,8 +488,8 @@ pub fn edit_host() -> ph2d_timeline::StackHost {
     OPEN_CONTAINER.with(|p| {
         p.borrow()
             .last()
-            .map_or(ph2d_timeline::StackHost::Document, |&c| {
-                ph2d_timeline::StackHost::Container(c)
+            .map_or(ph2d_timeline::StackHost::Document, |step| {
+                ph2d_timeline::StackHost::Container(step.container)
             })
     })
 }

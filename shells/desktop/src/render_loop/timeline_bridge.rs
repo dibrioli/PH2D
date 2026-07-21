@@ -293,6 +293,41 @@ pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
     })
 }
 
+/// **What entering (or leaving) a container does to the transport loop** — called on the
+/// navigation EDGE only, from the shell's per-frame `edit_path` stamp (Enio, 2026-07-20:
+/// *"dentro do container o loop não se ajustou automaticamente ao tempo das lanes"*).
+///
+/// Inside a container the thing being authored is the INSTANCE, so play cycles over the
+/// timeline window that instance occupies — leads included ([`ph2d_timeline::entry_reach`]:
+/// bracketing only the moving window would cut the very fades the artist is tuning, the
+/// `stack_end_seconds` bug one level down). A playhead standing outside that window is
+/// seeked to its start: the alternative is a marker-less ruler that reads as broken.
+///
+/// Leaving (path empty) hands the transport back to the DOCUMENT's Arrange loop via the
+/// same [`ph2d_timeline::sync_transport_loop`] a tab switch uses — navigation is not an
+/// edit, so nothing here writes the document; the authored loop is merely re-installed.
+///
+/// Edge-triggered, not stamped every frame, so the artist can still re-arm or clear the
+/// loop while inside — their gesture wins over the convenience.
+pub(crate) fn on_nav_change(
+    doc: &ph2d_timeline::TimelineDoc,
+    path: &[ph2d_timeline::EnterStep],
+    playhead: &mut ph2d_core::Playhead,
+) {
+    if path.is_empty() {
+        ph2d_timeline::sync_transport_loop(doc, playhead, false);
+        return;
+    }
+    let Some((lo, hi)) = ph2d_timeline::entry_reach(doc, path) else {
+        return; // a stale walk has no window; leave the transport as it stands
+    };
+    playhead.set_loop(lo, hi);
+    playhead.set_loop_mode(ph2d_core::LoopMode::Wrap);
+    if playhead.time() < lo || playhead.time() > hi {
+        playhead.seek(lo);
+    }
+}
+
 #[cfg(test)]
 #[path = "timeline_bridge_tests.rs"]
 mod tests;

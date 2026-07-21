@@ -45,13 +45,17 @@ impl TimelineDoc {
     /// The last timeline second any strip occupies, across every lane, or `None`
     /// when the stack holds none.
     ///
-    /// A strip's outward lead-in reaches BACKWARD, so it never moves this end.
+    /// A strip's outward lead-in reaches BACKWARD, so it never moves this end — but the
+    /// outward lead-OUT reaches FORWARD past `t_end`, and it is content (the pose is
+    /// still travelling), so the end is [`crate::ClipStrip::lead_end`]. An end that
+    /// stopped at `t_end` made a freshly armed loop bracket the fade out of itself, and
+    /// the travel the artist authored never played (Enio, 2026-07-20).
     #[must_use]
     pub fn stack_end_seconds(&self) -> Option<f64> {
         self.stack
             .iter()
             .flat_map(|l| &l.strips)
-            .map(|s| s.t_end)
+            .map(crate::ClipStrip::lead_end)
             .fold(None, |acc: Option<f64>, t| {
                 Some(acc.map_or(t, |m| m.max(t)))
             })

@@ -293,31 +293,6 @@ pub fn clip_playhead(doc: &TimelineDoc, t: f64) -> Result<f64, crate::KeyRefusal
     Ok(stack_eval::sole_strip_of(scratch, doc.active_index())?.t_clip)
 }
 
-/// **Where the OPEN container's own clock stands at timeline time `t`** — or why it has none.
-///
-/// The sibling of [`clip_playhead`], and the reason it must exist: entering a container swaps
-/// the panel to its interior, which is laid out in the container's OWN seconds. A ruler still
-/// marking the timeline's second would put the playhead wherever the instance happens to
-/// start — the strip under the cursor would not be the one the marker claims. *One ruler
-/// measures one clock*, one level down from where that law was written.
-///
-/// `Err` is honest and must stay visible: a container that is not playing here has no "now" in
-/// it, and one that plays TWICE has two.
-///
-/// Same precondition as [`key_home`]: the caller must have primed the scratch at `t`.
-pub fn container_playhead(
-    doc: &TimelineDoc,
-    container: usize,
-    t: f64,
-) -> Result<f64, crate::KeyRefusal> {
-    if doc.stack().is_empty() {
-        return Err(crate::KeyRefusal::NotPlaying);
-    }
-    let scratch = doc.scratch();
-    debug_assert_scratch_at(scratch, t);
-    Ok(stack_eval::sole_container_strip_of(scratch, container)?.t_clip)
-}
-
 /// Hold the caller to the promise that the scratch describes `t`.
 ///
 /// Under a stack every answer here comes from the SCRATCH, so these functions are

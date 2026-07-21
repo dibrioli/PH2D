@@ -342,3 +342,36 @@ bifurcação (B) pode custar mais do que o número acima sugere.
 - **Achatar o container no load (bake).** Rejeitado: mata a edição não-destrutiva, que é a razão
   de o container existir. Continua disponível como *export*, que é como o AE o oferece
   (pre-render + proxy).
+
+---
+
+## Emenda (2026-07-20) — o mapa é da ENTRADA, e o transporte segue o animador
+
+O smoke do exemplo completo (`PH2D_NEST_SMOKE=2`, 3 clips / 2 lanes / 3 instâncias) derrubou
+quatro coisas, e duas eram de DESENHO deste ADR:
+
+1. **O mapa da instância (§5/Fatia 3d) deixou de vir do scratch e passou a vir do CAMINHO DE
+   ENTRADA** (`entry_map` sobre `EnterStep { container, lane, strip }`). A versão aceita aqui
+   derivava o mapa de *"o único strip tocando agora"*, e as duas recusas que ela fazia eram
+   fabricadas: nos VÃOS entre instâncias o container toca zero vezes (o mapa — e o arrasto da
+   régua com ele — piscava), e com o container instanciado 2+ vezes recusava sempre. Mas entrar
+   é clicar num STRIP: a instância que o animador quer dizer está nomeada pela própria
+   caminhada, então não há ambiguidade a recusar. O que segue recusando, e deve: instância que
+   DÁ A VOLTA (sem inverso) e caminhada obsoleta (strip deletado/retargetado). O par
+   scratch-based (`container_playhead`/`container_map`) morreu sem consumidores.
+   É a lição de [[feedback_an_impossible_inverse_is_a_reason_for_a_second_clock_not_a_readonly_control]]
+   aplicada de novo: a resposta a um inverso impossível era dar ESTADO à vista, não travar o
+   controle.
+2. **Entrar num container ajusta o loop do transporte à janela da instância** (leads
+   incluídos, `entry_reach`); sair reinstala o loop do DOCUMENTO (`sync_transport_loop`) —
+   navegação não é edição, nada escreve no doc. Edge-triggered: o gesto do artista sobre o
+   Loop, dentro, continua ganhando.
+3. **O "fim" da pilha inclui o `lead_out`** (`stack_end_seconds` → `lead_end()`): um loop
+   recém-armado que parava em `t_end` cortava do ciclo a própria fade que o artista autorou.
+4. **A aba Keys dentro de um container entrava em pânico** — o rebuild do snapshot pulava o
+   prime em `keys_mode` e o braço do host lia o scratch mesmo assim. Os readouts do host agora
+   são Arrange-only (e puros — sem scratch).
+
+Gates: `nesting_map.rs` (reescrito para `entry_map`/`entry_reach`), `nesting_view.rs` (novo,
+o lado do snapshot), `timeline_bridge_tests` (o loop de navegação), `lead_in.rs` (o extent).
+Mutações: 6/6 sangram no gate certo + o extent nasceu vermelho.

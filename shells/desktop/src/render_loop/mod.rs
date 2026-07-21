@@ -1070,7 +1070,16 @@ impl crate::App {
         // **Where a stack edit lands** (ADR-0133 §5) — the same mirror, one line later: the
         // panel knows which container the animator entered, and the intents about to drain
         // have to land there. Read BEFORE the drain, exactly like `keys_mode`.
-        self.timeline.edit_path = ph2d_panel_timeline::state::edit_path();
+        //
+        // A CHANGE in the path is the artist walking in or out of a container, and the
+        // transport follows them (`timeline_bridge::on_nav_change`): in, the loop brackets
+        // the entered instance; out, the document's own loop is re-installed. Edge-triggered
+        // — the mirror of the `keys_mode` tab-switch sync right below.
+        let edit_path = ph2d_panel_timeline::state::edit_path();
+        if edit_path != self.timeline.edit_path {
+            timeline_bridge::on_nav_change(&self.timeline.doc, &edit_path, &mut self.playhead);
+        }
+        self.timeline.edit_path = edit_path;
         if keys_mode != self.last_timeline_keys_mode {
             self.last_timeline_keys_mode = keys_mode;
             if keys_mode {

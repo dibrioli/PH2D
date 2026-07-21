@@ -147,3 +147,43 @@ Não integre, não pushe (§0.7). A tarefa vem do Enio.
 3. [`DIRETIVA_IMPLEMENTACAO.md`](IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md) (releia a cada passo);
 4. as **REGRAS PERMANENTES A–H** do [`MODELO_ABERTURA_LINHA.md`](IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md);
 5. se a tarefa for de timeline: `docs/Timeline/` (00 briefing · 01 UI · 02 clips · 03 pesquisa nesting · 04 plano nesting) e os `HANDOFF_line_anim_*` por data.
+
+---
+
+## Sessão 2026-07-20 (pós-abertura) — fades das strips, teclado por hover, exemplo de container, e os 4 fixes do smoke do container
+
+Commits locais desta sessão (todos na `line/anim-fixes`, sem push):
+`a369ab1d..9381a9c4` (loop wrap out · roteamento de teclado por hover · lead_out completo ·
+alças grandes + hover + alça fora da strip) · `c29c12ca` (`PH2D_NEST_SMOKE=2`, o exemplo
+completo do container: 3 clips/2 lanes/3 instâncias + gate `nesting_leads.rs`) · o commit
+desta entrada (os 4 fixes abaixo).
+
+**O smoke do exemplo derrubou 4 coisas (Enio), todas fechadas — detalhe na emenda 2026-07-20
+do ADR-0133:**
+
+1. **Panic na aba Keys dentro de container** — o rebuild pulava o prime em `keys_mode` e o
+   braço do host lia o scratch assim mesmo (`debug_assert_scratch_at`). Host readouts agora
+   são Arrange-only e PUROS. Gate: `nesting_view.rs::the_keys_tab_inside_a_container_does_not_panic`
+   (nasceu com o panic exato).
+2. **Régua não arrastava dentro do container** — o mapa vinha de "o único strip tocando
+   AGORA" (piscava nos vãos; recusava com 2+ instâncias). Agora o caminho de entrada lembra o
+   STRIP (`EnterStep {container, lane, strip}`) e o mapa é `entry_map` — puro, total, sem
+   scratch. O par scratch-based (`container_playhead`/`container_map` + `sole_container_strip_of`
+   + `ActiveStrip.id`) morreu sem consumidores. Marca do playhead: só quando o relógio da cena
+   está dentro da janela da instância entrada.
+3. **Loop não se ajustava ao entrar** — `timeline_bridge::on_nav_change` (edge-trigger no
+   carimbo do `edit_path`, espelho do sync de troca de aba): entrar abraça
+   `entry_reach` (janela + leads) e busca o início se o playhead está fora; sair reinstala o
+   loop do DOCUMENTO. Navegação nunca escreve no doc.
+4. **Loop automático cortava o lead_out** — `stack_end_seconds` agora mapeia `lead_end()`;
+   o Loop da barra e o go-to-end passam a cobrir a fade final.
+
+Gates: `nesting_map.rs` reescrito para `entry_map`/`entry_reach` (o gate "toca 2× não tem
+mapa" DISSOLVEU por desenho — virou "o mapa é o da instância entrada") · `nesting_view.rs`
+novo · 3 gates de navegação no `timeline_bridge_tests` · extent no `lead_in.rs`. Mutações:
+6/6 sangram no gate certo; extent nasceu vermelho. Suítes ph2d-timeline (28 alvos) +
+ph2d-panel-timeline + bridge (37) verdes.
+
+**Smoke sugerido:** o MESMO `PH2D_NEST_SMOKE=2` — agora: entrar no Jump não pode panicar na
+aba Keys; a régua arrasta em qualquer instante; o loop vira a janela da instância entrada
+(com as fades) e volta ao da cena ao sair; o Loop da barra na cena cobre até 10,5 s.

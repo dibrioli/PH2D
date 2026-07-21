@@ -138,7 +138,17 @@ Oráculos endurecidos: circular 6 setores (cada ≥ 0,5× o máx) · espelho gan
 ABSOLUTO** (lado original ≥ 0,8× um traço solo — a razão sozinha era verde sob o bug) · tiling
 0,1→0,5. Mutação tudo-na-raia-0: os 3 sangram.
 
-**W2.3b (PRÓXIMO) — silhueta/Shape/Falloff/Flatten&Rotate, o desenho reconhecido:**
+**W2.3b LANDOU (`298703b0` + splits `f8b3507d`) — a silhueta do PAINTER dirige o stamp:**
+falloff × Shape × Flatten&Rotate entram pelo `silhouette_at` (fonte única) via closure por dab
+na porta shaped (`dispatch_pressure_dab_lane(.., sil)` → `accumulate_paint_shaped` → UM corpo de
+pixel; `accumulate_paint` delega `None`, fingerprint prova o porte intacto). Prep = a receita do
+impasto; a sessão é `take()`da durante o batch (borrows disjuntos de `self.paint`). Bristle fica
+como fator default (W2.4 troca por Grain). Gate red-first: dab achatado deposita BANDA (mutação
+`None` sangra). Splits: `trail/transfer.rs` (movimento puro) + `wetpaint/tests.rs` (gates).
+⚠️ Smoke do Circular JÁ aprovado; **o do W2.3b (Flatten/Shape no wet) ainda não** — smoke junto
+com o próximo lote. Re-smoke Circular OK (Enio).
+
+**W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
 `Trail::accumulate_paint_shaped` (corpo único — closure nomeada passada a um dos 2 iteradores) +

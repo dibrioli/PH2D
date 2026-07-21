@@ -56,7 +56,49 @@
   criar o estado (lição §10.4 do impasto). O que capturar: `snapshot_grid` já existe na crate.
 - Smoke: cada wave entrega cena `PH2D_WETPAINT_SMOKE=N` auto-play.
 
-## §2.5 — W1 EM ANDAMENTO: o que já entrou + o reconhecimento feito
+## §2.4 — W1 FECHADO (2026-07-20, HEAD `13009e54`) — AGUARDANDO SMOKE DO ENIO
+
+**Smoke: `PH2D_WETPAINT_SMOKE=1 cargo run --release -p ph2d-host-desktop`** — canvas branco
+1024², brush já armado em Wet Paint (azul, 24 px): escolha o Painter e arraste; solte e ESPERE
+(a água segue nivelando/sangrando/secando a 40 Hz). ⚠️ O smoke arma o MODO em código de
+propósito e documentado: até o W3 não existe chip/painel que selecione Wet Paint.
+
+O que entrou (commits `2437a0cc..13009e54`):
+- **Portas de produto no engine** (`822f7ae4`): `dispatch_pressure_dab` (o §9 com pressão REAL +
+  raio REAL; `dispatch_dab` vira wrapper — fingerprint prova delegação byte-idêntica) ·
+  `begin/segment/end_direct_stroke` (traço alimentado por dabs reais, sem history do engine) ·
+  `render_pigment_only_region` (o full render virou wrapper da região — um corpo por célula).
+  Gates: região==full dentro do rect + sentinela fora; depósito + gating do sim.
+- **O modo no tool** (`8a89de7a`, `tool/paint/wetpaint.rs`): sessão = engine + base congelada
+  (`Arc`) + **guard de identidade de canvas** (o `wet_session_canvas` do watercolor, EAGER — no
+  dab E no tick, porque o sim composita sem pen-down; undo/fill/troca de layer matam a sessão
+  por `Arc::ptr_eq`). **Display-state, não document-state**: o composite escreve `canvas_rgba`
+  por dirty-rect, **encerrar a sessão É o bake** (os pixels já estão lá), e o grid fica FORA do
+  `ModelSnapshot` — um `GridSnapshot`/passo seria ~235 MB a 2048² (ADR-0117). Consequência
+  honesta, pro smoke julgar: **undo de um traço wet devolve o LOOK e mata a água** (o redo não
+  ressuscita a sessão). Rota em `stamp_dabs_inner` ANTES do passe de altura (relevo de tinta que
+  ESCOA seria errado 2×); tick 40 Hz clamp 5 em `paint_tick`; pen-up fecha o traço direto.
+  Célula 1-based: pixel `p` → célula `p+1` (o `view.toCell` do reference).
+- **Depósito só em gesto VIVO + métodos CUMULATIVOS** (Dots/Airbrush/Space): `live_gesture`
+  armado no `paint_begin` — ⚠️ o sinal NÃO pode ser `paint.stroke` (o lifecycle `mem::take` o
+  stroke durante o stamp; foi o 1º vermelho dos gates). DragDot/Anchored/Line re-carimbam por
+  frame e o depósito de fluido NÃO é idempotente (I2) — recusados até o W2 desenhar (idem shape
+  editors, que nem chegam ao `paint_begin`).
+- **4 gates mutation-tested** (inline em `wetpaint.rs`; 3 mutações sangram: rota · guard do
+  tick · teardown de modo) + suíte inteira do tool verde (743).
+- **LOC**: `solver.rs` 858→539 (meu débito do W0; split `solver/advect.rs`+`solver/project.rs`,
+  fingerprint prova byte-identidade) · `paint.rs` 713→**700 exatos** (re-ancoragem de
+  doc-comments pra caber `mod`+campo). ⚠️ **7 ofensores HERDADOS seguem no gate
+  `workspace_src_files_under_loc_cap`** (das waves AA/rake anteriores da linha, pré-meus
+  commits): `watercolor_render` 751 · `sculpt_tests/w3` 743 · `sculpt` 715 · `watercolor_field`
+  709 · `dab` 708 · `spec` 701 — fecham no gate batched do fechamento da linha.
+
+**Decisões registradas p/ Enio validar no smoke:** cor por-TRAÇO (Randomize per-dab = W2) ·
+knobs = defaults §16 do reference (painel = W3) · seção Watercolor ligável em modo WetPaint
+ainda não é escondida (incompatível; W3, lei #3) · gatilho de commit da sessão = mutação alheia /
+troca de modo (secagem completa NÃO encerra sozinha — decisão aberta de produto).
+
+## §2.5 — W1 (histórico do andamento; superado pelo §2.4)
 
 - **Inc.1 COMMITADO (`c329d126`)**: `PaintMode::WetPaint` (slot 11, `PAINT_MODE_COUNT` 12) + as
   DUAS portas de wire-string (`set_paint_tool_mode("wetpaint")` / `active_paint_mode_id()`).

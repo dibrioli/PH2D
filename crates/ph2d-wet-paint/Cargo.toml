@@ -1,0 +1,32 @@
+[package]
+name = "ph2d-wet-paint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Wet Paint engine — the fourth paint mode's physics core (ADR-0134): a
+# shallow-water / capillary fluid simulation over paper tooth, two-layer
+# pigment (suspended rides the flow, settled sticks to the sheet), wet-on-wet
+# bleeding, tilt drips, drying with darkened edges.
+#
+# A 1:1 port of the DOM-free reference engine in docs/Painter/ph2d_wet_paint/
+# (js/engine/, clean-room built from SPEC.md; physics family: Stam's stable
+# fluids 1999, Curtis et al. 1997, Kubelka–Munk). The port's law: arithmetic
+# in f64, storage in f32 — exactly what the JS does with Float32Array — and
+# every JS-specific integer/rounding semantic lives in `jsmath` with the
+# reason documented. The SPEC §18 acceptance tests run here as the parity
+# suite (tests/acceptance.rs), same numbers, same tolerances.
+#
+# Pure by design: no UI, no editor-core, no GPU. The painter tool drives it
+# through the facade (`painter` module); the shell owns pixels and panels.
+
+[dependencies]
+# Cross-OS bit-identical transcendentals (cos/sin in the paper bake, pow in
+# the sRGB<->linear transfer for Kubelka–Munk). Same pin + rationale as
+# ph2d-ecs: a patch bump can move an ulp and break determinism gates.
+libm = { version = "=0.2.16", default-features = false }

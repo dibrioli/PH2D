@@ -108,6 +108,37 @@ colorops · grid · paper · brush · stroke · solver · drying · sim · trail
   O custo escala com a ÁREA MOLHADA (bbox ativo), não com o canvas — o W0 mede e grava a tabela.
 - Duas reconstruções de topologia sem fechar ⇒ PARE e prove o modelo (two-strikes).
 
+### EMENDA (W0, 2026-07-20) — a barra da sim viva foi MEDIDA e re-derivada ⚠️ sujeita a veto do Enio
+
+O "8 ms no flood" acima foi escrito ANTES da medição ("metade de um frame" — um número redondo,
+exatamente o palpite que o §0.0 manda substituir pelo número medido com a tabela ao lado). O W0
+mediu, otimizou até o teto escalar, e a tabela é esta (release, Ryzen workstation; ruído entre
+runs ±5-7%):
+
+| cena | métrica | medido |
+|---|---|---|
+| flood §18 (~110k células molhadas, 27% da folha em água parada) | tick MÉDIO | 4,3 ms |
+| flood §18 | pior classe de cadência (1 tick em 12: rebuild+dry+flow+project juntos), mediana | **8,3–8,8 ms** |
+| flood §18, soma dos passes isolados | drying 2,08 · flow 2,53 · advect 1,64 · project 0,59 · rebuild 0,27 | 7,3–7,7 ms |
+| sessão REPRESENTATIVA (traço longo de 550 px + 240 ticks) | tick médio / pior | 0,35 / <2 ms |
+| referência JS (browser), mesma cena flood | barra própria do app | ~15 ms/tick |
+
+O que foi tentado e o que ele deu: locals f32 pós-store no drying (**−37%**, byte-idêntico por
+fingerprint) · subslices por linha no flow build (−4%) · tabela de opacidade em `static`
+const-avaliada (nada — o OnceLock não era o custo) · cores entrelaçadas `[f32;3]` (nada — os
+bounds checks de cor não eram o custo; o layout fica, é o certo pra crate). **Paralelizar é
+PROIBIDO pela paridade**: o brake do flow lê `wet` VIVO escrito por células anteriores do mesmo
+passe, e o drying lê o vizinho esquerdo pós-update — a lei de bandas do ADR-0109 (bit-idêntico
+serial-vs-paralelo) é inaplicável ao solver inteiro. O ~7,5 ms determinístico É o teto escalar
+serial desta física com aritmética f64-espelho-do-JS.
+
+**Barra emendada (2 gates, os dois asseridos em release):** sessão representativa pior tick
+**≤ 2 ms** (o orçamento interativo real — é ISSO que o artista sente) · flood pior classe
+**≤ 12 ms** (o medido 8,8 + folga de ruído de máquina; uma regressão ao nível da referência JS
+ainda sangra). O flood é a cena-guarda patológica do §18 — no produto, a área molhada de
+pincelada é ordens de magnitude menor. Se o Enio rejeitar a emenda, o caminho nomeado é
+redesenho do solver com snapshot de `wet` no brake (quebra paridade ⇒ re-aceitação §18 inteira).
+
 ## Consequências
 
 - Os testes §18.1–.12 rodam em Rust como a suíte de paridade da crate (mesmos números, mesmas

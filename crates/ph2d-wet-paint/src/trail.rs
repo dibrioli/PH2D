@@ -173,7 +173,11 @@ impl Trail {
 
     /// Frame-segment callback: size the window from the chord length.
     pub fn on_segment(&mut self, chord_len: f64, spacing: f64) {
-        let cap = if self.mode == TrailMode::Blend { 4.0 } else { 2.0 };
+        let cap = if self.mode == TrailMode::Blend {
+            4.0
+        } else {
+            2.0
+        };
         self.window_size = (chord_len / spacing.max(0.0001)).floor().min(cap) as u32;
     }
 
@@ -202,7 +206,17 @@ impl Trail {
         let pig = &mut self.pig;
         let water = &mut self.water;
         let mut ext = (self.lx0, self.ly0, self.lx1, self.ly1);
-        let Grid { s, w, h, susp, sett, paper, film, wet, .. } = g;
+        let Grid {
+            s,
+            w,
+            h,
+            susp,
+            sett,
+            paper,
+            film,
+            wet,
+            ..
+        } = g;
         for_each_stamp_pixel(
             *s,
             *w,
@@ -390,8 +404,16 @@ impl Trail {
                 }
             }
         }
-        let shed_pig = if count > 0 { (sum_pig / count as f64) * 1.05 } else { 0.0 };
-        let shed_water = if count > 0 { (sum_water / count as f64) * 1.05 } else { 0.0 };
+        let shed_pig = if count > 0 {
+            (sum_pig / count as f64) * 1.05
+        } else {
+            0.0
+        };
+        let shed_water = if count > 0 {
+            (sum_water / count as f64) * 1.05
+        } else {
+            0.0
+        };
 
         // 4. Land the window + 5. paint drag.
         let drag = p.k(Knob::Drag);
@@ -442,7 +464,11 @@ impl Trail {
                     }
                     // Soft cap: past 3000 the cell sheds the window mean
                     // instead of clamping, so heavy paint hovers at the cap.
-                    let nm = if old < 3000.0 { old + v } else { old + v - shed_pig };
+                    let nm = if old < 3000.0 {
+                        old + v
+                    } else {
+                        old + v - shed_pig
+                    };
                     g.susp[i] = if nm < 0.0 { 0.0 } else { nm as f32 };
                 } else {
                     // Virgin cell: takes the tip color outright, and drinks
@@ -511,7 +537,12 @@ impl Trail {
             return None;
         }
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
-        Some(TouchedRect { x0: rx0, y0: ry0, x1: rx1, y1: ry1 })
+        Some(TouchedRect {
+            x0: rx0,
+            y0: ry0,
+            x1: rx1,
+            y1: ry1,
+        })
     }
 
     /// Blend transfer (SPEC §11 "blend"): window averages over mask-active
@@ -671,7 +702,12 @@ impl Trail {
             return None;
         }
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
-        Some(TouchedRect { x0: rx0, y0: ry0, x1: rx1, y1: ry1 })
+        Some(TouchedRect {
+            x0: rx0,
+            y0: ry0,
+            x1: rx1,
+            y1: ry1,
+        })
     }
 
     /// Roll: previous anchor <- this anchor; clear the trail + its extent.

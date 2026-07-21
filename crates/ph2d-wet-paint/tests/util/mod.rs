@@ -20,7 +20,11 @@ pub fn drive_stroke(
     let dx = x1 - x0;
     let dy = y1 - y0;
     let len = (dx * dx + dy * dy).sqrt();
-    let (ux, uy) = if len > 0.0 { (dx / len, dy / len) } else { (0.0, 0.0) };
+    let (ux, uy) = if len > 0.0 {
+        (dx / len, dy / len)
+    } else {
+        (0.0, 0.0)
+    };
     engine.pointer_down(x0, y0, None);
     let mut travelled = 0.0;
     let mut x = x0;

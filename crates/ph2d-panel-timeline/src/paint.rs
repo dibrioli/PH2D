@@ -157,7 +157,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if state.tab.shows_keys() {
         tracks::paint_add_track(ctx, theme, header);
     } else {
-        crate::stack_lane_paint::paint_add_lane(ctx, theme, header);
+        crate::stack_add_header::paint_add_lane(ctx, theme, header);
     }
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);

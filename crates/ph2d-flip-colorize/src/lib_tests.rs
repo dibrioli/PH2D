@@ -267,6 +267,83 @@ fn the_bleed_zero_seals_the_gap() {
     );
 }
 
+/// 🔴 **O selo do `Bleed 0` NÃO extrapola para fora do retângulo** (report do Enio 2026-07-20:
+/// *"Antes o trap controlava a extrapolação para fora do retangulo. Agora nada tira a
+/// extrapolação"*).
+///
+/// A trapped-ball erode `trap_px` da tinta; com a **margem da grade FIXA** (`MARGIN_PX`), uma
+/// bola grande deixa o FUNDO (a moldura de papel fora da caixa) sem espaço para o próprio
+/// núcleo, e a dilatação o engole para dentro de uma cor — a cor VAZA para além da caixa. E o
+/// selo do `Bleed 0` alimenta um raio que **cresce com a precisão** (o zoom), então num zoom
+/// aproximado (precisão alta) a bola fica maior que a margem e a regressão aparece. O fix é a
+/// **margem crescer com o raio** (`margin_px = MARGIN_PX.max(trap_px)`), medido aqui a precisão
+/// 160 (onde o bug se manifesta) com a tremor real da cena do smoke.
+///
+/// Mutação que sangra: `margin_px = MARGIN_PX` (fixa) ⇒ a `RED` inunda a caixa inteira
+/// (`max_x ≈ +4.3`, do outro lado do divisor) em vez de parar no divisor (`+1.05`).
+#[test]
+fn the_bleed_zero_seal_does_not_extrapolate_past_the_box() {
+    let hh = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+    let seg_ = |a: Vec2, b: Vec2, n: usize, seed: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(
+                    a.x + (b.x - a.x) * t + hh(i + seed) * 0.05,
+                    a.y + (b.y - a.y) * t + hh(i + seed + 91) * 0.05,
+                )
+            })
+            .collect()
+    };
+    let mut strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = Vec::new();
+    for (a, b, sd) in [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53),
+    ] {
+        let pts = seg_(a, b, 24, sd);
+        let n = pts.len();
+        strokes.push((pts, vec![0.13; n], false));
+    }
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8, 3),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8, 5),
+            width: 0.15,
+        },
+    ];
+    // Precisão 160 = um zoom aproximado (a regressão só aparece quando o raio > margem fixa).
+    let precision = 160.0f32;
+    let trap = seal_from_bleed(0.0) * precision; // o raio do Bleed 0 (= 160 px aqui)
+    let regs = colorize_with(
+        &strokes,
+        &scribbles,
+        precision,
+        trap,
+        squeeze_from_bleed(0.0),
+    );
+    let red_max_x = regs
+        .iter()
+        .filter(|r| r.label == 0)
+        .flat_map(|r| r.fill.outer.iter())
+        .fold(f32::MIN, |m, p| m.max(p.x));
+    // O VERMELHO é a cor da ESQUERDA. Selado, ele para no divisor (x=1). Se o fundo colapsar,
+    // ele inunda a caixa inteira e cruza para a direita (max_x ≈ +4.3).
+    assert!(
+        red_max_x < 2.0,
+        "o Bleed 0 fez a cor extrapolar (vermelho alcança x={red_max_x:.2}; devia parar no \
+         divisor em ~+1.05). A margem da grade não cresceu com o raio da bola."
+    );
+}
+
 /// O raio da bola (px de buffer) que os gates usam.
 ///
 /// As fixtures têm um vão de 0,1 unidade de mundo e rodam a `precision` 80 ⇒ 8 px. A bola

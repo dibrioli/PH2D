@@ -124,7 +124,9 @@ pub fn squeeze_from_bleed(bleed: f32) -> u32 {
 ///
 /// Então o `Bleed 0` alimenta o raio da trapped-ball que o `colorize` já tem — combinado com o
 /// slider **Trap** por `max` (os dois são "força de selagem"; `max` é uma composição, não uma
-/// 2ª resposta à mesma pergunta).
+/// 2ª resposta à mesma pergunta). ⚠️ **A margem da grade cresce com o raio** ([`colorize_with`])
+/// — sem isso, a bola grande engolia o FUNDO (o vão de fora da caixa), e a cor extrapolava para
+/// além do retângulo (regressão do 1º selo, precisão alta = margem fina demais para a bola).
 ///
 /// `bleed ∈ [0,1]`: **`0` = sela** (raio `MAX_SEAL_DOC`, fecha vãos até `2·1.0 = 2` unidades);
 /// **acima do joelho (`0.5`) = `0`** (vão ABERTO, o [`squeeze_from_bleed`] regula a seepage — o
@@ -214,7 +216,15 @@ pub fn colorize_with(
         return Vec::new();
     }
     let scale = precision.max(MIN_SCALE);
-    let mut grid = Grid::new(lo, hi, scale, MARGIN_PX, MAX_SIDE);
+    // ⚠️ **A margem cresce com o raio da bola.** A trapped-ball erode `trap_px` da tinta; se a
+    // margem da grade for MENOR que a bola, o FUNDO (a moldura de papel FORA da caixa) não tem
+    // espaço para o próprio núcleo, e a dilatação o engole para dentro de uma cor — a cor
+    // extrapola para além do retângulo (a regressão do selo do `Bleed 0`: a `MARGIN_PX` fixa
+    // vira fina demais quando o zoom sobe a precisão e o raio junto). Com a margem ≥ raio, o
+    // fundo mantém componente próprio (sem cor) e a cor para na moldura. Um raio ≤ `MARGIN_PX`
+    // é byte-idêntico (a `max` devolve `MARGIN_PX`) — o caminho antigo de todo Trap pequeno.
+    let margin_px = MARGIN_PX.max(trap_px.max(0.0).ceil() as usize);
+    let mut grid = Grid::new(lo, hi, scale, margin_px, MAX_SIDE);
 
     // 2. As fronteiras NO EIXO (raio 0), a mesma cápsula do balde (`09 §2.1`, BUGS #14).
     for (pts, _, closed) in strokes {

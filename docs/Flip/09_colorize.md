@@ -1,5 +1,19 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite V): a EXTRAPOLAÇÃO do selo FECHOU** (report do Enio: *"Antes o
+> trap controlava a extrapolação para fora do retângulo. Agora nada tira a extrapolação"*). O
+> selo do `Bleed 0` alimenta um raio de trapped-ball que **cresce com a precisão** (o zoom), e a
+> `MARGIN_PX` da grade era **FIXA** (20 px) — então num zoom aproximado a bola ficava maior que a
+> margem, o FUNDO (a moldura de papel fora da caixa) não tinha espaço para o próprio núcleo, e a
+> dilatação o engolia para dentro de uma cor: a cor vazava para além do retângulo. ⚠️ **Medido:
+> a extrapolação é NÃO-MONOTÔNICA no raio** (o colapso da trapped-ball, o mesmo do smoke anterior):
+> a precisão 160, raio 16 px = justo (sem vazar), raio 160 px = a `RED` inunda a caixa inteira
+> (`max_x +4.3`, do outro lado do divisor). **Fix (1 linha):** `margin_px = MARGIN_PX.max(trap_px)`
+> — a margem cresce com o raio, o fundo mantém componente próprio (sem cor), a cor para na moldura;
+> raio ≤ 20 px é BYTE-IDÊNTICO (o caminho antigo). Medido a precisão 80/160: `RED` volta a parar no
+> divisor (`+1.05`) com a lente selada (`+0.95`). Gate `the_bleed_zero_seal_does_not_extrapolate_past_the_box`
+> (precisão 160 + tremor real; mutação `margin_px = MARGIN_PX` ⇒ `+4.28` ⇒ RED). Crate 30 verdes.
+>
 > **Estado (2026-07-20, noite IV): o `Bleed 0` SELA o vão** (6º smoke seg.: *"funciona,
 > contudo, mesmo com bleed 0 ainda há vazamento"*; o Enio escolheu *"Bleed 0 SELA o vão"*).
 > **Medição primeiro:** o pedágio (`squeeze`) SATURA em `+0.94` — nem `2¹⁷` fecha a lente de um

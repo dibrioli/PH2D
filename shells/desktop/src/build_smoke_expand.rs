@@ -136,23 +136,27 @@ impl crate::App {
              \x20    modo Node e veja as âncoras: é geometria, não mais estilo.\n\
              \x20 2) Selecione a ESTRELA (tem traço amarelo + miolo azul) e clique Outline\n\
              \x20    Stroke: têm de sobrar DOIS objetos — o miolo azul e o anel amarelo.\n\
-             \x20 3) OFFSET AO VIVO: selecione o DONUT verde e ARRASTE o slider **Offset** —\n\
-             \x20    a forma muda em TEMPO REAL; ao soltar, o slider volta ao centro (0).\n\
+             \x20 3) **O OFFSET É UM EFEITO VIVO** (mudou em 2026-07-21). Selecione o DONUT\n\
+             \x20    verde e ARRASTE o slider **Offset**: a forma muda em TEMPO REAL, mas o\n\
+             \x20    DOCUMENTO continua com a curva original. Entre no modo **Node** com o\n\
+             \x20    offset ligado: aparecem os nós da curva ORIGINAL, editáveis — arraste um\n\
+             \x20    e veja o offset acompanhar. É esta a diferença que você pediu: os\n\
+             \x20    vértices do offset NÃO existem no documento até o Apply.\n\
              \x20    O número é PERCENTUAL do tamanho da forma: −100 = a forma some\n\
-             \x20    garantido, +100 = ela dobra — o curso INTEIRO é útil, em qualquer\n\
-             \x20    escala de forma.\n\
+             \x20    garantido (e VOLTA ao subir o slider — a arte nunca foi apagada),\n\
+             \x20    +100 = ela dobra.\n\
              \x20    - **Side**: Both expande a borda E o furo; Outer só a borda; Inner só o\n\
              \x20      furo. Com **Inner** + **Corner Round**, arraste POSITIVO: as quinas\n\
-             \x20      do FURO arredondam (o bug do smoke passado). Negativo encolhe.\n\
-             \x20    - **Corner** (Miter/Round/Bevel) e **Side** são PREVIEW ao vivo do\n\
-             \x20      offset recém-solto: teste os 3 modos à vontade — nada é consolidado\n\
-             \x20      e o undo não empilha. A fileira \"Join\" lá em cima (seção Stroke) é\n\
-             \x20      a quina do TRAÇO, outra pergunta.\n\
-             \x20    - **Apply Offset** consolida o preview (os Corners deixam de\n\
-             \x20      re-offsetar); qualquer outra edição também consolida. Sem preview\n\
-             \x20      vivo, o botão aplica o valor do chip. Ctrl+Z com o preview aberto\n\
-             \x20      cancela o offset INTEIRO, mesmo depois de testar vários Corners.\n\
-             \x20 4) O ARCO roxo embaixo é o **Power Stroke** (agora LISO, sem rugosidade):\n\
+             \x20      do FURO arredondam. Negativo encolhe.\n\
+             \x20    - **Corner** (Miter/Round/Bevel) e **Side** re-cozinham na hora, SEMPRE\n\
+             \x20      a partir da curva original — Bevel desfaz Round e aplica Bevel. A\n\
+             \x20      fileira \"Join\" lá em cima (seção Stroke) é a quina do TRAÇO, outra\n\
+             \x20      pergunta.\n\
+             \x20    - **Apply Offset** MATERIALIZA: só aí os vértices novos entram no\n\
+             \x20      documento (volte ao modo Node e confira). **Convert to Curves** faz o\n\
+             \x20      mesmo. Sem materializar, o efeito FICA VIVO — atravessa Ctrl+S/Ctrl+O\n\
+             \x20      e Ctrl+Z como qualquer edição.\n\
+             \x20 4) O ARCO roxo embaixo é o **Power Stroke** (liso, sem rugosidade):\n\
              \x20    selecione-o e clique. Afina nas pontas e engrossa no meio. Mexa em\n\
              \x20    **W Start / W Mid / W End** e refaça — `W Pos` move onde o grosso senta.\n\
              \x20    Com os três em 1.00 o botão não faz nada de propósito: aí é Outline Stroke.\n\
@@ -206,7 +210,7 @@ impl crate::App {
         let (offs, d) = {
             let mut n = 0usize;
             let mut d = None;
-            for (id, _) in self.offset_live.live() {
+            for id in self.offset_live.live().keys() {
                 if let Some(g) = self.gfx.as_ref()
                     && let Some(spec) = crate::offset_live::spec_of(&g.sim, &self.vec_entities, *id)
                 {
@@ -242,7 +246,12 @@ impl crate::App {
     /// Nível 19 — **o fluxo EXATO do report de 2026-07-20** ("se selecionar Round, não
     /// consegue mudar"): arma ROUND **antes** do arrasto, arrasta o slider até SATURAR à
     /// direita (o gesto natural de um polegar rápido), segura, solta, e retuna
-    /// Bevel → Miter. Com a faixa antiga (±4 unidades de MUNDO) o release caía num regime
+    /// Bevel → Miter.
+    ///
+    /// ⚠️ **A partir de 2026-07-21 ele prova também o report SEGUINTE** ("a curva já tem
+    /// todos os vertex novos antes do apply"): a telemetria traz `src=` (os vértices
+    /// AUTORADOS) e `live=` (os do DESENHO). Ao longo dos três retunes, **`src` tem de ficar
+    /// PARADO** enquanto `live` muda — é a prova de que o documento não foi tocado. Com a faixa antiga (±4 unidades de MUNDO) o release caía num regime
     /// **join-inerte** — a forma estourava a tela e as quinas (onde o join mora) saíam de
     /// vista; à esquerda, aniquilava e os três joins produziam o mesmo nada. Com a LEI DA
     /// FORMA (fração × maxdim/2) o saturado É "a forma dobrada": quinas na tela, e cada
@@ -327,6 +336,47 @@ impl crate::App {
                 eprintln!("[retune-smoke] UP do chip");
                 self.smoke_pointer_up();
             }
+            // **A OUTRA METADE do report**: `Apply Offset` MATERIALIZA. Até aqui `src` ficou
+            // parado em todos os frames (a curva autorada) enquanto `live` mudou a cada
+            // retune; a partir do clique é `src` que salta e `off` cai a 0. Sem esta fase o
+            // roteiro provaria só que o preview não assa — e não que o Apply assa.
+            // ⚠️ **Volta ao ROUND antes de aplicar, e isso é o ORÁCULO.** Com MITER o offset
+            // desta rosquinha tem 8 âncoras — exatamente as 8 que a fonte já tinha —, então
+            // `src` NÃO se moveria no Apply e o roteiro seria verde sem provar nada. Com
+            // ROUND o desenho tem ~220: materializar tem de SALTAR o `src`.
+            320 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_JOIN_ROUND) {
+                Some((x, y)) => {
+                    eprintln!("[retune-smoke] DOWN ROUND (pré-Apply) em ({x}, {y})");
+                    self.smoke_pointer_down(x, y);
+                }
+                None => eprintln!("[retune-smoke] chip ROUND fora do hit-index"),
+            },
+            323 => self.smoke_pointer_up(),
+            // O botão Apply Offset mora ABAIXO dos chips: rola mais um pouco, senão o
+            // `smoke_find_widget` devolve None e a fase inteira vira um no-op silencioso.
+            332..=336
+                if self
+                    .smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH)
+                    .is_none() =>
+            {
+                let win = self.gfx.as_ref().map(|g| g.surface.size());
+                if let Some(w) = win {
+                    let (px, py) = (w.width as f32 - 120.0, w.height as f32 * 0.5);
+                    self.smoke_pointer_move(px, py);
+                    self.on_mouse_wheel(winit::event::MouseScrollDelta::LineDelta(0.0, -12.0));
+                }
+            }
+            340 => match self.smoke_find_widget(ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH) {
+                Some((x, y)) => {
+                    eprintln!("[retune-smoke] DOWN APPLY OFFSET em ({x}, {y})");
+                    self.smoke_pointer_down(x, y);
+                }
+                None => eprintln!("[retune-smoke] botão Apply Offset fora do hit-index"),
+            },
+            343 => {
+                eprintln!("[retune-smoke] UP do Apply — src TEM de saltar e off cair a 0");
+                self.smoke_pointer_up();
+            }
             380 => eprintln!("[retune-smoke] fim do roteiro — feche a janela"),
             _ => {}
         }
@@ -334,6 +384,9 @@ impl crate::App {
 
     /// Nível 18 — **o roteiro do RETUNE, auto-dirigido pelo input real** (a ferramenta que
     /// decodificou o report de 2026-07-20: "queda de FPS + não muda para Miter/Bevel").
+    ///
+    /// ⚠️ No modelo VIVO (2026-07-21) o oráculo mudou de lugar: `src=` na telemetria é a
+    /// curva autorada e tem de ficar PARADA; quem muda a cada retune é `live=` (o desenho).
     /// Na ORDEM do report: arrasta com o Miter default (segura ~2 s por fase, pra dar
     /// tempo de screenshot), solta, e retuna Round → Bevel → Miter com cliques de timing
     /// REAL (Down e Up em frames separados). A telemetria é a de

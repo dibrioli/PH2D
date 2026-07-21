@@ -174,10 +174,13 @@ impl BrushShape {
 /// the dab's whole silhouette — falloff curve, Shape image, flatten/rotate
 /// footprint — so `sil(x, y)` (absolute cell coords) REPLACES both the
 /// internal radial falloff and the elliptical footprint test (`0` = outside).
-/// The bristle `tex` stays as the engine's default texture factor, sampled in
-/// RAW offsets exactly as the Round shape samples it (the host's own grain
-/// system takes over rotation when it wants it). The engine's own paths never
-/// call this — the port's behaviour is pinned by the session fingerprint.
+/// The bristle `tex` is the engine's DEFAULT texture factor, sampled in RAW
+/// offsets exactly as the Round shape samples it; when the host has a grain
+/// system of its own, `grain(x, y)` REPLACES the bristle sample outright —
+/// two textures multiplying would double-darken, and the artist's Grain is
+/// THE texture everywhere else in the app. The engine's own paths never call
+/// this — the port's behaviour is pinned by the session fingerprint.
+#[allow(clippy::too_many_arguments)]
 pub fn for_each_stamp_pixel_shaped(
     s: usize,
     grid_w: usize,
@@ -187,6 +190,7 @@ pub fn for_each_stamp_pixel_shaped(
     cy: f64,
     r: f64,
     sil: &mut dyn FnMut(i32, i32) -> f64,
+    mut grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
     mut cb: impl FnMut(usize, i32, i32, f64, f64),
 ) {
     let x0 = ((cx - r).ceil() as i32).max(2);
@@ -201,7 +205,10 @@ pub fn for_each_stamp_pixel_shaped(
         for x in x0..=x1 {
             let fall = sil(x, y);
             if fall > 0.0 {
-                let texv = sample_bristle(tex, x as f64 - cx, y as f64 - cy);
+                let texv = match grain.as_deref_mut() {
+                    Some(gr) => gr(x, y),
+                    None => sample_bristle(tex, x as f64 - cx, y as f64 - cy),
+                };
                 if texv > 0.0 {
                     cb(i, x, y, fall, texv);
                 }

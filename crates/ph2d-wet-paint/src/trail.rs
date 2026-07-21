@@ -193,14 +193,16 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
     ) -> bool {
-        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, None)
+        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, None, None)
     }
 
     /// [`Self::accumulate_paint`] with the HOST's silhouette (the shaped
-    /// product door): `sil(x, y)` replaces the engine's falloff + footprint,
-    /// the bristle stays as the texture factor. ONE pixel body serves both
-    /// faces (`accumulate_paint` delegates with `None` — the fingerprint
-    /// pins that the port's own path did not move a bit).
+    /// product door): `sil(x, y)` replaces the engine's falloff + footprint;
+    /// `grain(x, y)`, when the host's Grain slot is armed, replaces the
+    /// bristle as the texture factor (`None` = the bristle stays). ONE pixel
+    /// body serves both faces (`accumulate_paint` delegates with `None` —
+    /// the fingerprint pins that the port's own path did not move a bit).
+    #[allow(clippy::too_many_arguments)]
     pub fn accumulate_paint_shaped(
         &mut self,
         g: &mut Grid,
@@ -209,8 +211,9 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
         sil: &mut dyn FnMut(i32, i32) -> f64,
+        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
     ) -> bool {
-        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, Some(sil))
+        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, Some(sil), grain)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -222,6 +225,7 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
         sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
     ) -> bool {
         if self.dab_count == 0 {
             // the window's first dab anchors it
@@ -293,9 +297,14 @@ impl Trail {
         };
         match sil {
             Some(sil) => {
-                for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, body);
+                for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, grain, body);
             }
             None => {
+                // A grain override without a silhouette cannot happen — the
+                // only Some-grain caller is the shaped door, which requires
+                // `sil`. Assert it so a future caller cannot pass a grain
+                // that would be silently discarded.
+                debug_assert!(grain.is_none(), "grain override requires the shaped path");
                 for_each_stamp_pixel(
                     *s,
                     *w,

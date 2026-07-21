@@ -80,14 +80,14 @@ fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
     for k in 1..=20 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None, None);
         prev = x;
     }
     e.set_stroke_color(0, [20.0, 220.0, 20.0]); // dip in green
     for k in 21..=40 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None, None);
         prev = x;
     }
     e.end_direct_stroke();
@@ -143,7 +143,7 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
         let chord = ((x - prev.0).powi(2) + (y - prev.1).powi(2)).sqrt();
         e.direct_segment(0, chord);
         // Real pressure (host units mapped to the §8 range) + real radius.
-        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0, None);
+        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0, None, None);
         prev = (x, y);
     }
     e.end_direct_stroke();
@@ -164,4 +164,62 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
         e.step_simulation();
     }
     util::sweep_nan(e.active_grid(), "post-direct-stroke sim");
+}
+
+/// W2.4's engine half: a host `grain` closure REPLACES the bristle sample on
+/// the shaped path — it does not multiply with it. Striped grain (odd
+/// columns 0) ⇒ odd columns get EXACTLY zero deposit; the bristled control
+/// run proves those columns DO deposit without the override, so the absence
+/// is the grain's doing, not the bristle's accident. Mutation that bleeds
+/// it: sampling the bristle even when `grain` is Some (the veto vanishes).
+#[test]
+fn the_hosts_grain_replaces_the_bristle() {
+    let run = |grained: bool| -> (f64, f64) {
+        let mut e = Engine::new(200, 120);
+        e.begin_direct_stroke(0, 40.0, 60.0);
+        let mut prev = 40.0f64;
+        for k in 1..=30 {
+            let x = 40.0 + 4.0 * k as f64;
+            e.direct_segment(0, x - prev);
+            let mut sil = |_: i32, _: i32| 1.0f64;
+            let mut gr = |cx: i32, _: i32| if cx % 2 == 0 { 1.0 } else { 0.0 };
+            e.dispatch_pressure_dab_lane(
+                0,
+                x,
+                60.0,
+                5.0,
+                1.0,
+                0.0,
+                9.0,
+                Some(&mut sil),
+                grained.then_some(&mut gr as &mut dyn FnMut(i32, i32) -> f64),
+            );
+            prev = x;
+        }
+        e.end_direct_stroke();
+        let g = e.active_grid();
+        let (mut even, mut odd) = (0.0f64, 0.0f64);
+        for cy in 1..=g.h {
+            for cx in 1..=g.w {
+                let v = f64::from(g.susp[cx + cy * g.s]);
+                if cx % 2 == 0 {
+                    even += v;
+                } else {
+                    odd += v;
+                }
+            }
+        }
+        (even, odd)
+    };
+    let (ctrl_even, ctrl_odd) = run(false);
+    assert!(
+        ctrl_even > 1000.0 && ctrl_odd > 1000.0,
+        "the bristled control must deposit in BOTH parities ({ctrl_even}, {ctrl_odd})"
+    );
+    let (even, odd) = run(true);
+    assert!(even > 1000.0, "the grained run stopped depositing ({even})");
+    assert_eq!(
+        odd, 0.0,
+        "a vetoed column carries deposit — the bristle spoke over the grain"
+    );
 }

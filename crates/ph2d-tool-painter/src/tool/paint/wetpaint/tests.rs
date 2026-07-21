@@ -367,6 +367,63 @@ fn the_wet_paint_wears_the_brushs_colour_not_black() {
     assert!(best[0] > 90, "the deposit reads near-black ({best:?})");
 }
 
+/// SEAM (W2.4): the artist's GRAIN replaces the engine's bristle in the wet
+/// deposit, by the colour route's own law (`dab::grain_at`). A
+/// canvas-anchored Checker at Depth 1 VETOES its zero texels — cells the
+/// bristled run paints must land at exactly zero, while the pass-texels
+/// still deposit (a global dim would fail the kept-count; a dead wire fails
+/// the vetoed-count). Mutation that bleeds it: passing `None` instead of
+/// the grain closure at the dispatch (B == A, the vetoed set collapses).
+#[test]
+fn the_artists_grain_textures_the_wet_deposit() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let run = |grained: bool| -> Vec<f32> {
+        let mut t = tool_in_mode("wetpaint");
+        if grained {
+            // Tiled = canvas-anchored: the veto pattern holds still across
+            // dabs (a dab-relative grain re-phases per dab and overlapping
+            // dabs fill each other's zeros — the known ViewPlane behaviour).
+            t.paint.brush.texture.kind = TextureKind::Checker;
+            t.paint.brush.texture.mapping = TextureMapping::Tiled;
+            t.paint.brush.grain_depth = 1.0;
+            for slot in &mut t.paint.brush_by_mode {
+                slot.texture.kind = TextureKind::Checker;
+                slot.texture.mapping = TextureMapping::Tiled;
+                slot.grain_depth = 1.0;
+            }
+        }
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let plain = run(false);
+    let grained = run(true);
+    let (mut vetoed, mut kept, mut mass) = (0usize, 0usize, 0.0f64);
+    for (a, b) in plain.iter().zip(grained.iter()) {
+        if *a > 1.0 {
+            if *b == 0.0 {
+                vetoed += 1;
+            } else {
+                kept += 1;
+            }
+        }
+        mass += f64::from(*b);
+    }
+    assert!(
+        mass > 1000.0,
+        "the grained stroke deposited nothing ({mass})"
+    );
+    assert!(
+        kept > 50,
+        "the grain vetoed everything — a dead brush, not a texture (kept {kept})"
+    );
+    assert!(
+        vetoed > 50,
+        "no bristle-painted cell was vetoed by the Checker — the Grain never \
+         reached the fluid (vetoed {vetoed}, kept {kept})"
+    );
+}
+
 /// Entering Wet Paint must NOT take the Impasto section away (Enio, W1
 /// smoke: "uma das regras era não afetar o que já existia") — the section
 /// hosts the ten-tool list and the canvas's Lighting. And the radio must

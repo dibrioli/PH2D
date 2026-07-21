@@ -135,6 +135,14 @@ impl PainterTool {
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
+        // The artist's GRAIN replaces the engine's bristle texture (W2.4).
+        // The bristle IS the fluid's default grain, so an armed Grain slot
+        // takes its place outright — two textures multiplying would
+        // double-darken, and everywhere else in the app the Grain is THE
+        // texture. The per-pixel law is `dab::grain_at`, the same single
+        // door the colour route and the impasto height kernel call.
+        let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let grain_active = brush.texture.is_active();
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let canvas_wh = [w as f32, h as f32];
@@ -229,6 +237,12 @@ impl PainterTool {
                     image: shape_image.as_ref(),
                     ramp_lut: shape_ramp_lut,
                 });
+            // Grain basis AFTER the Shape basis, from the same RNG stream —
+            // the colour route's resolve order (Shape before Grain), so the
+            // random draws land where every other route puts them.
+            let grain_basis = grain_active.then(|| {
+                ph2d_painter_brush::texture::dab_basis(&spec.texture, &mut *tex_rng, canvas_wh, fp)
+            });
             let inv_r = 1.0 / d.radius_px.max(0.01);
             let mut sil = |cx: i32, cy: i32| -> f64 {
                 let px = i64::from(cx) - 1;
@@ -246,6 +260,25 @@ impl PainterTool {
                     d.radius_px,
                 ))
             };
+            // Per-dab grain closure (armed slot only): replaces the bristle
+            // sample inside the shaped stamp, cell − 1 = px like `sil`.
+            let spec_ref = &spec;
+            let gimg = grain_image.as_ref();
+            let mut grain = grain_basis.as_ref().map(|gb| {
+                move |cx: i32, cy: i32| -> f64 {
+                    let px = i64::from(cx) - 1;
+                    let py = i64::from(cy) - 1;
+                    f64::from(ph2d_painter_brush::dab::grain_at(
+                        spec_ref,
+                        gb,
+                        gimg,
+                        px,
+                        py,
+                        d.center,
+                        d.radius_px,
+                    ))
+                }
+            });
             sess.engine.dispatch_pressure_dab_lane(
                 li,
                 f64::from(x) + 1.0,
@@ -255,6 +288,7 @@ impl PainterTool {
                 f64::from(d.dir[1]),
                 f64::from(d.radius_px),
                 Some(&mut sil),
+                grain.as_mut().map(|g| g as &mut dyn FnMut(i32, i32) -> f64),
             );
             sess.lanes[li].pos = d.center;
         }

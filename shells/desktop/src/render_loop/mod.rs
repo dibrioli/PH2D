@@ -46,6 +46,8 @@ mod inspector_joint_tests;
 mod inspector_ordering;
 mod inspector_physics;
 mod inspector_physics_apply;
+#[cfg(test)]
+mod inspector_physics_gesture_tests;
 mod inspector_physics_markers;
 #[cfg(test)]
 mod inspector_physics_tests;

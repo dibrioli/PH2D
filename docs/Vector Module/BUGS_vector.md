@@ -811,6 +811,137 @@ E dois corolários que valem além do blend:
 
 ---
 
+## Bug #18 — "Round não muda" e "só apply aplica" — a saga do Offset ao vivo (2026-07-20/21) — **FECHADO**
+
+Cinco rodadas de report do Enio sobre a MESMA feature, com **três causas diferentes** empilhadas
+umas sobre as outras. Cada rodada tem uma lição própria, e a última é a que valia desde o começo.
+
+### Sintoma (as cinco rodadas, na ordem)
+
+1. *"queda de fps, muda em tempo real para round mas não muda para Miter e Bevel"*
+2. *"funciona corretamente, mas com queda de FPS"*
+3. *"melhorou FPS mas regrediu: Round para Bevel ou Miter não muda mais"*
+4. *"não resolveu! se selecionar Round, não consegue mudar"*
+5. *"no momento que aperto Round a curva já tem todos os vertex novos criados antes de apertar
+   apply … a idéia é bevel desfazer round e aplicar bevel. Só apply aplica definitivamente"*
+
+### Causa 1 — o FANTASMA no `d` extremo (rodada 1)
+
+Com caneta `2|d|` maior que o próprio laço, o contorno interno da banda degenerava em ruído de
+winding e o refugo **atravessava o sweep**. Medido no donut: encolher além da morte devolvia NADA
+no Miter (correto) e uma **ilha de 12 verts / área 2,52 no Round e no Bevel** — não-monotônico e
+**diferente por join**, que é o report ao pé da letra. Fix: `drop_phantoms` na porta única
+`loop_region` (discriminador = distância ao laço fonte, teste pelo **MÁXIMO** do contorno).
+
+### Causa 2 — **o DIAL era o bug** (rodadas 3-4), e é a lição mais transferível daqui
+
+Depois do fantasma morto, o report virou *"não muda mais"* — **num build cujo código de produto era
+byte-idêntico ao que ele tinha aprovado**. A janela de retune sempre funcionou (o smoke prova: undo
+andando, verts mudando, janela viva). O que falhava era o **slider**:
+
+- ele mapeava **±4 unidades de MUNDO sobre ~104 px** de track, numa forma de 2,4 ⇒ o gesto natural
+  (arrastar com vigor) **saturava sempre**;
+- e os dois extremos são regimes **join-inertes**: à esquerda a forma **aniquila** (os três joins
+  produzem o mesmo nada — clicar chip não muda um pixel, literalmente) e à direita ela cresce
+  **4,3×** e estoura a tela, levando embora as quinas, que é onde o join mora.
+
+Medido: **37% do curso do slider era forma MORTA**. A rodada 1 era o fantasma NESSE mesmo regime (a
+`d = −4` o Round ressuscitava o blob — mudança visível! — e Miter/Bevel aniquilavam); o
+`drop_phantoms` igualou os três no nada, e daí *"não muda mais"*.
+
+A faixa antiga confessava a origem no próprio comentário: *"a vista do editor mede ~10 unidades"* —
+**derivada da VISTA**, quando o alcance útil de um offset é propriedade da **FORMA**. Fix: o slider
+passou a falar **fração do tamanho da seleção** (`d = fração × maxdim/2`, chip em percentual):
+**−100% = morte garantida** (o inradius de qualquer forma é ≤ maxdim/2) e **+100% = dobrar a forma**
+(quinas na tela ⇒ todo retune muda pixels visíveis). Curso morto 37% → ≤ 3%.
+
+E a fileira gêmea: o painel tinha **duas** fileiras "Join · Miter/Round/Bevel" idênticas (Stroke = a
+quina do traço, no-op visível num shape sem traço; Expand = a quina do offset). A do Expand virou
+**"Corner"**.
+
+### Causa 3 — **o MODELO** (rodada 5): o offset materializava no release
+
+A queixa final não era sobre nada disso: era que o resultado do offset **já era um objeto do
+documento**. No modo Node o artista via as ~238 âncoras dos arcos do Round e concluía — com razão —
+que a curva já tinha sido assada, e que o Bevel seguinte chanfraria *aqueles* vértices.
+
+⚠️ **MEDI ANTES DE MEXER, e a medição mudou o alvo:** a geometria **nunca compôs**. O gate
+`each_preview_re_derives_from_the_source_never_from_the_previous_preview` compara Round→Bevel com um
+Bevel **fresco da forma pristina, âncora a âncora (1e-6)**: idênticos. O `clone_from(&pre)` já fazia
+*"bevel desfaz round e aplica bevel"*. O defeito era o **modelo**, não a conta.
+
+**Fix (o que fechou):** componente `VecOffset{d, join, side}` na entidade; a shell **cozinha por
+frame** (memoizado) e o renderer desenha o cozido; o documento continua guardando a **curva
+autorada** — no Node aparecem os nós DELA, editáveis, e o offset acompanha. **Apply Offset** (ou
+Convert to Curves) é o único momento em que os vértices novos entram no documento. É a costura
+fonte≠cozido do ADR-0121/0132, um nível acima. Prova no smoke 19: `src=26` **parado** durante o
+arrasto e os quatro retunes, `live` 220 (Round) → 16 (Bevel) → 8 (Miter); no Apply **`src 26→238`,
+`live→0`**.
+
+⚠️ **A arquitetura foi decidida pelo COMPILADOR, não por gosto:** montar o offset na pilha de Live
+Path Effects **não compila** — um efeito é avaliado dentro da `ph2d-vec-scene` (crate pura) e o
+offset precisa da `ph2d-vec-boolean`, que depende dela; `error: cyclic package dependency`. A saída
+"registrar o motor por ponteiro global" foi **recusada**: faria `cooked()` — a resposta a *"o que
+este documento desenha?"* — depender de alguém ter chamado um instalador, e o mesmo arquivo
+desenharia diferente em processos diferentes, **em silêncio**.
+
+**Aniquilação:** a entrada fica **presente e vazia**, nunca ausente — a arte não sai da cena e volta
+ao subir o slider.
+
+### Os DOIS remendos meus que não eram a correção (e o que custaram)
+
+1. **Fazer o retune substituir o próprio passo de undo.** Legítimo por si (N retunes = 1 passo), mas
+   respondia a uma pergunta que o Enio não fez. Virou **código morto** no modelo certo.
+2. **Esconder as âncoras do preview** — e aqui eu causei uma **regressão**: gatear a chamada
+   `draw_overlays` inteira apagou os nós de **TODAS** as formas no modo Node enquanto a janela
+   vivesse. Revertido no report seguinte. ⚠️ **Suprimir um overlay globalmente para resolver um
+   problema de UMA forma é sempre grande demais** — o raciocínio "essa geometria é transiente, então
+   não decore" estava certo; o alcance da implementação, não.
+
+O padrão dos dois: **remendo sobre a premissa errada**. A premissa era *"o offset materializa no
+release"*, e enquanto ela ficou de pé, toda correção era em cima do sintoma.
+
+### O ORÁCULO que faltava (e por que a suíte era verde o tempo todo)
+
+O gate da cadeia afirmava *"Round, Bevel e Miter produzem verts DISTINTOS"*. Essa asserção **passa
+mesmo se o preview compuser** — bevel-de-round também difere de round. Quem pega a composição é a
+**identidade com um resultado FRESCO da fonte**. Um oráculo de *diferença* é quase sempre mais fraco
+do que parece: ele descarta o caso trivial e nada mais.
+
+### Três mutações SOBREVIVERAM, e todas eram a FIXTURE
+
+- **cook lendo `verts` cru** sobreviveu sob escala **uniforme** — a pilha de efeitos é invariante a
+  ela *de propósito*. RED só com `scale(3,1)`: a fixture que testa *em que ESPAÇO o efeito é medido*
+  tem de ser **não-uniforme**.
+- **`expand_selection` lendo cru**, idem.
+- **o resolver ignorando o id do caminho** é indistinguível com **uma forma só** na cena.
+
+### Interferência do AMBIENTE no harness (custou uma investigação inteira)
+
+O desktop é vivo: o WM reposiciona a janela recém-aberta sob o cursor **físico** parado e isso emite
+`CursorMoved` **reais**, que o slider agarrado obedece. Um hold sem re-assert foi teleportado a
+`d = −4` pelo ambiente, e eu persegui esse fantasma como se fosse do app. Os roteiros auto-dirigidos
+re-afirmam a posição sintética **todo frame do hold E no frame do release** (o `up` solta onde o
+ponteiro está, e o cursor físico pode ter falado por último).
+
+### Lições
+
+- **Quando o mecanismo está inocentado e o usuário insiste, desconfie do DIAL.** Um slider de faixa
+  fixa é usado nos EXTREMOS; se lá a feature é inerte por construção, o relato é "X não funciona" com
+  todo o mecanismo de X saindo limpo de teste após teste.
+- **A faixa de um controle é função do OPERANDO, não da vista.** ±4 unidades de mundo era um número
+  sobre o viewport; `fração × maxdim/2` é um número sobre a forma, e por isso o curso inteiro é útil
+  em qualquer escala.
+- **Duas fileiras idênticas no mesmo painel para perguntas diferentes** ("Join" do traço × do offset)
+  é meio caminho para "cliquei e não fez nada".
+- **Meça antes de aceitar o diagnóstico do usuário** — a composição que ele descrevia não existia; o
+  que existia era a *evidência visível* dela (âncoras materializadas). Corrigir o que ele descreveu
+  teria sido corrigir o que já estava certo.
+- **Uma âncora sobre geometria transiente é uma alça MORTA** (arrastá-la é trabalho que o próximo
+  clique apaga) — mas a cura é o modelo (não materializar), não esconder o overlay.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -855,3 +986,27 @@ E dois corolários que valem além do blend:
    olhando a tela — em ~20 minutos. A hipótese principal do handoff anterior (xform stale)
    estava **errada**, e o gate novo do arranjo nasceu **verde**. Uma tarde de leitura de
    código não teria chegado lá.
+
+10. **O DIAL pode ser o bug** (#18). Quando o mecanismo de X sai inocentado de teste após teste e o
+    usuário insiste que "X não funciona", pergunte **onde o gesto natural estaciona o parâmetro** — e
+    se ALI X é inerte por construção (aniquilação, fora da tela, clamp). O relato então é verdadeiro
+    e o mecanismo também: o que está errado é o mapa do controle. Gate: a fração do curso do slider
+    que cai em regime morto.
+
+11. **"Eles diferem" é um oráculo fraco** (#18). O gate dizia que Round, Bevel e Miter produzem
+    resultados distintos — e essa asserção **passa mesmo com o defeito** (compor bevel sobre round
+    também difere). O que pega é a **identidade com um resultado FRESCO** computado fora do caminho
+    sob teste. Antes de confiar num gate de diferença, pergunte: *que defeito ele deixaria passar?*
+
+12. **Remendo sobre a premissa errada** (#18). Três correções seguidas atacaram sintomas — undo,
+    âncoras, faixa — enquanto a premissa (*"o offset materializa no release"*) ficou de pé; uma delas
+    ainda causou regressão. Quando o mesmo relato volta pela terceira vez com palavras diferentes, o
+    que precisa mudar é **o modelo**, não mais um detalhe dele. E a pista costuma estar no
+    vocabulário do usuário: *"só apply aplica definitivamente"* é uma frase sobre **quando a
+    geometria nasce**, não sobre botões.
+
+13. **Suprimir um overlay globalmente para resolver o caso de UMA forma é grande demais** (#18).
+    O raciocínio ("esta geometria é transiente, não a decore") estava certo; o alcance
+    (`draw_overlays` inteiro, todas as formas, enquanto a janela vivesse) apagou o modo Node.
+    Overlay é política por-ALVO; quando a política nasce global, o gate que falta é o que pergunta
+    pelas formas que **não** são o alvo.

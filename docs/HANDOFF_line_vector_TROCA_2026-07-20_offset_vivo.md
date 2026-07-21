@@ -169,12 +169,21 @@ roteiro seria verde sem provar nada.
 
 ### ABERTO (nomeado, não contrabandeado)
 
-- **O hit-test e a bbox/gizmo leem a FONTE, não o desenho.** Com um offset grande, clicar no
-  anel novo fora da silhueta original não pega a forma, e o gizmo desenha a caixa da fonte. É a
-  mesma exposição que o Blend Object tem por desenho (lá pega-se o spine; aqui pega-se a
-  fonte). O mapa `LiveGeometry` já está na mão de quem faria o pick — é uma wave pequena, mas é
-  **decisão de produto** (a fonte também é o que o Node edita, e pegar pelo desenho pode
-  confundir os dois).
+- ~~**O hit-test e a bbox/gizmo leem a FONTE, não o desenho.**~~ → **O PICK FECHOU** (`7cee9e79`,
+  2026-07-21; gates em `shells/desktop/src/vec_offset_pick_tests.rs`). O que decidiu: `VecOffset`
+  é componente **registrado**, logo o offset vivo persiste no projeto e atravessa o undo — não é
+  estado de arrasto, é estado DURÁVEL, e uma forma ficava desenhada crescida indefinidamente com
+  o mouse apalpando a curva autorada. Clique de canvas (`contains_path`/`contains_world`) e
+  marquee (`pick_in_world_rect`) perguntam agora ao MESMO `live` que o `dispatch` consome.
+  ⚠️ **São dois sentidos e dois gates:** crescer (pegar onde a tinta chegou) e **encolher**
+  (NÃO pegar onde a tinta saiu) — um remendo de união passa no 1º e falha no 2º. Entrada vazia
+  (aniquilação) não pega nada, herdando a lei que o `recook` já tinha.
+  **A CAIXA do gizmo FICA na fonte, e é decisão:** o `d` é distância de MUNDO, então escalar a
+  forma não escala a banda ⇒ uma caixa que a incluísse faria o gizmo derivar do dedo durante o
+  arrasto (a armadilha das 5 tentativas revertidas do ADR-0128), e é também o default do
+  Illustrator ("Use Preview Bounds" desligado). O **modo Node** também fica na fonte — as
+  âncoras que o artista arrasta são as autoradas (ADR-0121). A divisão *quem lê a derivada, quem
+  lê a fonte* está escrita no cabeçalho de `offset_live.rs`.
 - **A visibilidade `Show/Hide` da árvore continua a ser da FONTE** (correto), mas nada oferece
   *"ver a curva original por baixo do offset"* — um *ghost*, se o Enio o quiser.
 - **Multi-seleção com offsets DIFERENTES**: arrastar o slider escreve o MESMO `d` em todas
@@ -459,6 +468,12 @@ A fila grande da linha (CLAUDE.md §5 "Vector Module", handoffs
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 - `ph2d-vec-render`: `pub type LiveGeometry` novo; **`dispatch` ganhou o parâmetro `live`**
   (5→6 args). Um chamador na shell.
+- **`7cee9e79` (o pick segue o desenho):** `ph2d-vec-scene` ganha **`pub fn curve_bbox_in_frame`**
+  (`path_ops.rs`, aditivo — é o motor de `path_curve_bbox_in_frame` extraído, que passou a
+  delegar; nenhuma assinatura pública mudou). Shell: `vec_gizmo_view::{contains_world,
+  contains_path, pick_all_at_world, pick_in_world_rect}` e `envelope_gesture::press` ganharam o
+  parâmetro `live` — **conflito de merge aqui é textual, não semântico**: quem tocar estes sítios
+  noutra linha só precisa repassar `self.offset_live.live()`.
 - `ph2d-vec-boolean`: `expand.rs` **783→552 LOC** com o módulo irmão novo `expand_ribbon.rs`
   (a fita do Power Stroke). `power_stroke` é re-exportado — a API pública não muda.
 - Shell: `App.offset_live` / `App.vec_expand_knobs` / `App.vec_offset_mirrored` (substituem

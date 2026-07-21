@@ -44,6 +44,8 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # Pure clean-room Blender brush engine (BrushSpec / Stroke / stamp_dab). Driven
 # from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# Wet Paint (PaintMode::WetPaint): the parity-tested fluid engine — ADR-0134.
+ph2d-wet-paint = { path = "../ph2d-wet-paint" }
 # Content-aware heal (Inpaint paint-mode): multi-scale PatchMatch reconstruction
 # of the brushed defect region on pen-up (ADR-0102). CPU reference path; the
 # `gpu` feature turns on its GPU compute path.

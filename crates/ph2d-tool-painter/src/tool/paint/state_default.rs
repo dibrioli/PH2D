@@ -231,6 +231,7 @@ impl Default for PaintState {
             deform: warp::DeformState::default(),
             warp: warp::session::WarpSession::default(),
             sculpt: sculpt::SculptState::default(),
+            wetpaint: wetpaint::WetPaintState::default(),
         }
     }
 }

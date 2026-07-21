@@ -93,6 +93,7 @@ pub(crate) use symmetry::SymmetryPick;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 mod wet_editable;
+mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub use curve::CurveOverlay;
 pub use curve_gizmo::TransformGizmo;
 pub use curve_tangent::TangentHandles;
@@ -200,9 +201,8 @@ pub(crate) struct PaintState {
     dynamics: Dynamics,
     /// The stroke in progress between pointer-down and pointer-up (`None` when idle).
     stroke: Option<Stroke>,
-    /// The **hover heading** (unit vector; `[0, 0]` = none yet) and the last hover position, so the
-    /// brush-cursor ring can aim before the pen goes down. Maintained by
-    /// [`PainterTool::on_canvas_hover`], which carries the reasoning; a live stroke's heading outranks it.
+    /// The **hover heading** (unit vector; `[0, 0]` = none yet) + last hover position — the brush
+    /// ring aims before pen-down ([`PainterTool::on_canvas_hover`]); a live stroke's heading outranks.
     hover_heading: [f32; 2],
     hover_pos: Option<[f32; 2]>,
     /// Reused dab buffer so a hot pointer stream allocates nothing per sample.
@@ -217,17 +217,17 @@ pub(crate) struct PaintState {
     eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     paint_mode: PaintMode,
-    /// Per-mode saved brush settings — the "independent tools" model (the default). Each [`PaintMode`]
-    /// keeps its OWN [`BrushSpec`], swapped into `brush` on a mode change so editing one tool's panel
-    /// never bleeds into another. Indexed by [`PaintMode::slot`]. Ignored while `link_shared_settings` is
-    /// on (all modes then share the live `brush`). The active mode's slot is stale while active (edits go
-    /// to `brush`); it's written back on the next mode switch. See [`tool_link`].
+    /// Per-mode saved brush settings — the "independent tools" model (the default): each
+    /// [`PaintMode`] keeps its OWN [`BrushSpec`] (indexed by [`PaintMode::slot`]), swapped into
+    /// `brush` on a mode change so one tool's panel never bleeds into another. Ignored while
+    /// `link_shared_settings` is on; the active mode's slot is stale while active (edits go to
+    /// `brush`, written back on the next switch). See [`tool_link`].
     brush_by_mode: [BrushSpec; PAINT_MODE_COUNT],
     /// "Sync with other tools": when `true`, every paint tool SHARES the live `brush` (a mode change no
     /// longer swaps slots), so a change in one panel shows in all. Default `false` = each tool independent.
     link_shared_settings: bool,
-    /// **Line** stroke method: show the live dx/dy distances + corner angles while drawing (the CAD
-    /// dimension overlay). Default `true`. A per-Line display pref, toggled by the "Dimensions" checkbox.
+    /// **Line** stroke method: live dx/dy + corner-angle CAD overlay while drawing. Default `true`;
+    /// a per-Line display pref (the "Dimensions" checkbox).
     line_show_dimensions: bool,
     /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
     mask_brush: u8,
@@ -281,10 +281,10 @@ pub(crate) struct PaintState {
     /// Freehand / Raster + a boolean op each). The `selection_mask` is a DERIVED cache: rasterize + composite
     /// this list. A gizmo drag mutates one entry's params in place and recomposites. [`selection_shapes`].
     selection_shapes: Vec<selection_shapes::SelectionEntry>,
-    /// **Per-shape rasterization cache** (perf): `(shape, coverage)` parallel to `selection_shapes` at the
-    /// last recompose. On the next recompose a shape whose geometry is UNCHANGED reuses its cached coverage
-    /// (an `Arc` clone) instead of re-rasterizing — so a gizmo drag over N boolean shapes only re-rasterizes
-    /// the ONE that moved (O(A) vs O(N·A) per frame). Self-validating by value, so no manual invalidation.
+    /// **Per-shape rasterization cache** (perf): `(shape, coverage)` parallel to `selection_shapes`
+    /// at the last recompose — an UNCHANGED shape reuses its cached coverage (`Arc` clone), so a
+    /// gizmo drag over N boolean shapes re-rasterizes only the ONE that moved (O(A) vs O(N·A) per
+    /// frame). Self-validating by value, no manual invalidation.
     selection_raster_cache: Vec<(selection_shapes::SelectionShape, Arc<Vec<u8>>)>,
     /// The isolated gizmo grab currently dragged (shape idx + handle + pristine geometry for drift-free
     /// whole-shape transforms); `None` when idle. [`selection_gizmo`].
@@ -371,11 +371,11 @@ pub(crate) struct PaintState {
     stroke_op_mode: stroke_multi::StrokeOp,
     /// Pending op-cycle **tap** (Down pos on the active shape's centre square): Up without a drag cycles the op; a drag past the slop clears it + moves the shape. [`stroke_multi`].
     op_tap: Option<[f32; 2]>,
-    /// Seamless-Tiling **edit-in-tile** offset (Enio 2026-07-11): a shape's overlay is drawn in the wrapped
-    /// neighbour tiles, so a grab there must edit the ORIGINAL. Fixed at the grab Down = the tile offset (px)
-    /// that lands the pointer on the active shape's bbox (`route_shape_pointer_multi`); subtracted from every
-    /// pointer of the gesture so the drag is CONTINUOUS (no seam jump — unlike a per-sample wrap) and works
-    /// for geometry drawn beyond the sprite. `[0, 0]` = no wrap (off-tiling / drawing / empty-space click).
+    /// Seamless-Tiling **edit-in-tile** offset (Enio 2026-07-11): a shape's overlay is drawn in the
+    /// wrapped neighbour tiles, so a grab there must edit the ORIGINAL. Fixed at the grab Down (the
+    /// tile offset landing the pointer on the shape's bbox, `route_shape_pointer_multi`), subtracted
+    /// from every pointer of the gesture — a CONTINUOUS drag (no per-sample seam jump), works beyond
+    /// the sprite. `[0, 0]` = no wrap (off-tiling / drawing / empty-space click).
     shape_edit_wrap: [f32; 2],
     /// Pending SELECTION op-cycle tap — Down on a shape's centre-move square arms `Some((shape, pos))`; Up without a drag past the slop cycles THAT shape's Add↔Remove op; a drag clears it + moves the shape. Mirrors [`op_tap`] but selection toggles only Add/Remove. [`selection_gizmo`].
     selection_op_tap: Option<(usize, [f32; 2])>,
@@ -487,7 +487,6 @@ pub(crate) struct PaintState {
     // property of the PAINT". It is the paint's, and paint is per-pixel — so it moved to `BrushSpec`
     // and is baked into the canvas with the stroke, like Depth and Body. Enio, 2026-07-13.)
     /// **Adjust Last Stroke** — whether moving a slider re-derives the stroke already on the canvas.
-    ///
     /// ON (the default, and how the section has always behaved): the artist lays a stroke and then
     /// dials it in *while looking at it* — every knob in the Body and Material cards re-derives the last
     /// stroke live, because the stroke stored its INGREDIENTS rather than its result.
@@ -498,10 +497,10 @@ pub(crate) struct PaintState {
     /// so it lives here and is never baked into a pixel.
     impasto_live_edit: bool,
     /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
-    /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
-    /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the
-    /// lift digs DEEPER — "quanto mais a água fica, mais dissolve", without physics. Sized lazily
-    /// with the coverage; persists through the WET SESSION (cleared on a fresh one).
+    /// soaked each pixel ([`PainterTool::grow_wet_soak`], tick heartbeat). The rewet reads it `0..1`:
+    /// more soak ⇒ the dissolve reaches FARTHER (blur-scale lerp) and the lift digs DEEPER — "quanto
+    /// mais a água fica, mais dissolve", without physics. Lazily sized; persists through the WET
+    /// SESSION (cleared on a fresh one).
     wet_soak: Vec<u8>,
     /// Current soak disc = the last dab's `(centre, radius)` — where the tick heartbeat pours dwell
     /// while the pointer is parked. `None` = stroke start.
@@ -517,21 +516,20 @@ pub(crate) struct PaintState {
     /// (`cw·fill·dens`): typical watercolor body + rim at the OUTER boundary, tip texture as pigment
     /// variation within. Empty / untouched ⇒ density 1 (byte-identical). Doc 13 #1 round 3.
     stroke_density: Vec<u8>,
-    /// Wet Mix (MIX-1): the per-stroke **pigment-reserve** map (`w*h`, `0..255`; sized lazily, only
-    /// while the mixer is on). Charge depletion must fade the PIGMENT, never the WATER: scaling the
-    /// coverage instead leaves the blurred `inner` short of 1.0 across the whole interior, so the
-    /// edge term (`cw·(1−inner)·gain`) floods the centre and the wash reads as a flat opaque slab
-    /// (Enio smoke 2026-07-08 — "matou a borda em qualquer valor < 0.93"). This buffer carries each
-    /// dab's fresh+carry reserve (max-blend: re-inking a faded trail restores it) and the composite
-    /// multiplies it into the whole BRUSH density term (fill + edge) AFTER the rim is derived from
-    /// the intact coverage — head keeps the full watercolor anatomy, the tail fades rim and body
-    /// together toward plain water. Empty ⇒ factor 1 (byte-identical default).
+    /// Wet Mix (MIX-1): the per-stroke **pigment-reserve** map (`w*h`, `0..255`; lazily sized, only
+    /// while the mixer is on). Charge depletion must fade the PIGMENT, never the WATER — scaling the
+    /// coverage instead leaves `inner` short of 1.0 interior-wide, the edge term floods the centre
+    /// and the wash reads as a flat opaque slab (Enio smoke 2026-07-08, "matou a borda em qualquer
+    /// valor < 0.93"). Carries each dab's fresh+carry reserve (max-blend: re-inking a faded trail
+    /// restores it); the composite multiplies it into the whole BRUSH density term (fill + edge)
+    /// AFTER the rim derives from intact coverage — head keeps the watercolor anatomy, the tail
+    /// fades rim + body toward plain water. Empty ⇒ factor 1 (byte-identical default).
     stroke_deplete: Vec<u8>,
-    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the
-    /// heartbeat (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED
-    /// coverage (max-blend). While wet, watercolor strokes CONTINUE one **wet session**
-    /// ([`PainterTool::wet_session_continues`]): the buffers accumulate the UNION, re-rendered
-    /// over the session base — one wash, one rim. Empty = dry (tick drops it + the session).
+    /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
+    /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage
+    /// (max-blend). While wet, watercolor strokes CONTINUE one **wet session**
+    /// ([`PainterTool::wet_session_continues`]) — the buffers accumulate the UNION over the session
+    /// base: one wash, one rim. Empty = dry (tick drops it + the session).
     canvas_wet: Vec<u8>,
     /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
@@ -586,33 +584,27 @@ pub(crate) struct PaintState {
     /// The committed wash's footprint (already full-axis on a tiled axis, from `dab_batch_region`), so the
     /// live re-render touches exactly the wash + its Tiling copies, not the whole canvas.
     wet_editable_region: Option<Region>,
-    /// The **substrate signature** the editable wash was last rendered with — the paint tick re-renders
-    /// when the live brush differs (a param moved), then refreshes this. `None` ⇒ inert.
-    ///
-    /// It used to be just `(Grain, Paper)` `TextureSettings`, which left the rest of the substrate OUT of
-    /// the detector (sweep 2026-07-12): **Paper Depth** and **Granulation** are read by `apply_watercolor`
-    /// but live on `BrushSpec`, not inside `TextureSettings`, and swapping the Paper/Grain IMAGE while
-    /// keeping `kind: Image` changes no setting at all — only the pixel version. So dragging Paper *Size*
-    /// re-rendered the wet pool and dragging Paper *Depth*, right next to it, did nothing: the same gesture,
-    /// two different behaviours, side by side.
+    /// The **substrate signature** the editable wash was last rendered with — the paint tick
+    /// re-renders when the live brush differs, then refreshes this. `None` ⇒ inert. It used to be
+    /// just `(Grain, Paper)` `TextureSettings`, which left the rest of the substrate OUT (sweep
+    /// 2026-07-12): **Paper Depth**/**Granulation** live on `BrushSpec`, and swapping the Paper/Grain
+    /// IMAGE under `kind: Image` changes only the pixel version — so dragging Paper *Size*
+    /// re-rendered the wet pool while Paper *Depth*, right beside it, did nothing.
     wet_editable_tex: Option<wet_editable::WetEditableSig>,
-    /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
-    /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
-    /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the
-    /// edge term to the rim), not the plain brush's tonal per-dab alpha (which accumulates by
-    /// source-over). A raw grey tip therefore starved the optics: pale centre + no rim (Enio
-    /// 2026-07-07). Scaling samples by this keeps the tip's RELATIVE texture but guarantees its core
-    /// reaches full coverage. Computed once per stroke at pen-down (`freeze_watercolor_ground`).
+    /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`;
+    /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY — a max-blend
+    /// union that must SATURATE in the wash core (`cw → 1` body, `inner → 1` rim confinement) — not
+    /// the plain brush's tonal per-dab alpha, so a raw grey tip starved the optics: pale centre, no
+    /// rim (Enio 2026-07-07). Scaling by this keeps the tip's RELATIVE texture with a saturating
+    /// core. Computed once per stroke at pen-down (`freeze_watercolor_ground`).
     wet_shape_norm: f32,
-    /// **Watercolor substrate cache** (perf, byte-identical): the paper-tooth height `paper_h` at each
-    /// canvas pixel (`f32`, `w*h`; `NaN` = not yet computed). The paper is CANVAS-ANCHORED — the same
-    /// canvas pixel yields the same `paper_h` for the whole stroke — but the optical composite recomputes
-    /// it (~28 integer-hashes for a procedural paper) every frame, so a big brush over many frames re-did
-    /// the same work. This memoises it: filled on first touch, reused by every later frame AND the pen-up
-    /// bake. **Reset to all-`NaN` at pen-down** ([`PainterTool::freeze_watercolor_ground`]) so a stroke
-    /// never reads a previous stroke's settings — the paper cannot change mid-stroke, so there is no
-    /// in-stroke invalidation to get wrong. Empty outside a watercolor stroke. Pure memoisation of a
-    /// deterministic function keyed by the exact canvas index ⇒ the composite is byte-identical.
+    /// **Watercolor substrate cache** (perf, byte-identical): the paper-tooth `paper_h` per canvas
+    /// pixel (`f32`, `w*h`; `NaN` = not computed). The paper is CANVAS-ANCHORED, yet the composite
+    /// recomputed it (~28 integer-hashes) every frame — this memoises it: filled on first touch,
+    /// reused by later frames AND the pen-up bake. **Reset to all-`NaN` at pen-down**
+    /// ([`PainterTool::freeze_watercolor_ground`]) so a stroke never reads a previous stroke's
+    /// settings (the paper cannot change mid-stroke ⇒ no in-stroke invalidation to get wrong).
+    /// Empty outside a watercolor stroke. Pure memoisation keyed by canvas index ⇒ byte-identical.
     wet_substrate: Vec<f32>,
     /// **Watercolor mixer** (Wet Mix — `wet_charge`/`wet_pull`/`wet_dilution`, `docs/Painter/07` §4)
     /// per-stroke state: the picked-up colour reservoir (unpremultiplied rgb + a presence-weighted
@@ -686,28 +678,23 @@ pub(crate) struct PaintState {
     /// sculpt rides the same dab list the colour does, so the brush's own knobs are its knobs. See
     /// [`sculpt`].
     sculpt: sculpt::SculptState,
+    /// **Wet Paint** session (fluid engine + frozen base) — display-state, not document-state; the
+    /// canvas-identity guard, the undo stance and the composite live in [`wetpaint`] (ADR-0134).
+    wetpaint: wetpaint::WetPaintState,
 }
 
-// (LOC cap) `set_line_constrain` / `set_shape_grab_tol_px` live beside the pointer entry in
-// `canvas_pointer`; the open-shape verbs in `curve_commit`; the drag-preview stamping in `stamp_preview`.
-
-// The `impl CanvasPaintTool` pointer entry point (`on_canvas_pointer`) lives in the sibling
-// `canvas_pointer` module (workspace file-LOC cap); it drives the private stroke-lifecycle methods above.
-// `union_region` (the routes' dirty-rect fold) lives in the sibling `region` for the same reason.
+// (LOC cap) `set_line_constrain`/`set_shape_grab_tol_px` live beside the `impl CanvasPaintTool`
+// pointer entry in `canvas_pointer` (it drives the private stroke-lifecycle methods); the open-shape
+// verbs in `curve_commit`; drag-preview stamping in `stamp_preview`; `union_region` in `region`.
 use region::union_region;
 
 #[cfg(test)]
 mod tests;
-
-// The Sculpt gates live in their own file rather than at the end of the 21k-line `tests` — a wave's
-// worth of gates appended to that is a wave's worth of gates nobody can find again.
-#[cfg(test)]
-mod sculpt_tests;
-
-// Screen-space anti-aliasing of the thin-stroke watercolor silhouette (own file, same rationale).
-#[cfg(test)]
-mod watercolor_aa_tests;
-
-// Screen-space anti-aliasing of the impasto film silhouette (the impasto half of BUGS #16).
+// Each gate family below gets its own file rather than the end of the 21k-line `tests` — a wave's
+// worth of gates appended there is a wave's worth of gates nobody can find again.
 #[cfg(test)]
 mod impasto_aa_tests;
+#[cfg(test)]
+mod sculpt_tests;
+#[cfg(test)]
+mod watercolor_aa_tests; // screen-space AA of the thin-stroke watercolor silhouette // screen-space AA of the impasto film silhouette (BUGS #16, impasto half)

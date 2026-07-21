@@ -39,6 +39,11 @@ impl PainterTool {
                 self.paint.inpaint_mask = vec![0u8; n];
             }
         }
+        // Wet Paint: arm the live-gesture gate — the deposit route refuses dabs outside a real
+        // pen-down..pen-up gesture (shape re-stamps against a fluid would pile paint; see `wetpaint`).
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+            self.paint.wetpaint.live_gesture = true;
+        }
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
@@ -221,6 +226,9 @@ impl PainterTool {
         // EDGE-1: the paper dries every frame too (stroke open or not — same class as the decay
         // above): the persistent moisture poured at each bake fades over the drying window.
         self.dry_canvas_wet(dt_s);
+        // Wet Paint: the 40 Hz fluid sim heartbeat (paused while a stroke is down — the engine's own
+        // gate); a plain no-op with no live session, like the two decays above.
+        self.wetpaint_tick(dt_s);
         // Keep the auto-centre symmetry pivot on the canvas centre every frame (also no-op when idle),
         // so the dashed overlay guide stays correct after a resize / fresh-sprite bind without paint.
         self.resolve_symmetry_geometry();
@@ -299,6 +307,11 @@ impl PainterTool {
         }
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
+        // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —
+        // stays alive across strokes). BEFORE close_stroke so the undo entry sees the final state.
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+            self.wetpaint_stroke_end();
+        }
         // Inpaint heal brush: reconstruct the marked defect BEFORE close_stroke, so the structural-undo
         // entry captures pre-stroke → healed as a single Cmd+Z step.
         if matches!(self.paint.paint_mode, PaintMode::Inpaint) {

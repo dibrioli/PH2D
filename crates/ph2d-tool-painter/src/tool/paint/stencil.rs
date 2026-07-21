@@ -394,6 +394,11 @@ impl PainterTool {
         if self.paint.paint_mode == PaintMode::Sculpt && new_mode != PaintMode::Sculpt {
             self.end_sculpt_session();
         }
+        // Leaving Wet Paint ends the fluid session: the last composite already IS the canvas (ending
+        // is the bake), and the sim must stop moving paint the moment another tool owns the pixels.
+        if self.paint.paint_mode == PaintMode::WetPaint && new_mode != PaintMode::WetPaint {
+            self.wetpaint_end_session();
+        }
         self.paint.paint_mode = new_mode;
         // The brush slot has just been swapped underneath us, so the "does anything read `Dab::dir`?" answer
         // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore

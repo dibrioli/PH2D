@@ -144,6 +144,28 @@ caiu na fileira **Corner** (Expand) ou na **Join** (Stroke), as gêmeas do §1.
 > hold, agora fechada no release. ⚠️ **LOC:** `vec_expand_tests.rs` tinha estourado o
 > teto (646/600 — o `file_loc_caps` só roda em `--tests`); a família do retune virou o
 > módulo FILHO `vec_expand_retune_tests.rs` (fixtures do pai via `use super::*`).
+>
+> **⬛ E O QUE FALTAVA ERA A DECORAÇÃO, NÃO A GEOMETRIA (`a9202661`, mesmo dia).** O Enio
+> re-reprovou com screenshot: *"no momento que aperto Round a curva já tem todos os
+> vertex novos criados antes de apertar apply … a idéia é bevel desfazer round e aplicar
+> bevel"*. **MEDI ANTES DE MEXER:** o gate novo
+> `each_preview_re_derives_from_the_source_never_from_the_previous_preview` compara
+> Round→Bevel com um Bevel **fresco da forma pristina, âncora a âncora (1e-6)** —
+> IDÊNTICOS. O `clone_from(&pre)` já fazia exatamente o que o pedido descreve; a
+> composição nunca existiu. ⚠️ E o oráculo antigo não bastava: *"os dois diferem"* (o gate
+> da cadeia) **passa mesmo compondo** — quem pega é a identidade com o fresco. O defeito
+> real é o que o screenshot mostra: em Node mode o resultado do preview vinha decorado com
+> as ~238 âncoras dos arcos do Round, e isso é **duas** coisas ruins — anuncia *"já virou
+> sua geometria"* (o report inteiro) e as âncoras são **alças MORTAS** (a geometria é
+> transiente; arrastar uma é trabalho que o próximo Corner apaga: painted,
+> hit-registered, apagado no frame seguinte — a classe de bug que esta linha já pagou
+> várias vezes). Fix: **`VecOverlayPlan.authored_handles`** (= `edit && !offset_previewing`)
+> cobre âncoras/handles de nó **e** alças de gradiente; o **desenho da forma continua**
+> (é o preview) e a decoração espera o Apply. ⚠️ O `edit` **não** cai junto — ele também
+> gateia o marquee e a gaiola do envelope, legítimos com um preview aberto. Gate de
+> **presença E ausência** (`an_offset_preview_draws_no_authored_handles`); mutações: o
+> preview COMPOR derruba 4 gates (inclusive o novo), e `authored_handles: edit` (o bug do
+> report de volta) derruba o do overlay.
 
 ## §2 — O que JÁ foi consertado nesta janela (não re-derive, não re-litigue)
 

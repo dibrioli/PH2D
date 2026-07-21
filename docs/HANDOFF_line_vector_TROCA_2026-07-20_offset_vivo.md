@@ -1,61 +1,72 @@
-# HANDOFF — troca de agente na `line/Vector` (2026-07-20): Offset AO VIVO, o bug aberto e a fila
+# HANDOFF — troca de agente na `line/Vector` (2026-07-20): Offset AO VIVO — o bug FECHADO e a fila
 
 > **Você assumiu esta linha pelo bloco do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md).**
 > FASE 0 primeiro: `cd Worktrees/line-Vector && pwd && git branch --show-current` —
 > a janela abre na raiz (= `main`) e os MESMOS paths existem nas duas árvores.
 >
-> Worktree: `Worktrees/line-Vector` · branch `line/Vector` · HEAD `c4b371fe` · árvore limpa.
+> Worktree: `Worktrees/line-Vector` · branch `line/Vector` · HEAD `6831b43d` · árvore limpa.
 > Modo L: **você NÃO integra nem pusha** — fecha, escreve handoff de integração e PARA
-> (CLAUDE.md §0.7). Commits: `git commit --no-verify -F <arquivo>` terminando em
-> `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+> (CLAUDE.md §0.7). Commits: `git commit --no-verify -F <arquivo>`.
 
 ---
 
-## §1 — A TAREFA Nº 1: o bug ABERTO do Offset ao vivo
+## §1 — O bug do Offset ao vivo: **FECHADO** (`6831b43d`, 2026-07-20) — leia antes de re-litigar
 
-Report do Enio (2026-07-20, o último, **depois** de `c4b371fe`):
+Report do Enio: *"mesmos problemas: queda de fps, muda em tempo real para round mas não
+muda para Miter e Bevel em tempo real"*. O protocolo do handoff anterior foi seguido ao
+pé da letra — **o harness foi estendido até conter o fluxo real** (ordem do Enio, cliques
+com Down/Up em frames SEPARADOS, `d` até saturar, bbox na telemetria — verts é CEGO ao
+Miter/Bevel) e a mecânica do retune saiu inocentada fim-a-fim **incluindo a TELA**
+(screenshots das 3 fases via `spectacle`: arcos → chanfros → quinas retas). O que sobrou
+era o BUG REAL, no **MOTOR**, no `d` extremo:
 
-> *"mesmos problemas: queda de fps, muda em tempo real para round mas não muda para
-> Miter e Bevel em tempo real"*
+- **O FANTASMA (consertado):** com caneta `2|d|` maior que o próprio laço, o contorno
+  interno da banda degenerava (winding-ruído) e o refugo atravessava o sweep. Medido no
+  donut do smoke: encolher além da morte (`d=−3/−4`) devolvia NADA no Miter (correto) e
+  uma **ILHA de 12 verts/área 2,52 no Round/Bevel** — não-monotônico e **diferente por
+  join**, que é o report ao pé da letra (uns cliques "mudavam", outros não); crescer a
+  `d=+4` inflava a área de 19,8 (exata) para 30,7 (furo-fantasma). Fix: **`drop_phantoms`
+  na porta única `loop_region`** (discriminador = distância ao laço fonte, teste pelo
+  MÁXIMO do contorno; caminho comum zero-custo). Gate
+  `an_offset_past_the_shapes_death_leaves_no_phantom` (ausência + identidade do
+  cancelamento + PRESENÇA do legítimo), 3 mutações, 3/3 sangram. Sonda `--ignored`:
+  `probe_offset_extreme_d`.
+- **A queda de FPS é ÁREA DE RENDER, não motor:** frame ocioso 7→26 ms (1024×768, debug)
+  depois de um commit a `d=4` — a forma inflada cobre a tela; a 4K multiplica ~6×. O
+  motor pós-`flat_lines` custa 4–10 ms/offset. **Decisão de produto pendente:** o slider
+  mapeia **±4 unidades de MUNDO sobre ~115 px de track** (~60 px além do centro satura;
+  clique no track TELEPORTA para ±4) — o racional documentado em `params.rs` ("a vista
+  mede ~10 unidades") é honesto mas produz gesto grosso e formas-balão; faixa RELATIVA à
+  seleção é a alternativa. E os smokes em `--release` (lição do áudio W7).
+- **A morte da janela de retune era MUDA** (`RetuneStep::Dead => {}`) — agora LOGA.
+- **A dança de layout do painel (ABERTO, decisão de produto):** quando o resultado do
+  offset morre (aniquilação), a seleção esvazia, a seção TRANSFORM some e **os chips de
+  Join/Side sobem ~230 px debaixo do cursor**; cada retune que ressuscita/mata a forma
+  faz o painel OSCILAR — um clique mirado no layout anterior cai em zona morta ("não
+  muda"). Com o motor consertado o extremo é consistente (aniquilado fica aniquilado em
+  todo join), mas a dança segue possível em fluxos que alternam resultado vazio/não-vazio.
+- ⚠️ **Interferência do AMBIENTE no harness (lição paga 2×):** o desktop é vivo — o KWin
+  reposiciona a janela recém-aberta sob o cursor FÍSICO parado e emite `CursorMoved`
+  REAIS, que o slider ativo obedece (um hold sem re-assert foi teleportado a `d=−4` pelo
+  ambiente; a investigação perseguiu esse fantasma achando que era do app). O nível 18
+  agora re-afirma a posição sintética TODO frame do hold.
 
-⚠️ **O meu harness NÃO contém o fenômeno dele** — essa é a informação mais importante
-deste handoff. O nível 18 (`PH2D_BUILD_SMOKE=18`, ver §3) dirige o app REAL pelo input
-real e mostra tudo VERDE: arrasto com Round a 11–20 ms/frame (debug), retunes
-Round→Bevel→Miter derrubando verts 302→54→26 na hora, janela de retune viva, um passo
-de undo por retune. E o Enio vê o oposto. **Não re-rode o harness que passa e declare
-consertado** ([[feedback_harness_reproduces_mechanism_not_context]],
-[[feedback_nonreproduction_is_not_proof_of_fix]]) — **estenda o harness até ele
-reproduzir o report**, e só então conserte.
-
-Diferenças candidatas entre o harness e o uso real (por onde começar):
-
-1. **A assimetria "para Round funciona, para Miter/Bevel não" cheira a 1º-clique-funciona,
-   seguintes-não** ⇒ a **janela de retune morrendo depois do 1º retune**. O oráculo de
-   morte é a profundidade do undo (`OffsetRetune::step`): se QUALQUER passo landa entre os
-   cliques dele, a janela morre em silêncio e os chips voltam a só armar o próximo arrasto.
-   O harness clica em cadência limpa de 20 frames e nada intervém; o fluxo real dele pode
-   estar registrando um passo que o harness não gera (um passo espúrio pós-retune? um
-   clique dele em outro widget? o `capture_project` vendo algo não-convergido na CENA
-   DELE, que tem mais objetos?). **Instrumento pronto: `PH2D_UNDO_LOG=1`** imprime cada
-   passo com o diff (world/vec/flip + ids). Peça ao Enio a sequência exata OU imite-a no
-   nível 18: **arrastar com Miter → clicar Round → clicar Bevel** (o harness atual clica
-   Round ANTES do arrasto; a ordem dele é outra e a ordem importa).
-2. **A queda de FPS persiste para ele** apesar do `flat_lines` (medido: motor 19–43 ms →
-   4,6–9,8 ms; arrasto 24–82 → 11–20 ms/frame, debug, janela ~800×900 do smoke). Candidatos:
-   `d` grande (o slider vai a ±4; o harness só chegou a ~1 — meça o custo a d=4), janela
-   maximizada (custo de render), a cena real dele (mais formas na seleção?), ou algo fora
-   do motor (o `post_frame_undo` captura o projeto TODO frame com input — no drag o
-   `held_button` suprime, mas confira NA CENA DELE). Meça antes de mexer
-   ([[feedback_measure_perf_symptom_scale]]).
-3. **Round↔Bevel é visualmente sutil** (os dois cortam o bico no MESMO recuo `d`; arco vs
-   chanfro). Já expliquei isso ao Enio e ele re-reportou "não muda" — trate como bug real
-   até prova em contrário, mas confirme com VERTS (o oráculo que não mente), nunca com área.
+**Falta o smoke do Enio** (veredito condicional, DIRETIVA §5): `PH2D_BUILD_SMOKE=18`
+roda sozinho a fases de ~2 s (dá pra VER cada retune); o 17 é a cena manual. Se o report
+persistir no fluxo dele, os instrumentos são `PH2D_UNDO_LOG=1` + o log novo da janela de
+retune — e a pergunta focada é: *qual `d` o release comitou, e a forma saiu da tela?*
 
 ## §2 — O que JÁ foi consertado nesta janela (não re-derive, não re-litigue)
 
 Commits, do mais novo ao mais velho — cada um com gates mutation-tested:
 
+- **`6831b43d`** — o **fantasma do offset extremo** (ver §1): `drop_phantoms` em
+  `loop_region` + gate `an_offset_past_the_shapes_death_leaves_no_phantom` + sonda
+  `probe_offset_extreme_d` (`--ignored`) + log da morte da janela de retune + nível 18
+  na ordem do report, com cliques de timing real e hold blindado contra o cursor físico
+  (`smoke_click_screen` removido — clique de 1 frame não contém as corridas de um clique
+  humano).
 - **`c4b371fe`** — `flat_lines` no motor (`ph2d-vec-boolean/src/expand.rs::loop_region`):
   tudo que entra num sweep do offset é achatado em RETAS na tolerância RELATIVA da forma.
   Causa medida: a quina Round produz banda de ARCOS e o sweep sobre cúbicas custava

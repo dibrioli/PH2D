@@ -160,23 +160,35 @@ fn the_scale_is_half_the_selections_world_bbox() {
     );
 }
 
-/// **A sessão CONGELA a escala contra o churn do preview.** O preview consome as fontes e
-/// seleciona o RESULTADO — cuja bbox cresce com o próprio `d`. Uma escala recomputada por
-/// frame retro-alimentaria o mapa: o mesmo polegar valeria distâncias diferentes a cada
-/// frame, e o slider "escorregaria" sob o dedo durante o arrasto.
+/// **A escala é função das FONTES, e o preview já não as move.** Enquanto o preview churnava
+/// a cena (a fonte virava o resultado, cuja bbox cresce com o próprio `d`), esta escala tinha
+/// de ser CONGELADA no grab, senão o mesmo polegar valia distâncias diferentes a cada frame.
+/// Hoje o documento não é tocado durante o arrasto ⇒ a bbox não se move ⇒ não há o que
+/// congelar. Este gate pina a premissa: se alguém voltar a escrever o resultado na cena
+/// durante o preview, ele fica VERMELHO e diz porquê.
 #[test]
-fn the_session_freezes_the_scale_against_the_previews_churn() {
-    let (mut scene, mut pen, xf) = scene_with_square(2.0);
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+fn the_scale_is_a_fact_of_the_sources_which_the_preview_never_moves() {
+    let (scene, pen, xf) = scene_with_square(2.0);
+    let before = offset_scale(&scene, &pen, &xf);
+    assert!((before - 1.0).abs() < 1e-9, "quadrado 2 → maxdim/2 = 1");
+    // O "frame de preview" do modelo novo: cozer e desenhar. A cena entra por `&VecScene` —
+    // é o COMPILADOR que garante que ela não muda —, e a escala tem de sair idêntica.
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut scene = scene;
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let ids: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    crate::offset_live::arm(&mut sim, &map, &ids, 0.8, 1, 2);
+    let mut live = crate::offset_live::OffsetLive::default();
+    live.recook(&scene, &sim, &map, &xf);
     assert!(
-        (sess.scale() - 1.0).abs() < 1e-9,
-        "quadrado 2 → maxdim/2 = 1"
+        !live.live().is_empty(),
+        "pré-condição: o offset tem de estar VIVO, senão o teste não observa nada"
     );
-    sess.preview(&mut scene, &mut pen, 0.8);
     assert!(
-        (sess.scale() - 1.0).abs() < 1e-9,
-        "o preview churnou a seleção (resultado maior) e a escala MUDOU — o mapa do \
-         slider deixou de ser função do grab"
+        (offset_scale(&scene, &pen, &xf) - before).abs() < 1e-9,
+        "cozer o preview não pode mover a bbox das fontes — se moveu, o preview voltou a \
+         escrever no documento e o mapa do slider deixou de ser função do grab"
     );
 }
 

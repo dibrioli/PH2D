@@ -2754,164 +2754,156 @@ impl crate::App {
                     op,
                 );
             }
-            // ── Offset Path AO VIVO ──────────────────────────────────────────────
-            // Arrastar o slider de Offset previsualiza a forma offsetada a cada frame e comita
-            // ao soltar. O offset é DESTRUTIVO, então a sessão guarda a cena do grab e a
-            // re-offseta do zero por frame (`OffsetSession`). O `active_id` do store é a alça
-            // agarrada (limpa no pointer Up), então ele é o sinal de "arrastando" e de
-            // "soltou". Durante o arrasto o `held_button` suprime o undo global; ao soltar,
-            // o diff registra UM passo — e o slider RECENTRA em "sem offset" para que o próximo
-            // grab comece do zero e a forma não salte pelo valor da última vez.
+            // ── Offset AO VIVO ───────────────────────────────────────────────────
+            // *"os botões Miter, Round e Bevel são previsualizações em tempo real dos efeitos,
+            // mas para consolidar a curva deve-se apertar Apply Offset ou Convert to Curves"*
+            // (Enio, 2026-07-21). O documento guarda a curva AUTORADA o tempo todo — o que se
+            // vê é a geometria derivada, cozida por `offset_live::recook` e desenhada no z da
+            // forma. Aqui só se ARMA a relação (`ph2d_ecs::VecOffset`): o slider dá o `d`, os
+            // chips de Corner/Side dão a quina e o lado.
             {
+                let knobs = crate::vec_expand::expand_knobs();
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                // **O painel espelha o que está SELECIONADO.** Sem isto, escolher uma forma com
+                // offset vivo mostraria os knobs globais do painel e o chip mentiria sobre a
+                // forma que está na tela. A borda é a SELEÇÃO (não o clique), e ela corre ANTES
+                // da borda dos chips — publicar depois faria o espelho parecer um clique novo e
+                // reescreveria a forma com os valores que acabaram de sair dela.
+                let mirror = (sel.len() == 1).then(|| sel[0]).filter(|id| {
+                    crate::offset_live::spec_of(sim, &self.vec_entities, *id).is_some()
+                });
+                let knobs = if mirror != self.vec_offset_mirrored {
+                    self.vec_offset_mirrored = mirror;
+                    match mirror
+                        .and_then(|id| crate::offset_live::spec_of(sim, &self.vec_entities, id))
+                    {
+                        Some(spec) => {
+                            ph2d_panel_vector::set_expand_join(spec.join);
+                            ph2d_panel_vector::set_expand_side(spec.side);
+                            let scale =
+                                crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &{
+                                    crate::vec_transform::build(sim, &self.vec_entities)
+                                });
+                            hero.store.set_slider_value(
+                                ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                                ph2d_tool_vector::params::offset_frac_to_slider(spec.d / scale),
+                            );
+                            (spec.join, spec.side)
+                        }
+                        None => knobs,
+                    }
+                } else {
+                    knobs
+                };
                 let offset_grabbed = matches!(
                     hero.store.active_id(),
                     Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET
                 );
-                // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo
-                // nasce de `fração × escala`, com a escala CONGELADA na sessão (a porta
-                // única `vec_expand::offset_scale` — report 2026-07-20, ver `params`).
+                // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo nasce
+                // de `fração × escala` (a porta única `vec_expand::offset_scale`, `ada45fac`).
+                // ⚠️ A escala NÃO precisa mais ser congelada no grab: o preview deixou de
+                // churnar a cena, então a bbox das FONTES não se move durante o arrasto.
                 let frac = hero
                     .store
                     .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
                     .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                         ph2d_tool_vector::params::slider_to_offset_frac(v)
                     });
-                if offset_grabbed {
-                    if self.vec_offset_session.is_none() {
-                        // Um grab novo supersede a janela de retune do gesto anterior — o
-                        // release deste arrasto abrirá a dele.
-                        self.vec_offset_retune = None;
-                        // As poses são construídas UMA vez (no grab) e congeladas na sessão — o
-                        // churn do preview despawnaria as fontes e perderia a pose.
-                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                        self.vec_offset_session =
-                            crate::vec_expand::OffsetSession::begin(vec_scene, &self.vec_pen, &xf);
-                    }
-                    if let Some(mut sess) = self.vec_offset_session.take() {
-                        sess.preview(vec_scene, &mut self.vec_pen, frac * sess.scale());
-                        self.vec_offset_session = Some(sess);
-                    }
-                } else if let Some(mut sess) = self.vec_offset_session.take() {
-                    // Soltou: o preview final ao `d` de soltura + recentra o slider — e a
-                    // sessão vira a JANELA DE RETUNE (Join/Side ainda mexem no comitado).
-                    let live_d = frac * sess.scale();
-                    sess.preview(vec_scene, &mut self.vec_pen, live_d);
-                    hero.store.set_slider_value(
-                        ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_frac_to_slider(0.0),
-                    );
-                    self.vec_offset_retune =
-                        crate::vec_expand::OffsetRetune::after_release(sess, live_d);
-                } else if let Some(mut win) = self.vec_offset_retune.take() {
-                    // ── Corner/Side são PREVIEW do offset recém-solto (Enio 2026-07-21:
-                    // "o usuário deve ter a oportunidade de testar os 3 modos antes de
-                    // aplicar") ── cada retune re-offseta NA HORA e **SUBSTITUI o próprio
-                    // passo de undo** (ver o braço Retune): testar os 3 Corners custa ZERO
-                    // passos extras, e um Ctrl+Z devolve a cena de ANTES do offset.
-                    // Consolidar = clicar Apply Offset (fecha a janela, nada muda) ou
-                    // qualquer edição alheia (o passo único já está na fila — a janela só
-                    // fecha, via Dead).
-                    let knobs = crate::vec_expand::expand_knobs();
-                    match win.step(self.undo.depth(), knobs) {
-                        // O fechamento é INTENCIONAL (retunar por cima de uma edição alheia
-                        // a engoliria; e depois de um Ctrl+Z o offset nem existe mais), mas
-                        // não pode ser MUDO: um chip clicado depois dele "não faz nada", e
-                        // sem este log o report vira "Corner não funciona" sem pista
-                        // (2026-07-20 — a falha silenciosa custou uma investigação inteira).
-                        crate::vec_expand::RetuneStep::Dead => {
-                            eprintln!(
-                                "[ph2d-vec] preview de offset fechou (o undo andou) — o que \
-                                 está na cena fica; os chips de Corner/Side armam o próximo \
-                                 arrasto"
-                            );
-                        }
-                        crate::vec_expand::RetuneStep::Keep => {
-                            self.vec_offset_retune = Some(win);
-                        }
-                        crate::vec_expand::RetuneStep::Retune => {
-                            // **Substituição de passo:** o topo da fila é o passo DESTE
-                            // offset (o oráculo de profundidade acabou de conferir — depth
-                            // divergente teria caído em Dead). Ele sai da fila e o
-                            // estado-pré vira o baseline; o diff do fim do frame registra
-                            // UM passo pre-gesto → resultado novo. N retunes = 1 passo.
-                            if let Some(pre) = self.undo.forget_last() {
-                                self.undo_baseline = Some(pre);
-                            }
-                            win.apply(vec_scene, &mut self.vec_pen, sim, &self.vec_entities, knobs);
-                            self.vec_offset_retune = Some(win);
-                        }
-                    }
+                if offset_grabbed && !sel.is_empty() {
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
+                    crate::offset_live::arm(sim, &self.vec_entities, &sel, d, knobs.0, knobs.1);
+                    self.vec_offset_mirrored = (sel.len() == 1).then(|| sel[0]);
+                }
+                // Um chip de Corner/Side clicado RETUNA os offsets vivos da seleção — e só
+                // eles: sem offset armado, o chip arma o próximo arrasto e não inventa
+                // geometria de lugar nenhum. Comparar com o quadro anterior é o que distingue
+                // "o artista clicou" de "o painel está no valor de sempre".
+                if knobs != self.vec_expand_knobs {
+                    self.vec_expand_knobs = knobs;
+                    crate::offset_live::retune(sim, &self.vec_entities, &sel, knobs);
                 }
             }
-            // **Apply Offset com preview vivo = CONSOLIDAR, não re-offsetar.** O resultado
-            // já está na cena com o seu passo ÚNICO de undo; o clique só fecha a janela
-            // (os chips de Corner/Side deixam de re-offsetar) sem mudar um byte. Um 2º
-            // offset por cima seria o botão desfazendo a promessa de "testar antes de
-            // aplicar" (Enio 2026-07-21).
-            let pending_vec_expand = if matches!(
-                pending_vec_expand,
-                Some(crate::vec_expand::Expand::Offset { .. })
-            ) && self.vec_offset_retune.take().is_some()
-            {
-                eprintln!(
-                    "[ph2d-vec] offset consolidado — os chips de Corner/Side armam o \
-                     próximo arrasto"
-                );
-                None
-            } else {
-                pending_vec_expand
-            };
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                // A distância vem do slider do painel — a MESMA fonte que o chip mostra.
-                // Fração × escala da seleção ATUAL (a mesma porta que o arrasto congela).
-                let d = hero
-                    .store
-                    .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
-                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
-                        ph2d_tool_vector::params::slider_to_offset_frac(v)
-                    })
-                    * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
-                // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
-                // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
-                // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
-                // lugar decidindo o que o artista já arrastou.
-                let wp = |id, default: f64| {
-                    hero.store.slider(id).map_or(default, |(_, v)| {
-                        ph2d_tool_vector::params::slider_to_wprofile(v)
-                    })
+                // **Apply Offset MATERIALIZA o offset vivo** — é o único momento em que os
+                // vértices do offset passam a existir no documento (Enio, 2026-07-21). Cada
+                // forma é assada com o `VecOffset` DELA, e não com o slider: duas formas podem
+                // carregar offsets diferentes, e o botão tem de honrar o que está na TELA.
+                // Passa pela MESMA porta do caminho numérico (`expand_selection`), senão
+                // haveria uma 2ª maneira de a geometria do offset entrar na cena.
+                let materialised = matches!(cmd, crate::vec_expand::Expand::Offset { .. }) && {
+                    let ids: Vec<ph2d_vec_scene::VecPathId> =
+                        self.vec_pen.selected_paths().to_vec();
+                    crate::offset_live::materialise(
+                        vec_scene,
+                        sim,
+                        &mut self.vec_pen,
+                        &mut self.vec_history,
+                        &self.vec_entities,
+                        &xf,
+                        &ids,
+                    )
                 };
-                let cmd = match cmd {
-                    crate::vec_expand::Expand::PowerStroke { .. } => {
-                        crate::vec_expand::Expand::PowerStroke {
-                            profile: ph2d_vec_scene::WidthProfile {
-                                start: wp(ph2d_editor::ids::VECTOR_EXPAND_W_START, 0.25),
-                                mid: wp(ph2d_editor::ids::VECTOR_EXPAND_W_MID, 1.6),
-                                end: wp(ph2d_editor::ids::VECTOR_EXPAND_W_END, 0.25),
-                                position: hero
-                                    .store
-                                    .slider(ph2d_editor::ids::VECTOR_EXPAND_W_POS)
-                                    .map_or(0.5, |(_, v)| f64::from(v)),
-                            },
-                        }
-                    }
-                    other => other,
-                };
-                crate::vec_expand::apply_vec_expand(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    &xf,
-                    cmd,
-                    d,
-                );
-                // O botão de Offset (caminho numérico: digitar `d` e clicar) recentra o slider
-                // igual ao arrasto — cada aplicação offseta pelo valor mostrado e volta a zero.
-                if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
+                if materialised {
+                    self.vec_offset_mirrored = None;
+                    // O slider volta ao zero: a forma nova não tem offset vivo, e um slider
+                    // parado em +40% sobre ela mentiria sobre o que está na cena.
                     hero.store.set_slider_value(
                         ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
                         ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                     );
+                } else {
+                    // O caminho NUMÉRICO (sem offset vivo armado): a distância vem do slider —
+                    // a MESMA fonte que o chip mostra —, fração × escala da seleção atual.
+                    let d = hero
+                        .store
+                        .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                        .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
+                            ph2d_tool_vector::params::slider_to_offset_frac(v)
+                        })
+                        * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
+                    // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
+                    // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
+                    // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
+                    // lugar decidindo o que o artista já arrastou.
+                    let wp = |id, default: f64| {
+                        hero.store.slider(id).map_or(default, |(_, v)| {
+                            ph2d_tool_vector::params::slider_to_wprofile(v)
+                        })
+                    };
+                    let cmd = match cmd {
+                        crate::vec_expand::Expand::PowerStroke { .. } => {
+                            crate::vec_expand::Expand::PowerStroke {
+                                profile: ph2d_vec_scene::WidthProfile {
+                                    start: wp(ph2d_editor::ids::VECTOR_EXPAND_W_START, 0.25),
+                                    mid: wp(ph2d_editor::ids::VECTOR_EXPAND_W_MID, 1.6),
+                                    end: wp(ph2d_editor::ids::VECTOR_EXPAND_W_END, 0.25),
+                                    position: hero
+                                        .store
+                                        .slider(ph2d_editor::ids::VECTOR_EXPAND_W_POS)
+                                        .map_or(0.5, |(_, v)| f64::from(v)),
+                                },
+                            }
+                        }
+                        other => other,
+                    };
+                    crate::vec_expand::apply_vec_expand(
+                        vec_scene,
+                        &mut self.vec_history,
+                        &mut self.vec_pen,
+                        &xf,
+                        cmd,
+                        d,
+                    );
+                    // O botão de Offset (caminho numérico: arrastar sem seleção viva e clicar)
+                    // recentra o slider — cada aplicação offseta pelo valor mostrado e zera.
+                    if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
+                        hero.store.set_slider_value(
+                            ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                            ph2d_tool_vector::params::offset_frac_to_slider(0.0),
+                        );
+                    }
                 }
             }
             if let Some(make) = pending_vec_compound {
@@ -3615,8 +3607,16 @@ impl crate::App {
             // "Apply" da seção Effects. Re-seleciona o resultado.
             if pending_vec_convert {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                let new_sel =
-                    crate::vec_convert::to_curves(sim, vec_scene, &mut self.vec_entities, &sel);
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let new_sel = crate::vec_convert::to_curves(
+                    sim,
+                    vec_scene,
+                    &mut self.vec_entities,
+                    &mut self.vec_pen,
+                    &mut self.vec_history,
+                    &xf,
+                    &sel,
+                );
                 self.vec_pen.select_many(&new_sel);
             }
             // Habilita "Convert to Curves" pela porta ÚNICA (`vec_convert::is_convertible`) — a
@@ -3745,22 +3745,18 @@ impl crate::App {
             // filhos (têm `ChildOf`) e o container (sem path, fora do mapa).
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
-            // Os gestos que escrevem geometria em MUNDO a cada frame: a caneta, a
-            // ferramenta de forma — e o preview VIVO do Offset (o `clone_from(&pre)`
-            // restaura o `next_id`, então o resultado renasce com o MESMO id e a MESMA
-            // entidade todo frame; assentá-lo no frame 1 fazia os frames seguintes
-            // desenharem mundo × centro = translação DOBRADA, o "pula pro canto direito").
-            // Nenhum deles pode ser assentado no meio; o do Offset assenta no release,
-            // quando a sessão já morreu e este chain contribui vazio.
+            // Os gestos que escrevem geometria em MUNDO a cada frame: a caneta e a
+            // ferramenta de forma. Nenhum deles pode ser assentado no meio.
+            // ⚠️ **O Offset saiu desta lista de propósito** (2026-07-21): o preview dele
+            // deixou de tocar a cena — a forma que está no documento é a AUTORADA, com a
+            // pose dela, e o resultado é geometria derivada que nunca entra aqui. Enquanto o
+            // preview churnava a cena, o resultado renascia com o mesmo id todo frame e
+            // precisava ser pulado, senão mundo × centro dobrava a pose (o "pula pro canto
+            // direito"). Sem churn, não há o que pular.
             let drawing: Vec<ph2d_vec_scene::VecPathId> =
                 [self.vec_pen.active_path(), self.vec_shape.active_path()]
                     .into_iter()
                     .flatten()
-                    .chain(
-                        self.vec_offset_session
-                            .iter()
-                            .flat_map(|s| s.live_paths().iter().copied()),
-                    )
                     .collect();
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
@@ -3916,7 +3912,19 @@ impl crate::App {
             );
 
             let cam_affine = camera.world_to_screen_affine(window_size);
-            ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
+            // A geometria DERIVADA deste frame — hoje, os offsets vivos. Cozida aqui (depois
+            // do `sync`, senão uma forma recém-criada ainda não tem entidade e o componente
+            // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.
+            self.offset_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            ph2d_vec_render::dispatch(
+                vec_scene,
+                &vec_view,
+                &vec_xf,
+                self.offset_live.live(),
+                cam_affine,
+                vector_scene,
+            );
             // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a

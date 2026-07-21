@@ -775,15 +775,18 @@ pub(crate) struct App {
     /// "o hospedeiro se moveu" (dirigir) de "o USUÁRIO arrastou o rótulo" (absorver no offset) —
     /// um `Transform` diferente do que gravamos só pode ter vindo do gizmo. Runtime-only.
     pub(crate) vec_label_poses: crate::label_live::LabelPoses,
-    /// A **sessão VIVA do Offset Path** — presente enquanto o slider de Offset é arrastado. O
-    /// preview restaura a cena do grab e re-offseta ao `d` atual a cada frame; ao soltar, o
-    /// diff do undo global fecha UM passo e o slider recentra em "sem offset". Runtime-only.
-    pub(crate) vec_offset_session: Option<crate::vec_expand::OffsetSession>,
-    /// A **janela de RETUNE** do Offset — aberta no release do slider. Enquanto viva,
-    /// trocar Join (Miter/Round/Bevel) ou Side re-offseta NA HORA ao `d` comitado (o
-    /// "diálogo ainda aberto" do Illustrator); morre na primeira edição alheia (o undo
-    /// anda) ou no próximo grab. Runtime-only.
-    pub(crate) vec_offset_retune: Option<crate::vec_expand::OffsetRetune>,
+    /// O **cozimento do Offset VIVO** — a geometria derivada que o `dispatch` desenha no lugar
+    /// da fonte (`ph2d_ecs::VecOffset`). Runtime-only e memoizado: o documento guarda a curva
+    /// autorada, e isto é o que se VÊ.
+    pub(crate) offset_live: crate::offset_live::OffsetLive,
+    /// Os knobs `(Corner, Side)` do painel no frame ANTERIOR. É o que distingue *"o artista
+    /// clicou um chip"* (retunar os offsets vivos da seleção) de *"o painel está no valor de
+    /// sempre"* — sem a borda, todo frame reescreveria o componente de toda forma selecionada.
+    pub(crate) vec_expand_knobs: (u8, u8),
+    /// A forma cujo offset vivo o painel está ESPELHANDO (slider + chips). Trocar a seleção
+    /// republica; sem isto, escolher uma forma offsetada mostraria os knobs globais do painel e
+    /// o chip mentiria sobre o que está na tela. Runtime-only.
+    pub(crate) vec_offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

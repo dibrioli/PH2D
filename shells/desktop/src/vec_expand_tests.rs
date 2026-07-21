@@ -242,226 +242,69 @@ fn a_uniform_power_stroke_records_nothing() {
     assert!(hist.undo(&scene).is_none());
 }
 
-// ───────────────────────── Offset Path ao vivo (o arrasto) ─────────────────────────
+// ───────────────── O que o Offset ao vivo deixou para trás ─────────────────
+//
+// A família `OffsetSession`/`OffsetRetune` MORREU em 2026-07-21: o preview deixou de churnar
+// a cena. As propriedades que ela provava ou passaram a ser verdade por construção (o
+// documento não é tocado, então o preview não pode ser cumulativo nem deslocar a pose) ou
+// mudaram de casa — os gates do modelo novo vivem em `offset_live_tests.rs`.
 
-/// A sessão viva só existe se há forma selecionada — arrastar o slider sem seleção não tem o
-/// que prever (e o botão também não faria nada).
+/// **A fonte entra COZIDA no comando, e é cozida ANTES da pose** — materializar congela o que
+/// se VÊ, não o que se guarda.
+///
+/// ⚠️ **A pose tem de ser NÃO-UNIFORME** (medido): a booleana também chama `cooked()` lá dentro
+/// (`to_bez_with`), então "com efeito difere de sem efeito" é verdade por duas vias e a mutação
+/// "ler `verts` cru" **sobrevive** a esse oráculo. O que só este sítio decide é o ESPAÇO em que
+/// a pilha é avaliada — o `FxCtx::ref_size` mede a caixa do que ENTRA —, e sob escala uniforme
+/// os dois espaços dão o mesmo desenho de propósito (o `Size` do Zig Zag é percentagem da
+/// forma). Com `scale (3,1)` a mutação sangra. [[feedback_layered_defenses_need_per_layer_gates]]
 #[test]
-fn an_offset_session_needs_a_selection() {
-    let mut scene = VecScene::new();
-    scene.push_path(square(10.0));
-    let empty = PenTool::default();
-    assert!(
-        OffsetSession::begin(&scene, &empty, &VecXforms::default()).is_none(),
-        "sem seleção não há sessão"
+fn the_command_offsets_the_cooked_shape_not_the_raw_one() {
+    let (mut scene, mut hist, mut pen, _) = scene_with(vec![square(10.0)]);
+    let id = scene.paths()[0].id;
+    // Uma pose com escala NÃO-UNIFORME: é ela que separa cozer-e-assar de assar-e-cozer.
+    let mut xf = VecXforms::default();
+    xf.insert(id, ph2d_vec_scene::Xform([3.0, 0.0, 0.0, 1.0, 3.0, 0.0]));
+    // Um Zig Zag ativo pelo MESMO caminho do produto.
+    crate::fx_bridge::add(&mut scene, id, 1);
+    crate::fx_bridge::set_param(&mut scene, id, 0, 0, 40.0);
+    assert_ne!(
+        scene.path(id).unwrap().cooked().into_owned().verts,
+        scene.path(id).unwrap().verts,
+        "pré-condição: o efeito tem de mudar a geometria, senão o teste não prova nada"
     );
-    let (scene, _h, pen, x) = scene_with(vec![square(10.0)]);
-    assert!(
-        OffsetSession::begin(&scene, &pen, &x).is_some(),
-        "com seleção há sessão"
+
+    // O oráculo, computado FORA do comando: cozer em LOCAL, assar a pose, offsetar.
+    let mut want_src = scene.path(id).unwrap().cooked().into_owned();
+    ph2d_vec_scene::bake_xform(&mut want_src, &xform_of(&xf, id));
+    let want: Vec<[f64; 2]> = ph2d_vec_boolean::offset_path(
+        &want_src,
+        1.0,
+        LineJoin::Miter,
+        ph2d_vec_scene::OffsetSide::Both,
+    )
+    .iter()
+    .flat_map(|p| p.verts_all().map(|v| v.anchor))
+    .collect();
+    assert!(!want.is_empty(), "pré-condição: o oráculo produz geometria");
+
+    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
+    let got: Vec<[f64; 2]> = scene
+        .paths()
+        .iter()
+        .flat_map(|p| p.verts_all().map(|v| v.anchor))
+        .collect();
+    assert_eq!(
+        got.len(),
+        want.len(),
+        "o Apply produziu {} âncoras e o oráculo {} — a pilha foi avaliada no espaço errado",
+        got.len(),
+        want.len()
     );
+    for (g, w) in got.iter().zip(&want) {
+        assert!(
+            (g[0] - w[0]).abs() < 1e-9 && (g[1] - w[1]).abs() < 1e-9,
+            "âncora materializada {g:?} ≠ a do oráculo {w:?}"
+        );
+    }
 }
-
-/// **O preview ao vivo NÃO É CUMULATIVO** — a propriedade que justifica a sessão inteira. O
-/// offset é destrutivo, então re-offsetar o resultado do frame anterior somaria; a sessão
-/// RESTAURA a cena do grab a cada frame e offseta do original. Arrastar o slider de 2 para 3 e
-/// de volta a 0 tem de dar sempre o offset ABSOLUTO, nunca a soma dos passos.
-#[test]
-fn the_live_offset_is_not_cumulative() {
-    let (mut scene, _hist, mut pen, xf) = scene_with(vec![square(10.0)]);
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-
-    let area = |scene: &VecScene| ph2d_vec_boolean::area(&scene.paths()[0]);
-
-    // d=2 ⇒ quadrado 14 ⇒ área 196.
-    sess.preview(&mut scene, &mut pen, 2.0);
-    assert!(
-        (area(&scene) - 196.0).abs() < 1.0,
-        "d=2 → 14² ({})",
-        area(&scene)
-    );
-
-    // d=2 DE NOVO ⇒ ainda 196 (não 18²=324, que seria offsetar o resultado anterior).
-    sess.preview(&mut scene, &mut pen, 2.0);
-    assert!(
-        (area(&scene) - 196.0).abs() < 1.0,
-        "o preview repetido compôs — a sessão não restaurou ({})",
-        area(&scene)
-    );
-
-    // d=3 ⇒ 16²=256 (do ORIGINAL de 10, não do 14 do passo anterior).
-    sess.preview(&mut scene, &mut pen, 3.0);
-    assert!(
-        (area(&scene) - 256.0).abs() < 1.0,
-        "d=3 → 16² ({})",
-        area(&scene)
-    );
-
-    // d=0 ⇒ volta ao original (offset zero = cena do grab restaurada).
-    sess.preview(&mut scene, &mut pen, 0.0);
-    assert!(
-        (area(&scene) - 100.0).abs() < 1e-6,
-        "d=0 devia devolver o original de 10² ({})",
-        area(&scene)
-    );
-    assert_eq!(scene.paths().len(), 1, "e uma forma só");
-}
-
-/// **O preview usa a MESMA porta que o botão** — o que o artista vê arrastando é byte-a-byte o
-/// que o botão assaria no mesmo `d`. Os dois chamam `expand_selection`; um 2º caminho
-/// divergiria no dia em que o offset ganhasse um detalhe.
-#[test]
-fn the_live_preview_matches_the_committed_offset() {
-    // Caminho do botão.
-    let (mut baked, mut hist, mut pen_b, xf) = scene_with(vec![square(10.0)]);
-    apply_vec_expand(&mut baked, &mut hist, &mut pen_b, &xf, MITER, 2.5);
-
-    // Caminho ao vivo, ao mesmo `d`.
-    let (mut live, _h, mut pen_l, _x) = scene_with(vec![square(10.0)]);
-    let mut sess = OffsetSession::begin(&live, &pen_l, &xf).unwrap();
-    sess.preview(&mut live, &mut pen_l, 2.5);
-
-    assert_eq!(baked.paths().len(), live.paths().len());
-    let (a, b) = (
-        ph2d_vec_boolean::area(&baked.paths()[0]),
-        ph2d_vec_boolean::area(&live.paths()[0]),
-    );
-    assert!((a - b).abs() < 1e-6, "o botão deu {a}, o arrasto deu {b}");
-}
-
-// ─────────────────── O arrasto sob o FRAME real (sync + settle) ───────────────────
-
-/// Um frame do produto durante o arrasto: preview → `sync` → `settle_origins` com o
-/// `drawing` que a `render_loop` passa (os `live_paths` da sessão — o preview é GESTO).
-/// Devolve o CENTRO DESENHADO do path do preview: bbox da geometria × xform vivo — o
-/// que a tela mostra, não o que o documento guarda.
-fn drag_frame(
-    sess: &mut OffsetSession,
-    scene: &mut VecScene,
-    pen: &mut PenTool,
-    sim: &mut ph2d_ecs::SimWorld,
-    map: &mut crate::vec_entities::VecEntityMap,
-    d: f64,
-) -> [f64; 2] {
-    sess.preview(scene, pen, d);
-    crate::vec_entities::sync(sim, scene, map);
-    let drawing: Vec<VecPathId> = sess.live_paths().to_vec();
-    crate::vec_transform::settle_origins(sim, scene, map, &drawing);
-    let live = crate::vec_transform::build(sim, map);
-    let pid = scene.paths().last().expect("o preview deixou um path").id;
-    let (lo, hi) = scene.path_bbox(pid).expect("bbox");
-    xform_of(&live, pid).apply([(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5])
-}
-
-/// Fixture posada: quadrado LOCAL centrado (como um path já assentado) cuja entidade
-/// carrega a pose `(4, 0)` — a rosquinha do smoke mora aí. Devolve tudo que o
-/// [`drag_frame`] precisa.
-#[allow(clippy::type_complexity)]
-fn posed_scene() -> (
-    VecScene,
-    PenTool,
-    ph2d_ecs::SimWorld,
-    crate::vec_entities::VecEntityMap,
-    VecXforms,
-) {
-    let mut sim = ph2d_ecs::SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
-    let mut scene = VecScene::new();
-    let id = scene.push_path(ph2d_vec_scene::rectangle([-1.0, -1.0], [1.0, 1.0]));
-    let e = sim
-        .world_mut()
-        .spawn((
-            ph2d_ecs::Transform {
-                translation: ph2d_core::Vec2::new(4.0, 0.0),
-                ..ph2d_ecs::Transform::IDENTITY
-            },
-            ph2d_ecs::Name::new("S"),
-            ph2d_ecs::VecPathRef(id),
-        ))
-        .id();
-    map.insert(id, e.to_bits());
-    let mut pen = PenTool::default();
-    pen.select_many(&[id]);
-    let xf = crate::vec_transform::build(&sim, &map);
-    (scene, pen, sim, map, xf)
-}
-
-/// **O preview vivo desenha NO MESMO LUGAR todo frame.** O `clone_from(&pre)` restaura o
-/// `next_id` da cena, então o resultado renasce com o MESMO id — e a MESMA entidade — a
-/// cada frame do arrasto. Se o `settle_origins` assentar essa entidade no frame 1
-/// (`Transform` = centro), o frame 2 insere geometria de MUNDO sob uma entidade que já
-/// carrega o centro: mundo × centro = translação DOBRADA — o *"pula para o canto direito"*
-/// (Enio, 2026-07-20), e cada re-grab compunha mais um centro. O preview é um GESTO: o
-/// settle o pula, e o lugar desenhado é estável.
-#[test]
-fn the_live_preview_draws_in_the_same_place_every_frame() {
-    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-    let c1 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
-    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
-    assert!(
-        (c1[0] - 4.0).abs() < 1e-3 && c1[1].abs() < 1e-3,
-        "frame 1 desenhou fora da pose da fonte: {c1:?}"
-    );
-    assert!(
-        (c2[0] - c1[0]).abs() < 1e-6 && (c2[1] - c1[1]).abs() < 1e-6,
-        "o MESMO d desenhou em lugares diferentes (frame 1 {c1:?}, frame 2 {c2:?}) — o \
-         settle assentou o preview e o frame seguinte dobrou a translação"
-    );
-}
-
-/// **Voltar o slider ao centro NO MEIO do arrasto mostra a forma NO LUGAR dela.** As
-/// entidades das fontes morrem no 1º churn, então restaurar a fonte crua (geometria LOCAL,
-/// entidade nova na IDENTIDADE) desenharia na ORIGEM — o "pula de lugar" original. Em
-/// `|d| ~ 0` pós-churn a fonte vira cópia assada em MUNDO: a pose viaja na geometria.
-#[test]
-fn returning_to_zero_mid_drag_shows_the_shape_at_its_pose() {
-    let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-    drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.5);
-    let c = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.0);
-    assert_eq!(scene.paths().len(), 1, "d=0 mostra UMA forma");
-    assert!(
-        (c[0] - 4.0).abs() < 1e-3 && c[1].abs() < 1e-3,
-        "d=0 pós-churn desenhou em {c:?} — a fonte encalhada perdeu a pose (origem?)"
-    );
-}
-
-/// **Um `d` que ANIQUILA a forma a some da cena — não a encalha.** `results` vazio num `d`
-/// grande é a forma que encolheu até sumir (resposta honesta); a fonte encalhada ficaria
-/// LOCAL com entidade nova na identidade e desenharia na ORIGEM. E o `d` seguinte a
-/// restaura do `pre`, como qualquer frame.
-#[test]
-fn an_annihilating_d_removes_the_source_from_the_scene() {
-    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(2.0)]);
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-    sess.preview(&mut scene, &mut pen, -100.0);
-    assert!(
-        scene.paths().is_empty(),
-        "a forma aniquilada tem de sumir DESTE frame"
-    );
-    assert!(sess.live_paths().is_empty(), "nada vivo");
-    assert!(pen.selected_paths().is_empty(), "seleção sem id morto");
-    sess.preview(&mut scene, &mut pen, 0.5);
-    assert_eq!(scene.paths().len(), 1, "o d seguinte restaura do pre");
-}
-
-/// **Agarrar o slider e soltar sem mover não muda NEM UM ID.** Todo grab começa com o
-/// slider recentrado (`d = 0`): antes de qualquer churn isso é restauração pura — sem esta
-/// zona morta, o simples toque no slider re-identificava a forma (id/nome/entidade novos)
-/// e custava um passo de undo que o artista não pediu.
-#[test]
-fn grabbing_without_moving_changes_nothing() {
-    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(3.0)]);
-    let before: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
-    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
-    sess.preview(&mut scene, &mut pen, 0.0);
-    let after: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
-    assert_eq!(before, after, "d=0 no grab tem de ser restauração pura");
-    assert!(sess.live_paths().is_empty(), "nada churnou, nada vivo");
-}
-
-/// A família da janela de PREVIEW/RETUNE — módulo FILHO (compartilha os fixtures acima;
-/// extraído pelo teto de 600 LOC do shell, HR-18).
-#[path = "vec_expand_retune_tests.rs"]
-mod retune;

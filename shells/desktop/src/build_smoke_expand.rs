@@ -160,9 +160,14 @@ impl crate::App {
         );
     }
 
-    /// A telemetria por-frame dos roteiros auto-dirigidos (níveis 18 e 19) — custo do
-    /// frame, profundidade do undo, janela de retune viva, join do painel, VERTS (o
-    /// oráculo dos retunes) e a LARGURA do bbox (o oráculo do arrasto).
+    /// A telemetria por-frame dos roteiros auto-dirigidos (níveis 18 e 19).
+    ///
+    /// ⚠️ **Ela mede DUAS geometrias, e é isso que prova o modelo novo** (2026-07-21):
+    /// `src=` são os vértices AUTORADOS (o que o documento guarda e o modo Node edita) e
+    /// `live=` são os do DESENHO (o offset cozido). Durante o preview, `src` tem de ficar
+    /// PARADO enquanto `live` muda a cada retune; no Apply é `src` que salta. Um oráculo só
+    /// sobre a cena não conseguiria distinguir "previsualizou" de "assou" — que é
+    /// exatamente o que o report de 2026-07-21 apanhou.
     ///
     /// VERTS, não área: a área a `Both` é CEGA por construção (o arredondamento perde
     /// (4−π)d² na borda e ganha o MESMO no furo — cancela exato). ⚠️ E BBOX, porque verts
@@ -196,18 +201,29 @@ impl crate::App {
             }
             (g.vec_scene.paths().len(), v, (hi - lo).max(0.0))
         });
-        // O slider fala FRAÇÃO da forma; o mundo-d = fração × escala da sessão (a lei da
-        // forma — ver `params::OFFSET_FRAC_MIN`). Fora de sessão loga a fração crua (o
-        // mundo-d nem existe ainda).
-        let d = self.gfx.as_ref().and_then(|g| {
-            let hero = g.hero_screen.as_ref()?;
-            let (_, v) = hero.store.slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)?;
-            let frac = ph2d_tool_vector::params::slider_to_offset_frac(v);
-            Some(match self.vec_offset_session.as_ref() {
-                Some(sess) => frac * sess.scale(),
-                None => frac,
-            })
-        });
+        // O `d` que está ARMADO na cena (o componente), não o do slider: é o número que o
+        // cozimento de facto usa. `?` = nenhum offset vivo.
+        let (offs, d) = {
+            let mut n = 0usize;
+            let mut d = None;
+            for (id, _) in self.offset_live.live() {
+                if let Some(g) = self.gfx.as_ref()
+                    && let Some(spec) = crate::offset_live::spec_of(&g.sim, &self.vec_entities, *id)
+                {
+                    n += 1;
+                    d.get_or_insert(spec.d);
+                }
+            }
+            (n, d)
+        };
+        // Os vértices do DESENHO — a geometria derivada que o `dispatch` põe na tela.
+        let live_verts: usize = self
+            .offset_live
+            .live()
+            .values()
+            .flat_map(|v| v.iter())
+            .map(|p| p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>())
+            .sum();
         let active = self
             .gfx
             .as_ref()
@@ -215,9 +231,9 @@ impl crate::App {
             .and_then(|h| h.store.active_id())
             .map_or("-".into(), |id| format!("{id:?}"));
         eprintln!(
-            "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} win={} join={} d={} paths={paths} verts={verts} bw={bw:.3} active={active}",
+            "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} off={offs} join={} d={} \
+             paths={paths} src={verts} live={live_verts} bw={bw:.3} active={active}",
             self.undo.depth(),
-            u8::from(self.vec_offset_retune.is_some()),
             ph2d_panel_vector::expand_join(),
             d.map_or("?".into(), |d| format!("{d:.3}")),
         );

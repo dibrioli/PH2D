@@ -269,6 +269,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0128: o Blend Object vivo. Mesma razão do conector — sem este registro o snapshot o
     // DESCARTA, e o undo/save perderiam o vínculo blend↔fontes em silêncio.
     reg.register::<crate::VecBlend>("ph2d::ecs::VecBlend");
+    // O Offset vivo: a forma engorda sem que a curva autorada mude. Mesma razão de todos os
+    // irmãos — sem o registro o snapshot o DESCARTA, e um Ctrl+Z (ou um save) devolveria a
+    // forma sem o offset, em silêncio, com a curva certa por baixo.
+    reg.register::<crate::VecOffset>("ph2d::ecs::VecOffset");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
@@ -314,7 +318,8 @@ mod tests {
         // + 1 §10 BlendMode + 5 save/undo
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
         // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 Blend Object (VecBlend)
-        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129).
+        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129)
+        // + 1 Offset vivo (VecOffset).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -326,7 +331,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 32);
+        assert_eq!(reg.len(), 33);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
@@ -337,6 +342,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecConnector").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBlend").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecOffset").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLabel").is_some());
         assert!(reg.get_by_name("ph2d::ecs::FlipObjectRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecShape").is_some());

@@ -21,6 +21,13 @@
 //!   deixa de seguir as formas, a morfada para no `t` atual.
 //! - **Pilha de efeitos** (ADR-0132) e **quinas vivas** (ADR-0121) — assadas no cozido pelo
 //!   `bake_cooked`, que é a MESMA porta do botão "Apply" da seção Effects.
+//! - **Offset vivo** (`VecOffset`) — MATERIALIZADO pela porta do `Apply Offset`
+//!   ([`crate::offset_live::materialise`]). ⚠️ Não basta soltar o componente, como no
+//!   conector/morph: a geometria do offset **não está no `verts`** (ela é DESENHO, cozida por
+//!   frame), então soltá-lo devolveria a curva autorada — o artista clicaria "Convert to
+//!   Curves" e veria a forma ENCOLHER de volta ao que era antes do offset. E o offset pode
+//!   produzir VÁRIOS caminhos de um só (o donut do smoke devolve oito a `Side=Inner`), que é a
+//!   outra razão de ele passar pelo `expand_selection` e não por um `bake_cooked`.
 //!
 //! ⚠️ **Blend e Envelope ficam de FORA, de propósito.** Os dois têm botão **Expand** próprio, e
 //! o que eles fazem não é congelar um path: o blend MATERIALIZA passos que são *virtuais* (não
@@ -30,7 +37,8 @@
 
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Entity, SimWorld, VecConnector, VecMorph, VecShape};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
+use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
 /// Um **HOST VIVO** reescreve o `verts` deste path por trás do artista (a receita da forma, a
 /// rota do conector, o `t` do morph). Congelar é REMOVER o host — o `verts` já carrega o cozido.
@@ -54,7 +62,9 @@ pub(crate) fn is_convertible(
     scene: &VecScene,
     id: VecPathId,
 ) -> bool {
-    has_live_host(sim, map, id) || scene.path(id).is_some_and(VecPath::has_live_geometry)
+    has_live_host(sim, map, id)
+        || crate::offset_live::spec_of(sim, map, id).is_some()
+        || scene.path(id).is_some_and(VecPath::has_live_geometry)
 }
 
 /// Solta os hosts de RELAÇÃO (conector, morph) das entidades da seleção. A forma paramétrica tem
@@ -86,11 +96,23 @@ pub(crate) fn to_curves(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &mut VecEntityMap,
+    pen: &mut PenTool,
+    history: &mut History,
+    xforms: &VecXforms,
     selection: &[VecPathId],
 ) -> Vec<VecPathId> {
     let new_sel = crate::vec_text::convert_text_selection_to_curves(sim, scene, map, selection);
     crate::vec_shape_live::drop_shape_params(sim, map, &new_sel);
     drop_relation_hosts(sim, map, &new_sel);
+    // O Offset vivo materializa ANTES do bake: ele CONSOME o caminho (remove+insere), então
+    // assar o cozido de um path que vai deixar de existir seria trabalho jogado fora — e a
+    // seleção que sai daqui tem de ser a que o `expand_selection` produziu.
+    let new_sel =
+        if crate::offset_live::materialise(scene, sim, pen, history, map, xforms, &new_sel) {
+            pen.selected_paths().to_vec()
+        } else {
+            new_sel
+        };
     for id in &new_sel {
         scene.bake_cooked(*id);
     }

@@ -5,7 +5,29 @@
 
 use super::*;
 use crate::vec_entities::VecEntityMap;
-use ph2d_vec_scene::{VecPath, VecVertex};
+use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_scene::{VecPath, VecVertex, VecXforms};
+
+/// O `to_curves` do produto com os canais que só o Offset vivo usa (pen/history/poses) — os
+/// testes desta suíte não têm offset armado, então eles ficam vazios.
+fn convert(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &mut VecEntityMap,
+    ids: &[VecPathId],
+) -> Vec<VecPathId> {
+    let mut pen = PenTool::new();
+    let mut history = History::new();
+    crate::vec_convert::to_curves(
+        sim,
+        scene,
+        map,
+        &mut pen,
+        &mut history,
+        &VecXforms::default(),
+        ids,
+    )
+}
 
 /// Um quadrado sincronizado numa entidade, com um Zig Zag ATIVO adicionado pelo MESMO caminho
 /// do produto (`fx_bridge`) — não um `PathEffect` fabricado à mão.
@@ -41,7 +63,7 @@ fn convert_to_curves_bakes_the_effect_stack() {
         "pré-condição: o Zig Zag tem de mudar a geometria, senão o bake não prova nada"
     );
 
-    let new_sel = crate::vec_convert::to_curves(&mut sim, &mut scene, &mut map, &[id]);
+    let new_sel = convert(&mut sim, &mut scene, &mut map, &[id]);
 
     assert!(
         new_sel.contains(&id),
@@ -149,7 +171,7 @@ fn convert_to_curves_bakes_a_live_corner() {
         "pré-condição: a quina tem de arredondar de facto"
     );
 
-    crate::vec_convert::to_curves(&mut sim, &mut scene, &mut map, &[id]);
+    convert(&mut sim, &mut scene, &mut map, &[id]);
 
     let p = scene.path(id).unwrap();
     assert_eq!(p.verts, cooked.verts, "a geometria autorada virou a cozida");
@@ -189,7 +211,7 @@ fn convert_to_curves_drops_the_relation_hosts() {
         decorate(&mut sim, e);
         assert!(crate::vec_convert::is_convertible(&sim, &map, &scene, id));
 
-        crate::vec_convert::to_curves(&mut sim, &mut scene, &mut map, &[id]);
+        convert(&mut sim, &mut scene, &mut map, &[id]);
 
         assert!(
             !crate::vec_convert::is_convertible(&sim, &map, &scene, id),
@@ -249,7 +271,7 @@ fn convert_to_curves_leaves_a_plain_path_alone() {
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let before = scene.path(id).unwrap().clone();
 
-    let new_sel = crate::vec_convert::to_curves(&mut sim, &mut scene, &mut map, &[id]);
+    let new_sel = convert(&mut sim, &mut scene, &mut map, &[id]);
 
     assert!(new_sel.contains(&id));
     assert_eq!(

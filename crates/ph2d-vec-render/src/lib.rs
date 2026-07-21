@@ -150,6 +150,19 @@ pub fn path_to_screen(xforms: &VecXforms, id: VecPathId, camera: Affine) -> Affi
     camera * Affine::new(ph2d_vec_scene::xform_of(xforms, id).0)
 }
 
+/// A **geometria DERIVADA** de um caminho neste frame, em MUNDO — o que ele DESENHA quando o que
+/// ele desenha não é o que ele guarda.
+///
+/// Existe porque nem toda geometria viva cabe dentro do [`VecPath::cooked`]: o Offset vivo
+/// (`VecOffset`) precisa do motor booleano, que **depende** da `ph2d-vec-scene` e portanto não
+/// pode ser chamado de dentro dela (o cargo recusa o ciclo por nome). A shell coze essa metade e
+/// a entrega aqui.
+///
+/// ⚠️ **Um caminho PRESENTE com a lista VAZIA desenha NADA** — é a aniquilação (um offset
+/// negativo grande come a forma). É diferente de estar AUSENTE, que desenha a fonte. Colapsar os
+/// dois faria a forma reaparecer inteira no instante em que o offset a mata.
+pub type LiveGeometry = std::collections::BTreeMap<VecPathId, Vec<VecPath>>;
+
 /// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `camera`
 /// (o world→screen). Fill primeiro, stroke por cima.
 ///
@@ -157,15 +170,29 @@ pub fn path_to_screen(xforms: &VecXforms, id: VecPathId, camera: Affine) -> Affi
 /// do path e dos ancestrais dela, não do documento (ADR-0110). `xforms` diz onde
 /// cada path está — o `Transform` da entidade dele (ADR-0111). O stroke escala
 /// junto com a forma, como o contorno de um sprite escalado.
+///
+/// `live` ([`LiveGeometry`]) troca a geometria de um caminho pela DERIVADA dele **no z dele** —
+/// não num passe por cima de tudo. É o que mantém a promessa do Offset vivo: o documento guarda
+/// a curva autorada (o modo Node edita os nós DELA) e o que se vê é o resultado, empilhado
+/// exatamente onde a forma sempre esteve.
 pub fn dispatch(
     scene: &VecScene,
     view: &VecViewState,
     xforms: &VecXforms,
+    live: &LiveGeometry,
     camera: Affine,
     target: &mut VectorScene,
 ) {
     for path in scene.paths() {
         if view.is_hidden(path.id) {
+            continue;
+        }
+        // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela
+        // CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real desta linha.
+        if let Some(items) = live.get(&path.id) {
+            for item in items {
+                draw_path(item, camera, target);
+            }
             continue;
         }
         let transform = path_to_screen(xforms, path.id, camera);
@@ -460,6 +487,74 @@ mod tests {
         }
     }
 
+    /// Uma cena de UM quadrado preenchido, e o id dele.
+    fn one_square() -> (VecScene, VecPathId) {
+        use ph2d_vec_scene::{Paint, Rgba8, VecVertex};
+        let mut scene = VecScene::new();
+        let id = scene.push_path(VecPath {
+            verts: [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            fill: Some(Paint::Solid(Rgba8::new(200, 30, 30, 255))),
+            ..VecPath::default()
+        });
+        (scene, id)
+    }
+
+    /// **A geometria viva desenha NO LUGAR da fonte, não por cima dela.** Duas formas na tela
+    /// onde devia haver uma é o sintoma de um passe que só ACRESCENTA; e o z de um offset tem
+    /// de ser o z da forma que ele offseta.
+    #[test]
+    fn the_live_geometry_draws_instead_of_the_source() {
+        let (scene, id) = one_square();
+        let (view, xf) = (VecViewState::default(), VecXforms::default());
+        let mut a = VectorScene::new();
+        dispatch(
+            &scene,
+            &view,
+            &xf,
+            &LiveGeometry::new(),
+            Affine::IDENTITY,
+            &mut a,
+        );
+        let plain = a.inner().encoding().n_paths;
+
+        // A derivada: DOIS caminhos (um offset pode partir a forma em vários — o donut do
+        // smoke devolve oito). Se o `dispatch` acrescentasse em vez de trocar, sairiam três.
+        let mut live = LiveGeometry::new();
+        let (extra, _) = one_square();
+        live.insert(id, extra.paths().to_vec());
+        live.insert(id, vec![scene.paths()[0].clone(), scene.paths()[0].clone()]);
+        let mut b = VectorScene::new();
+        dispatch(&scene, &view, &xf, &live, Affine::IDENTITY, &mut b);
+        assert_eq!(
+            b.inner().encoding().n_paths,
+            plain * 2,
+            "a derivada tem de SUBSTITUIR a fonte (2 itens = 2 desenhos, não 3)"
+        );
+    }
+
+    /// **Uma entrada PRESENTE e VAZIA desenha NADA** — é a aniquilação (o offset comeu a
+    /// forma). Colapsá-la com "ausente" faria a forma reaparecer inteira no extremo do
+    /// slider, que é o oposto do que o artista acabou de pedir.
+    #[test]
+    fn an_empty_live_entry_draws_nothing() {
+        let (scene, id) = one_square();
+        let mut live = LiveGeometry::new();
+        live.insert(id, Vec::new());
+        let mut s = VectorScene::new();
+        dispatch(
+            &scene,
+            &VecViewState::default(),
+            &VecXforms::default(),
+            &live,
+            Affine::IDENTITY,
+            &mut s,
+        );
+        assert_eq!(s.inner().encoding().n_paths, 0);
+    }
+
     /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,
     /// sem dirty-tracking), a fração dominante do custo em escala (achado Rive).
     /// `cargo test -p ph2d-vec-render --release -- --ignored --nocapture`
@@ -474,12 +569,26 @@ mod tests {
             let mut target = VectorScene::new();
             target.reset();
             let xf = VecXforms::new();
-            dispatch(&scene, &VecViewState::default(), &xf, affine, &mut target); // warm
+            dispatch(
+                &scene,
+                &VecViewState::default(),
+                &xf,
+                &LiveGeometry::new(),
+                affine,
+                &mut target,
+            ); // warm
             let iters = 30;
             let t = Instant::now();
             for _ in 0..iters {
                 target.reset();
-                dispatch(&scene, &VecViewState::default(), &xf, affine, &mut target);
+                dispatch(
+                    &scene,
+                    &VecViewState::default(),
+                    &xf,
+                    &LiveGeometry::new(),
+                    affine,
+                    &mut target,
+                );
             }
             let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
             println!(

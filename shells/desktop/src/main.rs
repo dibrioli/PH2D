@@ -109,6 +109,9 @@ mod morph_live;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
+/// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
+/// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
+mod offset_live;
 mod palette_persist;
 mod physics_smoke;
 mod physics_smoke_rigs;
@@ -132,8 +135,6 @@ mod vec_connector_panel;
 /// do lugar, em vez de a adivinhar.
 mod vec_convert;
 mod vec_entities;
-/// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
-/// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod vec_expand;
 mod vec_font;
 #[cfg(feature = "panel-vector")]
@@ -389,8 +390,9 @@ impl App {
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
-            vec_offset_session: None,
-            vec_offset_retune: None,
+            offset_live: crate::offset_live::OffsetLive::default(),
+            vec_expand_knobs: (0, 2),
+            vec_offset_mirrored: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,

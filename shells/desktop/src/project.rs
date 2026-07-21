@@ -323,6 +323,10 @@ impl crate::App {
         // zerada logo acima.
         self.timeline = ph2d_timeline::TimelineState::new();
         self.timeline_intents.clear();
+        // O memo do Offset vivo — pela razão do restore de undo: os `VecPathId` são reciclados
+        // entre documentos, e um acerto de memo desenharia o offset do projeto ANTERIOR.
+        self.offset_live.forget();
+        self.vec_offset_mirrored = None;
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos

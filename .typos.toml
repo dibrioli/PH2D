@@ -6,6 +6,9 @@
 
 [default]
 extend-ignore-identifiers-re = [
+    # Abbreviated git commit hashes quoted in handoffs — typos tokenizes a
+    # hex hash like `b685beed` and reads "beed" wanting "bead"/"been".
+    "\\b[0-9a-f]{8,40}\\b",
     # mlua + Luau API surface and types
     "luau",
     "mlua",
@@ -35,6 +38,9 @@ respondendo = "respondendo"  # pt-BR (comentario de codigo)
 TRANSFERE = "TRANSFERE"  # pt-BR (handoff wet paint)
 dilema = "dilema"  # pt-BR (handoff wet paint)
 commite = "commite"  # pt-BR imperativo de "commitar" (handoffs)
+clientes = "clientes"  # pt-BR (handoffs)
+montanha = "montanha"  # pt-BR (handoffs)
+valeu = "valeu"  # pt-BR (handoffs)
 prefixe = "prefixe"  # pt-BR imperativo de "prefixar" (handoffs)
 priorize = "priorize"  # pt-BR imperativo de "priorizar" (handoffs)
 # Project-specific names (not typos).

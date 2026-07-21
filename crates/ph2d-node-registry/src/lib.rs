@@ -13,7 +13,9 @@
 //! node is dropping a crate, never hand-editing a central list.
 
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::gpu::{GpuKernel, GridSpec, KernelResolver, StateSelect, StreamOp};
+use ph2d_nodegraph::gpu::{
+    GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, StateSelect, StreamOp,
+};
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
@@ -60,6 +62,9 @@ pub struct NodeRegistry {
     /// source-rows / concat / project), the count-changing family's side channel.
     /// Same shape as `grids`; a node opts in with a [`StreamOp`].
     stream_ops: BTreeMap<NodeTypeId, StreamOp>,
+    /// GPU/M5 (ADR-0139) — per-type multi-pass engine algorithm (Lloyd/JFA).
+    /// Same side-channel shape; a node opts in with a [`GpuAlgorithm`].
+    algorithms: BTreeMap<NodeTypeId, GpuAlgorithm>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -182,6 +187,12 @@ impl NodeRegistry {
     pub fn register_stream_op(&mut self, id: NodeTypeId, op: StreamOp) {
         self.stream_ops.insert(id, op);
     }
+
+    /// Declare this node type's engine algorithm (ADR-0139), paired with
+    /// `register_gpu_kernel(id, GpuKernel::PASSTHROUGH)` so the plan claims it.
+    pub fn register_gpu_algorithm(&mut self, id: NodeTypeId, alg: GpuAlgorithm) {
+        self.algorithms.insert(id, alg);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
@@ -203,6 +214,10 @@ impl KernelResolver for NodeRegistry {
 
     fn stream_op(&self, ty: NodeTypeId) -> Option<&StreamOp> {
         self.stream_ops.get(&ty)
+    }
+
+    fn algorithm(&self, ty: NodeTypeId) -> Option<&GpuAlgorithm> {
+        self.algorithms.get(&ty)
     }
 }
 

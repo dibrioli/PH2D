@@ -33,6 +33,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{GpuAlgorithm, GpuKernel};
 use ph2d_nodegraph::node::{
     LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, param_as_count,
 };
@@ -50,20 +51,53 @@ const VALUE_COL: &str = "v";
 /// gets roughly this many samples (accurate centroids without over-sampling).
 const SAMPLES_PER_POINT: usize = 16;
 /// Clamp on the sampling grid side (samples = res²). The lower bound keeps a small
-/// count's centroids sane; the upper bound caps the per-eval cost.
+/// count's centroids sane. The upper bound is the **integer-centroid ceiling** of
+/// the device path (ADR-0139): the JFA service accumulates `Σgx ≤ res³` in `u32`,
+/// and `1625³ < 2³² < 1626³` — a representation limit, not a comfort number (the
+/// engine guards its own copy, `ph2d_gpu_cook::voronoi::INT_CENTROID_RES_CEILING`,
+/// and a gate pins the two together).
 const MIN_RES: usize = 20;
-const MAX_RES: usize = 96;
-/// Cap on the point count (cost is O(iterations · res² · count)).
-const MAX_POINTS: usize = 600;
+const MAX_RES: usize = 1625;
+/// Cap on the point count — **the largest count whose sampling law holds intact**:
+/// past `MAX_RES²/SAMPLES_PER_POINT ≈ 165 039` the law would want a grid the u32
+/// centroid cannot represent, and the relaxation would degrade silently (fewer
+/// than 16 samples/point). MEASURED on the RTX (ADR-0139, 8 iterations, full
+/// relax per frame): 600 pts → 1,05 ms · 10k → 1,87 · 50k → 6,06 · 165k ≈ 15-21.
+/// The pre-ADR cap was 600 — the CPU's `O(res²·count)` scan was defining the
+/// product (§0.0); on the CPU reference the top of this range is minutes per
+/// cook (extrapolated from its measured 2,4 ms at 600) — the reference computes
+/// the same answer, the device owns the ceiling.
+const MAX_POINTS: usize = 165_000;
+/// The iteration clamp — shared with the device spec below, so the two paths
+/// cut the same slider at the same number.
+const MAX_ITERATIONS: i64 = 64;
 
 /// The Lloyd sampling grid side for `count` points: `√(count · SAMPLES_PER_POINT)`,
 /// clamped. This keeps the grid cost proportional to the work (≈ `count·16` samples)
 /// instead of a fixed `64²` — the fix for the per-frame recompute when `relax` is
 /// animated (each animated frame re-runs the whole relaxation; see the module docs).
+/// Delegates to [`GpuAlgorithm::lloyd_resolution`] — THE law, shared with the
+/// device service (ADR-0139) so the two paths discretise identically.
 fn resolution(count: usize) -> usize {
-    let ideal = ((count * SAMPLES_PER_POINT) as f32).sqrt().ceil() as usize;
-    ideal.clamp(MIN_RES, MAX_RES)
+    GpuAlgorithm::lloyd_resolution(count, SAMPLES_PER_POINT, MIN_RES, MAX_RES)
 }
+
+/// The device algorithm (ADR-0139): Lloyd via jump flooding, count-independent
+/// per iteration. The spec carries THIS file's caps and sampling law — the node
+/// is the source of truth for the numbers, the sequencer for the machinery.
+pub const GPU_ALGORITHM: GpuAlgorithm = GpuAlgorithm::LloydVoronoi {
+    count_param: "count",
+    width_param: "width",
+    height_param: "height",
+    seed_param: "seed",
+    iterations_param: "iterations",
+    relax_port: 0,
+    max_points: MAX_POINTS,
+    min_res: MIN_RES,
+    max_res: MAX_RES,
+    samples_per_point: SAMPLES_PER_POINT,
+    max_iterations: MAX_ITERATIONS,
+};
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -216,7 +250,7 @@ impl NodeOp for MotionVoronoi {
         let w = ctx.param("width").max(1e-3);
         let h = ctx.param("height").max(1e-3);
         let seed = ctx.param("seed").max(0.0).round() as u32;
-        let iterations = (ctx.param("iterations").round() as i64).clamp(0, 64) as usize;
+        let iterations = (ctx.param("iterations").round() as i64).clamp(0, MAX_ITERATIONS) as usize;
         // Unconnected relax → 1.0 (fully relaxed).
         let relax = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(1.0),
@@ -240,6 +274,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 (ADR-0139): PASSTHROUGH claims the node for the plan; the
+    // algorithm side channel tells the sequencer what to actually run.
+    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_gpu_algorithm(MANIFEST.id, GPU_ALGORITHM);
     Ok(())
 }
 
@@ -250,7 +288,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "count",
         label: "Count",
         min: 1.0,
-        max: 600.0,
+        max: 165_000.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -387,6 +425,30 @@ mod tests {
         match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v.len(), 24),
             _ => panic!("P"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod cost_probe {
+    use super::*;
+
+    /// MEASUREMENT (fila §2 item 5, §0.0): what does a live-animated Lloyd cost
+    /// at the node's own cap? Run:
+    ///   cargo test -p ph2d-node-motion-voronoi --release -- --ignored --nocapture
+    #[test]
+    #[ignore = "measurement — run alone with --nocapture"]
+    fn what_does_the_capped_lloyd_cost_per_frame() {
+        let (w, h, seed) = (5.0f32, 5.0f32, 1u32);
+        for &count in &[96usize, 300, 600] {
+            let res = resolution(count);
+            let mut pts = seed_points(count, w, h, seed);
+            let t0 = std::time::Instant::now();
+            for _ in 0..8 {
+                pts = lloyd_step(&pts, w, h, res);
+            }
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            eprintln!("  lloyd count {count:>4} res {res:>3} iter 8: {ms:>8.2} ms/frame");
         }
     }
 }

@@ -58,6 +58,8 @@ ph2d-node-sim-lifetime = { path = "../ph2d-node-sim-lifetime" }
 ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
 ph2d-node-motion-combine = { path = "../ph2d-node-motion-combine" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
+# ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
+ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }

@@ -105,6 +105,19 @@ fn output_shape(
     let inst = graph.node(node)?;
     let manifest = ops.resolve(inst.type_id())?.manifest();
     let kernel = kernels.gpu_kernel(inst.type_id())?;
+    // An engine ALGORITHM (ADR-0139) reshapes the output wholesale, like a
+    // structural stream op: the node registers PASSTHROUGH, so the binding
+    // rules below would answer with the base's columns — for `motion.voronoi`
+    // that is the relax VALUE stream, not the point cloud it actually emits.
+    if let Some(alg) = kernels.algorithm(inst.type_id()) {
+        match alg {
+            ph2d_nodegraph::gpu::GpuAlgorithm::LloydVoronoi { .. } => {
+                let mut cols = BTreeSet::new();
+                cols.insert("P");
+                return Some(Shape { cols, dense: false });
+            }
+        }
+    }
     // The base (port 0) the output rides on. A generator starts from nothing;
     // an unconnected input is the empty stream. Note this deliberately does NOT
     // ask `eligible` — a node the plan refuses still emits the columns its

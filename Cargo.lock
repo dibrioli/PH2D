@@ -5240,6 +5240,7 @@ dependencies = [
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-tint",
  "ph2d-node-motion-transform",
+ "ph2d-node-motion-voronoi",
  "ph2d-node-motion-wiggle",
  "ph2d-node-registry",
  "ph2d-node-sim-collide",

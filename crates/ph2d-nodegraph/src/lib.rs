@@ -37,6 +37,7 @@ pub mod attr;
 pub mod cook;
 pub mod effect;
 pub mod format;
+pub mod algorithm_meta;
 pub mod gpu;
 pub mod graph;
 pub mod node;

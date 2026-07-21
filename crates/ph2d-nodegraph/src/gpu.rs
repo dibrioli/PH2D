@@ -200,6 +200,7 @@ pub struct ColumnBinding {
     pub port: usize,
 }
 
+pub use crate::algorithm_meta::GpuAlgorithm;
 pub use crate::stream_op_meta::{KEEP_FLAG_COL, ROWS_COL, StreamOp};
 
 /// Everything a node's **count law** may look at. Dispatch size must be known
@@ -533,6 +534,13 @@ pub trait KernelResolver {
     /// kernel, exactly like a [`GridSpec`]; every per-element node declares
     /// nothing and nothing about it changes.
     fn stream_op(&self, _ty: NodeTypeId) -> Option<&StreamOp> {
+        None
+    }
+
+    /// The engine ALGORITHM this node's GPU cook runs (ADR-0139), if any.
+    /// Default `None` — a node opts in with a [`GpuAlgorithm`], exactly like a
+    /// [`GridSpec`]; every other node declares nothing.
+    fn algorithm(&self, _ty: NodeTypeId) -> Option<&GpuAlgorithm> {
         None
     }
 

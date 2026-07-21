@@ -302,7 +302,7 @@ prefixo CPU. Fechar isso é o item 1, e é o que transforma a capacidade em prod
 | 2 | **subir os 2 tetos MEDIDOS** (§0.0: quem move o número reconfere a nota) | polimento de escala | boids/collide acima de ~4–8M | os dois já estão medidos e nomeados: (a) dispatch por-bucket sobre `pow2(2N)` bate 65 535 workgroups/dim a ~8M → **dispatch 2-D em `grid.rs`**; (b) binding de `RenderInstance` (184 B) capado em 2 GiB → ~11,67M → **requisitar `max_storage_buffer_binding_size` maior** |
 | 3 | **o cull do `motion.boids`** (~20%, medido, NÃO aplicado) | polimento | ~20% no boids | ⚠️ **NÃO é o mesmo cull do collide** — o boids varre 3×3 FIXO (`cell=radius` exato, sem `ceil` variável), então não tem o degrau; a técnica se aplica mas é outra wave, nomeada de propósito no commit `2d0297c0` |
 | 4 | **próximo kernel de cobertura** | incremental | mais grafos 100% GPU | re-meça qual nó aparece no prefixo CPU de docs reais (o método do censo) |
-| 5 | **Voronoi (JFA)** / **soft_body-verlet (XPBD)** | **grande** | os outros O(N²) de simulação | cada um é um algoritmo GPU PRÓPRIO — NÃO reusa a grade de vizinhança; território de maior ambição e o mais longe |
+| 5 | ~~**Voronoi (JFA)**~~ **FEITO (ADR-0139, 2026-07-21 — ver bloco abaixo)** / **soft_body-verlet (XPBD)** ABERTO | **grande** | os outros O(N²) de simulação | cada um é um algoritmo GPU PRÓPRIO — NÃO reusa a grade de vizinhança. O XPBD do soft-body/corda fica nomeado (caps 1600/O(N), outra classe de custo — medir o que o artista de fato bate antes de atacar) |
 
 **⚠️ O CULL DO BOIDS APLICADO — e a medição derrubou DUAS conclusões erradas
 antes da certa (2026-07-21, fecha a fila §E):** o ganho real é **~6%** (1M
@@ -315,6 +315,40 @@ o refutou: três sweeps pesados costas-com-costas derivam o clock da GPU em
 com cooldowns de 60-90 s e o probe reduzido ao sweep relevante** (A/A'
 repete a ±0,1% em escala). Paridade intocada (o cull é exato; 22 gates da
 sim suite verdes).
+
+**⬛ O VORONOI VIROU JFA NA GPU E OS CAPS CAÍRAM (2026-07-21, ADR-0139 —
+item 5 da fila, 1ª metade):** o `motion.voronoi` tinha **o menor cap da
+biblioteca** (600 pontos) porque o `nearest` CPU é varredura linear
+`O(iterations·res²·count)` — MEDIDO: 2,4 ms/frame a 600 SÓ porque o cap o
+mantém barato; descapado ao que stippling quer (10k+), ~600 ms — o §0.0 ao pé
+da letra. O dispositivo roda **Jump Flooding** (Rong & Tan), count-independente
+por iteração, com **centroides em INTEIROS** (atomics u32 sobre índices de
+texel — exato e independente de ordem; overflow bound `res³ < 2³²` ⇒ teto de
+representação **res ≤ 1625**). Infra nova: **`GpuAlgorithm`, o 5º canal de
+side-metadata** (`algorithm_meta.rs` + `KernelResolver::algorithm` default
+None + `register_gpu_algorithm`; o nó registra PASSTHROUGH + spec com OS
+NÚMEROS DELE — a lei de resolução é `GpuAlgorithm::lloyd_resolution`, UMA
+função pros 2 caminhos); braço no `output_shape` do plan (senão a forma
+derivada seria a do port relax); maquinaria em `gpu-cook/src/voronoi.rs`
+(6 pipelines: seed hash bit-exato do emitter · grid_init `atomicMax(count−id)`
+com 0=vazio · JFA 1+halving com tie lower-id · reduce · move · lerp lendo o
+relax na **row 0 do dispositivo**). **Caps novos MEDIDOS:** `MAX_RES 96→1625`
+(recurso: representação u32) · `MAX_POINTS 600→165 000` (o maior count em que
+a lei de 16 samples/ponto se sustenta sob o teto; gate pina `count·16 ≤ res²`
+e `max_res ≤ INT_CENTROID_RES_CEILING`). Tabela RTX (8 iterações/frame):
+600→1,05 ms · 10k→1,94 · 50k→6,38 · **165k→20,2** · 1M→43,6 (grid satura).
+**Paridade (doutrina D4):** 1 passo de Lloyd = Δ máx **1e-6** · oráculo de
+assignment **0 texels divergentes** (fixture livre de colisão) · `iterations=0`
+**BIT-EXATO** a 600 pontos · trajetória cheia = banda MEDIDA (mean ≤0,023,
+pinada 0,04/0,15/0,55) — o mecanismo honesto é a **colisão de seed** (2 pontos
+num texel escondem 1 por uma rodada; transiente, documentado no módulo).
+9 gates (`tests/gpu_voronoi.rs` + naga unit), **6/6 mutações sangram**
+(lerp invertido · centroide sem +0,5 · tie-break · JFA truncada · chave de
+seed descasada · nó sem registro). ⚠️ Fixture lição: count 300 NÃO tem seed
+livre de colisão em 200 tentativas (birthday ≈ 9 esperadas) — o oráculo roda
+em 40/96; densidade não muda a classe de erro da JFA. Aberto honesto: cache
+por-params do cook (relax animado re-roda a relaxação toda — ~ms agora, era o
+design; nomeado no ADR §3).
 
 **⚠️ Otimizações MEDIDAS e REPROVADAS nesta jornada (não re-derive):**
 - **collide, teste-mais-barato-primeiro** no laço interno → 6,47→6,45 ms. O kernel é

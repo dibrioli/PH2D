@@ -67,6 +67,7 @@ pub mod shape;
 pub mod stream;
 mod stream_op;
 pub mod tap;
+pub mod voronoi;
 
 pub use debug_read::read_instances;
 pub use error::GpuCookError;
@@ -190,11 +191,15 @@ pub struct GpuCook {
     /// The structural stream-op pipelines (ADR-0136), built on first use like
     /// the tap and the grid — `Option` because `GpuCook` is `Default`.
     stream_op_pipes: Option<stream_op::StreamOpPipes>,
-    /// Stream-op transients that must outlive THIS cook's final submit (the
-    /// post-compaction gathers' uniforms and rows buffers). Cleared at the top
-    /// of every cook, like [`Self::grid_hold`].
+    /// Stream-op **and algorithm** transients that must outlive THIS cook's
+    /// final submit (the post-compaction gathers' uniforms and rows buffers;
+    /// the voronoi passes' uniforms, ADR-0139). Cleared at the top of every
+    /// cook, like [`Self::grid_hold`].
     stream_op_hold: Vec<wgpu::Buffer>,
     stream_op_hold_bufs: Vec<std::sync::Arc<wgpu::Buffer>>,
+    /// The engine-algorithm pipelines (ADR-0139), built on first use like the
+    /// stream ops — `Option` because `GpuCook` is `Default`.
+    voronoi_pipes: Option<voronoi::VoronoiPipes>,
 }
 
 /// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
@@ -390,6 +395,23 @@ impl GpuCook {
                 .resolve(stage.ty)
                 .expect("planned nodes resolve")
                 .manifest();
+            // A multi-pass engine ALGORITHM (ADR-0139), intercepted like the
+            // stream ops and before the passthrough branch — the node registers
+            // PASSTHROUGH so the plan claims it, and that branch would forward
+            // port 0 (`motion.voronoi`'s relax VALUE) instead of the cloud.
+            if let Some(alg) = kernels.algorithm(stage.ty) {
+                let out = self.encode_algorithm(
+                    gpu,
+                    &mut encoder,
+                    alg,
+                    graph,
+                    stage.node,
+                    manifest,
+                    &inputs,
+                );
+                streams.insert(stage.node, out);
+                continue;
+            }
             // The structural stream ops (ADR-0136), intercepted BEFORE the
             // passthrough branch — a Concat/Project registers PASSTHROUGH, and
             // that branch would forward port 0 instead.

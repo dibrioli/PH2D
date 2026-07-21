@@ -27,7 +27,7 @@ pub(crate) fn build_physics_info(
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
         Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX, LockPositionY,
-        LockRotation, RigidBody,
+        LockRotation, MassOverride, RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -49,6 +49,9 @@ pub(crate) fn build_physics_info(
     // Optional Freeze Position markers (W-LockPos); each presence is a flag.
     let lock_x = world.get::<LockPositionX>(entity).is_some();
     let lock_y = world.get::<LockPositionY>(entity).is_some();
+    // Optional mass override (W-Mass); presence = Manual mode, value = the kg. Absent
+    // = Auto (density-derived), and the Mass row is not shown.
+    let mass_ov = world.get::<MassOverride>(entity).map(|m| m.0);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -79,6 +82,8 @@ pub(crate) fn build_physics_info(
             offset: [0.0, 0.0],
             lock_x: false,
             lock_y: false,
+            mass_manual: false,
+            mass: 1.0,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -126,6 +131,10 @@ pub(crate) fn build_physics_info(
         offset: col.offset,
         lock_x,
         lock_y,
+        // Manual mode = the override is present; its value is shown in the Mass row.
+        // In Auto mode the Mass row is not shown, so its value is unused (0.0).
+        mass_manual: mass_ov.is_some(),
+        mass: mass_ov.unwrap_or(0.0),
     })
 }
 
@@ -145,7 +154,7 @@ pub(crate) fn apply_physics_edit(
 ) {
     use ph2d_physics_ecs::{
         BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
-        LockPositionY, LockRotation, RigidBody,
+        LockPositionY, LockRotation, MassOverride, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -155,6 +164,7 @@ pub(crate) fn apply_physics_edit(
     const LOCK_ROTATION: &str = "ph2d::physics::LockRotation";
     const LOCK_POSITION_X: &str = "ph2d::physics::LockPositionX";
     const LOCK_POSITION_Y: &str = "ph2d::physics::LockPositionY";
+    const MASS_OVERRIDE: &str = "ph2d::physics::MassOverride";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -350,6 +360,52 @@ pub(crate) fn apply_physics_edit(
         }
         return;
     }
+    if let PhysicsFieldEdit::MassMode(manual) = edit {
+        // Mass source (W-Mass): another RigidBody-level, optional presence-override
+        // component (`MassOverride`), handled here beside the constraints. Gated on a
+        // live collider: without one there is no shape to seed the mass from.
+        let Some(col) = world.get::<Collider>(entity).copied() else {
+            return;
+        };
+        if manual {
+            // Auto → Manual: seed the override with the current AUTO mass (density ×
+            // authored-shape area) so the mass does not jump when the toggle flips —
+            // Unity seeds the manual field from the auto value the same way. Exact for
+            // an unscaled body (the common case); a scaled body's true mass also
+            // scales by the area factor, but this is only a starting value the artist
+            // then tunes, and reading the exact scaled mass would re-derive rapier's
+            // own computation in a second place.
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                MASS_OVERRIDE,
+                &MassOverride(shape_mass(&col)),
+            );
+        } else {
+            // Manual → Auto: drop the override so the body weighs density × area again
+            // (the presence-override idiom — absent = the engine default).
+            queue_remove(queue, registry, entity_bits, MASS_OVERRIDE);
+        }
+        return;
+    }
+    if let PhysicsFieldEdit::Mass(v) = edit {
+        // The explicit mass value (Manual mode only). Clamp positive — a zero or
+        // negative mass is degenerate. Gated on the override already existing (the
+        // Mass row is painted only in Manual mode); a stale event must not attach an
+        // override while the body is in Auto mode.
+        if world.get::<MassOverride>(entity).is_none() {
+            return;
+        }
+        queue_set(
+            queue,
+            registry,
+            entity_bits,
+            MASS_OVERRIDE,
+            &MassOverride(v.max(1e-3)),
+        );
+        return;
+    }
 
     // Everything else edits the collider, so read the live one and write it
     // back changed — a partial write would drop the fields not being edited.
@@ -491,11 +547,38 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::Ccd(_)
         | PhysicsFieldEdit::LockRotation(_)
         | PhysicsFieldEdit::LockPositionX(_)
-        | PhysicsFieldEdit::LockPositionY(_) => {
+        | PhysicsFieldEdit::LockPositionY(_)
+        | PhysicsFieldEdit::MassMode(_)
+        | PhysicsFieldEdit::Mass(_) => {
             unreachable!("handled above")
         }
     }
     if next != cur {
         queue_set(queue, registry, entity_bits, COLLIDER, &next);
     }
+}
+
+/// The auto mass of a collider — `density × area` of the AUTHORED shape — used to
+/// seed the Manual-mode override so the mass does not jump when the artist flips to
+/// Manual (W-Mass).
+///
+/// It computes the same `mass = density × area` rapier does for auto mass, from the
+/// closed-form area of each shape. It ignores world scale (the seed is for the
+/// common unscaled body and is only a starting value); the true scaled mass would
+/// mean re-deriving rapier's computation in a second place. The angular inertia is
+/// rapier's concern once the mass is set.
+fn shape_mass(col: &ph2d_physics_ecs::Collider) -> f32 {
+    use ph2d_physics_ecs::ColliderShape;
+    use std::f32::consts::PI;
+    let area = match col.shape {
+        ColliderShape::Ball { radius } => PI * radius * radius,
+        ColliderShape::Cuboid { half_x, half_y } => 4.0 * half_x * half_y,
+        // A capsule: the straight rectangle (2·radius wide, 2·half_height tall) plus
+        // the two caps, which together form one full disc of the cap radius.
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => 4.0 * half_height * radius + PI * radius * radius,
+    };
+    (col.density * area).max(1e-3)
 }

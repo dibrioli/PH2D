@@ -375,3 +375,29 @@ impl SimComponent for LockPositionX {}
 pub struct LockPositionY;
 
 impl SimComponent for LockPositionY {}
+
+/// **Explicit mass override — an optional VALUED presence-override component (W-Mass).**
+///
+/// Absent (the common case) means *auto mass*: the body weighs `density × area`,
+/// exactly what every body did before this existed. Present, its `f32` is the mass
+/// in **kilograms**, set directly on the collider (`ColliderBuilder::mass`) and
+/// ignoring density — Unity's manual `Rigidbody2D.mass`, the opposite of
+/// `useAutoMass`. The angular inertia is still derived from the shape, so a heavy
+/// crate rotates like a crate.
+///
+/// **Why a valued component and not a `Collider` field** (which would append and
+/// bump the schema): it is the same idiom as [`GravityScale`] — an *override* that
+/// most bodies do not carry, so absent = the engine default and a project file
+/// stays free of the no-op. Being a newly registered component keyed by its own
+/// type-name hash, it needs **no `PROJECT_SCHEMA` bump** (the marker precedent).
+///
+/// **Density and mass are the SAME quantity by two roads** (`mass = density × area`),
+/// so the Inspector never shows both live: absent = density is the source (the
+/// Density row), present = mass is (the Mass row) — the Auto/Manual mode. It rides
+/// the `BodyDesc` the world rebuilds from, so a rewind re-arms it, and it only bites
+/// a Dynamic body (a Static/Kinematic one has infinite mass — rapier ignores both).
+/// Config, never live solver state, like every component in this file.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MassOverride(pub f32);
+
+impl SimComponent for MassOverride {}

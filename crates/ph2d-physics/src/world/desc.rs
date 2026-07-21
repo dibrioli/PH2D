@@ -150,4 +150,22 @@ pub struct BodyDesc {
     ///
     /// [`lock_x`]: BodyDesc::lock_x
     pub lock_y: bool,
+    /// **Explicit mass override** (Unity's manual `Rigidbody2D.mass`, the opposite
+    /// of `useAutoMass`). `None` (the default, and what every body did before this
+    /// existed) is *auto mass*: the mass is `density × area`, computed by rapier
+    /// from the collider — `.density(desc.density)`. `Some(m)` sets the mass to `m`
+    /// kg directly with `ColliderBuilder::mass(m)`, ignoring density; the angular
+    /// inertia is still derived from the shape (so a heavy box rotates like a box).
+    ///
+    /// It is a spawn-time collider mass-property, so — like the flags around it — it
+    /// rides the `BodyDesc` the world rebuilds from and a rewind re-arms it. It only
+    /// bites a Dynamic body: a Static/Kinematic body has infinite mass and rapier
+    /// ignores both density and mass, which is why the §11 control is Dynamic-only.
+    ///
+    /// The authored source is the optional `MassOverride` component in
+    /// `ph2d-physics-ecs`; the bridge folds it in here. Density and mass are the
+    /// SAME quantity by two roads (mass = density × area), so exactly one is ever
+    /// live — `None` means density is the source, `Some` means it is not (the
+    /// Auto/Manual mode the Inspector exposes, never both at once).
+    pub mass_override: Option<f32>,
 }

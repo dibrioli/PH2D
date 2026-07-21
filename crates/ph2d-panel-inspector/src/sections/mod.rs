@@ -39,6 +39,7 @@ mod joint;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;
+mod physics_rows;
 mod render_source;
 mod rows;
 mod sampling;

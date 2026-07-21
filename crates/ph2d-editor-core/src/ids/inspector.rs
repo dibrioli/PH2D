@@ -291,6 +291,18 @@ pub const INSP_PHYS_LOCKY: [NodeId; 2] = [
     hash_node_id("insp_phys_locky_free"),
     hash_node_id("insp_phys_locky_locked"),
 ];
+/// §11 Mass-source toggle — group id + the two options (Auto / Manual) (W-Mass).
+/// Auto = mass is density×area (the Density row); Manual = an explicit mass in kg
+/// (the Mass row). Dynamic-only, reusing the same paint/populate/event path as the
+/// other two-segment controls. Density and mass are the same quantity by two roads,
+/// so only one row is ever shown.
+pub const INSP_LIVE_PHYSICS_MASSMODE: NodeId = hash_node_id("insp_live_physics_massmode");
+pub const INSP_PHYS_MASSMODE: [NodeId; 2] = [
+    hash_node_id("insp_phys_massmode_auto"),
+    hash_node_id("insp_phys_massmode_manual"),
+];
+/// §11 Mass (kg) NumberInput — the live control in Manual mode (W-Mass).
+pub const INSP_PHYS_MASS: NodeId = hash_node_id("insp_phys_mass");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

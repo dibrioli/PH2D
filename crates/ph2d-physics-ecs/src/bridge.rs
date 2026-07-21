@@ -519,6 +519,10 @@ impl PhysicsBridge {
             // re-arms it exactly like the rotation lock above.
             let lock_x = world.get::<crate::LockPositionX>(e).is_some();
             let lock_y = world.get::<crate::LockPositionY>(e).is_some();
+            // Optional MassOverride (W-Mass); its VALUE is the explicit mass in kg
+            // (`None` = auto, density-derived). Folded into the `BodyDesc` so a
+            // rewind re-arms it, exactly like gravity scale.
+            let mass_override = world.get::<crate::MassOverride>(e).map(|m| m.0);
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -530,6 +534,7 @@ impl PhysicsBridge {
                 lock_rotation,
                 lock_x,
                 lock_y,
+                mass_override,
             );
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),

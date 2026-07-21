@@ -33,6 +33,7 @@ fn box_of(side: f32) -> BodyDesc {
         lock_rotation: false,
         lock_x: false,
         lock_y: false,
+        mass_override: None,
         offset: [0.0, 0.0],
     }
 }

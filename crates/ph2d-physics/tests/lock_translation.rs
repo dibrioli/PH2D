@@ -43,6 +43,7 @@ fn pose_after(lock_x: bool, lock_y: bool, linvel: [f32; 2], gravity: [f32; 2]) -
         offset: [0.0, 0.0],
         lock_x,
         lock_y,
+        mass_override: None,
     });
     for _ in 0..30 {
         w.step();

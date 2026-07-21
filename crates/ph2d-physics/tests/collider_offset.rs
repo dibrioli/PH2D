@@ -40,6 +40,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         lock_rotation: false,
         lock_x: false,
         lock_y: false,
+        mass_override: None,
         offset: [0.0, 0.0],
     });
     let body = w.spawn_body(BodyDesc {
@@ -60,6 +61,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         lock_rotation: false,
         lock_x: false,
         lock_y: false,
+        mass_override: None,
         offset,
     });
     for _ in 0..300 {

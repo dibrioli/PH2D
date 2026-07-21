@@ -21,6 +21,7 @@
 //! | `16`| W-LockRot| FREEZE ROTATION: two boxes on mirror slopes, the free one tumbles, the locked one stays upright |
 //! | `17`| W-Offset| COLLIDER OFFSET: two characters, one with a foot-offset collider stands, the centred one sinks |
 //! | `18`| W-LockPos| FREEZE POSITION: three launched balls — free arcs, X-locked drops straight, Y-locked glides level |
+//! | `19`| W-Mass| MANUAL MASS: a heavy (30 kg override) ball plows through a row of pins; the same-size light ball stops |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -88,6 +89,7 @@ impl crate::App {
             "16" => self.physics_smoke_lock_rotation(),
             "17" => self.physics_smoke_offset(),
             "18" => self.physics_smoke_freeze_position(),
+            "19" => self.physics_smoke_mass(),
             _ => self.physics_smoke_drop(),
         }
 

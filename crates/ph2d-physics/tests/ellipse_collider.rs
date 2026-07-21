@@ -41,6 +41,7 @@ fn an_ellipse_collider_has_the_authored_half_extents() {
         lock_rotation: false,
         lock_x: false,
         lock_y: false,
+        mass_override: None,
         offset: [0.0, 0.0],
     });
 

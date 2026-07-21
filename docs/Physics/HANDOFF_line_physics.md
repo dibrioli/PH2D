@@ -2245,3 +2245,48 @@ altura constante porque gravidade não a puxa).
 
 **Aberto (deliberado):** freeze de **rotação + posição combinados** já funciona (os 3 marcadores ORam no
 mesmo bitmask); nada mais pede. `lock_z`/2.5D fora de escopo (motor 2D).
+
+---
+
+## §W-Mass — MASSA MANUAL por corpo (2026-07-20, smoke `=19`)
+
+**O artista pensa em MASSA, não em densidade.** Até aqui a massa era `densidade × área` — quem quer "esta
+caixa pesa 10 kg" tinha de calcular a densidade. Agora um toggle **Mass: Auto | Manual** no §11 (o
+`useAutoMass` do Unity): Auto mostra a row **Density**, Manual mostra **Mass (kg)**.
+
+⚠️ **Densidade e massa são a MESMA grandeza por dois caminhos** (`massa = densidade × área`), então **só uma
+row é viva por vez** — mostrar as duas seria o bug "duas portas pra uma grandeza". O toggle escolhe qual.
+Static/Kinematic (massa infinita, rapier ignora as duas) mantêm a row Density simples, sem toggle (Dynamic-only).
+
+**Componente VALUADO opcional `MassOverride(f32)`** (idioma do `GravityScale`, não marcador — carrega um
+valor): ausente = Auto, presente = Manual. Registro **9→10**, blob-key, **sem bump** (fica **29**). `BodyDesc.
+mass_override: Option<f32>` → `world.rs` ramifica `ColliderBuilder::mass(m)` (kg, ignora densidade; inércia
+angular ainda derivada da forma) vs `.density(d)` (auto, byte-idêntico ao de antes). Rida no recipe pro
+rewind re-armar. **Auto→Manual semeia com a massa auto** (`shape_mass` = densidade × área da forma autorada,
+`inspector_physics.rs`) pra não SALTAR ao trocar — exato pra corpo sem escala (o comum); um corpo escalado
+tem a massa real também escalada, mas é só o valor inicial que o artista ajusta (ler a massa exata seria
+re-derivar a conta do rapier num 2º lugar). ~27 fixtures de `ph2d-physics/tests` ganharam `mass_override: None`.
+
+**Gates (red-first + mutação):** wrapper `a_manual_mass_overrides_the_density_derived_mass` (lê `RigidBody::
+mass()` cru: auto ≈ 0,785 = π·0,25, manual == 10,0; mut world sempre `.density` → RED) +
+`a_heavier_body_dominates_a_head_on_collision` (massa muda COMPORTAMENTO, não só um readout — colisão de
+momento, o pesado atravessa o leve; gravidade esconderia, todos caem a `g`). ECS `the_bridge_folds_a_mass_
+override_and_a_rewind_preserves_it` (bola pesada `MassOverride(20)` ara a fila de leves e passa de x=1,5; mut
+bridge ignora o componente → vira leve, para em ~1,25 = RED; + controle auto-massa + rewind). Seam
+`mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only` (Auto pinta Density e NÃO Mass; Manual pinta
+Mass e NÃO Density — presença E ausência; Static = Density sem toggle) + no sweep de `every_segmented_option`.
+Persistência round-trip (`MassOverride(7.5)`) · registro **9→10** · c9 **61 corpos** (uma bola pesada).
+
+**LOC:** `physics.rs` (painel) bateu **609 > 600** (o cap do painel, que o `architecture_workspace_file_loc_cap`
+NÃO cobre — `ph2d-panel-*` é do `architecture_panel_loc_cap`) → split: a helper das rows de massa foi pro
+irmão **`sections/physics_rows.rs`** (recebe `is_dynamic`/`mass_manual` resolvidos, então não compartilha
+const privada). `physics.rs` 543.
+
+**Ids/consts:** `INSP_LIVE_PHYSICS_MASSMODE` (group) + `INSP_PHYS_MASSMODE: [NodeId;2]` (Auto/Manual) +
+`INSP_PHYS_MASS` (NumberInput) · `ph2d::physics::MassOverride` · `BodyDesc.mass_override`. `populate.rs`
+registra o group + a range de MASS (min 0.001 — massa deve ser positiva). `PROJECT_SCHEMA` fica **29**. Smoke
+`=19` (2 lanes: bola CYAN pesada — Manual 30 kg — ara a fila de 5 pinos e segue; a ORANGE do mesmo tamanho
+mas auto-massa PARA no 1º pino; flipe a pesada pra Auto e ela para igual).
+
+**Aberto (deliberado):** damping/drag por-corpo (precisa de modo de combinação com o global — `damp_mode` do
+Godot) · dominance/collision-priority (nicho). Nada pede.

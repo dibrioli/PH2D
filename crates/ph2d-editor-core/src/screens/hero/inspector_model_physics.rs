@@ -115,6 +115,18 @@ pub struct InspectorPhysicsInfo {
     /// a floating platform. Mirrors the optional `LockPositionY` marker. The two
     /// axes are independent. Dynamic-only.
     pub lock_y: bool,
+    /// Mass source (Unity's `useAutoMass`): `false` = Auto (the mass is `density ×
+    /// area`, and the section shows the Density row); `true` = Manual (the mass is
+    /// [`mass`](InspectorPhysicsInfo::mass) kg, and the section shows the Mass row).
+    /// Mirrors the PRESENCE of the optional `MassOverride` component. Density and
+    /// mass are the same quantity by two roads, so exactly one is ever live.
+    /// Dynamic-only — a Static/Kinematic body has infinite mass.
+    pub mass_manual: bool,
+    /// The explicit mass in kg, shown in the Mass row when
+    /// [`mass_manual`](InspectorPhysicsInfo::mass_manual) is `true` (the
+    /// `MassOverride` component's value). Meaningless in Auto mode, where Density is
+    /// the live control instead.
+    pub mass: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -179,6 +191,13 @@ pub enum PhysicsFieldEdit {
     /// Freeze-Position-Y toggle. Attaches/detaches the optional `LockPositionY`
     /// marker.
     LockPositionY(bool),
+    /// Mass-source toggle (Auto | Manual). `true` (Manual) attaches a `MassOverride`
+    /// seeded from the current auto mass; `false` (Auto) detaches it so the body
+    /// weighs `density × area` again — the presence-override idiom.
+    MassMode(bool),
+    /// The explicit mass, kg (only meaningful in Manual mode). Updates the
+    /// `MassOverride` component's value.
+    Mass(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

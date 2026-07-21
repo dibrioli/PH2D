@@ -198,8 +198,27 @@ pub(crate) fn paint_physics_section(
         );
     }
 
+    // Mass source (W-Mass). A Dynamic body's mass is either density-derived (Auto,
+    // mass = density × area) or an explicit override (Manual, kg) — the same quantity
+    // by two roads, so the Auto|Manual toggle picks which single row is live (Density
+    // vs Mass), never both. A Static/Kinematic body has infinite mass (rapier ignores
+    // both), so it keeps the plain Density row without the toggle — a control that
+    // cannot do anything is worse than a missing one, but this preserves today's UI
+    // for those kinds rather than dropping a row.
+    yy = super::physics_rows::paint_mass_source(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        info.kind_tag == KIND_DYNAMIC,
+        info.mass_manual,
+    );
+
     for (label, id) in [
-        ("Density", ids::INSP_PHYS_DENSITY),
         ("Bounce", ids::INSP_PHYS_RESTITUTION),
         ("Friction", ids::INSP_PHYS_FRICTION),
     ] {

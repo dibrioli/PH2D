@@ -460,8 +460,16 @@ impl PhysicsWorld {
                     .unwrap_or_else(|| ColliderBuilder::ball(rx.max(ry).max(f32::MIN_POSITIVE)))
             }
         };
+        // Mass source: an explicit override (`Some(m)` → `.mass(m)`, kg, ignoring
+        // density — Unity's manual mass) or auto (`None` → `.density(d)`, mass =
+        // density × area, rapier's own default and byte-identical to before this
+        // existed). Exactly one is set, never both — they are the same quantity by
+        // two roads. The angular inertia is derived from the shape either way.
+        let shape = match desc.mass_override {
+            Some(m) => shape.mass(m),
+            None => shape.density(desc.density),
+        };
         let collider = shape
-            .density(desc.density)
             .restitution(desc.restitution)
             .friction(desc.friction)
             // A sensor passes through (no contact forces) but the narrow phase

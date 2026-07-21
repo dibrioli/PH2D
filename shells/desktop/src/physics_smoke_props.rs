@@ -558,4 +558,86 @@ impl crate::App {
              Rotation (scene 16)."
         );
     }
+
+    /// **Scene 19 (W-Mass).** Two lanes prove mass MATTERS. Each lane has a bowling
+    /// ball launched into a row of five light pins. The TOP lane's ball is HEAVY (a
+    /// manual `MassOverride` of 30 kg) — it plows straight through the whole row and
+    /// keeps going. The BOTTOM lane's ball is the SAME SIZE but auto-mass (density
+    /// ≈ light) — it stops dead at the first pin. Density and mass are the same
+    /// quantity by two roads, so an artist wanting a "heavy" object sets the mass
+    /// directly (Unity's manual mass) instead of reverse-engineering a density.
+    ///
+    /// Runs PAUSED at t=0. Play to launch both balls; select the heavy one and see
+    /// **Mass: Auto | Manual → 30 kg** in §11 (Dynamic-only). Flip it to Auto to
+    /// watch it stop like the light one.
+    pub(crate) fn physics_smoke_mass(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A ball at `(x, y)` with an optional launch and mass override.
+        let mut ball = |x: f32, y: f32, vx: f32, mass: Option<f32>, hue: [f32; 4], label: &str| {
+            let base = (
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], hue),
+                Name::new(label.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    // Low friction so the pins scatter cleanly rather than grip.
+                    friction: 0.2,
+                    ..Collider::default()
+                },
+                InitialVelocity {
+                    linvel: [vx, 0.0],
+                    angvel: 0.0,
+                },
+            );
+            match mass {
+                Some(m) => {
+                    world.spawn((base, ph2d_physics_ecs::MassOverride(m)));
+                }
+                None => {
+                    world.spawn(base);
+                }
+            };
+        };
+
+        // Two lanes at different heights. Each: a launcher ball on the left + five
+        // light pins in a row. The launcher differs only in mass.
+        for (lane_y, launcher_mass, hue, tag) in [
+            (2.2f32, Some(30.0), [0.4, 0.8, 0.95, 1.0], "Heavy"),
+            (0.6f32, None, [0.95, 0.55, 0.25, 1.0], "Light"),
+        ] {
+            ball(
+                -4.0,
+                lane_y,
+                5.0,
+                launcher_mass,
+                hue,
+                &format!("{tag} Ball"),
+            );
+            for i in 0..5u32 {
+                ball(
+                    i as f32 * 0.7,
+                    lane_y,
+                    0.0,
+                    None,
+                    [0.75, 0.75, 0.80, 1.0],
+                    &format!("{tag} Pin {i}"),
+                );
+            }
+        }
+
+        eprintln!(
+            "[physics-smoke 19] Paused at t=0. Press Play. Two lanes, each a ball launched into five \
+             light pins. TOP (CYAN) ball is HEAVY (manual Mass 30 kg): it plows through the whole row \
+             and keeps going. BOTTOM (ORANGE) ball is the SAME SIZE but auto-mass (light): it STOPS \
+             at the first pin. Select the heavy ball and see Mass: Auto | Manual = 30 kg in §11 \
+             (Dynamic-only); flip it to Auto to watch it stop like the light one. Mass is the same \
+             quantity as density by another road — you set the weight directly instead of a density."
+        );
+    }
 }

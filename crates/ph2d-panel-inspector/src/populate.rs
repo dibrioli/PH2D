@@ -141,6 +141,7 @@ fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_LOCKROT);
     register_button_ids(store, &ids::INSP_PHYS_LOCKX);
     register_button_ids(store, &ids::INSP_PHYS_LOCKY);
+    register_button_ids(store, &ids::INSP_PHYS_MASSMODE);
     register_button_ids(store, &ids::INSP_PHYS_BAKE_CH);
     register_button_ids(
         store,
@@ -172,6 +173,10 @@ fn populate_physics(store: &mut WidgetStore) {
         (ids::INSP_PHYS_LINVEL_Y, 0.0, -100.0, 100.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PHYS_ANGVEL, 0.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s
         (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),   // LITERAL-PX-OK: kg/m^2
+        // Explicit mass override (W-Mass), Manual mode. min 0.001 (mass must be
+        // positive — a zero-mass dynamic body is degenerate); the range bounds the
+        // DRAG only, the component/BodyDesc take any positive f32.
+        (ids::INSP_PHYS_MASS, 1.0, 0.001, 100000.0, 0.1), // LITERAL-PX-OK: kg
         (ids::INSP_PHYS_RESTITUTION, 0.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: bounciness is 0..=1 by physics
         (ids::INSP_PHYS_FRICTION, 0.5, 0.0, 10.0, 0.01), // LITERAL-PX-OK: Coulomb coefficient, >1 is legal
         // Per-body gravity multiplier (W8). The range bounds the DRAG only — the

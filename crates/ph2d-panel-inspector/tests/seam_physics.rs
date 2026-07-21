@@ -49,6 +49,8 @@ fn with_body() -> InspectorPhysicsInfo {
         offset: [0.0, 0.0],
         lock_x: false,
         lock_y: false,
+        mass_manual: false,
+        mass: 1.0,
     }
 }
 
@@ -192,6 +194,14 @@ fn every_segmented_option_reaches_the_bus() {
             &click(with_body(), id),
             PhysicsFieldEdit::LockPositionY(i == 1),
             &format!("Freeze-Position-Y toggle option {i}"),
+        );
+    }
+    // Auto | Manual (Mass source) — each side its own boolean.
+    for (i, &id) in ids::INSP_PHYS_MASSMODE.iter().enumerate() {
+        expect(
+            &click(with_body(), id),
+            PhysicsFieldEdit::MassMode(i == 1),
+            &format!("Mass-mode toggle option {i}"),
         );
     }
 }
@@ -718,6 +728,98 @@ fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
             );
         }
     }
+}
+
+/// **The Mass source is Auto|Manual, Dynamic-only, and the Mass row REPLACES the
+/// Density row in Manual mode** (W-Mass).
+///
+/// Density and mass are the same quantity by two roads, so exactly one is ever live
+/// — showing both would be the two-doors bug. This asserts: the toggle's presence
+/// per kind (Dynamic-only, since a Static/Kinematic body has infinite mass); that
+/// Auto paints Density and NOT Mass, while Manual paints Mass and NOT Density
+/// (presence AND absence — an absence gate alone stays green with nothing painted);
+/// and that the Mass commit reaches the bus.
+#[test]
+fn mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    let painted = |info: InspectorPhysicsInfo| {
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        let has = |id| rects.iter().any(|(n, _)| *n == id);
+        (
+            has(ids::INSP_PHYS_MASSMODE[0]),
+            has(ids::INSP_PHYS_DENSITY),
+            has(ids::INSP_PHYS_MASS),
+        )
+    };
+
+    // Dynamic Auto: the toggle + Density, NOT Mass.
+    assert_eq!(
+        painted(with_body()),
+        (true, true, false),
+        "Dynamic Auto should paint the Mass toggle + Density, not the Mass row"
+    );
+    // Dynamic Manual: the toggle + Mass, NOT Density (the swap).
+    assert_eq!(
+        painted(InspectorPhysicsInfo {
+            mass_manual: true,
+            ..with_body()
+        }),
+        (true, false, true),
+        "Dynamic Manual should paint the Mass toggle + Mass row, not Density (the two \
+         are one quantity, so exactly one is live)"
+    );
+    // Static: no toggle, plain Density (unchanged from before this existed).
+    assert_eq!(
+        painted(InspectorPhysicsInfo {
+            kind_tag: 1,
+            ..with_body()
+        }),
+        (false, true, false),
+        "a Static body should keep the plain Density row and NOT offer the Mass toggle"
+    );
+
+    // The toggle is honoured only for a Dynamic body.
+    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+        let info = InspectorPhysicsInfo {
+            kind_tag: tag,
+            ..with_body()
+        };
+        for &id in ids::INSP_PHYS_MASSMODE.iter() {
+            assert_eq!(
+                !click(info, id).is_empty(),
+                offered,
+                "kind_tag={tag}: the event handler disagrees with the painter about \
+                 whether the Mass toggle is offered"
+            );
+        }
+    }
+
+    // The Mass commit reaches the bus (Manual mode, Dynamic) with its own value.
+    expect(
+        &commit(
+            InspectorPhysicsInfo {
+                mass_manual: true,
+                ..with_body()
+            },
+            ids::INSP_PHYS_MASS,
+            12.5,
+        ),
+        PhysicsFieldEdit::Mass(12.5),
+        "Mass (kg)",
+    );
 }
 
 /// **The two Freeze-Position toggles are offered and honoured only for a Dynamic

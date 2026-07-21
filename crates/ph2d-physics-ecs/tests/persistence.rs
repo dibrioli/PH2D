@@ -16,7 +16,8 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
     BodyKind, Ccd, Collider, ColliderShape, GravityScale, InitialVelocity, LockPositionX,
-    LockPositionY, LockRotation, PhysicsBridge, RigidBody, register_physics_components,
+    LockPositionY, LockRotation, MassOverride, PhysicsBridge, RigidBody,
+    register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -82,6 +83,8 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         // independent zero-field presence flag that must survive the snapshot.
         LockPositionX,
         LockPositionY,
+        // The mass override (W-Mass): a VALUED component whose f32 must round-trip.
+        MassOverride(7.5),
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -148,6 +151,14 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert!(
         dst.world().get::<LockPositionY>(e).is_some(),
         "the LockPositionY marker did not survive the snapshot round trip (registered?)"
+    );
+    let mass = *dst
+        .world()
+        .get::<MassOverride>(e)
+        .expect("MassOverride survived the round trip (registered?)");
+    assert_eq!(
+        mass.0, 7.5,
+        "the mass override did not survive the snapshot round trip"
     );
 }
 

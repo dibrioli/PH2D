@@ -30,6 +30,7 @@ fn desc(shape: ShapeDesc, x: f32, y: f32, body_type: RigidBodyType) -> BodyDesc 
         lock_rotation: false,
         lock_x: false,
         lock_y: false,
+        mass_override: None,
         offset: [0.0, 0.0],
     }
 }

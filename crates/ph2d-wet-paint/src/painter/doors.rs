@@ -194,6 +194,23 @@ impl Engine {
         }
     }
 
+    /// Seed the active layer's PAPER plane from the host's own paper law —
+    /// `f(px, py)` in canvas pixels (cell − 1; the pad ring asks for −1 / w,
+    /// which a procedural or clamped sampler answers naturally). Covers the
+    /// exact index domain [`crate::paper::bake_paper`] covers, pad ring
+    /// included; values clamp to the tooth range 0..1. Not calling it keeps
+    /// the port's own preset tile, byte-identical.
+    pub fn seed_paper_with(&mut self, f: &mut dyn FnMut(i64, i64) -> f64) {
+        let g = &mut self.layers[self.active_layer].grid;
+        for y in 0..g.rows {
+            let mut i = y * g.s;
+            for x in 0..g.s {
+                g.paper[i] = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
+                i += 1;
+            }
+        }
+    }
+
     /// End a real-dab stroke: every lane's tip remainder is dropped by
     /// design, mirroring the tail of the engine's `end_stroke`. The lane pool
     /// stays allocated for the next stroke of the session.

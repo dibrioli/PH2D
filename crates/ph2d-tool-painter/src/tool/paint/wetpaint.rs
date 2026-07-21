@@ -133,7 +133,8 @@ impl PainterTool {
         // eraser — this early-out only covers the guard killing the session
         // between the route decision and here (the batch then does nothing).
         let erasing = self.paint.eraser;
-        if self.paint.wetpaint.session.is_none() {
+        let fresh = self.paint.wetpaint.session.is_none();
+        if fresh {
             if erasing {
                 return;
             }
@@ -152,6 +153,34 @@ impl PainterTool {
         // checker's eyes); restored before the composite.
         let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
         let sess = &mut taken;
+        // ── The artist's PAPER drives the engine's tooth (W2.7) ────────────
+        // Seeded ONCE, at session birth: paper is SUBSTRATE — it does not
+        // change under live water; a new session reads the current slot. The
+        // law is the painter's own canvas-fixed paper sampling (the NEUTRAL
+        // door `sample_tiled_rot_wrapped`, the same law the watercolor
+        // substrate reads — one paper, never a second system). No slot armed
+        // = the port's preset tile, byte-identical. Known v1 gap: the bitmap
+        // Size seam-snap under sprite Tiling (`snap_slot_size`) is not
+        // applied — procedurals wrap exactly; a bitmap paper may seam.
+        if fresh && brush.paper.is_active() {
+            let paper_tex = brush.paper;
+            let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
+            let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
+            let period = [
+                if self.paint.tiling[0] { w as f32 } else { 0.0 },
+                if self.paint.tiling[1] { h as f32 } else { 0.0 },
+            ];
+            sess.engine.seed_paper_with(&mut |px, py| {
+                f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                    &paper_tex,
+                    px,
+                    py,
+                    paper_img.as_ref(),
+                    rot,
+                    period,
+                ))
+            });
+        }
         // ── The dab's SILHOUETTE — the painter's, not the engine's ─────────
         // `silhouette_at` is the single source of the dab's shape (falloff ×
         // Shape image/procedural × flatten/rotate footprint); the engine's

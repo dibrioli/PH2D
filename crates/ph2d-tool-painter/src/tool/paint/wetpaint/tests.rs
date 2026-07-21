@@ -570,6 +570,83 @@ fn alpha_lock_pins_the_wet_silhouette_to_the_existing_paint() {
     assert!(painted_opaque, "the opaque half took no colour at all");
 }
 
+/// SEAM (W2.7): the artist's PAPER drives the wet tooth — a Checker paper
+/// slot seeds the engine's paper plane at session birth, and the deposit's
+/// paper gate (tooth valleys reject pigment) follows MY pattern instead of
+/// the port's preset. The control run (no slot) shows no alignment with
+/// that pattern, so the contrast is the seeding's doing. Mutation that
+/// bleeds it: dropping the `seed_paper_with` call (the grained ratio
+/// collapses to the control's).
+#[test]
+fn the_artists_paper_drives_the_wet_tooth() {
+    use ph2d_painter_brush::TextureKind;
+    let arm = |t: &mut PainterTool| {
+        t.paint.brush.paper.kind = TextureKind::Checker;
+        t.paint.brush.paper.size = [8.0, 8.0]; // ~16 px checker cells
+        for slot in &mut t.paint.brush_by_mode {
+            slot.paper.kind = TextureKind::Checker;
+            slot.paper.size = [8.0, 8.0];
+        }
+    };
+    let run = |papered: bool| -> Vec<f32> {
+        let mut t = tool_in_mode("wetpaint");
+        if papered {
+            arm(&mut t);
+        }
+        stroke_across(&mut t);
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        sess.engine.layers[0].grid.susp.clone()
+    };
+    let control = run(false);
+    let papered = run(true);
+    // Valley/peak sets from the SAME sampler the seed uses — the reference
+    // pattern, not the function under test (which is the seeding + the
+    // deposit gate). Restricted to cells the CONTROL stroke reaches.
+    let paper_tex = {
+        let mut t = tool_in_mode("wetpaint");
+        arm(&mut t);
+        t.paint.brush.paper
+    };
+    let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
+    let g_s = 202usize; // grid stride = w + 2 (pad ring)
+    let ratio_of = |susp: &[f32]| -> f64 {
+        let (mut valley, mut peak) = (0.0f64, 0.0f64);
+        for cy in 1..=120usize {
+            for cx in 1..=200usize {
+                let m = f64::from(susp[cx + cy * g_s]);
+                if control[cx + cy * g_s] <= 1.0 {
+                    continue; // outside the stroke's reach
+                }
+                let s = ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                    &paper_tex,
+                    cx as i64 - 1,
+                    cy as i64 - 1,
+                    None,
+                    rot,
+                    [0.0, 0.0],
+                );
+                if s < 0.5 {
+                    valley += m;
+                } else {
+                    peak += m;
+                }
+            }
+        }
+        valley / peak.max(1.0)
+    };
+    let r_control = ratio_of(&control);
+    let r_papered = ratio_of(&papered);
+    assert!(
+        r_control > 0.5,
+        "fixture: the preset run must NOT align with my checker (ratio {r_control:.2})"
+    );
+    assert!(
+        r_papered < r_control * 0.6,
+        "the paper never reached the tooth — no valley rejection \
+         (papered {r_papered:.2} vs control {r_control:.2})"
+    );
+}
+
 /// SEAM (W2.6): the wet ERASER lifts the FLUID and the water survives — the
 /// "eraser" wire inside Wet Paint keeps the mode (leaving would BAKE the
 /// painting being corrected), and the dabs route to the engine's

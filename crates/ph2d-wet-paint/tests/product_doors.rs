@@ -166,6 +166,34 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
     util::sweep_nan(e.active_grid(), "post-direct-stroke sim");
 }
 
+/// W2.7's engine half: `seed_paper_with` covers the EXACT index domain
+/// `bake_paper` covers — pad ring included — and clamps to the tooth range.
+/// The default preset is non-constant (the positive control: seeding really
+/// replaced something). Mutation that bleeds it: skipping the pad ring / a
+/// row (some cell keeps the preset value ≠ 0.7).
+#[test]
+fn the_hosts_paper_seed_covers_the_whole_padded_plane() {
+    let mut e = Engine::new(120, 90);
+    {
+        let g = e.active_grid();
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for &v in &g.paper {
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+        assert!(
+            hi > lo,
+            "the preset paper must be non-constant ({lo}..{hi})"
+        );
+    }
+    e.seed_paper_with(&mut |_, _| 0.7);
+    let g = e.active_grid();
+    assert!(
+        g.paper.iter().all(|&v| v == 0.7),
+        "a cell kept the preset — the seed missed part of the plane"
+    );
+}
+
 /// W2.4's engine half: a host `grain` closure REPLACES the bristle sample on
 /// the shaped path — it does not multiply with it. Striped grain (odd
 /// columns 0) ⇒ odd columns get EXACTLY zero deposit; the bristled control

@@ -424,6 +424,152 @@ fn the_artists_grain_textures_the_wet_deposit() {
     );
 }
 
+/// SEAM (W2.5): the SELECTION confines the wet deposit — the fluid may flow
+/// wherever the sim takes it, but the canvas write keep-lerps every
+/// deselected texel back to the frozen base, and that holds through the
+/// TICKS too (the sim keeps compositing after pen-up; a pen-up-only gate
+/// would leak as the water spreads). Mutation that bleeds it: dropping
+/// `gsel` from the `splat_keep` call in `wetpaint_composite`.
+#[test]
+fn the_selection_confines_the_wet_deposit() {
+    let mut t = tool_in_mode("wetpaint");
+    t.set_rect_selection(0, 0, 100, 120); // the LEFT half
+    assert!(t.selection_restricts_paint(), "fixture: selection is live");
+    stroke_across(&mut t); // crosses the border to x = 170
+    for _ in 0..20 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    // The WATER must survive the gates — before the wet route bypassed the
+    // outer snapshot/restore wrapper, `restore_deselected_region`'s
+    // `Arc::make_mut` re-seated the canvas Arc and the identity guard
+    // killed the session every batch (the mode's whole point, gone, with
+    // every pixel-assert below still green).
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "the wet session died under a selection"
+    );
+    let mut painted_inside = false;
+    for y in 0..120usize {
+        for x in 0..200usize {
+            let o = (y * 200 + x) * 4;
+            let px = &t.canvas_rgba[o..o + 4];
+            if x >= 106 {
+                assert_eq!(px, &[255u8; 4], "deselected texel ({x},{y}) took wet paint");
+            } else if x < 100 && px != [255u8; 4] {
+                painted_inside = true;
+            }
+        }
+    }
+    assert!(painted_inside, "the selected half took no paint at all");
+}
+
+/// SEAM (W2.5): the protection MASK freezes its texels under wet paint —
+/// same keep-lerp, other gate. Mutation that bleeds it: dropping `gprot`
+/// from the `splat_keep` call (the selection gate stays green — each wire
+/// has its own gate).
+#[test]
+fn the_protection_mask_freezes_its_texels_under_wet_paint() {
+    let mut t = tool_in_mode("wetpaint");
+    t.ensure_mask_scratch();
+    assert!(t.mask_protection_active(), "fixture: protection is live");
+    // Blacken (protect) the RIGHT half of the scratch: luminance 0 = frozen.
+    {
+        let scratch = Arc::make_mut(&mut t.paint.mask_scratch_rgba);
+        for y in 0..120usize {
+            for x in 100..200usize {
+                let o = (y * 200 + x) * 4;
+                scratch[o] = 0;
+                scratch[o + 1] = 0;
+                scratch[o + 2] = 0;
+            }
+        }
+    }
+    stroke_across(&mut t);
+    for _ in 0..20 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    // Same survival law as the selection gate: the protection restore used
+    // to kill the session through the identity guard.
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "the wet session died under the protection mask"
+    );
+    let mut painted_free = false;
+    for y in 0..120usize {
+        for x in 0..200usize {
+            let o = (y * 200 + x) * 4;
+            let px = &t.canvas_rgba[o..o + 4];
+            if x >= 100 {
+                assert_eq!(px, &[255u8; 4], "protected texel ({x},{y}) took wet paint");
+            } else if px != [255u8; 4] {
+                painted_free = true;
+            }
+        }
+    }
+    assert!(painted_free, "the unprotected half took no paint at all");
+}
+
+/// SEAM (W2.5): ALPHA-LOCK pins the wet deposit to existing paint — the
+/// layer's α is frozen to the session base, so a transparent texel never
+/// grows a silhouette however far the water flows, while opaque texels
+/// still take colour. Mutation that bleeds it: dropping the α pin in
+/// `wetpaint_composite` (the α reference chain in `wet_splat_gates` is the
+/// same wire — either cut lands here).
+#[test]
+fn alpha_lock_pins_the_wet_silhouette_to_the_existing_paint() {
+    // Left half opaque white, right half fully transparent.
+    let mut src = vec![0u8; 200 * 120 * 4];
+    for y in 0..120usize {
+        for x in 0..100usize {
+            let o = (y * 200 + x) * 4;
+            src[o..o + 4].copy_from_slice(&[255, 255, 255, 255]);
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, 200, 120);
+    let b = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.8, 0.1, 0.1],
+        space_attenuation: false,
+        ..Default::default()
+    };
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.set_paint_tool_mode("wetpaint");
+    let active = t.layers.active().expect("active layer");
+    t.layers.get_mut(active).expect("layer").alpha_locked = true;
+    stroke_across(&mut t);
+    for _ in 0..20 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    let (mut painted_opaque, mut alpha_kept) = (false, true);
+    for y in 0..120usize {
+        for x in 0..200usize {
+            let o = (y * 200 + x) * 4;
+            let px = &t.canvas_rgba[o..o + 4];
+            if x >= 100 {
+                if px[3] != 0 {
+                    alpha_kept = false;
+                }
+            } else {
+                assert_eq!(px[3], 255, "opaque texel ({x},{y}) lost its α");
+                if px[..3] != [255u8; 3] {
+                    painted_opaque = true;
+                }
+            }
+        }
+    }
+    assert!(
+        alpha_kept,
+        "a transparent texel grew a silhouette under alpha-lock"
+    );
+    assert!(painted_opaque, "the opaque half took no colour at all");
+}
+
 /// Entering Wet Paint must NOT take the Impasto section away (Enio, W1
 /// smoke: "uma das regras era não afetar o que já existia") — the section
 /// hosts the ten-tool list and the canvas's Lighting. And the radio must

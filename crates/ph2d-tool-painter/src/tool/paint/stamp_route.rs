@@ -89,6 +89,19 @@ impl PainterTool {
             self.accumulate_wet_color(wet_dabs);
             return;
         }
+        // Wet Paint enforces the canvas gates ITSELF — keep-lerp toward the
+        // frozen base in `wetpaint_composite` (`splat_keep`, the watercolor
+        // stance above). The snapshot/restore wrapper below would not only be
+        // redundant, it KILLS the wet session every batch: `restore_*` runs
+        // `Arc::make_mut` on a canvas whose Arc the session also holds
+        // (refcount 2 ⇒ clone ⇒ new pointer), and the canvas-identity guard
+        // reads the new Arc as a foreign mutation — under a selection the
+        // water would never live past one batch, which is the mode's whole
+        // point. Found by a surviving mutation (W2.5).
+        if self.paint.paint_mode == PaintMode::WetPaint {
+            self.stamp_dabs_routed(dabs);
+            return;
+        }
         // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)
         // and the Selection mask (restrict paint to the selected region, ADR-0103). Snapshot the footprint
         // once, stamp, then revert whatever each active gate protects.

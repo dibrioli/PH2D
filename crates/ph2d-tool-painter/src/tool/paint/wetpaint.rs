@@ -68,7 +68,9 @@ pub(super) struct WetSession {
     /// The engine (grid + sim + tuning), sized to the layer canvas.
     pub(super) engine: Engine,
     /// The canvas frozen at session start — every composite renders over THIS.
-    base: Arc<Vec<u8>>,
+    /// `pub(super)` so [`PainterTool::wet_splat_gates`] can serve it as the
+    /// alpha-lock's α reference (the frozen base the composite reads).
+    pub(super) base: Arc<Vec<u8>>,
     /// The exact `canvas_rgba` Arc OUR last composite produced (or the one the
     /// session started from). A mismatch = foreign mutation = session over.
     canvas: Arc<Vec<u8>>,
@@ -355,9 +357,18 @@ impl PainterTool {
 
     /// Composite the engine's dirty rect: pigment (straight alpha) OVER the
     /// frozen base, written into `canvas_rgba`, preview marked.
+    ///
+    /// Selection / protection / alpha-lock (W2.5) are enforced HERE, at the
+    /// single place the module writes the canvas: the fluid flows wherever
+    /// the SIM takes it, and the gated texels keep-lerp back to the frozen
+    /// base (`splat_keep` — the watercolor composite's exact law, a hard
+    /// guarantee independent of where the water reached). Alpha-lock pins
+    /// the layer's α to the frozen base (colour deposits into existing
+    /// paint; the silhouette never moves). All gates off = byte-identical.
     fn wetpaint_composite(&mut self) {
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
+        let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -388,12 +399,18 @@ impl PainterTool {
         render_pigment_only_region(&layers, cx0, cy0, cx1, cy1, &mut sess.pigment);
         drop(layers);
         // Straight-alpha OVER the frozen base, cell (cx,cy) → pixel (cx-1,cy-1).
+        let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
+        let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
+        let gate_on = gsel.is_some() || gprot.is_some();
+        let alock_on = gate_alock.is_some();
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
         for cy in cy0..=cy1 {
             for cx in cx0..=cx1 {
                 let o = ((cy - 1) * w + (cx - 1)) * 4;
                 let pa = sess.pigment[o + 3] as f32 / 255.0;
                 if pa <= 0.0 {
+                    // Base verbatim — the gates keep-lerp TOWARD the base, so
+                    // they are exact no-ops on this branch.
                     canvas[o..o + 4].copy_from_slice(&sess.base[o..o + 4]);
                     continue;
                 }
@@ -405,6 +422,24 @@ impl PainterTool {
                     canvas[o + ch] = ((pc * pa + bc * ba * (1.0 - pa)) / oa).round() as u8;
                 }
                 canvas[o + 3] = (oa * 255.0).round() as u8;
+                if gate_on {
+                    let keep = super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
+                    if keep < 1.0 {
+                        for c in 0..4 {
+                            let painted = f32::from(canvas[o + c]);
+                            let orig = f32::from(sess.base[o + c]);
+                            canvas[o + c] = (painted * keep + orig * (1.0 - keep))
+                                .round()
+                                .clamp(0.0, 255.0)
+                                as u8;
+                        }
+                    }
+                }
+                if alock_on {
+                    // Alpha-lock: the α reference IS `sess.base` (the gate's
+                    // buffer, served by `wet_splat_gates`' wet-session arm).
+                    canvas[o + 3] = sess.base[o + 3];
+                }
             }
         }
         // Re-arm the guard with the Arc our own make_mut may have re-seated.

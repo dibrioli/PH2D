@@ -197,14 +197,19 @@ impl PainterTool {
         let prot = self
             .mask_protection_active()
             .then(|| Arc::clone(&self.paint.mask_scratch_rgba));
-        // Alpha-lock (§2.10, doc 13 #8): gate by the FROZEN base the composite reads — the session base
-        // during a wet session, else the per-stroke base — so the α reference matches the composite's.
+        // Alpha-lock (§2.10, doc 13 #8): gate by the FROZEN base the composite reads — the WET PAINT
+        // session base when that session is live (W2.5; the OFF contract keeps it `None` everywhere
+        // else), else the watercolor session base, else the per-stroke base — so the α reference
+        // always matches the composite that will apply it.
         let alock = self
             .active_alpha_locked()
             .then(|| {
                 self.paint
-                    .wet_session_base
-                    .clone()
+                    .wetpaint
+                    .session
+                    .as_ref()
+                    .map(|s| Arc::clone(&s.base))
+                    .or_else(|| self.paint.wet_session_base.clone())
                     .or_else(|| self.paint.watercolor_base.clone())
             })
             .flatten();

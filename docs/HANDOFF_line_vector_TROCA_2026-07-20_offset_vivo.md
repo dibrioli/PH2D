@@ -11,9 +11,38 @@
 
 ---
 
-## §1 — O bug do Offset ao vivo: **FECHADO** (`6831b43d`, 2026-07-20) — leia antes de re-litigar
+## §1 — O bug do Offset ao vivo: **FECHADO em DUAS metades** (`6831b43d` fantasma + `ada45fac` lei da forma, 2026-07-20) — leia antes de re-litigar
 
-Report do Enio: *"mesmos problemas: queda de fps, muda em tempo real para round mas não
+> **⬛ A 5ª rodada fechou o caso (`ada45fac`): o dial era o bug.** Depois do revert do memo
+> o Enio reportou *"Não resolveu! se selecionar Round, não consegue mudar"* — **num build
+> cujo código de produto era byte-idêntico ao que ele tinha aprovado** ("Funciona
+> corretamente"). A janela de retune sempre funcionou (smoke 18: undo andando, verts
+> mudando, janela viva). O que falhava: o slider mapeava **±4 unidades de MUNDO sobre
+> ~104 px** numa forma de 2,4 — o gesto natural SATURAVA sempre, e **os dois extremos são
+> regimes join-inertes**: à esquerda a forma ANIQUILA (os três joins produzem o mesmo
+> nada — clicar chip não muda um pixel, literalmente) e à direita ela cresce 4,3× e
+> estoura a tela (as quinas, onde o join mora, saem de vista). A 1ª rodada era o FANTASMA
+> nesse mesmo regime: a `d=−4` o Round ressuscitava o blob (mudança visível!) e
+> Miter/Bevel aniquilavam — *"muda para round mas não para Miter e Bevel"* ao pé da
+> letra; o `drop_phantoms` igualou os três no nada, e daí *"não muda mais"*.
+> **Fix: o slider virou LEI DA FORMA** — fala FRAÇÃO da seleção (chip em percentual),
+> `d = fração × offset_scale` com `offset_scale = maxdim/2` da bbox de MUNDO (porta única
+> em `vec_expand.rs`, **CONGELADA na sessão** — o preview churna a seleção e recomputar
+> por frame retro-alimentaria o mapa): **−100% = morte garantida** (inradius ≤ maxdim/2),
+> **+100% = dobrar a forma** (quinas na tela; todo retune muda pixels visíveis); precisão
+> 3,3× mais fina; +25% default visível em qualquer escala de forma. O mapa do STORE fica
+> estático (percentual) ⇒ o rótulo do chip nunca mente, zero publish; o botão Offset Path
+> pergunta à MESMA porta. **E a fileira gêmea**: o painel tem DUAS fileiras
+> "Join · Miter/Round/Bevel" (Stroke = quina do traço, no-op visível em shape sem traço;
+> Expand = quina do offset) — a do Expand agora chama **"Corner"**. Gates em
+> `vec_expand_scale_tests.rs` (5; a mutação `offset_scale→4.0` — a faixa velha — sangra
+> 4/5 **com os números do report**: "37% do curso é forma morta", "4,33×"). Smoke novo
+> **`PH2D_BUILD_SMOKE=19` = o fluxo EXATO do report** (Round armado ANTES → arrasto
+> saturado → retunes): release em d=1,2 (dobrada, na tela), Bevel 238→34 verts, Miter
+> 34→26, janela viva. O Enio **viu os smokes rodando e confirmou** ("posso ver seus
+> testes e lá funciona corretamente").
+
+Report da 1ª rodada: *"mesmos problemas: queda de fps, muda em tempo real para round mas não
 muda para Miter e Bevel em tempo real"*. O protocolo do handoff anterior foi seguido ao
 pé da letra — **o harness foi estendido até conter o fluxo real** (ordem do Enio, cliques
 com Down/Up em frames SEPARADOS, `d` até saturar, bbox na telemetria — verts é CEGO ao
@@ -62,15 +91,16 @@ era o BUG REAL, no **MOTOR**, no `d` extremo:
     → morte. **NÃO investiguei a fundo** — se o Enio confirmar "não muda" no build
     revertido, este é o próximo suspeito (o log de Dead dirá se é isso). Tornar a janela
     robusta (só morrer em edição REAL, não em re-assentamento) é wave própria.
-  - **Decisão de produto pendente (faixa do slider):** ±4 unidades de MUNDO sobre ~115 px
-    de track (~60 px além do centro satura; clique no track TELEPORTA para ±4). Racional
-    em `params.rs` ("a vista mede ~10 unidades") produz gesto grosso e formas-balão; faixa
-    RELATIVA à seleção é a alternativa.
-  - ⚠️ **No `d` extremo os joins CONVERGEM por correção** (`drop_phantoms`, §1): a `d=+4` os
-    três dão a MESMA área (19.8) — Round mantém arcos (264 verts), mas Bevel (16) e Miter
-    (8) ficam quase idênticos (o chanfro é minúsculo perto do offset gigante). Se o Enio
-    testar a `d` grande, "Bevel ou Miter não muda" ENTRE SI é o comportamento CORRETO
-    (eles convergem); só Round→Bevel/Miter deve mudar (arcos somem).
+  - ~~**Decisão de produto pendente (faixa do slider)**~~ — **RESOLVIDA em `ada45fac`**
+    (a lei da forma, ver o bloco ⬛ no topo do §1): a faixa deixou de ser ±4 de mundo e
+    virou fração da seleção. O racional antigo de `params.rs` ("a vista mede ~10
+    unidades") derivava a faixa da VISTA; o alcance útil de um offset é propriedade da
+    FORMA.
+  - ⚠️ **No `d` extremo os joins CONVERGEM por correção** (`drop_phantoms`, §1): num
+    offset gigante o chanfro do Bevel fica minúsculo relativo ao todo e Bevel≈Miter é o
+    comportamento CORRETO. Com a lei da forma o extremo alcançável é "dobrar" (d =
+    maxdim/2), onde os três ainda diferem visivelmente (donut: Round 238 · Bevel 34 ·
+    Miter 26 verts) — a convergência só volta a importar se um dia o teto subir.
 - **A morte da janela de retune era MUDA** (`RetuneStep::Dead => {}`) — agora LOGA.
 - **A dança de layout do painel (ABERTO, decisão de produto):** quando o resultado do
   offset morre (aniquilação), a seleção esvazia, a seção TRANSFORM some e **os chips de
@@ -84,10 +114,12 @@ era o BUG REAL, no **MOTOR**, no `d` extremo:
   ambiente; a investigação perseguiu esse fantasma achando que era do app). O nível 18
   agora re-afirma a posição sintética TODO frame do hold.
 
-**Falta o smoke do Enio** (veredito condicional, DIRETIVA §5): `PH2D_BUILD_SMOKE=18`
-roda sozinho a fases de ~2 s (dá pra VER cada retune); o 17 é a cena manual. Se o report
-persistir no fluxo dele, os instrumentos são `PH2D_UNDO_LOG=1` + o log novo da janela de
-retune — e a pergunta focada é: *qual `d` o release comitou, e a forma saiu da tela?*
+**Smokes** (todos exigem `--release`): **`PH2D_BUILD_SMOKE=19`** é o fluxo do report
+(Round armado → satura → retunes — roda sozinho); `=18` é o retune a `d` moderado;
+`=17` é a cena manual. O Enio viu os autos-dirigidos rodando e confirmou. Se um "não
+muda" voltar no fluxo MANUAL dele, os instrumentos são `PH2D_UNDO_LOG=1` + o log da
+janela de retune (`[ph2d-vec] janela de retune fechou`) — e a 1ª pergunta é se o clique
+caiu na fileira **Corner** (Expand) ou na **Join** (Stroke), as gêmeas do §1.
 
 ## §2 — O que JÁ foi consertado nesta janela (não re-derive, não re-litigue)
 

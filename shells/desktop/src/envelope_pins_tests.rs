@@ -23,6 +23,7 @@ fn pressing_empty_space_in_pins_mode_nails_a_resting_pin() {
         crate::envelope_gesture::press(
             &mut sim,
             &scene,
+            &Default::default(),
             Some(container),
             [4.0, 4.0],
             0.05,
@@ -51,6 +52,7 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
     let _ = crate::envelope_gesture::press(
         &mut sim,
         &scene,
+        &Default::default(),
         Some(container),
         [4.0, 4.0],
         0.05,
@@ -70,6 +72,7 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
     let _ = crate::envelope_gesture::press(
         &mut sim,
         &scene,
+        &Default::default(),
         Some(container),
         moved,
         0.05,
@@ -89,6 +92,7 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
     let _ = crate::envelope_gesture::press(
         &mut sim,
         &scene,
+        &Default::default(),
         Some(container),
         [4.0, 4.0],
         0.05,
@@ -360,6 +364,7 @@ fn alt_click_removes_the_pin_under_the_cursor() {
     assert!(crate::envelope_gesture::press(
         &mut sim,
         &scene,
+        &Default::default(),
         Some(container),
         [4.0, 4.0],
         0.05,
@@ -384,6 +389,7 @@ fn alt_on_empty_space_nails_nothing() {
     let _ = crate::envelope_gesture::press(
         &mut sim,
         &scene,
+        &Default::default(),
         Some(container),
         [40.0, 40.0],
         0.05,

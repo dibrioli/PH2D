@@ -17,11 +17,27 @@
 //!
 //! Aqui moram também o **picking** de canvas — clicar numa forma fora da ferramenta
 //! vetorial a seleciona como se fosse um sprite — e o marquee.
+//!
+//! # O pick segue o DESENHO; a CAIXA segue a fonte
+//!
+//! Com um offset vivo (`ph2d_ecs::VecOffset`) o documento guarda a curva autorada e a tela
+//! mostra a derivada. O **hit-test** pergunta ao mesmo `live` que o renderer consome — clicar
+//! no que se vê é a definição de apontar, e sem isso a forma crescida era pintada num lugar e
+//! clicável noutro.
+//!
+//! A **bbox do gizmo** (`gizmo_view_for_entity`, acima) fica na FONTE, e é decisão, não
+//! esquecimento. Dois motivos: (a) o `d` do offset é uma distância de MUNDO, então escalar a
+//! forma não escala a banda — uma caixa que a incluísse pediria `s = (alvo − 2d)/meia_fonte`,
+//! e o gizmo derivaria do dedo durante o arrasto, que é a mesma armadilha das 5 tentativas
+//! revertidas do Blend Object (ADR-0128: *um gizmo sobre geometria que se move DOBRA*);
+//! (b) é o default do Illustrator — o bounding box ignora traço e efeitos de aparência, e
+//! "Use Preview Bounds" é preferência **desligada**.
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_editor::GizmoView;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
+use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 
 use crate::vec_entities::VecEntityMap;
@@ -223,6 +239,7 @@ pub(crate) fn container_view(
 pub(crate) fn contains_world(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &LiveGeometry,
     entity: Entity,
     p: [f32; 2],
     stroke_hit_r: f64,
@@ -230,22 +247,62 @@ pub(crate) fn contains_world(
     let Some(vp) = sim.world().get::<VecPathRef>(entity) else {
         return false;
     };
-    contains_path(sim, scene, entity, vp.0, p, stroke_hit_r)
+    contains_path(sim, scene, live, entity, vp.0, p, stroke_hit_r)
 }
 
 /// Amostras por segmento na varredura de proximidade do traço.
 const STROKE_SAMPLES: u32 = 24;
+
+/// **A forma que se VÊ é a que se PEGA** — `p` (mundo) contra a geometria DERIVADA de um
+/// caminho, que já vem assada em mundo (a pose viaja dentro dela).
+///
+/// A pergunta *"o que está desenhado aqui?"* é feita ao MESMO mapa que o
+/// [`ph2d_vec_render::dispatch`] consome; nada aqui re-deriva um offset. O ponto não volta ao
+/// espaço local porque a derivada não tem um: ela é de mundo por construção.
+///
+/// ⚠️ Uma entrada **VAZIA** é a aniquilação (o offset comeu a forma) e sai `false` — nada
+/// desenhado, nada pego. É por isso que o `offset_live::recook` insere a entrada mesmo vazia:
+/// ausente significaria *"desenhe/pegue a fonte"*, e a forma voltaria a ser clicável onde a
+/// tela está limpa.
+fn hits_derived(items: &[ph2d_vec_scene::VecPath], p: [f64; 2], stroke_hit_r: f64) -> bool {
+    items.iter().any(|item| {
+        if ph2d_vec_scene::contains_point(item, p) {
+            return true;
+        }
+        let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(item, p, STROKE_SAMPLES)
+        else {
+            return false;
+        };
+        // Mesmas duas folgas do caminho da FONTE (a tinta que se vê conta; uma linha não tem
+        // interior). O raio já é de mundo e a geometria também — não há escala a cruzar.
+        let half_ink = item.stroke.as_ref().map_or(0.0, |s| s.width * 0.5);
+        let open = (0..item.contour_count()).all(|c| !matches!(item.contour(c), Some((_, true))));
+        let slop = if open {
+            stroke_hit_r * OPEN_PATH_HIT_K
+        } else {
+            stroke_hit_r
+        };
+        d2.sqrt() <= slop + half_ink
+    })
+}
 
 /// `p` (mundo) pega o path `id`: no INTERIOR (formas fechadas) OU a ≤ `stroke_hit_r`
 /// do TRAÇO (formas abertas e a borda de fechadas).
 fn contains_path(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &LiveGeometry,
     entity: Entity,
     id: VecPathId,
     p: [f32; 2],
     stroke_hit_r: f64,
 ) -> bool {
+    // A DERIVADA manda quando existe: com um offset vivo o documento guarda a curva autorada e
+    // a tela mostra outra coisa, então apalpar a fonte pegaria a forma onde ela NÃO está (e
+    // deixaria de pegá-la onde está). O mesmo `live` que o renderer consome, pela mesma chave.
+    if let Some(items) = live.get(&id) {
+        return hits_derived(items, [f64::from(p[0]), f64::from(p[1])], stroke_hit_r);
+    }
     let x = xform_of_transform(world_transform(sim, entity));
     let Some(inv) = x.inverse() else {
         return false; // forma colapsada
@@ -313,6 +370,7 @@ fn contains_path(
 pub(crate) fn pick_all_at_world(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &LiveGeometry,
     view_state: &VecViewState,
     map: &VecEntityMap,
     p: [f32; 2],
@@ -328,7 +386,7 @@ pub(crate) fn pick_all_at_world(
         };
         let e = Entity::from_bits(bits);
         if sim.world().get_entity(e).is_ok()
-            && contains_path(sim, scene, e, path.id, p, stroke_hit_r)
+            && contains_path(sim, scene, live, e, path.id, p, stroke_hit_r)
         {
             out.push(bits);
         }
@@ -344,14 +402,55 @@ pub(crate) fn pick_all_at_world(
 fn pick_at_world(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &LiveGeometry,
     view_state: &VecViewState,
     map: &VecEntityMap,
     p: [f32; 2],
     stroke_hit_r: f64,
 ) -> Option<u64> {
-    pick_all_at_world(sim, scene, view_state, map, p, stroke_hit_r)
+    pick_all_at_world(sim, scene, live, view_state, map, p, stroke_hit_r)
         .into_iter()
         .next()
+}
+
+/// A caixa de MUNDO que o marquee compara — a da geometria DERIVADA quando existe uma, a da
+/// fonte (bbox local × pose) quando não. `None` = caminho sem geometria nenhuma.
+fn world_bbox(
+    sim: &SimWorld,
+    scene: &VecScene,
+    live: &LiveGeometry,
+    e: Entity,
+    id: VecPathId,
+) -> Option<([f64; 2], [f64; 2])> {
+    if let Some(items) = live.get(&id) {
+        // Já é de mundo: a união das caixas das peças, sem passar pela pose (assá-la de novo
+        // colocaria a caixa duas vezes longe da forma).
+        return items
+            .iter()
+            .filter_map(|it| ph2d_vec_scene::curve_bbox_in_frame(it, 1.0, 0.0))
+            .reduce(|(a_lo, a_hi), (b_lo, b_hi)| {
+                (
+                    [a_lo[0].min(b_lo[0]), a_lo[1].min(b_lo[1])],
+                    [a_hi[0].max(b_hi[0]), a_hi[1].max(b_hi[1])],
+                )
+            });
+    }
+    let (lo, hi) = scene.path_curve_bbox(id)?;
+    let x = xform_of_transform(world_transform(sim, e));
+    // Os 4 cantos do bbox LOCAL sobem ao mundo; uma forma girada dá um
+    // quadrilátero, e o bbox dele é o que se compara com o marquee.
+    let corners = [
+        x.apply(lo),
+        x.apply([hi[0], lo[1]]),
+        x.apply(hi),
+        x.apply([lo[0], hi[1]]),
+    ];
+    let (mut wlo, mut whi) = (corners[0], corners[0]);
+    for c in &corners[1..] {
+        wlo = [wlo[0].min(c[0]), wlo[1].min(c[1])];
+        whi = [whi[0].max(c[0]), whi[1].max(c[1])];
+    }
+    Some((wlo, whi))
 }
 
 /// Toda forma vetorial cuja bbox de mundo intersecta o retângulo — o marquee.
@@ -359,6 +458,7 @@ fn pick_at_world(
 pub(crate) fn pick_in_world_rect(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &LiveGeometry,
     view_state: &VecViewState,
     map: &VecEntityMap,
     rect_min: [f32; 2],
@@ -376,23 +476,9 @@ pub(crate) fn pick_in_world_rect(
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        let Some((lo, hi)) = scene.path_curve_bbox(path.id) else {
+        let Some((wlo, whi)) = world_bbox(sim, scene, live, e, path.id) else {
             continue;
         };
-        let x = xform_of_transform(world_transform(sim, e));
-        // Os 4 cantos do bbox LOCAL sobem ao mundo; uma forma girada dá um
-        // quadrilátero, e o bbox dele é o que se compara com o marquee.
-        let corners = [
-            x.apply(lo),
-            x.apply([hi[0], lo[1]]),
-            x.apply(hi),
-            x.apply([lo[0], hi[1]]),
-        ];
-        let (mut wlo, mut whi) = (corners[0], corners[0]);
-        for c in &corners[1..] {
-            wlo = [wlo[0].min(c[0]), wlo[1].min(c[1])];
-            whi = [whi[0].max(c[0]), whi[1].max(c[1])];
-        }
         let overlaps = whi[0] >= f64::from(rect_min[0])
             && wlo[0] <= f64::from(rect_max[0])
             && whi[1] >= f64::from(rect_min[1])
@@ -411,3 +497,7 @@ mod tests;
 #[cfg(test)]
 #[path = "vec_gizmo_view_hit_tests.rs"]
 mod hit_tests;
+
+#[cfg(test)]
+#[path = "vec_offset_pick_tests.rs"]
+mod offset_pick_tests;

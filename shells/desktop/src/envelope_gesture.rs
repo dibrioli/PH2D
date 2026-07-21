@@ -103,9 +103,14 @@ fn edges_to_world(local: CageEdges, xf: &Xform) -> CageEdges {
 /// bolinha (px, do renderer) para o alcance em mundo — a MESMA constante que o desenho usa, para o
 /// dedo e a tela concordarem.
 #[must_use]
+// cena+derivada (o que está DESENHADO) + seleção + cursor + escala + modificador + arrasto: os
+// sete são intrínsecos ao gesto, e o `live` viaja com o `scene` porque a pergunta do hit-test é
+// *"o que está na tela aqui?"* — apalpar a fonte pegaria a forma onde ela não está.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn press(
     sim: &mut SimWorld,
     scene: &VecScene,
+    live: &ph2d_vec_render::LiveGeometry,
     selected: Option<u64>,
     world_pt: [f64; 2],
     px_to_world: f64,
@@ -141,7 +146,7 @@ pub(crate) fn press(
     // É a MESMA regra que já governa a alça de raio numa Live Shape (ADR-0121): geometria que uma
     // relação viva possui não é editável à mão. Quem quiser os pontos de volta tem **Expand**.
     // Clique fora da arte continua a cair no pen — desselecionar segue funcionando.
-    let on_art = hits_child_art(sim, scene, bits, world_pt, px_to_world);
+    let on_art = hits_child_art(sim, scene, live, bits, world_pt, px_to_world);
     if on_art {
         crate::vec_overlay_diag::refused(
             "ancora de filho",
@@ -155,6 +160,7 @@ pub(crate) fn press(
 fn hits_child_art(
     sim: &SimWorld,
     scene: &VecScene,
+    live: &ph2d_vec_render::LiveGeometry,
     bits: u64,
     world_pt: [f64; 2],
     px_to_world: f64,
@@ -169,7 +175,7 @@ fn hits_child_art(
         return false;
     };
     kids.into_iter()
-        .any(|e| crate::vec_gizmo_view::contains_world(sim, scene, e, p, hit_r))
+        .any(|e| crate::vec_gizmo_view::contains_world(sim, scene, live, e, p, hit_r))
 }
 
 /// **A pressão no gesto Pinos** — e ela é de outra natureza: aqui o clique no VAZIO *cria*.

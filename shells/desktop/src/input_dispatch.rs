@@ -2795,6 +2795,7 @@ impl App {
                                 if crate::envelope_gesture::press(
                                     &mut gfx.sim,
                                     &gfx.vec_scene,
+                                    self.offset_live.live(),
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
@@ -3213,6 +3214,7 @@ impl App {
                         let mut hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
+                            self.offset_live.live(),
                             &vec_view,
                             &self.vec_entities,
                             world_pos,
@@ -3289,6 +3291,7 @@ impl App {
                         let hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
+                            self.offset_live.live(),
                             &vec_view,
                             &self.vec_entities,
                             world_pos,
@@ -3363,6 +3366,7 @@ impl App {
                                 || crate::vec_gizmo_view::contains_world(
                                     &gfx.sim,
                                     &gfx.vec_scene,
+                                    self.offset_live.live(),
                                     entity,
                                     world_pos,
                                     crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
@@ -3570,6 +3574,7 @@ impl App {
                         let mut hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
+                            self.offset_live.live(),
                             &vec_view,
                             &self.vec_entities,
                             world_pos,
@@ -3820,6 +3825,7 @@ impl App {
                             let mut bits = crate::vec_gizmo_view::pick_in_world_rect(
                                 &gfx.sim,
                                 &gfx.vec_scene,
+                                self.offset_live.live(),
                                 &vec_view,
                                 &self.vec_entities,
                                 rmin,

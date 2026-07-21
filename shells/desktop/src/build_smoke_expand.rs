@@ -152,6 +152,13 @@ impl crate::App {
              \x20      a partir da curva original — Bevel desfaz Round e aplica Bevel. A\n\
              \x20      fileira \"Join\" lá em cima (seção Stroke) é a quina do TRAÇO, outra\n\
              \x20      pergunta.\n\
+             \x20    - **O CLIQUE SEGUE O DESENHO** (2026-07-21): com o offset bem POSITIVO,\n\
+             \x20      clique no vazio ao lado do donut, dentro da banda que cresceu — a forma\n\
+             \x20      SELECIONA (antes, o mouse apalpava a curva original e ali não havia\n\
+             \x20      nada). Com o offset bem NEGATIVO, clique entre a tinta encolhida e onde\n\
+             \x20      a borda original estava: não pega nada, que é o certo. A CAIXA do gizmo\n\
+             \x20      fica na curva original de propósito (é o default do Illustrator, e é o\n\
+             \x20      que impede o gizmo de derivar do dedo ao escalar).\n\
              \x20    - **Apply Offset** MATERIALIZA: só aí os vértices novos entram no\n\
              \x20      documento (volte ao modo Node e confira). **Convert to Curves** faz o\n\
              \x20      mesmo. Sem materializar, o efeito FICA VIVO — atravessa Ctrl+S/Ctrl+O\n\

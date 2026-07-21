@@ -50,7 +50,7 @@ fn scene_with_line(
 fn hits(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, p: [f32; 2], r: f64) -> bool {
     let id = *map.keys().next().expect("um path");
     let e = Entity::from_bits(map[&id]);
-    contains_path(sim, scene, e, id, p, r)
+    contains_path(sim, scene, &Default::default(), e, id, p, r)
 }
 
 /// **O GATE.** O corpo da ponta de seta pega o clique.

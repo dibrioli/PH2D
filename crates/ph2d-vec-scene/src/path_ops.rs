@@ -470,24 +470,7 @@ impl VecScene {
         s: f64,
     ) -> Option<([f64; 2], [f64; 2])> {
         let path = self.paths.iter().find(|p| p.id == id)?;
-        let rot = |p: [f64; 2]| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c];
-        // ⚠️ A semente era `path.verts.first()`, a âncora **CRUA** — e o min/max que vem a
-        // seguir corre sobre pontos **COZIDOS**. Duas fontes na mesma caixa: a caixa era
-        // esticada até um ponto que não está desenhado. Com raio de quina vivo isso custava o
-        // canto cortado (pequeno, ninguém viu); com a pilha de efeitos (ADR-0132) a âncora crua
-        // pode cair fora da forma inteira — um caminho aparado passa a ter gizmo maior do que a
-        // arte. Agora só o cozido semeia, e **um caminho sem geometria devolve `None`**, que é
-        // a resposta que o docstring sempre prometeu para "vazio".
-        let mut lo = [f64::INFINITY; 2];
-        let mut hi = [f64::NEG_INFINITY; 2];
-        for_each_curve_point(path, |pt| {
-            let r = rot(pt);
-            lo[0] = lo[0].min(r[0]);
-            lo[1] = lo[1].min(r[1]);
-            hi[0] = hi[0].max(r[0]);
-            hi[1] = hi[1].max(r[1]);
-        });
-        (lo[0] <= hi[0]).then_some((lo, hi))
+        curve_bbox_in_frame(path, c, s)
     }
 
     /// O ponto `p` (world) está DENTRO da região do path `id`? Amostra cada contorno
@@ -582,6 +565,35 @@ impl VecScene {
         path.closed = closed;
         true
     }
+}
+
+/// Bbox da CURVA de um `VecPath` AVULSO, no frame rotacionado por −θ (`c = cos θ`, `s = sin θ`;
+/// `θ = 0` = axis-aligned). `None` para caminho sem geometria.
+///
+/// É o motor de [`VecScene::path_curve_bbox_in_frame`], **extraído de propósito**: a geometria
+/// DERIVADA — o offset vivo (`ph2d_ecs::VecOffset`), que o renderer desenha no lugar da fonte —
+/// **não está na cena** e precisa da MESMA resposta. Duas caixas para a mesma curva é como um
+/// marquee passa a pegar uma forma onde ela não está desenhada.
+///
+/// ⚠️ A semente era `path.verts.first()`, a âncora **CRUA** — e o min/max que vem a seguir corre
+/// sobre pontos **COZIDOS**. Duas fontes na mesma caixa: a caixa era esticada até um ponto que
+/// não está desenhado. Com raio de quina vivo isso custava o canto cortado (pequeno, ninguém
+/// viu); com a pilha de efeitos (ADR-0132) a âncora crua pode cair fora da forma inteira — um
+/// caminho aparado passa a ter gizmo maior do que a arte. Agora só o cozido semeia, e **um
+/// caminho sem geometria devolve `None`**, que é a resposta que o docstring sempre prometeu.
+#[must_use]
+pub fn curve_bbox_in_frame(path: &crate::VecPath, c: f64, s: f64) -> Option<([f64; 2], [f64; 2])> {
+    let rot = |p: [f64; 2]| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c];
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for_each_curve_point(path, |pt| {
+        let r = rot(pt);
+        lo[0] = lo[0].min(r[0]);
+        lo[1] = lo[1].min(r[1]);
+        hi[0] = hi[0].max(r[0]);
+        hi[1] = hi[1].max(r[1]);
+    });
+    (lo[0] <= hi[0]).then_some((lo, hi))
 }
 
 /// Chama `f` em cada ponto amostrado da curva de TODOS os contornos de `path`

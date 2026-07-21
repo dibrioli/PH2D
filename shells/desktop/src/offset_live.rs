@@ -23,6 +23,17 @@
 //! efeitos produzem geometria plana que ele pode consumir. O inverso (offsetar e depois ondular)
 //! continua alcançável pelo caminho destrutivo — Apply Offset e então o efeito.
 //!
+//! # Quem lê a DERIVADA e quem lê a FONTE
+//!
+//! Lêem a derivada os que respondem *"o que está na tela aqui?"* — o
+//! [`ph2d_vec_render::dispatch`] e, desde 2026-07-21, o **hit-test de canvas** e o **marquee**
+//! ([`crate::vec_gizmo_view`]): clicar no que se vê é a definição de apontar, e enquanto o pick
+//! apalpava a curva autorada a forma crescida era pintada num lugar e clicável noutro.
+//!
+//! Lêem a FONTE os que respondem *"o que o artista escreveu?"*: o modo **Node** (as âncoras que
+//! ele arrasta são as autoradas — é a mesma lei do raio de quina vivo, ADR-0121) e a **caixa do
+//! gizmo** (o porquê está no cabeçalho do `vec_gizmo_view`). Nenhum dos dois é esquecimento.
+//!
 //! # O memo não é otimização prematura: é MEDIDO
 //!
 //! `offset_path` custa, em release, **0,40–0,86 ms** no donut e **0,55–1,07 ms** na estrela com

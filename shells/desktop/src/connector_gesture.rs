@@ -70,6 +70,7 @@ impl App {
         let hits = crate::vec_gizmo_view::pick_all_at_world(
             &gfx.sim,
             &gfx.vec_scene,
+            self.offset_live.live(),
             &view,
             &self.vec_entities,
             [world[0] as f32, world[1] as f32],

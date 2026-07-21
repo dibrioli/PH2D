@@ -39,7 +39,7 @@ pub use xform::{VecXforms, Xform, xform_of};
 /// Whole-path transforms (flip / rotate / translate / scale / bbox) live in a
 /// sibling module (LOC cap); the `impl VecScene` block is inherent.
 mod path_ops;
-pub use path_ops::bake_xform;
+pub use path_ops::{bake_xform, curve_bbox_in_frame};
 
 /// **O ponto está dentro da forma?** — módulo irmão de `path_ops` (teto de LOC). A ponta de
 /// seta é um [`VecPath`] que **não vive na cena**, então o hit-test precisa poder perguntar por

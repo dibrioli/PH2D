@@ -25,17 +25,41 @@ fn an_open_line_is_picked_by_stroke_proximity_not_interior() {
     // Um clique 0.4 ACIMA da linha (fora do traço): sem raio não pega — uma linha
     // aberta não tem interior.
     assert_eq!(
-        pick_at_world(&sim, &scene, &vs, &map, [5.0, 0.4], 0.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [5.0, 0.4],
+            0.0
+        ),
         None
     );
     // Com raio 1.0 (> 0.4): pega pela proximidade do traço.
     assert_eq!(
-        pick_at_world(&sim, &scene, &vs, &map, [5.0, 0.4], 1.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [5.0, 0.4],
+            1.0
+        ),
         Some(e.to_bits())
     );
     // Longe do traço, mesmo com raio: não pega.
     assert_eq!(
-        pick_at_world(&sim, &scene, &vs, &map, [5.0, 5.0], 1.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [5.0, 5.0],
+            1.0
+        ),
         None
     );
 }
@@ -150,19 +174,46 @@ fn an_envelope_container_publishes_a_union_gizmo_box() {
 fn picking_finds_the_shape_where_the_transform_puts_it() {
     let (mut sim, scene, map, e) = scene_with_square();
     let vs = VecViewState::default();
-    assert!(pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0], 0.0).is_some());
+    assert!(
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [0.0, 0.0],
+            0.0
+        )
+        .is_some()
+    );
 
     sim.world_mut().entity_mut(e).insert(Transform {
         translation: Vec2::new(50.0, 0.0),
         ..Transform::IDENTITY
     });
     assert_eq!(
-        pick_at_world(&sim, &scene, &vs, &map, [0.0, 0.0], 0.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [0.0, 0.0],
+            0.0
+        ),
         None,
         "a origem ficou vazia"
     );
     assert_eq!(
-        pick_at_world(&sim, &scene, &vs, &map, [50.0, 0.0], 0.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [50.0, 0.0],
+            0.0
+        ),
         Some(e.to_bits()),
         "a forma está onde o transform a pôs"
     );
@@ -178,7 +229,15 @@ fn a_hidden_or_locked_shape_is_not_pickable() {
         locked: Vec::new(),
     };
     assert_eq!(
-        pick_at_world(&sim, &scene, &hidden, &map, [0.0, 0.0], 0.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &hidden,
+            &map,
+            [0.0, 0.0],
+            0.0
+        ),
         None
     );
     let locked = VecViewState {
@@ -186,7 +245,15 @@ fn a_hidden_or_locked_shape_is_not_pickable() {
         locked: vec![id],
     };
     assert_eq!(
-        pick_at_world(&sim, &scene, &locked, &map, [0.0, 0.0], 0.0),
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &locked,
+            &map,
+            [0.0, 0.0],
+            0.0
+        ),
         None
     );
 }
@@ -200,9 +267,28 @@ fn the_marquee_selects_a_translated_shape_by_its_world_bbox() {
         translation: Vec2::new(20.0, 20.0),
         ..Transform::IDENTITY
     });
-    assert!(pick_in_world_rect(&sim, &scene, &vs, &map, [-5.0, -5.0], [5.0, 5.0]).is_empty());
+    assert!(
+        pick_in_world_rect(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [-5.0, -5.0],
+            [5.0, 5.0]
+        )
+        .is_empty()
+    );
     assert_eq!(
-        pick_in_world_rect(&sim, &scene, &vs, &map, [15.0, 15.0], [25.0, 25.0]),
+        pick_in_world_rect(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [15.0, 15.0],
+            [25.0, 25.0]
+        ),
         vec![e.to_bits()]
     );
 }

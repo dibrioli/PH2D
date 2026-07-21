@@ -109,6 +109,42 @@ pub fn squeeze_from_bleed(bleed: f32) -> u32 {
     base + (base as f32 * frac) as u32
 }
 
+/// **O slider Bleed → o RAIO de SELAGEM do vão** (em DOC units), o selo do `Bleed 0` (6º
+/// smoke seg.: *"mesmo com bleed 0 ainda há vazamento"*; Enio 2026-07-20 escolheu *"Bleed 0
+/// SELA o vão"*).
+///
+/// O pedágio (`squeeze`) SATURA — medido: nem `2¹⁷` fecha a lente de um vão largo em `x=1,0`,
+/// porque o pedágio `1/d²` é ~zero no meio de um vão largo (a passagem honesta, por design). A
+/// única forma de o `Bleed 0` NÃO vazar é tratar o vão como FECHADO, e o mecanismo que sela um
+/// **corte numa linha** é a **trapped-ball** (a bola não passa por vão `< 2r` ⇒ os dois lados
+/// viram componentes SEPARADOS ⇒ sem Voronoi ⇒ a cor para na linha). ⚠️ A morfologia (close)
+/// NÃO serve aqui: ela costura vãos entre ARESTAS paralelas, não um corte entre duas PONTAS
+/// colineares (a cintura da ponte é sempre `< 2·seal` e a erosão a apaga — medido, lente
+/// intocada).
+///
+/// Então o `Bleed 0` alimenta o raio da trapped-ball que o `colorize` já tem — combinado com o
+/// slider **Trap** por `max` (os dois são "força de selagem"; `max` é uma composição, não uma
+/// 2ª resposta à mesma pergunta).
+///
+/// `bleed ∈ [0,1]`: **`0` = sela** (raio `MAX_SEAL_DOC`, fecha vãos até `2·1.0 = 2` unidades);
+/// **acima do joelho (`0.5`) = `0`** (vão ABERTO, o [`squeeze_from_bleed`] regula a seepage — o
+/// 5º smoke intacto). Entre eles o raio cresce à medida que o Bleed cai. Em DOC units porque um
+/// vão é grandeza do documento; o chamador multiplica pela precisão (px/unidade), como o Trap.
+///
+/// ⚠️ **Trade medido:** a trapped-ball com raio grande também erode as câmaras, então uma
+/// região mais estreita que `2·MAX_SEAL_DOC` colapsa no `Bleed 0` (sub-segmentar é PERDA). Por
+/// isso `MAX_SEAL_DOC` é conservador (1 unidade) — sela o vão deliberado sem comer arte fina; o
+/// artista que precisa de mais sobe o **Trap** de propósito.
+#[must_use]
+pub fn seal_from_bleed(bleed: f32) -> f32 {
+    /// Abaixo deste Bleed o selo começa a engajar (acima, vão aberto — só squeeze).
+    const KNEE: f32 = 0.5;
+    /// O raio de selagem em `bleed = 0` (DOC units): fecha vãos até `2·1.0 = 2` unidades.
+    const MAX_SEAL_DOC: f32 = 1.0;
+    let b = bleed.clamp(0.0, 1.0);
+    ((KNEE - b) / KNEE).max(0.0) * MAX_SEAL_DOC
+}
+
 /// **Colorize:** line-art (as mesmas polilinhas de fronteira do balde) + rabiscos coloridos
 /// → uma região de geometria por área conexa, cada uma com o rótulo que o corte LazyBrush
 /// lhe deu. Vazio se não há linha OU não há rabisco.

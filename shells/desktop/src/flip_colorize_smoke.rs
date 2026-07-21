@@ -134,7 +134,10 @@ impl crate::App {
              b) O VAO no meio do divisor deixa a cor entrar (a LENTE) — e' honesto (vao\n   \
                 aberto = passagem). AJUSTES no painel — **AGORA EM TEMPO REAL depois do\n   \
                 Apply** (arraste o slider e o corte re-roda ao vivo, sem clicar Apply de novo):\n   \
-                · **Bleed**: quao fundo a cor entra pelo vao (continuo; sobe = cola).\n   \
+                · **Bleed**: quanto a cor respeita o vao. **0 = SELA** (as cores param na\n     \
+                  linha do divisor, sem lente, mesmo com o buraco aberto); subindo, o vao\n     \
+                  abre e a cor entra mais fundo; **1 = flui livre**. O 0 alimenta a bola de\n     \
+                  selagem (o pedagio sozinho satura em ~+0.94 e NUNCA fecha o vao largo).\n   \
                 · **Trap**: fecha o vao de vez (bola que nao passa por vao < 2r; ate 50 px).\n   \
                 (Ctrl+Z desfaz o ajuste; de novo, o Apply. Editar o desenho encerra o ajuste.)\n"
         );

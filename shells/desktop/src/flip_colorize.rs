@@ -54,6 +54,12 @@ struct LiveApply {
 
 /// `(precision, trap_px)` a partir do estilo + da vista — a MESMA conversão do balde, numa
 /// porta só, para o Apply e o re-Apply ao vivo **nunca** divergirem (duas portas divergem).
+///
+/// O `trap_px` devolvido é o EFETIVO: o `max` do slider **Trap** com o raio de **selagem** do
+/// `Bleed 0` (6º smoke, "Bleed 0 SELA o vão"). Os dois são força de trapped-ball; o `Bleed`
+/// alimenta o raio pelo `seal_from_bleed` (o pedágio satura e nunca fecha a lente — só a bola
+/// que não passa pelo vão o faz). `Bleed` acima do joelho ⇒ selo 0 ⇒ o Trap sozinho, e a
+/// seepage fica com o `squeeze` — o 5º smoke intacto.
 fn precision_and_trap(style: &FlipStyleSnapshot, px_to_world: f32, obj_scale: f32) -> (f32, f32) {
     let doc_per_px = px_to_world * obj_scale;
     // px de tela → px de buffer por unidade de documento (a precisão do balde).
@@ -61,7 +67,9 @@ fn precision_and_trap(style: &FlipStyleSnapshot, px_to_world: f32, obj_scale: f3
     // O Trap chega em px de TELA e atravessa as duas conversões (BUGS #11: subir a
     // Precision encolheria a bola em silêncio se ele não cruzasse `precision`).
     let trap_px = (style.trap as f32) * doc_per_px * precision;
-    (precision, trap_px)
+    // O selo do Bleed 0, em DOC units → px de buffer pela MESMA precisão. Combinado por `max`.
+    let seal_px = ph2d_flip_colorize::seal_from_bleed(style.colorize_bleed as f32) * precision;
+    (precision, trap_px.max(seal_px))
 }
 
 /// **A porta única que produz e insere as regiões** — o Apply e o re-Apply ao vivo chamam

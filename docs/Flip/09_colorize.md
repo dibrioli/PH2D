@@ -1,5 +1,24 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-20, noite IV): o `Bleed 0` SELA o vão** (6º smoke seg.: *"funciona,
+> contudo, mesmo com bleed 0 ainda há vazamento"*; o Enio escolheu *"Bleed 0 SELA o vão"*).
+> **Medição primeiro:** o pedágio (`squeeze`) SATURA em `+0.94` — nem `2¹⁷` fecha a lente de um
+> vão largo em `x=1.0`, porque `1/d²` é ~zero no meio de um vão largo (passagem honesta, por
+> design). A cura é tratar o vão como FECHADO, e o mecanismo que sela um **corte numa linha** é
+> a **trapped-ball** (bola não passa por vão `< 2r` ⇒ 2 componentes ⇒ sem Voronoi ⇒ cor na
+> linha). ⚠️ **A morfologia (close) foi CONSTRUÍDA e MEDIDA-e-DESCARTADA:** ela costura vãos
+> entre ARESTAS paralelas, não um corte entre duas PONTAS colineares (a cintura da ponte é
+> sempre `< 2·seal`, a erosão a apaga; lente **intocada** no probe — 0.690 em todo `seal_px`).
+> **Fix:** `seal_from_bleed(bleed)` (DOC units) alimenta o raio da trapped-ball no `Bleed` baixo,
+> combinado com o slider **Trap** por `max` (composição, não 2ª porta); o shell fá-lo dentro do
+> `precision_and_trap` (a MESMA porta do Apply e do re-Apply ao vivo). Medido (cena do smoke,
+> precisão 40): `Bleed 0.5 → +0.69` (5º smoke intacto) · `≤ 0.15 → +0.95` (SELADO, na linha) ·
+> `0 → +0.95`. ⚠️ Trade: `MAX_SEAL_DOC = 1.0` (conservador — sela vãos ≤ 2 doc sem comer arte
+> fina; região `< 2·MAX_SEAL_DOC` colapsa no `Bleed 0`, então o artista sobe o **Trap** de
+> propósito p/ mais). Gate `the_bleed_zero_seals_the_gap` (mutação `seal_from_bleed→0` ⇒ volta
+> ao `+0.915` do squeeze puro ⇒ RED). Suíte crate 29 verdes. **Smoke: arraste o Bleed a 0 — a
+> lente some (a cor cola no divisor).**
+>
 > **Estado (2026-07-20, noite III): Trap e Bleed em TEMPO REAL depois do Apply** (6º smoke:
 > "trap e bleed não estão em tempo real após apply. faça ficar em tempo real para ajustes").
 > A última aplicação fica **VIVA** — o "ajustar a última operação" do Blender (o painel F6):

@@ -8,7 +8,10 @@
 //! gates pin the WIRING — energy assembly, the guloso multiway, the geometry — on a fixture
 //! that contains the phenomenon.
 
-use super::{ColorRegion, DEFAULT_SQUEEZE, Scribble, colorize, colorize_with, squeeze_from_bleed};
+use super::{
+    ColorRegion, DEFAULT_SQUEEZE, Scribble, colorize, colorize_with, seal_from_bleed,
+    squeeze_from_bleed,
+};
 
 /// **O slider Bleed mapeia no pedágio de aperto** (6º smoke): `0.5` devolve o
 /// [`DEFAULT_SQUEEZE`] EXATO (o meio do slider = o comportamento aprovado no 5º smoke),
@@ -170,6 +173,97 @@ fn the_trap_is_binary_the_bleed_is_continuous() {
     assert!(
         lens_trap(30.0) > lens_trap(18.0) + 0.1,
         "o Trap ACIMA do selo tem de fechar a lente (a cor cola no divisor)"
+    );
+}
+
+/// 🔴 **O `Bleed 0` SELA o vão** (6º smoke seg.: *"funciona, contudo, mesmo com bleed 0 ainda
+/// há vazamento"*; Enio 2026-07-20 escolheu *"Bleed 0 SELA o vão"*).
+///
+/// O pedágio SATURA — o `Bleed 0` só com `squeeze` fica em `+0.915` (um bojo ainda vaza,
+/// porque um vão largo é passagem por design). A cura que o Enio pediu é tratar o vão como
+/// FECHADO, e `seal_from_bleed` alimenta a trapped-ball no `Bleed` baixo: no `0`, o raio
+/// (`1.0` doc × precisão = 40 px aqui) fecha o vão de 48 px, os dois lados viram componentes
+/// SEPARADOS, e a fronteira cola na linha (`+0.95`, a borda do vão). No MEIO (`0.5`) o selo é 0
+/// e o vão fica aberto — o 5º smoke intacto.
+///
+/// Mutação que sangra: `seal_from_bleed → 0` (o selo some) ⇒ o `Bleed 0` volta ao `+0.915` do
+/// squeeze puro, abaixo do limiar de selagem.
+#[test]
+fn the_bleed_zero_seals_the_gap() {
+    let seg_ = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5)),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5)),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5)),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5)),
+        (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6)),
+        (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5)),
+    ]
+    .into_iter()
+    .map(|(a, b)| {
+        let pts = seg_(a, b, 24);
+        let n = pts.len();
+        (pts, vec![0.26; n], false)
+    })
+    .collect();
+    let scribbles = vec![
+        Scribble {
+            label: 0,
+            points: seg_(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
+            width: 0.15,
+        },
+        Scribble {
+            label: 1,
+            points: seg_(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
+            width: 0.15,
+        },
+    ];
+    let precision = 40.0f32;
+    // A LENTE do produto: o `Bleed` alimenta a bola (`seal`) E o pedágio (`squeeze`), Trap 0.
+    let lens = |bleed: f32| -> f32 {
+        let trap = seal_from_bleed(bleed) * precision;
+        let sq = squeeze_from_bleed(bleed);
+        colorize_with(&strokes, &scribbles, precision, trap, sq)
+            .iter()
+            .filter(|r| r.label == 1)
+            .flat_map(|r| r.fill.outer.iter())
+            .fold(f32::MAX, |m, p| m.min(p.x))
+    };
+    // O vão do divisor está em x=1. SELADO, a lente cola na linha (a borda do vão, ~+0.95).
+    let sealed = lens(0.0);
+    assert!(
+        sealed >= 0.93,
+        "o Bleed 0 tem de SELAR o vão (lente na linha ~+0.95, medido); deu {sealed:.3}"
+    );
+    // O MEIO fica ABERTO — a seepage do 5º smoke, bem à esquerda da linha.
+    let mid = lens(0.5);
+    assert!(
+        mid < 0.75,
+        "o Bleed 0.5 tem de deixar o vão ABERTO (o 5º smoke); deu {mid:.3}"
+    );
+    // E é o SELO que fecha o último trecho: sem ele (Trap 0) o squeeze puro para em ~+0.915.
+    let squeeze_only = colorize_with(
+        &strokes,
+        &scribbles,
+        precision,
+        0.0,
+        squeeze_from_bleed(0.0),
+    )
+    .iter()
+    .filter(|r| r.label == 1)
+    .flat_map(|r| r.fill.outer.iter())
+    .fold(f32::MAX, |m, p| m.min(p.x));
+    assert!(
+        sealed > squeeze_only + 0.02,
+        "o selo tem de fechar além do que o squeeze sozinho alcança \
+         (selado {sealed:.3} vs squeeze puro {squeeze_only:.3})"
     );
 }
 
@@ -1053,8 +1147,7 @@ fn the_colour_edge_follows_a_wavy_line_without_sawtooth() {
     // fronteira volta do bojo para a linha por caminho geodésico honesto (desvios de
     // ~14 px que são a LENTE, §3.2 — outro fenômeno, outra decisão), e este gate mede o
     // SERRILHADO de quem já está colado na linha.
-    let in_window =
-        |p: Vec2| (0.8..1.2).contains(&p.x) && (1.1..2.3).contains(&p.y.abs());
+    let in_window = |p: Vec2| (0.8..1.2).contains(&p.x) && (1.1..2.3).contains(&p.y.abs());
     let step = 1.0 / precision; // ~1 px
     for label in [0u16, 1u16] {
         let mut devs: Vec<f32> = Vec::new();
@@ -1377,7 +1470,11 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
             (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13),
             (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29),
         ] {
-            let pts = if wavy { hand(&seg_(a, b, 24), s) } else { seg_(a, b, 24) };
+            let pts = if wavy {
+                hand(&seg_(a, b, 24), s)
+            } else {
+                seg_(a, b, 24)
+            };
             let n = pts.len();
             strokes.push((pts, vec![0.0; n], false));
         }
@@ -1385,7 +1482,11 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
             (Vec2::new(1.0, -2.5), Vec2::new(1.0, -0.6), 41usize, 41usize),
             (Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53, 53),
         ] {
-            let pts = if wavy { hand(&seg_(a, b, n), s) } else { seg_(a, b, n) };
+            let pts = if wavy {
+                hand(&seg_(a, b, n), s)
+            } else {
+                seg_(a, b, n)
+            };
             let m = pts.len();
             strokes.push((pts, vec![0.0; m], false));
         }
@@ -1444,7 +1545,10 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
         let gscale = grid.scale;
         let to_world = move |x: usize| lo.x - super::MARGIN_PX as f32 / gscale + x as f32 / gscale;
         let col_of = |wx: f32| ((wx - lo.x) * gscale) as i64 + super::MARGIN_PX as i64;
-        let (band_lo, band_hi) = (col_of(0.5).max(0) as usize, (col_of(1.5) as usize).min(w - 1));
+        let (band_lo, band_hi) = (
+            col_of(0.5).max(0) as usize,
+            (col_of(1.5) as usize).min(w - 1),
+        );
         let mut rows: Vec<(usize, f32, f32, f32)> = Vec::new(); // (y, ink, red, blue) em mundo
         for y in 0..h {
             let wy = lo.y - super::MARGIN_PX as f32 / grid.scale + y as f32 / grid.scale;
@@ -1496,8 +1600,8 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
                 return (0.0, 0.0);
             }
             let px = gscale;
-            let rough = dev.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>()
-                / (dev.len() - 1) as f32;
+            let rough =
+                dev.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>() / (dev.len() - 1) as f32;
             let (mn, mx) = dev
                 .iter()
                 .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
@@ -1514,8 +1618,8 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
             }
             let px = gscale;
             let xs: Vec<f32> = pts.iter().map(|p| p.1).collect();
-            let rough = xs.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>()
-                / (xs.len() - 1) as f32;
+            let rough =
+                xs.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>() / (xs.len() - 1) as f32;
             let (mn, mx) = xs
                 .iter()
                 .fold((f32::MAX, f32::MIN), |(l, h), &d| (l.min(d), h.max(d)));
@@ -1578,7 +1682,11 @@ fn probe_the_sawtooth_boundary_along_the_divider() {
                 for x in band_lo..=band_hi {
                     if grid.flags[y * w + x] & FILLED != 0 {
                         let wx = to_world(x);
-                        edge = if label == 0 { edge.max(wx) } else { edge.min(wx) };
+                        edge = if label == 0 {
+                            edge.max(wx)
+                        } else {
+                            edge.min(wx)
+                        };
                     }
                 }
                 if edge.abs() != f32::MAX {

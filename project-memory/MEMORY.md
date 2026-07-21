@@ -18,6 +18,7 @@
 - [Parâmetro que não muda NADA](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor
 - [Rótulo promete o que o MODELO entrega](feedback_a_label_must_promise_what_the_model_delivers.md) — "Air Drag" sobre damping uniforme
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de design
+- [Alvo não-idempotente não exclui autoria](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md) — separe autoria de depósito; funil no commit
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md)
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão

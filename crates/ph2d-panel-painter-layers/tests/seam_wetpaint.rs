@@ -148,33 +148,22 @@ fn a_wet_knob_edit_forwards_through_the_panel() {
     );
 }
 
-/// W3 law #3: the Method dropdown offers ONLY the incremental methods while
-/// Wet Paint is armed — the fluid deposit is not idempotent, so a menu
-/// offering Line / Anchored / the shape editors would offer methods that
-/// paint NOTHING through the wet route. The full list stays for the plain
-/// brush (presence). Mutation that bleeds it: the wet arm dropped from
+/// Doc 21 (deposit-at-commit): the Method dropdown offers the FULL list
+/// while Wet Paint is armed — every method authors a flat static preview
+/// and the fluid receives the final dab list once at commit, so no method
+/// is incompatible (the W3 narrowing rested on a refuted premise). Mutation
+/// that bleeds it: re-adding the `b.wetpaint` narrowing arm to
 /// `stroke_method_offer::offered_stroke_methods`.
 #[test]
-fn the_method_menu_offers_only_incremental_methods_while_wet_is_armed() {
+fn the_method_menu_offers_every_method_while_wet_is_armed() {
     use ph2d_panel_painter_layers::stroke_method_offer::offered_stroke_methods;
-    use ph2d_tool_painter::StrokeMethod;
     let plain = PainterTool::default().brush_settings();
     let full = offered_stroke_methods(Some(&plain));
-    assert!(
-        full.contains(&StrokeMethod::Line.to_u8()),
-        "positive control: the plain brush must offer Line"
-    );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     let offered = offered_stroke_methods(Some(&wet.brush_settings()));
-    assert!(
-        !offered.is_empty(),
-        "the wet menu offers nothing — a brush with no method"
+    assert_eq!(
+        offered, full,
+        "wet mode narrows the Method menu — deposit-at-commit made every method valid"
     );
-    for &m in offered {
-        assert!(
-            StrokeMethod::from_u8(m).is_incremental(),
-            "wet mode offers non-incremental method {m} — a menu entry that paints nothing"
-        );
-    }
 }

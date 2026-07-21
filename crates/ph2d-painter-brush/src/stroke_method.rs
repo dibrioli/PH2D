@@ -96,8 +96,10 @@ impl StrokeMethod {
     /// NON-IDEMPOTENT deposit can accept: the shape editors and the interactive methods re-emit
     /// their whole dab list every preview frame, which against a fluid / accumulating target
     /// would pile paint while the artist just looks. One predicate on purpose — the Smear /
-    /// Blur / Clone menu narrowing, the Wet Paint dab route and the Wet Paint entry coercion all
-    /// ask THIS question, and three private copies of the set would drift.
+    /// Blur / Clone menu narrowing, the Wet Paint ownership predicate (`wet_owns_the_dabs`) and
+    /// the wet route's belt all ask THIS question, and private copies of the set would drift.
+    /// (Doc 21: incremental = the live-deposit methods; every OTHER method authors flat and
+    /// deposits once at commit — non-incremental is an authoring cadence, not an exclusion.)
     #[must_use]
     pub fn is_incremental(self) -> bool {
         matches!(self, Self::Dots | Self::Airbrush | Self::Space)

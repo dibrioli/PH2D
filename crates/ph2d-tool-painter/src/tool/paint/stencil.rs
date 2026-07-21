@@ -349,6 +349,8 @@ impl PainterTool {
         // Any tool switch disarms a pending Eyedropper pick; only "eyedropper" re-arms it below.
         self.paint.eyedropper_armed = false;
         use super::PaintMode;
+        let old_mode = self.paint.paint_mode;
+        let old_method = self.paint.brush.stroke_method;
         let new_mode = match mode {
             "smear" => PaintMode::Smear,
             "blur" => PaintMode::Blur,
@@ -420,19 +422,23 @@ impl PainterTool {
         // the checkbox / its reset disarm), exactly like Watercolor's flag.
         if new_mode == PaintMode::WetPaint {
             self.paint.wetpaint.armed = true;
-            // Wet Paint only deposits through the CUMULATIVE stroke methods
-            // (Dots / Airbrush / Space — the fluid deposit is not idempotent,
-            // so the re-stamping methods are refused by the route). A wet
-            // slot holding a non-cumulative method would be a brush that
-            // paints NOTHING with no error — so entering the mode coerces it
-            // to the default Space, through the method setter (which also
-            // bakes any open shape set, exactly what entering wet means).
-            // The panel's Method dropdown hides those options while armed
-            // (law #3); this is the belt for the doors the dropdown does not
-            // own (undo restoring a shape edit, older sessions' slots).
-            if !self.paint.brush.stroke_method.is_incremental() {
-                self.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::Space.to_u8());
+        }
+        // Doc 21: crossing the wet boundary with shapes open KEEPS them (the
+        // W3 entry coercion is reverted — authoring is flat in wet too) and
+        // re-forms the preview under the new mode's rules in both directions:
+        // entering peels the relief-bearing Paint preview and re-stamps flat;
+        // leaving re-stamps with relief over the baked water. The shape's
+        // METHOD rides across the boundary too — pointer routing is by
+        // method, so the freshly loaded slot's own method would orphan the
+        // editor (open, painted, and unreachable under the mouse).
+        if (old_mode == PaintMode::WetPaint) != (new_mode == PaintMode::WetPaint)
+            && (self.is_editing_shape() || self.has_parked_shapes())
+        {
+            if old_method.is_shape() {
+                self.paint.brush.stroke_method = old_method;
             }
+            self.paint.wet_shape_active = false;
+            self.refill_open_shape();
         }
         // The brush slot has just been swapped underneath us, so the "does anything read `Dab::dir`?" answer
         // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore

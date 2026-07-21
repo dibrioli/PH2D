@@ -290,7 +290,12 @@ impl PainterTool {
         //
         // It runs BEFORE the colour routes because it reads a COPY of the `tex_rng` stream, which the
         // routes are about to consume — see rule 2 in `super::impasto`.
-        self.stamp_dabs_height(dabs, &brush);
+        // WET PAINT lays NO relief, explicitly (doc 21): in that mode even the flat AUTHORING
+        // previews flow through here (un-owned batches), and relief pinned to a dab footprint
+        // would outlive pigment that the commit deposit then makes FLOW away (gate G12).
+        if !matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+            self.stamp_dabs_height(dabs, &brush);
+        }
         // ── SCULPT: the same list, a different verb on the same plane ────────────────────────────
         // Sculpt reads the layer's committed relief and RESHAPES it (Smooth / Sharpen; the spatula
         // verbs follow in Wave 2). It hangs off THIS choke point, and not off geometry of its own, for

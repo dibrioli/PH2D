@@ -1218,38 +1218,6 @@ fn the_wet_section_reset_restores_the_knob_defaults() {
     );
 }
 
-/// Entering Wet Paint COERCES a non-incremental stroke method to Space: the
-/// fluid deposit is not idempotent, so the re-stamping methods paint NOTHING
-/// through the wet route — a brush that silently does nothing is the exact
-/// shape of bug this line keeps finding. The panel hides those options while
-/// armed (law #3); this is the belt for the doors the menu does not own.
-/// Mutation that bleeds it: the coercion arm dropped from
-/// `set_paint_tool_mode`.
-#[test]
-fn entering_wet_coerces_a_non_incremental_method_to_space() {
-    use ph2d_painter_brush::StrokeMethod;
-    // Door 1: arming from the plain Brush with a Line method in hand.
-    let mut t = tool_in_mode("brush");
-    t.set_brush_stroke_method(StrokeMethod::Line.to_u8());
-    assert_eq!(t.paint.brush.stroke_method, StrokeMethod::Line);
-    t.set_wetpaint_armed(true);
-    assert_eq!(
-        t.paint.brush.stroke_method,
-        StrokeMethod::Space,
-        "arming with a shape method left a brush that paints nothing"
-    );
-    // Door 2: re-entering the mode with a dirty WET slot.
-    let mut t = tool_in_mode("wetpaint");
-    t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
-    t.set_paint_tool_mode("smear");
-    t.set_paint_tool_mode("brush"); // armed ⇒ wet again
-    assert_eq!(
-        t.paint.brush.stroke_method,
-        StrokeMethod::Space,
-        "re-entering wet kept the non-incremental method in the wet slot"
-    );
-}
-
 // ── Doc 21 (deposit-at-commit) — Stage 0 pins ─────────────────────────────
 
 /// Doc 21 G0a: `wet_owns_the_dabs` is FALSE in every non-wet mode, eraser on
@@ -1336,5 +1304,125 @@ fn the_paint_mode_flat_pipeline_survives_the_deposit_at_commit_diff() {
             17972062586509242145u64,
         ),
         "the Paint-mode flat pipeline moved under the doc-21 diff"
+    );
+}
+
+// ── Doc 21 — Stage 1: the authoring law (un-owned flat previews) ──────────
+
+/// Doc 21 G1 (red-first): a shape editor in Wet Paint AUTHORS — the flat
+/// preview paints pixels through the normal pipeline — and the engine stays
+/// untouched during authoring (dry canvas: no session is even born). RED
+/// today: the wet route owns and refuses the batch, so an ellipse draws
+/// NOTHING. Mutation that bleeds it: dropping the `is_incremental` conjunct
+/// from `wet_owns_the_dabs`.
+#[test]
+fn a_wet_shape_previews_flat_and_the_engine_stays_untouched() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool_in_mode("wetpaint");
+    t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+    let painted = t
+        .canvas_rgba
+        .chunks_exact(4)
+        .any(|px| px[0] != 255 || px[1] != 255 || px[2] != 255);
+    assert!(
+        painted,
+        "a wet-mode ellipse authored NOTHING — the flat preview never painted"
+    );
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "authoring on a dry canvas built a fluid session — the engine must stay untouched"
+    );
+}
+
+/// Doc 21 G8 (tool half, red-first): entering Wet Paint KEEPS the open
+/// shape — the W3 entry coercion (method → Space, which baked the set) is
+/// reverted; open shapes cross into wet as wet-authoring shapes. Mutation
+/// that bleeds it: re-adding the coercion.
+#[test]
+fn entering_wet_keeps_the_open_shape_editable() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool_in_mode("brush");
+    t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+    assert!(t.paint.ellipse.is_some(), "fixture: an ellipse is open");
+    t.set_wetpaint_armed(true); // enters Wet Paint
+    assert!(
+        t.paint.ellipse.is_some(),
+        "entering wet killed the open shape (the reverted W3 coercion is back)"
+    );
+    assert_eq!(
+        t.paint.brush.stroke_method,
+        StrokeMethod::Ellipse,
+        "entering wet moved the stroke method off the open editor"
+    );
+}
+
+/// Doc 21 G18: the Selection gates the flat wet AUTHORING preview exactly
+/// like Paint mode — un-owned batches go through the outer snapshot/restore
+/// wrapper, so preview pixels outside the selection stay pristine. Mutation
+/// that bleeds it: keeping authoring batches owned (wrapper bypassed).
+#[test]
+fn selection_gates_the_flat_wet_preview() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool_in_mode("wetpaint");
+    t.set_rect_selection(0, 0, 100, 120); // the LEFT half
+    assert!(t.selection_restricts_paint(), "fixture: selection live");
+    t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([130.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([130.0, 80.0], PointerPhase::Up));
+    let mut inside = false;
+    let mut outside_touched = false;
+    for y in 0..120usize {
+        for x in 0..200usize {
+            let o = (y * 200 + x) * 4;
+            let p = &t.canvas_rgba[o..o + 4];
+            let painted = p[0] != 255 || p[1] != 255 || p[2] != 255;
+            if x < 100 {
+                inside |= painted;
+            } else {
+                outside_touched |= painted;
+            }
+        }
+    }
+    assert!(inside, "the preview painted nothing inside the selection");
+    assert!(
+        !outside_touched,
+        "the flat wet preview escaped the selection — the wrapper was bypassed"
+    );
+}
+
+/// Doc 21 G12: Wet Paint lays NO relief — pigment that will FLOW cannot
+/// leave a ridge pinned to the dab footprint. Explicit for both halves:
+/// incremental batches return at the wet arm before the height pass;
+/// authoring (un-owned) batches skip it by the mode gate. Mutation that
+/// bleeds it: dropping the `!WetPaint` gate on `stamp_dabs_height`.
+#[test]
+fn wetpaint_lays_no_relief() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool_in_mode("wetpaint");
+    t.paint.brush.impasto = true;
+    for slot in &mut t.paint.brush_by_mode {
+        slot.impasto = true;
+    }
+    // Incremental half (owned, live deposit).
+    stroke_across(&mut t);
+    assert!(
+        t.paint.relief.stroke_height.iter().all(|&h| h == 0.0),
+        "an incremental wet stroke laid relief"
+    );
+    // Authoring half (un-owned flat preview).
+    t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+    assert!(
+        t.paint.relief.stroke_height.iter().all(|&h| h == 0.0),
+        "a wet shape preview laid relief the commit would never keep"
     );
 }

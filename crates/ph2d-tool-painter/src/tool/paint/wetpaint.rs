@@ -35,14 +35,18 @@
 //! radius = the dab's real `radius_px`. Colour is taken at stroke start
 //! (per-dab Randomize colour is a W2 seam).
 //!
-//! ## What deliberately does NOT run in this mode (W1)
+//! ## Authoring vs deposit (doc 21 — deposit-at-commit)
 //!
-//! The impasto height pass and every colour route — the engine owns the
-//! deposit, and relief for paint that then FLOWS AWAY would be wrong twice.
-//! And a deposit only happens inside a live freehand stroke: the shape
-//! editors re-stamp their whole geometry every preview frame, which against
-//! a non-idempotent fluid deposit would pile paint while the artist just
-//! LOOKS (the I2 disease) — their integration is a W2 design, not a default.
+//! The re-stamping methods (DragDot / Anchored / the shape editors) AUTHOR
+//! through the normal flat pipeline (their batches are un-owned — see
+//! [`PainterTool::wet_owns_the_dabs`]) and the fluid receives the FINAL dab
+//! list exactly once, at commit (pen-up / Enter / Apply), through the
+//! commit door (`wetpaint_commit`). The impasto height pass never runs in
+//! this mode (relief pinned to a footprint would outlive paint that flows
+//! away — gated in `stamp_dabs_inner`). A live deposit still only happens
+//! inside a real incremental gesture: re-stamp previews piling paint into a
+//! non-idempotent fluid while the artist just LOOKS (the I2 disease) is the
+//! exact failure the ownership split + the route's belt refuse.
 
 use super::*;
 use ph2d_wet_paint::painter::{Dirty, Engine};
@@ -74,6 +78,19 @@ pub(crate) struct WetPaintState {
     /// The authored knob values (W3) — survive the session, the mode and the
     /// tool round-trips; the section reset restores [`WetKnobs::default`].
     pub(super) knobs: WetKnobs,
+    /// Doc 21 (deposit-at-commit): the commit-deposit STASH — the exact batch
+    /// the last flat authoring preview painted (`stamp_drag_preview`'s own
+    /// parameter, untiled/mirrored; the dispatcher re-tiles at deposit
+    /// exactly as it did at preview). The deposit IS the preview by
+    /// construction — nothing is re-derived at commit. Transient, never
+    /// serialized; cleared by pen-down, cancel, mode-leave and teardown.
+    pub(super) pending_deposit: Vec<Dab>,
+    /// Doc 21: TRUE only across the single `stamp_dabs` replay inside
+    /// `wetpaint_commit_deposit` — the third key on the wet arm's gate. A
+    /// leak of this flag while a preview re-stamp runs is I2 resurrected
+    /// (every refill becomes a fluid deposit); it is written in exactly two
+    /// adjacent statements around that one call, nowhere else.
+    pub(super) deposit_pass: bool,
 }
 
 pub(super) struct WetSession {
@@ -165,12 +182,19 @@ impl PainterTool {
     /// condition would diverge, and the diverged half is a canvas gate that
     /// either leaks or kills the water.
     ///
-    /// Wet Paint owns everything in its mode EXCEPT the eraser with no live
-    /// session (W2.6): the wet eraser erases the FLUID, and with no session
-    /// there is nothing wet — those dabs fall through to the normal eraser
-    /// and erase the BAKED canvas instead (which is what is visibly there).
+    /// Wet Paint owns (doc 21): the INCREMENTAL methods' live batches and the
+    /// commit door's `deposit_pass` replay — nothing else. A non-incremental
+    /// AUTHORING batch (DragDot / Anchored / the shape editors' re-stamps) is
+    /// deliberately UN-owned: it falls through the completely normal flat
+    /// pipeline (snapshot/restore wrapper + colour routes), which is what
+    /// makes the flat preview — and hands it Selection/protection/alpha-lock
+    /// byte-identically to Paint mode. The eraser with no live session (W2.6)
+    /// also falls through (it erases the BAKED canvas, which is what is
+    /// visibly there). Non-wet modes: the mode conjunct short-circuits first —
+    /// not one instruction changes (gate G0a).
     pub(super) fn wet_owns_the_dabs(&self) -> bool {
         matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && (self.paint.brush.stroke_method.is_incremental() || self.paint.wetpaint.deposit_pass)
             && (!self.paint.eraser || self.paint.wetpaint.session.is_some())
     }
 
@@ -179,12 +203,14 @@ impl PainterTool {
     /// sees exactly what the colour routes would have seen.
     pub(super) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         let (w, h) = self.source_size;
-        // Deposits only inside a live gesture (module doc, I2), and only for
-        // the CUMULATIVE stroke methods — DragDot/Anchored/Line re-stamp a
-        // moving shape every preview frame, which against a non-idempotent
-        // fluid deposit would pile paint while the artist just looks (W2).
-        let cumulative = brush.stroke_method.is_incremental();
-        if dabs.is_empty() || w == 0 || h == 0 || !self.paint.wetpaint.live_gesture || !cumulative {
+        // Two doors in, one belt (doc 21): a LIVE incremental gesture (the
+        // W1/W2 path — dabs are the artist's hand, once) or the commit
+        // door's one-shot `deposit_pass` replay. Everything else is refused
+        // — authoring batches are un-owned and can no longer even reach
+        // here (routing sends them flat); this gate is the belt against a
+        // routing regression, and it must stay a WALL, not a debug_assert.
+        let live = self.paint.wetpaint.live_gesture && brush.stroke_method.is_incremental();
+        if dabs.is_empty() || w == 0 || h == 0 || !(live || self.paint.wetpaint.deposit_pass) {
             return;
         }
         self.wetpaint_guard();

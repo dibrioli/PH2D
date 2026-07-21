@@ -97,8 +97,7 @@ impl PainterTool {
             brush.stroke_method,
             StrokeMethod::Dots | StrokeMethod::Airbrush | StrokeMethod::Space
         );
-        if dabs.is_empty() || w == 0 || h == 0 || !self.paint.wetpaint.live_gesture || !cumulative
-        {
+        if dabs.is_empty() || w == 0 || h == 0 || !self.paint.wetpaint.live_gesture || !cumulative {
             return;
         }
         self.wetpaint_guard();
@@ -115,8 +114,15 @@ impl PainterTool {
         }
         let sess = self.paint.wetpaint.session.as_mut().expect("ensured above");
         if !sess.stroke_open {
+            // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
+            // writes plane values straight through `clamp_u8`); the brush stores sRGB 0..1. Passing
+            // the normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
             let c = brush.color;
-            sess.engine.color = [c[0] as f64, c[1] as f64, c[2] as f64];
+            sess.engine.color = [
+                f64::from(c[0]) * 255.0,
+                f64::from(c[1]) * 255.0,
+                f64::from(c[2]) * 255.0,
+            ];
             let p0 = dabs[0].center;
             sess.engine
                 .begin_direct_stroke(p0[0] as f64 + 1.0, p0[1] as f64 + 1.0);
@@ -279,7 +285,12 @@ mod tests {
     use ph2d_painter_brush::Falloff;
 
     fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
-        CanvasPointer { pos, pressure: 1.0, tilt: [0.0, 0.0], phase }
+        CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        }
     }
 
     /// A white opaque canvas + a red brush, in the given paint mode.
@@ -320,17 +331,32 @@ mod tests {
         let mut t = tool_in_mode("wetpaint");
         let before = Arc::clone(&t.canvas_rgba);
         stroke_across(&mut t);
-        assert!(t.paint.wetpaint.session.is_some(), "no wet session after a wet stroke");
-        assert_ne!(&*before, &*t.canvas_rgba, "a wet stroke left the canvas byte-identical");
+        assert!(
+            t.paint.wetpaint.session.is_some(),
+            "no wet session after a wet stroke"
+        );
+        assert_ne!(
+            &*before, &*t.canvas_rgba,
+            "a wet stroke left the canvas byte-identical"
+        );
         // The session spans strokes: pen-up closed the engine stroke but kept the water.
         let sess = t.paint.wetpaint.session.as_ref().unwrap();
-        assert!(!sess.stroke_open, "pen-up must close the engine's direct stroke");
-        assert!(sess.engine.sim_should_run(), "the sim must resume after pen-up");
+        assert!(
+            !sess.stroke_open,
+            "pen-up must close the engine's direct stroke"
+        );
+        assert!(
+            sess.engine.sim_should_run(),
+            "the sim must resume after pen-up"
+        );
         // Heartbeat: the sim steps and composites without panicking or NaNing.
         for _ in 0..30 {
             t.paint_tick(1.0 / 40.0);
         }
-        assert!(t.paint.wetpaint.session.is_some(), "the heartbeat must not kill the session");
+        assert!(
+            t.paint.wetpaint.session.is_some(),
+            "the heartbeat must not kill the session"
+        );
         assert!(t.canvas_rgba.iter().all(|b| *b != 0 || true), "unreachable");
     }
 
@@ -354,7 +380,10 @@ mod tests {
         // And the positive control: the same fixture in the wet mode DOES.
         let mut t = tool_in_mode("wetpaint");
         stroke_across(&mut t);
-        assert!(t.paint.wetpaint.session.is_some(), "positive control failed");
+        assert!(
+            t.paint.wetpaint.session.is_some(),
+            "positive control failed"
+        );
     }
 
     /// The canvas-identity guard, at the TICK: a foreign `canvas_rgba` swap
@@ -381,6 +410,55 @@ mod tests {
         );
     }
 
+    /// The paint wears the BRUSH's colour — the engine speaks 0..255 and the
+    /// brush 0..1, and forgetting the scale paints black (Enio's W1 smoke).
+    /// Mutation that bleeds it: dropping the `* 255.0` in the colour handoff.
+    #[test]
+    fn the_wet_paint_wears_the_brushs_colour_not_black() {
+        let mut t = tool_in_mode("wetpaint");
+        // The fixture brush is [0.8, 0.1, 0.1] — a saturated red.
+        stroke_across(&mut t);
+        // The strongest deposit anywhere on the canvas (the trail lays mass
+        // with vertical structure, so a single row is not a fair sample —
+        // the first cut of this gate scanned only the stroke row and failed
+        // over a CORRECT product).
+        let mut best = [255u8; 4];
+        let mut best_dev = 0u32;
+        for px in t.canvas_rgba.chunks_exact(4) {
+            let dev = px[..3].iter().map(|&c| 255u32 - u32::from(c)).sum::<u32>();
+            if dev > best_dev {
+                best_dev = dev;
+                best = [px[0], px[1], px[2], px[3]];
+            }
+        }
+        assert!(
+            best[0] > best[1].saturating_add(40) && best[0] > best[2].saturating_add(40),
+            "the wet deposit is not red-dominant (got {best:?}) — the colour scale is wrong"
+        );
+        assert!(best[0] > 90, "the deposit reads near-black ({best:?})");
+    }
+
+    /// Entering Wet Paint must NOT take the Impasto section away (Enio, W1
+    /// smoke: "uma das regras era não afetar o que já existia") — the section
+    /// hosts the ten-tool list and the canvas's Lighting. And the radio must
+    /// light NOTHING (claiming Deposit would be the lying radio the rail
+    /// refused for the Knife). Mutations: drop WetPaint from
+    /// `impasto_section_applies` (first half) or let `impasto_tool` fall to
+    /// its `_ => DEPOSIT` arm (second half).
+    #[test]
+    fn wet_paint_keeps_the_impasto_section_with_no_tool_lit() {
+        let t = tool_in_mode("wetpaint");
+        assert!(
+            t.impasto_section_applies(),
+            "Wet Paint hid the Impasto section — the tool list and Lighting became unreachable"
+        );
+        assert_eq!(
+            t.impasto_tool(),
+            super::super::impasto_tool::IMPASTO_TOOL_NONE,
+            "the tool radio claims a tool the hand is not holding"
+        );
+    }
+
     /// Leaving the mode ends the session, and ending IS the bake: the pixels
     /// of the last composite stay exactly as they are. Mutation that bleeds
     /// it: dropping the teardown arm in `set_paint_tool_mode`.
@@ -391,7 +469,13 @@ mod tests {
         assert!(t.paint.wetpaint.session.is_some());
         let painted = Arc::clone(&t.canvas_rgba);
         t.set_paint_tool_mode("brush");
-        assert!(t.paint.wetpaint.session.is_none(), "mode exit must end the wet session");
-        assert_eq!(&*painted, &*t.canvas_rgba, "the mode exit moved pixels — ending must be a stop");
+        assert!(
+            t.paint.wetpaint.session.is_none(),
+            "mode exit must end the wet session"
+        );
+        assert_eq!(
+            &*painted, &*t.canvas_rgba,
+            "the mode exit moved pixels — ending must be a stop"
+        );
     }
 }

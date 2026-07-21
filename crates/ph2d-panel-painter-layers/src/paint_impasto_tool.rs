@@ -36,6 +36,9 @@ use ph2d_tool_painter::BrushSettings;
 const TOOL_DEPOSIT: u8 = 0;
 /// Wire index of the Knife — mirrors `IMPASTO_TOOL_KNIFE`.
 const TOOL_KNIFE: u8 = 1;
+/// "None of the ten" — mirrors `IMPASTO_TOOL_NONE` (Wet Paint shows the section, holds no tool on
+/// this list): the radio lights nothing and NO tool card paints.
+const TOOL_NONE: u8 = u8::MAX;
 
 /// The **Tool** card: ten chips, reflowing onto extra rows on a narrow panel.
 ///
@@ -124,6 +127,9 @@ pub(crate) fn paint_tool_body(
             crate::paint_impasto::paint_knife_card(ctx, theme, x, content_w, y, brush),
             false,
         ),
+        // No tool in hand (Wet Paint): the list painted, nothing selected, no tool card — a card
+        // for a tool the artist is not holding would be the sculpt rows lying about the fluid.
+        TOOL_NONE => (y, false),
         _ => (
             crate::paint_sculpt::paint_sculpt_rows(ctx, theme, x, content_w, y, *brush),
             false,

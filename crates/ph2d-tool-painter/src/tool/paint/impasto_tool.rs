@@ -47,6 +47,10 @@ pub const IMPASTO_TOOL_KNIFE: u8 = 1;
 /// The wire index of the first **sculpt verb**; the eight run `2..IMPASTO_TOOL_COUNT`, in `SculptMode`
 /// order (Smooth · Sharpen · Flatten · Scrape · Fill · Chisel · Layer · Inflate).
 pub const IMPASTO_TOOL_SCULPT_BASE: u8 = 2;
+/// "None of the ten": the mode in hand (Wet Paint) is not on this list, so the radio must light
+/// NOTHING — naming Deposit while the hand holds the fluid is the lying radio the rail refused for
+/// the Knife. Out-of-range is the segmented widget's documented "no selection" rendering.
+pub const IMPASTO_TOOL_NONE: u8 = u8::MAX;
 
 impl PainterTool {
     /// Whether the **Impasto section** applies at all — the three modes that have something to say about
@@ -63,11 +67,17 @@ impl PainterTool {
     /// siblings are. Modes absent from the list — Blur, Clone, Mask, Inpaint, Fill, Selection, Deform —
     /// have no verb on this list; ⚠️ Deform's **Affect Relief** toggle is relief-adjacent and stays in the
     /// Deform card, because Deform owns the whole panel body through an early return.
+    ///
+    /// **Wet Paint is IN, and it is Enio's ruling, not the watercolor precedent's** (W1 smoke,
+    /// 2026-07-20: *"vc suprimiu a seção Impasto — uma das regras era não afetar o que já existia"*).
+    /// The fluid lays no body, so the watercolor argument would exclude it — but the section now
+    /// hosts the ten-TOOL list and the canvas's Lighting, and a mode that hides it takes the tool
+    /// switcher away. The radio lights nothing there ([`IMPASTO_TOOL_NONE`]).
     #[must_use]
     pub fn impasto_section_applies(&self) -> bool {
         matches!(
             self.paint.paint_mode,
-            PaintMode::Paint | PaintMode::Knife | PaintMode::Sculpt
+            PaintMode::Paint | PaintMode::Knife | PaintMode::Sculpt | PaintMode::WetPaint
         ) && !self.watercolor_render_active()
             && !self.paint.eraser
     }
@@ -83,6 +93,8 @@ impl PainterTool {
             PaintMode::Sculpt => {
                 IMPASTO_TOOL_SCULPT_BASE + self.paint.sculpt.mode.min(SCULPT_VERB_MAX)
             }
+            // Wet Paint shows the section but is not one of the ten — nothing lights up.
+            PaintMode::WetPaint => IMPASTO_TOOL_NONE,
             _ => IMPASTO_TOOL_DEPOSIT,
         }
     }

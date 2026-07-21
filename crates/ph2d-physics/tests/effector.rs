@@ -7,7 +7,9 @@
 //! precisely how the one-way platform's sign flip survived three gates one wave
 //! ago. Ordering is a parameter here from the start.
 
-use ph2d_physics::{BodyDesc, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc};
+use ph2d_physics::{
+    BodyDesc, LayerMatrix, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
+};
 
 /// A body with everything neutral — the fixtures override the few fields they
 /// are about, so a new `BodyDesc` field lands in ONE place.
@@ -310,5 +312,57 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
              bounding box must not be pushed, x={}",
             x_of(&w, corner)
         );
+    }
+}
+
+#[test]
+fn the_collision_layer_matrix_decides_who_the_zone_can_touch() {
+    // **The per-object answer to "does THIS body feel THIS area?"** — and it is not a
+    // new knob: the world's layer matrix already filters the narrow phase, and a force
+    // zone is read from the narrow phase, so a body on a layer the zone's layer does not
+    // collide with is invisible to it. (Unity spells the same rule as the effector's own
+    // `colliderMask`; here it is the matrix the artist already authored in the Physics
+    // panel, so there is no second place to say who interacts with whom.)
+    //
+    // Measured, not assumed — and gated, because it is a promise the product now makes:
+    // blocked, the ball does not move by a single float; the same-layer control in the
+    // SAME run is carried 8.5 m, which is what proves the zone was alive at all.
+    for blocked in [false, true] {
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let mut matrix = LayerMatrix::all();
+        if blocked {
+            matrix.set(0, 1, false);
+        }
+        w.set_layer_matrix(matrix);
+
+        // The zone is on layer 0 (the default).
+        w.spawn_body(zone(0.0, 0.0, 2.0, 2.0, [5.0, 0.0]));
+        let other_layer = w.spawn_body(BodyDesc {
+            layer: 1,
+            ..ball(0.0, 0.0, 1.0)
+        });
+        let same_layer = w.spawn_body(ball(0.0, 1.0, 1.0));
+        for _ in 0..60 {
+            w.step();
+        }
+
+        assert!(
+            x_of(&w, same_layer) > 0.5,
+            "blocked={blocked}: the same-layer control must be carried — without it a \
+             zone that pushed NOBODY would pass the half below"
+        );
+        if blocked {
+            assert_eq!(
+                x_of(&w, other_layer),
+                0.0,
+                "a body whose layer does not collide with the zone's must be untouched"
+            );
+        } else {
+            assert!(
+                x_of(&w, other_layer) > 0.5,
+                "with the matrix open, layer 1 is carried like layer 0"
+            );
+        }
     }
 }

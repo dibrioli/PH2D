@@ -2646,6 +2646,24 @@ impossível de olhar. Selecione qualquer zona: a §11 mostra **Trigger = Sensor*
 Trigger para **Solid** e as rows **somem** e One-Way toma o lugar delas — a regra da wave, visível. **B** para os
 contornos.
 
+### ⚠️ "Como configuro a RESPOSTA de um objeto à área?" — a resposta já existe, e não é script
+
+Pergunta do Enio no smoke. **Não há script em lugar nenhum do PH2D** — a autoria é o Inspector. Mas o
+controle por-objeto já está no produto, em duas camadas, e nenhuma delas é nova:
+
+- **QUEM sente:** a **matriz de camadas de colisão** (W2c). Uma zona é lida da narrow phase, e a matriz já
+  filtra a narrow phase ⇒ um corpo numa camada que não colide com a da zona é **invisível** para ela. É o
+  `colliderMask` do effector da Unity, só que dito **uma vez** na matriz que o artista já autorou no painel de
+  MUNDO, em vez de re-digitado em cada área. **Medido** (gate `the_collision_layer_matrix_decides_who_the_zone_can_touch`):
+  bloqueado o corpo não anda **um float**, e o controle de mesma camada na MESMA corrida é levado 8,5 m — é ele
+  que prova que a zona estava viva.
+- **QUANTO sente:** a **massa** (Auto/Manual, W-Mass). Não é configuração da resposta, é a própria lei: `a = F/m`.
+
+**O que NÃO existe:** um *multiplicador por-corpo* ("este objeto sente 50% de qualquer vento"). Seria um
+`AreaResponse(f32)` — mesmo idioma dos outros overrides, ~1 wave — e a pergunta de projeto que ele traz é se um
+multiplicador global por corpo é a granularidade certa ou se o artista quer *por-área* (Unity resolve com
+máscara, não com peso). Não construir sem pedido: hoje a dupla camada+massa cobre "não sente" e "sente menos".
+
 ### Aberto no W-Area
 
 Falloff (hoje a força é uniforme dentro da área — Unity tem um gradiente e o Godot não) · torque de área (a

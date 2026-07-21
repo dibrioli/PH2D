@@ -34,6 +34,9 @@ exclusivos = "exclusivos"  # pt-BR (comentario de codigo)
 respondendo = "respondendo"  # pt-BR (comentario de codigo)
 TRANSFERE = "TRANSFERE"  # pt-BR (handoff wet paint)
 dilema = "dilema"  # pt-BR (handoff wet paint)
+commite = "commite"  # pt-BR imperativo de "commitar" (handoffs)
+prefixe = "prefixe"  # pt-BR imperativo de "prefixar" (handoffs)
+priorize = "priorize"  # pt-BR imperativo de "priorizar" (handoffs)
 # Project-specific names (not typos).
 ph2d = "ph2d"
 PH2D = "PH2D"

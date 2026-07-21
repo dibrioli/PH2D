@@ -167,7 +167,8 @@ fps** já no zoom default. ⇒ o cook está a 3% de um frame; a queda é o **REN
 empacotamento na água. É a lição do ADR-0134 (o teto da MÁQUINA ≠ o tamanho de uma
 DEMO): o count é um **orçamento de RENDER**, não do cook. **Demo reduzido a
 64×1024 = 65.536** (4×, folga de render); o teto do cook segue em MILHÕES (a classe
-4,19 M-em-3,6 ms), alcançável subindo `rows`/`cols`. **Aguardando re-smoke.**
+4,19 M-em-3,6 ms), alcançável subindo `rows`/`cols`. **SMOKE OK (Enio, 2026-07-20)
+com o demo reduzido a 65 k.**
 
 **Gates (verdes na RTX):** paridade `sim.zone` 4 casos (floor **1,7e-6** · disc
 **5,7e-6** · bowl **2,1e-6** · sea+bed) vs CPU, cada colisor contra uma linha de

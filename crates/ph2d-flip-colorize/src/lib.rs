@@ -623,3 +623,18 @@ fn trace_region(
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+/// Os gates do **Bleed / selo / quina** (6º smoke) — módulo irmão pelo teto de LOC (700).
+#[cfg(test)]
+#[path = "lib_bleed_tests.rs"]
+mod bleed_tests;
+
+/// As réguas/sondas `#[ignore]` — módulo irmão pelo teto de LOC (700).
+#[cfg(test)]
+#[path = "lib_probes.rs"]
+mod probes;
+
+/// Os gates da borda sobre a tinta (serrilhado, fresta) — irmão pelo teto de LOC (700).
+#[cfg(test)]
+#[path = "lib_edge_tests.rs"]
+mod edge_tests;

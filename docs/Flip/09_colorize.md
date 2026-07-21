@@ -1,5 +1,86 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-21): AUDITORIA COMPLETA (3 agentes) — a QUINA fechou, e ela era a doença
+> canônica da linha.** O Enio pediu *"levante agentes … auditoria completa com colorize
+> inclusive com pesquisa em fontes originais"*. Três frentes: caça ao defeito, pesquisa em
+> fontes primárias, auditoria de 2 lentes.
+>
+> **1. A QUINA — causa NOMEADA e fechada.** As 4 paredes da caixa são traços **SEPARADOS** e o
+> tremor deixa as pontas sem coincidir: o vão entre os EIXOS mede 0,023 e 0,040 doc nas quinas
+> esquerdas contra 0,012 e 0,0045 nas direitas (**a assimetria é aritmética do fixture**). A
+> tinta é rasterizada no eixo (raio 0, BUGS #14), e uma cápsula de raio 0 fecha vão ≲2 px mas
+> não 3,7 ⇒ **a quina esquerda tem buraco real na tinta a partir da precisão ~80**. A
+> trapped-ball SELA esse buraco no **núcleo** — mas o passo 4a, a *dilatação de volta*, era uma
+> **BFS FIFO de contagem de saltos que atravessava o mesmo buraco que a bola acabou de
+> recusar**. Numa quina CONVEXA o núcleo de FORA chega em ~`r` saltos e o de DENTRO em ~`2r` ⇒
+> o exterior ganha a corrida e leva uma cunha, cuja fronteira é a bissetriz de hop-count numa
+> grade 4-conexa: **uma reta a 45°** — o triângulo preto, 0,33 doc de profundidade, com o
+> contorno tendo UMA aresta de `(-3,518, 2,518)` a `(-4,011, 2,032)`. **Duas portas para o mesmo
+> fato:** o passo 3 diz *"a bola não passa"*, o 4a dizia *"passa"*. **Fix:** o 4a virou flood de
+> **maior GARGALO** (max-bottleneck) — *um papel pertence ao núcleo cuja BOLA MAIS GORDA o
+> alcança* —, em fila de níveis descendente O(N) (o nível corrente É a capacidade; o vizinho
+> entra em `min(nível, dist(q))`). Corte **0,33/0,35 → 0,00/0,00**; perf 1726 → **1831 ms**
+> @4096² (+6%). Gate `the_colour_fills_the_corner_the_artist_drew` (mutação: voltar ao
+> hop-count ⇒ RED). ⚠️ **Eu havia construído e REVERTIDO este fix** por medir a precisão 40,
+> onde os mesmos vãos viram 0,9–1,6 px e a cápsula os fecha — *fixture só prova o que contém*, e
+> a minha não continha. O gate agora **mede o próprio vão** e recusa um fixture cego.
+>
+> **2. Um PANIC em debug, vivo desde o 4º smoke.** `voronoi.rs` construía o array de vizinhos
+> **EAGER**, e em `y == 0` o `p.wrapping_sub(w) + 1` estourava ⇒ **2/31 testes FALHAVAM sem
+> `--release`**, que é o perfil do `ship.sh` (`ci-test`). O produto **panicava ao colorir num
+> build de debug** sempre que um componente contestado alcançasse a linha 0 — o caso normal.
+> Invisível por 3 commits porque a suíte só era rodada com `--release`. Irmão fechado junto: a
+> EDT devolve `u32::MAX` com tinta vazia e `1 + u32::MAX` wrapa para 0 ⇒ divisão por zero.
+>
+> **3. Um Apply RECUSADO comia os rabiscos do artista.** O `mem::take` das sementes rodava
+> ANTES de **cinco** saídas, e três delas mandam o artista *corrigir e tentar de novo* ("a
+> camada está travada", "desenhe a line-art primeiro", "rabisque dentro das formas fechadas") —
+> o que era impossível: os rabiscos tinham ido embora, e o **Ctrl+Z não os trazia** (a fila de
+> removidos era limpa na linha seguinte, então o `undo_route` deixava de ser dono do atalho).
+> Uma recusa custava o trabalho. Agora **só o SUCESSO consome**; gate mutação-testado.
+>
+> **4. A PESQUISA (fontes primárias) reenquadra o desenho — leia antes de mexer no selo.**
+> ⚠️ **A erosão global com raio grande é a ferramenta ERRADA para fechar um vão largo, e
+> nenhuma fonte primária a usa assim.** (a) O **LazyBrush não fecha vão nenhum**: o custo de
+> atravessar branco é **por pixel de fronteira** num min-cut (`K = 2(w+h)`, derivado da imagem,
+> **não ajustável**), então um vão largo é caro *porque é largo* — no nosso Dijkstra geodésico
+> ele é barato *porque é largo*, e **o pedágio saturar é a assinatura de medir a grandeza
+> errada**, não falta de tuning. (b) O **trapped-ball NUNCA usa um raio**: usa **cascata
+> descendente `R…1`** com máscara acumulativa, e a volta é **fila de prioridade**, não flood —
+> o paper declara que *"the ball cannot penetrate into narrow pockets […] or pass through
+> narrow necks"* e o region-growing existe **para curar isso**. Implementamos a bola sem as duas
+> defesas. (c) A **Krita Colorize Mask (o mesmo LazyBrush) não erode nada** — o "Gap close hint"
+> é blur da line art com a tinta original recolada por cima, e o número na tela é a **largura do
+> vão** (interno ×2). (d) O implementador do MyPaint **construiu a erosão global e a descartou
+> por escrito**, com os nossos dois sintomas: *"loss of information for **sharp corners** and
+> **areas that are narrower than the maximum gap closing radius**"*. (e) **UI: 6 de 6 produtos**
+> (Krita ×2, CSP, Harmony, TVPaint, GIMP, MyPaint) expõem **UM** slider, em px, nomeado pelo
+> **VÃO** — nunca raio, nunca pedágio, nunca dois. **Recomendação: barreira virtual entre as
+> PONTAS do vão** (local, monotônica, zero efeito em quina), que é onde 4 produtos convergiram;
+> alternativa mais barata = cascata + dilatação por prioridade (Zhang 2009 / OLM 2024, que
+> reporta *"straight boundaries instead of ball shapes"*). ⚠️ E a medição que nos fez abandonar
+> o min-cut (3,3 s / 157 s) pode ter medido um **multiway-cut global**, não o algoritmo do paper
+> (`< N` max-flows BINÁRIOS sobre máscara que encolhe, 3–18× de speedup) — **o número que
+> importava talvez nunca tenha sido medido**.
+>
+> **5. ABERTO e MEDIDO (o próximo item, e é grave):** no Bleed **default** (0,5, sem selo) **a
+> cor ESCAPA da caixa** a partir da precisão 80 (medido em 80/160/320; a 40 não). Mesma
+> causa-raiz (o buraco de quina), mas o selo a mascarava — com a bola ligada não escapa. O gate
+> `the_colour_does_not_escape_the_box` passa porque **o fixture dele não contém o fenômeno**
+> (não tem quinas de traços separados). O fix certo é o (4): fechar o vão LOCALMENTE.
+>
+> **Outros:** comentário que MENTIA removido (dizia que *"o motor cresce a bola até os rabiscos
+> caírem em regiões distintas"* — não cresce: `trap_px` vai direto ao `segment`) · a lista
+> `colorize_only` do seam do painel estava **MORTA** (construída e nunca referenciada ⇒ o slider
+> Bleed não tinha gate de AUSÊNCIA nenhum) — ligada aos 6 modos não-Colorize · **3 LOC caps
+> fechados** por split (`flip_colorize.rs` 707→527 + `flip_colorize_tests.rs`; `lib_tests.rs`
+> 1994→659 + `lib_bleed_tests.rs`/`lib_probes.rs`/`lib_edge_tests.rs`) — o `lib_tests.rs` já
+> chegou a esta sessão com **1427/700**, vermelho de herança. ⚠️ **Sem gate NENHUM sobre a
+> costura do shell** (`precision_and_trap`): a auditoria mutou o `.max(seal_px)` para fora e
+> **862 testes de shell ficaram verdes** enquanto a entrega do 6º smoke morria — item aberto,
+> junto com o `trap_px` que não sobrevive ao clamp de `MAX_SIDE` (bola de 21,6 doc a 10× de
+> zoom) e o custo do re-Apply ao vivo (61–294 ms/frame contra o kill-criterion de 16 ms do §7.2).
+>
 > **Estado (2026-07-20, noite VI): o selo virou um DEGRAU** (report do Enio: *"o bleed baixo
 > está tirando tinta das quinas antes de resolver o vazamento"*, com a LENTE ainda na tela).
 > **O diagnóstico que importa está na palavra "antes":** a trapped-ball é **BINÁRIA** (o próprio

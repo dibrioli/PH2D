@@ -112,19 +112,57 @@ pub fn segment(grid: &Grid, r_px: f32) -> Segmentation {
     //     núcleo próprio — e a margem da grade é exatamente esse caso quando a bola cresce.
     //     Foi o bug do smoke de 2026-07-19: uma região de 54.927 px contendo o lobo esquerdo
     //     E o lado de fora, e a cor pintando a tela inteira.
-    queue.clear();
+    //     ⚠️ **E a bola tem de valer para a DILATAÇÃO, não só para o núcleo.** A BFS FIFO
+    //     anterior contava SALTOS, então ela atravessava alegremente o mesmo buraco que a bola
+    //     acabou de recusar — duas portas para o mesmo fato. Numa QUINA convexa cujos dois
+    //     traços não se encontram (tremor de mão: medido 3,7 e 6,5 px de buraco entre os eixos
+    //     na cena do smoke a precisão 160), o núcleo de FORA alcança o buraco em ~`r` saltos e
+    //     o de DENTRO precisa de ~`2r` ⇒ o exterior ganha a corrida e leva uma cunha do
+    //     interior, cuja fronteira é a bissetriz de hop-count numa grade 4-conexa: **uma reta a
+    //     45°**. É o triângulo preto na quina que o Enio reportou (0,33 doc de profundidade), e
+    //     ele cresce com o raio da bola — por isso aparecia junto com o selo do `Bleed 0`.
+    //
+    //     A lei correta é a da própria trapped-ball, estendida para além do núcleo: **um pixel
+    //     de papel pertence ao núcleo cuja BOLA MAIS GORDA consegue alcançá-lo** — caminho de
+    //     maior gargalo (max-bottleneck), não de menor contagem de saltos. Uma fila de níveis
+    //     descendente em distância-à-tinta a computa em O(N): o nível corrente É a capacidade
+    //     do caminho, e o vizinho entra em `min(nível, dist(q))` — o gargalo, exatamente. Assim
+    //     um núcleo reivindica a vizinhança LARGA antes que qualquer frente se esprema por uma
+    //     garganta, e a garganta é o ÚLTIMO nível processado. (É a "fair prioritized dilation"
+    //     que o paper do trapped-ball usa; o flood ingênuo é o que produz "ball shapes".)
+    let dist_of = |i: usize| (sq[i].isqrt() as usize).min(w + h);
+    let max_d = component
+        .iter()
+        .enumerate()
+        .filter(|&(_, &r)| r != NO_REGION)
+        .map(|(i, _)| dist_of(i))
+        .max()
+        .unwrap_or(0);
+    let mut levels: Vec<Vec<u32>> = vec![Vec::new(); max_d + 1];
     for (i, &r) in component.iter().enumerate() {
         if r != NO_REGION {
-            queue.push_back(i as u32);
+            levels[dist_of(i).min(max_d)].push(i as u32);
         }
     }
-    while let Some(cf) = queue.pop_front() {
-        let c = cf as usize;
-        let id = component[c];
-        for q in neighbours(w, h, c) {
-            if component[q] == NO_REGION && !is_ink(q) {
-                component[q] = id;
-                queue.push_back(q as u32);
+    for level in (0..=max_d).rev() {
+        // `current` sai da tabela para o empréstimo do laço; um vizinho de MESMO gargalo volta
+        // para ele (FIFO por índice ⇒ determinístico), um mais estreito cai num nível abaixo.
+        let mut current = std::mem::take(&mut levels[level]);
+        let mut k = 0;
+        while k < current.len() {
+            let c = current[k] as usize;
+            k += 1;
+            let id = component[c];
+            for q in neighbours(w, h, c) {
+                if component[q] == NO_REGION && !is_ink(q) {
+                    component[q] = id;
+                    let lv = dist_of(q).min(level); // o GARGALO do caminho até `q`
+                    if lv == level {
+                        current.push(q as u32);
+                    } else {
+                        levels[lv].push(q as u32);
+                    }
+                }
             }
         }
     }

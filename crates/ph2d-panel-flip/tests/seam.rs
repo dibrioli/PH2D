@@ -82,7 +82,10 @@ fn colorize_bleed_slider_drag_reaches_tool() {
             forwarded = true;
         }
     }
-    assert!(forwarded, "Bleed edit never reached the bus — the seam is dead");
+    assert!(
+        forwarded,
+        "Bleed edit never reached the bus — the seam is dead"
+    );
     assert!(
         (tool.ui_snapshot().colorize_bleed - 1.0).abs() < 1e-6,
         "slider→tool seam delivered the wrong Bleed fraction"
@@ -410,6 +413,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
+                &colorize_only,
             ],
         ),
         (
@@ -422,12 +426,19 @@ fn each_mode_shows_only_its_own_attributes() {
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
+                &colorize_only,
             ],
         ),
         (
             FlipMode::Fill,
             &bucket_expected, // inclui o Trap (compartilhado)
-            &[&stroke_only, &eraser_only, &sculpt_only, &edit_only],
+            &[
+                &stroke_only,
+                &eraser_only,
+                &sculpt_only,
+                &edit_only,
+                &colorize_only,
+            ],
         ),
         // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
         (
@@ -440,6 +451,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &trap_shared,
                 &fill_swatch,
                 &edit_only,
+                &colorize_only,
             ],
         ),
         // Select move/gira o objeto: não tem atributo de pintura nenhum.
@@ -454,6 +466,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
+                &colorize_only,
             ],
         ),
         // Edit (W6): as ops de seleção + os atributos do traço que ele reescreve (as DUAS
@@ -469,6 +482,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &trap_shared,
                 &sculpt_only,
                 &smoothing_only,
+                &colorize_only,
             ],
         ),
         // Colorize (C2): a cor do rabisco + Apply/Clear, e NADA de traço/borracha/balde/

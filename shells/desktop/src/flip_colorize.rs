@@ -339,12 +339,39 @@ impl crate::App {
         // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
         let seed_width = scribble_width(&style, &w2l);
         let playhead = self.playhead;
-        let strip = &mut self.flip_strip;
-        let scribbles = std::mem::take(&mut self.flip_colorize.scribbles);
-        // O Apply consome as sementes; um redo de rabisco pós-Apply devolveria uma semente
-        // sem o contexto que a criou — a fila de removidos morre junto.
-        self.flip_colorize.popped.clear();
 
+        // Rabiscos MUNDO → LOCAL, agrupados por cor: cada cor distinta é um rótulo, e o
+        // mapa rótulo→cor devolve a cor de cada região.
+        //
+        // ⚠️ **Feito ANTES de tocar o `gfx`, e as sementes NÃO são consumidas aqui.** Abaixo há
+        // CINCO saídas que recusam o Apply, e três delas mandam o artista *corrigir e tentar de
+        // novo* ("desenhe a line-art primeiro", "rabisque dentro das formas fechadas", "a
+        // camada está travada") — o que era impossível, porque um `mem::take` no topo já tinha
+        // levado os rabiscos embora, e o **Ctrl+Z não os trazia de volta** (a fila de removidos
+        // era limpa na linha seguinte, então o `undo_route` deixava de ser dono do atalho).
+        // Uma recusa não pode custar o trabalho do artista: só o SUCESSO consome (no fim).
+        let mut palette: Vec<[u8; 4]> = Vec::new();
+        let mut seeds: Vec<Scribble> = Vec::new();
+        for (color, world_pts) in &self.flip_colorize.scribbles {
+            let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
+                palette.push(*color);
+                palette.len() - 1
+            }) as u16;
+            let points: Vec<Vec2> = world_pts
+                .iter()
+                .map(|p| {
+                    let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
+                    Vec2::new(l[0] as f32, l[1] as f32)
+                })
+                .collect();
+            seeds.push(Scribble {
+                label,
+                points,
+                width: seed_width,
+            });
+        }
+
+        let strip = &mut self.flip_strip;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -365,29 +392,6 @@ impl crate::App {
             return;
         };
 
-        // Rabiscos MUNDO → LOCAL, agrupados por cor: cada cor distinta é um rótulo, e o
-        // mapa rótulo→cor devolve a cor de cada região.
-        let mut palette: Vec<[u8; 4]> = Vec::new();
-        let mut seeds: Vec<Scribble> = Vec::new();
-        for (color, world_pts) in &scribbles {
-            let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
-                palette.push(*color);
-                palette.len() - 1
-            }) as u16;
-            let points: Vec<Vec2> = world_pts
-                .iter()
-                .map(|p| {
-                    let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
-                    Vec2::new(l[0] as f32, l[1] as f32)
-                })
-                .collect();
-            seeds.push(Scribble {
-                label,
-                points,
-                width: seed_width,
-            });
-        }
-
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return;
         };
@@ -400,11 +404,16 @@ impl crate::App {
         }
         let obj_scale = w2l.mean_scale() as f32;
 
-        // ⚠️ O **Trap** é um PISO, não o valor final: o motor cresce a bola até os rabiscos do
-        // artista caírem em regiões distintas (`§8`). E o **Bleed** (6º smoke) é o controle
-        // CONTÍNUO do vazamento pelo vão (o pedágio de aperto) — imune ao zoom, ao contrário do
-        // Trap, que é binário. `precision_and_trap`/`squeeze_from_bleed` são as portas
+        // O **Trap** é o raio da bola, e o **Bleed** governa o vazamento pelo vão em duas
+        // metades: o pedágio de aperto (contínuo) e, no extremo baixo, o RAIO de selagem (que
+        // entra no `max` com o Trap). `precision_and_trap`/`squeeze_from_bleed` são as portas
         // compartilhadas com o re-Apply ao vivo, senão os dois caminhos divergiriam.
+        //
+        // ⚠️ **Correção (auditoria 2026-07-20): o comentário que morava aqui MENTIA.** Ele
+        // dizia *"o Trap é um PISO — o motor cresce a bola até os rabiscos caírem em regiões
+        // distintas"*. O motor **não faz isso**: `trap_px` vai direto para `segment(grid,
+        // trap_px)` e a única adaptação é o *fallback* para raio 0 quando NENHUM pixel comporta
+        // a bola. Não há busca, não há crescimento — o número que entra é o que vale.
         let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
         let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
 
@@ -420,6 +429,12 @@ impl crate::App {
             self.title_dirty = true;
             return;
         }
+
+        // ✅ SÓ AGORA as sementes foram consumidas — o Apply teve sucesso. Um redo de rabisco
+        // pós-Apply devolveria uma semente sem o contexto que a criou, então a fila de
+        // removidos morre junto.
+        self.flip_colorize.scribbles.clear();
+        self.flip_colorize.popped.clear();
 
         // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real
         // (`flip_colorize_live_adjust`), sem clicar Apply de novo.
@@ -507,140 +522,5 @@ impl crate::App {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_flip::Rgba;
-
-    /// Uma line-art de moldura FECHADA (um quadrado de tinta grossa) — o `boundaries` traça o
-    /// laço e o `colorize_with` preenche o interior onde a semente cai.
-    fn boxed_lineart() -> FlipDrawing {
-        let mut s = FlipStroke::new();
-        for &(x, y) in &[
-            (0.0, 0.0),
-            (100.0, 0.0),
-            (100.0, 100.0),
-            (0.0, 100.0),
-            (0.0, 0.0),
-        ] {
-            s.push_point(Point {
-                pos: Vec2::new(x, y),
-                width: 4.0,
-                opacity: 1.0,
-                color: Rgba::BLACK,
-            });
-        }
-        let mut d = FlipDrawing::default();
-        d.strokes.push(s);
-        d
-    }
-
-    /// Uma semente no centro do quadrado (rótulo 0), da paleta de uma cor.
-    fn center_seed() -> (Vec<[u8; 4]>, Vec<Scribble>) {
-        (
-            vec![[220, 70, 70, 255]],
-            vec![Scribble {
-                label: 0,
-                points: vec![Vec2::new(40.0, 50.0), Vec2::new(60.0, 50.0)],
-                width: 2.0,
-            }],
-        )
-    }
-
-    /// **O re-Apply ao vivo SUBSTITUI, não empilha** — o coração do Trap/Bleed em tempo real
-    /// (6º smoke, "faça ficar em tempo real"). A operação viva restaura a base congelada e
-    /// reinsere; se ela reinserisse SEM restaurar, cada tique do slider empilharia outra pilha
-    /// de fills e a borda ficaria opaca de camadas mortas.
-    ///
-    /// Mutação que o derruba: **pular a restauração da base** antes do 2º `insert_regions` —
-    /// o desenho cresceria para `base + n1 + n2` em vez de `base + n2`.
-    #[test]
-    fn the_live_reapply_replaces_the_regions_it_does_not_stack_them() {
-        let (palette, seeds) = center_seed();
-        let base = boxed_lineart();
-        let base_len = base.strokes.len();
-
-        // 1ª aplicação (Bleed no default).
-        let mut d = base.clone();
-        let n1 = insert_regions(
-            &mut d,
-            &palette,
-            &seeds,
-            1.0,
-            2.0,
-            ph2d_flip_colorize::DEFAULT_SQUEEZE,
-        );
-        assert!(n1 >= 1, "a moldura fechada tem de dar ao menos 1 região");
-        assert_eq!(
-            d.strokes.len(),
-            base_len + n1,
-            "1ª inserção: base + regiões"
-        );
-
-        // Re-Apply ao vivo: RESTAURA a base, reinsere com outro Bleed (mais colado).
-        d.strokes.clone_from(&base.strokes);
-        let n2 = insert_regions(
-            &mut d,
-            &palette,
-            &seeds,
-            1.0,
-            2.0,
-            ph2d_flip_colorize::squeeze_from_bleed(0.0),
-        );
-        assert_eq!(
-            d.strokes.len(),
-            base_len + n2,
-            "o re-Apply SUBSTITUI (base + n2), nunca empilha (base + n1 + n2)"
-        );
-    }
-
-    fn scr(n: u8) -> ([u8; 4], Vec<Vec2>) {
-        (
-            [n, 0, 0, 255],
-            vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, f32::from(n))],
-        )
-    }
-
-    /// **A disciplina da pilha de rabiscos** ("undo/redo ruim", 7º smoke): Ctrl+Z remove o
-    /// ÚLTIMO rabisco (LIFO), Ctrl+Shift+Z o devolve na ordem, e um rabisco NOVO descarta
-    /// os removidos — a lei de toda fila de redo (agir depois de desfazer mata o refazer).
-    #[test]
-    fn scribble_undo_pops_lifo_redo_restores_and_a_new_scribble_kills_the_redo() {
-        let mut c = FlipColorize::default();
-        for n in [1u8, 2, 3] {
-            let (col, pts) = scr(n);
-            c.push_scribble(col, pts);
-        }
-        assert!(c.can_undo_scribble() && !c.can_redo_scribble());
-
-        c.undo_scribble(); // remove o 3
-        c.undo_scribble(); // remove o 2
-        assert_eq!(c.scribbles.len(), 1);
-        assert_eq!(c.scribbles[0].0[0], 1, "o mais antigo fica");
-        assert!(c.can_redo_scribble());
-
-        c.redo_scribble(); // devolve o 2
-        assert_eq!(c.scribbles.last().expect("redo").0[0], 2, "volta na ordem");
-
-        // Um rabisco NOVO mata o redo pendente (o 3 nunca mais volta).
-        let (col, pts) = scr(9);
-        c.push_scribble(col, pts);
-        assert!(
-            !c.can_redo_scribble(),
-            "agir depois de desfazer mata o refazer"
-        );
-
-        // Clear zera as DUAS filas.
-        c.undo_scribble();
-        c.clear();
-        assert!(!c.can_undo_scribble() && !c.can_redo_scribble());
-    }
-
-    /// **Vazio, o Colorize CEDE o atalho** — é o que deixa o Ctrl+Z pós-Apply cair no
-    /// Global (o dono do Apply). O contrato dos `can_*` é exatamente este gate de posse.
-    #[test]
-    fn an_empty_scribble_buffer_yields_the_chord() {
-        let c = FlipColorize::default();
-        assert!(!c.can_undo_scribble());
-        assert!(!c.can_redo_scribble());
-    }
-}
+#[path = "flip_colorize_tests.rs"]
+mod tests;

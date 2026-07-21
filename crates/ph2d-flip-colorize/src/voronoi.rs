@@ -84,9 +84,13 @@ impl Scratch {
         // `squeeze` pode passar de 65535 (o painel vai até ~131072); o clamp mantém a
         // representação sã sem estreitar a faixa útil (no meio de um vão de 48 px, `d² ≈ 576`,
         // então `toll = squeeze/577` cabe em u16 muito além do teto do slider).
+        // ⚠️ `saturating_add`: a EDT devolve `u32::MAX` quando o conjunto de TINTA é vazio (o
+        // contrato está documentado em `edt.rs`), e `1 + u32::MAX` wrapa para `0` ⇒ divisão por
+        // zero. Não é alcançável pelo `boundaries()` do shell (que filtra traços com < 2
+        // pontos), mas `colorize_with` é `pub` e a guarda pertence a quem divide.
         let toll = ink_dist2
             .iter()
-            .map(|&sq| (squeeze / (1 + sq)).min(u32::from(u16::MAX)) as u16)
+            .map(|&sq| (squeeze / sq.saturating_add(1).max(1)).min(u32::from(u16::MAX)) as u16)
             .collect();
         // O ring do Dial só precisa ser maior que o maior INCREMENTO único (`base + toll`).
         // O `toll` de um pixel de PAPEL é `squeeze/(1+d²)` com `d² ≥ 1` (papel colado na
@@ -151,6 +155,13 @@ pub(crate) fn claim(
             let k = s.lab[p];
             let (x, y) = (p % w, p / w);
             // Os 8 vizinhos; nos diagonais, os dois CANTOS ortogonais (a recusa da peneira).
+            //
+            // ⚠️ O array é construído **EAGER**: todo índice é avaliado ANTES de o `ok` dele ser
+            // consultado. Então todo aritmético aqui tem de ser não-panicante mesmo na borda em
+            // que o `ok` é falso — em `y == 0` o `p.wrapping_sub(w)` devolve um valor enorme, e
+            // um `+ 1` cru sobre ele **panica em debug** (e o `ci-test` do ship roda em debug:
+            // o produto panicava ao colorir num build de debug sempre que um componente
+            // contestado alcançasse a linha 0 da grade — o caso NORMAL).
             type Arm = (bool, usize, u32, Option<(usize, usize)>);
             let arms: [Arm; 8] = [
                 (x + 1 < w, p + 1, STEP, None),
@@ -171,7 +182,7 @@ pub(crate) fn claim(
                 ),
                 (
                     x + 1 < w && y > 0,
-                    p.wrapping_sub(w) + 1,
+                    p.wrapping_sub(w).wrapping_add(1),
                     STEP_DIAG,
                     Some((p + 1, p.wrapping_sub(w))),
                 ),

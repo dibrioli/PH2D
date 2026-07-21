@@ -17,7 +17,7 @@
 use crate::flip_fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
 use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke, Point};
-use ph2d_flip_colorize::{ColorRegion, Scribble};
+use ph2d_flip_colorize::Scribble;
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vec_scene::Xform;
@@ -32,81 +32,39 @@ use ph2d_vec_scene::Xform;
 /// precisar identificar "os meus strokes" (o `FlipStroke` não tem id). A base é o desenho
 /// como ele estava ANTES de a 1ª aplicação inserir uma região; reinserir sobre ela reproduz
 /// o Apply com os parâmetros novos, sem empilhar.
+/// Um quadro que o Apply escreveu — a base congelada dele e quantos strokes saíram.
+///
+/// ⚠️ **É por QUADRO, não do gesto**: o Apply multiframe (C3) escreve em N desenhos, e a
+/// linha de cada quadro é diferente, então o número de regiões também é. Uma contagem só,
+/// do gesto, tornaria o guard de segurança inútil em todos menos um.
+struct LiveFrame {
+    did: DrawingId,
+    /// Os strokes do desenho ANTES da 1ª inserção — a base congelada.
+    base: Vec<FlipStroke>,
+    /// Quantos strokes a última (re)inserção produziu neste quadro. O **guard de
+    /// segurança**: se o desenho não é mais `base.len() + produced`, o artista editou outra
+    /// coisa (nova linha, balde, borracha) e a sessão MORRE — re-Aplicar apagaria a edição.
+    produced: usize,
+}
+
 struct LiveApply {
     /// Rótulo → cor (a paleta que o Apply montou dos rabiscos).
     palette: Vec<[u8; 4]>,
     /// As sementes já em LOCAL do desenho, congeladas no Apply — uma função pura de
     /// `(sementes, trap, bleed)`, então o re-Apply é determinístico.
+    ///
+    /// ⚠️ **UMA lista serve todos os quadros, e não é atalho: é o que o onion fill É.** O
+    /// rabisco é autorado em MUNDO por cima das poses empilhadas, e a `w2l` é do OBJETO (não
+    /// do desenho) ⇒ o LOCAL é o mesmo em todo quadro da camada. O que muda entre eles é a
+    /// LINHA, e é por isso que cada um resolve por conta própria.
     seeds: Vec<Scribble>,
-    /// O alvo: o objeto e o desenho onde as regiões foram escritas.
+    /// O objeto onde as regiões foram escritas.
     oid: FlipObjectId,
-    did: DrawingId,
-    /// Os strokes do desenho ANTES da 1ª inserção — a base congelada.
-    base: Vec<FlipStroke>,
-    /// Quantos strokes a última (re)inserção produziu. O **guard de segurança**: se o
-    /// desenho não é mais `base.len() + produced`, o artista editou outra coisa (nova
-    /// linha, balde, borracha) e a sessão MORRE — re-Aplicar apagaria a edição dele.
-    produced: usize,
+    /// Os quadros tocados — o ativo é o **primeiro** (a âncora do `targets`).
+    frames: Vec<LiveFrame>,
     /// Os últimos `(trap, bleed)` rodados — o re-Apply só dispara quando MUDAM.
     trap: f64,
     bleed: f64,
-}
-
-/// `(precision, trap_px)` a partir do estilo + da vista — a MESMA conversão do balde, numa
-/// porta só, para o Apply e o re-Apply ao vivo **nunca** divergirem (duas portas divergem).
-///
-/// O `trap_px` devolvido é o EFETIVO: o `max` do slider **Trap** com o raio de **selagem** do
-/// `Bleed 0` (6º smoke, "Bleed 0 SELA o vão"). Os dois são força de trapped-ball; o `Bleed`
-/// alimenta o raio pelo `seal_from_bleed` (o pedágio satura e nunca fecha a lente — só a bola
-/// que não passa pelo vão o faz). `Bleed` acima do joelho ⇒ selo 0 ⇒ o Trap sozinho, e a
-/// seepage fica com o `squeeze` — o 5º smoke intacto.
-fn precision_and_trap(style: &FlipStyleSnapshot, px_to_world: f32, obj_scale: f32) -> (f32, f32) {
-    let doc_per_px = px_to_world * obj_scale;
-    // px de tela → px de buffer por unidade de documento (a precisão do balde).
-    let precision = 1.6 / doc_per_px.max(1e-6);
-    // O Trap chega em px de TELA e atravessa as duas conversões (BUGS #11: subir a
-    // Precision encolheria a bola em silêncio se ele não cruzasse `precision`).
-    let trap_px = (style.trap as f32) * doc_per_px * precision;
-    // O selo do Bleed 0, em DOC units → px de buffer pela MESMA precisão. Combinado por `max`.
-    let seal_px = ph2d_flip_colorize::seal_from_bleed(style.colorize_bleed as f32) * precision;
-    (precision, trap_px.max(seal_px))
-}
-
-/// **A porta única que produz e insere as regiões** — o Apply e o re-Apply ao vivo chamam
-/// esta MESMA função, então a borda de uma cor colorida nunca depende de por qual caminho
-/// ela foi (re)gerada. Assume `drawing` já na base (line-art + fills pré-Colorize) e devolve
-/// quantos strokes foram inseridos.
-fn insert_regions(
-    drawing: &mut FlipDrawing,
-    palette: &[[u8; 4]],
-    seeds: &[Scribble],
-    precision: f32,
-    trap_px: f32,
-    squeeze: u32,
-) -> usize {
-    let lines = boundaries(drawing);
-    if lines.is_empty() {
-        return 0;
-    }
-    let regions: Vec<ColorRegion> =
-        ph2d_flip_colorize::colorize_with(&lines, seeds, precision, trap_px, squeeze);
-    // Cada região entra ACIMA dos fills existentes (a cor nova cobre a velha, abaixo da
-    // linha — o `Paint` do balde), com a MESMA dilatação (contour_widths + fill_stroke).
-    let is_fill = |s: &FlipStroke| s.hide_stroke && s.fill.is_some();
-    let mut produced = 0;
-    for region in regions {
-        let color = crate::flip_draw::srgb8_to_linear(palette[region.label as usize]);
-        let widths = ph2d_flip_fill::contour_widths(&lines, &region.fill.outer);
-        let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
-        let at = drawing
-            .strokes
-            .iter()
-            .rposition(is_fill)
-            .map_or(0, |i| i + 1);
-        drawing.strokes.insert(at, stroke);
-        produced += 1;
-    }
-    produced
 }
 
 /// Distância mínima entre amostras de um rabisco (px de tela) — igual ao `flip_draw`.
@@ -378,7 +336,7 @@ impl crate::App {
         let win = gfx.surface.size();
         let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
 
-        let Some((oid, _lid, did)) = crate::flip_autokey::target_drawing(
+        let Some((oid, lid, did)) = crate::flip_autokey::target_drawing(
             &mut gfx.flip,
             &playhead,
             active_layer,
@@ -429,6 +387,53 @@ impl crate::App {
             self.title_dirty = true;
             return;
         }
+        let mut frames = vec![LiveFrame {
+            did,
+            base,
+            produced,
+        }];
+
+        // **O ONION FILL** (fatia C3, `09 §5.2`): com chaves selecionadas na tira, o MESMO
+        // rabisco colore todas. O que a C3 acrescenta ao multiframe do balde **não é o
+        // range** (esse já existia) — é a **SEMENTE**: o balde replica um PONTO, e aqui o
+        // artista rabisca por cima das poses EMPILHADAS e cada quadro é semeado pelo traço
+        // inteiro. As sementes já estão em LOCAL e servem todos os quadros (a `w2l` é do
+        // OBJETO); o que muda de quadro para quadro é a LINHA, então cada um resolve
+        // sozinho — `09 §5.2` e o comentário gêmeo do `flip_fill`: *"N solves independentes;
+        // a região pode mudar de forma, não há contorno a reaproveitar"*.
+        //
+        // **Os vizinhos falham em SILÊNCIO** (a política herdada do balde, `09 §5.2`): um
+        // quadro em que a arte não fecha não pode derrubar o gesto nos outros, e o toast
+        // fala pelo quadro ATIVO — que é onde o artista está olhando. A recusa acima já
+        // aconteceu: se o ATIVO não produziu nada, nem chegamos aqui.
+        //
+        // **`falloff = false`**: colorir é op discreta, como o balde. Meia-cor não existe.
+        let extra: Vec<DrawingId> = crate::flip_multiframe::targets(
+            &gfx.flip,
+            oid,
+            lid,
+            &playhead,
+            strip.selected_keys(),
+            (
+                did,
+                gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead)),
+            ),
+            false,
+        )
+        .into_iter()
+        .map(|t| t.did)
+        .filter(|d| *d != did)
+        .collect();
+        frames.extend(colorize_frames(
+            &mut gfx.flip,
+            oid,
+            &extra,
+            &palette,
+            &seeds,
+            precision,
+            trap_px,
+            squeeze,
+        ));
 
         // ✅ SÓ AGORA as sementes foram consumidas — o Apply teve sucesso. Um redo de rabisco
         // pós-Apply devolveria uma semente sem o contexto que a criou, então a fila de
@@ -437,14 +442,14 @@ impl crate::App {
         self.flip_colorize.popped.clear();
 
         // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real
-        // (`flip_colorize_live_adjust`), sem clicar Apply de novo.
+        // (`flip_colorize_live_adjust`), sem clicar Apply de novo — em TODOS os quadros que
+        // o gesto escreveu, senão os vizinhos ficariam presos no Trap da 1ª rodada e a tira
+        // mostraria dois ajustes diferentes para uma operação só.
         self.flip_colorize.live = Some(LiveApply {
             palette,
             seeds,
             oid,
-            did,
-            base,
-            produced,
+            frames,
             trap: style.trap,
             bleed: style.colorize_bleed,
         });
@@ -477,7 +482,7 @@ impl crate::App {
         if style.trap == live.trap && style.colorize_bleed == live.bleed {
             return;
         }
-        let (oid, did) = (live.oid, live.did);
+        let oid = live.oid;
         let w2l = self.flip_active_world_to_local();
         let obj_scale = w2l.mean_scale() as f32;
 
@@ -489,28 +494,38 @@ impl crate::App {
         let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
         let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
 
-        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
-            self.flip_colorize.end_live(); // o desenho-alvo sumiu (undo/delete)
-            return;
-        };
-        // **O guard de segurança:** o desenho ainda é `base + as MINHAS regiões`? Se o artista
-        // desenhou uma linha nova, encheu com o balde ou apagou algo, o comprimento muda —
-        // restaurar a base apagaria o trabalho dele. A sessão morre e o Trap novo simplesmente
-        // não retro-aplica (ele clica Apply de novo).
-        let live = self.flip_colorize.live.as_mut().expect("live is Some");
-        if drawing.strokes.len() != live.base.len() + live.produced {
-            self.flip_colorize.end_live();
+        // ⚠️ **O guard é perguntado a TODOS os quadros ANTES de escrever em qualquer um** — o
+        // ajuste é UMA operação, e re-rodar metade dela deixaria a tira com dois Traps. Se
+        // um único quadro não é mais `base + as MINHAS regiões` (o artista desenhou, encheu
+        // com o balde, apagou), a sessão MORRE inteira e o Trap novo simplesmente não
+        // retro-aplica — o artista clica Apply de novo.
+        let live = self.flip_colorize.live.as_ref().expect("live is Some");
+        let intact = live.frames.iter().all(|f| {
+            gfx.flip
+                .object(oid)
+                .and_then(|o| o.drawing(f.did))
+                .is_some_and(|d| d.strokes.len() == f.base.len() + f.produced)
+        });
+        if !intact {
+            self.flip_colorize.end_live(); // desenho editado ou sumido (undo/delete)
             return;
         }
-        drawing.strokes.clone_from(&live.base);
-        live.produced = insert_regions(
-            drawing,
-            &live.palette,
-            &live.seeds,
-            precision,
-            trap_px,
-            squeeze,
-        );
+
+        let live = self.flip_colorize.live.as_mut().expect("live is Some");
+        for f in &mut live.frames {
+            let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(f.did)) else {
+                continue; // o `intact` acima já provou que existe; defensivo
+            };
+            drawing.strokes.clone_from(&f.base);
+            f.produced = insert_regions(
+                drawing,
+                &live.palette,
+                &live.seeds,
+                precision,
+                trap_px,
+                squeeze,
+            );
+        }
         live.trap = style.trap;
         live.bleed = style.colorize_bleed;
         // Como o Apply deferido: sem isto o `post_frame_undo` pularia o diff num frame sem
@@ -520,6 +535,11 @@ impl crate::App {
         self.title_dirty = true;
     }
 }
+
+/// O motor (conversões + a porta única de inserção) — irmão pelo teto de LOC do shell.
+#[path = "flip_colorize_engine.rs"]
+mod engine;
+use engine::{colorize_frames, insert_regions, precision_and_trap};
 
 #[cfg(test)]
 #[path = "flip_colorize_tests.rs"]

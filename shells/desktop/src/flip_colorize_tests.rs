@@ -250,3 +250,194 @@ fn both_sealing_sliders_reach_the_engine_and_compose() {
         "com Trap minúsculo manda o SELO: {small_trap} ≠ {seal}"
     );
 }
+
+/// 🔴 **O ONION FILL: o MESMO rabisco colore os quadros selecionados** (fatia C3,
+/// `09 §5.2`).
+///
+/// O que a C3 acrescenta ao multiframe do balde **não é o range** — esse já existia
+/// (`flip_fill.rs`, W7) — é a **SEMENTE**: o balde replica um PONTO nos N desenhos, e aqui o
+/// artista rabisca por cima das poses EMPILHADAS e cada quadro é semeado pelo TRAÇO inteiro.
+///
+/// A fixture põe a MESMA moldura em dois quadros, mas com a linha **deslocada** entre eles —
+/// é o que um desenho animado faz, e é o que obriga cada quadro a resolver por conta própria
+/// (a região muda de forma; não há contorno a reaproveitar). Um rabisco que cai dentro dos
+/// DOIS tem de colorir os dois.
+///
+/// ⚠️ O oráculo é a APARÊNCIA (cada quadro ganhou uma região de preenchimento), nunca a
+/// contagem de chamadas do `insert_regions` — um espelho da implementação ficaria verde com
+/// as regiões saindo no desenho errado.
+///
+/// Mutação que sangra: `colorize_frames` iterando `dids.iter().take(0)` — o vizinho fica sem
+/// cor e o gate nomeia qual quadro ficou.
+#[test]
+fn the_same_scribble_colours_every_selected_frame() {
+    // Uma moldura fechada deslocada de `dx` — a "pose" daquele quadro.
+    let framed = |dx: f32| -> FlipDrawing {
+        let mut s = FlipStroke::new();
+        for &(x, y) in &[
+            (0.0, 0.0),
+            (100.0, 0.0),
+            (100.0, 100.0),
+            (0.0, 100.0),
+            (0.0, 0.0),
+        ] {
+            s.push_point(Point {
+                pos: Vec2::new(x + dx, y),
+                width: 4.0,
+                opacity: 1.0,
+                color: Rgba::BLACK,
+            });
+        }
+        let mut d = FlipDrawing::default();
+        d.strokes.push(s);
+        d
+    };
+    let (palette, _) = center_seed();
+    // Um RABISCO (não um ponto) largo o bastante para cair dentro das duas poses.
+    let seeds = vec![Scribble {
+        label: 0,
+        points: vec![Vec2::new(45.0, 50.0), Vec2::new(60.0, 50.0)],
+        width: 2.0,
+    }];
+
+    let mut produced = Vec::new();
+    for dx in [0.0f32, 8.0] {
+        let mut d = framed(dx);
+        let before = d.strokes.len();
+        let n = insert_regions(
+            &mut d,
+            &palette,
+            &seeds,
+            1.0,
+            2.0,
+            ph2d_flip_colorize::DEFAULT_SQUEEZE,
+        );
+        assert_eq!(
+            d.strokes.len(),
+            before + n,
+            "cada quadro é um solve independente sobre a PRÓPRIA base"
+        );
+        produced.push(n);
+    }
+    assert!(
+        produced.iter().all(|n| *n >= 1),
+        "controle positivo: o MESMO rabisco tem de colorir as DUAS poses, não só a ativa \
+         (regiões por quadro: {produced:?})"
+    );
+}
+
+/// 🔴 **O fan-out ESCREVE em cada quadro selecionado** (fatia C3) — dirigindo o
+/// `colorize_frames` sobre um `FlipDoc` de verdade, com DUAS chaves e a linha deslocada
+/// entre elas.
+///
+/// ⚠️ Este gate existe porque o irmão de engine (`the_same_scribble_colours_every_selected
+/// _frame`) chama o `insert_regions` **ele mesmo**, quadro a quadro — ele prova que uma
+/// semente só resolve em duas poses, e ficaria VERDE com o laço do produto deletado. E o
+/// arch-gate irmão lê o FONTE, então uma mutação que preserva a forma e neutraliza o laço
+/// (`take(0)`) passa por ele. Só este aqui roda o laço do produto e conta o resultado.
+///
+/// Mutações que sangram: `dids.iter().take(0)` (nenhum vizinho colorido) · devolver o
+/// `LiveFrame` mesmo com `produced == 0` (a base do quadro que não fechou entraria na sessão
+/// viva e o Trap seguinte reescreveria um desenho que o gesto nunca tocou).
+#[test]
+fn the_fan_out_writes_a_region_into_every_frame_it_is_given() {
+    use ph2d_flip::{Hold, KeyKind};
+
+    let framed = |dx: f32| -> FlipStroke {
+        let mut s = FlipStroke::new();
+        for &(x, y) in &[
+            (0.0, 0.0),
+            (100.0, 0.0),
+            (100.0, 100.0),
+            (0.0, 100.0),
+            (0.0, 0.0),
+        ] {
+            s.push_point(Point {
+                pos: Vec2::new(x + dx, y),
+                width: 4.0,
+                opacity: 1.0,
+                color: Rgba::BLACK,
+            });
+        }
+        s
+    };
+
+    let mut flip = ph2d_flip::FlipDoc::default();
+    let oid = flip.push_object("C3");
+    let obj = flip.object_mut(oid).expect("objeto");
+    let lid = obj.add_layer("L");
+    // Duas chaves, poses DIFERENTES — é o que obriga cada quadro a resolver por conta.
+    let mut dids = Vec::new();
+    for (frame, dx) in [(0i32, 0.0f32), (4, 8.0)] {
+        let did = obj
+            .insert_frame(lid, frame, Hold::Implicit, KeyKind::Keyframe)
+            .expect("chave");
+        obj.drawing_mut(did)
+            .expect("desenho")
+            .strokes
+            .push(framed(dx));
+        dids.push(did);
+    }
+    // Um quadro EXTRA sem line-art nenhuma: ele não fecha, e tem de falhar em SILÊNCIO
+    // sem derrubar os outros nem entrar na sessão viva.
+    let empty = obj
+        .insert_frame(lid, 8, Hold::Implicit, KeyKind::Keyframe)
+        .expect("chave vazia");
+    dids.push(empty);
+
+    let (palette, _) = center_seed();
+    let seeds = vec![Scribble {
+        label: 0,
+        points: vec![Vec2::new(45.0, 50.0), Vec2::new(60.0, 50.0)],
+        width: 2.0,
+    }];
+    let before: Vec<usize> = dids
+        .iter()
+        .map(|d| {
+            flip.object(oid)
+                .and_then(|o| o.drawing(*d))
+                .map_or(0, |dr| dr.strokes.len())
+        })
+        .collect();
+
+    let frames = colorize_frames(
+        &mut flip,
+        oid,
+        &dids,
+        &palette,
+        &seeds,
+        1.0,
+        2.0,
+        ph2d_flip_colorize::DEFAULT_SQUEEZE,
+    );
+
+    assert_eq!(
+        frames.len(),
+        2,
+        "os DOIS quadros com arte têm de ganhar região; o vazio falha em silêncio \
+         (saíram {} sessões)",
+        frames.len()
+    );
+    for (i, d) in dids.iter().take(2).enumerate() {
+        let now = flip
+            .object(oid)
+            .and_then(|o| o.drawing(*d))
+            .map_or(0, |dr| dr.strokes.len());
+        assert!(
+            now > before[i],
+            "o quadro {i} tem de ter ganho preenchimento ({} -> {now})",
+            before[i]
+        );
+    }
+    // O quadro que não fechou volta INTOCADO — e não entra na sessão viva, senão o Trap
+    // seguinte restauraria uma base que este gesto nunca escreveu.
+    let empty_now = flip
+        .object(oid)
+        .and_then(|o| o.drawing(empty))
+        .map_or(0, |dr| dr.strokes.len());
+    assert_eq!(empty_now, before[2], "o quadro sem arte volta intocado");
+    assert!(
+        !frames.iter().any(|f| f.did == empty),
+        "um quadro que não produziu região não pode entrar na sessão de ajuste ao vivo"
+    );
+}

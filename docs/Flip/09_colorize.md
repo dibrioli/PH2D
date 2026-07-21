@@ -1,5 +1,51 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-21, noite): a fatia C3 — o ONION FILL — LANDOU** (pendente de smoke).
+> Com chaves marcadas na tira, **um Apply colore todas**: o rabisco é autorado em MUNDO por
+> cima das poses empilhadas e semeia cada quadro.
+>
+> **O que a C3 acrescenta NÃO é o range — é a SEMENTE** (o §5.2 já dizia, e a §5.1 já tinha
+> corrigido a lista de pendências que mentia): o range do multiframe existe desde o W7 e o
+> balde o usa; o balde replica um **PONTO**, e o Colorize semeia com o **TRAÇO INTEIRO**. As
+> sementes servem todos os quadros de graça porque a `w2l` é do **OBJETO**, não do desenho —
+> o LOCAL é o mesmo em toda a camada. O que muda entre quadros é a **LINHA**, e é por isso
+> que cada um resolve sozinho (N solves independentes; a região muda de forma, não há
+> contorno a reaproveitar — o comentário gêmeo do `flip_fill`).
+>
+> **Duas decisões herdadas do balde, não re-litigadas** (`§5.2`): `falloff = false` (colorir
+> é op discreta — meia-cor não existe) e **os vizinhos falham em SILÊNCIO** (um quadro em que
+> a arte não fecha não pode derrubar o gesto nos outros; o toast fala pelo quadro ATIVO, que
+> é onde o artista está olhando). O quadro que não fecha volta **INTOCADO** e **não entra na
+> sessão de ajuste ao vivo** — senão o Trap seguinte restauraria uma base que este gesto
+> nunca escreveu.
+>
+> ⚠️ **O ajuste ao vivo teve de virar N quadros** (`LiveApply.frames: Vec<LiveFrame>`): com
+> um `did` só, arrastar o Trap depois de um Apply multiframe atualizaria o quadro ativo e
+> deixaria os vizinhos presos no Trap da 1ª rodada — **uma operação, dois ajustes na tira**. E
+> o **guard de segurança é por QUADRO** (a linha de cada um é diferente, então a contagem de
+> regiões também é: uma contagem só do gesto tornaria o guard inútil em todos menos um) e é
+> **perguntado a TODOS antes de escrever em qualquer um** — ou re-roda inteiro, ou não
+> re-roda; meia re-aplicação deixaria a tira inconsistente e não há como desfazê-la pela
+> metade.
+>
+> **O laço foi EXTRAÍDO para `colorize_frames` e isso é o desenho, não arrumação:** o
+> `flip_colorize_apply` precisa de `gfx` (janela + GPU) e **nenhum teste o alcança**, mas um
+> `FlipDoc` se monta headless. Com o fan-out numa função própria, o gate que importa
+> (`the_fan_out_writes_a_region_into_every_frame_it_is_given`) **roda o laço do produto** sobre
+> 3 quadros — dois com arte deslocada e um VAZIO — e conta o resultado. ⚠️ Isto foi decidido
+> por MEDIÇÃO: o arch-gate sobre o fonte (o padrão do `Join` da física) **passou** por uma
+> mutação `.take(0)` que preserva o texto e neutraliza o laço. Um gate de fonte pina FORMA, e
+> forma não é comportamento. O que sobrou nele é só a metade que nenhum teste alcança —
+> **quem PERGUNTA à tira** —, e lá a lição foi outra: procurar o *nome* `colorize_frames`
+> deixava passar `let _ = colorize_frames(…)`; o gate pina a **frase inteira**
+> (`frames.extend(colorize_frames(`), que é a LIGAÇÃO.
+>
+> **3 gates novos + 4 arch-gates; 6 mutações, 6 sangram.** LOC: `flip_colorize.rs` foi a
+> 645/600 ⇒ módulo irmão `flip_colorize_engine.rs` (as conversões + a porta única de
+> inserção + o fan-out). Smoke: **`PH2D_FLIP_COLORIZE_SMOKE=1`** agora monta **TRÊS chaves**
+> (0, 4, 8) com o divisor em posições diferentes — marque as três na tira e clique Apply uma
+> vez (passos 6-9 no texto que a cena imprime).
+
 > **Estado (2026-07-21, tarde): A FUGA PELA QUINA FECHOU — a parede é o EIXO, e a arte é o
 > CORPO** (report do Enio: *"nada tira a extrapolação"*; era o item ABERTO nº 1 da auditoria da
 > manhã, e o smoke dela foi aprovado). Registro completo: [BUGS #23](BUGS_flip.md) e

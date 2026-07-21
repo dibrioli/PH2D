@@ -102,6 +102,34 @@ impl crate::App {
         dr.strokes
             .push(hand(&seg(Vec2::new(1.0, 0.6), Vec2::new(1.0, 2.5), 53), 53));
 
+        // ── A FATIA C3 (onion fill): mais DUAS chaves com a MESMA arte DESLOCADA. É o que
+        //    um desenho animado faz — a linha se move —, e é o que obriga cada quadro a
+        //    resolver por conta própria. Marque as três na tira e um Apply colore as três.
+        let obj = gfx.flip.object_mut(oid).expect("objeto");
+        for (frame, dx) in [(4i32, 0.6f32), (8, 1.2)] {
+            let Some(d2) = obj.insert_frame(l, frame, Hold::Implicit, KeyKind::Keyframe) else {
+                continue;
+            };
+            let dr2 = obj.drawing_mut(d2).expect("desenho");
+            for (a, b, s) in [
+                (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0),
+                (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7),
+                (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13),
+                (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29),
+            ] {
+                dr2.strokes.push(hand(&seg(a, b, 24), s));
+            }
+            // O divisor ANDA: é a pose daquele quadro.
+            dr2.strokes.push(hand(
+                &seg(Vec2::new(1.0 + dx, -2.5), Vec2::new(1.0 + dx, -0.6), 41),
+                41,
+            ));
+            dr2.strokes.push(hand(
+                &seg(Vec2::new(1.0 + dx, 0.6), Vec2::new(1.0 + dx, 2.5), 53),
+                53,
+            ));
+        }
+
         // ── Os DOIS rabiscos (MUNDO ≈ LOCAL num objeto fresco): vermelho à esquerda,
         //    azul à direita. Traços verticais, não pontos (um ponto degenera o corte). ──
         self.flip_colorize.push_scribble(
@@ -139,7 +167,18 @@ impl crate::App {
                   abre e a cor entra mais fundo; **1 = flui livre**. O 0 alimenta a bola de\n     \
                   selagem (o pedagio sozinho satura em ~+0.94 e NUNCA fecha o vao largo).\n   \
                 · **Trap**: fecha o vao de vez (bola que nao passa por vao < 2r; ate 50 px).\n   \
-                (Ctrl+Z desfaz o ajuste; de novo, o Apply. Editar o desenho encerra o ajuste.)\n"
+                (Ctrl+Z desfaz o ajuste; de novo, o Apply. Editar o desenho encerra o ajuste.)\n\
+             \n\
+             ONION FILL (fatia C3) — a cena tem TRES chaves (0, 4, 8) com o divisor em\n\
+             posicoes DIFERENTES:\n\
+             6. Marque as tres chaves na tira (multi-selecao) e clique **Apply** UMA vez.\n\
+             7. Passeie pelos quadros: as TRES tem de estar coloridas, e a fronteira de cada\n   \
+                uma tem de colar no divisor DAQUELE quadro (nao no do quadro ativo) — cada\n   \
+                quadro e um solve independente, porque a linha se move.\n\
+             8. Arraste o **Trap**/**Bleed**: o ajuste ao vivo re-roda em TODOS os quadros\n   \
+                que o gesto escreveu, nao so no ativo.\n\
+             9. Um quadro em que a arte nao fecha falha em SILENCIO — o toast fala pelo\n   \
+                quadro ATIVO, que e onde voce esta olhando.\n"
         );
     }
 }

@@ -32,13 +32,30 @@ era o BUG REAL, no **MOTOR**, no `d` extremo:
   `an_offset_past_the_shapes_death_leaves_no_phantom` (ausência + identidade do
   cancelamento + PRESENÇA do legítimo), 3 mutações, 3/3 sangram. Sonda `--ignored`:
   `probe_offset_extreme_d`.
-- **A queda de FPS é ÁREA DE RENDER, não motor:** frame ocioso 7→26 ms (1024×768, debug)
-  depois de um commit a `d=4` — a forma inflada cobre a tela; a 4K multiplica ~6×. O
-  motor pós-`flat_lines` custa 4–10 ms/offset. **Decisão de produto pendente:** o slider
-  mapeia **±4 unidades de MUNDO sobre ~115 px de track** (~60 px além do centro satura;
-  clique no track TELEPORTA para ±4) — o racional documentado em `params.rs` ("a vista
-  mede ~10 unidades") é honesto mas produz gesto grosso e formas-balão; faixa RELATIVA à
-  seleção é a alternativa. E os smokes em `--release` (lição do áudio W7).
+- **A queda de FPS é o BUILD DEBUG — MEDIDO em `--release` (`6831b43d`+`<este>`):** o
+  arrasto vivo custa **0.8–1.5 ms/frame em release** (60 fps+; os frames de 16.7 ms são
+  vsync ocioso), e o motor no pior caso (Round, `d=4`, `--release`) é **1.5 ms** (Miter/
+  Bevel ~0.1 ms). Em **debug** o mesmo arrasto é 8–26 ms — e o Enio smoke-testa em debug
+  (`cargo run` sem `--release`), então o "trava" é o build, não o produto. **Sonda:
+  `probe_offset_cost_on_the_d_ladder` (`--release --ignored`).** ⚠️ Eu falhei em pôr
+  `--release` na instrução de smoke — a MESMA lição do áudio W7 (*"`--release` não é
+  preferência"*). **O smoke agora exige `--release`** (ver §3).
+  - **Desperdício real eliminado (o memo do preview):** o preview roda TODO frame enquanto
+    o slider está agarrado, mesmo com o mouse PARADO — e re-clonava a cena INTEIRA
+    (`clone_from(&pre)` = **O(cena toda)**, não O(seleção)) + re-rodava o sweep à toa.
+    Numa cena grande o preço por frame não é do offset, é da CÓPIA. `OffsetSession.last`
+    memoiza `(d, knobs)`: frame sem mudança pula o trabalho inteiro. Gate
+    `an_unchanged_offset_frame_is_memoized` (mutação neutraliza o memo → sangra); o guard
+    do double-pose foi retunado para `d` VARIÁVEL (0.3→0.4) pra não medir o memo em vez da
+    costura settle↔re-derive que ele guarda.
+  - **Decisão de produto pendente (faixa do slider):** ±4 unidades de MUNDO sobre ~115 px
+    de track (~60 px além do centro satura; clique no track TELEPORTA para ±4). Racional
+    em `params.rs` ("a vista mede ~10 unidades") é honesto mas produz gesto grosso e
+    formas-balão; faixa RELATIVA à seleção é a alternativa.
+  - **ABERTO (não construído — release não o exige):** durante o arrasto ATIVO (d muda por
+    frame) o memo não ajuda e o `clone_from` segue O(cena toda); só a seleção muda. Clonar
+    só os paths selecionados seria O(seleção), útil numa cena grande em debug — mas a
+    medição de release diz que o produto não precisa. Nomeado, não contrabandeado.
 - **A morte da janela de retune era MUDA** (`RetuneStep::Dead => {}`) — agora LOGA.
 - **A dança de layout do painel (ABERTO, decisão de produto):** quando o resultado do
   offset morre (aniquilação), a seleção esvazia, a seção TRANSFORM some e **os chips de
@@ -96,17 +113,27 @@ peça o backtrace (`RUST_BACKTRACE=1`).
 
 ## §3 — As ferramentas (USE-AS, elas acharam tudo até aqui)
 
+⚠️ **SEMPRE `--release` para julgar FPS** (lição do áudio W7): em debug o motor é ~16×
+mais lento e "trava" é o build, não o produto. Em release o arrasto é 0.8–1.5 ms/frame.
+
 - **`PH2D_BUILD_SMOKE=17`** — a cena manual do Expand (zig-zag/estrela/rosquinha/arco).
-  Rodar: `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=17 cargo run -p ph2d-host-desktop`.
+  Rodar: `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=17 cargo run --release -p ph2d-host-desktop`.
 - **`PH2D_BUILD_SMOKE=18`** — **o harness AUTO-DIRIGIDO** (`build_smoke_expand.rs::
-  smoke_expand_retune_drive` + primitivos em `build_smoke_drive.rs`): rola o painel, clica
-  Round, agarra o slider com o PONTEIRO, arrasta por frames, solta, clica Bevel e Miter —
-  logando por frame `dt` (o FPS), profundidade do undo, janela viva, join do painel e
-  VERTS da cena. **Modifique o roteiro para a sequência do Enio** — é ali que o bug dele
-  tem de aparecer primeiro. Roda sozinho: `PH2D_BUILD_SMOKE=18 timeout 30 cargo run -p
-  ph2d-host-desktop 2>&1 | grep retune-smoke`.
-- **`PH2D_UNDO_LOG=1`** — cada passo de undo com o diff que o causou (é como se pega a
-  morte da janela de retune e passo espúrio).
+  smoke_expand_retune_drive` + primitivos em `build_smoke_drive.rs`): rola o painel, agarra
+  o slider com o PONTEIRO, arrasta por frames na ordem do report (Miter default → Round →
+  Bevel → Miter, cliques com Down/Up em frames separados), logando por frame `dt` (o FPS),
+  undo, janela viva, join, VERTS e a LARGURA do bbox (o oráculo do arrasto — verts é cego
+  ao Miter/Bevel). Roda sozinho: `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=18 timeout
+  30 cargo run --release -p ph2d-host-desktop 2>&1 | grep retune-smoke`. ⚠️ Ele re-afirma
+  a posição do hold por frame porque o WM injeta `CursorMoved` reais sob a janela recém-
+  aberta (ver §1) — não remova.
+- **`probe_offset_cost_on_the_d_ladder`** (`crates/ph2d-vec-boolean/tests/
+  probe_offset_extreme_d.rs`, `--release --ignored --nocapture`) — o custo do motor por
+  join/`d` (Round `d=4` = 1.5 ms; o resto <0.2 ms).
+- **`probe_every_join_on_the_d_ladder`** (mesmo arquivo, `--ignored`) — paths/verts/área
+  por join/`d`, o que decodificou o fantasma.
+- **`PH2D_UNDO_LOG=1`** — cada passo de undo com o diff. O log da janela de retune que
+  fecha (`RetuneStep::Dead`) sai sem env (é `eprintln` incondicional).
 
 ## §4 — Armadilhas PAGAS desta linha (custaram smoke/bug cada uma)
 

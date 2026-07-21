@@ -393,20 +393,57 @@ fn posed_scene() -> (
 /// carrega o centro: mundo × centro = translação DOBRADA — o *"pula para o canto direito"*
 /// (Enio, 2026-07-20), e cada re-grab compunha mais um centro. O preview é um GESTO: o
 /// settle o pula, e o lugar desenhado é estável.
+///
+/// ⚠️ Os dois frames usam `d` DIFERENTE (0.3 → 0.4) de propósito: o memo do preview
+/// (`OffsetSession::last`) pula um frame de `d` IGUAL, então um teste com o mesmo `d`
+/// testaria o memo, não a costura settle↔re-derive que ESTE gate guarda. O offset cresce
+/// simétrico em torno do centro, então o centro fica em `(4,0)` para qualquer `d` — o que
+/// muda entre os frames é o TAMANHO, e é a re-inserção sob o mesmo id (com o settle
+/// pulando-a como gesto) que tem de manter o centro parado.
 #[test]
 fn the_live_preview_draws_in_the_same_place_every_frame() {
     let (mut scene, mut pen, mut sim, mut map, xf) = posed_scene();
     let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
     let c1 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
-    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.3);
+    let c2 = drag_frame(&mut sess, &mut scene, &mut pen, &mut sim, &mut map, 0.4);
     assert!(
         (c1[0] - 4.0).abs() < 1e-3 && c1[1].abs() < 1e-3,
         "frame 1 desenhou fora da pose da fonte: {c1:?}"
     );
     assert!(
-        (c2[0] - c1[0]).abs() < 1e-6 && (c2[1] - c1[1]).abs() < 1e-6,
-        "o MESMO d desenhou em lugares diferentes (frame 1 {c1:?}, frame 2 {c2:?}) — o \
-         settle assentou o preview e o frame seguinte dobrou a translação"
+        (c2[0] - 4.0).abs() < 1e-3 && c2[1].abs() < 1e-3,
+        "o frame seguinte (d novo, re-derivado sob o mesmo id) desenhou em {c2:?} — o \
+         settle assentou o preview e a translação dobrou"
+    );
+}
+
+/// **Um frame cujo `d` e knobs não mudaram é MEMOIZADO — não re-clona a cena nem re-offseta.**
+/// O preview roda todo frame enquanto o slider está agarrado, mesmo com o mouse parado; o
+/// `clone_from(&pre)` custa O(cena TODA), então segurar o slider re-copiava a cena inteira e
+/// re-rodava o sweep à toa (a queda de FPS ao pausar o arrasto numa cena grande, 2026-07-20).
+/// O `preview` devolve `true` quando re-derivou, `false` quando pulou.
+#[test]
+fn an_unchanged_offset_frame_is_memoized() {
+    let (mut scene, _h, mut pen, xf) = scene_with(vec![square(10.0)]);
+    let mut sess = OffsetSession::begin(&scene, &pen, &xf).expect("há seleção");
+
+    assert!(sess.preview(&mut scene, &mut pen, 2.0), "1º frame re-deriva");
+    let area = ph2d_vec_boolean::area(&scene.paths()[0]);
+    assert!(
+        !sess.preview(&mut scene, &mut pen, 2.0),
+        "o MESMO d tem de ser memoizado (pulado)"
+    );
+    assert!(
+        (ph2d_vec_boolean::area(&scene.paths()[0]) - area).abs() < 1e-9,
+        "o frame memoizado deixou a cena EXATAMENTE como estava"
+    );
+    assert!(
+        sess.preview(&mut scene, &mut pen, 3.0),
+        "um d NOVO re-deriva"
+    );
+    assert!(
+        !sess.preview(&mut scene, &mut pen, 3.0),
+        "…e o memo volta a valer no novo d"
     );
 }
 

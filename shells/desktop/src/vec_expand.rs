@@ -196,6 +196,16 @@ pub(crate) struct OffsetSession {
     /// `d` real as entidades das fontes morreram, e `|d| ~ 0` passa a mostrar cópias de
     /// mundo (ver [`Self::preview`]).
     churned: bool,
+    /// O `(d, knobs)` do último preview DESENHADO — o memo que torna o held-still gratuito.
+    ///
+    /// O offset é FUNÇÃO PURA de `(pre, d, join, side)`, e `pre` é fixo na sessão: um frame
+    /// com os MESMOS `d`+knobs re-derivaria byte-a-byte o que a cena JÁ mostra. E o preview
+    /// roda TODO frame enquanto o slider está agarrado, mesmo com o mouse PARADO — segurar
+    /// o slider re-clonava a cena inteira e re-rodava o sweep à toa. ⚠️ O `clone_from(&pre)`
+    /// custa **O(cena TODA)**, não O(seleção): numa cena com muitas formas o preço por
+    /// frame não é do offset, é da CÓPIA — e é isso que o artista sente como queda de FPS
+    /// ao pausar o arrasto numa cena grande. Memoizar pula o frame inteiro quando nada mudou.
+    last: Option<(f64, (u8, u8))>,
 }
 
 impl OffsetSession {
@@ -212,6 +222,7 @@ impl OffsetSession {
                 xforms: xforms.clone(),
                 live: Vec::new(),
                 churned: false,
+                last: None,
             })
     }
 
@@ -236,12 +247,24 @@ impl OffsetSession {
     /// - **aniquilada de verdade** (`|d|` grande que a some, e ela tinha área): some DESTE
     ///   frame — o próximo `d` a restaura do `pre` como sempre. Fonte SEM área (uma linha, que
     ///   o motor não sabe offsetar) nunca é aniquilada: vira cópia de mundo e fica visível.
-    pub(crate) fn preview(&mut self, scene: &mut VecScene, pen: &mut PenTool, d: f64) {
+    ///
+    /// Devolve `true` se re-derivou a cena, `false` se o frame foi memoizado (o `d`+knobs não
+    /// mudaram desde o último preview — a cena já mostra o resultado certo). Ver o campo
+    /// [`Self::last`].
+    pub(crate) fn preview(&mut self, scene: &mut VecScene, pen: &mut PenTool, d: f64) -> bool {
+        // Memo: o offset é função pura de `(pre, d, knobs)` e `pre` é fixo na sessão. Frame
+        // com os mesmos = a cena JÁ mostra este preview, e re-clonar+re-offsetar é puro
+        // desperdício (o held-still numa cena grande, onde o `clone_from` domina).
+        let key = (d, expand_knobs());
+        if self.last == Some(key) {
+            return false;
+        }
+        self.last = Some(key);
         scene.clone_from(&self.pre);
         pen.select_many(&self.sources);
         if !self.churned && d.abs() < ph2d_vec_boolean::MIN_OFFSET {
             self.live.clear();
-            return;
+            return true;
         }
         self.churned = true;
         let cmd = Expand::Offset {
@@ -276,6 +299,7 @@ impl OffsetSession {
         }
         pen.select_many(&live);
         self.live = live;
+        true
     }
 }
 
@@ -373,6 +397,11 @@ impl OffsetRetune {
                 *t = ph2d_ecs::Transform::IDENTITY;
             }
         }
+        // O retune FORÇA uma re-derivação: o `d` é o comitado (imutável), então sem
+        // invalidar o memo um retune ao mesmo `d` com knob novo poderia casar a chave
+        // antiga e pular — o entity-reset acima ficaria órfão. (Os knobs mudam por
+        // definição num retune, mas a intenção é explícita, não incidental.)
+        self.sess.last = None;
         self.sess.preview(scene, pen, self.d);
         self.knobs = knobs_now;
         self.depth = None;

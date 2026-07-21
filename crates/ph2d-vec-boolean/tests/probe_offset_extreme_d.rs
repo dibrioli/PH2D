@@ -28,6 +28,30 @@ fn donut() -> VecPath {
 }
 
 #[test]
+#[ignore = "sonda de PERF — rode com --release -- --ignored --nocapture"]
+fn probe_offset_cost_on_the_d_ladder() {
+    let src = donut();
+    // Warm-up para tirar o custo do 1º alloc do número.
+    let _ = offset_path(&src, 1.0, LineJoin::Round, OffsetSide::Both);
+    for join in [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel] {
+        for d in [0.5, 1.0, 2.0, 4.0] {
+            // Medimos a MEDIANA de N corridas — o motor é determinístico, então a
+            // variância é ruído do relógio.
+            let n = 51;
+            let mut ts: Vec<f64> = (0..n)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ = offset_path(&src, d, join, OffsetSide::Both);
+                    t0.elapsed().as_secs_f64() * 1e3
+                })
+                .collect();
+            ts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            println!("join={join:?} d={d:+.1} -> {:.3} ms (mediana de {n})", ts[n / 2]);
+        }
+    }
+}
+
+#[test]
 #[ignore = "sonda de diagnóstico — rode com -- --ignored --nocapture"]
 fn probe_every_join_on_the_d_ladder() {
     let src = donut();

@@ -204,6 +204,9 @@ fn populate_physics(store: &mut WidgetStore) {
         // needs ~200 N just to hold it against gravity.
         (ids::INSP_PHYS_FORCE_X, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
         (ids::INSP_PHYS_FORCE_Y, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
+        // The medium's resistance. Same range as the other drag knobs in this app —
+        // it is the same law, so it must be the same numbers.
+        (ids::INSP_PHYS_AREA_DRAG, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: drag coefficient
     ] {
         store.register(
             id,

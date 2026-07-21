@@ -27,8 +27,9 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
-        Dominance, GravityScale, InitialVelocity, MassOverride, MaterialCombine, RigidBody,
+        AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, DampMode,
+        DampingOverride, Dominance, GravityScale, InitialVelocity, MassOverride, MaterialCombine,
+        RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -39,6 +40,7 @@ pub(crate) fn apply_physics_edit(
     const MATERIAL_COMBINE: &str = "ph2d::physics::MaterialCombine";
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
     const AREA_EFFECTOR: &str = "ph2d::physics::AreaEffector";
+    const AREA_DRAG: &str = "ph2d::physics::AreaDrag";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -323,6 +325,25 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
+    if let PhysicsFieldEdit::AreaDrag(v) = edit {
+        // The medium half of a force zone (W-AreaDrag). Its OWN component, so a zone
+        // that only resists carries no force blob and vice versa — and so that adding
+        // it cost no `PROJECT_SCHEMA` bump. Same SENSOR gate as Force: the narrow phase
+        // records an overlap only for a sensor, so on a solid collider this would be a
+        // number nothing ever reads.
+        if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
+            return;
+        }
+        // A negative drag would ADD energy — the same clamp the other drag knobs take.
+        let d = AreaDrag(v.max(0.0));
+        if d.is_neutral() {
+            queue_remove(queue, registry, entity_bits, AREA_DRAG);
+        } else {
+            queue_set(queue, registry, entity_bits, AREA_DRAG, &d);
+        }
+        return;
+    }
+
     if let PhysicsFieldEdit::ForceX(_) | PhysicsFieldEdit::ForceY(_) = edit {
         // Force zone (W-Area): a per-collider push carried by the optional
         // `AreaEffector`, read-modify-write so editing one axis keeps the other.
@@ -506,7 +527,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::DampMode(_)
         | PhysicsFieldEdit::OneWay(_)
         | PhysicsFieldEdit::ForceX(_)
-        | PhysicsFieldEdit::ForceY(_) => {
+        | PhysicsFieldEdit::ForceY(_)
+        | PhysicsFieldEdit::AreaDrag(_) => {
             unreachable!("handled above")
         }
     }

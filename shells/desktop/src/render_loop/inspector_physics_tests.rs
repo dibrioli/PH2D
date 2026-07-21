@@ -421,6 +421,61 @@ fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
     );
 }
 
+/// **The medium half is its own component, and the two do not disturb each other**
+/// (W-AreaDrag).
+///
+/// The point of two components rather than one struct with two fields: a zone that
+/// only resists carries no force blob, a zone that only pushes carries no drag blob,
+/// and adding the second cost **no `PROJECT_SCHEMA` bump** — a bump refuses every
+/// project already saved at the old number, which is a steep price for tidiness.
+#[test]
+fn the_area_drag_is_its_own_component_and_leaves_the_force_alone() {
+    use ph2d_physics_ecs::{AreaDrag, AreaEffector};
+
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+
+    // SOLID: refused, exactly like Force.
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(4.0));
+    assert!(
+        sim.world().get::<AreaDrag>(e).is_none(),
+        "an area-drag edit on a SOLID collider must be refused — the narrow phase \
+         records no overlap for it"
+    );
+
+    apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(4.0));
+    assert_eq!(
+        sim.world().get::<AreaDrag>(e).copied(),
+        Some(AreaDrag(4.0)),
+        "setting Drag on a sensor should attach the component"
+    );
+    assert!(
+        sim.world().get::<AreaEffector>(e).is_none(),
+        "a zone that only RESISTS must carry no force component — that is the whole \
+         reason the two are separate"
+    );
+
+    // And the force lands beside it without disturbing the drag.
+    apply(&mut sim, e, PhysicsFieldEdit::ForceY(3.0));
+    assert_eq!(sim.world().get::<AreaDrag>(e).copied(), Some(AreaDrag(4.0)));
+    assert_eq!(
+        sim.world().get::<AreaEffector>(e).map(|a| a.force),
+        Some([0.0, 3.0])
+    );
+
+    // Zero (and negative — a drag that ADDS energy is not a thing) detaches.
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(-2.0));
+    assert!(
+        sim.world().get::<AreaDrag>(e).is_none(),
+        "a non-positive drag is neutral — the component must detach"
+    );
+    assert!(
+        sim.world().get::<AreaEffector>(e).is_some(),
+        "detaching the drag must not take the force with it"
+    );
+}
+
 /// **The five presence-is-the-value markers, through the one table that now serves
 /// them all** (`inspector_physics_markers`, split out in W-Area).
 ///

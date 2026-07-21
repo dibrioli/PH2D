@@ -309,9 +309,12 @@ pub(super) fn paint_collision_rows(
         // A SENSOR: what force does this area apply to whatever is inside it? Wind,
         // an updraft, a conveyor. Newtons, so it is resisted by mass — the number an
         // artist tunes against a body's own weight.
+        // Force is what the area PUSHES with; Drag is what it RESISTS with. Together
+        // they are the difference between wind (push, no resistance) and water.
         for (label, id) in [
             ("Force X (N)", ids::INSP_PHYS_FORCE_X),
             ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
+            ("Drag", ids::INSP_PHYS_AREA_DRAG),
         ] {
             yy = num_row(
                 scene,

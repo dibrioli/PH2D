@@ -557,7 +557,18 @@ impl PhysicsBridge {
             // Optional AreaEffector (W-Area); its VALUE is the force in newtons the
             // zone applies to whatever overlaps it. Folded in and riding the
             // `BodyDesc` for the rewind; the wrapper refuses it on a solid collider.
-            let effector = world.get::<crate::AreaEffector>(e).map(|a| a.force);
+            // Optional AreaEffector / AreaDrag (W-Area, W-AreaDrag); the VALUES are
+            // what the area does to whatever overlaps it. Two components, bundled here
+            // into the one `AreaEffect` the world takes — they are separate on this
+            // side because a component blob is positional and a second FIELD would be
+            // a schema bump, while a second COMPONENT is additive.
+            let zone_force = world.get::<crate::AreaEffector>(e).map(|a| a.force);
+            let zone_drag = world.get::<crate::AreaDrag>(e).map(|d| d.0);
+            let effector =
+                (zone_force.is_some() || zone_drag.is_some()).then(|| ph2d_physics::AreaEffect {
+                    force: zone_force.unwrap_or([0.0, 0.0]),
+                    drag: zone_drag.unwrap_or(0.0),
+                });
             let desc = crate::scale::body_desc(
                 rb,
                 col,

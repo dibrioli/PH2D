@@ -59,6 +59,7 @@ fn with_body() -> InspectorPhysicsInfo {
         damp_mode_tag: 0,
         one_way: false,
         force: [0.0, 0.0],
+        area_drag: 0.0,
     }
 }
 
@@ -1217,7 +1218,8 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
     }
 }
 
-/// **The Force rows are SENSOR-only, and each axis reaches the bus** (W-Area).
+/// **The area rows (Force X/Y + Drag) are SENSOR-only, and each reaches the bus**
+/// (W-Area, W-AreaDrag).
 ///
 /// The first §11 control gated on another CONTROL rather than on `kind_tag`, so the
 /// sweep has to ask a question it never asked before: the same body, the same kind,
@@ -1234,7 +1236,14 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         w: 320.0,
         h: 2400.0,
     };
-    const FORCE_IDS: [ph2d_a11y::NodeId; 2] = [ids::INSP_PHYS_FORCE_X, ids::INSP_PHYS_FORCE_Y];
+    // ⚠️ All THREE, including Drag (W-AreaDrag). A sweep that enumerates the rows it
+    // knows about is the premise that rots: the next row added to the sensor block
+    // must be in this list, and the seam is where its absence shows.
+    const FORCE_IDS: [ph2d_a11y::NodeId; 3] = [
+        ids::INSP_PHYS_FORCE_X,
+        ids::INSP_PHYS_FORCE_Y,
+        ids::INSP_PHYS_AREA_DRAG,
+    ];
 
     for tag in [0u8, 1, 2] {
         for is_sensor in [true, false] {
@@ -1273,6 +1282,11 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         &commit(sensor, ids::INSP_PHYS_FORCE_Y, -3.25),
         PhysicsFieldEdit::ForceY(-3.25),
         "Force Y",
+    );
+    expect(
+        &commit(sensor, ids::INSP_PHYS_AREA_DRAG, 4.0),
+        PhysicsFieldEdit::AreaDrag(4.0),
+        "Area Drag",
     );
 
     // Refused on a SOLID collider and on a bodyless entity — the narrow phase records

@@ -493,3 +493,39 @@ impl AreaEffector {
 }
 
 impl SimComponent for AreaEffector {}
+
+/// **Area drag — the medium half of a force zone (W-AreaDrag).**
+///
+/// Absent (the common case) is an area that offers no resistance. Present, its `f32`
+/// is a drag coefficient applied every substep to every DYNAMIC body overlapping this
+/// collider: the difference between **wind** and **water**.
+///
+/// It is the same law as the world's default drag and the per-body [`DampingOverride`]
+/// (`v /= 1 + d·dt`), so "drag" means one thing everywhere — and it damps **both** the
+/// linear and the angular velocity, because a medium resists a spin too.
+///
+/// ⚠️ **Its own component rather than a field on [`AreaEffector`], deliberately.** The
+/// wrapper bundles the two into one `AreaEffect` (that side is not serialized), but a
+/// component's blob is postcard, which is POSITIONAL: appending a field to
+/// `AreaEffector` would be a `PROJECT_SCHEMA` bump, and a bump **refuses every project
+/// file already saved at the old number** — throwing away real work to avoid a second
+/// component. A newly registered component is keyed by its own type-name hash and is
+/// purely additive, so every existing file still loads. The two are independently
+/// meaningful anyway: a wind that does not slow you, a pool of syrup that does not push.
+///
+/// Same coupling as its sibling: it only bites when the collider is a **SENSOR**, and
+/// the §11 row is offered under exactly that condition. It rides the `BodyDesc` the
+/// world rebuilds from, so a rewind re-arms it. Config, never live solver state.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AreaDrag(pub f32);
+
+impl AreaDrag {
+    /// Is this neutral — an area that resists nothing? Used to DETACH so a zone with
+    /// no medium carries no component.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.0 <= 0.0
+    }
+}
+
+impl SimComponent for AreaDrag {}

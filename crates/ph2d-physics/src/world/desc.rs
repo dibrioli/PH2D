@@ -66,6 +66,38 @@ pub struct DampingDesc {
     pub replace: bool,
 }
 
+/// What a **force zone** does to the bodies inside it (W-Area, W-AreaDrag).
+///
+/// Bundled for the same reason [`CombineRules`] is: they are two statements about ONE
+/// area, they reach the world through one field, and bundling costs each fixture a
+/// single `effector: None` instead of two. (On the ECS side they stay two separate
+/// components — see `AreaDrag` — because THAT side is serialized, and a second
+/// component is additive where a second field is a `PROJECT_SCHEMA` bump.)
+///
+/// The two are independent and each is meaningful alone: a wind that does not slow
+/// you (`drag: 0`), a pool of syrup that does not push (`force: [0, 0]`).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct AreaEffect {
+    /// Constant force in newtons, world axes. Resisted by the body's mass.
+    pub force: [f32; 2],
+    /// **Drag coefficient inside the area** — a medium, not a push.
+    ///
+    /// It is the SAME law as rapier's `linear_damping` and the world's
+    /// [`super::BodyDefaults`] drag (`v /= 1 + d·dt` — rapier's own `apply_damping`),
+    /// so the word "drag" means one thing everywhere in this app: uniform decay,
+    /// mass-independent. ⚠️ Same LAW, not the same arithmetic: rapier applies its
+    /// damping deep inside the velocity solver while a zone applies it at the top of
+    /// the substep, and the zone can only reach bodies the previous substep reported
+    /// as overlapping — so over a run it performs exactly **one fewer** decay, a ratio
+    /// of `1 + d·dt_substep` (measured 1.0125 at d = 3, and pinned in a gate so a
+    /// change of application point shows up as a named quantity). It damps
+    /// **both** the linear and the angular velocity, because a medium resists a spin
+    /// too — Godot exposes the two separately on an `Area2D`, but a region is a
+    /// substance rather than a tuning surface, and the per-BODY `DampingOverride`
+    /// already covers the asymmetric case.
+    pub drag: f32,
+}
+
 /// Snapshot of one rigid body for hashing / inspection. Sorted by
 /// handle index in [`crate::world::PhysicsWorld::body_snapshots`] so cross-OS
 /// hashing is stable.
@@ -283,10 +315,11 @@ pub struct BodyDesc {
     /// the `BodyDesc` the world rebuilds from, so a rewind re-arms it. The authored
     /// source is the optional `OneWayPlatform` marker in `ph2d-physics-ecs`.
     pub one_way: bool,
-    /// **Force zone** — a constant force, in newtons (world axes), applied every
-    /// substep to every DYNAMIC body overlapping this collider (Unity's
-    /// `AreaEffector2D`, Godot's `Area2D` overrides). `None` (the default, and what
-    /// every body did before this existed) is an ordinary body that pushes nothing.
+    /// **Force zone** — what this area does to the dynamic bodies overlapping it: a
+    /// constant force in newtons, a drag that resists them, or both (see
+    /// [`AreaEffect`]). Unity's `AreaEffector2D`, Godot's `Area2D` overrides. `None`
+    /// (the default, and what every body did before this existed) is an ordinary body
+    /// that neither pushes nor resists.
     ///
     /// It is a **force, not an acceleration**: the impulse `F·dt` is resisted by the
     /// body's mass, so a leaf is carried by a wind a crate barely feels. That is the
@@ -304,5 +337,5 @@ pub struct BodyDesc {
     /// in `ph2d-physics-ecs`.
     ///
     /// [`is_sensor`]: BodyDesc::is_sensor
-    pub effector: Option<[f32; 2]>,
+    pub effector: Option<AreaEffect>,
 }

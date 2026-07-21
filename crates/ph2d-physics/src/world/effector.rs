@@ -41,9 +41,9 @@ use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::{ColliderSet, NarrowPhase};
 use rapier2d::na::Vector2;
 
-use super::desc::BodyDesc;
+use super::desc::{AreaEffect, BodyDesc};
 
-/// **Is this body a force zone, and with what force?** The single door.
+/// **Is this body a force zone, and with what effect?** The single door.
 ///
 /// `None` for a body with no effector, for a zero force, and for a **solid**
 /// collider.
@@ -62,12 +62,13 @@ use super::desc::BodyDesc;
 /// single door the §11 rows mirror — the panel offers Force only for a sensor, and
 /// its seam gate is where that rule IS observable.
 #[must_use]
-pub(crate) fn zone_force(desc: &BodyDesc) -> Option<Vector2<f32>> {
-    let f = desc.effector?;
-    if !desc.is_sensor || (f[0] == 0.0 && f[1] == 0.0) {
+pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
+    let e = desc.effector?;
+    let inert = e.force[0] == 0.0 && e.force[1] == 0.0 && e.drag <= 0.0;
+    if !desc.is_sensor || inert {
         return None;
     }
-    Some(Vector2::new(f[0], f[1]))
+    Some(e)
 }
 
 /// Apply one substep of every registered zone's force to the dynamic bodies
@@ -92,7 +93,7 @@ pub(crate) fn apply(
     bodies: &mut RigidBodySet,
     colliders: &ColliderSet,
     narrow_phase: &NarrowPhase,
-    zones: &[(RigidBodyHandle, Vector2<f32>)],
+    zones: &[(RigidBodyHandle, AreaEffect)],
     dt: f32,
 ) {
     // Fast path AND contract: a world with no zone never touches a body, so it is
@@ -100,7 +101,8 @@ pub(crate) fn apply(
     if zones.is_empty() {
         return;
     }
-    for &(zone_body, force) in zones {
+    for &(zone_body, effect) in zones {
+        let force = Vector2::new(effect.force[0], effect.force[1]);
         // The zone's own collider handle, copied out so the immutable borrow of
         // `bodies` ends before the impulses below need it mutably.
         let Some(zone_collider) = bodies
@@ -135,6 +137,19 @@ pub(crate) fn apply(
                 continue;
             }
             b.apply_impulse(force * dt, true);
+            // The medium's resistance. ⚠️ Written as `v /= 1 + d·dt`, which is
+            // *exactly* what rapier's own `linear_damping` integrator does — so the
+            // word "drag" means one thing across the world default, the per-body
+            // override and this. Applying it as another impulse would be a second law
+            // for the same word, and the two would disagree at large `d` (an impulse
+            // can overshoot through zero and push the body BACKWARDS; this cannot).
+            if effect.drag > 0.0 {
+                let k = 1.0 / (1.0 + effect.drag * dt);
+                let v = *b.linvel();
+                let w = b.angvel();
+                b.set_linvel(v * k, true);
+                b.set_angvel(w * k, true);
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ use defaults::BodyDefaults;
 use layers::LayerMatrix;
 // The descriptors and the shape vocabulary live in sibling modules (LOC),
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
-pub use desc::{BodyDesc, BodySnapshot, CombineRules, DampingDesc};
+pub use desc::{AreaEffect, BodyDesc, BodySnapshot, CombineRules, DampingDesc};
 use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
@@ -78,16 +78,17 @@ pub struct PhysicsWorld {
     /// kinematic bodies, which is what keeps `step` byte-identical to the one
     /// that shipped before this existed.
     kinematic_targets: Vec<(RigidBodyHandle, Isometry2<f32>, Isometry2<f32>)>,
-    /// The registered **force zones** (W-Area): a sensor body and the force, in
-    /// newtons, it applies to whatever overlaps it. Derived from `BodyDesc` at
-    /// spawn through the single door `effector::zone_force`, so it is CONFIG —
+    /// The registered **force zones** (W-Area): a sensor body and what it does to
+    /// whatever overlaps it — a force in newtons, a drag that resists, or both.
+    /// Derived from `BodyDesc` at spawn through the single door
+    /// `effector::zone_effect`, so it is CONFIG —
     /// nothing in the step loop writes it, which is why a checkpoint restore
     /// (which swaps the body/collider arenas, not this) leaves it valid.
     ///
     /// **Sorted by handle**: a body standing in two overlapping zones sums their
     /// impulses, and the order of a float sum is exactly the kind of detail that
     /// makes a cross-OS hash drift (HR-5).
-    effectors: Vec<(RigidBodyHandle, Vector2<f32>)>,
+    effectors: Vec<(RigidBodyHandle, desc::AreaEffect)>,
 }
 
 impl PhysicsWorld {
@@ -455,13 +456,14 @@ impl PhysicsWorld {
             .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
         self.stamp_layer(collider_handle, desc.layer as usize);
-        // Force zone (W-Area). `zone_force` is the single door — it refuses a solid
-        // collider (an area you cannot enter is not an area, and the narrow phase
-        // reports no overlap for it) and a ZERO force (which would push nothing and
-        // only WAKE bodies, so registering it would not be byte-neutral). Kept sorted
-        // by handle so two overlapping zones sum in a fixed order.
-        if let Some(force) = effector::zone_force(&desc) {
-            self.effectors.push((handle, force));
+        // Force zone (W-Area / W-AreaDrag). `zone_effect` is the single door — it
+        // refuses a solid collider (an area you cannot enter is not an area, and the
+        // narrow phase reports no overlap for it) and an INERT one (no force and no
+        // drag: it would touch nothing and only WAKE bodies, so registering it would
+        // not be byte-neutral). Kept sorted by handle so two overlapping zones apply
+        // in a fixed order.
+        if let Some(effect) = effector::zone_effect(&desc) {
+            self.effectors.push((handle, effect));
             self.effectors
                 .sort_unstable_by_key(|(h, _)| h.into_raw_parts());
         }

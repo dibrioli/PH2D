@@ -349,6 +349,10 @@ pub const INSP_PHYS_ONEWAY: [NodeId; 2] = [
 /// overlap for a solid one. Detaches its `AreaEffector` at zero on both axes.
 pub const INSP_PHYS_FORCE_X: NodeId = hash_node_id("insp_phys_force_x");
 pub const INSP_PHYS_FORCE_Y: NodeId = hash_node_id("insp_phys_force_y");
+/// §11 Area drag (W-AreaDrag) — the resistance the medium inside this SENSOR offers.
+/// The other half of a force zone: force is the push, this is the water. Same law as
+/// the world default drag; detaches its `AreaDrag` at zero.
+pub const INSP_PHYS_AREA_DRAG: NodeId = hash_node_id("insp_phys_area_drag");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

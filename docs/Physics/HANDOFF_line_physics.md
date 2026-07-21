@@ -2771,3 +2771,81 @@ memória entre frames) e o consumidor honesto dela é gameplay, não overlay · 
 (exigiria acumular o pico DENTRO do laço de sub-passos: custo em toda cena para uma leitura de debug) · readout
 "Contacts: N" na §11 (a seção não tem row de readout; seria widget novo, e o W7 estabeleceu que a metade visível
 é o overlay).
+
+---
+
+## §W-AreaDrag — A ÁREA RESISTE: a diferença entre VENTO e ÁGUA (2026-07-21, smoke `=26`)
+
+**A outra metade do campo de força**, e estava nomeada como aberta desde o W-Area (*"arrasto de área — a
+diferença entre vento e água"*). Uma zona com força e sem resistência é um **vácuo que sopra**: a caixa pequena
+é arremessada e nunca desacelera. Com `drag`, ela entra, **afunda devagar** e a coisa lê como líquido.
+
+**A MESMA lei em todo lugar.** `v /= 1 + d·dt` — o `apply_damping` do próprio rapier, o mesmo que o default de
+mundo e o `DampingOverride` por-corpo usam. A palavra "drag" significa **uma** coisa neste app: decaimento
+uniforme, independente de massa. E damping **linear E angular** com um knob só, porque um meio resiste a giro
+também (o Godot expõe os dois separados num `Area2D`; aqui uma região é uma *substância*, e o caso assimétrico
+já tem dono no override por-corpo).
+
+### ⚠️ Mesma LEI, aritmética diferente — e o gate pina o número exato
+
+O gate nasceu pedindo igualdade e ficou vermelho por **1,25%** (mundo 1,3512776 · zona 1,3681686). A causa não
+é aproximação: o rapier aplica damping **dentro do velocity solver**, logo antes de integrar posições
+(`velocity_solver.rs:240`), enquanto uma zona aplica no topo do sub-passo — e só alcança corpos que o sub-passo
+**anterior** reportou como sobrepostos (o lag de um sub-passo que este módulo documenta desde o W-Area). A zona
+faz portanto **exatamente um decaimento a menos**, e a razão medida é `1 + d·dt_substep` = **1,0125**.
+
+O gate afirma **esse número** (`the_zone_drag_is_the_world_drag_law_off_by_exactly_one_substep`), não uma
+tolerância: assim, mudar ONDE o arrasto é aplicado aparece como uma quantidade nomeada em vez de 1% misterioso.
+⚠️ A alternativa — escrever no `linear_damping` do próprio rapier para os corpos dentro da zona — daria
+igualdade exata e foi **rejeitada**: seria o **terceiro escritor** de um campo cujo histórico de clobber o
+W-Damping já pagou (o `apply_to_all` global), e exigiria restaurar o valor autorado ao sair.
+
+### ⚠️ DOIS componentes, e a razão é o custo de um bump
+
+O wrapper **junta** os dois num `AreaEffect { force, drag }` (aquele lado não é serializado, e juntar custa a
+cada fixture um `effector: None` em vez de dois). Do lado ECS eles ficam **separados** — `AreaEffector` e
+**`AreaDrag`** — e isso não é desleixo: o blob de um componente é postcard, que é **POSICIONAL**, então apendar
+um campo no `AreaEffector` seria bump de `PROJECT_SCHEMA`, e **um bump recusa TODO projeto já salvo no número
+antigo**. Jogar fora trabalho real para evitar um segundo componente é o trade errado. Registro **15→16**,
+`PROJECT_SCHEMA` fica em **29**. E os dois são independentemente significativos de qualquer forma: um vento que
+não te freia (`drag: 0`), uma poça de xarope que não empurra (`force: [0,0]`).
+
+⚠️ **A mudança de `Option<[f32;2]>` para `Option<AreaEffect>` custou DOIS sítios de fixture, não quarenta** —
+todo `effector: None` continua compilando. Trocar o TIPO dentro de um `Option` é barato exatamente onde apendar
+um campo é caro.
+
+### Onde mora o quê
+
+`AreaEffect` em `desc.rs` · `effector::zone_force` → **`zone_effect`** (a porta única agora responde *"o que
+esta área faz?"*, e recusa a zona **inerte** — sem força E sem arrasto — pelo mesmo motivo de antes: registrá-la
+acordaria corpos) · o damping no mesmo laço do impulso · `AreaDrag(f32)` em `components/overrides.rs` ·
+`INSP_PHYS_AREA_DRAG` na row **Drag** do bloco de sensor · `PhysicsFieldEdit::AreaDrag`. c9 **69→71** (a poça
++ a bola: o decaimento roda FORA do ponto onde o rapier aplica o dele, então é um fold de `f32` que nenhum outro
+corpo do harness percorre).
+
+**Sem visual novo, e é decisão:** uma força precisa de seta porque *para que lado sopra* não é inferível de nada
+na tela; um arrasto **se vê nos corpos desacelerando**. Uma cena pausada mostra só o contorno de sensor, e isso
+é honesto — não há direção para desenhar.
+
+### Gates e mutações
+
+Wrapper 4 novos (arrasto freia quem cai · **é a lei do mundo menos um sub-passo** · resiste a giro, com controle
+fora da poça · zona inerte é byte-idêntica **pelos dois caminhos**, força zero ou arrasto zero). ECS 1 (a ponte
+dobra e o rewind re-arma; a fixture usa um corpo com **só** `AreaDrag` e nenhum `AreaEffector`, o que prova o
+bundle). Seam +1 na varredura (as 3 rows agora, com a nota de que enumerar as rows conhecidas é a premissa que
+apodrece) e shell +1 (**componente próprio: mexer num não mexe no outro**, e o negativo detacha). **9 mutações,
+9 sangram.**
+
+### Smoke `=26` — três meios, as mesmas três caixas
+
+VÁCUO (sem zona nenhuma — uma zona vazia seria recusada pelo `zone_effect` de qualquer forma, e um retângulo
+pintado que não faz nada é o controle dimmed que este repo apaga) · VENTO (`Force Y = +3,5`) · ÁGUA (a mesma
+força **+ `Drag = 4`**). Medido em t = 5 s: no vento a caixa média já estava no fundo em **1 s**; na água ela
+ainda está **atravessando a poça** (y = 0,87 e caindo), a pequena **flutua na superfície** (2,23) e a pesada
+chega ao chão. É a descida lenta que lê como líquido.
+
+### Aberto no W-AreaDrag
+
+Empuxo de verdade (hoje "flutuar" é uma força constante para cima vencendo o peso — um empuxo real dependeria
+da fração SUBMERSA, e a zona não sabe quanto do corpo está dentro dela) · a força continua em eixos de MUNDO,
+então girar a zona não gira o vento · falloff dentro da área · torque de área.

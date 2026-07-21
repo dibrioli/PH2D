@@ -25,9 +25,9 @@ pub(crate) fn build_physics_info(
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
-        AreaEffector, Ccd, Collider, ColliderShape, DampingOverride, Dominance, GravityScale,
-        InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
-        OneWayPlatform, RigidBody,
+        AreaDrag, AreaEffector, Ccd, Collider, ColliderShape, DampingOverride, Dominance,
+        GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
+        MaterialCombine, OneWayPlatform, RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -75,6 +75,9 @@ pub(crate) fn build_physics_info(
     let force = world
         .get::<AreaEffector>(entity)
         .map_or([0.0, 0.0], |a| a.force);
+    // Optional AreaDrag (W-AreaDrag) — the medium half, its own component so that
+    // adding it costs no `PROJECT_SCHEMA` bump. Same Sensor-only condition in paint.
+    let area_drag = world.get::<AreaDrag>(entity).map_or(0.0, |d| d.0);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -115,6 +118,7 @@ pub(crate) fn build_physics_info(
             damp_mode_tag: 0,
             one_way: false,
             force: [0.0, 0.0],
+            area_drag: 0.0,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -174,5 +178,6 @@ pub(crate) fn build_physics_info(
         damp_mode_tag: damping.mode.tag(),
         one_way,
         force,
+        area_drag,
     })
 }

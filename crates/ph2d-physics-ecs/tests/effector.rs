@@ -118,3 +118,51 @@ fn a_solid_zone_pushes_nothing() {
         x_of(&sim, e)
     );
 }
+
+#[test]
+fn the_bridge_folds_the_area_drag_and_a_rewind_preserves_it() {
+    // The medium half (W-AreaDrag), through the outcome an artist would check: a box
+    // dropped into a pool arrives at the bottom slower than the identical box dropped
+    // beside it. Two separate components reach the world as ONE effect, so this also
+    // proves the bundling — a body carrying only `AreaDrag` and no `AreaEffector` still
+    // becomes a zone.
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 1.0,
+                half_y: 2.0,
+            },
+            is_sensor: true,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ph2d_physics_ecs::AreaDrag(6.0),
+    ));
+    let in_pool = faller(&mut sim, 0.0);
+    let in_air = faller(&mut sim, 6.0);
+    let mut bridge = PhysicsBridge::new();
+    play_to(&mut bridge, &mut sim, 60);
+
+    fn y(sim: &SimWorld, e: Entity) -> f32 {
+        sim.world().get::<Transform>(e).unwrap().translation.y
+    }
+    let (wet, dry) = (y(&sim, in_pool), y(&sim, in_air));
+    assert!(
+        wet > dry + 0.5,
+        "the box that fell through the pool should be held up relative to the one in \
+         open air ({wet} vs {dry}) — the bridge is not folding `AreaDrag` into the sim"
+    );
+
+    // Scrub to t=0 and replay: the same resistance, so the drag rode the `BodyDesc`.
+    bridge.dispatch(&mut sim, false, 0);
+    play_to(&mut bridge, &mut sim, 60);
+    assert!(
+        (y(&sim, in_pool) - wet).abs() < 1e-3,
+        "after a rewind the pool was not re-armed ({wet} -> {})",
+        y(&sim, in_pool)
+    );
+}

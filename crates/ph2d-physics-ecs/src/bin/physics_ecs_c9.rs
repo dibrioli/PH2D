@@ -17,8 +17,9 @@
 //! solver, W-Material, one DAMPED launched ball → the per-body drag fold in the
 //! integrator, W-Damping, and one ball launched UP through a ONE-WAY platform → the
 //! contact-modification hook, W-OneWay, and one ball falling through a WIND COLUMN →
-//! the force-zone impulse read from the narrow phase's intersection graph, W-Area):
-//! entities carry
+//! the force-zone impulse read from the narrow phase's intersection graph, W-Area, and
+//! one ball sinking through a DRAG POOL → the zone's decay applied outside rapier's own
+//! damping point, W-AreaDrag): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -29,16 +30,16 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 69
+//! physics-ecs-c9 body_count: 71
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
-    Dominance, GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride,
-    MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
+    AreaDrag, AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode,
+    DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX, LockRotation,
+    MassOverride, MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -448,6 +449,40 @@ fn main() {
             ..Collider::default()
         },
         Transform::from_translation(Vec2::new(-58.0, 4.0)),
+    ));
+
+    // One DRAG POOL and the ball sinking through it (W-AreaDrag): the zone carries an
+    // `AreaDrag` and no force, so it reaches the world through the same `AreaEffect`
+    // bundle by the OTHER half — and its decay is applied at the top of the substep,
+    // outside the point where rapier applies its own damping. That is a different `f32`
+    // fold from every other body here, and CI proves it bit-identical cross-OS. Its own
+    // lane, far left.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 1.0,
+                half_y: 2.0,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaDrag(6.0),
+        Transform::from_translation(Vec2::new(-64.0, 1.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.25 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-64.0, 4.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

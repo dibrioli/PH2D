@@ -8,7 +8,7 @@
 //! ago. Ordering is a parameter here from the start.
 
 use ph2d_physics::{
-    BodyDesc, LayerMatrix, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
+    AreaEffect, BodyDesc, LayerMatrix, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
 };
 
 /// A body with everything neutral — the fixtures override the few fields they
@@ -42,11 +42,17 @@ fn desc(body_type: RigidBodyType, x: f32, y: f32, shape: ShapeDesc) -> BodyDesc 
     }
 }
 
-/// A static sensor box carrying a force — the zone itself.
+/// A static sensor box carrying a force — the zone itself. Drag gets its own helper
+/// below, so the force gates read without a `0.0` nobody is testing.
 fn zone(x: f32, y: f32, half_x: f32, half_y: f32, force: [f32; 2]) -> BodyDesc {
+    zone_with(x, y, half_x, half_y, force, 0.0)
+}
+
+/// The general zone: a force, a drag, or both.
+fn zone_with(x: f32, y: f32, half_x: f32, half_y: f32, force: [f32; 2], drag: f32) -> BodyDesc {
     BodyDesc {
         is_sensor: true,
-        effector: Some(force),
+        effector: Some(AreaEffect { force, drag }),
         ..desc(
             RigidBodyType::Fixed,
             x,
@@ -286,7 +292,10 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
         w.set_gravity(0.0, 0.0);
         let round = BodyDesc {
             is_sensor: true,
-            effector: Some([5.0, 0.0]),
+            effector: Some(AreaEffect {
+                force: [5.0, 0.0],
+                drag: 0.0,
+            }),
             ..desc(
                 RigidBodyType::Fixed,
                 0.0,
@@ -365,4 +374,149 @@ fn the_collision_layer_matrix_decides_who_the_zone_can_touch() {
             );
         }
     }
+}
+
+#[test]
+fn a_drag_zone_slows_what_falls_through_it() {
+    // The other half of a medium: a force zone with no drag is a vacuum that blows.
+    // Falling the SAME distance through the same air, the body that crossed the pool
+    // arrives slower — and the control proves the fall itself is not what slowed it.
+    let speeds: Vec<f32> = [0.0f32, 4.0]
+        .iter()
+        .map(|&drag| {
+            let mut w = PhysicsWorld::new();
+            w.spawn_body(zone_with(0.0, 0.0, 2.0, 1.5, [0.0, 0.0], drag));
+            let b = w.spawn_body(ball(0.0, 3.0, 1.0));
+            for _ in 0..60 {
+                w.step();
+            }
+            -w.bodies().get(b).expect("ball").linvel().y
+        })
+        .collect();
+    assert!(
+        speeds[0] > 5.0,
+        "the control must be falling fast by now ({} m/s)",
+        speeds[0]
+    );
+    assert!(
+        speeds[1] < speeds[0] * 0.6,
+        "a body that fell through a drag zone should be markedly slower ({} vs {})",
+        speeds[1],
+        speeds[0]
+    );
+}
+
+#[test]
+fn the_zone_drag_is_the_world_drag_law_off_by_exactly_one_substep() {
+    // ⚠️ "Drag" must mean ONE thing in this app: the world default
+    // (`BodyDefaults::linear_damping`), the per-body override and this all use
+    // rapier's `v /= 1 + d·dt` (its own `apply_damping`, verified in the source).
+    //
+    // They do NOT come out bit-identical, and the reason is worth pinning rather than
+    // hiding under a tolerance. rapier applies damping deep inside the velocity
+    // solver, just before integrating positions; a zone applies it at the top of the
+    // substep, and it can only apply it to bodies the PREVIOUS substep's narrow phase
+    // reported as overlapping — the one-substep lag this module documents. So the zone
+    // performs exactly **one fewer** decay over the same run.
+    //
+    // Measured at d = 3, launch 6 m/s, 30 ticks: world 1.3512776, zone 1.3681686 —
+    // a ratio of 1.0125, which is exactly `1 + d·dt_substep`. This gate asserts that
+    // number, so a change in WHERE the drag is applied shows up as a named quantity
+    // instead of a mysterious 1%.
+    let launch = 6.0f32;
+    let coeff = 3.0f32;
+
+    let mut by_world = PhysicsWorld::new();
+    by_world.set_gravity(0.0, 0.0);
+    by_world.set_body_defaults(ph2d_physics::BodyDefaults {
+        linear_damping: coeff,
+        ..by_world.body_defaults()
+    });
+    let a = by_world.spawn_body(BodyDesc {
+        linvel: [launch, 0.0],
+        ..ball(0.0, 0.0, 1.0)
+    });
+
+    let mut by_zone = PhysicsWorld::new();
+    by_zone.set_gravity(0.0, 0.0);
+    // Big enough that the body never leaves it over the run.
+    by_zone.spawn_body(zone_with(0.0, 0.0, 60.0, 5.0, [0.0, 0.0], coeff));
+    let b = by_zone.spawn_body(BodyDesc {
+        linvel: [launch, 0.0],
+        ..ball(0.0, 0.0, 1.0)
+    });
+
+    for _ in 0..30 {
+        by_world.step();
+        by_zone.step();
+    }
+    let (vw, vz) = (vx_of(&by_world, a), vx_of(&by_zone, b));
+    let one_substep = 1.0 + coeff * by_zone.substep_dt();
+    assert!(
+        (vz / vw - one_substep).abs() < 0.002,
+        "the zone drag should be the world drag law short exactly one substep \
+         (ratio {one_substep}), got {} ({vz} vs {vw})",
+        vz / vw
+    );
+}
+
+#[test]
+fn the_drag_resists_a_spin_too() {
+    // A medium resists rotation, and that is why one knob damps both: syrup that let
+    // a coin spin freely would not read as syrup. (Godot exposes the two separately
+    // on an Area2D; the per-BODY override is where the asymmetric case lives here.)
+    let mut w = PhysicsWorld::new();
+    w.set_gravity(0.0, 0.0);
+    w.spawn_body(zone_with(0.0, 0.0, 4.0, 4.0, [0.0, 0.0], 4.0));
+    let spinner = w.spawn_body(BodyDesc {
+        angvel: 12.0,
+        ..ball(0.0, 0.0, 1.0)
+    });
+    // The control sits outside the pool with the identical spin.
+    let free = w.spawn_body(BodyDesc {
+        angvel: 12.0,
+        ..ball(10.0, 0.0, 1.0)
+    });
+    for _ in 0..60 {
+        w.step();
+    }
+    let inside = w.bodies().get(spinner).expect("spinner").angvel();
+    let outside = w.bodies().get(free).expect("free").angvel();
+    assert!(
+        (outside - 12.0).abs() < 1e-3,
+        "the control outside the pool keeps its spin ({outside})"
+    );
+    assert!(
+        inside < outside * 0.3,
+        "a spin inside the pool must be resisted ({inside} vs {outside})"
+    );
+}
+
+#[test]
+fn an_inert_zone_is_byte_identical_whether_it_is_zero_force_or_zero_drag() {
+    // The registration guard now has TWO ways to be inert, and both must leave the
+    // world untouched — a zone that neither pushes nor resists is a plain sensor.
+    let hashes: Vec<[u8; 32]> = [
+        Some(AreaEffect {
+            force: [0.0, 0.0],
+            drag: 0.0,
+        }),
+        None,
+    ]
+    .into_iter()
+    .map(|effector| {
+        let (mut w, _) = settled_ball();
+        let mut z = zone(0.0, 0.0, 6.0, 3.0, [0.0, 0.0]);
+        z.effector = effector;
+        w.spawn_body(z);
+        for _ in 0..120 {
+            w.step();
+        }
+        w.deterministic_hash()
+    })
+    .collect();
+    assert_eq!(
+        hashes[0], hashes[1],
+        "a zone with neither force nor drag must be byte-identical to no zone at all"
+    );
 }

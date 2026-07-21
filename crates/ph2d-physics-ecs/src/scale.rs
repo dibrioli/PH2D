@@ -32,7 +32,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics::{
-    BodyDesc, CoefficientCombineRule, CombineRules, DampingDesc, RigidBodyType, ShapeDesc,
+    AreaEffect, BodyDesc, CoefficientCombineRule, CombineRules, DampingDesc, RigidBodyType,
+    ShapeDesc,
 };
 
 use crate::components::{
@@ -150,10 +151,13 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `replace: true`, the one door) and riding the `BodyDesc` for the rewind.
 /// `one_way` is the PRESENCE of the optional [`crate::OneWayPlatform`] marker — the
 /// collider is solid only from its local +Y side; rides the `BodyDesc` for the rewind.
-/// `effector` is the optional [`crate::AreaEffector`] component's force in newtons
-/// (absent = a body that pushes nothing) — the force zone, riding the `BodyDesc` for
-/// the rewind like the rest. The wrapper is the half that refuses it on a solid
-/// collider (`effector::zone_force`), so this stays a plain hand-off.
+/// `effector` is what the area DOES — the force in newtons from the optional
+/// [`crate::AreaEffector`] and the drag from the optional [`crate::AreaDrag`], bundled
+/// by the caller into one `AreaEffect` (the two stay separate components because that
+/// side is serialized; see `AreaDrag`). Absent = a body that neither pushes nor
+/// resists. It rides the `BodyDesc` for the rewind like the rest, and the wrapper is
+/// the half that refuses it on a solid collider (`effector::zone_effect`), so this
+/// stays a plain hand-off.
 ///
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
@@ -175,7 +179,7 @@ pub(crate) fn body_desc(
     material: MaterialCombine,
     damping: Option<DampingOverride>,
     one_way: bool,
-    effector: Option<[f32; 2]>,
+    effector: Option<AreaEffect>,
 ) -> BodyDesc {
     BodyDesc {
         gravity_scale,

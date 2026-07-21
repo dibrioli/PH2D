@@ -32,8 +32,8 @@ pub use world::defaults::BodyDefaults;
 pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{
-    BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld, ShapeDesc,
-    capsule_vertices, ellipse_vertices,
+    AreaEffect, BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld,
+    ShapeDesc, capsule_vertices, ellipse_vertices,
 };
 
 /// The checkpoint ring's stride, in ticks — the bound on how many steps a

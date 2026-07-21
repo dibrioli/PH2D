@@ -148,6 +148,24 @@ como fator default (W2.4 troca por Grain). Gate red-first: dab achatado deposita
 ⚠️ Smoke do Circular JÁ aprovado; **o do W2.3b (Flatten/Shape no wet) ainda não** — smoke junto
 com o próximo lote. Re-smoke Circular OK (Enio).
 
+**W2.4 LANDOU (`3272e6d1` + fmt-sweep `bab935a9`) — o Grain do artista substitui a bristle:**
+a bristle é o grain DEFAULT do fluido, então slot de Grain armado (`brush.texture.is_active()`)
+= closure por dab que SUBSTITUI o `sample_bristle` no stamp shaped (multiplicar os dois
+escureceria em dobro; em todo o resto do app o Grain É a textura). A lei por-pixel é
+`dab::grain_at` — a MESMA porta única da rota de cor e do kernel de altura do impasto (Depth +
+granulation + stencil dobrados). Prep espelha o impasto: `grain_basis` DEPOIS do `shape_basis`,
+mesmo stream de RNG (ordem Shape-antes-de-Grain). Plumbing: `dispatch_pressure_dab_lane(..,
+sil, grain)` → `accumulate_paint_shaped(.., grain)` → `for_each_stamp_pixel_shaped` (`texv =
+grain(x,y)` quando Some; `debug_assert` grain-sem-sil no braço unshaped — parâmetro descartado
+em silêncio é armadilha). Grain inativo = `None` = caminho byte-idêntico (fingerprint intacto).
+2 gates mutation-tested, cada mutação sangra SÓ o seu: engine (`the_hosts_grain_replaces_the_
+bristle`, listras vetam colunas ímpares a zero EXATO + controle positivo bristled) · tool
+(`the_artists_grain_textures_the_wet_deposit`, Checker **Tiled** depth 1 — canvas-anchored,
+senão dabs sobrepostos re-faseiam e enchem os zeros uns dos outros; oráculo tríplice
+vetoed/kept/mass — o kept-count mata o dim global). ⚠️ O fmt-sweep é dívida do W0 (a crate
+nunca passou pelo fmt PINADO 1.95; `--no-verify` pulava o hook) — commit separado, zero lógica.
+⚠️ Smoke do W2.4 pendente junto do lote (Grain procedural/imagem num traço wet).
+
 **W2.3b — o desenho original (histórico):**
 `for_each_stamp_pixel_shaped` JÁ EXISTE em `brush.rs` (sem chamador): closure
 `sil(x,y)->f64` substitui falloff+footprint internos; bristle fica como fator. Falta: (a)
@@ -167,7 +185,7 @@ intocados (fingerprint pina). `texv` (bristle) FICA como fator default estilo-Gr
 a bristle pelo Grain do artista quando houver um. Perf: silhouette por pixel = o que as rotas
 de cor já pagam.
 
-**W2 restante:** W2.4 Grain · W2.5 Selection/alpha-lock (keep-lerp no MEU composite — o modelo
+**W2 restante:** W2.5 Selection/alpha-lock (keep-lerp no MEU composite — o modelo
 `splat_keep`) · W2.6 Eraser→`Tool::Erase` (o engine já o tem; `paint.eraser` em modo wet roteia
 tool_override) · W2.7 Paper (LER doc 19 ANTES — extração de substrato quer ADR; mapear presets
 do painter nos 3 do engine é o v1 honesto?) · W2.8 shape editors (depósito 1× no Apply — os

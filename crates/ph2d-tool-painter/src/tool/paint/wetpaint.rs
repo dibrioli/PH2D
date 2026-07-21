@@ -321,6 +321,63 @@ mod tests {
         t.on_canvas_pointer(cp([170.0, 60.0], PointerPhase::Up));
     }
 
+    /// Suspended-pigment mass inside the cell columns `[x0, x1]` (1-based).
+    fn susp_in_columns(t: &PainterTool, x0: usize, x1: usize) -> f64 {
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        let g = &sess.engine.layers[0].grid;
+        let mut sum = 0.0f64;
+        for cy in 1..=g.h {
+            for cx in x0..=x1 {
+                sum += f64::from(g.susp[cx + cy * g.s]);
+            }
+        }
+        sum
+    }
+
+    /// SEAM: Symmetry is FREE through the choke point — the dab list arrives
+    /// already mirrored, so a stroke held to the LEFT half deposits fluid on
+    /// the RIGHT half too, in comparable mass. Mutation that bleeds it: a wet
+    /// route hung off its own geometry instead of `stamp_dabs_inner`'s list
+    /// (the exact disease the choke-point comment warns about).
+    #[test]
+    fn symmetry_mirrors_the_wet_deposit_for_free() {
+        let mut t = tool_in_mode("wetpaint");
+        t.toggle_symmetry_enabled(); // mirror X on the canvas centre (x = 100)
+        t.on_canvas_pointer(cp([25.0, 60.0], PointerPhase::Down));
+        for k in 1..=10 {
+            t.on_canvas_pointer(cp([25.0 + 4.5 * k as f32, 60.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([70.0, 60.0], PointerPhase::Up));
+        let left = susp_in_columns(&t, 1, 100);
+        let right = susp_in_columns(&t, 101, 200);
+        assert!(left > 1000.0, "the stroke itself deposited nothing ({left})");
+        assert!(
+            right > left * 0.5 && right < left * 2.0,
+            "the mirrored deposit is missing or lopsided (left {left}, right {right})"
+        );
+    }
+
+    /// SEAM: Tiling wraps the wet deposit — a stroke hugging the LEFT edge
+    /// lands its wrapped copies by the RIGHT edge. Same mutation as the
+    /// symmetry gate (the free lunch is the same list).
+    #[test]
+    fn tiling_wraps_the_wet_deposit_across_the_edge() {
+        let mut t = tool_in_mode("wetpaint");
+        t.paint.tiling[0] = true;
+        t.on_canvas_pointer(cp([4.0, 60.0], PointerPhase::Down));
+        for k in 1..=10 {
+            t.on_canvas_pointer(cp([4.0, 60.0 + 3.0 * k as f32], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([4.0, 90.0], PointerPhase::Up));
+        let near_left = susp_in_columns(&t, 1, 20);
+        let near_right = susp_in_columns(&t, 185, 200);
+        assert!(near_left > 500.0, "the stroke itself deposited nothing ({near_left})");
+        assert!(
+            near_right > near_left * 0.1,
+            "no wrapped deposit by the far edge (left {near_left}, right {near_right})"
+        );
+    }
+
     /// PRESENCE: a Wet Paint stroke deposits (the canvas moves), the session
     /// exists past pen-up (the water is still wet), and the heartbeat keeps
     /// the sim alive without poisoning a pixel. Mutation that bleeds it:

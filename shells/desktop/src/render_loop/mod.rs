@@ -3936,29 +3936,19 @@ impl crate::App {
             // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à
             // parte (valem em TODOS os modos) — `vec_overlay` separa as duas políticas
             // num ponto testável (P1).
-            // Um preview de Offset (arrasto vivo OU janela de Corner/Side) reescreve a
-            // cena a cada clique — a geometria ali é TRANSIENTE, então ela não ganha
-            // âncoras (ver `VecOverlayPlan::authored_handles`).
-            let offset_previewing =
-                self.vec_offset_session.is_some() || self.vec_offset_retune.is_some();
-            let overlay = crate::vec_overlay::vec_overlay_plan(
-                vector_active,
-                self.vec_draw_config.mode,
-                offset_previewing,
-            );
+            let overlay =
+                crate::vec_overlay::vec_overlay_plan(vector_active, self.vec_draw_config.mode);
             if overlay.edit {
-                if overlay.authored_handles {
-                    ph2d_vec_render::draw_overlays(
-                        vec_scene,
-                        &vec_view,
-                        self.vec_pen.selected(),
-                        self.vec_pen.selected_paths(),
-                        self.vec_pen.selected_verts(),
-                        &vec_xf,
-                        cam_affine,
-                        vector_scene,
-                    );
-                }
+                ph2d_vec_render::draw_overlays(
+                    vec_scene,
+                    &vec_view,
+                    self.vec_pen.selected(),
+                    self.vec_pen.selected_paths(),
+                    self.vec_pen.selected_verts(),
+                    &vec_xf,
+                    cam_affine,
+                    vector_scene,
+                );
                 // NOTA: as alças de raio de quina (Live Corners) não são mais desenhadas — o
                 // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
                 // clicar-e-arrastar). A exclusão de forma VIVA (`crate::corner_handles::has_derived_verts`)
@@ -4003,13 +3993,7 @@ impl crate::App {
                 // Gradient handles (multi-point dots, or linear/radial endpoints)
                 // when the selected path has a gradient fill. A geometria do gradiente
                 // é LOCAL como a do path, então sobe pelo afim dele.
-                //
-                // Sob `authored_handles` pela MESMA razão das âncoras: arrastar a alça de
-                // um gradiente sobre o resultado de um preview é trabalho que o próximo
-                // clique de Corner apaga.
-                if overlay.authored_handles
-                    && let Some(sel) = self.vec_pen.selected()
-                {
+                if let Some(sel) = self.vec_pen.selected() {
                     ph2d_vec_render::draw_gradient_handles(
                         vec_scene,
                         Some(sel),

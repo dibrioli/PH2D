@@ -99,7 +99,11 @@ impl Sim {
     pub fn gather_params(&self, tuning: &Tuning) -> Params {
         Params {
             values: tuning.snapshot(),
-            mix: if self.km_mixing { ColorMix::Km } else { ColorMix::Plain },
+            mix: if self.km_mixing {
+                ColorMix::Km
+            } else {
+                ColorMix::Plain
+            },
             km_mixing: self.km_mixing,
         }
     }

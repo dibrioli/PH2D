@@ -85,7 +85,11 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             if new_film < 0.0001 {
                 new_film = 0.0;
             }
-            let lost = if f > 0.0 { 1.0 - clamp01(new_film / f) } else { 1.0 };
+            let lost = if f > 0.0 {
+                1.0 - clamp01(new_film / f)
+            } else {
+                1.0
+            };
             film_c = new_film as f32;
 
             // Settle: the fraction of water lost carries the same fraction of

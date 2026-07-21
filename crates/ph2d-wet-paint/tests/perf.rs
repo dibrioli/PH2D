@@ -74,10 +74,16 @@ fn perf_sanity_scripted_session() {
     }
     println!("    240 steps in {dt:.0} ms  (~{per100:.0} ms / 100 steps)");
     println!("    worst cadence-class median tick: {worst_median:.2} ms");
-    assert!(per100 < 500.0, "{per100:.0} ms per 100 steps (must be well under 1000)");
+    assert!(
+        per100 < 500.0,
+        "{per100:.0} ms per 100 steps (must be well under 1000)"
+    );
     // ADR-0134 (amended) interactive bar: on the REPRESENTATIVE session the
     // worst tick fits comfortably inside a 60 fps frame's slack.
-    assert!(worst_median <= 2.0, "session worst tick class {worst_median:.2} ms > 2 ms");
+    assert!(
+        worst_median <= 2.0,
+        "session worst tick class {worst_median:.2} ms > 2 ms"
+    );
 }
 
 /// Per-pass cost table on the flood (the ADR-0134 measurement record).
@@ -87,8 +93,7 @@ fn perf_sanity_scripted_session() {
 fn measure_pass_breakdown_on_flood() {
     use ph2d_wet_paint::drying::drying_pass;
     use ph2d_wet_paint::solver::{
-        advect, apply_boundaries, build_flow_field, project, rebuild_active_region,
-        smooth_velocity,
+        advect, apply_boundaries, build_flow_field, project, rebuild_active_region, smooth_velocity,
     };
     let mut e = flood_engine();
     // Settle the cadence state with a few real steps first.
@@ -106,8 +111,12 @@ fn measure_pass_breakdown_on_flood() {
     };
     let mut total = 0.0;
     total += time("rebuild_active_region", &mut |g| rebuild_active_region(g));
-    total += time("drying_pass", &mut |g| drying_pass(g, &p, 0.00025, 0.000025, false));
-    total += time("build_flow_field", &mut |g| build_flow_field(g, &p, 0.0, 0.005, false));
+    total += time("drying_pass", &mut |g| {
+        drying_pass(g, &p, 0.00025, 0.000025, false)
+    });
+    total += time("build_flow_field", &mut |g| {
+        build_flow_field(g, &p, 0.0, 0.005, false)
+    });
     total += time("smooth_velocity", &mut |g| smooth_velocity(g, &p));
     total += time("advect", &mut |g| {
         advect(g, &p, 0.0, 0.005);
@@ -149,8 +158,13 @@ fn perf_guard_full_flood_and_kill_criterion() {
         }
     }
     println!("    240 steps in {dt:.0} ms  (~{per100:.0} ms / 100 steps)");
-    println!("    worst cadence-class median tick: {worst_median:.2} ms (ADR-0134 amended kill: 12 ms)");
-    assert!(per100 < 1500.0, "flood: {per100:.0} ms per 100 steps (upper-bound guard 1500)");
+    println!(
+        "    worst cadence-class median tick: {worst_median:.2} ms (ADR-0134 amended kill: 12 ms)"
+    );
+    assert!(
+        per100 < 1500.0,
+        "flood: {per100:.0} ms per 100 steps (upper-bound guard 1500)"
+    );
     // ADR-0134 AMENDED kill criterion (measured table in the ADR): the flood
     // guard scene (~110k wet cells, 27% of the reference sheet standing wet)
     // measured 8.3-8.8 ms on the worst 1-in-12 cadence tick at the serial

@@ -74,7 +74,11 @@ pub fn render_region(
     let valley = if ext { p.k(Knob::ExtValleyGran) } else { 0.0 };
     let sheen = if ext { p.k(Knob::ExtWetSheen) } else { 0.0 };
     let dither = if ext { p.k(Knob::ExtGrainDither) } else { 0.0 };
-    let edge_tint = if ext { (p.k(Knob::ExtEdgeTint) - 0.5) * 2.0 } else { 0.0 }; // signed, 0 = neutral
+    let edge_tint = if ext {
+        (p.k(Knob::ExtEdgeTint) - 0.5) * 2.0
+    } else {
+        0.0
+    }; // signed, 0 = neutral
 
     for cy in y0..=y1 {
         let mut i = x0 as usize + cy as usize * s;
@@ -118,7 +122,11 @@ pub fn render_region(
                 // 3000 (thick paint hides the grain).
                 let mut fade = 1.0;
                 if total > 1000.0 {
-                    fade = if total >= 3000.0 { 0.0 } else { (3000.0 - total) / 2000.0 };
+                    fade = if total >= 3000.0 {
+                        0.0
+                    } else {
+                        (3000.0 - total) / 2000.0
+                    };
                 }
                 let mut v = (pap * 100.0 - 40.0) * grain_vis * fade;
                 // Signed emboss from the mass gradient: one side lightens,

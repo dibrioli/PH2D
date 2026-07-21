@@ -61,7 +61,11 @@ fn t01_02_pressure_fade_in_and_porous_deposit() {
     }
     assert!(total > 0.0, "no pigment deposited at all");
     let frac = holding as f64 / band as f64;
-    assert!(frac < 0.85, "{:.1}% of band cells hold pigment (must be < 85%)", frac * 100.0);
+    assert!(
+        frac < 0.85,
+        "{:.1}% of band cells hold pigment (must be < 85%)",
+        frac * 100.0
+    );
     sweep_nan(g, "post-stroke");
 }
 
@@ -77,17 +81,30 @@ fn t03_wet_and_dry_tools() {
     e.tool = Tool::Wet;
     drive_stroke(&mut e, 100.0, 150.0, 200.0, 150.0, 4.0, 0);
     let first = e.active_grid().film[center] as f64;
-    assert!(first > 0.0 && first < 0.2, "one wet pass film = {first} (need 0 < f < 0.2)");
-    assert!(e.active_grid().wet[center] > 0, "wetness byte at line center is 0 after wet pass");
+    assert!(
+        first > 0.0 && first < 0.2,
+        "one wet pass film = {first} (need 0 < f < 0.2)"
+    );
+    assert!(
+        e.active_grid().wet[center] > 0,
+        "wetness byte at line center is 0 after wet pass"
+    );
     for _ in 0..30 {
         drive_stroke(&mut e, 100.0, 150.0, 200.0, 150.0, 4.0, 0);
     }
     let after = e.active_grid().film[center] as f64;
-    assert!(after > 5.0 * first, "31 wet passes film {after} !> 5x first {first}");
+    assert!(
+        after > 5.0 * first,
+        "31 wet passes film {after} !> 5x first {first}"
+    );
     e.tool = Tool::Dry;
     drive_stroke(&mut e, 100.0, 150.0, 200.0, 150.0, 4.0, 0);
     let g = e.active_grid();
-    assert_eq!(g.wet[center], 0, "dry pass left wetness {} (must seal to 0)", g.wet[center]);
+    assert_eq!(
+        g.wet[center], 0,
+        "dry pass left wetness {} (must seal to 0)",
+        g.wet[center]
+    );
     assert!(
         g.film[center] >= 0.001,
         "dry pass film {} < 0.001 floor",
@@ -247,7 +264,10 @@ fn t07_blend_remixes_dry_paint() {
     e.tool = Tool::Blend;
     drive_stroke(&mut e, 120.0, 120.0, 170.0, 120.0, 4.0, 0); // across the patch's right edge
     let grown = sum_outside(&e) - before;
-    assert!(grown > 100.0, "settled mass beyond the patch grew by {grown:.1} (need > 100)");
+    assert!(
+        grown > 100.0,
+        "settled mass beyond the patch grew by {grown:.1} (need > 100)"
+    );
     sweep_nan(e.active_grid(), "post-blend");
 }
 
@@ -263,7 +283,11 @@ fn t08_tuning_registry() {
     t.set_by_key("gravity", 0.03);
     t.set_by_key("brake", 0.1);
     let changed = t.reset_group(ph2d_wet_paint::tuning::KnobGroup::Physics);
-    assert_eq!(changed.len(), 3, "3 knobs were off-default; each must report");
+    assert_eq!(
+        changed.len(),
+        3,
+        "3 knobs were off-default; each must report"
+    );
     assert!(
         t.get(Knob::Leveling) == 0.5 && t.get(Knob::Gravity) == 0.005 && t.get(Knob::Brake) == 1.5,
         "group reset did not restore defaults"
@@ -324,14 +348,20 @@ fn t09_drip_and_stability() {
         e.step_simulation();
     }
     let descent = wet_front_max_y(&e) as i64 - 39;
-    assert!(descent >= 40, "gravity drip descended {descent} rows (need >= 40)");
+    assert!(
+        descent >= 40,
+        "gravity drip descended {descent} rows (need >= 40)"
+    );
     let mut e0 = drip_setup();
     e0.sim.gravity_override = Some([0.0, 0.0]);
     for _ in 0..240 {
         e0.step_simulation();
     }
     let spread = wet_front_max_y(&e0) as i64 - 39;
-    assert!(spread <= 8, "zero-gravity front moved {spread} rows (need <= 8)");
+    assert!(
+        spread <= 8,
+        "zero-gravity front moved {spread} rows (need <= 8)"
+    );
     for _ in 0..120 {
         e.step_simulation();
     }

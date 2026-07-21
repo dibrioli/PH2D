@@ -123,7 +123,17 @@ pub enum ColorMix {
 impl ColorMix {
     /// Mix dst -> src by weight w, both 0..255 float channels, into `out`.
     #[inline]
-    pub fn mix(self, dr: f64, dg: f64, db: f64, sr: f64, sg: f64, sb: f64, w: f64, out: &mut [f64; 3]) {
+    pub fn mix(
+        self,
+        dr: f64,
+        dg: f64,
+        db: f64,
+        sr: f64,
+        sg: f64,
+        sb: f64,
+        w: f64,
+        out: &mut [f64; 3],
+    ) {
         match self {
             ColorMix::Plain => {
                 out[0] = dr + (sr - dr) * w;

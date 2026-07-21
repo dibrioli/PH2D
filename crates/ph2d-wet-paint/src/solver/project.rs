@@ -14,7 +14,14 @@ pub fn project(g: &mut Grid, p: &Params) {
     let w = g.w as i32;
     let h = g.h as i32;
     let projection = p.k(Knob::Projection);
-    let Grid { flow_x, flow_y, vel_x, vel_y, active, .. } = g;
+    let Grid {
+        flow_x,
+        flow_y,
+        vel_x,
+        vel_y,
+        active,
+        ..
+    } = g;
     let div = flow_x;
     let prs = flow_y;
     let zx0 = (g.bx0 - 1).max(0);

@@ -40,7 +40,16 @@ pub fn apply_erase(
     let force = p.k(Knob::Eraser) * erase_slider;
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
-    let Grid { s, w, h, susp, sett, film, paper, .. } = g;
+    let Grid {
+        s,
+        w,
+        h,
+        susp,
+        sett,
+        film,
+        paper,
+        ..
+    } = g;
     let _ = s;
     for_each_stamp_pixel(
         *s,
@@ -108,7 +117,15 @@ pub fn apply_wet(
     let cap = p.k(Knob::WaterCap);
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
-    let Grid { s, w, h, film, paper, wet, .. } = g;
+    let Grid {
+        s,
+        w,
+        h,
+        film,
+        paper,
+        wet,
+        ..
+    } = g;
     for_each_stamp_pixel(
         *s,
         *w,
@@ -152,7 +169,9 @@ pub fn apply_dry(g: &mut Grid, p: &Params, tex: &[f32], dab: &Dab) -> Option<Tou
     let force = p.k(Knob::Dryer);
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
-    let Grid { s, w, h, film, wet, .. } = g;
+    let Grid {
+        s, w, h, film, wet, ..
+    } = g;
     for_each_stamp_pixel(
         *s,
         *w,
@@ -215,7 +234,12 @@ pub fn apply_blow(
     // Snapshot the wetness in the affected region so the drag reads
     // pre-write values (sampling live bytes would compound the drag within
     // one dab).
-    let r = rect_around(g, dab.x, dab.y, dab.r + off_x.abs().max(off_y.abs()) as f64 + 1.0);
+    let r = rect_around(
+        g,
+        dab.x,
+        dab.y,
+        dab.r + off_x.abs().max(off_y.abs()) as f64 + 1.0,
+    );
     let snap_w = (r.x1 - r.x0 + 1) as usize;
     let snap_h = (r.y1 - r.y0 + 1) as usize;
     let mut snap = vec![0u8; snap_w * snap_h];
@@ -228,7 +252,17 @@ pub fn apply_blow(
     let mut touched = false;
     let w_i32 = g.w as i32;
     let h_i32 = g.h as i32;
-    let Grid { s, w, h, film, paper, wet, vel_x, vel_y, .. } = g;
+    let Grid {
+        s,
+        w,
+        h,
+        film,
+        paper,
+        wet,
+        vel_x,
+        vel_y,
+        ..
+    } = g;
     let stride = *s;
     for_each_stamp_pixel(
         *s,
@@ -324,7 +358,15 @@ pub fn apply_smear(
     let mut out = [0.0f64; 3];
     let mix = p.mix;
     let mut touched = false;
-    let Grid { s, w, h, susp, susp_rgb, film, .. } = g;
+    let Grid {
+        s,
+        w,
+        h,
+        susp,
+        susp_rgb,
+        film,
+        ..
+    } = g;
     for_each_stamp_pixel(
         *s,
         *w,
@@ -405,7 +447,16 @@ pub fn apply_smear(
                 if in_c + res > 0.0 {
                     let wgt = in_c / (in_c + res);
                     let uc = susp_rgb[i];
-                    mix.mix(uc[0] as f64, uc[1] as f64, uc[2] as f64, cr, cg, cbv, wgt, &mut out);
+                    mix.mix(
+                        uc[0] as f64,
+                        uc[1] as f64,
+                        uc[2] as f64,
+                        cr,
+                        cg,
+                        cbv,
+                        wgt,
+                        &mut out,
+                    );
                     susp_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
                 }
                 susp[i] = (susp[i] as f64 + (src_mass - susp[i] as f64) * u) as f32;

@@ -63,7 +63,13 @@ impl Default for Stroke {
 pub enum StrokeEvent {
     /// Chord length of a spline segment, reported before its dabs.
     Segment { chord: f64 },
-    Dab { x: f64, y: f64, pressure: f64, dir_x: f64, dir_y: f64 },
+    Dab {
+        x: f64,
+        y: f64,
+        pressure: f64,
+        dir_x: f64,
+        dir_y: f64,
+    },
 }
 
 impl Stroke {
@@ -82,7 +88,11 @@ impl Stroke {
         self.first_dab_done = false;
         // JS `Math.max(0.5, spacing || 2)`: a falsy spacing (0 or NaN) falls
         // back to the default 2 BEFORE the floor (port-verify finding).
-        let spacing = if spacing == 0.0 || spacing.is_nan() { 2.0 } else { spacing };
+        let spacing = if spacing == 0.0 || spacing.is_nan() {
+            2.0
+        } else {
+            spacing
+        };
         self.spacing = spacing.max(0.5);
     }
 
@@ -184,7 +194,14 @@ impl Stroke {
         }
     }
 
-    fn emit_segment(&mut self, p0: Point, p1: Point, p2: Point, p3: Point, out: &mut Vec<StrokeEvent>) {
+    fn emit_segment(
+        &mut self,
+        p0: Point,
+        p1: Point,
+        p2: Point,
+        p3: Point,
+        out: &mut Vec<StrokeEvent>,
+    ) {
         let cdx = p2.x - p1.x;
         let cdy = p2.y - p1.y;
         let chord = (cdx * cdx + cdy * cdy).sqrt();

@@ -75,7 +75,7 @@ impl PaperPreset {
                 tooth_amp: 0.34,
                 sparkle_amp: 0.052,
                 fibre_depth: 0.20,
-            seed_base: 23,
+                seed_base: 23,
             },
             PaperPreset::Hot => &PaperParams {
                 mean: 0.497,
@@ -103,7 +103,11 @@ pub struct PaperKnobs {
 
 impl Default for PaperKnobs {
     fn default() -> Self {
-        PaperKnobs { contrast: 1.0, fibres: 1.0, grooves: 1.0 }
+        PaperKnobs {
+            contrast: 1.0,
+            fibres: 1.0,
+            grooves: 1.0,
+        }
     }
 }
 

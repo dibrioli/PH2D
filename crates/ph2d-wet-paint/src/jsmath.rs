@@ -58,7 +58,11 @@ pub fn to_int32_wrapping(v: f64) -> i32 {
         return 0;
     }
     let m = v.trunc().rem_euclid(4_294_967_296.0); // [0, 2^32)
-    if m >= 2_147_483_648.0 { (m - 4_294_967_296.0) as i32 } else { m as i32 }
+    if m >= 2_147_483_648.0 {
+        (m - 4_294_967_296.0) as i32
+    } else {
+        m as i32
+    }
 }
 
 /// `x & mask` where `x` may be negative (JS ToInt32 + two's-complement AND).

@@ -79,7 +79,15 @@ fn budget_stroke(size_slider: f64, r: i64) -> BudgetResult {
     }
     let cov = touched as f64 / band as f64;
     let upper_share = upper / (upper + lower);
-    BudgetResult { engine: e, mass, water, cov, upper_share, above5, max_run }
+    BudgetResult {
+        engine: e,
+        mass,
+        water,
+        cov,
+        upper_share,
+        above5,
+        max_run,
+    }
 }
 
 #[test]
@@ -186,7 +194,10 @@ fn t11b_deposit_integral_and_uniformity() {
         (g_mean - 4.0).abs() <= 4.0 * 0.25,
         "grid integral mean {g_mean:.2} outside 4.0 +-25%"
     );
-    assert!(g_min >= 1.5, "grid integral min {g_min:.2} < 1.5 (uniformity)");
+    assert!(
+        g_min >= 1.5,
+        "grid integral min {g_min:.2} < 1.5 (uniformity)"
+    );
     println!(
         "    integral: origin {origin_integral:.2} ({origin_clearing} texels) | 3x3 grid mean {g_mean:.2} min {g_min:.2}"
     );
@@ -206,10 +217,26 @@ fn t12_lane_structure_at_two_radii() {
         "r25 upper half-band carries {:.1}% of off-path mass (need 35-65%)",
         b25.upper_share * 100.0
     );
-    assert!(b12.above5 >= 7, "r12 rows >5% of max: {} of 25 (need >= 7)", b12.above5);
-    assert!(b25.above5 >= 20, "r25 rows >5% of max: {} of 51 (need >= 20)", b25.above5);
-    assert!(b12.max_run <= 6, "r12 longest <2% run: {} (need <= 6)", b12.max_run);
-    assert!(b25.max_run <= 12, "r25 longest <2% run: {} (need <= 12)", b25.max_run);
+    assert!(
+        b12.above5 >= 7,
+        "r12 rows >5% of max: {} of 25 (need >= 7)",
+        b12.above5
+    );
+    assert!(
+        b25.above5 >= 20,
+        "r25 rows >5% of max: {} of 51 (need >= 20)",
+        b25.above5
+    );
+    assert!(
+        b12.max_run <= 6,
+        "r12 longest <2% run: {} (need <= 6)",
+        b12.max_run
+    );
+    assert!(
+        b25.max_run <= 12,
+        "r25 longest <2% run: {} (need <= 12)",
+        b25.max_run
+    );
     println!(
         "    r12: upper {:.1}% | rows>5% {}/25 | max gap {}",
         b12.upper_share * 100.0,

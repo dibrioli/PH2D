@@ -14,7 +14,11 @@ use util::drive_stroke;
 fn layers_of(e: &Engine) -> Vec<RenderLayer<'_>> {
     e.layers
         .iter()
-        .map(|l| RenderLayer { grid: &l.grid, opacity: l.opacity, visible: l.visible })
+        .map(|l| RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
         .collect()
 }
 
@@ -39,16 +43,27 @@ fn the_region_render_is_the_full_render_where_it_is_asked() {
             let o = ((cy - 1) * w + (cx - 1)) * 4;
             let in_rect = (x0..=x1).contains(&cx) && (y0..=y1).contains(&cy);
             if in_rect {
-                assert_eq!(&region[o..o + 4], &full[o..o + 4], "cell ({cx},{cy}) diverges");
+                assert_eq!(
+                    &region[o..o + 4],
+                    &full[o..o + 4],
+                    "cell ({cx},{cy}) diverges"
+                );
                 inside += 1;
             } else {
-                assert_eq!(&region[o..o + 4], &[0xAB; 4], "cell ({cx},{cy}) outside was written");
+                assert_eq!(
+                    &region[o..o + 4],
+                    &[0xAB; 4],
+                    "cell ({cx},{cy}) outside was written"
+                );
             }
         }
     }
     // The fixture must contain the phenomenon: pigment inside the rect.
     assert_eq!(inside, (x1 - x0 + 1) * (y1 - y0 + 1));
-    assert!(full.chunks_exact(4).any(|px| px[3] > 0), "stroke deposited nothing");
+    assert!(
+        full.chunks_exact(4).any(|px| px[3] > 0),
+        "stroke deposited nothing"
+    );
 }
 
 /// Mid-stroke `set_stroke_color` swaps the FRESH INK: the half of the stroke
@@ -60,19 +75,19 @@ fn the_region_render_is_the_full_render_where_it_is_asked() {
 fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
     let mut e = Engine::new(300, 120);
     e.color = [220.0, 20.0, 20.0]; // red ink loaded
-    e.begin_direct_stroke(30.0, 60.0);
+    e.begin_direct_stroke(0, 30.0, 60.0);
     let mut prev = 30.0f64;
     for k in 1..=20 {
         let x = 30.0 + 6.0 * k as f64;
-        e.direct_segment(x - prev);
-        e.dispatch_pressure_dab(x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        e.direct_segment(0, x - prev);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0);
         prev = x;
     }
-    e.set_stroke_color([20.0, 220.0, 20.0]); // dip in green
+    e.set_stroke_color(0, [20.0, 220.0, 20.0]); // dip in green
     for k in 21..=40 {
         let x = 30.0 + 6.0 * k as f64;
-        e.direct_segment(x - prev);
-        e.dispatch_pressure_dab(x, 60.0, 5.0, 1.0, 0.0, 8.0);
+        e.direct_segment(0, x - prev);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0);
         prev = x;
     }
     e.end_direct_stroke();
@@ -93,9 +108,18 @@ fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
     };
     let (r0, g0, m0) = mean(30, 110);
     let (r1, g1, m1) = mean(190, 270);
-    assert!(m0 > 1000.0 && m1 > 1000.0, "a stroke half deposited nothing ({m0}, {m1})");
-    assert!(r0 > g0 + 60.0, "the first half is not red ({r0:.0} vs {g0:.0})");
-    assert!(g1 > r1 + 20.0, "the second half never turned green ({r1:.0} vs {g1:.0})");
+    assert!(
+        m0 > 1000.0 && m1 > 1000.0,
+        "a stroke half deposited nothing ({m0}, {m1})"
+    );
+    assert!(
+        r0 > g0 + 60.0,
+        "the first half is not red ({r0:.0} vs {g0:.0})"
+    );
+    assert!(
+        g1 > r1 + 20.0,
+        "the second half never turned green ({r1:.0} vs {g1:.0})"
+    );
 }
 
 /// The direct doors deposit real paint and gate the sim exactly as the
@@ -107,20 +131,26 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
         let g = e.active_grid();
         g.susp.iter().map(|&v| v as f64).sum()
     };
-    e.begin_direct_stroke(40.0, 60.0);
-    assert!(!e.sim_should_run(), "sim must pause while a direct stroke is down");
+    e.begin_direct_stroke(0, 40.0, 60.0);
+    assert!(
+        !e.sim_should_run(),
+        "sim must pause while a direct stroke is down"
+    );
     let mut prev = (40.0f64, 60.0f64);
     for k in 1..=30 {
         let x = 40.0 + 4.0 * k as f64;
         let y = 60.0;
         let chord = ((x - prev.0).powi(2) + (y - prev.1).powi(2)).sqrt();
-        e.direct_segment(chord);
+        e.direct_segment(0, chord);
         // Real pressure (host units mapped to the §8 range) + real radius.
-        e.dispatch_pressure_dab(x, y, 5.0, 1.0, 0.0, 9.0);
+        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0);
         prev = (x, y);
     }
     e.end_direct_stroke();
-    assert!(e.sim_should_run(), "sim must resume after the direct stroke ends");
+    assert!(
+        e.sim_should_run(),
+        "sim must resume after the direct stroke ends"
+    );
     let mass_after: f64 = {
         let g = e.active_grid();
         g.susp.iter().map(|&v| v as f64).sum()

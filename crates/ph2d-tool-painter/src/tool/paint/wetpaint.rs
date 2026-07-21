@@ -77,13 +77,18 @@ pub(super) struct WetSession {
     pigment: Vec<u8>,
     /// Fixed-step accumulator for [`PainterTool::wetpaint_tick`].
     acc: f32,
-    /// Last dab centre of the open stroke (chord source for the trail window).
-    prev: Option<[f32; 2]>,
-    /// The last fresh-ink colour sent to the engine (change detector for the
-    /// per-dab Randomize handoff — no jitter ⇒ zero calls).
-    prev_ink: [f32; 3],
+    /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
+    /// matched geometrically): last dab centre (the chord source) + the last
+    /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
+    lanes: Vec<Lane>,
     /// A direct stroke is open in the engine (pen-down .. pen-up).
     stroke_open: bool,
+}
+
+/// One replication lane of the open stroke — see [`WetSession::lanes`].
+struct Lane {
+    pos: [f32; 2],
+    ink: [f32; 3],
 }
 
 impl PainterTool {
@@ -111,8 +116,7 @@ impl PainterTool {
                 canvas: Arc::clone(&self.canvas_rgba),
                 pigment: vec![0u8; w as usize * h as usize * 4],
                 acc: 0.0,
-                prev: None,
-                prev_ink: [0.0; 3],
+                lanes: Vec::new(),
                 stroke_open: false,
             });
         }
@@ -128,39 +132,66 @@ impl PainterTool {
             ]
         };
         if !sess.stroke_open {
-            // The DAB's colour, not the brush's: Randomize Colour is already resolved per dab by
-            // the stroke engine, so wiring `d.color` gives the jitter for free (W2.2).
-            sess.engine.color = ink(dabs[0].color);
-            let p0 = dabs[0].center;
-            sess.engine
-                .begin_direct_stroke(p0[0] as f64 + 1.0, p0[1] as f64 + 1.0);
             sess.stroke_open = true;
-            sess.prev = None;
-            sess.prev_ink = dabs[0].color;
+            sess.lanes.clear();
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
         for d in dabs {
             let [x, y] = d.center;
-            if let Some(p) = sess.prev {
-                let chord = (((x - p[0]) as f64).powi(2) + ((y - p[1]) as f64).powi(2)).sqrt();
-                sess.engine.direct_segment(chord);
+            // LANE matching, geometric: the dab belongs to the lane whose
+            // last position is within its own radius (consecutive dabs of one
+            // copy are a spacing apart; other copies are far). A dab with no
+            // lane in reach BEGINS one — a symmetry copy at stroke start, or
+            // a Tiling wrap born mid-stroke at the sprite edge. Near a radial
+            // centre the copies converge and may swap lanes; there their
+            // positions coincide, so a swap deposits the same paint.
+            let thr = d.radius_px.max(4.0);
+            let mut best = thr * thr;
+            let mut lane = None;
+            for (i, l) in sess.lanes.iter().enumerate() {
+                let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
+                let d2 = ddx * ddx + ddy * ddy;
+                if d2 <= best {
+                    best = d2;
+                    lane = Some(i);
+                }
             }
-            // Per-dab fresh ink (Randomize): the trail's reservoir moves, the tip self-cleans
-            // toward it — a loaded brush dipped in new paint, not a hard recolour.
-            if d.color != sess.prev_ink {
-                sess.engine.set_stroke_color(ink(d.color));
-                sess.prev_ink = d.color;
+            let li = match lane {
+                Some(i) => {
+                    sess.engine.direct_segment(i, f64::from(best.sqrt()));
+                    i
+                }
+                None => {
+                    let i = sess.lanes.len();
+                    // The DAB's colour, not the brush's: Randomize is already
+                    // resolved per dab by the stroke engine (W2.2).
+                    sess.engine.color = ink(d.color);
+                    sess.engine
+                        .begin_direct_stroke(i, f64::from(x) + 1.0, f64::from(y) + 1.0);
+                    sess.lanes.push(Lane {
+                        pos: d.center,
+                        ink: d.color,
+                    });
+                    i
+                }
+            };
+            // Per-dab fresh ink (Randomize): reload the lane's trail — a
+            // brush dipped in new paint (see `Trail::set_base_color`).
+            if d.color != sess.lanes[li].ink {
+                sess.engine.set_stroke_color(li, ink(d.color));
+                sess.lanes[li].ink = d.color;
             }
             let b = ((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0;
-            sess.engine.dispatch_pressure_dab(
-                x as f64 + 1.0,
-                y as f64 + 1.0,
+            sess.engine.dispatch_pressure_dab_lane(
+                li,
+                f64::from(x) + 1.0,
+                f64::from(y) + 1.0,
                 b,
-                d.dir[0] as f64,
-                d.dir[1] as f64,
-                d.radius_px as f64,
+                f64::from(d.dir[0]),
+                f64::from(d.dir[1]),
+                f64::from(d.radius_px),
             );
-            sess.prev = Some(d.center);
+            sess.lanes[li].pos = d.center;
         }
         self.wetpaint_composite();
     }
@@ -174,7 +205,7 @@ impl PainterTool {
         {
             sess.engine.end_direct_stroke();
             sess.stroke_open = false;
-            sess.prev = None;
+            sess.lanes.clear();
         }
     }
 
@@ -356,6 +387,18 @@ mod tests {
     /// (the exact disease the choke-point comment warns about).
     #[test]
     fn symmetry_mirrors_the_wet_deposit_for_free() {
+        // The SOLO baseline first: the same stroke with no symmetry. The
+        // ratio alone stayed green under the single-trail bug (the
+        // alternating-anchor salvage is symmetric — each side kept ~half),
+        // so the oracle also demands each side carries a full stroke's mass.
+        let mut solo = tool_in_mode("wetpaint");
+        solo.on_canvas_pointer(cp([25.0, 60.0], PointerPhase::Down));
+        for k in 1..=10 {
+            solo.on_canvas_pointer(cp([25.0 + 4.5 * k as f32, 60.0], PointerPhase::Move));
+        }
+        solo.on_canvas_pointer(cp([70.0, 60.0], PointerPhase::Up));
+        let solo_left = susp_in_columns(&solo, 1, 100);
+
         let mut t = tool_in_mode("wetpaint");
         t.toggle_symmetry_enabled(); // mirror X on the canvas centre (x = 100)
         t.on_canvas_pointer(cp([25.0, 60.0], PointerPhase::Down));
@@ -364,12 +407,68 @@ mod tests {
         }
         t.on_canvas_pointer(cp([70.0, 60.0], PointerPhase::Up));
         let left = susp_in_columns(&t, 1, 100);
-        let right = susp_in_columns(&t, 101, 200);
-        assert!(left > 1000.0, "the stroke itself deposited nothing ({left})");
         assert!(
-            right > left * 0.5 && right < left * 2.0,
+            left > solo_left * 0.8,
+            "the original side lost mass to the mirror ({left} vs solo {solo_left})"
+        );
+        let right = susp_in_columns(&t, 101, 200);
+        assert!(
+            left > 1000.0,
+            "the stroke itself deposited nothing ({left})"
+        );
+        // Each copy is a FULL stroke through its own lane. The first cut
+        // accepted 0.5..2.0 and stayed green while the single-trail window
+        // silently dropped half of every copy (the "Simetria Circular não
+        // está correta" bug wore mirror clothes here).
+        assert!(
+            right > left * 0.75 && right < left * 1.33,
             "the mirrored deposit is missing or lopsided (left {left}, right {right})"
         );
+    }
+
+    /// SEAM (the Enio report, W2): CIRCULAR symmetry — a stroke drawn in one
+    /// sector must lay the SAME stroke in every radial sector. With one trail
+    /// window the interleaved copies were silently dropped (`lx >=
+    /// TRAIL_SIZE` returns) and the sectors came out broken; the lanes fix
+    /// is what this pins. Mutation that bleeds it: routing every dab to lane
+    /// 0 (the matching loop removed).
+    #[test]
+    fn circular_symmetry_lays_the_same_stroke_in_every_sector() {
+        let mut t = tool_in_mode("wetpaint");
+        t.toggle_symmetry_enabled();
+        t.toggle_symmetry_circular();
+        t.set_symmetry_segments(6);
+        // A radial stroke inside one sector, well away from the centre.
+        t.on_canvas_pointer(cp([130.0, 60.0], PointerPhase::Down));
+        for k in 1..=10 {
+            t.on_canvas_pointer(cp([130.0 + 4.0 * k as f32, 60.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([170.0, 60.0], PointerPhase::Up));
+        // Suspended mass per angular sector around the canvas centre.
+        let sess = t.paint.wetpaint.session.as_ref().expect("a wet session");
+        let g = &sess.engine.layers[0].grid;
+        let (cx, cy) = (101.0f32, 61.0f32); // canvas centre, cell coords
+        let mut sectors = [0.0f64; 6];
+        for gy in 1..=g.h {
+            for gx in 1..=g.w {
+                let m = g.susp[gx + gy * g.s];
+                if m <= 0.0 {
+                    continue;
+                }
+                let a = (gy as f32 - cy).atan2(gx as f32 - cx); // gate-only trig
+                let sec = (((a + std::f32::consts::PI) / (2.0 * std::f32::consts::PI)) * 6.0)
+                    .clamp(0.0, 5.999) as usize;
+                sectors[sec] += f64::from(m);
+            }
+        }
+        let max = sectors.iter().cloned().fold(0.0f64, f64::max);
+        assert!(max > 1000.0, "no sector deposited anything ({sectors:?})");
+        for (i, m) in sectors.iter().enumerate() {
+            assert!(
+                *m > max * 0.5,
+                "sector {i} is missing its copy ({m:.0} vs max {max:.0}; all {sectors:?})"
+            );
+        }
     }
 
     /// SEAM (W2.2): Randomize Colour reaches the wet deposit — with full Hue
@@ -418,9 +517,15 @@ mod tests {
         t.on_canvas_pointer(cp([4.0, 90.0], PointerPhase::Up));
         let near_left = susp_in_columns(&t, 1, 20);
         let near_right = susp_in_columns(&t, 185, 200);
-        assert!(near_left > 500.0, "the stroke itself deposited nothing ({near_left})");
         assert!(
-            near_right > near_left * 0.1,
+            near_left > 500.0,
+            "the stroke itself deposited nothing ({near_left})"
+        );
+        // The wrap is a full lane of its own now — not the accidental half
+        // the alternating-anchor windows used to salvage (>0.1 was green
+        // over that bug).
+        assert!(
+            near_right > near_left * 0.5,
             "no wrapped deposit by the far edge (left {near_left}, right {near_right})"
         );
     }

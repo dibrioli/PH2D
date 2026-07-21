@@ -46,7 +46,12 @@ pub struct BristleKnobs {
 
 impl Default for BristleKnobs {
     fn default() -> Self {
-        BristleKnobs { felt: 0.01, bristle_count: 950.0, bristle_strength: 1.0, bristle_size: 1.0 }
+        BristleKnobs {
+            felt: 0.01,
+            bristle_count: 950.0,
+            bristle_strength: 1.0,
+            bristle_size: 1.0,
+        }
     }
 }
 
@@ -165,6 +170,47 @@ impl BrushShape {
 /// vector); with no direction yet it falls back to the disc. Texture coords
 /// for shaped brushes are the ROTATED px offsets, so the grain rides the
 /// stroke frame.
+/// The PRODUCT's shaped variant of [`for_each_stamp_pixel`]: the host owns
+/// the dab's whole silhouette — falloff curve, Shape image, flatten/rotate
+/// footprint — so `sil(x, y)` (absolute cell coords) REPLACES both the
+/// internal radial falloff and the elliptical footprint test (`0` = outside).
+/// The bristle `tex` stays as the engine's default texture factor, sampled in
+/// RAW offsets exactly as the Round shape samples it (the host's own grain
+/// system takes over rotation when it wants it). The engine's own paths never
+/// call this — the port's behaviour is pinned by the session fingerprint.
+pub fn for_each_stamp_pixel_shaped(
+    s: usize,
+    grid_w: usize,
+    grid_h: usize,
+    tex: &[f32],
+    cx: f64,
+    cy: f64,
+    r: f64,
+    sil: &mut dyn FnMut(i32, i32) -> f64,
+    mut cb: impl FnMut(usize, i32, i32, f64, f64),
+) {
+    let x0 = ((cx - r).ceil() as i32).max(2);
+    let x1 = ((cx + r).floor() as i32).min(grid_w as i32 - 1);
+    let y0 = ((cy - r).ceil() as i32).max(2);
+    let y1 = ((cy + r).floor() as i32).min(grid_h as i32 - 1);
+    if x1 < x0 || y1 < y0 {
+        return;
+    }
+    for y in y0..=y1 {
+        let mut i = x0 as usize + y as usize * s;
+        for x in x0..=x1 {
+            let fall = sil(x, y);
+            if fall > 0.0 {
+                let texv = sample_bristle(tex, x as f64 - cx, y as f64 - cy);
+                if texv > 0.0 {
+                    cb(i, x, y, fall, texv);
+                }
+            }
+            i += 1;
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn for_each_stamp_pixel(
     s: usize,

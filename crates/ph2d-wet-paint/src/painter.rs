@@ -52,7 +52,12 @@ pub struct Sliders {
 
 impl Default for Sliders {
     fn default() -> Self {
-        Sliders { size: 0.7, pressure: 0.7, water: 1.0, erase: 0.4 }
+        Sliders {
+            size: 0.7,
+            pressure: 0.7,
+            water: 1.0,
+            erase: 0.4,
+        }
     }
 }
 
@@ -101,6 +106,13 @@ pub struct Engine {
     prev_dab_x: f64,
     prev_dab_y: f64,
     stroke_tool_backup: Option<Tool>,
+    /// Product LANES: one trail per symmetry copy / tile offset of the host's
+    /// stroke. The engine's own `trail` is ONE 123² window anchored at its
+    /// first dab — feed it an interleaved multi-copy dab list and every copy
+    /// outside the window is silently dropped (`lx >= TRAIL_SIZE` returns),
+    /// which is exactly "Simetria Circular não está correta" (Enio, W2).
+    /// Lazily grown; ended together by [`Self::end_direct_stroke`].
+    pub lane_trails: Vec<Trail>,
     /// Test hook: (pressure, dab) per dispatched dab.
     pub on_dab: Option<Box<dyn FnMut(f64, &Dab)>>,
     pub dirty: Dirty,
@@ -121,6 +133,7 @@ impl Engine {
             paper_dirty: false,
             brush_tex: None,
             trail: Trail::default(),
+            lane_trails: Vec::new(),
             stroke: Stroke::default(),
             stroke_events: Vec::new(),
             tool: Tool::Paint,
@@ -256,39 +269,15 @@ impl Engine {
         r: f64,
     ) {
         let p = self.sim.gather_params(&self.tuning);
+        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        self.finish_dispatch(p, dab, b, water_unit);
+    }
+
+    /// §9's stateful half: the test hook + the tool-routed deposit through the
+    /// engine's OWN trail (the synthetic-stroke path).
+    fn finish_dispatch(&mut self, p: crate::sim::Params, dab: Dab, b: f64, water_unit: f64) {
         let s = self.sliders;
-        let pressure_base = 0.2 + 0.7 * s.pressure; // even minimum pressure deposits
-        let mut intensity = b * 0.5 * pressure_base;
-        intensity = intensity.clamp(0.0, 3.0);
-        intensity *= p.k(Knob::Intensity); // knob applied post-clamp
-        let water_unit = s.water * 0.35;
-        // Pressure-INVERSE water: a light touch is wetter, a heavy stroke
-        // denser.
-        let water_amount =
-            (2.0 * water_unit * water_unit) / (pressure_base + 0.01) * p.k(Knob::WaterPerDab);
-        let mut h = 0.5 * b;
-        if h < 1.0 {
-            h = 1.0;
-        } else if h > 3.0 {
-            h = 3.0;
-        }
-        if h > r / 2.0 {
-            h = r / 2.0;
-        }
-        let hardness = h * h; // slow => 9 crisp flat-top, fast => ~2 soft puff
-        let dry_gate = clamp01(1.0 - water_amount / 1.5) * clamp01((11.0 - b - 4.0) / 4.0);
-        let dab = Dab {
-            x,
-            y,
-            r,
-            hardness,
-            intensity,
-            water_amount,
-            dry_gate,
-            shape: self.shape,
-            dir_x,
-            dir_y,
-        };
+        let (x, y) = (dab.x, dab.y);
         if let Some(hook) = self.on_dab.as_mut() {
             hook(b, &dab);
         }
@@ -302,7 +291,10 @@ impl Engine {
         let layer = &mut self.layers[self.active_layer];
         let rect: Option<TouchedRect> = match self.tool {
             Tool::Paint => {
-                if self.trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass) {
+                if self
+                    .trail
+                    .accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass)
+                {
                     self.trail.transfer_paint(&mut layer.grid, &p)
                 } else {
                     None
@@ -311,7 +303,11 @@ impl Engine {
             Tool::Blend => {
                 // Blend is a tool (fixed hardness 4.8, intensity clamped to 3)
                 // that routes through the trail's saturating mask window.
-                let bd = Dab { hardness: TOOL_HARDNESS, intensity: intensity.min(3.0), ..dab };
+                let bd = Dab {
+                    hardness: TOOL_HARDNESS,
+                    intensity: dab.intensity.min(3.0),
+                    ..dab
+                };
                 if self.trail.accumulate_blend(&layer.grid, &p, &tex, &bd) {
                     self.trail.transfer_blend(&mut layer.grid, &p)
                 } else {
@@ -322,13 +318,23 @@ impl Engine {
             Tool::Wet => apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit),
             Tool::Dry => apply_dry(&mut layer.grid, &p, &tex, &dab),
             Tool::Blow => {
-                let (px, py) =
-                    if self.has_prev_dab { (self.prev_dab_x, self.prev_dab_y) } else { (x, y) };
+                let (px, py) = if self.has_prev_dab {
+                    (self.prev_dab_x, self.prev_dab_y)
+                } else {
+                    (x, y)
+                };
                 apply_blow(&mut layer.grid, &p, &tex, &dab, px, py)
             }
             Tool::Smear => {
                 if self.has_prev_dab {
-                    apply_smear(&mut layer.grid, &p, &tex, &dab, self.prev_dab_x, self.prev_dab_y)
+                    apply_smear(
+                        &mut layer.grid,
+                        &p,
+                        &tex,
+                        &dab,
+                        self.prev_dab_x,
+                        self.prev_dab_y,
+                    )
                 } else {
                     None // skip the stroke's first dab (no displacement)
                 }
@@ -356,7 +362,13 @@ impl Engine {
                         self.trail.on_segment(chord, spacing);
                     }
                 }
-                StrokeEvent::Dab { x, y, pressure, dir_x, dir_y } => {
+                StrokeEvent::Dab {
+                    x,
+                    y,
+                    pressure,
+                    dir_x,
+                    dir_y,
+                } => {
                     self.dispatch_dab(x, y, pressure, dir_x, dir_y);
                 }
             }
@@ -377,46 +389,14 @@ impl Engine {
         }
         self.stroke_down = true;
         self.has_prev_dab = false;
-        let mode = if self.tool == Tool::Blend { TrailMode::Blend } else { TrailMode::Paint };
+        let mode = if self.tool == Tool::Blend {
+            TrailMode::Blend
+        } else {
+            TrailMode::Paint
+        };
         self.trail.start_stroke(x, y, self.color, mode);
         let spacing = self.tuning.get(Knob::Spacing);
         self.stroke.begin(x, y, spacing);
-    }
-
-    /// Product door: begin a stroke fed by REAL dabs from the host's stroke
-    /// engine — the synthetic §8 pressure recurrence and the engine's own
-    /// spacing are bypassed; §9's mapping still runs per dab in
-    /// [`Self::dispatch_pressure_dab`]. No history capture (the host owns
-    /// undo); the trail starts exactly as [`Self::pointer_down`] starts it.
-    pub fn begin_direct_stroke(&mut self, x: f64, y: f64) {
-        self.stroke_down = true;
-        self.has_prev_dab = false;
-        let mode = if self.tool == Tool::Blend { TrailMode::Blend } else { TrailMode::Paint };
-        self.trail.start_stroke(x, y, self.color, mode);
-    }
-
-    /// Product door: the stroke's fresh-ink colour (sRGB 0..255), settable
-    /// PER DAB — the host's Randomize Colour. Delegates to the trail's
-    /// reservoir; `self.color` follows so the next stroke starts from it.
-    pub fn set_stroke_color(&mut self, color: [f64; 3]) {
-        self.color = color;
-        self.trail.set_base_color(color);
-    }
-
-    /// Product door: the host's path advanced by `chord` px — rolls the
-    /// trail's deposit window exactly as the engine's own Segment events do.
-    pub fn direct_segment(&mut self, chord: f64) {
-        if self.tool == Tool::Paint || self.tool == Tool::Blend {
-            let spacing = self.tuning.get(Knob::Spacing);
-            self.trail.on_segment(chord, spacing);
-        }
-    }
-
-    /// Product door: end a real-dab stroke. The trail's tip remainder is
-    /// dropped by design, mirroring the tail of the engine's `end_stroke`.
-    pub fn end_direct_stroke(&mut self) {
-        self.stroke_down = false;
-        self.trail.drop_remainder();
     }
 
     /// One per 40 Hz step while down.
@@ -639,7 +619,12 @@ impl Engine {
         let ny1 = (y1 + 1).min(self.height as i32);
         match &mut self.dirty {
             Dirty::Clean => {
-                self.dirty = Dirty::Rect { x0: nx0, y0: ny0, x1: nx1, y1: ny1 };
+                self.dirty = Dirty::Rect {
+                    x0: nx0,
+                    y0: ny0,
+                    x1: nx1,
+                    y1: ny1,
+                };
             }
             Dirty::Rect { x0, y0, x1, y1 } => {
                 if nx0 < *x0 {
@@ -668,3 +653,5 @@ impl Engine {
         std::mem::replace(&mut self.dirty, Dirty::Clean)
     }
 }
+
+mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split

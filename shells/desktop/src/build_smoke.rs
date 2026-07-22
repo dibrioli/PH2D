@@ -110,6 +110,11 @@ impl crate::App {
             crate::fx_smoke::frame(self, f, level);
             return;
         }
+        // O UNDO da pilha de efeitos, AUTO-DIRIGIDO (o report do Enio, 3×) — irmão `fx_undo_smoke`.
+        if level == 20 {
+            crate::fx_undo_smoke::frame(self, f);
+            return;
+        }
         match f {
             // A cena. A geometria entra em MUNDO com o `Transform` na identidade — é como a
             // Shape tool deixa uma forma recém-desenhada; o `settle_origins` do frame a

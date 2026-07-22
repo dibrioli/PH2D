@@ -92,6 +92,7 @@ mod forwarding;
 mod fx_bridge;
 mod fx_bridge_dispatch;
 mod fx_smoke;
+mod fx_undo_smoke;
 mod hero_bridge;
 mod hero_intents;
 mod image_import;

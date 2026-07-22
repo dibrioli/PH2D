@@ -18,6 +18,9 @@
 > com a **timeline principal** segue **ADIADA** (Enio 2026-07-12) e o **export** é deferido de
 > propósito. Fila e backlog verificado:
 > [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
+>
+> **A linha está FECHADA e smokada (2026-07-21), aguardando ordem de integração** —
+> handoff: [`../HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md`](../HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md).
 
 ## O que landou DESDE o snapshot de 2026-07-12 (não reconstruir — tem doc + código)
 

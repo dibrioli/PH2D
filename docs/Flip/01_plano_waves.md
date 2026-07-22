@@ -268,8 +268,11 @@ paint-behind, multiframe.
   `colorize()`; corte hugga a tinta, vão não vaza) **e** o **modo Colorize clicável no shell** (7º
   `FlipMode`: rabiscar → **Apply** → regiões, com **overlay ao vivo dos rabiscos**; smoke
   `PH2D_FLIP_COLORIZE_SMOKE=1`). ~~multiframe~~ · ~~Apply live~~ · ~~C3~~ — os três landaram.
-  **ABERTO:** **pré-segmentação por regiões** (perf a 4K, [`09`](09_colorize.md) §7.1) · o
-  re-Apply ao vivo custa 61-294 ms/frame contra o kill-criterion de 16 ms (§7.2) · o `trap_px`
+  **ABERTO:** **pré-segmentação por regiões** (perf a 4K, [`09`](09_colorize.md) §7.1) ·
+  ~~o re-Apply ao vivo viola o kill-criterion de 16 ms~~ — **FECHADO 2026-07-21**: medido em
+  **304 ms/tique** (3 quadros da C3, escala do produto) e **1,45 s** com zoom; o split refutou
+  o cache (solve 76%, raster 4%), então o corte saiu para um `Job` com **um em voo** e o undo
+  passou a tratar recálculo pendente como gesto em andamento · o `trap_px`
   não sobrevive ao clamp de `MAX_SIDE`. ~~o `fill_at` do BALDE tem o mesmo buraco de quina~~ —
   **FECHADO 2026-07-21** ([BUGS #23](BUGS_flip.md)): era pior que no Colorize (o balde
   **RECUSAVA** a partir da precisão 80, com o toast mandando subir o Gap Closure sobre uma

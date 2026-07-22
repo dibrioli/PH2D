@@ -7,6 +7,7 @@
 //! só por arch-gate sobre o fonte.
 
 use super::{FlipStyleSnapshot, LiveFrame, Scribble, boundaries, fill_stroke};
+use ph2d_core::Vec2;
 use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke};
 use ph2d_flip_colorize::ColorRegion;
 
@@ -38,27 +39,46 @@ pub(super) fn precision_and_trap(
 /// esta MESMA função, então a borda de uma cor colorida nunca depende de por qual caminho
 /// ela foi (re)gerada. Assume `drawing` já na base (line-art + fills pré-Colorize) e devolve
 /// quantos strokes foram inseridos.
-pub(super) fn insert_regions(
-    drawing: &mut FlipDrawing,
-    palette: &[[u8; 4]],
+/// **A metade CARA, isolada do documento** (a fatia de perf, `09 §7.2`): o corte é função
+/// pura de `(linhas, sementes, precisão, trap, squeeze)` — nada aqui toca o `FlipDoc`, e é
+/// por isso que ela pode rodar **fora da thread de UI**.
+///
+/// As `lines` chegam CONGELADAS (as fronteiras da base, capturadas no Apply) em vez de serem
+/// relidas do desenho: durante um ajuste ao vivo a base não muda por definição, e reler
+/// exigiria o documento — que é exatamente o que o worker não pode ter.
+#[must_use]
+pub(super) fn colorize_regions(
+    lines: &[(Vec<Vec2>, Vec<f32>, bool)],
     seeds: &[Scribble],
     precision: f32,
     trap_px: f32,
     squeeze: u32,
-) -> usize {
-    let lines = boundaries(drawing);
+) -> Vec<ColorRegion> {
     if lines.is_empty() {
-        return 0;
+        return Vec::new();
     }
-    let regions: Vec<ColorRegion> =
-        ph2d_flip_colorize::colorize_with(&lines, seeds, precision, trap_px, squeeze);
+    ph2d_flip_colorize::colorize_with(lines, seeds, precision, trap_px, squeeze)
+}
+
+/// **A metade BARATA, que só o documento pode fazer**: as regiões viram strokes e entram no
+/// desenho. Roda sempre na thread de UI — é ela que possui o `FlipDoc`.
+///
+/// ⚠️ **`lines` é o MESMO conjunto que produziu as regiões**, nunca relido do desenho: o
+/// `contour_widths` decide que linha cada ponto do contorno veste, e vesti-lo com uma lista
+/// diferente da que gerou a geometria é a dessincronização do BUGS #16 por outra porta.
+pub(super) fn install_regions(
+    drawing: &mut FlipDrawing,
+    lines: &[(Vec<Vec2>, Vec<f32>, bool)],
+    palette: &[[u8; 4]],
+    regions: Vec<ColorRegion>,
+) -> usize {
     // Cada região entra ACIMA dos fills existentes (a cor nova cobre a velha, abaixo da
     // linha — o `Paint` do balde), com a MESMA dilatação (contour_widths + fill_stroke).
     let is_fill = |s: &FlipStroke| s.hide_stroke && s.fill.is_some();
     let mut produced = 0;
     for region in regions {
         let color = crate::flip_draw::srgb8_to_linear(palette[region.label as usize]);
-        let widths = ph2d_flip_fill::contour_widths(&lines, &region.fill.outer);
+        let widths = ph2d_flip_fill::contour_widths(lines, &region.fill.outer);
         let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
         let at = drawing
             .strokes
@@ -104,13 +124,19 @@ pub(super) fn colorize_frames(
             continue;
         };
         let base = dr.strokes.clone();
-        let produced = insert_regions(dr, palette, seeds, precision, trap_px, squeeze);
+        // As fronteiras da BASE, capturadas ANTES de qualquer inserção. É o que o worker do
+        // ajuste ao vivo consome (ele não pode ver o documento) e o que o `install_regions`
+        // veste — a MESMA lista nas duas pontas, nunca relida.
+        let lines = boundaries(dr);
+        let regions = colorize_regions(&lines, seeds, precision, trap_px, squeeze);
+        let produced = install_regions(dr, &lines, palette, regions);
         if produced == 0 {
             dr.strokes = base; // silêncio: este quadro não fechou, os outros seguem
             continue;
         }
         out.push(LiveFrame {
             did,
+            lines,
             base,
             produced,
         });

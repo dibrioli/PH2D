@@ -45,7 +45,7 @@ fn center_seed() -> (Vec<[u8; 4]>, Vec<Scribble>) {
 /// reinsere; se ela reinserisse SEM restaurar, cada tique do slider empilharia outra pilha
 /// de fills e a borda ficaria opaca de camadas mortas.
 ///
-/// Mutação que o derruba: **pular a restauração da base** antes do 2º `insert_regions` —
+/// Mutação que o derruba: **pular a restauração da base** antes do 2º corte —
 /// o desenho cresceria para `base + n1 + n2` em vez de `base + n2`.
 #[test]
 fn the_live_reapply_replaces_the_regions_it_does_not_stack_them() {
@@ -55,13 +55,18 @@ fn the_live_reapply_replaces_the_regions_it_does_not_stack_them() {
 
     // 1ª aplicação (Bleed no default).
     let mut d = base.clone();
-    let n1 = insert_regions(
+    let lines = boundaries(&d);
+    let n1 = install_regions(
         &mut d,
+        &lines,
         &palette,
-        &seeds,
-        1.0,
-        2.0,
-        ph2d_flip_colorize::DEFAULT_SQUEEZE,
+        colorize_regions(
+            &lines,
+            &seeds,
+            1.0,
+            2.0,
+            ph2d_flip_colorize::DEFAULT_SQUEEZE,
+        ),
     );
     assert!(n1 >= 1, "a moldura fechada tem de dar ao menos 1 região");
     assert_eq!(
@@ -72,13 +77,18 @@ fn the_live_reapply_replaces_the_regions_it_does_not_stack_them() {
 
     // Re-Apply ao vivo: RESTAURA a base, reinsere com outro Bleed (mais colado).
     d.strokes.clone_from(&base.strokes);
-    let n2 = insert_regions(
+    let lines = boundaries(&d);
+    let n2 = install_regions(
         &mut d,
+        &lines,
         &palette,
-        &seeds,
-        1.0,
-        2.0,
-        ph2d_flip_colorize::squeeze_from_bleed(0.0),
+        colorize_regions(
+            &lines,
+            &seeds,
+            1.0,
+            2.0,
+            ph2d_flip_colorize::squeeze_from_bleed(0.0),
+        ),
     );
     assert_eq!(
         d.strokes.len(),
@@ -264,7 +274,7 @@ fn both_sealing_sliders_reach_the_engine_and_compose() {
 /// DOIS tem de colorir os dois.
 ///
 /// ⚠️ O oráculo é a APARÊNCIA (cada quadro ganhou uma região de preenchimento), nunca a
-/// contagem de chamadas do `insert_regions` — um espelho da implementação ficaria verde com
+/// contagem de chamadas do corte — um espelho da implementação ficaria verde com
 /// as regiões saindo no desenho errado.
 ///
 /// Mutação que sangra: `colorize_frames` iterando `dids.iter().take(0)` — o vizinho fica sem
@@ -304,13 +314,18 @@ fn the_same_scribble_colours_every_selected_frame() {
     for dx in [0.0f32, 8.0] {
         let mut d = framed(dx);
         let before = d.strokes.len();
-        let n = insert_regions(
+        let lines = boundaries(&d);
+        let n = install_regions(
             &mut d,
+            &lines,
             &palette,
-            &seeds,
-            1.0,
-            2.0,
-            ph2d_flip_colorize::DEFAULT_SQUEEZE,
+            colorize_regions(
+                &lines,
+                &seeds,
+                1.0,
+                2.0,
+                ph2d_flip_colorize::DEFAULT_SQUEEZE,
+            ),
         );
         assert_eq!(
             d.strokes.len(),
@@ -331,7 +346,7 @@ fn the_same_scribble_colours_every_selected_frame() {
 /// entre elas.
 ///
 /// ⚠️ Este gate existe porque o irmão de engine (`the_same_scribble_colours_every_selected
-/// _frame`) chama o `insert_regions` **ele mesmo**, quadro a quadro — ele prova que uma
+/// _frame`) chama o corte **ele mesmo**, quadro a quadro — ele prova que uma
 /// semente só resolve em duas poses, e ficaria VERDE com o laço do produto deletado. E o
 /// arch-gate irmão lê o FONTE, então uma mutação que preserva a forma e neutraliza o laço
 /// (`take(0)`) passa por ele. Só este aqui roda o laço do produto e conta o resultado.
@@ -439,5 +454,55 @@ fn the_fan_out_writes_a_region_into_every_frame_it_is_given() {
     assert!(
         !frames.iter().any(|f| f.did == empty),
         "um quadro que não produziu região não pode entrar na sessão de ajuste ao vivo"
+    );
+}
+
+/// 🔴 **Um recálculo pendente conta como GESTO EM ANDAMENTO** (a fatia de perf, `09 §7.2`).
+///
+/// O ajuste Trap/Bleed saiu da thread de UI (304 ms/tique medidos), e isso quebra a premissa
+/// do `post_frame_undo`: ele suprime enquanto o `held_button` está preso, mas o worker
+/// continua DEPOIS de o botão soltar. Sem esta pergunta, soltar o slider registraria um passo
+/// com o resultado ANTIGO e a chegada do worker registraria um segundo — **dois Ctrl+Z para
+/// um arrasto**, e o primeiro devolvendo um estado que o artista nunca viu.
+///
+/// Três estados, três respostas:
+/// - **sem sessão** → nada pendente (o Colorize não pode segurar o undo do app inteiro);
+/// - **sessão em dia** (painel == aplicado) → nada pendente;
+/// - **painel divergente** (o slider mudou e ninguém computou ainda) → PENDENTE.
+///
+/// Mutação que sangra: `live_busy` devolvendo `false` sempre.
+#[test]
+fn a_pending_live_recompute_counts_as_a_gesture_in_progress() {
+    let mut c = FlipColorize::default();
+    let style = |trap: f64| ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Colorize,
+        trap,
+        ..Default::default()
+    };
+
+    // Sem sessão: o Colorize não segura o undo de ninguém.
+    assert!(
+        !c.live_busy(Some(&style(0.0))),
+        "sem Apply vivo não há o que esperar — segurar aqui congelaria o undo do app"
+    );
+
+    // Uma sessão aplicada com trap 3.0 e nenhum worker.
+    c.live = Some(LiveApply {
+        palette: Vec::new(),
+        seeds: Vec::new(),
+        oid: ph2d_flip::FlipObjectId(0),
+        frames: Vec::new(),
+        trap: 3.0,
+        bleed: 0.5,
+        job: None,
+    });
+    assert!(
+        !c.live_busy(Some(&style(3.0))),
+        "painel em dia com o aplicado: nada pendente, o passo pode registrar"
+    );
+    assert!(
+        c.live_busy(Some(&style(9.0))),
+        "o slider mudou e ninguém computou — o gesto NÃO terminou, e registrar agora \
+         gravaria um passo com o resultado antigo"
     );
 }

@@ -350,7 +350,16 @@ impl crate::App {
         }
         // Um gesto em andamento (botão pressionado) muta a cada Move; espera o fim
         // para não registrar um passo por frame.
-        if !had_input || self.held_button.is_some() {
+        //
+        // ⚠️ **Um recálculo assíncrono pendente conta como gesto em andamento** — é a MESMA
+        // frase acima aplicada a um trabalho que continua depois do botão soltar. O ajuste
+        // Trap/Bleed do Colorize roda fora da thread de UI (`09 §7.2`, 304 ms/tique), então
+        // soltar o slider registraria um passo com o resultado ANTIGO e a chegada do worker
+        // registraria um segundo: dois Ctrl+Z para um arrasto.
+        if !had_input
+            || self.held_button.is_some()
+            || self.flip_colorize.live_busy(self.flip_style.as_ref())
+        {
             return;
         }
         let Some(current) = self.capture_project() else {

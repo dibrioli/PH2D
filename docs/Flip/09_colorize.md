@@ -1,5 +1,55 @@
 # Flip — a wave **COLORIZE**: o plano
 
+> **Estado (2026-07-21, noite II): o AJUSTE AO VIVO saiu da thread de UI — o kill-criterion
+> do §7.2, honrado** (pendente de smoke). Era o item aberto que a **C3 agravou**: o re-Apply
+> já violava o orçamento, e o onion fill o multiplicou por N quadros.
+>
+> **Medido antes de construir** (régua no repo: `probe_live_cost.rs`, `--ignored`), na escala
+> do PRODUTO (câmera default = 10 unidades de mundo em 1080p ⇒ precisão 172,8):
+>
+> | precisão | grade | 1 quadro | 3 quadros (C3) | × o orçamento de 16 ms |
+> |---|---|---|---|---|
+> | 86,4 | ~731 px | 26 ms | 72 ms | 2× / 5× |
+> | **172,8** | ~1422 px | **104 ms** | **304 ms** | **7× / 19×** |
+> | 345,6 | ~2804 px | 486 ms | 1449 ms | 30× / **90×** |
+>
+> ⚠️ **E a hipótese intuitiva foi REFUTADA pela medição:** *"basta cachear o raster, que não
+> muda entre tiques"* — o split é `solve` **76%** · vetorização 18% · **raster+setup 4%**. O
+> que é constante entre tiques é justamente a fatia desprezível, e o que custa depende de
+> `trap`/`squeeze`, que é exatamente o que o slider move. Nenhum cache chega a 16 ms ⇒ vale ao
+> pé da letra o que o §7.2 pré-decidiu: **muda-se o invólucro, não o kernel**.
+>
+> **O rate-limiter não tem constante.** No máximo **UM** corte em voo, e o pedido mais recente
+> é coalescido: enquanto ele roda, mexer o slider só reescreve o alvo; quando volta, se o alvo
+> mudou, sai outro. Isso se auto-pace na taxa do próprio solve, **sem `SETTLE` para calibrar**
+> — e é a diferença deliberada para o `OffThread` do áudio (ADR-0125), que precisa de debounce
+> porque lá o trabalho é *automático e invisível*; aqui ele **é** o feedback visual, e esperar
+> um timer seria a tela deixar de responder de propósito.
+>
+> ⚠️ **O undo teria virado DOIS passos por arrasto, e isso é estrutural:** o `post_frame_undo`
+> suprime enquanto o `held_button` está preso — *"um gesto em andamento muta a cada Move;
+> espera o fim"* —, mas o worker continua **depois** de o botão soltar. Sem a correção, soltar
+> registraria um passo com o resultado ANTIGO e a chegada do worker registraria um segundo. A
+> lei nova é a MESMA frase estendida: **um recálculo pendente É o gesto não ter terminado**
+> (`FlipColorize::live_busy`, perguntado ao lado do `held_button`).
+>
+> ⚠️ **Os parâmetros voltam COM o resultado**, nunca são relidos do painel na chegada: entre a
+> saída e a volta o artista pode ter movido o slider, e gravar o valor de agora marcaria como
+> honrado um pedido que ninguém computou — a sessão pararia de recalcular, presa num resultado
+> velho que se declara atual (a lei do readout do ADR-0125, no mesmo lugar).
+>
+> **Duas portas viraram duas metades:** `colorize_regions` (função pura de geometria — o
+> worker, que **nunca vê o `FlipDoc`**) e `install_regions` (a metade que só o documento pode
+> fazer). O `insert_regions` que fazia as duas **morreu**: com o corte fora da thread, mantê-lo
+> seria uma terceira porta para a mesma pergunta. E as `lines` de cada quadro passaram a ser
+> **congeladas no Apply** — o worker precisa delas e não pode ir buscá-las.
+>
+> **2 gates novos + 1 arch-gate; 3 mutações, 3 sangram.** LOC: a sessão viva saiu para o irmão
+> `flip_colorize_live.rs`. **Aberto:** a barra de progresso não é pintada (o corte é
+> sub-segundo no caso comum e uma barra piscando a cada nudge disputaria a coluna com toasts
+> reais — a metade do padrão que o ADR-0125 também recusa).
+
+
 > **Estado (2026-07-21, noite): a fatia C3 — o ONION FILL — LANDOU, smoke APROVADO.**
 > Com chaves marcadas na tira, **um Apply colore todas**: o rabisco é autorado em MUNDO por
 > cima das poses empilhadas e semeia cada quadro.

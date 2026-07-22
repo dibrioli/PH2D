@@ -36,11 +36,14 @@ fn apply_body() -> &'static str {
     &rest[..end]
 }
 
+/// A sessão viva mora num irmão (`flip_colorize_live.rs`) pelo teto de LOC do shell.
+const LIVE: &str = include_str!("../src/flip_colorize_live.rs");
+
 fn live_body() -> &'static str {
-    let start = SRC
+    let start = LIVE
         .find("pub(crate) fn flip_colorize_live_adjust(&mut self)")
         .expect("o `flip_colorize_live_adjust` foi renomeado — re-mire o gate");
-    &SRC[start..]
+    &LIVE[start..]
 }
 
 #[test]
@@ -112,8 +115,8 @@ fn the_neighbours_never_speak_for_the_active_frame() {
 fn the_live_adjust_reruns_every_frame_the_gesture_wrote() {
     let body = live_body();
     assert!(
-        body.contains("for f in &mut live.frames"),
-        "o Trap/Bleed ao vivo tem de re-rodar em TODOS os quadros escritos — senão os \
+        body.contains("live.frames.iter_mut().zip(done.regions)"),
+        "o Trap/Bleed ao vivo tem de instalar em TODOS os quadros escritos — senão os \
          vizinhos ficam presos no Trap da 1ª rodada e a tira mostra dois ajustes para uma \
          operação só"
     );
@@ -123,8 +126,8 @@ fn the_live_adjust_reruns_every_frame_the_gesture_wrote() {
         .find("let intact = ")
         .expect("o guard de segurança por-quadro sumiu");
     let write = body
-        .find("for f in &mut live.frames")
-        .expect("o laço de reescrita sumiu");
+        .find("live.frames.iter_mut().zip(done.regions)")
+        .expect("o laço de instalação sumiu");
     assert!(
         guard < write,
         "o guard tem de rodar ANTES da 1ª escrita (é uma operação só: ou re-roda inteira, \
@@ -162,5 +165,47 @@ fn the_smoke_scene_arms_the_multiframe_selection_and_reports_it() {
         SMOKE.contains("chave(s) em {keys:?}"),
         "a cena tem de IMPRIMIR quantas chaves montou e quantas marcou — o smoke responde \
          sozinho se o arquivo de teste está certo"
+    );
+}
+
+/// 🔴 **O corte do ajuste ao vivo NÃO roda na thread de UI** (`09 §7.2`, o kill-criterion
+/// declarado ANTES do build).
+///
+/// Medido na escala do produto: **104 ms** um quadro, **304 ms** os três da C3 — 19× o
+/// orçamento de 16 ms; e a 345,6 de precisão, **1,45 s** (90×). O split diz que não há cache
+/// que salve (solve 76%, raster 4%), então o §7.2 se aplica ao pé da letra: *muda o
+/// invólucro*.
+///
+/// Três leis, e a 3ª é a que faz o rate-limiter existir:
+/// 1. o corte sai num `Job` (o padrão `progress` que o CLAUDE.md manda **copiar**);
+/// 2. o worker recebe **geometria clonada** e nunca vê o `FlipDoc` — é o que torna a porta
+///    segura, e o que obrigou as `lines` a serem congeladas no Apply;
+/// 3. **no máximo UM em voo**: enquanto ele roda, mexer o slider só reescreve o alvo. Sem
+///    isso um arrasto é *uma thread por frame* — a lição literal do ADR-0125.
+#[test]
+fn the_live_cut_runs_off_the_ui_thread_one_at_a_time() {
+    let body = live_body();
+    assert!(
+        body.contains("Job::spawn("),
+        "o corte tem de sair da thread de UI pelo padrão `progress` (Job) — 304 ms/tique \
+         contra o orçamento de 16 ms do §7.2"
+    );
+    assert!(
+        body.contains("if live.job.is_some()"),
+        "no máximo UM corte em voo — sem esse guard um arrasto de slider vira uma thread \
+         por frame (ADR-0125)"
+    );
+    // O worker leva CÓPIA da geometria. Se ele tocasse o documento, não haveria porta.
+    assert!(
+        body.contains("f.lines.clone()") && body.contains("live.seeds.clone()"),
+        "o worker recebe geometria CLONADA — ele não pode ver o `FlipDoc`"
+    );
+    // ⚠️ E os parâmetros voltam COM o resultado: lê-los do painel na chegada marcaria como
+    // honrado um pedido que ninguém computou, e a sessão pararia de recalcular.
+    assert!(
+        body.contains("live.trap = done.trap") && body.contains("live.bleed = done.bleed"),
+        "o (trap, bleed) aplicado vem do RESULTADO, nunca do painel na chegada — senão um \
+         pedido não computado seria marcado como honrado e a sessão congelaria num \
+         resultado velho que se declara atual"
     );
 }

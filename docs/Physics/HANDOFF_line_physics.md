@@ -3047,6 +3047,28 @@ trocar a normal pela velocidade (só divergem na **sustentação**, que nenhum g
 a ponte descartar o componente (não havia gate de ECS). Com os dois gates novos, **8
 mutações, 8 sangram**.
 
+### ⚠️ "Tudo isso está exposto na UI?" — conferido, e virou GATE
+
+Pergunta do Enio depois do smoke das oito waves. A resposta é **sim**, conferida
+componente a componente: os **18** componentes de física registrados têm todos um caminho
+de escrita a partir do Inspector (§11 · §12 · o botão Join), e o `Transform` — posição,
+**rotação**, escala, skew — é autorável na seção de Transform, que é o que permite largar
+um tronco inclinado ou montar um V de rampas.
+
+Mas **prosa envelhece**, e a nona wave será escrita por alguém que não estava nesta
+conversa. Um componente que chega ao motor sem chegar à §11 é o **órfão** que a DIRETIVA
+§2 proíbe: funciona em toda cena de smoke (que constrói com código) e é inalcançável no
+produto — o modo de falha exato do painel de MUNDO no W2b, onde tudo a jusante funcionava
+sobre um painel que não existia no build.
+
+`shells/desktop/tests/every_physics_component_is_authorable.rs` fecha isso: para cada nome
+registrado em `register_physics_components`, algum dos três escritores de UI
+(`inspector_physics_apply` · `inspector_physics_markers` · `inspector_joint`) tem de
+nomeá-lo. Estrutural, sobre o fonte. Ele **não** prova que o controle está pintado — isso
+é o `architecture_panel_wiring_parity` e os seams que CLICAM — prova que ele **existe**, e
+era a metade que faltava. Duas mutações: registrar um componente sem escritor (falha
+nomeando-o) e o parse ler zero (falha dizendo que um gate que não lê nada passa sempre).
+
 ### Aberto no W-Buoyancy
 
 Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resistir mais de lado que de proa —

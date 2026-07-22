@@ -419,3 +419,108 @@ fn two_texts_are_not_a_link_candidate() {
         .insert(VecShape::Text(params("B")));
     assert!(crate::vec_text_ride::link_candidate(&f.sim, &f.map, &[f.text, f.guide]).is_none());
 }
+
+// ── W5: a alça de arrasto ─────────────────────────────────────────────────────
+
+/// **A alça assenta onde o texto começa** — no ponto do guia em `start_offset`, e MOVE quando o
+/// offset muda. É o oráculo de que a alça e o texto falam do mesmo número.
+#[test]
+fn the_handle_sits_where_the_text_starts_and_moves_with_the_offset() {
+    let mut f = fixture();
+    f.link(0.0, false);
+    f.recook();
+    let sel = vec![f.text, f.guide];
+    let at0 = crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).expect("alça");
+    // Começa perto da 1ª ponta do arco, (6, 0).
+    assert!(
+        (at0[0] - 6.0).abs() < 0.2 && at0[1].abs() < 0.2,
+        "a alça nasce no começo do arco: {at0:?}"
+    );
+    f.link(0.5, false);
+    f.recook();
+    let at_mid = crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).expect("alça");
+    // Meia volta do quarto de círculo: bem mais alto.
+    assert!(
+        at_mid[1] > at0[1] + 2.0,
+        "a alça subiu com o offset: {at0:?} -> {at_mid:?}"
+    );
+}
+
+/// **Não há alça sem um texto vinculado** — nem num texto solto, nem numa seleção vazia. O
+/// overlay a esconde por esta mesma resposta; sem isto, a bolinha apareceria na tela virgem.
+#[test]
+fn there_is_no_handle_without_a_linked_text() {
+    let mut f = fixture();
+    let sel = vec![f.text, f.guide];
+    // Texto solto: sem alça.
+    assert!(crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).is_none());
+    // Seleção vazia: sem alça.
+    assert!(crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &[]).is_none());
+    // Vinculado: agora existe.
+    f.link(0.3, false);
+    f.recook();
+    assert!(crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).is_some());
+}
+
+/// **Agarrar a alça e arrastá-la corre o texto pela curva.** O gesto inteiro pela porta real:
+/// press (arma), drag (escreve o offset), e o texto vai parar onde o dedo pousou.
+#[test]
+fn dragging_the_handle_runs_the_text_along_the_curve() {
+    let mut f = fixture();
+    f.link(0.0, false);
+    f.recook();
+    let sel = vec![f.text, f.guide];
+    let at = crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).expect("alça");
+
+    // Pressão sobre a alça: arma.
+    let mut armed = false;
+    let hit =
+        crate::vec_text_ride::handle::press(&f.sim, &f.scene, &f.map, &sel, at, 0.3, &mut armed);
+    assert!(hit && armed, "a pressão sobre a alça arma o arrasto");
+
+    // Arrasta o dedo para a OUTRA ponta do quarto de círculo, (0, 6).
+    let target = [0.0, 6.0];
+    assert!(crate::vec_text_ride::handle::drag(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel,
+        target,
+        armed,
+    ));
+    let now = crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).expect("alça");
+    // A alça (e o texto) foram para perto do alvo, no fim do arco.
+    assert!(
+        now[1] > 5.0 && now[0].abs() < 1.0,
+        "o arrasto levou o texto ao fim do arco: {now:?}"
+    );
+}
+
+/// **Uma pressão FORA da alça não arma nada** — o pen fica dono do clique. Sem isto, qualquer
+/// clique no modo Node com um texto vinculado selecionado roubaria o gesto do pen.
+#[test]
+fn a_press_away_from_the_handle_arms_nothing() {
+    let mut f = fixture();
+    f.link(0.0, false);
+    f.recook();
+    let sel = vec![f.text, f.guide];
+    let at = crate::vec_text_ride::handle::world(&f.sim, &f.scene, &f.map, &sel).expect("alça");
+    let mut armed = false;
+    // Bem longe da alça.
+    let far = [at[0] + 50.0, at[1] + 50.0];
+    let hit =
+        crate::vec_text_ride::handle::press(&f.sim, &f.scene, &f.map, &sel, far, 0.3, &mut armed);
+    assert!(
+        !hit && !armed,
+        "longe da alça, o press não arma nem consome"
+    );
+    // E um drag sem arme é no-op.
+    assert!(!crate::vec_text_ride::handle::drag(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel,
+        far,
+        false,
+    ));
+}

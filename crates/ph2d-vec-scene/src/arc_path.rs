@@ -104,6 +104,58 @@ impl ArcPath {
             tangent_at(&self.segs[i], t).unwrap_or([0.0, 0.0]),
         )
     }
+
+    /// A posição de arco do ponto do contorno **mais próximo** de `p`.
+    ///
+    /// É o inverso da pergunta que o [`Self::frame_at`] responde — *"onde na curva cai este
+    /// ponto de mundo?"* —, e é o que uma alça arrastável precisa: o dedo anda pela tela e a
+    /// resposta é onde no caminho ele pousou. Um `NaN` num consumidor a jusante viraria uma alça
+    /// que salta para o começo; por isso a busca é fechada e sempre devolve um `s` em `[0, total]`.
+    ///
+    /// **Amostra grossa + refino local**, sem derivada (HR-5): a curva não é convexa, então uma
+    /// busca puramente local (Newton) cairia num mínimo errado numa curva em S. `samples` fixa a
+    /// densidade da varredura grossa — o suficiente para não pular um laço — e a bisseção
+    /// dourada em torno do vencedor tira a resposta de cima da grade. `O(samples + iters)` por
+    /// chamada, e uma alça é arrastada, não varrida em massa: é barato onde é chamado.
+    #[must_use]
+    pub fn closest_arc(&self, p: [f64; 2]) -> f64 {
+        let total = self.total();
+        if total <= 0.0 {
+            return 0.0;
+        }
+        let dist2 = |s: f64| {
+            let (q, _) = self.frame_at(s);
+            let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
+            dx.mul_add(dx, dy * dy)
+        };
+        // Varredura grossa: ~um passo por 2 px de curva, com um piso para contornos curtos.
+        let samples = ((total * 0.5).ceil() as usize).clamp(24, 512);
+        let step = total / samples as f64;
+        let mut best_s = 0.0;
+        let mut best = dist2(0.0);
+        for i in 1..=samples {
+            let s = i as f64 * step;
+            let d = dist2(s);
+            if d < best {
+                best = d;
+                best_s = s;
+            }
+        }
+        // Refino: encolhe o intervalo `[best_s − step, best_s + step]` amostrando o meio de cada
+        // metade e ficando com a melhor. Converge geometricamente; 32 passos levam um passo de
+        // ~centenas de px abaixo do sub-pixel.
+        let (mut lo, mut hi) = ((best_s - step).max(0.0), (best_s + step).min(total));
+        for _ in 0..32 {
+            let m = 0.5 * (lo + hi);
+            let (a, b) = (0.5 * (lo + m), 0.5 * (m + hi));
+            if dist2(a) < dist2(b) {
+                hi = m;
+            } else {
+                lo = m;
+            }
+        }
+        0.5 * (lo + hi)
+    }
 }
 
 #[cfg(test)]

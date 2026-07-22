@@ -1705,6 +1705,27 @@ impl App {
     /// Arrasta o canto da gaiola do Envelope agarrado no press (ADR-0129 Fatia 1) para a
     /// posição do cursor, respeitando a convexidade (o canto para na fronteira, não sai
     /// dela). No-op (false) sem um arrasto vivo — a mesma disciplina do `vec_pen_drag_move`.
+    /// Arrasta a alça do texto em caminho para o cursor (W5): projeta no caminho e escreve
+    /// `start_offset`. No-op sem arrasto armado — a mesma disciplina do `vec_envelope_corner_move`.
+    fn vec_textpath_handle_move(&mut self, x: f32, y: f32) -> bool {
+        if !self.vec_textpath_handle_drag {
+            return false;
+        }
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        crate::vec_text_ride::handle::drag(
+            &mut gfx.sim,
+            &mut gfx.vec_scene,
+            &self.vec_entities,
+            self.vec_pen.selected_paths(),
+            [f64::from(w[0]), f64::from(w[1])],
+            self.vec_textpath_handle_drag,
+        )
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -2077,6 +2098,11 @@ impl App {
             && let Some(w) = self.vec_world_at(self.last_pointer)
             && self.build_move(w)
         {
+            return;
+        }
+        // W5: arrastar a alça do texto em caminho (modo Node) — antes do envelope e do
+        // pen, pela mesma disciplina de early-return; no-op sem a alça agarrada.
+        if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // ADR-0129 Fatia 1: arrastar um canto da gaiola do Envelope (modo Node).
@@ -2818,7 +2844,24 @@ impl App {
                                 // — que agarraria uma âncora da forma COZIDA, revertida
                                 // pelo recook do frame seguinte. Um erro cai no
                                 // `on_press_node` de sempre (seleção / edição de âncora).
-                                if crate::envelope_gesture::press(
+                                // W5: a alça do TEXTO EM CAMINHO, hit-testada ANTES do
+                                // envelope e do pen. Mesma razão da alça da gaiola — a
+                                // geometria do texto vinculado é COZIDA em mundo, então
+                                // deixar o pen agarrar uma âncora dela daria um ponto que
+                                // anda e volta no frame seguinte. Um acerto arma o arrasto
+                                // do `start_offset` e pula tudo o mais.
+                                let radius = px_to_world * crate::vec_text_ride::HANDLE_R_PX;
+                                if crate::vec_text_ride::handle::press(
+                                    &gfx.sim,
+                                    &gfx.vec_scene,
+                                    &self.vec_entities,
+                                    self.vec_pen.selected_paths(),
+                                    [w[0] as f64, w[1] as f64],
+                                    radius,
+                                    &mut self.vec_textpath_handle_drag,
+                                ) {
+                                    // alça do texto agarrada — pen e envelope ficam de fora
+                                } else if crate::envelope_gesture::press(
                                     &mut gfx.sim,
                                     &gfx.vec_scene,
                                     self.offset_live.live(),
@@ -2930,6 +2973,12 @@ impl App {
                     // (esse é o histórico do PEN; o envelope viaja no `WorldSnapshot`).
                     // Consome só quando havia um canto vivo.
                     if self.vec_envelope_drag.take().is_some() {
+                        return;
+                    }
+                    // W5: fim de um arrasto da alça do texto. O `VecTextPath` alterado vira UM
+                    // passo no diff global ao soltar (o `held_button` suprimiu os frames
+                    // intermediários), como o envelope. Consome só quando havia arrasto vivo.
+                    if std::mem::take(&mut self.vec_textpath_handle_drag) {
                         return;
                     }
                     // Marquee release → box-select the anchors inside the box.

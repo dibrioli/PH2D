@@ -49,6 +49,11 @@ pub use envelope::{
     ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage, draw_envelope_pins,
 };
 
+/// A **alça do texto em caminho** (plano 22, W5) — módulo irmão (LOC cap). A bolinha onde o
+/// texto começa no caminho; arrastá-la corre o texto ao longo dele.
+mod text_handle;
+pub use text_handle::draw_text_handle;
+
 /// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
 /// artista arrasta às cegas e só descobre o que pegou depois de soltar.
 mod build_faces;

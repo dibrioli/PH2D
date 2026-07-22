@@ -4210,6 +4210,26 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // W5: a alça do TEXTO EM CAMINHO — a bolinha onde o texto começa no guia. O
+                // `plan` diz o MODO (Node); o `handle::world` devolve `None` quando não há um
+                // texto vinculado na seleção, então nunca é desenhada onde não há o que arrastar.
+                // A geometria é MUNDO (o guia já traz a pose), então sobe pelo afim da CÂMERA.
+                if overlay.textpath_handle
+                    && let Some(at) = crate::vec_text_ride::handle::world(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        self.vec_pen.selected_paths(),
+                    )
+                {
+                    ph2d_vec_render::draw_text_handle(
+                        at,
+                        self.vec_textpath_handle_drag,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
                 // Gradient handles (multi-point dots, or linear/radial endpoints)
                 // when the selected path has a gradient fill. A geometria do gradiente
                 // é LOCAL como a do path, então sobe pelo afim dele.

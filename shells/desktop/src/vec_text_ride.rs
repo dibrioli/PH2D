@@ -30,6 +30,11 @@ use ph2d_vec_scene::arc_path::ArcPath;
 use crate::vec_entities::VecEntityMap;
 use crate::vec_glyph::TextPlacement;
 
+/// O raio da bolinha da alça, em px de tela — o mesmo alcance para o desenho e o hit-test, pela
+/// conversão `× px_to_world` na fronteira. É a irmã do `ENVELOPE_HANDLE_R_PX` (6.0) e da
+/// `connector::HANDLE_R_PX` (7.0); 7 para o dedo a alcançar sem mira fina.
+pub(crate) const HANDLE_R_PX: f64 = 7.0; // LITERAL-PX-OK: raio de alça, medida de INTERAÇÃO
+
 /// O caminho-guia + o vínculo que o escolheu, prontos para serem cavalgados.
 pub(crate) struct Guide {
     arc: ArcPath,
@@ -81,6 +86,26 @@ impl Guide {
             start_offset: f64::from(self.link.start_offset) * self.arc.total(),
             flip: self.link.flip,
         }
+    }
+
+    /// O ponto de MUNDO onde a alça de arrasto assenta — onde o texto **começa** no caminho.
+    ///
+    /// É o ponto do arco em `start_offset` (a mesma fração×total que o `placement` usa, pela
+    /// mesma porta): a alça marca de onde a palavra parte, que é o que o `start_offset` diz. O
+    /// ponto é o alvo do hit-test e o que o overlay desenha — perguntá-lo aqui, e não recomputá-lo
+    /// nos dois sítios, é o que impede a alça de ser desenhada num sítio e agarrada noutro.
+    #[must_use]
+    pub(crate) fn handle_world(&self) -> [f64; 2] {
+        let s = f64::from(self.link.start_offset) * self.arc.total();
+        self.arc.frame_at(s).0
+    }
+
+    /// A fração de arco do ponto de mundo `p` mais próximo do caminho — o que um arrasto da alça
+    /// escreve em `start_offset`. `NaN`-safe (o [`ArcPath::closest_arc`] devolve sempre um arco
+    /// válido; a divisão pelo total é guardada em [`Self`], que só nasce com total > 0).
+    #[must_use]
+    pub(crate) fn frac_at_world(&self, p: [f64; 2]) -> f32 {
+        (self.arc.closest_arc(p) / self.arc.total()) as f32
     }
 }
 
@@ -218,4 +243,105 @@ pub(crate) enum TextPathCmd {
     Detach,
     /// Trocar o lado.
     Flip(bool),
+}
+
+/// A ALÇA de arrasto do texto em caminho: onde ela está, e como um arrasto a move (W5).
+///
+/// # Uma alça, e não três
+///
+/// O plano (22 §5.3) pedia *in / center / out*, copiando os três colchetes do Illustrator. Duas
+/// dessas três não existem no nosso modelo, e uma alça que não faz nada é pior que uma que falta:
+///
+/// - **out** é a extensão do *container* de texto — o colchete onde o texto para e transborda.
+///   **Não temos container:** o texto flui livre pela curva, sem recorte. A alça não teria o que
+///   mover.
+/// - **center-flip** vira o texto quando arrastado *através* da curva. É espacial, mas fiddly: ao
+///   ajustar o offset o artista cruzaria a linha por acidente e o texto piscaria de lado. O lado
+///   é uma escolha explícita, e o toggle **This side / Other side** do painel a faz sem
+///   ambiguidade.
+/// - **in** é onde o texto *começa* — o `start_offset`. Espacial, e a única das três que é uma
+///   posição a arrastar. É esta.
+///
+/// # Não é uma segunda porta para o Offset — é a MESMA
+///
+/// O painel já tem o slider de Offset. Isto **não** o duplica no sentido ruim: é o mesmo número
+/// (`start_offset`), editado de dois modos, e ambos resolvem pela MESMA `edit(…, |l| l.start_offset)`
+/// — a regra das duas-portas exige que concordem, e concordam por construção. É o precedente das
+/// alças de gradiente e do gizmo de Transform: para uma grandeza **espacial**, arrastar na tela é
+/// uma interação legitimamente diferente de um slider, não um segundo modelo dela.
+pub(crate) mod handle {
+    use super::{Guide, VecEntityMap, VecScene, guide_of};
+    use ph2d_ecs::SimWorld;
+    use ph2d_vec_scene::VecPathId;
+
+    /// O ponto de MUNDO da alça do texto selecionado — `None` se não há texto vinculado na
+    /// seleção. O overlay o desenha e o hit-test o compara ao cursor: a MESMA fonte, senão a
+    /// alça seria pintada num sítio e agarrada noutro.
+    #[must_use]
+    pub(crate) fn world(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        selection: &[VecPathId],
+    ) -> Option<[f64; 2]> {
+        selected_guide(sim, scene, map, selection).map(|g| g.handle_world())
+    }
+
+    /// **Pressão no modo Node:** se a alça está sob o cursor, arma o arrasto e devolve `true` —
+    /// o host então PULA o pen. `radius` é o alcance em mundo (o raio da bolinha em px × o
+    /// `px_to_world`), a MESMA conversão que o desenho usa, para o dedo e a tela concordarem.
+    #[must_use]
+    pub(crate) fn press(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        selection: &[VecPathId],
+        world_pt: [f64; 2],
+        radius: f64,
+        armed: &mut bool,
+    ) -> bool {
+        let Some(h) = world(sim, scene, map, selection) else {
+            return false;
+        };
+        let hit = (h[0] - world_pt[0]).hypot(h[1] - world_pt[1]) <= radius;
+        if hit {
+            *armed = true;
+        }
+        hit
+    }
+
+    /// Arrasta a alça para o cursor: projeta o ponto no caminho, converte em fração e escreve
+    /// `start_offset`. No-op (`false`) sem arrasto armado — a disciplina do `vec_pen_drag_move`.
+    ///
+    /// Passa pela porta `edit`, a MESMA do slider de Offset: a alça e o slider escrevem o mesmo
+    /// número pela mesma função, então não podem divergir.
+    pub(crate) fn drag(
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &VecEntityMap,
+        selection: &[VecPathId],
+        world_pt: [f64; 2],
+        armed: bool,
+    ) -> bool {
+        if !armed {
+            return false;
+        }
+        let Some(frac) =
+            selected_guide(sim, scene, map, selection).map(|g| g.frac_at_world(world_pt))
+        else {
+            return false;
+        };
+        super::edit(sim, scene, map, selection, |l| l.start_offset = frac)
+    }
+
+    /// O [`Guide`] do texto vinculado da seleção — o guia cozido e em mundo, pronto para a alça.
+    fn selected_guide(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        selection: &[VecPathId],
+    ) -> Option<Guide> {
+        let (_, entity, _) = crate::vec_text_object::selected_text_object(sim, map, selection)?;
+        guide_of(sim, scene, map, entity)
+    }
 }

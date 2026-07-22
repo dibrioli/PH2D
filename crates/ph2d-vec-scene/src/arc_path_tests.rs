@@ -140,3 +140,89 @@ fn subdividing_a_contour_does_not_move_the_arc() {
         );
     }
 }
+
+/// **`closest_arc` inverte `frame_at`** — o ponto na curva no arco `s` tem `closest_arc` de volta
+/// em `s`. É o contrato da alça arrastável: o dedo sobre a curva pousa exatamente onde está.
+#[test]
+fn closest_arc_inverts_frame_at_on_the_curve() {
+    let ap = ArcPath::from_contour(&circle(), true).expect("círculo");
+    for frac in [0.05, 0.2, 0.37, 0.5, 0.83, 0.99] {
+        let s = ap.total() * frac;
+        let (p, _) = ap.frame_at(s);
+        let got = ap.closest_arc(p);
+        assert!(
+            (got - s).abs() < 0.05,
+            "frac {frac}: fechou em {got:.4}, esperado {s:.4}"
+        );
+    }
+}
+
+/// **Um ponto FORA da curva cai no arco mais próximo** — e a busca não é local, então uma curva
+/// em S não a engana. O dedo raramente está exatamente sobre a linha; a alça segue o ponto mais
+/// perto dela.
+#[test]
+fn closest_arc_finds_the_nearest_point_off_the_curve() {
+    // Uma onda em S: dois lóbulos, onde uma busca puramente local (Newton) cairia no lóbulo
+    // errado a partir de um chute do lado oposto.
+    let s_wave = vec![
+        VecVertex {
+            anchor: [0.0, 0.0],
+            in_handle: [-20.0, 0.0],
+            out_handle: [20.0, 0.0],
+            kind: VertexKind::Smooth,
+            corner_radius: 0.0,
+        },
+        VecVertex {
+            anchor: [40.0, 30.0],
+            in_handle: [20.0, 30.0],
+            out_handle: [60.0, 30.0],
+            kind: VertexKind::Smooth,
+            corner_radius: 0.0,
+        },
+        VecVertex {
+            anchor: [80.0, -30.0],
+            in_handle: [60.0, -30.0],
+            out_handle: [100.0, -30.0],
+            kind: VertexKind::Smooth,
+            corner_radius: 0.0,
+        },
+        VecVertex {
+            anchor: [120.0, 0.0],
+            in_handle: [100.0, 0.0],
+            out_handle: [140.0, 0.0],
+            kind: VertexKind::Smooth,
+            corner_radius: 0.0,
+        },
+    ];
+    let ap = ArcPath::from_contour(&s_wave, false).expect("onda");
+    // Um alvo bem no meio do primeiro lóbulo, deslocado para fora: a resposta tem de estar no
+    // primeiro terço do arco, NÃO no lóbulo de baixo do outro lado.
+    let (mid, _) = ap.frame_at(ap.total() * 0.25);
+    let target = [mid[0], mid[1] + 8.0];
+    let got = ap.closest_arc(target);
+    assert!(
+        got < ap.total() * 0.45,
+        "o alvo perto do 1º lóbulo caiu no arco {got:.3} (total {:.3})",
+        ap.total()
+    );
+    // E o ponto que ele achou está de fato mais perto do alvo que o começo do arco.
+    let (q, _) = ap.frame_at(got);
+    let d_got = (q[0] - target[0]).hypot(q[1] - target[1]);
+    let (q0, _) = ap.frame_at(0.0);
+    let d0 = (q0[0] - target[0]).hypot(q0[1] - target[1]);
+    assert!(
+        d_got < d0,
+        "o mais próximo ({d_got:.3}) bate o começo ({d0:.3})"
+    );
+}
+
+/// Num contorno degenerado (comprimento zero) `closest_arc` é `0`, não `NaN` — a alça não salta.
+#[test]
+fn closest_arc_of_a_degenerate_contour_is_zero() {
+    let ap = ArcPath::from_contour(
+        &[VecVertex::corner([5.0, 5.0]), VecVertex::corner([5.0, 5.0])],
+        false,
+    )
+    .expect("contorno");
+    assert_eq!(ap.closest_arc([9.0, 9.0]), 0.0);
+}

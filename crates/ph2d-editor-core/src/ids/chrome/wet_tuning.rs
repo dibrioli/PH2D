@@ -15,6 +15,9 @@ use super::{NodeId, hash_node_id};
 pub const WET_TUNING_PANEL: NodeId = hash_node_id("wet_tuning.panel");
 /// The panel's scrollbar.
 pub const WET_TUNING_SCROLL: NodeId = hash_node_id("wet_tuning.scroll");
+/// The panel's close button — forwards the SAME Tuning toggle the basic
+/// section owns (visibility is the tool's authored fact).
+pub const WET_TUNING_CLOSE: NodeId = hash_node_id("wet_tuning.close");
 
 /// Collapsible group headers, in display order:
 /// Paint · Water · Physics · Tools · Paper · Experimental.

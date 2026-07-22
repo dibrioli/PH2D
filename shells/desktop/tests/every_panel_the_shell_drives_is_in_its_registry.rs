@@ -33,6 +33,7 @@
 const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     // (Panel::ID, the cargo feature that compiles it into the registry)
     ("physics", "panel-physics"),
+    ("wet_tuning", "panel-wet-tuning"),
     ("timeline", "panel-timeline"),
     ("inspector", "panel-inspector"),
     ("hierarchy", "panel-hierarchy"),
@@ -44,6 +45,7 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
 fn enabled(feature: &str) -> bool {
     match feature {
         "panel-physics" => cfg!(feature = "panel-physics"),
+        "panel-wet-tuning" => cfg!(feature = "panel-wet-tuning"),
         "panel-timeline" => cfg!(feature = "panel-timeline"),
         "panel-inspector" => cfg!(feature = "panel-inspector"),
         "panel-hierarchy" => cfg!(feature = "panel-hierarchy"),

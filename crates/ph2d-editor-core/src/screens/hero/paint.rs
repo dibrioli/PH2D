@@ -344,6 +344,11 @@ pub fn paint_hero_screen(
         // Its `paint()` no-ops when hidden. WITHOUT this entry the panel is
         // registered, visible, and NEVER painted — nothing breaks, nothing warns.
         ids::PHYSICS_PANEL,
+        // Wet Tuning side panel (doc 22, docked beside the painter panel):
+        // visibility mirrored from the tool's Tuning checkbox by the painter
+        // bridge; `paint()` no-ops when hidden. WITHOUT this entry the panel
+        // is registered, visible, and NEVER painted.
+        ids::WET_TUNING_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

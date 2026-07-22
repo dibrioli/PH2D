@@ -20,6 +20,7 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod dab_gizmo;
+mod value_forward;
 mod decode;
 mod impasto_picker;
 mod option_route;
@@ -529,29 +530,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Grain Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
-        WidgetEvent::ValueChanged(id)
-            if core_ids::PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS.contains(&id) =>
-        {
-            ramp_picker::on_ramp_value_changed(host, id);
-            Some(true)
-        }
-        // Shape Color ramp: bar-stop drag + the editable index / position chips.
-        WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
-            shape_ramp_picker::on_shape_ramp_value_changed(host, id);
-            Some(true)
-        }
-        // Flatten/rotate gizmo: a handle `CurvePoint` drag → decode flatten (radial) / angle.
-        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_DAB_GIZMO => {
-            dab_gizmo::on_dab_gizmo_value_changed(host);
-            Some(true)
-        }
-        // Wet Paint TILT pad (doc 22): drain + snap + forward ring/spoke
-        // (body lives beside the dial's paint — one conversion, one house).
-        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_WETPAINT_TILT_PAD => {
-            crate::paint_wetpaint_tilt::forward_tilt_pad_drag(host);
-            Some(true)
-        }
+        // Ramps / dab gizmo / wet TILT pad — table-routed in a sibling
+        // (`event/value_forward.rs`), one arm per file-LOC cap.
+        WidgetEvent::ValueChanged(id) if value_forward::route(host, id) => Some(true),
         // Grain/Shape param number-fields: forward the committed/scrubbed REAL value (the tool's
         // real-value setters clamp it; params/Depth are already `0..1`). Enio 2026-06-25.
         WidgetEvent::ValueChanged(id) if crate::number_field::is_param_field(id) => {

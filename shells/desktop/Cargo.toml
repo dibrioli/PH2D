@@ -27,6 +27,7 @@ ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # The world-settings panel (ADR-0131 D8 / W2b). The shell drains its intents
 # in `render_loop::physics_panel_bridge`.
 ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
+ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing
@@ -340,6 +341,7 @@ default = [
     "panel-motion-params",
     "panel-timeline",
     "panel-physics",
+    "panel-wet-tuning",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -390,6 +392,12 @@ panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
 # made the panel unreachable in the first smoke — every unit gate green, and
 # `W` toggling the visibility of a panel that was not in the registry.
 panel-physics        = ["ph2d-panel-registry-init/panel-physics"]
+# Wet Tuning side panel (doc 22). `ph2d-panel-wet-tuning` is a non-optional
+# direct dep (the painter bridge publishes its brush snapshot and mirrors the
+# Tuning checkbox into its visibility); this line flips the registry-init
+# feature that compiles the panel INTO the registry (see the physics warning
+# above: the shell sets `default-features = false` there).
+panel-wet-tuning     = ["ph2d-panel-registry-init/panel-wet-tuning"]
 # Direct dep too: the render_loop editor bridge reads the transport intents +
 # drives the preview engine + publishes position back for the readout/playhead.
 panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode", "dep:ph2d-audio-spectral", "dep:ph2d-audio-opus"]

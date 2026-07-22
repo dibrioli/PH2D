@@ -190,6 +190,12 @@ pub const FLIP_SCROLLBAR_ID: NodeId = NodeId(835);
 /// Inspector / Vector / Flip panels that share the dock slot.
 /// Next free id is `837`; re-read the collision note above before taking it.
 pub const PHYSICS_SCROLLBAR_ID: NodeId = NodeId(836);
+/// Wet Tuning docked-panel scrollbar (doc 22) — the full knob table (40 rows
+/// in 6 sections) always overflows the dock height. Independent thumb id so
+/// dispatch routes drag-scroll without aliasing the panels sharing the
+/// column. Next free id is `838`; re-read the collision note above before
+/// taking it.
+pub const WET_TUNING_SCROLLBAR_ID: NodeId = NodeId(837);
 
 #[cfg(test)]
 mod tests {

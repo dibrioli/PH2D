@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-panel-wet-tuning"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# HR-15: every new panel string goes through `tr()` (the physics panel's rule
+# — the Inspector's hardcoded-English exception is NOT inherited).
+ph2d-i18n = { path = "../ph2d-i18n" }
+# The knob REGISTRY (`KNOB_DEFS`) — the panel builds itself from this table
+# (the model's own law: "the panel builds itself from this table"), so there
+# is no second copy of a range/step/default to drift.
+ph2d-wet-paint = { path = "../ph2d-wet-paint" }
+# `BrushSettings` — the snapshot the shell publishes each frame (the
+# painter-layers `set_current_brush` pattern; the wet knobs ride inside it).
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: a panel with an
+# `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
+# observable effect.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

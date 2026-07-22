@@ -30,6 +30,7 @@ ph2d-panel-physics = { path = "../ph2d-panel-physics", optional = true }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline", optional = true }
 ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
 ph2d-panel-vector = { path = "../ph2d-panel-vector", optional = true }
+ph2d-panel-wet-tuning = { path = "../ph2d-panel-wet-tuning", optional = true }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
 # <ph2d-panel-sync:deps:end>
 
@@ -68,6 +69,7 @@ panel-physics = ["dep:ph2d-panel-physics"]
 panel-timeline = ["dep:ph2d-panel-timeline"]
 panel-upscale = ["dep:ph2d-panel-upscale"]
 panel-vector = ["dep:ph2d-panel-vector"]
+panel-wet-tuning = ["dep:ph2d-panel-wet-tuning"]
 panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
 # <ph2d-panel-sync:features:end>
 

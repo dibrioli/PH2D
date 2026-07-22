@@ -25,25 +25,15 @@
 //! node is wired to it, because a reduction that is wrong in the block seam is
 //! invisible on one block and fatal on many.
 //!
-//! ## `Max`/`Min` are BIT-EXACT; `Sum` is not, and that is a fact about floats
+//! ## The operator lives in the pure-data crate
 //!
-//! Tree reduction visits the elements in a different order than the CPU's
-//! sequential `fold`. For [`ReduceOp::Max`] and [`ReduceOp::Min`] that is
-//! **irrelevant**: they are associative *and exact* over floats, so **every**
-//! evaluation order yields the identical bit pattern — the parity gate asserts
-//! equality, not an ε, and it does so by mathematics rather than by luck.
-//!
-//! [`ReduceOp::Sum`] is a different animal: float addition is **not**
-//! associative, so the tree's answer differs from the sequential one in the last
-//! ulps, and its gate carries a documented ε. This is the same reason
-//! `voronoi.rs` reduces its centroid in **integers**. Callers that need a
-//! bit-exact whole-stream sum should quantise first, not pretend.
-//!
-//! ⚠️ **NaN is out of contract.** Rust's `f32::max` returns the non-NaN operand;
-//! WGSL's `max` with a NaN operand is implementation-defined. The stream columns
-//! this reduces are positions and radii, and a NaN in one is already a bug
-//! upstream — so this promises nothing about NaN rather than promising something
-//! it cannot keep on both paths.
+//! [`ReduceOp`] is `ph2d_nodegraph::gpu::ReduceOp`, re-exported here. Its WGSL
+//! combine, its WGSL identity and its CPU fold are three answers to ONE question
+//! (*"what does this operator mean?"*), and a second copy on this side of the
+//! fence is how the device's `max` and the host's `max` come to disagree about
+//! an identity with nobody noticing. Its docs carry the parity contract:
+//! `Max`/`Min` are **bit-exact** in any evaluation order, `Sum` is a documented
+//! ε, and NaN is out of contract on both paths.
 //!
 //! ## Composes with the cook's single submit
 //!
@@ -57,64 +47,11 @@ use crate::scan::dispatch_2d;
 use ph2d_gpu::GpuContext;
 use std::sync::OnceLock;
 
+pub use ph2d_nodegraph::gpu::ReduceOp;
+
 /// Elements reduced per workgroup — one per invocation, so it is the workgroup
 /// size the whole engine uses (`codegen::WORKGROUP_SIZE`).
 const WG: u32 = crate::codegen::WORKGROUP_SIZE;
-
-/// Which reduction to run over the stream.
-///
-/// The variants are ordered by how much they promise: the two exact ones first
-/// (see the module docs — their parity is bit-exact by associativity), the
-/// order-dependent one last.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ReduceOp {
-    /// Largest element. **Exact in any order** → bit-exact CPU↔GPU parity.
-    Max,
-    /// Smallest element. **Exact in any order** → bit-exact CPU↔GPU parity.
-    Min,
-    /// Sum. Float addition is not associative → the tree's answer differs from a
-    /// sequential fold in the last ulps (documented ε, never a bit-exact claim).
-    Sum,
-}
-
-impl ReduceOp {
-    /// The WGSL expression combining two accumulators.
-    fn wgsl_combine(self) -> &'static str {
-        match self {
-            ReduceOp::Max => "max(a, b)",
-            ReduceOp::Min => "min(a, b)",
-            ReduceOp::Sum => "a + b",
-        }
-    }
-
-    /// The identity element — what a lane past the end contributes. It has to be
-    /// the operator's true identity, not merely "a big number": a `Max` seeded
-    /// with `0.0` would silently report `0` for an all-negative column, which is
-    /// the kind of wrong that looks plausible on every fixture anyone writes.
-    fn wgsl_identity(self) -> &'static str {
-        match self {
-            // Not `-1.0/0.0`: WGSL const-evaluates that to an error. The most
-            // negative finite f32 is the identity for every finite input, and the
-            // module docs already put NaN/inf out of contract.
-            ReduceOp::Max => "-3.40282347e+38",
-            ReduceOp::Min => "3.40282347e+38",
-            ReduceOp::Sum => "0.0",
-        }
-    }
-
-    /// The CPU oracle for this operator over `data` — the canonical answer the
-    /// gate reconciles the device against. Sequential by construction: for
-    /// `Max`/`Min` that is the same number the tree gets, and for `Sum` it is
-    /// deliberately the *reference* order, not a second tree.
-    #[must_use]
-    pub fn cpu(self, data: &[f32]) -> f32 {
-        match self {
-            ReduceOp::Max => data.iter().copied().fold(f32::NEG_INFINITY, f32::max),
-            ReduceOp::Min => data.iter().copied().fold(f32::INFINITY, f32::min),
-            ReduceOp::Sum => data.iter().copied().fold(0.0, |a, b| a + b),
-        }
-    }
-}
 
 /// The reduction kernel for one operator: each workgroup folds a block of [`WG`]
 /// elements in workgroup memory and writes the block's result to `out[wid]`.
@@ -317,47 +254,11 @@ impl Reduce {
 mod tests {
     use super::*;
 
-    #[test]
-    fn max_and_min_are_exactly_associative_so_any_tree_order_agrees() {
-        // The whole bit-exact parity claim rests on this, so it is asserted here
-        // rather than merely written in the module docs: fold the SAME data in
-        // the sequential order and in a (different) pairwise-tree order and
-        // demand the identical bit pattern. If this ever fails on some target,
-        // the gate's `assert_eq!` was the wrong shape and should have been an ε.
-        let data: Vec<f32> = (0..1000)
-            .map(|i| ((i * 7919) % 2003) as f32 * 0.5 - 500.0)
-            .collect();
-        for op in [ReduceOp::Max, ReduceOp::Min] {
-            let sequential = op.cpu(&data);
-            // Pairwise tree, the shape the GPU actually uses.
-            let mut level = data.clone();
-            while level.len() > 1 {
-                level = level
-                    .chunks(2)
-                    .map(|c| if c.len() == 2 { op.cpu(c) } else { c[0] })
-                    .collect();
-            }
-            assert_eq!(
-                sequential.to_bits(),
-                level[0].to_bits(),
-                "{op:?} must be order-independent to the BIT"
-            );
-        }
-    }
-
-    #[test]
-    fn the_identity_is_the_operators_own_not_merely_a_big_number() {
-        // A `Max` seeded with 0.0 reports 0 for an all-negative column — wrong in
-        // a way that every non-negative fixture agrees with. Pin the real identity.
-        let all_negative = [-5.0_f32, -2.0, -9.0];
-        assert_eq!(ReduceOp::Max.cpu(&all_negative), -2.0);
-        let all_positive = [5.0_f32, 2.0, 9.0];
-        assert_eq!(ReduceOp::Min.cpu(&all_positive), 2.0);
-        // And the WGSL identities are the same choice, spelled for the device.
-        assert_eq!(ReduceOp::Max.wgsl_identity(), "-3.40282347e+38");
-        assert_eq!(ReduceOp::Min.wgsl_identity(), "3.40282347e+38");
-        assert_eq!(ReduceOp::Sum.wgsl_identity(), "0.0");
-    }
+    // The operator's own properties (associativity, identity, the CPU oracle)
+    // are pinned where the operator LIVES — `ph2d_nodegraph::reduce_meta`. A
+    // second copy here would be two gates for one fact, free to drift apart the
+    // day someone edits one of them. What this file still owns is the generated
+    // MODULE, and that is what is gated below.
 
     #[test]
     fn every_operator_generates_a_distinct_module_with_its_own_combine() {

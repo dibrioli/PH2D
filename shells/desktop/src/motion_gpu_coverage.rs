@@ -30,6 +30,7 @@ use super::gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
+use super::gpu_deform_demo::build_gpu_deform_demo_document;
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
@@ -84,6 +85,14 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)
+    });
+    // ⚠️ The DEFORMER scene, and it earns its place by CHANGING WHAT THE CENSUS
+    // CAN SEE. Until this document existed the corpus contained no deformer at
+    // all, so the census reported a clean frontier while an entire node family
+    // was CPU-only — the census counts FRONTIERS, and a hole nobody wired into a
+    // document is not a frontier, it is an absence.
+    push("demo=12 deformer cloth (bend->twist)", &|d| {
+        build_gpu_deform_demo_document(d, reg)
     });
     out
 }

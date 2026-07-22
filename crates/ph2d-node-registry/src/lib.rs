@@ -14,7 +14,7 @@
 
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::{
-    GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, StateSelect, StreamOp,
+    GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, ReduceSpec, StateSelect, StreamOp,
 };
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
@@ -65,6 +65,10 @@ pub struct NodeRegistry {
     /// GPU/M5 (ADR-0139) — per-type multi-pass engine algorithm (Lloyd/JFA).
     /// Same side-channel shape; a node opts in with a [`GpuAlgorithm`].
     algorithms: BTreeMap<NodeTypeId, GpuAlgorithm>,
+    /// GPU/M5 (ADR-0126) — per-type whole-stream reductions, the DEFORMER
+    /// channel. Same side-channel shape; a node opts in with a slice of
+    /// [`ReduceSpec`]s the sequencer folds before its kernel pass.
+    reduces: BTreeMap<NodeTypeId, &'static [ReduceSpec]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -193,6 +197,14 @@ impl NodeRegistry {
     pub fn register_gpu_algorithm(&mut self, id: NodeTypeId, alg: GpuAlgorithm) {
         self.algorithms.insert(id, alg);
     }
+
+    /// Declare the whole-stream reductions this node's kernel reads — the
+    /// DEFORMER channel (ADR-0126). Additive, last-write-wins, pure `'static`
+    /// data, like [`Self::register_grid`]. The sequencer folds each spec before
+    /// the node's kernel pass and gives the body `reduce_<name>()`.
+    pub fn register_reduces(&mut self, id: NodeTypeId, specs: &'static [ReduceSpec]) {
+        self.reduces.insert(id, specs);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
@@ -218,6 +230,10 @@ impl KernelResolver for NodeRegistry {
 
     fn algorithm(&self, ty: NodeTypeId) -> Option<&GpuAlgorithm> {
         self.algorithms.get(&ty)
+    }
+
+    fn reduces(&self, ty: NodeTypeId) -> &'static [ReduceSpec] {
+        self.reduces.get(&ty).copied().unwrap_or(&[])
     }
 }
 

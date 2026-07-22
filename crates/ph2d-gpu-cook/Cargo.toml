@@ -58,6 +58,11 @@ ph2d-node-sim-lifetime = { path = "../ph2d-node-sim-lifetime" }
 ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
 ph2d-node-motion-combine = { path = "../ph2d-node-motion-combine" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
+# The DEFORMER family — the whole-stream reduction channel (reduce -> broadcast
+# -> map). These are the first nodes whose kernel reads a number about the WHOLE
+# stream, so they are what the reduce gates cook on both paths.
+ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
+ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
 # ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

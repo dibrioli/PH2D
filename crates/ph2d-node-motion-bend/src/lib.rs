@@ -24,6 +24,9 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{
+    ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec,
+};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::f32::consts::{PI, TAU};
@@ -78,6 +81,104 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The whole-stream reduction this deformer needs: the layout's **X extent**
+/// about the pivot (GPU/M5, the deformer channel — `ph2d_nodegraph::reduce_meta`).
+///
+/// This is the `x_extent` fold at the top of [`bend`], declared so the sequencer
+/// can run it on the device before the per-element pass. ⚠️ **`Max` over an
+/// expression built only from subtraction and `abs` — so this one is BIT-EXACT
+/// against the CPU**: `Max` is associative and exact in any evaluation order, and
+/// there is no multiply-add here for a device to contract into an FMA. (Its
+/// sibling `motion.twist` folds a radius, which has a product, and is an ε.)
+static REDUCES: &[ReduceSpec] = &[ReduceSpec {
+    name: "x_extent",
+    column: "P",
+    dim: Dim::Vec2,
+    port: 0,
+    op: ReduceOp::Max,
+    value: "abs(v.x - params.pivot_x)",
+    params: &["pivot_x"],
+    // The same identity the `P` binding declares — an absent `P` is materialised
+    // as the origin by BOTH paths, so both measure the extent of a layout of
+    // origins (which is `|pivot_x|`, not "no extent").
+    identity: [0.0; 4],
+}];
+
+/// The device form of [`bend`] (GPU/M5). One invocation per element, reading the
+/// layout's X extent from the reduction above.
+///
+/// ⚠️ **The trig is the CPU's polynomial, ported operation for operation** — not
+/// WGSL's `sin`/`cos`. The CPU is transcendental-free by HR-5 (the corrected
+/// parabolic sine, ~0.09% off true trig), so calling the device's real `sin`
+/// here would not be a tighter ε, it would be a *different curve*: the arc would
+/// visibly differ from the canonical one wherever the approximation does.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let bd_p = read_in_P(i);\n\
+        let bd_dx = bd_p.x - params.pivot_x;\n\
+        let bd_dy = bd_p.y - params.pivot_y;\n\
+        let bd_theta = params.angle * read_amount_v(i) * 3.1415927 / 180.0;\n\
+        let bd_ext = reduce_x_extent();\n\
+        var bd_bent = vec2<f32>(bd_dx, bd_dy);\n\
+        if (bd_ext >= 1e-4 && abs(bd_theta) >= 1e-4) {\n\
+        \x20   let bd_k = bd_theta / bd_ext;\n\
+        \x20   let bd_r = 1.0 / bd_k;\n\
+        \x20   let bd_ph = (bd_k * bd_dx) / 6.2831855;\n\
+        \x20   let bd_c = bend_sin_cycles(bd_ph + 0.25);\n\
+        \x20   let bd_s = bend_sin_cycles(bd_ph);\n\
+        \x20   bd_bent = vec2<f32>((bd_r - bd_dy) * bd_s, bd_r * (1.0 - bd_c) + bd_dy * bd_c);\n\
+        }\n\
+        let bd_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        write_P(i, vec2<f32>(\n\
+        \x20   bd_p.x + (params.pivot_x + bd_bent.x - bd_p.x) * bd_f,\n\
+        \x20   bd_p.y + (params.pivot_y + bd_bent.y - bd_p.y) * bd_f));\n",
+    wgsl_lib: "\
+        // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
+        fn bend_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            // ReadWrite, not ReadWriteExisting: the CPU materialises an absent
+            // `P` from the origin and always emits one (`out.set("P", …)`).
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            // The `amount_at` rule, declared: absent reads 1.0 (full static
+            // bend), length-1 broadcasts, length-N is per element.
+            access: ColumnAccess::ReadBroadcast,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 1,
+        },
+    ],
+    params: &["angle", "pivot_x", "pivot_y"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
@@ -187,6 +288,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5: the kernel and the whole-stream reduction it reads. Side metadata
+    // on the registry (ADR-0126) — the frozen node contract is untouched.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_reduces(MANIFEST.id, REDUCES);
     Ok(())
 }
 

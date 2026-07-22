@@ -28,6 +28,11 @@ mod gpu_demos;
 /// answer the interacting-sim question none of the throughput scenes can.
 #[path = "motion_state_gpu_neighbour_demos.rs"]
 mod gpu_neighbour_demos;
+/// The DEFORMER scene, its own file for the same reason: it answers "does a node
+/// whose kernel needs one number about the WHOLE stream run on the device?",
+/// which none of the per-element or neighbourhood scenes can.
+#[path = "motion_state_gpu_demos_deform.rs"]
+mod gpu_deform_demo;
 /// The panel scene, split out at the HR-18 cap — see the module's own note on
 /// why the seam is the QUESTION each scene answers, not the line count.
 #[path = "motion_state_gpu_panel_demo.rs"]
@@ -48,6 +53,7 @@ use gpu_demos::{
 use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
+use gpu_deform_demo::build_gpu_deform_demo_document;
 use gpu_panel_demo::build_gpu_panel_demo_document;
 use gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use gpu_zone_demo::build_gpu_zone_demo_document;
@@ -189,6 +195,10 @@ impl MotionState {
             // (Lloyd relaxation via jump flooding), and the cap that fell with
             // it: 20.000 points where the CPU-era node capped at 600.
             Ok("11") => build_gpu_voronoi_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // The DEFORMER family: the whole-stream reduction channel. Two
+            // deformers CHAINED, so the second one's fold must measure what the
+            // first one produced (see the scene's own note).
+            Ok("12") => build_gpu_deform_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

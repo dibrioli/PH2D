@@ -201,6 +201,7 @@ pub struct ColumnBinding {
 }
 
 pub use crate::algorithm_meta::GpuAlgorithm;
+pub use crate::reduce_meta::{ReduceOp, ReduceSpec};
 pub use crate::stream_op_meta::{KEEP_FLAG_COL, ROWS_COL, StreamOp};
 
 /// Everything a node's **count law** may look at. Dispatch size must be known
@@ -542,6 +543,18 @@ pub trait KernelResolver {
     /// [`GridSpec`]; every other node declares nothing.
     fn algorithm(&self, _ty: NodeTypeId) -> Option<&GpuAlgorithm> {
         None
+    }
+
+    /// The whole-stream reductions this node's kernel reads, if any — the
+    /// DEFORMER channel (see [`ReduceSpec`]). Default **empty**, so a node opts
+    /// in by registering specs exactly as it opts into a kernel at all; every
+    /// existing kernel declares nothing and nothing about it changes.
+    ///
+    /// Empty slice rather than `Option<&[_]>`: "declares no reduction" and
+    /// "declares an empty list of reductions" are the same fact, and one
+    /// representation for one fact means no site has to handle both.
+    fn reduces(&self, _ty: NodeTypeId) -> &'static [ReduceSpec] {
+        &[]
     }
 
     /// Whether this node type KEEPS the **dense id window** (ADR-0130): a source

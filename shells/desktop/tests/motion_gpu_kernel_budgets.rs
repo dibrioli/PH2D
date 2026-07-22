@@ -67,6 +67,11 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             kernel.bindings,
             &port_names,
             reg.grid(manifest.id),
+            // The node's declared reductions — a deformer's module carries a
+            // `reduce_*` storage binding per spec, so measuring the "widest
+            // layout this kernel can ask for" without them would measure a
+            // module the sequencer never builds.
+            reg.reduces(manifest.id),
             |_| true,
         );
         let struct_body = src

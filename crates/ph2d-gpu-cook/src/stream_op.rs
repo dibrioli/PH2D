@@ -255,6 +255,10 @@ impl GpuCook {
             inputs,
             src.clone(),
             None,
+            // A compaction predicate reads no whole-stream reduction: it decides
+            // per element whether the element survives, and a number about the
+            // whole stream would be a number about a stream that is changing.
+            (&[], &[]),
         );
         let Some(flags) = pred_out.cols.get(KEEP_FLAG_COL).map(|c| c.buffer.clone()) else {
             // A predicate that does not write the flag is an authoring bug in the

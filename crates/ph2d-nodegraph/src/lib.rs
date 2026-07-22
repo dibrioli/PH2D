@@ -43,6 +43,7 @@ pub mod graph;
 pub mod node;
 pub mod param_source;
 pub mod port;
+pub mod reduce_meta;
 pub mod stream_op_meta;
 pub mod time;
 pub mod value;

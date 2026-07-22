@@ -88,6 +88,10 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_sim_spawn::register(&mut reg).unwrap();
     ph2d_node_motion_combine::register(&mut reg).unwrap();
     ph2d_node_value_attribute::register(&mut reg).unwrap();
+    // The deformer family — the first kernels that read a whole-stream
+    // reduction, so the first whose module gains `reduce_*` symbols.
+    ph2d_node_motion_bend::register(&mut reg).unwrap();
+    ph2d_node_motion_twist::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {
@@ -107,6 +111,11 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 kernel.bindings,
                 &port_names,
                 reg.grid(manifest.id),
+                // The node's declared reductions, asked of the REGISTRY — not
+                // `&[]`. A deformer's body calls `reduce_<name>()`, so passing an
+                // empty list here would validate a module the sequencer never
+                // builds and miss a misspelled reduction entirely.
+                reg.reduces(manifest.id),
                 |b| {
                     let idx = kernel
                         .bindings
@@ -140,6 +149,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 predicate.bindings,
                 &port_names,
                 None,
+                &[],
                 |b| {
                     let idx = predicate
                         .bindings

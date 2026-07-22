@@ -62,6 +62,7 @@ mod lifecycle;
 pub mod lower;
 pub mod plan;
 pub mod reduce;
+mod reduce_stage;
 pub mod ring;
 pub mod scan;
 pub mod shape;
@@ -189,6 +190,18 @@ pub struct GpuCook {
     /// The grid output buffers (`starts`/`sorted`) a kernel pass binds, held for
     /// the same window — one per grid-bearing stage this cook.
     grid_hold: Vec<grid::GridBuffers>,
+    /// The whole-stream reduction service (the deformer channel), built on first
+    /// use like the grid — `Option` because `GpuCook` is `Default`.
+    reduce: Option<reduce::Reduce>,
+    /// The reduce map passes' N-sized scratch, held until this cook's submit —
+    /// the same window as [`Self::grid_hold`], for the same reason. Pooled
+    /// column buffers are `Arc`, the per-pass uniforms are owned, so both shapes
+    /// are held (mirroring `stream_op_hold` / `stream_op_hold_bufs`).
+    reduce_hold: Vec<wgpu::Buffer>,
+    reduce_hold_bufs: Vec<std::sync::Arc<wgpu::Buffer>>,
+    /// The 4-byte reduction results a kernel pass binds, held for the same
+    /// window — one set per reducing stage this cook.
+    reduce_results_hold: Vec<reduce_stage::ReduceResults>,
     /// The structural stream-op pipelines (ADR-0136), built on first use like
     /// the tap and the grid — `Option` because `GpuCook` is `Default`.
     stream_op_pipes: Option<stream_op::StreamOpPipes>,
@@ -326,6 +339,10 @@ impl GpuCook {
         // the buffers return once the prior submit that used them has completed.
         self.grid_hold.clear();
         self.grid_scratch = grid::GridScratch::default();
+        // The reduce transients (the deformer channel), same window as the grid's.
+        self.reduce_hold.clear();
+        self.reduce_hold_bufs.clear();
+        self.reduce_results_hold.clear();
         // The stream-op transients (ADR-0136), same window.
         self.stream_op_hold.clear();
         self.stream_op_hold_bufs.clear();
@@ -565,6 +582,25 @@ impl GpuCook {
                         manifest,
                     )
                 });
+                // The node's declared whole-stream reductions (the deformer
+                // channel), folded into this same encoder BEFORE its kernel pass.
+                //
+                // **Inside the sweep loop, next to the grid rebuild, and for the
+                // same reason**: a sweep moves the very column a reduction reads,
+                // so a fold hoisted out would answer "how wide was the layout
+                // BEFORE you deformed it?" from sweep 2 onward. Reductions are
+                // per-element-cheap and today's clients run one sweep, so this
+                // costs nothing and cannot go stale.
+                let reduce_specs = kernels.reduces(stage.ty);
+                let reduce_results = self.run_reduces(
+                    gpu,
+                    &mut encoder,
+                    reduce_specs,
+                    &inputs,
+                    graph,
+                    stage.node,
+                    manifest,
+                );
                 out = self.encode_kernel_stage(
                     gpu,
                     &mut encoder,
@@ -579,7 +615,9 @@ impl GpuCook {
                     &inputs,
                     base.clone(),
                     grid_spec.zip(grid_buffers.as_ref()),
+                    (reduce_specs, &reduce_results.buffers),
                 );
+                self.reduce_results_hold.push(reduce_results);
                 if let Some(gb) = grid_buffers {
                     self.grid_hold.push(gb);
                 }

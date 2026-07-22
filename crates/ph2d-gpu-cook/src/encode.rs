@@ -18,7 +18,7 @@ use crate::{
     CachedPipeline, GpuColumn, GpuCook, GpuStream, UNIFORM_BYTES, codegen, create_pipeline, stream,
 };
 use ph2d_gpu::GpuContext;
-use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, SourceWindow};
+use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, ReduceSpec, SourceWindow};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
 
@@ -50,6 +50,7 @@ impl GpuCook {
         inputs: &[GpuStream],
         base: GpuStream,
         grid: Option<(&GridSpec, &GridBuffers)>,
+        reduces: (&'static [ReduceSpec], &[wgpu::Buffer]),
     ) -> GpuStream {
         use codegen::BindingPlan;
 
@@ -84,6 +85,7 @@ impl GpuCook {
                     bindings,
                     &port_names,
                     grid.map(|(s, _)| s),
+                    reduces.0,
                     present,
                 );
                 CachedPipeline {
@@ -197,6 +199,16 @@ impl GpuCook {
             entries.push(wgpu::BindGroupEntry {
                 binding: slot,
                 resource: gb.sorted.as_entire_binding(),
+            });
+            slot += 1;
+        }
+        // The reduction results, LAST — the exact order `kernel_module` declared
+        // them (spec order, after the grid). One buffer per spec; the sequencer
+        // filled them into this same encoder before this pass.
+        for buf in reduces.1 {
+            entries.push(wgpu::BindGroupEntry {
+                binding: slot,
+                resource: buf.as_entire_binding(),
             });
             slot += 1;
         }

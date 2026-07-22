@@ -25,6 +25,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -84,6 +85,101 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The whole-stream reduction this deformer needs: the **rim radius** about the
+/// pivot (GPU/M5, the deformer channel — `ph2d_nodegraph::reduce_meta`).
+///
+/// This is the `r_max` fold at the top of [`twist`], declared so the sequencer
+/// can run it on the device before the per-element pass. ⚠️ The `.max(MIN_RADIUS)`
+/// floor is **NOT** part of the reduction — it is applied by the consumer, on
+/// both paths, because it is a guard about *what the answer is used for* (a
+/// division), not about what was measured.
+///
+/// ⚠️ **An ε, not bit-exact, and the reason is one multiply.** `Max` itself is
+/// exact in any order (its sibling `motion.bend` folds `|x − pivot|` and IS
+/// bit-exact), but the value folded here is `√(dx² + dy²)`: a device may contract
+/// `dx*dx + dy*dy` into an FMA where the host does not, so the two can differ in
+/// the last ulps before the fold ever sees them.
+static REDUCES: &[ReduceSpec] = &[ReduceSpec {
+    name: "r_max",
+    column: "P",
+    dim: Dim::Vec2,
+    port: 0,
+    op: ReduceOp::Max,
+    value: "sqrt((v.x - params.pivot_x) * (v.x - params.pivot_x) \
+            + (v.y - params.pivot_y) * (v.y - params.pivot_y))",
+    params: &["pivot_x", "pivot_y"],
+    // The same identity the `P` binding declares (see `motion.bend`'s note).
+    identity: [0.0; 4],
+}];
+
+/// The device form of [`twist`] (GPU/M5). One invocation per element, reading
+/// the rim radius from the reduction above.
+///
+/// ⚠️ **The trig is the CPU's polynomial, ported operation for operation** — see
+/// the same note on `motion.bend`: HR-5 makes the canonical path
+/// transcendental-free, so the device's real `sin` would be a *different curve*,
+/// not a tighter ε.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let tw_p = read_in_P(i);\n\
+        let tw_dx = tw_p.x - params.pivot_x;\n\
+        let tw_dy = tw_p.y - params.pivot_y;\n\
+        let tw_r = sqrt(tw_dx * tw_dx + tw_dy * tw_dy);\n\
+        // The MIN_RADIUS floor belongs to the CONSUMER, not the reduction.\n\
+        let tw_rmax = max(reduce_r_max(), 1e-6);\n\
+        let tw_deg = params.angle * read_amount_v(i) * (tw_r / tw_rmax);\n\
+        let tw_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let tw_ph = tw_deg / 360.0;\n\
+        let tw_c = twist_sin_cycles(tw_ph + 0.25);\n\
+        let tw_s = twist_sin_cycles(tw_ph);\n\
+        let tw_rx = params.pivot_x + (tw_c * tw_dx - tw_s * tw_dy);\n\
+        let tw_ry = params.pivot_y + (tw_s * tw_dx + tw_c * tw_dy);\n\
+        write_P(i, vec2<f32>(\n\
+        \x20   tw_p.x + (tw_rx - tw_p.x) * tw_f,\n\
+        \x20   tw_p.y + (tw_ry - tw_p.y) * tw_f));\n",
+    wgsl_lib: "\
+        // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
+        fn twist_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 1,
+        },
+    ],
+    params: &["angle", "pivot_x", "pivot_y"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
@@ -197,6 +293,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5: the kernel and the whole-stream reduction it reads. Side metadata
+    // on the registry (ADR-0126) — the frozen node contract is untouched.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_reduces(MANIFEST.id, REDUCES);
     Ok(())
 }
 

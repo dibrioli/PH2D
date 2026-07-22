@@ -22,7 +22,7 @@
 //! On a **multi-input** node every reader is qualified by port name
 //! (`read_rest_P`, `HAS_forces_vel`) — see [`accessor_suffix`].
 
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec, ReduceSpec};
 use ph2d_nodegraph::port::Dim;
 
 pub use crate::field_name::wgsl_field;
@@ -64,8 +64,9 @@ pub fn wgsl_type(dim: Dim) -> &'static str {
     }
 }
 
-/// A WGSL literal for `identity`'s first `dim`-many lanes.
-fn identity_literal(dim: Dim, identity: [f32; 4]) -> String {
+/// A WGSL literal for `identity`'s first `dim`-many lanes. Shared with the
+/// reduce map pass, whose absent-column form folds exactly this constant.
+pub fn identity_literal(dim: Dim, identity: [f32; 4]) -> String {
     let lane = |v: f32| format!("{v:?}");
     match dim {
         Dim::Scalar => lane(identity[0]),
@@ -272,6 +273,7 @@ pub fn kernel_module(
     bindings: &[ColumnBinding],
     port_names: &[&str],
     grid: Option<&GridSpec>,
+    reduces: &[ReduceSpec],
     mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
     // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
@@ -346,6 +348,16 @@ pub fn kernel_module(
         slot += 1;
         src.push_str(&format!(
             "@group(0) @binding({slot}) var<storage, read> grid_sorted: array<u32>;\n"
+        ));
+        slot += 1;
+    }
+    // The whole-stream reduction results, LAST of all — after the columns AND
+    // after the grid, so a node that declares one never shifts anybody's slot.
+    // Each is a 1-element buffer the sequencer filled before this pass ran.
+    for r in reduces {
+        src.push_str(&format!(
+            "@group(0) @binding({slot}) var<storage, read> reduce_buf_{}: array<f32>;\n",
+            r.name
         ));
         slot += 1;
     }
@@ -451,6 +463,20 @@ pub fn kernel_module(
              \x20   return bitcast<u32>(h) & (params.grid_num_buckets - 1u);\n\
              }\n\n",
         );
+    }
+
+    // The reduction accessors — one number about the WHOLE stream, the same for
+    // every invocation. `reduce_<name>()` and not a bare `let`, so the body reads
+    // it exactly like it reads a column (`read_P(i)`), and so a kernel that never
+    // calls it costs nothing.
+    for r in reduces {
+        src.push_str(&format!(
+            "fn reduce_{n}() -> f32 {{ return reduce_buf_{n}[0]; }}\n",
+            n = r.name
+        ));
+    }
+    if !reduces.is_empty() {
+        src.push('\n');
     }
 
     src.push_str(kernel.wgsl_lib);

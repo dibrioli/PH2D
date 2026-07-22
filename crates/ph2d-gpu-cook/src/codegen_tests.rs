@@ -121,7 +121,7 @@ const GATHER: GpuKernel = GpuKernel {
 fn present_columns_bind_buffers_absent_read_becomes_identity() {
     // P present, falloff absent → P reads+writes buffers; falloff reads
     // its identity constant (1.0) with no binding.
-    let src = kernel_module(&K, K.bindings, &["in"], None, |b| b.column == "P");
+    let src = kernel_module(&K, K.bindings, &["in"], None, &[], |b| b.column == "P");
     assert!(src.contains("var<storage, read> in_P"));
     assert!(src.contains("var<storage, read_write> out_P"));
     assert!(!src.contains("in_falloff"));
@@ -133,7 +133,7 @@ fn present_columns_bind_buffers_absent_read_becomes_identity() {
 fn absent_read_write_existing_drops_the_write() {
     // Nothing present → P's write is a no-op (the CPU pass-through), and
     // NO storage binding exists at all.
-    let src = kernel_module(&K, K.bindings, &["in"], None, |_| false);
+    let src = kernel_module(&K, K.bindings, &["in"], None, &[], |_| false);
     assert!(!src.contains("var<storage"));
     assert!(src.contains("fn write_P(i: u32, v: vec2<f32>) { _ = i; _ = v; }"));
 }
@@ -177,17 +177,17 @@ fn a_read_write_columns_presence_moves_the_signature() {
         "present and absent MUST key different pipelines"
     );
     // …and they really are different modules, which is why.
-    assert!(kernel_module(&RW, RW.bindings, &["in"], None, |_| true).contains("in_size"));
-    assert!(!kernel_module(&RW, RW.bindings, &["in"], None, |_| false).contains("in_size"));
+    assert!(kernel_module(&RW, RW.bindings, &["in"], None, &[], |_| true).contains("in_size"));
+    assert!(!kernel_module(&RW, RW.bindings, &["in"], None, &[], |_| false).contains("in_size"));
 }
 
 #[test]
 fn the_has_const_tells_presence_apart_from_an_identity_read() {
     // The whole point: `read_falloff` answers 1.0 either way, so a body
     // that must BRANCH on absence (integrate's seed) has no other signal.
-    let present = kernel_module(&K, K.bindings, &["in"], None, |_| true);
+    let present = kernel_module(&K, K.bindings, &["in"], None, &[], |_| true);
     assert!(present.contains("const HAS_falloff: bool = true;"));
-    let absent = kernel_module(&K, K.bindings, &["in"], None, |_| false);
+    let absent = kernel_module(&K, K.bindings, &["in"], None, &[], |_| false);
     assert!(absent.contains("const HAS_falloff: bool = false;"));
 }
 
@@ -195,7 +195,7 @@ fn the_has_const_tells_presence_apart_from_an_identity_read() {
 fn a_multi_input_kernel_names_every_reader_by_its_port() {
     // `vel` is bound on BOTH ports: unqualified readers would collide, and
     // whichever won would be a plausible wrong answer.
-    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, |_| true);
+    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, &[], |_| true);
     assert!(src.contains("fn read_rest_vel(i: u32) -> vec2<f32> { return in_rest_vel[i]; }"));
     assert!(src.contains("fn read_forces_vel(i: u32) -> vec2<f32> { return in_forces_vel[i]; }"));
     assert!(src.contains("const HAS_rest_vel: bool = true;"));
@@ -211,7 +211,7 @@ fn a_multi_input_kernel_names_every_reader_by_its_port() {
 
 #[test]
 fn a_consumed_column_is_read_but_never_written() {
-    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, |_| true);
+    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, &[], |_| true);
     assert!(src.contains("fn read_forces_accel(i: u32) -> vec2<f32>"));
     // No output buffer, no writer: the sequencer drops it from the output
     // stream instead (`GpuStream` threading), which is what "transient" means.
@@ -225,7 +225,7 @@ fn a_gather_key_reads_the_id_and_the_positional_default_is_the_identity() {
     // reduce to positional (`gather_row(i) = i`, everyone paired) and there
     // is no `gather_prev_n` uniform. This is the grid path, byte-for-byte the
     // pre-0130 behaviour.
-    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, |b| {
+    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, &[], |b| {
         b.column != "id"
     });
     assert!(src.contains("fn gather_row(i: u32) -> u32 { return i; }"));
@@ -246,7 +246,7 @@ fn a_present_dense_id_activates_the_arithmetic_gather() {
     // prev_first`, `gather_paired` bounds-checks against `prev_n`, and the
     // prior state's min id is read RAW off element 0 of the STATE port's id
     // (not the base's). VALUE casts (`u32(max(...))`), never `bitcast`.
-    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, |_| true);
+    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, &[], |_| true);
     assert!(
         src.contains("gather_prev_n: u32,"),
         "the prior-count uniform exists"
@@ -276,7 +276,7 @@ fn a_refusal_generates_nothing_at_all() {
     // It answers eligibility at plan time; by codegen the column is
     // provably absent, so a binding for it would be dead weight in every
     // pipeline.
-    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, |_| true);
+    let src = kernel_module(&SIM, SIM.bindings, SIM_PORTS, None, &[], |_| true);
     // (Not a bare `contains("id")` — the entry point takes `global_invocation_id`.)
     assert!(!src.contains("in_rest_id"), "no read buffer");
     assert!(!src.contains("fn read_rest_id("), "no accessor");

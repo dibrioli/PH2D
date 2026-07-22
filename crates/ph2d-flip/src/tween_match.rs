@@ -27,8 +27,20 @@
 //!    (ponto, círculo) não tem eixo, e contá-lo zero premiaria justamente quem não trouxe
 //!    informação. O custo é a média PONDERADA dos termos que existem.
 //!
-//! A atribuição é **ótima** (Hungarian/Jonker-Volgenant O(n³), `assign`), não gulosa — n é
-//! pequeno (traços de um desenho) e o gate a compara com a busca exaustiva de permutações.
+//! A atribuição é **ótima** (Hungarian/Jonker-Volgenant O(n³), `assign`), não gulosa, e o
+//! gate a compara com a busca exaustiva de permutações.
+//!
+//! **O custo é MEDIDO** (`the_plan_cost_ruler`), porque *"n é pequeno"* era uma afirmação
+//! sobre um número que ninguém tinha olhado — um line-art denso tem centenas de traços:
+//!
+//! ```text
+//!   traços     10      50     100     200     400     800
+//!   plano    0,004   0,021   0,060   0,223   0,820   3,226  ms
+//! ```
+//!
+//! Nesta faixa quem domina é a matriz de custo (`O(n·m)`), não o solver. E o plano é
+//! construído **UMA vez por intervalo** — não por quadro e não por inbetween —, então
+//! 3,2 ms num desenho de 800 traços é pago uma vez no clique do `Add`.
 
 use crate::drawing::FlipDrawing;
 use crate::stroke::FlipStroke;

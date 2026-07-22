@@ -19,8 +19,10 @@
 > propósito. Fila e backlog verificado:
 > [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
 >
-> **A linha está FECHADA e smokada (2026-07-21), aguardando ordem de integração** —
-> handoff: [`../HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md`](../HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md).
+> **A wave COLORIZE integrou ao main em 2026-07-21.** A jornada seguinte (2026-07-22) é o
+> **Tween v2** — doc [`11`](11_tween_v2.md), **construída e gateada, PENDENTE DE SMOKE**
+> (`PH2D_FLIP_TWEEN_SMOKE=1`); handoff de integração:
+> [`../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md`](../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md).
 
 ## O que landou DESDE o snapshot de 2026-07-12 (não reconstruir — tem doc + código)
 
@@ -35,6 +37,7 @@
 | **W7 — Multiframe** | **multi-seleção de chaves na tira** (`strip.selected_keys()`) · **Instance** / linked-duplicate (`FLIP_KEY_INSTANCE` + marcador `INSTANCE_DOT`) · **pose de quadro** · **régua de scrub** · **falloff temporal** visível na tira · modo **`Selected`** dos fantasmas | 2026-07-13..15 (W7.1–W7.4) | `flip_multiframe.rs`, `flip_strip.rs`, `flip_pose_gizmo.rs`; `onion.rs` (`OnionMode::Selected`) |
 | **Colorize C1 — Trap** | *trapped-ball*: o balde para de vazar por vão estreito (chip `FLIP_TRAP`) | 2026-07-18 `a6e8277a` | **em `ph2d-flip-fill`** (`ball.rs`/`edt.rs`, `Trap`), **não** na crate `ph2d-flip-colorize` que o [`09`](09_colorize.md) previa |
 | **Região por curvas** | a malha do fill nasce dos vértices das linhas; o donut (buraco = componente conexa); R3 revogada por medição | 2026-07-18 | doc [`10`](10_regiao_por_curvas.md) §11–§12; BUGS #19–#22; `flip_fill_curve_route.*`, `flip_fill_dilate.*` |
+| **Tween v2** | a correspondência de traços deixa de ser ordinal (custo + atribuição ótima) e o inbetween percorre o **arco** em vez da corda (espiral logarítmica) — mais o `Ease`/`Fade` da barra, que fecham a T3.7 | 2026-07-22 | doc [`11`](11_tween_v2.md); `tween_match.rs`, `tween_spiral.rs`, `tween.rs`; smoke `PH2D_FLIP_TWEEN_SMOKE=1` |
 
 ## Regras permanentes (valem em TODA task)
 
@@ -148,9 +151,10 @@ células de exposição, pre/post behavior).
       pixel-idênticos em t=0/1; auto-flip nos 3 ramos; órfãos estáveis).
 - [x] **T3.7 — Tween (UI).** Caixa de contagem + botão **Add Tween** na tira: gera N inbetweens
       entre a chave atual e a seguinte, auto-flip ligado, fator por posição absoluta.
-      **Parcial e declarado:** o *picker de easing* e o toggle de *fade-in dos órfãos* NÃO estão
-      na UI (o motor suporta os dois — `TweenOptions`); hoje a UI usa Linear + sem fade.
-      Carry-over de UI, não de motor.
+      **FECHADA em 2026-07-22 (Tween v2, doc [`11`](11_tween_v2.md) §5):** o chip **Ease**
+      (Linear/In/Out/In-Out, nos rótulos da timeline) e o toggle **Fade** entraram na barra,
+      pela porta única `FlipStrip::tween_options()`. A família do easing é fixa em `Quad` de
+      propósito — o picker completo já existe no menu de curvas da timeline.
 - [ ] **T3.8 — Cache de playback.** **NÃO foi feito, e por escolha:** a tesselação já é cacheada
       por DESENHO (T1.8) e é ela o custo real da troca de quadro; o ring de texturas COMPOSTAS só
       compensa se o composite virar o gargalo — e isso se **mede** antes (memória
@@ -261,7 +265,12 @@ paint-behind, multiframe.
 
 - **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
-- **Tween v2:** matching espacial + espiral logarítmica + UI de correção de pares (04 §2).
+- ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22**
+  (doc [`11`](11_tween_v2.md), pendente de smoke). **ABERTO de lá:** a **UI de correção de
+  pares** (o overlay + o re-par manual — a lição CACANi; o `TweenPlan` já publica os pares e
+  o custo PARA isto) · o **alinhamento de FASE da costura** em traço fechado (a resposta é o
+  `phase_only` que o `ph2d-vec-blend` já construiu) · a torção em rotação grande
+  (Sederberg 1992 / Alexa 2000 — a correspondência era o pré-requisito dos dois).
 - **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C3 (onion fill)
   LANDOU 2026-07-21, smoke APROVADO** — com chaves marcadas na tira um Apply colore todas; o
   que ela acrescenta NÃO é o range (esse é do W7) e sim a **SEMENTE**: o rabisco é autorado em

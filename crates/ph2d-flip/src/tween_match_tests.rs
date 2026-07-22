@@ -624,3 +624,33 @@ fn an_empty_drawing_yields_an_empty_plan() {
     assert_eq!(plan.pairs(), 0);
     assert_eq!(plan.pair_of_b(0), None);
 }
+
+/// **A régua do CUSTO do plano.** O `assign` é `O(n³)` e o doc do módulo afirma *"n é
+/// pequeno (traços de um desenho)"* — uma afirmação sobre um número que ninguém tinha
+/// medido. Um desenho de line-art denso tem centenas de traços, e o tween roda o plano UMA
+/// vez por intervalo (não por quadro), então o orçamento é generoso — mas ele tem de
+/// existir.
+///
+/// `cargo test -p ph2d-flip --release the_plan_cost_ruler -- --ignored --nocapture`
+#[test]
+#[ignore = "régua: o custo do plano por tamanho de desenho"]
+fn the_plan_cost_ruler() {
+    let scene = |n: usize| {
+        let mut d = FlipDrawing::new();
+        for i in 0..n {
+            let (x, y) = ((i % 20) as f32 * 7.0, (i / 20) as f32 * 5.0);
+            d.strokes
+                .push(stroke(&[(x, y), (x + 4.0, y + 2.0), (x + 6.0, y - 1.0)]));
+        }
+        d
+    };
+    println!("\n  traços    plano (ms)");
+    for n in [10usize, 50, 100, 200, 400, 800] {
+        let (a, b) = (scene(n), scene(n));
+        let t = std::time::Instant::now();
+        let plan = TweenPlan::build(&a, &b);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        println!("  {n:6}    {ms:8.3}   ({} pares)", plan.pairs());
+    }
+    println!();
+}

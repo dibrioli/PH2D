@@ -129,30 +129,45 @@ Cada uma custou um smoke ou uma leva de gates. A lição, não a saga.
 
 Nenhum é bloqueante; escolha com o Enio. A ordem abaixo é a minha recomendação de valor/custo.
 
-### §4.1 — Fechar o UNDO da pilha ⚠️ o único aberto que o Enio já reportou
+### ~~§4.1 — Fechar o UNDO da pilha~~ ✅ **FECHADO POR MEDIÇÃO** (2026-07-21, `7d1852ed`)
 
-O Enio reportou três vezes que os efeitos **não têm undo**. Eu **não consegui reproduzir** — dois
-agentes e quatro varreduras confirmaram que **não há assimetria nenhuma** entre os efeitos e o resto
-do documento no caminho input→bus→mutação→diff→restore (`effects` está no `PartialEq`, o restore
-reinstala a cena, a mutação corre antes do hook). Corrigi o único ponto onde eles se comportavam
-diferente (o pivô, §3.9). **Não afirmo que fechou.**
-
-O protocolo que decide numa corrida (o log foi retirado; re-instrumente as três saídas antecipadas
-de `post_frame_undo` se preciso):
+**O undo da pilha de efeitos funciona, e agora há como o provar numa corrida:**
 
 ```
-PH2D_UNDO_LOG=1 cargo run -p ph2d-host-desktop
+PH2D_BUILD_SMOKE=20 cargo run --release -p ph2d-host-desktop
 ```
-Adicione um efeito e leia. **Nenhuma linha** ⇒ o passo não é registado (a montante: `sole_path`
-devolveu `None`, ou o Click não chegou ao drain — e então o efeito também não teria sido aplicado).
+
+Um probe **auto-dirigido e auto-verificável** (`shells/desktop/src/fx_undo_smoke.rs`): clica os
+botões DE VERDADE pelo hit-index (Down e Up em frames separados, como um dedo), varre os **sete**
+gestos da pilha — Add · arrasto de parâmetro · Hide · Remove · Add de novo · 2º arrasto · **Apply
+Effects** — e caminha de volta com sete Ctrl+Z. Uma tabela `EXPECTED` confere `(frame, undo, nº de
+efeitos, nº de vértices)` e imprime **um veredito**. Medido: **15/15 OK** · todo gesto = um passo ·
+o arrasto inteiro = **um** passo · o Apply assa (`verts 4→2`) e o Ctrl+Z repõe **as duas metades**
+num passo · **zero** passos espúrios.
+
+⚠️ **Por que a varredura anterior não podia fechar isto** (e a lição que fica): o gate dela
+(`undo_tests.rs::putting_or_removing_any_effect_round_trips_through_undo`) chama `fx_bridge::add`
+**direto** e prova que o ESTADO ida-e-volta. Tudo verdade — e nada disso toca *"o meu CLIQUE virou
+um passo?"*. Entre o clique e o passo há a máquina que a fixture não continha: o Click nasce no
+`Up`, atravessa o bus, é aplicado DENTRO do `render_frame`, e o `post_frame_undo` decide por dois
+flags (`any_input_this_frame`, `held_button`) que vivem no ritmo dos EVENTOS, não no do drain.
+[[reference_topic_fixture_discipline]]
+
+**O probe sabe ficar VERMELHO** (metade do valor): com a captura do `ProjectState` cega para
+`effects` — exatamente o bug que o report descreve — dá **14/15 FALHA**, e o sintoma emerge
+idêntico ao relatado (clicar Add não mexe na profundidade; o Ctrl+Z acaba apagando a **forma**).
+
+O protocolo antigo continua válido para outros sintomas de undo:
+`PH2D_UNDO_LOG=1 cargo run -p ph2d-host-desktop` — **nenhuma linha** ⇒ o passo não é registado;
 **`vec=true` + passos a mais em frames seguintes** ⇒ passo espúrio, o 1º Ctrl+Z gasta-se nele (a
-classe do `vec_zorder_fixpoint_tests`). Detalhe: §11/§14 do
-`docs/HANDOFF_line_vector_integracao_2026-07-18b.md`.
+classe do `vec_zorder_fixpoint_tests`).
 
-### §4.2 — Chamfer (tipo de quina)
+### ~~§4.2 — Chamfer (tipo de quina)~~ ✅ **JÁ ESTAVA FEITO** (verificado 2026-07-21)
 
-**Quase de graça** sobre o `corner_live` (ADR-0121): reta em vez de arco. Não é efeito de pilha — é
-um modo do raio de quina, por-vértice. O ponto de extensão já existe.
+⚠️ **Entrada ORFÃ — não a reconstrua.** O chamfer existe: `corner_live` tem o toggle de estilo, há
+as ferramentas Fillet/Chamfer, e há cenas de smoke (15/16). Esta entrada foi escrita quando ainda
+não estava, e sobreviveu à wave que a fechou. *Uma lista de pendências velha não é ruído: ela faz a
+próxima LLM propor construir o que existe.*
 
 ### §4.3 — Texto em caminho
 
@@ -160,12 +175,17 @@ Ficou **muito mais barato**: o `arclen.rs` que o Trim trouxe é o pré-requisito
 espaçamento igual pede inverso de comprimento de arco). É um subsistema de fontes, não um efeito —
 uma linha inteira, não uma entrada na pilha.
 
-### §4.4 — ⚠️ Offset Path — como COMANDO, não como efeito
+### ~~§4.4 — ⚠️ Offset Path — como COMANDO, não como efeito~~ ✅ **FEITO** (2026-07-20/21)
 
-**Achado arquitetural desta sessão, e poupa um dia:** offset correto exige tratamento de quinas e
+**Achado arquitetural daquela sessão, e poupou um dia:** offset correto exige tratamento de quinas e
 remoção de auto-interseções — isto é, o **motor booleano** (`ph2d-vec-boolean`). A `ph2d-vec-scene` é
 sem-dependências de propósito, e como todo efeito da pilha é avaliado DENTRO dela, **nenhum efeito
 alcança a booleana**. O Offset tem de ser um **comando de edição**, como as booleanas que já existem.
+
+⚠️ **Esta nota estava CERTA e ninguém a leu a tempo** — a sessão de 2026-07-21 re-derivou o mesmo
+ciclo do cargo a partir do compilador, depois de três correções no modelo errado. O Offset landou
+como **efeito VIVO** (`ph2d_ecs::VecOffset`, cozido por frame na shell + `Apply Offset` que
+materializa) e o **pick segue o desenho** (`7cee9e79`). Detalhe: `HANDOFF_line_vector_TROCA_2026-07-20_offset_vivo.md`.
 
 ### §4.5 — O TWIST, quando houver como verificá-lo
 

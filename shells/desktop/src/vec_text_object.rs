@@ -107,11 +107,19 @@ pub(crate) fn selected_text_object(
 }
 
 /// Re-cozinha um objeto de texto com `params` novos: grava o `VecShape` e regenera a
-/// geometria (compound CENTRADO, in-place). O `Transform` **não é tocado** — a forma
+/// geometria in-place.
+///
+/// **Texto reto:** compound CENTRADO no local 0, e o `Transform` **não é tocado** — a forma
 /// re-cozinha em torno do próprio centro, preservando a pose (e o move do usuário).
+///
+/// **Texto em caminho** ([`crate::vec_text_ride`]): a geometria sai em MUNDO (o caminho já
+/// traz a pose dele), então NÃO é centrada e o `Transform` é devolvido à **identidade** — uma
+/// pose por cima aplicaria a transformação duas vezes. É o desenho do conector, e é o que
+/// torna o gizmo inócuo sobre um texto preso: o que se move é o caminho.
 pub(crate) fn recook_text_object(
     sim: &mut SimWorld,
     scene: &mut VecScene,
+    map: &VecEntityMap,
     id: VecPathId,
     entity: Entity,
     params: VecTextParams,
@@ -122,20 +130,39 @@ pub(crate) fn recook_text_object(
         .iter()
         .find(|p| p.id == id)
         .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+    let guide = crate::vec_text_ride::guide_of(sim, scene, map, entity);
+    let placement = guide.as_ref().map_or(
+        TextPlacement::At([0.0, 0.0]),
+        crate::vec_text_ride::Guide::placement,
+    );
     let compound = text_to_compound_path(
         &font,
         &params.text,
         &layout_of_params(&params),
         &axes_of_params(&params),
-        &TextPlacement::At([0.0, 0.0]),
+        &placement,
         &fill,
         &stroke,
     )
     .map(|mut c| {
-        let ctr = crate::vec_glyph::path_center(&c);
-        crate::vec_glyph::offset_path(&mut c, [-ctr[0], -ctr[1]]);
+        if guide.is_none() {
+            let ctr = crate::vec_glyph::path_center(&c);
+            crate::vec_glyph::offset_path(&mut c, [-ctr[0], -ctr[1]]);
+        }
         c
     });
+    // A identidade é re-imposta a CADA re-cook, não uma vez ao vincular: o gizmo continua a
+    // existir sobre a entidade, e um arrasto que escrevesse pose deslocaria o texto do caminho
+    // até alguém reparar. Devolver a identidade é o que torna o gesto inócuo em vez de errado.
+    if guide.is_some()
+        && sim
+            .world()
+            .get::<Transform>(entity)
+            .is_some_and(|t| *t != Transform::IDENTITY)
+        && let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
+    {
+        *t = Transform::IDENTITY;
+    }
     // Pela porta única (`VecPath::replace_cooked`): o re-cozimento produz geometria e estilo, e
     // NÃO conhece a identidade nem a pilha de efeitos. Isto era `*p = np`, e o `np` nasce com
     // `..Default::default()` — então cada knob do painel apagava a pilha do texto em silêncio.
@@ -163,7 +190,7 @@ pub(crate) fn edit_selected_text(
         return false;
     };
     f(&mut params);
-    recook_text_object(sim, scene, id, e, params);
+    recook_text_object(sim, scene, map, id, e, params);
     true
 }
 

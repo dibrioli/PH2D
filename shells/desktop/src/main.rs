@@ -163,6 +163,7 @@ mod vec_snap;
 mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;
+mod vec_text_ride;
 mod vec_transform;
 mod wetpaint_smoke;
 mod winit_host;

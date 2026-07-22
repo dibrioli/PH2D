@@ -47,6 +47,7 @@ impl PainterTool {
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
+        self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
         self.paint.line_anchor = Some(ev.pos);
         // EDGE-1 wet session: while the paper is still WET and the canvas is untouched since OUR
         // last bake, consecutive watercolor strokes are ONE wash — keep the union buffers + cum

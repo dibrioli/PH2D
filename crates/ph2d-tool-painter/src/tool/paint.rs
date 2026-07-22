@@ -94,7 +94,8 @@ pub(crate) use symmetry::SymmetryPick;
 mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
-mod wetpaint_settings; // Wet Paint authored state (checkbox + W3 knobs + routing) — LOC-cap sibling
+mod wetpaint_commit;
+mod wetpaint_settings; // Wet Paint authored state (checkbox + W3 knobs + routing) — LOC-cap sibling // Wet Paint deposit-at-commit door (doc 21) — LOC-cap sibling
 pub use self::{curve_gizmo::TransformGizmo, curve_tangent::TangentHandles};
 pub use curve::CurveOverlay;
 /// The Ellipse stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
@@ -149,8 +150,7 @@ mod selection_edit;
 mod selection_gizmo;
 /// **Deform** (Liquify) — the single inverse-warp kernel + per-mode displacement fields + Reconstruct/Amount.
 mod warp;
-pub use selection_gizmo::SelectionGizmoView;
-pub use warp::DeformGizmoView;
+pub use self::{selection_gizmo::SelectionGizmoView, warp::DeformGizmoView};
 /// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
 pub mod impasto_rig;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.

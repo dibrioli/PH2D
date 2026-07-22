@@ -77,7 +77,13 @@ impl PainterTool {
             };
             self.restore_region(&rect, &p.pixels);
         }
+        // Doc 21: deliberately NOT `peel_drag_preview` — this is the UNDO path, a
+        // wholesale foreign restore; re-arming the wet guard here would let the
+        // water SURVIVE an undo, violating the guard's law (`wetpaint.rs` module
+        // doc). The stash dies with the record (a restored shape re-stamps and
+        // re-stashes on its refill below).
         self.paint.drag_preview = None;
+        self.paint.wetpaint.pending_deposit.clear();
         self.paint.curve = None;
         self.paint.ellipse = None;
         self.paint.polygon = None;

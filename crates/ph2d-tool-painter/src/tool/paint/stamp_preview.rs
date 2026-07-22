@@ -31,14 +31,14 @@ impl PainterTool {
     /// the UNtiled dabs); the save-region bbox is measured over the tiled set so it still covers the
     /// wrapped copies (else the wrapped paint falls outside the restore region — a trail).
     pub(super) fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
+        // Doc 21 §F layer 2: a deposit_pass leak into a preview re-stamp is I2 resurrected.
+        debug_assert!(!self.paint.wetpaint.deposit_pass);
         // (Watercolor render-path never reaches here — `stamp_stroke_dabs` short-circuits it before the
         // restore/save dance, since it deposits no pixels; see `super::watercolor_render`.)
         // In Selection **Edit** mode the native gizmo drives the SELECTION mask, not pixels — peel any
         // leftover preview and paint nothing (ADR-0103 Am.2). The mask refill runs off the pointer path.
         if self.paint.selection_edit_mode {
-            if let Some(prev) = self.paint.drag_preview.take() {
-                self.restore_region(&prev.rect, &prev.pixels);
-            }
+            self.peel_drag_preview();
             return;
         }
         if let Some(prev) = self.paint.drag_preview.take() {
@@ -81,6 +81,35 @@ impl PainterTool {
             }
             None => self.stamp_dabs(dabs),
         }
+        // Doc 21 law B: record the batch this preview just painted — the
+        // commit deposit IS the preview by construction (nothing re-derived
+        // at commit: seed / offset / boolean-trace drift is structurally
+        // impossible). The stash is the UNtiled parameter; the dispatcher
+        // re-tiles at deposit exactly as it did here. Eraser: a flat erase
+        // is its own commit — nothing to deposit. The re-arm marks the
+        // re-stamp as an OWNED write so a live session survives authoring
+        // (law D); one call covers restore + save + stamp in one dynamic
+        // extent (single-threaded — no tick can interleave).
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint) && !self.paint.eraser {
+            self.paint.wetpaint.pending_deposit.clear();
+            self.paint.wetpaint.pending_deposit.extend_from_slice(dabs);
+            self.wetpaint_rearm_after_own_write();
+        }
+    }
+
+    /// Doc 21: peel the live flat preview back to pristine and clear the
+    /// commit stash — the CANCEL door (Esc, a cancelled shape, the
+    /// selection-edit escape). The peel is an OWNED write (the guard
+    /// re-arms), so cancelling authoring over live water returns the water
+    /// exactly as it was. ⚠️ The UNDO path (`restore_shape_overlay`) is
+    /// deliberately NOT this door: an undo restore is a wholesale foreign
+    /// swap and the guard's whole law is that undo kills the water.
+    pub(super) fn peel_drag_preview(&mut self) {
+        if let Some(prev) = self.paint.drag_preview.take() {
+            self.restore_region(&prev.rect, &prev.pixels);
+            self.wetpaint_rearm_after_own_write();
+        }
+        self.paint.wetpaint.pending_deposit.clear();
     }
 
     /// Commit the interactive preview: drop the restore record so the last batch stays painted.
@@ -114,6 +143,20 @@ impl PainterTool {
     /// what closes it, at the same one point, for every method — and it is also where a sculpt gesture
     /// stops being editable, which is the point of `end_sculpt_session`'s docs.
     pub(super) fn commit_drag_preview(&mut self) {
+        // Doc 21 law C: in Wet Paint the commit IS the deposit — peel the
+        // flat sketch, replay the stash once through the full dispatcher,
+        // let the sim resume ("the sketch melts"). The eraser and an empty
+        // stash fall through to the flat commit below (a flat erase bakes;
+        // an empty stash means nothing previewed).
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && !self.paint.eraser
+            && !self.paint.wetpaint.pending_deposit.is_empty()
+        {
+            self.wetpaint_commit_deposit();
+            self.paint.drag_preview = None;
+            self.paint.wet_shape_active = false;
+            return;
+        }
         self.commit_stroke_height();
         self.end_sculpt_session(); // committed ⇒ the sculpt session dies (the card arms the NEXT stroke)
         self.paint.drag_preview = None;

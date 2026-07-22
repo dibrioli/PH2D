@@ -102,7 +102,9 @@ pub(super) struct WetSession {
     pub(super) base: Arc<Vec<u8>>,
     /// The exact `canvas_rgba` Arc OUR last composite produced (or the one the
     /// session started from). A mismatch = foreign mutation = session over.
-    canvas: Arc<Vec<u8>>,
+    /// `pub(super)` so the doc-21 commit door can re-arm it after an OWNED
+    /// authoring write (`wetpaint_commit::wetpaint_rearm_after_own_write`).
+    pub(super) canvas: Arc<Vec<u8>>,
     /// Session-persistent pigment scratch (`w*h*4`); the region render fully
     /// overwrites the rect it is asked for, so stale bytes outside are inert.
     pigment: Vec<u8>,
@@ -505,6 +507,8 @@ impl PainterTool {
     /// the engine's own gate) and composite whatever it moved. No session = a
     /// true no-op (the OFF contract: not one byte is looked at).
     pub(super) fn wetpaint_tick(&mut self, dt_s: f32) {
+        // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
+        debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none() {
             return;
         }
@@ -537,6 +541,11 @@ impl PainterTool {
     /// stops moving.
     pub(super) fn wetpaint_end_session(&mut self) {
         self.paint.wetpaint.session = None;
+        // Doc 21: mode-leave hygiene — a stash must not survive into another
+        // mode's commit. (The GUARD-kill branch deliberately does NOT clear
+        // it: a mid-authoring undo keeps authoring, and its later commit
+        // still deposits — into a fresh session over the peeled canvas.)
+        self.paint.wetpaint.pending_deposit.clear();
     }
 
     /// The canvas-identity guard (module doc): a foreign `canvas_rgba` swap

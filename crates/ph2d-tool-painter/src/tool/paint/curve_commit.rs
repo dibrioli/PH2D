@@ -84,9 +84,7 @@ impl PainterTool {
             || self.line_cancel();
         if self.has_parked_shapes() {
             // Peel any preview the parked shapes are still stamped into, then drop the whole set.
-            if let Some(prev) = self.paint.drag_preview.take() {
-                self.restore_region(&prev.rect, &prev.pixels);
-            }
+            self.peel_drag_preview(); // doc 21: cancel door — owned peel, stash cleared
             self.clear_parked_shapes();
             self.paint.stroke_undo = None;
             self.paint.wet_shape_active = false; // #3: end the shape wash session (ground rebuilds next)

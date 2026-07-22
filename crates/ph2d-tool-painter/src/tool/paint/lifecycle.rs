@@ -26,6 +26,7 @@ impl PainterTool {
         self.paint.stroke = None; // an in-progress brush stroke (mid-gesture rebind)
         self.paint.stroke_undo = None; // its pending undo snapshot (of the OLD document)
         self.paint.drag_preview = None; // Drag-Dot restore record — holds OLD-canvas pixels
+        self.paint.wetpaint.pending_deposit.clear(); // doc 21: the stash described the OLD canvas
         self.paint.inpaint_mask = Vec::new(); // Inpaint defect marks (rebuilt on the next paint_begin)
         self.paint.mask_scratch_rgba = std::sync::Arc::new(Vec::new()); // Mask scratch of the old sprite
         self.paint.mask_scratch_target = None;

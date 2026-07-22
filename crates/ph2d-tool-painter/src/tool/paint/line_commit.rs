@@ -69,9 +69,7 @@ impl PainterTool {
             return false;
         }
         self.paint.line = None;
-        if let Some(prev) = self.paint.drag_preview.take() {
-            self.restore_region(&prev.rect, &prev.pixels);
-        }
+        self.peel_drag_preview(); // doc 21: cancel door — owned peel, stash cleared
         self.paint.stroke_undo = None;
         self.paint.shape_offset_base_px = 0.0;
         self.paint.shape_offset_norm = 0.5;

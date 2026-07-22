@@ -1227,8 +1227,18 @@ fn the_wet_section_reset_restores_the_knob_defaults() {
 #[test]
 fn no_non_wet_mode_is_ever_owned_by_the_wet_module() {
     for wire in [
-        "brush", "eraser", "smear", "blur", "clone", "mask", "inpaint", "fill", "selection",
-        "deform", "sculpt", "knife",
+        "brush",
+        "eraser",
+        "smear",
+        "blur",
+        "clone",
+        "mask",
+        "inpaint",
+        "fill",
+        "selection",
+        "deform",
+        "sculpt",
+        "knife",
     ] {
         for eraser in [false, true] {
             let mut t = PainterTool::default();

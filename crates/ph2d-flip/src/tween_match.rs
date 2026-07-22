@@ -356,6 +356,82 @@ impl TweenPlan {
     pub fn pairs(&self) -> usize {
         self.a_to_b.iter().filter(|p| p.is_some()).count()
     }
+
+    /// Quantos traços de A o plano cobre (= `a.strokes.len()` na construção).
+    #[must_use]
+    pub fn a_len(&self) -> usize {
+        self.a_to_b.len()
+    }
+
+    /// Quantos traços de B o plano cobre (= `b.strokes.len()` na construção).
+    #[must_use]
+    pub fn b_len(&self) -> usize {
+        self.b_to_a.len()
+    }
+
+    // ── Edição manual (a lição CACANi: o matcher erra, e o artista corrige) ────────
+    //
+    // O `04 §2` sempre disse que o automático não basta — TODO produto de correspondência
+    // (CACANi, GSAP, Corel) dá um escape MANUAL, porque nenhum matcher acerta todo par. Estes
+    // três métodos são esse escape: a UI de correção de pares lê os pares acima e os REESCREVE
+    // aqui. Um par forçado perde o `cost` (vira `None`): a confiança do MATCHER não descreve
+    // mais um par que o ARTISTA escolheu, e o overlay pinta o manual numa cor própria em vez
+    // de mentir uma pontuação.
+
+    /// **Força o par `A[a] ↔ B[b]`** — desfazendo os vínculos antigos dos DOIS.
+    ///
+    /// Um par é uma bijeção parcial: se `A[a]` já casava com outro `B`, esse `B` vira órfão; se
+    /// `B[b]` já era reclamado por outro `A`, esse `A` vira órfão. Sem desfazer os dois lados, o
+    /// mesmo `B` teria dois donos e o inbetween mostraria dois traços derretendo no mesmo lugar.
+    ///
+    /// `false` (no-op) se `a`/`b` estão fora da faixa — o plano não cresce por um índice inválido.
+    pub fn repair(&mut self, a: usize, b: usize) -> bool {
+        if a >= self.a_to_b.len() || b >= self.b_to_a.len() {
+            return false;
+        }
+        // Solta o antigo parceiro de A (esse B fica sem dono).
+        if let Some(old_b) = self.a_to_b[a] {
+            self.b_to_a[old_b] = None;
+        }
+        // Solta o antigo dono de B (esse A vira órfão — some/pisca no inbetween se não for
+        // re-pareado, e é por isso que o overlay o marca).
+        if let Some(old_a) = self.b_to_a[b] {
+            self.a_to_b[old_a] = None;
+            self.cost[old_a] = None;
+        }
+        self.a_to_b[a] = Some(b);
+        self.b_to_a[b] = Some(a);
+        self.cost[a] = None; // par manual: sem pontuação de matcher
+        true
+    }
+
+    /// **Orfana o traço `A[a]`** — ele deixa de ter par (vira cópia estática, ou fade se
+    /// `fade_orphans`). O ex-parceiro `B` também fica sem dono. `false` se `a` está fora da faixa.
+    pub fn unpair_a(&mut self, a: usize) -> bool {
+        if a >= self.a_to_b.len() {
+            return false;
+        }
+        if let Some(b) = self.a_to_b[a] {
+            self.b_to_a[b] = None;
+        }
+        self.a_to_b[a] = None;
+        self.cost[a] = None;
+        true
+    }
+
+    /// **Orfana o traço `B[b]`** — ele nasce do nada (ou fade-in) em vez de vir de um `A`. O
+    /// ex-dono `A` também vira órfão. `false` se `b` está fora da faixa.
+    pub fn unpair_b(&mut self, b: usize) -> bool {
+        if b >= self.b_to_a.len() {
+            return false;
+        }
+        if let Some(a) = self.b_to_a[b] {
+            self.a_to_b[a] = None;
+            self.cost[a] = None;
+        }
+        self.b_to_a[b] = None;
+        true
+    }
 }
 
 /// A diagonal do bbox da união dos dois DESENHOS — a régua de `Δcentróide`.

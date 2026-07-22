@@ -4,6 +4,7 @@
 //! furo que acompanha o contorno, órfão que não pisca — nunca a fórmula reescrita ao lado.
 
 use super::*;
+use crate::DrawingId;
 use crate::ids::FlipObjectId;
 
 fn stroke(pts: &[(f32, f32)]) -> FlipStroke {
@@ -554,5 +555,103 @@ fn a_stroke_that_swings_past_ninety_degrees_is_not_a_reversed_stroke() {
     assert!(
         crate::tween_flip::should_flip(&a, &back),
         "o traço desenhado ao contrário passou batido"
+    );
+}
+
+// ── a correspondência CORRIGIDA à mão (a UI de correção de pares) ───────────────────
+
+/// Monta um objeto com DUAS chaves de dois traços cada, num arranjo em que o automático
+/// já resolve pela FORMA (A-de-baixo↔B-de-baixo, sem movimento) — o palco onde uma
+/// correção FORÇADA se vê. Devolve `(objeto, layer, A, B)` para o teste re-parear.
+fn swap_scene() -> (FlipObject, crate::ids::LayerId, DrawingId, DrawingId) {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    let l = o.add_layer("L");
+    let a = o
+        .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    let b = o
+        .insert_frame(l, 8, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    // A: traço0 em baixo (y=0), traço1 em cima (y=100).
+    let da = o.drawing_mut(a).unwrap();
+    da.strokes.push(stroke(&[(0.0, 0.0), (10.0, 0.0)]));
+    da.strokes.push(stroke(&[(0.0, 100.0), (10.0, 100.0)]));
+    // B: traço0 em CIMA (y=100), traço1 em baixo (y=0) — a ordem trocada. O automático
+    // pareia pela forma (A0↔B1 em baixo, A1↔B0 em cima), então nenhum traço se move.
+    let db = o.drawing_mut(b).unwrap();
+    db.strokes.push(stroke(&[(0.0, 100.0), (10.0, 100.0)]));
+    db.strokes.push(stroke(&[(0.0, 0.0), (10.0, 0.0)]));
+    (o, l, a, b)
+}
+
+/// O `y` do traço 0 do inbetween em `frame` (todos os pontos partilham o `y` nas fixtures).
+fn breakdown_y0(o: &FlipObject, l: crate::ids::LayerId, frame: Frame) -> f32 {
+    let did = o.drawing_at(l, frame).unwrap();
+    o.drawing(did).unwrap().strokes[0].positions()[0].y
+}
+
+/// 🔴 **`tween_with_plan` HONRA a correspondência corrigida.** Sem a correção, o automático
+/// deixa o traço 0 parado em `y=0` (ele já casa com o B de baixo). Forçando `A0↔B0` (o de
+/// CIMA), o inbetween do meio sobe para `y=50` — a prova de que o par manual atravessou o
+/// commit e dirigiu o movimento.
+///
+/// Mutação que sangra: ignorar o `plan_override` (voltar a `TweenPlan::build`) ⇒ o meio
+/// volta a `y=0` e o gate falha. É a razão de existir de toda a feature: um par que o
+/// artista corrigiu tem de aparecer no desenho.
+#[test]
+fn the_corrected_pairing_drives_the_inbetween() {
+    // Referência: o automático deixa o traço 0 parado (casa com o B de baixo).
+    let (mut o, l, _, _) = swap_scene();
+    let req = TweenRequest {
+        layer: l,
+        from: 0,
+        to: 8,
+        count: 1,
+        options: TweenOptions::default(),
+    };
+    assert_eq!(o.tween(req), 1);
+    assert!(
+        breakdown_y0(&o, l, 4).abs() < 1e-3,
+        "premissa: no automático o traço 0 não se move (y≈0)"
+    );
+
+    // Agora com a correção: força A0↔B0 (o de cima). O plano vem dos MESMOS desenhos-chave.
+    let (mut o, l, a, b) = swap_scene();
+    let mut plan = TweenPlan::build(o.drawing(a).unwrap(), o.drawing(b).unwrap());
+    assert_eq!(plan.pair_of_a(0), Some(1), "premissa: auto pareia A0↔B1");
+    assert!(plan.repair(0, 0), "força A0↔B0 (o de cima)");
+    assert_eq!(o.tween_with_plan(req, &plan), 1);
+    assert!(
+        (breakdown_y0(&o, l, 4) - 50.0).abs() < 1e-3,
+        "o par forçado A0↔B0 devia levar o inbetween a y=50, deu {}",
+        breakdown_y0(&o, l, 4)
+    );
+}
+
+/// 🔴 **Um plano de dimensões ERRADAS é descartado, nunca pareado pelo índice errado.** Se
+/// a chave foi editada entre corrigir e commitar, o plano velho não descreve mais os
+/// desenhos — cair no automático é a resposta segura (um par silenciosamente torto é pior).
+///
+/// Mutação que sangra: tirar a guarda de dimensões ⇒ o plano de 1 traço é usado sobre um
+/// desenho de 2 e o `.get` devolve órfãos silenciosos em vez do resultado automático.
+#[test]
+fn a_plan_of_the_wrong_size_falls_back_to_auto() {
+    let (mut o, l, _, _) = swap_scene();
+    // Um plano construído de desenhos de UM traço só (dimensões 1×1, não 2×2).
+    let one = drawing(vec![stroke(&[(0.0, 0.0), (10.0, 0.0)])]);
+    let stale = TweenPlan::build(&one, &one);
+    assert_eq!((stale.a_len(), stale.b_len()), (1, 1));
+    let req = TweenRequest {
+        layer: l,
+        from: 0,
+        to: 8,
+        count: 1,
+        options: TweenOptions::default(),
+    };
+    assert_eq!(o.tween_with_plan(req, &stale), 1);
+    // Caiu no automático: o traço 0 não se move (y≈0), como no gate acima.
+    assert!(
+        breakdown_y0(&o, l, 4).abs() < 1e-3,
+        "o plano obsoleto devia ser descartado e o automático assumir (y≈0)"
     );
 }

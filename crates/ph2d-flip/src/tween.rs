@@ -414,6 +414,25 @@ impl FlipObject {
     ///
     /// `0` se as chaves não existem, não têm desenho, ou não há quadro livre.
     pub fn tween(&mut self, req: TweenRequest) -> u32 {
+        self.tween_inner(req, None)
+    }
+
+    /// [`tween`](Self::tween) com uma **correspondência corrigida à mão** — a UI de correção
+    /// de pares (a lição CACANi) constrói o plano automático, deixa o artista re-parear
+    /// ([`TweenPlan::repair`]/[`TweenPlan::unpair_a`]), e commita por aqui.
+    ///
+    /// ⚠️ **O plano tem de ter sido construído dos MESMOS desenhos-chave** que este `tween`
+    /// vai reamostrar (mesma contagem de traços em A e em B). Se as dimensões não baterem
+    /// (a chave foi editada entre corrigir e commitar), o plano é DESCARTADO e cai no
+    /// automático — parear pelo índice errado mostraria um braço virando um pé, e um par
+    /// silenciosamente torto é pior que o automático que o artista quis corrigir.
+    pub fn tween_with_plan(&mut self, req: TweenRequest, plan: &TweenPlan) -> u32 {
+        self.tween_inner(req, Some(plan))
+    }
+
+    /// O corpo de [`tween`](Self::tween): `plan_override` = a correspondência já corrigida
+    /// (ou `None` para construir a automática).
+    fn tween_inner(&mut self, req: TweenRequest, plan_override: Option<&TweenPlan>) -> u32 {
         let (from, to) = (req.from.min(req.to), req.from.max(req.to));
         let gap = to - from;
         if gap < 2 || req.count == 0 {
@@ -459,7 +478,18 @@ impl FlipObject {
         // **A correspondência é função do PAR, não do fator** — uma busca por inbetween
         // refaria o mesmo trabalho N vezes e, pior, poderia dar respostas DIFERENTES entre
         // quadros vizinhos, o que na tela é o traço piscando de identidade.
-        let plan = TweenPlan::build(&a, &b);
+        //
+        // O `plan_override` (a UI de correção de pares) só é aceito se descreve ESTES
+        // desenhos — a guarda de dimensões é o que impede um plano obsoleto de parear pelo
+        // índice errado (ver `tween_with_plan`). Fora isso, constrói-se o automático.
+        let built;
+        let plan = match plan_override {
+            Some(p) if p.a_len() == a.strokes.len() && p.b_len() == b.strokes.len() => p,
+            _ => {
+                built = TweenPlan::build(&a, &b);
+                &built
+            }
+        };
 
         let mut made = 0;
         for i in 1..=count {

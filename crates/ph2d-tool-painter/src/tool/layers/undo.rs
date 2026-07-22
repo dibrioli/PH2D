@@ -106,6 +106,12 @@ impl PainterTool {
         // nothing else in the system so much as blinks. (`docs/Painter/18…` §10.4; the same
         // source-of-truth-before-its-derivative ordering the selection shapes get, four lines up.)
         self.restore_sculpt(m.sculpt);
+        // Wet Paint (doc 21): an undo is a wholesale foreign swap — the water DIES, eagerly and
+        // HERE, before `restore_shape_overlay` below re-stamps the reinstated editor: that refill's
+        // stash tail re-arms the guard as an OWNED write, and a lazy guard-kill would lose the race
+        // (the session would surf the undo on the refill's re-arm — caught red by G10). Sibling of
+        // the watercolor teardown at the end of this fn.
+        self.wetpaint_end_session();
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
         // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
         // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.

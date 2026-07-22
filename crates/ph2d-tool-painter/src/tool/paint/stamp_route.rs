@@ -293,6 +293,9 @@ impl PainterTool {
         // WET PAINT lays NO relief, explicitly (doc 21): in that mode even the flat AUTHORING
         // previews flow through here (un-owned batches), and relief pinned to a dab footprint
         // would outlive pigment that the commit deposit then makes FLOW away (gate G12).
+        // ⚠️ The contract is honoured TWICE by design: `impasto_applies` (inside the pass) is
+        // Paint-only, so mutating THIS gate alone survives G12 — the same layered-defense shape
+        // as the GPU light's early-out. This branch states the intent where the routing lives.
         if !matches!(self.paint.paint_mode, PaintMode::WetPaint) {
             self.stamp_dabs_height(dabs, &brush);
         }

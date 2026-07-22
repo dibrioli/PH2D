@@ -404,3 +404,131 @@ fn esc_returns_the_water_alive() {
         "the water DIED across an Esc — the peel was read as foreign"
     );
 }
+
+/// Doc 21 G10: UNDO over a wet Apply reinstates the editable shape over
+/// STILL water — the undo restore is a wholesale foreign swap, so the
+/// session dies (the guard's law; the deliberately-unconverted peel in
+/// `restore_shape_overlay`); the editor comes back with a VISIBLE flat
+/// preview; re-Apply deposits into a FRESH session. Mutation that bleeds
+/// it: routing the undo path through the re-arming peel door.
+#[test]
+fn undo_over_a_wet_apply_reinstates_the_editable_shape_over_still_water() {
+    let mut t = wet_tool();
+    draw_ellipse(&mut t);
+    assert!(t.commit_open_shape());
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "fixture: deposit landed"
+    );
+    assert!(t.undo_last(), "fixture: the Apply undoes");
+    t.paint_tick(1.0 / 40.0); // the guard runs — the foreign swap is seen here
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "the water SURVIVED an undo — the guard's law is broken"
+    );
+    assert!(
+        t.paint.ellipse.is_some(),
+        "undo did not reinstate the editable ellipse"
+    );
+    let painted = t
+        .canvas_rgba
+        .chunks_exact(4)
+        .any(|p| p[0] != 255 || p[1] != 255 || p[2] != 255);
+    assert!(painted, "the reinstated shape has no visible flat preview");
+    assert!(t.commit_open_shape(), "re-Apply must commit");
+    assert!(
+        grid_mass(&t) > 1.0,
+        "the re-Apply deposited nothing into the fresh session"
+    );
+}
+
+/// Doc 21 G13: the ERASER × a re-stamp method is a FLAT erase and the water
+/// dies — the flat EraseAlpha preview shows exactly what commits (an honest
+/// preview), and the erase write is foreign to the session (no re-arm for
+/// the eraser, W2.6 extended / the watercolor stance). Mutation that bleeds
+/// it: re-arming the guard for eraser writes.
+#[test]
+fn a_re_stamp_eraser_bakes_through_and_ends_the_session() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = wet_tool();
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    for k in 1..=8 {
+        t.on_canvas_pointer(cp([30.0 + 10.0 * k as f32, 60.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 60.0], PointerPhase::Up));
+    assert!(t.paint.wetpaint.session.is_some(), "fixture: live water");
+    t.set_paint_tool_mode("eraser"); // stays WetPaint (W2.6) with the eraser flag
+    assert!(t.paint.eraser, "fixture: the eraser is on");
+    t.set_brush_stroke_method(StrokeMethod::DragDot.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Up));
+    t.paint_tick(1.0 / 40.0); // the guard sees the foreign erase
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "the water survived a flat erase — the eraser write was re-armed as OURS"
+    );
+    assert!(
+        t.paint.wetpaint.pending_deposit.is_empty(),
+        "an eraser gesture left a deposit stash"
+    );
+}
+
+/// Doc 21 G14: Apply & Keep deposits PER PRESS and the editor survives —
+/// each press is the artist's explicit gesture (not I2), and after the
+/// deposit the next refill re-records and re-holds. Mutation that bleeds
+/// it: clearing the editor in the wet commit branch.
+#[test]
+fn apply_and_keep_deposits_per_press_and_the_editor_survives() {
+    let mut t = wet_tool();
+    draw_ellipse(&mut t);
+    assert!(t.ellipse_commit_keep(), "fixture: first Apply & Keep");
+    let m1 = grid_mass(&t);
+    assert!(m1 > 1.0, "the first press deposited nothing");
+    assert!(t.paint.ellipse.is_some(), "Apply & Keep closed the editor");
+    // Nudge a handle — the editor refills (re-records the stash over the water).
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([106.0, 84.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([106.0, 84.0], PointerPhase::Up));
+    assert!(t.ellipse_commit_keep(), "fixture: second Apply & Keep");
+    let m2 = grid_mass(&t);
+    assert!(
+        m2 > m1 + 1.0,
+        "the second press deposited nothing (m1 {m1}, m2 {m2})"
+    );
+    assert!(
+        t.paint.ellipse.is_some(),
+        "the editor died on the 2nd press"
+    );
+}
+
+/// Doc 21 — the route BELT (seam 2's second layer): even called DIRECTLY
+/// with a live gesture, a non-incremental batch is refused by
+/// `stamp_dabs_wetpaint` — the wall a future routing regression hits.
+/// This is the per-layer gate the layered defense needs (the ownership
+/// split upstream normally prevents the call from ever happening).
+#[test]
+fn the_route_belt_refuses_a_non_incremental_live_batch() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = wet_tool();
+    let mut brush = t.paint.brush;
+    brush.stroke_method = StrokeMethod::Ellipse;
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    t.paint.wetpaint.live_gesture = true;
+    let dabs = [Dab {
+        center: [60.0, 60.0],
+        radius_px: 10.0,
+        coverage: 0.9,
+        color: [0.8, 0.1, 0.1],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: 0.0,
+        stroke_radius_px: 10.0,
+    }];
+    t.stamp_dabs_wetpaint(&dabs, &brush);
+    assert_eq!(
+        grid_mass(&t),
+        0.0,
+        "the belt let a non-incremental live batch deposit"
+    );
+}

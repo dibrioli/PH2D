@@ -35,6 +35,10 @@ impl PainterTool {
     /// the session must die at the next guard (W2.6 extended, the watercolor
     /// stance). Foreign swaps (undo, layer switch, fill) never call this and
     /// still die at the guard — that asymmetry is the entire design.
+    /// ⚠️ The `!eraser` guard is a SECOND layer: today no caller reaches this
+    /// with the eraser on (the stash tail skips erasers; the peel door only
+    /// restores pristine) — mutating it alone survives G13 by design; it
+    /// exists for the caller someone adds next year.
     pub(super) fn wetpaint_rearm_after_own_write(&mut self) {
         if !self.paint.eraser
             && let Some(sess) = self.paint.wetpaint.session.as_mut()

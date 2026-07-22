@@ -551,7 +551,7 @@ impl PainterTool {
     /// End the session (mode switch / explicit teardown). The last composite
     /// is already in `canvas_rgba`, so ending IS the bake — the water just
     /// stops moving.
-    pub(super) fn wetpaint_end_session(&mut self) {
+    pub(crate) fn wetpaint_end_session(&mut self) {
         self.paint.wetpaint.session = None;
         // Doc 21: mode-leave hygiene — a stash must not survive into another
         // mode's commit. (The GUARD-kill branch deliberately does NOT clear

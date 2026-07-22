@@ -7,17 +7,18 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 17 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+- **Commits:** 19 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
   **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
   **doc 23: estudo + implementação — o pigmento responde às tools** →
   **fix pós-smoke do Impasto, em 4 commits**: TODOS os cards com Enable ON (a estreiteza
   selected-tool-only revertida; Material fan-out pros 3 slots de relevo) + os 3 refinos do
   Enio (card Knife só com a faca · card Sculpt logo abaixo do TOOL e só com um verbo em mãos ·
   Filter Layer/Stroke só nos verbos que os têm) →
-  **o dropdown de MODO DE PINTURA + o bug do modo órfão** (§2.1), ver §2/§6;
+  **o dropdown de MODO DE PINTURA + o bug do modo órfão** (§2.1) →
+  **o canvas do Painter que era derrubado e nunca re-pushado** (§2.2), ver §2/§6;
   checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
-- **Gate batched:** `nextest-impacted` **5048/5048** · clippy `--all-targets` **0 warnings** nas
+- **Gate batched:** `nextest-impacted` **5053/5053** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
   intacto · 13 arch-gates verdes · 3 mutações dirigidas sangram (porta de tool → RED de paridade
   bit-exata; rota de SetValue do tuning → RED; véu do Show Wet bakando → RED).
@@ -83,6 +84,46 @@ reinstalado, porque a regra de ENTRADA (*"escolher um meio USA ele"*) mascara a 
 destino **Digital** (que não tem regra de entrada, porque não possui modo nenhum) testa a de saída
 sozinha; (b) o gate exigia o chip **Blend** em Watercolor, onde ele é escondido **de propósito**
 (doc 13 #4) — over-claim corrigido em vez de contrabandeado.
+
+## 2.2 A SPRITE SE MOVIA EM VEZ DE SER PINTADA (2026-07-22)
+
+Enio: *"o app sai de modo de pintura e não volta mais nem se selecionar a sprite e nem se sair e
+entrar novamente no modo de pintura … a sprite se move no canvas e não conseguimos pintar"*.
+
+A sprite **mover** é a assinatura exata de `deliver_canvas_pointer` recusando o Down: ele cai
+adiante e quem o pega é o gizmo. Ele recusa com `canvas_size() == (0,0)` — e o canvas fica assim
+porque **sair do Painter sem edições pendentes derruba o canvas** (`RasterEditTool::deactivate`
+zera `canvas_rgba`/`source_size`) **sem desfazer o binding**.
+
+⚠️ **Um fato, duas cópias, e as duas mentiam.** A shell guardava `last_painter_pushed_entity` (cópia
+do `bound_doc` do tool) e a condição de re-push era `memo != Some(bits)`: depois do teardown o memo
+ainda nomeava a sprite, então o re-push que consertaria tudo era **pulado justamente porque o memo
+dizia que já tinha sido feito**. E mesmo forçando um `bind_document`, a guarda de "mesma sprite" só
+re-semeia quando `doc_is_disposable()` — falso para qualquer pilha multi-layer ou esculpida.
+
+| Peça | O quê |
+|---|---|
+| `PainterTool::needs_document_bind(entity)` (**NOVO**, `tool/documents.rs`) | *outro doc* **ou** *sem pixels* — as duas maneiras de não ter documento |
+| `bind_document` | canvas vazio = **não há documento**: não entra na guarda de mesma-sprite nem é stashado (guardá-lo devolveria um doc sem pixels na linha seguinte) |
+| `render_loop/painter_bridge.rs` | a decisão de bind passa a ser `painter.needs_document_bind(bits)` |
+| `render_loop/mod.rs` | o memo é limpo **sempre** que o Painter sai, não só quando havia bake diferido |
+
+⚠️ **Achado do arredor — um controle MORTO shipado no commit anterior:** segurando o **Smear** do
+rail e escolhendo **Watercolor**, nada acontecia. Cada modo tem `BrushSpec` próprio, e a ordem dos
+passos punha a flag no slot do *Smear* e só depois pegava o pincel, cujo slot ainda lia `false`.
+Impasto passava por **sorte** (espelha em 3 slots) e Wet Paint por **desenho** (`armed` não é
+por-slot) — a forma exata que deixa um meio apodrecer sozinho. `set_paint_media` agora **pega a
+ferramenta ANTES de armar o meio**.
+
+**Gates:** `tool::documents::rebind_tests` (o repro, com 1 e 2 camadas — a 2ª derrota o
+`doc_is_disposable`) + `shells/desktop/tests/the_painter_asks_the_tool_whether_it_needs_a_document.rs`
+(2 arch-gates: a decisão pergunta ao tool · a limpeza do memo está **fora** do ramo do bake) + 2 de
+modelo (`the_painter_opens_on_the_plain_digital_brush`, `picking_a_medium_while_holding_a_rail_tool_arms_it`).
+**5 mutações, 5 sangram.**
+
+⚠️ **Lição de gate:** a 1ª versão do arch-gate só pedia que a limpeza viesse **depois** do teardown,
+e a mutação (limpeza de volta para dentro do `if`, uma linha abaixo) **passou** por ele — *"depois"*
+e *"fora"* não são a mesma pergunta. Agora ele lê o `}` que fecha o bloco.
 
 ## 3. Símbolos que podem COLIDIR
 
@@ -150,7 +191,12 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
    volta a ser o pincel. Idem indo para **Wet Paint**. E confira o **Preset** logo acima: com Wet
    Paint armado, escolher *"Watercolor Basic"* tem de deixar o chip lendo **Watercolor**, não os
    dois meios ligados.
-6. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
+6. **O canvas volta (§2.2):** com a sprite selecionada, entre no Painter, **saia sem pintar nada**,
+   e volte — tem de dar para pintar. (Antes: a sprite era **arrastada** pelo gizmo, e nem
+   re-selecionar nem re-entrar no Painter devolvia a pintura.) Confira também o par que a auditoria
+   achou: pegue o **Smear** do rail e escolha **Watercolor** no Paint Mode — o chip tem de FICAR em
+   Watercolor (antes voltava sozinho para Digital).
+7. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
    idem (boot equivalence + fingerprint com pin justificado; `wetLift=0` reproduz o pin
    antigo ao byte).
 
@@ -165,4 +211,4 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 - A visibilidade do painel via bridge não tem gate de shell dedicado (o espelho é 3 linhas no
   `painter_bridge`; o gate de registry cobre a metade estrutural).
 
-*Linha `Painter` pronta (17 commits). Aguardo ordem de integração.*
+*Linha `Painter` pronta (19 commits). Aguardo ordem de integração.*

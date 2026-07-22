@@ -483,6 +483,22 @@ nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra c
 
 ## §8 — Superfície de colisão (para o handoff de integração)
 
+### Já construído (W0–W3) — o que a integração vê hoje
+
+| Símbolo novo | Onde | Nota de colisão |
+|---|---|---|
+| `VecPath::replace_cooked` | `ph2d-vec-scene/src/recook.rs` (módulo NOVO) | Método inerente, arquivo próprio ⇒ isolado. **É a porta única do re-cozimento**, com 3 chamadores |
+| `ArcPath` (`from_contour`/`total`/`anchor_arcs`/`frame_at`) | `ph2d-vec-scene/src/arc_path.rs` (NOVO) | Arquivo próprio; o `fx_zigzag` passou a delegar (fingerprint pinado prova byte-identidade) |
+| `GlyphFrame` (`on_path`/`shifted_along`/`apply`) | `ph2d-vec-scene/src/text_path.rs` (NOVO) | Arquivo próprio |
+| `TextPlacement` · `caret_frame` | `shells/desktop/src/vec_glyph.rs` | `pub(crate)`; **assinatura mudada** em `text_to_vec_paths`/`text_to_compound_path`/`glyph_to_vec_path` (6 chamadores, todos na shell) |
+| `PH2D_BUILD_SMOKE=21` e `=22` | `build_smoke.rs` + `text_fx_smoke.rs`/`text_path_smoke.rs` (NOVOS) | Os níveis de smoke são uma **lista compartilhada**: 21/22 estavam livres, mas o valor **se CONTA na integração** se outra linha os tiver tomado |
+| `VERTS_REWRITE` ganhou `.replace_cooked(` | `shells/desktop/tests/every_host_that_rewrites_verts_faces_the_radius_handle.rs` | Arch-gate de OUTRA wave que esta linha cegou e curou (§6, W3) |
+
+**Nada de schema bumpou ainda** (`VEC_SCENE_SCHEMA_VERSION` e `PROJECT_SCHEMA` intactos): W0–W3 não
+persistem nada. O bump chega com a **W4**, que é quem dá ao texto um vínculo a guardar.
+
+### O que ainda vem
+
 - **Contratos congelados: NENHUM tocado.**
 - `VEC_SCENE_SCHEMA_VERSION` **13 → +1** · `PROJECT_SCHEMA` **+1** — valores se CONTAM na
   integração, não se escolhem aqui.

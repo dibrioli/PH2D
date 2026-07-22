@@ -156,7 +156,14 @@ impl PainterTool {
             sculpt_radius: self.paint.sculpt.radius_norm,
             sculpt_radius_px: self.sculpt_radius_px() as f32,
             sculpt_rake: self.sculpt_rake(),
-            sculpt_filters: self.paint.sculpt.mode_enum().filters_layer(),
+            // The Filter buttons ask for the verb IN HAND: the verb must reshape
+            // (`filters_layer` — Smooth/Sharpen/Inflate) AND the painter must be in
+            // Sculpt mode. With the Sculpt card visible under every impasto tool
+            // (the all-cards rule, 2026-07-22), the mode half is what keeps the
+            // buttons from appearing while holding the Deposit or the Knife (Enio,
+            // same smoke: "Filter Layer/Stroke estão aparecendo para Deposit e
+            // Knife").
+            sculpt_filters: self.is_sculpt_mode() && self.paint.sculpt.mode_enum().filters_layer(),
             sculpt_can_filter_stroke: self.can_filter_last_stroke(),
             sculpt_smooth: self.sculpt_smooth(),
             sculpt_smooth_px: self.sculpt_smooth_px(),

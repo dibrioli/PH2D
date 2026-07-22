@@ -367,13 +367,21 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
             tool_y < sculpt_y && sculpt_y < body_y,
             "card order must be TOOL < Sculpt < Body (got {tool_y} / {sculpt_y} / {body_y})"
         );
-        // Filter buttons follow the VERB: present for Smooth (a reshaper)…
-        assert!(
-            rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER).is_some(),
-            "Smooth must offer Filter Layer in {mode:?}"
-        );
-        // …and absent for a plane verb (Flatten), whose target is fitted to
-        // the brush's footprint — a layer has none.
+        // Filter buttons ask for the verb IN HAND: present only in Sculpt
+        // mode with a reshaping verb (Smooth here) — never while holding the
+        // Deposit or the Knife, even though the Sculpt card itself is
+        // visible there (Enio, same smoke).
+        let filter = rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER);
+        if mode == "sculpt" {
+            assert!(filter.is_some(), "Smooth in hand must offer Filter Layer");
+        } else {
+            assert!(
+                filter.is_none(),
+                "mode {mode:?} is offering Filter Layer — the buttons need the verb IN HAND"
+            );
+        }
+        // …and absent for a plane verb (Flatten) even in hand, whose target
+        // is fitted to the brush's footprint — a layer has none.
         tool.set_sculpt_mode(2); // Flatten
         set_current_brush(Some(tool.brush_settings()));
         let (_host, _st, rects) = painted(&tool);

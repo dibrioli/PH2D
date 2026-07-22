@@ -54,7 +54,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             let f = film0 as f64;
             let s_mass = susp0 as f64;
             // Post-store mirrors of the cell's mutable fields.
-            let film_c: f32;
+
             let mut susp_c = susp0;
             let mut sett_c = g.sett[i];
             let mut susp_rgb = g.susp_rgb[i];
@@ -90,7 +90,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             } else {
                 1.0
             };
-            film_c = new_film as f32;
+            let film_c: f32 = new_film as f32;
 
             // Settle: the fraction of water lost carries the same fraction of
             // suspended pigment onto the paper (opacity-composited color).

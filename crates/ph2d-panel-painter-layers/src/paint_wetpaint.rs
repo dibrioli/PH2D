@@ -12,6 +12,19 @@ use crate::number_field;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_tool_painter::BrushSettings;
 
+// Knob ranges/steps: each mirrors the `set_wet_knob_value` clamp in the tool
+// (which mirrors SPEC §16's `KNOB_DEFS` slider table) — parameter domains of
+// the fluid engine, not design values.
+const PIGMENT_MAX: f32 = 2000.0; // LITERAL-PX-OK: wet-paint Pigment-per-dab range bound (SPEC §16)
+const PIGMENT_STEP: f64 = 10.0; // LITERAL-PX-OK: wet-paint Pigment slider step (SPEC §16)
+const PICKUP_MAX: f32 = 0.2; // LITERAL-PX-OK: wet-paint Pickup range bound (SPEC §16)
+const PICKUP_STEP: f64 = 0.001; // LITERAL-PX-OK: wet-paint Pickup slider step (SPEC §16)
+const DRY_SPEED_MAX: f32 = 8.0; // LITERAL-PX-OK: wet-paint Evaporation range bound (SPEC §16)
+const DRY_SPEED_STEP: f64 = 0.05; // LITERAL-PX-OK: wet-paint Evaporation slider step (SPEC §16)
+const EDGE_MAX: f32 = 200.0; // LITERAL-PX-OK: wet-paint Edge-darkening range bound (SPEC §16)
+const GRAVITY_MAX: f32 = 0.05; // LITERAL-PX-OK: wet-paint Gravity range bound (SPEC §16)
+const GRAVITY_STEP: f64 = 0.0005; // LITERAL-PX-OK: wet-paint Gravity slider step (SPEC §16)
+
 pub(crate) fn paint_wetpaint_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -66,8 +79,8 @@ pub(crate) fn paint_wetpaint_section(
                 core_ids::PAINTER_WETPAINT_PIGMENT,
                 k.pigment as f32,
                 0.0,
-                2000.0,
-                10.0,
+                PIGMENT_MAX,
+                PIGMENT_STEP,
                 0,
             ),
             (
@@ -75,8 +88,8 @@ pub(crate) fn paint_wetpaint_section(
                 core_ids::PAINTER_WETPAINT_PICKUP,
                 k.pickup as f32,
                 0.0,
-                0.2,
-                0.001,
+                PICKUP_MAX,
+                PICKUP_STEP,
                 3,
             ),
             (
@@ -84,8 +97,8 @@ pub(crate) fn paint_wetpaint_section(
                 core_ids::PAINTER_WETPAINT_DRY_SPEED,
                 k.dry_speed as f32,
                 0.0,
-                8.0,
-                0.05,
+                DRY_SPEED_MAX,
+                DRY_SPEED_STEP,
                 2,
             ),
             (
@@ -93,7 +106,7 @@ pub(crate) fn paint_wetpaint_section(
                 core_ids::PAINTER_WETPAINT_EDGE,
                 k.edge_darkening as f32,
                 0.0,
-                200.0,
+                EDGE_MAX,
                 1.0,
                 0,
             ),
@@ -102,8 +115,8 @@ pub(crate) fn paint_wetpaint_section(
                 core_ids::PAINTER_WETPAINT_GRAVITY,
                 k.gravity as f32,
                 0.0,
-                0.05,
-                0.0005,
+                GRAVITY_MAX,
+                GRAVITY_STEP,
                 4,
             ),
             (

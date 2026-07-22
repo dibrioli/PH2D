@@ -45,11 +45,13 @@ pub fn drive_stroke(
     }
 }
 
+#[allow(dead_code)] // shared test util: each test binary compiles this module and uses a subset
 pub fn has_nan(arr: &[f32]) -> bool {
     arr.iter().any(|v| v.is_nan())
 }
 
 /// NaN sweep over every float field the reference harness checks.
+#[allow(dead_code)] // shared test util: each test binary compiles this module and uses a subset
 pub fn sweep_nan(g: &Grid, label: &str) {
     let fields: [(&str, &[f32]); 5] = [
         ("film", &g.film),

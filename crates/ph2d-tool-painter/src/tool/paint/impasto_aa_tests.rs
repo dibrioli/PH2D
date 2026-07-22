@@ -68,8 +68,8 @@ fn canvas_hash(canvas: &[u8]) -> u64 {
     h
 }
 
-/// MEASUREMENT: current thin-stroke edge profiles + the whole-canvas fingerprints that will become
-/// the hard-mode (checkbox OFF) oracles. Run with `--nocapture` BEFORE implementing the AA.
+// MEASUREMENT note: the thin-stroke edge profiles + whole-canvas fingerprints below became the
+// hard-mode (checkbox OFF) oracles; the standalone measurement scaffold was retired.
 
 /// RED-FIRST product gate (the impasto half of Enio's report): a thin impasto stroke's outer edge
 /// must CLIMB, never jump paper→solid in one texel. Pre-AA every radius was binary (r=10 jumped
@@ -157,9 +157,9 @@ fn the_films_two_halves_agree_on_the_rim() {
         .map(|c| c.as_ref().clone())
         .expect("impasto stroke has a covers plane");
     let mut disagree = 0u32;
-    for i in 0..(size as usize * size as usize) {
+    for (i, &c) in cov.iter().enumerate().take(size as usize * size as usize) {
         let has_pigment = t.canvas_rgba[i * 4 + 1] != 255; // black over white: green drops
-        let has_cover = cov[i] > 0;
+        let has_cover = c > 0;
         if has_pigment != has_cover {
             disagree += 1;
         }

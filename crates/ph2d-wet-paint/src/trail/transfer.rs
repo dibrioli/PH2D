@@ -169,7 +169,7 @@ impl Trail {
                 // stroke.
                 let sx = self.prev_anchor_x + (lx - TRAIL_HALF);
                 let sy = self.prev_anchor_y + (ly - TRAIL_HALF);
-                if sx >= 2 && sx <= w - 1 && sy >= 2 && sy <= h - 1 {
+                if sx >= 2 && sx < w && sy >= 2 && sy < h {
                     let si = sx as usize + sy as usize * s;
                     let had_susp = g.susp[i] > 0.0;
                     let had_sett = g.sett[i] > 0.0;

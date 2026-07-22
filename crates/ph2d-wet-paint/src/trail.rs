@@ -287,7 +287,7 @@ impl Trail {
             wet[i] = wet_byte_from_paper(tooth);
             let lx = x - anchor_x + TRAIL_HALF;
             let ly = y - anchor_y + TRAIL_HALF;
-            if lx < 0 || lx >= TRAIL_SIZE || ly < 0 || ly >= TRAIL_SIZE {
+            if !(0..TRAIL_SIZE).contains(&lx) || !(0..TRAIL_SIZE).contains(&ly) {
                 return;
             }
             let l = (lx + ly * TRAIL_SIZE) as usize;
@@ -368,7 +368,7 @@ impl Trail {
                 }
                 let lx = x - anchor_x + TRAIL_HALF;
                 let ly = y - anchor_y + TRAIL_HALF;
-                if lx < 0 || lx >= TRAIL_SIZE || ly < 0 || ly >= TRAIL_SIZE {
+                if !(0..TRAIL_SIZE).contains(&lx) || !(0..TRAIL_SIZE).contains(&ly) {
                     return;
                 }
                 let l = (lx + ly * TRAIL_SIZE) as usize;

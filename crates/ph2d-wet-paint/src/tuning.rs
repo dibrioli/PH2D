@@ -160,10 +160,10 @@ impl Tuning {
     pub fn reset_group(&mut self, group: KnobGroup) -> Vec<&'static KnobDef> {
         let mut changed = Vec::new();
         for d in KNOB_DEFS.iter() {
-            if d.group == group {
-                if let Some(def) = self.set(d.knob, d.default) {
-                    changed.push(def);
-                }
+            if d.group == group
+                && let Some(def) = self.set(d.knob, d.default)
+            {
+                changed.push(def);
             }
         }
         changed

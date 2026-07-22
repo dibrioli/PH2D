@@ -119,13 +119,13 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
     sim.frame += 1;
     let n = sim.frame;
 
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         rebuild_active_region(g);
         if !g.has_fluid {
             return false;
         }
     }
-    if n % sim.dry_every == 0 {
+    if n.is_multiple_of(sim.dry_every) {
         // The evaporation / re-wet knobs are straight multipliers on the
         // cadence-adaptive scales.
         drying_pass(
@@ -136,7 +136,7 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
             sim.ext_bypass,
         );
     }
-    if n % 4 == 0 {
+    if n.is_multiple_of(4) {
         build_flow_field(g, &p, grav[0], grav[1], sim.ext_bypass);
     } else {
         smooth_velocity(g, &p);
@@ -146,7 +146,7 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
     }
     let vmax = advect(g, &p, grav[0], grav[1]);
     apply_boundaries(g, false);
-    if n % 3 == 0 {
+    if n.is_multiple_of(3) {
         project(g, &p);
         apply_boundaries(g, true);
     }

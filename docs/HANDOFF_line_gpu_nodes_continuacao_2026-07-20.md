@@ -1,4 +1,4 @@
-# HANDOFF (continuação) — `line/gpu-nodes` · ADR-0134 (a grade de vizinhança) · 2026-07-20
+# HANDOFF (continuação) — `line/gpu-nodes` · ADR-0140 (a grade de vizinhança) · 2026-07-20
 
 > **Para o próximo agente desta linha.** Você está ASSUMINDO uma linha que já
 > existe. Antes de ler qualquer código, faça a **FASE 0** do bloco de troca
@@ -23,11 +23,11 @@
 > se o Enio integrar OUTRA linha antes de você continuar; se ninguém integrou nada,
 > o main não andou e você continua direto.
 >
-> **Este doc é o estado + os planos DESTA jornada (ADR-0134).** A história do
+> **Este doc é o estado + os planos DESTA jornada (ADR-0140).** A história do
 > pipeline GPU que já estava no main (os 32 kernels, o tap, o flip do default) mora
 > no [`_2026-07-19.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-19.md) — leia-o
 > se precisar do motor por baixo. O **porquê** de cada decisão desta jornada está no
-> [ADR-0134](architecture/decisions/0134-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md)
+> [ADR-0140](architecture/decisions/0140-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md)
 > e nas mensagens de commit (elas são o diário — `git show <sha>`).
 
 ---
@@ -77,7 +77,7 @@ smoke reprovado:
 
 ---
 
-## §1 — Onde paramos (ADR-0134, tudo em 19 commits locais, NÃO integrado)
+## §1 — Onde paramos (ADR-0140, tudo em 19 commits locais, NÃO integrado)
 
 **A linha entregou a GRADE ESPACIAL na GPU e os DOIS primeiros clientes dela** — a
 capacidade que não existia em lugar nenhum: **interação de vizinhança a milhões**. A
@@ -87,7 +87,7 @@ um **serviço do sequenciador** (D2), não um kernel de boids. Fases fechadas:
 | fase | o que entregou | commit |
 |---|---|---|
 | censo | qual nó está no prefixo CPU dos docs REAIS (re-medido) | `b685beed` |
-| ADR-0134 | a decisão inteira (grade=serviço, hash não bounded, CPU canônica) | `bc4d04e6` |
+| ADR-0140 | a decisão inteira (grade=serviço, hash não bounded, CPU canônica) | `bc4d04e6` |
 | 1a | o **scan** (prefix-sum) reusável na GPU, bit-exato | `8477cac5` |
 | 1b/2 | a **grade** (spatial hash), gateada, bit-exata na RTX | `39ee06ee` |
 | 3 | a grade se liga ao cook do nó | `77ed563a` |
@@ -164,7 +164,7 @@ custa **0,5 ms/tick** (1 tick/frame, campo limitado, zero NaN); rodei o app com 
 tool Motion forçado ativo e o roteador reportou **`FullyGpu`, 0 fallthrough, ~58
 fps** já no zoom default. ⇒ o cook está a 3% de um frame; a queda é o **RENDER** de
 262 k instâncias quando todas ficam visíveis (zoom out) + o overdraw do
-empacotamento na água. É a lição do ADR-0134 (o teto da MÁQUINA ≠ o tamanho de uma
+empacotamento na água. É a lição do ADR-0140 (o teto da MÁQUINA ≠ o tamanho de uma
 DEMO): o count é um **orçamento de RENDER**, não do cook. **Demo reduzido a
 64×1024 = 65.536** (4×, folga de render); o teto do cook segue em MILHÕES (a classe
 4,19 M-em-3,6 ms), alcançável subindo `rows`/`cols`. **SMOKE OK (Enio, 2026-07-20)
@@ -437,7 +437,7 @@ de comando).
 
 ## §5 — Como reportar sua abertura (FASE 0, passo 8)
 
-> "Assumi `line/gpu-nodes` em `Worktrees/line-gpu-nodes` (HEAD `<sha>`). ADR-0134
+> "Assumi `line/gpu-nodes` em `Worktrees/line-gpu-nodes` (HEAD `<sha>`). ADR-0140
 > fechado: a grade espacial na GPU + boids/collide a milhões (fases 1–5), 3 demos
 > (`=7`/`=8`/`=9`) smokados e aprovados, **19 commits locais aguardando integração**
 > do Enio. Próximo passo em aberto: `sim.zone` como escopo de cook (a NEVE na GPU) —

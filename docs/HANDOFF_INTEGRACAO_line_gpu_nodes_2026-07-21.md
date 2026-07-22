@@ -23,7 +23,7 @@
 **Cinco corpos de trabalho, cronológicos e dependentes** (não reordene — cada um constrói sobre
 a infra do anterior):
 
-1. **`bc4d04e6` … `168bcc7e`** — ADR-0134: a **grade espacial** na GPU (scan reusável → grade →
+1. **`bc4d04e6` … `168bcc7e`** — ADR-0140: a **grade espacial** na GPU (scan reusável → grade →
    boids → collide) + as cenas `=7`/`=8`/`=9`.
 2. **`df10ab60` … `cf92e934`** — ADR-0135: a família **`sim.zone`** (o contêiner de laço é um
    passthrough condicional; o recuo parcial) + a cena `=10`.
@@ -178,7 +178,7 @@ O caminho GPU é **ON por default**; `PH2D_GPU_COOK=0` volta pra CPU (útil pra 
 
 ## 8. Detalhe técnico
 
-Tudo — os ADRs 0134–0139, as medições, as armadilhas de fixture, as otimizações **medidas e
+Tudo — os ADRs 0135–0140, as medições, as armadilhas de fixture, as otimizações **medidas e
 reprovadas** (não re-derive) — está em
 [`HANDOFF_line_gpu_nodes_continuacao_2026-07-20.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-20.md)
 e nos próprios ADRs. O relatório da auditoria que abriu a fila §E vive em

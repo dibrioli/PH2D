@@ -12,7 +12,7 @@
 > e nos ADRs [0126](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)
 > · [0127](architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md)
 > · [0130](architecture/decisions/0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md)
-> · [0134](architecture/decisions/0134-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md)
+> · [0140](architecture/decisions/0140-gpu-multi-pass-kernels-neighborhood-sims-build-a-spatial-grid-on-device.md)
 > · [0135](architecture/decisions/0135-gpu-sim-zone-is-a-conditional-passthrough-and-a-partial-claim-retreats.md).
 > **Leia-os antes de auditar** — muita coisa que "parece bug" já é decisão medida.
 
@@ -52,7 +52,7 @@ passo) · as regras A–H de `MODELO_ABERTURA_LINHA.md`.
 ## §0 — Estado da linha (o que existe, tudo em 21 commits locais NÃO integrados)
 
 O pipeline **GPU-resident de Motion Nodes** está maduro: 32 kernels + a grade de
-vizinhança (ADR-0134) + a família `sim.zone` na GPU (ADR-0135), GPU como DEFAULT,
+vizinhança (ADR-0140) + a família `sim.zone` na GPU (ADR-0135), GPU como DEFAULT,
 o painel lendo uma frame GPU-resident pelo tap. Fases fechadas e **smokadas pelo
 Enio**:
 
@@ -61,7 +61,7 @@ Enio**:
 | Fase 1–3: buffers GPU + lowering WGSL + o laço `pre` de sim | 0126/0127 | OK |
 | Emitter (id-gather aritmético, janela densa) | 0130 | OK |
 | 32 kernels · lei de contagem · broadcast · variantes por-param · tap · GPU default | — | OK (`=6`) |
-| A grade de vizinhança + boids/collide a milhões (Fases 1–5) | 0134 | OK (`=7`/`=8`/`=9`) |
+| A grade de vizinhança + boids/collide a milhões (Fases 1–5) | 0140 | OK (`=7`/`=8`/`=9`) |
 | **A família `sim.zone` na GPU** (passthrough condicional + `sim.step`/`sim.collide` + o RECUO do plano) | **0135** | **OK (`=10`, 2026-07-20)** |
 
 ⚠️ **A última coisa que aconteceu (e é uma LIÇÃO pra auditoria):** o smoke do `=10`

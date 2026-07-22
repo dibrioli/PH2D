@@ -3036,6 +3036,12 @@ bola de mesma área). Componente `AreaFormDrag`, registro **17→18**, schema **
    simétrico a velocidade de rotação é exatamente tangencial ⇒ `v·n = 0`. O efeito inteiro
    está no GRADIENTE ao longo da aresta — `EDGE_SAMPLES = 2` o captura.
 
+**Smoke `=28`, e a fixture nasceu CONTAMINADA duas vezes** (a sonda pegou antes do Enio): com os troncos caindo de
+FORA, o de proa — 2,0 de altura — entrava na zona antes e já descia diferente; e pousados, os dois descansavam em
+alturas diferentes por geometria. A comparação só é sobre DIREÇÃO se todo o resto for igual, então eles nascem
+**já dentro** de uma zona funda. Medido: viscosidade **−5,04 / −5,02** (juntos) · forma **−0,17 / −2,63** (2,5 m
+de diferença) · e o mesmo tronco girando dá **2,74 rad** na viscosidade contra **1,21** na forma.
+
 ⚠️ **E DUAS mutações sobreviveram à primeira rodada, ambas nomeando fixture faltante:**
 trocar a normal pela velocidade (só divergem na **sustentação**, que nenhum gate media) e
 a ponte descartar o componente (não havia gate de ECS). Com os dois gates novos, **8

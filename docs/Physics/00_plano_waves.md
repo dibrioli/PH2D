@@ -53,7 +53,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-Contacts** | quem toca quem, onde, sob que carga | `=25` |
 | **W-AreaDrag** | a área RESISTE (vento vs água) | `=26` |
 | **W-Buoyancy** | Arquimedes: a área sabe quanto do corpo está dentro | `=27` |
-| **W-FormDrag** | o arrasto que sabe para onde o corpo aponta | gates |
+| **W-FormDrag** | o arrasto que sabe para onde o corpo aponta | `=28` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

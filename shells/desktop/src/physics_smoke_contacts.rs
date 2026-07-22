@@ -9,7 +9,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    AreaBuoyancy, AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, RigidBody,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, BodyKind, Collider, ColliderShape,
+    InitialVelocity, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -341,6 +342,151 @@ impl crate::App {
              cima do centro de massa, entao o braco de alavanca vira um torque restaurador (de \
              graca, mesma formula). Selecione a poca: Section 11 mostra Trigger = Sensor e as \
              QUATRO rows da area (Force X/Y, Drag, Fluid Density). B liga o contorno."
+        );
+    }
+
+    /// **Scene 28 (W-FormDrag).** O arrasto que sabe para onde o corpo está apontado.
+    ///
+    /// Duas lanes, os MESMOS troncos (2,0 × 0,4), largados **já dentro** de uma zona
+    /// funda — a orientação é a única coisa que difere entre eles.
+    ///
+    /// - **ESQUERDA — `Drag` (viscosidade):** os dois descem **juntos** (medido: −5,04 e
+    ///   −5,02). O arrasto uniforme não sabe qual é qual;
+    /// - **DIREITA — `Shape Drag`:** o de **proa** afunda **2,5 m a mais** que o de
+    ///   través (−2,63 contra −0,17), porque oferece 0,4 de secção contra 2,0.
+    ///
+    /// E embaixo, **o mesmo tronco girando em cada lane**, sem gravidade: na viscosidade
+    /// ele ainda deu 2,74 rad; na forma, 1,21 — **mais que o dobro de freio**, e nenhum
+    /// número disse à zona que aquilo era comprido.
+    ///
+    /// ⚠️ Nenhum deles **vira** para a correnteza, e isso está certo: num corpo simétrico
+    /// o centro de pressão é o centro de massa, então não há braço de alavanca. Uma
+    /// flecha só se alinha porque as penas ficam ATRÁS do centro de massa.
+    ///
+    /// ⚠️ A fixture nasceu **contaminada duas vezes** e a medição pegou: com os troncos
+    /// caindo de FORA, o de proa (2,0 de altura) entrava na zona antes e já descia
+    /// diferente; e pousados, os dois descansavam em alturas diferentes por geometria. A
+    /// comparação só é sobre DIREÇÃO se tudo mais for igual.
+    ///
+    /// Toca sozinha. **B** liga o contorno.
+    pub(crate) fn physics_smoke_form_drag(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        // Chão bem abaixo da zona, para eles pousarem depois que a comparação já foi vista.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, -8.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [16.0, 0.5], [0.40, 0.42, 0.48, 1.0]),
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 8.0,
+                    half_y: 0.25,
+                },
+                ..Collider::default()
+            },
+        ));
+
+        for (cx, form, tint, tag) in [
+            (-2.8f32, 0.0f32, [0.55, 0.55, 0.60, 0.18], "Drag"),
+            (2.8, 3.0, [0.35, 0.75, 0.95, 0.22], "Shape"),
+        ] {
+            let e = world
+                .spawn((
+                    Transform::from_translation(Vec2::new(cx, -2.0)),
+                    Sprite::atlas(WHITE_TILE_KEY, [4.8, 10.0], tint),
+                    Name::new(format!("{tag} Zone")),
+                    RigidBody {
+                        kind: BodyKind::Static,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 2.4,
+                            half_y: 5.0,
+                        },
+                        is_sensor: true,
+                        ..Collider::default()
+                    },
+                ))
+                .id();
+            if form > 0.0 {
+                world.entity_mut(e).insert(AreaFormDrag(form));
+            } else {
+                // Calibrado para frear tanto quanto a forma freia de través: assim a
+                // comparação é sobre DIREÇÃO, não sobre quem freia mais.
+                world.entity_mut(e).insert(AreaDrag(2.0));
+            }
+
+            for (dx, rot, hue, what) in [
+                (-1.2f32, 0.0f32, [0.95, 0.80, 0.30, 1.0], "broadside"),
+                (
+                    1.2,
+                    std::f32::consts::FRAC_PI_2,
+                    [0.95, 0.45, 0.30, 1.0],
+                    "edge-on",
+                ),
+            ] {
+                world.spawn((
+                    Transform {
+                        translation: Vec2::new(cx + dx, 2.0),
+                        rotation: rot,
+                        scale: Vec2::new(1.0, 1.0),
+                        skew_x: 0.0,
+                        skew_y: 0.0,
+                    },
+                    Sprite::atlas(WHITE_TILE_KEY, [2.0, 0.4], hue),
+                    Name::new(format!("{tag} {what}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 1.0,
+                            half_y: 0.2,
+                        },
+                        ..Collider::default()
+                    },
+                    ph2d_physics_ecs::LockRotation,
+                ));
+            }
+
+            // O MESMO tronco girando em cada lane, sem gravidade: só o freio aparece.
+            world.spawn((
+                Transform::from_translation(Vec2::new(cx, -5.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [2.0, 0.4], [0.55, 0.95, 0.60, 1.0]),
+                Name::new(format!("{tag} spinner")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 0.2,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::GravityScale(0.0),
+                InitialVelocity {
+                    linvel: [0.0, 0.0],
+                    angvel: 6.0,
+                },
+            ));
+        }
+
+        eprintln!(
+            "[physics-smoke 28] Tocando. Os MESMOS troncos largados JA DENTRO de duas zonas fundas \
+             -- a orientacao e a unica coisa que difere. ESQUERDA e Drag UNIFORME (viscosidade): o \
+             de trave (amarelo) e o de proa (laranja) descem JUNTOS, porque o arrasto uniforme nao \
+             sabe qual e qual (medido: -5,04 e -5,02). DIREITA e SHAPE DRAG: o de PROA afunda 2,5 m \
+             A MAIS que o de trave (-2,63 contra -0,17), porque oferece 0,4 de seccao contra 2,0. \
+             EMBAIXO, o MESMO tronco girando em cada lane, sem gravidade: na viscosidade ele ainda \
+             deu 2,74 rad, na forma 1,21 -- mais que o DOBRO de freio, e nenhum numero disse a zona \
+             que aquilo era comprido. NOTE que nenhum deles VIRA para a correnteza, e isso esta \
+             CERTO: num corpo simetrico o centro de pressao e o centro de massa, entao nao ha braco \
+             de alavanca -- uma flecha so se alinha porque as penas ficam ATRAS do centro de massa. \
+             B liga o contorno."
         );
     }
 }

@@ -30,6 +30,7 @@
 //! | `25`| W-Contacts| WHERE THEY TOUCH: white crosses on every contact, growing with the LOAD -- a stack, and a ball in a V |
 //! | `26`| W-AreaDrag| WIND vs WATER: the same three boxes into a vacuum, a wind and a pool -- drag is what makes it a liquid |
 //! | `27`| W-Buoyancy| ARQUIMEDES: cortica boia na linha d'agua, pedra afunda, e o barco tombado se ENDIREITA sozinho |
+//! | `28`| W-FormDrag| SECCAO: de proa passa na frente de trave; e o tronco girando para enquanto a bola roda |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -106,6 +107,7 @@ impl crate::App {
             "25" => self.physics_smoke_contacts(),
             "26" => self.physics_smoke_area_drag(),
             "27" => self.physics_smoke_buoyancy(),
+            "28" => self.physics_smoke_form_drag(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -27,6 +27,6 @@ pub fn set_current_brush(brush: Option<BrushSettings>) {
 /// an untouched section authors anyway.
 pub(crate) fn current() -> BrushSettings {
     CURRENT
-        .with(|c| c.borrow().clone())
+        .with(|c| *c.borrow())
         .unwrap_or_else(|| ph2d_tool_painter::PainterTool::default().brush_settings())
 }

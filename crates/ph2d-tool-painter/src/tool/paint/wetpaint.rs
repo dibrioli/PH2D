@@ -218,7 +218,7 @@ impl WetSession {
     /// ENGINE's own tile is the tooth source (an armed artist Paper slot
     /// overrides it; its three physical knobs hide in the panel then).
     fn reconcile_facts(&mut self, f: WetEngineFacts) {
-        use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS};
+        use ph2d_wet_paint::tuning::KNOB_DEFS;
         if self.applied == f {
             return;
         }
@@ -229,9 +229,10 @@ impl WetSession {
         if f.knobs.erase != a.knobs.erase {
             self.engine.sliders.erase = f.knobs.erase;
         }
-        for i in 0..KNOB_COUNT {
-            if f.knobs.knobs[i] != a.knobs.knobs[i] {
-                self.engine.set_knob(KNOB_DEFS[i].knob, f.knobs.knobs[i]);
+        let moved = KNOB_DEFS.iter().zip(&f.knobs.knobs).zip(&a.knobs.knobs);
+        for ((def, new), old) in moved {
+            if new != old {
+                self.engine.set_knob(def.knob, *new);
             }
         }
         if f.tilt != a.tilt {

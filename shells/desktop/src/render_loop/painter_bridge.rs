@@ -362,13 +362,13 @@ pub(super) fn dispatch(
             // few floats.
             let brush_snapshot = painter.brush_settings();
             let stroke_method_u8 = brush_snapshot.stroke_method;
-            ph2d_panel_painter_layers::set_current_brush(Some(brush_snapshot.clone()));
+            ph2d_panel_painter_layers::set_current_brush(Some(brush_snapshot));
             // Wet Tuning side panel (doc 22): same snapshot, same cadence — and
             // its visibility MIRRORS the tool's authored Tuning checkbox
             // (painter active + wet armed + tuning_open). Edge-triggered z
             // bump: `WET_TUNING_PANEL` rides the z fallback list, but bumping
             // on open keeps it above its dock neighbours.
-            ph2d_panel_wet_tuning::set_current_brush(Some(brush_snapshot.clone()));
+            ph2d_panel_wet_tuning::set_current_brush(Some(brush_snapshot));
             let tuning_open =
                 painter_is_active && brush_snapshot.wetpaint && brush_snapshot.wet_tuning_open;
             hero.panel_visibility.insert("wet_tuning", tuning_open);

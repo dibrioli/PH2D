@@ -277,6 +277,7 @@ fn header_row(
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
+#[allow(clippy::too_many_arguments)] // a row is (geometry, id, label, state) — splitting hides the seam
 fn checkbox_row(
     ctx: &mut PaintCtx,
     theme: Theme,

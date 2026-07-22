@@ -118,8 +118,8 @@ fn the_blend_lane_door_remixes_settled_paint() {
                 let i = cx + 1 + (cy + 1) * g.s;
                 let m = g.sett[i] as f64;
                 mass += m;
-                for c in 0..3 {
-                    acc[c] += g.sett_rgb[i][c] as f64 * m;
+                for (a, c) in acc.iter_mut().zip(g.sett_rgb[i].iter()) {
+                    *a += f64::from(*c) * m;
                 }
             }
         }

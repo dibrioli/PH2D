@@ -8,6 +8,7 @@ use ph2d_wet_paint::painter::Engine;
 /// exactly like the reference harness: one pointer sample per step, sim
 /// stepped only when the engine says it should (paused while down except for
 /// blow), then the release tail, then `sim_after` extra steps.
+#[allow(dead_code)] // shared test util: each test binary compiles this module and uses a subset
 pub fn drive_stroke(
     engine: &mut Engine,
     x0: f64,

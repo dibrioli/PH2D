@@ -33,6 +33,14 @@ extend-ignore-identifiers-re = [
 FleX = "FleX"
 
 [default.extend-words]
+# CITACOES VERBATIM do Enio (2026-07-20/21) sobre a aba Containers da timeline:
+# "a aba conteiner so serve como uma lista de containers criados". Corrigir a grafia
+# dentro das aspas falsificaria a citacao, entao a palavra entra aqui. O identificador
+# e o nome da feature seguem "container" (ingles correto) no codigo.
+conteiner = "conteiner"  # pt-BR (citacao do Enio)
+conteiners = "conteiners"  # pt-BR (citacao do Enio)
+Conteiners = "Conteiners"  # pt-BR (citacao do Enio)
+coincidente = "coincidente"  # pt-BR (doc do flip-colorize)
 exclusivos = "exclusivos"  # pt-BR (comentario de codigo)
 respondendo = "respondendo"  # pt-BR (comentario de codigo)
 TRANSFERE = "TRANSFERE"  # pt-BR (handoff wet paint)

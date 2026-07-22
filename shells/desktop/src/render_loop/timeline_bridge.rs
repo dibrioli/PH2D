@@ -324,7 +324,7 @@ pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
 /// timeline window that instance occupies — leads included ([`ph2d_timeline::entry_reach`]:
 /// bracketing only the moving window would cut the very fades the artist is tuning, the
 /// `stack_end_seconds` bug one level down). A playhead standing outside that window is
-/// seeked to its start: the alternative is a marker-less ruler that reads as broken.
+/// moved to its start: the alternative is a marker-less ruler that reads as broken.
 ///
 /// Leaving (path empty) hands the transport back to the DOCUMENT's Arrange loop via the
 /// same [`ph2d_timeline::sync_transport_loop`] a tab switch uses — navigation is not an

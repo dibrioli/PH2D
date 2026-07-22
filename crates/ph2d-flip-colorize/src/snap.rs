@@ -174,8 +174,8 @@ pub(crate) fn snap_ring_to_axis(
     for i in 0..m {
         let (p, ad) = out[i];
         walked.push((p, ad));
-        let (pn, adn) = out[(i + 1) % m];
-        let (Some(a), Some(b)) = (ad, adn) else {
+        let (pn, ad_next) = out[(i + 1) % m];
+        let (Some(a), Some(b)) = (ad, ad_next) else {
             continue;
         };
         if a.stroke != b.stroke || a.seg == b.seg {

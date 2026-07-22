@@ -338,7 +338,7 @@ fn entering_brackets_the_loop_around_the_instance_and_leaving_restores() {
     );
 }
 
-/// **A playhead standing outside the entered instance is seeked to its start** — the
+/// **A playhead standing outside the entered instance is moved to its start** — the
 /// alternative is a marker-less ruler that reads as broken (the pre-fix symptom).
 #[test]
 fn entering_from_outside_the_window_seeks_to_its_start() {

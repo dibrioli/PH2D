@@ -92,6 +92,9 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // reduction, so the first whose module gains `reduce_*` symbols.
     ph2d_node_motion_bend::register(&mut reg).unwrap();
     ph2d_node_motion_twist::register(&mut reg).unwrap();
+    // The first node with TWO reductions (the centroid) — the plural
+    // `reduce_cx`/`reduce_cy` symbols.
+    ph2d_node_motion_spherize::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

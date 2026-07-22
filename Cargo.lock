@@ -5238,6 +5238,7 @@ dependencies = [
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-sort",
+ "ph2d-node-motion-spherize",
  "ph2d-node-motion-spring",
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-tint",

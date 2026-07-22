@@ -115,3 +115,79 @@ pub(super) fn build_gpu_deform_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The **breathing LENS** (`PH2D_GPU_COOK_DEMO=13`) — the ready-to-smoke document
+/// for the `Sum` half of the reduction channel: `grid(700×700) → spherize →
+/// output`, the bulge/pinch driven by an LFO, **490.000 instances 100% on the
+/// device**.
+///
+/// ## What you should see
+///
+/// A dense sheet whose **middle swells toward you and then sucks back in**, like a
+/// magnifying glass sliding over it and reversing — the centre spreads out at the
+/// peak of the bulge, pulls into a knot at the pinch, and the rim of the lens
+/// stays put throughout (the quadratic falloff makes the edge seamless). The
+/// motion is smooth and radial; nothing should shear or tear.
+///
+/// ## What it is actually demonstrating
+///
+/// The lens is centred on the layout's **centroid**, and the centroid is
+/// `Σ P / n` — two `Sum` reductions over the whole stream (`cx`, `cy`), divided by
+/// the count. This is the FIRST node whose kernel reads **more than one**
+/// whole-stream reduction, and the first to fold with `Sum` rather than `Max`
+/// (`bend`/`twist` are bit-exact `Max`; a `Sum` is a documented ε — see
+/// `ph2d_nodegraph::reduce_meta`). If the swell ever centres somewhere other than
+/// the middle of the sheet, one of the two sums is wrong.
+///
+/// ⚠️ **`amount` is broadcast at index 0**, matching the CPU node, which reads
+/// `vals.first()` — one bulge factor for the whole lens even under a per-element
+/// field. The LFO here is length-1, so it is the whole field's breath.
+pub(super) fn build_gpu_spherize_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 700.0);
+    g.set_param(grid, "cols", 700.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+
+    // A large lens (most of the 700-unit sheet) so the bulge is the whole field
+    // breathing, not a small bump in the middle.
+    let sph = g.add_node("motion.spherize");
+    g.set_param(sph, "radius", 320.0);
+
+    // The breath: bipolar `amount` (swells then pinches). Amplitude 0.9 keeps the
+    // pinch short of the r=0 singularity the node guards but never wants to sit on.
+    let breath = g.add_node("value.lfo");
+    g.set_param(breath, "period", 6.0);
+    g.set_param(breath, "amplitude", 0.9);
+
+    let out = g.add_node("motion.output");
+
+    for (i, n) in [grid, sph, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 200.0,
+                y: 140.0,
+            },
+        );
+    }
+    g.set_pos(breath, Pos { x: 280.0, y: 320.0 });
+
+    for (from, to, port) in [(grid, sph, 0u16), (breath, sph, 1), (sph, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

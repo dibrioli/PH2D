@@ -30,7 +30,7 @@ use super::gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
-use super::gpu_deform_demo::build_gpu_deform_demo_document;
+use super::gpu_deform_demo::{build_gpu_deform_demo_document, build_gpu_spherize_demo_document};
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
@@ -93,6 +93,10 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // document is not a frontier, it is an absence.
     push("demo=12 deformer cloth (bend->twist)", &|d| {
         build_gpu_deform_demo_document(d, reg)
+    });
+    // The `Sum` centroid deformer — the two-reduction node.
+    push("demo=13 spherize lens (Sum centroid)", &|d| {
+        build_gpu_spherize_demo_document(d, reg)
     });
     out
 }

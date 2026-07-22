@@ -53,6 +53,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_lfo::register(&mut reg).unwrap();
     ph2d_node_motion_bend::register(&mut reg).unwrap();
     ph2d_node_motion_twist::register(&mut reg).unwrap();
+    ph2d_node_motion_spherize::register(&mut reg).unwrap();
+    ph2d_node_motion_move::register(&mut reg).unwrap();
     reg
 }
 
@@ -206,6 +208,78 @@ fn the_twist_deformer_matches_the_cpu_within_epsilon() {
         let dev = cook_gpu(&gpu, &reg, &g, out);
         compare(&format!("twist angle {angle} pivot {pivot:?}"), &cpu, &dev);
     }
+}
+
+/// `motion.spherize`, on the device, agrees with the canonical bulge/pinch — the
+/// **`Sum` reduction, and TWO of them** (the centroid).
+///
+/// ⚠️ **The grid is TRANSLATED before the spherize**, so its centroid is a number
+/// the reduction must actually compute — not the origin it would be by symmetry.
+/// A `Sum` that folded only the first block, or dropped `cy`, would put the lens
+/// centre somewhere else and the whole warp would land wrong; with the centroid
+/// pinned at the origin (a bare grid) several such bugs would look plausible.
+/// This is the `Sum` analogue of moving the pivot off-centre for `bend`.
+///
+/// The bound is [`EPS_POS`], the same as the `Max` deformers **despite** `Sum`
+/// being an ε where `Max` is exact — because the centroid divides the layout-scale
+/// sum back down by `n`, so its own error is tiny; measured worst is printed below.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_spherize_deformer_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // amount ∈ {bulge, pinch}, radius spanning the lens sizes; the grid is
+    // shifted by `offset` so the centroid is off-origin.
+    for (amount, radius, offset) in [
+        (0.8f32, 6.0f32, [4.0f32, -2.5]),
+        (-0.6, 9.0, [-3.0, 1.5]),
+        (0.5, 4.0, [0.0, 0.0]),
+    ] {
+        let (g, out) = spherize_chain(&reg, amount, radius, offset);
+        let cpu = cook_cpu(&reg, &g, out);
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        compare(
+            &format!("spherize amount {amount} radius {radius} offset {offset:?}"),
+            &cpu,
+            &dev,
+        );
+    }
+}
+
+/// A grid, TRANSLATED (so the spherize's centroid is off-origin), spherized, then
+/// output. `amount` is a constant `value.lfo` at phase 0 (a fixed bulge/pinch —
+/// the LFO is how `amount` is authored, and a constant is the reproducible case).
+fn spherize_chain(reg: &NodeRegistry, amount: f32, radius: f32, offset: [f32; 2]) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", SIDE);
+    g.set_param(grid, "cols", SIDE);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", offset[0]);
+    g.set_param(mv, "dy", offset[1]);
+    let sph = g.add_node("motion.spherize");
+    g.set_param(sph, "radius", radius);
+    // A constant amount: a `value.lfo` with amplitude carrying the level and a
+    // period so long it does not move at the fixed playhead. Simpler: offset.
+    let amt = g.add_node("value.lfo");
+    g.set_param(amt, "amplitude", 0.0);
+    g.set_param(amt, "offset", amount);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(grid, mv, 0u16), (mv, sph, 0), (amt, sph, 1), (sph, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out)
 }
 
 /// **The deformer actually DEFORMS**, and the reduction is what makes it do so.

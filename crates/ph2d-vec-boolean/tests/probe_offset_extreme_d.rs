@@ -46,7 +46,10 @@ fn probe_offset_cost_on_the_d_ladder() {
                 })
                 .collect();
             ts.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            println!("join={join:?} d={d:+.1} -> {:.3} ms (mediana de {n})", ts[n / 2]);
+            println!(
+                "join={join:?} d={d:+.1} -> {:.3} ms (mediana de {n})",
+                ts[n / 2]
+            );
         }
     }
 }
@@ -65,7 +68,10 @@ fn probe_every_join_on_the_d_ladder() {
                 .map(|p| p.verts.len() + p.subpaths.iter().map(|c| c.verts.len()).sum::<usize>())
                 .sum();
             let area: f64 = out.iter().map(|p| ph2d_vec_boolean::area(p).abs()).sum();
-            println!("join={join:?} d={d:+.2} -> paths={} verts={verts} area={area:.4}", out.len());
+            println!(
+                "join={join:?} d={d:+.2} -> paths={} verts={verts} area={area:.4}",
+                out.len()
+            );
         }
         println!("---");
     }

@@ -28,12 +28,12 @@ pub use snap::{SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_tar
 /// A alça do **raio de quina** (Live Corners) — módulo irmão (LOC cap).
 pub mod corner_handle;
 
-/// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
-/// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
-mod pen_drag;
 /// **O press das ferramentas Fillet / Chamfer** (`on_press_corner`) — módulo irmão (LOC cap).
 /// Bloco `impl PenTool` inerente; move e release reusam o caminho do pen.
 mod corner_tool;
+/// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
+/// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
+mod pen_drag;
 use ph2d_vec_scene::{Paint, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).

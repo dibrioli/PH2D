@@ -91,5 +91,7 @@ fn measure_power_stroke_ribbon() {
     let (len, width) = (20.0, 1.0);
     let out = ph2d_vec_boolean::power_stroke(&straight(len, width), &profile);
     let dev = ripple(&out, len, width, &profile);
-    println!("reta: desvio máx da borda ao perfil = {dev:.5} (o festão da união de discos era ~0.08)");
+    println!(
+        "reta: desvio máx da borda ao perfil = {dev:.5} (o festão da união de discos era ~0.08)"
+    );
 }

@@ -147,7 +147,11 @@ fn dragging_outward_keeps_the_corner_sharp() {
     // (5,-1) é para FORA da forma (projeção na bissetriz interna negativa).
     pen.on_drag(&mut scene, [5.0, -1.0], &mut nosnap);
     pen.on_release();
-    assert_eq!(radius(&scene, id, 1), 0.0, "arrasto para fora = quina afiada");
+    assert_eq!(
+        radius(&scene, id, 1),
+        0.0,
+        "arrasto para fora = quina afiada"
+    );
 }
 
 /// REPRO (Enio): fillet numa quina, troca de ferramenta, chanfra OUTRA — a 1ª sobrevive?
@@ -172,6 +176,9 @@ fn repro_two_tools_two_corners() {
         radius(&scene, id, 1),
         radius(&scene, id, 2)
     );
-    assert!(radius(&scene, id, 1) > 0.0, "a 1a quina (fillet) sobreviveu?");
+    assert!(
+        radius(&scene, id, 1) > 0.0,
+        "a 1a quina (fillet) sobreviveu?"
+    );
     assert!(radius(&scene, id, 2) < 0.0, "a 2a quina chanfrou?");
 }

@@ -74,10 +74,12 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
             true,
         )
     };
-    // A faísca: um traço curto. Salta de x=-5 (chave 0) para x=+5 (chave 8), e é desenhada
-    // um pouco mais longa na chegada. O salto (centróide) + a diferença de comprimento levam
-    // o custo do par BEM acima do teto de recusa (0.38), então o automático a ORFANA — que é
-    // exatamente o que o gate `the_scene_orphans_the_spark_until_paired` confirma.
+    // A faísca: um traço curto, um de cada lado do corpo, DENTRO do quadro. A câmera padrão
+    // mostra ~±3 unidades — pôr a faísca em ±5 a deixava FORA da tela, e a demonstração
+    // inteira com ela. O órfão vem da diferença de FORMA (o salto de lado + a de comprimento),
+    // não da distância pura: `custo ≈ centróide + |Δcomprimento|` passa BEM do teto de recusa
+    // (0.38), então o automático a ORFANA — o que o gate
+    // `the_scene_orphans_the_spark_until_paired` confirma.
     let spark = |x: f32, len: f32| {
         line(
             &seg(Vec2::new(x, 0.2), Vec2::new(x + len, 0.2), 4),
@@ -90,13 +92,13 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
         let dr = obj.drawing_mut(d0).expect("desenho");
         dr.strokes.push(torso());
         dr.strokes.push(head());
-        dr.strokes.push(spark(-5.0, 0.6)); // a faísca à ESQUERDA (curta)
+        dr.strokes.push(spark(-2.0, 0.5)); // a faísca à ESQUERDA (curta), on-screen
     }
     if let Some(d8) = obj.insert_frame(l, 8, Hold::Implicit, KeyKind::Keyframe) {
         let dr = obj.drawing_mut(d8).expect("desenho");
         dr.strokes.push(torso());
         dr.strokes.push(head());
-        dr.strokes.push(spark(4.4, 1.2)); // a faísca à DIREITA (mais longa)
+        dr.strokes.push(spark(1.1, 1.6)); // a faísca à DIREITA (mais longa), on-screen
     }
     l
 }
@@ -149,10 +151,12 @@ impl crate::App {
              E um traco SEM par ganha um ANEL MAGENTA: ele SOME (se estava na partida) ou\n\
              NASCE do nada (se estava na chegada) no meio do tween.\n\
              \n\
-             NESTA CENA: o tronco e a cabeca mal se movem, entao casam VERDE. Mas a FAISCA\n\
-             salta longe demais, e o automatico DESISTE dela -- os dois cantos ganham um\n\
-             ANEL MAGENTA (uma faisca a esquerda na partida, uma a direita na chegada, sem\n\
-             linha ligando as duas).\n\
+             NESTA CENA: no meio esta o CORPO (um tronco vertical + uma cabeca em losango --\n\
+             parece uma chave, mas e' so o sujeito estavel do teste). Ele mal se move, entao\n\
+             o tronco e a cabeca casam VERDE. De cada lado do corpo ha uma FAISCA pequena\n\
+             (traco curto): ela pula de lado E muda de comprimento, o automatico DESISTE\n\
+             dela, e as DUAS (a da esquerda e a da direita) ganham um ANEL MAGENTA, sem\n\
+             linha ligando -- e' O QUE VOCE VAI PAREAR.\n\
              \n\
              O QUE FAZER\n\
              ===========\n\

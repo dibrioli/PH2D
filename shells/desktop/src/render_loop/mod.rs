@@ -4615,7 +4615,14 @@ impl crate::App {
                         .downcast_mut::<ph2d_tool_painter::PainterTool>()
                 })
                 .is_some_and(|p| p.deform_gizmo().is_some());
+            // A correção de pares do Flip é o MESMO caso das tools de vetor acima: o overlay de
+            // Pairs quer o clique do canvas para re-parear, e a caixa+alças do gizmo do objeto
+            // registram hits no `hit_index` que fazem `on_canvas` virar falso — roubando TODO
+            // clique de re-par. Enquanto Pairs está aberto, o gizmo do objeto some (a seleção
+            // fica armada; só a caixa/alças somem).
+            let flip_pairs_active = self.flip_active && self.flip_strip.tween_correct.is_some();
             let suppress_gizmo = painter_deform_transform
+                || flip_pairs_active
                 || tools
                     .active()
                     .map(|t| {

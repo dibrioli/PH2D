@@ -59,3 +59,15 @@ Família: [[feedback_painted_is_not_populated_paint_gate]] (nenhum gate rodava `
 (o mock não roda o `pre_populate` compartilhado — `insp_*`/scrollbar aparecem "mortos" e não estão).
 Todas dizem a mesma coisa por ângulos diferentes — esta é a regra que as resume:
 **o widget está pronto quando um teste clica nele.**
+
+**Reincidência com um degrau NOVO (2026-07-21, `line/anim-fixes`, o duplo-clique do container):** o
+gesto era **sintetizado um nível acima do clique**. O gate de unidade injetava
+`GesturePhase::DoubleClick` pronto no roteador do painel — consumidor provado, produtor nunca — e o
+`pointer_up` do dispatcher engolia o par (o upgrade Click→DoubleClick estava **enumerado por kind**,
+só `Marker`, escrito quando o rename do marker era o único consumidor). Pintado, registrado, roteado,
+**morto sob o mouse**. ⚠️ E o `click_at` do testkit **não pega esse caso por construção**: ele espaça
+os cliques 1 s DE PROPÓSITO para nunca virar double — um consumidor de duplo-clique precisa do PAR
+CRU (`dispatch_pointer_event` ×4 com timestamps ~50 ms). Regra dupla: (a) todo evento composto
+(double, drag, wheel) tem de nascer do **dispatcher real** em pelo menos um gate — sintetizar a fase
+é provar só a metade de baixo; (b) enumeração de consumidores num braço de dispatch vira **método do
+próprio tipo** (`TimelineHitKind::wants_double_click`), com um pin que enumera os dois lados.

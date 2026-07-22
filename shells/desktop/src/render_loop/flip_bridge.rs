@@ -117,6 +117,7 @@ fn strip_snapshot(
         tween_count: strip.tween_count,
         tween_ease: strip.tween_ease,
         tween_fade: strip.tween_fade,
+        tween_pairs: strip.tween_correct.is_some(),
         cycle: cycle_wire(layer.cycle.post),
     }
 }

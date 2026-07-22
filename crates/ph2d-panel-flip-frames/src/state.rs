@@ -67,6 +67,9 @@ pub struct FlipStripSnapshot {
     pub tween_ease: u8,
     /// Traços que existem em só UMA das duas chaves entram/saem esmaecendo.
     pub tween_fade: bool,
+    /// A sessão de correção de pares está aberta (o toggle **Pairs** está aceso, e o overlay
+    /// mostra a correspondência do intervalo).
+    pub tween_pairs: bool,
     /// Ciclo (post behavior) da camada ativa — `CycleMode as u8`.
     pub cycle: u8,
     /// **Falloff temporal** do multiframe: os vizinhos recebem menos influência que o

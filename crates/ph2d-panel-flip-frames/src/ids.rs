@@ -7,5 +7,5 @@ pub use ph2d_editor_core::ids::{
     FLIP_KEY_DUP, FLIP_KEY_INSTANCE, FLIP_KEY_LEFT, FLIP_KEY_RIGHT, FLIP_KEY_UNLINK,
     FLIP_NEXT_DRAWING, FLIP_PLAY, FLIP_PREV_DRAWING, FLIP_SCRUB, FLIP_STRIP_CLOSE,
     FLIP_STRIP_PANEL, FLIP_TWEEN_ADD, FLIP_TWEEN_EASE_DD, FLIP_TWEEN_FADE, FLIP_TWEEN_NUM,
-    flip_cell_id, flip_cycle_option_id, flip_tween_ease_option_id,
+    FLIP_TWEEN_PAIRS, flip_cell_id, flip_cycle_option_id, flip_tween_ease_option_id,
 };

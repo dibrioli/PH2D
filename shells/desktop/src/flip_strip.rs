@@ -43,6 +43,11 @@ pub(crate) struct FlipStrip {
     /// como um interruptor à parte. **Só pincéis o respeitam**; ops discretas (o balde) usam
     /// sempre `1.0` (`02_referencia §11`).
     pub(crate) falloff: bool,
+    /// **A sessão de correção de pares** (a UI que o toggle "Pairs" abre). `Some` = ativa:
+    /// o overlay mostra a correspondência do intervalo, o clique do canvas re-pareia, e o
+    /// Add commita com o plano corrigido. Estado de autoria (não documento) — corrigir um
+    /// par não muda o desenho até o Add. Ver [`crate::flip_tween_correct`].
+    pub(crate) tween_correct: Option<crate::flip_tween_correct::TweenCorrect>,
 }
 
 /// **Os quatro presets da barra**, na ordem dos rótulos do painel
@@ -74,6 +79,7 @@ impl Default for FlipStrip {
             tween_fade: false,
             selection: Vec::new(),
             falloff: false,
+            tween_correct: None,
         }
     }
 }
@@ -122,6 +128,27 @@ fn target(flip: &FlipDoc, active_layer: Option<LayerId>) -> Option<(FlipObjectId
 fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
     playhead.pause();
     playhead.seek_frame(i64::from(f.max(0)), f64::from(fps));
+}
+
+/// **O intervalo de tween AGORA** — `(objeto, camada, chave A, chave B)` em torno do
+/// quadro-fonte atual. `None` se não há dois keyframes para interpolar entre.
+///
+/// **Porta única:** o botão Add Tween e o construtor da sessão de correção de pares
+/// ([`crate::flip_tween_correct::build`]) chamam ESTA função — o plano corrigido tem de ser
+/// commitado no MESMO intervalo em que foi construído, e duas resoluções divergiriam (a
+/// sessão pinada a um intervalo, o Add commitando noutro, e as correções seriam ignoradas
+/// em silêncio).
+pub(crate) fn current_tween_interval(
+    flip: &FlipDoc,
+    active_layer: Option<LayerId>,
+    playhead: &Playhead,
+) -> Option<(FlipObjectId, LayerId, Frame, Frame)> {
+    let (oid, lid) = target(flip, active_layer)?;
+    let frame = source_frame(flip, oid, lid, playhead);
+    let layer = flip.object(oid)?.layer(lid)?;
+    let from = layer.keyframe_at_or_before(frame)?;
+    let to = layer.next_keyframe_key(frame)?;
+    (from != to).then_some((oid, lid, from, to))
 }
 
 /// O **quadro-fonte** da camada agora: sob um ciclo, o quadro do vão que está sendo
@@ -402,29 +429,48 @@ pub(crate) fn apply_panel_event(
             strip.tween_fade = !strip.tween_fade;
             false
         }
+        // **O toggle "Pairs"** (a UI de correção de pares): abre/fecha a sessão de
+        // correspondência para o intervalo atual. Aberta, ela intercepta o clique do canvas
+        // (re-parear) e o Add commita com o plano corrigido. Sem intervalo válido, não abre —
+        // não há entre o quê interpolar, então não há par a corrigir.
+        PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_PAIRS => {
+            if strip.tween_correct.is_some() {
+                strip.tween_correct = None; // fecha
+            } else {
+                strip.tween_correct =
+                    crate::flip_tween_correct::build(flip, active_layer, playhead);
+            }
+            false // estado de autoria, não documento
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_ADD => {
             // Os extremos do tween são **KEYFRAMES** — nunca os breakdowns que ele
             // mesmo gerou. Usar o "próximo desenho" fazia o 2º Add interpolar entre a
             // chave e o inbetween vizinho (lixo entre 0 e 2) em vez de REGENERAR o
             // intervalo 0→8. E parado em cima de um inbetween, o extremo A é a chave
             // anterior — clicar Add de novo regenera, não empilha.
-            let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
-                return false;
-            };
-            let (Some(from), Some(to)) = (
-                layer.keyframe_at_or_before(frame),
-                layer.next_keyframe_key(frame),
-            ) else {
+            let Some((_, _, from, to)) = current_tween_interval(flip, active_layer, playhead)
+            else {
                 return false; // sem os dois extremos não há entre o quê interpolar
             };
-            let made = flip.object_mut(oid).map_or(0, |o| {
-                o.tween(TweenRequest {
-                    layer: lid,
-                    from,
-                    to,
-                    count: strip.tween_count,
-                    options: strip.tween_options(),
-                })
+            let req = TweenRequest {
+                layer: lid,
+                from,
+                to,
+                count: strip.tween_count,
+                options: strip.tween_options(),
+            };
+            // Se a sessão de correção de pares está pinada NESTE intervalo, commita com o
+            // plano corrigido; senão o automático de sempre. A porta única de intervalo
+            // garante que a comparação bate — um par que o artista corrigiu tem de aparecer
+            // no desenho, e a guarda de dimensões do motor recusa um plano obsoleto.
+            let corrected = strip
+                .tween_correct
+                .as_ref()
+                .filter(|tc| (tc.layer, tc.from, tc.to) == (lid, from, to))
+                .map(|tc| &tc.plan);
+            let made = flip.object_mut(oid).map_or(0, |o| match corrected {
+                Some(plan) => o.tween_with_plan(req, plan),
+                None => o.tween(req),
             });
             made > 0
         }

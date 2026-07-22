@@ -33,6 +33,7 @@ pub(crate) mod flip_pass;
 mod flip_pass_cache;
 mod flip_pass_ghosts;
 mod flip_selection_overlay;
+mod flip_tween_overlay;
 mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
@@ -603,6 +604,9 @@ impl crate::App {
         self.flip_segment_smoke();
         self.blend_smoke();
         self.build_session_upkeep();
+        // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
+        // se o intervalo é o mesmo, ou se a sessão está fechada).
+        self.flip_tween_pairs_upkeep();
         // ADR-0114 C2: o Apply/Clear do Colorize marcado no frame anterior (o drain de painel
         // roda com `self.gfx` preso; aqui, antes de bindar `gfx`, `self` está livre).
         if std::mem::take(&mut self.pending_flip_colorize_apply) {
@@ -3833,6 +3837,18 @@ impl crate::App {
                 );
                 // A caixa do marquee (W6.1) — em px de tela, como o realce.
                 flip_selection_overlay::draw_flip_marquee(self.flip_edit_gesture, vector_scene);
+
+                // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as
+                // linhas de par (pela confiança) + órfãos, no MESMO `l2w` do objeto. Só
+                // desenha com a sessão Pairs aberta.
+                flip_tween_overlay::draw(
+                    flip_active && self.flip_strip.tween_correct.is_some(),
+                    self.flip_strip.tween_correct.as_ref(),
+                    &l2w,
+                    camera,
+                    surface.size(),
+                    vector_scene,
+                );
             }
 
             // Texto em edição herda o Style do painel em TEMPO REAL: o bridge acabou

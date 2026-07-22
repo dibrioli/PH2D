@@ -443,3 +443,136 @@ fn the_add_button_generates_with_the_easing_the_bar_selected() {
          botão Add ignorou o chip da barra"
     );
 }
+
+// ── Tween v2: a correção de pares (o seam do toggle + do Add) ────────────────────────
+
+use crate::flip_tween_correct::{PairSel, Side, apply_click};
+
+/// Monta o palco de swap NO DOCUMENTO: chave 0 (traço0 embaixo, traço1 em cima) e chave 8
+/// (traço0 em CIMA, traço1 embaixo). O automático pareia pela forma (A0↔B1 embaixo, sem
+/// mover), então uma correção forçada A0↔B0 é o que faz o meio SUBIR.
+fn swap_doc() -> (FlipDoc, FlipObjectId, LayerId, Playhead) {
+    let (mut doc, oid, lid, playhead) = doc_with_key0();
+    let obj = doc.object_mut(oid).unwrap();
+    let seg = |y: f32| {
+        let mut s = ph2d_flip::FlipStroke::new();
+        s.push_default(ph2d_core::Vec2::new(0.0, y));
+        s.push_default(ph2d_core::Vec2::new(10.0, y));
+        s
+    };
+    let a = obj.layer(lid).unwrap().frames()[&0].drawing.unwrap();
+    obj.drawing_mut(a).unwrap().strokes.push(seg(0.0)); // A0 embaixo
+    obj.drawing_mut(a).unwrap().strokes.push(seg(100.0)); // A1 em cima
+    let b = obj
+        .insert_frame(lid, 8, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    obj.drawing_mut(b).unwrap().strokes.push(seg(100.0)); // B0 em cima
+    obj.drawing_mut(b).unwrap().strokes.push(seg(0.0)); // B1 embaixo
+    (doc, oid, lid, playhead)
+}
+
+/// 🔴 **O toggle Pairs abre e fecha a sessão** — e ela nasce pinada ao intervalo (0,8).
+///
+/// Mutação que sangra: o braço do toggle não chamar `build` (deixar `None`) ⇒ a sessão
+/// nunca abre e o overlay/pick ficam mortos.
+#[test]
+fn the_pairs_toggle_opens_and_closes_the_session() {
+    let (mut doc, _, lid, mut ph) = swap_doc();
+    let mut strip = FlipStrip::default();
+    ph.seek(0.0);
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    let tc = strip.tween_correct.as_ref().expect("Pairs abriu a sessão");
+    assert_eq!(
+        (tc.layer, tc.from, tc.to),
+        (lid, 0, 8),
+        "pinada ao intervalo 0→8"
+    );
+    assert_eq!(tc.a.strokes.len(), 2, "clonou A");
+    assert_eq!(tc.b.strokes.len(), 2, "clonou B");
+    // Clicar de novo fecha.
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    assert!(strip.tween_correct.is_none(), "Pairs fechou a sessão");
+}
+
+/// 🔴 **Sem dois keyframes não há o que corrigir — Pairs NÃO abre.** Um único quadro não tem
+/// intervalo de tween, então oferecer a sessão seria um botão que não faz nada.
+#[test]
+fn the_pairs_toggle_does_not_open_without_an_interval() {
+    let (mut doc, _, lid, mut ph) = doc_with_key0(); // uma chave só
+    let mut strip = FlipStrip::default();
+    ph.seek(0.0);
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    assert!(
+        strip.tween_correct.is_none(),
+        "sem segundo keyframe a sessão não devia abrir"
+    );
+}
+
+/// 🔴 **O Add commita com a correspondência CORRIGIDA** — o seam inteiro: o toggle abre a
+/// sessão, o gesto real (`apply_click`) força A0↔B0, e o Add faz o inbetween subir a y=50.
+/// Sem a correção o automático deixaria o traço 0 parado em y=0.
+///
+/// Mutação que sangra: o Add ignorar `strip.tween_correct` (chamar sempre `o.tween`) ⇒ o meio
+/// volta a y=0 e o gate falha — é a entrega inteira da feature.
+#[test]
+fn the_add_button_uses_the_corrected_pairing() {
+    let (mut doc, oid, lid, mut ph) = swap_doc();
+    let mut strip = FlipStrip::default();
+    strip.tween_count = 1;
+    ph.seek(0.0);
+    // Abre Pairs.
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    // Corrige pelo gesto REAL: marca A0, clica B0 (o de cima) ⇒ força A0↔B0.
+    {
+        let tc = strip.tween_correct.as_mut().expect("sessão aberta");
+        assert_eq!(tc.plan.pair_of_a(0), Some(1), "premissa: auto pareia A0↔B1");
+        let a0 = PairSel {
+            side: Side::A,
+            idx: 0,
+        };
+        let b0 = PairSel {
+            side: Side::B,
+            idx: 0,
+        };
+        assert_eq!(apply_click(&mut tc.plan, Some(a0), Some(b0)), None);
+        assert_eq!(tc.plan.pair_of_a(0), Some(0), "forçou A0↔B0");
+    }
+    // Add.
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_ADD,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    let mid = did_at(&doc, oid, lid, 4).expect("o inbetween nasceu");
+    let y = doc.object(oid).unwrap().drawing(mid).unwrap().strokes[0].positions()[0].y;
+    assert!(
+        (y - 50.0).abs() < 1e-3,
+        "a correção A0↔B0 devia levar o traço 0 a y=50; deu {y:.1} — o Add ignorou a sessão"
+    );
+}

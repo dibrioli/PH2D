@@ -357,6 +357,11 @@ pub const FLIP_TWEEN_EASE_DD: NodeId = hash_node_id("flip.strip.tween_ease_dd");
 /// statically (`TweenOptions::fade_orphans`).
 pub const FLIP_TWEEN_FADE: NodeId = hash_node_id("flip.strip.tween_fade");
 
+/// Toggle the **pair-correction** overlay (the CACAni lesson: the matcher errs, the
+/// artist corrects). While on, the canvas shows which stroke of A becomes which of B,
+/// and a click re-pairs; the Add button then commits with the corrected plan.
+pub const FLIP_TWEEN_PAIRS: NodeId = hash_node_id("flip.strip.tween_pairs");
+
 /// Derive the id of easing option `preset` in the open easing dropdown popover.
 #[must_use]
 pub fn flip_tween_ease_option_id(preset: u8) -> NodeId {

@@ -123,6 +123,9 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         // o que fazer com os traços que existem em só uma das chaves.
         Item::Ease(snap.tween_ease),
         Item::Toggle(ids::FLIP_TWEEN_FADE, "Fade", snap.tween_fade),
+        // **Pairs** — abre o overlay de correção de correspondência (a lição CACAni: o
+        // matcher erra, o artista corrige). Aceso enquanto a sessão está aberta.
+        Item::Toggle(ids::FLIP_TWEEN_PAIRS, "Pairs", snap.tween_pairs),
         Item::Toggle(ids::FLIP_TWEEN_ADD, "Add", false),
         Item::Gap,
         // Ciclo (post behavior da camada ativa)

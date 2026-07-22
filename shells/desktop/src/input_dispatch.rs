@@ -2526,6 +2526,18 @@ impl App {
         {
             return;
         }
+        // Tween v2 — correção de pares: enquanto a sessão Pairs está aberta, o clique do
+        // canvas RE-PAREIA (sobrepõe o modo atual — Draw/Erase/etc — porque é um sub-modo do
+        // fluxo de tween, não um modo de desenho). Uma chamada faz tudo (não é arrasto).
+        if self.flip_wants_tween_pairs()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_tween_pairs_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
         // Flip bucket (W4): um CLIQUE no modo Fill preenche a região sob o cursor.
         // Não é um gesto de arrasto — uma chamada faz tudo.
         if self.flip_wants_fill()

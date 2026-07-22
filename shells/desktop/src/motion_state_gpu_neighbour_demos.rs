@@ -1,4 +1,4 @@
-//! The **neighbourhood** scenes (`PH2D_GPU_COOK_DEMO=7` and `=8`, ADR-0134) — a
+//! The **neighbourhood** scenes (`PH2D_GPU_COOK_DEMO=7` and `=8`, ADR-0140) — a
 //! sibling of `motion_state_gpu_demos.rs`, split for the same reason the panel
 //! demo was: they answer a question none of the others can.
 //!
@@ -7,7 +7,7 @@
 //! The GPU has always been good at that. This one is the opposite: a boid reads
 //! its NEIGHBOURS, an all-pairs `O(N²)` that is exactly why boids has been a
 //! few-hundred-agent toy for forty years. The breakthrough is the spatial grid
-//! (ADR-0134): a counting sort into perception-radius cells, so each agent sweeps
+//! (ADR-0140): a counting sort into perception-radius cells, so each agent sweeps
 //! a 3×3 neighbourhood instead of the whole flock, and the interacting sim joins
 //! the throughput ones at a **million agents**.
 //!
@@ -32,7 +32,7 @@
 //!   `motion.collide`'s kernel), and the scene used to be sized with no headroom
 //!   for the Amplitude knob (see `build_gpu_collide_demo_document`).
 //!
-//! Together they are the argument that the grid is a **service** (ADR-0134 D2) and
+//! Together they are the argument that the grid is a **service** (ADR-0140 D2) and
 //! not a boids-shaped detour: one client keeps its state across ticks, the other
 //! has no state at all and iterates within a single cook, and both get their
 //! neighbours from the same counting sort.
@@ -46,7 +46,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// **The million-boid murmuration** (`PH2D_GPU_COOK_DEMO=7`) — the ready-to-smoke
-/// scene for the neighbourhood sim on the device (ADR-0134). Returns the sink.
+/// scene for the neighbourhood sim on the device (ADR-0140). Returns the sink.
 /// (The million holds 60 fps because there is NO global attractor — see `count`
 /// below for the three measured rounds that led here.)
 pub(super) fn build_gpu_boids_demo_document(
@@ -134,7 +134,7 @@ pub(super) fn build_gpu_boids_demo_document(
     Some(vec![out])
 }
 
-/// **The breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0134 Fase 5) — the
+/// **The breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0140 Fase 5) — the
 /// SECOND neighbourhood client, and the one that proves the grid is a reusable
 /// service rather than a boids-shaped detour.
 ///
@@ -237,7 +237,7 @@ pub(super) fn build_gpu_collide_demo_document(
     Some(vec![out])
 }
 
-/// **The spread SWEEP** (`PH2D_GPU_COOK_DEMO=9`, ADR-0134 Fase 5) — the DIAGNOSTIC
+/// **The spread SWEEP** (`PH2D_GPU_COOK_DEMO=9`, ADR-0140 Fase 5) — the DIAGNOSTIC
 /// scene, built because `=8` is a poor instrument for judging a PERFORMANCE fix.
 ///
 /// A breathing blob hides frame time: the packing looks the same whether the cook

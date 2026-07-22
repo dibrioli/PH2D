@@ -2,7 +2,7 @@
 
 - **Status:** aceito (implementado nesta linha, `line/gpu-nodes`)
 - **Data:** 2026-07-20
-- **Contexto:** continuação de ADR-0126/0127/0130/0134/0135; fila §E do relatório da
+- **Contexto:** continuação de ADR-0126/0127/0130/0140/0135; fila §E do relatório da
   auditoria (`docs/HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md`), item 1.
 
 ## Contexto
@@ -31,7 +31,7 @@ A CPU mantém os sobreviventes na ordem original **de propósito** (`sim.lifetim
 *"reshuffling the set every tick would make every downstream index-based node
 flicker"*). Um append atômico embaralharia a ordem por frame — flicker em alpha
 sobreposto e paridade morta. O motor reusa o `Scan::exclusive` que o counting-sort da
-grade de vizinhança já construiu (ADR-0134): *predicado escreve flag por elemento →
+grade de vizinhança já construiu (ADR-0140): *predicado escreve flag por elemento →
 scan exclusivo das flags → scatter `rows[scan[i]] = i` dos sobreviventes → gather de
 TODAS as colunas por `rows`*.
 

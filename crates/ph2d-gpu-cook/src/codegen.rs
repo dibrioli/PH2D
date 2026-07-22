@@ -306,7 +306,7 @@ pub fn kernel_module(
     if broadcasts_anything(bindings) {
         src.push_str("    bcast_one: u32,\n");
     }
-    // The grid's cell size and bucket count (ADR-0134 D2): CPU-known, so uniforms,
+    // The grid's cell size and bucket count (ADR-0140 D2): CPU-known, so uniforms,
     // and the SAME values packed into the grid-build's own uniform — the body's
     // `grid_bucket_of` must agree bit-for-bit with the build's binning.
     if grid.is_some() {
@@ -336,7 +336,7 @@ pub fn kernel_module(
             slot += 1;
         }
     }
-    // The grid's two arrays, LAST (ADR-0134 D2) — after every column binding, so
+    // The grid's two arrays, LAST (ADR-0140 D2) — after every column binding, so
     // adding a grid never shifts a stream binding's slot. The sequencer appends
     // them to the bind group in the same order.
     if grid.is_some() {
@@ -437,7 +437,7 @@ pub fn kernel_module(
         }
     }
 
-    // The grid helpers (ADR-0134 D2) — the SAME binning as the build's
+    // The grid helpers (ADR-0140 D2) — the SAME binning as the build's
     // `bucket_of` (`grid.rs`), split so the body can name a neighbour CELL (for
     // the 3×3 sweep and the exact-cell dedup) and its bucket. The body iterates
     // `grid_sorted[grid_starts[b] .. grid_starts[b+1]]` for each of the 9 cells.

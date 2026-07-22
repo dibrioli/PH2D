@@ -1,4 +1,4 @@
-//! **Spatial-hash grid parity** (ADR-0134, Phase 1b/2) — the neighbourhood
+//! **Spatial-hash grid parity** (ADR-0140, Phase 1b/2) — the neighbourhood
 //! structure boids/collide/SPH share, gated standalone before any node wiring.
 //!
 //! The intra-bucket order is a non-deterministic atomic race (and unspecified on

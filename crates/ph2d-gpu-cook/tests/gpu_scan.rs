@@ -1,4 +1,4 @@
-//! **GPU exclusive-scan parity** (ADR-0134, Phase 1a) — the reusable prefix-sum
+//! **GPU exclusive-scan parity** (ADR-0140, Phase 1a) — the reusable prefix-sum
 //! the spatial-hash counting-sort is built on, gated ALONE before any grid.
 //!
 //! The scan is INTEGER, so unlike the float kernels this is **bit-exact**, not

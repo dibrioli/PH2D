@@ -63,12 +63,12 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_spring::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
-    // GPU/M5 (ADR-0134) — the grid-injected WGSL (the `target`/`out`/`in`
+    // GPU/M5 (ADR-0140) — the grid-injected WGSL (the `target`/`out`/`in`
     // reserved-word trap is caught here, device-free, per handoff §0.4).
     ph2d_node_motion_boids::register(&mut reg).unwrap();
     // The ITERATED grid kernel (Fase 5): 2 input ports ⇒ port-qualified readers.
     ph2d_node_motion_collide::register(&mut reg).unwrap();
-    // GPU/M5 (ADR-0134) — the sim-zone family: the per-element integrator that
+    // GPU/M5 (ADR-0140) — the sim-zone family: the per-element integrator that
     // reads its own clock column, and the static-shape collider.
     ph2d_node_sim_step::register(&mut reg).unwrap();
     ph2d_node_sim_collide::register(&mut reg).unwrap();

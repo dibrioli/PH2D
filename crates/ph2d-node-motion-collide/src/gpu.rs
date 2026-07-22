@@ -1,4 +1,4 @@
-//! The GPU kernel for `motion.collide` (ADR-0134 Fase 5) — the O(N²) push-apart,
+//! The GPU kernel for `motion.collide` (ADR-0140 Fase 5) — the O(N²) push-apart,
 //! answered on the device by the spatial grid.
 //!
 //! This is the node the grid was built for. Boids proved the machinery on a
@@ -13,7 +13,7 @@
 //! first (and for its own reason: Gauss–Seidel made the packing depend on the
 //! stream's index order, measured at 1018 % of a disc diameter), and only then did
 //! a device port become expressible. The two now compute the same thing, differing
-//! solely in the ORDER of a float sum ⇒ ε (ADR-0134 D4).
+//! solely in the ORDER of a float sum ⇒ ε (ADR-0140 D4).
 //!
 //! - **Gather, not scatter.** Each thread sums the corrections its OWN contacts ask
 //!   of it and divides by their count. That is exactly the CPU's per-disc average,

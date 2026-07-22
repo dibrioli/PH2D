@@ -1,5 +1,5 @@
 //! **The spatial-hash grid** — the reusable neighbourhood structure the whole
-//! O(N²) sim class is built on (ADR-0134, Phase 1b/2).
+//! O(N²) sim class is built on (ADR-0140, Phase 1b/2).
 //!
 //! Boids, `sim.collide` and a future SPH all ask the same question — *who is
 //! within `radius` of element `i`?* — and all answer it the same way: bin every

@@ -44,7 +44,7 @@ pub struct NodeRegistry {
     /// path); the GPU sequencer (`ph2d-gpu-cook`) resolves kernels through
     /// [`KernelResolver`].
     gpu_kernels: BTreeMap<NodeTypeId, GpuKernel>,
-    /// GPU/M5 (ADR-0134 D2) — per-type spatial-grid requirement, keyed the same
+    /// GPU/M5 (ADR-0140 D2) — per-type spatial-grid requirement, keyed the same
     /// way and kept OUT of the frozen manifest like every other side channel. A
     /// node with a neighbourhood kernel (boids, `sim.collide`, SPH) registers a
     /// [`GridSpec`]; the sequencer builds the grid before its kernel pass.
@@ -156,7 +156,7 @@ impl NodeRegistry {
     }
 
     /// Declare that a node type's kernel needs a spatial neighbourhood grid
-    /// (ADR-0134 D2). Additive, last-write-wins, pure `'static` data — like
+    /// (ADR-0140 D2). Additive, last-write-wins, pure `'static` data — like
     /// [`Self::register_gpu_kernel`]. The sequencer builds the grid over the
     /// [`GridSpec`]'s column before the node's kernel pass.
     pub fn register_grid(&mut self, id: NodeTypeId, grid: GridSpec) {

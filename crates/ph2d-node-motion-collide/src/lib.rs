@@ -16,7 +16,7 @@
 //! makes the packing expand and contract — deterministic and replay-safe (HR-5:
 //! arithmetic + `sqrt`, no trig). `Effect::Pure`.
 //!
-//! ## The sweep is AVERAGED JACOBI, not Gauss–Seidel (ADR-0134 Fase 5)
+//! ## The sweep is AVERAGED JACOBI, not Gauss–Seidel (ADR-0140 Fase 5)
 //!
 //! Each `iterations` sweep reads ONE snapshot of the positions, accumulates every
 //! contact's requested correction per disc, and then applies the **average** of what
@@ -37,7 +37,7 @@
 //! It is additionally the scheme a GPU can run at all — every thread reads the same
 //! snapshot — which is what lets the spatial-grid port exist.
 //!
-//! O(n²·iterations) here; the device path (spatial hash on the GPU) is ADR-0134.
+//! O(n²·iterations) here; the device path (spatial hash on the GPU) is ADR-0140.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -259,7 +259,7 @@ impl NodeOp for MotionCollide {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionCollide))?;
-    // GPU/M5 (ADR-0134 Fase 5): the push-apart on the device via the spatial grid,
+    // GPU/M5 (ADR-0140 Fase 5): the push-apart on the device via the spatial grid,
     // swept `iterations` times. Only expressible because the reference became
     // averaged Jacobi — an in-place Gauss-Seidel sweep is sequential by definition.
     reg.register_gpu_kernel(MANIFEST.id, gpu::GPU_KERNEL);
@@ -359,7 +359,7 @@ mod tests {
         m / min_dist
     }
 
-    /// **The measurement that decides the solver** (ADR-0134 Fase 5): packing quality
+    /// **The measurement that decides the solver** (ADR-0140 Fase 5): packing quality
     /// and ORDER-DEPENDENCE of the current scheme. Run:
     ///   cargo test -p ph2d-node-motion-collide -- --ignored --nocapture
     #[test]
@@ -424,7 +424,7 @@ mod tests {
     }
 
     /// **The packing is a fact about the SET, not about the listing** — the property
-    /// averaged Jacobi bought (ADR-0134 Fase 5). Pack a crowded cloud, then pack the
+    /// averaged Jacobi bought (ADR-0140 Fase 5). Pack a crowded cloud, then pack the
     /// same points presented in a different order, un-permute, and compare.
     ///
     /// The in-place Gauss–Seidel this replaced fails here by **6.11 world units**

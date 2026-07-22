@@ -1,12 +1,12 @@
 //! Gates for the **neighbourhood** GPU/M5 demos (`PH2D_GPU_COOK_DEMO=7/8/9`,
-//! ADR-0134), split out of `motion_state_gpu_tests.rs` at the HR-18 cap — the
+//! ADR-0140), split out of `motion_state_gpu_tests.rs` at the HR-18 cap — the
 //! same seam their scene builders take in `motion_state_gpu_neighbour_demos.rs`.
 //! Each pins the PLAN (fully-GPU, drives a loop, dispatch count), headless, so a
 //! silent CPU fallback cannot pass for the real spatial-grid path.
 
 use super::*;
 
-/// The **murmuration** (`PH2D_GPU_COOK_DEMO=7`, ADR-0134) must plan
+/// The **murmuration** (`PH2D_GPU_COOK_DEMO=7`, ADR-0140) must plan
 /// as a fully-GPU LOOP — the whole claim of the neighbourhood sim. A silent CPU
 /// fallback (the route degrades by design) would look identical, just at seconds
 /// per tick instead of milliseconds, and the reviewer would sign off on a path
@@ -63,7 +63,7 @@ fn the_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
     );
 }
 
-/// The **breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0134 Fase 5) must plan
+/// The **breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0140 Fase 5) must plan
 /// as a fully-GPU chain — and, unlike every scene before it, one whose kernel is
 /// ITERATED. A silent CPU fallback would look identical (the CPU has packed discs
 /// since M3, just at `O(N²·iterations)`), so the plan is what has to be pinned.

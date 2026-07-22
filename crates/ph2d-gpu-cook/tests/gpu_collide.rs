@@ -1,4 +1,4 @@
-//! **Push-apart on the GPU** (ADR-0134 Fase 5) — the `O(N²·iterations)` packing,
+//! **Push-apart on the GPU** (ADR-0140 Fase 5) — the `O(N²·iterations)` packing,
 //! answered by the spatial grid, reconciled against the CPU's averaged Jacobi.
 //!
 //! This is the first ITERATED kernel: the sequencer runs the pass `iterations`

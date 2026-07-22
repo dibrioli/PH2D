@@ -1,6 +1,6 @@
 # ADR-0135 — A família `sim.zone` na GPU: o contêiner de laço de estado é um passthrough CONDICIONAL, e um claim parcial RECUA
 
-- **Status:** PROPOSTA. Continua a linha `line/gpu-nodes` (ADR-0126 contrato · 0127 laço de sim · 0130 emitter · 0134 grade de vizinhança). **Número provisório**, escolhido nesta linha; o integrador reconcilia se colidir ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+- **Status:** PROPOSTA. Continua a linha `line/gpu-nodes` (ADR-0126 contrato · 0127 laço de sim · 0130 emitter · 0140 grade de vizinhança). **Número provisório**, escolhido nesta linha; o integrador reconcilia se colidir ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 - **NÃO toca o contrato congelado** (ADR-0126): `NodeOp`/`NodeManifest`/`OpResolver` intactos. Tudo aqui é **metadado lateral** append-only do sequenciador (`StateSelect` + `KernelResolver::state_select`, ao lado de `GridSpec`/`grid`) e dois kernels de nó.
 - **Método:** o **censo medido** (`shells/desktop/src/motion_gpu_coverage.rs`) apontou o gargalo ANTES de qualquer desenho ([[feedback_a_frontier_is_not_a_census]]).
 

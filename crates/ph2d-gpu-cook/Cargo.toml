@@ -45,10 +45,10 @@ ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }
 ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 # The colour ramp: the positional key `HAS_<col>` unblocked.
 ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
-# GPU/M5 (ADR-0134) — the neighbourhood sim: boids on the spatial grid.
+# GPU/M5 (ADR-0140) — the neighbourhood sim: boids on the spatial grid.
 ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }
-# GPU/M5 (ADR-0134) — the sim-zone family: the state loop, its integrator, its
+# GPU/M5 (ADR-0140) — the sim-zone family: the state loop, its integrator, its
 # static collider (the fixed-population simulation on the device).
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }

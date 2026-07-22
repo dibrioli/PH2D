@@ -1,4 +1,4 @@
-//! **Boids on the GPU** (ADR-0134 Phase 3b) — the O(N²) flock, answered by the
+//! **Boids on the GPU** (ADR-0140 Phase 3b) — the O(N²) flock, answered by the
 //! spatial grid, reconciled against the CPU all-pairs.
 //!
 //! A sim is `x_{n+1} = f(x_n)`, so ε feeds back and a long trajectory drifts

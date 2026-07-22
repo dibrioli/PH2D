@@ -1,11 +1,11 @@
-//! The GPU kernel for `motion.boids` (ADR-0134 Phase 3b) — the O(N²) all-pairs
+//! The GPU kernel for `motion.boids` (ADR-0140 Phase 3b) — the O(N²) all-pairs
 //! flock, answered on the device by the spatial grid.
 //!
 //! The sequencer builds a neighbourhood grid over the `pre` state's `P` (cell =
 //! `radius`, so a 3×3 cell sweep is exactly the within-radius set the CPU scans)
 //! before this pass; the body then reproduces `crate::step`/`crate::seed` bit-for
 //! -bit at the seed (integer `hash3`) and within ε at the step (the neighbour SET
-//! is identical, only the float sum ORDER differs — ADR-0134 D4).
+//! is identical, only the float sum ORDER differs — ADR-0140 D4).
 //!
 //! - **Seed vs step** branches on `HAS_state_P`: tick 0 (the `pre` is Empty, so
 //!   the state carries no `P`) seeds the hashed cloud; from tick 1 it steps. The

@@ -178,7 +178,7 @@ pub struct GpuCook {
     /// the tick it is asked for instead of anchoring at 0. See
     /// [`Self::reseed_from_next_tick`].
     reseed: bool,
-    /// The spatial-grid service (ADR-0134 D2), built on first use like the tap
+    /// The spatial-grid service (ADR-0140 D2), built on first use like the tap
     /// pipeline — `Option` because `GpuCook` is `Default` and has no device.
     grid: Option<grid::Grid>,
     /// Transients of THIS cook's grid builds (scan scratch + cursors). Cleared at
@@ -321,7 +321,7 @@ impl GpuCook {
         // Drop the previous frame's tap hold BEFORE reclaiming, or its refcount
         // would keep every intermediate out of the pool for one extra frame.
         self.tap_streams.clear();
-        // This cook's grid transients (ADR-0134): dropped like the tap hold, so
+        // This cook's grid transients (ADR-0140): dropped like the tap hold, so
         // the buffers return once the prior submit that used them has completed.
         self.grid_hold.clear();
         self.grid_scratch = grid::GridScratch::default();
@@ -527,14 +527,14 @@ impl GpuCook {
             if needed > limit {
                 return Err(GpuCookError::TooManyBindings(stage.ty, needed, limit));
             }
-            // A neighbourhood kernel (ADR-0134 D2) gets its grid built into this
+            // A neighbourhood kernel (ADR-0140 D2) gets its grid built into this
             // same encoder BEFORE its pass — over the position column the spec
             // names, on the port the spec names (port 0 for a per-element node,
             // the `pre` state port for a self-loop sim).
             let grid_spec = kernels.grid(stage.ty);
             // **How many sweeps?** A simulation STEP dispatches once (the tick is
             // the iteration); a relaxation SOLVER runs its `iterations` param
-            // (`GridSpec::sweeps_param`, ADR-0134 Fase 5). Clamped to at least one
+            // (`GridSpec::sweeps_param`, ADR-0140 Fase 5). Clamped to at least one
             // so a zero/negative param is the identity dispatch, never a skipped
             // stage that would leave the node's output undefined.
             // ⚠️ The rounding and the clamp are the CPU's, to the letter

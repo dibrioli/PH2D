@@ -1,4 +1,4 @@
-# ADR-0134 — Kernels GPU multi-passe: a simulação de VIZINHANÇA (boids/collide/SPH) constrói uma grade espacial no dispositivo
+# ADR-0140 — Kernels GPU multi-passe: a simulação de VIZINHANÇA (boids/collide/SPH) constrói uma grade espacial no dispositivo
 
 - **Status:** PROPOSTA. Sucede a linha `line/gpu-nodes` (Fases 0–2 + o emitter/id-gather do [ADR-0130](0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md) integradas). É o Fase 3 do [plano mestre](../../plans/2026-07-gpu-resident-node-pipeline.md) — *"estruturas espaciais na GPU (os O(N²) que rayon não salva)"*.
 - **NÃO toca o contrato congelado** ([ADR-0126](0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)): `NodeOp=2`/`NodeManifest=8`/`OpResolver=1` intactos. O programa de passes é **metadado lateral** do `GpuKernel`, **append-only** — um kernel single-passe (todos os 32 de hoje) é o caso vazio e fica **byte-idêntico**.

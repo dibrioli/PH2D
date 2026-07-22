@@ -438,7 +438,7 @@ impl GpuKernel {
     }
 }
 
-/// A node whose GPU kernel needs a **spatial neighbourhood grid** (ADR-0134 D2)
+/// A node whose GPU kernel needs a **spatial neighbourhood grid** (ADR-0140 D2)
 /// declares one, registered on the side like the kernel itself. Before the
 /// node's kernel pass the sequencer bins `column` (a `vec2` position stream) on
 /// input `port` into a uniform grid of cell size `param(cell_param)`, and the
@@ -478,7 +478,7 @@ pub struct GridSpec {
     /// being indexed — that is what makes it a neighbourhood relaxation rather than
     /// two unrelated facts. A kernel that wants to iterate over something it does
     /// NOT spatially index has no client yet, and inventing the contract for it
-    /// here would be speculating (ADR-0134 D2's deferral, held).
+    /// here would be speculating (ADR-0140 D2's deferral, held).
     pub sweeps_param: Option<&'static str>,
 }
 
@@ -513,7 +513,7 @@ pub struct StateSelect {
 pub trait KernelResolver {
     fn gpu_kernel(&self, ty: NodeTypeId) -> Option<&GpuKernel>;
 
-    /// The neighbourhood grid this node's kernel needs, if any (ADR-0134 D2).
+    /// The neighbourhood grid this node's kernel needs, if any (ADR-0140 D2).
     /// Default `None` — a kernel opts in by registering a [`GridSpec`], exactly
     /// as it opts into a kernel at all; the 32 shipping kernels declare nothing
     /// and get nothing.

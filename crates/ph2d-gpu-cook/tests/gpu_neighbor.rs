@@ -1,4 +1,4 @@
-//! **Grid-wiring parity** (ADR-0134, Phase 3) — the sequencer builds a spatial
+//! **Grid-wiring parity** (ADR-0140, Phase 3) — the sequencer builds a spatial
 //! grid before a kernel pass and the body reads neighbours through it.
 //!
 //! A synthetic node `test.neighbor_disp` displaces each element by the NUMBER of

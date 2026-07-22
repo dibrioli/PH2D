@@ -406,9 +406,7 @@ fn look_at_the_zipper() {
     // A zona do laço escuro: o anel azul em torno da ponta do toco (y∈[190,225]).
     let mut tipzone: Vec<(f32, f32)> = Vec::new();
     for ring in rings_of(1) {
-        let n = ring.len();
-        for i in 0..n {
-            let p = ring[i];
+        for p in &ring {
             if (392.0..410.0).contains(&p.x) && (188.0..228.0).contains(&p.y) {
                 tipzone.push((p.y, p.x));
             }

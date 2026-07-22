@@ -1,5 +1,5 @@
 //! **GPU exclusive prefix-sum (scan)** over a `u32` storage buffer — the reusable
-//! primitive the spatial-hash counting-sort needs (ADR-0134, Phase 1a).
+//! primitive the spatial-hash counting-sort needs (ADR-0140, Phase 1a).
 //!
 //! The counting-sort that turns positions into a neighbour grid is
 //! *clear → count → **scan** → scatter*, and the scan is the only step that is

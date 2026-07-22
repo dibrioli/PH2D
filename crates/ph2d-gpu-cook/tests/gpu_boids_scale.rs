@@ -1,4 +1,4 @@
-//! **How far does the flock scale on the device?** (ADR-0134 Phase 4) — the
+//! **How far does the flock scale on the device?** (ADR-0140 Phase 4) — the
 //! §0.0 measurement that a cap must quote. The slider stops at 500 because the
 //! CPU is `O(N²)` all-pairs; the GPU path must not inherit that number — it must
 //! quote its OWN, measured here.

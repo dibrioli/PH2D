@@ -133,7 +133,7 @@ impl GpuCook {
             let at = window_at + usize::from(has_window) * 8 + usize::from(has_src_n) * 4;
             uni[at..at + 4].copy_from_slice(&codegen::broadcast_mask(&counts).to_le_bytes());
         }
-        // The grid's bucket count + cell, LAST in the layout (ADR-0134). `cell`
+        // The grid's bucket count + cell, LAST in the layout (ADR-0140). `cell`
         // is re-resolved here from the SAME param the build read, so the body's
         // `grid_bucket_of` bins exactly as the build did.
         if let Some((spec, gb)) = grid {
@@ -253,7 +253,7 @@ impl GpuCook {
         out
     }
 
-    /// Build the neighbourhood grid for a stage (ADR-0134 D2) into the cook's
+    /// Build the neighbourhood grid for a stage (ADR-0140 D2) into the cook's
     /// encoder, over the position column the [`GridSpec`] names on its port. The
     /// grid service is compiled on first use, like the tap pipeline.
     #[allow(clippy::too_many_arguments)] // private seam of `cook`, mirrors the stage encoder

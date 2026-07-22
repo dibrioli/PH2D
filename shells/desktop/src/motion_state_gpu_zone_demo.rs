@@ -1,4 +1,4 @@
-//! The **simulation-zone** scene (`PH2D_GPU_COOK_DEMO=10`, ADR-0134 §1) — the
+//! The **simulation-zone** scene (`PH2D_GPU_COOK_DEMO=10`, ADR-0140 §1) — the
 //! smoke for the `sim.zone` family running on the device.
 //!
 //! Every other GPU scene either has no state (`=1`/`=2`/`=8`/`=9`) or carries it
@@ -42,7 +42,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// **The fixed-population snow globe** (`PH2D_GPU_COOK_DEMO=10`) — the ready-to-
-/// smoke scene for the sim-zone family on the device (ADR-0134 §1). Returns the
+/// smoke scene for the sim-zone family on the device (ADR-0140 §1). Returns the
 /// sink.
 pub(super) fn build_gpu_zone_demo_document(
     doc: &mut MotionDoc,

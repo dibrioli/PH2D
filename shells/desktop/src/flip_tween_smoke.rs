@@ -132,28 +132,59 @@ impl crate::App {
         // ⚠️ **A cena DIZ o que construiu** — sem isto, um Add que gera inbetweens tortos é
         // indistinguível de uma cena montada errada ([[feedback_ready_to_smoke_example]]).
         eprintln!(
-            "\n[tween-smoke] cena montada: 2 chaves (0 e 8) · A tem 4 tracos \
-             [corpo, BRACO, perna, CHAPEU] · B tem 3 na ordem TROCADA [perna, corpo, BRACO] \
-             · o braco girou 120 graus em torno do ombro (0.0, 1.2) · Tween = 3."
+            "\n[tween-smoke] cena montada: um bonequinho de palito em 2 quadros \
+             (0 e 8), Tween ja esta em 3."
         );
         eprintln!(
-            "\n[tween-smoke] COMO USAR:\n\
-             1. Aperte **Add** na barra da tira (o campo Tween ja esta em 3).\n\
-             2. Use as setas (^/v) para folhear os quadros 0 -> 2 -> 4 -> 6 -> 8.\n\
+            "\n\
+             O QUE ESTA NA TELA\n\
+             ==================\n\
+             Um boneco de palito: um TRONCO em pe, um BRACO saindo do ombro para a\n\
+             direita (como o ponteiro de um relogio marcando 3 horas), uma PERNA para a\n\
+             esquerda, e um CHAPEUZINHO em cima.\n\
              \n\
-             CONFIRA:\n\
-             a) O BRACO NAO ENCOLHE. Ele percorre um ARCO em torno do ombro, com o\n   \
-                comprimento inteiro. Com o lerp (v1) ele encolheria a ~57%% no quadro 4 e\n   \
-                a figura pareceria um boneco de palito quebrando o braco.\n\
-             b) O OMBRO FICA PARADO. E o ponto fixo do movimento — se ele deslizar, o\n   \
-                pivo saiu do lugar.\n\
-             c) NADA ATRAVESSA A FIGURA. B foi desenhado na ordem trocada de proposito;\n   \
-                por indice, o braco interpolaria contra a perna e cruzaria o corpo.\n\
-             d) O CHAPEU (so existe em A) fica parado, como copia estatica — e' o default.\n   \
-                Marque **Fade** e aperte Add de novo: agora ele SOME esmaecendo E VIAJA\n   \
-                junto com a cabeca, em vez de ficar pregado no ar.\n\
-             e) O chip **Ease** muda o TEMPO: com Ease In os inbetweens se acumulam perto\n   \
-                de A; com Ease Out, perto de B. (Add regenera — nao empilha.)\n"
+             Ele tem so DOIS desenhos: o quadro 0 (esse) e o quadro 8. No quadro 8 o\n\
+             braco girou para cima-e-para-a-esquerda (marcando ~10 horas), a perna trocou\n\
+             de lado, e o chapeu sumiu.\n\
+             \n\
+             O QUE FAZER\n\
+             ===========\n\
+             Aperte **Add** na barra da tira. Ele inventa os 3 quadros do meio (2, 4, 6).\n\
+             Depois use as setas ^/v (ou clique nas celulas da tira) para folhear\n\
+             0 -> 2 -> 4 -> 6 -> 8, ida e volta. E o boneco se mexendo.\n\
+             \n\
+             O QUE OLHAR (3 coisas, todas no quadro 4 -- o do meio)\n\
+             ======================================================\n\
+             \n\
+             1) O BRACO TEM DE FICAR DO MESMO TAMANHO.\n\
+             \n\
+                CERTO  : ele varre um arco, como o ponteiro do relogio indo das 3 para as\n\
+                         10 horas. Sempre do mesmo comprimento.\n\
+                ERRADO : ele ENCOLHE ate a METADE no quadro 4 e volta a crescer -- como\n\
+                         uma antena de radio recolhendo e saindo de novo.\n\
+             \n\
+                (Esse encolhimento e' o que o Blender faz, e o que nos faziamos ate ontem:\n\
+                 a ponta do braco corta o caminho em linha reta em vez de dar a volta.)\n\
+             \n\
+             2) O TRONCO NAO PODE SE MEXER, NEM UM POUCO.\n\
+             \n\
+                Ele foi desenhado IGUAL nos dois quadros, entao tem de ficar parado.\n\
+             \n\
+                Se ele escorregar para baixo ou para o lado, e' porque o programa casou o\n\
+                tronco com a PERNA -- eu desenhei o quadro 8 na ordem trocada (perna\n\
+                primeiro) de proposito, que e' o que um animador faz sem pensar.\n\
+             \n\
+             3) O CHAPEU (marque **Fade** e aperte Add de novo).\n\
+             \n\
+                SEM Fade : o chapeu fica parado e inteiro ate o quadro 8, onde some de\n\
+                           uma vez. E' o padrao.\n\
+                COM Fade : ele vai ficando transparente quadro a quadro E acompanha o\n\
+                           movimento -- em vez de ficar pregado no ar enquanto o resto do\n\
+                           boneco se mexe embaixo dele.\n\
+             \n\
+             4) (opcional) O chip **Ease** muda o RITMO, nao o caminho: com 'Ease In' o\n\
+                boneco comeca devagar e acelera; com 'Ease Out', o contrario. Aperte Add\n\
+                de novo depois de trocar -- ele refaz, nao empilha.\n"
         );
     }
 }
@@ -291,4 +322,82 @@ mod tests {
             "com Fade o chapéu deveria VIAJAR com o vizinho: x={b:.3} (parado é {a:.3})"
         );
     }
+}
+
+/// **A SONDA: o que o artista vai ver, em números** (render-and-look, headless).
+///
+/// `cargo test -p ph2d-host-desktop --release the_tween_smoke_look -- --ignored --nocapture`
+///
+/// Existe porque a mensagem que a cena imprime **descreve uma tela**, e uma descrição de
+/// tela escrita sem olhar é exatamente como um smoke passa a mandar o artista procurar a
+/// coisa errada. Ela roda o MESMO `stage()` + o MESMO `tween`, e imprime, quadro a quadro,
+/// as três coisas que a mensagem manda conferir.
+#[cfg(test)]
+#[test]
+#[ignore = "sonda: imprime o que a cena de smoke mostra, quadro a quadro"]
+fn the_tween_smoke_look() {
+    use ph2d_flip::{FlipDoc, TweenOptions, TweenRequest};
+
+    for fade in [false, true] {
+        let mut doc = FlipDoc::default();
+        let oid = doc.push_object("T");
+        let obj = doc.object_mut(oid).expect("objeto");
+        let l = stage(obj);
+        obj.tween(TweenRequest {
+            layer: l,
+            from: 0,
+            to: 8,
+            count: 3,
+            options: TweenOptions {
+                fade_orphans: fade,
+                ..Default::default()
+            },
+        });
+        println!(
+            "\n══ Fade {} ══════════════════════════════════════════════",
+            if fade { "MARCADO" } else { "desmarcado" }
+        );
+        println!("  quadro   ponta do braço      compr.   (o lerp daria)   chapéu x   opacidade");
+        let obj = doc.object(oid).expect("objeto");
+        for f in [0, 2, 4, 6, 8] {
+            let Some(d) = obj.layer(l).expect("camada").drawing_at(f) else {
+                continue;
+            };
+            let art = obj.drawing(d).expect("arte");
+            // O braço: o traço de 10 pontos que sai do ombro.
+            let arm = art
+                .strokes
+                .iter()
+                .find(|s| s.len() == 10)
+                .expect("o braço está lá");
+            let tip = *arm.positions().last().expect("ponta");
+            let len: f32 = arm
+                .positions()
+                .windows(2)
+                .map(|w| (w[1] - w[0]).length())
+                .sum();
+            // O que o lerp puro daria: a corda entre as duas poses no mesmo t.
+            let t = f as f32 / 8.0;
+            let lerp_len = 1.8
+                * (1.0 - t + t * (120f32).to_radians().cos())
+                    .hypot(t * (120f32).to_radians().sin());
+            // O chapéu: o único traço de 5 pontos.
+            let hat = art.strokes.iter().find(|s| s.len() == 5);
+            let (hx, ho) = hat.map_or((f32::NAN, f32::NAN), |s| {
+                (
+                    s.positions().iter().map(|p| p.x).sum::<f32>() / 5.0,
+                    s.opacities()[0],
+                )
+            });
+            println!(
+                "  {f:^6}   ({:5.2}, {:5.2})     {len:5.2}       {lerp_len:5.2}        \
+                 {hx:6.2}      {ho:5.2}",
+                tip.x, tip.y
+            );
+        }
+    }
+    println!(
+        "\n  o ombro está em (0.00, 1.20) — a base do braço não pode sair dali.\n\
+         'chapéu x' NaN = o chapéu não existe naquele quadro.\n"
+    );
 }

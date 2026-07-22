@@ -82,6 +82,26 @@ impl Default for Sim {
     }
 }
 
+/// The tilt DIAL's direction for a spoke (0..11, 30° steps, 0 = +x, going
+/// clockwise in screen space like the reference dial). The four cardinals
+/// return EXACT unit vectors — the boot spoke is 3 (straight down) and the
+/// engine boots `tilt_dir = (0, 1)` exactly, so a boot-time reconcile must be
+/// a bit-exact no-op (`libm::cos(PI/2)` is `6.1e-17`, not `0`); the other
+/// spokes take the reference's raw cos/sin.
+#[must_use]
+pub fn tilt_dir_for_spoke(spoke: u8) -> [f64; 2] {
+    match spoke % 12 {
+        0 => [1.0, 0.0],
+        3 => [0.0, 1.0],
+        6 => [-1.0, 0.0],
+        9 => [0.0, -1.0],
+        s => {
+            let a = f64::from(s) * 30.0 * std::f64::consts::PI / 180.0;
+            [libm::cos(a), libm::sin(a)]
+        }
+    }
+}
+
 impl Sim {
     /// The effective gravity vector for this step.
     pub fn gravity(&self, tuning: &Tuning) -> [f64; 2] {

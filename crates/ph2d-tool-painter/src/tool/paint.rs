@@ -31,7 +31,10 @@ mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay s
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
-pub use self::{stroke_multi::StrokeOpBadge, wetpaint_settings::WetKnobs};
+pub use self::{
+    stroke_multi::StrokeOpBadge,
+    wetpaint_settings::{WetKnobs, WetTool},
+};
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)

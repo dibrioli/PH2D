@@ -345,8 +345,25 @@ pub struct BrushSettings {
     /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the
     /// Brush IS the fluid and "brush" always returns to Wet Paint.
     pub wetpaint: bool,
-    /// The W3 curated knob values (authored, tool-global — `WetPaintState::knobs`).
+    /// The full authored knob table (doc 22 — sliders + every registry knob;
+    /// the basic section's curated rows and the Tuning panel's table are two
+    /// views of this one value).
     pub wet_knobs: crate::WetKnobs,
+    /// The wet TOOL the brush wire drives while armed (doc 22).
+    pub wet_tool: crate::WetTool,
+    /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).
+    pub wet_tilt_on: bool,
+    pub wet_tilt_ring: u8,
+    pub wet_tilt_spoke: u8,
+    /// Show-wet display overlay (never baked).
+    pub wet_show_wet: bool,
+    /// Paper checkbox — the tooth is visually part of the painting.
+    pub wet_paper_visual: bool,
+    /// Experimental K-M flags (mixing = sim-side, glaze = composite-side).
+    pub wet_km_mixing: bool,
+    pub wet_km_glaze: bool,
+    /// The Tuning side panel's visibility checkbox.
+    pub wet_tuning_open: bool,
 
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).

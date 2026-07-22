@@ -24,10 +24,73 @@ pub const PAINTER_WETPAINT_RESET: NodeId = hash_node_id("painter_brush.wetpaint_
 /// persists across tool switches so "brush" always returns to Wet Paint until unchecked.
 pub const PAINTER_WETPAINT_ENABLE: NodeId = hash_node_id("painter_brush.wetpaint_enable");
 
+// ── Doc 22 — the wet TOOLS (the model's 7-button radio; Erase is the OTHER
+//    VIEW of the rail's eraser chip, the impasto tool-list precedent). ──
+
+/// The 7 wet tool buttons, in the model's order: Paint · Erase · Smear ·
+/// Blend · Wet · Dry · Blow. Clicking USES the tool (Erase → the eraser
+/// wire; everything else → the brush wire + `WetPaintState.tool`).
+pub const PAINTER_WETPAINT_TOOL_IDS: [NodeId; 7] = [
+    hash_node_id("painter_brush.wetpaint_tool_paint"),
+    hash_node_id("painter_brush.wetpaint_tool_erase"),
+    hash_node_id("painter_brush.wetpaint_tool_smear"),
+    hash_node_id("painter_brush.wetpaint_tool_blend"),
+    hash_node_id("painter_brush.wetpaint_tool_wet"),
+    hash_node_id("painter_brush.wetpaint_tool_dry"),
+    hash_node_id("painter_brush.wetpaint_tool_blow"),
+];
+
+/// The TILT dial (the model's polar pad, 8 rings x 12 spokes): a 2D drag
+/// surface registered as a curve-point widget; the panel converts the drag to
+/// (ring, spoke) and forwards them as `SetValue`s on the two ids below.
+pub const PAINTER_WETPAINT_TILT_PAD: NodeId = hash_node_id("painter_brush.wetpaint_tilt_pad");
+/// Tilt **on/off** toggle (header button) — flips without losing the dial.
+pub const PAINTER_WETPAINT_TILT_TOGGLE: NodeId = hash_node_id("painter_brush.wetpaint_tilt_toggle");
+/// Tilt ring (0..8) — `SetValue` carrier, never painted/registered itself.
+pub const PAINTER_WETPAINT_TILT_RING: NodeId = hash_node_id("painter_brush.wetpaint_tilt_ring");
+/// Tilt spoke (0..11, 30 deg steps) — `SetValue` carrier like the ring.
+pub const PAINTER_WETPAINT_TILT_SPOKE: NodeId = hash_node_id("painter_brush.wetpaint_tilt_spoke");
+
+/// **Wet canvas** — one-shot: raise the sheet's WETNESS everywhere (via max);
+/// the next stroke bleeds anywhere. Creates the session if none is live.
+pub const PAINTER_WETPAINT_WETCANVAS: NodeId = hash_node_id("painter_brush.wetpaint_wetcanvas");
+/// **Dry canvas** — one-shot: settle all suspended pigment, zero water,
+/// velocity and wetness. Instant, no drying rims.
+pub const PAINTER_WETPAINT_DRYCANVAS: NodeId = hash_node_id("painter_brush.wetpaint_drycanvas");
+/// **Fast dry** — one-shot: accelerated evaporation+settle passes until the
+/// fluid is gone; the edge rims still darken.
+pub const PAINTER_WETPAINT_FASTDRY: NodeId = hash_node_id("painter_brush.wetpaint_fastdry");
+/// **Show wet** — TOGGLE: display-only damp overlay (never baked).
+pub const PAINTER_WETPAINT_SHOWWET: NodeId = hash_node_id("painter_brush.wetpaint_showwet");
+
+/// **Paper** checkbox — the tooth becomes visually part of the painting
+/// (granulation + emboss printed into the pigment colours; render-only).
+pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
+    hash_node_id("painter_brush.wetpaint_paper_visual");
+/// **Tuning** checkbox — shows/hides the side panel with the full knob table.
+pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
+
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 2] = [PAINTER_WETPAINT_ENABLE, PAINTER_WETPAINT_RESET];
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 16] = [
+    PAINTER_WETPAINT_ENABLE,
+    PAINTER_WETPAINT_RESET,
+    PAINTER_WETPAINT_TOOL_IDS[0],
+    PAINTER_WETPAINT_TOOL_IDS[1],
+    PAINTER_WETPAINT_TOOL_IDS[2],
+    PAINTER_WETPAINT_TOOL_IDS[3],
+    PAINTER_WETPAINT_TOOL_IDS[4],
+    PAINTER_WETPAINT_TOOL_IDS[5],
+    PAINTER_WETPAINT_TOOL_IDS[6],
+    PAINTER_WETPAINT_TILT_TOGGLE,
+    PAINTER_WETPAINT_WETCANVAS,
+    PAINTER_WETPAINT_DRYCANVAS,
+    PAINTER_WETPAINT_FASTDRY,
+    PAINTER_WETPAINT_SHOWWET,
+    PAINTER_WETPAINT_PAPER_VISUAL,
+    PAINTER_WETPAINT_TUNING,
+];
 
 // ── The W3 curated knobs (SPEC §16 — the ~40-knob tuning table curated to the seven an artist
 //    reaches for; the rest stay named engine constants). Each is a `card_row` number chip whose

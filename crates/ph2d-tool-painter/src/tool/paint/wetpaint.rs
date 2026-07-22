@@ -50,13 +50,23 @@
 
 use super::*;
 use ph2d_wet_paint::painter::{Dirty, Engine};
-use ph2d_wet_paint::render::{RenderLayer, render_pigment_only_region};
+use ph2d_wet_paint::render::{RenderLayer, render_pigment_region_visual};
 
 /// 40 Hz fixed-step (SPEC §5); at most 5 steps per frame, backlog dropped.
 const WET_STEP_S: f32 = 1.0 / 40.0;
 const WET_MAX_STEPS: usize = 5;
 
-#[derive(Default)]
+/// Show-wet veil (doc 22 §2.7 — the model's damp overlay, adapted from an
+/// opaque sheet to a LAYER): a cool translucent slate composited over the
+/// result wherever the sheet is damp, so wetness reads over paint AND over
+/// nothing; the meniscus glint keeps the model's rim law. Display-only —
+/// the end-session door recomposites clean, so none of this ever bakes.
+const WET_VEIL_ALPHA: f64 = 0.18;
+const WET_VEIL_RGB: [f64; 3] = [56.0, 80.0, 104.0];
+/// The model's light direction (top-left) for the meniscus glint.
+const WET_LIGHT_X: f64 = -std::f64::consts::FRAC_1_SQRT_2;
+const WET_LIGHT_Y: f64 = -std::f64::consts::FRAC_1_SQRT_2;
+
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
     /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the
@@ -91,6 +101,69 @@ pub(crate) struct WetPaintState {
     /// (every refill becomes a fluid deposit); it is written in exactly two
     /// adjacent statements around that one call, nowhere else.
     pub(super) deposit_pass: bool,
+    /// The wet TOOL (doc 22): which of the model's tools the brush wire
+    /// drives while armed. Paint by default; Erase is NOT here — it is the
+    /// rail eraser's other view.
+    pub(super) tool: WetTool,
+    /// The tilt DIAL (doc 22): on/off + ring (0..8, magnitude `ring/4`) +
+    /// spoke (0..11, 30° steps). Boot = the model's boot = the engine's
+    /// boot: ON, straight down, half radius (gate-pinned no-op reconcile).
+    pub(super) tilt_on: bool,
+    pub(super) tilt_ring: u8,
+    pub(super) tilt_spoke: u8,
+    /// Show-wet overlay (display-only; NEVER baked — the end-session door
+    /// recomposites clean first).
+    pub(super) show_wet: bool,
+    /// Paper checkbox (doc 22 §2.8): the tooth becomes visually part of the
+    /// painting (granulation + emboss into the pigment colours). Baked on
+    /// purpose — it is part of the painting, unlike the show-wet veil.
+    pub(super) paper_visual: bool,
+    /// Experimental: K–M pigment mixing (`sim.km_mixing`).
+    pub(super) km_mixing: bool,
+    /// Experimental: K–M glaze stacking in the composite.
+    pub(super) km_glaze: bool,
+    /// The Tuning side panel's visibility (the basic section's checkbox).
+    pub(super) tuning_open: bool,
+}
+
+impl Default for WetPaintState {
+    fn default() -> Self {
+        Self {
+            armed: false,
+            session: None,
+            live_gesture: false,
+            knobs: WetKnobs::default(),
+            pending_deposit: Vec::new(),
+            deposit_pass: false,
+            tool: WetTool::default(),
+            tilt_on: true,
+            tilt_ring: 4,
+            tilt_spoke: 3,
+            show_wet: false,
+            paper_visual: false,
+            km_mixing: false,
+            km_glaze: false,
+            tuning_open: false,
+        }
+    }
+}
+
+/// Everything the session pushes into the ENGINE (doc 22) — compared as one
+/// value per batch/tick; the boot constant equals the engine's own boot
+/// exactly (gate-pinned), so an untouched section reconciles as a no-op.
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct WetEngineFacts {
+    pub(super) knobs: WetKnobs,
+    pub(super) tilt: (bool, u8, u8),
+    pub(super) km_mixing: bool,
+}
+
+impl WetEngineFacts {
+    pub(super) const BOOT: Self = Self {
+        knobs: WetKnobs::DEFAULT,
+        tilt: (true, 4, 3),
+        km_mixing: false,
+    };
 }
 
 pub(super) struct WetSession {
@@ -126,11 +199,11 @@ pub(super) struct WetSession {
     /// ignored until the bake (Enio 2026-07-21, "os ajustes ... não estão
     /// sendo levados em consideração").
     paper_key: Option<PaperKey>,
-    /// The [`WetKnobs`] last pushed into the engine — starts at the defaults
-    /// (the engine boots with exactly them, gate-pinned) and the reconcile
-    /// pushes the authored values when they differ. Same law as `paper_key`:
-    /// the knobs are authored state, the session is not.
-    applied_knobs: WetKnobs,
+    /// The [`WetEngineFacts`] last pushed into the engine — starts at the
+    /// boot constant (the engine boots with exactly it, gate-pinned) and the
+    /// reconcile pushes the authored values when they differ. Same law as
+    /// `paper_key`: the facts are authored state, the session is not.
+    applied: WetEngineFacts,
 }
 
 /// Everything the paper seed reads — the reconcile re-seeds exactly when one
@@ -146,27 +219,47 @@ struct PaperKey {
 }
 
 impl WetSession {
-    /// Push the authored knobs into the engine when they moved (W3). ONE
-    /// door for the stamp AND the tick — Dry Speed and Gravity act on water
-    /// already sitting on the canvas, so a knob must land while the sim
-    /// runs, not only at the next stroke. Unchanged knobs cost one struct
-    /// compare. The tuning knobs go through `Engine::set_knob` (the door
-    /// that reacts to what a knob invalidates); none of the seven carries a
-    /// rebuild kind today, but the door stays the law.
-    fn reconcile_knobs(&mut self, knobs: WetKnobs) {
-        if self.applied_knobs == knobs {
+    /// Push the authored FACTS into the engine when they moved (W3, grown by
+    /// doc 22). ONE door for the stamp AND the tick — Dry Speed and Gravity
+    /// act on water already sitting on the canvas, so a knob must land while
+    /// the sim runs, not only at the next stroke. Unchanged facts cost one
+    /// struct compare. The tuning knobs go through `Engine::set_knob` (the
+    /// door that reacts to what a knob invalidates: bristle rebuild lazy,
+    /// paper re-bake, repaint) — and the paper re-bake only fires while the
+    /// ENGINE's own tile is the tooth source (an armed artist Paper slot
+    /// overrides it; its three physical knobs hide in the panel then).
+    fn reconcile_facts(&mut self, f: WetEngineFacts) {
+        use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS};
+        if self.applied == f {
             return;
         }
-        use ph2d_wet_paint::tuning::Knob;
-        self.engine.sliders.water = knobs.water;
-        self.engine.sliders.erase = knobs.erase;
-        self.engine.set_knob(Knob::PigmentPerDab, knobs.pigment);
-        self.engine.set_knob(Knob::Pickup, knobs.pickup);
-        self.engine.set_knob(Knob::Evaporation, knobs.dry_speed);
-        self.engine
-            .set_knob(Knob::EdgeDarkening, knobs.edge_darkening);
-        self.engine.set_knob(Knob::Gravity, knobs.gravity);
-        self.applied_knobs = knobs;
+        let a = self.applied;
+        if f.knobs.water != a.knobs.water {
+            self.engine.sliders.water = f.knobs.water;
+        }
+        if f.knobs.erase != a.knobs.erase {
+            self.engine.sliders.erase = f.knobs.erase;
+        }
+        for i in 0..KNOB_COUNT {
+            if f.knobs.knobs[i] != a.knobs.knobs[i] {
+                self.engine.set_knob(KNOB_DEFS[i].knob, f.knobs.knobs[i]);
+            }
+        }
+        if f.tilt != a.tilt {
+            let (on, ring, spoke) = f.tilt;
+            let d = ph2d_wet_paint::sim::tilt_dir_for_spoke(spoke);
+            self.engine.sim.tilt_on = on;
+            self.engine.sim.tilt_dir_x = d[0];
+            self.engine.sim.tilt_dir_y = d[1];
+            self.engine.sim.tilt_scale = f64::from(ring) / 4.0;
+        }
+        if f.km_mixing != a.km_mixing {
+            self.engine.sim.km_mixing = f.km_mixing;
+        }
+        if self.paper_key.is_none() && self.engine.paper_dirty() {
+            self.engine.rebake_paper();
+        }
+        self.applied = f;
     }
 }
 
@@ -222,22 +315,11 @@ impl PainterTool {
         // eraser — this early-out only covers the guard killing the session
         // between the route decision and here (the batch then does nothing).
         let erasing = self.paint.eraser;
-        let fresh = self.paint.wetpaint.session.is_none();
-        if fresh {
+        if self.paint.wetpaint.session.is_none() {
             if erasing {
                 return;
             }
-            self.paint.wetpaint.session = Some(WetSession {
-                engine: Engine::new(w as usize, h as usize),
-                base: Arc::clone(&self.canvas_rgba),
-                canvas: Arc::clone(&self.canvas_rgba),
-                pigment: vec![0u8; w as usize * h as usize * 4],
-                acc: 0.0,
-                lanes: Vec::new(),
-                stroke_open: false,
-                paper_key: None,
-                applied_knobs: WetKnobs::default(),
-            });
+            self.ensure_wet_session();
         }
         // Take the session out so the prep below can borrow `self.paint`'s
         // Shape state alongside it (disjoint in fact, not in the borrow
@@ -284,8 +366,19 @@ impl PainterTool {
             }
             sess.paper_key = want;
         }
-        // ── The W3 knobs — same reconcile law as the paper. ────────────────
-        sess.reconcile_knobs(self.paint.wetpaint.knobs);
+        // ── The authored facts — same reconcile law as the paper. ──────────
+        sess.reconcile_facts(self.wet_facts());
+        // The engine-side TOOL (doc 22): gives the lane doors their
+        // `TrailMode` (begin picks Blend by it) and the sim its pause law
+        // (`sim_should_run` keeps running under a Blow stroke, the model's
+        // one exception). The ERASER always pauses — the engine erases with
+        // its own tool untouched, exactly as before.
+        let wet_tool = self.paint.wetpaint.tool;
+        sess.engine.tool = if erasing {
+            ph2d_wet_paint::painter::Tool::Paint
+        } else {
+            wet_tool.engine()
+        };
         // ── The dab's SILHOUETTE — the painter's, not the engine's ─────────
         // `silhouette_at` is the single source of the dab's shape (falloff ×
         // Shape image/procedural × flatten/rotate footprint); the engine's
@@ -320,9 +413,13 @@ impl PainterTool {
         if !sess.stroke_open {
             sess.stroke_open = true;
             sess.lanes.clear();
-            // The eraser is LANE-LESS (a direct grid op, no trail) — open one
-            // direct stroke so the sim pauses under the gesture as usual.
-            if erasing && let Some(d0) = dabs.first() {
+            // The eraser and the DIRECT wet tools (Wet/Dry/Blow/Smear) are
+            // LANE-LESS (per-dab grid ops, no trail) — open one direct
+            // stroke so the sim gets its stroke gate as usual (paused under
+            // the gesture; the Blow exception rides `engine.tool`).
+            if (erasing || !wet_tool.uses_lanes())
+                && let Some(d0) = dabs.first()
+            {
                 sess.engine.begin_direct_stroke(
                     0,
                     f64::from(d0.center[0]) + 1.0,
@@ -341,7 +438,11 @@ impl PainterTool {
             // centre the copies converge and may swap lanes; there their
             // positions coincide, so a swap deposits the same paint.
             // The ERASER skips the lanes entirely — every copy just erases
-            // where it lands.
+            // where it lands. The direct wet tools keep the geometric lane
+            // MATCHING (it is what carries each symmetry/tiling copy's own
+            // previous dab centre — the smear/blow displacement source) but
+            // never touch the engine's lane trails.
+            let mut lane_born = false;
             let li = if erasing {
                 0
             } else {
@@ -358,17 +459,25 @@ impl PainterTool {
                 }
                 match lane {
                     Some(i) => {
-                        sess.engine.direct_segment(i, f64::from(best.sqrt()));
+                        if wet_tool.uses_lanes() {
+                            sess.engine.direct_segment(i, f64::from(best.sqrt()));
+                        }
                         i
                     }
                     None => {
                         let i = sess.lanes.len();
-                        // The DAB's colour, not the brush's: Randomize is
-                        // already resolved per dab by the stroke engine
-                        // (W2.2).
-                        sess.engine.color = ink(d.color);
-                        sess.engine
-                            .begin_direct_stroke(i, f64::from(x) + 1.0, f64::from(y) + 1.0);
+                        lane_born = true;
+                        if wet_tool.uses_lanes() {
+                            // The DAB's colour, not the brush's: Randomize
+                            // is already resolved per dab by the stroke
+                            // engine (W2.2).
+                            sess.engine.color = ink(d.color);
+                            sess.engine.begin_direct_stroke(
+                                i,
+                                f64::from(x) + 1.0,
+                                f64::from(y) + 1.0,
+                            );
+                        }
                         sess.lanes.push(Lane {
                             pos: d.center,
                             ink: d.color,
@@ -377,9 +486,14 @@ impl PainterTool {
                     }
                 }
             };
+            // The lane's PREVIOUS centre (before this dab updates it) — the
+            // direct tools' displacement source; a born lane has none, and
+            // the eraser has no lanes at all.
+            let lane_prev: Option<[f32; 2]> =
+                (!erasing && !lane_born).then(|| sess.lanes[li].pos);
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
-            if !erasing && d.color != sess.lanes[li].ink {
+            if !erasing && wet_tool == WetTool::Paint && d.color != sess.lanes[li].ink {
                 sess.engine.set_stroke_color(li, ink(d.color));
                 sess.lanes[li].ink = d.color;
             }
@@ -473,17 +587,44 @@ impl PainterTool {
                 );
                 continue;
             }
-            sess.engine.dispatch_pressure_dab_lane(
-                li,
-                f64::from(x) + 1.0,
-                f64::from(y) + 1.0,
-                b,
-                f64::from(d.dir[0]),
-                f64::from(d.dir[1]),
-                f64::from(d.radius_px),
-                Some(&mut sil),
-                grain_arg,
-            );
+            match wet_tool {
+                WetTool::Paint => sess.engine.dispatch_pressure_dab_lane(
+                    li,
+                    f64::from(x) + 1.0,
+                    f64::from(y) + 1.0,
+                    b,
+                    f64::from(d.dir[0]),
+                    f64::from(d.dir[1]),
+                    f64::from(d.radius_px),
+                    Some(&mut sil),
+                    grain_arg,
+                ),
+                // Blend keeps the engine's own fixed-hardness stamp (the
+                // model's tools ignore the brush silhouette on purpose).
+                WetTool::Blend => sess.engine.dispatch_pressure_dab_lane_blend(
+                    li,
+                    f64::from(x) + 1.0,
+                    f64::from(y) + 1.0,
+                    b,
+                    f64::from(d.dir[0]),
+                    f64::from(d.dir[1]),
+                    f64::from(d.radius_px),
+                ),
+                // Direct tools: per-dab grid ops; the displacement source is
+                // THIS lane's previous centre (host-tracked per copy).
+                WetTool::Wet | WetTool::Dry | WetTool::Blow | WetTool::Smear => {
+                    sess.engine.dispatch_pressure_dab_tool(
+                        wet_tool.engine(),
+                        f64::from(x) + 1.0,
+                        f64::from(y) + 1.0,
+                        b,
+                        f64::from(d.dir[0]),
+                        f64::from(d.dir[1]),
+                        f64::from(d.radius_px),
+                        lane_prev.map(|p| [f64::from(p[0]) + 1.0, f64::from(p[1]) + 1.0]),
+                    );
+                }
+            }
             sess.lanes[li].pos = d.center;
         }
         self.paint.wetpaint.session = Some(taken);
@@ -525,13 +666,13 @@ impl PainterTool {
         if self.wet_authoring_hold() {
             return;
         }
-        let knobs = self.paint.wetpaint.knobs;
+        let facts = self.wet_facts();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
-        // Knobs land while the water SITS too (Dry Speed / Gravity are sim
-        // forces): the tick reconciles with the same door as the stamp.
-        sess.reconcile_knobs(knobs);
+        // Facts land while the water SITS too (Dry Speed / Gravity / the
+        // tilt are sim forces): the tick reconciles with the stamp's door.
+        sess.reconcile_facts(facts);
         sess.acc += dt_s;
         let mut steps = 0;
         while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS {
@@ -550,14 +691,120 @@ impl PainterTool {
 
     /// End the session (mode switch / explicit teardown). The last composite
     /// is already in `canvas_rgba`, so ending IS the bake — the water just
-    /// stops moving.
+    /// stops moving. The show-wet VEIL must never bake (doc 22 §2.7): with
+    /// the overlay on and the canvas still ours, recomposite clean first.
     pub(crate) fn wetpaint_end_session(&mut self) {
+        self.wetpaint_guard();
+        if self.paint.wetpaint.show_wet && self.paint.wetpaint.session.is_some() {
+            if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+                sess.engine.mark_dirty_full();
+            }
+            self.wetpaint_composite_veiled(false);
+        }
         self.paint.wetpaint.session = None;
         // Doc 21: mode-leave hygiene — a stash must not survive into another
         // mode's commit. (The GUARD-kill branch deliberately does NOT clear
         // it: a mid-authoring undo keeps authoring, and its later commit
         // still deposits — into a fresh session over the peeled canvas.)
         self.paint.wetpaint.pending_deposit.clear();
+    }
+
+    /// The authored engine facts (the reconcile's input, doc 22).
+    pub(super) fn wet_facts(&self) -> WetEngineFacts {
+        let w = &self.paint.wetpaint;
+        WetEngineFacts {
+            knobs: w.knobs,
+            tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
+            km_mixing: w.km_mixing,
+        }
+    }
+
+    /// Create the session if none is live (the stamp's lazy birth, also the
+    /// Wet-canvas button's door — wetting the sheet before the first stroke
+    /// IS its use case). `false` when the canvas has no size.
+    pub(super) fn ensure_wet_session(&mut self) -> bool {
+        if self.paint.wetpaint.session.is_some() {
+            return true;
+        }
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return false;
+        }
+        self.paint.wetpaint.session = Some(WetSession {
+            engine: Engine::new(w as usize, h as usize),
+            base: Arc::clone(&self.canvas_rgba),
+            canvas: Arc::clone(&self.canvas_rgba),
+            pigment: vec![0u8; w as usize * h as usize * 4],
+            acc: 0.0,
+            lanes: Vec::new(),
+            stroke_open: false,
+            paper_key: None,
+            applied: WetEngineFacts::BOOT,
+        });
+        true
+    }
+
+    /// **Wet canvas** (one-shot): raise the sheet's wetness everywhere via
+    /// max — no water injected, the sim stays idle, the next stroke bleeds
+    /// anywhere. Creates the session if none is live.
+    pub(crate) fn wetpaint_wet_canvas(&mut self) {
+        if self.wet_authoring_hold() {
+            return;
+        }
+        self.wetpaint_guard();
+        if !self.ensure_wet_session() {
+            return;
+        }
+        let facts = self.wet_facts();
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.reconcile_facts(facts);
+            sess.engine.wet_canvas_now();
+        }
+        self.wetpaint_composite();
+    }
+
+    /// **Dry canvas** (one-shot): settle all suspended pigment, zero water /
+    /// velocity / wetness. No live session = nothing wet = an honest no-op.
+    pub(crate) fn wetpaint_dry_canvas(&mut self) {
+        if self.wet_authoring_hold() {
+            return;
+        }
+        self.wetpaint_guard();
+        let facts = self.wet_facts();
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.reconcile_facts(facts);
+            sess.engine.dry_canvas_now();
+            self.wetpaint_composite();
+        }
+    }
+
+    /// **Fast dry** (one-shot): accelerated evaporation+settle passes until
+    /// the fluid is gone; the edge rims still darken. No session = no-op.
+    pub(crate) fn wetpaint_fast_dry(&mut self) {
+        if self.wet_authoring_hold() {
+            return;
+        }
+        self.wetpaint_guard();
+        let facts = self.wet_facts();
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.reconcile_facts(facts);
+            sess.engine.fast_dry_now();
+            self.wetpaint_composite();
+        }
+    }
+
+    /// Recomposite the whole session after a display-flag flip (Show wet /
+    /// Paper / Glaze). During an authoring hold only the dirty mark lands —
+    /// the resume tick composites (doc 21 law D forbids composites here).
+    pub(crate) fn wet_recomposite_full(&mut self) {
+        self.wetpaint_guard();
+        let hold = self.wet_authoring_hold();
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.engine.mark_dirty_full();
+            if !hold {
+                self.wetpaint_composite();
+            }
+        }
     }
 
     /// The canvas-identity guard (module doc): a foreign `canvas_rgba` swap
@@ -581,9 +828,19 @@ impl PainterTool {
     /// the layer's α to the frozen base (colour deposits into existing
     /// paint; the silhouette never moves). All gates off = byte-identical.
     fn wetpaint_composite(&mut self) {
+        self.wetpaint_composite_veiled(self.paint.wetpaint.show_wet);
+    }
+
+    /// [`Self::wetpaint_composite`] with the show-wet veil explicit — the
+    /// end-session door forces `false` so the veil never bakes.
+    fn wetpaint_composite_veiled(&mut self, veil: bool) {
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
         let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();
+        let visual = ph2d_wet_paint::render::PigmentVisual {
+            paper: self.paint.wetpaint.paper_visual,
+            km_glaze: self.paint.wetpaint.km_glaze,
+        };
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -611,7 +868,20 @@ impl PainterTool {
                 visible: l.visible,
             })
             .collect();
-        render_pigment_only_region(&layers, cx0, cy0, cx1, cy1, &mut sess.pigment);
+        // The visual terms (doc 22): the paper printed into the pigment and
+        // the K–M glaze stacking ride the SAME single render body; both off
+        // is the historical pigment render, byte for byte (engine-gated).
+        let params = sess.engine.sim.gather_params(&sess.engine.tuning);
+        render_pigment_region_visual(
+            Some(&params),
+            &layers,
+            visual,
+            cx0,
+            cy0,
+            cx1,
+            cy1,
+            &mut sess.pigment,
+        );
         drop(layers);
         // Straight-alpha OVER the frozen base, cell (cx,cy) → pixel (cx-1,cy-1).
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
@@ -657,6 +927,56 @@ impl PainterTool {
                 }
             }
         }
+        if veil {
+            // Show-wet: the damp overlay, display-only (never baked). Reads
+            // the ACTIVE grid's wetness byte + film exactly like the model;
+            // the veil is composited OVER the finished pixel so it shows on
+            // painted and unpainted texels alike (an inspection overlay may
+            // override the alpha-lock's look — the bake never carries it).
+            let g = sess.engine.active_grid();
+            let sg = g.s;
+            for cy in cy0..=cy1 {
+                for cx in cx0..=cx1 {
+                    let i = cx + cy * sg;
+                    let film = f64::from(g.film[i]);
+                    let mut wet_sig = f64::from(g.wet[i]) / 255.0;
+                    if film > 0.02 {
+                        let t = (film / 2.5).min(1.0);
+                        let sv = t * t * (3.0 - 2.0 * t);
+                        if sv > wet_sig {
+                            wet_sig = sv;
+                        }
+                    }
+                    if wet_sig <= 0.01 {
+                        continue;
+                    }
+                    let o = ((cy - 1) * w + (cx - 1)) * 4;
+                    let a_v = WET_VEIL_ALPHA * wet_sig;
+                    let ca = f64::from(canvas[o + 3]) / 255.0;
+                    let oa = a_v + ca * (1.0 - a_v);
+                    // Meniscus glint — the model's rim shine, additive.
+                    let gx = (f64::from(g.film[i + 1]) - f64::from(g.film[i - 1])) * 0.5;
+                    let gy = (f64::from(g.film[i + sg]) - f64::from(g.film[i - sg])) * 0.5;
+                    let mag = (gx * gx + gy * gy).sqrt();
+                    let shine = if mag > 0.01 {
+                        let rim = (mag * 0.7).min(1.0);
+                        18.3 * rim
+                            * rim
+                            * (0.5
+                                + 0.5 * ((gx / mag) * WET_LIGHT_X + (gy / mag) * WET_LIGHT_Y))
+                    } else {
+                        0.0
+                    };
+                    for ch in 0..3 {
+                        let cc = f64::from(canvas[o + ch]);
+                        let mixed =
+                            (WET_VEIL_RGB[ch] * a_v + cc * ca * (1.0 - a_v)) / oa.max(1e-6) + shine;
+                        canvas[o + ch] = mixed.round().clamp(0.0, 255.0) as u8;
+                    }
+                    canvas[o + 3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
+                }
+            }
+        }
         // Re-arm the guard with the Arc our own make_mut may have re-seated.
         sess.canvas = Arc::clone(&self.canvas_rgba);
         let region = Region {
@@ -671,3 +991,5 @@ impl PainterTool {
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
+#[cfg(test)]
+mod tests_doc22; // the doc-22 gates (tuning/tilt/tools/actions/flags)

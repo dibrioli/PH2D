@@ -485,12 +485,24 @@ impl Engine {
 
     pub fn action_wet_canvas(&mut self) {
         self.capture_history();
+        self.wet_canvas_now();
+    }
+
+    /// [`Self::action_wet_canvas`] without the engine-history capture — the
+    /// PRODUCT door (the host owns undo; a capture here would clone every
+    /// grid plane per press, the ADR-0117 disease). ONE body serves both.
+    pub fn wet_canvas_now(&mut self) {
         wet_canvas(self.active_grid_mut());
         self.mark_dirty_full(); // show-wet overlay may change everywhere
     }
 
     pub fn action_dry_canvas(&mut self) {
         self.capture_history();
+        self.dry_canvas_now();
+    }
+
+    /// [`Self::action_dry_canvas`] without the history capture (product door).
+    pub fn dry_canvas_now(&mut self) {
         let mix = self.sim.gather_params(&self.tuning).mix;
         let g = self.active_grid_mut();
         dry_canvas(g, mix);
@@ -500,6 +512,11 @@ impl Engine {
 
     pub fn action_fast_dry(&mut self) {
         self.capture_history();
+        self.fast_dry_now();
+    }
+
+    /// [`Self::action_fast_dry`] without the history capture (product door).
+    pub fn fast_dry_now(&mut self) {
         let idx = self.active_layer;
         sim_fast_dry(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.mark_dirty_full();

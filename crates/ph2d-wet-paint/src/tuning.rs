@@ -97,6 +97,20 @@ mod defs;
 
 pub use defs::{KNOB_DEFS, KnobDef};
 
+/// The boot value of every knob, in [`Knob`] discriminant order — `const` so
+/// a host's authored-state `DEFAULT` (a `const` item) can carry the exact
+/// engine boot (f64 equality gates depend on it).
+#[must_use]
+pub const fn knob_defaults() -> [f64; KNOB_COUNT] {
+    let mut values = [0.0; KNOB_COUNT];
+    let mut i = 0;
+    while i < KNOB_COUNT {
+        values[i] = KNOB_DEFS[i].default;
+        i += 1;
+    }
+    values
+}
+
 /// Live knob values. Writes report what they invalidated; the facade reacts
 /// (lazy brush rebuild, paper re-bake on release, repaint).
 #[derive(Clone)]
@@ -106,11 +120,9 @@ pub struct Tuning {
 
 impl Default for Tuning {
     fn default() -> Self {
-        let mut values = [0.0; KNOB_COUNT];
-        for (i, d) in KNOB_DEFS.iter().enumerate() {
-            values[i] = d.default;
+        Tuning {
+            values: knob_defaults(),
         }
-        Tuning { values }
     }
 }
 

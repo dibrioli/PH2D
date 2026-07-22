@@ -1111,11 +1111,11 @@ fn the_engine_boots_with_the_knob_defaults() {
     let e = &sess.engine;
     assert_eq!(e.sliders.water, d.water);
     assert_eq!(e.sliders.erase, d.erase);
-    assert_eq!(e.tuning.get(Knob::PigmentPerDab), d.pigment);
-    assert_eq!(e.tuning.get(Knob::Pickup), d.pickup);
-    assert_eq!(e.tuning.get(Knob::Evaporation), d.dry_speed);
-    assert_eq!(e.tuning.get(Knob::EdgeDarkening), d.edge_darkening);
-    assert_eq!(e.tuning.get(Knob::Gravity), d.gravity);
+    assert_eq!(e.tuning.get(Knob::PigmentPerDab), d.pigment());
+    assert_eq!(e.tuning.get(Knob::Pickup), d.pickup());
+    assert_eq!(e.tuning.get(Knob::Evaporation), d.dry_speed());
+    assert_eq!(e.tuning.get(Knob::EdgeDarkening), d.edge_darkening());
+    assert_eq!(e.tuning.get(Knob::Gravity), d.gravity());
 }
 
 /// A turned knob reaches the LIVE engine — through the panel's own channel

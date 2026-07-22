@@ -77,7 +77,7 @@ pub(crate) fn paint_wetpaint_section(
             (
                 "Pigment",
                 core_ids::PAINTER_WETPAINT_PIGMENT,
-                k.pigment as f32,
+                k.pigment() as f32,
                 0.0,
                 PIGMENT_MAX,
                 PIGMENT_STEP,
@@ -86,7 +86,7 @@ pub(crate) fn paint_wetpaint_section(
             (
                 "Pickup",
                 core_ids::PAINTER_WETPAINT_PICKUP,
-                k.pickup as f32,
+                k.pickup() as f32,
                 0.0,
                 PICKUP_MAX,
                 PICKUP_STEP,
@@ -95,7 +95,7 @@ pub(crate) fn paint_wetpaint_section(
             (
                 "Dry Speed",
                 core_ids::PAINTER_WETPAINT_DRY_SPEED,
-                k.dry_speed as f32,
+                k.dry_speed() as f32,
                 0.0,
                 DRY_SPEED_MAX,
                 DRY_SPEED_STEP,
@@ -104,7 +104,7 @@ pub(crate) fn paint_wetpaint_section(
             (
                 "Edge Darkening",
                 core_ids::PAINTER_WETPAINT_EDGE,
-                k.edge_darkening as f32,
+                k.edge_darkening() as f32,
                 0.0,
                 EDGE_MAX,
                 1.0,
@@ -113,7 +113,7 @@ pub(crate) fn paint_wetpaint_section(
             (
                 "Gravity",
                 core_ids::PAINTER_WETPAINT_GRAVITY,
-                k.gravity as f32,
+                k.gravity() as f32,
                 0.0,
                 GRAVITY_MAX,
                 GRAVITY_STEP,

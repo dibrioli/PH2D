@@ -12,9 +12,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | `cf851d2e593d024981577c41809f5714596dba53` |
+| HEAD | ver `git log -1 --format=%H line/FLIP` (6 commits; o último é o de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **5** |
+| commits à frente do `main` | **6** |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
 
 ```bash

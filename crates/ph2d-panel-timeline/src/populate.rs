@@ -147,9 +147,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             selected_index: Some(0),
         },
     );
-    // The Containers list's two verbs, one id array each — registered for every row the id
-    // arrays can address, not just the ones today's document fills, for the reason above.
+    // The Containers list's button verbs (pencil + trash), one id array each — registered
+    // for every row the id arrays can address, not just the ones today's document fills, for
+    // the reason above.
     for id in ids::TIMELINE_CONT_RENAME {
+        button(store, id);
+    }
+    for id in ids::TIMELINE_CONT_DELETE {
         button(store, id);
     }
     for id in ids::TIMELINE_CONT_OPT {

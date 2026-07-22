@@ -338,12 +338,15 @@ impl TimelineViewSnapshot {
             .extend(doc.containers().iter().enumerate().map(|(i, c)| {
                 ContainerView {
                     name: c.name.clone(),
-                    // Its own interior's end — what a strip placed on it is sized to, read
-                    // through the SAME door the scene's end comes from (`host_end_seconds`), so
-                    // a container instance cannot be born at a speed nobody asked for.
-                    length: doc
-                        .host_end_seconds(crate::StackHost::Container(i))
-                        .unwrap_or(0.0),
+                    // Its own interior's end — what a strip placed on it is sized to and what
+                    // the Containers list draws its bar with, read through the SAME doors the
+                    // document uses (`host_end_seconds` + `container_bar_seconds`), so the bar
+                    // on screen, the span the `+` places and the slice the strip windows are
+                    // one number. An EMPTY container publishes its born length (2 s).
+                    length: crate::container_bar_seconds(
+                        doc.host_end_seconds(crate::StackHost::Container(i))
+                            .unwrap_or(0.0),
+                    ),
                 }
             }));
         self.crumbs.clear();

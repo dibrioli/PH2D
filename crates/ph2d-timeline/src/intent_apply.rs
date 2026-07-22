@@ -339,6 +339,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::RenameContainer { index, name } => edit(state, |doc, _| {
             doc.rename_container(index, name);
         }),
+        // Deleting an ASSET — `edit` for the same reason, and the doc's cascade rides inside
+        // the same capture, so the instances and the asset undo as one.
+        I::RemoveContainer { index } => edit(state, |doc, _| {
+            doc.remove_container(index);
+        }),
         I::RemoveLane { lane } => edit_at(state, host, |doc, host, _| {
             doc.remove_lane_in(host, lane);
         }),

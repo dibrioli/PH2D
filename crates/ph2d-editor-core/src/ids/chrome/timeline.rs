@@ -230,6 +230,28 @@ pub const TIMELINE_CONT_RENAME: [NodeId; 16] = [
     hash_node_id("timeline.cont_rename_15"),
 ];
 
+/// The trash on a container's row — deletes the ASSET and every instance of it (the
+/// document cascades; one undo step). Beside the pencil, mirroring the clip cluster's
+/// `[✎][🗑]` pair one bar up.
+pub const TIMELINE_CONT_DELETE: [NodeId; 16] = [
+    hash_node_id("timeline.cont_delete_0"),
+    hash_node_id("timeline.cont_delete_1"),
+    hash_node_id("timeline.cont_delete_2"),
+    hash_node_id("timeline.cont_delete_3"),
+    hash_node_id("timeline.cont_delete_4"),
+    hash_node_id("timeline.cont_delete_5"),
+    hash_node_id("timeline.cont_delete_6"),
+    hash_node_id("timeline.cont_delete_7"),
+    hash_node_id("timeline.cont_delete_8"),
+    hash_node_id("timeline.cont_delete_9"),
+    hash_node_id("timeline.cont_delete_10"),
+    hash_node_id("timeline.cont_delete_11"),
+    hash_node_id("timeline.cont_delete_12"),
+    hash_node_id("timeline.cont_delete_13"),
+    hash_node_id("timeline.cont_delete_14"),
+    hash_node_id("timeline.cont_delete_15"),
+];
+
 /// The source dropdown's CONTAINER half — one id per container, the sibling of
 /// [`TIMELINE_CLIP_OPT`].
 ///

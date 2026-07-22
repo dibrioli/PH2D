@@ -106,6 +106,11 @@ fn the_cap_is_the_lists_id_array() {
         ids::TIMELINE_CONT_RENAME.len()
     );
     assert_eq!(ph2d_timeline::MAX_CONTAINERS, ids::TIMELINE_CONT_ROW.len());
+    assert_eq!(
+        ph2d_timeline::MAX_CONTAINERS,
+        ids::TIMELINE_CONT_DELETE.len(),
+        "o lixo é o terceiro array da mesma linha"
+    );
 }
 
 /// **Dois cliques na barra ENTRAM; um clique não faz nada.**

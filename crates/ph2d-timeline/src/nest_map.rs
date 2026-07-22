@@ -253,13 +253,16 @@ pub struct HostClock {
     pub placed: bool,
 }
 
-/// The axis an UNPLACED container's ruler counts along: its own content's end, floored so the
-/// axis is never degenerate (an empty container still has to be scrubbable — it is where you
-/// put the first strip).
+/// The axis an UNPLACED container's ruler counts along: its own content's end, through the
+/// SAME door everything else measures a container with ([`crate::container_bar_seconds`]) —
+/// an empty one counts 2 s, which is both "never degenerate" (it is where the first strip
+/// goes) and the length its bar in the Containers list shows. Two numbers for one axis would
+/// be the ruler disagreeing with the bar you double-clicked to get here.
 fn interior_extent(doc: &TimelineDoc, container: usize) -> f64 {
-    doc.host_end_seconds(crate::StackHost::Container(container))
-        .unwrap_or(0.0)
-        .max(1.0)
+    crate::container_bar_seconds(
+        doc.host_end_seconds(crate::StackHost::Container(container))
+            .unwrap_or(0.0),
+    )
 }
 
 /// **The timeline window the walked-into instance OCCUPIES**, leads included — what a

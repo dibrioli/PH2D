@@ -68,6 +68,29 @@ pub enum StackHost {
 /// together.
 pub const MAX_CONTAINERS: usize = 16;
 
+/// **The seconds an EMPTY container is born with** (Enio, 2026-07-21: *"seu tamanho inicial
+/// (quando o container é vazio) é de 2 segundos"*).
+///
+/// Read only through [`container_bar_seconds`] — never directly.
+pub const EMPTY_CONTAINER_SECONDS: f64 = 2.0;
+
+/// **How long a container is, given its interior's extent** — the ONE door.
+///
+/// Four things need this number and they must agree: the bar the Containers list draws, the
+/// snapshot's `ContainerView::length`, the span the lane's `+` places, and the slice
+/// [`TimelineDoc::add_strip_to`] windows. Content answers for itself; an empty container
+/// answers [`EMPTY_CONTAINER_SECONDS`], because a zero-length asset is a bar the double-click
+/// cannot land on and a strip whose window stays 0 FOREVER — fill the container later and the
+/// already-placed instance would keep playing nothing, silently.
+#[must_use]
+pub fn container_bar_seconds(interior: f64) -> f64 {
+    if interior > 0.0 {
+        interior
+    } else {
+        EMPTY_CONTAINER_SECONDS
+    }
+}
+
 impl TimelineDoc {
     /// Append an empty container and return its index. Refuses past [`MAX_CONTAINERS`],
     /// returning the last existing index (the shape [`TimelineDoc::add_clip`] already uses:
@@ -85,12 +108,50 @@ impl TimelineDoc {
     }
 
     /// Rename container `index` (out of range: no-op) — the sibling of
-    /// [`TimelineDoc::rename_clip`], and one of the exactly two things the Containers list
-    /// lets you do to a container (the other is open it).
+    /// [`TimelineDoc::rename_clip`], and one of the Containers list's verbs (the others are
+    /// delete, and entering by double-click).
     pub fn rename_container(&mut self, index: usize, name: String) {
         if let Some(c) = self.containers_mut().get_mut(index) {
             c.name = name;
         }
+    }
+
+    /// Delete container `index` — the asset AND every instance of it, everywhere.
+    ///
+    /// Deleting an asset that is placed cannot leave the placements behind: a strip whose
+    /// source is gone plays nothing and can never be re-pointed (a strip has no "choose
+    /// source" edit), so the honest delete is the cascade — the After Effects rule (deleting
+    /// a comp removes its layers), with the global undo as the safety net.
+    ///
+    /// And because [`StripSource::Container`] is an INDEX, every reference above the hole
+    /// steps down one as the list closes over it — a surviving instance keeps playing the
+    /// asset the artist placed, not the neighbour that slid into its slot.
+    pub fn remove_container(&mut self, index: usize) -> bool {
+        if index >= self.containers().len() {
+            return false;
+        }
+        self.containers_mut().remove(index);
+        let hole = u16::try_from(index).unwrap_or(u16::MAX);
+        let fix = |lanes: &mut Vec<ClipLane>| {
+            for lane in lanes {
+                lane.strips
+                    .retain(|s| s.source != StripSource::Container(hole));
+                for s in &mut lane.strips {
+                    if let StripSource::Container(j) = s.source
+                        && j > hole
+                    {
+                        s.source = StripSource::Container(j - 1);
+                    }
+                }
+            }
+        };
+        if let Some(lanes) = self.host_stack_mut(StackHost::Document) {
+            fix(lanes);
+        }
+        for c in self.containers_mut() {
+            fix(&mut c.stack);
+        }
+        true
     }
 
     /// A container's interior stack.
@@ -364,10 +425,12 @@ impl TimelineDoc {
 
     /// How long a source runs, in its own seconds.
     ///
-    /// For a container this is the extent of its interior stack — the last moment any strip
-    /// inside it is still playing. A container with an empty interior is zero-length, and a
-    /// strip of it would be a strip nobody can grab; that is the caller's problem to see, not
-    /// a reason to invent a length.
+    /// For a container this is [`container_bar_seconds`] over its interior's extent — content
+    /// answers for itself, an EMPTY one answers [`EMPTY_CONTAINER_SECONDS`]. ⚠️ The note that
+    /// stood here (*"an empty interior is zero-length … the caller's problem to see, not a
+    /// reason to invent a length"*) was retired by Enio's rule (2026-07-21): an empty
+    /// container IS 2 s long, everywhere — and the zero it defended made `src_out` freeze at
+    /// 0 on a place-then-fill, so the instance played nothing forever.
     ///
     /// ⚠️ **It reads [`TimelineDoc::host_end_seconds`], the SAME door the panel sizes a new
     /// strip's span from.** It used to fold `t_end` while that one folds `lead_end`, and the
@@ -383,9 +446,14 @@ impl TimelineDoc {
                     c.clip.duration().to_seconds().max(self.clip_end_seconds(i))
                 })
             }
-            StripSource::Container(i) => self
-                .host_end_seconds(StackHost::Container(i as usize))
-                .unwrap_or(0.0),
+            // A MISSING container stays 0.0 (the callers refuse it) — the door is for
+            // containers that exist and are empty, not for indices that point at nothing.
+            StripSource::Container(i) => self.containers().get(i as usize).map_or(0.0, |_| {
+                container_bar_seconds(
+                    self.host_end_seconds(StackHost::Container(i as usize))
+                        .unwrap_or(0.0),
+                )
+            }),
         }
     }
 }

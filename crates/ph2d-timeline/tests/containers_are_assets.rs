@@ -101,6 +101,122 @@ fn the_container_cap_is_the_lists_id_array_and_the_document_refuses() {
     // enxerga os dois lados. Aqui fica a metade que é do documento: ele RECUSA.
 }
 
+/// **Deletar um container leva as INSTÂNCIAS dele junto — e os sobreviventes seguem tocando
+/// o asset que o artista colocou**, não o vizinho que escorregou para o slot.
+///
+/// `StripSource::Container` é um ÍNDICE: fechar o buraco sem re-apontar as referências
+/// acima dele faria toda instância de B virar, em silêncio, uma instância do que quer que
+/// agora more no slot de B. E uma strip cujo source sumiu não tem como ser re-apontada (não
+/// existe edit "escolher fonte"), então o delete honesto é a cascata — com o undo global de
+/// rede.
+#[test]
+fn deleting_a_container_removes_its_instances_and_survivors_keep_their_assets() {
+    let mut doc = TimelineDoc::new();
+    let a = doc.add_container("A".to_string());
+    let b = doc.add_container("B".to_string());
+    // B contém uma instância de A — a cascata tem de alcançar interiores, não só a cena.
+    let inner = doc
+        .add_lane_in(StackHost::Container(b), "in".to_string())
+        .unwrap();
+    doc.add_strip_to(
+        StackHost::Container(b),
+        inner,
+        StripSource::Container(u16::try_from(a).unwrap()),
+        0.0,
+        2.0,
+    )
+    .unwrap();
+    // E a cena toca os dois.
+    let lane = doc.add_lane("L".to_string()).unwrap();
+    doc.add_strip_to(
+        StackHost::Document,
+        lane,
+        StripSource::Container(u16::try_from(a).unwrap()),
+        0.0,
+        2.0,
+    )
+    .unwrap();
+    doc.add_strip_to(
+        StackHost::Document,
+        lane,
+        StripSource::Container(u16::try_from(b).unwrap()),
+        3.0,
+        5.0,
+    )
+    .unwrap();
+
+    assert!(doc.remove_container(a));
+
+    let names: Vec<&str> = doc.containers().iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, vec!["B"], "o asset morre");
+    let scene: Vec<StripSource> = doc.stack()[lane].strips.iter().map(|s| s.source).collect();
+    assert_eq!(
+        scene,
+        vec![StripSource::Container(0)],
+        "a instância de A morre com ele, e a de B segue B até o slot novo"
+    );
+    assert!(
+        doc.container_stack(0).unwrap()[0].strips.is_empty(),
+        "a cascata alcança o INTERIOR dos outros containers"
+    );
+
+    // Fora da lista: recusa, e nada se move.
+    assert!(!doc.remove_container(9));
+    assert_eq!(doc.containers().len(), 1);
+}
+
+/// **Um container vazio nasce com 2 segundos — em TODA porta** (Enio, 2026-07-21: *"seu
+/// tamanho inicial (quando o container é vazio) é de 2 segundos"*).
+///
+/// O zero que morava aqui não era neutro: colocar um container vazio congelava `src_out` em
+/// 0, então preenchê-lo DEPOIS deixava a instância tocando nada, para sempre, sem erro.
+/// A janela de 2 s torna o place-then-fill um fluxo que funciona.
+#[test]
+fn an_empty_container_is_born_two_seconds_long_everywhere() {
+    assert!(
+        (ph2d_timeline::container_bar_seconds(0.0) - ph2d_timeline::EMPTY_CONTAINER_SECONDS).abs()
+            < 1e-12
+    );
+    assert!(
+        (ph2d_timeline::container_bar_seconds(3.5) - 3.5).abs() < 1e-12,
+        "conteúdo responde por si"
+    );
+
+    // A porta do DOCUMENTO: colocar um container vazio abre a janela de 2 s.
+    let mut st = TimelineState::new();
+    let e = st.doc.add_container("Empty".to_string());
+    let lane = st.doc.add_lane("L".to_string()).unwrap();
+    let id = st
+        .doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(e).unwrap()),
+            0.0,
+            2.0,
+        )
+        .unwrap();
+    let s = st
+        .doc
+        .strip_in_mut(StackHost::Document, lane, id)
+        .unwrap()
+        .clone();
+    assert!(
+        (s.src_out - 2.0).abs() < 1e-9,
+        "a fatia É os 2 s de nascença — congelada em 0 ela silenciaria o conteúdo futuro"
+    );
+    assert!((s.speed - 1.0).abs() < 1e-9, "e nasce em velocidade 1");
+
+    // A porta da VISTA: a lista desenha a barra com o mesmo número.
+    let mut snap = ph2d_timeline::TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
+    assert!(
+        (snap.containers[e].length - 2.0).abs() < 1e-9,
+        "o snapshot publica o comprimento de nascença, veio {}",
+        snap.containers[e].length
+    );
+}
+
 /// **Renomear é a outra coisa que a lista faz** — e um índice fora dela é um no-op, não um
 /// pânico nem o nome do vizinho.
 #[test]

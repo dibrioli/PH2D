@@ -259,10 +259,11 @@ impl crate::App {
              lenta). Abra L: sao TRES abas agora, [Keys | Containers | Arrange].\n\
              [nest-smoke]   Arrange   = a CENA (as 3 instancias). Botao direito numa strip \
              Jump -> \"Enter Container\" leva voce para dentro dela.\n\
-             [nest-smoke]   Containers = a LISTA dos containers do documento, uma barra em \
-             branco por container. A barra nao redimensiona, nao arrasta, nao corta: um \
-             container e' um ASSET, nao um trecho de tempo. So duas coisas -- o LAPIS na \
-             coluna da esquerda renomeia, e o DUPLO-CLIQUE na barra entra.\n\
+             [nest-smoke]   Containers = a LISTA dos containers do documento: uma strip em \
+             branco por container, do tamanho DELE (o Jump mede 2s; um container vazio \
+             nasce medindo 2s). A barra nao redimensiona, nao arrasta, nao corta. Tres \
+             coisas -- o LAPIS renomeia, a LIXEIRA apaga (o asset E as instancias dele, um \
+             undo so), e o DUPLO-CLIQUE na barra entra.\n\
              [nest-smoke]   O unico botao da coluna ali e' \"+ Container\" (cria um NOVO e \
              vazio, sem despejar nada na cena e sem entrar nele). DENTRO de um container o \
              botao vira \"+ Lane\". Edite o pico do Rise UMA vez e os TRES pulos mudam.\n\

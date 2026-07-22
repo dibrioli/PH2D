@@ -313,15 +313,25 @@ pub enum TimelineIntent {
     AddContainer,
     /// Rename container `index` — the sibling of [`Self::RenameClip`].
     ///
-    /// One of exactly **two** things the Containers list does to a container (the other,
-    /// entering it, is navigation and raises no intent at all). A container's bar in that
-    /// list is a LABEL, not a strip: it has no span to trim, no lane to cross, and no
-    /// position in time — it names an asset (Enio, 2026-07-21).
+    /// One of the Containers list's verbs — rename, delete, enter — where entering is
+    /// navigation and raises no intent at all. A container's bar in that list is a LABEL for
+    /// an asset, not a strip: it has no lane to cross and no position in time (Enio,
+    /// 2026-07-21).
     RenameContainer {
         /// Index into [`crate::TimelineDoc::containers`].
         index: usize,
         /// The new author-visible name.
         name: String,
+    },
+    /// Delete container `index` — the asset and EVERY instance of it, in ONE step.
+    ///
+    /// The cascade is the document's ([`crate::TimelineDoc::remove_container`]): instances of
+    /// the deleted container die with it, and surviving references are re-pointed as the list
+    /// closes over the hole. One intent so undo restores all of it together — a delete whose
+    /// undo left the instances dead would not be an undo.
+    RemoveContainer {
+        /// Index into [`crate::TimelineDoc::containers`].
+        index: usize,
     },
     /// Delete a lane and every strip on it.
     RemoveLane {

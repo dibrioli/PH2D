@@ -466,12 +466,36 @@ fn stack_click(
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddContainer);
         return Some(EventOutcome::Consumed);
     }
-    // The pencil on a container's row — the other of the list's two verbs.
+    // The pencil on a container's row — the second of the list's three verbs.
     if let Some(index) = ids::TIMELINE_CONT_RENAME.iter().position(|&b| b == id) {
         // A container the snapshot no longer has raises nothing: the action expires with its
         // target, exactly as the lane mute's does.
         if index < crate::state::current_snapshot().containers.len() {
             crate::clip_rename::open_container(state, index);
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    // The trash — the third verb (Enio, 2026-07-21: *"as funções normais de renomear,
+    // deletar e entrar"*). One intent; the document cascades (asset + instances) inside it.
+    if let Some(index) = ids::TIMELINE_CONT_DELETE.iter().position(|&b| b == id) {
+        if index < crate::state::current_snapshot().containers.len() {
+            // The source selection follows the ASSET the artist picked, not the slot number
+            // it happened to occupy — deleted, it is no selection at all; above the hole, it
+            // steps down with its asset (the mirror of the document's own remap).
+            match state.source_container {
+                Some(s) if s == index => state.source_container = None,
+                Some(s) if s > index => state.source_container = Some(s - 1),
+                _ => {}
+            }
+            // An open container rename holds an index into the same list; shifted, it would
+            // commit onto a neighbour. Abandon it rather than guess.
+            if state
+                .clip_rename
+                .is_some_and(|c| c.kind == crate::state::RenameKind::Container)
+            {
+                state.clip_rename = None;
+            }
+            crate::state::push_intent(ph2d_timeline::TimelineIntent::RemoveContainer { index });
         }
         return Some(EventOutcome::Consumed);
     }

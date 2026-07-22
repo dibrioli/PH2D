@@ -7,8 +7,10 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_surface, paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
+    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
+    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
+    panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     ButtonState, Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader,
@@ -37,7 +39,34 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     }
     let insp: Rect = ctx.layout.inspector;
     let gap = Spacing::Xs.px();
-    let rect = Rect::new((insp.x - insp.w - gap).max(0.0), insp.y, insp.w, insp.h);
+    // Docked default: beside (left of) the inspector slot. The user can then
+    // drag/resize it like any floating panel — the deltas live on the store
+    // under WET_TUNING_PANEL (the same side-tables the Inspector chrome
+    // uses), applied over this base and clamped to the viewport.
+    let base = Rect::new((insp.x - insp.w - gap).max(0.0), insp.y, insp.w, insp.h);
+    let off = ctx
+        .host
+        .store()
+        .blender_picker_offset(ids::WET_TUNING_PANEL);
+    let resize = ctx.host.store().panel_resize_delta(ids::WET_TUNING_PANEL);
+    let (rect, clamped_off, clamped_resize) = clamp_panel_rect(base, off, resize, ctx.viewport);
+    // Write the CLAMPED values back (the hero-paint contract): the next
+    // drag-begin must capture the visible offset, not an accumulated raw
+    // one — else the panel rubber-bands when the drag reverses direction.
+    if clamped_off != off {
+        ctx.host.store_mut().set_blender_picker_offset(
+            ids::WET_TUNING_PANEL,
+            clamped_off.0,
+            clamped_off.1,
+        );
+    }
+    if clamped_resize != resize {
+        ctx.host.store_mut().set_panel_resize_delta(
+            ids::WET_TUNING_PANEL,
+            clamped_resize.0,
+            clamped_resize.1,
+        );
+    }
     let theme = ctx.host.theme();
     let brush = state::current();
 
@@ -81,6 +110,32 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     ctx.scene.pop_layer();
 
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    // Chrome grabbers — registered AFTER the body on purpose. Hit dispatch
+    // is last-registered-wins, and body rows keep their hit rects when they
+    // scroll up under the title (registration is not clipped): the drag band
+    // both MOVES the panel and SHIELDS the heading, so a press there can
+    // never scrub the invisible slider behind it. The band stops exactly at
+    // `body_top` (everything above is chrome, everything below is live body)
+    // and leaves the close-button reserve clear.
+    paint_panel_corner_dot(rect, ctx.scene, theme);
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
+    let hit_index = ctx.host.hit_index_mut();
+    hit_index.register(
+        ids::WET_TUNING_RESIZE_HANDLE,
+        panel_resize_handle_rect(rect),
+    );
+    hit_index.register(
+        ids::WET_TUNING_RESIZE_HANDLE_BL,
+        panel_resize_handle_rect_bl(rect),
+    );
+    hit_index.register(
+        ids::WET_TUNING_DRAG_HANDLE,
+        panel_drag_handle_rect(rect, body_top - rect.y, PANEL_HEADER_CLOSE_RESERVE),
+    );
+    // The X lives in the reserve the band leaves clear — re-register its hit
+    // rect here too, else a row scrolled under the reserve outranks it.
+    hit_index.register(ids::WET_TUNING_CLOSE, panel_close_button_rect(rect));
 }
 
 fn paint_body(

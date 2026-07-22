@@ -7,7 +7,8 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 8 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento).
+- **Commits:** 9 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+  **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique**, ver §2/§6).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
 - **Gate batched:** `nextest-impacted` **5031/5031** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
@@ -19,7 +20,7 @@
 | Arquivo | O quê |
 |---|---|
 | `ph2d-editor-core/src/ids/chrome/painter_wetpaint.rs` | +7 tool ids, tilt pad/toggle/ring/spoke, 4 ações, paper_visual, tuning; `PAINTER_WETPAINT_CLICKS` **2→16** |
-| `ph2d-editor-core/src/ids/chrome/wet_tuning.rs` | **NOVO** — painel/scroll/close + headers/resets/eye/km + a família dinâmica `wet_tuning_*_id(key)` (fnv runtime) |
+| `ph2d-editor-core/src/ids/chrome/wet_tuning.rs` | **NOVO** — painel/scroll/close + headers/resets/eye/km + a família dinâmica `wet_tuning_*_id(key)` (fnv runtime) + `WET_TUNING_DRAG_HANDLE`/`RESIZE_HANDLE`/`RESIZE_HANDLE_BL` (chrome de drag/resize, 1º smoke do Enio) |
 | `ph2d-editor-core/src/widget/scrollbar.rs` + `widget/mod.rs` | `WET_TUNING_SCROLLBAR_ID = NodeId(837)` — **próximo livre: 838** |
 | `ph2d-editor-core/src/interaction/dispatch/scroll.rs` | braço 837 → `WET_TUNING_PANEL` no `scrollbar_panel_for_id` |
 | `ph2d-editor-core/src/screens/hero/paint.rs` | `WET_TUNING_PANEL` na fallback de z-order |
@@ -69,7 +70,13 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
    Bristle count re-textura o depósito; Contrast/Fibres/Grooves re-cozem o papel do ENGINE — e
    **somem** quando o Paper slot do artista arma); resets por-knob e por-grupo; o olhinho do
    PAPER = o checkbox Paper; K–M mixing muda a mistura de cores; Glaze muda lavagem-sobre-seco;
-   fechar no X = desmarcar Tuning.
+   fechar no X = desmarcar Tuning. **Chrome (fix do 1º smoke):** arrastar pela BARRA DE
+   TÍTULO move o painel; os grippers dos 2 cantos inferiores redimensionam (mesma maquinaria
+   `BlenderHit` do Inspector, deltas sob `WET_TUNING_PANEL`, clamp ao viewport); e o heading
+   ENGOLE o clique — com o corpo rolado, a row que fica atrás do título não pode ser
+   scrubada (a banda de drag é registrada por ÚLTIMO no paint: last-registered-wins; gates
+   em `tests/panel_chrome.rs`, 2 mutações provadas — banda registrada cedo · handle fora do
+   `populate`).
 3. **As 5 tools novas:** Smear arrasta, Blend remistura tinta SECA, Wet molha sem pigmento, Dry
    sela, Blow empurra o filme (a sim fica viva sob o gesto do Blow). Com Symmetry ligada, Smear/
    Blow deslocam LOCALMENTE em cada cópia (o prev por-lane).

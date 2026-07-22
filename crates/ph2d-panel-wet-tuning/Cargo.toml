@@ -29,3 +29,6 @@ ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 # `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
 # observable effect.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# `PointerEvent` — the chrome seams drive REAL Down/Move/Up drags (title
+# band, corner grippers) through the same dispatcher the shell runs.
+ph2d-host = { path = "../ph2d-host" }

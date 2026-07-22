@@ -45,12 +45,17 @@ impl TuneRow {
     }
 }
 
+/// Step-granularity thresholds for the readout decimals (fmt-stable const
+/// lines so the allowlist marker stays glued to its literal).
+const STEP_2DP: f64 = 0.01; // LITERAL-PX-OK: step-granularity threshold (math, not design)
+const STEP_3DP: f64 = 0.001; // LITERAL-PX-OK: step-granularity threshold (math, not design)
+
 fn decimals_for_step(step: f64) -> usize {
     if step >= 1.0 {
         0
-    } else if step >= 0.01 { // LITERAL-PX-OK: step-granularity threshold (math, not design)
+    } else if step >= STEP_2DP {
         2
-    } else if step >= 0.001 { // LITERAL-PX-OK: step-granularity threshold (math, not design)
+    } else if step >= STEP_3DP {
         3
     } else {
         4
@@ -172,6 +177,9 @@ mod tests {
             ids::WET_TUNING_PAPER_EYE,
             ids::WET_TUNING_KM_MIXING,
             ids::WET_TUNING_KM_GLAZE,
+            ids::WET_TUNING_DRAG_HANDLE,
+            ids::WET_TUNING_RESIZE_HANDLE,
+            ids::WET_TUNING_RESIZE_HANDLE_BL,
             ids::PAINTER_WETPAINT_TUNING,
         ] {
             put(id, "static chrome");

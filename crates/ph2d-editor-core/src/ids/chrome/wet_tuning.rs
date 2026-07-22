@@ -19,6 +19,18 @@ pub const WET_TUNING_SCROLL: NodeId = hash_node_id("wet_tuning.scroll");
 /// section owns (visibility is the tool's authored fact).
 pub const WET_TUNING_CLOSE: NodeId = hash_node_id("wet_tuning.close");
 
+/// Title-bar drag band (move the panel). Parented to [`WET_TUNING_PANEL`]
+/// via `BlenderHitKind::DragHandle` — the panel-agnostic drag machinery the
+/// Inspector/Hierarchy handles use. Registered at the END of the panel's
+/// paint so it also SHIELDS the header: a slider row scrolled up behind the
+/// title bar keeps its hit rect (registration is not clipped), and without
+/// the band on top a drag on the heading would scrub that invisible slider.
+pub const WET_TUNING_DRAG_HANDLE: NodeId = hash_node_id("wet_tuning.drag_handle");
+/// Bottom-right resize gripper (`BlenderHitKind::ResizeHandle`).
+pub const WET_TUNING_RESIZE_HANDLE: NodeId = hash_node_id("wet_tuning.resize_handle");
+/// Bottom-left resize gripper (`BlenderHitKind::ResizeHandleBl`).
+pub const WET_TUNING_RESIZE_HANDLE_BL: NodeId = hash_node_id("wet_tuning.resize_handle_bl");
+
 /// Collapsible group headers, in display order:
 /// Paint · Water · Physics · Tools · Paper · Experimental.
 pub const WET_TUNING_GROUP_HEADERS: [NodeId; 6] = [

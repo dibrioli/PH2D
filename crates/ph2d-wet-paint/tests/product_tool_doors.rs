@@ -131,7 +131,10 @@ fn the_blend_lane_door_remixes_settled_paint() {
         (mass, acc)
     };
     let (mass_before, before) = mean_a(&e);
-    assert!(mass_before > 0.0, "fixture: patch A must hold settled paint");
+    assert!(
+        mass_before > 0.0,
+        "fixture: patch A must hold settled paint"
+    );
     // Blend across the boundary through the lane door.
     e.tool = Tool::Blend;
     e.begin_direct_stroke(0, 32.0, 48.0);
@@ -284,5 +287,8 @@ fn the_glaze_stacks_the_film_over_the_dried_paint() {
             }
         }
     }
-    assert!(moved, "glaze must change the film-over-dried-paint stacking");
+    assert!(
+        moved,
+        "glaze must change the film-over-dried-paint stacking"
+    );
 }

@@ -206,9 +206,9 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
 #[test]
 fn every_doc22_wet_click_forwards_through_the_panel() {
     use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
     use ph2d_editor_core::panel::EventOutcome;
     use ph2d_editor_core::tool::PanelEvent;
-    use ph2d_editor_core::interaction::WidgetEvent;
     for clicked in core_ids::PAINTER_WETPAINT_CLICKS {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;
@@ -237,9 +237,9 @@ fn every_doc22_wet_click_forwards_through_the_panel() {
 #[test]
 fn the_tilt_pad_drag_forwards_ring_and_spoke() {
     use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
     use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
     use ph2d_editor_core::tool::PanelEvent;
-    use ph2d_editor_core::interaction::WidgetEvent;
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     host.store_mut().set_curve_point_drag(
@@ -253,7 +253,11 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
         &mut st,
         WidgetEvent::ValueChanged(core_ids::PAINTER_WETPAINT_TILT_PAD),
     );
-    assert_eq!(outcome, EventOutcome::Consumed, "the pad drain arm is missing");
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "the pad drain arm is missing"
+    );
     let actions = host.drained_actions();
     let val = |target: NodeId| {
         actions.iter().find_map(|a| match a {

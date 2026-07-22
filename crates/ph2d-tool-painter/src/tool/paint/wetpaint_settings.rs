@@ -262,9 +262,7 @@ impl PainterTool {
                 self.reset_brush_wetpaint();
                 true
             }
-            PanelEvent::Click(id)
-                if core_ids::PAINTER_WETPAINT_TOOL_IDS.contains(id) =>
-            {
+            PanelEvent::Click(id) if core_ids::PAINTER_WETPAINT_TOOL_IDS.contains(id) => {
                 let index = core_ids::PAINTER_WETPAINT_TOOL_IDS
                     .iter()
                     .position(|t| t == id)
@@ -332,7 +330,10 @@ impl PainterTool {
     /// (dynamic id family — resolved through [`wet_tuning_id_map`]).
     fn route_wet_tuning_click(&mut self, id: ph2d_a11y::NodeId) -> bool {
         use ph2d_editor_core::ids as core_ids;
-        if let Some(gi) = core_ids::WET_TUNING_GROUP_RESETS.iter().position(|g| *g == id) {
+        if let Some(gi) = core_ids::WET_TUNING_GROUP_RESETS
+            .iter()
+            .position(|g| *g == id)
+        {
             let group = [
                 KnobGroup::Paint,
                 KnobGroup::Water,
@@ -377,8 +378,8 @@ enum TuneWidget {
 /// reset id (the hidden §17 group has no UI, exactly like the model). Built
 /// from the same `KNOB_DEFS` + id-derive functions the panel paints from —
 /// no table to drift.
-fn wet_tuning_id_map()
--> &'static std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)> {
+fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)>
+{
     use ph2d_editor_core::ids as core_ids;
     static MAP: std::sync::OnceLock<
         std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)>,
@@ -389,9 +390,15 @@ fn wet_tuning_id_map()
             if def.group == KnobGroup::Hidden {
                 continue;
             }
-            m.insert(core_ids::wet_tuning_slider_id(def.key), (i, TuneWidget::Slider));
+            m.insert(
+                core_ids::wet_tuning_slider_id(def.key),
+                (i, TuneWidget::Slider),
+            );
             m.insert(core_ids::wet_tuning_chip_id(def.key), (i, TuneWidget::Chip));
-            m.insert(core_ids::wet_tuning_reset_id(def.key), (i, TuneWidget::Reset));
+            m.insert(
+                core_ids::wet_tuning_reset_id(def.key),
+                (i, TuneWidget::Reset),
+            );
         }
         m
     })

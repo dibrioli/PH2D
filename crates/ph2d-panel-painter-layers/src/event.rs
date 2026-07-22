@@ -20,7 +20,6 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod dab_gizmo;
-mod value_forward;
 mod decode;
 mod impasto_picker;
 mod option_route;
@@ -28,6 +27,7 @@ mod picker;
 mod ramp_picker;
 mod shape_layer_picker;
 mod shape_ramp_picker;
+mod value_forward;
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,

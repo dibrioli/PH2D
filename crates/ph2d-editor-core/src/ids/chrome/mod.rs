@@ -39,7 +39,6 @@ mod painter_tiling;
 mod painter_watercolor;
 mod painter_wetpaint;
 mod physics;
-mod wet_tuning;
 mod rail;
 mod rail_painter;
 mod timeline;
@@ -49,6 +48,7 @@ mod vector;
 mod vector_patternpath;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
+mod wet_tuning;
 
 pub use bgremoval::*;
 pub use flip::*;
@@ -73,7 +73,6 @@ pub use painter_tiling::*;
 pub use painter_watercolor::*;
 pub use painter_wetpaint::*;
 pub use physics::*;
-pub use wet_tuning::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use timeline::*;
@@ -81,3 +80,4 @@ pub use topbar::*;
 pub use vector::*;
 pub use vector_patternpath::*;
 pub use vector_textpath::*;
+pub use wet_tuning::*;

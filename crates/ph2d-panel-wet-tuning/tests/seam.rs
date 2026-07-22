@@ -30,9 +30,9 @@ fn drained_setvalue(actions: &[EditorAction], id: ph2d_a11y::NodeId) -> Option<f
 }
 
 fn drained_click(actions: &[EditorAction], id: ph2d_a11y::NodeId) -> bool {
-    actions.iter().any(|a| {
-        matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if *i == id)
-    })
+    actions
+        .iter()
+        .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if *i == id))
 }
 
 /// EVERY row's slider forwards its REAL value (track → range mapping), and
@@ -46,8 +46,8 @@ fn every_row_slider_and_reset_forwards() {
         // Put the slider's track at 1.0 — the forwarded value must be the
         // row's MAX (the def's own bound, from the registry).
         host.set_slider_value(row.slider, 1.0);
-        let out =
-            host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.slider));
+        let out = host
+            .apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.slider));
         assert_eq!(out, EventOutcome::Consumed, "slider {} ignored", row.key);
         let actions = host.drained_actions();
         let v = drained_setvalue(&actions, row.slider)
@@ -60,8 +60,7 @@ fn every_row_slider_and_reset_forwards() {
             row.max
         );
         let (mut host, mut st) = self::host();
-        let out =
-            host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(row.reset));
+        let out = host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(row.reset));
         assert_eq!(out, EventOutcome::Consumed, "reset {} ignored", row.key);
         assert!(
             drained_click(&host.drained_actions(), row.reset),
@@ -120,10 +119,7 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
         EventOutcome::Consumed
     );
     assert!(
-        drained_click(
-            &host.drained_actions(),
-            core_ids::PAINTER_WETPAINT_TUNING
-        ),
+        drained_click(&host.drained_actions(), core_ids::PAINTER_WETPAINT_TUNING),
         "close must forward the basic section's Tuning toggle"
     );
 }
@@ -161,7 +157,9 @@ fn paint_offers_the_table_and_hides_engine_paper_knobs_under_artist_paper() {
         host.paint::<WetTuningPanel>(&mut st, viewport)
     };
     let has = |rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId| {
-        rects.iter().any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+        rects
+            .iter()
+            .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
     };
     let plain = paint_with(PainterTool::default().brush_settings());
     for row in rows::rows() {

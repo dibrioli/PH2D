@@ -368,7 +368,10 @@ fn erase_pick_is_the_rail_erasers_other_view() {
     let mut t = wet_tool_fixture();
     click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[1]);
     assert!(t.paint.eraser, "Erase pick must land on the eraser wire");
-    assert!(t.paint.wetpaint.armed, "the ARM survives the tool view swap");
+    assert!(
+        t.paint.wetpaint.armed,
+        "the ARM survives the tool view swap"
+    );
     click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[0]);
     assert!(!t.paint.eraser);
     assert!(

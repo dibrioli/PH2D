@@ -489,8 +489,7 @@ impl PainterTool {
             // The lane's PREVIOUS centre (before this dab updates it) — the
             // direct tools' displacement source; a born lane has none, and
             // the eraser has no lanes at all.
-            let lane_prev: Option<[f32; 2]> =
-                (!erasing && !lane_born).then(|| sess.lanes[li].pos);
+            let lane_prev: Option<[f32; 2]> = (!erasing && !lane_born).then(|| sess.lanes[li].pos);
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
             if !erasing && wet_tool == WetTool::Paint && d.color != sess.lanes[li].ink {
@@ -962,8 +961,7 @@ impl PainterTool {
                         let rim = (mag * 0.7).min(1.0);
                         18.3 * rim
                             * rim
-                            * (0.5
-                                + 0.5 * ((gx / mag) * WET_LIGHT_X + (gy / mag) * WET_LIGHT_Y))
+                            * (0.5 + 0.5 * ((gx / mag) * WET_LIGHT_X + (gy / mag) * WET_LIGHT_Y))
                     } else {
                         0.0
                     };

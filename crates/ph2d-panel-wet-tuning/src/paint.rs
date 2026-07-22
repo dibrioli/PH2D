@@ -97,13 +97,24 @@ fn paint_body(
     let artist_paper_armed = brush.paper_kind != 0;
     for section in rows::SECTIONS {
         let open = !ctx.host.store().is_collapsed(section.header);
-        y = header_row(ctx, theme, x, w, y, section.header, section.reset, {
-            // The PAPER header carries the eye — the paperVisibility
-            // master's on/off face (the same authored fact as the basic
-            // section's Paper checkbox).
-            matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper)
-                .then_some((ids::WET_TUNING_PAPER_EYE, brush.wet_paper_visual))
-        }, tr(section.label), open);
+        y = header_row(
+            ctx,
+            theme,
+            x,
+            w,
+            y,
+            section.header,
+            section.reset,
+            {
+                // The PAPER header carries the eye — the paperVisibility
+                // master's on/off face (the same authored fact as the basic
+                // section's Paper checkbox).
+                matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper)
+                    .then_some((ids::WET_TUNING_PAPER_EYE, brush.wet_paper_visual))
+            },
+            tr(section.label),
+            open,
+        );
         if !open {
             continue;
         }
@@ -126,9 +137,15 @@ fn paint_body(
         ids::WET_TUNING_GROUP_HEADERS[5], // no reset: the reset slot repeats the header (skipped)
         None,
         tr("panel.wet_tuning.group.experimental"),
-        !ctx.host.store().is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]),
+        !ctx.host
+            .store()
+            .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]),
     );
-    if !ctx.host.store().is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]) {
+    if !ctx
+        .host
+        .store()
+        .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5])
+    {
         y = checkbox_row(
             ctx,
             theme,
@@ -190,7 +207,12 @@ fn paint_row(
             theme,
         )
     };
-    let reset_rect = Rect::new(x + w - RESET_W, y, RESET_W, ROW_H_PX.min(used.max(ROW_H_PX)));
+    let reset_rect = Rect::new(
+        x + w - RESET_W,
+        y,
+        RESET_W,
+        ROW_H_PX.min(used.max(ROW_H_PX)),
+    );
     paint_icon_button(
         reset_rect,
         IconGlyph::Builtin(ph2d_editor_core::IconId::Reset),

@@ -180,7 +180,9 @@ pub fn tr(key: &str) -> &'static str {
         "panel.wet_tuning.group.experimental" => "Experimental",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
-        "panel.wet_tuning.note" => "Kubelka-Munk subtractive color. Further gated extensions (diffusion, backrun, fingering, dry-brush, render extras) ship neutral; see the tuning registry's hidden group.",
+        "panel.wet_tuning.note" => {
+            "Kubelka-Munk subtractive color. Further gated extensions (diffusion, backrun, fingering, dry-brush, render extras) ship neutral; see the tuning registry's hidden group."
+        }
         "panel.wet_tuning.knob.pigmentPerDab" => "Pigment per dab",
         "panel.wet_tuning.knob.paperGate" => "Paper gate",
         "panel.wet_tuning.knob.felt" => "Felt (pores)",

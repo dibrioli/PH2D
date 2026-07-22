@@ -25,10 +25,13 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_render_components(&mut reg);
-        // 30 ecs components (ver `register_ecs_components_populates_registry` —
-        // inclui VecShape/VecConnector/VecBlend/VecLabel/VecEnvelope)
-        // + 1 render component (Sprite).
-        assert_eq!(reg.len(), 33);
+        // O numero se CONTA, nao se escolhe: e o contador de `ph2d-ecs`
+        // (`register_ecs_components_populates_registry`, hoje 33 — inclui
+        // VecShape/VecConnector/VecBlend/VecLabel/VecEnvelope/VecOffset)
+        // + 1 render component (Sprite). SAO DOIS contadores: quem registra
+        // um componente novo no ECS tem de somar aqui tambem, e este gate so
+        // roda na suite da ph2d-render.
+        assert_eq!(reg.len(), 34);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

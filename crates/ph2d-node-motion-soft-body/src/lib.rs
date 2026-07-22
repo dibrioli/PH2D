@@ -62,8 +62,22 @@ const VALUE_COL: &str = "v";
 const MAX_DT: f32 = 0.1;
 /// Below this a magnitude is treated as zero (skip the normalise / division).
 const EPS: f32 = 1e-6;
-/// Grid dimensions are clamped to this many cells per side (mesh cost is O(rows·cols)).
-const MAX_SIDE: i64 = 40;
+/// Grid dimensions are clamped to this many cells per side — **262 144
+/// particles**, and the resource is the **HR-4 soft-physics sub-budget of
+/// 2,0 ms/tick**. MEASURED (`cost_probe`, single-threaded, one tick of the
+/// full `step`): 512² = **1,426 ms = 71% do orçamento** · 724² = 3,296 ms =
+/// 165% (estoura). The mesh cost is `O(rows·cols)` and nothing here is
+/// quadratic — shape matching reduces the whole cloud to 8 scalars.
+///
+/// ⚠️ **Era 40** (1600 partículas), and that number named no resource: it cost
+/// **0,005 ms**, 0,25% of the budget — 164× below what the same code delivers
+/// (§0.0: measure before you limit). A jelly at 40×40 has the resolution of a
+/// checkerboard; this is the cap the algorithm actually earns.
+///
+/// ⚠️ At the cap the binding constraint is no longer the SIM — it is the
+/// RENDER: 262 144 quads is exactly where the zone scene measured the frame
+/// drop (2026-07-20). Reaching this number is a deliberate act, not a default.
+const MAX_SIDE: i64 = 512;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -317,7 +331,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "rows",
         label: "Rows",
         min: 2.0,
-        max: 40.0,
+        max: 512.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -325,7 +339,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "cols",
         label: "Cols",
         min: 2.0,
-        max: 40.0,
+        max: 512.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -572,29 +586,101 @@ mod tests {
 }
 
 #[cfg(test)]
+mod cap_gates {
+    use super::shape::{rest_shape, shape_goals};
+    use super::{MAX_SIDE, PARAM_HINTS};
+
+    /// The slider and the clamp are TWO copies of one number on opposite sides
+    /// of the file — a hint that says 40 over a clamp that says 512 is a
+    /// control whose top third does nothing, and nothing else would notice.
+    #[test]
+    fn the_mesh_sliders_reach_exactly_the_clamp() {
+        for param in ["rows", "cols"] {
+            let hint = PARAM_HINTS
+                .iter()
+                .find(|h| h.param == param)
+                .unwrap_or_else(|| panic!("{param} has a hint"));
+            assert_eq!(
+                hint.max, MAX_SIDE as f32,
+                "the {param} slider must reach the clamp, and stop there"
+            );
+        }
+    }
+
+    /// **The cap's whole justification is that the cost is LINEAR** — shape
+    /// matching reduces the cloud to 8 scalars, so there is no `N²` anywhere.
+    /// Asserted as a RATIO, never wall-clock: `ci-test` builds at `opt-level=1`
+    /// and a millisecond bar would measure the PROFILE (the ADR-0124 lesson).
+    /// Someone who made this quadratic would take the cap from 71% of the HR-4
+    /// budget to 45× it, and every unit test would stay green.
+    #[test]
+    fn the_shape_match_is_linear_in_the_mesh() {
+        let cost = |side: usize| {
+            let rest = rest_shape(side, side, 1.0);
+            let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
+            let t0 = std::time::Instant::now();
+            for _ in 0..5 {
+                std::hint::black_box(shape_goals(&pred, &rest, 0.3));
+            }
+            t0.elapsed().as_secs_f64()
+        };
+        let small = cost(128);
+        let big = cost(256); // 4x the particles
+        let ratio = big / small.max(1e-9);
+        assert!(
+            ratio <= 8.0,
+            "4x the mesh must cost ~4x, not {ratio:.1}x — the cap assumes linear"
+        );
+    }
+}
+
+#[cfg(test)]
 mod cost_probe {
     use super::shape::{rest_shape, shape_goals};
 
-    /// MEASUREMENT (a fila §2 do handoff da linha GPU): o cap do nó é
+    /// MEASUREMENT (a fila §2 do handoff da linha GPU): o cap do nó ERA
     /// `MAX_SIDE = 40` (1600 partículas). O custo por tick é o shape-matching —
     /// DUAS passadas lineares sobre a nuvem (centroide, depois `A_pq`/`A_qq`) —
     /// então a pergunta do §0.0 é: esse cap é de CUSTO ou é escolha?
+    ///
+    /// Mede as DUAS coisas: o núcleo (`shape_goals`) e o **tick inteiro**
+    /// (`step`, que é o que o orçamento do HR-4 de fato paga — predição,
+    /// projeção ao objetivo e leitura de velocidade, todas lineares por cima).
     ///
     ///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture
     #[test]
     #[ignore = "measurement — run alone with --nocapture"]
     fn what_does_the_shape_match_cost_per_tick() {
-        for &side in &[40usize, 100, 316, 1000] {
+        const REPS: u32 = 20;
+        for &side in &[40usize, 100, 316, 512, 724, 1000] {
             let n = side * side;
             let rest = rest_shape(side, side, 1.0);
             let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
             let t0 = std::time::Instant::now();
-            const REPS: u32 = 20;
             for _ in 0..REPS {
                 std::hint::black_box(shape_goals(&pred, &rest, 0.3));
             }
-            let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
-            eprintln!("  shape_match {side:>4}x{side:<4} = {n:>9} partículas: {ms:>8.3} ms/tick");
+            let core = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+
+            let p = super::Params {
+                rows: side,
+                cols: side,
+                spacing: 1.0,
+                gravity: 9.8,
+                stiffness: 0.6,
+                beta: 0.3,
+                damping: 0.02,
+                pin: true,
+            };
+            let vel = vec![[0.0f32; 2]; n];
+            let t0 = std::time::Instant::now();
+            for _ in 0..REPS {
+                std::hint::black_box(super::step(&pred, &vel, [0.0, 0.0], &rest, 1.0 / 60.0, &p));
+            }
+            let tick = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+            eprintln!(
+                "  {side:>4}x{side:<4} = {n:>9} partículas: núcleo {core:>7.3} ms · TICK {tick:>7.3} ms"
+            );
         }
     }
 }

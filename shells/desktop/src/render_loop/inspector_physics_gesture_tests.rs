@@ -279,3 +279,112 @@ fn a_buoyant_pool_is_authorable_with_ui_gestures_alone() {
         "a cortiça tem de PARAR na linha d'água, e não ser arremessada nem afundar ({up})"
     );
 }
+
+/// **Um TRONCO boiando, só com gestos da UI** — e o passo que NÃO se dá.
+///
+/// Pedido do Enio depois do smoke `=27`. O gesto é curto (Add + Density), e a lição
+/// está no que **não** se faz: converter para **Capsule**.
+///
+/// ⚠️ **Uma cápsula é Y-alinhada por design** (`ShapeDesc::Capsule` documenta o porquê:
+/// um eixo configurável seria uma segunda forma de dizer o que o `Transform` já diz), e
+/// um tronco DEITADO é largo. A conversão então toma `radius = min(hx, hy)` — a regra
+/// honesta *"a cápsula nunca fica mais larga que a caixa"* — e para uma caixa larga isso
+/// dá `half_height = 0`: **um círculo inscrito na altura**, que joga fora todo o
+/// comprimento. Medido: um tronco de 2,4 × 0,5 vira uma bola de raio 0,25, e aí ele
+/// **não endireita mais** — um círculo não tem orientação para endireitar.
+///
+/// Não é bug da conversão, é geometria; e o contorno (tecla B) mostra a bola, então o
+/// artista VÊ. O que este gate garante é que o caminho certo — deixar a caixa que o Add
+/// já casou com o sprite — produz um tronco que boia E se endireita.
+#[test]
+fn a_floating_log_is_authorable_with_ui_gestures_alone() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 10.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -3.5)),
+    ));
+
+    // A poça, pelos gestos que o irmão acima já pina.
+    let pool = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, -1.5)),
+            Sprite::atlas(0, [8.0, 3.0], [0.3, 0.5, 0.9, 0.3]),
+        ))
+        .id();
+    for edit in [
+        PhysicsFieldEdit::Add,
+        PhysicsFieldEdit::Kind(1),
+        PhysicsFieldEdit::Sensor(true),
+        PhysicsFieldEdit::AreaDensity(4.0),
+        PhysicsFieldEdit::AreaDrag(1.5),
+    ] {
+        apply(&mut sim, pool, edit);
+    }
+
+    // O tronco: um sprite comprido, posicionado INCLINADO a 1 rad — é assim que o
+    // artista o larga, e é o que torna o auto-endireitamento visível.
+    let log = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                translation: Vec2::new(0.0, 2.0),
+                rotation: 1.0,
+                scale: Vec2::new(1.0, 1.0),
+                skew_x: 0.0,
+                skew_y: 0.0,
+            },
+            Sprite::atlas(0, [2.4, 0.5], [0.55, 0.35, 0.2, 1.0]),
+        ))
+        .id();
+
+    // Gesto 1: Add. O collider nasce 1,20 × 0,25 — a caixa do sprite, e já a forma
+    // certa para um tronco deitado.
+    apply(&mut sim, log, PhysicsFieldEdit::Add);
+    let i = build_physics_info(sim.world(), log.to_bits(), false, 5.0, 0).unwrap();
+    assert_eq!(
+        (i.shape_tag, i.half_x, i.half_y),
+        (1, 1.2, 0.25),
+        "o Add tem de casar o collider com o sprite comprido — é o que faz o passo \
+         seguinte ser o ÚLTIMO"
+    );
+    // Gesto 2: Density abaixo da do fluido. Madeira contra água, e nada mais.
+    apply(&mut sim, log, PhysicsFieldEdit::Density(1.0));
+
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=600 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let tr = *sim.world().get::<Transform>(log).unwrap();
+    assert!(
+        tr.translation.y.abs() < 0.4,
+        "o tronco tem de PARAR na linha d'água (y ≈ 0), e ficou em {}",
+        tr.translation.y
+    );
+    assert!(
+        tr.rotation.sin().abs() < 0.15,
+        "largado a 1 rad (sin 0,84), o tronco tem de se ENDIREITAR — |sin| ficou em {}",
+        tr.rotation.sin().abs()
+    );
+
+    // ⚠️ E o controle que nomeia a armadilha: o MESMO tronco convertido para Capsule
+    // vira um círculo, e um círculo não endireita. Sem esta metade, o gate acima
+    // passaria e a recomendação "não converta" seria prosa sem prova.
+    apply(&mut sim, log, PhysicsFieldEdit::Shape(2));
+    let i = build_physics_info(sim.world(), log.to_bits(), false, 5.0, 0).unwrap();
+    assert_eq!(
+        (i.radius, i.cap_half_height),
+        (0.25, 0.0),
+        "converter um tronco DEITADO para cápsula dá o círculo inscrito na altura — a \
+         cápsula é Y-alinhada, então o comprimento não tem onde caber"
+    );
+}

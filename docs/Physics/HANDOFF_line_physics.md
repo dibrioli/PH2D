@@ -2957,6 +2957,27 @@ Poça (`Fluid Density = 4`, `Drag = 1.5`) e cinco corpos, medidos: cortiça (d=1
 (d=3) flutua quase submersa em **−0,11** · pedra (d=12) vai ao fundo em **−2,55** · bola (d=1,5) boia em
 **0,06** · e o barco entra tombado a 1 rad (**sin 0,84**) e se endireita para **sin 0,01**.
 
+### ⚠️ "Como criar o tronco boiando pela UI?" — e o passo que NÃO se dá
+
+Pergunta do Enio depois do smoke. O gesto é **curto** — o sprite comprido, **Add**, e
+**Density = 1** — e a lição está no passo que eu quase recomendei: converter para
+**Capsule**.
+
+Uma cápsula é **Y-alinhada por design** (`ShapeDesc::Capsule` documenta o porquê: um eixo
+configurável seria uma segunda forma de dizer o que o `Transform` já diz), e um tronco
+DEITADO é largo. A conversão toma `radius = min(hx, hy)` — a regra honesta *"a cápsula
+nunca fica mais larga que a caixa"* — e numa caixa larga isso dá `half_height = 0`:
+**o círculo inscrito na altura**. Medido: 2,4 × 0,5 vira uma bola de raio 0,25, e o tronco
+**deixa de endireitar**, porque um círculo não tem orientação. Não é bug da conversão, é
+geometria — e o contorno (**B**) mostra a bola, então o artista VÊ.
+
+O caminho certo é **deixar a caixa que o `Add` já casou com o sprite**. Medido, largado a
+1 rad: y → 0,13 (linha d'água) e ângulo **1,000 → −0,001 rad**. Pinado em
+`a_floating_log_is_authorable_with_ui_gestures_alone`, cuja segunda metade **converte para
+cápsula e afirma o círculo** — sem ela, a recomendação *"não converta"* seria prosa sem
+prova. Duas mutações sangram: o `Add` ignorar a caixa do sprite, e o empuxo aplicar no
+centro de massa em vez do centroide submerso.
+
 ### Aberto no W-Buoyancy
 
 Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resistir mais de lado que de proa —

@@ -316,16 +316,18 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
 
 /// **Every configuration card is painted when Impasto is on — and none when it is off** (Enio,
 /// 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
-/// cards"*; this REVERSED the selected-tool narrowing an earlier gate here pinned).
+/// cards"*, refined the same day). The three refinements are pinned here too:
 ///
-/// One representative knob per card, in every relief mode: Depth (Body) · Plow (Knife) · Radius
-/// (Sculpt, verb Smooth) · Shine (Material) · Show (Lighting). The OFF half keeps the gate honest —
-/// presence alone would stay green if the Enable stopped gating anything.
+/// - the **Sculpt card sits directly below TOOL** (order: TOOL chip < Sculpt knob < Body knob);
+/// - the **Knife card is the one exception** — Plow paints only while the Knife is the selected tool;
+/// - the **Filter buttons follow the verb**: painted for Smooth/Sharpen/Inflate, never for a plane verb.
+///
+/// One representative knob per card; the OFF half keeps the gate honest — presence alone would stay
+/// green if the Enable stopped gating anything.
 #[test]
 fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
-    let card_ids: [(ph2d_a11y::NodeId, &str); 5] = [
+    let card_ids: [(ph2d_a11y::NodeId, &str); 4] = [
         (core_ids::PAINTER_IMPASTO_DEPTH, "Body/Depth"),
-        (core_ids::PAINTER_IMPASTO_PLOW, "Knife/Plow"),
         (core_ids::PAINTER_SCULPT_RADIUS_SLIDER, "Sculpt/Radius"),
         (core_ids::PAINTER_IMPASTO_SHINE, "Material/Shine"),
         (core_ids::PAINTER_IMPASTO_SHOW, "Lighting/Show"),
@@ -341,6 +343,45 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
                 "with Impasto ON in {mode:?}, the {name} card is missing — the all-cards rule"
             );
         }
+        // The Knife card is the exception: Plow only while the Knife is in hand.
+        let plow = rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW);
+        if mode == "knife" {
+            assert!(plow.is_some(), "the Knife in hand must show its Plow card");
+        } else {
+            assert!(
+                plow.is_none(),
+                "mode {mode:?} is offering Plow — the Knife card paints only for the Knife"
+            );
+        }
+        // Order: Sculpt directly below the TOOL card, Body after it.
+        let tool_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
+            .expect("TOOL chips painted")
+            .y;
+        let sculpt_y = rect_of(&rects, core_ids::PAINTER_SCULPT_RADIUS_SLIDER)
+            .expect("asserted above")
+            .y;
+        let body_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH)
+            .expect("asserted above")
+            .y;
+        assert!(
+            tool_y < sculpt_y && sculpt_y < body_y,
+            "card order must be TOOL < Sculpt < Body (got {tool_y} / {sculpt_y} / {body_y})"
+        );
+        // Filter buttons follow the VERB: present for Smooth (a reshaper)…
+        assert!(
+            rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER).is_some(),
+            "Smooth must offer Filter Layer in {mode:?}"
+        );
+        // …and absent for a plane verb (Flatten), whose target is fitted to
+        // the brush's footprint — a layer has none.
+        tool.set_sculpt_mode(2); // Flatten
+        set_current_brush(Some(tool.brush_settings()));
+        let (_host, _st, rects) = painted(&tool);
+        assert!(
+            rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER).is_none(),
+            "Flatten is offering Filter Layer in {mode:?} — the buttons follow the verbs that use them"
+        );
+        tool.set_sculpt_mode(0);
         // …and the OFF half: unticking Enable takes every card with it.
         tool.toggle_brush_impasto();
         set_current_brush(Some(tool.brush_settings()));
@@ -351,6 +392,10 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
                 "with Impasto OFF in {mode:?}, the {name} card must not paint"
             );
         }
+        assert!(
+            rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW).is_none(),
+            "with Impasto OFF in {mode:?}, the Knife card must not paint either"
+        );
     }
 }
 

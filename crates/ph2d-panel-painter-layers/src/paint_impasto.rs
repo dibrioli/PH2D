@@ -128,19 +128,27 @@ pub(crate) fn paint_impasto_section(
     // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
     // de Adjust Last Stroke"*) — then EVERY configuration card, not just the selected tool's (Enio,
     // 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
-    // cards"*). The earlier selected-tool narrowing hid the Knife/Sculpt/Body knobs from whoever was not
-    // holding that exact tool; with every card visible each one edits ITS tool's authored state — alive
-    // the moment that tool is picked — and Material now writes the three relief slots (tool side), so no
-    // card is a knob editing a slot nothing reads. The radio still says which tool the BRUSH is.
+    // cards"*, refined the same day). The order and the one exception are Enio's: the **Sculpt card sits
+    // directly below TOOL** (eight of the ten chips are its verbs), then Body, then the **Knife card only
+    // while the Knife is the selected tool** (Plow is the one knob with no life outside that grip), then
+    // Material — which the tool now fans out to the three relief slots, so it is not a dead knob under
+    // any tool — and Lighting. The radio still says which tool the BRUSH is.
     y = crate::paint_impasto_tool::paint_tool_card(ctx, theme, x, content_w, y, &brush);
-    y = paint_body_card(ctx, theme, x, content_w, y, &brush);
-    y = paint_knife_card(ctx, theme, x, content_w, y, &brush);
     y = paint_sculpt_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_body_card(ctx, theme, x, content_w, y, &brush);
+    if brush.impasto_tool == TOOL_KNIFE {
+        y = paint_knife_card(ctx, theme, x, content_w, y, &brush);
+    }
     y = paint_material_card(ctx, theme, x, content_w, y, &brush);
     // Lighting is last: it is the canvas's, not the brush's — one light for the whole document, like the
     // paper colour.
     paint_lighting_card(ctx, theme, x, content_w, y, &brush)
 }
+
+/// Wire index of the Knife on the TOOL list — mirrors `ph2d_tool_painter`'s `IMPASTO_TOOL_KNIFE`
+/// (private module there, and `paint.rs` sits at its LOC cap; the seam gates click the real product,
+/// so a drift here goes red instead of silent).
+const TOOL_KNIFE: u8 = 1;
 
 /// The **Sculpt** card: the selected verb's knob rows, framed. The verb itself is chosen on the TOOL
 /// radio above; this card shows (and edits) that verb's authored knobs — visible for every tool, like

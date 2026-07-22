@@ -3078,3 +3078,111 @@ Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resi
 depende da secção projetada, que este módulo já sabe calcular) · a superfície é PLANA (ondas seriam outra
 coisa) · o `local_polygon` não conhece `Compound`/`TriMesh`, e devolve `None` — nenhum empuxo é melhor que um
 empuxo sobre silhueta inventada.
+
+---
+
+## W-ContactEvents — *começou a tocar* / *parou de tocar* (2026-07-22, smoke `=29`)
+
+A frente **A** do handoff de reabertura, e a que ele chamava de *"o mais valioso, e o mais
+desenhado"*. O W-Contacts entrega **quem está tocando agora**; isto entrega a **transição**
+— o que um consumidor de gameplay de fato consome (som de impacto, dano, gatilho).
+
+`PhysicsBridge::contact_events() -> &[ContactEvent]`, com `ContactPhase::{Began, Ended}`,
+o LUGAR do toque e a carga. ⚠️ **O consumidor de gameplay continua NÃO construído** — é
+cross-line e é decisão do Enio (a mesma fronteira que o W7 traçou para os sensores). O que
+esta wave deve é o primitivo **mais uma leitura VISÍVEL dele**, para o canal não nascer
+flag morto.
+
+### A armadilha que a wave existe para evitar
+
+O conjunto permanente é **recomputado do zero todo dispatch**, então um diff ingênuo
+transforma **todo movimento descontínuo do relógio numa tempestade de colisões**: arraste a
+régua para trás sobre uma pilha assentada e cada par que o replay encontra parece novo em
+folha. Mas nada começou — o artista mexeu no relógio.
+
+A lei: **um evento descreve uma transição que a simulação de fato ATRAVESSOU.** Toda
+descontinuidade derruba `contacts_continuous`, e o rebuild seguinte adota o conjunto **em
+SILÊNCIO** (`discard_contact_history`, com **dois** chamadores — `rewind_to` e `hold`).
+
+⚠️ **A baseline nasce VAZIA e contínua**, então o primeiro frame simulado reporta o que
+achar, inclusive uma pilha autorada já encostada. É a leitura da **Unity**
+(`OnCollisionEnter` dispara no 1º `FixedUpdate` para corpos pré-tocando) e a única
+defensável: a narrow phase nunca tinha rodado, logo não existe verdade anterior.
+
+### ⚠️ O bug VIVO que a busca por uma baseline encontrou
+
+`hold` (o toggle **Physics** do transporte desmarcado) limpava `triggers` — com um
+comentário explicando que um overlap velho acenderia um sensor com nada dentro — e **não
+limpava `contacts`**. Os contatos saem da narrow phase, e só `step` a atualiza ⇒ **desligar
+a física deixava as cruzes na tela**, descrevendo toques num mundo que o artista podia
+então desmontar com a mão. A metade sólida da frase que a metade sensor já dizia, faltando
+desde o W-Contacts. Gate red-first + mutação M2.
+
+### A metade visível: o flash é um `×`, não um `+` maior
+
+O comprimento do braço da cruz **já significa CARGA**. Um flash que também crescesse os
+braços colocaria dois significados num canal só — um toque novo e leve ficaria idêntico a
+um velho e pesado. O flash entra a **45°**: por 6 ticks (~100 ms, régua de display, não
+knob) um `×` abre e some; juntos leem como faísca, e depois o `+` volta a dizer só o que
+sempre disse. `BodyContact.age_ticks: Option<u64>` — e o `None` (*"já tocava quando o
+relógio pulou"*) é exatamente o que impede um scrub de acender a cena inteira.
+
+⚠️ **Um gate achou um defeito de desenho real:** o flash nascia com 4 px, **menor** que os
+9 px da cruz de carga máxima, então o pouso no contato mais carregado da cena seria
+anunciado por uma marca escondida dentro da que ela anunciava. `FLASH_MIN_PX` passou a ser
+**derivado** de `MARK_MAX_PX`.
+
+### ⚠️ O LIMITE, medido — um impacto RÁPIDO não produz evento nenhum
+
+A amostra é tomada depois que `step` retorna, e o solver resolve um pouso duro **e já
+separa o corpo dentro do mesmo passo**: medido numa bola de raio 0,3 largada de 3,9 m, ela
+desce até `y = −0,478` contra profundidade de toque `−0,5` e **já está subindo** quando o
+tick acaba. Nos dois instantes em que o canal amostra, o par não está encostado — e o
+pouso que uma pessoa vê claramente é invisível aqui.
+
+Fronteira **varrida**: de 1,2 m (~5,8 m/s) **todo** quique é reportado; de 2,0 m (~7,0 m/s)
+o primeiro **não**. A cena `=29` larga dentro da faixa reportada **de propósito**, e diz
+isso na mensagem — uma cena que largasse de 3,4 ensinaria que a feature falha.
+
+**É o MESMO mecanismo do pico de impulso que falta** (`ContactReport::impulse`), e tem a
+mesma cura: amostrar **DENTRO do laço de sub-passos**. Quem construir *"força de impacto
+real"* (frente **B**) ganha este de graça — **são uma wave, não duas**.
+
+### Gates
+
+**9 no kernel** (`crates/ph2d-physics-ecs/tests/contact_events.rs`) + **4 no overlay**.
+**8 mutações, 8 sangram** (M1 rewind mantém a história · M2 `hold` deixa as cruzes — o bug
+vivo · M3 flag de continuidade ignorada · M4 par re-baselinado carimbado como começando
+agora · M5 overlay pisca par sem começo · M6 flash não expande · M7 flash não morre · M8
+flash nasce menor que a cruz de carga máxima).
+
+⚠️ **`reading_the_transitions_does_not_move_the_world`:** esta wave adiciona **memória**
+(um mapa, um flag, uma fila), que é exatamente o tipo de adição que começa a escrever de
+volta no dia em que alguém decidir que um evento deve acordar um corpo. **Provado com
+número, não com argumento:** `physics_ecs_c9` roda **75 corpos, 120 passos, hash
+`7d55a4abb03fb4654c1a3e62492b7741de7d5a79e36817668983df43ab081177`** — **byte-idêntico** ao
+do `main` (rodado nas duas árvores). Nenhum bump de `PROJECT_SCHEMA` (fica **29**), nenhum
+componente novo (registro fica **18**): uma transição é estado vivo do solver, o oposto de
+config.
+
+⚠️ **Um gate nasceu vermelho por FIXTURE, não por produto:** o do scrub mirava o tick 20,
+onde as caixas ainda estão CAINDO — nada tocava. Corrigido cobrindo os **dois** scrubs
+perigosos: para um tick onde tudo também toca (o diff ficaria quieto por SORTE, então
+aquela metade afirma a IDADE) e para dentro da queda livre, onde quatro pares somem de uma
+vez e um diff ingênuo anunciaria quatro partidas que nunca houve.
+
+### LOC
+
+`bridge.rs` bateu **722/700** ⇒ split por RESPONSABILIDADE: `rewind_to` +
+`rebuild_from_rest` viraram `bridge/rewind.rs` (642), o irmão exato do `bridge/hold.rs` —
+*o que a ponte faz quando o relógio PARA* e *o que ela faz quando ele volta* são os dois
+comportamentos de uma timeline que não avança, e nenhum pertence ao meio do caminho que dá
+passo.
+
+### Aberto no W-ContactEvents
+
+O **consumidor de gameplay** (marker de timeline / callback de script) segue cross-line e
+decisão do Enio · o impacto rápido invisível **e** o pico de impulso, que são **um** item
+com **uma** cura (amostrar dentro do laço de sub-passos, e o preço é pago por toda cena —
+medir antes) · eventos **por-tick** em vez de por-dispatch (um frame que deve vários ticks
+reporta a diferença entre as duas pontas) · readout de contatos na §11.

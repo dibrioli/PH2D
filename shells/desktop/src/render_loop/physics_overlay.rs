@@ -41,7 +41,8 @@ use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point, VectorScene};
 
 use super::physics_overlay_contacts::{
-    CONTACT_RGBA, WATERLINE_RGBA, contact_marks, waterline_marks,
+    CONTACT_FLASH_RGBA, CONTACT_RGBA, WATERLINE_RGBA, contact_flashes, contact_marks,
+    waterline_marks,
 };
 use super::physics_overlay_joints::{JOINT_RGBA, joint_marks};
 
@@ -431,6 +432,18 @@ pub(super) fn draw(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
             &Brush::Solid(Color::new(CONTACT_RGBA)),
+            None,
+            &path,
+        );
+    }
+    // And the BEGIN-flash on top of the standing marks: it lives a few ticks and it is
+    // the visible half of the contact-events channel (`contact_flashes`). Last, so the
+    // spark is never buried by the very cross it is announcing.
+    for path in contact_flashes(show, contacts, camera, window) {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(OUTLINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(CONTACT_FLASH_RGBA)),
             None,
             &path,
         );

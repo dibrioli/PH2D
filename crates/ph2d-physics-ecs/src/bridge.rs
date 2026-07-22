@@ -19,6 +19,7 @@ mod diagnostics;
 mod hold;
 mod joints;
 mod kinematic;
+mod rewind;
 mod space;
 mod triggers;
 
@@ -146,6 +147,21 @@ pub struct PhysicsBridge {
     /// a contact is a RELATIONSHIP with no owner, unlike a trigger, which is asked
     /// about one sensor. Cleared and refilled per dispatch; empty in free fall.
     contacts: Vec<contacts::BodyContact>,
+    /// What was touching at the END of the previous dispatch, with where and when it
+    /// began — the memory that turns a standing set into TRANSITIONS
+    /// (`bridge::contacts`). `BTreeMap` for the determinism reason `bodies`
+    /// documents; the key order is the order `Ended` events come out in.
+    contact_since: BTreeMap<(Entity, Entity), contacts::ContactMemo>,
+    /// The transitions of this dispatch. Cleared and refilled next to `contacts`,
+    /// from the same diff.
+    contact_events: Vec<contacts::ContactEvent>,
+    /// Whether `contact_since` describes the tick immediately before this one.
+    ///
+    /// False after any discontinuous clock move, which makes the next rebuild adopt
+    /// the set in SILENCE instead of reporting a scrub as a hundred collisions. Starts
+    /// TRUE over an empty baseline, so the first stepped frame does report what it
+    /// finds — the Unity reading, argued in `rebuild_contacts`.
+    contacts_continuous: bool,
 }
 
 impl Default for PhysicsBridge {
@@ -177,6 +193,9 @@ impl PhysicsBridge {
             steps_taken: 0,
             triggers: BTreeMap::new(),
             contacts: Vec::new(),
+            contact_since: BTreeMap::new(),
+            contact_events: Vec::new(),
+            contacts_continuous: true,
         }
     }
 
@@ -405,83 +424,6 @@ impl PhysicsBridge {
         // final world state as the triggers, for the same reason — whichever branch
         // above produced it. No-op (and no alloc) when nothing touches.
         self.rebuild_contacts();
-    }
-
-    /// Put the world back at tick 0 and replay forward to `target`.
-    ///
-    /// rapier cannot step backwards, and the live `Transform` is no help —
-    /// the readback has already overwritten it with the simulated pose. So
-    /// each body carries the description it was SPAWNED with
-    /// ([`BodyRef::rest`]); a fresh world built from those, replayed
-    /// `target` steps, reproduces the state exactly (the sim is
-    /// deterministic). `target == 0` is the common case — Reset — and costs
-    /// no steps at all.
-    ///
-    /// **W1.5:** the checkpoint ring makes this `O(STRIDE)` instead of
-    /// `O(target)`. The ring seeds the world from the newest cached state at
-    /// or before `target` and only the remainder is replayed; on a miss (a
-    /// target older than the cached window, and Reset, which is `target = 0`)
-    /// the world is rebuilt from the bodies' rest descriptions — the path
-    /// that shipped in W1, still the only correctness-critical one.
-    fn rewind_to(&mut self, sim: &mut SimWorld, target: u64, scene: &mut dyn SceneAtTick) {
-        let anchor = self.ring.seed(&mut self.world, target);
-        let (from, replayed) = match anchor {
-            Some(tick) => (tick, target - tick),
-            None => {
-                self.rebuild_from_rest();
-                (0, target)
-            }
-        };
-        for i in 0..replayed {
-            // ⚠️ The replay drives scene-owned bodies too, and skipping this
-            // was the defect that made a scrub disagree with a play. A
-            // kinematic body frozen at its rest pose for the whole replay is a
-            // platform that is not where it was, so every dynamic body that
-            // touched it lands somewhere else — measured at 3.4 cm on a partial
-            // replay, and at "the box never travelled at all" on a ring miss,
-            // which meant the answer also depended on whether the cache
-            // happened to hold the anchor.
-            //
-            // With a scene that answers, this restores the invariant the whole
-            // bridge rests on: the world is a function of the tick, given the
-            // authored rest state AND the authored curves — both reproducible.
-            scene.put(sim, from + i + 1);
-            self.drive_kinematic(sim, 1.0);
-            self.world.step();
-            self.steps_taken += 1;
-        }
-        self.readback(sim);
-        self.last_stepped = target;
-    }
-
-    /// Put the world back at tick 0 from the descriptions the bodies were
-    /// spawned with.
-    ///
-    /// The live `Transform` is no help here — the readback has already
-    /// overwritten it with the simulated pose — which is why every body
-    /// carries its [`BodyRef::rest`].
-    ///
-    /// **Clears the ring**, because this hands out fresh rapier handles: a
-    /// checkpoint captured before the rebuild indexes bodies through the old
-    /// arena, and restoring it would leave the bridge's handles addressing
-    /// nothing. The pose published would then be stale, in silence — the
-    /// worst kind of wrong. (The handles very likely come back identical,
-    /// insertion order being the same; "very likely" is not a thing to build
-    /// a cache on, and clearing here costs nothing since the ring already
-    /// missed.)
-    fn rebuild_from_rest(&mut self) {
-        self.ring.clear();
-        self.world = PhysicsWorld::new();
-        self.settings.apply_to(&mut self.world);
-        // BTreeMap → entity order, so the fresh handles are assigned in the
-        // same deterministic order as the original spawn (HR-5).
-        for b in self.bodies.values_mut() {
-            b.handle = self.world.spawn_body(b.rest);
-        }
-        // Joints come back in the SAME call: the rewind replays its owed steps
-        // immediately, and a replay missing the joints is a different
-        // simulation — the chain would fall apart and re-assemble a frame later.
-        self.respawn_joints_from_rest();
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned

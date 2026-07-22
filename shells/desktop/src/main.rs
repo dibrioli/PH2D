@@ -127,6 +127,7 @@ mod physics_smoke;
 mod physics_smoke_collision;
 mod physics_smoke_contacts;
 mod physics_smoke_damping;
+mod physics_smoke_events;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod project;

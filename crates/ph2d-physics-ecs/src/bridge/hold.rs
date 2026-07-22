@@ -93,5 +93,14 @@ impl PhysicsBridge {
         // No sim ran, so there is no live overlap to report. A stale trigger
         // state would light a sensor that nothing is inside anymore.
         self.triggers.clear();
+        // ⚠️ And the SOLID half of exactly that sentence, which was missing until
+        // the contact-events wave went looking for a baseline here. `contacts` is
+        // read from the narrow phase, and only `step` updates that — so disarming
+        // the transport's Physics toggle used to LEAVE THE CROSSES ON SCREEN,
+        // describing touches in a world the artist can now pull apart by hand
+        // while the marks sit there. Clearing also drops the events' baseline, so
+        // re-arming re-adopts the set in silence instead of reporting the pause as
+        // a collision (`bridge::contacts::discard_contact_history`).
+        self.discard_contact_history();
     }
 }

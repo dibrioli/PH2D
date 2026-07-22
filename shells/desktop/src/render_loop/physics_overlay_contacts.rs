@@ -88,6 +88,79 @@ pub(super) fn contact_marks(
     contacts.iter().map(|c| mark(c, camera, window)).collect()
 }
 
+/// The flash — the same white, at full opacity, because it is the same vocabulary
+/// saying "this one, now".
+pub(super) const CONTACT_FLASH_RGBA: [f32; 4] = [1.0, 1.0, 1.0, 1.0]; // LITERAL-COLOR-OK: flash de contato
+
+/// How many ticks a begin-flash lives.
+///
+/// **A display ruler, not a knob** (the plan's rule: a number the artist cannot
+/// calibrate against their art does not become surface). At the 60 Hz tick this is
+/// ~100 ms — long enough to be caught reliably, and short enough that a busy stack
+/// does not stay lit. One or two ticks reads as a dropped frame rather than an event,
+/// which is the failure mode a single-frame flash has.
+const FLASH_TICKS: u64 = 6;
+
+/// Arm of the flash at birth and at death, screen px. It EXPANDS as it ages, which is
+/// what makes it read as a burst rather than as a second, brighter contact.
+///
+/// ⚠️ **Derived from [`MARK_MAX_PX`], not chosen next to it** — a gate caught the
+/// first version being born at 4 px, *smaller* than the 9 px cross of a fully-loaded
+/// contact, so a landing into the most heavily-loaded joint in the scene would have
+/// been announced by a mark hidden inside the one it was announcing. The flash has to
+/// clear the biggest standing cross in the WORST case, and tying the two together is
+/// what keeps that true the day the load ruler moves.
+const FLASH_MIN_PX: f64 = MARK_MAX_PX + 2.0; // LITERAL-PX-OK: chrome de overlay
+const FLASH_MAX_PX: f64 = FLASH_MIN_PX * 2.0; // LITERAL-PX-OK: chrome de overlay
+
+/// The begin-flash of one contact: a DIAGONAL cross, expanding with age.
+///
+/// ⚠️ **Diagonal, and not a bigger `+`, because arm length is already spoken for** —
+/// [`mark`] sizes the upright cross by the LOAD the pair carries. A flash that also
+/// grew the arms would make a brand-new light touch indistinguishable from an old
+/// heavy one, which is two meanings on one channel. Rotating 45° gives the event its
+/// own channel: for the few ticks it lives, the two crosses together read as a spark,
+/// and then the `+` is left saying what it always said.
+fn flash(contact: &BodyContact, camera: &Camera2d, window: WindowSize) -> Option<BezPath> {
+    // `None` age is a pair adopted at a re-baseline — it never *began* as far as the
+    // simulation is concerned, so it must not flash. That distinction is the whole
+    // reason `age_ticks` is an `Option` and not a number (see `BodyContact`).
+    let age = contact.age_ticks?;
+    if age >= FLASH_TICKS {
+        return None;
+    }
+    let (sx, sy) = camera.world_to_screen(contact.point, window);
+    let centre = Point::new(f64::from(sx), f64::from(sy));
+    let t = age as f64 / FLASH_TICKS as f64;
+    let arm = FLASH_MIN_PX + t * (FLASH_MAX_PX - FLASH_MIN_PX);
+    // 45°: the half-diagonal of a square with this arm.
+    let d = arm * std::f64::consts::FRAC_1_SQRT_2;
+
+    let mut path = BezPath::new();
+    path.move_to(Point::new(centre.x - d, centre.y - d));
+    path.line_to(Point::new(centre.x + d, centre.y + d));
+    path.move_to(Point::new(centre.x - d, centre.y + d));
+    path.line_to(Point::new(centre.x + d, centre.y - d));
+    Some(path)
+}
+
+/// Every begin-flash to draw, or nothing when the overlay is off. Pure and returned
+/// as data, for the reason [`contact_marks`] documents.
+pub(super) fn contact_flashes(
+    show: bool,
+    contacts: &[BodyContact],
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Vec<BezPath> {
+    if !show {
+        return Vec::new();
+    }
+    contacts
+        .iter()
+        .filter_map(|c| flash(c, camera, window))
+        .collect()
+}
+
 /// A linha d'água — **ciano claro**, a cor da água, e o único traço do overlay que
 /// descreve um LUGAR em vez de um corpo.
 pub(super) const WATERLINE_RGBA: [f32; 4] = [0.45, 0.85, 1.0, 0.75]; // LITERAL-COLOR-OK: overlay de linha d'agua

@@ -361,7 +361,123 @@ fn the_threshold_accepts_the_worst_real_pose_change_and_refuses_another_limb() {
     );
 }
 
+/// **Uma PANORÂMICA não orfana o desenho inteiro.** Quando a cena toda se desloca, TODOS
+/// os custos sobem juntos — e um limiar absoluto sozinho recusaria cada par, deixando o
+/// intervalo inteiro de inbetweens com cópias estáticas que saltam no último quadro.
+///
+/// É a metade RELATIVA da recusa que segura isto (um custo alto só quer dizer "não é o
+/// mesmo traço" quando os vizinhos NÃO subiram junto).
+///
+/// ⚠️ **`dx = 2000`, e o número foi MEDIDO.** A 1ª versão deste gate panoramava 140 e
+/// **não continha o fenômeno**: ali o custo é `0,255`, abaixo do limiar de `0,38`, então o
+/// teste absoluto sozinho já passava — o gate ficava verde sem exercitar a metade que ele
+/// existe para provar (a mutação que tira a metade relativa não o matava). A régua deu a
+/// escada: `dx=40 → 0,119 · 140 → 0,255 · 400 → 0,341 · 2000 → 0,388`, e só a última
+/// cruza a cerca.
+#[test]
+fn a_camera_pan_does_not_orphan_every_stroke_at_once() {
+    let scene = |dx: f32| {
+        drawing(vec![
+            stroke(&[(dx, 0.0), (dx + 40.0, 0.0)]),
+            stroke(&[(dx + 10.0, 30.0), (dx + 10.0, 90.0)]),
+            stroke(&[(dx - 20.0, 60.0), (dx + 5.0, 75.0)]),
+        ])
+    };
+    let plan = TweenPlan::build(&scene(0.0), &scene(2000.0));
+    assert_eq!(
+        plan.pairs(),
+        3,
+        "a panorâmica orfanou traços: {:?}",
+        (0..3).map(|i| plan.cost_of_a(i)).collect::<Vec<_>>()
+    );
+    for i in 0..3 {
+        assert_eq!(plan.pair_of_a(i), Some(i));
+    }
+}
+
+/// **Um traço sozinho que viaja longe continua sendo ele mesmo.** Sem contexto na cena não
+/// há com o que comparar o deslocamento — e a régua do custo, que é o bbox da união, cresce
+/// junto com ele. Era o gate do BURACO (um "O" atravessando a tela) que nascia vermelho.
+#[test]
+fn a_lone_stroke_that_travels_far_is_still_itself() {
+    for dx in [50.0, 100.0, 400.0] {
+        let plan = TweenPlan::build(
+            &drawing(vec![closed(&[(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0)])]),
+            &drawing(vec![closed(&[
+                (dx - 10.0, -10.0),
+                (dx + 10.0, -10.0),
+                (dx + 10.0, 10.0),
+            ])]),
+        );
+        assert_eq!(plan.pair_of_a(0), Some(0), "orfanou com dx={dx}");
+    }
+}
+
 // ── as RÉGUAS (medem os números que viraram constante) ───────────────────────
+
+/// **A régua do `OUTLIER_FACTOR`:** a razão `custo/mediana` na panorâmica (onde ela tem de
+/// ficar perto de 1) contra a de um traço que SOME (onde ela tem de estourar).
+///
+/// `cargo test -p ph2d-flip --release the_outlier_ruler -- --ignored --nocapture`
+#[test]
+#[ignore = "régua: imprime a razão custo/mediana dos dois regimes"]
+fn the_outlier_ruler() {
+    let ratios = |a: &FlipDrawing, b: &FlipDrawing| -> Vec<f32> {
+        let fa: Vec<StrokeFeatures> = a.strokes.iter().map(features).collect();
+        let fb: Vec<StrokeFeatures> = b.strokes.iter().map(features).collect();
+        let ctx = CostCtx {
+            diag: union_diag(&fa, &fb),
+            order_span: (fa.len().max(fb.len()) - 1) as f32,
+        };
+        let (n, m) = (fa.len(), fb.len());
+        let mut costs = vec![0.0f32; n * m];
+        for i in 0..n {
+            for j in 0..m {
+                costs[i * m + j] = pair_cost(&fa[i], &fb[j], i, j, ctx);
+            }
+        }
+        let picked = assign(&costs, n, m);
+        let mut cs: Vec<f32> = picked.iter().map(|&(i, j)| costs[i * m + j]).collect();
+        cs.sort_by(f32::total_cmp);
+        let med = cs[cs.len() / 2];
+        cs.iter()
+            .map(|c| if med > 0.0 { c / med } else { f32::INFINITY })
+            .collect()
+    };
+
+    let scene = |dx: f32| {
+        drawing(vec![
+            stroke(&[(dx, 0.0), (dx + 40.0, 0.0)]),
+            stroke(&[(dx + 10.0, 30.0), (dx + 10.0, 90.0)]),
+            stroke(&[(dx - 20.0, 60.0), (dx + 5.0, 75.0)]),
+        ])
+    };
+    println!("\n== PANORÂMICA (a cena inteira anda; NENHUM par é outlier) ==");
+    for dx in [40.0, 140.0, 400.0, 2000.0] {
+        let plan = TweenPlan::build(&scene(0.0), &scene(dx));
+        println!(
+            "  dx={dx:6}  razões {:.3?}  custos {:.3?}  (limiar {PAIR_REJECT_COST})",
+            ratios(&scene(0.0), &scene(dx)),
+            (0..3)
+                .map(|i| plan.cost_of_a(i).unwrap_or(f32::NAN))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    println!("== UM TRAÇO SOME e outro NASCE (o par espúrio TEM de ser outlier) ==");
+    let a = drawing(vec![
+        stroke(&[(0.0, 0.0), (40.0, 0.0)]),
+        stroke(&[(10.0, 30.0), (10.0, 90.0)]),
+        stroke(&[(200.0, 200.0), (210.0, 205.0)]), // some
+    ]);
+    let b = drawing(vec![
+        stroke(&[(2.0, 1.0), (42.0, 1.0)]),
+        stroke(&[(12.0, 31.0), (12.0, 91.0)]),
+        stroke(&[(-150.0, -90.0), (-140.0, -95.0)]), // nasce
+    ]);
+    println!("  razões {:.3?}", ratios(&a, &b));
+    println!("\n  OUTLIER_FACTOR = {OUTLIER_FACTOR}\n");
+}
 
 /// **A régua do limiar** (`PAIR_REJECT_COST`) e do piso de anisotropia
 /// (`AXIS_MIN_ANISOTROPY`): imprime o custo dos pares LEGÍTIMOS (o que um inbetween de

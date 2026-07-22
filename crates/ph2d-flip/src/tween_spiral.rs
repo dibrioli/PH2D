@@ -15,10 +15,9 @@
 //! Três coisas que valem mais que a fórmula:
 //!
 //! 1. **A representação apaga o caso especial.** Quando a similaridade é uma translação
-//!    pura (`σ=1`, `θ=0`) o ponto fixo NÃO EXISTE — é a matriz `I − σR` singular. Em vez de
-//!    um ramo `if` no chamador, isso vira uma VARIANTE ([`StrokeMotion::Lerp`]) cujo
-//!    `advance` devolve o próprio ponto: a fórmula do chamador
-//!    (`advance(a,u) + u·resíduo`) então **reduz ao lerp que o v1 já fazia, ao bit**.
+//!    pura (`σ=1`, `θ=0`) o ponto fixo NÃO EXISTE — a matriz `I − σR` é singular. Em vez de
+//!    um ramo `if` no chamador, isso vira a variante [`StrokeMotion::Translate`], e a
+//!    fórmula do chamador (`advance(a,u) + u·resíduo`) vale para as duas sem ramo nenhum.
 //! 2. **O resíduo tem uma porta só.** `resid = b − S(a)` é *o que a similaridade não
 //!    explica*, e `S(a)` é exatamente `advance(a, 1.0)` — nada de uma segunda cópia da
 //!    similaridade para calcular a diferença.
@@ -35,7 +34,7 @@
 use ph2d_core::Vec2;
 
 /// Abaixo deste `det(I − σR)` a similaridade é uma **translação pura** (ou perto demais
-/// disso para ser distinguível), e o movimento cai no lerp.
+/// disso para ser distinguível), e o movimento vira [`StrokeMotion::Translate`].
 ///
 /// `det = 1 − 2σcos θ + σ²` — zero exatamente quando `σ=1` e `θ=0`.
 ///
@@ -57,18 +56,24 @@ use ph2d_core::Vec2;
 ///
 /// ⚠️ A 1ª versão deste comentário dizia que o erro *"explode duas ordens de grandeza por
 /// década abaixo"* — **falso, e escrito antes de medir**: as linhas de baixo da tabela já
-/// caem no ramo `Lerp`, então o que elas mostram é o erro da CORDA, que encolhe.
+/// caem no ramo `Translate`, então o que elas mostram é o erro da CORDA, que encolhe.
 const DET_MIN: f64 = 1.0e-6;
 
 /// Escala abaixo da qual B colapsou num ponto: `σᵗ` levaria todo `t > 0` para o mesmo
-/// lugar (um salto no primeiro inbetween). Cai no lerp, que degrada suavemente.
+/// lugar (um salto no primeiro inbetween). Cai na translação, que degrada suavemente.
 const SCALE_MIN: f64 = 1.0e-3;
 
 /// **O movimento rígido de um traço** entre dois quadros-chave.
+///
+/// ⚠️ A 1ª versão chamava o caso degenerado de `Lerp` e o fazia devolver o **próprio
+/// ponto** — "o rígido aqui é a identidade". Era **mentira**, e o gate do órfão a pegou:
+/// numa translação pura o rígido É a translação, e quem pergunta *"para onde este traço
+/// foi?"* de fora do par (um órfão que precisa viajar junto) recebia "para lugar nenhum".
+/// Dentro do par a mentira não aparecia, porque o resíduo cobria a translação inteira.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum StrokeMotion {
-    /// Translação pura, dados insuficientes, ou colapso: **o caminho do v1, ao bit**.
-    Lerp,
+    /// Sem rotação nem escala apreciáveis: o movimento rígido é uma translação.
+    Translate(Vec2),
     /// Gira e escala em torno do ponto fixo.
     Spiral {
         /// O ponto fixo da similaridade (o "centro" do movimento).
@@ -88,8 +93,12 @@ impl StrokeMotion {
     /// não uma segunda opinião sobre quem é quem.
     pub(crate) fn fit(a: &[Vec2], b: &[Vec2]) -> Self {
         let n = a.len().min(b.len());
+        if n == 0 {
+            return Self::Translate(Vec2::ZERO);
+        }
         if n < 2 {
-            return Self::Lerp; // um ponto não define rotação nem escala
+            // Um ponto não define rotação nem escala — mas define para onde ele foi.
+            return Self::Translate(b[0] - a[0]);
         }
         let inv = 1.0 / n as f64;
         let (mut ca, mut cb) = ((0.0f64, 0.0f64), (0.0f64, 0.0f64));
@@ -100,6 +109,9 @@ impl StrokeMotion {
             cb.1 += f64::from(b[i].y);
         }
         let (ca, cb) = ((ca.0 * inv, ca.1 * inv), (cb.0 * inv, cb.1 * inv));
+        // A translação dos CENTRÓIDES é o rígido de todo caso degenerado abaixo — e é o
+        // que um órfão vizinho monta para viajar junto.
+        let shift = Vec2::new((cb.0 - ca.0) as f32, (cb.1 - ca.1) as f32);
 
         // Σ a'·b' e Σ a'×b' — a parte "complexa" do ajuste: o vetor `(dot, cross)` tem
         // ARGUMENTO θ e MÓDULO σ·Σ|a'|².
@@ -112,12 +124,12 @@ impl StrokeMotion {
             norm_a += ax * ax + ay * ay;
         }
         if norm_a <= 0.0 {
-            return Self::Lerp; // A é um ponto: não há forma para girar
+            return Self::Translate(shift); // A é um ponto: não há forma para girar
         }
         let theta = libm::atan2(cross, dot);
         let scale = (dot * dot + cross * cross).sqrt() / norm_a;
         if scale < SCALE_MIN {
-            return Self::Lerp; // B colapsou
+            return Self::Translate(shift); // B colapsou
         }
         let (sin, cos) = libm::sincos(theta);
         let (m00, m01) = (scale * cos, -scale * sin); // M = σ·R(θ)
@@ -128,7 +140,7 @@ impl StrokeMotion {
         // (I − M)·F = c. det = (1−σcos)² + (σsin)² = 1 − 2σcos θ + σ².
         let det = 1.0 - 2.0 * scale * cos + scale * scale;
         if det < DET_MIN {
-            return Self::Lerp; // translação pura: o ponto fixo está no infinito
+            return Self::Translate(shift); // o ponto fixo está no infinito
         }
         // (I − M)⁻¹ = 1/det · [[1−σcos, σsin·(−1)·(−1)] …] — a inversa de
         // [[1−m00, −m01], [−m10, 1−m11]] com m01 = −m10.
@@ -145,15 +157,16 @@ impl StrokeMotion {
 
     /// **Onde o ponto `p` de A está no fator `u`, pela parte RÍGIDA do movimento.**
     ///
-    /// `Lerp` devolve o próprio ponto — e é isso que faz `advance(p,u) + u·resid` reduzir
-    /// exatamente ao lerp do v1 (ver o §1 do módulo).
+    /// Numa `Translate` isto é `p + d·u`; numa `Spiral`, o arco. Nos dois casos é a
+    /// resposta COMPLETA a *"para onde este traço leva um ponto que anda com ele?"* — o que
+    /// um órfão vizinho precisa saber (ver o ⚠️ do enum).
     ///
     /// `u` fora de `[0,1]` é extrapolação legítima: a espiral **continua girando**, que é
     /// o overshoot que um animador de fato quer (antecipação/rebote), em vez de esticar
     /// uma reta para fora do movimento.
     pub(crate) fn advance(&self, p: Vec2, u: f32) -> Vec2 {
         match *self {
-            Self::Lerp => p,
+            Self::Translate(d) => p + d * u,
             Self::Spiral {
                 fixed,
                 angle,
@@ -164,6 +177,23 @@ impl StrokeMotion {
                 let d = p - fixed;
                 fixed + Vec2::new(k * (cos * d.x - sin * d.y), k * (sin * d.x + cos * d.y))
             }
+        }
+    }
+
+    /// **Onde o ponto pareado `a ↔ b` está no fator `u`** — rígido + resíduo, a porta única
+    /// do ponto INTERPOLADO (o `advance` responde outra pergunta: onde vai um passageiro
+    /// que não tem par).
+    ///
+    /// ⚠️ **Na `Translate` a conta é escrita como `a + (b − a)·u`, e isso é load-bearing:**
+    /// é algebricamente a mesma expressão (`a + d·u + (b − a − d)·u`), mas com **uma**
+    /// multiplicação em vez de duas — e é o que faz uma translação pura sair **byte-idêntica**
+    /// ao tween do v1 em vez de a um ulp dele. A forma de duas parcelas errava o último bit
+    /// (medido: `36.175` × `36.174995`), e um gate de bits é muito mais difícil de fraudar
+    /// que um de épsilon.
+    pub(crate) fn point_at(&self, a: Vec2, b: Vec2, u: f32) -> Vec2 {
+        match *self {
+            Self::Translate(_) => a + (b - a) * u,
+            Self::Spiral { .. } => self.advance(a, u) + self.residual(a, b) * u,
         }
     }
 

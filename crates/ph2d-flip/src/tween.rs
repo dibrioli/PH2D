@@ -1,12 +1,14 @@
-//! **Tween** — o inbetween automático (W3.T3.6), port do `interpolate.cc` +
-//! `interpolate_curves.cc` do GP (`02_referencia §3`), clean-room.
+//! **Tween** — o inbetween automático (W3.T3.6 + **Tween v2**), clean-room do
+//! `interpolate.cc` + `interpolate_curves.cc` do GP (`02_referencia §3`), com os dois
+//! upgrades qualificados de `04 §2`.
 //!
 //! Dois desenhos-chave A e B; o tween produz o desenho intermediário no fator `t`.
-//! Quatro peças, todas com uma razão:
+//! As peças, cada uma com uma razão:
 //!
-//! 1. **Pareamento POR ÍNDICE** — o i-ésimo traço de A com o i-ésimo de B. Simples
-//!    e ESTÁVEL (não pisca entre quadros). Traço de A sem par vira cópia estática;
-//!    traço extra de B nunca aparece (ou faz fade-in, se pedido).
+//! 1. **Correspondência ESPACIAL** ([`crate::TweenPlan`], `tween_match`) — quem vira quem
+//!    sai da geometria, não do índice. A ordem de desenho continua contando **como termo do
+//!    custo**, então o par ordinal ganha quando tudo mais empata: o v2 subsume o v1.
+//!    Traço sem par vira cópia estática (ou fade, se pedido).
 //! 2. **Contagem = MAX(A, B) com padding** ([`sample_padded`]) — os pontos da curva
 //!    MENOR são preservados EXATAMENTE e os extras se distribuem ∝ comprimento de
 //!    arco. É o que garante que em `t=0` e `t=1` os extremos saem **idênticos** ao
@@ -15,8 +17,12 @@
 //! 3. **Auto-flip** — se B foi desenhado no sentido contrário, o lerp faria o traço
 //!    dar um nó. O teste é geométrico (cordas que se cruzam / direções opostas),
 //!    com desempate por distância quando as cordas são quase paralelas (< 15°).
-//! 4. **Lerp NÃO-clampado** com o fator em `[-1, +2]`: overshoot é ferramenta
-//!    (antecipação/rebote), não bug.
+//! 4. **Movimento por ESPIRAL logarítmica** ([`StrokeMotion`], `tween_spiral`) — o traço
+//!    percorre o ARCO entre as duas poses em vez da corda, e por isso um braço que gira não
+//!    encolhe no meio do caminho. Translação pura cai na variante `Lerp` e o resultado é
+//!    **byte-idêntico** ao do v1.
+//! 5. **Fator NÃO-clampado** em `[-1, +2]`: overshoot é ferramenta (antecipação/rebote),
+//!    não bug — e a espiral o honra CONTINUANDO a girar, em vez de esticar uma reta.
 //!
 //! Os inbetweens nascem [`KeyKind::Breakdown`], e re-tweenar **exclui os
 //! breakdowns** do intervalo antes de recomeçar — regenerar é idempotente.
@@ -28,6 +34,8 @@ use crate::ids::{Frame, LayerId};
 use crate::object::FlipObject;
 use crate::stroke::{FlipStroke, Point};
 use crate::tween_flip::should_flip;
+use crate::tween_match::TweenPlan;
+use crate::tween_spiral::StrokeMotion;
 use ph2d_anim::Interp;
 use ph2d_core::Vec2;
 
@@ -60,34 +68,109 @@ impl Default for TweenOptions {
 /// **O desenho intermediário entre `a` e `b` no fator `t`** (`0` = A, `1` = B).
 ///
 /// `t` é o fator BRUTO (posição no intervalo); o easing é aplicado aqui dentro.
+///
+/// Constrói a correspondência na hora. Para gerar VÁRIOS inbetweens do mesmo par, use
+/// [`tween_drawing_with`] com um [`TweenPlan`] construído uma vez — a correspondência é
+/// função do PAR, não do fator, e refazê-la por quadro é repetir o mesmo trabalho.
 #[must_use]
 pub fn tween_drawing(a: &FlipDrawing, b: &FlipDrawing, t: f32, opts: TweenOptions) -> FlipDrawing {
+    tween_drawing_with(a, b, t, opts, &TweenPlan::build(a, b))
+}
+
+/// [`tween_drawing`] com a correspondência já resolvida (a forma que o documento usa).
+#[must_use]
+pub fn tween_drawing_with(
+    a: &FlipDrawing,
+    b: &FlipDrawing,
+    t: f32,
+    opts: TweenOptions,
+    plan: &TweenPlan,
+) -> FlipDrawing {
     let u = ease(t, opts.easing);
     let mut out = FlipDrawing::new();
+    // O movimento rígido de cada par, guardado com o centróide de A: os ÓRFÃOS o consultam
+    // para viajar junto com o vizinho (um braço que some tem de acompanhar o corpo enquanto
+    // desaparece, não ficar pregado no ar enquanto a figura anda embora).
+    let mut motions: Vec<(Vec2, StrokeMotion)> = Vec::new();
     for (i, sa) in a.strokes.iter().enumerate() {
-        match b.strokes.get(i) {
-            Some(sb) => out.strokes.push(tween_stroke(sa, sb, u, opts.auto_flip)),
-            // Sem par: cópia estática de A (não pisca, não some).
+        match plan.pair_of_a(i).and_then(|j| b.strokes.get(j)) {
+            Some(sb) => {
+                let (m, s) = tween_stroke(sa, sb, u, opts.auto_flip);
+                motions.push((mean_pos(sa), m));
+                out.strokes.push(s);
+            }
+            // Sem par: cópia estática de A (não pisca, não some) — ou fade-out, se pedido.
             None => out.strokes.push(sa.clone()),
         }
     }
     if opts.fade_orphans {
-        // Traços que só B tem: entram com a opacidade subindo (em vez de "pipocar"
-        // inteiros no último quadro).
-        for sb in b.strokes.iter().skip(a.strokes.len()) {
-            let mut s = sb.clone();
-            let k = u.clamp(0.0, 1.0);
-            for o in s.opacities_mut() {
-                *o *= k;
+        // O fade dos órfãos é SIMÉTRICO. Antes só o lado de B tinha fade (e por índice, o
+        // que só enxergava "B tem mais traços que A"): o nome dizia "orphans" e a metade de
+        // A ficava de fora — um traço que SOME saltava para fora da tela de um quadro para
+        // o outro.
+        for (i, sa) in a.strokes.iter().enumerate() {
+            if plan.pair_of_a(i).is_some() {
+                continue;
             }
-            // Um PREENCHIMENTO não é visível pela opacidade dos pontos (eles nem são
-            // rasterizados) — quem manda é o `fill.opacity`. Sem isto, uma região
-            // colorida nova "pipocava" inteira no 1º inbetween, que é exatamente o que o
-            // fade_orphans existe para evitar.
-            if let Some(f) = s.fill.as_mut() {
-                f.opacity *= k;
+            let m = nearest_motion(&motions, mean_pos(sa));
+            out.strokes[i] = fade_orphan(sa, 1.0 - u, |p| m.advance(p, u));
+        }
+        for (j, sb) in b.strokes.iter().enumerate() {
+            if plan.pair_of_b(j).is_some() {
+                continue;
             }
-            out.strokes.push(s);
+            // O órfão de B chega vindo de onde o vizinho estava: a mesma espiral, andada
+            // PARA TRÁS (de `u` até 1) — em `u=1` ele está exatamente onde B o desenhou.
+            let m = nearest_motion(&motions, mean_pos(sb));
+            out.strokes
+                .push(fade_orphan(sb, u, |p| m.advance(p, u - 1.0)));
+        }
+    }
+    out
+}
+
+/// Média das posições — a régua de proximidade dos órfãos (não é a feature de
+/// correspondência: aqui a pergunta é só *"quem está perto?"*, e a média basta).
+fn mean_pos(s: &FlipStroke) -> Vec2 {
+    let n = s.len();
+    if n == 0 {
+        return Vec2::ZERO;
+    }
+    s.positions().iter().fold(Vec2::ZERO, |a, &p| a + p) / n as f32
+}
+
+/// O movimento do par mais próximo de `p` — parado, se não houver par nenhum (um
+/// desenho em que NADA casou não tem vizinho para dizer para onde as coisas foram).
+fn nearest_motion(motions: &[(Vec2, StrokeMotion)], p: Vec2) -> StrokeMotion {
+    motions
+        .iter()
+        .min_by(|(a, _), (b, _)| {
+            (*a - p)
+                .length_squared()
+                .total_cmp(&(*b - p).length_squared())
+        })
+        .map_or(StrokeMotion::Translate(Vec2::ZERO), |&(_, m)| m)
+}
+
+/// Um órfão no fator dado: opacidade `k` e cada ponto levado por `warp`.
+fn fade_orphan(s: &FlipStroke, k: f32, warp: impl Fn(Vec2) -> Vec2) -> FlipStroke {
+    let mut out = s.clone();
+    let k = k.clamp(0.0, 1.0);
+    for p in out.positions_mut() {
+        *p = warp(*p);
+    }
+    for o in out.opacities_mut() {
+        *o *= k;
+    }
+    // Um PREENCHIMENTO não é visível pela opacidade dos pontos (eles nem são
+    // rasterizados) — quem manda é o `fill.opacity`. Sem isto, uma região colorida nova
+    // "pipocava" inteira no 1º inbetween, que é exatamente o que o fade existe para evitar.
+    if let Some(f) = out.fill.as_mut() {
+        f.opacity *= k;
+    }
+    for h in &mut out.holes {
+        for p in h.iter_mut() {
+            *p = warp(*p);
         }
     }
     out
@@ -100,11 +183,28 @@ fn ease(t: f32, easing: Interp) -> f32 {
 }
 
 /// Interpola um par de traços. `u` é o fator já com easing.
-fn tween_stroke(a: &FlipStroke, b: &FlipStroke, u: f32, auto_flip: bool) -> FlipStroke {
+///
+/// Devolve TAMBÉM o movimento rígido ajustado — quem chama precisa dele para levar os
+/// órfãos vizinhos, e ajustá-lo uma segunda vez lá seria a segunda porta para a mesma
+/// pergunta (*"para onde este traço foi?"*), que é como duas respostas divergem.
+fn tween_stroke(
+    a: &FlipStroke,
+    b: &FlipStroke,
+    u: f32,
+    auto_flip: bool,
+) -> (StrokeMotion, FlipStroke) {
     let flip = auto_flip && should_flip(a, b);
     let n = a.len().max(b.len());
     let pa = sample_padded(a, n, false);
     let pb = sample_padded(b, n, flip);
+
+    // **A espiral é ajustada sobre a MESMA correspondência que a interpolação usa** (os
+    // arrays já padded e já flipados) — não sobre os traços crus, que têm contagens
+    // diferentes e ponto 0 possivelmente trocado.
+    let motion = StrokeMotion::fit(
+        &pa.iter().map(|p| p.pos).collect::<Vec<_>>(),
+        &pb.iter().map(|p| p.pos).collect::<Vec<_>>(),
+    );
 
     // Atributos de CURVA: vêm de A (o GP não faz crossfade de material/flags). O
     // FILL é a exceção que corrigimos: se ambos têm, a cor interpola (senão o
@@ -113,7 +213,9 @@ fn tween_stroke(a: &FlipStroke, b: &FlipStroke, u: f32, auto_flip: bool) -> Flip
     for i in 0..n {
         let (x, y) = (pa[i], pb[i]);
         out.push_point(Point {
-            pos: Vec2::new(lerp(x.pos.x, y.pos.x, u), lerp(x.pos.y, y.pos.y, u)),
+            // A porta única do ponto pareado: rígido + resíduo, e na translação pura
+            // ela é `x + (y − x)·u` — a expressão do v1, ao bit.
+            pos: motion.point_at(x.pos, y.pos, u),
             width: lerp(x.width, y.width, u).max(0.0),
             opacity: lerp(x.opacity, y.opacity, u).clamp(0.0, 1.0),
             color: lerp_rgba(x.color, y.color, u),
@@ -132,23 +234,27 @@ fn tween_stroke(a: &FlipStroke, b: &FlipStroke, u: f32, auto_flip: bool) -> Flip
     // fica sólido no meio do tween e uma mancha de cor solta viaja pelo caminho (o
     // even-odd conta o anel órfão como região preenchida).
     //
-    // Os furos são pareados por índice, como os traços. Quem não tem par fica onde está:
-    // é a mesma escolha do traço sem par (cópia estática, não pisca nem some).
+    // Os furos são pareados por índice (são poucos e nascem juntos com o contorno, então
+    // a ordem é a informação que existe). Quem não tem par **viaja com o contorno**, pela
+    // espiral do próprio traço: deixá-lo parado o faria sair de dentro da forma, que é
+    // exatamente o defeito que este bloco existe para impedir.
     out.holes = a
         .holes
         .iter()
         .enumerate()
         .map(|(i, ha)| match b.holes.get(i) {
-            Some(hb) => tween_ring(ha, hb, u),
-            None => ha.clone(),
+            Some(hb) => tween_ring(ha, hb, u, motion),
+            None => ha.iter().map(|&p| motion.advance(p, u)).collect(),
         })
         .collect();
-    out
+    (motion, out)
 }
 
 /// Interpola um anel de buraco (pareamento por índice + padding ao maior, exatamente
-/// como o contorno — um furo é uma polilinha fechada como qualquer outra).
-fn tween_ring(a: &[Vec2], b: &[Vec2], u: f32) -> Vec<Vec2> {
+/// como o contorno — um furo é uma polilinha fechada como qualquer outra), pelo MESMO
+/// movimento rígido do contorno que o carrega: se o furo tivesse espiral própria, ele
+/// giraria por conta e sairia da forma.
+fn tween_ring(a: &[Vec2], b: &[Vec2], u: f32, motion: StrokeMotion) -> Vec<Vec2> {
     if a.is_empty() || b.is_empty() {
         return a.to_vec();
     }
@@ -163,7 +269,7 @@ fn tween_ring(a: &[Vec2], b: &[Vec2], u: f32) -> Vec<Vec2> {
     (0..n)
         .map(|i| {
             let (p, q) = (at(a, i), at(b, i));
-            Vec2::new(lerp(p.x, q.x, u), lerp(p.y, q.y, u))
+            motion.point_at(p, q, u)
         })
         .collect()
 }
@@ -350,6 +456,10 @@ impl FlipObject {
         let count = req.count.min((gap - 1) as u32);
         let a = self.drawing(da).expect("chave A tem desenho").clone();
         let b = self.drawing(db).expect("chave B tem desenho").clone();
+        // **A correspondência é função do PAR, não do fator** — uma busca por inbetween
+        // refaria o mesmo trabalho N vezes e, pior, poderia dar respostas DIFERENTES entre
+        // quadros vizinhos, o que na tela é o traço piscando de identidade.
+        let plan = TweenPlan::build(&a, &b);
 
         let mut made = 0;
         for i in 1..=count {
@@ -367,7 +477,7 @@ impl FlipObject {
                 continue; // chave real do usuário no caminho: respeita
             }
             let t = (f - from) as f32 / gap as f32;
-            let art = tween_drawing(&a, &b, t, req.options);
+            let art = tween_drawing_with(&a, &b, t, req.options, &plan);
             let Some(new_id) = self.insert_frame(req.layer, f, Hold::Implicit, KeyKind::Breakdown)
             else {
                 continue;
@@ -383,307 +493,6 @@ impl FlipObject {
         made
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ids::FlipObjectId;
-
-    fn stroke(pts: &[(f32, f32)]) -> FlipStroke {
-        let mut s = FlipStroke::new();
-        for &(x, y) in pts {
-            s.push_default(Vec2::new(x, y));
-        }
-        s
-    }
-
-    fn drawing(strokes: Vec<FlipStroke>) -> FlipDrawing {
-        let mut d = FlipDrawing::new();
-        d.strokes = strokes;
-        d
-    }
-
-    fn pts(s: &FlipStroke) -> Vec<(f32, f32)> {
-        s.positions().iter().map(|p| (p.x, p.y)).collect()
-    }
-
-    /// **A propriedade que justifica o padding:** nos extremos (`t=0`/`t=1`) o
-    /// tween reproduz os desenhos originais PONTO A PONTO, mesmo com contagens
-    /// diferentes. (Uma reamostragem uniforme falharia aqui.)
-    #[test]
-    fn the_endpoints_are_reproduced_exactly() {
-        let a = drawing(vec![stroke(&[(0.0, 0.0), (10.0, 0.0)])]); // 2 pontos
-        let b = drawing(vec![stroke(&[(0.0, 5.0), (5.0, 5.0), (10.0, 5.0)])]); // 3
-        let o = TweenOptions::default();
-
-        let at0 = tween_drawing(&a, &b, 0.0, o);
-        assert_eq!(at0.strokes[0].len(), 3, "conta pelo MAIOR");
-        // Os 2 pontos de A saem exatos; o extra caiu no meio do segmento.
-        assert_eq!(
-            pts(&at0.strokes[0]),
-            vec![(0.0, 0.0), (5.0, 0.0), (10.0, 0.0)]
-        );
-
-        let at1 = tween_drawing(&a, &b, 1.0, o);
-        assert_eq!(pts(&at1.strokes[0]), pts(&b.strokes[0]), "B, ponto a ponto");
-    }
-
-    /// O meio é o meio (com easing linear).
-    #[test]
-    fn the_middle_is_the_average() {
-        let a = drawing(vec![stroke(&[(0.0, 0.0), (10.0, 0.0)])]);
-        let b = drawing(vec![stroke(&[(0.0, 10.0), (10.0, 10.0)])]);
-        let mid = tween_drawing(&a, &b, 0.5, TweenOptions::default());
-        assert_eq!(pts(&mid.strokes[0]), vec![(0.0, 5.0), (10.0, 5.0)]);
-    }
-
-    /// **Auto-flip:** B desenhado ao contrário (mesma forma, ordem invertida). Sem
-    /// o flip, o meio colapsaria num X; com ele, o traço só se translada.
-    #[test]
-    fn auto_flip_untangles_a_reversed_stroke() {
-        let a = drawing(vec![stroke(&[(0.0, 0.0), (10.0, 0.0)])]);
-        let b = drawing(vec![stroke(&[(10.0, 10.0), (0.0, 10.0)])]); // invertido
-        let mid = tween_drawing(&a, &b, 0.5, TweenOptions::default());
-        assert_eq!(
-            pts(&mid.strokes[0]),
-            vec![(0.0, 5.0), (10.0, 5.0)],
-            "com flip: translação limpa"
-        );
-        // Sem auto-flip, o mesmo par vira o nó (as pontas cruzam no meio).
-        let no_flip = TweenOptions {
-            auto_flip: false,
-            ..Default::default()
-        };
-        let bad = tween_drawing(&a, &b, 0.5, no_flip);
-        assert_eq!(
-            pts(&bad.strokes[0]),
-            vec![(5.0, 5.0), (5.0, 5.0)],
-            "colapsa"
-        );
-    }
-
-    /// Cordas quase paralelas (< 15°) não decidem por cruzamento — decide a
-    /// distância. Aqui as pontas próximas já estão pareadas: NÃO inverte.
-    #[test]
-    fn nearly_parallel_chords_are_decided_by_distance() {
-        let a = stroke(&[(0.0, 0.0), (10.0, 0.0)]);
-        let b = stroke(&[(0.2, 1.0), (10.1, 1.0)]);
-        assert!(!should_flip(&a, &b));
-    }
-
-    /// Traço de A sem par vira cópia estática (não some, não pisca).
-    #[test]
-    fn unpaired_strokes_of_a_stay_static() {
-        let a = drawing(vec![
-            stroke(&[(0.0, 0.0), (1.0, 0.0)]),
-            stroke(&[(5.0, 5.0), (6.0, 5.0)]),
-        ]);
-        let b = drawing(vec![stroke(&[(0.0, 2.0), (1.0, 2.0)])]);
-        let mid = tween_drawing(&a, &b, 0.5, TweenOptions::default());
-        assert_eq!(mid.strokes.len(), 2);
-        assert_eq!(pts(&mid.strokes[1]), pts(&a.strokes[1]), "cópia estática");
-        // Órfão de B não aparece (default); com fade_orphans, aparece esmaecido.
-        let o = TweenOptions {
-            fade_orphans: true,
-            ..Default::default()
-        };
-        let with = tween_drawing(&b, &a, 0.5, o); // agora B é o maior
-        assert_eq!(with.strokes.len(), 2);
-        assert!(
-            (with.strokes[1].opacities()[0] - 0.5).abs() < 1e-6,
-            "fade-in"
-        );
-    }
-
-    /// O padding reparte os extras ∝ comprimento: o segmento longo leva mais.
-    #[test]
-    fn padding_favours_the_longer_segment() {
-        let s = stroke(&[(0.0, 0.0), (1.0, 0.0), (11.0, 0.0)]); // segs 1 e 10
-        let out = sample_padded(&s, 6, false);
-        assert_eq!(out.len(), 6);
-        // Os 3 originais estão lá.
-        for p in [(0.0, 0.0), (1.0, 0.0), (11.0, 0.0)] {
-            assert!(
-                out.iter().any(|q| (q.pos.x - p.0).abs() < 1e-6),
-                "original {p:?} preservado"
-            );
-        }
-        // O segundo segmento (10× mais longo) ficou com quase todos os extras.
-        let in_second = out
-            .iter()
-            .filter(|p| p.pos.x > 1.0 && p.pos.x < 11.0)
-            .count();
-        assert!(
-            in_second >= 2,
-            "extras foram pro segmento longo: {in_second}"
-        );
-    }
-
-    /// A op de documento: N inbetweens BREAKDOWN entre duas chaves, e re-tweenar
-    /// regenera (não empilha).
-    #[test]
-    fn the_document_op_creates_breakdowns_and_is_idempotent() {
-        let mut o = FlipObject::new(FlipObjectId(1), "O");
-        let l = o.add_layer("L");
-        let a = o
-            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
-            .unwrap();
-        let b = o
-            .insert_frame(l, 8, Hold::Implicit, KeyKind::Keyframe)
-            .unwrap();
-        o.drawing_mut(a)
-            .unwrap()
-            .strokes
-            .push(stroke(&[(0.0, 0.0), (10.0, 0.0)]));
-        o.drawing_mut(b)
-            .unwrap()
-            .strokes
-            .push(stroke(&[(0.0, 10.0), (10.0, 10.0)]));
-
-        let req = TweenRequest {
-            layer: l,
-            from: 0,
-            to: 8,
-            count: 3,
-            options: TweenOptions::default(),
-        };
-        assert_eq!(o.tween(req), 3);
-        let cells = o.layer(l).unwrap().cells();
-        let frames: Vec<Frame> = cells.iter().map(|(k, _, _)| *k).collect();
-        assert_eq!(frames, vec![0, 2, 4, 6, 8], "espaçados no intervalo");
-        // Tipos: os do meio são BREAKDOWN.
-        let kinds: Vec<KeyKind> = frames
-            .iter()
-            .map(|f| o.layer(l).unwrap().frames()[f].kind)
-            .collect();
-        assert_eq!(kinds[2], KeyKind::Breakdown);
-        assert_eq!(kinds[0], KeyKind::Keyframe);
-        // O do meio (t=0.5) está no meio do caminho.
-        let mid_id = o.drawing_at(l, 4).unwrap();
-        assert_eq!(
-            pts(&o.drawing(mid_id).unwrap().strokes[0]),
-            vec![(0.0, 5.0), (10.0, 5.0)]
-        );
-
-        // Re-tweenar com outra contagem REGENERA (não tweena os breakdowns).
-        let again = TweenRequest { count: 1, ..req };
-        assert_eq!(o.tween(again), 1);
-        let frames: Vec<Frame> = o
-            .layer(l)
-            .unwrap()
-            .cells()
-            .iter()
-            .map(|(k, _, _)| *k)
-            .collect();
-        assert_eq!(frames, vec![0, 4, 8], "os antigos sumiram");
-        // E o inbetween novo é o do MEIO do caminho — prova de que a regeneração
-        // interpolou entre os EXTREMOS (0 e 8), não entre a chave e um breakdown
-        // sobrevivente. Com os ids remapeados pela compactação, um `da`/`db` resolvido
-        // ANTES apontaria para o desenho errado e este valor sairia torto.
-        let mid = o.drawing_at(l, 4).unwrap();
-        assert_eq!(
-            pts(&o.drawing(mid).unwrap().strokes[0]),
-            vec![(0.0, 5.0), (10.0, 5.0)],
-            "o inbetween regenerado é a média dos extremos"
-        );
-    }
-
-    /// **O bug do smoke:** depois de gerar inbetweens, a chave "seguinte" para um novo
-    /// tween tem de ser o próximo **KEYFRAME** — não o breakdown vizinho. Sem isso, o
-    /// 2º Add interpolaria entre a chave 0 e o inbetween 2 (lixo entre 0 e 2), em vez
-    /// de regenerar o intervalo 0→8.
-    #[test]
-    fn the_next_tween_target_skips_the_breakdowns_it_just_made() {
-        let mut o = FlipObject::new(FlipObjectId(1), "O");
-        let l = o.add_layer("L");
-        let a = o
-            .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
-            .unwrap();
-        let b = o
-            .insert_frame(l, 8, Hold::Implicit, KeyKind::Keyframe)
-            .unwrap();
-        o.drawing_mut(a)
-            .unwrap()
-            .strokes
-            .push(stroke(&[(0.0, 0.0), (10.0, 0.0)]));
-        o.drawing_mut(b)
-            .unwrap()
-            .strokes
-            .push(stroke(&[(0.0, 10.0), (10.0, 10.0)]));
-        o.tween(TweenRequest {
-            layer: l,
-            from: 0,
-            to: 8,
-            count: 3,
-            options: TweenOptions::default(),
-        });
-        let layer = o.layer(l).unwrap();
-        // O próximo DESENHO depois de 0 é o breakdown em 2 …
-        assert_eq!(layer.next_drawing_key(0), Some(2));
-        // … mas o próximo KEYFRAME (o extremo do tween) continua sendo o 8.
-        assert_eq!(layer.next_keyframe_key(0), Some(8));
-        // E parado EM CIMA de um inbetween, o extremo A é a chave 0 (não o breakdown).
-        assert_eq!(layer.keyframe_at_or_before(4), Some(0));
-        assert_eq!(layer.next_keyframe_key(4), Some(8));
-    }
-
-    /// **O buraco anda junto com o contorno.**
-    ///
-    /// O `clone_attrs` traz os furos de A verbatim. Num "O" que atravessa a tela com dois
-    /// keys + tween, o contorno externo interpolava e o furo ficava PARADO em A: os
-    /// inbetweens mostravam um "O" sólido (o furo saiu de dentro da forma) mais uma
-    /// mancha de cor solta viajando pelo caminho — o even-odd conta o anel órfão como
-    /// região preenchida.
-    #[test]
-    fn a_hole_travels_with_its_outer_contour() {
-        let ring = |cx: f32, r: f32| -> Vec<Vec2> {
-            vec![
-                Vec2::new(cx - r, -r),
-                Vec2::new(cx + r, -r),
-                Vec2::new(cx + r, r),
-                Vec2::new(cx - r, r),
-            ]
-        };
-        let make = |cx: f32| -> FlipDrawing {
-            let mut d = FlipDrawing::new();
-            let mut s = FlipStroke::new();
-            for p in ring(cx, 10.0) {
-                s.push_point(Point {
-                    pos: p,
-                    width: 0.0,
-                    opacity: 1.0,
-                    color: Rgba::BLACK,
-                });
-            }
-            s.closed = true;
-            s.hide_stroke = true;
-            s.fill = Some(crate::stroke::Fill {
-                color: Rgba::BLACK,
-                opacity: 1.0,
-            });
-            s.holes = vec![ring(cx, 4.0)];
-            d.strokes.push(s);
-            d
-        };
-        let a = make(0.0);
-        let b = make(100.0);
-        let mid = tween_drawing(&a, &b, 0.5, TweenOptions::default());
-        let s = &mid.strokes[0];
-
-        // O contorno externo está no meio do caminho…
-        let cx_outer: f32 =
-            s.positions().iter().map(|p| p.x).sum::<f32>() / s.positions().len() as f32;
-        assert!(
-            (cx_outer - 50.0).abs() < 1.0,
-            "o contorno externo deveria estar em x=50, esta em {cx_outer}"
-        );
-        // … e o FURO tem de estar no meio do caminho TAMBÉM (senão saiu da forma).
-        assert_eq!(s.holes.len(), 1, "o furo sumiu");
-        let cx_hole: f32 = s.holes[0].iter().map(|p| p.x).sum::<f32>() / s.holes[0].len() as f32;
-        assert!(
-            (cx_hole - 50.0).abs() < 1.0,
-            "o furo ficou para tras em x={cx_hole} (o contorno foi para 50): ele saiu de \
-             dentro da forma e virou uma mancha solta"
-        );
-    }
-}
+#[path = "tween_tests.rs"]
+mod tests;

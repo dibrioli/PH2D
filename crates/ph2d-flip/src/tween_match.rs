@@ -79,6 +79,35 @@ const BLOCKED: f32 = 1.0e6;
 /// de mão e não dita direção nenhuma; 10% já é uma forma que aponta para algum lado.
 const AXIS_MIN_ANISOTROPY: f32 = 0.05;
 
+/// **O par é recusado?** — duas perguntas, e as DUAS têm de dizer sim.
+///
+/// 1. **Absoluta:** o par é implausível por si (`> PAIR_REJECT_COST`)?
+/// 2. **Relativa:** ele é um OUTLIER entre os pares deste desenho (`> k × mediana`)?
+///
+/// ⚠️ **A segunda existe porque a primeira sozinha estava ERRADA, e o gate do buraco a
+/// pegou** (um quadrado sozinho que viaja 5× o próprio tamanho era recusado, e nos
+/// inbetweens ele ficava parado em A para saltar a B no fim). Pior: com o limiar absoluto
+/// sozinho, uma **panorâmica** — a cena INTEIRA se deslocando — orfanaria *todo* traço do
+/// desenho de uma vez, porque todos os custos sobem juntos. Um custo alto só significa
+/// "isto não é o mesmo traço" quando os VIZINHOS não subiram junto.
+///
+/// A forma escolhida apaga o caso especial: com **um** par só, ele É a própria mediana, e
+/// `c > k·c` é falso para `k ≥ 1` ⇒ pareia. Sem `if n == 1` em lugar nenhum.
+fn rejects(cost: f32, median: f32) -> bool {
+    cost > PAIR_REJECT_COST && cost > OUTLIER_FACTOR * median
+}
+
+/// Quantas vezes a mediana dos outros pares um custo precisa ser para virar outlier.
+///
+/// MEDIDO por `the_outlier_ruler`, e o vão é enorme: numa panorâmica (a cena inteira
+/// andando, `dx` de 40 a 400) a razão dá **1,000 exato** — o deslocamento é comum a todos,
+/// então todo par carrega o mesmo custo e a mediana É esse custo. Num desenho onde um traço
+/// SOME e outro NASCE, o par espúrio dá **246,6×** a mediana.
+///
+/// Entre 1 e 246 qualquer coisa serve; `2.0` é conservador dos dois lados — a política é
+/// *na dúvida, parear*.
+const OUTLIER_FACTOR: f32 = 2.0;
+
 /// A assinatura geométrica de um traço — o que a correspondência compara.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StrokeFeatures {
@@ -268,13 +297,21 @@ impl TweenPlan {
                 costs[i * m + j] = pair_cost(f, g, i, j, ctx);
             }
         }
-        for (i, j) in assign(&costs, n, m) {
+        // O solver casa TODOS que puder (é uma atribuição); quem decide se o par SIGNIFICA
+        // alguma coisa é a recusa abaixo. Sem ela, o último traço sobrando de A seria
+        // casado com o último de B por eliminação, e o inbetween mostraria um braço virando
+        // um pé do outro lado da tela.
+        let picked = assign(&costs, n, m);
+        let mut sorted: Vec<f32> = picked
+            .iter()
+            .map(|&(i, j)| costs[i * m + j])
+            .filter(|c| *c < BLOCKED)
+            .collect();
+        sorted.sort_by(f32::total_cmp);
+        let median = sorted.get(sorted.len() / 2).copied().unwrap_or(0.0);
+        for (i, j) in picked {
             let c = costs[i * m + j];
-            // O solver casa TODOS que puder (é uma atribuição); o limiar é quem decide se
-            // o par significa alguma coisa. Sem ele, o último traço sobrando de A seria
-            // casado com o último de B por eliminação, e o inbetween mostraria um braço
-            // virando um pé.
-            if c <= PAIR_REJECT_COST {
+            if !rejects(c, median) {
                 plan.a_to_b[i] = Some(j);
                 plan.b_to_a[j] = Some(i);
                 plan.cost[i] = Some(c);

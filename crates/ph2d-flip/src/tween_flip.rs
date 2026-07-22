@@ -8,6 +8,8 @@
 //! O teste é puramente geométrico — cordas que se cruzam, ou direções opostas — com
 //! desempate por distância quando as cordas são quase paralelas (< 15°). Comparar
 //! SENOS, nunca chamar `acos` (HR-5).
+//!
+//! ⚠️ **Traço FECHADO responde por outra pergunta** ([`opposite_winding`]) — ver lá.
 
 use crate::stroke::FlipStroke;
 use ph2d_core::Vec2;
@@ -16,6 +18,19 @@ use ph2d_core::Vec2;
 const SIN_15: f32 = 0.258_819_04;
 
 pub(crate) fn should_flip(a: &FlipStroke, b: &FlipStroke) -> bool {
+    // **Num traço fechado as "pontas" são VIZINHAS** (a costura), então a corda entre elas
+    // não descreve o percurso — o teste abaixo vira ruído e inverte anéis à toa.
+    //
+    // ⚠️ Era um bug REAL, e a espiral o expôs: num "O" que gira 90° o flip espúrio
+    // transformava a rotação limpa numa reflexão, o ajuste via `σ ≈ 0` e caía na
+    // translação — o anel cortava caminho pela CORDA em vez de percorrer o arco.
+    //
+    // Para um anel a pergunta certa é o SENTIDO do percurso: dois windings opostos
+    // percorrem o contorno em direções contrárias, e interpolar entre eles vira a forma do
+    // avesso (o `ph2d-vec-blend` mediu isso — a forma COLAPSA no meio).
+    if a.closed || b.closed {
+        return opposite_winding(a, b);
+    }
     let (Some(a0), Some(a1)) = (a.point(0), a.point(a.len().saturating_sub(1))) else {
         return false;
     };
@@ -34,6 +49,37 @@ pub(crate) fn should_flip(a: &FlipStroke, b: &FlipStroke) -> bool {
     }
     let (da, db) = (a1 - a0, b1 - b0);
     da.x * db.x + da.y * db.y < 0.0
+}
+
+/// **Os dois anéis são percorridos em sentidos contrários?** (área com sinal, shoelace).
+///
+/// É o teste que substitui as cordas no caso fechado. Área ZERO (um anel degenerado, ou
+/// um traço marcado `closed` com dois pontos) não decide nada — e aí não inverter é a
+/// resposta segura: uma inversão espúria é o defeito que este módulo existe para evitar.
+///
+/// ⚠️ **O que isto NÃO resolve, de propósito:** dois anéis de mesmo sentido cujo ponto 0
+/// está em lugares diferentes do contorno (a FASE da costura). O tween os interpola com a
+/// costura desalinhada, e a forma do meio fica torcida. A resposta é o alinhamento de fase
+/// por correlação circular que o `ph2d-vec-blend` já construiu para o Blend do vetor —
+/// wave própria, nomeada no handoff, e não um `if` a mais aqui.
+fn opposite_winding(a: &FlipStroke, b: &FlipStroke) -> bool {
+    let area = |s: &FlipStroke| -> f32 {
+        let p = s.positions();
+        let n = p.len();
+        if n < 3 {
+            return 0.0;
+        }
+        // Shoelace: o dobro da área com sinal (o fator 2 não muda o SINAL, que é o que
+        // importa aqui, então não se paga por ele).
+        (0..n)
+            .map(|i| {
+                let (u, v) = (p[i], p[(i + 1) % n]);
+                u.x * v.y - v.x * u.y
+            })
+            .sum()
+    };
+    let (wa, wb) = (area(a), area(b));
+    wa * wb < 0.0
 }
 
 /// Cordas com ângulo < 15° entre si (mesmo sentido): `|sin| < sin15` e `cos > 0`.

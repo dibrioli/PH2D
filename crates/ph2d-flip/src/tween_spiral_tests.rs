@@ -6,9 +6,9 @@
 use super::*;
 use ph2d_core::Vec2;
 
-/// O ponto do traço no fator `u`, pela fórmula do chamador: rígido + resíduo.
+/// O ponto do traço no fator `u` — a porta que o tween usa.
 fn at(m: StrokeMotion, a: Vec2, b: Vec2, u: f32) -> Vec2 {
-    m.advance(a, u) + m.residual(a, b) * u
+    m.point_at(a, b, u)
 }
 
 /// Gira `pts` de `deg` graus em torno de `c` e escala por `k` (o fixture "pose B").
@@ -121,7 +121,13 @@ fn a_pure_translation_is_bit_identical_to_the_old_lerp() {
     let b: Vec<Vec2> = a.iter().map(|p| *p + t).collect();
 
     let m = StrokeMotion::fit(&a, &b);
-    assert_eq!(m, StrokeMotion::Lerp, "uma translação não tem ponto fixo");
+    let StrokeMotion::Translate(d) = m else {
+        panic!("uma translação não tem ponto fixo");
+    };
+    assert!(
+        (d - t).length() < 1e-4,
+        "a translação medida saiu {d:?}, era {t:?}"
+    );
     for u in [0.0, 0.125, 0.25, 1.0 / 3.0, 0.5, 0.7, 1.0, 1.5, -0.5] {
         for (&p, &q) in a.iter().zip(&b) {
             let old = p + (q - p) * u; // a expressão do v1
@@ -188,18 +194,27 @@ fn the_scale_grows_geometrically_not_linearly() {
 /// Um traço de UM ponto não define rotação nem escala — e não pode entrar em pânico.
 #[test]
 fn a_degenerate_stroke_falls_back_instead_of_panicking() {
-    assert_eq!(StrokeMotion::fit(&[], &[]), StrokeMotion::Lerp);
+    assert_eq!(
+        StrokeMotion::fit(&[], &[]),
+        StrokeMotion::Translate(Vec2::ZERO)
+    );
     let p = [Vec2::new(1.0, 2.0)];
-    assert_eq!(StrokeMotion::fit(&p, &p), StrokeMotion::Lerp);
+    assert_eq!(
+        StrokeMotion::fit(&p, &p),
+        StrokeMotion::Translate(Vec2::ZERO)
+    );
     // Todos os pontos coincidentes (norm_a = 0).
     let same = [Vec2::new(3.0, 3.0); 5];
-    assert_eq!(StrokeMotion::fit(&same, &same), StrokeMotion::Lerp);
+    assert_eq!(
+        StrokeMotion::fit(&same, &same),
+        StrokeMotion::Translate(Vec2::ZERO)
+    );
     // B colapsado num ponto: σ → 0.
     let a: Vec<Vec2> = (0..5).map(|i| Vec2::new(i as f32, 0.0)).collect();
-    assert_eq!(
+    assert!(matches!(
         StrokeMotion::fit(&a, &[Vec2::new(9.0, 9.0); 5]),
-        StrokeMotion::Lerp
-    );
+        StrokeMotion::Translate(_)
+    ));
 }
 
 /// **A régua do `DET_MIN`.** Varre o ângulo de uma rotação quase-degenerada e mede o erro

@@ -217,6 +217,8 @@ pub fn tr(key: &str) -> &'static str {
         "panel.wet_tuning.knob.dryer" => "Dryer",
         "panel.wet_tuning.knob.blow" => "Blow",
         "panel.wet_tuning.knob.smear" => "Smear",
+        "panel.wet_tuning.knob.wetLift" => "Rewet lift",
+        "panel.wet_tuning.knob.extStaining" => "Staining",
         "panel.wet_tuning.knob.paperContrast" => "Contrast",
         "panel.wet_tuning.knob.paperFibres" => "Fibres",
         "panel.wet_tuning.knob.paperGrooves" => "Grooves",

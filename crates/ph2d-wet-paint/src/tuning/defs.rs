@@ -494,9 +494,14 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         0.0,
         None,
     ),
+    // Doc 23: promoted out of Hidden — with the active lift (P1/P2/P3) and
+    // the erase resistance (P4), staining is the product control for "how
+    // permanent is dried paint" (0 = lifts freely, 1 = pinned down; the 0.5
+    // default is the exact multiplier-1 neutral point, so promoting the
+    // group changes NO number).
     k(
         Knob::ExtStaining,
-        KnobGroup::Hidden,
+        KnobGroup::Paint,
         "extStaining",
         0.0,
         1.0,
@@ -573,5 +578,19 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         0.01,
         0.5,
         Some(Rebuild::Render),
+    ),
+    // Doc 23 P1 — active re-wet lift (Tools group, beside eraser/dryer/blow/
+    // smear). 0 = the old model to the byte (Wet never touches settled
+    // pigment); default 0.25 is calibrated by the reactivation gate: three
+    // full-stamp Wet dabs dissolve over half of a dried stroke.
+    k(
+        Knob::WetLift,
+        KnobGroup::Tools,
+        "wetLift",
+        0.0,
+        1.0,
+        0.01,
+        0.25,
+        None,
     ),
 ];

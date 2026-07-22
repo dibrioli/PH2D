@@ -221,6 +221,11 @@ impl Trail {
     /// Blend transfer (SPEC §11 "blend"): window averages over mask-active
     /// cells, then every masked cell relaxes toward them — suspended AND
     /// settled (dry paint re-mixes), water, and the wetness byte.
+    ///
+    /// Doc 23 P3 — a WET blend re-suspends: where water stands, part of the
+    /// settled layer lifts through the same door the Wet tool uses
+    /// (`drying::lift_settled`), so a wet blend bleeds afterwards while a
+    /// dry blend stays the in-place re-mix it always was.
     pub fn transfer_blend(&mut self, g: &mut Grid, p: &Params) -> Option<TouchedRect> {
         if self.lx1 < self.lx0 {
             self.roll_window();
@@ -231,6 +236,7 @@ impl Trail {
         let h = g.h as i32;
         let mut out = [0.0f64; 3];
         let mix = p.mix;
+        let lift_gain = crate::tools::active_lift_gain(p);
         // Pass 1: averages.
         let mut n = 0u32;
         let mut s_susp = 0.0f64;
@@ -355,6 +361,24 @@ impl Trail {
                     // The wetness byte relaxes in the settled pass. (JS
                     // Uint8Array store truncates; values stay in [0,255].)
                     g.wet[i] = (g.wet[i] as f64 + (avg_wet - g.wet[i] as f64) * a) as u8;
+                }
+                // Doc 23 P3 — the wet-blend lift, after the relaxes so the
+                // freshly suspended pigment is not immediately averaged
+                // back down.
+                if lift_gain > 0.0 && g.film[i] as f64 > 0.001 && g.sett[i] > 0.0 {
+                    let b = crate::jsmath::clamp01(a * lift_gain);
+                    if b > 0.0 {
+                        let sett_c = g.sett_rgb[i];
+                        crate::drying::lift_settled(
+                            b,
+                            &mut g.susp[i],
+                            &mut g.sett[i],
+                            &mut g.susp_rgb[i],
+                            sett_c,
+                            mix,
+                            &mut out,
+                        );
+                    }
                 }
                 if cx < rx0 {
                     rx0 = cx;

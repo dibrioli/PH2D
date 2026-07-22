@@ -5,12 +5,23 @@
 //! bbox.
 
 use crate::brush::{for_each_stamp_pixel, for_each_stamp_pixel_shaped};
+use crate::drying::{lift_settled, staining_multiplier};
 use crate::grid::{Grid, wet_byte_from_paper};
-use crate::jsmath::js_round;
+use crate::jsmath::{clamp01, js_round};
 use crate::opacity::alpha_of_mass;
 use crate::sim::Params;
 use crate::trail::{Dab, TouchedRect};
 use crate::tuning::Knob;
+
+/// Doc 23: the shared active-lift gain — `wetLift · stainingMultiplier`.
+/// Every active rewetter (Wet dissolve, wet Smear, wet Blend) derives its
+/// per-pixel `b` from this ONE product, so "how re-soluble is dried paint"
+/// has a single answer across tools. `wetLift = 0` or `staining = 1` turn
+/// every active lift off exactly.
+#[inline]
+pub(crate) fn active_lift_gain(p: &Params) -> f64 {
+    p.k(Knob::WetLift) * staining_multiplier(p.k(Knob::ExtStaining))
+}
 
 pub const TOOL_HARDNESS: f64 = 4.8;
 
@@ -66,6 +77,12 @@ fn apply_erase_impl(
     let gate = p.k(Knob::PaperGate);
     let pig_cap = p.k(Knob::GateSaturation);
     let force = p.k(Knob::Eraser) * erase_slider;
+    // Doc 23 P4 — dried, staining paint resists the eraser: the settled
+    // layer takes a weaker force (`force · (1 − 0.5·staining)`; staining 0
+    // erases like the wet layers, staining 1 at half force). Suspended
+    // pigment and water keep the full force — they are not bound to the
+    // fibre.
+    let force_sett = force * (1.0 - 0.5 * p.k(Knob::ExtStaining));
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
     let Grid {
@@ -105,7 +122,8 @@ fn apply_erase_impl(
         if (susp[i] as f64) < 1.0 {
             susp[i] = 0.0; // stale color bytes may remain; mass 0 hides them
         }
-        sett[i] = (sett[i] as f64 * k) as f32;
+        let k_sett = 1.0 - force_sett * gg;
+        sett[i] = (sett[i] as f64 * k_sett) as f32;
         if (sett[i] as f64) < 1.0 {
             sett[i] = 0.0;
         }
@@ -142,7 +160,13 @@ fn apply_erase_impl(
     }
 }
 
-/// wet: drip-feed water; gentle, accumulates over repeated passes.
+/// wet: drip-feed water; gentle, accumulates over repeated passes — and
+/// (doc 23 P1) an ACTIVE lift: the stamp dissolves settled pigment back
+/// into suspension on the spot. Watercolor is re-soluble (the gum-arabic
+/// binder re-dissolves; "lifting" is a standard technique) and Rebelle's
+/// Re-wet is stroke-driven — the passive re-wet in the drying pass is
+/// ~1%/s ambience and cannot serve a gesture. `wetLift = 0` restores the
+/// water-only model to the byte.
 pub fn apply_wet(
     g: &mut Grid,
     p: &Params,
@@ -152,6 +176,9 @@ pub fn apply_wet(
 ) -> Option<TouchedRect> {
     let add = 2.0 * (water_unit * 0.2) * (water_unit * 0.2) * p.k(Knob::WaterPerDab);
     let cap = p.k(Knob::WaterCap);
+    let lift_gain = active_lift_gain(p);
+    let mix = p.mix;
+    let mut out = [0.0f64; 3];
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
     let Grid {
@@ -161,6 +188,10 @@ pub fn apply_wet(
         film,
         paper,
         wet,
+        susp,
+        sett,
+        susp_rgb,
+        sett_rgb,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -189,6 +220,23 @@ pub fn apply_wet(
             }
             film[i] = f as f32;
             wet[i] = wet_byte_from_paper(paper[i] as f64);
+            // The active lift, through the SAME door as the passive re-wet
+            // (drying.rs) — the freshly suspended pigment then bleeds,
+            // follows gravity and answers the Blow/Smear tools.
+            if lift_gain > 0.0 && sett[i] > 0.0 {
+                let b = clamp01(stamp * lift_gain);
+                if b > 0.0 {
+                    lift_settled(
+                        b,
+                        &mut susp[i],
+                        &mut sett[i],
+                        &mut susp_rgb[i],
+                        sett_rgb[i],
+                        mix,
+                        &mut out,
+                    );
+                }
+            }
             touched = true;
         },
     );
@@ -355,11 +403,18 @@ pub fn apply_blow(
 }
 
 /// smear: drag suspended pigment + water from the previous-dab offset (the
-/// reach grows with speed). Only the SUSPENDED layer moves — the settled
-/// layer is deliberately untouched, matching real smudge behavior (do not
-/// "fix" this). The source is a mass-weighted bilinear sample of a pre-dab
-/// snapshot (weighting each corner by its mass keeps edges from dragging
-/// toward black).
+/// reach grows with speed). The source is a mass-weighted bilinear sample
+/// of a pre-dab snapshot (weighting each corner by its mass keeps edges
+/// from dragging toward black).
+///
+/// Doc 23 P2 — the settled layer is no longer untouchable (the old note
+/// said "matching real smudge behavior"; measured against Rebelle's Smudge
+/// and real re-soluble watercolor, it wasn't): on a WET cell the pass
+/// dissolves settled pigment through the lift door (the next dab's
+/// snapshot then drags what this one freed — smudging through wet paint IS
+/// dissolve-then-drag); on a DRY cell the settled layer itself is dragged,
+/// like every raster smudge. Both are resisted by `1 − staining`, so
+/// `staining = 1` restores the suspended-only model to the byte.
 pub fn apply_smear(
     g: &mut Grid,
     p: &Params,
@@ -369,6 +424,7 @@ pub fn apply_smear(
     prev_y: f64,
 ) -> Option<TouchedRect> {
     let force = p.k(Knob::Smear);
+    let sett_gain = 1.0 - p.k(Knob::ExtStaining);
     let clamp_i = dab.intensity.min(3.0);
     let dx = dab.x - prev_x;
     let dy = dab.y - prev_y;
@@ -383,6 +439,8 @@ pub fn apply_smear(
     let mut s_mass = vec![0.0f32; n];
     let mut s_rgb = vec![[0.0f32; 3]; n];
     let mut s_f = vec![0.0f32; n];
+    let mut s_sett = vec![0.0f32; n];
+    let mut s_sett_rgb = vec![[0.0f32; 3]; n];
     for y in r.y0..=r.y1 {
         for x in r.x0..=r.x1 {
             let i = x as usize + y as usize * g.s;
@@ -390,6 +448,8 @@ pub fn apply_smear(
             s_mass[l] = g.susp[i];
             s_rgb[l] = g.susp_rgb[i];
             s_f[l] = g.film[i];
+            s_sett[l] = g.sett[i];
+            s_sett_rgb[l] = g.sett_rgb[i];
         }
     }
     let mut out = [0.0f64; 3];
@@ -401,6 +461,8 @@ pub fn apply_smear(
         h,
         susp,
         susp_rgb,
+        sett,
+        sett_rgb,
         film,
         ..
     } = g;
@@ -504,6 +566,76 @@ pub fn apply_smear(
                 + s_f[l01] as f64 * w01
                 + s_f[l11] as f64 * w11;
             film[i] = (film[i] as f64 + (src_film - film[i] as f64) * u) as f32;
+            // Doc 23 P2 — the settled layer, resisted by staining.
+            let u_sett = u * sett_gain;
+            if u_sett > 0.0 {
+                if film[i] as f64 > 0.001 {
+                    // WET cell: dissolve through the lift door; the susp
+                    // drag above carries it from the next dab on.
+                    if sett[i] > 0.0 {
+                        let b = clamp01(u_sett);
+                        lift_settled(
+                            b,
+                            &mut susp[i],
+                            &mut sett[i],
+                            &mut susp_rgb[i],
+                            sett_rgb[i],
+                            mix,
+                            &mut out,
+                        );
+                    }
+                } else {
+                    // DRY cell: drag the settled layer itself (same
+                    // mass-weighted bilinear sample as the suspended pass).
+                    let sm00 = s_sett[l00] as f64 * w00;
+                    let sm10 = s_sett[l10] as f64 * w10;
+                    let sm01 = s_sett[l01] as f64 * w01;
+                    let sm11 = s_sett[l11] as f64 * w11;
+                    let src_sett = sm00 + sm10 + sm01 + sm11;
+                    if src_sett > 0.0 {
+                        let inv = 1.0 / src_sett;
+                        let k00 = s_sett_rgb[l00];
+                        let k10 = s_sett_rgb[l10];
+                        let k01 = s_sett_rgb[l01];
+                        let k11 = s_sett_rgb[l11];
+                        let cr = (k00[0] as f64 * sm00
+                            + k10[0] as f64 * sm10
+                            + k01[0] as f64 * sm01
+                            + k11[0] as f64 * sm11)
+                            * inv;
+                        let cg = (k00[1] as f64 * sm00
+                            + k10[1] as f64 * sm10
+                            + k01[1] as f64 * sm01
+                            + k11[1] as f64 * sm11)
+                            * inv;
+                        let cbv = (k00[2] as f64 * sm00
+                            + k10[2] as f64 * sm10
+                            + k01[2] as f64 * sm01
+                            + k11[2] as f64 * sm11)
+                            * inv;
+                        let in_c = alpha_of_mass(src_sett) * u_sett;
+                        let res = alpha_of_mass(sett[i] as f64) * (1.0 - in_c);
+                        if in_c + res > 0.0 {
+                            let wgt = in_c / (in_c + res);
+                            let sc = sett_rgb[i];
+                            mix.mix(
+                                sc[0] as f64,
+                                sc[1] as f64,
+                                sc[2] as f64,
+                                cr,
+                                cg,
+                                cbv,
+                                wgt,
+                                &mut out,
+                            );
+                            sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
+                        }
+                    }
+                    if src_sett > 0.0 || sett[i] > 0.0 {
+                        sett[i] = (sett[i] as f64 + (src_sett - sett[i] as f64) * u_sett) as f32;
+                    }
+                }
+            }
             touched = true;
         },
     );

@@ -7,6 +7,7 @@
 //! settles first and darkens the boundary. Once a cell has settled >= 1000
 //! the edge boost stops — saturated washes stop over-darkening.
 
+use crate::colorops::ColorMix;
 use crate::grid::Grid;
 use crate::jsmath::clamp01;
 use crate::opacity::alpha_of_mass;
@@ -15,13 +16,55 @@ use crate::solver::rebuild_active_region;
 use crate::tuning::Knob;
 
 /// Staining extension: bidirectional lift multiplier, exactly 1 at 0.5.
+/// `pub(crate)`: the doc-23 active lifts (Wet/Smear/Blend tools) apply the
+/// SAME law, so staining means one thing everywhere.
 #[inline]
-fn staining_multiplier(s: f64) -> f64 {
+pub(crate) fn staining_multiplier(s: f64) -> f64 {
     if s < 0.5 {
         1.0 + (0.5 - s) * 14.0 // 0 -> 8x
     } else {
         (1.0 - s) * 2.0 // 1 -> 0x
     }
+}
+
+/// The LIFT DOOR (SPEC §6.2 re-wet arithmetic, extracted verbatim): move
+/// `sett · b` back into suspension with the opacity-composited color. ONE
+/// arithmetic for every rewetter — the passive drying pass below and the
+/// doc-23 active tools (Wet/Smear/Blend) — so passive and active lift can
+/// never disagree about what "dissolving" means. Callers own `b` (clamped
+/// 0..1) and the staining multiplier.
+#[inline]
+pub(crate) fn lift_settled(
+    b: f64,
+    susp: &mut f32,
+    sett: &mut f32,
+    susp_rgb: &mut [f32; 3],
+    sett_rgb: [f32; 3],
+    mix: ColorMix,
+    out: &mut [f64; 3],
+) {
+    let st = *sett as f64;
+    let lift = st * b;
+    let a_in = alpha_of_mass(st) * b;
+    let u = alpha_of_mass(*susp as f64) * (1.0 - a_in);
+    if u + a_in > 0.0 {
+        let w = a_in / (u + a_in);
+        mix.mix(
+            susp_rgb[0] as f64,
+            susp_rgb[1] as f64,
+            susp_rgb[2] as f64,
+            sett_rgb[0] as f64,
+            sett_rgb[1] as f64,
+            sett_rgb[2] as f64,
+            w,
+            out,
+        );
+        *susp_rgb = [out[0] as f32, out[1] as f32, out[2] as f32];
+    } else {
+        *susp_rgb = sett_rgb;
+    }
+    *susp = (*susp as f64 + lift) as f32;
+    *sett = (st - lift) as f32;
 }
 
 /// One drying pass over every bbox cell holding water or suspended pigment
@@ -147,27 +190,15 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
                 }
                 b = clamp01(b);
                 if b > 0.0 {
-                    let lift = st * b;
-                    let a_in = alpha_of_mass(st) * b;
-                    let u = alpha_of_mass(susp_c as f64) * (1.0 - a_in);
-                    if u + a_in > 0.0 {
-                        let w = a_in / (u + a_in);
-                        mix.mix(
-                            susp_rgb[0] as f64,
-                            susp_rgb[1] as f64,
-                            susp_rgb[2] as f64,
-                            sett_rgb[0] as f64,
-                            sett_rgb[1] as f64,
-                            sett_rgb[2] as f64,
-                            w,
-                            &mut out,
-                        );
-                        susp_rgb = [out[0] as f32, out[1] as f32, out[2] as f32];
-                    } else {
-                        susp_rgb = sett_rgb;
-                    }
-                    susp_c = (susp_c as f64 + lift) as f32;
-                    sett_c = (st - lift) as f32;
+                    lift_settled(
+                        b,
+                        &mut susp_c,
+                        &mut sett_c,
+                        &mut susp_rgb,
+                        sett_rgb,
+                        mix,
+                        &mut out,
+                    );
                 }
             }
 

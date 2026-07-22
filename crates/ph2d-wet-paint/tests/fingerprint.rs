@@ -48,22 +48,42 @@ fn fingerprint(e: &Engine) -> u64 {
     h
 }
 
-#[test]
-fn scripted_session_fingerprint_is_stable() {
+fn scripted_session(wet_lift: Option<f64>) -> Engine {
     // A session that exercises deposit + trail + drying + flow + advect +
     // projection + a wet pass + drip under tilt.
     let mut e = Engine::new(300, 200);
+    if let Some(v) = wet_lift {
+        e.set_knob(ph2d_wet_paint::tuning::Knob::WetLift, v);
+    }
     drive_stroke(&mut e, 40.0, 60.0, 260.0, 90.0, 4.0, 30);
     e.tool = Tool::Wet;
     drive_stroke(&mut e, 40.0, 120.0, 260.0, 120.0, 5.0, 10);
     e.tool = Tool::Paint;
     e.sim.gravity_override = Some([0.0, 1.0]);
     drive_stroke(&mut e, 60.0, 40.0, 240.0, 40.0, 3.0, 80);
-    let fp = fingerprint(&e);
-    // Pinned from the first straight port (see module doc). If a rewrite
-    // moves this number, the rewrite changed the simulation — find out why
-    // before touching the pin.
+    e
+}
+
+#[test]
+fn scripted_session_fingerprint_is_stable() {
+    let fp = fingerprint(&scripted_session(None));
+    // Pinned (see history below). If a rewrite moves this number, the
+    // rewrite changed the simulation — find out why before touching the pin.
     assert_eq!(fp, PINNED, "session fingerprint drifted: {fp:#018x}");
+}
+
+/// Doc 23 §5 gate: `wetLift = 0` IS the pre-doc-23 model, to the byte — the
+/// same scripted session reproduces the pin that stood before the active
+/// lift landed. This is also the proof that extracting `lift_settled` out
+/// of the drying pass was pure code motion (the passive re-wet runs in this
+/// session and hashes identically).
+#[test]
+fn wet_lift_zero_is_the_old_model_to_the_byte() {
+    let fp = fingerprint(&scripted_session(Some(0.0)));
+    assert_eq!(
+        fp, PINNED_PRE_DOC23,
+        "wetLift=0 must reproduce the pre-doc-23 session: {fp:#018x}"
+    );
 }
 
 // Pin history — every move names the SEMANTIC change that justified it:
@@ -75,4 +95,11 @@ fn scripted_session_fingerprint_is_stable() {
 //                        sums the q's before adding to the cell, and the
 //                        paper lattices are Float32Array (each rng draw
 //                        rounds to f32 before the noise sampler reads it).
-const PINNED: u64 = 0x6097_a692_a23d_bd5f;
+// 0x99d8_891b_57a7_2abe  doc 23 P1: the Wet tool ACTIVELY lifts settled
+//                        pigment through `lift_settled` (wetLift 0.25) —
+//                        the session's Wet stroke now dissolves what the
+//                        first stroke dried. wetLift=0 still reproduces
+//                        the previous pin (gate above): the drift is the
+//                        feature, not an accident.
+const PINNED: u64 = 0x99d8_891b_57a7_2abe;
+const PINNED_PRE_DOC23: u64 = 0x6097_a692_a23d_bd5f;

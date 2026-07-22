@@ -186,16 +186,18 @@ mod tests {
         }
     }
 
-    /// 39 visible knobs (13 Paint + 7 Water + 10 Physics + 4 Tools + 5 Paper
-    /// + the PaperVisibility master) — the registry's visible surface, whole.
+    /// 42 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
+    /// by doc 23 — + 7 Water + 10 Physics + 5 Tools — incl. the doc-23
+    /// Rewet lift — + 5 Paper + the PaperVisibility master) — the
+    /// registry's visible surface, whole.
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 40);
+        assert_eq!(rows().len(), 42);
         for g in [
-            (KnobGroup::Paint, 13),
+            (KnobGroup::Paint, 14),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 10),
-            (KnobGroup::Tools, 4),
+            (KnobGroup::Tools, 5),
             (KnobGroup::Paper, 6),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();

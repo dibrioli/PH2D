@@ -1,5 +1,29 @@
 # 23 — Estudo: como Blend · Smear · Erase · Wet · Dry · Blow devem tratar o PIGMENTO
 
+> **⬛ IMPLEMENTADO (2026-07-22, mesma sessão — P1+P2+P3+P4):** checkpoint
+> `checkpoint-pre-wet-tools-rework` criado antes; reverter = `git reset --hard` nele.
+> O que a implementação acrescentou ao plano:
+> - **Porta única de fato:** `drying::lift_settled` extraído VERBATIM do re-wet passivo
+>   (pure code motion — provado pelo gate `wet_lift_zero_is_the_old_model_to_the_byte`,
+>   que reproduz o pin ANTIGO da sessão roteirizada com `wetLift=0`). Wet (P1), Smear
+>   molhado (P2), Blend molhado (P3) e o passivo dissolvem pela MESMA aritmética;
+>   `tools::active_lift_gain = wetLift · stainingMultiplier` é o ganho comum.
+> - **Knob `wetLift`** (Tools, 0..1, default **0.25**) apendado por último (`KNOB_COUNT`
+>   53→54); **`extStaining` saiu do Hidden → grupo PAINT** ("Staining" no painel; o
+>   default 0.5 é o ponto neutro exato do multiplicador, então a promoção não move nada).
+> - **O pin do fingerprint MUDOU com justificativa** (protocolo do pin): a sessão
+>   roteirizada tem um traço de Wet e o P1 é semântica nova; o pin pré-doc-23 virou o
+>   gate do `wetLift=0`.
+> - **Medições que lapidaram os gates:** (a) filme do drip-feed é FINO (0,0098/dab) —
+>   deixado quieto, UMA passada de drying re-assenta o que o lift suspendeu (física
+>   honesta: molhar e não mexer devolve o quadro; o gate mede ENQUANTO molhado);
+>   (b) o Blow desloca pouco em filme fino mas o deslocamento SOBREVIVE ao
+>   re-assentamento (com 0,034 px vs deriva de controle 0,0002 — moat 170×);
+>   (c) o smear avança a frente ~3 px por passada (esfregar espalha por REPETIÇÃO).
+> - **P4 aplicado como proposto** (`force_sett = force·(1−0.5·staining)`).
+> - 7 gates novos (5 em `product_rewet.rs` + 2 pins em `fingerprint.rs`), **5 mutações,
+>   5 sangram** cada uma no seu gate. Painel Tuning: 40→**42** rows automáticas.
+
 > Pedido do Enio (2026-07-22): *"estudo sério em app de física como Rebelle… como o pigmento
 > reage a cada um deles. Exemplo disfuncional: pinto com tinta pura sem água, pego o pincel
 > Wet e passo sobre a tinta — nada acontece. Certamente esse não é o comportamento normal."*

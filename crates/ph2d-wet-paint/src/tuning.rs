@@ -67,9 +67,14 @@ pub enum Knob {
     ExtWetSheen,
     ExtGrainDither,
     ExtEdgeTint,
+    /// Doc 23 P1: active re-wet lift — how strongly a wet-tool stamp
+    /// dissolves SETTLED pigment back into suspension (watercolor is
+    /// re-soluble; Rebelle's "Re-wet" is stroke-driven). Appended LAST so
+    /// every earlier discriminant — and the registry order — is untouched.
+    WetLift,
 }
 
-pub const KNOB_COUNT: usize = 53;
+pub const KNOB_COUNT: usize = 54;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

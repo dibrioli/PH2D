@@ -7,8 +7,10 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 9 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
-  **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique**, ver §2/§6).
+- **Commits:** 11 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+  **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
+  **doc 23: estudo + implementação — o pigmento responde às tools**, ver §2/§6; checkpoint
+  de reversão: tag `checkpoint-pre-wet-tools-rework`).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
 - **Gate batched:** `nextest-impacted` **5031/5031** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
@@ -32,6 +34,7 @@
 | `shells/desktop/src/forwarding.rs` | `WET_TUNING_PANEL` no `cursor_over_hero_panel` (wheel intercept) |
 | `shells/desktop/src/render_loop/painter_bridge.rs` | publish do snapshot + espelho de visibilidade (`tuning_open`; OFF escrito FORA do downcast) + z-bump no edge |
 | `ph2d-wet-paint` (engine) | portas ADITIVAS: `dispatch_pressure_dab_lane_blend` · `dispatch_pressure_dab_tool` (prev explícito) · `render_pigment_region_visual` (+`PigmentVisual`; `render_pigment_only_region` delega, off byte-idêntico) · `wet_canvas_now`/`dry_canvas_now`/`fast_dry_now` (sem `capture_history` — o clone de grid por aperto seria a doença do ADR-0117) · `tilt_dir_for_spoke` (cardinais EXATOS) · `knob_defaults()` const · `Tuning::default` delega |
+| `ph2d-wet-paint` (engine, **doc 23**) | **MUDANÇA DE COMPORTAMENTO dos tools** (P1-P4, [doc 23](Painter/23_estudo_tools_wet_pigmento.md)): Wet dissolve `sett` sob o stamp · Smear arrasta o seco · Blend molhado re-suspende · Erase resiste por staining — porta única `drying::lift_settled` (extração VERBATIM do re-wet passivo) + `tools::active_lift_gain`. **`Knob::WetLift` apendado (`KNOB_COUNT` 53→54)** + `extStaining` Hidden→Paint (painel Tuning 40→42 rows; i18n +2 chaves). ⚠️ **O pin `fingerprint.rs::PINNED` MUDOU** (justificado no histórico do pin; o pin antigo virou o gate `wet_lift_zero_is_the_old_model_to_the_byte`). Gates: `tests/product_rewet.rs` (5, mutação-provados 5/5) |
 
 ## 3. Símbolos que podem COLIDIR
 
@@ -80,8 +83,17 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 3. **As 5 tools novas:** Smear arrasta, Blend remistura tinta SECA, Wet molha sem pigmento, Dry
    sela, Blow empurra o filme (a sim fica viva sob o gesto do Blow). Com Symmetry ligada, Smear/
    Blow deslocam LOCALMENTE em cada cópia (o prev por-lane).
-4. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
-   idem (boot equivalence + fingerprint).
+4. **O pigmento responde às tools (doc 23):** pinte com tinta pura (Water 0), Fast dry,
+   e passe o **Wet** — a tinta seca DISSOLVE sob o pincel (o reporte original); com a área
+   molhada, **Blow** empurra e **Smear** arrasta a cor re-suspensa; **Smear no seco**
+   esfrega como smudge de raster (espalha por repetição); **Blend** sobre seco re-mistura
+   (como antes) e sobre molhado re-suspende (sangra depois); **Staining** no painel Tuning
+   (grupo PAINT) controla tudo — a 1.0 a tinta seca fica pinada; **Rewet lift** (grupo
+   TOOLS) é a força do dissolve, 0 = modelo antigo. ⚠️ Molhar e NÃO mexer re-assenta o
+   pigmento quando a água morre — é física, não bug.
+5. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
+   idem (boot equivalence + fingerprint com pin justificado; `wetLift=0` reproduz o pin
+   antigo ao byte).
 
 ## 7. Decisões que o smoke pode reabrir (nomeadas, não escondidas)
 

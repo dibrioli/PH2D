@@ -177,6 +177,14 @@ impl TimelineDoc {
         }
     }
 
+    /// The bindings vec + every clip, mutably — what [`Self::purge_binding`]
+    /// (in `binding.rs`, the module that owns the document↔object link) needs
+    /// and nothing else should reach for. `bindings_mut` hands out a slice on
+    /// purpose (nobody else may REMOVE), and this file sits at its LOC cap.
+    pub(crate) fn purge_parts(&mut self) -> (&mut Vec<TargetBinding>, &mut [NamedClip]) {
+        (&mut self.bindings, &mut self.clips)
+    }
+
     /// Hand out a fresh strip identity. Monotonic and never reused: a stale drag
     /// or undo entry must resolve to "gone", never to somebody else's strip.
     pub(crate) fn alloc_strip_id(&mut self) -> crate::stack::StripId {

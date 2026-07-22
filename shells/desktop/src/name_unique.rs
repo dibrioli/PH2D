@@ -20,46 +20,7 @@
 //! free slot is found. Suffix is **stripped** before bumping so
 //! `Sprite (1)` duplicated becomes `Sprite (2)` (not `Sprite (1) (1)`).
 
-use ph2d_ecs::{Entity, Name, Resource, SimWorld};
-
-/// **Os nomes que a timeline ainda ESPERA** — reservados contra reciclagem (Enio, 2026-07-22).
-///
-/// Uma track cujo objeto foi deletado fica **dormente** e reencontra o dono pelo NOME quando
-/// ele volta (`timeline_persist::upkeep`) — é o que faz delete + Ctrl+Z devolver a animação
-/// junto com o objeto, porque o undo global não carrega o `TimelineDoc`.
-///
-/// Mas o nome de um objeto morto voltava ao pote: o objeto SEGUINTE nascia com ele, e a track
-/// órfã o adotava — o objeto novo nascia dirigido pela animação do antigo, com a pose reescrita
-/// todo frame. É o report *"a timeline não funciona para o segundo objeto"*.
-///
-/// A cura é tirar a colisão de cena em vez de administrá-la: enquanto uma track espera por
-/// "Sprite", **nada mais se chama "Sprite"** — o próximo objeto nasce "Sprite (1)". O undo
-/// continua curando porque ele **restaura o `Name` literal** do snapshot e nunca passa por
-/// aqui; e quem pergunta *"este nome está livre?"* passa por [`name_in_use`], uma porta só.
-///
-/// Guarda o **hash** (`WireId`), não o texto: é o que a binding carrega, e é o que a torna
-/// comparável sem manter uma segunda cópia do nome que poderia divergir.
-///
-/// Vive como `Resource` no `World` — onde [`unique_name`] já olha — e por isso **não** entra
-/// no `WorldSnapshot` (que serializa `entities`, não resources): reserva é estado vivo de
-/// sessão, não conteúdo do documento, e um undo não deve rebobiná-la.
-#[derive(Resource, Default)]
-pub struct ReservedNames {
-    wires: Vec<u64>,
-}
-
-impl ReservedNames {
-    /// Republica a reserva (chamado pelo upkeep do frame). Zero-alloc no estado estável:
-    /// sem órfãs, é um `clear` sobre um vec que já está vazio.
-    pub fn publish(&mut self, wires: impl Iterator<Item = u64>) {
-        self.wires.clear();
-        self.wires.extend(wires);
-    }
-
-    fn holds(&self, candidate: &str) -> bool {
-        !self.wires.is_empty() && self.wires.contains(&ph2d_ecs::stable_name_id(candidate))
-    }
-}
+use ph2d_ecs::{Entity, Name, SimWorld};
 
 /// Returns a `String` that is guaranteed not to collide with any
 /// existing `Name` component in `world`. `base` is the desired label;
@@ -98,37 +59,17 @@ pub fn unique_name_excluding(world: &mut SimWorld, base: &str, exclude: Entity) 
     }
 }
 
-/// **A porta única de *"este nome está livre?"*** — e "em uso" inclui o que a timeline espera.
-///
-/// As duas metades têm de ser perguntadas juntas: um objeto vivo com o nome, e uma track
-/// dormente que o reserva ([`ReservedNames`]). Perguntar só a primeira é o bug que fazia o
-/// objeto novo herdar a animação do deletado.
 fn name_in_use(world: &mut SimWorld, candidate: &str) -> bool {
-    if reserved_holds(world, candidate) {
-        return true;
-    }
     let w = world.world_mut();
     let mut q = w.query::<&Name>();
     q.iter(w).any(|n: &Name| n.as_str() == candidate)
 }
 
 fn name_in_use_excluding(world: &mut SimWorld, candidate: &str, exclude: Entity) -> bool {
-    if reserved_holds(world, candidate) {
-        return true;
-    }
     let w = world.world_mut();
     let mut q = w.query::<(Entity, &Name)>();
     q.iter(w)
         .any(|(e, n): (Entity, &Name)| e != exclude && n.as_str() == candidate)
-}
-
-/// A timeline está segurando este nome? (`false` quando ninguém publicou reserva — o caso de
-/// todo harness que não monta uma timeline.)
-fn reserved_holds(world: &mut SimWorld, candidate: &str) -> bool {
-    world
-        .world_mut()
-        .get_resource::<ReservedNames>()
-        .is_some_and(|r| r.holds(candidate))
 }
 
 /// `"Sprite (3)"` → `"Sprite"`. `"Sprite"` → `"Sprite"`. Preserves

@@ -43,6 +43,12 @@ fn publish_view(state: &TimelinePanelState, snapshot: &ph2d_timeline::TimelineVi
     // Arrange is always the SCENE's stack, so the breadcrumb trail does not apply there
     // however deep the animator walked (`tab::Tab::scene_root`).
     state::publish_scene_root(state.tab.scene_root());
+    // The Containers LIST has no playback mode (Enio, 2026-07-22) — same door the
+    // painters and the ADD button read (`tab::rows`), so what the shell refuses and
+    // what the bar paints as dead cannot be two different views.
+    state::publish_containers_list(
+        crate::tab::rows(state.tab, snapshot) == crate::tab::Rows::Containers,
+    );
 }
 
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
@@ -58,6 +64,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // A hidden panel is not editing keys: the timeline runs on its normal
         // (timeline) clock, not a soloed clip one.
         state::publish_keys_mode(false);
+        // ...and it is not showing the Containers list either — a stale `true`
+        // here would keep refusing playback with no panel on screen to say why.
+        state::publish_containers_list(false);
         // ...nor is it inside a container. The trail survives (it comes back where it was),
         // but a hidden panel must not leave the shell driving a container's interior.
         state::publish_scene_root(true);

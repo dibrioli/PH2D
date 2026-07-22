@@ -472,3 +472,82 @@ fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
     );
     assert_eq!(ph.loop_range(), None, "off limpa o relógio");
 }
+
+/// **A lista de Containers recusa o play — e SÓ o play** (Enio, 2026-07-22).
+///
+/// Segunda camada da recusa (a primeira é o painel, que nem registra o hit do botão): um
+/// clique sintético ou obsoleto que chegue aqui com a lista na tela mapeia para NADA. O
+/// frame-step segue mapeando — o que a lista não tem é PLAYBACK, não o transporte inteiro —
+/// e o mesmo clique fora da lista segue ligando o relógio (o controle positivo).
+#[test]
+fn the_containers_list_refuses_play_and_only_play() {
+    let mut st = TimelineState::new();
+    let ph = Playhead::new(1.0 / 60.0);
+    st.containers_list = true;
+    assert_eq!(
+        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+        None,
+        "na lista, play/pause não vira intent nenhum"
+    );
+    assert!(
+        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_NEXT_FRAME), &st, &ph).is_some(),
+        "o frame-step não é playback: segue vivo"
+    );
+    st.containers_list = false;
+    assert_eq!(
+        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+        Some(TimelineIntent::TogglePlay),
+        "fora da lista o mesmo clique liga o relógio — sem este controle positivo, \
+         recusar tudo ficaria verde"
+    );
+}
+
+/// **Um relógio que ENTRA correndo na lista é pausado pelo bridge** — o backstop.
+///
+/// As camadas de gesto (hit ausente + intent recusado) não cobrem o caso de trocar para a
+/// aba Containers COM o play rodando: os controles morreriam com o relógio ainda correndo, e
+/// não haveria como pausá-lo. O `run` pergunta ao MESMO campo carimbado e pausa.
+#[test]
+fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut st = TimelineState::new();
+    let mut intents = Vec::new();
+    let mut ak = super::super::autokey_pass::AutokeyState::default();
+
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.play();
+    assert!(ph.is_playing(), "fixture: o relógio chega correndo");
+    st.containers_list = true;
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+    );
+    assert!(
+        !ph.is_playing(),
+        "na lista não existe playback: o bridge pausa o relógio que entrou correndo"
+    );
+
+    // Controle positivo: fora da lista o run não toca no play.
+    let mut ph2 = Playhead::new(1.0 / 60.0);
+    ph2.play();
+    st.containers_list = false;
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph2,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+    );
+    assert!(
+        ph2.is_playing(),
+        "fora da lista o relógio segue — pausar sempre deixaria este gate verde \
+         com o produto sem play nenhum"
+    );
+}

@@ -36,6 +36,30 @@ pub(crate) fn icon_button(
     x + BTN_W
 }
 
+/// Paint one square icon-button DEAD: [`ButtonState::Disabled`] and **no hit
+/// registered** — the refusal is in the seam, not in the paint, so there is no
+/// dispatch path for a click to lie through. Used by the transport's play/pause
+/// on the Containers list, where playback does not exist (Enio, 2026-07-22).
+/// Returns the right edge, like [`icon_button`], so the row's flow is identical.
+pub(crate) fn dead_icon_button(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    glyph: IconId,
+) -> f32 {
+    let rect = Rect::new(x, y, BTN_W, ROW_H_PX);
+    paint_icon_button(
+        rect,
+        IconGlyph::Builtin(glyph),
+        IconButtonStyle::Compact,
+        ButtonState::Disabled,
+        ctx.scene,
+        theme,
+    );
+    x + BTN_W
+}
+
 /// Paint one number chip (value mirrored from the snapshot when unfocused);
 /// register its `[0, ∞)` range + hit. Returns the right edge.
 #[allow(clippy::too_many_arguments)]

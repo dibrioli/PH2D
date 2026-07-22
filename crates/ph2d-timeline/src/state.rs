@@ -182,6 +182,18 @@ pub struct TimelineState {
     /// clip-switch sync) targets: the Keys-view clip-clock loop, or the Arrange
     /// timeline loop. Session state, like [`Self::flags`]; defaults to Arrange.
     pub keys_mode: bool,
+    /// **The panel is showing the Containers LIST** (the Containers tab at its root
+    /// level) — stamped by the shell each frame from
+    /// `ph2d_panel_timeline::state::containers_list()`, the same channel
+    /// [`Self::keys_mode`] rides, and `false` while the panel is hidden.
+    ///
+    /// The list is a LIBRARY, not a view of time, so **playback does not exist
+    /// there** (Enio, 2026-07-22): the transport's play/pause is refused, the loop
+    /// mark is not drawn, and a clock that was already running is paused. Everything
+    /// that enforces that reads THIS field — one stamped fact, not three private
+    /// re-derivations. It comes back the moment the animator enters a container or
+    /// returns to Keys/Arrange.
+    pub containers_list: bool,
     /// **How deep into the nesting the animator has walked** — outermost first, empty at the
     /// scene root (ADR-0133 §5).
     ///

@@ -74,8 +74,11 @@ pub(crate) fn paint(
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
     // without hiding the time numbers. Each view draws its OWN loop (`snap.loop_range`
     // is already the view-appropriate one, in this ruler's clock), so both tabs paint
-    // it; a no-op when this view has no loop.
-    paint_loop_band(ctx, theme, region, &time_to_x, snap);
+    // it; a no-op when this view has no loop. The Containers LIST has no playback
+    // mode, so no band there (`clock.loop_band` — the braces below share the gate).
+    if clock.loop_band {
+        paint_loop_band(ctx, theme, region, &time_to_x, snap);
+    }
 
     // Minor + major ticks (+ labels on majors).
     paint_ticks(
@@ -150,8 +153,11 @@ pub(crate) fn paint(
 
     // The loop braces are each view's own — drawn on both tabs. They go on TOP of the
     // scrub strip so their grab targets win the hit where they overlap (`HitIndex::hit`
-    // walks in reverse); drawn last for the same reason visually.
-    paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+    // walks in reverse); drawn last for the same reason visually. Gated WITH the band
+    // (`clock.loop_band`): a hidden band with live grips would be an invisible control.
+    if clock.loop_band {
+        paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+    }
     // The markers ARE timeline furniture (timeline-time) — Arrange, or Keys without a
     // stack. On the clip's ruler under a stack they would stand at the wrong second.
     if clock.markers {

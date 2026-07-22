@@ -51,41 +51,42 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 }
 
 /// Per-frame identity upkeep (called by `timeline_bridge::run`, after the apply
-/// refreshed the `missing` flags): live bindings keep their name-hash stamped,
-/// and missing ones try to reconnect to a live entity with the same name. This
-/// is what makes a track survive its object — deleting the object hides its
-/// rows; the global undo respawns it with FRESH entity bits but the same
-/// `Name`, and the binding heals, rows back. Returns how many healed.
+/// refreshed the `missing` flags), in two passes over the SAME name map:
+///
+/// 1. **Heal** — live bindings keep their name-hash stamped, and missing ones
+///    reconnect to a live entity with the same name. This is what recolors a
+///    project load (`install_from_project` detaches everything) and what makes
+///    a timeline-undo of the purge below recoverable.
+/// 2. **Purge** — a binding still missing after the heal, whose object is
+///    genuinely GONE (no live entity carries its name), is removed from the
+///    document together with its tracks in every clip (Enio, 2026-07-22: *"a
+///    timeline precisa ser resetada ao deletar o objeto"*). When the purge
+///    removes the LAST animated object, the whole document resets — clips,
+///    containers, lanes, loop — because composition authored around an object
+///    that no longer exists is exactly the stale state that arrived "totalmente
+///    bugada" for the next object created. One timeline-undo step covers it.
+///
+/// ⚠️ **A ordem heal→purge é load-bearing:** o load de projeto destaca TODA
+/// binding (`entity = 0`, `missing`) e conta com o heal DESTE chamado para
+/// recolá-las — uma purga que rodasse antes (ou que ignorasse o resultado do
+/// heal) apagaria o documento inteiro um frame depois de todo Ctrl+O.
+///
+/// **Um nome AMBÍGUO não cura NEM purga — recusa.** Se DOIS objetos vivos dividem o
+/// nome, "qual deles é o dono desta track?" não tem resposta — curar num deles seria
+/// dirigir a pose do objeto errado, e purgar seria destruir trabalho por causa de um
+/// empate transitório. A binding fica dormente até o empate acabar.
 ///
 /// Steady state (nothing missing) touches no allocation (HR-3: the bridge's
 /// paused path is gated zero-alloc): the name map is only built when a missing
 /// binding exists to resolve.
 ///
-/// **Um nome AMBÍGUO não cura — recusa.** A unicidade de nome é um invariante mantido em N
-/// lugares do shell (import, rename, merge, e agora os spawns de vetor e Flip), e um invariante
-/// mantido em N lugares é um invariante que um dia falha em N+1. Se DOIS objetos vivos dividem o
-/// nome, "qual deles é o dono desta track?" não tem resposta — e escolher um (o último que a query
-/// devolver, que é o que um `BTreeMap` faz sozinho) é escolher **em silêncio**, com o resultado de
-/// a animação dirigir a pose do objeto errado.
-///
-/// A binding fica `missing`: a track some do painel e volta quando o empate acabar. Perder a
-/// track de vista é honesto; movê-la para o objeto errado é corrupção.
-pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
+/// Returns whether the document was **RESET** this frame — the purge removed
+/// the last animated object. The bridge reacts (rewind + pause + drop the
+/// panel's container trail); nothing here touches a playhead, because this
+/// function does not own one. Healing is not counted back: its oracle is the
+/// bindings themselves (`entity` bits + `!missing`).
+pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     let any_missing = timeline.doc.bindings().iter().any(|b| b.missing);
-    // **Publica a reserva de nomes** antes de tentar curar: enquanto uma track espera por um
-    // nome, nada mais pode nascer com ele (`name_unique::ReservedNames`). Sem isso o objeto
-    // SEGUINTE herdava o nome vago do deletado e a track órfã o adotava — o report de
-    // 2026-07-22. É aqui porque esta função já varre as bindings todo frame: uma segunda
-    // varredura seria uma segunda resposta a *"quem está órfã?"*.
-    let reserved = timeline
-        .doc
-        .bindings()
-        .iter()
-        .filter(|b| b.missing)
-        .map(|b| b.wire_id.0);
-    world
-        .get_resource_or_insert_with(crate::name_unique::ReservedNames::default)
-        .publish(reserved);
     // `None` no valor = nome AMBÍGUO (dois objetos vivos, o mesmo nome).
     let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut q = world.query::<(Entity, &Name)>();
@@ -99,12 +100,56 @@ pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
     } else {
         std::collections::BTreeMap::new() // alloc-free
     };
-    let world = &*world;
-    refresh_and_heal_bindings(
-        &mut timeline.doc,
-        |bits| wire_of(world, bits),
-        |w| by_wire.get(&w.0).copied().flatten(),
-    )
+    {
+        let world = &*world;
+        refresh_and_heal_bindings(
+            &mut timeline.doc,
+            |bits| wire_of(world, bits),
+            |w| by_wire.get(&w.0).copied().flatten(),
+        );
+    }
+    purge_the_dead(timeline, &by_wire)
+}
+
+/// The purge half of [`upkeep`] — see its docs for the policy. Returns whether
+/// the document was fully reset.
+fn purge_the_dead(
+    timeline: &mut TimelineState,
+    by_wire: &std::collections::BTreeMap<u64, Option<u64>>,
+) -> bool {
+    // Still missing after the heal ⇒ dead, EXCEPT the ambiguous tie (a live
+    // duplicate exists — `Some(None)` in the map), which stays dormant. A NULL
+    // wire id (a transient that never had a name) can never heal, so it purges.
+    let dead: Vec<ph2d_anim::AnimTarget> = timeline
+        .doc
+        .bindings()
+        .iter()
+        .filter(|b| b.missing && by_wire.get(&b.wire_id.0) != Some(&None))
+        .map(|b| b.target)
+        .collect();
+    if dead.is_empty() {
+        return false;
+    }
+    // ONE timeline-undo step for the whole purge (reset included): the recovery
+    // path after an accidental delete is global Ctrl+Z (the object respawns,
+    // same name) + timeline Ctrl+Z (the doc returns, bindings dormant) — and
+    // the heal above recolors them on the next frame.
+    timeline.history.push(timeline.doc.clone());
+    for target in dead {
+        timeline.doc.purge_binding(target);
+    }
+    // Purged targets may be selected; a selection into removed tracks is stale.
+    timeline.selection.clear();
+    if !timeline.doc.bindings().is_empty() {
+        return false; // other objects still animated: their work is untouchable
+    }
+    // Last animated object gone ⇒ the timeline resets. The display fps is a
+    // project-ish setting, not the dead object's animation — it survives.
+    let fps = timeline.doc.fps_display;
+    timeline.doc = ph2d_timeline::TimelineDoc::new();
+    timeline.doc.fps_display = fps;
+    timeline.edit_path.clear();
+    true
 }
 
 /// Carimba o `wire_id` (hash do nome do objeto) em cada binding e serializa o documento —
@@ -177,40 +222,42 @@ mod tests {
         );
     }
 
-    /// **Um nome AMBÍGUO não cura — recusa.**
+    /// **Um nome AMBÍGUO não cura, não purga — recusa.**
     ///
     /// A animação reencontra o objeto pelo NOME (`wire_id` = hash do `Name`), e a unicidade é um
     /// invariante mantido em N lugares do shell. Se dois objetos vivos dividem o nome, *"de quem é
-    /// esta track?"* não tem resposta — e o `BTreeMap` responderia sozinho, pelo último que a query
-    /// devolvesse: a animação passaria a dirigir a pose do objeto errado, em silêncio.
-    ///
-    /// A track fica `missing` (some do painel) e volta quando o empate acabar. Perder a track de
-    /// vista é honesto; movê-la para o objeto errado é corrupção.
+    /// esta track?"* não tem resposta — curar num deles seria dirigir a pose do objeto errado, e
+    /// PURGAR seria destruir trabalho por causa de um empate transitório. A track fica dormente
+    /// (some do painel) até o empate acabar; então cura no que sobrou.
     #[test]
-    fn an_ambiguous_name_refuses_to_heal_instead_of_guessing() {
+    fn an_ambiguous_name_refuses_to_heal_and_refuses_to_purge() {
         let mut sim = SimWorld::new();
         let hero = sim.world_mut().spawn(Name::new("hero")).id();
         let mut timeline = TimelineState::new();
         key(&mut timeline, hero.to_bits());
-        assert_eq!(
-            upkeep(&mut timeline, sim.world_mut()),
-            0,
-            "vivo: nada a curar"
+        assert!(
+            !upkeep(&mut timeline, sim.world_mut()),
+            "vivo: nada a fazer"
         );
 
-        // O objeto morre — a track fica dormente, por design.
+        // O objeto morre — e ANTES do próximo upkeep dois homônimos entram em cena
+        // (um sprite renomeado, uma forma homônima). O empate tem de existir no
+        // frame em que a purga olharia, senão a fixture não contém o fenômeno.
         sim.world_mut().despawn(hero);
-        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
-        assert!(timeline.doc.bindings()[0].missing);
-
-        // …e voltam DOIS objetos com o mesmo nome (um sprite renomeado, uma forma homônima).
         let a = sim.world_mut().spawn(Name::new("hero")).id();
         let b = sim.world_mut().spawn(Name::new("hero")).id();
         assert_ne!(a, b);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
+        assert!(timeline.doc.bindings()[0].missing);
+
+        assert!(
+            !upkeep(&mut timeline, sim.world_mut()),
+            "empate não é reset"
+        );
         assert_eq!(
-            upkeep(&mut timeline, sim.world_mut()),
-            0,
-            "empate de nome: a track NÃO pode escolher um dos dois"
+            timeline.doc.bindings().len(),
+            1,
+            "empate de nome: a track não escolhe um dos dois NEM é purgada"
         );
         assert!(
             timeline.doc.bindings()[0].missing,
@@ -219,51 +266,60 @@ mod tests {
 
         // Desfeito o empate, ela cura no que sobrou.
         sim.world_mut().despawn(b);
-        assert_eq!(
-            upkeep(&mut timeline, sim.world_mut()),
-            1,
-            "sem empate, cura"
-        );
+        upkeep(&mut timeline, sim.world_mut());
         assert_eq!(timeline.doc.bindings()[0].entity, a.to_bits());
+        assert!(!timeline.doc.bindings()[0].missing, "sem empate, cura");
     }
 
+    /// **Deletar o objeto purga a track dele no MESMO upkeep** (Enio, 2026-07-22: *"a timeline
+    /// precisa ser resetada ao deletar o objeto"*) — e sendo o único objeto animado, o
+    /// documento inteiro RESETA, num passo do undo da timeline.
+    ///
+    /// Este é o contrato que SUBSTITUI o "delete + Ctrl+Z cura" de 2026-07-11: a dormência que
+    /// fazia a cura era a mesma que entregava a timeline velha ("totalmente bugada") ao próximo
+    /// objeto criado. A recuperação agora é explícita: Ctrl+Z global (o objeto volta) + Ctrl+Z
+    /// da timeline (o documento volta, dormente) — e o heal recola. O gate disso mora em
+    /// `timeline_orphan_tests`.
     #[test]
-    fn upkeep_reconnects_a_deleted_objects_track_when_it_comes_back_by_name() {
-        // The delete → global-undo cycle: the undo restores the world by
-        // RESPAWNING, so "the same object" returns under fresh entity bits with
-        // the same Name. The binding must follow it.
+    fn a_deleted_objects_track_is_purged_and_the_last_one_resets_the_document() {
         let mut sim = SimWorld::new();
-        let old = sim.world_mut().spawn(Name::new("hero")).id();
+        let hero = sim.world_mut().spawn(Name::new("hero")).id();
         let mut timeline = TimelineState::new();
-        key(&mut timeline, old.to_bits());
+        key(&mut timeline, hero.to_bits());
+        upkeep(&mut timeline, sim.world_mut()); // carimba o wire_id em vida
+        let steps_before = timeline.history.can_undo();
 
-        // Frame upkeep while alive: stamps the name-hash (0 healed).
-        assert_eq!(upkeep(&mut timeline, sim.world_mut()), 0);
-
-        // The object is deleted; the apply pass flags the binding missing.
-        sim.world_mut().despawn(old);
+        sim.world_mut().despawn(hero);
         ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
         assert!(timeline.doc.bindings()[0].missing, "flagged by liveness");
-        assert_eq!(
-            upkeep(&mut timeline, sim.world_mut()),
-            0,
-            "no same-name entity yet: stays dormant"
-        );
 
-        // The undo respawns it — fresh bits, same name.
-        let reborn = sim.world_mut().spawn(Name::new("hero")).id();
-        assert_ne!(reborn, old, "a respawn hands out fresh bits");
-        assert_eq!(upkeep(&mut timeline, sim.world_mut()), 1, "healed");
-        assert_eq!(timeline.doc.bindings()[0].entity, reborn.to_bits());
-        assert!(!timeline.doc.bindings()[0].missing);
+        assert!(
+            upkeep(&mut timeline, sim.world_mut()),
+            "último objeto animado deletado => o documento reseta"
+        );
+        assert!(
+            timeline.doc.bindings().is_empty(),
+            "a binding foi PURGADA, não deixada dormente"
+        );
+        assert_eq!(
+            timeline.doc,
+            ph2d_timeline::TimelineDoc::new(),
+            "resetada = um documento fresco, não um documento esvaziado aos poucos"
+        );
+        assert!(steps_before, "as keys já eram passos");
+        assert!(
+            timeline.history.can_undo(),
+            "a purga é um passo do undo da timeline — trabalho destruível tem caminho de volta"
+        );
     }
 
-    /// **A animação atravessa o arquivo de projeto e reencontra os objetos pelo NOME.**
+    /// **A animação atravessa o arquivo de projeto e reencontra os objetos pelo NOME** — e o
+    /// heal roda ANTES da purga, no MESMO upkeep.
     ///
-    /// Sessão 1 salva; a sessão 2 respawna os MESMOS nomes com bits DIFERENTES (é o que o
-    /// `apply_project` faz: despawna tudo e re-spawna do snapshot). O `install_from_project`
-    /// destaca as bindings e o `upkeep` do frame — a mesma função que cura o delete+undo — as
-    /// recola. Nenhuma track fica órfã, e nenhuma cola no objeto errado.
+    /// A ordem é load-bearing: o `install_from_project` destaca TODA binding (`entity = 0`,
+    /// `missing`), então uma purga que rodasse primeiro (ou que ignorasse o resultado do heal)
+    /// apagaria o documento inteiro um frame depois de todo Ctrl+O. O oráculo aqui é o
+    /// documento INTEIRO intacto depois do primeiro frame — não só as bindings.
     #[test]
     fn the_animation_crosses_the_project_file_and_finds_its_objects_by_name() {
         // Sessão 1: dois sprites nomeados, uma track cada.
@@ -300,22 +356,24 @@ mod tests {
             "destacada = `entity` zerada: bits de outra sessão nunca podem colar por acidente"
         );
 
-        // O frame seguinte (o `upkeep` do `timeline_bridge`) recola pelo nome.
-        assert_eq!(
-            upkeep(&mut loaded, sim2.world_mut()),
-            2,
-            "as duas recolaram"
+        // O frame seguinte (o `upkeep` do `timeline_bridge`) recola pelo nome — e a purga,
+        // que roda no mesmo chamado, não pode tocar num documento que acabou de curar.
+        assert!(
+            !upkeep(&mut loaded, sim2.world_mut()),
+            "um load que cura nunca é um reset"
         );
+        assert_eq!(loaded.doc.bindings().len(), 2, "nada foi purgado");
         for (b, want) in loaded.doc.bindings().iter().zip(&load_bits) {
             assert_eq!(b.entity, *want, "cada binding no objeto DESTA sessão");
             assert!(!b.missing);
         }
     }
 
-    /// A track cujo objeto não está no projeto carregado **sobrevive como `missing`** — não é
-    /// descartada em silêncio (o painel a badgeia; o apply a pula).
+    /// A track cujo objeto não está no projeto carregado **sai com ele** — purgada no primeiro
+    /// upkeep (Enio, 2026-07-22: objeto que não existe não deixa timeline para trás). As
+    /// OUTRAS bindings curam normalmente, e curar uma é o que impede o reset total.
     #[test]
-    fn a_track_whose_object_is_gone_stays_missing_never_dropped() {
+    fn a_track_whose_object_is_not_in_the_loaded_project_leaves_with_it() {
         let (save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
         let mut timeline = TimelineState::new();
         key(&mut timeline, save_bits[0]);
@@ -326,15 +384,18 @@ mod tests {
         let (mut load_world, _) = world_with(&["sprite_001"]);
         let mut loaded = install_from_project(&bytes).unwrap();
         assert_eq!(loaded.doc.bindings().len(), 2);
-        assert_eq!(
-            upkeep(&mut loaded, load_world.world_mut()),
-            1,
-            "uma recola; a outra continua pendente"
-        );
-        assert!(!loaded.doc.bindings()[0].missing);
         assert!(
-            loaded.doc.bindings()[1].missing,
-            "a track do objeto ausente fica visível como missing, não some"
+            !upkeep(&mut loaded, load_world.world_mut()),
+            "uma binding curou: o documento não reseta"
+        );
+        assert_eq!(
+            loaded.doc.bindings().len(),
+            1,
+            "a track do objeto ausente foi purgada com ele"
+        );
+        assert!(
+            !loaded.doc.bindings()[0].missing,
+            "e a sobrevivente é a que curou"
         );
     }
 

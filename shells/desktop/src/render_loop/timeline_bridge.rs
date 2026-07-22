@@ -22,6 +22,11 @@ use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc_exce
 /// `ak.displaced` (a pose the user displaced while paused, waiting for a manual
 /// K — see `autokey_pass`), so the document does not fight the manipulation.
 /// Call each frame in the apply pass, after `apply_sprite_animations`.
+///
+/// Returns `true` when the identity upkeep RESET the document (the last animated
+/// object was deleted — `timeline_persist::upkeep`); the caller rewinds the
+/// clocks and drops the panel's container trail, which this function cannot do
+/// because it only holds ONE of the two playheads.
 pub(crate) fn run(
     world: &mut World,
     timeline: &mut TimelineState,
@@ -30,7 +35,17 @@ pub(crate) fn run(
     live_entity: Option<u64>,
     ak: &mut super::autokey_pass::AutokeyState,
     solo: bool,
-) {
+) -> bool {
+    // **The Containers list has no playback mode** (Enio, 2026-07-22). The two
+    // refusal layers upstream (the play button paints dead + unhittable; the
+    // TogglePlay intent maps to None) stop the GESTURES — this is the backstop
+    // for the clock itself: switching to the list while playing, or any path
+    // that reaches the playhead without asking the panel (spacebar), lands here
+    // and the clock pauses. In the list `keys_mode` is false, so `playhead` IS
+    // the scene clock the artist would otherwise watch run with dead controls.
+    if timeline.containers_list && playhead.is_playing() {
+        playhead.pause();
+    }
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
     }
@@ -51,10 +66,11 @@ pub(crate) fn run(
     } else {
         apply_from_doc_except(world, &mut timeline.doc, playhead.time(), skip);
     }
-    // Identity upkeep: a deleted object's rows leave the view (the apply above
-    // just flagged them missing), and an object that comes back under the same
-    // name — the global undo respawns entities with FRESH bits — reconnects.
-    crate::timeline_persist::upkeep(timeline, world);
+    // Identity upkeep: heal (a project load's detached bindings recolam pelo
+    // nome), then purge — a deleted object's tracks leave the document with it,
+    // and deleting the LAST animated object resets the timeline whole
+    // (`timeline_persist::upkeep`).
+    crate::timeline_persist::upkeep(timeline, world)
 }
 
 /// Translate a transport [`PanelEvent`] (by widget id) into a [`TimelineIntent`].
@@ -89,6 +105,11 @@ pub(crate) fn intent_for_transport(
         .then(|| ph2d_timeline::entry_reach(&timeline.doc, &timeline.edit_path))
         .flatten();
     match *ev {
+        // No playback mode on the Containers LIST (Enio, 2026-07-22): the panel
+        // already paints the button dead and unhittable — this layer keeps a
+        // synthetic/stale click from starting a clock the view says cannot run
+        // ([[feedback_layered_defenses_need_per_layer_gates]]).
+        PanelEvent::Click(id) if id == ids::TIMELINE_PLAY && timeline.containers_list => None,
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => {
             Some(I::Scrub(reach.map_or(0.0, |(lo, _)| lo)))

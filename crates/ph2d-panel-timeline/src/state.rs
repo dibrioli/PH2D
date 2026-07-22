@@ -56,6 +56,12 @@ thread_local! {
     /// Keys, which is not the scene root — and the trail is empty there anyway, so both
     /// answers are `Document` until somebody walks somewhere.
     static SCENE_ROOT: Cell<bool> = const { Cell::new(false) };
+    /// **The panel is showing the Containers LIST** (the Containers tab at its root level —
+    /// `tab::Rows::Containers`). Published every paint beside [`KEYS_MODE`], `false` while
+    /// hidden. The list is a LIBRARY, not a view of time, so playback does not exist there
+    /// (Enio, 2026-07-22) — the shell stamps this onto `TimelineState::containers_list` and
+    /// every playback refusal reads that one field.
+    static CONTAINERS_LIST: Cell<bool> = const { Cell::new(false) };
 }
 
 /// **Navigation** — the tab/trail publish channel, in a sibling module (LOC cap).
@@ -64,10 +70,12 @@ thread_local! {
 /// move house because a file got long.
 #[path = "state_nav.rs"]
 mod state_nav;
-pub use state_nav::{edit_host, edit_path, keys_mode, open_container};
+pub use state_nav::{
+    containers_list, edit_host, edit_path, keys_mode, open_container, reset_trail,
+};
 pub(crate) use state_nav::{
-    enter_container, open_container_root, pop_to_depth, publish_keys_mode, publish_scene_root,
-    set_tab, trail_len,
+    enter_container, open_container_root, pop_to_depth, publish_containers_list, publish_keys_mode,
+    publish_scene_root, set_tab, trail_len,
 };
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the

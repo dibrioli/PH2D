@@ -317,12 +317,20 @@ impl App {
             // back / forward (pausing, so you land on the frame). Every
             // animatable system samples the Playhead for the current frame.
             KeyCode::Space => {
-                let playing = self.playhead.toggle_play();
-                gfx.toasts.push(Toast::info(if playing {
-                    "Timeline · play"
+                // No playback mode on the Containers LIST (Enio, 2026-07-22). The
+                // bridge would pause it right back next frame anyway — refusing
+                // here keeps the toast from announcing a play that never happens.
+                if self.timeline.containers_list {
+                    gfx.toasts
+                        .push(Toast::info("Timeline · no playback in the Containers list"));
                 } else {
-                    "Timeline · pause"
-                }));
+                    let playing = self.playhead.toggle_play();
+                    gfx.toasts.push(Toast::info(if playing {
+                        "Timeline · play"
+                    } else {
+                        "Timeline · pause"
+                    }));
+                }
             }
             KeyCode::Comma | KeyCode::Period => {
                 let back = code == KeyCode::Comma;

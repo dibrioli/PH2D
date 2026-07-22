@@ -9,12 +9,29 @@
 //! The state itself stays in the parent's `thread_local!` block: these are its accessors, not
 //! a second copy of it.
 
-use super::{KEYS_MODE, OPEN_CONTAINER, SCENE_ROOT, TimelinePanelState, drop_row_gestures};
+use super::{
+    CONTAINERS_LIST, KEYS_MODE, OPEN_CONTAINER, SCENE_ROOT, TimelinePanelState, drop_row_gestures,
+};
 use std::cell::Cell;
 
 /// Publish whether the panel is on the Keys tab (called by `paint` each frame).
 pub(crate) fn publish_keys_mode(on: bool) {
     KEYS_MODE.with(|c| c.set(on));
+}
+
+/// Publish whether the panel is showing the Containers LIST (called by `paint` each
+/// frame, beside [`publish_keys_mode`]; `false` when the panel is hidden). See
+/// [`CONTAINERS_LIST`] — the list has no playback mode.
+pub(crate) fn publish_containers_list(on: bool) {
+    CONTAINERS_LIST.with(|c| c.set(on));
+}
+
+/// **Is the timeline panel showing the Containers list?** Read by the shell each frame and
+/// stamped onto `TimelineState::containers_list`, from which every playback refusal reads
+/// (the play button's intent, the spacebar arm, the bridge's pause backstop).
+#[must_use]
+pub fn containers_list() -> bool {
+    CONTAINERS_LIST.with(Cell::get)
 }
 
 /// Publish whether the panel is showing the SCENE's stack (called by `paint` each frame,
@@ -62,6 +79,14 @@ pub(crate) fn enter_container(step: ph2d_timeline::EnterStep) {
 /// as part of the trail rather than special-cased.
 pub(crate) fn pop_to_depth(depth: usize) {
     OPEN_CONTAINER.with(|p| p.borrow_mut().truncate(depth));
+}
+
+/// **Drop the whole trail** — called by the shell when the timeline document RESETS
+/// (deleting the last animated object, Enio 2026-07-22). The trail's steps are container
+/// INDICES into the old document; left standing they would describe rooms that no longer
+/// exist, and the next publish would walk the shell into one.
+pub fn reset_trail() {
+    pop_to_depth(0);
 }
 
 /// **How deep the animator has walked**, outermost first — read by the shell each frame and

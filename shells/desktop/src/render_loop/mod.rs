@@ -1061,6 +1061,12 @@ impl crate::App {
         // model). `keys_mode` is the panel's last-painted tab; it picks which
         // playhead the transport moves, whether the scene solos, and how K authors.
         let keys_mode = ph2d_panel_timeline::state::keys_mode();
+        // **The Containers LIST has no playback mode** (Enio, 2026-07-22) — the
+        // panel publishes which view it painted (false while hidden), the shell
+        // stamps it here, and every enforcement point (play-button refusal in
+        // `intent_for_transport`, the spacebar arm, the bridge's pause backstop)
+        // reads the ONE stamped field instead of re-deriving the view.
+        self.timeline.containers_list = ph2d_panel_timeline::state::containers_list();
         // The active clip's loop is per-VIEW now (independent Keys/Arrange loops). The
         // shell owns both clocks, so it (a) stamps the mode `apply_intent` reads to pick
         // which loop an edit or a clip-switch targets, and (b) on a TAB switch — which is
@@ -1167,7 +1173,7 @@ impl crate::App {
         } else {
             &mut self.playhead
         };
-        timeline_bridge::run(
+        let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
             active_playhead,
@@ -1176,6 +1182,21 @@ impl crate::App {
             &mut self.autokey,
             keys_mode,
         );
+        if timeline_reset {
+            // The document just went back to a fresh state (the last animated
+            // object was deleted — Enio 2026-07-22, "a timeline precisa ser
+            // resetada ao deletar o objeto"). The clocks and the panel's
+            // container trail describe the OLD document, so they reset with it:
+            // rewind + pause BOTH playheads (`rewind` deliberately preserves the
+            // play state, so the pause is explicit), and drop the trail (its
+            // steps are container indices into a document that no longer has
+            // containers).
+            self.playhead.rewind();
+            self.playhead.pause();
+            self.clip_playhead.rewind();
+            self.clip_playhead.pause();
+            ph2d_panel_timeline::state::reset_trail();
+        }
         // The playhead has now moved: a transport jump queued last frame can
         // finally ask the panel to pan to it (the snapshot below carries the
         // new time, and `paint` reads both later this frame).

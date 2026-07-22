@@ -71,6 +71,32 @@ pub struct TargetBinding {
     pub rest: Option<f32>,
 }
 
+impl crate::doc::TimelineDoc {
+    /// **The document forgets an object's track** — remove `target`'s binding and
+    /// its track from **every** clip (Enio, 2026-07-22: *"a timeline precisa ser
+    /// resetada ao deletar o objeto"*).
+    ///
+    /// Not [`Self::unbind`]: that is the panel's per-row verb and trims the
+    /// ACTIVE clip only. Bindings are document-level — every clip keys the same
+    /// objects — so forgetting an object that no longer exists has to sweep the
+    /// clips it never shows. A track left behind in an inactive clip is exactly
+    /// the stale state that made a deleted object's timeline "totalmente bugada"
+    /// for the next object created.
+    ///
+    /// Returns `true` if the binding existed.
+    pub fn purge_binding(&mut self, target: AnimTarget) -> bool {
+        let (bindings, clips) = self.purge_parts();
+        let Some(pos) = bindings.iter().position(|b| b.target == target) else {
+            return false;
+        };
+        bindings.remove(pos);
+        for named in clips {
+            named.clip.remove_track(target);
+        }
+        true
+    }
+}
+
 impl TargetBinding {
     /// A binding of an allocated `target` to a live entity + property. Callers
     /// go through [`crate::TimelineDoc::bind`], which allocates the target and

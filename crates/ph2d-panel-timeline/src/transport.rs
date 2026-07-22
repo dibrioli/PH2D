@@ -257,7 +257,17 @@ fn paint_item(
             } else {
                 IconId::Play
             };
-            x = icon_button(ctx, theme, x, y, ids::TIMELINE_PLAY, play_glyph) + half;
+            // **The Containers LIST has no playback mode** (Enio, 2026-07-22): the
+            // list is a library of assets, not a view of time, so play/pause paints
+            // DEAD there — disabled AND unhittable, because a dimmed control that
+            // still dispatches lies ([[feedback_widget_is_done_when_a_test_clicks_it]]).
+            // It comes back inside a container, on Keys and on Arrange, where the
+            // same door (`tab::rows`) stops answering `Containers`.
+            x = if crate::tab::rows(view.tab, snap) == crate::tab::Rows::Containers {
+                widgets::dead_icon_button(ctx, theme, x, y, play_glyph)
+            } else {
+                icon_button(ctx, theme, x, y, ids::TIMELINE_PLAY, play_glyph)
+            } + half;
             x = icon_button(
                 ctx,
                 theme,
@@ -438,3 +448,7 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 #[path = "transport_widgets.rs"]
 mod widgets;
 pub(crate) use widgets::{chip, icon_button, label, mirror_number, toggle};
+
+#[cfg(test)]
+#[path = "transport_playback_tests.rs"]
+mod playback_tests;

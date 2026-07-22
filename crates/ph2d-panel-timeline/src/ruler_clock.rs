@@ -20,6 +20,12 @@ pub struct RulerClock {
     /// a stack (then the clip IS the timeline). The loop is NOT gated by this — it is
     /// each view's own, drawn against the very clock this ruler scrubs.
     pub markers: bool,
+    /// This ruler draws (and offers the grips of) the loop band. Everywhere but the
+    /// Containers LIST: the list is a library, not a view of time, and playback —
+    /// which is all a loop describes — does not exist there (Enio, 2026-07-22).
+    /// Gates the BAND and the BRACES together: an invisible band with live grips
+    /// would be a control you can grab and cannot see.
+    pub loop_band: bool,
 }
 
 /// **Which clock this tab's ruler measures.** Pure, and tested as such.
@@ -28,6 +34,19 @@ pub struct RulerClock {
 /// can prove the ruler's *hits* and never its *line*. Answering here rather than
 /// inside the paint loop is what gives that line an oracle at all.
 pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> RulerClock {
+    // **The Containers LIST** (the tab at its root — same door as the painters,
+    // `tab::rows`): a library of assets measured in seconds, so the ruler still
+    // ticks and scrubs, but there is no playback here and therefore NO loop band
+    // (Enio, 2026-07-22). Entering a container falls through to the lanes logic
+    // below, where the band comes back.
+    if crate::tab::rows(tab, snap) == crate::tab::Rows::Containers {
+        return RulerClock {
+            now: Some(snap.time_seconds),
+            scrub: true,
+            markers: true,
+            loop_band: false,
+        };
+    }
     if tab.shows_lanes() {
         // **Inside a container the Arrange lanes are ITS interior**, laid out in its own
         // seconds (ADR-0133 §5) — so the ruler marks its clock, not the timeline's. Marking
@@ -47,6 +66,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
                 now: Some(now),
                 scrub: snap.host_map.is_some(),
                 markers: false,
+                loop_band: true,
             };
         }
         if !snap.crumbs.is_empty() {
@@ -57,6 +77,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
                 now: None,
                 scrub: snap.host_map.is_some(),
                 markers: false,
+                loop_band: true,
             };
         }
         // Arrange IS the timeline: the transport's playhead, and it owns the markers
@@ -65,6 +86,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             now: Some(snap.time_seconds),
             scrub: true,
             markers: true,
+            loop_band: true,
         };
     }
     // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
@@ -77,6 +99,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
         now: snap.clip_time,
         scrub: true,
         markers: !snap.stacked(),
+        loop_band: true,
     }
 }
 
@@ -112,7 +135,8 @@ mod tests {
                 RulerClock {
                     now: Some(1.25),
                     scrub: true,
-                    markers: true
+                    markers: true,
+                    loop_band: true,
                 },
                 "{tab:?} lost the ruler it always had"
             );
@@ -174,5 +198,28 @@ mod tests {
         for stacked in [false, true] {
             assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).markers);
         }
+    }
+
+    /// **Só a lista de Containers perde a banda de loop** (Enio, 2026-07-22: *"a marca de
+    /// loop não deve aparecer"* — a lista é biblioteca, não vista de tempo). Toda outra
+    /// vista a mantém, incluindo DENTRO de um container — onde os comandos "voltam a
+    /// funcionar", nas palavras do pedido.
+    #[test]
+    fn only_the_containers_list_loses_the_loop_band() {
+        let s = snap(true, 4.0, Some(2.0));
+        assert!(
+            !clock_for(Tab::Containers, &s).loop_band,
+            "a LISTA (crumbs vazios) não desenha a marca de loop"
+        );
+        assert!(clock_for(Tab::Keys, &s).loop_band);
+        assert!(clock_for(Tab::Arrange, &s).loop_band);
+        // Dentro de um container (migalha na trilha) a banda volta.
+        let mut inside = snap(true, 4.0, Some(2.0));
+        inside.crumbs = vec![(0, "Walk".into())];
+        inside.host_time = Some(1.0);
+        assert!(
+            clock_for(Tab::Containers, &inside).loop_band,
+            "entrar no container devolve o playback — e a marca junto"
+        );
     }
 }

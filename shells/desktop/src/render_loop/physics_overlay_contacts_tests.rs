@@ -100,3 +100,65 @@ fn the_toggle_switches_the_marks_off() {
         "a scene where nothing touches draws nothing"
     );
 }
+
+#[test]
+fn the_waterline_is_drawn_across_the_pool_and_obeys_the_toggle() {
+    // A metade visível do empuxo. A geometria vem PRONTA da física, então o que este
+    // gate cobre é a projeção: a linha tem de sair na altura certa da tela, atravessar a
+    // poça, e sumir com o toggle.
+    //
+    // Câmera de 10 unidades de mundo sobre 1000 px = 100 px por unidade, centro do mundo
+    // no centro da tela. Uma superfície em y = 0 cai em 500 px; de x = −3,5 a +3,5 vira
+    // 150..850 px, mais a sobra de 6 px em cada ponta.
+    let marks = waterline_marks(true, &[([-3.5, 0.0], [3.5, 0.0])], &camera(), window());
+    assert_eq!(marks.len(), 1);
+    let pts: Vec<Point> = marks[0]
+        .elements()
+        .iter()
+        .filter_map(|el| match el {
+            ph2d_vector::PathEl::MoveTo(p) | ph2d_vector::PathEl::LineTo(p) => Some(*p),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        (pts[0].y - 500.0).abs() < 1.0 && (pts[1].y - 500.0).abs() < 1.0,
+        "a superfície em y = 0 tem de cair no meio da tela, e caiu em {pts:?}"
+    );
+    assert!(
+        (pts[0].x - 144.0).abs() < 1.0 && (pts[1].x - 856.0).abs() < 1.0,
+        "a linha tem de atravessar a poça inteira mais a sobra de 6 px, e ficou em {pts:?}"
+    );
+
+    assert!(
+        waterline_marks(false, &[([-1.0, 0.0], [1.0, 0.0])], &camera(), window()).is_empty(),
+        "a linha d'água obedece ao mesmo toggle que o resto do chrome de física"
+    );
+    assert!(
+        waterline_marks(true, &[], &camera(), window()).is_empty(),
+        "uma cena sem poça não desenha nada"
+    );
+}
+
+#[test]
+fn a_tilted_pool_draws_a_level_waterline() {
+    // ⚠️ O gate que exige que a linha venha da FÍSICA e não do topo da caixa. Água é
+    // horizontal mesmo numa poça torta, e é isso que a `surface_level` (perpendicular à
+    // gravidade) devolve — um overlay que desenhasse a aresta de cima do collider daria
+    // uma linha INCLINADA, e as duas só discordam aqui.
+    //
+    // A entrada é o que a física de fato produz para uma poça rotacionada: dois pontos
+    // na MESMA altura, mas afastados do centro.
+    let marks = waterline_marks(true, &[([-2.0, 1.4], [2.6, 1.4])], &camera(), window());
+    let pts: Vec<Point> = marks[0]
+        .elements()
+        .iter()
+        .filter_map(|el| match el {
+            ph2d_vector::PathEl::MoveTo(p) | ph2d_vector::PathEl::LineTo(p) => Some(*p),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        (pts[0].y - pts[1].y).abs() < 1e-6,
+        "os dois extremos têm de sair na MESMA altura de tela ({pts:?})"
+    );
+}

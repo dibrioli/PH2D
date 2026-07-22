@@ -85,3 +85,15 @@ impl PhysicsBridge {
             .count()
     }
 }
+
+impl PhysicsBridge {
+    /// A linha d'água de cada zona com empuxo — o que o overlay desenha (W-Buoyancy).
+    ///
+    /// Passagem direta para [`ph2d_physics::PhysicsWorld::waterlines`]: a shell não
+    /// alcança o `PhysicsWorld`, e a ponte não tem opinião nenhuma sobre a superfície —
+    /// ela é da física, calculada pela mesma função que o empuxo usa.
+    #[must_use]
+    pub fn waterlines(&self) -> Vec<([f32; 2], [f32; 2])> {
+        self.world.waterlines()
+    }
+}

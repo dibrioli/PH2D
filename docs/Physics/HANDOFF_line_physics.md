@@ -2978,6 +2978,35 @@ cápsula e afirma o círculo** — sem ela, a recomendação *"não converta"* s
 prova. Duas mutações sangram: o `Add` ignorar a caixa do sprite, e o empuxo aplicar no
 centro de massa em vez do centroide submerso.
 
+### ⚠️ A LINHA D'ÁGUA — a pergunta do Enio pegou o buraco certo
+
+*"Como a água faz boiar o tronco? Não temos UI para isso?"* — a UI existia (a row **Fluid
+Density**), mas o **overlay não desenhava NADA**: um campo de força ganha seta, um arrasto
+não tem direção para desenhar, e o empuxo tem um **lugar** — a superfície — que era o
+único número do modelo invisível na tela. O artista posicionava o tronco no olho.
+
+Agora a poça desenha sua linha d'água (**ciano claro**, o único traço do overlay que
+descreve um LUGAR em vez de um corpo; sobra de 6 px em cada ponta para ler como
+superfície e não como aresta do retângulo), **antes** dos corpos — ela é o cenário, e o
+que se lê por cima são as coisas que boiam.
+
+⚠️ **Sai da MESMA `surface_level` do empuxo** (`buoyancy::waterline` →
+`PhysicsWorld::waterlines` → ponte → overlay), nunca de uma re-derivação: duas respostas
+para *"onde está a água?"* divergiriam numa poça rotacionada ou sob gravidade lateral, que
+é precisamente onde ninguém confere. Só zona com **densidade** tem linha (vento e xarope
+não têm superfície nenhuma para mostrar), e sem gravidade não há linha.
+
+⚠️ **Uma mutação SOBREVIVEU e nomeou o buraco da fixture:** trocar `up = -g/|g|` por
+`(0,1)` deixou os 9 gates verdes — porque **com gravidade padrão os dois são a mesma
+coisa**. A metade que faltava é gravidade **lateral**, onde a superfície é VERTICAL; com
+ela o gate sangra. É a mesma lição de sempre, e desta vez a mutação a encontrou antes do
+smoke.
+
+**LOC:** a linha levou `world.rs` a 703/700 ⇒ split em **`world/queries.rs`** (as
+consultas de LEITURA — irmão de `sensors`/`contacts`, e o corte que o arquivo já vinha
+fazendo: *o que MOVE* e *o que se OLHA* não são a mesma responsabilidade). 4 gates novos
+(2 wrapper, 2 overlay), 4 mutações, **4 sangram** após a correção da fixture.
+
 ### Aberto no W-Buoyancy
 
 Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resistir mais de lado que de proa —

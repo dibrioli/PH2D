@@ -40,7 +40,9 @@ use ph2d_physics_ecs::{
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point, VectorScene};
 
-use super::physics_overlay_contacts::{CONTACT_RGBA, contact_marks};
+use super::physics_overlay_contacts::{
+    CONTACT_RGBA, WATERLINE_RGBA, contact_marks, waterline_marks,
+};
 use super::physics_overlay_joints::{JOINT_RGBA, joint_marks};
 
 /// Outline thickness, in screen px. Thinner than the selection halo (2 px):
@@ -394,6 +396,7 @@ pub(super) fn draw(
     sim: &mut SimWorld,
     joint_anchors: &[([f32; 2], [f32; 2])],
     contacts: &[ph2d_physics_ecs::BodyContact],
+    waterlines: &[([f32; 2], [f32; 2])],
     triggered: &[ph2d_ecs::Entity],
     camera: &Camera2d,
     window: WindowSize,
@@ -405,6 +408,17 @@ pub(super) fn draw(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
             &Brush::Solid(Color::new(rgba)),
+            None,
+            &path,
+        );
+    }
+    // A linha d'água ANTES dos corpos: ela é o cenário (onde a superfície está), e o
+    // que se lê por cima dela são as coisas que boiam.
+    for path in waterline_marks(show, waterlines, camera, window) {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(OUTLINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(WATERLINE_RGBA)),
             None,
             &path,
         );

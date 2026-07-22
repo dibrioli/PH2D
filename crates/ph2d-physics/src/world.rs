@@ -17,6 +17,7 @@ pub mod joints;
 pub mod kinematic;
 pub mod layers;
 pub mod oneway;
+pub mod queries;
 pub mod sensors;
 pub mod shape;
 

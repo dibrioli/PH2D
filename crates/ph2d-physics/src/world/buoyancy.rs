@@ -219,3 +219,48 @@ pub(crate) fn apply(
         b.apply_impulse_at_point(force * dt, at, true);
     }
 }
+
+/// **A LINHA D'ÁGUA de uma zona** — os dois extremos do segmento onde a superfície
+/// corta o collider dela, em unidades de mundo.
+///
+/// Existe porque a superfície é o único número que este módulo calcula e que nada na
+/// tela mostrava: o artista posiciona o tronco *no olho*, sem saber onde ele vai parar.
+///
+/// ⚠️ **Perpendicular à GRAVIDADE**, pela MESMA [`surface_level`] que o empuxo usa — não
+/// por uma re-derivação. Duas respostas para *"onde está a água?"* divergiriam
+/// exatamente onde ninguém confere: numa poça rotacionada, ou sob gravidade lateral. E o
+/// segmento é recortado à LARGURA do collider, projetando os vértices na tangente, para
+/// que a linha acabe onde a poça acaba, em vez de atravessar a cena.
+///
+/// `None` sem gravidade — sem peso de fluido não há superfície que signifique alguma
+/// coisa, a mesma resposta que [`buoyant_force`] dá.
+#[must_use]
+pub(crate) fn waterline(
+    zone: &dyn Shape,
+    zone_pose: &rapier2d::na::Isometry2<f32>,
+    gravity: Vector2<f32>,
+) -> Option<([f32; 2], [f32; 2])> {
+    let g = gravity.norm();
+    if g <= 0.0 {
+        return None;
+    }
+    let up = -gravity / g;
+    let poly = local_polygon(zone)?;
+    let level = surface_level(&poly, zone_pose, up);
+    // A tangente da superfície: perpendicular a `up`, no plano.
+    let tangent = Vector2::new(-up.y, up.x);
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    for p in &poly {
+        let t = (zone_pose * p).coords.dot(&tangent);
+        lo = lo.min(t);
+        hi = hi.max(t);
+    }
+    if !(lo.is_finite() && hi.is_finite()) {
+        return None;
+    }
+    let at = |t: f32| {
+        let v = tangent * t + up * level;
+        [v.x, v.y]
+    };
+    Some((at(lo), at(hi)))
+}

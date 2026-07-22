@@ -328,3 +328,116 @@ fn a_tessellated_ball_carries_the_documented_polygon_bias() {
          módulo documenta), e rendeu {ratio}"
     );
 }
+
+#[test]
+fn the_waterline_is_level_even_in_a_tilted_pool() {
+    // ⚠️ O gate que só a linha d'água pode falhar: água é HORIZONTAL mesmo numa poça
+    // torta, então a superfície não é a aresta de cima do collider. Uma poça girada 0,4
+    // rad tem de devolver dois pontos na MESMA altura — e a aresta de cima dela, não.
+    let mut w = PhysicsWorld::new();
+    w.spawn_body(BodyDesc {
+        rotation: 0.4,
+        is_sensor: true,
+        effector: Some(AreaEffect {
+            force: [0.0, 0.0],
+            drag: 0.0,
+            density: 4.0,
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            0.0,
+            0.0,
+            ShapeDesc::Cuboid {
+                half_x: 3.0,
+                half_y: 1.0,
+            },
+        )
+    });
+    let lines = w.waterlines();
+    assert_eq!(lines.len(), 1, "uma poça com empuxo tem uma linha d'água");
+    let (a, b) = lines[0];
+    assert!(
+        (a[1] - b[1]).abs() < 1e-5,
+        "a linha tem de ser HORIZONTAL numa poça inclinada, e saiu {a:?} -> {b:?}"
+    );
+    // E ela passa pelo ponto mais alto do collider — é ali que a água acaba.
+    let top = 3.0f32 * 0.4f32.sin() + 1.0 * 0.4f32.cos();
+    assert!(
+        (a[1] - top).abs() < 1e-3,
+        "a superfície fica no extremo superior do collider ({}, esperado {top})",
+        a[1]
+    );
+
+    // ⚠️ **E com gravidade LATERAL a linha é VERTICAL.** Sem esta metade o gate é verde
+    // sobre a versão errada: com gravidade padrão `-g/|g|` É exatamente `(0, 1)`, então
+    // uma implementação que tomasse "o topo em Y" passaria em tudo acima — foi
+    // precisamente o que a mutação mostrou, e a fixture é que não continha o fenômeno.
+    let mut side = PhysicsWorld::new();
+    side.set_gravity(9.81, 0.0);
+    side.spawn_body(BodyDesc {
+        is_sensor: true,
+        effector: Some(AreaEffect {
+            force: [0.0, 0.0],
+            drag: 0.0,
+            density: 4.0,
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            0.0,
+            0.0,
+            ShapeDesc::Cuboid {
+                half_x: 3.0,
+                half_y: 1.0,
+            },
+        )
+    });
+    let (c, d) = side.waterlines()[0];
+    assert!(
+        (c[0] - d[0]).abs() < 1e-5 && (c[1] - d[1]).abs() > 1.0,
+        "com gravidade em +x a superfície é VERTICAL (x constante, y variando), e saiu \
+         {c:?} -> {d:?}"
+    );
+    assert!(
+        (c[0] + 3.0).abs() < 1e-4,
+        "e ela fica no extremo −x do collider, que é o 'alto' desta gravidade ({})",
+        c[0]
+    );
+}
+
+#[test]
+fn only_a_buoyant_zone_has_a_waterline() {
+    // Uma zona que só empurra ou só resiste não tem superfície nenhuma para mostrar —
+    // desenhar uma linha nela diria ao artista que ali há água, e não há.
+    let mut w = PhysicsWorld::new();
+    w.spawn_body(BodyDesc {
+        is_sensor: true,
+        effector: Some(AreaEffect {
+            force: [0.0, 5.0],
+            drag: 2.0,
+            density: 0.0,
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            0.0,
+            0.0,
+            ShapeDesc::Cuboid {
+                half_x: 2.0,
+                half_y: 2.0,
+            },
+        )
+    });
+    assert!(
+        w.waterlines().is_empty(),
+        "vento e xarope não têm linha d'água"
+    );
+
+    // E sem gravidade também não: não há superfície que signifique alguma coisa, a mesma
+    // resposta que o empuxo dá.
+    let mut w2 = PhysicsWorld::new();
+    w2.set_gravity(0.0, 0.0);
+    pool(&mut w2, 4.0);
+    assert!(
+        w2.waterlines().is_empty(),
+        "sem gravidade não há superfície"
+    );
+}

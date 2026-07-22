@@ -5145,6 +5145,7 @@ dependencies = [
 name = "ph2d-flip"
 version = "0.0.0"
 dependencies = [
+ "libm",
  "ph2d-anim",
  "ph2d-core",
  "ph2d-painter-effects",

@@ -21,6 +21,12 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # `Interp` — a MESMA curva de easing da timeline/graph editor (o tween do W3 reusa
 # o solver de bézier em vez de recriar 10 equações de easing).
 ph2d-anim = { path = "../ph2d-anim" }
+# libm — o `atan2`/`sincos`/`pow` da ESPIRAL do tween (`tween_spiral.rs`), que são
+# de faixa cheia e não cabem numa série truncada como o Twist do reshape. É o
+# porte puro-Rust do MUSL, pinado como nas outras crates que precisam do MESMO
+# resultado em toda plataforma (`ph2d-ecs`, `ph2d-physics`, `ph2d-editor-core`):
+# quem diverge entre OSes é o `sin` da `std`, que chama a libm do SISTEMA.
+libm = { version = "=0.2.16", default-features = false }
 # Modelo puro serializável: undo por snapshot + save (mesma disciplina do
 # ph2d-vec-scene). postcard = wire format canônico do repo.
 serde = { version = "1", features = ["derive"] }

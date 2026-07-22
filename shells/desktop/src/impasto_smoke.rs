@@ -1,18 +1,19 @@
 //! `PH2D_IMPASTO_SMOKE` — a ready-to-paint Impasto canvas (#16).
 //!
-//! Spawns a white 1024² paint canvas AND pre-arms the brush with impasto ON — **and nothing else**
-//! (Grain = None; Enio 2026-07-12). Run it, pick the Painter, drag: the paint comes out thick and lit.
-//! No knob hunting — a new feature ships with the example that demonstrates it, it does not ask the artist
-//! to assemble one ([[feedback_ready_to_smoke_example]]). And the example shows the DEFAULTS, so a bad
-//! default has nowhere to hide.
+//! Spawns a white 1024² paint canvas and sizes the brush for relief (Grain = None; Enio 2026-07-12).
+//! The painter opens in **Digital** (the app default) — pick **Impasto** from the Paint Mode dropdown,
+//! then drag: the paint comes out thick and lit. A new feature ships with the example that demonstrates
+//! it ([[feedback_ready_to_smoke_example]]); the example shows the DEFAULTS, so a bad default has
+//! nowhere to hide.
 //!
 //! ```text
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 //!   PH2D_IMPASTO_SMOKE=1 cargo run --release -p ph2d-host-desktop
 //! ```
 //!
-//! Then: click the white canvas → the **Painter** pill → drag. The **Paint Mode** dropdown (Brush
-//! panel) is already set to *Impasto*, so its section is open; the Lighting card drives the light live.
+//! Then: click the white canvas → the **Painter** pill. It opens in **Digital** (the app default); pick
+//! **Impasto** from the Paint Mode dropdown (Brush panel) to open its section, and drag — the Lighting
+//! card drives the light live.
 //!
 //! **The RIG (2026-07-12):** the card carries **four lamps** — the chips `1 2 3 4` under Show Impasto. A
 //! chip marked `2·` is a lamp that is OFF. Pick lamp 2, tick its **Enable**, and you have a fill: give it an
@@ -81,11 +82,13 @@
 //! Line in Sculpt, turn Radius before applying, and watch it re-render; then Apply, turn it again, and
 //! watch nothing happen.
 //!
-//! Note that nothing here is armed in code — you click the rail chip yourself. That is on purpose. The
-//! smoke that arms state under the table skips exactly the seam it was supposed to prove, and this line
-//! has the scar: `PH2D_IMPASTO_SMOKE` pre-selected the medium, which is how the master switch shipped
-//! dead under the mouse and nobody noticed for a week. (The medium is now the Paint Mode dropdown, and
-//! `seam_paint_media.rs` clicks it with a real pointer — which is the cover this arming borrows.)
+//! Note that the MEDIUM is not armed in code — you pick Impasto from the dropdown yourself. That is on
+//! purpose. The smoke that arms state under the table skips exactly the seam it was supposed to prove,
+//! and this line has the scar twice: `PH2D_IMPASTO_SMOKE` pre-selected the medium, which is how the
+//! master switch shipped dead under the mouse and nobody noticed for a week — and it re-appeared on
+//! 2026-07-22, opening the painter on Impasto when the app default is Digital (Enio caught it on the Wet
+//! Paint side). The medium is the Paint Mode dropdown now, a real control clicked by a real pointer in
+//! `seam_paint_media.rs`; the smoke gives you the canvas and gets out of the way.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -124,8 +127,8 @@ pub(crate) fn spawn_if_enabled(
     ) {
         Ok((label, bits)) => {
             println!(
-                "PH2D_IMPASTO_SMOKE: canvas '{label}' ready — pick the Painter tool and drag. \
-                 The brush is armed with impasto ON and Grain = None; everything else is the default."
+                "PH2D_IMPASTO_SMOKE: canvas '{label}' ready — pick the Painter tool. It opens in \
+                 DIGITAL; pick Impasto from the Paint Mode dropdown (Grain = None, size 40), then drag."
             );
             Some(bits)
         }
@@ -156,8 +159,14 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     // Anchor it to the canvas — `TextureMapping::Tiled` — and the marks read as bristle streaks along the
     // path instead of ribs across it. The first smoke shipped with the default ViewPlane and Enio saw the
     // corduroy immediately.)
+    // ⚠️ **The MEDIUM is NOT selected here** — the module doc above has said so all along ("nothing here
+    // is armed in code — you click the rail chip yourself"), and until 2026-07-22 the code contradicted
+    // it (`set_paint_media(Impasto)`), re-opening the very scar it warns about: the painter opened on a
+    // medium the app default says it should not, and it skipped the dropdown seam. Only the SIZE is set,
+    // and it lands on the shared Paint slot (the Impasto Deposit IS `PaintMode::Paint`), so it is ready
+    // the moment you pick Impasto from the Paint Mode dropdown.
     painter.set_brush_size_px(40.0);
-    // The PRODUCT door since 2026-07-22: the Paint Mode dropdown's setter, not a section checkbox.
-    painter.set_paint_media(ph2d_tool_painter::PaintMedia::Impasto);
-    println!("PH2D_IMPASTO_SMOKE: brush armed (impasto ON, Grain = None) — drag on the canvas.");
+    println!(
+        "PH2D_IMPASTO_SMOKE: canvas ready in DIGITAL — pick Impasto from the Paint Mode dropdown."
+    );
 }

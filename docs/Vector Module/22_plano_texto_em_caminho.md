@@ -3,7 +3,9 @@
 > **Origem:** Enio, 2026-07-22 — *"Creio que ainda não temos paths deformando textos. Faça estudo e
 > pesquisa sobre a ferramenta e coloque nos planos para implementar."*
 >
-> **Estado:** PESQUISA FECHADA · PLANO PROPOSTO · **nada construído**. Aguarda ordem do Enio.
+> **Estado:** ✅ **CONSTRUÍDO (W0–W5, 2026-07-22)** — motor + vínculo + UI + alça de canvas, tudo
+> smokado. Linha `line/Vector`, aguardando ordem de integração. **Zero bump de schema, zero
+> contrato congelado tocado.** O que mudou de forma face ao plano está marcado ⚠️ em cada wave.
 >
 > Irmãos: [`20_pesquisa_ferramentas_de_artista.md`](20_pesquisa_ferramentas_de_artista.md) §1.2 (que já
 > tinha nomeado o item e o classificado como "Faixa A #3, Pequeno/Médio, alto retorno") ·
@@ -482,9 +484,36 @@ algum lugar* — selecionar, prender, mover o offset, virar, soltar, medindo o q
 **Cena 23** (`PH2D_BUILD_SMOKE=23`): a mesa posta para o gesto. Irmã da 22 — aquela mostra o
 motor, esta o caminho até ele, e **as duas falham por motivos completamente diferentes**.
 
-### W5 — As alças no canvas
-in / center / out, Node-only. É a wave que pode ser cortada sem matar a feature (o `startOffset`
-numérico já entrega a capacidade) — e por isso é a última.
+### W5 — A alça no canvas ✅ **CONSTRUÍDA (2026-07-22)**, e com o modelo CORRIGIDO
+
+⚠️ **Uma alça, não três.** O plano dizia *in / center / out*, copiando os colchetes do
+Illustrator. Duas das três **não existem no nosso modelo**, e uma alça que não faz nada é pior
+que uma que falta:
+
+- **out** é a extensão do *container* de texto (onde ele para e transborda). **Não temos
+  container:** o texto flui livre pela curva, sem recorte. A alça não teria o que mover.
+- **center-flip** vira o texto quando arrastado *através* da curva — espacial, mas fiddly: ao
+  ajustar o offset o artista cruzaria a linha por acidente. O toggle **This side / Other side**
+  já faz isso explícito.
+- **in** é onde o texto começa (o `start_offset`) — a única das três que é uma posição a
+  arrastar. É esta.
+
+**Não é uma segunda porta para o Offset.** O slider já existe; a alça é o **mesmo** número
+editado de dois modos, ambos por `vec_text_ride::edit`. É o precedente das alças de gradiente e
+do gizmo de Transform: para uma grandeza **espacial**, arrastar na tela é legitimamente diferente
+de um slider, não um segundo modelo dela.
+
+Geometria: **`ArcPath::closest_arc(p)`** — o inverso do `frame_at` (onde na curva cai este ponto
+de mundo). Amostra grossa + refino local, sem derivada (HR-5), porque a curva não é convexa e
+Newton cairia no lóbulo errado numa curva em S. **Node-only** (política de modo da gaiola do
+Envelope), hit-testada **antes** do envelope e do pen (a geometria cozida reverteria uma âncora
+que o pen agarrasse).
+
+⚠️ A alça é **puro desenho no shell**, então mutá-la deixa a workspace verde ⇒ **arch-gate
+próprio sobre o fonte** (`the_textpath_handle_is_drawn_and_dragged`), que ainda checa a **ordem**
+do press — e essa checagem pegou o próprio scanner sendo enganado por um comentário
+`on_press_node` acima da chamada real. **20 gates no total** (motor + `closest_arc` + Node-only +
+arch), **4 mutações de gesto, 4 sangram**.
 
 ---
 
@@ -531,7 +560,7 @@ nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra c
 
 ## §8 — Superfície de colisão (para o handoff de integração)
 
-### Já construído (W0–W3) — o que a integração vê hoje
+### Já construído (W0–W5) — o que a integração vê hoje
 
 | Símbolo novo | Onde | Nota de colisão |
 |---|---|---|
@@ -546,8 +575,13 @@ nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra c
 | `paint_textpath.rs` · `state_textpath.rs` · `vec_text_ride.rs` | painel + shell (NOVOS) | Arquivos próprios ⇒ isolados |
 | `event.rs::track_slider_event` | `ph2d-panel-vector` | **Extração** do `apply_event` (teto de 200 LOC/fn) — move 5 braços existentes |
 | `VERTS_REWRITE` ganhou `.replace_cooked(` | `shells/desktop/tests/every_host_that_rewrites_verts_faces_the_radius_handle.rs` | Arch-gate de OUTRA wave que esta linha cegou e curou (§6, W3) |
+| `ArcPath::closest_arc` (W5) | `ph2d-vec-scene/src/arc_path.rs` | Método novo, mesmo arquivo — aditivo |
+| `draw_text_handle` (W5) | `ph2d-vec-render/src/text_handle.rs` (NOVO) | Arquivo próprio ⇒ isolado; re-exportado no `lib.rs` |
+| `VecOverlayPlan.textpath_handle` (W5) | `shells/desktop/src/vec_overlay.rs` | Campo apendado ao struct de plano de overlay (Node-only, testado) |
+| `App.vec_textpath_handle_drag` (W5) | `shells/desktop/src/app_state.rs` | Flag runtime-only (não é documento) — apendado |
+| `vec_text_ride::handle` + `HANDLE_R_PX` (W5) | `shells/desktop/src/vec_text_ride.rs` | Submódulo no arquivo próprio da feature |
 
-**NADA de schema bumpou, e a W4 também não** — era o custo que o §5.2 previa e que o componente
+**NADA de schema bumpou, W4 e W5 tampouco** — era o custo que o §5.2 previa e que o componente
 opcional dissolveu. `VEC_SCENE_SCHEMA_VERSION` e `PROJECT_SCHEMA` seguem **intactos**.
 
 ### O que ainda vem

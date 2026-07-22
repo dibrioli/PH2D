@@ -506,3 +506,157 @@ fn a_ball_too_fat_for_the_click_says_so_instead_of_leaking() {
 fn the_trap_is_off_by_default() {
     assert_eq!(FillParams::default().trap_px, 0.0);
 }
+
+/// 🔴 **O balde preenche uma caixa cujas QUINAS são traços separados — no default**
+/// (BUGS #23, o item que a wave Colorize deixou nomeado para o balde).
+///
+/// Uma caixa desenhada à mão são QUATRO traços, e o tremor deixa as pontas sem coincidir:
+/// medido nesta fixture, o vão entre os EIXOS das quinas é **0,0045 a 0,0404 doc**, contra
+/// **0,26 de tinta** (2 × 0,13). Na tela: quinas fechadas com 6× de folga. No raster (que é
+/// o EIXO, raio 0 — BUGS #14): um buraco.
+///
+/// ⚠️ **O sintoma não era vazar, era RECUSAR**, e piorava com a Precision: a 40 o balde
+/// preenchia, e a partir de **80** devolvia `Leaked` — o artista lê *"raise Gap Closure to
+/// seal the outline"* sobre uma quina que ele vê fechada, e **subir a Precision para melhorar
+/// o contorno quebrava o balde**.
+///
+/// Os dois remédios existentes RESGATAVAM (medido: `gap_reach` a partir de 0,05, ou
+/// `trap_px` 2) — mas os dois nascem **desligados**, então o default era a recusa. E mandar
+/// fechar à mão o que a tinta já cobre é a ferramenta pedindo que se conserte o que não está
+/// quebrado.
+///
+/// Este gate roda no **DEFAULT** (`gap_reach: 0`, `trap_px: 0`), que é onde o artista está,
+/// e varre a faixa de Precision — porque o defeito é função dela.
+///
+/// Mutação que sangra: tirar o laço de `weld::welds` do raster (volta o `Leaked` a 80+).
+#[test]
+fn the_bucket_fills_a_box_whose_corners_are_separate_strokes() {
+    let hand = |pts: &[Vec2], seed: usize| -> Vec<Vec2> {
+        let h = |k: usize| ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+        pts.iter()
+            .enumerate()
+            .map(|(i, p)| Vec2::new(p.x + h(i + seed) * 0.05, p.y + h(i + seed + 91) * 0.05))
+            .collect()
+    };
+    let seg = |a: Vec2, b: Vec2, n: usize| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let t = i as f32 / (n - 1) as f32;
+                Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            })
+            .collect()
+    };
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = [
+        (Vec2::new(-4.0, -2.5), Vec2::new(4.0, -2.5), 0usize),
+        (Vec2::new(4.0, -2.5), Vec2::new(4.0, 2.5), 7),
+        (Vec2::new(4.0, 2.5), Vec2::new(-4.0, 2.5), 13),
+        (Vec2::new(-4.0, 2.5), Vec2::new(-4.0, -2.5), 29),
+    ]
+    .into_iter()
+    .map(|(a, b, s)| {
+        let pts = hand(&seg(a, b, 24), s);
+        let n = pts.len();
+        (pts, vec![0.13; n], false)
+    })
+    .collect();
+
+    // ── Controle positivo: a fixture CONTÉM o fenômeno. ──
+    // As quinas têm de estar DESCOLADAS (senão não há buraco) e ainda assim cobertas pelo
+    // corpo pintado (senão o vão é deliberado e a solda não deve — nem pode — fechá-lo).
+    for i in 0..4 {
+        let gap = (*strokes[i].0.last().expect("ponta") - strokes[(i + 1) % 4].0[0]).length();
+        assert!(
+            gap > 0.0 && gap < 0.26,
+            "controle positivo: a quina {i} tem de estar descolada ({gap}) e coberta pela \
+             tinta (2 x 0,13) — senão a fixture não contém o fenômeno"
+        );
+    }
+
+    for precision in [40.0f32, 80.0, 160.0, 320.0] {
+        let r = fill_at(
+            &strokes,
+            Vec2::new(0.0, 0.0),
+            FillParams {
+                precision,
+                gap_reach: 0.0, // o DEFAULT: sem Gap Closure
+                trap_px: 0.0,   // o DEFAULT: sem Trap
+                ..Default::default()
+            },
+        );
+        let f = r.unwrap_or_else(|e| {
+            panic!(
+                "precisão {precision}: o balde recusou ({e:?}) uma caixa cujas quinas o \
+                 artista vê FECHADAS — e mandá-lo subir o Gap Closure é pedir que ele \
+                 conserte o que não está quebrado (BUGS #23)"
+            )
+        });
+        // Controle positivo #2: encheu de verdade. "Não recusou" fica verde com área ~0.
+        let area = signed_area(&f.outer).abs();
+        assert!(
+            area > 30.0,
+            "precisão {precision}: a caixa tem 40 unidades² e o preenchimento saiu com \
+             {area:.1} — recusar e devolver um caco são a mesma falha"
+        );
+    }
+}
+
+/// 🔴 **A solda e o Gap Closure são DISJUNTOS: um vão DELIBERADO segue aberto.**
+///
+/// A regra da solda é *"a tinta que o artista pintou cobre o vão"*. Um C aberto — o esboço,
+/// a forma que se deixa aberta de propósito — tem as pontas **longe** uma da outra, então ela
+/// nunca o toca. Sem este gate a solda seria o remédio novo que torna o antigo contagem
+/// dupla ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]): o Gap Closure viraria
+/// um knob que não muda nada, e ninguém notaria até alguém precisar dele.
+///
+/// Mutação que sangra: trocar o teste de alcance da solda por uma constante generosa — o C
+/// fecha sozinho e o `Leaked` some.
+#[test]
+fn a_deliberate_gap_still_leaks_and_still_needs_the_gap_closure() {
+    // Um quadrado com UM vão de 1,0 doc no lado direito — 4x a tinta que o cobriria. As
+    // outras três quinas COINCIDEM (as pontas dos dois traços se tocam), então só há um vão
+    // na figura e ele é o que está sob teste.
+    let w = 0.13;
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = vec![
+        (
+            vec![
+                Vec2::new(-2.0, -2.0),
+                Vec2::new(2.0, -2.0),
+                Vec2::new(2.0, -0.5),
+            ],
+            vec![w; 3],
+            false,
+        ),
+        (
+            vec![
+                Vec2::new(2.0, 0.5),
+                Vec2::new(2.0, 2.0),
+                Vec2::new(-2.0, 2.0),
+                Vec2::new(-2.0, -2.0),
+            ],
+            vec![w; 4],
+            false,
+        ),
+    ];
+    let params = |gap_reach: f32| FillParams {
+        precision: 80.0,
+        gap_reach,
+        ..Default::default()
+    };
+    assert_eq!(
+        fill_at(&strokes, Vec2::new(0.0, 0.0), params(0.0)).unwrap_err(),
+        FillError::Leaked,
+        "um vão de 1,0 doc contra 0,26 de tinta é DELIBERADO — a solda não pode fechá-lo, \
+         senão o Gap Closure vira um knob que não muda nada"
+    );
+    // ⚠️ **Achado do controle positivo, medido e NÃO perseguido aqui:** o `reach` que fecha
+    // este vão de 1,0 doc é **4,0** — 4× o vão (varrido: 0,5 · 1,0 · 1,5 · 2,0 = `Leaked`;
+    // 4,0 preenche). O slider é rotulado pelo ALCANCE da extensão, então o artista que mede
+    // o próprio vão e digita esse número recebe um `Leaked`. É ergonomia do **Gap Closure**,
+    // não da solda (que já não toca este vão — é o que a asserção acima prova), e por isso
+    // fica NOMEADO em vez de contrabandeado. O número aqui é o MEDIDO, não um palpite.
+    assert!(
+        fill_at(&strokes, Vec2::new(0.0, 0.0), params(4.0)).is_ok(),
+        "controle positivo: o Gap Closure continua sendo a ferramenta de quem quer fechar \
+         o que decidiu deixar aberto"
+    );
+}

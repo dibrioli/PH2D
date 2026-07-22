@@ -1567,7 +1567,8 @@ virou remoção de código que a lei já subsome.
 ## #23 — A cor escapava por uma quina que o artista via FECHADA
 
 **2026-07-21** · *"mesmo problema veja as quinas"* → auditoria de 3 agentes → **smoke
-APROVADO** · e depois: *"nada tira a extrapolação"* (Enio, 6º smoke do Colorize).
+APROVADO** · e depois: *"nada tira a extrapolação"* (Enio, 6º smoke do Colorize) →
+**smoke da SOLDA APROVADO no mesmo dia**.
 
 ### O INVARIANTE
 
@@ -1647,12 +1648,46 @@ segmentos.
    um atalho `r_e <= 0` **provadamente inerte** (o teste de alcance já responde). O atalho foi
    DELETADO — uma 2ª porta para a mesma regra é uma porta que ninguém vai lembrar de manter.
 
-### O que ficou ABERTO (e é do balde, não do Colorize)
+### O BALDE tinha o mesmo buraco — e era PIOR (fechado 2026-07-21, mesma sessão)
 
-O **`fill_at`** rasteriza as fronteiras pela MESMA lei de raio 0 e tem o MESMO buraco de
-quina — ele só não aparece porque o balde tem o Gap Closure para o artista fechar à mão. A
-solda é a resposta estrutural, e ela mora numa crate que o balde não importa. **Wave própria,
-não contrabando.**
+O item ficou aberto por uma tarde e a medição o reescreveu. O `fill_at` rasteriza pela MESMA
+lei de raio 0, e o próprio código **já nomeava o defeito e o declarava aceitável**:
+
+> *"duas linhas cujos CORPOS se sobrepõem mas cujos eixos não se cruzam deixam de selar
+> sozinhas — é o Gap Closure que fecha, e o toast do vazamento já o sugere."*
+
+O **mecanismo** estava certo; o **veredito** errado. E o sintoma não era vazar:
+
+| precisão | 40 | 80 | 160 | 320 |
+|---|---|---|---|---|
+| balde, no default | preenche | **`Leaked`** | **`Leaked`** | **`Leaked`** |
+
+O artista lia **"Fill leaked — raise Gap Closure to seal the outline"** sobre uma quina que
+na tela está fechada com 6× de folga. E **subir a Precision quebrava o balde**: a 40
+funcionava, a 80 parava — exatamente o knob que se mexe para melhorar o contorno.
+
+Os dois remédios existentes RESGATAVAM (`gap_reach ≥ 0,05`, ou `trap_px 2`), e **os dois
+nascem desligados** — o default era a recusa. Mandar fechar à mão o que a tinta já cobre é a
+ferramenta pedindo que se conserte o que não está quebrado.
+
+Fix: `weld.rs` **mudou de casa** — saiu da `ph2d-flip-colorize` e foi para a
+`ph2d-flip-fill`, que é a dona da pergunta *"onde a parede continua?"*. Uma porta, dois
+consumidores; duas cópias divergiriam, e a borda de uma cor passaria a discordar da borda de
+um balde na mesma arte. Com Gap Closure **desligado** o resultado ficou **idêntico** ao que
+`gap_reach = 0,2` produzia antes.
+
+⚠️ **Não é contagem dupla, e a disjunção é por CONSTRUÇÃO** — a solda só dispara onde a tinta
+já cobre, então um vão deliberado (o C aberto, o esboço) tem as pontas longe e ela nunca o
+toca. Gate irmão `a_deliberate_gap_still_leaks_and_still_needs_the_gap_closure` pina os dois
+lados, e o gate do C aberto do shell continuou verde sem ser tocado.
+
+### ⚠️ Achado do controle positivo, medido e NÃO perseguido
+
+Escrevendo o gate da disjunção: o `reach` que fecha um vão de **1,0 doc** é **4,0** — 4× o
+vão (varrido: 0,5 · 1,0 · 1,5 · 2,0 todos `Leaked`). O slider é rotulado pelo **alcance da
+extensão**, então o artista que mede o próprio vão e digita esse número recebe um `Leaked`.
+É ergonomia do **Gap Closure**, não da solda, e fica **nomeado** aqui em vez de contrabandeado
+dentro desta wave ([[feedback_ergonomics_verdict_is_a_design_bug]]).
 
 ---
 

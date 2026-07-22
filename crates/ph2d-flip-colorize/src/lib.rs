@@ -47,7 +47,6 @@ mod flow;
 mod segment;
 mod snap;
 mod voronoi;
-mod weld;
 use segment::{NO_REGION, segment};
 
 // Mirram o `fill_at` (`09 §2.1` — MESMO raster, MESMO back-end).
@@ -255,7 +254,7 @@ pub fn colorize_with(
     // 2b. **As JUNTAS** (`weld.rs`): onde dois traços se sobrepõem na tela mas os EIXOS não
     //     se tocam, a parede ganha o pedaço que falta. Vai pela MESMA porta do passo 2 — uma
     //     solda é um pedaço de linha, e a tinta do artista já está por cima dela.
-    for (a, b) in weld::welds(strokes) {
+    for (a, b) in ph2d_flip_fill::welds(strokes) {
         grid.stroke_capsule(a, b, 0.0);
         grid.ink_capsule(a, b, 0.0);
     }

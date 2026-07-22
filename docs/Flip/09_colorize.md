@@ -1,6 +1,6 @@
 # Flip — a wave **COLORIZE**: o plano
 
-> **Estado (2026-07-21, noite): a fatia C3 — o ONION FILL — LANDOU** (pendente de smoke).
+> **Estado (2026-07-21, noite): a fatia C3 — o ONION FILL — LANDOU, smoke APROVADO.**
 > Com chaves marcadas na tira, **um Apply colore todas**: o rabisco é autorado em MUNDO por
 > cima das poses empilhadas e semeia cada quadro.
 >
@@ -46,7 +46,7 @@
 > (0, 4, 8) com o divisor em posições diferentes — marque as três na tira e clique Apply uma
 > vez (passos 6-9 no texto que a cena imprime).
 
-> **Estado (2026-07-21, tarde): A FUGA PELA QUINA FECHOU — a parede é o EIXO, e a arte é o
+> **Estado (2026-07-21, tarde): A FUGA PELA QUINA FECHOU (smoke APROVADO) — a parede é o EIXO, e a arte é o
 > CORPO** (report do Enio: *"nada tira a extrapolação"*; era o item ABERTO nº 1 da auditoria da
 > manhã, e o smoke dela foi aprovado). Registro completo: [BUGS #23](BUGS_flip.md) e
 > [#24](BUGS_flip.md).

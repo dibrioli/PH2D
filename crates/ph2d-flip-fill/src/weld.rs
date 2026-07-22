@@ -24,7 +24,7 @@
 use ph2d_core::Vec2;
 
 /// Uma junta a fechar: um segmento de parede virtual entre `a` e `b`.
-pub(crate) type Weld = (Vec2, Vec2);
+pub type Weld = (Vec2, Vec2);
 
 /// O envelope de um traço: bbox dos EIXOS + a maior meia-largura dele.
 struct Envelope {
@@ -75,7 +75,8 @@ fn closest_on_segment(p: Vec2, a: Vec2, b: Vec2) -> (f32, Vec2, f32) {
 /// se o corpo dela cobre os dois, a tela mostra os três unidos. O que ela **não** faz é soldar
 /// duas vezes no mesmo traço — por traço fica a junta mais próxima, que é a que o artista
 /// desenhou.
-pub(crate) fn welds(strokes: &[(Vec<Vec2>, Vec<f32>, bool)]) -> Vec<Weld> {
+#[must_use]
+pub fn welds(strokes: &[(Vec<Vec2>, Vec<f32>, bool)]) -> Vec<Weld> {
     let env: Vec<Envelope> = strokes.iter().map(|(pts, w, _)| envelope(pts, w)).collect();
     let mut out: Vec<Weld> = Vec::new();
 

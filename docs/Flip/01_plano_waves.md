@@ -13,8 +13,8 @@
 > **instância/pose de quadro** → **multiframe** → salvar. Docs por wave: WT [`03`](03_traco_rasterizacao.md) ·
 > W3 [`05`](05_frames_ghost_tween.md) · W4 [`06`](06_fill_balde.md) · W5 [`07`](07_reshape_escultura.md) ·
 > W6 Edit Mode [`08`](08_edit_mode_selecao.md) · Colorize [`09`](09_colorize.md) · Região por curvas [`10`](10_regiao_por_curvas.md).
-> **A wave Colorize FECHOU as três fatias** (C1 Trap · C2 LazyBrush · C3 onion fill —
-> [`09_colorize.md`](09_colorize.md) §7; C3 pendente de smoke). A integração
+> **A wave Colorize FECHOU as três fatias, todas smokadas** (C1 Trap · C2 LazyBrush ·
+> C3 onion fill — [`09_colorize.md`](09_colorize.md) §7). A integração
 > com a **timeline principal** segue **ADIADA** (Enio 2026-07-12) e o **export** é deferido de
 > propósito. Fila e backlog verificado:
 > [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
@@ -260,7 +260,7 @@ paint-behind, multiframe.
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
 - **Tween v2:** matching espacial + espiral logarítmica + UI de correção de pares (04 §2).
 - **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C3 (onion fill)
-  LANDOU 2026-07-21, pendente smoke** — com chaves marcadas na tira um Apply colore todas; o
+  LANDOU 2026-07-21, smoke APROVADO** — com chaves marcadas na tira um Apply colore todas; o
   que ela acrescenta NÃO é o range (esse é do W7) e sim a **SEMENTE**: o rabisco é autorado em
   MUNDO sobre as poses empilhadas e semeia cada quadro, que resolve sozinho porque a linha se
   move ([`09 §5.2`](09_colorize.md)). **C2 LANDOU (2026-07-19,
@@ -270,8 +270,12 @@ paint-behind, multiframe.
   `PH2D_FLIP_COLORIZE_SMOKE=1`). ~~multiframe~~ · ~~Apply live~~ · ~~C3~~ — os três landaram.
   **ABERTO:** **pré-segmentação por regiões** (perf a 4K, [`09`](09_colorize.md) §7.1) · o
   re-Apply ao vivo custa 61-294 ms/frame contra o kill-criterion de 16 ms (§7.2) · o `trap_px`
-  não sobrevive ao clamp de `MAX_SIDE` · **o `fill_at` do BALDE tem o mesmo buraco de quina do
-  [BUGS #23](BUGS_flip.md)** (wave própria).
+  não sobrevive ao clamp de `MAX_SIDE`. ~~o `fill_at` do BALDE tem o mesmo buraco de quina~~ —
+  **FECHADO 2026-07-21** ([BUGS #23](BUGS_flip.md)): era pior que no Colorize (o balde
+  **RECUSAVA** a partir da precisão 80, com o toast mandando subir o Gap Closure sobre uma
+  quina fechada na tela); a `weld.rs` mudou de casa para a `ph2d-flip-fill` e serve os dois
+  consumidores por uma porta só. **Aberto de lá:** o `reach` do Gap Closure precisa de **4× o
+  vão** para fechá-lo, e o slider é rotulado pelo alcance — medido, nomeado, não perseguido.
 - **Ghost extras:** light table (marcadores fixos) + Shift & Trace (transform por ghost +
   F1/F2/F3) (04 §4).
 - ~~**Edit Mode**~~ (seleção de traço/ponto/segmento + transform): **LANDOU (W6, 2026-07-13, doc

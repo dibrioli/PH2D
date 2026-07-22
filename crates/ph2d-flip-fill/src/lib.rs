@@ -41,6 +41,7 @@ mod edt;
 mod gap;
 mod raster;
 mod trace;
+mod weld;
 
 pub use arrange::{Region, region_at};
 pub use ball::{TrapBall, TrapRegion};
@@ -51,6 +52,7 @@ pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
 pub use raster::{BOUNDARY, FILLED, Grid, INK};
 pub use trace::{RDP_EPSILON_PX, signed_area, simplify_ring, trace_contours};
+pub use weld::{Weld, welds};
 
 use ph2d_core::Vec2;
 
@@ -258,10 +260,16 @@ pub fn fill_at(
     //      passo 5, que crava a borda da cor EM CIMA do eixo — sem ele, a cor pararia
     //      na face interna da parede, ~1 px de buffer aquém.
     //
-    //    (A ESPESSURA não entra no raster — só folga o bbox, no passo 2. O preço da
-    //    âncora zoom-proof: duas linhas cujos CORPOS se sobrepõem mas cujos eixos não
-    //    se cruzam deixam de selar sozinhas — é o Gap Closure que fecha, e o toast do
-    //    vazamento já o sugere.)
+    //    ⚠️ **CORREÇÃO (2026-07-21, BUGS #23).** O comentário que morava aqui dizia:
+    //    *"duas linhas cujos CORPOS se sobrepõem mas cujos eixos não se cruzam deixam de
+    //    selar sozinhas — é o Gap Closure que fecha, e o toast do vazamento já o sugere"*.
+    //    O **mecanismo** estava certo e o **veredito** errado. Medido numa caixa de mão de
+    //    4 traços (o vão entre os eixos das quinas: 0,0045 a 0,0404 doc, contra 0,26 de
+    //    tinta): a partir da precisão **80** o balde devolve `Leaked` e o artista lê *"raise
+    //    Gap Closure to seal the outline"* — sobre uma quina que na tela está fechada com
+    //    **6× de folga**. Pior: a 40 preenchia, então **subir a Precision quebrava o
+    //    balde**. Mandar o artista fechar à mão um vão que ele já cobriu de tinta é a
+    //    ferramenta pedindo que ele conserte o que não está quebrado.
     for (pts, _, closed) in strokes {
         let n = pts.len();
         if n < 2 {
@@ -273,6 +281,21 @@ pub fn fill_at(
             grid.stroke_capsule(a, b, 0.0); // a parede, no eixo
             grid.ink_capsule(a, b, 0.0); // a linha do eixo (alvo do passo 5)
         }
+    }
+    // **As JUNTAS** (`weld.rs`): onde a tinta que o artista pintou cobre o vão entre duas
+    // partes, a parede é contínua ali — porque na TELA ela é. Regra DERIVADA da arte
+    // (`d ≤ meia-largura + meia-largura`), sem knob e sem constante.
+    //
+    // ⚠️ **Não é contagem dupla com o Gap Closure, e os dois são DISJUNTOS por construção**
+    // ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]): a solda só dispara onde
+    // a tinta JÁ cobre — um vão deliberado (um C aberto, um esboço) tem as pontas longe uma
+    // da outra e ela nunca o toca. O Gap Closure segue sendo a ferramenta de quem quer
+    // fechar o que decidiu deixar aberto; a solda faz o **default** parar de contradizer a
+    // tela. E ela **não entra em `closures`**: um fechamento é artefato AUTORADO, que o
+    // chamador materializa e o artista vê — a solda não é nada disso.
+    for (a, b) in weld::welds(strokes) {
+        grid.stroke_capsule(a, b, 0.0);
+        grid.ink_capsule(a, b, 0.0);
     }
     for c in &closures {
         grid.stroke_capsule(c.a, c.b, 0.0); // o fechamento é fino (1px) e é só parede

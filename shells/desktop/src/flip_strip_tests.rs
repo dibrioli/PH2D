@@ -535,8 +535,10 @@ fn the_pairs_toggle_does_not_open_without_an_interval() {
 #[test]
 fn the_add_button_uses_the_corrected_pairing() {
     let (mut doc, oid, lid, mut ph) = swap_doc();
-    let mut strip = FlipStrip::default();
-    strip.tween_count = 1;
+    let mut strip = FlipStrip {
+        tween_count: 1,
+        ..Default::default()
+    };
     ph.seek(0.0);
     // Abre Pairs.
     click(

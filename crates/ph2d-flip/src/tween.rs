@@ -507,7 +507,7 @@ impl FlipObject {
                 continue; // chave real do usuário no caminho: respeita
             }
             let t = (f - from) as f32 / gap as f32;
-            let art = tween_drawing_with(&a, &b, t, req.options, &plan);
+            let art = tween_drawing_with(&a, &b, t, req.options, plan);
             let Some(new_id) = self.insert_frame(req.layer, f, Hold::Implicit, KeyKind::Breakdown)
             else {
                 continue;

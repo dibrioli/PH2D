@@ -32,7 +32,7 @@ use super::gpu_demos::{
 };
 use super::gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
-    build_gpu_spherize_demo_document,
+    build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -104,6 +104,10 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // The four-reduction bounding-box deformer (the first Min user).
     push("demo=14 four-point-warp (bbox)", &|d| {
         build_gpu_four_point_warp_demo_document(d, reg)
+    });
+    // The count-changing SourceRows deformer that reads its template.
+    push("demo=15 kaleidoscope (SourceRows fan-out)", &|d| {
+        build_gpu_kaleidoscope_demo_document(d, reg)
     });
     out
 }

@@ -5228,6 +5228,7 @@ dependencies = [
  "ph2d-node-motion-four-point-warp",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-integrate",
+ "ph2d-node-motion-kaleidoscope",
  "ph2d-node-motion-look-at",
  "ph2d-node-motion-luminance",
  "ph2d-node-motion-move",

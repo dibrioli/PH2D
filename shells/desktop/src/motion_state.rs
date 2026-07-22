@@ -55,7 +55,7 @@ use gpu_neighbour_demos::{
 };
 use gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
-    build_gpu_spherize_demo_document,
+    build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
 };
 use gpu_panel_demo::build_gpu_panel_demo_document;
 use gpu_voronoi_demo::build_gpu_voronoi_demo_document;
@@ -209,6 +209,11 @@ impl MotionState {
             // reductions, the first use of Min).
             Ok("14") => {
                 build_gpu_four_point_warp_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // The count-changing deformer: the mandala fan-out (StreamOp
+            // SourceRows, the first kernel to READ its template).
+            Ok("15") => {
+                build_gpu_kaleidoscope_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

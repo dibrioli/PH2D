@@ -280,3 +280,88 @@ pub(super) fn build_gpu_four_point_warp_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The spinning **MANDALA** (`PH2D_GPU_COOK_DEMO=15`) — the ready-to-smoke
+/// document for the COUNT-CHANGING deformer: `grid(200×200) → move → kaleidoscope
+/// → output`, a source blob fanned into 12 mirrored slices and spun by an LFO.
+/// **40.000 source elements × 12 = 480.000 on the device.**
+///
+/// ## What you should see
+///
+/// A twelve-fold mandala that **rotates**, its slices meeting as mirror images
+/// (the true kaleidoscope fold — every other slice is reflected). The source is a
+/// dense square parked off the centre, so each slice is a wedge and the twelve
+/// wedges close into a ring that turns as the spin LFO sweeps. Nothing should
+/// tear at the seams between slices (that is the mirror agreeing at the boundary).
+///
+/// ## What it is actually demonstrating
+///
+/// This is the FIRST count-changing node on the device that READS its template.
+/// Its output is `n · segments` elements — a fan-out the CPU pays in full — and
+/// each output element is the source rotated into its slice. On the GPU it is a
+/// `StreamOp::SourceRows` kernel: it reads the source `P` at row `i % n`
+/// (`ColumnAccess::SourceRead`, the length-decouple that lets a kernel read a
+/// template shorter than its own dispatch), writes the rotated position and the
+/// template row, and the sequencer gathers every other column onto each slice —
+/// so `size`/`tint`/`id` are duplicated exactly like the CPU's `dup_n`. If a slice
+/// ever shows the wrong copy or lands at the origin, the source read or the fan-out
+/// broke.
+///
+/// ⚠️ **`spin` is broadcast at index 0** — one global rotation for the whole
+/// mandala, the CPU's `first()`.
+pub(super) fn build_gpu_kaleidoscope_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+
+    // 200 × 200 = 40.000 source elements; × 12 slices = 480.000 on the device.
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 200.0);
+    g.set_param(grid, "cols", 200.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+
+    // Park the source off the centre so each slice is a WEDGE and the twelve close
+    // into a ring (a grid centred on the pivot would just overlap itself).
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 260.0);
+    g.set_param(mv, "dy", 0.0);
+
+    let kal = g.add_node("motion.kaleidoscope");
+    g.set_param(kal, "segments", 12.0);
+    g.set_param(kal, "reflect", 1.0); // the true kaleidoscope fold (Dₙ)
+
+    // The spin: `value.lfo` in degrees, a slow full sweep so the mandala turns.
+    // Amplitude 180 + offset 180 keeps it monotonic-looking across a period.
+    let spin = g.add_node("value.lfo");
+    g.set_param(spin, "period", 12.0);
+    g.set_param(spin, "amplitude", 180.0);
+    g.set_param(spin, "offset", 180.0);
+
+    let out = g.add_node("motion.output");
+
+    for (i, n) in [grid, mv, kal, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 140.0,
+            },
+        );
+    }
+    g.set_pos(spin, Pos { x: 440.0, y: 320.0 });
+
+    for (from, to, port) in [(grid, mv, 0u16), (mv, kal, 0), (spin, kal, 1), (kal, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

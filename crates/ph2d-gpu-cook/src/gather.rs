@@ -50,6 +50,12 @@ pub(crate) fn column_present(
 ) -> bool {
     match inputs.get(b.port) {
         None => false,
+        // A source-mapped read (ADR-0136, `StreamOp::SourceRows`): the template
+        // port is length-decoupled from the dispatch (dispatch = count law,
+        // template = its own length), so presence is "carries the column at any
+        // non-empty length" — the same rule the id-gather's state ports get, and
+        // the body reads it at its OWN index (`kaleidoscope`'s `i % src_n`).
+        Some(s) if b.access.is_source_read() => s.count > 0 && s.cols.contains_key(b.column),
         Some(s) if gather_port.is_some_and(|kp| b.port != kp) => {
             s.count > 0 && s.cols.contains_key(b.column)
         }

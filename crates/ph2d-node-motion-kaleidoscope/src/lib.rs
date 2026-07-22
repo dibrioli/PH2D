@@ -22,6 +22,9 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{
+    ColumnAccess, ColumnBinding, GpuKernel, ROWS_COL, SourceWindow, StreamOp,
+};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -80,6 +83,103 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The GPU kernel (GPU/M5, ADR-0136 `StreamOp::SourceRows`): a COUNT-CHANGING
+/// deformer, output length `segments · n`, slice-major (output `i` is slice
+/// `i / n`, source row `i % n`).
+///
+/// ⚠️ **This is the first `SourceRows` kernel that READS its template.**
+/// `sim.spawn` only writes `id`/`cp_rows` and lets the gather copy the template;
+/// kaleidoscope reads the source `P` at row `i % window_src_n`
+/// ([`ColumnAccess::SourceRead`], the length-decouple that makes a template-port
+/// read present) and writes a ROTATED output `P` — so `P` is TWO bindings
+/// (SourceRead in, Write out; they are different buffers). The sequencer then
+/// gathers every OTHER template column at `cp_rows`, duplicating `size`/`tint`/
+/// `id` onto each slice exactly like the CPU's `dup_n`.
+///
+/// ⚠️ **The trig is the CPU's parabolic sine, ported** (see `motion.bend`): HR-5
+/// keeps the canonical path transcendental-free, so the device's real `sin` would
+/// be a different curve, not a tighter ε. The rotation matches [`kaleidoscope`]
+/// operation for operation, including the odd-slice mirror (`reflect`).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let k_srcn = max(params.window_src_n, 1u);\n\
+        let k_seg = clamp(round(params.segments), 1.0, 256.0);\n\
+        let k_s = i / k_srcn;\n\
+        let k_row = i % k_srcn;\n\
+        write_cp_rows(i, f32(k_row));\n\
+        let k_src = read_in_P(k_row);\n\
+        let k_lx = k_src.x - params.pivot_x;\n\
+        var k_ly = k_src.y - params.pivot_y;\n\
+        if (round(params.reflect) != 0.0 && (k_s % 2u) == 1u) { k_ly = -k_ly; }\n\
+        let k_ph = f32(k_s) / k_seg + read_spin_v(0u) / 360.0;\n\
+        let k_c = kal_sin_cycles(k_ph + 0.25);\n\
+        let k_sn = kal_sin_cycles(k_ph);\n\
+        write_P(i, vec2<f32>(\n\
+        \x20   k_lx * k_c - k_ly * k_sn + params.pivot_x,\n\
+        \x20   k_lx * k_sn + k_ly * k_c + params.pivot_y));\n",
+    wgsl_lib: "\
+        // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
+        fn kal_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[
+        // The source position, read at the mapped row `i % src_n` — length
+        // decoupled from the dispatch (the template is `n`, the output `n·seg`).
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::SourceRead,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // The rotated OUTPUT position — a separate buffer from the read above.
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // The template row each output element is born from — the SourceRows
+        // machinery gathers every other column at these rows and drops this one.
+        ColumnBinding {
+            column: ROWS_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // The global spin (degrees), broadcast at index 0 — the CPU's `first()`.
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &["segments", "reflect", "pivot_x", "pivot_y"],
+    // Output = `n · segments`, the CPU's `positions.len()`. `segments` is clamped
+    // to the SAME `[1, MAX_SEGMENTS]` the `eval` uses, so both sides mint the same
+    // count and the kernel's `k_seg` divisor matches its slice count.
+    count_law: Some(|c| {
+        let n = c.inputs.first().copied().unwrap_or(0) as usize;
+        let segments = ((c.param)("segments").round() as i64).clamp(1, MAX_SEGMENTS) as usize;
+        SourceWindow::of_count(n * segments)
+    }),
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// Replicate `p` into `segments` slices about `pivot`, rotated by `spin_cycles`, with
@@ -176,6 +276,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 (ADR-0136): a count-changing SourceRows kernel — the first that
+    // READS its template (via `ColumnAccess::SourceRead`). Side metadata on the
+    // registry; the frozen node contract is untouched.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows { port: 0 });
     Ok(())
 }
 

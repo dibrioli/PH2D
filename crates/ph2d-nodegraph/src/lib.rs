@@ -35,6 +35,7 @@
 
 pub mod algorithm_meta;
 pub mod attr;
+pub mod column;
 pub mod cook;
 pub mod effect;
 pub mod format;

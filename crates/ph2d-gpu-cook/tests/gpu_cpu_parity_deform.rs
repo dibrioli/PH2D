@@ -55,6 +55,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_twist::register(&mut reg).unwrap();
     ph2d_node_motion_spherize::register(&mut reg).unwrap();
     ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
+    ph2d_node_motion_kaleidoscope::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     reg
 }
@@ -66,6 +67,10 @@ const PLAYHEAD: f64 = 0.37;
 /// the reduction's first block seam (256) and its second level, so the recursion
 /// is exercised by the product rather than only by the primitive's own gate.
 const SIDE: f32 = 128.0;
+
+/// The kaleidoscope's source side length: `KAL_SIDE² · segments` is the output,
+/// kept light (64² × 8 = 32.768).
+const KAL_SIDE: usize = 64;
 
 /// Position bound. **Measured, not borrowed** — the gate prints its worst at
 /// every size, and this is that number with head-room, not the `2e-3` the
@@ -315,6 +320,89 @@ fn four_point_chain(reg: &NodeRegistry, warp: f32, off: [f32; 8]) -> (Graph, Nod
     g.set_param(amt, "offset", warp);
     let out = g.add_node("motion.output");
     for (from, to, port) in [(grid, fpw, 0u16), (amt, fpw, 1), (fpw, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// `motion.kaleidoscope`, on the device, agrees with the canonical mandala — the
+/// **count-changing** `StreamOp::SourceRows` deformer, and the first kernel to
+/// READ its template (`ColumnAccess::SourceRead`).
+///
+/// ⚠️ **The instance COUNT must match first** — the output is `n · segments`, and
+/// a wrong count law or a broken fan-out is a different number of things on
+/// screen, which `compare`'s length assert catches before any position. The
+/// element ORDER also has to agree: the CPU is slice-major (`out[s·n + i]`) and
+/// the device dispatches `i = s·src_n + row`, which coincide because `src_n = n`.
+///
+/// Both the **rotational** (`reflect` off, cyclic Cₖ) and **mirrored** (`reflect`
+/// on, the true kaleidoscope Dₖ) symmetries are tested — the odd-slice mirror is a
+/// separate branch on both sides. `spin` off-zero rotates the whole pattern, so
+/// the reduction-free transform is exercised at a non-trivial angle.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_kaleidoscope_deformer_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // (segments, reflect, spin_deg, pivot).
+    let cases: [(f32, bool, f32, [f32; 2]); 4] = [
+        (6.0, false, 0.0, [0.0, 0.0]),
+        (6.0, true, 0.0, [0.0, 0.0]),
+        (8.0, true, 37.0, [2.5, -1.5]),
+        (3.0, false, -110.0, [-3.0, 2.0]),
+    ];
+    for (segments, reflect, spin, pivot) in cases {
+        let (g, out) = kaleidoscope_chain(&reg, segments, reflect, spin, pivot);
+        let cpu = cook_cpu(&reg, &g, out);
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        assert_eq!(
+            cpu.len(),
+            KAL_SIDE * KAL_SIDE * segments as usize,
+            "kaleidoscope must fan out to n·segments"
+        );
+        compare(
+            &format!("kaleidoscope seg {segments} reflect {reflect} spin {spin}"),
+            &cpu,
+            &dev,
+        );
+    }
+}
+
+/// A grid, kaleidoscoped, then output. `spin` is a constant `value.lfo` (a fixed
+/// global rotation — the reproducible authoring case).
+fn kaleidoscope_chain(
+    reg: &NodeRegistry,
+    segments: f32,
+    reflect: bool,
+    spin_deg: f32,
+    pivot: [f32; 2],
+) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    // A smaller source so `n · segments` stays a light dispatch (64² × 8 = 32.768).
+    g.set_param(grid, "rows", KAL_SIDE as f32);
+    g.set_param(grid, "cols", KAL_SIDE as f32);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let kal = g.add_node("motion.kaleidoscope");
+    g.set_param(kal, "segments", segments);
+    g.set_param(kal, "reflect", f32::from(reflect));
+    g.set_param(kal, "pivot_x", pivot[0]);
+    g.set_param(kal, "pivot_y", pivot[1]);
+    let spin = g.add_node("value.lfo");
+    g.set_param(spin, "amplitude", 0.0);
+    g.set_param(spin, "offset", spin_deg);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(grid, kal, 0u16), (spin, kal, 1), (kal, out, 0)] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, port),

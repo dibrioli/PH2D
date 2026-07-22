@@ -1,5 +1,5 @@
 //! Gates do overlay da correção de pares. O que se pina: a cor da linha DIZ a confiança
-//! (verde↔vermelho por custo, âmbar para o manual) e a geometria sai em px de TELA (senão o
+//! (verde<->vermelho por custo, âmbar para o manual) e a geometria sai em px de TELA (senão o
 //! Vello multiplicaria a espessura pelo zoom — a mesma cicatriz do `flip_selection_overlay`).
 
 use super::*;
@@ -26,7 +26,7 @@ fn the_link_colour_reads_the_confidence() {
         let (lo, hi) = (LINK_GOOD[k].min(LINK_BAD[k]), LINK_GOOD[k].max(LINK_BAD[k]));
         assert!(
             mid[k] >= lo - 1e-6 && mid[k] <= hi + 1e-6,
-            "o canal {k} do meio saiu fora do intervalo verde↔vermelho: {}",
+            "o canal {k} do meio saiu fora do intervalo verde<->vermelho: {}",
             mid[k]
         );
     }

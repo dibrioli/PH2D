@@ -7,7 +7,7 @@ use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, TweenPlan};
 use ph2d_vector::Affine;
 
-/// Duas nuvens de traços bem separadas → o automático pareia A0↔B0, A1↔B1. É o palco dos
+/// Duas nuvens de traços bem separadas -> o automático pareia A0<->B0, A1<->B1. É o palco dos
 /// re-pares.
 fn two_cluster() -> (FlipDrawing, FlipDrawing, TweenPlan) {
     let line = |x: f32, y: f32| {
@@ -23,8 +23,8 @@ fn two_cluster() -> (FlipDrawing, FlipDrawing, TweenPlan) {
     b.strokes.push(line(0.0, 1.0));
     b.strokes.push(line(100.0, 1.0));
     let plan = TweenPlan::build(&a, &b);
-    assert_eq!(plan.pair_of_a(0), Some(0), "premissa: A0↔B0");
-    assert_eq!(plan.pair_of_a(1), Some(1), "premissa: A1↔B1");
+    assert_eq!(plan.pair_of_a(0), Some(0), "premissa: A0<->B0");
+    assert_eq!(plan.pair_of_a(1), Some(1), "premissa: A1<->B1");
     (a, b, plan)
 }
 
@@ -45,7 +45,7 @@ const B1: PairSel = PairSel {
     idx: 1,
 };
 
-/// 🔴 **O 1º clique num traço MARCA** (nada → marcado); o clique no VAZIO desmarca.
+/// 🔴 **O 1º clique num traço MARCA** (nada -> marcado); o clique no VAZIO desmarca.
 #[test]
 fn a_click_selects_and_an_empty_click_deselects() {
     let (_, _, mut plan) = two_cluster();
@@ -60,7 +60,7 @@ fn a_click_selects_and_an_empty_click_deselects() {
 }
 
 /// 🔴 **Marcar A e clicar o outro LADO FORÇA o par.** É o gesto inteiro: A0 marcado + clique
-/// em B1 ⇒ A0↔B1, e a marca some.
+/// em B1 ⇒ A0<->B1, e a marca some.
 ///
 /// Mutação que sangra: não chamar `plan.repair` (só devolver `None`) ⇒ o par não muda.
 #[test]
@@ -116,16 +116,16 @@ fn the_pick_takes_the_nearest_stroke_within_reach() {
     b.strokes.push(seg(200.0));
 
     let id = Affine::IDENTITY;
-    // A 3 px de A0 (dentro da folga de 10) → pega A0.
+    // A 3 px de A0 (dentro da folga de 10) -> pega A0.
     assert_eq!(
         nearest_stroke(&a, id, &b, id, 50.0, 3.0),
         Some(A0),
         "3 px de A0 devia pegar A0"
     );
-    // A 3 px de A1 → pega A1 (o MAIS próximo, não o primeiro da lista).
+    // A 3 px de A1 -> pega A1 (o MAIS próximo, não o primeiro da lista).
     assert_eq!(nearest_stroke(&a, id, &b, id, 50.0, 97.0), Some(A1));
-    // Perto de B0 (lado B) → Side::B.
+    // Perto de B0 (lado B) -> Side::B.
     assert_eq!(nearest_stroke(&a, id, &b, id, 50.0, 203.0), Some(B0));
-    // No vazio (50 px de qualquer traço) → nada.
+    // No vazio (50 px de qualquer traço) -> nada.
     assert_eq!(nearest_stroke(&a, id, &b, id, 50.0, 50.0), None);
 }

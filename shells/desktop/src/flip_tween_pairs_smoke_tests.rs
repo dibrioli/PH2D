@@ -33,6 +33,6 @@ fn the_scene_orphans_the_spark_until_paired() {
     assert_eq!(plan.pair_of_b(2), None, "e a de B também");
 
     // O gesto do artista (marcar A2, clicar B2) força o par — a faísca deixa de piscar.
-    assert!(plan.repair(2, 2), "força faísca-A ↔ faísca-B");
+    assert!(plan.repair(2, 2), "força faísca-A <-> faísca-B");
     assert_eq!(plan.pair_of_a(2), Some(2), "pareada, a faísca viaja");
 }

@@ -41,6 +41,7 @@ mod segment;
 mod stroke;
 mod tween;
 mod tween_flip;
+mod tween_match;
 
 pub use autokey::AutokeyPolicy;
 pub use color::Rgba;
@@ -56,6 +57,7 @@ pub use pose::Pose;
 pub use segment::{Cutter, cuts, piece_of_point, probe_point};
 pub use stroke::{Cap, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke, Point};
 pub use tween::{TweenOptions, TweenRequest, tween_drawing};
+pub use tween_match::{PAIR_REJECT_COST, StrokeFeatures, TweenPlan, features};
 
 /// A curva de easing do tween — o MESMO enum que a timeline/graph editor usam
 /// (`ph2d-anim`), re-exportado para o painel/shell não dependerem da crate de

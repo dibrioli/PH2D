@@ -33,11 +33,11 @@
 //! (`ph2d-node-registry`, ADR-0031), and the domain evaluators (`ph2d-eval-*`,
 //! ADR-0034).
 
+pub mod algorithm_meta;
 pub mod attr;
 pub mod cook;
 pub mod effect;
 pub mod format;
-pub mod algorithm_meta;
 pub mod gpu;
 pub mod graph;
 pub mod node;

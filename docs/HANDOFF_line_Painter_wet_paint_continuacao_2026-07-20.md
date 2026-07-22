@@ -308,7 +308,51 @@ default). **Mutações: 2/2 sangram só os seus** — reinstalar o `fresh` derru
 gate antigo do W2.7 fica VERDE sobre o defeito** (ele só testa o nascimento — a prova de que era
 o gate que faltava); tirar só o braço `rebake_paper` derruba só o do desarme. Suíte tool 766 ok.
 
-**W2 restante:** só o W2.8, e ele virou FORK do Enio (ver bloco W2.8 acima) — a saída (2) o dissolve no W3.
+**⬛ DOC 21 — TODOS OS MÉTODOS DE STROKE NO WET (deposit-at-commit) LANDOU (2026-07-21,
+`ae531e51..c2eddcc9`, 4 estágios, AGUARDANDO SMOKE):** o Enio derrubou a premissa do W3
+(*"todos os modos stroke são perfeitamente adaptáveis... o depósito é estático e só após o
+mouse up a simulação começa... nos dinâmicos, quando se apertar Enter"*) — a análise
+multiagêntica (4 leitores + 3 designs + juiz, design decision-complete em
+[`docs/Painter/21_wet_stroke_integration_design.md`](docs/Painter/21_wet_stroke_integration_design.md))
+produziu as **4 leis**: **(A)** batch de autoria não-incremental é **UN-owned** — cai no
+pipeline flat NORMAL (wrapper de Selection byte-idêntico ao Paint; `wet_owns_the_dabs` ganhou
+`is_incremental || deposit_pass`); **(B)** a cauda do `stamp_drag_preview` **STASHA o batch
+exato que pintou** (`pending_deposit` — o depósito É o preview por construção; boolean
+multi-shape incluso via `restamp_shapes_preview`); **(C)** UMA porta de commit
+(`wetpaint_commit.rs::wetpaint_commit_deposit`, chamada pelo funil `commit_drag_preview` que
+TODO caminho de commit já usa): **peel → re-arm → replay único** via `stamp_dabs` sob
+`deposit_pass` (Tiling/RNG/bypass de graça); **(D) WET-ON-WET — o diferencial**: a sessão viva
+SOBREVIVE à autoria (writes próprios re-armam o guard; a água **CONGELA** sob a mão — hold
+DERIVADO no tick, `drag_preview.is_some()` em modo wet, zero estado novo) e o depósito do
+Enter **FUNDE com a água velha na MESMA sessão** (oráculo = ponteiro do `sess.base`, nunca
+aparência). DragDot/Anchored commitam no pen-up; Line/Arc/Ellipse/Polygon/FreeHand no
+Enter/Apply; Apply & Keep deposita POR aperto (gesto explícito ≠ I2); Esc devolve a água viva
+e intacta; **UNDO MATA a água** (lei do guard) — e o G10 nasceu VERMELHO pegando um vazamento
+real: o refill do shape reinstalado re-armava o guard depois do restore ⇒ o kill virou EAGER
+no `restore_model` (irmão do `dry_session_now`). Eraser × métodos re-stamp = flat erase
+honesto, água morre (W2.6 estendido). **Reverts do W3 (a lista honesta):** coerção de entrada
+DELETADA (shapes cruzam a fronteira wet ABERTOS, o método viaja junto — rota de ponteiro é
+por método) · narrowing do menu DELETADO (lista cheia sob wet) · o belt da rota FICA como
+muro. **Sem porta de região no engine** (o composite boolean já vira dabs de contorno) e
+**sem mudança de engine** (G7 pinou: 1 dab em stroke fresca TRANSFERE — a refutação do design
+de flush door). **19 gates** (G0 fingerprint do modo Paint pinada + G0a tabela-verdade + G7
+engine + 16 de produto), mutações sangrando cada uma a sua; **2 sobreviventes POR PROJETO
+documentados no código** (gate de relevo: `impasto_applies` já é Paint-only, contrato 2×; o
+`!eraser` do rearm: nenhum chamador atual). **Riscos nomeados (medir-primeiro, doc 21 §G):**
+pool de lanes em one-shots espalhados (pré-existente, ampliado) · `TRAIL_HALF=61` clipa pincel
+gigante (pré-existente, wave própria do engine) · cauda ≤2 dabs por lane multi-dab no
+`end_direct_stroke` (paridade byte com todo pen-up de hoje; se o smoke mostrar vão em contorno
+fechado, o fix nomeado é flush door no engine com gate próprio) · **a água congela enquanto um
+shape fica parado aberto** — forçado por mecanismo e é o modelo do dono; não "consertar" para
+o estado rasgado. **Higiene aceita sem pin:** o clear do stash no `paint_begin` (mutação
+sobreviveria — nenhum caminho atual chega lá com stash órfão). **SMOKE:** wet armado → Method
+agora tem TODAS as opções → Line/Ellipse/Polygon: autoria flat estática (água congela), Enter
+= *"o esboço derrete"* (deposita e flui); desenhe wash molhado ANTES e um shape POR CIMA —
+no Enter os dois fluem juntos (wet-on-wet); Esc devolve a água; Ctrl+Z sobre um Apply
+reinstala o shape editável sobre água parada; DragDot/Anchored: arrasto flat, up deposita.
+
+**W2 restante:** ~~o W2.8~~ — **dissolvido pelo doc 21** (a saída era um falso dilema; o Enio
+escolheu a integração real e ela landou).
 
 **W3 LANDOU (2026-07-21) — os knobs curados + os incompatíveis ESCONDIDOS (a saída 2 do fork,
 executada):** a seção Wet Paint ganhou **7 knobs** curados da tabela §16 do SPEC (o resto segue

@@ -1,10 +1,13 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
 > ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
-> [`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)** —
-> a linha **INTEGROU** ao `main` (as 8 waves + W4b + W5, smoke aprovado) e o **plano original acabou**.
-> Aquele doc te diz como REABRIR a linha, onde paramos e os planos a seguir. Este tracker é o estado
-> por-wave; aquele é o ponto de partida.
+> [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md)** —
+> a jornada de 21/07 (mais 21 waves, W6 → W-FormDrag) **INTEGROU** ao `main`, com todos os smokes
+> aprovados. Aquele doc te diz como REABRIR a worktree, o que já existe (para não reconstruir) e o
+> plano. Este tracker é o estado **por-wave**, para consulta pontual — não leitura linear.
+>
+> (O `HANDOFF_CONTINUACAO_line_physics_2026-07-19.md` era o equivalente da jornada anterior e está
+> **vencido**: o plano dele foi todo executado.)
 >
 > **Tracker VIVO do módulo** (o `docs/HANDOFF_*` da física). Toda jornada futura **atualiza este
 > arquivo**: estado por-wave, decisões, gotchas, ids/consts alocados. LLM nova lê ISTO + a

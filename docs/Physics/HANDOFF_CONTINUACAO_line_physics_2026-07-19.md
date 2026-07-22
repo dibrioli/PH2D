@@ -1,5 +1,10 @@
 # HANDOFF de CONTINUAÇÃO — `line/physics`, pós-integração (2026-07-19)
 
+> ⚠️ **VENCIDO (2026-07-22).** O plano deste doc foi todo executado — 21 waves, W6 → W-FormDrag,
+> integradas ao `main`. Quem assume a linha começa por
+> [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md).
+> Este fica como registro do que a jornada de 19/07 planejou.
+
 > **Para o próximo agente que assumir esta linha.** A linha **INTEGROU** ao `main` e o **plano
 > original acabou** — as 8 waves + W4b + W5, todas com smoke aprovado. Este doc te diz **como
 > reabrir**, **onde paramos** e **quais os planos a seguir**. Não há tarefa pendente forçada:

@@ -17,7 +17,7 @@
 | branch | `line/FLIP` |
 | HEAD | ver `git log -1 --format=%H line/FLIP` (o último commit é de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **19** (8 do Tween v2 + 11 da **correção de pares**, o fix do S2 e docs — ver **§9**) |
+| commits à frente do `main` | **21** (8 do Tween v2 + o resto da **correção de pares**, o fix do S2 e docs — ver **§9**; use `git rev-list --count main..line/FLIP` para o número exato, o ff-only não depende dele) |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
 
 > **Este handoff cobre DUAS entregas da mesma wave.** O **Tween v2** (§2–§8) está **SMOKE

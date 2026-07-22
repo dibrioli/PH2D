@@ -126,15 +126,17 @@ pub(crate) fn paint_impasto_section(
         brush.impasto_live_edit,
     );
     // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
-    // de Adjust Last Stroke"*) — then EVERY configuration card, not just the selected tool's (Enio,
-    // 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
-    // cards"*, refined the same day). The order and the one exception are Enio's: the **Sculpt card sits
-    // directly below TOOL** (eight of the ten chips are its verbs), then Body, then the **Knife card only
-    // while the Knife is the selected tool** (Plow is the one knob with no life outside that grip), then
-    // Material — which the tool now fans out to the three relief slots, so it is not a dead knob under
-    // any tool — and Lighting. The radio still says which tool the BRUSH is.
+    // de Adjust Last Stroke"*) — then the cards, per the layout Enio refined across the 2026-07-22
+    // smoke: **Body, Material and Lighting are permanent** (Body/Material fan their edits out to the
+    // relief slots on the tool side, so neither is a dead knob under any tool), while the two
+    // tool-SPECIFIC cards follow their tools — the **Sculpt card only with a sculpt verb in hand**
+    // (directly below TOOL, whose eight rightmost chips are its verbs) and the **Knife card only while
+    // the Knife is selected** (Plow has no life outside that grip). The radio still says which tool the
+    // BRUSH is.
     y = crate::paint_impasto_tool::paint_tool_card(ctx, theme, x, content_w, y, &brush);
-    y = paint_sculpt_card(ctx, theme, x, content_w, y, &brush);
+    if brush.is_sculpt {
+        y = paint_sculpt_card(ctx, theme, x, content_w, y, &brush);
+    }
     y = paint_body_card(ctx, theme, x, content_w, y, &brush);
     if brush.impasto_tool == TOOL_KNIFE {
         y = paint_knife_card(ctx, theme, x, content_w, y, &brush);
@@ -151,8 +153,9 @@ pub(crate) fn paint_impasto_section(
 const TOOL_KNIFE: u8 = 1;
 
 /// The **Sculpt** card: the selected verb's knob rows, framed. The verb itself is chosen on the TOOL
-/// radio above; this card shows (and edits) that verb's authored knobs — visible for every tool, like
-/// its Body/Knife siblings, since the all-cards rule (Enio, 2026-07-22).
+/// radio above; this card shows (and edits) that verb's authored knobs — painted only with a sculpt
+/// verb IN HAND (like the Knife card follows the Knife), directly below the TOOL card (Enio,
+/// 2026-07-22).
 fn paint_sculpt_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

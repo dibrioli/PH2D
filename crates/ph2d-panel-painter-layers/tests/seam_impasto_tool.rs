@@ -314,74 +314,75 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
     assert_eq!(bs.impasto_tool, 0, "…and Deposit is tool 0");
 }
 
-/// **Every configuration card is painted when Impasto is on — and none when it is off** (Enio,
-/// 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
-/// cards"*, refined the same day). The three refinements are pinned here too:
+/// **The impasto cards, exactly as Enio refined them across the 2026-07-22 smoke** — and none of them
+/// with Enable off:
 ///
-/// - the **Sculpt card sits directly below TOOL** (order: TOOL chip < Sculpt knob < Body knob);
-/// - the **Knife card is the one exception** — Plow paints only while the Knife is the selected tool;
-/// - the **Filter buttons follow the verb**: painted for Smooth/Sharpen/Inflate, never for a plane verb.
+/// - **Body, Material and Lighting are PERMANENT** (their edits fan out to the relief slots on the
+///   tool side, so none is a dead knob under any tool);
+/// - the two tool-SPECIFIC cards follow their tools: **Sculpt only with a verb in hand** (directly
+///   below TOOL — order pinned by y), **Knife only while the Knife is selected**;
+/// - the **Filter buttons follow the verb in hand**: Smooth/Sharpen/Inflate offer them, a plane verb
+///   (Flatten) does not, and no other tool sees them at all.
 ///
 /// One representative knob per card; the OFF half keeps the gate honest — presence alone would stay
 /// green if the Enable stopped gating anything.
 #[test]
 fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
-    let card_ids: [(ph2d_a11y::NodeId, &str); 4] = [
+    let permanent: [(ph2d_a11y::NodeId, &str); 3] = [
         (core_ids::PAINTER_IMPASTO_DEPTH, "Body/Depth"),
-        (core_ids::PAINTER_SCULPT_RADIUS_SLIDER, "Sculpt/Radius"),
         (core_ids::PAINTER_IMPASTO_SHINE, "Material/Shine"),
         (core_ids::PAINTER_IMPASTO_SHOW, "Lighting/Show"),
     ];
     for mode in RELIEF_MODES {
         let mut tool = tool_in(mode);
-        tool.set_sculpt_mode(0); // Smooth ⇒ the Sculpt card shows the Radius row
+        tool.set_sculpt_mode(0); // Smooth ⇒ the Sculpt card (in hand) shows the Radius row
         set_current_brush(Some(tool.brush_settings()));
         let (_host, _st, rects) = painted(&tool);
-        for (id, name) in card_ids {
+        for (id, name) in permanent {
             assert!(
                 rect_of(&rects, id).is_some(),
-                "with Impasto ON in {mode:?}, the {name} card is missing — the all-cards rule"
+                "with Impasto ON in {mode:?}, the {name} card is missing"
             );
         }
-        // The Knife card is the exception: Plow only while the Knife is in hand.
+        // The tool-specific pair follows its tools.
         let plow = rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW);
-        if mode == "knife" {
-            assert!(plow.is_some(), "the Knife in hand must show its Plow card");
-        } else {
-            assert!(
-                plow.is_none(),
-                "mode {mode:?} is offering Plow — the Knife card paints only for the Knife"
-            );
-        }
-        // Order: Sculpt directly below the TOOL card, Body after it.
-        let tool_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
-            .expect("TOOL chips painted")
-            .y;
-        let sculpt_y = rect_of(&rects, core_ids::PAINTER_SCULPT_RADIUS_SLIDER)
-            .expect("asserted above")
-            .y;
-        let body_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH)
-            .expect("asserted above")
-            .y;
-        assert!(
-            tool_y < sculpt_y && sculpt_y < body_y,
-            "card order must be TOOL < Sculpt < Body (got {tool_y} / {sculpt_y} / {body_y})"
-        );
-        // Filter buttons ask for the verb IN HAND: present only in Sculpt
-        // mode with a reshaping verb (Smooth here) — never while holding the
-        // Deposit or the Knife, even though the Sculpt card itself is
-        // visible there (Enio, same smoke).
+        let radius = rect_of(&rects, core_ids::PAINTER_SCULPT_RADIUS_SLIDER);
         let filter = rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER);
-        if mode == "sculpt" {
-            assert!(filter.is_some(), "Smooth in hand must offer Filter Layer");
-        } else {
+        match mode {
+            "knife" => {
+                assert!(plow.is_some(), "the Knife in hand must show its Plow card");
+                assert!(radius.is_none(), "the Sculpt card needs a verb in hand");
+            }
+            "sculpt" => {
+                assert!(plow.is_none(), "sculpt must not offer the Knife card");
+                // Order: the Sculpt card sits directly below TOOL, Body after it.
+                let tool_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
+                    .expect("TOOL chips painted")
+                    .y;
+                let sculpt_y = radius.expect("a verb in hand must show its card").y;
+                let body_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH)
+                    .expect("asserted above")
+                    .y;
+                assert!(
+                    tool_y < sculpt_y && sculpt_y < body_y,
+                    "card order must be TOOL < Sculpt < Body (got {tool_y} / {sculpt_y} / {body_y})"
+                );
+                assert!(filter.is_some(), "Smooth in hand must offer Filter Layer");
+            }
+            _ => {
+                assert!(
+                    plow.is_none() && radius.is_none(),
+                    "mode {mode:?} is offering a tool-specific card it does not hold"
+                );
+            }
+        }
+        if mode != "sculpt" {
             assert!(
                 filter.is_none(),
                 "mode {mode:?} is offering Filter Layer — the buttons need the verb IN HAND"
             );
         }
-        // …and absent for a plane verb (Flatten) even in hand, whose target
-        // is fitted to the brush's footprint — a layer has none.
+        // A plane verb in hand shows its card but not the Filter buttons.
         tool.set_sculpt_mode(2); // Flatten
         set_current_brush(Some(tool.brush_settings()));
         let (_host, _st, rects) = painted(&tool);
@@ -394,16 +395,21 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
         tool.toggle_brush_impasto();
         set_current_brush(Some(tool.brush_settings()));
         let (_host, _st, rects) = painted(&tool);
-        for (id, name) in card_ids {
+        for (id, name) in permanent {
             assert!(
                 rect_of(&rects, id).is_none(),
                 "with Impasto OFF in {mode:?}, the {name} card must not paint"
             );
         }
-        assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW).is_none(),
-            "with Impasto OFF in {mode:?}, the Knife card must not paint either"
-        );
+        for (id, name) in [
+            (core_ids::PAINTER_IMPASTO_PLOW, "Knife"),
+            (core_ids::PAINTER_SCULPT_RADIUS_SLIDER, "Sculpt"),
+        ] {
+            assert!(
+                rect_of(&rects, id).is_none(),
+                "with Impasto OFF in {mode:?}, the {name} card must not paint either"
+            );
+        }
     }
 }
 

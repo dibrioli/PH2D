@@ -303,9 +303,34 @@ envelope, com aceitação própria.
 
 **Esta wave fechou sozinha e vale sozinha.** Não depende de nada abaixo.
 
-### W1 — O walker de arco vira porta única
-`arc_walk.rs` extraído; `fx_zigzag` delega; gate de **byte-identidade** do zigzag (fixture: círculo
-+ forma com quinas, o mesmo par que o `fx_zigzag_tests` já usa).
+### W1 — O walker de arco vira porta única ✅ **CONSTRUÍDA (2026-07-22)**
+
+`ph2d-vec-scene::arc_path::ArcPath` (irmão do `arclen`, que responde por **uma** cúbica):
+`from_contour` · `total` · `anchor_arcs` · `frame_at(s) -> (ponto, tangente)`. O `fx_zigzag`
+**delega**, e o walker privado dele morreu.
+
+⚠️ **A porta NÃO tem opinião sobre onde amostrar** — isso é do efeito (o Zig Zag quer a grade de
+cristas unida às âncoras; o texto quer uma posição por glifo). Puxar a política para dentro faria
+a porta legislar sobre features que ainda não existem.
+
+**O oráculo da extração é uma impressão digital pinada** (`0xf6ebed490c31322e`), medida **antes**
+de mexer no efeito, sobre 4 regimes: fechado · fechado subdividido (a UNIÃO) · **aberto com
+quinas** · Roughen com semente. O Zig Zag já shipou; um refactor que "só move código" prova-o ao
+BIT, não por inspeção. **Bateu exatamente.**
+
+⚠️ **A fixture das QUINAS é que carrega o gate, e isto foi medido:** sob a mutação `p <= s` →
+`p < s` (off-by-one na busca binária), **os outros 18 gates ficam verdes** — porque o *ponto*
+resolvido é idêntico (satura no fim do segmento anterior) e só a **tangente** difere, e só onde há
+descontinuidade. Num círculo liso as duas tangentes concordam. Sem uma quina na fixture, a suíte
+inteira seria verde sobre um walker trocado.
+
+**Mutações:** off-by-one na busca binária ⇒ 1 RED (só a impressão digital) · `anchor_arcs`
+devolver também o total ⇒ 4 RED.
+
+⚠️ **Um gate MEU nasceu com a tolerância errada e a medição corrigiu-o:** o perímetro do círculo
+deu `377,0440` contra `2πR = 376,9911` (**1,40e-4**), acima do `1e-4` que eu tinha escrito. Não é
+o integrador — é a assinatura do círculo aproximado por 4 cúbicas. O **controle** que separa as
+duas explicações é o gate da reta, onde o mesmo integrador acerta `100.0` a **1e-9**.
 
 ### W2 — O motor: arco → afim por glifo
 Kernel puro em `ph2d-vec-scene` (`text_path.rs`): dado `(caminho, s, advance, altura do glifo,

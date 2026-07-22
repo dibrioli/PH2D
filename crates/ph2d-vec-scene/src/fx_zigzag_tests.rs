@@ -86,6 +86,86 @@ fn radii(v: &[VecVertex]) -> Vec<f64> {
     v.iter().map(|w| w.anchor[0].hypot(w.anchor[1])).collect()
 }
 
+/// Uma polilinha ABERTA com quinas — o outro regime (o `closed` muda a contagem de segmentos e a
+/// grade das cristas, e a cúspide de uma quina é onde a tangente não existe).
+fn open_corner() -> Vec<VecVertex> {
+    [[0.0, 0.0], [40.0, 0.0], [40.0, 30.0], [90.0, 30.0]]
+        .into_iter()
+        .map(VecVertex::corner)
+        .collect()
+}
+
+/// FNV-1a sobre os bits — determinístico, sem dependência, e sensível ao último ulp.
+fn fnv(mut h: u64, x: u64) -> u64 {
+    for b in x.to_le_bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// **A IMPRESSÃO DIGITAL do Zig Zag.** É o oráculo da extração do walker de arco para
+/// [`crate::arc_path`] (W1 do plano de texto em caminho, doc 22): o Zig Zag **já shipou**, e um
+/// refactor que "só move código" tem de o provar ao BIT — não por inspeção.
+///
+/// Cobre os quatro regimes que a extração pode partir: fechado · o mesmo fechado com o dobro de
+/// âncoras (a UNIÃO com a grade) · **aberto com quinas** (outra contagem de segmentos, e cúspides
+/// onde a tangente não existe) · Roughen com semente (o outro deslocamento).
+///
+/// ⚠️ Se este gate falhar num commit que **pretendia** mudar o desenho do efeito, o número é que
+/// está velho. Num commit de refactor, o número está certo e o refactor não é o que diz ser.
+#[test]
+fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
+    let cases: [(Vec<VecVertex>, bool, ZigZagSpec); 4] = [
+        (circle(), true, spec(20.0)),
+        (circle_subdivided(), true, spec(7.5)),
+        (
+            open_corner(),
+            false,
+            ZigZagSpec {
+                amplitude: 15.0,
+                ridges: 5.0,
+                smooth: true,
+                rough_seed: None,
+            },
+        ),
+        (
+            circle(),
+            true,
+            ZigZagSpec {
+                amplitude: 12.0,
+                ridges: 9.0,
+                smooth: false,
+                rough_seed: Some(42),
+            },
+        ),
+    ];
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (v, closed, s) in cases {
+        let (out, c) = zigzag_contour(&v, closed, &s, ref_of(&v));
+        h = fnv(h, u64::from(c));
+        h = fnv(h, out.len() as u64);
+        for w in &out {
+            for x in [
+                w.anchor[0],
+                w.anchor[1],
+                w.in_handle[0],
+                w.in_handle[1],
+                w.out_handle[0],
+                w.out_handle[1],
+            ] {
+                h = fnv(h, x.to_bits());
+            }
+            h = fnv(h, w.kind as u64);
+        }
+    }
+    // Medida em 2026-07-22, ANTES da extração do walker (commit 5bc175013).
+    assert_eq!(
+        h, 0xf6eb_ed49_0c31_322e,
+        "o desenho do Zig Zag mudou (impressao digital {h:#018x})"
+    );
+}
+
 /// **O ponto neutro é um no-op byte-idêntico** — o que a pilha exige de todo efeito.
 #[test]
 fn the_neutral_point_is_a_byte_identical_no_op() {

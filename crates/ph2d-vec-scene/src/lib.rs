@@ -82,6 +82,12 @@ pub mod corner_live;
 /// modelo de documento é sem-kurbo por decisão declarada no `Cargo.toml`.
 pub mod arclen;
 
+/// **Um contorno parametrizado por arco** ([`arc_path::ArcPath`]) — irmão do [`arclen`], que
+/// responde por UMA cúbica. É a porta única de *"onde fica o arco `s` neste caminho inteiro?"*,
+/// partilhada pelo Zig Zag e por quem vier (o `arclen` já nomeava a fila: Trim, Repeater, Pattern
+/// Along Path, texto em caminho).
+pub mod arc_path;
+
 /// **A pilha de Live Path Effects** (ADR-0132): efeitos não-destrutivos e empilháveis,
 /// avaliados pelo `cooked()` logo depois do estágio da quina.
 pub mod effect;

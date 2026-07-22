@@ -42,8 +42,7 @@
 //! a curva deslocada**, aproximando-a melhor). As **cristas** — o que se vê — continuam a ser
 //! função só da geometria, e é isso que o gate afirma.
 
-use crate::arclen::{Cubic, arclen, inv_arclen, point_at, tangent_at};
-use crate::corner_live::segment;
+use crate::arc_path::ArcPath;
 use crate::{VecVertex, VertexKind};
 
 /// Abaixo desta amplitude (em unidades de mundo) o efeito é o ponto neutro.
@@ -156,19 +155,13 @@ pub fn zigzag_contour(
     }
     // `100` = a média das dimensões da forma. É aqui, e só aqui, que a percentagem vira mundo.
     let amplitude = spec.amplitude / 100.0 * ref_size;
-    let seg_count = if closed { n } else { n - 1 };
-    let segs: Vec<Cubic> = (0..seg_count).map(|i| segment(verts, i, n)).collect();
-    // `starts[i]` = a posição de arco onde o segmento `i` começa; a última entrada é o total.
-    // É prefixo somado (e não uma lista de comprimentos) porque as âncoras de entrada são
-    // exatamente estas posições — e porque localizar `s` vira busca binária.
-    let mut starts = Vec::with_capacity(seg_count + 1);
-    let mut acc = 0.0;
-    for c in &segs {
-        starts.push(acc);
-        acc += arclen(c);
-    }
-    starts.push(acc);
-    let total = acc;
+    // O percurso por arco vem da porta única (`crate::arc_path`), partilhada com quem mais
+    // precisar de "onde fica o arco `s` neste caminho" — o walker privado que vivia aqui era a
+    // primeira das duas cópias que sempre acabam por divergir.
+    let Some(ap) = ArcPath::from_contour(verts, closed) else {
+        return (verts.to_vec(), closed);
+    };
+    let total = ap.total();
     if total <= EPS {
         return (verts.to_vec(), closed);
     }
@@ -190,7 +183,7 @@ pub fn zigzag_contour(
     }
     // ...e a UNIÃO com as âncoras que chegaram. É esta linha que faz o efeito COMPOR: um pico
     // do zigzag anterior é uma âncora, logo é amostrado onde está em vez de ser saltado.
-    at.extend_from_slice(&starts[..seg_count]);
+    at.extend_from_slice(ap.anchor_arcs());
     if !closed {
         at.push(total);
     }
@@ -228,7 +221,7 @@ pub fn zigzag_contour(
     let mut state = spec.rough_seed.unwrap_or(0);
     let mut out = Vec::with_capacity(m);
     for (k, &s) in at.iter().enumerate() {
-        let (point, tangent) = walk_to(&segs, &starts, s);
+        let (point, tangent) = ap.frame_at(s);
         // A normal é a tangente rodada um quarto de volta — troca de eixo e sinal, sem
         // transcendental (HR-5). Numa cúspide não há direção: o ponto entra sem deslocamento,
         // em vez de ser DESCARTADO — descartar tirava uma crista da conta em silêncio.
@@ -269,25 +262,6 @@ pub fn zigzag_contour(
         });
     }
     (out, closed)
-}
-
-/// Onde o comprimento `s` cai: o ponto e a tangente unitária ali.
-///
-/// `starts` é o prefixo somado, então o segmento sai por **busca binária** — a varredura linear
-/// que estava aqui fazia o custo ser `O(amostras × segmentos)`, e empilhar zigzags é justamente
-/// o caso em que os dois crescem juntos.
-///
-/// Numa cúspide não há tangente; devolve-se `[0, 0]`, e quem chama desloca por zero.
-fn walk_to(segs: &[Cubic], starts: &[f64], s: f64) -> ([f64; 2], [f64; 2]) {
-    let i = starts
-        .partition_point(|&p| p <= s)
-        .saturating_sub(1)
-        .min(segs.len() - 1);
-    let t = inv_arclen(&segs[i], (s - starts[i]).max(0.0));
-    (
-        point_at(&segs[i], t),
-        tangent_at(&segs[i], t).unwrap_or([0.0, 0.0]),
-    )
 }
 
 #[cfg(test)]

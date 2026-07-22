@@ -435,6 +435,33 @@ W3 = seção "Wet Paint" do painel (espelho de `paint_watercolor.rs`): ~meia dú
 gate de presença+ausência. O reset de grupo do painel chama `Engine::reset_knob_group` (nunca
 `Tuning::reset_group` direto — ela devolve os defs mudados e o caller TEM de reagir).
 
+## §3.5 — FECHAMENTO DA LINHA (2026-07-21) — a jornada Wet Paint está COMPLETA
+
+O plano inteiro landou e smokou (W0 engine · W1 modo · W2.1–2.7 · checkbox · W3 knobs · doc 21,
+que dissolveu o W2.8). O fechamento executou o gate batched + a auditoria:
+
+- **7 ofensores herdados de LOC fechados por SPLIT** (`90437448`): `tuning.rs`→`tuning/defs.rs`
+  (a tabela) · `watercolor_render.rs`→`watercolor_render/window.rs` (a aritmética de janela) ·
+  `sculpt_tests/w3.rs`→`w3_heading.rs` (a família do heading do Chisel) · `sculpt.rs`→`sculpt/mode.rs`
+  (a taxonomia de verbos) · `watercolor_field.rs`→`watercolor_field/style.rs` (o estilo por-traço) ·
+  `dab.rs`→`dab/bands.rs` (o raster core) · `spec.rs`→`spec/queries.rs` (as perguntas derivadas).
+  Todos módulos FILHOS (o `paint.rs` em 700 exatos não foi tocado); puro-move provado pelas suítes
+  (790 tool + 265 brush + 34 wet-paint) e pelos fingerprints.
+- **Gate batched (`bdaee9b8`):** `nextest-impacted` vs origin/main **5015/5015** · clippy
+  `--all-targets -D warnings` limpo nas 5 crates (a dívida do porte W0 fechou: fixes mecânicos
+  provados pelo fingerprint + allows crate-wide no `lib.rs` amarrados à lei do porte — min/max com
+  semântica NaN do JS, laços com o `i` do reference, literais do reference) · fmt pinado limpo ·
+  typos limpo (+2 palavras pt-BR no `.typos.toml`) · **o `no_magic_numeric` pegou os 9 literais de
+  range dos knobs do W3** → consts nomeadas `LITERAL-PX-OK` no padrão do painel watercolor · um
+  assert-sempre-verdadeiro (`x != 0 || true`) deletado de um gate meu — andaime que não afirmava nada.
+- **Auditoria 2 lentes sobre o diff acumulado: SEM ACHADOS nas duas.** SEAMS (11 widgets fecham o
+  circuito; Method cheio sob wet; esconderijos presença+ausência; Reset desarma) e CLAIMS (9 claims
+  load-bearing conferidos com file:line — `deposit_pass` só na porta, undo EAGER, stash sem órfão
+  alcançável, porta única, hold derivado, §G fiel). Notas registradas no handoff de integração §5.
+- **Handoff de integração:** [`HANDOFF_INTEGRACAO_line_Painter_wet_paint_2026-07-21.md`](HANDOFF_INTEGRACAO_line_Painter_wet_paint_2026-07-21.md).
+  CLAUDE.md §5 ganhou o bloco "🌊 O WET PAINT". **A linha PAROU — integração e ship só por ordem
+  EXPLÍCITA do Enio (§0.7).**
+
 ## §4 — Avisos operacionais
 
 - ⚠️ O cwd do shell RESETOU pro primário no meio da sessão sem aviso — toda mutação por caminho

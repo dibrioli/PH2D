@@ -61,6 +61,7 @@ pub mod instances;
 mod lifecycle;
 pub mod lower;
 pub mod plan;
+pub mod reduce;
 pub mod ring;
 pub mod scan;
 pub mod shape;

@@ -220,7 +220,7 @@ impl Scan {
 /// The 65 535-per-dimension limit is a DISPATCH-SHAPE limit, not a work limit:
 /// fold `blocks` into an `(x, y)` rectangle that covers it (`x·y ≥ blocks`,
 /// both ≤ 65 535). Kernels linearise `wid = x + y·nw.x` and guard the padding.
-pub(crate) fn dispatch_2d(blocks: u32) -> (u32, u32) {
+pub fn dispatch_2d(blocks: u32) -> (u32, u32) {
     const MAX_DIM: u32 = 65_535;
     if blocks <= MAX_DIM {
         (blocks.max(1), 1)

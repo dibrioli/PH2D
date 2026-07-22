@@ -49,6 +49,7 @@
 //! step** from a seeded state — never a trajectory with ε loosened until it
 //! passes.
 
+mod accessors;
 pub mod codegen;
 mod count;
 pub mod debug_read;
@@ -241,56 +242,6 @@ pub const UNIFORM_BYTES: u64 = 128;
 pub(crate) const MAX_SWEEPS: i64 = 64;
 
 impl GpuCook {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// The instance buffer the LAST [`Self::cook`] produced, if any — what the
-    /// renderer binds. `None` before the first cook.
-    pub fn instances(&self) -> Option<&GpuInstances> {
-        self.instances.as_ref()
-    }
-
-    /// What the last [`Self::cook`] produced, per staged node — the graph panel's
-    /// only window into a GPU-resident frame. See [`shape::CookShape`].
-    pub fn shape(&self) -> &shape::CookShape {
-        &self.shape
-    }
-
-    /// How many elements `node` carried on the last [`Self::cook`].
-    pub fn node_count(&self, node: NodeId) -> Option<u32> {
-        self.shape.count(node)
-    }
-
-    /// The column names `node`'s output carried on the last [`Self::cook`].
-    pub fn node_columns(&self, node: NodeId) -> Option<&[String]> {
-        self.shape.columns(node)
-    }
-
-    /// The fixed tick this sim's state ([`Self::prev`]) belongs to — the GPU
-    /// mirror of `MotionCookPump::last_cooked_tick`, and the caller's input for
-    /// "how many ticks do I owe?". `None` before the first sequential cook.
-    ///
-    /// A sequential trajectory is the SUM of its steps, so a caller must cook
-    /// EVERY owed tick rather than one big jump — the same law the CPU pump
-    /// states (`ticks_owed`: "forward: every tick, never a skip"), for the same
-    /// reason: otherwise the motion depends on the frame rate.
-    pub fn last_cooked_tick(&self) -> Option<u64> {
-        self.last_tick
-    }
-
-    /// Column buffers the pool has ever created — flat across a steady scene,
-    /// which is the whole claim of the ping-pong (D1) and is otherwise
-    /// unobservable from outside.
-    pub fn pool_allocations(&self) -> usize {
-        self.pool.allocations()
-    }
-
-    /// Column buffers something still holds — for a sim, last tick's state.
-    pub fn pool_retained(&self) -> usize {
-        self.pool.retained()
-    }
-
     /// Run `plan` at `clock`, producing the instance buffer. Each entry of
     /// `boundary_streams` is a [`GpuPlan::boundaries`] node's freshly cooked
     /// output stream (cook them with the ordinary

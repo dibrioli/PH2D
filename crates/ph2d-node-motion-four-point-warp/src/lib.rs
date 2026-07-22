@@ -26,6 +26,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -96,6 +97,168 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// The whole-stream reductions this deformer needs: the layout's **bounding box**,
+/// as four folds — `Min`/`Max` over `P.x` and `P.y` (GPU/M5, the deformer channel
+/// — `ph2d_nodegraph::reduce_meta`). The `for q in p { xmin = xmin.min(...) … }`
+/// loop at the top of [`warp_positions`], declared.
+///
+/// ⚠️ **This is the widest reduction consumer (FOUR), and the first to use
+/// `Min`** — bend/twist are `Max`, spherize is `Sum`. Named (`xmin`/`xmax`/`ymin`
+/// /`ymax`) because the kernel reads all four; the channel was declared plural
+/// for exactly this shape.
+///
+/// ⚠️ **The reduction is BIT-EXACT here** — `Min`/`Max` are associative *and*
+/// exact over floats, so the bounding box the device computes is the same bits as
+/// the CPU's. The only ε in the node is the homography arithmetic (the matrix
+/// build's products, and the perspective divide), never the box.
+static REDUCES: &[ReduceSpec] = &[
+    ReduceSpec {
+        name: "xmin",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Min,
+        value: "v.x",
+        params: &[],
+        // Absent `P` → origin on both paths; the box of all-origins is a point,
+        // `w = h = 0`, and the node passes the layout through unchanged.
+        identity: [0.0; 4],
+    },
+    ReduceSpec {
+        name: "xmax",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Max,
+        value: "v.x",
+        params: &[],
+        identity: [0.0; 4],
+    },
+    ReduceSpec {
+        name: "ymin",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Min,
+        value: "v.y",
+        params: &[],
+        identity: [0.0; 4],
+    },
+    ReduceSpec {
+        name: "ymax",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Max,
+        value: "v.y",
+        params: &[],
+        identity: [0.0; 4],
+    },
+];
+
+/// The device form of [`warp_positions`] (GPU/M5). One invocation per element,
+/// reading the bounding box from the four reductions above, building the same
+/// Heckbert homography, and applying it with the perspective divide.
+///
+/// ⚠️ **The homography is rebuilt PER ELEMENT.** It depends only on the box and
+/// the params, so it is identical for every invocation — but WGSL has no cheap
+/// way to compute it once and share it without a second pass, and it is ~30 flops
+/// of arithmetic against a memory-bound kernel, so recomputing is free and keeps
+/// the node a plain `reduce → broadcast → map` with no extra stage. The helpers
+/// mirror `homography`/`apply` operation for operation, INCLUDING the affine
+/// branch for a parallelogram (`sx`/`sy` near zero) — a different branch on the
+/// device would diverge exactly on an axis-aligned quad, the most common case.
+///
+/// ⚠️ **`warp` is read at index 0**, matching the CPU's `warp_amount` (`first()`,
+/// broadcast) — see the same note on `motion.spherize`.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let fpw_xmin = reduce_xmin();\n\
+        let fpw_xmax = reduce_xmax();\n\
+        let fpw_ymin = reduce_ymin();\n\
+        let fpw_ymax = reduce_ymax();\n\
+        let fpw_w = fpw_xmax - fpw_xmin;\n\
+        let fpw_h = fpw_ymax - fpw_ymin;\n\
+        let fpw_p = read_in_P(i);\n\
+        var fpw_warped = fpw_p;\n\
+        if (fpw_w >= 1e-6 && fpw_h >= 1e-6) {\n\
+        \x20   let fpw_warp = read_warp_v(0u);\n\
+        // Heckbert corner order BL,BR,TR,TL = (0,0),(1,0),(1,1),(0,1).\n\
+        \x20   let c0 = vec2<f32>(fpw_xmin + fpw_warp * params.bl_dx, fpw_ymin + fpw_warp * params.bl_dy);\n\
+        \x20   let c1 = vec2<f32>(fpw_xmax + fpw_warp * params.br_dx, fpw_ymin + fpw_warp * params.br_dy);\n\
+        \x20   let c2 = vec2<f32>(fpw_xmax + fpw_warp * params.tr_dx, fpw_ymax + fpw_warp * params.tr_dy);\n\
+        \x20   let c3 = vec2<f32>(fpw_xmin + fpw_warp * params.tl_dx, fpw_ymax + fpw_warp * params.tl_dy);\n\
+        \x20   let m = fpw_homography(c0, c1, c2, c3);\n\
+        \x20   let uv = vec2<f32>((fpw_p.x - fpw_xmin) / fpw_w, (fpw_p.y - fpw_ymin) / fpw_h);\n\
+        \x20   fpw_warped = fpw_apply(m, uv);\n\
+        }\n\
+        let fpw_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        write_P(i, fpw_p + (fpw_warped - fpw_p) * fpw_f);\n",
+    wgsl_lib: "\
+        // Heckbert's closed-form homography of the unit square to `c0..c3`, mapping\n\
+        // (0,0)->c0, (1,0)->c1, (1,1)->c2, (0,1)->c3. Returns [a,b,c,d,e,f,g,h,1],\n\
+        // the CPU's index layout to the letter (incl. the affine parallelogram branch).\n\
+        fn fpw_homography(c0: vec2<f32>, c1: vec2<f32>, c2: vec2<f32>, c3: vec2<f32>) -> array<f32, 9> {\n\
+            let sx = c0.x - c1.x + c2.x - c3.x;\n\
+            let sy = c0.y - c1.y + c2.y - c3.y;\n\
+            if (abs(sx) < 1e-6 && abs(sy) < 1e-6) {\n\
+                return array<f32, 9>(c1.x - c0.x, c3.x - c0.x, c0.x, c1.y - c0.y, c3.y - c0.y, c0.y, 0.0, 0.0, 1.0);\n\
+            }\n\
+            let dx1 = c1.x - c2.x;\n\
+            let dx2 = c3.x - c2.x;\n\
+            let dy1 = c1.y - c2.y;\n\
+            let dy2 = c3.y - c2.y;\n\
+            let den = dx1 * dy2 - dx2 * dy1;\n\
+            if (abs(den) < 1e-6) {\n\
+                return array<f32, 9>(c1.x - c0.x, c3.x - c0.x, c0.x, c1.y - c0.y, c3.y - c0.y, c0.y, 0.0, 0.0, 1.0);\n\
+            }\n\
+            let g = (sx * dy2 - sy * dx2) / den;\n\
+            let h = (dx1 * sy - dy1 * sx) / den;\n\
+            return array<f32, 9>(\n\
+                c1.x - c0.x + g * c1.x, c3.x - c0.x + h * c3.x, c0.x,\n\
+                c1.y - c0.y + g * c1.y, c3.y - c0.y + h * c3.y, c0.y,\n\
+                g, h, 1.0);\n\
+        }\n\
+        fn fpw_apply(m: array<f32, 9>, uv: vec2<f32>) -> vec2<f32> {\n\
+            var w = m[6] * uv.x + m[7] * uv.y + m[8];\n\
+            if (abs(w) < 1e-6) { w = 1e-6; }\n\
+            return vec2<f32>(\n\
+                (m[0] * uv.x + m[1] * uv.y + m[2]) / w,\n\
+                (m[3] * uv.x + m[4] * uv.y + m[5]) / w);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            // Unconnected reads 1.0 (corners fully applied) — the CPU's `unwrap_or(1.0)`.
+            access: ColumnAccess::ReadBroadcast,
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 1,
+        },
+    ],
+    // The corner offsets, in the order the WGSL reads them.
+    params: &[
+        "tl_dx", "tl_dy", "tr_dx", "tr_dy", "br_dx", "br_dy", "bl_dx", "bl_dy",
+    ],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
@@ -269,6 +432,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5: the kernel and the FOUR whole-stream reductions it reads (the
+    // bounding box). Side metadata on the registry (ADR-0126) — the frozen node
+    // contract is untouched.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_reduces(MANIFEST.id, REDUCES);
     Ok(())
 }
 

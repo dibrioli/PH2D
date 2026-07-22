@@ -64,6 +64,7 @@ ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
 ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
 ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
 ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }
+ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }
 # ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

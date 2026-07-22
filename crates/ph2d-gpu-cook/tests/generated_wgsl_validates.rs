@@ -95,6 +95,9 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // The first node with TWO reductions (the centroid) — the plural
     // `reduce_cx`/`reduce_cy` symbols.
     ph2d_node_motion_spherize::register(&mut reg).unwrap();
+    // The widest reduction consumer (FOUR: the bounding box) and the first
+    // node whose wgsl_lib returns a WGSL array — a naga-only failure mode.
+    ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

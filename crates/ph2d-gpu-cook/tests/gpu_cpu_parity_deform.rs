@@ -54,6 +54,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_bend::register(&mut reg).unwrap();
     ph2d_node_motion_twist::register(&mut reg).unwrap();
     ph2d_node_motion_spherize::register(&mut reg).unwrap();
+    ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     reg
 }
@@ -247,6 +248,82 @@ fn the_spherize_deformer_matches_the_cpu_within_epsilon() {
             &dev,
         );
     }
+}
+
+/// `motion.four_point_warp`, on the device, agrees with the canonical corner-pin
+/// — the **widest reduction consumer (FOUR: the bounding box), and the first use
+/// of `Min`**.
+///
+/// ⚠️ **Two quads are tested on purpose.** A near-axis-aligned quad exercises the
+/// `homography`'s AFFINE branch (`sx`/`sy` ≈ 0), a skewed one exercises the
+/// PROJECTIVE branch with a real perspective divide — the two branches are
+/// separate code on both sides, and the affine one is the common case (a
+/// keystone) that a device-only projective path would silently get wrong.
+///
+/// The bounding box is `Min`/`Max`, which are bit-exact, so the reduction carries
+/// **no** ε — the only ε is the homography arithmetic and the divide, and the
+/// bound is [`EPS_POS`] (measured worst printed below).
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_four_point_warp_deformer_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // (label, warp, [tl_dx,tl_dy, tr_dx,tr_dy, br_dx,br_dy, bl_dx,bl_dy]).
+    let cases: [(&str, f32, [f32; 8]); 3] = [
+        // A gentle keystone: top edge pinched in — near-affine, the affine branch.
+        ("keystone", 1.0, [1.5, 0.0, -1.5, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        // A skewed quad — the projective branch, with a real perspective divide.
+        ("projective", 1.0, [2.0, 1.0, -1.0, 2.5, 1.5, -2.0, -2.5, -0.5]),
+        // Half-applied, to check `warp` scales the corners (a mid-billow pose).
+        ("half", 0.5, [3.0, 0.0, -3.0, 0.0, -1.0, -1.0, 1.0, 1.0]),
+    ];
+    for (label, warp, off) in cases {
+        let (g, out) = four_point_chain(&reg, warp, off);
+        let cpu = cook_cpu(&reg, &g, out);
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        compare(&format!("four_point_warp {label}"), &cpu, &dev);
+    }
+}
+
+/// A grid, corner-pinned by the eight offset params, then output. `warp` is a
+/// constant `value.lfo` (a fixed billow — the reproducible authoring case).
+fn four_point_chain(reg: &NodeRegistry, warp: f32, off: [f32; 8]) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", SIDE);
+    g.set_param(grid, "cols", SIDE);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let fpw = g.add_node("motion.four_point_warp");
+    for (name, v) in [
+        ("tl_dx", off[0]),
+        ("tl_dy", off[1]),
+        ("tr_dx", off[2]),
+        ("tr_dy", off[3]),
+        ("br_dx", off[4]),
+        ("br_dy", off[5]),
+        ("bl_dx", off[6]),
+        ("bl_dy", off[7]),
+    ] {
+        g.set_param(fpw, name, v);
+    }
+    let amt = g.add_node("value.lfo");
+    g.set_param(amt, "amplitude", 0.0);
+    g.set_param(amt, "offset", warp);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(grid, fpw, 0u16), (amt, fpw, 1), (fpw, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out)
 }
 
 /// A grid, TRANSLATED (so the spherize's centroid is off-origin), spherized, then

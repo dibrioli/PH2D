@@ -191,3 +191,92 @@ pub(super) fn build_gpu_spherize_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The **billowing FLAG** (`PH2D_GPU_COOK_DEMO=14`) — the ready-to-smoke document
+/// for the widest reduction consumer: `grid(700×700) → four_point_warp → output`,
+/// a perspective corner-pin driven by an LFO, **490.000 instances 100% on the
+/// device**.
+///
+/// ## What you should see
+///
+/// A dense sheet that **tips into perspective and flattens back**, like a flag or
+/// a projector keystone: the far corners pull in and up while the near ones stay,
+/// straight lines staying straight (that is the perspective divide, not a bilinear
+/// bow). At the LFO's zero the sheet is flat; at the peak it is fully pinned into
+/// the quad. Nothing should bow or shear along the way.
+///
+/// ## What it is actually demonstrating
+///
+/// The warp normalises every element to `(u,v)` within the layout's **bounding
+/// box**, and the box is four reductions — `Min`/`Max` over `P.x` and `P.y`. This
+/// is the FIRST node to read **four** whole-stream reductions and the first to use
+/// `Min` (bend/twist are `Max`, spherize is `Sum`). Because `Min`/`Max` are
+/// bit-exact, the box the device computes is the same bits as the CPU's — the only
+/// ε is the homography arithmetic. If the sheet ever pins to the wrong rectangle,
+/// one of the four box reductions is wrong.
+///
+/// ⚠️ **`warp` is broadcast at index 0** (the CPU's `first()`), so the LFO is the
+/// whole flag's single billow factor, not a per-element field.
+pub(super) fn build_gpu_four_point_warp_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 700.0);
+    g.set_param(grid, "cols", 700.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+
+    // A skewed target quad (world units, offsets from the bbox corners): the top
+    // edge pulls in and the right side lifts — a keystone that reads as depth.
+    // The sheet is ~700 units, so offsets in the low hundreds are a strong pin.
+    let fpw = g.add_node("motion.four_point_warp");
+    for (name, v) in [
+        ("tl_dx", 160.0f32),
+        ("tl_dy", 60.0),
+        ("tr_dx", -120.0),
+        ("tr_dy", 180.0),
+        ("br_dx", -40.0),
+        ("br_dy", 40.0),
+        ("bl_dx", 40.0),
+        ("bl_dy", 0.0),
+    ] {
+        g.set_param(fpw, name, v);
+    }
+
+    // The billow: `warp` scales every corner 0→1 and back. Unipolar (amplitude
+    // 0.5, offset 0.5) so it swings between flat (0) and fully pinned (1) rather
+    // than inverting the quad.
+    let billow = g.add_node("value.lfo");
+    g.set_param(billow, "period", 7.0);
+    g.set_param(billow, "amplitude", 0.5);
+    g.set_param(billow, "offset", 0.5);
+
+    let out = g.add_node("motion.output");
+
+    for (i, n) in [grid, fpw, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 200.0,
+                y: 140.0,
+            },
+        );
+    }
+    g.set_pos(billow, Pos { x: 280.0, y: 320.0 });
+
+    for (from, to, port) in [(grid, fpw, 0u16), (billow, fpw, 1), (fpw, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

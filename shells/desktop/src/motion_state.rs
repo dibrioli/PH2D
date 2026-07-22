@@ -53,7 +53,10 @@ use gpu_demos::{
 use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
-use gpu_deform_demo::{build_gpu_deform_demo_document, build_gpu_spherize_demo_document};
+use gpu_deform_demo::{
+    build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
+    build_gpu_spherize_demo_document,
+};
 use gpu_panel_demo::build_gpu_panel_demo_document;
 use gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use gpu_zone_demo::build_gpu_zone_demo_document;
@@ -202,6 +205,11 @@ impl MotionState {
             // The `Sum` half of the deformer channel: the centroid lens (two
             // reductions on one node).
             Ok("13") => build_gpu_spherize_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // The widest reduction consumer: the bounding-box corner-pin (four
+            // reductions, the first use of Min).
+            Ok("14") => {
+                build_gpu_four_point_warp_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

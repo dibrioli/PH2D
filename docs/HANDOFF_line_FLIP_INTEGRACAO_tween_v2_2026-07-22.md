@@ -120,7 +120,7 @@ bash scripts/nextest-impacted.sh
 | gate | resultado |
 |---|---|
 | `nextest-impacted.sh` | **5127 testes, 5127 passaram** |
-| `ph2d-flip` | 131 (+3 réguas `#[ignore]`) — **em debug E em release** |
+| `ph2d-flip` | 131 (+4 réguas `#[ignore]`) — **em debug E em release** |
 | `ph2d-panel-flip-frames` (seam) | 9 |
 | `cargo clippy --all-targets` nas 5 crates tocadas | limpo |
 | `file_loc_caps` (shell) · `architecture_workspace_file_loc_cap` · `architecture_panel_wiring_parity` · `node_id_collisions` · `arch_safe_clamp_only` | verdes |
@@ -134,6 +134,7 @@ só aparecia em debug porque o brief mandava rodar com `--release`.
 cargo test -p ph2d-flip --release the_cost_ruler    -- --ignored --nocapture
 cargo test -p ph2d-flip --release the_outlier_ruler -- --ignored --nocapture
 cargo test -p ph2d-flip --release the_spiral_ruler  -- --ignored --nocapture
+cargo test -p ph2d-flip --release the_plan_cost_ruler -- --ignored --nocapture
 ```
 
 ### 4.2 Provas de mutação (7, todas sangram)

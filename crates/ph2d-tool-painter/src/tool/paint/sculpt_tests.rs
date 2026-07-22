@@ -543,6 +543,7 @@ mod memo;
 mod plane;
 mod session;
 mod w3;
+mod w3_heading;
 
 /// **The sculpt fires in Sculpt mode, and in no other.**
 ///

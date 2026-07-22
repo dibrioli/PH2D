@@ -129,6 +129,7 @@ mod shape_build;
 mod shape_build_gesture;
 mod sim_populate;
 mod stack_smoke;
+mod text_fx_smoke;
 mod theme;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]

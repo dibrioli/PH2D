@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=21` — a cena da **W0** (texto + efeitos): a palavra "PATH" com um Zig Zag
+//!   ATIVO, já selecionada. Mexa em qualquer knob da seção **Text** (ou escreva mais uma letra) —
+//!   **a rugosidade tem de continuar lá**. Antes da W0 ela sumia neste gesto, em silêncio.
 //! - `PH2D_BUILD_SMOKE=19` — a cena do 17 com o **fluxo do report de 2026-07-20**: arma o
 //!   Corner Round ANTES, arrasta o Offset até SATURAR (o gesto natural), solta e retuna
 //!   Bevel → Miter. Com a lei da forma (±maxdim/2) o saturado é "a forma dobrada" e cada
@@ -113,6 +116,11 @@ impl crate::App {
         // O UNDO da pilha de efeitos, AUTO-DIRIGIDO (o report do Enio, 3×) — irmão `fx_undo_smoke`.
         if level == 20 {
             crate::fx_undo_smoke::frame(self, f);
+            return;
+        }
+        // A cena da W0 (texto + pilha de efeitos sobrevive ao re-cook) — irmão `text_fx_smoke`.
+        if level == 21 {
+            crate::text_fx_smoke::frame(self, f);
             return;
         }
         match f {

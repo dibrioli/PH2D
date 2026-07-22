@@ -131,6 +131,9 @@ mod sim_populate;
 mod stack_smoke;
 mod theme;
 mod timeline_persist;
+#[cfg(test)]
+#[path = "timeline_orphan_tests.rs"]
+mod timeline_orphan_tests;
 mod transport;
 mod undo;
 mod undo_route;

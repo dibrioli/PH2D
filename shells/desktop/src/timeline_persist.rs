@@ -72,6 +72,20 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 /// track de vista é honesto; movê-la para o objeto errado é corrupção.
 pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
     let any_missing = timeline.doc.bindings().iter().any(|b| b.missing);
+    // **Publica a reserva de nomes** antes de tentar curar: enquanto uma track espera por um
+    // nome, nada mais pode nascer com ele (`name_unique::ReservedNames`). Sem isso o objeto
+    // SEGUINTE herdava o nome vago do deletado e a track órfã o adotava — o report de
+    // 2026-07-22. É aqui porque esta função já varre as bindings todo frame: uma segunda
+    // varredura seria uma segunda resposta a *"quem está órfã?"*.
+    let reserved = timeline
+        .doc
+        .bindings()
+        .iter()
+        .filter(|b| b.missing)
+        .map(|b| b.wire_id.0);
+    world
+        .get_resource_or_insert_with(crate::name_unique::ReservedNames::default)
+        .publish(reserved);
     // `None` no valor = nome AMBÍGUO (dois objetos vivos, o mesmo nome).
     let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut q = world.query::<(Entity, &Name)>();

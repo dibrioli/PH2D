@@ -43,6 +43,7 @@ use rapier2d::na::Vector2;
 
 use super::buoyancy;
 use super::desc::{AreaEffect, BodyDesc};
+use super::form_drag;
 
 /// **Is this body a force zone, and with what effect?** The single door.
 ///
@@ -65,7 +66,11 @@ use super::desc::{AreaEffect, BodyDesc};
 #[must_use]
 pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
     let e = desc.effector?;
-    let inert = e.force[0] == 0.0 && e.force[1] == 0.0 && e.drag <= 0.0 && e.density <= 0.0;
+    let inert = e.force[0] == 0.0
+        && e.force[1] == 0.0
+        && e.drag <= 0.0
+        && e.density <= 0.0
+        && e.form_drag <= 0.0;
     if !desc.is_sensor || inert {
         return None;
     }
@@ -158,20 +163,27 @@ pub(crate) fn apply(
             // collider da zona E o do corpo enquanto escreve no corpo, o que não cabe
             // dentro do empréstimo que este laço já segura. A lista é reusada por zona
             // (a capacidade sobrevive ao `clear`), então uma cena sem empuxo não aloca.
-            if effect.density > 0.0 {
+            if effect.density > 0.0 || effect.form_drag > 0.0 {
                 to_float.push(parent);
             }
         }
         for &body in &to_float {
-            buoyancy::apply(
-                bodies,
-                colliders,
-                body,
-                zone_collider,
-                gravity,
-                effect.density,
-                dt,
-            );
+            if effect.density > 0.0 {
+                buoyancy::apply(
+                    bodies,
+                    colliders,
+                    body,
+                    zone_collider,
+                    gravity,
+                    effect.density,
+                    dt,
+                );
+            }
+            // O arrasto de forma vive no mesmo passe pelo mesmo motivo: ele precisa do
+            // collider do corpo enquanto escreve nele.
+            if effect.form_drag > 0.0 {
+                form_drag::apply(bodies, colliders, body, effect.form_drag, dt);
+            }
         }
     }
 }

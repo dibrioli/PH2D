@@ -210,6 +210,9 @@ fn populate_physics(store: &mut WidgetStore) {
         // Densidade do fluido: MESMA faixa do `Density` do collider, porque a
         // comparação entre os dois é justamente a leitura (menor boia, maior afunda).
         (ids::INSP_PHYS_AREA_DENSITY, 0.0, 0.0, 1000.0, 0.05), // LITERAL-PX-OK: kg/m^2
+        // Resistência de forma: mesma faixa dos outros arrastos, porque a leitura do
+        // artista é comparar os dois knobs de resistência lado a lado.
+        (ids::INSP_PHYS_AREA_FORM_DRAG, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: coef. de forma
     ] {
         store.register(
             id,

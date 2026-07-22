@@ -110,6 +110,18 @@ pub struct AreaEffect {
     /// resolve os três com um número só, e o número é comparável ao `density` do
     /// collider: menor que ele afunda, maior boia.
     pub density: f32,
+    /// **Arrasto de FORMA** — a resistência que sabe para onde o corpo está apontado.
+    ///
+    /// `0` (o default) é byte-idêntico a antes deste campo. Maior que zero, cada aresta
+    /// virada para o escoamento é empurrada ao longo da PRÓPRIA normal (ver
+    /// [`super::form_drag`]), o que dá duas coisas que o [`drag`](AreaEffect::drag)
+    /// uniforme não pode dar: **resistência por secção** (o mesmo tronco sofre 4× mais
+    /// de través que de proa) e **freio de rotação pela forma** (um tronco comprido
+    /// resiste a girar muito mais que uma bola de mesma área).
+    ///
+    /// Coexiste com o `drag` porque são mecanismos diferentes e ambos existem: *Drag* é
+    /// viscosidade (xarope), *Shape Drag* é resistência de forma (água).
+    pub form_drag: f32,
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

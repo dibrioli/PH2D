@@ -176,6 +176,9 @@ pub struct InspectorPhysicsInfo {
     /// `AreaBuoyancy`; ausente significa uma área sem empuxo. Oferecida sob a mesma
     /// condição de Sensor que [`force`](InspectorPhysicsInfo::force).
     pub area_density: f32,
+    /// **Arrasto de forma** (W-FormDrag): a resistência que sabe para onde o corpo
+    /// aponta. Espelha o opcional `AreaFormDrag`. Mesma condição de Sensor que as irmãs.
+    pub area_form_drag: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -289,6 +292,9 @@ pub enum PhysicsFieldEdit {
     /// Densidade do fluido (W-Buoyancy) — o empuxo de Arquimedes. Anexa o opcional
     /// `AreaBuoyancy`, destacado em zero. SENSOR-only, como Force e Drag.
     AreaDensity(f32),
+    /// Arrasto de FORMA (W-FormDrag) — resistência por secção + freio de rotação pela
+    /// forma. Anexa o opcional `AreaFormDrag`, destacado em zero. SENSOR-only.
+    AreaFormDrag(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

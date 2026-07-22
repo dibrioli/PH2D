@@ -69,6 +69,7 @@ fn zone_full(
             force,
             drag,
             density,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -313,6 +314,7 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
                 force: [5.0, 0.0],
                 drag: 0.0,
                 density: 0.0,
+                form_drag: 0.0,
             }),
             ..desc(
                 RigidBodyType::Fixed,
@@ -519,6 +521,7 @@ fn an_inert_zone_is_byte_identical_whether_it_is_zero_force_or_zero_drag() {
             force: [0.0, 0.0],
             drag: 0.0,
             density: 0.0,
+            form_drag: 0.0,
         }),
         None,
     ]

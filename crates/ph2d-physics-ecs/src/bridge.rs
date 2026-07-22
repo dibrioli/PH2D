@@ -565,11 +565,16 @@ impl PhysicsBridge {
             let zone_force = world.get::<crate::AreaEffector>(e).map(|a| a.force);
             let zone_drag = world.get::<crate::AreaDrag>(e).map(|d| d.0);
             let zone_density = world.get::<crate::AreaBuoyancy>(e).map(|b| b.0);
-            let any = zone_force.is_some() || zone_drag.is_some() || zone_density.is_some();
+            let zone_form = world.get::<crate::AreaFormDrag>(e).map(|f| f.0);
+            let any = zone_force.is_some()
+                || zone_drag.is_some()
+                || zone_density.is_some()
+                || zone_form.is_some();
             let effector = any.then(|| ph2d_physics::AreaEffect {
                 force: zone_force.unwrap_or([0.0, 0.0]),
                 drag: zone_drag.unwrap_or(0.0),
                 density: zone_density.unwrap_or(0.0),
+                form_drag: zone_form.unwrap_or(0.0),
             });
             let desc = crate::scale::body_desc(
                 rb,

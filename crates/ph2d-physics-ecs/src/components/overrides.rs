@@ -561,3 +561,28 @@ impl AreaBuoyancy {
 }
 
 impl SimComponent for AreaBuoyancy {}
+
+/// **Arrasto de FORMA — a resistência que sabe para onde o corpo aponta (W-FormDrag).**
+///
+/// Ausente é uma área sem resistência de forma. Presente, cada aresta do corpo virada
+/// para o escoamento é empurrada ao longo da própria normal, o que dá duas coisas que o
+/// [`AreaDrag`] uniforme não pode dar: **resistência por secção** (o mesmo tronco sofre
+/// 4× mais de través que de proa) e **freio de rotação pela FORMA** (um tronco comprido
+/// resiste a girar muito mais que uma bola de mesma área).
+///
+/// Coexiste com o `AreaDrag` porque são mecanismos diferentes e ambos existem na
+/// natureza: *Drag* é viscosidade, *Shape Drag* é resistência de forma. Quarto
+/// componente da mesma área, pela quarta vez pela mesma razão (campo novo = bump de
+/// `PROJECT_SCHEMA`, e um bump recusa todo projeto salvo). Só morde num SENSOR.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AreaFormDrag(pub f32);
+
+impl AreaFormDrag {
+    /// É neutro? Usado para DESTACAR, como os irmãos.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.0 <= 0.0
+    }
+}
+
+impl SimComponent for AreaFormDrag {}

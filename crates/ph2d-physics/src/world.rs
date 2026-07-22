@@ -13,6 +13,7 @@ pub mod defaults;
 pub mod desc;
 pub mod drag;
 pub mod effector;
+pub mod form_drag;
 pub mod joints;
 pub mod kinematic;
 pub mod layers;

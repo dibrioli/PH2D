@@ -43,6 +43,7 @@ fn pool(w: &mut PhysicsWorld, fluid_density: f32) {
             force: [0.0, 0.0],
             drag: 1.5,
             density: fluid_density,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -284,6 +285,7 @@ fn a_tessellated_ball_carries_the_documented_polygon_bias() {
             force: [0.0, 0.0],
             drag: 0.0,
             density: 1.0,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -342,6 +344,7 @@ fn the_waterline_is_level_even_in_a_tilted_pool() {
             force: [0.0, 0.0],
             drag: 0.0,
             density: 4.0,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -380,6 +383,7 @@ fn the_waterline_is_level_even_in_a_tilted_pool() {
             force: [0.0, 0.0],
             drag: 0.0,
             density: 4.0,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -415,6 +419,7 @@ fn only_a_buoyant_zone_has_a_waterline() {
             force: [0.0, 5.0],
             drag: 2.0,
             density: 0.0,
+            form_drag: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -439,5 +444,64 @@ fn only_a_buoyant_zone_has_a_waterline() {
     assert!(
         w2.waterlines().is_empty(),
         "sem gravidade não há superfície"
+    );
+}
+
+#[test]
+fn shape_drag_resists_by_section_where_uniform_drag_cannot() {
+    // O fato do W-FormDrag no MUNDO, não no kernel: o MESMO tronco largado de través
+    // desce mais devagar que de proa. Um `drag` uniforme dá exatamente a mesma queda nas
+    // duas poses — é essa diferença que a resistência de FORMA compra.
+    let fall = |rotation: f32, form: f32| {
+        let mut w = PhysicsWorld::new();
+        w.spawn_body(BodyDesc {
+            is_sensor: true,
+            effector: Some(AreaEffect {
+                force: [0.0, 0.0],
+                drag: 0.0,
+                density: 0.0,
+                form_drag: form,
+            }),
+            ..desc(
+                RigidBodyType::Fixed,
+                0.0,
+                -5.0,
+                ShapeDesc::Cuboid {
+                    half_x: 6.0,
+                    half_y: 6.0,
+                },
+            )
+        });
+        let b = w.spawn_body(BodyDesc {
+            rotation,
+            lock_rotation: true,
+            ..desc(
+                RigidBodyType::Dynamic,
+                0.0,
+                -2.0,
+                ShapeDesc::Cuboid {
+                    half_x: 1.0,
+                    half_y: 0.25,
+                },
+            )
+        });
+        for _ in 0..90 {
+            w.step();
+        }
+        -y_of(&w, b)
+    };
+    let (broadside, edge_on) = (fall(0.0, 3.0), fall(std::f32::consts::FRAC_PI_2, 3.0));
+    assert!(
+        edge_on > broadside * 1.4,
+        "de proa o tronco tem de descer bem mais que de través ({edge_on} contra \
+         {broadside}) — é a secção que resiste"
+    );
+    // E o controle: sem arrasto de forma, as duas poses são idênticas (a rotação está
+    // travada, então nada mais as distingue). Sem esta metade o gate acima poderia estar
+    // medindo qualquer assimetria da fixture.
+    let (a, b) = (fall(0.0, 0.0), fall(std::f32::consts::FRAC_PI_2, 0.0));
+    assert!(
+        (a - b).abs() < 1e-4,
+        "sem Shape Drag a orientação não pode mudar nada ({a} vs {b})"
     );
 }

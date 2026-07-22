@@ -31,16 +31,17 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 73
+//! physics-ecs-c9 body_count: 75
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    AreaBuoyancy, AreaDrag, AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule,
-    DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX,
-    LockRotation, MassOverride, MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, BodyKind, Ccd, Collider, ColliderShape,
+    CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockRotation, MassOverride, MaterialCombine, OneWayPlatform, PhysicsBridge,
+    RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -526,6 +527,46 @@ fn main() {
             skew_x: 0.0,
             skew_y: 0.0,
         },
+    ));
+
+    // Uma zona de arrasto de FORMA e um tronco girando dentro dela (W-FormDrag): a
+    // resistencia e somada aresta por aresta, com `omega x r` por sub-amostra, entao ela
+    // percorre um fold de `f32` que nenhum outro corpo do harness toca. O tronco entra
+    // GIRANDO e de trave, para que as duas metades (seccao e freio de rotacao) entrem no
+    // hash. Lane propria, na ponta esquerda.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 2.0,
+                half_y: 2.0,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaFormDrag(3.0),
+        Transform::from_translation(Vec2::new(-76.0, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.9,
+                half_y: 0.2,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        InitialVelocity {
+            linvel: [1.0, 0.0],
+            angvel: 5.0,
+        },
+        Transform::from_translation(Vec2::new(-76.0, 1.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

@@ -3007,6 +3007,40 @@ consultas de LEITURA — irmão de `sensors`/`contacts`, e o corte que o arquivo
 fazendo: *o que MOVE* e *o que se OLHA* não são a mesma responsabilidade). 4 gates novos
 (2 wrapper, 2 overlay), 4 mutações, **4 sangram** após a correção da fixture.
 
+### ⚠️ §W-FormDrag — o arrasto que sabe para onde o corpo aponta (2026-07-21)
+
+O `Drag` da área é **viscosidade**: uniforme, igual em toda direção — o modelo certo para
+*xarope*, e o que rapier/Unity/Godot chamam de damping. Mas ele não sabe nada sobre a
+FORMA, então um tronco atravessado desce exatamente como um tronco de proa.
+
+**Shape Drag** é a outra metade: cada aresta virada para o escoamento é empurrada ao
+longo da **própria normal**, no ponto dela. Dá duas coisas que o uniforme não pode dar —
+**resistência por SECÇÃO** (o mesmo tronco sofre **4×** mais de través que de proa) e
+**freio de rotação pela FORMA** (um tronco comprido resiste a girar muito mais que uma
+bola de mesma área). Componente `AreaFormDrag`, registro **17→18**, schema **fica em 29**
+(4ª vez), c9 **73→75**.
+
+**⚠️ TRÊS coisas que eu esperava e a medição negou:**
+
+1. **O cata-vento não existe num corpo simétrico.** Construí isto prevendo *"o tronco vira
+   para a correnteza"* e medi **zero torque em toda inclinação**. Não é bug: num corpo
+   simétrico o centro de pressão é o centroide, que é o centro de massa, e `r × F` some
+   aresta por aresta. Uma flecha só se alinha porque as penas ficam **atrás** do centro de
+   massa. Pinado num gate para ninguém "consertar" com um torque inventado.
+2. **A força tem de seguir a NORMAL, não a velocidade.** A 1ª versão empurrava ao longo de
+   `v` (arrasto se opõe ao movimento, parece natural) e o torque saía **exatamente zero**
+   por **identidade** — forças todas paralelas sobre um polígono fechado se cancelam.
+   Pressão de fluido age perpendicular à superfície, e a não-paralelidade é o que
+   produz **sustentação** (a placa inclinada plana de lado enquanto cai).
+3. **Uma amostra por aresta mede freio de rotação ZERO.** No meio da aresta de um corpo
+   simétrico a velocidade de rotação é exatamente tangencial ⇒ `v·n = 0`. O efeito inteiro
+   está no GRADIENTE ao longo da aresta — `EDGE_SAMPLES = 2` o captura.
+
+⚠️ **E DUAS mutações sobreviveram à primeira rodada, ambas nomeando fixture faltante:**
+trocar a normal pela velocidade (só divergem na **sustentação**, que nenhum gate media) e
+a ponte descartar o componente (não havia gate de ECS). Com os dois gates novos, **8
+mutações, 8 sangram**.
+
 ### Aberto no W-Buoyancy
 
 Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resistir mais de lado que de proa —

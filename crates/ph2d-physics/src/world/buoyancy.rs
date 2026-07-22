@@ -60,7 +60,7 @@ use super::shape::{capsule_vertices, ellipse_vertices};
 /// 0,64% que o cabeçalho nomeia. `None` para uma forma que este módulo não conhece:
 /// nenhum empuxo é melhor que um empuxo sobre uma silhueta inventada.
 #[must_use]
-fn local_polygon(shape: &dyn Shape) -> Option<Vec<Point2<f32>>> {
+pub(super) fn local_polygon(shape: &dyn Shape) -> Option<Vec<Point2<f32>>> {
     let pt = |[x, y]: [f32; 2]| Point2::new(x, y);
     if let Some(c) = shape.as_cuboid() {
         let (hx, hy) = (c.half_extents.x, c.half_extents.y);

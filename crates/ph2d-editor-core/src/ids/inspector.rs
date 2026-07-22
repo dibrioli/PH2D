@@ -357,6 +357,9 @@ pub const INSP_PHYS_AREA_DRAG: NodeId = hash_node_id("insp_phys_area_drag");
 /// Comparável ao `Density` do collider: um corpo menos denso que isto boia, mais denso
 /// afunda. Destaca seu `AreaBuoyancy` em zero.
 pub const INSP_PHYS_AREA_DENSITY: NodeId = hash_node_id("insp_phys_area_density");
+/// §11 Arrasto de FORMA (W-FormDrag) — a resistência que sabe para onde o corpo aponta.
+/// Irmã de `Drag` (viscosidade, uniforme) e não substituta: são mecanismos diferentes.
+pub const INSP_PHYS_AREA_FORM_DRAG: NodeId = hash_node_id("insp_phys_area_form_drag");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

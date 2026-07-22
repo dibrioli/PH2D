@@ -245,3 +245,70 @@ fn the_bridge_folds_the_buoyancy_and_a_rewind_preserves_it() {
         y(&sim, float_me)
     );
 }
+
+#[test]
+fn the_bridge_folds_the_shape_drag_and_a_rewind_preserves_it() {
+    // O quarto componente da área (W-FormDrag), pelo desfecho: o MESMO tronco largado
+    // de través desce menos que de proa. Fixture com SÓ `AreaFormDrag` — nenhum irmão —
+    // o que prova a metade dele do bundle.
+    let fall = |rotation: f32| {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 6.0,
+                    half_y: 6.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, -5.0)),
+            ph2d_physics_ecs::AreaFormDrag(3.0),
+        ));
+        let e = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                Transform {
+                    translation: Vec2::new(0.0, -2.0),
+                    rotation,
+                    scale: Vec2::new(1.0, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+            ))
+            .id();
+        let mut bridge = PhysicsBridge::new();
+        play_to(&mut bridge, &mut sim, 90);
+        let y = sim.world().get::<Transform>(e).unwrap().translation.y;
+        // Um scrub e um replay têm de reproduzir a mesma queda — o coeficiente rides o
+        // `BodyDesc`, então o rewind o re-arma.
+        bridge.dispatch(&mut sim, false, 0);
+        play_to(&mut bridge, &mut sim, 90);
+        let again = sim.world().get::<Transform>(e).unwrap().translation.y;
+        assert!(
+            (y - again).abs() < 1e-3,
+            "após um rewind o Shape Drag não foi re-armado ({y} -> {again})"
+        );
+        -y
+    };
+    let (broadside, edge_on) = (fall(0.0), fall(std::f32::consts::FRAC_PI_2));
+    assert!(
+        edge_on > broadside * 1.4,
+        "de proa o tronco desce bem mais que de través ({edge_on} contra {broadside}) — \
+         a ponte não está dobrando `AreaFormDrag` na sim"
+    );
+}

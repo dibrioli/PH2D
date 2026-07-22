@@ -316,6 +316,7 @@ pub(super) fn paint_collision_rows(
             ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
             ("Drag", ids::INSP_PHYS_AREA_DRAG),
             ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),
+            ("Shape Drag", ids::INSP_PHYS_AREA_FORM_DRAG),
         ] {
             yy = num_row(
                 scene,

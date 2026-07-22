@@ -394,42 +394,50 @@ impl PainterTool {
         self.paint.impasto_live_edit = !self.paint.impasto_live_edit;
     }
 
+    /// Write one material field on the active brush AND the three relief-mode slots — the
+    /// `toggle_brush_impasto` pattern. The Material card is visible under every impasto tool since the
+    /// all-cards rule (Enio, 2026-07-22), and only the DEPOSIT slot's material is ever baked: without
+    /// the fan-out, editing Shine while holding the Knife would write a slot nothing reads.
+    fn set_material_field(&mut self, write: impl Fn(&mut BrushSpec)) {
+        write(&mut self.paint.brush);
+        for mode in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
+            write(&mut self.paint.brush_by_mode[mode.slot()]);
+        }
+        self.rebake_live_material();
+    }
+
     /// **Shine** — how much the highlight is worth. A property of the PAINT (see `material.rs`), so it
     /// is a brush setting and it is baked into the canvas with the stroke.
     pub fn set_impasto_shine(&mut self, v: f32) {
-        self.paint.brush.impasto_shine = v.clamp(0.0, 1.0);
-        self.rebake_live_material();
+        self.set_material_field(|b| b.impasto_shine = v.clamp(0.0, 1.0));
     }
 
     /// **Roughness** — how BROAD the highlight is. `0` = a tight glint (wet varnish); `1` = a wide soft
     /// sheen (dry chalk). The knob that did not exist: the exponent was the constant `SHININESS = 24`.
     pub fn set_impasto_roughness(&mut self, v: f32) {
-        self.paint.brush.impasto_roughness = v.clamp(0.0, 1.0);
-        self.rebake_live_material();
+        self.set_material_field(|b| b.impasto_roughness = v.clamp(0.0, 1.0));
     }
 
     /// **Metallic** — whose colour the highlight takes: the LAMP's (`0`, a dielectric: oil, gouache) or
     /// the PAINT's own (`1`, a conductor: gold leaf, iridescent).
     pub fn set_impasto_metallic(&mut self, v: f32) {
-        self.paint.brush.impasto_metallic = v.clamp(0.0, 1.0);
-        self.rebake_live_material();
+        self.set_material_field(|b| b.impasto_metallic = v.clamp(0.0, 1.0));
     }
 
     /// **Wax** — the soft terminator of paint the light enters and leaves nearby (wrap lighting, not a
     /// subsurface simulation — see `material::Material::wax`).
     pub fn set_impasto_wax(&mut self, v: f32) {
-        self.paint.brush.impasto_wax = v.clamp(0.0, 1.0);
-        self.rebake_live_material();
+        self.set_material_field(|b| b.impasto_wax = v.clamp(0.0, 1.0));
     }
 
     /// **Wax Colour** — the FILTER on the light that scatters through the paint. White = the physics.
     pub fn set_impasto_wax_color(&mut self, c: [f32; 3]) {
-        self.paint.brush.impasto_wax_color = [
+        let c = [
             c[0].clamp(0.0, 1.0),
             c[1].clamp(0.0, 1.0),
             c[2].clamp(0.0, 1.0),
         ];
-        self.rebake_live_material();
+        self.set_material_field(|b| b.impasto_wax_color = c);
     }
 
     /// Reset the whole section to the defaults — the brush half from [`BrushSpec::default`], the canvas

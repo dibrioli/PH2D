@@ -314,90 +314,67 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
     assert_eq!(bs.impasto_tool, 0, "…and Deposit is tool 0");
 }
 
-/// **Only the selected tool's knobs are painted.**
+/// **Every configuration card is painted when Impasto is on — and none when it is off** (Enio,
+/// 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
+/// cards"*; this REVERSED the selected-tool narrowing an earlier gate here pinned).
 ///
-/// The house rule, and this section has already paid a smoke for breaking it: a knob that does nothing to
-/// the tool in your hand is a knob that lies about what the tool can do. Dimming is not the answer — a
-/// dimmed control still hit-registers, so it is cosmetic.
-///
-/// The two directions are both asserted, because each alone is a plausible bug: the knob missing where it
-/// belongs (the tool is unusable) and the knob present where it does not (the tool lies).
+/// One representative knob per card, in every relief mode: Depth (Body) · Plow (Knife) · Radius
+/// (Sculpt, verb Smooth) · Shine (Material) · Show (Lighting). The OFF half keeps the gate honest —
+/// presence alone would stay green if the Enable stopped gating anything.
 #[test]
-fn a_tool_shows_its_own_knobs_and_no_others() {
-    // Deposit: Depth yes, Plow no.
-    let tool = tool_in("brush");
-    let (_host, _st, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH).is_some(),
-        "the Deposit has no Depth slider — it is the one tool that lays body down"
-    );
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW).is_none(),
-        "the Deposit is offering Plow, which belongs to the Knife: the brush does not drag existing \
-         relief, it lays new"
-    );
-
-    // Knife: Plow yes, Depth no.
-    let tool = tool_in("knife");
-    let (_host, _st, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW).is_some(),
-        "the Knife has no Plow — its only knob"
-    );
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH).is_none(),
-        "the Knife is offering Depth. There is no depth to set when nothing is being laid down."
-    );
-
-    // A sculpt verb: its own knob, and neither of the two above.
-    let mut tool = tool_in("sculpt");
-    tool.set_sculpt_mode(0); // Smooth ⇒ the Radius row
-    set_current_brush(Some(tool.brush_settings()));
-    let (_host, _st, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_SCULPT_RADIUS_SLIDER).is_some(),
-        "Smooth has no Radius — the kernel's own scale"
-    );
-    for (id, name) in [
-        (core_ids::PAINTER_IMPASTO_DEPTH, "Depth"),
-        (core_ids::PAINTER_IMPASTO_PLOW, "Plow"),
-    ] {
-        assert!(
-            rect_of(&rects, id).is_none(),
-            "a sculpt verb is offering {name}: the verbs reshape the relief that is there, they neither \
-             deposit it nor drag it"
-        );
+fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
+    let card_ids: [(ph2d_a11y::NodeId, &str); 5] = [
+        (core_ids::PAINTER_IMPASTO_DEPTH, "Body/Depth"),
+        (core_ids::PAINTER_IMPASTO_PLOW, "Knife/Plow"),
+        (core_ids::PAINTER_SCULPT_RADIUS_SLIDER, "Sculpt/Radius"),
+        (core_ids::PAINTER_IMPASTO_SHINE, "Material/Shine"),
+        (core_ids::PAINTER_IMPASTO_SHOW, "Lighting/Show"),
+    ];
+    for mode in RELIEF_MODES {
+        let mut tool = tool_in(mode);
+        tool.set_sculpt_mode(0); // Smooth ⇒ the Sculpt card shows the Radius row
+        set_current_brush(Some(tool.brush_settings()));
+        let (_host, _st, rects) = painted(&tool);
+        for (id, name) in card_ids {
+            assert!(
+                rect_of(&rects, id).is_some(),
+                "with Impasto ON in {mode:?}, the {name} card is missing — the all-cards rule"
+            );
+        }
+        // …and the OFF half: unticking Enable takes every card with it.
+        tool.toggle_brush_impasto();
+        set_current_brush(Some(tool.brush_settings()));
+        let (_host, _st, rects) = painted(&tool);
+        for (id, name) in card_ids {
+            assert!(
+                rect_of(&rects, id).is_none(),
+                "with Impasto OFF in {mode:?}, the {name} card must not paint"
+            );
+        }
     }
 }
 
-/// **Material follows the Deposit, and only the Deposit.**
+/// **A Material edit reaches the DEPOSIT slot from every tool.**
 ///
-/// The material is per-BRUSH and is baked into the canvas *with the deposit*. Each mode keeps its own
-/// brush slot, so a Shine slider under the Knife or a sculpt verb would be editing a slot nothing ever
-/// reads — the definition of a dead knob, painted in the section that has been bitten by them most.
-///
-/// Its sibling claim is in `the_light_switch_is_reachable_from_every_mode_that_shapes_relief`: Material is
-/// the brush's and narrows, Lighting is the canvas's and does not. Getting those two backwards is exactly
-/// the mistake that produced the layout this replaces.
+/// The Material card is visible under every impasto tool (all-cards rule), but only the Deposit's brush
+/// slot is ever baked — so the tool fans a material write out to the three relief slots
+/// (`set_material_field`, the `toggle_brush_impasto` pattern). Without the fan-out, dialling Shine while
+/// holding the Knife writes a slot nothing reads: the knob would be alive on screen and dead in the
+/// paint. Mutation that bleeds: reverting the setters to the active-slot-only write.
 #[test]
-fn material_is_the_deposits_and_lighting_is_everyones() {
-    let tool = tool_in("brush");
-    let (_host, _st, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_SHINE).is_some(),
-        "fixture: the Deposit should show the Material card (else the negatives below are vacuous)"
-    );
+fn a_material_edit_under_any_tool_reaches_the_deposit_slot() {
     for mode in ["knife", "sculpt"] {
-        let tool = tool_in(mode);
-        let (_host, _st, rects) = painted(&tool);
+        let mut tool = tool_in(mode);
+        tool.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SetValue(
+            core_ids::PAINTER_IMPASTO_SHINE,
+            0.91,
+        ));
+        // Switch back to the Deposit: ITS slot must carry the edit.
+        tool.set_paint_tool_mode("brush");
+        let shine = tool.brush_settings().impasto_shine;
         assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_SHINE).is_none(),
-            "mode {mode:?} is offering the Material card. It is baked with the DEPOSIT, and this mode \
-             deposits nothing — the slider would edit a brush slot no pixel ever reads."
-        );
-        assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_SHOW).is_some(),
-            "…while Lighting must still be there in {mode:?}: it is the canvas's, not the brush's"
+            (shine - 0.91).abs() < 1e-6,
+            "Shine dialled under {mode:?} never reached the deposit slot (reads {shine})"
         );
     }
 }

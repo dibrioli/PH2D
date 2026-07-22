@@ -126,16 +126,46 @@ pub(crate) fn paint_impasto_section(
         brush.impasto_live_edit,
     );
     // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
-    // de Adjust Last Stroke"*), then the properties of the one that is selected.
+    // de Adjust Last Stroke"*) — then EVERY configuration card, not just the selected tool's (Enio,
+    // 2026-07-22 smoke: *"várias das configurações de Impasto não aparecem … faça aparecer todos os
+    // cards"*). The earlier selected-tool narrowing hid the Knife/Sculpt/Body knobs from whoever was not
+    // holding that exact tool; with every card visible each one edits ITS tool's authored state — alive
+    // the moment that tool is picked — and Material now writes the three relief slots (tool side), so no
+    // card is a knob editing a slot nothing reads. The radio still says which tool the BRUSH is.
     y = crate::paint_impasto_tool::paint_tool_card(ctx, theme, x, content_w, y, &brush);
-    let (mut y, wants_material) =
-        crate::paint_impasto_tool::paint_tool_body(ctx, theme, x, content_w, y, &brush);
-    if wants_material {
-        y = paint_material_card(ctx, theme, x, content_w, y, &brush);
-    }
-    // Lighting is last and is painted for EVERY tool: it is the canvas's, not the brush's — one light for
-    // the whole document, like the paper colour.
+    y = paint_body_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_knife_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_sculpt_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_material_card(ctx, theme, x, content_w, y, &brush);
+    // Lighting is last: it is the canvas's, not the brush's — one light for the whole document, like the
+    // paper colour.
     paint_lighting_card(ctx, theme, x, content_w, y, &brush)
+}
+
+/// The **Sculpt** card: the selected verb's knob rows, framed. The verb itself is chosen on the TOOL
+/// radio above; this card shows (and edits) that verb's authored knobs — visible for every tool, like
+/// its Body/Knife siblings, since the all-cards rule (Enio, 2026-07-22).
+fn paint_sculpt_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    // Row count mirrors `paint_sculpt_rows` exactly — a frame sized by a guessed height is how the next
+    // card paints over these rows (`no_impasto_widget_loses_its_hit_to_the_section_below`).
+    let mut rows = match brush.sculpt_knob_family {
+        1 => 1 + if brush.sculpt_is_chisel { 2 } else { 0 },
+        2 => 1 + if brush.sculpt_is_inflate { 1 } else { 0 },
+        _ => 1,
+    };
+    if brush.sculpt_filters {
+        rows += 1;
+    }
+    let (ix, iw, ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Sculpt", rows);
+    let _ = crate::paint_sculpt::paint_sculpt_rows(ctx, theme, ix, iw, ry, *brush);
+    next_y
 }
 
 /// Card 2: MATERIAL — what the paint IS, as opposed to what shape it has (per-brush).

@@ -7,10 +7,12 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 11 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+- **Commits:** 12 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
   **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
-  **doc 23: estudo + implementação — o pigmento responde às tools**, ver §2/§6; checkpoint
-  de reversão: tag `checkpoint-pre-wet-tools-rework`).
+  **doc 23: estudo + implementação — o pigmento responde às tools** →
+  **fix pós-smoke: Impasto mostra TODOS os cards com Enable ON** (a estreiteza
+  selected-tool-only revertida; Material fan-out pros 3 slots de relevo), ver §2/§6;
+  checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
 - **Gate batched:** `nextest-impacted` **5031/5031** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado

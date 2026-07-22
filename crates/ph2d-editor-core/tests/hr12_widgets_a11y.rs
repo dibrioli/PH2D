@@ -338,6 +338,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_shape_dab.rs",
         "gizmo handles are CurvePoints dispatched in editor-core; rest is a decorative template render",
     ),
+    // Wet Paint TILT dial (doc 22) — the pad is a `CurvePoint` dispatched in editor-core (the
+    // paint_shape_dab pattern) and its toggle delegates to `paint_checkbox_row` (the a11y-wired
+    // Checkbox); the polar grid + knob are a decorative template render.
+    (
+        "ph2d-panel-painter-layers/src/paint_wetpaint_tilt.rs",
+        "tilt pad is a CurvePoint dispatched in editor-core; toggle delegates to paint_checkbox_row",
+    ),
     // Watercolor section — its Wet-edges / Pigment checkboxes delegate to `paint_checkbox_row`
     // (the a11y-wired Checkbox) and the Edge / Spread / Granulation / Mix sliders to `number_field`
     // (the a11y-wired NumberInput); the collapsible header + labels are decorative chrome. Same

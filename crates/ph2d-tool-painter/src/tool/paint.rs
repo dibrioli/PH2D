@@ -31,11 +31,8 @@ mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay s
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
-pub use self::{
-    stroke_multi::StrokeOpBadge,
-    wetpaint_settings::{WetKnobs, WetTool},
-};
-/// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
+pub use self::stroke_multi::StrokeOpBadge;
+pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
 pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU light pass
@@ -46,7 +43,7 @@ mod impasto_settings; // Impasto: section setters + the panel-event route (mirro
 mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
 mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; its sibling is the plumbing)
 mod impasto_tool; // Impasto: the TEN tools that act on the body, as one list (Deposit · Knife · 8 verbs)
-mod jitter_settings;
+mod jitter_settings; // per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`

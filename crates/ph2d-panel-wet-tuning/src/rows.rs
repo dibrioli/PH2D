@@ -48,11 +48,11 @@ impl TuneRow {
 fn decimals_for_step(step: f64) -> usize {
     if step >= 1.0 {
         0
-    } else if step >= 0.05 {
+    } else if step >= 0.05 { // LITERAL-PX-OK: step-granularity threshold (math, not design)
         2
-    } else if step >= 0.01 {
+    } else if step >= 0.01 { // LITERAL-PX-OK: step-granularity threshold (math, not design)
         2
-    } else if step >= 0.001 {
+    } else if step >= 0.001 { // LITERAL-PX-OK: step-granularity threshold (math, not design)
         3
     } else {
         4

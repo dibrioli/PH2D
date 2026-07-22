@@ -20,8 +20,9 @@
 > [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
 >
 > **A wave COLORIZE integrou ao main em 2026-07-21.** A jornada seguinte (2026-07-22) é o
-> **Tween v2** — doc [`11`](11_tween_v2.md), **construída e gateada, PENDENTE DE SMOKE**
-> (`PH2D_FLIP_TWEEN_SMOKE=1`); handoff de integração:
+> **Tween v2** — doc [`11`](11_tween_v2.md), **construída, gateada e SMOKE APROVADO pelo Enio
+> (2026-07-22)** (`PH2D_FLIP_TWEEN_SMOKE=1` — o boneco de palito: braço mantém o comprimento no
+> arco, tronco casado não desliza, chapéu órfão desvanece só com Fade); handoff de integração:
 > [`../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md`](../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md).
 
 ## O que landou DESDE o snapshot de 2026-07-12 (não reconstruir — tem doc + código)
@@ -265,8 +266,8 @@ paint-behind, multiframe.
 
 - **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
-- ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22**
-  (doc [`11`](11_tween_v2.md), pendente de smoke). **ABERTO de lá:** a **UI de correção de
+- ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
+  (doc [`11`](11_tween_v2.md)). **ABERTO de lá:** a **UI de correção de
   pares** (o overlay + o re-par manual — a lição CACANi; o `TweenPlan` já publica os pares e
   o custo PARA isto) · o **alinhamento de FASE da costura** em traço fechado (a resposta é o
   `phase_only` que o `ph2d-vec-blend` já construiu) · a torção em rotação grande

@@ -3,9 +3,12 @@
 > **Para o agente INTEGRADOR.** A linha fechou a wave do **Tween v2**. O implementador parou
 > aqui (CLAUDE.md §0.7).
 >
-> ⚠️ **PENDENTE DE SMOKE.** Todos os gates estão verdes e a cena está pronta, mas o Enio
-> ainda não olhou o resultado na tela. O veredito é **condicional** (DIRETIVA §5):
-> *APPROVE pending smoke S1* — §7 abaixo.
+> ✅ **SMOKE APROVADO pelo Enio (2026-07-22).** Todos os gates estão verdes, e o Enio rodou a
+> cena (`PH2D_FLIP_TWEEN_SMOKE=1`) e aprovou: *"funcionou tudo como vc disse. Smoke OK."* — o
+> boneco de palito, com o braço mantendo o comprimento ao longo do arco, o tronco casado sem
+> deslizar, e o chapéu órfão desvanecendo só com Fade. O veredito deixou de ser condicional.
+> A linha aguarda **ordem explícita de integração** do Enio (CLAUDE.md §0.7). O S1 (§7) foi o
+> smoke que fechou o veredito.
 
 ## 1. Identidade
 

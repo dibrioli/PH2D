@@ -24,14 +24,8 @@ use crate::transport::{BTN_W, ClipChip, icon_button};
 const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
 
 /// How wide the cluster paints — the single source `transport`'s flow measures against.
-pub(crate) fn width(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
+pub(crate) fn width(snap: &TimelineViewSnapshot, _tab: Tab) -> f32 {
     let half = Spacing::Sm.px() * 0.5;
-    // The Containers tab leads with the chip that says WHICH container is being edited.
-    let host = if shows_host_picker(tab) {
-        CLIP_DD_W + half
-    } else {
-        0.0
-    };
     // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one clip.
     // Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16): they are the
     // two ways to get a clip, and the difference is only whether it starts empty.
@@ -40,16 +34,7 @@ pub(crate) fn width(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     } else {
         0.0
     };
-    host + CLIP_DD_W + half + BTN_W + half + BTN_W + half + BTN_W + half + trash
-}
-
-/// **Whether the "which container am I editing" chip is on screen** — the Containers tab
-/// only.
-///
-/// Everywhere else the question has a fixed answer the view already states: Keys is the
-/// active clip's, and Arrange is always the scene's ([`Tab::scene_root`]).
-pub(crate) fn shows_host_picker(tab: Tab) -> bool {
-    tab == Tab::Containers
+    CLIP_DD_W + half + BTN_W + half + BTN_W + half + BTN_W + half + trash
 }
 
 /// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
@@ -71,33 +56,6 @@ pub(crate) fn cluster(
 ) -> Option<ClipChip> {
     let gap = Spacing::Sm.px();
     let mut x = x;
-
-    // The host picker leads: *where am I* before *what will I place*.
-    if shows_host_picker(view.tab) {
-        let hc = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
-        ctx.host.hit_index_mut().register(ids::TIMELINE_HOST_DD, hc);
-        let (st, op) = match ctx.host.store().get(ids::TIMELINE_HOST_DD) {
-            Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-            _ => (DropdownState::Normal, false),
-        };
-        let mut hd = Dropdown::new(ids::TIMELINE_HOST_DD, "", host_options(snap))
-            .open(op)
-            .state(st);
-        if let Some(c) = view.open_container {
-            hd = hd.selected(c);
-        }
-        paint_dropdown_chip(&hd, hc, ctx.scene, ctx.text_system, theme);
-        x += CLIP_DD_W + gap * 0.5;
-        if op {
-            // Only one popover can be deferred; the open one wins. Two lists over the same
-            // pixels would fight, and the artist opened exactly one of them.
-            return Some(ClipChip {
-                rect: hc,
-                open: true,
-                host: true,
-            });
-        }
-    }
 
     let chip = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
     ctx.host
@@ -121,11 +79,7 @@ pub(crate) fn cluster(
         icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
     }
 
-    Some(ClipChip {
-        rect: chip,
-        open,
-        host: false,
-    })
+    Some(ClipChip { rect: chip, open })
 }
 
 /// **What the dropdown offers, per tab** — the SOURCE selector (ADR-0133, amended
@@ -142,9 +96,10 @@ pub(crate) fn cluster(
 /// interior IS putting clips in its lanes (*"na aba containers o dropbox não está exibindo os
 /// clips"*, Enio 2026-07-21).
 ///
-/// Which container the tab is EDITING is a different question with its own chip
-/// ([`ids::TIMELINE_HOST_DD`]): picking a SOURCE never navigates, because inside container A
-/// picking B has to mean *"place B inside A"*.
+/// **Picking a source never navigates.** Inside container A picking B has to mean *"place B
+/// inside A"*; going to B is what double-clicking its bar in the Containers list does. A
+/// second dropdown that navigated lived here for one iteration and was removed as a duplicate
+/// answer to a question the list answers by BEING a list.
 ///
 /// Each row carries the glyph of its KIND ([`CLIP_GLYPH`]/[`CONTAINER_GLYPH`]) — mixed in one
 /// list without a mark, the artist learns the kind by placing one and seeing what happens.
@@ -196,28 +151,20 @@ pub(crate) fn selected_source(
     }
 }
 
-/// **The Containers tab's host list** — every container, as a place to GO rather than a thing
-/// to place. Same glyph as the source list's container half: it is the same kind of thing.
-pub(crate) fn host_options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
-    snap.containers
-        .iter()
-        .enumerate()
-        .take(ids::TIMELINE_HOST_OPT.len())
-        .map(|(i, c)| {
-            DropdownOption::new(ids::TIMELINE_HOST_OPT[i], i, c.name.clone())
-                .with_icon(CONTAINER_GLYPH)
-        })
-        .collect()
-}
-
 /// **The two kinds, told apart by a discreet glyph** (Enio, 2026-07-21).
 ///
-/// One sheet against a stack of them: a clip is one animation, a container is several packed
-/// into a piece. They only have to be distinguishable from EACH OTHER — the list is where
-/// they sit side by side, and that is the whole job of the mark.
+/// ⚠️ The first pair was `Layer` and `Layers`, chosen by NAME — one sheet against a stack of
+/// them. Their source SVGs are the same drawing (both are Lucide's layers: three stacked
+/// sheets, differing only in how the top one's path is written), so on screen the mark said
+/// nothing at all and the report came straight back (*"os ícones dos conteiners … deve ser
+/// diferente do ícone de clips"*). A glyph pair has to be compared as PIXELS, never as
+/// identifiers.
+///
+/// A sheet of drawing against a packed BOX: a clip is one animation, a container is a piece
+/// with several inside — the Symbol of Animate, whose icon is a box for the same reason.
 const CLIP_GLYPH: IconId = IconId::Layer;
-/// …and the stack. See [`CLIP_GLYPH`].
-const CONTAINER_GLYPH: IconId = IconId::Layers;
+/// …and the box. See [`CLIP_GLYPH`].
+const CONTAINER_GLYPH: IconId = IconId::Prefab;
 
 /// **What a picked option IS** — read off the id ARRAY it belongs to, never off arithmetic.
 ///
@@ -250,8 +197,6 @@ pub(crate) fn owns(ev: &WidgetEvent) -> bool {
         || id == ids::TIMELINE_RENAME_CLIP
         || id == ids::TIMELINE_DELETE_CLIP
         || id == ids::TIMELINE_CLIP_RENAME_INPUT
-        || id == ids::TIMELINE_HOST_DD
-        || ids::TIMELINE_HOST_OPT.contains(&id)
         || source_at(id).is_some()
 }
 
@@ -269,30 +214,9 @@ pub(crate) fn apply_event(
         // ── Source selector: picking a CLIP or a CONTAINER from the open list ────
         // The kind comes from `source_at` (which id array the option belongs to), so the two
         // halves cannot be confused for one another at the same list position.
-        // ── Host picker: WHERE the Containers tab is looking ────────────────
-        // Its own control because it answers the other question (see `TIMELINE_HOST_DD`).
-        WidgetEvent::Click(id) if ids::TIMELINE_HOST_OPT.contains(&id) => {
-            if let Some(i) = ids::TIMELINE_HOST_OPT.iter().position(|&o| o == id) {
-                state::open_container_root(state, i);
-                if let Some(InteractiveState::Dropdown {
-                    open,
-                    selected_index,
-                    ..
-                }) = host.store_mut().get_mut(ids::TIMELINE_HOST_DD)
-                {
-                    *open = false;
-                    *selected_index = Some(i);
-                }
-            }
-            EventOutcome::Consumed
-        }
         WidgetEvent::Click(id) if source_at(id).is_some() => {
             let snap = state::current_snapshot();
-            let clips = if state.tab == Tab::Containers {
-                0
-            } else {
-                snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len())
-            };
+            let clips = snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len());
             // Where the pick sits in the painted list. Computed from the PICK, not from
             // `selected_source`: the clip half only reaches the snapshot next frame, and
             // asking the derived answer now would show the previous selection for one frame.
@@ -449,7 +373,6 @@ mod tests {
             tab,
             speed_view: false,
             source_container: c,
-            open_container: None,
         };
         assert_eq!(
             selected_source(&s, view(Tab::Arrange, None)),
@@ -468,22 +391,23 @@ mod tests {
         );
     }
 
-    /// **O chip de HOST só existe onde "qual container?" é pergunta** — e a barra abre
-    /// espaço para ele.
+    /// **O cluster de clip é o MESMO em toda aba** — um chip de fonte e os quatro botões.
     ///
-    /// ⚠️ Substitui um gate que afirmava o oposto sobre os quatro botões de CLIP (eles
-    /// sumiam na aba Containers). Aquela decisão CAIU junto com o filtro que tirava os clips
-    /// de lá: a aba lista clips de novo, então o clip ativo está em vista e os botões dele
-    /// voltam a significar algo.
+    /// ⚠️ Substitui o gate de um segundo chip (o "host picker", que navegava). Ele foi
+    /// removido porque a aba Containers virou uma LISTA, e uma lista já responde *"qual
+    /// container?"* por ser uma lista — duas portas para a mesma pergunta divergem
+    /// ([[feedback_two_doors_to_the_same_question_diverge]]). Este gate existe para que
+    /// ninguém devolva a segunda: se um chip voltar, a largura de alguma aba muda.
     #[test]
-    fn the_host_picker_only_exists_where_which_container_is_a_question() {
-        assert!(shows_host_picker(Tab::Containers));
-        assert!(!shows_host_picker(Tab::Keys) && !shows_host_picker(Tab::Arrange));
+    fn the_clip_cluster_is_the_same_width_on_every_tab() {
         let s = snap();
-        assert!(
-            width(&s, Tab::Containers) > width(&s, Tab::Arrange),
-            "a barra tem de abrir espaço para ele"
-        );
+        let w = width(&s, Tab::Keys);
+        for tab in crate::tab::ALL {
+            assert!(
+                (width(&s, tab) - w).abs() < f32::EPSILON,
+                "{tab:?} pinta um controle a mais"
+            );
+        }
     }
 
     /// **Cada linha diz de que TIPO ela é** — um glifo discreto, e os dois nunca coincidem
@@ -501,11 +425,36 @@ mod tests {
             CLIP_GLYPH, CONTAINER_GLYPH,
             "distinguir é o trabalho inteiro"
         );
-        // A lista de HOSTS é toda de containers, e leva o mesmo glifo: é a mesma coisa.
-        assert!(
-            host_options(&snap())
-                .iter()
-                .all(|o| o.icon == Some(CONTAINER_GLYPH))
+        // ⚠️ E são DESENHOS diferentes, não só variantes diferentes — a asserção acima estava
+        // VERDE sobre o par `Layer`/`Layers`, que são a mesma figura escrita de dois jeitos
+        // (o segundo `d` só retraça um lado antes de fechar). O glifo se compara como
+        // GEOMETRIA, nunca como identificador nem como texto do path (Enio, 2026-07-21).
+        assert_ne!(
+            ink(CLIP_GLYPH),
+            ink(CONTAINER_GLYPH),
+            "os dois glifos desenham a mesma coisa"
         );
+    }
+
+    /// Os pontos que um glifo de fato traça, arredondados e sem repetição — o traço COMO
+    /// FIGURA. Um `d` que retraça um lado dá o mesmo conjunto; um desenho diferente, não.
+    #[cfg(test)]
+    fn ink(icon: IconId) -> Vec<(i64, i64)> {
+        use ph2d_vector::PathEl;
+        let mut pts: Vec<(i64, i64)> = icon
+            .cmds()
+            .iter()
+            .flat_map(|c| ph2d_editor_core::icons::cmd_to_path(*c).elements().to_vec())
+            .filter_map(|el| match el {
+                PathEl::MoveTo(p) | PathEl::LineTo(p) => Some(p),
+                PathEl::QuadTo(_, p) | PathEl::CurveTo(_, _, p) => Some(p),
+                PathEl::ClosePath => None,
+            })
+            // Meio centésimo de unidade da grade 24×24 — bem abaixo de um sub-pixel.
+            .map(|p| ((p.x * 100.0) as i64, (p.y * 100.0) as i64))
+            .collect();
+        pts.sort_unstable();
+        pts.dedup();
+        pts
     }
 }

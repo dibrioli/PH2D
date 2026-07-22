@@ -99,21 +99,21 @@ pub fn edit_host() -> ph2d_timeline::StackHost {
         })
 }
 
-/// **Which container is open**, if any — the host picker's selection, derived from the
-/// published trail so the chip and the lanes can never name different containers.
+/// **Which container is open**, if any — derived from the published trail, so what the lanes
+/// show and what the breadcrumb says can never name different containers.
 ///
-/// `None` at the scene root AND for the Containers tab's "outside any container" level, whose
-/// step deliberately points one past the end of the container list (see the tab switch).
+/// `None` at the scene root, which on the Containers tab is the LIST.
 #[must_use]
 pub fn open_container() -> Option<usize> {
     edit_path().last().map(|s| s.container)
 }
 
-/// **Show `container` in the Containers tab** — the one door for "the tab is showing THIS".
+/// **Show `container` in the Containers tab** — the one door for "the tab is showing THIS",
+/// walked by a double-click on that container's bar in the list.
 ///
-/// It REPLACES the trail rather than pushing onto it: the tab's root is a container chosen by
-/// NAME, and pushing would read as *"inside the one I was already in"*, which is a different
-/// place with a different clock.
+/// It REPLACES the trail rather than pushing onto it: the list is the tab's ROOT, so a bar
+/// you double-click there is one level deep by definition. Pushing would read as *"inside the
+/// one I was already in"*, which is a different place with a different clock.
 pub(crate) fn open_container_root(state: &mut TimelinePanelState, container: usize) {
     pop_to_depth(0);
     enter_container(ph2d_timeline::EnterStep {

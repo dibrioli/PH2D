@@ -108,11 +108,6 @@ pub(crate) struct ClipChip {
     pub rect: Rect,
     /// Its option list is open.
     pub open: bool,
-    /// **Whether the open list is the HOST picker's** rather than the source's. The cluster
-    /// paints two chips on the Containers tab and only one popover can be deferred; this is
-    /// which list the deferred paint must build, so it cannot draw the source's options over
-    /// the host chip.
-    pub host: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -122,11 +117,10 @@ pub(crate) struct BarView {
     /// Expanded graph bands plot velocity instead of value.
     pub speed_view: bool,
     /// The container half of the source selection (`TimelinePanelState::source_container`).
+    ///
+    /// **What the lane's `+` would place**, never where the view is looking: those are two
+    /// questions, and the second one is answered by the Containers list you double-click.
     pub source_container: Option<usize>,
-    /// **Which container the Containers tab is editing** — the host picker's selection.
-    /// A different question from `source_container`, and that is why it is a different chip:
-    /// inside container A, picking B as a SOURCE means "place B inside A".
-    pub open_container: Option<usize>,
 }
 
 /// Flow the transport controls beside the panel title, wrapping onto as many rows

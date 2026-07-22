@@ -10,15 +10,17 @@
 //! by label length so the long one was not crushed to a bare "+". The pair was the real
 //! defect: they belong to different PLACES.
 //!
-//! - The **Containers tab, outside any container** is the level where containers are MADE:
-//!   `+ Container`. There are no lanes here to add to.
-//! - **Inside** a container — and on **Arrange** — you are looking at a stack: `+ Lane`.
-//!   Making another container from in here is not a thing anyone asked for; PLACING one is,
-//!   and that is the source dropdown plus the lane's own `+`.
-//!
 //! With one button the crush cannot happen at all: it takes the strip whole. The
 //! proportional split it replaced is gone rather than kept "just in case" — a mechanism with
 //! no caller is a mechanism that rots.
+//!
+//! # The button makes whatever the ROWS are made of
+//!
+//! That is the whole rule, and it is why [`add_kind`] takes a [`Rows`] and not a tab plus a
+//! bool: the Containers tab's root lists containers, so its ADD makes a container; inside one
+//! the rows are lanes, so it makes a lane; the Keys tab's rows are tracks and `tracks.rs`
+//! owns that header. A button that added something the band cannot show is a button whose
+//! result is invisible.
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
@@ -26,7 +28,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Theme;
 
 use crate::ids;
-use crate::tab::Tab;
+use crate::tab::Rows;
 
 /// What the lane area's ADD button makes here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -48,30 +50,20 @@ impl AddKind {
     }
 }
 
-/// **Which ADD this place offers** — the whole rule, as a pure function of the two facts the
-/// panel already has.
-///
-/// `inside` is *"the open container exists"* (the snapshot published a breadcrumb for it),
-/// not *"the tab is Containers"*: the Containers tab has both states, and they are the two
-/// levels — the LIST of containers, and the inside of one.
-pub(crate) fn add_kind(tab: Tab, inside: bool) -> Option<AddKind> {
-    match tab {
+/// **Which ADD this place offers** — the whole rule, as a pure function of what the row band
+/// holds.
+pub(crate) fn add_kind(rows: Rows) -> Option<AddKind> {
+    match rows {
         // The Keys tab adds TRACKS; `tracks::paint_add_track` owns that header.
-        Tab::Keys => None,
-        Tab::Containers if !inside => Some(AddKind::Container),
-        _ => Some(AddKind::Lane),
+        Rows::Keys => None,
+        Rows::Containers => Some(AddKind::Container),
+        Rows::Lanes => Some(AddKind::Lane),
     }
 }
 
 /// Paint the lane area's ADD button across the label column's header strip.
-pub(crate) fn paint_add_lane(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    header: Rect,
-    tab: Tab,
-    inside: bool,
-) {
-    let Some(kind) = add_kind(tab, inside) else {
+pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect, rows: Rows) {
+    let Some(kind) = add_kind(rows) else {
         return;
     };
     let (id, key) = kind.button();
@@ -96,45 +88,52 @@ pub(crate) fn paint_add_lane(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tab::ALL;
+    use crate::tab::{ALL, Tab};
 
-    /// **Cada lugar oferece UM botão, e o botão diz onde você está.**
+    /// **O botão faz aquilo de que a faixa de linhas é FEITA.**
     ///
-    /// A aba Containers tem DOIS estados e eles são os dois níveis: a LISTA de containers
-    /// (onde se faz um) e o INTERIOR de um (onde se fazem lanes). Oferecer "+ Container"
-    /// dentro de um container convidaria a fazer um irmão de onde você não pode colocá-lo —
-    /// colocar é o dropdown de fonte mais o `+` da lane (Enio, 2026-07-21).
+    /// A aba Containers tem DOIS níveis: a LISTA de containers (onde se faz um) e o INTERIOR
+    /// de um (onde se fazem lanes). Oferecer "+ Container" dentro de um container convidaria
+    /// a fazer um irmão de onde você não pode colocá-lo — colocar é o dropdown de fonte mais
+    /// o `+` da lane (Enio, 2026-07-21).
     #[test]
     fn each_place_offers_exactly_the_add_that_belongs_to_it() {
-        assert_eq!(add_kind(Tab::Containers, false), Some(AddKind::Container));
-        assert_eq!(add_kind(Tab::Containers, true), Some(AddKind::Lane));
-        assert_eq!(add_kind(Tab::Arrange, false), Some(AddKind::Lane));
-        assert_eq!(add_kind(Tab::Arrange, true), Some(AddKind::Lane));
-        assert_eq!(add_kind(Tab::Keys, false), None, "a Keys adiciona TRACKS");
-        assert_eq!(add_kind(Tab::Keys, true), None);
+        assert_eq!(add_kind(Rows::Containers), Some(AddKind::Container));
+        assert_eq!(add_kind(Rows::Lanes), Some(AddKind::Lane));
+        assert_eq!(add_kind(Rows::Keys), None, "a Keys adiciona TRACKS");
     }
 
     /// **"+ Container" existe em exatamente UM lugar**, e "+ Lane" nunca aparece ao lado dele.
     ///
     /// É a lei que apagou a divisão proporcional: com um botão por lugar, o esmagamento do
-    /// rótulo longo (o report anterior do Enio) não é sequer expressável.
+    /// rótulo longo (o report anterior do Enio) não é sequer expressável. E a varredura é
+    /// pelos NÍVEIS que de fato existem — cada aba com o snapshot que a produz — porque um
+    /// par `(aba, bool)` inventaria estados que a `tab::rows` não pode devolver.
     #[test]
     fn the_two_adds_are_never_offered_together() {
+        let inside = ph2d_timeline::TimelineViewSnapshot {
+            crumbs: vec![(0, "Walk".into())],
+            ..ph2d_timeline::TimelineViewSnapshot::default()
+        };
+        let root = ph2d_timeline::TimelineViewSnapshot::default();
         let places: Vec<Option<AddKind>> = ALL
             .into_iter()
-            .flat_map(|t| [add_kind(t, false), add_kind(t, true)])
+            .flat_map(|t| {
+                [
+                    add_kind(crate::tab::rows(t, &root)),
+                    add_kind(crate::tab::rows(t, &inside)),
+                ]
+            })
             .collect();
         let makers = places
             .iter()
             .filter(|k| **k == Some(AddKind::Container))
             .count();
         assert_eq!(makers, 1, "um só lugar faz containers, veio {places:?}");
-        assert!(
-            places
-                .iter()
-                .flatten()
-                .all(|k| matches!(k, AddKind::Lane | AddKind::Container)),
-            "e cada lugar oferece no máximo um"
+        assert_eq!(
+            add_kind(crate::tab::rows(Tab::Containers, &inside)),
+            Some(AddKind::Lane),
+            "e dentro de um container é a lane que se acrescenta"
         );
     }
 

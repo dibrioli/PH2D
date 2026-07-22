@@ -37,13 +37,11 @@ fn src(c: usize) -> StripSource {
     StripSource::Container(u16::try_from(c).unwrap())
 }
 
-/// **Making a container does not place one** — and the index it gets is the one the panel
-/// predicted.
+/// **Making a container does not place one, e nem viaja para dentro dele.**
 ///
-/// The panel opens the new container by `containers.len()` read BEFORE the intent, which is
-/// only sound while `add_container` appends and refuses nothing. This gate is what makes that
-/// a pinned invariant instead of a guess: give containers a cap one day and it turns red at
-/// the consumer that would silently open the wrong one.
+/// Os três atos eram um só aperto: o intent faz o ASSET, a lista ganha uma linha, e entrar é
+/// o duplo-clique nela (Enio, 2026-07-21). Aqui se mede o primeiro — nenhuma lane nova na
+/// cena, nenhuma instância.
 #[test]
 fn making_a_container_appends_the_asset_and_places_nothing() {
     let mut st = TimelineState::new();
@@ -57,7 +55,7 @@ fn making_a_container_appends_the_asset_and_places_nothing() {
     assert_eq!(
         st.doc.add_container("probe".to_string()),
         next + 1,
-        "add_container APPENDA e não recusa — é sobre isso que a predição do painel se apoia"
+        "add_container APENDA: o índice novo é o fim da lista"
     );
     assert_eq!(
         st.doc.stack().len(),
@@ -68,6 +66,77 @@ fn making_a_container_appends_the_asset_and_places_nothing() {
     assert!(
         st.doc.stack().iter().all(|l| l.strips.is_empty()),
         "nem uma instância"
+    );
+}
+
+/// **O teto de containers é o array de ids da LISTA, e a recusa mora no documento.**
+///
+/// A nota antiga dizia *"sem cap, de propósito: containers não têm UI, então não há recurso a
+/// apontar"* — e prometia o cap para quando o widget chegasse. Chegou: cada container é uma
+/// linha com um lápis, e o id daquele lápis sai de um array fixo (`TIMELINE_CONT_RENAME`),
+/// exatamente como o `MAX_CLIPS` sai do seletor de clips. O 17º container seria um asset que
+/// o artista vê e não consegue renomear.
+///
+/// A recusa **devolve um índice que existe**: quem chama navega para ele, e um índice fora da
+/// lista seria um buraco.
+#[test]
+fn the_container_cap_is_the_lists_id_array_and_the_document_refuses() {
+    let mut doc = TimelineDoc::new();
+    for i in 0..ph2d_timeline::MAX_CONTAINERS {
+        assert_eq!(doc.add_container(format!("C{i}")), i);
+    }
+    let last = ph2d_timeline::MAX_CONTAINERS - 1;
+    assert_eq!(
+        doc.add_container("over".to_string()),
+        last,
+        "recusado, e o índice devolvido é um container que EXISTE"
+    );
+    assert_eq!(
+        doc.containers().len(),
+        ph2d_timeline::MAX_CONTAINERS,
+        "e nada foi acrescentado"
+    );
+    // ⚠️ Que este número seja EXATAMENTE o tamanho dos arrays de id da lista é medido no
+    // painel (`container_list_tests::the_cap_is_the_lists_id_array`), a única crate que
+    // enxerga os dois lados. Aqui fica a metade que é do documento: ele RECUSA.
+}
+
+/// **Renomear é a outra coisa que a lista faz** — e um índice fora dela é um no-op, não um
+/// pânico nem o nome do vizinho.
+#[test]
+fn renaming_a_container_names_that_one_and_an_absent_one_is_a_noop() {
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    st.doc.add_container("A".to_string());
+    st.doc.add_container("B".to_string());
+
+    ph2d_timeline::apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::RenameContainer {
+            index: 1,
+            name: "Jump".to_string(),
+        },
+    );
+    let names: Vec<&str> = st
+        .doc
+        .containers()
+        .iter()
+        .map(|c| c.name.as_str())
+        .collect();
+    assert_eq!(names, vec!["A", "Jump"]);
+
+    ph2d_timeline::apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::RenameContainer {
+            index: 9,
+            name: "ghost".to_string(),
+        },
+    );
+    assert!(
+        st.doc.containers().iter().all(|c| c.name != "ghost"),
+        "um índice que a lista não tem não pode renomear ninguém"
     );
 }
 

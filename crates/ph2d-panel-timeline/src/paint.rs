@@ -107,7 +107,6 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             tab: state.tab,
             speed_view: state.speed_view,
             source_container: state.source_container,
-            open_container: state::open_container(),
         },
     );
     let g = geom::resolve(rect, after_transport, state.label_w, min_label);
@@ -167,20 +166,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let preview_dx = crate::key_drag::preview_dx(state);
 
-    // The label column's header strip, aligned with the ruler: whichever ADD this
-    // tab's half is made of, and only that one. Sharing the strip was right while
-    // both halves were on screen; now a "+Lane" in the Keys tab would add a lane
-    // the tab cannot show — a button whose result is invisible is worse than a
-    // button that is not there ([[feedback_disabled_button_still_dispatches]]).
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
-    if state.tab.shows_keys() {
-        tracks::paint_add_track(ctx, theme, header);
-    } else {
-        // `inside` is "the open container EXISTS" — the snapshot publishes a crumb for it —
-        // not "the tab is Containers": that tab has two levels, and the ADD differs on each.
-        let inside = !snapshot.crumbs.is_empty();
-        crate::stack_add_header::paint_add_lane(ctx, theme, header, state.tab, inside);
-    }
+    paint_add_header(ctx, theme, header, state.tab, &snapshot);
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
     // A handle or anchor drag whose row got culled (scrolled away, or its track
@@ -234,6 +221,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             header,
             time_area: g.time_area,
             clip_dd_chip,
+            // Where a CONTAINER's rename floats — its own row's label column, asked of the
+            // same function the list laid the name out with.
+            row_rename: crate::container_list::rename_anchor(&g, state, &snapshot),
             view_start,
             px_per_s,
         },
@@ -241,6 +231,32 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     set_last_content_h(content_h);
     set_last_visible_h(g.rows.h);
+}
+
+/// **The label column's header strip: whichever ADD this level is made of, and only that
+/// one.**
+///
+/// Sharing the strip was right while both halves were on screen; a "+ Lane" on the Keys tab
+/// would add a lane the tab cannot show, and a button whose result is invisible is worse than
+/// a button that is not there ([[feedback_disabled_button_still_dispatches]]). Tracks are
+/// `tracks.rs`'s; everything else asks `tab::rows` what the band holds.
+fn paint_add_header(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    header: Rect,
+    tab: crate::tab::Tab,
+    snapshot: &ph2d_timeline::TimelineViewSnapshot,
+) {
+    if tab.shows_keys() {
+        tracks::paint_add_track(ctx, theme, header);
+    } else {
+        crate::stack_add_header::paint_add_lane(
+            ctx,
+            theme,
+            header,
+            crate::tab::rows(tab, snapshot),
+        );
+    }
 }
 
 /// The seam between the track-name column and the time area: a hairline, plus a
@@ -277,6 +293,9 @@ struct Overlays {
     /// Where the clip dropdown's chip landed, and whether its list is open. The
     /// option popover and the rename field both hang off it.
     clip_dd_chip: Option<transport::ClipChip>,
+    /// Where a CONTAINER's rename field goes, when one is open: its row in the Containers
+    /// list. `None` for a clip rename, which floats over the chip instead.
+    row_rename: Option<Rect>,
     view_start: f64,
     px_per_s: f64,
 }
@@ -299,35 +318,21 @@ fn paint_overlays(
     tracks::paint_add_track_popover(ctx, theme, o.header, state.add_track_open);
 
     if let Some(c) = o.clip_dd_chip.filter(|c| c.open) {
-        let (chip, host) = (c.rect, c.host);
+        let chip = c.rect;
         // The SAME doors the chip paints from, so the open list and the collapsed chip
-        // cannot name different things — and the same branch, so the list that opens is the
-        // list of the chip that was clicked.
+        // cannot name different things.
         let view = crate::transport::BarView {
             tab: state.tab,
             speed_view: state.speed_view,
             source_container: state.source_container,
-            open_container: state::open_container(),
         };
-        let mut dd = if host {
-            let mut d = ph2d_editor_core::widget::Dropdown::new(
-                ids::TIMELINE_HOST_DD,
-                "",
-                crate::transport_clips::host_options(snapshot),
-            );
-            if let Some(i) = view.open_container {
-                d = d.selected(i);
-            }
-            d
-        } else {
-            ph2d_editor_core::widget::Dropdown::new(
-                ids::TIMELINE_CLIP_DD,
-                "",
-                crate::transport_clips::source_options(snapshot, state.tab),
-            )
-            .selected(crate::transport_clips::selected_source(snapshot, view))
-        };
-        dd = dd.open(true);
+        let dd = ph2d_editor_core::widget::Dropdown::new(
+            ids::TIMELINE_CLIP_DD,
+            "",
+            crate::transport_clips::source_options(snapshot, state.tab),
+        )
+        .selected(crate::transport_clips::selected_source(snapshot, view))
+        .open(true);
         ph2d_editor_core::widget::paint_dropdown_popover(
             &dd,
             chip,
@@ -365,11 +370,14 @@ fn paint_overlays(
     // is only knowable from the bar's flow, which is why it is reported back rather
     // than re-derived here: two answers to "where is the chip" would drift the moment
     // the bar wraps to a second row.
+    // A container's field goes on its ROW; a clip's on the chip that names it. Same field,
+    // and which rect it takes is the same question `RenameKind` already answered.
     crate::clip_rename::paint(
         state,
         ctx,
         theme,
-        o.clip_dd_chip.map_or(o.body, |c| c.rect),
+        o.row_rename
+            .unwrap_or_else(|| o.clip_dd_chip.map_or(o.body, |c| c.rect)),
         snapshot,
     );
 }

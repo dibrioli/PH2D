@@ -169,38 +169,65 @@ pub const TIMELINE_CLIP_OPT: [NodeId; 16] = [
     hash_node_id("timeline.clip_opt_15"),
 ];
 
-/// "+ Container" — make a container and open it on the Containers tab (ADR-0133).
+/// "+ Container" — make a container. The **only** button the Containers tab's list level
+/// offers (ADR-0133, amended 2026-07-21).
 pub const TIMELINE_ADD_CONTAINER: NodeId = hash_node_id("timeline.add_container");
 
-/// **The Containers tab's "which container am I editing" chip** — navigation, not source.
+/// **One container's bar in the Containers list** — the surface a double-click ENTERS.
 ///
-/// A second chip because these are two different questions, and one control cannot answer
-/// both: inside container A, picking B from the SOURCE list has to mean *"place B inside A"*,
-/// which is the opposite of *"leave A and go edit B"*. Fusing them is the same mistake
-/// "+ Container" made by creating and placing in one press.
+/// ⚠️ It replaced a "which container am I editing" dropdown chip. The chip was a second
+/// answer to a question the LIST already answers by being a list: *"a aba conteiner só serve
+/// como uma lista de containers criados"* (Enio, 2026-07-21). A picker that navigates and a
+/// list you double-click are two doors to the same place, and this project has paid for that
+/// shape before.
 ///
-/// Painted only on the Containers tab. Everywhere else "which stack" is not a question the
-/// view is asking: Keys is the active clip's, Arrange is always the scene's.
-pub const TIMELINE_HOST_DD: NodeId = hash_node_id("timeline.host_dd");
+/// The bar carries **no** trim edges, no body drag and no fade grips — it is a LABEL for an
+/// asset, not a span in time. Registering it as a single rect is what makes that structural
+/// rather than a rule someone has to remember.
+pub const TIMELINE_CONT_ROW: [NodeId; 16] = [
+    hash_node_id("timeline.cont_row_0"),
+    hash_node_id("timeline.cont_row_1"),
+    hash_node_id("timeline.cont_row_2"),
+    hash_node_id("timeline.cont_row_3"),
+    hash_node_id("timeline.cont_row_4"),
+    hash_node_id("timeline.cont_row_5"),
+    hash_node_id("timeline.cont_row_6"),
+    hash_node_id("timeline.cont_row_7"),
+    hash_node_id("timeline.cont_row_8"),
+    hash_node_id("timeline.cont_row_9"),
+    hash_node_id("timeline.cont_row_10"),
+    hash_node_id("timeline.cont_row_11"),
+    hash_node_id("timeline.cont_row_12"),
+    hash_node_id("timeline.cont_row_13"),
+    hash_node_id("timeline.cont_row_14"),
+    hash_node_id("timeline.cont_row_15"),
+];
 
-/// Options for [`TIMELINE_HOST_DD`] — one per container, same cap rule as its siblings.
-pub const TIMELINE_HOST_OPT: [NodeId; 16] = [
-    hash_node_id("timeline.host_opt_0"),
-    hash_node_id("timeline.host_opt_1"),
-    hash_node_id("timeline.host_opt_2"),
-    hash_node_id("timeline.host_opt_3"),
-    hash_node_id("timeline.host_opt_4"),
-    hash_node_id("timeline.host_opt_5"),
-    hash_node_id("timeline.host_opt_6"),
-    hash_node_id("timeline.host_opt_7"),
-    hash_node_id("timeline.host_opt_8"),
-    hash_node_id("timeline.host_opt_9"),
-    hash_node_id("timeline.host_opt_10"),
-    hash_node_id("timeline.host_opt_11"),
-    hash_node_id("timeline.host_opt_12"),
-    hash_node_id("timeline.host_opt_13"),
-    hash_node_id("timeline.host_opt_14"),
-    hash_node_id("timeline.host_opt_15"),
+/// The pencil on a container's row — the OTHER of the two things that list does.
+///
+/// A button and not a double-click, because the double-click is taken: it enters the
+/// container. The clip selector reached the same shape from the other direction (its first
+/// click opens a dropdown), and one rename affordance across the panel beats two.
+///
+/// **This array is `ph2d_timeline::MAX_CONTAINERS`** — the resource the ADR said would arrive
+/// with the widget that needs it. It has.
+pub const TIMELINE_CONT_RENAME: [NodeId; 16] = [
+    hash_node_id("timeline.cont_rename_0"),
+    hash_node_id("timeline.cont_rename_1"),
+    hash_node_id("timeline.cont_rename_2"),
+    hash_node_id("timeline.cont_rename_3"),
+    hash_node_id("timeline.cont_rename_4"),
+    hash_node_id("timeline.cont_rename_5"),
+    hash_node_id("timeline.cont_rename_6"),
+    hash_node_id("timeline.cont_rename_7"),
+    hash_node_id("timeline.cont_rename_8"),
+    hash_node_id("timeline.cont_rename_9"),
+    hash_node_id("timeline.cont_rename_10"),
+    hash_node_id("timeline.cont_rename_11"),
+    hash_node_id("timeline.cont_rename_12"),
+    hash_node_id("timeline.cont_rename_13"),
+    hash_node_id("timeline.cont_rename_14"),
+    hash_node_id("timeline.cont_rename_15"),
 ];
 
 /// The source dropdown's CONTAINER half — one id per container, the sibling of
@@ -209,9 +236,8 @@ pub const TIMELINE_HOST_OPT: [NodeId; 16] = [
 /// Two arrays rather than one shared list because the id says WHICH KIND was picked: the
 /// click handler reads the kind off the array it found the id in, so a clip and a container
 /// at the same list position can never be confused for one another. It also keeps each half's
-/// cap its own — clips are capped at `MAX_CLIPS`, containers are deliberately uncapped
-/// (ADR-0133 found no resource to limit them), and this is a cap on what the DROPDOWN can
-/// offer, never on what the document may hold.
+/// cap its own — clips are capped at `MAX_CLIPS`, containers at
+/// `ph2d_timeline::MAX_CONTAINERS`, and this is a cap on what the DROPDOWN can offer.
 pub const TIMELINE_CONT_OPT: [NodeId; 16] = [
     hash_node_id("timeline.cont_opt_0"),
     hash_node_id("timeline.cont_opt_1"),

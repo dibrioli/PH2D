@@ -530,6 +530,18 @@ pub enum TimelineHitKind {
     ResizeEdge {
         edges: u8,
     },
+    /// **A container's bar in the Containers list** (ADR-0133, amended 2026-07-21) — one rect,
+    /// and a double-click on it enters that container.
+    ///
+    /// Not a [`Self::Strip`]: a strip is a SPAN (two grabbable ends, a lane, a position in
+    /// time) and this is a LABEL for a document asset. Giving it its own kind rather than a
+    /// strip with the edges left out is what keeps "it cannot be resized, moved or trimmed"
+    /// (Enio, 2026-07-21) a property of the type instead of a rule four call sites have to
+    /// remember.
+    ContainerRow {
+        /// Index into `TimelineDoc::containers`.
+        index: usize,
+    },
 }
 
 /// Left edge bit of [`TimelineHitKind::ResizeEdge`].

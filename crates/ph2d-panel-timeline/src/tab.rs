@@ -101,6 +101,39 @@ impl Tab {
     }
 }
 
+/// **What the row band under the ruler is made of** — the one door, asked by the geometry,
+/// the painters and the ADD button alike.
+///
+/// The Containers tab has TWO levels and they are not two tabs: its root is the **list** of
+/// containers in the document (*"a aba conteiner só serve como uma lista de containers
+/// criados"*, Enio 2026-07-21), and double-clicking a bar walks into one, where the rows are
+/// that container's lanes. Everything downstream reads the level from here, so a row cannot
+/// be painted as one thing and measured as another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Rows {
+    /// Track rows + the Summary channel (the Keys tab).
+    Keys,
+    /// Stack lanes — the scene's on Arrange, a container's interior inside one.
+    Lanes,
+    /// The document's containers, one bar each: the Containers tab's root level.
+    Containers,
+}
+
+/// **Which level is on screen.** Pure, and the ONLY place that reads "am I inside" off the
+/// snapshot.
+///
+/// `crumbs` is the published trail, so *inside* means the shell agrees with the panel about
+/// where the animator is. Asking it here once means the ADD button, the row heights and the
+/// two painters cannot answer differently.
+#[must_use]
+pub fn rows(tab: Tab, snap: &ph2d_timeline::TimelineViewSnapshot) -> Rows {
+    match tab {
+        Tab::Keys => Rows::Keys,
+        Tab::Containers if snap.crumbs.is_empty() => Rows::Containers,
+        _ => Rows::Lanes,
+    }
+}
+
 /// Every tab, in strip order — what a sweep iterates so a new one cannot be forgotten.
 pub const ALL: [Tab; 3] = [Tab::Keys, Tab::Containers, Tab::Arrange];
 

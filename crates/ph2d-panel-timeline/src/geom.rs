@@ -201,15 +201,25 @@ pub(crate) fn row_h(expanded: bool, graph_h: f32) -> f32 {
 /// [`summary_h`], so a tab showing the wrong half is not expressible: the rows
 /// cannot disagree with the heights they are stacked from.
 pub(crate) fn stack_h(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
-    if tab.shows_lanes() {
-        ROW_H_PX * snap.lanes.len() as f32
-    } else {
-        0.0
+    ROW_H_PX * stack_rows(snap, tab) as f32
+}
+
+/// **How many rows the stack band holds, and of what** — lanes, or the container LIST.
+///
+/// One function so the height, the bands and both painters count the same thing. A row is a
+/// row is [`ROW_H_PX`]: a container's bar and a lane occupy the same box, which is why the
+/// list needed no geometry of its own.
+fn stack_rows(snap: &TimelineViewSnapshot, tab: Tab) -> usize {
+    match crate::tab::rows(tab, snap) {
+        crate::tab::Rows::Keys => 0,
+        crate::tab::Rows::Lanes => snap.lanes.len(),
+        crate::tab::Rows::Containers => snap.containers.len(),
     }
 }
 
-/// Every lane's `(index, top_y, height)` in the scrolled band — and **nothing at
-/// all outside the Arrange tab**, where the lanes have no height to sit in.
+/// Every stack row's `(index, top_y, height)` in the scrolled band — lanes, or the container
+/// list ([`stack_rows`]) — and **nothing at all on the Keys tab**, where they have no height
+/// to sit in.
 pub(crate) fn stack_bands(
     snap: &TimelineViewSnapshot,
     tab: Tab,
@@ -217,11 +227,7 @@ pub(crate) fn stack_bands(
     scroll_y: f32,
 ) -> impl Iterator<Item = (usize, f32, f32)> + '_ {
     let top = rows_top - scroll_y;
-    let n = if tab.shows_lanes() {
-        snap.lanes.len()
-    } else {
-        0
-    };
+    let n = stack_rows(snap, tab);
     (0..n).map(move |i| (i, top + ROW_H_PX * i as f32, ROW_H_PX))
 }
 

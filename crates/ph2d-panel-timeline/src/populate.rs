@@ -147,15 +147,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             selected_index: Some(0),
         },
     );
-    store.register(
-        ids::TIMELINE_HOST_DD,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: None,
-        },
-    );
-    for id in ids::TIMELINE_HOST_OPT {
+    // The Containers list's two verbs, one id array each — registered for every row the id
+    // arrays can address, not just the ones today's document fills, for the reason above.
+    for id in ids::TIMELINE_CONT_RENAME {
         button(store, id);
     }
     for id in ids::TIMELINE_CONT_OPT {

@@ -27,7 +27,7 @@ use crate::strip_paint::paint_strip;
 use crate::{geom, ids};
 
 /// Vertical inset of a strip inside its row, so lanes read as separate rows.
-const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
+pub(crate) const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
 pub(crate) const EDGE_W: f32 = 12.0; // LITERAL-PX-OK: a comfortable pointer target — 6 px was too thin to click (Enio, 2026-07-19)
 /// The lane weight field's width.
@@ -49,6 +49,13 @@ pub(crate) fn paint(
     state: &TimelinePanelState,
     snap: &TimelineViewSnapshot,
 ) {
+    // The stack band holds LANES here and the container LIST at the Containers tab's root —
+    // one band, two contents (`tab::rows`). Asking before the loop rather than filtering
+    // inside it: the two painters answer the same question in the same words, so neither can
+    // decide it is also the other's turn.
+    if crate::tab::rows(state.tab, snap) != crate::tab::Rows::Lanes {
+        return;
+    }
     let region = g.rows;
     let bands: Vec<(usize, f32, f32)> =
         geom::stack_bands(snap, state.tab, region.y, state.scroll_y).collect();

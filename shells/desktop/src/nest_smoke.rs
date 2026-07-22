@@ -258,16 +258,20 @@ impl crate::App {
              instanciado 3x em [0,2) [3,7) [8,10) — a do meio esticada (speed 0.5 = camera \
              lenta). Abra L: sao TRES abas agora, [Keys | Containers | Arrange].\n\
              [nest-smoke]   Arrange   = a CENA (as 3 instancias). Botao direito numa strip \
-             Jump -> \"Enter Container\" leva voce para a aba Containers.\n\
-             [nest-smoke]   Containers abre FORA de qualquer container: o unico botao da \
-             coluna e' \"+ Container\" (cria um NOVO e vazio, sem despejar nada na cena). O \
-             chip da esquerda escolhe qual container editar -- pegue \"Jump\".\n\
-             [nest-smoke]   DENTRO de um container o botao vira \"+ Lane\", e o dropdown de \
-             FONTE lista clips E containers (com glifos diferentes). Edite o pico do Rise UMA \
-             vez e os TRES pulos mudam.\n\
-             [nest-smoke]   Para COLOCAR: escolha a fonte no dropdown e clique no \"+\" da \
-             lane -- vale no Arrange e dentro de um container (e' assim que se aninha). \
-             Arraste o CORPO de uma strip para CIMA/BAIXO para troca-la de lane."
+             Jump -> \"Enter Container\" leva voce para dentro dela.\n\
+             [nest-smoke]   Containers = a LISTA dos containers do documento, uma barra em \
+             branco por container. A barra nao redimensiona, nao arrasta, nao corta: um \
+             container e' um ASSET, nao um trecho de tempo. So duas coisas -- o LAPIS na \
+             coluna da esquerda renomeia, e o DUPLO-CLIQUE na barra entra.\n\
+             [nest-smoke]   O unico botao da coluna ali e' \"+ Container\" (cria um NOVO e \
+             vazio, sem despejar nada na cena e sem entrar nele). DENTRO de um container o \
+             botao vira \"+ Lane\". Edite o pico do Rise UMA vez e os TRES pulos mudam.\n\
+             [nest-smoke]   Para VOLTAR a lista: toque a aba Containers estando nela (ou vá \
+             pela migalha \"Scene\", que leva ao Arrange).\n\
+             [nest-smoke]   Para COLOCAR: escolha a fonte no dropdown (clips com folha, \
+             containers com CAIXA) e clique no \"+\" da lane -- vale no Arrange e dentro de \
+             um container (e' assim que se aninha). Arraste o CORPO de uma strip para \
+             CIMA/BAIXO para troca-la de lane."
         );
     }
 }

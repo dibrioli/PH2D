@@ -156,21 +156,18 @@ pub(crate) fn apply_event(
                 .iter()
                 .position(|(tid, _)| *tid == id)
                 .map_or(crate::tab::Tab::default(), crate::tab::Tab::from_index);
-            crate::state::set_tab(state, want);
-            // **The Containers tab opens OUTSIDE any container** — the level where containers
-            // are made (Enio, 2026-07-21). The step points ONE PAST the end of the container
-            // list, which is out of range on purpose: no host, so no lanes, so the header
-            // offers "+ Container" and nothing else. And it is the index the next
-            // `AddContainer` will mint — the empty state and the first creation name the
-            // same place, so nothing is predicted twice.
-            if want == crate::tab::Tab::Containers && crate::state::trail_len() == 0 {
-                let n = crate::state::current_snapshot().containers.len();
-                crate::state::enter_container(ph2d_timeline::EnterStep {
-                    container: n,
-                    lane: 0,
-                    strip: None,
-                });
+            // **Tapping the tab you are already on returns it to its root**, and that is the
+            // way back out of a container to the LIST (the phone tab-bar convention, and the
+            // Vector pill's toggle is the same idiom here). `set_tab` is a no-op when the tab
+            // does not change, so the pop is the whole effect.
+            //
+            // It has to be BEFORE the switch, not after: after, the comparison would always
+            // be "equal" and every tab click would drop the trail — losing the animator's
+            // place on a plain Keys→Containers switch, which is the opposite of the rule.
+            if want == crate::tab::Tab::Containers && state.tab == want {
+                crate::state::pop_to_depth(0);
             }
+            crate::state::set_tab(state, want);
             EventOutcome::Consumed
         }
         // Speed-graph view toggle (W5) — panel-local view state, NOT a document
@@ -458,16 +455,24 @@ fn stack_click(
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddLane);
         return Some(EventOutcome::Consumed);
     }
-    // **New container** — the asset, then the tab opens it. The two halves of "New Symbol".
+    // **New container** — the asset, and NOTHING else.
     //
-    // The index is not a guess: `TimelineDoc::add_container` APPENDS and refuses nothing
-    // (ADR-0133 measured no resource that justifies a cap), so the container about to be
-    // born is `containers.len()`, and a gate pins that so a future cap cannot make this
-    // silently open the wrong one.
+    // ⚠️ It used to open the new container too, and that was wrong twice over: it made the
+    // Containers tab jump into edit mode on a press that said "make one", and it meant the
+    // tab could never be seen as what Enio asked it to be — *"uma lista de containers
+    // criados"* (2026-07-21). Making a thing and going into it are two acts; the second one
+    // is the double-click on its bar.
     if id == ids::TIMELINE_ADD_CONTAINER {
-        let next = crate::state::current_snapshot().containers.len();
         crate::state::push_intent(ph2d_timeline::TimelineIntent::AddContainer);
-        crate::state::open_container_root(state, next);
+        return Some(EventOutcome::Consumed);
+    }
+    // The pencil on a container's row — the other of the list's two verbs.
+    if let Some(index) = ids::TIMELINE_CONT_RENAME.iter().position(|&b| b == id) {
+        // A container the snapshot no longer has raises nothing: the action expires with its
+        // target, exactly as the lane mute's does.
+        if index < crate::state::current_snapshot().containers.len() {
+            crate::clip_rename::open_container(state, index);
+        }
         return Some(EventOutcome::Consumed);
     }
     // The breadcrumb: segment 0 is the scene root (leave everything), segment `n` pops OUT to

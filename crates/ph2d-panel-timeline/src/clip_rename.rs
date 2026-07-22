@@ -1,4 +1,4 @@
-//! Inline clip-rename field (W5 — clip selector).
+//! Inline **name** field — the clip selector's (W5) and the Containers list's.
 //!
 //! The pencil in the transport bar opens a single-line `TextInput` over the bar,
 //! seeded with the active clip's name. Exactly the shape of the sibling
@@ -15,6 +15,11 @@
 //! the thing being renamed is a DROPDOWN chip, and the first click of a
 //! double-click has already opened the list. A dedicated button has no such
 //! ambiguity, and it is discoverable next to the `+` that made the clip.
+//!
+//! The Containers list arrived at the same pencil from the other direction: there the
+//! double-click is taken — it ENTERS the container (Enio, 2026-07-21) — so a rename could
+//! not be one. [`crate::state::RenameKind`] is what lets both use this one field instead of
+//! growing a second one that would drift on the next fix.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
@@ -42,9 +47,9 @@ pub(crate) fn paint(
     let Some(mut cr) = state.clip_rename else {
         return;
     };
-    // The clip may have vanished (deleted, or an undo dropped it) — abandon the
+    // The clip (or container) may have vanished — deleted, or an undo dropped it. Abandon the
     // rename rather than rename whatever slid into that index.
-    let Some(name) = snap.clips.get(cr.index) else {
+    let Some(name) = current_name(snap, cr) else {
         state.clip_rename = None;
         return;
     };
@@ -62,7 +67,7 @@ pub(crate) fn paint(
             ids::TIMELINE_CLIP_RENAME_INPUT,
             InteractiveState::TextInput {
                 state: TextInputState::Focused,
-                text: name.clone(),
+                text: name.to_string(),
                 caret: name.len(),
                 selection_anchor: None,
             },
@@ -115,10 +120,29 @@ pub(crate) fn paint(
         .register(ids::TIMELINE_CLIP_RENAME_INPUT, rect);
 }
 
-/// Open the rename field on the ACTIVE clip (the pencil button).
+/// The name the field seeds from — the ONE place that maps a [`state::RenameKind`] to a list,
+/// so the seeding and the commit cannot disagree about what is being renamed.
+fn current_name(snap: &TimelineViewSnapshot, cr: state::ClipRename) -> Option<&str> {
+    match cr.kind {
+        state::RenameKind::Clip => snap.clips.get(cr.index).map(String::as_str),
+        state::RenameKind::Container => snap.containers.get(cr.index).map(|c| c.name.as_str()),
+    }
+}
+
+/// Open the rename field on the ACTIVE clip (the pencil button in the transport bar).
 pub(crate) fn open(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot) {
     state.clip_rename = Some(state::ClipRename {
+        kind: state::RenameKind::Clip,
         index: snap.active_clip,
+        opened: false,
+    });
+}
+
+/// Open the rename field on container `index` (a pencil in the Containers list).
+pub(crate) fn open_container(state: &mut TimelinePanelState, index: usize) {
+    state.clip_rename = Some(state::ClipRename {
+        kind: state::RenameKind::Container,
+        index,
         opened: false,
     });
 }
@@ -134,9 +158,17 @@ pub(crate) fn commit(state: &mut TimelinePanelState, store: &WidgetStore) {
     if let Some(name) = field_text(store) {
         let name = name.trim();
         if !name.is_empty() {
-            state::push_intent(TimelineIntent::RenameClip {
-                index: cr.index,
-                name: name.to_string(),
+            // The kind picks the intent, and it is the same kind the seed read from — one
+            // enum, so typing into a container's field can never rename a clip.
+            state::push_intent(match cr.kind {
+                state::RenameKind::Clip => TimelineIntent::RenameClip {
+                    index: cr.index,
+                    name: name.to_string(),
+                },
+                state::RenameKind::Container => TimelineIntent::RenameContainer {
+                    index: cr.index,
+                    name: name.to_string(),
+                },
             });
         }
     }

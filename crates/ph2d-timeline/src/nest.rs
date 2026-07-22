@@ -56,20 +56,41 @@ pub enum StackHost {
     Container(usize),
 }
 
+/// Most containers a document may hold.
+///
+/// **The cap that the old note said would arrive with the widget** — it has. A container is
+/// now a ROW in the Containers tab's list, and that row carries a rename button whose id
+/// comes from a fixed `NodeId` array (`TIMELINE_CONT_RENAME`), exactly as
+/// [`crate::MAX_CLIPS`] comes from the clip selector's. The chrome cannot mint a hit id at
+/// runtime, so a 17th container would be an asset the artist could see and never rename —
+/// and the refusal lives HERE, with the data, rather than letting the UI silently drop one
+/// it cannot address. Raising it means growing the id arrays in lockstep; a gate holds them
+/// together.
+pub const MAX_CONTAINERS: usize = 16;
+
 impl TimelineDoc {
-    /// Append an empty container and return its index.
-    ///
-    /// ⚠️ **No cap, deliberately.** [`crate::MAX_CLIPS`] and `MAX_LANES` exist because a
-    /// dropdown's option ids are a fixed `NodeId` array and the chrome cannot mint one at
-    /// runtime — a real resource, named. Containers have no UI yet (Fatia 3), so there is no
-    /// resource to point at, and a number written now would be the guess that CLAUDE §0.0
-    /// forbids. The cap arrives with the widget that needs it.
+    /// Append an empty container and return its index. Refuses past [`MAX_CONTAINERS`],
+    /// returning the last existing index (the shape [`TimelineDoc::add_clip`] already uses:
+    /// a refusal must still name a container that exists, or the caller navigates into a
+    /// hole).
     pub fn add_container(&mut self, name: String) -> usize {
+        if self.containers().len() >= MAX_CONTAINERS {
+            return self.containers().len().saturating_sub(1);
+        }
         self.containers_mut().push(NamedContainer {
             name,
             stack: Vec::new(),
         });
         self.containers().len() - 1
+    }
+
+    /// Rename container `index` (out of range: no-op) — the sibling of
+    /// [`TimelineDoc::rename_clip`], and one of the exactly two things the Containers list
+    /// lets you do to a container (the other is open it).
+    pub fn rename_container(&mut self, index: usize, name: String) {
+        if let Some(c) = self.containers_mut().get_mut(index) {
+            c.name = name;
+        }
     }
 
     /// A container's interior stack.

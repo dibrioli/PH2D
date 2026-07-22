@@ -334,6 +334,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             let name = doc.fresh_container_name();
             doc.add_container(name);
         }),
+        // Renaming an ASSET, so `edit` like its clip sibling — never `edit_at`: which stack
+        // is open has nothing to do with whose name this is.
+        I::RenameContainer { index, name } => edit(state, |doc, _| {
+            doc.rename_container(index, name);
+        }),
         I::RemoveLane { lane } => edit_at(state, host, |doc, host, _| {
             doc.remove_lane_in(host, lane);
         }),

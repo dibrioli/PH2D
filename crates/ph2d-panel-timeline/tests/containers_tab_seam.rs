@@ -1,15 +1,18 @@
 //! **A aba Containers, a costura que o artista aperta** (ADR-0133, emendado 2026-07-21).
 //!
-//! Três abas, três donos: Keys é o clip, **Containers é um container**, **Arrange é sempre a
-//! CENA**. O que estes gates protegem é a frase do meio — antes dela, entrar num container
-//! reaproveitava o Arrange em silêncio, e criar um container despejava uma instância na cena
-//! sem que ninguém pedisse. Era isso que fazia um container ler como *"apenas mais uma lane"*
-//! (Enio, 2026-07-21).
+//! Três abas, três donos: Keys é o clip, **Containers é a LISTA de containers do documento**,
+//! **Arrange é sempre a CENA**. O que estes gates protegem é a frase do meio — antes dela,
+//! entrar num container reaproveitava o Arrange em silêncio, criar um container despejava uma
+//! instância na cena sem que ninguém pedisse, e a única forma de VER os containers era abrir
+//! um menu. Era isso que fazia um container ler como *"apenas mais uma lane"* (Enio,
+//! 2026-07-21).
 //!
-//! Todos CLICAM ([[feedback_widget_is_done_when_a_test_clicks_it]]).
+//! Todos CLICAM ([[feedback_widget_is_done_when_a_test_clicks_it]]). Os gates da NAVEGAÇÃO
+//! (entrar por duplo-clique) moram em `src/container_list_tests.rs`: entrar é um gesto de
+//! superfície, e o roteador dele é interno à crate.
 
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
+use ph2d_panel_timeline::state::{RenameKind, TimelinePanelState, set_current_timeline};
 use ph2d_panel_timeline::tab::Tab;
 use ph2d_panel_timeline::{TimelinePanel, ids};
 use ph2d_timeline::{StackHost, StripSource, TimelineDoc, TimelineIntent, TimelineViewSnapshot};
@@ -38,7 +41,7 @@ fn snapshot_with_container() -> TimelineViewSnapshot {
     snap
 }
 
-/// Clica `id` com um snapshot publicado, devolvendo `(estado do painel, intents)`.
+/// Clica `id` com um snapshot publicado, devolvendo os intents levantados.
 fn click_with(
     snap: TimelineViewSnapshot,
     state: &mut TimelinePanelState,
@@ -52,109 +55,156 @@ fn click_with(
     ph2d_panel_timeline::state::drain_intents()
 }
 
-/// **A aba Containers abre FORA de qualquer container** — o nível onde containers são FEITOS
-/// (Enio, 2026-07-21).
+const VIEWPORT: ph2d_editor_core::zones::Rect =
+    ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+
+/// Pinta o painel de verdade e devolve o índice de hits que a pintura registrou.
+fn paint(
+    host: &mut MockPanelHost,
+    state: &mut TimelinePanelState,
+    snap: TimelineViewSnapshot,
+) -> Vec<(ph2d_editor_core::NodeId, ph2d_editor_core::zones::Rect)> {
+    set_current_timeline(Some(snap));
+    let regs = host.paint::<TimelinePanel>(state, VIEWPORT);
+    set_current_timeline(None);
+    regs
+}
+
+fn has(
+    regs: &[(ph2d_editor_core::NodeId, ph2d_editor_core::zones::Rect)],
+    id: ph2d_editor_core::NodeId,
+) -> bool {
+    regs.iter().any(|(w, _)| *w == id)
+}
+
+/// **A LISTA existe na tela, com as duas coisas que ela faz — e sem nenhuma das que ela não
+/// faz.**
 ///
-/// O passo publicado aponta UMA ALÉM do fim da lista, fora de alcance de propósito: sem host
-/// não há lanes, então ela não desenha a pilha da CENA sob outro nome (a duplicata que a
-/// divisão em abas existe para evitar), e o cabeçalho oferece "+ Container" e mais nada. E é
-/// o índice que o próximo `AddContainer` vai cunhar: o estado vazio e a primeira criação
-/// nomeiam o mesmo lugar, então nada é previsto duas vezes.
+/// A pintura de verdade, e é onde os dois níveis da aba se separam ou não se separam: no
+/// nível da lista há uma barra e um lápis por container, "+ Container" e NENHUMA strip; um
+/// nível abaixo é o exato oposto. Sem este gate, os dois pintores sobre a MESMA faixa podem
+/// decidir que a vez é dos dois ([[feedback_widget_is_done_when_a_test_clicks_it]]).
 #[test]
-fn the_containers_tab_opens_outside_any_container() {
-    let snap = snapshot_with_container();
-    let n = snap.containers.len();
+fn the_list_paints_its_two_verbs_and_no_strip() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        tab: Tab::Containers,
+        ..TimelinePanelState::default()
+    };
+    let strip = ph2d_editor_core::ids::timeline_strip_hit_id(0, 1, 2);
+
+    let regs = paint(&mut host, &mut state, snapshot_with_container());
+    assert!(
+        has(&regs, ids::TIMELINE_CONT_ROW[0]),
+        "a barra do container"
+    );
+    assert!(has(&regs, ids::TIMELINE_CONT_RENAME[0]), "e o lápis dela");
+    assert!(
+        has(&regs, ids::TIMELINE_ADD_CONTAINER),
+        "o único botão da coluna é '+ Container'"
+    );
+    assert!(!has(&regs, ids::TIMELINE_ADD_LANE));
+    assert!(
+        !has(&regs, strip) && !has(&regs, ids::TIMELINE_LANE_ADD_STRIP[0]),
+        "a lista não pode desenhar as lanes da CENA sob outro nome"
+    );
+    // Uma linha só por container que EXISTE — nada de barras órfãs do array de ids.
+    assert!(!has(&regs, ids::TIMELINE_CONT_ROW[1]));
+
+    // Um nível abaixo (a shell publica a migalha): as lanes do container, e nenhuma barra.
+    let mut inside = snapshot_with_container();
+    inside.crumbs = vec![(0, "Walk".into())];
+    let regs = paint(&mut host, &mut state, inside);
+    assert!(has(&regs, ids::TIMELINE_ADD_LANE), "dentro é '+ Lane'");
+    assert!(!has(&regs, ids::TIMELINE_ADD_CONTAINER));
+    assert!(
+        !has(&regs, ids::TIMELINE_CONT_ROW[0]),
+        "e a lista não vaza para dentro do container"
+    );
+}
+
+/// **A aba Containers abre na LISTA** — fora de qualquer container.
+///
+/// O caminho publicado é a RAIZ, e é isso que faz a faixa de linhas ser a lista em vez das
+/// lanes de alguém. A primeira versão publicava um passo sentinela "uma além do fim" para
+/// fingir esse nível; a lista o tornou desnecessário, e um índice que aponta para um
+/// container inexistente é exatamente o tipo de estado que envenena a pergunta seguinte.
+#[test]
+fn the_containers_tab_opens_on_the_list() {
     let mut state = TimelinePanelState::default();
-    let _ = click_with(snap, &mut state, ids::TIMELINE_TAB_CONTAINERS);
+    let _ = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_TAB_CONTAINERS,
+    );
 
     assert_eq!(state.tab, Tab::Containers);
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(n),
-        "uma além do fim: nenhum container é o host, então não há lanes a mostrar"
-    );
-    assert_eq!(
-        ph2d_panel_timeline::state::open_container(),
-        Some(n),
-        "e é o índice que o próximo '+ Container' vai criar"
-    );
-}
-
-/// **Arrange é a CENA, por mais fundo que a trilha esteja.**
-///
-/// A trilha não é apagada (voltar tem de aterrissar onde você estava), ela simplesmente não
-/// se aplica ali. Sem esta lei, entrar num container reaproveitava o Arrange e não havia
-/// resposta na tela para *"o que estou vendo?"* exceto a migalha.
-#[test]
-fn arrange_is_the_scene_however_deep_the_trail_is() {
-    let mut state = TimelinePanelState::default();
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_TAB_CONTAINERS,
-    );
-    // Entra num container de verdade pelo picker de HOST — o controle da navegação.
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_HOST_OPT[0],
-    );
-    assert_eq!(
-        ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(0)
-    );
-
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_TAB_ARRANGE,
-    );
-    assert_eq!(
-        ph2d_panel_timeline::state::edit_host(),
         StackHost::Document,
-        "no Arrange a edição cai na pilha da CENA"
+        "a raiz da aba é a lista, não o interior de ninguém"
     );
-    assert!(
-        ph2d_panel_timeline::state::edit_path().is_empty(),
-        "e o caminho publicado é a raiz"
-    );
-
-    // ...e voltar aterrissa onde você estava: a trilha sobreviveu.
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_TAB_CONTAINERS,
-    );
-    assert_eq!(
-        ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(0),
-        "a trilha não foi apagada pelo Arrange — só não se aplicava lá"
-    );
+    assert_eq!(ph2d_panel_timeline::state::open_container(), None);
 }
 
-/// **"+ Container" CRIA e ABRE — e não coloca nada.**
+/// **"+ Container" CRIA — e não coloca, e não viaja.**
 ///
-/// Os dois atos que estavam fundidos, agora separados: o intent faz o asset, o painel abre a
-/// aba nele. O índice não é chute — é `containers.len()`, e o gate irmão em
-/// `containers_are_assets.rs` prende `add_container` a apendar.
+/// Os três atos que já estiveram fundidos, agora separados: o intent faz o asset, a lista
+/// ganha uma linha, e entrar é o duplo-clique nela. Fundido, o botão fazia a aba pular para
+/// o modo de edição num aperto que dizia *"faça um"*.
 #[test]
-fn add_container_makes_the_asset_and_opens_it() {
-    let mut state = TimelinePanelState::default();
-    let snap = snapshot_with_container();
-    let existing = snap.containers.len();
-    let intents = click_with(snap, &mut state, ids::TIMELINE_ADD_CONTAINER);
+fn add_container_makes_the_asset_and_stays_on_the_list() {
+    let mut state = TimelinePanelState {
+        tab: Tab::Containers,
+        ..TimelinePanelState::default()
+    };
+    let intents = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_ADD_CONTAINER,
+    );
 
     assert_eq!(
         intents,
         vec![TimelineIntent::AddContainer],
         "UM intent, e nenhum AddStrip: criar não é colocar"
     );
-    assert_eq!(state.tab, Tab::Containers, "e você cai dentro do que criou");
+    assert_eq!(state.tab, Tab::Containers);
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(existing),
-        "o container aberto é o que o intent está prestes a criar"
+        StackHost::Document,
+        "e você continua olhando a lista — criar não é entrar"
     );
+}
+
+/// **O lápis de uma linha abre o rename DAQUELE container.**
+///
+/// Um botão e não um duplo-clique, porque o duplo-clique está ocupado: ele entra. E o índice
+/// vem do array de ids, então o lápis da linha 0 não pode abrir o nome da linha 1.
+#[test]
+fn the_pencil_on_a_row_renames_that_container() {
+    let mut state = TimelinePanelState {
+        tab: Tab::Containers,
+        ..TimelinePanelState::default()
+    };
+    let intents = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_CONT_RENAME[0],
+    );
+    assert_eq!(intents, vec![], "abrir um campo não é uma edição");
+    let cr = state.clip_rename.expect("o campo tem de abrir");
+    assert_eq!(cr.kind, RenameKind::Container);
+    assert_eq!(cr.index, 0);
+
+    // Uma linha que o snapshot não tem não abre nada: a ação expira com o alvo.
+    let mut state = TimelinePanelState::default();
+    let _ = click_with(
+        snapshot_with_container(),
+        &mut state,
+        ids::TIMELINE_CONT_RENAME[7],
+    );
+    assert!(state.clip_rename.is_none());
 }
 
 /// **O `+` da lane coloca a FONTE selecionada — inclusive um container.**
@@ -221,20 +271,18 @@ fn the_lane_plus_still_places_the_active_clip_by_default() {
     );
 }
 
-/// **Escolher uma FONTE nunca viaja; o picker de HOST viaja.** Duas perguntas, dois
-/// controles.
+/// **Escolher uma FONTE nunca viaja.**
 ///
 /// Dentro do container A, escolher B na lista de FONTE tem de significar *"coloque B dentro
 /// de A"* — o oposto de *"saia de A e vá editar B"*. Um controle que fizesse as duas coisas
-/// não conseguiria expressar a primeira, que é justamente como se aninha.
+/// não conseguiria expressar a primeira, que é justamente como se aninha. É por isso que o
+/// chip que navegava foi removido: viajar é o duplo-clique na lista.
 #[test]
-fn picking_a_source_never_travels_but_the_host_picker_does() {
-    let snap = snapshot_with_container();
-    let n = snap.containers.len();
-    let mut state = TimelinePanelState::default();
-    let _ = click_with(snap, &mut state, ids::TIMELINE_TAB_CONTAINERS);
-
-    // FONTE: seleciona, e fica onde estava.
+fn picking_a_source_never_travels() {
+    let mut state = TimelinePanelState {
+        tab: Tab::Arrange,
+        ..TimelinePanelState::default()
+    };
     let _ = click_with(
         snapshot_with_container(),
         &mut state,
@@ -247,24 +295,8 @@ fn picking_a_source_never_travels_but_the_host_picker_does() {
     );
     assert_eq!(
         ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(n),
+        StackHost::Document,
         "escolher uma fonte NÃO pode mudar de lugar"
     );
-
-    // HOST: viaja.
-    let _ = click_with(
-        snapshot_with_container(),
-        &mut state,
-        ids::TIMELINE_HOST_OPT[0],
-    );
-    assert_eq!(
-        ph2d_panel_timeline::state::edit_host(),
-        StackHost::Container(0),
-        "o picker de host é quem leva você para dentro"
-    );
-    assert_eq!(
-        state.source_container,
-        Some(0),
-        "e a fonte escolhida sobrevive à viagem — são estados independentes"
-    );
+    assert_eq!(state.tab, Tab::Arrange, "nem de aba");
 }

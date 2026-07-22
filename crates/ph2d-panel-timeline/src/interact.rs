@@ -104,6 +104,11 @@ pub(crate) fn dispatch_primary(
         // also dragged would be a header that swallows a press meant for a strip
         // scrolled underneath it.
         TimelineHitKind::LaneHeader { .. } => {}
+        // A container's bar in the Containers list: a double-click walks in, and every other
+        // phase is deliberately inert (`container_list::apply`).
+        TimelineHitKind::ContainerRow { index } => {
+            crate::container_list::apply(state, index, g);
+        }
         // Column lock (default): a press on a track key is a press on its whole
         // time column, so grabbing one key grabs the vertical group. Unlocked, it
         // moves alone. Either way, the Summary diamond itself always moves the

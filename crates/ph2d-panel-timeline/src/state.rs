@@ -329,10 +329,27 @@ pub struct MarkerRename {
     pub opened: bool,
 }
 
-/// An open clip rename — see [`TimelinePanelState::clip_rename`].
+/// **Which list the open rename is renaming.**
+///
+/// One field, two lists: a clip named from the transport chip, a container named from its
+/// row's pencil in the Containers list. A SECOND rename field would be a second answer to
+/// "how do you type a name in this panel" — same widget id, same seeding rule, same
+/// Enter/Esc/click-away contract — differing only in where it floats and which intent it
+/// commits, which is exactly what this enum carries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenameKind {
+    /// A clip in `TimelineViewSnapshot::clips`, committed as `RenameClip`.
+    Clip,
+    /// A container in `TimelineViewSnapshot::containers`, committed as `RenameContainer`.
+    Container,
+}
+
+/// An open name edit — see [`TimelinePanelState::clip_rename`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ClipRename {
-    /// Index of the clip being renamed.
+    /// Which list `index` points into.
+    pub kind: RenameKind,
+    /// Index of the clip (or container) being renamed.
     pub index: usize,
     /// The field has been registered + seeded with the current name + focused.
     pub opened: bool,

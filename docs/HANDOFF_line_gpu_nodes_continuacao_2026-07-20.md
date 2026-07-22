@@ -342,6 +342,17 @@ assignment **0 texels divergentes** (fixture livre de colisão) · `iterations=0
 **BIT-EXATO** a 600 pontos · trajetória cheia = banda MEDIDA (mean ≤0,023,
 pinada 0,04/0,15/0,55) — o mecanismo honesto é a **colisão de seed** (2 pontos
 num texel escondem 1 por uma rodada; transiente, documentado no módulo).
+**CENA PRONTA PRA SMOKE: `PH2D_GPU_COOK_DEMO=11`** — o favo que respira
+(`motion.voronoi` 20 000 pontos → falloff → `value.attribute` → ramp Ice →
+scale), com `value.lfo` no `relax` varrendo 0..1 num período de 6 s: a nuvem
+se organiza em favo e dissolve de volta em ruído branco. **Os DOIS caminhos
+foram medidos nessa contagem exata:** dispositivo **3,02 ms/frame** ·
+referência CPU **2160 ms** = **715×** (e a relaxação re-cozinha TODO frame —
+é o pior caso do nó, de propósito). O `t` do ramp vem do `falloff` projetado,
+então a cor lê a GEOMETRIA: em `relax=0` os anéis saem esfarrapados, em
+`relax=1` ficam lisos e regulares — um confete por índice pareceria igual nos
+dois e não provaria nada. 2 gates de cena (`motion_state_gpu_voronoi_tests.rs`,
+plano 100%-GPU + a contagem cheia), 2/2 mutações sangram.
 9 gates (`tests/gpu_voronoi.rs` + naga unit), **6/6 mutações sangram**
 (lerp invertido · centroide sem +0,5 · tie-break · JFA truncada · chave de
 seed descasada · nó sem registro). ⚠️ Fixture lição: count 300 NÃO tem seed

@@ -440,7 +440,7 @@ mod cost_probe {
     #[ignore = "measurement — run alone with --nocapture"]
     fn what_does_the_capped_lloyd_cost_per_frame() {
         let (w, h, seed) = (5.0f32, 5.0f32, 1u32);
-        for &count in &[96usize, 300, 600] {
+        for &count in &[96usize, 300, 600, 20_000] {
             let res = resolution(count);
             let mut pts = seed_points(count, w, h, seed);
             let t0 = std::time::Instant::now();

@@ -519,6 +519,7 @@ fn how_far_does_the_lloyd_scale() {
         (600, 1625),
         (2_000, 1625),
         (10_000, 1625),
+        (20_000, 1625), // the shell's ready-to-smoke scene (PH2D_GPU_COOK_DEMO=11)
         (50_000, 1625),
         (165_000, 1625), // the shipped cap — the sampling law's last intact count
         (200_000, 1625),

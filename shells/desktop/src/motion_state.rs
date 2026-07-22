@@ -32,6 +32,10 @@ mod gpu_neighbour_demos;
 /// why the seam is the QUESTION each scene answers, not the line count.
 #[path = "motion_state_gpu_panel_demo.rs"]
 mod gpu_panel_demo;
+/// The Lloyd/JFA scene (ADR-0139), its own file for the same reason: it answers
+/// "does a node whose cook is a multi-pass ALGORITHM run on the device?".
+#[path = "motion_state_gpu_voronoi_demo.rs"]
+mod gpu_voronoi_demo;
 /// The sim-zone scene (ADR-0135), its own file for the same reason: it answers
 /// "does the state-loop CONTAINER run on the device?", which none of the others do.
 #[path = "motion_state_gpu_zone_demo.rs"]
@@ -45,6 +49,7 @@ use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
 use gpu_panel_demo::build_gpu_panel_demo_document;
+use gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use gpu_zone_demo::build_gpu_zone_demo_document;
 
 use ph2d_eval_motion::MotionCookPump;
@@ -180,6 +185,10 @@ impl MotionState {
             // the device. The boot snow's physics minus birth/death (which are
             // count-changing and still cook on the pump).
             Ok("10") => build_gpu_zone_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // ADR-0139: the breathing HONEYCOMB — the first engine ALGORITHM
+            // (Lloyd relaxation via jump flooding), and the cap that fell with
+            // it: 20.000 points where the CPU-era node capped at 600.
+            Ok("11") => build_gpu_voronoi_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {
@@ -339,6 +348,10 @@ mod gpu_tests;
 #[cfg(test)]
 #[path = "motion_state_gpu_neighbour_tests.rs"]
 mod gpu_neighbour_tests;
+
+#[cfg(test)]
+#[path = "motion_state_gpu_voronoi_tests.rs"]
+mod gpu_voronoi_tests;
 
 #[cfg(test)]
 #[path = "motion_gpu_coverage.rs"]

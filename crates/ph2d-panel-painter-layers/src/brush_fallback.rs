@@ -185,6 +185,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     jitter_spacing: 0.0,
     // Watercolor section — the `watercolor` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
+    // The medium: `0` = Digital, matching the three master flags below being off. The fallback is what
+    // a pre-publish frame paints, and Digital is the medium that IS the absence of the others.
+    media: 0,
     wetpaint: false,
     wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
     wet_tool: ph2d_tool_painter::WetTool::Paint,

@@ -362,10 +362,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
-        // Watercolor section: the Enable master toggle + the section reset + the Grain-section
-        // "Same as Paper" toggle + the Paper section reset. (Pigment merged into the Mix slider; Paper
-        // Rake/Random dropped from the UI — redesign 2026-07-07.)
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
+        // Watercolor section: the section reset + the Grain-section "Same as Paper" toggle + the Paper
+        // section reset. (Pigment merged into the Mix slider; Paper Rake/Random dropped from the UI —
+        // redesign 2026-07-07; the Enable master became the Paint Mode dropdown — 2026-07-22.)
         // Shape section's watercolor "Automatic" toggle (doc 13 #1).
         ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
@@ -444,6 +443,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // Blend + Falloff + Stroke-Method + Jitter-Unit chips are Dropdowns (generic
     // open/close dispatch); their options are popover buttons.
     for id in [
+        // The Paint Mode (medium) chip at the head of the appearance half.
+        ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA,
         ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,

@@ -19,10 +19,11 @@ pub const PAINTER_WETPAINT_SECTION_COLOR: NodeId =
 /// bakes the live water, since ending the session IS the bake).
 pub const PAINTER_WETPAINT_RESET: NodeId = hash_node_id("painter_brush.wetpaint_reset");
 
-/// **Enable** master toggle — the ARMED state. `Click` → `toggle_wetpaint_armed`. Off (default)
-/// leaves every stroke byte-identical to a plain brush; on, the Brush IS the fluid, and the arm
-/// persists across tool switches so "brush" always returns to Wet Paint until unchecked.
-pub const PAINTER_WETPAINT_ENABLE: NodeId = hash_node_id("painter_brush.wetpaint_enable");
+// ⚠️ **There is no `*_ENABLE` id here any more** (2026-07-22): the three media checkboxes were
+// replaced by the single `PAINTER_BRUSH_MEDIA` dropdown (`ids/chrome/painter.rs`), so this section
+// is painted only while its medium is the selected one. Keeping the checkbox id "for the API" would
+// leave an id that is registered and routed but never painted — the same rot the Paper slot's
+// Rake/Random ids became before they were removed.
 
 // ── Doc 22 — the wet TOOLS (the model's 7-button radio; Erase is the OTHER
 //    VIEW of the rail's eraser chip, the impasto tool-list precedent). ──
@@ -73,8 +74,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 16] = [
-    PAINTER_WETPAINT_ENABLE,
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 15] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],

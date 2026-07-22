@@ -39,10 +39,6 @@ impl PainterTool {
                 self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_KNIFE);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_ENABLE => {
-                self.toggle_brush_impasto();
-                true
-            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SMOOTH_EDGES => {
                 self.toggle_impasto_smooth_edges();
                 true
@@ -231,10 +227,36 @@ impl PainterTool {
     }
 
     pub fn toggle_brush_impasto(&mut self) {
-        self.paint.brush.impasto = !self.paint.brush.impasto;
-        let on = self.paint.brush.impasto;
+        self.set_brush_impasto(!self.paint.brush.impasto);
+    }
+
+    /// Set the section's master switch (the [`Self::toggle_brush_impasto`] the panel used to click, and
+    /// the arm the Paint Mode dropdown drives — one door, so neither can grow a rule the other lacks).
+    ///
+    /// ⚠️ **Switching it OFF brings the artist out of `Knife` / `Sculpt`.** Those two modes exist only
+    /// because Impasto is on ([`super::media::PaintMedia::cannot_outlive`]), and letting them outlive it
+    /// was a measured defect: enter Impasto, pick the Knife, untick Impasto, tick Wet Paint — and you
+    /// are still holding the knife, with the Colour and Blend rows gone (`paints_no_color()` is true for
+    /// a smear) under a panel that says Wet Paint. The mode was the medium's; the medium left; the mode
+    /// stayed. `Paint` is deliberately NOT in that set — the plain brush uses it too.
+    pub fn set_brush_impasto(&mut self, on: bool) {
+        let changed = self.paint.brush.impasto != on;
+        self.paint.brush.impasto = on;
+        // ⚠️ The three relief slots are written UNCONDITIONALLY — an early return on "the live flag
+        // already matches" would be assuming an invariant instead of establishing one, and a whole-spec
+        // write moves that flag behind this door's back: `apply_brush_preset` replaces `paint.brush`
+        // outright, so the live `impasto` read false while `brush_by_mode[Knife]` still held `true`,
+        // ready to come back on the next tool switch. Caught by a gate, not by reasoning.
         for mode in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
             self.paint.brush_by_mode[mode.slot()].impasto = on;
+        }
+        // Also unconditional, and for the same reason: if the flag was cleared behind this door while a
+        // Knife or Sculpt was in hand, this is the repair.
+        if !on && super::media::PaintMedia::Impasto.cannot_outlive(self.paint.paint_mode) {
+            self.set_paint_tool_mode("brush");
+        }
+        if !changed {
+            return;
         }
         // Impasto's default falloff is **Sphere**, not the brush's factory Smooth (Enio 2026-07-17): the
         // hemispherical shoulder reads as rounded body under the impasto light, where Smooth's flat plateau

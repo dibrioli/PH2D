@@ -11,11 +11,11 @@
 //!   PH2D_IMPASTO_SMOKE=1 cargo run --release -p ph2d-host-desktop
 //! ```
 //!
-//! Then: click the white canvas → the **Painter** pill → drag. The Impasto section (Brush panel) is
-//! already open with Enable ticked; the Lighting card drives the light live.
+//! Then: click the white canvas → the **Painter** pill → drag. The **Paint Mode** dropdown (Brush
+//! panel) is already set to *Impasto*, so its section is open; the Lighting card drives the light live.
 //!
 //! **The RIG (2026-07-12):** the card carries **four lamps** — the chips `1 2 3 4` under Show Impasto. A
-//! chip marked `2·` is a lamp that is OFF. Pick lamp 2, tick **Enable**, and you have a fill: give it an
+//! chip marked `2·` is a lamp that is OFF. Pick lamp 2, tick its **Enable**, and you have a fill: give it an
 //! Angle across from the key, a low Intensity, and a colour. **A coloured lamp tints the paint only where
 //! it TILTS** — flat paint stays exactly as you mixed it, because the shading is relative *per channel*.
 //! (One lamp of any colour therefore only brightens and darkens; the hue needs two lamps disagreeing.)
@@ -83,8 +83,9 @@
 //!
 //! Note that nothing here is armed in code — you click the rail chip yourself. That is on purpose. The
 //! smoke that arms state under the table skips exactly the seam it was supposed to prove, and this line
-//! has the scar: `PH2D_IMPASTO_SMOKE` pre-ticked Enable, which is how the master switch shipped dead
-//! under the mouse and nobody noticed for a week.
+//! has the scar: `PH2D_IMPASTO_SMOKE` pre-selected the medium, which is how the master switch shipped
+//! dead under the mouse and nobody noticed for a week. (The medium is now the Paint Mode dropdown, and
+//! `seam_paint_media.rs` clicks it with a real pointer — which is the cover this arming borrows.)
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -156,6 +157,7 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     // path instead of ribs across it. The first smoke shipped with the default ViewPlane and Enio saw the
     // corduroy immediately.)
     painter.set_brush_size_px(40.0);
-    painter.toggle_brush_impasto();
+    // The PRODUCT door since 2026-07-22: the Paint Mode dropdown's setter, not a section checkbox.
+    painter.set_paint_media(ph2d_tool_painter::PaintMedia::Impasto);
     println!("PH2D_IMPASTO_SMOKE: brush armed (impasto ON, Grain = None) — drag on the canvas.");
 }

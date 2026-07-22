@@ -838,28 +838,29 @@ fn disarming_the_checkbox_exits_and_bakes() {
 /// it returns. And the section RESET disarms too (the Watercolor reset's
 /// semantics). Mutation that bleeds it: the `route_brush_wetpaint_event`
 /// call dropped from `handle_panel_event`.
+///
+/// ⚠️ Since 2026-07-22 the arm is picked from the **Paint Mode** dropdown, not a section checkbox: the
+/// four media are exclusive, so the switch is one `SelectOption` rather than three booleans. Picking
+/// Digital is how you leave — and leaving still bakes, which is the half that matters here.
 #[test]
-fn the_panels_enable_checkbox_drives_the_wet_arm() {
+fn the_paint_mode_dropdown_drives_the_wet_arm() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let wet = || PanelEvent::SelectOption(ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA, "3".into());
+    let digital =
+        || PanelEvent::SelectOption(ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA, "0".into());
     let mut t = tool_in_mode("brush");
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
-    ));
+    t.handle_panel_event(wet());
     assert!(
         matches!(t.paint.paint_mode, PaintMode::WetPaint),
-        "the Enable click never reached the arm"
+        "picking Wet Paint never reached the arm"
     );
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
-    ));
+    t.handle_panel_event(digital());
     assert!(
         matches!(t.paint.paint_mode, PaintMode::Paint),
-        "the second click never disarmed"
+        "picking Digital never disarmed"
     );
-    // Reset = restore defaults INCLUDING the enable.
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
-    ));
+    // Reset = restore defaults INCLUDING the arm.
+    t.handle_panel_event(wet());
     t.handle_panel_event(PanelEvent::Click(
         ph2d_editor_core::ids::PAINTER_WETPAINT_RESET,
     ));

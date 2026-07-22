@@ -44,8 +44,8 @@ mod impasto_settle; // Impasto: the deposit settling under its own weight + the 
 mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; its sibling is the plumbing)
 mod impasto_tool; // Impasto: the TEN tools that act on the body, as one list (Deposit · Knife · 8 verbs)
 mod jitter_settings; // per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
-/// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
-mod paint_mode;
+pub(crate) mod media; // the paint's MEDIUM (Digital / Watercolor / Impasto / Wet Paint) + the door that switches it
+mod paint_mode; // the canvas pointer's operation (Paint / Smear / … ) — the MEDIUM's sibling question
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
 mod sculpt_blur; // Sculpt: the kernel (one expression, eight verbs) + the per-tile memo the family reads
 mod sculpt_close; // Sculpt: Inflate's footprint is a morphological CLOSING (fill concave, keep convex) — EDT

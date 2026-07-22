@@ -157,7 +157,8 @@ impl PainterTool {
         }
     }
 
-    /// The checkbox Click ([`ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE`]).
+    /// Flip the arm. The panel reaches it through `set_paint_media` (the Paint Mode dropdown);
+    /// the section reset and the smoke call it directly.
     pub fn toggle_wetpaint_armed(&mut self) {
         self.set_wetpaint_armed(!self.paint.wetpaint.armed);
     }
@@ -254,10 +255,6 @@ impl PainterTool {
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_ENABLE => {
-                self.toggle_wetpaint_armed();
-                true
-            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_RESET => {
                 self.reset_brush_wetpaint();
                 true

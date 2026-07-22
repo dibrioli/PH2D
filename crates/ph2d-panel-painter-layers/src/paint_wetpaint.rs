@@ -47,21 +47,15 @@ pub(crate) fn paint_wetpaint_section(
     if collapsed {
         return y;
     }
-    // Master enable — the ARM. Off (default) leaves every stroke byte-identical to a plain
-    // brush; on, the Brush IS the fluid until unchecked (leaving to another tool keeps it).
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_WETPAINT_ENABLE,
-        "Enable",
-        brush.wetpaint,
-    );
     // The W3 knobs — only while ARMED (a knob for an engine that is not running is a dead
     // control wearing a live one's clothes). Ranges mirror the tool's clamps (SPEC §16 /
     // `KNOB_DEFS` slider ranges); decimals sized to each knob's granularity.
+    //
+    // ⚠️ The arm is the **Paint Mode** dropdown at the head of the appearance half (2026-07-22) — the
+    // section's own `Enable` checkbox is gone, because the section is only painted while this medium is
+    // the one selected. The `brush.wetpaint` guard STAYS: `paint_media` derives the medium from this
+    // very flag, so the two agree by construction, and one condition guarding the knobs is cheaper to
+    // trust than a second predicate that could drift from it.
     if brush.wetpaint {
         // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
         // one radio: Erase highlights when the rail's eraser wire is live,

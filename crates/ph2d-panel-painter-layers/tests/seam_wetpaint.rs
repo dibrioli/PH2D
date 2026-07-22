@@ -32,22 +32,23 @@ fn has(rects: &[(NodeId, Rect)], id: NodeId) -> bool {
         .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
 }
 
-/// The Enable checkbox exists on BOTH sides of the arm — offered to check
-/// (plain brush) and to UNCHECK (wet mode; hiding it there is "não consigo
-/// sair do modo wet" with different clothes). Mutation that bleeds it: the
-/// section gated on `!brush.wetpaint` (or on the mode) instead of always.
+/// The **Paint Mode** chip exists on BOTH sides of the arm — offered to enter wet (plain brush) and
+/// to LEAVE it (hiding it there is "não consigo sair do modo wet" with different clothes). It replaced
+/// the section's own Enable checkbox on 2026-07-22, and it inherits that checkbox's whole duty: the way
+/// out has to be painted in the mode you need to get out of. Mutation that bleeds it: the chip painted
+/// from inside a medium's section instead of above them all.
 #[test]
-fn the_enable_checkbox_is_offered_to_arm_and_to_disarm() {
+fn the_paint_mode_chip_is_offered_to_arm_and_to_disarm() {
     let plain = PainterTool::default();
     assert!(
-        has(&painted(&plain), core_ids::PAINTER_WETPAINT_ENABLE),
-        "the plain brush has no Wet Paint checkbox to ARM"
+        has(&painted(&plain), core_ids::PAINTER_BRUSH_MEDIA),
+        "the plain brush has no Paint Mode chip — no way to reach Wet Paint at all"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     assert!(
-        has(&painted(&wet), core_ids::PAINTER_WETPAINT_ENABLE),
-        "the wet mode has no checkbox to DISARM — the artist cannot leave"
+        has(&painted(&wet), core_ids::PAINTER_BRUSH_MEDIA),
+        "the wet mode has no Paint Mode chip — the artist cannot leave"
     );
 }
 
@@ -93,17 +94,23 @@ fn the_knob_rows_are_offered_only_while_armed() {
     }
 }
 
-/// W3 law #3: the **Watercolor section hides while Wet Paint is armed** —
-/// its optics reinterpret the DIGITAL deposit and the fluid engine owns the
-/// wet one; two wet-media switches over one brush would be two answers to
-/// "what does this stroke do". Presence AND absence. Mutation that bleeds
-/// it: dropping the `!brush.wetpaint` gate in `paint_brush_sections`.
+/// W3 law #3: the **Watercolor section hides while Wet Paint is armed** — its optics reinterpret the
+/// DIGITAL deposit and the fluid engine owns the wet one; two wet-media switches over one brush would
+/// be two answers to "what does this stroke do".
+///
+/// ⚠️ Since 2026-07-22 this is enforced by the shape of the UI rather than by a special case: the media
+/// are a four-way dropdown, so only the selected one's section is painted and the state this gate
+/// defends against is unreachable. The gate stays because the LAW is what matters, not the mechanism —
+/// and it now needs an explicit positive control (Watercolor selected), because the plain brush no
+/// longer paints that section either. Mutation that bleeds it: the `match` in `paint_brush_sections`
+/// falling through to paint every section.
 #[test]
 fn the_watercolor_section_hides_while_wet_is_armed() {
-    let plain = PainterTool::default();
+    let mut wc = PainterTool::default();
+    wc.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(
-        has(&painted(&plain), core_ids::PAINTER_WATERCOLOR_SECTION),
-        "positive control: the plain brush must offer the Watercolor section"
+        has(&painted(&wc), core_ids::PAINTER_WATERCOLOR_SECTION),
+        "positive control: selecting Watercolor must offer the Watercolor section"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);

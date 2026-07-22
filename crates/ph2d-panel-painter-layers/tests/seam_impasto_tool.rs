@@ -125,18 +125,20 @@ fn the_light_switch_is_reachable_from_every_mode_that_shapes_relief() {
 /// **Mutation that must bleed:** paint the Lighting card from the `!brush.impasto` branch anyway. That was
 /// the shape a day earlier, and it is exactly what this reversal removes.
 #[test]
-fn enable_off_hides_the_whole_section_but_leaves_the_way_back_on() {
+fn leaving_the_medium_hides_the_whole_section_but_leaves_the_way_back_on() {
     let mut tool = tool_in("brush");
-    tool.toggle_brush_impasto(); // …back OFF (the fixture turns it on)
+    tool.set_paint_media(ph2d_tool_painter::PaintMedia::Digital); // …back OFF (the fixture turns it on)
     assert!(
         !tool.brush_settings().impasto,
-        "fixture: Enable must be OFF for this gate to mean anything"
+        "fixture: the medium must be OFF for this gate to mean anything"
     );
     let (_host, _st, rects) = painted(&tool);
 
     assert!(
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_ENABLE).is_some(),
-        "Enable must be painted even when it is off — it is the only way back on"
+        rect_of(&rects, core_ids::PAINTER_BRUSH_MEDIA).is_some(),
+        "the Paint Mode chip must be painted with Impasto off — it is the only way back on. \
+         (Since 2026-07-22 the section's own Enable checkbox is gone: the medium is picked from the \
+         one dropdown, so THAT is what has to survive leaving.)"
     );
     // Everything the master switch governs is gone — the Lighting card among it (Enio: the card is
     // Impasto's own, so it only appears when Impasto is active).

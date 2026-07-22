@@ -286,6 +286,7 @@ impl PainterTool {
             jitter_scale: b.jitter_scale,
             jitter_rotate: b.jitter_rotate,
             jitter_spacing: b.jitter_spacing,
+            media: self.paint_media().to_u8(),
             wetpaint: self.paint.wetpaint.armed,
             wet_knobs: self.paint.wetpaint.knobs,
             wet_tool: self.paint.wetpaint.tool,

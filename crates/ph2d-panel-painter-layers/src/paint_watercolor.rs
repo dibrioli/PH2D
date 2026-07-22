@@ -56,17 +56,10 @@ pub(crate) fn paint_watercolor_section(
         return y;
     }
 
-    // Master enable — off (default) makes a stroke byte-identical to a plain brush.
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_WATERCOLOR_ENABLE,
-        "Enable",
-        brush.watercolor,
-    );
+    // ⚠️ The master enable is the **Paint Mode** dropdown at the head of the appearance half
+    // (2026-07-22): this section is painted only while Watercolor is the selected medium, so a checkbox
+    // here would be a second door to the same fact. The guard stays as the belt to that braces —
+    // `paint_media` derives the medium from this flag, so they cannot disagree.
     if !brush.watercolor {
         return y;
     }

@@ -17,9 +17,11 @@ pub const PAINTER_WATERCOLOR_SECTION_COLOR: NodeId =
 /// Watercolor section **reset** icon button. `Click` → `reset_brush_watercolor`.
 pub const PAINTER_WATERCOLOR_RESET: NodeId = hash_node_id("painter_brush.watercolor_reset");
 
-/// **Enable** master toggle for the whole section (the wet-media render-path). `Click` →
-/// `toggle_brush_watercolor`. Off (default) makes a stroke byte-identical to a plain brush.
-pub const PAINTER_WATERCOLOR_ENABLE: NodeId = hash_node_id("painter_brush.watercolor_enable");
+// ⚠️ **There is no `*_ENABLE` id here any more** (2026-07-22): the three media checkboxes were
+// replaced by the single `PAINTER_BRUSH_MEDIA` dropdown (`ids/chrome/painter.rs`), so this section
+// is painted only while its medium is the selected one. Keeping the checkbox id "for the API" would
+// leave an id that is registered and routed but never painted — the same rot the Paper slot's
+// Rake/Random ids became before they were removed.
 /// **Pigment** subtractive-mixing gate field. No longer a standalone panel toggle — the panel drives it
 /// via the merged **Pigment** slider ([`PAINTER_WATERCOLOR_MIX`] → `set_brush_pigment_mixing`, `0` = off).
 /// The tool setter `toggle_brush_pigment` + this id stay for the tool API / back-compat.
@@ -162,8 +164,7 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
 /// into a trap (an audit read the leftover setters as live knobs). Removed 2026-07-12 — the per-dab
 /// rake/random live on the **Grain** slot, which is a stamp. `TextureSettings::rake` itself stays: it is
 /// shared with Shape/Grain, where it is real.
-pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 7] = [
-    PAINTER_WATERCOLOR_ENABLE,
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
     PAINTER_WATERCOLOR_RESET,
     PAINTER_WATERCOLOR_GRAN_SAME,
     PAINTER_WATERCOLOR_SMOOTH_EDGES,

@@ -147,6 +147,24 @@ pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
 }
 
+/// The **Paint Mode** dropdown chip at the head of the appearance half — the paint's MEDIUM
+/// (`0` Digital · `1` Watercolor · `2` Impasto · `3` Wet Paint). `SelectOption` →
+/// `PainterTool::set_paint_media`.
+///
+/// It replaced the three independent **Enable** checkboxes (2026-07-22, Enio: *"no lugar dos checkbox
+/// coloque um dropdown para o modo de pintura com os 4 modos"*): the media are mutually exclusive, and
+/// three booleans express eight states of which only four mean anything. Not to be confused with
+/// [`PAINTER_BRUSH_PRESET`] one row above, which SEEDS a whole `BrushSpec` — a starting point, where
+/// this one is the switch.
+pub const PAINTER_BRUSH_MEDIA: NodeId = hash_node_id("painter_brush.media");
+
+/// Derive the stable [`NodeId`] for Paint-Mode option `idx` (`0..PaintMedia::COUNT`) in the open
+/// [`PAINTER_BRUSH_MEDIA`] popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_media_option_id(idx: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.mediaopt.{idx}"))
+}
+
 /// Brush **Preset** dropdown chip at the very top of the Painter panel: one-click
 /// media presets (`0` = Digital Basic = the plain brush, `1` = Watercolor Basic =
 /// the optical wash configured to `docs/Painter/wet_edges_paint.html`). `SelectOption`

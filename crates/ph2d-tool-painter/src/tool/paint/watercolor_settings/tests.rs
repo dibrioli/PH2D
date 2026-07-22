@@ -11,7 +11,11 @@ fn panel_events_drive_watercolor_state() {
     let mut t = PainterTool::default();
     assert!(!t.brush_settings().watercolor, "default off");
 
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_ENABLE));
+    // The medium is picked from the Paint Mode dropdown (2026-07-22), not a section checkbox.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_MEDIA,
+        "1".into(),
+    ));
     assert!(t.brush_settings().watercolor, "Wet edges toggled on");
 
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_EDGE, 3.0));

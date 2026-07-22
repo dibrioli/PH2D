@@ -7,8 +7,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_tool_painter::{
-    MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, RampAlphaMode, RampColorMode, RampInterp, TextureKind,
-    TextureMapping,
+    MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, PaintMedia, RampAlphaMode, RampColorMode, RampInterp,
+    TextureKind, TextureMapping,
 };
 
 /// Decode a top-of-panel **Preset** popover option id → its preset idx (`0` = Digital, `1` = Watercolor).
@@ -25,6 +25,11 @@ pub(super) fn decode_paper_kind_option(id: NodeId) -> Option<u8> {
 /// Decode a Watercolor **Paper** mapping popover option id → its `TextureMapping` wire u8.
 pub(super) fn decode_paper_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT).find(|&m| core_ids::painter_paper_mapping_option_id(m) == id)
+}
+
+/// Decode a **Paint Mode** popover option id â its `PaintMedia` wire u8 (`0..PaintMedia::COUNT`).
+pub(super) fn decode_brush_media_option(id: NodeId) -> Option<u8> {
+    (0..PaintMedia::COUNT).find(|&i| core_ids::painter_brush_media_option_id(i) == id)
 }
 
 /// Decode a brush blend-mode popover option id → its mode `u8` (fixed; iterate the 24 stable ids).

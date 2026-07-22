@@ -85,20 +85,11 @@ pub(crate) fn paint_impasto_section(
         return y;
     }
 
-    // **Enable** is the section's master and is painted FIRST, because that is its rank (Enio,
-    // 2026-07-19: *"é quem habilita esse modo de pintura"*). It briefly lived inside the Deposit card —
-    // the one tool whose engine actually reads it — and that put the switch for the whole subject below
-    // the list of things it governs.
-    y = crate::paint_brush_top::paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_IMPASTO_ENABLE,
-        "Enable",
-        brush.impasto,
-    );
+    // ⚠️ **Enable** used to be painted here, first, as the section's master (Enio, 2026-07-19: *"é quem
+    // habilita esse modo de pintura"*). Since 2026-07-22 that switch is the **Paint Mode** dropdown at
+    // the head of the appearance half: the media are exclusive, and three checkboxes made "which medium
+    // am I in?" a question with eight answers. The guard below stays — `paint_media` derives the medium
+    // from this very flag, so the chip above and the section here cannot disagree.
     if !brush.impasto {
         // The Lighting card is Impasto's OWN, so it goes with the rest when the section is off (Enio,
         // 2026-07-19: *"o card Lighting é próprio de Impasto. só deve aparecer se impasto estiver ativo"*).

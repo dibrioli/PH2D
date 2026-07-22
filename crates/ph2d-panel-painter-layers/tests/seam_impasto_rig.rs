@@ -37,11 +37,15 @@ fn viewport() -> Rect {
 }
 
 /// A `PainterTool` with the Impasto section LIVE, and the panel's brush snapshot published from
-/// it — exactly as the shell publishes it each frame (`set_current_brush`). The Enable toggle is
-/// driven through the tool's own router, so the fixture cannot drift from the product.
+/// it — exactly as the shell publishes it each frame (`set_current_brush`). The medium is picked
+/// through the tool's own router (the **Paint Mode** dropdown's `SelectOption`, 2026-07-22), so the
+/// fixture cannot drift from the product.
 fn tool_with_impasto_on() -> PainterTool {
     let mut tool = PainterTool::default();
-    tool.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_ENABLE));
+    tool.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_MEDIA,
+        "2".into(),
+    ));
     let bs = tool.brush_settings();
     assert!(
         bs.impasto && bs.impasto_applies,

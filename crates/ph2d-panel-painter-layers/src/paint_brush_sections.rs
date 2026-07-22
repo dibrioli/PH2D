@@ -4,9 +4,55 @@
 //! a linha Painter cresceu a seção de Tiling e estourou até a dispensa de 215 LOC que a
 //! função tinha. Mesmo contrato de todo helper de seção: recebe o `y` corrente, devolve o novo.
 
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_tool_painter::BrushSettings;
+use ph2d_tool_painter::{BrushSettings, PaintMedia};
+
+/// Paint the **Paint Mode** chip, stashing the open popover for the deferred pass. Returns the next `y`.
+///
+/// The current value comes from the tool's own [`BrushSettings::media`] — derived there from the three
+/// master flags — so the chip cannot disagree with the section painted under it.
+fn paint_media_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let cur = brush.media;
+    let (ny, open) = crate::paint_brush::paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Paint Mode",
+        core_ids::PAINTER_BRUSH_MEDIA,
+        cur,
+        PaintMedia::from_u8(cur).name(),
+    );
+    if let Some(r) = open {
+        crate::state::set_pending_brush_media_dd(Some((r, cur)));
+    }
+    ny
+}
+
+/// The four media as `Dropdown` options (value = the [`PaintMedia`] wire `u8`, label = its name).
+/// Built from the enum itself, so a fifth medium cannot be added without appearing here.
+pub(crate) fn media_options() -> Vec<DropdownOption<u8>> {
+    (0..PaintMedia::COUNT)
+        .map(|i| {
+            DropdownOption::new(
+                core_ids::painter_brush_media_option_id(i),
+                i,
+                PaintMedia::from_u8(i).name(),
+            )
+        })
+        .collect()
+}
 
 /// Sections 6–11 — the dab-appearance + stroke half of the Brush body (Randomize · Shape · Shape
 /// Tone · Paper · Grain · Stroke · Symmetry · Tiling · Watercolor). Split out of
@@ -25,30 +71,38 @@ pub(crate) fn paint_appearance_sections(
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
-    // ── Watercolor — the wet-media look (edge darkening + granulation + pigment). MOVED to the head of the
-    //    appearance half (Enio 2026-07-12): it is the switch that REINTERPRETS everything under it — the
-    //    Grain slot becomes the granulation map, the Paper section appears, the optics take over the
-    //    deposit — so it belongs ABOVE what it governs, not buried below the Stroke sections. Hidden in
-    //    Inpaint like the rest of the appearance half. Off by default ⇒ a plain brush is byte-identical.
-    //    `docs/Painter/08_…`. ──
+    // ── **Paint Mode** — the paint's MEDIUM, and then that medium's own section and no other.
+    //
+    //    Until 2026-07-22 this was three independent **Enable** checkboxes, one at the head of each of
+    //    the three sections (Enio: *"temos na seção de modo da pintura 3 checkbox … no lugar dos
+    //    checkbox coloque um dropdown para o modo de pintura com os 4 modos. O padrão é o Digital
+    //    normal"*). Three booleans express eight states of which four mean anything, and the fourth
+    //    medium — the plain Blender-style brush — had no name at all: it was "none of the boxes".
+    //
+    //    The media reinterpret everything below them (the Grain slot becomes the granulation map, the
+    //    Paper section appears, the fluid engine takes the deposit outright), so the chip sits ABOVE
+    //    what it governs. Hidden in Inpaint like the rest of the appearance half.
+    //
+    //    ⚠️ Exactly ONE section is painted, and the exclusivity is the tool's (`set_paint_media`), not a
+    //    re-derivation here: the old "hide Watercolor while Wet Paint is armed" special case is gone
+    //    because the state it defended against can no longer be reached. Impasto keeps its own
+    //    `impasto_section_applies` gate — a medium can be selected in a mode it does not act in
+    //    (the rail's Blur, say), and that returns `y` untouched. ──
     if !brush.is_inpaint {
         y = sep(ctx.scene, theme, x, content_w, y);
-        // Wet Paint FIRST — like Watercolor it is a switch that reinterprets the deposit
-        // (the fluid engine takes over), so it sits at the head of the appearance half.
-        y = crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush);
-        // The Watercolor section HIDES while Wet Paint is armed (law #3 — hidden, never
-        // dimmed): its optics reinterpret the DIGITAL deposit, and in wet mode the fluid
-        // engine owns the deposit outright — two wet-media switches over one brush would
-        // be two answers to "what does this stroke do". Inert by construction too: the wet
-        // slot's `watercolor` flag can only be toggled through this section, which is
-        // never painted while armed. (Impasto stays — its Lighting card is the CANVAS's,
-        // gate-pinned reachable in wet.)
-        if !brush.wetpaint {
-            y = crate::paint_watercolor::paint_watercolor_section(
+        y = paint_media_row(ctx, theme, x, content_w, y, brush);
+        y = match PaintMedia::from_u8(brush.media) {
+            PaintMedia::Digital => y,
+            PaintMedia::Watercolor => crate::paint_watercolor::paint_watercolor_section(
                 ctx, theme, x, content_w, y, brush,
-            );
-        }
-        y = crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush);
+            ),
+            PaintMedia::Impasto => {
+                crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush)
+            }
+            PaintMedia::WetPaint => {
+                crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush)
+            }
+        };
     }
 
     // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,

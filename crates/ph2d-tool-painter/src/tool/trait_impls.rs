@@ -285,6 +285,13 @@ impl Tool for PainterTool {
                     self.apply_brush_preset(idx);
                 }
             }
+            // ── Paint Mode pick: value = the `PaintMedia` wire u8. The four media are exclusive, and
+            //    `set_paint_media` is the only thing that knows it (2026-07-22). ────────────────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_MEDIA => {
+                if let Ok(v) = value.parse::<u8>() {
+                    self.set_paint_media(crate::PaintMedia::from_u8(v));
+                }
+            }
             // ── Brush section blend pick: value = `BrushBlend` wire u8. ──────
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_BLEND => {
                 if let Ok(mode) = value.parse::<u8>() {

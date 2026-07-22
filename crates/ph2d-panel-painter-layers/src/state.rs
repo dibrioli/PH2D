@@ -70,6 +70,9 @@ thread_local! {
     /// the Brush-section paint, drained at the end of `paint`. Mirror of [`PENDING_BLEND_DD`].
     pub(crate) static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open **Paint Mode** (medium) chip — mirror of [`PENDING_BRUSH_BLEND_DD`].
+    pub(crate) static PENDING_BRUSH_MEDIA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// The open per-layer-colour **Shape layer blend** dropdown (the "B" chip): `(layer_index,
     /// chip_rect, current_mode_u8)`. One-open-at-a-time like [`PENDING_BLEND_DD`]; set during the
     /// Per-Layer Color rows paint, drained in the Brush-section deferred popover pass.

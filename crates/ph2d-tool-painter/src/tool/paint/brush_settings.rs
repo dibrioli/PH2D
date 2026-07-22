@@ -340,6 +340,15 @@ pub struct BrushSettings {
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,
 
+    /// The **Paint Mode** dropdown's current value — the paint's MEDIUM, as
+    /// [`super::PaintMedia::to_u8`] (`0` Digital · `1` Watercolor · `2` Impasto · `3` Wet Paint).
+    ///
+    /// ⚠️ Derived by the tool from the three master flags below, never stored beside them (2026-07-22):
+    /// the dropdown replaced three independent checkboxes, and a fourth field holding "the current
+    /// medium" would be a second place for the same fact to be true. The panel paints exactly one
+    /// medium's section — this one.
+    pub media: u8,
+
     // ── Wet Paint section (the fluid engine, ADR-0134) ──
     /// The Wet Paint **Enable** checkbox — the ARMED state (`WetPaintState::armed`, not a
     /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the

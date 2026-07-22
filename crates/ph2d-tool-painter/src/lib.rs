@@ -67,9 +67,9 @@ pub use tool::{
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, EllipseOverlay, FilterScope, ImpastoLamp, ImpastoLight,
     ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_IMPASTO_LIGHTS,
-    MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PainterTool, PolygonOverlay, SelectionGizmoView,
-    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs,
-    WetTool, brush_falloff_weight_at, set_pending_select_mods,
+    MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PaintMedia, PainterTool, PolygonOverlay,
+    SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
+    TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

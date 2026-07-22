@@ -22,12 +22,13 @@
 //! - NOT yet here: the panel (knobs are engine defaults — W3), Paper presets,
 //!   Shape/Grain in the wet deposit, per-dab Randomize colour (W2 seams).
 //!
-//! ⚠️ The MODE is armed in code, unlike the impasto smoke's rule — and that
-//! is not the scar it looks like: until W3 there is NO chip or panel that
-//! selects Wet Paint, so without this arm the smoke cannot reach the feature
-//! at all. The impasto scar ("pre-ticked Enable shipped a dead master
-//! switch") applies to arming a switch the artist COULD have clicked; here
-//! the switch does not exist yet, and W3's smoke must retire this arm.
+//! ⚠️ The MODE is armed in code, unlike the impasto smoke's rule. That was
+//! unavoidable when written (nothing selected Wet Paint), and since
+//! 2026-07-22 it is a convenience instead: the **Paint Mode** dropdown at
+//! the head of the Brush panel's appearance half selects it, and a real
+//! pointer clicking that chip is gate-covered in `seam_paint_media.rs`. The
+//! arm stays so the smoke opens ON the feature — but check the chip reads
+//! *Wet Paint*, and that picking *Digital* takes you out.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -86,13 +87,13 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {
         return;
     }
-    // Arm through the PRODUCT door — the Wet Paint checkbox (`set_wetpaint_armed`,
-    // the same setter the panel's Enable drives), so the smoke exercises what the
-    // artist has: the checkbox reads ON, and tool round-trips return to the fluid.
+    // Arm through the PRODUCT door — the Paint Mode dropdown's setter, so the smoke
+    // exercises what the artist has: the chip reads *Wet Paint*, and tool round-trips
+    // return to the fluid.
     // Then a size in the engine's native dab range and a pigment you can see on
     // white. Everything else is the shipped default — if a default is bad, the
     // smoke says so instead of hiding it.
-    painter.set_wetpaint_armed(true);
+    painter.set_paint_media(ph2d_tool_painter::PaintMedia::WetPaint);
     painter.set_brush_size_px(24.0);
     painter.set_brush_color_srgb8([30, 90, 200]); // a wet ultramarine
     println!("PH2D_WETPAINT_SMOKE: brush armed (Wet Paint mode) — drag on the canvas.");

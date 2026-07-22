@@ -244,6 +244,16 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
             cur,
         );
     }
+    if let Some((chip_rect, cur)) = state::take_pending_brush_media_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_BRUSH_MEDIA,
+            crate::paint_brush_sections::media_options(),
+            chip_rect,
+            cur,
+        );
+    }
     if let Some((chip_rect, cur)) = state::take_pending_brush_blend_dd() {
         paint_dropdown_popover(
             ctx,

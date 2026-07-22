@@ -17497,8 +17497,12 @@ fn impasto_panel_events_reach_the_brush() {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
 
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_ENABLE));
-    assert!(t.paint.brush.impasto, "Enable reached the brush");
+    // The medium is picked from the Paint Mode dropdown (2026-07-22), not a section checkbox.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_MEDIA,
+        "2".into(),
+    ));
+    assert!(t.paint.brush.impasto, "picking Impasto reached the brush");
 
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_DEPTH, -0.4));
     assert!(

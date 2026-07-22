@@ -21,9 +21,11 @@ pub const PAINTER_IMPASTO_RESET: NodeId = hash_node_id("painter_brush.impasto_re
 
 // ── The brush half: how this brush deposits body ────────────────────────────────────────────────
 
-/// **Enable** master toggle for the whole section. `Click` → `toggle_brush_impasto`. Off (the default)
-/// makes a stroke byte-identical to a build with no Impasto at all — the switch is the only gate.
-pub const PAINTER_IMPASTO_ENABLE: NodeId = hash_node_id("painter_brush.impasto_enable");
+// ⚠️ **There is no `*_ENABLE` id here any more** (2026-07-22): the three media checkboxes were
+// replaced by the single `PAINTER_BRUSH_MEDIA` dropdown (`ids/chrome/painter.rs`), so this section
+// is painted only while its medium is the selected one. Keeping the checkbox id "for the API" would
+// leave an id that is registered and routed but never painted — the same rot the Paper slot's
+// Rake/Random ids became before they were removed.
 /// **Adjust Last Stroke** — whether moving a slider re-derives the stroke already on the canvas
 /// (ON = the section's historical behaviour) or speaks only to the strokes still to come.
 /// `Click` → `toggle_impasto_live_edit`. An editing preference, not a property of the paint: it is
@@ -173,11 +175,10 @@ pub const PAINTER_IMPASTO_LIGHT_COLOR: NodeId = hash_node_id("painter_brush.impa
 /// `toggle_impasto_smooth_edges`.
 pub const PAINTER_IMPASTO_SMOOTH_EDGES: NodeId = hash_node_id("painter_brush.impasto_smooth_edges");
 
-pub const PAINTER_IMPASTO_CLICKS: [NodeId; 17] = [
+pub const PAINTER_IMPASTO_CLICKS: [NodeId; 16] = [
     PAINTER_IMPASTO_SMOOTH_EDGES,
     PAINTER_IMPASTO_TOOL_DEPOSIT,
     PAINTER_IMPASTO_TOOL_KNIFE,
-    PAINTER_IMPASTO_ENABLE,
     PAINTER_IMPASTO_LIVE_EDIT,
     PAINTER_IMPASTO_RESET,
     PAINTER_IMPASTO_SOURCE_UNIFORM,

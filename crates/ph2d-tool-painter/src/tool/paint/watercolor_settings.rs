@@ -38,17 +38,13 @@ fn is_procedural_paper(kind: TextureKind) -> bool {
 }
 
 impl PainterTool {
-    /// Route the Watercolor section controls (master enable + Pigment toggle + section reset, and the
+    /// Route the Watercolor section controls (Pigment toggle + section reset, and the
     /// Edge / Spread / Granulation / Mix sliders) from the layers panel's generic channel to the
     /// setters below. Returns `true` when it consumed the event. Mirrors
     /// [`Self::route_brush_jitter_event`]; called from `handle_panel_event` before the main match.
     pub(crate) fn route_brush_watercolor_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_ENABLE => {
-                self.toggle_brush_watercolor();
-                true
-            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO => {
                 self.toggle_brush_watercolor_shape_auto();
                 true
@@ -186,7 +182,18 @@ impl PainterTool {
     /// Toggle the **Wet edges** master enable — gates the whole section (edge / granulation / pigment).
     /// Off (default) makes a stroke byte-identical to a plain brush.
     pub fn toggle_brush_watercolor(&mut self) {
-        self.paint.brush.watercolor = !self.paint.brush.watercolor;
+        self.set_brush_watercolor(!self.paint.brush.watercolor);
+    }
+
+    /// Set the wash's master switch — the door the Paint Mode dropdown drives, with the toggle above
+    /// delegating so the two can never grow apart.
+    ///
+    /// ⚠️ Unlike the Impasto's, switching this off moves the artist nowhere: the wash **has no mode of
+    /// its own** (it reinterprets the ordinary `Paint` deposit), so there is nothing here that could be
+    /// orphaned — [`super::media::PaintMedia::cannot_outlive`] answers `false` for every mode, and that
+    /// is the honest asymmetry rather than a missing case.
+    pub fn set_brush_watercolor(&mut self, on: bool) {
+        self.paint.brush.watercolor = on;
     }
 
     /// Toggle the Shape section's **Automatic** (watercolor silhouette, doc 13 #1). Turning it OFF
@@ -478,6 +485,15 @@ impl PainterTool {
     /// `docs/Painter/wet_edges_paint.html`). Both PRESERVE the current colour + radius (a preset is a
     /// look, not a reset of what/where you paint); everything else is set from scratch so switching is
     /// deterministic. Plain state edit (no undo / pixel touch), like the section resets.
+    ///
+    /// ⚠️ **It finishes by going through the MEDIUM door** (2026-07-22). A preset writes `watercolor`
+    /// straight into the `BrushSpec`, which made it a *second* way to switch medium — and a second door
+    /// does not know the four are exclusive. Measured before the fix: with Wet Paint armed, picking
+    /// "Watercolor Basic" left `watercolor = true` **and** `wetpaint = true`, so the Paint Mode chip read
+    /// *Wet Paint* over a watercolor brush; and from Impasto it cleared the live slot's flag while
+    /// `brush_by_mode[Knife]` kept its own `impasto = true`, ready to resurrect on the next tool switch.
+    /// Routing the tail through `set_paint_media` makes the preset a *look* again, with the medium it
+    /// implies switched by the one thing that owns that question.
     pub fn apply_brush_preset(&mut self, idx: u8) {
         let cur = self.paint.brush;
         self.paint.brush = match idx {
@@ -512,6 +528,12 @@ impl PainterTool {
                 ..BrushSpec::default()
             },
         };
+        // The medium the preset implies, switched by the one door that knows they are exclusive.
+        self.set_paint_media(if idx == 1 {
+            super::PaintMedia::Watercolor
+        } else {
+            super::PaintMedia::Digital
+        });
     }
 }
 

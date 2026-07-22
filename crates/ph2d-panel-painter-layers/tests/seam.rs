@@ -669,29 +669,30 @@ fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
 /// `handle_panel_event` directly (a synthetic event skips the forward — the
 /// exact blind spot this file's header describes). This clicks the REAL
 /// panel seam for both wet clicks.
+///
+/// ⚠️ The **Enable** half of this gate is gone with its widget (2026-07-22): the arm is now picked from
+/// the Paint Mode dropdown, whose forward is driven by a REAL pointer through the popover in
+/// `seam_paint_media.rs` — a stronger version of the same proof, since it clicks the option rather than
+/// synthesising its `Click`.
 #[test]
-fn wetpaint_enable_and_reset_clicks_forward_through_the_panel() {
-    for clicked in [
-        core_ids::PAINTER_WETPAINT_ENABLE,
-        core_ids::PAINTER_WETPAINT_RESET,
-    ] {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-        let mut panel_state = PainterLayersPanelState;
-        let outcome = host
-            .apply_panel_event::<PainterLayersPanel>(&mut panel_state, WidgetEvent::Click(clicked));
-        assert_eq!(
-            outcome,
-            EventOutcome::Consumed,
-            "panel ignored the wet click {clicked:?} — the `event.rs` allowlist arm is missing \
-             (the checkbox is dead under the mouse)"
-        );
-        let actions = host.drained_actions();
-        assert!(
-            actions.iter().any(|a| matches!(
-                a,
-                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
-            )),
-            "wet click {clicked:?} never reached the bus. drained = {actions:?}"
-        );
-    }
+fn wetpaint_reset_click_forwards_through_the_panel() {
+    let clicked = core_ids::PAINTER_WETPAINT_RESET;
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut panel_state = PainterLayersPanelState;
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut panel_state, WidgetEvent::Click(clicked));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the wet click {clicked:?} — the `event.rs` allowlist arm is missing \
+         (the button is dead under the mouse)"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+        )),
+        "wet click {clicked:?} never reached the bus. drained = {actions:?}"
+    );
 }

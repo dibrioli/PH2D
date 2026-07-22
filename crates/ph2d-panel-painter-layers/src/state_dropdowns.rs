@@ -37,6 +37,16 @@ pub(crate) fn take_pending_paper_mapping_dd() -> Option<(Rect, u8)> {
     state::PENDING_PAPER_MAPPING_DD.with(|c| c.take())
 }
 
+/// Stash the open **Paint Mode** (medium) dropdown for the deferred popover pass.
+pub(crate) fn set_pending_brush_media_dd(v: Option<(Rect, u8)>) {
+    state::PENDING_BRUSH_MEDIA_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Paint Mode dropdown for the deferred popover paint.
+pub(crate) fn take_pending_brush_media_dd() -> Option<(Rect, u8)> {
+    state::PENDING_BRUSH_MEDIA_DD.with(|c| c.take())
+}
+
 /// Stash the open brush blend dropdown for the deferred popover pass.
 pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
     state::PENDING_BRUSH_BLEND_DD.with(|c| c.set(v));

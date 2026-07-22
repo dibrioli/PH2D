@@ -428,11 +428,59 @@ onda. ⚠️ A minha 1ª mensagem dizia *"a palavra dá a volta"* e era **falso*
 textos foram alongados e a afirmação corrigida. A sonda virou **gate permanente** sobre a MESMA
 tabela que a cena desenha.
 
-### W4 — A UI
-Seção **Text on Path** no painel (ids novos, strings por i18n, entrada em `VECTOR_SECTIONS`):
-botão de vincular/desvincular, `startOffset` (slider+chip com `link_slider_number` +
-`mark_chip_no_stepper`, DIRETRIZ §5.2), os 5 chips de efeito, os 4 de alinhamento, flip. Seam test
-que **CLICA** cada um (DIRETIVA §2 — pintado ⟹ wirado ⟹ despachado).
+### W4 — O vínculo + a UI ✅ **CONSTRUÍDA (2026-07-22)**, com o modelo CORRIGIDO
+
+#### W4a — o vínculo
+
+⚠️ **O §5.2 acima estava ERRADO e foi corrigido pela construção.** Ele previa apender
+`on_path`/`start_offset`/`flip` ao `VecTextParams`. Isso custaria um bump de `PROJECT_SCHEMA`
+(o blob de um componente é postcard **posicional**) — e **um bump RECUSA todo projeto já
+salvo**. O que entrou foi um **componente OPCIONAL** `ph2d_ecs::VecTextPath`, que cunha a
+própria blob-key e **não move nada**: o raciocínio que fez o `PhysicsJoint` não bumpar e o
+`GravityScale` nascer opcional em vez de campo do `RigidBody`. **Zero bump.**
+
+Ganha-se de graça uma frase melhor: *"texto reto é o que NÃO tem o componente"* é garantido
+pela ausência, enquanto *"texto reto é `on_path: None`"* cada leitor tem de lembrar.
+
+**O espaço, e ele não foi escolhido — foi herdado.** Um texto vinculado cozinha em **MUNDO**
+(o guia já traz a pose dele) e vive na **IDENTIDADE**; uma pose por cima aplicaria a
+transformação duas vezes. O `connector_live` já tinha escrito a regra e ela vale palavra por
+palavra: *"ele vive na identidade, e é isso que o torna (corretamente) não-arrastável pelo
+gizmo — arrastar um conector não quer dizer nada"*. **Mover um texto em caminho não quer dizer
+nada; o que se move é o caminho** (é o que o Illustrator faz — lá os dois são um objeto só), e
+o `settle_origins` já o respeita sem saber que existe (pula toda entidade com `VecShape`). A
+identidade é re-imposta a CADA re-cook, não uma vez ao vincular: o gizmo continua lá.
+
+Três escolhas que são decisão: o guia é lido `cooked()` (as Live Corners dele contam) **e
+assado pela pose de mundo dele** (senão mover o caminho deixaria de mover o texto — a metade
+visível da feature) · o `start_offset` é **fração**, convertida numa porta só · e um guia
+**apagado** devolve o texto ao layout reto em vez de o fazer sumir.
+
+#### W4b — a UI
+
+Seção **Text on Path** com **duas caras**: texto solto mostra só a porta de entrada (e só com a
+seleção que o gesto exige); texto preso mostra Offset, lado e Detach. Nunca as duas — e a
+**ausência tem gate próprio**, senão um `paint` que desenhasse tudo sempre passaria no gate de
+cliques.
+
+⚠️ **Os 5 chips de efeito e os 4 de alinhamento NÃO entraram, e isso é a W2 a ser honrada:** só
+a orientação **Rainbow** existe (a spec das outras quatro não está fixada), e o alinhamento
+precisa de `ascender`/`descender` que a `ph2d-vector-font` não expõe. Um segmentado de um item
+e quatro chips que não têm de onde tirar o número seriam controles mortos.
+
+⚠️ **Um erro meu, corrigido antes de shipar:** a 1ª versão pôs o **Detach como terceira opção
+do segmentado do lado**. Errado de um jeito que só se vê ao clicar — os outros dois são
+ESTADOS e ele é uma AÇÃO sem estado ligado.
+
+**O arch-gate que faltava:** o seam prova que o clique chega ao **barramento**; isso é metade.
+Um id pode chegar lá e **morrer**, que é o bug que o Redo da barra teve por um ano
+(*"registrado ≠ despachado"*). Como nenhum teste de unidade alcança a `render_loop`, a prova é
+sobre o **fonte**, com contador de controle positivo. E o gate da **quarta condição de UI** (a
+que a linha de física descobriu não ser implicada pelas outras três): *a SEQUÊNCIA leva a
+algum lugar* — selecionar, prender, mover o offset, virar, soltar, medindo o que o artista VÊ.
+
+**Cena 23** (`PH2D_BUILD_SMOKE=23`): a mesa posta para o gesto. Irmã da 22 — aquela mostra o
+motor, esta o caminho até ele, e **as duas falham por motivos completamente diferentes**.
 
 ### W5 — As alças no canvas
 in / center / out, Node-only. É a wave que pode ser cortada sem matar a feature (o `startOffset`
@@ -491,11 +539,16 @@ nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra c
 | `ArcPath` (`from_contour`/`total`/`anchor_arcs`/`frame_at`) | `ph2d-vec-scene/src/arc_path.rs` (NOVO) | Arquivo próprio; o `fx_zigzag` passou a delegar (fingerprint pinado prova byte-identidade) |
 | `GlyphFrame` (`on_path`/`shifted_along`/`apply`) | `ph2d-vec-scene/src/text_path.rs` (NOVO) | Arquivo próprio |
 | `TextPlacement` · `caret_frame` | `shells/desktop/src/vec_glyph.rs` | `pub(crate)`; **assinatura mudada** em `text_to_vec_paths`/`text_to_compound_path`/`glyph_to_vec_path` (6 chamadores, todos na shell) |
-| `PH2D_BUILD_SMOKE=21` e `=22` | `build_smoke.rs` + `text_fx_smoke.rs`/`text_path_smoke.rs` (NOVOS) | Os níveis de smoke são uma **lista compartilhada**: 21/22 estavam livres, mas o valor **se CONTA na integração** se outra linha os tiver tomado |
+| `PH2D_BUILD_SMOKE=21`, `=22` e `=23` | `build_smoke.rs` + `text_fx_smoke.rs`/`text_path_smoke.rs`/`text_path_gesture_smoke.rs` (NOVOS) | Os níveis de smoke são uma **lista compartilhada**: 21–23 estavam livres, mas o valor **se CONTA na integração** se outra linha os tiver tomado |
+| `ph2d_ecs::VecTextPath` | `ph2d-ecs/src/vec_text_path.rs` (NOVO) | Componente novo ⇒ blob-key própria ⇒ **zero bump**. ⚠️ O contador de componentes é **TRÊS**: ecs `33→34`, render e script `34→35` — os dois últimos só aparecem no gate da árvore combinada |
+| `VECTOR_SECTION_TEXTPATH` + 6 ids | `ph2d-editor-core/src/ids/chrome/vector_textpath.rs` (NOVO) | Arquivo próprio (split por LOC). ⚠️ **`VECTOR_SECTIONS` é lista compartilhada — só ADICIONAR**, e a entrada foi ao FIM |
+| `panel.vector.section.textpath` | `ph2d-i18n/src/lib.rs` | Uma linha numa tabela compartilhada |
+| `paint_textpath.rs` · `state_textpath.rs` · `vec_text_ride.rs` | painel + shell (NOVOS) | Arquivos próprios ⇒ isolados |
+| `event.rs::track_slider_event` | `ph2d-panel-vector` | **Extração** do `apply_event` (teto de 200 LOC/fn) — move 5 braços existentes |
 | `VERTS_REWRITE` ganhou `.replace_cooked(` | `shells/desktop/tests/every_host_that_rewrites_verts_faces_the_radius_handle.rs` | Arch-gate de OUTRA wave que esta linha cegou e curou (§6, W3) |
 
-**Nada de schema bumpou ainda** (`VEC_SCENE_SCHEMA_VERSION` e `PROJECT_SCHEMA` intactos): W0–W3 não
-persistem nada. O bump chega com a **W4**, que é quem dá ao texto um vínculo a guardar.
+**NADA de schema bumpou, e a W4 também não** — era o custo que o §5.2 previa e que o componente
+opcional dissolveu. `VEC_SCENE_SCHEMA_VERSION` e `PROJECT_SCHEMA` seguem **intactos**.
 
 ### O que ainda vem
 

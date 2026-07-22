@@ -1,4 +1,4 @@
-//! `PH2D_NEST_SMOKE=1|2` — cenas PRONTAS PARA VER do **nesting** (ADR-0133).
+//! `PH2D_NEST_SMOKE=1|2|3` — cenas PRONTAS PARA VER do **nesting** (ADR-0133).
 //!
 //! **`=1`** sobe o app com **um objeto**, um clip que o faz dar UM passo, e um **container**
 //! ("Walk") que toca esse passo — instanciado **duas vezes** na timeline, a segunda deslocada.
@@ -10,6 +10,12 @@
 //! meio **esticada** (o `add_strip_to` deriva `speed = slice/span`, então esticar É câmera
 //! lenta), as travessias entre instâncias ligadas por **lead-in** e o fim cruzando o **loop**
 //! por **lead-out** (as fades desta linha). Ver a doc de [`App::nest_scene_jump`].
+//!
+//! **`=3`** é a **BIBLIOTECA** (pedido do Enio, 2026-07-22): **três** containers de uma vez —
+//! um aninhado DENTRO de outro, e um VAZIO. As duas primeiras cenas têm um container cada, e
+//! por isso não alcançam o que a aba **Containers** passou a ser em 2026-07-21: uma LISTA de
+//! assets, com barras de tamanhos diferentes, aninhamento real (trilha de 3 níveis) e uma
+//! lixeira que apaga em **CASCATA**. Ver a doc de [`App::nest_scene_library`].
 //!
 //! É o antídoto da montagem-na-mão ([[feedback_ready_to_smoke_example]]): abra o painel com
 //! **L**, clique a aba **Arrange**, e as duas instâncias já estão lá.
@@ -75,10 +81,10 @@ impl crate::App {
         }
         self.nest_smoke_done = true;
 
-        if scene == "2" {
-            self.nest_scene_jump();
-        } else {
-            self.nest_scene_walk();
+        match scene.to_str() {
+            Some("2") => self.nest_scene_jump(),
+            Some("3") => self.nest_scene_library(),
+            _ => self.nest_scene_walk(),
         }
     }
 
@@ -145,6 +151,167 @@ impl crate::App {
         );
     }
 
+    /// Cena `=3` — **a BIBLIOTECA**: três containers, um DENTRO do outro, um VAZIO.
+    ///
+    /// As cenas `=1`/`=2` têm **um** container cada, então nenhuma delas alcança o que a aba
+    /// **Containers** virou em 2026-07-21 — uma LISTA de assets. Esta monta a lista inteira:
+    ///
+    /// | asset | interior | onde aparece |
+    /// |---|---|---|
+    /// | **Step** (0) | 1 lane, 1 clip, 1,0 s | 3× dentro do Walk **e** 1× na cena |
+    /// | **Walk** (1) | 2 lanes, 3,0 s — **contém o Step** | 1× na cena |
+    /// | **Pause** (2) | vazio | 1× na cena |
+    ///
+    /// # O que olhar
+    ///
+    /// - **A lista tem TRÊS barras de tamanhos diferentes** (1 s · 3 s · 2 s), e a do Pause
+    ///   mede 2 s **sem ter conteúdo nenhum**: é a `container_bar_seconds`, a porta única que
+    ///   um container vazio responde. O bug latente que ela consertou está nesta cena — a
+    ///   instância de Pause na cena tem janela REAL; encha o Pause depois e ela toca o que
+    ///   você pôs, em vez de tocar nada para sempre.
+    /// - **Aninhamento de verdade:** entre no Walk (duplo-clique na barra dele) e as strips
+    ///   lá dentro são **containers**, não clips. Entre de novo, numa delas: a trilha fica
+    ///   `[ Scene ][ Walk ][ Step ]`, e clicar **Walk** volta UM nível — não salta para a cena.
+    /// - **O dropdown de FONTE tem as duas famílias** (2 clips + 3 containers): os glifos são
+    ///   de desenho distinto — **folha** para clip, **caixa** para container. Escolher fonte
+    ///   **não navega**.
+    /// - **Canais esparsos, e é por isso que o passo anda:** o clip `Step` keya só **Y** e o
+    ///   `Glide` só **X**, então dentro do Walk as duas lanes SOMAM — três quiques no lugar
+    ///   viram três passos atravessando a tela. Um `TranslationX` dentro do Step não faria
+    ///   isso: a posição é ABSOLUTA, e as três repetições voltariam ao mesmo x.
+    /// - ⚠️ **No vão do Pause (3 s a 5 s) o objeto PARA e isso é o certo** — o container está
+    ///   vazio, então não há curva dirigindo nada ali. A barra existe, a instância existe, e o
+    ///   conteúdo é que não existe ainda.
+    /// - **A CASCATA da lixeira** (o gesto que só esta cena expõe): apague o **Step** na lista.
+    ///   Ele some de DOIS lugares — a instância solta na cena **e** as três de dentro do Walk —
+    ///   e o Walk, que era o índice 1, desce para o 0 com a instância dele **ainda tocando o
+    ///   Walk**, não o vizinho que escorregou para o slot. Ctrl+Z devolve tudo.
+    fn nest_scene_library(&mut self) {
+        let bits = {
+            let gfx = self.gfx.as_mut().expect("gfx");
+            gfx.sim
+                .world_mut()
+                .spawn((
+                    Transform::from_translation(Vec2::new(0.0, 0.0)),
+                    Sprite::atlas(0, [1.0, 1.0], [0.45, 0.85, 0.45, 1.0]),
+                    Name::new("LibraryDemo"),
+                ))
+                .id()
+                .to_bits()
+        };
+
+        build_library(&mut self.timeline.doc, bits);
+
+        // O loop mora em DOIS lugares e os dois têm de concordar (o do playhead rebobina o
+        // relógio; o do DOC é o que o avaliador lê).
+        self.timeline
+            .doc
+            .set_active_loop_for(false, Some((0.0, LIBRARY_END)));
+        self.playhead.rewind();
+        self.playhead.set_loop(0.0, LIBRARY_END);
+        self.playhead.play();
+
+        eprintln!(
+            "[nest-smoke] LibraryDemo: 3 containers -- Step (1.0s, 1 lane) · Walk (3.0s, 2 \
+             lanes, CONTEM o Step 3x) · Pause (VAZIO, barra de 2.0s). Cena = Walk [0,3) + \
+             Pause [3,5) + Step [5,6). Abra L -> aba Containers: sao TRES barras, de tamanhos \
+             diferentes.\n\
+             [nest-smoke]   ANINHAMENTO: duplo-clique na barra do Walk entra nele; as strips \
+             de la dentro sao CONTAINERS (Step). Entre numa delas: a trilha vira \
+             [ Scene ][ Walk ][ Step ] e clicar \"Walk\" volta UM nivel.\n\
+             [nest-smoke]   CASCATA: apague o Step na lista (lixeira). Ele some da cena E de \
+             dentro do Walk; o Walk desce de indice 1 para 0 e a instancia dele continua \
+             tocando o WALK. Ctrl+Z devolve.\n\
+             [nest-smoke]   O objeto PARA entre 3s e 5s -- o Pause esta vazio, e e' isso que \
+             uma barra sem conteudo significa. Ponha algo dentro dele e a instancia passa a \
+             tocar (era este o bug que a porta unica de tamanho consertou).\n\
+             [nest-smoke]   FONTE: o dropdown lista 2 clips (folha) + 3 containers (caixa), \
+             glifos de desenho distinto; escolher fonte nunca navega."
+        );
+    }
+}
+
+/// Quanto a cena `=3` dura — o fim da última instância.
+pub(crate) const LIBRARY_END: f64 = 6.0;
+
+/// **Monta a biblioteca da cena `=3` no `doc`** — a metade que não precisa de janela.
+///
+/// Separada do [`App::nest_scene_library`] para que o gate irmão dirija **esta** função, e não
+/// um espelho dela: uma cena que afirma no `eprintln` o que não montou é indistinguível de
+/// feature quebrada (a lição que o smoke do Colorize pagou), e o eprintln aqui afirma seis
+/// números.
+pub(crate) fn build_library(doc: &mut ph2d_timeline::TimelineDoc, bits: u64) {
+    {
+        // 1. DUAS peças, em canais DISJUNTOS — é o que deixa as lanes somarem em vez de
+        //    brigarem (ADR-0115, canais esparsos: o keyado É a máscara).
+        doc.rename_clip(0, "Step".to_string()); // só Y: o quique
+        key(doc, bits, PropKind::TranslationY, 0.0, 0.0);
+        key(doc, bits, PropKind::TranslationY, 0.5, 0.8);
+        key(doc, bits, PropKind::TranslationY, 1.0, 0.0);
+
+        let glide = doc.add_clip("Glide".to_string()); // só X: a travessia
+        doc.set_active(glide);
+        key(doc, bits, PropKind::TranslationX, 0.0, -3.0);
+        key(doc, bits, PropKind::TranslationX, 3.0, 3.0);
+        doc.set_active(0);
+
+        // 2. O container FOLHA: um quique, 1 s. É o asset mais fundo da árvore.
+        let step = doc.add_container("Step".to_string());
+        let step_host = StackHost::Container(step);
+        let bounce = doc
+            .add_lane_in(step_host, "Bounce".to_string())
+            .expect("lane do Step");
+        doc.add_strip_to(step_host, bounce, StripSource::Clip(0), 0.0, 1.0)
+            .expect("o quique dentro do Step");
+
+        // 3. O container COMPOSTO: contém o Step TRÊS vezes (aninhamento — um container
+        //    referenciando outro) + a travessia por cima, numa 2ª lane.
+        let walk = doc.add_container("Walk".to_string());
+        let walk_host = StackHost::Container(walk);
+        let steps = doc
+            .add_lane_in(walk_host, "Steps".to_string())
+            .expect("lane Steps");
+        let step_src = StripSource::Container(u16::try_from(step).expect("cabe"));
+        for i in 0..3 {
+            let t = f64::from(i);
+            doc.add_strip_to(walk_host, steps, step_src, t, t + 1.0)
+                .expect("passo aninhado");
+        }
+        let glide_lane = doc
+            .add_lane_in(walk_host, "Glide".to_string())
+            .expect("lane Glide");
+        doc.add_strip_to(
+            walk_host,
+            glide_lane,
+            StripSource::Clip(u16::try_from(glide).expect("cabe")),
+            0.0,
+            3.0,
+        )
+        .expect("a travessia por cima dos passos");
+
+        // 4. O container VAZIO. Nasce medindo 2 s pela `container_bar_seconds` — e a instância
+        //    dele na cena, abaixo, é o caso que a porta única conserta.
+        let pause = doc.add_container("Pause".to_string());
+
+        // 5. A CENA: o composto, o vazio, e a folha SOLTA — a folha aparecer aqui E dentro do
+        //    Walk é o que torna a cascata da lixeira visível em dois lugares de uma vez.
+        let lane = doc.add_lane("Scene".to_string()).expect("lane da cena");
+        let walk_src = StripSource::Container(u16::try_from(walk).expect("cabe"));
+        let pause_src = StripSource::Container(u16::try_from(pause).expect("cabe"));
+        doc.add_strip_to(StackHost::Document, lane, walk_src, 0.0, 3.0)
+            .expect("o Walk na cena");
+        doc.add_strip_to(StackHost::Document, lane, pause_src, 3.0, 5.0)
+            .expect("o Pause vazio na cena");
+        doc.add_strip_to(StackHost::Document, lane, step_src, 5.0, LIBRARY_END)
+            .expect("o Step solto na cena");
+    }
+}
+
+#[cfg(test)]
+#[path = "nest_smoke_tests.rs"]
+mod tests;
+
+impl crate::App {
     /// Cena `=2` — **"o mesmo pulo, três vezes"**: o exemplo completo do diferencial.
     ///
     /// # O que olhar

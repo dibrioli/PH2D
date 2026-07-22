@@ -544,6 +544,29 @@ pub enum TimelineHitKind {
     },
 }
 
+impl TimelineHitKind {
+    /// **Whether a second tap on this surface upgrades to [`GesturePhase::DoubleClick`]** —
+    /// asked by the dispatcher's Up, answered HERE so the list of double-click consumers
+    /// lives beside the variants a new one is added to.
+    ///
+    /// ⚠️ This was an inline enumeration in `pointer_up.rs` (*"only a MARKER tap upgrades"*),
+    /// written when the marker's rename was the timeline's only double-click. The second
+    /// consumer — the Containers list, whose bars are ENTERED by double-click — shipped
+    /// painted, registered and routed, and was dead under the mouse, because the enumeration
+    /// nobody remembered swallowed the upgrade before the panel ever saw it (Enio,
+    /// 2026-07-21: *"ainda não consigo entrar no container com duplo clique"*). Same disease
+    /// as the Painter's heading warm-up: a reader list far from its variants rots on the
+    /// first new reader.
+    ///
+    /// Every other surface keeps treating a second tap as a plain Click ON PURPOSE — a key
+    /// diamond re-selects, an empty lane re-clears; upgrading them would change behaviour
+    /// nobody asked for.
+    #[must_use]
+    pub fn wants_double_click(self) -> bool {
+        matches!(self, Self::Marker { .. } | Self::ContainerRow { .. })
+    }
+}
+
 /// Left edge bit of [`TimelineHitKind::ResizeEdge`].
 pub const TIMELINE_EDGE_L: u8 = 1 << 0;
 /// Right edge bit.
@@ -596,4 +619,47 @@ pub struct TimelineGesture {
     pub y: f32,
     pub button: PointerButton,
     pub mods: GestureMods,
+}
+
+#[cfg(test)]
+mod timeline_hit_kind_tests {
+    use super::TimelineHitKind as K;
+
+    /// **Exactly two surfaces upgrade a second tap, and the list is pinned.**
+    ///
+    /// The marker (double-click renames) and the container bar (double-click enters). Every
+    /// other surface treats the pair as a plain Click on purpose — this gate is what makes
+    /// widening or narrowing that list a decision instead of a drive-by: the container bar
+    /// was dead under the mouse precisely because the list lived inline in `pointer_up.rs`
+    /// where no test enumerated it.
+    #[test]
+    fn exactly_the_marker_and_the_container_bar_want_a_double_click() {
+        let wants = [K::Marker { index: 0 }, K::ContainerRow { index: 0 }];
+        let plain = [
+            K::Lane,
+            K::Key { target: 0, key: 0 },
+            K::SummaryKey { t_bits: 0 },
+            K::Twirl { target: 0 },
+            K::Row { target: 0 },
+            K::SummaryLock,
+            K::LabelSplitter,
+            K::CurveAnchor { target: 0, key: 0 },
+            K::CurveHandle {
+                target: 0,
+                key: 0,
+                which: 0,
+            },
+            K::GraphResize,
+            K::LoopBrace { edge: 0 },
+            K::Strip {
+                lane: 0,
+                strip: 0,
+                edge: 2,
+            },
+            K::LaneHeader { lane: 0 },
+            K::ResizeEdge { edges: 0 },
+        ];
+        assert!(wants.iter().all(|k| k.wants_double_click()));
+        assert!(plain.iter().all(|k| !k.wants_double_click()));
+    }
 }

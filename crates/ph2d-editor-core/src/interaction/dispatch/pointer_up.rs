@@ -234,19 +234,15 @@ pub(super) fn dispatch_up<'frame>(
         // (a tap). No apply_click/focus side effects — the panel owns semantics.
         if let Some((surface, kind)) = store.timeline_surface_at_id(active) {
             let dragged = store.take_timeline_moved();
-            // Consume the double-click flag regardless (keeps it from leaking to
-            // the next tap), but only a MARKER tap upgrades to `DoubleClick` —
-            // every other surface treats a second tap as a plain Click, so this
-            // stays a no-op behaviour change for keys / lanes / braces.
+            // Consume the double-click flag regardless (keeps it from leaking to the next
+            // tap). Whether the pair UPGRADES is the kind's own question
+            // (`TimelineHitKind::wants_double_click`) — the enumeration that lived inline
+            // here missed the second consumer the day it arrived, and the container bar
+            // shipped dead under the mouse.
             let double = store.take_timeline_double();
             let phase = if dragged {
                 GesturePhase::End
-            } else if double
-                && matches!(
-                    kind,
-                    crate::interaction::types::TimelineHitKind::Marker { .. }
-                )
-            {
+            } else if double && kind.wants_double_click() {
                 GesturePhase::DoubleClick
             } else {
                 GesturePhase::Click

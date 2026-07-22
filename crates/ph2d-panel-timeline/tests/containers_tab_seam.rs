@@ -407,3 +407,54 @@ fn picking_a_source_never_travels() {
     );
     assert_eq!(state.tab, Tab::Arrange, "nem de aba");
 }
+
+/// **Um DUPLO-CLIQUE DE VERDADE na barra entra no container** — Down/Up ×2 pelo dispatcher,
+/// não um gesto sintético (Enio, 2026-07-21: *"ainda não consigo entrar no container com
+/// duplo clique"*).
+///
+/// ⚠️ O gate de unidade injetava `GesturePhase::DoubleClick` pronto no roteador — e o
+/// roteador estava certo. Quem engolia o par era o `pointer_up` do dispatcher: o upgrade
+/// Click→DoubleClick numa superfície timeline estava ENUMERADO por kind (*"only a MARKER
+/// tap upgrades"*), escrito quando o rename do marker era o único duplo-clique da timeline.
+/// O segundo consumidor nasceu pintado, registrado, roteado — e morto sob o mouse. Um teste
+/// que fabrica o gesto prova o consumidor; só o par de cliques REAL prova o produtor.
+#[test]
+fn a_real_double_click_on_the_bar_enters_the_container() {
+    // A trilha é thread_local e cada #[test] roda na própria thread: nasce limpa.
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        tab: Tab::Containers,
+        ..TimelinePanelState::default()
+    };
+    let regs = paint(&mut host, &mut state, snapshot_with_container());
+    let bar = regs
+        .iter()
+        .find(|(w, _)| *w == ids::TIMELINE_CONT_ROW[0])
+        .map(|(_, r)| *r)
+        .expect("a barra pinta");
+    let (cx, cy) = (bar.x + bar.w * 0.5, bar.y + bar.h * 0.5);
+
+    // O par: dois Down/Up no MESMO ponto, 100 ms entre eles — dentro da janela de 350 ms.
+    let mut t: u128 = 1_000_000_000;
+    for _ in 0..2 {
+        for kind in [ph2d_host::PointerKind::Down, ph2d_host::PointerKind::Up] {
+            let _ = host.dispatch_pointer_event(ph2d_host::PointerEvent {
+                x: cx,
+                y: cy,
+                pressure: 1.0,
+                kind,
+                source: ph2d_host::PointerSource::Mouse,
+                button: ph2d_host::PointerButton::Primary,
+                timestamp_ns: t,
+            });
+            t += 50_000_000; // 50 ms
+        }
+    }
+    // O gesto drena no process do paint seguinte — o mesmo frame em que o app o drenaria.
+    let _ = paint(&mut host, &mut state, snapshot_with_container());
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(0),
+        "o par de cliques REAL tem de entrar — se isto falha, o dispatcher engoliu o double"
+    );
+}

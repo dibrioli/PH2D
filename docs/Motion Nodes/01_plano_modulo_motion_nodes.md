@@ -4,6 +4,72 @@
 [`00_estudo_estado_da_arte.md`](00_estudo_estado_da_arte.md) · **Referência canônica de UX/semântica:**
 MiniCavalryV2 (`/home/enio/Documentos/Recursos/Nodes/MiniCavalryV2`, **read-only**, testado e aprovado).
 
+---
+
+## ⚠️ ESTADO REAL — auditoria de 2026-07-22 (leia ANTES de usar este plano como fila)
+
+Este plano foi **cumprido e superado**. O texto abaixo é o de 2026-07-07 e, em quatro pontos,
+**descrevia coisas que hoje são falsas** — deixá-las de pé faz a próxima LLM construir o que já
+existe, ou reconstruir o que foi deliberadamente revogado. As correções estão marcadas **inline**
+com `⚠️ SUPERSEDED`; este bloco é o índice delas.
+
+| Fase | Estado (verificado no repo, não de memória) |
+|---|---|
+| **M0** | ✅ **13/13** tasks |
+| **M1** | ✅ editor E1–E10 + P1/R1 + nós (alguns por **supersessão documentada**: `value.clamp` vive no `map_range` (doc 13), `value.random` no `instance_field` (doc 12)) |
+| **M2** | ✅ neck (`cook_scoped` + `CheckpointRing`) + nós |
+| **M3** | ✅ **15/15** nós; editor F3 entregue em forma **diferente e melhor** (doc 46) |
+| **M4** | 🟡 rig 6/6 ✔ · subgrafo+breadcrumb ✔ (doc 57) · param→socket ✔ (doc 58) · **FX de PASSE 0/6** |
+| **M5** | ✅ **excede o plano** — entregue pela linha `line/gpu-nodes` (ADR-0135..0140) |
+
+**Contrato congelado: NUNCA foi tocado** (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`). Os dois
+amendments que o §4 previa **dissolveram**: o M4.N1 (`ParamSpec` tipado) virou o **canal de text
+param** (doc 32) e o M4.N3 (`Domain::Rig`) foi decidido *contra* — um esqueleto é stream comum.
+
+**Contagem:** o plano projetou ~135 nós MVP / ~90 crates. Hoje: **90 crates-nó, 88 registradas**.
+
+### ⚠️ O que o censo de cobertura GPU de fato diz (medido 2026-07-22)
+
+`cargo test -p ph2d-host-desktop --bins gpu_coverage_census -- --nocapture` reporta o **boot
+document** como `HYBRID/CPU`, fronteira `motion.distribute_poisson`; e a demo 2 como `HYBRID/CPU`,
+fronteira `motion.sort`. **Nenhum dos dois é um buraco de performance** — os dois são *boundaries
+ESTÁTICOS* (`Effect::Pure`, sem aresta `delayed`, sem param dirigido ⇒ **constantes**, cozidas uma
+vez e enviadas uma vez). O `plan.rs` **nomeia o caso por escrito**: o Poisson é *"an inherently
+sequential algorithm that will never have a kernel"*, e o boundary estático existe exatamente para
+ele não arrastar o laço.
+
+> **A lição, e ela é reutilizável: o censo conta FRONTEIRAS, não CUSTO.** Um `source` puro no topo
+> da cadeia é o limite mais barato que existe; um nó **no meio de um stream vivo** é o caro, porque
+> arrasta para a CPU todo mundo acima dele — inclusive nós que TÊM kernel.
+
+E o corpus do censo **não contém um único deformer** ⇒ ele não consegue ver o buraco real
+([[feedback_a_fixture_only_proves_what_it_contains]]). É esse buraco que a fila abaixo ataca.
+
+### A fila REAL (o que sobrou, em ordem de valor medido)
+
+1. **Deformers na GPU** — `bend`/`twist`/`spherize`/`four_point_warp`/`lattice`/`kaleidoscope` não
+   têm kernel. São `reduce → broadcast → map`, e **não existe reduce reusável** no `ph2d-gpu-cook`
+   (o `scan` é reusável; o único reduce é **privado** dentro do `voronoi.rs`). **Um primitivo de
+   reduce destrava a família inteira** — é o irmão do `scan`, e o `ReduceSpec` é o irmão do
+   `GridSpec` (side-metadata no registry, `default None`, contrato intocado).
+2. **Auto-inserção de adapters** (§1.1) — a tabela `CONVERSIONS` e o `can_connect` **nunca foram
+   construídos**; hoje o editor RECUSA fio incompatível em vez de oferecer o adapter. Os nós-adapter
+   existem; falta a ponte.
+3. **`motion.delay`** e **`motion.distribute_path`** (o alimentado pelo `vector.*`) — os 2 nós que
+   sobraram da FILA 4. O `distribute_curve` diz no próprio doc-comment que o path cross-module é
+   *"separate, later"*.
+4. **Wire-insert** (soltar da paleta sobre um fio) — o irmão dele (drop no card = port picker) **já
+   existe** (`snapshot_drop.rs`).
+5. **FX de PASSE** (`glow`/`bloom`/`blur`/`vignette`/`levels`/`hue_shift`) — compositor HDR,
+   **cross-module**: a doc 38 §8 manda **PARAR e reportar ao Enio**. Reuso obrigatório do
+   compositor 22-modos do Painter — escrever um segundo bloom é dívida, não feature.
+6. **`AttrAccess`** — ⚠️ o tipo **nunca foi construído**; é citado num doc-comment do
+   `registry/ui.rs` como se fosse chegar. O `flow.rs` explica por que não usou: os atributos que um
+   nó lê/escreve **não estão no `NodeManifest`**, que é CONGELADO. A influência entregue é
+   **estrutural** (por arestas) e funciona; a por-atributo **custa um ADR**.
+7. **W4.T4 — dock da timeline** no `motion_timeline_slot` (ainda `h=0`). ⚠️ Encosta na linha
+   `anim` — **duas linhas no mesmo módulo é proibido**: exige ordem do Enio.
+
 > **Norte:** sistema de motion nodes extremamente poderoso, intuitivo e fácil de usar, mirando o
 > ápice de beleza e performance com Rust/WGPU. Port **por semântica**, nunca por representação,
 > **com os melhoramentos** (correções das fraquezas do MVP) embutidos por construção.
@@ -45,6 +111,10 @@ estado → checkpoints.
 | gradient | `(Field, Vec4, Static)` | `Opaque(Arc<GradientStops>)` |
 | skeleton | `(Vector, Mat3, Frame)` | `Opaque(Arc<Skeleton>)` (precedente ADR-0058-am.1) |
 
+> ⚠️ **SUPERSEDED (parcial, 2026-07-22): os nós-adapter EXISTEM; a AUTO-INSERÇÃO não.** Não há
+> `CONVERSIONS` nem `can_connect` no repo — o editor pergunta só `connects_directly` e **recusa**
+> o fio incompatível (toast). Item 2 da fila nova.
+
 **Conversões = adapter-nodes auto-inseridos pelo editor.** O substrato continua estrito
 (`connects_directly`); o adapter é nó `Pure` comum (diffável, params editáveis — o "fio
 tracejado" do MVP vira a renderização compacta do adapter). Crates `ph2d-node-adapt-*`:
@@ -77,6 +147,12 @@ bindings virtuais). Cor: **linear no fio, OKLab dentro dos nós perceptuais**.
   identidade = `hash(node_seed, spawn_index)`; toda aleatoriedade deriva do hash → re-sim bit-exata.
 
 ### 1.4 Tempo, transporte e scrub
+
+> ⚠️ **SUPERSEDED (W4.T7, 2026-07-12): o `MotionTransport` MORREU.** O Motion não tem relógio
+> próprio — ele cozinha no tick do **`Playhead`** (`motion_bridge::ticks_owed`: play = TODO tick
+> para a frente, porque a sim é sequencial; scrub/jump = UMA chamada, sem replay). Relógio único
+> era o pré-requisito real do W4.T4. Um teste que queira rodar a sim constrói um `Playhead`.
+> O `Cook::checkpoint`/`restore` + `CheckpointRing` do parágrafo abaixo **estão vivos** (doc 11).
 
 `MotionTransport { tick: u64, playing, accumulator, loop_range }`; playhead = `tick × FIXED_DT`
 (1/60, do FixedStep de ph2d-core). Nós de sim usam **dt fixo constante**.
@@ -357,6 +433,14 @@ degradar frame; smoke com Enio.
 
 **Necks:**
 
+> ⚠️ **SUPERSEDED (2026-07-22): os 3 necks estão RESOLVIDOS, e DOIS deles sem tocar o contrato.**
+>
+> | # | Desfecho real |
+> |---|---|
+> | **M4.N1** | **NÃO bumpou o `NodeManifest`.** O **canal de TEXT PARAM** (doc 32 — `Graph::set_text_param` + `EvalCtx::text_param`) deu a `motion.expression` com param string **sem tocar o congelado**: params vivem no `Graph`, não no manifest. **É o padrão canônico para param não-f32.** A promoção param→socket saiu depois pelo `GraphIntent::DriveParam` (doc 58), também aditiva |
+> | **M4.N2** | **NÃO feito, e nem precisa hoje:** `Func::Pow` não existe no `ph2d-expr`; a `motion.expression` shipa `sin cos abs sqrt floor fract min max mix noise select`. Nenhum nó pede `pow` — acorda quando um pedir |
+> | **M4.N3** | **DECIDIDO CONTRA.** Não há `Domain::Rig`: *um esqueleto é um stream de instâncias comum* — `parent`/`len`/`rot` são colunas ordinárias, então todo nó genérico funciona sobre um rig e `rig.*` não precisou de mudança de contrato (racional completo em `ph2d-node-rig-skeleton`) |
+
 | # | Task |
 |---|---|
 | M4.N1 | **ADR `ParamSpec` tipado** (`ParamValue{F32,Vec2,Color,Enum,Bool}` — cap-bump ADR-0039); inclui a hierarquia socket>keyframe>literal (preparo da timeline futura) |
@@ -406,6 +490,12 @@ dataSource CSV/JSON · exports (Lottie/MP4/WebM) · gameplay/blocos (ADR-0036).
 - Ship 1× por jornada: `./scripts/ship.sh` → push → babysit (DIRETRIZ §1.5.4).
 
 ## 6. Arquivos críticos
+
+> ⚠️ **SUPERSEDED (2026-07-22)** em dois pontos desta lista: **`motion_smoke.rs` não existe** (foi
+> aposentado — a autoria real o tornou obsoleto) e o **`MotionState` não guarda transporte** (§1.4).
+> O bridge é hoje uma família de ~24 arquivos `render_loop/motion_bridge*.rs`, não um só. E o
+> `ph2d-motion-gpu` do M5 **não** foi construído com esse nome: quem entrega é **`ph2d-gpu-cook`**
+> (+ `ph2d-gpu`), da linha `line/gpu-nodes`.
 
 - `crates/ph2d-nodegraph/src/cook.rs` — cook_scoped/checkpoint (único toque em substrato, M2)
 - `crates/ph2d-eval-motion/src/lib.rs` — colunas canônicas + evaluate_motion_into (M0)

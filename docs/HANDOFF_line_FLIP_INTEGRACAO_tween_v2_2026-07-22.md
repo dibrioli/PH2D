@@ -17,7 +17,7 @@
 | branch | `line/FLIP` |
 | HEAD | ver `git log -1 --format=%H line/FLIP` (o último commit é de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **17** (8 do Tween v2 + 9 da **correção de pares** e docs — ver **§9**) |
+| commits à frente do `main` | **19** (8 do Tween v2 + 11 da **correção de pares**, o fix do S2 e docs — ver **§9**) |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
 
 > **Este handoff cobre DUAS entregas da mesma wave.** O **Tween v2** (§2–§8) está **SMOKE
@@ -280,6 +280,7 @@ b_len)` não bate com os desenhos-chave é descartado e cai no automático (nunc
 | `ph2d-panel-flip-frames` (`ids/state/toolbar_plan/populate/event`) | +botão **Pairs** (snapshot `tween_pairs`, toggle, `BUTTONS` 17→18) | append em listas |
 | `shells/desktop/src/flip_strip.rs` | porta única `current_tween_interval`; toggle Pairs + Add usa o plano corrigido | 581 LOC |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod flip_tween_correct/pairs_smoke` + a chamada de overlay/upkeep/smoke no prólogo | +poucas linhas |
+| `shells/desktop/src/render_loop/mod.rs` (`suppress_gizmo`) | **Pairs suprime o gizmo do objeto** — a caixa dele registra hits no `hit_index`, `on_canvas` vira falso e o clique de re-par seria roubado (o MESMO caso das tools de vetor, ao lado do qual entrou) | +2 linhas na condição |
 | `shells/desktop/src/input_dispatch.rs` | 1 branch (`flip_wants_tween_pairs` no pen-down, antes dos modos) | append |
 | `shells/desktop/src/render_loop/flip_bridge.rs` | `tween_pairs: strip.tween_correct.is_some()` no snapshot | 1 linha |
 
@@ -300,6 +301,14 @@ env PH2D_FLIP_TWEEN_PAIRS_SMOKE=1 cargo run -p ph2d-host-desktop --release
 
 A cena imprime `[pairs-smoke] cena montada: … Pairs ja esta ABERTO.` e um guia em pt-BR. O que
 olhar: o **overlay** aparece (duas poses, A azul / B laranja, linhas por confiança, **um anel
-magenta em cada faísca órfã**); clicar a faísca esquerda depois a direita **funde as duas
-numa linha âmbar**; o **Add** faz a faísca **atravessar** (sem a correção, ela pisca de um
-lado ao outro no quadro 8). Os gestos: mesmo traço = orfana · vazio = desmarca.
+magenta em cada faísca órfã**, uma de cada lado do corpo); clicar a faísca esquerda depois a
+direita **funde as duas numa linha âmbar**; o **Add** faz a faísca **atravessar** (sem a
+correção, ela pisca de um lado ao outro no quadro 8). Os gestos: mesmo traço = orfana · vazio =
+desmarca.
+
+⚠️ **1ª rodada do S2 (Enio) achou DOIS defeitos, os dois corrigidos (`29e2af6a5`):** as
+faíscas estavam em **±5** e a câmera padrão mostra só **±3** ⇒ a demonstração inteira ficava
+**fora da tela** (só se via o corpo-demo + o gizmo do objeto, cuja caixa larga denunciava o
+conteúdo off-screen); e o **gizmo do objeto roubava o clique** de re-par (`on_canvas` falso
+sobre a caixa dele). Faíscas → ±2 (órfão agora pela diferença de FORMA, gate confirma) + Pairs
+entra no `suppress_gizmo`. **Re-smoke pendente.**

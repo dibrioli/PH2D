@@ -546,6 +546,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             dab_gizmo::on_dab_gizmo_value_changed(host);
             Some(true)
         }
+        // Wet Paint TILT pad (doc 22): drain + snap + forward ring/spoke
+        // (body lives beside the dial's paint — one conversion, one house).
+        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_WETPAINT_TILT_PAD => {
+            crate::paint_wetpaint_tilt::forward_tilt_pad_drag(host);
+            Some(true)
+        }
         // Grain/Shape param number-fields: forward the committed/scrubbed REAL value (the tool's
         // real-value setters clamp it; params/Depth are already `0..1`). Enio 2026-06-25.
         WidgetEvent::ValueChanged(id) if crate::number_field::is_param_field(id) => {

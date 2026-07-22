@@ -167,3 +167,108 @@ fn the_method_menu_offers_every_method_while_wet_is_armed() {
         "wet mode narrows the Method menu — deposit-at-commit made every method valid"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Doc 22 — the grown section: tools, tilt, canvas actions, Paper, Tuning.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Every doc-22 widget is offered while ARMED and absent for the plain brush
+/// (presence AND absence — a control for an engine that is not running is a
+/// dead control wearing a live one's clothes). Mutation that bleeds it: any
+/// widget dropped from the armed branch, or painted outside it.
+#[test]
+fn every_doc22_wet_widget_is_offered_only_while_armed() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    let on = painted(&wet);
+    let off = painted(&PainterTool::default());
+    let mut ids: Vec<NodeId> = core_ids::PAINTER_WETPAINT_TOOL_IDS.to_vec();
+    ids.extend([
+        core_ids::PAINTER_WETPAINT_TILT_TOGGLE,
+        core_ids::PAINTER_WETPAINT_TILT_PAD,
+        core_ids::PAINTER_WETPAINT_WETCANVAS,
+        core_ids::PAINTER_WETPAINT_DRYCANVAS,
+        core_ids::PAINTER_WETPAINT_FASTDRY,
+        core_ids::PAINTER_WETPAINT_SHOWWET,
+        core_ids::PAINTER_WETPAINT_PAPER_VISUAL,
+        core_ids::PAINTER_WETPAINT_TUNING,
+    ]);
+    for id in ids {
+        assert!(has(&on, id), "armed wet section is missing {id:?}");
+        assert!(!has(&off, id), "{id:?} painted for the PLAIN brush");
+    }
+}
+
+/// Every doc-22 CLICK forwards through the REAL panel seam (the Enable
+/// checkbox shipped dead under the mouse once — a synthetic tool-side event
+/// skips this forward, which is exactly how it shipped). Mutation: an id
+/// missing from `PAINTER_WETPAINT_CLICKS` (allowlist + populate share it).
+#[test]
+fn every_doc22_wet_click_forwards_through_the_panel() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::panel::EventOutcome;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    for clicked in core_ids::PAINTER_WETPAINT_CLICKS {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "panel ignored the wet click {clicked:?} (allowlist arm missing)"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "wet click {clicked:?} never reached the bus. drained = {actions:?}"
+        );
+    }
+}
+
+/// The TILT pad drag snaps to the dial's grid and forwards ring+spoke as two
+/// `SetValue`s (the shared conversion — a drag to the right edge is ring 8,
+/// spoke 0). Mutation: the ValueChanged arm missing from `event.rs`, or the
+/// conversion diverging from the paint's placement law.
+#[test]
+fn the_tilt_pad_drag_forwards_ring_and_spoke() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    host.store_mut().set_curve_point_drag(
+        core_ids::PAINTER_WETPAINT_TILT_PAD,
+        0,
+        0,
+        1.0, // right edge
+        0.5, // vertical centre
+    );
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(core_ids::PAINTER_WETPAINT_TILT_PAD),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed, "the pad drain arm is missing");
+    let actions = host.drained_actions();
+    let val = |target: NodeId| {
+        actions.iter().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)) if *id == target => Some(*v),
+            _ => None,
+        })
+    };
+    assert_eq!(
+        val(core_ids::PAINTER_WETPAINT_TILT_RING),
+        Some(8.0),
+        "a drag to the rim must snap to the outer ring"
+    );
+    assert_eq!(
+        val(core_ids::PAINTER_WETPAINT_TILT_SPOKE),
+        Some(0.0),
+        "a drag straight right is spoke 0"
+    );
+}

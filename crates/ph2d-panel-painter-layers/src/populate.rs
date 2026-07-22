@@ -365,9 +365,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Watercolor section: the Enable master toggle + the section reset + the Grain-section
         // "Same as Paper" toggle + the Paper section reset. (Pigment merged into the Mix slider; Paper
         // Rake/Random dropped from the UI — redesign 2026-07-07.)
-        // Wet Paint section: the Enable master toggle (the persistent ARM) + the section reset.
-        ph2d_editor_core::ids::PAINTER_WETPAINT_ENABLE,
-        ph2d_editor_core::ids::PAINTER_WETPAINT_RESET,
         ph2d_editor_core::ids::PAINTER_WATERCOLOR_ENABLE,
         // Shape section's watercolor "Automatic" toggle (doc 13 #1).
         ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
@@ -415,6 +412,30 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
             },
         );
     }
+    // Wet Paint section (doc 22): Enable + reset + the 7 tool buttons + the
+    // tilt toggle + the canvas actions + Show Wet + Paper + Tuning — ONE
+    // membership list shared with the paint and the click forward.
+    for id in ph2d_editor_core::ids::PAINTER_WETPAINT_CLICKS {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    // The TILT pad is a CurvePoint drag surface; the paint refreshes the
+    // carried canvas rect per frame — this registration is the focusability
+    // half (the wiring-parity law: painted + hit-indexed but absent here =
+    // dead under the mouse).
+    store.register(
+        ph2d_editor_core::ids::PAINTER_WETPAINT_TILT_PAD,
+        InteractiveState::CurvePoint {
+            parent: ph2d_editor_core::ids::PAINTER_WETPAINT_TILT_PAD,
+            channel: 0,
+            index: 0,
+            canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1.0, 1.0),
+        },
+    );
     // Mouse-over hint for the (not-yet-wired) Save As Object button.
     store.set_tooltip(
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,

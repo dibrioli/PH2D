@@ -65,6 +65,7 @@ mod paint_texture_ramp;
 mod paint_watercolor;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
+mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
 mod populate;
 mod populate_brush_chips;
 mod populate_deform;

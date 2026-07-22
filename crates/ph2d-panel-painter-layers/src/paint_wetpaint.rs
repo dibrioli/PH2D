@@ -63,6 +63,44 @@ pub(crate) fn paint_wetpaint_section(
     // control wearing a live one's clothes). Ranges mirror the tool's clamps (SPEC §16 /
     // `KNOB_DEFS` slider ranges); decimals sized to each knob's granularity.
     if brush.wetpaint {
+        // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
+        // one radio: Erase highlights when the rail's eraser wire is live,
+        // everything else mirrors the authored wet tool.
+        let selected = if brush.eraser {
+            1
+        } else {
+            match brush.wet_tool {
+                ph2d_tool_painter::WetTool::Paint => 0,
+                ph2d_tool_painter::WetTool::Smear => 2,
+                ph2d_tool_painter::WetTool::Blend => 3,
+                ph2d_tool_painter::WetTool::Wet => 4,
+                ph2d_tool_painter::WetTool::Dry => 5,
+                ph2d_tool_painter::WetTool::Blow => 6,
+            }
+        };
+        let t = core_ids::PAINTER_WETPAINT_TOOL_IDS;
+        let tool_opts: [(ph2d_a11y::NodeId, String); 7] = [
+            (t[0], "Paint".into()),
+            (t[1], "Erase".into()),
+            (t[2], "Smear".into()),
+            (t[3], "Blend".into()),
+            (t[4], "Wet".into()),
+            (t[5], "Dry".into()),
+            (t[6], "Blow".into()),
+        ];
+        y = crate::paint_impasto::seg_row_owned(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_WETPAINT_TOOL_IDS[0],
+            "Wet paint tool",
+            &tool_opts,
+            selected,
+        );
+        // The TILT dial (the model's polar pad, copied faithfully).
+        y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;
         let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 7] = [
             (
@@ -134,6 +172,57 @@ pub(crate) fn paint_wetpaint_section(
                 ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
             );
         }
+        // Canvas actions (the model's bottom bar): three one-shots as a
+        // momentary button row (the watercolor Dry/Wet pattern) + Show Wet
+        // as an honest TOGGLE (its state is visible, not implied).
+        y = crate::paint_impasto::seg_row_owned(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_WETPAINT_WETCANVAS,
+            "Wet canvas actions",
+            &[
+                (core_ids::PAINTER_WETPAINT_WETCANVAS, "Wet canvas".into()),
+                (core_ids::PAINTER_WETPAINT_DRYCANVAS, "Dry canvas".into()),
+                (core_ids::PAINTER_WETPAINT_FASTDRY, "Fast dry".into()),
+            ],
+            usize::MAX,
+        );
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_WETPAINT_SHOWWET,
+            "Show Wet",
+            brush.wet_show_wet,
+        );
+        // Paper — the tooth becomes visually part of the painting (render
+        // grain + emboss printed into the pigment; bakes on purpose).
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_WETPAINT_PAPER_VISUAL,
+            "Paper",
+            brush.wet_paper_visual,
+        );
+        // Tuning — opens the side panel with the engine's full knob table.
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_WETPAINT_TUNING,
+            "Tuning",
+            brush.wet_tuning_open,
+        );
     }
     y
 }

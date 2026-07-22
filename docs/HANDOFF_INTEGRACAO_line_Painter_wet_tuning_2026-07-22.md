@@ -7,7 +7,7 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 20 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+- **Commits:** 21 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
   **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
   **doc 23: estudo + implementação — o pigmento responde às tools** →
   **fix pós-smoke do Impasto, em 4 commits**: TODOS os cards com Enable ON (a estreiteza
@@ -16,10 +16,11 @@
   Filter Layer/Stroke só nos verbos que os têm) →
   **o dropdown de MODO DE PINTURA + o bug do modo órfão** (§2.1) →
   **o canvas do Painter que era derrubado e nunca re-pushado** (§2.2) →
-  **os smokes abrem em Digital** (§2.3), ver §2/§6;
+  **os smokes abrem em Digital** (§2.3) →
+  **defaults de produto do Wet Paint** (§2.4), ver §2/§6;
   checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
-- **Gate batched:** `nextest-impacted` **5055/5055** · clippy `--all-targets` **0 warnings** nas
+- **Gate batched:** `nextest-impacted` **5058/5058** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
   intacto · 13 arch-gates verdes · 3 mutações dirigidas sangram (porta de tool → RED de paridade
   bit-exata; rota de SetValue do tuning → RED; véu do Show Wet bakando → RED).
@@ -148,6 +149,33 @@ Fix: os smokes dão o canvas e abrem em **Digital**; o artista escolhe o meio no
 nenhum unit test a alcança) — lê a fonte dos 2 smokes e recusa `set_paint_media(PaintMedia::<não-
 Digital>)` + controle positivo. 1 mutação, sangra.
 
+## 2.4 DEFAULTS DE PRODUTO DO WET PAINT (2026-07-22)
+
+Enio: Spacing **0.025** (só wet), Pigment **800**, Paper Gate **0.4**, Felt **0.03**, Bristle Size
+**2.0**, Bristle Count **2000**.
+
+⚠️ **São defaults de PRODUTO, não do modelo.** O engine é um port 1:1 do reference JS e os `KNOB_DEFS`
+(SPEC §16) são os defaults DELE — mexer neles quebraria o fingerprint e a fidelidade. Então os valores
+do Enio vivem no **TOOL**, não no engine (`ph2d-wet-paint` intocado, fingerprint 14/14).
+
+| Peça | O quê |
+|---|---|
+| `state_default.rs` | slot próprio do WetPaint com `spacing: 0.025` (mais denso que o 0.05 de Smear/Blur/Clone); os outros modos intactos |
+| `WetKnobs::ENGINE_BOOT` (**NOVO**) | o boot real do engine (`Engine::new` / SPEC) — a **baseline** do reconcile |
+| `WetKnobs::DEFAULT` | passou a ser o **perfil de produto** (o boot + 5 tweaks); usado por `default()`, `reset_group`, `set(NaN)`, `FALLBACK_BRUSH` |
+| `WetEngineFacts::BOOT.knobs` | `ENGINE_BOOT` (não `DEFAULT`) — o `applied` da sessão inicia na baseline |
+
+⚠️ **A DESACOPLAÇÃO é a espinha.** `ENGINE_BOOT` e `DEFAULT` eram a MESMA const. Se colapsados, o
+reconcile faria early-return no 1º batch (`applied == facts`) e o engine ficaria em 600 sob um painel
+lendo 800. O reconcile só empurra o produto porque ele **difere** da baseline (`applied` inicia em
+`ENGINE_BOOT`, o 1º `facts` é `DEFAULT` produto ⇒ delta ⇒ push).
+
+**Gates** (`wetpaint/tests_doc22.rs`): `the_reconcile_baseline_is_the_engines_own_boot` (baseline==SPEC,
+difere do produto, engine boota na SPEC ANTES do reconcile) · `the_tool_default_reaches_the_engine_exactly`
+(o produto chega ao engine pós-stroke, bit a bit) · `the_wet_paint_knob_defaults_are_the_ones_enio_chose`
+(pina os 5 + prova que os outros == boot) · `wet_paint_opens_at_the_dense_default_spacing`. **5 mutações,
+5 sangram** — colapsar a baseline sangra **duas** (a baseline E a entrega).
+
 ## 3. Símbolos que podem COLIDIR
 
 - `NodeId(837)` (scrollbar) — **hand-assigned**; se outra linha tomou 837, renumere (próximo 838)
@@ -206,10 +234,13 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
    (grupo PAINT) controla tudo — a 1.0 a tinta seca fica pinada; **Rewet lift** (grupo
    TOOLS) é a força do dissolve, 0 = modelo antigo. ⚠️ Molhar e NÃO mexer re-assenta o
    pigmento quando a água morre — é física, não bug.
-5. **O padrão de abertura é DIGITAL (§2.1 + §2.3):** abra o Painter (mesmo sob `PH2D_WETPAINT_SMOKE=1`
+5. **Os defaults do Wet Paint (§2.4):** entre em Wet Paint (pelo dropdown) e confira o Stroke =
+   **Spacing 0.025** e o Tuning = **Pigment 800 · Paper Gate 0.4 · Felt 0.03 · Bristle Size 2.0 ·
+   Bristle Count 2000**. O reset de grupo/seção volta a ELES (não ao boot do engine).
+6. **O padrão de abertura é DIGITAL (§2.1 + §2.3):** abra o Painter (mesmo sob `PH2D_WETPAINT_SMOKE=1`
    ou `PH2D_IMPASTO_SMOKE=1`) e o chip **Paint Mode** tem de ler *Digital*, sem nenhuma seção de meio
    pintada. Escolha o meio no dropdown para trabalhar.
-6. **O dropdown de MODO DE PINTURA (§2.1):** o chip **Paint Mode** no topo da metade de aparência
+7. **O dropdown de MODO DE PINTURA (§2.1):** o chip **Paint Mode** no topo da metade de aparência
    lista *Digital · Watercolor · Impasto · Wet Paint* e abre **Digital** num projeto novo; escolher
    um pinta **só** a seção dele (as três checkboxes `Enable` sumiram — o chip é o interruptor).
    ⚠️ **O repro do bug:** entre em **Impasto**, clique a **faca** (ou um verbo do Sculpt), e então
@@ -217,12 +248,12 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
    volta a ser o pincel. Idem indo para **Wet Paint**. E confira o **Preset** logo acima: com Wet
    Paint armado, escolher *"Watercolor Basic"* tem de deixar o chip lendo **Watercolor**, não os
    dois meios ligados.
-7. **O canvas volta (§2.2):** com a sprite selecionada, entre no Painter, **saia sem pintar nada**,
+8. **O canvas volta (§2.2):** com a sprite selecionada, entre no Painter, **saia sem pintar nada**,
    e volte — tem de dar para pintar. (Antes: a sprite era **arrastada** pelo gizmo, e nem
    re-selecionar nem re-entrar no Painter devolvia a pintura.) Confira também o par que a auditoria
    achou: pegue o **Smear** do rail e escolha **Watercolor** no Paint Mode — o chip tem de FICAR em
    Watercolor (antes voltava sozinho para Digital).
-8. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
+9. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
    idem (boot equivalence + fingerprint com pin justificado; `wetLift=0` reproduz o pin
    antigo ao byte).
 
@@ -237,4 +268,4 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 - A visibilidade do painel via bridge não tem gate de shell dedicado (o espelho é 3 linhas no
   `painter_bridge`; o gate de registry cobre a metade estrutural).
 
-*Linha `Painter` pronta (20 commits). Aguardo ordem de integração.*
+*Linha `Painter` pronta (21 commits). Aguardo ordem de integração.*

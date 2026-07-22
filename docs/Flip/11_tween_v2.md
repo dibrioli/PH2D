@@ -190,16 +190,63 @@ aparecer, pare**. Aperte **Add** e folheie 0 → 2 → 4 → 6 → 8:
    lugares diferentes do contorno são interpolados com a costura desalinhada, e a forma do
    meio fica torcida. A resposta é a correlação circular que o `ph2d-vec-blend` **já
    construiu** (`phase_only`) — wave própria, não um `if` a mais no auto-flip.
-2. **O overlay de PARES + o re-par manual** (a lição CACANi: *nenhum matcher automático é
-   confiável; a UI de correção é parte do algoritmo*). O `TweenPlan` já publica
-   `pair_of_a`/`pair_of_b`/`cost_of_a` **para isto** — falta desenhar as linhas que ligam
-   os traços casados entre as duas chaves e aceitar um par PINADO como restrição dura na
-   atribuição (`assign` recebe a matriz; um pino é custo 0 na célula e `BLOCKED` no resto
-   da linha e da coluna). **Ele não é UI morta hoje**: a wave não adiciona nada que dependa
-   dele; ele é o próximo passo de qualidade.
+2. ~~**O overlay de PARES + o re-par manual**~~ — **LANDOU 2026-07-22, pendente de smoke**
+   (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`). Ver **§8**.
 3. **Rotação grande ainda torce** (o lerp do resíduo não-rígido). O estado da arte é
    Sederberg 1992 / Alexa 2000 — e a correspondência, que esta wave entrega, era o
    pré-requisito dos dois.
 4. **A meia-volta EXATA é ambígua** e nenhuma ferramenta resolve: girar 180° para os dois
    lados dá a MESMA pose. O gate pina o que importa (mesmo ali o traço **não colapsa**);
    escolher o lado é trabalho do artista, e é a razão de o BetweenIT ter correção manual.
+
+## §8 — A correção de pares (o escape CACAni) — LANDOU 2026-07-22, pendente de smoke
+
+O matcher v2 é bom, mas a pesquisa foi categórica: **todo** produto de correspondência
+(CACAni, GSAP, Corel) dá um escape MANUAL, porque nenhum matcher acerta TODO par. Esta é a UI
+desse escape — um toggle **Pairs** na barra da tira que abre um overlay da correspondência.
+
+**O motor** (`ph2d-flip`):
+- `TweenPlan::repair(a, b)` / `unpair_a(a)` / `unpair_b(b)` reescrevem a correspondência já
+  resolvida. Um par forçado **perde o `cost`** (vira `None`) — a confiança do MATCHER não
+  descreve mais um par que o ARTISTA escolheu, e o overlay o pinta em âmbar, não numa cor de
+  pontuação. `a_len`/`b_len` expostos.
+- `FlipObject::tween_with_plan(req, &plan)` commita com o plano corrigido, com **guarda de
+  dimensões**: um plano cujo `(a_len, b_len)` não bate com os desenhos-chave (a chave foi
+  editada entre corrigir e commitar) é DESCARTADO e cai no automático — parear pelo índice
+  errado mostraria um braço virando um pé, e um par silenciosamente torto é pior que o
+  automático que o artista quis corrigir.
+
+**⚠️ A decisão de projeto (difere do que o §7 previa):** o `repair` **edita o plano
+resolvido**, não re-roda o `assign` com um pino como restrição dura. Re-otimizar em torno do
+pino re-arranjaria os OUTROS pares (que o artista não tocou) — mais "esperto", mas
+imprevisível. A edição direta muda **só** o par forçado + os dois parceiros que ele
+desalojou; é o que o artista espera de "eu disse que ESTE vira ESTE".
+
+**A UI** (shell):
+- **`flip_tween_correct`**: a sessão (`TweenCorrect`, estado de autoria na `FlipStrip` — não
+  documento; corrigir não muda o desenho até o Add) + o gesto PURO (`apply_click`: marca ·
+  força · orfana · move) + o pick em espaço de TELA (`nearest_stroke`). A sessão é PINADA a
+  um intervalo pela porta única `flip_strip::current_tween_interval` (a MESMA que o Add usa —
+  senão a sessão descreveria um intervalo e o commit outro), e SEGUE o artista a um intervalo
+  novo (`flip_tween_pairs_upkeep`).
+- **`render_loop::flip_tween_overlay`**: o overlay esquemático em px de tela (irmão do
+  `flip_selection_overlay`, mesma cadeia `câmera ∘ objeto ∘ pose_da_chave`). A e B carregam
+  poses de chave DIFERENTES, cada lado com seu afim — por isso o pick é em tela (um espaço
+  só) em vez de inverter duas poses. A **cor da linha diz a confiança**: verde (custo 0) →
+  vermelho (no teto de recusa), âmbar para o manual; um **anel magenta** marca cada órfão.
+- **O gesto:** clique um traço (fica branco, marcado) · clique o do OUTRO lado → força o par ·
+  clique o MESMO de novo → orfana · clique no vazio → desmarca. Enquanto Pairs está aberto o
+  clique do canvas é da correção (sobrepõe o modo Draw/Erase). O **Add** commita com o plano
+  corrigido; desligar Pairs descarta.
+
+**Gates (17 novos):** o motor (repair solta os dois vínculos · unpair orfana os dois lados ·
+índice fora da faixa é no-op · a correção dirige o inbetween · plano de tamanho errado cai no
+automático); o gesto (marca/força/orfana/move); o pick (mais próximo ao alcance); a cor da
+confiança + a geometria de tela; e o seam inteiro (o toggle abre/fecha, sem intervalo não
+abre, o Add usa a correção). Smoke `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` (uma faísca que o
+automático orfana; o artista a pareia e ela ATRAVESSA em vez de piscar).
+
+**Aberto daqui:** re-otimizar em torno do pino (a alternativa do §7, se o uso mostrar que a
+edição direta é apertada demais) · a ambiguidade de sobreposição do pick (dois traços no
+MESMO lugar de tela — só atrapalha pares já corretos, documentado no `nearest_stroke`) · um
+Ctrl+Z para o re-par (hoje o gesto é barato de refazer; a sessão é transiente).

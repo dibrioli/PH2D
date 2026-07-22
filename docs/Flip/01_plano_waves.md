@@ -267,10 +267,12 @@ paint-behind, multiframe.
 - **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
 - ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
-  (doc [`11`](11_tween_v2.md)). **ABERTO de lá:** a **UI de correção de
-  pares** (o overlay + o re-par manual — a lição CACANi; o `TweenPlan` já publica os pares e
-  o custo PARA isto) · o **alinhamento de FASE da costura** em traço fechado (a resposta é o
-  `phase_only` que o `ph2d-vec-blend` já construiu) · a torção em rotação grande
+  (doc [`11`](11_tween_v2.md)). ~~a **UI de correção de pares** (o overlay + o re-par manual —
+  a lição CACAni)~~ — **LANDOU 2026-07-22, pendente de smoke** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`;
+  doc [`11 §8`](11_tween_v2.md)): toggle **Pairs** na barra → overlay da correspondência (linhas
+  por confiança verde/vermelho/âmbar + anéis de órfão), clique re-pareia, o Add commita com o
+  plano corrigido. **ABERTO de lá:** o **alinhamento de FASE da costura** em traço fechado (a
+  resposta é o `phase_only` que o `ph2d-vec-blend` já construiu) · a torção em rotação grande
   (Sederberg 1992 / Alexa 2000 — a correspondência era o pré-requisito dos dois).
 - **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C3 (onion fill)
   LANDOU 2026-07-21, smoke APROVADO** — com chaves marcadas na tira um Apply colore todas; o

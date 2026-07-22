@@ -17,8 +17,13 @@
 | branch | `line/FLIP` |
 | HEAD | ver `git log -1 --format=%H line/FLIP` (o último commit é de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **8** |
+| commits à frente do `main` | **17** (8 do Tween v2 + 9 da **correção de pares** e docs — ver **§9**) |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
+
+> **Este handoff cobre DUAS entregas da mesma wave.** O **Tween v2** (§2–§8) está **SMOKE
+> APROVADO**. A **correção de pares** (§9, o overlay CACAni + o re-par manual) está
+> **construída e gateada, pendente de smoke** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`). As duas
+> integram juntas; a segunda é aditiva sobre a primeira.
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D     # a árvore PRIMÁRIA
@@ -122,11 +127,12 @@ bash scripts/nextest-impacted.sh
 
 | gate | resultado |
 |---|---|
-| `nextest-impacted.sh` | **5127 testes, 5127 passaram** |
-| `ph2d-flip` | 131 (+4 réguas `#[ignore]`) — **em debug E em release** |
-| `ph2d-panel-flip-frames` (seam) | 9 |
-| `cargo clippy --all-targets` nas 5 crates tocadas | limpo |
-| `file_loc_caps` (shell) · `architecture_workspace_file_loc_cap` · `architecture_panel_wiring_parity` · `node_id_collisions` · `arch_safe_clamp_only` | verdes |
+| `nextest-impacted.sh` | **5145 testes, 5145 passaram** (inclui os 17 gates da §9) |
+| `ph2d-flip` | 137 (+3 réguas `#[ignore]`) — **em debug E em release** |
+| `ph2d-panel-flip-frames` (seam, com o botão **Pairs**) | 9 |
+| `ph2d-host-desktop` (inclui o gesto/pick/overlay/seam da §9) | 962 |
+| `cargo clippy --all-targets` nas crates tocadas | limpo |
+| `file_loc_caps` (shell) · `architecture_workspace_file_loc_cap` · `architecture_panel_wiring_parity` · `node_id_collisions` · `no_tofu_glyphs` | verdes |
 
 ⚠️ **Rode as duas** (debug e release): a wave anterior desta mesma linha shipou um pânico que
 só aparecia em debug porque o brief mandava rodar com `--release`.
@@ -231,3 +237,69 @@ cena) — o smoke julga a APARÊNCIA, que é o que nenhum deles pode julgar.
 2. **Push só por ordem EXPLÍCITA do Enio** (CLAUDE.md §0.7).
 3. **Atualize a §5 do `CLAUDE.md`** com a entrada do Tween v2 — uma §5 que não descreve o que
    está no `main` faz a próxima LLM reconstruir o que existe.
+
+## 9. A correção de pares (continuação da mesma wave — pendente de smoke)
+
+O escape manual que a lição CACAni exige (o matcher erra, o artista corrige). Doc completo:
+[`docs/Flip/11_tween_v2.md §8`](Flip/11_tween_v2.md).
+
+### 9.1 Superfície pública NOVA na `ph2d-flip` (foundational), toda ADITIVA
+
+```rust
+impl TweenPlan {
+    pub fn repair(&mut self, a: usize, b: usize) -> bool;   // força A[a] <-> B[b]
+    pub fn unpair_a(&mut self, a: usize) -> bool;           // orfana A[a]
+    pub fn unpair_b(&mut self, b: usize) -> bool;           // orfana B[b]
+    pub fn a_len(&self) -> usize;                            // dims (para a guarda)
+    pub fn b_len(&self) -> usize;
+}
+impl FlipObject {
+    pub fn tween_with_plan(&mut self, req: TweenRequest, plan: &TweenPlan) -> u32; // commit corrigido
+}
+```
+
+Nada removido; `tween` mantém a assinatura (agora delega a um `tween_inner` privado). Um par
+manual **perde o `cost`** (`cost_of_a` = `None`) — a confiança do matcher não descreve uma
+escolha do artista. O `tween_with_plan` tem **guarda de dimensões**: plano cujo `(a_len,
+b_len)` não bate com os desenhos-chave é descartado e cai no automático (nunca pareia pelo
+índice errado).
+
+### 9.2 Módulos NOVOS no shell (isolados)
+
+| arquivo | o quê |
+|---|---|
+| `shells/desktop/src/flip_tween_correct.rs` | a sessão (`TweenCorrect` na `FlipStrip`, estado de autoria) + o gesto puro (`apply_click`) + o pick em tela (`nearest_stroke`) + `build`/upkeep |
+| `shells/desktop/src/render_loop/flip_tween_overlay.rs` | o overlay esquemático (linhas por confiança + anéis de órfão), px de tela, irmão do `flip_selection_overlay` |
+| `shells/desktop/src/flip_tween_pairs_smoke.rs` | a cena `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
+
+### 9.3 Arquivos COMPARTILHADOS tocados (onde um merge futuro morde)
+
+| arquivo | mudança | risco |
+|---|---|---|
+| `crates/ph2d-editor-core/src/ids/chrome/flip.rs` | `+FLIP_TWEEN_PAIRS` (id novo) | append |
+| `ph2d-panel-flip-frames` (`ids/state/toolbar_plan/populate/event`) | +botão **Pairs** (snapshot `tween_pairs`, toggle, `BUTTONS` 17→18) | append em listas |
+| `shells/desktop/src/flip_strip.rs` | porta única `current_tween_interval`; toggle Pairs + Add usa o plano corrigido | 581 LOC |
+| `shells/desktop/src/{main,render_loop/mod}.rs` | `mod flip_tween_correct/pairs_smoke` + a chamada de overlay/upkeep/smoke no prólogo | +poucas linhas |
+| `shells/desktop/src/input_dispatch.rs` | 1 branch (`flip_wants_tween_pairs` no pen-down, antes dos modos) | append |
+| `shells/desktop/src/render_loop/flip_bridge.rs` | `tween_pairs: strip.tween_correct.is_some()` no snapshot | 1 linha |
+
+### 9.4 Gates (17 novos) + LOC
+
+`tween_match_edit_tests.rs` (motor: repair/unpair/no-op) · `tween_tests.rs` (a correção
+dirige o inbetween; plano de tamanho errado cai no automático) · `flip_tween_correct_tests.rs`
+(o gesto + o pick) · `flip_tween_overlay_tests.rs` (a cor da confiança + a geometria de tela) ·
+`flip_strip_tests.rs` (o seam: toggle abre/fecha · sem intervalo não abre · o Add usa a
+correção) · `flip_tween_pairs_smoke_tests.rs` (a cena contém o fenômeno). **`tween_match_tests.rs`
+foi splitado** (741→661) para o irmão `tween_match_edit_tests.rs` (cap de LOC).
+
+### 9.5 O SMOKE (S2) — o que falta para o veredito da 2ª entrega
+
+```bash
+env PH2D_FLIP_TWEEN_PAIRS_SMOKE=1 cargo run -p ph2d-host-desktop --release
+```
+
+A cena imprime `[pairs-smoke] cena montada: … Pairs ja esta ABERTO.` e um guia em pt-BR. O que
+olhar: o **overlay** aparece (duas poses, A azul / B laranja, linhas por confiança, **um anel
+magenta em cada faísca órfã**); clicar a faísca esquerda depois a direita **funde as duas
+numa linha âmbar**; o **Add** faz a faísca **atravessar** (sem a correção, ela pisca de um
+lado ao outro no quadro 8). Os gestos: mesmo traço = orfana · vazio = desmarca.

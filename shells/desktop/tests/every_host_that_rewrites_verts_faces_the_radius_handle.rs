@@ -23,9 +23,16 @@ use std::fs;
 
 /// A assinatura de "eu reescrevo a geometria autorada deste path".
 ///
-/// Duas formas, porque os hosts usam as duas: `p.verts = …` (blend, morph, envelope, live
-/// shape) e `p.verts.clear()` seguido de `extend` (o conector, que remonta a polilinha).
-const VERTS_REWRITE: [&str; 2] = [".verts = ", ".verts.clear()"];
+/// Três formas, porque os hosts usam as três: `p.verts = …` (blend, morph, live shape),
+/// `p.verts.clear()` seguido de `extend` (o conector, que remonta a polilinha) e
+/// `p.replace_cooked(…)` (a porta única do re-cozimento — o envelope e o texto).
+///
+/// ⚠️ **A terceira entrou depois de o gate ter cegado por ela.** O `envelope_live` escrevia
+/// os campos à mão; quando passou pela porta única, a assinatura dele desapareceu do
+/// detector e o controle positivo abaixo caiu de 5 para 4 hosts — exatamente a falha que
+/// aquele `assert` existe para gritar. Uma porta NOVA de reescrita tem de entrar aqui no
+/// MESMO commit em que nasce, senão este gate passa a guardar menos do que promete.
+const VERTS_REWRITE: [&str; 3] = [".verts = ", ".verts.clear()", ".replace_cooked("];
 
 /// Só hosts vivos: `*_live.rs`. Exclui os `*_tests.rs` (que montam fixtures e escrevem
 /// `verts` legitimamente) e o `blend_smoke.rs` — e evita o falso positivo que o gate irmão

@@ -54,7 +54,7 @@ pub(crate) fn reopen_text_session(
         &params.text,
         &layout,
         &axes,
-        [0.0, 0.0],
+        &crate::vec_glyph::TextPlacement::At([0.0, 0.0]),
         &fill,
         &stroke,
     )

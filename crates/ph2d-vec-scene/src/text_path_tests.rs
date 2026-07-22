@@ -191,6 +191,30 @@ fn the_glyph_keeps_its_size_anywhere_on_the_curve() {
     }
 }
 
+/// **Deslocar a origem ao longo da linha É somar ao `local[0]`** — a identidade que autoriza a
+/// âncora ao meio a ser paga uma vez por glifo em vez de uma vez por ponto de contorno.
+///
+/// O oráculo é a EQUIVALÊNCIA das duas rotas, não um número: se ela vale, o `shifted_along`
+/// não pode estar a fazer outra coisa (rodar, escalar, deslocar pela normal) sem quebrá-la.
+#[test]
+fn shifting_the_origin_along_the_line_equals_offsetting_every_local_x() {
+    let ap = circle_path();
+    let f = GlyphFrame::on_path(&ap, ap.total() * 0.23, 2.0, false).expect("frame");
+    let h = 0.4;
+    let shifted = f.shifted_along(-h);
+    for local in [[0.0, 0.0], [1.5, -0.75], [-3.0, 2.25]] {
+        let a = shifted.apply(local);
+        let b = f.apply([local[0] - h, local[1]]);
+        assert!(
+            (a[0] - b[0]).abs() < 1e-12 && (a[1] - b[1]).abs() < 1e-12,
+            "{local:?}: {a:?} contra {b:?}"
+        );
+    }
+    // E os EIXOS não se mexem — é uma translação, não uma re-orientação.
+    assert_eq!(shifted.x_axis, f.x_axis);
+    assert_eq!(shifted.y_axis, f.y_axis);
+}
+
 /// **Numa cúspide não há referencial** — e a resposta é `None`, não um ângulo inventado. Quem
 /// chama decide o que fazer; esta função não escolhe por ele.
 #[test]

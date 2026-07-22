@@ -14,7 +14,9 @@
 use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
 
-use crate::vec_glyph::{TextLayout, caret_x_offset, resolve_style, text_to_compound_path};
+use crate::vec_glyph::{
+    TextLayout, TextPlacement, caret_frame, caret_x_offset, resolve_style, text_to_compound_path,
+};
 
 /// Uma sessão de digitação de texto no canvas (`DrawMode::Text`). O texto vive como
 /// UM `VecPath` compound na cena (campo [`Self::id`]); esta struct guarda o ponto de
@@ -176,7 +178,7 @@ pub(crate) fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTex
         &edit.text,
         &layout_of(edit),
         &axes_of(edit),
-        [0.0, 0.0],
+        &TextPlacement::At([0.0, 0.0]),
         &edit.fill,
         &edit.stroke,
     )
@@ -430,12 +432,25 @@ pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2]
     // Geometria centrada no local 0 + `Transform = origin + center`: o mundo =
     // baseline-rel − center + (origin + center) = origin + baseline-rel; o center
     // cancela, então o caret usa a baseline no clique (a mesma transform da geometria).
-    let cx = edit.origin[0] + caret_x_offset(&font, last_line, &layout_of(edit), &axes_of(edit));
-    let baseline = edit.origin[1] - line_idx as f64 * edit.size * edit.line_height;
+    let pen = [
+        caret_x_offset(&font, last_line, &layout_of(edit), &axes_of(edit)),
+        -(line_idx as f64 * edit.size * edit.line_height),
+    ];
+    // Pela MESMA porta que posiciona os glyphs (`caret_frame` → `glyph_frame`): quando a
+    // sessão cavalgar um caminho, o cursor cavalga junto sem que ninguém se lembre disto.
+    // Perguntar em dois sítios é como o cursor fica no texto reto com as letras na curva.
+    let f = caret_frame(&placement_of(edit), pen)?;
     Some((
-        [cx, baseline - 0.2 * edit.size],
-        [cx, baseline + 0.72 * edit.size],
+        f.apply([0.0, -0.2 * edit.size]),
+        f.apply([0.0, 0.72 * edit.size]),
     ))
+}
+
+/// Onde a sessão de texto assenta. Hoje é sempre um ponto — a sessão ainda não tem como
+/// ganhar um caminho (é o gesto da W4); esta é a porta ÚNICA onde isso passa a ser dito, e
+/// o resto do módulo já não sabe a diferença.
+fn placement_of(edit: &VecTextEdit) -> TextPlacement<'static> {
+    TextPlacement::At(edit.origin)
 }
 
 /// Os parâmetros primitivos ([`VecTextParams`]) da sessão — o que vai no componente

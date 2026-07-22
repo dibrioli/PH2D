@@ -8,28 +8,37 @@
 //!
 //! **Coordenadas.** Unidades de design são y-up e o world do editor TAMBÉM é y-up (quem
 //! inverte pra tela é a câmera, `world_to_screen_affine` com `scale(k, −k)`). Mapeia
-//! `(x, y) → (x·scale + origin.x, y·scale + origin.y)`, SEM flip — flipar aqui somaria
-//! com o da câmera e o texto sairia de cabeça pra baixo.
+//! `(x, y) → frame.apply([x·scale, y·scale])`, SEM flip — flipar aqui somaria com o da
+//! câmera e o texto sairia de cabeça pra baixo.
+//!
+//! **O glyph pousa por um AFIM, não por um ponto** ([`GlyphFrame`]). Num texto reto o
+//! referencial é a identidade transladada e a aritmética é BYTE-IDÊNTICA à do ponto que
+//! havia antes (`1.0.mul_add(a, b)` é exatamente `a + b`, `0.0.mul_add(a, b)` é `b`) —
+//! pinado pelo fingerprint em [`crate::vec_glyph`]. Num texto em caminho o mesmo builder
+//! recebe o referencial daquele glifo e nada mais muda: é por isso que Live Corners,
+//! furos, a marcação Smooth e o `FillRule` não precisaram saber que o caminho existe.
 //!
 //! **Handles.** O `VecVertex` guarda handles ABSOLUTOS (estilo Rive `CubicVertex`), não
 //! vetores-tangente. Quad `S–Q–E` sobe pra cúbica com controles absolutos `S + ⅔(Q−S)` e
 //! `E + ⅔(Q−E)`; a cúbica usa `c1`/`c2` diretos.
 
+use ph2d_vec_scene::text_path::GlyphFrame;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath, VecVertex, VertexKind};
 use ph2d_vector_font::{GlyphOutline, PathCommand};
 
 /// Converte o contorno de um glyph em um `VecPath` compound preenchido. `scale` =
-/// `font_size / units_per_em`; `origin` = canto do glyph em world (y-down). Devolve
-/// `None` quando o glyph não tem área preenchível (espaço, contorno degenerado).
+/// `font_size / units_per_em`; `frame` = o afim que leva o espaço do glyph ao world,
+/// com a origem no **pen origin** dele. Devolve `None` quando o glyph não tem área
+/// preenchível (espaço, contorno degenerado).
 #[must_use]
 pub(crate) fn glyph_to_vec_path(
     outline: &GlyphOutline,
     scale: f64,
-    origin: [f64; 2],
+    frame: &GlyphFrame,
     fill: Option<Paint>,
     stroke: Option<StrokeSpec>,
 ) -> Option<VecPath> {
-    let mut b = Build::new(scale, origin);
+    let mut b = Build::new(scale, *frame);
     for cmd in &outline.commands {
         match *cmd {
             PathCommand::MoveTo(p) => b.move_to(p.x, p.y),
@@ -46,9 +55,14 @@ pub(crate) fn glyph_to_vec_path(
 /// vértice sai com handles absolutos já colocados pelo segmento que chega/sai dele.
 struct Build {
     scale: f64,
-    origin: [f64; 2],
+    frame: GlyphFrame,
     /// Tolerância² de "mesmo ponto" (¼ de unidade escalada) — só funde a ponta que
     /// volta ao início; âncoras inteiras distintas ficam ≥ 1 unidade apart.
+    ///
+    /// Continua em unidades de MUNDO sob um caminho porque o referencial é **rígido**:
+    /// ele roda o glyph, não o estica, então distâncias sobrevivem à viagem (é o que o
+    /// gate `the_glyph_keeps_its_size_anywhere_on_the_curve` pina). Um referencial
+    /// não-rígido — se algum dia entrar — teria de reconsiderar esta linha.
     eps_sq: f64,
     contours: Vec<Vec<VecVertex>>,
     cur: Vec<VecVertex>,
@@ -59,11 +73,11 @@ struct Build {
 }
 
 impl Build {
-    fn new(scale: f64, origin: [f64; 2]) -> Self {
+    fn new(scale: f64, frame: GlyphFrame) -> Self {
         let e = scale * 0.25;
         Self {
             scale,
-            origin,
+            frame,
             eps_sq: (e * e).max(1e-12),
             contours: Vec::new(),
             cur: Vec::new(),
@@ -74,14 +88,13 @@ impl Build {
         }
     }
 
-    /// Unidade de design → world + origem. NÃO flipa Y: o world do editor é Y-up
-    /// (igual à fonte); quem inverte pra tela é a câmera (`world_to_screen_affine`
-    /// tem `scale(k, −k)`). Flipar aqui deixaria o texto de cabeça pra baixo.
+    /// Unidade de design → world, pelo referencial do glyph. NÃO flipa Y: o world do
+    /// editor é Y-up (igual à fonte); quem inverte pra tela é a câmera
+    /// (`world_to_screen_affine` tem `scale(k, −k)`). Flipar aqui deixaria o texto de
+    /// cabeça pra baixo.
     fn tf(&self, x: f32, y: f32) -> [f64; 2] {
-        [
-            f64::from(x) * self.scale + self.origin[0],
-            f64::from(y) * self.scale + self.origin[1],
-        ]
+        self.frame
+            .apply([f64::from(x) * self.scale, f64::from(y) * self.scale])
     }
 
     /// Fecha o contorno corrente e o guarda (≥ 2 vértices = tem área).
@@ -216,6 +229,15 @@ mod tests {
         Paint::solid(Rgba8::new(0, 0, 0, 255))
     }
 
+    /// O referencial da IDENTIDADE na origem — o texto reto, que é o que estes gates medem.
+    fn plain() -> GlyphFrame {
+        GlyphFrame {
+            origin: [0.0, 0.0],
+            x_axis: [1.0, 0.0],
+            y_axis: [0.0, 1.0],
+        }
+    }
+
     fn outline(commands: Vec<PathCommand>) -> GlyphOutline {
         GlyphOutline::new(commands, 1000)
     }
@@ -232,7 +254,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0 / 1000.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -256,7 +278,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0 / 1000.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -285,7 +307,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0 / 1000.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -310,7 +332,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0, // sem escala pra conta redonda
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -336,7 +358,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -361,7 +383,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0 / 1000.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -381,7 +403,7 @@ mod tests {
                 PathCommand::Close,
             ]),
             1.0 / 1000.0,
-            [0.0, 0.0],
+            &plain(),
             Some(black()),
             None,
         )
@@ -397,9 +419,7 @@ mod tests {
     /// Um glyph sem contorno fechável (espaço) devolve `None`.
     #[test]
     fn an_empty_outline_is_none() {
-        assert!(
-            glyph_to_vec_path(&outline(vec![]), 1.0, [0.0, 0.0], Some(black()), None).is_none()
-        );
+        assert!(glyph_to_vec_path(&outline(vec![]), 1.0, &plain(), Some(black()), None).is_none());
     }
 
     /// O Style do painel vira o par (fill, stroke) do texto: sem preenchimento quando

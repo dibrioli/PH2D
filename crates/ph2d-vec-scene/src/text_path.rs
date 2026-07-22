@@ -104,6 +104,28 @@ impl GlyphFrame {
         })
     }
 
+    /// O MESMO referencial com a origem deslocada `dx` **ao longo da linha**.
+    ///
+    /// Existe por causa da âncora ao meio (§ do módulo): o caminho é amostrado no CENTRO do
+    /// glifo, mas um contorno de glifo é desenhado a partir do **pen origin** dele. Recuar a
+    /// origem meio avanço é exatamente equivalente a somar `-avanço/2` a todo `local[0]` —
+    /// `apply([x − h, y]) = origem + eixo_x·(x − h) + eixo_y·y = (origem − eixo_x·h) + …` — e
+    /// fazê-lo UMA vez por glifo, em vez de por ponto de contorno, mantém o `apply` a puro afim.
+    ///
+    /// Note que isto **não** é o mesmo que amostrar o caminho meio avanço atrás: ali a curva
+    /// mudaria de direção entre os dois pontos, aqui o glifo inteiro partilha o referencial do
+    /// seu centro — que é o que o mantém rígido.
+    #[must_use]
+    pub fn shifted_along(&self, dx: f64) -> Self {
+        Self {
+            origin: [
+                self.x_axis[0].mul_add(dx, self.origin[0]),
+                self.x_axis[1].mul_add(dx, self.origin[1]),
+            ],
+            ..*self
+        }
+    }
+
     /// Leva um ponto do **espaço de texto** ao mundo.
     ///
     /// `local[0]` = ao longo da linha a partir da âncora do glifo · `local[1]` = acima da

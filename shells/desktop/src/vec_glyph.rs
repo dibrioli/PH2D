@@ -16,8 +16,72 @@
 
 use ph2d_tool_vector::TextAlign;
 use ph2d_vec_edit::PenStyle;
+use ph2d_vec_scene::arc_path::ArcPath;
+use ph2d_vec_scene::text_path::GlyphFrame;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath};
 use ph2d_vector_font::{AxisTag, VariableFont};
+
+/// **Onde o bloco de texto assenta** — um ponto de mundo, ou um caminho que ele cavalga.
+///
+/// É um enum e não um par `(origem, Option<caminho>)` porque as duas coisas são respostas à
+/// MESMA pergunta: sobre um caminho a origem do bloco não é ignorada por convenção, ela deixa
+/// de existir (o `startOffset` a substitui). Um par deixaria exprimível um estado — *"tenho
+/// origem E caminho"* — que nada sabe honrar, e é dele que nasce o bug em que metade do código
+/// lê um e metade lê o outro.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum TextPlacement<'a> {
+    /// Bloco reto, ancorado num ponto de mundo (a baseline da 1ª linha).
+    At([f64; 2]),
+    /// Cavalgando um caminho parametrizado por arco.
+    OnPath {
+        path: &'a ArcPath,
+        /// Onde a 1ª linha começa, em comprimento de arco (o `startOffset` do SVG).
+        start_offset: f64,
+        /// Texto do outro lado, a ler no sentido oposto.
+        flip: bool,
+    },
+}
+
+/// **O referencial de UM glyph** (ou do caret, que é um glyph de avanço zero).
+///
+/// Esta é a porta única do posicionamento: o laço de glyphs e o caret perguntam à MESMA
+/// função. É o que impede o defeito óbvio desta feature — *o cursor de digitação ficar no
+/// texto reto enquanto as letras já estão na curva* —, que enumerar dois sítios não impede,
+/// só promete.
+///
+/// `pen` é o deslocamento acumulado do bloco: `pen[0]` ao longo da linha (já com o
+/// alinhamento somado), `pen[1]` a entrelinha (negativa para baixo, world y-up).
+///
+/// `None` significa **não desenhe este glyph**, por duas razões distintas e ambas honestas:
+/// a âncora caiu **fora** do caminho (a regra normativa do SVG; saturar empilharia as letras
+/// que sobram num montinho na ponta) ou caiu numa **cúspide**, onde não há direção e um
+/// ângulo inventado poria a letra num rumo que ninguém autorou.
+#[must_use]
+fn glyph_frame(placement: &TextPlacement<'_>, pen: [f64; 2], advance: f64) -> Option<GlyphFrame> {
+    match *placement {
+        // ⚠️ A soma é `origem + pen`, exatamente como era quando isto devolvia um ponto —
+        // reassociar (pôr o `pen[1]` no y LOCAL, por exemplo) move o layout reto por um ulp.
+        TextPlacement::At(o) => Some(GlyphFrame {
+            origin: [o[0] + pen[0], o[1] + pen[1]],
+            x_axis: [1.0, 0.0],
+            y_axis: [0.0, 1.0],
+        }),
+        TextPlacement::OnPath {
+            path,
+            start_offset,
+            flip,
+        } => {
+            // A âncora é o MEIO do glyph (o `mid` normativo do `<textPath>`); o contorno é
+            // desenhado do pen origin dele, então o referencial recua meio avanço.
+            let half = advance * 0.5;
+            let s = start_offset + pen[0] + half;
+            if s < 0.0 || s > path.total() {
+                return None;
+            }
+            Some(GlyphFrame::on_path(path, s, pen[1], flip)?.shifted_along(-half))
+        }
+    }
+}
 
 /// Os knobs de layout de um bloco de texto (tudo o que NÃO é fonte/eixo/cor). Agrupa
 /// tamanho + tipografia num só parâmetro para o converter não estourar o número de
@@ -49,13 +113,18 @@ pub(crate) fn resolve_style(
 /// separa) é medida e deslocada pelo alinhamento; `tracking` abre/fecha o espaço entre
 /// glyphs; `line_height` (× tamanho) é a entrelinha. `axes` (ex. `wght`) valem no
 /// contorno E no avanço (a métrica muda com o peso). Advance-only, sem shaping complexo.
+///
+/// Sobre um caminho ([`TextPlacement::OnPath`]) **nada disto muda**: alinhamento, tracking e
+/// entrelinha continuam a produzir o mesmo `pen`, e só a tradução `pen → mundo` é outra. É
+/// por isso que a 2ª linha de um texto em caminho corre paralela à 1ª, de graça — a
+/// entrelinha vira deslocamento pela NORMAL da curva sem que este laço saiba disso.
 #[must_use]
 pub(crate) fn text_to_vec_paths(
     font: &VariableFont,
     text: &str,
     layout: &TextLayout,
     axes: &[(AxisTag, f32)],
-    origin: [f64; 2],
+    placement: &TextPlacement<'_>,
     fill: &Option<Paint>,
     stroke: &Option<StrokeSpec>,
 ) -> Vec<VecPath> {
@@ -72,22 +141,29 @@ pub(crate) fn text_to_vec_paths(
                 continue;
             };
             let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0)) * scale;
-            if let Ok(outline) = font.outline(gid, axes)
-                && let Some(path) = glyph_to_vec_path(
-                    &outline,
-                    scale,
-                    [origin[0] + pen_x, origin[1] + pen_y],
-                    fill.clone(),
-                    *stroke,
-                )
+            if let Some(frame) = glyph_frame(placement, [pen_x, pen_y], advance)
+                && let Ok(outline) = font.outline(gid, axes)
+                && let Some(path) =
+                    glyph_to_vec_path(&outline, scale, &frame, fill.clone(), *stroke)
             {
                 out.push(path);
             }
+            // O pen avança MESMO quando o glyph não é desenhado — um glyph fora do caminho
+            // (ou sem contorno) não pode encolher o texto e puxar os seguintes para trás.
             pen_x += advance + track_px;
         }
         pen_y -= line_h; // linhas descem = y menor (world y-up)
     }
     out
+}
+
+/// O referencial do CARET na ponta da última linha — o mesmo do glyph que ali seria
+/// carimbado, porque um cursor é um glyph de avanço zero.
+///
+/// `None` pelas mesmas razões do [`glyph_frame`]: cursor fora do caminho, ou numa cúspide.
+#[must_use]
+pub(crate) fn caret_frame(placement: &TextPlacement<'_>, pen: [f64; 2]) -> Option<GlyphFrame> {
+    glyph_frame(placement, pen, 0.0)
 }
 
 /// O texto inteiro como UM `VecPath` compound (todos os contornos de todos os glyphs
@@ -100,11 +176,11 @@ pub(crate) fn text_to_compound_path(
     text: &str,
     layout: &TextLayout,
     axes: &[(AxisTag, f32)],
-    origin: [f64; 2],
+    placement: &TextPlacement<'_>,
     fill: &Option<Paint>,
     stroke: &Option<StrokeSpec>,
 ) -> Option<VecPath> {
-    let glyphs = text_to_vec_paths(font, text, layout, axes, origin, &None, &None);
+    let glyphs = text_to_vec_paths(font, text, layout, axes, placement, &None, &None);
     // Concatena o contorno externo + os furos de cada glyph num único compound.
     let mut contours: Vec<Contour> = Vec::new();
     for g in glyphs {
@@ -207,196 +283,5 @@ pub(crate) fn caret_x_offset(
 pub(crate) use crate::vec_glyph_build::glyph_to_vec_path;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_vec_scene::Rgba8;
-
-    fn black() -> Paint {
-        Paint::solid(Rgba8::new(0, 0, 0, 255))
-    }
-
-    /// FNV-1a sobre TODA coordenada produzida (âncoras **e** alças, todos os contornos).
-    /// Alças porque é lá que uma mudança de referencial se esconde: um erro que só as move
-    /// deixa as âncoras no lugar e muda a curva entre elas.
-    fn fnv(paths: &[VecPath]) -> u64 {
-        fn eat(h: &mut u64, x: f64) {
-            for b in x.to_bits().to_be_bytes() {
-                *h ^= u64::from(b);
-                *h = h.wrapping_mul(0x0000_0100_0000_01b3);
-            }
-        }
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for p in paths {
-            for v in p.verts_all() {
-                for q in [v.anchor, v.in_handle, v.out_handle] {
-                    eat(&mut h, q[0]);
-                    eat(&mut h, q[1]);
-                }
-            }
-        }
-        h
-    }
-
-    /// A fixture do fingerprint: exercita TODO ingrediente do layout reto — duas linhas
-    /// (entrelinha), alinhamento não-trivial, tracking, um eixo variável, glifo com furo
-    /// (`o`), glifo sem área (o espaço) e uma origem que não é a origem.
-    fn straight_fingerprint_paths() -> Vec<VecPath> {
-        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
-        let lay = TextLayout {
-            size: 1.3,
-            line_height: 1.15,
-            tracking: 0.07,
-            align: TextAlign::Center,
-        };
-        text_to_vec_paths(
-            &font,
-            "on path\nAVo",
-            &lay,
-            &[(AxisTag::new(*b"wght"), 620.0)],
-            [0.75, -0.25],
-            &Some(black()),
-            &None,
-        )
-    }
-
-    /// **O layout reto não se move.** O texto em caminho entra como um SEGUNDO referencial
-    /// por glifo, e o modo de falha que importa é o silencioso: a rota de sempre passar a
-    /// pousar as letras a um ulp de onde pousava, invisível na tela e presente em cada
-    /// arquivo salvo. O número foi medido no commit anterior a este e é a definição.
-    #[test]
-    fn the_straight_layout_is_byte_identical_across_the_text_on_path_wiring() {
-        assert_eq!(fnv(&straight_fingerprint_paths()), 0x511c_90e4_7b1f_01db);
-    }
-
-    /// Multi-linha: a 2ª linha desce (world y-up → y negativo abaixo da baseline).
-    #[test]
-    fn a_second_line_sits_below_the_first() {
-        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
-        let font = &font;
-        let min_y = |paths: &[VecPath]| {
-            paths
-                .iter()
-                .flat_map(|p| p.verts.iter())
-                .map(|v| v.anchor[1])
-                .fold(f64::INFINITY, f64::min)
-        };
-        let lay = TextLayout {
-            size: 1.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-        };
-        let one = text_to_vec_paths(font, "A", &lay, &[], [0.0, 0.0], &Some(black()), &None);
-        let two = text_to_vec_paths(font, "A\nA", &lay, &[], [0.0, 0.0], &Some(black()), &None);
-        assert!(
-            min_y(&one) >= -1e-6,
-            "linha única: baseline em 0, sem descer"
-        );
-        assert!(
-            min_y(&two) < -0.5,
-            "a 2ª linha desce abaixo da baseline da 1ª"
-        );
-    }
-
-    /// Centralizar uma linha a desloca para a ESQUERDA da origem (o bloco fica
-    /// centrado no ponto de clique); alinhar à direita a termina na origem.
-    #[test]
-    fn alignment_shifts_the_line_horizontally() {
-        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
-        let min_x = |paths: &[VecPath]| {
-            paths
-                .iter()
-                .flat_map(|p| p.verts.iter())
-                .map(|v| v.anchor[0])
-                .fold(f64::INFINITY, f64::min)
-        };
-        let lay = |align| TextLayout {
-            size: 1.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align,
-        };
-        let left = text_to_vec_paths(
-            &font,
-            "AA",
-            &lay(TextAlign::Left),
-            &[],
-            [0.0, 0.0],
-            &Some(black()),
-            &None,
-        );
-        let center = text_to_vec_paths(
-            &font,
-            "AA",
-            &lay(TextAlign::Center),
-            &[],
-            [0.0, 0.0],
-            &Some(black()),
-            &None,
-        );
-        let right = text_to_vec_paths(
-            &font,
-            "AA",
-            &lay(TextAlign::Right),
-            &[],
-            [0.0, 0.0],
-            &Some(black()),
-            &None,
-        );
-        assert!(
-            min_x(&center) < min_x(&left),
-            "centralizado começa à esquerda do alinhado à esquerda"
-        );
-        assert!(
-            min_x(&right) < min_x(&center),
-            "à direita começa ainda mais à esquerda (termina na origem)"
-        );
-    }
-
-    /// O texto vivo é UM path compound com todos os contornos: "Hi" = H (1) + ponto e
-    /// haste do i (2) → 1 verts + ≥2 subpaths, um objeto só.
-    #[test]
-    fn compound_path_merges_all_glyph_contours() {
-        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
-        let lay = TextLayout {
-            size: 1.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-        };
-        let one = text_to_compound_path(&font, "Hi", &lay, &[], [0.0, 0.0], &Some(black()), &None)
-            .unwrap();
-        assert!(
-            !one.subpaths.is_empty(),
-            "vários glyphs/furos viram subpaths do mesmo path"
-        );
-        assert!(
-            text_to_compound_path(&font, "   ", &lay, &[], [0.0, 0.0], &Some(black()), &None)
-                .is_none(),
-            "só espaços = sem geometria"
-        );
-    }
-
-    /// Tracking positivo abre o espaço entre glyphs, então a mesma string ocupa mais
-    /// largura (o cursor avança mais).
-    #[test]
-    fn positive_tracking_widens_the_line() {
-        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
-        let base = TextLayout {
-            size: 1.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-        };
-        let wide = TextLayout {
-            tracking: 0.3,
-            ..base
-        };
-        let narrow = caret_x_offset(&font, "AAA", &base, &[]);
-        let opened = caret_x_offset(&font, "AAA", &wide, &[]);
-        assert!(
-            opened > narrow + 0.5,
-            "tracking abre a linha (0.3·size × 2 gaps)"
-        );
-    }
-}
+#[path = "vec_glyph_tests.rs"]
+mod tests;

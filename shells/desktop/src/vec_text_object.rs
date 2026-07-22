@@ -15,7 +15,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
 use crate::vec_entities::{VecEntityMap, group_entities};
-use crate::vec_glyph::{TextLayout, text_to_compound_path, text_to_vec_paths};
+use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};
 use crate::vec_text::VecTextEdit;
 
 fn text_params(edit: &VecTextEdit) -> VecTextParams {
@@ -127,7 +127,7 @@ pub(crate) fn recook_text_object(
         &params.text,
         &layout_of_params(&params),
         &axes_of_params(&params),
-        [0.0, 0.0],
+        &TextPlacement::At([0.0, 0.0]),
         &fill,
         &stroke,
     )
@@ -279,7 +279,7 @@ pub(crate) fn convert_text_selection_to_curves(
             &params.text,
             &layout,
             &axes,
-            [0.0, 0.0],
+            &TextPlacement::At([0.0, 0.0]),
             &fill,
             &stroke,
         )
@@ -289,7 +289,7 @@ pub(crate) fn convert_text_selection_to_curves(
             &params.text,
             &layout,
             &axes,
-            [0.0, 0.0],
+            &TextPlacement::At([0.0, 0.0]),
             &fill,
             &stroke,
         );

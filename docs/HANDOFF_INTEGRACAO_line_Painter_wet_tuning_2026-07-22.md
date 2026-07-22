@@ -7,14 +7,17 @@
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 12 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
+- **Commits:** 17 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
   **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
   **doc 23: estudo + implementação — o pigmento responde às tools** →
-  **fix pós-smoke: Impasto mostra TODOS os cards com Enable ON** (a estreiteza
-  selected-tool-only revertida; Material fan-out pros 3 slots de relevo), ver §2/§6;
+  **fix pós-smoke do Impasto, em 4 commits**: TODOS os cards com Enable ON (a estreiteza
+  selected-tool-only revertida; Material fan-out pros 3 slots de relevo) + os 3 refinos do
+  Enio (card Knife só com a faca · card Sculpt logo abaixo do TOOL e só com um verbo em mãos ·
+  Filter Layer/Stroke só nos verbos que os têm) →
+  **o dropdown de MODO DE PINTURA + o bug do modo órfão** (§2.1), ver §2/§6;
   checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`).
 - **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
-- **Gate batched:** `nextest-impacted` **5031/5031** · clippy `--all-targets` **0 warnings** nas
+- **Gate batched:** `nextest-impacted` **5048/5048** · clippy `--all-targets` **0 warnings** nas
   8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
   intacto · 13 arch-gates verdes · 3 mutações dirigidas sangram (porta de tool → RED de paridade
   bit-exata; rota de SetValue do tuning → RED; véu do Show Wet bakando → RED).
@@ -38,6 +41,49 @@
 | `ph2d-wet-paint` (engine) | portas ADITIVAS: `dispatch_pressure_dab_lane_blend` · `dispatch_pressure_dab_tool` (prev explícito) · `render_pigment_region_visual` (+`PigmentVisual`; `render_pigment_only_region` delega, off byte-idêntico) · `wet_canvas_now`/`dry_canvas_now`/`fast_dry_now` (sem `capture_history` — o clone de grid por aperto seria a doença do ADR-0117) · `tilt_dir_for_spoke` (cardinais EXATOS) · `knob_defaults()` const · `Tuning::default` delega |
 | `ph2d-wet-paint` (engine, **doc 23**) | **MUDANÇA DE COMPORTAMENTO dos tools** (P1-P4, [doc 23](Painter/23_estudo_tools_wet_pigmento.md)): Wet dissolve `sett` sob o stamp · Smear arrasta o seco · Blend molhado re-suspende · Erase resiste por staining — porta única `drying::lift_settled` (extração VERBATIM do re-wet passivo) + `tools::active_lift_gain`. **`Knob::WetLift` apendado (`KNOB_COUNT` 53→54)** + `extStaining` Hidden→Paint (painel Tuning 40→42 rows; i18n +2 chaves). ⚠️ **O pin `fingerprint.rs::PINNED` MUDOU** (justificado no histórico do pin; o pin antigo virou o gate `wet_lift_zero_is_the_old_model_to_the_byte`). Gates: `tests/product_rewet.rs` (5, mutação-provados 5/5) |
 
+## 2.1 O DROPDOWN DE MODO DE PINTURA (2026-07-22) — e o bug que ele fechou
+
+Enio: *"temos na seção de modo da pintura 3 checkbox … no lugar dos checkbox coloque um dropdown
+para o modo de pintura com os 4 modos. O padrão é o Digital normal"* — mais o report **"ao entrar
+em Impasto e depois sair e selecionar Wet Paint, widgets como o seletor de cor sumiram"**.
+
+**Os dois são a mesma coisa.** `Knife` e `Sculpt` existem só porque o Impasto está ligado, e
+sobreviviam a ele ser desligado: o artista escolhia Wet Paint e continuava **com a espátula na
+mão** — `paints_no_color()` verdadeiro, Cor e Blend fora da tela, sob um painel que nomeava outro
+meio. Medido (probe): `colour=false blend=false` via Knife E via Sculpt; ligar/desligar sem pegar
+ferramenta **não** reproduz, que é por que passou despercebido.
+
+| Peça | O quê |
+|---|---|
+| `ph2d-tool-painter/src/tool/paint/media.rs` (**NOVO**) | `PaintMedia{Digital,Watercolor,Impasto,WetPaint}` — **derivado** das 3 flags, nunca guardado + `PainterTool::paint_media`/`set_paint_media` (a porta única que sabe que são exclusivos) |
+| `ids/chrome/painter.rs` | `PAINTER_BRUSH_MEDIA` + `painter_brush_media_option_id(u8)` |
+| `ids/chrome/painter_{wetpaint,watercolor,impasto}.rs` | **os 3 `*_ENABLE` REMOVIDOS** (id + array de CLICKS + `populate` + a rota de `Click` no tool) |
+| `BrushSettings.media: u8` | o valor do chip; o painel pinta **exatamente uma** seção |
+| `apply_brush_preset` | passa a terminar na MESMA porta (era a 2ª porta — ver abaixo) |
+
+**A auditoria achou a SEGUNDA PORTA.** O dropdown **Preset** (uma linha acima) escreve
+`watercolor` direto no `BrushSpec`. Medido: Wet Paint armado + *"Watercolor Basic"* deixava
+`watercolor` **E** `wetpaint` verdadeiros — o chip lendo *Wet Paint* sobre um pincel de aquarela;
+e vindo do Impasto limpava só o slot VIVO, com `brush_by_mode[Knife]` guardando `impasto = true`
+para ressuscitar no próximo switch de ferramenta. Fix: o preset termina em `set_paint_media`, e as
+3 slots de relevo passam a ser escritas **incondicionalmente** (o early-return *assumia* um
+invariante em vez de estabelecê-lo).
+
+⚠️ **O `Preset` continua sendo uma pergunta diferente** (*semeie meu pincel com uma configuração
+pronta*) e ficou **fora de escopo**: hoje ele e o Paint Mode mostram os dois a palavra
+"Watercolor", o que é adjacência a decidir com o Enio — fundir, renomear, ou deixar.
+
+**Gates:** `ph2d-panel-painter-layers/tests/seam_paint_media.rs` (3, dirigidos por **ponteiro
+real**: abre o chip, repinta, clica a opção) + `tool/paint/media/tests.rs` (6). **7 mutações, 7
+sangram**; 1 sobrevivente **documentado** (o registro em `populate` é redundante —
+`paint_dropdown_chip` já faz `register_if_absent`; a entrada fica pelo `wiring_parity`).
+
+⚠️ **Duas lições ficaram anotadas nos próprios gates:** (a) o repro **nasceu VERDE** com o defeito
+reinstalado, porque a regra de ENTRADA (*"escolher um meio USA ele"*) mascara a de SAÍDA — só o
+destino **Digital** (que não tem regra de entrada, porque não possui modo nenhum) testa a de saída
+sozinha; (b) o gate exigia o chip **Blend** em Watercolor, onde ele é escondido **de propósito**
+(doc 13 #4) — over-claim corrigido em vez de contrabandeado.
+
 ## 3. Símbolos que podem COLIDIR
 
 - `NodeId(837)` (scrollbar) — **hand-assigned**; se outra linha tomou 837, renumere (próximo 838)
@@ -47,6 +93,9 @@
 - Chaves i18n `panel.wet_tuning.*` (match do `tr()` — Mergiraf funde adições disjuntas).
 - Feature cargo `panel-wet-tuning` (registry-init GERADO + shell) e o id de painel `"wet_tuning"`.
 - `EXPECTED_TYPED` +1 — se outra linha também adicionou painel, **conte, não escolha**.
+- `PAINTER_BRUSH_MEDIA` + `painter_brush_media_option_id` (ids novos em `chrome/painter.rs`) e a
+  **remoção** de `PAINTER_{WETPAINT,WATERCOLOR,IMPASTO}_ENABLE` — se outra linha os referencia, ela
+  quer `set_paint_media` / `PaintMedia`. Os 3 arrays de `*_CLICKS` encolheram (16→15, 7→6, 17→16).
 
 ## 4. Contratos congelados encostados
 
@@ -93,7 +142,15 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
    (grupo PAINT) controla tudo — a 1.0 a tinta seca fica pinada; **Rewet lift** (grupo
    TOOLS) é a força do dissolve, 0 = modelo antigo. ⚠️ Molhar e NÃO mexer re-assenta o
    pigmento quando a água morre — é física, não bug.
-5. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
+5. **O dropdown de MODO DE PINTURA (§2.1):** o chip **Paint Mode** no topo da metade de aparência
+   lista *Digital · Watercolor · Impasto · Wet Paint* e abre **Digital** num projeto novo; escolher
+   um pinta **só** a seção dele (as três checkboxes `Enable` sumiram — o chip é o interruptor).
+   ⚠️ **O repro do bug:** entre em **Impasto**, clique a **faca** (ou um verbo do Sculpt), e então
+   escolha **Digital** — o seletor de cor e o Blend têm de continuar na tela, e a ferramenta na mão
+   volta a ser o pincel. Idem indo para **Wet Paint**. E confira o **Preset** logo acima: com Wet
+   Paint armado, escolher *"Watercolor Basic"* tem de deixar o chip lendo **Watercolor**, não os
+   dois meios ligados.
+6. **Zero regressão:** o modo Paint comum segue byte-idêntico (G0b verde); wet Paint padrão
    idem (boot equivalence + fingerprint com pin justificado; `wetLift=0` reproduz o pin
    antigo ao byte).
 
@@ -108,4 +165,4 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 - A visibilidade do painel via bridge não tem gate de shell dedicado (o espelho é 3 linhas no
   `painter_bridge`; o gate de registry cobre a metade estrutural).
 
-*Linha `Painter` pronta (8 commits). Aguardo ordem de integração.*
+*Linha `Painter` pronta (17 commits). Aguardo ordem de integração.*

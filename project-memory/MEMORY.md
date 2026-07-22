@@ -78,6 +78,7 @@
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 - [Componente que não cumpre o próprio contrato? suspeite do CHAMADOR](feedback_a_component_missing_its_contract_suspect_the_caller_first.md) — trocar o componente esconde a causa e costuma trazer um 2º defeito
+- [Restore preserva mtime → cargo reusa o MUTANTE](feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant.md) — `touch` depois de todo restore
 
 ## Padrões de código (gotchas silenciosos)
 - [UI = gallery + inspector](feedback_ui_source_of_truth_gallery_inspector.md) — espelhe

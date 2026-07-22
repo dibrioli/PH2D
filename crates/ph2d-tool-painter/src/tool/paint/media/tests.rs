@@ -41,14 +41,76 @@ fn only_one_medium_is_ever_on() {
     }
 }
 
+/// **The Painter opens on Digital** — Enio, 2026-07-22: *"o modo padrão de pintura (o modo que aparece
+/// ao abrir o painter) deve ser o digital normal"*.
+///
+/// A default is a policy, and policies drift when nothing pins them (this line already paid for that
+/// with `Adjust Last Stroke`, where thirteen fixtures had silently inherited the old one). Digital is
+/// the medium that IS the absence of the other three, so the assertion is made on both sides: the enum
+/// says Digital, and every master flag is off.
+#[test]
+fn the_painter_opens_on_the_plain_digital_brush() {
+    let t = PainterTool::default();
+    assert_eq!(
+        t.paint_media(),
+        PaintMedia::Digital,
+        "a fresh Painter does not open on the plain brush"
+    );
+    let b = t.brush_settings();
+    assert!(
+        !b.watercolor && !b.impasto && !b.wetpaint,
+        "the default has a medium armed: watercolor={} impasto={} wetpaint={}",
+        b.watercolor,
+        b.impasto,
+        b.wetpaint
+    );
+    assert_eq!(
+        b.media,
+        PaintMedia::Digital.to_u8(),
+        "the panel snapshot disagrees with the tool about the opening medium"
+    );
+}
+
+/// **Picking a medium from a RAIL TOOL actually arms it.**
+///
+/// Each paint mode keeps its own `BrushSpec`, so the order inside `set_paint_media` decides which slot
+/// the flag lands in. Measured with the steps the other way round: holding the rail Smear and picking
+/// **Watercolor** wrote the flag into the *Smear's* slot, then took the brush — whose slot still read
+/// `false`. The chip snapped back to *Digital* and the artist had clicked a dead control. Impasto passed
+/// by luck (it mirrors into three slots) and Wet Paint by design (`armed` is not per-slot), which is
+/// exactly the shape that lets one medium rot alone.
+///
+/// **Mutation that must bleed:** move the `set_paint_tool_mode("brush")` step back below the `match`.
+#[test]
+fn picking_a_medium_while_holding_a_rail_tool_arms_it() {
+    for start in ["smear", "blur", "clone"] {
+        for m in [
+            PaintMedia::Watercolor,
+            PaintMedia::Impasto,
+            PaintMedia::WetPaint,
+        ] {
+            let mut t = PainterTool::default();
+            t.set_paint_tool_mode(start);
+            t.set_paint_media(m);
+            assert_eq!(
+                t.paint_media(),
+                m,
+                "from the rail {start}, picking {m:?} left the medium at {:?} — the flag went to a \
+                 slot the tool then switched away from",
+                t.paint_media()
+            );
+        }
+    }
+}
+
 /// **`Digital` does not yank you out of the tool you are holding.**
 ///
 /// It owns no mode on purpose: the rail's Smear / Blur / Clone ARE digital, so picking the medium that
 /// means "no medium" must leave them alone. The three real media do the opposite — choosing one USES
-/// it — and that asymmetry is the whole content of step 3 in `set_paint_media`.
+/// it — and that asymmetry is the whole content of the take-the-brush step in `set_paint_media`.
 ///
-/// **Mutation that must bleed:** drop the `media != PaintMedia::Digital` guard on step 3 (the Smear is
-/// swapped for the brush by a control that promised nothing of the kind).
+/// **Mutation that must bleed:** drop the `media != PaintMedia::Digital` guard on that step (the Smear
+/// is swapped for the brush by a control that promised nothing of the kind).
 #[test]
 fn picking_digital_leaves_a_rail_tool_where_it_is() {
     let mut t = PainterTool::default();
@@ -72,7 +134,7 @@ fn picking_digital_leaves_a_rail_tool_where_it_is() {
 /// **A mode that a medium owns cannot outlive it** — the model half of Enio's 2026-07-22 report.
 ///
 /// Driven through `set_brush_impasto` DIRECTLY rather than through `set_paint_media`, and that is the
-/// point: the dropdown's step 3 would rescue this for every destination except Digital, so a gate that
+/// point: the dropdown's take-the-brush step would rescue this for every destination but Digital, so a gate that
 /// only ever went through the dropdown would pass with the rule deleted (it did — the first draft of
 /// the panel-side gate).
 ///

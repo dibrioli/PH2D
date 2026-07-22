@@ -102,7 +102,13 @@ impl PainterTool {
         width: u32,
         height: u32,
     ) {
-        if self.bound_doc == Some(entity) {
+        // ⚠️ **A torn-down canvas is not a document.** `RasterEditTool::deactivate` empties the pixels
+        // but leaves `bound_doc` and the layer stack standing, so every "am I already bound?" answer
+        // below would be a stale YES — and both of them refuse to re-seed. Enio, 2026-07-22: *"o app sai
+        // de modo de pintura e não volta mais … a sprite se move no canvas e não conseguimos pintar"* —
+        // the canvas stayed 0×0, so every canvas pointer fell through to the gizmo.
+        let torn_down = self.canvas_rgba.is_empty();
+        if self.bound_doc == Some(entity) && !torn_down {
             // Same sprite re-pushed: only re-seed when there is no work to lose, so an external
             // image-tool edit still updates the canvas without flattening our own layers.
             if self.doc_is_disposable() {
@@ -110,8 +116,10 @@ impl PainterTool {
             }
             return;
         }
-        // Stash the OUTGOING document (keep its work) before we replace it.
+        // Stash the OUTGOING document (keep its work) before we replace it. A torn-down one has no work
+        // to keep — stashing it would cache a document with no pixels and hand it straight back below.
         if let Some(old) = self.bound_doc
+            && !torn_down
             && !self.doc_is_disposable()
         {
             let stashed = self.stash_current_doc();
@@ -127,6 +135,24 @@ impl PainterTool {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
             None => self.set_source(rgba, width, height), // fresh (or the sprite's flat texture)
         }
+    }
+
+    /// Does the painter need `entity`'s pixels pushed to it — is it NOT currently holding a usable
+    /// canvas for that sprite?
+    ///
+    /// The shell asks this instead of remembering which sprite it last pushed. Remembering was a second
+    /// copy of a fact the tool already owns, and it went stale in exactly one place: leaving the Painter
+    /// with nothing unbaked tears the canvas down (`RasterEditTool::deactivate`) without telling anyone,
+    /// so the shell's memo still named the sprite while the tool had no pixels for it — and the re-push
+    /// that would have fixed it was skipped *because* the memo said it was already done. Coming back,
+    /// the canvas was 0×0, `deliver_canvas_pointer` bailed, and the Down fell through to the gizmo: the
+    /// artist dragged the sprite around instead of painting it (Enio, 2026-07-22).
+    ///
+    /// Two conditions, because there are two ways to not have a document: a different sprite, or no
+    /// pixels at all.
+    #[must_use]
+    pub fn needs_document_bind(&self, entity: u64) -> bool {
+        self.bound_doc != Some(entity) || self.canvas_rgba.is_empty()
     }
 
     /// Whether the working document can simply be THROWN AWAY on a rebind, because the sprite's own
@@ -404,5 +430,50 @@ mod tests {
             "sprite 2 must come back with ITS relief (none) — not with sprite 1's, whose layer ids \
              collide with its own by construction"
         );
+    }
+}
+
+#[cfg(test)]
+mod rebind_tests {
+    use crate::tool::PainterTool;
+    use ph2d_editor_core::tool::Tool;
+
+    fn px(w: u32, h: u32) -> Vec<u8> {
+        vec![200u8; (w as usize) * (h as usize) * 4]
+    }
+
+    /// **DEFECT REPRO (Enio, 2026-07-22):** *"o app sai de modo de pintura e não volta mais nem se
+    /// selecionar a sprite e nem se sair e entrar novamente no modo de pintura. Assim quando tentamos
+    /// pintar a sprite, a sprite se move no canvas e não conseguimos pintar."*
+    #[test]
+    fn re_entering_the_painter_gives_the_sprite_back_a_paintable_canvas() {
+        for layers in [1usize, 2] {
+            let mut t = PainterTool::default();
+            t.bind_document(7, px(4, 4), 4, 4);
+            for _ in 1..layers {
+                t.add_raster_layer("L");
+            }
+            t.mark_baked(); // the artist's work reached the sprite; nothing is unbaked
+            t.on_deactivate(); // leave the Painter — no unbaked edits ⇒ the canvas is torn down
+            assert_eq!(
+                t.canvas_size(),
+                (0, 0),
+                "fixture ({layers} layers): the teardown did not happen, so this proves nothing"
+            );
+
+            t.on_activate(); // …and come back to the SAME sprite
+            assert!(
+                t.needs_document_bind(7),
+                "({layers} layers) the tool says it is still bound to a document whose pixels it \
+                 threw away — the shell believes it and never re-pushes"
+            );
+            t.bind_document(7, px(4, 4), 4, 4);
+            assert_ne!(
+                t.canvas_size(),
+                (0, 0),
+                "({layers} layers) re-binding the same sprite left the canvas empty — every canvas \
+                 pointer falls through to the gizmo, so the sprite MOVES instead of being painted"
+            );
+        }
     }
 }

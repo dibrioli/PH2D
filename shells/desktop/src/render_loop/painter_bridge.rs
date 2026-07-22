@@ -167,18 +167,27 @@ pub(super) fn dispatch(
         }
     }
 
-    // ── Source push when the selection drifts → bind the painter document ──
+    // ── Source push when the painter has no document for the selection → bind it ──
     // Push the selected sprite's pixels into the painter, but via `bind_document` (NOT the generic
     // `set_source`) so the OUTGOING sprite's multi-layer stack is stashed by id instead of flattened —
     // switching sprites preserves each sprite's layers (Enio 2026-06-26). Painter canvas storage is RGBA8
     // straight (matches bgremoval's `into_straight()`); 0×0 sources are rejected at the boundary.
+    //
+    // ⚠️ **The TOOL decides whether it needs a document** (`needs_document_bind`), not this memo. The
+    // memo was a second copy of a fact the tool owns, and it went stale in one specific way: leaving the
+    // Painter with nothing unbaked tears the canvas down without clearing it, so the memo still named
+    // the sprite while the tool had no pixels — and the re-push that would have fixed it was skipped
+    // *because* the memo said it was already done. Coming back, the canvas was 0×0, so every canvas
+    // pointer fell through and the artist dragged the sprite instead of painting it (Enio 2026-07-22).
+    // `last_painter_pushed_entity` still records what was pushed (the bake bookkeeping below reads it),
+    // but it no longer gets a vote on whether to push.
     if painter_is_active
         && let Some(tool) = tools.active_mut()
         && let Some(painter) = tool
             .as_any_mut()
             .downcast_mut::<ph2d_tool_painter::PainterTool>()
         && let Some(bits) = hero.gizmo.selection
-        && *last_painter_pushed_entity != Some(bits)
+        && painter.needs_document_bind(bits)
         && let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
             ph2d_ecs::Entity::from_bits(bits),
             sim,

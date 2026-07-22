@@ -141,18 +141,26 @@ impl crate::tool::PainterTool {
     /// **The one door that switches medium** — the Paint Mode dropdown's setter, and the only place
     /// that knows the four are exclusive.
     ///
-    /// Three steps, and each is load-bearing:
+    /// Three steps, and each is load-bearing — **in this order**:
     ///
     /// 1. **Leave** every medium that is not the pick. Each `set_*` is responsible for bringing the
     ///    artist out of a mode that [`PaintMedia::cannot_outlive`], so no step here can strand one.
-    /// 2. **Enter** the pick.
-    /// 3. **Choosing a medium USES it** — the TOOL list's own law (Enio, 2026-07-19: *"escolher uma
+    /// 2. **Choosing a medium USES it** — the TOOL list's own law (Enio, 2026-07-19: *"escolher uma
     ///    ferramenta USA ela"*). If the mode in hand is not one the new medium works in, take the
     ///    brush. Without this, picking Impasto while holding the rail Smear selects a medium whose
     ///    section is not even painted (`impasto_section_applies`), and picking Wet Paint from there
     ///    arms a fluid that the `"brush"` wire never reaches — a dropdown naming a medium that is not
     ///    running. `Digital` is exempt because it owns no mode: the rail tools ARE digital, so
     ///    picking it must never yank you out of the Smear.
+    /// 3. **Enter** the pick.
+    ///
+    /// ⚠️ **Steps 2 and 3 were the other way round, and that made Watercolor a DEAD control from any
+    /// rail tool** (measured 2026-07-22): each paint mode keeps its own [`ph2d_painter_brush::BrushSpec`],
+    /// so entering first wrote `watercolor = true` into the **Smear's** slot — and step 2 then switched
+    /// to the brush, whose slot still read `false`. The chip snapped straight back to *Digital*. Impasto
+    /// survived by luck (`set_brush_impasto` mirrors its flag into all three relief slots) and Wet Paint
+    /// by design (`armed` lives in `WetPaintState`, not in a slot). Take the tool FIRST, then arm the
+    /// medium on the slot the artist actually lands in.
     pub fn set_paint_media(&mut self, media: PaintMedia) {
         if media != PaintMedia::WetPaint {
             self.set_wetpaint_armed(false);
@@ -163,14 +171,14 @@ impl crate::tool::PainterTool {
         if media != PaintMedia::Impasto {
             self.set_brush_impasto(false);
         }
+        if media != PaintMedia::Digital && !media.works_in(self.paint.paint_mode) {
+            self.set_paint_tool_mode("brush");
+        }
         match media {
             PaintMedia::Digital => {}
             PaintMedia::Watercolor => self.set_brush_watercolor(true),
             PaintMedia::Impasto => self.set_brush_impasto(true),
             PaintMedia::WetPaint => self.set_wetpaint_armed(true),
-        }
-        if media != PaintMedia::Digital && !media.works_in(self.paint.paint_mode) {
-            self.set_paint_tool_mode("brush");
         }
     }
 }

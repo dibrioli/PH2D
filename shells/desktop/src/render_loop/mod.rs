@@ -2619,24 +2619,29 @@ impl crate::App {
                         );
                         self.last_painter_pushed_entity = None; // bridge re-pushes the new selection
                     }
-                } else if let Some(old) = self.last_painter_pushed_entity
-                    && let Some(painter) = tools.tool_by_id_mut(&painter_id).and_then(|t| {
+                } else if let Some(old) = self.last_painter_pushed_entity {
+                    if let Some(painter) = tools.tool_by_id_mut(&painter_id).and_then(|t| {
                         t.as_any_mut()
                             .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                    })
-                    && painter.take_deferred_bake()
-                {
-                    // The painter deactivated with unbaked edits → bake the kept canvas, then finish
-                    // the teardown its `on_deactivate` deferred.
-                    crate::hero_intents::auto_commit_painter(
-                        old,
-                        sim,
-                        renderer,
-                        asset_db,
-                        atlas_asset_map,
-                        painter,
-                    );
-                    (painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();
+                    }) && painter.take_deferred_bake()
+                    {
+                        // The painter deactivated with unbaked edits → bake the kept canvas, then
+                        // finish the teardown its `on_deactivate` deferred.
+                        crate::hero_intents::auto_commit_painter(
+                            old,
+                            sim,
+                            renderer,
+                            asset_db,
+                            atlas_asset_map,
+                            painter,
+                        );
+                        (painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();
+                    }
+                    // ⚠️ Cleared whether or not there was a bake to defer. The tool is not active, so
+                    // nothing is bound — and this memo is read downstream as "the doc the painter is
+                    // working on" (`on_active_doc` in the image-edit intents). Leaving it set on the
+                    // no-edits path left it naming a sprite the painter had already torn down: the
+                    // same stale-second-copy that made the canvas unreachable (Enio 2026-07-22).
                     self.last_painter_pushed_entity = None;
                 }
             }

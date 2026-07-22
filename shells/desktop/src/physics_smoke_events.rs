@@ -122,7 +122,8 @@ impl crate::App {
              cruz  +  (em pe)     = ESTADO. Estes dois estao se tocando AGORA.\n\
                                     O TAMANHO dela e a CARGA (peso que o par aguenta).\n\
              cruz  x  (deitada)   = EVENTO. Estes dois COMECARAM a se tocar agora.\n\
-                                    Abre, some em ~0,1 s, e nao volta.\n\
+                                    Abre, some em ~0,1 s, e nao volta. O TAMANHO dela\n\
+                                    e a FORCA do impacto (cena 30 mostra isso).\n\
              \n\
              E ISSO QUE A WAVE ADICIONOU: antes o motor so sabia dizer 'estao se\n\
              tocando'. Agora ele sabe dizer 'comecaram AGORA' e 'pararam AGORA' --\n\
@@ -158,13 +159,104 @@ impl crate::App {
              \n\
              ---- LIMITE CONHECIDO (medido, nao e defeito a reportar) -------------\n\
              \n\
-             Queda ALTA (acima de ~2 m) nao gera evento: o motor resolve o pouso e\n\
-             ja separa os corpos dentro do mesmo passo, entao nos dois instantes em\n\
-             que o canal olha, eles nao estao encostados. Por isso a bola aqui cai\n\
-             de perto. Consertar isso e a mesma tarefa de medir a forca de impacto.\n\
+             Queda ALTA (acima de ~2 m) de um corpo QUE QUICA nao gera evento: o\n\
+             motor resolve o pouso e ja separa dentro do mesmo passo, entao nos dois\n\
+             instantes em que o canal olha eles nao estao encostados. Por isso a bola\n\
+             aqui cai de perto. (A forca do impacto JA e medida -- cena 30; o que\n\
+             falta e um evento para o toque rapido, que e a proxima wave.)\n\
              \n\
              (B liga/desliga o contorno dos colliders.)\n\
              ======================================================================\n"
+        );
+    }
+
+    /// **Cena 30 (W-ImpactForce) — a ESCADA de impacto.** Quatro bolas IDÊNTICAS
+    /// (mesma massa, mesmo tamanho, `restitution` 0 → pousam e ficam), largadas de
+    /// alturas crescentes. Cada uma pisca UM `×` ao pousar, e o flash é **maior quanto
+    /// mais alto ela caiu** — porque o tamanho do `×` é a FORÇA do impacto (`impact`),
+    /// não a carga.
+    ///
+    /// A carga (o `+`) NÃO distingue as quatro: uma bola parada pesa o mesmo tendo caído
+    /// de 0,4 m ou de 4 m. O `impact` (pico dentro dos sub-passos) é o que cresce, e é o
+    /// número que um som de impacto quer. Medido (probe `probe_scene_30`): impacto
+    /// **0,81 / 1,39 / 1,95 / 2,52** N·s para quedas de 0,4 / 1,2 / 2,4 / 4,0 m — os `×`
+    /// vão de médio a cheio, da esquerda para a direita.
+    ///
+    /// As quatro pousam em tempos diferentes (a mais baixa primeiro), então os flashes
+    /// aparecem em sequência — um crescendo. Scrub/replay para revê-los.
+    pub(crate) fn physics_smoke_impact_ladder(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        // Um chão FINO e largo (topo em y = -0,8): fino de propósito, porque é a
+        // geometria em que o toque aparece limpo no canal (medido na linha).
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, -1.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [12.0, 0.4], [0.30, 0.32, 0.38, 1.0]),
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 6.0,
+                    half_y: 0.2,
+                },
+                ..Collider::default()
+            },
+        ));
+
+        // ⚠️ Alturas MEDIDAS, não escolhidas por estética: dão a escada de impacto
+        // 0,81 / 1,39 / 1,95 / 2,52 (probe). A mais alta satura a régua do flash (2,0),
+        // que e' honesto -- acima disso "muito forte" e' a leitura util.
+        let heights = [0.4f32, 1.2, 2.4, 4.0];
+        for (i, &h) in heights.iter().enumerate() {
+            let x = i as f32 * 2.0 - 3.0;
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, -0.5 + h)),
+                Sprite::atlas(
+                    WHITE_TILE_KEY,
+                    [0.6, 0.6],
+                    [0.45, 0.70, 0.55 + 0.10 * i as f32, 1.0],
+                ),
+                Name::new(format!("Ball {i}")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.3 },
+                    restitution: 0.0,
+                    friction: 0.5,
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        eprintln!(
+            "\n\
+             ============= [physics-smoke 30] A ESCADA DE IMPACTO ================\n\
+             \n\
+             Quatro bolas IGUAIS, largadas de alturas crescentes (0,4 / 1,2 / 2,4 /\n\
+             4,0 m). Cada uma pousa e pisca um  x  branco.\n\
+             \n\
+             >>> O TAMANHO do  x  e a FORCA do impacto. Quanto mais alto caiu, MAIOR\n\
+                 o flash. Da esquerda para a direita: medio -> cheio. <<<\n\
+             \n\
+             Medido (impact, N.s):   0,81   1,39   1,95   2,52\n\
+             \n\
+             ---- POR QUE ISSO IMPORTA -------------------------------------------\n\
+             \n\
+             A CARGA (a cruz  +  em pe) nao distingue as quatro: uma bola PARADA pesa\n\
+             o mesmo tendo caido de 0,4 m ou de 4 m (medido: carga ~0,014 nas duas).\n\
+             O impacto (o pico DENTRO dos sub-passos, que o motor perdia entre um\n\
+             passo e outro) e o unico numero que cresce -- e e' o que um som de\n\
+             impacto ou um dano querem saber.\n\
+             \n\
+             As quatro pousam em tempos diferentes (a mais baixa primeiro), entao os\n\
+             flashes vem em sequencia. Arraste a regua (tecla L abre a timeline) para\n\
+             reve-los lado a lado.\n\
+             \n\
+             (B liga/desliga o contorno dos colliders.)\n\
+             ====================================================================\n"
         );
     }
 }

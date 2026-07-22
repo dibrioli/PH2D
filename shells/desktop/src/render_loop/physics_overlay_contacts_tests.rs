@@ -31,6 +31,10 @@ fn contact(point: [f32; 2], impulse: f32) -> BodyContact {
         b: Entity::from_bits(2),
         point,
         impulse,
+        // Default the impact peak to the load — a standing contact's peak is at
+        // least its load, and these placement/load tests do not exercise impact.
+        // The flash tests that DO set it explicitly via `contact_impact`.
+        impact: impulse,
         age_ticks: None,
     }
 }
@@ -40,6 +44,16 @@ fn contact_aged(point: [f32; 2], impulse: f32, age: u64) -> BodyContact {
     BodyContact {
         age_ticks: Some(age),
         ..contact(point, impulse)
+    }
+}
+
+/// A fresh contact with a chosen IMPACT peak — for the flash tests, where the
+/// size rides impact, not load. `age 0` and load fixed, so only the impact varies.
+fn contact_impact(impact: f32, age: u64) -> BodyContact {
+    BodyContact {
+        impact,
+        age_ticks: Some(age),
+        ..contact([0.0, 0.0], 0.01)
     }
 }
 
@@ -150,6 +164,34 @@ fn the_flash_does_not_steal_the_channel_that_means_load() {
     assert!(
         flash_arm_px(&flash[0]) > arm_px(&mark_heavy[0]),
         "and a light NEW contact still announces itself over a heavy old one"
+    );
+}
+
+/// ⚠️ The flash size reads the IMPACT peak (W-ImpactForce): a hard hit flashes
+/// bigger than a gentle one, at the SAME age. This is the visible half of the wave —
+/// without it the captured peak would be a number no one can see.
+///
+/// The gate fixes age (both fresh) and load (both the helper's default) so only the
+/// impact differs, and asserts the hard flash out-reads the gentle one by a real
+/// margin. Mutating the boost away (flash ignores impact) makes them equal — RED.
+#[test]
+fn a_harder_impact_flashes_bigger() {
+    let cam = camera();
+    let gentle = contact_impact(0.05, 0); // barely a tap
+    let hard = contact_impact(IMPACT_FULL_NS, 0); // a full-scale slam
+
+    let gentle_arm = flash_arm_px(&contact_flashes(true, &[gentle], &cam, window())[0]);
+    let hard_arm = flash_arm_px(&contact_flashes(true, &[hard], &cam, window())[0]);
+    assert!(
+        hard_arm > gentle_arm + FLASH_IMPACT_BOOST_PX * 0.5,
+        "a hard impact must flash visibly bigger than a gentle one: \
+         gentle {gentle_arm:.1} px vs hard {hard_arm:.1} px"
+    );
+    // And the floor still holds: even the gentlest flash clears the biggest standing
+    // load cross, so the event is never hidden inside the load it announces.
+    assert!(
+        gentle_arm > MARK_MAX_PX,
+        "the flash floor survives the impact ruler"
     );
 }
 

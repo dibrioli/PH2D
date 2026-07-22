@@ -8,6 +8,7 @@ pub mod buoyancy;
 pub mod checkpoint;
 pub mod collider_build;
 pub mod contacts;
+mod convenience;
 pub mod damping;
 pub mod defaults;
 pub mod desc;
@@ -34,9 +35,7 @@ use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, LockedAxes,
     MultibodyJointSet, RigidBody, RigidBodyBuilder, RigidBodyHandle, RigidBodySet, RigidBodyType,
 };
-use rapier2d::geometry::{
-    BroadPhaseBvh, ColliderBuilder, ColliderHandle, ColliderSet, NarrowPhase,
-};
+use rapier2d::geometry::{BroadPhaseBvh, ColliderHandle, ColliderSet, NarrowPhase};
 use rapier2d::na::{Isometry2, Vector2};
 use rapier2d::pipeline::PhysicsPipeline;
 use rapier2d::prelude::nalgebra;
@@ -92,6 +91,22 @@ pub struct PhysicsWorld {
     /// impulses, and the order of a float sum is exactly the kind of detail that
     /// makes a cross-OS hash drift (HR-5).
     effectors: Vec<(RigidBodyHandle, desc::AreaEffect)>,
+    /// The **impact peak** of each touching pair over the current tick's
+    /// sub-steps (W-ImpactForce): body pair (lower handle first) → the hardest
+    /// summed normal impulse it reached at any single sub-step.
+    ///
+    /// It is a READOUT, not simulation state — nothing in the solver reads it, so
+    /// it is invisible to the C9 determinism hash (which is body poses), exactly
+    /// like `contact_reports` is. It exists because the peak lives *between* the
+    /// sub-steps and is gone by the time `step` returns: cleared at the start of
+    /// each `step` and folded by `max` after each sub-step, so the readback finds
+    /// the peak of the last tick. `BTreeMap` (not `HashMap`) so the readout is
+    /// reproducible cross-OS, the same rule the whole module follows.
+    ///
+    /// A field and not a local for the same reason `kinematic_targets` is: `step`
+    /// is the hot path with a zero-alloc gate, so the capacity is reached once and
+    /// reused (`clear` keeps it). Empty for a scene where nothing touches.
+    contact_peaks: std::collections::BTreeMap<contacts::PeakKey, f32>,
 }
 
 impl PhysicsWorld {
@@ -158,6 +173,7 @@ impl PhysicsWorld {
             air_drag: 0.0,
             kinematic_targets: Vec::new(),
             effectors: Vec::new(),
+            contact_peaks: std::collections::BTreeMap::new(),
         }
     }
 
@@ -333,52 +349,6 @@ impl PhysicsWorld {
         self.step_count
     }
 
-    /// Spawn a dynamic rigid body at `(x, y)` with a circle collider
-    /// of `radius` and `density`. Convenience for fixtures + early
-    /// games; full-fidelity callers reach for [`PhysicsWorld::bodies_mut`]
-    /// and the rapier builders directly.
-    pub fn add_dynamic_circle(
-        &mut self,
-        x: f32,
-        y: f32,
-        radius: f32,
-        density: f32,
-    ) -> (RigidBodyHandle, ColliderHandle) {
-        let body = RigidBodyBuilder::dynamic()
-            .translation(Vector2::new(x, y))
-            .build();
-        let body_handle = self.bodies.insert(body);
-        self.stamp_defaults(body_handle);
-        let collider = ColliderBuilder::ball(radius).density(density).build();
-        let collider_handle =
-            self.colliders
-                .insert_with_parent(collider, body_handle, &mut self.bodies);
-        self.stamp_layer(collider_handle, 0);
-        (body_handle, collider_handle)
-    }
-
-    /// Spawn a static cuboid (e.g. a floor or wall). `half_x` and
-    /// `half_y` are HALF-EXTENTS (rapier convention).
-    pub fn add_static_cuboid(
-        &mut self,
-        x: f32,
-        y: f32,
-        half_x: f32,
-        half_y: f32,
-    ) -> (RigidBodyHandle, ColliderHandle) {
-        let body = RigidBodyBuilder::fixed()
-            .translation(Vector2::new(x, y))
-            .build();
-        let body_handle = self.bodies.insert(body);
-        self.stamp_defaults(body_handle);
-        let collider = ColliderBuilder::cuboid(half_x, half_y).build();
-        let collider_handle =
-            self.colliders
-                .insert_with_parent(collider, body_handle, &mut self.bodies);
-        self.stamp_layer(collider_handle, 0);
-        (body_handle, collider_handle)
-    }
-
     /// Spawn a body of any [`RigidBodyType`] with one attached collider,
     /// from a plain [`BodyDesc`]. The general constructor the ECS bridge
     /// (`ph2d-physics-ecs`) drives — it covers every body×shape combo the
@@ -536,6 +506,11 @@ impl PhysicsWorld {
     /// [`PhysicsWorld::dt`] — never accept an external dt at the
     /// wrapper boundary (HR-5).
     pub fn step(&mut self) {
+        // W-ImpactForce: the impact peak is the hardest a pair pushes at any
+        // single sub-step, and it is gone by the time this returns. Start the tick
+        // with an empty ledger and `max` into it after each sub-step below. Cleared
+        // (capacity kept) rather than reallocated — the hot-path zero-alloc gate.
+        self.contact_peaks.clear();
         for sub in 0..self.substeps {
             // Kinematic bodies advance a SLICE of their tick per sub-step, for
             // the same reason the drag below is applied per sub-step: rapier
@@ -589,6 +564,16 @@ impl PhysicsWorld {
                 &mut self.ccd_solver,
                 &physics_hooks,
                 &event_handler,
+            );
+            // W-ImpactForce: fold this sub-step's contact loads into the peak
+            // ledger. Measured ≤ 1.93% of the HR-4 budget at 500 contact pairs
+            // (`tests/measure_impact.rs`), so it is unconditional — a gating flag
+            // that never toggled would be a dead flag. Empty for a scene where
+            // nothing touches, which keeps it free there.
+            contacts::accumulate_peaks(
+                &self.narrow_phase,
+                &self.colliders,
+                &mut self.contact_peaks,
             );
         }
         // The aim is spent. Retaining the capacity is why this is a field:

@@ -308,6 +308,53 @@ fn the_transitions_are_deterministic() {
     assert_eq!(a, b, "the same scene must transition identically");
 }
 
+/// ⚠️ A `Began` event carries the **impact peak of the landing** (W-ImpactForce), not
+/// the load — so a hit sound sizes itself by how hard the pair hit. This is the BRIDGE
+/// half: it proves `impact` threads from the world through `ContactReport` →
+/// `ContactMemo` → `ContactEvent` distinctly from `impulse`.
+///
+/// **A bouncy box, and the phase-free signal** (the same one the wrapper's gate uses,
+/// one level down). Over a full bounce a box eventually has a Began where it has already
+/// lifted off by the tick's end: the event's `impulse` (endpoint load) is ~zero while
+/// its `impact` (the captured peak) is not — scene 29 tick 63: load 0.0, impact 0.85. A
+/// single landing tick's load is sub-step-phase-dependent and can equal the peak, so the
+/// gate collects EVERY Began and asks whether one carries a peak clearly above its own
+/// endpoint. Red-first: mutating the bridge to carry `r.impulse` for the impact field
+/// (or any of the kernel mutations `contacts.rs` lists) makes `impact == impulse` on
+/// every event → no such Began → RED.
+#[test]
+fn a_began_event_carries_the_impact_of_the_landing() {
+    let mut sim = SimWorld::new();
+    floor(&mut sim);
+    bouncy_box_at(&mut sim, 0.0, 3.0);
+    let mut bridge = PhysicsBridge::new();
+
+    let mut peak_seen = 0.0f32;
+    let mut peak_beats_endpoint = false;
+    let from = bridge.last_stepped();
+    for t in (from + 1)..=(from + 300) {
+        bridge.dispatch(&mut sim, true, t);
+        for e in bridge.contact_events() {
+            if e.phase == ContactPhase::Began {
+                peak_seen = peak_seen.max(e.impact);
+                if e.impact > 0.1 && e.impulse < e.impact * 0.5 {
+                    peak_beats_endpoint = true;
+                }
+            }
+        }
+    }
+
+    assert!(
+        peak_seen > 1.0,
+        "fixture: a 3 m drop should produce a hard Began, got peak {peak_seen}"
+    );
+    assert!(
+        peak_beats_endpoint,
+        "some Began must carry a peak clearly above its own endpoint load — the impact \
+         threaded through the bridge, not the load it rebounds to"
+    );
+}
+
 /// **The headless probe behind smoke scene 29.** Not an assertion — a MEASUREMENT.
 ///
 /// The plan's rule is that a scene's `eprintln!` cites numbers the probe produced,
@@ -418,14 +465,75 @@ fn probe_scene_29() {
             *counts.entry(who).or_default() += 1;
             firsts.entry(who).or_insert(t);
             println!(
-                "tick {t:>3}  {who:<7} {:?}  impulse {:.5}",
-                e.phase, e.impulse
+                "tick {t:>3}  {who:<7} {:?}  load {:.5}  impact {:.5}",
+                e.phase, e.impulse, e.impact
             );
         }
     }
     println!("--- totals ---");
     for (who, n) in &counts {
         println!("{who:<7} {n} transitions, first at tick {}", firsts[who]);
+    }
+}
+
+/// **The headless probe behind smoke scene 30 (the impact ladder).** Four identical
+/// dead balls dropped from increasing heights: each fires ONE Began, and its `impact`
+/// grows with the drop. Prints the numbers the scene's message cites.
+#[test]
+#[ignore = "measurement probe for smoke scene 30, not a gate"]
+fn probe_scene_30() {
+    let heights = [0.4f32, 1.2, 2.4, 4.0];
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 6.0,
+                half_y: 0.2,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -1.0)),
+    ));
+    let balls: Vec<Entity> = heights
+        .iter()
+        .enumerate()
+        .map(|(i, &h)| {
+            sim.world_mut()
+                .spawn((
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Ball { radius: 0.3 },
+                        restitution: 0.0,
+                        friction: 0.5,
+                        ..Collider::default()
+                    },
+                    Transform::from_translation(Vec2::new(i as f32 * 2.0 - 3.0, -0.5 + h)),
+                ))
+                .id()
+        })
+        .collect();
+
+    let mut bridge = PhysicsBridge::new();
+    println!("\n--- scene 30, impact ladder ---");
+    for t in 1..=240u64 {
+        bridge.dispatch(&mut sim, true, t);
+        for e in bridge.contact_events() {
+            if e.phase == ContactPhase::Began {
+                let who = if balls.contains(&e.a) { e.a } else { e.b };
+                let idx = balls.iter().position(|b| *b == who).unwrap_or(99);
+                println!(
+                    "tick {t:>3}  ball {idx} (drop {:.1} m)  load {:.5}  impact {:.5}",
+                    heights.get(idx).copied().unwrap_or(0.0),
+                    e.impulse,
+                    e.impact
+                );
+            }
+        }
     }
 }
 

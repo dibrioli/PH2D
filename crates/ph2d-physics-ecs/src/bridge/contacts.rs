@@ -31,9 +31,15 @@ pub struct BodyContact {
     pub b: Entity,
     /// The deepest contact point, in world units.
     pub point: [f32; 2],
-    /// The load this pair is carrying right now, in N·s. **Not an impact peak** —
-    /// see [`ph2d_physics::ContactReport::impulse`], where that was measured.
+    /// The load this pair is carrying right now, in N·s — what the standing cross's
+    /// size means. **Not the impact peak** — see [`Self::impact`].
     pub impulse: f32,
+    /// The **peak** normal impulse this pair reached during the tick's sub-steps, in
+    /// N·s — *how hard the hit was* (W-ImpactForce). `>= impulse` always. This is what
+    /// the flash's size means, and it is a different channel from the load precisely
+    /// so a hard hit on a lightly-loaded pair reads differently from a gentle touch on
+    /// a heavy one. Straight through from [`ph2d_physics::ContactReport::impact`].
+    pub impact: f32,
     /// Ticks since this pair BEGAN touching — the age the overlay fades its flash
     /// over.
     ///
@@ -93,12 +99,20 @@ pub struct ContactEvent {
     /// LAST point the pair was known to touch at — the place they parted.
     pub point: [f32; 2],
     /// The load at that moment, in N·s. For `Ended`, the last load the pair carried.
-    /// **Still not an impact peak** — the same measurement that governs
-    /// [`BodyContact::impulse`] governs this: `step` returns after the solver has
-    /// already absorbed the impact, so a landing from 6 m reports what sitting still
-    /// reports. Sizing anything by "how hard did that hit" needs the peak captured
-    /// INSIDE the sub-step loop, which is a different wave and a cost in every scene.
+    /// The load meter — for *how hard the hit was*, read [`Self::impact`].
     pub impulse: f32,
+    /// The **impact peak** of this transition, in N·s — for a `Began`, how hard the
+    /// pair hit; for an `Ended`, the last peak it was known at (W-ImpactForce). This
+    /// is the number a hit sound sizes itself by, and it is the captured peak, not the
+    /// settled load ([`ph2d_physics::ContactReport::impact`]).
+    ///
+    /// ⚠️ **Scope of this wave:** the peak is real for every transition that FIRES,
+    /// but a *fast* impact — one that both begins and ends inside a single tick —
+    /// still fires no event at all (the standing-set diff never sees it), so its
+    /// peak, though captured in the world, is not delivered here. Making a fast impact
+    /// eventful restructures the diff (standing set → per-tick touched set) and is the
+    /// next wave; the capture this one adds is its prerequisite.
+    pub impact: f32,
 }
 
 /// What the bridge remembers about a pair BETWEEN dispatches — the whole of the
@@ -108,9 +122,11 @@ pub(super) struct ContactMemo {
     /// Tick the pair began touching, or `None` when it was already touching at the
     /// last re-baseline (see [`BodyContact::age_ticks`]).
     began: Option<u64>,
-    /// Last known place and load, so an `Ended` event can say where they parted.
+    /// Last known place, load, and impact peak, so an `Ended` event can say where
+    /// they parted and how hard the pair last hit.
     point: [f32; 2],
     impulse: f32,
+    impact: f32,
 }
 
 impl PhysicsBridge {
@@ -182,6 +198,7 @@ impl PhysicsBridge {
                     began,
                     point: r.point,
                     impulse: r.impulse,
+                    impact: r.impact,
                 },
             );
             self.contacts.push(BodyContact {
@@ -189,6 +206,7 @@ impl PhysicsBridge {
                 b,
                 point: r.point,
                 impulse: r.impulse,
+                impact: r.impact,
                 age_ticks: began.map(|t| tick.saturating_sub(t)),
             });
         }
@@ -204,6 +222,7 @@ impl PhysicsBridge {
                         phase: ContactPhase::Ended,
                         point: memo.point,
                         impulse: memo.impulse,
+                        impact: memo.impact,
                     });
                 }
             }
@@ -215,6 +234,7 @@ impl PhysicsBridge {
                         phase: ContactPhase::Began,
                         point: memo.point,
                         impulse: memo.impulse,
+                        impact: memo.impact,
                     });
                 }
             }

@@ -3186,3 +3186,87 @@ decisão do Enio · o impacto rápido invisível **e** o pico de impulso, que s�
 com **uma** cura (amostrar dentro do laço de sub-passos, e o preço é pago por toda cena —
 medir antes) · eventos **por-tick** em vez de por-dispatch (um frame que deve vários ticks
 reporta a diferença entre as duas pontas) · readout de contatos na §11.
+
+## W-ImpactForce — *quão forte foi o toque* (2026-07-22, smoke `=30`)
+
+A frente **B** que a `W-ContactEvents` nomeou, e a cura que ela e a `W-Contacts` prometiam:
+o `impulse` de um contato é a **CARGA** que o par segura *agora* — não o **PICO** do
+impacto. Medido (`tests/measure_impact.rs`): a mesma bola cai de 0,6 m ou de 10 m e a carga
+de repouso é **plana em ~0,014 N·s**, enquanto o pico do impacto cresce **0,58 / 1,13 / 1,59
+/ 2,18 / 2,98 / 3,89** de 0,6 a 10 m. O pico vive **entre** os sub-passos e some quando
+`step` retorna (o solver já parou o corpo). É o número que um som de impacto quer.
+
+### O kernel
+
+`PhysicsWorld` ganhou um campo **`contact_peaks: BTreeMap<PeakKey, f32>`** (par de corpos →
+pico do impulso sobre os sub-passos do tick). `step()` **limpa** no início e chama
+`contacts::accumulate_peaks` (um `max` por par) **depois de cada** `physics_pipeline.step()`.
+`ContactReport` ganhou `impact` (o pico, lido do mapa; `>= impulse` sempre), e a lógica
+`collider→corpo→ordem` virou **uma porta** `active_pair` que `contact_reports` e
+`accumulate_peaks` compartilham (duas cópias divergiriam sobre *quais* pares tocam).
+
+⚠️ **READOUT, não estado de solver** — nada no solver lê `contact_peaks`, então é invisível
+ao hash de determinismo (que é a pose dos corpos): c9 saiu **byte-idêntico** ao `main`
+(`7d55a4ab…`, 75 corpos). `BTreeMap` e não `HashMap` para o readout ser reproduzível
+cross-OS (a mesma lei que o resto do módulo).
+
+### Sempre-ligado, porque MEDIDO primeiro (CLAUDE.md §0.0)
+
+O custo do `max` por-sub-passo em toda cena foi medido **antes** de decidir: no pior caso
+(pilha de 500 pares) é limitado por cima por `substeps × contact_reports()` = **≤ 0,036
+ms/tick = ≤ 2,4% do orçamento HR-4** (e o custo real é menor — `contact_reports` faz
+alloc+sort+map que a captura pula). Barato ⇒ **incondicional**: um flag que nunca se desliga
+seria flag morto. O `measure_impact.rs` mede o custo sem escrever a captura (limite superior
+por APIs que já existem).
+
+### A metade visível
+
+O flash `×` do overlay agora **escala com o `impact`** (`FLASH_IMPACT_BOOST_PX`, régua
+`IMPACT_FULL_NS = 2,0` medida) — um slam forte pisca maior que um toque leve. ⚠️ O piso
+`FLASH_MIN_PX` (derivado de `MARK_MAX_PX`) fica intacto, então o gate do front A (*o flash
+mais leve ainda supera a maior cruz de carga*) segue verde. O `×` (impacto) e o `+` (carga)
+são **canais separados** de propósito.
+
+### ⚠️ A armadilha que quase passou — fixture, não código
+
+No nível do mundo `impulse` (tick-end) É o pico quando o par ainda toca no fim do tick — o
+corpo é pego **mais forte NA fronteira**, então num tick de **POUSO** `impact == impulse`, e
+um gate que lê o endpoint de um tick de pouso **não distingue** o `max`-sobre-sub-passos do
+último sub-passo. Medido: no caminho `spawn_body(desc)` (o que a ponte usa) o tick de pouso
+dá `load == impact == 3,00` — a coincidência. O gap só aparece num tick de **RASPÃO**, onde o
+corpo já saiu antes do último sub-passo (endpoint ~0, pico não): scene-29 tick 63, `load 0,0
+/ impact 0,85`. Por isso os gates usam **bola que QUICA + chão FINO** (onde os raspões caem
+dentro do `contact_reports`) e perguntam *"existe um tick cujo pico supera claramente o
+próprio endpoint?"* — verdade só para o `max` real; as 3 mutações que colapsam `impact` em
+`impulse` deixam nenhum tick assim → RED. (Detalhe reproduzível em
+`debug_the_peak_shows_only_on_a_grazing_tick`.)
+
+### Gates: 3, e 5 mutações que sangram
+
+- **Wrapper** `the_impact_peak_is_the_hit_the_load_meter_misses` (bola quica, chão fino):
+  existe um tick com pico >> endpoint. Mata M1 (`contact_reports` lê `impulse`) · M2
+  (`accumulate_peaks` usa `=` em vez de `max`) · M3 (remove a chamada em `step`).
+- **Ponte** `a_began_event_carries_the_impact_of_the_landing` (bola quica, ponte): algum
+  `Began` carrega pico >> endpoint. Mata M1/M2/M3 (via kernel) **e** M4 (a ponte enfia
+  `r.impulse` no campo `impact`).
+- **Overlay** `a_harder_impact_flashes_bigger`: impacto duplo → flash maior, mesmo age.
+  Mata M5 (o flash ignora o `impact`). O piso de A segue pinado no mesmo gate.
+
+### Aberto no W-ImpactForce
+
+O **impacto RÁPIDO invisível** (um toque que começa e termina dentro de UM tick) segue sem
+evento — o pico É capturado em `contact_peaks`, mas o diff de eventos do front A é sobre o
+conjunto **permanente** (`contact_reports`, vivo no fim do tick), que não vê o toque rápido.
+Um evento para o toque rápido reestrutura esse diff (conjunto permanente → conjunto tocado
+**por tick**, com a união dos ticks de um dispatch de vários ticks) e é a **próxima wave** —
+esta captura é o pré-requisito dela. Também: o `impact` no `contact_reports` de um par vivo
+quase sempre coincide com o `impulse` (o valor extra do `impact` mora nos EVENTOS, onde um
+raspão preserva o pico) · eventos por-tick em vez de por-dispatch.
+
+### LOC
+
+`world.rs` bateu **706 > 700** (o campo `contact_peaks` + a captura) ⇒ split
+`world/convenience.rs` (os dois construtores `add_dynamic_circle`/`add_static_cuboid`, ~40
+linhas, `impl PhysicsWorld` num módulo irmão) → **661**. `physics_smoke_events.rs` 172→262 (a
+cena 30) e `physics_overlay_contacts.rs` 221→251 (o flash por impacto) seguem sob o cap 600
+do shell.

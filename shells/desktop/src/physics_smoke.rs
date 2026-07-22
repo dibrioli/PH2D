@@ -109,6 +109,7 @@ impl crate::App {
             "27" => self.physics_smoke_buoyancy(),
             "28" => self.physics_smoke_form_drag(),
             "29" => self.physics_smoke_events(),
+            "30" => self.physics_smoke_impact_ladder(),
             _ => self.physics_smoke_drop(),
         }
 

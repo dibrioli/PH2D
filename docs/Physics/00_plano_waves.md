@@ -55,6 +55,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-Buoyancy** | Arquimedes: a área sabe quanto do corpo está dentro | `=27` |
 | **W-FormDrag** | o arrasto que sabe para onde o corpo aponta | `=28` |
 | **W-ContactEvents** | *começou a tocar* / *parou de tocar* — e um scrub não é colisão | `=29` |
+| **W-ImpactForce** | *quão forte foi o toque* — o pico entre os sub-passos, não a carga | `=30` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

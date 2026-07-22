@@ -158,7 +158,9 @@ fn the_bottom_of_a_stack_carries_more_load_than_the_top() {
     // asked whether landing from 6 m reports a bigger impulse than resting. It does
     // NOT — measured, the two agree to seven digits (0.010032237 vs 0.010032236),
     // because `step` returns after the solver has already stopped the body: the impact
-    // peak lives *between* the substeps and is gone by the time anyone can read it.
+    // peak lives *between* the substeps. (W-ImpactForce now captures that peak in a
+    // SEPARATE field, `impact` — see `the_impact_peak_is_the_hit_the_load_meter_misses`
+    // below; this gate is still about `impulse`, which is and remains the load.)
     //
     // What the number is instead is the **load this pair is carrying right now**, and
     // that is exactly and beautifully physical: in a stack of four identical boxes the
@@ -198,6 +200,84 @@ fn the_bottom_of_a_stack_carries_more_load_than_the_top() {
             reports[i].impulse
         );
     }
+}
+
+/// ⚠️ The whole of W-ImpactForce, red-first: the `impact` peak is *how hard the hit
+/// was*, which `impulse` (the endpoint load) structurally cannot be — it is the load
+/// the pair holds *after* the solver has absorbed the hit.
+///
+/// **A BOUNCY ball on a THIN floor, and the phase-free signal.** At the world level
+/// `impulse` is the load at tick-end, and for a pair still in contact then it equals the
+/// sub-step peak — the ball is caught hardest *at* the boundary, so on a landing tick
+/// the two coincide (measured: load == impact on every in-contact tick over a thick-floor
+/// bounce). The peak-vs-endpoint gap shows only on a GRAZING tick, where the ball touches
+/// mid-tick and is lifting off by the end: endpoint ~zero, peak not. A thin floor makes
+/// those grazing ticks land inside `contact_reports` — measured on this exact fixture,
+/// tick 35 reads load 0.003 / impact 2.27, and later bounces read load 0.0 / impact 0.85.
+///
+/// The gate asks: over the trajectory, is there a tick whose captured peak clearly
+/// EXCEEDS its own endpoint load? Yes for the real capture; NO for all three mutations
+/// that collapse `impact` onto `impulse` — `contact_reports` reading the load for the
+/// impact field, `accumulate_peaks` using `=` (last write) instead of `max`, and
+/// deleting the accumulate call in `step`. Each makes `impact == impulse` on every tick,
+/// so no tick can have impact exceeding its own endpoint → RED.
+#[test]
+fn the_impact_peak_is_the_hit_the_load_meter_misses() {
+    // A bouncy ball over a THIN floor (top at y = 0). Report the largest peak seen, and
+    // whether ANY tick had the peak clearly above its own endpoint load (impact > 0.1
+    // and endpoint < half of it — the signature of a mid-tick impact the endpoint
+    // missed).
+    fn drop_bouncy(drop_y: f32) -> (f32, bool) {
+        let mut w = PhysicsWorld::new();
+        w.spawn_body(desc(
+            RigidBodyType::Fixed,
+            0.0,
+            -0.2,
+            ShapeDesc::Cuboid {
+                half_x: 4.0,
+                half_y: 0.2,
+            },
+        ));
+        w.spawn_body(BodyDesc {
+            restitution: 0.75,
+            ..desc(
+                RigidBodyType::Dynamic,
+                0.0,
+                drop_y,
+                ShapeDesc::Ball { radius: 0.3 },
+            )
+        });
+        let mut peak = 0.0f32;
+        let mut peak_beats_endpoint = false;
+        for _ in 0..300 {
+            w.step();
+            if let Some(r) = w.contact_reports().first() {
+                peak = peak.max(r.impact);
+                if r.impact > 0.1 && r.impulse < r.impact * 0.5 {
+                    peak_beats_endpoint = true;
+                }
+            }
+        }
+        (peak, peak_beats_endpoint)
+    }
+
+    let (peak, sep) = drop_bouncy(1.2);
+
+    // The peak clearly exceeds the endpoint on some tick — this is exactly and only what
+    // the max-over-sub-steps buys, and it is a hard hit (a fixed small constant could
+    // not produce it). That the peak GROWS with the drop is measured separately in
+    // `tests/measure_impact.rs`; a harder drop's first landing is a FAST impact that
+    // `contact_reports` cannot see (it separates within the tick), so a two-height
+    // comparison read from the live standing set is not the way to assert it.
+    assert!(
+        sep,
+        "some tick must capture a peak above its own endpoint load — the mid-tick impact \
+         the load meter drops"
+    );
+    assert!(
+        peak > 1.0,
+        "and the captured peak is a real hit, not a settle: {peak}"
+    );
 }
 
 #[test]

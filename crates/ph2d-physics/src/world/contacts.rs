@@ -24,9 +24,17 @@
 //! the collision most is, and the **summed** normal impulse, which is how hard the
 //! whole pair pushed.
 
+use std::collections::BTreeMap;
+
 use rapier2d::dynamics::RigidBodyHandle;
+use rapier2d::geometry::{ColliderSet, NarrowPhase};
 
 use super::PhysicsWorld;
+
+/// A body pair keyed for the peak map — the two handles' raw parts, lower first,
+/// so the key matches the order [`ContactReport`] reports the pair in. `BTreeMap`
+/// wants `Ord`, and this derives it (unlike the handles themselves).
+pub(crate) type PeakKey = ((u32, u32), (u32, u32));
 
 /// One touching pair, in plain data — no rapier type escapes except the body
 /// handles the caller already speaks.
@@ -41,18 +49,85 @@ pub struct ContactReport {
     /// The summed normal impulse over the pair's manifolds, in N·s — **the load this
     /// pair is carrying right now**.
     ///
-    /// ⚠️ **Not the impact peak, and that was measured rather than assumed.** A ball
-    /// landing from 6 m reports the same impulse as the same ball sitting still
-    /// (0.010032237 vs 0.010032236): `step` returns after the solver has already
-    /// stopped the body, so the peak lives *between* the substeps and is gone before
-    /// anyone can read it. Reporting an "impact strength" from out here would be a
-    /// number that never gets big.
+    /// ⚠️ **Not the impact peak** — see [`Self::impact`], which is. A ball landing from
+    /// 6 m reports the same *impulse* as the same ball sitting still (0.010032237 vs
+    /// 0.010032236): `step` returns after the solver has already stopped the body, so
+    /// what survives out here is the settled load, not the peak.
     ///
     /// What it IS is exactly and usefully physical: in a stack of four identical
     /// boxes the impulses come out **4 : 3 : 2 : 1** from the floor up, because the
     /// bottom contact holds four boxes and the top one holds one. It is a load meter,
-    /// and that is what the overlay's spark size means.
+    /// and that is what the overlay's standing cross size means.
     pub impulse: f32,
+    /// The **peak** normal impulse this pair reached during the tick's sub-steps, in
+    /// N·s — *how hard the hit was*, as opposed to [`Self::impulse`], which is the load
+    /// it settled to (W-ImpactForce).
+    ///
+    /// This is the number a hit sound wants. It exists because [`Self::impulse`]
+    /// **cannot** carry it: the impact happens *between* the sub-steps and is gone by
+    /// the time `step` returns. Captured by a `max` over the sub-steps inside the step
+    /// loop (measured: ≤ 1.93% of the HR-4 budget at 500 contact pairs, so always-on);
+    /// see [`PhysicsWorld::step`].
+    ///
+    /// **`impact >= impulse` always** for a live pair: the tick's peak is at least its
+    /// endpoint. For a pair that is touching now but whose peak was not captured (it
+    /// began touching only on the readback, never during a stepped sub-step — which the
+    /// current step loop cannot produce), this falls back to `impulse`.
+    pub impact: f32,
+}
+
+/// The ordered body pair, deepest world point, and summed normal impulse of one
+/// **actively touching** contact pair — or `None` for a near-miss (bounding
+/// volumes overlap, no active manifold point).
+///
+/// The single door both readers go through, so `contact_reports` (the load meter)
+/// and `accumulate_peaks` (the impact capture) cannot disagree about *which*
+/// pairs are touching, in *what* order, at *what* load — a second copy of this
+/// collider→body→order logic is exactly the kind that drifts.
+fn active_pair(
+    pair: &rapier2d::geometry::ContactPair,
+    colliders: &ColliderSet,
+) -> Option<(RigidBodyHandle, RigidBodyHandle, [f32; 2], f32)> {
+    if !pair.has_any_active_contact {
+        return None;
+    }
+    let c1 = colliders.get(pair.collider1)?;
+    let c2 = colliders.get(pair.collider2)?;
+    let (b1, b2) = (c1.parent()?, c2.parent()?);
+    // ⚠️ `local_p1` is in **collider1's** frame, so it has to go through
+    // collider1's world position — the same whose-frame-is-this care the one-way
+    // hook pays, and for the same reason: the pair is not ordered for us.
+    let (_, deepest) = pair.find_deepest_contact()?;
+    let world = c1.position() * deepest.local_p1;
+    let impulse = pair.total_impulse_magnitude();
+    let (body1, body2) = if b1.into_raw_parts() <= b2.into_raw_parts() {
+        (b1, b2)
+    } else {
+        (b2, b1)
+    };
+    Some((body1, body2, [world.x, world.y], impulse))
+}
+
+/// Fold this instant's contact loads into the peak map by `max` — the impact
+/// capture, called once per sub-step from [`PhysicsWorld::step`]. Keyed by the
+/// **body** pair (lower first), so it lines up with [`ContactReport`] when the
+/// readback reads it back out.
+///
+/// A `max` and not a sum: the impact is the hardest the pair pushed at any single
+/// instant of the tick, not the total over the tick (which would grow with the
+/// sub-step count and mean nothing physical).
+pub(super) fn accumulate_peaks(
+    narrow_phase: &NarrowPhase,
+    colliders: &ColliderSet,
+    out: &mut BTreeMap<PeakKey, f32>,
+) {
+    for pair in narrow_phase.contact_pairs() {
+        if let Some((b1, b2, _, impulse)) = active_pair(pair, colliders) {
+            let key = (b1.into_raw_parts(), b2.into_raw_parts());
+            let slot = out.entry(key).or_insert(0.0);
+            *slot = slot.max(impulse);
+        }
+    }
 }
 
 impl PhysicsWorld {
@@ -85,27 +160,26 @@ impl PhysicsWorld {
         let mut out: Vec<ContactReport> = self
             .narrow_phase
             .contact_pairs()
-            .filter(|pair| pair.has_any_active_contact)
             .filter_map(|pair| {
-                let c1 = self.colliders.get(pair.collider1)?;
-                let c2 = self.colliders.get(pair.collider2)?;
-                let (b1, b2) = (c1.parent()?, c2.parent()?);
-                // ⚠️ `local_p1` is in **collider1's** frame, so it has to go
-                // through collider1's world position — the same
-                // whose-frame-is-this care the one-way hook pays, and for the same
-                // reason: the pair is not ordered for us.
-                let (_, deepest) = pair.find_deepest_contact()?;
-                let world = c1.position() * deepest.local_p1;
-                let (body1, body2) = if b1.into_raw_parts() <= b2.into_raw_parts() {
-                    (b1, b2)
-                } else {
-                    (b2, b1)
-                };
+                let (body1, body2, point, impulse) = active_pair(pair, &self.colliders)?;
+                // The impact peak the step loop captured for this pair. `impulse`
+                // (the settled load) is the floor: the peak is at least the
+                // endpoint, and a pair with no captured peak (impossible from the
+                // current loop — a live pair touched the last sub-step) reads its
+                // load.
+                let key = (body1.into_raw_parts(), body2.into_raw_parts());
+                let impact = self
+                    .contact_peaks
+                    .get(&key)
+                    .copied()
+                    .unwrap_or(impulse)
+                    .max(impulse);
                 Some(ContactReport {
                     body1,
                     body2,
-                    point: [world.x, world.y],
-                    impulse: pair.total_impulse_magnitude(),
+                    point,
+                    impulse,
+                    impact,
                 })
             })
             .collect();

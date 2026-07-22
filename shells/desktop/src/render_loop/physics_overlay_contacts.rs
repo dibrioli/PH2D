@@ -15,10 +15,13 @@
 //! holding everything above it. That is not decoration; it is the same 4 : 3 : 2 : 1
 //! the wrapper's gate pins, drawn.
 //!
-//! ⚠️ It is **not** an impact flash. The load is read after `step` returns, and by
-//! then the solver has already absorbed the impact — measured, a ball landing from
-//! 6 m reports the same number as one sitting still. Sizing the mark by "impact
-//! strength" would be sizing it by a number that never gets big.
+//! ⚠️ The standing cross's size is **load**, and only load. *How hard the hit was*
+//! is a separate reading on a separate mark — the begin-flash (below), whose size
+//! rides the captured **impact peak** (W-ImpactForce). The two are genuinely
+//! different numbers: measured, a ball landing from 6 m settles to the same load as
+//! one sitting still, while its impact peak is ~200× larger. Keeping them on
+//! different marks is what lets a gentle touch on a heavy stack read differently
+//! from a hard slam onto bare floor.
 
 use ph2d_physics_ecs::BodyContact;
 use ph2d_render::Camera2d;
@@ -113,14 +116,39 @@ const FLASH_TICKS: u64 = 6;
 const FLASH_MIN_PX: f64 = MARK_MAX_PX + 2.0; // LITERAL-PX-OK: chrome de overlay
 const FLASH_MAX_PX: f64 = FLASH_MIN_PX * 2.0; // LITERAL-PX-OK: chrome de overlay
 
-/// The begin-flash of one contact: a DIAGONAL cross, expanding with age.
+/// How many extra screen px a full-impact hit adds to the flash's base size.
 ///
-/// ⚠️ **Diagonal, and not a bigger `+`, because arm length is already spoken for** —
-/// [`mark`] sizes the upright cross by the LOAD the pair carries. A flash that also
-/// grew the arms would make a brand-new light touch indistinguishable from an old
-/// heavy one, which is two meanings on one channel. Rotating 45° gives the event its
-/// own channel: for the few ticks it lives, the two crosses together read as a spark,
-/// and then the `+` is left saying what it always said.
+/// This is the visible reading of *how hard* — a hard slam flashes bigger than a
+/// gentle touch. Chosen so a full-impact birth (`FLASH_MIN_PX + this` = 23 px)
+/// clears a gentle flash at its OLDEST (`FLASH_MAX_PX` = 22 px), so "hard" always
+/// out-reads "soft" no matter the age either is caught at.
+const FLASH_IMPACT_BOOST_PX: f64 = 12.0; // LITERAL-PX-OK: chrome de overlay
+
+/// The impact peak, in N·s, at which the flash reaches full [`FLASH_IMPACT_BOOST_PX`].
+///
+/// **Measured, not chosen** (`tests/measure_impact.rs`): the reference ball (r=0.3,
+/// density 1) captures impact peaks of 0.58 / 1.13 / 1.59 / 2.18 / 3.89 N·s dropped
+/// from 0.6 / 1.2 / 2.0 / 3.4 / 10 m, while its settled LOAD stays flat at 0.014. So
+/// `2.0` puts a 1.2 m bounce mid-range and a 3.4 m slam at the top — the spread that
+/// makes the impact reading legible. A display ruler: nothing reads it back, and a
+/// harder-than-3.4 m hit saturates, which is honest (past a point, "very hard" is the
+/// useful reading — the same stance the load ruler takes).
+const IMPACT_FULL_NS: f32 = 2.0;
+
+/// The begin-flash of one contact: a DIAGONAL cross, sized by IMPACT and expanding
+/// with age.
+///
+/// ⚠️ **Diagonal, and not a bigger `+`, because upright arm length is already spoken
+/// for** — [`mark`] sizes the `+` by the LOAD the pair carries. The flash sizes itself
+/// by the IMPACT peak instead (`contact.impact`, not `contact.impulse`), so the two
+/// marks answer the two different questions a contact raises: *how much is it holding*
+/// and *how hard did it hit*. Rotating 45° keeps them on separate channels: for the
+/// few ticks the flash lives, the two crosses read as a spark, and the `+` is left
+/// saying what it always said.
+///
+/// Size composes the two dimensions: a floor of [`FLASH_MIN_PX`] (so even a gentle
+/// touch clears the biggest standing load cross — the front-A gate), plus an impact
+/// boost, plus an age expansion that makes it read as a burst.
 fn flash(contact: &BodyContact, camera: &Camera2d, window: WindowSize) -> Option<BezPath> {
     // `None` age is a pair adopted at a re-baseline — it never *began* as far as the
     // simulation is concerned, so it must not flash. That distinction is the whole
@@ -131,8 +159,10 @@ fn flash(contact: &BodyContact, camera: &Camera2d, window: WindowSize) -> Option
     }
     let (sx, sy) = camera.world_to_screen(contact.point, window);
     let centre = Point::new(f64::from(sx), f64::from(sy));
+    let impact_frac = f64::from((contact.impact / IMPACT_FULL_NS).clamp(0.0, 1.0));
+    let base = FLASH_MIN_PX + impact_frac * FLASH_IMPACT_BOOST_PX;
     let t = age as f64 / FLASH_TICKS as f64;
-    let arm = FLASH_MIN_PX + t * (FLASH_MAX_PX - FLASH_MIN_PX);
+    let arm = base + t * (FLASH_MAX_PX - FLASH_MIN_PX);
     // 45°: the half-diagonal of a square with this arm.
     let d = arm * std::f64::consts::FRAC_1_SQRT_2;
 

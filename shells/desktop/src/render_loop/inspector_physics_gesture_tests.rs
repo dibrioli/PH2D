@@ -187,3 +187,95 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
          acima produziram uma piscina que não é água"
     );
 }
+
+/// **Uma poça com EMPUXO é autorável só com gestos da UI** — e o passo que a torna
+/// água de verdade é um número só (W-Buoyancy).
+///
+/// O irmão acima (`a_water_zone_is_authorable_with_ui_gestures_alone`) monta a versão
+/// do W-Area: `Force Y` constante. Este monta a de Arquimedes, e o oráculo é o que
+/// **distingue as duas** — o corpo leve tem de **PARAR** perto da superfície em vez de
+/// ser arremessado para fora, que era o defeito nomeado como aberto no W-AreaDrag.
+#[test]
+fn a_buoyant_pool_is_authorable_with_ui_gestures_alone() {
+    let pool = {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, -1.5)),
+                Sprite::atlas(0, [7.0, 3.0], [0.3, 0.5, 0.9, 0.3]),
+            ))
+            .id();
+        (sim, e)
+    };
+    let (mut sim, pool) = pool;
+
+    // Os mesmos quatro primeiros gestos do irmão — Add, Static, Sensor — e então UM
+    // número: a densidade do fluido. Nenhuma força a tunar por objeto.
+    apply(&mut sim, pool, PhysicsFieldEdit::Add);
+    apply(&mut sim, pool, PhysicsFieldEdit::Kind(1));
+    apply(&mut sim, pool, PhysicsFieldEdit::Sensor(true));
+    apply(&mut sim, pool, PhysicsFieldEdit::AreaDensity(4.0));
+    apply(&mut sim, pool, PhysicsFieldEdit::AreaDrag(1.5));
+    let i = build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0).unwrap();
+    assert_eq!(
+        (i.area_density, i.area_drag),
+        (4.0, 1.5),
+        "as rows de área têm de aceitar os dois números num sensor"
+    );
+
+    // Chão, e duas caixas de MESMO tamanho e densidades diferentes largadas na poça.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 10.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -3.5)),
+    ));
+    let drop = |sim: &mut SimWorld, x: f32, density: f32| {
+        sim.world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.25,
+                        half_y: 0.25,
+                    },
+                    density,
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x, 2.0)),
+            ))
+            .id()
+    };
+    let cork = drop(&mut sim, -2.0, 1.0);
+    let stone = drop(&mut sim, 2.0, 12.0);
+
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=420 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let y = |sim: &SimWorld, e: Entity| sim.world().get::<Transform>(e).unwrap().translation.y;
+    let (up, down) = (y(&sim, cork), y(&sim, stone));
+
+    assert!(
+        down < -2.0,
+        "a caixa 3x mais densa que o fluido tem de ir ao fundo ({down})"
+    );
+    // ⚠️ O oráculo que separa Arquimedes de uma força constante: a cortiça PARA perto da
+    // superfície (y = 0). Uma `Force Y` forte o bastante para levantá-la a lançaria para
+    // fora da poça e ela continuaria subindo — é justamente o defeito que esta wave veio
+    // fechar, e é por isso que o teto faz parte da asserção.
+    assert!(
+        up.abs() < 0.5,
+        "a cortiça tem de PARAR na linha d'água, e não ser arremessada nem afundar ({up})"
+    );
+}

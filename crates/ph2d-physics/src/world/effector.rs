@@ -41,6 +41,7 @@ use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::{ColliderSet, NarrowPhase};
 use rapier2d::na::Vector2;
 
+use super::buoyancy;
 use super::desc::{AreaEffect, BodyDesc};
 
 /// **Is this body a force zone, and with what effect?** The single door.
@@ -64,7 +65,7 @@ use super::desc::{AreaEffect, BodyDesc};
 #[must_use]
 pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
     let e = desc.effector?;
-    let inert = e.force[0] == 0.0 && e.force[1] == 0.0 && e.drag <= 0.0;
+    let inert = e.force[0] == 0.0 && e.force[1] == 0.0 && e.drag <= 0.0 && e.density <= 0.0;
     if !desc.is_sensor || inert {
         return None;
     }
@@ -94,6 +95,7 @@ pub(crate) fn apply(
     colliders: &ColliderSet,
     narrow_phase: &NarrowPhase,
     zones: &[(RigidBodyHandle, AreaEffect)],
+    gravity: Vector2<f32>,
     dt: f32,
 ) {
     // Fast path AND contract: a world with no zone never touches a body, so it is
@@ -101,8 +103,10 @@ pub(crate) fn apply(
     if zones.is_empty() {
         return;
     }
+    let mut to_float: Vec<RigidBodyHandle> = Vec::new();
     for &(zone_body, effect) in zones {
         let force = Vector2::new(effect.force[0], effect.force[1]);
+        to_float.clear();
         // The zone's own collider handle, copied out so the immutable borrow of
         // `bodies` ends before the impulses below need it mutably.
         let Some(zone_collider) = bodies
@@ -150,6 +154,24 @@ pub(crate) fn apply(
                 b.set_linvel(v * k, true);
                 b.set_angvel(w * k, true);
             }
+            // Arquimedes é anotado aqui e aplicado FORA deste laço: ele precisa ler o
+            // collider da zona E o do corpo enquanto escreve no corpo, o que não cabe
+            // dentro do empréstimo que este laço já segura. A lista é reusada por zona
+            // (a capacidade sobrevive ao `clear`), então uma cena sem empuxo não aloca.
+            if effect.density > 0.0 {
+                to_float.push(parent);
+            }
+        }
+        for &body in &to_float {
+            buoyancy::apply(
+                bodies,
+                colliders,
+                body,
+                zone_collider,
+                gravity,
+                effect.density,
+                dt,
+            );
         }
     }
 }

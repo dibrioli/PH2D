@@ -207,6 +207,9 @@ fn populate_physics(store: &mut WidgetStore) {
         // The medium's resistance. Same range as the other drag knobs in this app —
         // it is the same law, so it must be the same numbers.
         (ids::INSP_PHYS_AREA_DRAG, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: drag coefficient
+        // Densidade do fluido: MESMA faixa do `Density` do collider, porque a
+        // comparação entre os dois é justamente a leitura (menor boia, maior afunda).
+        (ids::INSP_PHYS_AREA_DENSITY, 0.0, 0.0, 1000.0, 0.05), // LITERAL-PX-OK: kg/m^2
     ] {
         store.register(
             id,

@@ -27,9 +27,9 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, DampMode,
-        DampingOverride, Dominance, GravityScale, InitialVelocity, MassOverride, MaterialCombine,
-        RigidBody,
+        AreaBuoyancy, AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, CombineRule,
+        DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity, MassOverride,
+        MaterialCombine, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -41,6 +41,7 @@ pub(crate) fn apply_physics_edit(
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
     const AREA_EFFECTOR: &str = "ph2d::physics::AreaEffector";
     const AREA_DRAG: &str = "ph2d::physics::AreaDrag";
+    const AREA_BUOYANCY: &str = "ph2d::physics::AreaBuoyancy";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -325,6 +326,22 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
+    if let PhysicsFieldEdit::AreaDensity(v) = edit {
+        // A densidade do fluido (W-Buoyancy) — o terceiro componente desta área, mesmo
+        // gate SENSOR dos irmãos. Uma densidade negativa não é uma coisa; zero é a área
+        // sem empuxo, e destaca.
+        if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
+            return;
+        }
+        let b = AreaBuoyancy(v.max(0.0));
+        if b.is_neutral() {
+            queue_remove(queue, registry, entity_bits, AREA_BUOYANCY);
+        } else {
+            queue_set(queue, registry, entity_bits, AREA_BUOYANCY, &b);
+        }
+        return;
+    }
+
     if let PhysicsFieldEdit::AreaDrag(v) = edit {
         // The medium half of a force zone (W-AreaDrag). Its OWN component, so a zone
         // that only resists carries no force blob and vice versa — and so that adding
@@ -528,7 +545,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::OneWay(_)
         | PhysicsFieldEdit::ForceX(_)
         | PhysicsFieldEdit::ForceY(_)
-        | PhysicsFieldEdit::AreaDrag(_) => {
+        | PhysicsFieldEdit::AreaDrag(_)
+        | PhysicsFieldEdit::AreaDensity(_) => {
             unreachable!("handled above")
         }
     }

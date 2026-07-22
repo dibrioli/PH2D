@@ -353,6 +353,10 @@ pub const INSP_PHYS_FORCE_Y: NodeId = hash_node_id("insp_phys_force_y");
 /// The other half of a force zone: force is the push, this is the water. Same law as
 /// the world default drag; detaches its `AreaDrag` at zero.
 pub const INSP_PHYS_AREA_DRAG: NodeId = hash_node_id("insp_phys_area_drag");
+/// §11 Densidade do FLUIDO (W-Buoyancy) — o empuxo de Arquimedes dentro deste sensor.
+/// Comparável ao `Density` do collider: um corpo menos denso que isto boia, mais denso
+/// afunda. Destaca seu `AreaBuoyancy` em zero.
+pub const INSP_PHYS_AREA_DENSITY: NodeId = hash_node_id("insp_phys_area_density");
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

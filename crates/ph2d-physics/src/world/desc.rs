@@ -96,6 +96,20 @@ pub struct AreaEffect {
     /// substance rather than a tuning surface, and the per-BODY `DampingOverride`
     /// already covers the asymmetric case.
     pub drag: f32,
+    /// **Densidade do fluido** (kg/m² em 2D) — o empuxo de Arquimedes.
+    ///
+    /// `0` (o default) é uma área sem empuxo, byte-idêntica a antes deste campo. Maior
+    /// que zero, a área empurra cada corpo submerso para cima com `ρ·|g|·A_submersa`,
+    /// aplicada no centroide da parte submersa (ver [`super::buoyancy`]).
+    ///
+    /// ⚠️ **Não é a mesma coisa que uma `force` para cima, e a diferença é o que faz
+    /// valer a pena:** uma força constante não sabe onde a superfície está (o corpo leve
+    /// é arremessado para fora em vez de parar na linha d'água), é por MASSA e não por
+    /// densidade (o número certo muda para cada objeto, quando a intuição é *madeira
+    /// boia, pedra afunda* — propriedade do MATERIAL), e não endireita nada. Arquimedes
+    /// resolve os três com um número só, e o número é comparável ao `density` do
+    /// collider: menor que ele afunda, maior boia.
+    pub density: f32,
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

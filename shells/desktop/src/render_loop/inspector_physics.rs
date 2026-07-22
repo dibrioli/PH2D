@@ -25,9 +25,9 @@ pub(crate) fn build_physics_info(
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
-        AreaDrag, AreaEffector, Ccd, Collider, ColliderShape, DampingOverride, Dominance,
-        GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
-        MaterialCombine, OneWayPlatform, RigidBody,
+        AreaBuoyancy, AreaDrag, AreaEffector, Ccd, Collider, ColliderShape, DampingOverride,
+        Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
+        MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -78,6 +78,9 @@ pub(crate) fn build_physics_info(
     // Optional AreaDrag (W-AreaDrag) — the medium half, its own component so that
     // adding it costs no `PROJECT_SCHEMA` bump. Same Sensor-only condition in paint.
     let area_drag = world.get::<AreaDrag>(entity).map_or(0.0, |d| d.0);
+    // Optional AreaBuoyancy (W-Buoyancy) — a densidade do fluido, terceiro componente
+    // da mesma área e pela mesma razão: um campo novo seria bump de schema.
+    let area_density = world.get::<AreaBuoyancy>(entity).map_or(0.0, |b| b.0);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -119,6 +122,7 @@ pub(crate) fn build_physics_info(
             one_way: false,
             force: [0.0, 0.0],
             area_drag: 0.0,
+            area_density: 0.0,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -179,5 +183,6 @@ pub(crate) fn build_physics_info(
         one_way,
         force,
         area_drag,
+        area_density,
     })
 }

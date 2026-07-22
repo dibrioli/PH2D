@@ -481,3 +481,62 @@ fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
         );
     }
 }
+
+/// **O terceiro componente da mesma área, e os três não se atrapalham** (W-Buoyancy).
+///
+/// A terceira vez que esta linha escolhe componente novo em vez de campo novo, pela
+/// terceira vez pelo mesmo motivo: blob de componente é postcard POSICIONAL, então um
+/// campo seria bump de `PROJECT_SCHEMA`, e um bump recusa todo projeto já salvo.
+#[test]
+fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
+    use ph2d_physics_ecs::{AreaBuoyancy, AreaDrag, AreaEffector};
+
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+
+    // SÓLIDO: recusado, exatamente como Force e Drag.
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(6.0));
+    assert!(
+        sim.world().get::<AreaBuoyancy>(e).is_none(),
+        "densidade de fluido num collider SÓLIDO tem de ser recusada — a narrow phase \
+         não registra sobreposição para ele"
+    );
+
+    apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(6.0));
+    assert_eq!(
+        sim.world().get::<AreaBuoyancy>(e).copied(),
+        Some(AreaBuoyancy(6.0)),
+        "num sensor, a densidade anexa o componente"
+    );
+    assert!(
+        sim.world().get::<AreaEffector>(e).is_none() && sim.world().get::<AreaDrag>(e).is_none(),
+        "uma poça que só faz BOIAR não pode carregar blob de força nem de arrasto — é a \
+         razão inteira de serem três componentes"
+    );
+
+    // Os três convivem, e mexer num não mexe nos outros.
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(2.0));
+    apply(&mut sim, e, PhysicsFieldEdit::ForceX(1.0));
+    assert_eq!(
+        (
+            sim.world().get::<AreaBuoyancy>(e).copied(),
+            sim.world().get::<AreaDrag>(e).copied(),
+            sim.world().get::<AreaEffector>(e).map(|a| a.force),
+        ),
+        (
+            Some(AreaBuoyancy(6.0)),
+            Some(AreaDrag(2.0)),
+            Some([1.0, 0.0])
+        ),
+    );
+
+    // Zero destaca só o dele.
+    apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(0.0));
+    assert!(
+        sim.world().get::<AreaBuoyancy>(e).is_none()
+            && sim.world().get::<AreaDrag>(e).is_some()
+            && sim.world().get::<AreaEffector>(e).is_some(),
+        "destacar a densidade não pode levar os irmãos junto"
+    );
+}

@@ -188,6 +188,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_FORCE_X if info.is_sensor => Some(PhysicsFieldEdit::ForceX(v)),
             ids::INSP_PHYS_FORCE_Y if info.is_sensor => Some(PhysicsFieldEdit::ForceY(v)),
             ids::INSP_PHYS_AREA_DRAG if info.is_sensor => Some(PhysicsFieldEdit::AreaDrag(v)),
+            ids::INSP_PHYS_AREA_DENSITY if info.is_sensor => Some(PhysicsFieldEdit::AreaDensity(v)),
             _ => None,
         };
         if let Some(edit) = edit {

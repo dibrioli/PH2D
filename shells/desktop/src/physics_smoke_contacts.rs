@@ -8,7 +8,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{
+    AreaBuoyancy, AreaDrag, AreaEffector, BodyKind, Collider, ColliderShape, RigidBody,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 use crate::physics_smoke::spawn_floor;
@@ -213,6 +215,132 @@ impl crate::App {
              knobs on one area, and the pair is the whole difference between a fan and a liquid. Select any zone: Section 11 shows Trigger = Sensor, Force X/Y and Drag -- \
              switch Trigger to Solid and all three rows vanish. Press B for the outlines (the \
              orange arrow is the push; drag has no direction to draw)."
+        );
+    }
+
+    /// **Scene 27 (W-Buoyancy).** Arquimedes: a área sabe QUANTO do corpo está dentro
+    /// dela, e isso resolve três coisas que uma `Force Y` constante não resolve.
+    ///
+    /// Uma piscina (`Fluid Density = 4`, `Drag = 1.5`) e cinco corpos:
+    ///
+    /// - **três caixas de densidades 1, 3 e 12**: a leve **para na linha d'água** (y ≈
+    ///   0,14), a de 3 flutua **quase toda submersa** (−0,11: menos densa que o fluido,
+    ///   mas por pouco) e a de 12 vai ao fundo. Uma força constante arremessaria a leve
+    ///   para fora, e as três responderiam à MASSA em vez de à densidade.
+    ///   ⚠️ A caixa do meio era **densidade 4** — igual à do fluido — e a descrição dizia
+    ///   *"fica a meia-água"*. Medido, ela vai ao FUNDO: empuxo neutro não empurra de
+    ///   volta, ele só deixa de puxar, então a velocidade com que ela chega só é removida
+    ///   pelo arrasto. Estava fisicamente certo e a frase mentia; a densidade virou 3;
+    /// - **um "barco" largado tombado a 1 rad**: ele **se endireita sozinho**, porque o
+    ///   empuxo age no centroide da parte SUBMERSA e o braço de alavanca é um torque
+    ///   restaurador — de graça, é a mesma fórmula;
+    /// - **uma bola**, para ver a superfície molhar uma curva (recortada como polígono
+    ///   de 32 lados, com o viés de 0,64% que o módulo documenta).
+    ///
+    /// Toca sozinha. Selecione a poça: §11 mostra **Trigger = Sensor** e as quatro rows
+    /// da área (Force X/Y, Drag, **Fluid Density**). **B** liga o contorno.
+    pub(crate) fn physics_smoke_buoyancy(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // A poça: superfície em y = 0, fundo logo acima do chão.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, -1.3)),
+            Sprite::atlas(WHITE_TILE_KEY, [7.0, 2.6], [0.25, 0.55, 0.95, 0.30]),
+            Name::new("Pool"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 3.5,
+                    half_y: 1.3,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            AreaBuoyancy(4.0),
+            AreaDrag(1.5),
+        ));
+
+        // Três densidades contra o fluido 4: 4x mais leve, igual, 3x mais pesada.
+        for (x, d, hue, tag) in [
+            (-2.6f32, 1.0f32, [0.95, 0.85, 0.30, 1.0], "Cork 1"),
+            (-1.4, 3.0, [0.95, 0.60, 0.25, 1.0], "Wood 3"),
+            (-0.2, 12.0, [0.85, 0.30, 0.30, 1.0], "Stone 12"),
+        ] {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 2.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], hue),
+                Name::new(tag),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.25,
+                        half_y: 0.25,
+                    },
+                    density: d,
+                    friction: 0.4,
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        // O barco tombado — o gesto que só o torque do centroide submerso produz.
+        world.spawn((
+            Transform {
+                translation: Vec2::new(1.5, 1.2),
+                rotation: 1.0,
+                scale: Vec2::new(1.0, 1.0),
+                skew_x: 0.0,
+                skew_y: 0.0,
+            },
+            Sprite::atlas(WHITE_TILE_KEY, [1.6, 0.3], [0.40, 0.85, 0.55, 1.0]),
+            Name::new("Capsized Boat"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.8,
+                    half_y: 0.15,
+                },
+                density: 1.0,
+                friction: 0.4,
+                ..Collider::default()
+            },
+        ));
+
+        // E uma bola, para a superfície molhar uma curva.
+        world.spawn((
+            Transform::from_translation(Vec2::new(3.0, 2.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], [0.85, 0.85, 0.95, 1.0]),
+            Name::new("Ball 1.5"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.35 },
+                density: 1.5,
+                friction: 0.4,
+                ..Collider::default()
+            },
+        ));
+
+        eprintln!(
+            "[physics-smoke 27] Tocando. ARQUIMEDES: a poca sabe QUANTO de cada corpo esta dentro \
+             dela. As tres caixas tem densidades 1, 3 e 12 contra um fluido de 4 -- a AMARELA para \
+             na LINHA D'AGUA (uma Force Y constante a arremessaria para FORA da piscina, porque \
+             nao sabe onde a superficie esta), a LARANJA (densidade 3) flutua QUASE TODA SUBMERSA \
+             e a VERMELHA vai ao fundo. Isso e por DENSIDADE, nao por massa: madeira boia, \
+             pedra afunda. O BARCO VERDE entra TOMBADO a 1 rad e SE ENDIREITA SOZINHO -- o empuxo \
+             age no centroide da parte SUBMERSA, e quando o corpo inclina esse centroide sai de \
+             cima do centro de massa, entao o braco de alavanca vira um torque restaurador (de \
+             graca, mesma formula). Selecione a poca: Section 11 mostra Trigger = Sensor e as \
+             QUATRO rows da area (Force X/Y, Drag, Fluid Density). B liga o contorno."
         );
     }
 }

@@ -152,7 +152,8 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// `one_way` is the PRESENCE of the optional [`crate::OneWayPlatform`] marker — the
 /// collider is solid only from its local +Y side; rides the `BodyDesc` for the rewind.
 /// `effector` is what the area DOES — the force in newtons from the optional
-/// [`crate::AreaEffector`] and the drag from the optional [`crate::AreaDrag`], bundled
+/// [`crate::AreaEffector`], a drag from the optional [`crate::AreaDrag`] and a fluid
+/// density from the optional [`crate::AreaBuoyancy`] — bundled
 /// by the caller into one `AreaEffect` (the two stay separate components because that
 /// side is serialized; see `AreaDrag`). Absent = a body that neither pushes nor
 /// resists. It rides the `BodyDesc` for the rewind like the rest, and the wrapper is

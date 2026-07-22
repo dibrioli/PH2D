@@ -2869,3 +2869,97 @@ as dimensões, e o gesto deixa de ser um gesto.
 Empuxo de verdade (hoje "flutuar" é uma força constante para cima vencendo o peso — um empuxo real dependeria
 da fração SUBMERSA, e a zona não sabe quanto do corpo está dentro dela) · a força continua em eixos de MUNDO,
 então girar a zona não gira o vento · falloff dentro da área · torque de área.
+
+---
+
+## §W-Buoyancy — ARQUIMEDES: a área sabe QUANTO do corpo está dentro dela (2026-07-21, smoke `=27`)
+
+**A lacuna que o W-AreaDrag deixou nomeada**, e que eu tinha dito ao Enio ser a parte desonesta: até aqui
+"flutuar" era uma `Force Y` constante vencendo o peso. Três defeitos que um artista sente na hora:
+
+1. **não se auto-nivela** — a força não sabe onde a superfície está, então o corpo leve é *arremessado para
+   fora da piscina* em vez de parar na linha d'água;
+2. **é por MASSA, não por densidade** — o número certo tem de ser re-descoberto por objeto (caixa 4× mais
+   pesada, 4× a força), quando a intuição real é *madeira boia, pedra afunda*, propriedade do **material**;
+3. **não endireita nada** — barco tombado fica tombado.
+
+`ρ_fluido · |g| · A_submersa`, para cima, no **centroide da parte submersa**, resolve os três com **um número
+só**. O corpo sobe até a área submersa gerar o próprio peso ⇒ a linha d'água cai de graça; mais denso que o
+fluido nunca chega lá; e o centroide se desloca quando o corpo inclina ⇒ o braço de alavanca **endireita o
+barco**, sem uma linha extra.
+
+**A superfície é perpendicular à GRAVIDADE, não ao eixo Y.** Água tem superfície horizontal mesmo numa poça
+torta — e o mesmo raciocínio diz que com gravidade lateral a superfície é vertical. Sai de graça e apaga dois
+casos especiais; ⚠️ com gravidade **zero** não há empuxo, o que é fisicamente certo e não um degenerado a
+tratar. Gate irmão pina cada metade.
+
+**O polígono vem do collider VIVO do rapier**, nunca do `BodyDesc`: é ele que a escala do `Transform` já
+alcançou (W6), então uma poça ou um barco escalados boiam com o tamanho que estão **desenhados**. Recorte
+Sutherland–Hodgman contra um semi-plano + shoelace para área e centroide. ⚠️ **O ponto de interseção entra na
+lista** — sem ele a área saltaria de vértice em vértice e o corpo tremeria na linha d'água (mutação sangra).
+
+### ⚠️ O viés de 0,64%, medido em vez de acreditado
+
+O rapier representa bola e cápsula **exatamente** (sem vértices), então o empuxo as tessela pelas MESMAS portas
+que constroem o collider de elipse e que o overlay desenha. Um N-gono regular inscrito tem `(N/2π)·sin(2π/N)` da
+área do círculo = **99,36%** em `ELLIPSE_SEGS = 32`. O gate afirma **esse número**, não uma tolerância.
+
+⚠️ **E a 1ª medição dele deu 0,745 — exatamente 3/4** — o que denunciou o mecanismo em vez de esconder: no
+PRIMEIRO tick só 3 dos 4 sub-passos aplicam, porque a zona só alcança quem o sub-passo **anterior** reportou
+como sobreposto (o lag de um sub-passo que o módulo documenta desde o W-Area). O gate mede em regime.
+
+### ⚠️ QUATRO fixtures nasceram erradas, e as quatro pelo mesmo tipo de erro
+
+1. **Um retângulo não tem quilha.** O gate do barco exigia ângulo pequeno e ficou vermelho sobre um barco
+   perfeitamente nivelado que por acaso girou 180° (3,141 rad). O oráculo virou `|sin(ângulo)|`: 0 e π são a
+   MESMA pose flutuante.
+2. **O gate de "corpo acima da superfície" zerou a gravidade do MUNDO** — e assim desligou o próprio empuxo que
+   ele media: verde pelo motivo errado (e o gate irmão já cobria esse caso). Agora a gravidade é normal e o
+   controle é quem tem `gravity_scale: 0`.
+3. **O controle foi atropelado pelo experimento — TERCEIRA vez nesta linha** (o W-Area teve duas). O corpo de
+   baixo, arremessado por uma poça de densidade 100, atingiu o controle a **21,8 m**. Controle vai para outra
+   COLUNA, e a densidade da fixture desceu para 8.
+4. **A linha d'água foi medida cedo demais.** O sistema é amortecido; medir a deriva a 400 passos reprova um
+   corpo que ainda está assentando, que é o produto funcionando. Agora mede sobre os últimos 300 de 1200.
+
+### ⚠️ O smoke afirmava "fica a meia-água" e a medição desmentiu
+
+A caixa de densidade **igual** à do fluido (4) **vai ao FUNDO** (−2,46 medido). Está certo: empuxo neutro não
+empurra de volta, ele só deixa de puxar — a velocidade com que ela chega só é removida pelo arrasto. A física
+estava certa e **a frase mentia**; a caixa do meio virou densidade **3** e agora flutua *quase toda submersa*
+(−0,11), que é o caso intermediário de verdade.
+
+### Onde mora o quê
+
+`AreaEffect.density` · `world/buoyancy.rs` (`local_polygon` — a porta única de *"que forma é esta?"*, lendo o
+collider do solver — `clip_below`, `area_centroid`, `buoyant_force`, `apply`) · `zone_effect` conta densidade
+como não-inerte · `AreaBuoyancy(f32)` em `components/overrides.rs` (**registro 16→17**, `PROJECT_SCHEMA` fica em
+**29** pela **terceira vez pela mesma razão**: componente novo é aditivo, campo novo seria bump, e um bump
+**recusa todo projeto já salvo**) · row **Fluid Density** no bloco de sensor · `PhysicsFieldEdit::AreaDensity`.
+c9 **71→73** (a poça + a caixa que entra INCLINADA, então o momento restaurador entra no hash).
+
+⚠️ **`apply_impulse_at_point`, não `apply_impulse`** — é o único gate que distingue as duas, e é o que
+endireita o barco. O empuxo sai do laço de empréstimos do `effector::apply` porque precisa ler os DOIS
+colliders enquanto escreve no corpo; a lista é reusada por zona, então cena sem empuxo não aloca.
+
+### Gates e mutações
+
+Wrapper 7 (linha d'água é EQUILÍBRIO · densidade decide, não massa · **o barco se endireita** · corpo fora da
+poça intocado · gravidade zero = sem empuxo · **superfície ⊥ gravidade** · o viés do polígono). ECS 1 (dobra +
+rewind, fixture com **só** `AreaBuoyancy`). Seam +1 (as **quatro** rows da área) e shell +2 (**terceiro
+componente, e mexer num não mexe nos outros** · **a poça com empuxo é autorável só com gestos da UI**, cujo
+oráculo é a cortiça **PARAR** perto da superfície — exatamente o que separa Arquimedes da força constante).
+**6 mutações no kernel, 6 sangram.**
+
+### Smoke `=27`
+
+Poça (`Fluid Density = 4`, `Drag = 1.5`) e cinco corpos, medidos: cortiça (d=1) para em **y ≈ 0,14** · madeira
+(d=3) flutua quase submersa em **−0,11** · pedra (d=12) vai ao fundo em **−2,55** · bola (d=1,5) boia em
+**0,06** · e o barco entra tombado a 1 rad (**sin 0,84**) e se endireita para **sin 0,01**.
+
+### Aberto no W-Buoyancy
+
+Arrasto de forma (o arrasto da área é uniforme; um casco de barco deveria resistir mais de lado que de proa —
+depende da secção projetada, que este módulo já sabe calcular) · a superfície é PLANA (ondas seriam outra
+coisa) · o `local_polygon` não conhece `Compound`/`TriMesh`, e devolve `None` — nenhum empuxo é melhor que um
+empuxo sobre silhueta inventada.

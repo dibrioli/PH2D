@@ -19,7 +19,8 @@
 //! contact-modification hook, W-OneWay, and one ball falling through a WIND COLUMN →
 //! the force-zone impulse read from the narrow phase's intersection graph, W-Area, and
 //! one ball sinking through a DRAG POOL → the zone's decay applied outside rapier's own
-//! damping point, W-AreaDrag): entities carry
+//! damping point, W-AreaDrag, and one crate FLOATING in a pool → o recorte de polígono
+//! do empuxo e o impulso aplicado num PONTO, W-Buoyancy): entities carry
 //! `RigidBody`/`Collider`, the bridge spawns rapier bodies, steps at the
 //! tick, and reads poses back into `Transform`. The hash is over those
 //! readback `Transform`s — so it proves OUR code (iteration order, the
@@ -30,16 +31,16 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 71
+//! physics-ecs-c9 body_count: 73
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    AreaDrag, AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode,
-    DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
+    AreaBuoyancy, AreaDrag, AreaEffector, BodyKind, Ccd, Collider, ColliderShape, CombineRule,
+    DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX,
+    LockRotation, MassOverride, MaterialCombine, OneWayPlatform, PhysicsBridge, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -483,6 +484,48 @@ fn main() {
             ..Collider::default()
         },
         Transform::from_translation(Vec2::new(-64.0, 4.0)),
+    ));
+
+    // Uma POÇA e a caixa boiando nela (W-Buoyancy): o empuxo recorta o polígono do corpo
+    // contra a superfície (Sutherland–Hodgman + shoelace) e aplica o impulso NUM PONTO, o
+    // que gera torque — dois folds de `f32` que nenhum outro corpo do harness percorre, e
+    // que CI prova bit-idênticos cross-OS. A caixa entra INCLINADA, então o momento
+    // restaurador entra no hash também. Lane própria, na ponta esquerda.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 2.0,
+                half_y: 1.5,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaBuoyancy(4.0),
+        Transform::from_translation(Vec2::new(-70.0, -1.5)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.4,
+                half_y: 0.2,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform {
+            translation: Vec2::new(-70.0, 1.0),
+            rotation: 0.6,
+            scale: Vec2::new(1.0, 1.0),
+            skew_x: 0.0,
+            skew_y: 0.0,
+        },
     ));
 
     let mut bridge = PhysicsBridge::new();

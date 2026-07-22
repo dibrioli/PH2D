@@ -4,6 +4,7 @@
 //! add bodies + colliders, then call [`PhysicsWorld::step`] once per
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
+pub mod buoyancy;
 pub mod checkpoint;
 pub mod collider_build;
 pub mod contacts;
@@ -564,6 +565,7 @@ impl PhysicsWorld {
                 &self.colliders,
                 &self.narrow_phase,
                 &self.effectors,
+                self.gravity,
                 self.integration_parameters.dt,
             );
             // The one-way platform hook. Installing it is byte-neutral for every scene

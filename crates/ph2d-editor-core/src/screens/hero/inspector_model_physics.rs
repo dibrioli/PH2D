@@ -172,6 +172,10 @@ pub struct InspectorPhysicsInfo {
     /// component; absent means an area that resists nothing. Offered under the same
     /// Sensor condition as [`force`](InspectorPhysicsInfo::force).
     pub area_drag: f32,
+    /// **Densidade do fluido** (W-Buoyancy): o empuxo desta área. Espelha o opcional
+    /// `AreaBuoyancy`; ausente significa uma área sem empuxo. Oferecida sob a mesma
+    /// condição de Sensor que [`force`](InspectorPhysicsInfo::force).
+    pub area_density: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -282,6 +286,9 @@ pub enum PhysicsFieldEdit {
     /// Area drag (W-AreaDrag) — the medium's resistance inside a force zone. Attaches
     /// the optional `AreaDrag` component, detached at zero. SENSOR-only, like Force.
     AreaDrag(f32),
+    /// Densidade do fluido (W-Buoyancy) — o empuxo de Arquimedes. Anexa o opcional
+    /// `AreaBuoyancy`, destacado em zero. SENSOR-only, como Force e Drag.
+    AreaDensity(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

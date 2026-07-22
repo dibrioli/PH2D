@@ -50,9 +50,26 @@ fn zone(x: f32, y: f32, half_x: f32, half_y: f32, force: [f32; 2]) -> BodyDesc {
 
 /// The general zone: a force, a drag, or both.
 fn zone_with(x: f32, y: f32, half_x: f32, half_y: f32, force: [f32; 2], drag: f32) -> BodyDesc {
+    zone_full(x, y, half_x, half_y, force, drag, 0.0)
+}
+
+/// The fullest zone: force, drag and fluid density.
+fn zone_full(
+    x: f32,
+    y: f32,
+    half_x: f32,
+    half_y: f32,
+    force: [f32; 2],
+    drag: f32,
+    density: f32,
+) -> BodyDesc {
     BodyDesc {
         is_sensor: true,
-        effector: Some(AreaEffect { force, drag }),
+        effector: Some(AreaEffect {
+            force,
+            drag,
+            density,
+        }),
         ..desc(
             RigidBodyType::Fixed,
             x,
@@ -295,6 +312,7 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
             effector: Some(AreaEffect {
                 force: [5.0, 0.0],
                 drag: 0.0,
+                density: 0.0,
             }),
             ..desc(
                 RigidBodyType::Fixed,
@@ -500,6 +518,7 @@ fn an_inert_zone_is_byte_identical_whether_it_is_zero_force_or_zero_drag() {
         Some(AreaEffect {
             force: [0.0, 0.0],
             drag: 0.0,
+            density: 0.0,
         }),
         None,
     ]

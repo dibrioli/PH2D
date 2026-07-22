@@ -166,3 +166,82 @@ fn the_bridge_folds_the_area_drag_and_a_rewind_preserves_it() {
         y(&sim, in_pool)
     );
 }
+
+#[test]
+fn the_bridge_folds_the_buoyancy_and_a_rewind_preserves_it() {
+    // O empuxo (W-Buoyancy), pelo desfecho que um artista confere: a caixa MENOS densa
+    // que o fluido sobe à superfície e para lá, a MAIS densa afunda. A fixture usa um
+    // corpo com SÓ `AreaBuoyancy` — nenhum `AreaEffector`, nenhum `AreaDrag` — o que
+    // prova que os três componentes chegam ao mundo como um efeito só.
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 4.0,
+                half_y: 2.0,
+            },
+            is_sensor: true,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -2.0)),
+        ph2d_physics_ecs::AreaBuoyancy(4.0),
+    ));
+    let float_me = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.25,
+                    half_y: 0.25,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(-2.0, -1.0)),
+        ))
+        .id();
+    let sink_me = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.25,
+                    half_y: 0.25,
+                },
+                density: 12.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(2.0, -1.0)),
+        ))
+        .id();
+
+    let mut bridge = PhysicsBridge::new();
+    play_to(&mut bridge, &mut sim, 240);
+    fn y(sim: &SimWorld, e: Entity) -> f32 {
+        sim.world().get::<Transform>(e).unwrap().translation.y
+    }
+    let (up, down) = (y(&sim, float_me), y(&sim, sink_me));
+    assert!(
+        up > down + 1.0,
+        "a caixa 4x menos densa que o fluido tem de boiar bem acima da 3x mais densa \
+         ({up} vs {down}) — a ponte não está dobrando `AreaBuoyancy` na sim"
+    );
+
+    // Scrub para t=0 e replay: o mesmo empuxo, então ele viajou no `BodyDesc`.
+    bridge.dispatch(&mut sim, false, 0);
+    play_to(&mut bridge, &mut sim, 240);
+    assert!(
+        (y(&sim, float_me) - up).abs() < 1e-3,
+        "depois de um rewind o empuxo não foi re-armado ({up} -> {})",
+        y(&sim, float_me)
+    );
+}

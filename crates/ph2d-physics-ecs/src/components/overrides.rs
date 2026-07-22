@@ -529,3 +529,35 @@ impl AreaDrag {
 }
 
 impl SimComponent for AreaDrag {}
+
+/// **Empuxo de área — a densidade do FLUIDO (W-Buoyancy).**
+///
+/// Ausente (o caso comum) é uma área sem empuxo. Presente, seu `f32` é a densidade do
+/// fluido em kg/m² (2D), e cada corpo submerso recebe `ρ·|g|·A_submersa` para cima,
+/// aplicada no centroide da parte submersa.
+///
+/// ⚠️ **Não é uma `AreaEffector` para cima, e a diferença é o motivo da wave.** Uma
+/// força constante não sabe onde a superfície está (o corpo leve é arremessado para fora
+/// da piscina em vez de parar na linha d'água), é vencida pela MASSA e não pela densidade
+/// (o número certo muda para cada objeto, quando a intuição é *madeira boia, pedra
+/// afunda* — propriedade do MATERIAL), e não endireita nada. Arquimedes resolve os três
+/// com um número só, e ele é **comparável ao `density` do `Collider`**: menor que ele o
+/// corpo afunda, maior ele boia.
+///
+/// Terceiro componente da mesma área, pela terceira vez pela mesma razão: um blob de
+/// componente é postcard POSICIONAL, então apendar campo no [`AreaEffector`] seria bump
+/// de `PROJECT_SCHEMA` — e um bump **recusa todo projeto já salvo**. Mesmo acoplamento
+/// dos irmãos: só morde num collider **SENSOR**, e a row da §11 é oferecida sob
+/// exatamente essa condição. Config, nunca estado vivo.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AreaBuoyancy(pub f32);
+
+impl AreaBuoyancy {
+    /// É neutro — uma área sem empuxo? Usado para DESTACAR, como os irmãos.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.0 <= 0.0
+    }
+}
+
+impl SimComponent for AreaBuoyancy {}

@@ -60,6 +60,7 @@ fn with_body() -> InspectorPhysicsInfo {
         one_way: false,
         force: [0.0, 0.0],
         area_drag: 0.0,
+        area_density: 0.0,
     }
 }
 
@@ -1239,10 +1240,11 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // ⚠️ All THREE, including Drag (W-AreaDrag). A sweep that enumerates the rows it
     // knows about is the premise that rots: the next row added to the sensor block
     // must be in this list, and the seam is where its absence shows.
-    const FORCE_IDS: [ph2d_a11y::NodeId; 3] = [
+    const FORCE_IDS: [ph2d_a11y::NodeId; 4] = [
         ids::INSP_PHYS_FORCE_X,
         ids::INSP_PHYS_FORCE_Y,
         ids::INSP_PHYS_AREA_DRAG,
+        ids::INSP_PHYS_AREA_DENSITY,
     ];
 
     for tag in [0u8, 1, 2] {
@@ -1287,6 +1289,11 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         &commit(sensor, ids::INSP_PHYS_AREA_DRAG, 4.0),
         PhysicsFieldEdit::AreaDrag(4.0),
         "Area Drag",
+    );
+    expect(
+        &commit(sensor, ids::INSP_PHYS_AREA_DENSITY, 6.0),
+        PhysicsFieldEdit::AreaDensity(6.0),
+        "Fluid Density",
     );
 
     // Refused on a SOLID collider and on a bodyless entity — the narrow phase records

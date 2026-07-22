@@ -47,11 +47,20 @@ E o corpus do censo **não contém um único deformer** ⇒ ele não consegue ve
 
 ### A fila REAL (o que sobrou, em ordem de valor medido)
 
-1. **Deformers na GPU** — `bend`/`twist`/`spherize`/`four_point_warp`/`lattice`/`kaleidoscope` não
-   têm kernel. São `reduce → broadcast → map`, e **não existe reduce reusável** no `ph2d-gpu-cook`
-   (o `scan` é reusável; o único reduce é **privado** dentro do `voronoi.rs`). **Um primitivo de
-   reduce destrava a família inteira** — é o irmão do `scan`, e o `ReduceSpec` é o irmão do
-   `GridSpec` (side-metadata no registry, `default None`, contrato intocado).
+1. **Deformers na GPU** — ⬛ **O CANAL LANDOU (2026-07-22, esta sessão) e a família de redução
+   está FECHADA.** O primitivo de reduce reusável (`ph2d-gpu-cook::reduce`, irmão do `scan`) +
+   o **6º canal do resolver** `ReduceSpec` (`ph2d_nodegraph::reduce_meta`, side-metadata no
+   registry, `default []`, append-only, **contrato congelado intocado**) destravaram a forma
+   `reduce → broadcast → map`. **Quatro nós na GPU, cobrindo os 3 operadores e a pluralidade:**
+   `motion.bend` (Max sobre `|x−pivot|`, **bit-exato** — sem produto) · `motion.twist` (Max sobre
+   `√(dx²+dy²)`, ε) · `motion.spherize` (**Sum**, e as **DUAS** reduções do centróide) ·
+   `motion.four_point_warp` (**QUATRO** reduções = o bbox, e a estreia do **Min**; box bit-exato,
+   só a homografia carrega ε). Provado no device (RTX): pior ε **3,8e-5** vs bound **medido 2e-4**;
+   gate de paridade + excursão + seam + mutações por operador; WGSL valida em todo o espaço de
+   presença (sem device); censo GANHOU deformers (antes não via o buraco). Smokes
+   `PH2D_GPU_COOK_DEMO=12/13/14`. **Restam SEM redução, de propósito:** `kaleidoscope` é
+   **count-changing** (`StreamOp`, replica em N fatias — outra máquina) e `lattice` é
+   gerador/distribuição, não deformer de stream — nenhum é fatia do canal de redução.
 2. **Auto-inserção de adapters** (§1.1) — a tabela `CONVERSIONS` e o `can_connect` **nunca foram
    construídos**; hoje o editor RECUSA fio incompatível em vez de oferecer o adapter. Os nós-adapter
    existem; falta a ponte.

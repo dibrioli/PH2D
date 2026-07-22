@@ -114,23 +114,57 @@ impl crate::App {
         }
 
         eprintln!(
-            "[physics-smoke 29] Tocando. A cruz BRANCA e o ESTADO (quem toca, sob que carga); o \
-             X que abre e some e o EVENTO (comecou agora). Numeros MEDIDOS pela sonda headless \
-             (probe_scene_29), 4 s a 60 Hz. ESQUERDA, a bola quicando: 7 transicoes, a primeira \
-             no tick 36 -- comecou/terminou alternando (36/37, 63/64, 73/74) ate assentar no 76, \
-             e entre um quique e outro a cruz SOME porque o par deixou de existir. MEIO, a caixa \
-             morta: UMA transicao, no tick 55, e mais nenhuma -- o X morre em 6 ticks e a cruz \
-             fica para sempre (o flash e o evento, a cruz e o estado). DIREITA, a pilha autorada \
-             JA encostada: 3 transicoes, TODAS no tick 1, e depois silencio absoluto -- a leitura \
-             da Unity, porque antes do primeiro passo a narrow phase nunca tinha rodado e nao \
-             existia verdade anterior. AGORA FACA AS DUAS COISAS QUE NAO SE VEEM SOZINHAS: (1) \
-             arraste a regua para TRAS -- as cruzes mudam para o que toca naquele tick e NADA \
-             pisca, porque um scrub nao atravessou transicao nenhuma; (2) desmarque Physics na \
-             barra -- as cruzes SOMEM (sem solver nao ha toque vivo), e ao remarcar elas voltam \
-             SEM piscar. B liga o contorno. LIMITE HONESTO, medido: um impacto rapido (acima de \
-             ~2 m de queda, ~7 m/s) nao produz evento nenhum -- o solver resolve e separa DENTRO \
-             do mesmo passo, entao nos dois instantes em que o canal amostra o par nao esta \
-             encostado. E o mesmo mecanismo do pico de impulso, e teria a mesma cura."
+            "\n\
+             ================ [physics-smoke 29] EVENTOS DE CONTATO ================\n\
+             \n\
+             DUAS MARCAS BRANCAS, E ELAS DIZEM COISAS DIFERENTES:\n\
+             \n\
+             cruz  +  (em pe)     = ESTADO. Estes dois estao se tocando AGORA.\n\
+                                    O TAMANHO dela e a CARGA (peso que o par aguenta).\n\
+             cruz  x  (deitada)   = EVENTO. Estes dois COMECARAM a se tocar agora.\n\
+                                    Abre, some em ~0,1 s, e nao volta.\n\
+             \n\
+             E ISSO QUE A WAVE ADICIONOU: antes o motor so sabia dizer 'estao se\n\
+             tocando'. Agora ele sabe dizer 'comecaram AGORA' e 'pararam AGORA' --\n\
+             que e o que um jogo precisa para tocar um som de impacto ou tirar vida.\n\
+             \n\
+             ---- O QUE OLHAR NA TELA (3 colunas) ---------------------------------\n\
+             \n\
+             ESQUERDA  bola quicando ... a cada pouso: um x pisca. Entre um quique\n\
+                                         e outro a cruz + SOME (nao estao mais se\n\
+                                         tocando). Medido: 7 transicoes.\n\
+             MEIO      caixa que nao quica ... pisca UMA vez e para. A cruz + fica\n\
+                                         para sempre. Este e o contraste que importa:\n\
+                                         o x e o EVENTO, a cruz e o ESTADO.\n\
+             DIREITA   pilha ja empilhada ... pisca UMA vez, no primeiro instante,\n\
+                                         e nunca mais. E de proposito (o motor nunca\n\
+                                         tinha olhado essa cena antes).\n\
+             \n\
+             ---- AS 2 COISAS QUE VOCE PRECISA FAZER (o resto e so olhar) ---------\n\
+             \n\
+             >>> Aperte L para abrir a TIMELINE embaixo. As duas ficam la. <<<\n\
+             \n\
+             (1) ARRASTE A REGUA DA TIMELINE PARA TRAS.\n\
+                 ESPERADO: as cruzes + mudam (para o que toca naquele instante),\n\
+                 e NENHUM x pisca.\n\
+                 POR QUE IMPORTA: voltar no tempo nao e uma colisao. Sem isso, todo\n\
+                 arrasto de regua dispararia dezenas de sons de impacto falsos.\n\
+             \n\
+             (2) DESMARQUE O BOTAO 'Physics' NA BARRA DA TIMELINE (perto de Loop).\n\
+                 ESPERADO: as cruzes SOMEM. Remarcando, elas voltam SEM piscar.\n\
+                 POR QUE IMPORTA: isto era um BUG ate esta wave -- com a fisica\n\
+                 desligada as cruzes ficavam na tela, descrevendo toques num mundo\n\
+                 que voce ja podia desmontar com a mao.\n\
+             \n\
+             ---- LIMITE CONHECIDO (medido, nao e defeito a reportar) -------------\n\
+             \n\
+             Queda ALTA (acima de ~2 m) nao gera evento: o motor resolve o pouso e\n\
+             ja separa os corpos dentro do mesmo passo, entao nos dois instantes em\n\
+             que o canal olha, eles nao estao encostados. Por isso a bola aqui cai\n\
+             de perto. Consertar isso e a mesma tarefa de medir a forca de impacto.\n\
+             \n\
+             (B liga/desliga o contorno dos colliders.)\n\
+             ======================================================================\n"
         );
     }
 }

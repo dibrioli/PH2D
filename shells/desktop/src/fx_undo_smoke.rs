@@ -347,7 +347,7 @@ fn select_the_shape(app: &mut crate::App) {
     eprintln!(
         "[smoke] UNDO DA PILHA DE EFEITOS (auto-dirigido) — não toque no mouse.\n\
          \x20 O roteiro clica **Add** (o 1º efeito da lista) e depois dá **Ctrl+Z**.\n\
-         \x20 Leia o terminal: `fx` tem de ir 0→1 no clique, `undo` tem de subir NO MESMO\n\
+         \x20 Leia o terminal: `fx` tem de ir 0->1 no clique, `undo` tem de subir NO MESMO\n\
          \x20 frame, e depois do Ctrl+Z `fx` tem de voltar a 0 numa só aplicação."
     );
 }

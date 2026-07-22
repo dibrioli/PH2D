@@ -150,7 +150,7 @@ fn the_scale_is_half_the_selections_world_bbox() {
     let xf = crate::vec_transform::build(&sim, &map);
     assert!(
         (offset_scale(&scene, &pen, &xf) - 4.5).abs() < 1e-9,
-        "multi-seleção usa a bbox da UNIÃO (x de 2 a 11 → maxdim 9 → 4.5)"
+        "multi-seleção usa a bbox da UNIÃO (x de 2 a 11 -> maxdim 9 -> 4.5)"
     );
 
     let empty = PenTool::default();
@@ -170,7 +170,7 @@ fn the_scale_is_half_the_selections_world_bbox() {
 fn the_scale_is_a_fact_of_the_sources_which_the_preview_never_moves() {
     let (scene, pen, xf) = scene_with_square(2.0);
     let before = offset_scale(&scene, &pen, &xf);
-    assert!((before - 1.0).abs() < 1e-9, "quadrado 2 → maxdim/2 = 1");
+    assert!((before - 1.0).abs() < 1e-9, "quadrado 2 -> maxdim/2 = 1");
     // O "frame de preview" do modelo novo: cozer e desenhar. A cena entra por `&VecScene` —
     // é o COMPILADOR que garante que ela não muda —, e a escala tem de sair idêntica.
     let mut sim = ph2d_ecs::SimWorld::default();

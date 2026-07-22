@@ -33,7 +33,7 @@ impl BodyCtx<'_> {
         // dobrar) — o mundo-d é `fração × vec_expand::offset_scale` na shell. Percentual
         // porque o mapa do store é estático: um rótulo em unidades de mundo mentiria
         // sempre que a seleção mudasse de tamanho.
-        let pct = params::slider_to_offset_frac(track) * 100.0;
+        let pct = params::slider_to_offset_frac(track) * 100.0; // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
         y = self.slider_row(
             "Offset",
             ids::VECTOR_EXPAND_OFFSET,

@@ -444,7 +444,7 @@ fn populate_ops(store: &mut WidgetStore) {
         ids::VECTOR_EXPAND_OFFSET,
         ids::VECTOR_EXPAND_OFFSET_NUM,
         offset_frac_to_slider(OFFSET_DEFAULT_FRAC),
-        OFFSET_DEFAULT_FRAC * 100.0,
+        OFFSET_DEFAULT_FRAC * 100.0, // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
         OFFSET_SLIDER_SCALE,
         OFFSET_SLIDER_OFFSET,
     );

@@ -59,6 +59,63 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do
 mapa entra AQUI na mesma sessão**, com uma linha; o detalhe fica no tracker.
 
+## ⚠️ Toda wave chega à UI — a política, não a boa intenção
+
+Pergunta do Enio no fim da jornada de 2026-07-21 (*"tudo isso está exposto na UI e é possível criar essas cenas
+todas usando apenas os parâmetros expostos?"*). A resposta foi **sim**, mas a pergunta expôs que isso era um
+hábito e não uma regra. Agora é regra, e vale para **toda wave futura desta linha**.
+
+### O que "chegar à UI" significa, em quatro condições
+
+Uma wave só fecha quando o que ela construiu é alcançável por um artista **sem escrever código**:
+
+1. **Existe** — todo componente registrado tem um caminho de escrita a partir do Inspector.
+   Gate: `shells/desktop/tests/every_physics_component_is_authorable.rs` (estrutural, sobre o fonte).
+2. **É pintado e registrado** — o controle aparece e é focável.
+   Gate: `architecture_panel_wiring_parity`.
+3. **O clique chega ao barramento** — cada row/chip despachado, com a recusa no `event`, nunca no laço de pintura
+   (*dim não é recusa*). Gate: a **varredura** de seam do painel, que clica **todos** os controles da seção.
+4. **A SEQUÊNCIA leva a algum lugar** — o gesto composto produz uma coisa que funciona.
+   Gate: `inspector_physics_gesture_tests`.
+
+⚠️ **A (4) é a categoria que esta jornada descobriu, e ela não é implicada pelas outras três.** Todo edit pode ter
+gate e o gesto ainda não levar a lugar nenhum: uma row que só aparece depois de outra, um default que atrapalha,
+um passo que exige um número que o artista não tem como saber. Foi ela que pegou o passo *"converta para
+Capsule"* que eu quase ensinei ao Enio — geometricamente correto, e destrói o tronco.
+
+### A metade VISÍVEL conta como UI
+
+Um controle autorável cujo efeito é invisível está meio construído. A precedência é do **W7** (*um sensor com
+nada lendo suas sobreposições é um flag morto — torne-o VISÍVEL primeiro*) e ela se repetiu quatro vezes:
+
+- força de área → **seta laranja** (*para que lado sopra?* não é inferível);
+- contatos → **cruz branca**, do tamanho da carga;
+- empuxo → **linha d'água** (o único número que o modelo calculava e a tela escondia — achado pelo Enio);
+- arrasto → **nada, e é decisão**: um arrasto não tem direção para desenhar, ele se vê nos corpos desacelerando.
+
+A pergunta a fazer no fim de cada wave é *"o que esta wave calcula que a tela não mostra?"* — e a resposta
+**pode** ser "nada, de propósito", desde que seja escrita.
+
+### E toda wave ganha uma CENA
+
+`PH2D_PHYSICS_SMOKE=<n>`, com os números **medidos** (a sonda headless roda a cena e reporta; a mensagem
+`eprintln!` cita os valores). Uma wave gateada e não-smokável é meia wave — foi o estado do W-FormDrag por uma
+hora, e a cena `=28` nasceu para fechar isso.
+
+⚠️ **A cena é uma FIXTURE e adoece como fixture.** Nesta jornada: dois controles foram *atropelados pelo próprio
+experimento* (W-Area, W-Buoyancy), um V nasceu de cabeça para baixo (W-Contacts), o `=28` nasceu contaminado
+**duas vezes** por geometria que eu não controlava, e uma mensagem afirmava *"fica a meia-água"* sobre uma caixa
+que a medição mostrou ir ao **fundo**. **Rode a sonda antes de escrever a mensagem.**
+
+### O que fica FORA da UI, e por quê
+
+Um número que o artista não tem como calibrar não vira knob. Da jornada: o `EDGE_SAMPLES` do arrasto de forma,
+o `LOAD_FULL_NS` da cruz de contato, o `ALLOWED_ANGLE` do one-way, o `STRIDE` do ring — todos são **régua de
+implementação**, medidos e documentados no código, não superfície. A pergunta é *"o artista sabe o que este
+número significa na arte dele?"*.
+
+---
+
 **Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
 (`ph2d-fluids`, M13+), collider-gen vetorial + fratura (ADR-0063, aposentada com a 0108).
 

@@ -1,5 +1,10 @@
 # HANDOFF de INTEGRAÇÃO — `line/physics` · jornada REABERTA (2026-07-19)
 
+> ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_2026-07-21.md`](HANDOFF_INTEGRACAO_line_physics_2026-07-21.md).**
+> A linha continuou por mais 17 waves depois deste arquivo, e os números aqui (schema, registro, `body_count`)
+> estão VELHOS — integrar por eles quebraria a contagem. Este fica como registro do que W6/W7/Weld/BakeChannels
+> decidiram; **para integrar, leia o de 21/07**.
+
 > Para o **agente integrador** (por ordem EXPLÍCITA do Enio; a linha não integra nem pusha
 > sozinha — CLAUDE.md §0.7).
 >

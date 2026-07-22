@@ -156,6 +156,31 @@ impl MockPanelHost {
         }
     }
 
+    /// Set a registered dropdown's open state — what the generic dispatcher writes when
+    /// the user clicks a chip. Panics if `id` is absent or not a `Dropdown`.
+    ///
+    /// **Why the testkit needs this at all:** the open/close of a dropdown is done by the
+    /// SHELL's generic dispatch, not by the panel's `apply_event` — so a seam test driving
+    /// `apply_event` alone cannot reach the state *"this popover is open"*, and any rule
+    /// about it (e.g. *opening one closes the other*) would be untestable at this seam.
+    pub fn set_dropdown_open(&mut self, id: NodeId, open: bool) {
+        match self.store.get_mut(id) {
+            Some(InteractiveState::Dropdown { open: o, .. }) => *o = open,
+            Some(_) => panic!("set_dropdown_open: {id:?} is registered but is not a Dropdown"),
+            None => panic!("set_dropdown_open: {id:?} is not registered (did populate run?)"),
+        }
+    }
+
+    /// Read a registered dropdown's open state (the mirror of
+    /// [`Self::set_dropdown_open`], so a gate can assert on it).
+    #[must_use]
+    pub fn dropdown_is_open(&self, id: NodeId) -> Option<bool> {
+        match self.store.get(id) {
+            Some(InteractiveState::Dropdown { open, .. }) => Some(*open),
+            _ => None,
+        }
+    }
+
     /// Drain everything the panel pushed onto the action bus so far. The
     /// shell does the same each frame; tests inspect the result to assert
     /// the panel actually emitted the right [`EditorAction`].

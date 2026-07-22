@@ -115,6 +115,8 @@ fn strip_snapshot(
         additive: strip.additive,
         falloff: strip.falloff,
         tween_count: strip.tween_count,
+        tween_ease: strip.tween_ease,
+        tween_fade: strip.tween_fade,
         cycle: cycle_wire(layer.cycle.post),
     }
 }

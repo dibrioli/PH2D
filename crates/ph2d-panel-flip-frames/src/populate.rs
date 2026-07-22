@@ -123,6 +123,7 @@ pub fn populate(store: &mut WidgetStore) {
         TWEEN_MIN,
         TWEEN_MAX,
     );
+    button(store, ids::FLIP_TWEEN_FADE);
     button(store, ids::FLIP_TWEEN_ADD);
 
     // Chrome.

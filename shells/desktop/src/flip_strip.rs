@@ -12,8 +12,8 @@
 
 use ph2d_core::Playhead;
 use ph2d_flip::{
-    CycleMode, DupMode, FlipDoc, FlipObjectId, Frame, Hold, KeyKind, LayerId, TweenOptions,
-    TweenRequest,
+    CycleMode, DupMode, Easing, EasingFamily, EasingMode, FlipDoc, FlipObjectId, Frame, Hold,
+    Interp, KeyKind, LayerId, TweenOptions, TweenRequest,
 };
 
 /// O estado de autoria da tira (o que NÃO é documento).
@@ -26,6 +26,13 @@ pub(crate) struct FlipStrip {
     pub(crate) additive: bool,
     /// Quantos inbetweens o botão Tween gera.
     pub(crate) tween_count: u32,
+    /// O preset de easing dos inbetweens (índice em `TWEEN_EASE_NAMES` do painel).
+    /// O MOTOR sempre soube fazer isto (`TweenOptions::easing`); era a barra que não
+    /// oferecia — a dívida que o plano T3.7 declarou como *"carry-over de UI, não de motor"*.
+    pub(crate) tween_ease: u8,
+    /// Traços que existem em só UMA das duas chaves entram/saem esmaecendo, em vez de
+    /// serem cópia estática (`TweenOptions::fade_orphans`).
+    pub(crate) tween_fade: bool,
     /// Chaves selecionadas na tira. O modo `Selected` dos Ghost Frames lê isto — e o
     /// **multiframe** (W7) a usa como alvo: com 2+ chaves marcadas, o MESMO gesto de
     /// escultura/balde age em todas.
@@ -38,12 +45,33 @@ pub(crate) struct FlipStrip {
     pub(crate) falloff: bool,
 }
 
+/// **Os quatro presets da barra**, na ordem dos rótulos do painel
+/// (`Linear · Ease In · Ease Out · Ease In-Out`).
+///
+/// A FAMÍLIA é fixa em `Quad` de propósito: a barra da tira é um controle rápido, e o
+/// picker de família inteiro já existe no menu de curvas da timeline. Oferecer onze
+/// famílias num chip de toolbar seria a UI cara no lugar errado.
+fn ease_preset(preset: u8) -> Interp {
+    let mode = match preset {
+        1 => EasingMode::In,
+        2 => EasingMode::Out,
+        3 => EasingMode::InOut,
+        _ => return Interp::Linear,
+    };
+    Interp::Eased(Easing {
+        family: EasingFamily::Quad,
+        mode,
+    })
+}
+
 impl Default for FlipStrip {
     fn default() -> Self {
         Self {
             autokey: true,
             additive: false,
             tween_count: 1,
+            tween_ease: 0,
+            tween_fade: false,
             selection: Vec::new(),
             falloff: false,
         }
@@ -51,6 +79,17 @@ impl Default for FlipStrip {
 }
 
 impl FlipStrip {
+    /// **As opções do tween montadas a partir da barra** — a porta única entre os dois
+    /// controles e o motor. O `Add` lê daqui em vez de montar um `TweenOptions` próprio;
+    /// dois lugares montando as mesmas opções é como um deles esquece do knob novo.
+    pub(crate) fn tween_options(&self) -> TweenOptions {
+        TweenOptions {
+            easing: ease_preset(self.tween_ease),
+            fade_orphans: self.tween_fade,
+            ..TweenOptions::default()
+        }
+    }
+
     /// As chaves selecionadas (os fantasmas leem isto no modo `Selected`; o **multiframe**
     /// as usa como alvo — `flip_multiframe::targets`).
     pub(crate) fn selected_keys(&self) -> &[Frame] {
@@ -355,6 +394,14 @@ pub(crate) fn apply_panel_event(
             strip.tween_count = (*v as i64).clamp(1, 32) as u32;
             false
         }
+        PanelEvent::SelectOption(id, val) if *id == ids::FLIP_TWEEN_EASE_DD => {
+            strip.tween_ease = val.parse::<u8>().unwrap_or(0).min(3);
+            false
+        }
+        PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_FADE => {
+            strip.tween_fade = !strip.tween_fade;
+            false
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_ADD => {
             // Os extremos do tween são **KEYFRAMES** — nunca os breakdowns que ele
             // mesmo gerou. Usar o "próximo desenho" fazia o 2º Add interpolar entre a
@@ -376,7 +423,7 @@ pub(crate) fn apply_panel_event(
                     from,
                     to,
                     count: strip.tween_count,
-                    options: TweenOptions::default(),
+                    options: strip.tween_options(),
                 })
             });
             made > 0

@@ -347,6 +347,22 @@ pub const FLIP_TWEEN_NUM: NodeId = hash_node_id("flip.strip.tween_num");
 /// the next one).
 pub const FLIP_TWEEN_ADD: NodeId = hash_node_id("flip.strip.tween_add");
 
+/// The easing preset of the generated inbetweens (`Linear / Ease In / Out / In-Out`).
+///
+/// The MOTOR always supported it (`TweenOptions::easing`); only the toolbar did not
+/// offer it — the "carry-over of UI, not of engine" that plan T3.7 declared.
+pub const FLIP_TWEEN_EASE_DD: NodeId = hash_node_id("flip.strip.tween_ease_dd");
+
+/// Fade the strokes that exist in only ONE of the two keys, instead of copying them
+/// statically (`TweenOptions::fade_orphans`).
+pub const FLIP_TWEEN_FADE: NodeId = hash_node_id("flip.strip.tween_fade");
+
+/// Derive the id of easing option `preset` in the open easing dropdown popover.
+#[must_use]
+pub fn flip_tween_ease_option_id(preset: u8) -> NodeId {
+    flip_fnv_node_id(&format!("flip.strip.easeopt.{preset}"))
+}
+
 // ── Cycle (post behavior of the active layer) ────────────────────────────────
 /// The cycle dropdown chip (None / Hold / Loop / Ping-Pong).
 pub const FLIP_CYCLE_DD: NodeId = hash_node_id("flip.strip.cycle_dd");

@@ -13,7 +13,7 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button
 use ph2d_editor_core::tool::PanelEvent;
 
 /// Os botões/toggles da barra + o X, todos encaminhados como `Click`.
-const BUTTONS: [ph2d_a11y::NodeId; 16] = [
+const BUTTONS: [ph2d_a11y::NodeId; 17] = [
     ids::FLIP_PREV_DRAWING,
     ids::FLIP_PLAY,
     ids::FLIP_NEXT_DRAWING,
@@ -29,6 +29,7 @@ const BUTTONS: [ph2d_a11y::NodeId; 16] = [
     ids::FLIP_KEY_LEFT,
     ids::FLIP_KEY_RIGHT,
     ids::FLIP_TWEEN_ADD,
+    ids::FLIP_TWEEN_FADE,
     ids::FLIP_STRIP_CLOSE,
 ];
 
@@ -48,9 +49,18 @@ fn cell_index(id: ph2d_a11y::NodeId) -> Option<usize> {
     (0..n).find(|&i| ids::flip_cell_id(i) == id)
 }
 
-/// A opção de ciclo `mode`, se `id` for uma delas.
-fn cycle_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0u8..4).find(|&m| ids::flip_cycle_option_id(m) == id)
+/// A opção `n` de um dos dropdowns, se `id` for uma delas — devolve TAMBÉM de qual chip,
+/// porque o dispatch precisa fechar o popover certo e mandar o `SelectOption` com o id do
+/// dono (mandar o do outro chip seria despachar a escolha para o campo errado).
+fn dropdown_option(id: ph2d_a11y::NodeId) -> Option<(ph2d_a11y::NodeId, u8)> {
+    (0u8..4)
+        .find(|&m| ids::flip_cycle_option_id(m) == id)
+        .map(|m| (ids::FLIP_CYCLE_DD, m))
+        .or_else(|| {
+            (0u8..4)
+                .find(|&m| ids::flip_tween_ease_option_id(m) == id)
+                .map(|m| (ids::FLIP_TWEEN_EASE_DD, m))
+        })
 }
 
 pub(crate) fn apply_event(
@@ -66,20 +76,20 @@ pub(crate) fn apply_event(
             true
         }
         WidgetEvent::Click(id) => {
-            // Uma opção do ciclo: fecha o popover e aplica.
-            if let Some(mode) = cycle_option(id) {
+            // Uma opção de dropdown: fecha o popover DAQUELE chip e aplica.
+            if let Some((chip, mode)) = dropdown_option(id) {
                 if let Some(InteractiveState::Dropdown {
                     open,
                     selected_index,
                     ..
-                }) = host.store_mut().get_mut(ids::FLIP_CYCLE_DD)
+                }) = host.store_mut().get_mut(chip)
                 {
                     *open = false;
                     *selected_index = Some(mode as usize);
                 }
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        ids::FLIP_CYCLE_DD,
+                        chip,
                         mode.to_string(),
                     )));
                 return EventOutcome::from_bool(true);
@@ -92,8 +102,23 @@ pub(crate) fn apply_event(
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
                     true
                 }
-                // O chip do ciclo em si: o Click é só o open/close genérico.
-                None => id == ids::FLIP_CYCLE_DD,
+                // O chip em si: o Click é só o open/close genérico. **Abrir um FECHA o
+                // outro** — dois popovers abertos ao mesmo tempo é um estado que ninguém
+                // pediu, e só um deles chega a ser pintado (o `pending` é um).
+                None if id == ids::FLIP_CYCLE_DD || id == ids::FLIP_TWEEN_EASE_DD => {
+                    let other = if id == ids::FLIP_CYCLE_DD {
+                        ids::FLIP_TWEEN_EASE_DD
+                    } else {
+                        ids::FLIP_CYCLE_DD
+                    };
+                    if let Some(InteractiveState::Dropdown { open, .. }) =
+                        host.store_mut().get_mut(other)
+                    {
+                        *open = false;
+                    }
+                    true
+                }
+                None => false,
             }
         }
         // A régua de scrub: a mecânica de slider deu um `value` `0..1`; mapeamos ao

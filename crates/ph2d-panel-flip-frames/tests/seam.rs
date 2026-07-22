@@ -53,6 +53,7 @@ fn every_toolbar_button_reaches_the_bus() {
         ("key left", ids::FLIP_KEY_LEFT),
         ("key right", ids::FLIP_KEY_RIGHT),
         ("tween add", ids::FLIP_TWEEN_ADD),
+        ("tween fade", ids::FLIP_TWEEN_FADE),
     ];
     for (name, id) in buttons {
         let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
@@ -292,6 +293,8 @@ fn every_toolbar_control_is_actually_painted() {
         ("fps", ids::FLIP_FPS_NUM),
         ("hold", ids::FLIP_HOLD_NUM),
         ("tween count", ids::FLIP_TWEEN_NUM),
+        ("tween ease", ids::FLIP_TWEEN_EASE_DD),
+        ("tween fade", ids::FLIP_TWEEN_FADE),
         ("cycle", ids::FLIP_CYCLE_DD),
     ];
     for (name, id) in controls {
@@ -384,4 +387,73 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
         lane.h
     );
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
+}
+
+/// **A escolha de easing chega ao barramento, com o id do SEU chip.** A barra tem dois
+/// dropdowns e as duas listas de opção convivem no mesmo roteador — mandar o
+/// `SelectOption` com o id do outro chip despacharia a escolha para o campo errado
+/// (o ciclo da camada viraria o easing do tween, em silêncio).
+#[test]
+fn picking_a_tween_easing_reaches_the_bus_under_its_own_chip() {
+    for preset in 0u8..4 {
+        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut state = FlipStripState;
+        let outcome = host.apply_panel_event::<FlipFramesPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::flip_tween_ease_option_id(preset)),
+        );
+        assert_eq!(outcome, EventOutcome::Consumed);
+        let want = preset.to_string();
+        assert!(
+            drain(&mut host).iter().any(|e| matches!(
+                e,
+                PanelEvent::SelectOption(i, v)
+                    if *i == ids::FLIP_TWEEN_EASE_DD && *v == want
+            )),
+            "o preset {preset} de easing não chegou ao barramento sob o próprio chip"
+        );
+    }
+}
+
+/// **Abrir um dropdown FECHA o outro.** Dois popovers abertos ao mesmo tempo é um estado
+/// que ninguém pediu — e só um deles chega a ser pintado, então o segundo ficaria
+/// "aberto" e invisível, comendo o próximo clique.
+#[test]
+fn opening_one_dropdown_closes_the_other() {
+    for (first, second) in [
+        (ids::FLIP_CYCLE_DD, ids::FLIP_TWEEN_EASE_DD),
+        (ids::FLIP_TWEEN_EASE_DD, ids::FLIP_CYCLE_DD),
+    ] {
+        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut state = FlipStripState;
+        // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
+        // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
+        ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
+            has_layer: true,
+            layer_name: "L".into(),
+            cells: vec![FlipCell {
+                key: 0,
+                exposure: 1,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            }],
+            fps: 12.0,
+            ..Default::default()
+        });
+        host.paint::<FlipFramesPanel>(
+            &mut state,
+            ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+        );
+        host.set_dropdown_open(first, true);
+        host.set_dropdown_open(second, false);
+
+        host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::Click(second));
+        assert_eq!(
+            host.dropdown_is_open(first),
+            Some(false),
+            "o popover do outro chip continuou aberto"
+        );
+    }
 }

@@ -65,6 +65,10 @@ pub use tween_match::{PAIR_REJECT_COST, StrokeFeatures, TweenPlan, features};
 /// animação só por causa de um preset.
 pub use ph2d_anim::Interp;
 
+/// Os presets nomeados da mesma curva — o shell monta `Interp::Eased(..)` a partir do
+/// chip de easing da barra sem depender do `ph2d-anim` por causa de um enum.
+pub use ph2d_anim::{Easing, EasingFamily, EasingMode};
+
 /// O compositor de blend do Painter, re-exportado para os consumidores do Flip
 /// (render/painel) casarem o tipo sem depender de `ph2d-painter-effects`
 /// diretamente. É o MESMO `BlendMode` guardado em [`FlipLayer::blend`].

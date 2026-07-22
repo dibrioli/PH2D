@@ -316,3 +316,130 @@ fn the_scrub_lane_moves_the_playhead_without_touching_the_selection() {
         "a regua DESMONTOU a multiselecao — o ponto inteiro dela e nao tocar a selecao"
     );
 }
+
+// ── Tween v2: os dois controles que o motor sempre soube honrar ───────────────
+
+/// **O chip de Ease chega ao motor.** O `TweenOptions::easing` existe desde o W3 e a barra
+/// não o oferecia (a dívida que o plano T3.7 chamou de *"carry-over de UI, não de motor"*).
+/// O gate dirige o `SelectOption` REAL e lê o que o `tween_options()` monta — a porta única
+/// entre a barra e o motor.
+#[test]
+fn the_easing_chip_reaches_the_tween_options() {
+    let (mut doc, _oid, lid, mut playhead) = doc_with_key0();
+    let mut strip = FlipStrip::default();
+    assert_eq!(
+        strip.tween_options().easing,
+        Interp::Linear,
+        "o default da barra é o tempo uniforme"
+    );
+
+    for (preset, want) in [
+        (1u8, EasingMode::In),
+        (2, EasingMode::Out),
+        (3, EasingMode::InOut),
+    ] {
+        apply_panel_event(
+            &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, preset.to_string()),
+            &mut doc,
+            Some(lid),
+            &mut playhead,
+            &mut strip,
+            false,
+        );
+        assert_eq!(
+            strip.tween_options().easing,
+            Interp::Eased(Easing {
+                family: EasingFamily::Quad,
+                mode: want,
+            }),
+            "o preset {preset} não chegou às opções do tween"
+        );
+    }
+    // E volta ao uniforme.
+    apply_panel_event(
+        &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, "0".into()),
+        &mut doc,
+        Some(lid),
+        &mut playhead,
+        &mut strip,
+        false,
+    );
+    assert_eq!(strip.tween_options().easing, Interp::Linear);
+}
+
+/// **O toggle Fade chega ao motor** — e é o mesmo `fade_orphans` que o `tween_drawing`
+/// consome, não um segundo flag paralelo.
+#[test]
+fn the_fade_toggle_reaches_the_tween_options() {
+    let (mut doc, _oid, lid, mut playhead) = doc_with_key0();
+    let mut strip = FlipStrip::default();
+    assert!(
+        !strip.tween_options().fade_orphans,
+        "por default um traço sem par é cópia estática (não pisca, não some)"
+    );
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_FADE,
+        &mut doc,
+        lid,
+        &mut playhead,
+        &mut strip,
+    );
+    assert!(strip.tween_options().fade_orphans, "o Fade não armou");
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_FADE,
+        &mut doc,
+        lid,
+        &mut playhead,
+        &mut strip,
+    );
+    assert!(!strip.tween_options().fade_orphans, "o Fade não desarmou");
+}
+
+/// **E o botão Add HONRA as duas** — o gate anterior prova que a barra escreve no estado;
+/// este prova que o `tween` de fato usa esse estado. Sem ele, `tween_options()` poderia
+/// estar perfeito e o `Add` continuar montando um `TweenOptions::default()` do lado.
+#[test]
+fn the_add_button_generates_with_the_easing_the_bar_selected() {
+    let (mut doc, oid, lid, mut playhead) = doc_with_key0();
+    let mut strip = FlipStrip::default();
+    // Duas chaves com o MESMO traço, transladado — o easing muda ONDE o meio cai.
+    let obj = doc.object_mut(oid).unwrap();
+    let a = obj.layer(lid).unwrap().frames()[&0].drawing.unwrap();
+    let mut s = ph2d_flip::FlipStroke::new();
+    s.push_default(ph2d_core::Vec2::new(0.0, 0.0));
+    s.push_default(ph2d_core::Vec2::new(10.0, 0.0));
+    obj.drawing_mut(a).unwrap().strokes.push(s.clone());
+    let b = obj
+        .insert_frame(lid, 8, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    let mut s2 = ph2d_flip::FlipStroke::new();
+    s2.push_default(ph2d_core::Vec2::new(0.0, 100.0));
+    s2.push_default(ph2d_core::Vec2::new(10.0, 100.0));
+    obj.drawing_mut(b).unwrap().strokes.push(s2);
+
+    // Ease In (acelera do repouso): o inbetween do MEIO fica ATRÁS da metade do caminho.
+    apply_panel_event(
+        &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, "1".into()),
+        &mut doc,
+        Some(lid),
+        &mut playhead,
+        &mut strip,
+        false,
+    );
+    strip.tween_count = 1;
+    playhead.seek(0.0);
+    click(
+        ph2d_editor::ids::FLIP_TWEEN_ADD,
+        &mut doc,
+        lid,
+        &mut playhead,
+        &mut strip,
+    );
+    let mid = did_at(&doc, oid, lid, 4).expect("o inbetween nasceu");
+    let y = doc.object(oid).unwrap().drawing(mid).unwrap().strokes[0].positions()[0].y;
+    assert!(
+        y < 40.0,
+        "com Ease In o meio tinha de ficar atrás de y=50 (uniforme); ficou em {y:.1} — o \
+         botão Add ignorou o chip da barra"
+    );
+}

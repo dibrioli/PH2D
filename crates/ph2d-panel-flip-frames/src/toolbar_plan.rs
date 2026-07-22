@@ -42,6 +42,8 @@ pub(crate) enum Item {
     Number(NodeId, f64),
     Label(&'static str),
     Cycle(u8),
+    /// O chip de easing do tween (dropdown de 4 presets).
+    Ease(u8),
     /// Respiro entre grupos — some no início de uma linha nova.
     Gap,
 }
@@ -57,6 +59,7 @@ impl Item {
                 TypeToken::Sm.px() * GLYPH_W_RATIO * t.len() as f32 + Spacing::Xs.px()
             }
             Item::Cycle(_) => CYCLE_W,
+            Item::Ease(_) => CYCLE_W,
             Item::Gap => return None,
         })
     }
@@ -116,6 +119,10 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         // Tween: quantos inbetweens + gerar
         Item::Label("Tween"),
         Item::Number(ids::FLIP_TWEEN_NUM, f64::from(snap.tween_count)),
+        // O TEMPO dos inbetweens (o motor sempre soube; a barra é que não oferecia) e
+        // o que fazer com os traços que existem em só uma das chaves.
+        Item::Ease(snap.tween_ease),
+        Item::Toggle(ids::FLIP_TWEEN_FADE, "Fade", snap.tween_fade),
         Item::Toggle(ids::FLIP_TWEEN_ADD, "Add", false),
         Item::Gap,
         // Ciclo (post behavior da camada ativa)

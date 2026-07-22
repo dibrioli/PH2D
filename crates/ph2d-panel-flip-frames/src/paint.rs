@@ -101,9 +101,15 @@ pub(crate) fn paint(_state: &mut FlipStripState, ctx: &mut PaintCtx) {
         &snap,
     );
 
-    // O popover do ciclo vai por ÚLTIMO (fora de qualquer clip, por cima de tudo).
+    // O popover ABERTO vai por ÚLTIMO (fora de qualquer clip, por cima de tudo). A barra
+    // tem dois dropdowns, e cada um mostra a SUA seleção — o `pending` diz qual é.
     if let Some(chip) = pending_cycle {
-        crate::paint_toolbar::paint_cycle_popover(ctx, theme, chip, snap.cycle);
+        let cur = if chip.id == ids::FLIP_TWEEN_EASE_DD {
+            snap.tween_ease
+        } else {
+            snap.cycle
+        };
+        crate::paint_toolbar::paint_cycle_popover(ctx, theme, chip, cur);
     }
 
     // Re-registra o X depois do corpo (o último registro vence).

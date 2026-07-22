@@ -25,8 +25,15 @@ use ph2d_tokens::{ColorToken, Theme, TypeToken};
 /// Os 4 modos de ciclo, na ordem do enum (`CycleMode as u8`).
 const CYCLE_NAMES: [&str; 4] = ["No Cycle", "Hold", "Loop", "Ping-Pong"];
 
+/// Os presets de easing do tween, no vocabulário que o resto do app já usa (os mesmos
+/// rótulos do menu de curvas da timeline — o artista não aprende duas linguagens).
+pub(crate) const TWEEN_EASE_NAMES: [&str; 4] = ["Linear", "Ease In", "Ease Out", "Ease In-Out"];
+
 /// O chip do ciclo, quando o popover está aberto (pintado por último).
 pub(crate) struct PendingCycle {
+    /// De QUAL dropdown é este popover — a barra tem mais de um, e o `Rect` sozinho não
+    /// diz qual lista desenhar.
+    pub(crate) id: NodeId,
     pub(crate) chip: Rect,
 }
 
@@ -49,7 +56,12 @@ pub(crate) fn paint(
             Item::Toggle(id, text, active) => toggle(ctx, theme, r, *id, text, *active),
             Item::Number(id, value) => number(ctx, theme, r, *id, *value),
             Item::Label(text) => label(ctx, theme, r, text),
-            Item::Cycle(cur) => pending = cycle_chip(ctx, theme, r, *cur),
+            Item::Cycle(cur) => {
+                pending = dropdown_chip(ctx, theme, r, ids::FLIP_CYCLE_DD, *cur).or(pending);
+            }
+            Item::Ease(cur) => {
+                pending = dropdown_chip(ctx, theme, r, ids::FLIP_TWEEN_EASE_DD, *cur).or(pending);
+            }
             Item::Gap => {}
         }
     }
@@ -133,18 +145,30 @@ fn label(ctx: &mut PaintCtx, theme: Theme, r: Rect, text: &str) {
     );
 }
 
-fn cycle_options() -> Vec<DropdownOption<u8>> {
-    CYCLE_NAMES
+/// As opções de um dos dropdowns da barra — a tabela e os ids de opção viajam JUNTOS,
+/// porque uma lista com os ids do outro chip é um popover que despacha a coisa errada.
+fn options_of(dd: NodeId) -> Vec<DropdownOption<u8>> {
+    let (names, id_of): (&[&str], fn(u8) -> NodeId) = if dd == ids::FLIP_TWEEN_EASE_DD {
+        (&TWEEN_EASE_NAMES, ids::flip_tween_ease_option_id)
+    } else {
+        (&CYCLE_NAMES, ids::flip_cycle_option_id)
+    };
+    names
         .iter()
         .enumerate()
-        .map(|(i, name)| DropdownOption::new(ids::flip_cycle_option_id(i as u8), i as u8, *name))
+        .map(|(i, name)| DropdownOption::new(id_of(i as u8), i as u8, *name))
         .collect()
 }
 
-/// O chip do ciclo (dropdown genérico: o open/close é do dispatch).
-fn cycle_chip(ctx: &mut PaintCtx, theme: Theme, r: Rect, cur: u8) -> Option<PendingCycle> {
+/// Um chip de dropdown da barra (o open/close é do dispatch genérico).
+fn dropdown_chip(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    r: Rect,
+    id: NodeId,
+    cur: u8,
+) -> Option<PendingCycle> {
     debug_assert!((r.w - CYCLE_W).abs() < 1.0, "o plano mediu outro chip");
-    let id = ids::FLIP_CYCLE_DD;
     ctx.host.store_mut().register_if_absent(
         id,
         InteractiveState::Dropdown {
@@ -157,30 +181,28 @@ fn cycle_chip(ctx: &mut PaintCtx, theme: Theme, r: Rect, cur: u8) -> Option<Pend
         ctx.host.store().get(id),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let dd = Dropdown::new(id, "", cycle_options())
+    let dd = Dropdown::new(id, "", options_of(id))
         .selected(cur)
         .open(open)
         .state(DropdownState::Normal);
     paint_dropdown_chip(&dd, r, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, r);
-    open.then_some(PendingCycle { chip: r })
+    open.then_some(PendingCycle { id, chip: r })
 }
 
-/// O popover aberto do ciclo — pintado por último, fora de qualquer clip.
+/// O popover aberto de um dos chips — pintado por último, fora de qualquer clip.
 pub(crate) fn paint_cycle_popover(
     ctx: &mut PaintCtx,
     theme: Theme,
     pending: PendingCycle,
     cur: u8,
 ) {
-    let dd = Dropdown::new(ids::FLIP_CYCLE_DD, "", cycle_options())
+    let dd = Dropdown::new(pending.id, "", options_of(pending.id))
         .selected(cur)
         .open(true);
     paint_dropdown_popover(&dd, pending.chip, ctx.scene, ctx.text_system, theme);
     let panel = dd.popover_rect(pending.chip);
-    ctx.host
-        .store_mut()
-        .set_dropdown_popover(ids::FLIP_CYCLE_DD, panel);
+    ctx.host.store_mut().set_dropdown_popover(pending.id, panel);
     for (i, opt) in dd.options.iter().enumerate() {
         ctx.host.store_mut().register_if_absent(
             opt.id,

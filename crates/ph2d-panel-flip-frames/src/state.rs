@@ -63,6 +63,10 @@ pub struct FlipStripSnapshot {
     pub additive: bool,
     /// Quantos inbetweens o botão Tween vai gerar.
     pub tween_count: u32,
+    /// O preset de easing dos inbetweens (índice em `TWEEN_EASE_NAMES`).
+    pub tween_ease: u8,
+    /// Traços que existem em só UMA das duas chaves entram/saem esmaecendo.
+    pub tween_fade: bool,
     /// Ciclo (post behavior) da camada ativa — `CycleMode as u8`.
     pub cycle: u8,
     /// **Falloff temporal** do multiframe: os vizinhos recebem menos influência que o

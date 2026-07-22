@@ -598,6 +598,7 @@ impl crate::App {
         self.flip_edit_smoke();
         self.flip_fill_smoke();
         self.flip_colorize_smoke();
+        self.flip_tween_smoke();
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();

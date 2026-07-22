@@ -528,3 +528,31 @@ fn two_rings_wound_the_other_way_round_are_flipped() {
         "os dois sentidos opostos passaram batido"
     );
 }
+
+/// **Um traço que GIRA muito não é um traço desenhado ao contrário** — e as duas coisas
+/// eram indistinguíveis para o teste de "direções opostas" (`da·db < 0` vale para qualquer
+/// giro além de 90°).
+///
+/// ⚠️ O preço era invisível até a espiral: o flip espúrio colava a PONTA de A no COMEÇO de
+/// B, o ajuste enxergava outro movimento, e o inbetween girava em torno do lugar errado.
+/// Com o lerp o resultado já saía torto de qualquer jeito, então ninguém tinha o que
+/// comparar.
+#[test]
+fn a_stroke_that_swings_past_ninety_degrees_is_not_a_reversed_stroke() {
+    let shoulder = Vec2::new(0.0, 0.0);
+    let a = stroke(&[(0.0, 0.0), (0.6, 0.0), (1.2, 0.0), (1.8, 0.0)]);
+    for deg in [95.0, 120.0, 150.0, 179.0] {
+        let b = turned(&a, shoulder, deg);
+        assert!(
+            !crate::tween_flip::should_flip(&a, &b),
+            "um giro de {deg}° foi lido como traço invertido"
+        );
+    }
+    // E o controle: o MESMO traço redesenhado ao contrário continua sendo invertido.
+    let mut back = turned(&a, shoulder, 120.0);
+    back.positions_mut().reverse();
+    assert!(
+        crate::tween_flip::should_flip(&a, &back),
+        "o traço desenhado ao contrário passou batido"
+    );
+}

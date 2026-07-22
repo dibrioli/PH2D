@@ -90,6 +90,7 @@ mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
+mod flip_tween_smoke;
 mod forwarding;
 mod fx_bridge;
 mod fx_bridge_dispatch;

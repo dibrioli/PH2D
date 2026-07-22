@@ -136,11 +136,13 @@ pub(crate) fn recook_text_object(
         crate::vec_glyph::offset_path(&mut c, [-ctr[0], -ctr[1]]);
         c
     });
-    if let Some(mut np) = compound
+    // Pela porta única (`VecPath::replace_cooked`): o re-cozimento produz geometria e estilo, e
+    // NÃO conhece a identidade nem a pilha de efeitos. Isto era `*p = np`, e o `np` nasce com
+    // `..Default::default()` — então cada knob do painel apagava a pilha do texto em silêncio.
+    if let Some(np) = compound
         && let Some(p) = scene.path_mut(id)
     {
-        np.id = id;
-        *p = np;
+        p.replace_cooked(np);
     }
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
         e.insert(VecShape::Text(params));
@@ -333,10 +335,98 @@ pub(crate) fn convert_text_selection_to_curves(
 mod tests {
     use super::*;
     use crate::vec_text::regen_into;
+    use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+    use ph2d_vec_scene::fx_zigzag::ZigZagSpec;
     use ph2d_vec_scene::{Paint, Rgba8};
 
     fn black() -> Paint {
         Paint::solid(Rgba8::new(0, 0, 0, 255))
+    }
+
+    /// Um Zig Zag armado — o efeito que o artista aplica a um texto e espera reencontrar.
+    fn zig() -> FxEntry {
+        FxEntry::new(PathEffect::ZigZag(ZigZagSpec {
+            amplitude: 12.0,
+            ridges: 7.0,
+            ..ZigZagSpec::default()
+        }))
+    }
+
+    /// Uma sessão de texto vivo pronta a cozinhar ("Hi", fonte embutida, sem eixos extras).
+    fn session() -> VecTextEdit {
+        VecTextEdit {
+            origin: [0.0, 0.0],
+            size: 1.0,
+            weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+            extra_axes: Vec::new(),
+            family: None,
+            fill: Some(black()),
+            stroke: None,
+            text: "Hi".to_string(),
+            id: None,
+            center: [0.0, 0.0],
+        }
+    }
+
+    /// **Gate red-first do W0 (caminho do PAINEL).** O artista aplica um efeito a um texto
+    /// finalizado e depois mexe num knob (ou digita) com o objeto selecionado: o re-cook regenera
+    /// os glyphs — e a pilha de efeitos **tem de continuar lá**.
+    ///
+    /// Contra o produto de 2026-07-22 (`*p = np` em `recook_text_object`) isto falha com `0`
+    /// efeitos. E falhava em SILÊNCIO: o re-cook é event-driven, então o artista só o dispara
+    /// quando volta a escrever, que é quando não está olhando para o efeito.
+    #[test]
+    fn editing_a_text_object_keeps_its_effects_stack() {
+        let mut sim = SimWorld::default();
+        let mut scene = VecScene::new();
+        let mut map = VecEntityMap::new();
+        let mut edit = session();
+        regen_into(&mut scene, &mut edit);
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        upsert_text_shape(&mut sim, &map, &edit);
+        let id = edit.id.expect("o compound do texto");
+
+        // O artista aplica um Zig Zag ao texto.
+        scene.path_mut(id).expect("o path do texto").effects = vec![zig()];
+
+        // ... e depois digita mais uma letra com o objeto selecionado (o caminho do painel).
+        let edited = edit_selected_text(&mut sim, &mut scene, &map, &[id], |p| p.text.push('!'));
+        assert!(edited, "havia um objeto de texto selecionado");
+
+        let p = scene.path_mut(id).expect("o texto continua na cena");
+        assert_eq!(
+            p.effects,
+            vec![zig()],
+            "a pilha de efeitos tem de sobreviver ao re-cook do texto"
+        );
+    }
+
+    /// **O irmão do gate acima, no caminho da SESSÃO VIVA** (`regen_into`, uma tecla por vez).
+    /// São dois sítios de `*p = np` distintos, então um gate só deixaria metade do bug de pé —
+    /// e é justamente a metade que dispara a cada tecla.
+    #[test]
+    fn typing_in_a_live_text_session_keeps_its_effects_stack() {
+        let mut scene = VecScene::new();
+        let mut edit = session();
+        regen_into(&mut scene, &mut edit);
+        let id = edit.id.expect("o compound do texto");
+        scene.path_mut(id).expect("o path do texto").effects = vec![zig()];
+
+        edit.text.push('!'); // uma tecla
+        regen_into(&mut scene, &mut edit);
+
+        assert_eq!(edit.id, Some(id), "o id é estável entre teclas");
+        assert_eq!(
+            scene
+                .path_mut(id)
+                .expect("o texto continua na cena")
+                .effects,
+            vec![zig()],
+            "a pilha sobrevive a cada tecla da sessão viva"
+        );
     }
 
     /// O texto vivo é UM objeto (compound + `VecShape::Text`); "Convert to Curves"

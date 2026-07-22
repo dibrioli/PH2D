@@ -9,7 +9,41 @@
 
 use super::*;
 use ph2d_ecs::{ChildOf, EnvelopeKind, Transform, VecPathRef};
+use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+use ph2d_vec_scene::fx_zigzag::ZigZagSpec;
 use ph2d_vec_scene::{ShapeKind, cook};
+
+/// **O QUE O ENVELOPE PRODUZ É O QUE SE VÊ — o efeito não é aplicado DUAS vezes.**
+///
+/// `create` assa `src.cooked()` na fonte do filho (está escrito lá): o Zig Zag já está NA
+/// geometria guardada. Se a pilha ficasse também armada no path, o `cooked()` que o renderer
+/// chama a ondularia OUTRA VEZ — e ninguém veria o número, só uma forma mais rasgada do que o
+/// artista pediu.
+///
+/// O oráculo é de **aparência** (*o que renderiza é o que o recook escreveu*), não a regra do
+/// conserto: ele continua válido se um dia a cura mudar de forma (limpar a pilha, ou guardar a
+/// fonte AUTORADA em vez da cozida). Nasceu VERMELHO em 2026-07-22.
+#[test]
+fn the_envelope_does_not_apply_a_baked_effect_a_second_time() {
+    let mut src = ellipse([5.0, 3.0], 2.0);
+    src.effects = vec![FxEntry::new(PathEffect::ZigZag(ZigZagSpec {
+        amplitude: 20.0,
+        ridges: 6.0,
+        ..ZigZagSpec::default()
+    }))];
+    let (mut sim, mut scene, _map, _container, ids) = envelope_over(vec![src]);
+    recook(&mut sim, &mut scene);
+    let p = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == ids[0])
+        .expect("o filho");
+    assert_eq!(
+        p.cooked().verts,
+        p.verts,
+        "o que renderiza difere do que o envelope escreveu: o efeito foi aplicado outra vez"
+    );
+}
 
 fn ellipse(c: [f64; 2], r: f64) -> VecPath {
     cook(

@@ -26,6 +26,13 @@ pub use geometry::{
 mod compound;
 pub use compound::{Contour, FillRule};
 
+/// **Re-cozimento em lugar** ([`VecPath::replace_cooked`]): a porta única de "esta forma foi
+/// re-gerada dos próprios parâmetros". Irmão de `compound` (os dois só acrescentam métodos
+/// inerentes a [`VecPath`]); mora aqui, e não no sítio de chamada, porque quem sabe **quais
+/// campos um re-cozimento produz** é a crate dona do tipo — e três chamadores a responderem por
+/// conta própria já custou a pilha de efeitos do texto.
+mod recook;
+
 /// Pilha de z + recorte de copy/paste. A ÁRVORE de objetos é a Hierarchy do
 /// editor (ADR-0110): nome/visibilidade/trava/parentesco são da entidade ECS.
 mod structure;

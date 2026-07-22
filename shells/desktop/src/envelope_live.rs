@@ -172,6 +172,15 @@ pub(crate) fn create(
             continue;
         };
         write_shape(scene, id, world_path);
+        // ⚠️ A pilha de efeitos deste filho **já está NA fonte** — o passo 1 assou `cooked()`, e o
+        // `replace_cooked` (com razão) preserva `effects` num re-cozimento. Mas isto não é um
+        // re-cozimento, é uma ENTREGA: deixá-la armada faria o `cooked()` do renderer ondular
+        // outra vez uma forma já ondulada, e o artista veria um Zig Zag com o dobro do que pediu
+        // sem número nenhum na tela a explicá-lo. Mesmo trade da booleana com as quinas
+        // (ADR-0121): quem assa, desarma.
+        if let Some(p) = scene.path_mut(id) {
+            p.effects.clear();
+        }
         if let Ok(mut ce) = sim.world_mut().get_entity_mut(entity) {
             ce.remove::<RootOrder>();
             ce.insert(ChildOf(container));
@@ -455,16 +464,16 @@ pub(crate) fn dissolve(
 /// Escreve a forma deformada no path `id`, **em lugar** — o estilo (fill/stroke) vem da fonte, que o
 /// `warp_path` preserva. Em lugar, e não `push_path`, pela mesma razão do morph: um id novo por frame
 /// faria entidade/seleção/gizmo **piscarem**.
+///
+/// Vai pela porta única [`VecPath::replace_cooked`]. Este sítio escrevia os seis campos **à mão** e
+/// estava CERTO — inclusive era o único dos três re-cooks que preservava a pilha de efeitos. Mas
+/// estava certo por *enumeração*: acertava os campos de hoje e ficaria errado em silêncio no
+/// sétimo. A porta única transforma isso num erro de compilação.
 fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
-    p.verts = cooked.verts;
-    p.subpaths = cooked.subpaths;
-    p.closed = cooked.closed;
-    p.fill_rule = cooked.fill_rule;
-    p.fill = cooked.fill;
-    p.stroke = cooked.stroke;
+    p.replace_cooked(cooked);
 }
 
 #[cfg(test)]

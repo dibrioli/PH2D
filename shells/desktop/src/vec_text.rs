@@ -187,11 +187,11 @@ pub(crate) fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTex
         c
     });
     match (edit.id, compound) {
-        // Atualiza in-place preservando o id (a entidade/gizmo/seleção ficam).
-        (Some(id), Some(mut np)) => {
+        // Atualiza in-place preservando o id (a entidade/gizmo/seleção ficam) — e, pela porta
+        // única, a PILHA DE EFEITOS: era `*p = np`, e cada tecla apagava o efeito do texto.
+        (Some(id), Some(np)) => {
             if let Some(p) = scene.path_mut(id) {
-                np.id = id;
-                *p = np;
+                p.replace_cooked(np);
             } else {
                 // O path foi removido por fora (ex.: Delete) — recria.
                 edit.id = Some(scene.push_path(np));

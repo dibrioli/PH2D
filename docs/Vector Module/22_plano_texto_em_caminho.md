@@ -70,7 +70,13 @@ geometria deformada some. Consequência medida por leitura:
 - Aplique **Zig Zag** num texto → funciona (a pilha roda sobre compound; `apply_per_contour` trata
   cada glifo e cada furo por si, [`effect.rs:506-525`](../../crates/ph2d-vec-scene/src/effect.rs)).
 - Depois **edite uma letra** → o re-cook dispara e **a pilha inteira desaparece em silêncio**.
-- Idem para um texto dentro de um envelope: a próxima tecla apaga a deformação daquele frame.
+
+⚠️ **CORREÇÃO desta seção (2026-07-22, medida ao construir a W0):** a 1ª versão deste plano dizia
+que *"idem para um texto dentro de um envelope"*. **Falso.** O `write_shape` do envelope
+([`envelope_live.rs:457`](../../shells/desktop/src/envelope_live.rs)) escrevia os seis campos **à
+mão** e por isso **preservava** `effects` — era o único dos três re-cooks que acertava. Estava
+certo por **enumeração**, o que é outra coisa: acertava os campos de hoje e ficaria errado em
+silêncio no sétimo. É essa distinção que decidiu a forma da cura (§6, W0).
 
 O re-cook é **event-driven, não por frame** (call sites em `vec_text_object.rs:164`,
 `vec_text.rs:97,124,132,155,261-326`, `label_live.rs:418`, `vec_text_reopen.rs:186`) — por isso
@@ -251,18 +257,51 @@ alças da gaiola do envelope ([`envelope_gesture.rs:14-17`](../../shells/desktop
 
 ## §6 — Waves
 
-### W0 — O re-cook do texto PRESERVA o que não é geometria ⚠️ *pré-requisito, e é bug vivo*
+### W0 — O re-cook preserva o que não é geometria ✅ **CONSTRUÍDA (2026-07-22)**
 
-Corrigir `*p = np` ([`vec_text_object.rs:142`](../../shells/desktop/src/vec_text_object.rs)) para
-preservar `effects` (e o que mais não for geometria). Gate **red-first**: aplicar Zig Zag num texto,
-editar uma letra, exigir que a pilha continue lá — nasce VERMELHO hoje.
+**A cura não foi corrigir dois `*p = np`: foi tirar de três sítios a pergunta que nenhum deles
+devia estar respondendo.** Quem sabe *quais campos um re-cozimento produz* é a crate dona do tipo.
 
-Gate irmão: o mesmo para o texto **dentro de um envelope** (o `create` guarda a fonte autorada como
-postcard; confirmar que a edição do texto não a invalida). Se o envelope-sobre-texto for
-irreconciliável com a edição viva, a regra do ADR-0129 §325 passa a **valer para texto também, com
-gate executável** — nunca com prosa.
+- **Porta única nova:** `VecPath::replace_cooked`
+  ([`ph2d-vec-scene/src/recook.rs`](../../crates/ph2d-vec-scene/src/recook.rs), módulo irmão de
+  `compound` — os dois só acrescentam métodos inerentes). Substitui geometria + estilo; preserva
+  **`id`** e **`effects`**.
+- ⚠️ **O guarda é o COMPILADOR, não um comentário:** o corpo faz `let Self { .. }` **exaustivo**,
+  sem `..`. Acrescentar um campo a `VecPath` **deixa de compilar**, e obriga quem o acrescenta a
+  responder *"isto é produzido pelo re-cozimento, ou sobrevive a ele?"* no commit em que o campo
+  nasce — a única hora em que a resposta é conhecida. Era exatamente o modo de falha do
+  `write_shape`, que estava **certo e frágil**.
+- **Três chamadores** passaram por ela: `recook_text_object` · `regen_into` · `write_shape`.
 
-**Esta wave fecha sozinha e vale sozinha.** Não depende de nada abaixo.
+**E a W0 achou um SEGUNDO defeito, pré-existente e independente do texto:** `envelope_live::create`
+assa `src.cooked()` na fonte do filho (está escrito lá) **e deixava a pilha armada no path** ⇒ o
+`cooked()` do renderer aplicava o efeito **outra vez** sobre a forma já ondulada. O artista via um
+Zig Zag com o dobro do que pediu, sem número nenhum na tela a explicá-lo. Cura: **quem assa,
+desarma** — o mesmo trade da booleana com as quinas (ADR-0121).
+
+**Gates (todos nasceram VERMELHOS contra o produto de 2026-07-22):**
+
+| Gate | Onde | Sintoma que pega |
+|---|---|---|
+| `editing_a_text_object_keeps_its_effects_stack` | shell, caminho do **painel** | `left: []` |
+| `typing_in_a_live_text_session_keeps_its_effects_stack` | shell, caminho da **sessão viva** | `left: []` |
+| `the_envelope_does_not_apply_a_baked_effect_a_second_time` | shell, envelope | efeito em dobro |
+| 4 unit gates de `replace_cooked` | `ph2d-vec-scene` | invariantes da lei |
+
+⚠️ O gate do envelope tem oráculo de **APARÊNCIA** (*o que renderiza é o que o recook escreveu*),
+nunca a regra do conserto — continua válido se a cura mudar de forma.
+
+**Mutações:** `*p = np` de volta ⇒ 3 RED · `create` sem desarmar ⇒ 1 RED · esquecer de copiar
+`fill` ⇒ 2 RED · deixar o `id` do cozido vencer ⇒ 2 RED.
+
+**Fica ABERTO, e é decisão do Enio (não a tomei sozinho):** `create` podia guardar a fonte
+**AUTORADA** em vez da cozida, e então a pilha sobreviveria ao Release inteira (não-destrutivo de
+verdade, ADR-0121). O preço é que o efeito passaria a ser calculado **depois** da deformação —
+as cristas seguiriam o contorno deformado em vez de serem esticadas pela gaiola. Hoje o
+comportamento é o do Illustrator (o envelope deforma a APARÊNCIA); mudar isso é redesenho do
+envelope, com aceitação própria.
+
+**Esta wave fechou sozinha e vale sozinha.** Não depende de nada abaixo.
 
 ### W1 — O walker de arco vira porta única
 `arc_walk.rs` extraído; `fx_zigzag` delega; gate de **byte-identidade** do zigzag (fixture: círculo

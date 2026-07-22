@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 6d3039ad-668d-4133-a295-f69680a93752
+  modified: 2026-07-21T23:12:30.966Z
 ---
 
 O `cd` dentro de um comando composto do Bash **pode não ter efeito** (o sandbox roda a partir do *primary working directory*). Um `sed -i`/`>`/`mv` com **caminho relativo** então grava no repo ERRADO. Em Modo L isso significa: você acha que está no worktree da sua linha e escreve no `main`.
@@ -32,3 +33,15 @@ E o resto:
 **Reincidência (2026-07-13):** não foi o `sed` — foi o **cwd da própria ferramenta de shell, que PERSISTE entre chamadas**. Um `cd` do repo primário feito duas chamadas antes (para recortar um screenshot) deixou o shell lá, e um script Python com caminho *relativo* editou o `shells/desktop/src/undo.rs` do **primário**. Não há caminho relativo seguro em Modo L: **toda mutação usa caminho absoluto**, e todo comando começa com o `cd <worktree> &&` explícito.
 
 **Reincidiu 2026-07-18 (linha `line/Painter`), com a regra mecânica JÁ escrita acima e lida.** Mesmo mecanismo de 2026-07-13: um `cd /home/.../PH2D` feito para um `git worktree add` persistiu, e duas chamadas depois um `python3 - <<'PY'` com caminho **relativo** editou o `painter_preview_handoff_tests.rs` do **primário**. A pista veio junto e foi barata: o `cargo test` seguinte falhou com `failed to create directory /home/.../PH2D/target`. Revertido com `git checkout -- <o arquivo>` (ele NÃO estava na lista de modificados do início da sessão, então reverter era seguro) e reaplicado na worktree por caminho absoluto. **A lição não é texto novo — é que a regra existe e eu não a apliquei.** O gatilho de risco é específico e vale nomear: **todo comando que faz `cd` para fora da worktree (`git worktree add/list/remove`, inspecionar o main) envenena o cwd para o resto do turno.** Depois de um desses, o próximo comando que muta arquivo TEM de reabrir com `cd <worktree> &&`.
+
+**Reincidiu 2026-07-19 (linha `line/Painter`), e a PISTA foi de um tipo novo — ela não se parece com árvore errada.** Num turno longo eu **misturei** os dois estilos: a maioria dos scripts usava `base + "crates/..."` (absoluto, correto) e dois usaram caminho **relativo**. Os absolutos acertaram a worktree, então nada pareceu errado por muito tempo. O relativo caiu no `main`, e o sintoma que apareceu foi:
+
+> `error[E0599]: no variant or associated item named 'Knife' found for enum PaintMode`
+
+⚠️ **Isso LÊ como "meu código está quebrado", não como "estou na árvore errada"** — diferente do `FileNotFoundError` / `failed to create directory` das reincidências anteriores, que apontam para o filesystem. Eu tinha acabado de adicionar aquela variante e o compilador dizia que ela não existia. A tentação é ir depurar o `enum`.
+
+**Regra de diagnóstico nova:** um erro de compilação dizendo que um símbolo que **você acabou de escrever** não existe é assinatura de **árvore errada** antes de ser assinatura de bug. Confira `git -C <worktree> status` e `git -C <primário> status` ANTES de reabrir o arquivo do símbolo.
+
+**Reverter: aplique o patch REVERSO, não `git checkout` (2026-07-21, linha `line/anim-fixes`).** Sétima reincidência, mesmo mecanismo (cwd derivou sozinho depois de dezenas de comandos certos; pista = `failed to create directory /home/.../PH2D/target`, o tmpfs do primário). O que é novo é a **recuperação**: como a edição veio de um script, eu tinha as strings `old`/`new` exatas na mão — então desfiz aplicando `new → old` por texto no arquivo do primário. Isso é estritamente melhor que o `git checkout -- <arquivo>` que os itens acima sugerem: `checkout` descarta o arquivo INTEIRO (levaria junto WIP alheio que por acaso estivesse ali), enquanto o patch reverso toca só o que você escreveu — e casa com [[feedback_mutation_undo_with_cp_never_git_checkout]]. Confirme com `git -C <primário> status -- crates/` **vazio** depois.
+
+E a lição de processo: **misturar absoluto e relativo é pior que usar só relativo.** Só-relativo falha cedo e alto; misturado, os acertos escondem o erro e o estrago fica latente até um sintoma que aponta para outro lugar. A regra mecânica acima não admite "esse script é curtinho" — vale para *todos* os blocos do turno, inclusive os que você escreveu depois de já ter acertado dez.

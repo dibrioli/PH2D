@@ -33,3 +33,23 @@ Três requisitos, e o terceiro é o que quase se esquece:
    "nada" e a única evidência vira a sua palavra. Meça: no Multiband, o agudo balança **0,532** com
    Compress e **0,002** com Multiband (fonte seca: 0,000) — 266×, e o gate falha se o clipe deixar
    de expor isso.
+
+## A cena tem de ARMAR o gesto, e DIZER o que montou (Enio, 2026-07-21)
+
+*"Não sei se você preparou corretamente o arquivo de teste."*
+
+Montar a fixture **não basta**: se a feature só age atrás de um gesto (uma seleção, um modo,
+um toggle) e a cena não o arma, o produto entrega o caminho de sempre — e o resultado é
+**indistinguível da feature quebrada**. No onion fill do Flip a cena criava as 3 chaves e não
+marcava nenhuma; marcar era Shift/Ctrl+clique célula a célula, que a cena nem dizia onde
+ficava. Um Apply coloria um quadro só, exatamente como se o fan-out não existisse.
+
+Explicar melhor no texto **não é a correção** — a cena arma. (Deixe o caminho de volta: *"para
+ver um quadro só, clique sem modificador"*.)
+
+E a cena **imprime o que construiu** (`3 chave(s) em [0,4,8], 3 marcada(s)`): *"o arquivo de
+teste está certo?"* é pergunta que o smoke responde sozinho, senão a única evidência vira a
+sua palavra de novo. Nomeie também o que aparece na tela e **não é arte** (um fantasma de
+onion skin lê como um segundo objeto que ninguém desenhou).
+
+Gateável por arch-gate sobre o fonte da cena — o smoke precisa de janela, mas o texto dele não.

@@ -131,3 +131,36 @@ fn the_live_adjust_reruns_every_frame_the_gesture_wrote() {
          ou não re-roda)"
     );
 }
+
+const SMOKE: &str = include_str!("../src/flip_colorize_smoke.rs");
+
+/// 🔴 **A cena de smoke ARMA a seleção que a fatia precisa.**
+///
+/// A C3 só age com **2+ chaves marcadas** (`flip_multiframe::targets` devolve o caminho de
+/// sempre abaixo disso), e marcar é Shift/Ctrl+clique célula a célula na tira. Uma cena que
+/// não arma deixa a fatia atrás de um gesto que ela nem diz onde fica — e o Apply colore um
+/// quadro só, **indistinguível da feature quebrada**. Foi exatamente essa a dúvida do 1º
+/// smoke (*"não sei se você preparou corretamente o arquivo de teste"*), e a resposta certa
+/// não é explicar melhor: é a cena nascer clicável (plano §8, ready-to-smoke).
+///
+/// E ela tem de **DIZER o que construiu**: *"o arquivo de teste está certo?"* é uma pergunta
+/// que o smoke responde sozinho, senão um Apply de um quadro só é indistinguível de uma cena
+/// com um quadro só.
+#[test]
+fn the_smoke_scene_arms_the_multiframe_selection_and_reports_it() {
+    assert!(
+        SMOKE.contains("self.flip_strip.selection.clone_from(&keys)"),
+        "a cena tem de MARCAR as chaves na tira — sem isso a C3 fica atrás de um gesto \
+         manual e o Apply colore um quadro só, indistinguível da feature quebrada"
+    );
+    assert!(
+        SMOKE.contains("insert_frame(l, frame,"),
+        "a cena tem de criar os quadros EXTRA (com o divisor deslocado) — uma chave só não \
+         contém o fenômeno que a fatia existe para resolver"
+    );
+    assert!(
+        SMOKE.contains("chave(s) em {keys:?}"),
+        "a cena tem de IMPRIMIR quantas chaves montou e quantas marcou — o smoke responde \
+         sozinho se o arquivo de teste está certo"
+    );
+}

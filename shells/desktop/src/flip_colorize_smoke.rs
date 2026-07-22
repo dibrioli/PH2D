@@ -130,6 +130,17 @@ impl crate::App {
             ));
         }
 
+        // ⚠️ **A cena ARMA a seleção das três chaves.** Sem isto a C3 ficava atrás de um
+        //    gesto que a cena nem dizia onde fica (Shift/Ctrl+clique célula a célula na
+        //    tira), e um Apply "normal" coloria só o quadro ativo — indistinguível da
+        //    feature quebrada. Ready-to-smoke (plano §8): a fatia nasce clicável.
+        //    Para ver o comportamento de UM quadro, clique numa célula da tira SEM
+        //    modificador (isso zera a seleção).
+        let keys: Vec<i32> = obj
+            .layer(l)
+            .map(|lay| lay.cells().iter().map(|(k, _, _)| *k).collect())
+            .unwrap_or_default();
+
         // ── Os DOIS rabiscos (MUNDO ≈ LOCAL num objeto fresco): vermelho à esquerda,
         //    azul à direita. Traços verticais, não pontos (um ponto degenera o corte). ──
         self.flip_colorize.push_scribble(
@@ -141,7 +152,17 @@ impl crate::App {
             seg(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
         );
 
+        self.flip_strip.selection.clone_from(&keys);
         self.playhead.pause();
+        // ⚠️ **A cena DIZ o que construiu.** "Não sei se o arquivo de teste está certo" é
+        // uma pergunta que o smoke tem de responder sozinho — sem isto, um Apply que colore
+        // um quadro só é indistinguível de uma cena com um quadro só.
+        eprintln!(
+            "\n[colorize-smoke] cena montada: {} chave(s) em {keys:?}, {} marcada(s) na \
+             tira. O divisor anda 0.0 / 0.6 / 1.2 entre elas.",
+            keys.len(),
+            self.flip_strip.selection.len()
+        );
         eprintln!(
             "\n[colorize-smoke] Modo Colorize. Dois rabiscos ja estao na tela (vermelho esq,\n\
              azul dir) — voce os VE porque o overlay desenha o que esta acumulado.\n\
@@ -169,16 +190,22 @@ impl crate::App {
                 · **Trap**: fecha o vao de vez (bola que nao passa por vao < 2r; ate 50 px).\n   \
                 (Ctrl+Z desfaz o ajuste; de novo, o Apply. Editar o desenho encerra o ajuste.)\n\
              \n\
-             ONION FILL (fatia C3) — a cena tem TRES chaves (0, 4, 8) com o divisor em\n\
-             posicoes DIFERENTES:\n\
-             6. Marque as tres chaves na tira (multi-selecao) e clique **Apply** UMA vez.\n\
-             7. Passeie pelos quadros: as TRES tem de estar coloridas, e a fronteira de cada\n   \
-                uma tem de colar no divisor DAQUELE quadro (nao no do quadro ativo) — cada\n   \
-                quadro e um solve independente, porque a linha se move.\n\
-             8. Arraste o **Trap**/**Bleed**: o ajuste ao vivo re-roda em TODOS os quadros\n   \
+             ONION FILL (fatia C3) — a cena ja' vem com TRES chaves (0, 4, 8), o divisor em\n\
+             posicoes diferentes, e **as tres JA MARCADAS na tira**. Entao o Apply do passo 4\n\
+             ja' e' o multiframe: um clique colore os tres quadros.\n\
+             6. Passeie pelos quadros (setas / a tira): as TRES tem de estar coloridas, e a\n   \
+                fronteira de cada uma tem de colar no divisor DAQUELE quadro (nao no do\n   \
+                ativo) — cada quadro e um solve independente, porque a linha se move.\n\
+             7. Arraste o **Trap**/**Bleed**: o ajuste ao vivo re-roda em TODOS os quadros\n   \
                 que o gesto escreveu, nao so no ativo.\n\
+             8. Para ver UM quadro so': clique numa celula da tira SEM modificador (zera a\n   \
+                selecao) e clique Apply de novo. Shift/Ctrl+clique volta a marcar.\n\
              9. Um quadro em que a arte nao fecha falha em SILENCIO — o toast fala pelo\n   \
-                quadro ATIVO, que e onde voce esta olhando.\n"
+                quadro ATIVO, que e onde voce esta olhando.\n\
+             \n\
+             O FANTASMA: o divisor AZULADO a direita do branco e' o onion skin do quadro\n\
+             seguinte (a pose para onde a linha anda). Nao e' arte deste quadro — e' o que\n\
+             torna o gesto do onion fill possivel: voce rabisca por cima das poses empilhadas.\n"
         );
     }
 }

@@ -309,7 +309,7 @@ gate antigo do W2.7 fica VERDE sobre o defeito** (ele só testa o nascimento —
 o gate que faltava); tirar só o braço `rebake_paper` derruba só o do desarme. Suíte tool 766 ok.
 
 **⬛ DOC 21 — TODOS OS MÉTODOS DE STROKE NO WET (deposit-at-commit) LANDOU (2026-07-21,
-`ae531e51..c2eddcc9`, 4 estágios, AGUARDANDO SMOKE):** o Enio derrubou a premissa do W3
+`ae531e51..c2eddcc9`, 4 estágios, **SMOKE OK 2026-07-21**):** o Enio derrubou a premissa do W3
 (*"todos os modos stroke são perfeitamente adaptáveis... o depósito é estático e só após o
 mouse up a simulação começa... nos dinâmicos, quando se apertar Enter"*) — a análise
 multiagêntica (4 leitores + 3 designs + juiz, design decision-complete em

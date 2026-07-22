@@ -256,3 +256,93 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod perf {
+    use super::*;
+
+    /// Um caminho ondulado de `n` âncoras.
+    fn wiggle(n: usize) -> Vec<VecVertex> {
+        (0..n)
+            .map(|i| {
+                let x = i as f64 * 0.7;
+                let y = if i % 2 == 0 { 0.6 } else { -0.6 };
+                VecVertex {
+                    anchor: [x, y],
+                    in_handle: [x - 0.25, y],
+                    out_handle: [x + 0.25, y],
+                    kind: VertexKind::Smooth,
+                    corner_radius: 0.0,
+                }
+            })
+            .collect()
+    }
+
+    /// O custo de UM re-cook — o que uma tecla paga. 200 glifos, 50 âncoras.
+    fn recook_ms(on_path: bool, reps: u32) -> f64 {
+        let font = crate::vec_font::resolve(None);
+        let l = TextLayout {
+            size: 0.2,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: TextAlign::Left,
+        };
+        let verts = wiggle(50);
+        let text: String = "ABCDEFGHIJ".repeat(20);
+        let t0 = std::time::Instant::now();
+        for _ in 0..reps {
+            let ap = ArcPath::from_contour(&verts, false).expect("caminho");
+            let placement = if on_path {
+                TextPlacement::OnPath {
+                    path: &ap,
+                    start_offset: 0.0,
+                    flip: false,
+                }
+            } else {
+                TextPlacement::At([0.0, 0.0])
+            };
+            let out = crate::vec_glyph::text_to_compound_path(
+                &font, &text, &l, &AXES, &placement, &None, &None,
+            );
+            std::hint::black_box(out);
+        }
+        t0.elapsed().as_secs_f64() * 1000.0 / f64::from(reps)
+    }
+
+    /// **Cavalgar o caminho custa ~2× o texto reto, e não mais.**
+    ///
+    /// O oráculo é uma RAZÃO contra a rota que já existia, não um relógio: o perfil de teste
+    /// do CI compila em `opt-level=1`, então um limite de milissegundos ali mede o PERFIL e
+    /// não a regressão. Medido em `--release`: **0,37 ms reto contra 0,72 no caminho** — a
+    /// inversão de comprimento de arco por glifo dobra o layout, que é o preço honesto de
+    /// pousar cada letra onde o arco manda.
+    ///
+    /// ⚠️ **Uma razão contra o número de ÂNCORAS foi tentada primeiro e DESCARTADA por
+    /// medição**: quadruplicar as âncoras dá razão **0,90**, e nem trocar a busca binária do
+    /// `frame_at` por uma varredura linear a move — o custo do caminho desaparece ao lado do
+    /// custo dos contornos. Um gate que nenhuma mutação mata passa sempre, e um gate que
+    /// passa sempre é pior que gate nenhum, porque *parece* cobertura.
+    #[test]
+    fn riding_the_path_costs_about_twice_the_straight_layout() {
+        let straight = recook_ms(false, 6);
+        let ridden = recook_ms(true, 6);
+        let ratio = ridden / straight;
+        assert!(
+            ratio < 3.5,
+            "cavalgar custou {ratio:.2}x o texto reto ({straight:.3} ms contra {ridden:.3} ms)"
+        );
+    }
+
+    /// **O kill-criterion da feature, medido em `--release`.**
+    ///
+    /// Declarado ANTES do build (plano 22 §7): uma tecla num texto de 200 glifos sobre um
+    /// caminho de 50 âncoras não pode passar de **8 ms** — o mesmo kill do irmão sculpt.
+    /// Medido: **0,72 ms**, onze vezes de folga ⇒ o recuo que o plano previa (re-cook
+    /// preguiçoso com cache do walker) **não é preciso**, e isso está decidido por medição.
+    #[test]
+    #[ignore = "kill-criterion: mede wall-clock, só faz sentido em --release"]
+    fn a_keystroke_recook_stays_under_the_kill() {
+        let ms = recook_ms(true, 20);
+        assert!(ms < 8.0, "re-cook de 200 glifos em 50 âncoras: {ms:.3} ms");
+    }
+}

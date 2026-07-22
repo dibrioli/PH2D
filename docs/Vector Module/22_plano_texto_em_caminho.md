@@ -372,10 +372,61 @@ diz agora.
 **Mutações:** normal para a direita ⇒ 3 RED · flip sem inverter a tangente ⇒ 2 RED · flip sem
 espelhar o arco ⇒ 1 RED · cúspide a devolver referencial inventado ⇒ 1 RED.
 
-### W3 — O layout consome o motor
-`vec_glyph.rs:80` passa a receber afim; `pen_x` vira `s`. `on_path: None` **byte-idêntico** (gate
-com fingerprint, o padrão do repo). O caret (`caret_x_offset:193`) segue o mesmo caminho — senão o
-cursor de digitação fica no texto reto enquanto as letras estão na curva.
+### W3 — O layout consome o motor ✅ **CONSTRUÍDA (2026-07-22)**
+O laço de layout deixou de calcular um PONTO por glifo e passou a resolver um **referencial**;
+`glyph_to_vec_path` recebe `&GlyphFrame`. O texto reto ficou **byte-idêntico**, pinado pelo
+fingerprint `0x511c_90e4_7b1f_01db` — **medido no commit ANTERIOR** (`abcf2c603`), para a alegação
+*"medido antes"* ser verificável no histórico e não uma afirmação minha.
+
+**Duas decisões de forma que valem mais que o código:**
+
+- **`TextPlacement` é um ENUM**, não `(origem, Option<caminho>)`. Sobre um caminho a origem do
+  bloco não é ignorada por convenção — ela **deixa de existir** (o `startOffset` a substitui). Um
+  par tornaria exprimível *"tenho origem E caminho"*, que nada sabe honrar, e é desse estado que
+  nasce o bug em que metade do código lê um e metade lê o outro.
+- **`glyph_frame` é PORTA ÚNICA**: o laço de glifos e o caret perguntam a ela. É o que impede
+  estruturalmente o defeito que esta wave nomeou desde o plano — *o cursor no texto reto com as
+  letras na curva* —, e que enumerar dois sítios só promete. **Um caret é um glifo de avanço zero.**
+
+**O que a medição negou (de novo):** a 2ª linha num círculo **anti-horário** empilha para **FORA**,
+não para dentro — a subida da letra aponta para o centro. Terceira vez que "dentro/fora" falha e
+*"à esquerda do sentido de marcha"* acerta. O gate passou a medir **paralelismo** (as duas bordas
+da banda andam o mesmo tanto), que é o que uma divergência ao longo da palavra quebraria — e um
+*"está mais para lá"* não quebraria.
+
+**⚠️ Um defeito MEDIDO e deliberadamente NÃO corrigido.** No documento uma reta é a cúbica
+degenerada `(P0,P0,P3,P3)`, cuja derivada é **nula nas duas pontas**: `ArcPath::frame_at(0)` de um
+segmento reto não tem tangente, e o texto — que não inventa rumo — salta ali. A cura é óbvia
+(amostrar a derivada um passo para dentro) e foi **escrita e medida**: ela faz sangrar o
+fingerprint do Zig Zag, porque o Zig Zag amostra **exatamente nas âncoras**, que são os pontos
+estacionários. Ou seja **muda o desenho de um efeito que o Enio já aprovou em smoke** — decisão de
+produto, não carona de uma wave de texto. Revertida, e o defeito fica **gateado**
+(`a_stationary_parameterisation_has_no_direction_and_the_text_skips_it`) para não ser
+re-descoberto do zero nem curado sem que alguém veja o preço. **A W4 encosta nisto**: um texto
+ligado a um segmento reto com `startOffset = 0` perde o cursor.
+
+**Dois gates nasceram fracos, pela mesma doença — a fixture não continha o fenômeno:**
+o gate do *drop* usava uma **reta**, e ali a saturação já cai na tangente nula, então o glifo era
+descartado **por acidente** e o gate ficava verde com o guard inteiro apagado (virou um **arco**);
+e *"o pen avança nos glifos saltados"* estava afirmado num comentário e preso por nada — a mutação
+**sobreviveu**, e o caso que o prova é o gesto mais comum da feature (texto **centrado**, cuja
+primeira metade cai em arco negativo: com o pen travado a palavra inteira sumiria).
+**6 mutações, 6 sangram.**
+
+**⚠️ E um arch-gate que EU MESMO ceguei na W0:**
+`every_live_host_that_rewrites_verts_is_named_by_the_radius_handle_policy` estava **vermelho
+latente desde `5bc175013`** — o `envelope_live` passou a reescrever pela porta `replace_cooked`, a
+assinatura sintática sumiu do detector e o controle positivo caiu de 5 para 4 hosts, que é
+exatamente a falha que aquele `assert` existe para gritar. **Não vi porque as verificações
+intermédias correram filtradas por nome, e `tests/*.rs` não corre com filtro.** `.replace_cooked(`
+entrou no detector; toda porta NOVA de reescrita tem de entrar lá no commit em que nasce.
+
+**Cena de smoke 22** (`PH2D_BUILD_SMOKE=22`) — a wave é motor, então sem cena seria invisível, e
+*invisível* e *quebrado* têm a mesma cara. Onda + dois círculos (um virado). **Medido antes de a
+mensagem afirmar o que mostra**: 11 + 39 + 22 glifos, todos desenhados, ângulos de +37° a −54° na
+onda. ⚠️ A minha 1ª mensagem dizia *"a palavra dá a volta"* e era **falso** (21% do círculo) — os
+textos foram alongados e a afirmação corrigida. A sonda virou **gate permanente** sobre a MESMA
+tabela que a cena desenha.
 
 ### W4 — A UI
 Seção **Text on Path** no painel (ids novos, strings por i18n, entrada em `VECTOR_SECTIONS`):
@@ -406,6 +457,20 @@ Se digitar uma tecla num texto de 200 glifos sobre um caminho de 50 âncoras pas
 **re-cook preguiçoso com cache do walker** — e se nem assim, para **`Convert to Curves` obrigatório
 antes de vincular** (texto-em-caminho destrutivo), que é pior UX mas honesto. *Não* se aceita
 baixar o teto de glifos sem medir: o teto é do hardware.
+
+✅ **MEDIDO na W3 (2026-07-22): 0,72 ms** contra os 8 do kill — **onze vezes de folga**, sem cache
+nenhum. O recuo previsto acima **não é preciso**, e isso está decidido por medição em vez de por
+receio. O texto reto custa 0,37 ms ⇒ a inversão de comprimento de arco por glifo **dobra** o
+layout, que é o preço honesto de pousar cada letra onde o arco manda.
+
+Os dois gates vivem em `text_path_smoke::perf`: uma **RAZÃO** (cavalgar contra reto, bar 3,5×) que
+roda sempre — porque o perfil de teste do CI compila em `opt-level=1` e ali um limite de
+milissegundos mede o PERFIL, não a regressão — e o **kill absoluto** em `--release`, `#[ignore]`.
+⚠️ **Uma razão contra o número de ÂNCORAS foi tentada primeiro e DESCARTADA por medição**:
+quadruplicar as âncoras dá razão **0,90**, e nem trocar a busca binária do `frame_at` por uma
+varredura linear a move — o custo do caminho desaparece ao lado do custo dos contornos. Um gate que
+nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra com a mutação realista
+(*"melhorar a precisão"* da inversão de arco, 40 → 400 iterações).
 
 **O que este plano NÃO faz, de propósito:**
 - **Não compensa colisão em curva apertada** (§3.3) — nomeado, com gatilho.

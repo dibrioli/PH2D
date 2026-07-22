@@ -170,7 +170,7 @@ impl crate::App {
              \n\
                 Ele foi desenhado IGUAL nos dois quadros, entao tem de ficar parado.\n\
              \n\
-                Se ele escorregar para baixo ou para o lado, e' porque o programa casou o\n\
+                Se ele escorregar para baixo ou para o lado, e' porque ele casou o\n\
                 tronco com a PERNA -- eu desenhei o quadro 8 na ordem trocada (perna\n\
                 primeiro) de proposito, que e' o que um animador faz sem pensar.\n\
              \n\

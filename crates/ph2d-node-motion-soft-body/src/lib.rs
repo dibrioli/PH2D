@@ -570,3 +570,31 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod cost_probe {
+    use super::shape::{rest_shape, shape_goals};
+
+    /// MEASUREMENT (a fila §2 do handoff da linha GPU): o cap do nó é
+    /// `MAX_SIDE = 40` (1600 partículas). O custo por tick é o shape-matching —
+    /// DUAS passadas lineares sobre a nuvem (centroide, depois `A_pq`/`A_qq`) —
+    /// então a pergunta do §0.0 é: esse cap é de CUSTO ou é escolha?
+    ///
+    ///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture
+    #[test]
+    #[ignore = "measurement — run alone with --nocapture"]
+    fn what_does_the_shape_match_cost_per_tick() {
+        for &side in &[40usize, 100, 316, 1000] {
+            let n = side * side;
+            let rest = rest_shape(side, side, 1.0);
+            let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
+            let t0 = std::time::Instant::now();
+            const REPS: u32 = 20;
+            for _ in 0..REPS {
+                std::hint::black_box(shape_goals(&pred, &rest, 0.3));
+            }
+            let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+            eprintln!("  shape_match {side:>4}x{side:<4} = {n:>9} partículas: {ms:>8.3} ms/tick");
+        }
+    }
+}

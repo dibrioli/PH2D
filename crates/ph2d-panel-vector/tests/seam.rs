@@ -1568,3 +1568,125 @@ fn clicking_a_side_chip_records_that_side() {
         );
     }
 }
+
+/// Os controles da seção **Text on Path** (plano 22) chegam ao bus quando o artista CLICA
+/// NELES — pelo caminho inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs`
+/// → bus). Irmão do gate do Envelope acima, e pela MESMA razão.
+///
+/// ⚠️ **As DUAS premissas de estado são do fixture, e nenhuma é decoração.** A seção só existe
+/// com um texto em foco (`set_current_text_visible`), e as suas duas caras dependem do vínculo:
+/// o botão de PRENDER só é pintado com a seleção que o gesto exige, e o Offset/lado/Detach só
+/// com um vínculo VIVO. Um fixture que publicasse só metade deixaria metade dos ids sem retângulo
+/// e o gate morreria na 1ª asserção — que é a mesma classe de premissa que o sweep do Painter
+/// perdeu (*Filter Stroke só existe depois de um traço*).
+#[test]
+fn every_text_on_path_control_reaches_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    ph2d_panel_vector::set_current_text_visible(true);
+    for (linked, id, name) in [
+        // Texto SOLTO com a seleção certa: só a porta de entrada.
+        (false, ids::VECTOR_TEXTPATH_LINK, "Text on Path"),
+        // Texto PRESO: o que se pode dizer sobre o vínculo.
+        (true, ids::VECTOR_TEXTPATH_FLIP_OFF, "This side"),
+        (true, ids::VECTOR_TEXTPATH_FLIP, "Other side"),
+        (true, ids::VECTOR_TEXTPATH_DETACH, "Detach from Path"),
+    ] {
+        ph2d_panel_vector::set_current_textpath_can_link(!linked);
+        ph2d_panel_vector::set_current_textpath(linked, 0.25, false);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| {
+                panic!("o controle {name} nao foi PINTADO com area clicavel na secao Text on Path")
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate` \
+             (o controle esta desenhado, mas nao existe para o dispatcher)"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        let reached = host
+            .drained_actions()
+            .into_iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
+        assert!(
+            reached,
+            "o Click em {name} nao chegou ao bus — falta o id na allowlist do `event.rs` \
+             (o controle e clicavel e MORTO)"
+        );
+    }
+    ph2d_panel_vector::set_current_text_visible(false);
+    ph2d_panel_vector::set_current_textpath_can_link(false);
+    ph2d_panel_vector::set_current_textpath(false, 0.0, false);
+}
+
+/// **A seção não oferece o que não funciona, e a AUSÊNCIA é metade do gate.**
+///
+/// Um texto solto com a seleção errada não mostra o botão de prender (clicar não teria como
+/// explicar-se); um texto preso não mostra o botão de prender (prender não quer dizer nada num
+/// texto já preso); e um texto solto não mostra Offset/lado/Detach (não há vínculo de que
+/// falar). Sem esta metade, um `paint` que desenhasse tudo sempre passaria no gate acima.
+#[test]
+fn the_text_on_path_section_offers_only_what_applies() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let rect = |id| {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+    };
+    ph2d_panel_vector::set_current_text_visible(true);
+
+    // Solto, mas com a seleção ERRADA: nada é oferecido.
+    ph2d_panel_vector::set_current_textpath_can_link(false);
+    ph2d_panel_vector::set_current_textpath(false, 0.0, false);
+    assert!(
+        rect(ids::VECTOR_TEXTPATH_LINK).is_none(),
+        "sem a seleção que o gesto exige, prender nao pode ser oferecido"
+    );
+    assert!(rect(ids::VECTOR_TEXTPATH_OFFSET).is_none(), "nem o offset");
+
+    // Solto, com a seleção CERTA: só a porta de entrada.
+    ph2d_panel_vector::set_current_textpath_can_link(true);
+    assert!(rect(ids::VECTOR_TEXTPATH_LINK).is_some());
+    assert!(
+        rect(ids::VECTOR_TEXTPATH_DETACH).is_none(),
+        "soltar um texto que nao esta preso nao quer dizer nada"
+    );
+
+    // Preso: o inverso exato.
+    ph2d_panel_vector::set_current_textpath_can_link(true);
+    ph2d_panel_vector::set_current_textpath(true, 0.5, true);
+    assert!(
+        rect(ids::VECTOR_TEXTPATH_LINK).is_none(),
+        "prender um texto ja' preso nao quer dizer nada"
+    );
+    assert!(rect(ids::VECTOR_TEXTPATH_OFFSET).is_some());
+    assert!(rect(ids::VECTOR_TEXTPATH_DETACH).is_some());
+
+    // E num objeto que NAO e' texto a secao inteira some.
+    ph2d_panel_vector::set_current_text_visible(false);
+    assert!(
+        rect(ids::VECTOR_TEXTPATH_LINK).is_none() && rect(ids::VECTOR_TEXTPATH_OFFSET).is_none(),
+        "num retangulo selecionado a secao nao tem sujeito"
+    );
+    ph2d_panel_vector::set_current_textpath(false, 0.0, false);
+    ph2d_panel_vector::set_current_textpath_can_link(false);
+}

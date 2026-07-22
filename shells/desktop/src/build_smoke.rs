@@ -11,6 +11,8 @@
 //!   **a rugosidade tem de continuar lá**. Antes da W0 ela sumia neste gesto, em silêncio.
 //! - `PH2D_BUILD_SMOKE=22` — a cena da **W3** (texto em CAMINHO): uma onda e dois círculos,
 //!   com o texto a cavalgá-los; a 2ª linha corre paralela, o 3º está virado.
+//! - `PH2D_BUILD_SMOKE=23` — a cena do **GESTO** (W4): um texto e uma curva já selecionados,
+//!   para o artista os prender pelo painel (seção Text on Path).
 //! - `PH2D_BUILD_SMOKE=19` — a cena do 17 com o **fluxo do report de 2026-07-20**: arma o
 //!   Corner Round ANTES, arrasta o Offset até SATURAR (o gesto natural), solta e retuna
 //!   Bevel → Miter. Com a lei da forma (±maxdim/2) o saturado é "a forma dobrada" e cada
@@ -128,6 +130,12 @@ impl crate::App {
         // A cena da W3 (o texto cavalga o caminho) — irmão `text_path_smoke`.
         if level == 22 {
             crate::text_path_smoke::frame(self, f);
+            return;
+        }
+        // A cena do GESTO (o artista prende o texto pelo painel) — irmão
+        // `text_path_gesture_smoke`. Irmã da 22: aquela mostra o motor, esta o caminho até ele.
+        if level == 23 {
+            crate::text_path_gesture_smoke::frame(self, f);
             return;
         }
         match f {

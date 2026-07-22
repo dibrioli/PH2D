@@ -1533,6 +1533,8 @@ impl crate::App {
             // ADR-0129: o botão "Envelope" envolve a seleção numa gaiola (container); Expand
             // materializa a deformada e Release ressuscita a fonte autorada — os dois dissolvem.
             let mut pending_create_envelope = false;
+            let mut pending_textpath: Option<crate::vec_text_ride::TextPathCmd> = None;
+            let mut pending_textpath_offset: Option<f64> = None;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
             // O GESTO do envelope (ADR-0129 Fatias D+E): Perspective (projetivo) · Mesh (Coons) ·
@@ -1711,6 +1713,17 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PINS {
                                 // ADR-0129 Fatia E: o puppet warp (MLS-rigid).
                                 pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Pins);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_LINK {
+                                // Plano 22: prende o texto da seleção à outra forma dela.
+                                pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Link);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_DETACH {
+                                pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Detach);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP {
+                                pending_textpath =
+                                    Some(crate::vec_text_ride::TextPathCmd::Flip(true));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP_OFF {
+                                pending_textpath =
+                                    Some(crate::vec_text_ride::TextPathCmd::Flip(false));
                             } else if let Some(hit) = crate::fx_bridge_dispatch::classify_click(*id)
                             {
                                 match hit {
@@ -1858,6 +1871,10 @@ impl crate::App {
                                 // ADR-0128: arrastar Steps ajusta o blend selecionado AO VIVO.
                                 pending_blend_steps =
                                     Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_OFFSET {
+                                // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
+                                // documento (o painel nao converte -- track e valor coincidem).
+                                pending_textpath_offset = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
@@ -2749,6 +2766,38 @@ impl crate::App {
             }
             // ADR-0129: **Envelope** — envolve a seleção (1..N formas) num container com a gaiola em
             // repouso. Síncrono (as formas já existem; o container não tem path), então age já.
+            // Plano 22: prender / soltar / trocar o lado. Um comando só por frame (é um
+            // clique), e todos passam pelas portas do `vec_text_ride` — que re-cozinham pela
+            // porta de sempre, para não haver uma segunda resposta a "como um texto vira
+            // geometria".
+            if let Some(v) = pending_textpath_offset {
+                let sel = self.vec_pen.selected_paths().to_vec();
+                crate::vec_text_ride::edit(sim, vec_scene, &self.vec_entities, &sel, |l| {
+                    l.start_offset = v as f32;
+                });
+            }
+            if let Some(cmd) = pending_textpath {
+                let sel = self.vec_pen.selected_paths().to_vec();
+                let done = match cmd {
+                    crate::vec_text_ride::TextPathCmd::Link => {
+                        crate::vec_text_ride::link(sim, vec_scene, &self.vec_entities, &sel)
+                    }
+                    crate::vec_text_ride::TextPathCmd::Detach => {
+                        crate::vec_text_ride::detach(sim, vec_scene, &self.vec_entities, &sel)
+                    }
+                    crate::vec_text_ride::TextPathCmd::Flip(v) => {
+                        crate::vec_text_ride::edit(sim, vec_scene, &self.vec_entities, &sel, |l| {
+                            l.flip = v;
+                        })
+                    }
+                };
+                if !done {
+                    eprintln!(
+                        "[ph2d-vec] text on path: selecione o TEXTO e um caminho (ou um texto \
+                         ja' preso, para soltar)"
+                    );
+                }
+            }
             if pending_create_envelope {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 match crate::envelope_live::create(sim, vec_scene, &self.vec_entities, &ids) {
@@ -3789,6 +3838,20 @@ impl crate::App {
                     .collect();
                 let env_container = crate::envelope_live::sole_container(sim, &sel_bits);
                 ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
+                // Text on Path (plano 22): as duas perguntas que só a shell sabe responder —
+                // *"esta seleção permite prender?"* (um texto + um caminho) e *"o texto em foco
+                // já cavalga alguma coisa, e com que valores?"*. A primeira usa a MESMA porta
+                // que o clique honra (`link_candidate`), senão o botão apareceria e recusaria.
+                let sel = self.vec_pen.selected_paths().to_vec();
+                ph2d_panel_vector::set_current_textpath_can_link(
+                    crate::vec_text_ride::link_candidate(sim, &self.vec_entities, &sel).is_some(),
+                );
+                let ride = crate::vec_text_ride::current(sim, &self.vec_entities, &sel);
+                ph2d_panel_vector::set_current_textpath(
+                    ride.is_some(),
+                    ride.map_or(0.0, |r| f64::from(r.start_offset)),
+                    ride.is_some_and(|r| r.flip),
+                );
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.
                 let fx_target = crate::fx_bridge::sole_path(self.vec_pen.selected_paths());

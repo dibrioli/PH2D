@@ -87,3 +87,135 @@ impl Guide {
 #[cfg(test)]
 #[path = "vec_text_ride_tests.rs"]
 mod tests;
+
+/// **O par que o gesto de prender exige: um TEXTO e um caminho que não seja ele.**
+///
+/// Porta única — quem PUBLICA se o botão aparece e quem HONRA o clique perguntam a esta
+/// mesma função. Perguntar em dois sítios é como nasce o botão que aparece e recusa.
+///
+/// `None` quando a seleção não é exatamente isso: sem texto, sem segunda forma, ou com mais de
+/// duas. Duas é o número certo e não uma limitação — *"prender este texto àquela curva"* nomeia
+/// exatamente dois objetos, e três não diz qual delas é a curva.
+#[must_use]
+pub(crate) fn link_candidate(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[ph2d_vec_scene::VecPathId],
+) -> Option<(ph2d_vec_scene::VecPathId, Entity, ph2d_vec_scene::VecPathId)> {
+    if selection.len() != 2 {
+        return None;
+    }
+    let (text, entity, _) = crate::vec_text_object::selected_text_object(sim, map, selection)?;
+    let guide = *selection.iter().find(|&&id| id != text)?;
+    // O guia não pode ser ele mesmo um texto: prender texto a texto não quer dizer nada, e o
+    // `find` acima escolheria arbitrariamente qual dos dois manda.
+    let guide_is_text = map
+        .get(&guide)
+        .map(|&b| Entity::from_bits(b))
+        .and_then(|e| sim.world().get::<ph2d_ecs::VecShape>(e))
+        .is_some_and(|s| matches!(s, ph2d_ecs::VecShape::Text(_)));
+    (!guide_is_text).then_some((text, entity, guide))
+}
+
+/// Prende o texto da seleção ao outro objeto dela. `true` se prendeu.
+pub(crate) fn link(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    selection: &[ph2d_vec_scene::VecPathId],
+) -> bool {
+    let Some((text, entity, guide)) = link_candidate(sim, map, selection) else {
+        return false;
+    };
+    sim.world_mut().entity_mut(entity).insert(VecTextPath {
+        path: guide,
+        start_offset: 0.0,
+        flip: false,
+    });
+    recook(sim, scene, map, text, entity);
+    true
+}
+
+/// Solta o texto da seleção do caminho dele. `true` se soltou.
+///
+/// O caminho FICA. Soltar é remover o componente — nada é destruído, e é isso que torna
+/// prender uma porta de duas mãos (o argumento do `Release` do Envelope e do Blend).
+pub(crate) fn detach(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    selection: &[ph2d_vec_scene::VecPathId],
+) -> bool {
+    let Some((text, entity, _)) = crate::vec_text_object::selected_text_object(sim, map, selection)
+    else {
+        return false;
+    };
+    if sim.world().get::<VecTextPath>(entity).is_none() {
+        return false;
+    }
+    sim.world_mut().entity_mut(entity).remove::<VecTextPath>();
+    recook(sim, scene, map, text, entity);
+    true
+}
+
+/// Edita o vínculo do texto da seleção (offset, lado) e re-cozinha. `true` se havia vínculo.
+pub(crate) fn edit(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    selection: &[ph2d_vec_scene::VecPathId],
+    f: impl FnOnce(&mut VecTextPath),
+) -> bool {
+    let Some((text, entity, _)) = crate::vec_text_object::selected_text_object(sim, map, selection)
+    else {
+        return false;
+    };
+    let Some(mut link) = sim.world().get::<VecTextPath>(entity).copied() else {
+        return false;
+    };
+    f(&mut link);
+    sim.world_mut().entity_mut(entity).insert(link);
+    recook(sim, scene, map, text, entity);
+    true
+}
+
+/// O vínculo VIVO do texto da seleção, para o painel publicar os controles no lugar certo.
+#[must_use]
+pub(crate) fn current(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[ph2d_vec_scene::VecPathId],
+) -> Option<VecTextPath> {
+    let (_, entity, _) = crate::vec_text_object::selected_text_object(sim, map, selection)?;
+    sim.world().get::<VecTextPath>(entity).copied()
+}
+
+/// Re-cozinha o texto com os params que ele já tem — o vínculo mudou, o texto não.
+///
+/// Passa pela porta de sempre (`recook_text_object`), que é quem sabe resolver o guia e impor
+/// a identidade. Um re-cook próprio aqui seria a segunda resposta a *"como um texto vira
+/// geometria"*, e divergiria no dia em que uma delas ganhasse um cuidado.
+fn recook(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    text: ph2d_vec_scene::VecPathId,
+    entity: Entity,
+) {
+    if let Some(ph2d_ecs::VecShape::Text(params)) =
+        sim.world().get::<ph2d_ecs::VecShape>(entity).cloned()
+    {
+        crate::vec_text_object::recook_text_object(sim, scene, map, text, entity, params);
+    }
+}
+
+/// Um comando de vínculo vindo do painel — um clique, um comando.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum TextPathCmd {
+    /// Prender o texto da seleção à outra forma dela.
+    Link,
+    /// Soltar (o caminho fica).
+    Detach,
+    /// Trocar o lado.
+    Flip(bool),
+}

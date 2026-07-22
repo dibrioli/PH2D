@@ -358,6 +358,12 @@ pub use envelope::{
     set_current_envelope_mode, set_current_envelope_presets, set_current_has_envelope,
 };
 
+/// O estado do **Text on Path** (plano 22) — módulo irmão pelo mesmo teto de 600 LOC.
+#[path = "state_textpath.rs"]
+mod textpath;
+pub(crate) use textpath::{can_link, flip, linked, offset};
+pub use textpath::{set_current_textpath, set_current_textpath_can_link};
+
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {
     CURRENT_TEXT_VISIBLE.with(|c| c.set(v));

@@ -371,6 +371,9 @@ mod style;
 pub(crate) use effects::seed_effect_ranges;
 use style::populate_style;
 
+/// Passo do campo numérico do Offset, em fração do comprimento do caminho.
+const TEXTPATH_OFFSET_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento
+
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
@@ -383,6 +386,31 @@ fn populate_ops(store: &mut WidgetStore) {
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     blend::populate_blend(store);
     envelope::populate_envelope(store);
+    // Text on Path (plano 22): os quatro controles + o slider de offset. Registrados
+    // INCONDICIONALMENTE, como todos os irmãos — o store é agnóstico de modo, e quem decide se
+    // o clique é possível é a PINTURA (sem hit-rect não há Click).
+    button(store, ids::VECTOR_TEXTPATH_LINK);
+    button(store, ids::VECTOR_TEXTPATH_DETACH);
+    button(store, ids::VECTOR_TEXTPATH_FLIP);
+    button(store, ids::VECTOR_TEXTPATH_FLIP_OFF);
+    // O offset é uma FRAÇÃO do comprimento (o `startOffset` do SVG): track e valor coincidem,
+    // então a escala é 1 e o deslocamento 0 — o único slider do painel em que isso é verdade,
+    // e é o que torna o campo legível (0.50 é meio caminho, em qualquer curva).
+    slider_chip(
+        store,
+        ids::VECTOR_TEXTPATH_OFFSET,
+        ids::VECTOR_TEXTPATH_OFFSET_NUM,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+    );
+    store.set_number_range(
+        ids::VECTOR_TEXTPATH_OFFSET_NUM,
+        0.0,
+        1.0,
+        TEXTPATH_OFFSET_STEP,
+    );
     effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);

@@ -130,6 +130,7 @@ mod shape_build_gesture;
 mod sim_populate;
 mod stack_smoke;
 mod text_fx_smoke;
+mod text_path_gesture_smoke;
 mod text_path_smoke;
 mod theme;
 #[cfg(test)]

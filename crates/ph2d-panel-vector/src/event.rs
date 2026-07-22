@@ -77,28 +77,50 @@ fn forward_track(
     true
 }
 
+/// Os sliders cujo valor viaja como **track** (ou como uma conversão de uma linha dele).
+///
+/// Extraídos do `apply_event` pelo teto de 200 LOC por função. O critério não é "os primeiros
+/// braços": é *"o valor que sai daqui é o track, ou uma função pura dele"* — todo o resto lê
+/// estado do painel (o acumulador da rotação, o valor comprometido de um campo) e por isso
+/// **não** cabe aqui.
+///
+/// `None` = não é um destes; o `match` de baixo decide.
+fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
+    let WidgetEvent::ValueChanged(id) = ev else {
+        return None;
+    };
+    // O Bend é BIPOLAR: o track `0..1` vira `-1..1` aqui, na fronteira.
+    if id == ids::VECTOR_ENVELOPE_BEND {
+        return Some(forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0)));
+    }
+    // O track de um parâmetro de efeito é NORMALIZADO `0..1`; a faixa real é do EFEITO e viaja
+    // no snapshot. Quem reconverte é a shell, que a conhece — aqui o que se garante é que o
+    // número que sai é o track, sem fingir ser outra coisa.
+    if fx_param_of(id).is_some() || id == ids::VECTOR_BLEND_STEPS {
+        return Some(forward_track(host, id, 0.0, |t| t));
+    }
+    if id == ids::VECTOR_MORPH_T {
+        return Some(forward_track(host, id, 0.5, |t| t));
+    }
+    // O Offset do texto em caminho é uma FRAÇÃO do comprimento (o `startOffset` do SVG): track
+    // e valor de documento são o MESMO número, então a fronteira não converte nada. É o único
+    // slider do painel em que isso é verdade, e é o que torna o campo legível — `0.50` é meio
+    // caminho, em qualquer curva.
+    if id == ids::VECTOR_TEXTPATH_OFFSET {
+        return Some(forward_track(host, id, 0.0, |t| t));
+    }
+    None
+}
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if let Some(consumed) = track_slider_event(host, ev) {
+        return EventOutcome::from_bool(consumed);
+    }
     let consumed = match ev {
-        // O Bend é BIPOLAR: o track `0..1` vira `-1..1` aqui, na fronteira.
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_ENVELOPE_BEND => {
-            forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0))
-        }
-        // O track de um parâmetro de efeito é NORMALIZADO `0..1`; a faixa real é do EFEITO e
-        // viaja no snapshot. Quem reconverte é a shell, que a conhece — aqui o que se garante é
-        // que o número que sai é o track, sem fingir ser outra coisa.
-        WidgetEvent::ValueChanged(id) if fx_param_of(id).is_some() => {
-            forward_track(host, id, 0.0, |t| t)
-        }
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_MORPH_T => {
-            forward_track(host, id, 0.5, |t| t)
-        }
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_BLEND_STEPS => {
-            forward_track(host, id, 0.0, |t| t)
-        }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_WIDTH => {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -454,6 +476,12 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_ENVELOPE_MESH
         || id == ids::VECTOR_ENVELOPE_PINS
         || id == ids::VECTOR_ENVELOPE_CLEAR_PINS
+        // Text on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
+        // `VecTextPath` da entidade), então atravessam para a shell como os do envelope.
+        || id == ids::VECTOR_TEXTPATH_LINK
+        || id == ids::VECTOR_TEXTPATH_DETACH
+        || id == ids::VECTOR_TEXTPATH_FLIP
+        || id == ids::VECTOR_TEXTPATH_FLIP_OFF
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION

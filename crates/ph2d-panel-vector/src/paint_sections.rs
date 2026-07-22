@@ -56,6 +56,10 @@ mod blend;
 #[path = "paint_envelope.rs"]
 mod envelope;
 
+/// A seção **Text on Path** (plano 22) — módulo irmão (teto de 600 LOC).
+#[path = "paint_textpath.rs"]
+mod textpath;
+
 /// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
 #[path = "paint_effects.rs"]
 mod effects;
@@ -186,6 +190,10 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::text_section);
         y = self.step(y, Self::font_section);
         y = self.step(y, Self::paragraph_section);
+        // Text on Path fica com as outras seções de TEXTO (Font / Paragraph / Axes) e não com
+        // os deformadores: o artista a procura onde afina o texto, e ela não deforma glyph
+        // nenhum — os glyphs continuam rígidos (plano 22 §1, caso A).
+        y = self.step(y, Self::textpath_section);
         y = self.step(y, Self::axes_section);
         y = self.step(y, |b, y| b.stroke_style(snap, y));
         y = self.step(y, |b, y| b.fill_style(snap, y));

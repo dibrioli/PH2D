@@ -106,6 +106,18 @@ impl Fix {
         );
     }
 
+    /// O y mais alto do texto — quão longe ele subiu pelo arco.
+    fn top_y(&self) -> f64 {
+        self.scene
+            .paths()
+            .iter()
+            .find(|p| p.id == self.text)
+            .expect("texto")
+            .verts_all()
+            .map(|v| v.anchor[1])
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+
     /// A menor e a maior distância de uma âncora do texto à origem.
     fn radial_band(&self) -> (f64, f64) {
         self.scene
@@ -307,4 +319,103 @@ fn flipping_puts_the_text_on_the_other_side_of_the_guide() {
         lo_a < R - 0.2 && hi_b > R + 0.2,
         "e cada uma tem corpo do seu lado: {lo_a:.3} / {hi_b:.3}"
     );
+}
+
+/// **A SEQUÊNCIA do gesto leva a algum lugar** — a quarta condição de UI, que a linha de
+/// física descobriu **não ser implicada** pelas outras três (o componente existe · é pintado e
+/// registrado · o clique chega ao barramento). Todas as três podem estar verdes e o artista
+/// ainda assim não conseguir chegar a lado nenhum.
+///
+/// Aqui a sequência é a real: selecionar os dois → prender → mover o offset → virar → soltar.
+/// Cada passo é medido pelo que o artista VÊ (onde a geometria caiu), não pelo componente.
+#[test]
+fn the_whole_gesture_gets_the_artist_somewhere() {
+    let mut f = fixture();
+    let sel = vec![f.text, f.guide];
+
+    // 1. Com os dois selecionados, o gesto é oferecido.
+    assert!(
+        crate::vec_text_ride::link_candidate(&f.sim, &f.map, &sel).is_some(),
+        "um texto + um caminho é exatamente o par que o gesto nomeia"
+    );
+    // …e com só o texto, não é (não há curva a que prender).
+    assert!(
+        crate::vec_text_ride::link_candidate(&f.sim, &f.map, &[f.text]).is_none(),
+        "sem a curva não há a que prender"
+    );
+
+    // 2. Prender põe o texto na curva.
+    assert!(crate::vec_text_ride::link(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel
+    ));
+    assert!(f.radial_band().0 > 5.0, "prendeu: {:?}", f.radial_band());
+
+    // 3. O offset ANDA o texto ao longo dela.
+    let y_at_start = f.top_y();
+    assert!(crate::vec_text_ride::edit(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel,
+        |l| l.start_offset = 0.6
+    ));
+    assert!(
+        f.top_y() > y_at_start + 2.0,
+        "o offset moveu o texto pelo arco: {y_at_start:.3} -> {:.3}",
+        f.top_y()
+    );
+
+    // 4. Virar troca o lado.
+    let inside = f.radial_band();
+    assert!(crate::vec_text_ride::edit(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel,
+        |l| l.flip = true
+    ));
+    assert!(
+        f.radial_band().1 > inside.1,
+        "virou para fora: {inside:?} -> {:?}",
+        f.radial_band()
+    );
+
+    // 5. Soltar devolve o texto reto — e o CAMINHO fica.
+    assert!(crate::vec_text_ride::detach(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel
+    ));
+    assert!(f.radial_band().0 < 2.0, "soltou: {:?}", f.radial_band());
+    assert!(
+        f.scene.paths().iter().any(|p| p.id == f.guide),
+        "o caminho fica — soltar não destrói nada"
+    );
+    // E soltar de novo não faz nada (não há vínculo).
+    assert!(!crate::vec_text_ride::detach(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        &sel
+    ));
+}
+
+/// **Prender texto a texto não quer dizer nada, e o gesto recusa.**
+///
+/// Com dois textos selecionados o `find` que escolhe o guia pegaria um deles ARBITRARIAMENTE —
+/// e o artista veria um dos seus textos virar curva-guia por sorteio.
+#[test]
+fn two_texts_are_not_a_link_candidate() {
+    let mut f = fixture();
+    // O "guia" passa a ser texto também.
+    let ge = Entity::from_bits(f.map[&f.guide]);
+    f.sim
+        .world_mut()
+        .entity_mut(ge)
+        .insert(VecShape::Text(params("B")));
+    assert!(crate::vec_text_ride::link_candidate(&f.sim, &f.map, &[f.text, f.guide]).is_none());
 }

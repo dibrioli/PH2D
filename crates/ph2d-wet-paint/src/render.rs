@@ -291,11 +291,50 @@ pub fn render_pigment_only(layers: &[RenderLayer<'_>], out: &mut [u8]) {
 }
 
 /// The region form of [`render_pigment_only`] (the product's dirty-rect
-/// composite; the full render above is a thin wrapper so there is exactly ONE
-/// per-cell body to diverge). Cell coords, inclusive, [1..W] x [1..H]; `out`
-/// is the FULL W*H*4 canvas — only the rect's pixels are written.
+/// composite). Thin wrapper over [`render_pigment_region_visual`] with the
+/// visual terms OFF — byte-identical by construction (every visual term is
+/// branch-gated, so the off path runs exactly the historical float sequence)
+/// and there is exactly ONE per-cell body to diverge. Cell coords,
+/// inclusive, [1..W] x [1..H]; `out` is the FULL W*H*4 canvas — only the
+/// rect's pixels are written.
 pub fn render_pigment_only_region(
     layers: &[RenderLayer<'_>],
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    out: &mut [u8],
+) {
+    render_pigment_region_visual(None, layers, PigmentVisual::default(), x0, y0, x1, y1, out);
+}
+
+/// The product composite's VISUAL terms — the model's paper-into-the-paint
+/// half, layer-honest: no SHEET (a layer is not the app's background — the
+/// paper-tinted near-white base of [`render_region`] would paint an opaque
+/// page over the art under it). Alpha is ALWAYS pure pigment coverage.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub struct PigmentVisual {
+    /// Print the tooth into the pigment: the granulation offset `v`
+    /// (`(pap·100−40)·visualGrain·fade`) plus the signed mass-gradient
+    /// emboss, both riding INSIDE the pigment colour channels exactly as in
+    /// [`render_region`], scaled by the `PaperVisibility` master. "The
+    /// texture becomes visually part of the painting."
+    pub paper: bool,
+    /// Stack suspended over settled by K–M reflectance
+    /// ([`km_glaze_channel_linear`]) instead of alpha-over — the
+    /// layer-integration half of the model's glaze (there the base is the
+    /// sheet; here the wet film glazes the dried paint).
+    pub km_glaze: bool,
+}
+
+/// [`render_pigment_only_region`]'s single per-cell body, with the optional
+/// visual terms. `p` is only read when a visual flag is on (the wrapper
+/// passes `None`; the tool passes the session's live params).
+#[allow(clippy::too_many_arguments)]
+pub fn render_pigment_region_visual(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
     x0: usize,
     y0: usize,
     x1: usize,
@@ -305,6 +344,16 @@ pub fn render_pigment_only_region(
     let g0 = layers[0].grid;
     let s = g0.s;
     let w = g0.w;
+    let paper_on = visual.paper && p.is_some();
+    let glaze_on = visual.km_glaze;
+    let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
+        (true, Some(p)) => (
+            p.k(Knob::PaperVisibility),
+            p.k(Knob::VisualGrain),
+            p.k(Knob::Emboss),
+        ),
+        _ => (0.0, 0.0, 0.0),
+    };
     for cy in y0..=y1 {
         let mut i = x0 + cy * s;
         let mut o = ((cy - 1) * w + (x0 - 1)) * 4;
@@ -320,7 +369,8 @@ pub fn render_pigment_only_region(
                 if la <= 0.0 {
                     continue;
                 }
-                // Layer color: settled, then suspended over it (straight alpha).
+                // Layer color: settled, then suspended over it (straight
+                // alpha) — or by K–M reflectance under the glaze flag.
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
                 let (mut cr, mut cg, mut cb) = (sc[0] as f64, sc[1] as f64, sc[2] as f64);
@@ -329,9 +379,61 @@ pub fn render_pigment_only_region(
                     cg = uc[1] as f64;
                     cb = uc[2] as f64;
                 } else if a_f > 0.0 {
-                    cr = cr * (1.0 - a_f) + uc[0] as f64 * a_f;
-                    cg = cg * (1.0 - a_f) + uc[1] as f64 * a_f;
-                    cb = cb * (1.0 - a_f) + uc[2] as f64 * a_f;
+                    if glaze_on {
+                        // The wet film GLAZES the dried paint: suspended over
+                        // settled by reflectance, per channel, in linear
+                        // light — [`render_region`]'s stacking law with the
+                        // settled colour as the base.
+                        cr = linear_to_srgb(km_glaze_channel_linear(
+                            srgb_to_linear(clamp_byte(cr) / 255.0),
+                            srgb_to_linear(clamp_byte(uc[0] as f64) / 255.0),
+                            a_f,
+                        )) * 255.0;
+                        cg = linear_to_srgb(km_glaze_channel_linear(
+                            srgb_to_linear(clamp_byte(cg) / 255.0),
+                            srgb_to_linear(clamp_byte(uc[1] as f64) / 255.0),
+                            a_f,
+                        )) * 255.0;
+                        cb = linear_to_srgb(km_glaze_channel_linear(
+                            srgb_to_linear(clamp_byte(cb) / 255.0),
+                            srgb_to_linear(clamp_byte(uc[2] as f64) / 255.0),
+                            a_f,
+                        )) * 255.0;
+                    } else {
+                        cr = cr * (1.0 - a_f) + uc[0] as f64 * a_f;
+                        cg = cg * (1.0 - a_f) + uc[1] as f64 * a_f;
+                        cb = cb * (1.0 - a_f) + uc[2] as f64 * a_f;
+                    }
+                }
+                if paper_on {
+                    // The tooth printed into the pigment — [`render_region`]'s
+                    // exact `v`: paper faded by the master toward flat 0.5,
+                    // granulation fading out as mass goes 1000 -> 3000, plus
+                    // the signed emboss (vertical weighted 2x). Adding v to
+                    // the combined colour equals adding it to settled AND
+                    // suspended before combining (distributivity).
+                    let pap_raw = g0.paper[i] as f64;
+                    let pap = 0.5 + (pap_raw - 0.5) * paper_vis;
+                    let total = lg.sett[i] as f64 + lg.susp[i] as f64;
+                    let mut fade = 1.0;
+                    if total > 1000.0 {
+                        fade = if total >= 3000.0 {
+                            0.0
+                        } else {
+                            (3000.0 - total) / 2000.0
+                        };
+                    }
+                    let mut v = (pap * 100.0 - 40.0) * grain_vis * fade;
+                    let m_l = lg.sett[i - 1] as f64 + lg.susp[i - 1] as f64;
+                    let m_r = lg.sett[i + 1] as f64 + lg.susp[i + 1] as f64;
+                    let m_u = lg.sett[i - s] as f64 + lg.susp[i - s] as f64;
+                    let m_d = lg.sett[i + s] as f64 + lg.susp[i + s] as f64;
+                    let mut emb = ((m_r - m_l) * 0.5 + (m_d - m_u) * 1.0) * 0.008 * emboss_k;
+                    emb = emb.clamp(-40.0, 40.0);
+                    v += emb;
+                    cr += v;
+                    cg += v;
+                    cb += v;
                 }
                 // Over-composite onto the accumulator (premultiplied).
                 pr = pr * (1.0 - la) + cr * la;

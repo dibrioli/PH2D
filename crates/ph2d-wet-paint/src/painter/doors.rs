@@ -194,6 +194,105 @@ impl Engine {
         }
     }
 
+    /// §9 with real pressure + radius, deposited through the LANE's trail in
+    /// **BLEND** mode — `finish_dispatch`'s Blend recipe (fixed
+    /// [`TOOL_HARDNESS`], intensity clamped to 3, the saturating mask window
+    /// remixing even settled paint) on the lane plumbing. The host reconciles
+    /// `engine.tool = Tool::Blend` BEFORE opening the lane's stroke, so
+    /// [`Self::begin_direct_stroke`] picked `TrailMode::Blend` and
+    /// [`Self::direct_segment`] rolls the blend window (cap 4).
+    #[allow(clippy::too_many_arguments)]
+    pub fn dispatch_pressure_dab_lane_blend(
+        &mut self,
+        lane: usize,
+        x: f64,
+        y: f64,
+        b: f64,
+        dir_x: f64,
+        dir_y: f64,
+        r: f64,
+    ) {
+        let p = self.sim.gather_params(&self.tuning);
+        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        if let Some(hook) = self.on_dab.as_mut() {
+            hook(b, &dab);
+        }
+        let bd = Dab {
+            hardness: TOOL_HARDNESS,
+            intensity: dab.intensity.min(3.0),
+            ..dab
+        };
+        self.texture();
+        let tex = self.brush_tex.take().unwrap();
+        let layer = &mut self.layers[self.active_layer];
+        let Some(trail) = self.lane_trails.get_mut(lane) else {
+            self.brush_tex = Some(tex);
+            return;
+        };
+        let rect = if trail.accumulate_blend(&layer.grid, &p, &tex, &bd) {
+            trail.transfer_blend(&mut layer.grid, &p)
+        } else {
+            None
+        };
+        self.brush_tex = Some(tex);
+        if let Some(rc) = rect {
+            self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);
+        }
+    }
+
+    /// §9 with real pressure + radius, routed to a DIRECT tool —
+    /// [`Tool::Wet`] / [`Tool::Dry`] / [`Tool::Blow`] / [`Tool::Smear`] —
+    /// LANE-LESS per-dab grid ops like the eraser door. `prev` is the SAME
+    /// lane's previous dab centre, **host-tracked per symmetry/tiling copy**:
+    /// the engine's own singular `prev_dab` fed an interleaved multi-copy
+    /// list would read the OTHER copy's position and blow/smear with a giant
+    /// cross-canvas displacement. Smear with `None` skips (the stroke's
+    /// first dab has no displacement — the model's law); Blow falls back to
+    /// the dab itself (zero displacement, the model's `(px, py) = (x, y)`
+    /// arm). Paint/Blend/Erase have their own doors — routing them here is a
+    /// debug-time error and a release no-op.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dispatch_pressure_dab_tool(
+        &mut self,
+        tool: Tool,
+        x: f64,
+        y: f64,
+        b: f64,
+        dir_x: f64,
+        dir_y: f64,
+        r: f64,
+        prev: Option<[f64; 2]>,
+    ) {
+        let p = self.sim.gather_params(&self.tuning);
+        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        if let Some(hook) = self.on_dab.as_mut() {
+            hook(b, &dab);
+        }
+        self.texture();
+        let tex = self.brush_tex.take().unwrap();
+        let layer = &mut self.layers[self.active_layer];
+        let rect = match tool {
+            Tool::Wet => apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit),
+            Tool::Dry => apply_dry(&mut layer.grid, &p, &tex, &dab),
+            Tool::Blow => {
+                let [px, py] = prev.unwrap_or([x, y]);
+                apply_blow(&mut layer.grid, &p, &tex, &dab, px, py)
+            }
+            Tool::Smear => match prev {
+                Some([px, py]) => apply_smear(&mut layer.grid, &p, &tex, &dab, px, py),
+                None => None,
+            },
+            Tool::Paint | Tool::Blend | Tool::Erase => {
+                debug_assert!(false, "Paint/Blend/Erase have their own product doors");
+                None
+            }
+        };
+        self.brush_tex = Some(tex);
+        if let Some(rc) = rect {
+            self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);
+        }
+    }
+
     /// Seed the active layer's PAPER plane from the host's own paper law —
     /// `f(px, py)` in canvas pixels (cell − 1; the pad ring asks for −1 / w,
     /// which a procedural or clamped sampler answers naturally). Covers the

@@ -292,3 +292,115 @@ fn the_boolean_multi_shape_batch_reaches_the_stash_and_the_grid() {
         "the boolean multi-shape set never reached the fluid ({m})"
     );
 }
+
+/// Doc 21 G4 — THE differential: a LIVE session survives authoring and the
+/// commit deposit FUSES with the old water. Oracle is `sess.base` POINTER
+/// identity (not appearance — a fresh session looks plausibly similar; the
+/// silent theft). While held: zero sim steps (grid bit-frozen) and the flat
+/// preview survives the ticks (no composite tears it). Mutations that bleed
+/// it: (a) dropping the re-arm in the stash tail ⇒ the guard kills the
+/// session at the next tick; (b) dropping the hold ⇒ a tick composite
+/// erases preview pixels.
+#[test]
+fn a_live_session_survives_authoring_and_the_deposit_fuses() {
+    let mut t = wet_tool();
+    // Live water: an incremental stroke, then a few ticks of flow.
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    for k in 1..=8 {
+        t.on_canvas_pointer(cp([30.0 + 10.0 * k as f32, 30.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 30.0], PointerPhase::Up));
+    for _ in 0..4 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    let base_ptr = {
+        let sess = t.paint.wetpaint.session.as_ref().expect("live water");
+        std::sync::Arc::as_ptr(&sess.base)
+    };
+    // Author an ellipse OVER the live water.
+    draw_ellipse(&mut t);
+    let frozen = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("survived")
+        .engine
+        .layers[0]
+        .grid
+        .susp
+        .clone();
+    let preview_px: Vec<bool> = t
+        .canvas_rgba
+        .chunks_exact(4)
+        .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
+        .collect();
+    for _ in 0..6 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect(
+            "the live session DIED under the authoring preview — the re-arm is gone \
+             (the wet-on-wet differential silently stolen)",
+        );
+        assert_eq!(
+            std::sync::Arc::as_ptr(&sess.base),
+            base_ptr,
+            "the session was rebuilt mid-authoring — not the same water"
+        );
+        assert_eq!(
+            sess.engine.layers[0].grid.susp, frozen,
+            "the sim STEPPED while the artist authored — the hold is gone"
+        );
+    }
+    let still: Vec<bool> = t
+        .canvas_rgba
+        .chunks_exact(4)
+        .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
+        .collect();
+    assert_eq!(
+        preview_px, still,
+        "a tick composite tore the flat preview off the canvas"
+    );
+    // Enter: the deposit lands in the SAME session — the fusion oracle.
+    let m0 = grid_mass(&t);
+    assert!(t.commit_open_shape());
+    let sess = t.paint.wetpaint.session.as_ref().expect("fused session");
+    assert_eq!(
+        std::sync::Arc::as_ptr(&sess.base),
+        base_ptr,
+        "the deposit landed in a FRESH session — nothing fuses with the old water"
+    );
+    assert!(grid_mass(&t) > m0 + 1.0, "the commit deposited nothing");
+}
+
+/// Doc 21 G5: Esc returns the water ALIVE and untouched — the cancel peel is
+/// an OWNED write (the guard re-arms), the hold releases, and the canvas is
+/// byte-equal to the pre-shape composite. Mutation that bleeds it: peeling
+/// without the re-arm (session dies at the next tick).
+#[test]
+fn esc_returns_the_water_alive() {
+    let mut t = wet_tool();
+    t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
+    for k in 1..=8 {
+        t.on_canvas_pointer(cp([30.0 + 10.0 * k as f32, 30.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 30.0], PointerPhase::Up));
+    for _ in 0..4 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    let before = t.canvas_rgba.as_ref().clone();
+    draw_ellipse(&mut t);
+    assert!(t.cancel_open_shape(), "fixture: a shape was open to cancel");
+    assert_eq!(
+        &*t.canvas_rgba, &before,
+        "Esc did not return the canvas to the pre-shape composite"
+    );
+    for _ in 0..4 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "the water DIED across an Esc — the peel was read as foreign"
+    );
+}

@@ -513,6 +513,18 @@ impl PainterTool {
             return;
         }
         self.wetpaint_guard();
+        // Doc 21 law D: the water FREEZES while the artist authors a flat
+        // preview (flow AND drying) — zero steps, zero composites, zero knob
+        // reconciles; a composite would copy `sess.base` verbatim where the
+        // pigment is empty and ERASE the preview inside its dirty rect (a
+        // torn state). The guard above still ran: foreign swaps (undo, layer
+        // switch) kill the session even mid-authoring. The hold is DERIVED
+        // (`drag_preview` is the flat re-stamp record in this mode) — no
+        // state, no release door; commit/cancel drop the record and the
+        // next tick simply resumes.
+        if self.wet_authoring_hold() {
+            return;
+        }
         let knobs = self.paint.wetpaint.knobs;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;

@@ -215,6 +215,59 @@ mod tests {
         Paint::solid(Rgba8::new(0, 0, 0, 255))
     }
 
+    /// FNV-1a sobre TODA coordenada produzida (âncoras **e** alças, todos os contornos).
+    /// Alças porque é lá que uma mudança de referencial se esconde: um erro que só as move
+    /// deixa as âncoras no lugar e muda a curva entre elas.
+    fn fnv(paths: &[VecPath]) -> u64 {
+        fn eat(h: &mut u64, x: f64) {
+            for b in x.to_bits().to_be_bytes() {
+                *h ^= u64::from(b);
+                *h = h.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for p in paths {
+            for v in p.verts_all() {
+                for q in [v.anchor, v.in_handle, v.out_handle] {
+                    eat(&mut h, q[0]);
+                    eat(&mut h, q[1]);
+                }
+            }
+        }
+        h
+    }
+
+    /// A fixture do fingerprint: exercita TODO ingrediente do layout reto — duas linhas
+    /// (entrelinha), alinhamento não-trivial, tracking, um eixo variável, glifo com furo
+    /// (`o`), glifo sem área (o espaço) e uma origem que não é a origem.
+    fn straight_fingerprint_paths() -> Vec<VecPath> {
+        let font = VariableFont::new(ph2d_text::inter_variable_ttf().to_vec()).expect("embutida");
+        let lay = TextLayout {
+            size: 1.3,
+            line_height: 1.15,
+            tracking: 0.07,
+            align: TextAlign::Center,
+        };
+        text_to_vec_paths(
+            &font,
+            "on path\nAVo",
+            &lay,
+            &[(AxisTag::new(*b"wght"), 620.0)],
+            [0.75, -0.25],
+            &Some(black()),
+            &None,
+        )
+    }
+
+    /// **O layout reto não se move.** O texto em caminho entra como um SEGUNDO referencial
+    /// por glifo, e o modo de falha que importa é o silencioso: a rota de sempre passar a
+    /// pousar as letras a um ulp de onde pousava, invisível na tela e presente em cada
+    /// arquivo salvo. O número foi medido no commit anterior a este e é a definição.
+    #[test]
+    fn the_straight_layout_is_byte_identical_across_the_text_on_path_wiring() {
+        assert_eq!(fnv(&straight_fingerprint_paths()), 0x511c_90e4_7b1f_01db);
+    }
+
     /// Multi-linha: a 2ª linha desce (world y-up → y negativo abaixo da baseline).
     #[test]
     fn a_second_line_sits_below_the_first() {

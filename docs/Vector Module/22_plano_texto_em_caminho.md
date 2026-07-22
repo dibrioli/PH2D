@@ -332,13 +332,45 @@ deu `377,0440` contra `2πR = 376,9911` (**1,40e-4**), acima do `1e-4` que eu ti
 o integrador — é a assinatura do círculo aproximado por 4 cúbicas. O **controle** que separa as
 duas explicações é o gate da reta, onde o mesmo integrador acerta `100.0` a **1e-9**.
 
-### W2 — O motor: arco → afim por glifo
-Kernel puro em `ph2d-vec-scene` (`text_path.rs`): dado `(caminho, s, advance, altura do glifo,
-efeito, alinhamento, flip)` devolve o afim. Cinco braços = as cinco variantes de §3.2. Sem UI, sem
-shell. Gates: `Rainbow` num **círculo de raio R** põe cada glifo à distância R do centro com o eixo
-radial (oráculo geométrico, não espelho da fórmula); `StairStep` mantém o eixo vertical em toda
-posição; `Gravity` num círculo **reduz a Rainbow** (identidade pinada, como o gate Inflate/Layer do
-Painter) e **difere** numa elipse — é esse par que dá sentido ao teste.
+### W2 — O motor: arco → afim por glifo ✅ **CONSTRUÍDA (2026-07-22), com escopo ESTREITADO**
+
+`ph2d-vec-scene::text_path::GlyphFrame` — `on_path(caminho, s, dy, flip)` + `apply([dx, dy])`.
+Kernel puro: **não sabe o que é um glifo**. Quem conhece fonte, avanço e ascender é o shell; quem
+conhece arco é esta crate.
+
+⚠️ **SÓ a Rainbow foi construída, e o corte é deliberado.** O plano previa as cinco variantes de
+§3.2 num só passo. Ao implementar, a fonte da Adobe caiu **três vezes** (timeout · certificado
+expirado · 403), e eu só tenho as outras quatro **de memória**. **Skew e 3D Ribbon são duais** —
+uma preserva as arestas verticais do glifo, a outra as horizontais — e implementar a trocada
+produziria um efeito coerente, bonito e **com o rótulo errado**. É o defeito exato que o Painter
+pagou ao armar `Falloff::Sharp` no lugar de `Pow4` porque o *identificador* casava com a palavra
+da UI. A Rainbow entrou porque tem especificação **aberta e normativa**: ela é o `<textPath>` do
+SVG. As outras entram quando a spec estiver **fixada por fonte citável**, não por memória.
+
+**A âncora é o MEIO do glifo** (`mid = pen + avanço/2`), que é normativo no SVG — ancorar pela
+borda esquerda faz a letra girar *para fora* da linha e é a origem de metade dos artefatos em
+curva apertada.
+
+**O `flip` custa um sinal, não dois:** virar percorre o arco da outra ponta **e** inverte a
+tangente; a normal inverte **junto** (é a perpendicular dela), então o `dy` passa para o outro
+lado sozinho.
+
+**Gates (9), todos com oráculo geométrico:** rigidez (eixos ortonormais em todo ponto) · num
+círculo o texto fica **no círculo** · o `dy` levanta à **esquerda da marcha** · flip troca de lado
+· flip lê da outra ponta · numa **reta** o referencial é a identidade transladada (texto em
+caminho sobre linha reta é indistinguível de texto normal) · `apply([0,0])` é a origem · **o glifo
+mantém o TAMANHO** em qualquer ponto da curva (é a diferença entre isto e um envelope, e é por
+isso que não há refit) · **cúspide devolve `None`**, não um ângulo inventado.
+
+⚠️ **Um gate meu nasceu vermelho por uma frase errada MINHA, não por código errado:** eu escrevi
+que `dy` positivo vai *"para fora da curva"*. O círculo do fixture é **anti-horário** e a esquerda
+de quem o percorre aponta para o **centro**. O árbitro foi o gate da reta, onde `dy = 7` põe o
+glifo em `y = +7` — **acima** da baseline, que é o que texto precisa. *"Fora"* é
+winding-dependente e não serve de especificação; **"à esquerda da marcha"** serve, e é o que o doc
+diz agora.
+
+**Mutações:** normal para a direita ⇒ 3 RED · flip sem inverter a tangente ⇒ 2 RED · flip sem
+espelhar o arco ⇒ 1 RED · cúspide a devolver referencial inventado ⇒ 1 RED.
 
 ### W3 — O layout consome o motor
 `vec_glyph.rs:80` passa a receber afim; `pen_x` vira `s`. `on_path: None` **byte-idêntico** (gate

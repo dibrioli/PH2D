@@ -88,6 +88,11 @@ pub mod arclen;
 /// Along Path, texto em caminho).
 pub mod arc_path;
 
+/// **O referencial de um glifo que cavalga um caminho** ([`text_path::GlyphFrame`]) — o motor do
+/// texto em caminho. Consome o [`arc_path`] e **não sabe o que é um glifo**: quem conhece fonte,
+/// avanço e ascender é o shell.
+pub mod text_path;
+
 /// **A pilha de Live Path Effects** (ADR-0132): efeitos não-destrutivos e empilháveis,
 /// avaliados pelo `cooked()` logo depois do estágio da quina.
 pub mod effect;

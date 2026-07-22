@@ -20,6 +20,7 @@
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de design
 - [Alvo não-idempotente não exclui autoria](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md) — separe autoria de depósito; funil no commit
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md)
+- [A cwd do Bash VOLTA ao primário](feedback_bash_cwd_resets_and_slips_to_the_primary.md) — Modo L: prefixe todo comando com o `cd` da worktree
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar

@@ -34,15 +34,43 @@ pub struct WetKnobs {
     pub knobs: [f64; KNOB_COUNT],
 }
 
+/// [`WetKnobs::DEFAULT`]'s knob array — the reference boot with Enio's five Wet Paint product tweaks
+/// (2026-07-22). A `const fn` so `DEFAULT` stays a `const` (the panel's `FALLBACK_BRUSH` needs it).
+/// Each override is inside its `KNOB_DEFS` range, so no clamp is skipped by writing the array directly.
+const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
+    let mut k = knob_defaults();
+    k[Knob::PigmentPerDab as usize] = 800.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 600
+    k[Knob::PaperGate as usize] = 0.4; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.6
+    k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
+    k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0
+    k[Knob::BristleCount as usize] = 2000.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 950
+    k
+}
+
 impl WetKnobs {
-    /// SPEC §16 boot defaults — MUST match the engine's own boot state
-    /// (`Sliders::default` + `KNOB_DEFS`), or a fresh session would get
-    /// reconciled away from the very defaults it booted with. A `const` so
-    /// the panel's `FALLBACK_BRUSH` (a `const` item) can carry it.
-    pub const DEFAULT: Self = Self {
+    /// The reference model's boot — SPEC §16 (`Sliders::default` + `KNOB_DEFS`), the values the ENGINE
+    /// actually boots with (`Engine::new`). This is the reconcile's **no-op baseline**: a session's
+    /// `applied` field inits to this (via `WetEngineFacts::BOOT`), so the first reconcile measures the
+    /// tool's authored delta against the engine's real starting state. It is NOT the app default — see
+    /// [`Self::DEFAULT`] — and the two MUST stay distinct, or the reconcile's early-return would skip
+    /// the product values (panel showing 800 over an engine still at 600).
+    pub const ENGINE_BOOT: Self = Self {
         water: 1.0,
         erase: 0.4,
         knobs: knob_defaults(),
+    };
+
+    /// The app's Wet Paint **default** — [`Self::ENGINE_BOOT`] with Enio's five product tweaks
+    /// (2026-07-22: Pigment 800, Paper Gate 0.4, Felt 0.03, Bristle Size 2.0, Bristle Count 2000).
+    /// Distinct from the reference boot ON PURPOSE: the engine stays a faithful 1:1 port of the JS
+    /// reference (its fingerprint untouched, its `KNOB_DEFS` intact), and the painter opens the fluid on
+    /// values chosen for the tool. The session's reconcile pushes these into the engine at birth, because
+    /// they differ from the boot baseline it inits `applied` to. A `const` so the panel's
+    /// `FALLBACK_BRUSH` (a `const` item) can carry it.
+    pub const DEFAULT: Self = Self {
+        water: 1.0,
+        erase: 0.4,
+        knobs: painter_default_knobs(),
     };
 
     /// Read one registry knob.
@@ -57,16 +85,20 @@ impl WetKnobs {
     pub fn set(&mut self, knob: Knob, v: f64) {
         let def = &KNOB_DEFS[knob as usize];
         self.knobs[knob as usize] = if v.is_nan() {
-            def.default
+            // NaN (garbled input) falls back to the app DEFAULT, not the engine's SPEC boot — "default"
+            // means the product value the artist opened with (== SPEC for every knob but Enio's five).
+            Self::DEFAULT.knobs[knob as usize]
         } else {
             v.clamp(def.min, def.max)
         };
     }
 
-    /// Restore one GROUP to its defaults (the Tuning panel's header reset).
+    /// Restore one GROUP to the app DEFAULTS (the Tuning panel's header reset). Reads [`Self::DEFAULT`],
+    /// not `KNOB_DEFS`, so a reset lands on the same values the section opened with — the product tweaks
+    /// included (for every knob but Enio's five, `DEFAULT` and `KNOB_DEFS` agree, so this is a no-op change).
     pub fn reset_group(&mut self, group: KnobGroup) {
         for def in KNOB_DEFS.iter().filter(|d| d.group == group) {
-            self.knobs[def.knob as usize] = def.default;
+            self.knobs[def.knob as usize] = Self::DEFAULT.knobs[def.knob as usize];
         }
     }
 

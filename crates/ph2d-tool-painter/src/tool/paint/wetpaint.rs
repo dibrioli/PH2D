@@ -138,8 +138,7 @@ impl Default for WetPaintState {
 }
 
 /// Everything the session pushes into the ENGINE (doc 22) — compared as one
-/// value per batch/tick; the boot constant equals the engine's own boot
-/// exactly (gate-pinned), so an untouched section reconciles as a no-op.
+/// value per batch/tick; the boot constant equals the engine's own boot (gate-pinned).
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct WetEngineFacts {
     pub(super) knobs: WetKnobs,
@@ -148,8 +147,11 @@ pub(super) struct WetEngineFacts {
 }
 
 impl WetEngineFacts {
+    /// The session's `applied` init — the engine's REAL boot (`WetKnobs::ENGINE_BOOT` == `Engine::new`),
+    /// NOT the tool's product default (`WetKnobs::DEFAULT`). The first reconcile then sees the authored
+    /// knobs differ from this baseline and pushes them; collapsing the two would skip the product values.
     pub(super) const BOOT: Self = Self {
-        knobs: WetKnobs::DEFAULT,
+        knobs: WetKnobs::ENGINE_BOOT,
         tilt: (true, 4, 3),
         km_mixing: false,
     };

@@ -75,23 +75,25 @@ fn grid_totals(t: &PainterTool) -> (f64, f64, f64, f64) {
     (film, susp, sett, vel)
 }
 
-/// The authored BOOT equals the engine's boot EXACTLY, knob by knob (f64
-/// bits) — the reconcile of an untouched section must be a no-op. Mutation
-/// that bleeds it: any drift between `WetKnobs::DEFAULT` / the tilt boot
-/// and the engine's own boot values.
+/// The tool's Wet Paint DEFAULT reaches the engine EXACTLY, knob by knob (f64 bits) — the reconcile
+/// pushes the authored values at session birth. Since 2026-07-22 that default is the PRODUCT profile
+/// (Enio's five tweaks over the engine's SPEC boot), so this ALSO proves the reconcile is not a no-op:
+/// it carries the delta from the engine's boot to the tool's default. Mutation that bleeds it: any drift
+/// in `WetKnobs::DEFAULT` / the tilt boot, or the reconcile dropped.
 #[test]
-fn the_boot_facts_equal_the_engine_boot_exactly() {
+fn the_tool_default_reaches_the_engine_exactly() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
+    let d = WetKnobs::default();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     let e = &sess.engine;
-    assert_eq!(e.sliders.water.to_bits(), 1.0f64.to_bits());
-    assert_eq!(e.sliders.erase.to_bits(), 0.4f64.to_bits());
+    assert_eq!(e.sliders.water.to_bits(), d.water.to_bits());
+    assert_eq!(e.sliders.erase.to_bits(), d.erase.to_bits());
     for def in KNOB_DEFS.iter() {
         assert_eq!(
             e.tuning.get(def.knob).to_bits(),
-            def.default.to_bits(),
-            "knob {} drifted from its boot default",
+            d.knobs[def.knob as usize].to_bits(),
+            "knob {} did not reach the engine",
             def.key
         );
     }
@@ -100,6 +102,88 @@ fn the_boot_facts_equal_the_engine_boot_exactly() {
     assert_eq!(e.sim.tilt_dir_y.to_bits(), 1.0f64.to_bits());
     assert_eq!(e.sim.tilt_scale.to_bits(), 1.0f64.to_bits());
     assert!(!e.sim.km_mixing);
+}
+
+/// The reconcile's no-op BASELINE (`WetEngineFacts::BOOT`, which the session's `applied` inits to) is the
+/// ENGINE's own boot — NOT the tool's product default. Two things must hold or the first reconcile
+/// mis-detects the delta: the baseline equals `Engine::new`'s boot, and it DIFFERS from the product
+/// default (so the product actually gets pushed). Collapsing the two constants into `WetKnobs::DEFAULT`
+/// would leave the engine at 600 under a panel reading 800.
+///
+/// Mutation that bleeds it: `WetEngineFacts::BOOT.knobs = WetKnobs::DEFAULT`, or `ENGINE_BOOT` drifting.
+#[test]
+fn the_reconcile_baseline_is_the_engines_own_boot() {
+    use ph2d_wet_paint::tuning::knob_defaults;
+    // The baseline const IS the SPEC boot, and it is what the reconcile inits `applied` to.
+    assert_eq!(WetKnobs::ENGINE_BOOT.knobs, knob_defaults());
+    assert_eq!(WetEngineFacts::BOOT.knobs, WetKnobs::ENGINE_BOOT);
+    // …and the engine really boots there — inspected BEFORE any reconcile (a fresh session, no stroke).
+    let mut t = wet_tool_fixture();
+    assert!(
+        t.ensure_wet_session(),
+        "the fixture has a canvas, so a session must be born"
+    );
+    let sess = t.paint.wetpaint.session.as_ref().expect("session");
+    for def in KNOB_DEFS.iter() {
+        assert_eq!(
+            sess.engine.tuning.get(def.knob).to_bits(),
+            def.default.to_bits(),
+            "the engine did not boot knob {} at its SPEC default",
+            def.key
+        );
+    }
+    // The product default DIFFERS from the baseline, so the reconcile does real work (not a no-op).
+    assert_ne!(WetKnobs::DEFAULT, WetKnobs::ENGINE_BOOT);
+}
+
+/// The five Wet Paint knob defaults Enio chose (2026-07-22) — pinned so they cannot silently drift, and
+/// so the fact that each differs from the engine's SPEC boot is on the record. Every OTHER knob is the
+/// engine boot untouched (the product profile is the boot with five tweaks, nothing more).
+#[test]
+fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
+    use ph2d_wet_paint::tuning::knob_defaults;
+    let d = WetKnobs::DEFAULT;
+    assert_eq!(d.get(Knob::PigmentPerDab), 800.0);
+    assert_eq!(d.get(Knob::PaperGate), 0.4);
+    assert_eq!(d.get(Knob::Felt), 0.03);
+    assert_eq!(d.get(Knob::BristleSize), 2.0);
+    assert_eq!(d.get(Knob::BristleCount), 2000.0);
+    let boot = knob_defaults();
+    for def in KNOB_DEFS.iter() {
+        let is_enios = matches!(
+            def.knob,
+            Knob::PigmentPerDab
+                | Knob::PaperGate
+                | Knob::Felt
+                | Knob::BristleSize
+                | Knob::BristleCount
+        );
+        if !is_enios {
+            assert_eq!(
+                d.get(def.knob),
+                boot[def.knob as usize],
+                "knob {} drifted from the SPEC boot but is not one of Enio's five",
+                def.key
+            );
+        }
+    }
+}
+
+/// Wet Paint opens at Enio's dense default Spacing (2026-07-22), on ITS OWN slot — the other modes keep
+/// theirs. Mutation that bleeds it: the wet-slot spacing line dropped from `PaintState::default`.
+#[test]
+fn wet_paint_opens_at_the_dense_default_spacing() {
+    let t = PainterTool::default();
+    assert_eq!(
+        t.paint.brush_by_mode[PaintMode::WetPaint.slot()].spacing,
+        0.025,
+        "wet paint did not open at the dense default spacing"
+    );
+    assert_eq!(
+        t.paint.brush_by_mode[PaintMode::Paint.slot()].spacing,
+        BrushSpec::default().spacing,
+        "the plain Paint slot's spacing changed — the wet default leaked"
+    );
 }
 
 /// A Tuning-panel SetValue (dynamic id family) reaches the LIVE engine on

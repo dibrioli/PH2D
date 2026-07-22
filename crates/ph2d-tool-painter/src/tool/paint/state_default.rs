@@ -46,6 +46,14 @@ impl Default for PaintState {
         brush_by_mode[PaintMode::Blur.slot()] = dense;
         brush_by_mode[PaintMode::Clone.slot()] = dense;
         brush_by_mode[PaintMode::Sculpt.slot()] = sculpt;
+        // Wet Paint wants dabs DENSER still (Enio, 2026-07-22): the fluid reads best with tightly
+        // packed deposits, so Spacing 0.025 — half the Smear/Blur/Clone 0.05. Its own slot, so the
+        // other modes are untouched.
+        let wet = BrushSpec {
+            spacing: 0.025, // LITERAL-OK: wet-paint default dab spacing (Enio)
+            ..base
+        };
+        brush_by_mode[PaintMode::WetPaint.slot()] = wet;
         Self {
             brush: base,
             brush_by_mode,

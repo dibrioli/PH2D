@@ -1097,11 +1097,11 @@ fn the_shapes_tone_knobs_shift_the_wet_silhouette() {
 
 // ── W3 — the curated knobs + the incompatible-method coercion ─────────────
 
-/// The engine BOOTS with exactly [`WetKnobs::DEFAULT`] — the equivalence the
-/// reconcile's early-return rests on: if the two drift, every fresh session
-/// is silently reconciled away from the very defaults it booted with (or
-/// worse, isn't — and the panel shows numbers the engine never had).
-/// Mutation that bleeds it: any drifted field in `WetKnobs::DEFAULT`.
+/// The curated section's five accessors reach the engine after a stroke — i.e. the tool's
+/// [`WetKnobs::DEFAULT`] (the app's product default since 2026-07-22) is what the engine ends up
+/// running, via the reconcile. NOT the engine's SPEC boot: that is the reconcile BASELINE, pinned
+/// separately in `tests_doc22::the_reconcile_baseline_is_the_engines_own_boot`.
+/// Mutation that bleeds it: any drifted field in `WetKnobs::DEFAULT`, or the reconcile dropped.
 #[test]
 fn the_engine_boots_with_the_knob_defaults() {
     use ph2d_wet_paint::tuning::Knob;

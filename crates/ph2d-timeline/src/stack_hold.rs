@@ -149,7 +149,22 @@ impl ClipLane {
             .filter(|s| s.t_end <= t)
             .max_by(|a, b| a.t_end.total_cmp(&b.t_end))
         {
-            let something_ahead = self.strips.iter().any(|s| s.lead_end() >= t);
+            // Strictly ahead (a future strip, or one still crossfading here) always
+            // holds the previous pose to bridge the gap. A strip exactly AT its end
+            // (`lead_end == t`) holds its frozen frame ONLY when it is a HARD cut
+            // (`blend_out == 0`): a container's held end frame evaluated at its length
+            // (the `nesting_leads` case — the inclusive edge that the comment above
+            // calls load-bearing). A strip that FADED OUT has already taken its
+            // influence to 0 at its `lead_end`, so its own just-ended boundary must
+            // NOT snap its frozen frame back to full weight — that spike is invisible
+            // during Play (a tick almost never lands exactly on the boundary) but a
+            // paused, frame-snapped SCRUB parks on it, and under PingPong (the loop is
+            // filtered to `None`) no seam smooths it, so the object jumped at the strip
+            // exit (Enio, 2026-07-23).
+            let something_ahead =
+                self.strips.iter().enumerate().any(|(i, s)| {
+                    s.lead_end() > t || (s.lead_end() >= t && self.blend_out(i) <= 0.0)
+                });
             let cyclic = loop_range.is_some_and(|(a, b)| t >= a && t < b);
             if something_ahead || cyclic {
                 return Some((held, held.hold_source_time(), w));

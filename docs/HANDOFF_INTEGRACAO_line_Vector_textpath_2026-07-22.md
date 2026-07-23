@@ -30,7 +30,7 @@ efeitos (e a geometria de envelope) em silêncio ao editar uma letra. Curado pel
 | `ph2d-editor-core` | arquivo NOVO `ids/chrome/vector_textpath.rs`; entrada em `VECTOR_SECTIONS` | ⚠️ `VECTOR_SECTIONS` é lista compartilhada — a entrada foi ao **FIM** (só ADICIONAR) |
 | `ph2d-i18n` | 1 chave `panel.vector.section.textpath` | tabela compartilhada, só ADICIONAR |
 | `ph2d-panel-vector` | arquivos NOVOS `paint_textpath.rs`, `state_textpath.rs`; `+track_slider_event` em `event.rs` (extração de 5 braços do `apply_event`, teto de LOC) | seção nova, isolada |
-| `ph2d-vec-render` | arquivo NOVO `text_handle.rs` + re-export | isolado |
+| `ph2d-vec-render` | arquivo NOVO `text_handle.rs` (ficha grande + colorida) + re-export | isolado |
 | `ph2d-render`, `ph2d-script` | **só o contador de componentes** (`34→35`) | ver §5 |
 | `shells/desktop` | arquivos NOVOS `vec_text_ride.rs`, `text_path_smoke.rs`, `text_path_gesture_smoke.rs`; edições em `vec_glyph*.rs`, `vec_text*.rs`, `render_loop/mod.rs`, `input_dispatch.rs`, `vec_overlay.rs`, `app_state.rs`, `main.rs`, `build_smoke.rs` | a shell é da linha |
 
@@ -81,7 +81,7 @@ Todos `--release`, na worktree:
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector
 env PH2D_BUILD_SMOKE=21 cargo run -p ph2d-host-desktop --release   # W0: efeito sobrevive ao re-cook
 env PH2D_BUILD_SMOKE=22 cargo run -p ph2d-host-desktop --release   # W2/W3: o MOTOR (onda + 2 círculos)
-env PH2D_BUILD_SMOKE=23 cargo run -p ph2d-host-desktop --release   # W4/W5: o GESTO (prender + alça)
+env PH2D_BUILD_SMOKE=23 cargo run -p ph2d-host-desktop --release   # W4/W5: o GESTO (prender + alça no SELECT)
 ```
 
 - **21/22/23 já foram smokados e APROVADOS pelo Enio** nesta jornada.

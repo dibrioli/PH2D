@@ -505,9 +505,13 @@ de um slider, não um segundo modelo dela.
 
 Geometria: **`ArcPath::closest_arc(p)`** — o inverso do `frame_at` (onde na curva cai este ponto
 de mundo). Amostra grossa + refino local, sem derivada (HR-5), porque a curva não é convexa e
-Newton cairia no lóbulo errado numa curva em S. **Node-only** (política de modo da gaiola do
-Envelope), hit-testada **antes** do envelope e do pen (a geometria cozida reverteria uma âncora
-que o pen agarrasse).
+Newton cairia no lóbulo errado numa curva em S.
+
+⚠️ **Modo SELECT, não Node — corrigido pós-smoke (Enio):** no Node a bolinha se confundia com as
+âncoras dos outros paths. Mudou para o **Select** (onde não há âncoras, e o gizmo de sprite é
+inócuo sobre um texto vinculado — ele vive na identidade) e virou uma **ficha grande e sólida**
+(10 px vs 6 das âncoras, preenchida de Accent). A costura seguiu o precedente da alça do
+**conector** (press antes do picking/gizmo, `over_canvas_or_gizmo`).
 
 ⚠️ A alça é **puro desenho no shell**, então mutá-la deixa a workspace verde ⇒ **arch-gate
 próprio sobre o fonte** (`the_textpath_handle_is_drawn_and_dragged`), que ainda checa a **ordem**

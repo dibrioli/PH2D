@@ -66,11 +66,10 @@ pub(crate) fn should_flip(a: &FlipStroke, b: &FlipStroke) -> bool {
 /// um traço marcado `closed` com dois pontos) não decide nada — e aí não inverter é a
 /// resposta segura: uma inversão espúria é o defeito que este módulo existe para evitar.
 ///
-/// ⚠️ **O que isto NÃO resolve, de propósito:** dois anéis de mesmo sentido cujo ponto 0
-/// está em lugares diferentes do contorno (a FASE da costura). O tween os interpola com a
-/// costura desalinhada, e a forma do meio fica torcida. A resposta é o alinhamento de fase
-/// por correlação circular que o `ph2d-vec-blend` já construiu para o Blend do vetor —
-/// wave própria, nomeada no handoff, e não um `if` a mais aqui.
+/// ⚠️ **O que isto NÃO resolve, e não deve:** dois anéis de mesmo sentido cujo ponto 0 está
+/// em lugares diferentes do contorno (a FASE da costura). É uma pergunta à parte — a
+/// correlação circular de [`crate::tween_phase`], que roda no `tween` DEPOIS do sentido (a
+/// espiral só tira o rígido sobre a correspondência já alinhada), e não um `if` a mais aqui.
 fn opposite_winding(a: &FlipStroke, b: &FlipStroke) -> bool {
     let area = |s: &FlipStroke| -> f32 {
         let p = s.positions();

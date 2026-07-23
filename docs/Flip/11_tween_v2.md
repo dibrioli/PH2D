@@ -3,8 +3,9 @@
 > **O que esta wave entrega:** o inbetween deixa de parear por ÍNDICE e de interpolar
 > POSIÇÃO. Quem vira quem sai da geometria; o traço percorre o **arco** entre as duas poses
 > em vez da corda. Spec de origem: [`04_alem_do_blender.md` §2](04_alem_do_blender.md).
-> **Estado: construída e gateada (2026-07-22), PENDENTE DE SMOKE** —
-> `PH2D_FLIP_TWEEN_SMOKE=1`.
+> **Estado: construída, gateada e SMOKE APROVADO (2026-07-22)** —
+> `PH2D_FLIP_TWEEN_SMOKE=1` (o boneco de palito) · `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`
+> (a correção de pares, §8).
 
 ## §1 — O que estava errado, e o quanto
 
@@ -186,11 +187,13 @@ aparecer, pare**. Aperte **Add** e folheie 0 → 2 → 4 → 6 → 8:
 
 ## §7 — Aberto (nomeado, não escondido)
 
-1. **A FASE da costura em traço fechado.** Dois anéis de mesmo sentido cujo ponto 0 está em
-   lugares diferentes do contorno são interpolados com a costura desalinhada, e a forma do
-   meio fica torcida. A resposta é a correlação circular que o `ph2d-vec-blend` **já
-   construiu** (`phase_only`) — wave própria, não um `if` a mais no auto-flip.
-2. ~~**O overlay de PARES + o re-par manual**~~ — **LANDOU 2026-07-22, pendente de smoke**
+1. ~~**A FASE da costura em traço fechado.**~~ — **LANDOU 2026-07-22, pendente de smoke**
+   (`PH2D_FLIP_TWEEN_PHASE_SMOKE=1`; ver **§9**). Dois anéis de mesmo sentido cujo ponto 0
+   estava em lugares diferentes do contorno eram interpolados com a costura desalinhada e a
+   forma do meio TORCIA (medido: não colapsa — a espiral lê o par nariz↔costas como um giro de
+   180° e leva o anel num LAÇO para fora da reta). Fechado pela correlação circular do módulo
+   irmão `tween_phase`, sobre a **virada** e não as posições.
+2. ~~**O overlay de PARES + o re-par manual**~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
    (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`). Ver **§8**.
 3. **Rotação grande ainda torce** (o lerp do resíduo não-rígido). O estado da arte é
    Sederberg 1992 / Alexa 2000 — e a correspondência, que esta wave entrega, era o
@@ -199,7 +202,7 @@ aparecer, pare**. Aperte **Add** e folheie 0 → 2 → 4 → 6 → 8:
    lados dá a MESMA pose. O gate pina o que importa (mesmo ali o traço **não colapsa**);
    escolher o lado é trabalho do artista, e é a razão de o BetweenIT ter correção manual.
 
-## §8 — A correção de pares (o escape CACAni) — LANDOU 2026-07-22, pendente de smoke
+## §8 — A correção de pares (o escape CACAni) — LANDOU 2026-07-22, SMOKE APROVADO
 
 O matcher v2 é bom, mas a pesquisa foi categórica: **todo** produto de correspondência
 (CACAni, GSAP, Corel) dá um escape MANUAL, porque nenhum matcher acerta TODO par. Esta é a UI
@@ -250,3 +253,44 @@ automático orfana; o artista a pareia e ela ATRAVESSA em vez de piscar).
 edição direta é apertada demais) · a ambiguidade de sobreposição do pick (dois traços no
 MESMO lugar de tela — só atrapalha pares já corretos, documentado no `nearest_stroke`) · um
 Ctrl+Z para o re-par (hoje o gesto é barato de refazer; a sessão é transiente).
+
+## §9 — A fase da costura (o item §7.1, fechado) — LANDOU 2026-07-22, pendente de smoke
+
+Num traço FECHADO o ponto 0 é a **costura arbitrária** onde o artista fechou o traço, não uma
+ponta. Se A e B começam o anel em lugares diferentes do contorno, o pareamento por índice fica
+girado e a forma do meio TORCE — e, medido, ela **não colapsa**: a espiral lê o par nariz↔costas
+como um giro de ~180° e leva o anel num **LAÇO** (mergulha para fora da reta e chega rodado).
+
+**O motor** (`ph2d-flip::tween_phase`, módulo irmão de `tween`/`tween_flip`):
+- `seam_shift(a, b) -> usize` — o deslocamento cíclico que faz `a[i]` parear com `b[(i+s)%n]`
+  seguindo a FORMA. É uma **correlação circular** (a técnica do `phase_only` do `ph2d-vec-blend`),
+  mas o sinal é a **virada `(sen, cos)`** por amostra de arco, **não as posições**: a espiral tira
+  o rígido DEPOIS, então a fase tem de ser invariante à rotação (senão o giro do mundo vazaria
+  para o índice — a divergência do nosso caso contra o do vetor). Grade de arco fixa
+  (`PHASE_STEPS = 96`) ⇒ custo `O(steps²)` **constante no tamanho do anel** (régua `the_phase_ruler`).
+- **É OPT-IN pela geometria:** só cede da identidade (deslocamento 0) por um vale DECISIVO — o
+  ganho grande frente à AMPLITUDE do custo, e com piso de sinal-chato (`FLAT_EPS`). Um anel
+  simétrico (quadrado, círculo) tem custo chato ⇒ fica na identidade, e a rotação limpa da espiral
+  não vira reflexão por ruído de `f64`. Anel < 8 pontos ⇒ 0 (protege os quadrados de 4 pontos dos
+  gates de furo do `tween`, que ficam **byte-idênticos**). É a mesma lição do z-order desta linha:
+  *não se escolhe um desempate — não se tem empate.*
+
+**A costura** (`tween::tween_stroke`): a fase roda ENTRE o auto-flip e o `fit` — o `tween_flip`
+resolve o SENTIDO, a fase resolve a FASE, e a espiral ajusta o rígido sobre a correspondência já
+alinhada (por isso vem antes do `fit`). O FURO (`tween_ring`) passa pela **MESMA porta** — um furo
+é um anel fechado como o contorno, e o mesmo "O" com o buraco começando em lugares diferentes
+torceria o furo.
+
+**Gates (motor + smoke):** a fase realinha a costura · é invariante à rotação (a fase de B e de B
+girado 90° é IGUAL) · anel simétrico fica na identidade · anel pequeno fica na identidade · a
+régua · e o smoke de aparência (`the_phase_smoke_keeps_the_ring_on_the_straight_path`: o blob
+desliza em LINHA RETA, y≈0; sem a fase mergulha para y≈−2,2). ⚠️ **O 1º oráculo, de ÁREA, nasceu
+VERDE sobre o bug** — a torção não colapsa a área (a forma só gira e desloca), e o defeito é o
+centróide sair da reta; a lição é a de sempre ([[feedback_oracle_must_model_appearance_not_implementation]]:
+a aparência aqui é o CAMINHO, não o tamanho). Mutação (`seam_shift → 0`) sangra os gates de
+comportamento e o smoke. Smoke: `PH2D_FLIP_TWEEN_PHASE_SMOKE=1`.
+
+**Aberto de lá:** a fase é uma **rotação inteira** de `pb` (preserva os pontos de B); o refino
+sub-vértice (a parábola do `phase_only`) foi dispensado de propósito — o pareamento é discreto e o
+índice é arredondado de qualquer jeito. A rotação grande ainda torce (o resíduo não-rígido, §7.3),
+que é outra wave, e cuja correspondência era o pré-requisito.

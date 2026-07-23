@@ -196,11 +196,27 @@ fn tween_stroke(
     let flip = auto_flip && should_flip(a, b);
     let n = a.len().max(b.len());
     let pa = sample_padded(a, n, false);
-    let pb = sample_padded(b, n, flip);
+    let mut pb = sample_padded(b, n, flip);
+
+    // **A FASE da costura** (só anel×anel): num traço fechado o ponto 0 é onde o artista
+    // fechou o traço, não uma ponta — se A e B começam em lugares diferentes do contorno, o
+    // pareamento por índice fica girado e a forma do meio TORCE (um "O" vira um oito). O
+    // `tween_flip` já resolveu o SENTIDO; isto resolve a FASE, girando `pb` para o índice que
+    // segue a forma. A espiral (abaixo) tira o rígido depois, sobre esta correspondência já
+    // alinhada — por isso a fase precisa vir ANTES do `fit`.
+    if a.closed && b.closed {
+        let s = crate::tween_phase::seam_shift(
+            &pa.iter().map(|p| p.pos).collect::<Vec<_>>(),
+            &pb.iter().map(|p| p.pos).collect::<Vec<_>>(),
+        );
+        if s != 0 {
+            pb.rotate_left(s); // pb[i] ← pb[(i + s) % n]
+        }
+    }
 
     // **A espiral é ajustada sobre a MESMA correspondência que a interpolação usa** (os
-    // arrays já padded e já flipados) — não sobre os traços crus, que têm contagens
-    // diferentes e ponto 0 possivelmente trocado.
+    // arrays já padded, já flipados e já alinhados de fase) — não sobre os traços crus, que
+    // têm contagens diferentes e ponto 0 possivelmente trocado.
     let motion = StrokeMotion::fit(
         &pa.iter().map(|p| p.pos).collect::<Vec<_>>(),
         &pb.iter().map(|p| p.pos).collect::<Vec<_>>(),
@@ -266,11 +282,15 @@ fn tween_ring(a: &[Vec2], b: &[Vec2], u: f32, motion: StrokeMotion) -> Vec<Vec2>
         let j = if n <= 1 { 0 } else { i * (m - 1) / (n - 1) };
         ring[j.min(m - 1)]
     };
+    // **A costura do FURO também pode estar desalinhada** — um furo é um anel fechado como o
+    // contorno, e o mesmo "O" cujo buraco começa em lugares diferentes de A e B torceria o
+    // furo no meio. Alinha pela MESMA porta (`tween_phase`), pareando `pa[i]` com `pb[(i+s)%n]`.
+    // Furos pequenos (< o piso do módulo) devolvem `s = 0` ⇒ o par índice-a-índice de sempre.
+    let pa: Vec<Vec2> = (0..n).map(|i| at(a, i)).collect();
+    let pb: Vec<Vec2> = (0..n).map(|i| at(b, i)).collect();
+    let s = crate::tween_phase::seam_shift(&pa, &pb);
     (0..n)
-        .map(|i| {
-            let (p, q) = (at(a, i), at(b, i));
-            motion.point_at(p, q, u)
-        })
+        .map(|i| motion.point_at(pa[i], pb[(i + s) % n], u))
         .collect()
 }
 

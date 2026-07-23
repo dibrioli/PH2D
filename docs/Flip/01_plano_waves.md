@@ -39,6 +39,8 @@
 | **Colorize C1 — Trap** | *trapped-ball*: o balde para de vazar por vão estreito (chip `FLIP_TRAP`) | 2026-07-18 `a6e8277a` | **em `ph2d-flip-fill`** (`ball.rs`/`edt.rs`, `Trap`), **não** na crate `ph2d-flip-colorize` que o [`09`](09_colorize.md) previa |
 | **Região por curvas** | a malha do fill nasce dos vértices das linhas; o donut (buraco = componente conexa); R3 revogada por medição | 2026-07-18 | doc [`10`](10_regiao_por_curvas.md) §11–§12; BUGS #19–#22; `flip_fill_curve_route.*`, `flip_fill_dilate.*` |
 | **Tween v2** | a correspondência de traços deixa de ser ordinal (custo + atribuição ótima) e o inbetween percorre o **arco** em vez da corda (espiral logarítmica) — mais o `Ease`/`Fade` da barra, que fecham a T3.7 | 2026-07-22 | doc [`11`](11_tween_v2.md); `tween_match.rs`, `tween_spiral.rs`, `tween.rs`; smoke `PH2D_FLIP_TWEEN_SMOKE=1` |
+| **Tween v2 — correção de pares** | a lição CACAni: o toggle **Pairs** abre um overlay da correspondência e o clique re-pareia; o Add commita corrigido | 2026-07-22 | doc [`11 §8`](11_tween_v2.md); `flip_tween_correct.rs`, `tween_match.rs::repair`; smoke `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
+| **Tween v2 — fase da costura** | dois anéis fechados com o ponto 0 em lugares diferentes deixam de torcer no meio: correlação circular sobre a **virada** alinha o pareamento antes da espiral | 2026-07-22 | doc [`11 §9`](11_tween_v2.md); `tween_phase.rs`; smoke `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` |
 
 ## Regras permanentes (valem em TODA task)
 
@@ -268,12 +270,15 @@ paint-behind, multiframe.
   · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
 - ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
   (doc [`11`](11_tween_v2.md)). ~~a **UI de correção de pares** (o overlay + o re-par manual —
-  a lição CACAni)~~ — **LANDOU 2026-07-22, pendente de smoke** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`;
+  a lição CACAni)~~ — **LANDOU 2026-07-22, SMOKE APROVADO** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`;
   doc [`11 §8`](11_tween_v2.md)): toggle **Pairs** na barra → overlay da correspondência (linhas
   por confiança verde/vermelho/âmbar + anéis de órfão), clique re-pareia, o Add commita com o
-  plano corrigido. **ABERTO de lá:** o **alinhamento de FASE da costura** em traço fechado (a
-  resposta é o `phase_only` que o `ph2d-vec-blend` já construiu) · a torção em rotação grande
-  (Sederberg 1992 / Alexa 2000 — a correspondência era o pré-requisito dos dois).
+  plano corrigido. ~~o **alinhamento de FASE da costura** em traço fechado~~ — **LANDOU
+  2026-07-22, pendente de smoke** (`PH2D_FLIP_TWEEN_PHASE_SMOKE=1`; crate nova `tween_phase.rs`,
+  correlação circular sobre a **virada** e não as posições — a espiral tira o rígido depois, então
+  a fase tem de ser invariante à rotação; doc [`11 §9`](11_tween_v2.md)). **ABERTO de lá:** a
+  torção em rotação grande (Sederberg 1992 / Alexa 2000 — a correspondência era o pré-requisito
+  dos dois).
 - **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C3 (onion fill)
   LANDOU 2026-07-21, smoke APROVADO** — com chaves marcadas na tira um Apply colore todas; o
   que ela acrescenta NÃO é o range (esse é do W7) e sim a **SEMENTE**: o rabisco é autorado em

@@ -42,6 +42,7 @@ mod stroke;
 mod tween;
 mod tween_flip;
 mod tween_match;
+mod tween_phase;
 mod tween_spiral;
 
 pub use autokey::AutokeyPolicy;

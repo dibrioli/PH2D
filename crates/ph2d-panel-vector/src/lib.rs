@@ -36,6 +36,10 @@ mod paint;
 pub(crate) const SPACING_MIN: f64 = 0.25;
 /// Ver [`SPACING_MIN`].
 pub(crate) const SPACING_MAX: f64 = 4.0;
+/// A meia-faixa do Offset perpendicular do Pattern on Path, em unidades de MUNDO: o slider é
+/// bipolar `−OFFSET_MAX..OFFSET_MAX` (track `0..1`, `0.5` = sobre a curva). Empurra as cópias para
+/// fora/dentro da curva; lido pelo paint, populate e event pela MESMA porta.
+pub(crate) const OFFSET_MAX: f64 = 2.0;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;

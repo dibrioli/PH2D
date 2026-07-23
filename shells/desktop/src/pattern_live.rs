@@ -82,6 +82,7 @@ impl PatternLive {
 fn spec_to_motor(spec: &VecPatternPath, total: f64) -> PatternSpec {
     PatternSpec {
         start_offset: f64::from(spec.start_offset) * total,
+        end_offset: f64::from(spec.end_offset) * total,
         spacing: f64::from(spec.spacing),
         offset: f64::from(spec.offset),
         flip: spec.flip,

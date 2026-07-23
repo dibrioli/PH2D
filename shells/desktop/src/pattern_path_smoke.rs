@@ -11,9 +11,10 @@
 //! 1. **Pattern on Path** — a seta some do lugar e reaparece **repetida ao longo do arco**, cada
 //!    cópia **girada para a tangente** dali (é o que separa isto do Repeater).
 //! 2. **Spacing** — arrastar o slider muda quão densas as cópias povoam a curva.
-//! 3. **Start** — arrastar corre o padrão inteiro pela curva.
-//! 4. **Side: Other side** — o padrão passa para o outro lado.
-//! 5. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica**.
+//! 3. **Start / End** — as cópias caem só no trecho `[Start, End]` do arco.
+//! 4. **Offset** — empurra as cópias para fora/dentro da curva (perpendicular).
+//! 5. **Side: Other side** — o padrão passa para o outro lado.
+//! 6. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica**.
 
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex, VertexKind};
 
@@ -75,9 +76,10 @@ fn arm(app: &mut crate::App) {
          [smoke]      A seta some do lugar e reaparece REPETIDA ao longo do arco, cada copia\n\
          [smoke]      girada para a tangente dali (nao um angulo unico -- isso separa do Repeater).\n\
          [smoke]   2. Arraste Spacing -- muda quao densas as copias povoam a curva.\n\
-         [smoke]   3. Arraste Start -- corre o padrao inteiro pela curva.\n\
-         [smoke]   4. Side: \"Other side\" -- o padrao passa para o outro lado.\n\
-         [smoke]   5. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica.",
+         [smoke]   3. Arraste Start/End -- as copias caem so no trecho [Start, End] do arco.\n\
+         [smoke]   4. Arraste Offset -- empurra as copias para fora/dentro da curva (perpendicular).\n\
+         [smoke]   5. Side: \"Other side\" -- o padrao passa para o outro lado.\n\
+         [smoke]   6. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica.",
         can.is_some()
     );
     if can.is_none() {

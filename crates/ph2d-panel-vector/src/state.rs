@@ -367,8 +367,8 @@ pub use textpath::{set_current_textpath, set_current_textpath_can_link};
 #[path = "state_patternpath.rs"] // Pattern on Path (plano 23), irmão pelo teto de 600 LOC
 mod patternpath;
 pub(crate) use patternpath::{
-    can_link as pp_can_link, flip as pp_flip, linked as pp_linked, spacing as pp_spacing,
-    start as pp_start,
+    can_link as pp_can_link, end as pp_end, flip as pp_flip, linked as pp_linked,
+    offset as pp_offset, spacing as pp_spacing, start as pp_start,
 };
 pub use patternpath::{set_current_patternpath, set_current_patternpath_can_link};
 

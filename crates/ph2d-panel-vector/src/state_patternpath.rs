@@ -17,7 +17,9 @@ thread_local! {
     static CAN_LINK: Cell<bool> = const { Cell::new(false) };
     static LINKED: Cell<bool> = const { Cell::new(false) };
     static START: Cell<f64> = const { Cell::new(0.0) };
+    static END: Cell<f64> = const { Cell::new(1.0) };
     static SPACING: Cell<f64> = const { Cell::new(1.0) };
+    static OFFSET: Cell<f64> = const { Cell::new(0.0) };
     static FLIP: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -31,10 +33,19 @@ pub(crate) fn can_link() -> bool {
 }
 
 /// Publica o estado do vínculo do motivo corrente: se existe, e com que valores.
-pub fn set_current_patternpath(linked: bool, start: f64, spacing: f64, flip: bool) {
+pub fn set_current_patternpath(
+    linked: bool,
+    start: f64,
+    end: f64,
+    spacing: f64,
+    offset: f64,
+    flip: bool,
+) {
     LINKED.with(|c| c.set(linked));
     START.with(|c| c.set(start));
+    END.with(|c| c.set(end));
     SPACING.with(|c| c.set(spacing));
+    OFFSET.with(|c| c.set(offset));
     FLIP.with(|c| c.set(flip));
 }
 
@@ -46,8 +57,16 @@ pub(crate) fn start() -> f64 {
     START.with(Cell::get)
 }
 
+pub(crate) fn end() -> f64 {
+    END.with(Cell::get)
+}
+
 pub(crate) fn spacing() -> f64 {
     SPACING.with(Cell::get)
+}
+
+pub(crate) fn offset() -> f64 {
+    OFFSET.with(Cell::get)
 }
 
 pub(crate) fn flip() -> bool {

@@ -115,9 +115,18 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_PATTERNPATH_START {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
+    if id == ids::VECTOR_PATTERNPATH_END {
+        return Some(forward_track(host, id, 1.0, |t| t));
+    }
     if id == ids::VECTOR_PATTERNPATH_SPACING {
         return Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(crate::SPACING_MAX - crate::SPACING_MIN, crate::SPACING_MIN)
+        }));
+    }
+    // Offset: BIPOLAR `−OFFSET_MAX..OFFSET_MAX` (o mesmo mapa do Bend), `0.5` = zero.
+    if id == ids::VECTOR_PATTERNPATH_OFFSET {
+        return Some(forward_track(host, id, 0.5, |t| {
+            t.mul_add(2.0 * crate::OFFSET_MAX, -crate::OFFSET_MAX)
         }));
     }
     None

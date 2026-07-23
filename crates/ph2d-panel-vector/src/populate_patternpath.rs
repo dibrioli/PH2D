@@ -38,20 +38,38 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
         crate::SPACING_MAX,
         PATTERNPATH_SPACING_STEP,
     );
-    // Start: FRAÇÃO do comprimento (track == valor), como o Offset do texto.
+    // Start / End: FRAÇÃO do comprimento (track == valor). Start nasce em 0, End em 1 (a curva
+    // inteira). O trecho `[Start, End]` é onde as cópias caem.
+    for (slider, chip, track) in [
+        (
+            ids::VECTOR_PATTERNPATH_START,
+            ids::VECTOR_PATTERNPATH_START_NUM,
+            0.0,
+        ),
+        (
+            ids::VECTOR_PATTERNPATH_END,
+            ids::VECTOR_PATTERNPATH_END_NUM,
+            1.0,
+        ),
+    ] {
+        slider_chip(store, slider, chip, track, f64::from(track), 1.0, 0.0);
+        store.set_number_range(chip, 0.0, 1.0, PATTERNPATH_START_STEP);
+    }
+    // Offset: BIPOLAR (unidades de mundo). O track `0..1` mapeia `−OFFSET_MAX..OFFSET_MAX`; `0.5`
+    // (o default) é sobre a curva. O `scale`/`offset` do chip são o MESMO mapa do `event.rs`.
     slider_chip(
         store,
-        ids::VECTOR_PATTERNPATH_START,
-        ids::VECTOR_PATTERNPATH_START_NUM,
+        ids::VECTOR_PATTERNPATH_OFFSET,
+        ids::VECTOR_PATTERNPATH_OFFSET_NUM,
+        0.5,
         0.0,
-        0.0,
-        1.0,
-        0.0,
+        (2.0 * crate::OFFSET_MAX) as f32,
+        -crate::OFFSET_MAX as f32,
     );
     store.set_number_range(
-        ids::VECTOR_PATTERNPATH_START_NUM,
-        0.0,
-        1.0,
-        PATTERNPATH_START_STEP,
+        ids::VECTOR_PATTERNPATH_OFFSET_NUM,
+        -crate::OFFSET_MAX,
+        crate::OFFSET_MAX,
+        PATTERNPATH_SPACING_STEP,
     );
 }

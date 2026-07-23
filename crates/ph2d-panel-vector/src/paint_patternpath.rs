@@ -75,6 +75,43 @@ impl BodyCtx<'_> {
             &format!("{start:.2}"),
             y,
         );
+        // End — o fim do trecho, FRAÇÃO (track == valor). `[Start, End]` é onde as cópias caem.
+        let end_track = self
+            .store
+            .slider(ids::VECTOR_PATTERNPATH_END)
+            .map_or_else(|| state::pp_end() as f32, |(_, v)| v);
+        let end = self
+            .store
+            .number_value(ids::VECTOR_PATTERNPATH_END_NUM)
+            .unwrap_or_else(state::pp_end);
+        y = self.slider_row(
+            "End",
+            ids::VECTOR_PATTERNPATH_END,
+            ids::VECTOR_PATTERNPATH_END_NUM,
+            end_track,
+            end,
+            &format!("{end:.2}"),
+            y,
+        );
+        // Offset — desvio perpendicular, BIPOLAR (unidades de mundo). O track `0..1` mapeia
+        // `−OFFSET_MAX..OFFSET_MAX` (o mesmo mapa bipolar do Bend), `0.5` = sobre a curva.
+        let off = self
+            .store
+            .number_value(ids::VECTOR_PATTERNPATH_OFFSET_NUM)
+            .unwrap_or_else(state::pp_offset);
+        let off_track = self
+            .store
+            .slider(ids::VECTOR_PATTERNPATH_OFFSET)
+            .map_or_else(|| offset_track(state::pp_offset()), |(_, v)| v);
+        y = self.slider_row(
+            "Offset",
+            ids::VECTOR_PATTERNPATH_OFFSET,
+            ids::VECTOR_PATTERNPATH_OFFSET_NUM,
+            off_track,
+            off,
+            &format!("{off:.2}"),
+            y,
+        );
         // O lado é um par exclusivo (deste / do outro), não um checkbox — a mesma razão do texto.
         let flip = state::pp_flip();
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
@@ -90,4 +127,9 @@ impl BodyCtx<'_> {
 fn spacing_track(spacing: f64) -> f32 {
     (((spacing - crate::SPACING_MIN) / (crate::SPACING_MAX - crate::SPACING_MIN)) as f32)
         .clamp(0.0, 1.0)
+}
+
+/// O track `0..1` do slider a partir do Offset bipolar `−OFFSET_MAX..OFFSET_MAX` — `0.5` = zero.
+fn offset_track(offset: f64) -> f32 {
+    (((offset / crate::OFFSET_MAX) * 0.5 + 0.5) as f32).clamp(0.0, 1.0)
 }

@@ -165,6 +165,37 @@ fn the_output_is_linear_in_the_copy_count() {
     assert_eq!(verts, 25 * motif.total_verts());
 }
 
+/// **O End limita o TRECHO** — as cópias caem só em `[start, end]`, o resto da curva fica vazio.
+/// Mutação que mata: o limite superior ignorar o `end_offset` (usar o `total`) devolve 2 cópias.
+#[test]
+fn the_end_limits_the_tiling_range() {
+    let motif = square(); // largura 40
+    let guide = straight(100.0);
+    // Sem End (INFINITY): 2 cópias — fatias [0,40] e [40,80].
+    assert_eq!(pattern_along(&motif, &guide, &PatternSpec::default()).len(), 2);
+    // End = 50 (arco): só [0,40] cabe em [0,50]; [40,80] passa de 50 ⇒ 1 cópia.
+    let clipped = pattern_along(
+        &motif,
+        &guide,
+        &PatternSpec {
+            end_offset: 50.0,
+            ..PatternSpec::default()
+        },
+    );
+    assert_eq!(clipped.len(), 1, "End=50 corta a 2ª cópia");
+    // End antes de Start ⇒ trecho vazio ⇒ nenhuma cópia.
+    let empty = pattern_along(
+        &motif,
+        &guide,
+        &PatternSpec {
+            start_offset: 60.0,
+            end_offset: 40.0,
+            ..PatternSpec::default()
+        },
+    );
+    assert!(empty.is_empty(), "End antes de Start ⇒ trecho vazio");
+}
+
 /// Guia degenerada ⇒ nada, sem pânico (o `total <= 0` e o `k_hi < k_lo`).
 #[test]
 fn a_guide_that_holds_no_copy_yields_nothing() {

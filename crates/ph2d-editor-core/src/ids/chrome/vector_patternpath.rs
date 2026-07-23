@@ -36,3 +36,12 @@ pub const VECTOR_PATTERNPATH_SPACING_NUM: NodeId = hash_node_id("vector.patternp
 pub const VECTOR_PATTERNPATH_START: NodeId = hash_node_id("vector.patternpath.start");
 /// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_START`].
 pub const VECTOR_PATTERNPATH_START_NUM: NodeId = hash_node_id("vector.patternpath.start.num");
+/// **End** — onde a tilagem termina, em FRAÇÃO do comprimento. `[Start, End]` é o trecho tilado.
+pub const VECTOR_PATTERNPATH_END: NodeId = hash_node_id("vector.patternpath.end");
+/// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_END`].
+pub const VECTOR_PATTERNPATH_END_NUM: NodeId = hash_node_id("vector.patternpath.end.num");
+/// **Offset** — desvio das cópias ao longo da NORMAL (perpendicular à curva), bipolar em unidades
+/// de mundo. Empurra o padrão para fora/dentro da curva.
+pub const VECTOR_PATTERNPATH_OFFSET: NodeId = hash_node_id("vector.patternpath.offset");
+/// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_OFFSET`].
+pub const VECTOR_PATTERNPATH_OFFSET_NUM: NodeId = hash_node_id("vector.patternpath.offset.num");

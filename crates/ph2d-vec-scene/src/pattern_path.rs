@@ -53,6 +53,11 @@ pub struct PatternSpec {
     /// Arco onde a tilagem começa, em unidades de mundo ao longo da guia. É o irmão do
     /// `start_offset` do texto: correr este valor desliza o padrão inteiro pela curva.
     pub start_offset: f64,
+    /// Arco onde a tilagem TERMINA, em unidades de mundo. As cópias caem no trecho
+    /// `[start_offset, end_offset]` (o limite superior efetivo é `min(end_offset, total)`).
+    /// `f64::INFINITY` = a curva inteira, e é o default (nenhum consumidor que não queira limitar
+    /// precisa saber que o campo existe).
+    pub end_offset: f64,
     /// Multiplica a **largura** do bbox do motivo para dar o avanço por cópia. `1.0` encaixa as
     /// cópias borda-a-borda; `0.5` sobrepõe metade; `2.0` deixa um vão de uma cópia.
     pub spacing: f64,
@@ -67,6 +72,7 @@ impl Default for PatternSpec {
     fn default() -> Self {
         Self {
             start_offset: 0.0,
+            end_offset: f64::INFINITY,
             spacing: 1.0,
             offset: 0.0,
             flip: false,
@@ -124,8 +130,8 @@ fn map_vert(v: &VecVertex, frame: &GlyphFrame, center: [f64; 2]) -> VecVertex {
 ///
 /// Vazio se a guia é degenerada (`total <= 0`) ou nenhuma cópia cabe. A cópia `k` ocupa a fatia de
 /// arco `[start + avanço·k, start + avanço·(k+1)]`, com o centro em `start + avanço·(k + ½)`; emitem-se
-/// as cópias cuja **fatia inteira cabe** em `[0, total]` — nada transborda as pontas (a cauda pode
-/// sobrar, plano 23 §3, e é isso que distingue de deixar meia-cópia pendurada no fim).
+/// as cópias cuja **fatia inteira cabe** no trecho `[start, min(end, total)]` — nada transborda as
+/// pontas (a cauda pode sobrar, plano 23 §3, e é isso que distingue de deixar meia-cópia pendurada).
 ///
 /// ⚠️ Numa **cúspide** o [`GlyphFrame::on_path`] devolve `None` (não há tangente) e a cópia é
 /// **pulada** — a mesma escolha do texto: sem direção, inventar um referencial poria a forma num
@@ -147,8 +153,11 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     // fronteira do encaixe exato.
     // Ambos são FINITOS: `total > 0` já foi testado e `advance >= MIN_ADVANCE`, então `inv` e os dois
     // são finitos; `k_lo` nunca é NaN (o `.max(0.0)` o garante). Um `<` cru basta e é claro.
+    // O limite superior é o FIM do trecho: `min(end_offset, total)` — o `end_offset` default é
+    // `INFINITY`, então o `min` o reduz ao `total` (a curva inteira) sem um caso especial.
+    let hi_bound = spec.end_offset.min(total);
     let k_lo = (-spec.start_offset * inv).ceil().max(0.0);
-    let k_hi = ((total - spec.start_offset) * inv - 1.0 + FIT_EPS).floor();
+    let k_hi = ((hi_bound - spec.start_offset) * inv - 1.0 + FIT_EPS).floor();
     if k_hi < k_lo {
         return Vec::new();
     }

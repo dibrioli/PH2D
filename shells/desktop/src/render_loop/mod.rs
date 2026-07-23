@@ -1540,6 +1540,8 @@ impl crate::App {
             let mut pending_patternpath: Option<crate::pattern_live::PatternPathCmd> = None;
             let mut pending_pp_spacing: Option<f64> = None;
             let mut pending_pp_start: Option<f64> = None;
+            let mut pending_pp_end: Option<f64> = None;
+            let mut pending_pp_offset: Option<f64> = None;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
             // O GESTO do envelope (ADR-0129 Fatias D+E): Perspective (projetivo) · Mesh (Coons) ·
@@ -1899,6 +1901,13 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_START {
                                 // FRAÇÃO do comprimento (track == valor, como o Offset do texto).
                                 pending_pp_start = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_END {
+                                // FRAÇÃO do comprimento -- o fim do trecho `[Start, End]`.
+                                pending_pp_end = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_OFFSET {
+                                // Desvio perpendicular (unidades de mundo), ja' bipolar (`-2..2`)
+                                // convertido pelo event.rs do painel -- aqui e' valor.
+                                pending_pp_offset = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
@@ -2836,6 +2845,18 @@ impl crate::App {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
                     l.start_offset = v as f32;
                 });
+            }
+            if let Some(v) = pending_pp_end
+                && let Some(motif) = self.vec_pen.selected()
+            {
+                crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
+                    l.end_offset = v as f32;
+                });
+            }
+            if let Some(v) = pending_pp_offset
+                && let Some(motif) = self.vec_pen.selected()
+            {
+                crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.offset = v as f32);
             }
             if let Some(cmd) = pending_patternpath {
                 let sel = self.vec_pen.selected_paths().to_vec();
@@ -3926,7 +3947,9 @@ impl crate::App {
                 ph2d_panel_vector::set_current_patternpath(
                     pat.is_some(),
                     pat.map_or(0.0, |p| f64::from(p.start_offset)),
+                    pat.map_or(1.0, |p| f64::from(p.end_offset)),
                     pat.map_or(1.0, |p| f64::from(p.spacing)),
+                    pat.map_or(0.0, |p| f64::from(p.offset)),
                     pat.is_some_and(|p| p.flip),
                 );
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --

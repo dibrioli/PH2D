@@ -38,6 +38,11 @@ pub struct VecPatternPath {
     /// `startOffset` do SVG, e o que sobrevive a editar o caminho (esticar a curva mantém o padrão
     /// onde o artista o pôs). Convertido em distância na fronteira (a mesma porta do texto).
     pub start_offset: f32,
+    /// Onde a tilagem TERMINA, em **fração do comprimento total** (`1.0` = a curva inteira). Junto
+    /// com `start_offset` define o TRECHO `[start, end]` em que as cópias caem — o resto da curva
+    /// fica vazio (o *Start/End* do Trim Paths do After Effects). `end <= start` ⇒ trecho vazio ⇒
+    /// nenhuma cópia, que é a resposta honesta.
+    pub end_offset: f32,
     /// Multiplica a **largura do motivo** para dar o avanço por cópia: `1.0` encaixa borda-a-borda,
     /// `<1` sobrepõe, `>1` deixa vão. É o `PatternSpec::spacing` do motor.
     pub spacing: f32,
@@ -55,6 +60,7 @@ impl Default for VecPatternPath {
         Self {
             path: 0,
             start_offset: 0.0,
+            end_offset: 1.0,
             spacing: 1.0,
             offset: 0.0,
             flip: false,

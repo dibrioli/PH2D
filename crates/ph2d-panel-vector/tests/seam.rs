@@ -1712,7 +1712,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         (true, ids::VECTOR_PATTERNPATH_DETACH, "Detach from Path"),
     ] {
         ph2d_panel_vector::set_current_patternpath_can_link(!linked);
-        ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, false);
+        ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, 1.0, 0.0, false);
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         let r = host
@@ -1744,7 +1744,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         );
     }
     ph2d_panel_vector::set_current_patternpath_can_link(false);
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
 }
 
 /// **A seção Pattern on Path oferece só o que se aplica, e a AUSÊNCIA é metade do gate.**
@@ -1768,7 +1768,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
 
     // Sem vínculo e sem seleção-de-dois: a seção inteira some (nem o cabeçalho).
     ph2d_panel_vector::set_current_patternpath_can_link(false);
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
     assert!(
         rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
             && rect(ids::VECTOR_PATTERNPATH_SPACING).is_none(),
@@ -1788,15 +1788,17 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     );
 
     // Preso: o inverso exato — os controles, não a porta de entrada.
-    ph2d_panel_vector::set_current_patternpath(true, 0.5, 2.0, true);
+    ph2d_panel_vector::set_current_patternpath(true, 0.5, 0.8, 2.0, 0.5, true);
     assert!(
         rect(ids::VECTOR_PATTERNPATH_LINK).is_none(),
         "prender um motivo já preso não quer dizer nada"
     );
     assert!(rect(ids::VECTOR_PATTERNPATH_SPACING).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_START).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_END).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_OFFSET).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_DETACH).is_some());
 
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
     ph2d_panel_vector::set_current_patternpath_can_link(false);
 }

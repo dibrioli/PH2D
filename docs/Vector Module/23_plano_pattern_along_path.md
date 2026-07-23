@@ -105,9 +105,13 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
   outro é o guia. Fica na porta única `pattern_live::link_candidate` (o painel a usa para OFERECER,
   o clique para HONRAR — senão o botão apareceria e recusaria).
 - **Controles:** Link · Spacing (o assinatura, `0.25..4.0`, track↔valor pela porta `SPACING_MIN/MAX`
-  lida por paint/populate/event) · Start (fração, verbatim do Offset do texto) · Side · Detach. O
-  **offset normal** (perpendicular) fica adiado — o campo existe (default 0, usado pelo motor) e a
-  alça da W4 é o lugar natural para ele.
+  lida por paint/populate/event) · Start · **End** · **Offset** (perpendicular) · Side · Detach.
+  - **End** (Enio, 2026-07-23) é campo NOVO no componente (`end_offset`, fração, default 1.0) e no
+    motor (`PatternSpec.end_offset`, mundo, default `INFINITY`): as cópias caem no trecho
+    `[Start, End]` (o limite é `min(end, total)`, então `INFINITY` = curva inteira, sem caso
+    especial). Apendar campo é livre — o componente ainda não integrou.
+  - **Offset** (perpendicular, `OFFSET_MAX = ±2` mundo, bipolar como o Bend) só faltava a UI: o
+    campo já existia e o motor já o usava.
 - **7 sítios da costura** todos fiados: id · populate · paint · event · bus · drain · publish; +2
   gates de seam que CLICAM os botões (dispatch) e provam a **ausência** (a seção não oferece o que
   não se aplica). Portas de escrita `detach`/`edit` (adiadas na W2) chegaram aqui.

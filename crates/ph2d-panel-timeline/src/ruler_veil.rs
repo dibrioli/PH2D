@@ -5,33 +5,33 @@
 
 use super::*;
 
-/// Half-width of the grab target AROUND the edge line — a press just left/right of
-/// the thin line still grabs. The grab also extends RIGHT to cover the ↔ glyph.
-const DUR_HANDLE_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: duration-handle grab half-width
-/// Horizontal offset of the ↔ glyph CENTRE from the veil edge — 20 px to the right
-/// (Enio, 2026-07-23: *"mais afastada da borda 20px para direita"*), clear of the
-/// loop braces.
-const DUR_ARROW_OFFSET: f32 = 20.0; // LITERAL-PX-OK: ↔ glyph offset from the duration edge
+/// Horizontal offset of the ↔ glyph CENTRE from the veil edge — well to the RIGHT
+/// (Enio, 2026-07-23: moved another 20 px out, *"pois ela conflita com a área do
+/// loop quando o loop vai até o fim"*). The grab lives ON the glyph, so at this
+/// distance neither the glyph nor its grab overlaps the loop brace sitting at the
+/// edge when the loop runs to the end.
+const DUR_ARROW_OFFSET: f32 = 40.0; // LITERAL-PX-OK: ↔ glyph offset from the duration edge
 /// Half the shaft length of the ↔ glyph (2× — Enio, 2026-07-23: *"maior (2x)"*).
 const DUR_ARROW_HALF_W: f32 = 8.0; // LITERAL-PX-OK: ↔ glyph shaft half-width
 /// Half-thickness of the ↔ glyph shaft (2×).
 const DUR_ARROW_SHAFT_HW: f32 = 2.0; // LITERAL-PX-OK: ↔ glyph shaft half-thickness
 /// Arrowhead size of the ↔ glyph (2×).
 const DUR_ARROW_HEAD: f32 = 6.0; // LITERAL-PX-OK: ↔ glyph arrowhead size
-/// Padding right of the ↔ glyph the grab still covers.
-const DUR_ARROW_PAD: f32 = 3.0; // LITERAL-PX-OK: grab padding past the ↔ glyph
+/// Padding around the ↔ glyph the grab still covers.
+const DUR_ARROW_PAD: f32 = 4.0; // LITERAL-PX-OK: grab padding around the ↔ glyph
 
-/// Paint the drag grip at the veil's left edge (the authored duration end) and
-/// register it as a [`TimelineHitKind::DurationHandle`] surface. A no-op unless
-/// the view has an authored duration whose end is on-screen — same gate as the
-/// veil ([`beyond_end_shade`]); the handle IS the veil's edge, so it cannot exist
-/// where the veil does not.
+/// Paint the ↔ drag grip for the authored duration and register it as a
+/// [`TimelineHitKind::DurationHandle`] surface. A no-op unless the view has an
+/// authored duration whose end is on-screen — same gate as the veil
+/// ([`beyond_end_shade`]).
 ///
-/// A vertical grip bar sits ON the edge; a small ↔ glyph sits a little to its
-/// RIGHT, over the dark veil (Enio, 2026-07-23: *"um pouco à direita do início do
-/// véu"*), so the affordance reads without hiding the tick at the edge. The grab
-/// rect is centred on the edge and reaches into both sides, so a press just left
-/// or right of the line still grabs it.
+/// **No bar on the edge, and the grip is offset RIGHT** (Enio, 2026-07-23): the
+/// loop brace sits ON the edge when the loop runs to the end, so a bar there and a
+/// grab reaching to the edge fought it for the pointer. The affordance is just the
+/// ↔ glyph, well to the right over the dark veil, and the grab is tight around the
+/// glyph — clear of the edge, so the loop brace stays grabbable. The drag is
+/// grab-relative (`duration_drag`), so grabbing the offset glyph does not jump the
+/// duration to the glyph's position.
 pub(super) fn paint_duration_handle(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -51,15 +51,8 @@ pub(super) fn paint_duration_handle(
         return;
     }
     let color = resolve(ColorToken::TimelinePlayhead, theme);
-    // The grip bar on the edge.
-    fill_rounded_rect(
-        ctx.scene,
-        Rect::new(edge - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
-        Radius::Xs.px(),
-        color,
-    );
-    // The ↔ glyph, a little to the right of the edge, centred vertically in the
-    // strip: a thin shaft with a triangle arrowhead at each end.
+    // The ↔ glyph, well to the right of the edge (over the dark veil), centred
+    // vertically in the strip: a thin shaft with a triangle arrowhead at each end.
     let cy = region.y + RULER_H * 0.5;
     let gx = edge + DUR_ARROW_OFFSET;
     let half = DUR_ARROW_HALF_W;
@@ -92,13 +85,9 @@ pub(super) fn paint_duration_handle(
         ],
         color,
     );
-    // The grab target: from a half-width LEFT of the edge, all the way RIGHT to
-    // past the ↔ glyph — so both the edge line AND the arrow (20 px right) are
-    // grabbable. The drag is grab-relative (`duration_drag`), so grabbing the arrow
-    // does not jump the duration. Across the ruler strip.
-    let hit_left = edge - DUR_HANDLE_HIT_HW;
-    let hit_right = gx + half + DUR_ARROW_HEAD + DUR_ARROW_PAD;
-    let hit = Rect::new(hit_left, region.y, hit_right - hit_left, RULER_H);
+    // The grab target: tight around the ↔ glyph and NOTHING at the edge, so the loop
+    // brace at the duration end keeps its own grab. Across the ruler strip.
+    let hit = grab_rect(edge, region.y);
     ctx.host.store_mut().register(
         ids::TIMELINE_DUR_HANDLE,
         InteractiveState::TimelineSurface {
@@ -110,4 +99,42 @@ pub(super) fn paint_duration_handle(
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_DUR_HANDLE, hit);
+}
+
+/// The duration handle's grab rect for a veil edge at `edge` — tight around the ↔
+/// glyph, offset RIGHT so it never overlaps the loop brace's own grab at the edge.
+/// Pure, so the "clear of the edge" rule has an oracle the paint cannot give it.
+fn grab_rect(edge: f32, region_y: f32) -> Rect {
+    let gx = edge + DUR_ARROW_OFFSET;
+    let hit_left = gx - DUR_ARROW_HALF_W - DUR_ARROW_HEAD - DUR_ARROW_PAD;
+    let hit_right = gx + DUR_ARROW_HALF_W + DUR_ARROW_HEAD + DUR_ARROW_PAD;
+    Rect::new(hit_left, region_y, hit_right - hit_left, RULER_H)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **The grab is clear of the edge, so the loop brace at the duration end stays
+    /// grabbable** (Enio, 2026-07-23). The loop brace's own grab reaches `BRACE_HIT_HW`
+    /// either side of the edge; the duration grab must start strictly to the RIGHT of
+    /// that, or (registered last, so topmost) it would steal the brace's press when the
+    /// loop runs to the end.
+    #[test]
+    fn the_grab_does_not_reach_the_edge_where_the_loop_brace_sits() {
+        let edge = 200.0;
+        let g = grab_rect(edge, 0.0);
+        assert!(
+            g.x > edge + BRACE_HIT_HW,
+            "grab starts at {} but the loop brace reaches to {}",
+            g.x,
+            edge + BRACE_HIT_HW
+        );
+        // And it does cover the ↔ glyph (so the affordance is actually grabbable).
+        let gx = edge + DUR_ARROW_OFFSET;
+        assert!(
+            g.x < gx && g.x + g.w > gx,
+            "the grab must cover the arrow at {gx}"
+        );
+    }
 }

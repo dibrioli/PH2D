@@ -1,5 +1,36 @@
 # HANDOFF — `line/anim`: os bugs da DURAÇÃO EXPLÍCITA + autokey (2026-07-23)
 
+> ## ⬛ RE-SMOKE 2 (2026-07-23, commit `4ade61919`) — o Bug B foi APROVADO; o véu+clamp tinham RAIZ SEPARADA, agora fechada
+>
+> **Enio aprovou o Bug B** ("colocando a playhead além do tempo de duração e usando autokey, os
+> keyframes são criados dentro da área"). Mas o **véu (escurecimento) não pintava** e o **playhead
+> passava do fim** (screenshot: aba Keys, Dur=2, Time(s)=2.333, sem área escura).
+>
+> **A investigação read-only tinha ERRADO ao refutar H3/H4** — ela inferiu "sem véu ⇒ duração não
+> autorada", mas a duração ESTAVA autorada. A raiz real: **`keys_mode = shows_keys() && stacked()`**
+> ([paint.rs:48](../../crates/ph2d-panel-timeline/src/paint.rs)), então numa cena **sem pilha**
+> `keys_mode` é **FALSE** mesmo na aba Keys. O clamp caía no braço `scene_length` (None), o véu lia
+> `scene_length.is_some()` (false) — **mas o corte do apply/autokey usa `clip_cut(active)`
+> independente de `solo`** quando a pilha é vazia, então as keys landavam em 2 (o Bug B "funciona")
+> enquanto véu e clamp ignoravam o override do clip. **Três sintomas, uma raiz.** A caixa Dur
+> mostrava 2 corretamente (via `clip_end_seconds`, que honra o override) — o número certo na caixa,
+> o mesmo fato ignorado pelos dois consumidores (o padrão "duas portas divergindo").
+>
+> **Fix (`4ade61919`):** porta única `TimelineDoc::view_authored_end(container, keys_mode)` — o
+> companheiro AUTORADO de `view_end_seconds`, com o MESMO fallthrough de pilha (sem pilha o clip É a
+> timeline, `ruler_clock`). O clamp (timeline_bridge) e o véu (snapshot, base + ramo de container)
+> passam a perguntar a MESMA porta que a caixa já respondia. 3 gates red-first (o caso **sem-pilha**,
+> `solo=false` + clip override — que o gate antigo do clamp nunca cobria: só testava `solo=true`),
+> **mutação provada** (reverter o ramo sem-pilha → os 3 RED). Suítes: **583 crates + 1015 shell
+> (debug) · 583 + bridge (release) · clippy 0 · LOC caps verdes.**
+>
+> **RE-SMOKE 2 (o que confirmar):** aba Keys, cena SEM Arrange (sem strips), objeto animado, Dur=M:
+> (a) além de M a área escurece; (b) o playhead PARA em M (scrub e play); (c) o autokey continua sem
+> mintir key (não regrediu). E o caso COM pilha (aba Arrange com strips, `scene_length` autorada)
+> deve seguir igual.
+>
+> ---
+>
 > ## ⬛ FECHADO NA SESSÃO SEGUINTE (2026-07-23, commits `ae99a27bd` + `743c8ef11`) — AGUARDANDO RE-SMOKE
 >
 > **Os 3 bugs têm fix commitado, gate red-first e mutação provada.** O que a investigação

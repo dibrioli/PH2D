@@ -307,6 +307,19 @@ pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::Ke
     // lanes. Asking `doc.stack()` here kept authoring inside a container hostage to
     // whatever the SCENE happened to hold (Enio, 2026-07-22).
     if doc.scratch().root().is_none() && doc.stack().is_empty() {
+        // The active clip's authored duration cuts this clock BEFORE the remap —
+        // the same composition both solo lanes of the apply run
+        // ([`apply_active_clip`] and the empty-stack lane of
+        // [`apply_from_doc_except`], `clip_cut` then the entity's clock). Beyond
+        // the cut the apply freezes every pose at `curve(cut)`, so "where does a
+        // key authored right now land" is the BOUNDARY — the frame the animator
+        // is looking at. Handing back the raw time here dropped keys at instants
+        // the apply never samples: scrubbing past the authored end with AutoKey
+        // armed minted a key per frame off the frozen pose (the 2026-07-23
+        // superbug; [[feedback_derived_coordinate_seed_must_match_sample]]).
+        // The stacked branch below never had the hole — each strip's `t_clip`
+        // was built through `cut_source`.
+        let t = doc.clip_cut(doc.active_index(), t);
         return Ok(remapped_time(doc, entity, t));
     }
     let scratch = doc.scratch();

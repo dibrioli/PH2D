@@ -165,6 +165,35 @@ fn a_clips_cut_freezes_both_solo_paths_at_the_same_instant() {
     );
 }
 
+/// **The AUTHOR's clock is cut too** (the 2026-07-23 superbug): past the authored
+/// end the apply freezes every pose at `curve(cut)`, so the time a key authored
+/// "now" lands at is the BOUNDARY — the frame the animator is looking at — never
+/// the raw playhead, which the apply does not sample. This is the root-empty
+/// lane of `key_home` (Keys, and Arrange with an empty stack — the one view
+/// whose playhead clamp arm reads `scene_length` and so cannot stand in for the
+/// clip's own cut).
+#[test]
+fn a_key_authored_beyond_the_cut_lands_on_the_boundary() {
+    let (_, mut doc, e) = scene();
+    doc.set_clip_length_override(0, Some(2.0));
+    assert_eq!(
+        ph2d_timeline::key_time(&doc, e, 3.0),
+        Some(2.0),
+        "beyond the cut a key lands ON the cut — the instant the apply froze at"
+    );
+    assert_eq!(
+        ph2d_timeline::key_time(&doc, e, 1.0),
+        Some(1.0),
+        "within the cut: identity, as always"
+    );
+    doc.set_clip_length_override(0, None);
+    assert_eq!(
+        ph2d_timeline::key_time(&doc, e, 3.0),
+        Some(3.0),
+        "no authored duration: the raw clock, byte-identical to before"
+    );
+}
+
 // ── the loop never leaves the authored area ─────────────────────────────────
 
 /// **Nenhum loop passa do fim autorado** (Enio, 2026-07-23): armar ou arrastar

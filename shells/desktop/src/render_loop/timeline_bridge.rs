@@ -353,6 +353,12 @@ pub(crate) fn key_authoring_solo(
         ));
     }
     let value = sample_prop_value(world, entity, prop)?; // the raw pose = what you see
+    // The clip's authored duration cuts the solo clock BEFORE the remap — the
+    // same composition `apply_active_clip` runs. Past the cut the pose you see
+    // is frozen at `curve(cut)`, so K captures it AT the boundary (the visible
+    // frame); keying at the raw time would land at an instant the apply never
+    // samples, and the pose would snap back (seed == sample, 2026-07-23).
+    let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     let t = ph2d_timeline::remapped_time(doc, entity, clip_t);
     Some((value, ph2d_anim::RationalTime::from_seconds(t)))
 }

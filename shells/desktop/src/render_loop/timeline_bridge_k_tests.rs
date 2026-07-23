@@ -339,6 +339,40 @@ fn solo_k_keys_at_clip_time_and_never_refuses() {
     );
 }
 
+/// **Solo K beyond the authored cut keys AT the boundary** (2026-07-23): past the
+/// cut the solo apply freezes every pose at `curve(cut)`, so the frame the
+/// animator sees — and K captures — is the boundary's. Keying at the raw clip
+/// time would land at an instant the apply never samples, and the pose would
+/// snap back (seed == sample).
+#[test]
+fn solo_k_beyond_the_cut_keys_at_the_boundary() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{SimWorld, Transform};
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(9.0, 0.0)),
+            ph2d_ecs::Name::new("Solo"),
+        ))
+        .id()
+        .to_bits();
+    let mut st = solo_doc(bits);
+    st.doc
+        .set_clip_length_override(st.doc.active_index(), Some(2.0));
+
+    let (_, t) = key_authoring_solo(sim.world(), &st, bits, PropKind::TranslationX, 2.5)
+        .expect("solo K never refuses");
+    assert_eq!(
+        t.to_seconds(),
+        2.0,
+        "beyond the cut: the key lands ON the cut, where the visible frame lives"
+    );
+    let (_, t) = key_authoring_solo(sim.world(), &st, bits, PropKind::TranslationX, 1.5)
+        .expect("solo K never refuses");
+    assert_eq!(t.to_seconds(), 1.5, "within the cut: identity, as always");
+}
+
 /// Guard: the fixture really leaves `Right` active (so the assertions above are about
 /// the clip the animator is editing).
 fn st_doc_active_is_right(st: &TimelineState) {

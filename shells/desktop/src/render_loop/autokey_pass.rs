@@ -170,8 +170,34 @@ pub(crate) fn apply_samples(
         armed
     };
     let fps = timeline.doc.fps_display;
+    // **The author's clock is the apply's clock, CUT included** (seed == sample).
+    // The apply cuts every clock at the view's authored duration before anything
+    // else (`apply_active_clip` / the empty-stack lane of `apply_from_doc_except`
+    // cut by the clip; `stack_frames` cuts frame 0 by the scene/container and each
+    // strip by `cut_source`). Past the cut the pose is FROZEN at `curve(cut)`, so
+    // a diff that reads `curve(raw)` sees a phantom delta and mints a key per
+    // scrubbed frame, at a time the apply never samples (the 2026-07-23 superbug).
+    // The playhead clamp upstream is UX; THIS is the correctness boundary — there
+    // are roads past the clamp (the Arrange clamp arm reads `scene_length`, which
+    // can be unauthored while the clip's own cut is live).
+    // Which cut mirrors which apply:
+    //  - Keys/solo, and Arrange with an EMPTY stack: the active clip's own cut.
+    //  - A real stack / container: the view's frame-0 cut. The diff there reads
+    //    the primed scratch (already cut per strip), and `key_home`'s stacked
+    //    branch debug-asserts the clock it is handed matches the scratch's own —
+    //    so hand it the same one.
+    // All cuts are `t.min(len)`, so within the authored range (and with nothing
+    // authored) `t_cut == playhead.time()` and this is byte-identical to before.
+    let t_raw = playhead.time();
+    let t_cut = if solo || (root.is_none() && timeline.doc.stack().is_empty()) {
+        timeline.doc.clip_cut(timeline.doc.active_index(), t_raw)
+    } else if let Some(c) = root {
+        timeline.doc.container_cut(c, t_raw)
+    } else {
+        timeline.doc.cut_scene(t_raw)
+    };
     let t = ph2d_timeline::snap_time(
-        RationalTime::from_seconds(playhead.time()),
+        RationalTime::from_seconds(t_cut),
         fps,
         timeline.flags.frame_snap,
     );
@@ -190,8 +216,10 @@ pub(crate) fn apply_samples(
         // land) at the exact time the apply pass sampled, or world == curve
         // breaks: every pose edit would key at an invisible time and snap
         // back. Identity (the common case, remapped == playhead) keeps the
-        // frame-snapped playhead time byte-identical to before.
-        let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, playhead.time());
+        // frame-snapped playhead time byte-identical to before. The remap
+        // composes ON TOP of the cut (`t_cut`), the apply's own order
+        // (cut first, then the entity's clock).
+        let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, t_cut);
         // Where a key lands — the active clip's OWN time. Without a stack that is
         // the entity's clock (above); with one, the strip's map composes on top,
         // and it can have **no answer**: a clip playing twice right now offers two
@@ -216,10 +244,10 @@ pub(crate) fn apply_samples(
         let home = if solo {
             Ok(t_src)
         } else {
-            ph2d_timeline::key_home(&timeline.doc, entity, playhead.time())
+            ph2d_timeline::key_home(&timeline.doc, entity, t_cut)
         };
         let t_e = home.ok().map(|ts| {
-            if playing || ts != playhead.time() {
+            if playing || ts != t_cut {
                 RationalTime::from_seconds(ts)
             } else {
                 t
@@ -358,6 +386,9 @@ pub(crate) fn apply_samples(
     ak.drag_active = drag_now;
 }
 
+#[cfg(test)]
+#[path = "autokey_cut_clock_tests.rs"]
+mod cut_clock_tests;
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;

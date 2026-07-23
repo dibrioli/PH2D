@@ -370,3 +370,183 @@ pub(super) fn build_gpu_kaleidoscope_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// **O ORGANISMO** (`PH2D_GPU_COOK_DEMO=16`) — the ONE scene that smokes the whole
+/// reduction channel end to end: a single dense blob is fanned into a twelve-fold
+/// body and then **domed, arced, wound, and tipped into perspective**, each
+/// deformation folding its own whole-stream reduction over the live stream the
+/// previous one produced. `grid(200×200) → move → kaleidoscope → spherize → bend →
+/// twist → four_point_warp → output`. **40.000 source × 12 = 480.000 instances,
+/// six kernels deep, 100% on the device.**
+///
+/// ## What you should see
+///
+/// A twelve-petalled organism that never sits still: it **spins** (the fan), its
+/// centre **breathes toward you and sucks back** (the dome), the whole ring **curls
+/// into a shell and uncurls** (the arc), it **winds and unwinds around its axis**
+/// (the wind), and the entire churning mass **tips into keystone perspective and
+/// flattens back** (the pin). The five motions are on five PRIME periods
+/// (13·6·9·11·7 s), so the composite pose cycle is enormous — you will not see it
+/// repeat. The seams between the twelve slices stay welded (the mirror agreeing),
+/// the dome stays centred (the centroid is honest), and nothing pops, tears, or
+/// snaps flat.
+///
+/// ## What it is actually demonstrating — everything the line built, at once
+///
+/// - **The count-changing SourceRead** (`kaleidoscope`): 40.000 source rows fanned
+///   to 480.000 on the device, each slice reading the template `P` at `i % n`
+///   (`ColumnAccess::SourceRead`) and the sequencer gathering `size`/`tint`/`id`
+///   onto every copy. Every deformer downstream runs on the *fanned* 480.000.
+/// - **All three reduce operators, chained**: `spherize` folds the centroid (two
+///   `Sum`s, ÷ count), `bend` folds the X extent (`Max`), `twist` folds the rim
+///   radius (`Max`), `four_point_warp` folds the bounding box (`Min`+`Max` ×4).
+///   Bit-exact where `Max`/`Min`, a documented ε where `Sum` or the homography
+///   (`ph2d_nodegraph::reduce_meta`).
+///
+/// ⚠️ **The reductions are folded PER STAGE, over the live stream, and that is the
+/// sharp part of the whole channel.** The dome centres on the centroid of the
+/// *fanned* mandala; the arc wraps the X extent of the *domed* mandala; the wind
+/// turns the rim of the *arced* one; the pin frames the box of the *wound* one.
+/// Hoisting any fold to the top of the cook would look plausible on one deformer
+/// and be wrong here — as each stage reshapes the silhouette, a stale extent /
+/// radius / box would make the next stage overshoot exactly when the form is
+/// tightest. If the organism ever winds harder as it curls, or the dome drifts off
+/// the axis of symmetry, or the pin frames a stale rectangle, that per-stage
+/// ordering broke.
+///
+/// ⚠️ **Every amount is BROADCAST at row 0** (`ColumnAccess::ReadBroadcast`, the
+/// CPU's `first()`): five length-1 LFOs, each one number held across all 480.000
+/// elements, so the body moves as ONE organism rather than as half a million
+/// independent quads. Bisect the device against the reference with `PH2D_GPU_COOK=0`
+/// — the two paths must agree within the channel's ε.
+pub(super) fn build_gpu_deform_organism_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+
+    // 200 × 200 = 40.000 source elements; the kaleidoscope fans it to 480.000 —
+    // the same population as every other deform scene, so the GPU meter compares.
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 200.0);
+    g.set_param(grid, "cols", 200.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+
+    // Park the source off the pivot so each slice is a WEDGE and the twelve close
+    // into a ring (the fan of a grid centred on the pivot just overlaps itself).
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 260.0);
+    g.set_param(mv, "dy", 0.0);
+
+    // 1. THE FAN — count-changing (×12), the true kaleidoscope fold (Dₙ mirror).
+    let kal = g.add_node("motion.kaleidoscope");
+    g.set_param(kal, "segments", 12.0);
+    g.set_param(kal, "reflect", 1.0);
+
+    // 2. THE DOME — centred on the mandala's centroid (two Sum reductions ÷ count).
+    // radius 380 covers the fanned ring (outer radius ≈ 360), so the whole body
+    // breathes rather than a bump in the middle.
+    let sph = g.add_node("motion.spherize");
+    g.set_param(sph, "radius", 380.0);
+
+    // 3. THE ARC — the domed mandala's X extent (Max) wraps onto a barrel.
+    let bend = g.add_node("motion.bend");
+    g.set_param(bend, "angle", 150.0);
+    g.set_param(bend, "pivot_x", 0.0);
+    g.set_param(bend, "pivot_y", 0.0);
+
+    // 4. THE WIND — the arced form's rim radius (Max) turns; the centre does not.
+    let twist = g.add_node("motion.twist");
+    g.set_param(twist, "angle", 120.0);
+    g.set_param(twist, "pivot_x", 0.0);
+    g.set_param(twist, "pivot_y", 0.0);
+
+    // 5. THE PIN — the wound form's bounding box (Min/Max ×4) → keystone quad.
+    let fpw = g.add_node("motion.four_point_warp");
+    for (name, v) in [
+        ("tl_dx", 160.0f32),
+        ("tl_dy", 60.0),
+        ("tr_dx", -120.0),
+        ("tr_dy", 180.0),
+        ("br_dx", -40.0),
+        ("br_dy", 40.0),
+        ("bl_dx", 40.0),
+        ("bl_dy", 0.0),
+    ] {
+        g.set_param(fpw, name, v);
+    }
+
+    // Five LFOs on five PRIME periods (seconds/cycle) so no two beat in lockstep
+    // and the composite pose never repeats within any smoke session. `spin` and
+    // `keystone` are unipolar (a sweep / a flat↔pinned swing); the three shape
+    // amounts are bipolar (they deform BOTH ways).
+    let spin = g.add_node("value.lfo"); // the fan turns
+    g.set_param(spin, "period", 13.0);
+    g.set_param(spin, "amplitude", 180.0);
+    g.set_param(spin, "offset", 180.0);
+    let dome = g.add_node("value.lfo"); // the centre swells/pinches
+    g.set_param(dome, "period", 6.0);
+    g.set_param(dome, "amplitude", 0.9);
+    let arc = g.add_node("value.lfo"); // the ring curls both ways
+    g.set_param(arc, "period", 9.0);
+    g.set_param(arc, "amplitude", 1.0);
+    let wind = g.add_node("value.lfo"); // it winds and unwinds
+    g.set_param(wind, "period", 11.0);
+    g.set_param(wind, "amplitude", 1.0);
+    let keystone = g.add_node("value.lfo"); // it tips into perspective
+    g.set_param(keystone, "period", 7.0);
+    g.set_param(keystone, "amplitude", 0.5);
+    g.set_param(keystone, "offset", 0.5);
+
+    let out = g.add_node("motion.output");
+
+    // The spine runs left to right; the five LFOs sit under the stage each drives.
+    for (i, n) in [grid, mv, kal, sph, bend, twist, fpw, out]
+        .into_iter()
+        .enumerate()
+    {
+        g.set_pos(
+            n,
+            Pos {
+                x: 60.0 + i as f32 * 150.0,
+                y: 140.0,
+            },
+        );
+    }
+    for (i, n) in [spin, dome, arc, wind, keystone].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 360.0 + i as f32 * 150.0,
+                y: 320.0,
+            },
+        );
+    }
+
+    for (from, to, port) in [
+        (grid, mv, 0u16),
+        (mv, kal, 0),
+        (spin, kal, 1),
+        (kal, sph, 0),
+        (dome, sph, 1),
+        (sph, bend, 0),
+        (arc, bend, 1),
+        (bend, twist, 0),
+        (wind, twist, 1),
+        (twist, fpw, 0),
+        (keystone, fpw, 1),
+        (fpw, out, 0),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

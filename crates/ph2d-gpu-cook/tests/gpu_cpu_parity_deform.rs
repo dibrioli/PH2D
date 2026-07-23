@@ -464,6 +464,155 @@ fn spherize_chain(
     (g, out)
 }
 
+/// **O ORGANISMO** — the `PH2D_GPU_COOK_DEMO=16` scene as a chain: the whole
+/// reduction channel end to end, `grid(n×n) → move → kaleidoscope → spherize →
+/// bend → twist → four_point_warp → output`. The kaleidoscope FANS the source
+/// (`n² · segments`), then four count-preserving deformers each fold their own
+/// reduction over the stream the previous one produced — `Sum` (centroid), `Max`
+/// (x-extent), `Max` (rim radius), `Min`/`Max` (bbox). Every amount is a constant
+/// `value.lfo` on port 1 (`ReadBroadcast`, frozen so the parity is reproducible),
+/// and every level is non-trivial so no stage passes the layout through flat.
+///
+/// `side` is a free variable so the parity gate can run it TINY (the scene itself
+/// is 200² · 12 = 480.000; here 12² · 12 = 1.728 is enough to cross the fan and
+/// every reduction seam while keeping the CPU reference instant).
+fn organism_chain(reg: &NodeRegistry, side: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", side);
+    g.set_param(grid, "cols", side);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+
+    // Park the source off the pivot so each slice is a wedge (the scene's `move`).
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 26.0);
+    g.set_param(mv, "dy", 0.0);
+
+    // 1. THE FAN — count-changing (×12), the true Dₙ mirror.
+    let kal = g.add_node("motion.kaleidoscope");
+    g.set_param(kal, "segments", 12.0);
+    g.set_param(kal, "reflect", 1.0);
+    // 2. THE DOME — the fanned mandala's centroid (two Sum reductions).
+    let sph = g.add_node("motion.spherize");
+    g.set_param(sph, "radius", 40.0);
+    // 3. THE ARC — the domed form's X extent (Max).
+    let bend = g.add_node("motion.bend");
+    g.set_param(bend, "angle", 90.0);
+    g.set_param(bend, "pivot_x", 0.0);
+    g.set_param(bend, "pivot_y", 0.0);
+    // 4. THE WIND — the arced form's rim radius (Max).
+    let twist = g.add_node("motion.twist");
+    g.set_param(twist, "angle", 80.0);
+    g.set_param(twist, "pivot_x", 0.0);
+    g.set_param(twist, "pivot_y", 0.0);
+    // 5. THE PIN — the wound form's bounding box (Min/Max ×4).
+    let fpw = g.add_node("motion.four_point_warp");
+    for (name, v) in [
+        ("tl_dx", 8.0f32),
+        ("tl_dy", 3.0),
+        ("tr_dx", -6.0),
+        ("tr_dy", 9.0),
+        ("br_dx", -2.0),
+        ("br_dy", 2.0),
+        ("bl_dx", 2.0),
+        ("bl_dy", 0.0),
+    ] {
+        g.set_param(fpw, name, v);
+    }
+
+    // Constant broadcast amounts (amplitude 0, offset = level), each non-trivial.
+    let amt = |g: &mut Graph, level: f32| {
+        let n = g.add_node("value.lfo");
+        g.set_param(n, "amplitude", 0.0);
+        g.set_param(n, "offset", level);
+        n
+    };
+    let spin = amt(&mut g, 30.0); // degrees
+    let dome = amt(&mut g, 0.6);
+    let arc = amt(&mut g, 0.7);
+    let wind = amt(&mut g, 0.7);
+    let keystone = amt(&mut g, 0.8);
+
+    let out = g.add_node("motion.output");
+
+    for (from, to, port) in [
+        (grid, mv, 0u16),
+        (mv, kal, 0),
+        (spin, kal, 1),
+        (kal, sph, 0),
+        (dome, sph, 1),
+        (sph, bend, 0),
+        (arc, bend, 1),
+        (bend, twist, 0),
+        (wind, twist, 1),
+        (twist, fpw, 0),
+        (keystone, fpw, 1),
+        (fpw, out, 0),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// **The whole organism is claimed WHOLE by the planner** — device-free, so it
+/// runs on every lane. This is the property that makes `PH2D_GPU_COOK_DEMO=16` a
+/// valid GPU smoke: six kernels deep (a count-changing fan and four reducing
+/// deformers) with ZERO CPU boundary. A single node that fell back to the CPU
+/// would split the plan, and the scene would silently cook half on each side.
+///
+/// Mutation note: this catches the failure that no numeric gate can — a deformer
+/// whose kernel registration is dropped still cooks correctly on the CPU, so the
+/// picture looks right; only `is_fully_gpu()` goes false.
+#[test]
+fn the_organism_is_claimed_whole_on_the_device() {
+    let reg = registry();
+    let (g, out) = organism_chain(&reg, 12.0);
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the organism chain (kaleidoscope → spherize → bend → twist → \
+         four_point_warp) must be claimed WHOLE — a CPU boundary anywhere means \
+         PH2D_GPU_COOK_DEMO=16 is not the all-on-device smoke it claims to be"
+    );
+}
+
+/// **The six-deep chain agrees with the CPU** — the reductions do not just each
+/// work in isolation (the gates above), they COMPOSE: each stage folds over what
+/// the last one produced, on both paths, and the pictures still match.
+///
+/// ⚠️ **And it fits the SAME [`EPS_POS`] the single stages use** — that is the
+/// finding, not a footnote. Four amplifying deformers in series each divide by a
+/// reduction, so a last-ulp difference in the fanned centroid *could* ride through
+/// the arc, the wind, and the homography and compound. Measured at a tiny size
+/// (12² · 12 = 1.728), the worst is **3,5e-5** — essentially the single-stage
+/// number; the compounding did NOT blow the bound. So this reuses `compare`,
+/// which enforces `EPS_POS` per instance, rather than inventing a looser bound
+/// the arithmetic does not need. A dead reduction anywhere breaks the count or
+/// moves the picture by tens of units — five orders of magnitude away.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_organism_matches_the_cpu_through_every_folded_stage() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = organism_chain(&reg, 12.0);
+    let cpu = cook_cpu(&reg, &g, out);
+    let gpu_out = cook_gpu(&gpu, &reg, &g, out);
+    // `compare` enforces EPS_POS per instance and returns the worst; the folded
+    // six-kernel chain fits the same bound as one deformer.
+    compare("organism (6 kernels deep)", &cpu, &gpu_out);
+}
+
 /// **The deformer actually DEFORMS**, and the reduction is what makes it do so.
 ///
 /// ⚠️ Without this the parity gates above are satisfiable by two paths that both

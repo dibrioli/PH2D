@@ -47,8 +47,9 @@ mod gpu_voronoi_demo;
 mod gpu_zone_demo;
 
 use gpu_deform_demo::{
-    build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
-    build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
+    build_gpu_deform_demo_document, build_gpu_deform_organism_demo_document,
+    build_gpu_four_point_warp_demo_document, build_gpu_kaleidoscope_demo_document,
+    build_gpu_spherize_demo_document,
 };
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
@@ -214,6 +215,12 @@ impl MotionState {
             // SourceRows, the first kernel to READ its template).
             Ok("15") => {
                 build_gpu_kaleidoscope_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // O ORGANISMO: the whole reduction channel end to end — count-changing
+            // fan (SourceRead) then the four count-preserving deformers, each
+            // folding its reduction over the live stream the previous one produced.
+            Ok("16") => {
+                build_gpu_deform_organism_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

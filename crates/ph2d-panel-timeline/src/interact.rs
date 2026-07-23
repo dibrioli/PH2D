@@ -278,7 +278,8 @@ mod tests {
     fn the_duration_handle_routes_to_the_length_edit() {
         // The Primary router must send a DurationHandle gesture to `duration_drag`
         // (not swallow it): a drag on the veil edge authors a length. 120 px/s, so
-        // x = 240 px is t = 2 s. Keys tab (default) → the clip scope.
+        // the 4 s edge is at x = 480; grab it and drag to x = 240 (t = 2 s). Keys
+        // tab (default) → the clip scope.
         let mut st = TimelinePanelState::default();
         let s = TimelineViewSnapshot {
             view_length_explicit: true,
@@ -290,7 +291,7 @@ mod tests {
             gesture(
                 TimelineHitKind::DurationHandle,
                 GesturePhase::Begin,
-                240.0,
+                480.0,
                 false,
             ),
             120.0,

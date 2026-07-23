@@ -107,10 +107,8 @@ fn min_len(snap: &TimelineViewSnapshot) -> f64 {
 }
 
 /// The time under pointer x, frame-snapped when the snapshot asks for it, never
-/// negative — the ONE "pointer → snapped ruler time" conversion, so the loop brace,
-/// the veil's duration handle and any future ruler grip all snap the SAME way the
-/// playhead does (`snap.frame_snap` / `snap.fps`).
-pub(crate) fn time_at(
+/// negative.
+fn time_at(
     view_start: f64,
     time_x: f32,
     px_per_s: f64,

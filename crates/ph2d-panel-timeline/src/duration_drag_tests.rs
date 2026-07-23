@@ -17,6 +17,9 @@ fn snap() -> TimelineViewSnapshot {
     }
 }
 
+/// The edge (veil left border) x for `snap()`: 4 s x 100 px/s from view_start 0.
+const EDGE_X: f32 = 400.0;
+
 fn gesture(phase: GesturePhase, x: f32) -> TimelineGesture {
     TimelineGesture {
         surface: ph2d_a11y::NodeId(0),
@@ -29,22 +32,57 @@ fn gesture(phase: GesturePhase, x: f32) -> TimelineGesture {
     }
 }
 
-/// Drive Begin->Update->End at `x` and return the drained intents.
-fn drag(state: &mut TimelinePanelState, s: &TimelineViewSnapshot, x: f32) -> Vec<TimelineIntent> {
-    apply(state, 0.0, 100.0, s, gesture(GesturePhase::Begin, x));
-    apply(state, 0.0, 100.0, s, gesture(GesturePhase::Update, x));
-    apply(state, 0.0, 100.0, s, gesture(GesturePhase::End, x));
+/// GRAB at `grab_x`, drag to `to_x`, release. Return the drained intents.
+fn drag_from(
+    state: &mut TimelinePanelState,
+    s: &TimelineViewSnapshot,
+    grab_x: f32,
+    to_x: f32,
+) -> Vec<TimelineIntent> {
+    apply(state, 0.0, 100.0, s, gesture(GesturePhase::Begin, grab_x));
+    apply(state, 0.0, 100.0, s, gesture(GesturePhase::Update, to_x));
+    apply(state, 0.0, 100.0, s, gesture(GesturePhase::End, to_x));
     state::drain_intents()
+}
+
+/// Grab the EDGE and drag to `to_x` (the edge follows the pointer straight).
+fn drag(
+    state: &mut TimelinePanelState,
+    s: &TimelineViewSnapshot,
+    to_x: f32,
+) -> Vec<TimelineIntent> {
+    drag_from(state, s, EDGE_X, to_x)
 }
 
 #[test]
 fn a_drag_on_keys_authors_the_clip_duration_snapped() {
-    // x = 200 px -> t = 2.0 s (already on a frame). Keys tab -> the CLIP scope.
+    // Grab the edge (x=400, t=4), drag to x=200 (t=2.0, on a frame). Keys tab ->
+    // the CLIP scope.
     let mut st = TimelinePanelState::default(); // tab: Keys
     let got = drag(&mut st, &snap(), 200.0);
     assert!(
         got.contains(&TimelineIntent::SetClipLength { len: Some(2.0) }),
         "dragging the veil edge to t=2 authors the clip duration, got {got:?}"
+    );
+}
+
+#[test]
+fn grabbing_the_arrow_off_the_edge_does_not_jump_the_duration() {
+    // The double-arrow sits 20 px right of the edge. GRAB there (x=420) and DON'T
+    // move: the duration must stay 4.0, not jump to t(420)=4.2. This is the
+    // grab-relative offset — an absolute map would jump on grab.
+    let mut st = TimelinePanelState::default();
+    let got = drag_from(&mut st, &snap(), 420.0, 420.0);
+    assert!(
+        got.contains(&TimelineIntent::SetClipLength { len: Some(4.0) }),
+        "grabbing the arrow and not moving keeps the duration at 4.0, got {got:?}"
+    );
+    // And dragging the arrow LEFT by 200 px shrinks the edge by 2 s (4 -> 2).
+    let mut st = TimelinePanelState::default();
+    let got = drag_from(&mut st, &snap(), 420.0, 220.0);
+    assert!(
+        got.contains(&TimelineIntent::SetClipLength { len: Some(2.0) }),
+        "dragging the arrow 200 px left moves the edge 2 s, got {got:?}"
     );
 }
 
@@ -67,6 +105,7 @@ fn the_whole_drag_is_one_undo_bracket() {
         2,
         "exactly one bracket, got {got:?}"
     );
+    assert!(st.dur_drag.is_none(), "the drag state cleared at End");
 }
 
 #[test]
@@ -103,8 +142,8 @@ fn inside_a_container_it_authors_the_container_duration() {
 }
 
 #[test]
-fn the_drag_frame_snaps_like_the_playhead() {
-    // 100 px/s, 60 fps: x = 157 px is t = 1.57 s -> nearest frame 94/60 = 1.5666…
+fn the_drag_frame_snaps_the_result_like_the_playhead() {
+    // Grab the edge, drag to x=157 px (t=1.57 s) -> nearest frame 94/60 = 1.5666…
     let mut st = TimelinePanelState::default();
     let got = drag(&mut st, &snap(), 157.0);
     let frame = (1.57 * 60.0_f64).round() / 60.0;
@@ -134,8 +173,8 @@ fn snap_off_keeps_the_exact_time() {
 
 #[test]
 fn a_drag_can_never_zero_the_duration() {
-    // Drag the edge far left (x = -500 -> t = -5): it clamps to one frame, never 0,
-    // so the veil (and this handle) never vanish out from under the pointer.
+    // Grab the edge, drag far left (x=-500 -> t=-5): it clamps to one frame, never
+    // 0, so the veil (and this handle) never vanish out from under the pointer.
     let mut st = TimelinePanelState::default();
     let got = drag(&mut st, &snap(), -500.0);
     let one_frame = 1.0 / 60.0;
@@ -154,8 +193,20 @@ fn a_bare_click_closes_the_bracket_and_authors_nothing() {
     // seek.
     let mut st = TimelinePanelState::default();
     let s = snap();
-    apply(&mut st, 0.0, 100.0, &s, gesture(GesturePhase::Begin, 200.0));
-    apply(&mut st, 0.0, 100.0, &s, gesture(GesturePhase::Click, 200.0));
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        gesture(GesturePhase::Begin, EDGE_X),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        gesture(GesturePhase::Click, EDGE_X),
+    );
     let got = state::drain_intents();
     assert_eq!(
         got,
@@ -166,4 +217,5 @@ fn a_bare_click_closes_the_bracket_and_authors_nothing() {
         !got.iter().any(|i| matches!(i, TimelineIntent::Scrub(_))),
         "the handle is a grip; a click must NOT scrub"
     );
+    assert!(st.dur_drag.is_none(), "the drag state cleared on click");
 }

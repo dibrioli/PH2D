@@ -158,6 +158,11 @@ pub struct TimelinePanelState {
     /// In-progress loop-brace drag on the ruler (W4.T3): which edge and the range
     /// captured at Begin, so a slow drag applies deltas to a fixed origin.
     pub loop_drag: Option<LoopDrag>,
+    /// In-progress duration-handle drag on the ruler (Enio, 2026-07-23): the offset
+    /// (seconds) between the grabbed pointer and the veil edge at Begin, so the edge
+    /// tracks the pointer from wherever it was grabbed (the ↔ sits right of the edge).
+    /// `None` when no duration drag is in flight.
+    pub dur_drag: Option<f64>,
     /// The clip strip being dragged or trimmed, if any.
     pub strip_drag: Option<StripDrag>,
     /// A lane weight field is being edited (dragged or typed) and an undo bracket
@@ -440,6 +445,7 @@ impl Default for TimelinePanelState {
             anchor_drag: None,
             summary_press: None,
             loop_drag: None,
+            dur_drag: None,
             strip_drag: None,
             weight_edit: None,
             marker_drag: None,

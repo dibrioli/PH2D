@@ -5,17 +5,21 @@
 
 use super::*;
 
-/// Half-width of the duration handle's grab target — generous, like a brace, so a
-/// press near the thin edge line still grabs it.
+/// Half-width of the grab target AROUND the edge line — a press just left/right of
+/// the thin line still grabs. The grab also extends RIGHT to cover the ↔ glyph.
 const DUR_HANDLE_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: duration-handle grab half-width
-/// Horizontal offset of the ↔ glyph from the veil edge (to the right, over the veil).
-const DUR_ARROW_OFFSET: f32 = 9.0; // LITERAL-PX-OK: ↔ glyph offset from the duration edge
-/// Half the shaft length of the ↔ glyph.
-const DUR_ARROW_HALF_W: f32 = 4.0; // LITERAL-PX-OK: ↔ glyph shaft half-width
-/// Half-thickness of the ↔ glyph shaft.
-const DUR_ARROW_SHAFT_HW: f32 = 1.0; // LITERAL-PX-OK: ↔ glyph shaft half-thickness
-/// Arrowhead size of the ↔ glyph.
-const DUR_ARROW_HEAD: f32 = 3.0; // LITERAL-PX-OK: ↔ glyph arrowhead size
+/// Horizontal offset of the ↔ glyph CENTRE from the veil edge — 20 px to the right
+/// (Enio, 2026-07-23: *"mais afastada da borda 20px para direita"*), clear of the
+/// loop braces.
+const DUR_ARROW_OFFSET: f32 = 20.0; // LITERAL-PX-OK: ↔ glyph offset from the duration edge
+/// Half the shaft length of the ↔ glyph (2× — Enio, 2026-07-23: *"maior (2x)"*).
+const DUR_ARROW_HALF_W: f32 = 8.0; // LITERAL-PX-OK: ↔ glyph shaft half-width
+/// Half-thickness of the ↔ glyph shaft (2×).
+const DUR_ARROW_SHAFT_HW: f32 = 2.0; // LITERAL-PX-OK: ↔ glyph shaft half-thickness
+/// Arrowhead size of the ↔ glyph (2×).
+const DUR_ARROW_HEAD: f32 = 6.0; // LITERAL-PX-OK: ↔ glyph arrowhead size
+/// Padding right of the ↔ glyph the grab still covers.
+const DUR_ARROW_PAD: f32 = 3.0; // LITERAL-PX-OK: grab padding past the ↔ glyph
 
 /// Paint the drag grip at the veil's left edge (the authored duration end) and
 /// register it as a [`TimelineHitKind::DurationHandle`] surface. A no-op unless
@@ -88,15 +92,13 @@ pub(super) fn paint_duration_handle(
         ],
         color,
     );
-    // The grab target: centred on the edge, reaching a generous half-width into
-    // BOTH sides (so a press just left/right of the thin line still grabs), and
-    // extending across the ruler strip.
-    let hit = Rect::new(
-        edge - DUR_HANDLE_HIT_HW,
-        region.y,
-        DUR_HANDLE_HIT_HW * 2.0,
-        RULER_H,
-    );
+    // The grab target: from a half-width LEFT of the edge, all the way RIGHT to
+    // past the ↔ glyph — so both the edge line AND the arrow (20 px right) are
+    // grabbable. The drag is grab-relative (`duration_drag`), so grabbing the arrow
+    // does not jump the duration. Across the ruler strip.
+    let hit_left = edge - DUR_HANDLE_HIT_HW;
+    let hit_right = gx + half + DUR_ARROW_HEAD + DUR_ARROW_PAD;
+    let hit = Rect::new(hit_left, region.y, hit_right - hit_left, RULER_H);
     ctx.host.store_mut().register(
         ids::TIMELINE_DUR_HANDLE,
         InteractiveState::TimelineSurface {

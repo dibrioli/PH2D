@@ -27,7 +27,7 @@
 pub mod world;
 
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
-pub use world::contacts::ContactReport;
+pub use world::contacts::{ContactReport, PeakKey, PeakSample};
 pub use world::defaults::BodyDefaults;
 pub use world::joints::{JointDesc, JointKind, MotorDesc};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};

@@ -22,7 +22,14 @@ use ph2d_ecs::Entity;
 
 use super::PhysicsBridge;
 
-/// One touching pair, in entity space — what the overlay draws.
+/// One pair TOUCHING right now, in entity space — what the overlay draws a `+` on.
+///
+/// The standing set: rebuilt every dispatch from the world's end-of-tick state
+/// ([`ph2d_physics::PhysicsWorld::contact_reports`]). *Who began touching* is a
+/// separate channel ([`ContactEvent`]), and *the flash that marks a beginning* is a
+/// third ([`ContactFlash`]) — a beginning is an event, not a property of the standing
+/// pair, and (W-TickContacts) a beginning can even belong to a pair that is no longer
+/// in this list.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BodyContact {
     /// The two entities, in the world's handle order (so a pair reads the same
@@ -35,21 +42,48 @@ pub struct BodyContact {
     /// size means. **Not the impact peak** — see [`Self::impact`].
     pub impulse: f32,
     /// The **peak** normal impulse this pair reached during the tick's sub-steps, in
-    /// N·s — *how hard the hit was* (W-ImpactForce). `>= impulse` always. This is what
-    /// the flash's size means, and it is a different channel from the load precisely
-    /// so a hard hit on a lightly-loaded pair reads differently from a gentle touch on
-    /// a heavy one. Straight through from [`ph2d_physics::ContactReport::impact`].
+    /// N·s — *how hard the hit was* (W-ImpactForce). `>= impulse` always. A different
+    /// channel from the load, so a hard hit on a lightly-loaded pair reads differently
+    /// from a gentle touch on a heavy one. Straight through from
+    /// [`ph2d_physics::ContactReport::impact`].
     pub impact: f32,
-    /// Ticks since this pair BEGAN touching — the age the overlay fades its flash
-    /// over.
-    ///
-    /// `None` means *"already touching when the timeline last jumped"*: a scrub or a
-    /// disarm re-baselines the set without inventing a beginning for it (see
-    /// [`PhysicsBridge::rebuild_contacts`]). Keeping that distinct from `Some(0)` is
-    /// what stops a scrub from flashing every contact in the scene at once — the age
-    /// is a fact about the SIMULATION, not about how long the readback has known.
-    pub age_ticks: Option<u64>,
 }
+
+/// One begin-flash — a `×` the overlay draws for a few ticks after a pair began
+/// touching, sized by the impact of the hit (W-ContactEvents' visible half,
+/// W-ImpactForce's size).
+///
+/// A SEPARATE channel from [`BodyContact`], and that is the whole of W-TickContacts on
+/// the visible side: a flash marks a BEGINNING, which is an event with a fixed lifetime,
+/// not a property of a pair that happens to still be touching. Sourced from `Began`
+/// transitions and decayed in SIM ticks by the bridge, it therefore flashes a pair for
+/// its full life *whether or not it is still touching* — including a FAST touch that
+/// began and ended inside one tick and never enters `contacts` at all. (The old flash
+/// rode `BodyContact`, so a short bounce flashed for only the ticks it touched, and a
+/// fast touch never flashed; both are fixed by moving here.)
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ContactFlash {
+    /// The pair that began — same fixed order as everywhere else, so a re-light of the
+    /// same pair finds its own flash.
+    pub a: Entity,
+    pub b: Entity,
+    /// Where the touch began, world units.
+    pub point: [f32; 2],
+    /// The impact peak of the beginning, N·s — the flash's size.
+    pub impact: f32,
+    /// Ticks since the beginning. The overlay sizes and expands the flash from this;
+    /// the bridge drops it past [`CONTACT_FLASH_TICKS`].
+    pub age_ticks: u64,
+}
+
+/// How many sim ticks a begin-flash lives.
+///
+/// It lives here, not in the overlay, because the bridge ages the flashes in SIM ticks
+/// (in the stepping loop) and drops them past this — so the overlay never has to. The
+/// overlay reads it to size the age expansion; a single source keeps the drop and the
+/// draw agreeing. At the 60 Hz tick this is ~100 ms — long enough to catch, short enough
+/// that a busy scene does not stay lit (the reason the old overlay chose it).
+pub const CONTACT_FLASH_TICKS: u64 = 6;
 
 /// Which end of a contact's life an event describes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -66,37 +100,28 @@ pub enum ContactPhase {
 /// A contact TRANSITION — the thing gameplay consumes (an impact sound, damage, a
 /// trigger), as opposed to [`BodyContact`], which is a standing state.
 ///
-/// ⚠️ **Sampled once per dispatch, not once per tick.** A frame that owes several
-/// ticks (catching up, or a forward scrub) reports the difference between its two
-/// ENDPOINTS, so a pair that both began and ended inside that span is never seen.
-/// The alternative — reading the contact graph after every sub-tick — costs the read
-/// in every scene to serve a case only a stalled frame produces, and it was not
-/// measured to be worth that. Documented rather than hidden, because a consumer that
-/// counts hits needs to know the sampling rate of its own input.
+/// **Diffed once per TICK, not once per dispatch** (W-TickContacts). A frame that owes
+/// several ticks — catching up, or a forward scrub — steps the world tick by tick, and
+/// the diff runs after EACH, so a pair that both began and ended inside that span is
+/// reported, not lost between the endpoints. And the diff is against the world's
+/// per-tick UNION ([`ph2d_physics::PhysicsWorld::tick_contacts`], the same sub-step
+/// ledger that captures the impact peak), so a FAST touch — one the solver resolves and
+/// pushes back out within a single tick, never touching at the tick's end — is caught in
+/// the sub-step it was active and fires a `Began`. (The old per-dispatch diff, sampling
+/// only `contact_reports`, missed both: measured, a 3 m drop's first landing was
+/// invisible and an 8 m drop fired nothing at all.)
 ///
-/// ⚠️ **And the sharper edge of the same fact: a FAST impact produces no event at
-/// all.** The sample is taken after `step` returns, and the solver resolves a hard
-/// landing and pushes the body back out WITHIN that step — measured on a ball of
-/// radius 0.3 dropped 3.9 m, which reaches y = -0.478 against a contact depth of
-/// -0.5 and is already climbing when the tick ends. So the pair is not touching at
-/// either sampling instant, and the landing that a person plainly sees is invisible
-/// here. The boundary was swept: dropped from 1.2 m (~5.8 m/s) every bounce is
-/// reported; from 2.0 m (~7.0 m/s) the first one is not. Smoke scene 29 drops from
-/// within the reported range on purpose, and says so.
-///
-/// **This is the same mechanism as the missing impulse peak** ([`Self::impulse`]),
-/// and it has the same cure: sampling INSIDE the sub-step loop. Whoever builds "real
-/// impact force" gets this for free and should take both — they are one wave, not
-/// two, and pricing it is the open question (it is a cost paid by every scene for a
-/// reading only some scenes want).
+/// The only touch this cannot report is one that begins and ends within a SINGLE
+/// sub-step — which the discrete solver cannot produce (a contact it never resolved
+/// across a sub-step boundary is a tunnel, and preventing that is CCD's job).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ContactEvent {
     /// The two entities, in the same fixed order [`BodyContact`] uses.
     pub a: Entity,
     pub b: Entity,
     pub phase: ContactPhase,
-    /// Where the touch was. For `Began`, this tick's deepest point; for `Ended`, the
-    /// LAST point the pair was known to touch at — the place they parted.
+    /// Where the touch was. For `Began`, the last-active sub-step's deepest point; for
+    /// `Ended`, the LAST point the pair was known to touch at — the place they parted.
     pub point: [f32; 2],
     /// The load at that moment, in N·s. For `Ended`, the last load the pair carried.
     /// The load meter — for *how hard the hit was*, read [`Self::impact`].
@@ -104,76 +129,155 @@ pub struct ContactEvent {
     /// The **impact peak** of this transition, in N·s — for a `Began`, how hard the
     /// pair hit; for an `Ended`, the last peak it was known at (W-ImpactForce). This
     /// is the number a hit sound sizes itself by, and it is the captured peak, not the
-    /// settled load ([`ph2d_physics::ContactReport::impact`]).
-    ///
-    /// ⚠️ **Scope of this wave:** the peak is real for every transition that FIRES,
-    /// but a *fast* impact — one that both begins and ends inside a single tick —
-    /// still fires no event at all (the standing-set diff never sees it), so its
-    /// peak, though captured in the world, is not delivered here. Making a fast impact
-    /// eventful restructures the diff (standing set → per-tick touched set) and is the
-    /// next wave; the capture this one adds is its prerequisite.
+    /// settled load ([`ph2d_physics::ContactReport::impact`]). Real for every transition
+    /// that fires, including the fast touches this wave now delivers.
     pub impact: f32,
 }
 
-/// What the bridge remembers about a pair BETWEEN dispatches — the whole of the
-/// state that turns a standing set into transitions.
+/// What the bridge remembers about a pair between TICKS — the last place, load, and
+/// peak it was seen at, so an `Ended` event can say where the pair parted and how hard
+/// it last hit. The whole of the state that turns a standing set into transitions.
 #[derive(Copy, Clone, Debug)]
 pub(super) struct ContactMemo {
-    /// Tick the pair began touching, or `None` when it was already touching at the
-    /// last re-baseline (see [`BodyContact::age_ticks`]).
-    began: Option<u64>,
-    /// Last known place, load, and impact peak, so an `Ended` event can say where
-    /// they parted and how hard the pair last hit.
     point: [f32; 2],
     impulse: f32,
     impact: f32,
 }
 
 impl PhysicsBridge {
-    /// Rebuild [`contacts`](Self::contacts) from the world's current touching pairs,
-    /// and DIFF it against the previous dispatch to produce
-    /// [`contact_events`](Self::contact_events).
-    ///
-    /// Returns early — before building the handle→entity map — when nothing is
-    /// touching AND nothing was touching, which is every frame of a scene in free
-    /// fall. The map is built here rather than maintained every frame for the same
-    /// reason `triggers` does it: it is only needed when there is something to
-    /// translate.
-    ///
-    /// ## The trap this function exists to avoid
-    ///
-    /// The standing set is recomputed from scratch every dispatch, so a naive diff
-    /// turns every DISCONTINUOUS clock move into a storm of events: scrub backwards
-    /// over a settled stack and each pair the replay lands on looks brand new. But
-    /// nothing began — the artist moved the clock. An event describes a transition
-    /// **the simulation actually stepped through**, so any discontinuity
-    /// ([`rewind_to`](super::PhysicsBridge::rewind_to) and
-    /// [`hold`](super::PhysicsBridge::hold)) drops `contacts_continuous`, and the next
-    /// rebuild re-baselines in SILENCE.
-    ///
-    /// ⚠️ The baseline starts **empty and continuous**, so the first stepped frame
-    /// emits `Began` for whatever it finds — including a stack authored already
-    /// resting. That matches Unity (`OnCollisionEnter` fires on the first
-    /// `FixedUpdate` for pre-touching bodies) and is the only defensible reading: the
-    /// narrow phase had never run before, so there is no earlier truth to compare to.
-    pub(super) fn rebuild_contacts(&mut self) {
-        self.contacts.clear();
-        self.contact_events.clear();
-        let reports = self.world.contact_reports();
-        if reports.is_empty() && self.contact_since.is_empty() {
-            self.contacts_continuous = true;
-            return;
-        }
-        let tick = self.last_stepped;
-        let mut by_handle: std::collections::BTreeMap<(u32, u32), Entity> = Default::default();
+    /// The handle→entity map, rebuilt from `bodies`. Built on demand rather than
+    /// maintained, the same call `triggers` makes — it is only needed when there is
+    /// something to translate.
+    pub(super) fn handle_map(&self) -> BTreeMap<(u32, u32), Entity> {
+        let mut by_handle: BTreeMap<(u32, u32), Entity> = BTreeMap::new();
         for (e, b) in &self.bodies {
             by_handle.insert(b.handle.into_raw_parts(), *e);
         }
-        // Fresh memo per touching pair. `BTreeMap` and not a `Vec` because the
-        // difference below is a SET operation, and because the order it iterates in
-        // is the order `Ended` events come out in — deterministic, like everything
-        // else the bridge publishes.
+        by_handle
+    }
+
+    /// Diff the world's PER-TICK union of touching pairs against the standing set to
+    /// emit [`contact_events`](Self::contact_events), and light a flash for each
+    /// beginning. Called after EVERY `step` in the forward loop (W-TickContacts), so a
+    /// touch that lives less than a whole tick is still reported — the source is
+    /// [`tick_contacts`](ph2d_physics::PhysicsWorld::tick_contacts), the sub-step ledger,
+    /// not the settled end-of-tick state a fast touch has already left.
+    ///
+    /// ## The trap this exists to avoid
+    ///
+    /// The standing set is recomputed from scratch, so a naive diff turns every
+    /// DISCONTINUOUS clock move into a storm: scrub back over a settled stack and every
+    /// pair looks brand new. But nothing began — the artist moved the clock. An event
+    /// describes a transition **the simulation actually stepped through**, so any
+    /// discontinuity ([`rewind_to`](super::PhysicsBridge::rewind_to),
+    /// [`hold`](super::PhysicsBridge::hold)) drops `contacts_continuous`, and the next
+    /// forward tick RE-BASELINES in silence.
+    ///
+    /// ⚠️ The baseline starts **empty and continuous**, so the first stepped tick emits
+    /// `Began` for whatever it finds — a stack authored already resting reports its
+    /// contact (Unity's reading: the narrow phase had never run, so there is no earlier
+    /// truth to compare against). The re-baseline path (`!continuous`) fires only after a
+    /// discontinuity has explicitly dropped the flag.
+    pub(super) fn accumulate_contact_events(&mut self, by_handle: &BTreeMap<(u32, u32), Entity>) {
+        // Age the flashes one tick; drop those the overlay would no longer draw so the
+        // list stays bounded. A pair that begins again re-lights its own flash to age 0.
+        self.flashes.retain_mut(|f| {
+            f.age_ticks += 1;
+            f.age_ticks < CONTACT_FLASH_TICKS
+        });
+
+        // `now` = the per-tick union, mapped to entities. `BTreeMap`, not a `Vec`,
+        // because the diff below is a SET operation and its iteration order is the order
+        // events come out in — deterministic, like everything the bridge publishes.
         let mut now: BTreeMap<(Entity, Entity), ContactMemo> = BTreeMap::new();
+        for (key, sample) in self.world.tick_contacts() {
+            let (Some(&a), Some(&b)) = (by_handle.get(&key.0), by_handle.get(&key.1)) else {
+                continue;
+            };
+            now.insert(
+                (a, b),
+                ContactMemo {
+                    point: sample.point,
+                    impulse: sample.impulse,
+                    impact: sample.impact,
+                },
+            );
+        }
+
+        if !self.contacts_continuous {
+            // Re-baseline after a discontinuity: adopt the set without reporting any of
+            // it as having begun, and light nothing.
+            self.contact_since = now;
+            self.contacts_continuous = true;
+            return;
+        }
+
+        // ENDED first, then BEGAN — a fixed order, so a consumer draining the queue sees
+        // the same sequence on every machine. (The two halves cannot name the same pair,
+        // so the order is presentation, not semantics.)
+        for (&(a, b), memo) in &self.contact_since {
+            if !now.contains_key(&(a, b)) {
+                self.contact_events.push(ContactEvent {
+                    a,
+                    b,
+                    phase: ContactPhase::Ended,
+                    point: memo.point,
+                    impulse: memo.impulse,
+                    impact: memo.impact,
+                });
+            }
+        }
+        for (&(a, b), memo) in &now {
+            if !self.contact_since.contains_key(&(a, b)) {
+                self.contact_events.push(ContactEvent {
+                    a,
+                    b,
+                    phase: ContactPhase::Began,
+                    point: memo.point,
+                    impulse: memo.impulse,
+                    impact: memo.impact,
+                });
+                // The visible half: a beginning flashes, whether or not it survives to
+                // the tick's end.
+                self.light_flash(a, b, memo.point, memo.impact);
+            }
+        }
+        self.contact_since = now;
+    }
+
+    /// Re-light this pair's begin-flash to age 0, or start one — so a pair that bounces
+    /// rapidly shows ONE flash, re-lit, rather than a growing pile of them.
+    fn light_flash(&mut self, a: Entity, b: Entity, point: [f32; 2], impact: f32) {
+        if let Some(f) = self.flashes.iter_mut().find(|f| f.a == a && f.b == b) {
+            f.point = point;
+            f.impact = impact;
+            f.age_ticks = 0;
+        } else {
+            self.flashes.push(ContactFlash {
+                a,
+                b,
+                point,
+                impact,
+                age_ticks: 0,
+            });
+        }
+    }
+
+    /// Rebuild [`contacts`](Self::contacts) (the standing `+` crosses) from the world's
+    /// end-of-tick touching pairs. Runs once at the END of a dispatch, whichever branch
+    /// produced the state — a scrub still publishes what touches AT the tick the artist
+    /// is looking at. Empty (and no map built) when nothing touches.
+    ///
+    /// Purely the standing set: the transitions and flashes are the forward loop's job
+    /// (`accumulate_contact_events`), which is the only place the clock moved through
+    /// them.
+    pub(super) fn rebuild_standing_contacts(&mut self) {
+        self.contacts.clear();
+        let reports = self.world.contact_reports();
+        if reports.is_empty() {
+            return;
+        }
+        let by_handle = self.handle_map();
         for r in reports {
             let (Some(&a), Some(&b)) = (
                 by_handle.get(&r.body1.into_raw_parts()),
@@ -181,69 +285,18 @@ impl PhysicsBridge {
             ) else {
                 continue;
             };
-            let began = if self.contacts_continuous {
-                // Carry the beginning forward for a pair that was already touching;
-                // a pair that was not is beginning NOW.
-                self.contact_since
-                    .get(&(a, b))
-                    .map_or(Some(tick), |memo| memo.began)
-            } else {
-                // Re-baselining: the set is adopted without inventing a beginning
-                // for any of it.
-                None
-            };
-            now.insert(
-                (a, b),
-                ContactMemo {
-                    began,
-                    point: r.point,
-                    impulse: r.impulse,
-                    impact: r.impact,
-                },
-            );
             self.contacts.push(BodyContact {
                 a,
                 b,
                 point: r.point,
                 impulse: r.impulse,
                 impact: r.impact,
-                age_ticks: began.map(|t| tick.saturating_sub(t)),
             });
         }
-        if self.contacts_continuous {
-            // ENDED first, then BEGAN — a fixed order, so a consumer draining the
-            // queue sees the same sequence on every machine. (The two halves cannot
-            // name the same pair, so the order is presentation, not semantics.)
-            for (&(a, b), memo) in &self.contact_since {
-                if !now.contains_key(&(a, b)) {
-                    self.contact_events.push(ContactEvent {
-                        a,
-                        b,
-                        phase: ContactPhase::Ended,
-                        point: memo.point,
-                        impulse: memo.impulse,
-                        impact: memo.impact,
-                    });
-                }
-            }
-            for (&(a, b), memo) in &now {
-                if !self.contact_since.contains_key(&(a, b)) {
-                    self.contact_events.push(ContactEvent {
-                        a,
-                        b,
-                        phase: ContactPhase::Began,
-                        point: memo.point,
-                        impulse: memo.impulse,
-                        impact: memo.impact,
-                    });
-                }
-            }
-        }
-        self.contact_since = now;
-        self.contacts_continuous = true;
     }
 
-    /// Forget what was touching, WITHOUT reporting any of it as having ended.
+    /// Forget what was touching, WITHOUT reporting any of it as having ended — and put
+    /// out any live flashes, since a scrub or a disarm is not a moment to be lighting up.
     ///
     /// The two callers are the two discontinuities: a scrub/Reset
     /// ([`rewind_to`](super::PhysicsBridge::rewind_to)) and disarming the transport's
@@ -254,6 +307,7 @@ impl PhysicsBridge {
         self.contacts.clear();
         self.contact_events.clear();
         self.contact_since.clear();
+        self.flashes.clear();
         self.contacts_continuous = false;
     }
 
@@ -267,9 +321,10 @@ impl PhysicsBridge {
 
     /// The contact TRANSITIONS of this dispatch — who started touching, who stopped.
     ///
-    /// Empty on any frame where the standing set did not change, and empty on the
-    /// frame after a discontinuity (see [`Self::rebuild_contacts`]). Ordered
-    /// `Ended` then `Began`, each half sorted by entity pair.
+    /// Empty on any frame where nothing began or ended, and empty on the frame after a
+    /// discontinuity (see [`Self::accumulate_contact_events`]). Ordered `Ended` then
+    /// `Began` within each tick, each half sorted by entity pair; a multi-tick dispatch
+    /// concatenates its ticks in order.
     ///
     /// ⚠️ **This is the channel a gameplay consumer would drain** (an impact sound, a
     /// timeline marker, a script callback) — and that consumer is deliberately NOT
@@ -279,6 +334,18 @@ impl PhysicsBridge {
     #[must_use]
     pub fn contact_events(&self) -> &[ContactEvent] {
         &self.contact_events
+    }
+
+    /// The live begin-flashes — the `×` marks the overlay draws for a few ticks after a
+    /// pair began touching, sized by the impact of the hit ([`ContactFlash`]).
+    ///
+    /// A SEPARATE channel from [`Self::contacts`] because a flash marks a BEGINNING and
+    /// lives a fixed span whether or not the pair still touches — so a FAST touch, one
+    /// that never enters `contacts`, still flashes (W-TickContacts). Aged in sim ticks
+    /// and dropped past [`CONTACT_FLASH_TICKS`]; cleared by a discontinuity.
+    #[must_use]
+    pub fn contact_flashes(&self) -> &[ContactFlash] {
+        &self.flashes
     }
 
     /// How many bodies `entity` is touching right now. A scan, not an index — see the

@@ -106,7 +106,7 @@ pub struct PhysicsWorld {
     /// A field and not a local for the same reason `kinematic_targets` is: `step`
     /// is the hot path with a zero-alloc gate, so the capacity is reached once and
     /// reused (`clear` keeps it). Empty for a scene where nothing touches.
-    contact_peaks: std::collections::BTreeMap<contacts::PeakKey, f32>,
+    contact_peaks: std::collections::BTreeMap<contacts::PeakKey, contacts::PeakSample>,
 }
 
 impl PhysicsWorld {

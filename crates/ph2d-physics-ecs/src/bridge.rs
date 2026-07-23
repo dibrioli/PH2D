@@ -147,20 +147,24 @@ pub struct PhysicsBridge {
     /// a contact is a RELATIONSHIP with no owner, unlike a trigger, which is asked
     /// about one sensor. Cleared and refilled per dispatch; empty in free fall.
     contacts: Vec<contacts::BodyContact>,
-    /// What was touching at the END of the previous dispatch, with where and when it
-    /// began — the memory that turns a standing set into TRANSITIONS
+    /// What was touching at the END of the previous TICK, with where and how hard it
+    /// last hit — the memory that turns a per-tick set into TRANSITIONS
     /// (`bridge::contacts`). `BTreeMap` for the determinism reason `bodies`
     /// documents; the key order is the order `Ended` events come out in.
     contact_since: BTreeMap<(Entity, Entity), contacts::ContactMemo>,
-    /// The transitions of this dispatch. Cleared and refilled next to `contacts`,
-    /// from the same diff.
+    /// The transitions of this dispatch — cleared at its start, appended to per tick.
     contact_events: Vec<contacts::ContactEvent>,
+    /// The live begin-flashes (`bridge::contacts`) — the visible half. Seeded from
+    /// `Began` transitions and decayed in SIM ticks; PERSISTS across dispatches (a
+    /// flash outlives the tick it was born in), so it is not cleared per dispatch, only
+    /// aged and dropped, or cleared by a discontinuity.
+    flashes: Vec<contacts::ContactFlash>,
     /// Whether `contact_since` describes the tick immediately before this one.
     ///
-    /// False after any discontinuous clock move, which makes the next rebuild adopt
+    /// False after any discontinuous clock move, which makes the next forward tick adopt
     /// the set in SILENCE instead of reporting a scrub as a hundred collisions. Starts
-    /// TRUE over an empty baseline, so the first stepped frame does report what it
-    /// finds — the Unity reading, argued in `rebuild_contacts`.
+    /// TRUE over an empty baseline, so the first stepped tick does report what it finds
+    /// — the Unity reading, argued in `accumulate_contact_events`.
     contacts_continuous: bool,
 }
 
@@ -195,6 +199,7 @@ impl PhysicsBridge {
             contacts: Vec::new(),
             contact_since: BTreeMap::new(),
             contact_events: Vec::new(),
+            flashes: Vec::new(),
             contacts_continuous: true,
         }
     }
@@ -355,6 +360,9 @@ impl PhysicsBridge {
         scene: &mut dyn SceneAtTick,
     ) {
         self.prepare(sim);
+        // Transitions are a fresh list per dispatch; the forward loop appends to it,
+        // tick by tick. (Flashes are NOT cleared here — they outlive their tick.)
+        self.contact_events.clear();
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
@@ -381,6 +389,10 @@ impl PhysicsBridge {
                 // on the first step and then has zero velocity for the rest.
                 let owed = target - self.last_stepped;
                 self.capture_kinematic_start();
+                // The handle→entity map for the per-tick event diff. Built ONCE here:
+                // the forward branch never respawns bodies (only a rewind does), so the
+                // handles are stable across the loop.
+                let by_handle = self.handle_map();
                 let mut tick = self.last_stepped;
                 for i in 0..owed {
                     // Ask the scene for THIS tick first. When it answers, the
@@ -395,6 +407,10 @@ impl PhysicsBridge {
                     self.drive_kinematic(sim, f);
                     self.world.step();
                     self.steps_taken += 1;
+                    // Diff this tick's touching union against the standing set — the
+                    // only place the clock stepped through the transitions, and the one
+                    // that catches a touch shorter than a whole tick (W-TickContacts).
+                    self.accumulate_contact_events(&by_handle);
                     tick += 1;
                     // Asking is free; capturing costs about one step, which
                     // is why the ring is sparse (see `PhysicsCheckpointRing`).
@@ -420,10 +436,12 @@ impl PhysicsBridge {
         // no alloc) when the scene has no sensors.
         self.rebuild_triggers();
         // And the SOLID half of the same question (`bridge::contacts`): who is
-        // actually touching whom, where, and under how much load. Read from the same
-        // final world state as the triggers, for the same reason — whichever branch
-        // above produced it. No-op (and no alloc) when nothing touches.
-        self.rebuild_contacts();
+        // actually touching whom, where, and under how much load — the STANDING set,
+        // read from the same final world state as the triggers, for the same reason.
+        // The transitions and flashes are the forward loop's job above; this only
+        // publishes what touches AT the tick the artist is now looking at, which is a
+        // question even a scrub must answer. No-op (and no alloc) when nothing touches.
+        self.rebuild_standing_contacts();
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned

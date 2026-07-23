@@ -18,42 +18,28 @@ fn camera() -> Camera2d {
     }
 }
 
-/// A contact with **no beginning** — the state a pair is in after a re-baseline, and
-/// the one these load/placement tests want: they measure the standing `+`, and a pair
-/// that is flashing would put a second cross in the same picture.
-///
-/// The premise is declared rather than inherited: a fixture that reaches its state by
-/// leaning on a default silently changes meaning the day the default moves, and stays
-/// green while testing the opposite.
+/// A standing touching pair — what the `+` load cross is drawn from. The impact peak
+/// defaults to the load (a standing pair's peak is at least its load; these
+/// placement/load tests do not exercise impact).
 fn contact(point: [f32; 2], impulse: f32) -> BodyContact {
     BodyContact {
         a: Entity::from_bits(1),
         b: Entity::from_bits(2),
         point,
         impulse,
-        // Default the impact peak to the load — a standing contact's peak is at
-        // least its load, and these placement/load tests do not exercise impact.
-        // The flash tests that DO set it explicitly via `contact_impact`.
         impact: impulse,
-        age_ticks: None,
     }
 }
 
-/// The same pair, `age` ticks after it BEGAN touching — what flashes.
-fn contact_aged(point: [f32; 2], impulse: f32, age: u64) -> BodyContact {
-    BodyContact {
-        age_ticks: Some(age),
-        ..contact(point, impulse)
-    }
-}
-
-/// A fresh contact with a chosen IMPACT peak — for the flash tests, where the
-/// size rides impact, not load. `age 0` and load fixed, so only the impact varies.
-fn contact_impact(impact: f32, age: u64) -> BodyContact {
-    BodyContact {
+/// A begin-flash with a chosen IMPACT peak and age — what the overlay draws a `×` for
+/// (its OWN channel now, separate from the standing contact).
+fn flash_at(impact: f32, age: u64) -> ContactFlash {
+    ContactFlash {
+        a: Entity::from_bits(1),
+        b: Entity::from_bits(2),
+        point: [0.0, 0.0],
         impact,
-        age_ticks: Some(age),
-        ..contact([0.0, 0.0], 0.01)
+        age_ticks: age,
     }
 }
 
@@ -87,83 +73,77 @@ fn flash_arm_px(path: &BezPath) -> f64 {
     half_diag * std::f64::consts::SQRT_2
 }
 
-/// A pair that BEGAN this tick gets a flash; one adopted at a re-baseline does not.
+/// A begin-flash draws its own `×`, on its own channel — separate from the standing
+/// `+` the load cross draws.
 ///
-/// ⚠️ This is the overlay half of the wave's central rule. `age_ticks: None` means
-/// "already touching when the timeline jumped" — a scrub, or re-arming the Physics
-/// toggle — and flashing those would light up the whole scene every time the artist
-/// drags the ruler, announcing collisions that never happened.
+/// ⚠️ The wave moved the flash off `BodyContact` and onto [`ContactFlash`], so the two
+/// are different lists now and the overlay cannot confuse "just began" with "still
+/// touching". The rule that a re-baselined pair never flashes moved WITH it — into the
+/// bridge, which simply never puts a flash in the list for an adopted pair (the ecs gate
+/// `a_scrub_backwards_is_not_a_hundred_collisions` pins that).
 #[test]
-fn a_fresh_contact_flashes_and_a_re_baselined_one_never_does() {
-    let fresh = contact_aged([0.0, 0.0], 0.01, 0);
-    let adopted = contact([0.0, 0.0], 0.01);
+fn a_begin_flash_draws_its_own_cross_beside_the_standing_mark() {
+    let flash = flash_at(0.5, 0);
+    let touching = contact([0.0, 0.0], 0.01);
 
     assert_eq!(
-        contact_flashes(true, &[fresh], &camera(), window()).len(),
+        contact_flashes(true, &[flash], &camera(), window()).len(),
         1,
-        "a contact that began this tick flashes"
+        "a begin-flash draws a cross"
     );
-    assert!(
-        contact_flashes(true, &[adopted], &camera(), window()).is_empty(),
-        "a pair with no beginning has nothing to announce"
-    );
-    // And the standing cross is drawn either way — the flash is an ADDITION, never a
-    // replacement, or a scrub would erase the marks it must keep showing.
-    assert_eq!(contact_marks(true, &[fresh], &camera(), window()).len(), 1);
+    // The standing `+` is a SEPARATE list — the flash never erases the mark a scrub
+    // must keep showing.
     assert_eq!(
-        contact_marks(true, &[adopted], &camera(), window()).len(),
+        contact_marks(true, &[touching], &camera(), window()).len(),
         1
     );
+    // An empty flash list draws no cross, whatever is touching.
+    assert!(contact_flashes(true, &[], &camera(), window()).is_empty());
 }
 
-/// The flash EXPANDS as it ages, and dies. Expansion is what makes it read as a
-/// burst instead of as a second, brighter contact sitting there.
+/// The flash EXPANDS as it ages. Expansion is what makes it read as a burst instead of
+/// as a second, brighter contact sitting there.
+///
+/// (Where it STOPS is the bridge's job — it drops flashes past `CONTACT_FLASH_TICKS`, so
+/// every one handed here is live; the ecs gate `the_begin_flash_decays...` pins the
+/// stop.)
 #[test]
-fn the_flash_expands_with_age_and_then_stops() {
+fn the_flash_expands_with_age() {
     let cam = camera();
-    let at = |age: u64| {
-        contact_flashes(true, &[contact_aged([0.0, 0.0], 0.01, age)], &cam, window())
-            .first()
-            .map(flash_arm_px)
-    };
-
-    let young = at(0).expect("a brand-new contact flashes");
-    let older = at(FLASH_TICKS - 1).expect("it is still alive on its last tick");
+    let arm =
+        |age: u64| flash_arm_px(&contact_flashes(true, &[flash_at(0.01, age)], &cam, window())[0]);
+    let young = arm(0);
+    let older = arm(CONTACT_FLASH_TICKS - 1);
     assert!(
         older > young + 1.0,
         "the flash must visibly grow: {young:.1} px -> {older:.1} px"
     );
-    assert!(
-        at(FLASH_TICKS).is_none(),
-        "and it must stop, or every settled contact in the scene stays lit"
-    );
-    assert!(at(FLASH_TICKS + 50).is_none(), "long-standing contacts too");
 }
 
 /// ⚠️ The flash must NOT ride the arm length, because arm length already means LOAD.
 ///
 /// Two meanings on one channel is how a brand-new light touch becomes
 /// indistinguishable from an old heavy one. The gate states it as the property rather
-/// than as "it is diagonal": the flash of a LIGHT fresh contact has to be bigger than
-/// the standing mark of a HEAVY one, which can only be true if they are separate
-/// marks.
+/// than as "it is diagonal": the flash of a LIGHT touch (impact at its floor) has to be
+/// bigger than the standing mark of a HEAVY one, which can only be true if they are
+/// separate marks.
 #[test]
 fn the_flash_does_not_steal_the_channel_that_means_load() {
     let cam = camera();
-    let light_fresh = contact_aged([0.0, 0.0], 0.0, 0);
-    let heavy_old = contact([0.0, 0.0], LOAD_FULL_NS * 4.0);
+    let light_flash = flash_at(0.0, 0); // no impact -> the flash sits at its floor
+    let heavy_mark = contact([0.0, 0.0], LOAD_FULL_NS * 4.0);
 
-    let mark_light = contact_marks(true, &[light_fresh], &cam, window());
-    let mark_heavy = contact_marks(true, &[heavy_old], &cam, window());
+    let mark_light = contact_marks(true, &[contact([0.0, 0.0], 0.0)], &cam, window());
+    let mark_heavy = contact_marks(true, &[heavy_mark], &cam, window());
     assert!(
         arm_px(&mark_heavy[0]) > arm_px(&mark_light[0]),
         "the upright cross still says load, and only load"
     );
 
-    let flash = contact_flashes(true, &[light_fresh], &cam, window());
+    let flash = contact_flashes(true, &[light_flash], &cam, window());
     assert!(
         flash_arm_px(&flash[0]) > arm_px(&mark_heavy[0]),
-        "and a light NEW contact still announces itself over a heavy old one"
+        "and even the faintest flash still announces itself over a heavy standing cross"
     );
 }
 
@@ -177,8 +157,8 @@ fn the_flash_does_not_steal_the_channel_that_means_load() {
 #[test]
 fn a_harder_impact_flashes_bigger() {
     let cam = camera();
-    let gentle = contact_impact(0.05, 0); // barely a tap
-    let hard = contact_impact(IMPACT_FULL_NS, 0); // a full-scale slam
+    let gentle = flash_at(0.05, 0); // barely a tap
+    let hard = flash_at(IMPACT_FULL_NS, 0); // a full-scale slam
 
     let gentle_arm = flash_arm_px(&contact_flashes(true, &[gentle], &cam, window())[0]);
     let hard_arm = flash_arm_px(&contact_flashes(true, &[hard], &cam, window())[0]);
@@ -199,7 +179,7 @@ fn a_harder_impact_flashes_bigger() {
 /// lives in the data, not in the paint loop.
 #[test]
 fn the_toggle_switches_the_flashes_off() {
-    let fresh = contact_aged([0.0, 0.0], 0.01, 0);
+    let fresh = flash_at(0.5, 0);
     assert!(contact_flashes(false, &[fresh], &camera(), window()).is_empty());
 }
 

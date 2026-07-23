@@ -13,7 +13,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, ContactPhase, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, CONTACT_FLASH_TICKS, Collider, ColliderShape, ContactPhase, PhysicsBridge, RigidBody,
+};
 
 fn floor(sim: &mut SimWorld) -> Entity {
     sim.world_mut()
@@ -159,9 +161,9 @@ fn a_scrub_backwards_is_not_a_hundred_collisions() {
         "the scrub must still publish what touches AT the target tick"
     );
     assert!(
-        bridge.contacts().iter().all(|c| c.age_ticks.is_none()),
-        "a re-baselined pair has no beginning to count from — else the overlay \
-         flashes the whole scene on every scrub"
+        bridge.contact_flashes().is_empty(),
+        "a scrub leaves no flash lit — else the overlay flashes the whole scene when \
+         the artist drags the ruler"
     );
 
     // ── Scrub B: backwards into free fall, where NOTHING is touching.
@@ -258,30 +260,74 @@ fn the_first_stepped_frame_reports_what_it_was_authored_touching() {
         bridge.contact_events()
     );
     assert_eq!(
-        bridge.contacts()[0].age_ticks,
-        Some(0),
+        bridge.contact_flashes().len(),
+        1,
         "and it began THIS tick, so the overlay flashes it"
     );
 }
 
-/// `age_ticks` counts from the beginning and keeps counting — it is a fact about the
-/// SIMULATION, not about how many frames the readback has been looking.
+/// A begin-flash lives a FIXED span and then is gone — even though the pair keeps
+/// touching the whole time.
+///
+/// The flash marks a BEGINNING (an event), not the duration of a touch, which is why it
+/// rides its own channel and not the standing contact. The old flash rode
+/// `BodyContact.age_ticks`, so it lasted exactly as long as the pair touched: a short
+/// bounce under-flashed and a fast touch never flashed at all. Here the box rests for
+/// the whole test, and the flash still expires on schedule.
 #[test]
-fn the_age_counts_ticks_since_the_pair_began() {
+fn the_begin_flash_decays_over_a_fixed_span_even_while_the_pair_keeps_touching() {
     let mut sim = SimWorld::new();
     floor(&mut sim);
-    bouncy_box_at(&mut sim, 0.0, 0.25);
+    bouncy_box_at(&mut sim, 0.0, 0.25); // authored resting on the floor
     let mut bridge = PhysicsBridge::new();
 
     bridge.dispatch(&mut sim, true, 1);
-    let began_at = bridge.last_stepped();
-    assert_eq!(bridge.contacts()[0].age_ticks, Some(0));
-
-    play_to(&mut bridge, &mut sim, began_at + 5);
     assert_eq!(
-        bridge.contacts()[0].age_ticks,
-        Some(5),
-        "five ticks later the same pair is five ticks old"
+        bridge.contact_flashes().len(),
+        1,
+        "the authored resting contact flashes on the first stepped tick"
+    );
+    assert_eq!(bridge.contact_flashes()[0].age_ticks, 0, "and it is new");
+
+    // Play well past the flash's life. The box never leaves the floor.
+    play_to(&mut bridge, &mut sim, CONTACT_FLASH_TICKS + 3);
+    assert!(
+        !bridge.contacts().is_empty(),
+        "fixture: the box is still resting on the floor the whole time"
+    );
+    assert!(
+        bridge.contact_flashes().is_empty(),
+        "the flash is spent after {CONTACT_FLASH_TICKS} ticks even though the pair is \
+         still touching — a flash is a beginning, not a duration"
+    );
+}
+
+/// A discontinuity puts out a LIVE flash — a scrub or a disarm is not a moment to be
+/// lighting up.
+///
+/// The existing scrub gate settles for many ticks first, so no flash is live when it
+/// jumps; this one disarms while the flash is still burning. Red-first: without the
+/// flash-clear in `discard_contact_history`, the spark survives the discontinuity and
+/// hangs on screen over a world the artist can now pull apart by hand.
+#[test]
+fn a_discontinuity_puts_out_a_live_flash() {
+    let mut sim = SimWorld::new();
+    floor(&mut sim);
+    bouncy_box_at(&mut sim, 0.0, 0.25); // authored resting → flashes on tick 1
+    let mut bridge = PhysicsBridge::new();
+
+    bridge.dispatch(&mut sim, true, 1);
+    assert_eq!(
+        bridge.contact_flashes().len(),
+        1,
+        "fixture: the authored contact flashes on the first stepped tick, while it is live"
+    );
+
+    // Disarm the transport's Physics toggle while the flash is still burning.
+    bridge.hold(&mut sim, 2);
+    assert!(
+        bridge.contact_flashes().is_empty(),
+        "a discontinuity puts the live flash out"
     );
 }
 
@@ -353,6 +399,166 @@ fn a_began_event_carries_the_impact_of_the_landing() {
         "some Began must carry a peak clearly above its own endpoint load — the impact \
          threaded through the bridge, not the load it rebounds to"
     );
+}
+
+/// **The wave (W-TickContacts), red-first.** A touch that begins AND ends between two
+/// dispatch endpoints fires an event — because the diff now runs per TICK, not per
+/// dispatch, over the sub-step union the world already captures for the impact peak.
+///
+/// The construction makes the fast touch *unavoidable* rather than hoping a drop lands
+/// sub-tick (which is phase-dependent — measured, a 3 m drop's first landing is
+/// invisible while a 6 m drop's is not): play tick-by-tick until the ball is just above
+/// the floor, then ask for ONE dispatch that spans the whole landing-and-rebound. The
+/// ball is airborne at both endpoints, so the end-of-dispatch sample front A took sees
+/// nothing.
+///
+/// Red-first: with the per-dispatch diff, `dispatch(55)` from tick 40 diffs the tick-55
+/// state (airborne) against the tick-40 state (airborne) and reports no Began, even
+/// though the ball plainly bounced in between. With the per-tick diff, the landing tick
+/// enters the union and a Began fires.
+#[test]
+fn a_touch_between_two_dispatch_endpoints_still_fires() {
+    let mut sim = SimWorld::new();
+    floor(&mut sim);
+    // A ball, high restitution, so the landing ENDS (a dead body would rest and the
+    // touch would persist to the endpoint, hiding the phenomenon).
+    let ball = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.3 },
+                restitution: 0.75,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+
+    // Fall tick-by-tick until the ball is just above the floor (still airborne).
+    play_to(&mut bridge, &mut sim, 40);
+    assert!(
+        bridge.contacts().is_empty(),
+        "fixture: at tick 40 the ball is still falling"
+    );
+
+    // ONE dispatch spanning the landing (~tick 44) and the rebound.
+    bridge.dispatch(&mut sim, true, 55);
+    assert!(
+        bridge.contacts().is_empty(),
+        "fixture: by tick 55 the ball has bounced back up — the touch is INVISIBLE to \
+         a diff that samples only the dispatch endpoints"
+    );
+
+    let began: Vec<_> = bridge
+        .contact_events()
+        .iter()
+        .filter(|e| e.phase == ContactPhase::Began && (e.a == ball || e.b == ball))
+        .collect();
+    assert!(
+        !began.is_empty(),
+        "the ball landed between the endpoints, so a Began must fire; got {:?}",
+        bridge.contact_events()
+    );
+    assert!(
+        began.iter().any(|e| e.impact > 0.5),
+        "and it carries the impact of a real landing, not a graze; got {began:?}"
+    );
+}
+
+/// **The wave in the ordinary case: normal ONE-tick-per-dispatch play.** A hard landing
+/// that the solver resolves and rebounds within a single tick fires a `Began`, because
+/// the diff runs over the tick's sub-step union, not its settled end.
+///
+/// Red-first, and phase-free by construction: an 8 m drop is fast enough that its FIRST
+/// landing is sub-tick at every alignment (measured: with the old per-dispatch diff it
+/// fired NOTHING in the first ~100 ticks; the first reported event, if any, was a much
+/// later slow bounce). Here it lands at ~tick 76 with an impact near 5 N·s.
+#[test]
+fn a_fast_landing_fires_during_normal_one_tick_play() {
+    let mut sim = SimWorld::new();
+    floor(&mut sim);
+    let ball = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.3 },
+                restitution: 0.75,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 8.0)),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+
+    // Play 100 ticks one at a time — the FIRST landing is ~tick 76.
+    let mut hardest = 0.0f32;
+    for t in 1..=100u64 {
+        bridge.dispatch(&mut sim, true, t);
+        for e in bridge.contact_events() {
+            if e.phase == ContactPhase::Began && (e.a == ball || e.b == ball) {
+                hardest = hardest.max(e.impact);
+            }
+        }
+    }
+    assert!(
+        hardest > 3.0,
+        "an 8 m drop's first landing is sub-tick, and the old diff missed it entirely; \
+         the per-tick union must fire a Began carrying its impact — got hardest {hardest}"
+    );
+}
+
+/// **Measurement probe for the fast-bounce gate and smoke scene 31.** Drops a bouncy
+/// ball from several heights, ONE tick per dispatch (the real play cadence), and prints
+/// the tick and impact of the FIRST landing's Began — the landing the old per-dispatch
+/// diff missed above ~3 m.
+#[test]
+#[ignore = "measurement probe, not a gate"]
+fn probe_fast_bounces() {
+    println!("\n--- fast bounces, 1 tick/dispatch, first-landing Began ---");
+    for h in [1.2f32, 3.0, 6.0, 8.0, 10.0] {
+        let mut sim = SimWorld::new();
+        floor(&mut sim);
+        let ball = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.3 },
+                    restitution: 0.75,
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, h)),
+            ))
+            .id();
+        let mut bridge = PhysicsBridge::new();
+        let mut first: Option<(u64, f32)> = None;
+        let mut total = 0;
+        for t in 1..=180u64 {
+            bridge.dispatch(&mut sim, true, t);
+            for e in bridge.contact_events() {
+                if e.phase == ContactPhase::Began && (e.a == ball || e.b == ball) {
+                    total += 1;
+                    first.get_or_insert((t, e.impact));
+                }
+            }
+        }
+        match first {
+            Some((t, imp)) => println!(
+                "drop {h:>5.1} m -> first landing Began at tick {t}, impact {imp:.3} N.s; \
+                 {total} begans in 180 ticks"
+            ),
+            None => println!("drop {h:>5.1} m -> NO Began in 180 ticks"),
+        }
+    }
 }
 
 /// **The headless probe behind smoke scene 29.** Not an assertion — a MEASUREMENT.

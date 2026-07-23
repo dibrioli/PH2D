@@ -23,7 +23,7 @@
 //! different marks is what lets a gentle touch on a heavy stack read differently
 //! from a hard slam onto bare floor.
 
-use ph2d_physics_ecs::BodyContact;
+use ph2d_physics_ecs::{BodyContact, CONTACT_FLASH_TICKS, ContactFlash};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
@@ -95,15 +95,6 @@ pub(super) fn contact_marks(
 /// saying "this one, now".
 pub(super) const CONTACT_FLASH_RGBA: [f32; 4] = [1.0, 1.0, 1.0, 1.0]; // LITERAL-COLOR-OK: flash de contato
 
-/// How many ticks a begin-flash lives.
-///
-/// **A display ruler, not a knob** (the plan's rule: a number the artist cannot
-/// calibrate against their art does not become surface). At the 60 Hz tick this is
-/// ~100 ms — long enough to be caught reliably, and short enough that a busy stack
-/// does not stay lit. One or two ticks reads as a dropped frame rather than an event,
-/// which is the failure mode a single-frame flash has.
-const FLASH_TICKS: u64 = 6;
-
 /// Arm of the flash at birth and at death, screen px. It EXPANDS as it ages, which is
 /// what makes it read as a burst rather than as a second, brighter contact.
 ///
@@ -135,33 +126,32 @@ const FLASH_IMPACT_BOOST_PX: f64 = 12.0; // LITERAL-PX-OK: chrome de overlay
 /// useful reading — the same stance the load ruler takes).
 const IMPACT_FULL_NS: f32 = 2.0;
 
-/// The begin-flash of one contact: a DIAGONAL cross, sized by IMPACT and expanding
-/// with age.
+/// The begin-flash of one pair: a DIAGONAL cross, sized by IMPACT and expanding with
+/// age.
+///
+/// ⚠️ **Its own channel now** ([`ContactFlash`], not [`BodyContact`]): a flash marks a
+/// BEGINNING, so it lives a fixed span whether or not the pair is still touching — which
+/// is what lets a FAST touch, one that never enters the standing list, flash at all
+/// (W-TickContacts). The bridge ages the flashes in sim ticks and drops the spent ones,
+/// so every flash handed here is live; the overlay only sizes.
 ///
 /// ⚠️ **Diagonal, and not a bigger `+`, because upright arm length is already spoken
 /// for** — [`mark`] sizes the `+` by the LOAD the pair carries. The flash sizes itself
-/// by the IMPACT peak instead (`contact.impact`, not `contact.impulse`), so the two
-/// marks answer the two different questions a contact raises: *how much is it holding*
-/// and *how hard did it hit*. Rotating 45° keeps them on separate channels: for the
-/// few ticks the flash lives, the two crosses read as a spark, and the `+` is left
-/// saying what it always said.
+/// by the IMPACT peak instead (`flash.impact`), so the two marks answer the two
+/// different questions a contact raises: *how much is it holding* and *how hard did it
+/// hit*. Rotating 45° keeps them on separate channels.
 ///
 /// Size composes the two dimensions: a floor of [`FLASH_MIN_PX`] (so even a gentle
 /// touch clears the biggest standing load cross — the front-A gate), plus an impact
 /// boost, plus an age expansion that makes it read as a burst.
-fn flash(contact: &BodyContact, camera: &Camera2d, window: WindowSize) -> Option<BezPath> {
-    // `None` age is a pair adopted at a re-baseline — it never *began* as far as the
-    // simulation is concerned, so it must not flash. That distinction is the whole
-    // reason `age_ticks` is an `Option` and not a number (see `BodyContact`).
-    let age = contact.age_ticks?;
-    if age >= FLASH_TICKS {
-        return None;
-    }
-    let (sx, sy) = camera.world_to_screen(contact.point, window);
+fn flash(flash: &ContactFlash, camera: &Camera2d, window: WindowSize) -> BezPath {
+    let (sx, sy) = camera.world_to_screen(flash.point, window);
     let centre = Point::new(f64::from(sx), f64::from(sy));
-    let impact_frac = f64::from((contact.impact / IMPACT_FULL_NS).clamp(0.0, 1.0));
+    let impact_frac = f64::from((flash.impact / IMPACT_FULL_NS).clamp(0.0, 1.0));
     let base = FLASH_MIN_PX + impact_frac * FLASH_IMPACT_BOOST_PX;
-    let t = age as f64 / FLASH_TICKS as f64;
+    // The bridge only keeps ages in `0..CONTACT_FLASH_TICKS`, so this fraction is in
+    // `[0, 1)`; the shared const keeps the drop and the draw agreeing.
+    let t = flash.age_ticks as f64 / CONTACT_FLASH_TICKS as f64;
     let arm = base + t * (FLASH_MAX_PX - FLASH_MIN_PX);
     // 45°: the half-diagonal of a square with this arm.
     let d = arm * std::f64::consts::FRAC_1_SQRT_2;
@@ -171,24 +161,21 @@ fn flash(contact: &BodyContact, camera: &Camera2d, window: WindowSize) -> Option
     path.line_to(Point::new(centre.x + d, centre.y + d));
     path.move_to(Point::new(centre.x - d, centre.y + d));
     path.line_to(Point::new(centre.x + d, centre.y - d));
-    Some(path)
+    path
 }
 
 /// Every begin-flash to draw, or nothing when the overlay is off. Pure and returned
 /// as data, for the reason [`contact_marks`] documents.
 pub(super) fn contact_flashes(
     show: bool,
-    contacts: &[BodyContact],
+    flashes: &[ContactFlash],
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<BezPath> {
     if !show {
         return Vec::new();
     }
-    contacts
-        .iter()
-        .filter_map(|c| flash(c, camera, window))
-        .collect()
+    flashes.iter().map(|f| flash(f, camera, window)).collect()
 }
 
 /// A linha d'água — **ciano claro**, a cor da água, e o único traço do overlay que

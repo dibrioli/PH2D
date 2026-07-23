@@ -397,6 +397,7 @@ pub(super) fn draw(
     sim: &mut SimWorld,
     joint_anchors: &[([f32; 2], [f32; 2])],
     contacts: &[ph2d_physics_ecs::BodyContact],
+    flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
     triggered: &[ph2d_ecs::Entity],
     camera: &Camera2d,
@@ -439,7 +440,7 @@ pub(super) fn draw(
     // And the BEGIN-flash on top of the standing marks: it lives a few ticks and it is
     // the visible half of the contact-events channel (`contact_flashes`). Last, so the
     // spark is never buried by the very cross it is announcing.
-    for path in contact_flashes(show, contacts, camera, window) {
+    for path in contact_flashes(show, flashes, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,

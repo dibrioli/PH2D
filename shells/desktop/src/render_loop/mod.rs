@@ -3783,6 +3783,10 @@ impl crate::App {
             // says whether two objects are resting on each other or just overlapping
             // in the artist's eye.
             let contacts = physics.contacts().to_vec();
+            // The begin-flashes (`×`) — the visible half of the contact-events channel,
+            // a separate list from the standing `+` crosses because a flash marks a
+            // BEGINNING and outlives the tick it was born in (W-TickContacts).
+            let flashes = physics.contact_flashes().to_vec();
             // Onde a água está. O empuxo calcula essa superfície todo frame e, até
             // isto, nada na tela a mostrava — o artista posicionava o que boia no olho.
             let waterlines = physics.waterlines();
@@ -3792,6 +3796,7 @@ impl crate::App {
                 sim,
                 &joint_anchors,
                 &contacts,
+                &flashes,
                 &waterlines,
                 &triggered,
                 camera,

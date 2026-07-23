@@ -50,12 +50,10 @@ impl crate::App {
         spawn_floor(world);
 
         // ── ESQUERDA: a bola que quica ──────────────────────────────────────
-        // ⚠️ Largada de **1,2**, e a altura foi MEDIDA, não escolhida por estética:
-        // acima de ~2,0 o primeiro quique é INVISÍVEL para este canal. O impacto
-        // rápido é resolvido e separado dentro do mesmo `step` (medido: a bola desce
-        // até y = -0,478 e volta, e o toque acontece em -0,5), então nos dois
-        // instantes em que o canal amostra o par não está encostado. Uma cena que
-        // largasse de 3,4 ensinaria que a feature falha. Ver `ContactEvent`.
+        // Largada de **1,2** — um quique calmo para a primeira leitura. (Até a wave
+        // W-TickContacts a altura era FORÇADA aqui: acima de ~2 m o primeiro quique
+        // era invisível, resolvido e separado dentro do mesmo `step`. Isso FOI
+        // corrigido — a cena 31 larga de bem mais alto e o impacto rápido acende.)
         world.spawn((
             Transform::from_translation(Vec2::new(-2.6, 1.2)),
             Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], [0.35, 0.85, 0.55, 1.0]),
@@ -159,13 +157,13 @@ impl crate::App {
                  desligada as cruzes ficavam na tela, descrevendo toques num mundo\n\
                  que voce ja podia desmontar com a mao.\n\
              \n\
-             ---- LIMITE CONHECIDO (medido, nao e defeito a reportar) -------------\n\
+             ---- O QUE ERA LIMITE E DEIXOU DE SER (W-TickContacts) ---------------\n\
              \n\
-             Queda ALTA (acima de ~2 m) de um corpo QUE QUICA nao gera evento: o\n\
-             motor resolve o pouso e ja separa dentro do mesmo passo, entao nos dois\n\
-             instantes em que o canal olha eles nao estao encostados. Por isso a bola\n\
-             aqui cai de perto. (A forca do impacto JA e medida -- cena 30; o que\n\
-             falta e um evento para o toque rapido, que e a proxima wave.)\n\
+             Antes desta wave, uma queda ALTA de um corpo QUE QUICA nao gerava evento\n\
+             nenhum: o motor resolvia o pouso e ja separava dentro do MESMO passo, entao\n\
+             o canal, que so olhava o fim do passo, nunca via o toque. Agora o diff roda\n\
+             por TICK sobre a uniao dos sub-passos, entao o toque rapido acende. A CENA\n\
+             31 mostra isso: uma bola largada de 8 m, cujos pousos eram invisiveis.\n\
              \n\
              (B liga/desliga o contorno dos colliders.)\n\
              ======================================================================\n"
@@ -284,6 +282,82 @@ impl crate::App {
              \n\
              (Tudo em UM frame -- tecla L abre a timeline para dar scrub e rever os\n\
              impactos. B liga/desliga o contorno dos colliders.)\n\
+             ===================================================================\n"
+        );
+    }
+
+    /// **Cena 31 (W-TickContacts) — o impacto RÁPIDO acende.** Duas bolas que quicam,
+    /// lado a lado, na mesma restituição — só a ALTURA muda.
+    ///
+    /// **ESQUERDA — a bola BAIXA (larga de 1,2 m).** Cada pouso é lento o bastante para
+    /// o par ainda estar encostado no fim do tick, então este pouso SEMPRE acendeu um
+    /// `×` — é o controle.
+    ///
+    /// **DIREITA — a bola ALTA (larga de 8 m).** Cada pouso é tão rápido que o motor
+    /// resolve e já separa dentro de um único tick: no fim do passo a bola já subiu.
+    /// Até esta wave, o canal só olhava o fim do passo, então esses pousos eram
+    /// **INVISÍVEIS** — a bola quicava alto e não acendia `×` nenhum, e quanto mais
+    /// forte o pouso, mais invisível. Agora o diff roda por TICK sobre a união dos
+    /// sub-passos, então **todo pouso acende** — e o `×` é maior, porque o impacto é
+    /// maior (medido `probe_fast_bounces`: pico ~1,6 N·s na baixa, ~4,8 N·s na alta).
+    ///
+    /// É a mesma máquina do pico de impacto (cena 30): o pico vive entre os sub-passos.
+    /// A cena 30 mostrou a FORÇA de um toque que já era reportado; esta mostra um toque
+    /// que **não era reportado de jeito nenhum** passando a existir.
+    pub(crate) fn physics_smoke_fast_impact(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        spawn_floor(world);
+
+        // Uma bola que quica em `x`, largada de `y`. A física é IDÊNTICA nas duas — só a
+        // altura difere, e é a altura que torna o pouso rápido ou lento.
+        let mut bouncy = |x: f32, y: f32, hue: [f32; 4], name: &str| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], hue),
+                Name::new(name.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.3 },
+                    restitution: 0.75,
+                    ..Collider::default()
+                },
+            ));
+        };
+        bouncy(-2.5, 1.2, [0.35, 0.85, 0.55, 1.0], "Low bounce"); // controle
+        bouncy(2.5, 8.0, [0.95, 0.55, 0.35, 1.0], "High bounce"); // a wave
+
+        eprintln!(
+            "\n\
+             ============ [physics-smoke 31] O IMPACTO RAPIDO ACENDE ============\n\
+             \n\
+             Duas bolas que quicam, mesma restituicao. So a ALTURA muda.\n\
+             \n\
+             ESQUERDA  bola BAIXA (larga de 1,2 m) ... pouso LENTO. O par ainda esta\n\
+                       encostado no fim do tick, entao este pouso SEMPRE acendeu um  x .\n\
+                       E' o controle.\n\
+             DIREITA   bola ALTA  (larga de 8 m)   ... pouso RAPIDO. O motor resolve e\n\
+                       ja separa a bola dentro de UM tick -- no fim do passo ela ja subiu.\n\
+             \n\
+             >>> Ate esta wave, os pousos da bola ALTA eram INVISIVEIS: ela quicava\n\
+                 alto e nao acendia  x  nenhum, e quanto mais forte o pouso, mais\n\
+                 invisivel. Agora TODO pouso acende -- e o  x  da alta e' MAIOR, porque\n\
+                 o impacto e' maior. <<<\n\
+             \n\
+             Medido (pico do 1o pouso):  ~1,6 N.s na baixa   ~4,8 N.s na alta\n\
+             \n\
+             ---- POR QUE ERA INVISIVEL ----------------------------------------\n\
+             \n\
+             O diff antigo olhava so o FIM do passo. Um pouso rapido comeca e termina\n\
+             DENTRO do passo, entao nos dois instantes em que o canal olhava a bola nao\n\
+             estava encostada. Agora o diff roda por TICK sobre a UNIAO dos sub-passos\n\
+             -- a mesma leitura que captura o pico de impacto (cena 30). O unico toque\n\
+             que ainda escapa e' o que comeca e termina no MESMO sub-passo, que o solver\n\
+             discreto nem produz (isso seria um tunel, e e' trabalho do CCD).\n\
+             \n\
+             (Tudo em UM frame. L abre a timeline; B liga/desliga o contorno.)\n\
              ===================================================================\n"
         );
     }

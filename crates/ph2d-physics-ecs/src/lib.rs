@@ -23,7 +23,9 @@ mod scale;
 pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
-pub use bridge::contacts::{BodyContact, ContactEvent, ContactPhase};
+pub use bridge::contacts::{
+    BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,
+};
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, BodyKind, Ccd, Collider, ColliderShape,

@@ -34,7 +34,31 @@ use super::PhysicsWorld;
 /// A body pair keyed for the peak map — the two handles' raw parts, lower first,
 /// so the key matches the order [`ContactReport`] reports the pair in. `BTreeMap`
 /// wants `Ord`, and this derives it (unlike the handles themselves).
-pub(crate) type PeakKey = ((u32, u32), (u32, u32));
+///
+/// `pub` because the bridge diffs the per-tick union ([`PhysicsWorld::tick_contacts`])
+/// against its standing set, and it already speaks handle raw parts (its own
+/// handle→entity map is keyed the same way).
+pub type PeakKey = ((u32, u32), (u32, u32));
+
+/// What the world remembers about one pair over the sub-steps of a single tick — the
+/// data an EVENT needs (W-TickContacts), which the settled end-of-tick state cannot
+/// carry for a pair that lifted off before the last sub-step.
+///
+/// `impact` is the hardest the pair pushed at any sub-step (the peak, W-ImpactForce);
+/// `point`/`impulse` are the LAST sub-step it was active in. For a pair still touching
+/// at the tick's end, "last active" IS the end, so these agree with
+/// [`PhysicsWorld::contact_reports`]; for a FAST touch — one caught in a mid-tick
+/// sub-step and gone by the last — they are the closest instant the world saw it, which
+/// is where its event's place and load come from.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct PeakSample {
+    /// The peak normal impulse over the tick's sub-steps, N·s.
+    pub impact: f32,
+    /// The deepest contact point at the last sub-step the pair was active in, world units.
+    pub point: [f32; 2],
+    /// The summed normal impulse at that same last-active sub-step, N·s.
+    pub impulse: f32,
+}
 
 /// One touching pair, in plain data — no rapier type escapes except the body
 /// handles the caller already speaks.
@@ -113,19 +137,28 @@ fn active_pair(
 /// **body** pair (lower first), so it lines up with [`ContactReport`] when the
 /// readback reads it back out.
 ///
-/// A `max` and not a sum: the impact is the hardest the pair pushed at any single
-/// instant of the tick, not the total over the tick (which would grow with the
-/// sub-step count and mean nothing physical).
+/// The `impact` is a `max` and not a sum: it is the hardest the pair pushed at any
+/// single instant of the tick, not the total over the tick (which would grow with the
+/// sub-step count and mean nothing physical). The `point`/`impulse`, by contrast, are
+/// **overwritten** each sub-step, so at the tick's end they hold the LAST sub-step the
+/// pair was active in — which is what a fast touch's event needs (W-TickContacts): a
+/// place and a load for a pair that is no longer touching when `step` returns.
 pub(super) fn accumulate_peaks(
     narrow_phase: &NarrowPhase,
     colliders: &ColliderSet,
-    out: &mut BTreeMap<PeakKey, f32>,
+    out: &mut BTreeMap<PeakKey, PeakSample>,
 ) {
     for pair in narrow_phase.contact_pairs() {
-        if let Some((b1, b2, _, impulse)) = active_pair(pair, colliders) {
+        if let Some((b1, b2, point, impulse)) = active_pair(pair, colliders) {
             let key = (b1.into_raw_parts(), b2.into_raw_parts());
-            let slot = out.entry(key).or_insert(0.0);
-            *slot = slot.max(impulse);
+            let s = out.entry(key).or_insert(PeakSample {
+                impact: 0.0,
+                point,
+                impulse,
+            });
+            s.impact = s.impact.max(impulse);
+            s.point = point;
+            s.impulse = impulse;
         }
     }
 }
@@ -171,8 +204,7 @@ impl PhysicsWorld {
                 let impact = self
                     .contact_peaks
                     .get(&key)
-                    .copied()
-                    .unwrap_or(impulse)
+                    .map_or(impulse, |s| s.impact)
                     .max(impulse);
                 Some(ContactReport {
                     body1,
@@ -185,5 +217,20 @@ impl PhysicsWorld {
             .collect();
         out.sort_unstable_by_key(|r| (r.body1.into_raw_parts(), r.body2.into_raw_parts()));
         out
+    }
+
+    /// The **per-tick union** of touching pairs — every pair that had an active contact
+    /// in *any* sub-step of the last [`step`](PhysicsWorld::step), with its peak, its
+    /// last-active place, and its last-active load ([`PeakSample`]).
+    ///
+    /// This is the SUPERSET of [`contact_reports`](Self::contact_reports) (the end-of-tick
+    /// live state): a pair that lands and rebounds within one tick is here, and is not
+    /// there. The bridge diffs this against its standing set to report a fast touch that
+    /// the end-of-tick state can never show (W-TickContacts). It is the same ledger the
+    /// impact peak already accumulates — no extra work on the stepping path, and cleared
+    /// (capacity kept) at the start of every `step`.
+    #[must_use]
+    pub fn tick_contacts(&self) -> &BTreeMap<PeakKey, PeakSample> {
+        &self.contact_peaks
     }
 }

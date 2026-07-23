@@ -308,7 +308,11 @@ impl App {
             last_timeline_keys_mode: false,
             last_timeline_container: None,
             timeline_last_selected: None,
-            timeline: ph2d_timeline::TimelineState::new(),
+            // A 4 s composition on open, not an open-ended one pinned at t = 0 (Enio,
+            // 2026-07-23): an AUTHORED default duration so the comp end — and the veil
+            // past it — is there from the first frame. A loaded project keeps its own
+            // saved duration (`apply_project` replaces this whole `TimelineState`).
+            timeline: ph2d_timeline::TimelineState::with_default_duration(),
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),

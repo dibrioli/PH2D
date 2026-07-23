@@ -30,6 +30,12 @@ const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
+/// The Dur(s) chip's stepper increment — **0.2 s per click** (Enio, 2026-07-23:
+/// *"faça cada clique subir ou descer o valor em 0.2 seg"*). The Time/Frame chips
+/// step by a frame (`1/fps`); a DURATION is coarser, so `1/fps` (≈0.04 s) produced
+/// the fiddly, "wrong-looking" values the report named (4.04, 4.08, …). A round
+/// 0.2 s keeps the authored duration on clean tenths.
+const DUR_STEP_SECONDS: f64 = 0.2;
 /// Buttons in the transport cluster: go-start, step-back, play, step-forward, go-end.
 const TRANSPORT_BTNS: usize = 5;
 
@@ -265,7 +271,6 @@ fn paint_length_chip(
     x: f32,
     y: f32,
     snap: &TimelineViewSnapshot,
-    fps: f64,
 ) {
     labeled_chip(
         ctx,
@@ -275,7 +280,7 @@ fn paint_length_chip(
         "panel.timeline.length",
         ids::TIMELINE_LENGTH_NUM,
         snap.view_length_seconds,
-        1.0 / fps,
+        DUR_STEP_SECONDS,
         2,
     );
 }
@@ -411,7 +416,7 @@ fn paint_item(
             1.0,
             0,
         ),
-        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap, fps),
+        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap),
         // Loop and PingPong are the SAME loop seen two ways, so exactly one can
         // read as on — the snapshot carries a range plus a mode, and there is no
         // value that is both.

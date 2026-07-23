@@ -65,6 +65,14 @@ pub const DOC_VERSION: u32 = 11;
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
 
+/// The **authored** duration a freshly opened timeline gets (Enio, 2026-07-23:
+/// *"a timeline abre com Duração zero. Por padrão coloque 4 segundos"*) — the AE
+/// "new composition is N seconds long" default. Applied by
+/// [`crate::TimelineState::with_default_duration`] (the shell's startup path), NOT by
+/// [`TimelineDoc::new`], so the crate's "fresh document = derived end" invariant — and
+/// every test that leans on it — is untouched.
+pub const DEFAULT_DURATION_SECONDS: f64 = 4.0;
+
 /// How many clips a document may hold.
 ///
 /// A real bound, not a guess at what an animator needs: the clip selector is a

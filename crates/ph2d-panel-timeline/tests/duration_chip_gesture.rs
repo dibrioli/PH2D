@@ -43,23 +43,27 @@ fn enter() -> KeyEvent {
     }
 }
 
-/// Paint the Keys tab over a document whose DERIVED end is 2 s (keys ending at
-/// t = 2, nothing authored) — the exact state in the report's screenshot.
-fn painted_dur_chip(host: &mut MockPanelHost, state: &mut TimelinePanelState) -> (f32, f32) {
+/// Paint the Keys tab over a document showing `secs` and return the chip's RECT.
+/// `explicit=false` mirrors the report's derived-end screenshot.
+fn painted_dur_rect(host: &mut MockPanelHost, state: &mut TimelinePanelState, secs: f64) -> Rect {
     set_current_timeline(Some(TimelineViewSnapshot {
         fps: 60.0,
-        view_length_seconds: 2.0,
+        view_length_seconds: secs,
         view_length_explicit: false,
         ..TimelineViewSnapshot::default()
     }));
     let regs = host.paint::<TimelinePanel>(state, VIEWPORT);
-    let r = regs
-        .iter()
+    regs.iter()
         .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM)
         .map(|(_, r)| *r)
-        .expect("the Dur(s) chip was painted but never hit-registered");
-    // The LEFT body: the chip's right column is the stepper zone, and a click
-    // there is a value bump, not a focus gesture.
+        .expect("the Dur(s) chip was painted but never hit-registered")
+}
+
+/// Paint the Keys tab over a 2 s derived-end doc and return a click point on the
+/// chip's LEFT body (the right column is the stepper zone, a value bump — not a
+/// focus gesture).
+fn painted_dur_chip(host: &mut MockPanelHost, state: &mut TimelinePanelState) -> (f32, f32) {
+    let r = painted_dur_rect(host, state, 2.0);
     (r.x + r.w * 0.3, r.y + r.h * 0.5)
 }
 
@@ -152,6 +156,50 @@ fn typing_a_new_duration_replaces_the_readout() {
         drain_intents(),
         vec![TimelineIntent::SetClipLength { len: Some(5.0) }],
         "typing '5' must author 5.0 — the focus click selects the readout"
+    );
+    set_current_timeline(None);
+}
+
+// ── the stepper arrows: +/- 0.2 s per click (Enio, 2026-07-23) ───────────────
+//
+// The Dur chip's right column is a stepper. It stepped by `1/fps` (~0.04 s), so a
+// click produced the fiddly "wrong" values the report named (2.04, 2.08, …). A
+// duration is coarser: each click is 0.2 s. `stepper_up_rect`/`_down_rect` mark the
+// upper/lower half of the stepper column (`stepper_width` = clamp(h*0.6, 16, 22)).
+
+use ph2d_editor_core::widget::NumberInput;
+
+/// A click on the UP arrow raises the authored duration by exactly 0.2 s.
+#[test]
+fn the_up_stepper_adds_a_fifth_of_a_second() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let r = painted_dur_rect(&mut host, &mut state, 2.0);
+    let up = NumberInput::new(ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM, "", 2.0).up_rect(r);
+    let evs = host.click_at(up.x + up.w * 0.5, up.y + up.h * 0.5);
+    route_events(&mut host, &mut state, evs);
+    assert_eq!(
+        drain_intents(),
+        vec![TimelineIntent::SetClipLength { len: Some(2.2) }],
+        "one up-click authors +0.2 s (was 1/fps ~0.04)"
+    );
+    set_current_timeline(None);
+}
+
+/// A click on the DOWN arrow lowers it by exactly 0.2 s.
+#[test]
+fn the_down_stepper_subtracts_a_fifth_of_a_second() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let r = painted_dur_rect(&mut host, &mut state, 2.0);
+    let down =
+        NumberInput::new(ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM, "", 2.0).down_rect(r);
+    let evs = host.click_at(down.x + down.w * 0.5, down.y + down.h * 0.5);
+    route_events(&mut host, &mut state, evs);
+    assert_eq!(
+        drain_intents(),
+        vec![TimelineIntent::SetClipLength { len: Some(1.8) }],
+        "one down-click authors -0.2 s"
     );
     set_current_timeline(None);
 }

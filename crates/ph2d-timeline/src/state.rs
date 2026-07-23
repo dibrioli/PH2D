@@ -236,9 +236,32 @@ impl TimelineState {
     }
 
     /// A fresh state around an empty document.
+    ///
+    /// **Derived end, no authored duration** — the invariant every test leans on
+    /// (`view_end_seconds` reads the content). The PRODUCT default is
+    /// [`Self::with_default_duration`]; the shell uses that so a freshly opened
+    /// timeline is a 4 s composition, not an open-ended one pinned at t = 0.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A fresh state whose active clip carries the **product default duration**
+    /// ([`crate::DEFAULT_DURATION_SECONDS`], 4 s) — what the app opens with (Enio,
+    /// 2026-07-23: *"a timeline abre com Duração zero. Por padrão coloque 4 segundos"*).
+    ///
+    /// An authored duration (not a derived one) so the composition end — and the veil
+    /// that darkens past it — is there from the first frame, before a single key. On
+    /// the Keys tab with no stack the clip IS the timeline ([`crate::TimelineDoc::view_authored_end`]),
+    /// so the clip's override is the right scope; the Dur(s) chip and the veil drag both
+    /// edit this same number. Kept OUT of [`Self::new`] so the crate's "fresh = derived"
+    /// invariant (and the tests on it) stay intact.
+    #[must_use]
+    pub fn with_default_duration() -> Self {
+        let mut st = Self::default();
+        st.doc
+            .set_clip_length_override(0, Some(crate::DEFAULT_DURATION_SECONDS));
+        st
     }
 
     /// Undo one document step (returns `true` if something was undone). The
@@ -284,5 +307,45 @@ mod flag_default_tests {
         assert!(!f.performing, "Record é modal e deliberado");
         assert!(!f.simulate_physics, "a sim não se arma sozinha (ADR-0131)");
         assert!(f.frame_snap, "snap de quadro é o normal da autoria");
+    }
+}
+
+#[cfg(test)]
+mod default_duration_tests {
+    use super::TimelineState;
+
+    /// **A timeline do PRODUTO abre com 4 s autorados** (Enio, 2026-07-23), e a
+    /// veil fecha desde o 1º frame — enquanto `new()` fica DERIVADO (o invariante
+    /// dos testes). As duas coisas de uma vez: o clip carrega o override, e a vista
+    /// (sem pilha, o clip É a timeline) responde autorada.
+    #[test]
+    fn the_product_default_is_a_four_second_authored_composition() {
+        let plain = TimelineState::new();
+        assert_eq!(
+            plain.doc.clip_length_override(0),
+            None,
+            "new() fica DERIVADO — o invariante da crate"
+        );
+        assert_eq!(
+            plain.doc.view_authored_end(None, false),
+            None,
+            "e a vista abre aberta (sem veil) num doc cru"
+        );
+
+        let product = TimelineState::with_default_duration();
+        assert_eq!(
+            product.doc.clip_length_override(0),
+            Some(crate::DEFAULT_DURATION_SECONDS),
+            "o produto abre com o override de 4 s no clip"
+        );
+        assert_eq!(
+            product.doc.view_authored_end(None, false),
+            Some(4.0),
+            "e a vista fecha (a veil aparece) desde o 1º frame, sem pilha"
+        );
+        assert!(
+            (product.doc.view_end_seconds(false) - 4.0).abs() < 1e-9,
+            "a caixa Dur mostra 4"
+        );
     }
 }

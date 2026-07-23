@@ -71,6 +71,7 @@
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (9)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
 - [Ofício de gate (21)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
+- [Âncora em BYTES é proxy que expira](feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires.md) — arch-gate afirma relação posicional, nunca distância/janela no fonte
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando

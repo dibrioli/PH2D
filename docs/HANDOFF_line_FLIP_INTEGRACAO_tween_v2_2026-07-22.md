@@ -17,7 +17,7 @@
 | branch | `line/FLIP` |
 | HEAD | ver `git log -1 --format=%H line/FLIP` (o último commit é de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **21** (8 do Tween v2 + o resto da **correção de pares**, o fix do S2 e docs — ver **§9**; use `git rev-list --count main..line/FLIP` para o número exato, o ff-only não depende dele) |
+| commits à frente do `main` | **22** (8 do Tween v2 + a **correção de pares** (§9) + a **fase da costura** (§10) + fixes e docs; use `git rev-list --count main..line/FLIP` para o número exato, o ff-only não depende dele) |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
 
 > **Este handoff cobre DUAS entregas da mesma wave.** O **Tween v2** (§2–§8) está **SMOKE
@@ -238,7 +238,7 @@ cena) — o smoke julga a APARÊNCIA, que é o que nenhum deles pode julgar.
 3. **Atualize a §5 do `CLAUDE.md`** com a entrada do Tween v2 — uma §5 que não descreve o que
    está no `main` faz a próxima LLM reconstruir o que existe.
 
-## 9. A correção de pares (continuação da mesma wave — pendente de smoke)
+## 9. A correção de pares (continuação da mesma wave — SMOKE APROVADO)
 
 O escape manual que a lição CACAni exige (o matcher erra, o artista corrige). Doc completo:
 [`docs/Flip/11_tween_v2.md §8`](Flip/11_tween_v2.md).
@@ -311,4 +311,55 @@ faíscas estavam em **±5** e a câmera padrão mostra só **±3** ⇒ a demonst
 **fora da tela** (só se via o corpo-demo + o gizmo do objeto, cuja caixa larga denunciava o
 conteúdo off-screen); e o **gizmo do objeto roubava o clique** de re-par (`on_canvas` falso
 sobre a caixa dele). Faíscas → ±2 (órfão agora pela diferença de FORMA, gate confirma) + Pairs
-entra no `suppress_gizmo`. **Re-smoke pendente.**
+entra no `suppress_gizmo`. **✅ RE-SMOKE APROVADO pelo Enio (2026-07-22): "funciona!".**
+
+## 10. A fase da costura em traço fechado (o item §7.1, fechado — pendente de smoke)
+
+Fecha o **item aberto §7.1** do doc 11: dois anéis de mesmo sentido cujo ponto 0 está em lugares
+diferentes do contorno tweenavam com a costura desalinhada e o meio TORCIA (medido: não colapsa —
+a espiral lê o par nariz↔costas como um giro de ~180° e leva o anel num LAÇO). Doc completo:
+[`docs/Flip/11_tween_v2.md §9`](Flip/11_tween_v2.md).
+
+### 10.1 Superfície NOVA na `ph2d-flip` — módulo `pub(crate)`, ZERO superfície pública
+
+Módulo irmão `tween_phase` (`seam_shift(a, b) -> usize`), **interno à crate** — não amplia a
+superfície foundational (o `tween` o chama). Correlação circular sobre a **virada `(sen,cos)`**
+por amostra de arco (invariante a rotação — a espiral tira o rígido depois; se correlacionasse
+posições, o giro do mundo vazaria para a fase). Grade fixa `PHASE_STEPS=96` ⇒ custo constante no
+tamanho do anel. OPT-IN pela geometria (só cede da identidade por um vale decisivo — amplitude do
+custo + piso de sinal-chato; anel simétrico/pequeno fica na identidade).
+
+### 10.2 Arquivos tocados (todos DESTA linha — nenhum contrato, nenhum schema)
+
+| arquivo | mudança | risco |
+|---|---|---|
+| `crates/ph2d-flip/src/tween_phase.rs` | **novo** (motor + gates + régua) | isolado |
+| `crates/ph2d-flip/src/lib.rs` | `mod tween_phase;` | 1 linha |
+| `crates/ph2d-flip/src/tween.rs` | fase entre auto-flip e `fit` no `tween_stroke`; mesma porta no `tween_ring` (furo) | append; `pb` virou `mut` |
+| `crates/ph2d-flip/src/tween_flip.rs` | doc do `opposite_winding` aponta para `tween_phase` (o item que ele nomeava fechou) | comentário |
+| `shells/desktop/src/flip_tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
+| `shells/desktop/src/{main,render_loop/mod}.rs` | `mod` + a chamada do smoke no prólogo | append (ao lado dos outros smokes) |
+
+⚠️ **Byte-idêntico para traço aberto e para anel < 8 pontos** — os gates de furo do `tween`
+(`a_hole_travels_…`, `a_hole_turns_…`, quadrados de 4 pontos) ficam intocados por construção.
+
+### 10.3 Gates + prova de mutação
+
+Motor (`tween_phase::tests`): `the_seam_shift_realigns_the_seam` · `the_signal_is_rotation_invariant`
+· `a_symmetric_ring_is_left_alone` · `a_small_ring_is_left_alone` · `the_phase_ruler` (`#[ignore]`).
+Smoke (shell): `the_phase_smoke_keeps_the_ring_on_the_straight_path` (o blob desliza em LINHA RETA,
+`y≈0`; sem a fase mergulha para `y≈−2,2`). **Mutação `seam_shift → 0`** sangra os 2 gates de
+comportamento do motor E o smoke (verificado end-to-end, a área colapsa? NÃO — o centróide sai da
+reta). ⚠️ **O 1º oráculo, de ÁREA, nasceu VERDE sobre o bug** (a torção só gira/desloca, não
+encolhe) — o defeito é o CAMINHO; a lição de sempre ([[feedback_oracle_must_model_appearance_not_implementation]]).
+
+### 10.4 O SMOKE (S3) — o que falta para o veredito da 3ª entrega
+
+```bash
+env PH2D_FLIP_TWEEN_PHASE_SMOKE=1 cargo run -p ph2d-host-desktop --release
+```
+
+A cena imprime `[phase-smoke] cena montada: …` e um guia. O que olhar: um **blob** (gota com
+narizinho) à esquerda, o MESMO blob à direita no quadro 8 (desenhado de um ponto de partida
+diferente). Aperte **Add**, folheie 0→2→4→6→8: o blob tem de **deslizar em LINHA RETA**, sempre
+em pé. **ERRADO:** mergulha para baixo e faz um LAÇO (cambalhota), chegando de cabeça para baixo.

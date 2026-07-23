@@ -93,6 +93,20 @@ impl BodyCtx<'_> {
             &format!("{end:.2}"),
             y,
         );
+        // Slide — o CENTRO do trecho: arrastar desliza Start e End JUNTOS (o comprimento se preserva).
+        // ⚠️ O valor é DERIVADO de `(start+end)/2` a cada frame, NÃO lido do store: ele muda quando o
+        // artista mexe em Start/End ou nas alças, e o store só teria a última posição de arrasto de
+        // Slide. O drain re-centra a janela a partir deste número (a porta é o `render_loop`).
+        let slide = (state::pp_start() + state::pp_end()) * 0.5;
+        y = self.slider_row(
+            "Slide",
+            ids::VECTOR_PATTERNPATH_SLIDE,
+            ids::VECTOR_PATTERNPATH_SLIDE_NUM,
+            slide as f32,
+            slide,
+            &format!("{slide:.2}"),
+            y,
+        );
         // Offset — desvio perpendicular, BIPOLAR (unidades de mundo). O track `0..1` mapeia
         // `−OFFSET_MAX..OFFSET_MAX` (o mesmo mapa bipolar do Bend), `0.5` = sobre a curva.
         let off = self

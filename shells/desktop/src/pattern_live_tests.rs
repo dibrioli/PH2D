@@ -143,3 +143,25 @@ fn the_handles_sit_at_the_ends_and_dragging_edits_them() {
     // Uma seleção SEM pattern ⇒ sem alças.
     assert!(handle::world(&sim, &scene, &map, &[guide]).is_none());
 }
+
+/// **Sob FLIP, as alças acompanham as cópias (o bug do Enio).** O motor espelha o arco
+/// (`total - s`), então a ficha de Start salta para o FIM físico do arco e a de End para o começo,
+/// e arrastar escreve a fração LÓGICA (invertida). Mutação que mata: ignorar o flip na alça deixa
+/// as fichas num lado e as cópias no outro.
+#[test]
+fn the_handles_follow_the_copies_under_flip() {
+    let (scene, mut sim, map, motif, guide) = scene();
+    link(&mut sim, &map, motif, guide);
+    super::edit(&mut sim, &map, motif, |l| l.flip = true);
+    let sel = [motif, guide];
+
+    // Start (frac 0) cai no arco físico 100; End (frac 1) no arco físico 0 — ESPELHADOS.
+    let (s, e) = handle::world(&sim, &scene, &map, &sel).expect("alças sob flip");
+    assert!((s[0] - 100.0).abs() < 1e-2, "Start no fim físico sob flip: {s:?}");
+    assert!(e[0].abs() < 1e-2, "End no começo físico sob flip: {e:?}");
+
+    // Arrastar a ficha de Start para o arco físico 25 escreve start_offset = 0.75 (o lógico).
+    assert!(handle::drag(&mut sim, &scene, &map, &sel, [25.0, 0.0], Some(PatternHandle::Start)));
+    let start = spec_of(&sim, &map, motif).unwrap().start_offset;
+    assert!((start - 0.75).abs() < 0.02, "Start lógico sob flip: {start}");
+}

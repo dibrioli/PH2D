@@ -1541,6 +1541,7 @@ impl crate::App {
             let mut pending_pp_spacing: Option<f64> = None;
             let mut pending_pp_start: Option<f64> = None;
             let mut pending_pp_end: Option<f64> = None;
+            let mut pending_pp_slide: Option<f64> = None;
             let mut pending_pp_offset: Option<f64> = None;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
@@ -1904,6 +1905,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_END {
                                 // FRAÇÃO do comprimento -- o fim do trecho `[Start, End]`.
                                 pending_pp_end = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SLIDE {
+                                // O CENTRO do trecho -- o drain re-centra a janela (move Start+End).
+                                pending_pp_slide = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_OFFSET {
                                 // Desvio perpendicular (unidades de mundo), ja' bipolar (`-2..2`)
                                 // convertido pelo event.rs do painel -- aqui e' valor.
@@ -2860,6 +2864,18 @@ impl crate::App {
                 && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.offset = v as f32);
+            }
+            // Slide re-centra o trecho `[Start, End]` PRESERVANDO o comprimento: move as duas
+            // âncoras juntas (o pedido do Enio). O centro é clampado para a janela caber em [0,1].
+            if let Some(v) = pending_pp_slide
+                && let Some(motif) = pp_motif
+            {
+                crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
+                    let half = (f64::from(l.end_offset) - f64::from(l.start_offset)) * 0.5;
+                    let c = v.clamp(half, 1.0 - half);
+                    l.start_offset = (c - half) as f32;
+                    l.end_offset = (c + half) as f32;
+                });
             }
             if let Some(cmd) = pending_patternpath {
                 let sel = self.vec_pen.selected_paths().to_vec();

@@ -281,7 +281,14 @@ pub(crate) mod handle {
         let spec = spec_of(sim, map, linked_motif(sim, map, selection)?)?;
         let arc = crate::vec_guide::guide_arc(sim, scene, map, spec.path)?;
         let total = arc.total();
-        let at = |frac: f32| arc.frame_at(f64::from(frac).clamp(0.0, 1.0) * total).0;
+        // ⚠️ HONRA O FLIP (Enio, 2026-07-23: *"as alças não são invertidas junto com as shapes"*):
+        // sob flip o motor amostra o arco do OUTRO lado (`GlyphFrame::on_path` usa `total - s`), então
+        // a ficha TEM de pousar no arco espelhado, senão alça e cópias ficam em lados diferentes.
+        // Aqui só o PONTO importa (as fichas ficam SOBRE a curva, dy=0), então basta o arco espelhado.
+        let at = |frac: f32| {
+            let s = f64::from(frac).clamp(0.0, 1.0) * total;
+            arc.frame_at(if spec.flip { total - s } else { s }).0
+        };
         Some((at(spec.start_offset), at(spec.end_offset)))
     }
 
@@ -334,8 +341,13 @@ pub(crate) mod handle {
         let Some(arc) = crate::vec_guide::guide_arc(sim, scene, map, spec.path) else {
             return false;
         };
+        let total = arc.total();
+        // O cursor está no arco FÍSICO; o start/end guardado é o LÓGICO, que o motor espelha sob
+        // flip. Inverter aqui mantém a alça sob o dedo (o par do fix em `world`).
+        let phys = arc.closest_arc(world_pt);
+        let logical = if spec.flip { total - phys } else { phys };
         #[allow(clippy::cast_possible_truncation)]
-        let frac = (arc.closest_arc(world_pt) / arc.total()) as f32;
+        let frac = (logical / total) as f32;
         edit(sim, map, motif, |l| match which {
             PatternHandle::Start => l.start_offset = frac,
             PatternHandle::End => l.end_offset = frac,

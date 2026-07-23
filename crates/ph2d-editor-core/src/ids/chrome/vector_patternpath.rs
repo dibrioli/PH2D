@@ -40,6 +40,11 @@ pub const VECTOR_PATTERNPATH_START_NUM: NodeId = hash_node_id("vector.patternpat
 pub const VECTOR_PATTERNPATH_END: NodeId = hash_node_id("vector.patternpath.end");
 /// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_END`].
 pub const VECTOR_PATTERNPATH_END_NUM: NodeId = hash_node_id("vector.patternpath.end.num");
+/// **Slide** — o CENTRO do trecho `[Start, End]`. Arrastar desliza as DUAS âncoras juntas ao longo
+/// do caminho (o comprimento do trecho se preserva) — mover o padrão sem mudar sua extensão.
+pub const VECTOR_PATTERNPATH_SLIDE: NodeId = hash_node_id("vector.patternpath.slide");
+/// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_SLIDE`].
+pub const VECTOR_PATTERNPATH_SLIDE_NUM: NodeId = hash_node_id("vector.patternpath.slide.num");
 /// **Offset** — desvio das cópias ao longo da NORMAL (perpendicular à curva), bipolar em unidades
 /// de mundo. Empurra o padrão para fora/dentro da curva.
 pub const VECTOR_PATTERNPATH_OFFSET: NodeId = hash_node_id("vector.patternpath.offset");

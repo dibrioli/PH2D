@@ -1796,6 +1796,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     assert!(rect(ids::VECTOR_PATTERNPATH_SPACING).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_START).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_END).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_SLIDE).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_OFFSET).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_DETACH).is_some());
 

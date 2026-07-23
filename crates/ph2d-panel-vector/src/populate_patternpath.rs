@@ -51,6 +51,11 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
             ids::VECTOR_PATTERNPATH_END_NUM,
             1.0,
         ),
+        (
+            ids::VECTOR_PATTERNPATH_SLIDE,
+            ids::VECTOR_PATTERNPATH_SLIDE_NUM,
+            0.5,
+        ),
     ] {
         slider_chip(store, slider, chip, track, f64::from(track), 1.0, 0.0);
         store.set_number_range(chip, 0.0, 1.0, PATTERNPATH_START_STEP);

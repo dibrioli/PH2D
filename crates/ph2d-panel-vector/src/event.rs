@@ -118,6 +118,10 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_PATTERNPATH_END {
         return Some(forward_track(host, id, 1.0, |t| t));
     }
+    // Slide é o CENTRO do trecho (fração, track == valor); o drain re-centra a janela.
+    if id == ids::VECTOR_PATTERNPATH_SLIDE {
+        return Some(forward_track(host, id, 0.5, |t| t));
+    }
     if id == ids::VECTOR_PATTERNPATH_SPACING {
         return Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(crate::SPACING_MAX - crate::SPACING_MIN, crate::SPACING_MIN)

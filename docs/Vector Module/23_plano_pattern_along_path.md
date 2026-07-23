@@ -116,6 +116,18 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
   gates de seam que CLICAM os botões (dispatch) e provam a **ausência** (a seção não oferece o que
   não se aplica). Portas de escrita `detach`/`edit` (adiadas na W2) chegaram aqui.
 
+## §6.1 — Correções pós-smoke (Enio, 2026-07-23)
+
+- **FLIP nas alças.** Sob *Other side* o motor amostra o arco do outro lado (`GlyphFrame::on_path`
+  usa `total − s`), mas as fichas usavam `frame_at(s)` cru ⇒ alça e cópias em lados diferentes
+  ("tudo buga"). `handle::world` passa a pousar a ficha no arco espelhado e `handle::drag` inverte a
+  fração — os dois pelo MESMO `if flip { total − s }`. Gate `the_handles_follow_the_copies_under_flip`.
+- **Slide** (o "offset ao longo do path"). Além do Offset perpendicular, um slider **Slide** desliza
+  o trecho `[Start, End]` INTEIRO pela curva (as duas âncoras juntas), preservando o comprimento. É
+  o CENTRO do trecho — **derivado** de `(start+end)/2`, sem campo novo no componente: o drain
+  re-centra a janela (clampada a `[0,1]`), e o painel lê o centro fresco a cada frame (muda quando
+  Start/End/alças mudam). Seam gate cobre a presença da row.
+
 ## §6 — Decisões da W4 (as alças de canvas)
 
 - **DUAS fichas** (Start e End do trecho), no modo **Select** (a mesma regra da alça do texto: no

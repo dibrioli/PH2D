@@ -54,8 +54,9 @@ pub(crate) enum ActiveSource {
         /// The frame its interior was resolved into. **Not** the container's index: two
         /// strips of the same container are two instances, each reading its own time.
         frame: usize,
-        /// The frame holding the same interior resolved at the strip's FIRST frame
-        /// (`src_in`) — the reference an **additive** lane measures its delta against.
+        /// The frame holding the same interior resolved at the strip's FIRST frame —
+        /// `src_in`, **clamped to the interior's first voice** — the reference an
+        /// **additive** lane measures its delta against.
         ///
         /// `None` on an Override lane, where nothing asks. It is resolved during the
         /// rebuild rather than on demand because the answer is "the interior at another
@@ -63,9 +64,9 @@ pub(crate) enum ActiveSource {
         /// re-resolving the whole interior mid-sample.
         ///
         /// The rule is deliberately the SAME one a clip strip follows ("its own value at
-        /// `src_in`"). A cheaper reference — the rest pose, say — would have been a second
-        /// answer to one question, and the two would drift the day someone nested an
-        /// additive lane inside an additive lane.
+        /// `src_in`", where a track clamps before its first key — the clamp above is that
+        /// clamp, one level up). Only a channel this frame STILL cannot answer measures
+        /// against rest, which is what soloing the container shows there (`stack_eval`).
         reference: Option<usize>,
     },
 }
@@ -372,10 +373,20 @@ impl StackScratch {
                 // The additive reference costs a SECOND resolution of the same interior,
                 // at the strip's first frame — and it is paid only on an additive lane,
                 // which is the only place anything asks for it.
+                //
+                // **Clamped to the interior's first voice** (Enio, 2026-07-23): a track
+                // sampled before its first key returns the first key, and the interior
+                // must mirror that, or an interior whose first strip starts past `src_in`
+                // (every strip is born AT THE PLAYHEAD, so that is the common case) answers
+                // nothing at the reference time — and `v - base` collapsed to an exact,
+                // silent zero: the whole additive strip was inert.
                 let reference = additive.then(|| {
+                    let t_ref = doc
+                        .container_first_voice(c)
+                        .map_or(src_in, |voice| src_in.max(voice));
                     self.frames.push(StackFrame {
                         container: Some(c),
-                        t: src_in,
+                        t: t_ref,
                         first: 0,
                         count: 0,
                     });

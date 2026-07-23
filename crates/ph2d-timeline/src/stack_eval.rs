@@ -178,12 +178,19 @@ fn eval_frame(
                 let base = match a.source {
                     // A container's reference is its interior read at the strip's FIRST
                     // frame — the same rule ("the clip's own value at `src_in`"), asked of
-                    // the thing that is actually playing.
-                    // The interior read at the strip's FIRST frame — the same rule a clip
-                    // strip follows, asked of the thing that is actually playing.
+                    // the thing that is actually playing. The frame is clamped to the
+                    // interior's first voice at resolve time (`stack_frames::resolve`),
+                    // mirroring a track's clamp before its first key.
+                    //
+                    // A channel the clamped frame STILL cannot answer (a lane deeper in
+                    // the interior that starts later) measures against `rest` — which is
+                    // what soloing the container shows there: nothing written, the scene's
+                    // captured base standing. Falling back to `v` was the bug this comment
+                    // replaces: `v - v` is an exact zero, so the whole strip went silently
+                    // inert (Enio, 2026-07-23).
                     ActiveSource::Container { reference, .. } => reference
                         .and_then(|r| eval_frame(doc, scratch, r, q, probe))
-                        .unwrap_or(v),
+                        .unwrap_or_else(|| f64::from(rest)),
                     ActiveSource::Clip(clip) => {
                         let probed = probe.filter(|p| p.clip == clip);
                         let track = doc.clips().get(clip).and_then(|c| c.clip.track(target));

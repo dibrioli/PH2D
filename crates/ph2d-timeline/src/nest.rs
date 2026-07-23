@@ -207,6 +207,26 @@ impl TimelineDoc {
         self.containers_mut().get_mut(ix).map(|c| &mut c.stack)
     }
 
+    /// The first instant container `ix`'s interior SPEAKS — the earliest presence
+    /// (`lead_start`) of any strip on any unmuted lane — or `None` for an interior
+    /// with nothing to say.
+    ///
+    /// It exists for the ADDITIVE reference (Enio, 2026-07-23): the delta of a
+    /// container strip is measured against "the interior at `src_in`", and an
+    /// interior whose first strip starts later than that answered **nothing** —
+    /// the reference fell back to the live value and the whole strip contributed
+    /// an exact, silent zero. A clip never has that hole because a track CLAMPS
+    /// (sampling before the first key returns the first key); this is the same
+    /// clamp, one level up: the reference time is `src_in.max(first voice)`.
+    #[must_use]
+    pub(crate) fn container_first_voice(&self, ix: usize) -> Option<f64> {
+        self.container_stack(ix)?
+            .iter()
+            .filter(|l| !l.muted)
+            .flat_map(|l| l.strips.iter().map(crate::ClipStrip::lead_start))
+            .min_by(f64::total_cmp)
+    }
+
     /// The lanes of whichever stack `host` names.
     #[must_use]
     pub fn host_stack(&self, host: StackHost) -> Option<&[ClipLane]> {

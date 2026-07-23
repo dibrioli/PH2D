@@ -127,13 +127,34 @@ impl ClipLane {
         // sorted by START time, and a long strip can begin before a short one and
         // outlive it. This is the pose a fade-IN crosses FROM, and what a plain gap
         // (previous strip did not fade out) holds.
+        //
+        // **Only a BOUNDED gap holds — past its LAST strip the lane RELEASES**
+        // (Enio, 2026-07-23: *"no momento em que coloco o clip na lane 2 o segundo
+        // clip da lane 1 não toca mais"*). The hold exists so a fade crosses FROM
+        // somewhere and a gap between strips stays deterministic; held forever, an
+        // upper lane with one short strip becomes an eternal full-influence mask
+        // over everything below it. So the hold asks "is anything still coming in
+        // this lane?" — presence reaching `t`, BOUNDARY INCLUSIVE (`lead_end() >=
+        // t`: a strip ahead, one still fading here, or the exact instant the last
+        // one ends) holds; strictly beyond it the lane goes silent and the lanes
+        // below show through. The inclusive edge is load-bearing: a CONTAINER's
+        // held end frame is its interior evaluated exactly AT its length, and an
+        // exclusive release erased every container's last pose (the
+        // `nesting_leads` gate caught it). Under a WRAP loop the lane is cyclic
+        // ("after the last" IS "before the first"), so inside the loop the
+        // trailing hold stays — it is the pose the seam design rests on.
         if let Some(held) = self
             .strips
             .iter()
             .filter(|s| s.t_end <= t)
             .max_by(|a, b| a.t_end.total_cmp(&b.t_end))
         {
-            return Some((held, held.hold_source_time(), w));
+            let something_ahead = self.strips.iter().any(|s| s.lead_end() >= t);
+            let cyclic = loop_range.is_some_and(|(a, b)| t >= a && t < b);
+            if something_ahead || cyclic {
+                return Some((held, held.hold_source_time(), w));
+            }
+            return None;
         }
         // Nothing has ended yet — the OPENING edge. Under a loop that brackets `t`,
         // wrap: the pose the object is coming FROM is the one the loop's end leaves

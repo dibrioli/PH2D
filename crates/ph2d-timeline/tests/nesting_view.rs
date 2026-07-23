@@ -192,3 +192,27 @@ fn the_loop_braces_inside_are_the_containers_own_loop() {
         "a Keys mostra o loop do clip, como sempre"
     );
 }
+
+/// **O snapshot do interior carrega a duração do CONTAINER — e diz se ela é
+/// AUTORADA** (Enio, 2026-07-23): o véu além do fim e o clamp do playhead só
+/// fecham a vista quando `view_length_explicit` é true, então um carimbo errado
+/// aqui é "nada escuro" com todos os gates de pintura verdes.
+#[test]
+fn the_interior_snapshot_stamps_the_containers_authored_duration() {
+    let (mut st, step) = nested_state();
+    let c = step.container;
+    st.edit_path.push(step);
+    let playhead = Playhead::new(1.0 / 60.0);
+    let mut snap = TimelineViewSnapshot::default();
+
+    // Derivada: o número aparece, mas a vista segue ABERTA (autorar além do fim
+    // — colocar um strip no playhead depois do conteúdo — exige vista aberta).
+    snap.rebuild(&mut st, &playhead, false);
+    assert!(!snap.view_length_explicit, "derivada não fecha a vista");
+
+    // Autorada: o mesmo número FECHA — véu e clamp ligam neste flag.
+    st.doc.set_container_length_override(c, Some(2.0));
+    snap.rebuild(&mut st, &playhead, false);
+    assert!(snap.view_length_explicit, "a Dur digitada fecha a vista");
+    assert!((snap.view_length_seconds - 2.0).abs() < 1e-9);
+}

@@ -121,9 +121,12 @@ fn a_fade_in_across_a_gap_starts_from_where_the_object_is() {
     );
 }
 
-/// The gap is not silence, and it is not rest either: it is the pose the last strip to
-/// end is still asserting. (Before, this held only by ACCIDENT — nobody wrote, so the
-/// object kept its pose. Now the lane says so, which is what lets the fade cross it.)
+/// The BOUNDED gap is not silence, and it is not rest either: it is the pose the
+/// last strip to end is still asserting — that determinism is what lets a fade
+/// cross it. **Past the LAST strip the lane RELEASES** (Enio, 2026-07-23: an
+/// upper lane with one short strip was masking every lane below it forever):
+/// nothing is written, so the object keeps whatever pose it HAD — played
+/// through, that is the end pose, and the trailing region reads identically.
 #[test]
 fn the_gap_holds_the_last_strips_pose() {
     let mut s = scene();
@@ -132,9 +135,18 @@ fn the_gap_holds_the_last_strips_pose() {
     for t in [3.0, 3.25, 3.5, 3.99] {
         assert_eq!(s.x_at(t), -3.0, "t={t} in the gap");
     }
+    s.x_at(6.9); // play through Right's end…
     for t in [7.0, 8.0, 50.0] {
-        assert_eq!(s.x_at(t), 3.0, "t={t}: past the last strip, it still holds");
+        assert_eq!(
+            s.x_at(t),
+            3.0,
+            "t={t}: released — nothing writes, the pose it HAD stays"
+        );
     }
+    // And the release is a RELEASE, not a hold: come from inside Left instead,
+    // and the trailing region keeps THAT pose (nobody writes there).
+    s.x_at(1.0);
+    assert_eq!(s.x_at(50.0), -3.0, "released: keeps the pose it came with");
 }
 
 /// **The pose is a function of the playhead.** Scrub in from the left and in from the

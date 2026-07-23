@@ -3,12 +3,14 @@
 > **Para o agente INTEGRADOR.** A linha fechou a wave do **Tween v2**. O implementador parou
 > aqui (CLAUDE.md §0.7).
 >
-> ✅ **SMOKE APROVADO pelo Enio (2026-07-22).** Todos os gates estão verdes, e o Enio rodou a
-> cena (`PH2D_FLIP_TWEEN_SMOKE=1`) e aprovou: *"funcionou tudo como vc disse. Smoke OK."* — o
-> boneco de palito, com o braço mantendo o comprimento ao longo do arco, o tronco casado sem
-> deslizar, e o chapéu órfão desvanecendo só com Fade. O veredito deixou de ser condicional.
-> A linha aguarda **ordem explícita de integração** do Enio (CLAUDE.md §0.7). O S1 (§7) foi o
-> smoke que fechou o veredito.
+> ✅ **AS TRÊS ENTREGAS SMOKE-APROVADAS pelo Enio (2026-07-22).** Todos os gates verdes.
+> **(1) Tween v2** (§2–§8, S1) — *"funcionou tudo como vc disse. Smoke OK."*: o boneco de palito,
+> o braço mantendo o comprimento ao longo do arco, o tronco casado sem deslizar, o chapéu órfão
+> desvanecendo só com Fade. **(2) Correção de pares** (§9, S2) — *"funciona!"* (as duas faíscas
+> órfãs fundem numa linha âmbar e a corrigida atravessa). **(3) Fase da costura** (§10, S3) —
+> *"parece bom!"* (o blob de mão desliza reto em vez de arquear). Os três vereditos deixaram de
+> ser condicionais. A linha **fechou** e aguarda **ordem explícita de integração** do Enio via
+> agente integrador dedicado (CLAUDE.md §0.7) — o implementador NÃO integra nem pusha sozinho.
 
 ## 1. Identidade
 
@@ -17,13 +19,13 @@
 | branch | `line/FLIP` |
 | HEAD | ver `git log -1 --format=%H line/FLIP` (o último commit é de docs) |
 | base do fork (merge-base) | `13a04c7aab68` |
-| commits à frente do `main` | **22** (8 do Tween v2 + a **correção de pares** (§9) + a **fase da costura** (§10) + fixes e docs; use `git rev-list --count main..line/FLIP` para o número exato, o ff-only não depende dele) |
+| commits à frente do `main` | **24** (8 do Tween v2 + a **correção de pares** (§9) + a **fase da costura** (§10) + o fix do arco (§10.5) + fixes e docs; confira com `git rev-list --count main..line/FLIP`, o ff-only não depende dele) |
 | `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
 
-> **Este handoff cobre DUAS entregas da mesma wave.** O **Tween v2** (§2–§8) está **SMOKE
-> APROVADO**. A **correção de pares** (§9, o overlay CACAni + o re-par manual) está
-> **construída e gateada, pendente de smoke** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`). As duas
-> integram juntas; a segunda é aditiva sobre a primeira.
+> **Este handoff cobre TRÊS entregas da mesma wave, todas SMOKE-APROVADAS.** O **Tween v2**
+> (§2–§8) · a **correção de pares** (§9, o overlay CACAni + o re-par manual) · a **fase da
+> costura** em traço fechado (§10, com o fix do arco em §10.5). As três integram juntas; cada
+> uma é aditiva sobre a anterior (a fase só toca `ph2d-flip`, ZERO superfície pública nova).
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D     # a árvore PRIMÁRIA
@@ -313,12 +315,15 @@ conteúdo off-screen); e o **gizmo do objeto roubava o clique** de re-par (`on_c
 sobre a caixa dele). Faíscas → ±2 (órfão agora pela diferença de FORMA, gate confirma) + Pairs
 entra no `suppress_gizmo`. **✅ RE-SMOKE APROVADO pelo Enio (2026-07-22): "funciona!".**
 
-## 10. A fase da costura em traço fechado (o item §7.1, fechado — pendente de smoke)
+## 10. A fase da costura em traço fechado (o item §7.1, fechado — SMOKE APROVADO)
 
 Fecha o **item aberto §7.1** do doc 11: dois anéis de mesmo sentido cujo ponto 0 está em lugares
 diferentes do contorno tweenavam com a costura desalinhada e o meio TORCIA (medido: não colapsa —
 a espiral lê o par nariz↔costas como um giro de ~180° e leva o anel num LAÇO). Doc completo:
 [`docs/Flip/11_tween_v2.md §9`](Flip/11_tween_v2.md).
+
+✅ **SMOKE APROVADO pelo Enio (2026-07-22): *"parece bom!"*** — depois do fix do arco (§10.5), o
+desenho de mão dele desliza reto em vez de arquear.
 
 ⚠️ **CORREÇÃO no mesmo dia (report do Enio):** a 1ª versão correlacionava a VIRADA e **arqueava**
 no desenho de mão dele. Ver §10.5.
@@ -361,7 +366,7 @@ smoke inteiro nasceu verde sobre o ARCO porque usava formas **idênticas** — o
 quando A e B DIFEREM (mão), daí o gate de regressão usar ruído diferente
 ([[feedback_oracle_must_model_appearance_not_implementation]], [[reference_topic_fixture_discipline]]).
 
-### 10.4 O SMOKE (S3) — o que falta para o veredito da 3ª entrega
+### 10.4 O SMOKE (S3) — APROVADO (*"parece bom!"*)
 
 ```bash
 env PH2D_FLIP_TWEEN_PHASE_SMOKE=1 cargo run -p ph2d-host-desktop --release
@@ -370,8 +375,10 @@ env PH2D_FLIP_TWEEN_PHASE_SMOKE=1 cargo run -p ph2d-host-desktop --release
 A cena imprime `[phase-smoke] cena montada: …` e um guia. Um **blob** (gota com narizinho) à
 esquerda, o MESMO blob à direita no quadro 8 (desenhado de um ponto de partida diferente). Aperte
 **Add**, folheie 0→2→4→6→8: o blob tem de **deslizar em LINHA RETA**. **ERRADO:** mergulha e faz um
-LAÇO. ⚠️ **Este smoke usa formas idênticas** — ele valida a fase mas NÃO reproduz o arco; **o teste
-de verdade é o DESENHO DE MÃO do Enio** (o que arqueava), que agora deve deslizar.
+LAÇO. ⚠️ **Este smoke usa formas idênticas** — ele valida a fase mas NÃO reproduz o arco; o teste
+de verdade foi o **DESENHO DE MÃO do Enio** (o que arqueava), que passou a deslizar — daí o
+*"parece bom!"*. O gate de regressão que trava o arco pra sempre (`tween_arc_probe.rs`, §10.3) usa
+blobs de mão com ruído diferente, justamente porque o arco só aparece quando A e B DIFEREM.
 
 ### 10.5 O ARCO (report do Enio) — a virada estava errada, a cura é o TRAJETO
 

@@ -1705,8 +1705,6 @@ impl App {
     /// Arrasta o canto da gaiola do Envelope agarrado no press (ADR-0129 Fatia 1) para a
     /// posição do cursor, respeitando a convexidade (o canto para na fronteira, não sai
     /// dela). No-op (false) sem um arrasto vivo — a mesma disciplina do `vec_pen_drag_move`.
-    /// Arrasta a alça do texto em caminho para o cursor (W5): projeta no caminho e escreve
-    /// `start_offset`. No-op sem arrasto armado — a mesma disciplina do `vec_envelope_corner_move`.
     fn vec_textpath_handle_move(&mut self, x: f32, y: f32) -> bool {
         if !self.vec_textpath_handle_drag {
             return false;
@@ -1723,6 +1721,26 @@ impl App {
             self.vec_pen.selected_paths(),
             [f64::from(w[0]), f64::from(w[1])],
             self.vec_textpath_handle_drag,
+        )
+    }
+
+    /// **Pressão no modo Select sobre a alça do texto em caminho** (W5): se a alça está sob o
+    /// cursor, arma o arrasto e devolve `true` — o host então PULA o picking/gizmo. Irmã do
+    /// `conn_handle_down`: no Select a tool não captura o canvas, e o gizmo é inócuo sobre um
+    /// texto vinculado (identidade), então a alça precisa deste arm para o dedo a pegar.
+    fn vec_textpath_handle_down(&mut self, world: [f64; 2]) -> bool {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let radius = self.vec_px_to_world() * crate::vec_text_ride::HANDLE_R_PX;
+        crate::vec_text_ride::handle::press(
+            &gfx.sim,
+            &gfx.vec_scene,
+            &self.vec_entities,
+            self.vec_pen.selected_paths(),
+            world,
+            radius,
+            &mut self.vec_textpath_handle_drag,
         )
     }
 
@@ -2100,11 +2118,6 @@ impl App {
         {
             return;
         }
-        // W5: arrastar a alça do texto em caminho (modo Node) — antes do envelope e do
-        // pen, pela mesma disciplina de early-return; no-op sem a alça agarrada.
-        if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
         // ADR-0129 Fatia 1: arrastar um canto da gaiola do Envelope (modo Node).
         // Mesma disciplina de early-return do pen; no-op sem um canto agarrado.
         if self.vec_envelope_corner_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2137,6 +2150,11 @@ impl App {
         // uma ponta SOLTA no ponteiro, e o re-cook do frame já desenha a linha inteira seguindo
         // a mão — não há caminho de preview separado, o preview é o conector.
         if self.conn_handle_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // W5: arrastar a alça do texto em caminho (modo Select) — irmã da alça do conector
+        // acima, mesma disciplina de early-return; no-op sem a alça agarrada.
+        if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -2557,6 +2575,23 @@ impl App {
         {
             return;
         }
+        // **A alça do TEXTO EM CAMINHO** (W5), no modo Select — irmã da do conector, mesmo lugar
+        // e mesma razão: no Select a tool não captura o canvas, e sem este arm a pressão iria
+        // para o picking/gizmo. O gizmo é inócuo sobre um texto vinculado (vive na identidade),
+        // então o Select é a casa natural da alça — e sem as âncoras do Node ela não se confunde
+        // com ponto de objeto nenhum (Enio, smoke). Só devolve `true` sobre a alça de um texto
+        // vinculado SELECIONADO; qualquer outro caso segue o caminho de sempre.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && let Some(w) = self.vec_world_at((evt.x, evt.y))
+            && self.vec_textpath_handle_down(w)
+        {
+            return;
+        }
         // O Up que FECHA o arrasto de alça (ele nasceu no Select, e é lá que morre).
         if self.vec_conn_handle.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2567,6 +2602,14 @@ impl App {
             } else {
                 self.conn_handle_cancel();
             }
+            return;
+        }
+        // O Up que fecha o arrasto da alça do texto — nasceu no Select, morre no Select.
+        if self.vec_textpath_handle_drag
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+        {
+            self.vec_textpath_handle_drag = false;
             return;
         }
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
@@ -2844,24 +2887,12 @@ impl App {
                                 // — que agarraria uma âncora da forma COZIDA, revertida
                                 // pelo recook do frame seguinte. Um erro cai no
                                 // `on_press_node` de sempre (seleção / edição de âncora).
-                                // W5: a alça do TEXTO EM CAMINHO, hit-testada ANTES do
-                                // envelope e do pen. Mesma razão da alça da gaiola — a
-                                // geometria do texto vinculado é COZIDA em mundo, então
-                                // deixar o pen agarrar uma âncora dela daria um ponto que
-                                // anda e volta no frame seguinte. Um acerto arma o arrasto
-                                // do `start_offset` e pula tudo o mais.
-                                let radius = px_to_world * crate::vec_text_ride::HANDLE_R_PX;
-                                if crate::vec_text_ride::handle::press(
-                                    &gfx.sim,
-                                    &gfx.vec_scene,
-                                    &self.vec_entities,
-                                    self.vec_pen.selected_paths(),
-                                    [w[0] as f64, w[1] as f64],
-                                    radius,
-                                    &mut self.vec_textpath_handle_drag,
-                                ) {
-                                    // alça do texto agarrada — pen e envelope ficam de fora
-                                } else if crate::envelope_gesture::press(
+                                //
+                                // A alça do TEXTO EM CAMINHO (W5) NÃO vive aqui — ela é do
+                                // modo **Select** (a bolinha se perdia no meio das âncoras
+                                // do Node; Enio, smoke). Vive ao lado das alças do conector,
+                                // mais acima neste arquivo.
+                                if crate::envelope_gesture::press(
                                     &mut gfx.sim,
                                     &gfx.vec_scene,
                                     self.offset_live.live(),
@@ -2975,12 +3006,8 @@ impl App {
                     if self.vec_envelope_drag.take().is_some() {
                         return;
                     }
-                    // W5: fim de um arrasto da alça do texto. O `VecTextPath` alterado vira UM
-                    // passo no diff global ao soltar (o `held_button` suprimiu os frames
-                    // intermediários), como o envelope. Consome só quando havia arrasto vivo.
-                    if std::mem::take(&mut self.vec_textpath_handle_drag) {
-                        return;
-                    }
+                    // (A alça do texto em caminho é do modo Select — o Up dela mora lá em cima,
+                    // ao lado do Up do conector; não aqui, que é o caminho de Node.)
                     // Marquee release → box-select the anchors inside the box.
                     if let Some((start, cur)) = self.vec_marquee.take() {
                         if let Some(gfx) = self.gfx.as_mut() {

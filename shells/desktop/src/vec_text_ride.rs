@@ -31,9 +31,10 @@ use crate::vec_entities::VecEntityMap;
 use crate::vec_glyph::TextPlacement;
 
 /// O raio da bolinha da alça, em px de tela — o mesmo alcance para o desenho e o hit-test, pela
-/// conversão `× px_to_world` na fronteira. É a irmã do `ENVELOPE_HANDLE_R_PX` (6.0) e da
-/// `connector::HANDLE_R_PX` (7.0); 7 para o dedo a alcançar sem mira fina.
-pub(crate) const HANDLE_R_PX: f64 = 7.0; // LITERAL-PX-OK: raio de alça, medida de INTERAÇÃO
+/// conversão `× px_to_world` na fronteira. **Maior** que as alças de nó (`ENVELOPE_HANDLE_R_PX`
+/// 6.0, `connector::HANDLE_R_PX` 7.0): a alça de uma relação é uma ficha grande, não um ponto de
+/// geometria, e espelha o `text_handle::HANDLE_R_PX` do renderer (os dois têm de concordar).
+pub(crate) const HANDLE_R_PX: f64 = 10.0; // LITERAL-PX-OK: raio de alça, medida de INTERAÇÃO
 
 /// O caminho-guia + o vínculo que o escolheu, prontos para serem cavalgados.
 pub(crate) struct Guide {
@@ -262,6 +263,14 @@ pub(crate) enum TextPathCmd {
 /// - **in** é onde o texto *começa* — o `start_offset`. Espacial, e a única das três que é uma
 ///   posição a arrastar. É esta.
 ///
+/// # No modo SELECT, grande e colorida (Enio, smoke)
+///
+/// ⚠️ Nasceu no Node e pequena, e ali se confundia com as âncoras dos outros paths (que são
+/// anéis pequenos). Mudou para o **Select** — onde não há âncoras, e o gizmo de sprite é inócuo
+/// sobre um texto vinculado (ele vive na identidade) — e virou uma **ficha grande e sólida**
+/// (`text_handle::draw_text_handle`), que lê como a alça primária de uma relação, não como um
+/// ponto de geometria.
+///
 /// # Não é uma segunda porta para o Offset — é a MESMA
 ///
 /// O painel já tem o slider de Offset. Isto **não** o duplica no sentido ruim: é o mesmo número
@@ -287,9 +296,10 @@ pub(crate) mod handle {
         selected_guide(sim, scene, map, selection).map(|g| g.handle_world())
     }
 
-    /// **Pressão no modo Node:** se a alça está sob o cursor, arma o arrasto e devolve `true` —
-    /// o host então PULA o pen. `radius` é o alcance em mundo (o raio da bolinha em px × o
-    /// `px_to_world`), a MESMA conversão que o desenho usa, para o dedo e a tela concordarem.
+    /// **Pressão sobre a alça (modo Select):** se a alça está sob o cursor, arma o arrasto e
+    /// devolve `true` — o host então PULA o picking/gizmo. `radius` é o alcance em mundo (o raio
+    /// da bolinha em px × `px_to_world`), a MESMA conversão que o desenho usa, para o dedo e a
+    /// tela concordarem.
     #[must_use]
     pub(crate) fn press(
         sim: &SimWorld,

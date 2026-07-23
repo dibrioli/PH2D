@@ -22,19 +22,19 @@ fn shell(path: &str) -> String {
         .unwrap_or_else(|e| panic!("ler {path}: {e}"))
 }
 
-/// O DESENHO da alça está costurado no overlay, e gateado pela política de modo (Node-only).
+/// O DESENHO da alça está costurado no overlay, e gateado pela política de modo (Select-only).
 #[test]
-fn the_render_loop_draws_the_handle_gated_on_node_mode() {
+fn the_render_loop_draws_the_handle_gated_on_select_mode() {
     let rl = shell("render_loop/mod.rs");
     // Desenha pelo renderer dedicado…
     assert!(
         rl.contains("draw_text_handle"),
         "a `render_loop` não chama `draw_text_handle` — a alça existe no motor e não na tela"
     );
-    // …atrás do flag de modo do `VecOverlayPlan` (Node-only, testado em `vec_overlay`)…
+    // …atrás do flag de modo do `VecOverlayPlan` (Select-only, testado em `vec_overlay`)…
     assert!(
         rl.contains("overlay.textpath_handle"),
-        "o desenho da alça não é gateado por `overlay.textpath_handle` — apareceria fora do Node"
+        "o desenho da alça não é gateado por `overlay.textpath_handle` — apareceria fora do Select"
     );
     // …e o ponto vem da porta única, não de uma re-derivação que divergiria do hit-test.
     assert!(
@@ -45,37 +45,52 @@ fn the_render_loop_draws_the_handle_gated_on_node_mode() {
 }
 
 /// O GESTO da alça está costurado no ponteiro: press (arma), move (arrasta), release (limpa).
+///
+/// A alça é do modo **Select** (Enio, smoke — no Node se confundia com as âncoras), então o
+/// press é a porta `vec_textpath_handle_down`, irmã do `conn_handle_down`, e vem ANTES do
+/// picking/gizmo. O move e o release seguem a mesma família do conector.
 #[test]
 fn the_render_loop_wires_the_handle_gesture() {
     let disp = shell("input_dispatch.rs");
     for (needle, what) in [
         (
-            "vec_text_ride::handle::press",
-            "o PRESS (armar) não está no dispatch do ponteiro",
+            "vec_textpath_handle_down",
+            "o PRESS (armar) não está no dispatch do ponteiro (modo Select)",
         ),
         (
             "vec_textpath_handle_move",
             "o MOVE (arrastar) não está no dispatch do ponteiro",
         ),
         (
-            "std::mem::take(&mut self.vec_textpath_handle_drag)",
+            "self.vec_textpath_handle_drag = false",
             "o RELEASE não limpa o arrasto — a alça ficaria colada ao cursor após soltar",
         ),
     ] {
         assert!(disp.contains(needle), "{what}");
     }
-    // ⚠️ E a ORDEM importa: o press da alça vem ANTES do do envelope e do pen. A geometria do
-    // texto vinculado é COZIDA — deixar o pen agarrá-la primeiro dá um ponto que anda e volta.
+    // ⚠️ E a ORDEM importa: no Select a tool não captura o canvas, então o press da alça tem de
+    // ser hit-testado ANTES do picking/gizmo — senão o clique selecionaria a forma atrás dela em
+    // vez de a arrastar (a mesma razão da alça do conector). O `over_canvas_or_gizmo` é o que
+    // deixa o clique passar mesmo com o gizmo por cima do texto.
     let handle_at = disp
-        .find("vec_text_ride::handle::press")
-        .expect("press da alça");
-    // A CHAMADA (`self.vec_pen.on_press_node`), não a menção do comentário logo acima dela.
-    let pen_at = disp
-        .find("self.vec_pen.on_press_node")
-        .expect("press do pen (on_press_node)");
+        .find("self.vec_textpath_handle_down(w)")
+        .expect("press da alça (Select)");
+    // O picking/gizmo do Select roda no fluxo de sempre, que começa no guard ADR-0112 abaixo
+    // (`no modo **Select** a ferramenta não captura o canvas`). O arm da alça TEM de vir antes
+    // dele, senão o clique selecionaria a forma atrás em vez de arrastar a alça.
+    let generic_dispatch_at = disp
+        .find("no modo **Select** a ferramenta não captura")
+        .expect("o guard ADR-0112 do dispatch genérico");
     assert!(
-        handle_at < pen_at,
-        "o press da alça tem de ser hit-testado ANTES do pen (a geometria cozida do texto \
-         reverteria uma âncora agarrada pelo pen)"
+        handle_at < generic_dispatch_at,
+        "o press da alça (Select) tem de ser hit-testado ANTES do picking/gizmo genérico"
+    );
+    // E é irmão do press do conector — ambos no mesmo cluster de early-return do Select.
+    let conn_at = disp
+        .find("self.conn_handle_down(w)")
+        .expect("press da alça do conector");
+    assert!(
+        (handle_at as isize - conn_at as isize).unsigned_abs() < 1200,
+        "a alça do texto e a do conector deviam estar no MESMO cluster de Select"
     );
 }

@@ -30,9 +30,12 @@ pub(crate) struct VecOverlayPlan {
     /// se a forma selecionada é de fato um envelope é o [`crate::envelope_gesture::view`] que decide
     /// (devolve `None` quando não é).
     pub envelope_cage: bool,
-    /// A **alça do texto em caminho** (plano 22, W5) — só no **Node**, a mesma razão de modo da
-    /// gaiola. Este flag só diz que a alça *pode* aparecer; se há um texto vinculado na seleção é
-    /// o [`crate::vec_text_ride::handle::world`] que decide (devolve `None` quando não há).
+    /// A **alça do texto em caminho** (plano 22, W5) — só no **Select**. ⚠️ Ao contrário da
+    /// gaiola do envelope (que é do Node), esta vive no Select: no Node ela se perdia no meio das
+    /// âncoras dos outros paths (Enio, smoke), e no Select o gizmo é inócuo sobre um texto
+    /// vinculado (identidade) — então o Select não tem âncora nenhuma a poluir a tela. Este flag
+    /// só diz que a alça *pode* aparecer; se há um texto vinculado na seleção é o
+    /// [`crate::vec_text_ride::handle::world`] que decide (devolve `None` quando não há).
     pub textpath_handle: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
@@ -57,9 +60,10 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
         // `envelope_gesture::view` que resolve — aqui é só a política de MODO.
         envelope_cage: vector_active && mode == DrawMode::Node,
-        // Mesma política de modo da gaiola: um texto vinculado é editado no Node (não há âncoras
-        // a mexer — a geometria é derivada), e no Select o gizmo é inócuo sobre ele (identidade).
-        textpath_handle: vector_active && mode == DrawMode::Node,
+        // ⚠️ **Select**, não Node — a exceção deliberada entre os overlays. No Node a bolinha se
+        // confundia com as âncoras dos outros paths; no Select não há âncoras, e o gizmo é inócuo
+        // sobre o texto vinculado. A alça é grande e colorida justamente para saltar do gizmo.
+        textpath_handle: vector_active && mode == DrawMode::Select,
     }
 }
 
@@ -154,14 +158,15 @@ mod tests {
         );
     }
 
-    /// **A alça do texto em caminho é do NODE, e só dele** — a mesma política de modo da gaiola.
-    /// No Select o gizmo é inócuo sobre um texto vinculado (vive na identidade), e no Pen/Shape o
-    /// clique tem outro dono.
+    /// **A alça do texto em caminho é do SELECT, e só dele** (Enio, smoke: no Node ela se confunde
+    /// com as âncoras). ⚠️ É a exceção entre os overlays — a gaiola do envelope e as âncoras são do
+    /// Node; esta é do Select justamente porque lá não há âncoras e o gizmo é inócuo sobre o texto
+    /// vinculado.
     #[test]
-    fn the_textpath_handle_belongs_to_node_mode_alone() {
-        assert!(vec_overlay_plan(true, DrawMode::Node).textpath_handle);
+    fn the_textpath_handle_belongs_to_select_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Select).textpath_handle);
         for mode in [
-            DrawMode::Select,
+            DrawMode::Node,
             DrawMode::Pen,
             DrawMode::Shape,
             DrawMode::Build,
@@ -173,7 +178,7 @@ mod tests {
             );
         }
         assert!(
-            !vec_overlay_plan(false, DrawMode::Node).textpath_handle,
+            !vec_overlay_plan(false, DrawMode::Select).textpath_handle,
             "tool inativa não desenha a alça"
         );
     }

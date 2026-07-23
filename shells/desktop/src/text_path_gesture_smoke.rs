@@ -14,13 +14,13 @@
 //!
 //! 1. **Text on Path** — o texto salta para cima da curva.
 //! 2. **Offset** — arrastar o slider faz o texto correr ao longo dela.
-//! 2b. **A alça** (W5) — no modo Node, uma bolinha marca onde o texto começa; arrastá-la corre
-//!     o texto pela curva (a manipulação direta do Offset).
-//! 3. **Side: Other side** — o texto passa para o outro lado, a ler ao contrário.
-//! 4. Mova a **CURVA** com o gizmo — o texto vai junto.
-//! 5. Tente mover o **TEXTO** — ele não sai do lugar, de propósito: mover um texto preso não
+//! 3. **A alça** (W5) — no modo **Select**, uma ficha grande e colorida marca onde o texto
+//!    começa; arrastá-la corre o texto pela curva (a manipulação direta do Offset).
+//! 4. **Side: Other side** — o texto passa para o outro lado, a ler ao contrário.
+//! 5. Mova a **CURVA** com o gizmo — o texto vai junto.
+//! 6. Tente mover o **TEXTO** — ele não sai do lugar, de propósito: mover um texto preso não
 //!    quer dizer nada; o que se move é o caminho (é o que o conector já faz, e o Illustrator).
-//! 6. **Detach from Path** — o texto volta a ser texto reto e **a curva fica**.
+//! 7. **Detach from Path** — o texto volta a ser texto reto e **a curva fica**.
 
 use ph2d_ecs::VecShape;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex, VertexKind};
@@ -116,9 +116,9 @@ fn arm(app: &mut crate::App) {
          [smoke]      O texto tem de SALTAR para cima da curva.\n\
          [smoke]   2. Arraste o Offset -- o texto corre ao longo dela.\n\
          [smoke]   3. Side: \"Other side\" -- passa para o outro lado, a ler ao contrario.\n\
-         [smoke]   4. (W5) Entre no modo NODE (a seta branca). Uma BOLINHA aparece onde o texto\n\
-         [smoke]      COMECA na curva -- arraste-a: o texto corre pela curva (o mesmo que o\n\
-         [smoke]      Offset, direto na tela). Fora do Node ela nao aparece.\n\
+         [smoke]   4. (W5) No modo SELECT (a seta preta), uma FICHA grande e colorida aparece\n\
+         [smoke]      onde o texto COMECA na curva -- arraste-a: o texto corre pela curva (o\n\
+         [smoke]      mesmo que o Offset, direto na tela). Ela salta das ancoras e do gizmo.\n\
          [smoke]   5. Mova a CURVA com o gizmo -- o texto vai junto.\n\
          [smoke]   6. Tente mover o TEXTO -- ele NAO sai do lugar. E' de proposito: mover um\n\
          [smoke]      texto preso nao quer dizer nada, o que se move e' o caminho.\n\

@@ -26,13 +26,13 @@
 //! thing whose job is to point at the next fix.
 
 use super::build_default_document;
-use super::gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
-    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
-};
 use super::gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
     build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
+};
+use super::gpu_demos::{
+    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;

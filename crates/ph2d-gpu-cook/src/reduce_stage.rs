@@ -37,9 +37,9 @@ use ph2d_nodegraph::node::NodeManifest;
 /// reuse the pipeline compiled from the old one).
 fn map_cache_key(spec: &ReduceSpec, present: bool) -> (u64, u64) {
     let fnv = |h: u64, bytes: &[u8]| {
-        bytes.iter().fold(h, |h, b| {
-            (h ^ u64::from(*b)).wrapping_mul(0x100_0000_01b3)
-        })
+        bytes
+            .iter()
+            .fold(h, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x100_0000_01b3))
     };
     let mut h = fnv(0xcbf2_9ce4_8422_2325, spec.value.as_bytes());
     h = fnv(h, spec.name.as_bytes());

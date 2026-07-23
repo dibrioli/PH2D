@@ -353,7 +353,12 @@ pub(super) fn build_gpu_kaleidoscope_demo_document(
     }
     g.set_pos(spin, Pos { x: 440.0, y: 320.0 });
 
-    for (from, to, port) in [(grid, mv, 0u16), (mv, kal, 0), (spin, kal, 1), (kal, out, 0)] {
+    for (from, to, port) in [
+        (grid, mv, 0u16),
+        (mv, kal, 0),
+        (spin, kal, 1),
+        (kal, out, 0),
+    ] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, port),

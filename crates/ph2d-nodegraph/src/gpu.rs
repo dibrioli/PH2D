@@ -400,6 +400,7 @@ pub trait KernelResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::port::Dim;
 
     #[test]
     fn passthrough_is_recognized_and_emits_nothing() {

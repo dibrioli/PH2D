@@ -191,7 +191,11 @@ fn the_bend_deformer_matches_the_cpu_within_epsilon() {
         return;
     };
     let reg = registry();
-    for (angle, pivot) in [(90.0, [0.0, 0.0]), (140.0, [3.5, -1.25]), (-70.0, [-2.0, 0.75])] {
+    for (angle, pivot) in [
+        (90.0, [0.0, 0.0]),
+        (140.0, [3.5, -1.25]),
+        (-70.0, [-2.0, 0.75]),
+    ] {
         let (g, out) = chain(&reg, "motion.bend", angle, pivot);
         let cpu = cook_cpu(&reg, &g, out);
         let dev = cook_gpu(&gpu, &reg, &g, out);
@@ -208,7 +212,11 @@ fn the_twist_deformer_matches_the_cpu_within_epsilon() {
         return;
     };
     let reg = registry();
-    for (angle, pivot) in [(90.0, [0.0, 0.0]), (200.0, [2.75, 1.5]), (-120.0, [-1.0, -3.0])] {
+    for (angle, pivot) in [
+        (90.0, [0.0, 0.0]),
+        (200.0, [2.75, 1.5]),
+        (-120.0, [-1.0, -3.0]),
+    ] {
         let (g, out) = chain(&reg, "motion.twist", angle, pivot);
         let cpu = cook_cpu(&reg, &g, out);
         let dev = cook_gpu(&gpu, &reg, &g, out);
@@ -281,7 +289,11 @@ fn the_four_point_warp_deformer_matches_the_cpu_within_epsilon() {
         // A gentle keystone: top edge pinched in — near-affine, the affine branch.
         ("keystone", 1.0, [1.5, 0.0, -1.5, 0.0, 0.0, 0.0, 0.0, 0.0]),
         // A skewed quad — the projective branch, with a real perspective divide.
-        ("projective", 1.0, [2.0, 1.0, -1.0, 2.5, 1.5, -2.0, -2.5, -0.5]),
+        (
+            "projective",
+            1.0,
+            [2.0, 1.0, -1.0, 2.5, 1.5, -2.0, -2.5, -0.5],
+        ),
         // Half-applied, to check `warp` scales the corners (a mid-billow pose).
         ("half", 0.5, [3.0, 0.0, -3.0, 0.0, -1.0, -1.0, 1.0, 1.0]),
     ];
@@ -417,7 +429,12 @@ fn kaleidoscope_chain(
 /// A grid, TRANSLATED (so the spherize's centroid is off-origin), spherized, then
 /// output. `amount` is a constant `value.lfo` at phase 0 (a fixed bulge/pinch —
 /// the LFO is how `amount` is authored, and a constant is the reproducible case).
-fn spherize_chain(reg: &NodeRegistry, amount: f32, radius: f32, offset: [f32; 2]) -> (Graph, NodeId) {
+fn spherize_chain(
+    reg: &NodeRegistry,
+    amount: f32,
+    radius: f32,
+    offset: [f32; 2],
+) -> (Graph, NodeId) {
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", SIDE);

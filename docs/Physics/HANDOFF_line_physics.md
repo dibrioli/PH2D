@@ -3252,16 +3252,14 @@ próprio endpoint?"* — verdade só para o `max` real; as 3 mutações que cola
 - **Overlay** `a_harder_impact_flashes_bigger`: impacto duplo → flash maior, mesmo age.
   Mata M5 (o flash ignora o `impact`). O piso de A segue pinado no mesmo gate.
 
-### Aberto no W-ImpactForce
+### Aberto no W-ImpactForce — FECHADO pela W-TickContacts (ver abaixo)
 
 O **impacto RÁPIDO invisível** (um toque que começa e termina dentro de UM tick) segue sem
 evento — o pico É capturado em `contact_peaks`, mas o diff de eventos do front A é sobre o
 conjunto **permanente** (`contact_reports`, vivo no fim do tick), que não vê o toque rápido.
 Um evento para o toque rápido reestrutura esse diff (conjunto permanente → conjunto tocado
 **por tick**, com a união dos ticks de um dispatch de vários ticks) e é a **próxima wave** —
-esta captura é o pré-requisito dela. Também: o `impact` no `contact_reports` de um par vivo
-quase sempre coincide com o `impulse` (o valor extra do `impact` mora nos EVENTOS, onde um
-raspão preserva o pico) · eventos por-tick em vez de por-dispatch.
+esta captura é o pré-requisito dela. **Isso é a W-TickContacts, ver a seção final.**
 
 ### LOC
 
@@ -3283,3 +3281,82 @@ impacto ganha uma **consequência visível** (as caixas voam), e o `×` a quanti
 3 / 6 / 10 / 16 m/s. **Lição:** um readout de debug (o `×`) só é legível quando amarrado a algo
 que o olho já lê como "forte" — e um chão estático não reage. A bola rápida ganha CCD (não
 atravessar a caixa fina entre dois passos).
+
+## W-TickContacts — o toque RÁPIDO vira evento (2026-07-22, smoke `=31`, pendente de smoke)
+
+A **próxima wave** que a W-ContactEvents e a W-ImpactForce nomearam, e para a qual a captura do
+pico (front B) era o pré-requisito. O diff de contatos rodava por **DISPATCH** sobre
+`contact_reports` (o estado vivo no FIM do passo), então dois toques ficavam invisíveis:
+
+- **entre dois endpoints de um dispatch multi-tick** — um par que começa e termina dentro do
+  span (catch-up / scrub-forward) não aparece em nenhum dos dois endpoints;
+- **dentro de UM tick** — o solver resolve um pouso duro e já separa o corpo antes do fim do
+  passo, então nos dois instantes em que o canal olhava o par não estava encostado.
+
+**Medido (probe `probe_fast_bounces`, 1 tick/dispatch):** o 1º pouso de uma queda de **3 m** não
+gerava evento (o 1º Began reportado era um quique lento no tick **91**, não no pouso ~45); uma
+queda de **8 m** não gerava evento **nenhum** nos primeiros 100 ticks. Depois do fix: 3 m → 1º
+pouso no tick 45 (impacto 2,83); 8 m → tick 76 (impacto 4,80); 10 m → tick 85 (5,38).
+
+### O kernel — o diff roda por TICK sobre a UNIÃO dos sub-passos
+
+O `contact_peaks` que o front B acumulava para o pico **já é a união dos sub-passos** (um par
+tocado em qualquer sub-passo está lá, mesmo que suma antes do último) — só faltava consumi-lo
+para eventos. `PhysicsWorld::tick_contacts` o expõe; o `PeakSample` ganhou `point` + `impulse`
+(o `impact` é o `max`, `point`/`impulse` são o ÚLTIMO sub-passo ativo — o evento de um toque que
+já saiu precisa de um lugar e uma carga). A ponte diffa esse conjunto **depois de cada
+`world.step()`** no laço forward, não uma vez no fim (`rebuild_contacts` virou
+`accumulate_contact_events` por tick + `rebuild_standing_contacts` por dispatch). O único toque
+que ainda escapa é o que começa **e** termina no MESMO sub-passo — que o solver discreto nem
+produz (seria túnel, trabalho do CCD).
+
+### O flash virou canal próprio, event-sourced
+
+O `×` do overlay cavalgava `BodyContact.age_ticks`, então vivia só enquanto o par **TOCAVA** —
+um pouso curto **sub-piscava** e um rápido **nunca piscava** (ele nunca entra na lista
+permanente). Agora é `ContactFlash` (a/b, point, impact, age), semeado dos `Began` e **decaído
+em ticks pela ponte**, `CONTACT_FLASH_TICKS` mora lá. Um começo pisca sua vida inteira, encoste
+ou não. `age_ticks`/`began` **saíram** (só serviam ao flash antigo); a supressão de re-baseline
+que o `None` fazia foi **subsumida** — um re-baseline (scrub/disarm) simplesmente não cria flash.
+`discard_contact_history` também apaga os flashes vivos (uma descontinuidade não é hora de
+acender).
+
+### Custo — em play normal, ZERO regressão
+
+Play normal é 1 tick/dispatch, então o diff roda **exatamente** as vezes que o front A rodava.
+Só um catch-up/scrub multi-tick paga K diffs, e cada diff é um `BTreeMap`-sobre-contatos (µs
+contra os **ms** do `step`, que roda por tick de qualquer jeito — medido **57 ms/tick** a 500
+contatos numa pilha assentada, `measure_impact.rs`). O enriquecimento do `PeakSample` (2 escritas
+a mais por par por sub-passo) ficou **≤ 2,2%** do `step`.
+
+### Gates — 12 ecs + 10 overlay, 6 mutações que sangram
+
+Red-first (os 2 fast-touch): `a_fast_landing_fires_during_normal_one_tick_play` (8 m,
+1 tick/dispatch — o caso comum) e `a_touch_between_two_dispatch_endpoints_still_fires` (queda de
+3 m, joga tick-a-tick até 40 e depois UM dispatch até 55 que abrange o pouso; a bola está no ar
+nos dois endpoints, provando que é invisível ao diff de endpoints). Mais:
+`the_begin_flash_decays_over_a_fixed_span_even_while_the_pair_keeps_touching` (o flash é um
+começo, não uma duração) e `a_discontinuity_puts_out_a_live_flash` (disarm com o flash ainda
+aceso). As 6 mutações: **união→fim-de-passo** (`out.clear()` por sub-passo) mata os 2 fast-touch
++ o gate de impacto do front B · **once-per-dispatch** (accumulate fora do laço) mata SÓ o
+multi-tick (o single-tick é 1 tick = 1 diff, imune) · **light_flash no-op** mata 3 de presença ·
+**nunca-descartar** (retain sempre true) mata o decay · **discard-não-limpa** mata o live-flash ·
+**re-baseline-off** (`if false`) mata SÓ o re-arm-silencioso (um scrub é sempre backward, nunca
+roda o accumulate forward — por isso não sangra ali). **c9 byte-idêntico** (`7d55a4ab…`, readout
+puro). `PROJECT_SCHEMA` **fica 29**, registro **fica 18**.
+
+### A cena 31 — a bola de 8 m cujos pousos eram escuros
+
+Duas bolas que quicam, mesma restituição, só a ALTURA muda: a BAIXA (1,2 m) tem pousos lentos
+que sempre acenderam (controle); a ALTA (8 m) tem pousos rápidos que eram **invisíveis** — ela
+quicava alto e não acendia `×` nenhum, e quanto mais forte o pouso, mais invisível. Agora todo
+pouso acende, e o `×` da alta é MAIOR (impacto maior). É a mesma máquina do pico da cena 30: a
+30 mostrou a FORÇA de um toque que já era reportado; a 31 mostra um toque que **não era
+reportado de jeito nenhum** passando a existir.
+
+### Aberto no W-TickContacts
+
+O **consumidor de gameplay** (colisão → som/dano/marker/callback) segue cross-line e decisão do
+Enio, a fronteira que o W7 desenhou — este canal é o primitivo + a leitura visível, não o
+consumidor. E o toque começa-e-termina no MESMO sub-passo (túnel sem CCD) fica sem evento por
+construção.

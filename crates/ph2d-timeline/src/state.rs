@@ -149,10 +149,12 @@ pub struct TimelineFlags {
 impl Default for TimelineFlags {
     fn default() -> Self {
         Self {
-            // Armed by default: this is an animation timeline — dragging a bound
-            // sprite records a key at the playhead, the primary authoring gesture
-            // (the transport pill shows the state and can disarm it).
-            auto_key: true,
+            // DISARMED by default (Enio, 2026-07-22 — reverses the launch default):
+            // auto-key silently converts every pose nudge into animation, and a
+            // recorder that arms itself is the same class of surprise as a physics
+            // sim that starts itself (`simulate_physics` below). Keying is opted
+            // INTO per session; the transport pill is the switch.
+            auto_key: false,
             frame_snap: true,
             // Record is modal and deliberate — never armed on its own.
             performing: false,
@@ -253,5 +255,27 @@ impl TimelineState {
         } else {
             false
         }
+    }
+}
+
+#[cfg(test)]
+mod flag_default_tests {
+    use super::TimelineFlags;
+
+    /// **Os defaults dos flags são decisões de PRODUTO, pinadas** — cada um já foi
+    /// decidido pelo Enio em separado, e um default que se move em silêncio inverte
+    /// o sentido de toda fixture que chega ao estado por toggle.
+    ///
+    /// - `auto_key` DESARMADO (2026-07-22): keyar é opt-in por sessão — um gravador
+    ///   que se arma sozinho transforma ajuste de pose em animação sem aviso.
+    /// - `performing` e `simulate_physics` desarmados pelas decisões já documentadas
+    ///   nos campos; `frame_snap` armado (autoria em quadros inteiros é o normal).
+    #[test]
+    fn the_flag_defaults_are_the_product_decisions() {
+        let f = TimelineFlags::default();
+        assert!(!f.auto_key, "AutoKey nasce DESMARCADO (Enio, 2026-07-22)");
+        assert!(!f.performing, "Record é modal e deliberado");
+        assert!(!f.simulate_physics, "a sim não se arma sozinha (ADR-0131)");
+        assert!(f.frame_snap, "snap de quadro é o normal da autoria");
     }
 }

@@ -382,10 +382,23 @@ pub(crate) struct App {
     /// the clip's own time, not the timeline's. Advanced alongside `playhead` each
     /// tick (each only moves when its own transport is playing).
     pub(crate) clip_playhead: Playhead,
+    /// **The Containers view's own interior-time playhead** (Enio, 2026-07-22: *"o
+    /// playback deve ser relativo ao container aberto em edição"*). While the animator
+    /// is inside a container editing its lanes, the transport drives THIS clock — the
+    /// third of three, beside [`Self::playhead`] (scene) and [`Self::clip_playhead`]
+    /// (clip) — and the scene shows the container's interior soloed at it
+    /// (`apply_container`). Independent by construction: its loop is the container's own
+    /// (`NamedContainer.loop_range`), so cycling here never touches the Arrange's.
+    /// Advanced alongside the others each tick (each moves only when its transport plays).
+    pub(crate) container_playhead: Playhead,
     /// The Keys-tab state the shell saw LAST frame, so it can detect a tab switch and
     /// hand the now-active clock its own view's loop (a tab switch is not an intent,
     /// so nothing else would sync it). See `render_loop`.
     pub(crate) last_timeline_keys_mode: bool,
+    /// The container the shell was editing LAST frame (`Some(c)` inside container `c`),
+    /// so it can detect entering/leaving/switching a container and hand the container
+    /// clock its own loop — the nav mirror of [`Self::last_timeline_keys_mode`].
+    pub(crate) last_timeline_container: Option<usize>,
     /// The primary selected entity the shell saw LAST frame — the other half of the
     /// selection EDGE (`timeline_bridge::selection_jumps_to_keys`): a NEW selection
     /// asks the timeline panel for the Keys tab (Enio, 2026-07-22), and an edge

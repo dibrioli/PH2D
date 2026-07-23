@@ -934,6 +934,10 @@ impl crate::App {
         // when ITS transport is playing, so advancing both is harmless and keeps
         // "play a clip's keys" working without a second tick source.
         self.clip_playhead.advance_ticks(report.ticks);
+        // The Containers view's clock (Enio, 2026-07-22): editing a container's
+        // lanes plays the CONTAINER's own interior, not the scene. A third clock,
+        // like the clip's — it only advances while ITS transport plays.
+        self.container_playhead.advance_ticks(report.ticks);
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
@@ -1094,10 +1098,27 @@ impl crate::App {
         // the entered instance; out, the document's own loop is re-installed. Edge-triggered
         // — the mirror of the `keys_mode` tab-switch sync right below.
         let edit_path = ph2d_panel_timeline::state::edit_path();
-        if edit_path != self.timeline.edit_path {
-            timeline_bridge::on_nav_change(&self.timeline.doc, &edit_path, &mut self.playhead);
-        }
         self.timeline.edit_path = edit_path;
+        // **Which container the transport is EDITING this frame** (Enio, 2026-07-22) —
+        // `Some(c)` only while inside a container's lanes (not Keys, not the scene root),
+        // stamped for the bridge, the autokey pass and the K flow to read. The active
+        // playhead becomes the CONTAINER clock there (chosen just below), so playback,
+        // the ruler and the loop are the container's, not the Arrange's.
+        let container: Option<usize> = (!keys_mode)
+            .then(|| self.timeline.edit_path.last().map(|s| s.container))
+            .flatten();
+        self.timeline.container_open = container;
+        // Entering / switching / leaving a container arms the CONTAINER clock with its
+        // OWN loop (edge-triggered, the nav mirror of the `keys_mode` sync below). The
+        // scene clock is deliberately NOT touched — the Arrange loop survives the visit.
+        if container != self.last_timeline_container {
+            self.last_timeline_container = container;
+            timeline_bridge::on_container_nav_change(
+                &self.timeline.doc,
+                container,
+                &mut self.container_playhead,
+            );
+        }
         if keys_mode != self.last_timeline_keys_mode {
             self.last_timeline_keys_mode = keys_mode;
             if keys_mode {
@@ -1112,14 +1133,21 @@ impl crate::App {
         }
         if self.timeline_insert_key {
             self.timeline_insert_key = false;
-            // The stack's scratch must describe THIS instant before the Arrange-side
-            // K asks it where a key lands or whether the pose is reachable. Skip it
-            // in Keys mode — solo has no stack in view, so K reads the clip directly
-            // (no scratch, no refusal). Without the prime the Arrange path resolves
-            // against the PREVIOUS frame's strip state, and at speed 100 one frame is
-            // 1.67 s of clip skew.
+            // The K clock is the clock the animator is watching: the container's
+            // inside one, the scene's on Arrange. Keys solos and reads the clip
+            // directly (no scratch). The value/time helpers below read the same clock.
+            let k_time = if container.is_some() {
+                self.container_playhead.time()
+            } else {
+                self.playhead.time()
+            };
+            // The scratch must describe THIS instant before the Arrange/container K asks
+            // it where a key lands or whether the pose is reachable — ROOTED at whatever
+            // stack the animator is looking at (the scene's, or the container's interior;
+            // Enio 2026-07-22). Skip it in Keys (solo has no scratch). Without the prime
+            // the resolve runs against the PREVIOUS frame's strip state.
             if !keys_mode {
-                self.timeline.doc.prime_stack(self.playhead.time());
+                self.timeline.doc.prime_rooted(container, k_time);
             }
             if let Some(entity) = hero_screen
                 .as_ref()
@@ -1149,18 +1177,23 @@ impl crate::App {
                             self.clip_playhead.time(),
                         )
                     } else {
+                        // Arrange OR inside a container — both read the stack (rooted at
+                        // the scene or the container respectively, primed above) at
+                        // `k_time`. The value/time helpers are root-aware, so a container
+                        // key lands on the container's clock and refuses on the
+                        // container's terms, never the scene's.
                         timeline_bridge::key_value_for(
                             sim.world(),
                             &self.timeline,
                             entity,
                             prop,
-                            self.playhead.time(),
+                            k_time,
                         )
                         .zip(timeline_bridge::key_insert_time(
                             &self.timeline,
                             entity,
                             prop,
-                            self.playhead.time(),
+                            k_time,
                         ))
                     };
                     if let Some((value, t)) = authored {
@@ -1177,11 +1210,14 @@ impl crate::App {
             }
         }
         // General timeline (W1): drain pending panel/K intents into the app-general
-        // document, then apply it to the scene. Keys mode drives the CLIP playhead
-        // and solos the active clip; Arrange drives the timeline playhead and blends
-        // the stack. Skipping the dragged entity. No-op while empty.
+        // document, then apply it to the scene. Three clocks, one chosen per view:
+        // Keys drives the CLIP playhead (solo the clip); inside a container the
+        // CONTAINER playhead (solo the interior); Arrange the timeline playhead (blend
+        // the stack). Skipping the dragged entity. No-op while empty.
         let active_playhead = if keys_mode {
             &mut self.clip_playhead
+        } else if container.is_some() {
+            &mut self.container_playhead
         } else {
             &mut self.playhead
         };
@@ -1193,6 +1229,7 @@ impl crate::App {
             dragging_entity,
             &mut self.autokey,
             keys_mode,
+            container,
         );
         if timeline_reset {
             // The document just went back to a fresh state (the last animated
@@ -1207,6 +1244,9 @@ impl crate::App {
             self.playhead.pause();
             self.clip_playhead.rewind();
             self.clip_playhead.pause();
+            self.container_playhead.rewind();
+            self.container_playhead.pause();
+            self.last_timeline_container = None;
             ph2d_panel_timeline::state::reset_trail();
         }
         // The playhead has now moved: a transport jump queued last frame can
@@ -1217,10 +1257,12 @@ impl crate::App {
         }
         // Publish the view snapshot the docked timeline panel paints (transport
         // state; tracks/keys from E3+). Rebuilt from the ACTIVE playhead (the clip
-        // clock in Keys mode, the timeline clock in Arrange), so the whole transport
-        // reflects the clock the panel is showing.
+        // clock in Keys mode, the CONTAINER clock inside one, the timeline clock in
+        // Arrange), so the whole transport reflects the clock the panel is showing.
         let active_playhead = if keys_mode {
             &self.clip_playhead
+        } else if container.is_some() {
+            &self.container_playhead
         } else {
             &self.playhead
         };
@@ -4493,13 +4535,15 @@ impl crate::App {
             // apply pass too, so an undo/paste/scrub — which the apply writes back
             // to the world — reads world == curve and keys nothing.
             // The pass authors on the clock the APPLY drove this frame: the clip
-            // playhead when the Keys view solos the active clip, the timeline's
-            // otherwise — the same pick `timeline_bridge::run` made above, read
-            // from the same stamped fact (`timeline.keys_mode`, which the pass
-            // itself branches on). Handing it the scene clock while solo drives
+            // playhead in Keys, the CONTAINER playhead inside one, the timeline's on
+            // Arrange — the same three-way pick `timeline_bridge::run` made above, from
+            // the same stamped facts (`keys_mode` / `container_open`, which the pass
+            // reads to root its scratch). Handing it the wrong clock while a solo drives
             // the pose is how one strip in a lane killed auto-key (2026-07-22).
             let autokey_clock = if self.timeline.keys_mode {
                 &self.clip_playhead
+            } else if self.timeline.container_open.is_some() {
+                &self.container_playhead
             } else {
                 &self.playhead
             };

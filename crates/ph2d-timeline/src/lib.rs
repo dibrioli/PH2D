@@ -47,8 +47,8 @@ pub mod state;
 mod strip_edge_edit;
 
 pub use apply::{
-    apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time,
-    remapped_time,
+    apply_active_clip, apply_container, apply_from_doc, apply_from_doc_except, clip_playhead,
+    key_home, key_time, remapped_time,
 };
 pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,
@@ -62,7 +62,7 @@ pub use graph::{
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;
-pub use intent_apply::{apply_intent, snap_time, sync_transport_loop};
+pub use intent_apply::{apply_intent, snap_time, sync_container_loop, sync_transport_loop};
 pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };

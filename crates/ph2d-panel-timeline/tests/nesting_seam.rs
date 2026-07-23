@@ -231,13 +231,12 @@ fn the_trail_costs_nothing_at_the_scene_root() {
     );
 }
 
-/// **A régua DENTRO de um container mede o relógio DELE.**
+/// **A régua DENTRO de um container mede o RELÓGIO PRÓPRIO dele** (Enio, 2026-07-22).
 ///
-/// Bug que a Fatia 3b introduziu e este gate nasceu vermelho sobre: entrar troca as lanes para
-/// os segundos LOCAIS do container, e o playhead continuava marcando o segundo da TIMELINE.
-/// Com a instância começando em 5 s, os dois discordavam por exatamente 5 s — a strip debaixo
-/// do cursor não era a que o playhead dizia. É a doutrina "uma régua mede um relógio"
-/// (`tab.rs`) um nível abaixo de onde ela foi escrita.
+/// O transporte ali é o relógio do container, um clock autônomo — o shell entrega esse
+/// playhead ao `rebuild`, então `time_seconds`/`host_time` SÃO o segundo local do interior,
+/// por identidade. `container_open` marca a vista. Este é o modelo que substitui o mapa
+/// cena→interior: o playback deixou de ser o do Arrange.
 #[test]
 fn the_ruler_inside_a_container_measures_the_containers_clock() {
     let mut doc = TimelineDoc::new();
@@ -246,7 +245,6 @@ fn the_ruler_inside_a_container_measures_the_containers_clock() {
         .unwrap();
     doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 4.0)
         .unwrap();
-    // A instância começa em 5 s na timeline.
     let lane = doc.add_lane("doc".into()).unwrap();
     let strip = doc
         .add_strip_to(
@@ -260,36 +258,45 @@ fn the_ruler_inside_a_container_measures_the_containers_clock() {
 
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    // O passo lembra o STRIP de entrada — é dele que o mapa/marca derivam agora.
     st.edit_path = vec![ph2d_timeline::EnterStep {
         container: c,
         lane,
         strip: Some(strip),
     }];
 
+    // O playhead entregue é o do CONTAINER — seu tempo é local (0,5 s DELE), não os 5,5 s
+    // da timeline em que a instância toca.
     let mut ph = ph2d_core::Playhead::default();
-    ph.seek(5.5); // meio segundo DENTRO da instância
+    ph.seek(0.5);
     let mut snap = TimelineViewSnapshot::default();
     snap.rebuild(&mut st, &ph, false);
 
     assert_eq!(
+        snap.container_open,
+        Some(c),
+        "a vista é marcada como a do container — a porta que a régua lê"
+    );
+    assert_eq!(
         snap.host_time,
         Some(0.5),
-        "dentro do container o playhead está a 0,5 s DELE (a instância começa em 5 s na \
-         timeline); publicar 5,5 poria a marca meio traço fora do que as lanes mostram"
+        "a régua marca o playhead LOCAL do container, por identidade"
     );
     assert!(
-        (snap.time_seconds - 5.5).abs() < 1e-12,
-        "e o tempo da TIMELINE continua sendo o que é — os dois relógios coexistem, é isso \
-         que as duas réguas mostram"
+        (snap.time_seconds - 0.5).abs() < 1e-12,
+        "e time_seconds É o relógio do container agora"
+    );
+    // O readout da migalha ainda é a relação com a CENA (onde a instância toca), intacto.
+    assert!(
+        snap.host_map.is_some_and(|m| (m.t0 - 5.0).abs() < 1e-9),
+        "a instância toca a partir de 5 s na cena — o readout sobrevive à troca de relógio"
     );
 }
 
-/// **A régua do Arrange usa o relógio do container quando há um aberto** — e não desenha
-/// playhead nenhum quando o container não toca exatamente uma vez aqui.
+/// **A régua do Arrange lê o relógio do container quando há um aberto** — pela porta
+/// `container_open`, marcando o `time_seconds` local por identidade.
 ///
-/// O snapshot publicar `host_time` não adianta se ninguém o ler: este gate pergunta à função
-/// que a pintura de fato consulta ([[feedback_painted_is_not_populated_paint_gate]]).
+/// O snapshot marcar `container_open` não adianta se ninguém o ler: este gate pergunta à
+/// função que a pintura de fato consulta ([[feedback_painted_is_not_populated_paint_gate]]).
 #[test]
 fn the_arrange_ruler_takes_its_clock_from_the_open_container() {
     use ph2d_panel_timeline::{ruler_clock_for_tests, tab::Tab};
@@ -304,24 +311,21 @@ fn the_arrange_ruler_takes_its_clock_from_the_open_container() {
     assert_eq!(out.now, Some(5.5));
     assert!(out.markers, "fora, os markers são desta régua");
 
-    // Dentro: o relógio do container, e os markers saem (são stamped em segundos da timeline).
+    // Dentro (container aberto): o relógio local por identidade, e os markers saem (são
+    // stamped em segundos da cena).
     snap.crumbs = vec![(0, "Walk".into())];
-    snap.host_time = Some(0.5);
+    snap.container_open = Some(0);
+    snap.time_seconds = 0.5;
     let inside = ruler_clock_for_tests(Tab::Arrange, &snap);
     assert_eq!(
         inside.now,
         Some(0.5),
-        "a régua tem de marcar o segundo DO CONTAINER"
+        "a régua marca o segundo LOCAL do container"
     );
     assert!(
         !inside.markers,
-        "markers em segundos da timeline sentariam no segundo errado aqui"
+        "markers em segundos da cena sentariam no segundo errado aqui"
     );
-
-    // Dentro, mas o container não toca aqui: nenhum playhead é melhor que um mentiroso.
-    snap.host_time = None;
-    let nowhere = ruler_clock_for_tests(Tab::Arrange, &snap);
-    assert_eq!(nowhere.now, None, "sem um 'agora' único, não se desenha um");
 }
 
 /// Publica um snapshot com o container ABERTO e uma única instância começando em `start`,
@@ -360,13 +364,15 @@ fn open_container_at(start: f64, playhead: f64) -> ph2d_timeline::TimelineViewSn
     snap
 }
 
-/// **O arrasto da régua DENTRO de um container busca o segundo da TIMELINE, não o local.**
+/// **O arrasto da régua DENTRO de um container busca o segundo LOCAL — identidade** (Enio,
+/// 2026-07-22).
 ///
-/// Este gate nasceu VERMELHO sobre o bug que a 3b deixou: o eixo virou o do interior e o
-/// arrasto continuou mandando o número cru. Com a instância em 4 s, largar no meio de uma
-/// janela de 8 s é o segundo 4 do INTERIOR — que é o segundo **8** da cena, não o 4.
+/// O transporte ali é o relógio próprio do container, então o eixo da régua e o clock que o
+/// arrasto busca são o MESMO: o valor cru (`view_start + v·view_span`) já é o tempo. A antiga
+/// conversão cena↔interior (via `host_map`) sumiu com o modelo de relógio único. Com span 8 e
+/// o slider a 0,5, o arrasto busca o segundo 4 DO CONTAINER.
 #[test]
-fn scrubbing_inside_a_container_seeks_the_timeline_second_not_the_local_one() {
+fn scrubbing_inside_a_container_seeks_the_local_second() {
     ph2d_panel_timeline::state::set_current_timeline(Some(open_container_at(4.0, 5.0)));
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState {
@@ -386,16 +392,14 @@ fn scrubbing_inside_a_container_seeks_the_timeline_second_not_the_local_one() {
         events,
         vec![ph2d_editor_core::tool::PanelEvent::SetValue(
             ids::TIMELINE_RULER,
-            8.0
+            4.0
         )],
-        "o segundo 4 do interior de uma instância que começa em 4 s é o segundo 8 da cena"
+        "o eixo é o relógio do container: 0,5 sobre 8 s é o segundo 4 DELE, cru"
     );
 }
 
-/// **Na CENA nada mudou** — o controle positivo do gate acima.
-///
-/// Sem ele, `host_time` devolvendo o número cru para tudo deixaria os dois verdes, e a
-/// conversão seria código morto.
+/// **Na CENA é o mesmo — identidade** (o controle positivo do gate acima: os dois modos
+/// buscam o valor cru, e nenhum deles converte).
 #[test]
 fn scrubbing_at_the_scene_root_still_seeks_the_raw_second() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
@@ -420,26 +424,24 @@ fn scrubbing_at_the_scene_root_still_seeks_the_raw_second() {
     );
 }
 
-/// **Sem inverso, o arrasto não busca nada** — a segunda camada da recusa.
+/// **Dentro de um container o arrasto SEMPRE busca — o relógio é autônomo** (Enio,
+/// 2026-07-22).
 ///
-/// `clock_for` já não registra o hit neste caso, então em produção o evento nem chega. O gate
-/// existe porque a camada de baixo protege outra coisa: se alguém voltar a oferecer o
-/// controle, o `event.rs` ainda não pode INVENTAR um segundo
-/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+/// A antiga recusa "sem inverso, não busca nada" existia porque o scrub mapeava
+/// interior→cena e podia não ter mapa. Com o relógio próprio do container isso deixou de
+/// existir: não há mapa a faltar, então o arrasto é sempre o segundo local. Este gate pina a
+/// ausência da recusa — o modo de falha que ela protegia (um segundo inventado) não é mais
+/// alcançável por construção.
 #[test]
-fn without_an_inverse_the_scrub_seeks_nowhere() {
+fn inside_a_container_the_scrub_always_seeks_the_local_second() {
     let mut snap = open_container_at(4.0, 5.0);
-    assert!(
-        snap.host_map.is_some(),
-        "a fixture tem de PARTIR de um mapa"
-    );
-    snap.host_map = None; // a instância dá a volta, ou a caminhada ficou obsoleta
+    snap.host_map = None; // sem mapa: no modelo antigo isto RECUSAVA o arrasto
     ph2d_panel_timeline::state::set_current_timeline(Some(snap));
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState {
         view_start_s: 0.0,
         view_span_s: 8.0,
-        tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
+        tab: ph2d_panel_timeline::tab::Tab::Arrange,
         ..TimelinePanelState::default()
     };
     host.set_slider_value(ids::TIMELINE_RULER, 0.5);
@@ -449,9 +451,13 @@ fn without_an_inverse_the_scrub_seeks_nowhere() {
     );
     let events = timeline_events(&mut host);
     ph2d_panel_timeline::state::set_current_timeline(None);
-    assert!(
-        events.is_empty(),
-        "sem mapa não há segundo honesto para buscar, veio {events:?}"
+    assert_eq!(
+        events,
+        vec![ph2d_editor_core::tool::PanelEvent::SetValue(
+            ids::TIMELINE_RULER,
+            4.0
+        )],
+        "sem mapa a régua ainda arrasta — o relógio do container não depende de um inverso"
     );
 }
 

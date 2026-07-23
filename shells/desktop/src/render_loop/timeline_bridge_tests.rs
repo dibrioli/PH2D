@@ -268,211 +268,6 @@ fn addprop_ids_map_to_prop_kinds() {
     assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
 }
 
-/// The scene of the container-navigation gates: a 2 s container instanced at `[4, 12)`
-/// (stretched 2× → speed 0.5) with a 1 s lead-in and 0.5 s lead-out, and a DOCUMENT loop
-/// over `[0, 20)`. Returns the state (path stamped empty) and the entry step.
-fn nav_scene() -> (TimelineState, ph2d_timeline::EnterStep) {
-    use ph2d_timeline::{StackHost, StripSource};
-    let mut st = TimelineState::new();
-    let doc = &mut st.doc;
-    let c = doc.add_container("C".into());
-    doc.add_lane_in(StackHost::Container(c), "l".into())
-        .unwrap();
-    doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 2.0)
-        .unwrap();
-    let lane = doc.add_lane("doc".into()).unwrap();
-    let strip = doc
-        .add_strip_to(
-            StackHost::Document,
-            lane,
-            StripSource::Container(u16::try_from(c).unwrap()),
-            4.0,
-            12.0,
-        )
-        .unwrap();
-    {
-        let s = doc.strip_in_mut(StackHost::Document, lane, strip).unwrap();
-        s.lead_in = 1.0;
-        s.lead_out = 0.5;
-    }
-    doc.set_active_loop_for(false, Some((0.0, 20.0)));
-    (
-        st,
-        ph2d_timeline::EnterStep {
-            container: c,
-            lane,
-            strip: Some(strip),
-        },
-    )
-}
-
-/// **Entering a container brackets the transport loop around the entered instance —
-/// leads included — and leaving re-installs the document's own loop** (Enio, 2026-07-20:
-/// *"dentro do container o loop não se ajustou automaticamente"*). Navigation never
-/// touches the DOCUMENT's loop: it is the artist's authored range, merely stepped aside
-/// from while inside.
-#[test]
-fn entering_brackets_the_loop_around_the_instance_and_leaving_restores() {
-    let (st, step) = nav_scene();
-    let mut ph = Playhead::new(1.0 / 60.0);
-    ph.seek(5.0);
-
-    on_nav_change(&st.doc, &[step], &mut ph);
-    assert_eq!(
-        ph.loop_range(),
-        Some((3.0, 12.5)),
-        "the instance's window plus its leads — bracketing only [4,12) cuts the fades"
-    );
-    assert!((ph.time() - 5.0).abs() < 1e-9, "already inside: no seek");
-    assert_eq!(
-        st.doc.active_loop_for(false),
-        Some((0.0, 20.0)),
-        "navigation is not an edit — the document loop is untouched"
-    );
-
-    on_nav_change(&st.doc, &[], &mut ph);
-    assert_eq!(
-        ph.loop_range(),
-        Some((0.0, 20.0)),
-        "leaving hands the transport back to the document's own loop"
-    );
-}
-
-/// **A playhead standing outside the entered instance is moved to its start** — the
-/// alternative is a marker-less ruler that reads as broken (the pre-fix symptom).
-#[test]
-fn entering_from_outside_the_window_seeks_to_its_start() {
-    let (st, step) = nav_scene();
-    let mut ph = Playhead::new(1.0 / 60.0);
-    ph.seek(17.0); // beyond the instance's reach [3, 12.5]
-    on_nav_change(&st.doc, &[step], &mut ph);
-    assert!(
-        (ph.time() - 3.0).abs() < 1e-9,
-        "outside the reach the transport lands at its start, got {}",
-        ph.time()
-    );
-}
-
-/// **A stale walk leaves the transport alone** — no window, no guess.
-#[test]
-fn a_stale_walk_leaves_the_transport_as_it_stands() {
-    let (mut st, step) = nav_scene();
-    st.doc.remove_strip_in(
-        ph2d_timeline::StackHost::Document,
-        step.lane,
-        step.strip.unwrap(),
-    );
-    let mut ph = Playhead::new(1.0 / 60.0);
-    ph.set_loop(0.0, 20.0);
-    ph.seek(5.0);
-    on_nav_change(&st.doc, &[step], &mut ph);
-    assert_eq!(ph.loop_range(), Some((0.0, 20.0)), "loop untouched");
-    assert!((ph.time() - 5.0).abs() < 1e-9, "playhead untouched");
-}
-
-/// **Dentro de um container, Loop/PingPong/ir-ao-início/ir-ao-fim falam da INSTÂNCIA** —
-/// transporte-apenas, o documento fica de fora (Enio, 2026-07-20: *"o loop dentro do
-/// container deve se ajustar automaticamente quando ligado às strips"*). Escrever
-/// `SetLoop` dali reescreveria o loop autorado da CENA com a janela de uma instância, e
-/// sair do container revelaria o estrago.
-#[test]
-fn inside_a_container_the_loop_toggles_bracket_the_instance_on_the_transport() {
-    let (mut st, step) = nav_scene();
-    st.edit_path = vec![step];
-    let ph = Playhead::new(1.0 / 60.0);
-    let ev = |on| PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_LOOP, on);
-
-    assert_eq!(
-        intent_for_transport(&ev(true), &st, &ph),
-        Some(TimelineIntent::SetTransportLoop {
-            range: Some((3.0, 12.5)), // o alcance da instância, leads incluídos
-            ping_pong: false,
-        }),
-    );
-    assert_eq!(
-        intent_for_transport(&ev(false), &st, &ph),
-        Some(TimelineIntent::SetTransportLoop {
-            range: None,
-            ping_pong: false,
-        }),
-    );
-    assert_eq!(
-        intent_for_transport(
-            &PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_PINGPONG, true),
-            &st,
-            &ph
-        ),
-        Some(TimelineIntent::SetTransportLoop {
-            range: Some((3.0, 12.5)),
-            ping_pong: true,
-        }),
-    );
-    assert_eq!(
-        intent_for_transport(
-            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_START),
-            &st,
-            &ph
-        ),
-        Some(TimelineIntent::Scrub(3.0)),
-        "ir ao início vai ao início da instância"
-    );
-    assert_eq!(
-        intent_for_transport(
-            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_END),
-            &st,
-            &ph
-        ),
-        Some(TimelineIntent::Scrub(12.5)),
-        "ir ao fim vai ao fim do alcance dela"
-    );
-
-    // Na RAIZ nada muda: o toggle segue escrevendo o loop do DOCUMENTO.
-    st.edit_path.clear();
-    assert!(
-        matches!(
-            intent_for_transport(&ev(true), &st, &ph),
-            Some(TimelineIntent::SetLoop {
-                range: Some(_),
-                ping_pong: false
-            })
-        ),
-        "na cena o Loop é do documento, como sempre"
-    );
-}
-
-/// **`SetTransportLoop` arma o RELÓGIO e não toca o documento** — a metade que protege o
-/// loop autorado da cena.
-#[test]
-fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
-    let (mut st, _step) = nav_scene();
-    let mut ph = Playhead::new(1.0 / 60.0);
-    let before = st.doc.active_loop_for(false);
-    ph2d_timeline::apply_intent(
-        &mut st,
-        &mut ph,
-        TimelineIntent::SetTransportLoop {
-            range: Some((2.0, 5.0)),
-            ping_pong: true,
-        },
-    );
-    assert_eq!(ph.loop_range(), Some((2.0, 5.0)));
-    assert!(ph.is_ping_pong());
-    assert_eq!(
-        st.doc.active_loop_for(false),
-        before,
-        "o documento fica de fora"
-    );
-    ph2d_timeline::apply_intent(
-        &mut st,
-        &mut ph,
-        TimelineIntent::SetTransportLoop {
-            range: None,
-            ping_pong: false,
-        },
-    );
-    assert_eq!(ph.loop_range(), None, "off limpa o relógio");
-}
-
 /// **A lista de Containers recusa o play — e SÓ o play** (Enio, 2026-07-22).
 ///
 /// Segunda camada da recusa (a primeira é o painel, que nem registra o hit do botão): um
@@ -526,6 +321,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         None,
         &mut ak,
         false,
+        None,
     );
     assert!(
         !ph.is_playing(),
@@ -544,6 +340,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         None,
         &mut ak,
         false,
+        None,
     );
     assert!(
         ph2.is_playing(),

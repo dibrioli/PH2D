@@ -48,9 +48,13 @@ use crate::stack_frames::StackScratch;
 /// v9: a strip's fade-out can reach OUTWARD into the gap after it
 /// (`ClipStrip.lead_out`, appended) — the mirror of `lead_in` (Enio, 2026-07-19). `0.0` is
 /// the old behaviour byte-for-byte.
+/// v10: each container carries its OWN loop (`NamedContainer.loop_range` +
+/// `loop_ping_pong`, appended) — the interior transport's cycle, independent of the
+/// scene's and of every clip's (Enio, 2026-07-22: *"o loop deve ser independente em
+/// cada modo"*). `None`/`false` behaves exactly as v9.
 ///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
-pub const DOC_VERSION: u32 = 9;
+pub const DOC_VERSION: u32 = 10;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

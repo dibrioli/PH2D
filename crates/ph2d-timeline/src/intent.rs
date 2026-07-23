@@ -230,6 +230,24 @@ pub enum TimelineIntent {
         ping_pong: bool,
     },
 
+    /// **Set a CONTAINER's own loop** — the interior transport's cycle, persisted on
+    /// the [`crate::NamedContainer`] (Enio, 2026-07-22: *"o loop deve ser independente
+    /// em cada modo — clip, arrange e container"*).
+    ///
+    /// Raised by the Loop/PingPong toggles while a container is open for editing. The
+    /// playhead this intent syncs is the one `apply_intent` is handed — the CONTAINER
+    /// clock, in that view — so the scene's transport is out of reach by construction:
+    /// the leak this replaces was exactly a container toggle writing the scene's loop
+    /// (`SetLoop`) whenever the container had no instance for `entry_reach` to bracket.
+    SetContainerLoop {
+        /// Which container's loop (a stale index is a no-op — the document refuses).
+        container: usize,
+        /// `[start, end)` in the CONTAINER's own seconds; `None` clears it.
+        range: Option<(f64, f64)>,
+        /// Play back and forth instead of jumping to the start.
+        ping_pong: bool,
+    },
+
     // ── history ─────────────────────────────────────────────────────────────
     /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).
     /// Until the matching [`TimelineIntent::EndEdit`], every document edit joins

@@ -15,6 +15,13 @@ use crate::strip_edge_edit::{
     MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
 };
 
+/// The loop-sync family (`sync_transport_loop`/`sync_container_loop`/`sync_loop`) — sibling
+/// module under the LOC cap.
+#[path = "intent_loop_sync.rs"]
+mod intent_loop_sync;
+use intent_loop_sync::sync_loop;
+pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
+
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
 /// are grouped as a single undo step.
 pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: TimelineIntent) {
@@ -61,6 +68,17 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             } else {
                 ph2d_core::LoopMode::Wrap
             });
+        }
+        // The CONTAINER's own loop (Enio, 2026-07-22). Writes the container and syncs
+        // the playhead it was handed — the container clock in the interior view. The
+        // scene's loop and the clips' are not touched: each mode owns its own.
+        I::SetContainerLoop {
+            container,
+            range,
+            ping_pong,
+        } => {
+            state.doc.set_container_loop(container, range, ping_pong);
+            sync_container_loop(&state.doc, container, playhead);
         }
 
         // authoring (undoable)
@@ -508,37 +526,6 @@ fn copy_selection(state: &mut TimelineState) {
     state.clipboard.set_from_absolute(&picked);
 }
 
-/// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
-/// only if the document changed.
-/// Mirror the ACTIVE clip's loop into the playhead — the one place a clip switch
-/// (or an undo of one) becomes the live transport loop.
-/// Publish the ACTIVE CLIP's loop for one VIEW onto its transport — the doc is the
-/// truth, the `Playhead` is the copy. `keys` picks the pair: the Keys-view clip-clock
-/// loop (`clip_playhead`) or the Arrange timeline loop (`playhead`).
-///
-/// Every intent that can change which clip is active (or its range) calls this. **So must
-/// anything that swaps the document under the transport** — loading a project, above all:
-/// the loop lives in the clip (`NamedClip.loop_range` / `keys_loop_range`, DOC v3/v5), so
-/// without this a saved loop never comes back, and — worse — the *previous* project's loop
-/// stays armed on the `Playhead` and quietly loops the new project over a range that belongs
-/// to a file the artist already closed. The shell also calls it on a TAB switch (which is not
-/// an intent) so the now-active clock adopts its own view's loop.
-pub fn sync_transport_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) {
-    sync_loop(doc, playhead, keys);
-}
-
-fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) {
-    match doc.active_loop_for(keys) {
-        Some((a, b)) => playhead.set_loop(a, b),
-        None => playhead.clear_loop(),
-    }
-    playhead.set_loop_mode(if doc.active_ping_pong_for(keys) {
-        ph2d_core::LoopMode::PingPong
-    } else {
-        ph2d_core::LoopMode::Wrap
-    });
-}
-
 /// [`edit`], for a mutation that must land in whichever stack the animator has OPEN.
 ///
 /// The host is passed through rather than read from `state` inside the closure because the
@@ -553,6 +540,8 @@ fn edit_at(
     edit(state, |doc, sel| f(doc, host, sel));
 }
 
+/// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
+/// only if the document changed.
 fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
     // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
     // mutate, and let the bracket's commit fold every frame of the gesture into

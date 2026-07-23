@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_nine() {
+fn schema_version_is_ten() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -108,10 +108,13 @@ fn schema_version_is_nine() {
     //      from that field on, which is exactly why the version gate refuses it.
     // v9 = a strip's fade-out can reach OUTWARD into the gap after it
     //      (`ClipStrip.lead_out`, appended) — the mirror of `lead_in` (Enio, 2026-07-19).
+    // v10 = each container carries its OWN loop (`NamedContainer.loop_range` +
+    //      `loop_ping_pong`, appended) — the interior transport's cycle, independent of
+    //      the scene's and every clip's (Enio, 2026-07-22).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 9);
-    assert_eq!(TimelineDoc::new().version, 9);
+    assert_eq!(DOC_VERSION, 10);
+    assert_eq!(TimelineDoc::new().version, 10);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

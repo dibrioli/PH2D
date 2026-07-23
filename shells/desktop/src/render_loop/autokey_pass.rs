@@ -138,6 +138,12 @@ pub(crate) fn apply_samples(
     // "does not play here" toasts (Enio, 2026-07-22). The caller passes the
     // matching playhead (clip in keys mode, timeline otherwise).
     let solo = timeline.keys_mode;
+    // Inside a container the diff believes in the CONTAINER's blend, at the container
+    // clock (Enio, 2026-07-22) — the third view. The scratch is primed ROOTED there
+    // (`container_open`), so the root-aware `shown_value`/`key_home`/`key_value_in_active_clip`
+    // read the container's lanes, not the scene's. `None` primes the scene (root None),
+    // exactly as before.
+    let root = timeline.container_open;
     // The stack's scratch must describe THIS instant before anything asks it where
     // a key lands or whether a pose is reachable. In production the apply built it
     // a moment ago at this very playhead, so this costs a compare — but the pass no
@@ -145,7 +151,7 @@ pub(crate) fn apply_samples(
     // and accidentally right. Solo never consults the scratch (there is no blend),
     // and priming it with the CLIP clock would poison it for everyone else.
     if !solo {
-        timeline.doc.prime_stack(playhead.time());
+        timeline.doc.prime_rooted(root, playhead.time());
     }
 
     // Whether this frame CAPTURES the pose into keys.

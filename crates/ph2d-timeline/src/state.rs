@@ -196,6 +196,13 @@ pub struct TimelineState {
     /// re-derivations. It comes back the moment the animator enters a container or
     /// returns to Keys/Arrange.
     pub containers_list: bool,
+    /// **The container whose interior the transport is EDITING** (`Some(c)` only while
+    /// inside container `c`'s lanes — not Keys, not the scene root; Enio, 2026-07-22).
+    /// Stamped by the shell each frame, the nav-side sibling of [`Self::keys_mode`]. It
+    /// is what makes the third clock work: the auto-key pass primes its scratch ROOTED
+    /// here (`prime_rooted`), so keying inside a container reads the CONTAINER's blend
+    /// and lands on the CONTAINER's clock, not the scene's.
+    pub container_open: Option<usize>,
     /// **How deep into the nesting the animator has walked** — outermost first, empty at the
     /// scene root (ADR-0133 §5).
     ///

@@ -48,34 +48,16 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
         };
     }
     if tab.shows_lanes() {
-        // **Inside a container the Arrange lanes are ITS interior**, laid out in its own
-        // seconds (ADR-0133 §5) — so the ruler marks its clock, not the timeline's. Marking
-        // `time_seconds` there put the playhead off by exactly where the instance starts: the
-        // strip under the marker was not the strip the marker claimed.
-        //
-        // Scrubbing stays on the TIMELINE playhead (the transport owns it, and a container has
-        // no playhead of its own to move) and the markers stay off: they are stamped in
-        // timeline seconds and would sit at the wrong second in here.
-        //
-        // ⚠️ E o SCRUB é o mapa, não o relógio: arrastar tem de chegar como um tempo da
-        // TIMELINE (o único playhead que existe), então a régua só arrasta onde a instância
-        // tem inverso (`host_map`). Sem ele nem hit se registra — um controle que não pode
-        // honrar o gesto não deve aceitá-lo.
-        if let Some(now) = snap.host_time {
+        // **Inside a container the ruler measures the CONTAINER's OWN clock** (Enio,
+        // 2026-07-22): the transport IS that clock now, so `time_seconds` is already the
+        // interior-local time — the ruler marks it directly and the scrub writes it
+        // directly (identity, `container_open` is the door). The old model ran the SCENE
+        // playhead mapped into here, which is why playback was the Arrange's. Markers stay
+        // OFF — they are stamped in scene seconds and belong on the Arrange ruler.
+        if snap.container_open.is_some() {
             return RulerClock {
-                now: Some(now),
-                scrub: snap.host_map.is_some(),
-                markers: false,
-                loop_band: true,
-            };
-        }
-        if !snap.crumbs.is_empty() {
-            // Open, but the container is not playing exactly once here: there is no single
-            // "now" in it. Draw NO playhead rather than one at a second it is not at —
-            // the same refusal `clip_playhead` makes, for the same reason.
-            return RulerClock {
-                now: None,
-                scrub: snap.host_map.is_some(),
+                now: Some(snap.time_seconds),
+                scrub: true,
                 markers: false,
                 loop_band: true,
             };
@@ -162,31 +144,29 @@ mod tests {
             assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).scrub);
         }
     }
-    /// **Sem inverso a régua do container NÃO arrasta.**
-    ///
-    /// É a primeira vez que `scrub: false` acontece de verdade — o campo existe desde que a
-    /// régua ganhou dois relógios, com o docstring que diz exatamente isto. A camada de
-    /// baixo (o `event.rs`) recusa por conta própria; esta aqui nem oferece o controle, e
-    /// cada camada precisa do seu gate ([[feedback_layered_defenses_need_per_layer_gates]]).
+    /// **Dentro de um container a régua arrasta o RELÓGIO DELE — sempre, por identidade**
+    /// (Enio, 2026-07-22). O transporte ali é o relógio próprio do container, um clock
+    /// autônomo, então o scrub é o `time_seconds` cru — não há mais mapa cena→interior para
+    /// faltar, e a antiga recusa "sem inverso" (que dependia desse mapa) deixou de existir
+    /// por desenho. `container_open` é a porta; `host_map` não gateia mais nada aqui.
     #[test]
-    fn a_container_without_an_inverse_offers_no_scrub() {
+    fn a_container_ruler_scrubs_its_own_clock_by_identity() {
         let mut s = snap(true, 4.0, Some(2.0));
         s.crumbs = vec![(0, "Walk".into())];
-        s.host_time = Some(1.0);
-        s.host_map = None; // a instância dá a volta, ou a caminhada ficou obsoleta
+        s.container_open = Some(0);
+        s.time_seconds = 1.25;
+        s.host_map = None; // não importa mais — o relógio do container é autônomo
+        let c = clock_for(Tab::Containers, &s);
+        assert!(c.scrub, "o relógio próprio do container sempre arrasta");
+        assert_eq!(c.now, Some(1.25), "e o now é o tempo LOCAL do container");
+        assert!(!c.markers, "os markers são da cena — ficam de fora aqui");
+        // Controle: SEM `container_open` (na cena/Arrange) a régua é a da timeline, e o
+        // `now` é o mesmo `time_seconds` — o campo é o que distingue as duas leituras.
+        s.container_open = None;
         assert!(
-            !clock_for(Tab::Arrange, &s).scrub,
-            "arrastar não teria para onde buscar — o hit não pode nem existir"
+            clock_for(Tab::Arrange, &s).markers,
+            "a cena carrega os markers"
         );
-        // Controle POSITIVO: o MESMO snapshot com mapa arrasta. Sem ele, `scrub: false`
-        // para tudo deixaria este gate verde e a régua morta na cena inteira.
-        s.host_map = Some(ph2d_timeline::ContainerMap {
-            t0: 4.0,
-            t1: 12.0,
-            u0: 0.0,
-            u1: 8.0,
-        });
-        assert!(clock_for(Tab::Arrange, &s).scrub);
     }
 
     #[test]
@@ -213,10 +193,10 @@ mod tests {
         );
         assert!(clock_for(Tab::Keys, &s).loop_band);
         assert!(clock_for(Tab::Arrange, &s).loop_band);
-        // Dentro de um container (migalha na trilha) a banda volta.
+        // Dentro de um container (marcado por `container_open`) a banda volta.
         let mut inside = snap(true, 4.0, Some(2.0));
         inside.crumbs = vec![(0, "Walk".into())];
-        inside.host_time = Some(1.0);
+        inside.container_open = Some(0);
         assert!(
             clock_for(Tab::Containers, &inside).loop_band,
             "entrar no container devolve o playback — e a marca junto"

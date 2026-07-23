@@ -125,6 +125,8 @@ pub(crate) struct StackScratch {
     /// not in how it is stored, which keeps the whole scratch zero-alloc in steady state
     /// (HR-3) instead of allocating a fresh interior every frame.
     pub(crate) frames: Vec<StackFrame>,
+    /// The stack this scratch is rooted in (`None` = the scene). See [`Self::root`].
+    root: Option<usize>,
     /// The timeline time this was built at. `NaN` until the first rebuild — and
     /// `NaN != NaN`, so a fresh scratch is never mistaken for a valid one.
     ///
@@ -153,6 +155,7 @@ impl Default for StackScratch {
             clocks: Vec::new(),
             frames: Vec::new(),
             t: f64::NAN, // never equal to a real time: the first prime always builds
+            root: None,
         }
     }
 }
@@ -163,6 +166,15 @@ impl StackScratch {
         self.t
     }
 
+    /// **Which stack this scratch is ROOTED in** — `None` for the document's own
+    /// (the scene), `Some(c)` when it describes container `c`'s interior soloed
+    /// (the Containers-tab editing view, Enio 2026-07-22). Every authoring gate
+    /// that used to ask `doc.stack().is_empty()` asks THIS instead: rooted, the
+    /// scene's stack is the wrong stack to interrogate.
+    pub(crate) fn root(&self) -> Option<usize> {
+        self.root
+    }
+
     /// Resolve the live strips at `t` and every remapped entity's clock inside
     /// each one. Call once per frame, after the liveness pass.
     ///
@@ -170,17 +182,28 @@ impl StackScratch {
     /// at the playhead. That is not a special case bolted on — it is what "no
     /// stack" *means*, and it keeps the single-clip path on the same code.
     pub(crate) fn rebuild(&mut self, doc: &TimelineDoc, t: f64) {
+        self.rebuild_rooted(doc, None, t);
+    }
+
+    /// [`Self::rebuild`], ROOTED: `root = Some(c)` resolves container `c`'s
+    /// interior as if it were the scene — frame 0 is the container, and the
+    /// breadth-first walk below recurses into whatever it nests, on the same
+    /// code. This is what solos a container for editing (`apply_container`):
+    /// one evaluator, two roots, so the interior you author and the interior an
+    /// instance plays can never be two different answers.
+    pub(crate) fn rebuild_rooted(&mut self, doc: &TimelineDoc, root: Option<usize>, t: f64) {
         self.t = t;
+        self.root = root;
         self.active.clear();
         self.frames.clear();
         self.frames.push(StackFrame {
-            container: None,
+            container: root,
             t,
             first: 0,
             count: 0,
         });
 
-        if doc.stack().is_empty() {
+        if root.is_none() && doc.stack().is_empty() {
             self.active.push(ActiveStrip {
                 frame: 0,
                 lane: 0,

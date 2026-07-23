@@ -97,6 +97,46 @@ pub fn apply_from_doc_except(
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }
 
+/// **Apply container `container`'s INTERIOR alone, at ITS local clock `t`** — the
+/// Containers editing view's solo, the sibling of [`apply_active_clip`] one level up
+/// (Enio, 2026-07-22: *"o playback deve ser relativo ao container aberto em edição"*).
+///
+/// Same evaluator as the scene, ROOTED (`rebuild_rooted`): the interior you watch
+/// while editing and the interior an instance plays in the scene are ONE answer.
+/// Sparsity holds — a channel no lane of the container keys is left untouched, so
+/// objects outside the container keep the scene pose they had.
+pub fn apply_container(
+    world: &mut World,
+    doc: &mut TimelineDoc,
+    container: usize,
+    t: f64,
+    skip: impl Fn(u64) -> bool,
+) {
+    refresh_liveness_and_rest(world, doc);
+    let mut scratch = doc.take_scratch();
+    scratch.rebuild_rooted(doc, Some(container), t);
+    for b in doc.bindings() {
+        if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
+            continue;
+        }
+        let sampled = stack_eval::sample_stack(
+            doc,
+            &scratch,
+            stack_eval::Query {
+                entity: b.entity,
+                target: b.target,
+                prop: b.prop,
+                rest: b.rest.unwrap_or(0.0),
+            },
+        )
+        .map(AnimValue::Float);
+        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            write_prop(world, e, b.prop, v);
+        }
+    }
+    doc.put_scratch(scratch);
+}
+
 /// Pass 1 — liveness (P6), and the one chance to capture `rest`.
 ///
 /// It precedes the clock pass on purpose: a dead entity's Time Remap track must
@@ -253,7 +293,12 @@ pub fn key_time(doc: &TimelineDoc, entity: u64, t: f64) -> Option<f64> {
 /// `key_time` is this, thrown away: every caller that does not surface the reason
 /// says so by calling that one instead.
 pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::KeyRefusal> {
-    if doc.stack().is_empty() {
+    // **Which stack gates the answer is the SCRATCH's root**, not the scene's: a
+    // Containers editing view primes rooted (`prime_rooted`), and there "is there a
+    // stack between the playhead and the clip?" is a question about the CONTAINER's
+    // lanes. Asking `doc.stack()` here kept authoring inside a container hostage to
+    // whatever the SCENE happened to hold (Enio, 2026-07-22).
+    if doc.scratch().root().is_none() && doc.stack().is_empty() {
         return Ok(remapped_time(doc, entity, t));
     }
     let scratch = doc.scratch();
@@ -285,7 +330,9 @@ pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::Ke
 /// scratch, so the caller must have primed it at `t`
 /// ([`TimelineDoc::prime_stack`]).
 pub fn clip_playhead(doc: &TimelineDoc, t: f64) -> Result<f64, crate::KeyRefusal> {
-    if doc.stack().is_empty() {
+    // Root-aware for the same reason as [`key_home`]: rooted, the gate is the
+    // container's lanes, not the scene's.
+    if doc.scratch().root().is_none() && doc.stack().is_empty() {
         return Ok(t);
     }
     let scratch = doc.scratch();

@@ -180,7 +180,9 @@ impl AutokeyPlan {
 /// The value the scene is showing for `prop` right now — the same number the
 /// apply pass wrote. `None` when nothing drives it (the unbound path).
 fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
-    if doc.stack().is_empty() {
+    // Root-aware, like `key_home`: a scratch rooted in a container makes the
+    // CONTAINER's lanes the stack in question, whatever the scene holds.
+    if doc.scratch().root().is_none() && doc.stack().is_empty() {
         return curve_value(doc, entity, prop, t_secs);
     }
     let b = doc.binding_for(entity, prop)?;
@@ -215,7 +217,9 @@ pub fn key_value_in_active_clip(
     prop: PropKind,
     want: f32,
 ) -> Option<f32> {
-    if doc.stack().is_empty() {
+    // Root-aware, like `key_home` (the same 2026-07-22 fix): rooted, the blend to
+    // invert is the CONTAINER's, and the scene's emptiness is the wrong question.
+    if doc.scratch().root().is_none() && doc.stack().is_empty() {
         return Some(want);
     }
     let scratch = doc.scratch();

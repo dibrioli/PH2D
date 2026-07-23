@@ -85,57 +85,58 @@ fn the_keys_tab_inside_a_container_does_not_panic() {
     );
 }
 
-/// **The Arrange snapshot's map survives every playhead position** — including the gaps
-/// between instances, where the scratch-derived map used to vanish and the ruler with it
-/// (Enio, 2026-07-20: *"não consigo controlar/arrastar a playhead"*). The MARKER stays
-/// honest to the scene clock: present only while the scene playhead is inside the entered
-/// instance's window, mapped through the same relation the scrub writes with.
+/// **Inside a container the ruler is the container's OWN clock — identity, not the scene
+/// mapped** (Enio, 2026-07-22: *"o playback deve ser relativo ao container aberto"*). The
+/// shell hands `rebuild` the CONTAINER playhead, so `time_seconds`/`host_time` ARE the
+/// interior-local time, `container_open` marks the view, and the `host_map` readout — a
+/// SCENE fact (where the instance plays) — survives untouched because it is a pure function
+/// of the doc+path, independent of which clock the transport runs.
 #[test]
-fn the_arrange_map_holds_in_the_gaps_and_the_marker_stays_honest() {
+fn inside_a_container_the_ruler_is_its_own_clock_and_the_scene_readout_survives() {
     let (mut st, step) = nested_state();
     st.edit_path.push(step);
     let mut playhead = Playhead::new(1.0 / 60.0);
     let mut snap = TimelineViewSnapshot::default();
 
-    // Inside the entered instance: map AND marker, in the interior's clock.
-    playhead.seek(1.5);
-    snap.rebuild(&mut st, &playhead, false);
-    let m = snap.host_map.expect("inside the window the map is there");
-    assert!((m.t0 - 0.0).abs() < 1e-9 && (m.t1 - 2.0).abs() < 1e-9);
-    assert!(
-        snap.host_time.is_some_and(|u| (u - 1.5).abs() < 1e-9),
-        "marker at the interior second the map names, got {:?}",
-        snap.host_time
-    );
+    // The playhead handed in is the CONTAINER clock: whatever local second it stands at,
+    // that is the ruler's now, and it is offered as such.
+    for local in [0.25, 1.5] {
+        playhead.seek(local);
+        snap.rebuild(&mut st, &playhead, false);
+        assert_eq!(
+            snap.container_open,
+            Some(step.container),
+            "the view is marked as the container's — the door the ruler reads"
+        );
+        assert!(
+            snap.host_time.is_some_and(|u| (u - local).abs() < 1e-9),
+            "the ruler marks the interior-local playhead ({local}), got {:?}",
+            snap.host_time
+        );
+        assert!(
+            (snap.time_seconds - local).abs() < 1e-9,
+            "time_seconds IS the container clock now"
+        );
+    }
 
-    // In the GAP between instances: the map — and with it the scrub — is still offered
-    // (this is the fix); the marker is not (the interior is not being played HERE).
-    playhead.seek(3.0);
-    snap.rebuild(&mut st, &playhead, false);
+    // The breadcrumb readout is the SCENE relation — where the entered instance plays on
+    // the timeline — and it is there regardless of where the container clock stands.
+    let m = snap
+        .host_map
+        .expect("the scene relation survives the clock change");
     assert!(
-        snap.host_map.is_some(),
-        "the entry map must not flicker away in the gap — that froze the ruler"
+        (m.t0 - 0.0).abs() < 1e-9 && (m.t1 - 2.0).abs() < 1e-9,
+        "the [0,2) instance"
     );
-    assert_eq!(
-        snap.host_time, None,
-        "no marker: the scene playhead is outside the entered instance"
-    );
-
-    // Inside the OTHER instance: same story — the map is the ENTERED one's, the marker
-    // absent (this instance is not the one the animator walked into).
-    playhead.seek(5.0);
-    snap.rebuild(&mut st, &playhead, false);
-    let m = snap.host_map.expect("still the entered instance's map");
-    assert!((m.t1 - 2.0).abs() < 1e-9, "still [0,2), not [4,6)");
-    assert_eq!(snap.host_time, None);
 }
 
-/// **The loop braces inside a container are the TRANSPORT's, mapped to the interior** —
-/// never the document's scene loop drawn raw on the interior axis (Enio's screenshot,
-/// 2026-07-20: braces spanning 0..10.8 over a 2 s interior). The document loop is a
-/// DECOY here on purpose: a display that reads it bleeds.
+/// **The loop braces inside a container are the CONTAINER's OWN loop** — read from the
+/// document (`container_loop`), in the interior's own seconds, NEVER the scene's loop
+/// mapped in (Enio, 2026-07-22: *"o loop deve ser independente em cada modo"*). The SCENE
+/// loop is a DECOY on purpose: a display that reads it bleeds the Arrange's cycle into the
+/// container.
 #[test]
-fn the_loop_braces_inside_are_the_transports_mapped_to_the_interior() {
+fn the_loop_braces_inside_are_the_containers_own_loop() {
     let mut st = TimelineState::new();
     let doc = &mut st.doc;
     let e = 7u64;
@@ -158,6 +159,9 @@ fn the_loop_braces_inside_are_the_transports_mapped_to_the_interior() {
         )
         .unwrap();
     doc.set_active_loop_for(false, Some((0.0, 20.0))); // o decoy: o loop da CENA
+    // The container's OWN loop — a proper subset of its own [0,2) interior, distinct from
+    // the scene decoy so a display that read the wrong one cannot match by accident.
+    doc.set_container_loop(walk, Some((0.5, 1.5)), false);
     st.edit_path.push(EnterStep {
         container: walk,
         lane,
@@ -165,27 +169,22 @@ fn the_loop_braces_inside_are_the_transports_mapped_to_the_interior() {
     });
 
     let mut playhead = Playhead::new(1.0 / 60.0);
-    // ⚠️ Um SUBCONJUNTO PRÓPRIO da janela [4,6], de propósito: com o loop do transporte
-    // igual à janela, o decoy do doc (0,20) CLAMPADO pelo mapa dava as MESMAS chaves
-    // (0,2) e a mutação "ler o doc" ficou verde — o fixture não continha o fenômeno
-    // ([[feedback_a_green_gate_may_be_green_by_accident]]).
-    playhead.set_loop(4.5, 5.5);
-    playhead.seek(5.0);
+    playhead.seek(1.0);
     let mut snap = TimelineViewSnapshot::default();
     snap.rebuild(&mut st, &playhead, false);
     assert_eq!(
         snap.loop_range,
         Some((0.5, 1.5)),
-        "as chaves são o loop do TRANSPORTE no relógio do interior — não o (0,20) do doc"
+        "as chaves são o loop DO CONTAINER (0.5,1.5) — não o (0,20) da cena"
     );
     assert!(!snap.loop_ping_pong);
 
-    // O modo do transporte também é o exibido.
-    playhead.set_loop_mode(ph2d_core::LoopMode::PingPong);
+    // Ping-pong is the container's own too.
+    st.doc.set_container_loop(walk, Some((0.5, 1.5)), true);
     snap.rebuild(&mut st, &playhead, false);
-    assert!(snap.loop_ping_pong, "ping-pong do relógio, não do doc");
+    assert!(snap.loop_ping_pong, "ping-pong do container, não da cena");
 
-    // E na aba KEYS o loop volta a ser o do documento (o relógio dali é o do clip).
+    // E na aba KEYS o loop volta a ser o do clip (o relógio dali é o do clip).
     snap.rebuild(&mut st, &playhead, true);
     assert_eq!(
         snap.loop_range,

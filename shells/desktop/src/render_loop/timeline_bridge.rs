@@ -27,6 +27,10 @@ use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc_exce
 /// object was deleted — `timeline_persist::upkeep`); the caller rewinds the
 /// clocks and drops the panel's container trail, which this function cannot do
 /// because it only holds ONE of the two playheads.
+// The frame's inputs, each load-bearing (the world, the two-way state, the active
+// clock, the drag/displaced skips, and the two view discriminants `solo`/`container`).
+// Bundling them into a struct would hide which the caller must supply per frame.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn run(
     world: &mut World,
     timeline: &mut TimelineState,
@@ -35,6 +39,7 @@ pub(crate) fn run(
     live_entity: Option<u64>,
     ak: &mut super::autokey_pass::AutokeyState,
     solo: bool,
+    container: Option<usize>,
 ) -> bool {
     // **The Containers list has no playback mode** (Enio, 2026-07-22). The two
     // refusal layers upstream (the play button paints dead + unhittable; the
@@ -57,11 +62,16 @@ pub(crate) fn run(
     }
     let displaced = &ak.displaced;
     let skip = |bits: u64| live_entity == Some(bits) || displaced.contains(&bits);
-    // **Keys mode solos the active clip** (`apply_active_clip`): you see and pose
-    // exactly the curves you are editing, at the clip's own clock, with the stack
-    // out of the way. Arrange blends the stack at the timeline clock. Both honour
-    // `skip` (the gizmo-dragged entity, the displaced pin).
-    if solo {
+    // **Three clocks, three views** (Enio, 2026-07-16 / 2026-07-22):
+    // - Keys solos the active CLIP at its own clock (`apply_active_clip`) — pose the
+    //   exact curves you edit, stack out of the way.
+    // - Inside a container, solo the CONTAINER's interior at ITS clock
+    //   (`apply_container`) — the playback the animator is editing IS the container's.
+    // - Arrange blends the scene stack at the timeline clock.
+    // All honour `skip` (the gizmo-dragged entity, the displaced pin).
+    if let Some(c) = container {
+        ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
+    } else if solo {
         ph2d_timeline::apply_active_clip(world, &mut timeline.doc, playhead.time(), skip);
     } else {
         apply_from_doc_except(world, &mut timeline.doc, playhead.time(), skip);
@@ -94,16 +104,23 @@ pub(crate) fn intent_for_transport(
     // a fresh clip's duration is 0, which would pin both at t = 0 for every hand-keyed
     // animation.
     let duration = || timeline.doc.view_end_seconds(timeline.keys_mode);
-    // **Inside a container, "the whole thing" is the walked-into INSTANCE** — its scene
-    // window, leads included (`entry_reach`, the same door entering arms the loop
-    // through). Go-to-start/end land on its edges, and the Loop/PingPong toggles bracket
-    // it on the TRANSPORT only ([`TimelineIntent::SetTransportLoop`]): the document's
-    // loop is the SCENE's, and a toggle flipped while visiting an instance must not
-    // rewrite it (Enio, 2026-07-20). `None` at the root, or on a stale walk — then every
-    // arm below falls back to the scene behaviour it always had.
-    let reach = (!timeline.keys_mode && !timeline.edit_path.is_empty())
-        .then(|| ph2d_timeline::entry_reach(&timeline.doc, &timeline.edit_path))
+    // **Inside a container the transport is the CONTAINER's own clock** (Enio, 2026-07-22:
+    // *"o playback deve ser relativo ao container aberto em edição"*), so every command
+    // here speaks the container's LOCAL time: go-to-start is 0, go-to-end is its length,
+    // and Loop/PingPong write the CONTAINER's own loop ([`TimelineIntent::SetContainerLoop`],
+    // persisted on the `NamedContainer`) — independent of the scene's and of every clip's.
+    // `None` on Keys / at the scene root, where the arms below keep their old behaviour.
+    let container: Option<usize> = (!timeline.keys_mode)
+        .then(|| timeline.edit_path.last().map(|s| s.container))
         .flatten();
+    let container_len = |c: usize| {
+        ph2d_timeline::container_bar_seconds(
+            timeline
+                .doc
+                .host_end_seconds(ph2d_timeline::StackHost::Container(c))
+                .unwrap_or(0.0),
+        )
+    };
     match *ev {
         // No playback mode on the Containers LIST (Enio, 2026-07-22): the panel
         // already paints the button dead and unhittable — this layer keeps a
@@ -111,15 +128,16 @@ pub(crate) fn intent_for_transport(
         // ([[feedback_layered_defenses_need_per_layer_gates]]).
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY && timeline.containers_list => None,
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
-        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => {
-            Some(I::Scrub(reach.map_or(0.0, |(lo, _)| lo)))
-        }
+        // Go-to-start is 0 in every mode — the local start of whatever clock the shell
+        // hands us (scene, clip, or container). (In container mode the clock is the
+        // container's own, so 0 is its interior start, not the scene's.)
+        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
         PanelEvent::Click(id) if id == ids::TIMELINE_ADD_MARKER => Some(I::AddMarker {
             t_seconds: playhead.time(),
             label: format!("M{}", timeline.doc.markers().len() + 1),
         }),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => {
-            Some(I::Scrub(reach.map_or_else(duration, |(_, hi)| hi)))
+            Some(I::Scrub(container.map_or_else(duration, container_len)))
         }
         PanelEvent::Click(id) if id == ids::TIMELINE_PREV_FRAME => {
             Some(I::SeekFrame(playhead.frame(fps) - 1))
@@ -138,12 +156,15 @@ pub(crate) fn intent_for_transport(
         // anyone has to remember to enforce.
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP || id == ids::TIMELINE_PINGPONG => {
             let ping_pong = id == ids::TIMELINE_PINGPONG;
-            // Inside a container the toggle brackets the INSTANCE, transport-only (see
-            // `reach` above): on = its reach, off = no loop; leaving re-installs the
-            // scene's own loop (`on_nav_change`).
-            if let Some((lo, hi)) = reach {
-                return Some(I::SetTransportLoop {
-                    range: on.then_some((lo, hi)),
+            // Inside a container the toggle writes the CONTAINER's OWN loop, over its
+            // local `[0, length)` — persisted on the `NamedContainer`, independent of
+            // the scene's and every clip's (Enio, 2026-07-22). The leak this replaces
+            // was a container toggle reaching the SCENE's loop.
+            if let Some(c) = container {
+                let len = container_len(c).max(1.0 / fps.max(1.0));
+                return Some(I::SetContainerLoop {
+                    container: c,
+                    range: on.then_some((0.0, len)),
                     ping_pong: on && ping_pong,
                 });
             }
@@ -362,22 +383,29 @@ pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
 ///
 /// Edge-triggered, not stamped every frame, so the artist can still re-arm or clear the
 /// loop while inside — their gesture wins over the convenience.
-pub(crate) fn on_nav_change(
+/// **Entering / switching a container arms the CONTAINER clock with the container's
+/// OWN loop** (Enio, 2026-07-22) — `container` is the innermost the animator has walked
+/// into (`None` when they left back to the scene). It touches ONLY `container_ph`.
+///
+/// This replaces the old scene-side bracketing: entering a container no longer reaches
+/// the scene playhead at all, so the Arrange loop the artist authored survives every
+/// visit untouched. Leaving (`None`) does nothing — there is nothing on the scene clock
+/// to restore, because nothing on it was ever moved.
+pub(crate) fn on_container_nav_change(
     doc: &ph2d_timeline::TimelineDoc,
-    path: &[ph2d_timeline::EnterStep],
-    playhead: &mut ph2d_core::Playhead,
+    container: Option<usize>,
+    container_ph: &mut ph2d_core::Playhead,
 ) {
-    if path.is_empty() {
-        ph2d_timeline::sync_transport_loop(doc, playhead, false);
-        return;
-    }
-    let Some((lo, hi)) = ph2d_timeline::entry_reach(doc, path) else {
-        return; // a stale walk has no window; leave the transport as it stands
+    let Some(c) = container else {
+        return; // left to the scene: the scene clock was never ours to touch
     };
-    playhead.set_loop(lo, hi);
-    playhead.set_loop_mode(ph2d_core::LoopMode::Wrap);
-    if playhead.time() < lo || playhead.time() > hi {
-        playhead.seek(lo);
+    ph2d_timeline::sync_container_loop(doc, c, container_ph);
+    // Land inside the loop if one is set and the clock is parked outside it — the same
+    // courtesy the scene-side bracketing used to do, now on the container's own clock.
+    if let (Some((lo, hi)), _) = doc.container_loop(c)
+        && (container_ph.time() < lo || container_ph.time() > hi)
+    {
+        container_ph.seek(lo);
     }
 }
 
@@ -388,3 +416,7 @@ mod tests;
 #[cfg(test)]
 #[path = "timeline_bridge_k_tests.rs"]
 mod k_tests;
+
+#[cfg(test)]
+#[path = "timeline_bridge_container_tests.rs"]
+mod container_tests;

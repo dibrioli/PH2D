@@ -83,31 +83,13 @@ pub(crate) fn apply_event(
                 .map(|(_, v)| f64::from(v))
                 .unwrap_or(0.0);
             let local = state.view_start_s + v * state.view_span_s;
-            // **A régua lê num relógio e escreve noutro, e a conversão mora aqui.**
-            // No ARRANGE dentro de um container o eixo é o INTERIOR (é como as lanes estão
-            // dispostas), mas o playhead que o arrasto busca é o da TIMELINE — o único que
-            // existe (ADR-0133 §1). Sem converter, com a instância em 4 s, arrastar até o
-            // segundo 1 do interior buscava o segundo 1 da CENA: três segundos fora.
-            //
-            // ⚠️ A pergunta é da ABA, não só da trilha: na aba KEYS a régua é o relógio do
-            // CLIP e o valor cru já é o eixo — o mapa do container nem se aplica. Perguntar
-            // só à trilha engolia o scrub da Keys dentro de um container (crumbs cheios +
-            // `host_map` None em keys_mode) e o playhead congelava (Enio, 2026-07-20:
-            // *"ao pular de jump para keys, não consigo mover playhead"*).
-            let snap = crate::state::current_snapshot();
-            let time = if !state.tab.shows_lanes() || snap.crumbs.is_empty() {
-                local // Keys = relógio do clip · cena raiz = timeline: o eixo JÁ é o valor
-            } else {
-                match snap.host_map {
-                    Some(m) => m.host_time(local),
-                    // Sem inverso não há para onde buscar. `clock_for` já nem registra o
-                    // hit neste caso; a recusa está repetida aqui porque as duas camadas
-                    // protegem coisas diferentes — a de lá não OFERECE o controle, a daqui
-                    // não INVENTA um segundo se alguém voltar a oferecê-lo
-                    // ([[feedback_layered_defenses_need_per_layer_gates]]).
-                    None => return EventOutcome::Consumed,
-                }
-            };
+            // **O eixo da régua É o relógio que o arrasto busca — IDENTIDADE em todo modo**
+            // (Enio, 2026-07-22). O shell entrega o playhead do modo (cena · clip · CONTAINER)
+            // e a régua é desenhada nesse mesmo relógio, então o valor cru já é o tempo. Dentro
+            // de um container o transporte é o relógio DELE (`container_open`), não mais a cena
+            // mapeada — foi a troca de relógios (ler num, escrever noutro) que fazia o playback
+            // ser o do Arrange. Na aba KEYS o eixo é o clip; na cena raiz é a timeline.
+            let time = local;
             host.bus_mut()
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::SetValue(
                     id, time,

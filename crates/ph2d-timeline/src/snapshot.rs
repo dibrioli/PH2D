@@ -240,6 +240,13 @@ pub struct TimelineViewSnapshot {
     /// play" has no answer. The breadcrumb's readout must print *that* rather than a scene
     /// window which is really the container's own seconds wearing the scene's label.
     pub host_placed: bool,
+    /// **The container whose interior is on screen for editing** — `Some(c)` while the
+    /// animator is inside container `c`'s lanes (Enio, 2026-07-22). It marks the view where
+    /// the transport is the CONTAINER's own clock: the ruler reads [`Self::time_seconds`] as
+    /// the interior-local time (identity, not through [`Self::host_map`]), the scrub writes
+    /// that clock directly, and [`Self::loop_range`] is the container's own loop. `None`
+    /// everywhere else (Keys, the Containers list, Arrange).
+    pub container_open: Option<usize>,
     /// **Where the animator IS** — the breadcrumb, outermost first.
     ///
     /// Empty means the document's own stack (the trail still paints its root: "Scene"). Each
@@ -353,6 +360,7 @@ impl TimelineViewSnapshot {
         self.host_time = None;
         self.host_map = None;
         self.host_placed = false;
+        self.container_open = None;
         // The WHOLE path, outermost first — the trail has to say where you are, and where
         // you are is every level you walked through, not just the last one.
         for step in &state.edit_path {
@@ -372,28 +380,30 @@ impl TimelineViewSnapshot {
         // scene clock: it is drawn only while the scene playhead is inside this instance's
         // window (elsewhere the interior is not being played *here*).
         if !keys_mode && !state.edit_path.is_empty() {
+            // **The `host_map`/`host_placed` readout is the SCENE relation** — where this
+            // instance plays on the timeline ("plays 4.00-12.00 / not playing here"), a
+            // fact about the scene the breadcrumb shows. It is a pure function of the
+            // doc+path, INDEPENDENT of which clock the transport runs, so it survives the
+            // change below untouched.
             let clock = crate::entry_clock(doc, &state.edit_path);
             self.host_map = clock.map(|c| c.map);
             self.host_placed = clock.is_some_and(|c| c.placed);
-            self.host_time = self.host_map.and_then(|m| {
-                let t = playhead.time();
-                (t >= m.t0 && t <= m.t1).then(|| m.local_time(t))
-            });
-            // **The loop braces in here are the TRANSPORT's, mapped to the interior.**
-            // The document's Arrange loop is a SCENE fact; drawn raw on the interior's
-            // axis it spanned 0..10.8 over a 2 s interior (Enio's screenshot,
-            // 2026-07-20) — the same read-in-one-clock-write-in-another disease the
-            // ruler had. And the transport is the truth in here: entering brackets the
-            // instance on the playhead (`on_nav_change`), the toggles re-arm it
-            // (`SetTransportLoop`), and the document is deliberately untouched. The
-            // mapping clamps: the visible braces are the part of the loop that is HERE.
-            self.loop_range = self.host_map.and_then(|m| {
-                playhead.loop_range().and_then(|(a, b)| {
-                    let (la, lb) = (m.local_time(a), m.local_time(b));
-                    (lb > la).then_some((la, lb))
-                })
-            });
-            self.loop_ping_pong = self.loop_range.is_some() && playhead.is_ping_pong();
+            // **The transport in here is the CONTAINER's OWN clock now** (Enio,
+            // 2026-07-22): the shell hands `rebuild` the container playhead, so
+            // `time_seconds` IS the interior-local time and the ruler marks it directly
+            // (`container_open` below tells the panel to read it as identity, not through
+            // `host_map`). The old model ran the SCENE playhead mapped into here, which is
+            // why playback was the Arrange's.
+            let container = state.edit_path.last().map(|s| s.container);
+            self.container_open = container;
+            self.host_time = Some(playhead.time());
+            // **The loop braces are the CONTAINER's own loop** — read from the document
+            // (`container_loop`), in the interior's own seconds, NEVER mapped from the
+            // scene's. This is the leak the report named: the container's loop and the
+            // Arrange's are independent, each parked on its own clock (Enio, 2026-07-22).
+            let (range, ping) = container.map_or((None, false), |c| doc.container_loop(c));
+            self.loop_range = range;
+            self.loop_ping_pong = ping;
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host()).unwrap_or(&[]);
         self.lanes.clear();

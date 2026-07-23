@@ -298,7 +298,15 @@ impl App {
                 ph.pause();
                 ph
             },
+            // The Containers view's interior-time clock — paused, its own, for the
+            // same reason: playing a container's lanes never disturbs the scene.
+            container_playhead: {
+                let mut ph = Playhead::default();
+                ph.pause();
+                ph
+            },
             last_timeline_keys_mode: false,
+            last_timeline_container: None,
             timeline_last_selected: None,
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),

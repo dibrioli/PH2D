@@ -41,6 +41,15 @@ pub struct NamedContainer {
     pub name: String,
     /// The interior: lanes of strips, bottom to top — a stack like any other.
     pub stack: Vec<ClipLane>,
+    /// **The container's OWN loop**, in its own local clock (Enio, 2026-07-22: *"o loop
+    /// deve ser independente em cada modo — clip, arrange e container"*). Wraps the
+    /// CONTAINER playhead while its interior is open for editing — never the scene's
+    /// clock, never a clip's. Appended field (`DOC_VERSION` 9 -> 10, postcard is
+    /// positional; v9 is refused on load, the house rule for a hard break).
+    pub loop_range: Option<(f64, f64)>,
+    /// PingPong for [`Self::loop_range`] — the same one-loop-two-modes pair every
+    /// [`crate::NamedClip`] carries. Appended (v10).
+    pub loop_ping_pong: bool,
 }
 
 /// Which stack an edit is addressing: the document's own, or a container's interior.
@@ -103,8 +112,41 @@ impl TimelineDoc {
         self.containers_mut().push(NamedContainer {
             name,
             stack: Vec::new(),
+            loop_range: None,
+            loop_ping_pong: false,
         });
         self.containers().len() - 1
+    }
+
+    /// Container `index`'s own loop, `(range, ping_pong)` — the interior transport's
+    /// pair. Out of range (a stale walk): no loop.
+    #[must_use]
+    pub fn container_loop(&self, index: usize) -> (Option<(f64, f64)>, bool) {
+        self.containers()
+            .get(index)
+            .map_or((None, false), |c| (c.loop_range, c.loop_ping_pong))
+    }
+
+    /// Set container `index`'s own loop (out of range: no-op). The scene's loop and
+    /// every clip's are DELIBERATELY not in reach from here — each mode owns its own
+    /// (Enio, 2026-07-22), and one setter that could touch two of them is how the
+    /// container's loop leaked into the Arrange in the first place.
+    pub fn set_container_loop(&mut self, index: usize, range: Option<(f64, f64)>, ping_pong: bool) {
+        if let Some(c) = self.containers_mut().get_mut(index) {
+            c.loop_range = range;
+            c.loop_ping_pong = range.is_some() && ping_pong;
+        }
+    }
+
+    /// [`TimelineDoc::prime_stack`], ROOTED: build the scratch describing `root`'s
+    /// stack at `t` — the scene's for `None`, container `c`'s interior (soloed, in
+    /// its OWN clock) for `Some(c)`. The Containers editing view primes through
+    /// here so every scratch reader — the apply, auto-key, the manual K — answers
+    /// about the stack the animator is LOOKING at (Enio, 2026-07-22).
+    pub fn prime_rooted(&mut self, root: Option<usize>, t: f64) {
+        let mut scratch = self.take_scratch();
+        scratch.rebuild_rooted(self, root, t);
+        self.put_scratch(scratch);
     }
 
     /// Rename container `index` (out of range: no-op) — the sibling of

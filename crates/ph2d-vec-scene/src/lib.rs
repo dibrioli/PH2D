@@ -93,6 +93,11 @@ pub mod arc_path;
 /// avanço e ascender é o shell.
 pub mod text_path;
 
+/// **Pattern Along Path** ([`pattern_path::pattern_along`]) — um motivo copiado, RÍGIDO, ao longo
+/// de um caminho-guia (plano 23). Irmão do texto em caminho: consome o [`arc_path`] e o
+/// [`text_path::GlyphFrame`], e como o mapa é afim não há refit (o que o separa do Envelope).
+pub mod pattern_path;
+
 /// **A pilha de Live Path Effects** (ADR-0132): efeitos não-destrutivos e empilháveis,
 /// avaliados pelo `cooked()` logo depois do estágio da quina.
 pub mod effect;

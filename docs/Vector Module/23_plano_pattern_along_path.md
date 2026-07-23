@@ -142,3 +142,36 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
   (as fichas nas pontas + arrastar edita o campo CERTO) + arch-gate sobre o FONTE (desenho gateado
   no Select, fora do `overlay.edit`; gesto no cluster do Select) — o shell não é alcançável por
   unit test.
+
+## §7 — O Picker de caminho-guia (Enio 2026-07-23)
+
+> *"tanto a ferramenta Pattern on path como a ferramenta text on path devem ter um botão Picker onde
+> o usuário primeiro seleciona a shape, depois aperta o botão e seleciona o path. Dessa forma é mais
+> correto."*
+
+A disambiguação por seleção (`link_candidate`) tem de ADIVINHAR qual dos selecionados é a fonte e qual
+é o guia — e adivinha errado quando as premissas não valem (o *"escolhendo a si mesmo"* que o bbox só
+resolve no caso comum). O **Picker** remove a adivinhação: a **fonte** é a que estava selecionada
+quando o botão foi apertado, o **guia** é o que o clique seguinte acerta. Um é capturado, o outro é
+apontado — nunca há dois candidatos para a mesma vaga.
+
+- **Partilhado** por Pattern E Text on Path, pela MESMA infra: `crate::vec_pick::PathPick{PatternMotif,
+  TextObject}` (o pedido armado, com a fonte capturada) + `hover_outline` (o realce do guia sob o
+  cursor, pelo MESMO `path_at` do clique — o realce nunca mente sobre o que será escolhido).
+- **A auto-ligação por DOIS selecionados FICA.** As duas portas coexistem, em seleções diferentes: com
+  UM selecionado o painel oferece **"Pick Path"** (`can_pick`); com DOIS, **"Pattern on Path"** /
+  **"Text on Path"** (`can_link`). O Picker é a porta explícita e mais correta; a auto é a conveniência.
+- **O clique modal prende** (`input_dispatch::vec_path_pick_click`): fonte→guia via
+  `pattern_live::link` (Pattern) / `vec_text_ride::link_explicit` (Text — o `link` sem o
+  `link_candidate`, com as mesmas guardas). Clique no vazio OU botão direito **desiste**; sair do modo
+  Select limpa o pick.
+- **Spacing já dirige a CONTAGEM automaticamente** (o motor `k_lo..k_hi`, §2) — o pedido *"o número de
+  cópias se torna variável e automático conforme o espaçamento"* já era o comportamento; nada a
+  construir, só confirmado.
+- **Zero componente novo, zero schema** — o Picker reusa `VecPatternPath`/`VecTextPath`. Costura:
+  ids (`vector.{patternpath,textpath}.pick`) + painel (`can_pick` + botões) + render_loop
+  (arm/drain/publish/overlay) + input_dispatch (clique). Gates: seam dos 2 pickers + 2 de
+  `link_explicit` (prende o par + recusa par ruim).
+
+**Aberto (refinamento):** sem realce da FONTE (só do guia); sem tecla Escape dedicada (o botão direito
+e o clique no vazio já desistem).

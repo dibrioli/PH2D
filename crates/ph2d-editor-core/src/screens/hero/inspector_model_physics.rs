@@ -179,6 +179,11 @@ pub struct InspectorPhysicsInfo {
     /// **Arrasto de forma** (W-FormDrag): a resistência que sabe para onde o corpo
     /// aponta. Espelha o opcional `AreaFormDrag`. Mesma condição de Sensor que as irmãs.
     pub area_form_drag: f32,
+    /// **Torque de área** (W-AreaTorque): o giro (N·m) que esta área imprime a cada corpo
+    /// dentro dela — um redemoinho, uma mesa giratória. Espelha o opcional `AreaTorque`;
+    /// o SINAL é o sentido (`> 0` anti-horário), então ausente/zero é uma área que não
+    /// gira nada. Mesma condição de Sensor que as irmãs.
+    pub area_torque: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -295,6 +300,10 @@ pub enum PhysicsFieldEdit {
     /// Arrasto de FORMA (W-FormDrag) — resistência por secção + freio de rotação pela
     /// forma. Anexa o opcional `AreaFormDrag`, destacado em zero. SENSOR-only.
     AreaFormDrag(f32),
+    /// Torque de área (W-AreaTorque) — o giro que a zona imprime. Anexa o opcional
+    /// `AreaTorque`, destacado em zero (o SINAL é o sentido, não um valor a descartar).
+    /// SENSOR-only, como as irmãs.
+    AreaTorque(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

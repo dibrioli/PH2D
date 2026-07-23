@@ -1,7 +1,8 @@
 //! **Force zones** — an area that pushes whatever is inside it (ADR-0131 W-Area).
 //!
 //! Wind, an updraft, a conveyor, a current: a sensor collider carrying a force
-//! vector, applied each substep to every dynamic body overlapping it. Unity's
+//! vector (and, since W-AreaTorque, a rotational `torque` — a whirlpool, a
+//! turntable), applied each substep to every dynamic body overlapping it. Unity's
 //! `AreaEffector2D` and Godot's `Area2D` overrides are the same shape.
 //!
 //! ## A force, never an acceleration — and why that decides the model
@@ -68,6 +69,7 @@ pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
     let e = desc.effector?;
     let inert = e.force[0] == 0.0
         && e.force[1] == 0.0
+        && e.torque == 0.0
         && e.drag <= 0.0
         && e.density <= 0.0
         && e.form_drag <= 0.0;
@@ -146,6 +148,16 @@ pub(crate) fn apply(
                 continue;
             }
             b.apply_impulse(force * dt, true);
+            // The rotational push — a whirlpool, a turntable. `apply_torque_impulse`
+            // (NOT set_angular_velocity) so it is resisted by the moment of inertia,
+            // the exact mirror of the force above being resisted by mass: a long bar
+            // spins up less than a compact one of the same area, which is the feature.
+            // Guarded on non-zero so a pure-force / pure-drag zone never wakes a body
+            // for a torque it does not carry (`zone_effect` already refuses the wholly
+            // inert zone; this is the per-body echo of that).
+            if effect.torque != 0.0 {
+                b.apply_torque_impulse(effect.torque * dt, true);
+            }
             // The medium's resistance. ⚠️ Written as `v /= 1 + d·dt`, which is
             // *exactly* what rapier's own `linear_damping` integrator does — so the
             // word "drag" means one thing across the world default, the per-body

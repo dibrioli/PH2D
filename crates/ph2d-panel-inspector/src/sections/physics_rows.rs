@@ -314,6 +314,7 @@ pub(super) fn paint_collision_rows(
         for (label, id) in [
             ("Force X (N)", ids::INSP_PHYS_FORCE_X),
             ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
+            ("Torque (N·m)", ids::INSP_PHYS_AREA_TORQUE),
             ("Drag", ids::INSP_PHYS_AREA_DRAG),
             ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),
             ("Shape Drag", ids::INSP_PHYS_AREA_FORM_DRAG),

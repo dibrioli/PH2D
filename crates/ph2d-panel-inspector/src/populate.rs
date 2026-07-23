@@ -204,6 +204,11 @@ fn populate_physics(store: &mut WidgetStore) {
         // needs ~200 N just to hold it against gravity.
         (ids::INSP_PHYS_FORCE_X, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
         (ids::INSP_PHYS_FORCE_Y, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: newtons
+        // Torque zone (W-AreaTorque): N·m, signed (the sign is the spin direction). The
+        // linear/rotational pair with Force, so it wears the same generous signed range —
+        // weighed against the body's MOMENT OF INERTIA, which is smaller than its mass, so
+        // a modest number already spins a compact body briskly.
+        (ids::INSP_PHYS_AREA_TORQUE, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: N*m
         // The medium's resistance. Same range as the other drag knobs in this app —
         // it is the same law, so it must be the same numbers.
         (ids::INSP_PHYS_AREA_DRAG, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: drag coefficient

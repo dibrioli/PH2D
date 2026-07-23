@@ -111,6 +111,7 @@ impl crate::App {
             "29" => self.physics_smoke_events(),
             "30" => self.physics_smoke_impact_demolition(),
             "31" => self.physics_smoke_fast_impact(),
+            "32" => self.physics_smoke_spin_zone(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -16,7 +16,9 @@ use super::inspector_physics_tests::{apply, sprite_scene};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_editor::PhysicsFieldEdit;
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, PhysicsBridge, PhysicsSettings, RigidBody,
+};
 use ph2d_render::Sprite;
 
 use super::inspector_physics::build_physics_info;
@@ -185,6 +187,87 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
         "depois de 3 s a caixa na piscina tem de estar visivelmente mais alta que a \
          idêntica que caiu ao lado ({in_pool} vs {in_air}) — sem isso os cinco gestos \
          acima produziram uma piscina que não é água"
+    );
+}
+
+/// **Uma MESA GIRATÓRIA é autorável só com gestos da UI** (W-AreaTorque) — e o passo
+/// que a faz girar é um número só.
+///
+/// O oráculo nunca é "o componente `AreaTorque` existe": é a CENA. Uma caixa dentro da
+/// zona GIRA (a rotação cresce), a idêntica ao lado fica parada. Sem gravidade de mundo,
+/// para que a rampa de ângulo venha inteira do torque da zona e a caixa não caia para
+/// fora do sensor.
+#[test]
+fn a_spin_zone_is_authorable_with_ui_gestures_alone() {
+    let mut sim = SimWorld::new();
+    // O artista posiciona um retângulo de 4 x 4 m (a mesa).
+    let table = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+            Sprite::atlas(0, [4.0, 4.0], [0.6, 0.4, 0.9, 0.3]),
+        ))
+        .id();
+
+    // 1. Add. 2. Static (a mesa não cai). 3. Sensor (dá para entrar nela).
+    apply(&mut sim, table, PhysicsFieldEdit::Add);
+    apply(&mut sim, table, PhysicsFieldEdit::Kind(1));
+    apply(&mut sim, table, PhysicsFieldEdit::Sensor(true));
+    let i = build_physics_info(sim.world(), table.to_bits(), false, 5.0, 0).unwrap();
+    assert!(
+        i.is_sensor && i.kind_tag == 1,
+        "é o Sensor que faz a row Torque ser oferecida — sem ele o passo 4 não existe"
+    );
+
+    // 4. Torque (o giro) — um número só, e o sinal é o sentido. ⚠️ 0.5 gira a caixa 1x1
+    //    ~86 graus em 60 ticks: um giro claro, mas sub-revolução, para que a `rotation`
+    //    (que dá a volta em ±pi) não wrape e o oráculo seja legível.
+    apply(&mut sim, table, PhysicsFieldEdit::AreaTorque(0.5));
+    let i = build_physics_info(sim.world(), table.to_bits(), false, 5.0, 0).unwrap();
+    assert_eq!(
+        i.area_torque, 0.5,
+        "a row Torque tem de anexar o `AreaTorque` com o valor autorado"
+    );
+
+    // O oráculo: duas caixas 1x1 idênticas, uma dentro da mesa, a outra fora.
+    let box_at = |sim: &mut SimWorld, x: f32| {
+        sim.world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.5,
+                        half_y: 0.5,
+                    },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x, 0.0)),
+            ))
+            .id()
+    };
+    let inside = box_at(&mut sim, 0.0);
+    let outside = box_at(&mut sim, 8.0);
+
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_settings(PhysicsSettings {
+        gravity_y: 0.0,
+        ..Default::default()
+    });
+    for t in 1..=60 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let rot = |sim: &SimWorld, e: Entity| sim.world().get::<Transform>(e).unwrap().rotation;
+    let (spun, still) = (rot(&sim, inside), rot(&sim, outside));
+    assert!(
+        spun.abs() > 0.5,
+        "depois de 1 s a caixa na mesa tem de ter girado visivelmente (rotação {spun}) — \
+         sem isso os quatro gestos acima produziram uma mesa que não gira"
+    );
+    assert!(
+        still.abs() < 1e-4,
+        "a caixa fora da mesa não pode girar (rotação {still})"
     );
 }
 

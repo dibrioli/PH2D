@@ -122,6 +122,21 @@ pub struct AreaEffect {
     /// Coexiste com o `drag` porque são mecanismos diferentes e ambos existem: *Drag* é
     /// viscosidade (xarope), *Shape Drag* é resistência de forma (água).
     pub form_drag: f32,
+    /// **Torque de área** (N·m) — o análogo ROTACIONAL da [`force`](AreaEffect::force).
+    ///
+    /// `0` (o default) é byte-idêntico a antes deste campo. Diferente de zero, a área
+    /// aplica esse torque a cada corpo dinâmico dentro dela, a cada sub-passo — um
+    /// redemoinho, uma mesa giratória, uma esteira que gira. O sinal é o sentido (`> 0`
+    /// anti-horário, `< 0` horário), então o neutro é `== 0` e não `<= 0` como o dos
+    /// irmãos de arrasto.
+    ///
+    /// ⚠️ **Um torque, nunca uma aceleração angular** — exatamente a escolha que a
+    /// [`force`](AreaEffect::force) faz no eixo linear. O impulso `τ·dt` é resistido
+    /// pelo MOMENTO DE INÉRCIA do corpo, então um tronco comprido gira mais devagar que
+    /// uma bola de mesma área: a forma resiste ao giro como a massa resiste à translação,
+    /// e essa assimetria É a feature. Uma zona de *aceleração angular* seria independente
+    /// da forma e uma segunda porta para o que a inércia já responde.
+    pub torque: f32,
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

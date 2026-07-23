@@ -70,6 +70,7 @@ fn zone_full(
             drag,
             density,
             form_drag: 0.0,
+            torque: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -98,6 +99,43 @@ fn x_of(w: &PhysicsWorld, h: RigidBodyHandle) -> f32 {
 
 fn vx_of(w: &PhysicsWorld, h: RigidBodyHandle) -> f32 {
     w.bodies().get(h).expect("body alive").linvel().x
+}
+
+/// A static sensor box carrying a TORQUE and nothing else — the spin zone
+/// (W-AreaTorque). Force/drag/density are all zero so the torque gates read without a
+/// stray field.
+fn torque_zone(x: f32, y: f32, half_x: f32, half_y: f32, torque: f32) -> BodyDesc {
+    BodyDesc {
+        is_sensor: true,
+        effector: Some(AreaEffect {
+            force: [0.0, 0.0],
+            drag: 0.0,
+            density: 0.0,
+            form_drag: 0.0,
+            torque,
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            x,
+            y,
+            ShapeDesc::Cuboid { half_x, half_y },
+        )
+    }
+}
+
+/// A dynamic box of the given half-extents at `(x, y)`. Its MOMENT OF INERTIA is a
+/// function of those extents, which is the whole point of the inertia gate.
+fn box_body(x: f32, y: f32, half_x: f32, half_y: f32) -> BodyDesc {
+    desc(
+        RigidBodyType::Dynamic,
+        x,
+        y,
+        ShapeDesc::Cuboid { half_x, half_y },
+    )
+}
+
+fn w_of(w: &PhysicsWorld, h: RigidBodyHandle) -> f32 {
+    w.bodies().get(h).expect("body alive").angvel()
 }
 
 /// Spawn a zone and one ball in the requested order, so both branches of "which
@@ -180,6 +218,126 @@ fn the_zone_pushes_with_a_force_so_mass_resists_it() {
              (ratio ~4), got {ratio} ({dl} / {dh})"
         );
     }
+}
+
+#[test]
+fn a_torque_zone_spins_a_body_inside_it_and_one_outside_is_still() {
+    // The rotational sibling of the push gate. A body inside a torque zone spins up;
+    // an identical body outside it does not. Mutation: dropping `apply_torque_impulse`
+    // leaves the inside body at zero angular velocity, which this asserts against.
+    for zone_first in [true, false] {
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let (_z, inside) = zone_and_ball(
+            &mut w,
+            torque_zone(0.0, 0.0, 2.0, 2.0, 4.0),
+            box_body(0.0, 0.0, 0.3, 0.3),
+            zone_first,
+        );
+        // Control ABOVE the zone (out of the way), never beside — the spinner does not
+        // travel, but keeping the convention makes the pair of gates read the same.
+        let outside = w.spawn_body(box_body(0.0, 6.0, 0.3, 0.3));
+        for _ in 0..60 {
+            w.step();
+        }
+        assert!(
+            w_of(&w, inside) > 0.5,
+            "zone_first={zone_first}: a body inside a +torque zone should spin up (w>0), \
+             but w={} -- the zone is not applying its torque",
+            w_of(&w, inside)
+        );
+        assert!(
+            w_of(&w, outside).abs() < 1e-6,
+            "zone_first={zone_first}: a body outside must not spin, w={}",
+            w_of(&w, outside)
+        );
+    }
+}
+
+#[test]
+fn the_torque_sign_sets_the_spin_direction() {
+    // The sign IS the direction, which is why the neutral is `== 0` and not `<= 0`: a
+    // negative torque is clockwise, a real thing, not an invalid value. Mutation:
+    // clamping the torque to `>= 0` (as the drag knobs are clamped) makes the CW case
+    // stand still, and this is the gate that sees it.
+    let spin = |torque: f32| {
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        w.spawn_body(torque_zone(0.0, 0.0, 2.0, 2.0, torque));
+        let b = w.spawn_body(box_body(0.0, 0.0, 0.3, 0.3));
+        for _ in 0..60 {
+            w.step();
+        }
+        w_of(&w, b)
+    };
+    let (ccw, cw) = (spin(4.0), spin(-4.0));
+    assert!(
+        ccw > 0.5,
+        "a positive torque spins counter-clockwise (w>0), got {ccw}"
+    );
+    assert!(
+        cw < -0.5,
+        "a negative torque spins clockwise (w<0), got {cw}"
+    );
+    assert!(
+        (ccw + cw).abs() < 1e-4,
+        "the two directions must be mirror images (|+w| == |-w|), got {ccw} and {cw}"
+    );
+}
+
+#[test]
+fn the_zone_spins_with_a_torque_so_the_moment_of_inertia_resists_it() {
+    // ⚠️ The gate that says this is a TORQUE and not an angular acceleration — the exact
+    // mirror of `the_zone_pushes_with_a_force_so_mass_resists_it`. A long bar has a far
+    // larger moment of inertia than a compact box of the SAME mass, so the same torque
+    // spins it up much less. Applying the torque as an acceleration (dividing out the
+    // inertia) makes both reach the same angular velocity, and only this gate can see it.
+    //
+    // Same area (=> same mass at the same density): the compact box is 1x1 and the bar is
+    // 4x0.25. Box I = m(1+1)/12; bar I = m(16+0.0625)/12 ~= 8x the box's — so the bar
+    // spins up roughly 8x slower.
+    let mut w = PhysicsWorld::new();
+    w.set_gravity(0.0, 0.0);
+    w.spawn_body(torque_zone(0.0, 0.0, 6.0, 6.0, 4.0));
+    let compact = w.spawn_body(box_body(-2.0, 0.0, 0.5, 0.5));
+    let bar = w.spawn_body(box_body(2.0, 0.0, 2.0, 0.125));
+    for _ in 0..60 {
+        w.step();
+    }
+    let (wc, wb) = (w_of(&w, compact), w_of(&w, bar));
+    assert!(
+        wc > 0.1 && wb > 0.0,
+        "both must spin: compact {wc} / bar {wb}"
+    );
+    assert!(
+        wc > wb * 4.0,
+        "the compact box (small inertia) must spin up far faster than the long bar \
+         (large inertia) under the same torque -- got {wc} vs {wb}. If they are close, \
+         the torque is being applied as an ACCELERATION, not a torque"
+    );
+}
+
+#[test]
+fn a_solid_torque_zone_spins_nothing() {
+    // The sensor coupling, at the torque layer: a solid collider records no intersection,
+    // so it has nobody to spin (and it blocks instead). Mirrors `a_solid_zone_pushes_
+    // nothing`; the §11 row offers Torque only for a sensor for the same reason.
+    let mut w = PhysicsWorld::new();
+    w.set_gravity(0.0, 0.0);
+    let mut z = torque_zone(0.0, 0.0, 2.0, 2.0, 8.0);
+    z.is_sensor = false;
+    w.spawn_body(z);
+    // Beside the solid box, not on it, so this measures the ABSENCE of a spin, not a
+    // collision.
+    let b = w.spawn_body(box_body(3.0, 0.0, 0.3, 0.3));
+    for _ in 0..60 {
+        w.step();
+    }
+    assert!(
+        w_of(&w, b).abs() < 1e-6,
+        "a SOLID torque zone must spin nothing, w={}",
+        w_of(&w, b)
+    );
 }
 
 /// A ball dropped on a static floor and left alone until it **falls asleep** —
@@ -315,6 +473,7 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
                 drag: 0.0,
                 density: 0.0,
                 form_drag: 0.0,
+                torque: 0.0,
             }),
             ..desc(
                 RigidBodyType::Fixed,
@@ -522,6 +681,7 @@ fn an_inert_zone_is_byte_identical_whether_it_is_zero_force_or_zero_drag() {
             drag: 0.0,
             density: 0.0,
             form_drag: 0.0,
+            torque: 0.0,
         }),
         None,
     ]

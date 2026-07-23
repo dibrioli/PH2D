@@ -586,3 +586,40 @@ impl AreaFormDrag {
 }
 
 impl SimComponent for AreaFormDrag {}
+
+/// **Torque de área** — o análogo ROTACIONAL do [`AreaEffector`] (W-AreaTorque).
+///
+/// Ausente (o caso comum) é uma área que não gira nada. Presente, seu `f32` é um torque
+/// em N·m aplicado a cada sub-passo a todo corpo DINÂMICO que sobrepõe este collider: um
+/// redemoinho, uma mesa giratória, uma esteira que gira. Enquanto o `AreaEffector` empurra
+/// pelo centro de massa (não gira nada), este é a metade que FAZ girar.
+///
+/// ⚠️ **Um torque, resistido pelo MOMENTO DE INÉRCIA** — não uma aceleração angular. Um
+/// tronco comprido gira mais devagar que uma bola de mesma área, exatamente como a folha
+/// voa e o caixote não sob a `force`: a forma resiste ao giro como a massa resiste à
+/// translação. Uma zona de *aceleração* seria independente da forma e uma segunda porta
+/// para o que a inércia já responde.
+///
+/// ⚠️ **O sinal é o SENTIDO** (`> 0` anti-horário, `< 0` horário), então o neutro é
+/// `== 0.0` — diferente dos irmãos de arrasto, cujo neutro é `<= 0.0` (arrasto negativo
+/// adicionaria energia). Um torque negativo é uma direção, não um valor inválido.
+///
+/// Quinto componente da mesma área, pela quinta vez pela mesma razão: um blob de
+/// componente é postcard POSICIONAL, então apendar campo no [`AreaEffector`] seria bump
+/// de `PROJECT_SCHEMA` — e um bump **recusa todo projeto já salvo**. Mesmo acoplamento dos
+/// irmãos: só morde num collider **SENSOR**, e a row da §11 é oferecida sob exatamente essa
+/// condição. Config, nunca estado vivo.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AreaTorque(pub f32);
+
+impl AreaTorque {
+    /// É neutro — uma área que não gira nada? Um torque de exatamente zero. Usado para
+    /// DESTACAR, mas com `== 0.0`: um torque negativo é um SENTIDO (horário), não um
+    /// valor a descartar como o arrasto negativo dos irmãos.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.0 == 0.0
+    }
+}
+
+impl SimComponent for AreaTorque {}

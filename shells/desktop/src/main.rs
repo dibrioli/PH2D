@@ -130,6 +130,7 @@ mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
+mod physics_smoke_zones;
 mod project;
 mod project_painter;
 mod render_loop;

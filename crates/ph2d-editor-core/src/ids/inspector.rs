@@ -349,6 +349,10 @@ pub const INSP_PHYS_ONEWAY: [NodeId; 2] = [
 /// overlap for a solid one. Detaches its `AreaEffector` at zero on both axes.
 pub const INSP_PHYS_FORCE_X: NodeId = hash_node_id("insp_phys_force_x");
 pub const INSP_PHYS_FORCE_Y: NodeId = hash_node_id("insp_phys_force_y");
+/// §11 Torque de área (W-AreaTorque) — o giro (N·m) que este SENSOR imprime a cada corpo
+/// dentro dele, um redemoinho ou mesa giratória. O SINAL é o sentido; destaca seu
+/// `AreaTorque` em zero exato (não clampa negativo, ao contrário dos irmãos de arrasto).
+pub const INSP_PHYS_AREA_TORQUE: NodeId = hash_node_id("insp_phys_area_torque");
 /// §11 Area drag (W-AreaDrag) — the resistance the medium inside this SENSOR offers.
 /// The other half of a force zone: force is the push, this is the water. Same law as
 /// the world default drag; detaches its `AreaDrag` at zero.

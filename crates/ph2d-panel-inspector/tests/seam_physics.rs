@@ -62,6 +62,7 @@ fn with_body() -> InspectorPhysicsInfo {
         area_drag: 0.0,
         area_density: 0.0,
         area_form_drag: 0.0,
+        area_torque: 0.0,
     }
 }
 
@@ -1241,9 +1242,10 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // ⚠️ All THREE, including Drag (W-AreaDrag). A sweep that enumerates the rows it
     // knows about is the premise that rots: the next row added to the sensor block
     // must be in this list, and the seam is where its absence shows.
-    const FORCE_IDS: [ph2d_a11y::NodeId; 5] = [
+    const FORCE_IDS: [ph2d_a11y::NodeId; 6] = [
         ids::INSP_PHYS_FORCE_X,
         ids::INSP_PHYS_FORCE_Y,
+        ids::INSP_PHYS_AREA_TORQUE,
         ids::INSP_PHYS_AREA_DRAG,
         ids::INSP_PHYS_AREA_DENSITY,
         ids::INSP_PHYS_AREA_FORM_DRAG,
@@ -1286,6 +1288,14 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         &commit(sensor, ids::INSP_PHYS_FORCE_Y, -3.25),
         PhysicsFieldEdit::ForceY(-3.25),
         "Force Y",
+    );
+    // ⚠️ A NEGATIVE value on purpose (W-AreaTorque): the sign is the spin direction, so it
+    // must survive the event layer intact — a clamp here (as the drag rows take) would
+    // silently drop the clockwise half.
+    expect(
+        &commit(sensor, ids::INSP_PHYS_AREA_TORQUE, -7.5),
+        PhysicsFieldEdit::AreaTorque(-7.5),
+        "Torque",
     );
     expect(
         &commit(sensor, ids::INSP_PHYS_AREA_DRAG, 4.0),

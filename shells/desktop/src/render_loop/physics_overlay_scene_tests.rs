@@ -12,7 +12,7 @@
 
 use super::tests::{camera, points, window};
 use super::{
-    DYNAMIC_RGBA, EFFECTOR_RGBA, SENSOR_ACTIVE_RGBA, SENSOR_IDLE_RGBA, STATIC_RGBA,
+    DYNAMIC_RGBA, EFFECTOR_RGBA, SENSOR_ACTIVE_RGBA, SENSOR_IDLE_RGBA, STATIC_RGBA, TORQUE_RGBA,
     collider_outline, outline_rgba, outlines,
 };
 use ph2d_physics_ecs::{BodyKind, ColliderShape, ShapeDesc};
@@ -470,4 +470,78 @@ fn a_force_zone_draws_its_push_even_while_the_clock_runs() {
 
     // And the whole thing obeys the toggle, like every other piece of this chrome.
     assert!(outlines(false, false, &mut pushing, &[], &camera(), window()).is_empty());
+}
+
+/// **A torque zone draws a spin glyph showing which way it turns — and keeps drawing it
+/// while the clock runs** (W-AreaTorque).
+///
+/// The rotational sibling of the force-arrow gate. A pure whirlpool carries no force
+/// arrow, so without this glyph a spin zone would be an invisible property — a magenta
+/// box no different from a sensor that merely notices things. The SIGN is the direction,
+/// so the two handednesses must draw DIFFERENT shapes: a glyph that ignored the sign
+/// would tell the artist a clockwise zone spins counter-clockwise.
+#[test]
+fn a_torque_zone_draws_its_spin_even_while_the_clock_runs() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{AreaTorque, Collider, RigidBody};
+
+    let zone = |torque: f32| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 1.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+            AreaTorque(torque),
+        ));
+        sim
+    };
+
+    // A spinning zone: outline + glyph, and the glyph is its own colour.
+    let mut ccw = zone(8.0);
+    let drawn = outlines(true, false, &mut ccw, &[], &camera(), window());
+    assert_eq!(
+        drawn.len(),
+        2,
+        "a torque zone should draw its outline AND a spin glyph, got {} paths",
+        drawn.len()
+    );
+    assert_eq!(
+        drawn[1].1, TORQUE_RGBA,
+        "the spin glyph must not wear a colour that already means something else"
+    );
+
+    // The sign is the direction: the +torque glyph and the -torque glyph must be
+    // DIFFERENT shapes (opposite sweeps), not the same arc drawn twice. Mirror the sign
+    // and the arc points move.
+    let mut cw = zone(-8.0);
+    let cw_drawn = outlines(true, false, &mut cw, &[], &camera(), window());
+    let (a, b) = (points(&drawn[1].0), points(&cw_drawn[1].0));
+    assert!(
+        a.iter()
+            .zip(b.iter())
+            .any(|(p, q)| (p.0 - q.0).abs() > 1.0 || (p.1 - q.1).abs() > 1.0),
+        "a +torque and a -torque glyph must differ (the sign is the spin direction), but \
+         they drew the same shape"
+    );
+
+    // A zone that spins nothing draws no glyph — the outline alone.
+    let mut idle = zone(0.0);
+    assert_eq!(
+        outlines(true, false, &mut idle, &[], &camera(), window()).len(),
+        1,
+        "a zero torque must draw no glyph — a spin of no strength is not a whirlpool"
+    );
+
+    // And it obeys the toggle, like every other piece of this chrome.
+    assert!(outlines(false, false, &mut ccw, &[], &camera(), window()).is_empty());
 }

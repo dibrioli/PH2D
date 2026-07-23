@@ -27,9 +27,9 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, BodyKind, Collider, ColliderShape,
-        CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
-        MassOverride, MaterialCombine, RigidBody,
+        AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, BodyKind, Collider,
+        ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
+        InitialVelocity, MassOverride, MaterialCombine, RigidBody,
     };
     const RIGID_BODY: &str = "ph2d::physics::RigidBody";
     const COLLIDER: &str = "ph2d::physics::Collider";
@@ -43,6 +43,7 @@ pub(crate) fn apply_physics_edit(
     const AREA_DRAG: &str = "ph2d::physics::AreaDrag";
     const AREA_BUOYANCY: &str = "ph2d::physics::AreaBuoyancy";
     const AREA_FORM_DRAG: &str = "ph2d::physics::AreaFormDrag";
+    const AREA_TORQUE: &str = "ph2d::physics::AreaTorque";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -342,6 +343,23 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
+    if let PhysicsFieldEdit::AreaTorque(v) = edit {
+        // O torque de área (W-AreaTorque) — o quinto componente desta zona, mesmo gate
+        // SENSOR dos irmãos. ⚠️ NÃO clampa em `>= 0`: o sinal é o SENTIDO (negativo =
+        // horário), então só o zero exato destaca (`is_neutral` == 0.0). Clampar tiraria
+        // metade dos redemoinhos.
+        if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
+            return;
+        }
+        let t = AreaTorque(v);
+        if t.is_neutral() {
+            queue_remove(queue, registry, entity_bits, AREA_TORQUE);
+        } else {
+            queue_set(queue, registry, entity_bits, AREA_TORQUE, &t);
+        }
+        return;
+    }
+
     if let PhysicsFieldEdit::AreaDensity(v) = edit {
         // A densidade do fluido (W-Buoyancy) — o terceiro componente desta área, mesmo
         // gate SENSOR dos irmãos. Uma densidade negativa não é uma coisa; zero é a área
@@ -563,7 +581,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::ForceY(_)
         | PhysicsFieldEdit::AreaDrag(_)
         | PhysicsFieldEdit::AreaDensity(_)
-        | PhysicsFieldEdit::AreaFormDrag(_) => {
+        | PhysicsFieldEdit::AreaFormDrag(_)
+        | PhysicsFieldEdit::AreaTorque(_) => {
             unreachable!("handled above")
         }
     }

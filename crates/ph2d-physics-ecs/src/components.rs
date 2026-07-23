@@ -241,7 +241,7 @@ impl SimComponent for Collider {}
 mod overrides;
 
 pub use overrides::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, Ccd, CombineRule, DampMode,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, Ccd, CombineRule, DampMode,
     DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY,
     LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };

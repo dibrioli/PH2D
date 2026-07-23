@@ -34,7 +34,8 @@ use crate::vec_glyph::TextPlacement;
 /// conversão `× px_to_world` na fronteira. **Maior** que as alças de nó (`ENVELOPE_HANDLE_R_PX`
 /// 6.0, `connector::HANDLE_R_PX` 7.0): a alça de uma relação é uma ficha grande, não um ponto de
 /// geometria, e espelha o `text_handle::HANDLE_R_PX` do renderer (os dois têm de concordar).
-pub(crate) const HANDLE_R_PX: f64 = 10.0; // LITERAL-PX-OK: raio de alça, medida de INTERAÇÃO
+/// 15 px = 50% maior que o 10 inicial (Enio, smoke).
+pub(crate) const HANDLE_R_PX: f64 = 15.0; // LITERAL-PX-OK: raio de alça, medida de INTERAÇÃO
 
 /// O caminho-guia + o vínculo que o escolheu, prontos para serem cavalgados.
 pub(crate) struct Guide {

@@ -32,8 +32,9 @@ use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, Strok
 /// Raio da bolinha, em pixels de tela. Espelha o `vec_text_ride::HANDLE_R_PX` do host — o mesmo
 /// número dos dois lados, senão o desenho e o hit-test discordariam sobre o tamanho da alça.
 /// **Grande de propósito** (as âncoras/cantos são 6): a alça de uma relação não é um ponto de
-/// geometria, e o tamanho é metade do que a separa deles (Enio, smoke).
-const HANDLE_R_PX: f64 = 10.0;
+/// geometria, e o tamanho é metade do que a separa deles. 15 px = 50% maior que o 10 inicial,
+/// a pedido do Enio (smoke).
+const HANDLE_R_PX: f64 = 15.0;
 
 /// Espessura do anel de contraste, em pixels — um pouco mais grosso que o das alças de nó, para a
 /// ficha ler como sólida a qualquer zoom.

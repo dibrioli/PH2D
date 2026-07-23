@@ -6,17 +6,21 @@
 //! Offset, e as duas escrevem o MESMO `start_offset` (o host garante isso; ver
 //! `vec_text_ride::handle`).
 //!
-//! # Grande, sólida e colorida — e por quê (Enio, smoke)
+//! # Grande, sólida e âmbar — e por quê (Enio, smoke ×2)
 //!
-//! ⚠️ A 1ª versão era pequena (7 px) e VAZADA (anel), no modo Node — e ali se confundia com as
-//! âncoras dos outros paths, que são exatamente anéis pequenos. Duas mudanças, uma decisão de
-//! produto: a alça mudou para o **Select** (onde não há âncoras a poluir a tela) e virou um
-//! **disco SÓLIDO grande** (10 px vs 6 das âncoras), preenchido de `Accent` com um anel de
-//! contraste. Não é uma alça de nó a mais — é a alça primária de uma relação, e lê como uma
-//! ficha, não como um ponto de geometria.
+//! ⚠️ **Duas correções, dois smokes.** A 1ª versão era pequena (7 px), VAZADA e no modo Node — e
+//! ali se confundia com as âncoras dos outros paths (anéis pequenos). A 2ª virou disco sólido no
+//! Select, mas **preenchido de `Accent`** — e o `Accent` deste tema é o MESMO rosa/magenta do
+//! gizmo de sprite, então a ficha se perdia entre os quadradinhos da caixa de transformação.
 //!
-//! **Cheia sempre**, e mais escura durante o arrasto (`AccentPress`): o estado no preenchimento,
-//! como as irmãs, mas o corpo nunca some — ela é o objeto que o artista agarra.
+//! Agora é **âmbar** (`Warn`): distinto do rosa do gizmo E do azul do texto, sem depender do
+//! matiz do accent (que varia por tema). Não é semântica de aviso — âmbar é a cor clássica de
+//! *alça que se agarra*, e é o que a separa de tudo o mais na tela. Disco SÓLIDO grande (10 px vs
+//! 6 das âncoras), com anel de contraste — lê como a alça primária de uma relação, não como um
+//! ponto de geometria.
+//!
+//! **Cheia sempre**, e mais escura durante o arrasto (`WarnSoft`→`Warn`): o estado no
+//! preenchimento, como as irmãs, mas o corpo nunca some — ela é o objeto que o artista agarra.
 //!
 //! O raio espelha o `vec_text_ride::HANDLE_R_PX` do host (o hit-test lê o dele, `× px_to_world`);
 //! dois números fariam o dedo pegar num sítio e a bolinha acender noutro. O desenho é em espaço de
@@ -50,14 +54,15 @@ pub fn draw_text_handle(
         let c = t.resolve(theme);
         VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
     };
-    // O corpo é `Accent` (`AccentPress` sob o dedo); o anel é `AccentFg`, a cor de contraste
-    // GARANTIDO sobre o accent — a ficha lê tanto sobre a arte escura quanto sobre a clara.
+    // O corpo é **âmbar** (`Warn`) — distinto do rosa do gizmo e do azul do texto; sob o dedo
+    // escurece para `WarnSoft`. O anel é `BorderEmph` (o mesmo contorno das alças irmãs), que
+    // contrasta com o âmbar em qualquer tema.
     let body = vello(if dragging {
-        ColorToken::AccentPress
+        ColorToken::WarnSoft
     } else {
-        ColorToken::Accent
+        ColorToken::Warn
     });
-    let ring = vello(ColorToken::AccentFg);
+    let ring = vello(ColorToken::BorderEmph);
 
     let dot = Circle::new(transform * Point::new(at[0], at[1]), HANDLE_R_PX);
     target.inner_mut().fill(

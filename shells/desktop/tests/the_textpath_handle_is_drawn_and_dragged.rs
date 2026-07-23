@@ -42,6 +42,21 @@ fn the_render_loop_draws_the_handle_gated_on_select_mode() {
         "o desenho não lê o ponto da alça de `handle::world` — uma 2ª derivação divergiria do \
          hit-test, e a alça seria pintada num sítio e agarrada noutro"
     );
+    // ⚠️ **E FORA do bloco `if overlay.edit` — o bug do 1º smoke do Select.** Aquele bloco é
+    // FALSO no modo Select (as âncoras não aparecem lá, ADR-0112), então um desenho lá dentro
+    // NUNCA roda no único modo em que a alça existe. A prova: o `draw_text_handle` vem DEPOIS do
+    // `draw_connector_handles` — que é a região comprovadamente fora do `overlay.edit` (as alças
+    // do conector são do Select pela mesma razão). Se alguém o puser de volta no bloco de edição,
+    // ele passa a preceder o do conector e este gate fica VERMELHO.
+    let draw_at = rl.find("draw_text_handle").expect("desenho da alça");
+    let conn_at = rl
+        .find("draw_connector_handles")
+        .expect("desenho das alças do conector");
+    assert!(
+        draw_at > conn_at,
+        "o `draw_text_handle` está ANTES do `draw_connector_handles` — provavelmente dentro do \
+         bloco `if overlay.edit`, onde nunca desenha no modo Select (o bug do smoke)"
+    );
 }
 
 /// O GESTO da alça está costurado no ponteiro: press (arma), move (arrasta), release (limpa).

@@ -3361,7 +3361,7 @@ Enio, a fronteira que o W7 desenhou — este canal é o primitivo + a leitura vi
 consumidor. E o toque começa-e-termina no MESMO sub-passo (túnel sem CCD) fica sem evento por
 construção.
 
-## W-AreaTorque — a MESA GIRATÓRIA (2026-07-22, cena `=32`, pendente de smoke)
+## W-AreaTorque — a MESA GIRATÓRIA (2026-07-22, cena `=32` smoke OK 2026-07-22; cena `=33` + fix de sync pendentes de smoke)
 
 A frente da **família das zonas** que a reabertura nomeou. O `AreaEffector` (W-Area) empurra
 pelo CENTRO DE MASSA e não gira nada — este é o análogo ROTACIONAL: uma área que aplica um
@@ -3428,6 +3428,22 @@ spinner), hash `27f3c1aa…` **determinístico entre debug/release** — ⚠️ 
 Compacta (+1, rápida) · barra (+1, 8× mais lenta = a inércia) · compacta (−1, gira ao contrário =
 o sinal) · controle sem zona (parada). Flutuam por `GravityScale(0)` (o giro vem só do torque).
 Números medidos no 1º segundo: 171° · 21° (razão 8,03) · −171°. `B` liga o glifo.
+
+### As rows de área agora MOSTRAM o valor (fix de sync, pós-pergunta do Enio)
+
+Pergunta do Enio: *"já podemos fazer isso usando apenas a UI? não vi nada disso agindo na UI."*
+Resposta: sim — a autoria sempre funcionou (Add → Static → **Sensor** → a row Torque aparece →
+digita). O que faltava: as **5 rows de área** (Force X/Y, Torque, Drag, Fluid Density, Shape
+Drag) eram **write-only** — `sync_physics_fields` sincronizava raio/densidade/massa mas **não**
+as de área, então **re-selecionar** a zona mostrava `0` (ou o valor da seleção anterior) em vez
+do número no collider. Gap **pré-existente de TODA a família** (W-Area..W-FormDrag), não só do
+torque. Fix: as 6 entram no `sync_physics_fields` — roda **só na troca de seleção** (dentro do
+`paint`, guardado por `entity_changed`), então nunca briga com o valor sendo digitado. ⚠️ o sync
+deriva a entidade do snapshot de **TRANSFORM**, não do de física (o gate seta os dois). Gate
+red-first `selecting_a_zone_shows_its_authored_area_values` (`seam_physics`); mutação M6 (tirar
+as rows do sync) sangra. **Cena `=33`** demonstra a autoria pela UI (esquerda: sprite pelado para
+autorar; direita: mesa já autorada que gira no Play e mostra a row Torque preenchida ao
+selecionar — a prova do fix). Ambos **pendentes de smoke**.
 
 ### Aberto no W-AreaTorque
 

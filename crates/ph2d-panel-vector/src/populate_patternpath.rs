@@ -17,6 +17,7 @@ const PATTERNPATH_START_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do
 /// todos os irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
 pub(super) fn populate_patternpath(store: &mut WidgetStore) {
     button(store, ids::VECTOR_PATTERNPATH_LINK);
+    button(store, ids::VECTOR_PATTERNPATH_PICK);
     button(store, ids::VECTOR_PATTERNPATH_DETACH);
     button(store, ids::VECTOR_PATTERNPATH_FLIP);
     button(store, ids::VECTOR_PATTERNPATH_FLIP_OFF);

@@ -21,6 +21,10 @@ pub const VECTOR_SECTION_PATTERNPATH: NodeId = hash_node_id("vector.section.patt
 /// **Pattern on Path** — prende o motivo (o primário) à outra forma selecionada (o guia). Só é
 /// oferecido com a seleção que o gesto exige (dois caminhos), fato que só a shell enxerga.
 pub const VECTOR_PATTERNPATH_LINK: NodeId = hash_node_id("vector.patternpath.link");
+/// **Pick Path** — o gesto de duas mãos (Enio 2026-07-23): com o MOTIVO selecionado, apertar isto
+/// arma o pick e o clique seguinte no canvas escolhe o caminho-guia. É a porta EXPLÍCITA — a fonte é
+/// a selecionada, o guia é o clicado —, sem a adivinhação por bbox do [`VECTOR_PATTERNPATH_LINK`].
+pub const VECTOR_PATTERNPATH_PICK: NodeId = hash_node_id("vector.patternpath.pick");
 /// **Detach** — solta o motivo do caminho; ele volta a ser uma forma solta e o caminho fica.
 pub const VECTOR_PATTERNPATH_DETACH: NodeId = hash_node_id("vector.patternpath.detach");
 /// **Other side** — põe o padrão do outro lado da curva, a percorrê-la ao contrário.

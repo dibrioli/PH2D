@@ -24,7 +24,10 @@ fn scene() -> (VecScene, SimWorld, VecEntityMap, VecPathId, VecPathId) {
         ..VecPath::default()
     });
     let guide = scene.push_path(VecPath {
-        verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([100.0, 0.0])],
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::corner([100.0, 0.0]),
+        ],
         closed: false,
         ..VecPath::default()
     });
@@ -50,7 +53,10 @@ fn copies(live: &PatternLive, id: VecPathId) -> usize {
 #[test]
 fn a_linked_motif_recooks_into_copies() {
     let (scene, mut sim, map, motif, guide) = scene();
-    assert!(link(&mut sim, &map, motif, guide), "prendeu o motivo ao guia");
+    assert!(
+        link(&mut sim, &map, motif, guide),
+        "prendeu o motivo ao guia"
+    );
     assert!(spec_of(&sim, &map, motif).is_some(), "o vínculo existe");
 
     let mut live = PatternLive::default();
@@ -76,7 +82,11 @@ fn detaching_stops_the_copies() {
 
     assert!(detach(&mut sim, &map, motif), "soltou");
     live.recook(&scene, &sim, &map);
-    assert_eq!(copies(&live, motif), 0, "solto: sem cópias (o motivo vira fonte)");
+    assert_eq!(
+        copies(&live, motif),
+        0,
+        "solto: sem cópias (o motivo vira fonte)"
+    );
     // O guia sobreviveu à soltura — soltar remove a RELAÇÃO, não o objeto.
     assert!(scene.path(guide).is_some(), "o caminho-guia fica");
 }
@@ -86,8 +96,14 @@ fn detaching_stops_the_copies() {
 #[test]
 fn a_shape_cannot_ride_itself() {
     let (_scene, mut sim, map, motif, _guide) = scene();
-    assert!(!link(&mut sim, &map, motif, motif), "recusa prender a si mesma");
-    assert!(spec_of(&sim, &map, motif).is_none(), "nenhum vínculo criado");
+    assert!(
+        !link(&mut sim, &map, motif, motif),
+        "recusa prender a si mesma"
+    );
+    assert!(
+        spec_of(&sim, &map, motif).is_none(),
+        "nenhum vínculo criado"
+    );
 }
 
 /// **O guia é o caminho de MAIOR extensão, INDEPENDENTE da ordem de seleção** (Enio, 2026-07-23:
@@ -98,8 +114,14 @@ fn a_shape_cannot_ride_itself() {
 fn the_guide_is_the_larger_path_regardless_of_order() {
     let (scene, _sim, _map, motif, guide) = scene();
     // O guia é a RETA (extensão 100 > 56,6 do quadrado) nas DUAS ordens.
-    assert_eq!(link_candidate(&scene, &[motif, guide]), Some((motif, guide)));
-    assert_eq!(link_candidate(&scene, &[guide, motif]), Some((motif, guide)));
+    assert_eq!(
+        link_candidate(&scene, &[motif, guide]),
+        Some((motif, guide))
+    );
+    assert_eq!(
+        link_candidate(&scene, &[guide, motif]),
+        Some((motif, guide))
+    );
     // Menos/mais de dois, ou o mesmo id duas vezes, não é candidato.
     assert_eq!(link_candidate(&scene, &[motif]), None);
     assert_eq!(link_candidate(&scene, &[motif, motif]), None);
@@ -113,7 +135,10 @@ fn the_linked_motif_is_found_in_the_selection_not_the_primary() {
     let (_scene, mut sim, map, motif, guide) = scene();
     link(&mut sim, &map, motif, guide);
     // A seleção lista o GUIA primeiro; o motivo (linkado) é o segundo — e é ele que se acha.
-    assert_eq!(super::linked_motif(&sim, &map, &[guide, motif]), Some(motif));
+    assert_eq!(
+        super::linked_motif(&sim, &map, &[guide, motif]),
+        Some(motif)
+    );
     assert_eq!(super::linked_motif(&sim, &map, &[guide]), None);
 }
 
@@ -125,19 +150,42 @@ fn the_handles_sit_at_the_ends_and_dragging_edits_them() {
     let (scene, mut sim, map, motif, guide) = scene();
     link(&mut sim, &map, motif, guide);
     let sel = [motif, guide];
-    let (s, e) = handle::world(&sim, &scene, &map, &sel).expect("vinculado → alças");
+    let (s, e) = handle::world(&sim, &scene, &map, &sel).expect("vinculado -> alcas");
     assert!(s[0].abs() < 1e-3, "Start na origem do arco: {s:?}");
     assert!((e[0] - 100.0).abs() < 1e-2, "End no fim do arco: {e:?}");
 
     // Pressão sobre a ficha do END arma o End.
     let mut armed = None;
-    assert!(handle::press(&sim, &scene, &map, &sel, [100.0, 0.0], 5.0, &mut armed));
-    assert_eq!(armed, Some(PatternHandle::End), "a ficha sob o cursor é a de End");
+    assert!(handle::press(
+        &sim,
+        &scene,
+        &map,
+        &sel,
+        [100.0, 0.0],
+        5.0,
+        &mut armed
+    ));
+    assert_eq!(
+        armed,
+        Some(PatternHandle::End),
+        "a ficha sob o cursor é a de End"
+    );
 
     // Arrastá-la para o arco 50 escreve end_offset = 0.5 (e NÃO mexe no start).
-    assert!(handle::drag(&mut sim, &scene, &map, &sel, [50.0, 0.0], armed));
+    assert!(handle::drag(
+        &mut sim,
+        &scene,
+        &map,
+        &sel,
+        [50.0, 0.0],
+        armed
+    ));
     let spec = spec_of(&sim, &map, motif).unwrap();
-    assert!((spec.end_offset - 0.5).abs() < 0.02, "End arrastado p/ 0.5: {}", spec.end_offset);
+    assert!(
+        (spec.end_offset - 0.5).abs() < 0.02,
+        "End arrastado p/ 0.5: {}",
+        spec.end_offset
+    );
     assert!(spec.start_offset.abs() < 1e-6, "o Start não se moveu");
 
     // Uma seleção SEM pattern ⇒ sem alças.
@@ -157,11 +205,24 @@ fn the_handles_follow_the_copies_under_flip() {
 
     // Start (frac 0) cai no arco físico 100; End (frac 1) no arco físico 0 — ESPELHADOS.
     let (s, e) = handle::world(&sim, &scene, &map, &sel).expect("alças sob flip");
-    assert!((s[0] - 100.0).abs() < 1e-2, "Start no fim físico sob flip: {s:?}");
+    assert!(
+        (s[0] - 100.0).abs() < 1e-2,
+        "Start no fim físico sob flip: {s:?}"
+    );
     assert!(e[0].abs() < 1e-2, "End no começo físico sob flip: {e:?}");
 
     // Arrastar a ficha de Start para o arco físico 25 escreve start_offset = 0.75 (o lógico).
-    assert!(handle::drag(&mut sim, &scene, &map, &sel, [25.0, 0.0], Some(PatternHandle::Start)));
+    assert!(handle::drag(
+        &mut sim,
+        &scene,
+        &map,
+        &sel,
+        [25.0, 0.0],
+        Some(PatternHandle::Start)
+    ));
     let start = spec_of(&sim, &map, motif).unwrap().start_offset;
-    assert!((start - 0.75).abs() < 0.02, "Start lógico sob flip: {start}");
+    assert!(
+        (start - 0.75).abs() < 0.02,
+        "Start lógico sob flip: {start}"
+    );
 }

@@ -1785,6 +1785,45 @@ impl App {
         )
     }
 
+    /// **O clique do Picker de guia** (Enio 2026-07-23): com um pick armado, resolve o caminho sob o
+    /// cursor e PRENDE — o motivo/texto capturado à fonte, o clicado ao guia. Clique no vazio desiste;
+    /// clicar a própria fonte é ignorado (fica armado). Consome sempre o press (o guard já filtrou por
+    /// `vec_path_pick.is_some()`), então o clique nunca cai no picking/gizmo enquanto o pick corre.
+    fn vec_path_pick_click(&mut self, world: [f64; 2]) {
+        let Some(pick) = self.vec_path_pick else {
+            return;
+        };
+        // LITERAL-PX-OK: o MESMO raio/resolvedor do realce do hover, para o que se clica ser o que se vê.
+        let hit_r = 10.0 * self.vec_px_to_world();
+        self.any_input_this_frame = true;
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let Some(guide) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) else {
+            self.vec_path_pick = None; // clique no vazio = desiste
+            return;
+        };
+        if guide == pick.source() {
+            return; // clicou a própria fonte — não é um guia; continua armado
+        }
+        let done = match pick {
+            crate::vec_pick::PathPick::PatternMotif(motif) => {
+                crate::pattern_live::link(&mut gfx.sim, &self.vec_entities, motif, guide)
+            }
+            crate::vec_pick::PathPick::TextObject(text) => crate::vec_text_ride::link_explicit(
+                &mut gfx.sim,
+                &mut gfx.vec_scene,
+                &self.vec_entities,
+                text,
+                guide,
+            ),
+        };
+        if done {
+            self.vec_path_pick = None;
+            eprintln!("[ph2d-vec] pick: preso ao caminho-guia");
+        }
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -2620,6 +2659,21 @@ impl App {
         {
             return;
         }
+        // **O Picker de caminho-guia ARMADO** (Enio 2026-07-23): enquanto se escolhe um guia, o
+        // clique no canvas PRENDE (ou desiste no vazio) — nunca seleciona nem arrasta ficha. Por
+        // isso precede as alças e o picking/gizmo: um pick em curso é modal, e o clique é dele.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.vec_path_pick.is_some()
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && let Some(w) = self.vec_world_at((evt.x, evt.y))
+        {
+            self.vec_path_pick_click(w);
+            return;
+        }
         // **A alça do TEXTO EM CAMINHO** (W5), no modo Select — irmã da do conector, mesmo lugar
         // e mesma razão: no Select a tool não captura o canvas, e sem este arm a pressão iria
         // para o picking/gizmo. O gizmo é inócuo sobre um texto vinculado (vive na identidade),
@@ -3183,6 +3237,12 @@ impl App {
                     // panel buttons receive their Up.
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
+                    // O botão direito ABORTA o gesto em curso — a mesma tecla de fuga que já vale para
+                    // a caneta, a forma e o conector. Um Picker armado é um gesto: o direito desiste
+                    // dele (o clique esquerdo no vazio também, mas o direito é o "cancela" universal).
+                    if self.vec_path_pick.take().is_some() {
+                        return;
+                    }
                     // O botão direito ABORTA o conector em construção (a linha some) — o
                     // mesmo que ele já faz com a caneta e a ferramenta de forma. E abortar o
                     // arrasto de uma ALÇA devolve a ponta ao lugar de onde ela saiu (o

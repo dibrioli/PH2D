@@ -33,9 +33,9 @@ mod paint;
 /// motivo. `0.25` sobrepõe forte, `4.0` deixa vãos largos, `1.0` encaixa borda-a-borda. O track do
 /// slider é `0..1` e mapeia nesta faixa — a MESMA porta é lida pelo paint (track→display), pelo
 /// populate (scale/offset do chip) e pelo event (track→valor), senão os três divergiriam.
-pub(crate) const SPACING_MIN: f64 = 0.25;
+pub(crate) const SPACING_MIN: f64 = 0.25; // LITERAL-PX-OK: faixa no domínio do documento
 /// Ver [`SPACING_MIN`].
-pub(crate) const SPACING_MAX: f64 = 4.0;
+pub(crate) const SPACING_MAX: f64 = 4.0; // LITERAL-PX-OK: faixa no domínio do documento
 /// A meia-faixa do Offset perpendicular do Pattern on Path, em unidades de MUNDO: o slider é
 /// bipolar `−OFFSET_MAX..OFFSET_MAX` (track `0..1`, `0.5` = sobre a curva). Empurra as cópias para
 /// fora/dentro da curva; lido pelo paint, populate e event pela MESMA porta.
@@ -63,12 +63,13 @@ pub use state::{
     set_current_effects, set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
     set_current_has_envelope, set_current_path_closed, set_current_patternpath,
-    set_current_patternpath_can_link, set_current_pivot_edit, set_current_selection_count,
-    set_current_shape_focus, set_current_snap, set_current_text, set_current_text_align,
-    set_current_text_axes, set_current_text_font, set_current_text_font_previews,
-    set_current_text_seed, set_current_text_visible, set_current_textpath,
-    set_current_textpath_can_link, set_current_transform, set_current_vector_style,
-    set_expand_join, set_expand_side, set_selected_vertex_type, take_want_font_previews,
+    set_current_patternpath_can_link, set_current_patternpath_can_pick, set_current_pivot_edit,
+    set_current_selection_count, set_current_shape_focus, set_current_snap, set_current_text,
+    set_current_text_align, set_current_text_axes, set_current_text_font,
+    set_current_text_font_previews, set_current_text_seed, set_current_text_visible,
+    set_current_textpath, set_current_textpath_can_link, set_current_transform,
+    set_current_vector_style, set_expand_join, set_expand_side, set_selected_vertex_type,
+    take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

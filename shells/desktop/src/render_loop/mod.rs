@@ -1543,6 +1543,10 @@ impl crate::App {
             let mut pending_pp_end: Option<f64> = None;
             let mut pending_pp_slide: Option<f64> = None;
             let mut pending_pp_offset: Option<f64> = None;
+            // O Picker de guia (Enio 2026-07-23): o botão só ARMA — a shell captura a fonte e o
+            // clique seguinte no canvas escolhe o guia. Um por feature; a fonte é resolvida no drain.
+            let mut pending_pp_pick = false;
+            let mut pending_text_pick = false;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
             // O GESTO do envelope (ADR-0129 Fatias D+E): Perspective (projetivo) · Mesh (Coons) ·
@@ -1724,6 +1728,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_LINK {
                                 // Plano 22: prende o texto da seleção à outra forma dela.
                                 pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Link);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_PICK {
+                                // Picker: arma; a fonte (o texto em foco) é capturada no drain.
+                                pending_text_pick = true;
                             } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_DETACH {
                                 pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Detach);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP {
@@ -1735,6 +1742,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_LINK {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Link);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_PICK {
+                                // Picker: arma; a fonte (o motivo selecionado) é capturada no drain.
+                                pending_pp_pick = true;
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_DETACH {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Detach);
@@ -2835,12 +2845,30 @@ impl crate::App {
                     );
                 }
             }
+            // Picker do texto (Enio 2026-07-23): o botão só ARMOU; aqui capturamos a FONTE — o texto
+            // em foco — para o clique seguinte no canvas escolher o guia. Capturamos o id agora porque
+            // esse clique pode mudar a seleção (ele ESCOLHE o guia, não deve virar a fonte).
+            if pending_text_pick {
+                let sel = self.vec_pen.selected_paths().to_vec();
+                if let Some((text, _, _)) =
+                    crate::vec_text_object::selected_text_object(sim, &self.vec_entities, &sel)
+                {
+                    self.vec_path_pick = Some(crate::vec_pick::PathPick::TextObject(text));
+                    eprintln!(
+                        "[ph2d-vec] text on path: pick armado -- clique no CAMINHO-guia (vazio = \
+                         desiste)"
+                    );
+                }
+            }
             // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
             // LINKADO da seleção (`linked_motif`), não o primário: depois de prender, o primário
             // pode ser o GUIA. O comando prende/solta/vira. Tudo pela porta única `pattern_live`, e
             // o `recook` do frame seguinte redesenha as cópias.
-            let pp_motif =
-                crate::pattern_live::linked_motif(sim, &self.vec_entities, self.vec_pen.selected_paths());
+            let pp_motif = crate::pattern_live::linked_motif(
+                sim,
+                &self.vec_entities,
+                self.vec_pen.selected_paths(),
+            );
             if let Some(v) = pending_pp_spacing
                 && let Some(motif) = pp_motif
             {
@@ -2901,6 +2929,15 @@ impl crate::App {
                          ja' preso, para soltar/afinar)"
                     );
                 }
+            }
+            // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
+            // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
+            if pending_pp_pick && let Some(motif) = self.vec_pen.selected() {
+                self.vec_path_pick = Some(crate::vec_pick::PathPick::PatternMotif(motif));
+                eprintln!(
+                    "[ph2d-vec] pattern on path: pick armado -- clique no CAMINHO-guia (vazio = \
+                     desiste)"
+                );
             }
             if pending_create_envelope {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -3965,6 +4002,12 @@ impl crate::App {
                     crate::pattern_live::link_candidate(vec_scene, &sel).is_some(),
                 );
                 let pat = crate::pattern_live::current(sim, &self.vec_entities, &sel);
+                // O Picker (Enio 2026-07-23): a porta EXPLÍCITA, oferecida com UM caminho selecionado
+                // que ainda não é um motivo vinculado — a fonte à espera do clique do guia.
+                // `pat.is_none()` exclui o motivo já preso (que mostra os controles, não a porta).
+                ph2d_panel_vector::set_current_patternpath_can_pick(
+                    sel.len() == 1 && pat.is_none(),
+                );
                 ph2d_panel_vector::set_current_patternpath(
                     pat.is_some(),
                     pat.map_or(0.0, |p| f64::from(p.start_offset)),
@@ -4285,6 +4328,33 @@ impl crate::App {
                 ph2d_vec_render::draw_blend_overlay(&preview, cam_affine, vector_scene);
             } else if !self.vec_blend_picks.is_empty() {
                 self.vec_blend_picks.clear();
+            }
+            // **O Picker de caminho-guia** (Enio 2026-07-23): armado, o caminho sob o cursor é o que
+            // o clique vai prender — a silhueta dele acende, o idioma do conta-gotas. `path_at` é o
+            // MESMO resolvedor do clique, então o realce nunca mente sobre o que será escolhido. Fora
+            // do modo Select (ou sem a tool) o pick não faz sentido: limpa, para não ficar armado e
+            // invisível — a saída sem compromisso, como o clique no vazio.
+            if let Some(pick) = self.vec_path_pick {
+                if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+                {
+                    let w = camera.screen_to_world(self.last_pointer, window_size);
+                    let a = camera.screen_to_world((0.0, 0.0), window_size);
+                    let b = camera.screen_to_world((1.0, 0.0), window_size);
+                    // LITERAL-PX-OK: raio de acerto em px, o MESMO do picking de canvas (`path_at`).
+                    let hit_r =
+                        10.0 * f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt());
+                    if let Some(gid) =
+                        self.vec_pen
+                            .path_at(vec_scene, [f64::from(w[0]), f64::from(w[1])], hit_r)
+                        && gid != pick.source()
+                        && let Some(outline) =
+                            crate::vec_pick::hover_outline(vec_scene, &vec_xf, gid)
+                    {
+                        ph2d_vec_render::draw_blend_overlay(&[outline], cam_affine, vector_scene);
+                    }
+                } else {
+                    self.vec_path_pick = None;
+                }
             }
             // Âncoras/handles/gradiente/marquee só interessam a quem edita nós; no
             // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à

@@ -152,6 +152,53 @@ pub(crate) fn link(
     true
 }
 
+/// Prende um texto EXPLÍCITO a um caminho-guia EXPLÍCITO — a porta do **Picker** ([`crate::vec_pick`]):
+/// o texto é o que foi capturado no arm, o guia é o que o clique acertou. `true` se prendeu.
+///
+/// É o [`link`] sem a adivinhação — o par vem pronto, então não passa pelo [`link_candidate`]. Repete
+/// as duas guardas que importam (o texto tem de SER um texto; o guia não pode ser um texto) porque,
+/// com um par vindo de fora, elas não estão mais garantidas pela seleção.
+pub(crate) fn link_explicit(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    text: ph2d_vec_scene::VecPathId,
+    guide: ph2d_vec_scene::VecPathId,
+) -> bool {
+    if text == guide {
+        return false;
+    }
+    let Some(&bits) = map.get(&text) else {
+        return false;
+    };
+    let entity = Entity::from_bits(bits);
+    // A fonte capturada tem de SER um texto de fato.
+    let source_is_text = sim
+        .world()
+        .get::<ph2d_ecs::VecShape>(entity)
+        .is_some_and(|s| matches!(s, ph2d_ecs::VecShape::Text(_)));
+    if !source_is_text {
+        return false;
+    }
+    // O guia não pode ser um texto (prender texto a texto não quer dizer nada) — a mesma guarda do
+    // [`link_candidate`].
+    let guide_is_text = map
+        .get(&guide)
+        .map(|&b| Entity::from_bits(b))
+        .and_then(|e| sim.world().get::<ph2d_ecs::VecShape>(e))
+        .is_some_and(|s| matches!(s, ph2d_ecs::VecShape::Text(_)));
+    if guide_is_text {
+        return false;
+    }
+    sim.world_mut().entity_mut(entity).insert(VecTextPath {
+        path: guide,
+        start_offset: 0.0,
+        flip: false,
+    });
+    recook(sim, scene, map, text, entity);
+    true
+}
+
 /// Solta o texto da seleção do caminho dele. `true` se soltou.
 ///
 /// O caminho FICA. Soltar é remover o componente — nada é destruído, e é isso que torna

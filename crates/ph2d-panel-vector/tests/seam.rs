@@ -1590,8 +1590,11 @@ fn every_text_on_path_control_reaches_the_bus_when_clicked() {
     const SEC: u128 = 1_000_000_000;
     ph2d_panel_vector::set_current_text_visible(true);
     for (linked, id, name) in [
-        // Texto SOLTO com a seleção certa: só a porta de entrada.
+        // Texto SOLTO com a seleção certa: a porta de entrada AUTO...
         (false, ids::VECTOR_TEXTPATH_LINK, "Text on Path"),
+        // ...e o **Picker** (Enio 2026-07-23), oferecido sempre que há um texto solto (a fonte é o
+        // texto em foco; o guia vem do clique). O botão só ARMA, mas o clique tem de chegar ao bus.
+        (false, ids::VECTOR_TEXTPATH_PICK, "Pick Path"),
         // Texto PRESO: o que se pode dizer sobre o vínculo.
         (true, ids::VECTOR_TEXTPATH_FLIP_OFF, "This side"),
         (true, ids::VECTOR_TEXTPATH_FLIP, "Other side"),
@@ -1654,37 +1657,45 @@ fn the_text_on_path_section_offers_only_what_applies() {
     };
     ph2d_panel_vector::set_current_text_visible(true);
 
-    // Solto, mas com a seleção ERRADA: nada é oferecido.
+    // Solto, com a seleção ERRADA para a auto-ligação: ela não é oferecida — mas o **Picker** SIM
+    // (não depende da seleção-de-dois; a fonte é o texto em foco). Nem offset (não há vínculo).
     ph2d_panel_vector::set_current_textpath_can_link(false);
     ph2d_panel_vector::set_current_textpath(false, 0.0, false);
     assert!(
         rect(ids::VECTOR_TEXTPATH_LINK).is_none(),
-        "sem a seleção que o gesto exige, prender nao pode ser oferecido"
+        "sem a seleção que a auto-ligação exige, `Text on Path` nao pode ser oferecido"
+    );
+    assert!(
+        rect(ids::VECTOR_TEXTPATH_PICK).is_some(),
+        "o Picker é oferecido sempre que há um texto solto — não depende da seleção-de-dois"
     );
     assert!(rect(ids::VECTOR_TEXTPATH_OFFSET).is_none(), "nem o offset");
 
-    // Solto, com a seleção CERTA: só a porta de entrada.
+    // Solto, com a seleção CERTA: as DUAS portas (auto + Picker), nunca Detach.
     ph2d_panel_vector::set_current_textpath_can_link(true);
     assert!(rect(ids::VECTOR_TEXTPATH_LINK).is_some());
+    assert!(rect(ids::VECTOR_TEXTPATH_PICK).is_some());
     assert!(
         rect(ids::VECTOR_TEXTPATH_DETACH).is_none(),
         "soltar um texto que nao esta preso nao quer dizer nada"
     );
 
-    // Preso: o inverso exato.
+    // Preso: o inverso exato — nem a auto-ligação nem o Picker (prender um texto preso não diz nada).
     ph2d_panel_vector::set_current_textpath_can_link(true);
     ph2d_panel_vector::set_current_textpath(true, 0.5, true);
     assert!(
-        rect(ids::VECTOR_TEXTPATH_LINK).is_none(),
+        rect(ids::VECTOR_TEXTPATH_LINK).is_none() && rect(ids::VECTOR_TEXTPATH_PICK).is_none(),
         "prender um texto ja' preso nao quer dizer nada"
     );
     assert!(rect(ids::VECTOR_TEXTPATH_OFFSET).is_some());
     assert!(rect(ids::VECTOR_TEXTPATH_DETACH).is_some());
 
-    // E num objeto que NAO e' texto a secao inteira some.
+    // E num objeto que NAO e' texto a secao inteira some (incluindo o Picker).
     ph2d_panel_vector::set_current_text_visible(false);
     assert!(
-        rect(ids::VECTOR_TEXTPATH_LINK).is_none() && rect(ids::VECTOR_TEXTPATH_OFFSET).is_none(),
+        rect(ids::VECTOR_TEXTPATH_LINK).is_none()
+            && rect(ids::VECTOR_TEXTPATH_PICK).is_none()
+            && rect(ids::VECTOR_TEXTPATH_OFFSET).is_none(),
         "num retangulo selecionado a secao nao tem sujeito"
     );
     ph2d_panel_vector::set_current_textpath(false, 0.0, false);
@@ -1743,6 +1754,38 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
              (o controle e clicavel e MORTO)"
         );
     }
+    // O **Picker** (Enio 2026-07-23): a porta EXPLÍCITA, oferecida com UM caminho selecionado
+    // (`can_pick`, sem `can_link`). O botão só ARMA na shell — mas o clique tem de chegar ao bus como
+    // qualquer outro, senão o gesto de duas mãos nasce morto.
+    {
+        let id = ids::VECTOR_PATTERNPATH_PICK;
+        ph2d_panel_vector::set_current_patternpath_can_link(false);
+        ph2d_panel_vector::set_current_patternpath_can_pick(true);
+        ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .expect("o botao Pick Path nao foi PINTADO com area clicavel na secao Pattern on Path");
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre Pick Path nao virou Click — falta `button()` no `populate`"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(
+                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id)
+            ),
+            "o Click em Pick Path nao chegou ao bus — falta o id na allowlist do `event.rs`"
+        );
+        ph2d_panel_vector::set_current_patternpath_can_pick(false);
+    }
     ph2d_panel_vector::set_current_patternpath_can_link(false);
     ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
 }
@@ -1766,18 +1809,35 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
     };
 
-    // Sem vínculo e sem seleção-de-dois: a seção inteira some (nem o cabeçalho).
+    // Sem vínculo, sem seleção-de-dois E sem seleção-de-um: a seção inteira some (nem o cabeçalho).
     ph2d_panel_vector::set_current_patternpath_can_link(false);
+    ph2d_panel_vector::set_current_patternpath_can_pick(false);
     ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
     assert!(
         rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
+            && rect(ids::VECTOR_PATTERNPATH_PICK).is_none()
             && rect(ids::VECTOR_PATTERNPATH_SPACING).is_none(),
         "sem vínculo nem seleção, a seção não tem o que oferecer"
     );
 
-    // Seleção de dois (can_link), sem vínculo: só a porta de entrada.
+    // Seleção de UM (can_pick), sem vínculo: só o **Picker** — a porta explícita. A auto-ligação
+    // (que quer DOIS) não é oferecida, e não há controles a afinar sem um vínculo.
+    ph2d_panel_vector::set_current_patternpath_can_pick(true);
+    assert!(rect(ids::VECTOR_PATTERNPATH_PICK).is_some());
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_LINK).is_none(),
+        "com UM selecionado a auto-ligação (que quer dois) não é oferecida"
+    );
+    assert!(rect(ids::VECTOR_PATTERNPATH_SPACING).is_none());
+    ph2d_panel_vector::set_current_patternpath_can_pick(false);
+
+    // Seleção de dois (can_link), sem vínculo: só a porta de entrada AUTO (o Picker é da de-um).
     ph2d_panel_vector::set_current_patternpath_can_link(true);
     assert!(rect(ids::VECTOR_PATTERNPATH_LINK).is_some());
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_PICK).is_none(),
+        "com DOIS selecionados a porta é a auto-ligação, não o Picker (que é da seleção-de-um)"
+    );
     assert!(
         rect(ids::VECTOR_PATTERNPATH_SPACING).is_none(),
         "sem vínculo não há Spacing a afinar"
@@ -1787,10 +1847,11 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
         "soltar um motivo que não está preso não quer dizer nada"
     );
 
-    // Preso: o inverso exato — os controles, não a porta de entrada.
+    // Preso: o inverso exato — os controles, nem a porta de entrada nem o Picker.
     ph2d_panel_vector::set_current_patternpath(true, 0.5, 0.8, 2.0, 0.5, true);
     assert!(
-        rect(ids::VECTOR_PATTERNPATH_LINK).is_none(),
+        rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
+            && rect(ids::VECTOR_PATTERNPATH_PICK).is_none(),
         "prender um motivo já preso não quer dizer nada"
     );
     assert!(rect(ids::VECTOR_PATTERNPATH_SPACING).is_some());

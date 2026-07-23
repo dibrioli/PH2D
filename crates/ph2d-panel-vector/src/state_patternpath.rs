@@ -15,6 +15,7 @@ use std::cell::Cell;
 
 thread_local! {
     static CAN_LINK: Cell<bool> = const { Cell::new(false) };
+    static CAN_PICK: Cell<bool> = const { Cell::new(false) };
     static LINKED: Cell<bool> = const { Cell::new(false) };
     static START: Cell<f64> = const { Cell::new(0.0) };
     static END: Cell<f64> = const { Cell::new(1.0) };
@@ -30,6 +31,17 @@ pub fn set_current_patternpath_can_link(v: bool) {
 
 pub(crate) fn can_link() -> bool {
     CAN_LINK.with(Cell::get)
+}
+
+/// Publica se a seleção corrente permite ARMAR o Picker: exatamente um caminho, ainda solto — a
+/// fonte do gesto de duas mãos. Distinto do `can_link` (que quer DOIS): aqui a fonte é UMA, e o guia
+/// vem do clique seguinte no canvas.
+pub fn set_current_patternpath_can_pick(v: bool) {
+    CAN_PICK.with(|c| c.set(v));
+}
+
+pub(crate) fn can_pick() -> bool {
+    CAN_PICK.with(Cell::get)
 }
 
 /// Publica o estado do vínculo do motivo corrente: se existe, e com que valores.

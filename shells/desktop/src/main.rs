@@ -115,11 +115,10 @@ mod nest_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
+mod palette_persist;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
-/// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
-mod vec_guide;
-mod palette_persist;
+mod pattern_path_smoke;
 mod physics_smoke;
 mod physics_smoke_collision;
 mod physics_smoke_contacts;
@@ -133,7 +132,6 @@ mod shape_build;
 mod shape_build_gesture;
 mod sim_populate;
 mod stack_smoke;
-mod pattern_path_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
@@ -160,8 +158,12 @@ mod vec_font_preview;
 mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_glyph_build;
+/// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
+mod vec_guide;
 mod vec_overlay;
 mod vec_overlay_diag;
+/// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
+mod vec_pick;
 mod vec_selection;
 mod vec_shape_live;
 mod vec_shape_params;
@@ -422,6 +424,7 @@ impl App {
             vec_envelope_drag: None,
             vec_textpath_handle_drag: false,
             vec_patternpath_handle: None,
+            vec_path_pick: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

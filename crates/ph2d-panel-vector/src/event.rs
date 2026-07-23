@@ -503,12 +503,16 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // Text on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
         // `VecTextPath` da entidade), então atravessam para a shell como os do envelope.
         || id == ids::VECTOR_TEXTPATH_LINK
+        // Pick Path: arma o Picker (a shell captura o texto em foco e espera o clique do guia).
+        || id == ids::VECTOR_TEXTPATH_PICK
         || id == ids::VECTOR_TEXTPATH_DETACH
         || id == ids::VECTOR_TEXTPATH_FLIP
         || id == ids::VECTOR_TEXTPATH_FLIP_OFF
         // Pattern on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
         // `VecPatternPath` da entidade), então atravessam para a shell como os do texto.
         || id == ids::VECTOR_PATTERNPATH_LINK
+        // Pick Path: arma o Picker (a shell captura o motivo selecionado e espera o clique do guia).
+        || id == ids::VECTOR_PATTERNPATH_PICK
         || id == ids::VECTOR_PATTERNPATH_DETACH
         || id == ids::VECTOR_PATTERNPATH_FLIP
         || id == ids::VECTOR_PATTERNPATH_FLIP_OFF

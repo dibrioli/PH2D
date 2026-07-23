@@ -524,3 +524,62 @@ fn a_press_away_from_the_handle_arms_nothing() {
         false,
     ));
 }
+
+/// **O Picker prende um par EXPLÍCITO** (Enio 2026-07-23). `link_explicit` não passa pelo
+/// `link_candidate`: ele recebe `(texto, guia)` prontos — a fonte capturada no arm, o guia clicado —
+/// e pendura o componente E re-cozinha, exatamente como o `link` faz por dentro. É a porta do gesto
+/// de duas mãos, e sem este gate a costura arm→clique→vínculo do texto nasceria não-testada.
+#[test]
+fn link_explicit_binds_the_given_pair_and_the_text_rides_it() {
+    let mut f = fixture();
+    let e = f.text_entity();
+    assert!(
+        f.sim.world().get::<VecTextPath>(e).is_none(),
+        "precondition: o texto nasce solto"
+    );
+    assert!(
+        crate::vec_text_ride::link_explicit(&mut f.sim, &mut f.scene, &f.map, f.text, f.guide),
+        "o par explícito tem de prender"
+    );
+    let link = f
+        .sim
+        .world()
+        .get::<VecTextPath>(e)
+        .copied()
+        .expect("o componente foi pendurado");
+    assert_eq!(link.path, f.guide, "o guia clicado é o caminho do vínculo");
+    // E o texto de fato cavalgou o guia (raio ~6): a costura chega ao re-cook, não só ao componente.
+    assert!(
+        f.radial_band().0 > 3.0,
+        "o texto tem de subir para cima do guia (r=6) depois do link_explicit, veio {:?}",
+        f.radial_band()
+    );
+}
+
+/// **`link_explicit` recusa o que não pode prender** — a fonte tem de ser um texto, o guia não pode
+/// ser um, e nada se prende a si mesmo. As MESMAS guardas do `link_candidate`, reafirmadas porque
+/// com o par vindo de fora a seleção não as garante mais.
+#[test]
+fn link_explicit_refuses_bad_pairs() {
+    let mut f = fixture();
+    // A si mesmo.
+    assert!(!crate::vec_text_ride::link_explicit(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        f.text,
+        f.text
+    ));
+    // O GUIA como fonte (o guia não é um texto) — a inversão do par.
+    assert!(!crate::vec_text_ride::link_explicit(
+        &mut f.sim,
+        &mut f.scene,
+        &f.map,
+        f.guide,
+        f.text,
+    ));
+    // Nenhum dos dois ganhou o componente.
+    let ge = Entity::from_bits(f.map[&f.guide]);
+    assert!(f.sim.world().get::<VecTextPath>(f.text_entity()).is_none());
+    assert!(f.sim.world().get::<VecTextPath>(ge).is_none());
+}

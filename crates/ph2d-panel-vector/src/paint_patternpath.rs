@@ -20,8 +20,9 @@ use super::*;
 impl BodyCtx<'_> {
     /// Seção **PATTERN ON PATH**.
     pub(crate) fn patternpath_section(&mut self, y: f32) -> f32 {
-        // Só quando há o que dizer: um vínculo vivo, ou a seleção que permite criar um.
-        if !state::pp_linked() && !state::pp_can_link() {
+        // Só quando há o que dizer: um vínculo vivo, ou a seleção que permite criar um — por DOIS
+        // caminhos (a auto-ligação) ou por UM (o Picker, a fonte à espera do clique do guia).
+        if !state::pp_linked() && !state::pp_can_link() && !state::pp_can_pick() {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
@@ -33,9 +34,15 @@ impl BodyCtx<'_> {
             return y;
         }
         if !state::pp_linked() {
-            // A porta de entrada — só oferecida quando a seleção (dois caminhos) a permite. Um
-            // botão que recusa é pior que um que falta; oferecer só quando funciona é o honesto.
-            return self.action_button(ids::VECTOR_PATTERNPATH_LINK, "Pattern on Path", y);
+            // Duas portas para prender, por seleção. Com DOIS caminhos, a auto-ligação (o guia é o
+            // de maior extensão). Com UM, o **Picker**: apertar arma e o clique seguinte escolhe o
+            // guia — a porta EXPLÍCITA, sem a adivinhação por bbox. As duas são exclusivas (uma quer
+            // dois selecionados, a outra um), então nunca aparecem juntas. Um botão que recusa é
+            // pior que um que falta: cada porta é oferecida só na seleção em que funciona.
+            if state::pp_can_link() {
+                return self.action_button(ids::VECTOR_PATTERNPATH_LINK, "Pattern on Path", y);
+            }
+            return self.action_button(ids::VECTOR_PATTERNPATH_PICK, "Pick Path", y);
         }
         // Spacing — o controle-assinatura (quão densas as cópias). Track `0..1` → valor `0.25..4.0`
         // (o mapa vive na fronteira, `event::track_slider_event`, e é o mesmo do Bend bipolar).

@@ -22,6 +22,10 @@ pub const VECTOR_SECTION_TEXTPATH: NodeId = hash_node_id("vector.section.textpat
 /// **Text on Path** — prende o texto selecionado à outra forma selecionada. Só é oferecido com a
 /// seleção que o gesto exige (um texto + um caminho), fato que só a shell enxerga.
 pub const VECTOR_TEXTPATH_LINK: NodeId = hash_node_id("vector.textpath.link");
+/// **Pick Path** — a porta EXPLÍCITA do vínculo (Enio 2026-07-23): com o TEXTO em foco, apertar isto
+/// arma o pick e o clique seguinte no canvas escolhe o caminho-guia, sem a seleção de dois que o
+/// [`VECTOR_TEXTPATH_LINK`] exige.
+pub const VECTOR_TEXTPATH_PICK: NodeId = hash_node_id("vector.textpath.pick");
 /// **Detach** — solta o texto do caminho; ele volta a ser texto reto e o caminho fica.
 ///
 /// Sem isto, prender seria porta de mão única — a mesma razão pela qual o envelope tem Release.

@@ -339,9 +339,6 @@ pub(crate) fn convertible() -> bool {
     CURRENT_CONVERTIBLE.with(Cell::get)
 }
 
-/// Publica se a seleção vive sob UM container de Envelope (ADR-0129) — habilita **Expand**/
-/// **Release**, que só fazem sentido sobre um envelope existente. Quem responde no shell é o
-/// `envelope_live::sole_container`, a MESMA porta que a seleção e o `dissolve` usam.
 /// O estado dos **Effects** (ADR-0132) — módulo irmão pelo teto de 600 LOC deste arquivo.
 #[path = "state_effects.rs"]
 mod effects;
@@ -367,10 +364,12 @@ pub use textpath::{set_current_textpath, set_current_textpath_can_link};
 #[path = "state_patternpath.rs"] // Pattern on Path (plano 23), irmão pelo teto de 600 LOC
 mod patternpath;
 pub(crate) use patternpath::{
-    can_link as pp_can_link, end as pp_end, flip as pp_flip, linked as pp_linked,
-    offset as pp_offset, spacing as pp_spacing, start as pp_start,
+    can_link as pp_can_link, can_pick as pp_can_pick, end as pp_end, flip as pp_flip,
+    linked as pp_linked, offset as pp_offset, spacing as pp_spacing, start as pp_start,
 };
-pub use patternpath::{set_current_patternpath, set_current_patternpath_can_link};
+pub use patternpath::{
+    set_current_patternpath, set_current_patternpath_can_link, set_current_patternpath_can_pick,
+};
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {

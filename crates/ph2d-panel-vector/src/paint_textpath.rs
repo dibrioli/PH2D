@@ -41,17 +41,17 @@ impl BodyCtx<'_> {
             return y;
         }
         if !state::linked() {
-            // A porta de entrada. Ao contrário do botão do Envelope (que é pintado sempre e
-            // recusa no shell), este depende de uma seleção MUITO específica — um texto e um
-            // caminho — e um clique com a seleção errada não teria como explicar-se sem uma
-            // mensagem. Oferecer só quando funciona é mais honesto aqui.
+            // Duas portas para prender. A auto-ligação (`Text on Path`) depende de uma seleção MUITO
+            // específica — um texto E um caminho —, então é oferecida só quando essa seleção existe:
+            // um clique com a seleção errada não teria como explicar-se. O **Picker** (`Pick Path`)
+            // não tem essa dependência — a fonte é o texto em foco, o guia vem do clique seguinte no
+            // canvas —, então é oferecido SEMPRE que há um texto solto. As duas coexistem quando
+            // ambas valem; o Picker é a porta explícita e mais correta (Enio 2026-07-23).
+            let mut y = y;
             if state::can_link() {
-                return self.action_button(ids::VECTOR_TEXTPATH_LINK, "Text on Path", y);
+                y = self.action_button(ids::VECTOR_TEXTPATH_LINK, "Text on Path", y);
             }
-            // Sem a seleção certa a seção fica VAZIA sob o cabeçalho — e isso é deliberado. Um
-            // botão desabilitado convidaria ao clique e teria de explicar-se; o cabeçalho já
-            // nomeia a feature, que é o que faz o artista procurá-la.
-            return y;
+            return self.action_button(ids::VECTOR_TEXTPATH_PICK, "Pick Path", y);
         }
         let track = self
             .store

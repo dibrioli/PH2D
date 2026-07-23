@@ -791,6 +791,11 @@ pub(crate) struct App {
     /// (`start_offset`/`end_offset`) é, e vive no `VecPatternPath`. Um `Option` e não um booleano
     /// porque há DUAS alças. Ver [`crate::pattern_live::handle`].
     pub(crate) vec_patternpath_handle: Option<crate::pattern_live::PatternHandle>,
+    /// **O Picker de caminho-guia armado** (Enio 2026-07-23): `Some` enquanto se espera o clique que
+    /// escolhe o guia de um motivo (Pattern) ou de um texto (Text on Path). A fonte foi capturada no
+    /// arm; o clique seguinte no canvas prende, um clique no vazio desiste. Sair do modo Select (ou
+    /// da tool) o limpa. Runtime-only: o pick não é documento — o vínculo que ele cria é.
+    pub(crate) vec_path_pick: Option<crate::vec_pick::PathPick>,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

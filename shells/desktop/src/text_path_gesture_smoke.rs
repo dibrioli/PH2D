@@ -114,6 +114,9 @@ fn arm(app: &mut crate::App) {
          selecionados (objeto de texto: {is_text} · gesto oferecido: {can}).\n\
          [smoke]   1. No painel Vector, secao TEXT ON PATH -> clique \"Text on Path\".\n\
          [smoke]      O texto tem de SALTAR para cima da curva.\n\
+         [smoke]      (Ou o **Picker** -- \"Pick Path\": aperta e clica a CURVA. E' a porta\n\
+         [smoke]       explicita; para prova-la so' com o texto, clique no vazio e selecione so'\n\
+         [smoke]       o texto -- \"Text on Path\" some e fica \"Pick Path\".)\n\
          [smoke]   2. Arraste o Offset -- o texto corre ao longo dela.\n\
          [smoke]   3. Side: \"Other side\" -- passa para o outro lado, a ler ao contrario.\n\
          [smoke]   4. (W5) No modo SELECT (a seta preta), uma FICHA grande e colorida aparece\n\

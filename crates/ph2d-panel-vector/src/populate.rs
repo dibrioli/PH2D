@@ -394,6 +394,7 @@ fn populate_ops(store: &mut WidgetStore) {
     // INCONDICIONALMENTE, como todos os irmãos — o store é agnóstico de modo, e quem decide se
     // o clique é possível é a PINTURA (sem hit-rect não há Click).
     button(store, ids::VECTOR_TEXTPATH_LINK);
+    button(store, ids::VECTOR_TEXTPATH_PICK);
     button(store, ids::VECTOR_TEXTPATH_DETACH);
     button(store, ids::VECTOR_TEXTPATH_FLIP);
     button(store, ids::VECTOR_TEXTPATH_FLIP_OFF);

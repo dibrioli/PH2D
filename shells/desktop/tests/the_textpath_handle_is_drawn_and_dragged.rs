@@ -101,11 +101,27 @@ fn the_render_loop_wires_the_handle_gesture() {
         "o press da alça (Select) tem de ser hit-testado ANTES do picking/gizmo genérico"
     );
     // E é irmão do press do conector — ambos no mesmo cluster de early-return do Select.
+    //
+    // ⚠️ Este par era afirmado por uma DISTÂNCIA EM BYTES (`< 1200`), e o Picker de caminho-guia
+    // — que é do mesmo cluster, também modal, e tem de preceder as duas alças — entrou entre eles
+    // e empurrou a distância para 1810: o gate ficou **VERMELHO sobre código correto**. Uma
+    // distância é proxy de *"mesmo cluster"*, e todo bloco legítimo inserido no meio a invalida.
+    //
+    // A propriedade REAL nunca foi métrica, é POSICIONAL: o que faz das duas alças irmãs é que
+    // **as duas correm antes do picking/gizmo genérico** — é isso, e só isso, que impede o clique
+    // de selecionar a forma atrás em vez de arrastar a alça. Então cada press ganha a MESMA
+    // asserção, e o par deixa de depender de quantos bytes há entre eles.
+    //
+    // ⚠️ Uma 1ª tentativa afirmou também *"o que está entre os dois é gateado em `DrawMode::Select`"*
+    // — e a MUTAÇÃO a matou: o span `[conn, textpath)` termina DENTRO da cadeia de guards do
+    // próprio bloco do textpath, então o `DrawMode::Select` dele está sempre no span e a asserção
+    // **não podia falhar**. Verde por construção; removida em vez de shipada.
     let conn_at = disp
         .find("self.conn_handle_down(w)")
         .expect("press da alça do conector");
     assert!(
-        (handle_at as isize - conn_at as isize).unsigned_abs() < 1200,
-        "a alça do texto e a do conector deviam estar no MESMO cluster de Select"
+        conn_at < generic_dispatch_at,
+        "o press da alça do CONECTOR caiu depois do picking/gizmo genérico — o clique passaria a \
+         selecionar a forma atrás em vez de arrastar a alça"
     );
 }

@@ -35,14 +35,45 @@ fn at(needle: &str) -> usize {
 
 /// **O `dispatch` recebe a geometria VIVA, não um mapa vazio.** É o argumento que faz o
 /// preview existir; trocá-lo por `&LiveGeometry::new()` compila e apaga a feature em silêncio.
+///
+/// ⚠️ **A `LiveGeometry` do frame tem DUAS fontes** (Pattern Along Path, plano 23): o mapa é o
+/// offset vivo FUNDIDO com as cópias do pattern, e por isso não cabe inline no argumento — ele
+/// nasce num binding logo acima da chamada. A versão anterior deste gate procurava o literal
+/// `self.offset_live.live()` DENTRO de uma janela de 400 bytes a partir do `dispatch(`, e o
+/// binding a empurrou para fora dela: o gate ficou **VERMELHO sobre código correto**. Uma janela
+/// de bytes é proxy de *"o argumento vem da fonte viva"*, e proxy quebra quando a forma muda —
+/// então agora a pergunta é feita direto: **qual argumento** o `dispatch` recebe, e **de onde**
+/// aquele nome nasce. Isso é mais forte que a janela: um `&LiveGeometry::new()` não tem binding
+/// nenhum, e um binding que deixe de ler as fontes vivas fica vermelho pelo nome que falta.
 #[test]
 fn the_dispatch_is_handed_the_live_geometry() {
     let call = at("ph2d_vec_render::dispatch(");
-    let tail = &SRC[call..call + 400.min(SRC.len() - call)];
+    let args_end = SRC[call..].find(");").expect("fim da lista de argumentos do `dispatch`") + call;
+    let args = &SRC[call..args_end];
     assert!(
-        tail.contains("self.offset_live.live()"),
-        "o `dispatch` não está recebendo `self.offset_live.live()` — com um mapa vazio o \
-         offset ao vivo desaparece da tela e NENHUM teste de unidade o nota:\n{tail}"
+        !args.contains("LiveGeometry::new()"),
+        "o `dispatch` está recebendo um mapa VAZIO — o offset/pattern ao vivo some da tela e \
+         NENHUM teste de unidade o nota:\n{args}"
+    );
+    let live_arg = args
+        .lines()
+        .map(str::trim)
+        .find(|l| l.starts_with("&vec_live"))
+        .expect(
+            "o `dispatch` não recebe `&vec_live` — se o nome mudou, atualize este gate (e \
+             confira que o preview ainda chega à tela: `PH2D_BUILD_SMOKE=17`)",
+        );
+    let _ = live_arg;
+    // E o nome tem de nascer das DUAS fontes vivas, ANTES da chamada.
+    let bind = at("let mut vec_live = self.offset_live.live()");
+    assert!(
+        bind < call,
+        "`vec_live` é ligado DEPOIS do `dispatch` — o frame desenharia a resposta do frame anterior"
+    );
+    assert!(
+        SRC[bind..call].contains("self.pattern_live"),
+        "`vec_live` não recolhe `self.pattern_live` — as cópias do Pattern Along Path sumiriam \
+         da tela sem nenhum teste de unidade notar"
     );
 }
 

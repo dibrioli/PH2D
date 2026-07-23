@@ -23,6 +23,9 @@ use ph2d_vector::{Affine, BezPath, Brush, Fill};
 
 use crate::ids;
 
+#[path = "ruler_veil.rs"]
+mod veil;
+
 pub(crate) const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
 const TICK_MAJOR_H: f32 = 10.0; // LITERAL-PX-OK: labelled second tick height
 const TICK_MINOR_H: f32 = 5.0; // LITERAL-PX-OK: half-second tick height
@@ -174,6 +177,14 @@ pub(crate) fn paint(
     // (`clock.loop_band`): a hidden band with live grips would be an invisible control.
     if clock.loop_band {
         paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+    }
+    // The DURATION handle at the veil's left edge — drag it to resize the composition
+    // (Enio, 2026-07-23). Registered AFTER the braces (topmost) so grabbing the comp
+    // end wins over a loop brace parked at the same instant, and gated the same way as
+    // the veil itself (`loop_band && view_length_explicit`, `beyond_end_shade`): no
+    // authored end, no handle.
+    if clock.loop_band {
+        veil::paint_duration_handle(ctx, theme, region, view_start, px_per_s, snap);
     }
     // The markers ARE timeline furniture (timeline-time) — Arrange, or Keys without a
     // stack. On the clip's ruler under a stack they would stand at the wrong second.

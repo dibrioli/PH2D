@@ -203,3 +203,48 @@ fn the_down_stepper_subtracts_a_fifth_of_a_second() {
     );
     set_current_timeline(None);
 }
+
+// ── the veil DRAG handle is painted + hit-registered (Enio, 2026-07-23) ───────
+//
+// A grip on the ruler at the veil's left edge — drag it to resize the composition.
+// The handle must be REGISTERED by the paint, or it is dead under the mouse (the
+// trap this project keeps hitting). It exists iff the view has an authored
+// duration, exactly like the veil it edges.
+
+/// With an authored duration on screen, the ruler paints and hit-registers the
+/// duration handle. With none, the handle does not exist (no veil, no grip).
+#[test]
+fn the_duration_handle_is_painted_only_with_an_authored_duration() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+
+    // Authored 2 s duration → the handle is registered.
+    set_current_timeline(Some(TimelineViewSnapshot {
+        fps: 60.0,
+        view_length_seconds: 2.0,
+        view_length_explicit: true,
+        ..TimelineViewSnapshot::default()
+    }));
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(
+        regs.iter()
+            .any(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_DUR_HANDLE),
+        "an authored duration must paint a grabbable resize handle on the ruler"
+    );
+
+    // Derived end (nothing authored) → no veil, no handle.
+    set_current_timeline(Some(TimelineViewSnapshot {
+        fps: 60.0,
+        view_length_seconds: 2.0,
+        view_length_explicit: false,
+        ..TimelineViewSnapshot::default()
+    }));
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(
+        !regs
+            .iter()
+            .any(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_DUR_HANDLE),
+        "no authored duration → no veil → no handle"
+    );
+    set_current_timeline(None);
+}

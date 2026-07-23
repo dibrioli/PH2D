@@ -530,6 +530,13 @@ pub enum TimelineHitKind {
     ResizeEdge {
         edges: u8,
     },
+    /// **The grip at the veil's left edge on the ruler** — the authored-duration
+    /// end. Dragging it left/right sets the view's explicit duration (the AE comp
+    /// end), snapped like the playhead; the panel maps pointer x to time and picks
+    /// the scope (clip / scene / container) the same way the Dur(s) chip does. No
+    /// payload — a duration has one value per view, resolved panel-side. The shell
+    /// gives it a ↔ resize cursor (`timeline_resize_cursor`).
+    DurationHandle,
     /// **A container's bar in the Containers list** (ADR-0133, amended 2026-07-21) — one rect,
     /// and a double-click on it enters that container.
     ///
@@ -658,6 +665,7 @@ mod timeline_hit_kind_tests {
             },
             K::LaneHeader { lane: 0 },
             K::ResizeEdge { edges: 0 },
+            K::DurationHandle,
         ];
         assert!(wants.iter().all(|k| k.wants_double_click()));
         assert!(plain.iter().all(|k| !k.wants_double_click()));

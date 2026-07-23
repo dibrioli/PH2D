@@ -317,6 +317,9 @@ pub const TIMELINE_ADDPROP_OPACITY: NodeId = hash_node_id("timeline.addprop.opac
 pub const TIMELINE_ADDPROP_TIME: NodeId = hash_node_id("timeline.addprop.time");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
+/// The drag grip at the veil's left edge (the authored-duration end) — resizing
+/// the composition duration by dragging on the ruler.
+pub const TIMELINE_DUR_HANDLE: NodeId = hash_node_id("timeline.dur_handle");
 /// The dope-sheet lanes background (box-select / deselect hit-target).
 pub const TIMELINE_LANES: NodeId = hash_node_id("timeline.lanes");
 /// Vertical scrollbar for the track list.

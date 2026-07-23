@@ -43,6 +43,7 @@ mod anchor_drag;
 mod box_select;
 mod clip_rename;
 mod container_list;
+mod duration_drag;
 mod event;
 mod geom;
 mod graph;

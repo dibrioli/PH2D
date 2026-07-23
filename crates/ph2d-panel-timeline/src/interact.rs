@@ -91,6 +91,11 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::LoopBrace { edge } => {
             loop_drag::apply(state, time_x, px_per_s, snap, edge, g);
         }
+        // The grip at the veil's left edge: drag it to resize the composition
+        // duration (scope-appropriate `Set*Length`, snapped like the playhead).
+        TimelineHitKind::DurationHandle => {
+            crate::duration_drag::apply(state, time_x, px_per_s, snap, g);
+        }
         TimelineHitKind::Marker { index } => {
             marker_drag::apply(state, time_x, px_per_s, snap, index, g);
         }
@@ -267,6 +272,45 @@ mod tests {
             &snap(),
         );
         assert!(!st.is_expanded(3));
+    }
+
+    #[test]
+    fn the_duration_handle_routes_to_the_length_edit() {
+        // The Primary router must send a DurationHandle gesture to `duration_drag`
+        // (not swallow it): a drag on the veil edge authors a length. 120 px/s, so
+        // x = 240 px is t = 2 s. Keys tab (default) → the clip scope.
+        let mut st = TimelinePanelState::default();
+        let s = TimelineViewSnapshot {
+            view_length_explicit: true,
+            view_length_seconds: 4.0,
+            ..snap()
+        };
+        feed(
+            &mut st,
+            gesture(
+                TimelineHitKind::DurationHandle,
+                GesturePhase::Begin,
+                240.0,
+                false,
+            ),
+            120.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(
+                TimelineHitKind::DurationHandle,
+                GesturePhase::Update,
+                240.0,
+                false,
+            ),
+            120.0,
+            &s,
+        );
+        assert!(
+            state::drain_intents().contains(&TimelineIntent::SetClipLength { len: Some(2.0) }),
+            "the router must reach duration_drag and author the clip length"
+        );
     }
 
     #[test]

@@ -1389,6 +1389,9 @@ impl App {
             TimelineHitKind::LabelSplitter => CursorIcon::EwResize,
             TimelineHitKind::GraphResize => CursorIcon::NsResize,
             TimelineHitKind::ResizeEdge { edges } => resize_cursor_for_edges(edges),
+            // The veil's duration grip resizes the composition sideways (Enio,
+            // 2026-07-23: the ↔ over the ruler at the veil edge).
+            TimelineHitKind::DurationHandle => CursorIcon::EwResize,
             _ => return None,
         })
     }

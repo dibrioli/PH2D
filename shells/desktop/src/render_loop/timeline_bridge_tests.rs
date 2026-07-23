@@ -551,3 +551,29 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
          com o produto sem play nenhum"
     );
 }
+
+/// **A borda da seleção, e só ela, pede a aba Keys** (Enio, 2026-07-22).
+///
+/// As três recusas importam tanto quanto o disparo: re-observar a MESMA seleção todo
+/// frame não pode puxar aba (o animador precisa poder ficar em Containers/Arrange com
+/// um objeto selecionado), e deselecionar não é selecionar.
+#[test]
+fn only_a_new_selection_asks_for_the_keys_tab() {
+    assert!(
+        selection_jumps_to_keys(None, Some(7)),
+        "nada -> objeto: dispara"
+    );
+    assert!(
+        selection_jumps_to_keys(Some(7), Some(9)),
+        "objeto -> OUTRO objeto: dispara"
+    );
+    assert!(
+        !selection_jumps_to_keys(Some(7), Some(7)),
+        "a mesma seleção, frame após frame, não pode puxar a aba de volta"
+    );
+    assert!(
+        !selection_jumps_to_keys(Some(7), None),
+        "deselecionar não é selecionar"
+    );
+    assert!(!selection_jumps_to_keys(None, None), "nada continua nada");
+}

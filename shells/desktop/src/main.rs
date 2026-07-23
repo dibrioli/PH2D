@@ -130,10 +130,10 @@ mod shape_build_gesture;
 mod sim_populate;
 mod stack_smoke;
 mod theme;
-mod timeline_persist;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]
 mod timeline_orphan_tests;
+mod timeline_persist;
 mod transport;
 mod undo;
 mod undo_route;
@@ -299,6 +299,7 @@ impl App {
                 ph
             },
             last_timeline_keys_mode: false,
+            timeline_last_selected: None,
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,

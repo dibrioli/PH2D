@@ -66,16 +66,64 @@ pub fn autokey_props(
     baseline: &PoseSample,
     allow_create: bool,
 ) -> AutokeyPlan {
+    autokey_props_in(doc, entity, t_secs, world, baseline, allow_create, false)
+}
+
+/// **The Keys/solo view's auto-key** — the same decision, taken against the
+/// SOLOED clip instead of the stack's blend.
+///
+/// The sibling of `key_authoring_solo` in the shell's K flow, and it exists for
+/// the same bug (Enio, 2026-07-22: *"a partir do momento que eu crio uma strip
+/// numa lane, não consigo mais criar keys com autokey"*): the moment ONE strip
+/// exists, [`autokey_props`] starts reading the STACK — the blend at the
+/// TIMELINE clock — while the Keys view drives the scene from the active clip
+/// at the CLIP clock ([`crate::apply_active_clip`]). Diffing one against the
+/// other saw a phantom move every frame and then asked the strip's map where to
+/// key it, which refused (`NotPlaying`) whenever the scene's strips were
+/// elsewhere — the toast wall.
+///
+/// In solo there is no blend: `t_secs` is the CLIP playhead's instant (the same
+/// clock the solo apply sampled), the shown value is the clip's own curve, the
+/// stored value is the pose itself, and there is **nothing to refuse** — soloing
+/// the clip is precisely what guarantees "key it here" one answer.
+#[must_use]
+pub fn autokey_props_solo(
+    doc: &TimelineDoc,
+    entity: u64,
+    t_secs: f64,
+    world: &PoseSample,
+    baseline: &PoseSample,
+    allow_create: bool,
+) -> AutokeyPlan {
+    autokey_props_in(doc, entity, t_secs, world, baseline, allow_create, true)
+}
+
+/// The shared core — `solo` picks which scene the diff believes in: the stack's
+/// blend (Arrange) or the active clip alone (Keys). One function, two named
+/// doors, so the two views cannot drift in what "moved" means.
+fn autokey_props_in(
+    doc: &TimelineDoc,
+    entity: u64,
+    t_secs: f64,
+    world: &PoseSample,
+    baseline: &PoseSample,
+    allow_create: bool,
+    solo: bool,
+) -> AutokeyPlan {
     let mut plan = AutokeyPlan::default();
     for (i, &prop) in PropKind::ALL.iter().enumerate() {
         let Some(v) = world[i] else { continue };
 
         // What the apply actually WROTE at this instant — the value the animator
-        // is looking at. With no stack that is the active clip's curve; with a
-        // stack it is the blend, and comparing against the active clip's curve
-        // instead would see a difference every single frame and mint a key every
-        // single frame. The diff must read what the eye reads.
-        let shown = shown_value(doc, entity, prop, t_secs);
+        // is looking at. With no stack (or soloed) that is the active clip's
+        // curve; under a stack it is the blend, and comparing against the active
+        // clip's curve instead would see a difference every single frame and mint
+        // a key every single frame. The diff must read what the eye reads.
+        let shown = if solo {
+            curve_value(doc, entity, prop, t_secs)
+        } else {
+            shown_value(doc, entity, prop, t_secs)
+        };
 
         let moved = match shown {
             // Bound: key when the pose left the curve it is drawn on.
@@ -88,6 +136,12 @@ pub fn autokey_props(
             continue;
         }
 
+        if solo {
+            // Soloed, the pose you see IS the clip's value (`key_authoring_solo`
+            // stores the same way): no blend to invert, nothing to refuse.
+            plan.keys.push((prop, v));
+            continue;
+        }
         // What must the ACTIVE clip's track hold so the scene lands on `v`? With
         // no stack, `v` itself. Under a stack, the inverse of the blend — and
         // sometimes there is no inverse (ADR-0115 R9), in which case we refuse.

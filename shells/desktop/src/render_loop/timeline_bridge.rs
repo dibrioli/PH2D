@@ -169,6 +169,15 @@ pub(crate) fn intent_for_transport(
     }
 }
 
+/// **Selecionar um objeto NOVO leva a timeline à aba Keys** (Enio, 2026-07-22) — a
+/// decisão de BORDA: dispara quando a seleção primária muda para um objeto (qualquer
+/// um), e só então. Deselecionar não puxa aba nenhuma, e re-observar a MESMA seleção
+/// frame após frame também não — senão o animador nunca conseguiria ficar em
+/// Containers/Arrange com um objeto selecionado.
+pub(crate) fn selection_jumps_to_keys(prev: Option<u64>, now: Option<u64>) -> bool {
+    now.is_some() && now != prev
+}
+
 /// Whether this transport event **jumps** the playhead to a time the current
 /// view may not show — go-to-start/end, a frame step off the edge, a typed time
 /// or frame. The shell asks the panel to pan the playhead back into view after

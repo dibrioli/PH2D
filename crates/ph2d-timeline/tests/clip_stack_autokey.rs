@@ -18,7 +18,7 @@ use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Transform, World};
 use ph2d_timeline::{
     ClipLane, ClipStrip, LaneMode, PoseSample, PropKind, StripSource, TimelineDoc, apply_from_doc,
-    autokey_props, key_time, key_value_in_active_clip,
+    autokey_props, autokey_props_solo, key_time, key_value_in_active_clip,
 };
 
 fn s(t: f64) -> RationalTime {
@@ -382,5 +382,47 @@ fn an_additive_key_away_from_the_reference_still_round_trips_exactly() {
         (x_of(&world, e) - 130.0).abs() < 1e-2,
         "the key must reproduce the pose it was authored from: {}",
         x_of(&world, e)
+    );
+}
+
+/// **Soloed, o MESMO documento keya — e a pose na própria curva não keya nada.**
+///
+/// A metade de crate do report de 2026-07-22 (*"a partir do momento que eu crio uma
+/// strip numa lane, não consigo mais criar keys com autokey"*): a vista Keys dirige a
+/// cena só pelo clip ativo, então o auto-key dela diffa contra a curva SOLOADA (não o
+/// blend) e armazena a pose CRUA (sem inverso) — `autokey_props_solo`, gêmea da
+/// `key_authoring_solo` do K. Julgada contra o blend, uma pose parada sobre a própria
+/// curva lia como movida todo frame, e o mapa da strip recusava: a parede de toasts.
+#[test]
+fn soloed_the_same_pose_keys_and_the_on_curve_pose_keys_nothing() {
+    let (mut world, mut doc, e) = scene();
+    doc.add_clip("Top".to_string());
+    flat(&mut doc, 0, e, PropKind::TranslationX, 100.0);
+    flat(&mut doc, 1, e, PropKind::TranslationX, 200.0);
+    doc.stack_mut().push(lane(0, LaneMode::Override, 1.0));
+    doc.stack_mut().push(lane(1, LaneMode::Override, 1.0)); // dona do canal no ARRANGE
+    apply_from_doc(&mut world, &mut doc, 1.0); // prima o scratch p/ o controle positivo
+
+    // Arrastada para fora da curva soloada: a key aterrissa, CRUA, sem recusa.
+    let plan = autokey_props_solo(&doc, e, 1.0, &pose_x(350.0), &pose_x(100.0), true);
+    assert_eq!(
+        plan.keys,
+        vec![(PropKind::TranslationX, 350.0)],
+        "solo armazena a própria pose — não há blend para inverter"
+    );
+    assert!(plan.refused.is_empty(), "solar é o que garante um lugar");
+
+    // Sobre a curva soloada (100): nada se moveu, nada keya — mesmo com o BLEND
+    // mostrando 200 aqui.
+    let still = autokey_props_solo(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true);
+    assert!(
+        still.is_empty(),
+        "pose == curva soloada: nenhuma key fantasma"
+    );
+    // Controle positivo: o diff do ARRANGE vê a MESMA pose como movida — é o
+    // fantasma que o solo existe para não ver.
+    assert!(
+        !autokey_props(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true).is_empty(),
+        "sem o fenômeno no fixture, mutar o solo para ler o blend ficaria verde"
     );
 }

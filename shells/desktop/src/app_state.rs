@@ -386,6 +386,11 @@ pub(crate) struct App {
     /// hand the now-active clock its own view's loop (a tab switch is not an intent,
     /// so nothing else would sync it). See `render_loop`.
     pub(crate) last_timeline_keys_mode: bool,
+    /// The primary selected entity the shell saw LAST frame — the other half of the
+    /// selection EDGE (`timeline_bridge::selection_jumps_to_keys`): a NEW selection
+    /// asks the timeline panel for the Keys tab (Enio, 2026-07-22), and an edge
+    /// needs a "before" to compare against.
+    pub(crate) timeline_last_selected: Option<u64>,
     /// The app-general timeline document + selection/history/flags (W1). The
     /// `render_loop::timeline_bridge` drains `timeline_intents` into it, then
     /// applies it to the scene at the Playhead. Empty until the panel (W2) or a

@@ -50,7 +50,9 @@ pub use apply::{
     apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time,
     remapped_time,
 };
-pub use autokey::{AutokeyPlan, PoseSample, autokey_props, key_value_in_active_clip};
+pub use autokey::{
+    AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,
+};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc};

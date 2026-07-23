@@ -129,12 +129,24 @@ pub(crate) fn apply_samples(
     ak: &mut AutokeyState,
     toasts: &mut ph2d_editor::ToastQueue,
 ) {
+    // **Which scene the diff believes in** — the same split the manual K has
+    // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
+    // the active clip at the CLIP playhead, so the pass must author on that clock
+    // and against that curve. Before this split, ONE strip in a lane flipped every
+    // question here to the stack's blend at the TIMELINE clock — a clock the solo
+    // apply was not driving — and auto-key on the Keys tab died in a wall of
+    // "does not play here" toasts (Enio, 2026-07-22). The caller passes the
+    // matching playhead (clip in keys mode, timeline otherwise).
+    let solo = timeline.keys_mode;
     // The stack's scratch must describe THIS instant before anything asks it where
     // a key lands or whether a pose is reachable. In production the apply built it
     // a moment ago at this very playhead, so this costs a compare — but the pass no
     // longer DEPENDS on that having happened, which is the difference between right
-    // and accidentally right.
-    timeline.doc.prime_stack(playhead.time());
+    // and accidentally right. Solo never consults the scratch (there is no blend),
+    // and priming it with the CLIP clock would poison it for everyone else.
+    if !solo {
+        timeline.doc.prime_stack(playhead.time());
+    }
 
     // Whether this frame CAPTURES the pose into keys.
     //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
@@ -193,7 +205,13 @@ pub(crate) fn apply_samples(
         // `key_home`, not `key_time`: the two differ only in that this one carries
         // the REASON, and a refusal the animator cannot see is indistinguishable
         // from a bug (they drag, the object snaps back, nothing says why).
-        let home = ph2d_timeline::key_home(&timeline.doc, entity, playhead.time());
+        // Soloed there is no strip map to compose and nothing to refuse — the key
+        // lands on the entity's own clip clock, which is `t_src` by construction.
+        let home = if solo {
+            Ok(t_src)
+        } else {
+            ph2d_timeline::key_home(&timeline.doc, entity, playhead.time())
+        };
         let t_e = home.ok().map(|ts| {
             if playing || ts != playhead.time() {
                 RationalTime::from_seconds(ts)
@@ -221,7 +239,11 @@ pub(crate) fn apply_samples(
             // curve; under a plain Play the drag is the sole source of an
             // off-curve pose, so this naturally captures just the dragged
             // entity's trajectory, key per display frame.
-            let plan = autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true);
+            let plan = if solo {
+                ph2d_timeline::autokey_props_solo(&timeline.doc, entity, t_diff, &pose, &base, true)
+            } else {
+                autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true)
+            };
             // **A refusal is a result, not an absence.** The pose was moved and the
             // clip being edited cannot express it (ADR-0115 R9) — so no key is
             // written, the apply snaps the object back next frame, and the animator
@@ -255,9 +277,22 @@ pub(crate) fn apply_samples(
         // diff is keyed above) or back on-curve (K landed / undo) → heal out.
         if !playing {
             // `allow_create = false`: only BOUND props matter here — an unbound
-            // one is never overwritten by the apply, so it needs no pin.
-            let off_curve =
-                !autokey_props(&timeline.doc, entity, t_diff, &pose, &base, false).is_empty();
+            // one is never overwritten by the apply, so it needs no pin. Same
+            // solo split as the capture above: the pin must judge "off its
+            // curve" against the scene the apply is actually driving.
+            let off_curve = !(if solo {
+                ph2d_timeline::autokey_props_solo(
+                    &timeline.doc,
+                    entity,
+                    t_diff,
+                    &pose,
+                    &base,
+                    false,
+                )
+            } else {
+                autokey_props(&timeline.doc, entity, t_diff, &pose, &base, false)
+            })
+            .is_empty();
             if !capturing && off_curve {
                 ak.displaced.insert(entity);
             } else {

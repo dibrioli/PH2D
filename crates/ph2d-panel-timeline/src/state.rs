@@ -26,16 +26,6 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus header + paddings).
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
-    /// A pending "fit the view to the keys" request (F over the panel). The
-    /// shortcut is read by the shell's keyboard handler, but the view transform
-    /// it fits is panel state — so the shell raises the request here and `paint`
-    /// consumes it once the time area's pixel width is known.
-    static FIT_REQUESTED: Cell<bool> = const { Cell::new(false) };
-    /// A pending "pan the time axis until the playhead is visible" request,
-    /// raised by the shell after a transport command that jumps the playhead
-    /// (go-to-start/end, a frame step, a typed time). Consumed by `paint`, which
-    /// alone knows the visible span.
-    static REVEAL_REQUESTED: Cell<bool> = const { Cell::new(false) };
     /// **The panel is on the Keys tab** — published every paint, read by the shell
     /// next frame. This is the panel→shell mirror of the tab (the reverse of
     /// [`CURRENT_SNAPSHOT`]): the shell needs it to drive the CLIP playhead and solo
@@ -70,6 +60,10 @@ thread_local! {
 /// move house because a file got long.
 #[path = "state_nav.rs"]
 mod state_nav;
+/// **Requests shell→paint** (fit / reveal / aba Keys) — sibling module (LOC cap);
+/// `pub use` so `state::request_*` stays every caller's door.
+#[path = "state_requests.rs"]
+mod state_requests;
 pub use state_nav::{
     containers_list, edit_host, edit_path, keys_mode, open_container, reset_trail,
 };
@@ -77,6 +71,8 @@ pub(crate) use state_nav::{
     enter_container, open_container_root, pop_to_depth, publish_containers_list, publish_keys_mode,
     publish_scene_root, set_tab, trail_len,
 };
+pub use state_requests::{request_fit, request_keys_tab, request_reveal_playhead};
+pub(crate) use state_requests::{take_fit_request, take_keys_tab_request, take_reveal_request};
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
 /// time axis (pan + zoom). Wired in E6; `Default` satisfies the
@@ -534,31 +530,6 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
 #[must_use]
 pub fn drain_intents() -> Vec<TimelineIntent> {
     INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
-}
-
-/// Ask the panel to fit its time view to the extent of the keys on the next
-/// paint (the `F` shortcut, raised by the shell while the cursor is over the
-/// panel — Blender's per-area focus).
-pub fn request_fit() {
-    FIT_REQUESTED.with(|c| c.set(true));
-}
-
-/// Consume a pending fit request.
-pub(crate) fn take_fit_request() -> bool {
-    FIT_REQUESTED.with(|c| c.replace(false))
-}
-
-/// Ask the panel to pan the time axis until the playhead is visible on the next
-/// paint. Raised by the shell right after it queues a transport command that
-/// jumps the playhead — the panel only page-follows while PLAYING, so a paused
-/// go-to-end would otherwise leave the view where it was.
-pub fn request_reveal_playhead() {
-    REVEAL_REQUESTED.with(|c| c.set(true));
-}
-
-/// Consume a pending reveal request.
-pub(crate) fn take_reveal_request() -> bool {
-    REVEAL_REQUESTED.with(|c| c.replace(false))
 }
 
 /// Last scrollable content height measured by `paint`.

@@ -130,3 +130,44 @@ fn the_panel_publishes_the_list_view_and_clears_it_on_every_other_view() {
         "DENTRO de um container não é a lista: o playback volta ali"
     );
 }
+
+/// **Selecionar um objeto novo aterrissa o painel na aba Keys** (Enio, 2026-07-22) — o
+/// consumo do request, no paint REAL, pela porta única `set_tab`. O controle positivo é
+/// a metade que importa: SEM request o paint não mexe na aba, senão o animador nunca
+/// ficaria em Arrange.
+#[test]
+fn a_keys_tab_request_is_honoured_by_the_next_paint_and_only_then() {
+    use ph2d_editor_core::zones::Rect;
+    crate::state::set_current_timeline(Some(snap_with_loop(false)));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    let mut state = TimelinePanelState {
+        tab: crate::tab::Tab::Arrange,
+        ..TimelinePanelState::default()
+    };
+    let vp = Rect::new(0.0, 0.0, 1400.0, 500.0);
+
+    // Sem request, a aba fica onde o animador a deixou.
+    host.paint::<crate::TimelinePanel>(&mut state, vp);
+    assert_eq!(
+        state.tab,
+        crate::tab::Tab::Arrange,
+        "paint sem request não pode puxar a aba"
+    );
+
+    // Com request, o MESMO paint aterrissa em Keys — e o consumo é one-shot.
+    crate::state::request_keys_tab();
+    host.paint::<crate::TimelinePanel>(&mut state, vp);
+    assert_eq!(
+        state.tab,
+        crate::tab::Tab::Keys,
+        "o request aterrissa em Keys"
+    );
+    state.tab = crate::tab::Tab::Arrange;
+    host.paint::<crate::TimelinePanel>(&mut state, vp);
+    assert_eq!(
+        state.tab,
+        crate::tab::Tab::Arrange,
+        "consumido: o frame seguinte não re-aplica o pedido"
+    );
+    crate::state::set_current_timeline(None);
+}

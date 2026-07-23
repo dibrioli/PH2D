@@ -144,3 +144,109 @@ fn an_ordinary_pose_edit_keys_and_says_nothing() {
     assert_eq!(toasts.len(), 0, "and nothing is said about it");
     assert_eq!(ak.refusal, None);
 }
+
+/// **O report de 2026-07-22, vermelho-primeiro**: *"a partir do momento que eu crio uma
+/// strip numa lane, não consigo mais criar keys com autokey"* — a parede de toasts da
+/// screenshot. A strip está em `[2, 4)` e o animador edita na vista KEYS, onde o apply
+/// solou o clip no relógio DELE (0.5). Antes do braço solo, o pass diffava contra o
+/// blend no relógio da CENA e pedia ao mapa da strip um lugar que não existe:
+/// `NotPlaying`, todo frame, nenhuma key. Agora a key ATERRISSA no relógio do clip,
+/// com o valor cru, em silêncio.
+#[test]
+fn the_keys_view_still_autokeys_after_a_strip_exists() {
+    let (mut st, mut ph) = state_with_tx_track();
+    lane_with_strip(&mut st, &mut ph, 0, 2.0, 4.0); // a forma exata do report
+    st.keys_mode = true; // o painel está na vista Keys: o apply sola o clip
+    // O relógio que o caller passa em keys mode é o do CLIP (`autokey_clock`).
+    let clip_ph = {
+        let mut p = Playhead::new(1.0 / 60.0);
+        p.seek(0.5);
+        p.pause();
+        p
+    };
+    let before = track_len(&st);
+
+    let mut ak = AutokeyState::default();
+    let mut toasts = ToastQueue::new();
+    // Frame 1 semeia a baseline; o 2º é o arrasto.
+    for &x in &[5.0, 99.0] {
+        frame_toasts(
+            &mut st,
+            &clip_ph,
+            &[(E, pose(&[(TX, x)]))],
+            true,
+            true,
+            &mut ak,
+            &mut toasts,
+        );
+    }
+
+    assert_eq!(
+        track_len(&st),
+        before + 1,
+        "a key aterrissa: solar o clip é o que garante um lugar para ela"
+    );
+    assert_eq!(toasts.len(), 0, "e nenhuma recusa é dita");
+    assert_eq!(
+        tx_at(&st, 0.5),
+        Some(99.0),
+        "no relógio do CLIP, com o valor CRU (sem inverso de blend)"
+    );
+}
+
+/// **A pose sobre a própria curva soloada não keya nada** — a outra metade do mesmo
+/// bug. O diff tem de ler a cena que o apply está dirigindo: soloado, isso é a curva
+/// do clip. A fixture TEM de conter o fenômeno: uma lane `Override` por cima faz o
+/// BLEND mostrar 42 onde a curva soloada diz 5 — julgada contra o blend, a pose
+/// parada leria como movida todo frame, e a recusa (`Overridden`) viraria a parede.
+#[test]
+fn a_soloed_pose_on_its_own_curve_keys_nothing_under_a_stack() {
+    let (mut st, mut ph) = state_with_tx_track();
+    // Um 2º clip com outro valor no MESMO canal, Override em cima: blend(0.5) = 42.
+    apply_intent(&mut st, &mut ph, I::AddClip);
+    apply_intent(&mut st, &mut ph, I::SetActiveClip { index: 1 });
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddKey {
+            entity: E,
+            prop: PropKind::TranslationX,
+            t: RationalTime::from_seconds(0.0),
+            value: AnimValue::Float(42.0),
+            interp: ph2d_anim::Interp::Linear,
+        },
+    );
+    apply_intent(&mut st, &mut ph, I::SetActiveClip { index: 0 });
+    lane_with_strip(&mut st, &mut ph, 0, 0.0, 4.0);
+    lane_with_strip(&mut st, &mut ph, 1, 0.0, 4.0);
+    st.keys_mode = true;
+    let clip_ph = {
+        let mut p = Playhead::new(1.0 / 60.0);
+        p.seek(0.5);
+        p.pause();
+        p
+    };
+    let before = track_len(&st);
+
+    let mut ak = AutokeyState::default();
+    let mut toasts = ToastQueue::new();
+    for _ in 0..3 {
+        // x = 5.0 É a curva em 0.5 — a pose que o solo acabou de escrever.
+        frame_toasts(
+            &mut st,
+            &clip_ph,
+            &[(E, pose(&[(TX, 5.0)]))],
+            false,
+            true,
+            &mut ak,
+            &mut toasts,
+        );
+    }
+
+    assert_eq!(track_len(&st), before, "nada se moveu, nada keya");
+    assert_eq!(toasts.len(), 0, "e nada é dito");
+    assert!(
+        !ak.displaced.contains(&E),
+        "nem o pin de pose deslocada arma — a pose está NA curva que a cena mostra"
+    );
+}

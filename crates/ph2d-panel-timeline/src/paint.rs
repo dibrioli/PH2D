@@ -34,7 +34,13 @@ const SPLIT_LINE_W: f32 = 1.0; // LITERAL-PX-OK: splitter hairline width
 /// published on the switch itself — the shell reads the host at the TOP of a frame, so a tab
 /// that only took effect at paint time would route one frame of edits into the stack the
 /// animator just left. This is what restores them when a hidden panel comes back.
-fn publish_view(state: &TimelinePanelState, snapshot: &ph2d_timeline::TimelineViewSnapshot) {
+fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::TimelineViewSnapshot) {
+    // **A NEW selection lands the panel on Keys** (Enio, 2026-07-22): the shell raised
+    // the request at the selection edge; honoured here, through the ONE tab door, and
+    // BEFORE the publishes below so the shell reads the tab it just asked for.
+    if state::take_keys_tab_request() {
+        state::set_tab(state, crate::tab::Tab::Keys);
+    }
     // On the Keys tab AND under a stack, the shell drives the CLIP playhead and solos the
     // active clip. **Without a stack there is nothing to solo** — the clip IS the timeline —
     // so keys_mode stays false and a fresh document behaves exactly as it always has (one
@@ -67,6 +73,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // ...and it is not showing the Containers list either — a stale `true`
         // here would keep refusing playback with no panel on screen to say why.
         state::publish_containers_list(false);
+        // A selection made with the panel CLOSED does not queue a tab yank for
+        // whenever it reopens — drop the request instead of banking it.
+        let _ = state::take_keys_tab_request();
         // ...nor is it inside a container. The trail survives (it comes back where it was),
         // but a hidden panel must not leave the shell driving a container's interior.
         state::publish_scene_root(true);

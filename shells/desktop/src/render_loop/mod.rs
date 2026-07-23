@@ -1060,6 +1060,18 @@ impl crate::App {
         // The panel's Keys tab drives a soloed clip on its OWN clock (the AE precomp
         // model). `keys_mode` is the panel's last-painted tab; it picks which
         // playhead the transport moves, whether the scene solos, and how K authors.
+        // **Selecionar um objeto NOVO leva a timeline à aba Keys** (Enio, 2026-07-22):
+        // selecionar é dizer "quero trabalhar NESTE", e as keys dele são onde esse
+        // trabalho acontece. A decisão de borda é pura e testada
+        // (`selection_jumps_to_keys`); o pedido viaja pelo canal do `F` e é consumido
+        // (ou, painel oculto, descartado) pelo paint deste MESMO frame.
+        let selected_now = hero_screen
+            .as_ref()
+            .and_then(|h| h.gizmo.iter_selected().next());
+        if timeline_bridge::selection_jumps_to_keys(self.timeline_last_selected, selected_now) {
+            ph2d_panel_timeline::state::request_keys_tab();
+        }
+        self.timeline_last_selected = selected_now;
         let keys_mode = ph2d_panel_timeline::state::keys_mode();
         // **The Containers LIST has no playback mode** (Enio, 2026-07-22) — the
         // panel publishes which view it painted (false while hidden), the shell
@@ -4480,9 +4492,20 @@ impl crate::App {
             // selected sprite and keys only what left its curve. Placed after the
             // apply pass too, so an undo/paste/scrub — which the apply writes back
             // to the world — reads world == curve and keys nothing.
+            // The pass authors on the clock the APPLY drove this frame: the clip
+            // playhead when the Keys view solos the active clip, the timeline's
+            // otherwise — the same pick `timeline_bridge::run` made above, read
+            // from the same stamped fact (`timeline.keys_mode`, which the pass
+            // itself branches on). Handing it the scene clock while solo drives
+            // the pose is how one strip in a lane killed auto-key (2026-07-22).
+            let autokey_clock = if self.timeline.keys_mode {
+                &self.clip_playhead
+            } else {
+                &self.playhead
+            };
             autokey_pass::run(
                 &mut self.timeline,
-                &self.playhead,
+                autokey_clock,
                 &mut self.autokey,
                 toasts,
                 hero,

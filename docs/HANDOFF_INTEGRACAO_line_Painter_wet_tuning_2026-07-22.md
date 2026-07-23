@@ -1,29 +1,44 @@
-# HANDOFF DE INTEGRAÇÃO — `line/Painter` · a UI completa do Wet Paint (doc 22)
+# HANDOFF DE INTEGRAÇÃO — `line/Painter` · Wet Paint (doc 22/23) + reorg do Impasto + o modo de pintura
 
 > DIRETRIZ §1.5.9. A linha está FECHADA e **NÃO integra nem faz ship** (o Enio cancelou
 > explicitamente a integração/ship/CI desta jornada em 2026-07-22 — outros agentes vão
 > trabalhar em suas linhas; este handoff espera o integrador da próxima janela).
 
+> **O escopo cresceu além do doc 22** (o nome do arquivo é histórico). Em ordem:
+> **(A)** a UI completa do Wet Paint — doc 22 (seção básica + tools + TILT + ações de canvas + Paper +
+> o painel lateral **Wet Tuning** com a tabela inteira de knobs) — e **(B)** o **doc 23** (o pigmento
+> seco responde a Wet/Smear/Blend/Erase). Depois, disparados por smokes do Enio:
+> **(C)** a reorganização dos cards do **Impasto** numa lista só · **(D)** o **dropdown de Modo de
+> Pintura** (os 4 meios, que fechou o bug do modo órfão, §2.1) · **(E)** o **canvas derrubado** que
+> impedia pintar (§2.2) · **(F)** os smokes abrindo em **Digital** (§2.3) · **(G)** os **defaults de
+> produto** do Wet Paint (§2.4). Tudo aditivo ou contido no módulo, exceto o que a §2/§3 nomeiam.
+
 ## 1. Identidade
 
 - **Branch:** `line/Painter` · **base do fork:** `13a04c7aa` (o main integrado de 2026-07-22).
-- **Commits:** 21 (W1 engine → W2 tool → W3 seção básica → W4 painel lateral → fechamento →
-  **fix pós-smoke: painel arrastável/redimensionável + heading engole o clique** →
-  **doc 23: estudo + implementação — o pigmento responde às tools** →
-  **fix pós-smoke do Impasto, em 4 commits**: TODOS os cards com Enable ON (a estreiteza
-  selected-tool-only revertida; Material fan-out pros 3 slots de relevo) + os 3 refinos do
-  Enio (card Knife só com a faca · card Sculpt logo abaixo do TOOL e só com um verbo em mãos ·
-  Filter Layer/Stroke só nos verbos que os têm) →
-  **o dropdown de MODO DE PINTURA + o bug do modo órfão** (§2.1) →
-  **o canvas do Painter que era derrubado e nunca re-pushado** (§2.2) →
-  **os smokes abrem em Digital** (§2.3) →
-  **defaults de produto do Wet Paint** (§2.4), ver §2/§6;
-  checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`).
-- **Plano:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md).
-- **Gate batched:** `nextest-impacted` **5058/5058** · clippy `--all-targets` **0 warnings** nas
-  8 crates tocadas · engine debug **E** release verdes (a lição do voronoi) · fingerprint pinado
-  intacto · 13 arch-gates verdes · 3 mutações dirigidas sangram (porta de tool → RED de paridade
-  bit-exata; rota de SetValue do tuning → RED; véu do Show Wet bakando → RED).
+- **Commits:** **24** — `13a04c7aa..HEAD` (`HEAD` = `021b89263`). Waves A/B nos commits `233797b5e`
+  (W1) → `82dfeac3f` (Wet Tuning arrasta/redimensiona), com `b782226c7`+`cd31c44ca` = doc 23;
+  wave C em `939d4de6e`+`2b4ac8b87`+`9512fb400`+`068b08789`; D em `3a8afa3fa`; E em `11ad184bd`;
+  F em `5ed714db0`; G em `da9af82f3`. O resto são commits `docs(painter)` (handoff + CLAUDE.md).
+  Checkpoint de reversão do doc 23: tag `checkpoint-pre-wet-tools-rework`.
+- **Planos:** [`docs/Painter/22_plano_wet_tuning_ui.md`](Painter/22_plano_wet_tuning_ui.md) ·
+  [`docs/Painter/23_estudo_tools_wet_pigmento.md`](Painter/23_estudo_tools_wet_pigmento.md).
+- **Crates tocadas (8):** `ph2d-wet-paint`, `ph2d-tool-painter`, `ph2d-panel-painter-layers`,
+  `ph2d-panel-wet-tuning` (**NOVA**), `ph2d-editor-core`, `ph2d-i18n`, `ph2d-panel-registry-init`,
+  `shells/desktop` (+ `Cargo.lock`, docs, CLAUDE.md).
+- **Gate batched (rodado no fechamento, 2026-07-22):**
+  - `scripts/nextest-impacted.sh` → **5058 passed, 223 skipped, 0 failed**.
+  - `cargo clippy --workspace --all-targets` → **0 warnings**.
+  - `cargo fmt --all --check` (pin 1.95) → **limpo**.
+  - `typos` (raiz, com `.typos.toml`) → **0 erros**.
+  - LOC caps: `architecture_workspace_file_loc_cap` **+** `shells/desktop file_loc_caps` → **verdes**
+    (`wetpaint.rs` a 700 exatos, `paint.rs` a 700).
+  - `cargo machete` nas 3 crates de código-novo → **0 deps mortas**.
+  - `cargo test -p ph2d-wet-paint` (engine, inclui o **fingerprint** pinado) → **14/14** —
+    o pin do doc 23 mudou COM justificativa; nada nesta jornada tocou o engine depois disso.
+  - **Contagem de mutação da jornada:** cada wave traz seus gates mutação-provados (doc 22 = 3 ·
+    doc 23 = 5 · dropdown/§2.1 = 7 · canvas/§2.2 = 5 · smokes/§2.3 = 1 · defaults/§2.4 = 5), com os
+    sobreviventes DOCUMENTADOS onde há (o `populate` redundante do chip de meio).
 
 ## 2. Foundational/compartilhado tocado (tudo aditivo)
 
@@ -43,6 +58,9 @@
 | `shells/desktop/src/render_loop/painter_bridge.rs` | publish do snapshot + espelho de visibilidade (`tuning_open`; OFF escrito FORA do downcast) + z-bump no edge |
 | `ph2d-wet-paint` (engine) | portas ADITIVAS: `dispatch_pressure_dab_lane_blend` · `dispatch_pressure_dab_tool` (prev explícito) · `render_pigment_region_visual` (+`PigmentVisual`; `render_pigment_only_region` delega, off byte-idêntico) · `wet_canvas_now`/`dry_canvas_now`/`fast_dry_now` (sem `capture_history` — o clone de grid por aperto seria a doença do ADR-0117) · `tilt_dir_for_spoke` (cardinais EXATOS) · `knob_defaults()` const · `Tuning::default` delega |
 | `ph2d-wet-paint` (engine, **doc 23**) | **MUDANÇA DE COMPORTAMENTO dos tools** (P1-P4, [doc 23](Painter/23_estudo_tools_wet_pigmento.md)): Wet dissolve `sett` sob o stamp · Smear arrasta o seco · Blend molhado re-suspende · Erase resiste por staining — porta única `drying::lift_settled` (extração VERBATIM do re-wet passivo) + `tools::active_lift_gain`. **`Knob::WetLift` apendado (`KNOB_COUNT` 53→54)** + `extStaining` Hidden→Paint (painel Tuning 40→42 rows; i18n +2 chaves). ⚠️ **O pin `fingerprint.rs::PINNED` MUDOU** (justificado no histórico do pin; o pin antigo virou o gate `wet_lift_zero_is_the_old_model_to_the_byte`). Gates: `tests/product_rewet.rs` (5, mutação-provados 5/5) |
+| `ph2d-editor-core/src/ids/chrome/painter.rs` (**§2.1**) | **+** `PAINTER_BRUSH_MEDIA` + `painter_brush_media_option_id(u8)` (o chip de meio). ⚠️ **NÃO-aditivo:** `painter_{wetpaint,watercolor,impasto}.rs` **PERDERAM** `*_ENABLE` (id + row em `*_CLICKS`, que encolheu 16→15 · 7→6 · 17→16). Ver §3 |
+| `shells/desktop/src/render_loop/{painter_bridge,mod}.rs` (**§2.2**) | a decisão de bind virou `painter.needs_document_bind(bits)` (não o memo `last_painter_pushed_entity`); o memo é limpo em TODA saída do Painter. Arquivos de shell já desta linha (doc 22 também os toca) |
+| `shells/desktop/src/{impasto,wetpaint}_smoke.rs` (**§2.3**) | os `arm_brush_once` **pararam de forçar o meio** (abrem em Digital); só-shell, sem foundational |
 
 ## 2.1 O DROPDOWN DE MODO DE PINTURA (2026-07-22) — e o bug que ele fechou
 
@@ -259,6 +277,9 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 
 ## 7. Decisões que o smoke pode reabrir (nomeadas, não escondidas)
 
+- **`Preset` vs `Paint Mode` mostram os dois "Watercolor"** (§2.1): o Preset semeia o `BrushSpec`
+  inteiro, o Paint Mode troca o meio — perguntas diferentes, mas o rótulo colide. Fundir/renomear/
+  deixar é decisão do Enio.
 - Métodos de stroke NÃO-incrementais (Line/shapes) com tool ≠ Paint: o preview flat mostra
   PIGMENTO e o commit aplica a TOOL (o esboço derrete na ação) — coerente com o doc 21, mas o
   preview "mente" a cor para Wet/Dry/Blow; se incomodar, a saída é restringir o Method sob tools.
@@ -268,4 +289,18 @@ genéricos); `NodeOp`/`NodeManifest` intocados.
 - A visibilidade do painel via bridge não tem gate de shell dedicado (o espelho é 3 linhas no
   `painter_bridge`; o gate de registry cobre a metade estrutural).
 
-*Linha `Painter` pronta (21 commits). Aguardo ordem de integração.*
+## 8. Ordem de operação para o integrador
+
+1. `git merge --ff-only line/Painter` (ou rebase por cima do main de HOJE — a §3 lista o que pode
+   colidir; o `ph2d-panel-wet-tuning` é crate nova, então o conflito real seria em `Cargo.lock` /
+   `ph2d-panel-registry-init` gerado / i18n / os ids `chrome/painter*.rs`).
+2. Rode `scripts/foundational-integrate.sh` (o gate da árvore combinada) — os números da §1 são
+   desta árvore isolada; o gate do main-de-hoje pode surfar latentes de OUTRAS linhas (é o esperado,
+   DIRETRIZ §1.5.9).
+3. ⚠️ **`PROJECT_SCHEMA` / contratos:** esta linha **não bumpou schema nem contrato** (§4). Se outra
+   linha bumpou o `PROJECT_SCHEMA`, **o valor se CONTA, não se escolhe** — esta não entra na soma.
+4. `EXPECTED_TYPED` +1 e `NodeId(837)` são as duas colisões numéricas — **conte, não escolha** (§3).
+5. Só então o ship do integrador (`./scripts/ship.sh` → push → babysit), **por ordem do Enio**.
+
+*Linha `Painter` FECHADA (24 commits, `13a04c7aa..021b89263`). Gates de fechamento verdes (§1).
+Aguardo ordem de integração — não integro nem pusho por conta própria.*

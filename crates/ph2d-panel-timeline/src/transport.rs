@@ -35,7 +35,7 @@ const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
 /// step by a frame (`1/fps`); a DURATION is coarser, so `1/fps` (≈0.04 s) produced
 /// the fiddly, "wrong-looking" values the report named (4.04, 4.08, …). A round
 /// 0.2 s keeps the authored duration on clean tenths.
-const DUR_STEP_SECONDS: f64 = 0.2;
+const DUR_STEP_SECONDS: f64 = 0.2; // LITERAL-PX-OK: 0.2 s stepper increment (a time value), not a UI px metric
 /// Buttons in the transport cluster: go-start, step-back, play, step-forward, go-end.
 const TRANSPORT_BTNS: usize = 5;
 
@@ -195,8 +195,9 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
     let gap = Spacing::Sm.px();
     let half = gap * 0.5;
     match item {
-        // One cell per tab, side by side inside the segmented pill.
-        Item::Tabs => crate::transport_tabs::width(),
+        // One cell per tab, side by side inside the segmented pill (the container
+        // levels of the trail sit among them now, so the width is view-dependent).
+        Item::Tabs => crate::transport_tabs::width(snap),
         // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one
         // clip. Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16):
         // they are the two ways to get a clip, and the difference between them is
@@ -331,7 +332,7 @@ fn paint_item(
         DEFAULT_FPS
     };
     match item {
-        Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab),
+        Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab, snap),
         Item::Crumbs => crate::breadcrumb::paint(ctx, theme, x, y, snap),
         Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap, view),
         Item::Transport => {

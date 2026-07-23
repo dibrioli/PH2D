@@ -551,14 +551,17 @@ fn entering_two_deep_keeps_the_way_back_to_the_middle() {
     assert_eq!(ph2d_panel_timeline::state::edit_host(), StackHost::Document);
 }
 
-/// **A trilha funda é de fato PINTADA, e cada segmento vira alvo clicável.**
+/// **A trilha funda é de fato PINTADA como ABAS no grupo, e cada nível vira alvo clicável.**
 ///
-/// Os gates acima provam a POLÍTICA (que profundidade cada slot popa); nenhum deles roda o
-/// `paint`, e um segmento atrás de um `return` antecipado — ou um índice fora da régua de ids
-/// — seria "a trilha não existe" com tudo verde ([[feedback_painted_is_not_populated_paint_gate]]).
-/// Este pinta, e lê o que o clique de fato encontraria.
+/// Os segmentos do container agora vivem no strip de abas (`transport_tabs`), entre
+/// Containers e Arrange (Enio, 2026-07-23). Os gates acima provam a POLÍTICA (que
+/// profundidade cada slot popa); este roda o `paint` e lê o que o clique de fato
+/// encontraria — uma aba atrás de um `return` antecipado, ou um índice fora da régua de
+/// ids, seria "a trilha não existe" com tudo verde
+/// ([[feedback_painted_is_not_populated_paint_gate]]). O slot 0 (a cena) NÃO é mais um
+/// segmento: a aba **Arrange** é a cena.
 #[test]
-fn a_deep_trail_paints_a_clickable_segment_for_every_level() {
+fn a_deep_trail_paints_a_clickable_tab_for_every_container_level() {
     use ph2d_editor_core::zones::Rect;
     const VIEWPORT: Rect = Rect {
         x: 0.0,
@@ -583,8 +586,8 @@ fn a_deep_trail_paints_a_clickable_segment_for_every_level() {
         .count();
     assert_eq!(
         painted,
-        ids::TIMELINE_CRUMB.len(),
-        "a trilha funda tem de encher a régua de ids -- e nunca passar dela"
+        ids::TIMELINE_CRUMB.len() - 1,
+        "a trilha funda enche a régua de ids MENOS o slot 0 (a cena é a aba Arrange)"
     );
     // E o controle POSITIVO: na cena a trilha não pinta segmento nenhum.
     set_current_timeline(Some(TimelineViewSnapshot::default()));

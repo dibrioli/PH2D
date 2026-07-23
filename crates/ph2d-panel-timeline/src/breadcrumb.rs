@@ -1,44 +1,45 @@
-//! The breadcrumb: **where in the nesting the animator is**, and the way back out
-//! ([ADR-0133] §5).
+//! The container's **host-window STATUS readout** — and the [`trail`]/[`depth_of_slot`]
+//! machinery the tab strip reuses to render its container tabs ([ADR-0133] §5).
 //!
-//! # Why a trail and not a tab
+//! # The trail became TABS (Enio, 2026-07-23)
 //!
-//! The research split the two lineages cleanly: **edit-in-place with a breadcrumb** is the 2D
-//! animation lineage (Flash/Animate's edit bar, Harmony's `Top` button), and **a new tab** is
-//! the compositing lineage (After Effects). No formal consensus says the tab is worse — but
-//! the *symptom* is documented over and over, always the same one: you lose the parent's
-//! context, and AE users rebuild it by hand (locking a viewer, `View > New Viewer`) to get
-//! back what edit-in-place gives for free. Adobe answered with navigation aids, never with
-//! in-place editing.
+//! The clickable breadcrumb segments — a `Scene` button that just fell into Arrange and a
+//! `Container` button beside it — floated OUTSIDE the tab group, one of them redundant with
+//! a tab already there. They moved INTO the strip ([`crate::transport_tabs`]): entering a
+//! container adds its tab between Containers and Arrange, born checked; leaving is any of
+//! the three fixed tabs. This module kept the two things that are NOT tabs: the navigation
+//! rule ([`depth_of_slot`]/[`trail`], which the strip walks to build the container cells) and
+//! the **status readout**.
 //!
-//! ⚠️ And the panel's existing `Tab::{Keys, Arrange}` is **not** the same axis: the tab says
-//! *which half you are looking at*, the trail says *where you are*. They compose — the trail
-//! puts you in a container, and the tabs then show that container's keys or its arrangement.
+//! The original research still stands and is why the trail exists at all: **edit-in-place
+//! with a breadcrumb** is the 2D lineage (Flash/Animate, Harmony) and **a new tab** is the
+//! compositing lineage (After Effects), whose users lose the parent's context and rebuild it
+//! by hand. The pivot keeps the edit-in-place *model* (you are still inside the container,
+//! not in a separate document) and only moves the *control* into the group the animator
+//! already reaches for.
 //!
-//! # Zero-width at the root
+//! # The readout, and why not a second ruler
 //!
-//! At the scene root there is nothing to go back to, so the trail paints nothing and measures
-//! zero. A document that never touches containers pays nothing and sees nothing.
+//! Inside a container two clocks are on screen at once: the transport chip keeps showing the
+//! scene's second, the ruler counts the interior's. Seeing `8.00` in the chip and the
+//! playhead at `4` on the ruler is a contradiction until you know where the instance starts.
+//! AE answers with a second stacked ruler; we do not need it — what is missing is the
+//! RELATION between the two, which is [`status`], one line of text. A no-op at the root and
+//! on the Keys tab, where that ruler is not on screen.
 //!
 //! [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
-use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Theme, TypeToken};
 
 use crate::ids;
 
-/// One segment's width. Fixed rather than measured: the trail sits in a flow layout that
-/// wraps, and a segment that grew with a container's name would make the whole bar reflow
-/// every rename.
-const SEG_W: f32 = 74.0; // LITERAL-PX-OK: breadcrumb segment width
-
-/// Width reserved for the status readout that follows the trail. Fixed for the same reason
-/// [`SEG_W`] is: it rides a flow layout, and a readout that grew with its own number would
-/// reflow the whole bar every time the playhead crossed into or out of the instance.
+/// Width reserved for the status readout that follows the tabs. Fixed rather than
+/// measured: it rides a flow layout that wraps, and a readout that grew with its own
+/// number would reflow the whole bar every time the playhead crossed into or out of
+/// the instance.
 const STATUS_W: f32 = 132.0; // LITERAL-PX-OK: host-window readout width
 
 /// **Which depth the segment in slot `slot` pops to**, for a path `len` containers deep — the
@@ -158,74 +159,39 @@ impl Status {
     }
 }
 
-/// How wide the trail paints — the single source the transport flow measures against.
+/// How wide the STATUS readout paints — the single source the transport flow measures
+/// against. Zero when there is no status (the root, or the Keys tab). The trail's own
+/// segments moved into the tab strip (`transport_tabs`); this module keeps only the
+/// readout that RELATES the two clocks on screen.
 pub(crate) fn width(snap: &TimelineViewSnapshot) -> f32 {
-    let n = trail(snap).len();
-    if n == 0 {
-        return 0.0;
+    if status(snap).is_some() {
+        STATUS_W
+    } else {
+        0.0
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "n is at most the id array's length"
-    )]
-    let n = n as f32;
-    let gap = Spacing::Sm.px() * 0.5;
-    n * SEG_W
-        + (n - 1.0) * gap
-        + if status(snap).is_some() {
-            gap + STATUS_W
-        } else {
-            0.0
-        }
 }
 
-/// Paint the trail: `[ Scene ][ C1 ][ C2 ]`, each segment a button that pops out to it.
-///
-/// The LAST segment is where you already are, so clicking it is a no-op — it is painted as
-/// part of the trail rather than special-cased, because a trail whose current position is
-/// missing reads as "you are nowhere".
+/// Paint the host-window STATUS readout (`plays 4.00 - 12.00` / `not playing here` /
+/// `not placed`) — a READOUT, not a control: no id, no hit. The trail's clickable
+/// segments are now tabs in the strip (`transport_tabs`); what stays here is the one
+/// line that says WHERE the open container plays on the scene ruler, which no tab can
+/// carry. A no-op at the root and on the Keys tab (`status` returns `None`).
 pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &TimelineViewSnapshot) {
-    let entries = trail(snap);
-    if entries.is_empty() {
+    let Some(st) = status(snap) else {
         return;
-    }
-    let gap = Spacing::Sm.px() * 0.5;
-    let mut x = x;
-    for (slot, (_, label)) in entries.iter().enumerate() {
-        let id = ids::TIMELINE_CRUMB[slot];
-        let rect = Rect::new(x, y, SEG_W, ROW_H_PX);
-        let st = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
-        paint_button(
-            &Button::new(id, label.clone()).state(st),
-            rect,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(id, rect);
-        x += SEG_W + gap;
-    }
-    // The status is a READOUT, not a control: no id, no hit. It states a fact about where
-    // the interior plays; there is nothing to click, and registering it would make a hit
-    // that swallows a press and does nothing.
-    if let Some(st) = status(snap) {
-        let text = st.text();
-        let font = TypeToken::Xs.px();
-        ph2d_editor_core::text_elide::paint_text_elided(
-            ctx.text_system,
-            ctx.scene,
-            &text,
-            x,
-            y + (ROW_H_PX - font) * 0.5,
-            font,
-            STATUS_W,
-            resolve(ColorToken::Text3, theme),
-        );
-    }
+    };
+    let text = st.text();
+    let font = TypeToken::Xs.px();
+    ph2d_editor_core::text_elide::paint_text_elided(
+        ctx.text_system,
+        ctx.scene,
+        &text,
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        STATUS_W,
+        resolve(ColorToken::Text3, theme),
+    );
 }
 
 #[cfg(test)]
@@ -407,24 +373,33 @@ mod tests {
         }
     }
 
-    /// **The flow layout reserves the readout's room.**
+    /// **The status readout reserves its own room, and nothing else does.**
     ///
-    /// The trail rides a flow layout that wraps; if `width` did not count the readout, the
-    /// next item would be painted on top of it. The gate is a comparison, not a literal, so
-    /// it survives a change to either constant.
+    /// The trail's clickable segments moved into the tab strip; this module now measures
+    /// ONLY the readout. A view WITH a status is wider than one without (the Keys tab,
+    /// which prints nothing), and the trail's depth no longer changes the width — the
+    /// segments are not here anymore.
     #[test]
-    fn the_width_makes_room_for_the_readout() {
-        let with = width(&snap(true, Some(map())));
-        let bare = {
-            let mut s = snap(true, Some(map()));
-            s.crumbs.clear();
-            // One segment's worth of trail, without a status: the root case has no trail at
-            // all, so the honest comparison is the same trail minus the readout.
-            width(&s) + 2.0 * SEG_W + Spacing::Sm.px() * 0.5
-        };
+    fn the_width_is_the_status_and_nothing_but() {
+        let inside = snap(true, Some(map())); // Arrange inside a container: a status
         assert!(
-            with > bare,
-            "the readout must widen the trail: {with} vs {bare}"
+            width(&inside) > 0.0,
+            "a placed container reads out its window"
+        );
+
+        let mut keys = snap(true, Some(map()));
+        keys.keys_mode = true; // the Keys tab: no readout
+        assert!(
+            width(&keys).abs() < f32::EPSILON,
+            "the Keys tab prints nothing"
+        );
+
+        // A DEEPER trail does not widen this module anymore — the extra segments are tabs.
+        let mut deeper = snap(true, Some(map()));
+        deeper.crumbs = vec![(0, "A".into()), (1, "B".into()), (2, "C".into())];
+        assert!(
+            (width(&deeper) - width(&inside)).abs() < f32::EPSILON,
+            "trail depth is the tab strip's business now, not the readout's"
         );
     }
 }

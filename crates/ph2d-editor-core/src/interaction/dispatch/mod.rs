@@ -161,7 +161,17 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
         let _ = write!(buffer, "{}", super::format_number(*value));
         *caret = buffer.len();
         *last_committed = *value;
-        *selection_anchor = None;
+        // **Focus selects ALL** — a numeric chip is a readout the artist
+        // SUBSTITUTES: the first keystroke must replace the formatted value,
+        // not append to it. With the anchor collapsed here, clicking a chip
+        // showing "2" and typing "2" parsed "22" — the Dur(s) chip authored a
+        // 22 s duration whose veil sat off-screen and whose clamp pinned
+        // nothing (Enio, 2026-07-23; the keyboard-commit tests' `Backspace × 5`
+        // dance was this same trap, confessed). Blender/AE convention: first
+        // click selects all, a second click places the caret (the Down that
+        // FOCUSED skips `place_text_caret` — see `pointer_down.rs`); Tab-focus
+        // lands here too and gets the same replace-on-type.
+        *selection_anchor = Some(0);
     }
 }
 

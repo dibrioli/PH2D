@@ -36,6 +36,9 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # Behavioral seam harness (MockPanelHost) for the transport wire test
 # (architecture_interactive_crate_has_behavioral_test).
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# The keyboard/text dispatch arena (`dispatch_key`/`dispatch_text_input`) — the
+# duration-chip gesture gate types into the painted chip for real.
+bumpalo = { version = "3", features = ["collections"] }
 # `Playhead` — the seam tests drive `apply_intent`/`rebuild` to build a real
 # document + snapshot (the same objects the shell publishes).
 ph2d-core = { path = "../ph2d-core" }

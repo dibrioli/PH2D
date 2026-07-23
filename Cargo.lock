@@ -6687,6 +6687,7 @@ version = "0.0.0"
 name = "ph2d-panel-timeline"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-editor-core",

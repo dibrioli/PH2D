@@ -384,7 +384,8 @@ pub(super) fn dispatch_down<'frame>(
     {
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
-        if store.focus_id() != Some(id) {
+        let focus_gained = store.focus_id() != Some(id);
+        if focus_gained {
             store.set_focus(Some(id));
             init_number_buffer(store, id);
             match store.get_mut(id) {
@@ -508,8 +509,21 @@ pub(super) fn dispatch_down<'frame>(
             // the clicked byte position and seed the
             // selection anchor there. Subsequent Move events
             // extend the selection from anchor → new caret.
-            let offset = byte_offset_from_click_xy(store, id, rect, event.x, event.y, ts.take());
-            place_text_caret(store, id, offset, true);
+            //
+            // EXCEPT the Down that just FOCUSED a NumberInput: focus selected
+            // all (`init_number_buffer`) so typing REPLACES the readout, and
+            // placing the caret here would collapse that selection back to the
+            // clicked byte — the exact re-collapse that made typing "2" into a
+            // chip showing "2" author 22 (Dur(s), 2026-07-23). A second click
+            // on the already-focused chip still places the caret for surgical
+            // edits (Blender's number-field model).
+            let kept_focus_selection =
+                focus_gained && matches!(store.get(id), Some(InteractiveState::NumberInput { .. }));
+            if !kept_focus_selection {
+                let offset =
+                    byte_offset_from_click_xy(store, id, rect, event.x, event.y, ts.take());
+                place_text_caret(store, id, offset, true);
+            }
         }
         set_widget_pressed(store, id);
         // For sliders, the initial Down also sets value

@@ -107,7 +107,7 @@ pub fn dispatch_key<'frame>(
                 if matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
                     && event.keycode == KEY_ENTER
                 {
-                    commit_number_buffer(store, id, &mut events);
+                    commit_number_buffer(store, id, &mut events, true);
                     reset_focused_visual_state(store, id);
                     store.set_focus(None);
                     events.push(WidgetEvent::Blur(id));

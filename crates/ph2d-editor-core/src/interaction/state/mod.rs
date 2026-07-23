@@ -284,6 +284,13 @@ pub struct WidgetStore {
     /// (mouse stopped, value still climbing). Membership here makes
     /// the dispatch skip the stepper hit-test for the id.
     pub(super) chips_without_steppers: std::collections::BTreeSet<NodeId>,
+    /// NumberInput ids that commit on an explicit ENTER even when the typed value
+    /// equals the one already shown. Opt-in (default off), for a chip whose
+    /// displayed value is a DERIVED readout distinct from an AUTHORED state — the
+    /// timeline Dur(s) box shows the content's derived end, and typing that same
+    /// number must still author the explicit duration (Enio, 2026-07-23). Every
+    /// other chip keeps the delta-gate that suppresses a same-value commit.
+    pub(super) number_commit_always: std::collections::BTreeSet<NodeId>,
     /// NodeIds eligible for collapse-toggle on left-click. Populated by
     /// `pre_populate` / panel `populate` for every `paint_section_header`
     /// site. The dispatch consults this set to decide whether a click

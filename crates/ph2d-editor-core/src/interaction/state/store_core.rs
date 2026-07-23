@@ -19,6 +19,7 @@ impl WidgetStore {
             number_drag_rate: BTreeMap::new(),
             number_to_slider_snap_integer: std::collections::BTreeSet::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
+            number_commit_always: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
             palette_name_to_parent: BTreeMap::new(),
@@ -277,6 +278,20 @@ impl WidgetStore {
     /// deprecated [`mark_chip_no_stepper`](Self::mark_chip_no_stepper).
     pub fn is_chip_no_stepper(&self, id: NodeId) -> bool {
         self.chips_without_steppers.contains(&id)
+    }
+
+    /// Mark a NumberInput so an explicit ENTER commits its buffer even when the
+    /// typed value is unchanged — see [`Self::number_commit_always`]
+    /// (`number_commit_always` field). The panel calls this once at populate for
+    /// the timeline Dur(s) chip.
+    pub fn set_number_commit_always(&mut self, id: NodeId) {
+        self.number_commit_always.insert(id);
+    }
+
+    /// Whether an unchanged ENTER commit on `id` should still emit `ValueChanged`.
+    #[must_use]
+    pub fn number_commit_always(&self, id: NodeId) -> bool {
+        self.number_commit_always.contains(&id)
     }
 
     /// Mark a section header NodeId as collapse-toggle eligible.

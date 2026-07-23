@@ -316,7 +316,7 @@ pub(super) fn dispatch_down<'frame>(
     if let Some(old) = prev_focus
         && new_focus != Some(old)
     {
-        commit_number_buffer(store, old, events);
+        commit_number_buffer(store, old, events, false);
         commit_hex_buffer(store, old, events);
         reset_focused_visual_state(store, old);
         events.push(WidgetEvent::Blur(old));

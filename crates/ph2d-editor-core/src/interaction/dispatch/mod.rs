@@ -250,6 +250,7 @@ pub(super) fn commit_number_buffer<'a>(
     store: &mut WidgetStore,
     id: ph2d_a11y::NodeId,
     events: &mut BumpVec<'a, WidgetEvent>,
+    force: bool,
 ) {
     // Phase 1 — parse the buffer. On parse failure, revert to
     // last_committed; on success, capture the parsed display value
@@ -324,6 +325,15 @@ pub(super) fn commit_number_buffer<'a>(
             use std::fmt::Write;
             let _ = write!(buffer, "{}", super::format_number(*value));
             *caret = buffer.len();
+        }
+        // **An opt-in chip commits an UNCHANGED value on explicit ENTER**
+        // (`force`), because its displayed number is a DERIVED readout and
+        // typing that same number is a real DERIVED -> AUTHORED transition
+        // downstream (the timeline Dur(s) box; Enio, 2026-07-23). Only on
+        // `force` (Enter), never on a mere blur, and only for a flagged id —
+        // every other chip keeps the delta-gate above.
+        if force && store.number_commit_always(id) {
+            events.push(WidgetEvent::ValueChanged(id));
         }
     }
     // BlenderColorPicker channel chip: write the parsed value back

@@ -610,3 +610,98 @@ fn link_slider_number_mapped_with_identity_args_equals_legacy() {
     assert_eq!(store.linked_slider(NodeId(2)), Some(NodeId(1)));
     assert_eq!(store.linked_number(NodeId(1)), Some(NodeId(2)));
 }
+
+// ── commit-always: an unchanged Enter still fires for a flagged chip ──────────
+//
+// The timeline Dur(s) box shows the content's DERIVED end. Typing that same
+// number must author the explicit duration — but the delta-gate in
+// `commit_number_buffer` suppresses a same-value commit. `set_number_commit_always`
+// opts a chip out of that suppression, on an explicit ENTER only (never a blur),
+// and ONLY for the flagged id (Enio, 2026-07-23).
+
+fn focused_chip(value: f64, commit_always: bool) -> WidgetStore {
+    let mut store = WidgetStore::with_capacity(4);
+    let buffer = format!("{value}");
+    let len = buffer.len();
+    store.register(
+        NodeId(2),
+        InteractiveState::NumberInput {
+            state: TextInputState::Focused,
+            value,
+            buffer,
+            caret: len,
+            last_committed: value,
+            selection_anchor: None,
+        },
+    );
+    store.set_focus(Some(NodeId(2)));
+    if commit_always {
+        store.set_number_commit_always(NodeId(2));
+    }
+    store
+}
+
+/// Enter on a flagged chip whose typed value equals the shown value STILL emits
+/// `ValueChanged` — the derived->authored transition the Dur(s) box needs.
+#[test]
+fn a_flagged_chip_commits_an_unchanged_value_on_enter() {
+    let mut store = focused_chip(2.0, true);
+    let arena = Bump::new();
+    // No edit — the buffer already reads "2"; the user just presses Enter.
+    let events = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            ph2d_editor_core::interaction::WidgetEvent::ValueChanged(NodeId(2))
+        )),
+        "a flagged chip must fire ValueChanged on an unchanged Enter, got {events:?}"
+    );
+}
+
+/// The OPT-IN is real: an UNflagged chip keeps the delta-gate — an unchanged
+/// Enter fires nothing, so every other number box is byte-identical.
+#[test]
+fn an_unflagged_chip_stays_silent_on_an_unchanged_enter() {
+    let mut store = focused_chip(2.0, false);
+    let arena = Bump::new();
+    let events = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    assert!(
+        !events.iter().any(|e| matches!(
+            e,
+            ph2d_editor_core::interaction::WidgetEvent::ValueChanged(NodeId(2))
+        )),
+        "an unflagged chip must NOT fire on an unchanged commit, got {events:?}"
+    );
+}
+
+/// It is ENTER-scoped, not blur-scoped: leaving the field by focusing ELSEWHERE
+/// (a pointer-down on another widget) must not author. Only the explicit Enter
+/// gesture asserts the value — merely visiting the box does not lock the duration.
+#[test]
+fn a_flagged_chip_does_not_commit_an_unchanged_value_on_blur() {
+    let mut store = focused_chip(2.0, true);
+    // A second widget to receive the focus-stealing click.
+    store.register(
+        NodeId(9),
+        InteractiveState::Button {
+            state: ph2d_editor_core::widget::ButtonState::Normal,
+        },
+    );
+    let mut hits = HitIndex::default();
+    hits.register(NodeId(9), Rect::new(500.0, 500.0, 20.0, 20.0));
+    let arena = Bump::new();
+    // Pointer-down away from the chip -> focus departs -> commit_number_buffer(force=false).
+    let events = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 510.0, 510.0),
+        &arena,
+    );
+    assert!(
+        !events.iter().any(|e| matches!(
+            e,
+            ph2d_editor_core::interaction::WidgetEvent::ValueChanged(NodeId(2))
+        )),
+        "blur must NOT author an unchanged value even when flagged, got {events:?}"
+    );
+}

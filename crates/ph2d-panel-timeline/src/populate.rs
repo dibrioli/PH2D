@@ -96,6 +96,11 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     number(store, ids::TIMELINE_TIME_NUM);
     number(store, ids::TIMELINE_FRAME_NUM);
     number(store, ids::TIMELINE_LENGTH_NUM);
+    // **The Dur(s) box shows the content's DERIVED end until a duration is
+    // authored, so typing that same number must still author it** (Enio,
+    // 2026-07-23): commit on an explicit Enter even when unchanged. Every other
+    // chip keeps the delta-gate that suppresses a same-value commit.
+    store.set_number_commit_always(ids::TIMELINE_LENGTH_NUM);
     // Every lane's weight field, not just the lanes a fresh document has: the
     // store is populated ONCE at install, so a lane added later would paint a
     // field that was never registered — pintado mas inerte (the same reason every

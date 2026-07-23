@@ -150,7 +150,7 @@ pub(super) fn cycle_focus<'a>(
             if let Some(old) = store.focus_id()
                 && old != id
             {
-                super::commit_number_buffer(store, old, events);
+                super::commit_number_buffer(store, old, events, false);
                 super::commit_hex_buffer(store, old, events);
                 super::reset_focused_visual_state(store, old);
                 events.push(WidgetEvent::Blur(old));

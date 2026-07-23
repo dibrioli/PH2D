@@ -50,3 +50,42 @@ pub(crate) fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) 
         ph2d_core::LoopMode::Wrap
     });
 }
+
+/// Which duration [`apply_length`] authors.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum LengthTarget {
+    /// The scene's (Arrange).
+    Scene,
+    /// The active clip's (Keys).
+    ActiveClip,
+    /// A container's, by index.
+    Container(usize),
+}
+
+/// **Author one explicit duration** (Enio, 2026-07-23): one undo step, then the
+/// loop invariant (`clamp_loops_to_lengths` — shrinking a duration pulls every
+/// loop it governs back inside) and the LIVE playhead loop resync, so the
+/// transport shows the clamped brace this same frame. One function for the three
+/// intents, or the clamp would be three copies waiting to drift.
+pub(crate) fn apply_length(
+    state: &mut crate::TimelineState,
+    playhead: &mut ph2d_core::Playhead,
+    target: LengthTarget,
+    len: Option<f64>,
+) {
+    super::edit(state, |doc, _| {
+        match target {
+            LengthTarget::Scene => doc.set_scene_length(len),
+            LengthTarget::ActiveClip => {
+                let ix = doc.active_index();
+                doc.set_clip_length_override(ix, len);
+            }
+            LengthTarget::Container(c) => doc.set_container_length_override(c, len),
+        }
+        doc.clamp_loops_to_lengths();
+    });
+    match target {
+        LengthTarget::Container(c) => sync_container_loop(&state.doc, c, playhead),
+        _ => sync_loop(&state.doc, playhead, state.keys_mode),
+    }
+}

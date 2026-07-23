@@ -165,6 +165,95 @@ fn a_clips_cut_freezes_both_solo_paths_at_the_same_instant() {
     );
 }
 
+// ── the loop never leaves the authored area ─────────────────────────────────
+
+/// **Nenhum loop passa do fim autorado** (Enio, 2026-07-23): armar ou arrastar
+/// uma brace além dele puxa a brace de volta; ENCOLHER a duração encolhe o loop
+/// junto (e o playhead vivo resincroniza); um loop inteiro além do fim não
+/// abraça nada e é LIMPO. Sem duração autorada a brace é livre, como sempre.
+#[test]
+fn no_loop_reaches_past_the_authored_duration() {
+    use ph2d_timeline::{TimelineIntent as I, TimelineState, apply_intent};
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+
+    // Sem Dur autorada: a brace fica onde foi posta.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((0.0, 5.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(st.doc.active_loop_for(false), Some((0.0, 5.0)));
+
+    // Dur da cena = 2: a brace existente encolhe na hora.
+    apply_intent(&mut st, &mut ph, I::SetSceneLength { len: Some(2.0) });
+    assert_eq!(st.doc.active_loop_for(false), Some((0.0, 2.0)));
+    // E armar além do fim já nasce preso.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((1.0, 9.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(st.doc.active_loop_for(false), Some((1.0, 2.0)));
+    // Um loop inteiro além do fim não abraça nada: limpo.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((3.0, 9.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(st.doc.active_loop_for(false), None);
+
+    // O par do Keys responde ao CLIP, não à cena.
+    st.keys_mode = true;
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((0.0, 8.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(
+        st.doc.active_loop_for(true),
+        Some((0.0, 8.0)),
+        "clip sem Dur: livre"
+    );
+    apply_intent(&mut st, &mut ph, I::SetClipLength { len: Some(1.0) });
+    assert_eq!(st.doc.active_loop_for(true), Some((0.0, 1.0)));
+
+    // E o loop de um CONTAINER responde à duração DELE.
+    let mut st = TimelineState::new();
+    let c = st.doc.add_container("C".to_string());
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetContainerLoop {
+            container: c,
+            range: Some((0.0, 6.0)),
+            ping_pong: true,
+        },
+    );
+    assert_eq!(st.doc.container_loop(c).0, Some((0.0, 6.0)));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetContainerLength {
+            container: c,
+            len: Some(2.0),
+        },
+    );
+    assert_eq!(st.doc.container_loop(c).0, Some((0.0, 2.0)));
+}
+
 // ── persistence ─────────────────────────────────────────────────────────────
 
 /// The three overrides survive the round-trip (v11, appended fields).

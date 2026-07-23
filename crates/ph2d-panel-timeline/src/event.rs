@@ -120,21 +120,15 @@ pub(crate) fn apply_event(
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Click(id)));
             EventOutcome::Consumed
         }
-        // **The Dur(s) chip writes the scope the ONE door names** (Enio,
-        // 2026-07-23): the open container, the container the source dropdown
-        // points at, the active clip (Keys), the scene (Arrange). Routed HERE —
-        // not forwarded to the shell — because `source_container` is panel
-        // state the shell never sees; display and routing share
-        // `transport::length_scope`, so they cannot disagree. 0 clears.
+        // **The Dur(s) chip writes THE VIEW on screen** (Enio, 2026-07-23): the
+        // open container, the active clip (Keys), the scene (Arrange). Routed
+        // HERE and shared with the painter (`transport::length_scope`), so what
+        // you read and what your typing edits cannot diverge. 0 clears.
         WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_LENGTH_NUM => {
             let v = host.store().number_value(id).unwrap_or(0.0);
             let len = (v > 0.0).then_some(v);
             let snap = crate::state::current_snapshot();
-            let intent = match crate::transport::length_scope(
-                snap.container_open,
-                state.source_container,
-                state.tab,
-            ) {
+            let intent = match crate::transport::length_scope(snap.container_open, state.tab) {
                 crate::transport::LengthScope::Container(c) => {
                     ph2d_timeline::TimelineIntent::SetContainerLength { container: c, len }
                 }

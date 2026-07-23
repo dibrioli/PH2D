@@ -78,4 +78,37 @@ impl TimelineDoc {
     pub fn set_active_ping_pong(&mut self, on: bool) {
         self.set_active_ping_pong_for(false, on);
     }
+
+    /// **No loop reaches past the authored duration that governs it** (Enio,
+    /// 2026-07-23: *"faça a área do loop/pingpong não ultrapassar a área definida
+    /// pela duração"*). One invariant, enforced whole: every clip's Arrange loop
+    /// against the SCENE's authored length, every clip's Keys loop against that
+    /// clip's own, every container's loop against its own. A loop lying wholly
+    /// beyond the end brackets nothing and is CLEARED. Called after every edit
+    /// that can break it — arming or dragging a brace, and shrinking a duration —
+    /// so the five arms share one law instead of five copies of it.
+    ///
+    /// Only an AUTHORED duration constrains (a derived end never did), and a loop
+    /// already inside is byte-untouched.
+    pub(crate) fn clamp_loops_to_lengths(&mut self) {
+        let clamp = |range: &mut Option<(f64, f64)>, end: Option<f64>| {
+            let Some(end) = end else { return };
+            if let Some((a, b)) = *range {
+                *range = (a < end).then_some((a, b.min(end)));
+            }
+        };
+        let scene = self.scene_length;
+        for i in 0..self.clips().len() {
+            let own = self.clip_length_override(i);
+            let c = &mut self.clips[i];
+            clamp(&mut c.loop_range, scene);
+            clamp(&mut c.keys_loop_range, own);
+        }
+        for i in 0..self.containers().len() {
+            let own = self.container_length_override(i);
+            if let Some(c) = self.containers_mut().get_mut(i) {
+                clamp(&mut c.loop_range, own);
+            }
+        }
+    }
 }

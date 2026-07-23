@@ -223,32 +223,31 @@ fn toggle_w() -> f32 {
 
 /// Paint one item at `(x, y)`. Returns the clip chip's rect when that item is the
 /// clip dropdown AND it is open (the caller defers the popover — see [`paint_bar`]).
-/// **Which duration the Dur(s) chip shows AND writes** — one door for paint and
-/// for the event router, so what you read and what your typing edits can never
-/// diverge (Enio, 2026-07-23: the box follows what the dropdown names).
+/// **Which duration the Dur(s) chip shows AND writes — THE VIEW you are looking
+/// at, always** (Enio, 2026-07-23, smoke: *"nada escuro … o playhead ultrapassa"*).
+/// One door for paint and for the event router, so what you read and what your
+/// typing edits can never diverge.
 ///
-/// Priority: the container OPEN for editing (its interior is the view) · the
-/// container the source dropdown names (either root view — switching the
-/// dropdown re-aims the box) · the active clip (Keys) · the scene (Arrange
-/// root with a clip source — the Arrange's own duration needs a home, and the
-/// clip named there has its own on the Keys tab).
+/// The first cut let the source DROPDOWN hijack the scope, and the smoke showed
+/// why that is a trap: you type a duration while looking at the Arrange, the
+/// value lands on the container the dropdown happens to name, and the view you
+/// are watching never closes — no shade, no clamp, and the box holds a number
+/// that edited something off-screen. A write that goes somewhere invisible is a
+/// control that lies. The container's own duration is edited INSIDE it (the
+/// double-click), where its ruler, shade and clamp are on screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LengthScope {
-    /// A container, by index.
+    /// The container open for editing (its interior is the view).
     Container(usize),
-    /// The active clip.
+    /// The active clip (the Keys view).
     Clip,
     /// The scene (Arrange).
     Scene,
 }
 
 /// See [`LengthScope`].
-pub(crate) fn length_scope(
-    container_open: Option<usize>,
-    source_container: Option<usize>,
-    tab: Tab,
-) -> LengthScope {
-    if let Some(c) = container_open.or(source_container) {
+pub(crate) fn length_scope(container_open: Option<usize>, tab: Tab) -> LengthScope {
+    if let Some(c) = container_open {
         LengthScope::Container(c)
     } else if tab == Tab::Keys {
         LengthScope::Clip
@@ -257,26 +256,17 @@ pub(crate) fn length_scope(
     }
 }
 
-/// The Dur(s) chip, **through the scope door** (`length_scope`): a container
-/// named by the dropdown shows ITS length; otherwise the view's own (clip in
-/// Keys, scene in Arrange, the open container inside one —
-/// `view_length_seconds` is stamped per view already).
+/// The Dur(s) chip: **the view's own duration** (`view_length_seconds` is
+/// stamped per view — clip in Keys, scene in Arrange, the open container
+/// inside one). The router writes the same scope (`length_scope`).
 fn paint_length_chip(
     ctx: &mut PaintCtx,
     theme: Theme,
     x: f32,
     y: f32,
     snap: &TimelineViewSnapshot,
-    view: BarView,
     fps: f64,
 ) {
-    let value = match length_scope(snap.container_open, view.source_container, view.tab) {
-        LengthScope::Container(c) => snap
-            .containers
-            .get(c)
-            .map_or(snap.view_length_seconds, |v| v.length),
-        LengthScope::Clip | LengthScope::Scene => snap.view_length_seconds,
-    };
     labeled_chip(
         ctx,
         theme,
@@ -284,7 +274,7 @@ fn paint_length_chip(
         y,
         "panel.timeline.length",
         ids::TIMELINE_LENGTH_NUM,
-        value,
+        snap.view_length_seconds,
         1.0 / fps,
         2,
     );
@@ -421,7 +411,7 @@ fn paint_item(
             1.0,
             0,
         ),
-        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap, view, fps),
+        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap, fps),
         // Loop and PingPong are the SAME loop seen two ways, so exactly one can
         // read as on — the snapshot carries a range plus a mode, and there is no
         // value that is both.

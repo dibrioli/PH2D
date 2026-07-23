@@ -99,11 +99,10 @@ fn time_chip_edit_raises_set_value() {
     );
 }
 
-/// **O chip Dur(s) escreve o escopo que a porta única nomeia** (Enio, 2026-07-23):
-/// o container ABERTO · o container que o dropdown de fonte aponta · o clip ativo
-/// (Keys) · a cena (Arrange raiz). Roteado no PAINEL (o `source_container` é
-/// estado dele) e empurrado como INTENT; display e rota compartilham
-/// `transport::length_scope`, então não podem divergir. 0 limpa.
+/// **O chip Dur(s) escreve A VISTA na tela** (Enio, 2026-07-23): o container
+/// ABERTO · o clip ativo (Keys) · a cena (Arrange raiz). Roteado no PAINEL e
+/// empurrado como INTENT; display e rota compartilham `transport::length_scope`,
+/// então não podem divergir. 0 limpa.
 #[test]
 fn the_length_chip_writes_the_scope_the_one_door_names() {
     use ph2d_timeline::TimelineIntent as I;
@@ -136,14 +135,15 @@ fn the_length_chip_writes_the_scope_the_one_door_names() {
         edit(&mut host, &mut state, 1.5),
         vec![I::SetClipLength { len: Some(1.5) }]
     );
-    // O dropdown aponta um CONTAINER: o container — em qualquer vista raiz.
+    // **A armadilha do smoke (Enio, 2026-07-23): o dropdown NÃO desvia a
+    // escrita.** Com um container nomeado na fonte, digitar Dur na aba Keys
+    // ainda edita O CLIP QUE VOCÊ ESTÁ VENDO — a 1ª versão mandava o valor
+    // para o container fora da tela e a vista nunca fechava (nada escuro,
+    // playhead livre, caixa segurando um número que editou outra coisa).
     state.source_container = Some(3);
     assert_eq!(
         edit(&mut host, &mut state, 2.5),
-        vec![I::SetContainerLength {
-            container: 3,
-            len: Some(2.5)
-        }]
+        vec![I::SetClipLength { len: Some(2.5) }]
     );
     // DENTRO de um container (via snapshot): o aberto vence o dropdown.
     let snap = ph2d_timeline::TimelineViewSnapshot {

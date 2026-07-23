@@ -19,7 +19,7 @@ use crate::strip_edge_edit::{
 /// module under the LOC cap.
 #[path = "intent_loop_sync.rs"]
 mod intent_loop_sync;
-use intent_loop_sync::sync_loop;
+use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
 pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
@@ -53,6 +53,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             let keys = state.keys_mode;
             state.doc.set_active_loop_for(keys, range);
             state.doc.set_active_ping_pong_for(keys, ping_pong);
+            // A brace armed or dragged past the authored duration is pulled back
+            // inside it (Enio, 2026-07-23) — the same law every length edit runs.
+            state.doc.clamp_loops_to_lengths();
             sync_loop(&state.doc, playhead, keys);
         }
         // Transport-only: the clock is armed, the DOCUMENT is not touched — see the
@@ -78,18 +81,20 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             ping_pong,
         } => {
             state.doc.set_container_loop(container, range, ping_pong);
+            state.doc.clamp_loops_to_lengths();
             sync_container_loop(&state.doc, container, playhead);
         }
 
-        // The explicit durations (Enio, 2026-07-23) — authoring, one undo step each.
-        I::SetSceneLength { len } => edit(state, |doc, _| doc.set_scene_length(len)),
-        I::SetClipLength { len } => edit(state, |doc, _| {
-            let ix = doc.active_index();
-            doc.set_clip_length_override(ix, len);
-        }),
-        I::SetContainerLength { container, len } => edit(state, |doc, _| {
-            doc.set_container_length_override(container, len);
-        }),
+        // The explicit durations (Enio, 2026-07-23) — one family, one function
+        // (`apply_length`, beside the loop syncs it drives): authoring + the
+        // loop clamp + the live resync.
+        I::SetSceneLength { len } => apply_length(state, playhead, LengthTarget::Scene, len),
+        I::SetClipLength { len } => {
+            apply_length(state, playhead, LengthTarget::ActiveClip, len);
+        }
+        I::SetContainerLength { container, len } => {
+            apply_length(state, playhead, LengthTarget::Container(container), len);
+        }
 
         // authoring (undoable)
         I::Bind { entity, prop } => edit(state, |doc, _| {

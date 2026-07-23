@@ -320,14 +320,18 @@ diferentes do contorno tweenavam com a costura desalinhada e o meio TORCIA (medi
 a espiral lê o par nariz↔costas como um giro de ~180° e leva o anel num LAÇO). Doc completo:
 [`docs/Flip/11_tween_v2.md §9`](Flip/11_tween_v2.md).
 
+⚠️ **CORREÇÃO no mesmo dia (report do Enio):** a 1ª versão correlacionava a VIRADA e **arqueava**
+no desenho de mão dele. Ver §10.5.
+
 ### 10.1 Superfície NOVA na `ph2d-flip` — módulo `pub(crate)`, ZERO superfície pública
 
 Módulo irmão `tween_phase` (`seam_shift(a, b) -> usize`), **interno à crate** — não amplia a
-superfície foundational (o `tween` o chama). Correlação circular sobre a **virada `(sen,cos)`**
-por amostra de arco (invariante a rotação — a espiral tira o rígido depois; se correlacionasse
-posições, o giro do mundo vazaria para a fase). Grade fixa `PHASE_STEPS=96` ⇒ custo constante no
-tamanho do anel. OPT-IN pela geometria (só cede da identidade por um vale decisivo — amplitude do
-custo + piso de sinal-chato; anel simétrico/pequeno fica na identidade).
+superfície foundational (o `tween` o chama). Correlação circular sobre o **TRAJETO** (as posições
+centradas no centróide, o critério do flubber, o que o `phase_only` do vetor de fato usa): a fase
+de menor deslocamento faz o ajuste ver ~translação (o blob DESLIZA). Grade fixa `PHASE_STEPS=96` ⇒
+custo constante no tamanho do anel. **SEM margem de aceitação** — com o trajeto o mínimo nunca
+aumenta o deslocamento (a identidade é candidata), então a fase só reduz a rotação que o ajuste vê;
+guardas: anel degenerado e pequeno (`< 8 pontos`).
 
 ### 10.2 Arquivos tocados (todos DESTA linha — nenhum contrato, nenhum schema)
 
@@ -337,6 +341,7 @@ custo + piso de sinal-chato; anel simétrico/pequeno fica na identidade).
 | `crates/ph2d-flip/src/lib.rs` | `mod tween_phase;` | 1 linha |
 | `crates/ph2d-flip/src/tween.rs` | fase entre auto-flip e `fit` no `tween_stroke`; mesma porta no `tween_ring` (furo) | append; `pb` virou `mut` |
 | `crates/ph2d-flip/src/tween_flip.rs` | doc do `opposite_winding` aponta para `tween_phase` (o item que ele nomeava fechou) | comentário |
+| `crates/ph2d-flip/tests/tween_arc_probe.rs` | **novo** — o gate de regressão do arco + a sonda | isolado |
 | `shells/desktop/src/flip_tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod` + a chamada do smoke no prólogo | append (ao lado dos outros smokes) |
 
@@ -345,13 +350,16 @@ custo + piso de sinal-chato; anel simétrico/pequeno fica na identidade).
 
 ### 10.3 Gates + prova de mutação
 
-Motor (`tween_phase::tests`): `the_seam_shift_realigns_the_seam` · `the_signal_is_rotation_invariant`
-· `a_symmetric_ring_is_left_alone` · `a_small_ring_is_left_alone` · `the_phase_ruler` (`#[ignore]`).
-Smoke (shell): `the_phase_smoke_keeps_the_ring_on_the_straight_path` (o blob desliza em LINHA RETA,
-`y≈0`; sem a fase mergulha para `y≈−2,2`). **Mutação `seam_shift → 0`** sangra os 2 gates de
-comportamento do motor E o smoke (verificado end-to-end, a área colapsa? NÃO — o centróide sai da
-reta). ⚠️ **O 1º oráculo, de ÁREA, nasceu VERDE sobre o bug** (a torção só gira/desloca, não
-encolhe) — o defeito é o CAMINHO; a lição de sempre ([[feedback_oracle_must_model_appearance_not_implementation]]).
+Motor (`tween_phase::tests`): `the_seam_shift_realigns_a_moved_seam` · **`the_phase_never_increases_the_travel`**
+(a invariante que mata o arco) · `a_symmetric_ring_is_left_alone` · `a_small_ring_is_left_alone` ·
+`the_phase_ruler` (`#[ignore]`). Regressão (`tests/tween_arc_probe.rs`):
+**`a_moved_hand_drawn_blob_glides_straight_instead_of_arcing`** — o bug do Enio, ponta a ponta, com
+blobs de MÃO (ruído diferente); mutação de deslocamento espúrio `n/6` sangra (`off=0 → y=−11,8`).
+Smoke (shell): `the_phase_smoke_keeps_the_ring_on_the_straight_path`. ⚠️ **Duas lições de oráculo,
+as duas minhas:** o oráculo de ÁREA nasceu VERDE sobre a torção (a forma só gira/desloca), e o
+smoke inteiro nasceu verde sobre o ARCO porque usava formas **idênticas** — o arco só aparece
+quando A e B DIFEREM (mão), daí o gate de regressão usar ruído diferente
+([[feedback_oracle_must_model_appearance_not_implementation]], [[reference_topic_fixture_discipline]]).
 
 ### 10.4 O SMOKE (S3) — o que falta para o veredito da 3ª entrega
 
@@ -359,7 +367,29 @@ encolhe) — o defeito é o CAMINHO; a lição de sempre ([[feedback_oracle_must
 env PH2D_FLIP_TWEEN_PHASE_SMOKE=1 cargo run -p ph2d-host-desktop --release
 ```
 
-A cena imprime `[phase-smoke] cena montada: …` e um guia. O que olhar: um **blob** (gota com
-narizinho) à esquerda, o MESMO blob à direita no quadro 8 (desenhado de um ponto de partida
-diferente). Aperte **Add**, folheie 0→2→4→6→8: o blob tem de **deslizar em LINHA RETA**, sempre
-em pé. **ERRADO:** mergulha para baixo e faz um LAÇO (cambalhota), chegando de cabeça para baixo.
+A cena imprime `[phase-smoke] cena montada: …` e um guia. Um **blob** (gota com narizinho) à
+esquerda, o MESMO blob à direita no quadro 8 (desenhado de um ponto de partida diferente). Aperte
+**Add**, folheie 0→2→4→6→8: o blob tem de **deslizar em LINHA RETA**. **ERRADO:** mergulha e faz um
+LAÇO. ⚠️ **Este smoke usa formas idênticas** — ele valida a fase mas NÃO reproduz o arco; **o teste
+de verdade é o DESENHO DE MÃO do Enio** (o que arqueava), que agora deve deslizar.
+
+### 10.5 O ARCO (report do Enio) — a virada estava errada, a cura é o TRAJETO
+
+A 1ª versão da fase correlacionava a **virada** `(sen,cos)`, no raciocínio de que "a espiral tira o
+rígido depois, então a fase tem de ser invariante à rotação". Funcionou no smoke (formas idênticas)
+mas o Enio desenhou as duas chaves À MÃO — mesma forma, ruído diferente, costura levemente
+deslocada — e o tween fez um **arco para cima** (a imagem: o quadro do meio bem mais alto que os
+extremos, e a forma se pinçando à direita).
+
+**Causa (medida, sonda `probe_hand_drawn_blob_arcs`):** uma costura **2 vértices** fora subia o meio
+**+20 unidades**. Para um anel, um giro e um deslocamento de costura são a MESMA coisa; a virada,
+cega ao giro, escolhia uma fase que fazia o ajuste (Umeyama) achar uma ROTAÇÃO, e a espiral varria
+um arco (`s` vértices ≈ `s·360/n` graus). **Eu regredi o caso comum** (blob movido) para consertar o
+raro (costura meia-volta fora).
+
+**Cura:** correlacionar o **TRAJETO** (posições centradas) — a fase de menor deslocamento faz o
+ajuste ver ~translação. Medido depois: off 0-2 → `y≈+0,6` (o comum, perfeito); off 4 → +2,4; sobra
+um balanço SUAVE (4-6 px) em off 8-16 que é a **diferença genuína de forma** entre as duas chaves de
+mão, não o arco. **E a margem de aceitação MORREU:** com o trajeto ela era nociva (impedia
+endireitar off≈4). Aberto: um **deadband de rotação pequena** para traço fechado zeraria o balanço
+residual (um blob fechado quase nunca *quer* girar) — outra wave, decisão de produto.

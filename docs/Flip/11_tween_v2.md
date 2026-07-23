@@ -261,36 +261,48 @@ ponta. Se A e B começam o anel em lugares diferentes do contorno, o pareamento 
 girado e a forma do meio TORCE — e, medido, ela **não colapsa**: a espiral lê o par nariz↔costas
 como um giro de ~180° e leva o anel num **LAÇO** (mergulha para fora da reta e chega rodado).
 
+⚠️ **CORREÇÃO (o report do Enio, 2026-07-22): a 1ª versão correlacionava a VIRADA e ARQUEAVA.** Ela
+funcionava no smoke (formas idênticas, só movidas) mas o Enio desenhou as duas chaves à mão —
+mesma forma, ruído diferente, costura levemente deslocada — e o tween fez um **arco para cima**.
+Medido (sonda `probe_hand_drawn_blob_arcs`): uma costura **2 vértices** fora subia o meio **+20
+unidades**. Causa: para um anel, **um giro e um deslocamento de costura são a MESMA coisa**, e a
+virada, invariante à rotação, escolhia uma fase que fazia o ajuste (Umeyama) achar uma ROTAÇÃO — a
+espiral então varria um arco (um deslocamento de `s` vértices ≈ `s·360/n` graus de giro). O sinal
+certo é o **TRAJETO** (as posições centradas, o que o `phase_only` do vetor de fato usa).
+
 **O motor** (`ph2d-flip::tween_phase`, módulo irmão de `tween`/`tween_flip`):
 - `seam_shift(a, b) -> usize` — o deslocamento cíclico que faz `a[i]` parear com `b[(i+s)%n]`
-  seguindo a FORMA. É uma **correlação circular** (a técnica do `phase_only` do `ph2d-vec-blend`),
-  mas o sinal é a **virada `(sen, cos)`** por amostra de arco, **não as posições**: a espiral tira
-  o rígido DEPOIS, então a fase tem de ser invariante à rotação (senão o giro do mundo vazaria
-  para o índice — a divergência do nosso caso contra o do vetor). Grade de arco fixa
-  (`PHASE_STEPS = 96`) ⇒ custo `O(steps²)` **constante no tamanho do anel** (régua `the_phase_ruler`).
-- **É OPT-IN pela geometria:** só cede da identidade (deslocamento 0) por um vale DECISIVO — o
-  ganho grande frente à AMPLITUDE do custo, e com piso de sinal-chato (`FLAT_EPS`). Um anel
-  simétrico (quadrado, círculo) tem custo chato ⇒ fica na identidade, e a rotação limpa da espiral
-  não vira reflexão por ruído de `f64`. Anel < 8 pontos ⇒ 0 (protege os quadrados de 4 pontos dos
-  gates de furo do `tween`, que ficam **byte-idênticos**). É a mesma lição do z-order desta linha:
-  *não se escolhe um desempate — não se tem empate.*
+  **sobrepondo as duas formas com o menor deslocamento** (o TRAJETO, o critério do flubber). É uma
+  **correlação circular** sobre as **posições centradas no centróide** (a translação entre A e B
+  não é assunto da fase — a espiral a resolve). A fase de menor trajeto faz o ajuste ver
+  ~translação ⇒ o blob **desliza**; escolher pela virada deixava o ajuste achar um giro ⇒ arco.
+  Grade de arco fixa (`PHASE_STEPS = 96`) ⇒ custo `O(steps²)` **constante no tamanho do anel**.
+- **SEM margem de aceitação, e é a lição do arco:** com o trajeto, o mínimo **nunca aumenta** o
+  deslocamento (a identidade é sempre um candidato), então a fase só pode REDUZIR a rotação que o
+  ajuste vê. Uma margem só a impediria de endireitar uma costura moderadamente deslocada (off≈4 ⇒
+  ~28° de giro deixado ⇒ arco). Guardas: só o anel degenerado (`spread≈0`) e o pequeno
+  (`< 8 pontos`, que mantém byte-idênticos os gates de furo do `tween`). Um círculo tem um mínimo
+  de trajeto CLARO em `s=0` (≠ o custo chato da virada), então não é mexido por ruído.
 
 **A costura** (`tween::tween_stroke`): a fase roda ENTRE o auto-flip e o `fit` — o `tween_flip`
 resolve o SENTIDO, a fase resolve a FASE, e a espiral ajusta o rígido sobre a correspondência já
-alinhada (por isso vem antes do `fit`). O FURO (`tween_ring`) passa pela **MESMA porta** — um furo
-é um anel fechado como o contorno, e o mesmo "O" com o buraco começando em lugares diferentes
-torceria o furo.
+alinhada (por isso vem antes do `fit`). O FURO (`tween_ring`) passa pela **MESMA porta**.
 
-**Gates (motor + smoke):** a fase realinha a costura · é invariante à rotação (a fase de B e de B
-girado 90° é IGUAL) · anel simétrico fica na identidade · anel pequeno fica na identidade · a
-régua · e o smoke de aparência (`the_phase_smoke_keeps_the_ring_on_the_straight_path`: o blob
-desliza em LINHA RETA, y≈0; sem a fase mergulha para y≈−2,2). ⚠️ **O 1º oráculo, de ÁREA, nasceu
-VERDE sobre o bug** — a torção não colapsa a área (a forma só gira e desloca), e o defeito é o
-centróide sair da reta; a lição é a de sempre ([[feedback_oracle_must_model_appearance_not_implementation]]:
-a aparência aqui é o CAMINHO, não o tamanho). Mutação (`seam_shift → 0`) sangra os gates de
-comportamento e o smoke. Smoke: `PH2D_FLIP_TWEEN_PHASE_SMOKE=1`.
+**Gates (motor + regressão + smoke):** `the_seam_shift_realigns_a_moved_seam` (costura muito
+fora → realinha) · **`the_phase_never_increases_the_travel`** (a invariante que mata o arco) ·
+anel simétrico/pequeno na identidade · a régua · **`a_moved_hand_drawn_blob_glides_straight...`**
+(o bug do Enio, ponta a ponta: dois blobs de mão movidos deslizam reto, y≈0, sem oito; mutação de
+deslocamento espúrio `n/6` sangra) · o smoke de aparência
+(`the_phase_smoke_keeps_the_ring_on_the_straight_path`). ⚠️ **Duas lições de oráculo, as duas
+minhas:** o 1º oráculo do smoke, de ÁREA, nasceu VERDE sobre a torção (a forma só gira/desloca,
+não encolhe — o defeito é o CAMINHO); e o smoke inteiro nasceu verde sobre o ARCO porque usava
+formas **idênticas** — o arco só aparece quando A e B **diferem** (mão), e é por isso que o gate de
+regressão usa blobs de mão com ruído diferente ([[feedback_oracle_must_model_appearance_not_implementation]],
+[[reference_topic_fixture_discipline]]). Smoke: `PH2D_FLIP_TWEEN_PHASE_SMOKE=1`.
 
-**Aberto de lá:** a fase é uma **rotação inteira** de `pb` (preserva os pontos de B); o refino
-sub-vértice (a parábola do `phase_only`) foi dispensado de propósito — o pareamento é discreto e o
-índice é arredondado de qualquer jeito. A rotação grande ainda torce (o resíduo não-rígido, §7.3),
-que é outra wave, e cuja correspondência era o pré-requisito.
+**Aberto de lá:** sobra um balanço SUAVE (~4-6 px num blob de raio 30 movendo 120) em costuras
+moderadamente deslocadas (off 8-16) — é a **diferença genuína de forma** entre as duas chaves de
+mão (o ajuste acha um giro pequeno que a fase minimiza mas não zera), medido e nomeado, não um
+arco. Reduzi-lo mais pediria um **deadband de rotação pequena** para traço fechado na espiral (um
+blob fechado quase nunca *quer* girar), que é outra wave — decisão de produto. E a rotação grande
+ainda torce (o resíduo não-rígido, §7.3).

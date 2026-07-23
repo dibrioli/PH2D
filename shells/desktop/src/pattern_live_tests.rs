@@ -90,24 +90,31 @@ fn a_shape_cannot_ride_itself() {
     assert!(spec_of(&sim, &map, motif).is_none(), "nenhum vínculo criado");
 }
 
-/// **O primário é o MOTIVO, o outro é o guia** — a lei de disambiguação do painel (W3). Sem ela, o
-/// gesto não saberia qual dos dois selecionados cavalga qual.
+/// **O guia é o caminho de MAIOR extensão, INDEPENDENTE da ordem de seleção** (Enio, 2026-07-23:
+/// *"escolhendo a si mesmo e não a outra curva"*). O motivo é o quadrado (bbox diag ~56,6); o guia
+/// é a reta (bbox 100). Mutação que mata: a regra antiga (primário=motivo) invertia os papéis
+/// conforme a ordem de clique.
 #[test]
-fn the_primary_is_the_motif_and_the_other_is_the_guide() {
-    let (_scene, _sim, _map, motif, guide) = scene();
-    // Primário = motif ⇒ (motif, guide).
-    assert_eq!(
-        link_candidate(&[motif, guide], Some(motif)),
-        Some((motif, guide))
-    );
-    // Primário = guide ⇒ os papéis se invertem (o primário É sempre o motivo).
-    assert_eq!(
-        link_candidate(&[motif, guide], Some(guide)),
-        Some((guide, motif))
-    );
-    // Um só selecionado, ou sem primário, não é candidato.
-    assert_eq!(link_candidate(&[motif], Some(motif)), None);
-    assert_eq!(link_candidate(&[motif, guide], None), None);
+fn the_guide_is_the_larger_path_regardless_of_order() {
+    let (scene, _sim, _map, motif, guide) = scene();
+    // O guia é a RETA (extensão 100 > 56,6 do quadrado) nas DUAS ordens.
+    assert_eq!(link_candidate(&scene, &[motif, guide]), Some((motif, guide)));
+    assert_eq!(link_candidate(&scene, &[guide, motif]), Some((motif, guide)));
+    // Menos/mais de dois, ou o mesmo id duas vezes, não é candidato.
+    assert_eq!(link_candidate(&scene, &[motif]), None);
+    assert_eq!(link_candidate(&scene, &[motif, motif]), None);
+}
+
+/// **`linked_motif` acha o motivo pela seleção, não pelo primário** — depois de prender, o primário
+/// pode ser o GUIA (o último clicado), mas quem tem os controles é o motivo. Sem isto, os
+/// sliders/alças editariam o guia (sem componente) e não fariam nada.
+#[test]
+fn the_linked_motif_is_found_in_the_selection_not_the_primary() {
+    let (_scene, mut sim, map, motif, guide) = scene();
+    link(&mut sim, &map, motif, guide);
+    // A seleção lista o GUIA primeiro; o motivo (linkado) é o segundo — e é ele que se acha.
+    assert_eq!(super::linked_motif(&sim, &map, &[guide, motif]), Some(motif));
+    assert_eq!(super::linked_motif(&sim, &map, &[guide]), None);
 }
 
 /// **As duas alças (W4) ficam nas pontas do trecho, e arrastá-las edita Start/End.** A guia é a
@@ -117,21 +124,22 @@ fn the_primary_is_the_motif_and_the_other_is_the_guide() {
 fn the_handles_sit_at_the_ends_and_dragging_edits_them() {
     let (scene, mut sim, map, motif, guide) = scene();
     link(&mut sim, &map, motif, guide);
-    let (s, e) = handle::world(&sim, &scene, &map, Some(motif)).expect("vinculado → alças");
+    let sel = [motif, guide];
+    let (s, e) = handle::world(&sim, &scene, &map, &sel).expect("vinculado → alças");
     assert!(s[0].abs() < 1e-3, "Start na origem do arco: {s:?}");
     assert!((e[0] - 100.0).abs() < 1e-2, "End no fim do arco: {e:?}");
 
     // Pressão sobre a ficha do END arma o End.
     let mut armed = None;
-    assert!(handle::press(&sim, &scene, &map, Some(motif), [100.0, 0.0], 5.0, &mut armed));
+    assert!(handle::press(&sim, &scene, &map, &sel, [100.0, 0.0], 5.0, &mut armed));
     assert_eq!(armed, Some(PatternHandle::End), "a ficha sob o cursor é a de End");
 
     // Arrastá-la para o arco 50 escreve end_offset = 0.5 (e NÃO mexe no start).
-    assert!(handle::drag(&mut sim, &scene, &map, Some(motif), [50.0, 0.0], armed));
+    assert!(handle::drag(&mut sim, &scene, &map, &sel, [50.0, 0.0], armed));
     let spec = spec_of(&sim, &map, motif).unwrap();
     assert!((spec.end_offset - 0.5).abs() < 0.02, "End arrastado p/ 0.5: {}", spec.end_offset);
     assert!(spec.start_offset.abs() < 1e-6, "o Start não se moveu");
 
-    // O GUIA não tem pattern ⇒ sem alças.
-    assert!(handle::world(&sim, &scene, &map, Some(guide)).is_none());
+    // Uma seleção SEM pattern ⇒ sem alças.
+    assert!(handle::world(&sim, &scene, &map, &[guide]).is_none());
 }

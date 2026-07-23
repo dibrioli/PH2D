@@ -2831,47 +2831,51 @@ impl crate::App {
                     );
                 }
             }
-            // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO (o primário); o
-            // comando prende/solta/vira. Todas as escritas passam pela porta única `pattern_live`,
-            // e o `recook` do frame seguinte redesenha as cópias.
+            // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
+            // LINKADO da seleção (`linked_motif`), não o primário: depois de prender, o primário
+            // pode ser o GUIA. O comando prende/solta/vira. Tudo pela porta única `pattern_live`, e
+            // o `recook` do frame seguinte redesenha as cópias.
+            let pp_motif =
+                crate::pattern_live::linked_motif(sim, &self.vec_entities, self.vec_pen.selected_paths());
             if let Some(v) = pending_pp_spacing
-                && let Some(motif) = self.vec_pen.selected()
+                && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.spacing = v as f32);
             }
             if let Some(v) = pending_pp_start
-                && let Some(motif) = self.vec_pen.selected()
+                && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
                     l.start_offset = v as f32;
                 });
             }
             if let Some(v) = pending_pp_end
-                && let Some(motif) = self.vec_pen.selected()
+                && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
                     l.end_offset = v as f32;
                 });
             }
             if let Some(v) = pending_pp_offset
-                && let Some(motif) = self.vec_pen.selected()
+                && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.offset = v as f32);
             }
             if let Some(cmd) = pending_patternpath {
                 let sel = self.vec_pen.selected_paths().to_vec();
-                let primary = self.vec_pen.selected();
                 let done = match cmd {
+                    // O guia é o caminho de MAIOR extensão dos dois (independe da ordem de clique)
+                    // — a correção do "escolhendo a si mesmo" (Enio).
                     crate::pattern_live::PatternPathCmd::Link => {
-                        crate::pattern_live::link_candidate(&sel, primary).is_some_and(
+                        crate::pattern_live::link_candidate(vec_scene, &sel).is_some_and(
                             |(motif, guide)| {
                                 crate::pattern_live::link(sim, &self.vec_entities, motif, guide)
                             },
                         )
                     }
-                    crate::pattern_live::PatternPathCmd::Detach => primary
+                    crate::pattern_live::PatternPathCmd::Detach => pp_motif
                         .is_some_and(|m| crate::pattern_live::detach(sim, &self.vec_entities, m)),
-                    crate::pattern_live::PatternPathCmd::Flip(v) => primary.is_some_and(|m| {
+                    crate::pattern_live::PatternPathCmd::Flip(v) => pp_motif.is_some_and(|m| {
                         crate::pattern_live::edit(sim, &self.vec_entities, m, |l| l.flip = v)
                     }),
                 };
@@ -3938,12 +3942,13 @@ impl crate::App {
                 );
                 // Pattern on Path (plano 23): as MESMAS duas perguntas — *"esta seleção permite
                 // prender?"* (dois caminhos) e *"o motivo em foco já cavalga algo, com que
-                // valores?"*. A 1ª usa a MESMA porta que o clique honra (`link_candidate`).
-                let primary = self.vec_pen.selected();
+                // valores?"*. A 1ª usa a MESMA porta que o clique honra (`link_candidate`), a 2ª
+                // acha o motivo LINKADO na seleção (não o primário — depois de prender ele pode ser
+                // o guia).
                 ph2d_panel_vector::set_current_patternpath_can_link(
-                    crate::pattern_live::link_candidate(&sel, primary).is_some(),
+                    crate::pattern_live::link_candidate(vec_scene, &sel).is_some(),
                 );
-                let pat = crate::pattern_live::current(sim, &self.vec_entities, primary);
+                let pat = crate::pattern_live::current(sim, &self.vec_entities, &sel);
                 ph2d_panel_vector::set_current_patternpath(
                     pat.is_some(),
                     pat.map_or(0.0, |p| f64::from(p.start_offset)),
@@ -4429,7 +4434,7 @@ impl crate::App {
                     sim,
                     vec_scene,
                     &self.vec_entities,
-                    self.vec_pen.selected(),
+                    self.vec_pen.selected_paths(),
                 )
             {
                 use crate::pattern_live::PatternHandle;

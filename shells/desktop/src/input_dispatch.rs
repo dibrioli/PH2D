@@ -1760,7 +1760,7 @@ impl App {
             &mut gfx.sim,
             &gfx.vec_scene,
             &self.vec_entities,
-            self.vec_pen.selected(),
+            self.vec_pen.selected_paths(),
             [f64::from(w[0]), f64::from(w[1])],
             armed,
         )
@@ -1778,7 +1778,7 @@ impl App {
             &gfx.sim,
             &gfx.vec_scene,
             &self.vec_entities,
-            self.vec_pen.selected(),
+            self.vec_pen.selected_paths(),
             world,
             radius,
             &mut self.vec_patternpath_handle,

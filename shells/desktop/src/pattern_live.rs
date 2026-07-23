@@ -125,35 +125,77 @@ pub(crate) fn link(
     true
 }
 
-/// **O par que o gesto de prender exige: dois caminhos, o PRIMÁRIO é o motivo.**
+/// **O par que o gesto de prender exige: dois caminhos, `(motivo, guia)`.**
 ///
 /// Porta única — quem PUBLICA se o botão aparece (o painel) e quem HONRA o clique perguntam aqui.
-/// Com dois selecionados, o **primário** (o último clicado, o sujeito do painel) é o **motivo**, e
-/// o outro é o **guia** — a mesma lei do *"o painel é sobre o primário"* das outras seções. Não é
-/// limitação: *"repita este motivo ao longo daquela curva"* nomeia exatamente dois, e o primário é
-/// quem o artista está a configurar.
+///
+/// ⚠️ **O guia é o caminho de maior EXTENSÃO (bbox); o motivo é o menor** (Enio, 2026-07-23: *"está
+/// escolhendo como path a si mesmo e não a outra curva"*). A regra anterior — *"o primário (último
+/// clicado) é o motivo"* — dependia da ORDEM de seleção: escolher a curva por último a tornava o
+/// motivo, e o pattern ria a forma pequena (o "a si mesmo"). A extensão espacial é **independente
+/// de ordem** e casa com o caso dominante — um motivo COMPACTO repetido ao longo de uma curva
+/// GRANDE — e é a bbox **LOCAL** de propósito: o motivo é tilado na forma local (a pose é ignorada,
+/// W2), então a extensão que decide é a MESMA que a que o artista vê repetida. Empate desempata
+/// pela ordem; o caso raro (motivo maior que o guia) fica para um botão de *swap*.
+///
+/// (Comprimento de ARCO seria pior: uma forma FECHADA tem perímetro que passa fácil de uma reta
+/// mais longa — um quadrado de lado 40 tem perímetro 160 contra os 100 da reta.)
 #[must_use]
 pub(crate) fn link_candidate(
+    scene: &VecScene,
     selection: &[VecPathId],
-    primary: Option<VecPathId>,
 ) -> Option<(VecPathId, VecPathId)> {
-    if selection.len() != 2 {
+    if selection.len() != 2 || selection[0] == selection[1] {
         return None;
     }
-    let motif = primary?;
-    let guide = *selection.iter().find(|&&id| id != motif)?;
-    (motif != guide).then_some((motif, guide))
+    let extent = |id: VecPathId| -> f64 {
+        let Some(p) = scene.path(id) else { return 0.0 };
+        let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+        for v in p.verts_all() {
+            for k in 0..2 {
+                lo[k] = lo[k].min(v.anchor[k]);
+                hi[k] = hi[k].max(v.anchor[k]);
+            }
+        }
+        if lo[0] > hi[0] {
+            0.0
+        } else {
+            (hi[0] - lo[0]).hypot(hi[1] - lo[1])
+        }
+    };
+    let (a, b) = (selection[0], selection[1]);
+    // guia = o de MAIOR extensão; motivo = o menor.
+    if extent(a) >= extent(b) {
+        Some((b, a))
+    } else {
+        Some((a, b))
+    }
 }
 
-/// O vínculo VIVO do motivo em foco (o primário), para o painel publicar os controles no lugar
-/// certo. `None` = o primário não é um pattern (ou não há primário).
+/// O caminho selecionado que É um pattern (carrega o `VecPatternPath`) — o MOTIVO vinculado, seja
+/// ele o primário ou não. É por AQUI que o painel, os sliders e as alças acham o alvo, e não pelo
+/// primário: depois de prender, o primário pode ser o GUIA (o último clicado), mas quem tem os
+/// controles é o motivo.
+#[must_use]
+pub(crate) fn linked_motif(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+) -> Option<VecPathId> {
+    selection
+        .iter()
+        .copied()
+        .find(|&id| spec_of(sim, map, id).is_some())
+}
+
+/// O vínculo VIVO do motivo em foco (o linkado na seleção), para o painel publicar os controles.
 #[must_use]
 pub(crate) fn current(
     sim: &SimWorld,
     map: &VecEntityMap,
-    primary: Option<VecPathId>,
+    selection: &[VecPathId],
 ) -> Option<VecPatternPath> {
-    spec_of(sim, map, primary?)
+    spec_of(sim, map, linked_motif(sim, map, selection)?)
 }
 
 /// **Solta** o motivo do caminho (o caminho FICA — soltar é remover o componente). `true` se havia
@@ -223,20 +265,20 @@ pub(crate) enum PatternHandle {
 /// MESMA porta ([`edit`]), então não podem divergir. As fichas ficam SOBRE a curva (marcam as
 /// posições de arco); o desvio perpendicular é o slider Offset, à parte.
 pub(crate) mod handle {
-    use super::{PatternHandle, VecEntityMap, VecScene, edit, spec_of};
+    use super::{PatternHandle, VecEntityMap, VecScene, edit, linked_motif, spec_of};
     use ph2d_ecs::SimWorld;
     use ph2d_vec_scene::VecPathId;
 
-    /// Os pontos de MUNDO das fichas de Start e End do motivo em foco. `None` sem um pattern
-    /// vinculado no primário (ou com o guia apagado/degenerado).
+    /// Os pontos de MUNDO das fichas de Start e End do motivo vinculado na seleção. `None` sem um
+    /// pattern na seleção (ou com o guia apagado/degenerado).
     #[must_use]
     pub(crate) fn world(
         sim: &SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
-        primary: Option<VecPathId>,
+        selection: &[VecPathId],
     ) -> Option<([f64; 2], [f64; 2])> {
-        let spec = spec_of(sim, map, primary?)?;
+        let spec = spec_of(sim, map, linked_motif(sim, map, selection)?)?;
         let arc = crate::vec_guide::guide_arc(sim, scene, map, spec.path)?;
         let total = arc.total();
         let at = |frac: f32| arc.frame_at(f64::from(frac).clamp(0.0, 1.0) * total).0;
@@ -251,12 +293,12 @@ pub(crate) mod handle {
         sim: &SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
-        primary: Option<VecPathId>,
+        selection: &[VecPathId],
         world_pt: [f64; 2],
         radius: f64,
         armed: &mut Option<PatternHandle>,
     ) -> bool {
-        let Some((s, e)) = world(sim, scene, map, primary) else {
+        let Some((s, e)) = world(sim, scene, map, selection) else {
             return false;
         };
         let hit = |p: [f64; 2]| (p[0] - world_pt[0]).hypot(p[1] - world_pt[1]) <= radius;
@@ -279,11 +321,11 @@ pub(crate) mod handle {
         sim: &mut SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
-        primary: Option<VecPathId>,
+        selection: &[VecPathId],
         world_pt: [f64; 2],
         armed: Option<PatternHandle>,
     ) -> bool {
-        let (Some(which), Some(motif)) = (armed, primary) else {
+        let (Some(which), Some(motif)) = (armed, linked_motif(sim, map, selection)) else {
             return false;
         };
         let Some(spec) = spec_of(sim, map, motif) else {

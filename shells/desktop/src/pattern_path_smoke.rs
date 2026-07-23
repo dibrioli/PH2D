@@ -63,16 +63,18 @@ fn arm(app: &mut crate::App) {
     let Some((motif, guide)) = PENDING.lock().expect("smoke lock").take() else {
         return;
     };
-    // Os DOIS selecionados, com o motivo como PRIMÁRIO (o `select_many` faz o ÚLTIMO ser o
-    // primário) — é a seleção que o gesto exige, e a cena existe para a pôr pronta.
+    // Os DOIS selecionados — a ordem NÃO importa (o guia é o de maior extensão, o arco). É a
+    // seleção que o gesto exige, e a cena existe para a pôr pronta.
     app.vec_pen.select_many(&[guide, motif]);
     let sel = app.vec_pen.selected_paths().to_vec();
-    let primary = app.vec_pen.selected();
-    let can = crate::pattern_live::link_candidate(&sel, primary);
+    let can = app
+        .gfx
+        .as_ref()
+        .and_then(|g| crate::pattern_live::link_candidate(&g.vec_scene, &sel));
 
     eprintln!(
         "[smoke] W3 pattern along path -- a mesa esta' posta: uma SETA (motivo) e um ARCO (guia), \
-         os DOIS selecionados (motivo primario), gesto oferecido: {}.\n\
+         os DOIS selecionados (o guia e' o de maior extensao), gesto oferecido: {}.\n\
          [smoke]   1. No painel Vector, secao PATTERN ON PATH -> clique \"Pattern on Path\".\n\
          [smoke]      A seta some do lugar e reaparece REPETIDA ao longo do arco, cada copia\n\
          [smoke]      girada para a tangente dali (nao um angulo unico -- isso separa do Repeater).\n\

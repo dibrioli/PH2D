@@ -37,16 +37,41 @@ impl TimelineDoc {
         true
     }
 
-    /// A name no lane is using yet ("Lane 1", "Lane 2", …).
+    /// A name no lane is using yet in the DOCUMENT's stack ("Lane 1", "Lane 2", …).
     #[must_use]
     pub fn fresh_lane_name(&self) -> String {
-        let mut n = self.stack().len() + 1;
+        self.fresh_lane_name_in(crate::StackHost::Document)
+    }
+
+    /// A name no lane is using yet **in `host`'s stack** (Enio, 2026-07-23).
+    ///
+    /// The old `fresh_lane_name` always counted the DOCUMENT's stack — so adding a lane
+    /// INSIDE a container named it against the wrong list and every container lane came out
+    /// "Lane 1" (the container's own lanes were invisible to the counter, and the document's
+    /// "Lane 1" rarely collided with them). The name is a property of the STACK it joins.
+    #[must_use]
+    pub fn fresh_lane_name_in(&self, host: crate::StackHost) -> String {
+        let lanes = self.host_stack(host).map_or(&[][..], |l| l);
+        let mut n = lanes.len() + 1;
         loop {
             let name = format!("Lane {n}");
-            if !self.stack().iter().any(|l| l.name == name) {
+            if !lanes.iter().any(|l| l.name == name) {
                 return name;
             }
             n += 1;
+        }
+    }
+
+    /// Rename lane `lane` in `host`'s stack (out of range / no host: no-op). Returns
+    /// whether a lane was renamed — the sibling of [`TimelineDoc::rename_clip`], for the
+    /// Arrange/Container lane rows (Enio, 2026-07-23).
+    pub fn rename_lane_in(&mut self, host: crate::StackHost, lane: usize, name: String) -> bool {
+        match self.host_stack_mut(host).and_then(|l| l.get_mut(lane)) {
+            Some(l) => {
+                l.name = name;
+                true
+            }
+            None => false,
         }
     }
 

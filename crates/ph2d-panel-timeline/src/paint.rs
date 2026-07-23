@@ -239,9 +239,11 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             header,
             time_area: g.time_area,
             clip_dd_chip,
-            // Where a CONTAINER's rename floats — its own row's label column, asked of the
-            // same function the list laid the name out with.
-            row_rename: crate::container_list::rename_anchor(&g, state, &snapshot),
+            // Where a CONTAINER's or a LANE's rename floats — its own row's label column.
+            // At most one rename is open (`state.clip_rename` is a single slot), so the two
+            // anchors are exclusive and `or` picks whichever kind is live.
+            row_rename: crate::container_list::rename_anchor(&g, state, &snapshot)
+                .or_else(|| crate::clip_rename::lane_rename_anchor(&g, state, &snapshot)),
             view_start,
             px_per_s,
         },

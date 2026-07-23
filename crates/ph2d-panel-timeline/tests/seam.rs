@@ -747,13 +747,13 @@ fn park_lane_menu(host: &mut MockPanelHost, lane: usize) {
     host.store_mut().close_context_menu(); // the Down-before-Click parks it
 }
 
-/// Every lane-menu row raises the intent its label promises — including
-/// **Delete Lane**, which until this row existed was an intent (`RemoveLane`) the
-/// document could serve and no gesture could reach: a lane, once added, could not
-/// be removed. A dead intent is the mirror image of a dead menu item, and neither
-/// compiles red.
+/// Every lane-menu row does what its label promises — the intent-raisers raise their
+/// intent (incl. **Delete Lane**, which until this row existed was an intent the document
+/// could serve and no gesture could reach), and **Rename Lane** OPENS the rename field
+/// instead (a gesture start, not a one-shot). A dead menu item and a dead intent are the
+/// same shape, and neither compiles red.
 #[test]
-fn every_lane_menu_row_raises_the_intent_its_label_promises() {
+fn every_lane_menu_row_does_what_its_label_promises() {
     use ph2d_editor_core::ids as c;
     use ph2d_timeline::{LaneMode, TimelineIntent as I};
 
@@ -776,6 +776,7 @@ fn every_lane_menu_row_raises_the_intent_its_label_promises() {
         }
     };
 
+    let mut saw_rename = false;
     for (id, label, _) in c::TIMELINE_LANE_MENU {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
@@ -787,16 +788,35 @@ fn every_lane_menu_row_raises_the_intent_its_label_promises() {
             EventOutcome::Consumed,
             "lane-menu row `{label}` is painted but has no event.rs arm"
         );
-        assert_eq!(
-            ph2d_panel_timeline::drain_intents(),
-            vec![expected(id)],
-            "lane-menu row `{label}` must raise the intent it names"
-        );
+        if id == c::CTX_MENU_TL_LANE_RENAME {
+            // Rename is a gesture START: it opens the field on THIS lane, raising no intent.
+            saw_rename = true;
+            assert!(
+                ph2d_panel_timeline::drain_intents().is_empty(),
+                "Rename Lane must not raise an intent — it opens the field"
+            );
+            assert_eq!(
+                state.clip_rename.map(|c| (c.kind, c.index)),
+                Some((ph2d_panel_timeline::state::RenameKind::Lane, 0)),
+                "Rename Lane opens the rename field on the clicked lane"
+            );
+        } else {
+            assert_eq!(
+                ph2d_panel_timeline::drain_intents(),
+                vec![expected(id)],
+                "lane-menu row `{label}` must raise the intent it names"
+            );
+            assert!(
+                state.clip_rename.is_none(),
+                "a non-rename row must not open the rename field"
+            );
+        }
         assert!(
             host.store().last_context_menu().is_none(),
             "row `{label}` left its request parked"
         );
     }
+    assert!(saw_rename, "the Rename Lane row must be in the menu table");
     ph2d_panel_timeline::set_current_timeline(None);
 }
 

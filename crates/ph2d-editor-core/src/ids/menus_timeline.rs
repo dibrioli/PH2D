@@ -104,14 +104,19 @@ pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
 pub const CTX_MENU_TL_LANE_OVERRIDE: NodeId = hash_node_id("ctx_menu_tl_lane_override");
 /// Add this lane's DELTA against the first frame of its own clip.
 pub const CTX_MENU_TL_LANE_ADDITIVE: NodeId = hash_node_id("ctx_menu_tl_lane_additive");
+/// Rename the lane (the right-click rename the clip selector + container list have).
+pub const CTX_MENU_TL_LANE_RENAME: NodeId = hash_node_id("ctx_menu_tl_lane_rename");
 /// Delete the lane and every strip on it.
 pub const CTX_MENU_TL_LANE_DELETE: NodeId = hash_node_id("ctx_menu_tl_lane_delete");
 
-/// The lane menu, in paint order. One table, three consumers — same shape, same
-/// gate as the strip menu below.
-pub const TIMELINE_LANE_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
+/// The lane menu, in paint order. One table, its consumers — same shape, same
+/// gate as the strip menu below. Rename sits above Delete: naming a lane is a far
+/// more common act than destroying it (Enio, 2026-07-23), and lanes come out
+/// "Lane 1/2/3" so most animators will want to name at least one.
+pub const TIMELINE_LANE_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
     (CTX_MENU_TL_LANE_OVERRIDE, "Override", None),
     (CTX_MENU_TL_LANE_ADDITIVE, "Additive", None),
+    (CTX_MENU_TL_LANE_RENAME, "Rename Lane", None),
     (CTX_MENU_TL_LANE_DELETE, "Delete Lane", None),
 ];
 

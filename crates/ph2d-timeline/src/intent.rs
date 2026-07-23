@@ -308,6 +308,15 @@ pub enum TimelineIntent {
     // ── the clip stack (ADR-0115 — each is one undo step) ───────────────────
     /// Append an empty lane. Refused past [`crate::MAX_LANES`].
     AddLane,
+    /// **Rename a lane row** (Arrange/Container) — the right-click rename the container list
+    /// and clip selector already have, one level over (Enio, 2026-07-23). `lane` is the index
+    /// within whichever stack is OPEN (the shell routes it via `edit_at`).
+    RenameLane {
+        /// Lane index within the open host's stack.
+        lane: usize,
+        /// The new name (already trimmed by the panel's rename field).
+        name: String,
+    },
     /// **Make a container** — the ASSET, and nothing else (ADR-0133, amended 2026-07-21).
     ///
     /// # Creating and placing are two acts

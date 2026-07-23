@@ -240,7 +240,7 @@ fn stack_event(
     match ev {
         WidgetEvent::Click(id) => stack_click(state, id)
             .or_else(|| strip_menu_click(state, id, host))
-            .or_else(|| lane_menu_click(id, host)),
+            .or_else(|| lane_menu_click(state, id, host)),
         // Grabbing (or clicking into) the weight field OPENS the undo bracket.
         //
         // Dispatch emits a `ValueChanged` for every Move of a number body-drag, and
@@ -289,6 +289,7 @@ fn stack_event(
 /// because the row has no width for a third button; that is a layout fact, not a
 /// judgement about how often a lane gets deleted.
 fn lane_menu_click(
+    state: &mut TimelinePanelState,
     id: ph2d_editor_core::NodeId,
     host: &mut dyn PanelHostInternal,
 ) -> Option<EventOutcome> {
@@ -306,8 +307,13 @@ fn lane_menu_click(
         return Some(EventOutcome::Consumed);
     };
     if lane < crate::state::current_snapshot().lanes.len() {
-        let intent = if id == ids::CTX_MENU_TL_LANE_DELETE {
-            TimelineIntent::RemoveLane { lane }
+        if id == ids::CTX_MENU_TL_LANE_RENAME {
+            // Rename opens the field instead of pushing an intent — the animator
+            // types, and Enter commits `RenameLane` (`clip_rename::commit`). It is the
+            // one menu item that is a gesture START, not a one-shot.
+            crate::clip_rename::open_lane(state, lane);
+        } else if id == ids::CTX_MENU_TL_LANE_DELETE {
+            state::push_intent(TimelineIntent::RemoveLane { lane });
         } else {
             // The two modes. `Additive` is named explicitly and `Override` is the
             // fallback, so a row added to the table without an arm here lands on
@@ -317,9 +323,8 @@ fn lane_menu_click(
             } else {
                 LaneMode::Override
             };
-            TimelineIntent::SetLaneMode { lane, mode }
-        };
-        state::push_intent(intent);
+            state::push_intent(TimelineIntent::SetLaneMode { lane, mode });
+        }
     }
     host.store_mut().close_context_menu();
     host.store_mut().consume_last_context_menu();

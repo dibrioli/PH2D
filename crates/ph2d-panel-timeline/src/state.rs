@@ -346,6 +346,10 @@ pub enum RenameKind {
     Clip,
     /// A container in `TimelineViewSnapshot::containers`, committed as `RenameContainer`.
     Container,
+    /// A LANE row (Arrange/Container), committed as `RenameLane`. `index` is the lane's
+    /// index within the open host's stack — the same index the row paints and the mode/mute
+    /// edits carry (Enio, 2026-07-23).
+    Lane,
 }
 
 /// An open name edit — see [`TimelinePanelState::clip_rename`].

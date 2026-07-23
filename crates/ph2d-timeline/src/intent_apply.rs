@@ -342,8 +342,15 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // not looking at. `StackHost::Document` is the default, so a document that never uses
         // containers takes exactly the path it always did.
         I::AddLane => edit_at(state, host, |doc, host, _| {
-            let name = doc.fresh_lane_name();
+            // Name against the HOST's stack, not the document's — a container lane named
+            // against the document came out "Lane 1" every time (Enio, 2026-07-23).
+            let name = doc.fresh_lane_name_in(host);
             doc.add_lane_in(host, name);
+        }),
+        // Rename a lane row (Arrange/Container). `edit_at`, so it lands in whichever stack the
+        // animator has OPEN — the same routing the lane's own add/mode/mute edits take.
+        I::RenameLane { lane, name } => edit_at(state, host, |doc, host, _| {
+            doc.rename_lane_in(host, lane, name);
         }),
         // The ASSET, and nothing else — see the intent's docs for why placing is a separate
         // act. `edit`, not `edit_at`: a container belongs to the DOCUMENT's list, so the

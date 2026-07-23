@@ -378,3 +378,82 @@ fn moving_a_strip_inside_a_container_keeps_its_lane_sorted() {
         "o strip movido é o de trás agora"
     );
 }
+
+/// **Lanes are named against the STACK they join, not always the document's** (Enio,
+/// 2026-07-23). The old `fresh_lane_name` counted the document's stack, so every lane added
+/// inside a container came out "Lane 1" — the container's own lanes were invisible to the
+/// counter. Each host numbers its own.
+#[test]
+fn fresh_lane_names_count_the_host_stack_not_the_document() {
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("C".into());
+    let host = StackHost::Container(c);
+
+    // The DOCUMENT stack has two lanes — a decoy: the container must not count them.
+    doc.add_lane_in(
+        StackHost::Document,
+        doc.fresh_lane_name_in(StackHost::Document),
+    )
+    .unwrap();
+    doc.add_lane_in(
+        StackHost::Document,
+        doc.fresh_lane_name_in(StackHost::Document),
+    )
+    .unwrap();
+
+    // Three lanes INSIDE the container, each named against the container.
+    for _ in 0..3 {
+        let name = doc.fresh_lane_name_in(host);
+        doc.add_lane_in(host, name).unwrap();
+    }
+    let names: Vec<&str> = doc
+        .container_stack(c)
+        .unwrap()
+        .iter()
+        .map(|l| l.name.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        ["Lane 1", "Lane 2", "Lane 3"],
+        "container lanes number themselves — not all 'Lane 1'"
+    );
+    // And the document's own numbering is unaffected by the container's lanes.
+    assert_eq!(
+        doc.fresh_lane_name_in(StackHost::Document),
+        "Lane 3",
+        "the document counts ITS two lanes, blind to the container's three"
+    );
+}
+
+/// **Renaming a lane lands in the host's stack** — the Arrange/Container rename, and a
+/// stale index is a refused no-op.
+#[test]
+fn rename_lane_writes_the_host_stack() {
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("C".into());
+    let host = StackHost::Container(c);
+    doc.add_lane_in(host, "Lane 1".into()).unwrap();
+    doc.add_lane_in(host, "Lane 2".into()).unwrap();
+
+    assert!(doc.rename_lane_in(host, 1, "Legs".into()));
+    assert_eq!(doc.container_stack(c).unwrap()[1].name, "Legs");
+    assert_eq!(
+        doc.container_stack(c).unwrap()[0].name,
+        "Lane 1",
+        "só a lane pedida muda"
+    );
+    assert!(
+        !doc.rename_lane_in(host, 9, "x".into()),
+        "índice obsoleto: no-op recusado, não pânico"
+    );
+    // The DOCUMENT stack is a different host — a lane rename in the container never touches it.
+    doc.add_lane_in(StackHost::Document, "Doc Lane".into())
+        .unwrap();
+    assert!(doc.rename_lane_in(StackHost::Document, 0, "Scene".into()));
+    assert_eq!(doc.stack()[0].name, "Scene");
+    assert_eq!(
+        doc.container_stack(c).unwrap()[1].name,
+        "Legs",
+        "o container fica firme"
+    );
+}

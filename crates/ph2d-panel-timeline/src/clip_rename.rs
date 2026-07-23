@@ -126,6 +126,7 @@ fn current_name(snap: &TimelineViewSnapshot, cr: state::ClipRename) -> Option<&s
     match cr.kind {
         state::RenameKind::Clip => snap.clips.get(cr.index).map(String::as_str),
         state::RenameKind::Container => snap.containers.get(cr.index).map(|c| c.name.as_str()),
+        state::RenameKind::Lane => snap.lanes.get(cr.index).map(|l| l.name.as_str()),
     }
 }
 
@@ -145,6 +146,38 @@ pub(crate) fn open_container(state: &mut TimelinePanelState, index: usize) {
         index,
         opened: false,
     });
+}
+
+/// Open the rename field on lane `index` (Rename Lane in the lane's right-click menu).
+/// `index` is the lane's position within the OPEN host's stack — the snapshot's `lanes`.
+pub(crate) fn open_lane(state: &mut TimelinePanelState, index: usize) {
+    state.clip_rename = Some(state::ClipRename {
+        kind: state::RenameKind::Lane,
+        index,
+        opened: false,
+    });
+}
+
+/// **Where a lane's rename field floats** — over the label column of its own row, the
+/// sibling of [`crate::container_list::rename_anchor`]. `None` when no lane rename is open,
+/// the view is not a lanes view, or the row is scrolled out of the band.
+pub(crate) fn lane_rename_anchor(
+    g: &crate::geom::Geom,
+    state: &TimelinePanelState,
+    snap: &TimelineViewSnapshot,
+) -> Option<ph2d_editor_core::zones::Rect> {
+    let cr = state
+        .clip_rename
+        .filter(|c| c.kind == state::RenameKind::Lane)?;
+    // A lanes view (Arrange, or inside a container) — never the Keys tab or the list.
+    if crate::tab::rows(state.tab, snap) != crate::tab::Rows::Lanes {
+        return None;
+    }
+    let region = g.rows;
+    let (_, y, h) = crate::geom::stack_bands(snap, state.tab, region.y, state.scroll_y)
+        .find(|(i, _, _)| *i == cr.index)?;
+    (y >= region.y && y + h <= region.y + region.h)
+        .then(|| ph2d_editor_core::zones::Rect::new(region.x, y, g.label_w, h))
 }
 
 /// Commit the open rename: push a `RenameClip` with the trimmed field text (an
@@ -167,6 +200,10 @@ pub(crate) fn commit(state: &mut TimelinePanelState, store: &WidgetStore) {
                 },
                 state::RenameKind::Container => TimelineIntent::RenameContainer {
                     index: cr.index,
+                    name: name.to_string(),
+                },
+                state::RenameKind::Lane => TimelineIntent::RenameLane {
+                    lane: cr.index,
                     name: name.to_string(),
                 },
             });

@@ -1744,6 +1744,47 @@ impl App {
         )
     }
 
+    /// Arrasta a alça do PATTERN (Start/End, W4) armada para o cursor — no-op sem uma armada.
+    /// Irmã do `vec_textpath_handle_move`, mesma disciplina de early-return.
+    fn vec_patternpath_handle_move(&mut self, x: f32, y: f32) -> bool {
+        if self.vec_patternpath_handle.is_none() {
+            return false;
+        }
+        let armed = self.vec_patternpath_handle;
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        crate::pattern_live::handle::drag(
+            &mut gfx.sim,
+            &gfx.vec_scene,
+            &self.vec_entities,
+            self.vec_pen.selected(),
+            [f64::from(w[0]), f64::from(w[1])],
+            armed,
+        )
+    }
+
+    /// **Pressão no modo Select sobre uma alça do PATTERN** (W4): se uma está sob o cursor, arma o
+    /// arrasto DELA e devolve `true` (o host então PULA o picking/gizmo). Irmã do
+    /// `vec_textpath_handle_down`; o raio é o MESMO da ficha do texto (as duas são a mesma ficha).
+    fn vec_patternpath_handle_down(&mut self, world: [f64; 2]) -> bool {
+        let radius = self.vec_px_to_world() * crate::vec_text_ride::HANDLE_R_PX;
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        crate::pattern_live::handle::press(
+            &gfx.sim,
+            &gfx.vec_scene,
+            &self.vec_entities,
+            self.vec_pen.selected(),
+            world,
+            radius,
+            &mut self.vec_patternpath_handle,
+        )
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -2155,6 +2196,10 @@ impl App {
         // W5: arrastar a alça do texto em caminho (modo Select) — irmã da alça do conector
         // acima, mesma disciplina de early-return; no-op sem a alça agarrada.
         if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // W4 do pattern: arrastar a ficha de Start/End (modo Select) — irmã da do texto.
+        if self.vec_patternpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -2592,6 +2637,20 @@ impl App {
         {
             return;
         }
+        // O MESMO guard para as alças do PATTERN (W4): no Select a tool não captura o canvas e o
+        // gizmo é inócuo sobre um motivo vinculado, então a ficha precisa deste arm antes do
+        // picking/gizmo. Irmão do `vec_textpath_handle_down` logo acima.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && let Some(w) = self.vec_world_at((evt.x, evt.y))
+            && self.vec_patternpath_handle_down(w)
+        {
+            return;
+        }
         // O Up que FECHA o arrasto de alça (ele nasceu no Select, e é lá que morre).
         if self.vec_conn_handle.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2610,6 +2669,14 @@ impl App {
             && kind == PointerKind::Up
         {
             self.vec_textpath_handle_drag = false;
+            return;
+        }
+        // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
+        if self.vec_patternpath_handle.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+        {
+            self.vec_patternpath_handle = None;
             return;
         }
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique

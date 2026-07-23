@@ -4420,6 +4420,35 @@ impl crate::App {
                     vector_scene,
                 );
             }
+            // **As DUAS alças do PATTERN ON PATH** (W4) — Start e End do trecho, no MESMO lugar da
+            // alça do texto (Select, depois do gizmo). Reusa a ficha (`draw_text_handle`): as duas
+            // fichas são iguais, a POSIÇÃO diz qual é Start e qual é End. `handle::world` devolve
+            // `None` sem um pattern vinculado no primário.
+            if overlay.patternpath_handles
+                && let Some((start_pt, end_pt)) = crate::pattern_live::handle::world(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    self.vec_pen.selected(),
+                )
+            {
+                use crate::pattern_live::PatternHandle;
+                let dragging = self.vec_patternpath_handle;
+                ph2d_vec_render::draw_text_handle(
+                    start_pt,
+                    dragging == Some(PatternHandle::Start),
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
+                ph2d_vec_render::draw_text_handle(
+                    end_pt,
+                    dragging == Some(PatternHandle::End),
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
+            }
             // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
             // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
             if let Some((a, b)) = crate::vec_text::caret_of(self.vec_text_edit.as_ref()) {

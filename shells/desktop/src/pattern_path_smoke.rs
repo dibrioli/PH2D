@@ -11,7 +11,8 @@
 //! 1. **Pattern on Path** — a seta some do lugar e reaparece **repetida ao longo do arco**, cada
 //!    cópia **girada para a tangente** dali (é o que separa isto do Repeater).
 //! 2. **Spacing** — arrastar o slider muda quão densas as cópias povoam a curva.
-//! 3. **Start / End** — as cópias caem só no trecho `[Start, End]` do arco.
+//! 3. **Start / End** — pelo slider OU pelas **duas fichas âmbar na curva** (W4, no modo Select):
+//!    as cópias caem só no trecho `[Start, End]` do arco.
 //! 4. **Offset** — empurra as cópias para fora/dentro da curva (perpendicular).
 //! 5. **Side: Other side** — o padrão passa para o outro lado.
 //! 6. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica**.
@@ -76,7 +77,8 @@ fn arm(app: &mut crate::App) {
          [smoke]      A seta some do lugar e reaparece REPETIDA ao longo do arco, cada copia\n\
          [smoke]      girada para a tangente dali (nao um angulo unico -- isso separa do Repeater).\n\
          [smoke]   2. Arraste Spacing -- muda quao densas as copias povoam a curva.\n\
-         [smoke]   3. Arraste Start/End -- as copias caem so no trecho [Start, End] do arco.\n\
+         [smoke]   3. Arraste Start/End (slider) OU as duas FICHAS ambar na curva (W4, modo\n\
+         [smoke]      Select) -- as copias caem so no trecho [Start, End] do arco.\n\
          [smoke]   4. Arraste Offset -- empurra as copias para fora/dentro da curva (perpendicular).\n\
          [smoke]   5. Side: \"Other side\" -- o padrao passa para o outro lado.\n\
          [smoke]   6. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica.",

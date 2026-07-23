@@ -421,6 +421,7 @@ impl App {
             vec_morph_pending: None,
             vec_envelope_drag: None,
             vec_textpath_handle_drag: false,
+            vec_patternpath_handle: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

@@ -207,6 +207,100 @@ pub(crate) enum PatternPathCmd {
     Flip(bool),
 }
 
+/// **Qual das DUAS alças de canvas (W4)** está sob o dedo — a de início ou a de fim do trecho.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PatternHandle {
+    /// A ficha em `start_offset` — onde a tilagem começa.
+    Start,
+    /// A ficha em `end_offset` — onde termina.
+    End,
+}
+
+/// **As duas alças de canvas** (W4): fichas nos pontos de Start e End do trecho, no modo Select.
+///
+/// Espelham a alça do texto ([`crate::vec_text_ride::handle`]) — a versão de manipulação direta dos
+/// sliders Start/End, na tela. Cada uma escreve o MESMO número que o slider correspondente pela
+/// MESMA porta ([`edit`]), então não podem divergir. As fichas ficam SOBRE a curva (marcam as
+/// posições de arco); o desvio perpendicular é o slider Offset, à parte.
+pub(crate) mod handle {
+    use super::{PatternHandle, VecEntityMap, VecScene, edit, spec_of};
+    use ph2d_ecs::SimWorld;
+    use ph2d_vec_scene::VecPathId;
+
+    /// Os pontos de MUNDO das fichas de Start e End do motivo em foco. `None` sem um pattern
+    /// vinculado no primário (ou com o guia apagado/degenerado).
+    #[must_use]
+    pub(crate) fn world(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        primary: Option<VecPathId>,
+    ) -> Option<([f64; 2], [f64; 2])> {
+        let spec = spec_of(sim, map, primary?)?;
+        let arc = crate::vec_guide::guide_arc(sim, scene, map, spec.path)?;
+        let total = arc.total();
+        let at = |frac: f32| arc.frame_at(f64::from(frac).clamp(0.0, 1.0) * total).0;
+        Some((at(spec.start_offset), at(spec.end_offset)))
+    }
+
+    /// **Pressão sobre uma ficha (modo Select):** se uma está sob o cursor, arma o arrasto DELA e
+    /// devolve `true` (o host então PULA o picking/gizmo). O Start tem prioridade quando as duas
+    /// coincidem — arrastar desempata na primeira mão.
+    #[must_use]
+    pub(crate) fn press(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        primary: Option<VecPathId>,
+        world_pt: [f64; 2],
+        radius: f64,
+        armed: &mut Option<PatternHandle>,
+    ) -> bool {
+        let Some((s, e)) = world(sim, scene, map, primary) else {
+            return false;
+        };
+        let hit = |p: [f64; 2]| (p[0] - world_pt[0]).hypot(p[1] - world_pt[1]) <= radius;
+        let which = if hit(s) {
+            Some(PatternHandle::Start)
+        } else if hit(e) {
+            Some(PatternHandle::End)
+        } else {
+            None
+        };
+        if which.is_some() {
+            *armed = which;
+        }
+        which.is_some()
+    }
+
+    /// Arrasta a ficha armada para o cursor: projeta no caminho, converte em fração e escreve
+    /// `start_offset`/`end_offset` pela porta única [`edit`] (a MESMA do slider). No-op sem arrasto.
+    pub(crate) fn drag(
+        sim: &mut SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        primary: Option<VecPathId>,
+        world_pt: [f64; 2],
+        armed: Option<PatternHandle>,
+    ) -> bool {
+        let (Some(which), Some(motif)) = (armed, primary) else {
+            return false;
+        };
+        let Some(spec) = spec_of(sim, map, motif) else {
+            return false;
+        };
+        let Some(arc) = crate::vec_guide::guide_arc(sim, scene, map, spec.path) else {
+            return false;
+        };
+        #[allow(clippy::cast_possible_truncation)]
+        let frac = (arc.closest_arc(world_pt) / arc.total()) as f32;
+        edit(sim, map, motif, |l| match which {
+            PatternHandle::Start => l.start_offset = frac,
+            PatternHandle::End => l.end_offset = frac,
+        })
+    }
+}
+
 #[cfg(test)]
 #[path = "pattern_live_tests.rs"]
 mod tests;

@@ -54,7 +54,7 @@ sem cache nenhum. O recuo previsto **não é preciso** (gate `a_keystroke_recook
 | **W1** | O **motor** `pattern_along(motivo, guia, spec) -> contornos` (arco → afim rígido por cópia; sem refit) + gate red-first + gate de perf | `ph2d-vec-scene` (`pattern_path.rs`, arquivo próprio) | ✅ **0,597 ms/200 cópias** |
 | **W2** | O **vínculo**: componente `VecPatternPath` + porta única de guia (`ArcPath` do cozido-em-mundo, compartilhada com texto) + o render que faz o cozido do motivo = saída do motor | `ph2d-ecs` + shell | ✅ **vivo + smoke 24** |
 | **W3** | Seção de painel **Pattern on Path** (Link/Detach · Spacing · Start · Side), ids, i18n, ponte da shell — espelha a seção de texto | `ph2d-panel-vector` + `ph2d-editor-core` + `ph2d-i18n` + shell | ✅ **seam-gated + smoke 24** |
-| **W4** | **Alça** de canvas (o ponto de início no arco), modo Select — avaliar reuso da alça de texto vs irmã | `ph2d-vec-render` + shell | — |
+| **W4** | **DUAS alças** de canvas (Start + End do trecho, modo Select), arrastáveis; reusam a ficha do texto | shell | ✅ **arch-gated + smoke 24** |
 | **W5** | Cena(s) de smoke auto-verificáveis | shell (`build_smoke.rs`) | — |
 
 ## §2 — O motor (W1), em uma frase
@@ -115,3 +115,18 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
 - **7 sítios da costura** todos fiados: id · populate · paint · event · bus · drain · publish; +2
   gates de seam que CLICAM os botões (dispatch) e provam a **ausência** (a seção não oferece o que
   não se aplica). Portas de escrita `detach`/`edit` (adiadas na W2) chegaram aqui.
+
+## §6 — Decisões da W4 (as alças de canvas)
+
+- **DUAS fichas** (Start e End do trecho), no modo **Select** (a mesma regra da alça do texto: no
+  Node se perderiam nas âncoras; no Select não há âncoras e o gizmo é inócuo sobre um motivo
+  vinculado). Reusam a `draw_text_handle` (a mesma ficha âmbar) — a POSIÇÃO diz qual é qual.
+- Cada ficha é a manipulação direta do slider correspondente: arrastar escreve `start_offset`/
+  `end_offset` pela porta ÚNICA `pattern_live::edit` (a MESMA do slider), então não divergem. As
+  fichas ficam SOBRE a curva (marcam as posições de arco); o Offset perpendicular é o slider.
+- `PatternHandle{Start,End}` + `handle::{world,press,drag}` (irmão do `vec_text_ride::handle`);
+  estado de arrasto `App.vec_patternpath_handle: Option<PatternHandle>` (um `Option`, não booleano,
+  porque há DUAS). Costurado no ponteiro (press antes do picking · move · release), gate de unidade
+  (as fichas nas pontas + arrastar edita o campo CERTO) + arch-gate sobre o FONTE (desenho gateado
+  no Select, fora do `overlay.edit`; gesto no cluster do Select) — o shell não é alcançável por
+  unit test.

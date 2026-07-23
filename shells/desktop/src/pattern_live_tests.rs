@@ -5,7 +5,7 @@
 //! que estes gates existem para matar: o `recook` não ler o componente (0 cópias), o `detach` não
 //! remover o vínculo (as cópias sobrevivem à soltura), o `link` prender a forma a si mesma.
 
-use super::{PatternLive, detach, link, link_candidate, spec_of};
+use super::{PatternHandle, PatternLive, detach, handle, link, link_candidate, spec_of};
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
@@ -108,4 +108,30 @@ fn the_primary_is_the_motif_and_the_other_is_the_guide() {
     // Um só selecionado, ou sem primário, não é candidato.
     assert_eq!(link_candidate(&[motif], Some(motif)), None);
     assert_eq!(link_candidate(&[motif, guide], None), None);
+}
+
+/// **As duas alças (W4) ficam nas pontas do trecho, e arrastá-las edita Start/End.** A guia é a
+/// reta [0,0]→[100,0], então a ficha de Start cai em ~(0,0) e a de End em ~(100,0). Mutação que
+/// mata: o `drag` escrever o campo errado (Start em vez de End) muda `start_offset`, não `end`.
+#[test]
+fn the_handles_sit_at_the_ends_and_dragging_edits_them() {
+    let (scene, mut sim, map, motif, guide) = scene();
+    link(&mut sim, &map, motif, guide);
+    let (s, e) = handle::world(&sim, &scene, &map, Some(motif)).expect("vinculado → alças");
+    assert!(s[0].abs() < 1e-3, "Start na origem do arco: {s:?}");
+    assert!((e[0] - 100.0).abs() < 1e-2, "End no fim do arco: {e:?}");
+
+    // Pressão sobre a ficha do END arma o End.
+    let mut armed = None;
+    assert!(handle::press(&sim, &scene, &map, Some(motif), [100.0, 0.0], 5.0, &mut armed));
+    assert_eq!(armed, Some(PatternHandle::End), "a ficha sob o cursor é a de End");
+
+    // Arrastá-la para o arco 50 escreve end_offset = 0.5 (e NÃO mexe no start).
+    assert!(handle::drag(&mut sim, &scene, &map, Some(motif), [50.0, 0.0], armed));
+    let spec = spec_of(&sim, &map, motif).unwrap();
+    assert!((spec.end_offset - 0.5).abs() < 0.02, "End arrastado p/ 0.5: {}", spec.end_offset);
+    assert!(spec.start_offset.abs() < 1e-6, "o Start não se moveu");
+
+    // O GUIA não tem pattern ⇒ sem alças.
+    assert!(handle::world(&sim, &scene, &map, Some(guide)).is_none());
 }

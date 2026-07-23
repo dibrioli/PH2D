@@ -786,6 +786,11 @@ pub(crate) struct App {
     /// e vive no `VecTextPath`. Um booleano e não um alvo porque há UMA alça (o `start_offset` do
     /// texto selecionado); qual texto vem da seleção, como no painel. Ver [`crate::vec_text_ride`].
     pub(crate) vec_textpath_handle_drag: bool,
+    /// Qual das duas alças do PATTERN (Start/End, plano 23 W4) está sob arrasto, se alguma. Armada
+    /// no press de Select, limpa no release. Runtime-only: o arrasto não é documento — o resultado
+    /// (`start_offset`/`end_offset`) é, e vive no `VecPatternPath`. Um `Option` e não um booleano
+    /// porque há DUAS alças. Ver [`crate::pattern_live::handle`].
+    pub(crate) vec_patternpath_handle: Option<crate::pattern_live::PatternHandle>,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

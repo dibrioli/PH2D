@@ -476,64 +476,85 @@ fn probe_scene_29() {
     }
 }
 
-/// **The headless probe behind smoke scene 30 (the impact ladder).** Four identical
-/// dead balls dropped from increasing heights: each fires ONE Began, and its `impact`
-/// grows with the drop. Prints the numbers the scene's message cites.
+/// **The headless probe behind smoke scene 30 (the demolition).** A heavy ball fired
+/// horizontally into a light box at two speeds: the Began of the ball→box pair carries
+/// a bigger `impact` the faster it was fired. Prints the numbers the scene cites.
 #[test]
 #[ignore = "measurement probe for smoke scene 30, not a gate"]
 fn probe_scene_30() {
-    let heights = [0.4f32, 1.2, 2.4, 4.0];
-    let mut sim = SimWorld::new();
-    sim.world_mut().spawn((
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x: 6.0,
-                half_y: 0.2,
+    // A ball fired at `vx` into a light box sitting on a floor; return the impact of the
+    // ball->box Began.
+    fn slam(vx: f32) -> f32 {
+        use ph2d_physics_ecs::{InitialVelocity, MassOverride};
+        let mut sim = SimWorld::new();
+        // Floor.
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
             },
-            ..Collider::default()
-        },
-        Transform::from_translation(Vec2::new(0.0, -1.0)),
-    ));
-    let balls: Vec<Entity> = heights
-        .iter()
-        .enumerate()
-        .map(|(i, &h)| {
-            sim.world_mut()
-                .spawn((
-                    RigidBody {
-                        kind: BodyKind::Dynamic,
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 10.0,
+                    half_y: 0.2,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, -0.2)),
+        ));
+        // A light box to hit.
+        let box_e = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.25,
+                        half_y: 0.25,
                     },
-                    Collider {
-                        shape: ColliderShape::Ball { radius: 0.3 },
-                        restitution: 0.0,
-                        friction: 0.5,
-                        ..Collider::default()
-                    },
-                    Transform::from_translation(Vec2::new(i as f32 * 2.0 - 3.0, -0.5 + h)),
-                ))
-                .id()
-        })
-        .collect();
-
-    let mut bridge = PhysicsBridge::new();
-    println!("\n--- scene 30, impact ladder ---");
-    for t in 1..=240u64 {
-        bridge.dispatch(&mut sim, true, t);
-        for e in bridge.contact_events() {
-            if e.phase == ContactPhase::Began {
-                let who = if balls.contains(&e.a) { e.a } else { e.b };
-                let idx = balls.iter().position(|b| *b == who).unwrap_or(99);
-                println!(
-                    "tick {t:>3}  ball {idx} (drop {:.1} m)  load {:.5}  impact {:.5}",
-                    heights.get(idx).copied().unwrap_or(0.0),
-                    e.impulse,
-                    e.impact
-                );
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(2.0, 0.25)),
+            ))
+            .id();
+        // A heavy fast ball.
+        let ball = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.35 },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(-2.0, 0.35)),
+                InitialVelocity {
+                    linvel: [vx, 0.0],
+                    angvel: 0.0,
+                },
+                MassOverride(6.0),
+            ))
+            .id();
+        let mut bridge = PhysicsBridge::new();
+        let from = bridge.last_stepped();
+        for t in (from + 1)..=(from + 180) {
+            bridge.dispatch(&mut sim, true, t);
+            for e in bridge.contact_events() {
+                if e.phase == ContactPhase::Began
+                    && ((e.a == ball && e.b == box_e) || (e.a == box_e && e.b == ball))
+                {
+                    return e.impact;
+                }
             }
         }
+        0.0
+    }
+
+    println!("\n--- scene 30, demolition: impact of ball->box Began ---");
+    for vx in [3.0f32, 6.0, 10.0, 16.0] {
+        println!("  vx {vx:>5.1} m/s  ->  impact {:.4} N.s", slam(vx));
     }
 }
 

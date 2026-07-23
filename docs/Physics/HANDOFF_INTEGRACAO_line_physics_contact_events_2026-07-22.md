@@ -96,8 +96,8 @@ o norte do ADR-0131 não muda).
 4. ⚠️ Arraste a régua para TRÁS: as cruzes mudam e **NADA pisca**.
 5. ⚠️ Desmarque `Physics` na barra: as cruzes **SOMEM**; ao remarcar, voltam **sem piscar** (o bug vivo que A consertou).
 
-**Wave B — `env PH2D_PHYSICS_SMOKE=30 cargo run -p ph2d-host-desktop --release`** (a escada de impacto):
-6. Quatro bolas IGUAIS caem de alturas crescentes; cada uma pisca um `×` ao pousar, e o **flash é maior quanto mais alto ela caiu** (o tamanho do `×` = a FORÇA do impacto, medida 0,81/1,39/1,95/2,52). Os flashes vêm em sequência (a mais baixa primeiro) — scrub para revê-los lado a lado.
+**Wave B — `env PH2D_PHYSICS_SMOKE=30 cargo run -p ph2d-host-desktop --release`** (a DEMOLIÇÃO):
+6. Duas raias iguais (torre de caixas leves + bola pesada lançada), só a velocidade muda: EM CIMA lenta (5 m/s) → a torre balança, `×` pequeno; EMBAIXO rápida (16 m/s) → a torre EXPLODE, `×` enorme. O tamanho do `×` = a FORÇA do impacto (medido ~1,4 a 6 m/s, ~4,5 a 16 m/s), e ela tem CONSEQUÊNCIA visível — as caixas voam. (Tecla **L** dá scrub para rever os impactos.) ⚠️ A 1ª versão batia num chão imóvel e o Enio recusou (*"não mostra o efeito"*).
 
 **Regressão a olhar de carona:** `=25` (W-Contacts) inalterada exceto o flash aparecer nos
 primeiros ticks; `=7` (Bake) exercita o `hold`, que A mudou.

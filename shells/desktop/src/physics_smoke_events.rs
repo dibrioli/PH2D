@@ -7,7 +7,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Ccd, Collider, ColliderShape, InitialVelocity, MassOverride, RigidBody,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 use crate::physics_smoke::spawn_floor;
@@ -170,93 +172,119 @@ impl crate::App {
         );
     }
 
-    /// **Cena 30 (W-ImpactForce) — a ESCADA de impacto.** Quatro bolas IDÊNTICAS
-    /// (mesma massa, mesmo tamanho, `restitution` 0 → pousam e ficam), largadas de
-    /// alturas crescentes. Cada uma pisca UM `×` ao pousar, e o flash é **maior quanto
-    /// mais alto ela caiu** — porque o tamanho do `×` é a FORÇA do impacto (`impact`),
-    /// não a carga.
+    /// **Cena 30 (W-ImpactForce) — a DEMOLIÇÃO.** Duas raias IGUAIS, cada uma uma
+    /// TORRE de caixas leves e uma bola pesada lançada contra ela — só a VELOCIDADE
+    /// muda. Em cima, um empurrão lento: a torre balança, o `×` é pequeno. Embaixo, um
+    /// tiro rápido: a torre EXPLODE, e o `×` no impacto é enorme.
     ///
-    /// A carga (o `+`) NÃO distingue as quatro: uma bola parada pesa o mesmo tendo caído
-    /// de 0,4 m ou de 4 m. O `impact` (pico dentro dos sub-passos) é o que cresce, e é o
-    /// número que um som de impacto quer. Medido (probe `probe_scene_30`): impacto
-    /// **0,81 / 1,39 / 1,95 / 2,52** N·s para quedas de 0,4 / 1,2 / 2,4 / 4,0 m — os `×`
-    /// vão de médio a cheio, da esquerda para a direita.
+    /// É o que faltava na cena da bola no chão: bater num chão imóvel só mostra o `×`
+    /// abstrato. Aqui a força do impacto tem uma CONSEQUÊNCIA visível — quanto mais
+    /// forte o tiro, mais longe as caixas voam, e o `×` cresce junto. Medido (probe
+    /// `probe_scene_30`, bola pesada num alvo leve): impacto **1,4** N·s a 6 m/s,
+    /// **4,5** N·s a 16 m/s.
     ///
-    /// As quatro pousam em tempos diferentes (a mais baixa primeiro), então os flashes
-    /// aparecem em sequência — um crescendo. Scrub/replay para revê-los.
-    pub(crate) fn physics_smoke_impact_ladder(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
-        // Um chão FINO e largo (topo em y = -0,8): fino de propósito, porque é a
-        // geometria em que o toque aparece limpo no canal (medido na linha).
-        world.spawn((
-            Transform::from_translation(Vec2::new(0.0, -1.0)),
-            Sprite::atlas(WHITE_TILE_KEY, [12.0, 0.4], [0.30, 0.32, 0.38, 1.0]),
-            Name::new("Floor"),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 6.0,
-                    half_y: 0.2,
-                },
-                ..Collider::default()
-            },
-        ));
-
-        // ⚠️ Alturas MEDIDAS, não escolhidas por estética: dão a escada de impacto
-        // 0,81 / 1,39 / 1,95 / 2,52 (probe). A mais alta satura a régua do flash (2,0),
-        // que e' honesto -- acima disso "muito forte" e' a leitura util.
-        let heights = [0.4f32, 1.2, 2.4, 4.0];
-        for (i, &h) in heights.iter().enumerate() {
-            let x = i as f32 * 2.0 - 3.0;
+    /// ⚠️ A CARGA (o `+`) não veria isso: depois que a poeira assenta, cada caixa parada
+    /// pesa o mesmo peso, tenha sido empurrada de leve ou pulverizada. O que distingue os
+    /// dois tiros é o PICO — o `×` — que vive dentro dos sub-passos e some quando o passo
+    /// termina, e que esta wave captura.
+    pub(crate) fn physics_smoke_impact_demolition(&mut self) {
+        // Uma raia: um chão, uma torre de caixas leves em `tower_x`, e uma bola pesada em
+        // `-tower_x` disparada para a direita a `vx`. `fast` liga o CCD (a bola rápida não
+        // atravessa a caixa fina entre dois passos).
+        let hue_ball = [0.95, 0.55, 0.35, 1.0];
+        let lane = |world: &mut ph2d_ecs::World, floor_y: f32, vx: f32, fast: bool| {
+            let top = floor_y + 0.2;
             world.spawn((
-                Transform::from_translation(Vec2::new(x, -0.5 + h)),
-                Sprite::atlas(
-                    WHITE_TILE_KEY,
-                    [0.6, 0.6],
-                    [0.45, 0.70, 0.55 + 0.10 * i as f32, 1.0],
-                ),
-                Name::new(format!("Ball {i}")),
+                Transform::from_translation(Vec2::new(0.0, floor_y)),
+                Sprite::atlas(WHITE_TILE_KEY, [16.0, 0.4], [0.30, 0.32, 0.38, 1.0]),
+                Name::new("Floor"),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 8.0,
+                        half_y: 0.2,
+                    },
+                    ..Collider::default()
+                },
+            ));
+            // A torre: 5 caixas leves empilhadas.
+            for row in 0..5 {
+                let hue = [0.50, 0.62 + 0.05 * row as f32, 0.85, 1.0];
+                world.spawn((
+                    Transform::from_translation(Vec2::new(4.0, top + 0.25 + row as f32 * 0.5)),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], hue),
+                    Name::new(format!("Brick {row}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 0.25,
+                            half_y: 0.25,
+                        },
+                        friction: 0.4,
+                        ..Collider::default()
+                    },
+                ));
+            }
+            // A bola pesada, lançada contra a torre.
+            let ball = (
+                Transform::from_translation(Vec2::new(-5.0, top + 0.35)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], hue_ball),
+                Name::new("Wrecker"),
                 RigidBody {
                     kind: BodyKind::Dynamic,
                 },
                 Collider {
-                    shape: ColliderShape::Ball { radius: 0.3 },
-                    restitution: 0.0,
-                    friction: 0.5,
+                    shape: ColliderShape::Ball { radius: 0.35 },
                     ..Collider::default()
                 },
-            ));
-        }
+                InitialVelocity {
+                    linvel: [vx, 0.0],
+                    angvel: 0.0,
+                },
+                MassOverride(6.0),
+            );
+            if fast {
+                world.spawn((ball, Ccd));
+            } else {
+                world.spawn(ball);
+            }
+        };
+
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        lane(world, 2.0, 5.0, false); // EM CIMA: empurrao lento
+        lane(world, -3.0, 16.0, true); // EMBAIXO: tiro rapido
 
         eprintln!(
             "\n\
-             ============= [physics-smoke 30] A ESCADA DE IMPACTO ================\n\
+             ============== [physics-smoke 30] A DEMOLICAO =====================\n\
              \n\
-             Quatro bolas IGUAIS, largadas de alturas crescentes (0,4 / 1,2 / 2,4 /\n\
-             4,0 m). Cada uma pousa e pisca um  x  branco.\n\
+             Duas raias IGUAIS -- uma torre de caixas leves e uma bola pesada. So\n\
+             a VELOCIDADE da bola muda.\n\
              \n\
-             >>> O TAMANHO do  x  e a FORCA do impacto. Quanto mais alto caiu, MAIOR\n\
-                 o flash. Da esquerda para a direita: medio -> cheio. <<<\n\
+             EM CIMA  (lento, 5 m/s)   ... a torre BALANCA, o  x  do impacto e' pequeno.\n\
+             EMBAIXO  (rapido, 16 m/s) ... a torre EXPLODE, e o  x  e' ENORME.\n\
              \n\
-             Medido (impact, N.s):   0,81   1,39   1,95   2,52\n\
+             >>> O TAMANHO do  x  e a FORCA do impacto -- e ela tem CONSEQUENCIA:\n\
+                 quanto mais forte o tiro, mais longe as caixas voam. <<<\n\
              \n\
-             ---- POR QUE ISSO IMPORTA -------------------------------------------\n\
+             Medido (impact da bola no 1o tijolo, N.s):  ~1,4 a 6 m/s   ~4,5 a 16 m/s\n\
              \n\
-             A CARGA (a cruz  +  em pe) nao distingue as quatro: uma bola PARADA pesa\n\
-             o mesmo tendo caido de 0,4 m ou de 4 m (medido: carga ~0,014 nas duas).\n\
-             O impacto (o pico DENTRO dos sub-passos, que o motor perdia entre um\n\
-             passo e outro) e o unico numero que cresce -- e e' o que um som de\n\
-             impacto ou um dano querem saber.\n\
+             ---- POR QUE A CARGA NAO BASTA -------------------------------------\n\
              \n\
-             As quatro pousam em tempos diferentes (a mais baixa primeiro), entao os\n\
-             flashes vem em sequencia. Arraste a regua (tecla L abre a timeline) para\n\
-             reve-los lado a lado.\n\
+             Depois que a poeira assenta, cada caixa PARADA pesa o mesmo -- tenha sido\n\
+             empurrada de leve ou pulverizada. A CARGA (a cruz  +  em pe) nao distingue\n\
+             os dois tiros. So o PICO (o  x ) distingue, e o pico vive DENTRO dos\n\
+             sub-passos e some quando o passo termina. Capturar esse pico e' a wave.\n\
+             E' o que um som de impacto ou um dano querem: quao forte foi o toque.\n\
              \n\
-             (B liga/desliga o contorno dos colliders.)\n\
-             ====================================================================\n"
+             (Tudo em UM frame -- tecla L abre a timeline para dar scrub e rever os\n\
+             impactos. B liga/desliga o contorno dos colliders.)\n\
+             ===================================================================\n"
         );
     }
 }

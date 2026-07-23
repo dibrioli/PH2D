@@ -3267,6 +3267,19 @@ raspão preserva o pico) · eventos por-tick em vez de por-dispatch.
 
 `world.rs` bateu **706 > 700** (o campo `contact_peaks` + a captura) ⇒ split
 `world/convenience.rs` (os dois construtores `add_dynamic_circle`/`add_static_cuboid`, ~40
-linhas, `impl PhysicsWorld` num módulo irmão) → **661**. `physics_smoke_events.rs` 172→262 (a
+linhas, `impl PhysicsWorld` num módulo irmão) → **661**. `physics_smoke_events.rs` 172→290 (a
 cena 30) e `physics_overlay_contacts.rs` 221→251 (o flash por impacto) seguem sob o cap 600
 do shell.
+
+### A cena 30 — a DEMOLIÇÃO (o 1º corte foi recusado)
+
+O 1º corte da cena 30 era uma **escada** de bolas caindo num chão imóvel, e o `×` crescia com
+a queda. O Enio recusou: *"bater no chão imóvel não mostra o efeito"* — e tinha razão, o chão
+absorve tudo e sobra só o `×` abstrato. A cena virou uma **DEMOLIÇÃO**: duas raias iguais
+(torre de caixas leves + bola pesada lançada), só a VELOCIDADE muda — lenta (5 m/s) a torre
+balança e o `×` é pequeno; rápida (16 m/s) a torre EXPLODE e o `×` é enorme. A força do
+impacto ganha uma **consequência visível** (as caixas voam), e o `×` a quantifica. Medido
+(probe `probe_scene_30`, bola pesada num alvo leve): impacto **0,70 / 1,41 / 2,80 / 4,53** a
+3 / 6 / 10 / 16 m/s. **Lição:** um readout de debug (o `×`) só é legível quando amarrado a algo
+que o olho já lê como "forte" — e um chão estático não reage. A bola rápida ganha CCD (não
+atravessar a caixa fina entre dois passos).

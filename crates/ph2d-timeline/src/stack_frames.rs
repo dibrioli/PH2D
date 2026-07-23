@@ -193,6 +193,13 @@ impl StackScratch {
     /// one evaluator, two roots, so the interior you author and the interior an
     /// instance plays can never be two different answers.
     pub(crate) fn rebuild_rooted(&mut self, doc: &TimelineDoc, root: Option<usize>, t: f64) {
+        // **The authored duration CUTS frame 0's clock** (Enio, 2026-07-23): time past
+        // the explicit end holds the end's pose instead of playing on. The interior
+        // frames get the same cut where their strips resolve (`build_frame`).
+        let t = match root {
+            None => doc.cut_scene(t),
+            Some(c) => doc.container_cut(c, t),
+        };
         self.t = t;
         self.root = root;
         self.active.clear();
@@ -210,7 +217,8 @@ impl StackScratch {
                 lane: 0,
                 source: ActiveSource::Clip(doc.active_index()),
                 w: 1.0,
-                t_clip: t,
+                // The solo path IS the active clip's clock — its cut applies here.
+                t_clip: doc.clip_cut(doc.active_index(), t),
                 src_in: 0.0,
                 held: false,
             });
@@ -297,6 +305,9 @@ impl StackScratch {
                 let Some(t_local) = strip.source_time_with_lead(t) else {
                     continue; // outside the strip (+ its lead-in)
                 };
+                // The source's authored duration cuts its clock: a slice windowed
+                // before the cut existed (or stretched past it) holds the cut's pose.
+                let t_local = doc.cut_source(strip.source, t_local);
                 let Some(source) = self.resolve(doc, strip.source, t_local, additive, strip.src_in)
                 else {
                     continue; // a deleted clip or a deleted container
@@ -335,16 +346,14 @@ impl StackScratch {
             let loop_range = (frame == 0)
                 .then(|| {
                     let (range, ping_pong) = match self.root {
-                        None => (
-                            doc.active_loop_for(false),
-                            doc.active_ping_pong_for(false),
-                        ),
+                        None => (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
                         Some(c) => doc.container_loop(c),
                     };
                     range.filter(|_| !ping_pong)
                 })
                 .flatten();
             if let Some((strip, t_local, w)) = lane.hold_at(t, loop_range)
+                && let t_local = doc.cut_source(strip.source, t_local)
                 && let Some(source) =
                     self.resolve(doc, strip.source, t_local, additive, strip.src_in)
             {
@@ -405,6 +414,7 @@ impl StackScratch {
                     let t_ref = doc
                         .container_first_voice(c)
                         .map_or(src_in, |voice| src_in.max(voice));
+                    let t_ref = doc.container_cut(c, t_ref);
                     self.frames.push(StackFrame {
                         container: Some(c),
                         t: t_ref,

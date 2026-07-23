@@ -171,6 +171,11 @@ pub struct TimelineViewSnapshot {
     /// artist never asked for — a 5 s clip crammed into a 1 s box at 5×. Transport's go-to-end
     /// reads `end_seconds` for the very same reason; this field is the panel's copy of that answer.
     pub clip_length_seconds: f64,
+    /// The CURRENT VIEW's **effective duration** in seconds — what the Dur(s)
+    /// chip shows and edits (Enio, 2026-07-23). Keys: the active clip's end;
+    /// Arrange: the scene's; inside a container: the container's own. Each is
+    /// the authored override when one is set, the derived end otherwise.
+    pub view_length_seconds: f64,
     /// **Where the KEYS ruler's playhead stands**, in the active clip's own time.
     ///
     /// The keys in [`Self::tracks`] are stamped in the clip's time and the strips in
@@ -309,6 +314,12 @@ impl TimelineViewSnapshot {
         self.loop_range = doc.active_loop_for(keys_mode);
         self.loop_ping_pong = doc.active_ping_pong_for(keys_mode);
         self.clip_length_seconds = doc.end_seconds();
+        // The current view's EFFECTIVE duration — the number the Dur(s) chip shows.
+        // Keys: the active clip's end; Arrange: the scene's (its authored
+        // `scene_length` when set, the stack's extent otherwise). Inside a
+        // container the interior branch below overwrites this with the
+        // container's own length, completing the three scopes (Enio, 2026-07-23).
+        self.view_length_seconds = doc.view_end_seconds(keys_mode);
         self.keys_mode = keys_mode;
         // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
         // clip clock, so publish it verbatim — the transport is the clip's. Outside
@@ -345,15 +356,12 @@ impl TimelineViewSnapshot {
             .extend(doc.containers().iter().enumerate().map(|(i, c)| {
                 ContainerView {
                     name: c.name.clone(),
-                    // Its own interior's end — what a strip placed on it is sized to and what
-                    // the Containers list draws its bar with, read through the SAME doors the
-                    // document uses (`host_end_seconds` + `container_bar_seconds`), so the bar
-                    // on screen, the span the `+` places and the slice the strip windows are
-                    // one number. An EMPTY container publishes its born length (2 s).
-                    length: crate::container_bar_seconds(
-                        doc.host_end_seconds(crate::StackHost::Container(i))
-                            .unwrap_or(0.0),
-                    ),
+                    // Its length through THE door (`container_length_seconds`) — what a
+                    // strip placed on it is sized to and what the Containers list draws
+                    // its bar with, so the bar on screen, the span the `+` places and
+                    // the slice the strip windows are one number. An EMPTY container
+                    // publishes its born length (2 s); an authored duration (v11) wins.
+                    length: doc.container_length_seconds(i),
                 }
             }));
         self.crumbs.clear();
@@ -396,6 +404,11 @@ impl TimelineViewSnapshot {
             // why playback was the Arrange's.
             let container = state.edit_path.last().map(|s| s.container);
             self.container_open = container;
+            if let Some(c) = container {
+                // The interior's transport measures the CONTAINER — its authored
+                // duration when set, its content's extent otherwise (one door).
+                self.view_length_seconds = doc.container_length_seconds(c);
+            }
             self.host_time = Some(playhead.time());
             // **The loop braces are the CONTAINER's own loop** — read from the document
             // (`container_loop`), in the interior's own seconds, NEVER mapped from the

@@ -248,6 +248,27 @@ pub enum TimelineIntent {
         ping_pong: bool,
     },
 
+    // ── explicit durations (the AE composition-duration model, Enio 2026-07-23) ──
+    /// Author the SCENE's (Arrange) explicit duration. `None` (or a non-positive
+    /// value — the numeric box's 0) clears it back to the derived end. Authoring,
+    /// not transport: it changes what plays and persists, so it is one undo step.
+    SetSceneLength {
+        /// Seconds; `None` = derived from content.
+        len: Option<f64>,
+    },
+    /// Author the ACTIVE CLIP's explicit duration — the Keys view's scope.
+    SetClipLength {
+        /// Seconds; `None` = derived from content.
+        len: Option<f64>,
+    },
+    /// Author a CONTAINER's explicit duration (a stale index is a no-op).
+    SetContainerLength {
+        /// Which container.
+        container: usize,
+        /// Seconds; `None` = derived from content.
+        len: Option<f64>,
+    },
+
     // ── history ─────────────────────────────────────────────────────────────
     /// Open an undo bracket around a multi-frame gesture (a graph-handle drag).
     /// Until the matching [`TimelineIntent::EndEdit`], every document edit joins

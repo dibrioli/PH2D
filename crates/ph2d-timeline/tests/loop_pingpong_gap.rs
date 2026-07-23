@@ -25,8 +25,20 @@ fn scene() -> (World, TimelineDoc, u64) {
     let mut world = World::new();
     let e = world.spawn(Transform::default()).id().to_bits();
     let mut doc = TimelineDoc::new();
-    doc.insert_key(e, PropKind::TranslationX, s(0.0), AnimValue::Float(10.0), Interp::Linear);
-    doc.insert_key(e, PropKind::TranslationX, s(2.0), AnimValue::Float(20.0), Interp::Linear);
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(2.0),
+        AnimValue::Float(20.0),
+        Interp::Linear,
+    );
     (world, doc, e)
 }
 

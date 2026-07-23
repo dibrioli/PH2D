@@ -58,6 +58,7 @@ enum Item {
     AddMarker,
     TimeChip,
     FrameChip,
+    LengthChip,
     Loop,
     PingPong,
     Physics,
@@ -71,7 +72,7 @@ enum Item {
 // acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
 // MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
 // dos dois lados do conflito.
-const ITEMS: [Item; 15] = [
+const ITEMS: [Item; 16] = [
     Item::Tabs,
     Item::Crumbs,
     Item::Clips,
@@ -80,6 +81,10 @@ const ITEMS: [Item; 15] = [
     Item::AddMarker,
     Item::TimeChip,
     Item::FrameChip,
+    // The view's explicit DURATION (Enio, 2026-07-23) sits between the readouts
+    // and the loop cluster on purpose: it is about the clock's extent — what
+    // go-to-end reaches and what a fresh Loop brackets.
+    Item::LengthChip,
     Item::Loop,
     Item::PingPong,
     // Physics sits with Loop/PingPong, not with AutoKey/Record: those two arm
@@ -199,7 +204,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
         }
         Item::ReverseKeys => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
-        Item::TimeChip | Item::FrameChip => CHIP_LABEL_W + half + CHIP_W,
+        Item::TimeChip | Item::FrameChip | Item::LengthChip => CHIP_LABEL_W + half + CHIP_W,
         Item::Loop
         | Item::PingPong
         | Item::Physics
@@ -218,6 +223,35 @@ fn toggle_w() -> f32 {
 
 /// Paint one item at `(x, y)`. Returns the clip chip's rect when that item is the
 /// clip dropdown AND it is open (the caller defers the popover — see [`paint_bar`]).
+/// One labeled numeric chip — the label at `x`, the chip a half-gap after it.
+/// The three transport chips (Time / Frame / Dur) are this one drawing, and the
+/// measure arm (`CHIP_LABEL_W + half + CHIP_W`) describes exactly this layout.
+#[allow(clippy::too_many_arguments)]
+fn labeled_chip(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    key: &str,
+    id: ph2d_a11y::NodeId,
+    value: f64,
+    step: f64,
+    decimals: usize,
+) {
+    let half = Spacing::Sm.px() * 0.5;
+    label(ctx, theme, ph2d_i18n::tr(key), x, y, CHIP_LABEL_W);
+    chip(
+        ctx,
+        theme,
+        x + CHIP_LABEL_W + half,
+        y,
+        id,
+        value,
+        step,
+        decimals,
+    );
+}
+
 fn paint_item(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -291,46 +325,46 @@ fn paint_item(
             );
         }
         Item::AddMarker => add_marker_button(ctx, theme, x, y),
-        Item::TimeChip => {
-            label(
-                ctx,
-                theme,
-                ph2d_i18n::tr("panel.timeline.time_seconds"),
-                x,
-                y,
-                CHIP_LABEL_W,
-            );
-            chip(
-                ctx,
-                theme,
-                x + CHIP_LABEL_W + half,
-                y,
-                ids::TIMELINE_TIME_NUM,
-                snap.time_seconds,
-                1.0 / fps,
-                2,
-            );
-        }
-        Item::FrameChip => {
-            label(
-                ctx,
-                theme,
-                ph2d_i18n::tr("panel.timeline.frame"),
-                x,
-                y,
-                CHIP_LABEL_W,
-            );
-            chip(
-                ctx,
-                theme,
-                x + CHIP_LABEL_W + half,
-                y,
-                ids::TIMELINE_FRAME_NUM,
-                snap.frame as f64,
-                1.0,
-                0,
-            );
-        }
+        // The three chips share one drawing (label + numeric), so they share one
+        // painter — a fourth copy of the pair is how the label and the chip come
+        // to disagree about the half-gap between them. `LengthChip` is the view's
+        // EFFECTIVE duration (Enio, 2026-07-23): derived from content, or the
+        // authored override when one is set; typing writes the scope on screen
+        // (clip in Keys, the open container inside one, the scene in Arrange)
+        // and 0 clears back to derived.
+        Item::TimeChip => labeled_chip(
+            ctx,
+            theme,
+            x,
+            y,
+            "panel.timeline.time_seconds",
+            ids::TIMELINE_TIME_NUM,
+            snap.time_seconds,
+            1.0 / fps,
+            2,
+        ),
+        Item::FrameChip => labeled_chip(
+            ctx,
+            theme,
+            x,
+            y,
+            "panel.timeline.frame",
+            ids::TIMELINE_FRAME_NUM,
+            snap.frame as f64,
+            1.0,
+            0,
+        ),
+        Item::LengthChip => labeled_chip(
+            ctx,
+            theme,
+            x,
+            y,
+            "panel.timeline.length",
+            ids::TIMELINE_LENGTH_NUM,
+            snap.view_length_seconds,
+            1.0 / fps,
+            2,
+        ),
         // Loop and PingPong are the SAME loop seen two ways, so exactly one can
         // read as on — the snapshot carries a range plus a mode, and there is no
         // value that is both.

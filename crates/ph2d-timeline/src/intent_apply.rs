@@ -81,6 +81,16 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             sync_container_loop(&state.doc, container, playhead);
         }
 
+        // The explicit durations (Enio, 2026-07-23) — authoring, one undo step each.
+        I::SetSceneLength { len } => edit(state, |doc, _| doc.set_scene_length(len)),
+        I::SetClipLength { len } => edit(state, |doc, _| {
+            let ix = doc.active_index();
+            doc.set_clip_length_override(ix, len);
+        }),
+        I::SetContainerLength { container, len } => edit(state, |doc, _| {
+            doc.set_container_length_override(container, len);
+        }),
+
         // authoring (undoable)
         I::Bind { entity, prop } => edit(state, |doc, _| {
             doc.bind(entity, prop);

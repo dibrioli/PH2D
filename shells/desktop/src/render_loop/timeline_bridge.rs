@@ -113,14 +113,7 @@ pub(crate) fn intent_for_transport(
     let container: Option<usize> = (!timeline.keys_mode)
         .then(|| timeline.edit_path.last().map(|s| s.container))
         .flatten();
-    let container_len = |c: usize| {
-        ph2d_timeline::container_bar_seconds(
-            timeline
-                .doc
-                .host_end_seconds(ph2d_timeline::StackHost::Container(c))
-                .unwrap_or(0.0),
-        )
-    };
+    let container_len = |c: usize| timeline.doc.container_length_seconds(c);
     match *ev {
         // No playback mode on the Containers LIST (Enio, 2026-07-22): the panel
         // already paints the button dead and unhittable — this layer keeps a
@@ -149,6 +142,19 @@ pub(crate) fn intent_for_transport(
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_RULER => Some(I::Scrub(v)),
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
             Some(I::SeekFrame(v as i64))
+        }
+        // The Dur(s) chip writes the EXPLICIT duration of the scope on screen —
+        // clip in Keys, the open container inside one, the scene in Arrange —
+        // the same 3-way the Loop toggle routes by. 0 clears back to derived.
+        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_LENGTH_NUM => {
+            let len = (v > 0.0).then_some(v);
+            Some(if timeline.keys_mode {
+                I::SetClipLength { len }
+            } else if let Some(c) = container {
+                I::SetContainerLength { container: c, len }
+            } else {
+                I::SetSceneLength { len }
+            })
         }
         // Loop and PingPong are ONE loop seen two ways — a range plus what happens
         // at its end. Each toggle sends the whole value, so arming one necessarily

@@ -199,6 +199,43 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
 
 /// **`SetTransportLoop` arma o RELÓGIO e não toca o documento** — a metade que protege o
 /// loop autorado da cena.
+/// **O chip Dur(s) escreve o escopo NA TELA** (Enio, 2026-07-23): Keys = o clip
+/// ativo; dentro de um container = o container; no Arranje = a cena. E 0 limpa
+/// (volta ao fim derivado) — o gesto de "clear" da caixa numérica.
+#[test]
+fn the_duration_chip_writes_the_scope_on_screen() {
+    let (mut st, step) = nav_scene();
+    let c = step.container;
+    let ph = Playhead::new(1.0 / 60.0);
+    let ev = |v| PanelEvent::SetValue(ph2d_editor::ids::TIMELINE_LENGTH_NUM, v);
+
+    // Arrange (raiz): a CENA.
+    assert_eq!(
+        intent_for_transport(&ev(3.5), &st, &ph),
+        Some(TimelineIntent::SetSceneLength { len: Some(3.5) }),
+    );
+    // 0 limpa.
+    assert_eq!(
+        intent_for_transport(&ev(0.0), &st, &ph),
+        Some(TimelineIntent::SetSceneLength { len: None }),
+    );
+    // Dentro de um container: o CONTAINER.
+    st.edit_path = vec![step];
+    assert_eq!(
+        intent_for_transport(&ev(2.5), &st, &ph),
+        Some(TimelineIntent::SetContainerLength {
+            container: c,
+            len: Some(2.5),
+        }),
+    );
+    // Keys: o CLIP ativo (mesmo com um container aberto — a aba manda).
+    st.keys_mode = true;
+    assert_eq!(
+        intent_for_transport(&ev(1.5), &st, &ph),
+        Some(TimelineIntent::SetClipLength { len: Some(1.5) }),
+    );
+}
+
 #[test]
 fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
     let (mut st, _step) = nav_scene();

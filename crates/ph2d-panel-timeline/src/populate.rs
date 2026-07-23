@@ -95,6 +95,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     number(store, ids::TIMELINE_TIME_NUM);
     number(store, ids::TIMELINE_FRAME_NUM);
+    number(store, ids::TIMELINE_LENGTH_NUM);
     // Every lane's weight field, not just the lanes a fresh document has: the
     // store is populated ONCE at install, so a lane added later would paint a
     // field that was never registered — pintado mas inerte (the same reason every

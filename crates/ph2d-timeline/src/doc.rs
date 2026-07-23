@@ -53,8 +53,14 @@ use crate::stack_frames::StackScratch;
 /// scene's and of every clip's (Enio, 2026-07-22: *"o loop deve ser independente em
 /// cada modo"*). `None`/`false` behaves exactly as v9.
 ///
+/// v11: the three **explicit durations** (`NamedClip.length_override`,
+/// `NamedContainer.length_override`, `TimelineDoc.scene_length`, all appended) — the
+/// AE composition-duration model (Enio, 2026-07-23): an authored end that go-to-end
+/// and a fresh loop read, cutting content past it non-destructively. `None` behaves
+/// exactly as v10.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
-pub const DOC_VERSION: u32 = 10;
+pub const DOC_VERSION: u32 = 11;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -113,6 +119,13 @@ pub struct NamedClip {
     pub keys_loop_range: Option<(f64, f64)>,
     /// Mirror of [`Self::loop_ping_pong`] for the Keys-view loop. Appended (v5).
     pub keys_loop_ping_pong: bool,
+    /// The clip's **explicit duration** in seconds, when authored — the AE
+    /// composition-duration model (Enio, 2026-07-23): it defines "the end" for
+    /// go-to-end and a freshly armed loop, and a value SHORTER than the content
+    /// **cuts** it non-destructively (keys past it stay authored, they just never
+    /// play — the eval clamps its clock at the cut). `None` = derived from
+    /// content, exactly as before. Appended (v11).
+    pub length_override: Option<f64>,
 }
 
 /// The editable timeline document (see module docs).
@@ -142,6 +155,12 @@ pub struct TimelineDoc {
     /// **Empty is the default and is not a degenerate case** — a document with no containers
     /// behaves exactly as v7 did, on the same code path.
     containers: Vec<NamedContainer>,
+    /// The SCENE's (Arrange) **explicit duration** in seconds, when authored — the
+    /// third of the three scopes ([`NamedClip::length_override`] carries the clip's,
+    /// [`crate::NamedContainer::length_override`] each container's). Same contract:
+    /// defines "the end", cuts content past it non-destructively, `None` = derived.
+    /// Appended (v11).
+    pub scene_length: Option<f64>,
     /// This frame's live strips and their per-entity clocks (`stack_eval.rs`).
     /// Runtime scratch, not document identity: never serialized, always compares
     /// equal, and its buffers are retained frame to frame (zero-alloc, HR-3).
@@ -169,6 +188,7 @@ impl TimelineDoc {
                 loop_ping_pong: false,
                 keys_loop_range: None,
                 keys_loop_ping_pong: false,
+                length_override: None,
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -177,6 +197,7 @@ impl TimelineDoc {
             next_strip: 0,
             stack: Vec::new(),
             containers: Vec::new(),
+            scene_length: None,
             scratch: StackScratch::default(),
         }
     }
@@ -300,6 +321,7 @@ impl TimelineDoc {
             loop_ping_pong: false,
             keys_loop_range: None,
             keys_loop_ping_pong: false,
+            length_override: None,
         });
         self.clips.len() - 1
     }
@@ -337,6 +359,8 @@ impl TimelineDoc {
             // both views.
             keys_loop_range: src.keys_loop_range,
             keys_loop_ping_pong: src.keys_loop_ping_pong,
+            // The explicit duration travels too: it is part of what the clip IS.
+            length_override: src.length_override,
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)
@@ -402,76 +426,6 @@ impl TimelineDoc {
             self.active_clip = self.active_clip.saturating_sub(1);
         }
         true
-    }
-
-    /// The active clip's loop range for one VIEW, if it has one. `keys` picks the
-    /// Keys-view loop (the clip's own clock); `false` picks the Arrange/timeline
-    /// loop. The two are stored and returned independently — the loop area is
-    /// per clip AND per view (Enio, 2026-07-16).
-    #[must_use]
-    pub fn active_loop_for(&self, keys: bool) -> Option<(f64, f64)> {
-        let c = &self.clips[self.active_clip];
-        if keys {
-            c.keys_loop_range
-        } else {
-            c.loop_range
-        }
-    }
-
-    /// Park `range` on the ACTIVE clip's `keys`/Arrange loop. The caller mirrors it
-    /// into the matching `Playhead` (clip clock in Keys, timeline in Arrange), which
-    /// owns the live loop — this is the copy that survives a clip switch.
-    pub fn set_active_loop_for(&mut self, keys: bool, range: Option<(f64, f64)>) {
-        let c = &mut self.clips[self.active_clip];
-        if keys {
-            c.keys_loop_range = range;
-        } else {
-            c.loop_range = range;
-        }
-    }
-
-    /// Whether the active clip's `keys`/Arrange loop ping-pongs.
-    #[must_use]
-    pub fn active_ping_pong_for(&self, keys: bool) -> bool {
-        let c = &self.clips[self.active_clip];
-        if keys {
-            c.keys_loop_ping_pong
-        } else {
-            c.loop_ping_pong
-        }
-    }
-
-    /// Set whether the active clip's `keys`/Arrange loop ping-pongs.
-    pub fn set_active_ping_pong_for(&mut self, keys: bool, on: bool) {
-        let c = &mut self.clips[self.active_clip];
-        if keys {
-            c.keys_loop_ping_pong = on;
-        } else {
-            c.loop_ping_pong = on;
-        }
-    }
-
-    /// The active clip's Arrange (timeline) loop range — [`Self::active_loop_for`]`(false)`.
-    /// The project-load path and older callers read the timeline loop through this.
-    #[must_use]
-    pub fn active_loop(&self) -> Option<(f64, f64)> {
-        self.active_loop_for(false)
-    }
-
-    /// Park `range` on the active clip's Arrange loop.
-    pub fn set_active_loop(&mut self, range: Option<(f64, f64)>) {
-        self.set_active_loop_for(false, range);
-    }
-
-    /// Whether the active clip's Arrange loop ping-pongs.
-    #[must_use]
-    pub fn active_ping_pong(&self) -> bool {
-        self.active_ping_pong_for(false)
-    }
-
-    /// Set whether the active clip's Arrange loop ping-pongs.
-    pub fn set_active_ping_pong(&mut self, on: bool) {
-        self.set_active_ping_pong_for(false, on);
     }
 
     /// A name no clip is using yet — `"Clip 2"`, then `"Clip 3"`… Seeds the
@@ -698,3 +652,7 @@ impl TimelineDoc {
 /// private fields, the idiom `Track`'s `rove` already uses.
 #[path = "doc_extent.rs"]
 mod extent;
+
+/// **The per-clip, per-view loop pair** — same child-module idiom as `extent`.
+#[path = "doc_loops.rs"]
+mod loops;

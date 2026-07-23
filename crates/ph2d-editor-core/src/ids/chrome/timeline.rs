@@ -26,6 +26,9 @@ pub const TIMELINE_NEXT_FRAME: NodeId = hash_node_id("timeline.next_frame");
 pub const TIMELINE_TIME_NUM: NodeId = hash_node_id("timeline.time_num");
 /// Editable frame chip (seek).
 pub const TIMELINE_FRAME_NUM: NodeId = hash_node_id("timeline.frame_num");
+/// Editable duration chip — the current view's EXPLICIT length (AE composition
+/// duration; Enio 2026-07-23). 0 clears back to the derived end.
+pub const TIMELINE_LENGTH_NUM: NodeId = hash_node_id("timeline.length_num");
 /// Loop-range toggle.
 pub const TIMELINE_LOOP: NodeId = hash_node_id("timeline.loop");
 /// Auto-key arm toggle.

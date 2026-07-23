@@ -1,0 +1,208 @@
+//! **A duração explícita** (Enio, 2026-07-23): o modelo composition-duration do AE —
+//! um tamanho autorado por clip, por container e para o Arranje que define "o fim"
+//! (go-to-end, o loop recém-armado, a barra do container, a fatia de uma instância
+//! nova) e **CORTA o excedente sem destruí-lo**: keys e strips além do fim ficam
+//! autorados, o avaliador só clampa o relógio no corte.
+
+use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_ecs::{Entity, Transform, World};
+use ph2d_timeline::{
+    ClipLane, ClipStrip, PropKind, StackHost, StripSource, TimelineDoc, apply_active_clip,
+    apply_from_doc,
+};
+
+fn s(t: f64) -> RationalTime {
+    RationalTime::from_seconds(t)
+}
+
+fn scene() -> (World, TimelineDoc, u64) {
+    let mut world = World::new();
+    let e = world.spawn(Transform::default()).id().to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(4.0),
+        AnimValue::Float(40.0),
+        Interp::Linear,
+    );
+    (world, doc, e)
+}
+
+fn x_of(world: &World, e: u64) -> f32 {
+    world
+        .get::<Transform>(Entity::from_bits(e))
+        .unwrap()
+        .translation
+        .x
+}
+
+// ── the doors ───────────────────────────────────────────────────────────────
+
+/// An authored duration IS the end — shorter than the content (the cut) and
+/// longer than it (room to grow) both win over the derived answer; clearing
+/// (`None`, or the numeric box's 0) restores it.
+#[test]
+fn an_authored_duration_wins_over_the_derived_end_in_all_three_scopes() {
+    let (_, mut doc, _) = scene();
+    // Clip: derived end is the last key (4.0).
+    assert!((doc.clip_end_seconds(0) - 4.0).abs() < 1e-9);
+    doc.set_clip_length_override(0, Some(2.5));
+    assert!((doc.clip_end_seconds(0) - 2.5).abs() < 1e-9, "shorter cuts");
+    doc.set_clip_length_override(0, Some(9.0));
+    assert!(
+        (doc.clip_end_seconds(0) - 9.0).abs() < 1e-9,
+        "longer extends"
+    );
+    doc.set_clip_length_override(0, Some(0.0));
+    assert!((doc.clip_end_seconds(0) - 4.0).abs() < 1e-9, "0 clears");
+
+    // Scene: derived end is the stack's extent.
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 6.0, 4.0));
+    doc.stack_mut().push(lane);
+    assert!((doc.view_end_seconds(false) - 6.0).abs() < 1e-9);
+    doc.set_scene_length(Some(3.0));
+    assert!((doc.view_end_seconds(false) - 3.0).abs() < 1e-9);
+    doc.set_scene_length(None);
+    assert!((doc.view_end_seconds(false) - 6.0).abs() < 1e-9);
+
+    // Container: derived is the interior's extent (empty = its born 2 s).
+    assert_eq!(doc.add_container("C".to_string()), 0);
+    assert!((doc.container_length_seconds(0) - 2.0).abs() < 1e-9);
+    doc.set_container_length_override(0, Some(5.0));
+    assert!((doc.container_length_seconds(0) - 5.0).abs() < 1e-9);
+}
+
+// ── the cut, through the real apply ─────────────────────────────────────────
+
+/// The SCENE's authored duration cuts frame 0's clock: past it the pose holds
+/// the cut's value instead of playing on — and a strip lying wholly beyond the
+/// cut never plays. Non-destructive: clearing the length brings it all back.
+#[test]
+fn the_scene_cut_freezes_the_pose_at_the_authored_end() {
+    let (mut world, mut doc, e) = scene();
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 4.0, 4.0));
+    doc.stack_mut().push(lane);
+    doc.set_scene_length(Some(2.0));
+
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert!(
+        (x_of(&world, e) - 10.0).abs() < 1e-4,
+        "inside the cut: plays"
+    );
+    apply_from_doc(&mut world, &mut doc, 3.0);
+    let x = x_of(&world, e);
+    assert!(
+        (x - 20.0).abs() < 1e-4,
+        "x = {x}: past the scene's authored end the clock holds the cut (20.0); \
+         30.0 means the excess still plays"
+    );
+
+    doc.set_scene_length(None); // non-destructive: the content was never touched
+    apply_from_doc(&mut world, &mut doc, 3.0);
+    assert!(
+        (x_of(&world, e) - 30.0).abs() < 1e-4,
+        "clearing restores the excess"
+    );
+}
+
+/// A CONTAINER's authored duration cuts every instance's interior clock — even
+/// instances whose slice was windowed before the duration was authored.
+#[test]
+fn a_containers_cut_reaches_an_instance_placed_before_it() {
+    let (mut world, mut doc, e) = scene();
+    assert_eq!(doc.add_container("C".to_string()), 0);
+    let mut inner = ClipLane::new("inner");
+    inner.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 4.0, 4.0));
+    doc.container_stack_mut(0).unwrap().push(inner);
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(StripSource::Container(0), 0.0, 4.0, 4.0));
+    doc.stack_mut().push(lane);
+
+    apply_from_doc(&mut world, &mut doc, 3.0);
+    assert!(
+        (x_of(&world, e) - 30.0).abs() < 1e-4,
+        "no cut: plays through"
+    );
+
+    doc.set_container_length_override(0, Some(2.0));
+    apply_from_doc(&mut world, &mut doc, 3.0);
+    let x = x_of(&world, e);
+    assert!(
+        (x - 20.0).abs() < 1e-4,
+        "x = {x}: the container's authored end cuts its interior clock inside \
+         the already-placed instance (holds 20.0); 30.0 means the cut never \
+         reached the evaluator"
+    );
+}
+
+/// The CLIP's authored duration cuts the Keys solo AND the no-stack solo path —
+/// the same instant in both, because they are the same door.
+#[test]
+fn a_clips_cut_freezes_both_solo_paths_at_the_same_instant() {
+    let (mut world, mut doc, e) = scene();
+    doc.set_clip_length_override(0, Some(2.0));
+
+    apply_from_doc(&mut world, &mut doc, 3.0); // empty stack: the solo path
+    assert!(
+        (x_of(&world, e) - 20.0).abs() < 1e-4,
+        "no-stack solo holds the cut"
+    );
+
+    apply_active_clip(&mut world, &mut doc, 3.0, |_| false); // the Keys solo
+    assert!(
+        (x_of(&world, e) - 20.0).abs() < 1e-4,
+        "Keys solo holds the same cut"
+    );
+}
+
+// ── persistence ─────────────────────────────────────────────────────────────
+
+/// The three overrides survive the round-trip (v11, appended fields).
+#[test]
+fn the_three_durations_survive_the_round_trip() {
+    let (_, mut doc, _) = scene();
+    assert_eq!(doc.add_container("C".to_string()), 0);
+    doc.set_clip_length_override(0, Some(1.5));
+    doc.set_container_length_override(0, Some(2.5));
+    doc.set_scene_length(Some(3.5));
+
+    let back = TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap();
+    assert!((back.clip_end_seconds(0) - 1.5).abs() < 1e-9);
+    assert!((back.container_length_seconds(0) - 2.5).abs() < 1e-9);
+    assert!((back.view_end_seconds(false) - 3.5).abs() < 1e-9);
+}
+
+/// A new instance of a cut container is SIZED to the cut — the strip the `+`
+/// places, the bar the list draws and the slice the evaluator windows are one
+/// number, through one door.
+#[test]
+fn a_new_instance_is_sized_to_the_containers_authored_duration() {
+    let (_, mut doc, _) = scene();
+    assert_eq!(doc.add_container("C".to_string()), 0);
+    let mut inner = ClipLane::new("inner");
+    inner.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 4.0, 4.0));
+    doc.container_stack_mut(0).unwrap().push(inner);
+    doc.set_container_length_override(0, Some(2.0));
+    doc.stack_mut().push(ClipLane::new("L"));
+
+    let id = doc
+        .add_strip_to(StackHost::Document, 0, StripSource::Container(0), 1.0, 3.0)
+        .unwrap();
+    let strip = doc.strip(0, id).unwrap();
+    assert!(
+        (strip.slice() - 2.0).abs() < 1e-9,
+        "slice = {}: the strip's source window must be the container's authored \
+         duration (2.0), not its interior's extent (4.0)",
+        strip.slice()
+    );
+}

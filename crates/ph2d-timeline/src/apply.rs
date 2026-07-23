@@ -76,7 +76,11 @@ pub fn apply_from_doc_except(
             )
             .map(AnimValue::Float)
         } else {
-            let t_entity = stack_eval::solo_source_time(&scratch, b.entity, t);
+            // The active clip's authored duration cuts the solo clock too — the
+            // scratch's solo entry was built at the cut (`stack_frames`), and the
+            // clock must be read at the SAME instant it was built at.
+            let t_solo = doc.clip_cut(doc.active_index(), t);
+            let t_entity = stack_eval::solo_source_time(&scratch, b.entity, t_solo);
             // Skip empty tracks so a just-created binding never forces the
             // property to a default value.
             doc.active_clip().track(b.target).and_then(|tr| {
@@ -198,6 +202,10 @@ pub fn apply_active_clip(
     skip: impl Fn(u64) -> bool,
 ) {
     refresh_liveness_and_rest(world, doc);
+    // The clip's authored duration cuts its own clock (Enio, 2026-07-23) — the
+    // same cut the stacked path applies in `stack_frames`, so the Keys solo and
+    // an instance of this clip freeze at the same instant.
+    let clip_t = doc.clip_cut(doc.active_index(), clip_t);
 
     for b in doc.bindings() {
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {

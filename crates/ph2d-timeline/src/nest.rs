@@ -50,6 +50,12 @@ pub struct NamedContainer {
     /// PingPong for [`Self::loop_range`] — the same one-loop-two-modes pair every
     /// [`crate::NamedClip`] carries. Appended (v10).
     pub loop_ping_pong: bool,
+    /// The container's **explicit duration** in seconds, when authored — the same
+    /// AE composition-duration contract as [`crate::NamedClip::length_override`]
+    /// (Enio, 2026-07-23): it is the bar the Containers list draws, the window a
+    /// new instance is sized to, the end a fresh interior loop brackets — and
+    /// content past it is CUT non-destructively. `None` = derived. Appended (v11).
+    pub length_override: Option<f64>,
 }
 
 /// Which stack an edit is addressing: the document's own, or a container's interior.
@@ -114,6 +120,7 @@ impl TimelineDoc {
             stack: Vec::new(),
             loop_range: None,
             loop_ping_pong: false,
+            length_override: None,
         });
         self.containers().len() - 1
     }
@@ -502,20 +509,16 @@ impl TimelineDoc {
     /// retimed by a fade somebody authored inside it a week earlier.
     fn source_length(&self, source: StripSource) -> f64 {
         match source {
-            StripSource::Clip(i) => {
-                let i = i as usize;
-                self.clips().get(i).map_or(0.0, |c| {
-                    c.clip.duration().to_seconds().max(self.clip_end_seconds(i))
-                })
-            }
+            // `clip_end_seconds` already folds the authored duration, the last key AND
+            // the explicit `length_override` (v11) — the extra `duration()` max that
+            // stood here was a re-derivation of its first half.
+            StripSource::Clip(i) => self.clip_end_seconds(i as usize),
             // A MISSING container stays 0.0 (the callers refuse it) — the door is for
             // containers that exist and are empty, not for indices that point at nothing.
-            StripSource::Container(i) => self.containers().get(i as usize).map_or(0.0, |_| {
-                container_bar_seconds(
-                    self.host_end_seconds(StackHost::Container(i as usize))
-                        .unwrap_or(0.0),
-                )
-            }),
+            StripSource::Container(i) => self
+                .containers()
+                .get(i as usize)
+                .map_or(0.0, |_| self.container_length_seconds(i as usize)),
         }
     }
 }

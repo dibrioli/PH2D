@@ -99,6 +99,27 @@ fn time_chip_edit_raises_set_value() {
     );
 }
 
+/// The Dur(s) chip (Enio, 2026-07-23) — painted, registered AND dispatching: the
+/// shell routes its value to the scope on screen (clip/container/scene), so a
+/// chip that never emits is a duration nobody can author.
+#[test]
+fn length_chip_edit_raises_set_value() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+
+    host.set_number_value(ids::TIMELINE_LENGTH_NUM, 2.5);
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_LENGTH_NUM),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(
+        timeline_events(&mut host),
+        vec![PanelEvent::SetValue(ids::TIMELINE_LENGTH_NUM, 2.5)],
+        "duration-chip edit must carry the real value for the shell to route by scope"
+    );
+}
+
 #[test]
 fn ruler_scrub_maps_value_to_time_and_raises_scrub() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();

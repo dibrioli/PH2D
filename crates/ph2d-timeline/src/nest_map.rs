@@ -259,10 +259,7 @@ pub struct HostClock {
 /// goes) and the length its bar in the Containers list shows. Two numbers for one axis would
 /// be the ruler disagreeing with the bar you double-clicked to get here.
 fn interior_extent(doc: &TimelineDoc, container: usize) -> f64 {
-    crate::container_bar_seconds(
-        doc.host_end_seconds(crate::StackHost::Container(container))
-            .unwrap_or(0.0),
-    )
+    doc.container_length_seconds(container)
 }
 
 /// **The timeline window the walked-into instance OCCUPIES**, leads included — what a

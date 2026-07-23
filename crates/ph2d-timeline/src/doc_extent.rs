@@ -32,13 +32,20 @@ impl TimelineDoc {
     ///
     /// Falls back to the clip when no lane holds a strip: a document nobody has
     /// arranged has no stack to bracket, and the clip is the timeline.
+    /// An **authored duration wins over the derived end** (the AE composition-
+    /// duration model, Enio 2026-07-23): the scene's `scene_length` here, a clip's
+    /// `length_override` in [`Self::clip_end_seconds`], a container's in
+    /// [`Self::container_length_seconds`]. Content past it stays authored and is
+    /// CUT from playback ([`Self::cut_source`]).
     #[must_use]
     pub fn view_end_seconds(&self, keys: bool) -> f64 {
         if keys {
             self.end_seconds()
         } else {
-            self.stack_end_seconds()
-                .unwrap_or_else(|| self.end_seconds())
+            self.scene_length.unwrap_or_else(|| {
+                self.stack_end_seconds()
+                    .unwrap_or_else(|| self.end_seconds())
+            })
         }
     }
 
@@ -74,11 +81,16 @@ impl TimelineDoc {
     }
 
     /// [`Self::end_seconds`] for any clip — what a strip placed on it is sized to.
+    /// An authored [`crate::NamedClip::length_override`] IS the end, wherever the
+    /// content lies (shorter cuts, longer extends — both are the point).
     #[must_use]
     pub fn clip_end_seconds(&self, index: usize) -> f64 {
         let Some(named) = self.clips.get(index) else {
             return 0.0;
         };
+        if let Some(len) = named.length_override {
+            return len;
+        }
         let last_key = named
             .clip
             .tracks()
@@ -87,5 +99,86 @@ impl TimelineDoc {
             .map(|k| k.t.to_seconds())
             .fold(0.0_f64, f64::max);
         named.clip.duration().to_seconds().max(last_key)
+    }
+
+    /// **How long container `index` is, in seconds — the ONE door** (Enio,
+    /// 2026-07-23). An authored [`crate::NamedContainer::length_override`] wins;
+    /// otherwise the interior's extent through [`crate::container_bar_seconds`]
+    /// (an empty interior is 2 s). Before this door existed, FOUR call sites
+    /// composed the same two functions by hand — the snapshot's bar, the bridge's
+    /// loop brace, `source_length`'s slice window and the unplaced ruler's axis —
+    /// which is exactly the drift the override would have had to be added to
+    /// four times. `0.0` for a container that does not exist (callers refuse it).
+    #[must_use]
+    pub fn container_length_seconds(&self, index: usize) -> f64 {
+        let Some(c) = self.containers().get(index) else {
+            return 0.0;
+        };
+        c.length_override.unwrap_or_else(|| {
+            crate::container_bar_seconds(
+                self.host_end_seconds(crate::StackHost::Container(index))
+                    .unwrap_or(0.0),
+            )
+        })
+    }
+
+    /// **The cut**: the latest instant of `source`'s own clock that PLAYS, given
+    /// its authored duration — or `t` untouched when none is authored. This is
+    /// what "an explicit duration cuts the excess" means at the evaluator: every
+    /// clock handed to a strip's interior or tracks passes through here
+    /// (`stack_frames`), so content past the cut holds the cut's pose instead of
+    /// playing on — non-destructively, the keys and strips stay authored.
+    #[must_use]
+    pub fn cut_source(&self, source: crate::StripSource, t: f64) -> f64 {
+        match source {
+            crate::StripSource::Clip(i) => self.clip_cut(i as usize, t),
+            crate::StripSource::Container(i) => self.container_cut(i as usize, t),
+        }
+    }
+
+    /// [`Self::cut_source`] by clip index — also the solo (no-stack) path's cut.
+    #[must_use]
+    pub fn clip_cut(&self, index: usize, t: f64) -> f64 {
+        self.clips
+            .get(index)
+            .and_then(|c| c.length_override)
+            .map_or(t, |len| t.min(len))
+    }
+
+    /// [`Self::cut_source`] by container index — also the rooted frame 0's cut.
+    #[must_use]
+    pub fn container_cut(&self, index: usize, t: f64) -> f64 {
+        self.containers()
+            .get(index)
+            .and_then(|c| c.length_override)
+            .map_or(t, |len| t.min(len))
+    }
+
+    /// [`Self::cut_source`] for the SCENE's own clock (`scene_length`) — frame 0
+    /// of an un-rooted scratch.
+    #[must_use]
+    pub fn cut_scene(&self, t: f64) -> f64 {
+        self.scene_length.map_or(t, |len| t.min(len))
+    }
+
+    /// Author clip `index`'s explicit duration (`None` clears it — back to the
+    /// derived end). Non-positive values clear too: a zero-length clip is a
+    /// timeline nobody can grab, and 0 is the numeric box's "clear" gesture.
+    pub fn set_clip_length_override(&mut self, index: usize, len: Option<f64>) {
+        if let Some(c) = self.clips.get_mut(index) {
+            c.length_override = len.filter(|l| *l > 0.0);
+        }
+    }
+
+    /// Author container `index`'s explicit duration — same contract as the clip's.
+    pub fn set_container_length_override(&mut self, index: usize, len: Option<f64>) {
+        if let Some(c) = self.containers_mut().get_mut(index) {
+            c.length_override = len.filter(|l| *l > 0.0);
+        }
+    }
+
+    /// Author the SCENE's explicit duration — same contract as the clip's.
+    pub fn set_scene_length(&mut self, len: Option<f64>) {
+        self.scene_length = len.filter(|l| *l > 0.0);
     }
 }

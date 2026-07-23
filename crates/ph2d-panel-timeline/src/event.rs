@@ -39,9 +39,12 @@ fn is_button(id: NodeId) -> bool {
         || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 
-/// The two transport chips (ValueChanged → `PanelEvent::SetValue`).
+/// The transport chips (ValueChanged → `PanelEvent::SetValue`): the two seek
+/// readouts plus the view's explicit duration (Enio, 2026-07-23).
 fn is_chip(id: NodeId) -> bool {
-    id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
+    id == ids::TIMELINE_TIME_NUM
+        || id == ids::TIMELINE_FRAME_NUM
+        || id == ids::TIMELINE_LENGTH_NUM
 }
 
 /// The transport toggles routed to the shell (Toggled → `PanelEvent::Toggle`).

@@ -106,6 +106,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.host_not_placed" => "not placed",
         "panel.timeline.add_marker" => "+M",
         "panel.timeline.time_seconds" => "Time(s)",
+        "panel.timeline.length" => "Dur(s)",
         "panel.timeline.frame" => "Frame",
         "panel.timeline.loop" => "Loop",
         "panel.timeline.ping_pong" => "PingPong",

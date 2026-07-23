@@ -39,12 +39,12 @@ fn is_button(id: NodeId) -> bool {
         || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 
-/// The transport chips (ValueChanged → `PanelEvent::SetValue`): the two seek
-/// readouts plus the view's explicit duration (Enio, 2026-07-23).
+/// The two transport chips (ValueChanged → `PanelEvent::SetValue`). The Dur(s)
+/// chip is NOT here: its routing needs the panel's own dropdown state
+/// (`source_container`), so it pushes its intent directly — see the dedicated
+/// arm in `apply_event`.
 fn is_chip(id: NodeId) -> bool {
-    id == ids::TIMELINE_TIME_NUM
-        || id == ids::TIMELINE_FRAME_NUM
-        || id == ids::TIMELINE_LENGTH_NUM
+    id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
 }
 
 /// The transport toggles routed to the shell (Toggled → `PanelEvent::Toggle`).
@@ -118,6 +118,34 @@ pub(crate) fn apply_event(
             }
             host.bus_mut()
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Click(id)));
+            EventOutcome::Consumed
+        }
+        // **The Dur(s) chip writes the scope the ONE door names** (Enio,
+        // 2026-07-23): the open container, the container the source dropdown
+        // points at, the active clip (Keys), the scene (Arrange). Routed HERE —
+        // not forwarded to the shell — because `source_container` is panel
+        // state the shell never sees; display and routing share
+        // `transport::length_scope`, so they cannot disagree. 0 clears.
+        WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_LENGTH_NUM => {
+            let v = host.store().number_value(id).unwrap_or(0.0);
+            let len = (v > 0.0).then_some(v);
+            let snap = crate::state::current_snapshot();
+            let intent = match crate::transport::length_scope(
+                snap.container_open,
+                state.source_container,
+                state.tab,
+            ) {
+                crate::transport::LengthScope::Container(c) => {
+                    ph2d_timeline::TimelineIntent::SetContainerLength { container: c, len }
+                }
+                crate::transport::LengthScope::Clip => {
+                    ph2d_timeline::TimelineIntent::SetClipLength { len }
+                }
+                crate::transport::LengthScope::Scene => {
+                    ph2d_timeline::TimelineIntent::SetSceneLength { len }
+                }
+            };
+            crate::state::push_intent(intent);
             EventOutcome::Consumed
         }
         WidgetEvent::ValueChanged(id) if is_chip(id) => {

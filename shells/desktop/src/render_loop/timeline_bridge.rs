@@ -54,6 +54,27 @@ pub(crate) fn run(
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
     }
+    // **An AUTHORED duration is a hard end** (Enio, 2026-07-23): the playhead never
+    // leaves `[0, end]` on a view whose duration is explicit. Every road in — scrub,
+    // typed time, frame step, play — passes through here once per frame, so this is
+    // the one door; play that reaches the end parks there and PAUSES (the AE comp
+    // end). A view with no authored Dur keeps today's open-ended run — which is what
+    // keeps a physics scene's Play (an empty timeline driving a sim) alive.
+    let authored_end = match (container, solo) {
+        (Some(c), _) => timeline.doc.container_length_override(c),
+        (None, true) => timeline
+            .doc
+            .clip_length_override(timeline.doc.active_index()),
+        (None, false) => timeline.doc.scene_length,
+    };
+    if let Some(end) = authored_end
+        && playhead.time() > end
+    {
+        if playhead.is_playing() {
+            playhead.pause();
+        }
+        playhead.seek(end);
+    }
     // A playhead move (scrub, play, frame step) reclaims every displaced pose
     // for the animation — Blender semantics: the un-keyed pose is discarded.
     if playhead.time() != ak.displaced_t {
@@ -142,19 +163,6 @@ pub(crate) fn intent_for_transport(
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_RULER => Some(I::Scrub(v)),
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
             Some(I::SeekFrame(v as i64))
-        }
-        // The Dur(s) chip writes the EXPLICIT duration of the scope on screen —
-        // clip in Keys, the open container inside one, the scene in Arrange —
-        // the same 3-way the Loop toggle routes by. 0 clears back to derived.
-        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_LENGTH_NUM => {
-            let len = (v > 0.0).then_some(v);
-            Some(if timeline.keys_mode {
-                I::SetClipLength { len }
-            } else if let Some(c) = container {
-                I::SetContainerLength { container: c, len }
-            } else {
-                I::SetSceneLength { len }
-            })
         }
         // Loop and PingPong are ONE loop seen two ways — a range plus what happens
         // at its end. Each toggle sends the whole value, so arming one necessarily

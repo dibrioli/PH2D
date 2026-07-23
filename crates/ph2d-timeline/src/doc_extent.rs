@@ -161,6 +161,22 @@ impl TimelineDoc {
         self.scene_length.map_or(t, |len| t.min(len))
     }
 
+    /// Clip `index`'s AUTHORED duration, if any — `None` means derived. The
+    /// readers that must distinguish "authored" from "derived" (the beyond-end
+    /// shade, the playhead clamp) ask this; everything that just wants "the end"
+    /// asks [`Self::clip_end_seconds`].
+    #[must_use]
+    pub fn clip_length_override(&self, index: usize) -> Option<f64> {
+        self.clips.get(index).and_then(|c| c.length_override)
+    }
+
+    /// Container `index`'s AUTHORED duration, if any — sibling of
+    /// [`Self::clip_length_override`].
+    #[must_use]
+    pub fn container_length_override(&self, index: usize) -> Option<f64> {
+        self.containers().get(index).and_then(|c| c.length_override)
+    }
+
     /// Author clip `index`'s explicit duration (`None` clears it — back to the
     /// derived end). Non-positive values clear too: a zero-length clip is a
     /// timeline nobody can grab, and 0 is the numeric box's "clear" gesture.

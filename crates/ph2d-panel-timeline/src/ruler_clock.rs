@@ -40,9 +40,13 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
     // (Enio, 2026-07-22). Entering a container falls through to the lanes logic
     // below, where the band comes back.
     if crate::tab::rows(tab, snap) == crate::tab::Rows::Containers {
+        // **No playhead on the LIST** (Enio, 2026-07-23): a library of assets has
+        // no "now" — the line comes back inside a container and on the other tabs.
+        // Scrub goes with it: a drag that moves an invisible clock is a control
+        // that lies. The ticks stay (the bars are measured in seconds).
         return RulerClock {
-            now: Some(snap.time_seconds),
-            scrub: true,
+            now: None,
+            scrub: false,
             markers: true,
             loop_band: false,
         };
@@ -178,6 +182,29 @@ mod tests {
         for stacked in [false, true] {
             assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).markers);
         }
+    }
+
+    /// **A LISTA de Containers não tem playhead** (Enio, 2026-07-23: *"na aba
+    /// Containers o Playhead deve ser ocultado (não dentro de um container)"*) —
+    /// uma biblioteca de assets não tem "agora", então nem linha nem scrub; os
+    /// dois voltam DENTRO de um container e nas outras abas.
+    #[test]
+    fn the_containers_list_has_no_playhead_and_no_scrub() {
+        let s = snap(true, 4.0, Some(2.0));
+        let list = clock_for(Tab::Containers, &s);
+        assert_eq!(list.now, None, "a lista não desenha playhead");
+        assert!(
+            !list.scrub,
+            "um arrasto que move um relógio invisível mente"
+        );
+        // Dentro de um container os dois voltam.
+        let mut inside = snap(true, 4.0, Some(2.0));
+        inside.crumbs = vec![(0, "Walk".into())];
+        inside.container_open = Some(0);
+        inside.time_seconds = 1.25;
+        let c = clock_for(Tab::Containers, &inside);
+        assert_eq!(c.now, Some(1.25));
+        assert!(c.scrub);
     }
 
     /// **Só a lista de Containers perde a banda de loop** (Enio, 2026-07-22: *"a marca de

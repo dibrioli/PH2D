@@ -99,25 +99,66 @@ fn time_chip_edit_raises_set_value() {
     );
 }
 
-/// The Dur(s) chip (Enio, 2026-07-23) — painted, registered AND dispatching: the
-/// shell routes its value to the scope on screen (clip/container/scene), so a
-/// chip that never emits is a duration nobody can author.
+/// **O chip Dur(s) escreve o escopo que a porta única nomeia** (Enio, 2026-07-23):
+/// o container ABERTO · o container que o dropdown de fonte aponta · o clip ativo
+/// (Keys) · a cena (Arrange raiz). Roteado no PAINEL (o `source_container` é
+/// estado dele) e empurrado como INTENT; display e rota compartilham
+/// `transport::length_scope`, então não podem divergir. 0 limpa.
 #[test]
-fn length_chip_edit_raises_set_value() {
+fn the_length_chip_writes_the_scope_the_one_door_names() {
+    use ph2d_timeline::TimelineIntent as I;
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
+    let edit = |host: &mut MockPanelHost, state: &mut TimelinePanelState, v: f64| {
+        host.set_number_value(ids::TIMELINE_LENGTH_NUM, v);
+        let out = host.apply_panel_event::<TimelinePanel>(
+            state,
+            WidgetEvent::ValueChanged(ids::TIMELINE_LENGTH_NUM),
+        );
+        assert_eq!(out, EventOutcome::Consumed);
+        ph2d_panel_timeline::state::drain_intents()
+    };
 
-    host.set_number_value(ids::TIMELINE_LENGTH_NUM, 2.5);
-    let outcome = host.apply_panel_event::<TimelinePanel>(
-        &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_LENGTH_NUM),
-    );
-    assert_eq!(outcome, EventOutcome::Consumed);
+    // Arrange raiz, fonte = clip: a CENA. E 0 limpa.
+    ph2d_panel_timeline::state::set_current_timeline(Some(Default::default()));
+    state.tab = ph2d_panel_timeline::tab::Tab::Arrange;
     assert_eq!(
-        timeline_events(&mut host),
-        vec![PanelEvent::SetValue(ids::TIMELINE_LENGTH_NUM, 2.5)],
-        "duration-chip edit must carry the real value for the shell to route by scope"
+        edit(&mut host, &mut state, 3.5),
+        vec![I::SetSceneLength { len: Some(3.5) }]
     );
+    assert_eq!(
+        edit(&mut host, &mut state, 0.0),
+        vec![I::SetSceneLength { len: None }]
+    );
+    // Keys, fonte = clip: o CLIP ativo.
+    state.tab = ph2d_panel_timeline::tab::Tab::Keys;
+    assert_eq!(
+        edit(&mut host, &mut state, 1.5),
+        vec![I::SetClipLength { len: Some(1.5) }]
+    );
+    // O dropdown aponta um CONTAINER: o container — em qualquer vista raiz.
+    state.source_container = Some(3);
+    assert_eq!(
+        edit(&mut host, &mut state, 2.5),
+        vec![I::SetContainerLength {
+            container: 3,
+            len: Some(2.5)
+        }]
+    );
+    // DENTRO de um container (via snapshot): o aberto vence o dropdown.
+    let snap = ph2d_timeline::TimelineViewSnapshot {
+        container_open: Some(1),
+        ..Default::default()
+    };
+    ph2d_panel_timeline::state::set_current_timeline(Some(snap));
+    assert_eq!(
+        edit(&mut host, &mut state, 4.5),
+        vec![I::SetContainerLength {
+            container: 1,
+            len: Some(4.5)
+        }]
+    );
+    ph2d_panel_timeline::state::set_current_timeline(None);
 }
 
 #[test]

@@ -176,6 +176,11 @@ pub struct TimelineViewSnapshot {
     /// Arrange: the scene's; inside a container: the container's own. Each is
     /// the authored override when one is set, the derived end otherwise.
     pub view_length_seconds: f64,
+    /// Whether [`Self::view_length_seconds`] is an AUTHORED duration (the AE cut)
+    /// rather than derived from content. Only an authored end closes the view:
+    /// the beyond-end shade and the playhead clamp key on THIS, so an open-ended
+    /// timeline (no Dur set) looks and plays exactly as it always did.
+    pub view_length_explicit: bool,
     /// **Where the KEYS ruler's playhead stands**, in the active clip's own time.
     ///
     /// The keys in [`Self::tracks`] are stamped in the clip's time and the strips in
@@ -320,6 +325,11 @@ impl TimelineViewSnapshot {
         // container the interior branch below overwrites this with the
         // container's own length, completing the three scopes (Enio, 2026-07-23).
         self.view_length_seconds = doc.view_end_seconds(keys_mode);
+        self.view_length_explicit = if keys_mode {
+            doc.clip_length_override(doc.active_index()).is_some()
+        } else {
+            doc.scene_length.is_some()
+        };
         self.keys_mode = keys_mode;
         // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
         // clip clock, so publish it verbatim — the transport is the clip's. Outside
@@ -408,6 +418,7 @@ impl TimelineViewSnapshot {
                 // The interior's transport measures the CONTAINER — its authored
                 // duration when set, its content's extent otherwise (one door).
                 self.view_length_seconds = doc.container_length_seconds(c);
+                self.view_length_explicit = doc.container_length_override(c).is_some();
             }
             self.host_time = Some(playhead.time());
             // **The loop braces are the CONTAINER's own loop** — read from the document

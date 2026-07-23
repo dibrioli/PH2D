@@ -199,40 +199,115 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
 
 /// **`SetTransportLoop` arma o RELÓGIO e não toca o documento** — a metade que protege o
 /// loop autorado da cena.
-/// **O chip Dur(s) escreve o escopo NA TELA** (Enio, 2026-07-23): Keys = o clip
-/// ativo; dentro de um container = o container; no Arranje = a cena. E 0 limpa
-/// (volta ao fim derivado) — o gesto de "clear" da caixa numérica.
+/// **Uma duracao AUTORADA e' um fim DURO** (Enio, 2026-07-23): o playhead nunca
+/// fica alem dela — scrub, tempo digitado, frame step e play passam todos pelo
+/// `run()` uma vez por frame, e o clamp mora la'. Play que alcanca o fim PARA e
+/// PAUSA (o fim de comp do AE). Sem Dur autorada, nada muda — e' o que mantem o
+/// Play de uma cena de fisica (timeline vazia dirigindo a sim) vivo.
 #[test]
-fn the_duration_chip_writes_the_scope_on_screen() {
-    let (mut st, step) = nav_scene();
-    let c = step.container;
-    let ph = Playhead::new(1.0 / 60.0);
-    let ev = |v| PanelEvent::SetValue(ph2d_editor::ids::TIMELINE_LENGTH_NUM, v);
+fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut st = TimelineState::new();
+    let mut intents = Vec::new();
+    let mut ak = super::super::autokey_pass::AutokeyState::default();
+    let mut ph = Playhead::new(1.0 / 60.0);
 
-    // Arrange (raiz): a CENA.
-    assert_eq!(
-        intent_for_transport(&ev(3.5), &st, &ph),
-        Some(TimelineIntent::SetSceneLength { len: Some(3.5) }),
+    // SEM duracao autorada: um scrub alem do conteudo fica onde caiu (hoje).
+    ph.seek(9.0);
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+        None,
     );
-    // 0 limpa.
-    assert_eq!(
-        intent_for_transport(&ev(0.0), &st, &ph),
-        Some(TimelineIntent::SetSceneLength { len: None }),
+    assert!(
+        (ph.time() - 9.0).abs() < 1e-9,
+        "sem Dur: aberto como sempre"
     );
-    // Dentro de um container: o CONTAINER.
-    st.edit_path = vec![step];
-    assert_eq!(
-        intent_for_transport(&ev(2.5), &st, &ph),
-        Some(TimelineIntent::SetContainerLength {
-            container: c,
-            len: Some(2.5),
-        }),
+
+    // COM duracao autorada da CENA: o mesmo scrub e' preso no fim, e o play pausa.
+    st.doc.set_scene_length(Some(2.0));
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+        None,
     );
-    // Keys: o CLIP ativo (mesmo com um container aberto — a aba manda).
-    st.keys_mode = true;
-    assert_eq!(
-        intent_for_transport(&ev(1.5), &st, &ph),
-        Some(TimelineIntent::SetClipLength { len: Some(1.5) }),
+    assert!((ph.time() - 2.0).abs() < 1e-9, "preso no fim autorado");
+    ph.play();
+    ph.seek(5.0); // o play que atravessou o fim neste frame
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+        None,
+    );
+    assert!((ph.time() - 2.0).abs() < 1e-9);
+    assert!(
+        !ph.is_playing(),
+        "play que alcanca o fim PAUSA (fim de comp)"
+    );
+
+    // O escopo e' o da VISTA: em Keys quem manda e' o CLIP; a cena nao alcanca.
+    let mut clip_ph = Playhead::new(1.0 / 60.0);
+    clip_ph.seek(9.0);
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut clip_ph,
+        &mut intents,
+        None,
+        &mut ak,
+        true,
+        None,
+    );
+    assert!((clip_ph.time() - 9.0).abs() < 1e-9, "clip sem Dur: livre");
+    st.doc.set_clip_length_override(0, Some(1.0));
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut clip_ph,
+        &mut intents,
+        None,
+        &mut ak,
+        true,
+        None,
+    );
+    assert!(
+        (clip_ph.time() - 1.0).abs() < 1e-9,
+        "o clip autorado prende o Keys"
+    );
+
+    // E dentro de um container, o do CONTAINER.
+    let c = st.doc.add_container("C".into());
+    let mut cont_ph = Playhead::new(1.0 / 60.0);
+    cont_ph.seek(9.0);
+    st.doc.set_container_length_override(c, Some(1.5));
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut cont_ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+        Some(c),
+    );
+    assert!(
+        (cont_ph.time() - 1.5).abs() < 1e-9,
+        "o container autorado prende o interior"
     );
 }
 

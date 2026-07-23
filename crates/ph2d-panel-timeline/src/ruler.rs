@@ -71,6 +71,23 @@ pub(crate) fn paint(
         Radius::Xs.px(),
         resolve(ColorToken::TimelineRulerBg, theme),
     );
+    // **The dead zone beyond an AUTHORED end** (Enio, 2026-07-23: "deixar a área
+    // fora da animação ativa mais escura"): a scrim from the explicit duration to
+    // the right edge, across ruler AND rows — the visual half of the cut. Only an
+    // AUTHORED end closes a view (`view_length_explicit`); a derived end keeps the
+    // open-ended timeline it always was. Gated with `loop_band` because that flag
+    // is "this view has playback" — the Containers LIST has none and shades nothing.
+    if clock.loop_band
+        && let Some(shade) = beyond_end_shade(region, view_start, px_per_s, snap)
+    {
+        fill_rounded_rect(
+            ctx.scene,
+            shade,
+            Radius::Xs.px(),
+            resolve(ColorToken::BgScrim, theme),
+        );
+    }
+
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
     // without hiding the time numbers. Each view draws its OWN loop (`snap.loop_range`
     // is already the view-appropriate one, in this ruler's clock), so both tabs paint
@@ -188,6 +205,26 @@ fn paint_loop_band(
             resolve(ColorToken::TimelineLoopRegion, theme),
         );
     }
+}
+
+/// **Where the beyond-the-end scrim lies** — from the view's authored duration to
+/// the region's right edge, full height (ruler + rows, the same span the playhead
+/// line crosses) — or `None` when the view has no authored duration or the end is
+/// off-screen to the right. Pure, so the "only an AUTHORED end darkens" rule has
+/// an oracle a paint test cannot give it.
+fn beyond_end_shade(
+    region: Rect,
+    view_start: f64,
+    px_per_s: f64,
+    snap: &TimelineViewSnapshot,
+) -> Option<Rect> {
+    if !snap.view_length_explicit {
+        return None;
+    }
+    let right = region.x + region.w;
+    let x = region.x + ((snap.view_length_seconds - view_start) * px_per_s) as f32;
+    let x0 = safe_clamp(x, region.x, right);
+    (x0 < right).then(|| Rect::new(x0, region.y, right - x0, region.h))
 }
 
 /// The MOVE-handle grab strip for a loop drawn across `[x0, x1]` at the top of
@@ -433,6 +470,30 @@ fn paint_ticks(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **Só um fim AUTORADO escurece** (Enio, 2026-07-23): o véu nasce na duração
+    /// explícita e corre até a borda direita, altura CHEIA (régua + rows — o mesmo
+    /// vão da linha do playhead); sem Dur autorada não há véu (a timeline segue
+    /// aberta), e um fim além da borda direita não desenha nada.
+    #[test]
+    fn the_shade_starts_at_the_authored_end_and_only_when_authored() {
+        let region = Rect::new(10.0, 0.0, 400.0, 300.0);
+        let mut snap = TimelineViewSnapshot {
+            view_length_seconds: 2.0,
+            view_length_explicit: true,
+            ..TimelineViewSnapshot::default()
+        };
+        // 2 s a 100 px/s a partir de 0: o véu começa em x = 10 + 200.
+        let shade = beyond_end_shade(region, 0.0, 100.0, &snap).expect("authored end shades");
+        assert_eq!((shade.x, shade.w), (210.0, 200.0));
+        assert_eq!((shade.y, shade.h), (region.y, region.h), "altura CHEIA");
+        // Derivado (não autorado): nada — a vista continua aberta.
+        snap.view_length_explicit = false;
+        assert!(beyond_end_shade(region, 0.0, 100.0, &snap).is_none());
+        // Autorado mas fora da tela à direita: nada a desenhar.
+        snap.view_length_explicit = true;
+        assert!(beyond_end_shade(region, 0.0, 1000.0, &snap).is_none());
+    }
 
     /// **The loop's MOVE grab is a thin strip at the TOP of the band, not the whole
     /// ruler** — that is what leaves the rest of the band to the scrub, so a click

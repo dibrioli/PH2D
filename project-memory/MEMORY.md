@@ -77,6 +77,7 @@
 - [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (3)](reference_topic_fixture_discipline.md) — só prova o que contém
 - [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA
+- [Coordenada que WRAPA é oráculo ruim — meça a TAXA](feedback_a_wrapping_coordinate_is_a_bad_oracle_measure_the_rate.md) — ângulo mod 2π vira ruído acima de 1 volta; leia angvel, não rotation
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 - [Componente que não cumpre o próprio contrato? suspeite do CHAMADOR](feedback_a_component_missing_its_contract_suspect_the_caller_first.md) — trocar o componente esconde a causa e costuma trazer um 2º defeito

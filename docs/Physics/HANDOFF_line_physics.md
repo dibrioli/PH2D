@@ -3282,7 +3282,7 @@ impacto ganha uma **consequência visível** (as caixas voam), e o `×` a quanti
 que o olho já lê como "forte" — e um chão estático não reage. A bola rápida ganha CCD (não
 atravessar a caixa fina entre dois passos).
 
-## W-TickContacts — o toque RÁPIDO vira evento (2026-07-22, smoke `=31`, pendente de smoke)
+## W-TickContacts — o toque RÁPIDO vira evento (2026-07-22, smoke `=31`, smoke OK 2026-07-22)
 
 A **próxima wave** que a W-ContactEvents e a W-ImpactForce nomearam, e para a qual a captura do
 pico (front B) era o pré-requisito. O diff de contatos rodava por **DISPATCH** sobre
@@ -3360,3 +3360,77 @@ O **consumidor de gameplay** (colisão → som/dano/marker/callback) segue cross
 Enio, a fronteira que o W7 desenhou — este canal é o primitivo + a leitura visível, não o
 consumidor. E o toque começa-e-termina no MESMO sub-passo (túnel sem CCD) fica sem evento por
 construção.
+
+## W-AreaTorque — a MESA GIRATÓRIA (2026-07-22, cena `=32`, pendente de smoke)
+
+A frente da **família das zonas** que a reabertura nomeou. O `AreaEffector` (W-Area) empurra
+pelo CENTRO DE MASSA e não gira nada — este é o análogo ROTACIONAL: uma área que aplica um
+**torque** a cada corpo dinâmico dentro dela (um redemoinho, uma mesa giratória, uma esteira que
+gira). Fecha o item "torque de área" aberto desde o W-Area.
+
+### O kernel — o torque pendura na porta única do efetor
+
+`AreaEffect` (o bundle do `desc`, **não serializado**) ganhou `torque: f32`, e `effector::apply`
+aplica `b.apply_torque_impulse(effect.torque * dt, true)` no MESMO laço que já aplica a força.
+⚠️ **`apply_torque_impulse`, NÃO `set_angular_velocity`** — o impulso é resistido pelo **MOMENTO
+DE INÉRCIA** do corpo, o espelho EXATO de a força ser resistida pela massa: um tronco comprido
+gira mais devagar que uma bola de mesma área (medido: 8,03× para uma barra 4×0,25 contra uma
+compacta 1×1). Uma zona de *aceleração angular* seria independente da forma e uma segunda porta
+para o que a inércia já responde. ⚠️ **O SINAL é o sentido** (`> 0` anti-horário, `< 0` horário),
+então o neutro é `== 0.0` — diferente dos irmãos de arrasto (`<= 0.0`): um torque negativo é uma
+direção, não um valor inválido. O `zone_effect` ganhou `&& e.torque == 0.0` no `inert` (uma zona
+só-torque É uma zona).
+
+### Componente novo, ZERO bump
+
+`AreaTorque(f32)` — o **quinto** componente da mesma área, pela quinta vez pela mesma razão: um
+blob é postcard POSICIONAL, então apendar campo no `AreaEffector` seria bump de `PROJECT_SCHEMA` e
+um bump **recusa todo projeto salvo**; um componente novo cunha blob-key próprio e é aditivo.
+Registro **18→19**, `PROJECT_SCHEMA` **fica 29**. A ponte dobra `AreaTorque` no MESMO `AreaEffect`
+(mais um `zone_torque` no `any`), então ele rida o `BodyDesc` e um rewind o re-arma de graça.
+
+### A metade visível — o GLIFO de giro
+
+`AreaEffector` desenha uma SETA (para que lado sopra?); o torque desenha um **arco de 270° com
+ponta de flecha**, VIOLETA (cor que nenhum collider/joint/lançamento/força usa), no centro da
+zona, em pixels de tela constantes (um giro não tem "longe"). ⚠️ O arco é construído numa BASE de
+tela derivada da câmera (`û` = onde o mundo +x cai na tela, `ŵ` = +y), não em ângulos de tela
+cravados, então um torque +τ desenha o sentido que um corpo VISIVELMENTE giraria sob esta câmera,
+qualquer que seja o y-flip. Desenhado **mesmo no play** (o giro é propriedade da ÁREA, como a seta
+da força). Sem esse glifo uma zona de giro seria uma caixa magenta indistinguível de um sensor
+comum.
+
+### ⚠️ A armadilha que a medição pegou: `rotation` WRAPA, `angvel` não
+
+Um torque forte gira o corpo VÁRIAS revoluções, e o readback escreve `Transform.rotation`, que dá
+a volta em ±π — então a rotação lida vira ruído (medido: compacta 2,688, barra −1,254 com torque
+6, sem sentido como taxa). Os gates de MUNDO leem o `angvel` cru (não-wrapado) e podem apertar; os
+gates de ECS/gesto/smoke leem `rotation` e por isso a fixture mantém o giro **sub-revolução**
+(torque 0,5–1,0 num corpo 1×1 → ~86–171° por segundo, sem wrap). É a mesma classe de
+[[reference_topic_oracle_discipline]]: uma coordenada que WRAPA é um oráculo ruim quando a
+grandeza pode passar do período do wrap — meça a TAXA, não o ângulo acumulado.
+
+### Gates — 4 mundo + 2 ecs + count + seam + gesto + overlay-scene, 5 mutações que sangram
+
+Mundo (`ph2d-physics/tests/effector.rs`): spins-inside+outside-still · sign-sets-direction ·
+moment-of-inertia-resists (compacta > barra × 4, o pin "torque não é aceleração") · solid-zone-
+spins-nothing. ECS (`ph2d-physics-ecs/tests/area_torque.rs`): fold+rewind · solid-coupling. Mais:
+count 18→19 · seam sensor-only + commit NEGATIVO (o sinal atravessa o event layer sem clamp) ·
+gesto "mesa giratória autorável só com UI" · overlay-scene glyph presente/ausente/direção. As **5
+mutações**: neutralizar `apply_torque_impulse` (3 gates de mundo RED) · tirar torque do `inert`
+(zona só-torque não registra, spin RED) · `torque.abs()` (sign RED) · glifo ignora o sinal (scene-
+direction RED) · ponte nunca dobra `AreaTorque` (ECS fold RED). **c9 77 corpos** (mesa +
+spinner), hash `27f3c1aa…` **determinístico entre debug/release** — ⚠️ MUDA em relação ao main
+(`7d55a4ab…`), e isso é CORRETO: o torque muda a sim, ao contrário dos readouts A/B/C.
+
+### A cena 32 — quatro caixas flutuantes
+
+Compacta (+1, rápida) · barra (+1, 8× mais lenta = a inércia) · compacta (−1, gira ao contrário =
+o sinal) · controle sem zona (parada). Flutuam por `GravityScale(0)` (o giro vem só do torque).
+Números medidos no 1º segundo: 171° · 21° (razão 8,03) · −171°. `B` liga o glifo.
+
+### Aberto no W-AreaTorque
+
+Falloff dentro da área (o giro é uniforme; um redemoinho real cai com o raio) · o torque é
+constante (não decai com a distância ao centro) · a família das zonas ainda tem **o frame da
+zona** (a força/torque em eixos de MUNDO — girar a zona não gira o vento) por fazer.

@@ -11,8 +11,9 @@
 //!   **a rugosidade tem de continuar lá**. Antes da W0 ela sumia neste gesto, em silêncio.
 //! - `PH2D_BUILD_SMOKE=22` — a cena da **W3** (texto em CAMINHO): uma onda e dois círculos,
 //!   com o texto a cavalgá-los; a 2ª linha corre paralela, o 3º está virado.
-//! - `PH2D_BUILD_SMOKE=24` — a cena do **PATTERN Along Path** (plano 23, W2): um motivo (seta)
-//!   vinculado a um guia (arco), cozido VIVO — as cópias giradas sobre a curva, a fonte intocada.
+//! - `PH2D_BUILD_SMOKE=24` — a cena do **GESTO** do Pattern Along Path (plano 23, W3): um motivo
+//!   (seta) e um guia (arco), os dois selecionados — clique **Pattern on Path** no painel e afine
+//!   Spacing/Start/Side; as cópias giradas sobre a curva, a fonte intocada.
 //! - `PH2D_BUILD_SMOKE=23` — a cena do **GESTO** (W4): um texto e uma curva já selecionados,
 //!   para o artista os prender pelo painel (seção Text on Path).
 //! - `PH2D_BUILD_SMOKE=19` — a cena do 17 com o **fluxo do report de 2026-07-20**: arma o
@@ -140,8 +141,8 @@ impl crate::App {
             crate::text_path_gesture_smoke::frame(self, f);
             return;
         }
-        // A cena do PATTERN Along Path (plano 23, W2): um motivo vinculado a um guia, cozido VIVO
-        // (componente -> `pattern_live::recook` -> `dispatch`) — as cópias sobre a curva.
+        // A cena do GESTO do Pattern Along Path (plano 23, W3): motivo + guia selecionados, o
+        // artista prende pelo painel; daí o `pattern_live::recook` -> `dispatch` desenha as cópias.
         if level == 24 {
             crate::pattern_path_smoke::frame(self, f);
             return;

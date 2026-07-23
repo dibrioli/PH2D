@@ -124,10 +124,87 @@ pub(crate) fn link(
     true
 }
 
-// As portas de ESCRITA — `detach` (soltar) e `edit` (mudar spacing/offset/lado) — nascem na W3, com
-// o painel que as consome (o slider e a alça passarão por elas, e a regra das duas-portas exige que
-// concordem). Adicioná-las agora seria código sem chamador vivo (YAGNI); o gate abaixo já prova a
-// BEHAVIOR de soltar (componente ausente ⇒ sem cópias), que é o invariante que importa.
+/// **O par que o gesto de prender exige: dois caminhos, o PRIMÁRIO é o motivo.**
+///
+/// Porta única — quem PUBLICA se o botão aparece (o painel) e quem HONRA o clique perguntam aqui.
+/// Com dois selecionados, o **primário** (o último clicado, o sujeito do painel) é o **motivo**, e
+/// o outro é o **guia** — a mesma lei do *"o painel é sobre o primário"* das outras seções. Não é
+/// limitação: *"repita este motivo ao longo daquela curva"* nomeia exatamente dois, e o primário é
+/// quem o artista está a configurar.
+#[must_use]
+pub(crate) fn link_candidate(
+    selection: &[VecPathId],
+    primary: Option<VecPathId>,
+) -> Option<(VecPathId, VecPathId)> {
+    if selection.len() != 2 {
+        return None;
+    }
+    let motif = primary?;
+    let guide = *selection.iter().find(|&&id| id != motif)?;
+    (motif != guide).then_some((motif, guide))
+}
+
+/// O vínculo VIVO do motivo em foco (o primário), para o painel publicar os controles no lugar
+/// certo. `None` = o primário não é um pattern (ou não há primário).
+#[must_use]
+pub(crate) fn current(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    primary: Option<VecPathId>,
+) -> Option<VecPatternPath> {
+    spec_of(sim, map, primary?)
+}
+
+/// **Solta** o motivo do caminho (o caminho FICA — soltar é remover o componente). `true` se havia
+/// vínculo.
+pub(crate) fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -> bool {
+    let Some(&bits) = map.get(&motif) else {
+        return false;
+    };
+    let e = Entity::from_bits(bits);
+    if sim.world().get::<VecPatternPath>(e).is_none() {
+        return false;
+    }
+    if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+        em.remove::<VecPatternPath>();
+    }
+    true
+}
+
+/// Edita o vínculo do motivo (spacing, start, offset, lado). `true` se havia vínculo.
+///
+/// A porta ÚNICA de escrita — o slider do painel e a alça de canvas (W4) passam por AQUI, então não
+/// podem divergir sobre o mesmo número.
+pub(crate) fn edit(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    motif: VecPathId,
+    f: impl FnOnce(&mut VecPatternPath),
+) -> bool {
+    let Some(&bits) = map.get(&motif) else {
+        return false;
+    };
+    let e = Entity::from_bits(bits);
+    let Some(mut link) = sim.world().get::<VecPatternPath>(e).copied() else {
+        return false;
+    };
+    f(&mut link);
+    if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+        em.insert(link);
+    }
+    true
+}
+
+/// Um comando de vínculo vindo do painel — um clique, um comando.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum PatternPathCmd {
+    /// Prender o motivo (primário) ao outro selecionado.
+    Link,
+    /// Soltar (o caminho fica).
+    Detach,
+    /// Trocar o lado.
+    Flip(bool),
+}
 
 #[cfg(test)]
 #[path = "pattern_live_tests.rs"]

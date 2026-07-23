@@ -1,17 +1,19 @@
-//! **A cena do Pattern Along Path (W2)** — `PH2D_BUILD_SMOKE=24`.
+//! **A cena do GESTO do Pattern Along Path (W3)** — `PH2D_BUILD_SMOKE=24`.
 //!
-//! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC, como o `text_path_smoke`. Prova o
-//! **pipeline VIVO** (o que o texto smoke 22 NÃO faz: aquele monta a geometria à mão): um motivo e
-//! um guia entram na cena, o [`crate::pattern_live::link`] os vincula, e a partir daí é o
-//! `pattern_live::recook` + o `dispatch` do render loop que desenham as cópias — a fonte nunca é
-//! tocada. Se as cópias aparecem, o componente, o cozimento e a fusão na `LiveGeometry` funcionam.
+//! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC, como o `text_path_smoke`. A mesa fica
+//! posta: um **motivo** (seta azul) e um **guia** (arco cinza), os DOIS selecionados com o motivo
+//! como PRIMÁRIO, e a ferramenta Vector ativa. O painel Vector já deve mostrar a seção **Pattern on
+//! Path** com o botão de prender — e daí em diante é o `pattern_live::recook` + o `dispatch` que
+//! desenham as cópias (a fonte, que o Node edita, nunca é tocada).
 //!
-//! # O que julgar
+//! # O roteiro (impresso no terminal)
 //!
-//! - O **motivo** (uma seta azul) some do lugar onde foi posto e reaparece **repetido ao longo da
-//!   curva**, cada cópia **girada para a tangente** dali (é o que separa isto do Repeater).
-//! - O **guia** (cinza) fica desenhado por baixo — as cópias andam por cima dele.
-//! - O espaçamento entre as cópias é constante em ARCO (não aperta nas dobras).
+//! 1. **Pattern on Path** — a seta some do lugar e reaparece **repetida ao longo do arco**, cada
+//!    cópia **girada para a tangente** dali (é o que separa isto do Repeater).
+//! 2. **Spacing** — arrastar o slider muda quão densas as cópias povoam a curva.
+//! 3. **Start** — arrastar corre o padrão inteiro pela curva.
+//! 4. **Side: Other side** — o padrão passa para o outro lado.
+//! 5. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica**.
 
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex, VertexKind};
 
@@ -59,39 +61,29 @@ fn arm(app: &mut crate::App) {
     let Some((motif, guide)) = PENDING.lock().expect("smoke lock").take() else {
         return;
     };
-    let Some(gfx) = app.gfx.as_mut() else { return };
-    let linked = crate::pattern_live::link(&mut gfx.sim, &app.vec_entities, motif, guide);
-
-    // ⚠️ MEÇA antes de escrever a mensagem (a lição de física): quantas cópias o `recook` vai de
-    // facto desenhar? Resolve o guia pela MESMA porta do render loop e roda o MESMO motor.
-    let n = crate::vec_guide::guide_arc(&gfx.sim, &gfx.vec_scene, &app.vec_entities, guide)
-        .and_then(|arc| gfx.vec_scene.path(motif).map(|m| (arc, m)))
-        .map_or(0, |(arc, m)| {
-            let cooked = m.cooked();
-            ph2d_vec_scene::pattern_path::pattern_along(
-                &cooked,
-                &arc,
-                &ph2d_vec_scene::pattern_path::PatternSpec {
-                    start_offset: 0.0,
-                    spacing: 1.0,
-                    ..Default::default()
-                },
-            )
-            .len()
-        });
+    // Os DOIS selecionados, com o motivo como PRIMÁRIO (o `select_many` faz o ÚLTIMO ser o
+    // primário) — é a seleção que o gesto exige, e a cena existe para a pôr pronta.
+    app.vec_pen.select_many(&[guide, motif]);
+    let sel = app.vec_pen.selected_paths().to_vec();
+    let primary = app.vec_pen.selected();
+    let can = crate::pattern_live::link_candidate(&sel, primary);
 
     eprintln!(
-        "[smoke] W2 pattern along path -- vinculado: {linked} · {n} copia(s) na curva.\n\
-         [smoke]   A SETA azul foi posta de lado e agora aparece REPETIDA ao longo do arco,\n\
-         [smoke]   cada copia girada para a tangente dali (nao um angulo unico -- isso e' o que\n\
-         [smoke]   separa o pattern do Repeater). O guia cinza fica por baixo.\n\
-         [smoke]   REPROVE se: as setas nao giram com a curva, ou o motivo continua desenhado\n\
-         [smoke]   solto no lugar onde foi posto (o vinculo/cozimento nao pegou)."
+        "[smoke] W3 pattern along path -- a mesa esta' posta: uma SETA (motivo) e um ARCO (guia), \
+         os DOIS selecionados (motivo primario), gesto oferecido: {}.\n\
+         [smoke]   1. No painel Vector, secao PATTERN ON PATH -> clique \"Pattern on Path\".\n\
+         [smoke]      A seta some do lugar e reaparece REPETIDA ao longo do arco, cada copia\n\
+         [smoke]      girada para a tangente dali (nao um angulo unico -- isso separa do Repeater).\n\
+         [smoke]   2. Arraste Spacing -- muda quao densas as copias povoam a curva.\n\
+         [smoke]   3. Arraste Start -- corre o padrao inteiro pela curva.\n\
+         [smoke]   4. Side: \"Other side\" -- o padrao passa para o outro lado.\n\
+         [smoke]   5. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica.",
+        can.is_some()
     );
-    if !linked || n == 0 {
+    if can.is_none() {
         eprintln!(
-            "[smoke] !! a mesa NAO esta' posta (vinculado: {linked}, copias: {n}) -- as copias nao \
-             vao aparecer, e o resto do smoke nao significa nada. PARE e reporte."
+            "[smoke] !! a mesa NAO esta' posta (gesto: false) -- o painel nao vai oferecer o botao, \
+             e o resto do smoke nao significa nada. PARE e reporte."
         );
     }
 }

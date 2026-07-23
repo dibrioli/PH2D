@@ -44,6 +44,8 @@ mod rail_painter;
 mod timeline;
 mod topbar;
 mod vector;
+/// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
+mod vector_patternpath;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
 
@@ -75,4 +77,5 @@ pub use rail_painter::*;
 pub use timeline::*;
 pub use topbar::*;
 pub use vector::*;
+pub use vector_patternpath::*;
 pub use vector_textpath::*;

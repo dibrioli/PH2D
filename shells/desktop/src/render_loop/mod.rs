@@ -1535,6 +1535,11 @@ impl crate::App {
             let mut pending_create_envelope = false;
             let mut pending_textpath: Option<crate::vec_text_ride::TextPathCmd> = None;
             let mut pending_textpath_offset: Option<f64> = None;
+            // Pattern on Path (plano 23): o comando de vínculo + os dois sliders, drenados como os
+            // do texto (o motivo é o PRIMÁRIO, o guia é o outro selecionado).
+            let mut pending_patternpath: Option<crate::pattern_live::PatternPathCmd> = None;
+            let mut pending_pp_spacing: Option<f64> = None;
+            let mut pending_pp_start: Option<f64> = None;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
             // O GESTO do envelope (ADR-0129 Fatias D+E): Perspective (projetivo) · Mesh (Coons) ·
@@ -1724,6 +1729,18 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP_OFF {
                                 pending_textpath =
                                     Some(crate::vec_text_ride::TextPathCmd::Flip(false));
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_LINK {
+                                pending_patternpath =
+                                    Some(crate::pattern_live::PatternPathCmd::Link);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_DETACH {
+                                pending_patternpath =
+                                    Some(crate::pattern_live::PatternPathCmd::Detach);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_FLIP {
+                                pending_patternpath =
+                                    Some(crate::pattern_live::PatternPathCmd::Flip(true));
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_FLIP_OFF {
+                                pending_patternpath =
+                                    Some(crate::pattern_live::PatternPathCmd::Flip(false));
                             } else if let Some(hit) = crate::fx_bridge_dispatch::classify_click(*id)
                             {
                                 match hit {
@@ -1875,6 +1892,13 @@ impl crate::App {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SPACING {
+                                // Plano 23: ja' convertido pelo event.rs do painel para o dominio do
+                                // documento (multiplos da largura do motivo) -- aqui e' valor.
+                                pending_pp_spacing = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_START {
+                                // FRAÇÃO do comprimento (track == valor, como o Offset do texto).
+                                pending_pp_start = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
@@ -2795,6 +2819,45 @@ impl crate::App {
                     eprintln!(
                         "[ph2d-vec] text on path: selecione o TEXTO e um caminho (ou um texto \
                          ja' preso, para soltar)"
+                    );
+                }
+            }
+            // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO (o primário); o
+            // comando prende/solta/vira. Todas as escritas passam pela porta única `pattern_live`,
+            // e o `recook` do frame seguinte redesenha as cópias.
+            if let Some(v) = pending_pp_spacing
+                && let Some(motif) = self.vec_pen.selected()
+            {
+                crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.spacing = v as f32);
+            }
+            if let Some(v) = pending_pp_start
+                && let Some(motif) = self.vec_pen.selected()
+            {
+                crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| {
+                    l.start_offset = v as f32;
+                });
+            }
+            if let Some(cmd) = pending_patternpath {
+                let sel = self.vec_pen.selected_paths().to_vec();
+                let primary = self.vec_pen.selected();
+                let done = match cmd {
+                    crate::pattern_live::PatternPathCmd::Link => {
+                        crate::pattern_live::link_candidate(&sel, primary).is_some_and(
+                            |(motif, guide)| {
+                                crate::pattern_live::link(sim, &self.vec_entities, motif, guide)
+                            },
+                        )
+                    }
+                    crate::pattern_live::PatternPathCmd::Detach => primary
+                        .is_some_and(|m| crate::pattern_live::detach(sim, &self.vec_entities, m)),
+                    crate::pattern_live::PatternPathCmd::Flip(v) => primary.is_some_and(|m| {
+                        crate::pattern_live::edit(sim, &self.vec_entities, m, |l| l.flip = v)
+                    }),
+                };
+                if !done {
+                    eprintln!(
+                        "[ph2d-vec] pattern on path: selecione o MOTIVO e um caminho (ou um motivo \
+                         ja' preso, para soltar/afinar)"
                     );
                 }
             }
@@ -3851,6 +3914,20 @@ impl crate::App {
                     ride.is_some(),
                     ride.map_or(0.0, |r| f64::from(r.start_offset)),
                     ride.is_some_and(|r| r.flip),
+                );
+                // Pattern on Path (plano 23): as MESMAS duas perguntas — *"esta seleção permite
+                // prender?"* (dois caminhos) e *"o motivo em foco já cavalga algo, com que
+                // valores?"*. A 1ª usa a MESMA porta que o clique honra (`link_candidate`).
+                let primary = self.vec_pen.selected();
+                ph2d_panel_vector::set_current_patternpath_can_link(
+                    crate::pattern_live::link_candidate(&sel, primary).is_some(),
+                );
+                let pat = crate::pattern_live::current(sim, &self.vec_entities, primary);
+                ph2d_panel_vector::set_current_patternpath(
+                    pat.is_some(),
+                    pat.map_or(0.0, |p| f64::from(p.start_offset)),
+                    pat.map_or(1.0, |p| f64::from(p.spacing)),
+                    pat.is_some_and(|p| p.flip),
                 );
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.

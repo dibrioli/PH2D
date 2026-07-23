@@ -109,6 +109,17 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_TEXTPATH_OFFSET {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
+    // Pattern on Path: o Start é FRAÇÃO (track == valor, como o Offset do texto); o Spacing mapeia
+    // o track `0..1` na faixa `SPACING_MIN..SPACING_MAX` — a MESMA fronteira que o `scale`/`offset`
+    // do chip no `populate` usa, senão o slider e o campo numérico divergiriam.
+    if id == ids::VECTOR_PATTERNPATH_START {
+        return Some(forward_track(host, id, 0.0, |t| t));
+    }
+    if id == ids::VECTOR_PATTERNPATH_SPACING {
+        return Some(forward_track(host, id, 0.5, |t| {
+            t.mul_add(crate::SPACING_MAX - crate::SPACING_MIN, crate::SPACING_MIN)
+        }));
+    }
     None
 }
 
@@ -482,6 +493,12 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_TEXTPATH_DETACH
         || id == ids::VECTOR_TEXTPATH_FLIP
         || id == ids::VECTOR_TEXTPATH_FLIP_OFF
+        // Pattern on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
+        // `VecPatternPath` da entidade), então atravessam para a shell como os do texto.
+        || id == ids::VECTOR_PATTERNPATH_LINK
+        || id == ids::VECTOR_PATTERNPATH_DETACH
+        || id == ids::VECTOR_PATTERNPATH_FLIP
+        || id == ids::VECTOR_PATTERNPATH_FLIP_OFF
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION

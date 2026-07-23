@@ -5,24 +5,10 @@
 //! que estes gates existem para matar: o `recook` não ler o componente (0 cópias), o `detach` não
 //! remover o vínculo (as cópias sobrevivem à soltura), o `link` prender a forma a si mesma.
 
-use super::{PatternLive, link, spec_of};
+use super::{PatternLive, detach, link, link_candidate, spec_of};
 use crate::vec_entities::VecEntityMap;
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecPathRef, VecPatternPath};
+use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
-
-/// Solta o vínculo direto no mundo — a porta `detach` (o painel) nasce na W3; aqui a pergunta é
-/// sobre a BEHAVIOR do `recook` (componente ausente ⇒ sem cópias).
-fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -> bool {
-    let Some(&bits) = map.get(&motif) else {
-        return false;
-    };
-    let e = Entity::from_bits(bits);
-    if sim.world().get::<VecPatternPath>(e).is_none() {
-        return false;
-    }
-    sim.world_mut().entity_mut(e).remove::<VecPatternPath>();
-    true
-}
 
 /// Um motivo (quadrado de 40) + um guia (reta de 100), cada um uma entidade na identidade.
 fn scene() -> (VecScene, SimWorld, VecEntityMap, VecPathId, VecPathId) {
@@ -102,4 +88,24 @@ fn a_shape_cannot_ride_itself() {
     let (_scene, mut sim, map, motif, _guide) = scene();
     assert!(!link(&mut sim, &map, motif, motif), "recusa prender a si mesma");
     assert!(spec_of(&sim, &map, motif).is_none(), "nenhum vínculo criado");
+}
+
+/// **O primário é o MOTIVO, o outro é o guia** — a lei de disambiguação do painel (W3). Sem ela, o
+/// gesto não saberia qual dos dois selecionados cavalga qual.
+#[test]
+fn the_primary_is_the_motif_and_the_other_is_the_guide() {
+    let (_scene, _sim, _map, motif, guide) = scene();
+    // Primário = motif ⇒ (motif, guide).
+    assert_eq!(
+        link_candidate(&[motif, guide], Some(motif)),
+        Some((motif, guide))
+    );
+    // Primário = guide ⇒ os papéis se invertem (o primário É sempre o motivo).
+    assert_eq!(
+        link_candidate(&[motif, guide], Some(guide)),
+        Some((guide, motif))
+    );
+    // Um só selecionado, ou sem primário, não é candidato.
+    assert_eq!(link_candidate(&[motif], Some(motif)), None);
+    assert_eq!(link_candidate(&[motif, guide], None), None);
 }

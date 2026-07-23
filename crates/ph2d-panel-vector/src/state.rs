@@ -364,6 +364,14 @@ mod textpath;
 pub(crate) use textpath::{can_link, flip, linked, offset};
 pub use textpath::{set_current_textpath, set_current_textpath_can_link};
 
+#[path = "state_patternpath.rs"] // Pattern on Path (plano 23), irmão pelo teto de 600 LOC
+mod patternpath;
+pub(crate) use patternpath::{
+    can_link as pp_can_link, flip as pp_flip, linked as pp_linked, spacing as pp_spacing,
+    start as pp_start,
+};
+pub use patternpath::{set_current_patternpath, set_current_patternpath_can_link};
+
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {
     CURRENT_TEXT_VISIBLE.with(|c| c.set(v));

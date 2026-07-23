@@ -1690,3 +1690,113 @@ fn the_text_on_path_section_offers_only_what_applies() {
     ph2d_panel_vector::set_current_textpath(false, 0.0, false);
     ph2d_panel_vector::set_current_textpath_can_link(false);
 }
+
+/// **Cada BOTÃO do Pattern on Path chega ao bus quando clicado** (plano 23) — o irmão do gate do
+/// texto. Um vínculo perfeito atrás de um botão que não despacha é indistinguível de uma feature
+/// quebrada, e é o `event.rs`/`populate` que fecham essa lacuna.
+#[test]
+fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (linked, id, name) in [
+        // Motivo SOLTO com a seleção certa (dois caminhos): só a porta de entrada.
+        (false, ids::VECTOR_PATTERNPATH_LINK, "Pattern on Path"),
+        // Motivo PRESO: o que se pode dizer sobre o vínculo.
+        (true, ids::VECTOR_PATTERNPATH_FLIP_OFF, "This side"),
+        (true, ids::VECTOR_PATTERNPATH_FLIP, "Other side"),
+        (true, ids::VECTOR_PATTERNPATH_DETACH, "Detach from Path"),
+    ] {
+        ph2d_panel_vector::set_current_patternpath_can_link(!linked);
+        ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, false);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "o controle {name} nao foi PINTADO com area clicavel na secao Pattern on Path"
+                )
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate`"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        let reached = host
+            .drained_actions()
+            .into_iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
+        assert!(
+            reached,
+            "o Click em {name} nao chegou ao bus — falta o id na allowlist do `event.rs` \
+             (o controle e clicavel e MORTO)"
+        );
+    }
+    ph2d_panel_vector::set_current_patternpath_can_link(false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+}
+
+/// **A seção Pattern on Path oferece só o que se aplica, e a AUSÊNCIA é metade do gate.**
+///
+/// Ao contrário do texto, a seção não depende de uma forma em foco — depende da RELAÇÃO: sem
+/// vínculo e sem seleção-de-dois ela nem sobe (senão apareceria para toda forma selecionada). Sem
+/// esta metade, um `paint` que desenhasse tudo sempre passaria no gate de cima.
+#[test]
+fn the_pattern_on_path_section_offers_only_what_applies() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let rect = |id| {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+    };
+
+    // Sem vínculo e sem seleção-de-dois: a seção inteira some (nem o cabeçalho).
+    ph2d_panel_vector::set_current_patternpath_can_link(false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
+            && rect(ids::VECTOR_PATTERNPATH_SPACING).is_none(),
+        "sem vínculo nem seleção, a seção não tem o que oferecer"
+    );
+
+    // Seleção de dois (can_link), sem vínculo: só a porta de entrada.
+    ph2d_panel_vector::set_current_patternpath_can_link(true);
+    assert!(rect(ids::VECTOR_PATTERNPATH_LINK).is_some());
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_SPACING).is_none(),
+        "sem vínculo não há Spacing a afinar"
+    );
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_DETACH).is_none(),
+        "soltar um motivo que não está preso não quer dizer nada"
+    );
+
+    // Preso: o inverso exato — os controles, não a porta de entrada.
+    ph2d_panel_vector::set_current_patternpath(true, 0.5, 2.0, true);
+    assert!(
+        rect(ids::VECTOR_PATTERNPATH_LINK).is_none(),
+        "prender um motivo já preso não quer dizer nada"
+    );
+    assert!(rect(ids::VECTOR_PATTERNPATH_SPACING).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_START).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_DETACH).is_some());
+
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, false);
+    ph2d_panel_vector::set_current_patternpath_can_link(false);
+}

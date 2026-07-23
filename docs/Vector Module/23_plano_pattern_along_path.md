@@ -53,7 +53,7 @@ sem cache nenhum. O recuo previsto **não é preciso** (gate `a_keystroke_recook
 |---|---|---|---|
 | **W1** | O **motor** `pattern_along(motivo, guia, spec) -> contornos` (arco → afim rígido por cópia; sem refit) + gate red-first + gate de perf | `ph2d-vec-scene` (`pattern_path.rs`, arquivo próprio) | ✅ **0,597 ms/200 cópias** |
 | **W2** | O **vínculo**: componente `VecPatternPath` + porta única de guia (`ArcPath` do cozido-em-mundo, compartilhada com texto) + o render que faz o cozido do motivo = saída do motor | `ph2d-ecs` + shell | ✅ **vivo + smoke 24** |
-| **W3** | Seção de painel **Pattern on Path** (Spacing · Offset · Flip + Link/Detach), ids, i18n — espelha a seção de texto | `ph2d-panel-vector` + `ph2d-editor-core` + `ph2d-i18n` | — |
+| **W3** | Seção de painel **Pattern on Path** (Link/Detach · Spacing · Start · Side), ids, i18n, ponte da shell — espelha a seção de texto | `ph2d-panel-vector` + `ph2d-editor-core` + `ph2d-i18n` + shell | ✅ **seam-gated + smoke 24** |
 | **W4** | **Alça** de canvas (o ponto de início no arco), modo Select — avaliar reuso da alça de texto vs irmã | `ph2d-vec-render` + shell | — |
 | **W5** | Cena(s) de smoke auto-verificáveis | shell (`build_smoke.rs`) | — |
 
@@ -95,3 +95,19 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
   mudança do guia; adicioná-lo sem medir que uma cena parada custa é otimização prematura.
 - Contador de componentes: **ecs 34→35, render 35→36, script 35→36** (o número se CONTA na
   integração). **Sem bump de schema** (componente novo cunha blob-key própria). Smoke: **24**.
+
+## §5 — Decisões da W3 (o painel)
+
+- **A seção só sobe quando há o que fazer** (`pp_linked() || pp_can_link()`). Ao contrário do texto
+  (que tem uma forma em foco), um motivo é um caminho qualquer — a seção apareceria para toda forma
+  selecionada e viraria ruído. Aparece com um vínculo vivo, ou com a seleção-de-dois que o permite.
+- **Disambiguação motivo/guia: o PRIMÁRIO é o motivo** (o último clicado, o sujeito do painel), o
+  outro é o guia. Fica na porta única `pattern_live::link_candidate` (o painel a usa para OFERECER,
+  o clique para HONRAR — senão o botão apareceria e recusaria).
+- **Controles:** Link · Spacing (o assinatura, `0.25..4.0`, track↔valor pela porta `SPACING_MIN/MAX`
+  lida por paint/populate/event) · Start (fração, verbatim do Offset do texto) · Side · Detach. O
+  **offset normal** (perpendicular) fica adiado — o campo existe (default 0, usado pelo motor) e a
+  alça da W4 é o lugar natural para ele.
+- **7 sítios da costura** todos fiados: id · populate · paint · event · bus · drain · publish; +2
+  gates de seam que CLICAM os botões (dispatch) e provam a **ausência** (a seção não oferece o que
+  não se aplica). Portas de escrita `detach`/`edit` (adiadas na W2) chegaram aqui.

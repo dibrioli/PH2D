@@ -362,6 +362,10 @@ mod envelope;
 #[path = "populate_effects.rs"]
 mod effects;
 
+/// O registro dos widgets do **Pattern on Path** (plano 23) — irmão pelo teto de 600 LOC.
+#[path = "populate_patternpath.rs"]
+mod patternpath;
+
 /// O registro dos widgets de **ESTILO** (traço, tracejado, pontas, preenchimento) — módulo
 /// irmão pelo teto de 600 LOC deste arquivo.
 #[path = "populate_style.rs"]
@@ -411,6 +415,8 @@ fn populate_ops(store: &mut WidgetStore) {
         1.0,
         TEXTPATH_OFFSET_STEP,
     );
+    // Pattern on Path (plano 23): os quatro botões + os dois sliders, num irmão pelo teto de LOC.
+    patternpath::populate_patternpath(store);
     effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);

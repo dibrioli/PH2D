@@ -277,6 +277,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
     reg.register::<crate::VecTextPath>("ph2d::ecs::VecTextPath");
+    // O vínculo MOTIVO -> caminho-guia (Pattern Along Path, plano 23). Mesma razão do texto: sem o
+    // registro, um Ctrl+Z (ou reabrir) devolveria o motivo SOLTO do caminho, uma cópia só, no meio
+    // da cena -- e o caminho continuaria lá. As cópias são desenho derivado, então o que o snapshot
+    // tem de guardar é a RELAÇÃO, e é este componente.
+    reg.register::<crate::VecPatternPath>("ph2d::ecs::VecPatternPath");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
@@ -323,7 +328,8 @@ mod tests {
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
         // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 Blend Object (VecBlend)
         // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129)
-        // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath).
+        // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath)
+        // + 1 pattern em caminho (VecPatternPath, plano 23).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -335,7 +341,8 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 34);
+        assert_eq!(reg.len(), 35);
+        assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

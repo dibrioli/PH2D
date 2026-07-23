@@ -26,12 +26,12 @@ mod tests {
         register_ecs_components(&mut reg);
         register_script_components(&mut reg);
         // O numero se CONTA, nao se escolhe: e o contador de `ph2d-ecs`
-        // (`register_ecs_components_populates_registry`, hoje 33 — inclui
-        // VecShape/VecConnector/VecBlend/VecLabel/VecEnvelope/VecOffset)
+        // (`register_ecs_components_populates_registry`, hoje 35 — inclui
+        // VecShape/VecConnector/VecBlend/VecLabel/VecEnvelope/VecOffset/VecTextPath/VecPatternPath)
         // + 1 script component (LuauScript). SAO TRES contadores desta
         // familia (ecs, render, script): registrar um componente novo no ECS
         // tem de somar nos tres, e cada um so roda na suite da sua crate.
-        assert_eq!(reg.len(), 35);
+        assert_eq!(reg.len(), 36);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

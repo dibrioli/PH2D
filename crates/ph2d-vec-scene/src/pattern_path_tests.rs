@@ -8,7 +8,7 @@
 
 use super::{PatternSpec, pattern_along};
 use crate::arc_path::ArcPath;
-use crate::{Contour, VecPath, VecVertex, VertexKind};
+use crate::{VecPath, VecVertex, VertexKind};
 
 /// Uma guia reta de `(0,0)` a `(len,0)`, aberta.
 fn straight(len: f64) -> ArcPath {
@@ -59,9 +59,10 @@ fn arrow() -> VecPath {
     }
 }
 
-fn bbox(c: &Contour) -> ([f64; 2], [f64; 2]) {
+/// bbox do contorno PRIMÁRIO de uma cópia — os motivos de teste são de contorno único.
+fn bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
-    for v in &c.verts {
+    for v in &p.verts {
         for k in 0..2 {
             lo[k] = lo[k].min(v.anchor[k]);
             hi[k] = hi[k].max(v.anchor[k]);
@@ -70,9 +71,9 @@ fn bbox(c: &Contour) -> ([f64; 2], [f64; 2]) {
     (lo, hi)
 }
 
-fn centroid(c: &Contour) -> [f64; 2] {
-    let n = c.verts.len() as f64;
-    let s = c
+fn centroid(p: &VecPath) -> [f64; 2] {
+    let n = p.verts.len() as f64;
+    let s = p
         .verts
         .iter()
         .fold([0.0, 0.0], |a, v| [a[0] + v.anchor[0], a[1] + v.anchor[1]]);
@@ -151,16 +152,16 @@ fn the_copies_rotate_to_the_tangent_on_a_curve() {
     );
 }
 
-/// **A saída é LINEAR na contagem** — `cópias × contornos(motivo)` contornos, e
-/// `cópias × verts(motivo)` vértices. Uma multiplicação acidental (cópias de cópias) estouraria
-/// isto; é a guarda anti-quadrática barata que roda sempre.
+/// **A saída é LINEAR na contagem** — uma cópia por `VecPath`, e `cópias × verts(motivo)`
+/// vértices no total. Uma multiplicação acidental (cópias de cópias) estouraria isto; é a guarda
+/// anti-quadrática barata que roda sempre.
 #[test]
 fn the_output_is_linear_in_the_copy_count() {
     let motif = square();
     let out = pattern_along(&motif, &straight(1000.0), &PatternSpec::default());
-    // 1000 / 40 = 25 cópias (centros 20,60,…,980 ⇒ 25).
-    assert_eq!(out.len(), 25 * motif.contour_count());
-    let verts: usize = out.iter().map(|c| c.verts.len()).sum();
+    // 1000 / 40: fatias [0,40]..[960,1000] cabem ⇒ 25 cópias.
+    assert_eq!(out.len(), 25, "uma cópia por VecPath");
+    let verts: usize = out.iter().map(VecPath::total_verts).sum();
     assert_eq!(verts, 25 * motif.total_verts());
 }
 

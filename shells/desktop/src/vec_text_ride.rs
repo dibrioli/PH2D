@@ -23,7 +23,7 @@
 //! Illustrator faz (lá o texto e o caminho são literalmente um objeto só), e é o que o
 //! `settle_origins` já respeita sem saber que existe (ele pula toda entidade com `VecShape`).
 
-use ph2d_ecs::{Entity, SimWorld, Transform, VecTextPath};
+use ph2d_ecs::{Entity, SimWorld, VecTextPath};
 use ph2d_vec_scene::VecScene;
 use ph2d_vec_scene::arc_path::ArcPath;
 
@@ -57,22 +57,11 @@ pub(crate) fn guide_of(
     entity: Entity,
 ) -> Option<Guide> {
     let link = *sim.world().get::<VecTextPath>(entity)?;
-    let src = scene.paths().iter().find(|p| p.id == link.path)?;
-    // A APARÊNCIA do caminho — `cooked()` resolve o raio de quina (sem raio ele empresta a
-    // fonte, custo zero). Ler a fonte crua faria o texto ignorar as Live Corners do guia.
-    let mut world = src.cooked().into_owned();
-    // ...assada pela pose de MUNDO do guia. Sem isto o texto assentaria onde o caminho NÃO
-    // está — e mover o caminho deixaria de mover o texto, que é a metade visível da feature.
-    let pose = map
-        .get(&link.path)
-        .map(|&bits| Entity::from_bits(bits))
-        .filter(|&e| sim.world().get_entity(e).is_ok())
-        .map_or_else(Transform::default, |e| {
-            crate::vec_transform::world_transform(sim, e)
-        });
-    ph2d_vec_scene::bake_xform(&mut world, &crate::vec_transform::xform_of_transform(pose));
-    let arc = ArcPath::from_contour(&world.verts, world.closed)?;
-    (arc.total() > 0.0).then_some(Guide { arc, link })
+    // A resolução do arco (cozido + assado em mundo + total > 0) é a MESMA pergunta que o Pattern
+    // Along Path faz, e mora numa porta única (`vec_guide`) — duas cópias divergiriam no dia em que
+    // uma ganhasse um cuidado. Aqui só se acrescenta o `link`, que é próprio do texto.
+    let arc = crate::vec_guide::guide_arc(sim, scene, map, link.path)?;
+    Some(Guide { arc, link })
 }
 
 impl Guide {

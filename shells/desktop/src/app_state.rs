@@ -815,6 +815,10 @@ pub(crate) struct App {
     /// da fonte (`ph2d_ecs::VecOffset`). Runtime-only e memoizado: o documento guarda a curva
     /// autorada, e isto é o que se VÊ.
     pub(crate) offset_live: crate::offset_live::OffsetLive,
+    /// O **cozimento do Pattern Along Path VIVO** — as cópias de um motivo ao longo de um guia
+    /// (`ph2d_ecs::VecPatternPath`, plano 23), irmão do `offset_live`. Runtime-only: o documento
+    /// guarda a RELAÇÃO (o componente), e isto é o desenho derivado dela.
+    pub(crate) pattern_live: crate::pattern_live::PatternLive,
     /// Os knobs `(Corner, Side)` do painel no frame ANTERIOR. É o que distingue *"o artista
     /// clicou um chip"* (retunar os offsets vivos da seleção) de *"o painel está no valor de
     /// sempre"* — sem a borda, todo frame reescreveria o componente de toda forma selecionada.

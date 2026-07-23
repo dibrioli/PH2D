@@ -5,7 +5,7 @@
 //! layout ([`crate::vec_glyph`]); aqui a pergunta é a costura — *o vínculo chega ao re-cook?*
 
 use super::*;
-use ph2d_ecs::{VecShape, VecTextParams};
+use ph2d_ecs::{Transform, VecShape, VecTextParams};
 use ph2d_vec_scene::{VecPath, VecPathId, VecVertex, VertexKind};
 
 /// Um texto e um caminho na cena, já sincronizados com entidades.

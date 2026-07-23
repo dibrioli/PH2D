@@ -114,7 +114,13 @@ fn map_vert(v: &VecVertex, frame: &GlyphFrame, center: [f64; 2]) -> VecVertex {
     }
 }
 
-/// **Tila o `motif` ao longo da `guide`**, devolvendo os contornos de TODAS as cópias.
+/// **Tila o `motif` ao longo da `guide`**, devolvendo **uma cópia por `VecPath`**.
+///
+/// Cada cópia é o motivo inteiro (contorno primário + subpaths) transformado, herdando o
+/// `fill`/`stroke`/`fill_rule` dele. Uma cópia por path — e não um compound único com todos os
+/// contornos — de propósito: um motivo com `fill_rule` (uma rosca `EvenOdd`) num compound só faria
+/// o exterior de uma cópia furar o interior da vizinha. A cópia carrega `id` default (irrelevante:
+/// a `LiveGeometry` é DESENHADA, não vive na cena) e `effects` vazia (o motivo já entra cozido).
 ///
 /// Vazio se a guia é degenerada (`total <= 0`) ou nenhuma cópia cabe. A cópia `k` ocupa a fatia de
 /// arco `[start + avanço·k, start + avanço·(k+1)]`, com o centro em `start + avanço·(k + ½)`; emitem-se
@@ -125,7 +131,7 @@ fn map_vert(v: &VecVertex, frame: &GlyphFrame, center: [f64; 2]) -> VecVertex {
 /// **pulada** — a mesma escolha do texto: sem direção, inventar um referencial poria a forma num
 /// ângulo que ninguém autorou.
 #[must_use]
-pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Vec<Contour> {
+pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Vec<VecPath> {
     let total = guide.total();
     if total <= 0.0 {
         return Vec::new();
@@ -149,6 +155,10 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let count = ((k_hi - k_lo + 1.0).min(MAX_COPIES as f64)) as usize;
 
+    let map_contour = |verts: &[VecVertex], frame: &GlyphFrame| -> Vec<VecVertex> {
+        verts.iter().map(|v| map_vert(v, frame, center)).collect()
+    };
+
     let mut out = Vec::new();
     for j in 0..count {
         #[allow(clippy::cast_precision_loss)]
@@ -157,15 +167,23 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
         let Some(frame) = GlyphFrame::on_path(guide, s, spec.offset, spec.flip) else {
             continue; // cúspide: sem tangente, pula a cópia (como o texto pula o glifo)
         };
-        for c in 0..motif.contour_count() {
-            // `contour(c)` nunca é `None` para `c < contour_count()`.
-            if let Some((verts, closed)) = motif.contour(c) {
-                out.push(Contour {
-                    verts: verts.iter().map(|v| map_vert(v, &frame, center)).collect(),
-                    closed,
-                });
-            }
-        }
+        let subpaths = motif
+            .subpaths
+            .iter()
+            .map(|c| Contour {
+                verts: map_contour(&c.verts, &frame),
+                closed: c.closed,
+            })
+            .collect();
+        out.push(VecPath {
+            verts: map_contour(&motif.verts, &frame),
+            closed: motif.closed,
+            fill: motif.fill.clone(),
+            stroke: motif.stroke,
+            subpaths,
+            fill_rule: motif.fill_rule,
+            ..VecPath::default()
+        });
     }
     out
 }

@@ -52,7 +52,7 @@ sem cache nenhum. O recuo previsto **não é preciso** (gate `a_keystroke_recook
 | Wave | Entrega | Crate | Estado |
 |---|---|---|---|
 | **W1** | O **motor** `pattern_along(motivo, guia, spec) -> contornos` (arco → afim rígido por cópia; sem refit) + gate red-first + gate de perf | `ph2d-vec-scene` (`pattern_path.rs`, arquivo próprio) | ✅ **0,597 ms/200 cópias** |
-| **W2** | O **vínculo**: componente `VecPatternPath` + porta única de guia (`ArcPath` do cozido-em-mundo, compartilhada com texto) + o render que faz o cozido do motivo = saída do motor | `ph2d-ecs` + shell | — |
+| **W2** | O **vínculo**: componente `VecPatternPath` + porta única de guia (`ArcPath` do cozido-em-mundo, compartilhada com texto) + o render que faz o cozido do motivo = saída do motor | `ph2d-ecs` + shell | ✅ **vivo + smoke 24** |
 | **W3** | Seção de painel **Pattern on Path** (Spacing · Offset · Flip + Link/Detach), ids, i18n — espelha a seção de texto | `ph2d-panel-vector` + `ph2d-editor-core` + `ph2d-i18n` | — |
 | **W4** | **Alça** de canvas (o ponto de início no arco), modo Select — avaliar reuso da alça de texto vs irmã | `ph2d-vec-render` + shell | — |
 | **W5** | Cena(s) de smoke auto-verificáveis | shell (`build_smoke.rs`) | — |
@@ -77,3 +77,21 @@ afim é rotação + translação ⇒ `corner_radius` (comprimento LOCAL) sobrevi
   e para onde a próxima cópia não cabe (a cauda pode sobrar); *fit* é refinamento com dono próprio.
 - **Uma orientação (Rainbow/rígida)** — as demais herdam a mesma limitação normativa do texto
   (`text_path.rs` §"O que este módulo NÃO faz": só a spec aberta entra).
+
+## §4 — Decisões de arquitetura da W2 (o que a integração vê)
+
+- **Não é `replace_cooked` como o texto — é `LiveGeometry` como o `VecOffset`.** O texto sobrescreve
+  `verts` porque não tem fonte autorada a perder (a fonte são os params). O motivo TEM geometria
+  autorada (é ela que o Node edita), então as cópias são **desenho derivado** (`pattern_live` coze
+  `Vec<VecPath>` por frame → `dispatch` no z do motivo), a fonte intocada. É o precedente do Offset.
+- **A pose do motivo é IGNORADA (v1).** As cópias vêm da `cooked()` LOCAL do motivo (a forma), não da
+  de mundo. Mexer no gizmo do motivo não muda as cópias — é o *"mover o objeto vinculado não quer
+  dizer nada"* do texto/conector. Para redimensionar as cópias: editar os nós do motivo, ou o
+  Spacing. Escalar por gizmo (assar o linear do `Transform`) é **decisão de produto adiada** — a
+  troca é de uma linha (`pattern_live::recook`) se o smoke pedir.
+- **Guia degenerado / cauda que não cabe ⇒ mostra a FONTE** (o motivo), não nada — ao contrário do
+  Offset (onde vazio É a aniquilação). O `pattern_live` deixa a entrada AUSENTE nesses casos.
+- **Sem memo (v1), medido** (0,597 ms/200 cópias, dentro do orçamento). Memoizar exige detectar a
+  mudança do guia; adicioná-lo sem medir que uma cena parada custa é otimização prematura.
+- Contador de componentes: **ecs 34→35, render 35→36, script 35→36** (o número se CONTA na
+  integração). **Sem bump de schema** (componente novo cunha blob-key própria). Smoke: **24**.

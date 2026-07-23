@@ -4129,11 +4129,24 @@ impl crate::App {
             // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.
             self.offset_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // O Pattern Along Path vivo (plano 23): as cópias de um motivo ao longo de um guia,
+            // cozidas aqui e desenhadas no z do motivo — a fonte nunca é tocada.
+            self.pattern_live.recook(vec_scene, sim, &self.vec_entities);
+            // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern (não os dois),
+            // então fundir é seguro; começa do offset (em cena típica de pattern, vazio ⇒ clone
+            // trivial) e junta as cópias do pattern por cima.
+            let mut vec_live = self.offset_live.live().clone();
+            vec_live.extend(
+                self.pattern_live
+                    .live()
+                    .iter()
+                    .map(|(id, v)| (*id, v.clone())),
+            );
             ph2d_vec_render::dispatch(
                 vec_scene,
                 &vec_view,
                 &vec_xf,
-                self.offset_live.live(),
+                &vec_live,
                 cam_affine,
                 vector_scene,
             );

@@ -115,6 +115,10 @@ mod nest_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
+/// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
+mod pattern_live;
+/// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
+mod vec_guide;
 mod palette_persist;
 mod physics_smoke;
 mod physics_smoke_collision;
@@ -129,6 +133,7 @@ mod shape_build;
 mod shape_build_gesture;
 mod sim_populate;
 mod stack_smoke;
+mod pattern_path_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
@@ -423,6 +428,7 @@ impl App {
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
             offset_live: crate::offset_live::OffsetLive::default(),
+            pattern_live: crate::pattern_live::PatternLive::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
             vec_history: ph2d_vec_edit::History::new(),

@@ -105,8 +105,10 @@ pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecC
 mod vec_blend;
 pub use vec_blend::VecBlend;
 mod vec_offset;
+mod vec_pattern_path;
 mod vec_text_path;
 pub use vec_offset::VecOffset;
+pub use vec_pattern_path::VecPatternPath;
 pub use vec_text_path::VecTextPath;
 
 mod vec_morph;

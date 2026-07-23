@@ -60,13 +60,14 @@ pub(crate) fn run(
     // the one door; play that reaches the end parks there and PAUSES (the AE comp
     // end). A view with no authored Dur keeps today's open-ended run — which is what
     // keeps a physics scene's Play (an empty timeline driving a sim) alive.
-    let authored_end = match (container, solo) {
-        (Some(c), _) => timeline.doc.container_length_override(c),
-        (None, true) => timeline
-            .doc
-            .clip_length_override(timeline.doc.active_index()),
-        (None, false) => timeline.doc.scene_length,
-    };
+    //
+    // Through `view_authored_end` — the SAME door the veil asks (`snapshot`), so the
+    // darkened dead zone and the wall the playhead hits are the same fact. `solo` is
+    // `keys_mode`, and without a stack that is FALSE even on the Keys tab; the door
+    // handles it (a clip's `length_override` closes the no-stack view). Reading
+    // `scene_length` here directly missed exactly that — a clip Dur that darkened
+    // nothing and pinned nothing (Enio, 2026-07-23).
+    let authored_end = timeline.doc.view_authored_end(container, solo);
     if let Some(end) = authored_end
         && playhead.time() > end
     {

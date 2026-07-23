@@ -325,11 +325,13 @@ impl TimelineViewSnapshot {
         // container the interior branch below overwrites this with the
         // container's own length, completing the three scopes (Enio, 2026-07-23).
         self.view_length_seconds = doc.view_end_seconds(keys_mode);
-        self.view_length_explicit = if keys_mode {
-            doc.clip_length_override(doc.active_index()).is_some()
-        } else {
-            doc.scene_length.is_some()
-        };
+        // The AUTHORED companion of the value above, through the ONE door — so the
+        // veil darkens exactly when the box shows an authored number. Keying this on
+        // `keys_mode` alone missed the no-stack Keys case: the clip's `length_override`
+        // closes the view, but `keys_mode` is false (no stack to solo), and the veil
+        // asked `scene_length` — authored a clip Dur, saw no darkening (Enio,
+        // 2026-07-23). The container branch below overwrites this for a container view.
+        self.view_length_explicit = doc.view_authored_end(None, keys_mode).is_some();
         self.keys_mode = keys_mode;
         // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
         // clip clock, so publish it verbatim — the transport is the clip's. Outside
@@ -418,7 +420,9 @@ impl TimelineViewSnapshot {
                 // The interior's transport measures the CONTAINER — its authored
                 // duration when set, its content's extent otherwise (one door).
                 self.view_length_seconds = doc.container_length_seconds(c);
-                self.view_length_explicit = doc.container_length_override(c).is_some();
+                // Same door as the base above, now scoped to the container — the veil
+                // darkens the container view iff its own duration is authored.
+                self.view_length_explicit = doc.view_authored_end(Some(c), false).is_some();
             }
             self.host_time = Some(playhead.time());
             // **The loop braces are the CONTAINER's own loop** — read from the document
@@ -569,6 +573,47 @@ mod tests {
         let cap = snap.tracks[0].keys.capacity();
         snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks[0].keys.capacity(), cap, "key buffer reused");
+    }
+
+    #[test]
+    fn a_no_stack_clip_duration_makes_the_snapshot_explicit() {
+        // The veil reads `view_length_explicit`; the panel publishes `keys_mode` as
+        // `shows_keys() && stacked()`, so with no stack it hands `rebuild` FALSE even
+        // on the Keys tab. The snapshot must STILL report the clip's authored Dur as
+        // explicit (the clip is the timeline) so the dead zone darkens — the exact
+        // gap of the re-smoke (Enio, 2026-07-23).
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        apply_intent(
+            &mut st,
+            &mut ph,
+            Ix::AddKey {
+                entity: 1,
+                prop: PropKind::TranslationX,
+                t: s(2.0),
+                value: AnimValue::Float(10.0),
+                interp: Interp::Linear,
+            },
+        );
+        let mut snap = TimelineViewSnapshot::default();
+        // keys_mode FALSE (no stack), no authored Dur yet → open-ended, no veil.
+        snap.rebuild(&mut st, &ph, false);
+        assert!(
+            !snap.view_length_explicit,
+            "a derived end never darkens the view"
+        );
+        // Author the CLIP's duration (the Keys-tab scope) → the snapshot closes even
+        // with keys_mode false.
+        st.doc.set_clip_length_override(0, Some(2.0));
+        snap.rebuild(&mut st, &ph, false);
+        assert!(
+            snap.view_length_explicit,
+            "an authored clip Dur must darken the no-stack view"
+        );
+        assert!(
+            (snap.view_length_seconds - 2.0).abs() < 1e-9,
+            "and the veil starts at the authored end the box shows"
+        );
     }
 
     #[test]

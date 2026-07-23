@@ -311,6 +311,59 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
     );
 }
 
+/// **A duração de CLIP prende o playhead mesmo SEM pilha** (Enio, 2026-07-23, o
+/// re-smoke): o painel publica `keys_mode = shows_keys() && stacked()`, então na aba
+/// Keys de uma cena não-arranjada `solo` chega FALSO — e o clamp lia `scene_length`
+/// (None), deixando o playhead passar do fim autorado do clip. O gate antigo só
+/// exercitava `solo=true` (com pilha), então o fixture não continha o fenômeno.
+/// Agora o clamp pergunta `view_authored_end`, que sem pilha honra o override do clip.
+#[test]
+fn a_clip_duration_pins_the_playhead_even_with_no_stack_and_solo_false() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut st = TimelineState::new();
+    let mut intents = Vec::new();
+    let mut ak = super::super::autokey_pass::AutokeyState::default();
+
+    // Sem pilha, sem scene_length, um override de CLIP = 2 — o estado do screenshot.
+    st.doc.set_clip_length_override(0, Some(2.0));
+
+    // `solo = false` (nenhum stack para solar), `container = None` — exatamente o que
+    // o shell passa na aba Keys de uma cena não-arranjada.
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.seek(2.333); // além do fim autorado, como na foto (Time(s)=2.333)
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false, // solo — FALSO sem pilha, o cerne do bug
+        None,
+    );
+    assert!(
+        (ph.time() - 2.0).abs() < 1e-9,
+        "sem pilha o Dur do clip prende o playhead em 2 (era 2.333: o clamp lia \
+         scene_length em vez do override do clip)"
+    );
+
+    // Play que atravessa o fim PAUSA (fim de comp), também sem pilha.
+    ph.play();
+    ph.seek(5.0);
+    run(
+        sim.world_mut(),
+        &mut st,
+        &mut ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+        None,
+    );
+    assert!((ph.time() - 2.0).abs() < 1e-9);
+    assert!(!ph.is_playing(), "o play que alcança o fim autorado pausa");
+}
+
 #[test]
 fn set_transport_loop_arms_the_clock_and_leaves_the_document_alone() {
     let (mut st, _step) = nav_scene();

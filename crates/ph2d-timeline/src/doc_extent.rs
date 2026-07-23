@@ -49,6 +49,44 @@ impl TimelineDoc {
         }
     }
 
+    /// **Which authored duration CLOSES this view** — `Some(end)` iff the view has an
+    /// EXPLICIT duration (the AE composition end that darkens the dead zone and pins
+    /// the playhead), `None` when the end is merely derived and the timeline stays
+    /// open-ended.
+    ///
+    /// This is the *authored* companion of [`Self::view_end_seconds`], and it MUST
+    /// fall through the same way that value does, or the two disagree about the same
+    /// timeline. In particular **without a stack the clip IS the timeline**
+    /// (`ruler_clock`: both tabs rule the one clock there is), so a clip's authored
+    /// `length_override` closes the scene view too — the exact case the veil and the
+    /// playhead clamp missed by keying on `keys_mode`, which the panel publishes as
+    /// `shows_keys() && stacked()` and so reads FALSE on the Keys tab when nothing is
+    /// arranged. The Dur(s) box (via `clip_end_seconds`) already showed the right
+    /// number; only the two consumers that decide *is it authored* were asking a
+    /// different door ([[feedback_two_doors_to_the_same_question_diverge]], Enio
+    /// 2026-07-23).
+    ///
+    /// - `container`: `Some(c)` inside a container's editing view → its own override.
+    /// - `keys_mode`: the panel's published flag (soloing a clip out of a stack).
+    #[must_use]
+    pub fn view_authored_end(&self, container: Option<usize>, keys_mode: bool) -> Option<f64> {
+        if let Some(c) = container {
+            return self.container_length_override(c);
+        }
+        if keys_mode {
+            return self.clip_length_override(self.active_clip);
+        }
+        // Arrange / no-solo: the scene's authored length, or — when NO lane holds a
+        // strip — the active clip's (the clip is the timeline). With a real stack
+        // `stack_end_seconds` is `Some`, so the clip override never leaks in.
+        self.scene_length.or_else(|| {
+            self.stack_end_seconds()
+                .is_none()
+                .then(|| self.clip_length_override(self.active_clip))
+                .flatten()
+        })
+    }
+
     /// The last timeline second any strip occupies, across every lane, or `None`
     /// when the stack holds none.
     ///

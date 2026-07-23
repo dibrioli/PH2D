@@ -194,6 +194,50 @@ fn a_key_authored_beyond_the_cut_lands_on_the_boundary() {
     );
 }
 
+/// **Without a stack a clip's authored duration CLOSES the view** (Enio, 2026-07-23):
+/// the veil and the playhead clamp ask `view_authored_end`, and it must return the
+/// clip override even with `keys_mode = false` — which is what the panel publishes on
+/// the Keys tab when nothing is arranged (`shows_keys() && stacked()`). The Dur(s) box
+/// already showed the number (via `clip_end_seconds`); this is the door that makes the
+/// two consumers agree. A REAL stack keeps the clip override out (the scene decides).
+#[test]
+fn a_no_stack_clip_duration_closes_the_view_regardless_of_keys_mode() {
+    let (_, mut doc, _) = scene();
+    // No stack, no scene_length, a clip override — the screenshot's state.
+    doc.set_clip_length_override(0, Some(2.0));
+    // The reported bug: keys_mode is FALSE (no stack), and the door must still close.
+    assert_eq!(
+        doc.view_authored_end(None, false),
+        Some(2.0),
+        "no stack: the clip IS the timeline, so its Dur closes the view even when \
+         keys_mode is false"
+    );
+    // And on the stacked Keys path (keys_mode true) it was always right.
+    assert_eq!(doc.view_authored_end(None, true), Some(2.0));
+    // Clear it → open-ended again (a derived end never darkens).
+    doc.set_clip_length_override(0, None);
+    assert_eq!(doc.view_authored_end(None, false), None);
+
+    // A REAL stack: the scene decides, and an UN-authored scene stays open even
+    // though the clip below carries an override (the override never leaks up).
+    doc.set_clip_length_override(0, Some(2.0));
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 6.0, 4.0));
+    doc.stack_mut().push(lane);
+    assert_eq!(
+        doc.view_authored_end(None, false),
+        None,
+        "with a stack the scene's own (unset) length rules — the clip override is \
+         not the scene's"
+    );
+    doc.set_scene_length(Some(3.0));
+    assert_eq!(
+        doc.view_authored_end(None, false),
+        Some(3.0),
+        "the scene's own"
+    );
+}
+
 // ── the loop never leaves the authored area ─────────────────────────────────
 
 /// **Nenhum loop passa do fim autorado** (Enio, 2026-07-23): armar ou arrastar

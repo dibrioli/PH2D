@@ -101,7 +101,10 @@ fn motif_bbox(motif: &VecPath) -> (f64, [f64; 2]) {
     if !seen {
         return (0.0, [0.0, 0.0]);
     }
-    (hi[0] - lo[0], [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5])
+    (
+        hi[0] - lo[0],
+        [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5],
+    )
 }
 
 /// Um vértice do motivo levado ao mundo pelo referencial da cópia, RÍGIDO.

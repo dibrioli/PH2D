@@ -48,7 +48,10 @@ fn at(needle: &str) -> usize {
 #[test]
 fn the_dispatch_is_handed_the_live_geometry() {
     let call = at("ph2d_vec_render::dispatch(");
-    let args_end = SRC[call..].find(");").expect("fim da lista de argumentos do `dispatch`") + call;
+    let args_end = SRC[call..]
+        .find(");")
+        .expect("fim da lista de argumentos do `dispatch`")
+        + call;
     let args = &SRC[call..args_end];
     assert!(
         !args.contains("LiveGeometry::new()"),

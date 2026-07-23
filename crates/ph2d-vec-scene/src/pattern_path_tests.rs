@@ -82,7 +82,11 @@ fn centroid(p: &VecPath) -> [f64; 2] {
 
 fn norm(v: [f64; 2]) -> [f64; 2] {
     let m = v[0].hypot(v[1]);
-    if m == 0.0 { [0.0, 0.0] } else { [v[0] / m, v[1] / m] }
+    if m == 0.0 {
+        [0.0, 0.0]
+    } else {
+        [v[0] / m, v[1] / m]
+    }
 }
 
 /// **As cópias tilam a guia reta**: contagem certa, espaçadas pelo avanço, forma preservada.
@@ -100,7 +104,10 @@ fn the_copies_tile_the_straight_guide() {
         let cx = 20.0 + 40.0 * k as f64;
         assert!((hi[0] - lo[0] - 40.0).abs() < 1e-9, "largura preservada");
         assert!((hi[1] - lo[1] - 40.0).abs() < 1e-9, "altura preservada");
-        assert!(((lo[0] + hi[0]) * 0.5 - cx).abs() < 1e-9, "centro x da cópia {k}");
+        assert!(
+            ((lo[0] + hi[0]) * 0.5 - cx).abs() < 1e-9,
+            "centro x da cópia {k}"
+        );
         assert!(((lo[1] + hi[1]) * 0.5).abs() < 1e-9, "centro y na baseline");
     }
 }
@@ -122,7 +129,11 @@ fn the_copies_rotate_to_the_tangent_on_a_curve() {
     let guide = circle(r);
     let advance = 40.0; // largura(seta) × spacing 1.0
     let out = pattern_along(&arrow(), &guide, &PatternSpec::default());
-    assert!(out.len() >= 8, "um círculo de raio 60 cabe ~9 setas, veio {}", out.len());
+    assert!(
+        out.len() >= 8,
+        "um círculo de raio 60 cabe ~9 setas, veio {}",
+        out.len()
+    );
 
     let mut dirs = Vec::new();
     for (k, c) in out.iter().enumerate() {
@@ -134,7 +145,10 @@ fn the_copies_rotate_to_the_tangent_on_a_curve() {
         let (_, t) = guide.frame_at(s);
         let tan = norm(t);
         let dot = dir[0] * tan[0] + dir[1] * tan[1];
-        assert!(dot > 0.999, "cópia {k}: dir·tangente = {dot} (deveria ser ~1)");
+        assert!(
+            dot > 0.999,
+            "cópia {k}: dir·tangente = {dot} (deveria ser ~1)"
+        );
         dirs.push(dir);
     }
     // (2) espalhamento: o maior ângulo entre duas direções passa de 90° (colapsa a 0° na mutação).
@@ -172,7 +186,10 @@ fn the_end_limits_the_tiling_range() {
     let motif = square(); // largura 40
     let guide = straight(100.0);
     // Sem End (INFINITY): 2 cópias — fatias [0,40] e [40,80].
-    assert_eq!(pattern_along(&motif, &guide, &PatternSpec::default()).len(), 2);
+    assert_eq!(
+        pattern_along(&motif, &guide, &PatternSpec::default()).len(),
+        2
+    );
     // End = 50 (arco): só [0,40] cabe em [0,50]; [40,80] passa de 50 ⇒ 1 cópia.
     let clipped = pattern_along(
         &motif,
@@ -229,7 +246,14 @@ fn a_keystroke_recook_stays_under_the_kill() {
     let t0 = std::time::Instant::now();
     let out = pattern_along(&motif, &guide, &spec);
     let dt = t0.elapsed().as_secs_f64() * 1e3;
-    eprintln!("pattern_along: {} cópias × 40 verts em {dt:.3} ms", out.len());
+    eprintln!(
+        "pattern_along: {} cópias × 40 verts em {dt:.3} ms",
+        out.len()
+    );
     assert!(out.len() >= 190, "esperava ~200 cópias, veio {}", out.len());
-    assert!(dt < 8.0, "re-cook de {} cópias custou {dt:.2} ms (kill 8)", out.len());
+    assert!(
+        dt < 8.0,
+        "re-cook de {} cópias custou {dt:.2} ms (kill 8)",
+        out.len()
+    );
 }

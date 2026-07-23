@@ -412,6 +412,27 @@ acessor = "acessor"
 # diagnóstico do handoff. Lidos como inglês mal escrito; são as palavras portuguesas.
 itens = "itens"
 instrumentos = "instrumentos"
+# pt-BR da jornada de 2026-07-23 (integração de 6 linhas). Todas em doc-comment ou em
+# string de CENA DE SMOKE (que é impressa no terminal, não é UI — a UI segue 100% inglês,
+# HR-15). Lidas como inglês torto pelo dicionário en-US; são as palavras portuguesas.
+#   `INERCIA` — o MOMENTO DE INÉRCIA que resiste ao torque de área, sem acento porque a
+#     linha é doc-comment ASCII (`physics_smoke_zones.rs`, `physics_ecs_c9.rs`). É o
+#     espelho exato de massa-resiste-a-força, e o número medido está ao lado.
+#   `som` — "tocar um SOM de impacto" (`physics_smoke_events.rs`): o consumidor de
+#     gameplay que o canal de contact events existe para servir.
+#   `leves` — a torre de caixas LEVES contra a bola pesada (a cena da demolição).
+#   `rever` — "scrub para REVER os impactos" na instrução da cena.
+#   `impactos` — o plural de impacto, na mesma instrução.
+#   `exclusivas` — as duas portas de ligação do Pattern são EXCLUSIVAS entre si
+#     (`paint_patternpath.rs`): auto-ligação por 2 selecionados vs Picker explícito.
+#   `precisou` — "…e não PRECISOU de uma linha de código a dizê-lo" (`vec_glyph_tests.rs`).
+INERCIA = "INERCIA"
+som = "som"
+leves = "leves"
+rever = "rever"
+impactos = "impactos"
+exclusivas = "exclusivas"
+precisou = "precisou"
 
 [files]
 extend-exclude = [

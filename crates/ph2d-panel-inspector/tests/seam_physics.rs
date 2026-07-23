@@ -15,8 +15,12 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel};
-use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
-use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_physics};
+use ph2d_editor_core::screens::hero::{
+    InspectorPhysicsInfo, InspectorTransformInfo, PhysicsFieldEdit,
+};
+use ph2d_panel_inspector::{
+    InspectorPanel, InspectorState, set_current_inspector_physics, set_current_inspector_transform,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 const ENTITY: u64 = 0xABCD_1234;
@@ -1325,4 +1329,75 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
             "a Force row reached the bus on an entity with no body"
         );
     }
+}
+
+/// **Selecting a zone shows its authored area values in the rows** (W-Area..W-AreaTorque).
+///
+/// The other half of the seam: authoring the rows reaches the bus (above), but the
+/// widgets were WRITE-ONLY — `sync_physics_fields` synced radius/density/mass but not the
+/// five area rows, so re-selecting a zone showed `0` (or the previous selection's stale
+/// value) instead of the number on the collider. The artist set a Torque, looked back,
+/// and it read empty. This drives the real sync (it runs on selection change inside
+/// `paint`) and asserts each row displays the authored value. Red-first: before the fix
+/// every one of these was `0.0`.
+#[test]
+fn selecting_a_zone_shows_its_authored_area_values() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let info = InspectorPhysicsInfo {
+        is_sensor: true,
+        force: [12.5, -3.25],
+        area_torque: 40.0,
+        area_drag: 4.0,
+        area_density: 6.0,
+        area_form_drag: 2.5,
+        ..with_body()
+    };
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(info));
+    // ⚠️ `sync_inspector_from_snapshots` derives the "which entity" (and thus the
+    // selection-changed edge that gates the sync) from the TRANSFORM snapshot, not the
+    // physics one — every real selected entity has a Transform. Set it so the edge fires.
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: ENTITY,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    set_current_inspector_transform(None);
+
+    let val = |id| match host.store().get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        other => panic!("{id:?} is not a registered NumberInput: {other:?}"),
+    };
+    assert_eq!(
+        val(ids::INSP_PHYS_AREA_TORQUE),
+        40.0,
+        "the Torque row must SHOW the authored torque on selection, not 0"
+    );
+    assert_eq!(val(ids::INSP_PHYS_FORCE_X), 12.5, "Force X did not sync");
+    assert_eq!(val(ids::INSP_PHYS_FORCE_Y), -3.25, "Force Y did not sync");
+    assert_eq!(val(ids::INSP_PHYS_AREA_DRAG), 4.0, "Drag did not sync");
+    assert_eq!(
+        val(ids::INSP_PHYS_AREA_DENSITY),
+        6.0,
+        "Fluid Density did not sync"
+    );
+    assert_eq!(
+        val(ids::INSP_PHYS_AREA_FORM_DRAG),
+        2.5,
+        "Shape Drag did not sync"
+    );
 }

@@ -116,4 +116,104 @@ impl crate::App {
              Physics MARCADO."
         );
     }
+
+    /// **Cena 33 (W-AreaTorque, autoria pela UI).** O palco para AUTORAR a mesa giratória
+    /// só com cliques — a resposta ao *"não vi nada disso agindo na UI"*.
+    ///
+    /// **ESQUERDA — a mesa a AUTORAR.** Um sprite pelado (sem física) com uma caixa
+    /// flutuante dentro. Selecione o sprite e, no Inspector, seção **Physics Body**:
+    /// 1. **Add Physics Body**
+    /// 2. **Kind = Static** (a mesa não cai)
+    /// 3. **Trigger = Sensor** ← *é este passo que faz a linha **Torque** aparecer* (junto
+    ///    de Force/Drag/Fluid Density/Shape Drag — são todas sensor-only)
+    /// 4. Digite um valor em **Torque (N·m)** (ex.: 1) — a caixa começa a girar. O SINAL é
+    ///    o sentido (negativo = horário).
+    ///
+    /// **DIREITA — a mesa PRONTA.** Já autorada (Static + Sensor + Torque 1). No Play ela
+    /// gira sozinha. Selecione o sprite dela: o Inspector mostra Kind=Static, Trigger=Sensor
+    /// e a linha **Torque com o valor 1** — a prova de que a row **reflete** o que está no
+    /// collider (antes desta wave as rows de área eram write-only e liam 0 ao re-selecionar).
+    ///
+    /// ⚠️ **B** liga o contorno e o glifo de giro violeta. Deixe **Physics** MARCADO.
+    pub(crate) fn physics_smoke_author_spin(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+
+        // Um chão bem abaixo, só para dar referência visual (as caixas flutuam).
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, -8.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [16.0, 0.5], [0.40, 0.42, 0.48, 1.0]),
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 8.0,
+                    half_y: 0.25,
+                },
+                ..Collider::default()
+            },
+        ));
+
+        // Uma caixa 1x1 flutuante (o "disco" que a mesa gira). O giro vem só do torque.
+        let disc = |world: &mut bevy_ecs::world::World, cx: f32, tag: &str| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(cx, 0.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [0.95, 0.80, 0.30, 1.0]),
+                Name::new(format!("{tag} disc")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.5,
+                        half_y: 0.5,
+                    },
+                    ..Collider::default()
+                },
+                GravityScale(0.0),
+            ));
+        };
+
+        // ESQUERDA: o sprite PELADO (sem RigidBody/Collider) que o artista vai autorar.
+        world.spawn((
+            Transform::from_translation(Vec2::new(-4.0, 0.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [4.0, 4.0], [0.55, 0.4, 0.85, 0.16]),
+            Name::new("Turntable (author me)"),
+        ));
+        disc(world, -4.0, "left");
+
+        // DIREITA: a mesa PRONTA -- Static Sensor + AreaTorque(1). Ao selecionar, o
+        // Inspector mostra a linha Torque com o valor (o fix de sync desta wave).
+        world.spawn((
+            Transform::from_translation(Vec2::new(4.0, 0.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [4.0, 4.0], [0.4, 0.7, 0.55, 0.16]),
+            Name::new("Turntable (working)"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 2.0,
+                    half_y: 2.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            AreaTorque(1.0),
+        ));
+        disc(world, 4.0, "right");
+
+        eprintln!(
+            "[physics-smoke 33] AUTORIA PELA UI. ESQUERDA: um sprite PELADO com uma caixa \
+             flutuante. Selecione o sprite -> Inspector > Physics Body: (1) Add Physics Body \
+             (2) Kind=Static (3) Trigger=Sensor <- e AQUI a linha 'Torque (N*m)' aparece, com \
+             Force/Drag/Fluid Density/Shape Drag (todas sensor-only) (4) digite Torque=1 e a \
+             caixa comeca a girar. DIREITA: a mesma mesa JA autorada (Static+Sensor+Torque 1) \
+             -- no Play ela gira sozinha, e ao selecionar o sprite dela o Inspector mostra a \
+             linha Torque com o valor 1 (a prova de que a row reflete o collider). B liga o \
+             contorno e o glifo de giro violeta; deixe Physics MARCADO. De Play."
+        );
+    }
 }

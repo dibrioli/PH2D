@@ -571,6 +571,18 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_DOMINANCE, f32::from(info.dominance)),
         (ids::INSP_PHYS_LINEAR_DAMPING, info.linear_damping),
         (ids::INSP_PHYS_ANGULAR_DAMPING, info.angular_damping),
+        // The area-zone rows (W-Area..W-AreaTorque). Without these the widgets were
+        // WRITE-ONLY: authoring a Force/Torque/Drag worked, but re-selecting the zone
+        // showed 0 (or the previous selection's stale value) instead of the number that
+        // is actually on the collider — so the artist could not read back what they set.
+        // Synced here like every other field; this runs once on selection change (not
+        // per frame), so it never fights the value being typed.
+        (ids::INSP_PHYS_FORCE_X, info.force[0]),
+        (ids::INSP_PHYS_FORCE_Y, info.force[1]),
+        (ids::INSP_PHYS_AREA_TORQUE, info.area_torque),
+        (ids::INSP_PHYS_AREA_DRAG, info.area_drag),
+        (ids::INSP_PHYS_AREA_DENSITY, info.area_density),
+        (ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

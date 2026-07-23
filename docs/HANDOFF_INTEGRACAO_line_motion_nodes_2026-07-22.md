@@ -70,7 +70,7 @@ REAL do app automaticamente. **Os kernels estão VIVOS no editor, não só no de
 | `KernelResolver::reduces()` | gpu | método de trait NOVO (default `&[]`) |
 | `NodeRegistry::{reduces (campo), register_reduces, reduces()}` | node-registry | append |
 | gpu-cook: mods `reduce_stage`/`accessors`; `Reduce`/`ReduceScratch`/`reduce_into`; `GpuCook.{reduce,reduce_hold,reduce_hold_bufs,reduce_results_hold}`; `REDUCE_MAP_SALT`; naming `reduce_buf_<name>`/`reduce_<name>()` | gpu-cook | append |
-| **`PH2D_GPU_COOK_DEMO=12,13,14,15`** | shell | **cenas de smoke** — a `line/gpu-nodes` tomou 7-11 (JÁ integrada); confirmar que nenhuma linha AINDA-NÃO-integrada reivindicou 12-15 |
+| **`PH2D_GPU_COOK_DEMO=12,13,14,15,16`** | shell | **cenas de smoke** (=16 = O ORGANISMO, o canal inteiro num grafo) — a `line/gpu-nodes` tomou 7-11 (JÁ integrada); confirmar que nenhuma linha AINDA-NÃO-integrada reivindicou 12-16 |
 | `Cargo.lock` | raiz | só as 5 path-deps de dev do gpu-cook |
 
 **ADR:** nenhum número novo reivindicado. O canal de redução monta no padrão
@@ -108,17 +108,28 @@ dependência cruzada com outras crates além do que já está no `main` do fork.
 - `cargo check --workspace` · `fmt --all --check` · `clippy --all-targets` (crates tocadas)
 - `architecture_contract_surface` 3/3 · `generated_wgsl_validates` 2/2 (os 5 kernels em TODO subconjunto de presença)
 - `architecture_workspace_file_loc_cap` · `file_loc_caps` (shell) · `motion_gpu_kernel_budgets`
-- **`gpu_cpu_parity_deform` 7/7 no DEVICE** (bend/twist/spherize/four_point_warp/kaleidoscope + excursão + a costura de redução), serial — pior ε medido **9,8e-6** vs bound `EPS_POS = 2e-4`.
+- **`gpu_cpu_parity_deform` 9/9 no DEVICE** (bend/twist/spherize/four_point_warp/kaleidoscope + excursão + costura de redução + **O ORGANISMO**), serial — pior ε medido **9,8e-6** (deformers isolados) e **3,5e-5** (o organismo, 6 kernels de profundidade) vs bound `EPS_POS = 2e-4`.
+- **`the_organism_is_claimed_whole_on_the_device`** — device-free (roda em TODA lane, sem adapter): prova que a cena =16 (6 kernels: fan count-changing + 4 deformers redutores) é reivindicada INTEIRA pelo planner, ZERO fronteira de CPU.
 
 **Smoke VISUAL (não rodei windowed — é do integrador/Enio):**
 ```
+env PH2D_GPU_COOK_DEMO=16 cargo run -p ph2d-host-desktop --release   # O ORGANISMO -- o canal INTEIRO num grafo
 env PH2D_GPU_COOK_DEMO=12 cargo run -p ph2d-host-desktop --release   # bend -> twist (cloth)
 env PH2D_GPU_COOK_DEMO=13 cargo run -p ph2d-host-desktop --release   # spherize (lens)
 env PH2D_GPU_COOK_DEMO=14 cargo run -p ph2d-host-desktop --release   # four_point_warp (flag)
 env PH2D_GPU_COOK_DEMO=15 cargo run -p ph2d-host-desktop --release   # kaleidoscope (mandala)
 ```
 GPU ON por default; `PH2D_GPU_COOK=0` bissecta para a CPU (a paridade prova que
-as duas concordam). Todas as cenas são 490k+ instâncias, FULLY GPU (`plan.is_fully_gpu()`).
+as duas concordam). Todas as cenas são ~490k instâncias, FULLY GPU (`plan.is_fully_gpu()`).
+
+**`=16` é a cena de smoke de TUDO num grafo só** — `grid → move → kaleidoscope →
+spherize → bend → twist → four_point_warp → output`: o fan count-changing
+(SourceRead) seguido dos quatro deformers redutores, cada um dobrando a própria
+redução (Sum · Max · Max · Min/Max) **sobre o stream que o anterior produziu**.
+Cinco LFOs em períodos primos (13·6·9·11·7 s) ⇒ a pose composta não repete.
+Bisecte com `PH2D_GPU_COOK=0`: as duas rotas concordam dentro do ε do canal. **Se
+qualquer estágio ficasse na CPU, o `is_fully_gpu()` da cena seria falso — e o gate
+device-free acima pega isso.**
 
 **⚠️ NÃO rodei** a varredura pesada `-- --ignored` completa (boids/voronoi a
 milhões) — por restrição de saturação de GPU do Enio, ela fica para a integração.

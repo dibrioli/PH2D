@@ -1,5 +1,62 @@
 # HANDOFF — `line/anim`: os bugs da DURAÇÃO EXPLÍCITA + autokey (2026-07-23)
 
+> ## ⬛ FECHADO NA SESSÃO SEGUINTE (2026-07-23, commits `ae99a27bd` + `743c8ef11`) — AGUARDANDO RE-SMOKE
+>
+> **Os 3 bugs têm fix commitado, gate red-first e mutação provada.** O que a investigação
+> (4 lentes paralelas, linha a linha) confirmou/refinou sobre este brief:
+>
+> - **Bug B (superbug)** — mecanismo confirmado, escopo MENOR que o §2 dizia: sob pilha/container
+>   reais o seed==sample **já fechava** pelo scratch primado (cortado por dentro); a doença morava
+>   só nos **caminhos escalares** — solo/Keys (`t_src` cru em `autokey_pass.rs`) e o **fallback
+>   raiz-vazia** (3 gates idênticos: `key_home`/`shown_value`/`key_value_in_active_clip`). Os
+>   repros (ii)/(iii) do §2 **não existiam** (o diff empilhado ignora `t_secs`). E o **K manual
+>   compartilhava o buraco** (`key_time` no Arrange, `key_authoring_solo` no Keys) — fechado junto.
+>   Fix: `t_cut` por-modo no passe (espelho exato de `apply.rs:208`/`:82`/frame-0 do scratch) +
+>   corte dentro do gate raiz-vazia de `key_home` + corte no `key_authoring_solo`. Edição
+>   deliberada além do corte **keya NA fronteira** (o frame visível) — a surdez foi rejeitada.
+>   Todos os cortes são `t.min(len)` ⇒ comutam/idempotentes; o par `prime`/`debug_assert_scratch_at`
+>   ficou coerente até com clamp furado. Gates: `a_key_authored_beyond_the_cut_lands_on_the_boundary`
+>   (crate) · `autokey_cut_clock_tests.rs` (split HR-18: 2 vistas de scrub + edição na fronteira) ·
+>   `solo_k_beyond_the_cut_keys_at_the_boundary` (K). **3 mutações, cada uma sangra o seu.**
+> - **Bugs A+C** — **H2 CONFIRMADA como mecanismo único; H1/H3/H4 REFUTADAS** (véu visível e de
+>   altura cheia, clamp são, router são, commit-always são — o véu ausente do screenshot é
+>   consequência: a duração autorada era **22**, não 2). Não havia select-all ao focar
+>   (`init_number_buffer` colapsava a âncora; os testes antigos confessavam com `Backspace × 5`).
+>   Fix: **foco seleciona tudo** (clique E Tab), o Down que focou não re-colapsa via
+>   `place_text_caret`, 2º clique posiciona o caret (modelo Blender/AE). ⚠️ **Vale para TODO
+>   chip numérico do app** (a direção que este handoff prescreveu sem escopo) — o re-smoke deve
+>   dar uma passada em outros chips (Inspector/physics) para confirmar que substituir-ao-digitar
+>   é o esperado em todo lugar. Gates que **dirigem o gesto real** (clique no rect pintado +
+>   `dispatch_text_input` + Enter): `number_input_focus_replaces.rs` (editor-core) ·
+>   `duration_chip_gesture.rs` (painel com populate REAL; a mutação reproduz `Some(22.0)`).
+> - Suítes: **1440 crates + 1014 shell (debug) · 1440 + família timeline (release) · clippy 0 ·
+>   LOC caps verdes** (split `autokey_cut_clock_tests.rs`).
+> - **§7 corrigido:** o gate `the_duration_chip_writes_the_scope_on_screen` citado ali **não existe
+>   no HEAD** (nasceu em `642c46fca`, morreu em `1e9017eaa` — papel migrou pro router do painel).
+>
+> **RE-SMOKE (fila §6.3):** aba Keys, clip com keys até N, Dur = M&lt;N →
+> (a) digitar M na caixa (clique simples, SEM limpar) autora M — a caixa continua mostrando M;
+> (b) além de M a área escurece e o playhead PARA em M;
+> (c) na aba Arrange (cena sem Dur própria), AutoKey armado, arrastar o playhead além de M não
+> cria NENHUMA key com o objeto parado; (d) mover o objeto de propósito além de M keya EM M;
+> (e) um clique na metade direita do chip é o stepper (±1 frame) — comportamento pré-existente,
+> ver "Aberto".
+>
+> **Aberto (cantos nomeados, não-bloqueantes):**
+> - **K numa track Time além do corte** segue no relógio cru (os braços TimeRemap de
+>   `key_value_for`/`key_authoring_solo` não cortam) — canto ultra-estreito, decisão de design
+>   (autorar o MAPA além do corte pode ser deliberado).
+> - **D3 (pré-existente, documentado no fix):** no Arrange raiz-vazia o próprio apply compõe
+>   `clip_cut(raw)` no ramo escalar e `clip_cut(cut_scene(raw))` no scratch — divergem só com
+>   clamp furado + `scene_length` autorada + entidade com remap.
+> - **O stepper do chip Dur** (`±1/fps` no terço direito, sem `mark_chip_no_stepper`): um clique
+>   "para focar" que caia ali autora derivado±1 frame em silêncio. Legítimo como stepper;
+>   ergonomia a julgar no smoke.
+>
+> O texto abaixo é o brief ORIGINAL da sessão anterior, mantido como registro.
+
+---
+
 > **Você assumiu a linha `line/anim`.** ANTES de ler qualquer arquivo:
 > ```
 > cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim

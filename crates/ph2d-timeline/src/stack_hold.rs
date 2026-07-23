@@ -40,6 +40,11 @@ impl ClipLane {
     /// back before it starts: fading in from the rest pose at the top of a timeline is
     /// a real thing to want, and there is nothing behind the first strip to hold.
     ///
+    /// `loop_range` is a **WRAPPING** loop's range — the caller (`stack_frames`)
+    /// filters by mode, because a ping-pong playhead REFLECTS at the ends and never
+    /// crosses the seam: its range must never arrive here, or the opening gap shows
+    /// the loop-end pose on a seam nobody travels (Enio, 2026-07-23).
+    ///
     /// That last clause is true of a timeline you play once, and **false of one you
     /// loop**, where the ruler's ends are neighbours: what is "before the first strip"
     /// is "after the last", and what is "after the last" is "before the first". So a

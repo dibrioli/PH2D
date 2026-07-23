@@ -322,7 +322,28 @@ impl StackScratch {
             // ⚠️ Only frame 0 has that loop. A container's interior has no loop of its
             // own yet, and borrowing the DOCUMENT's would be a loop from another clock
             // wrapping a stack it knows nothing about.
-            let loop_range = (frame == 0).then(|| doc.active_loop_for(false)).flatten();
+            // **Cyclic only under a loop that WRAPS** (Enio, 2026-07-23): a ping-pong
+            // playhead REFLECTS at the range's ends and never crosses the seam, so the
+            // pose the loop's end leaves behind must never surface in the opening gap —
+            // under PingPong the gap behaves exactly as with no loop at all, and the
+            // object rests where the first strip will pick it up.
+            //
+            // Rooted, frame 0 IS a container's interior, and the loop that governs it is
+            // the CONTAINER's own — the scene's Arrange loop is another clock's bracket
+            // around a stack it knows nothing about (the warning three lines up, which
+            // the rooted path had quietly walked past).
+            let loop_range = (frame == 0)
+                .then(|| {
+                    let (range, ping_pong) = match self.root {
+                        None => (
+                            doc.active_loop_for(false),
+                            doc.active_ping_pong_for(false),
+                        ),
+                        Some(c) => doc.container_loop(c),
+                    };
+                    range.filter(|_| !ping_pong)
+                })
+                .flatten();
             if let Some((strip, t_local, w)) = lane.hold_at(t, loop_range)
                 && let Some(source) =
                     self.resolve(doc, strip.source, t_local, additive, strip.src_in)

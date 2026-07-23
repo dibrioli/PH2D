@@ -259,8 +259,14 @@ impl TimelineState {
     #[must_use]
     pub fn with_default_duration() -> Self {
         let mut st = Self::default();
+        // Both the active clip (the Keys tab) AND the scene (the Arrange tab) open as
+        // 4 s compositions (Enio, 2026-07-23: *"ao entrar em arrange, dur = 0, deveria
+        // ser 4 seg por padrão"*). Each tab authors its OWN scope; defaulting both is
+        // what makes every tab open at 4 s, veil and all, rather than a derived 0.
         st.doc
             .set_clip_length_override(0, Some(crate::DEFAULT_DURATION_SECONDS));
+        st.doc
+            .set_scene_length(Some(crate::DEFAULT_DURATION_SECONDS));
         st
     }
 
@@ -336,12 +342,17 @@ mod default_duration_tests {
         assert_eq!(
             product.doc.clip_length_override(0),
             Some(crate::DEFAULT_DURATION_SECONDS),
-            "o produto abre com o override de 4 s no clip"
+            "o produto abre com o override de 4 s no CLIP (a aba Keys)"
+        );
+        assert_eq!(
+            product.doc.scene_length,
+            Some(crate::DEFAULT_DURATION_SECONDS),
+            "e 4 s na CENA (a aba Arrange), senão Arrange abre com Dur 0"
         );
         assert_eq!(
             product.doc.view_authored_end(None, false),
             Some(4.0),
-            "e a vista fecha (a veil aparece) desde o 1º frame, sem pilha"
+            "a vista fecha (a veil aparece) desde o 1º frame"
         );
         assert!(
             (product.doc.view_end_seconds(false) - 4.0).abs() < 1e-9,

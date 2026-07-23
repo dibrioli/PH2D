@@ -315,6 +315,10 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             edit(state, |doc, sel| {
                 let name = doc.fresh_clip_name();
                 let i = doc.add_clip(name);
+                // A new clip opens as a 4 s composition, not a derived-0 one (Enio,
+                // 2026-07-23) — the same product default the first clip gets. The
+                // AUTHORING layer stamps it; the data `add_clip` stays derived.
+                doc.set_clip_length_override(i, Some(crate::DEFAULT_DURATION_SECONDS));
                 doc.set_active(i);
                 sel.clear();
             });
@@ -372,7 +376,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // stack that happens to be open must not decide whose list it joins.
         I::AddContainer => edit(state, |doc, _| {
             let name = doc.fresh_container_name();
-            doc.add_container(name);
+            let c = doc.add_container(name);
+            // A new container opens as a 4 s composition too (Enio, 2026-07-23) — an
+            // empty one's derived 2 s bar is not the default the artist expects, and
+            // without an authored duration its veil never shows. Same product default,
+            // stamped at authoring.
+            doc.set_container_length_override(c, Some(crate::DEFAULT_DURATION_SECONDS));
         }),
         // Renaming an ASSET, so `edit` like its clip sibling — never `edit_at`: which stack
         // is open has nothing to do with whose name this is.

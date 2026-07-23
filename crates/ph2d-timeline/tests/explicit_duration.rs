@@ -238,6 +238,54 @@ fn a_no_stack_clip_duration_closes_the_view_regardless_of_keys_mode() {
     );
 }
 
+/// **A new clip and a new container open as 4 s compositions** (Enio, 2026-07-23),
+/// authored through the intent (the shell's create path) — not the raw `add_clip`/
+/// `add_container`, which stay derived for every test that leans on them. The veil
+/// follows: an authored duration is a visible one.
+#[test]
+fn a_new_clip_and_container_open_at_the_default_four_seconds() {
+    use ph2d_timeline::{
+        DEFAULT_DURATION_SECONDS, TimelineIntent as I, TimelineState, apply_intent,
+    };
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+
+    // The raw constructor stays derived (the invariant the crate tests rely on).
+    let raw = st.doc.add_clip("raw".into());
+    assert_eq!(
+        st.doc.clip_length_override(raw),
+        None,
+        "add_clip is the DATA layer — derived, no default"
+    );
+
+    // The AUTHORING intent stamps the 4 s default, and makes the new clip active.
+    apply_intent(&mut st, &mut ph, I::AddClip);
+    let active = st.doc.active_index();
+    assert_eq!(
+        st.doc.clip_length_override(active),
+        Some(DEFAULT_DURATION_SECONDS),
+        "a clip created by the artist opens at 4 s"
+    );
+    assert!(
+        (st.doc.clip_end_seconds(active) - 4.0).abs() < 1e-9,
+        "so the Dur box shows 4, not 0"
+    );
+
+    // A container the same — an empty one's 2 s bar is not the default, and without
+    // an authored duration its veil never shows.
+    apply_intent(&mut st, &mut ph, I::AddContainer);
+    let c = st.doc.containers().len() - 1;
+    assert_eq!(
+        st.doc.container_length_override(c),
+        Some(DEFAULT_DURATION_SECONDS),
+        "a container opens at 4 s, so its veil is visible from the start"
+    );
+    assert!(
+        (st.doc.container_length_seconds(c) - 4.0).abs() < 1e-9,
+        "and the container Dur box shows 4, not the empty 2"
+    );
+}
+
 // ── the loop never leaves the authored area ─────────────────────────────────
 
 /// **Nenhum loop passa do fim autorado** (Enio, 2026-07-23): armar ou arrastar

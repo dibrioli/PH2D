@@ -2,19 +2,20 @@
 
 > A família de **deformers do Motion foi para a GPU**: o 6º canal do resolver
 > (`reduce → broadcast → map`) e cinco nós CPU-only agora cozinham 100% no
-> device. Linha FECHADA, aguardando ordem de integração do Enio. **NÃO integra
-> nem pusha sozinha** (DIRETRIZ §1.5.9).
+> device. **SMOKE OK (Enio, 2026-07-22)** — a cena =16 (O ORGANISMO) aprovada.
+> Linha FECHADA, aguardando ordem de integração do Enio. **NÃO integra nem pusha
+> sozinha** (DIRETRIZ §1.5.9).
 
-*Resumo:* Linha `motion-nodes` pronta (HEAD `5daf12fe3`, 8 commits). Handoff abaixo. Aguardo ordem de integração.
+*Resumo:* Linha `motion-nodes` pronta e SMOKADA (HEAD `794793fd7`, 11 commits). Handoff abaixo. Aguardo ordem de integração.
 
 ---
 
 ## 1. Identidade
 
 - **Branch:** `line/motion-nodes`
-- **HEAD:** `5daf12fe3`
+- **HEAD:** `794793fd7`
 - **Base (merge-base com main):** `13a04c7aa`
-- **Commits:** 8 (6 de código + 2 de docs), ordem LINEAR e aditiva:
+- **Commits:** 11 (7 de código + 4 de docs), ordem LINEAR e aditiva:
   1. `3aba8ebbf` docs — o plano-mestre parou de mentir + a fila REAL
   2. `3df26029c` feat — o **REDUCE reusável** (o primitivo bit-exato, irmão do `scan`)
   3. `efd4182e5` feat — os **DEFORMERS** na GPU: o 6º canal do resolver + `bend`/`twist`
@@ -23,6 +24,9 @@
   6. `97da3ae80` docs — a fila REAL: o canal de redução FECHOU (4 nós, 3 operadores)
   7. `48a8114bb` feat — `kaleidoscope` (o 1º `StreamOp::SourceRows` que LÊ o template)
   8. `5daf12fe3` chore — fmt + import de `Dim` no teste do `gpu.rs` (achado do close-gate)
+  9. `12ab34e96` docs — o handoff de integração da linha
+  10. `33e5b322a` feat — **O ORGANISMO** (a cena =16 que smoka o canal inteiro num grafo) + 2 gates
+  11. `794793fd7` docs — o handoff inclui a cena =16 + os 2 gates novos
 
 ---
 
@@ -111,16 +115,21 @@ dependência cruzada com outras crates além do que já está no `main` do fork.
 - **`gpu_cpu_parity_deform` 9/9 no DEVICE** (bend/twist/spherize/four_point_warp/kaleidoscope + excursão + costura de redução + **O ORGANISMO**), serial — pior ε medido **9,8e-6** (deformers isolados) e **3,5e-5** (o organismo, 6 kernels de profundidade) vs bound `EPS_POS = 2e-4`.
 - **`the_organism_is_claimed_whole_on_the_device`** — device-free (roda em TODA lane, sem adapter): prova que a cena =16 (6 kernels: fan count-changing + 4 deformers redutores) é reivindicada INTEIRA pelo planner, ZERO fronteira de CPU.
 
-**Smoke VISUAL (não rodei windowed — é do integrador/Enio):**
+**Smoke VISUAL — `=16` APROVADO pelo Enio (2026-07-22).** ⚠️ **Rode de DENTRO da
+worktree** (a janela abre na raiz = `main`, que não tem estas cenas — foi o que
+deu "a velha cena da neve" no 1º try):
 ```
-env PH2D_GPU_COOK_DEMO=16 cargo run -p ph2d-host-desktop --release   # O ORGANISMO -- o canal INTEIRO num grafo
-env PH2D_GPU_COOK_DEMO=12 cargo run -p ph2d-host-desktop --release   # bend -> twist (cloth)
-env PH2D_GPU_COOK_DEMO=13 cargo run -p ph2d-host-desktop --release   # spherize (lens)
-env PH2D_GPU_COOK_DEMO=14 cargo run -p ph2d-host-desktop --release   # four_point_warp (flag)
-env PH2D_GPU_COOK_DEMO=15 cargo run -p ph2d-host-desktop --release   # kaleidoscope (mandala)
+cd Worktrees/line-motion-nodes && env PH2D_GPU_COOK_DEMO=16 cargo run -p ph2d-host-desktop --release   # O ORGANISMO -- o canal INTEIRO num grafo (SMOKADO)
+                                  env PH2D_GPU_COOK_DEMO=12 cargo run -p ph2d-host-desktop --release   # bend -> twist (cloth)
+                                  env PH2D_GPU_COOK_DEMO=13 cargo run -p ph2d-host-desktop --release   # spherize (lens)
+                                  env PH2D_GPU_COOK_DEMO=14 cargo run -p ph2d-host-desktop --release   # four_point_warp (flag)
+                                  env PH2D_GPU_COOK_DEMO=15 cargo run -p ph2d-host-desktop --release   # kaleidoscope (mandala)
 ```
 GPU ON por default; `PH2D_GPU_COOK=0` bissecta para a CPU (a paridade prova que
-as duas concordam). Todas as cenas são ~490k instâncias, FULLY GPU (`plan.is_fully_gpu()`).
+as duas concordam). As cenas 12-15 são ~490k instâncias; a =16 é 480k, FULLY GPU
+(`plan.is_fully_gpu()`). Só a =16 foi verificada windowed pelo Enio; 12-15 rodaram
+sob gates (paridade + censo), não foram olhadas na janela — se o integrador quiser,
+o mesmo comando as roda.
 
 **`=16` é a cena de smoke de TUDO num grafo só** — `grid → move → kaleidoscope →
 spherize → bend → twist → four_point_warp → output`: o fan count-changing
@@ -131,6 +140,7 @@ Bisecte com `PH2D_GPU_COOK=0`: as duas rotas concordam dentro do ε do canal. **
 qualquer estágio ficasse na CPU, o `is_fully_gpu()` da cena seria falso — e o gate
 device-free acima pega isso.**
 
-**⚠️ NÃO rodei** a varredura pesada `-- --ignored` completa (boids/voronoi a
-milhões) — por restrição de saturação de GPU do Enio, ela fica para a integração.
-O gate de paridade dos deformers (cenas leves 16k-70k) rodou 7/7 no device.
+**⚠️ NÃO rodei** a varredura pesada `-- --ignored` do repo INTEIRO (boids/voronoi
+a milhões) — por restrição de saturação de GPU do Enio, ela fica para o `ship.sh`
+da integração. Só o gate de paridade dos deformers (cenas leves 16k-70k + o
+organismo 1.728) rodou no device, **9/9**, serial.

@@ -1,8 +1,12 @@
 # 24 — A transferência sRGB vira TABELA (os dois knobs EXPERIMENTAL)
 
-> **Estado:** landou na `line/Painter` (2026-07-23), pendente de smoke.
-> **Escopo:** `ph2d-wet-paint` apenas. Nenhum schema, nenhum contrato congelado,
-> nenhum ADR, nenhuma dep nova. O caminho default (os dois knobs OFF) é
+> **Estado:** landou na `line/Painter` (2026-07-23). O 1º smoke REPROVOU
+> (*"ainda muito lento"*) e a 2ª rodada respondeu — ver **§6.1**, que é onde
+> está o número do produto.
+> **Escopo:** `ph2d-wet-paint` + o composite de `ph2d-tool-painter`
+> (**emenda 2 do [ADR-0109](../architecture/decisions/0109-rayon-exception-watercolor-composite.md)**:
+> o fan-out por linhas). Nenhum schema, nenhum contrato congelado, **nenhuma dep
+> nova** (o rayon já era do tool). O caminho default (os dois knobs OFF) é
 > **byte-idêntico** — o fingerprint da sessão não se moveu.
 
 ## 1. O reporte

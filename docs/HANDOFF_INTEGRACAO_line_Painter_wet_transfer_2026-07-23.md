@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | branch | `line/Painter` |
-| HEAD | `bfc2cffa9` |
+| HEAD | `e71f9e4c9` |
 | base do fork | `df91ef6ec` (= `main` no momento da abertura; rebase feito na abertura) |
-| commits | **3** (+ este doc e o doc 24) |
+| commits | **6** |
 
 Commits, em ordem (têm dependência entre si — integre a sequência inteira):
 
@@ -19,9 +19,14 @@ Commits, em ordem (têm dependência entre si — integre a sequência inteira):
 
 ## 2. Foundational / compartilhado tocado
 
-**NENHUM.** O diff inteiro vive em `crates/ph2d-wet-paint/` — verificado por
-`git diff --name-only main..HEAD`, zero linhas fora da crate. Sem `editor-core`,
-sem `ph2d-core`, sem `shells/*`, sem `tokens`, sem i18n, sem registry gerado.
+**Nenhum foundational.** O diff vive em `crates/ph2d-wet-paint/` +
+`crates/ph2d-tool-painter/src/tool/paint/wetpaint*` + a emenda no
+`docs/architecture/decisions/0109-*.md`. Sem `editor-core`, sem `ph2d-core`,
+sem `shells/*`, sem `tokens`, sem i18n, sem registry gerado.
+
+⚠️ **`ph2d-tool-painter` ganhou o fan-out por linhas do composite** (rayon, que
+essa crate **já** tinha por ADR-0109) — registrado como **emenda 2** naquele ADR,
+não contrabandeado. O engine continua sem thread-pool e sem dep nova.
 
 Arquivos: `src/colorops.rs` · `src/colorops/transfer.rs` (**novo**) ·
 `src/render.rs` · 4 arquivos de teste novos.

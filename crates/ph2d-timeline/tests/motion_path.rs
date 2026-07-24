@@ -27,6 +27,9 @@ fn rig(path: MotionPath, keys: &[(f64, f32)]) -> (World, Entity, TimelineDoc) {
     let mut w = World::new();
     let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
     let mut doc = TimelineDoc::new();
+    // Bind explicitly: a rig may want the binding (and its path) BEFORE any key —
+    // which is also the real order of the authoring gesture.
+    doc.bind(e.to_bits(), PropKind::Position);
     for &(t, s) in keys {
         doc.insert_key(
             e.to_bits(),
@@ -179,5 +182,156 @@ fn a_position_binding_and_its_path_round_trip_through_the_document() {
         (path.length() - 20.0).abs() < 1e-9,
         "the derived table was rebuilt on load: {}",
         path.length()
+    );
+}
+
+/// **O que o modo Path ganha de graça, provado em vez de prometido.**
+///
+/// A track mede DISTÂNCIA, então a inclinação que o graph editor desenha e que o
+/// speed graph plota é, literalmente, a velocidade do objeto na tela. Isto é a
+/// definição de parametrização por comprimento de arco enunciada como o fato que o
+/// artista vê — e é o argumento inteiro do ADR-0141 §2 para não inventar um canal 2D.
+///
+/// Oráculo por diferenças finitas nos DOIS lados (o número da track, e o ponto que o
+/// apply de fato escreve), nunca chamando `sample_speed`: uma função checada por ela
+/// mesma é um espelho, não um oráculo.
+#[test]
+fn the_slope_of_the_track_is_the_speed_on_the_canvas() {
+    // Uma curva de verdade, com quina: numa reta todo mundo acerta.
+    let path = MotionPath::new(vec![
+        PathAnchor::corner([0.0, 0.0]),
+        MotionPath::auto_smooth(Some([0.0, 0.0]), [10.0, 4.0], Some([16.0, -6.0])),
+        PathAnchor::corner([16.0, -6.0]),
+    ]);
+    let total = path.length() as f32;
+    // Ease-in-out: a velocidade VARIA, então uma identidade que só valesse em
+    // velocidade constante não passaria aqui.
+    let (mut w, e, mut doc) = rig(path, &[]);
+    for (t, s, interp) in [
+        (
+            0.0_f64,
+            0.0_f32,
+            Interp::Bezier {
+                x1: 0.6,
+                y1: 0.0,
+                x2: 0.4,
+                y2: 1.0,
+            },
+        ),
+        (2.0, total, Interp::Linear),
+    ] {
+        doc.insert_key(
+            e.to_bits(),
+            PropKind::Position,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(s),
+            interp,
+        );
+    }
+
+    let h = 1e-3;
+    let mut worst = 0.0f64;
+    for step in 1..20 {
+        let t = 2.0 * f64::from(step) / 20.0;
+        let track = |t: f64| {
+            doc.active_clip()
+                .track(doc.bindings()[0].target)
+                .map(|tr| {
+                    use ph2d_anim::AttributeEvaluator;
+                    match tr.sample(t) {
+                        AnimValue::Float(v) => f64::from(v),
+                        _ => unreachable!(),
+                    }
+                })
+                .unwrap()
+        };
+        let ds = track(t + h) - track(t - h);
+
+        apply_from_doc(&mut w, &mut doc, t - h);
+        let a = pos(&w, e);
+        apply_from_doc(&mut w, &mut doc, t + h);
+        let b = pos(&w, e);
+        let dp = f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt());
+
+        // O quociente é 1 quando "andar 1 na track" é "andar 1 na tela".
+        worst = worst.max((dp / ds - 1.0).abs());
+    }
+    // Medido: 5,2e-5 — o resíduo é a corda contra o arco na janela de diferença
+    // finita, não erro do motor.
+    println!("MEDIDO  pior desvio de |dp/ds - 1| = {worst:.2e}");
+    assert!(
+        worst < 0.01,
+        "a inclinação da track errou a velocidade na tela por {worst:.2e}: o valor que \
+         o speed graph plota não é a velocidade do objeto"
+    );
+}
+
+/// **Roving em modo Path é velocidade constante NA TELA.**
+///
+/// `Track::resolve_roving` deriva o tempo de uma key roving para velocidade constante
+/// em VALOR — e como o valor aqui é distância percorrida, isso é velocidade constante
+/// no canvas, sobre uma curva, sem nada novo. É o segundo item que o ADR-0141
+/// prometeu de graça.
+#[test]
+fn a_roving_key_gives_constant_speed_along_the_curve() {
+    let path = MotionPath::new(vec![
+        PathAnchor::corner([0.0, 0.0]),
+        MotionPath::auto_smooth(Some([0.0, 0.0]), [10.0, 6.0], Some([20.0, 0.0])),
+        PathAnchor::corner([20.0, 0.0]),
+    ]);
+    let (l0, l1) = (path.arclen_at(1).unwrap() as f32, path.length() as f32);
+    let (mut w, e, mut doc) = rig(path, &[]);
+
+    // Três keys, e a do MEIO no tempo ERRADO de propósito (0,2 s de 2 s, quando a
+    // metade do caminho já foi percorrida) — sem o rove o objeto dispara e depois
+    // rasteja.
+    let target = doc.bindings()[0].target;
+    let mut ids = Vec::new();
+    for (t, s) in [(0.0_f64, 0.0_f32), (0.2, l0), (2.0, l1)] {
+        let (_, id) = doc.insert_key(
+            e.to_bits(),
+            PropKind::Position,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(s),
+            Interp::Linear,
+        );
+        ids.push(id);
+    }
+
+    let speeds = |w: &mut World, doc: &mut TimelineDoc| -> Vec<f64> {
+        (1..12)
+            .map(|k| {
+                let t = 2.0 * f64::from(k) / 12.0;
+                let h = 5e-3;
+                apply_from_doc(w, doc, t - h);
+                let a = pos(w, e);
+                apply_from_doc(w, doc, t + h);
+                let b = pos(w, e);
+                f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt()) / (2.0 * h)
+            })
+            .collect()
+    };
+    let spread = |v: &[f64]| {
+        v.iter().copied().fold(0.0, f64::max) / v.iter().copied().fold(f64::INFINITY, f64::min)
+    };
+
+    // O CONTROLE: sem rove, a velocidade é tudo menos constante.
+    let before = spread(&speeds(&mut w, &mut doc));
+
+    let tr = doc.active_clip_mut().track_mut(target).unwrap();
+    assert!(tr.set_roving(ids[1], true), "a key do meio passa a rovar");
+    tr.resolve_roving();
+    let after = spread(&speeds(&mut w, &mut doc));
+
+    println!("MEDIDO  espalhamento de velocidade: {before:.2}x sem rove -> {after:.2}x com");
+    assert!(
+        before > 3.0,
+        "a fixture não contém o fenômeno: sem rove a velocidade já variava só \
+         {before:.2}x, então o gate passaria com o rove desligado"
+    );
+    assert!(
+        after < 1.15,
+        "com rove a velocidade ainda variou {after:.2}x — não é velocidade constante \
+         ao longo da curva"
     );
 }

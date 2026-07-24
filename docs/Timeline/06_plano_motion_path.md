@@ -141,6 +141,32 @@ bisseção antiga como oráculo) é `the_newton_inverse_agrees_with_the_bisectio
 - `the_schema_is_twelve_and_a_v11_blob_is_refused`
 - `separate_mode_is_byte_identical` (fingerprint — a lei #1: zero regressão)
 
+### ✅ FATIA 1 FECHADA (2026-07-23)
+
+**`MotionPath` mora no BINDING, não num vec paralelo ao `Track`** — refinamento do item 2 acima.
+A trajetória é propriedade do *movimento deste objeto*, não da leitura que um clip faz dele: dois
+clips que o animam pelo mesmo caminho são duas TEMPORIZAÇÕES da mesma viagem, que é exatamente o
+que a track de arco expressa. O pareamento âncora `i` ↔ key `i` continua sendo por ÍNDICE.
+
+**A porta única é `MotionPath::edit`** (a tabela é reconstruída antes de o chamador voltar) e há
+arch-gate lendo o fonte: exatamente **um** `&mut self.anchors` no arquivo, com controle positivo.
+
+**A tabela de arco NÃO viaja no arquivo** (`serde(from/into)` de `Vec<PathAnchor>`): número derivado
+em arquivo é 2ª cópia que pode discordar, e assim o load passa pelo único construtor que a
+reconstrói. Gate compara os bytes com os da lista de âncoras crua.
+
+⚠️ **O `rest` FICA escalar**, e isto corrigiu uma recomendação anterior desta linha. Ele está nas
+unidades do **TRACK**, e para Position o track mede *distância*: alargá-lo para `[f32; 2]` seria pôr
+um PONTO onde o consumidor mede metros-ao-longo-do-caminho. E blendar DISTÂNCIAS mantém o objeto
+**na** trajetória (meio caminho entre "3 m" e "7 m" é "5 m", ainda na curva) onde blendar os dois
+PONTOS cortaria a quina. O `rest` de Position é a **projeção** da pose autorada no caminho;
+**zero** seria o INÍCIO da trajetória — o "voa para a origem" que o campo existe para impedir.
+
+⚠️ **Duas fraquezas de fixture, minhas, achadas por mutação:** o gate de âncora passava `f64` onde
+uma key guarda `f32` (errava por **zero exato** — a forma de um gate que não mede nada); e o gate
+e2e só amostrava em **metades e fronteiras de segmento**, onde andar pelo PARÂMETRO concorda com
+andar por ARCO. Com uma amostra em 1/4 ele sangra.
+
 ## §5 — Fatia 2 — a amostragem (`ph2d-timeline`, headless)
 
 1. `apply` em modo Path: `ponto = caminho.em_arco(track.sample(t))`, pelo relógio da ENTIDADE (time
@@ -155,6 +181,30 @@ bisseção antiga como oráculo) é `the_newton_inverse_agrees_with_the_bisectio
   medida por diferenças finitas do ponto
 - `roving_gives_constant_speed_along_the_path`
 - perf
+
+### ✅ FATIA 2 FECHADA (2026-07-23) — **a lei da Fatia 0, honrada e medida**
+
+**18,77 µs/frame a 100 entidades = 0,113 % de um frame de 60 Hz** (orçamento 33,3 µs). A previsão
+da Fatia 0 (19 µs, extrapolada de 190 ns por amostra) errou por menos de 1 %.
+
+**O que o modo Path ganha de graça deixou de ser promessa:**
+- `the_slope_of_the_track_is_the_speed_on_the_canvas` — pior desvio de `|dp/ds − 1|` = **5,2e-5**
+  sobre uma curva com quina e ease-in-out. É o argumento inteiro do §2 do ADR: o número que o
+  speed graph plota **é** a velocidade do objeto. Oráculo por diferenças finitas nos DOIS lados,
+  nunca chamando `sample_speed` (uma função checada por ela mesma é espelho, não oráculo).
+- `a_roving_key_gives_constant_speed_along_the_curve` — espalhamento de velocidade **9,00× → 1,00×**,
+  com o controle "sem rove" no mesmo gate.
+
+⚠️ **O gate de perf precisou de DUAS camadas, e a segunda nasceu de uma mutação que sobreviveu.**
+Trocar o `partition_point` da busca de segmento por uma varredura sobre 512 âncoras move a razão de
+ponta a ponta para apenas **1,77×** — sob a barra de 2,0 — porque `Track::sample` e a inversa de
+Newton dominam o frame e **diluem** o defeito. O gate afiado mede `MotionPath::at` sozinha, com
+contraste de 1024× (8 → 8192 âncoras): **1,04× são e 16,45× com a varredura**
+([[feedback_layered_defenses_need_per_layer_gates]]).
+
+E a razão de ponta a ponta traz **controle positivo** — `MotionPath::project`, que é honestamente
+`O(âncoras)`, medida com o mesmo cronômetro na mesma fixture: **122×**. Sem ele, "a razão deu 1,0"
+seria uma afirmação sobre o cronômetro.
 
 ## §6 — Fatia 3 — a trajetória na TELA (`ph2d-panel-timeline` + shell)
 

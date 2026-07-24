@@ -238,6 +238,30 @@ trocou a busca binária por uma varredura).
 ⚠️ **A LUT fica documentada como a saída, com o número dela já medido** — acorda se uma cena real
 precisar de 1000+ entidades em Path *e* o perfil mostrar esta amostragem no topo.
 
+### A lei, VERIFICADA no produto (Fatia 2, 2026-07-23)
+
+Não na extrapolação de um micro-benchmark: no `apply_from_doc` real, com 100 entidades, cada uma
+com um binding Position de 64 âncoras e uma key por âncora.
+
+| | medido | a lei |
+|---|---|---|
+| frame a 100 entidades | **18,77 µs** = **0,113 %** | ≤ 0,2 % |
+| custo × âncoras (4 → 512, ponta a ponta) | **1,04×** | plano |
+| custo × âncoras (8 → 8192, `at` sozinha) | **1,04×** | plano |
+
+A previsão desta seção (19 µs) errou por menos de 1 %.
+
+⚠️ **A segunda metade da lei precisou de DOIS gates, e o segundo nasceu de uma mutação que
+sobreviveu ao primeiro.** Trocar a busca binária de segmento por uma varredura sobre 512 âncoras
+move a razão de ponta a ponta para **1,77×** — abaixo de qualquer barra sã — porque `Track::sample`
+e a inversa de Newton dominam o frame e **diluem** o defeito. O gate que pega mede `MotionPath::at`
+isolada, com contraste de 1024×: **16,45×** com a varredura. Uma lei com duas metades quer um gate
+por metade ([[feedback_layered_defenses_need_per_layer_gates]]).
+
+E a razão de ponta a ponta carrega **controle positivo** (`MotionPath::project`, honestamente
+`O(âncoras)`, mesmo cronômetro e mesma fixture: **122×**), porque uma razão de 1,0 sobre um
+cronômetro cego também dá 1,0.
+
 ⚠️ **Consequência cross-linha:** `inv_arclen` é **compartilhada** — Trim, Pattern Along Path, Zig
 Zag e texto-em-caminho (linha Vector) chamam a mesma função. Trocar bisseção por Newton **muda os
 bits** que ela devolve (1,3e-7). A Fatia 1 roda a suíte da `ph2d-vec-scene` e afina a tolerância

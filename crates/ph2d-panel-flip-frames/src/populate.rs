@@ -99,6 +99,10 @@ pub fn populate(store: &mut WidgetStore) {
         GHOST_MIN,
         GHOST_MAX,
     );
+    // **Pin** (light table): sem esta linha o botão é pintado, roteado e tem braço no
+    // shell — e mesmo assim fica MORTO sob o mouse, porque o Down do dispatcher só ativa
+    // um id que carrega estado no store. Foi exatamente assim que ele nasceu.
+    button(store, ids::FLIP_KEY_PIN);
 
     // Autoria.
     button(store, ids::FLIP_AUTOKEY);

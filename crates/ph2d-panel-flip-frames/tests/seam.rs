@@ -407,6 +407,15 @@ fn every_toolbar_control_is_actually_painted() {
         );
     }
 
+    // ⚠️ **E o Pin entra na lista** — ele nasceu FORA do `populate` (pintado, roteado,
+    // com braço no shell, e morto sob o mouse), e é a razão de existir o gate seguinte.
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_KEY_PIN && r.w > 0.0 && r.h > 0.0),
+        "o Pin (light table) nao e pintado com area clicavel"
+    );
+
     // E a célula do quadro 0 tem de estar lá — é o alvo de clique do usuário.
     let cell = ph2d_editor_core::ids::flip_cell_id(0);
     assert!(
@@ -559,4 +568,77 @@ fn opening_one_dropdown_closes_the_other() {
             "o popover do outro chip continuou aberto"
         );
     }
+}
+
+/// 🔴 **Todo botão da barra responde a um PONTEIRO de verdade** — não só a um
+/// `WidgetEvent::Click` entregue na mão.
+///
+/// ## Por que este gate existe (ele nasceu de um bug meu)
+///
+/// O **Pin** (light table) foi shipado sem a linha dele no `populate`: pintado, com hit
+/// registrado, na lista `BUTTONS`, com braço no shell — e **inerte sob o mouse**, porque o
+/// Down do dispatcher só torna ativo um id que carrega `InteractiveState` no store.
+///
+/// Nenhum gate existente pegava: o irmão acima prova que ele PINTA; o
+/// `every_toolbar_button_reaches_the_bus` entrega o evento **já construído** (pula a
+/// focabilidade); e o `architecture_panel_wiring_parity` é **cego para esta barra**, porque
+/// ela registra os hits num LAÇO sobre a tabela de itens — não há `register(ids::X)`
+/// literal para ele achar (a mesma cegueira que as 36 células da matriz de física
+/// documentaram).
+///
+/// Então a pergunta é feita do único jeito que não se pode fingir: **clicando**.
+#[test]
+fn every_toolbar_button_answers_a_real_pointer() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState::default();
+    ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+
+    // Os botões (não as caixas numéricas nem os chips de dropdown: aqueles têm mecânica
+    // própria e gates próprios logo acima).
+    let buttons = [
+        ("play", ids::FLIP_PLAY),
+        ("prev drawing", ids::FLIP_PREV_DRAWING),
+        ("next drawing", ids::FLIP_NEXT_DRAWING),
+        ("ghost", ids::FLIP_GHOST),
+        ("pin", ids::FLIP_KEY_PIN),
+        ("autokey", ids::FLIP_AUTOKEY),
+        ("falloff", ids::FLIP_FALLOFF),
+        ("additive", ids::FLIP_ADDITIVE),
+        ("key add", ids::FLIP_KEY_ADD),
+        ("key duplicate", ids::FLIP_KEY_DUP),
+        ("key instance", ids::FLIP_KEY_INSTANCE),
+        ("key unlink", ids::FLIP_KEY_UNLINK),
+        ("key delete", ids::FLIP_KEY_DELETE),
+        ("key left", ids::FLIP_KEY_LEFT),
+        ("key right", ids::FLIP_KEY_RIGHT),
+        ("tween add", ids::FLIP_TWEEN_ADD),
+        ("tween fade", ids::FLIP_TWEEN_FADE),
+        ("tween pairs", ids::FLIP_TWEEN_PAIRS),
+    ];
+    for (name, id) in buttons {
+        let painted = host.paint::<FlipFramesPanel>(&mut state, viewport);
+        let rect = painted
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("o botao '{name}' nao esta pintado"));
+        let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            events.iter().any(|e| matches!(e, WidgetEvent::Click(i) if *i == id)),
+            "o botao '{name}' esta PINTADO mas MORTO sob o mouse — falta a linha dele no \
+             `populate` (sem estado no store o dispatch nunca o torna ativo)"
+        );
+        // E o evento que o dispatcher emitiu, entregue ao painel, chega ao barramento.
+        for ev in events {
+            let _ = host.apply_panel_event::<FlipFramesPanel>(&mut state, ev);
+        }
+        assert!(
+            drain(&mut host)
+                .iter()
+                .any(|e| matches!(e, PanelEvent::Click(i) if *i == id)),
+            "o clique real no botao '{name}' nao chegou ao barramento"
+        );
+    }
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
 }

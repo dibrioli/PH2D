@@ -31,4 +31,37 @@ impl FlipStrip {
             }
         }
     }
+
+    /// **O pin acompanha a chave que ele aponta quando ela é MOVIDA.**
+    ///
+    /// Sem isto o artista fixa o quadro 11, arrasta aquela mesma célula para o 13, e o
+    /// fantasma **some** — o pin ficou apontando um quadro que não tem mais chave, e nada
+    /// na tela explica por quê. O que ele fixou foi *aquele desenho*; mover o desenho no
+    /// tempo não é soltá-lo.
+    pub(crate) fn remap_pin_after_move(&mut self, from: Frame, to: Frame) {
+        if let Some(i) = self.pinned.iter().position(|&k| k == from) {
+            self.pinned[i] = to;
+            self.pinned.sort_unstable();
+            self.pinned.dedup();
+        }
+    }
+
+    /// **O pin acompanha o EMPURRÃO da exposição.**
+    ///
+    /// `set_exposure` desloca todas as chaves depois de `key` pelo delta (é a semântica da
+    /// tira de exposição: esticar empurra, encolher puxa). Um pin numa dessas chaves tem de
+    /// ir junto — e este é o caso comum, não o exótico: esticar o primeiro quadro empurra
+    /// a fila inteira, então um único gesto orfanaria TODOS os pins à direita.
+    pub(crate) fn remap_pins_after_hold(&mut self, key: Frame, delta: i32) {
+        if delta == 0 {
+            return;
+        }
+        for k in &mut self.pinned {
+            if *k > key {
+                *k += delta;
+            }
+        }
+        self.pinned.sort_unstable();
+        self.pinned.dedup();
+    }
 }

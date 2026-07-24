@@ -4128,7 +4128,11 @@ impl crate::App {
             // GLOBAL e por DIFF: `post_frame_undo` compara o `ProjectState`, do qual o
             // `FlipDoc` faz parte. É o mesmo motivo pelo qual o drain do `PanelEvent`
             // logo acima também ignora o seu.)
-            let _ = crate::flip_strip_drag::apply_strip_intents(flip, self.flip_active_layer);
+            let _ = crate::flip_strip_drag::apply_strip_intents(
+                flip,
+                self.flip_active_layer,
+                &mut self.flip_strip,
+            );
             let (flip_active, flip_style) = flip_bridge::publish(
                 hero,
                 tools,

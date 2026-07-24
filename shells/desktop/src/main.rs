@@ -58,6 +58,8 @@ mod connector_live;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod contour_live;
+/// A cena de smoke do **Contour** (`PH2D_BUILD_SMOKE=25`) — irmã de `build_smoke`, teto de LOC.
+mod contour_smoke;
 mod corner_handles;
 mod cursor_pos;
 mod envelope_gesture;

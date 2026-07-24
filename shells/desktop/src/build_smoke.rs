@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=25` — a cena do **CONTOUR** (pesquisa `20_*` #9): uma estrela PELADA
+//!   (selecionada — é ela que prova o seam, do `Add Contour` ao Expand) e um hexágono que já vem
+//!   com 6 anéis armados, para o olho ter a que comparar.
 //! - `PH2D_BUILD_SMOKE=21` — a cena da **W0** (texto + efeitos): a palavra "PATH" com um Zig Zag
 //!   ATIVO, já selecionada. Mexa em qualquer knob da seção **Text** (ou escreva mais uma letra) —
 //!   **a rugosidade tem de continuar lá**. Antes da W0 ela sumia neste gesto, em silêncio.
@@ -116,6 +119,16 @@ impl crate::App {
         // A cena da PILHA de efeitos (ADR-0132), no módulo irmão `fx_smoke` — mesma razão de
         // LOC, e mesma disciplina: os níveis 13/14 nunca tocam um braço genérico abaixo. 13 é a
         // pilha animada; 14 é a cena do Apply / Convert (estática).
+        // A cena do CONTOUR (pesquisa `20_*` #9), no módulo irmão `contour_smoke` — mesma razão
+        // de LOC e mesma disciplina: o nível 25 nunca toca um braço genérico abaixo.
+        if level == 25 {
+            match f {
+                3 => self.smoke_contour_build(),
+                4 => self.smoke_contour_arm(),
+                _ => {}
+            }
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

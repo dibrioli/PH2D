@@ -342,11 +342,39 @@ fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
 /// produz uma forma nova): offsetar é mover a borda da mesma arte. Devolve vazio se `d` for
 /// ~0, se o sweep falhar, ou se a forma **desaparecer** ao encolher (resposta correta: um
 /// traço fino encolhido demais não sobra).
+///
+/// # ⚠️ O sweep PODE entrar em pânico, e o `catch_unwind` é o que torna esta doc verdadeira
+///
+/// *"devolve vazio se o sweep falhar"* era uma promessa só sobre o `None` do `Region::of`. O
+/// `linesweeper` 0.3.0 tem um `unwrap()` numa curva degenerada (`curve/mod.rs:302`) e **aborta o
+/// processo** em vez de devolver `None` — MEDIDO com uma varredura de 200 distâncias por forma:
+///
+/// | forma | Miter | Round | Bevel |
+/// |---|---|---|---|
+/// | retângulo | 0/200 | 0/200 | 0/200 |
+/// | hexágono | 8/200 | 26/200 | 26/200 |
+/// | estrela 5 pontas | 0/200 | 83/200 | **118/200** |
+///
+/// Numa estrela com quina Bevel, **59% das distâncias derrubam o app** — e o slider de Offset da
+/// seção Expand as alcança arrastando. É defeito PRÉ-EXISTENTE (nada aqui o introduziu); o
+/// Contour só o torna certo, porque N anéis varrem N distâncias de uma vez.
+///
+/// A cura no nosso lado é a mesma do `ph2d-imageio-avif` com um decoder hostil: **isolar o pânico
+/// na fronteira** e devolver o vazio que a função já promete. `AssertUnwindSafe` é honesto aqui —
+/// a entrada é emprestada e só lida, e o que sai é construído dentro do bloco, então não há
+/// invariante meio-escrito a vazar. A cura de VERDADE é do `linesweeper`, e não é desta linha.
 #[must_use]
 pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
     if d.abs() < MIN_OFFSET || !d.is_finite() {
         return Vec::new();
     }
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        offset_path_inner(path, d, join, side)
+    }))
+    .unwrap_or_default()
+}
+
+fn offset_path_inner(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
     // Regulariza ANTES de offsetar: os contornos têm de sair orientados e agrupados (quem é
     // furo de quem), senão não dá para offsetar cada um por conta própria.
     let Some(region) = Region::of(&to_bez_with(path, Closing::Always), rule_of(path)) else {

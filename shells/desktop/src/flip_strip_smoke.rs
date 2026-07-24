@@ -107,59 +107,70 @@ impl crate::App {
         );
         eprintln!(
             "\n\
-             O QUE ESTA NA TELA\n\
-             ==================\n\
-             Quatro barras coloridas (vermelha, amarela, ciano, verde), uma por quadro-chave,\n\
-             cada uma mais alta que a anterior. Embaixo, a TIRA DE FRAMES: quatro celulas de\n\
-             larguras DIFERENTES -- a largura de cada uma e' o tempo que aquele desenho fica\n\
-             na tela (4, 1, 6 e 2 quadros).\n\
+             ============================================================\n\
+             O QUE VOCE ESTA VENDO\n\
+             ============================================================\n\
+             No meio da tela: quatro barras coloridas (vermelha, amarela, ciano,\n\
+             verde), uma mais alta que a outra. Cada barra e' UM desenho seu.\n\
              \n\
-             1) ARRASTAR A CELULA = MOVER O DESENHO NO TEMPO\n\
-             ===============================================\n\
-             Pegue o CORPO de uma celula e arraste para os lados.\n\
+             Na faixa de baixo (a tira): quatro retangulos, um por desenho, e cada\n\
+             um com a LARGURA do tempo que aquele desenho fica na tela. Por isso\n\
+             eles tem tamanhos diferentes -- o numero dentro de cada um e' quantos\n\
+             quadros ele dura (4, 1, 6 e 2).\n\
              \n\
-                CERTO  : um contorno de acento mostra ONDE ela vai cair, e ela so pousa la\n\
-                         quando voce SOLTA. Ela ENCOSTA na celula vizinha e para (nao passa\n\
-                         por cima, nao some, nao troca de lugar com ninguem).\n\
-                ERRADO : a celula salta para debaixo do dedo no primeiro pixel; ou some; ou\n\
-                         atravessa a vizinha; ou o desenho muda enquanto voce ainda arrasta.\n\
+             Sao TRES coisas para conferir. Cada uma leva uns 10 segundos.\n\
              \n\
-             Um CLIQUE simples (sem arrastar) continua fazendo o de sempre: leva o playhead\n\
-             ate aquela chave. Um tremor de mao no clique NAO pode mover nada.\n\
+             ------------------------------------------------------------\n\
+             1) ARRASTAR UM RETANGULO -- muda o desenho de lugar no tempo\n\
+             ------------------------------------------------------------\n\
+             Segure o MEIO de um retangulo e arraste para o lado.\n\
              \n\
-             2) ARRASTAR A BORDA DIREITA = ESTICAR O HOLD\n\
-             ============================================\n\
-             Aproxime o ponteiro da BORDA DIREITA de uma celula larga (a ciano, de 6): uma\n\
-             barrinha clara aparece ali. Arraste-a.\n\
+             Enquanto voce arrasta, aparece um CONTORNO mostrando onde ele vai\n\
+             parar. Ele so muda de lugar de verdade quando voce SOLTA.\n\
              \n\
-                CERTO  : a celula cresce/encolhe e as celulas SEGUINTES sao EMPURRADAS (o\n\
-                         tempo e' relativo -- esticar o quadro 5 nao apaga o 11). O numero\n\
-                         dentro da celula (a exposicao) acompanha.\n\
-                ERRADO : a celula come a vizinha; ou encolhe ate sumir (o minimo e' 1); ou o\n\
-                         gesto move a chave em vez de estica-la.\n\
+             Ao chegar no vizinho, ele ENCOSTA e para -- nao passa por cima, nao\n\
+             troca de lugar, nao some.\n\
              \n\
-             Numa celula ESTREITA (a amarela, de 1 quadro) a barrinha NAO aparece -- ali nao\n\
-             cabem os dois alvos, e a celula inteira continua sendo de MOVER. Isso e'\n\
-             deliberado: perder o esticar num zoom apertado e' honesto (a caixa 'Hold' da\n\
-             barra continua la); perder o mover seria um bug.\n\
+             (So CLICAR, sem arrastar, continua fazendo o de sempre: pula para\n\
+              aquele desenho. Uma tremidinha de mao no clique nao pode mover nada.)\n\
              \n\
-             3) O PIN = LIGHT TABLE (a mesa de luz)\n\
-             ======================================\n\
-             Os fantasmas estao ligados em +-1, entao no quadro 0 voce ve a barra vermelha\n\
-             (a sua) e, apagada, a AMARELA (a vizinha). A ciano e a verde estao longe demais.\n\
+             ------------------------------------------------------------\n\
+             2) ARRASTAR A BEIRADA DIREITA -- muda quanto tempo ele dura\n\
+             ------------------------------------------------------------\n\
+             Chegue com o mouse na BEIRADA DIREITA do retangulo grande (o ciano,\n\
+             o de 6). Uma barrinha clara aparece ali. Arraste ela.\n\
              \n\
-             Va ate a ultima chave (celula verde), aperte **Pin** na barra (grupo do Ghost),\n\
-             e volte para o quadro 0.\n\
+             O retangulo estica ou encolhe, o numero dentro dele acompanha, e os\n\
+             retangulos SEGUINTES sao empurrados junto (esticar um desenho nao\n\
+             pode comer o proximo).\n\
              \n\
-                CERTO  : a barra VERDE agora aparece apagada (azulada, porque esta' no\n\
-                         futuro) mesmo estando a 11 quadros de distancia -- e a amarela\n\
-                         continua la. A celula fixada ganha um pontinho de acento no canto\n\
-                         de BAIXO. Apertar Pin de novo solta.\n\
-                ERRADO : a verde nao aparece (o pin nao chegou ao render); ou ela SUBSTITUI\n\
-                         a vizinha amarela (um pin acompanha os vizinhos, nao os troca).\n\
+             No retangulo mais fino (o amarelo, de 1 quadro) essa barrinha NAO\n\
+             aparece -- ali ele e' estreito demais para caber os dois gestos, e\n\
+             continua servindo so para arrastar. Isso e' de proposito: se voce\n\
+             quiser mudar a duracao dele, use a caixa 'Hold' la em cima.\n\
              \n\
-             (Os pins sao da sessao: fechar o app os esquece. Persistir e' decisao sua --\n\
-              esta' nomeada no handoff.)\n"
+             ------------------------------------------------------------\n\
+             3) O BOTAO 'Pin' -- deixa um desenho visivel de longe\n\
+             ------------------------------------------------------------\n\
+             Agora voce esta no comeco. Repare que da para ver, apagadinho, o\n\
+             desenho VIZINHO (a barra amarela) -- e' o fantasma de sempre. Os\n\
+             outros dois estao longe demais e nao aparecem.\n\
+             \n\
+             Clique no ULTIMO retangulo (o verde) para ir ate ele. Aperte o botao\n\
+             'Pin' na barra de cima. Volte para o primeiro retangulo (o vermelho).\n\
+             \n\
+             A barra VERDE agora tem de aparecer apagada, mesmo estando longe --\n\
+             e a amarela tem de continuar aparecendo tambem. O retangulo que voce\n\
+             fixou fica com um pontinho no canto de baixo. Apertar 'Pin' de novo\n\
+             desfaz.\n\
+             \n\
+             (Isso serve para deixar um desenho de referencia na tela enquanto\n\
+              voce trabalha em outro -- a mesa de luz.)\n\
+             \n\
+             ============================================================\n\
+             Se qualquer uma das tres nao fizer o que esta escrito, me diga O QUE\n\
+             ACONTECEU -- e' so isso que eu preciso.\n\
+             ============================================================\n"
         );
     }
 }

@@ -8,7 +8,10 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{AreaTorque, BodyKind, Collider, ColliderShape, GravityScale, RigidBody};
+use ph2d_physics_ecs::{
+    AreaEffector, AreaForceWorldAxes, AreaTorque, BodyKind, Collider, ColliderShape, GravityScale,
+    RigidBody,
+};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 impl crate::App {
@@ -214,6 +217,100 @@ impl crate::App {
              -- no Play ela gira sozinha, e ao selecionar o sprite dela o Inspector mostra a \
              linha Torque com o valor 1 (a prova de que a row reflete o collider). B liga o \
              contorno e o glifo de giro violeta; deixe Physics MARCADO. De Play."
+        );
+    }
+    /// **Cena 34 (W-AreaFrame).** Duas faixas idênticas, um bit de diferença.
+    ///
+    /// A zona de força era autorada em eixos de MUNDO, então **girar o sensor não girava
+    /// o vento** — uma esteira diagonal era inexprimível. Agora a força é autorada no
+    /// frame da ZONA, e o toggle `Force Axes: Zone | World` prende a direção de volta ao
+    /// mundo (o `useGlobalAngle` da Unity).
+    ///
+    /// As duas zonas têm a MESMA rotação (40°) e a MESMA força (0,9 N ao longo do próprio
+    /// +X). A única diferença é o marcador `AreaForceWorldAxes` na da direita. Medido
+    /// headless, 120 ticks (2 s), caixas de 0,7 m:
+    ///
+    /// | faixa | deslocamento | ângulo |
+    /// |---|---|---|
+    /// | **Zone** (esquerda) | `(2,81, 2,36)` | **40,0°** — o da zona, ao décimo |
+    /// | **World** (direita) | `(3,67, 0,00)` | **0,0°** — o vento velho |
+    ///
+    /// ⚠️ As caixas flutuam (`GravityScale(0)`) pelo motivo da cena 32: assim a trajetória
+    /// vem INTEIRA da zona e o ângulo é legível, sem gravidade a torcê-lo.
+    ///
+    /// **O gesto que fecha a quarta condição de UI:** selecione a zona da ESQUERDA e
+    /// clique `World` na linha *Force Axes* — as caixas dela passam a andar na horizontal,
+    /// como as da direita, e a SETA laranja do overlay gira junto (ela lê a mesma porta que
+    /// o solver). Clique `Zone` e o diagonal volta.
+    pub(crate) fn physics_smoke_force_frame(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        // 40 graus: nem eixo (onde seno e cosseno são triviais e um frame errado passaria
+        // despercebido), nem 45 (onde as duas componentes são iguais e trocá-las não se vê).
+        let rot = 40.0f32.to_radians();
+
+        let mut lane = |cx: f32, world_axes: bool, tag: &str, tint: [f32; 4]| {
+            let mut zone = world.spawn((
+                Transform {
+                    translation: Vec2::new(cx, 0.0),
+                    rotation: rot,
+                    scale: Vec2::new(1.0, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+                Sprite::atlas(WHITE_TILE_KEY, [6.0, 6.0], tint),
+                Name::new(format!("{tag} zone")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 3.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                AreaEffector { force: [0.9, 0.0] },
+            ));
+            if world_axes {
+                zone.insert(AreaForceWorldAxes);
+            }
+            // Três caixas empilhadas na vertical: uma só diria "andou", três dizem "andaram
+            // PARALELAS", que é o que uma direção de vento parece.
+            for (i, dy) in [-1.6f32, 0.0, 1.6].iter().enumerate() {
+                world.spawn((
+                    Transform::from_translation(Vec2::new(cx - 1.5, *dy)),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], [0.95, 0.80, 0.30, 1.0]),
+                    Name::new(format!("{tag} box {i}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 0.35,
+                            half_y: 0.35,
+                        },
+                        ..Collider::default()
+                    },
+                    GravityScale(0.0),
+                ));
+            }
+        };
+
+        lane(-7.0, false, "Zone-frame", [0.4, 0.7, 0.55, 0.16]);
+        lane(7.0, true, "World-axes", [0.55, 0.4, 0.85, 0.16]);
+
+        eprintln!(
+            "[physics-smoke 34] O FRAME DA ZONA. Duas zonas com a MESMA rotacao (40 graus) \
+             e a MESMA forca (0,9 N no proprio +X); a da DIREITA carrega o marcador \
+             World-axes. ESQUERDA (Zone): as caixas sobem na DIAGONAL, no angulo da zona -- \
+             medido headless em 2s: deslocamento (2,81, 2,36) = 40,0 graus. DIREITA (World): \
+             as mesmas caixas andam na HORIZONTAL -- (3,67, 0,00) = 0,0 graus, o vento velho. \
+             AGORA O GESTO: selecione a zona da ESQUERDA, Inspector > Physics Body > linha \
+             'Force Axes' -> clique World: as caixas dela passam a andar na horizontal e a \
+             SETA laranja gira junto (ela le a mesma porta que o solver). Clique Zone e o \
+             diagonal volta. B liga o contorno e a seta; deixe Physics MARCADO. De Play."
         );
     }
 }

@@ -31,7 +31,7 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 77
+//! physics-ecs-c9 body_count: 79
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
@@ -603,6 +603,46 @@ fn main() {
             ..Collider::default()
         },
         Transform::from_translation(Vec2::new(-82.0, 0.0)),
+    ));
+
+    // Uma zona de forca ROTACIONADA (W-AreaFrame): a forca e autorada no frame DELA e
+    // rodada pela pose dela, entao este e o unico corpo do harness cujo impulso passa
+    // pelo `zone_force_world` -- um par (sin, cos) vindo do `UnitComplex` do rapier e
+    // dois produtos de `f32` por sub-passo. Meia volta de giro (nem eixo, nem 45 graus)
+    // para que seno e cosseno sejam os dois nao-triviais e um erro de ulp em qualquer um
+    // deles mova o hash. Lane propria a esquerda da mesa giratoria.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 2.5,
+                half_y: 2.5,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaEffector { force: [3.0, 0.0] },
+        Transform {
+            translation: Vec2::new(-92.0, 0.0),
+            rotation: 0.9,
+            scale: Vec2::new(1.0, 1.0),
+            skew_x: 0.0,
+            skew_y: 0.0,
+        },
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-92.0, 0.0)),
     ));
 
     let mut bridge = PhysicsBridge::new();

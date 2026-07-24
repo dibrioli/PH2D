@@ -113,6 +113,7 @@ impl crate::App {
             "31" => self.physics_smoke_fast_impact(),
             "32" => self.physics_smoke_spin_zone(),
             "33" => self.physics_smoke_author_spin(),
+            "34" => self.physics_smoke_force_frame(),
             _ => self.physics_smoke_drop(),
         }
 

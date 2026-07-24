@@ -5,7 +5,10 @@
 //! que estes gates existem para matar: o `recook` não ler o componente (0 cópias), o `detach` não
 //! remover o vínculo (as cópias sobrevivem à soltura), o `link` prender a forma a si mesma.
 
-use super::{PatternHandle, PatternLive, detach, handle, link, link_candidate, spec_of};
+use super::{
+    PatternHandle, PatternLive, detach, handle, link, link_candidate, rotation_of,
+    set_rotation, spec_of,
+};
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
@@ -225,4 +228,107 @@ fn the_handles_follow_the_copies_under_flip() {
         (start - 0.75).abs() < 0.02,
         "Start lógico sob flip: {start}"
     );
+}
+
+// ── A ATITUDE do motivo (`VecPatternRotation`) ───────────────────────────────────
+
+/// **A rotação autorada chega às CÓPIAS** — o gate ponta-a-ponta da metade shell: escrever pela
+/// porta muda o que o `dispatch` desenharia, no MESMO frame.
+///
+/// O oráculo é a geometria derivada, não o componente: o quadrado de 40 deitado dá 2 cópias na
+/// reta de 100; girado 90° ele continua a dar 2 (um quadrado é simétrico — de propósito, para
+/// isolar a ATITUDE do avanço), mas cada cópia sai **virada**, e a viragem mede-se pela diagonal.
+///
+/// ⚠️ Mutação: o `recook` não ler a rotação (passar `0.0` ao `spec_to_motor`) deixa a geometria
+/// idêntica à do não-girado ⇒ RED.
+#[test]
+fn the_authored_attitude_reaches_the_copies() {
+    let (scene, mut sim, map, motif, guide) = scene();
+    assert!(link(&mut sim, &map, motif, guide));
+
+    let mut live = PatternLive::default();
+    live.recook(&scene, &sim, &map);
+    let flat: Vec<[f64; 2]> = live.live()[&motif][0].verts.iter().map(|v| v.anchor).collect();
+
+    assert!(set_rotation(&mut sim, &map, motif, 45.0), "escreveu a atitude");
+    live.recook(&scene, &sim, &map);
+    let turned: Vec<[f64; 2]> = live.live()[&motif][0].verts.iter().map(|v| v.anchor).collect();
+
+    assert_eq!(flat.len(), turned.len(), "o nº de vértices não muda");
+    let moved = flat
+        .iter()
+        .zip(&turned)
+        .filter(|(a, b)| (a[0] - b[0]).abs() > 1e-6 || (a[1] - b[1]).abs() > 1e-6)
+        .count();
+    assert_eq!(
+        moved,
+        flat.len(),
+        "a 45° TODO vértice da cópia devia ter-se movido; moveram-se {moved} de {}",
+        flat.len()
+    );
+}
+
+/// **O neutro DESTACA o componente** — arquivo sem no-op, e *"não tem o componente"* volta a
+/// significar exatamente *"não está girado"*, sem uma segunda forma de o dizer.
+///
+/// ⚠️ Mutação: `set_rotation` inserir `VecPatternRotation(0.0)` em vez de remover deixa o
+/// componente vivo com um zero ⇒ RED (e o save passaria a carregar um no-op para sempre).
+#[test]
+fn the_neutral_attitude_detaches_the_component() {
+    let (_scene, mut sim, map, motif, guide) = scene();
+    assert!(link(&mut sim, &map, motif, guide));
+    assert_eq!(rotation_of(&sim, &map, motif), 0.0, "nasce sem rotação");
+
+    assert!(set_rotation(&mut sim, &map, motif, 30.0));
+    assert_eq!(rotation_of(&sim, &map, motif), 30.0);
+    let e = ph2d_ecs::Entity::from_bits(map[&motif]);
+    assert!(
+        sim.world().get::<ph2d_ecs::VecPatternRotation>(e).is_some(),
+        "com ângulo autorado o componente existe"
+    );
+
+    assert!(set_rotation(&mut sim, &map, motif, 0.0));
+    assert!(
+        sim.world().get::<ph2d_ecs::VecPatternRotation>(e).is_none(),
+        "no neutro o componente tem de ser REMOVIDO, não guardado a zero"
+    );
+    assert_eq!(rotation_of(&sim, &map, motif), 0.0, "e continua a ler 0");
+}
+
+/// **Soltar leva a atitude junto.** Sem isto a rotação vira estado invisível que RESSUSCITA no
+/// próximo `link`: o artista prende o motivo a outra curva e as cópias nascem tortas por um ângulo
+/// que ele não vê em lado nenhum.
+///
+/// ⚠️ Mutação: `detach` remover só o `VecPatternPath` ⇒ o re-link lê 45° ⇒ RED.
+#[test]
+fn detaching_takes_the_attitude_with_it() {
+    let (_scene, mut sim, map, motif, guide) = scene();
+    assert!(link(&mut sim, &map, motif, guide));
+    assert!(set_rotation(&mut sim, &map, motif, 45.0));
+
+    assert!(detach(&mut sim, &map, motif), "soltou");
+    assert_eq!(
+        rotation_of(&sim, &map, motif),
+        0.0,
+        "a atitude tem de morrer com o vínculo"
+    );
+
+    assert!(link(&mut sim, &map, motif, guide), "prendeu de novo");
+    assert_eq!(
+        rotation_of(&sim, &map, motif),
+        0.0,
+        "o re-link não pode ressuscitar o ângulo do vínculo anterior"
+    );
+}
+
+/// **Girar um motivo SOLTO não quer dizer nada** — e a porta recusa, em vez de deixar um
+/// componente órfão que ressuscitaria no primeiro `link`.
+#[test]
+fn the_attitude_needs_a_link() {
+    let (_scene, mut sim, map, motif, _guide) = scene();
+    assert!(
+        !set_rotation(&mut sim, &map, motif, 45.0),
+        "sem vínculo a porta recusa"
+    );
+    assert_eq!(rotation_of(&sim, &map, motif), 0.0);
 }

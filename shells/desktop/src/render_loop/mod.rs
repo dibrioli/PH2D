@@ -1550,6 +1550,7 @@ impl crate::App {
             let mut pending_pp_end: Option<f64> = None;
             let mut pending_pp_slide: Option<f64> = None;
             let mut pending_pp_offset: Option<f64> = None;
+            let mut pending_pp_rotation: Option<f64> = None;
             // O Picker de guia (Enio 2026-07-23): o botão só ARMA — a shell captura a fonte e o
             // clique seguinte no canvas escolhe o guia. Um por feature; a fonte é resolvida no drain.
             let mut pending_pp_pick = false;
@@ -1925,6 +1926,10 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SLIDE {
                                 // O CENTRO do trecho -- o drain re-centra a janela (move Start+End).
                                 pending_pp_slide = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_ROTATION {
+                                // A ATITUDE do motivo sobre a guia, em GRAUS -- o event.rs do painel
+                                // ja' converteu o track bipolar (`-180..180`); aqui e' valor.
+                                pending_pp_rotation = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_OFFSET {
                                 // Desvio perpendicular (unidades de mundo), ja' bipolar (`-2..2`)
                                 // convertido pelo event.rs do painel -- aqui e' valor.
@@ -2904,6 +2909,13 @@ impl crate::App {
                 && let Some(motif) = pp_motif
             {
                 crate::pattern_live::edit(sim, &self.vec_entities, motif, |l| l.offset = v as f32);
+            }
+            // A rotação tem porta PRÓPRIA (`set_rotation`) e não o `edit`: ela vive num componente
+            // separado, para não bumpar o `PROJECT_SCHEMA` -- e essa porta destaca no neutro.
+            if let Some(v) = pending_pp_rotation
+                && let Some(motif) = pp_motif
+            {
+                crate::pattern_live::set_rotation(sim, &self.vec_entities, motif, v as f32);
             }
             // Slide re-centra o trecho `[Start, End]` PRESERVANDO o comprimento: move as duas
             // âncoras juntas (o pedido do Enio). O centro é clampado para a janela caber em [0,1].
@@ -4044,6 +4056,11 @@ impl crate::App {
                     pat.map_or(1.0, |p| f64::from(p.spacing)),
                     pat.map_or(0.0, |p| f64::from(p.offset)),
                     pat.is_some_and(|p| p.flip),
+                    f64::from(crate::pattern_live::current_rotation(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                    )),
                 );
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.

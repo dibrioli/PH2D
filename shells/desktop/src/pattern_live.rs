@@ -26,7 +26,7 @@
 //! medido como problema. Memoizar exige detectar a mudança do guia (cozido + assado), e adicioná-lo
 //! sem uma medição que o justifique é otimização prematura ([[project_m5_perf_validated]]).
 
-use ph2d_ecs::{Entity, SimWorld, VecPatternPath};
+use ph2d_ecs::{Entity, SimWorld, VecPatternPath, VecPatternRotation};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::pattern_path::{PatternSpec, pattern_along};
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -58,7 +58,8 @@ impl PatternLive {
                 continue; // guia apagado / degenerado → o motivo volta a ser desenhado (fonte)
             };
             let motif = path.cooked();
-            let copies = pattern_along(&motif, &arc, &spec_to_motor(&spec, arc.total()));
+            let rot = rotation_of(sim, map, path.id);
+            let copies = pattern_along(&motif, &arc, &spec_to_motor(&spec, rot, arc.total()));
             // ⚠️ Só insere se HÁ cópia. Vazio (o guia é curto demais para caber uma) fica AUSENTE
             // de propósito — e ausente faz o `dispatch` desenhar a FONTE (o motivo). Mostrar o
             // motivo *"não coube"* é mais honesto que sumir com ele, ao contrário do offset (onde
@@ -76,17 +77,69 @@ impl PatternLive {
     }
 }
 
-/// O `PatternSpec` do motor a partir do componente: a fração vira comprimento AQUI (a mesma porta,
-/// pela mesma razão do texto — um número que metade lê como fração e a outra como distância é o bug
-/// que não dá erro em lado nenhum).
-fn spec_to_motor(spec: &VecPatternPath, total: f64) -> PatternSpec {
+/// O `PatternSpec` do motor a partir dos componentes: a fração vira comprimento AQUI (a mesma
+/// porta, pela mesma razão do texto — um número que metade lê como fração e a outra como distância
+/// é o bug que não dá erro em lado nenhum).
+///
+/// ⚠️ **É aqui que os DOIS componentes viram um.** O vínculo (`VecPatternPath`) e a atitude
+/// (`VecPatternRotation`) são separados no ECS para não bumpar o `PROJECT_SCHEMA`, mas o motor vê
+/// um `PatternSpec` só — o mesmo desenho do `AreaEffect` da física, cujo bundle de runtime junta o
+/// que o ECS mantém apartado. Quem está a jusante nunca sabe que eram dois.
+fn spec_to_motor(spec: &VecPatternPath, rotation_deg: f32, total: f64) -> PatternSpec {
     PatternSpec {
         start_offset: f64::from(spec.start_offset) * total,
         end_offset: f64::from(spec.end_offset) * total,
         spacing: f64::from(spec.spacing),
         offset: f64::from(spec.offset),
         flip: spec.flip,
+        rotation_deg: f64::from(rotation_deg),
     }
+}
+
+/// A atitude autorada do motivo, em graus. **Ausência do componente é `0.0`** — não há caso
+/// especial a lembrar, e é o que faz todo documento anterior a esta wave ler como não-girado.
+#[must_use]
+pub(crate) fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> f32 {
+    let Some(&bits) = map.get(&id) else {
+        return 0.0;
+    };
+    sim.world()
+        .get::<VecPatternRotation>(Entity::from_bits(bits))
+        .map_or(0.0, |r| r.0)
+}
+
+/// **Escreve** a atitude do motivo. Porta ÚNICA da rotação (o slider e o campo numérico passam por
+/// aqui), irmã do [`edit`] — que não serve, porque a rotação não vive no `VecPatternPath`.
+///
+/// ⚠️ **Destaca no neutro:** `0.0` REMOVE o componente em vez de o guardar zerado. É o idioma dos
+/// overrides opcionais (`GravityScale`, `MassOverride`): arquivo sem no-op, e *"não tem o
+/// componente"* volta a significar exatamente *"não está girado"* — se guardássemos o zero, a
+/// afirmação passaria a ter duas formas e o load teria de conhecer as duas.
+///
+/// Exige o vínculo: girar um motivo que não cavalga nada não quer dizer nada, e deixaria um
+/// componente órfão que ressuscitaria no próximo `link`.
+pub(crate) fn set_rotation(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    motif: VecPathId,
+    deg: f32,
+) -> bool {
+    let Some(&bits) = map.get(&motif) else {
+        return false;
+    };
+    let e = Entity::from_bits(bits);
+    if sim.world().get::<VecPatternPath>(e).is_none() {
+        return false;
+    }
+    let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+        return false;
+    };
+    if deg == 0.0 {
+        em.remove::<VecPatternRotation>();
+    } else {
+        em.insert(VecPatternRotation(deg));
+    }
+    true
 }
 
 /// O pattern vivo de `id`, se houver. Porta única: o cozimento, o painel e o `Apply` perguntam AQUI.
@@ -198,8 +251,24 @@ pub(crate) fn current(
     spec_of(sim, map, linked_motif(sim, map, selection)?)
 }
 
+/// A atitude VIVA do motivo em foco, para o painel publicar o slider no lugar certo em vez de o
+/// deixar saltar no primeiro frame. Irmã da [`current`], e pela mesma razão que ela existe.
+#[must_use]
+pub(crate) fn current_rotation(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+) -> f32 {
+    linked_motif(sim, map, selection).map_or(0.0, |m| rotation_of(sim, map, m))
+}
+
 /// **Solta** o motivo do caminho (o caminho FICA — soltar é remover o componente). `true` se havia
 /// vínculo.
+///
+/// ⚠️ **Leva a ATITUDE junto.** A rotação só quer dizer alguma coisa em cima de uma guia; deixada
+/// para trás ela vira estado invisível que **ressuscita** no próximo `link` — o artista prende o
+/// motivo a outra curva e as cópias nascem tortas por um ângulo que ele não vê em lado nenhum.
+/// Soltar é desfazer a relação inteira, não metade dela.
 pub(crate) fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -> bool {
     let Some(&bits) = map.get(&motif) else {
         return false;
@@ -210,6 +279,7 @@ pub(crate) fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -
     }
     if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
         em.remove::<VecPatternPath>();
+        em.remove::<VecPatternRotation>();
     }
     true
 }

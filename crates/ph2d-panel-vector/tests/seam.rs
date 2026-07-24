@@ -1723,7 +1723,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         (true, ids::VECTOR_PATTERNPATH_DETACH, "Detach from Path"),
     ] {
         ph2d_panel_vector::set_current_patternpath_can_link(!linked);
-        ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, 1.0, 0.0, false);
+        ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, 1.0, 0.0, false, 0.0);
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         let r = host
@@ -1761,7 +1761,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         let id = ids::VECTOR_PATTERNPATH_PICK;
         ph2d_panel_vector::set_current_patternpath_can_link(false);
         ph2d_panel_vector::set_current_patternpath_can_pick(true);
-        ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
+        ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         let r = host
@@ -1787,7 +1787,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         ph2d_panel_vector::set_current_patternpath_can_pick(false);
     }
     ph2d_panel_vector::set_current_patternpath_can_link(false);
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
 }
 
 /// **A seção Pattern on Path oferece só o que se aplica, e a AUSÊNCIA é metade do gate.**
@@ -1812,7 +1812,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     // Sem vínculo, sem seleção-de-dois E sem seleção-de-um: a seção inteira some (nem o cabeçalho).
     ph2d_panel_vector::set_current_patternpath_can_link(false);
     ph2d_panel_vector::set_current_patternpath_can_pick(false);
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     assert!(
         rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
             && rect(ids::VECTOR_PATTERNPATH_PICK).is_none()
@@ -1848,7 +1848,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     );
 
     // Preso: o inverso exato — os controles, nem a porta de entrada nem o Picker.
-    ph2d_panel_vector::set_current_patternpath(true, 0.5, 0.8, 2.0, 0.5, true);
+    ph2d_panel_vector::set_current_patternpath(true, 0.5, 0.8, 2.0, 0.5, true, 45.0);
     assert!(
         rect(ids::VECTOR_PATTERNPATH_LINK).is_none()
             && rect(ids::VECTOR_PATTERNPATH_PICK).is_none(),
@@ -1859,8 +1859,84 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     assert!(rect(ids::VECTOR_PATTERNPATH_END).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_SLIDE).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_OFFSET).is_some());
+    assert!(rect(ids::VECTOR_PATTERNPATH_ROTATION).is_some());
     assert!(rect(ids::VECTOR_PATTERNPATH_DETACH).is_some());
 
-    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false);
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     ph2d_panel_vector::set_current_patternpath_can_link(false);
+}
+
+/// **O slider Rotation chega ao bus em GRAUS**, não com o track (`0..1`) — a conversão bipolar mora
+/// na fronteira do painel, e o shell nunca precisa saber que existe um track.
+///
+/// É o irmão exato do gate do Bend, e existe pela mesma razão: sem ele, o shell receberia `0.0` na
+/// ponta ESQUERDA do curso (onde o artista pediu **−180°**) e carimbaria "não girado" — um valor
+/// errado apresentado como certo, que nenhum gate de unidade do motor apanha, porque o motor
+/// receberia um número perfeitamente válido.
+///
+/// As três amostras são as que distinguem os mapas: o centro (`0.5 -> 0°`) sozinho passaria mesmo
+/// com o track a viajar cru, e é por isso que as pontas estão aqui.
+#[test]
+fn the_rotation_slider_reaches_the_bus_in_degrees() {
+    ph2d_panel_vector::set_current_patternpath(true, 0.0, 1.0, 1.0, 0.0, false, 0.0);
+    for (track, want) in [(0.0_f32, -180.0_f64), (0.5, 0.0), (1.0, 180.0)] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        host.set_slider_value(ids::VECTOR_PATTERNPATH_ROTATION, track);
+        let outcome = host.apply_panel_event::<VectorPanel>(
+            &mut panel_state,
+            WidgetEvent::ValueChanged(ids::VECTOR_PATTERNPATH_ROTATION),
+        );
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "a Rotation foi ignorada — falta o arm de ValueChanged no `event.rs`"
+        );
+        let got = host.drained_actions().into_iter().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
+                if c == ids::VECTOR_PATTERNPATH_ROTATION =>
+            {
+                Some(v)
+            }
+            _ => None,
+        });
+        assert_eq!(
+            got,
+            Some(want),
+            "track {track} devia chegar como {want}° no bus, chegou {got:?}"
+        );
+    }
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
+}
+
+/// **A row da Rotation é REGISTRADA, não só pintada** — pintar e hit-testar não basta: sem o
+/// `populate`, o widget nasce morto sob o mouse e o `ValueChanged` nunca sai.
+///
+/// Este gate dirige um **clique real** (`click_at` no retângulo pintado), que é o que separa
+/// *"tem retângulo"* de *"o ponteiro o alcança"*. É a falha exata que o `MockPanelHost::new()`
+/// esconde (ele pula o `populate`) e que já deixou dez chips verdes e mortos noutra linha.
+#[test]
+fn the_rotation_row_is_reachable_by_a_pointer() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    ph2d_panel_vector::set_current_patternpath(true, 0.0, 1.0, 1.0, 0.0, false, 0.0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let rects = host.paint::<VectorPanel>(&mut st, VIEWPORT);
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == ids::VECTOR_PATTERNPATH_ROTATION)
+        .map(|(_, r)| *r)
+        .expect("a row Rotation tem de ser pintada com o vínculo vivo");
+    // O caminho REAL do ponteiro: é isto que falha se o id não estiver registrado.
+    let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert!(
+        !events.is_empty(),
+        "a row Rotation está pintada mas MORTA sob o mouse — falta o registro no `populate`"
+    );
+    ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
 }

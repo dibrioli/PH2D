@@ -22,6 +22,7 @@ thread_local! {
     static SPACING: Cell<f64> = const { Cell::new(1.0) };
     static OFFSET: Cell<f64> = const { Cell::new(0.0) };
     static FLIP: Cell<bool> = const { Cell::new(false) };
+    static ROTATION: Cell<f64> = const { Cell::new(0.0) };
 }
 
 /// Publica se a seleção corrente permite **prender** um motivo a um caminho (dois caminhos).
@@ -45,6 +46,7 @@ pub(crate) fn can_pick() -> bool {
 }
 
 /// Publica o estado do vínculo do motivo corrente: se existe, e com que valores.
+#[allow(clippy::too_many_arguments)]
 pub fn set_current_patternpath(
     linked: bool,
     start: f64,
@@ -52,6 +54,7 @@ pub fn set_current_patternpath(
     spacing: f64,
     offset: f64,
     flip: bool,
+    rotation: f64,
 ) {
     LINKED.with(|c| c.set(linked));
     START.with(|c| c.set(start));
@@ -59,6 +62,7 @@ pub fn set_current_patternpath(
     SPACING.with(|c| c.set(spacing));
     OFFSET.with(|c| c.set(offset));
     FLIP.with(|c| c.set(flip));
+    ROTATION.with(|c| c.set(rotation));
 }
 
 pub(crate) fn linked() -> bool {
@@ -83,4 +87,10 @@ pub(crate) fn offset() -> f64 {
 
 pub(crate) fn flip() -> bool {
     FLIP.with(Cell::get)
+}
+
+/// A ATITUDE do motivo sobre a guia, em graus. `0.0` também é o que se publica sem vínculo — mas
+/// aí a seção nem pinta a row, então o número não é lido.
+pub(crate) fn rotation() -> f64 {
+    ROTATION.with(Cell::get)
 }

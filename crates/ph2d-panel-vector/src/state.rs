@@ -365,7 +365,8 @@ pub use textpath::{set_current_textpath, set_current_textpath_can_link};
 mod patternpath;
 pub(crate) use patternpath::{
     can_link as pp_can_link, can_pick as pp_can_pick, end as pp_end, flip as pp_flip,
-    linked as pp_linked, offset as pp_offset, spacing as pp_spacing, start as pp_start,
+    linked as pp_linked, offset as pp_offset, rotation as pp_rotation, spacing as pp_spacing,
+    start as pp_start,
 };
 pub use patternpath::{
     set_current_patternpath, set_current_patternpath_can_link, set_current_patternpath_can_pick,

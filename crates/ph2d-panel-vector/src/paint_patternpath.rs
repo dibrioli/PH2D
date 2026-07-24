@@ -133,6 +133,26 @@ impl BodyCtx<'_> {
             &format!("{off:.2}"),
             y,
         );
+        // Rotation — a ATITUDE do motivo em cima da guia, BIPOLAR em GRAUS. Fica ao lado do Offset
+        // porque os dois dizem como a cópia se põe em relação à curva (um desloca, o outro vira);
+        // o track `0..1` mapeia `−ROTATION_MAX..ROTATION_MAX` e `0.5` é deitado ao longo da curva.
+        let rot = self
+            .store
+            .number_value(ids::VECTOR_PATTERNPATH_ROTATION_NUM)
+            .unwrap_or_else(state::pp_rotation);
+        let rot_track = self
+            .store
+            .slider(ids::VECTOR_PATTERNPATH_ROTATION)
+            .map_or_else(|| rotation_track(state::pp_rotation()), |(_, v)| v);
+        y = self.slider_row(
+            "Rotation",
+            ids::VECTOR_PATTERNPATH_ROTATION,
+            ids::VECTOR_PATTERNPATH_ROTATION_NUM,
+            rot_track,
+            rot,
+            &format!("{rot:.0}\u{00b0}"),
+            y,
+        );
         // O lado é um par exclusivo (deste / do outro), não um checkbox — a mesma razão do texto.
         let flip = state::pp_flip();
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
@@ -153,4 +173,9 @@ fn spacing_track(spacing: f64) -> f32 {
 /// O track `0..1` do slider a partir do Offset bipolar `−OFFSET_MAX..OFFSET_MAX` — `0.5` = zero.
 fn offset_track(offset: f64) -> f32 {
     (((offset / crate::OFFSET_MAX) * 0.5 + 0.5) as f32).clamp(0.0, 1.0)
+}
+
+/// O track `0..1` do slider a partir da Rotation bipolar `−ROTATION_MAX..ROTATION_MAX` — `0.5` = 0°.
+fn rotation_track(deg: f64) -> f32 {
+    (((deg / crate::ROTATION_MAX) * 0.5 + 0.5) as f32).clamp(0.0, 1.0)
 }

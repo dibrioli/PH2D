@@ -40,6 +40,11 @@ pub(crate) const SPACING_MAX: f64 = 4.0; // LITERAL-PX-OK: faixa no domínio do 
 /// bipolar `−OFFSET_MAX..OFFSET_MAX` (track `0..1`, `0.5` = sobre a curva). Empurra as cópias para
 /// fora/dentro da curva; lido pelo paint, populate e event pela MESMA porta.
 pub(crate) const OFFSET_MAX: f64 = 2.0;
+/// A meia-faixa da ATITUDE do motivo no Pattern on Path, em GRAUS: o slider é bipolar
+/// `−ROTATION_MAX..ROTATION_MAX` (track `0..1`, `0.5` = deitado ao longo da curva). Meia volta para
+/// cada lado cobre o círculo inteiro sem repetir ângulo, e o neutro cai no centro do curso — o
+/// mesmo desenho do Offset, e lido pelo paint, populate e event pela MESMA porta.
+pub(crate) const ROTATION_MAX: f64 = 180.0; // LITERAL-PX-OK: faixa no domínio do documento
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;

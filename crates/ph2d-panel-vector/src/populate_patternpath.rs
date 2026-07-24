@@ -12,6 +12,8 @@ use ph2d_editor_core::interaction::WidgetStore;
 const PATTERNPATH_SPACING_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento
 /// Passo do campo numérico do Start (fração do comprimento do caminho).
 const PATTERNPATH_START_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento
+/// Passo do campo numérico da Rotation, em GRAUS — 1° por tecla é o passo que se autora.
+const PATTERNPATH_ROTATION_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento
 
 /// Os quatro botões + os dois sliders do Pattern on Path. Registrados INCONDICIONALMENTE como
 /// todos os irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
@@ -77,5 +79,22 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
         -crate::OFFSET_MAX,
         crate::OFFSET_MAX,
         PATTERNPATH_SPACING_STEP,
+    );
+    // Rotation: a ATITUDE em GRAUS, BIPOLAR (`−180..180`), `0.5` (o default) = deitado ao longo da
+    // curva. Mesmo mapa do Offset; o `scale`/`offset` do chip são os MESMOS que o `event.rs` aplica.
+    slider_chip(
+        store,
+        ids::VECTOR_PATTERNPATH_ROTATION,
+        ids::VECTOR_PATTERNPATH_ROTATION_NUM,
+        0.5,
+        0.0,
+        (2.0 * crate::ROTATION_MAX) as f32,
+        -crate::ROTATION_MAX as f32,
+    );
+    store.set_number_range(
+        ids::VECTOR_PATTERNPATH_ROTATION_NUM,
+        -crate::ROTATION_MAX,
+        crate::ROTATION_MAX,
+        PATTERNPATH_ROTATION_STEP,
     );
 }

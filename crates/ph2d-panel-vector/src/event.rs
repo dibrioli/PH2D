@@ -133,6 +133,13 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
             t.mul_add(2.0 * crate::OFFSET_MAX, -crate::OFFSET_MAX)
         }));
     }
+    // Rotation: BIPOLAR em GRAUS `−ROTATION_MAX..ROTATION_MAX`, `0.5` = deitado na curva. O mesmo
+    // mapa do Offset — e o MESMO que o `populate` dá ao chip, senão slider e campo divergiriam.
+    if id == ids::VECTOR_PATTERNPATH_ROTATION {
+        return Some(forward_track(host, id, 0.5, |t| {
+            t.mul_add(2.0 * crate::ROTATION_MAX, -crate::ROTATION_MAX)
+        }));
+    }
     None
 }
 

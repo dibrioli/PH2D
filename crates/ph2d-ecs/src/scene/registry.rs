@@ -282,7 +282,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // da cena -- e o caminho continuaria lá. As cópias são desenho derivado, então o que o snapshot
     // tem de guardar é a RELAÇÃO, e é este componente.
     reg.register::<crate::VecPatternPath>("ph2d::ecs::VecPatternPath");
-    // A ATITUDE do motivo sobre a guia (o par opcional do vínculo acima). Componente separado, e
+    // A ORIENTAÇÃO do motivo sobre a guia (o par opcional do vínculo acima). Componente separado, e
     // não um campo no `VecPatternPath`, porque o blob é postcard POSICIONAL: apender campo bumparia
     // o `PROJECT_SCHEMA`, e um bump RECUSA todo projeto já salvo. Ausência = sem rotação, então
     // documento antigo carrega inalterado. Sem o registro, o ângulo autorado morreria no primeiro

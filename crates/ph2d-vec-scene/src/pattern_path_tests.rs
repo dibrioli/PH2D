@@ -258,7 +258,7 @@ fn a_keystroke_recook_stays_under_the_kill() {
     );
 }
 
-// ── A ATITUDE DO MOTIVO SOBRE A CURVA (`rotation_deg`) ───────────────────────────
+// ── A ORIENTAÇÃO DO MOTIVO SOBRE A CURVA (`rotation_deg`) ───────────────────────────
 //
 // Quatro propriedades, e cada uma tem uma mutação que só ela sangra. A que mais importa é a do
 // AVANÇO: girar muda o que o motivo ocupa ao longo da guia, e se a medida não acompanhar, o
@@ -320,7 +320,7 @@ fn the_advance_follows_the_rotated_extent() {
     }
 }
 
-/// **A cópia veste a atitude autorada.** A seta aponta `+x` no motivo; a 90° ela tem de apontar
+/// **A cópia veste a orientação autorada.** A seta aponta `+x` no motivo; a 90° ela tem de apontar
 /// para a NORMAL da guia (`+y` numa reta que corre em `+x`). Medido da geometria emitida
 /// (`ponta − centroide`), nunca do ângulo que entrou.
 ///
@@ -347,7 +347,7 @@ fn the_copies_wear_the_authored_attitude() {
     }
 }
 
-/// **A atitude é relativa à TANGENTE, não ao mundo** — e é isto que a torna parte do
+/// **A orientação é relativa à TANGENTE, não ao mundo** — e é isto que a torna parte do
 /// pattern-along em vez de um giro solto.
 ///
 /// Num círculo, com 90°, cada seta tem de ser **perpendicular à tangente ALI** (paralela à normal

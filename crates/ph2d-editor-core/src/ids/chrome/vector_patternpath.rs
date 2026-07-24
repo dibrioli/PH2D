@@ -54,10 +54,9 @@ pub const VECTOR_PATTERNPATH_SLIDE_NUM: NodeId = hash_node_id("vector.patternpat
 pub const VECTOR_PATTERNPATH_OFFSET: NodeId = hash_node_id("vector.patternpath.offset");
 /// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_OFFSET`].
 pub const VECTOR_PATTERNPATH_OFFSET_NUM: NodeId = hash_node_id("vector.patternpath.offset.num");
-/// **Rotation** — a ATITUDE do motivo em cima da guia, em graus, bipolar (`0` = deitado ao longo
+/// **Rotation** — a ORIENTAÇÃO do motivo em cima da guia, em graus, bipolar (`0` = deitado ao longo
 /// da curva, `90` = de pé, atravessado). É constante em todas as cópias e relativa à TANGENTE, não
-/// ao mundo: numa curva as cópias continuam a acompanhar a guia e só ganham a atitude por cima.
+/// ao mundo: numa curva as cópias continuam a acompanhar a guia e só ganham a orientação por cima.
 pub const VECTOR_PATTERNPATH_ROTATION: NodeId = hash_node_id("vector.patternpath.rotation");
 /// O campo numérico gêmeo do [`VECTOR_PATTERNPATH_ROTATION`].
-pub const VECTOR_PATTERNPATH_ROTATION_NUM: NodeId =
-    hash_node_id("vector.patternpath.rotation.num");
+pub const VECTOR_PATTERNPATH_ROTATION_NUM: NodeId = hash_node_id("vector.patternpath.rotation.num");

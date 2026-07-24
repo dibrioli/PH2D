@@ -1927,7 +1927,7 @@ impl crate::App {
                                 // O CENTRO do trecho -- o drain re-centra a janela (move Start+End).
                                 pending_pp_slide = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_ROTATION {
-                                // A ATITUDE do motivo sobre a guia, em GRAUS -- o event.rs do painel
+                                // A ORIENTAÇÃO do motivo sobre a guia, em GRAUS -- o event.rs do painel
                                 // ja' converteu o track bipolar (`-180..180`); aqui e' valor.
                                 pending_pp_rotation = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_OFFSET {

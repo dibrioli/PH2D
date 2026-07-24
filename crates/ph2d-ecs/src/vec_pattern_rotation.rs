@@ -1,9 +1,9 @@
-//! **A atitude do motivo sobre a curva** — [`VecPatternRotation`], o par opcional do
+//! **A orientação do motivo sobre a curva** — [`VecPatternRotation`], o par opcional do
 //! [`crate::VecPatternPath`] (Pattern Along Path, plano 23).
 //!
 //! Gira cada cópia dentro do referencial da guia: `90` põe o motivo de pé, atravessado na curva.
 //! É **constante** em todas as cópias e **relativa à tangente**, não ao mundo — numa curva as
-//! cópias continuam a acompanhar a guia e só ganham uma atitude fixa em cima dela. O giro que
+//! cópias continuam a acompanhar a guia e só ganham uma orientação fixa em cima dela. O giro que
 //! **progride** de cópia para cópia (um leque) é outra coisa e tem outro dono: o Repeater
 //! (`fx_repeat`), dirigido por índice e não pela guia.
 //!
@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::SimComponent;
 
-/// A atitude do motivo sobre a guia, em **GRAUS**.
+/// A orientação do motivo sobre a guia, em **GRAUS**.
 ///
 /// A unidade está no nome porque um ângulo sem unidade declarada é o bug que não dá erro em lado
 /// nenhum: a fronteira do painel fala graus, o motor converte para o rotor uma única vez por

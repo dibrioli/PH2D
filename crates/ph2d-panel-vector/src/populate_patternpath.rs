@@ -80,7 +80,7 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
         crate::OFFSET_MAX,
         PATTERNPATH_SPACING_STEP,
     );
-    // Rotation: a ATITUDE em GRAUS, BIPOLAR (`−180..180`), `0.5` (o default) = deitado ao longo da
+    // Rotation: a ORIENTAÇÃO em GRAUS, BIPOLAR (`−180..180`), `0.5` (o default) = deitado ao longo da
     // curva. Mesmo mapa do Offset; o `scale`/`offset` do chip são os MESMOS que o `event.rs` aplica.
     slider_chip(
         store,

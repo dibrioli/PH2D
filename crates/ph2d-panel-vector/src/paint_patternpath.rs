@@ -133,7 +133,7 @@ impl BodyCtx<'_> {
             &format!("{off:.2}"),
             y,
         );
-        // Rotation — a ATITUDE do motivo em cima da guia, BIPOLAR em GRAUS. Fica ao lado do Offset
+        // Rotation — a ORIENTAÇÃO do motivo em cima da guia, BIPOLAR em GRAUS. Fica ao lado do Offset
         // porque os dois dizem como a cópia se põe em relação à curva (um desloca, o outro vira);
         // o track `0..1` mapeia `−ROTATION_MAX..ROTATION_MAX` e `0.5` é deitado ao longo da curva.
         let rot = self

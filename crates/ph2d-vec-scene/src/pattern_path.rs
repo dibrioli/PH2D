@@ -21,7 +21,7 @@
 //!
 //! O [`PatternSpec::rotation_deg`] gira o motivo dentro do referencial da cópia — ou seja, **em
 //! relação à guia**, não ao mundo. Toda cópia recebe o MESMO ângulo, então numa curva as cópias
-//! continuam a acompanhar a tangente e só ganham uma atitude fixa em cima dela (90° = de pé,
+//! continuam a acompanhar a tangente e só ganham uma orientação fixa em cima dela (90° = de pé,
 //! atravessadas na curva). Isto **não** é o que o § seguinte recusa: ali o que não existe é uma
 //! rotação que **progride** de cópia para cópia (um leque), que é do Repeater e é dirigida por
 //! índice, não pela guia.
@@ -90,7 +90,7 @@ pub struct PatternSpec {
     pub offset: f64,
     /// Põe o padrão do **outro lado** da curva, a percorrê-la ao contrário.
     pub flip: bool,
-    /// **Atitude do motivo sobre a curva, em GRAUS**, dentro do referencial da cópia — `90` põe o
+    /// **Orientação do motivo sobre a curva, em GRAUS**, dentro do referencial da cópia — `90` põe o
     /// motivo de pé, atravessado na guia. Constante em todas as cópias (§ do módulo); a unidade
     /// está no NOME porque um ângulo sem unidade declarada é o bug que não dá erro em lado nenhum
     /// (a mutação que troca `to_radians` por radianos crus sangra em três gates).

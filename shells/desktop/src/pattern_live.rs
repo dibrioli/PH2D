@@ -81,7 +81,7 @@ impl PatternLive {
 /// porta, pela mesma razão do texto — um número que metade lê como fração e a outra como distância
 /// é o bug que não dá erro em lado nenhum).
 ///
-/// ⚠️ **É aqui que os DOIS componentes viram um.** O vínculo (`VecPatternPath`) e a atitude
+/// ⚠️ **É aqui que os DOIS componentes viram um.** O vínculo (`VecPatternPath`) e a orientação
 /// (`VecPatternRotation`) são separados no ECS para não bumpar o `PROJECT_SCHEMA`, mas o motor vê
 /// um `PatternSpec` só — o mesmo desenho do `AreaEffect` da física, cujo bundle de runtime junta o
 /// que o ECS mantém apartado. Quem está a jusante nunca sabe que eram dois.
@@ -96,7 +96,7 @@ fn spec_to_motor(spec: &VecPatternPath, rotation_deg: f32, total: f64) -> Patter
     }
 }
 
-/// A atitude autorada do motivo, em graus. **Ausência do componente é `0.0`** — não há caso
+/// A orientação autorada do motivo, em graus. **Ausência do componente é `0.0`** — não há caso
 /// especial a lembrar, e é o que faz todo documento anterior a esta wave ler como não-girado.
 #[must_use]
 pub(crate) fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> f32 {
@@ -108,7 +108,7 @@ pub(crate) fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> 
         .map_or(0.0, |r| r.0)
 }
 
-/// **Escreve** a atitude do motivo. Porta ÚNICA da rotação (o slider e o campo numérico passam por
+/// **Escreve** a orientação do motivo. Porta ÚNICA da rotação (o slider e o campo numérico passam por
 /// aqui), irmã do [`edit`] — que não serve, porque a rotação não vive no `VecPatternPath`.
 ///
 /// ⚠️ **Destaca no neutro:** `0.0` REMOVE o componente em vez de o guardar zerado. É o idioma dos
@@ -251,21 +251,17 @@ pub(crate) fn current(
     spec_of(sim, map, linked_motif(sim, map, selection)?)
 }
 
-/// A atitude VIVA do motivo em foco, para o painel publicar o slider no lugar certo em vez de o
+/// A orientação VIVA do motivo em foco, para o painel publicar o slider no lugar certo em vez de o
 /// deixar saltar no primeiro frame. Irmã da [`current`], e pela mesma razão que ela existe.
 #[must_use]
-pub(crate) fn current_rotation(
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    selection: &[VecPathId],
-) -> f32 {
+pub(crate) fn current_rotation(sim: &SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> f32 {
     linked_motif(sim, map, selection).map_or(0.0, |m| rotation_of(sim, map, m))
 }
 
 /// **Solta** o motivo do caminho (o caminho FICA — soltar é remover o componente). `true` se havia
 /// vínculo.
 ///
-/// ⚠️ **Leva a ATITUDE junto.** A rotação só quer dizer alguma coisa em cima de uma guia; deixada
+/// ⚠️ **Leva a ORIENTAÇÃO junto.** A rotação só quer dizer alguma coisa em cima de uma guia; deixada
 /// para trás ela vira estado invisível que **ressuscita** no próximo `link` — o artista prende o
 /// motivo a outra curva e as cópias nascem tortas por um ângulo que ele não vê em lado nenhum.
 /// Soltar é desfazer a relação inteira, não metade dela.

@@ -89,7 +89,7 @@ pub(crate) fn flip() -> bool {
     FLIP.with(Cell::get)
 }
 
-/// A ATITUDE do motivo sobre a guia, em graus. `0.0` também é o que se publica sem vínculo — mas
+/// A ORIENTAÇÃO do motivo sobre a guia, em graus. `0.0` também é o que se publica sem vínculo — mas
 /// aí a seção nem pinta a row, então o número não é lido.
 pub(crate) fn rotation() -> f64 {
     ROTATION.with(Cell::get)

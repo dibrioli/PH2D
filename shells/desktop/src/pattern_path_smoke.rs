@@ -18,8 +18,14 @@
 //!    cópias caem só no trecho `[Start, End]` do arco.
 //! 5. **Slide** — desliza o trecho inteiro (as duas âncoras juntas) pela curva.
 //! 6. **Offset** — empurra as cópias para fora/dentro da curva (perpendicular).
-//! 7. **Side: Other side** — o padrão passa para o outro lado (e as fichas viram junto).
-//! 8. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica**.
+//! 7. **Rotation** — a ORIENTAÇÃO da seta em cima do arco, em graus. Arrastar até **90°** põe as
+//!    setas **de pé, atravessadas** na curva (elas continuam a acompanhar o arco — a rotação é
+//!    relativa à TANGENTE, não ao mundo), e a contagem **sobe** porque de pé a seta ocupa a
+//!    ALTURA em vez da LARGURA. Medido nesta cena: **15 -> 21 cópias (1,40x), virando 87°**.
+//!    Se o que você vir na tela discordar destes números, é a mensagem que está errada.
+//! 8. **Side: Other side** — o padrão passa para o outro lado (e as fichas viram junto).
+//! 9. **Detach from Path** — o motivo volta a ser uma forma solta e **o guia fica** (e a
+//!    Rotation morre com o vínculo: re-prender não ressuscita o ângulo).
 //!
 //! (Alternativa: selecionar a seta *e* o arco mostra **Pattern on Path**, a auto-ligação por dois.)
 
@@ -94,8 +100,13 @@ fn arm(app: &mut crate::App) {
          [smoke]   4. Arraste Start/End (slider) OU as duas FICHAS ambar na curva (modo Select).\n\
          [smoke]   5. Arraste Slide -- desliza o trecho INTEIRO (as duas ancoras juntas) pela curva.\n\
          [smoke]   6. Arraste Offset -- empurra as copias para fora/dentro da curva (perpendicular).\n\
-         [smoke]   7. Side: \"Other side\" -- o padrao passa para o outro lado, e as FICHAS viram junto.\n\
-         [smoke]   8. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica.\n\
+         [smoke]   7. Arraste Rotation ate' 90 graus -- as setas ficam DE PE', atravessadas na curva,\n\
+         [smoke]      e continuam a acompanhar o arco (a orientação e' relativa a` TANGENTE, nao ao\n\
+         [smoke]      mundo). A contagem SOBE: de pe' a seta ocupa a ALTURA, nao a LARGURA.\n\
+         [smoke]      MEDIDO nesta cena: 15 -> 21 copias (1.40x), virando 87 graus.\n\
+         [smoke]   8. Side: \"Other side\" -- o padrao passa para o outro lado, e as FICHAS viram junto.\n\
+         [smoke]   9. \"Detach from Path\" -- o motivo volta a ser forma solta, e o ARCO fica\n\
+         [smoke]      (a Rotation morre com o vinculo: re-prender NAO ressuscita o angulo).\n\
          [smoke]   (Alternativa: selecione a SETA *e* o ARCO -> a secao mostra \"Pattern on Path\", a\n\
          [smoke]    auto-ligacao por dois selecionados -- o guia e' o de maior extensao.)"
     );
@@ -125,6 +136,19 @@ mod tests {
     use ph2d_vec_scene::arc_path::ArcPath;
     use ph2d_vec_scene::pattern_path::{PatternSpec, pattern_along};
 
+    /// A direção que a seta aponta, em graus — `ponta − centroide` da cópia.
+    fn dir(c: &VecPath) -> f64 {
+        let n = c.verts.len() as f64;
+        let ctr = c
+            .verts
+            .iter()
+            .fold([0.0, 0.0], |a, v| [a[0] + v.anchor[0], a[1] + v.anchor[1]]);
+        let tip = c.verts[1].anchor; // a ponta da seta é o índice 1
+        (tip[1] - ctr[1] / n)
+            .atan2(tip[0] - ctr[0] / n)
+            .to_degrees()
+    }
+
     /// **A cena mostra o que a mensagem diz** (a política de física): as cópias tilam o arco E
     /// giram com ele. A sonda roda ANTES de a mensagem ser escrita, e fica.
     #[test]
@@ -146,17 +170,6 @@ mod tests {
 
         // As setas GIRAM: a direção ponta−centroide varia mais de 60° ao longo do arco (senão a
         // cena demonstra o pattern sem mostrar a rotação — a diferença do Repeater).
-        let dir = |c: &VecPath| {
-            let n = c.verts.len() as f64;
-            let ctr = c
-                .verts
-                .iter()
-                .fold([0.0, 0.0], |a, v| [a[0] + v.anchor[0], a[1] + v.anchor[1]]);
-            let tip = c.verts[1].anchor; // a ponta da seta é o índice 1
-            (tip[1] - ctr[1] / n)
-                .atan2(tip[0] - ctr[0] / n)
-                .to_degrees()
-        };
         let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
         for c in &copies {
             let a = dir(c);
@@ -166,6 +179,55 @@ mod tests {
         assert!(
             hi - lo > 60.0,
             "as setas mal giram ({lo:.0} a {hi:.0} graus)"
+        );
+    }
+
+    /// **O passo 8 do roteiro é MEDIDO, não afirmado** (a política que a `line/physics` fixou:
+    /// a sonda headless roda ANTES de a mensagem ser escrita).
+    ///
+    /// Duas coisas que o artista tem de ver ao arrastar a Rotation, e os números que o terminal
+    /// promete: a seta **vira** (a 90° ela aponta para a normal do arco, não ao longo dele) e a
+    /// **contagem sobe**, porque a seta de pé ocupa a ALTURA (0,36) em vez da LARGURA (0,50) —
+    /// razão 1,39×. Se algum dos dois deixar de ser verdade, é a MENSAGEM que está a mentir.
+    #[test]
+    fn the_scene_shows_the_attitude_turning_and_repacking() {
+        let guide = ArcPath::from_contour(&arc(), false).expect("arco");
+        let motif = VecPath {
+            verts: [[0.0, -0.18], [0.5, 0.0], [0.0, 0.18]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            ..VecPath::default()
+        };
+        let flat = pattern_along(&motif, &guide, &PatternSpec::default());
+        let upright = pattern_along(
+            &motif,
+            &guide,
+            &PatternSpec {
+                rotation_deg: 90.0,
+                ..PatternSpec::default()
+            },
+        );
+        // A contagem sobe na razão largura/altura do motivo (0,50 / 0,36).
+        let ratio = upright.len() as f64 / flat.len() as f64;
+        assert!(
+            ratio > 1.2,
+            "de pé a seta devia empacotar mais denso (0,50/0,36 = 1,39x); \
+             veio {} -> {} = {ratio:.2}x",
+            flat.len(),
+            upright.len()
+        );
+        // E vira: a 90° a seta aponta para a NORMAL, então a direção dela difere ~90° da que
+        // tinha deitada, na MESMA posição do arco (a primeira cópia).
+        let turn = (dir(&upright[0]) - dir(&flat[0])).abs();
+        assert!(
+            (60.0..=120.0).contains(&turn),
+            "a 90° a seta devia virar ~90 graus, virou {turn:.0}"
+        );
+        eprintln!(
+            "[sonda] Rotation 0 -> 90 graus: {} -> {} copias ({ratio:.2}x), virou {turn:.0} graus",
+            flat.len(),
+            upright.len()
         );
     }
 }

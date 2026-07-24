@@ -6,8 +6,8 @@
 //! remover o vínculo (as cópias sobrevivem à soltura), o `link` prender a forma a si mesma.
 
 use super::{
-    PatternHandle, PatternLive, detach, handle, link, link_candidate, rotation_of,
-    set_rotation, spec_of,
+    PatternHandle, PatternLive, detach, handle, link, link_candidate, rotation_of, set_rotation,
+    spec_of,
 };
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
@@ -230,14 +230,14 @@ fn the_handles_follow_the_copies_under_flip() {
     );
 }
 
-// ── A ATITUDE do motivo (`VecPatternRotation`) ───────────────────────────────────
+// ── A ORIENTAÇÃO do motivo (`VecPatternRotation`) ───────────────────────────────────
 
 /// **A rotação autorada chega às CÓPIAS** — o gate ponta-a-ponta da metade shell: escrever pela
 /// porta muda o que o `dispatch` desenharia, no MESMO frame.
 ///
 /// O oráculo é a geometria derivada, não o componente: o quadrado de 40 deitado dá 2 cópias na
 /// reta de 100; girado 90° ele continua a dar 2 (um quadrado é simétrico — de propósito, para
-/// isolar a ATITUDE do avanço), mas cada cópia sai **virada**, e a viragem mede-se pela diagonal.
+/// isolar a ORIENTAÇÃO do avanço), mas cada cópia sai **virada**, e a viragem mede-se pela diagonal.
 ///
 /// ⚠️ Mutação: o `recook` não ler a rotação (passar `0.0` ao `spec_to_motor`) deixa a geometria
 /// idêntica à do não-girado ⇒ RED.
@@ -248,11 +248,22 @@ fn the_authored_attitude_reaches_the_copies() {
 
     let mut live = PatternLive::default();
     live.recook(&scene, &sim, &map);
-    let flat: Vec<[f64; 2]> = live.live()[&motif][0].verts.iter().map(|v| v.anchor).collect();
+    let flat: Vec<[f64; 2]> = live.live()[&motif][0]
+        .verts
+        .iter()
+        .map(|v| v.anchor)
+        .collect();
 
-    assert!(set_rotation(&mut sim, &map, motif, 45.0), "escreveu a atitude");
+    assert!(
+        set_rotation(&mut sim, &map, motif, 45.0),
+        "escreveu a orientação"
+    );
     live.recook(&scene, &sim, &map);
-    let turned: Vec<[f64; 2]> = live.live()[&motif][0].verts.iter().map(|v| v.anchor).collect();
+    let turned: Vec<[f64; 2]> = live.live()[&motif][0]
+        .verts
+        .iter()
+        .map(|v| v.anchor)
+        .collect();
 
     assert_eq!(flat.len(), turned.len(), "o nº de vértices não muda");
     let moved = flat
@@ -295,7 +306,7 @@ fn the_neutral_attitude_detaches_the_component() {
     assert_eq!(rotation_of(&sim, &map, motif), 0.0, "e continua a ler 0");
 }
 
-/// **Soltar leva a atitude junto.** Sem isto a rotação vira estado invisível que RESSUSCITA no
+/// **Soltar leva a orientação junto.** Sem isto a rotação vira estado invisível que RESSUSCITA no
 /// próximo `link`: o artista prende o motivo a outra curva e as cópias nascem tortas por um ângulo
 /// que ele não vê em lado nenhum.
 ///
@@ -310,7 +321,7 @@ fn detaching_takes_the_attitude_with_it() {
     assert_eq!(
         rotation_of(&sim, &map, motif),
         0.0,
-        "a atitude tem de morrer com o vínculo"
+        "a orientação tem de morrer com o vínculo"
     );
 
     assert!(link(&mut sim, &map, motif, guide), "prendeu de novo");

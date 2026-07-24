@@ -77,6 +77,7 @@
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra
+- [Aproximação dentro de ponto fixo CAMINHA](feedback_an_approximation_inside_a_fixed_point_walks_it_does_not_merely_err.md) — tabela num laço de realimentação: meça deriva sob iteração, não erro de chamada única
 - [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA
 - [Coordenada que WRAPA é oráculo ruim — meça a TAXA](feedback_a_wrapping_coordinate_is_a_bad_oracle_measure_the_rate.md) — ângulo mod 2π vira ruído acima de 1 volta; leia angvel, não rotation

@@ -11,11 +11,11 @@
 //! split moved to the wrong place, or an index rescaled wrongly all bleed
 //! here rather than in a screenshot nobody diffs.
 
-use ph2d_wet_paint::colorops::transfer::{
-    ks_of_srgb255, ks_of_srgb255_exact, linear_to_srgb, linear_to_srgb_exact, srgb255_of_linear,
-    srgb255_to_linear, srgb_to_linear, srgb_to_linear_exact,
-};
 use ph2d_wet_paint::colorops::ColorMix;
+use ph2d_wet_paint::colorops::transfer::{
+    ks_of_srgb255, ks_of_srgb255_exact, linear_to_srgb, linear_to_srgb_exact, srgb_to_linear,
+    srgb_to_linear_exact, srgb255_of_linear, srgb255_to_linear,
+};
 
 /// One byte level on the 0..1 sRGB scale — the threshold below which an error
 /// cannot survive the renderer's `clamp_u8`.
@@ -108,7 +108,10 @@ fn the_255_door_clamps_the_gamut_like_clamp_byte() {
         worst = worst.max(e);
     }
     println!("0..255 door max |door - exact| = {worst:.3e}");
-    assert!(worst < BYTE_LEVEL / 1000.0, "0..255 door drifted {worst:.3e}");
+    assert!(
+        worst < BYTE_LEVEL / 1000.0,
+        "0..255 door drifted {worst:.3e}"
+    );
 }
 
 /// The two halves of the K–M round trip live in different modules and each
@@ -127,7 +130,10 @@ fn both_halves_floor_reflectance_at_the_same_place() {
     );
     // And just above the floor the round trip must start tracking the input.
     let c = srgb255_of_linear(reflect(ks_of_srgb255(60.0)));
-    assert!(c > a + 1.0, "the floor swallowed a colour it should not: {c}");
+    assert!(
+        c > a + 1.0,
+        "the floor swallowed a colour it should not: {c}"
+    );
 }
 
 fn reflect(ks: f64) -> f64 {

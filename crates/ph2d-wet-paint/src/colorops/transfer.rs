@@ -137,7 +137,10 @@ pub fn linear_to_srgb(c: f64) -> f64 {
     } else if c < SPLIT {
         lerp_at(&TABLES.to_srgb_fine, c * (N as f64 / SPLIT))
     } else {
-        lerp_at(&TABLES.to_srgb_coarse, (c - SPLIT) * (N as f64 / (1.0 - SPLIT)))
+        lerp_at(
+            &TABLES.to_srgb_coarse,
+            (c - SPLIT) * (N as f64 / (1.0 - SPLIT)),
+        )
     }
 }
 
@@ -259,8 +262,14 @@ mod tests {
     #[test]
     fn negatives_take_the_reference_branch() {
         for c in [-0.5, -1e-6] {
-            assert_eq!(srgb_to_linear(c).to_bits(), srgb_to_linear_exact(c).to_bits());
-            assert_eq!(linear_to_srgb(c).to_bits(), linear_to_srgb_exact(c).to_bits());
+            assert_eq!(
+                srgb_to_linear(c).to_bits(),
+                srgb_to_linear_exact(c).to_bits()
+            );
+            assert_eq!(
+                linear_to_srgb(c).to_bits(),
+                linear_to_srgb_exact(c).to_bits()
+            );
         }
     }
 

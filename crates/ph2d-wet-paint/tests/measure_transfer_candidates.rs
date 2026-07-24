@@ -44,13 +44,7 @@ impl Lut {
     }
     #[inline]
     fn lin(&self, c: f64) -> f64 {
-        let x = if c < 0.0 {
-            0.0
-        } else if c > 1.0 {
-            1.0
-        } else {
-            c
-        } * self.n as f64;
+        let x = c.clamp(0.0, 1.0) * self.n as f64;
         let i = x as usize;
         let i = if i >= self.n { self.n - 1 } else { i };
         let f = x - i as f64;
@@ -58,13 +52,7 @@ impl Lut {
     }
     #[inline]
     fn srgb(&self, c: f64) -> f64 {
-        let x = if c < 0.0 {
-            0.0
-        } else if c > 1.0 {
-            1.0
-        } else {
-            c
-        } * self.n as f64;
+        let x = c.clamp(0.0, 1.0) * self.n as f64;
         let i = x as usize;
         let i = if i >= self.n { self.n - 1 } else { i };
         let f = x - i as f64;
@@ -96,13 +84,7 @@ impl SegLut {
     }
     #[inline]
     fn srgb(&self, c: f64) -> f64 {
-        let c = if c < 0.0 {
-            0.0
-        } else if c > 1.0 {
-            1.0
-        } else {
-            c
-        };
+        let c = c.clamp(0.0, 1.0);
         let (tab, x) = if c < SPLIT {
             (&self.fine, c / SPLIT * self.n as f64)
         } else {

@@ -126,7 +126,10 @@ fn measure_km_pass_breakdown() {
     use ph2d_wet_paint::drying::drying_pass;
     use ph2d_wet_paint::solver::{advect, build_flow_field, project, smooth_velocity};
     println!("\n  K-M PASS BREAKDOWN — flood, median of 40 calls (ms)");
-    println!("    {:<22} {:>9} {:>9} {:>8}", "pass", "km OFF", "km ON", "ratio");
+    println!(
+        "    {:<22} {:>9} {:>9} {:>8}",
+        "pass", "km OFF", "km ON", "ratio"
+    );
     let mut off: Vec<(String, f64)> = Vec::new();
     let mut on: Vec<(String, f64)> = Vec::new();
     for km in [false, true] {
@@ -138,9 +141,9 @@ fn measure_km_pass_breakdown() {
         let p = e.sim.gather_params(&e.tuning);
         let g = e.active_grid_mut();
         let sink = if km { &mut on } else { &mut off };
-        let mut time = |name: &str,
-                        g: &mut ph2d_wet_paint::grid::Grid,
-                        f: &mut dyn FnMut(&mut ph2d_wet_paint::grid::Grid)| {
+        let time = |name: &str,
+                    g: &mut ph2d_wet_paint::grid::Grid,
+                    f: &mut dyn FnMut(&mut ph2d_wet_paint::grid::Grid)| {
             let mut s = Vec::new();
             for _ in 0..40 {
                 let t = Instant::now();
@@ -177,7 +180,7 @@ fn measure_km_pass_breakdown() {
 #[test]
 #[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
 fn measure_glaze_layering_cost() {
-    let mut e = painted_engine();
+    let e = painted_engine();
     let params = e.sim.gather_params(&e.tuning);
     let layers: Vec<RenderLayer<'_>> = e
         .layers
@@ -223,16 +226,7 @@ fn measure_glaze_layering_cost() {
         let mut samples = Vec::new();
         for _ in 0..20 {
             let t = Instant::now();
-            render_pigment_region_visual(
-                Some(&params),
-                &layers,
-                visual,
-                1,
-                1,
-                900,
-                450,
-                &mut out,
-            );
+            render_pigment_region_visual(Some(&params), &layers, visual, 1, 1, 900, 450, &mut out);
             samples.push(t.elapsed().as_secs_f64() * 1000.0);
         }
         println!("    {label}   median {:7.3} ms", median(samples));
@@ -245,7 +239,7 @@ fn measure_glaze_layering_cost() {
 #[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
 fn measure_render_region_glaze_cost() {
     use ph2d_wet_paint::render::render_region;
-    let mut e = painted_engine();
+    let e = painted_engine();
     let params = e.sim.gather_params(&e.tuning);
     let active: &Grid = &e.layers[0].grid;
     let layers: Vec<RenderLayer<'_>> = e
@@ -299,7 +293,9 @@ fn measure_representative_session() {
             .map(median)
             .fold(0.0f64, |a, b| a.max(b));
         let label = if km { "ON " } else { "OFF" };
-        println!("    km_mixing {label}  240 ticks {total:7.1} ms   worst class tick {worst:5.2} ms");
+        println!(
+            "    km_mixing {label}  240 ticks {total:7.1} ms   worst class tick {worst:5.2} ms"
+        );
     }
 }
 

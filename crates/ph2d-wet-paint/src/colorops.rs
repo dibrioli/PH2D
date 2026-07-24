@@ -71,7 +71,7 @@ pub mod transfer;
 // K–M and glaze sites use. ONE door each: every experimental site goes through
 // these, and the tables live behind them so no call site can pick a different
 // transfer than its neighbour.
-pub use transfer::{ks_of_srgb255, linear_to_srgb, srgb255_of_linear, srgb_to_linear};
+pub use transfer::{ks_of_srgb255, linear_to_srgb, srgb_to_linear, srgb255_of_linear};
 
 // ---------------------------------------------------------------------------
 // Kubelka–Munk single-constant mixing. A reflectance R maps to K/S =

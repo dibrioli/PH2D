@@ -49,6 +49,25 @@ struct Memo {
     /// `offset_path` devolveu para aquele `k` — pode ser mais de um caminho (um donut offsetado
     /// para dentro se parte em vários) ou nenhum (o anel morreu).
     rings: Vec<Vec<VecPath>>,
+    /// A ÚLTIMA geometria não-vazia de cada anel — a guarda de continuidade do arrasto.
+    ///
+    /// ⚠️ **Existe por causa de um defeito do motor de offset, e o número é MEDIDO** (report do
+    /// Enio, *"o efeito não é contínuo, dá saltos como se piscasse"*): o `linesweeper` 0.3.0
+    /// entra em pânico numa fração grande das distâncias — 47 de 400 num hexágono com quina
+    /// Round, **278 de 400** numa estrela com Bevel — e o `offset_path` converte a queda em
+    /// VAZIO (senão o app morria). Arrastar o slider varre distâncias, então cada anel some e
+    /// volta: era exatamente o piscar.
+    ///
+    /// Quatro curas foram MEDIDAS E REFUTADAS antes desta (detalhe no handoff): descartar
+    /// segmentos de comprimento zero antes do sweep (**zero efeito** — e a primeira medição que
+    /// disse o contrário era artefato da minha própria sonda) · empurrar a distância por 1e-4
+    /// (recupera ~50%, **12%** no pior caso) · offset ITERADO em passos pequenos (48→18 falhas
+    /// mas **1311 ms/frame**, 400× o custo) · fundir os sweeps num só (falhas idênticas).
+    ///
+    /// Então isto **não é a cura, é a continuidade**: onde o sweep não consegue responder, o anel
+    /// fica onde estava em vez de desaparecer. O artista vê um anel que atrasa, não um que
+    /// pisca. A cura de verdade é do motor de offset e precisa de wave própria com ADR.
+    last_good: Vec<Vec<VecPath>>,
 }
 
 impl Memo {
@@ -116,6 +135,10 @@ impl ContourLive {
     /// que promete materializar o que está na tela.
     fn ensure(&mut self, id: VecPathId, world: &VecPath, spec: &VecContour) -> &Memo {
         if !self.memo.get(&id).is_some_and(|m| m.matches(world, spec)) {
+            // ⚠️ Invalidar NÃO joga fora o `last_good`: é justamente durante o arrasto — quando
+            // toda mudança de `d` invalida — que a continuidade importa. O que morre é a
+            // geometria FRESCA; a última boa de cada anel atravessa para o cozimento seguinte.
+            let last_good = self.memo.remove(&id).map_or_else(Vec::new, |m| m.last_good);
             self.memo.insert(
                 id,
                 Memo {
@@ -125,6 +148,7 @@ impl ContourLive {
                     side: spec.side,
                     accel: spec.accel,
                     rings: Vec::new(),
+                    last_good,
                 },
             );
         }
@@ -134,13 +158,26 @@ impl ContourLive {
             .expect("o memo acabou de ser inserido se faltava");
         // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
         while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
-            let k = u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) + 1;
-            memo.rings.push(ph2d_vec_boolean::offset_path(
+            let k = usize::from(u16::try_from(memo.rings.len()).unwrap_or(u16::MAX));
+            let fresh = ph2d_vec_boolean::offset_path(
                 world,
-                spec.ring_distance(k),
+                spec.ring_distance(u16::try_from(k + 1).expect("k < steps <= MAX_CONTOUR_STEPS")),
                 crate::vec_expand::join_of_code(spec.join),
                 crate::vec_expand::side_of_code(spec.side),
-            ));
+            );
+            if fresh.is_empty() {
+                // O sweep não respondeu (§ do `last_good`): o anel FICA onde estava. Se nunca
+                // houve geometria boa para ele, aí sim não há o que desenhar — um anel que
+                // nunca existiu não pode "ficar".
+                let held = memo.last_good.get(k).cloned().unwrap_or_default();
+                memo.rings.push(held);
+            } else {
+                if memo.last_good.len() <= k {
+                    memo.last_good.resize(k + 1, Vec::new());
+                }
+                memo.last_good[k].clone_from(&fresh);
+                memo.rings.push(fresh);
+            }
         }
         memo
     }

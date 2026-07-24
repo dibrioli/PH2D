@@ -176,3 +176,75 @@ fn a_shape_without_a_contour_is_left_alone() {
         "sem contour a entrada tem de estar AUSENTE (presente-e-vazia apagaria a forma)"
     );
 }
+
+/// **Arrastar o slider não faz nenhum anel PISCAR** — o gate do report do Enio (*"o efeito não é
+/// contínuo, mas dá saltos como se piscasse"*).
+///
+/// # O que ele mede, e por que a contagem é o oráculo certo
+///
+/// O que o artista vê como piscar é um anel a **desaparecer e voltar**: o `linesweeper` não
+/// consegue responder em algumas distâncias, o `offset_path` devolve vazio, e o anel some do
+/// quadro por um frame. Medido no motor cru com o hexágono do smoke: **70 trocas de contagem**
+/// numa varredura de 240 passos de `d`, que é o que um arrasto de slider faz.
+///
+/// O oráculo é a CONTAGEM de caminhos que o `dispatch` desenharia, e não a geometria: a geometria
+/// muda a cada passo *de propósito* (é o efeito a seguir o slider). O que **não** pode acontecer é
+/// o número de anéis cair e subir.
+///
+/// ⚠️ Mutação: tirar o `last_good` do `ensure` (o anel vazio passa direto) ⇒ a contagem oscila ⇒
+/// RED. O fixture usa um HEXÁGONO, e é obrigatório: num quadrado o sweep responde em toda
+/// distância — a fixture tem de CONTER o fenômeno.
+#[test]
+fn dragging_the_offset_never_makes_a_ring_blink() {
+    let mut sim = SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let mut scene = VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::cook(
+        ph2d_vec_scene::ShapeKind::Polygon,
+        [1.0, -1.2],
+        [3.4, 1.2],
+        &[6.0],
+    ));
+    let e = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Hex"), VecPathRef(id)))
+        .id();
+    map.insert(id, e.to_bits());
+    if let Some(p) = scene.path_mut(id) {
+        p.fill = Some(Paint::solid(Rgba8::new(0, 0, 0, 255)));
+    }
+    arm(
+        &mut sim,
+        &map,
+        id,
+        VecContour {
+            steps: 6,
+            d: 0.0,
+            accel: 1.0,
+            join: 1, // Round: a quina em que o motor de offset falha mais
+            ..VecContour::default()
+        },
+    );
+    let mut live = ContourLive::default();
+    let xf = VecXforms::new();
+    let (mut prev, mut drops) = (usize::MAX, 0);
+    for i in 1..=240 {
+        let d = f64::from(i) * 0.005;
+        let ent = ph2d_ecs::Entity::from_bits(map[&id]);
+        if let Some(mut c) = sim.world_mut().get_mut::<VecContour>(ent) {
+            c.d = d;
+        }
+        live.recook(&scene, &sim, &map, &xf);
+        let n = live.live().get(&id).map_or(0, Vec::len);
+        if prev != usize::MAX && n < prev {
+            drops += 1;
+        }
+        prev = n;
+    }
+    assert_eq!(
+        drops, 0,
+        "a contagem de caminhos CAIU {drops} vezes durante o arrasto — é o piscar que o Enio \
+         reportou: um anel que o sweep não conseguiu cozer sumiu do quadro em vez de ficar onde \
+         estava (a guarda `last_good` do `ensure`)"
+    );
+}

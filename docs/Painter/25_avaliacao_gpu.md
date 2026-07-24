@@ -573,3 +573,50 @@ escala extrema / liberar a CPU, não o conserto do FPS reportado.
   era *"máscara flipa elegibilidade para a CPU"*, mas a Onda 2 tornou máscara
   **representável**. Movido para um **ajuste não-portado** (`ColorBalance`) — o `ship.sh`
   não roda gate GPU-adapter, então ele ficou verde-latente por exatamente uma onda.
+
+## 12. Onda 5b — o compositor GPU re-envia só a região suja da camada (2026-07-24)
+
+Smoke do Enio: o brush (Onda 5a) segurou, mas a MESMA queda de FPS persistiu em três
+cenas de máscara — **pintar a máscara**, **pintar com máscara**, e **pintar após limpar
+a máscara**. As três tornam a pilha **NÃO-trivial**, então saem da pista trivial da CPU
+que a Onda 5a consertou e vão para o **produtor GPU**.
+
+### 12.1 A medição (wgpu real, traço com máscara)
+
+| canvas | antes | depois | ganho |
+|---|---|---|---|
+| 2048² | 1,001 ms/move | **0,213** | ~4,7× |
+| 4096² | **5,789 ms/move** | **0,470** | **~12×** |
+| razão 4096/2048 | 5,8× (plano) | 2,2× | — |
+
+Causa: o cache de camadas do compositor re-enviava a camada **inteira** por movimento
+(`ensure_slice` → `upload_slice` = `write_texture` cheio, **64 MiB @ 4096² para um dab**)
+— a cópia de staging na CPU por trás do *"parece dependente de CPU"*. A Onda 5a só tocou
+a pista trivial da CPU; todo traço não-trivial a deixa.
+
+### 12.2 A cura
+
+`LayerPixels` ganhou **`dirty: Option<Region>`**. Numa fatia **RESIDENTE** cuja versão
+mudou, `ensure_slice` re-envia **só** aquela sub-região (`upload_slice_region`: `origin`
++ `bytes_per_row` de largura cheia, **sem gather na CPU**); fatia nova/não-residente ou
+`None` → envio cheio (o seed honesto). O tool fornece a região suja da camada **ativa**:
+`take_preview_dirty` guarda o `dirty_rect` acumulado (unido por `mark_dirty`, então cobre
+toda mudança desde o último upload mesmo sob frames perdidos) em `preview_dirty_region`,
+e `preview_layer_pixels` o devolve como tupla (a ponte constrói o `LayerPixels.dirty`,
+mantendo o tool desacoplado do `ph2d-render`). Camada não-ativa → `None` → cheio
+(undo/fonte nova).
+
+O **composite continua cheio** (GPU compute, rápido — o resíduo de 0,47 ms / razão 2,2×);
+a imagem não muda. O composite parcial fica **nomeado** como a próxima alavanca se algum
+dia 0,47 ms/move incomodar.
+
+### 12.3 Gate
+
+`gpu_partial_layer_upload_patches_only_the_dirty_region` — seed uma fatia, depois um
+buffer que difere em TODO lugar com só uma sub-região declarada suja; o composite tem de
+mostrar a cor NOVA DENTRO e a cor do SEED FORA (mutação: upload cheio → fora vira nova,
+RED). Os gates e2e de handoff já dirigem o provider REAL com regiões sujas e seguem
+byte-exatos (3/3, paridade 37/37).
+
+**Foundational:** `ph2d-render::LayerPixels` +1 campo (`dirty`), 5 sítios de construção
+atualizados (flip + 3 testes = `None`). Sem schema, sem contrato congelado.

@@ -25,13 +25,13 @@ const DUR_ARROW_PAD: f32 = 4.0; // LITERAL-PX-OK: grab padding around the ↔ gl
 /// authored duration whose end is on-screen — same gate as the veil
 /// ([`beyond_end_shade`]).
 ///
-/// **No bar on the edge, and the grip is offset RIGHT** (Enio, 2026-07-23): the
-/// loop brace sits ON the edge when the loop runs to the end, so a bar there and a
-/// grab reaching to the edge fought it for the pointer. The affordance is just the
-/// ↔ glyph, well to the right over the dark veil, and the grab is tight around the
-/// glyph — clear of the edge, so the loop brace stays grabbable. The drag is
-/// grab-relative (`duration_drag`), so grabbing the offset glyph does not jump the
-/// duration to the glyph's position.
+/// **No bar on the edge; the ↔ glyph is the visual cue, the whole veil is the grab**
+/// (Enio, 2026-07-23): the loop brace sits ON the edge when the loop runs to the end,
+/// so a bar there fought it for the pointer. The ↔ is drawn well to the right over the
+/// dark veil, and the grab spans the veil from just past the loop brace to the ruler's
+/// right edge ([`grab_rect`]) — a grab tight on the small glyph was a target most
+/// presses missed. The drag is grab-relative (`duration_drag`), so grabbing anywhere in
+/// the veil does not jump the duration to the pointer.
 pub(super) fn paint_duration_handle(
     ctx: &mut PaintCtx,
     theme: Theme,

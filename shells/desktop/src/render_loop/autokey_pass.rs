@@ -202,10 +202,19 @@ pub(crate) fn apply_samples(
         timeline.flags.frame_snap,
     );
 
+    // The default mode for an entity with no position animation yet (the transport
+    // toggle). An entity already in one mode keeps it — `position_key_mode` resolves
+    // that; this is only the fresh-entity fallback (ADR-0141).
+    let default_path = timeline.flags.motion_path_keys;
+
     // Diff each sprite against its curve (bound) or last frame (unbound), and
     // rebuild the baseline in one pass. The diff reads the document BEFORE any
     // upsert, so the whole selection is judged against one consistent state.
     let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
+    // Motion-path anchors to author (Path mode): `(entity, [x, y], key time)`.
+    // Separate from `to_key` because an anchor is 2D geometry, keyed through
+    // `key_the_path`, not a scalar upsert.
+    let mut to_path: Vec<(u64, [f32; 2], RationalTime)> = Vec::new();
     let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
     // The first refusal this frame, if any (they share a cause far more often than
     // not — one stack, one playhead).
@@ -274,9 +283,25 @@ pub(crate) fn apply_samples(
             // off-curve pose, so this naturally captures just the dragged
             // entity's trajectory, key per display frame.
             let plan = if solo {
-                ph2d_timeline::autokey_props_solo(&timeline.doc, entity, t_diff, &pose, &base, true)
+                ph2d_timeline::autokey_props_solo(
+                    &timeline.doc,
+                    entity,
+                    t_diff,
+                    &pose,
+                    &base,
+                    true,
+                    default_path,
+                )
             } else {
-                autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true)
+                autokey_props(
+                    &timeline.doc,
+                    entity,
+                    t_diff,
+                    &pose,
+                    &base,
+                    true,
+                    default_path,
+                )
             };
             // **A refusal is a result, not an absence.** The pose was moved and the
             // clip being edited cannot express it (ADR-0115 R9) — so no key is
@@ -289,6 +314,13 @@ pub(crate) fn apply_samples(
                 refused_now = Some(home.err().unwrap_or(ph2d_timeline::KeyRefusal::Overridden));
             }
             if let Some(t_e) = t_e {
+                // The motion-path anchor (Path mode), authored at the same home time
+                // as the scalar keys. During a paused drag `t_e` is fixed, so
+                // `key_the_path` moves the single anchor at that instant; while
+                // performing, `t_e` advances and lays a trail (a motion sketch).
+                if let Some(at) = plan.path_key {
+                    to_path.push((entity, at, t_e));
+                }
                 for (prop, v) in plan.keys {
                     to_key.push((entity, prop, v, t_e));
                     // Track the recorded span so the drag's end can simplify
@@ -322,9 +354,18 @@ pub(crate) fn apply_samples(
                     &pose,
                     &base,
                     false,
+                    default_path,
                 )
             } else {
-                autokey_props(&timeline.doc, entity, t_diff, &pose, &base, false)
+                autokey_props(
+                    &timeline.doc,
+                    entity,
+                    t_diff,
+                    &pose,
+                    &base,
+                    false,
+                    default_path,
+                )
             })
             .is_empty();
             if !capturing && off_curve {
@@ -356,7 +397,11 @@ pub(crate) fn apply_samples(
         if drag_now && !ak.drag_active && !timeline.history.is_open() {
             timeline.history.begin(&timeline.doc);
         }
-        let discrete = !drag_now && !to_key.is_empty() && !timeline.history.is_open();
+        // A path anchor (`to_path`) is a discrete edit too — in Path mode there are
+        // no scalar keys, so bracketing on `to_key` alone would author the anchor
+        // outside any undo step.
+        let discrete =
+            !drag_now && !(to_key.is_empty() && to_path.is_empty()) && !timeline.history.is_open();
         if discrete {
             timeline.history.begin(&timeline.doc);
         }
@@ -365,6 +410,12 @@ pub(crate) fn apply_samples(
             timeline
                 .doc
                 .upsert_key(*entity, *prop, *t_e, AnimValue::Float(*v), interp);
+        }
+        // The motion-path anchors (Path mode): `key_the_path` binds Position on
+        // first touch, adds/moves the anchor, and rewrites the distances the keys
+        // hold — the same door the manual `K` uses.
+        for (entity, at, t_e) in &to_path {
+            timeline.doc.key_the_path(*entity, *t_e, *at);
         }
         if discrete {
             let doc = timeline.doc.clone();

@@ -32,6 +32,24 @@ use crate::doc::TimelineDoc;
 use crate::path::MotionPath;
 use crate::prop::PropKind;
 
+/// **How a NEW position key should be authored for one entity** — the question
+/// `K` and auto-key ask before touching an object's position ([ADR-0141]).
+///
+/// The two modes are mutually exclusive per entity (a Position path OR separate
+/// X/Y, never both — mixing them is the conflict that keys separate axes over a
+/// visible motion path). So the answer is resolved, not chosen every time: an
+/// entity already animating in one mode keeps it; only a *fresh* one falls to the
+/// transport default.
+///
+/// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PositionKeyMode {
+    /// One 2D channel following a trajectory: a key is a motion-path anchor.
+    Path,
+    /// Separate `TranslationX`/`TranslationY` scalar tracks.
+    Separate,
+}
+
 /// O que uma conversão fez, e o que ela **deixou pelo caminho**.
 ///
 /// Não é telemetria: é o que o shell mostra ao artista. Uma conversão que descarta
@@ -172,6 +190,31 @@ impl TimelineDoc {
     #[must_use]
     pub fn position_path(&self, entity: u64) -> Option<&MotionPath> {
         self.binding_for(entity, PropKind::Position)?.path.as_ref()
+    }
+
+    /// **Which mode a new position key for `entity` must use** ([ADR-0141]).
+    ///
+    /// The existing animation decides — a Position binding is Path, a
+    /// `TranslationX`/`Y` binding is Separate — because the two modes cannot
+    /// coexist, and keying the wrong one is precisely the *"even with points on the
+    /// canvas the auto-key writes X/Y"* conflict. A fresh entity (no position
+    /// animation yet) has no mode of its own, so it takes `default_path` (the
+    /// transport toggle, [`crate::TimelineFlags::motion_path_keys`]).
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    #[must_use]
+    pub fn position_key_mode(&self, entity: u64, default_path: bool) -> PositionKeyMode {
+        if self.binding_for(entity, PropKind::Position).is_some() {
+            PositionKeyMode::Path
+        } else if self.binding_for(entity, PropKind::TranslationX).is_some()
+            || self.binding_for(entity, PropKind::TranslationY).is_some()
+        {
+            PositionKeyMode::Separate
+        } else if default_path {
+            PositionKeyMode::Path
+        } else {
+            PositionKeyMode::Separate
+        }
     }
 }
 

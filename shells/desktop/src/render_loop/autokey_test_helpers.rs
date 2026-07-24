@@ -6,7 +6,29 @@ use ph2d_timeline::{TimelineIntent as I, apply_intent};
 
 pub(super) const E: u64 = 1;
 pub(super) const TX: usize = 0;
+pub(super) const TY: usize = 1;
 pub(super) const ROT: usize = 2;
+
+/// A state in **Path mode**: a straight motion path 0→10 in x over 0..1 s,
+/// paused at t=0.5 where the trajectory draws (5, 0).
+pub(super) fn state_with_path() -> (TimelineState, Playhead) {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for (t, at) in [(0.0, [0.0_f32, 0.0]), (1.0, [10.0, 0.0])] {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddPathKey {
+                entity: E,
+                t: RationalTime::from_seconds(t),
+                at,
+            },
+        );
+    }
+    ph.seek(0.5);
+    ph.pause();
+    (st, ph)
+}
 
 pub(super) fn state_with_tx_track() -> (TimelineState, Playhead) {
     let mut st = TimelineState::new();

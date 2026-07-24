@@ -285,6 +285,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::SetAutoKey(on) => state.flags.auto_key = on,
         I::SetFrameSnap(on) => state.flags.frame_snap = on,
         I::SetPerforming(on) => state.flags.performing = on,
+        I::SetMotionPathKeys(on) => state.flags.motion_path_keys = on,
         I::SetSimulatePhysics(on) => state.flags.simulate_physics = on,
 
         // history

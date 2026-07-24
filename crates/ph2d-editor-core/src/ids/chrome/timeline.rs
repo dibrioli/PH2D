@@ -35,6 +35,10 @@ pub const TIMELINE_LOOP: NodeId = hash_node_id("timeline.loop");
 pub const TIMELINE_AUTOKEY: NodeId = hash_node_id("timeline.autokey");
 /// Performing (record-during-play, W5) arm toggle.
 pub const TIMELINE_RECORD: NodeId = hash_node_id("timeline.record");
+/// **Motion Path** keying-mode toggle (ADR-0141) — a new position key is a
+/// motion-path point (`on`) or separate X/Y (`off`). The DEFAULT for a fresh
+/// object; one already animating keeps its mode (`TimelineFlags::motion_path_keys`).
+pub const TIMELINE_MOTION_PATH: NodeId = hash_node_id("timeline.motion_path");
 /// Frame-snap toggle.
 pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
 /// **Ping-pong** loop toggle — the same loop as [`TIMELINE_LOOP`], played back

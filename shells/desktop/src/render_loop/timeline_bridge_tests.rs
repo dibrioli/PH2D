@@ -36,6 +36,15 @@ fn transport_ids_map_to_intents() {
         intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_RECORD, true), &st, &ph),
         Some(TimelineIntent::SetPerforming(true))
     );
+    // Motion Path (ADR-0141): the keying-mode toggle for position.
+    assert_eq!(
+        intent_for_transport(
+            &PanelEvent::Toggle(ids::TIMELINE_MOTION_PATH, false),
+            &st,
+            &ph
+        ),
+        Some(TimelineIntent::SetMotionPathKeys(false))
+    );
     assert_eq!(
         intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),
         Some(TimelineIntent::SetFrameSnap(false))

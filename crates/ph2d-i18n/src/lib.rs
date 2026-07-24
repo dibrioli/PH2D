@@ -112,6 +112,9 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.ping_pong" => "PingPong",
         "panel.timeline.autokey" => "AutoKey",
         "panel.timeline.record" => "Record",
+        // Motion Path keying mode (ADR-0141): a new position key is a trajectory
+        // point (on) or separate X/Y (off). "Path" fits the toggle's label column.
+        "panel.timeline.motion_path" => "Path",
         "panel.timeline.snap" => "Snap",
         "panel.timeline.speed" => "Speed",
         // Says what the clock DRIVES, not what the scene contains — the scene

@@ -247,6 +247,9 @@ pub enum TimelineIntent {
     SetFrameSnap(bool),
     /// Arm/disarm performing (record-during-play, W5).
     SetPerforming(bool),
+    /// New position keys as a motion path (`true`) or separate X/Y (`false`) —
+    /// see [`crate::TimelineFlags::motion_path_keys`] (ADR-0141).
+    SetMotionPathKeys(bool),
     /// Arm/disarm the rigid simulation on the transport (ADR-0131) — see
     /// [`crate::TimelineFlags::simulate_physics`].
     SetSimulatePhysics(bool),

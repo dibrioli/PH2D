@@ -25,6 +25,7 @@
 use ph2d_anim::AttributeEvaluator;
 
 use crate::doc::TimelineDoc;
+use crate::path_convert::PositionKeyMode;
 use crate::prop::PropKind;
 
 /// One selected sprite's six animatable values this frame, in [`PropKind::ALL`]
@@ -65,8 +66,18 @@ pub fn autokey_props(
     world: &PoseSample,
     baseline: &PoseSample,
     allow_create: bool,
+    default_path: bool,
 ) -> AutokeyPlan {
-    autokey_props_in(doc, entity, t_secs, world, baseline, allow_create, false)
+    autokey_props_in(
+        doc,
+        entity,
+        t_secs,
+        world,
+        baseline,
+        allow_create,
+        false,
+        default_path,
+    )
 }
 
 /// **The Keys/solo view's auto-key** — the same decision, taken against the
@@ -94,13 +105,24 @@ pub fn autokey_props_solo(
     world: &PoseSample,
     baseline: &PoseSample,
     allow_create: bool,
+    default_path: bool,
 ) -> AutokeyPlan {
-    autokey_props_in(doc, entity, t_secs, world, baseline, allow_create, true)
+    autokey_props_in(
+        doc,
+        entity,
+        t_secs,
+        world,
+        baseline,
+        allow_create,
+        true,
+        default_path,
+    )
 }
 
 /// The shared core — `solo` picks which scene the diff believes in: the stack's
 /// blend (Arrange) or the active clip alone (Keys). One function, two named
 /// doors, so the two views cannot drift in what "moved" means.
+#[allow(clippy::too_many_arguments)] // the frame's inputs; bundling them hides them
 fn autokey_props_in(
     doc: &TimelineDoc,
     entity: u64,
@@ -109,9 +131,21 @@ fn autokey_props_in(
     baseline: &PoseSample,
     allow_create: bool,
     solo: bool,
+    default_path: bool,
 ) -> AutokeyPlan {
     let mut plan = AutokeyPlan::default();
+    // The object's PLACE is one channel or two, never both (ADR-0141). In Path mode
+    // the two axes are a single motion-path anchor decided below from BOTH together;
+    // keying them as separate `TranslationX`/`Y` here — which the loop did
+    // unconditionally — is the *"even with a motion path the auto-key writes X/Y"*
+    // conflict. The other four channels (Rotation/Scale/Opacity) are mode-blind.
+    let mode = doc.position_key_mode(entity, default_path);
     for (i, &prop) in PropKind::ALL.iter().enumerate() {
+        if mode == PositionKeyMode::Path
+            && matches!(prop, PropKind::TranslationX | PropKind::TranslationY)
+        {
+            continue;
+        }
         let Some(v) = world[i] else { continue };
 
         // What the apply actually WROTE at this instant — the value the animator
@@ -151,6 +185,30 @@ fn autokey_props_in(
             None => plan.refused.push(prop),
         }
     }
+    // **The motion-path anchor**, decided once from both axes. A Transform always
+    // carries a translation, so both are present; the anchor lands where the object
+    // now is, when that is off the trajectory the scene is drawing.
+    if mode == PositionKeyMode::Path && let (Some(x), Some(y)) = (world[0], world[1]) {
+        let want = [x, y];
+        let moved = match position_shown(doc, entity, t_secs, solo) {
+            // Bound to a path: key when the object left the curve it sits on.
+            // `position_shown` and the apply both read `path.at(distance)` at the
+            // same instant, so an on-curve pose is byte-equal and never re-keys —
+            // the same anti-feedback guarantee the scalar diff has.
+            Some(p) => want != p,
+            // No path yet: first-touch, only if the UI moved either axis since
+            // last frame and creation is allowed. The shell's `key_the_path`
+            // binds+creates the trajectory from this first anchor.
+            None => {
+                allow_create
+                    && (baseline[0].is_some_and(|b| b != x)
+                        || baseline[1].is_some_and(|b| b != y))
+            }
+        };
+        if moved {
+            plan.path_key = Some(want);
+        }
+    }
     plan
 }
 
@@ -167,14 +225,37 @@ pub struct AutokeyPlan {
     pub keys: Vec<(PropKind, f32)>,
     /// Properties whose pose the active clip cannot express right now.
     pub refused: Vec<PropKind>,
+    /// **The motion-path anchor to author** (world `[x, y]`), in Path mode
+    /// (ADR-0141). The caller runs it through [`TimelineDoc::key_the_path`], which
+    /// adds/updates the anchor and rewrites the distances the keys hold. `None` in
+    /// Separate mode, or when the object sits on its trajectory. Distinct from
+    /// `keys` because a position anchor is 2D geometry, not a scalar value.
+    pub path_key: Option<[f32; 2]>,
 }
 
 impl AutokeyPlan {
     /// `true` when there is nothing to write and nothing to complain about.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.keys.is_empty() && self.refused.is_empty()
+        self.keys.is_empty() && self.refused.is_empty() && self.path_key.is_none()
     }
+}
+
+/// Where the scene is DRAWING `entity`'s position right now, in Path mode — the
+/// same `[x, y]` the apply wrote via `path.at(distance)`. `None` when nothing drives
+/// it yet (no trajectory, or an empty distance track): the unbound / first-touch
+/// path. It reads the distance through the SAME door the scalar diff uses
+/// (`shown_value` under a stack, `curve_value` soloed), so an on-curve pose the
+/// apply just wrote is byte-equal here.
+fn position_shown(doc: &TimelineDoc, entity: u64, t_secs: f64, solo: bool) -> Option<[f32; 2]> {
+    let distance = if solo {
+        curve_value(doc, entity, PropKind::Position, t_secs)
+    } else {
+        shown_value(doc, entity, PropKind::Position, t_secs)
+    }?;
+    doc.position_path(entity)?
+        .at(f64::from(distance))
+        .map(|s| s.point)
 }
 
 /// The value the scene is showing for `prop` right now — the same number the
@@ -286,13 +367,16 @@ mod tests {
     const E: u64 = 1;
     /// PoseSample index for each PropKind we probe.
     const TX: usize = 0;
+    const TY: usize = 1;
     const ROT: usize = 2;
 
     fn s(t: f64) -> RationalTime {
         RationalTime::from_seconds(t)
     }
 
-    /// A doc with a TranslationX track keyed 0→10 over 0..1 s.
+    /// A doc with a TranslationX track keyed 0→10 over 0..1 s. The entity is in
+    /// **Separate** mode (it has an X binding), so `default_path` is moot for it —
+    /// which is exactly the point of the tests that use it.
     fn doc_with_tx_track() -> TimelineState {
         let mut st = TimelineState::new();
         let mut ph = Playhead::new(1.0 / 60.0);
@@ -312,6 +396,25 @@ mod tests {
         st
     }
 
+    /// A doc with a straight motion path 0→10 in x over 0..1 s — the entity is in
+    /// **Path** mode (it has a Position binding with a trajectory).
+    fn doc_with_path() -> TimelineState {
+        let mut st = TimelineState::new();
+        let mut ph = Playhead::new(1.0 / 60.0);
+        for (t, at) in [(0.0, [0.0_f32, 0.0]), (1.0, [10.0, 0.0])] {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddPathKey {
+                    entity: E,
+                    t: s(t),
+                    at,
+                },
+            );
+        }
+        st
+    }
+
     fn pose(vals: &[(usize, f32)]) -> PoseSample {
         let mut p: PoseSample = [None; 6];
         for &(i, v) in vals {
@@ -320,12 +423,26 @@ mod tests {
         p
     }
 
+    /// `autokey_props` with the separate-axes default. Every fixture here that
+    /// exercises the *scalar* diff is separate-bound (or non-position), so the
+    /// default is moot; naming it keeps these calls readable. The mode-specific
+    /// tests below call `autokey_props` directly with the default they mean.
+    fn ak(
+        st: &TimelineState,
+        t: f64,
+        world: &PoseSample,
+        base: &PoseSample,
+        allow: bool,
+    ) -> AutokeyPlan {
+        autokey_props(&st.doc, E, t, world, base, allow, false)
+    }
+
     #[test]
     fn a_bound_prop_off_its_curve_is_keyed() {
         // At t = 0.5 the curve says x = 5. The world is at 7 (the user dragged it):
         // key it. The other props are None → never keyed.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), true);
+        let got = ak(&st, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), true);
         assert_eq!(got.keys, vec![(PropKind::TranslationX, 7.0)]);
     }
 
@@ -335,7 +452,7 @@ mod tests {
         // the curve value to the world, so world == curve — auto-key must be silent
         // or it would re-key what the document just produced, fighting the undo.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 5.0)]), &pose(&[]), true);
+        let got = ak(&st, 0.5, &pose(&[(TX, 5.0)]), &pose(&[]), true);
         assert!(got.is_empty(), "on-curve poses key nothing: {got:?}");
     }
 
@@ -344,28 +461,14 @@ mod tests {
         // Rotation has no track. It moved from 0 (last frame) to 0.5 (now), and
         // creation is allowed → key it (the shell will upsert, which binds+creates).
         let st = doc_with_tx_track();
-        let got = autokey_props(
-            &st.doc,
-            E,
-            0.5,
-            &pose(&[(ROT, 0.5)]),
-            &pose(&[(ROT, 0.0)]),
-            true,
-        );
+        let got = ak(&st, 0.5, &pose(&[(ROT, 0.5)]), &pose(&[(ROT, 0.0)]), true);
         assert_eq!(got.keys, vec![(PropKind::Rotation, 0.5)]);
     }
 
     #[test]
     fn an_unbound_prop_that_did_not_move_creates_nothing() {
         let st = doc_with_tx_track();
-        let got = autokey_props(
-            &st.doc,
-            E,
-            0.5,
-            &pose(&[(ROT, 0.5)]),
-            &pose(&[(ROT, 0.5)]), // same as last frame
-            true,
-        );
+        let got = ak(&st, 0.5, &pose(&[(ROT, 0.5)]), &pose(&[(ROT, 0.5)]), true);
         assert!(
             got.is_empty(),
             "an unchanged unbound prop must not spray a track"
@@ -377,18 +480,11 @@ mod tests {
         // Panel closed → the shell passes allow_create = false → casual editing
         // never sprays new tracks, however far the object moved.
         let st = doc_with_tx_track();
-        let got = autokey_props(
-            &st.doc,
-            E,
-            0.5,
-            &pose(&[(ROT, 9.0)]),
-            &pose(&[(ROT, 0.0)]),
-            false,
-        );
+        let got = ak(&st, 0.5, &pose(&[(ROT, 9.0)]), &pose(&[(ROT, 0.0)]), false);
         assert!(got.is_empty());
         // But a BOUND prop still auto-keys with creation off — updating an
         // existing channel is always allowed.
-        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), false);
+        let got = ak(&st, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), false);
         assert_eq!(got.keys, vec![(PropKind::TranslationX, 7.0)]);
     }
 
@@ -397,7 +493,7 @@ mod tests {
         // First frame an entity is selected: no baseline → nothing to compare, so
         // its mere selection never mints a key.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(ROT, 9.0)]), &pose(&[]), true);
+        let got = ak(&st, 0.5, &pose(&[(ROT, 9.0)]), &pose(&[]), true);
         assert!(got.is_empty());
     }
 
@@ -415,14 +511,7 @@ mod tests {
                 prop: PropKind::TranslationX,
             },
         );
-        let got = autokey_props(
-            &st.doc,
-            E,
-            0.5,
-            &pose(&[(TX, 3.0)]),
-            &pose(&[(TX, 0.0)]),
-            true,
-        );
+        let got = ak(&st, 0.5, &pose(&[(TX, 3.0)]), &pose(&[(TX, 0.0)]), true);
         assert_eq!(got.keys, vec![(PropKind::TranslationX, 3.0)]);
     }
 
@@ -432,29 +521,104 @@ mod tests {
         // is ON the curve → nothing more to key. This is the loop that must close.
         let mut st = doc_with_tx_track();
         let t = s(0.5);
-        let got = autokey_props(
-            &st.doc,
-            E,
-            t.to_seconds(),
-            &pose(&[(TX, 7.0)]),
-            &pose(&[]),
-            true,
-        );
+        let got = ak(&st, t.to_seconds(), &pose(&[(TX, 7.0)]), &pose(&[]), true);
         for (prop, v) in got.keys {
             st.doc
                 .upsert_key(E, prop, t, AnimValue::Float(v), Interp::Linear);
         }
-        let again = autokey_props(
-            &st.doc,
-            E,
-            t.to_seconds(),
-            &pose(&[(TX, 7.0)]),
-            &pose(&[]),
-            true,
-        );
+        let again = ak(&st, t.to_seconds(), &pose(&[(TX, 7.0)]), &pose(&[]), true);
         assert!(
             again.is_empty(),
             "the keyed pose is now on its own curve: {again:?}"
+        );
+    }
+
+    // ── position mode (ADR-0141) ─────────────────────────────────────────────
+
+    #[test]
+    fn an_entity_with_a_path_keys_the_path_not_the_axes() {
+        // THE reported conflict: with a motion path, moving the object must author a
+        // path ANCHOR, never separate X/Y. At t=0.5 the straight path draws x=5; the
+        // user dragged it to (5, 3) — off the path. ⚠️ The baseline MOVES y (0→3):
+        // without the mode skip, the unbound TranslationY would first-touch-create
+        // here, so the empty-baseline version was green even with the skip deleted.
+        let st = doc_with_path();
+        let got = autokey_props(
+            &st.doc,
+            E,
+            0.5,
+            &pose(&[(TX, 5.0), (TY, 3.0)]),
+            &pose(&[(TX, 5.0), (TY, 0.0)]),
+            true,
+            true,
+        );
+        assert!(
+            got.keys.is_empty(),
+            "Path mode must never key the separate axes: {:?}",
+            got.keys
+        );
+        assert_eq!(
+            got.path_key,
+            Some([5.0, 3.0]),
+            "the anchor lands where the object now is"
+        );
+    }
+
+    #[test]
+    fn a_pose_on_its_trajectory_authors_no_anchor() {
+        // The anti-feedback guarantee for Path mode: the pose the apply just wrote
+        // (path.at(distance)) is byte-equal to what `position_shown` recomputes, so
+        // an untouched object mints no anchor per frame. At t=0.5 the path IS (5,0).
+        let st = doc_with_path();
+        let got = autokey_props(
+            &st.doc,
+            E,
+            0.5,
+            &pose(&[(TX, 5.0), (TY, 0.0)]),
+            &pose(&[]),
+            true,
+            true,
+        );
+        assert!(got.is_empty(), "on-trajectory poses key nothing: {got:?}");
+    }
+
+    #[test]
+    fn separate_axes_win_over_the_path_default() {
+        // The default is only for FRESH entities. One already animating X/Y keeps
+        // keying X/Y even with the Motion Path toggle on — the two modes never mix.
+        let st = doc_with_tx_track();
+        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), true, true);
+        assert_eq!(got.keys, vec![(PropKind::TranslationX, 7.0)]);
+        assert_eq!(
+            got.path_key, None,
+            "an X/Y entity never grows a path from the default"
+        );
+    }
+
+    #[test]
+    fn a_fresh_entity_takes_the_toggle_default() {
+        // No position animation yet → the toggle decides. Same motion, two modes.
+        let st = TimelineState::new();
+        let world = pose(&[(TX, 4.0), (TY, 2.0)]);
+        let base = pose(&[(TX, 0.0), (TY, 0.0)]);
+
+        let path = autokey_props(&st.doc, E, 0.5, &world, &base, true, true);
+        assert_eq!(
+            path.path_key,
+            Some([4.0, 2.0]),
+            "default Path → the first anchor"
+        );
+        assert!(
+            path.keys.is_empty(),
+            "Path mode keys no axes: {:?}",
+            path.keys
+        );
+
+        let sep = autokey_props(&st.doc, E, 0.5, &world, &base, true, false);
+        assert_eq!(sep.path_key, None, "default Separate → no path");
+        assert_eq!(
+            sep.keys,
+            vec![(PropKind::TranslationX, 4.0), (PropKind::TranslationY, 2.0)]
         );
     }
 }

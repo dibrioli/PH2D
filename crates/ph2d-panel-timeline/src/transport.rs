@@ -70,6 +70,7 @@ enum Item {
     Physics,
     AutoKey,
     Record,
+    MotionPath,
     Snap,
     Speed,
 }
@@ -78,7 +79,7 @@ enum Item {
 // acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
 // MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
 // dos dois lados do conflito.
-const ITEMS: [Item; 16] = [
+const ITEMS: [Item; 17] = [
     Item::Tabs,
     Item::Crumbs,
     Item::Clips,
@@ -99,6 +100,9 @@ const ITEMS: [Item; 16] = [
     Item::Physics,
     Item::AutoKey,
     Item::Record,
+    // Motion Path (ADR-0141) sits with AutoKey/Record: it arms AUTHORING too —
+    // which channel a position gesture records (a trajectory point vs separate X/Y).
+    Item::MotionPath,
     Item::Snap,
     Item::Speed,
 ];
@@ -217,6 +221,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
         | Item::Physics
         | Item::AutoKey
         | Item::Record
+        | Item::MotionPath
         | Item::Snap
         | Item::Speed => toggle_w(),
     }
@@ -479,6 +484,20 @@ fn paint_item(
                 ids::TIMELINE_RECORD,
                 ph2d_i18n::tr("panel.timeline.record"),
                 snap.performing,
+            );
+        }
+        // Motion Path keying mode (ADR-0141) — a new position key is a trajectory
+        // point (on) or separate X/Y (off). Reads the snapshot like every other
+        // toggle, so the painted switch matches what K/auto-key will actually do.
+        Item::MotionPath => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_MOTION_PATH,
+                ph2d_i18n::tr("panel.timeline.motion_path"),
+                snap.motion_path_keys,
             );
         }
         Item::Snap => {

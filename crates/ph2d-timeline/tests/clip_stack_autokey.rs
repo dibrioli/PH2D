@@ -82,7 +82,7 @@ fn a_pose_sitting_on_the_blend_keys_nothing() {
         let shown = x_of(&world, e);
         assert!((shown - 150.0).abs() < 1e-4, "the stack shows the blend");
 
-        let plan = autokey_props(&doc, e, t, &pose_x(shown), &pose_x(shown), true);
+        let plan = autokey_props(&doc, e, t, &pose_x(shown), &pose_x(shown), true, false);
         assert!(
             plan.is_empty(),
             "t={t}: auto-key wrote {:?} for an object nobody touched \
@@ -108,7 +108,7 @@ fn a_key_authored_under_a_stack_round_trips_through_the_blend() {
     apply_from_doc(&mut world, &mut doc, 1.0); // shows 150
     let want = 180.0_f32;
 
-    let plan = autokey_props(&doc, e, 1.0, &pose_x(want), &pose_x(150.0), true);
+    let plan = autokey_props(&doc, e, 1.0, &pose_x(want), &pose_x(150.0), true, false);
     assert_eq!(plan.keys.len(), 1, "one key, no refusal: {plan:?}");
     let (prop, stored) = plan.keys[0];
 
@@ -150,7 +150,7 @@ fn a_pose_the_active_clip_cannot_express_is_refused_not_faked() {
         "the top lane owns it"
     );
 
-    let plan = autokey_props(&doc, e, 1.0, &pose_x(350.0), &pose_x(200.0), true);
+    let plan = autokey_props(&doc, e, 1.0, &pose_x(350.0), &pose_x(200.0), true, false);
     assert!(plan.keys.is_empty(), "nothing may be written");
     assert_eq!(
         plan.refused,
@@ -213,7 +213,7 @@ fn with_no_stack_the_authoring_rules_are_exactly_what_they_were() {
         "and the clock is the clock"
     );
 
-    let plan = autokey_props(&doc, e, 1.0, &pose_x(42.0), &pose_x(100.0), true);
+    let plan = autokey_props(&doc, e, 1.0, &pose_x(42.0), &pose_x(100.0), true, false);
     assert_eq!(plan.keys, vec![(PropKind::TranslationX, 42.0)]);
     assert!(plan.refused.is_empty());
 }
@@ -408,7 +408,7 @@ fn soloed_the_same_pose_keys_and_the_on_curve_pose_keys_nothing() {
     apply_from_doc(&mut world, &mut doc, 1.0); // prima o scratch p/ o controle positivo
 
     // Arrastada para fora da curva soloada: a key aterrissa, CRUA, sem recusa.
-    let plan = autokey_props_solo(&doc, e, 1.0, &pose_x(350.0), &pose_x(100.0), true);
+    let plan = autokey_props_solo(&doc, e, 1.0, &pose_x(350.0), &pose_x(100.0), true, false);
     assert_eq!(
         plan.keys,
         vec![(PropKind::TranslationX, 350.0)],
@@ -418,7 +418,7 @@ fn soloed_the_same_pose_keys_and_the_on_curve_pose_keys_nothing() {
 
     // Sobre a curva soloada (100): nada se moveu, nada keya — mesmo com o BLEND
     // mostrando 200 aqui.
-    let still = autokey_props_solo(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true);
+    let still = autokey_props_solo(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true, false);
     assert!(
         still.is_empty(),
         "pose == curva soloada: nenhuma key fantasma"
@@ -426,7 +426,7 @@ fn soloed_the_same_pose_keys_and_the_on_curve_pose_keys_nothing() {
     // Controle positivo: o diff do ARRANGE vê a MESMA pose como movida — é o
     // fantasma que o solo existe para não ver.
     assert!(
-        !autokey_props(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true).is_empty(),
+        !autokey_props(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true, false).is_empty(),
         "sem o fenômeno no fixture, mutar o solo para ler o blend ficaria verde"
     );
 }

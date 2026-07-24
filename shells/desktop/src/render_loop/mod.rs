@@ -1214,7 +1214,7 @@ impl crate::App {
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next())
             {
-                let props: Vec<_> = self
+                let mut props: Vec<_> = self
                     .timeline
                     .doc
                     .bindings()
@@ -1222,6 +1222,35 @@ impl crate::App {
                     .filter(|b| b.entity == entity)
                     .map(|b| b.prop)
                     .collect();
+                // If the entity has no position animation yet, K creates it in the
+                // toggle's mode (ADR-0141) — the same choice auto-key makes for a
+                // fresh object, so K and auto-key agree on Position vs separate X/Y.
+                // An entity already in one mode keeps it (the branch below routes
+                // Position → anchor, X/Y → scalar), so this only injects the FIRST
+                // position channel; the existing loop then authors it uniformly.
+                let has_position = props.iter().any(|p| {
+                    matches!(
+                        p,
+                        ph2d_timeline::PropKind::Position
+                            | ph2d_timeline::PropKind::TranslationX
+                            | ph2d_timeline::PropKind::TranslationY
+                    )
+                });
+                if !has_position {
+                    match self
+                        .timeline
+                        .doc
+                        .position_key_mode(entity, self.timeline.flags.motion_path_keys)
+                    {
+                        ph2d_timeline::PositionKeyMode::Path => {
+                            props.push(ph2d_timeline::PropKind::Position);
+                        }
+                        ph2d_timeline::PositionKeyMode::Separate => {
+                            props.push(ph2d_timeline::PropKind::TranslationX);
+                            props.push(ph2d_timeline::PropKind::TranslationY);
+                        }
+                    }
+                }
                 for prop in props {
                     // ⚠️ **Position não amostra um escalar: ele acrescenta uma ÂNCORA**
                     // (ADR-0141). "Capturar a pose" numa trajetória é uma edição da

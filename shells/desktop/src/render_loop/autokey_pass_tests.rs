@@ -33,6 +33,78 @@ fn a_pose_on_its_curve_at_an_off_frame_pause_keys_nothing() {
     );
 }
 
+// THE reported conflict (ADR-0141): with a motion path on the canvas, auto-key
+// must author a path ANCHOR, never separate TranslationX/Y. Before the mode fix
+// the pass iterated `PropKind::ALL` and keyed X/Y unconditionally, spraying axis
+// tracks over a visible trajectory.
+#[test]
+fn a_motion_path_object_auto_keys_the_path_never_the_axes() {
+    let (mut st, ph) = state_with_path();
+    let mut ak = AutokeyState::default();
+    let target = st.doc.binding_for(E, PropKind::Position).unwrap().target;
+    let before = st.doc.position_path(E).unwrap().len();
+
+    // Frame 1 settles the baseline at the on-path pose (5, 0), so frame 2's y-move
+    // (0→3) would first-touch-CREATE a TranslationY track if the mode skip were
+    // gone — a single frame has an empty baseline and would pass even broken.
+    frame(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 5.0), (TY, 0.0)]))],
+        false,
+        true,
+        &mut ak,
+    );
+    // Frame 2 — armed, paused: the object is dragged to (5, 3), off the path.
+    frame(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 5.0), (TY, 3.0)]))],
+        false,
+        true,
+        &mut ak,
+    );
+
+    assert!(
+        st.doc.binding_for(E, PropKind::TranslationX).is_none()
+            && st.doc.binding_for(E, PropKind::TranslationY).is_none(),
+        "auto-key sprayed separate X/Y over a motion path — the reported conflict"
+    );
+    assert_eq!(
+        st.doc.position_path(E).unwrap().len(),
+        before + 1,
+        "the drag adds exactly one anchor to the trajectory"
+    );
+    assert_eq!(
+        st.doc.path_anchor(target, 1).unwrap().anchor,
+        [5.0, 3.0],
+        "the anchor lands where the object was dragged"
+    );
+}
+
+// The anti-feedback guarantee for Path mode: after the apply writes the pose from
+// the path, an untouched object mints no anchor — the same guard the scalar diff
+// has. Here the pose IS the trajectory point at t=0.5, so nothing is authored.
+#[test]
+fn a_pose_on_its_trajectory_auto_keys_no_anchor() {
+    let (mut st, ph) = state_with_path();
+    let mut ak = AutokeyState::default();
+    let before = st.doc.position_path(E).unwrap().len();
+    frame(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 5.0), (TY, 0.0)]))],
+        false,
+        true,
+        &mut ak,
+    );
+    assert_eq!(
+        st.doc.position_path(E).unwrap().len(),
+        before,
+        "an on-trajectory pose must not grow the path every frame"
+    );
+}
+
 #[test]
 fn an_untouched_pose_at_an_off_frame_pause_is_not_pinned() {
     let (mut st, mut ph) = state_with_tx_track();

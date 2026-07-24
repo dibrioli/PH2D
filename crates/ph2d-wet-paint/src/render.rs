@@ -10,7 +10,8 @@
 //! stacking instead of alpha-over. A render-only "paper visibility" master
 //! fades the tooth in the appearance without ever touching the physics array.
 
-use crate::colorops::{km_glaze_channel_linear, linear_to_srgb, srgb_to_linear};
+use crate::colorops::km_glaze_channel_linear;
+use crate::colorops::transfer::{srgb255_of_linear, srgb255_to_linear};
 use crate::grid::Grid;
 use crate::jsmath::clamp_u8;
 use crate::opacity::alpha_of_mass;
@@ -31,11 +32,6 @@ fn smoothstep01(t: f64) -> f64 {
     } else {
         t * t * (3.0 - 2.0 * t)
     }
-}
-
-#[inline]
-fn clamp_byte(v: f64) -> f64 {
-    v.clamp(0.0, 255.0)
 }
 
 /// One layer as the renderer sees it. The slice passed to [`render_region`]
@@ -100,13 +96,14 @@ pub fn render_region(
                 g += lit;
                 b += lit;
             }
-            // Optional K–M glaze stacking works in linear reflectance.
+            // Optional K–M glaze stacking works in linear reflectance. The
+            // sheet is entered into that space LAZILY — a pixel no layer
+            // paints must not pay a transfer round trip to arrive back at the
+            // colour it already had (on a mostly-bare sheet that round trip
+            // was the whole cost of the checkbox), and skipping it also makes
+            // the untouched pixel exactly the base instead of an ulp off it.
             let (mut lr, mut lg, mut lb) = (0.0, 0.0, 0.0);
-            if km_glaze {
-                lr = srgb_to_linear(clamp_byte(r) / 255.0);
-                lg = srgb_to_linear(clamp_byte(g) / 255.0);
-                lb = srgb_to_linear(clamp_byte(b) / 255.0);
-            }
+            let mut in_linear = false;
 
             for layer in layers.iter().filter(|l| l.visible) {
                 let lgrd = layer.grid;
@@ -151,39 +148,21 @@ pub fn render_region(
                 let uc = lgrd.susp_rgb[i];
                 if km_glaze {
                     // Stack by reflectance: paper -> settled -> suspended.
+                    if (a_s > 0.0 || a_f > 0.0) && !in_linear {
+                        lr = srgb255_to_linear(r);
+                        lg = srgb255_to_linear(g);
+                        lb = srgb255_to_linear(b);
+                        in_linear = true;
+                    }
                     if a_s > 0.0 {
-                        lr = km_glaze_channel_linear(
-                            lr,
-                            srgb_to_linear(clamp_byte(sc[0] as f64 + v) / 255.0),
-                            a_s,
-                        );
-                        lg = km_glaze_channel_linear(
-                            lg,
-                            srgb_to_linear(clamp_byte(sc[1] as f64 + v) / 255.0),
-                            a_s,
-                        );
-                        lb = km_glaze_channel_linear(
-                            lb,
-                            srgb_to_linear(clamp_byte(sc[2] as f64 + v) / 255.0),
-                            a_s,
-                        );
+                        lr = km_glaze_channel_linear(lr, srgb255_to_linear(sc[0] as f64 + v), a_s);
+                        lg = km_glaze_channel_linear(lg, srgb255_to_linear(sc[1] as f64 + v), a_s);
+                        lb = km_glaze_channel_linear(lb, srgb255_to_linear(sc[2] as f64 + v), a_s);
                     }
                     if a_f > 0.0 {
-                        lr = km_glaze_channel_linear(
-                            lr,
-                            srgb_to_linear(clamp_byte(uc[0] as f64 + v) / 255.0),
-                            a_f,
-                        );
-                        lg = km_glaze_channel_linear(
-                            lg,
-                            srgb_to_linear(clamp_byte(uc[1] as f64 + v) / 255.0),
-                            a_f,
-                        );
-                        lb = km_glaze_channel_linear(
-                            lb,
-                            srgb_to_linear(clamp_byte(uc[2] as f64 + v) / 255.0),
-                            a_f,
-                        );
+                        lr = km_glaze_channel_linear(lr, srgb255_to_linear(uc[0] as f64 + v), a_f);
+                        lg = km_glaze_channel_linear(lg, srgb255_to_linear(uc[1] as f64 + v), a_f);
+                        lb = km_glaze_channel_linear(lb, srgb255_to_linear(uc[2] as f64 + v), a_f);
                     }
                 } else {
                     // Alpha-over, settled then suspended; the tooth offset v
@@ -202,23 +181,25 @@ pub fn render_region(
                 }
                 // Edge tint (extension): bidirectional darken/lighten on mass
                 // fronts.
-                if edge_tint != 0.0 {
+                // Under glaze the tint has never been applied (it is an sRGB
+                // offset and the stack is in reflectance), so the gradient is
+                // not computed either — same output, minus a dead `sqrt` per
+                // layer per pixel.
+                if edge_tint != 0.0 && !km_glaze {
                     let gmx = (m_r - m_l) * 0.5;
                     let gmy = (m_d - m_u) * 0.5;
                     let gm = (gmx * gmx + gmy * gmy).sqrt();
                     let wgt = smoothstep01((gm - 100.0) / 1300.0);
                     let tint = edge_tint * 130.0 * wgt;
-                    if !km_glaze {
-                        r -= tint;
-                        g -= tint;
-                        b -= tint;
-                    }
+                    r -= tint;
+                    g -= tint;
+                    b -= tint;
                 }
             }
-            if km_glaze {
-                r = linear_to_srgb(lr) * 255.0;
-                g = linear_to_srgb(lg) * 255.0;
-                b = linear_to_srgb(lb) * 255.0;
+            if in_linear {
+                r = srgb255_of_linear(lr);
+                g = srgb255_of_linear(lg);
+                b = srgb255_of_linear(lb);
             }
 
             // Show-wet overlay (active layer): a realistic damp look — darken
@@ -384,21 +365,23 @@ pub fn render_pigment_region_visual(
                         // settled by reflectance, per channel, in linear
                         // light — [`render_region`]'s stacking law with the
                         // settled colour as the base.
-                        cr = linear_to_srgb(km_glaze_channel_linear(
-                            srgb_to_linear(clamp_byte(cr) / 255.0),
-                            srgb_to_linear(clamp_byte(uc[0] as f64) / 255.0),
+                        // The 0..255 doors carry `clamp_byte(..)/255` inside
+                        // the table lookup (`colorops::transfer`).
+                        cr = srgb255_of_linear(km_glaze_channel_linear(
+                            srgb255_to_linear(cr),
+                            srgb255_to_linear(uc[0] as f64),
                             a_f,
-                        )) * 255.0;
-                        cg = linear_to_srgb(km_glaze_channel_linear(
-                            srgb_to_linear(clamp_byte(cg) / 255.0),
-                            srgb_to_linear(clamp_byte(uc[1] as f64) / 255.0),
+                        ));
+                        cg = srgb255_of_linear(km_glaze_channel_linear(
+                            srgb255_to_linear(cg),
+                            srgb255_to_linear(uc[1] as f64),
                             a_f,
-                        )) * 255.0;
-                        cb = linear_to_srgb(km_glaze_channel_linear(
-                            srgb_to_linear(clamp_byte(cb) / 255.0),
-                            srgb_to_linear(clamp_byte(uc[2] as f64) / 255.0),
+                        ));
+                        cb = srgb255_of_linear(km_glaze_channel_linear(
+                            srgb255_to_linear(cb),
+                            srgb255_to_linear(uc[2] as f64),
                             a_f,
-                        )) * 255.0;
+                        ));
                     } else {
                         cr = cr * (1.0 - a_f) + uc[0] as f64 * a_f;
                         cg = cg * (1.0 - a_f) + uc[1] as f64 * a_f;

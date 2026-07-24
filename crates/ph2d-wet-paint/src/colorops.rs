@@ -5,9 +5,12 @@
 //! a wet cell can re-mix thousands of times, and a byte round-trip on every
 //! mix drifts washes toward black.
 //!
-//! `pow` routes through `libm` (cross-OS bit-identical); it only runs when
-//! the K–M checkbox is ON or the glaze stack renders — never in the default
-//! hot path (HR-5).
+//! The sRGB transfer runs only when the K–M checkbox is ON or the glaze stack
+//! renders — never in the default hot path (HR-5) — but when it does run it
+//! runs 9-15 times per cell, which made it the whole cost of both
+//! EXPERIMENTAL knobs. It lives in [`transfer`], node-tabulated from `libm`
+//! and interpolated with IEEE basic operations only: same cross-OS
+//! bit-identity, ~11x the speed. Read that module before touching it.
 
 /// h in [0,360), s,v in [0,1] -> (r,g,b) 0..255 floats.
 pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> [f64; 3] {
@@ -62,25 +65,13 @@ pub fn rgb_to_hsv(r: f64, g: f64, b: f64) -> [f64; 3] {
     [h, if max == 0.0 { 0.0 } else { d / max }, max]
 }
 
-/// Standard sRGB EOTF, c in [0,1] -> linear [0,1].
-#[inline]
-pub fn srgb_to_linear(c: f64) -> f64 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        libm::pow((c + 0.055) / 1.055, 2.4)
-    }
-}
+pub mod transfer;
 
-/// Inverse EOTF, linear [0,1] -> sRGB [0,1].
-#[inline]
-pub fn linear_to_srgb(c: f64) -> f64 {
-    if c <= 0.0031308 {
-        c * 12.92
-    } else {
-        1.055 * libm::pow(c, 1.0 / 2.4) - 0.055
-    }
-}
+// The standard sRGB EOTF and its inverse, plus the 0..255-domain doors the
+// K–M and glaze sites use. ONE door each: every experimental site goes through
+// these, and the tables live behind them so no call site can pick a different
+// transfer than its neighbour.
+pub use transfer::{ks_of_srgb255, linear_to_srgb, srgb255_of_linear, srgb_to_linear};
 
 // ---------------------------------------------------------------------------
 // Kubelka–Munk single-constant mixing. A reflectance R maps to K/S =
@@ -141,21 +132,34 @@ impl ColorMix {
                 out[2] = db + (sb - db) * w;
             }
             ColorMix::Km => {
-                out[0] = linear_to_srgb(km_mix_channel_linear(
-                    srgb_to_linear(dr / 255.0),
-                    srgb_to_linear(sr / 255.0),
-                    w,
-                )) * 255.0;
-                out[1] = linear_to_srgb(km_mix_channel_linear(
-                    srgb_to_linear(dg / 255.0),
-                    srgb_to_linear(sg / 255.0),
-                    w,
-                )) * 255.0;
-                out[2] = linear_to_srgb(km_mix_channel_linear(
-                    srgb_to_linear(db / 255.0),
-                    srgb_to_linear(sb / 255.0),
-                    w,
-                )) * 255.0;
+                // A mix that moves nothing must CHANGE nothing, to the bit.
+                // Mathematically w=0 is dst and w=1 is src, so this is not a
+                // shortcut past the model, it is the model's own answer — and
+                // taking it matters because a weight of exactly 0 does occur
+                // (a settle or a lift whose incoming mass rounds to no
+                // coverage) and it recurs on the SAME cell every pass. The
+                // tabulated round trip is accurate but is not an identity, so
+                // without this a still wash would be nudged forever by passes
+                // that deposit nothing (see `transfer`'s fixed-point note).
+                if w <= 0.0 {
+                    *out = [dr, dg, db];
+                    return;
+                }
+                if w >= 1.0 {
+                    *out = [sr, sg, sb];
+                    return;
+                }
+                // Otherwise the composition of [`km_mix_channel_linear`] over
+                // the transfer, with the `/255` rescale folded into the
+                // table's index (`transfer`'s K/S door): mixtures are linear
+                // in K/S, so the mix itself is a lerp.
+                let iw = 1.0 - w;
+                let ks_r = iw * ks_of_srgb255(dr) + w * ks_of_srgb255(sr);
+                let ks_g = iw * ks_of_srgb255(dg) + w * ks_of_srgb255(sg);
+                let ks_b = iw * ks_of_srgb255(db) + w * ks_of_srgb255(sb);
+                out[0] = srgb255_of_linear(reflectance_of_ks(ks_r));
+                out[1] = srgb255_of_linear(reflectance_of_ks(ks_g));
+                out[2] = srgb255_of_linear(reflectance_of_ks(ks_b));
             }
         }
     }
@@ -175,9 +179,11 @@ pub fn km_weighted_mean_color(
     for ch in 0..3 {
         let mut ks = 0.0;
         for k in 0..count {
-            ks += weights[k] * ks_of_reflectance(srgb_to_linear(colors[k * 3 + ch] / 255.0));
+            // One door per corner per channel: the `/255` rescale rides inside
+            // the table's index instead of costing a division each.
+            ks += weights[k] * ks_of_srgb255(colors[k * 3 + ch]);
         }
-        out[ch] = linear_to_srgb(reflectance_of_ks(ks * inv_total)) * 255.0;
+        out[ch] = srgb255_of_linear(reflectance_of_ks(ks * inv_total));
     }
 }
 
@@ -205,16 +211,24 @@ mod tests {
     }
 
     #[test]
-    fn km_mix_endpoints_are_exact_above_the_floor() {
-        // Endpoints are exact ONLY above the 1/255 reflectance floor — a
-        // channel darker than that (linear) is floored on the way into K/S
-        // space and cannot round-trip. The reference behaves identically;
-        // pick endpoint colors whose linear channels all clear the floor.
+    fn km_mix_endpoints_are_bit_exact_at_any_colour() {
+        // A weight of 0 returns dst and a weight of 1 returns src, to the
+        // BIT, for every colour — including BELOW the 1/255 reflectance floor,
+        // where the K/S round trip provably cannot recover the input (every
+        // colour there shares one K/S). The endpoints do not go through K/S at
+        // all, so the floor is irrelevant to them; asserting equality rather
+        // than a tolerance is what pins that, and it is what keeps a pass that
+        // deposits nothing from tinting paint it did not touch.
         let mut out = [0.0; 3];
-        ColorMix::Km.mix(200.0, 90.0, 60.0, 40.0, 120.0, 180.0, 0.0, &mut out);
-        assert!((out[0] - 200.0).abs() < 1e-6 && (out[2] - 60.0).abs() < 1e-6);
-        ColorMix::Km.mix(200.0, 90.0, 60.0, 40.0, 120.0, 180.0, 1.0, &mut out);
-        assert!((out[0] - 40.0).abs() < 1e-6 && (out[2] - 180.0).abs() < 1e-6);
+        for (d, s) in [
+            ([200.0, 90.0, 60.0], [40.0, 120.0, 180.0]),
+            ([3.0, 1.0, 0.0], [255.0, 254.0, 250.0]), // both ends, floor included
+        ] {
+            ColorMix::Km.mix(d[0], d[1], d[2], s[0], s[1], s[2], 0.0, &mut out);
+            assert_eq!(out, d, "w=0 must return dst unchanged");
+            ColorMix::Km.mix(d[0], d[1], d[2], s[0], s[1], s[2], 1.0, &mut out);
+            assert_eq!(out, s, "w=1 must return src exactly");
+        }
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# HANDOFF DE INTEGRAÇÃO — `line/physics` (W-AreaFrame + W-AreaFalloff, 2026-07-23)
+# HANDOFF DE INTEGRAÇÃO — `line/physics` (W-AreaFrame + W-AreaFalloff + W-AreaMirror, 2026-07-23)
 
 > Para o **agente integrador**, por ordem do Enio (DIRETRIZ §1.5.9). A linha **não integrou e
 > não pushou**: fechou a wave, rodou o gate batched e parou.
@@ -118,13 +118,17 @@ de física; o Mergiraf funde isso sozinho, e o §3 abaixo é o que se grepa se n
 | `zone_falloff_scale` | `ph2d-physics::world::effector` | fn `pub`, re-exportada |
 | `FALLOFF_RGBA` / `FALLOFF_RING` | shell (annotations) | cor + a fração `0.5` do anel |
 | `apply_area_edit` / `area_edit` | shell / painel | os dois helpers dos splits |
-| `physics_smoke_falloff` + cena `"35"` | shell | próxima cena livre = **36** |
+| `physics_smoke_falloff` + cena `"35"` | shell | — |
+| `AreaEffect.mirror` + `AreaEffect::UNMIRRORED` | `ph2d-physics` (plain data) | campo novo, **não serializado** |
+| `zone_spin_sign` | `ph2d-physics::world::effector` | fn `pub`, re-exportada |
+| `physics_smoke_mirror` + cena `"36"` | shell | próxima cena livre = **37** |
+| `src/bin/physics_ecs_c9/{main,zones}.rs` | `ph2d-physics-ecs` | ⚠️ o bin virou DIRETÓRIO; o `[[bin]].path` do `Cargo.toml` mudou |
 
 **Contadores que SOMAM entre linhas** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]):
 
 - registro de componentes de física **19 → 21** (`register_physics_components` + o
   `assert_eq!(reg.len(), 21)`) — o `AreaForceWorldAxes` e o `AreaFalloff`, uma por wave;
-- `physics_ecs_c9` **77 → 81 corpos**, hash **`bfca28f7…`** (era `7d55a4ab…` no `main`);
+- `physics_ecs_c9` **77 → 83 corpos**, hash **`4e862761…`** (era `7d55a4ab…` no `main`);
 - `every_physics_component_is_authorable`: `WRITERS` **3 → 4** e o piso do parse **18 → 21**;
 - **`PROJECT_SCHEMA` NÃO mudou — fica em 29.** Componente novo cunha blob-key própria.
 
@@ -181,6 +185,14 @@ liga contorno e seta.
 **A caixa `Dur(s)` (§1b), em qualquer cena:** clique nela e **arraste** — o número tem de
 acompanhar o dedo em segundos (antes um pixel dava centenas). Digite **300** e dê Enter: a
 timeline abre até lá e a simulação corre os 5 minutos, em vez de bater no fim aos 4 s.
+
+**`env PH2D_PHYSICS_SMOKE=36 cargo run -p ph2d-host-desktop`** — o espelho.
+
+Quatro zonas com a MESMA autoria; só o **sinal da escala** difere (as da direita têm
+`scale.x = -1`, que é o gesto de virar o sprite). Em cima o vento a 40°: à esquerda as
+caixas sobem na diagonal `(2,81, 2,36)`, à direita vão para o lado **refletido**
+`(−2,81, −2,36)`. Embaixo o giro: `+117°` à esquerda, **`−117°`** à direita — ao contrário.
+Essa última linha É a wave (força é vetor e reflete, torque é pseudoescalar e inverte).
 
 **`env PH2D_PHYSICS_SMOKE=35 cargo run -p ph2d-host-desktop`** — a rajada com centro.
 

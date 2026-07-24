@@ -109,8 +109,40 @@ impl FlipStripSnapshot {
     }
 }
 
+/// **O que um arrasto na tira pede ao documento.**
+///
+/// Nenhuma operação NOVA: as duas já existem no `ph2d-flip` e já são o que os botões
+/// `◀`/`▶` e a caixa **Hold** chamam. O arrasto é uma segunda forma de PEDIR o que já
+/// existe — não um segundo caminho para fazê-lo (duas implementações do mesmo verbo
+/// divergem; uma segunda porta de PEDIDO, não).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FlipStripIntent {
+    /// Mover a chave `from` para o quadro `to` (`FlipObject::move_frame`).
+    MoveKey { from: i32, to: i32 },
+    /// A chave `key` passa a expor `frames` quadros (`FlipObject::set_exposure`, que
+    /// EMPURRA as seguintes — a semântica da tira de exposição).
+    SetHold { key: i32, frames: u32 },
+}
+
 thread_local! {
     static CURRENT: RefCell<FlipStripSnapshot> = RefCell::new(FlipStripSnapshot::default());
+    static INTENTS: RefCell<Vec<FlipStripIntent>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Enfileira um pedido do arrasto (o painel escreve; o shell drena no mesmo frame).
+pub(crate) fn push_intent(intent: FlipStripIntent) {
+    INTENTS.with(|c| c.borrow_mut().push(intent));
+}
+
+/// **Drena os pedidos do arrasto da tira** (o shell chama 1× por frame).
+///
+/// Canal próprio porque `PanelEvent` está congelado (CLAUDE.md §6) e um arrasto não cabe
+/// nos quatro variants dele. Espelha o `drain_intents` que a timeline usa pelo mesmo
+/// motivo; o **toque** continua saindo por `PanelEvent::Click`, então nada do que já
+/// funcionava mudou de rota.
+#[must_use]
+pub fn drain_flip_strip_intents() -> Vec<FlipStripIntent> {
+    INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
 }
 
 /// Publica o snapshot da tira (o shell chama 1× por frame com a tool ativa).
@@ -124,9 +156,16 @@ pub fn current_flip_strip() -> FlipStripSnapshot {
     CURRENT.with(|c| c.borrow().clone())
 }
 
-/// Estado retido do painel — vazio de propósito (a verdade está no shell).
+/// Estado retido do painel: **só a sessão de arrasto**.
+///
+/// O documento continua vivendo no shell (a tira é um espelho). O que mora aqui é estado de
+/// VISTA — o gesto em curso e o que ele vai pedir — e ele existe porque um arrasto tem
+/// percurso: o painel precisa desenhar *para onde a chave vai* antes de o documento saber
+/// disso. O documento só muda no fim ([`crate::strip_drag`]).
 #[derive(Clone, Debug, Default)]
-pub struct FlipStripState;
+pub struct FlipStripState {
+    pub(crate) drag: Option<crate::strip_drag::StripDrag>,
+}
 
 #[cfg(test)]
 mod scrub_tests {

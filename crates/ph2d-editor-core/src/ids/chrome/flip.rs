@@ -386,6 +386,17 @@ pub fn flip_cell_id(index: usize) -> NodeId {
     flip_fnv_node_id(&format!("flip.strip.cell.{index}"))
 }
 
+/// Derive the id of the **hold edge** of the strip cell at `index` — the grip on the
+/// cell's right boundary that stretches its exposure.
+///
+/// A separate id from [`flip_cell_id`] because it is a separate target: the body of the
+/// cell moves the key in time, its edge changes how long the key is held, and a single
+/// widget cannot answer both. Same index space as the cell it belongs to.
+#[must_use]
+pub fn flip_hold_edge_id(index: usize) -> NodeId {
+    flip_fnv_node_id(&format!("flip.strip.holdedge.{index}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

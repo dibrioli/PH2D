@@ -25,6 +25,9 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 
 [dev-dependencies]
+# `PointerButton` atravessa o `FlipStripGesture`; só os GATES constroem um gesto à mão
+# (o produto os recebe prontos do dispatch), então a aresta é de dev.
+ph2d-host = { path = "../ph2d-host" }
 # Blindagem Fase 1.2: seam headless (populate → apply_event → barramento). Dev-dep
 # só — o gate anti-ciclo lê `[dependencies]`, então isto não cria ciclo em runtime.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

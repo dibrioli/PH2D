@@ -17,7 +17,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-pub(crate) fn paint(_state: &mut FlipStripState, ctx: &mut PaintCtx) {
+pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(FlipFramesPanel::ID) {
         // Limpa o rect publicado, senão o `panel_at` continua devolvendo a tira
         // depois de trocar de tool (e ela comeria cliques do canvas).
@@ -95,6 +95,7 @@ pub(crate) fn paint(_state: &mut FlipStripState, ctx: &mut PaintCtx) {
     let cells_y = y + crate::toolbar_plan::bar_height(bar_rows, ROW_H_PX) + Spacing::Sm.px();
     let cells_h = (rect.y + rect.h - cells_y - PANEL_HEAD_PAD).max(0.0);
     crate::paint_cells::paint(
+        state,
         ctx,
         theme,
         Rect::new(inner_x, cells_y, inner_w, cells_h),

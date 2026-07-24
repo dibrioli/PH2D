@@ -13,20 +13,18 @@
 //! corrente — inclusive no meio de um hold, que é onde ele costuma estar.
 
 use crate::ids;
-use crate::state::FlipStripSnapshot;
-use ph2d_editor_core::interaction::InteractiveState;
+use crate::ruler::{MIN_CELL_W, StripRuler};
+use crate::state::{FlipStripSnapshot, FlipStripState};
+use ph2d_editor_core::interaction::{FlipStripHitKind, InteractiveState};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, token_to_vello,
+    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+    token_to_vello,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
-/// Largura máxima de um quadro em px (senão 3 chaves viram 3 painéis gigantes).
-const MAX_PX_PER_FRAME: f32 = 26.0; // LITERAL-PX-OK: strip cell scale cap
-/// Largura mínima visível de uma célula.
-const MIN_CELL_W: f32 = 3.0; // LITERAL-PX-OK: strip minimum cell width
 /// Lado do marcador de desenho instanciado.
 const INSTANCE_DOT: f32 = 4.0; // LITERAL-PX-OK: instanced-drawing marker
 /// Espessura da linha do playhead.
@@ -50,10 +48,20 @@ pub(crate) fn scrub_reserved_h() -> f32 {
     scrub_lane_h() + Spacing::Xs.px()
 }
 
-pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStripSnapshot) {
+pub(crate) fn paint(
+    state: &mut FlipStripState,
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    area: Rect,
+    snap: &FlipStripSnapshot,
+) {
     if area.w <= 0.0 || area.h <= 0.0 {
         return;
     }
+    // O gesto deste frame é consumido ANTES de pintar, com a régua da geometria que ele
+    // atravessou — pintar primeiro mostraria o quadro anterior do arrasto (um frame de
+    // atraso é o que se lê como "a célula não gruda no dedo").
+    crate::strip_drag::process(state, ctx, area, snap);
     // Trilho de fundo (a "pista" onde as células vivem).
     fill_rounded_rect(
         ctx.scene,
@@ -82,11 +90,13 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
         return;
     }
 
-    // O vão: do primeiro quadro exposto ao fim da última exposição. A escala é
-    // derivada dele, então a tira SEMPRE cabe na faixa.
-    let first = snap.cells[0].key;
-    let last = &snap.cells[snap.cells.len() - 1];
-    let end = last.key.saturating_add(last.exposure.max(1) as i32);
+    // O vão e a escala saem da RÉGUA — a mesma que interpreta o arrasto (`ruler.rs`).
+    // Duas cópias desta conta divergiriam, e o gesto passaria a pousar a chave onde a
+    // pintura não a desenhou.
+    let Some(ruler) = StripRuler::resolve(area, snap) else {
+        return;
+    };
+    let (first, end) = (ruler.first, ruler.end);
     let total = (end - first).max(1) as f32;
     let inner = Rect::new(
         area.x + Spacing::Xs.px(),
@@ -94,7 +104,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
         (area.w - Spacing::Xs.px() * 2.0).max(1.0),
         (area.h - Spacing::Xs.px() * 2.0).max(1.0),
     );
-    let ppf = (inner.w / total).min(MAX_PX_PER_FRAME);
+    let ppf = ruler.ppf;
     let font = TypeToken::Sm.px();
 
     // **A régua de scrub** (W7.3): uma faixa no TOPO da tira que move o playhead sem
@@ -108,25 +118,27 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
     // As células começam DEPOIS da faixa reservada. O painel já cresceu por
     // `scrub_reserved_h()` (ver `paint.rs`), então elas mantêm a altura de sempre — a régua
     // não as espreme (Enio 2026-07-14: *"ficou apertado na vertical"*).
-    let cells_top = inner.y + scrub_reserved_h();
-    let cell_h = (inner.y + inner.h - cells_top).max(1.0);
-
     for (i, cell) in snap.cells.iter().enumerate() {
-        let x = inner.x + (cell.key - first) as f32 * ppf;
-        let w = (cell.exposure.max(1) as f32 * ppf - 1.0).max(MIN_CELL_W);
-        let r = Rect::new(x, cells_top, w, cell_h);
+        let Some(r) = ruler.cell_rect(i, snap) else {
+            continue;
+        };
         let id = ids::flip_cell_id(i);
-        ctx.host.store_mut().register_if_absent(
+        // **A célula é uma SUPERFÍCIE de gesto, não mais um botão**: ela responde a toque
+        // (selecionar) E a arrasto (mover no tempo), e um widget primitivo só sabe a
+        // primeira. A aparência não muda — `paint_button` continua desenhando; o que era
+        // dado de graça pelo `InteractiveState::Button` (hover/press) passa a ser DERIVADO
+        // do próprio store, que é quem sabe quem está sob o ponteiro e quem está preso.
+        ctx.host.store_mut().register(
             id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
+            InteractiveState::FlipStripSurface {
+                parent: ids::FLIP_STRIP_PANEL,
+                kind: FlipStripHitKind::Cell {
+                    index: u16::try_from(i).unwrap_or(u16::MAX),
+                },
             },
         );
-        let st = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
+        let st = surface_button_state(ctx, id);
+        let w = r.w;
         // O rótulo só entra quando cabe (numa tira longa a célula é uma lasca).
         let label = if w > font * LABEL_FIT {
             format!("{}", cell.exposure)
@@ -169,7 +181,44 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             );
         }
         ctx.host.hit_index_mut().register(id, r);
+
+        // **O pega-mão do hold**, na borda direita — registrado DEPOIS da célula porque o
+        // hit index resolve do último para o primeiro: o grip fica POR CIMA do corpo onde
+        // eles se sobrepõem. Numa célula estreita a régua não o oferece (`None`), e aí a
+        // célula inteira segue sendo alvo de mover.
+        if let Some(edge) = ruler.hold_edge_rect(i, snap) {
+            let eid = ph2d_editor_core::ids::flip_hold_edge_id(i);
+            ctx.host.store_mut().register(
+                eid,
+                InteractiveState::FlipStripSurface {
+                    parent: ids::FLIP_STRIP_PANEL,
+                    kind: FlipStripHitKind::HoldEdge {
+                        index: u16::try_from(i).unwrap_or(u16::MAX),
+                    },
+                },
+            );
+            // Uma barrinha discreta: o grip só se ANUNCIA sob o ponteiro (ou preso), senão
+            // toda célula ganharia uma listra permanente que compete com o número.
+            let armed = ctx.host.store().hot_id() == Some(eid)
+                || ctx.host.store().active_id() == Some(eid);
+            if armed {
+                let bar = Rect::new(edge.x + edge.w * 0.5 - GRIP_BAR_W * 0.5, edge.y, GRIP_BAR_W, edge.h);
+                fill_rounded_rect(
+                    ctx.scene,
+                    bar,
+                    Radius::Sm.px(),
+                    resolve(ColorToken::BorderEmph, theme),
+                );
+            }
+            ctx.host.hit_index_mut().register(eid, edge);
+        }
     }
+
+    // **O preview do arrasto**: onde a chave VAI cair, ou que largura o hold VAI ter. O
+    // documento só muda no pen-up (`strip_drag`), então sem isto o gesto inteiro seria
+    // invisível até o fim — e um gesto que não mostra o resultado é um gesto que se aprende
+    // por tentativa.
+    paint_drag_preview(state, ctx, theme, &ruler, snap);
 
     // O playhead — uma linha no quadro corrente (que costuma estar NO MEIO de uma
     // exposição; é justamente aí que ele precisa ser visível).
@@ -183,6 +232,48 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             resolve(ColorToken::BorderEmph, theme),
         );
     }
+}
+
+/// Largura da barrinha que anuncia o pega-mão do hold sob o ponteiro.
+const GRIP_BAR_W: f32 = 2.0; // LITERAL-PX-OK: hold-grip hint bar
+
+/// **O estado visual de uma célula que virou superfície de gesto.**
+///
+/// Trocar `InteractiveState::Button` por `FlipStripSurface` tira do widget as transições
+/// automáticas de hover/press (o `dispatch::hover` só as roda para os quatro primitivos).
+/// Elas não se perdem: o store sabe quem está sob o ponteiro (`hot_id`) e quem está preso
+/// (`active_id`), que é *a mesma informação de onde as transições saíam*. Sem isto a célula
+/// ficaria visualmente morta sob o mouse — pintada, clicável e sem reagir.
+fn surface_button_state(ctx: &PaintCtx, id: ph2d_a11y::NodeId) -> ButtonState {
+    let store = ctx.host.store();
+    if store.active_id() == Some(id) {
+        ButtonState::Pressed
+    } else if store.hot_id() == Some(id) {
+        ButtonState::Hovered
+    } else {
+        ButtonState::Normal
+    }
+}
+
+/// Desenha o alvo do arrasto em curso: um contorno de acento onde a chave vai pousar (ou o
+/// quanto o hold vai medir). Nada em curso ⇒ nada pintado.
+fn paint_drag_preview(
+    state: &FlipStripState,
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    ruler: &StripRuler,
+    snap: &FlipStripSnapshot,
+) {
+    let Some(ghost) = crate::strip_drag::preview_rect(state, ruler, snap) else {
+        return;
+    };
+    stroke_rounded_rect(
+        ctx.scene,
+        ghost,
+        Radius::Md.px(),
+        StrokeToken::Thick.px(),
+        resolve(ColorToken::Accent, theme),
+    );
 }
 
 /// **A régua de scrub** (W7.3): um rail fino sobre a largura útil das células + um handle

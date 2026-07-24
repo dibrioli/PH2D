@@ -30,10 +30,15 @@ mod paint;
 mod paint_cells;
 mod paint_toolbar;
 pub mod populate;
+pub(crate) mod ruler;
 pub mod state;
+pub(crate) mod strip_drag;
 mod toolbar_plan;
 
-pub use state::{FlipCell, FlipStripSnapshot, current_flip_strip, set_current_flip_strip};
+pub use state::{
+    FlipCell, FlipStripIntent, FlipStripSnapshot, current_flip_strip, drain_flip_strip_intents,
+    set_current_flip_strip,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

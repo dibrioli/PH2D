@@ -95,31 +95,32 @@ pub(crate) fn apply_event(
                     )));
                 return EventOutcome::from_bool(true);
             }
-            // Uma célula: o shell resolve o índice → chave (seek + seleção).
-            match cell_index(id) {
-                Some(_) => {
-                    seam_reset_button(host, id);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
-                    true
+            // ⚠️ **Uma célula NÃO chega mais aqui**, e o braço que a tratava foi removido:
+            // desde que a célula virou superfície de gesto (`strip_drag`), o `dispatch`
+            // a captura no Down e o toque volta como `GesturePhase::Click` — que o
+            // `strip_drag::process` traduz no MESMO `PanelEvent::Click(flip_cell_id(i))`
+            // de sempre. Manter o braço aqui deixaria duas portas para a mesma pergunta,
+            // e a que o produto não usa é a que os testes acham primeiro (era o caso: o
+            // seam clicava por aqui e ficava verde sobre o caminho morto).
+            //
+            // O que sobra: o chip em si. O Click nele é só o open/close genérico, e
+            // **abrir um FECHA o outro** — dois popovers abertos ao mesmo tempo é um
+            // estado que ninguém pediu, e só um deles chega a ser pintado (o `pending`
+            // é um).
+            if id == ids::FLIP_CYCLE_DD || id == ids::FLIP_TWEEN_EASE_DD {
+                let other = if id == ids::FLIP_CYCLE_DD {
+                    ids::FLIP_TWEEN_EASE_DD
+                } else {
+                    ids::FLIP_CYCLE_DD
+                };
+                if let Some(InteractiveState::Dropdown { open, .. }) =
+                    host.store_mut().get_mut(other)
+                {
+                    *open = false;
                 }
-                // O chip em si: o Click é só o open/close genérico. **Abrir um FECHA o
-                // outro** — dois popovers abertos ao mesmo tempo é um estado que ninguém
-                // pediu, e só um deles chega a ser pintado (o `pending` é um).
-                None if id == ids::FLIP_CYCLE_DD || id == ids::FLIP_TWEEN_EASE_DD => {
-                    let other = if id == ids::FLIP_CYCLE_DD {
-                        ids::FLIP_TWEEN_EASE_DD
-                    } else {
-                        ids::FLIP_CYCLE_DD
-                    };
-                    if let Some(InteractiveState::Dropdown { open, .. }) =
-                        host.store_mut().get_mut(other)
-                    {
-                        *open = false;
-                    }
-                    true
-                }
-                None => false,
+                true
+            } else {
+                false
             }
         }
         // A régua de scrub: a mecânica de slider deu um `value` `0..1`; mapeamos ao

@@ -21,6 +21,56 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_panel_flip_frames::state::FlipStripState;
 use ph2d_panel_flip_frames::{FlipCell, FlipFramesPanel, FlipStripSnapshot, ids};
 use ph2d_ui_testkit::MockPanelHost;
+use ph2d_editor_core::zones::Rect;
+use ph2d_host::{PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_flip_frames::FlipStripIntent;
+
+/// Três chaves em 0/4/8, cada uma expondo 4 quadros — a fixture das células.
+fn strip_snapshot() -> FlipStripSnapshot {
+    let cell = |key: i32| FlipCell {
+        key,
+        exposure: 4,
+        breakdown: false,
+        instanced: false,
+        selected: false,
+        weight: 1.0,
+    };
+    FlipStripSnapshot {
+        has_layer: true,
+        cells: vec![cell(0), cell(4), cell(8)],
+        ..Default::default()
+    }
+}
+
+/// Pinta e devolve o rect da célula `i` — **o que o artista vê é o que o paint registrou**.
+fn cell_rect(
+    host: &mut MockPanelHost,
+    state: &mut FlipStripState,
+    viewport: Rect,
+    i: usize,
+) -> Rect {
+    host.paint::<FlipFramesPanel>(state, viewport)
+        .into_iter()
+        .find(|(id, r)| *id == ids::flip_cell_id(i) && r.w > 0.0 && r.h > 0.0)
+        .map(|(_, r)| r)
+        .expect("a célula tem de estar pintada e clicável")
+}
+
+/// Um arrasto REAL: Down, um Move além da folga, Up — pelo dispatcher do shell.
+fn drag(host: &mut MockPanelHost, x0: f32, y0: f32, x1: f32, y1: f32) {
+    let at = |x: f32, y: f32, kind: PointerKind| PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind,
+        source: PointerSource::Mouse,
+        button: ph2d_host::PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    host.dispatch_pointer_event(at(x0, y0, PointerKind::Down));
+    host.dispatch_pointer_event(at(x1, y1, PointerKind::Move));
+    host.dispatch_pointer_event(at(x1, y1, PointerKind::Up));
+}
 
 /// Os eventos que a tira empurrou no barramento nesta interação.
 fn drain(host: &mut MockPanelHost) -> Vec<PanelEvent> {
@@ -57,7 +107,7 @@ fn every_toolbar_button_reaches_the_bus() {
     ];
     for (name, id) in buttons {
         let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-        let mut state = FlipStripState;
+        let mut state = FlipStripState::default();
         let outcome = host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(
             outcome,
@@ -85,7 +135,7 @@ fn every_number_box_reaches_the_bus_with_its_value() {
     ];
     for (name, id, value) in numbers {
         let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-        let mut state = FlipStripState;
+        let mut state = FlipStripState::default();
         host.set_number_value(id, value);
         let outcome =
             host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::ValueChanged(id));
@@ -104,53 +154,98 @@ fn every_number_box_reaches_the_bus_with_its_value() {
     }
 }
 
-/// **Clicar numa CÉLULA chega ao barramento** — as células são registradas por
-/// ÍNDICE, e o decodificador lê o snapshot deste frame. Se o snapshot e o paint
-/// discordarem, o clique some: é este teste que pega.
+/// 🔴 **Um TOQUE numa célula chega ao barramento — pelo ponteiro REAL.**
+///
+/// Este gate mudou de caminho junto com o produto: a célula deixou de ser um botão e virou
+/// **superfície de gesto**, então o `WidgetEvent::Click` que a versão anterior deste teste
+/// entregava ao `apply_event` **não é mais o que acontece** — o dispatch captura o Down na
+/// superfície, o Up volta como `GesturePhase::Click`, e o `strip_drag` o traduz no MESMO
+/// `PanelEvent::Click(flip_cell_id(i))` de sempre.
+///
+/// ⚠️ Mantê-lo como estava teria deixado o gate **verde sobre um caminho morto** (ele
+/// passava: o braço antigo ainda existia no `event.rs`, sem nunca mais rodar no produto).
+/// Por isso ele agora PINTA, CLICA com o ponteiro do dispatcher, e pinta de novo — é o
+/// segundo paint que drena o gesto.
 #[test]
-fn clicking_a_cell_reaches_the_bus() {
+fn tapping_a_cell_reaches_the_bus_through_the_real_pointer() {
     let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-    let mut state = FlipStripState;
-    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
-        has_layer: true,
-        cells: vec![
-            FlipCell {
-                key: 0,
-                exposure: 4,
-                breakdown: false,
-                instanced: false,
-                selected: false,
-                weight: 1.0,
-            },
-            FlipCell {
-                key: 4,
-                exposure: 1,
-                breakdown: true,
-                instanced: false,
-                selected: false,
-                weight: 1.0,
-            },
-        ],
-        ..Default::default()
-    });
-    let id = ids::flip_cell_id(1);
-    let outcome = host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::Click(id));
-    assert_eq!(outcome, EventOutcome::Consumed, "a célula não é roteada");
+    let mut state = FlipStripState::default();
+    ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
+
+    let viewport = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let cell = cell_rect(&mut host, &mut state, viewport, 1);
+    host.click_at(cell.x + cell.w * 0.5, cell.y + cell.h * 0.5);
+    host.paint::<FlipFramesPanel>(&mut state, viewport); // o paint que DRENA o gesto
+
     assert!(
         drain(&mut host)
             .iter()
-            .any(|e| matches!(e, PanelEvent::Click(i) if *i == id)),
-        "o clique na célula não chegou ao barramento"
+            .any(|e| matches!(e, PanelEvent::Click(i) if *i == ids::flip_cell_id(1))),
+        "o toque na célula não chegou ao barramento"
     );
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
+}
 
-    // E uma célula que NÃO existe no snapshot não vira evento (o decodificador não
-    // pode inventar chave nenhuma).
-    let ghost = ids::flip_cell_id(9);
-    let outcome = host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::Click(ghost));
-    assert_eq!(
-        outcome,
-        EventOutcome::Ignored,
-        "uma célula inexistente não pode ser consumida"
+/// 🔴 **Arrastar a célula pede o `MoveKey`** — a costura inteira, com o ponteiro real:
+/// paint (registra a superfície) → Down → Move além da folga → Up → paint (drena) →
+/// `drain_flip_strip_intents`.
+///
+/// É o gate que prova que a célula não está **morta sob o mouse**: ela pode pintar,
+/// registrar hit e ter braço no painel e ainda assim nunca virar gesto, porque o Down do
+/// dispatcher só ativa um id que carrega `InteractiveState` no store. Foi isso que matou o
+/// rig de luz do Impasto com a suíte verde.
+#[test]
+fn dragging_a_cell_asks_the_document_to_move_the_key() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState::default();
+    ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
+    let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
+
+    let viewport = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let cell = cell_rect(&mut host, &mut state, viewport, 1);
+    let y = cell.y + cell.h * 0.5;
+    let x0 = cell.x + cell.w * 0.5;
+    // A célula do meio (chave 4) expõe 4 quadros: uma largura de célula à direita = +4.
+    drag(&mut host, x0, y, x0 + cell.w, y);
+    host.paint::<FlipFramesPanel>(&mut state, viewport);
+
+    let intents = ph2d_panel_flip_frames::drain_flip_strip_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [FlipStripIntent::MoveKey { from: 4, to }] if *to > 4
+        ),
+        "o arrasto não pediu para mover a chave: {intents:?}"
+    );
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
+}
+
+/// 🔴 **Arrastar a BORDA da célula pede a exposição, não o movimento.** Os dois alvos se
+/// sobrepõem em pixels (o grip mora dentro da célula), então quem decide é a ORDEM de
+/// registro no hit index — e é ela que este gate pina. Trocar a ordem faz o grip virar
+/// código morto: pintado, sobreposto e inalcançável.
+#[test]
+fn dragging_the_cells_edge_asks_for_the_exposure_instead() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState::default();
+    ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
+    let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
+
+    let viewport = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let cell = cell_rect(&mut host, &mut state, viewport, 0);
+    let y = cell.y + cell.h * 0.5;
+    // 2 px para dentro da borda direita: dentro do grip, e ainda dentro da célula.
+    let x0 = cell.x + cell.w - 2.0;
+    drag(&mut host, x0, y, x0 + cell.w, y);
+    host.paint::<FlipFramesPanel>(&mut state, viewport);
+
+    let intents = ph2d_panel_flip_frames::drain_flip_strip_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [FlipStripIntent::SetHold { key: 0, frames }] if *frames > 4
+        ),
+        "o arrasto da borda não pediu a exposição: {intents:?}"
     );
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
 }
@@ -165,7 +260,7 @@ fn clicking_a_cell_reaches_the_bus() {
 #[test]
 fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
     let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-    let mut state = FlipStripState;
+    let mut state = FlipStripState::default();
     // Vão exibido [0, 9): chaves 0 e 4 seguram 4 quadros, a última expõe 1.
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
         has_layer: true,
@@ -219,7 +314,7 @@ fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
 #[test]
 fn picking_a_cycle_option_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-    let mut state = FlipStripState;
+    let mut state = FlipStripState::default();
     let loop_mode = 2u8;
     let outcome = host.apply_panel_event::<FlipFramesPanel>(
         &mut state,
@@ -250,7 +345,7 @@ fn picking_a_cycle_option_reaches_the_bus() {
 #[test]
 fn every_toolbar_control_is_actually_painted() {
     let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-    let mut state = FlipStripState;
+    let mut state = FlipStripState::default();
 
     // A tira só desenha os controles com uma camada viva — é o estado que o
     // `flip_bridge` publica quando a tool está ativa.
@@ -328,7 +423,7 @@ fn every_toolbar_control_is_actually_painted() {
 #[test]
 fn the_scrub_lane_is_painted_with_a_hittable_rect() {
     let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-    let mut state = FlipStripState;
+    let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
         has_layer: true,
         layer_name: "L".into(),
@@ -397,7 +492,7 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
 fn picking_a_tween_easing_reaches_the_bus_under_its_own_chip() {
     for preset in 0u8..4 {
         let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-        let mut state = FlipStripState;
+        let mut state = FlipStripState::default();
         let outcome = host.apply_panel_event::<FlipFramesPanel>(
             &mut state,
             WidgetEvent::Click(ids::flip_tween_ease_option_id(preset)),
@@ -425,7 +520,7 @@ fn opening_one_dropdown_closes_the_other() {
         (ids::FLIP_TWEEN_EASE_DD, ids::FLIP_CYCLE_DD),
     ] {
         let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
-        let mut state = FlipStripState;
+        let mut state = FlipStripState::default();
         // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
         // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
         ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {

@@ -146,6 +146,7 @@ mod stack_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
+mod warp_smoke;
 mod theme;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]

@@ -129,6 +129,12 @@ impl crate::App {
             }
             return;
         }
+        // A cena da família WARP (Arc/Bulge/Wave/Fisheye/Rise) — irmão `warp_smoke`, mesma razão
+        // de LOC: cinco retângulos armados + um pelado para autorar pela seção Effects.
+        if level == 26 {
+            crate::warp_smoke::frame(self, f);
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

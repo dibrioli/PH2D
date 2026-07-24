@@ -54,6 +54,8 @@ mod inspector_physics_markers;
 mod inspector_physics_tests;
 mod inspector_visibility;
 pub(crate) mod motion_bridge;
+/// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
+pub(crate) mod motion_path_overlay;
 mod padding_bridge;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 mod paint_perf;
@@ -615,6 +617,7 @@ impl crate::App {
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
         self.stack_smoke();
+        self.motion_path_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.flip_pose_smoke();
@@ -4003,6 +4006,18 @@ impl crate::App {
                 &flashes,
                 &waterlines,
                 &triggered,
+                camera,
+                window_size,
+                vector_scene,
+            );
+            // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda
+            // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a
+            // cada frame sem ter onde pegar o caminho. Os PONTOS são um por quadro, e o
+            // espaçamento entre eles é a velocidade. No-op sem seleção ou sem Position.
+            motion_path_overlay::draw(
+                true,
+                &self.timeline.doc,
+                hero.gizmo.iter_selected().next(),
                 camera,
                 window_size,
                 vector_scene,

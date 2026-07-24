@@ -125,6 +125,7 @@ mod ktx2_smoke;
 mod label_live;
 mod mask_smoke;
 mod morph_live;
+mod motion_path_smoke;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
@@ -362,6 +363,7 @@ impl App {
             mask_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
+            motion_path_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

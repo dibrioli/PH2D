@@ -453,6 +453,8 @@ pub(crate) struct App {
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
+    /// Latch do `PH2D_PATH_SMOKE` (a cena do motion path, uma vez).
+    pub(crate) motion_path_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,

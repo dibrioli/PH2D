@@ -517,3 +517,36 @@ fn the_boot_snow_claims_the_loop_and_only_the_poisson_stays_cpu() {
     }
     assert_eq!(looped, 1, "exactly one sink drives the snow's sim loop");
 }
+
+/// The **FIELD family smoke really runs on the device** (`PH2D_GPU_COOK_DEMO=17`).
+///
+/// `field.index_range` writes the `falloff` mask on the GPU and a Solid tint reads
+/// it there; the whole `grid → field.index_range → tint → output` chain must be
+/// claimed whole, or the artist would smoke the CPU pump's memo (the band looks
+/// identical on screen, just cooked slower) and sign off on a path that never ran
+/// — the exact failure this file exists to prevent.
+#[test]
+fn the_field_index_range_demo_is_fully_gpu() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_field_index_range_demo_document(&mut doc, &registry)
+        .expect("well-typed field.index_range demo");
+    let out = *sinks.first().expect("one sink");
+    // The scene really contains the node under test — a gate that planned an empty
+    // or wrong graph fully-GPU would be vacuously green.
+    assert!(
+        doc.graph
+            .nodes()
+            .iter()
+            .any(|n| n.type_id() == ph2d_nodegraph::node::NodeTypeId::of("field.index_range")),
+        "the demo must contain the field.index_range node it exists to smoke"
+    );
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "field.index_range -> tint must be claimed whole — a CPU boundary here and \
+         the smoke would be reading the pump's memo, not the device: {:?}",
+        plan.boundaries
+    );
+}

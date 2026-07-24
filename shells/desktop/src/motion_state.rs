@@ -52,7 +52,8 @@ use gpu_deform_demo::{
     build_gpu_spherize_demo_document,
 };
 use gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document,
+    build_gpu_field_index_range_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use gpu_neighbour_demos::{
@@ -221,6 +222,12 @@ impl MotionState {
             // folding its reduction over the live stream the previous one produced.
             Ok("16") => {
                 build_gpu_deform_organism_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // The FIELD family: `field.index_range` writes the `falloff` mask keyed
+            // by ORDINAL (not position), coloured by a Solid tint — the middle band
+            // of 262k rows glowing red, a mask no spatial falloff can draw.
+            Ok("17") => {
+                build_gpu_field_index_range_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

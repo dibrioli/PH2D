@@ -67,6 +67,10 @@ ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }
 ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }
 # The count-changing deformer (StreamOp SourceRows) that READS its template.
 ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
+# The field.* focus-field family — pure per-instance maps that write the
+# multiplicative `falloff` mask; cooked on both paths by the falloff-column
+# parity gate (a downstream `tint` makes the mask a visible RenderInstance field).
+ph2d-node-field-index-range = { path = "../ph2d-node-field-index-range" }
 # ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

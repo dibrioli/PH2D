@@ -17,6 +17,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // <ph2d-node-sync:begin>
     ph2d_node_debug_const::register(reg)?;
     ph2d_node_debug_wave::register(reg)?;
+    ph2d_node_field_index_range::register(reg)?;
     ph2d_node_force_attractor::register(reg)?;
     ph2d_node_force_buoyancy::register(reg)?;
     ph2d_node_force_curl::register(reg)?;

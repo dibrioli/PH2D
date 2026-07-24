@@ -509,3 +509,73 @@ pub(super) fn build_gpu_hybrid_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The **FIELD family** smoke (`PH2D_GPU_COOK_DEMO=17`): `grid(512×512) →
+/// field.index_range → tint(Solid) → output` — **262.144 instances**, every node
+/// kernel-covered, so `PH2D_GPU_COOK=1` runs it 100 % GPU-resident (parity-proven
+/// bit-exact at 25.6k, `field_index_range_kernel_matches_the_cpu_within_epsilon`).
+///
+/// `field.index_range` writes the multiplicative `falloff` mask keyed by ORDINAL
+/// `i/(count−1)` — row-major here — and the Solid tint lerps the sprites' white
+/// toward a saturated red BY that mask. The result is a **horizontal band of the
+/// middle rows** glowing red, the rest white, the seam rows fading through the
+/// soft edge. It is the one mask a spatial `motion.falloff` cannot draw: it
+/// selects by RANK, not position — "the middle third of the clones", the stagger
+/// a grid + circle can never reach. Auto-plays on tool entry like every boot doc.
+pub(super) fn build_gpu_field_index_range_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    // 512 × 512 = 262.144 unit quads, gap 1.0 tiling them edge-to-edge into a
+    // dense field (the panel demo's scale — legibly a grid, substantial on GPU).
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+    let field = g.add_node("field.index_range");
+    // The middle ~half of the ordinal range, soft-edged — a horizontal band of
+    // rows (index is row-major), unmistakably index-keyed rather than spatial.
+    g.set_param(field, "start", 0.25);
+    g.set_param(field, "end", 0.75);
+    g.set_param(field, "soft", 0.08);
+    g.set_param(field, "curve", 2.0); // Smooth edges
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.95);
+    g.set_param(tint, "g", 0.25);
+    g.set_param(tint, "b", 0.15);
+    g.set_param(tint, "a", 1.0);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, field, tint, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
+    }
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (field, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (field, 0),
+        to: (tint, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (tint, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

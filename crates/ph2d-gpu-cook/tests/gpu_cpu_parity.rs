@@ -42,6 +42,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    // The field.* focus-field family (index-keyed `falloff` mask).
+    ph2d_node_field_index_range::register(&mut reg).unwrap();
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
@@ -499,6 +501,44 @@ fn wiggle_kernel_matches_the_cpu_within_epsilon() {
     g.set_param(node, "frequency", 0.9);
     g.set_param(node, "seed", 3.0);
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_index_range_kernel_matches_the_cpu_within_epsilon() {
+    // The first `field.*` source: a mask keyed by ORDINAL `i/(count−1)`, not by
+    // position. A downstream Solid tint lerps white → target BY the mask, so the
+    // index band becomes a colour gradient across the 160×160 = 25.6k-instance
+    // grid — the only way the scalar `falloff` column reaches a RenderInstance
+    // field the parity comparator sees. The grid emits no `falloff`, so the
+    // kernel exercises its `read_falloff` identity (1.0) path (the common case).
+    // Band bounds are deliberately un-round so a swapped Start/End or a dropped
+    // param cannot hide behind a tidy number; a `soft` ramp keeps the mask at
+    // INTERMEDIATE values across the grid (an all-1 band would stay green with
+    // the whole kernel deleted).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let foc = g.add_node("field.index_range");
+    g.set_param(foc, "start", 0.23);
+    g.set_param(foc, "end", 0.71);
+    g.set_param(foc, "soft", 0.14);
+    g.set_param(foc, "curve", 2.0); // Smooth — the polynomial the ε budget covers
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.31);
+    g.set_param(tint, "g", 0.72);
+    g.set_param(tint, "b", 0.16);
+    g.set_param(tint, "a", 0.85);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, foc);
+    connect(&mut g, foc, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + index_range + tint
 }
 
 #[test]

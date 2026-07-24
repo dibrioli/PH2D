@@ -40,6 +40,8 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    // The field.* focus-field family: an index-keyed mask writing `falloff`.
+    ph2d_node_field_index_range::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();

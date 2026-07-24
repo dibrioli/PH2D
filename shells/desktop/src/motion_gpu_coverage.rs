@@ -31,7 +31,8 @@ use super::gpu_deform_demo::{
     build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
 };
 use super::gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document,
+    build_gpu_field_index_range_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
@@ -85,6 +86,12 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     });
     push("demo=6 panel value branch", &|d| {
         build_gpu_panel_demo_document(d, reg)
+    });
+    // The first field.* focus-field source — the index-keyed `falloff` mask. It
+    // is fully-GPU (grid → field.index_range → tint), so a boundary here would be
+    // a real regression, not an inherent CPU node.
+    push("demo=17 field.index_range band", &|d| {
+        build_gpu_field_index_range_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

@@ -204,3 +204,70 @@ fn the_thread_the_dots_and_the_anchors_are_three_groups() {
     // Duas âncoras, quatro vértices cada.
     assert_eq!(points(&out[2].0).len(), 8);
 }
+
+/// **A porta única, provada onde ela importa:** apertar no centro de cada quadrado
+/// DESENHADO agarra exatamente aquela âncora.
+///
+/// Este é o gate que uma segunda derivação quebra. O modo de falha dela não é um
+/// pânico nem um número errado — é a alça pintada num sítio e agarrada noutro, o dedo
+/// errando, e o artista concluindo que a feature está quebrada.
+#[test]
+fn pressing_the_drawn_square_grabs_that_very_anchor() {
+    let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
+    let (cam, win) = (camera(), window());
+    let squares = points(&marks(true, &doc, Some(e), &cam, win)[2].0);
+    // Quatro vértices por quadrado; o centro é a média do 1º e do 3º (cantos opostos).
+    for (i, c) in squares.chunks(4).enumerate() {
+        let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
+        let hit = super::anchor_at(&doc, Some(e), &cam, win, cx as f32, cy as f32);
+        assert_eq!(
+            hit.map(|(_, k)| k),
+            Some(i),
+            "o quadrado {i} está desenhado em ({cx:.1}, {cy:.1}) e o hit-test não o \
+             encontra ali — desenho e pega discordam sobre onde a âncora está"
+        );
+    }
+}
+
+/// O alvo tem um raio, e fora dele o clique **passa** — senão a trajetória roubaria
+/// cliques do gizmo em toda a tela.
+#[test]
+fn the_grab_has_a_radius_and_a_far_click_passes_through() {
+    let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
+    let (cam, win) = (camera(), window());
+    let c = points(&marks(true, &doc, Some(e), &cam, win)[2].0);
+    let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
+
+    assert!(super::anchor_at(&doc, Some(e), &cam, win, cx as f32, (cy + 3.0) as f32).is_some());
+    assert!(
+        super::anchor_at(&doc, Some(e), &cam, win, cx as f32, (cy + 40.0) as f32).is_none(),
+        "um clique a 40 px da âncora foi agarrado — a trajetória está roubando o canvas"
+    );
+    // E sem seleção não há o que pegar, do mesmo jeito que não há o que desenhar.
+    assert!(super::anchor_at(&doc, None, &cam, win, cx as f32, cy as f32).is_none());
+}
+
+/// Com duas âncoras dentro do alvo vence a **mais próxima**, nunca a primeira da lista:
+/// "a primeira" faria o dedo pegar a de trás sem nada na tela explicando por quê.
+#[test]
+fn the_nearest_anchor_wins_not_the_first_one_listed() {
+    let (mut doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
+    // Uma câmera bem afastada põe as duas âncoras a poucos px uma da outra.
+    let cam = Camera2d {
+        height_world: 4000.0,
+        ..camera()
+    };
+    let win = window();
+    let pts = super::anchor_screen(&doc, Some(e), &cam, win);
+    let (a, b) = (pts[0].2, pts[1].2);
+    assert!(
+        (a.x - b.x).abs() < 2.0 * super::HIT_R_PX,
+        "a fixture não contém o fenômeno: as âncoras estão a {:.1} px, longe demais para \
+         as duas caberem no alvo",
+        (a.x - b.x).abs()
+    );
+    // Um clique colado na SEGUNDA tem de dar a segunda.
+    let hit = super::anchor_at(&doc, Some(e), &cam, win, b.x as f32, b.y as f32);
+    assert_eq!(hit.map(|(_, i)| i), Some(1));
+    let _ = &mut doc;
+}

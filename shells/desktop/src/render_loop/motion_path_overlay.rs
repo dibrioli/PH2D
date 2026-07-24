@@ -34,7 +34,7 @@
 use ph2d_anim::{AnimValue, AttributeEvaluator};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
-use ph2d_timeline::{PropKind, TimelineDoc};
+use ph2d_timeline::{AnimTarget, PropKind, TimelineDoc};
 use ph2d_vector::{BezPath, Point, VectorScene};
 
 /// A espessura do fio da trajetória, em px de tela. Mais fino que o contorno de
@@ -50,6 +50,11 @@ const DOT_HALF: f64 = 1.6; // LITERAL-PX-OK: chrome de overlay, geometria de tel
 /// Meia-largura do quadrado de uma âncora. Maior que um ponto de tempo porque é a
 /// coisa que se PEGA — um alvo de mouse, não uma marca de leitura.
 const ANCHOR_HALF: f64 = 4.0; // LITERAL-PX-OK: chrome de overlay, geometria de tela
+
+/// Raio de pega de uma âncora, em px de tela. Maior que a metade desenhada (4): um
+/// alvo de mouse quer folga, e esta é a mesma generosidade que a alça do texto em
+/// caminho e a do conector já assumem.
+const HIT_R_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
 
 /// Quantos segmentos de reta aproximam a curva por trecho entre pontos de tempo.
 /// O fio é redesenhado por frame e só precisa parecer liso.
@@ -168,19 +173,78 @@ pub(crate) fn marks(
         out.push((dots, PATH_RGBA));
     }
 
-    // 3. AS ÂNCORAS — o que se pega. Uma por key, no lugar que a distância dela nomeia.
+    // 3. AS ÂNCORAS — o que se pega, pela MESMA porta que o hit-test consulta.
     let mut anchors = BezPath::new();
     let mut any_anchor = false;
-    for i in 0..path.len() {
-        let Some(s) = path.arclen_at(i) else { continue };
-        let Some(k) = path.at(s) else { continue };
-        push_square(&mut anchors, to_screen(k.point), ANCHOR_HALF);
+    for (_, _, p) in anchor_screen(doc, selected, camera, window) {
+        push_square(&mut anchors, p, ANCHOR_HALF);
         any_anchor = true;
     }
     if any_anchor {
         out.push((anchors, PATH_RGBA));
     }
     out
+}
+
+/// **Onde estão as âncoras agarráveis, em px de tela** — `(alvo, índice, ponto)`.
+///
+/// ⚠️ **A porta ÚNICA**, e é a razão de esta função existir separada do desenho: quem
+/// PINTA e quem faz HIT-TEST têm de concordar sobre onde a âncora está. Duas derivações
+/// divergem, e o modo de falha é a alça pintada num sítio e agarrada noutro — o dedo
+/// erra e o artista conclui que a feature está quebrada. É a mesma lei que a alça do
+/// texto em caminho já paga (`handle::world`).
+///
+/// Lê o ponto **autorado** (`anchors()[i].anchor`), não uma re-amostragem por
+/// distância: a âncora é a coisa que o artista pôs ali, e a distância é derivada dela.
+pub(crate) fn anchor_screen(
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Vec<(AnimTarget, usize, Point)> {
+    let Some(entity) = selected else {
+        return Vec::new();
+    };
+    let Some(b) = doc
+        .bindings()
+        .iter()
+        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)
+    else {
+        return Vec::new();
+    };
+    let Some(path) = b.path.as_ref() else {
+        return Vec::new();
+    };
+    path.anchors()
+        .iter()
+        .enumerate()
+        .map(|(i, a)| {
+            let (sx, sy) = camera.world_to_screen(a.anchor, window);
+            (b.target, i, Point::new(f64::from(sx), f64::from(sy)))
+        })
+        .collect()
+}
+
+/// **A âncora sob o cursor**, se houver — o que o press agarra.
+///
+/// A MAIS PRÓXIMA dentro do raio, nunca a primeira encontrada: num caminho apertado
+/// duas âncoras podem estar as duas dentro do alvo, e "a primeira da lista" faria o
+/// dedo pegar a de trás sem nada na tela explicando por quê.
+pub(crate) fn anchor_at(
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    camera: &Camera2d,
+    window: WindowSize,
+    x: f32,
+    y: f32,
+) -> Option<(AnimTarget, usize)> {
+    let (px, py) = (f64::from(x), f64::from(y));
+    anchor_screen(doc, selected, camera, window)
+        .into_iter()
+        .map(|(t, i, p)| ((p.x - px).powi(2) + (p.y - py).powi(2), t, i))
+        .filter(|(d2, _, _)| *d2 <= HIT_R_PX * HIT_R_PX)
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, t, i)| (t, i))
 }
 
 /// Um losango de meia-largura `half` centrado em `c`. Losango e não círculo: um ponto

@@ -794,6 +794,15 @@ pub(crate) struct App {
     /// e vive no `VecTextPath`. Um booleano e não um alvo porque há UMA alça (o `start_offset` do
     /// texto selecionado); qual texto vem da seleção, como no painel. Ver [`crate::vec_text_ride`].
     pub(crate) vec_textpath_handle_drag: bool,
+    /// Qual âncora do MOTION PATH está sob arrasto, se alguma — `(alvo, índice)`. Armada
+    /// no press sobre a âncora, limpa no release (ADR-0141, Fatia 3). Runtime-only: um
+    /// arrasto vivo não é documento; o resultado (a geometria e as distâncias que as keys
+    /// guardam) é, e vive no `TargetBinding.path` + na track.
+    ///
+    /// Um par e não um booleano porque há uma âncora por key, e o alvo viaja junto para
+    /// que o move não precise re-perguntar qual binding é — a seleção pode mudar no meio
+    /// de um arrasto (um atalho, um undo), e o gesto continua sendo sobre o que foi pego.
+    pub(crate) motion_path_drag: Option<(ph2d_timeline::AnimTarget, usize)>,
     /// Qual das duas alças do PATTERN (Start/End, plano 23 W4) está sob arrasto, se alguma. Armada
     /// no press de Select, limpa no release. Runtime-only: o arrasto não é documento — o resultado
     /// (`start_offset`/`end_offset`) é, e vive no `VecPatternPath`. Um `Option` e não um booleano

@@ -448,6 +448,7 @@ impl App {
             vec_morph_pending: None,
             vec_envelope_drag: None,
             vec_textpath_handle_drag: false,
+            motion_path_drag: None,
             vec_patternpath_handle: None,
             vec_path_pick: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),

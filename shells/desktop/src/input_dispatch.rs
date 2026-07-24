@@ -1744,6 +1744,67 @@ impl App {
         )
     }
 
+    /// **Pressão sobre uma ÂNCORA do motion path** (ADR-0141, Fatia 3): se há uma sob o
+    /// cursor, arma o arrasto, abre UM passo de undo e devolve `true` — o host então PULA
+    /// o picking/gizmo.
+    ///
+    /// ⚠️ **Não é gateada por ferramenta**, ao contrário das alças do vetor: a trajetória
+    /// é do documento de ANIMAÇÃO, e o artista a molda com qualquer ferramenta na mão. O
+    /// que a gateia é ela estar VISÍVEL — a mesma pergunta que o desenho faz, e ela só é
+    /// verdadeira para o objeto selecionado com um binding Position.
+    ///
+    /// ⚠️ **Consequência honesta:** a âncora do primeiro key costuma cair EM CIMA do
+    /// sprite, onde o gizmo mora, então apertar exatamente ali agarra a âncora e não o
+    /// objeto. O alvo tem 7 px de raio e nada mais muda — é o mesmo trade que toda alça
+    /// deste app faz, e o desenho (um quadrado, a forma universal de "isto se arrasta")
+    /// é o que o anuncia.
+    fn motion_path_anchor_down(&mut self, x: f32, y: f32) -> bool {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let selected = gfx
+            .hero_screen
+            .as_ref()
+            .and_then(|h| h.gizmo.iter_selected().next());
+        let Some(hit) = crate::render_loop::motion_path_overlay::anchor_at(
+            &self.timeline.doc,
+            selected,
+            &gfx.camera,
+            gfx.surface.size(),
+            x,
+            y,
+        ) else {
+            return false;
+        };
+        // UM passo de undo por GESTO, não por frame de arrasto: o `commit_if_changed` do
+        // release fecha o que este `begin` abriu.
+        self.timeline.history.begin(&self.timeline.doc);
+        self.motion_path_drag = Some(hit);
+        true
+    }
+
+    /// Leva a âncora agarrada para o cursor. No-op (`false`) sem um arrasto vivo — a
+    /// mesma disciplina de early-return das alças do vetor.
+    ///
+    /// Escreve pela porta ÚNICA (`TimelineDoc::move_path_anchor`), que move a geometria e
+    /// reescreve as distâncias que as keys guardam na MESMA operação. As alças da âncora
+    /// são relativas a ela, então viajam junto de graça: arrastar uma âncora a MOVE, não
+    /// a remodela.
+    fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
+        let Some((target, i)) = self.motion_path_drag else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let w = gfx.camera.screen_to_world((x, y), gfx.surface.size());
+        let Some(mut a) = self.timeline.doc.path_anchor(target, i) else {
+            return false;
+        };
+        a.anchor = [w[0], w[1]];
+        self.timeline.doc.move_path_anchor(target, i, a)
+    }
+
     /// Arrasta a alça do PATTERN (Start/End, W4) armada para o cursor — no-op sem uma armada.
     /// Irmã do `vec_textpath_handle_move`, mesma disciplina de early-return.
     fn vec_patternpath_handle_move(&mut self, x: f32, y: f32) -> bool {
@@ -2246,6 +2307,12 @@ impl App {
         if self.vec_patternpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // A ÂNCORA do motion path (ADR-0141): leva a trajetória para o cursor. Irmã das
+        // alças acima na disciplina, e sem gate de ferramenta — a trajetória é do
+        // documento de animação, não de uma tool.
+        if self.motion_path_anchor_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
         // forwarding so widgets receive the move event but the camera
         // also follows.
@@ -2728,6 +2795,18 @@ impl App {
         {
             return;
         }
+        // **A ÂNCORA do MOTION PATH** (ADR-0141), antes do picking/gizmo pela mesma razão
+        // que as alças acima: a âncora do primeiro key cai em cima do sprite, e sem este
+        // arm a pressão iria para o gizmo — que moveria o OBJETO onde o dedo pediu a
+        // CURVA. Sem gate de ferramenta de propósito (ver `motion_path_anchor_down`).
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.motion_path_anchor_down(evt.x, evt.y)
+        {
+            return;
+        }
         // O MESMO guard para as alças do PATTERN (W4): no Select a tool não captura o canvas e o
         // gizmo é inócuo sobre um motivo vinculado, então a ficha precisa deste arm antes do
         // picking/gizmo. Irmão do `vec_textpath_handle_down` logo acima.
@@ -2768,6 +2847,17 @@ impl App {
             && kind == PointerKind::Up
         {
             self.vec_patternpath_handle = None;
+            return;
+        }
+        // O Up que fecha o arrasto de uma ÂNCORA do motion path — e que FECHA o passo de
+        // undo que o press abriu. Sem este `commit_if_changed` o `begin` fica pendurado e
+        // o próximo gesto o herda: um Ctrl+Z desfaria os dois de uma vez.
+        if self.motion_path_drag.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+        {
+            self.motion_path_drag = None;
+            self.timeline.history.commit_if_changed(&self.timeline.doc);
             return;
         }
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique

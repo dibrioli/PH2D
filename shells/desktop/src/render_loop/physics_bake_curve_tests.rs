@@ -8,8 +8,8 @@
 //! clock. A bake can be perfectly faithful and still useless, which is exactly
 //! the gap the first of these gates was written to close.
 
-use ph2d_ecs::Transform;
 use ph2d_ecs::scene::EditorCommandQueue;
+use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_physics_ecs::PhysicsBridge;
 use ph2d_timeline::{PropKind, TimelineState};
 
@@ -111,27 +111,29 @@ fn a_bodys_channels_key_on_shared_columns() {
     let _ = columns;
 }
 
-/// **The range comes from the loop, then the document, then the default.**
+/// **The window comes from the loop, then the document, then the default —
+/// and the loop's START is honoured, not dropped.**
 ///
 /// Each step of the chain, because the ones that never fire are the ones that
 /// rot: with no gate, ignoring the armed loop entirely left everything green
-/// and the artist's chosen range silently unused.
+/// and the artist's chosen range silently unused. The start is the W-BakeRange
+/// half — an armed `[0.5s, 2s]` loop used to bake `[0, 2s]`, throwing away the
+/// start the artist had set.
 #[test]
-fn the_bake_range_prefers_the_armed_loop_then_the_document() {
-    use super::bake_seconds;
+fn the_bake_window_prefers_the_armed_loop_and_honours_its_start() {
+    use super::bake_range;
     use ph2d_core::Playhead;
 
     let mut doc = ph2d_timeline::TimelineDoc::default();
     let mut playhead = Playhead::new(DT);
 
     assert_eq!(
-        bake_seconds(&doc, &playhead),
-        DEFAULT_BAKE_SECONDS,
-        "a fresh scene says nothing, so the measured default is what a bake \
-         covers"
+        bake_range(&doc, &playhead),
+        (0.0, DEFAULT_BAKE_SECONDS),
+        "a fresh scene says nothing, so a bake covers the whole measured default"
     );
 
-    // A document with content bakes to its own length.
+    // A document with content bakes to its own length, from the top.
     doc.upsert_key(
         1,
         PropKind::TranslationX,
@@ -139,19 +141,21 @@ fn the_bake_range_prefers_the_armed_loop_then_the_document() {
         ph2d_anim::AnimValue::Float(1.0),
         ph2d_anim::Interp::Linear,
     );
+    let (s, e) = bake_range(&doc, &playhead);
     assert!(
-        (bake_seconds(&doc, &playhead) - 3.0).abs() < 1e-6,
-        "an animated document baked {} s instead of its own 3 s extent",
-        bake_seconds(&doc, &playhead)
+        s == 0.0 && (e - 3.0).abs() < 1e-6,
+        "an animated document baked {s}..{e} instead of 0..3 s"
     );
 
-    // An armed loop outranks it: it is the control the artist reached for.
+    // An armed loop outranks it: it is the control the artist reached for, and
+    // BOTH of its ends are honoured. The old resolver returned only `2.0` here,
+    // silently dropping the 0.5 s start.
     playhead.set_loop(0.5, 2.0);
+    let (s, e) = bake_range(&doc, &playhead);
     assert!(
-        (bake_seconds(&doc, &playhead) - 2.0).abs() < 1e-6,
-        "the armed loop was ignored ({} s) — the artist's own range control \
-         does nothing and there is no other way to ask for one",
-        bake_seconds(&doc, &playhead)
+        (s - 0.5).abs() < 1e-6 && (e - 2.0).abs() < 1e-6,
+        "the armed loop's window was not honoured: baked {s}..{e}, expected \
+         0.5..2.0 — the artist's own range start does nothing"
     );
 }
 
@@ -198,6 +202,7 @@ fn a_bake_lands_on_the_clock_of_its_entity_not_the_playhead() {
         &mut bridge,
         &mut sim,
         &[ball],
+        0.0,
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
@@ -289,5 +294,87 @@ fn a_baked_take_plays_with_the_simulation_disarmed() {
          {:.4} m. A bake that only moves while the solver is running has not \
          become animation.",
         hi - lo
+    );
+}
+
+/// Bake the fixture over the window `[start, end]` and hand back the doc.
+fn baked_over(start: f64, end: f64) -> (TimelineState, SimWorld, Entity) {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        start,
+        end,
+        DT,
+        BakeChannels::All,
+        &queue,
+        &reg,
+    );
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &queue, &reg).expect("apply");
+    (timeline, sim, ball)
+}
+
+/// **A partial-range bake writes keys only inside its window; the front is
+/// discarded** (W-BakeRange). Baking `[0.5s, 1.5s]` must produce a curve that
+/// agrees with the full `[0, 1.5s]` bake INSIDE the window and holds the start
+/// pose BEFORE it — the front `[0, 0.5s)` was simulated (the sim is a function
+/// of the tick) but its samples are not keys.
+///
+/// An APPEARANCE oracle, read through the frame loop's own `apply_from_doc`:
+///  - inside the window (t = 1.0s) the two curves must AGREE — same simulation,
+///    same samples;
+///  - before the window (t = 0.0s) they must DIFFER — the full bake has the ball
+///    at its rest pose (y ≈ 2.0), the partial bake holds the fallen start pose,
+///    because no key describes a time before the window and the curve
+///    extrapolates its first key backward.
+///
+/// Mutation-tested: `channel_in(ch, start, end)` → `channel(ch)` (ignore the
+/// window) makes the partial bake write the front too, so at t=0 it matches the
+/// full bake and the DIFFER assertion goes red.
+#[test]
+fn a_partial_range_bake_writes_only_inside_its_window() {
+    const START: f64 = 0.5;
+    let (mut full, mut fsim, fball) = baked_over(0.0, BAKE_SECONDS);
+    let (mut part, mut psim, pball) = baked_over(START, BAKE_SECONDS);
+
+    let y_at = |ts: &mut TimelineState, sim: &mut SimWorld, e: Entity, t: f64| -> f32 {
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut ts.doc, t);
+        sim.world().get::<Transform>(e).unwrap().translation.y
+    };
+
+    // Inside the window the two bakes read the same simulation.
+    let inside = 1.0;
+    let (fy_in, py_in) = (
+        y_at(&mut full, &mut fsim, fball, inside),
+        y_at(&mut part, &mut psim, pball, inside),
+    );
+    assert!(
+        (fy_in - py_in).abs() < 0.02,
+        "inside the window the partial bake ({py_in:.4}) disagreed with the \
+         full bake ({fy_in:.4}) — same sim, same samples, they must match"
+    );
+
+    // Before the window the front is gone: the full bake sits at the rest pose,
+    // the partial bake holds the fallen start pose. They must differ, and the
+    // full one must still be near the authored rest of 2.0.
+    let (fy0, py0) = (
+        y_at(&mut full, &mut fsim, fball, 0.0),
+        y_at(&mut part, &mut psim, pball, 0.0),
+    );
+    assert!(
+        (fy0 - 2.0).abs() < 0.1,
+        "the full bake should describe the rest pose at t=0 (y≈2.0), got {fy0:.4}"
+    );
+    assert!(
+        (fy0 - py0).abs() > 0.5,
+        "the partial bake wrote the front: at t=0 it reads {py0:.4}, the same as \
+         the full bake ({fy0:.4}) — the window `[{START}s, {BAKE_SECONDS}s]` was \
+         not honoured"
     );
 }

@@ -110,7 +110,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
         ))
         .id();
     assert!(
-        !build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0)
+        !build_physics_info(sim.world(), pool.to_bits(), false, (0.0, 5.0), 0)
             .expect("§11 aparece para qualquer entidade com Transform")
             .has_body,
         "num sprite pelado a seção mostra a face VAZIA — é ela que oferece o Add"
@@ -120,7 +120,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     //    de 2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do
     //    tamanho que desenhou.
     apply(&mut sim, pool, PhysicsFieldEdit::Add);
-    let i = build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), pool.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         (i.half_x, i.half_y),
         (1.0, 1.5),
@@ -130,7 +130,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     // 2. Kind = Static (uma piscina não cai). 3. Trigger = Sensor (dá para entrar nela).
     apply(&mut sim, pool, PhysicsFieldEdit::Kind(1));
     apply(&mut sim, pool, PhysicsFieldEdit::Sensor(true));
-    let i = build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), pool.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert!(
         i.is_sensor && i.kind_tag == 1,
         "é o Sensor que faz as rows Force/Drag serem oferecidas — sem ele o passo 4 não existe"
@@ -139,7 +139,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     // 4. Force Y (o empuxo). 5. Drag (o meio).
     apply(&mut sim, pool, PhysicsFieldEdit::ForceY(3.5));
     apply(&mut sim, pool, PhysicsFieldEdit::AreaDrag(4.0));
-    let i = build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), pool.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!((i.force, i.area_drag), ([0.0, 3.5], 4.0));
 
     // E agora o oráculo: duas caixas idênticas, uma cai na piscina, a outra ao lado.
@@ -213,7 +213,7 @@ fn a_spin_zone_is_authorable_with_ui_gestures_alone() {
     apply(&mut sim, table, PhysicsFieldEdit::Add);
     apply(&mut sim, table, PhysicsFieldEdit::Kind(1));
     apply(&mut sim, table, PhysicsFieldEdit::Sensor(true));
-    let i = build_physics_info(sim.world(), table.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), table.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert!(
         i.is_sensor && i.kind_tag == 1,
         "é o Sensor que faz a row Torque ser oferecida — sem ele o passo 4 não existe"
@@ -223,7 +223,7 @@ fn a_spin_zone_is_authorable_with_ui_gestures_alone() {
     //    ~86 graus em 60 ticks: um giro claro, mas sub-revolução, para que a `rotation`
     //    (que dá a volta em ±pi) não wrape e o oráculo seja legível.
     apply(&mut sim, table, PhysicsFieldEdit::AreaTorque(0.5));
-    let i = build_physics_info(sim.world(), table.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), table.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         i.area_torque, 0.5,
         "a row Torque tem de anexar o `AreaTorque` com o valor autorado"
@@ -300,7 +300,7 @@ fn a_buoyant_pool_is_authorable_with_ui_gestures_alone() {
     apply(&mut sim, pool, PhysicsFieldEdit::Sensor(true));
     apply(&mut sim, pool, PhysicsFieldEdit::AreaDensity(4.0));
     apply(&mut sim, pool, PhysicsFieldEdit::AreaDrag(1.5));
-    let i = build_physics_info(sim.world(), pool.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), pool.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         (i.area_density, i.area_drag),
         (4.0, 1.5),
@@ -433,7 +433,7 @@ fn a_floating_log_is_authorable_with_ui_gestures_alone() {
     // Gesto 1: Add. O collider nasce 1,20 × 0,25 — a caixa do sprite, e já a forma
     // certa para um tronco deitado.
     apply(&mut sim, log, PhysicsFieldEdit::Add);
-    let i = build_physics_info(sim.world(), log.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), log.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         (i.shape_tag, i.half_x, i.half_y),
         (1, 1.2, 0.25),
@@ -463,7 +463,7 @@ fn a_floating_log_is_authorable_with_ui_gestures_alone() {
     // vira um círculo, e um círculo não endireita. Sem esta metade, o gate acima
     // passaria e a recomendação "não converta" seria prosa sem prova.
     apply(&mut sim, log, PhysicsFieldEdit::Shape(2));
-    let i = build_physics_info(sim.world(), log.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), log.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         (i.radius, i.cap_half_height),
         (0.25, 0.0),
@@ -497,7 +497,7 @@ fn a_gust_that_fades_at_the_edge_is_authorable_with_ui_gestures_alone() {
     apply(&mut sim, gust, PhysicsFieldEdit::Kind(1));
     apply(&mut sim, gust, PhysicsFieldEdit::Sensor(true));
     apply(&mut sim, gust, PhysicsFieldEdit::ForceX(4.0));
-    let i = build_physics_info(sim.world(), gust.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), gust.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert!(
         i.is_sensor && i.force[0] == 4.0,
         "é o Sensor que faz as rows de área serem oferecidas — sem ele o passo 5 não existe"
@@ -506,7 +506,7 @@ fn a_gust_that_fades_at_the_edge_is_authorable_with_ui_gestures_alone() {
     // 5. O falloff. Um número em 0..=1, e a régua é a própria zona: o artista não tem de
     //    saber nenhum raio, que é exatamente o que um "alcance" em metros exigiria dele.
     apply(&mut sim, gust, PhysicsFieldEdit::AreaFalloff(1.0));
-    let i = build_physics_info(sim.world(), gust.to_bits(), false, 5.0, 0).unwrap();
+    let i = build_physics_info(sim.world(), gust.to_bits(), false, (0.0, 5.0), 0).unwrap();
     assert_eq!(
         i.area_falloff, 1.0,
         "a row Falloff tem de anexar o `AreaFalloff` com a fração autorada"

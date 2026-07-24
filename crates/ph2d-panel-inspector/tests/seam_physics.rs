@@ -42,6 +42,9 @@ fn with_body() -> InspectorPhysicsInfo {
         layer: 0,
         can_join: false,
         bake_seconds: 5.0,
+        // A full-range bake starts at 0; W-BakeRange's partial start is exercised
+        // by the label gate below, not this base fixture.
+        bake_start_seconds: 0.0,
         is_sensor: false,
         // The zone's own frame — the DEFAULT, declared rather than inherited. A fixture
         // that reaches its state implicitly flips meaning the day the default moves and
@@ -573,13 +576,23 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
         "Bake to Timeline",
     );
 
-    // The label carries the resolved range — the painter builds it from this
-    // same function, so a label that stopped showing the number would have to
+    // The label carries the resolved window — the painter builds it from this
+    // same function, so a label that stopped showing the numbers would have to
     // change here.
-    let label = ph2d_panel_inspector::bake_label(2.5);
+    //
+    // A full-range bake (start 0) shows only the end, the common case; a partial
+    // range (an armed loop `[2s, 5s]`, W-BakeRange) shows BOTH ends, because the
+    // keys land at those absolute times and the artist has to know it. The end
+    // is present in both.
+    let full = ph2d_panel_inspector::bake_label(0.0, 2.5);
     assert!(
-        label.contains("2.5"),
-        "the Bake button's label does not show the range it would cover: {label:?}"
+        full.contains("2.5") && !full.contains('-'),
+        "a full-range Bake label should show just the end: {full:?}"
+    );
+    let partial = ph2d_panel_inspector::bake_label(2.0, 5.0);
+    assert!(
+        partial.contains("2.0") && partial.contains("5.0"),
+        "a partial-range Bake label must show both ends of the window: {partial:?}"
     );
 
     // The empty face has no motion to bake, and offers nothing.

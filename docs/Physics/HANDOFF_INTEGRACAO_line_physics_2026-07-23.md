@@ -1,4 +1,4 @@
-# HANDOFF DE INTEGRAÇÃO — `line/physics` (W-AreaFrame + W-AreaFalloff + W-AreaMirror, 2026-07-23)
+# HANDOFF DE INTEGRAÇÃO — `line/physics` (W-AreaFrame + W-AreaFalloff + W-AreaMirror + W-BakeRange, 2026-07-23/24)
 
 > Para o **agente integrador**, por ordem do Enio (DIRETRIZ §1.5.9). A linha **não integrou e
 > não pushou**: fechou a wave, rodou o gate batched e parou.
@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `63fc75df9` (o commit deste próprio doc; o integrador usa `git rev-parse line/physics`) |
+| HEAD | `60dcf302c` + este commit de doc (o integrador usa `git rev-parse line/physics`) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits à frente | **19** (1 doc herdado + 6 do W-AreaFrame + 6 do W-AreaFalloff + 2 do fix da Dur(s) + 3 do W-AreaMirror) |
+| commits à frente | **23** (1 doc herdado + 6 W-AreaFrame + 6 W-AreaFalloff + 2 fix Dur(s) + 3 W-AreaMirror + 1 re-pin + 3 W-BakeRange + este doc) |
 | working tree | limpa |
 
 Os commits, em ordem (o 1º já existia quando assumi a linha):
@@ -36,10 +36,21 @@ a0d429305 fix(timeline): a Dur(s) aceita QUALQUER duracao -- o teto de u16::MAX 
 2c589f8af feat(physics): W-AreaMirror -- espelhar a zona espelha o vento (e inverte o giro)
 b7bd434f9 docs(physics): W-AreaMirror no tracker e no plano
 bf9add666 docs(physics): CLAUDE.md 5 + handoff cobrem o W-AreaMirror
+99c02259f docs(physics): o handoff pina os commits das tres waves
+80099d24d feat(physics): W-BakeRange -- o inicio do loop e honrado no bake
+c3d7d4ee0 test(physics): os gates do W-BakeRange -- 3 mutacoes, 3 sangram
+60dcf302c docs(physics): W-BakeRange no tracker/plano/CLAUDE.md/reabertura
 (+ este commit)
 ```
 
-**Duas waves, uma branch.** Este handoff cobre as duas — o integrador lê um documento só.
+**Quatro waves, uma branch** (mais o fix da Dur(s), §1b). Este handoff cobre todas — o
+integrador lê um documento só. ⚠️ **A W-BakeRange (2026-07-24) toca o BAKE, que mora
+shell-side e é do domínio da linha** (diferente do fix da Dur(s) do §1b, que é cross-domínio):
+o `bake_seconds` lia o `end` do loop e descartava o `start`; agora um loop `[2s, 5s]` assa
+exatamente `[2s, 5s]`. Sem componente/id/bump; **c9 intocado** (não muda solver). Detalhe no
+tracker (§W-BakeRange). ⚠️ **Aberto e REPORTADO, não construído:** um Ctrl+Z para as duas
+metades do bake não é mecânico (duas pilhas de undo separadas — mudança no roteador de undo do
+editor + timeline, outro domínio).
 
 ---
 
@@ -209,6 +220,18 @@ Essa última linha É a wave (força é vetor e reflete, torque é pseudoescalar
    (é a silhueta encolhida à metade) e a fila dela passa a se abrir também.
 3. **A row lembra:** clique noutro objeto e volte — a linha continua mostrando o número.
 
+**`env PH2D_PHYSICS_SMOKE=37 cargo run -p ph2d-host-desktop`** — o início do loop honrado (W-BakeRange).
+
+Um `Dropper` caindo do topo, relógio **pausado**, loop armado `[0.5s, 2.5s]`, timeline aberta.
+
+1. **O botão diz o range:** selecione o Dropper → Inspector → *Physics Body*. O botão de bake
+   tem de ler **`Bake 0.5-2.5s`** (NÃO `Bake 2.5s`) — o início do loop é honrado.
+2. **O gesto:** clique nele. As chaves pousam só em `[0.5, 2.5]` (nada antes de 0.5s), o toast
+   diz **`Baked 0.5-2.5s`**, e o Body chip vira KINEMATIC.
+3. **O front descartado é visível:** desmarque **Physics** no transporte e dê Play — a bola
+   **SEGURA a pose de meio-ar de 0.5s** até a janela abrir, então anima a queda. Um bake de
+   range cheio a teria começado no TOPO.
+
 ⚠️ **Já aprovados** (não precisam de re-smoke): `=33` e `=34`.
 
 ---
@@ -227,6 +250,11 @@ Essa última linha É a wave (força é vetor e reflete, torque é pseudoescalar
   forma, e cujas curvas de nível são a própria silhueta escalada.
 - **Perfis de falloff** (smoothstep, inverso-quadrado) — outra CURVA sobre a mesma régua; é um
   knob de MODO, não um número novo, e só vale com pedido.
+- ⚠️ **Um Ctrl+Z para as duas metades do bake** (W-BakeRange nomeou, não construiu) — **NÃO é
+  mecânico**: são duas pilhas de undo genuinamente separadas (a GLOBAL captura a troca para
+  `Kinematic`, a da TIMELINE as chaves) com roteamento próprio em `input_dispatch/keyboard.rs`.
+  Uni-las é mudar o *roteador de undo* do editor e tocar a timeline (outro domínio) — o que o
+  doc-header do `physics_bake.rs` já avisa. Reportado ao Enio; decisão de arquitetura, não wave.
 - **3 mutações sobrevivem por projeto** (14+13 rodadas, 26 sangram), todas documentadas no
   fonte — a terceira é a irmã exata da primeira: pôr o `AreaFalloff` no `any` da ponte deixa
   tudo verde, porque `zone_effect` já recusa a zona inerte. As duas do W-AreaFrame: pôr o marcador no `any` da

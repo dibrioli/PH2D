@@ -8,15 +8,20 @@
 > cena (metade do que ele viu; pinado no gate) e **o hold aplicado em TEMPO REAL** durante
 > o arrasto (§2.1 — o mover mantém o contorno + commit no soltar, aprovado como estava).
 > Todos os gates verdes; auditoria de 2 lentes rodou (2 defeitos achados e corrigidos — §5).
+>
+> ➕ **FASE SEGUINTE na mesma linha (ordem do Enio 2026-07-24, "siga próxima fase"):** o
+> arrasto de **SELEÇÃO** (§2.2) — pegar uma célula marcada move a seleção inteira; e o
+> remap de sessão virou uma porta (pins + seleção), fechando de carona um órfão latente.
+> **Pendente de smoke** (Teste 4 do roteiro / linha *f* da §7).
 
 ## 1. Identidade
 
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `04985b666` + este commit de handoff) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.2, "a seleção viaja junta") |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **13** (7 da wave + cena do smoke reconstruída ×2 + hold vivo/ghost 0,25 + handoffs) |
+| commits à frente do `main` | **14** (7 da wave + cena do smoke reconstruída ×2 + hold vivo/ghost 0,25 + handoffs + a §2.2) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -55,6 +60,34 @@ CONGELADA no Begin** (`StripDrag::ruler`) — esticar muda o total de quadros e 
 re-escala; uma régua viva leria o mesmo x como um quadro maior a cada aplicação =
 **realimentação positiva** (gate `the_holds_mapping_is_frozen_at_the_grab`, mutação da régua
 viva sangra). O preview do hold morreu (a própria célula estica); o do mover fica.
+
+### 2.2 A SELEÇÃO viaja junta (fase seguinte, ordem do Enio 2026-07-24)
+
+O follow-up nomeado da própria wave: pegar uma célula **marcada** (multiframe W7) move a
+seleção INTEIRA pelo mesmo delta; pegar uma não marcada segue movendo só ela. O desenho em
+três fatos, todos gateados e mutação-provados (`strip_drag.rs`, doc do módulo):
+
+- **O limite do grupo é o vizinho NÃO marcado** (+ o piso `0`): o grupo anda rígido, então
+  marcada nunca colide com marcada; a interseção dos limites por-chave
+  (`selection_delta_bounds`) trava o grupo, que encosta e para — a regra do gesto de uma
+  célula, generalizada.
+- **A ordem de emissão garante que todo `move_frame` pousa**: para a direita, a mais à
+  direita anda primeiro (duas marcadas adjacentes movidas `+1` colidiriam na outra ordem — o
+  destino ainda estaria ocupado pela irmã, e o `move_frame` RECUSA); para a esquerda, o
+  espelho. Gate do shell prova o contrato contra o `move_frame` REAL
+  (`a_selection_drag_lands_every_one_of_its_moves`).
+- **Uma marcada sozinha é o gesto de sempre** (os limites degeneram nos por-índice, a
+  emissão é um pedido só) — o caso comum clique-e-arrasta não muda um byte.
+
+O preview vira **um contorno por marcada** (cada um com a própria exposição); o guard de
+obsolescência ganhou a 3ª forma (sessão de grupo cuja célula pega perdeu a marca ⇒ larga).
+
+⚠️ **E um bug LATENTE da wave anterior fechou de carona:** o remap pós-move cobria só os
+PINS — a **seleção** (também chaveada por quadro) ficava órfã quando a chave marcada era
+movida ou empurrada, **já no arrasto de uma célula** (acento apagado, multiframe mirando um
+quadro sem chave). `remap_pin_after_move`/`remap_pins_after_hold` viraram
+**`remap_session_after_move`/`_hold`** (`flip_strip_pins.rs`): UMA porta que remapeia pins
+E seleção — o próximo estado chaveado por quadro entra ali, não numa 3ª cópia da regra.
 
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
@@ -158,13 +191,16 @@ diferença some — o seed-versus-sample de sempre).
 | onde | nº |
 |---|---|
 | `ph2d-editor-core::interaction::flip_strip` (o canal) | 5 |
-| `panel-flip-frames`: `ruler` 4 · `strip_drag` 7 | 11 |
+| `panel-flip-frames`: `ruler` 4 · `strip_drag` 12 (7 + os 5 da seleção, §2.2) | 16 |
 | `panel-flip-frames/tests/seam.rs` (ponteiro REAL: toque, os 2 arrastos, os 18 botões) | 4 |
 | `ph2d-flip::onion` (light table) | 4 |
-| shell: `flip_strip_drag` 6 · `flip_strip_pin_tests` 2 · `flip_strip_smoke` 2 | 10 |
+| shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 2 · `flip_strip_smoke` 2 | 13 |
 | arch-gates de shell (ordem do frame · a costura do pin) | 3 |
 
-**10 mutações, 10 sangram:**
+**15 mutações, 15 sangram** (as 10 da wave + as 5 da §2.2: fan-out do grupo cravado na
+célula pega · emissão sempre na ordem da lista · preview só da pega · remap de move sem a
+seleção · remap do empurrão sem a seleção — e o guard do grupo obsoleto ganhou caso
+próprio no gate de sessão obsoleta):
 
 | mutação | o que morre |
 |---|---|
@@ -211,13 +247,14 @@ terminal; em resumo:
 | c | **arrastar a borda direita** da caixa larga (a de 6): ela estica **EM TEMPO REAL** (sem contorno — pós-smoke 2026-07-24) e as seguintes são EMPURRADAS |
 | d | na caixa de **1 quadro** a barrinha do hold **não aparece** — a caixa inteira é de mover (deliberado) |
 | e | **Pin** na última chave + voltar ao quadro 0: a bola verde aparece como vulto, **e a vizinha amarela continua lá** |
+| f | **Shift+clique** na primeira e na última caixa (marcam) + arrastar uma delas: DOIS contornos, as duas pousam JUNTAS ao soltar, o destaque acompanha; arrastar uma NÃO marcada move só ela (§2.2, pendente de smoke) |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 
 | item | gatilho |
 |---|---|
 | **Persistir os pins** no documento | custa um bump de `PROJECT_SCHEMA` (recusa projetos salvos). Decisão de produto do Enio |
-| Arrastar uma **SELEÇÃO** de células | hoje o gesto é por célula; a multi-seleção existe (multiframe) e o canal já carrega `mods` |
+| ~~Arrastar uma **SELEÇÃO** de células~~ | **FECHADO 2026-07-24** (§2.2) — pendente de smoke (roteiro: Teste 4 / linha *f* acima) |
 | Zoom/pan da tira | ela **sempre cabe**, por desenho (`05 §6`) — só vira pergunta se um documento longo mostrar que a lasca ficou ilegível |
 | Backlog anterior da linha | pré-segmentação 4K · `trap_px` × `MAX_SIDE` · o `reach` do Gap Closure · a exceção `rayon` · Shift & Trace · timeline global — **inalterados** |
 

@@ -350,8 +350,23 @@ viaja DENTRO do `ProjectState` sem versão própria, então levá-los ao documen
 apendado numa struct serializada — um bump de `PROJECT_SCHEMA`, que **recusa todo projeto já
 salvo**. Persistir é decisão de produto, nomeada no handoff.
 
-**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · arrastar uma
-SELEÇÃO de células (hoje o gesto é por célula) · Shift & Trace (transform por ghost).
+**A SELEÇÃO viaja junta (2026-07-24, o follow-up nomeado da wave):** pegar uma célula
+**marcada** move a seleção inteira pelo mesmo delta (o idioma do dope-sheet — marcou N, o
+gesto age nos N); pegar uma não marcada segue movendo só ela. Três fatos carregam o desenho
+(doc de `strip_drag.rs`): o limite do grupo é o **vizinho não marcado** (o grupo anda
+rígido, então marcada nunca colide com marcada — a interseção dos limites por-chave trava o
+grupo, que encosta e para); a **ordem de emissão** é quem garante que todo `move_frame`
+pousa (para a direita, a mais à direita anda primeiro — duas marcadas adjacentes movidas
+`+1` colidiriam na outra ordem, e o `move_frame` recusa); e uma marcada sozinha degenera no
+gesto de sempre (o caso comum clique-e-arrasta não muda um byte). O preview vira um
+contorno **por marcada**, cada um com a própria exposição. ⚠️ **E o remap de sessão virou
+UMA porta** (`remap_session_after_move/hold`): a seleção tinha o MESMO bug que o pin desta
+wave — mover/empurrar a chave marcada a orfanava (acento apagado, multiframe mirando
+fantasma), **latente já no arrasto de uma célula** — e a cura entrou na porta que os pins
+já usavam, para o próximo estado chaveado por quadro não nascer de fora.
+
+**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · Shift & Trace
+(transform por ghost).
 
 ---
 

@@ -298,8 +298,9 @@ fn surface_button_state(ctx: &PaintCtx, id: ph2d_a11y::NodeId) -> ButtonState {
     }
 }
 
-/// Desenha o alvo do arrasto em curso: um contorno de acento onde a chave vai pousar (ou o
-/// quanto o hold vai medir). Nada em curso ⇒ nada pintado.
+/// Desenha o alvo do arrasto em curso: um contorno de acento onde a chave vai pousar — e,
+/// num arrasto de SELEÇÃO, um contorno por célula marcada (o gesto mostra tudo o que vai
+/// mudar). Nada em curso ⇒ nada pintado.
 fn paint_drag_preview(
     state: &FlipStripState,
     ctx: &mut PaintCtx,
@@ -307,16 +308,15 @@ fn paint_drag_preview(
     ruler: &StripRuler,
     snap: &FlipStripSnapshot,
 ) {
-    let Some(ghost) = crate::strip_drag::preview_rect(state, ruler, snap) else {
-        return;
-    };
-    stroke_rounded_rect(
-        ctx.scene,
-        ghost,
-        Radius::Md.px(),
-        StrokeToken::Thick.px(),
-        resolve(ColorToken::Accent, theme),
-    );
+    for ghost in crate::strip_drag::preview_rects(state, ruler, snap) {
+        stroke_rounded_rect(
+            ctx.scene,
+            ghost,
+            Radius::Md.px(),
+            StrokeToken::Thick.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+    }
 }
 
 /// **A régua de scrub** (W7.3): um rail fino sobre a largura útil das células + um handle

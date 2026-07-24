@@ -64,11 +64,11 @@ pub(crate) fn apply_strip_intents(
                 // nada, que é o que acontece.
                 FlipStripIntent::MoveKey { from, to } => {
                     let ok = o.move_frame(lid, from, to);
-                    // ⚠️ O light table acompanha, e **só quando a chave de fato andou**:
-                    // remapear sobre um movimento recusado moveria o pin para um quadro
-                    // onde não há chave nenhuma.
+                    // ⚠️ O estado de sessão (pins + seleção) acompanha, e **só quando a
+                    // chave de fato andou**: remapear sobre um movimento recusado moveria
+                    // pin e marca para um quadro onde não há chave nenhuma.
                     if ok {
-                        strip.remap_pin_after_move(from, to);
+                        strip.remap_session_after_move(from, to);
                     }
                     ok
                 }
@@ -78,7 +78,7 @@ pub(crate) fn apply_strip_intents(
                     let before = o.layer(lid).map_or(0, |l| l.duration_at(key));
                     let ok = o.set_exposure(lid, key, frames);
                     if ok && before > 0 {
-                        strip.remap_pins_after_hold(key, frames as i32 - before as i32);
+                        strip.remap_session_after_hold(key, frames as i32 - before as i32);
                     }
                     ok
                 }
@@ -204,6 +204,76 @@ mod tests {
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 8 });
         assert!(!apply_strip_intents(&mut flip, Some(lid), &mut strip));
         assert_eq!(strip.pinned_keys(), &[4]);
+    }
+
+    /// 🔴 **Um arrasto de SELEÇÃO chega como pedidos que TODOS pousam** — o painel emite
+    /// na ordem que garante o pouso (para a direita, a mais à direita primeiro), e este
+    /// gate prova o contrato contra o `move_frame` REAL: chaves adjacentes {4,5} movidas
+    /// `+1` na ordem da lista teriam o primeiro pedido RECUSADO (destino ocupado pela
+    /// irmã) e o gesto moveria só metade da seleção, em silêncio.
+    #[test]
+    fn a_selection_drag_lands_every_one_of_its_moves() {
+        let mut flip = FlipDoc::default();
+        let oid = flip.push_object("Flip");
+        let obj = flip.object_mut(oid).expect("objeto");
+        let lid = obj.add_layer("Layer 1");
+        for key in [0, 4, 5] {
+            obj.insert_frame(lid, key, Hold::Implicit, KeyKind::Keyframe);
+        }
+        let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
+        // A ordem do PAINEL (direita→esquerda para delta positivo).
+        ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 5, to: 6 });
+        ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 5 });
+        let mut strip = crate::flip_strip::FlipStrip {
+            selection: vec![4, 5],
+            ..Default::default()
+        };
+        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert_eq!(keys(&flip, lid), vec![0, 5, 6], "as DUAS pousaram");
+        assert_eq!(
+            strip.selection,
+            vec![5, 6],
+            "e a seleção seguiu as chaves que moveu"
+        );
+    }
+
+    /// 🔴 **A seleção acompanha a chave movida** — o irmão exato do pin: marcar o quadro,
+    /// arrastá-lo, e a marca ficaria apontando um quadro sem chave (o acento apaga e o
+    /// multiframe passa a mirar um fantasma). Latente desde o arrasto de UMA célula.
+    #[test]
+    fn a_moved_key_carries_the_selection_along() {
+        let (mut flip, lid) = doc();
+        let mut strip = crate::flip_strip::FlipStrip {
+            selection: vec![4],
+            ..Default::default()
+        };
+        let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
+        ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 6 });
+        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert_eq!(strip.selection, vec![6], "a marca foi junto");
+    }
+
+    /// 🔴 **E acompanha o EMPURRÃO da exposição** — esticar a primeira chave empurra a
+    /// fila inteira; sem isto UM gesto de hold orfanaria todas as marcas à direita.
+    #[test]
+    fn stretching_a_hold_pushes_the_marks_that_the_keys_push() {
+        let (mut flip, lid) = doc();
+        let mut strip = crate::flip_strip::FlipStrip {
+            selection: vec![4, 8],
+            ..Default::default()
+        };
+        let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
+        // A chave 0 expunha 4 (0→4); passa a expor 6 ⇒ delta +2 ⇒ 4→6 e 8→10.
+        ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::SetHold {
+            key: 0,
+            frames: 6,
+        });
+        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert_eq!(
+            strip.selection,
+            vec![6, 10],
+            "as marcas seguiram o empurrão"
+        );
     }
 
     /// Sem pedidos o documento não é tocado — e o `false` é o que impede um frame ocioso

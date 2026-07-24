@@ -39,7 +39,14 @@ fn enabled() -> bool {
 /// do Pin precisa).
 const POSES: [(i32, Rgba, f32, f32, f32, f32); 4] = [
     (0, Rgba::new(0.95, 0.35, 0.35, 1.0), -1.10, 0.55, 0.42, 0.42),
-    (4, Rgba::new(0.95, 0.85, 0.35, 1.0), -0.35, -0.35, 0.42, 0.42),
+    (
+        4,
+        Rgba::new(0.95, 0.85, 0.35, 1.0),
+        -0.35,
+        -0.35,
+        0.42,
+        0.42,
+    ),
     (5, Rgba::new(0.40, 0.85, 0.95, 1.0), 0.25, -0.78, 0.62, 0.22),
     (11, Rgba::new(0.60, 0.95, 0.45, 1.0), 1.05, 0.50, 0.42, 0.42),
 ];
@@ -166,7 +173,11 @@ impl crate::App {
         eprintln!(
             "\n[strip-smoke] cena montada: a bola quicando em 4 chaves (0, 4, 5, 11; \
              exposicoes 4, 1, 6, 2). Ferramenta flip ativa: {}.",
-            if tool_ok { "sim" } else { "NAO (PARE: sem ela a faixa Frames nao aparece)" }
+            if tool_ok {
+                "sim"
+            } else {
+                "NAO (PARE: sem ela a faixa Frames nao aparece)"
+            }
         );
         eprintln!(
             "\n\
@@ -197,7 +208,7 @@ impl crate::App {
              ------------------------------------------------------------\n\
              A cada clique a bola PULA para a pose daquele desenho (e\n\
              muda de cor), e os vultos mudam junto. Se isso funciona,\n\
-             va aos tres testes.\n\
+             va aos quatro testes.\n\
              \n\
              ------------------------------------------------------------\n\
              TESTE 1 -- ARRASTAR UMA CAIXA muda o desenho de lugar no tempo\n\
@@ -231,6 +242,19 @@ impl crate::App {
              O vulto da bola verde agora aparece, mesmo de longe -- e o\n\
              vulto do vizinho continua la. A caixa fixada ganha um\n\
              pontinho no canto de baixo. Apertar 'Pin' de novo desfaz.\n\
+             \n\
+             ------------------------------------------------------------\n\
+             TESTE 4 -- VARIAS CAIXAS de uma vez (marcar e arrastar)\n\
+             ------------------------------------------------------------\n\
+             Segure SHIFT e clique na PRIMEIRA e na ULTIMA caixa: as\n\
+             duas ficam marcadas (cor de destaque). Agora segure o MEIO\n\
+             de uma das marcadas e arraste: aparecem DOIS contornos --\n\
+             um para cada marcada -- e, ao soltar, as duas mudam de\n\
+             lugar JUNTAS, a mesma distancia. O destaque acompanha as\n\
+             caixas movidas. As caixas NAO marcadas ficam onde estao, e\n\
+             o grupo ENCOSTA nelas e para, como no Teste 1. Arrastar uma\n\
+             caixa nao marcada move so ela. Para desmarcar, clique numa\n\
+             caixa sem Shift.\n\
              \n\
              ============================================================\n\
              Se algo nao fizer o que esta escrito, me diga O QUE\n\

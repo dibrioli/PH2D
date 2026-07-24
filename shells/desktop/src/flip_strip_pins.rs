@@ -32,36 +32,44 @@ impl FlipStrip {
         }
     }
 
-    /// **O pin acompanha a chave que ele aponta quando ela é MOVIDA.**
+    /// **Todo estado de sessão chaveado por QUADRO acompanha a chave MOVIDA** — hoje são
+    /// dois: os pins do light table e a **seleção do multiframe**.
     ///
-    /// Sem isto o artista fixa o quadro 11, arrasta aquela mesma célula para o 13, e o
-    /// fantasma **some** — o pin ficou apontando um quadro que não tem mais chave, e nada
-    /// na tela explica por quê. O que ele fixou foi *aquele desenho*; mover o desenho no
-    /// tempo não é soltá-lo.
-    pub(crate) fn remap_pin_after_move(&mut self, from: Frame, to: Frame) {
-        if let Some(i) = self.pinned.iter().position(|&k| k == from) {
-            self.pinned[i] = to;
-            self.pinned.sort_unstable();
-            self.pinned.dedup();
+    /// Sem isto o artista fixa (ou marca) o quadro 11, arrasta aquela mesma célula para o
+    /// 13, e o fantasma some / o acento apaga — a lista ficou apontando um quadro que não
+    /// tem mais chave, e nada na tela explica por quê. O que ele fixou/marcou foi *aquele
+    /// desenho*; mover o desenho no tempo não é soltá-lo. Uma porta só, de propósito: o
+    /// próximo estado chaveado por quadro entra AQUI, não numa 3ª cópia da regra (foi
+    /// exatamente assim que a seleção ficou de fora quando os pins ganharam a sua).
+    pub(crate) fn remap_session_after_move(&mut self, from: Frame, to: Frame) {
+        for list in [&mut self.pinned, &mut self.selection] {
+            if let Some(i) = list.iter().position(|&k| k == from) {
+                list[i] = to;
+                list.sort_unstable();
+                list.dedup();
+            }
         }
     }
 
-    /// **O pin acompanha o EMPURRÃO da exposição.**
+    /// **E acompanha o EMPURRÃO da exposição.**
     ///
     /// `set_exposure` desloca todas as chaves depois de `key` pelo delta (é a semântica da
-    /// tira de exposição: esticar empurra, encolher puxa). Um pin numa dessas chaves tem de
-    /// ir junto — e este é o caso comum, não o exótico: esticar o primeiro quadro empurra
-    /// a fila inteira, então um único gesto orfanaria TODOS os pins à direita.
-    pub(crate) fn remap_pins_after_hold(&mut self, key: Frame, delta: i32) {
+    /// tira de exposição: esticar empurra, encolher puxa). Um pin ou uma marca numa dessas
+    /// chaves tem de ir junto — e este é o caso comum, não o exótico: esticar o primeiro
+    /// quadro empurra a fila inteira, então um único gesto orfanaria TODOS os pins e
+    /// marcas à direita.
+    pub(crate) fn remap_session_after_hold(&mut self, key: Frame, delta: i32) {
         if delta == 0 {
             return;
         }
-        for k in &mut self.pinned {
-            if *k > key {
-                *k += delta;
+        for list in [&mut self.pinned, &mut self.selection] {
+            for k in list.iter_mut() {
+                if *k > key {
+                    *k += delta;
+                }
             }
+            list.sort_unstable();
+            list.dedup();
         }
-        self.pinned.sort_unstable();
-        self.pinned.dedup();
     }
 }

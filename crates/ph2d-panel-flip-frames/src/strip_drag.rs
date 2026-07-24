@@ -41,6 +41,26 @@
 //! quadro absoluto sob o cursor: com o absoluto a célula SALTA para debaixo do dedo no
 //! primeiro pixel, e pegar uma célula larga pela direita a jogaria vários quadros atrás. É a
 //! mesma escolha (pelo mesmo motivo) da alça de duração da timeline.
+//!
+//! ## A SELEÇÃO viaja junta (o follow-up nomeado da wave)
+//!
+//! Pegar uma célula **marcada** (multiframe, W7) move a seleção INTEIRA pelo mesmo delta —
+//! o idioma de todo dope-sheet (Blender/TVPaint): marcou N quadros, o gesto age nos N.
+//! Pegar uma célula NÃO marcada segue movendo só ela (a seleção não é tocada). Três fatos
+//! carregam o desenho:
+//!
+//! 1. **O limite é dos vizinhos NÃO marcados**: o grupo anda rígido (os espaçamentos
+//!    internos não mudam), então marcada não colide com marcada — quem para o grupo é a
+//!    primeira chave não marcada que alguma marcada alcançaria, e o piso `0` da primeira.
+//!    O delta permitido é a interseção dos limites por-chave (`selection_delta_bounds`).
+//! 2. **A ordem de emissão é quem garante que todo `move_frame` pousa**: duas marcadas
+//!    adjacentes movidas `+1` colidem se a da esquerda anda primeiro (o destino ainda está
+//!    ocupado pela irmã) — para a direita move-se da DIREITA para a esquerda; para a
+//!    esquerda, o inverso. Com os limites do item 1, essa ordem torna a recusa do
+//!    `move_frame` inalcançável.
+//! 3. **Uma célula marcada sozinha é o gesto de sempre**: os limites contra vizinhos não
+//!    marcados degeneram nos limites por-índice, e a emissão é um pedido só — o caso comum
+//!    (clique seleciona a célula, depois arrasta) não muda um byte de comportamento.
 
 use crate::ruler::StripRuler;
 use crate::state::{FlipStripIntent, FlipStripSnapshot, push_intent};
@@ -73,17 +93,71 @@ pub(crate) struct StripDrag {
     /// A régua CONGELADA no Begin — o mapeamento pixel→quadro do GESTO (ver o doc do
     /// módulo: com a régua viva, o hold realimenta a própria escala).
     pub(crate) ruler: StripRuler,
+    /// **A célula pega estava MARCADA no Begin** ⇒ o arrasto move a seleção inteira
+    /// (só MoveKey; o hold segue por-célula). O conjunto em si é relido do snapshot —
+    /// ele não muda sob o ponteiro capturado, e guardá-lo aqui seria a 2ª cópia.
+    pub(crate) group: bool,
 }
 
 impl StripDrag {
-    /// O que um arrasto de MOVER pede ao documento no `End` (`None` = o dedo tremeu, o
-    /// alvo é onde a chave já está).
-    fn move_intent(&self) -> Option<FlipStripIntent> {
-        (self.target != self.key).then_some(FlipStripIntent::MoveKey {
-            from: self.key,
-            to: self.target,
-        })
+    /// O que um arrasto de MOVER pede ao documento no `End` — nada quando o dedo tremeu
+    /// (o alvo é onde a chave já está). No **grupo** (célula marcada), um pedido por chave
+    /// marcada, na ordem que garante que todo `move_frame` pousa: movendo para a DIREITA,
+    /// da direita para a esquerda (a vizinha marcada já saiu do destino quando a irmã
+    /// chega); para a esquerda, o inverso.
+    fn push_move_intents(&self, snap: &FlipStripSnapshot) {
+        let delta = self.target - self.key;
+        if delta == 0 {
+            return;
+        }
+        if !self.group {
+            push_intent(FlipStripIntent::MoveKey {
+                from: self.key,
+                to: self.target,
+            });
+            return;
+        }
+        let keys = snap.cells.iter().filter(|c| c.selected).map(|c| c.key);
+        let emit = |k: i32| {
+            push_intent(FlipStripIntent::MoveKey {
+                from: k,
+                to: k + delta,
+            });
+        };
+        if delta > 0 {
+            keys.rev().for_each(emit);
+        } else {
+            keys.for_each(emit);
+        }
     }
+}
+
+/// **Quanto a SELEÇÃO inteira pode andar** — `(delta mínimo, delta máximo)`.
+///
+/// O grupo move rígido, então marcada nunca colide com marcada; o limite de cada chave
+/// marcada é o vizinho **não marcado** mais próximo de cada lado (ele fica parado), mais o
+/// piso `0` à esquerda (o mesmo da chave única). O delta permitido é a interseção: a chave
+/// mais apertada trava o grupo inteiro — encostar e parar, como no gesto de uma célula.
+fn selection_delta_bounds(snap: &FlipStripSnapshot) -> (i32, i32) {
+    let mut dmin = i32::MIN;
+    let mut dmax = i32::MAX;
+    for (i, c) in snap.cells.iter().enumerate() {
+        if !c.selected {
+            continue;
+        }
+        let lo = snap.cells[..i]
+            .iter()
+            .rev()
+            .find(|n| !n.selected)
+            .map_or(0, |n| n.key + 1);
+        dmin = dmin.max(lo - c.key);
+        if let Some(n) = snap.cells[i + 1..].iter().find(|n| !n.selected) {
+            dmax = dmax.min(n.key - 1 - c.key);
+        }
+    }
+    // Chave ordenada e vizinho não marcado ficam sempre do lado certo (dmin ≤ 0 ≤ dmax);
+    // o guard só existe para um snapshot malformado não virar pânico de `clamp`.
+    (dmin, dmax.max(dmin))
 }
 
 /// **Um passo do hold VIVO**: recomputa o alvo com a régua congelada e pede a exposição
@@ -152,8 +226,12 @@ pub(crate) fn apply(
     // A mesma pergunta, na outra ponta: o índice ainda existe mas a chave dele TROCOU.
     // No hold vivo o snapshot muda por construção (é o gesto aplicando), mas a chave
     // arrastada nunca muda de quadro sob `set_exposure` — se ela trocou, foi outra via.
+    // E um arrasto de GRUPO cuja célula pega deixou de estar marcada é a mesma coisa: a
+    // sessão descreve um conjunto que não existe mais.
     if g.phase != GesturePhase::Begin
-        && drag.as_ref().is_some_and(|d| d.key != cell.key)
+        && drag
+            .as_ref()
+            .is_some_and(|d| d.key != cell.key || (d.group && !cell.selected))
     {
         *drag = None;
         return None;
@@ -171,6 +249,7 @@ pub(crate) fn apply(
                 target: start,
                 applied: start,
                 ruler: *ruler,
+                group: kind == DragKind::MoveKey && cell.selected,
             });
             None
         }
@@ -179,8 +258,16 @@ pub(crate) fn apply(
                 match d.kind {
                     DragKind::MoveKey => {
                         let here = d.ruler.frame_at_x(g.x);
-                        let (lo, hi) = move_bounds(snap, index);
-                        d.target = (d.key + here - d.grab_frame).clamp(lo, hi); // CLAMP-OK: vizinhas
+                        let want = here - d.grab_frame;
+                        // No grupo o clamp é no DELTA (os limites vêm em delta, e um
+                        // `key + i32::MAX` estouraria); na célula única, no alvo.
+                        d.target = if d.group {
+                            let (dlo, dhi) = selection_delta_bounds(snap);
+                            d.key + want.clamp(dlo, dhi) // CLAMP-OK: vizinhas
+                        } else {
+                            let (lo, hi) = move_bounds(snap, index);
+                            (d.key + want).clamp(lo, hi) // CLAMP-OK: vizinhas
+                        };
                     }
                     DragKind::Hold => hold_step(d, g.x),
                 }
@@ -190,11 +277,7 @@ pub(crate) fn apply(
         GesturePhase::End => {
             if let Some(mut d) = drag.take() {
                 match d.kind {
-                    DragKind::MoveKey => {
-                        if let Some(intent) = d.move_intent() {
-                            push_intent(intent);
-                        }
-                    }
+                    DragKind::MoveKey => d.push_move_intents(snap),
                     // O documento já acompanhou o percurso; o End só honra o resto do
                     // caminho entre o último Move e o soltar.
                     DragKind::Hold => hold_step(&mut d, g.x),
@@ -211,27 +294,41 @@ pub(crate) fn apply(
     }
 }
 
-/// **Onde o contorno do arrasto é desenhado** — só para MOVER (o hold não tem preview: a
-/// própria célula estica em tempo real). `None` sem sessão, ou quando ela ainda não pede
-/// nada (o dedo tremeu dentro do próprio quadro: um contorno em cima da célula onde ela já
-/// está seria ruído).
-pub(crate) fn preview_rect(
+/// **Onde os contornos do arrasto são desenhados** — só para MOVER (o hold não tem
+/// preview: a própria célula estica em tempo real). Vazio sem sessão, ou quando ela ainda
+/// não pede nada (o dedo tremeu dentro do próprio quadro: um contorno em cima da célula
+/// onde ela já está seria ruído). Num arrasto de GRUPO, um contorno por célula marcada —
+/// cada uma no seu destino, com a SUA largura: o gesto mostra tudo o que vai mudar.
+pub(crate) fn preview_rects(
     state: &crate::state::FlipStripState,
     ruler: &StripRuler,
     snap: &FlipStripSnapshot,
-) -> Option<Rect> {
-    let d = state.drag?;
+) -> Vec<Rect> {
+    let Some(d) = state.drag else {
+        return Vec::new();
+    };
     if d.kind != DragKind::MoveKey || d.target == d.key {
-        return None;
+        return Vec::new();
     }
-    // A chave viaja inteira: a largura é a exposição que ela tem hoje.
-    let frames = exposure_of(snap, d.key).unwrap_or(1) as i32;
-    Some(Rect::new(
-        ruler.x_of_frame(d.target),
-        ruler.cells_top,
-        (frames as f32 * ruler.ppf - 1.0).max(crate::ruler::MIN_CELL_W),
-        ruler.cell_h,
-    ))
+    let ghost = |frame: i32, exposure: u32| {
+        Rect::new(
+            ruler.x_of_frame(frame),
+            ruler.cells_top,
+            (exposure.max(1) as f32 * ruler.ppf - 1.0).max(crate::ruler::MIN_CELL_W),
+            ruler.cell_h,
+        )
+    };
+    if d.group {
+        let delta = d.target - d.key;
+        snap.cells
+            .iter()
+            .filter(|c| c.selected)
+            .map(|c| ghost(c.key + delta, c.exposure))
+            .collect()
+    } else {
+        // A chave viaja inteira: a largura é a exposição que ela tem hoje.
+        vec![ghost(d.target, exposure_of(snap, d.key).unwrap_or(1))]
+    }
 }
 
 /// Drena os gestos da tira deste frame e os aplica à sessão.
@@ -269,296 +366,5 @@ pub(crate) fn process(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::state::FlipCell;
-    use ph2d_editor_core::interaction::GestureMods;
-    use ph2d_host::PointerButton;
-
-    fn cell(key: i32, exposure: u32) -> FlipCell {
-        FlipCell {
-            key,
-            exposure,
-            breakdown: false,
-            instanced: false,
-            selected: false,
-            pinned: false,
-            weight: 1.0,
-        }
-    }
-
-    /// Chaves em 0/4/8, cada uma expondo 4 — e uma faixa estreita o bastante para o teto de
-    /// px-por-quadro não mascarar a escala.
-    fn fixture() -> (StripRuler, FlipStripSnapshot) {
-        let snap = FlipStripSnapshot {
-            has_layer: true,
-            cells: vec![cell(0, 4), cell(4, 4), cell(8, 4)],
-            ..Default::default()
-        };
-        let ruler = StripRuler::resolve(Rect::new(0.0, 0.0, 120.0, 100.0), &snap).expect("régua");
-        (ruler, snap)
-    }
-
-    fn gesture(kind: FlipStripHitKind, phase: GesturePhase, x: f32) -> FlipStripGesture {
-        FlipStripGesture {
-            surface: ph2d_a11y::NodeId(1),
-            kind,
-            phase,
-            x,
-            y: 0.0,
-            button: PointerButton::Primary,
-            mods: GestureMods::default(),
-        }
-    }
-
-    /// Arrasta a célula `i` do meio dela até o quadro `to_frame`, e devolve o que ficou na
-    /// fila de pedidos.
-    fn drag_cell(i: u16, to_frame: i32) -> Vec<FlipStripIntent> {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents(); // a fila é thread_local
-        let mut d = None;
-        let body = r.cell_rect(i as usize, &s).unwrap();
-        let start = body.x + body.w * 0.5;
-        let kind = FlipStripHitKind::Cell { index: i };
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Begin, start));
-        // O ponteiro anda o mesmo tanto que o alvo tem de andar.
-        let delta = (to_frame - s.cells[i as usize].key) as f32 * r.ppf;
-        apply(
-            &mut d,
-            &r,
-            &s,
-            gesture(kind, GesturePhase::Update, start + delta),
-        );
-        apply(
-            &mut d,
-            &r,
-            &s,
-            gesture(kind, GesturePhase::End, start + delta),
-        );
-        crate::state::drain_flip_strip_intents()
-    }
-
-    /// 🔴 O gesto central: pegar a chave do meio e largá-la um quadro adiante pede
-    /// exatamente `move_frame(4 → 5)`. Mutação que sangra: aplicar no Update em vez do End
-    /// (a fila teria um pedido por passo do percurso — e o MOVER reordenaria a lista sob o
-    /// próprio índice, a razão de ele NÃO ser vivo).
-    #[test]
-    fn dragging_a_cell_asks_to_move_its_key() {
-        assert_eq!(
-            drag_cell(1, 5),
-            vec![FlipStripIntent::MoveKey { from: 4, to: 5 }]
-        );
-    }
-
-    /// 🔴 **O arrasto é relativo ao ponto de pega** — pegar a célula pelo MEIO e não mover o
-    /// ponteiro não move a chave. Com alvo absoluto (`target = frame sob o cursor`) a chave
-    /// saltaria para debaixo do dedo no primeiro Update: aqui, dois quadros adiante.
-    #[test]
-    fn grabbing_a_wide_cell_off_centre_does_not_teleport_it() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let mut d = None;
-        let body = r.cell_rect(1, &s).unwrap();
-        let grab = body.x + body.w * 0.75; // bem à direita do começo da célula
-        let kind = FlipStripHitKind::Cell { index: 1 };
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Begin, grab));
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Update, grab));
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::End, grab));
-        assert!(
-            crate::state::drain_flip_strip_intents().is_empty(),
-            "sem percurso não há pedido — a chave não pode saltar para o dedo"
-        );
-    }
-
-    /// 🔴 **A chave encosta na vizinha, não passa por cima dela.** `move_frame` RECUSA um
-    /// destino ocupado, e um gesto que às vezes não faz nada ensina intermitência.
-    #[test]
-    fn a_key_stops_against_its_neighbour_instead_of_being_refused() {
-        // A do meio (4) puxada para 99: a vizinha começa em 8 ⇒ para em 7.
-        assert_eq!(
-            drag_cell(1, 99),
-            vec![FlipStripIntent::MoveKey { from: 4, to: 7 }]
-        );
-        // E para trás: a anterior começa em 0 ⇒ para em 1.
-        assert_eq!(
-            drag_cell(1, -99),
-            vec![FlipStripIntent::MoveKey { from: 4, to: 1 }]
-        );
-    }
-
-    /// A PRIMEIRA chave para em 0 (o tempo começa ali) e a ÚLTIMA não tem teto — arrastá-la
-    /// para a direita é como uma cena se estende.
-    #[test]
-    fn the_first_key_stops_at_zero_and_the_last_one_has_no_ceiling() {
-        assert!(
-            drag_cell(0, -5).is_empty(),
-            "a primeira já está em 0: puxar para trás não pede nada"
-        );
-        assert_eq!(
-            drag_cell(2, 20),
-            vec![FlipStripIntent::MoveKey { from: 8, to: 20 }]
-        );
-    }
-
-    /// 🔴 **O hold é VIVO** (Enio, smoke 2026-07-24): o pedido sai no UPDATE — a célula
-    /// estica na tela enquanto o dedo anda — e o End não duplica nada quando o ponteiro
-    /// não andou mais. Dois Updates no mesmo alvo pedem UMA vez (emite-quando-muda).
-    /// Mutação que sangra: voltar a aplicar só no End (o 1º drain sai vazio).
-    #[test]
-    fn dragging_the_hold_edge_stretches_the_exposure_live() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let mut d = None;
-        let kind = FlipStripHitKind::HoldEdge { index: 0 };
-        let edge = r
-            .hold_edge_rect(0, &s)
-            .expect("a célula de 4 quadros tem grip");
-        let start = edge.x + edge.w * 0.5;
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Begin, start));
-        // Leva a borda até o meio do quadro 6 ⇒ exposição 7 (quadros 0..=6) — JÁ no Update.
-        let x6 = r.x_of_frame(6) + r.ppf * 0.5;
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Update, x6));
-        assert_eq!(
-            crate::state::drain_flip_strip_intents(),
-            vec![FlipStripIntent::SetHold { key: 0, frames: 7 }],
-            "o hold aplica enquanto o ponteiro anda, não no soltar"
-        );
-        // Mais um Update no MESMO lugar: alvo igual, nada novo na fila.
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Update, x6));
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::End, x6));
-        assert!(
-            crate::state::drain_flip_strip_intents().is_empty(),
-            "alvo que não mudou não pede de novo — nem no End"
-        );
-        assert!(d.is_none(), "o End encerra a sessão");
-    }
-
-    /// A exposição nunca chega a zero: arrastar a borda para trás da própria chave a deixa
-    /// em 1 quadro (um desenho que fica zero quadro na tela não é um desenho, é um delete —
-    /// e delete é outro botão).
-    #[test]
-    fn the_hold_never_shrinks_below_one_frame() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let mut d = None;
-        let kind = FlipStripHitKind::HoldEdge { index: 1 };
-        let edge = r.hold_edge_rect(1, &s).unwrap();
-        apply(
-            &mut d,
-            &r,
-            &s,
-            gesture(kind, GesturePhase::Begin, edge.x + edge.w * 0.5),
-        );
-        let far_left = r.x_of_frame(-20);
-        apply(
-            &mut d,
-            &r,
-            &s,
-            gesture(kind, GesturePhase::Update, far_left),
-        );
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::End, far_left));
-        assert_eq!(
-            crate::state::drain_flip_strip_intents(),
-            vec![FlipStripIntent::SetHold { key: 4, frames: 1 }]
-        );
-    }
-
-    /// 🔴 **O mapeamento do gesto é o do Begin.** O hold vivo muda o total de quadros, a
-    /// tira re-escala, e uma régua VIVA leria o MESMO x como um quadro maior — realimentação
-    /// positiva: a exposição dispararia sozinha. A sessão congela a régua da pegada, então
-    /// o mesmo x continua pedindo o mesmo alvo mesmo com a tira já esticada.
-    /// Mutação que sangra: `hold_step` ler a régua do frame em vez de `d.ruler`.
-    #[test]
-    fn the_holds_mapping_is_frozen_at_the_grab() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let mut d = None;
-        let kind = FlipStripHitKind::HoldEdge { index: 2 };
-        let edge = r.hold_edge_rect(2, &s).expect("grip da última");
-        apply(
-            &mut d,
-            &r,
-            &s,
-            gesture(kind, GesturePhase::Begin, edge.x + edge.w * 0.5),
-        );
-        // Estica a última em +2 quadros (4 → 6).
-        let x = r.x_of_frame(13) + r.ppf * 0.5;
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Update, x));
-        assert_eq!(
-            crate::state::drain_flip_strip_intents(),
-            vec![FlipStripIntent::SetHold { key: 8, frames: 6 }]
-        );
-        // O documento acompanhou (é o hold vivo): o snapshot do frame seguinte tem a
-        // exposição nova, e a régua RESOLVIDA dele lê o mesmo x como OUTRO quadro — a
-        // fixture tem de conter o fenômeno, senão a mutação não sangra.
-        let s2 = FlipStripSnapshot {
-            has_layer: true,
-            cells: vec![cell(0, 4), cell(4, 4), cell(8, 6)],
-            ..Default::default()
-        };
-        let r2 = StripRuler::resolve(Rect::new(0.0, 0.0, 120.0, 100.0), &s2).expect("régua");
-        assert_ne!(
-            r.frame_at_x(x),
-            r2.frame_at_x(x),
-            "pré-condição: a tira re-escalou e a régua viva discorda da congelada"
-        );
-        // O mesmo x, sob o snapshot novo e a régua nova: o alvo NÃO anda sozinho.
-        apply(&mut d, &r2, &s2, gesture(kind, GesturePhase::Update, x));
-        apply(&mut d, &r2, &s2, gesture(kind, GesturePhase::End, x));
-        assert!(
-            crate::state::drain_flip_strip_intents().is_empty(),
-            "com a régua congelada, o mesmo x pede o mesmo alvo — sem realimentação"
-        );
-    }
-
-    /// 🔴 **Um toque não pede nada e devolve a célula** — é o `PanelEvent::Click` de sempre
-    /// (selecionar a chave, com o modificador que o shell lê). Se o toque começasse a pedir
-    /// um `MoveKey{from: k, to: k}`, todo clique viraria uma edição no-op na fila de undo.
-    #[test]
-    fn a_tap_asks_for_nothing_and_reports_the_cell() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let mut d = None;
-        let kind = FlipStripHitKind::Cell { index: 2 };
-        let x = r.cell_rect(2, &s).unwrap().x + 1.0;
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Begin, x));
-        let tapped = apply(&mut d, &r, &s, gesture(kind, GesturePhase::Click, x));
-        assert_eq!(tapped, Some(2));
-        assert!(crate::state::drain_flip_strip_intents().is_empty());
-        assert!(d.is_none(), "o toque encerra a sessão");
-    }
-
-    /// A tira mudou embaixo do gesto (outra via editou o documento): a sessão é largada em
-    /// vez de agir sobre a chave que passou a ocupar aquele índice — nas DUAS formas de
-    /// ficar obsoleto: o índice não existe mais, ou existe com OUTRA chave dentro.
-    #[test]
-    fn a_stale_index_drops_the_session_instead_of_moving_the_wrong_key() {
-        let (r, s) = fixture();
-        let _ = crate::state::drain_flip_strip_intents();
-        let session = StripDrag {
-            kind: DragKind::MoveKey,
-            key: 4,
-            grab_frame: 4,
-            target: 6,
-            applied: 4,
-            ruler: r,
-        };
-        // Índice fora da lista.
-        let mut d = Some(session);
-        let gone = FlipStripHitKind::Cell { index: 9 };
-        assert_eq!(
-            apply(&mut d, &r, &s, gesture(gone, GesturePhase::Update, 10.0)),
-            None
-        );
-        assert!(d.is_none());
-        // Índice válido, chave trocada (a sessão diz 4; o índice 0 guarda a chave 0).
-        let mut d = Some(session);
-        let swapped = FlipStripHitKind::Cell { index: 0 };
-        assert_eq!(
-            apply(&mut d, &r, &s, gesture(swapped, GesturePhase::Update, 10.0)),
-            None
-        );
-        assert!(d.is_none());
-        assert!(crate::state::drain_flip_strip_intents().is_empty());
-    }
-}
+#[path = "strip_drag_tests.rs"]
+mod tests;

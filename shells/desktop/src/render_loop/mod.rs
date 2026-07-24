@@ -106,6 +106,7 @@ pub(crate) mod physics_bridge;
 #[cfg(test)]
 mod physics_bridge_tests;
 pub(crate) mod physics_overlay;
+mod physics_overlay_annotations;
 mod physics_overlay_contacts;
 mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;

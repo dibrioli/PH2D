@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `60dcf302c` + este commit de doc (o integrador usa `git rev-parse line/physics`) |
+| HEAD | `3c1cb6848` + este commit de doc (o integrador usa `git rev-parse line/physics`) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits à frente | **23** (1 doc herdado + 6 W-AreaFrame + 6 W-AreaFalloff + 2 fix Dur(s) + 3 W-AreaMirror + 1 re-pin + 3 W-BakeRange + este doc) |
+| commits à frente | **26** (1 doc herdado + 6 W-AreaFrame + 6 W-AreaFalloff + 2 fix Dur(s) + 3 W-AreaMirror + 1 re-pin + 3 W-BakeRange + 3 fidelidade do bake + este doc) |
 | working tree | limpa |
 
 Os commits, em ordem (o 1º já existia quando assumi a linha):
@@ -40,6 +40,10 @@ bf9add666 docs(physics): CLAUDE.md 5 + handoff cobrem o W-AreaMirror
 80099d24d feat(physics): W-BakeRange -- o inicio do loop e honrado no bake
 c3d7d4ee0 test(physics): os gates do W-BakeRange -- 3 mutacoes, 3 sangram
 60dcf302c docs(physics): W-BakeRange no tracker/plano/CLAUDE.md/reabertura
+65b3d3fd7 docs(physics): o handoff de integracao cobre o W-BakeRange (cena 37)
+0c1baeeb0 fix(physics): o bake usa tolerancia de fit propria, apertada (0.3%)
+4fbfffcd2 test(physics): o bake rastreia o quique + o overshoot e bracketado
+3c1cb6848 docs(physics): a fidelidade do bake -- a tolerancia do fit e do INPUT
 (+ este commit)
 ```
 
@@ -231,6 +235,12 @@ Um `Dropper` caindo do topo, relógio **pausado**, loop armado `[0.5s, 2.5s]`, t
 3. **O front descartado é visível:** desmarque **Physics** no transporte e dê Play — a bola
    **SEGURA a pose de meio-ar de 0.5s** até a janela abrir, então anima a queda. Um bake de
    range cheio a teria começado no TOPO.
+4. **A FIDELIDADE (o que o Enio reprovou):** o movimento assado tem de replicar a queda **e o
+   quique** — a bola não deve "flutuar" pela pose nem perder o quiquinho. A tolerância do fit
+   foi apertada de 1% (herdada do record, calibrada pro tremor da mão) para 0,3%, o **ponto
+   ótimo** (abaixo dele a Bézier overshoota, medido). Se num quique GRANDE o canto do contato
+   ainda parecer arredondado, é a tangente suave (broken-tangents no contato é item deferido do
+   fit, decisão à parte — nomeado no tracker).
 
 ⚠️ **Já aprovados** (não precisam de re-smoke): `=33` e `=34`.
 

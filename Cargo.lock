@@ -6939,6 +6939,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-render",
+ "ph2d-vec-scene",
  "postcard",
  "serde",
  "serde_json",

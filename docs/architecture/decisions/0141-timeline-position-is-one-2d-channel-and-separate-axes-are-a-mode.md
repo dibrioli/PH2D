@@ -185,6 +185,65 @@ de geometria — o desconto tem nome e não é inventado na hora.
 
 ---
 
+### ⚠️ A barra declarada FALHOU, e a substituta é medida (Fatia 0, 2026-07-23)
+
+Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../../crates/ph2d-timeline/tests/measure_motion_path.rs)
+(release, custo de UMA amostra em ns).
+
+```text
+  baseline: 1 Track::sample           =   5.7 ns
+            1 entidade Separate (X+Y) =  11.5 ns
+            a BARRA declarada (2x)    =  22.9 ns por entidade Path
+
+  âncoras │  bisseção │    Newton │  LUT K=16 │  err New │  err LUT │ it.New
+  ────────┼───────────┼───────────┼───────────┼──────────┼──────────┼───────
+        2 │ 1683.5 ns │  150.6 ns │    7.2 ns │  1.25e-7 │  1.76e-1 │   3.80
+        8 │ 1745.7 ns │  131.0 ns │    9.3 ns │  1.26e-7 │  1.41e-1 │   3.30
+       32 │ 1715.8 ns │  133.9 ns │   12.0 ns │  1.27e-7 │  1.36e-1 │   3.24
+      128 │ 1743.2 ns │  144.8 ns │   15.7 ns │  1.25e-7 │  1.26e-1 │   3.22
+```
+
+**Três leituras, e a terceira reescreve a barra:**
+
+1. **O custo é PLANO nas âncoras** nos três métodos — o prefixo somado + busca binária fazem só
+   **um** segmento ser invertido. A estrutura certa já existia (`ArcPath` da linha Vector, com o
+   mesmo raciocínio escrito: *"construa uma vez e consulte n vezes"*).
+2. **A inversa que SHIPA hoje custa 1700 ns** — 75× a barra declarada. Ela é bisseção de 40
+   iterações, e cada iteração chama `arclen_to` (Gauss-Legendre de 16 nós = 32 avaliações de
+   `|B'|`): **~1300 `sqrt` por amostra**.
+3. ⚠️ **A barra declarada era o INSTRUMENTO ERRADO.** Ela mede contra `Track::sample`, que custa
+   **5,7 ns** — quase nada. Uma razão contra quase-nada reprova qualquer algoritmo real, e não diz
+   **de que recurso** o limite é (§0.0). O recurso é o **frame**:
+
+   | método | 100 entidades Path | % de um frame de 60 Hz |
+   |---|---|---|
+   | bisseção (hoje) | 170 µs | **1,02 %** |
+   | **Newton** | **14 µs** | **0,084 %** |
+   | LUT K=16 | 1,2 µs | 0,007 % |
+
+**Decisão: Newton substitui a bisseção.** `ds/dt = |B'(t)|` — a derivada da função que se está a
+inverter está disponível de graça, que é exatamente a condição em que Newton bate bisseção:
+**12× mais barato, 3,2 iterações, e sem aproximação a defender** (1,3e-7 num caminho de 823
+unidades = 0,12 µm). O ADR não compra a LUT: ela é 10× mais barata ainda, mas erra **0,13
+unidades** — e uma aproximação que se paga em precisão sem que o orçamento a exija é um modo de
+falha comprado sem necessidade.
+
+**A LEI que substitui a barra:** *amostrar 100 entidades em modo Path custa **≤ 0,2 %** de um frame
+de 60 Hz, e o custo por entidade é **plano no número de âncoras***. As duas metades importam: a
+primeira é o recurso, a segunda é a estrutura (se o custo passar a crescer com as âncoras, alguém
+trocou a busca binária por uma varredura).
+
+⚠️ **A LUT fica documentada como a saída, com o número dela já medido** — acorda se uma cena real
+precisar de 1000+ entidades em Path *e* o perfil mostrar esta amostragem no topo.
+
+⚠️ **Consequência cross-linha:** `inv_arclen` é **compartilhada** — Trim, Pattern Along Path, Zig
+Zag e texto-em-caminho (linha Vector) chamam a mesma função. Trocar bisseção por Newton **muda os
+bits** que ela devolve (1,3e-7). A Fatia 1 roda a suíte da `ph2d-vec-scene` e afina a tolerância
+até os gates deles ficarem verdes — a melhoria é para os dois lados, mas quem a faz responde por
+ela.
+
+---
+
 ## Consequências
 
 - **Positivas:** o coração amado fecha; roving e o speed graph passam a significar o que significam

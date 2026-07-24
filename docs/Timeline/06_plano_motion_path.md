@@ -74,6 +74,47 @@ aqui — é **medição para decidir**; o gate nasce na Fatia 2, contra o númer
 
 ---
 
+### ✅ FATIA 0 FECHADA (2026-07-23) — **Newton, e a barra reescrita**
+
+Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../crates/ph2d-timeline/tests/measure_motion_path.rs).
+Números e o raciocínio completo: **emenda ao §Kill do ADR-0141**.
+
+**O que a medição decidiu:**
+
+1. **A inversa que shipa hoje (bisseção de 40 iterações) custa 1700 ns/amostra** — ~1300 `sqrt`.
+   **Newton custa 140 ns** com o MESMO resultado (erro 1,3e-7 num caminho de 823 unidades), porque
+   `ds/dt = |B'(t)|` está disponível de graça. **12×.**
+2. **O custo é plano no número de âncoras** (2 → 128): o prefixo somado + busca binária já isolam
+   **um** segmento. Nenhuma estrutura nova é precisa — a `ArcPath` da linha Vector já é isso.
+3. ⚠️ **A barra declarada era o instrumento errado** e foi substituída por uma LEI ligada a um
+   RECURSO: *100 entidades Path ≤ 0,2 % de um frame de 60 Hz, com custo plano nas âncoras*. A razão
+   contra `Track::sample` (5,7 ns) reprovava qualquer algoritmo real e não dizia de que recurso era.
+4. **A LUT (7-16 ns) NÃO é comprada** — erra 0,13 unidade, e comprar aproximação que o orçamento não
+   exige é escolher um modo de falha de graça. Fica documentada com o número medido.
+
+### A CASA do motor de arco (decidida por esta fatia)
+
+A matemática vive em [`ph2d-vec-scene/src/arclen.rs`](../../crates/ph2d-vec-scene/src/arclen.rs) —
+crate do módulo **Vector** — e é **pura**: opera em `Cubic = [[f64;2];4]`, sem um tipo sequer do
+documento de vetor, com `sqrt` como único transcendental (escolhido lá por determinismo
+cross-plataforma). A `ArcPath` irmã já traz prefixo somado, `at(s)` devolvendo **ponto e tangente
+unitária**, e `anchor_arcs()` — que é literalmente o *"valor da track por key"* da espinha do ADR.
+
+**Decisão:** o motor **muda-se para uma crate-folha própria** (`ph2d-arclen`, zero dependências), e
+a `ph2d-vec-scene` passa a **re-exportá-lo** (`pub mod arclen { pub use ph2d_arclen::*; }`) — os 5
+sítios de chamada dela seguem compilando **verbatim**. Copiar seria duas respostas para *"quanto
+andei nesta curva"*, que é o defeito que este repo cataloga; depender de `ph2d-vec-scene` a partir
+da timeline seria arrastar o modelo de documento do Vector para dentro do runtime de animação.
+
+⚠️ **A `ArcPath` toma `&[VecVertex]`** (acoplada ao documento). O que se move é o núcleo puro; a
+`from_contour` fica na `ph2d-vec-scene` como **adaptador**, e a estrutura ganha um irmão
+`from_cubics` na casa nova, que é por onde a timeline entra.
+
+⚠️ **Enquanto a mudança não acontece, o harness consome `ph2d-vec-scene` por `[dev-dependencies]`**
+(marcado TEMPORARY no `Cargo.toml`) — medição não compromete arquitetura, e a dep sai na Fatia 1.
+
+---
+
 ## §4 — Fatia 1 — dados + a porta única (`ph2d-timeline`, headless)
 
 1. `PropKind::Position = 8` (append; o discriminante é wire value congelado).

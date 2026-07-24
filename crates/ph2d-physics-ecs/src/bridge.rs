@@ -546,9 +546,16 @@ impl PhysicsBridge {
             let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(e).is_some();
             // How much of the push reaches the far side (W-AreaFalloff): a seventh
             // optional component, folded into the same bundle. Like the marker above it is
-            // NOT part of `any`, and here the reason is not merely hygiene — a falloff
-            // attenuates something, so a zone carrying nothing else attenuates nothing.
-            // It is a MODIFIER, not an effect.
+            // deliberately NOT part of `any` — a falloff is a MODIFIER, so a zone carrying
+            // nothing else attenuates nothing and is not a zone.
+            //
+            // ⚠️ And, like the marker above, that exclusion is HYGIENE rather than
+            // correctness — a mutation proved it: putting it in `any` leaves both gates
+            // green, because `effector::zone_effect` refuses the wholly inert zone anyway.
+            // I first wrote here that "the reason is not merely hygiene"; the measurement
+            // says otherwise, and the honest version is the one that survives being tested
+            // ([[feedback_layered_defenses_need_per_layer_gates]]). What it buys is the
+            // same thing its sibling buys: a `BodyDesc` that does not claim to be a zone.
             let zone_falloff = world.get::<crate::AreaFalloff>(e).map(|f| f.0);
             let any = zone_force.is_some()
                 || zone_drag.is_some()

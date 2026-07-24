@@ -42,6 +42,11 @@ const KEYS: [(i32, Rgba, f32); 4] = [
 const LAST_EXPOSURE: u32 = 2;
 
 /// Uma barra vertical na cor da chave — grande, chapada e inconfundível.
+///
+/// ⚠️ As quatro ficam quase no MESMO lugar, subindo um degrau de cada vez: a cena tem de
+/// parecer **um desenho que muda ao longo do tempo**, não quatro objetos numa cena. Com elas
+/// espalhadas (a 1ª versão) o smoke lia como *"só vejo 4 linhas"* — e lia certo, porque era
+/// isso que estava na tela.
 fn bar(colour: Rgba, height: f32, x: f32) -> FlipStroke {
     let mut s = FlipStroke::new();
     for i in 0..=8u8 {
@@ -63,7 +68,9 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     let l = obj.add_layer("Bars");
     for (i, &(key, colour, height)) in KEYS.iter().enumerate() {
         if let Some(d) = obj.insert_frame(l, key, Hold::Implicit, KeyKind::Keyframe) {
-            let x = -2.4 + i as f32 * 1.6;
+            // Um passo CURTO (um terço de barra): perto o bastante para o fantasma do
+            // vizinho se sobrepor e ler como "o mesmo desenho, um instante antes".
+            let x = -0.6 + i as f32 * 0.4;
             obj.drawing_mut(d)
                 .expect("desenho recém-criado")
                 .strokes
@@ -108,67 +115,74 @@ impl crate::App {
         eprintln!(
             "\n\
              ============================================================\n\
-             O QUE VOCE ESTA VENDO\n\
+             ANTES DE MAIS NADA: o que e' cada coisa na tela\n\
              ============================================================\n\
-             No meio da tela: quatro barras coloridas (vermelha, amarela, ciano,\n\
-             verde), uma mais alta que a outra. Cada barra e' UM desenho seu.\n\
+             Isto e' UMA animacao de 4 desenhos -- uma barrinha que vai CRESCENDO e\n\
+             andando um pouco para a direita. Nao sao 4 objetos: e' o mesmo objeto\n\
+             em 4 momentos.\n\
              \n\
-             Na faixa de baixo (a tira): quatro retangulos, um por desenho, e cada\n\
-             um com a LARGURA do tempo que aquele desenho fica na tela. Por isso\n\
-             eles tem tamanhos diferentes -- o numero dentro de cada um e' quantos\n\
-             quadros ele dura (4, 1, 6 e 2).\n\
+             Voce esta no PRIMEIRO desenho. Entao a tela mostra:\n\
              \n\
-             Sao TRES coisas para conferir. Cada uma leva uns 10 segundos.\n\
+               - a barra VERMELHA, a mais baixa -- e' o desenho de agora, na cor dele;\n\
+               - atras dela, uma sombra AZULADA -- e' o desenho SEGUINTE, aparecendo\n\
+                 apagado so para voce se guiar (e' o 'papel vegetal' do animador).\n\
+             \n\
+             Sombra esverdeada = desenho ANTERIOR. Sombra azulada = SEGUINTE. Elas\n\
+             NUNCA aparecem na cor de verdade -- so o desenho onde voce esta e' que\n\
+             tem cor. Quantas sombras aparecem depende do numero na caixa 'Ghost'\n\
+             la em cima (esta em 1 de cada lado).\n\
+             \n\
+             Na faixa de baixo: quatro retangulos, um por desenho. A LARGURA de cada\n\
+             um e' quanto tempo aquele desenho fica na tela (o numero dentro dele).\n\
              \n\
              ------------------------------------------------------------\n\
-             1) ARRASTAR UM RETANGULO -- muda o desenho de lugar no tempo\n\
+             AQUECIMENTO (5 segundos): clique nos retangulos, um por um\n\
+             ------------------------------------------------------------\n\
+             A barra tem de CRESCER a cada retangulo, e a sombra acompanhar. Se isso\n\
+             funciona, voce entendeu a cena e pode ir aos tres testes.\n\
+             \n\
+             ------------------------------------------------------------\n\
+             TESTE 1 -- ARRASTAR UM RETANGULO muda o desenho de lugar no tempo\n\
              ------------------------------------------------------------\n\
              Segure o MEIO de um retangulo e arraste para o lado.\n\
              \n\
-             Enquanto voce arrasta, aparece um CONTORNO mostrando onde ele vai\n\
-             parar. Ele so muda de lugar de verdade quando voce SOLTA.\n\
+             Enquanto arrasta, aparece um CONTORNO mostrando onde ele vai parar; ele\n\
+             so muda de lugar quando voce SOLTA. Ao chegar no vizinho, ENCOSTA e\n\
+             para -- nao passa por cima, nao troca de lugar, nao some.\n\
              \n\
-             Ao chegar no vizinho, ele ENCOSTA e para -- nao passa por cima, nao\n\
-             troca de lugar, nao some.\n\
-             \n\
-             (So CLICAR, sem arrastar, continua fazendo o de sempre: pula para\n\
-              aquele desenho. Uma tremidinha de mao no clique nao pode mover nada.)\n\
+             (So clicar, sem arrastar, continua pulando para aquele desenho. Uma\n\
+              tremidinha de mao no clique nao pode mover nada.)\n\
              \n\
              ------------------------------------------------------------\n\
-             2) ARRASTAR A BEIRADA DIREITA -- muda quanto tempo ele dura\n\
+             TESTE 2 -- ARRASTAR A BEIRADA DIREITA muda quanto tempo ele dura\n\
              ------------------------------------------------------------\n\
-             Chegue com o mouse na BEIRADA DIREITA do retangulo grande (o ciano,\n\
-             o de 6). Uma barrinha clara aparece ali. Arraste ela.\n\
+             Chegue com o mouse na BEIRADA DIREITA do retangulo mais largo (o de 6).\n\
+             Uma barrinha clara aparece ali. Arraste ela.\n\
              \n\
              O retangulo estica ou encolhe, o numero dentro dele acompanha, e os\n\
-             retangulos SEGUINTES sao empurrados junto (esticar um desenho nao\n\
-             pode comer o proximo).\n\
+             retangulos SEGUINTES sao empurrados junto.\n\
              \n\
-             No retangulo mais fino (o amarelo, de 1 quadro) essa barrinha NAO\n\
-             aparece -- ali ele e' estreito demais para caber os dois gestos, e\n\
-             continua servindo so para arrastar. Isso e' de proposito: se voce\n\
-             quiser mudar a duracao dele, use a caixa 'Hold' la em cima.\n\
+             No retangulo mais fino (o de 1) essa barrinha NAO aparece -- ele e'\n\
+             estreito demais para caber os dois gestos, e continua servindo so para\n\
+             arrastar. E' de proposito: para mudar a duracao dele, use a caixa\n\
+             'Hold' la em cima.\n\
              \n\
              ------------------------------------------------------------\n\
-             3) O BOTAO 'Pin' -- deixa um desenho visivel de longe\n\
+             TESTE 3 -- o botao 'Pin' deixa um desenho visivel de longe\n\
              ------------------------------------------------------------\n\
-             Agora voce esta no comeco. Repare que da para ver, apagadinho, o\n\
-             desenho VIZINHO (a barra amarela) -- e' o fantasma de sempre. Os\n\
-             outros dois estao longe demais e nao aparecem.\n\
+             Do primeiro desenho voce so ve a sombra do vizinho; o ULTIMO esta longe\n\
+             demais e nao aparece.\n\
              \n\
-             Clique no ULTIMO retangulo (o verde) para ir ate ele. Aperte o botao\n\
-             'Pin' na barra de cima. Volte para o primeiro retangulo (o vermelho).\n\
+             Clique no ULTIMO retangulo para ir ate ele. Aperte 'Pin' na barra de\n\
+             cima. Volte para o primeiro retangulo.\n\
              \n\
-             A barra VERDE agora tem de aparecer apagada, mesmo estando longe --\n\
-             e a amarela tem de continuar aparecendo tambem. O retangulo que voce\n\
-             fixou fica com um pontinho no canto de baixo. Apertar 'Pin' de novo\n\
-             desfaz.\n\
-             \n\
-             (Isso serve para deixar um desenho de referencia na tela enquanto\n\
-              voce trabalha em outro -- a mesa de luz.)\n\
+             A barra mais ALTA (a ultima) agora tem de aparecer como sombra, mesmo\n\
+             estando longe -- e a sombra do vizinho tem de continuar aparecendo\n\
+             tambem. O retangulo fixado fica com um pontinho no canto de baixo.\n\
+             Apertar 'Pin' de novo desfaz.\n\
              \n\
              ============================================================\n\
-             Se qualquer uma das tres nao fizer o que esta escrito, me diga O QUE\n\
+             Se alguma das tres nao fizer o que esta escrito, me diga O QUE\n\
              ACONTECEU -- e' so isso que eu preciso.\n\
              ============================================================\n"
         );
@@ -216,6 +230,35 @@ mod tests {
                 "toda chave da cena desenha alguma coisa"
             );
         }
+
+        // 🔴 **A cena tem de parecer UMA animação, não quatro objetos.** Os desenhos
+        // consecutivos ficam a menos de uma largura de barra um do outro (e crescem), então
+        // o fantasma do vizinho SE SOBREPÕE e lê como "o mesmo desenho, um instante antes".
+        // A 1ª versão espalhava as barras pela tela, e o smoke voltou com *"só vejo 4
+        // linhas"* — lendo certo o que estava lá.
+        let xs: Vec<f32> = cells
+            .iter()
+            .map(|(_, d, _)| obj.drawing(*d).expect("arte").strokes[0].positions()[0].x)
+            .collect();
+        for pair in xs.windows(2) {
+            let step = (pair[1] - pair[0]).abs();
+            assert!(
+                step > 0.0 && step < 0.5,
+                "os desenhos têm de se suceder de PERTO (passo {step:.2}) — espalhados, a \
+                 cena lê como quatro objetos e o onion skin não se sobrepõe"
+            );
+        }
+        let heights: Vec<f32> = cells
+            .iter()
+            .map(|(_, d, _)| {
+                let p = obj.drawing(*d).expect("arte").strokes[0].positions();
+                p.last().expect("ponto").y - p[0].y
+            })
+            .collect();
+        assert!(
+            heights.windows(2).all(|w| w[1] > w[0]),
+            "a barra CRESCE a cada quadro: é o que faz trocar de desenho ser visível ({heights:?})"
+        );
     }
 
     /// 🔴 **A cena arma o caso que o Pin existe para resolver**: no quadro 0, com alcance

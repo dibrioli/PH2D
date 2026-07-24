@@ -37,6 +37,43 @@ ca2367d50 docs(physics): CLAUDE.md 5 -- o W-AreaFalloff fecha a familia das zona
 
 ---
 
+## 1b — ⚠️ UM FIX FORA DO DOMÍNIO DA LINHA (ler antes de integrar)
+
+O último commit toca **`ph2d-panel-timeline`** e **`ph2d-editor-core`**, que não são desta
+linha. Foi **pedido direto do Enio** (*"a timeline está limitando a simulação pois não
+permite que eu redefina a Duração da Animação/Simulação … permita que eu possa colocar
+qualquer valor em Dur"*), e a causa é de física: a duração autorada CORTA o relógio, então
+um teto na caixa Dur é um teto na simulação.
+
+**A causa, medida:** os três chips do transporte (Time · Frame · Dur) registravam alcance
+`[0, f64::from(u16::MAX)]`. O `65535` não era medido — o doc-comment ao lado já dizia
+`[0, ∞)`, ou seja o código contradizia a intenção escrita nele. Mordia por **duas** vias:
+
+1. o **stepper** parava em 65535 s;
+2. o **arrasto** ficava inútil — o scrub deste app é *proporcional ao alcance*
+   (`DRAG_RANGE_PX_H` = 250 px varrem `[min, max]`), então **um pixel valia 262 segundos**.
+   É esta a via que o artista sente como *"a caixa não deixa eu editar"*.
+
+**O fix:** teto **aberto** (`f64::INFINITY`) + um **drag-rate calibrado** igual ao próprio
+`step` do chip (um pixel = um clique de stepper). ⚠️ O alcance **não foi apagado**: é ele
+que carrega o `step` (sem ele o dispatch cai numa heurística de buffer — `0.01` num valor
+com ponto — e o incremento de **0,2 s** que o Enio pediu em 2026-07-23 some em silêncio) e
+o piso `0` (duração negativa não é uma coisa; `0` é o gesto de LIMPAR). A mutação M17 prova
+isso: apagar o alcance derruba 3 gates.
+
+⚠️ **O doc do `set_number_drag_rate` mandava NÃO combinar os dois** — e o código faz o
+oposto há tempo: o rate vence o modelo proporcional *e* dispensa o clamp do arrasto
+(`dispatch::pointer_move`, dois sítios). O texto foi corrigido: era exatamente ele que
+desencorajava a combinação certa.
+
+**Nenhum schema, nenhum contrato, nenhum id novo.** Gates novos em
+`ph2d-panel-timeline/tests/duration_chip_gesture.rs` (um estrutural + um que **arrasta um
+ponteiro de verdade** e exige que 20 px pousem em segundos, não em milhares); **3 mutações,
+3 sangram**. O `Time` e o `Frame` herdam o mesmo conserto pela MESMA porta (`chip()`), que é
+o certo: as três são grandezas sem teto e uma resposta só.
+
+---
+
 ## 2 — Foundational / compartilhado tocado, e por quê
 
 Tudo **aditivo**. Nenhum arquivo fora do domínio de física foi reescrito.
@@ -140,6 +177,10 @@ liga contorno e seta.
    você escolheu (é a metade *write-only* que mordeu a família de zonas em 22/07).
 
 ### O que o Enio ainda não viu
+
+**A caixa `Dur(s)` (§1b), em qualquer cena:** clique nela e **arraste** — o número tem de
+acompanhar o dedo em segundos (antes um pixel dava centenas). Digite **300** e dê Enter: a
+timeline abre até lá e a simulação corre os 5 minutos, em vez de bater no fim aos 4 s.
 
 **`env PH2D_PHYSICS_SMOKE=35 cargo run -p ph2d-host-desktop`** — a rajada com centro.
 

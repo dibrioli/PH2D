@@ -3710,4 +3710,89 @@ lista existe para produzir; a entrada foi acrescentada (3 → 4 arquivos).
   com um pedido: o linear é o que os motores expõem e o que o smoke aprovar.
 - **O falloff não alcança o meio** — por decisão, com gate. Se um dia uma poça precisar afinar
   na margem, isso é outra grandeza (uma *máscara* de meio), não este fator.
-- ⚠️ Herdado, ainda aberto: **espelhar a zona não espelha o vento** (acima).
+- ~~Herdado: **espelhar a zona não espelha o vento**~~ — **FECHADO** (W-AreaMirror, abaixo).
+
+---
+
+## W-AreaMirror — virar o sprite vira a correia (2026-07-23, cena `=36`)
+
+A decisão de produto que o W-AreaFrame deixou aberta, e o Enio mandou seguir. **A zona
+honrava METADE do próprio frame:** a rotação sim, a reflexão não — e é o *mesmo*
+`Transform` que carrega as duas. O artista espelhava uma esteira para montar a metade
+espelhada de um nível e a correia continuava correndo para o mesmo lado, com a seta do
+overlay concordando com ela e nada na tela dizendo por quê. Medido antes de mexer:
+`scale.x = -1` dava deslocamento **idêntico** ao da não-espelhada.
+
+**O precedente já estava escrito na função que dobra isto** (`scale::body_desc`, W-Offset):
+*"escala SINCADA, não `abs` — o offset é POSIÇÃO, então um flip o ESPELHA"*. Uma força
+autorada no frame da zona é um **vetor** nesse frame, logo obedece à mesma regra, e as duas
+linhas agora moram uma ao lado da outra.
+
+### A metade que torna isto correto em vez de meio-feito
+
+**Força é VETOR, torque é PSEUDOVETOR — e uma reflexão distingue os dois.** Sob
+`diag(-1, 1)` a força vira `(−fx, fy)`; o torque 2D, sendo a componente z de um
+pseudovetor, **troca de sinal** — um redemoinho visto no espelho gira ao contrário. É por
+isso que a afirmação do W-AreaFrame (*"o torque é invariante"*) valia para a ROTAÇÃO e
+**não se estende**: uma rotação no plano é *em torno de* Z e deixa um escalar-z quieto, uma
+reflexão NO plano o nega.
+
+O fator é `det(S) = mirror[0]·mirror[1]` (porta `zone_spin_sign`), e a forma fechada apaga
+o caso especial: **espelhar os DOIS eixos não é uma reflexão, é uma rotação de 180°**, e o
+produto devolve `+1` sozinho. Há gate nesse par exato — uma implementação por
+paridade-de-um-eixo passa no primeiro caso e morre no segundo.
+
+### Três decisões de ordem, cada uma com gate
+
+1. **O espelho entra ANTES da rotação** — a ordem do `Transform` (`R · S`, a escala age no
+   espaço local). A implementação errada só diverge numa zona espelhada **E** rotacionada,
+   que é o caso de uso inteiro (a metade espelhada de um nível quase nunca está no eixo):
+   espelhar X e girar 90° manda o vento para −Y, a ordem trocada manda para +Y.
+2. **`world_axes` desliga o espelho junto com a rotação** — o toggle diz *"esta força é um
+   vetor de MUNDO"*, e um vetor de mundo não é tocado por nada que o frame da zona faça.
+   Sem esta metade o `Force Axes: World` seria uma promessa pela metade.
+3. **A silhueta e o falloff são cegos ao espelho, de propósito** — um retângulo espelhado é
+   o mesmo retângulo (`scaled_shape` usa o módulo onde a forma é um TAMANHO) e a
+   `radial_fraction` é simétrica. Só o que tem DIREÇÃO responde a um espelho.
+
+### A metade visível
+
+A **seta** laranja reflete e o **glifo** violeta inverte o sentido, os dois pela mesma porta
+que o solver (`zone_force_world` / `zone_spin_sign`). Uma seta desenhada de um espelho que o
+solver não usa aponta para onde o vento não sopra, e um screenshot é exatamente o que
+ninguém confere com um número.
+
+### Contadores
+
+`AreaEffect.mirror: [f32; 2]` (plain data do wrapper, **não serializado** ⇒ de graça) +
+`AreaEffect::UNMIRRORED`. **Nenhum componente novo, nenhum id, nenhum bump**: a lateralidade
+é função da POSE que o artista já manipula, não de um controle a mais — e é por isso que
+esta wave não tem row na §11. Registro fica em **21**, `PROJECT_SCHEMA` em **29**. c9
+**81 → 83 corpos** (uma zona espelhada num eixo **e** girada, para que as duas composições
+entrem no hash), `4e862761…`, igual em debug e release.
+
+### Gates e mutações
+
+4 no kernel (reflexão · ordem espelho-antes-de-rotação · `world_axes` imune · o par
+um-eixo/dois-eixos do torque) + 1 na ponte (o sinal vem do `Transform`, e o rewind o
+re-arma) + 1 no overlay (seta reflete, glifo inverte). **7 mutações, 7 sangram** — a que
+importa é a **M19**: trocar `det` por paridade-do-eixo-X passa em todo gate menos o do
+duplo flip.
+
+### LOC
+
+`physics_ecs_c9.rs` bateu 736 ⇒ as **oito lanes da família das zonas** saíram para
+`physics_ecs_c9/zones.rs`, pela linha que a cena já vinha desenhando (a família cresce uma
+lane por wave; o resto do harness está estável). ⚠️ Um arquivo em `src/bin/` vira **outro
+binário** — a forma certa é o diretório (`src/bin/<nome>/main.rs` + irmãos), com o
+`[[bin]].path` do `Cargo.toml` apontando para o `main.rs`. Hash **inalterado** pelo split.
+
+### Aberto no W-AreaMirror
+
+- **O SKEW não entra no frame.** `Transform` carrega cisalhamento e o espelho lê só os
+  sinais da escala — um vento numa zona cisalhada aponta como se ela não fosse. É a mesma
+  limitação honesta que o collider já tem (rapier não cisalha forma, W6), e fechá-la exigiria
+  decidir o que "a direção autorada" significa sob um afim não-conforme.
+- **Nada na §11 diz que a zona está espelhada** — o overlay mostra (a seta aponta para o
+  outro lado), e o `Transform` é onde o artista fez o gesto. Uma row de leitura seria a
+  segunda porta para um fato que o gizmo já conta.

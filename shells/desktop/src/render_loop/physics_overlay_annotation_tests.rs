@@ -13,7 +13,9 @@
 
 use super::outlines;
 use super::tests::{camera, points, window};
-use crate::render_loop::physics_overlay_annotations::{EFFECTOR_RGBA, TORQUE_RGBA};
+use crate::render_loop::physics_overlay_annotations::{
+    EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA,
+};
 use ph2d_physics_ecs::{BodyKind, ColliderShape};
 
 /// **A force zone draws an arrow showing which way it blows — and keeps drawing it
@@ -226,4 +228,102 @@ fn a_torque_zone_draws_its_spin_even_while_the_clock_runs() {
 
     // And it obeys the toggle, like every other piece of this chrome.
     assert!(outlines(false, false, &mut ccw, &[], &camera(), window()).is_empty());
+}
+
+/// **Uma zona com falloff desenha o anel de meio caminho — e só quando há o que atenuar**
+/// (W-AreaFalloff).
+///
+/// O falloff era o único número do modelo de área sem marca nenhuma na tela: a seta
+/// continua do mesmo tamanho (ela desenha a força AUTORADA, que é a do centro), então uma
+/// rajada e um bloco de vento uniforme ficavam idênticos até alguém rodar a simulação e
+/// reparar que os corpos se movem diferente.
+///
+/// ⚠️ O anel é a curva de nível EXATA porque a régua é invariante sob escala: `t = 0.5` é
+/// a silhueta encolhida à metade. O gate mede isso — a caixa do anel tem de ser metade da
+/// do contorno —, e não apenas "há mais um path".
+#[test]
+fn a_zone_with_falloff_draws_the_half_way_ring_and_only_when_it_pushes() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{AreaEffector, AreaFalloff, Collider, RigidBody};
+
+    /// `force` ligado ou não, `falloff` ligado ou não — as quatro combinações.
+    let zone = |force: bool, falloff: f32| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 2.0,
+                        half_y: 1.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ))
+            .id();
+        if force {
+            sim.world_mut()
+                .entity_mut(e)
+                .insert(AreaEffector { force: [5.0, 0.0] });
+        }
+        if falloff > 0.0 {
+            sim.world_mut().entity_mut(e).insert(AreaFalloff(falloff));
+        }
+        sim
+    };
+    let span = |path: &ph2d_vector::BezPath| {
+        let pts = points(path);
+        let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+        for (x, _) in &pts {
+            lo = lo.min(*x);
+            hi = hi.max(*x);
+        }
+        hi - lo
+    };
+
+    // Sem falloff: contorno + seta, e nada mais.
+    let mut plain = zone(true, 0.0);
+    let drawn = outlines(true, false, &mut plain, &[], &camera(), window());
+    assert_eq!(
+        drawn.len(),
+        2,
+        "uma zona sem falloff desenha contorno + seta e nada mais, saíram {} paths",
+        drawn.len()
+    );
+
+    // Com falloff: mais um path, na cor do falloff, com METADE da largura do contorno.
+    let mut fading = zone(true, 1.0);
+    let drawn = outlines(true, false, &mut fading, &[], &camera(), window());
+    assert_eq!(
+        drawn.len(),
+        3,
+        "uma zona que desvanece tem de desenhar o anel de meio caminho, saíram {} paths",
+        drawn.len()
+    );
+    let ring = drawn
+        .iter()
+        .find(|(_, rgba)| *rgba == FALLOFF_RGBA)
+        .expect("o anel do falloff tem de ter cor própria (o laranja apagado da força)");
+    let outline = &drawn[0].0;
+    let ratio = span(&ring.0) / span(outline);
+    assert!(
+        (ratio - f64::from(FALLOFF_RING)).abs() < 0.02,
+        "o anel tem de ser a silhueta encolhida a {FALLOFF_RING} — mediu {ratio} da \
+         largura do contorno, então não é a curva de nível que a régua descreve"
+    );
+
+    // ⚠️ E NÃO é desenhado quando não há o que atenuar: um falloff sobre uma zona que não
+    // empurra nem gira descreveria o desvanecimento de nada.
+    let mut inert = zone(false, 1.0);
+    let drawn = outlines(true, false, &mut inert, &[], &camera(), window());
+    assert!(
+        drawn.iter().all(|(_, rgba)| *rgba != FALLOFF_RGBA),
+        "o anel apareceu numa zona que não empurra nada"
+    );
 }

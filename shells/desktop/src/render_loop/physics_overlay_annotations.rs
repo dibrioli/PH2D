@@ -111,6 +111,23 @@ pub(super) fn effector_arrow(
     velocity_arrow(cx, cy, [force[0] * k, force[1] * k], camera, window)
 }
 
+/// O anel do **falloff** — o mesmo laranja da seta de força, apagado: ele não é um objeto
+/// novo, é a *mesma* força vista a meio caminho da borda.
+pub(super) const FALLOFF_RGBA: [f32; 4] = [1.0, 0.62, 0.16, 0.45]; // LITERAL-COLOR-OK: overlay de falloff
+
+/// A fração da zona onde o anel do falloff é desenhado — **metade**.
+///
+/// Não é um número escolhido por gosto: a régua do falloff
+/// (`ShapeDesc::radial_fraction`) é invariante sob mapas lineares, então o conjunto
+/// `t = 0.5` **é** a própria silhueta encolhida à metade em torno do centro. O anel é
+/// portanto a curva de nível exata, desenhada pela MESMA `collider_outline` que traça o
+/// contorno — nenhuma geometria segunda, e nada para divergir do que o solver mede.
+///
+/// Ele anuncia que o empurrão DESVANECE e mostra onde fica o meio do caminho; o *quanto*
+/// é a row `Falloff` da §11. Um anel cuja posição codificasse o valor teria de sumir para
+/// falloff < 0.5 (onde a força nunca chega à metade), que é pior que uma marca fixa.
+pub(super) const FALLOFF_RING: f32 = 0.5;
+
 /// The torque-zone glyph — **violet**, a hue no collider, joint, launch or force uses.
 pub(super) const TORQUE_RGBA: [f32; 4] = [0.66, 0.44, 0.98, 0.95]; // LITERAL-COLOR-OK: overlay de torque de area
 

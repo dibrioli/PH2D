@@ -90,7 +90,14 @@ pub struct PhysicsWorld {
     /// **Sorted by handle**: a body standing in two overlapping zones sums their
     /// impulses, and the order of a float sum is exactly the kind of detail that
     /// makes a cross-OS hash drift (HR-5).
-    effectors: Vec<(RigidBodyHandle, desc::AreaEffect)>,
+    ///
+    /// The third element is the zone's own **silhouette**, copied from the same
+    /// `BodyDesc` (W-AreaFalloff): the falloff measures how far out a body is *as a
+    /// fraction of this shape*, so the zone has to remember what it looks like. It is
+    /// carried here rather than re-read from the collider because this table is already
+    /// the zone's config record, and asking rapier's `Shape` trait instead would be a
+    /// second vocabulary for a silhouette `ShapeDesc` already names exactly.
+    effectors: Vec<(RigidBodyHandle, desc::AreaEffect, shape::ShapeDesc)>,
     /// The **impact peak** of each touching pair over the current tick's
     /// sub-steps (W-ImpactForce): body pair (lower handle first) → the hardest
     /// summed normal impulse it reached at any single sub-step.
@@ -436,9 +443,9 @@ impl PhysicsWorld {
         // not be byte-neutral). Kept sorted by handle so two overlapping zones apply
         // in a fixed order.
         if let Some(effect) = effector::zone_effect(&desc) {
-            self.effectors.push((handle, effect));
+            self.effectors.push((handle, effect, desc.shape));
             self.effectors
-                .sort_unstable_by_key(|(h, _)| h.into_raw_parts());
+                .sort_unstable_by_key(|(h, _, _)| h.into_raw_parts());
         }
         handle
     }
@@ -470,7 +477,7 @@ impl PhysicsWorld {
         // querying a dead collider handle every substep — harmless today (the
         // lookup fails), and exactly the kind of stale table that stops being
         // harmless the moment the arena reuses the index.
-        self.effectors.retain(|(h, _)| *h != handle);
+        self.effectors.retain(|(h, _, _)| *h != handle);
         self.bodies.remove(
             handle,
             &mut self.island_manager,

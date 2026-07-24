@@ -580,6 +580,7 @@ fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_FORCE_X, info.force[0]),
         (ids::INSP_PHYS_FORCE_Y, info.force[1]),
         (ids::INSP_PHYS_AREA_TORQUE, info.area_torque),
+        (ids::INSP_PHYS_AREA_FALLOFF, info.area_falloff),
         (ids::INSP_PHYS_AREA_DRAG, info.area_drag),
         (ids::INSP_PHYS_AREA_DENSITY, info.area_density),
         (ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),

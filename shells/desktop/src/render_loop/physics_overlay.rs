@@ -41,7 +41,8 @@ use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point, VectorScene};
 
 use super::physics_overlay_annotations::{
-    EFFECTOR_RGBA, TORQUE_RGBA, VELOCITY_RGBA, effector_arrow, torque_glyph, velocity_arrow,
+    EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA, VELOCITY_RGBA, effector_arrow,
+    torque_glyph, velocity_arrow,
 };
 use super::physics_overlay_contacts::{
     CONTACT_FLASH_RGBA, CONTACT_RGBA, WATERLINE_RGBA, contact_flashes, contact_marks,
@@ -323,8 +324,60 @@ pub(crate) fn outlines(
         {
             out.push((glyph, TORQUE_RGBA));
         }
+        // E o ANEL DO FALLOFF — a curva de nível de meio caminho, quando o empurrão desta
+        // zona desvanece para a borda. Sem ele o falloff é o único número do modelo de
+        // área que não deixa marca nenhuma na tela: a seta continua do mesmo tamanho (ela
+        // desenha a força AUTORADA, que é a do centro) e a diferença só aparece nos corpos
+        // se moverem de formas diferentes.
+        //
+        // ⚠️ Desenhado só quando há o que atenuar — um falloff sobre uma zona que não
+        // empurra nem gira descreveria o desvanecimento de nada. Mesma regra das duas
+        // anotações acima: cada uma aparece exatamente quando a sua grandeza existe.
+        //
+        // ⚠️ A metade sai pela MESMA `scaled_shape` do contorno, com a escala do corpo
+        // reduzida à metade — não por uma segunda função que encolhe formas. Halvar as
+        // duas componentes preserva a igualdade `|sx| == |sy|` que decide círculo-ou-elipse
+        // lá dentro, então o fantasma é da mesma FAMÍLIA que o contorno, sempre.
+        if show
+            && let Some(f) = world.get::<ph2d_physics_ecs::AreaFalloff>(e)
+            && f.0 > 0.0
+            && zone_pushes(world, e)
+        {
+            out.push((
+                collider_outline(
+                    scaled_shape(
+                        col.shape,
+                        ph2d_core::Vec2::new(
+                            t.scale.x * FALLOFF_RING,
+                            t.scale.y * FALLOFF_RING,
+                        ),
+                    ),
+                    t.translation.x + wox,
+                    t.translation.y + woy,
+                    t.rotation,
+                    camera,
+                    window,
+                ),
+                FALLOFF_RGBA,
+            ));
+        }
     }
     out
+}
+
+/// **Esta zona empurra alguma coisa?** — força ou torque, os dois EMPURRÕES que o falloff
+/// pesa (e exatamente eles: arrasto e empuxo descrevem um meio, e o fator não os alcança).
+///
+/// Existe como função porque a pergunta é uma só e o anel do falloff é o único que precisa
+/// dela; escrita inline no laço de pintura ela seria uma condição que nenhum gate consegue
+/// nomear.
+fn zone_pushes(world: &bevy_ecs::world::World, e: ph2d_ecs::Entity) -> bool {
+    world
+        .get::<ph2d_physics_ecs::AreaEffector>(e)
+        .is_some_and(|a| a.force != [0.0, 0.0])
+        || world
+            .get::<ph2d_physics_ecs::AreaTorque>(e)
+            .is_some_and(|t| t.0 != 0.0)
 }
 
 /// Paint them. No-op when [`outlines`] returns nothing.

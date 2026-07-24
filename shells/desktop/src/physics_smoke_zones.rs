@@ -1,16 +1,16 @@
 //! **Cena de ZONA rotacional** (`PH2D_PHYSICS_SMOKE=32`) — a mesa giratória: uma área
 //! que GIRA o que está dentro dela (W-AreaTorque).
 //!
-//! Arquivo próprio para a família das ZONAS (a metade rotacional do campo de força), com
-//! espaço para as próximas — o falloff e o frame da zona. As cenas de força linear vivem
+//! Arquivo próprio para a família das ZONAS, hoje com quatro cenas: a mesa giratória (=32),
+//! a autoria dela pela UI (=33), o frame da força (=34) e o falloff (=35). As de força linear vivem
 //! em [`crate::physics_smoke_collision`] (=24) e [`crate::physics_smoke_contacts`]
 //! (=26/27/28); esta é a irmã do torque.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{
-    AreaEffector, AreaForceWorldAxes, AreaTorque, BodyKind, Collider, ColliderShape, GravityScale,
-    RigidBody,
+    AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaTorque, BodyKind, Collider, ColliderShape,
+    GravityScale, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -311,6 +311,98 @@ impl crate::App {
              'Force Axes' -> clique World: as caixas dela passam a andar na horizontal e a \
              SETA laranja gira junto (ela le a mesma porta que o solver). Clique Zone e o \
              diagonal volta. B liga o contorno e a seta; deixe Physics MARCADO. De Play."
+        );
+    }
+
+    /// **Cena 35 (W-AreaFalloff).** A fila que voa junta, e a fila que se abre em leque.
+    ///
+    /// Até aqui uma zona empurrava IGUAL em toda a sua extensão: encostado na parede ou no
+    /// olho da rajada, o mesmo empurrão. O `Falloff` faz a força e o torque desvanecerem do
+    /// centro para a borda, **chegando a zero exatamente na fronteira**, e a régua é a
+    /// silhueta da própria zona — não há raio à parte para o artista manter em dia.
+    ///
+    /// As duas rajadas são redondas (raio 5), com a MESMA força (1,2 N em +X), e cada uma
+    /// tem quatro caixas idênticas empilhadas na coluna do centro, a 0 / 1,4 / 2,8 / 4,2 m
+    /// do olho — ou seja a `t` = 0 / 0,28 / 0,56 / 0,84 do caminho até a borda. Medido
+    /// headless, 3 s, deslocamento em metros:
+    ///
+    /// | faixa | olho | 0,28 | 0,56 | 0,84 |
+    /// |---|---|---|---|---|
+    /// | **uniforme** (esquerda) | 10,01 | 9,95 | 9,70 | 8,96 |
+    /// | **Falloff 1** (direita) | 7,64 | 6,43 | 4,35 | **1,71** |
+    ///
+    /// À esquerda a fila **voa junta** (a última fica um pouco atrás só porque sai da bola
+    /// por uma corda mais curta); à direita ela se **abre em leque**, e a caixa mais externa
+    /// anda 5× menos que a do olho.
+    ///
+    /// ⚠️ As caixas flutuam (`GravityScale(0)`) pelo motivo das cenas 32 e 34: assim a
+    /// trajetória vem INTEIRA da zona.
+    ///
+    /// **O gesto:** selecione a zona da ESQUERDA e digite `1` na linha *Falloff* — o anel
+    /// laranja apagado do meio caminho aparece no overlay (é a silhueta encolhida à metade,
+    /// a curva de nível exata) e a fila dela passa a se abrir também.
+    pub(crate) fn physics_smoke_falloff(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        // Redonda de propósito: numa rajada circular "longe do centro" se lê de bater o
+        // olho, e o anel de meio caminho do overlay é um círculo concêntrico.
+        const R: f32 = 5.0;
+
+        let mut lane = |cx: f32, falloff: f32, tag: &str, tint: [f32; 4]| {
+            let mut zone = world.spawn((
+                Transform::from_translation(Vec2::new(cx, 0.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [R * 2.0, R * 2.0], tint),
+                Name::new(format!("{tag} gust")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: R },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                AreaEffector { force: [1.2, 0.0] },
+            ));
+            if falloff > 0.0 {
+                zone.insert(AreaFalloff(falloff));
+            }
+            // Quatro caixas na COLUNA DO CENTRO: começam todas a `x` do olho, então a
+            // distância que as separa é puramente a vertical — e o leque é a única coisa
+            // que pode abri-las.
+            for (i, dy) in [0.0f32, 1.4, 2.8, 4.2].iter().enumerate() {
+                world.spawn((
+                    Transform::from_translation(Vec2::new(cx, *dy)),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], [0.95, 0.80, 0.30, 1.0]),
+                    Name::new(format!("{tag} box {i}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 0.35,
+                            half_y: 0.35,
+                        },
+                        ..Collider::default()
+                    },
+                    GravityScale(0.0),
+                ));
+            }
+        };
+
+        lane(-9.0, 0.0, "Uniform", [0.4, 0.7, 0.55, 0.16]);
+        lane(9.0, 1.0, "Falloff", [0.55, 0.4, 0.85, 0.16]);
+
+        eprintln!(
+            "[physics-smoke 35] O FALLOFF DA ZONA. Duas rajadas redondas (raio 5) com a \
+             MESMA forca (1,2 N em +X) e quatro caixas identicas cada, na coluna do centro, \
+             a 0 / 1,4 / 2,8 / 4,2 m do olho. ESQUERDA (uniforme, como era ate hoje): a fila \
+             VOA JUNTA -- medido em 3s, deslocamentos 10,01 / 9,95 / 9,70 / 8,96 m. DIREITA \
+             (Falloff 1): a fila se ABRE EM LEQUE -- 7,64 / 6,43 / 4,35 / 1,71 m, a mais \
+             externa andando 5x menos que a do olho, porque o empurrao chega a ZERO na borda. \
+             AGORA O GESTO: selecione a rajada da ESQUERDA, Inspector > Physics Body > linha \
+             'Falloff' -> digite 1: o anel laranja apagado do meio caminho aparece (a \
+             silhueta encolhida a metade, que e a curva de nivel exata) e a fila dela passa a \
+             se abrir tambem. B liga o contorno, a seta e o anel; deixe Physics MARCADO."
         );
     }
 }

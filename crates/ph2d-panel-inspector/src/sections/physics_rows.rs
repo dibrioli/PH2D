@@ -356,8 +356,17 @@ pub(super) fn paint_collision_rows(
             &FORCE_AXES_LABELS,
             u8::from(force_world_axes),
         );
+        // Then the PUSH block closes with the two rows that qualify it: the spin the area
+        // imprints, and how much of both survives the trip to the edge.
+        //
+        // ⚠️ Falloff sits directly under Torque, and ABOVE Drag, because that is exactly
+        // the boundary of what it weighs: the force and the torque — the two PUSHES —
+        // and nothing below. Drag, Fluid Density and Shape Drag describe a MEDIUM, and a
+        // medium does not thin out near its own edge (the water at the side of the pool
+        // is just as wet). Painted below them the row would read as governing all six.
         for (label, id) in [
             ("Torque (N·m)", ids::INSP_PHYS_AREA_TORQUE),
+            ("Falloff", ids::INSP_PHYS_AREA_FALLOFF),
             ("Drag", ids::INSP_PHYS_AREA_DRAG),
             ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),
             ("Shape Drag", ids::INSP_PHYS_AREA_FORM_DRAG),

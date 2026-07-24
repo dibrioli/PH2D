@@ -72,6 +72,7 @@ fn zone_full(
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -115,6 +116,7 @@ fn torque_zone(x: f32, y: f32, half_x: f32, half_y: f32, torque: f32) -> BodyDes
             form_drag: 0.0,
             torque,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -477,6 +479,7 @@ fn the_zone_pushes_what_overlaps_its_shape_not_its_bounding_box() {
                 form_drag: 0.0,
                 torque: 0.0,
                 world_axes: false,
+            falloff: 0.0,
             }),
             ..desc(
                 RigidBodyType::Fixed,
@@ -686,6 +689,7 @@ fn an_inert_zone_is_byte_identical_whether_it_is_zero_force_or_zero_drag() {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         None,
     ]

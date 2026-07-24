@@ -71,6 +71,7 @@ fn with_body() -> InspectorPhysicsInfo {
         area_density: 0.0,
         area_form_drag: 0.0,
         area_torque: 0.0,
+        area_falloff: 0.0,
     }
 }
 
@@ -1294,10 +1295,11 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // ⚠️ All THREE, including Drag (W-AreaDrag). A sweep that enumerates the rows it
     // knows about is the premise that rots: the next row added to the sensor block
     // must be in this list, and the seam is where its absence shows.
-    const FORCE_IDS: [ph2d_a11y::NodeId; 6] = [
+    const FORCE_IDS: [ph2d_a11y::NodeId; 7] = [
         ids::INSP_PHYS_FORCE_X,
         ids::INSP_PHYS_FORCE_Y,
         ids::INSP_PHYS_AREA_TORQUE,
+        ids::INSP_PHYS_AREA_FALLOFF,
         ids::INSP_PHYS_AREA_DRAG,
         ids::INSP_PHYS_AREA_DENSITY,
         ids::INSP_PHYS_AREA_FORM_DRAG,
@@ -1375,6 +1377,14 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         PhysicsFieldEdit::AreaTorque(-7.5),
         "Torque",
     );
+    // O falloff (W-AreaFalloff) passa CRU pelo evento — a fração é clampada uma vez só, no
+    // apply da shell, que é onde ela vira componente. Clampar aqui também seria a segunda
+    // porta para a mesma regra.
+    expect(
+        &commit(sensor, ids::INSP_PHYS_AREA_FALLOFF, 0.75),
+        PhysicsFieldEdit::AreaFalloff(0.75),
+        "Falloff",
+    );
     expect(
         &commit(sensor, ids::INSP_PHYS_AREA_DRAG, 4.0),
         PhysicsFieldEdit::AreaDrag(4.0),
@@ -1433,6 +1443,7 @@ fn selecting_a_zone_shows_its_authored_area_values() {
         area_drag: 4.0,
         area_density: 6.0,
         area_form_drag: 2.5,
+        area_falloff: 0.75,
         ..with_body()
     };
     let mut host = Host::with_panel::<InspectorPanel>();
@@ -1463,6 +1474,11 @@ fn selecting_a_zone_shows_its_authored_area_values() {
     );
     assert_eq!(val(ids::INSP_PHYS_FORCE_X), 12.5, "Force X did not sync");
     assert_eq!(val(ids::INSP_PHYS_FORCE_Y), -3.25, "Force Y did not sync");
+    assert_eq!(
+        val(ids::INSP_PHYS_AREA_FALLOFF),
+        0.75,
+        "the Falloff row must SHOW the authored fraction on selection, not 0"
+    );
     assert_eq!(val(ids::INSP_PHYS_AREA_DRAG), 4.0, "Drag did not sync");
     assert_eq!(
         val(ids::INSP_PHYS_AREA_DENSITY),

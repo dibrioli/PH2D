@@ -196,6 +196,10 @@ pub struct InspectorPhysicsInfo {
     /// o SINAL é o sentido (`> 0` anti-horário), então ausente/zero é uma área que não
     /// gira nada. Mesma condição de Sensor que as irmãs.
     pub area_torque: f32,
+    /// **Falloff da zona** (W-AreaFalloff): o quanto a força e o torque enfraquecem do
+    /// centro até a borda, em `0..=1`. Espelha o opcional `AreaFalloff`; ausente/zero é um
+    /// campo uniforme. Mesma condição de Sensor que as irmãs.
+    pub area_falloff: f32,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -321,6 +325,10 @@ pub enum PhysicsFieldEdit {
     /// `AreaTorque`, destacado em zero (o SINAL é o sentido, não um valor a descartar).
     /// SENSOR-only, como as irmãs.
     AreaTorque(f32),
+    /// Falloff da zona (W-AreaFalloff) — o quanto o empurrão enfraquece do centro até a
+    /// borda, `0..=1`. Anexa o opcional `AreaFalloff`, destacado em zero. SENSOR-only, como
+    /// as irmãs. Pesa a força E o torque; o arrasto e o empuxo, não.
+    AreaFalloff(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
     /// Create a joint between the two selected bodies (W3). Carries no

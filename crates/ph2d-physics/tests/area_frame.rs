@@ -62,6 +62,7 @@ fn zone(rotation: f32, force: [f32; 2], world_axes: bool, kind: RigidBodyType) -
             form_drag: 0.0,
             torque: 0.0,
             world_axes,
+            falloff: 0.0,
         }),
         ..desc(
             kind,

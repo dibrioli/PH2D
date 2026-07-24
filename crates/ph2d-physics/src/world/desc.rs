@@ -157,6 +157,32 @@ pub struct AreaEffect {
     /// normal de cada aresta do CORPO. A força é a única grandeza da área com direção
     /// própria, logo a única que um frame pode girar.
     pub world_axes: bool,
+    /// **Quanto o empurrão desta zona ENFRAQUECE do centro para a borda** (W-AreaFalloff).
+    ///
+    /// `0` (o default) é uniforme — o campo inteiro empurra igual, byte-idêntico a antes
+    /// deste campo. `1` desvanece linearmente até **zero exatamente na borda**, em toda
+    /// direção; valores intermediários são a mistura (`0.5` chega à borda com metade da
+    /// força). O fator é `1 − falloff · t`, onde `t` é
+    /// [`ShapeDesc::radial_fraction`](super::ShapeDesc::radial_fraction) — a fração do
+    /// caminho do centro até a borda —, **capado em 1** para que um corpo cujo centro já
+    /// saiu da zona receba zero e nunca um empurrão INVERTIDO.
+    ///
+    /// É o redemoinho que perde força longe do olho, a corrente que afrouxa na margem, e
+    /// o antídoto do degrau: sem ele o corpo que atravessa a fronteira passa de força
+    /// cheia a nada num sub-passo.
+    ///
+    /// ⚠️ **Escala a [`force`](AreaEffect::force) e o [`torque`](AreaEffect::torque), e
+    /// nada mais** — os dois EMPURRÕES da zona. O [`drag`](AreaEffect::drag), o
+    /// [`density`](AreaEffect::density) e o [`form_drag`](AreaEffect::form_drag) descrevem
+    /// um MEIO, e um meio não fica mais ralo perto da própria margem: a água da beira da
+    /// piscina molha igual. Há gate pinando essa fronteira, para ninguém "completar" a
+    /// wave passando o fator adiante.
+    ///
+    /// Não confundir com o alcance de um efetor de PONTO (o `gravity_point_unit_distance`
+    /// do Godot, o `distanceScale` do Unity): aqueles trazem um raio PRÓPRIO, um segundo
+    /// número que o artista tem de manter de acordo com o tamanho da zona. Aqui a régua é
+    /// a silhueta da própria zona.
+    pub falloff: f32,
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

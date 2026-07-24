@@ -25,7 +25,7 @@ pub(crate) fn build_physics_info(
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{
-        AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, Ccd, Collider,
+        AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaFormDrag, AreaTorque, Ccd, Collider,
         ColliderShape, DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX,
         LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
     };
@@ -91,6 +91,9 @@ pub(crate) fn build_physics_info(
     // Optional AreaTorque (W-AreaTorque) — o giro que a área imprime, quinto componente
     // da mesma zona e pela mesma razão (campo novo seria bump). Mesma condição de Sensor.
     let area_torque = world.get::<AreaTorque>(entity).map_or(0.0, |t| t.0);
+    // Optional AreaFalloff (W-AreaFalloff) — quanto o empurrão perde do centro à borda,
+    // sétimo componente da mesma zona e pela mesma razão. Mesma condição de Sensor.
+    let area_falloff = world.get::<AreaFalloff>(entity).map_or(0.0, |f| f.0);
     let (Some(rb), Some(col)) = (rb, col) else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -136,6 +139,7 @@ pub(crate) fn build_physics_info(
             area_density: 0.0,
             area_form_drag: 0.0,
             area_torque: 0.0,
+            area_falloff: 0.0,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -200,6 +204,7 @@ pub(crate) fn build_physics_info(
         area_density,
         area_form_drag,
         area_torque,
+        area_falloff,
     })
 }
 

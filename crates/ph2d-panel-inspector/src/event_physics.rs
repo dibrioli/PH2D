@@ -193,6 +193,9 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_FORCE_X if info.is_sensor => Some(PhysicsFieldEdit::ForceX(v)),
             ids::INSP_PHYS_FORCE_Y if info.is_sensor => Some(PhysicsFieldEdit::ForceY(v)),
             ids::INSP_PHYS_AREA_TORQUE if info.is_sensor => Some(PhysicsFieldEdit::AreaTorque(v)),
+            ids::INSP_PHYS_AREA_FALLOFF if info.is_sensor => {
+                Some(PhysicsFieldEdit::AreaFalloff(v))
+            }
             ids::INSP_PHYS_AREA_DRAG if info.is_sensor => Some(PhysicsFieldEdit::AreaDrag(v)),
             ids::INSP_PHYS_AREA_DENSITY if info.is_sensor => Some(PhysicsFieldEdit::AreaDensity(v)),
             ids::INSP_PHYS_AREA_FORM_DRAG if info.is_sensor => {

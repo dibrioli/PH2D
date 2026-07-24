@@ -40,11 +40,12 @@
 
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::{ColliderSet, NarrowPhase};
-use rapier2d::na::Vector2;
+use rapier2d::na::{Isometry2, Point2, Vector2};
 
 use super::buoyancy;
 use super::desc::{AreaEffect, BodyDesc};
 use super::form_drag;
+use super::shape::ShapeDesc;
 
 /// **The authored force, in world axes** — the single door for the zone's FRAME
 /// (W-AreaFrame).
@@ -92,6 +93,40 @@ pub fn zone_force_world_at(force: [f32; 2], world_axes: bool, rotation: f32) -> 
     zone_force_world(force, world_axes, sin_r, cos_r)
 }
 
+/// **Quanto desta zona chega a um corpo neste ponto** — a porta única do falloff
+/// (W-AreaFalloff). `1.0` no centro, `1 − falloff` na borda, e nunca menos que zero.
+///
+/// `zone_iso` é a pose de MUNDO do collider da zona (a do collider, não a do corpo, para
+/// que uma zona com offset meça a partir de onde a forma de fato está) e `point` é o
+/// ponto do mundo perguntado — o centro do corpo empurrado.
+///
+/// ⚠️ **Capado em `t ≤ 1`, e o cap é load-bearing:** a sobreposição que registra o par é
+/// forma-contra-forma, então o CENTRO de um corpo grande pode estar do lado de fora
+/// enquanto ele ainda encosta. Sem o cap, `1 − falloff·t` fica negativo e a zona passa a
+/// **puxar para trás** exatamente na borda onde deveria soltar — um sinal invertido que
+/// nenhum ledger acusa porque a soma continua fechando.
+///
+/// ⚠️ **`falloff == 0` devolve `1.0` e isso é byte-neutro por DUAS vias**: o chamador nem
+/// entra aqui (o early-out compra o CUSTO — nada de transformação inversa nem `sqrt` numa
+/// cena que não pediu falloff), e multiplicar por `1.0` exato é a identidade em IEEE-754
+/// (isso compra a IDENTIDADE, e é o que torna a cena antiga bit a bit a mesma). São duas
+/// camadas, cada uma comprando uma coisa diferente
+/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+#[must_use]
+pub fn zone_falloff_scale(
+    shape: ShapeDesc,
+    zone_iso: &Isometry2<f32>,
+    point: Vector2<f32>,
+    falloff: f32,
+) -> f32 {
+    if falloff <= 0.0 {
+        return 1.0;
+    }
+    let local = zone_iso.inverse_transform_point(&Point2::from(point));
+    let t = shape.radial_fraction([local.x, local.y]).min(1.0);
+    (1.0 - falloff * t).max(0.0)
+}
+
 /// **Is this body a force zone, and with what effect?** The single door.
 ///
 /// `None` for a body with no effector, for a zero force, and for a **solid**
@@ -113,6 +148,10 @@ pub fn zone_force_world_at(force: [f32; 2], world_axes: bool, rotation: f32) -> 
 #[must_use]
 pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
     let e = desc.effector?;
+    // ⚠️ `falloff` is deliberately NOT in this list: it is a MODIFIER, not an effect. A
+    // zone carrying nothing but a falloff attenuates nothing, so it is exactly as inert
+    // as one carrying nothing at all — and registering it would cost the substep walk and
+    // wake bodies for a push of zero (the same reasoning as the two refusals below).
     let inert = e.force[0] == 0.0
         && e.force[1] == 0.0
         && e.torque == 0.0
@@ -147,7 +186,7 @@ pub(crate) fn apply(
     bodies: &mut RigidBodySet,
     colliders: &ColliderSet,
     narrow_phase: &NarrowPhase,
-    zones: &[(RigidBodyHandle, AreaEffect)],
+    zones: &[(RigidBodyHandle, AreaEffect, ShapeDesc)],
     gravity: Vector2<f32>,
     dt: f32,
 ) {
@@ -157,7 +196,7 @@ pub(crate) fn apply(
         return;
     }
     let mut to_float: Vec<RigidBodyHandle> = Vec::new();
-    for &(zone_body, effect) in zones {
+    for &(zone_body, effect, zone_shape) in zones {
         to_float.clear();
         // The zone's own collider handle AND its pose, copied out so the immutable
         // borrow of `bodies` ends before the impulses below need it mutably.
@@ -206,7 +245,20 @@ pub(crate) fn apply(
             if !b.is_dynamic() {
                 continue;
             }
-            b.apply_impulse(force * dt, true);
+            // **Quanto desta zona chega AQUI** (W-AreaFalloff): 1 sem falloff (e então o
+            // early-out da porta nem calcula nada), menos que 1 conforme o corpo se afasta
+            // do centro. Perguntado por corpo porque é uma função da POSIÇÃO dele, e
+            // contra a pose do COLLIDER da zona (não a do corpo dela), que é onde a forma
+            // de fato está quando há offset.
+            let scale = if effect.falloff > 0.0 {
+                let here = *b.translation();
+                colliders.get(zone_collider).map_or(1.0, |c| {
+                    zone_falloff_scale(zone_shape, c.position(), here, effect.falloff)
+                })
+            } else {
+                1.0
+            };
+            b.apply_impulse(force * dt * scale, true);
             // The rotational push — a whirlpool, a turntable. `apply_torque_impulse`
             // (NOT set_angular_velocity) so it is resisted by the moment of inertia,
             // the exact mirror of the force above being resisted by mass: a long bar
@@ -214,8 +266,12 @@ pub(crate) fn apply(
             // Guarded on non-zero so a pure-force / pure-drag zone never wakes a body
             // for a torque it does not carry (`zone_effect` already refuses the wholly
             // inert zone; this is the per-body echo of that).
+            // O falloff pesa o giro pelo MESMO fator, e essa é a metade que a nota aberta
+            // do W-AreaTorque pedia: um redemoinho real perde força longe do olho. Os dois
+            // são EMPURRÕES da zona; o arrasto e o empuxo abaixo não são, e por isso não
+            // recebem o fator (há gate nessa fronteira).
             if effect.torque != 0.0 {
-                b.apply_torque_impulse(effect.torque * dt, true);
+                b.apply_torque_impulse(effect.torque * dt * scale, true);
             }
             // The medium's resistance. ⚠️ Written as `v /= 1 + d·dt`, which is
             // *exactly* what rapier's own `linear_damping` integrator does — so the

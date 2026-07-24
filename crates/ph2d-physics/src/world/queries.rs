@@ -25,8 +25,8 @@ impl PhysicsWorld {
     pub fn waterlines(&self) -> Vec<([f32; 2], [f32; 2])> {
         self.effectors
             .iter()
-            .filter(|(_, e)| e.density > 0.0)
-            .filter_map(|(handle, _)| {
+            .filter(|(_, e, _)| e.density > 0.0)
+            .filter_map(|(handle, _, _)| {
                 let collider = self
                     .bodies
                     .get(*handle)

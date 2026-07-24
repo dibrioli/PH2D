@@ -365,6 +365,13 @@ pub const INSP_PHYS_FORCE_AXES: [NodeId; 2] = [
 /// dentro dele, um redemoinho ou mesa giratória. O SINAL é o sentido; destaca seu
 /// `AreaTorque` em zero exato (não clampa negativo, ao contrário dos irmãos de arrasto).
 pub const INSP_PHYS_AREA_TORQUE: NodeId = hash_node_id("insp_phys_area_torque");
+/// §11 Falloff da zona (W-AreaFalloff) — o quanto a força e o torque ENFRAQUECEM do centro
+/// até a borda deste SENSOR. `0` (o default) é um campo uniforme; `1` desvanece até zero
+/// exatamente na borda, em toda direção. A régua é a silhueta da própria zona, então não há
+/// um raio à parte para discordar do tamanho dela. Pesa os dois EMPURRÕES e nada mais — o
+/// arrasto e o empuxo descrevem um meio, e um meio não fica ralo perto da própria margem.
+/// Destaca seu `AreaFalloff` em zero.
+pub const INSP_PHYS_AREA_FALLOFF: NodeId = hash_node_id("insp_phys_area_falloff");
 /// §11 Area drag (W-AreaDrag) — the resistance the medium inside this SENSOR offers.
 /// The other half of a force zone: force is the push, this is the water. Same law as
 /// the world default drag; detaches its `AreaDrag` at zero.

@@ -48,6 +48,109 @@ pub enum ShapeDesc {
     Stadium { half_height: f32, rx: f32, ry: f32 },
 }
 
+impl ShapeDesc {
+    /// **How far out is this local point, as a fraction of the way from the shape's
+    /// CENTRE to its BOUNDARY along the ray through it** — `0` at the centre, exactly
+    /// `1` on the boundary in *every* direction, `> 1` outside (W-AreaFalloff).
+    ///
+    /// `p` is in the shape's own local frame (the collider's, so an offset collider
+    /// measures from where it actually sits). This is the ruler a force zone's falloff
+    /// reads, and the reason it is *this* measure rather than a raw distance:
+    ///
+    /// - **It needs no second number.** A falloff radius of its own would be a length
+    ///   the artist has to keep in step with the zone's size — the recurring "two doors
+    ///   to one quantity" failure. Here the zone's own silhouette IS the extent.
+    /// - **It reaches zero exactly at the boundary, on every side.** A body leaving the
+    ///   area therefore leaves through a push that has already faded to nothing, instead
+    ///   of stepping off a cliff — which is the artefact a fade exists to remove.
+    /// - **Its iso-contours are the shape SCALED about its centre**, because the measure
+    ///   is invariant under any linear map (`t(Sp; S·shape) == t(p; shape)` — scaling a
+    ///   ray through the origin scales its boundary point by the same factor). That is
+    ///   what lets the overlay draw the half-strength ring by simply halving the shape,
+    ///   through the same `scaled_shape` door the outline uses, with no second geometry;
+    ///   and it is why the measure composes with W6's collider scaling for free.
+    ///
+    /// Three closed forms and no iteration: a `Ball` is an `Ellipse` with equal radii, a
+    /// `Capsule` is a `Stadium` with equal cap radii, and every `Stadium` is a
+    /// unit-radius capsule seen through `diag(rx, ry)` — so the two round families
+    /// collapse into one kernel each. ⚠️ **No `hypot`, no transcendental** (law 6): `hypot`
+    /// is the platform's libm and is not pinned across OSes, and this number reaches the
+    /// impulses the `physics_ecs_c9` hash compares between Linux, macOS and Windows.
+    /// Everything here is `+ - * /` and `sqrt`, all correctly rounded by IEEE-754.
+    ///
+    /// A degenerate shape (a zero half-extent) answers `0` — *do not attenuate*. There is
+    /// no interior to measure across, and the honest failure for an undefined ruler is to
+    /// leave the value it would have scaled exactly as it was.
+    #[must_use]
+    pub fn radial_fraction(self, p: [f32; 2]) -> f32 {
+        let [x, y] = p;
+        match self {
+            Self::Ball { radius } => Self::ellipse_fraction(x, y, radius, radius),
+            Self::Ellipse { rx, ry } => Self::ellipse_fraction(x, y, rx, ry),
+            Self::Cuboid { half_x, half_y } => {
+                if half_x <= 0.0 || half_y <= 0.0 {
+                    return 0.0;
+                }
+                // The ray from the centre leaves a box through whichever slab it
+                // saturates first, so the fraction is the larger of the two — and this
+                // is exactly `1` on the whole rectangle, corners included.
+                (x.abs() / half_x).max(y.abs() / half_y)
+            }
+            Self::Capsule {
+                half_height,
+                radius,
+            } => Self::stadium_fraction(x, y, half_height, radius, radius),
+            Self::Stadium {
+                half_height,
+                rx,
+                ry,
+            } => Self::stadium_fraction(x, y, half_height, rx, ry),
+        }
+    }
+
+    /// The fraction for an axis-aligned ellipse: normalise each axis by its own radius
+    /// and the boundary becomes the unit circle, so the fraction is just the length of
+    /// the normalised point. (A circle is the case `rx == ry`.)
+    fn ellipse_fraction(x: f32, y: f32, rx: f32, ry: f32) -> f32 {
+        if rx <= 0.0 || ry <= 0.0 {
+            return 0.0;
+        }
+        let (u, v) = (x / rx, y / ry);
+        (u * u + v * v).sqrt()
+    }
+
+    /// The fraction for a stadium — a Y-aligned segment of half-length `half_height`
+    /// capped by half-ellipses of radii `rx`/`ry`.
+    ///
+    /// Normalising by `(rx, ry)` turns it into a **unit-radius** capsule of half-height
+    /// `half_height / ry`, and the measure is invariant under that map, so one kernel
+    /// serves both the exact capsule and the scaled stadium.
+    ///
+    /// From the centre, the ray leaves either through a straight flank (`|u| = 1`) or
+    /// through a cap (the unit circle about `(0, ±h)`). The two cases are complementary:
+    /// the flank applies while `dv <= h·du`, and outside it `h·du < dv <= 1`, which is
+    /// precisely what keeps the cap's discriminant `1 − h²du²` non-negative — so neither
+    /// branch needs a guard beyond the degenerate-size one.
+    fn stadium_fraction(x: f32, y: f32, half_height: f32, rx: f32, ry: f32) -> f32 {
+        if rx <= 0.0 || ry <= 0.0 {
+            return 0.0;
+        }
+        let (u, v) = (x / rx, y / ry);
+        let h = (half_height / ry).max(0.0);
+        let len = (u * u + v * v).sqrt();
+        if len <= 0.0 {
+            return 0.0;
+        }
+        let (du, dv) = (u.abs() / len, v.abs() / len);
+        let boundary = if dv <= h * du {
+            1.0 / du
+        } else {
+            h * dv + (1.0 - h * h * du * du).max(0.0).sqrt()
+        };
+        len / boundary
+    }
+}
+
 /// How many vertices approximate an ellipse collider. Shared with the
 /// overlay so the wireframe traces the **same** polygon the solver sees
 /// (a smoother outline over a coarser collider would be a wireframe that

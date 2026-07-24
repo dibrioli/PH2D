@@ -28,7 +28,8 @@ pub use bridge::contacts::{
 };
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
+    AreaTorque, BodyKind,
     Ccd, Collider,
     ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
     InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
@@ -82,6 +83,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<AreaFormDrag>("ph2d::physics::AreaFormDrag");
     reg.register::<AreaTorque>("ph2d::physics::AreaTorque");
     reg.register::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
+    reg.register::<AreaFalloff>("ph2d::physics::AreaFalloff");
 }
 
 #[cfg(test)]
@@ -95,7 +97,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 20);
+        assert_eq!(reg.len(), 21);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -119,5 +121,6 @@ mod tests {
             reg.get_by_name("ph2d::physics::AreaForceWorldAxes")
                 .is_some()
         );
+        assert!(reg.get_by_name("ph2d::physics::AreaFalloff").is_some());
     }
 }

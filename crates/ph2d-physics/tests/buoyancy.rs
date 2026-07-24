@@ -46,6 +46,7 @@ fn pool(w: &mut PhysicsWorld, fluid_density: f32) {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -290,6 +291,7 @@ fn a_tessellated_ball_carries_the_documented_polygon_bias() {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -351,6 +353,7 @@ fn the_waterline_is_level_even_in_a_tilted_pool() {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -392,6 +395,7 @@ fn the_waterline_is_level_even_in_a_tilted_pool() {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -430,6 +434,7 @@ fn only_a_buoyant_zone_has_a_waterline() {
             form_drag: 0.0,
             torque: 0.0,
             world_axes: false,
+            falloff: 0.0,
         }),
         ..desc(
             RigidBodyType::Fixed,
@@ -473,6 +478,7 @@ fn shape_drag_resists_by_section_where_uniform_drag_cannot() {
                 form_drag: form,
                 torque: 0.0,
                 world_axes: false,
+            falloff: 0.0,
             }),
             ..desc(
                 RigidBodyType::Fixed,

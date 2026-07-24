@@ -652,3 +652,52 @@ impl SimComponent for AreaTorque {}
 pub struct AreaForceWorldAxes;
 
 impl SimComponent for AreaForceWorldAxes {}
+
+/// **O quanto o empurrão da área ENFRAQUECE do centro para a borda** (W-AreaFalloff).
+///
+/// Ausente (o caso comum) é um campo uniforme: todo corpo dentro da zona recebe o mesmo
+/// empurrão, esteja no olho ou encostado na parede. Presente, seu `f32` em `0..=1` é o
+/// quanto se perde no caminho até a borda — `1` desvanece até **zero exatamente na
+/// borda**, `0.5` chega lá com metade, e a lei é `1 − falloff · t` com `t` a fração do
+/// caminho do centro até a fronteira ([`ph2d_physics::ShapeDesc::radial_fraction`]).
+///
+/// É o redemoinho que perde força longe do olho e a corrente que afrouxa na margem — a
+/// nota que o W-AreaTorque deixou aberta. E é o antídoto do DEGRAU: sem ele o corpo que
+/// atravessa a fronteira passa de força cheia a nada dentro de um sub-passo.
+///
+/// ⚠️ **A régua é a silhueta da PRÓPRIA zona, nunca um raio à parte.** Um "raio de
+/// falloff" seria um segundo número que o artista tem de manter de acordo com o tamanho
+/// do collider — a falha de duas-portas que esta linha já pagou várias vezes —, e ele
+/// discordaria da zona no instante em que ela fosse redimensionada. Como a régua é a
+/// forma, a atenuação chega a zero em **toda** direção e acompanha a escala de graça
+/// (W6). O preço honesto: uma zona pequena desvanece em pouco espaço, o que é
+/// exatamente o que "fração do caminho até a borda" quer dizer.
+///
+/// ⚠️ **Pesa a [`AreaEffector`] e o [`AreaTorque`] — os dois EMPURRÕES — e mais nada.** O
+/// [`AreaDrag`], o [`AreaBuoyancy`] e o [`AreaFormDrag`] descrevem um MEIO, e um meio não
+/// fica mais ralo perto da própria margem: a água da beira da piscina molha igual. Há
+/// gate nessa fronteira.
+///
+/// ⚠️ **Sozinho não faz uma zona:** um falloff sem força nem torque atenua o nada, então a
+/// porta `zone_effect` continua recusando a área inerte — o componente é um MODIFICADOR,
+/// não um efeito.
+///
+/// Sétimo componente da mesma área, pela sétima vez pela mesma razão: o blob de um
+/// componente é postcard POSICIONAL, então apendar campo no [`AreaEffector`] seria bump de
+/// `PROJECT_SCHEMA`, e um bump **recusa todo projeto já salvo**. A ponte o dobra em
+/// `AreaEffect.falloff` (lado do wrapper, esse **não** é serializado), então ele rida o
+/// `BodyDesc` que o mundo reconstrói e **um rewind o re-arma**. Config, nunca estado vivo.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AreaFalloff(pub f32);
+
+impl AreaFalloff {
+    /// É neutro — uma área que empurra igual em toda a sua extensão? Falloff zero (ou
+    /// negativo, que não tem sentido: só se pode PERDER força pelo caminho). Usado para
+    /// DESTACAR o componente, na mesma política dos irmãos de arrasto.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.0 <= 0.0
+    }
+}
+
+impl SimComponent for AreaFalloff {}

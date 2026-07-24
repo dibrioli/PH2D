@@ -544,6 +544,12 @@ impl PhysicsBridge {
             // ([[feedback_layered_defenses_need_per_layer_gates]]). What it does buy is
             // a `BodyDesc` that does not claim to be a zone when it is not.
             let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(e).is_some();
+            // How much of the push reaches the far side (W-AreaFalloff): a seventh
+            // optional component, folded into the same bundle. Like the marker above it is
+            // NOT part of `any`, and here the reason is not merely hygiene — a falloff
+            // attenuates something, so a zone carrying nothing else attenuates nothing.
+            // It is a MODIFIER, not an effect.
+            let zone_falloff = world.get::<crate::AreaFalloff>(e).map(|f| f.0);
             let any = zone_force.is_some()
                 || zone_drag.is_some()
                 || zone_density.is_some()
@@ -556,6 +562,7 @@ impl PhysicsBridge {
                 form_drag: zone_form.unwrap_or(0.0),
                 torque: zone_torque.unwrap_or(0.0),
                 world_axes: zone_world_axes,
+                falloff: zone_falloff.unwrap_or(0.0),
             });
             let desc = crate::scale::body_desc(
                 rb,

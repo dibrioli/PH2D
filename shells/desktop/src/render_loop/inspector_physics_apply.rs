@@ -27,7 +27,8 @@ pub(crate) fn apply_physics_edit(
     registry: &ComponentRegistry,
 ) {
     use ph2d_physics_ecs::{
-        AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, BodyKind, Collider,
+        AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaFormDrag, AreaTorque, BodyKind,
+        Collider,
         ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
         InitialVelocity, MassOverride, MaterialCombine, RigidBody,
     };
@@ -44,6 +45,7 @@ pub(crate) fn apply_physics_edit(
     const AREA_BUOYANCY: &str = "ph2d::physics::AreaBuoyancy";
     const AREA_FORM_DRAG: &str = "ph2d::physics::AreaFormDrag";
     const AREA_TORQUE: &str = "ph2d::physics::AreaTorque";
+    const AREA_FALLOFF: &str = "ph2d::physics::AreaFalloff";
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
@@ -360,6 +362,24 @@ pub(crate) fn apply_physics_edit(
         return;
     }
 
+    if let PhysicsFieldEdit::AreaFalloff(v) = edit {
+        // O falloff (W-AreaFalloff) — o sétimo componente desta zona, mesmo gate SENSOR
+        // dos irmãos. Clampado em `0..=1`: é uma FRAÇÃO do empurrão que se perde no
+        // caminho, então negativo não é uma coisa e acima de 1 já é tudo (o cap de `t`
+        // no kernel faria o resto virar zero de qualquer forma — melhor recusar aqui, na
+        // fronteira onde o número é autorado, do que deixar a UI mostrar 3).
+        if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
+            return;
+        }
+        let f = AreaFalloff(v.clamp(0.0, 1.0));
+        if f.is_neutral() {
+            queue_remove(queue, registry, entity_bits, AREA_FALLOFF);
+        } else {
+            queue_set(queue, registry, entity_bits, AREA_FALLOFF, &f);
+        }
+        return;
+    }
+
     if let PhysicsFieldEdit::AreaDensity(v) = edit {
         // A densidade do fluido (W-Buoyancy) — o terceiro componente desta área, mesmo
         // gate SENSOR dos irmãos. Uma densidade negativa não é uma coisa; zero é a área
@@ -583,7 +603,8 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::AreaDrag(_)
         | PhysicsFieldEdit::AreaDensity(_)
         | PhysicsFieldEdit::AreaFormDrag(_)
-        | PhysicsFieldEdit::AreaTorque(_) => {
+        | PhysicsFieldEdit::AreaTorque(_)
+        | PhysicsFieldEdit::AreaFalloff(_) => {
             unreachable!("handled above")
         }
     }

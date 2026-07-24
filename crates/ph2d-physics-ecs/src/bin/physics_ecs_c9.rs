@@ -31,14 +31,15 @@
 //! (`.github/workflows/spike.yml`). Output format (stable, parsed by CI):
 //! ```text
 //! physics-ecs-c9 step_count: 120
-//! physics-ecs-c9 body_count: 79
+//! physics-ecs-c9 body_count: 81
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_physics_ecs::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, BodyKind, Ccd, Collider,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaFormDrag, AreaTorque, BodyKind, Ccd,
+    Collider,
     ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
     InitialVelocity, LockPositionX, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
     PhysicsBridge, RigidBody,
@@ -643,6 +644,41 @@ fn main() {
             ..Collider::default()
         },
         Transform::from_translation(Vec2::new(-92.0, 0.0)),
+    ));
+
+    // Uma zona com FALLOFF (W-AreaFalloff): o fator entra no caminho determinista por uma
+    // transformacao inversa de isometria mais a regua `radial_fraction`, que numa CAPSULA
+    // e o ramo com `sqrt` (as calotas) -- a forma mais cara das cinco, escolhida de
+    // proposito para o hash cobrir o ramo que um `hypot` de plataforma envenenaria. O corpo
+    // nasce FORA do eixo para que a regua leia os dois ramos e nao so o flanco reto. Lane
+    // propria a esquerda da zona rotacionada.
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 2.0,
+                radius: 1.5,
+            },
+            density: 1.0,
+            is_sensor: true,
+            ..Collider::default()
+        },
+        AreaEffector { force: [2.0, 1.0] },
+        AreaFalloff(0.8),
+        Transform::from_translation(Vec2::new(-102.0, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-101.2, 0.7)),
     ));
 
     let mut bridge = PhysicsBridge::new();

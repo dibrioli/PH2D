@@ -15,7 +15,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    AreaForceWorldAxes, BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale,
+    AreaFalloff, AreaForceWorldAxes, BodyKind, Ccd, Collider, ColliderShape, Dominance,
+    GravityScale,
     InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, PhysicsBridge,
     RigidBody, register_physics_components,
 };
@@ -92,6 +93,10 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         // conveyor back into a horizontal one — silently, on load, with the row still
         // reading "World".
         AreaForceWorldAxes,
+        // O falloff (W-AreaFalloff): um `f32` VALUADO. Perdê-lo num save devolve uma
+        // rajada que empurra igual em toda a extensão — a diferença que o artista autorou,
+        // desaparecida no load, com a row ainda mostrando o número.
+        AreaFalloff(0.75),
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -163,6 +168,14 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         dst.world().get::<AreaForceWorldAxes>(e).is_some(),
         "the AreaForceWorldAxes marker did not survive the snapshot round trip \
          (registered?) — a zone would silently load blowing the other way"
+    );
+    let falloff = *dst
+        .world()
+        .get::<AreaFalloff>(e)
+        .expect("AreaFalloff survived the round trip (registered?)");
+    assert_eq!(
+        falloff.0, 0.75,
+        "o falloff da zona não sobreviveu ao round trip do snapshot"
     );
     let mass = *dst
         .world()

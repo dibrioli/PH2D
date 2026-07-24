@@ -210,6 +210,11 @@ fn populate_physics(store: &mut WidgetStore) {
         // weighed against the body's MOMENT OF INERTIA, which is smaller than its mass, so
         // a modest number already spins a compact body briskly.
         (ids::INSP_PHYS_AREA_TORQUE, 0.0, -1000.0, 1000.0, 0.5), // LITERAL-PX-OK: N*m
+        // Falloff (W-AreaFalloff): uma FRAÇÃO, e por isso a faixa é fechada em `0..=1` —
+        // não é um comprimento a calibrar contra o tamanho da zona (a régua é a silhueta
+        // dela), e nada acima de 1 tem sentido: já se perde tudo na borda. Passo de 0.05
+        // porque o efeito é contínuo e o artista o julga olhando, não digitando.
+        (ids::INSP_PHYS_AREA_FALLOFF, 0.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fracao 0..1
         // The medium's resistance. Same range as the other drag knobs in this app —
         // it is the same law, so it must be the same numbers.
         (ids::INSP_PHYS_AREA_DRAG, 0.0, 0.0, 10.0, 0.05), // LITERAL-PX-OK: drag coefficient

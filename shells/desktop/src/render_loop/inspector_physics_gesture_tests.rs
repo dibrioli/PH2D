@@ -471,3 +471,83 @@ fn a_floating_log_is_authorable_with_ui_gestures_alone() {
          cápsula é Y-alinhada, então o comprimento não tem onde caber"
     );
 }
+
+/// **Uma rajada que enfraquece na margem é autorável só com gestos da UI** — o falloff
+/// (W-AreaFalloff), e o passo que a torna um campo com centro é UM número.
+///
+/// Os quatro primeiros gestos são os mesmos dos irmãos acima (Add · Static · Sensor · a
+/// força), e é justamente por isso que o gate importa: até aqui a sequência produzia um
+/// bloco de vento que empurra igual em toda a sua extensão. O 5º passo — `Falloff` — é o
+/// que a torna uma RAJADA, e o oráculo é a cena: dois corpos idênticos, na mesma linha do
+/// mesmo vento, um no olho e outro na margem, param em lugares diferentes.
+#[test]
+fn a_gust_that_fades_at_the_edge_is_authorable_with_ui_gestures_alone() {
+    let mut sim = SimWorld::new();
+    // O artista deita um retângulo de 24 x 8 m — a coluna de vento.
+    let gust = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+            Sprite::atlas(0, [24.0, 8.0], [0.9, 0.7, 0.3, 0.3]),
+        ))
+        .id();
+
+    // 1. Add. 2. Static (o vento não cai). 3. Sensor (dá para entrar nele). 4. A força.
+    apply(&mut sim, gust, PhysicsFieldEdit::Add);
+    apply(&mut sim, gust, PhysicsFieldEdit::Kind(1));
+    apply(&mut sim, gust, PhysicsFieldEdit::Sensor(true));
+    apply(&mut sim, gust, PhysicsFieldEdit::ForceX(4.0));
+    let i = build_physics_info(sim.world(), gust.to_bits(), false, 5.0, 0).unwrap();
+    assert!(
+        i.is_sensor && i.force[0] == 4.0,
+        "é o Sensor que faz as rows de área serem oferecidas — sem ele o passo 5 não existe"
+    );
+
+    // 5. O falloff. Um número em 0..=1, e a régua é a própria zona: o artista não tem de
+    //    saber nenhum raio, que é exatamente o que um "alcance" em metros exigiria dele.
+    apply(&mut sim, gust, PhysicsFieldEdit::AreaFalloff(1.0));
+    let i = build_physics_info(sim.world(), gust.to_bits(), false, 5.0, 0).unwrap();
+    assert_eq!(
+        i.area_falloff, 1.0,
+        "a row Falloff tem de anexar o `AreaFalloff` com a fração autorada"
+    );
+
+    // O oráculo é a CENA: duas bolas idênticas na mesma linha do vento.
+    let ball_at = |sim: &mut SimWorld, x: f32| {
+        sim.world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.5 },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x, 0.0)),
+            ))
+            .id()
+    };
+    let eye = ball_at(&mut sim, 0.0);
+    let edge = ball_at(&mut sim, 10.8);
+
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_settings(PhysicsSettings {
+        gravity_y: 0.0,
+        ..Default::default()
+    });
+    for t in 1..=12 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let x = |sim: &SimWorld, e: Entity| sim.world().get::<Transform>(e).unwrap().translation.x;
+    let (moved_eye, moved_edge) = (x(&sim, eye) - 0.0, x(&sim, edge) - 10.8);
+    assert!(
+        moved_eye > moved_edge * 3.0,
+        "os cinco gestos têm de produzir uma rajada com CENTRO: a bola do olho andou \
+         {moved_eye} e a da margem {moved_edge}"
+    );
+    assert!(
+        moved_edge > 0.0,
+        "a margem ainda é dentro do vento — a bola de lá tem de andar um pouco \
+         ({moved_edge})"
+    );
+}

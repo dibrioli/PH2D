@@ -372,6 +372,26 @@ fn the_curve_box_hugs_the_cooked_shape_and_an_empty_one_has_none() {
     );
 }
 
+/// **O painel alcança TODO tipo de efeito** — o menu "Add" registra `MAX_FX_KINDS` botões e pinta
+/// só `.take(MAX_FX_KINDS)` da tabela, então um `KINDS` maior que o teto do painel deixa os
+/// últimos tipos INVISÍVEIS (existem no motor, o artista nunca os vê). Foi o que a família Warp
+/// arriscou: `KINDS` foi de 4 para 9 e o teto do painel estava em 8.
+///
+/// A crate do motor não alcança a do painel (vive de snapshots), então o gate compara contra o
+/// número LITERAL e a mensagem diz onde está o outro lado — o mesmo padrão do teto de parâmetros.
+#[test]
+fn the_engine_and_panel_agree_on_the_kind_ceiling() {
+    // `ph2d_editor_core::ids::MAX_FX_KINDS`, em ids/chrome/vector.rs.
+    const PANEL_MAX_FX_KINDS: usize = 9;
+    assert!(
+        PathEffect::KINDS.len() <= PANEL_MAX_FX_KINDS,
+        "o motor publica {} tipos e o menu Add do painel só regista {PANEL_MAX_FX_KINDS} \
+         (`MAX_FX_KINDS` em ph2d-editor-core/src/ids/chrome/vector.rs) — os últimos ficam \
+         inalcançáveis",
+        PathEffect::KINDS.len()
+    );
+}
+
 /// **O teto de parâmetros do motor e o do painel têm de CONCORDAR.**
 ///
 /// ⚠️ O doc do `MAX_FX_ROW_PARAMS` afirmava *"há gate a exigir que os dois lados concordem"* e

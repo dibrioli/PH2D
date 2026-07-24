@@ -90,6 +90,11 @@ pub struct FxCtx {
     /// que o `ref_size`, e do caminho AUTORADO, para que o significado de um botão não dependa
     /// da ordem da pilha.
     pub center: [f64; 2],
+    /// A **semi-extensão** da caixa (metade da largura, metade da altura). É o que normaliza a
+    /// posição de um ponto para `[-1, 1]²` — o espaço em que os warps paramétricos (Arc/Bulge/…)
+    /// agem, exatamente como o diálogo Warp do Illustrator, que deforma DENTRO da bounding box.
+    /// Um eixo degenerado (linha horizontal ⇒ `half.y == 0`) é tratado pelo consumidor.
+    pub half: [f64; 2],
 }
 
 impl FxCtx {
@@ -117,6 +122,11 @@ impl FxCtx {
             },
             center: if seen {
                 [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5]
+            } else {
+                [0.0; 2]
+            },
+            half: if seen {
+                [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5]
             } else {
                 [0.0; 2]
             },
@@ -174,6 +184,9 @@ pub enum PathEffect {
     /// existir (2026-07-18) — rasgava a geometria em toda a variante que tentei, e a razão está
     /// no cabeçalho do [`crate::fx_warp`]. Os índices posicionais fecharam-se atrás dele.
     Bloat(crate::fx_warp::BloatSpec),
+    /// A família de warp paramétrico (Arc/Bulge/Wave/Fisheye/Rise) — o menu *Effect > Warp* do
+    /// Illustrator. Ver [`crate::fx_warp_presets`]. **Apendado por último**: postcard é posicional.
+    Warp(crate::fx_warp_presets::WarpSpec),
 }
 
 impl PathEffect {
@@ -188,6 +201,7 @@ impl PathEffect {
             Self::ZigZag(z) => z.is_neutral(),
             Self::Repeat(r) => r.is_neutral(),
             Self::Bloat(b) => b.is_neutral(),
+            Self::Warp(w) => w.is_neutral(),
         }
     }
 
@@ -200,7 +214,7 @@ impl PathEffect {
     pub fn as_trim(&self) -> Option<&TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
         }
     }
 
@@ -208,7 +222,7 @@ impl PathEffect {
     pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
         }
     }
 
@@ -217,7 +231,7 @@ impl PathEffect {
     pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
         }
     }
 
@@ -225,7 +239,7 @@ impl PathEffect {
     pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
         }
     }
 
@@ -244,13 +258,47 @@ impl PathEffect {
             }
             Self::Repeat(_) => "Repeater",
             Self::Bloat(_) => "Pucker & Bloat",
+            Self::Warp(w) => w.style.label(),
+        }
+    }
+
+    /// O Warp deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_warp(&self) -> Option<&crate::fx_warp_presets::WarpSpec> {
+        match self {
+            Self::Warp(w) => Some(w),
+            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_warp`].
+    pub fn as_warp_mut(&mut self) -> Option<&mut crate::fx_warp_presets::WarpSpec> {
+        match self {
+            Self::Warp(w) => Some(w),
+            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
         }
     }
 
     /// **A tabela de tipos** — o menu "Add" do painel sai daqui, então acrescentar um efeito
     /// não toca no painel. A ordem é a dos variants.
-    pub const KINDS: &'static [&'static str] =
-        &["Trim Path", "Zig Zag", "Repeater", "Pucker & Bloat"];
+    pub const KINDS: &'static [&'static str] = &[
+        "Trim Path",
+        "Zig Zag",
+        "Repeater",
+        "Pucker & Bloat",
+        // ⚠️ Os cinco warps DEPOIS dos quatro base, na ordem de [`crate::fx_warp_presets::
+        // WarpStyle::ALL`]. Não são uma 2ª lista solta: o gate `every_effect_kind_is_reachable`
+        // exige `from_kind(i).label() == KINDS[i]`, e o `label` de um Warp É o da `WarpStyle` —
+        // um typo aqui fica VERMELHO.
+        "Arc",
+        "Bulge",
+        "Wave",
+        "Fisheye",
+        "Rise",
+    ];
+
+    /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
+    const WARP_BASE: usize = 4;
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -262,7 +310,11 @@ impl PathEffect {
             1 => Some(Self::ZigZag(ZigZagSpec::default())),
             2 => Some(Self::Repeat(crate::fx_repeat::RepeatSpec::default())),
             3 => Some(Self::Bloat(crate::fx_warp::BloatSpec::default())),
-            _ => None,
+            // Um KIND por estilo de warp, todos o MESMO variant `Warp` — o estilo é escolhido no
+            // Add, não é parâmetro vivo (ver `WarpSpec`).
+            k => crate::fx_warp_presets::WarpStyle::ALL
+                .get(k - Self::WARP_BASE)
+                .map(|&s| Self::Warp(crate::fx_warp_presets::WarpSpec::new(s))),
         }
     }
 
@@ -274,6 +326,8 @@ impl PathEffect {
             Self::ZigZag(_) => 1,
             Self::Repeat(_) => 2,
             Self::Bloat(_) => 3,
+            // O estilo, na ordem da `WarpStyle::ALL`, deslocado pelos base.
+            Self::Warp(w) => Self::WARP_BASE + w.style as usize,
         }
     }
 
@@ -396,11 +450,21 @@ impl PathEffect {
             toggle: false,
             integer: false,
         }];
+        // Um só knob, partilhado por todos os estilos: a DOBRA (o *Bend* do Illustrator). O
+        // estilo já foi escolhido no Add — não é um parâmetro. H/V ficam para uma cauda.
+        const WARP: &[FxParam] = &[FxParam {
+            name: "Bend",
+            min: -100.0,
+            max: 100.0,
+            toggle: false,
+            integer: false,
+        }];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
             Self::Repeat(_) => REPEAT,
             Self::Bloat(_) => BLOAT,
+            Self::Warp(_) => WARP,
         }
     }
 
@@ -422,6 +486,7 @@ impl PathEffect {
             (Self::Repeat(r), 4) => r.spin,
             (Self::Repeat(r), 5) => r.orbit,
             (Self::Bloat(b), 0) => b.amount,
+            (Self::Warp(w), 0) => w.bend,
             _ => 0.0,
         }
     }
@@ -455,6 +520,7 @@ impl PathEffect {
             (Self::Repeat(r), 4) => r.spin = v,
             (Self::Repeat(r), 5) => r.orbit = v,
             (Self::Bloat(b), 0) => b.amount = v,
+            (Self::Warp(w), 0) => w.bend = v,
             _ => {}
         }
     }
@@ -486,6 +552,11 @@ impl PathEffect {
             Self::Bloat(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
                     crate::fx_warp::bloat_contour(v, c, spec, ctx)
+                });
+            }
+            Self::Warp(spec) => {
+                apply_per_contour(path, &mut out, |v, c| {
+                    crate::fx_warp_presets::warp_contour(v, c, spec, ctx)
                 });
             }
         }

@@ -118,6 +118,9 @@ pub mod fx_repeat;
 /// **Pucker & Bloat** — o deformador radial (ADR-0132).
 pub mod fx_warp;
 
+/// **Warp** — a família paramétrica do menu *Effect > Warp* (Arc/Bulge/Wave/Fisheye/Rise).
+pub mod fx_warp_presets;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).

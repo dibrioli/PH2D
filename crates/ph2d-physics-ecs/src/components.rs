@@ -238,12 +238,13 @@ impl SimComponent for Collider {}
 /// initial velocity, the constraint markers, mass, dominance, material combine,
 /// damping, one-way, the force zone). Re-exported so `components::GravityScale` and
 /// friends keep working: this is a LOC split, not a new address for the types.
+mod area;
 mod overrides;
 
+pub use area::{
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
+};
 pub use overrides::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
-    AreaTorque, Ccd,
-    CombineRule, DampMode,
-    DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY,
-    LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
+    Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };

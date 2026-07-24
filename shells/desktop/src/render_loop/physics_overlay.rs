@@ -347,10 +347,7 @@ pub(crate) fn outlines(
                 collider_outline(
                     scaled_shape(
                         col.shape,
-                        ph2d_core::Vec2::new(
-                            t.scale.x * FALLOFF_RING,
-                            t.scale.y * FALLOFF_RING,
-                        ),
+                        ph2d_core::Vec2::new(t.scale.x * FALLOFF_RING, t.scale.y * FALLOFF_RING),
                     ),
                     t.translation.x + wox,
                     t.translation.y + woy,

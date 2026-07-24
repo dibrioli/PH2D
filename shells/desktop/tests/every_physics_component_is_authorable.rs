@@ -17,10 +17,16 @@
 
 use std::fs;
 
-/// Os arquivos por onde uma edição do Inspector vira componente. Se um dia houver um
-/// quarto, ele entra aqui — e o gate falha até entrar, que é o ponto.
-const WRITERS: [&str; 3] = [
+/// Os arquivos por onde uma edição do Inspector vira componente. Se um dia houver mais
+/// um, ele entra aqui — e o gate falha até entrar, que é o ponto.
+///
+/// ⚠️ O quarto chegou (W-AreaFalloff): o cap de 600 LOC do shell obrigou a separar as
+/// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
+/// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
+/// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
+const WRITERS: [&str; 4] = [
     "src/render_loop/inspector_physics_apply.rs",
+    "src/render_loop/inspector_physics_area.rs",
     "src/render_loop/inspector_physics_markers.rs",
     "src/render_loop/inspector_joint.rs",
 ];
@@ -44,7 +50,7 @@ fn every_registered_physics_component_has_a_ui_writer() {
         .collect();
     registered.sort_unstable();
     assert!(
-        registered.len() >= 18,
+        registered.len() >= 21,
         "o registry encolheu ({} nomes) — ou o parse quebrou, e um gate que não lê nada \
          passa sempre",
         registered.len()

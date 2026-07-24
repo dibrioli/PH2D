@@ -136,6 +136,40 @@ não-panica + abstém-em-compound (crate) · `dragging_a_plain_contour_never_cal
 (shell, ADR-0120: conta as chamadas ao sweep = 0; mutação `offset_ring`→`offset_path` ⇒ 1920, RED).
 `ph2d-vec-boolean` ganhou `offset_ring` + `__sweep_calls` (`#[doc(hidden)]`).
 
+### ⬛ SMOKE DA CURA: aprovado + 3 bugs de Side (Enio, 2026-07-24)
+
+*"Muito melhor!"* (a estrela com anéis, aprovada) — e três defeitos de **Side**: `Both` OK ·
+`Inner` **completamente bugado** (nada aparece) · `Outer` OK no positivo, mas no **negativo cresce**
+em vez de encolher.
+
+**Duas causas, os dois fechados:**
+
+1. **`Outer` + negativo crescia** — bug de seleção de laço no `offset_ring`. Medido
+   (`probe_ring_loops`): o `kurbo::stroke` emite a dilatação e a erosão, e a seleção por
+   `area().abs()` (shoelace) **mente numa forma côncava** (a estrela CRESCIA ao encolher; o hexágono
+   Miter ficava igual) — a auto-interseção é contada com multiplicidade. Cura: escolher pelo
+   **SINAL da área** (a erosão sai winding-invertida = furo). E o direto passou a ser **GROW-ONLY**:
+   o kurbo **derruba o laço de erosão** a `|d|` grande (medido: erosão de 0,3 num quadrado unitário
+   some), então toda erosão vai pela booleana — CONSISTENTE, sem o salto de crossover (4,2% direto×
+   booleana) que apareceria se anéis do mesmo contour usassem métodos diferentes. O comum (crescer)
+   fica barato; o encolher paga a booleana isolada. ⚠️ Contador `__sweep_calls` virou **thread-local**
+   (o `AtomicU64` global era poluído pelos gates de shrink, que agora chamam a booleana, em paralelo).
+
+2. **`Inner` não fazia nada** — o Contour reusava o `OffsetSide` do Offset Path, cujo `Inner` move só
+   os **FUROS**, e uma silhueta sólida não tem nenhum. O artista testava esperando **DIREÇÃO** (o
+   modelo Corel Outside/Inside/Both, que a feature cita). Agora o `side` **é a direção**
+   (`contour_live::signed_dists`): **Outer** para fora (respeita o sinal), **Inner** o ESPELHO (com
+   o default positivo = para dentro, o *Inside* do Corel), **Both** os dois lados (2N anéis). O
+   offset é sempre da silhueta (`OffsetSide::Outer`) e a direção sai do SINAL, então o offset direto
+   cobre todos os Sides no crescer — **FPS/piscar não voltam por Inner nem Both**. A ordem de desenho
+   virou UMA regra por **PROFUNDIDADE** (distância assinada decrescente; `stacked`→`ordered_by_depth`).
+
+**Gates novos** (`contour_live_tests`, mutação-testados): `outer_with_negative_offset_shrinks_inward`
+· `inner_side_makes_rings_go_inward` · `both_side_makes_rings_on_both_directions` · o de paridade
+virou `the_direct_ring_is_grow_only_and_the_booleana_shrinks`. LOC: `offset_ring`+`split_loops` →
+módulo irmão `expand_ring.rs` (`expand.rs` 707→607). Doc de `VecContour::side` e o smoke `=25`
+atualizados. **Pendente de re-smoke** do Enio (Outer±, Inner, Both).
+
 ---
 
 ## §3 — Números que a integração precisa conferir
@@ -214,9 +248,14 @@ selecionada** (é ela que prova o seam, do `Add Contour` ao Expand, com a mão d
 - **A cura do `linesweeper` para o EXPAND** — o `offset_path` booleano ainda panica (apanhado pelo
   `catch_unwind`); o Contour vivo já não o usa, mas o Expand e a seção Expand sim. É upgrade/patch
   do dep, decisão com ADR.
-- **Compound / Inner / Both no Contour** ainda caem no `offset_path` (o `offset_ring` se abstém) —
-  estender o offset direto a eles é aditivo, mas a topologia (furo que encolhe, dois lados) é onde
-  a booleana ganha o custo dela; não medido como problema no uso real.
+- **A EROSÃO (encolher) cai no `offset_path`** — o offset direto é grow-only (o kurbo derruba o
+  laço de erosão a `|d|` grande, ver §2). Então `Inner`, `Both` (a metade para dentro) e `Outer`
+  negativo pagam a booleana, isolada por `catch_unwind` + `last_good`. O crescer (o caso comum) fica
+  no direto. Estender o direto à erosão é possível só para `|d|` pequeno, e o crossover medido (4,2%)
+  não compensa — decisão registrada, não pendência.
+- **Compound (com furos) no Contour** cai no `offset_path` da silhueta (`OffsetSide::Outer`),
+  ignorando os furos — um contour segue a borda de fora, que é o que o artista espera; estender ao
+  offset por-furo é aditivo, não medido como problema.
 - **Multi-seleção com contours diferentes**: os sliders são um número só e escrevem em todos os
   selecionados (mesmo desenho do Offset vivo).
 - **Contour + pilha de efeitos na mesma forma**: a resposta é o `LiveGeometry` alimentar um 2º

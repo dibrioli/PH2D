@@ -10,25 +10,27 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `<tip de line/physics>` |
+| HEAD | `63fc75df9` (o commit deste próprio doc; o integrador usa `git rev-parse line/physics`) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits à frente | **10** (1 doc herdado da sessão anterior + 5 do W-AreaFrame + 4 do W-AreaFalloff) |
+| commits à frente | **13** (1 doc herdado da sessão anterior + 6 do W-AreaFrame + 6 do W-AreaFalloff) |
 | working tree | limpa |
 
 Os commits, em ordem (o 1º já existia quando assumi a linha):
 
 ```
-1ae4dfef0  docs(physics): handoff de REABERTURA 2026-07-23
-938c5aaa3  feat(physics): W-AreaFrame -- girar a zona gira o vento
-043a345e5  test(physics): os gates do W-AreaFrame -- 13 mutacoes, 11 sangram
-8a87ed900  feat(physics): c9 ganha uma zona ROTACIONADA + cena 34 do frame
-67c14c5d3  refactor(physics): o overlay separa CONTORNO de ANOTACAO (cap de 600 LOC)
-20b0e8797  test(physics): o marcador do frame entra no round-trip de persistencia
-cb70bf0d8  docs(physics): W-AreaFrame no tracker/plano/CLAUDE.md + handoff
-baedc8123  feat(physics): W-AreaFalloff -- o empurrao desvanece do centro para a borda
-<hash>     test(physics): os gates do W-AreaFalloff -- 14 mutacoes, 13 sangram
-<hash>     refactor(physics): a familia das ZONAS ganha casa propria (caps de LOC)
-<hash>     docs(physics): W-AreaFalloff no tracker/plano/CLAUDE.md
+1ae4dfef0 docs(physics): handoff de REABERTURA 2026-07-23 -- o proximo agente assume a linha pos-integracao
+938c5aaa3 feat(physics): W-AreaFrame -- girar a zona gira o vento
+043a345e5 test(physics): os gates do W-AreaFrame -- 13 mutacoes, 11 sangram
+8a87ed900 feat(physics): c9 ganha uma zona ROTACIONADA + cena 34 do frame
+67c14c5d3 refactor(physics): o overlay separa CONTORNO de ANOTACAO (cap de 600 LOC)
+20b0e8797 test(physics): o marcador do frame entra no round-trip de persistencia
+cb70bf0d8 docs(physics): W-AreaFrame no tracker/plano/CLAUDE.md + handoff de integracao
+baedc8123 feat(physics): W-AreaFalloff -- o empurrao desvanece do centro para a borda
+6e4b59b58 test(physics): os gates do W-AreaFalloff -- 14 mutacoes, 13 sangram
+7abf8506a refactor(physics): a familia das ZONAS ganha casa propria (caps de LOC)
+fd3cc172c docs(physics): W-AreaFalloff no tracker/plano + handoff de integracao das 2 waves
+ca2367d50 docs(physics): CLAUDE.md 5 -- o W-AreaFalloff fecha a familia das zonas
+2f19baae4 docs(physics): o handoff de integracao pina os 12 commits reais
 ```
 
 **Duas waves, uma branch.** Este handoff cobre as duas — o integrador lê um documento só.

@@ -196,6 +196,87 @@ fn measure_the_stack_depth() {
     println!();
 }
 
+/// **The shell holds the drained Arc, and that is the whole cost of a plain stroke.**
+///
+/// Every other MOVE measurement in this file drops the `take_preview_arc` result on the floor
+/// (`let _ = …`), so the tool is the SOLE owner of `canvas_rgba` and its next `Arc::make_mut` is
+/// free. The real shell is not the sole owner: `painter_bridge::dispatch` stashes that Arc in
+/// `painter_preview.rgba` and holds it across the frame, so the tool's next `stamp_dabs`
+/// `make_mut` sees refcount 2 and **copies the entire canvas** before blitting the dab. A brush of
+/// 0.5 px pays a full-canvas memcpy per move — the "small brush, big canvas, CPU-bound FPS drop"
+/// Enio reported.
+///
+/// This measures the pre-fix shell (`held` kept) against the sole-owner path (`held` dropped),
+/// across canvas size and brush radius. The held column quadruples with the canvas while the dropped
+/// column stays flat and the radius barely moves it — the cost is the copy-on-write, not the deposit.
+///
+/// ⚠️ **This is the DIAGNOSIS, not the fix's gate.** The fix (the shell owning its preview buffer via
+/// `own_preview_buffer` so the tool stays sole owner) lives across the `ph2d-render`/shell boundary;
+/// its proof — driving the real helper, showing the held path go footprint-bound — is
+/// `painter_preview_pipeline_tests::a_plain_stroke_is_footprint_bound_when_the_shell_owns_its_buffer`.
+/// The `held` column here is exactly the bug that gate's control still reproduces.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_stroke_the_shell_actually_drives() {
+    fn stroke(size: u32, radius: f32, hold: bool) -> f64 {
+        let mut t = armed(size, PaintMedia::Digital, radius);
+        let mid = (size / 2) as f32;
+        let x0 = radius + 20.0;
+        const STEP_PX: f32 = 20.0;
+        let x1 = x0 + STEP_PX * 30.0;
+        assert!(x1 < (size as f32) - radius, "stroke must fit the canvas");
+        t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+        // The shell holds the LAST drained Arc (its `painter_preview.rgba`), one at a time.
+        let mut held: Option<std::sync::Arc<Vec<u8>>> = t.take_preview_arc().map(|(a, _, _)| a);
+        let mut moves = Vec::new();
+        let mut x = x0 + STEP_PX;
+        while x <= x1 {
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            let drained = t.take_preview_arc().map(|(a, _, _)| a);
+            moves.push(t0.elapsed().as_secs_f64() * 1e3);
+            // Keep it only in the `hold` arm — the drop arm frees the Arc before the next move,
+            // so the tool is sole owner and `make_mut` is O(1).
+            held = if hold { drained } else { None };
+            x += STEP_PX;
+        }
+        let _ = held;
+        moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        moves[moves.len() / 2]
+    }
+    // Whether a radius actually deposits — the copy only fires when the drain returns `Some` (the
+    // shell then holds the Arc). A radius so small it marks nothing dirty pays nothing, and mistaking
+    // that for "small brushes are free" is the fixture trap the radius-0.5 row would have set.
+    fn deposits(size: u32, radius: f32) -> bool {
+        let mut t = armed(size, PaintMedia::Digital, radius);
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([radius + 20.0, mid], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        t.on_canvas_pointer(cp([radius + 40.0, mid], PointerPhase::Move));
+        t.take_preview_arc().is_some()
+    }
+    println!(
+        "\n{:<10} {:>8} {:>9} {:>14} {:>14} {:>10}",
+        "canvas", "radius", "paints?", "held ms/move", "dropped ms/move", "ratio"
+    );
+    for size in [1024u32, 2048, 4096] {
+        for radius in [1.0f32, 2.0, 4.0, 16.0, 100.0] {
+            let held = stroke(size, radius, true);
+            let dropped = stroke(size, radius, false);
+            println!(
+                "{:<10} {:>8.1} {:>9} {:>14.3} {:>14.3} {:>9.1}x",
+                size,
+                radius,
+                deposits(size, radius),
+                held,
+                dropped,
+                held / dropped.max(1e-6)
+            );
+        }
+    }
+    println!();
+}
+
 /// The **heartbeat**, isolated — what a frame costs when the pen is NOT down.
 ///
 /// `paint_tick` is where the Wet Paint solver lives (the engine gates itself off while a stroke is down),

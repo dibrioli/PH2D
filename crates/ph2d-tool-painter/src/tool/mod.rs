@@ -126,6 +126,17 @@ pub struct PainterTool {
     pixel_clock: u64,
     source_size: (u32, u32),
     preview_dirty: bool,
+    /// Monotonic CONTENT version of the drained preview — bumped once per dirty
+    /// `take_preview_arc`, so the shell can detect "the preview changed" without
+    /// holding a clone of the canvas `Arc` and comparing pointers. Holding that
+    /// clone is what forced `stamp_dabs`' `Arc::make_mut` to copy the WHOLE canvas
+    /// every move (16 MiB @ 2048², 64 MiB @ 4096², regardless of a 0.5px dab —
+    /// the CPU-bound FPS drop Enio measured). The shell now owns its preview
+    /// buffer and keys the upload on this version (ADR-0124's lesson: ask the
+    /// version, never the pointer), so the tool stays the sole owner of
+    /// `canvas_rgba` and the write is in-place. Never reset — a monotonic counter
+    /// so a value seen once is never re-seen.
+    preview_version: u64,
     pending_commit: bool,
     /// `true` once any edit (stroke, layer op, adjustment) touched the working canvas/composite since
     /// the last `set_source` bind. The shell uses it to auto-bake the painting back into the sprite
@@ -196,6 +207,7 @@ impl Default for PainterTool {
             pixel_clock: 0,
             source_size: (0, 0),
             preview_dirty: false,
+            preview_version: 0,
             pending_commit: false,
             edited_since_bind: false,
             deferred_bake: false,

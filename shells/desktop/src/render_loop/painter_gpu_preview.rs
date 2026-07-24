@@ -345,8 +345,8 @@ fn compose_light_premul(
 /// Ensure `painter_preview_gpu` holds a slot sized `width × height`; reuse the
 /// existing slot when the dims match (the copy overwrites its contents),
 /// otherwise release the old slot and acquire a fresh EMPTY one. Returns the
-/// slot's `texture_id`. `arc_token` is `0` — the GPU producer has no CPU `Arc`
-/// cache token, and the next CPU frame's `arc_token != cache_token` test then
+/// slot's `texture_id`. `arc_token` is `0` — the GPU producer has no CPU content
+/// version, and the next CPU frame's `arc_token != cache_version` test then
 /// correctly forces a full re-upload on a GPU→CPU transition.
 fn ensure_slot(
     renderer: &mut SpriteRenderer,

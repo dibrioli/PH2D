@@ -52,6 +52,60 @@ fn px(t: &PainterTool, size: u32, x: u32, y: u32) -> [u8; 4] {
     ]
 }
 
+/// **`canvas_version` moves only when the preview actually changed.**
+///
+/// The shell keys its GPU-slot upload on this instead of the drained `Arc`'s pointer — which is what
+/// lets it own its preview buffer and leave the tool the sole owner of `canvas_rgba` (so a stamp
+/// writes in place instead of copying the whole plane per move). The contract: a DIRTY drain bumps
+/// the version (pixels moved ⇒ the shell uploads); an IDLE drain returns `None` and leaves it put
+/// (⇒ the shell's plan Skips). Break the bump and the shell freezes on a changing canvas; bump it on
+/// idle and it re-uploads a static one every frame.
+///
+/// Mutation that must bleed: drop the `self.preview_version += 1` in `take_preview_arc`.
+#[test]
+fn canvas_version_advances_on_a_dirty_drain_and_holds_on_an_idle_one() {
+    let mut t = white_canvas(64, 4.0);
+    let _ = t.take_preview_arc(); // clear any bind-time dirty so v0 is a settled baseline
+    let v0 = t.canvas_version();
+    assert!(
+        t.take_preview_arc().is_none(),
+        "a clean canvas has nothing to drain"
+    );
+    assert_eq!(
+        t.canvas_version(),
+        v0,
+        "an idle frame must not advance the version"
+    );
+
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    assert!(
+        t.take_preview_arc().is_some(),
+        "the dab dirtied the preview"
+    );
+    let v1 = t.canvas_version();
+    assert!(
+        v1 > v0,
+        "a dirty drain must advance the version ({v0} -> {v1})"
+    );
+
+    assert!(
+        t.take_preview_arc().is_none(),
+        "no new paint since the drain"
+    );
+    assert_eq!(
+        t.canvas_version(),
+        v1,
+        "a second idle frame holds the version"
+    );
+
+    t.on_canvas_pointer(cp([40.0, 20.0], PointerPhase::Move));
+    assert!(t.take_preview_arc().is_some());
+    assert!(
+        t.canvas_version() > v1,
+        "a second dirty drain advances the version again"
+    );
+}
+
 #[test]
 fn down_paints_into_active_raster_and_marks_dirty() {
     let mut t = white_canvas(64, 6.0);

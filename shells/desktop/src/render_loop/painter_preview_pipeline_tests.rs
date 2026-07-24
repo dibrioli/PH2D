@@ -57,6 +57,13 @@ struct Screen {
     /// `(texture_id, width, premultiplied bytes)` — the slot texture the sprite samples.
     slot: Option<(u32, u32, Vec<u8>)>,
     next_texture_id: u32,
+    /// The content version last drained (an idle frame reads the same one → the plan Skips).
+    version: u64,
+    /// The tool's composite for the last drained frame, kept WHOLE and INDEPENDENT of the shell's
+    /// mirror — the oracle. `assert_shows_the_cache` compares the slot against this, so a bug in
+    /// `own_preview_buffer`'s region patch (the shell's mirror diverging from the tool's composite)
+    /// shows up as a mismatch instead of hiding behind a slot derived from the same mirror.
+    truth: Option<Vec<u8>>,
 }
 
 impl Screen {
@@ -66,25 +73,43 @@ impl Screen {
             gpu: None,
             slot: None,
             next_texture_id: 0,
+            version: 0,
+            truth: None,
         }
     }
 
     /// One frame of the preview lane. Returns the plan it executed (for the gates' own asserts).
     fn frame(&mut self, painter: &mut PainterTool) -> UploadPlan {
         let mut dirty_bbox = None;
-        if let Some((rgba, w, h)) = painter.take_preview_arc() {
+        if let Some((drained, w, h)) = painter.take_preview_arc() {
             dirty_bbox = painter.take_preview_upload_bbox();
+            self.version = painter.canvas_version();
+            // The independent truth (the tool's full composite for this frame) BEFORE `drained` is
+            // consumed by the shell buffer helper.
+            self.truth = Some((*drained).clone());
+            // The shell's OWN buffer — the REAL function, driven exactly as `dispatch` drives it. It
+            // patches the dirty region into the prior buffer (or seeds a fresh one) and drops
+            // `drained`, so the tool is left the sole owner of its canvas.
+            let mirror = super::painter_bridge::own_preview_buffer(
+                self.cache.take(),
+                ENTITY,
+                w,
+                h,
+                &drained,
+                dirty_bbox,
+            );
             self.cache = Some(PainterPreview {
                 entity_bits: ENTITY,
-                rgba,
+                rgba: mirror,
                 width: w,
                 height: h,
             });
         }
+        let version = self.version;
         let Some(preview) = self.cache.as_ref() else {
             return UploadPlan::Skip; // nothing drained yet — dispatch's gated block never ran
         };
-        let plan = plan_upload(preview, self.gpu, dirty_bbox, false);
+        let plan = plan_upload(preview, self.gpu, dirty_bbox, version, false);
         match plan {
             UploadPlan::Skip => {}
             UploadPlan::Partial {
@@ -111,7 +136,7 @@ impl Screen {
                     texture_id,
                     width: preview.width,
                     height: preview.height,
-                    arc_token: Arc::as_ptr(&preview.rgba) as usize,
+                    arc_token: version as usize,
                     entity_bits: ENTITY,
                 });
             }
@@ -127,7 +152,7 @@ impl Screen {
                     texture_id,
                     width: preview.width,
                     height: preview.height,
-                    arc_token: Arc::as_ptr(&preview.rgba) as usize,
+                    arc_token: version as usize,
                     entity_bits: ENTITY,
                 });
             }
@@ -146,7 +171,10 @@ impl Screen {
     /// tool's dirty bbox really covered everything that changed, lighting included.
     fn assert_shows_the_cache(&self, ctx: &str) {
         let preview = self.cache.as_ref().expect("a drained composite");
-        let mut expected = (*preview.rgba).clone();
+        // Compare against the INDEPENDENT truth (the tool's composite), not the shell's mirror the
+        // slot was patched from — so a region-patch bug in `own_preview_buffer` can't hide behind a
+        // slot and mirror that agree with each other while both diverge from what the tool produced.
+        let mut expected = self.truth.clone().expect("a drained composite");
         premultiply_rgba8(&mut expected);
         assert_screen_equals(self.shown(), &expected, preview.width, ctx);
     }
@@ -460,7 +488,7 @@ fn the_screen_tracks_a_jittered_sculpt_frame_by_frame() {
 
 /// **The plan itself refuses the stale-skip and the mismatched patch** — the two protocol
 /// mutations that would silently freeze or misplace the screen. Pure-decision checks (no tool):
-/// a changed buffer identity must never plan `Skip`; a dims change must never plan `Partial`.
+/// a newer content version must never plan `Skip`; a dims change must never plan `Partial`.
 #[test]
 fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
     let rgba = Arc::new(vec![0u8; 16 * 16 * 4]);
@@ -470,20 +498,22 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
         width: 16,
         height: 16,
     };
+    // The slot was seeded at content version 1.
     let seeded = PainterPreviewGpu {
         texture_id: 7,
         width: 16,
         height: 16,
-        arc_token: Arc::as_ptr(&preview.rgba) as usize,
+        arc_token: 1,
         entity_bits: ENTITY,
     };
-    // Same buffer, same identity → Skip (the idle-frame no-op).
+    // Same version → Skip (the idle-frame no-op). The buffer's pointer is irrelevant now — the shell
+    // patches its mirror in place, so the pointer never changes even as the pixels do; only the
+    // version says whether the content moved.
     assert_eq!(
-        plan_upload(&preview, Some(seeded), None, false),
+        plan_upload(&preview, Some(seeded), None, 1, false),
         UploadPlan::Skip
     );
-    // A NEW composite buffer (new Arc) with a stale token must upload — Skip here is the frozen
-    // screen.
+    // A newer version must upload — Skip here is the frozen screen.
     let fresh = PainterPreview {
         entity_bits: ENTITY,
         rgba: Arc::new(vec![1u8; 16 * 16 * 4]),
@@ -491,7 +521,7 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
         height: 16,
     };
     assert_eq!(
-        plan_upload(&fresh, Some(seeded), None, false),
+        plan_upload(&fresh, Some(seeded), None, 2, false),
         UploadPlan::Full { reuse: Some(7) }
     );
     // A dirty bbox against a slot of DIFFERENT dims must not patch (the slot pixels outside the
@@ -503,10 +533,10 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
         height: 32,
     };
     assert_eq!(
-        plan_upload(&grown, Some(seeded), Some((0, 0, 8, 8)), false),
+        plan_upload(&grown, Some(seeded), Some((0, 0, 8, 8)), 2, false),
         UploadPlan::Full { reuse: Some(7) }
     );
-    // The happy partial: seeded slot, matching dims, in-bounds rect.
+    // The happy partial: seeded slot (token != 0), matching dims, newer version, in-bounds rect.
     let patched = PainterPreview {
         entity_bits: ENTITY,
         rgba: Arc::new(vec![2u8; 16 * 16 * 4]),
@@ -514,7 +544,7 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
         height: 16,
     };
     assert_eq!(
-        plan_upload(&patched, Some(seeded), Some((4, 4, 8, 8)), false),
+        plan_upload(&patched, Some(seeded), Some((4, 4, 8, 8)), 2, false),
         UploadPlan::Partial {
             texture_id: 7,
             rect: (4, 4, 8, 8)

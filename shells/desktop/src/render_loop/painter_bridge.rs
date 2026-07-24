@@ -235,6 +235,13 @@ pub(super) fn dispatch(
     // upload below (frame-local — same function scope, so no `PreviewCache`
     // field change needed). `Some` = upload only this sub-rect; `None` = full.
     let mut painter_dirty_bbox: Option<(u32, u32, u32, u32)> = None;
+    // The tool's monotonic canvas CONTENT version this frame — the shell keys its GPU-slot upload on
+    // this instead of the drained `Arc`'s pointer. Keying on the pointer meant the shell had to HOLD a
+    // clone of the live canvas so `Arc::make_mut` would hand back a fresh pointer on a change; holding it
+    // is exactly what made every `stamp_dabs` copy the whole canvas per move (measured: 0.34 ms/move @
+    // 2048², 10 ms/move @ 4096², flat across brush size — the CPU-bound FPS drop). Captured whether the
+    // drain produced a frame or not (an idle frame reads the SAME version → the plan Skips).
+    let mut cache_version: u64 = 0;
     // True when the GPU producer owns the preview slot this frame (representable
     // stack) — gates the CPU lifecycle block off so the two never fight the slot.
     let mut gpu_owns_preview = false;
@@ -288,7 +295,7 @@ pub(super) fn dispatch(
             // CPU cache unused while the GPU owns the slot — clear it so the
             // inactive/apply release + the gated CPU block below see `None`.
             *painter_preview = None;
-        } else if let (Some(sel), Some((rgba, w, h))) =
+        } else if let (Some(sel), Some((drained, w, h))) =
             (hero.gizmo.selection, painter.take_preview_arc())
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
@@ -305,16 +312,36 @@ pub(super) fn dispatch(
                 let n = N.fetch_add(1, Ordering::Relaxed);
                 if n < PREVIEW_DUMP_MAX_FRAMES {
                     let path = std::path::Path::new(&dir).join(format!("preview_{n:04}.png"));
-                    let _ = image::save_buffer(&path, &rgba[..], w, h, image::ColorType::Rgba8);
+                    let _ = image::save_buffer(&path, &drained[..], w, h, image::ColorType::Rgba8);
                 }
             }
+            // Own the preview buffer: patch the dirty region out of the drained composite into the
+            // shell's OWN buffer (in-place — the shell is its sole owner), then let `drained` drop. The
+            // old code stashed `drained` (a clone of the tool's live `canvas_rgba` on the trivial path,
+            // of its `composited` cache otherwise) and held it across the frame, so the tool's next
+            // `Arc::make_mut` saw a second owner and copied the WHOLE plane per move. Patching a
+            // shell-owned mirror is O(dirty bbox); the seed (no prior buffer / dims-or-entity change /
+            // full recompose) copies the composite once. Either way the tool is left the SOLE owner of
+            // its canvas, so its next stamp writes in place.
+            let mirror = own_preview_buffer(
+                painter_preview.take(),
+                sel,
+                w,
+                h,
+                &drained,
+                painter_dirty_bbox,
+            );
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
-                rgba,
+                rgba: mirror,
                 width: w,
                 height: h,
             });
         }
+        // Capture the content version for the upload plan below — bumped by the drain above on a
+        // change, unchanged on an idle frame (so the plan Skips). Read here, inside the downcast, in
+        // both the drained and idle cases.
+        cache_version = painter.canvas_version();
         // Diagnostic TRAP, half 1 (BUGS_painter.md #11 — OPEN): `PH2D_PREVIEW_DIAG=1` logs which producer
         // owns the preview slot each frame + the CPU partial-upload bbox. This is what proved the per-layer
         // shape edits run on the CPU lane (`gpu_owns=false`) while a slider drag hands the slot to the GPU
@@ -569,11 +596,57 @@ pub(super) fn dispatch(
         renderer,
         painter_preview.as_ref().filter(|_| !gpu_owns_preview),
         painter_dirty_bbox,
+        cache_version,
         gpu_owns_preview,
         painter_preview_gpu,
         toasts,
     );
     !apply_selection.is_empty()
+}
+
+/// Fill the shell's OWN preview buffer for this frame without holding the tool's canvas `Arc`.
+///
+/// Reuse the shell's prior buffer and patch only the dirty region when the geometry matches, so the
+/// tool is left the sole owner of its canvas (its next `stamp_dabs` writes in place instead of
+/// copying the whole plane — the per-move cost that scaled with the canvas, not the brush). A seed —
+/// no prior buffer, a dims/entity change, or a full recompose (`dirty_bbox == None`) — copies the
+/// drained composite once. `prior` is the shell-owned buffer from last frame (sole owner ⇒ the
+/// `make_mut` here never copies); `drained` is the tool's composite for THIS frame, borrowed only
+/// long enough to copy the region out, then dropped by the caller.
+///
+/// `pub(super)` so the display-pipeline gate drives THIS function, not a mirror of it — the whole
+/// point of the pipeline gates is that what they hold byte-exact is the code the app runs.
+pub(super) fn own_preview_buffer(
+    prior: Option<PainterPreview>,
+    entity_bits: u64,
+    width: u32,
+    height: u32,
+    drained: &Arc<Vec<u8>>,
+    dirty_bbox: Option<(u32, u32, u32, u32)>,
+) -> Arc<Vec<u8>> {
+    match (prior, dirty_bbox) {
+        (Some(p), Some((bx, by, bw, bh)))
+            if p.entity_bits == entity_bits
+                && p.width == width
+                && p.height == height
+                && (*p.rgba).len() == (*drained).len()
+                && bw > 0
+                && bh > 0
+                && bx + bw <= width
+                && by + bh <= height =>
+        {
+            let mut mirror = p.rgba;
+            let m = Arc::make_mut(&mut mirror); // shell is the sole owner ⇒ in place, no copy
+            let row = (bw * 4) as usize;
+            for ry in 0..bh {
+                let off = (((by + ry) * width + bx) * 4) as usize;
+                m[off..off + row].copy_from_slice(&drained[off..off + row]);
+            }
+            mirror
+        }
+        // Seed: no reusable prior buffer — take a full copy the shell then owns outright.
+        _ => Arc::new((**drained).clone()),
+    }
 }
 
 /// The CPU lane's slot upkeep for one frame — plan the upload ([`plan_upload`]), execute it
@@ -584,6 +657,7 @@ pub(super) fn upload_cpu_preview(
     renderer: &mut SpriteRenderer,
     cpu_preview: Option<&PainterPreview>,
     painter_dirty_bbox: Option<(u32, u32, u32, u32)>,
+    cache_version: u64,
     gpu_owns_preview: bool,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ToastQueue,
@@ -599,6 +673,7 @@ pub(super) fn upload_cpu_preview(
                 preview,
                 *painter_preview_gpu,
                 painter_dirty_bbox,
+                cache_version,
                 force_full,
             );
             let upload_result: Option<Result<u32, _>> = match plan {
@@ -644,7 +719,10 @@ pub(super) fn upload_cpu_preview(
                         texture_id,
                         width: preview.width,
                         height: preview.height,
-                        arc_token: Arc::as_ptr(&preview.rgba) as usize,
+                        // The tool's content version, NOT `Arc::as_ptr(rgba)`: the shell no longer
+                        // holds a clone of the tool's canvas, so its pointer would be meaningless here
+                        // (the mirror is patched in place ⇒ its pointer never changes).
+                        arc_token: cache_version as usize,
                         entity_bits: preview.entity_bits,
                     });
                 }
@@ -676,7 +754,7 @@ pub(super) fn upload_cpu_preview(
 /// whole life.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum UploadPlan {
-    /// The slot already holds this composite (same buffer identity, entity and dims) — no upload.
+    /// The slot already holds this composite (same content version, entity and dims) — no upload.
     Skip,
     /// Premultiply + upload the WHOLE canvas; `reuse` = overwrite that slot texture, `None` =
     /// acquire a fresh one (first frame, or dims/entity changed and the old slot was released).
@@ -690,17 +768,20 @@ pub(super) enum UploadPlan {
     },
 }
 
-/// The B.1 upload decision (see [`UploadPlan`]). The fast lane only fires after a full upload
-/// seeded the texture (the composite cache is `Some` only post-full-recompose, which uploads
+/// The B.1 upload decision (see [`UploadPlan`]). Change is detected by `cache_version` (the tool's
+/// monotonic canvas version) rather than the buffer pointer — the shell owns its mirror and patches
+/// it in place, so its pointer never moves even as pixels do; only the version says the content
+/// changed. The fast lane fires only after a full upload seeded the texture (a full recompose hands
 /// `bbox == None`), and any structural / metadata / dims / entity change forces a full upload — so
-/// the un-touched slot pixels are always current.
+/// the un-touched slot pixels are always current. An idle frame reads the unchanged version → `Skip`.
 pub(super) fn plan_upload(
     preview: &PainterPreview,
     gpu: Option<PainterPreviewGpu>,
     dirty_bbox: Option<(u32, u32, u32, u32)>,
+    cache_version: u64,
     force_full: bool,
 ) -> UploadPlan {
-    let cache_token = Arc::as_ptr(&preview.rgba) as usize;
+    let cache_token = cache_version as usize;
     let needs_upload = match gpu {
         None => true,
         Some(g) => {
@@ -718,8 +799,8 @@ pub(super) fn plan_upload(
         .flatten()
         .and_then(|(bx, by, bw, bh)| match gpu {
             // `g.arc_token != 0`: a partial patch is only sound over a slot the CPU lane itself
-            // seeded. The GPU producer stamps its slots with token 0 (it has no CPU `Arc`) exactly
-            // so this transition forces a FULL re-upload — a rect patched over the GPU
+            // seeded. The GPU producer stamps its slots with token 0 (it has no CPU content version)
+            // exactly so this transition forces a FULL re-upload — a rect patched over the GPU
             // compositor's output would leave every other pixel to a different producer (unlit,
             // and possibly older than the CPU cache), which is the GPU→CPU handoff artifact.
             Some(g)

@@ -8,6 +8,7 @@ use super::painter_preview_pipeline_tests::{
 };
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_painter_effects::adjustments::AdjustmentKind;
 use ph2d_tool_painter::PainterTool;
 use std::sync::Arc;
 
@@ -35,19 +36,33 @@ fn app_frame(
     let mut dirty_bbox = None;
     if gpu_owns {
         *preview = None;
-    } else if let Some((rgba, w, h)) = painter.take_preview_arc() {
+    } else if let Some((drained, w, h)) = painter.take_preview_arc() {
         dirty_bbox = painter.take_preview_upload_bbox();
+        // The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
+        // owner of its canvas — exactly as `dispatch` does it.
+        let mirror = super::painter_bridge::own_preview_buffer(
+            preview.take(),
+            ENTITY,
+            w,
+            h,
+            &drained,
+            dirty_bbox,
+        );
         *preview = Some(PainterPreview {
             entity_bits: ENTITY,
-            rgba,
+            rgba: mirror,
             width: w,
             height: h,
         });
     }
+    // Idle (drain None) reads the unchanged version → the plan Skips; a dirty frame reads the bumped
+    // one → it uploads.
+    let cache_version = painter.canvas_version();
     super::painter_bridge::upload_cpu_preview(
         renderer,
         preview.as_ref().filter(|_| !gpu_owns),
         dirty_bbox,
+        cache_version,
         gpu_owns,
         preview_gpu,
         toasts,
@@ -65,17 +80,17 @@ fn app_frame(
 /// This gate runs the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real
 /// readback — and holds the final screen bytes to a from-scratch recompose.
 ///
-/// ## The lever changed, the gate did not (2026-07-18)
+/// ## The lever keeps moving, the gate does not
 ///
-/// This used to flip eligibility with `impasto_show`, on the premise that *"the GPU compositor cannot
-/// light relief"*. It can now ([`ph2d_render::ImpastoLightPass`]), and a sculpted canvas is precisely
-/// what the GPU path is FOR — so relief no longer moves a document between producers, and a dance
-/// built on it would be two identical steps.
-///
-/// The lever is now a layer **mask**, which `flatten_for_gpu` still cannot represent. Nothing this
-/// gate proves has changed: it needs a door that flips eligibility, not that particular door. Relief
-/// now appears on the GPU side of the dance instead of the CPU side, which is the only place the
-/// update shows.
+/// It first flipped eligibility with `impasto_show` (premise: *"the GPU compositor cannot light
+/// relief"*), then with a layer **mask** (2026-07-18, once the light port made relief GPU-eligible).
+/// Then the GPU Ondas made a mask an OP too (`docs/Painter/25_avaliacao_gpu.md`), so a mask no longer
+/// moves a document between producers either — the lever is now an **unported adjustment**
+/// (`ColorBalance`: no scalar and no spatial GPU code, so `flatten_for_gpu` still refuses it). Nothing
+/// this gate proves has changed: it needs a door that flips eligibility, not any particular door — and
+/// each time a wave widened what the GPU can represent, this gate's lever had to be the thing STILL
+/// outside it (⚠️ and this gate is GPU-adapter-only, so `ship.sh` never runs it — the mask lever went
+/// stale-green-latent for exactly one wave before this run caught it).
 ///
 /// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
 #[test]
@@ -220,10 +235,14 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
         &mut toasts,
     );
 
-    // 4. A MASK on the active layer → outside the GPU op-list v1 → GPU→CPU handoff; then one more
-    //    impasto stroke so the partial lane runs over the re-seeded slot. (The mask is the live
-    //    eligibility lever now that relief is not one.)
-    t.add_mask_to_active().expect("a mask on the active layer");
+    // 4. An UNPORTED adjustment (ColorBalance has no scalar and no spatial GPU code) → outside the
+    //    GPU op-list → GPU→CPU handoff; then one more impasto stroke so the partial lane runs over
+    //    the re-seeded slot. `add_adjustment_layer` leaves the previously-active RASTER as the paint
+    //    target, so the follow-up strokes still deposit. (The lever moved off the mask: this line's
+    //    own wave made masks GPU-representable, so a mask no longer flips eligibility — see the module
+    //    doc.)
+    t.add_adjustment_layer(AdjustmentKind::ColorBalance)
+        .expect("an unported adjustment above the stack");
     assert!(
         !frame(
             &mut t,
@@ -233,7 +252,7 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
             &mut preview_gpu,
             &mut toasts
         ),
-        "a masked stack is not GPU-representable: the CPU producer reclaims the slot"
+        "an unported-adjustment stack is not GPU-representable: the CPU producer reclaims the slot"
     );
     t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Down));
     frame(
@@ -316,7 +335,9 @@ fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
         entity_bits: ENTITY,
     };
     assert_eq!(
-        plan_upload(&preview, Some(gpu_seeded), Some((4, 4, 8, 8)), false),
+        // A real CPU content version (1) against the GPU stamp (0): the version differs so an upload
+        // is due, and the `g.arc_token != 0` arm must still force it FULL rather than Partial.
+        plan_upload(&preview, Some(gpu_seeded), Some((4, 4, 8, 8)), 1, false),
         UploadPlan::Full { reuse: Some(9) },
         "a valid bbox over a GPU-seeded slot must still plan a FULL upload — a Partial here \
          patches CPU-lit bytes into the GPU compositor's unlit frame"

@@ -201,6 +201,12 @@ impl PainterTool {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
         }
+        // Past the guard we are returning a fresh preview, so the CONTENT changed since the last drain:
+        // bump the version the shell keys its upload on. This is the ONE place a Some is produced, so a
+        // single bump here covers the trivial, composite and mask-view returns below. (See the field doc
+        // on `preview_version`: the version replaces the shell's old `Arc::as_ptr` compare, which forced a
+        // whole-canvas copy per move.)
+        self.preview_version += 1;
         let (w, h) = self.source_size;
         // A mask row's grayscale-VIEW eye is open → show that mask's grayscale instead of the composite.
         if let Some(gray) = self.mask_grayscale_view_pixels() {
@@ -314,5 +320,16 @@ impl PainterTool {
     #[must_use]
     pub fn layers_revision(&self) -> u64 {
         self.layers_revision
+    }
+
+    /// Monotonic CONTENT version of the preview, bumped once per dirty
+    /// [`Self::take_preview_arc`]. The shell keys its GPU-slot upload on this
+    /// instead of the drained `Arc`'s pointer, so it never has to hold a clone of
+    /// `canvas_rgba` across the frame — which is what forced `stamp_dabs` to copy
+    /// the whole canvas per move. Read it right after the drain that produced the
+    /// preview (its value pairs with the `Arc` that drain returned).
+    #[must_use]
+    pub fn canvas_version(&self) -> u64 {
+        self.preview_version
     }
 }

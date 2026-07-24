@@ -87,6 +87,10 @@ pub(crate) mod painter_bridge_wetness;
 /// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
 #[cfg(test)]
 mod painter_preview_handoff_tests;
+/// Ownership gates: the shell's preview buffer is INDEPENDENT of the tool's canvas, so a plain stroke
+/// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
+#[cfg(test)]
+mod painter_preview_ownership_tests;
 /// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]

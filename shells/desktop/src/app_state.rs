@@ -1048,11 +1048,16 @@ pub(crate) struct BgremovalPreviewGpu {
     pub(crate) width: u32,
     /// Source-pixel height of the texture currently uploaded.
     pub(crate) height: u32,
-    /// `Arc::as_ptr` of the `rgba` buffer most recently uploaded,
-    /// stored as `usize` so the struct stays `Send + Sync` without an
-    /// unsafe impl — it's an identity token, never dereferenced. A
-    /// different value in the live cache means the tool produced a
-    /// new preview frame (or selection drifted) → re-upload.
+    /// Opaque change token of the pixels most recently uploaded, `usize` so the
+    /// struct stays `Send + Sync` — never dereferenced. A different value in the
+    /// live cache means new pixels → re-upload; `0` means the slot was NOT
+    /// CPU-seeded (the GPU producer's stamp), which forces the next CPU frame to a
+    /// full upload. BgRemoval fills it with `Arc::as_ptr(rgba)`; the **Painter**
+    /// fills it with the tool's monotonic `canvas_version()` — because keying on a
+    /// pointer forced the shell to hold a clone of the live canvas, and holding
+    /// that clone made `stamp_dabs`' `Arc::make_mut` copy the whole canvas every
+    /// move (the CPU-bound FPS drop on a big canvas). A version lets the shell own
+    /// its preview buffer and leave the tool sole owner of its canvas.
     pub(crate) arc_token: usize,
     /// Entity whose source produced the uploaded pixels. Used as a
     /// belt-and-suspenders check alongside `arc_token` so a

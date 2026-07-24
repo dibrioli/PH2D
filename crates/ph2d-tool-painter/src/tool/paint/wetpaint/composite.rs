@@ -3,6 +3,10 @@
 //! Selection/protection/alpha-lock gates, and the show-wet veil.
 
 use super::*;
+// The row fan-out and the engine's per-row door live HERE and nowhere else, so the imports do too: the
+// parent was three lines over the workspace LOC cap carrying names only this file uses.
+use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
+use rayon::prelude::*;
 
 /// Show-wet veil (doc 22 §2.7 — the model's damp overlay, adapted from an
 /// opaque sheet to a LAYER): a cool translucent slate composited over the

@@ -2368,3 +2368,109 @@ fn composite_region_into_canvas_refreshes_region_and_preserves_outside() {
         }
     }
 }
+
+/// **The GPU counterpart of the CPU stack-depth census** — the table behind
+/// `docs/Painter/25_avaliacao_gpu.md`.
+///
+/// `ph2d-tool-painter`'s `measure_the_stack_depth` times the CPU compositor doing a FULL recompose of an
+/// N-layer document. This is the same shape of work on the device, at the same sizes, so the two tables
+/// can be read side by side without either of them being a spec-sheet estimate.
+///
+/// Full canvas, not a dirty rect, and that is deliberate: the dirty-rect lane is the *painting* case and
+/// both producers are fast there. The number an artist actually feels as a freeze is the full recompose —
+/// a layer toggled, an opacity dragged, a blend mode changed, a document loaded.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_stack_depth_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    eprintln!("\n{:<10} {:>8} {:>16}", "layers", "canvas", "gpu floor ms");
+    for &n in &[2usize, 4, 8, 16] {
+        for &size in &[2048u32, 4096] {
+            let mut prov = MapProvider::default();
+            let mut ops = Vec::new();
+            for k in 0..n {
+                prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
+                ops.push(LayerOp::Layer {
+                    key: k as u64,
+                    blend_mode: 0,
+                    opacity: 1.0,
+                });
+            }
+            // The budget cap is part of the measurement, not an error: `LAYER_CACHE_BUDGET_BYTES`
+            // is 512 MB, so a 4096x4096 canvas (67 MB a slice) tops out at EIGHT layers and the
+            // compositor hands the document back to the CPU. Report that instead of panicking.
+            match comp.composite(&gpu, &ops, &prov, size, size, Region::full(size, size)) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("{n:<10} {size:>8} {:>16}", format!("REFUSED: {e}"));
+                    continue;
+                }
+            }
+            let floor = measure_composite(
+                &gpu,
+                &mut comp,
+                &ops,
+                &prov,
+                size,
+                size,
+                Region::full(size, size),
+                16,
+            );
+            eprintln!("{n:<10} {size:>8} {floor:>16.3}");
+        }
+    }
+    eprintln!();
+}
+
+/// The GPU counterpart of `measure_the_adjustment_drag` — the same slider drag, on the device.
+///
+/// The sibling gate `gpu_adjustment_drag_full_canvas_perf` stops at 2048x2048 because it is a BUDGET and
+/// budgets should be asserted where the product lives. This is a measurement, so it goes to 4096x4096 —
+/// where the CPU fallback costs 653 ms and the comparison stops being academic.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_adjustment_drag_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    eprintln!("\n{:<20} {:>8} {:>16}", "stack", "canvas", "gpu floor ms");
+    for &size in &[1024u32, 2048, 4096] {
+        for &n in &[1usize, 4] {
+            let mut prov = MapProvider::default();
+            let mut ops = Vec::new();
+            for k in 0..n {
+                prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
+                ops.push(LayerOp::Layer {
+                    key: k as u64,
+                    blend_mode: 0,
+                    opacity: 1.0,
+                });
+            }
+            ops.push(LayerOp::Adjustment {
+                kind: 0, // HSB — the same OKLab cbrt-heavy kind the CPU harness drags
+                params: [0.15, 0.4, 0.1],
+                blend_mode: 0,
+                opacity: 1.0,
+            });
+            let floor = measure_composite(
+                &gpu,
+                &mut comp,
+                &ops,
+                &prov,
+                size,
+                size,
+                Region::full(size, size),
+                16,
+            );
+            eprintln!(
+                "{:<20} {size:>8} {floor:>16.3}",
+                format!("{n} raster + HSB")
+            );
+        }
+    }
+    eprintln!();
+}

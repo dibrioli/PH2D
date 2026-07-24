@@ -1,3 +1,6 @@
+#[path = "measure_gpu_frontier.rs"]
+mod measure_gpu_frontier;
+
 use super::*;
 use crate::tool::paint::{ImpastoLight, MAX_IMPASTO_LIGHTS};
 use ph2d_editor_core::tool::RasterEditTool;

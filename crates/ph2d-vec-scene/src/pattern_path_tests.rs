@@ -257,3 +257,144 @@ fn a_keystroke_recook_stays_under_the_kill() {
         out.len()
     );
 }
+
+// ── A ATITUDE DO MOTIVO SOBRE A CURVA (`rotation_deg`) ───────────────────────────
+//
+// Quatro propriedades, e cada uma tem uma mutação que só ela sangra. A que mais importa é a do
+// AVANÇO: girar muda o que o motivo ocupa ao longo da guia, e se a medida não acompanhar, o
+// `spacing` passa a dizer "borda-a-borda" e a entregar sobreposição — em silêncio, para todo
+// ângulo ≠ 0.
+
+/// Um traço ALTO e fino: bbox **4 de largura × 40 de altura**. É o motivo que separa "medir antes
+/// de girar" de "medir depois": deitado ocupa 4 na guia, de pé ocupa 40 — um fator de **10**.
+fn dash() -> VecPath {
+    VecPath {
+        verts: [[0.0, 0.0], [4.0, 0.0], [4.0, 40.0], [0.0, 40.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
+/// **O avanço segue a extensão GIRADA — é o que mantém o `spacing` honesto.**
+///
+/// O contrato do `spacing` é *"1.0 encaixa as cópias borda-a-borda"*. O que encosta na cópia
+/// vizinha é a extensão do motivo **já girado**: o `dash` deitado ocupa 4 ao longo da guia, de pé
+/// ocupa 40. Numa guia de 200 isso é **50 cópias contra 5** — e as duas contagens são medidas da
+/// saída, não da fórmula.
+///
+/// A 2ª metade é a que fecha o buraco: com o motivo de pé, o **passo entre centros consecutivos**
+/// tem de ser 40 (a extensão girada), e a **largura de cada cópia** ao longo da guia também 40.
+/// Sem isso, "50 cópias" poderia ser só uma contagem certa com o desenho errado.
+///
+/// ⚠️ Mutação: medir o bbox ANTES de girar (`motif_bbox(motif, Rotor::new(0.0))`) mantém o avanço
+/// em 4 com o motivo de pé ⇒ 50 cópias sobrepostas 10× ⇒ a contagem e o passo sangram os dois.
+#[test]
+fn the_advance_follows_the_rotated_extent() {
+    let guide = straight(200.0);
+    let flat = pattern_along(&dash(), &guide, &PatternSpec::default());
+    let upright = pattern_along(
+        &dash(),
+        &guide,
+        &PatternSpec {
+            rotation_deg: 90.0,
+            ..PatternSpec::default()
+        },
+    );
+    assert_eq!(flat.len(), 50, "deitado: avanço 4 numa guia de 200");
+    assert_eq!(upright.len(), 5, "de pé: avanço 40 numa guia de 200");
+
+    // O passo entre centros E a largura de cada cópia são os DOIS a extensão girada (40).
+    for (k, c) in upright.iter().enumerate() {
+        let (lo, hi) = bbox(c);
+        assert!(
+            (hi[0] - lo[0] - 40.0).abs() < 1e-9,
+            "cópia {k}: largura na guia = {} (deveria ser 40, a ALTURA do motivo)",
+            hi[0] - lo[0]
+        );
+        assert!(
+            ((lo[0] + hi[0]) * 0.5 - (20.0 + 40.0 * k as f64)).abs() < 1e-9,
+            "cópia {k}: centro fora da sua fatia"
+        );
+    }
+}
+
+/// **A cópia veste a atitude autorada.** A seta aponta `+x` no motivo; a 90° ela tem de apontar
+/// para a NORMAL da guia (`+y` numa reta que corre em `+x`). Medido da geometria emitida
+/// (`ponta − centroide`), nunca do ângulo que entrou.
+///
+/// ⚠️ Mutação: `map_vert` ignorar o rotor deixa a seta em `+x` ⇒ `dot` com `+y` cai a 0 ⇒ RED.
+#[test]
+fn the_copies_wear_the_authored_attitude() {
+    let out = pattern_along(
+        &arrow(),
+        &straight(200.0),
+        &PatternSpec {
+            rotation_deg: 90.0,
+            ..PatternSpec::default()
+        },
+    );
+    assert!(!out.is_empty(), "esperava cópias");
+    for (k, c) in out.iter().enumerate() {
+        let tip = c.verts[1].anchor;
+        let ctr = centroid(c);
+        let dir = norm([tip[0] - ctr[0], tip[1] - ctr[1]]);
+        assert!(
+            dir[1] > 0.999,
+            "cópia {k}: a 90° a seta deveria apontar para a normal (+y), veio {dir:?}"
+        );
+    }
+}
+
+/// **A atitude é relativa à TANGENTE, não ao mundo** — e é isto que a torna parte do
+/// pattern-along em vez de um giro solto.
+///
+/// Num círculo, com 90°, cada seta tem de ser **perpendicular à tangente ALI** (paralela à normal
+/// daquele arco), e não a uma direção fixa do mundo. Provo pelas duas medidas independentes do
+/// gate irmão da tangente: (1) `dir · normal(s_k) ≈ 1` em cada cópia; (2) as direções **espalham**
+/// mais de 90° ao longo do círculo — a metade que não chama o `frame_at`.
+///
+/// ⚠️ Mutação: aplicar a rotação DEPOIS do frame (em espaço de mundo) deixa todas as setas na
+/// mesma direção ⇒ (1) falha onde a normal difere e (2) colapsa o espalhamento a 0°.
+#[test]
+fn the_attitude_rides_on_top_of_the_tangent() {
+    let guide = circle(60.0);
+    let spec = PatternSpec {
+        rotation_deg: 90.0,
+        ..PatternSpec::default()
+    };
+    let out = pattern_along(&arrow(), &guide, &spec);
+    // A seta girada ocupa 10 na guia (a ALTURA dela), então cabem muitas — o gate do avanço já
+    // pina esse número; aqui só preciso de várias para o espalhamento significar algo.
+    assert!(out.len() >= 8, "esperava várias cópias, veio {}", out.len());
+
+    let advance = 10.0; // altura(seta) × spacing 1.0 — a extensão GIRADA
+    let mut dirs = Vec::new();
+    for (k, c) in out.iter().enumerate() {
+        let tip = c.verts[1].anchor;
+        let ctr = centroid(c);
+        let dir = norm([tip[0] - ctr[0], tip[1] - ctr[1]]);
+        let (_, t) = guide.frame_at(advance * (k as f64 + 0.5));
+        let tan = norm(t);
+        let nrm = [-tan[1], tan[0]]; // a normal: a tangente rodada +90°
+        let dot = dir[0] * nrm[0] + dir[1] * nrm[1];
+        assert!(
+            dot > 0.999,
+            "cópia {k}: dir·normal = {dot} (a 90° a seta segue a NORMAL daquele arco)"
+        );
+        dirs.push(dir);
+    }
+    let mut max_ang = 0.0_f64;
+    for i in 0..dirs.len() {
+        for j in (i + 1)..dirs.len() {
+            let d = (dirs[i][0] * dirs[j][0] + dirs[i][1] * dirs[j][1]).clamp(-1.0, 1.0);
+            max_ang = max_ang.max(d.acos());
+        }
+    }
+    assert!(
+        max_ang > std::f64::consts::FRAC_PI_2,
+        "as direções deveriam espalhar >90° no círculo, espalharam {:.1}°",
+        max_ang.to_degrees()
+    );
+}

@@ -17,11 +17,35 @@
 //! da curva. O vértice do motivo entra em espaço local `[mx − cx, my − cy]` (o motivo recentrado no
 //! seu bbox), e o `apply` do frame leva `+x` do motivo **ao longo** da guia e `+y` **à normal**.
 //!
+//! # A rotação é CONSTANTE e relativa à TANGENTE
+//!
+//! O [`PatternSpec::rotation_deg`] gira o motivo dentro do referencial da cópia — ou seja, **em
+//! relação à guia**, não ao mundo. Toda cópia recebe o MESMO ângulo, então numa curva as cópias
+//! continuam a acompanhar a tangente e só ganham uma atitude fixa em cima dela (90° = de pé,
+//! atravessadas na curva). Isto **não** é o que o § seguinte recusa: ali o que não existe é uma
+//! rotação que **progride** de cópia para cópia (um leque), que é do Repeater e é dirigida por
+//! índice, não pela guia.
+//!
+//! ⚠️ **A rotação alimenta a MEDIDA do motivo, e tem de alimentar.** O avanço por cópia é
+//! `largura(bbox) × spacing`, e o contrato do `spacing` é *"1.0 encaixa borda-a-borda"* — mas o que
+//! ocupa a guia é a extensão do motivo **já girado**: um traço 1×10 deitado ocupa 1, de pé ocupa
+//! 10. Medir o bbox antes de girar deixaria o `spacing` a dizer uma coisa e a fazer outra, em
+//! silêncio, para todo ângulo ≠ 0. Por isso [`motif_bbox`] mede **no referencial girado** e é a
+//! porta ÚNICA de onde saem o avanço E a centragem — dois números que têm de concordar sobre o
+//! mesmo bbox.
+//!
+//! ⚠️ **O pivô da rotação é irrelevante, e isso é um teorema, não um descuido.** A cópia é
+//! re-centrada no bbox girado, e a re-centragem absorve o pivô: girar em torno da origem dá
+//! `R(p) − centro(R(p))`, girar em torno de `c` dá `R(p−c) − centro(R(p−c))`, e como
+//! `R(p) = R(p−c) + R(c)` os dois centros diferem exatamente por `R(c)`, que cancela. Não há
+//! *"gira em torno de quê?"* a responder errado.
+//!
 //! # O que este módulo NÃO faz (plano §3)
 //!
-//! Não **deforma** o motivo para dobrar ao longo da curva (isso é o Envelope) · não escala/roda por
-//! progressão (isso é o Repeater, `fx_repeat`, dirigido por parâmetro e não pela guia) · não
-//! **estica o avanço** para fechar exato no fim (a cauda pode sobrar; *fit* é refinamento próprio).
+//! Não **deforma** o motivo para dobrar ao longo da curva (isso é o Envelope) · não escala nem roda
+//! **por progressão** (isso é o Repeater, `fx_repeat`, dirigido por índice de cópia e não pela
+//! guia — vide o § da rotação acima, que é constante) · não **estica o avanço** para fechar exato
+//! no fim (a cauda pode sobrar; *fit* é refinamento próprio).
 
 use crate::arc_path::ArcPath;
 use crate::text_path::GlyphFrame;
@@ -66,6 +90,14 @@ pub struct PatternSpec {
     pub offset: f64,
     /// Põe o padrão do **outro lado** da curva, a percorrê-la ao contrário.
     pub flip: bool,
+    /// **Atitude do motivo sobre a curva, em GRAUS**, dentro do referencial da cópia — `90` põe o
+    /// motivo de pé, atravessado na guia. Constante em todas as cópias (§ do módulo); a unidade
+    /// está no NOME porque um ângulo sem unidade declarada é o bug que não dá erro em lado nenhum
+    /// (a mutação que troca `to_radians` por radianos crus sangra em três gates).
+    ///
+    /// `0.0` é o neutro: os gates de rotação-zero que já existiam (`the_copies_tile_the_straight_guide`,
+    /// `the_copies_rotate_to_the_tangent_on_a_curve`) seguem verdes sem tocar num número.
+    pub rotation_deg: f64,
 }
 
 impl Default for PatternSpec {
@@ -76,22 +108,78 @@ impl Default for PatternSpec {
             spacing: 1.0,
             offset: 0.0,
             flip: false,
+            rotation_deg: 0.0,
         }
     }
 }
 
-/// A largura do bbox do motivo (ao longo de x) e o **centro** do bbox.
+/// A rotação da cópia como um par `(cos, sin)`, construído **uma vez por re-cook** — nunca por
+/// vértice (o `sin_cos` é o único transcendental do módulo, e é assim que ele fica fora do laço).
+///
+/// O `identity` faz `rotation_deg == 0.0` devolver o ponto **intacto**. ⚠️ **Ele NÃO é
+/// load-bearing para a geometria, e isso foi MEDIDO, não suposto:** com `cos = 1, sin = 0` a
+/// multiplicação já é bit-exata para todo valor ordinário — os únicos bits que se movem são os de
+/// um **zero negativo** (`-0.0` vira `+0.0`), que desenha idêntico. Ou seja: não existe gate
+/// não-vácuo a escrever para este guard, porque para toda coordenada que um artista consegue
+/// autorar ele é um no-op. Fica por tornar *"rotação zero não toca em nada"* verdade **por
+/// construção** em vez de verdade por sorte da IEEE — e este comentário existe para o próximo
+/// leitor não ir procurar o gate que o justificaria.
+#[derive(Copy, Clone)]
+struct Rotor {
+    cos: f64,
+    sin: f64,
+    identity: bool,
+}
+
+impl Rotor {
+    fn new(deg: f64) -> Self {
+        if deg == 0.0 {
+            return Self {
+                cos: 1.0,
+                sin: 0.0,
+                identity: true,
+            };
+        }
+        let (sin, cos) = deg.to_radians().sin_cos();
+        Self {
+            cos,
+            sin,
+            identity: false,
+        }
+    }
+
+    fn apply(self, p: [f64; 2]) -> [f64; 2] {
+        if self.identity {
+            return p;
+        }
+        [
+            p[0] * self.cos - p[1] * self.sin,
+            p[0] * self.sin + p[1] * self.cos,
+        ]
+    }
+}
+
+/// A largura do bbox do motivo **no referencial girado** (ao longo de x, que é a direção de marcha
+/// na guia) e o **centro** desse mesmo bbox.
+///
+/// Porta ÚNICA da medida: o avanço por cópia e a centragem da cópia na fatia saem os DOIS daqui, do
+/// mesmo bbox — se saíssem de medidas diferentes, girar o motivo desalinharia o desenho do
+/// espaçamento sem que nada acusasse (§ do módulo).
 ///
 /// Sobre âncoras **e alças**: o casco convexo dos pontos de controle limita a curva, então a caixa
 /// que os inclui é um superconjunto que de fato contém o desenho — que é a medida certa para
 /// encaixar cópias sem sobrepor. Uma caixa só das âncoras cortaria uma curva que estufa para fora
 /// delas.
-fn motif_bbox(motif: &VecPath) -> (f64, [f64; 2]) {
+///
+/// Com `rot` identidade (`rotation_deg == 0`) os pontos passam intactos e o resultado é o mesmo
+/// número, ao bit, de antes de existir rotação.
+fn motif_bbox(motif: &VecPath, rot: Rotor) -> (f64, [f64; 2]) {
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     let mut seen = false;
     for v in motif.verts_all() {
         for p in [v.anchor, v.in_handle, v.out_handle] {
             seen = true;
+            let p = rot.apply(p);
             for k in 0..2 {
                 lo[k] = lo[k].min(p[k]);
                 hi[k] = hi[k].max(p[k]);
@@ -111,9 +199,16 @@ fn motif_bbox(motif: &VecPath) -> (f64, [f64; 2]) {
 ///
 /// Âncora **e as duas alças** passam pelo mesmo afim — é isso que mantém a curva sendo a imagem da
 /// curva. `corner_radius` é comprimento LOCAL e o afim é rotação + translação (sem escala), então
-/// ele sobrevive intacto (a mesma razão do `map_vert` do Repeater).
-fn map_vert(v: &VecVertex, frame: &GlyphFrame, center: [f64; 2]) -> VecVertex {
-    let m = |p: [f64; 2]| frame.apply([p[0] - center[0], p[1] - center[1]]);
+/// ele sobrevive intacto (a mesma razão do `map_vert` do Repeater) — e a rotação da cópia, sendo
+/// também rígida, não o toca.
+///
+/// A ordem é **gira → recentra → leva ao mundo**: o `center` já veio medido no referencial girado
+/// (por [`motif_bbox`]), então subtraí-lo depois de girar é o que põe a cópia no meio da fatia.
+fn map_vert(v: &VecVertex, frame: &GlyphFrame, rot: Rotor, center: [f64; 2]) -> VecVertex {
+    let m = |p: [f64; 2]| {
+        let p = rot.apply(p);
+        frame.apply([p[0] - center[0], p[1] - center[1]])
+    };
     VecVertex {
         anchor: m(v.anchor),
         in_handle: m(v.in_handle),
@@ -145,7 +240,9 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     if total <= 0.0 {
         return Vec::new();
     }
-    let (width, center) = motif_bbox(motif);
+    // O rotor UMA vez por re-cook; a medida do motivo sai do referencial DELE (§ do módulo).
+    let rot = Rotor::new(spec.rotation_deg);
+    let (width, center) = motif_bbox(motif, rot);
     let advance = (width * spec.spacing).max(MIN_ADVANCE);
     let inv = 1.0 / advance;
 
@@ -168,7 +265,10 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     let count = ((k_hi - k_lo + 1.0).min(MAX_COPIES as f64)) as usize;
 
     let map_contour = |verts: &[VecVertex], frame: &GlyphFrame| -> Vec<VecVertex> {
-        verts.iter().map(|v| map_vert(v, frame, center)).collect()
+        verts
+            .iter()
+            .map(|v| map_vert(v, frame, rot, center))
+            .collect()
     };
 
     let mut out = Vec::new();

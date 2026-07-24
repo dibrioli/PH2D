@@ -438,3 +438,63 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
     );
     assert_screen_equals(&shown, &truth, size, "GPU producer vs CPU producer");
 }
+
+/// **Where a MASKED stroke's frame goes** — the census behind the mask-path FPS report.
+///
+/// A masked layer is GPU-representable (Ondas 1-2), so a stroke on it takes the GPU PRODUCER, not
+/// the CPU trivial lane that Onda 5a made footprint-bound. This measures that producer's per-move
+/// cost at two canvas sizes. If it grows ~4x with the canvas, the cost is plane-bound — the whole
+/// changed layer re-uploaded per frame (`ensure_slice` -> full `write_texture`) plus the always-full
+/// composite (`try_drive` passes `seed_full = true`), the two O(canvas) costs Onda 5b must make
+/// partial. `#[ignore]`: needs a GPU adapter; run with `--release --ignored`.
+#[test]
+#[ignore = "perf measurement (GPU adapter) — run with --release --ignored"]
+fn measure_the_masked_stroke_on_the_gpu_producer() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    fn per_move(gpu: &ph2d_gpu::GpuContext, size: u32) -> (f64, bool) {
+        use ph2d_editor::tool::RasterEditTool;
+        let mut renderer = ph2d_render::SpriteRenderer::new(
+            gpu.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(gpu),
+            8,
+        );
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_size_px(16.0);
+        t.add_mask_to_active().expect("a mask on the active layer");
+        let (mut session, mut preview, mut toasts) =
+            (None, None, ph2d_editor::toast::ToastQueue::default());
+        let mut preview_gpu: Option<PainterPreviewGpu> = None;
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([40.0, mid], PointerPhase::Down));
+        let mut owns = false;
+        let mut moves = Vec::new();
+        for i in 1..=24u32 {
+            let x = 40.0 + 20.0 * (i as f32);
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            owns = app_frame(
+                &mut renderer,
+                &mut t,
+                &mut session,
+                &mut preview,
+                &mut preview_gpu,
+                &mut toasts,
+            );
+            moves.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        (moves[moves.len() / 2], owns)
+    }
+    let (ms_2k, owns_2k) = per_move(&gpu, 2048);
+    let (ms_4k, owns_4k) = per_move(&gpu, 4096);
+    eprintln!(
+        "[masked-move] 2048²={ms_2k:.3} ms (gpu_owns={owns_2k})  4096²={ms_4k:.3} ms \
+         (gpu_owns={owns_4k})  ratio {:.1}x",
+        ms_4k / ms_2k.max(1e-6)
+    );
+}

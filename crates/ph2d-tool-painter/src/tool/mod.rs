@@ -154,6 +154,12 @@ pub struct PainterTool {
     dock_shows_layers: bool,
     /// Accumulated dirty bbox for the partial-recompose fast lane (`take_preview_arc`).
     dirty_rect: Option<Region>,
+    /// The region the LAST GPU-lane drain (`take_preview_dirty`) took out of `dirty_rect` — stashed
+    /// so the GPU compositor's per-layer provider (`preview_layer_pixels`) can hand it back as
+    /// `LayerPixels.dirty`, and the compositor re-uploads only that sub-rect of the changed (active)
+    /// layer instead of the whole slice per move. The CPU lane's equivalent is `preview_upload_bbox`;
+    /// this is its GPU-lane twin (the GPU lane bypasses `take_preview_arc`).
+    preview_dirty_region: Option<Region>,
     /// Multi-selection — the set of layer rows highlighted in the panel. Plain
     /// click collapses to one; Cmd/Ctrl-click toggles; Shift-click selects a run.
     selection: BTreeSet<RtLayerId>,
@@ -213,6 +219,7 @@ impl Default for PainterTool {
             deferred_bake: false,
             undo: crate::undo::UndoController::default(),
             dirty_rect: None,
+            preview_dirty_region: None,
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,

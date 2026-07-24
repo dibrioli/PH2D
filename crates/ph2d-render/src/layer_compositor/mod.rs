@@ -193,6 +193,20 @@ impl Region {
 pub struct LayerPixels<'a> {
     pub version: u64,
     pub rgba8: &'a [u8],
+    /// The sub-rectangle of `rgba8` that changed since this layer was LAST
+    /// uploaded — the compositor then re-uploads only that region instead of the
+    /// whole `canvas_w × canvas_h` slice (a plain stroke on a big canvas was
+    /// re-uploading the entire layer per move: 64 MiB @ 4096² to deposit one dab).
+    ///
+    /// **Must cover EVERY change since the last upload**, or the untouched slice
+    /// pixels go stale. The caller accumulates it across frames (union) and
+    /// resets it exactly when the compositor consumes it (upload and reset are
+    /// one call in the painter bridge). `None` ⇒ upload the whole slice: the
+    /// honest default for a first upload (the slice is not resident yet), a
+    /// layer that changed everywhere (undo, fresh source), or a caller that does
+    /// not track regions. The compositor also ignores it on a first (non-resident)
+    /// upload — a partial patch over an unallocated slice would leave it garbage.
+    pub dirty: Option<Region>,
 }
 
 /// Resolves a layer key to its current pixels. Implemented by the painter tool

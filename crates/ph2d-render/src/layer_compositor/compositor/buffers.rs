@@ -89,7 +89,15 @@ impl LayerCompositor {
             }
             let slice = existing.slice;
             existing.version = pixels.version;
-            self.upload_slice(gpu, slice, width, height, pixels.rgba8);
+            // The slice is RESIDENT and only its version moved, so a partial patch is sound: the
+            // untouched texels are the previous upload, still valid. `dirty` (when the caller supplies
+            // it) is the region that changed since that upload, so re-upload only that — a plain stroke
+            // on a big canvas patches the dab footprint instead of the whole `width × height` slice
+            // (64 MiB @ 4096² per move). `None` ⇒ the caller can't bound the change ⇒ full upload.
+            match pixels.dirty {
+                Some(r) => self.upload_slice_region(gpu, slice, width, height, pixels.rgba8, r),
+                None => self.upload_slice(gpu, slice, width, height, pixels.rgba8),
+            }
             return Ok(());
         }
 
@@ -176,6 +184,58 @@ impl LayerCompositor {
             wgpu::Extent3d {
                 width,
                 height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    /// Upload ONLY `region` of a resident layer slice — the partial sibling of [`Self::upload_slice`].
+    ///
+    /// Reads the sub-rect straight out of the full `rgba8` buffer in place: `offset` points at
+    /// `(region.x, region.y)` and `bytes_per_row` stays the FULL row stride, so `write_texture` walks
+    /// `region.h` rows of `region.w` texels each without a CPU gather. `origin` places them at the same
+    /// coords in the slice, so the untouched texels keep the previous upload. `region` is assumed
+    /// in-bounds (`x+w ≤ width`, `y+h ≤ height`) and non-empty — the caller (`ensure_slice`) only
+    /// reaches here for a resident slice whose provider bounded the change; a degenerate region is a
+    /// cheap no-op write, never a panic.
+    pub(super) fn upload_slice_region(
+        &self,
+        gpu: &GpuContext,
+        slice: u32,
+        width: u32,
+        height: u32,
+        rgba8: &[u8],
+        region: super::super::Region,
+    ) {
+        let Some(array) = &self.array else { return };
+        let (rx, ry, rw, rh) = (region.x, region.y, region.w, region.h);
+        // Out-of-bounds / empty ⇒ fall back to a full upload rather than issue an invalid copy. This
+        // is defence, not the path: the provider bounds the region to the canvas it just painted.
+        if rw == 0 || rh == 0 || rx + rw > width || ry + rh > height {
+            self.upload_slice(gpu, slice, width, height, rgba8);
+            return;
+        }
+        let offset = (u64::from(ry) * u64::from(width) + u64::from(rx)) * 4;
+        gpu.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &array.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: rx,
+                    y: ry,
+                    z: slice,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba8,
+            wgpu::TexelCopyBufferLayout {
+                offset,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: Some(rh),
+            },
+            wgpu::Extent3d {
+                width: rw,
+                height: rh,
                 depth_or_array_layers: 1,
             },
         );

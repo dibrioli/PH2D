@@ -74,6 +74,7 @@ impl LayerPixelProvider for Dummy<'_> {
         Some(LayerPixels {
             version: 0,
             rgba8: self.px,
+            dirty: None,
         })
     }
 }

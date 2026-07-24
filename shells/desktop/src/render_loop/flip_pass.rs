@@ -76,6 +76,7 @@ impl LayerPixelProvider for DummyProvider<'_> {
         Some(LayerPixels {
             version: 0,
             rgba8: self.pixels,
+            dirty: None, // flip composites whole layers, never incrementally
         })
     }
 }

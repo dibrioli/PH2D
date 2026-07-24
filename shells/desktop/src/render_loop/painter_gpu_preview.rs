@@ -67,7 +67,13 @@ impl LayerPixelProvider for PainterLayerProvider<'_> {
     fn layer_pixels(&self, key: u64) -> Option<LayerPixels<'_>> {
         self.tool
             .preview_layer_pixels(key)
-            .map(|(version, rgba8)| LayerPixels { version, rgba8 })
+            .map(|(version, rgba8, dirty)| LayerPixels {
+                version,
+                rgba8,
+                // The active layer's dirty sub-rect (tuple → the render crate's `Region`), so the
+                // compositor re-uploads only what the stroke touched instead of the whole slice.
+                dirty: dirty.map(|(x, y, w, h)| Region { x, y, w, h }),
+            })
     }
 }
 

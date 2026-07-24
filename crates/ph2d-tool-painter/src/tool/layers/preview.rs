@@ -39,8 +39,15 @@ impl PainterTool {
     /// re-uploads a slice only on a real pixel edit. `None` for an unknown key
     /// or an empty active buffer (the bridge then falls back to the CPU
     /// compositor). W3 GPU preview (ADR-0045 Phase 3, step 2).
+    // (version, pixels, dirty-rect-tuple): a plain tuple, not a named struct or the render crate's
+    // `LayerPixels`/`Region`, precisely so the tool stays decoupled from `ph2d-render` (the bridge
+    // builds `LayerPixels` from it). The complexity is the decoupling boundary, not an accident.
+    #[allow(clippy::type_complexity)]
     #[must_use]
-    pub fn preview_layer_pixels(&self, key: u64) -> Option<(u64, &[u8])> {
+    pub fn preview_layer_pixels(
+        &self,
+        key: u64,
+    ) -> Option<(u64, &[u8], Option<(u32, u32, u32, u32)>)> {
         let id = RtLayerId(key);
         let version = self.layer_pixel_versions.get(&id).copied().unwrap_or(0);
         if self.layers.active() == Some(id) {
@@ -48,11 +55,18 @@ impl PainterTool {
             if buf.is_empty() {
                 return None;
             }
-            Some((version, buf))
+            // Only the ACTIVE layer changes during a stroke, and only in the region the last drain
+            // took (`preview_dirty_region`). Hand it to the compositor so it patches that sub-rect
+            // instead of re-uploading the whole slice. A tuple (not the render crate's `Region`) keeps
+            // the tool decoupled from `ph2d-render`; the bridge builds the `LayerPixels.dirty`.
+            let dirty = self.preview_dirty_region.map(|r| (r.x, r.y, r.w, r.h));
+            Some((version, buf, dirty))
         } else {
+            // A non-active layer that changed (undo, fresh source) has no bounded region here → `None`
+            // ⇒ the compositor re-uploads it whole, which is correct.
             self.images
                 .get(&id)
-                .map(|img| (version, img.rgba8.as_slice()))
+                .map(|img| (version, img.rgba8.as_slice(), None))
         }
     }
 
@@ -79,7 +93,13 @@ impl PainterTool {
         let dirty = std::mem::take(&mut self.preview_dirty);
         if dirty {
             self.composited = None;
-            self.dirty_rect = None;
+            // Move the accumulated dirty rect into `preview_dirty_region` (don't drop it, as before):
+            // the GPU compositor's provider (`preview_layer_pixels`) hands it back as the active
+            // layer's `LayerPixels.dirty`, so only that sub-rect of the layer is re-uploaded. Taking
+            // it here (union-accumulated by `mark_dirty` since the last drain, reset now) makes the
+            // region cover EXACTLY the changes since the last GPU upload — drain and upload are one
+            // `try_drive` call, so they stay in lockstep even if a frame is dropped.
+            self.preview_dirty_region = self.dirty_rect.take();
         }
         dirty
     }

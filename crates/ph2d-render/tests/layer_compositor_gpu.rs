@@ -53,6 +53,7 @@ impl LayerPixelProvider for MapProvider {
         self.layers.get(&key).map(|(v, b)| LayerPixels {
             version: *v,
             rgba8: b,
+            dirty: None, // this provider always re-uploads whole slices
         })
     }
 }
@@ -670,6 +671,100 @@ fn gpu_dirty_rect_matches_full() {
                 &full[fi..fi + 4],
                 &part[pi..pi + 4],
                 "dirty-rect pixel ({gx},{gy}) != full recompose"
+            );
+        }
+    }
+}
+
+/// Provider for the partial-upload gate: ONE layer whose bytes / version / dirty region I change
+/// between composites, so the compositor's `ensure_slice` takes the resident-slice + version-changed
+/// path (the only one that can patch a region).
+struct DirtyLayerProvider {
+    version: u64,
+    bytes: Vec<u8>,
+    dirty: Option<Region>,
+}
+
+impl LayerPixelProvider for DirtyLayerProvider {
+    fn layer_pixels(&self, key: u64) -> Option<LayerPixels<'_>> {
+        if key == 0 {
+            Some(LayerPixels {
+                version: self.version,
+                rgba8: &self.bytes,
+                dirty: self.dirty,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+/// **A resident layer re-uploads ONLY its dirty region — the whole point of Onda 5b.**
+///
+/// The mask-path FPS drop was the compositor re-uploading the WHOLE changed layer per move (64 MiB @
+/// 4096²). Seed a slice with a solid colour (full upload, new key), then hand it a buffer that differs
+/// EVERYWHERE but declare only a sub-rect dirty. The composite must then show the new colour INSIDE
+/// the rect and the SEED colour OUTSIDE it — proof the compositor patched only the region and left the
+/// rest of the resident slice from the prior upload.
+///
+/// Mutations that must bleed: `upload_slice_region` doing a full upload (outside the rect turns the
+/// new colour); uploading nothing / the wrong rect (inside the rect stays the seed colour).
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_partial_layer_upload_patches_only_the_dirty_region() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let solid = |v: u8| [v, v, v, 255].repeat((w * h) as usize);
+    let ops = vec![LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+        mask: None,
+        clipping: false,
+    }];
+    let full = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    let (seed_v, new_v) = (40u8, 200u8);
+
+    // Seed: solid `seed_v`, version 1 → NEW key → full upload.
+    let mut prov = DirtyLayerProvider {
+        version: 1,
+        bytes: solid(seed_v),
+        dirty: None,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, full).expect("seed");
+
+    // New colour EVERYWHERE, but only R declared dirty, version 2 → resident + version-changed →
+    // partial upload of R alone.
+    let r = Region {
+        x: 12,
+        y: 20,
+        w: 25,
+        h: 18,
+    };
+    prov.bytes = solid(new_v);
+    prov.version = 2;
+    prov.dirty = Some(r);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("partial");
+    let got = comp.read_output(&gpu).expect("readback");
+
+    for py in 0..h {
+        for px in 0..w {
+            let i = ((py * w + px) * 4) as usize;
+            let inside = px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+            let want = if inside { new_v } else { seed_v };
+            assert!(
+                (i32::from(got[i]) - i32::from(want)).abs() <= 2,
+                "({px},{py}) inside={inside}: want ~{want}, got {} — the partial upload {}",
+                got[i],
+                if inside {
+                    "did not patch the dirty region"
+                } else {
+                    "leaked outside the dirty region (a full upload?)"
+                }
             );
         }
     }

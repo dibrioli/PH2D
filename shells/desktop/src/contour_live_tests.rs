@@ -180,20 +180,18 @@ fn a_shape_without_a_contour_is_left_alone() {
 /// **Arrastar o slider não faz nenhum anel PISCAR** — o gate do report do Enio (*"o efeito não é
 /// contínuo, mas dá saltos como se piscasse"*).
 ///
-/// # O que ele mede, e por que a contagem é o oráculo certo
+/// # A contagem de anéis é estável durante o arrasto
 ///
-/// O que o artista vê como piscar é um anel a **desaparecer e voltar**: o `linesweeper` não
-/// consegue responder em algumas distâncias, o `offset_path` devolve vazio, e o anel some do
-/// quadro por um frame. Medido no motor cru com o hexágono do smoke: **70 trocas de contagem**
-/// numa varredura de 240 passos de `d`, que é o que um arrasto de slider faz.
+/// O que o artista via como piscar era um anel a **desaparecer e voltar** — o `linesweeper`
+/// panicava em muitas distâncias, o `offset_path` devolvia vazio, e o anel sumia. Isso foi curado
+/// na RAIZ pelo offset DIRETO (`offset_ring`), que cobre o caso comum sem tocar o `linesweeper`.
 ///
-/// O oráculo é a CONTAGEM de caminhos que o `dispatch` desenharia, e não a geometria: a geometria
-/// muda a cada passo *de propósito* (é o efeito a seguir o slider). O que **não** pode acontecer é
-/// o número de anéis cair e subir.
-///
-/// ⚠️ Mutação: tirar o `last_good` do `ensure` (o anel vazio passa direto) ⇒ a contagem oscila ⇒
-/// RED. O fixture usa um HEXÁGONO, e é obrigatório: num quadrado o sweep responde em toda
-/// distância — a fixture tem de CONTER o fenômeno.
+/// ⚠️ **Este gate NÃO distingue o mecanismo** — ele prova só que a contagem é estável, e isso é
+/// verdade tanto com o offset direto (curado) quanto com a booleana+`last_good` (mascarado). Quem
+/// distingue, e prova o FPS, é o irmão `dragging_a_plain_contour_never_calls_the_booleana` (conta
+/// as chamadas ao sweep). Este fica como guarda de que a estabilidade sobrevive a qualquer
+/// mudança futura. O fixture é um HEXÁGONO de propósito: num quadrado o sweep respondia sempre — a
+/// fixture tem de conter o fenômeno que o offset direto agora previne.
 #[test]
 fn dragging_the_offset_never_makes_a_ring_blink() {
     let mut sim = SimWorld::default();
@@ -246,5 +244,69 @@ fn dragging_the_offset_never_makes_a_ring_blink() {
         "a contagem de caminhos CAIU {drops} vezes durante o arrasto — é o piscar que o Enio \
          reportou: um anel que o sweep não conseguiu cozer sumiu do quadro em vez de ficar onde \
          estava (a guarda `last_good` do `ensure`)"
+    );
+}
+
+/// **O arrasto de `d` num contour comum NÃO chama a booleana** — o gate do FPS (report do Enio:
+/// *"queda importante de FPS"*), no padrão do ADR-0120 (contar as vezes que o caminho CARO dispara).
+///
+/// A raiz do FPS era cozer N `offset_path` (sweep booleano, 0,334 ms/anel) por frame de arrasto.
+/// O offset DIRETO (`offset_ring`, ~0,0005 ms/anel, 668×) cobre o caso comum — contorno único,
+/// Outer — sem tocar o `linesweeper`. Este gate dirige um arrasto de hexágono (N=8, 240 passos de
+/// `d`) e exige que a booleana seja chamada **ZERO** vezes.
+///
+/// ⚠️ É o gate que DISTINGUE o mecanismo, e o irmão anti-blink não distinguia: aquele mede a
+/// contagem de anéis, que é estável tanto com o offset direto quanto com a booleana+`last_good`.
+/// Mutação: trocar `offset_ring().unwrap_or_else(offset_path)` por `offset_path` direto ⇒ a
+/// booleana é chamada 240×8 vezes ⇒ RED. É também por que o custo cai: a booleana não roda.
+#[test]
+fn dragging_a_plain_contour_never_calls_the_booleana() {
+    let mut sim = SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let mut scene = VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::cook(
+        ph2d_vec_scene::ShapeKind::Polygon,
+        [1.0, -1.2],
+        [3.4, 1.2],
+        &[6.0],
+    ));
+    let e = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Hex"), VecPathRef(id)))
+        .id();
+    map.insert(id, e.to_bits());
+    if let Some(p) = scene.path_mut(id) {
+        p.fill = Some(Paint::solid(Rgba8::new(0, 0, 0, 255)));
+    }
+    arm(
+        &mut sim,
+        &map,
+        id,
+        VecContour {
+            steps: 8,
+            d: 0.0,
+            accel: 1.0,
+            join: 1,
+            ..VecContour::default()
+        },
+    );
+    let mut live = ContourLive::default();
+    let xf = VecXforms::new();
+    let before = ph2d_vec_boolean::__sweep_calls();
+    for i in 1..=240 {
+        let d = f64::from(i) * 0.005;
+        if let Some(mut c) = sim
+            .world_mut()
+            .get_mut::<VecContour>(ph2d_ecs::Entity::from_bits(map[&id]))
+        {
+            c.d = d;
+        }
+        live.recook(&scene, &sim, &map, &xf);
+    }
+    let calls = ph2d_vec_boolean::__sweep_calls() - before;
+    assert_eq!(
+        calls, 0,
+        "o arrasto de um contour de contorno unico chamou o sweep booleano {calls} vezes — o \
+         offset direto devia ter coberto TODOS os aneis (a raiz do FPS e do pisca-pisca)"
     );
 }

@@ -43,7 +43,7 @@ use ph2d_vec_scene::{
     FillRule, LineCap, LineJoin, OffsetSide, Paint, StrokePiece, StrokeSpec, VecPath, stroke_plan,
 };
 
-use crate::{Closing, binary_grouped, compound_from, flatten_groups, to_bez_with};
+use crate::{Closing, binary_grouped, compound_from, flatten_groups, to_bez_with, verts_from_bez};
 
 /// **A fita do Power Stroke** — módulo irmão (teto de LOC): o que MOLDA o traço de largura
 /// variável. O sweep e a limpeza de lascas ficam aqui, compartilhados com o Offset.
@@ -324,6 +324,101 @@ fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
         .collect()
 }
 
+/// **Offset DIRETO — a borda do traço, sem a booleana.** ~668× mais barato que [`offset_path`]
+/// e **nunca passa pelo `linesweeper`** (não panica).
+///
+/// # A ideia, que é a mesma que o Pattern/Blend usam
+///
+/// Um anel de contour é a **dilatação de Minkowski** da forma por um disco de raio `d` — a forma
+/// crescida. O contorno EXTERNO do `kurbo::stroke(forma, 2·d)` **é** essa fronteira; preenchê-lo
+/// resolve a dilatação. O caro (a booleana) só existia para *limpar a geometria*; para um
+/// preview que o **rasterizador** preenche com `NonZero`, a geometria não precisa ser limpa — o
+/// Vello resolve a auto-interseção. Medido (`the_ring_matches_the_booleana`): a área **NonZero**
+/// do loop externo é IDÊNTICA à da booleana, convexo E côncavo, qualquer `d` — e **correta onde a
+/// booleana panica**.
+///
+/// Por isso o resultado sai com **`fill_rule = NonZero`** e pode ser auto-cruzado: é um preview,
+/// não geometria editável. O [`offset_path`] (booleana) fica para o **Expand**, que materializa
+/// formas limpas num clique único — não por-frame.
+///
+/// # O domínio, e por que devolve `None` fora dele
+///
+/// Só o **contorno único** (sem furos), lado **Outer**. Compound e Inner/Both são raros num
+/// contour e a topologia deles (furo que encolhe, dois lados) é onde a booleana ganha o custo
+/// dela; `None` diz ao chamador *"use a booleana"*. `Some(vec![])` é diferente: *"eu sei fazer, e
+/// a forma sumiu ao encolher"* (o interior colapsou sob `d` negativo grande).
+#[must_use]
+pub fn offset_ring(
+    path: &VecPath,
+    d: f64,
+    join: LineJoin,
+    side: OffsetSide,
+) -> Option<Vec<VecPath>> {
+    if !d.is_finite()
+        || d.abs() < MIN_OFFSET
+        || !path.subpaths.is_empty()
+        || side != OffsetSide::Outer
+    {
+        return None;
+    }
+    let bez = to_bez_with(path, Closing::Always);
+    let tol = tolerance(&bez);
+    let pen = Stroke::new(2.0 * d.abs())
+        .with_join(join_of(join))
+        .with_caps(Cap::Butt);
+    let traced = weld_seams(&kurbo::stroke(&bez, &pen, &StrokeOpts::default(), tol), tol);
+    // O traço de um laço fechado tem DOIS contornos: o externo (offset `+d`) e o interno (`−d`).
+    // Crescer (`d>0`) quer o de maior área; encolher (`d<0`) o de menor. Um loop degenerado (a
+    // forma sumiu) tem área ~0 e não conta.
+    let mut loops: Vec<(f64, BezPath)> = split_loops(&traced)
+        .into_iter()
+        .map(|l| (l.area().abs(), l))
+        .filter(|(a, _)| *a > MIN_TOL)
+        .collect();
+    if loops.is_empty() {
+        return Some(Vec::new()); // sei fazer: a forma encolheu até sumir
+    }
+    loops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let chosen = if d > 0.0 {
+        loops.pop()
+    } else {
+        loops.into_iter().next()
+    };
+    let Some((_, loop_bez)) = chosen else {
+        return Some(Vec::new());
+    };
+    let Some(verts) = verts_from_bez(&loop_bez) else {
+        return Some(Vec::new());
+    };
+    Some(vec![VecPath {
+        verts,
+        closed: true,
+        fill: path.fill.clone(),
+        stroke: path.stroke,
+        // ⚠️ **NonZero, e é a espinha:** o loop pode ser auto-cruzado (côncavo + `d` grande), e é
+        // o winding NonZero do rasterizador que preenche a auto-interseção — o mesmo que a
+        // booleana faria, sem o custo dela.
+        fill_rule: FillRule::NonZero,
+        ..VecPath::default()
+    }])
+}
+
+/// Quebra um `BezPath` de vários sub-contornos num `BezPath` por contorno (corte em cada `MoveTo`).
+fn split_loops(bez: &BezPath) -> Vec<BezPath> {
+    let mut out: Vec<BezPath> = Vec::new();
+    let mut cur = BezPath::new();
+    for el in bez.elements() {
+        if matches!(el, PathEl::MoveTo(_)) && !cur.elements().is_empty() {
+            out.push(std::mem::take(&mut cur));
+        }
+        cur.push(*el);
+    }
+    if !cur.elements().is_empty() {
+        out.push(cur);
+    }
+    out
+}
+
 /// **Offset Path** — move a borda da forma por `d`, com quinas em `join`, e `side` diz QUAIS
 /// contornos participam.
 ///
@@ -368,10 +463,24 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
     if d.abs() < MIN_OFFSET || !d.is_finite() {
         return Vec::new();
     }
+    // Conta cada entrada no sweep — o gate do Contour prova que o preview VIVO não o chama
+    // (o offset direto cobre o caso comum), que é a raiz do FPS e do pânico. Padrão do ADR-0120
+    // ("o gate que conta quantas vezes o caminho CARO dispara").
+    SWEEP_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         offset_path_inner(path, d, join, side)
     }))
     .unwrap_or_default()
+}
+
+/// Quantas vezes [`offset_path`] (o sweep booleano, caro e capaz de panicar) foi chamado.
+static SWEEP_CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// O contador de entradas no sweep booleano — para o gate de perf do Contour (ADR-0120).
+#[doc(hidden)]
+#[must_use]
+pub fn __sweep_calls() -> u64 {
+    SWEEP_CALLS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 fn offset_path_inner(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {

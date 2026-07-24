@@ -25,7 +25,9 @@ pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 /// **Expand** — Outline Stroke (o traço vira forma) e Offset Path (a forma cresce). Módulo
 /// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.
 pub mod expand;
-pub use expand::{MIN_OFFSET, offset_path, outline_stroke, power_stroke};
+pub use expand::{
+    __sweep_calls, MIN_OFFSET, offset_path, offset_ring, outline_stroke, power_stroke,
+};
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex, VertexKind};
@@ -268,7 +270,7 @@ pub(crate) fn to_bez_with(path: &VecPath, closing: Closing) -> BezPath {
 
 /// kurbo `BezPath` (um contorno) → vértices (âncoras + handles reconstruídos dos
 /// elementos), **podado** por [`prune_contour`]. `None` se degenerar em < 3.
-fn verts_from_bez(bp: &BezPath) -> Option<Vec<VecVertex>> {
+pub(crate) fn verts_from_bez(bp: &BezPath) -> Option<Vec<VecVertex>> {
     let mut verts: Vec<VecVertex> = Vec::new();
     for el in bp.elements() {
         match *el {

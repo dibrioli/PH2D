@@ -497,3 +497,79 @@ de slice como bitfield) e 1 do orçamento por-dispositivo.
   (`push_error_scope(OutOfMemory)`), não um literal maior.
 - Uma **máscara de ajuste ESPACIAL** ainda cai na CPU: o passo de combine do
   pass-graph não tem entrada de máscara.
+
+## 11. Onda 5a — a pintura para de copiar o canvas inteiro por movimento (2026-07-24)
+
+Smoke do Enio: *"imagem 2048x2048 brush size de 0.5, pintura simples, com queda de
+FPS. parece dependente de CPU."* Pincel pequeno + tela grande + queda de FPS = custo
+por-frame **O(canvas), independente da pegada** — se fosse o depósito, um pincel
+minúsculo não derrubaria nada. **Nada disto é o compositor** das Ondas 1–2: um traço
+simples numa camada é trivial e nem chega ao compositor GPU; ele toma o caminho **CPU**
+(`take_preview_arc` + upload), que é exatamente o *"parece dependente de CPU"*.
+
+### 11.1 O que a medição mostrou
+
+O depósito é barato; o custo era um **`Arc::make_mut` do canvas inteiro por
+movimento**, forçado porque a shell segurava um clone do `canvas_rgba` vivo do tool (em
+`painter_preview.rgba`) atravessando o frame — então o próximo `stamp_dabs` via um 2º
+dono e copiava o plano todo antes de carimbar o dab.
+
+| canvas | raio | segurando (bug) | soltando (tool dono único) | razão |
+|---|---|---|---|---|
+| 2048² | 1 px | 0,340 ms/move | 0,003 | **132×** |
+| 2048² | 16 px | 0,441 | 0,095 | 4,6× |
+| 4096² | 1 px | **10,285** | 0,003 | **3851×** |
+| 4096² | 16 px | 9,779 | 0,091 | 107× |
+
+O custo *segurando* é **plano no raio** (0,34/0,33/0,37/0,44 ms a 2048² para raios
+1..16) — é a cópia do canvas, que não liga para o dab. A coluna *soltando* é o alvo.
+
+### 11.2 A causa é a MESMA que o ADR-0124 já curou no áudio
+
+A shell segurava o clone para detectar mudança por **identidade de ponteiro** (o
+`make_mut` devolvia ponteiro novo numa mudança). É o anti-padrão *"pergunte a versão,
+nunca o ponteiro."* Fix:
+
+- **`PainterTool::canvas_version()`** — contador monotônico, bumpado 1× por drain sujo.
+- A shell **possui o próprio buffer de preview** (`own_preview_buffer`: cópia cheia no
+  seed, `buffer anterior + patch da região suja` num frame parcial) e **solta** o `Arc`
+  drenado. O tool fica **dono único** do `canvas_rgba` → escrita **in place**.
+- Sem mudança de struct: o `arc_token` do slot (token opaco de mudança, compartilhado
+  com o bgremoval) carrega a **versão** para o painter; `0` segue o sentinela do
+  produtor GPU (força upload cheio no handoff GPU→CPU).
+
+### 11.3 Resultado, medido no caminho REAL (`own_preview_buffer`)
+
+`a_plain_stroke_is_footprint_bound_when_the_shell_owns_its_buffer`:
+
+```
+OWN  (fix)  2048²=0,096 ms  4096²=0,097 ms   razão 1,0x   (footprint-bound)
+HOLD (bug)  2048²=0,441 ms  4096²=9,834 ms   razão 22,3x  (o plano copiado)
+```
+
+A 4096² um traço simples vai de **9,8 → 0,1 ms/move (~100×)** e passa a ser **plano no
+tamanho da tela**. O depósito não foi tocado ⇒ a **aparência é byte-idêntica**; esta
+onda é custo, não pixel.
+
+⚠️ **A residência de canvas na GPU (Onda 5) segue por fazer e segue não sendo
+necessária para ESTE problema** — a medição mostra o depósito CPU já barato (0,003–0,6
+ms/move) para todo pincel realista uma vez removida a cópia. A Onda 5 vira otimização de
+escala extrema / liberar a CPU, não o conserto do FPS reportado.
+
+### 11.4 Gates (5, mutação-provados; + 1 lever consertado)
+
+- `the_shell_owns_its_preview_buffer_never_the_tools_canvas` — buffer INDEPENDENTE +
+  byte-fiel (mut `Arc::clone(drained)` → `ptr_eq` RED).
+- `canvas_version_advances_on_a_dirty_drain_and_holds_on_an_idle_one` (tool) — mut
+  dropar o `+= 1` → `0 -> 0` RED.
+- `the_paint_drain_owns_its_preview_buffer` — arch-gate sobre o fonte do drain (roteia
+  pelo helper, nunca `rgba: drained`).
+- `a_plain_stroke_is_footprint_bound...` — razão perf (`#[ignore]`), fix vs o controle
+  que segura o Arc.
+- Os gates de pipeline foram religados à **versão** + a um **oráculo de verdade
+  INDEPENDENTE** (um bug de patch da região não se esconde atrás de um slot derivado do
+  próprio mirror).
+- ⚠️ **Latente da Onda 2, que o gate de handoff GPU-adapter nunca rodou:** o lever dele
+  era *"máscara flipa elegibilidade para a CPU"*, mas a Onda 2 tornou máscara
+  **representável**. Movido para um **ajuste não-portado** (`ColorBalance`) — o `ship.sh`
+  não roda gate GPU-adapter, então ele ficou verde-latente por exatamente uma onda.

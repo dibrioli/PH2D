@@ -102,9 +102,7 @@ pub(super) fn dispatch(
     // timings + the canvas dims. This is what tells the difference between "the GPU producer's partial
     // upload fired" and "the mask stroke fell to a full CPU composite every frame" — the two the
     // headless proxy cannot tell apart. Zero cost when the var is unset.
-    let perf_t0 = std::env::var_os("PH2D_PAINT_PERF")
-        .is_some()
-        .then(std::time::Instant::now);
+    let perf_t0 = super::paint_perf::on().then(std::time::Instant::now);
     let mut dbg_trivial = false;
     let mut dbg_gray = false;
     let mut dbg_active_is_mask = false;
@@ -626,18 +624,18 @@ pub(super) fn dispatch(
     if let Some(t0) = perf_t0
         && painter_is_active
     {
-        let producer = if gpu_owns_preview { "GPU" } else { "CPU" };
-        let cpu_lane = match painter_dirty_bbox {
-            Some((_, _, w, h)) => format!("partial {w}x{h}"),
-            None => "full/idle".to_string(),
-        };
-        eprintln!(
-            "[paint-perf] {producer} dispatch={:.2}ms canvas={}x{} trivial={dbg_trivial} \
-             mask_gray_view={dbg_gray} active_is_mask={dbg_active_is_mask} cpu_lane={cpu_lane}",
-            t0.elapsed().as_secs_f64() * 1e3,
-            dbg_dims.0,
-            dbg_dims.1,
-        );
+        // Record this frame's dispatch info; the frame timer (`run_render_frame`) pairs it with the
+        // whole-frame time and the aggregator prints ONE summary line per window, not per frame.
+        super::paint_perf::record_dispatch(super::paint_perf::FrameInfo {
+            gpu: gpu_owns_preview,
+            dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
+            w: dbg_dims.0,
+            h: dbg_dims.1,
+            gray: dbg_gray,
+            active_is_mask: dbg_active_is_mask,
+            lane_partial: painter_dirty_bbox.is_some(),
+            trivial: dbg_trivial,
+        });
     }
     !apply_selection.is_empty()
 }

@@ -55,6 +55,8 @@ mod inspector_physics_tests;
 mod inspector_visibility;
 pub(crate) mod motion_bridge;
 mod padding_bridge;
+/// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
+mod paint_perf;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
@@ -172,19 +174,16 @@ fn frame_prof_on() -> bool {
     })
 }
 
-/// `PH2D_PAINT_PERF=1` diagnostic (2026-07-24, the mask-path FPS report): logs the WHOLE-frame wall
-/// clock on drop, so it pairs with the per-dispatch `[paint-perf]` line from `painter_bridge`. The
-/// difference between the two says whether a slow frame's cost is IN the painter preview production
-/// (dispatch) or OUTSIDE it (panel, sim_extract, present) — the question the headless proxy could not
-/// answer. Only logs frames slower than 4 ms so quiet frames don't drown the signal.
+/// `PH2D_PAINT_PERF=1` diagnostic (2026-07-24, the mask-path FPS report): the WHOLE-frame wall clock,
+/// handed to [`paint_perf::end_frame`] on drop so it pairs with the per-dispatch info recorded by
+/// `painter_bridge`. The aggregator prints ONE summary line per window (not one per frame — that
+/// drowned the terminal), and the frame-vs-dispatch split says whether a slow frame's cost is IN the
+/// painter preview production or OUTSIDE it (panel, sim_extract, present).
 struct PaintFrameTimer(Option<std::time::Instant>);
 impl Drop for PaintFrameTimer {
     fn drop(&mut self) {
         if let Some(t0) = self.0 {
-            let ms = t0.elapsed().as_secs_f64() * 1e3;
-            if ms > 4.0 {
-                eprintln!("[paint-perf] TOTAL frame={ms:.2}ms");
-            }
+            paint_perf::end_frame(t0.elapsed().as_secs_f64() as f32 * 1e3);
         }
     }
 }
@@ -198,12 +197,8 @@ const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_B
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
-        // PH2D_PAINT_PERF: whole-frame timer (logs on scope exit, pairs with the per-dispatch line).
-        let _paint_frame_timer = PaintFrameTimer(
-            std::env::var_os("PH2D_PAINT_PERF")
-                .is_some()
-                .then(std::time::Instant::now),
-        );
+        // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
+        let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
         // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
         if let Some(audio) = self.audio.as_mut() {

@@ -173,20 +173,30 @@ limpo nas 4 crates · `file_loc_caps` (shell) · `architecture_workspace_file_lo
 ## 7. O SMOKE — o que falta para o veredito
 
 ```bash
-cd /home/enio/Documentos/Projetos/PH2D && \
+# ⚠️ ANTES da integração o smoke só existe na WORKTREE — rodar da raiz abre o
+# main, onde a env é ignorada: app vazio, sem faixa, sem cena (aconteceu no
+# smoke de 2026-07-23: "não há retângulo nenhum"). Depois do merge, raiz.
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && \
   env PH2D_FLIP_STRIP_SMOKE=1 cargo run -p ph2d-host-desktop --release
 ```
 
-A cena imprime `[strip-smoke] cena montada: 4 chaves em 0, 4, 5 e 11 …` — **se essa linha não
-aparecer, pare**: o resto não significa nada. O roteiro completo sai no terminal; em resumo:
+A cena imprime `[strip-smoke] cena montada: a bola quicando em 4 chaves (0, 4, 5, 11; …)` —
+**se essa linha não aparecer, pare**: o resto não significa nada (árvore ou env errada). A cena
+é a **bola quicando** (4 poses: alto-esquerda vermelha · caindo amarela · ESMAGADA no chão
+ciano · alto-direita verde) sobre um chão fixo — as duas cenas anteriores (barras) reprovaram
+por leitura (*"só vejo 4 linhas"* · *"não há retângulo nenhum"*), e o roteiro agora chama as
+células de **caixas** para não colidir com nada do canvas. O onion vai **sem fade por
+distância** (`fade = false`, gateado): com `1/Δ` o vulto do Pin a Δ=11 cai no piso
+`GHOST_MIN_ALPHA = 0.1` — invisível, e o teste 3 não teria veredito. O roteiro completo sai no
+terminal; em resumo:
 
 | # | conferir |
 |---|---|
-| a | **arrastar a célula**: o contorno mostra onde ela vai cair, e ela só pousa ao SOLTAR; encosta na vizinha e para |
+| a | **arrastar a caixa**: o contorno mostra onde ela vai cair, e ela só pousa ao SOLTAR; encosta na vizinha e para |
 | b | um **clique** simples continua levando o playhead até a chave (tremor de mão não pode mover nada) |
-| c | **arrastar a borda direita** da célula larga: ela cresce e as seguintes são EMPURRADAS |
-| d | na célula de **1 quadro** a barrinha do hold **não aparece** — a célula inteira é de mover (deliberado) |
-| e | **Pin** na última chave + voltar ao quadro 0: a barra verde aparece como fantasma, **e a vizinha amarela continua lá** |
+| c | **arrastar a borda direita** da caixa larga (a de 6): ela cresce e as seguintes são EMPURRADAS |
+| d | na caixa de **1 quadro** a barrinha do hold **não aparece** — a caixa inteira é de mover (deliberado) |
+| e | **Pin** na última chave + voltar ao quadro 0: a bola verde aparece como vulto, **e a vizinha amarela continua lá** |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 

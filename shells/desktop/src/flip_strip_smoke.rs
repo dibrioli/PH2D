@@ -1,15 +1,20 @@
 //! **A cena pronta para o smoke da TIRA COM MÃOS** (`PH2D_FLIP_STRIP_SMOKE=1`).
 //!
-//! Três gestos novos para julgar, e a cena existe para que nenhum deles precise ser montado
-//! à mão: **arrastar a célula** (move a chave no tempo), **arrastar a borda direita dela**
-//! (estica o hold) e o **Pin** (light table — o quadro que fica visível como fantasma mesmo
-//! longe do playhead).
+//! Três gestos novos para julgar: **arrastar a caixa** (move a chave no tempo),
+//! **arrastar a borda direita dela** (estica o hold) e o **Pin** (light table — o
+//! desenho que fica visível como vulto mesmo longe do playhead).
 //!
-//! As quatro chaves são deliberadamente DESIGUAIS em exposição (4 · 1 · 6 · 2): a largura da
-//! célula é a duração, então uma tira de células iguais não mostraria que a largura *diz*
-//! alguma coisa — e o gesto de esticar não teria contra o que ser comparado. E os desenhos
-//! são grandes e de cores diferentes: para julgar um fantasma fixado é preciso reconhecê-lo
-//! de longe.
+//! A cena é a **BOLA QUICANDO** — o flipbook canônico: 4 poses inconfundíveis
+//! (alto-esquerda → caindo → ESMAGADA no chão → alto-direita), cada uma numa cor.
+//! As duas cenas anteriores (barras) REPROVARAM no smoke por leitura: *"só vejo 4
+//! linhas"* e *"não há retângulo nenhum"* — barras finas espalhadas leem como
+//! objetos avulsos, e "retângulo" colidia com as células da tira. Agora o canvas
+//! tem UMA bola (nunca chamada de retângulo) e as células da tira são as únicas
+//! "caixas" do roteiro.
+//!
+//! As quatro chaves são deliberadamente DESIGUAIS em exposição (4 · 1 · 6 · 2): a
+//! largura da caixa é a duração, e o gesto de esticar precisa de contra o que ser
+//! comparado.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -23,37 +28,51 @@ fn enabled() -> bool {
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_STRIP_SMOKE").is_some())
 }
 
-/// As quatro chaves: `(quadro, cor, altura da barra)`.
+/// As quatro poses da bola: `(quadro, cor, centro x, centro y, raio x, raio y)`.
 ///
-/// A **exposição não é autorada aqui**: ela É a distância até a chave seguinte (4, 1 e 6),
-/// e é isso que a largura da célula desenha. Só a última precisa ser dita — sem sucessora,
-/// ela não tem de onde tirar a sua (ver o `set_exposure` no fim de `stage`).
+/// A **exposição não é autorada aqui**: ela É a distância até a chave seguinte
+/// (4, 1 e 6); só a última precisa ser dita (ver o `set_exposure` em `stage`).
 ///
-/// A altura da barra é o que distingue os desenhos na tela: para julgar um fantasma fixado
-/// é preciso reconhecê-lo de longe.
-const KEYS: [(i32, Rgba, f32); 4] = [
-    (0, Rgba::new(0.95, 0.35, 0.35, 1.0), 0.6),
-    (4, Rgba::new(0.95, 0.85, 0.35, 1.0), 1.2),
-    (5, Rgba::new(0.40, 0.85, 0.95, 1.0), 1.8),
-    (11, Rgba::new(0.60, 0.95, 0.45, 1.0), 2.4),
+/// O `x` do centro CRESCE a cada pose (a bola VIAJA — é o que faz a cena ler como
+/// um desenho mudando no tempo, não como objetos numa cena) e a pose do chão é
+/// **mais larga que alta** (squash — reconhecível de longe, que é o que o teste
+/// do Pin precisa).
+const POSES: [(i32, Rgba, f32, f32, f32, f32); 4] = [
+    (0, Rgba::new(0.95, 0.35, 0.35, 1.0), -1.10, 0.55, 0.42, 0.42),
+    (4, Rgba::new(0.95, 0.85, 0.35, 1.0), -0.35, -0.35, 0.42, 0.42),
+    (5, Rgba::new(0.40, 0.85, 0.95, 1.0), 0.25, -0.78, 0.62, 0.22),
+    (11, Rgba::new(0.60, 0.95, 0.45, 1.0), 1.05, 0.50, 0.42, 0.42),
 ];
 
 /// A exposição da ÚLTIMA chave (a sentinela que fecha o vão). O roteiro promete 2.
 const LAST_EXPOSURE: u32 = 2;
 
-/// Uma barra vertical na cor da chave — grande, chapada e inconfundível.
-///
-/// ⚠️ As quatro ficam quase no MESMO lugar, subindo um degrau de cada vez: a cena tem de
-/// parecer **um desenho que muda ao longo do tempo**, não quatro objetos numa cena. Com elas
-/// espalhadas (a 1ª versão) o smoke lia como *"só vejo 4 linhas"* — e lia certo, porque era
-/// isso que estava na tela.
-fn bar(colour: Rgba, height: f32, x: f32) -> FlipStroke {
+/// Círculo unitário em 12 pontos (30° cada), sem trig em runtime — os valores são
+/// `(cos, sin)` exatos o bastante para um desenho de smoke.
+const UNIT_RING: [(f32, f32); 12] = [
+    (1.0, 0.0),
+    (0.866, 0.5),
+    (0.5, 0.866),
+    (0.0, 1.0),
+    (-0.5, 0.866),
+    (-0.866, 0.5),
+    (-1.0, 0.0),
+    (-0.866, -0.5),
+    (-0.5, -0.866),
+    (0.0, -1.0),
+    (0.5, -0.866),
+    (0.866, -0.5),
+];
+
+/// A bola: um anel grosso (elipse em 12 pontos, fechado). Grosso de propósito —
+/// o VULTO do onion é a silhueta 100% recolorida numa tinta escura a meia
+/// opacidade, e um traço fino vira um sussurro que ninguém acha na tela.
+fn ball(colour: Rgba, cx: f32, cy: f32, rx: f32, ry: f32) -> FlipStroke {
     let mut s = FlipStroke::new();
-    for i in 0..=8u8 {
-        let t = f32::from(i) / 8.0;
+    for &(ux, uy) in UNIT_RING.iter().chain(std::iter::once(&UNIT_RING[0])) {
         s.push_point(Point {
-            pos: Vec2::new(x, -1.4 + t * height),
-            width: 0.35,
+            pos: Vec2::new(cx + ux * rx, cy + uy * ry),
+            width: 0.30,
             opacity: 1.0,
             color: colour,
         });
@@ -62,25 +81,62 @@ fn bar(colour: Rgba, height: f32, x: f32) -> FlipStroke {
     s
 }
 
-/// **Monta a camada** — porta única: o gate encena por AQUI, senão a mensagem impressa
-/// descreveria uma tira que ninguém mais produz.
+/// O chão: uma linha cinza fixa, para a pose ESMAGADA ter onde existir.
+fn floor_stroke() -> FlipStroke {
+    let mut s = FlipStroke::new();
+    let grey = Rgba::new(0.55, 0.55, 0.55, 1.0);
+    for x in [-1.6f32, 1.6] {
+        s.push_point(Point {
+            pos: Vec2::new(x, -1.10),
+            width: 0.12,
+            opacity: 1.0,
+            color: grey,
+        });
+    }
+    s.hardness = 0.9;
+    s
+}
+
+/// **Monta a cena inteira** — porta única: o gate encena por AQUI, senão a
+/// mensagem impressa descreveria uma cena que ninguém mais produz. Devolve a
+/// camada da BOLA (a ativa — criada por último, que é o fallback do bridge).
 pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
-    let l = obj.add_layer("Bars");
-    for (i, &(key, colour, height)) in KEYS.iter().enumerate() {
+    obj.fps = 12.0;
+    // Fantasmas LIGADOS e apertados (±1): é o alcance curto que faz o Pin valer a
+    // pena — com ±8 todo mundo já apareceria e o gesto não provaria nada.
+    obj.onion.enabled = true;
+    obj.onion.frames_before = 1;
+    obj.onion.frames_after = 1;
+    // ⚠️ SEM esmaecer por distância: um pin fixa a chave 11 vista da chave 0
+    // (Δ=11), e com `fade = 1/Δ` o alpha cai a 0,5/11 e é clampado no piso
+    // `GHOST_MIN_ALPHA = 0.1` — o vulto que o TESTE 3 manda olhar seria
+    // invisível por construção. `fade` é setting autorável (o USE_FADE do GP);
+    // desligá-lo é encenação legítima, não maquiagem.
+    obj.onion.fade = false;
+
+    // O chão PRIMEIRO: a camada ativa (título da tira, alvo dos gestos) é a
+    // ÚLTIMA — tem de ser a da bola.
+    let floor = obj.add_layer("Chao");
+    if let Some(d) = obj.insert_frame(floor, 0, Hold::Implicit, KeyKind::Keyframe) {
+        obj.drawing_mut(d)
+            .expect("desenho recém-criado")
+            .strokes
+            .push(floor_stroke());
+    }
+
+    let l = obj.add_layer("Bola");
+    for &(key, colour, cx, cy, rx, ry) in &POSES {
         if let Some(d) = obj.insert_frame(l, key, Hold::Implicit, KeyKind::Keyframe) {
-            // Um passo CURTO (um terço de barra): perto o bastante para o fantasma do
-            // vizinho se sobrepor e ler como "o mesmo desenho, um instante antes".
-            let x = -0.6 + i as f32 * 0.4;
             obj.drawing_mut(d)
                 .expect("desenho recém-criado")
                 .strokes
-                .push(bar(colour, height, x));
+                .push(ball(colour, cx, cy, rx, ry));
         }
     }
-    // ⚠️ Só DEPOIS de todas as chaves existirem, e só na última: `set_exposure` EMPURRA as
-    // seguintes, então autorar exposição no meio do laço moveria as chaves que ainda vão
-    // nascer — a tira sairia com outros quadros que a mensagem não descreve.
-    obj.set_exposure(l, KEYS[KEYS.len() - 1].0, LAST_EXPOSURE);
+    // ⚠️ Só DEPOIS de todas as chaves existirem, e só na última: `set_exposure`
+    // EMPURRA as seguintes, então autorar exposição no meio do laço moveria as
+    // chaves que ainda vão nascer.
+    obj.set_exposure(l, POSES[POSES.len() - 1].0, LAST_EXPOSURE);
     l
 }
 
@@ -94,95 +150,86 @@ impl crate::App {
             return;
         }
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
+        let tool_ok = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
 
         let oid = gfx.flip.push_object("Strip Smoke");
         let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        obj.fps = 12.0;
-        // Fantasmas LIGADOS e apertados (±1): é o alcance que faz o light table valer a
-        // pena — com ±8 todo mundo já apareceria e o Pin não provaria nada.
-        obj.onion.enabled = true;
-        obj.onion.frames_before = 1;
-        obj.onion.frames_after = 1;
         stage(obj);
 
         self.playhead.seek(0.0);
         self.playhead.pause();
 
         eprintln!(
-            "\n[strip-smoke] cena montada: 4 chaves em 0, 4, 5 e 11 (exposicoes 4, 1, 6 e 2)."
+            "\n[strip-smoke] cena montada: a bola quicando em 4 chaves (0, 4, 5, 11; \
+             exposicoes 4, 1, 6, 2). Ferramenta flip ativa: {}.",
+            if tool_ok { "sim" } else { "NAO (PARE: sem ela a faixa Frames nao aparece)" }
         );
         eprintln!(
             "\n\
              ============================================================\n\
-             ANTES DE MAIS NADA: o que e' cada coisa na tela\n\
+             ANTES DE TUDO, confira DUAS coisas, nesta ordem:\n\
              ============================================================\n\
-             Isto e' UMA animacao de 4 desenhos -- uma barrinha que vai CRESCENDO e\n\
-             andando um pouco para a direita. Nao sao 4 objetos: e' o mesmo objeto\n\
-             em 4 momentos.\n\
+             1. Este terminal imprimiu, logo acima, a linha comecando com\n\
+                '[strip-smoke] cena montada'. Se NAO imprimiu, PARE: o\n\
+                smoke nao rodou (arvore ou variavel de ambiente errada).\n\
+             2. Na parte de BAIXO da janela do app existe uma faixa com o\n\
+                titulo 'Frames - Bola'. Dentro dela, abaixo da fileira de\n\
+                botoes, ha QUATRO CAIXAS lado a lado com os numeros\n\
+                4, 1, 6 e 2 dentro. Se essa faixa nao existir, PARE e me\n\
+                diga o que voce ve no lugar.\n\
              \n\
-             Voce esta no PRIMEIRO desenho. Entao a tela mostra:\n\
-             \n\
-               - a barra VERMELHA, a mais baixa -- e' o desenho de agora, na cor dele;\n\
-               - atras dela, uma sombra AZULADA -- e' o desenho SEGUINTE, aparecendo\n\
-                 apagado so para voce se guiar (e' o 'papel vegetal' do animador).\n\
-             \n\
-             Sombra esverdeada = desenho ANTERIOR. Sombra azulada = SEGUINTE. Elas\n\
-             NUNCA aparecem na cor de verdade -- so o desenho onde voce esta e' que\n\
-             tem cor. Quantas sombras aparecem depende do numero na caixa 'Ghost'\n\
-             la em cima (esta em 1 de cada lado).\n\
-             \n\
-             Na faixa de baixo: quatro retangulos, um por desenho. A LARGURA de cada\n\
-             um e' quanto tempo aquele desenho fica na tela (o numero dentro dele).\n\
-             \n\
-             ------------------------------------------------------------\n\
-             AQUECIMENTO (5 segundos): clique nos retangulos, um por um\n\
-             ------------------------------------------------------------\n\
-             A barra tem de CRESCER a cada retangulo, e a sombra acompanhar. Se isso\n\
-             funciona, voce entendeu a cena e pode ir aos tres testes.\n\
+             O que esta na tela: UMA bola quicando, desenhada em 4\n\
+             momentos -- um desenho por caixa: vermelha no alto a\n\
+             esquerda, amarela caindo, ciano ESMAGADA no chao, verde no\n\
+             alto a direita. Voce esta no primeiro desenho (a bola\n\
+             VERMELHA, na cor real). Perto dela ha um VULTO azul-escuro\n\
+             meio transparente: e' o desenho SEGUINTE, mostrado como\n\
+             referencia (o 'papel vegetal' do animador). Vulto\n\
+             esverdeado = desenho anterior; azulado = seguinte. So o\n\
+             desenho em que voce esta tem a cor verdadeira.\n\
              \n\
              ------------------------------------------------------------\n\
-             TESTE 1 -- ARRASTAR UM RETANGULO muda o desenho de lugar no tempo\n\
+             AQUECIMENTO (10 s): clique nas quatro caixas, uma por uma\n\
              ------------------------------------------------------------\n\
-             Segure o MEIO de um retangulo e arraste para o lado.\n\
-             \n\
-             Enquanto arrasta, aparece um CONTORNO mostrando onde ele vai parar; ele\n\
-             so muda de lugar quando voce SOLTA. Ao chegar no vizinho, ENCOSTA e\n\
-             para -- nao passa por cima, nao troca de lugar, nao some.\n\
-             \n\
-             (So clicar, sem arrastar, continua pulando para aquele desenho. Uma\n\
-              tremidinha de mao no clique nao pode mover nada.)\n\
+             A cada clique a bola PULA para a pose daquele desenho (e\n\
+             muda de cor), e os vultos mudam junto. Se isso funciona,\n\
+             va aos tres testes.\n\
              \n\
              ------------------------------------------------------------\n\
-             TESTE 2 -- ARRASTAR A BEIRADA DIREITA muda quanto tempo ele dura\n\
+             TESTE 1 -- ARRASTAR UMA CAIXA muda o desenho de lugar no tempo\n\
              ------------------------------------------------------------\n\
-             Chegue com o mouse na BEIRADA DIREITA do retangulo mais largo (o de 6).\n\
-             Uma barrinha clara aparece ali. Arraste ela.\n\
+             Segure o MEIO de uma caixa e arraste para o lado.\n\
+             Enquanto arrasta, um CONTORNO mostra onde ela vai parar;\n\
+             ela so muda de lugar quando voce SOLTA. Ao chegar na\n\
+             vizinha, ENCOSTA e para -- nao passa por cima, nao troca de\n\
+             lugar, nao some. (So clicar, sem arrastar, continua pulando\n\
+             para aquele desenho; tremidinha de mao no clique nao move.)\n\
              \n\
-             O retangulo estica ou encolhe, o numero dentro dele acompanha, e os\n\
-             retangulos SEGUINTES sao empurrados junto.\n\
-             \n\
-             No retangulo mais fino (o de 1) essa barrinha NAO aparece -- ele e'\n\
-             estreito demais para caber os dois gestos, e continua servindo so para\n\
-             arrastar. E' de proposito: para mudar a duracao dele, use a caixa\n\
-             'Hold' la em cima.\n\
+             ------------------------------------------------------------\n\
+             TESTE 2 -- ARRASTAR A BEIRADA DIREITA muda quanto tempo dura\n\
+             ------------------------------------------------------------\n\
+             Va com o mouse na BEIRADA DIREITA da caixa mais larga (a de\n\
+             numero 6). Uma barrinha clara aparece ali; arraste-a.\n\
+             A caixa estica ou encolhe, o numero acompanha, e as caixas\n\
+             SEGUINTES sao empurradas junto.\n\
+             Na caixa mais fina (a de numero 1) a barrinha NAO aparece --\n\
+             de proposito: estreita demais para os dois gestos, ela\n\
+             continua servindo para arrastar; a duracao dela muda pela\n\
+             caixa 'Hold' na fileira de botoes.\n\
              \n\
              ------------------------------------------------------------\n\
              TESTE 3 -- o botao 'Pin' deixa um desenho visivel de longe\n\
              ------------------------------------------------------------\n\
-             Do primeiro desenho voce so ve a sombra do vizinho; o ULTIMO esta longe\n\
-             demais e nao aparece.\n\
-             \n\
-             Clique no ULTIMO retangulo para ir ate ele. Aperte 'Pin' na barra de\n\
-             cima. Volte para o primeiro retangulo.\n\
-             \n\
-             A barra mais ALTA (a ultima) agora tem de aparecer como sombra, mesmo\n\
-             estando longe -- e a sombra do vizinho tem de continuar aparecendo\n\
-             tambem. O retangulo fixado fica com um pontinho no canto de baixo.\n\
-             Apertar 'Pin' de novo desfaz.\n\
+             Clique na PRIMEIRA caixa: a bola verde (a ultima) nao\n\
+             aparece nem como vulto -- esta longe demais.\n\
+             Agora clique na ULTIMA caixa, aperte 'Pin' na fileira de\n\
+             botoes, e volte a primeira caixa.\n\
+             O vulto da bola verde agora aparece, mesmo de longe -- e o\n\
+             vulto do vizinho continua la. A caixa fixada ganha um\n\
+             pontinho no canto de baixo. Apertar 'Pin' de novo desfaz.\n\
              \n\
              ============================================================\n\
-             Se alguma das tres nao fizer o que esta escrito, me diga O QUE\n\
+             Se algo nao fizer o que esta escrito, me diga O QUE\n\
              ACONTECEU -- e' so isso que eu preciso.\n\
              ============================================================\n"
         );
@@ -194,8 +241,21 @@ mod tests {
     use super::*;
     use ph2d_flip::FlipDoc;
 
-    /// 🔴 **A cena contém o que a mensagem promete.** Uma mensagem que descreve outra tira
-    /// manda o Enio procurar o que não existe — e ele julga o produto pelo que leu.
+    fn ball_bbox(points: &[Vec2]) -> (f32, f32, f32) {
+        let (mut min_x, mut max_x) = (f32::MAX, f32::MIN);
+        let (mut min_y, mut max_y) = (f32::MAX, f32::MIN);
+        for p in points {
+            min_x = min_x.min(p.x);
+            max_x = max_x.max(p.x);
+            min_y = min_y.min(p.y);
+            max_y = max_y.max(p.y);
+        }
+        ((min_x + max_x) * 0.5, max_x - min_x, max_y - min_y)
+    }
+
+    /// 🔴 **A cena contém o que a mensagem promete.** Uma mensagem que descreve
+    /// outra cena manda o Enio procurar o que não existe — e ele julga o produto
+    /// pelo que leu. (As duas cenas anteriores caíram exatamente aí.)
     #[test]
     fn the_smoke_scene_shows_what_its_message_promises() {
         let mut doc = FlipDoc::default();
@@ -203,6 +263,7 @@ mod tests {
         let obj = doc.object_mut(oid).expect("objeto");
         let l = stage(obj);
         let layer = obj.layer(l).expect("camada");
+        assert_eq!(layer.name, "Bola", "o título da tira que o roteiro nomeia");
         let cells = layer.cells();
 
         let keys: Vec<i32> = cells.iter().map(|(k, _, _)| *k).collect();
@@ -211,10 +272,10 @@ mod tests {
         assert_eq!(
             exposures,
             vec![4, 1, 6, 2],
-            "as exposições que a mensagem promete — a largura da célula É esse número"
+            "os números DENTRO das caixas — a largura da caixa É esse número"
         );
-        // Elas TÊM de ser desiguais: uma tira de células iguais não mostra que a largura
-        // significa alguma coisa, e o gesto de esticar não teria contra o que ser julgado.
+        // Desiguais: caixas do mesmo tamanho não mostram que a largura significa
+        // algo, e o gesto de esticar não teria contra o que ser julgado.
         assert!(
             exposures
                 .iter()
@@ -223,55 +284,62 @@ mod tests {
                 >= 3,
             "as exposições precisam ser visivelmente diferentes"
         );
-        // E cada chave tem arte (um fantasma fixado só se julga se der para reconhecê-lo).
-        for (_, drawing, _) in &cells {
+
+        // 🔴 **A cena tem de parecer UMA animação.** A bola VIAJA (x do centro
+        // estritamente crescente) e a pose do chão é ESMAGADA (mais larga que
+        // alta) — as duas propriedades que fazem "trocar de desenho" ser visível
+        // e o vulto fixado ser reconhecível de longe. As poses no ar são
+        // redondas (bbox ~quadrada), senão o squash não se destaca.
+        let boxes: Vec<(f32, f32, f32)> = cells
+            .iter()
+            .map(|(_, d, _)| ball_bbox(obj.drawing(*d).expect("arte").strokes[0].positions()))
+            .collect();
+        for pair in boxes.windows(2) {
             assert!(
-                obj.drawing(*drawing).is_some_and(|d| !d.strokes.is_empty()),
-                "toda chave da cena desenha alguma coisa"
+                pair[1].0 > pair[0].0,
+                "a bola viaja para a direita a cada desenho ({:?})",
+                boxes.iter().map(|b| b.0).collect::<Vec<_>>()
             );
+        }
+        let (_, sw, sh) = boxes[2];
+        assert!(
+            sw > 1.5 * sh,
+            "a pose do chão é ESMAGADA (largura {sw:.2} vs altura {sh:.2})"
+        );
+        for (i, &(_, w, h)) in boxes.iter().enumerate() {
+            if i != 2 {
+                assert!(
+                    (w - h).abs() < 0.05,
+                    "pose no ar {i} é redonda (bbox {w:.2}×{h:.2})"
+                );
+            }
         }
 
-        // 🔴 **A cena tem de parecer UMA animação, não quatro objetos.** Os desenhos
-        // consecutivos ficam a menos de uma largura de barra um do outro (e crescem), então
-        // o fantasma do vizinho SE SOBREPÕE e lê como "o mesmo desenho, um instante antes".
-        // A 1ª versão espalhava as barras pela tela, e o smoke voltou com *"só vejo 4
-        // linhas"* — lendo certo o que estava lá.
-        let xs: Vec<f32> = cells
-            .iter()
-            .map(|(_, d, _)| obj.drawing(*d).expect("arte").strokes[0].positions()[0].x)
-            .collect();
-        for pair in xs.windows(2) {
-            let step = (pair[1] - pair[0]).abs();
-            assert!(
-                step > 0.0 && step < 0.5,
-                "os desenhos têm de se suceder de PERTO (passo {step:.2}) — espalhados, a \
-                 cena lê como quatro objetos e o onion skin não se sobrepõe"
-            );
-        }
-        let heights: Vec<f32> = cells
-            .iter()
-            .map(|(_, d, _)| {
-                let p = obj.drawing(*d).expect("arte").strokes[0].positions();
-                p.last().expect("ponto").y - p[0].y
-            })
-            .collect();
+        // 🔴 **O vulto do Pin tem de ser VISÍVEL.** Com `fade = 1/Δ`, a chave 11
+        // fixada e vista da chave 0 sai a 0,5/11 → clampada no piso
+        // `GHOST_MIN_ALPHA` (0,1) — invisível sobre o fundo. O roteiro promete um
+        // vulto que aparece; a cena desliga o esmaecer para cumprir.
+        assert!(obj.onion.enabled, "fantasmas ligados desde o 1º frame");
+        assert_eq!(
+            (obj.onion.frames_before, obj.onion.frames_after),
+            (1, 1),
+            "alcance ±1: é o alcance curto que dá ao Pin algo a provar"
+        );
         assert!(
-            heights.windows(2).all(|w| w[1] > w[0]),
-            "a barra CRESCE a cada quadro: é o que faz trocar de desenho ser visível ({heights:?})"
+            !obj.onion.fade,
+            "sem fade por distância — o vulto fixado a Δ=11 seria invisível"
         );
     }
 
-    /// 🔴 **A cena arma o caso que o Pin existe para resolver**: no quadro 0, com alcance
-    /// ±1, a ÚLTIMA chave está fora — então fixá-la muda o que se vê, e o smoke tem um
-    /// veredito. Com um alcance generoso a barra verde já apareceria e o gesto não provaria
-    /// nada (a fixture não conteria o fenômeno).
+    /// 🔴 **A cena arma o caso que o Pin existe para resolver**: no quadro 0, com
+    /// alcance ±1, a ÚLTIMA chave está fora — então fixá-la muda o que se vê, e o
+    /// smoke tem um veredito. Com um alcance generoso a bola verde já apareceria
+    /// e o gesto não provaria nada (a fixture não conteria o fenômeno).
     #[test]
     fn the_last_key_is_out_of_ghost_range_so_pinning_it_changes_the_screen() {
         let mut doc = FlipDoc::default();
         let oid = doc.push_object("Strip Smoke");
         let obj = doc.object_mut(oid).expect("objeto");
-        obj.onion.frames_before = 1;
-        obj.onion.frames_after = 1;
         let l = stage(obj);
         let obj = doc.object(oid).expect("objeto");
         let layer = obj.layer(l).expect("camada");

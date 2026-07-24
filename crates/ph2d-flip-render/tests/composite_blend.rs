@@ -203,12 +203,12 @@ fn two_layers_multiply_composites_like_painter() {
     ));
     let cam = pixel_camera();
     let ops = vec![
-        LayerOp::Layer {
+        LayerOp::Layer { mask: None, clipping: false,
             key: 1,
             blend_mode: BlendMode::Normal.to_u8(),
             opacity: 1.0,
         },
-        LayerOp::Layer {
+        LayerOp::Layer { mask: None, clipping: false,
             key: 2,
             blend_mode: BlendMode::Multiply.to_u8(),
             opacity: 1.0,
@@ -296,12 +296,12 @@ fn top_layer_opacity_fades_toward_backdrop() {
     ));
     let cam = pixel_camera();
     let ops = vec![
-        LayerOp::Layer {
+        LayerOp::Layer { mask: None, clipping: false,
             key: 1,
             blend_mode: BlendMode::Normal.to_u8(),
             opacity: 1.0,
         },
-        LayerOp::Layer {
+        LayerOp::Layer { mask: None, clipping: false,
             key: 2,
             blend_mode: BlendMode::Normal.to_u8(),
             opacity: 0.5,

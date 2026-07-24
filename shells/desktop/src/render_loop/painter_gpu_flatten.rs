@@ -1,16 +1,30 @@
 //! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU
 //! `ph2d_render::LayerCompositor` (Painter GPU preview, ADR-0045 Phase 3).
 //!
-//! This is the **GPU-vs-CPU gate** (handoff §3): the GPU op-list
-//! (`Layer`/`PushGroup`/`PopGroup`/`Adjustment`/`SpatialAdjustment`) cannot
-//! represent per-layer masks, clipping, reference layers, or masked adjustments —
-//! and a kind with neither a per-pixel `gpu_code()` nor a spatial
-//! `gpu_spatial_code()` (e.g. Bloom / Noise / Halftone / ColorLookup /
-//! ShadowsHighlights) has no GPU op. When the stack uses ANY of those,
+//! This is the **GPU-vs-CPU gate** (handoff §3): what the GPU op-list
+//! (`Layer`/`PushGroup`/`PopGroup`/`Adjustment`/`SpatialAdjustment`) still cannot
+//! represent is a per-layer **mask**, **clipping**, or a **masked adjustment** —
+//! plus the six adjustment kinds with neither a per-pixel `gpu_code()` nor a
+//! spatial `gpu_spatial_code()`. When the stack uses ANY of those,
 //! [`flatten_for_gpu`] returns `None` and the bridge falls back to the CPU
 //! `take_preview_arc` path (correct, just slower — and it has the cut-point
-//! cache). When it returns `Some`, the GPU composites the whole stack
-//! (`base + simple adjustment` = the Enio hot case, ~1.7 ms @1024² vs ~55 ms CPU).
+//! cache). When it returns `Some`, the GPU composites the whole stack.
+//!
+//! ⚠️ **The list above is load-bearing and the previous version of it was WRONG in
+//! two ways** — measured in [`docs/Painter/25_avaliacao_gpu.md`], where falling off
+//! this path costs 107× on a composite and **885×** on an adjustment drag:
+//!
+//! * it named *reference layers* as unrepresentable. They composite like any other
+//!   layer (the flag is ColorDrop geometry, §2.9) — a whole document went to the
+//!   slow producer for a flag no compositor reads;
+//! * it named *"Bloom / Noise / Halftone / ColorLookup / ShadowsHighlights"* as
+//!   having no GPU op. **All five have one** — Noise/Halftone/ColorLookup are
+//!   `gpu_code` 9/10/11 and Bloom/S-H are `gpu_spatial_code` 4/5. The genuinely
+//!   unported kinds are `ColorBalance`, `GradientMap`, `PhotoFilter`,
+//!   `SelectiveColor`, `ChannelMixer` and `BlackAndWhite`.
+//!
+//! A stale refusal list is not a comment problem: it is the routing decision
+//! itself, and it decides the frame budget.
 //!
 //! The walk MIRRORS `ph2d_tool_painter::compositor::composite_into` EXACTLY —
 //! `root().iter().rev()` (panel order is top-first, so iterate bottom-to-top),
@@ -25,8 +39,9 @@ use ph2d_render::layer_compositor::LayerOp;
 use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
 
 /// Flatten `stack` into a GPU op-list, or `None` if it is not GPU-representable
-/// (mask / clipping / reference layer / masked adjustment / non-ported
-/// adjustment kind) — the caller then uses the CPU compositor.
+/// (mask / clipping / masked adjustment / non-ported adjustment kind) — the
+/// caller then uses the CPU compositor. A **reference layer is representable**;
+/// see the module doc for why it ever was not.
 // Consumed by the GPU preview path in `painter_bridge` (Phase 3 step 2): the
 // GPU-vs-CPU decision (a representable stack → GPU compositor, else CPU).
 pub(super) fn flatten_for_gpu(stack: &LayerStack) -> Option<(Vec<LayerOp>, Vec<f32>)> {
@@ -53,7 +68,14 @@ fn flatten_ids(
             continue;
         }
         // GPU op-list v1 can't represent these → bail to the CPU path.
-        if layer.mask.is_some() || layer.clipping || layer.is_reference {
+        //
+        // ⚠️ `is_reference` is NOT among them, and used to be. A reference layer is the
+        // *geometry source for ColorDrop* (`layers/mod.rs` §2.9) — the CPU compositor
+        // never reads the flag (zero occurrences in `ph2d_tool_painter::compositor`), so
+        // refusing on it sent the whole document to a producer up to 885× slower for a
+        // flag that changes no pixel. Pinned by
+        // `a_reference_layer_composites_like_any_other_and_stays_on_the_gpu`.
+        if layer.mask.is_some() || layer.clipping {
             return None;
         }
         let opacity = layer.opacity.clamp(0.0, 1.0);
@@ -281,5 +303,63 @@ mod tests {
             flatten_for_gpu(&s).is_none(),
             "a per-layer mask isn't in the GPU op-list v1 -> CPU fallback"
         );
+    }
+
+    /// A reference layer used to force the whole document onto the CPU producer, and the
+    /// flag changes **nothing about the composite** — it is the ColorDrop geometry source
+    /// (`layers/mod.rs` §2.9), read by zero lines of `ph2d_tool_painter::compositor`.
+    ///
+    /// The oracle is deliberately in TWO halves, because either alone is weak:
+    ///
+    /// * the routing half (this flatten now says yes) would pass just as happily if the
+    ///   flag DID change pixels and we were now composing it wrong;
+    /// * so the CPU half asserts the premise the routing rests on — the reference stack
+    ///   and the plain one composite **byte-identically** through the canonical CPU
+    ///   compositor, which is the thing the GPU op-list has to reproduce.
+    ///
+    /// Mutation: restoring `|| layer.is_reference` to the refusal turns the first half
+    /// red; making `is_reference` alter the composite would turn the second half red.
+    #[test]
+    fn a_reference_layer_composites_like_any_other_and_stays_on_the_gpu() {
+        use ph2d_tool_painter::compositor::{LayerPixelSource, composite};
+
+        /// Serves no pixels: what is pinned here is that the two WALKS agree, and they can
+        /// only disagree if something starts reading the flag.
+        struct NoPixels;
+        impl LayerPixelSource for NoPixels {
+            fn layer_rgba(&self, _id: ph2d_tool_painter::LayerId) -> Option<&[u8]> {
+                None
+            }
+        }
+
+        let build = |reference: bool| {
+            let mut s = LayerStack::new();
+            let base = s.add_raster("base", 4, 4).unwrap();
+            let top = s.add_raster("top", 4, 4).unwrap();
+            if reference {
+                s.set_reference(top, true);
+            }
+            (s, base, top)
+        };
+
+        // Half 1 — the routing: a reference layer is GPU-representable, and it flattens to
+        // exactly the ops the plain stack does (same keys, same order, same count).
+        let (plain, _, _) = build(false);
+        let (referenced, _, _) = build(true);
+        let (plain_ops, _) = flatten_for_gpu(&plain).expect("plain stack is representable");
+        let (ref_ops, _) =
+            flatten_for_gpu(&referenced).expect("a reference layer must NOT force the CPU path");
+        assert_eq!(
+            format!("{plain_ops:?}"),
+            format!("{ref_ops:?}"),
+            "the reference flag must not change a single op"
+        );
+
+        // Half 2 — the premise: the canonical CPU compositor produces the same bytes for
+        // both stacks.
+        let src = NoPixels;
+        let a = composite(&plain, &src, 4, 4);
+        let b = composite(&referenced, &src, 4, 4);
+        assert_eq!(a, b, "is_reference must be inert in the composite");
     }
 }

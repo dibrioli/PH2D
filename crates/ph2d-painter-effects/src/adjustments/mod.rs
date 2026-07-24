@@ -571,9 +571,15 @@ impl AdjustmentKind {
     /// `ph2d-render` dependency here, that would be a cycle). Reconciled with the
     /// pass-graph by the spatial parity gates (`gpu_<kind>_matches_cpu_reference`).
     ///
-    /// `Bloom` / `ShadowsHighlights` are spatial too but need extra pass-graph
-    /// infra (mip pyramid / tonal combine) that has not landed — they stay `None`
-    /// (CPU fallback) until their kernel ships.
+    /// ⚠️ This doc used to say *"`Bloom` / `ShadowsHighlights` … stay `None` (CPU
+    /// fallback) until their kernel ships"* — and the `match` three lines below has
+    /// been returning `Some(4)` / `Some(5)` for them since their kernels DID ship
+    /// (`SPATIAL_BLOOM` / `SPATIAL_SHADOWS_HIGHLIGHTS`, exercised by the
+    /// `gpu_bloom_drag_perf` gate). The comment contradicted the code it introduced,
+    /// and a stale refusal list here is not cosmetic: the painter's flatten reads
+    /// these two functions to decide GPU-vs-CPU, and that decision is worth up to
+    /// 885× (`docs/Painter/25_avaliacao_gpu.md`). Read the `match`, not this prose —
+    /// and if you change the `match`, change this.
     #[must_use]
     pub fn gpu_spatial_code(self) -> Option<u8> {
         Some(match self {
@@ -595,9 +601,13 @@ impl AdjustmentKind {
     /// `ShadowsHighlights`, which blurs only an INTERNAL luma map but outputs the
     /// base coverage. Drives the `is_spatial` branch in `compositor::compose`.
     ///
-    /// Note this is BROADER than [`Self::gpu_spatial_code`]: `Bloom` feathers
-    /// coverage but has no GPU spatial kernel yet (runs on the CPU fallback), so
-    /// the two sets differ on purpose.
+    /// ⚠️ This note used to read *"BROADER than [`Self::gpu_spatial_code`]: `Bloom`
+    /// feathers coverage but has no GPU spatial kernel yet"* — **both halves are
+    /// false today**. Bloom has kernel 4, and this set is a strict SUBSET of the
+    /// spatial set: it is the five that spread alpha, while `ShadowsHighlights` is
+    /// spatial (kernel 5) yet outputs the base coverage, so it is the one spatial
+    /// kind deliberately absent here. The two sets still differ on purpose — just
+    /// in the other direction.
     #[must_use]
     pub fn feathers_coverage(self) -> bool {
         matches!(

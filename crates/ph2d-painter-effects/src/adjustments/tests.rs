@@ -2368,3 +2368,85 @@ fn noise_and_halftone_segments_and_toggle_round_trip() {
         "Circle selected"
     );
 }
+
+/// The two GPU-code sets, pinned as SETS — the antidote to the three stale prose
+/// claims this file's doc-comments carried (see `gpu_spatial_code` /
+/// `feathers_coverage`).
+///
+/// Prose is not load-bearing here: the painter's `flatten_for_gpu` reads exactly
+/// these two functions to route a document to the GPU or to a producer up to 885×
+/// slower (`docs/Painter/25_avaliacao_gpu.md`). So the memberships are asserted, and
+/// asserted by ENUMERATION of `AdjustmentKind::ALL` — a spot-check of the kinds
+/// someone remembered is how the previous list rotted.
+#[test]
+fn the_gpu_code_sets_are_what_the_routing_believes_they_are() {
+    let per_pixel: Vec<AdjustmentKind> = AdjustmentKind::ALL
+        .iter()
+        .copied()
+        .filter(|k| k.gpu_code().is_some())
+        .collect();
+    let spatial: Vec<AdjustmentKind> = AdjustmentKind::ALL
+        .iter()
+        .copied()
+        .filter(|k| k.gpu_spatial_code().is_some())
+        .collect();
+    let neither: Vec<AdjustmentKind> = AdjustmentKind::ALL
+        .iter()
+        .copied()
+        .filter(|k| k.gpu_code().is_none() && k.gpu_spatial_code().is_none())
+        .collect();
+
+    // No kind may claim BOTH: the flatten checks spatial first, so a kind in both
+    // sets would silently never take its per-pixel path.
+    for k in &per_pixel {
+        assert!(
+            k.gpu_spatial_code().is_none(),
+            "{k:?} claims a per-pixel AND a spatial code — the flatten would only ever run the spatial one"
+        );
+    }
+
+    assert_eq!(
+        spatial,
+        vec![
+            AdjustmentKind::GaussianBlur,
+            AdjustmentKind::MotionBlur,
+            AdjustmentKind::Bloom,
+            AdjustmentKind::Sharpen,
+            AdjustmentKind::ChromaticAberration,
+            AdjustmentKind::ShadowsHighlights,
+        ],
+        "Bloom and ShadowsHighlights ARE spatial-ported; the doc that said otherwise was stale"
+    );
+    assert_eq!(
+        neither,
+        vec![
+            AdjustmentKind::ColorBalance,
+            AdjustmentKind::GradientMap,
+            AdjustmentKind::PhotoFilter,
+            AdjustmentKind::SelectiveColor,
+            AdjustmentKind::ChannelMixer,
+            AdjustmentKind::BlackAndWhite,
+        ],
+        "these six are the ONLY kinds that still force the painter onto the CPU compositor"
+    );
+    assert_eq!(
+        per_pixel.len() + spatial.len() + neither.len(),
+        AdjustmentKind::ALL.len(),
+        "every kind lands in exactly one bucket"
+    );
+
+    // `feathers_coverage` is a strict SUBSET of the spatial set (S/H is spatial but
+    // outputs base coverage) — the direction the old doc had backwards.
+    for k in AdjustmentKind::ALL {
+        if k.feathers_coverage() {
+            assert!(
+                k.gpu_spatial_code().is_some(),
+                "{k:?} feathers coverage but has no spatial kernel — the sets have drifted"
+            );
+        }
+    }
+    assert!(
+        !AdjustmentKind::ShadowsHighlights.feathers_coverage(),
+        "S/H blurs only an internal luma map; it must not adopt kernel alpha"
+    );
+}

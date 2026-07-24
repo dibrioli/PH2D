@@ -3796,3 +3796,85 @@ binário** — a forma certa é o diretório (`src/bin/<nome>/main.rs` + irmãos
 - **Nada na §11 diz que a zona está espelhada** — o overlay mostra (a seta aponta para o
   outro lado), e o `Transform` é onde o artista fez o gesto. Uma row de leitura seria a
   segunda porta para um fato que o gizmo já conta.
+
+## W-BakeRange — o início do loop é honrado (2026-07-24, cena `=37`)
+
+A metade do **BAKE** que estava aberta desde o W4 (*"alcance com INÍCIO — a sim é função do
+tick; assar `[2s,5s]` seria assar de 0 e descartar"*). E o achado que a torna uma **correção
+de input descartado**, não uma feature nova: o `bake_seconds` lia o `end` do loop e jogava o
+`start` fora — `if let Some((_, end)) = playhead.loop_range()`, o `_` era o começo. O artista
+já arma um loop `[2s, 5s]`; o bake cobria `[0, 5s]`, ignorando a decisão dele.
+
+**A sim ainda roda de 0.** O tick 0 é indispensável (a sim é função do tick e o *front*
+`[0, start)` tem de ser simulado para adiantar a cena de qualquer corpo que cavalgue uma
+plataforma já assada) — o que muda é que os samples do front **não viram chaves**. É
+exatamente o *"jogar fora"* que o plano pedia e que não acontecia. O `bake_range` devolve
+`(start, end)`: loop armado com `end > 0` ⇒ `(loop_start, loop_end)`; senão `(0, extensão)`
+ou `(0, DEFAULT)`.
+
+### A janela é aplicada ANTES da checagem de constância — e a ordem carrega o peso
+
+`BakedTrajectory::channel_in(ch, start, end)` recorta os samples ao `[start, end]` **e só
+então** decide se o canal é constante (a mesma lei do `None` que protege um canal parado). A
+ordem é *load-bearing*: um corpo que caiu no front `[0, start)` e **descansa** dentro da
+janela moveu-se na trajetória inteira mas é CONSTANTE na janela — escrever a "moção" dele
+seria uma track plana por cima do que o artista animou à mão ali dentro. Constância é
+propriedade dos samples que VIRAM chave, não da simulação toda. O `channel()` de range cheio
+delega com janela infinita ⇒ o caminho comum é byte-idêntico.
+
+### O botão e o toast dizem o que farão
+
+`bake_label(start, end)` colapsa em `Bake 5.0s` quando `start == 0` (o caso comum) e mostra
+`Bake 2.0-5.0s` com início positivo — as chaves pousam nesses tempos ABSOLUTOS e o artista
+tem de saber antes de clicar (o princípio do módulo: *o número invisível não existe*). O
+toast espelha: `Baked 0.5-2.5s`. `InspectorPhysicsInfo` ganhou `bake_start_seconds` (o par do
+`bake_seconds` que já era o `end`); a fiação passou de um `f32` para `(f32, f32)` em
+`snapshots.rs`/`build_physics_info`.
+
+### O que NÃO mudou, de propósito
+
+- **O rewind pós-bake continua a 0**, não ao `start`: a troca para `Kinematic` só alcança o
+  rapier no tick 0 (`reconcile_structure` re-descreve corpo em repouso), então é ali que a
+  entrega da pose de fato acontece. Antes da janela o corpo kinematic **segura a pose do
+  primeiro key** (extrapolação), que é a demonstração visível do front descartado.
+- **Nenhum componente, nenhum id, nenhum bump.** É comportamento do bake, não config: o
+  registro fica **21**, `PROJECT_SCHEMA` fica **29**, o `physics_ecs_c9` **não é tocado** (a
+  wave não muda solver nem componente) ⇒ hash inalterado, `4e862761…`, 83 corpos.
+
+### Gates e mutações (3 mutações, 3 sangram)
+
+- `bake::tests::a_window_hides_the_front_and_keeps_the_windowed_keys` (na `ph2d-physics-ecs`):
+  fixture *fell-then-rest*, prova que a constância é medida na janela.
+- `curve_tests::the_bake_window_prefers_the_armed_loop_and_honours_its_start`: o resolver;
+  **mutação** `return (0.0, end)` (descartar o start) ⇒ RED com `baked 0..2, expected 0.5..2.0`.
+- `curve_tests::a_partial_range_bake_writes_only_inside_its_window`: oráculo de APARÊNCIA (lê
+  a curva pelo `apply_from_doc`) — dentro da janela as duas curvas concordam, no t=0 o full
+  descreve o repouso (`y≈2.0`) e o parcial segura a pose caída; **mutação** `channel_in →
+  channel` (ignorar a janela) ⇒ RED (`at t=0 reads 2.0000, the same as the full bake`).
+- `seam_physics::the_bake_button_is_painted_and_reaches_the_bus`: o label colapsa em start 0 e
+  mostra os dois extremos com start > 0; **mutação** `bake_label` ignora o start ⇒ RED.
+
+### LOC
+
+`physics_bake_tests.rs` bateria em **600 exatos** com o gate novo — sentar no cap é frágil
+(a próxima linha de qualquer um quebra um gate alheio), então o `baked_over` + o gate de
+janela foram para o irmão `physics_bake_curve_tests.rs` (298→380), que já é a casa do range
+(mora ali o gate do resolver). `physics_smoke_rigs.rs` 520→575 (a cena 37, sob o cap).
+
+### Cena `=37`
+
+Um `Dropper` caindo do topo, loop armado `[0.5s, 2.5s]`, relógio pausado, timeline aberta. O
+botão tem de ler `Bake 0.5-2.5s`; ao assar, as chaves pousam só em `[0.5, 2.5]` (nada antes
+de 0.5s) e o Play (Physics OFF) mostra a bola SEGURANDO a pose de meio-ar de 0.5s até a
+janela abrir — um bake de range cheio a teria começado no topo.
+
+### Aberto no W-BakeRange
+
+- **Um Ctrl+Z para as duas metades do bake NÃO foi construído — e não é mecânico.** São duas
+  pilhas de undo genuinamente separadas: a GLOBAL (`ProjectState = WorldSnapshot + VecScene`,
+  captura a troca para `Kinematic`) e a da TIMELINE (clones de `TimelineDoc`, captura as
+  chaves), com roteamento de Ctrl+Z separado em `input_dispatch/keyboard.rs` (o bloco da
+  timeline dispara primeiro se o painel está aberto). Uni-las é mudar o *roteador de undo* e
+  tocar a timeline (outro domínio) — exatamente o que o doc-header do `physics_bake.rs` já
+  avisa (*"a change to the editor's undo architecture and not to the bake"*). **Reportado ao
+  Enio, não contrabandeado numa linha de física.**

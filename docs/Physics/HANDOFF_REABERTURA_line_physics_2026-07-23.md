@@ -157,9 +157,15 @@ Pergunte antes de escolher; ele decide a frente. Da mais valiosa para a menos:
 
 O bake lê a pose de **corpos**; uma corrente assada vira N kinematic com curvas próprias —
 reproduz o movimento e **descarta a articulação**. Assar *a restrição* (ou **recusar** assar
-corpos unidos, que talvez seja a resposta certa) é **decisão de design**, não mecânica. Junto:
-alcance com **início** (hoje sempre parte do tick 0, porque a sim é função do tick) e **um
-Ctrl+Z para as duas metades** (as chaves vão na fila da timeline, o `kind` na global).
+corpos unidos, que talvez seja a resposta certa) é **decisão de design**, não mecânica.
+
+- ~~alcance com **início**~~ — **FECHADO** (W-BakeRange, 2026-07-24, cena `=37`): o loop já
+  tinha um `start` e o bake o descartava; agora `[2s, 5s]` assa exatamente `[2s, 5s]`,
+  simulando o front e jogando fora os samples dele.
+- **Um Ctrl+Z para as duas metades** segue ABERTO **e não é mecânico** — reportado ao Enio:
+  são duas pilhas de undo separadas (a global captura o `kind`, a da timeline as chaves) com
+  roteamento próprio; uni-las é mudar o *roteador de undo* do editor e tocar a timeline
+  (outro domínio), exatamente o que o doc-header do `physics_bake.rs` avisa.
 
 #### C. Gizmo de âncora de joint no canvas
 

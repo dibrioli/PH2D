@@ -61,6 +61,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-AreaFrame** | o FRAME da zona — girar o sensor gira o vento (toggle `Force Axes: Zone \| World`) | `=34` |
 | **W-AreaFalloff** | o FALLOFF da zona — a força e o torque desvanecem do centro até ZERO na borda; a régua é a silhueta da própria zona | `=35` |
 | **W-AreaMirror** | o ESPELHO da zona — virar o sprite vira a correia; a força REFLETE (vetor) e o torque INVERTE (pseudoescalar) | `=36` |
+| **W-BakeRange** | o INÍCIO do loop é honrado — um loop `[2s, 5s]` assa exatamente `[2s, 5s]`, simulando o front e descartando-o (a metade do bake que estava aberta desde o W4) | `=37` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

@@ -1,6 +1,46 @@
 use super::super::*;
 
 impl LayerCompositor {
+    /// Make every key `ops` references resident: layer pixels **and** masks.
+    ///
+    /// The two are resolved by the same `ensure_slice` and live in the same
+    /// texture array — a mask is a layer key like any other — but they differ in
+    /// how a failure is handled, and that difference is the whole reason this is
+    /// a function instead of a loop written twice:
+    ///
+    /// * a **layer** the provider cannot serve is an error. The op-list named a
+    ///   layer that does not exist; compositing it would silently draw slice 0.
+    /// * a **mask** it cannot serve is **not** an error — it degrades to *no
+    ///   mask*, which is exactly what the CPU reference does (`mrgba.len() >= …`
+    ///   falls through to "fully visible"). The `flatten`'s `mask_slot_of` then
+    ///   finds no cache entry and emits `NO_MASK_SLOT`.
+    ///
+    /// Getting that backwards would hand a whole document to the other producer
+    /// over one malformed mask buffer.
+    // gpu + ops + src + dims + epoch + cap are all intrinsic to "make these keys
+    // resident"; bundling them would be a struct that exists only to satisfy a lint.
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_keys(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        src: &impl LayerPixelProvider,
+        canvas_w: u32,
+        canvas_h: u32,
+        epoch: u64,
+        cap: u32,
+    ) -> Result<(), LayerCompositeError> {
+        for op in ops {
+            if let LayerOp::Layer { key, .. } = op {
+                self.ensure_slice(gpu, *key, src, canvas_w, canvas_h, epoch, cap)?;
+            }
+            if let Some(m) = op_mask(op) {
+                let _ = self.ensure_slice(gpu, m.key, src, canvas_w, canvas_h, epoch, cap);
+            }
+        }
+        Ok(())
+    }
+
     /// Composite `ops` into the output texture, covering `region` of the
     /// `canvas_w × canvas_h` canvas. Uploads only layers whose version changed
     /// since the last call. Encodes + submits one compute dispatch.
@@ -57,15 +97,12 @@ impl LayerCompositor {
 
         // Resolve every referenced layer to a slice (uploading dirty pixels),
         // then flatten ops into the reusable GPU scratch.
-        for op in ops {
-            if let LayerOp::Layer { key, .. } = op {
-                self.ensure_slice(gpu, *key, src, canvas_w, canvas_h, epoch, cap)?;
-            }
-        }
+        self.resolve_keys(gpu, ops, src, canvas_w, canvas_h, epoch, cap)?;
         let cache = &self.cache;
         flatten_layer_ops(
             ops,
             |k| cache.get(&k).map_or(0, |c| c.slice),
+            |k| cache.get(&k).map(|c| c.slice),
             &mut self.scratch_ops,
         );
 
@@ -149,15 +186,12 @@ impl LayerCompositor {
         let epoch = self.clock;
         let cap = self.cache_cap(canvas_w, canvas_h).max(1);
         self.ensure_array(gpu, canvas_w, canvas_h, ops, cap)?;
-        for op in ops {
-            if let LayerOp::Layer { key, .. } = op {
-                self.ensure_slice(gpu, *key, src, canvas_w, canvas_h, epoch, cap)?;
-            }
-        }
+        self.resolve_keys(gpu, ops, src, canvas_w, canvas_h, epoch, cap)?;
         let cache = &self.cache;
         flatten_layer_ops(
             ops,
             |k| cache.get(&k).map_or(0, |c| c.slice),
+            |k| cache.get(&k).map(|c| c.slice),
             &mut self.scratch_ops,
         );
 

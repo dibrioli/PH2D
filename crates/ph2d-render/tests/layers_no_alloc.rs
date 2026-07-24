@@ -27,6 +27,8 @@ fn layers_no_alloc_hot_compose() {
     let mut ops = Vec::with_capacity(50);
     for i in 0..24u32 {
         ops.push(LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: (i % 8) as u64,
             blend_mode: (i % 22) as u8,
             opacity: 0.9,
@@ -35,6 +37,8 @@ fn layers_no_alloc_hot_compose() {
     ops.push(LayerOp::PushGroup);
     for i in 0..23u32 {
         ops.push(LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: (i % 8) as u64,
             blend_mode: (i % 22) as u8,
             opacity: 0.5,
@@ -50,7 +54,7 @@ fn layers_no_alloc_hot_compose() {
 
     // Warm the scratch to its final capacity — the ONLY reallocs happen here,
     // before the measured window.
-    flatten_layer_ops(&ops, slot_of, &mut scratch);
+    flatten_layer_ops(&ops, slot_of, |k| Some(slot_of(k)), &mut scratch);
     let warm_cap = scratch.capacity();
     assert!(
         warm_cap >= ops.len(),
@@ -60,7 +64,7 @@ fn layers_no_alloc_hot_compose() {
 
     // HR-3: 200 warm flattens must reuse the scratch without a single realloc.
     for _ in 0..200 {
-        flatten_layer_ops(&ops, slot_of, &mut scratch);
+        flatten_layer_ops(&ops, slot_of, |k| Some(slot_of(k)), &mut scratch);
     }
 
     assert_eq!(

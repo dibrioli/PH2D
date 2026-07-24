@@ -35,9 +35,18 @@ use ph2d_gpu::GpuContext;
 use std::collections::BTreeMap;
 
 mod compositor;
+mod ops; // the op-list model + its pure queries (LOC cap: sibling module)
 
 #[cfg(test)]
 mod tests;
+
+use ops::{COMBINE_BLOOM, COMBINE_GAUSSIAN, COMBINE_SHARPEN};
+pub use ops::{
+    LayerMask, LayerOp, MAX_BLUR_HALF, SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN,
+    SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, gaussian_weights, has_spatial,
+    motion_weights,
+};
+use ops::{distinct_layer_count, op_mask, validate_op_list};
 
 pub(crate) const LAYER_COMPOSITE_WGSL: &str = include_str!("../shaders/layer_composite.wgsl");
 
@@ -120,174 +129,6 @@ impl Region {
     }
 }
 
-/// One flattened compositor op, emitted by the caller from its `LayerStack`
-/// (top-down, bottom-to-top within each sibling list — the same order the CPU
-/// `composite_into` recurses). `key` is the caller's stable layer identifier
-/// (`LayerId.0`); `blend_mode` is the `BlendMode` wire `u8`; `opacity` folds
-/// into the source alpha. Groups bracket their children with
-/// [`LayerOp::PushGroup`] … [`LayerOp::PopGroup`].
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum LayerOp {
-    /// Blend a raster layer's pixels over the current accumulator.
-    Layer {
-        key: u64,
-        blend_mode: u8,
-        opacity: f32,
-    },
-    /// Begin a group: push a fresh sub-accumulator.
-    PushGroup,
-    /// End a group: blend the sub-accumulator over the parent as one layer.
-    PopGroup { blend_mode: u8, opacity: f32 },
-    /// Apply a non-destructive adjustment to the current accumulator (everything
-    /// below it). `kind` is an `ADJ_*` code — the caller maps its
-    /// `AdjustmentKind` to a code (the render crate stays decoupled from the
-    /// painter tool); an unknown code is an identity no-op in the shader.
-    /// `params` are the kind's ≤3 scalar params (see the WGSL `apply_adjustment`);
-    /// `blend_mode`/`opacity` are the adjustment's own — the effect blends back
-    /// over the base by these. W4 (ADR-0045).
-    Adjustment {
-        kind: u8,
-        params: [f32; 3],
-        blend_mode: u8,
-        opacity: f32,
-    },
-    /// Apply a SPATIAL (neighbourhood) adjustment to the current accumulator
-    /// (everything below it). Unlike [`LayerOp::Adjustment`] — which is a
-    /// per-pixel transform foldable into the single-pass compositor — a spatial
-    /// effect reads a *radius* of neighbours, so it is architecturally a **pass
-    /// break**: the compositor materialises the below-composite into a texture,
-    /// runs the kernel as 1+ ping-pong passes, blends the result back, then
-    /// continues the layers above as a new segment (Painter W4 spatial infra).
-    ///
-    /// `kernel` is a `SPATIAL_*` code (the caller maps its `AdjustmentKind`);
-    /// `params` are the kernel's scalars (`SPATIAL_GAUSSIAN` uses `params[0]` =
-    /// radius; `SPATIAL_SHADOWS_HIGHLIGHTS` uses all 8). `blend_mode`/`opacity`
-    /// are the adjustment's own — the effect blends back over the base by these,
-    /// mirroring the `Adjustment` arm. An unknown `kernel` is an identity no-op
-    /// (forward-compatible). The 8-scalar `params` is the widest spatial kind
-    /// (S/H); the 4-scalar kinds zero-pad the tail.
-    SpatialAdjustment {
-        kernel: u8,
-        params: [f32; 8],
-        blend_mode: u8,
-        opacity: f32,
-    },
-}
-
-/// Spatial-kernel codes — the `kernel` discriminant of
-/// [`LayerOp::SpatialAdjustment`]. The painter tool maps its
-/// `AdjustmentKind::GaussianBlur`/`Sharpen` (etc.) to one of these. The
-/// remaining kinds are reserved so the contract is stable as they land on the
-/// same pass-graph (Motion/Bloom/ShadowsHighlights/ChromaticAberration).
-///
-/// `SPATIAL_GAUSSIAN` reads `params[0]` = radius. `SPATIAL_SHARPEN` is unsharp
-/// mask (`src + amount·(src − blur(src))`) — `params[0]` = amount, `params[1]` =
-/// blur radius — and reuses the Gaussian blur passes, differing only in the
-/// combine step (`COMBINE_SHARPEN`).
-pub const SPATIAL_GAUSSIAN: u8 = 0;
-pub const SPATIAL_SHARPEN: u8 = 1;
-/// Directional (motion) blur — a single 1-D pass along `angle` of length
-/// `distance` (`params[0]` = distance, `params[1]` = angle in radians). Unlike
-/// Gaussian/Sharpen (axis-aligned separable H/V), this swaps the BLUR STAGE for
-/// `cs_blur_dir`; the combine is the passthrough (`COMBINE_GAUSSIAN`).
-pub const SPATIAL_MOTION: u8 = 2;
-/// Chromatic aberration — a single GATHER pass (`cs_chroma`) that samples the
-/// below-composite at per-channel RADIALLY-shifted coords (R/G/B fringe toward
-/// the edges). `params[0..3]` = red/green/blue shift in px (at the canvas corner),
-/// `params[3]` = falloff_center (RESERVED in the spike — the provisional model is
-/// linear-radial; the impl's `apply_chromatic_aberration` defines the curve).
-/// The per-channel scales + centre are precomputed CPU-side so the gather does no
-/// per-pixel sqrt (parity-robust, like motion); combine is the passthrough.
-pub const SPATIAL_CHROMA: u8 = 3;
-/// Bloom — bright-pass → separable Gaussian blur of the bright EXCESS → additive
-/// glow. `params[0]` = threshold, `params[1]` = intensity, `params[2]` = radius,
-/// `params[3]` = falloff. Adds the bright-pass `cs_bloom_bright` BEFORE the
-/// (premultiplied) separable blur, then the additive `COMBINE_BLOOM` step. The
-/// glow feathers coverage (haloes outward), so the combine adopts its alpha.
-/// Mirror of `ph2d_painter_brush::adjustments::spatial::apply_bloom`.
-pub const SPATIAL_BLOOM: u8 = 4;
-/// Shadows/Highlights — LOCAL tonal correction. Uses all 8 `params`:
-/// `[shadows_amount, shadows_tonal_width, shadows_radius, highlights_amount,
-/// highlights_tonal_width, highlights_radius, color_correction, midtone_contrast]`.
-/// `cs_sh_luma` extracts the display luma; the shared scalar blur builds two
-/// local-average tone maps (the two radii); `cs_combine_sh` lifts shadows /
-/// recovers highlights by the neighbourhood tone. Coverage is PRESERVED (a tonal
-/// op, NOT an image blur). Mirror of
-/// `ph2d_painter_brush::adjustments::spatial::apply_shadows_highlights`.
-pub const SPATIAL_SHADOWS_HIGHLIGHTS: u8 = 5;
-
-/// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
-/// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
-/// computes the unsharp mask from base + blurred; `BLOOM` adds `intensity·glow`
-/// onto the premultiplied base. All then blend over the base.
-const COMBINE_GAUSSIAN: u32 = 0;
-const COMBINE_SHARPEN: u32 = 1;
-const COMBINE_BLOOM: u32 = 2;
-
-/// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
-/// Bounds the weights buffer + the per-pixel tap count + the dirty-rect halo.
-/// A 256-radius blur is already far past any interactive use.
-pub const MAX_BLUR_HALF: u32 = 256;
-
-/// Separable-Gaussian half-kernel. Returns `(weights, half_width)` where
-/// `weights[i]` is the symmetric weight for offset `±i` (`weights[0]` = centre
-/// tap), normalised so the full kernel sums to 1. σ = radius/3 (radius ≈ 3σ,
-/// the textbook truncation); `half = ceil(radius)`.
-///
-/// This is `ph2d-render`'s SELF-CONTAINED copy: the crate is foundational and
-/// must not gain a production dependency on the painter tool's domain crate (the
-/// decoupling, see `Cargo.toml`). The painter impl's `ph2d_painter_brush::
-/// adjustments::gaussian_weights` is the canonical math and this is bit-identical
-/// to it — pinned by the `spatial_weights_parity` dev-test so the two copies can
-/// never drift (single source of truth without coupling the libs).
-#[must_use]
-pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
-    let r = radius.max(0.0);
-    let half = (r.ceil() as u32).clamp(1, MAX_BLUR_HALF);
-    let sigma = (r / 3.0).max(1e-3);
-    let two_sigma_sq = 2.0 * sigma * sigma;
-    let mut weights = Vec::with_capacity(half as usize + 1);
-    let mut sum = 0.0f32;
-    for i in 0..=half {
-        let x = i as f32;
-        let g = (-(x * x) / two_sigma_sq).exp();
-        weights.push(g);
-        // The centre tap is counted once; each ±i flank tap is counted twice.
-        sum += if i == 0 { g } else { 2.0 * g };
-    }
-    if sum > 0.0 {
-        for w in &mut weights {
-            *w /= sum;
-        }
-    }
-    (weights, half)
-}
-
-/// Motion-blur kernel — uniform box along the motion line (constant-velocity
-/// linear motion exposes every position equally). Returns `(weights, half)` for
-/// the symmetric `2·half+1`-tap average (`weights[i] = 1/(2·half+1)`); `half =
-/// ceil(distance/2)` so the line spans ≈ `distance` px. The taps are sampled
-/// along the direction by `cs_blur_dir` (see [`SPATIAL_MOTION`]).
-///
-/// `ph2d-render`'s self-contained copy, bit-identical to the canonical
-/// `ph2d_painter_brush::adjustments::motion_weights` (decoupling preserved;
-/// pinned by the `spatial_weights_parity` dev-test). See [`gaussian_weights`].
-#[must_use]
-pub fn motion_weights(distance: f32) -> (Vec<f32>, u32) {
-    let half = ((distance.max(0.0) / 2.0).ceil() as u32).clamp(1, MAX_BLUR_HALF);
-    let w = 1.0 / (2 * half + 1) as f32;
-    (vec![w; half as usize + 1], half)
-}
-
-/// Does this op-list contain a spatial adjustment (a pass break)? When false,
-/// the compositor takes the untouched single-pass path; when true, it takes the
-/// segmented pass-graph.
-#[must_use]
-pub fn has_spatial(ops: &[LayerOp]) -> bool {
-    ops.iter()
-        .any(|o| matches!(o, LayerOp::SpatialAdjustment { .. }))
-}
-
 /// Borrowed straight-sRGB8 pixels for one layer plus a cheap content version.
 /// The compositor re-uploads a slice only when `version` changes, so the
 /// caller must bump it whenever the layer's pixels change (e.g. a committed
@@ -351,7 +192,7 @@ const MAX_STACK: u32 = 9;
 
 // ── GPU-side POD mirrors ─────────────────────────────────────────────────
 
-/// One op as the shader sees it (16 bytes; mirrors WGSL `Op`).
+/// One op as the shader sees it (32 bytes; mirrors WGSL `Op`).
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuOp {
@@ -359,7 +200,21 @@ struct GpuOp {
     layer_slot: u32,
     blend_mode: u32,
     opacity: f32,
+    /// Texture-array slice of this op's mask, or [`NO_MASK_SLOT`].
+    mask_slot: u32,
+    /// [`FLAG_CLIPPING`] | [`FLAG_MASK_INVERTED`].
+    flags: u32,
+    _pad0: u32,
+    _pad1: u32,
 }
+
+/// `mask_slot` sentinel: this op carries no mask. Distinct from slice 0, which
+/// is a perfectly ordinary layer.
+const NO_MASK_SLOT: u32 = u32::MAX;
+/// `flags` bit 0 — the op clips to the current clip base.
+const FLAG_CLIPPING: u32 = 1;
+/// `flags` bit 1 — the mask reads `1 - luma`.
+const FLAG_MASK_INVERTED: u32 = 2;
 
 /// Op kind discriminants — mirror the WGSL `OP_*` consts.
 const OP_LAYER: u32 = 0;
@@ -699,58 +554,6 @@ struct WorkTex {
     view: wgpu::TextureView,
 }
 
-/// Validate group push/pop balance + depth without touching the GPU.
-fn validate_op_list(ops: &[LayerOp]) -> Result<(), LayerCompositeError> {
-    let mut depth: u32 = 0;
-    for op in ops {
-        match op {
-            LayerOp::PushGroup => {
-                depth += 1;
-                if depth + 1 > MAX_STACK {
-                    return Err(LayerCompositeError::MalformedOpList);
-                }
-            }
-            LayerOp::PopGroup { .. } => {
-                depth = depth
-                    .checked_sub(1)
-                    .ok_or(LayerCompositeError::MalformedOpList)?;
-            }
-            // Layers + adjustments are depth-neutral (an adjustment transforms
-            // the current accumulator in place, like a layer blends over it).
-            // A spatial adjustment is likewise depth-neutral at the op-list
-            // level — its multi-pass machinery runs between segments, but it
-            // does not push/pop a group.
-            LayerOp::Layer { .. }
-            | LayerOp::Adjustment { .. }
-            | LayerOp::SpatialAdjustment { .. } => {}
-        }
-    }
-    if depth != 0 {
-        return Err(LayerCompositeError::MalformedOpList);
-    }
-    Ok(())
-}
-
-/// Distinct `Layer` keys referenced by `ops`.
-fn distinct_layer_count(ops: &[LayerOp]) -> u32 {
-    // Allocation-free (HR-3): count each `Layer` key only at its FIRST
-    // occurrence. O(n²) in op count, but n is a few hundred at most and this is
-    // off the GPU-bound cost — cheaper than a per-`composite()` BTreeSet alloc
-    // on the documented real-time path (audit 2026-06-01 LOW).
-    let mut count = 0u32;
-    for (i, op) in ops.iter().enumerate() {
-        if let LayerOp::Layer { key, .. } = op {
-            let is_first = !ops[..i]
-                .iter()
-                .any(|o| matches!(o, LayerOp::Layer { key: k, .. } if k == key));
-            if is_first {
-                count += 1;
-            }
-        }
-    }
-    count
-}
-
 /// Reusable scratch for the flattened GPU op-list. Construct once, reuse
 /// across frames: [`flatten_layer_ops`] clears and refills it without
 /// allocating once it is warm (HR-3 — `layers_no_alloc_hot_compose`).
@@ -792,11 +595,36 @@ impl GpuOpScratch {
 /// capacity so it does NOT allocate once warm (HR-3). A key `slot_of` resolves
 /// to (defaulting to 0 for an absent key) becomes the texture-array slice the
 /// shader samples. `composite` calls this with the live cache as the resolver.
+///
+/// A **mask** key resolves through `mask_slot_of`, which is deliberately
+/// fallible where `slot_of` is not: a mask the provider could not serve at
+/// canvas size degrades to *no mask* (the CPU reference's behaviour), rather
+/// than poisoning the whole composite. See [`LayerMask`].
 pub fn flatten_layer_ops(
     ops: &[LayerOp],
     slot_of: impl Fn(u64) -> u32,
+    mask_slot_of: impl Fn(u64) -> Option<u32>,
     scratch: &mut GpuOpScratch,
 ) {
+    /// `(mask_slot, flags)` for an op's optional mask + clipping flag.
+    fn coverage(
+        mask: Option<LayerMask>,
+        clipping: bool,
+        mask_slot_of: &impl Fn(u64) -> Option<u32>,
+    ) -> (u32, u32) {
+        let mut flags = if clipping { FLAG_CLIPPING } else { 0 };
+        let slot = match mask.and_then(|m| mask_slot_of(m.key).map(|s| (s, m.inverted))) {
+            Some((slot, inverted)) => {
+                if inverted {
+                    flags |= FLAG_MASK_INVERTED;
+                }
+                slot
+            }
+            None => NO_MASK_SLOT,
+        };
+        (slot, flags)
+    }
+
     scratch.ops.clear();
     scratch.adj.clear();
     for op in ops {
@@ -805,20 +633,33 @@ pub fn flatten_layer_ops(
                 key,
                 blend_mode,
                 opacity,
-            } => GpuOp {
-                kind: OP_LAYER,
-                layer_slot: slot_of(*key),
-                blend_mode: *blend_mode as u32,
-                // Clamp to [0,1] to match the CPU reference (compositor.rs
-                // clamps layer.opacity before folding into source alpha); an
-                // out-of-range opacity would otherwise diverge (audit LOW).
-                opacity: opacity.clamp(0.0, 1.0),
-            },
+                mask,
+                clipping,
+            } => {
+                let (mask_slot, flags) = coverage(*mask, *clipping, &mask_slot_of);
+                GpuOp {
+                    kind: OP_LAYER,
+                    layer_slot: slot_of(*key),
+                    blend_mode: *blend_mode as u32,
+                    // Clamp to [0,1] to match the CPU reference (compositor.rs
+                    // clamps layer.opacity before folding into source alpha); an
+                    // out-of-range opacity would otherwise diverge (audit LOW).
+                    opacity: opacity.clamp(0.0, 1.0),
+                    mask_slot,
+                    flags,
+                    _pad0: 0,
+                    _pad1: 0,
+                }
+            }
             LayerOp::PushGroup => GpuOp {
                 kind: OP_PUSH_GROUP,
                 layer_slot: 0,
                 blend_mode: 0,
                 opacity: 1.0,
+                mask_slot: NO_MASK_SLOT,
+                flags: 0,
+                _pad0: 0,
+                _pad1: 0,
             },
             LayerOp::PopGroup {
                 blend_mode,
@@ -828,12 +669,17 @@ pub fn flatten_layer_ops(
                 layer_slot: 0,
                 blend_mode: *blend_mode as u32,
                 opacity: opacity.clamp(0.0, 1.0),
+                mask_slot: NO_MASK_SLOT,
+                flags: 0,
+                _pad0: 0,
+                _pad1: 0,
             },
             LayerOp::Adjustment {
                 kind,
                 params,
                 blend_mode,
                 opacity,
+                mask,
             } => {
                 // The op's `layer_slot` indexes the params we stash in parallel.
                 let params_index = scratch.adj.len() as u32;
@@ -843,11 +689,16 @@ pub fn flatten_layer_ops(
                     p1: params[1],
                     p2: params[2],
                 });
+                let (mask_slot, flags) = coverage(*mask, false, &mask_slot_of);
                 GpuOp {
                     kind: OP_ADJUSTMENT,
                     layer_slot: params_index,
                     blend_mode: *blend_mode as u32,
                     opacity: opacity.clamp(0.0, 1.0),
+                    mask_slot,
+                    flags,
+                    _pad0: 0,
+                    _pad1: 0,
                 }
             }
             // Spatial adjustments are driven CPU-side as pass breaks; emit a
@@ -859,6 +710,10 @@ pub fn flatten_layer_ops(
                 layer_slot: 0,
                 blend_mode: 0,
                 opacity: 1.0,
+                mask_slot: NO_MASK_SLOT,
+                flags: 0,
+                _pad0: 0,
+                _pad1: 0,
             },
         };
         scratch.ops.push(g);

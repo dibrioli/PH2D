@@ -19,9 +19,9 @@ use ph2d_painter_effects::adjustments::{
 };
 use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
-    LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS,
-    SPATIAL_SHARPEN, gaussian_weights, motion_weights,
+    LayerCompositeError, LayerCompositor, LayerMask, LayerOp, LayerPixelProvider, LayerPixels,
+    Region, SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION,
+    SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, gaussian_weights, motion_weights,
 };
 use std::collections::BTreeMap;
 
@@ -118,28 +118,57 @@ fn cpu_composite(ops: &[LayerOp], prov: &MapProvider, w: u32, _h: u32, region: R
             let gx = region.x + lx;
             let gy = region.y + ly;
             let mut stack = [[0.0f32; 4]; 9];
+            // One clip base per depth — the shader's `clip_base` array. `None` =
+            // no non-clipping layer drawn yet at this depth, so a clipping layer
+            // draws unclipped (the CPU compositor's `clip_base: Option`).
+            let mut clip_base = [None::<f32>; 9];
             let mut sp = 0usize;
+            let i = ((gy * w + gx) * 4) as usize;
+            // Rec.601 luma of a mask texel's STRAIGHT bytes — mirror of
+            // `ph2d_tool_painter::compositor::mask_value` and the WGSL
+            // `mask_value`. A mask key the provider does not serve is NO mask.
+            let mask_factor = |m: Option<LayerMask>| -> f32 {
+                let Some(m) = m else { return 1.0 };
+                let Some((_, b)) = prov.layers.get(&m.key).map(|(v, b)| (v, b)) else {
+                    return 1.0;
+                };
+                let v = (0.299 * b[i] as f32 + 0.587 * b[i + 1] as f32 + 0.114 * b[i + 2] as f32)
+                    / 255.0;
+                if m.inverted { 1.0 - v } else { v }
+            };
             for op in ops {
                 match op {
                     LayerOp::Layer {
                         key,
                         blend_mode,
                         opacity,
+                        mask,
+                        clipping,
                     } => {
                         let b = prov.bytes(*key);
-                        let i = ((gy * w + gx) * 4) as usize;
                         let mut s = [
                             srgb_to_linear_byte(b[i]),
                             srgb_to_linear_byte(b[i + 1]),
                             srgb_to_linear_byte(b[i + 2]),
                             b[i + 3] as f32 / 255.0,
                         ];
+                        // decode -> mask -> clip -> opacity, the CPU order.
+                        let raw_a = s[3];
+                        s[3] *= mask_factor(*mask);
+                        if *clipping {
+                            if let Some(base) = clip_base[sp] {
+                                s[3] *= base;
+                            }
+                        } else {
+                            clip_base[sp] = Some(raw_a);
+                        }
                         s[3] *= *opacity;
                         stack[sp] = apply_blend(BlendMode::from_u8(*blend_mode), stack[sp], s);
                     }
                     LayerOp::PushGroup => {
                         sp += 1;
                         stack[sp] = [0.0; 4];
+                        clip_base[sp] = None; // a group opens its own chain
                     }
                     LayerOp::PopGroup {
                         blend_mode,
@@ -148,6 +177,7 @@ fn cpu_composite(ops: &[LayerOp], prov: &MapProvider, w: u32, _h: u32, region: R
                         let mut sub = stack[sp];
                         sp -= 1;
                         sub[3] *= *opacity;
+                        clip_base[sp] = None; // returning from a group breaks the parent's
                         stack[sp] = apply_blend(BlendMode::from_u8(*blend_mode), stack[sp], sub);
                     }
                     LayerOp::Adjustment {
@@ -155,8 +185,11 @@ fn cpu_composite(ops: &[LayerOp], prov: &MapProvider, w: u32, _h: u32, region: R
                         params,
                         blend_mode,
                         opacity,
+                        mask,
                     } => {
-                        stack[sp] = cpu_adjust_op(*kind, *params, *blend_mode, *opacity, stack[sp]);
+                        clip_base[sp] = None; // an adjustment breaks the chain
+                        let t = *opacity * mask_factor(*mask);
+                        stack[sp] = cpu_adjust_op(*kind, *params, *blend_mode, t, stack[sp]);
                     }
                     // Spatial adjustments take the segmented pass-graph, not this
                     // single-pass reference — `gpu_gaussian_matches_cpu_reference`
@@ -221,11 +254,15 @@ fn gpu_composite_matches_cpu_reference_each_mode() {
     for code in 0..MAX_BLEND_MODES {
         let ops = vec![
             LayerOp::Layer {
+                mask: None,
+                clipping: false,
                 key: 0,
                 blend_mode: 0,
                 opacity: 1.0,
             },
             LayerOp::Layer {
+                mask: None,
+                clipping: false,
                 key: 1,
                 blend_mode: code,
                 opacity: 0.8,
@@ -280,11 +317,14 @@ fn gpu_adjustment_matches_cpu_reference_each_kind() {
         prov.insert(1, 1, varied_canvas(w, h, 5));
         let ops = vec![
             LayerOp::Layer {
+                mask: None,
+                clipping: false,
                 key: 1,
                 blend_mode: 0,
                 opacity: 1.0,
             },
             LayerOp::Adjustment {
+                mask: None,
                 kind: code,
                 params,
                 blend_mode: 0,
@@ -309,11 +349,14 @@ fn gpu_adjustment_matches_cpu_reference_each_kind() {
     prov.insert(1, 2, varied_canvas(w, h, 9));
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Adjustment {
+            mask: None,
             kind: 1,
             params: [0.6, 0.5, 0.0],
             blend_mode: 0,
@@ -366,11 +409,14 @@ fn gpu_adjustment_luts_curves_levels_parity() {
     }
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Adjustment {
+            mask: None,
             kind: 7,
             params: [0.0, 0.0, 0.0],
             blend_mode: 0,
@@ -407,11 +453,14 @@ fn gpu_adjustment_luts_curves_levels_parity() {
     let levels_lut = levels_display_lut(&lp).to_vec();
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Adjustment {
+            mask: None,
             kind: 8,
             params: [0.0, 0.0, 0.0],
             blend_mode: 0,
@@ -452,22 +501,30 @@ fn gpu_composite_matches_cpu_reference_grouped_stack() {
     // bottom, [group: c2 multiply, c3 screen]@0.6 overlay, c4 soft-light, c5 hue
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 8,
             opacity: 0.5,
         }, // Add
         LayerOp::PushGroup,
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 2,
             blend_mode: 1,
             opacity: 1.0,
         }, // Multiply
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 3,
             blend_mode: 6,
             opacity: 0.7,
@@ -477,11 +534,15 @@ fn gpu_composite_matches_cpu_reference_grouped_stack() {
             opacity: 0.6,
         }, // Overlay group
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 4,
             blend_mode: 10,
             opacity: 0.9,
         }, // SoftLight
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 5,
             blend_mode: 16,
             opacity: 0.8,
@@ -520,6 +581,8 @@ fn gpu_composite_matches_cpu_reference_deep_nested_groups() {
     // bg, then `depth` nested [PushGroup, Layer(mode d)], closed by `depth`
     // PopGroups with varied blend modes — every stack level carries real blends.
     let mut ops = vec![LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
@@ -527,6 +590,8 @@ fn gpu_composite_matches_cpu_reference_deep_nested_groups() {
     for d in 1..=depth {
         ops.push(LayerOp::PushGroup);
         ops.push(LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: d as u64,
             blend_mode: (d % MAX_BLEND_MODES as usize) as u8,
             opacity: 0.8,
@@ -565,11 +630,15 @@ fn gpu_dirty_rect_matches_full() {
     prov.insert(1, 1, varied_canvas(w, h, 2));
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 11,
             opacity: 0.65,
@@ -667,11 +736,14 @@ fn gpu_adjustment_drag_full_canvas_perf() {
         prov.insert(1, 1, varied_canvas(w, h, 3));
         let ops = vec![
             LayerOp::Layer {
+                mask: None,
+                clipping: false,
                 key: 1,
                 blend_mode: 0,
                 opacity: 1.0,
             },
             LayerOp::Adjustment {
+                mask: None,
                 kind: 0, // HSB — the cbrt-heavy worst case
                 params: [0.15, 0.4, 0.1],
                 blend_mode: 0,
@@ -719,6 +791,8 @@ fn gpu_composite_50_layers_dirty_rect_interactive() {
     }
     let ops: Vec<LayerOp> = (0..50)
         .map(|i| LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: (i % cap) as u64,
             blend_mode: (i % MAX_BLEND_MODES as u32) as u8,
             opacity: 0.9,
@@ -762,6 +836,8 @@ fn gpu_composite_full_4k_scales_linearly() {
     let make = |n: u32| -> Vec<LayerOp> {
         (0..n)
             .map(|i| LayerOp::Layer {
+                mask: None,
+                clipping: false,
                 key: (i % cap) as u64,
                 blend_mode: (i % MAX_BLEND_MODES as u32) as u8,
                 opacity: 0.9,
@@ -808,6 +884,8 @@ fn gpu_too_many_layers_errors_at_budget_cap() {
     }
     let ops: Vec<LayerOp> = (0..(cap as u64 + 1))
         .map(|k| LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: k,
             blend_mode: 0,
             opacity: 1.0,
@@ -864,6 +942,8 @@ fn cpu_seg_linear(
         for op in ops {
             match op {
                 LayerOp::Layer {
+                    mask: None,
+                    clipping: false,
                     key,
                     blend_mode,
                     opacity,
@@ -874,6 +954,7 @@ fn cpu_seg_linear(
                     acc = apply_blend(BlendMode::from_u8(*blend_mode), acc, s);
                 }
                 LayerOp::Adjustment {
+                    mask: None,
                     kind,
                     params,
                     blend_mode,
@@ -1014,11 +1095,15 @@ fn gpu_gaussian_matches_cpu_reference() {
     let radius = 4.0f32;
     let (weights, half) = gaussian_weights(radius);
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.6,
@@ -1096,11 +1181,15 @@ fn gpu_sharpen_matches_cpu_reference() {
     let radius = 3.0f32;
     let (weights, half) = gaussian_weights(radius);
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.5,
@@ -1220,11 +1309,15 @@ fn gpu_motion_matches_cpu_reference() {
     let (weights, half) = motion_weights(distance);
     let dir = [angle.cos(), angle.sin()];
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.7,
@@ -1340,11 +1433,15 @@ fn gpu_chroma_matches_cpu_reference() {
     // Classic CA: red fringes outward, blue inward, green fixed.
     let shifts = [3.0f32, 0.0, -3.0];
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.5,
@@ -1425,6 +1522,8 @@ fn gpu_gaussian_feathers_coverage_into_transparency() {
     prov.insert(0, 1, base);
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
@@ -1503,11 +1602,15 @@ fn gpu_bloom_matches_cpu_reference() {
         falloff: 0.2,
     };
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.6,
@@ -1604,6 +1707,8 @@ fn gpu_bloom_haloes_into_transparency() {
         falloff: 0.2,
     };
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
@@ -1698,11 +1803,15 @@ fn gpu_shadows_highlights_matches_cpu_reference() {
         midtone_contrast: 0.15,
     };
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
     }];
     let above = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 0.6,
@@ -1795,6 +1904,8 @@ fn gpu_noise_matches_cpu_reference() {
     }
     prov.insert(0, 1, base);
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
@@ -1824,6 +1935,7 @@ fn gpu_noise_matches_cpu_reference() {
         let ops = vec![
             below[0],
             LayerOp::Adjustment {
+                mask: None,
                 kind: 9, // ADJ_NOISE
                 params: [np.amount, kind_f, mono_f],
                 blend_mode: 0,
@@ -1882,6 +1994,8 @@ fn gpu_halftone_matches_cpu_reference() {
     }
     prov.insert(0, 1, base);
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
@@ -1900,6 +2014,7 @@ fn gpu_halftone_matches_cpu_reference() {
     let ops = vec![
         below[0],
         LayerOp::Adjustment {
+            mask: None,
             kind: 10, // ADJ_HALFTONE
             params: [hp.dot_size, hp.angle, shape_f],
             blend_mode: 0,
@@ -1974,6 +2089,8 @@ fn gpu_color_lookup_matches_cpu_reference() {
     }
     prov.insert(0, 1, base);
     let below = [LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 0,
         blend_mode: 0,
         opacity: 1.0,
@@ -1986,6 +2103,7 @@ fn gpu_color_lookup_matches_cpu_reference() {
         let ops = vec![
             below[0],
             LayerOp::Adjustment {
+                mask: None,
                 kind: 11, // ADJ_COLOR_LOOKUP
                 params: [f32::from(idx), intensity, 0.0],
                 blend_mode: 0,
@@ -2032,6 +2150,8 @@ fn gpu_bloom_drag_perf() {
         for &radius in &[20.0f32, 100.0] {
             let ops = vec![
                 LayerOp::Layer {
+                    mask: None,
+                    clipping: false,
                     key: 1,
                     blend_mode: 0,
                     opacity: 1.0,
@@ -2078,6 +2198,8 @@ fn gpu_bloom_large_radius_pyramid_haloes_wide() {
     let radius = 32.0f32; // > 16 → factor 2, low_radius 16 (the pyramid path)
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
@@ -2146,11 +2268,15 @@ fn injected_slice_wins_until_provider_version_bumps() {
     // Non-trivial 2-layer stack (top at half opacity so both layers matter).
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 0.5,
@@ -2246,6 +2372,8 @@ fn inject_rejects_incompatible_source_texture() {
     };
     let (w, h) = (16u32, 16u32);
     let ops = vec![LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 7,
         blend_mode: 0,
         opacity: 0.5,
@@ -2310,11 +2438,15 @@ fn composite_region_into_canvas_refreshes_region_and_preserves_outside() {
     };
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 0,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 0.5,
@@ -2394,6 +2526,8 @@ fn measure_the_stack_depth_on_the_device() {
             for k in 0..n {
                 prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
                 ops.push(LayerOp::Layer {
+                    mask: None,
+                    clipping: false,
                     key: k as u64,
                     blend_mode: 0,
                     opacity: 1.0,
@@ -2445,12 +2579,15 @@ fn measure_the_adjustment_drag_on_the_device() {
             for k in 0..n {
                 prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
                 ops.push(LayerOp::Layer {
+                    mask: None,
+                    clipping: false,
                     key: k as u64,
                     blend_mode: 0,
                     opacity: 1.0,
                 });
             }
             ops.push(LayerOp::Adjustment {
+                mask: None,
                 kind: 0, // HSB — the same OKLab cbrt-heavy kind the CPU harness drags
                 params: [0.15, 0.4, 0.1],
                 blend_mode: 0,
@@ -2473,4 +2610,386 @@ fn measure_the_adjustment_drag_on_the_device() {
         }
     }
     eprintln!();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COVERAGE MODIFIERS — mask (T3.5) and clipping (T3.6) on the GPU
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A canvas-sized grayscale ramp, as a mask layer's pixels: left edge black
+/// (hidden), right edge white (visible), alpha opaque throughout.
+///
+/// A RAMP and not a checker: every mask value in `0..=255` appears, so a mask
+/// applied at the wrong point in the order (before the transfer, on the colour
+/// instead of the coverage) diverges somewhere in the sweep instead of hiding in
+/// the two values a binary mask happens to test.
+fn mask_ramp(w: u32, h: u32) -> Vec<u8> {
+    let mut v = vec![0u8; (w as usize) * (h as usize) * 4];
+    for y in 0..h {
+        for x in 0..w {
+            let g = ((x * 255) / w.max(1)) as u8;
+            let i = ((y * w + x) * 4) as usize;
+            v[i] = g;
+            v[i + 1] = g;
+            v[i + 2] = g;
+            v[i + 3] = 255;
+        }
+    }
+    v
+}
+
+/// A canvas whose ALPHA sweeps across x — the clip base a clipping layer reads.
+///
+/// Clipping multiplies by the base's *raw straight alpha*, so a base with a flat
+/// alpha would make "reads the base's alpha" and "reads 1.0" indistinguishable.
+fn alpha_ramp_canvas(w: u32, h: u32, seed: u32) -> Vec<u8> {
+    let mut v = varied_canvas(w, h, seed);
+    for y in 0..h {
+        for x in 0..w {
+            v[(((y * w + x) * 4) + 3) as usize] = ((x * 255) / w.max(1)) as u8;
+        }
+    }
+    v
+}
+
+/// **The mask reaches the device and lands where the CPU puts it.**
+///
+/// The oracle is the same `cpu_composite` mirror every other parity gate uses,
+/// now taught the modifiers — so this asserts the shader against the reference,
+/// not against a second copy of the shader's own reasoning.
+///
+/// Both polarities are exercised, because inversion read off the wrong end is a
+/// still-plausible picture; and the mask is put on the TOP layer of two, so a
+/// mask that leaked into the wrong slot would show as the base disappearing.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_layer_mask_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    for inverted in [false, true] {
+        let mut prov = MapProvider::default();
+        prov.insert(1, 1, varied_canvas(w, h, 3));
+        prov.insert(2, 1, varied_canvas(w, h, 9));
+        prov.insert(7, 1, mask_ramp(w, h));
+        let ops = vec![
+            LayerOp::Layer {
+                key: 1,
+                blend_mode: 0,
+                opacity: 1.0,
+                mask: None,
+                clipping: false,
+            },
+            LayerOp::Layer {
+                key: 2,
+                blend_mode: 0,
+                opacity: 1.0,
+                mask: Some(LayerMask { key: 7, inverted }),
+                clipping: false,
+            },
+        ];
+        comp.composite(&gpu, &ops, &prov, w, h, region)
+            .expect("composite");
+        let got = comp.read_output(&gpu).expect("readback");
+        let want = cpu_composite(&ops, &prov, w, h, region);
+        let diff = max_byte_diff(&got, &want);
+        assert!(
+            diff <= 2,
+            "masked layer (inverted={inverted}): max diff {diff}"
+        );
+
+        // And it must actually DO something: a gate that only compares two
+        // implementations passes just as well when both ignore the mask.
+        let unmasked: Vec<LayerOp> = ops
+            .iter()
+            .map(|o| match *o {
+                LayerOp::Layer {
+                    key,
+                    blend_mode,
+                    opacity,
+                    clipping,
+                    ..
+                } => LayerOp::Layer {
+                    key,
+                    blend_mode,
+                    opacity,
+                    mask: None,
+                    clipping,
+                },
+                other => other,
+            })
+            .collect();
+        comp.composite(&gpu, &unmasked, &prov, w, h, region)
+            .expect("composite");
+        let plain = comp.read_output(&gpu).expect("readback");
+        assert!(
+            max_byte_diff(&got, &plain) > 8,
+            "the mask changed nothing — this gate would pass over a dropped mask"
+        );
+    }
+}
+
+/// **Clipping reaches the device, reads the RAW base alpha, and chains.**
+///
+/// Three properties in one fixture because they are one law:
+///
+/// * a clipping layer is multiplied by the base's straight alpha (the base has an
+///   alpha ramp, so "reads the base" and "reads 1.0" cannot coincide);
+/// * the base is the base's **raw** alpha — before the base's own mask. The base
+///   here WEARS a mask, which is the only fixture that can tell the two apart;
+/// * two consecutive clipping layers chain to the SAME base rather than
+///   compounding, which is what makes it a clip and not a stack of multiplies.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_clipping_matches_cpu_reference_including_the_chain() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    let mut prov = MapProvider::default();
+    prov.insert(1, 1, alpha_ramp_canvas(w, h, 3)); // the clip base
+    prov.insert(2, 1, varied_canvas(w, h, 9));
+    prov.insert(3, 1, varied_canvas(w, h, 11));
+    prov.insert(7, 1, mask_ramp(w, h));
+    let ops = vec![
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 1.0,
+            // The base wears a mask: the clip must ignore it (raw alpha).
+            mask: Some(LayerMask {
+                key: 7,
+                inverted: false,
+            }),
+            clipping: false,
+        },
+        LayerOp::Layer {
+            key: 2,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: true,
+        },
+        LayerOp::Layer {
+            key: 3,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: true, // chains to key 1, NOT to key 2
+        },
+    ];
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let want = cpu_composite(&ops, &prov, w, h, region);
+    let diff = max_byte_diff(&got, &want);
+    assert!(diff <= 2, "clipping chain: GPU vs CPU max byte diff {diff}");
+
+    // Positive control: unclipping the two upper layers must change the picture,
+    // or this gate is comparing two implementations that both ignore the flag.
+    let unclipped: Vec<LayerOp> = ops
+        .iter()
+        .map(|o| match *o {
+            LayerOp::Layer {
+                key,
+                blend_mode,
+                opacity,
+                mask,
+                ..
+            } => LayerOp::Layer {
+                key,
+                blend_mode,
+                opacity,
+                mask,
+                clipping: false,
+            },
+            other => other,
+        })
+        .collect();
+    comp.composite(&gpu, &unclipped, &prov, w, h, region)
+        .expect("composite");
+    let plain = comp.read_output(&gpu).expect("readback");
+    assert!(
+        max_byte_diff(&got, &plain) > 8,
+        "clipping changed nothing — this gate would pass over a dropped flag"
+    );
+}
+
+/// **A group opens its own clip chain and breaks the parent's on the way out** —
+/// the per-depth `clip_base` array, which is the one part of this port that the
+/// flat entry point cannot exercise.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_clip_chain_is_per_depth_across_groups() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    let mut prov = MapProvider::default();
+    for k in 1..=4u64 {
+        prov.insert(k, 1, alpha_ramp_canvas(w, h, k as u32 + 2));
+    }
+    let ops = vec![
+        // Root base — a clipping layer AFTER the group must NOT find it.
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: false,
+        },
+        LayerOp::PushGroup,
+        // Inside: its own base + a layer clipped to it.
+        LayerOp::Layer {
+            key: 2,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: false,
+        },
+        LayerOp::Layer {
+            key: 3,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: true,
+        },
+        LayerOp::PopGroup {
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        // Back at the root: the group broke the chain, so this draws UNCLIPPED.
+        LayerOp::Layer {
+            key: 4,
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: true,
+        },
+    ];
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let want = cpu_composite(&ops, &prov, w, h, region);
+    let diff = max_byte_diff(&got, &want);
+    assert!(diff <= 2, "per-depth clip chain: max byte diff {diff}");
+}
+
+/// **A masked adjustment fades its EFFECT, not the artwork under it.**
+///
+/// The distinction is the whole reason the mask lives on `t` and not on the
+/// coverage: where the mask is black the pixel must be the untouched base, and
+/// where it is white the pixel must be the fully adjusted one. A mask wired to
+/// the coverage instead would punch a hole — same "it responds to the mask", a
+/// completely different picture.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_adjustment_mask_fades_the_effect_not_the_coverage() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    let mut prov = MapProvider::default();
+    prov.insert(1, 1, varied_canvas(w, h, 4));
+    prov.insert(7, 1, mask_ramp(w, h));
+    let base_op = LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 1.0,
+        mask: None,
+        clipping: false,
+    };
+    let masked = vec![
+        base_op,
+        LayerOp::Adjustment {
+            kind: 2, // Invert — maximally visible, no params to get wrong
+            params: [0.0; 3],
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: Some(LayerMask {
+                key: 7,
+                inverted: false,
+            }),
+        },
+    ];
+    comp.composite(&gpu, &masked, &prov, w, h, region)
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let want = cpu_composite(&masked, &prov, w, h, region);
+    assert!(
+        max_byte_diff(&got, &want) <= 2,
+        "masked adjustment: max diff {}",
+        max_byte_diff(&got, &want)
+    );
+
+    // The ALPHA is untouched everywhere: a mask wired to coverage would show here
+    // and nowhere else.
+    comp.composite(&gpu, &[base_op], &prov, w, h, region)
+        .expect("composite");
+    let plain = comp.read_output(&gpu).expect("readback");
+    for i in (3..got.len()).step_by(4) {
+        assert_eq!(
+            got[i], plain[i],
+            "a masked adjustment must not change coverage at byte {i}"
+        );
+    }
+}
+
+/// **A mask the provider cannot serve is NO mask, not a failed composite.**
+///
+/// The CPU reference guards with `mrgba.len() >= …` and falls through to "fully
+/// visible". If the GPU errored instead, one malformed buffer would hand the
+/// whole document to the other producer — 885× on the adjustment drag — over a
+/// degenerate case the reference shrugs at.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_an_unservable_mask_degrades_to_no_mask() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (32u32, 32u32);
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    let mut prov = MapProvider::default();
+    prov.insert(1, 1, varied_canvas(w, h, 3));
+    // Key 7 is never inserted → `layer_pixels` returns None for it.
+    let ops = vec![LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 1.0,
+        mask: Some(LayerMask {
+            key: 7,
+            inverted: false,
+        }),
+        clipping: false,
+    }];
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("an unservable MASK must not fail the composite");
+    let got = comp.read_output(&gpu).expect("readback");
+
+    let plain = vec![LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 1.0,
+        mask: None,
+        clipping: false,
+    }];
+    comp.composite(&gpu, &plain, &prov, w, h, region)
+        .expect("composite");
+    let want = comp.read_output(&gpu).expect("readback");
+    assert_eq!(got, want, "a missing mask must composite as no mask at all");
 }

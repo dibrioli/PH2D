@@ -45,6 +45,11 @@
 // dynamic indexing (which Metal spills to thread-local memory) never lands on
 // the per-pixel critical path. `stack[d]` holds group depth `d+1`.
 const MAX_GROUP_STACK: u32 = 8u;
+// Depths a `sp` can take: 0 (root) plus the 8 group levels. This is what the
+// per-depth clip chain is indexed by, so it is ONE MORE than `MAX_GROUP_STACK`
+// — mirror of the Rust `MAX_STACK = 9`, which is `MAX_GROUP_DEPTH + 1` for the
+// same reason.
+const MAX_STACK: u32 = 9u;
 const F32_EPSILON: f32 = 1.1920929e-7; // f32::EPSILON (2^-23), mirror of Rust
 
 // Op kinds — keep in sync with the Rust `LayerOpKind` discriminants in
@@ -86,14 +91,28 @@ const ADJ_HALFTONE: u32 = 10u;
 // `ph2d_painter_brush::adjustments::lut::apply_color_lookup`.
 const ADJ_COLOR_LOOKUP: u32 = 11u;
 
-// One flattened compositor op. 16 bytes; `layer_slot` is the texture-array
+// `mask_slot` sentinel: this op carries no mask (slice 0 is an ordinary layer).
+const NO_MASK_SLOT: u32 = 0xFFFFFFFFu;
+// `flags` bits — mirror the Rust `FLAG_*` consts.
+const FLAG_CLIPPING: u32 = 1u;
+const FLAG_MASK_INVERTED: u32 = 2u;
+// `clip_base` sentinel: no non-clipping layer has been drawn at this depth yet,
+// so a clipping layer draws UNCLIPPED (the CPU's `clip_base: Option` = None).
+const NO_CLIP_BASE: f32 = -1.0;
+
+// One flattened compositor op. 32 bytes; `layer_slot` is the texture-array
 // slice for OP_LAYER, ignored otherwise; `blend_mode` + `opacity` apply to
-// OP_LAYER and OP_POP_GROUP.
+// OP_LAYER and OP_POP_GROUP. `mask_slot`/`flags` are the coverage modifiers
+// (T3.5 mask, T3.6 clipping) — see `layer_sample`.
 struct Op {
     kind: u32,
     layer_slot: u32,
     blend_mode: u32,
     opacity: f32,
+    mask_slot: u32,
+    flags: u32,
+    _pad0: u32,
+    _pad1: u32,
 }
 
 // Per-adjustment params (16 bytes; mirrors Rust `AdjParamsGpu`). `kind` is an
@@ -214,6 +233,80 @@ fn decode_layer(slot: u32, coord: vec2<i32>) -> vec4<f32> {
         srgb_lut[u32(raw.b * 255.0 + 0.5)],
         raw.a,
     );
+}
+
+// Straight grayscale value [0,1] of a mask texel — Rec.601 luma of the STRAIGHT
+// sRGB bytes, with NO transfer function. Mirror of
+// `ph2d_tool_painter::compositor::mask_value`: a mask is a coverage op, and
+// coverage does not live in a colour space. The bytes are recovered the same way
+// `decode_layer` recovers them, so both helpers agree about what byte a texel is.
+fn mask_value(slot: u32, coord: vec2<i32>) -> f32 {
+    let raw = textureLoad(layers, coord, i32(slot), 0);
+    let r = f32(u32(raw.r * 255.0 + 0.5));
+    let g = f32(u32(raw.g * 255.0 + 0.5));
+    let b = f32(u32(raw.b * 255.0 + 0.5));
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+}
+
+// The result of sampling one OP_LAYER: the source pixel with every coverage
+// modifier folded in, and the clip base that the NEXT op at this depth sees.
+struct LayerSample {
+    rgba: vec4<f32>,
+    clip_base: f32,
+}
+
+// ONE DOOR for "what does this layer op contribute, and what does it leave
+// behind?" — `cs_flat`, `cs_grouped` and `cs_segment` all ask it. Three copies
+// of this order would be three chances to disagree with the CPU reference, and
+// the only place a disagreement shows up is a screenshot.
+//
+// The order is the CPU's exactly (`compositor::compose`): decode → mask → clip →
+// opacity. `blend_window` applies opacity AFTER the sample closure that applies
+// the other two, which is why opacity is last here.
+//
+// The clip base is the layer's **raw** straight alpha — before its own mask and
+// before its own opacity — because the CPU hands the next layer `Some(rgba)`,
+// the untouched buffer. A clipping layer does not become a base (consecutive
+// clipping layers chain to the same one).
+fn layer_sample(op: Op, coord: vec2<i32>, clip_base_in: f32) -> LayerSample {
+    var s = decode_layer(op.layer_slot, coord);
+    let raw_a = s.a;
+    if op.mask_slot != NO_MASK_SLOT {
+        let m = mask_value(op.mask_slot, coord);
+        if (op.flags & FLAG_MASK_INVERTED) != 0u {
+            s.a = s.a * (1.0 - m);
+        } else {
+            s.a = s.a * m;
+        }
+    }
+    var out_base = clip_base_in;
+    if (op.flags & FLAG_CLIPPING) != 0u {
+        if clip_base_in != NO_CLIP_BASE {
+            s.a = s.a * clip_base_in;
+        }
+    } else {
+        out_base = raw_a;
+    }
+    s.a = s.a * op.opacity;
+    return LayerSample(s, out_base);
+}
+
+// An adjustment's effective strength at this pixel: its own opacity, multiplied
+// by its mask where it has one. The CPU puts the mask HERE — on `t`, the
+// strength — never on the coverage of the pixels below (`compose.rs`'s
+// Adjustment arm), so a masked adjustment fades its effect, it does not punch a
+// hole in the artwork.
+fn adjustment_strength(op: Op, coord: vec2<i32>) -> f32 {
+    var t = op.opacity;
+    if op.mask_slot != NO_MASK_SLOT {
+        let m = mask_value(op.mask_slot, coord);
+        if (op.flags & FLAG_MASK_INVERTED) != 0u {
+            t = t * (1.0 - m);
+        } else {
+            t = t * m;
+        }
+    }
+    return t;
 }
 
 // Encode a straight linear accumulator → straight sRGB8 normalized, matching
@@ -712,7 +805,7 @@ fn apply_adjustment_op(op: Op, acc: vec4<f32>, coord: vec2<i32>) -> vec4<f32> {
     let adj_rgb = apply_adjustment(ap, acc.rgb, coord);
     let src_px = vec4<f32>(adj_rgb, acc.a);
     let blended = apply_blend(op.blend_mode, acc, src_px);
-    let t = clamp(op.opacity, 0.0, 1.0);
+    let t = clamp(adjustment_strength(op, coord), 0.0, 1.0);
     return vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);
 }
 
@@ -756,14 +849,18 @@ fn cs_flat(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     var acc = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    // The clip chain at this (single) depth. An adjustment breaks it, exactly as
+    // the CPU's `clip_base = None` after its Adjustment arm.
+    var clip_base: f32 = NO_CLIP_BASE;
     for (var i: u32 = 0u; i < g.op_count; i = i + 1u) {
         let op = ops[i];
         if op.kind == OP_ADJUSTMENT {
             acc = apply_adjustment_op(op, acc, coord);
+            clip_base = NO_CLIP_BASE;
         } else if op.kind == OP_LAYER {
-            var s = decode_layer(op.layer_slot, coord);
-            s.a = s.a * op.opacity;
-            acc = apply_blend(op.blend_mode, acc, s);
+            let ls = layer_sample(op, coord, clip_base);
+            clip_base = ls.clip_base;
+            acc = apply_blend(op.blend_mode, acc, ls.rgba);
         }
         // Other kinds (groups, OP_SPATIAL) never reach cs_flat — the Rust side
         // dispatches cs_grouped for groups and the segmented pass-graph for any
@@ -786,24 +883,32 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
     var acc0 = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     var stack: array<vec4<f32>, MAX_GROUP_STACK>;
     var sp: u32 = 0u; // current depth: 0 = root (acc0), d ≥ 1 = stack[d-1]
+    // One clip chain PER DEPTH, because the CPU recurses into a group with its
+    // own `clip_base` local: a group opens a fresh chain, and returning from one
+    // breaks the parent's (the `clip_base = None` after the CPU's Group arm).
+    var clip_base: array<f32, MAX_STACK>;
+    for (var d: u32 = 0u; d < MAX_STACK; d = d + 1u) {
+        clip_base[d] = NO_CLIP_BASE;
+    }
 
     for (var i: u32 = 0u; i < g.op_count; i = i + 1u) {
         let op = ops[i];
         switch op.kind {
             case 0u: { // OP_LAYER — blend over the current-depth accumulator
-                var s = decode_layer(op.layer_slot, coord);
-                s.a = s.a * op.opacity;
+                let ls = layer_sample(op, coord, clip_base[sp]);
+                clip_base[sp] = ls.clip_base;
                 if sp == 0u {
-                    acc0 = apply_blend(op.blend_mode, acc0, s);
+                    acc0 = apply_blend(op.blend_mode, acc0, ls.rgba);
                 } else {
                     let d = sp - 1u;
-                    stack[d] = apply_blend(op.blend_mode, stack[d], s);
+                    stack[d] = apply_blend(op.blend_mode, stack[d], ls.rgba);
                 }
             }
             case 1u: { // OP_PUSH_GROUP — open a transparent sub-accumulator
                 if sp < MAX_GROUP_STACK {
                     sp = sp + 1u;
                     stack[sp - 1u] = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+                    clip_base[sp] = NO_CLIP_BASE; // the group opens its own chain
                 }
             }
             case 2u: { // OP_POP_GROUP — blend the sub-accumulator as one layer
@@ -811,6 +916,9 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
                     var sub = stack[sp - 1u];
                     sp = sp - 1u;
                     sub.a = sub.a * op.opacity;
+                    // A group is not a raster clip base: returning from one breaks
+                    // the PARENT's chain.
+                    clip_base[sp] = NO_CLIP_BASE;
                     if sp == 0u {
                         acc0 = apply_blend(op.blend_mode, acc0, sub);
                     } else {
@@ -820,6 +928,7 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
                 }
             }
             case 3u: { // OP_ADJUSTMENT — transform the current-depth accumulator
+                clip_base[sp] = NO_CLIP_BASE; // an adjustment breaks the chain
                 if sp == 0u {
                     acc0 = apply_adjustment_op(op, acc0, coord);
                 } else {
@@ -903,24 +1012,34 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     var stack: array<vec4<f32>, MAX_GROUP_STACK>;
     var sp: u32 = 0u;
+    // Per-depth clip chain — same law as `cs_grouped`. ⚠️ A segment STARTS a
+    // fresh chain even when it continues from `base_in`: the Rust side only
+    // breaks a segment at a depth-0 spatial adjustment, and an adjustment breaks
+    // the chain in the CPU reference too, so "fresh at every segment boundary"
+    // is exactly what the reference does — not an approximation of it.
+    var clip_base: array<f32, MAX_STACK>;
+    for (var d: u32 = 0u; d < MAX_STACK; d = d + 1u) {
+        clip_base[d] = NO_CLIP_BASE;
+    }
 
     for (var i: u32 = sg.op_start; i < sg.op_end; i = i + 1u) {
         let op = ops[i];
         switch op.kind {
             case 0u: { // OP_LAYER
-                var s = decode_layer(op.layer_slot, coord);
-                s.a = s.a * op.opacity;
+                let ls = layer_sample(op, coord, clip_base[sp]);
+                clip_base[sp] = ls.clip_base;
                 if sp == 0u {
-                    acc0 = apply_blend(op.blend_mode, acc0, s);
+                    acc0 = apply_blend(op.blend_mode, acc0, ls.rgba);
                 } else {
                     let d = sp - 1u;
-                    stack[d] = apply_blend(op.blend_mode, stack[d], s);
+                    stack[d] = apply_blend(op.blend_mode, stack[d], ls.rgba);
                 }
             }
             case 1u: { // OP_PUSH_GROUP
                 if sp < MAX_GROUP_STACK {
                     sp = sp + 1u;
                     stack[sp - 1u] = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+                    clip_base[sp] = NO_CLIP_BASE;
                 }
             }
             case 2u: { // OP_POP_GROUP
@@ -928,6 +1047,7 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
                     var sub = stack[sp - 1u];
                     sp = sp - 1u;
                     sub.a = sub.a * op.opacity;
+                    clip_base[sp] = NO_CLIP_BASE;
                     if sp == 0u {
                         acc0 = apply_blend(op.blend_mode, acc0, sub);
                     } else {
@@ -937,6 +1057,7 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
                 }
             }
             case 3u: { // OP_ADJUSTMENT (per-pixel)
+                clip_base[sp] = NO_CLIP_BASE;
                 if sp == 0u {
                     acc0 = apply_adjustment_op(op, acc0, coord);
                 } else {

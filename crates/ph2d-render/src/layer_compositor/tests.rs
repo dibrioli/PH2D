@@ -16,10 +16,53 @@ fn max_layers_for_budget_4k_and_degenerate() {
     );
 }
 
+/// The POD mirrors must be exactly the size the WGSL structs are, because a
+/// storage-buffer array is read by STRIDE: a Rust struct one word wider than its
+/// shader twin does not fail to bind — it reads every op from the wrong offset,
+/// and the picture is garbage with no error anywhere.
+///
+/// `GpuOp` grew 16 → 32 when the coverage modifiers landed (`mask_slot`, `flags`
+/// and two pads); the WGSL `Op` grew the same four words in the same order.
 #[test]
 fn gpu_pod_sizes_match_wgsl() {
-    assert_eq!(core::mem::size_of::<GpuOp>(), 16);
+    assert_eq!(core::mem::size_of::<GpuOp>(), 32);
     assert_eq!(core::mem::size_of::<GpuGlobals>(), 32);
+}
+
+/// The `Op` field ORDER is the binding contract, and `size_of` alone cannot see
+/// it: swap `mask_slot` with `flags` and the struct is still 32 bytes while every
+/// op silently reads a slice index as a bitfield.
+///
+/// So the WGSL declaration is read as text and its member order compared with
+/// this file's. Cheap, CPU-only, and it runs everywhere — the same discipline as
+/// `shader_blend_modes_bit_identical_with_rust`.
+#[test]
+fn gpu_op_field_order_matches_the_wgsl_struct() {
+    let src = LAYER_COMPOSITE_WGSL;
+    let start = src
+        .find("struct Op {")
+        .expect("the WGSL declares `struct Op`");
+    let body = &src[start..][..src[start..].find('}').expect("closed")];
+    let fields: Vec<&str> = body
+        .lines()
+        .skip(1)
+        .filter_map(|l| l.trim().split(':').next())
+        .filter(|n| !n.is_empty() && !n.starts_with("//"))
+        .collect();
+    assert_eq!(
+        fields,
+        vec![
+            "kind",
+            "layer_slot",
+            "blend_mode",
+            "opacity",
+            "mask_slot",
+            "flags",
+            "_pad0",
+            "_pad1",
+        ],
+        "WGSL `Op` members drifted from the Rust `GpuOp` layout"
+    );
 }
 
 /// The decode LUT the shader binds must equal the canonical
@@ -46,6 +89,8 @@ fn srgb_lut_matches_cpu_transfer() {
 #[test]
 fn validate_op_list_balance_and_depth() {
     let layer = LayerOp::Layer {
+        mask: None,
+        clipping: false,
         key: 1,
         blend_mode: 0,
         opacity: 1.0,
@@ -96,11 +141,14 @@ fn flatten_layer_ops_resolves_slots_and_reuses_scratch() {
     };
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 9,
             blend_mode: 1,
             opacity: 0.5,
         },
         LayerOp::Adjustment {
+            mask: None,
             kind: 0, // ADJ_HSB
             params: [0.25, 0.5, -0.1],
             blend_mode: 0,
@@ -108,6 +156,8 @@ fn flatten_layer_ops_resolves_slots_and_reuses_scratch() {
         },
         LayerOp::PushGroup,
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 7,
             blend_mode: 11,
             opacity: 1.0,
@@ -118,7 +168,7 @@ fn flatten_layer_ops_resolves_slots_and_reuses_scratch() {
         },
     ];
     let mut scratch = GpuOpScratch::new();
-    flatten_layer_ops(&ops, slot_of, &mut scratch);
+    flatten_layer_ops(&ops, slot_of, |k| Some(slot_of(k)), &mut scratch);
     assert_eq!(scratch.ops.len(), 5);
     assert_eq!(scratch.ops[0].kind, OP_LAYER);
     assert_eq!(scratch.ops[0].layer_slot, 1); // key 9 → slice 1
@@ -138,7 +188,7 @@ fn flatten_layer_ops_resolves_slots_and_reuses_scratch() {
 
     // Re-flattening into the same scratch must not grow capacity (HR-3).
     let cap = scratch.capacity();
-    flatten_layer_ops(&ops, slot_of, &mut scratch);
+    flatten_layer_ops(&ops, slot_of, |k| Some(slot_of(k)), &mut scratch);
     assert_eq!(scratch.capacity(), cap);
 }
 
@@ -146,16 +196,22 @@ fn flatten_layer_ops_resolves_slots_and_reuses_scratch() {
 fn distinct_layer_count_dedupes() {
     let ops = vec![
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 1,
             blend_mode: 0,
             opacity: 1.0,
         },
         LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: 2,
             blend_mode: 0,
             opacity: 1.0,

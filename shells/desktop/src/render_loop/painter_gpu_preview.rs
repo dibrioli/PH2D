@@ -74,9 +74,9 @@ impl LayerPixelProvider for PainterLayerProvider<'_> {
 /// Decide GPU-vs-CPU for this frame and, when GPU, recomposite into the preview
 /// slot. Returns `true` iff the GPU producer owns the slot (the stack is
 /// GPU-representable) — the caller then gates its CPU upload block off. On the
-/// CPU branch (no selection, or a stack with mask / clip / reference / masked or
-/// non-ported adjustment → `flatten_for_gpu` returns `None`) this is a no-op and
-/// the caller runs `take_preview_arc` + the CPU upload path.
+/// CPU branch (no selection, or `flatten_for_gpu` returns `None` — its module doc
+/// owns the refusal list, so this one cannot go stale) this is a no-op and the
+/// caller runs `take_preview_arc` + the CPU upload path.
 ///
 /// Drains the preview-dirty flag WITHOUT a CPU composite, so it recomposites on
 /// the GPU only when the preview actually changed; an idle representable stack
@@ -539,13 +539,38 @@ mod tests {
         );
     }
 
+    /// **The masked document goes to the GPU now** — the headline of
+    /// `docs/Painter/25_avaliacao_gpu.md` achado A, asserted where the routing
+    /// actually happens rather than one layer down in the flatten.
+    ///
+    /// Measured before this landed: a single mask took a 4096² adjustment drag
+    /// from 0,738 ms to 652,9 ms — 885×, triggered by a checkbox, with nothing on
+    /// screen to say why. A mask is how you paint inside a shape; it is not an
+    /// exotic feature to leave on the slow producer.
     #[test]
-    fn non_representable_stack_is_not_gpu_eligible() {
-        // A per-layer mask is outside the GPU op-list v1 → CPU fallback even
-        // though the stack is non-trivial.
+    fn a_masked_stack_is_gpu_eligible_now() {
         let mut t = sourced_tool();
         t.add_mask_to_active().expect("mask on Layer 1");
         assert!(!t.preview_is_trivial_stack());
-        assert!(gpu_eligible(&t).is_none(), "masked stack must stay CPU");
+        assert!(
+            gpu_eligible(&t).is_some(),
+            "a per-layer mask is an op now — it must not force the CPU producer"
+        );
+    }
+
+    /// The refusal that REMAINS, so "eligible" does not quietly become "always".
+    ///
+    /// A clipped GROUP stays on the CPU deliberately: the CPU reference's Group
+    /// arm reads neither `mask` nor `clipping`, and a GPU that honoured them would
+    /// make the picture depend on which producer won the frame.
+    #[test]
+    fn a_clipped_group_is_still_not_gpu_eligible() {
+        let mut t = sourced_tool();
+        let g = t.add_group().expect("group");
+        t.set_layer_clipping(g, true);
+        assert!(
+            gpu_eligible(&t).is_none(),
+            "a clipped group must stay on the CPU while the CPU ignores the flag"
+        );
     }
 }

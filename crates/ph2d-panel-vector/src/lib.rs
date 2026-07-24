@@ -45,6 +45,23 @@ pub(crate) const OFFSET_MAX: f64 = 2.0;
 /// cada lado cobre o círculo inteiro sem repetir ângulo, e o neutro cai no centro do curso — o
 /// mesmo desenho do Offset, e lido pelo paint, populate e event pela MESMA porta.
 pub(crate) const ROTATION_MAX: f64 = 180.0; // LITERAL-PX-OK: faixa no domínio do documento
+
+/// O track `0..1` do slider da Rotation **para GRAUS** (`−ROTATION_MAX..ROTATION_MAX`).
+///
+/// ⚠️ **Porta ÚNICA do mapa, e é por isso que existe.** O mesmo mapa era preciso em TRÊS sítios —
+/// o `scale`/`offset` que o `populate` dá ao chip numérico, a conversão do `event.rs` que alimenta
+/// o bus, e o inverso que o `paint` usa para pôr o slider no lugar. Três cópias da mesma
+/// aritmética, em três arquivos: a forma exata que diverge em silêncio, e cuja divergência é
+/// invisível na tela (digitar `90` e arrastar até 90° dariam ângulos diferentes, e nenhum dos dois
+/// pareceria errado). Com uma porta, divergir deixa de ser possível em vez de ser gateado.
+pub(crate) fn rotation_from_track(t: f64) -> f64 {
+    t.mul_add(2.0 * ROTATION_MAX, -ROTATION_MAX)
+}
+
+/// O inverso exato da [`rotation_from_track`]: graus para o track `0..1` do slider.
+pub(crate) fn rotation_to_track(deg: f64) -> f32 {
+    ((deg / ROTATION_MAX) * 0.5 + 0.5) as f32
+}
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
@@ -105,5 +122,36 @@ impl Panel for VectorPanel {
 
     fn populate(store: &mut WidgetStore) {
         populate::populate(store);
+    }
+}
+
+#[cfg(test)]
+mod rotation_map_tests {
+    /// **O mapa track↔graus é um par INVERSO exato** — o que impede o slider de saltar quando o
+    /// painel o re-posiciona a partir do valor publicado, e o campo numérico de discordar dele.
+    ///
+    /// ⚠️ Este gate existe porque o mapa tinha TRÊS cópias (populate / event / paint) e agora tem
+    /// uma porta; ele pina que a porta é auto-consistente. O que ele **não** alcança é o caminho
+    /// do chip numérico até o bus: o chip não fala com o bus, ele dirige o slider pelo *link* do
+    /// `WidgetStore`, e o `set_number_value` do testkit espeta o campo sem acionar o link — um
+    /// gate escrito por cima disso nasce vermelho por artefato de fixture, não por defeito. Fica
+    /// nomeado no handoff em vez de contrabandeado como cobertura.
+    #[test]
+    fn the_track_and_degree_maps_are_exact_inverses() {
+        for deg in [-180.0_f64, -90.0, -45.0, 0.0, 45.0, 90.0, 180.0] {
+            let t = super::rotation_to_track(deg);
+            let back = super::rotation_from_track(f64::from(t));
+            assert!(
+                (back - deg).abs() < 1e-6,
+                "{deg}° -> track {t} -> {back}° (o par não é inverso)"
+            );
+        }
+        // E as pontas do track caem exatamente nas pontas da faixa.
+        assert!((super::rotation_from_track(0.0) + super::ROTATION_MAX).abs() < 1e-9);
+        assert!((super::rotation_from_track(1.0) - super::ROTATION_MAX).abs() < 1e-9);
+        assert!(
+            super::rotation_from_track(0.5).abs() < 1e-9,
+            "o centro é 0°"
+        );
     }
 }

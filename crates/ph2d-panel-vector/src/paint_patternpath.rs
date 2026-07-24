@@ -143,7 +143,10 @@ impl BodyCtx<'_> {
         let rot_track = self
             .store
             .slider(ids::VECTOR_PATTERNPATH_ROTATION)
-            .map_or_else(|| rotation_track(state::pp_rotation()), |(_, v)| v);
+            .map_or_else(
+                || crate::rotation_to_track(state::pp_rotation()).clamp(0.0, 1.0),
+                |(_, v)| v,
+            );
         y = self.slider_row(
             "Rotation",
             ids::VECTOR_PATTERNPATH_ROTATION,
@@ -173,9 +176,4 @@ fn spacing_track(spacing: f64) -> f32 {
 /// O track `0..1` do slider a partir do Offset bipolar `−OFFSET_MAX..OFFSET_MAX` — `0.5` = zero.
 fn offset_track(offset: f64) -> f32 {
     (((offset / crate::OFFSET_MAX) * 0.5 + 0.5) as f32).clamp(0.0, 1.0)
-}
-
-/// O track `0..1` do slider a partir da Rotation bipolar `−ROTATION_MAX..ROTATION_MAX` — `0.5` = 0°.
-fn rotation_track(deg: f64) -> f32 {
-    (((deg / crate::ROTATION_MAX) * 0.5 + 0.5) as f32).clamp(0.0, 1.0)
 }

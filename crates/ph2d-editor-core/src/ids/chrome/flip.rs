@@ -43,6 +43,12 @@ pub const FLIP_MODE_EDIT: NodeId = hash_node_id("flip.mode.edit");
 /// Colorize: scribble colours over the line-art; the LazyBrush cut turns the scribbles
 /// into filled regions in ONE solve (COLORIZE C2 — `docs/Flip/09_colorize.md`).
 pub const FLIP_MODE_COLORIZE: NodeId = hash_node_id("flip.mode.colorize");
+/// Trace (Shift & Trace, `docs/Flip/04 §4`): canvas drags SHIFT the ghost under the
+/// cursor (Ctrl rotates) — display only, the digital sliding paper of the lightbox.
+pub const FLIP_MODE_TRACE: NodeId = hash_node_id("flip.mode.trace");
+/// Trace section: puts every shifted ghost back where its drawing is (the shifts are
+/// shell session state — display scaffolding, never the document).
+pub const FLIP_TRACE_RESET: NodeId = hash_node_id("flip.trace.reset");
 /// Edit section: deletes the selected strokes.
 pub const FLIP_EDIT_DELETE: NodeId = hash_node_id("flip.edit.delete");
 /// Edit section (W8): the selection DOMAIN — whole strokes (the GP Curve domain).

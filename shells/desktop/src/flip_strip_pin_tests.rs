@@ -88,3 +88,66 @@ fn a_pinned_key_reaches_the_ghost_pass_from_outside_the_range() {
     let plain = ph2d_flip::ghosts(layer, 0, &obj.onion, strip.selected_keys(), &[]);
     assert!(!plain.iter().any(|g| g.key == 24));
 }
+
+/// 🔴 **A folha do Shift & Trace acompanha a chave MOVIDA** — o trace é o 3º estado de
+/// sessão chaveado por quadro, e entra pela MESMA porta dos pins e da seleção: mover a
+/// célula não pode deixar o deslocamento apontando um quadro sem chave (o fantasma
+/// voltaria ao lugar em silêncio, e o artista perderia o posicionamento que acabou de
+/// fazer). Mutação que sangra: o `remap_session_after_move` pular o mapa.
+#[test]
+fn a_moved_key_carries_its_traced_sheet_along() {
+    let mut strip = FlipStrip::default();
+    let shift = ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(3.0, -2.0));
+    strip.trace.insert(4, shift);
+    strip.remap_session_after_move(4, 6);
+    assert!(!strip.trace.contains_key(&4), "a folha nao ficou para tras");
+    assert_eq!(
+        strip.trace.get(&6),
+        Some(&shift),
+        "o deslocamento viajou com a chave"
+    );
+}
+
+/// 🔴 **E acompanha o EMPURRÃO da exposição** — esticar a primeira chave empurra a fila;
+/// as folhas das chaves empurradas vão junto (e a de quem NÃO foi empurrado fica).
+#[test]
+fn stretching_a_hold_pushes_the_sheets_that_the_keys_push() {
+    let mut strip = FlipStrip::default();
+    let a = ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(1.0, 0.0));
+    let b = ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(0.0, 1.0));
+    strip.trace.insert(0, a);
+    strip.trace.insert(8, b);
+    strip.remap_session_after_hold(0, 2);
+    assert_eq!(
+        strip.trace.get(&0),
+        Some(&a),
+        "quem esta antes do empurrao fica"
+    );
+    assert_eq!(
+        strip.trace.get(&10),
+        Some(&b),
+        "quem foi empurrado leva a folha"
+    );
+    assert!(!strip.trace.contains_key(&8));
+}
+
+/// 🔴 **O Reset Shifts devolve toda folha ao lugar, pelo caminho REAL do botão** — e não
+/// é edição de documento (zero passo de undo: exibição, não obra).
+#[test]
+fn the_reset_button_clears_every_traced_sheet() {
+    let (mut doc, _oid, lid, mut ph) = doc_with_key0();
+    let mut strip = FlipStrip::default();
+    strip.trace.insert(
+        0,
+        ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(5.0, 5.0)),
+    );
+    let changed = click(
+        ph2d_editor::ids::FLIP_TRACE_RESET,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    assert!(strip.trace.is_empty(), "toda folha voltou ao lugar");
+    assert!(!changed, "reset de exibicao nao e passo de undo");
+}

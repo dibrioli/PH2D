@@ -395,6 +395,8 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Colorize bleed", ids::FLIP_COLORIZE_BLEED),
         ("Trap", ids::FLIP_TRAP),
     ];
+    // Trace (Shift & Trace): só o Reset — o modo desloca fantasmas, não pinta nada.
+    let trace_only = [("Trace reset", ids::FLIP_TRACE_RESET)];
 
     // (modo, o que TEM de aparecer, o que NÃO pode aparecer)
     #[allow(clippy::type_complexity)] // (modo, o que aparece, o que NAO pode aparecer)
@@ -402,7 +404,7 @@ fn each_mode_shows_only_its_own_attributes() {
         FlipMode,
         &[(&str, ph2d_a11y::NodeId)],
         &[&[(&str, ph2d_a11y::NodeId)]],
-    ); 7] = [
+    ); 8] = [
         (
             FlipMode::Draw,
             &stroke_only,
@@ -414,6 +416,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &sculpt_only,
                 &edit_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         (
@@ -427,6 +430,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &sculpt_only,
                 &edit_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         (
@@ -438,6 +442,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &sculpt_only,
                 &edit_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
@@ -452,6 +457,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &fill_swatch,
                 &edit_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         // Select move/gira o objeto: não tem atributo de pintura nenhum.
@@ -467,6 +473,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &sculpt_only,
                 &edit_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         // Edit (W6): as ops de seleção + os atributos do traço que ele reescreve (as DUAS
@@ -483,6 +490,7 @@ fn each_mode_shows_only_its_own_attributes() {
                 &sculpt_only,
                 &smoothing_only,
                 &colorize_only,
+                &trace_only,
             ],
         ),
         // Colorize (C2): a cor do rabisco + Apply/Clear, e NADA de traço/borracha/balde/
@@ -499,6 +507,23 @@ fn each_mode_shows_only_its_own_attributes() {
                 &fill_swatch,
                 &sculpt_only,
                 &edit_only,
+                &trace_only,
+            ],
+        ),
+        // Trace (Shift & Trace): só o Reset — deslocar fantasmas não tem atributo de
+        // pintura nenhum (nem Size: o gesto age no fantasma inteiro, não num raio).
+        (
+            FlipMode::Trace,
+            &trace_only,
+            &[
+                &stroke_only,
+                &eraser_only,
+                &bucket_only,
+                &trap_shared,
+                &fill_swatch,
+                &sculpt_only,
+                &edit_only,
+                &colorize_only,
             ],
         ),
     ];
@@ -565,6 +590,8 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         // e como o rabisco semeia pela CÁPSULA, é o Size que decide se um toque curto pega a
         // região. A `colorize_section` pinta os MESMOS ids `FLIP_SIZE`/`_NUM`.
         (FlipMode::Colorize, true),
+        // Trace desloca o fantasma INTEIRO — não há raio, então não há Size.
+        (FlipMode::Trace, false),
     ];
     assert_eq!(
         cases.len(),

@@ -34,6 +34,10 @@ pub(super) struct GhostRef<'a> {
     pub(super) tint: [f32; 3],
     /// Opacidade final (fade `1/|Δ|` × opacidade do onion × opacidade da camada).
     pub(super) alpha: f32,
+    /// **Shift & Trace** (`docs/Flip/04 §4`): o deslocamento de EXIBIÇÃO da folha desta
+    /// chave — composto por cima da pose no model da fatia. Identidade = caminho de
+    /// sempre, byte a byte.
+    pub(super) shift: ph2d_flip::Pose,
 }
 
 /// **De onde saem os fantasmas além da vizinhança**: as chaves marcadas na tira (que só o
@@ -49,6 +53,9 @@ pub(crate) struct GhostSources<'a> {
     /// **Light table** (T3.9): referências fixas, visíveis em qualquer modo e fora do
     /// alcance.
     pub(crate) pinned: &'a [Frame],
+    /// **Shift & Trace**: o deslocamento de exibição por chave (a folha do lightbox).
+    /// `None` = nenhum (o default — e o que os testes antigos passam sem saber dele).
+    pub(crate) trace: Option<&'a std::collections::BTreeMap<Frame, ph2d_flip::Pose>>,
 }
 
 /// Os fantasmas da camada `layer` no quadro `frame`, ou vazio se algum gate barra.
@@ -79,6 +86,11 @@ pub(super) fn collect<'a>(
                 // do fantasma compõe em Normal/1.0, senão o blend da camada (um
                 // Multiply, por exemplo) tingiria o fantasma com a arte de baixo.
                 alpha: g.alpha * layer.opacity,
+                shift: sources
+                    .trace
+                    .and_then(|m| m.get(&g.key))
+                    .copied()
+                    .unwrap_or_default(),
             })
         })
         .collect()

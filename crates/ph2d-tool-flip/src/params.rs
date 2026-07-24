@@ -32,6 +32,12 @@ pub enum FlipMode {
     /// **Colorize**: rabisca cores sobre as linhas; o corte LazyBrush transforma os
     /// rabiscos em regiões preenchidas num só solve (C2 — `docs/Flip/09_colorize.md`).
     Colorize,
+    /// **Trace** (Shift & Trace, OpenToonz — `docs/Flip/04 §4`): arrastar no canvas
+    /// DESLOCA o fantasma sob o cursor (Ctrl gira) — **só a exibição**, nunca o desenho.
+    /// É o papel que desliza no lightbox: posiciona a referência, volta ao Draw e traça
+    /// com ela deslocada. O deslocamento vive no shell (sessão, como os pins) e some no
+    /// Reset — a tool só guarda o modo.
+    Trace,
 }
 
 impl FlipMode {
@@ -43,7 +49,7 @@ impl FlipMode {
     /// dispara. Agora os gates varrem `ALL` e afirmam que a tabela deles a cobre INTEIRA,
     /// então o próximo modo quebra o teste no dia em que nascer — que é o único momento em
     /// que o custo de arrumar é baixo.
-    pub const ALL: [FlipMode; 7] = [
+    pub const ALL: [FlipMode; 8] = [
         FlipMode::Select,
         FlipMode::Draw,
         FlipMode::Erase,
@@ -51,6 +57,7 @@ impl FlipMode {
         FlipMode::Reshape,
         FlipMode::Edit,
         FlipMode::Colorize,
+        FlipMode::Trace,
     ];
 }
 

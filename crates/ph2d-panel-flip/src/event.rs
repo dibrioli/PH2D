@@ -127,6 +127,7 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_MODE_RESHAPE
                 || id == ids::FLIP_MODE_EDIT
                 || id == ids::FLIP_MODE_COLORIZE
+                || id == ids::FLIP_MODE_TRACE
                 || id == ids::FLIP_EDIT_DOM_STROKE
                 || id == ids::FLIP_EDIT_DOM_POINT
                 || id == ids::FLIP_EDIT_DOM_SEGMENT
@@ -159,7 +160,9 @@ pub(crate) fn apply_event(
                 // Colorize (C2): Apply roda o corte, Clear descarta os rabiscos — os dois
                 // mexem no buffer transiente do shell + no documento (não na tool).
                 || id == ids::FLIP_COLORIZE_APPLY
-                || id == ids::FLIP_COLORIZE_CLEAR =>
+                || id == ids::FLIP_COLORIZE_CLEAR
+                // Trace: o Reset limpa os deslocamentos, que são SESSÃO do shell.
+                || id == ids::FLIP_TRACE_RESET =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

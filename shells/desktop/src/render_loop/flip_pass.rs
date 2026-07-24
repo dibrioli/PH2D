@@ -399,8 +399,13 @@ fn collect_layers<'a>(
                         // **Cada fantasma na POSE DA SUA chave** (W7.2): o fantasma
                         // mostra onde o desenho ESTAVA — e "onde" inclui o lugar, não
                         // só a forma. Herdar a pose do quadro corrente empilharia todos
-                        // os fantasmas em cima da arte de agora.
-                        model: art_to_world(&model, layer.frame_pose(g.key)),
+                        // os fantasmas em cima da arte de agora. O `shift` é o Shift &
+                        // Trace (a folha deslizada) — identidade fora do modo.
+                        model: crate::flip_transform::art_to_world_traced(
+                            &model,
+                            layer.frame_pose(g.key),
+                            g.shift,
+                        ),
                         ghost: Some((g.tint, g.alpha)),
                     });
                 }

@@ -99,12 +99,13 @@ mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;
 mod flip_strip_drag;
-mod flip_transform;
-mod flip_tween_correct;
-mod flip_tween_pairs_smoke;
 mod flip_strip_pins;
 mod flip_strip_resolve;
 mod flip_strip_smoke;
+mod flip_trace;
+mod flip_transform;
+mod flip_tween_correct;
+mod flip_tween_pairs_smoke;
 mod flip_tween_phase_smoke;
 mod flip_tween_smoke;
 mod forwarding;
@@ -444,6 +445,7 @@ impl App {
             flip_segment_hover: None,
             flip_segment_hover_at: None,
             flip_edit_gesture: None,
+            flip_trace_drag: None,
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,

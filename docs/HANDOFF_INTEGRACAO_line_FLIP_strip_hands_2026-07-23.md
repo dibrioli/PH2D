@@ -9,19 +9,19 @@
 > o arrasto (§2.1 — o mover mantém o contorno + commit no soltar, aprovado como estava).
 > Todos os gates verdes; auditoria de 2 lentes rodou (2 defeitos achados e corrigidos — §5).
 >
-> ➕ **FASE SEGUINTE na mesma linha (ordem do Enio 2026-07-24, "siga próxima fase"):** o
-> arrasto de **SELEÇÃO** (§2.2) — pegar uma célula marcada move a seleção inteira; e o
-> remap de sessão virou uma porta (pins + seleção), fechando de carona um órfão latente.
-> **Pendente de smoke** (Teste 4 do roteiro / linha *f* da §7).
+> ➕ **FASES SEGUINTES na mesma linha (ordens do Enio 2026-07-24, "siga"):** o arrasto de
+> **SELEÇÃO** (§2.2 — ✅ smoke OK 2026-07-24) e o **Shift & Trace, metade do SHIFT** (§2.3
+> — o 8º `FlipMode`; **pendente de smoke**, Teste 5 do roteiro / linha *g* da §7). O remap
+> de sessão virou UMA porta (pins + seleção + folhas do trace).
 
 ## 1. Identidade
 
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.2, "a seleção viaja junta") |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.3, Shift & Trace) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **14** (7 da wave + cena do smoke reconstruída ×2 + hold vivo/ghost 0,25 + handoffs + a §2.2) |
+| commits à frente do `main` | **15** (7 da wave + cena do smoke reconstruída ×2 + hold vivo/ghost 0,25 + handoffs + §2.2 + §2.3) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -88,6 +88,33 @@ movida ou empurrada, **já no arrasto de uma célula** (acento apagado, multifra
 quadro sem chave). `remap_pin_after_move`/`remap_pins_after_hold` viraram
 **`remap_session_after_move`/`_hold`** (`flip_strip_pins.rs`): UMA porta que remapeia pins
 E seleção — o próximo estado chaveado por quadro entra ali, não numa 3ª cópia da regra.
+
+### 2.3 Shift & Trace — o SHIFT (fase seguinte, ordem do Enio 2026-07-24, "Siga")
+
+O item do backlog `docs/Flip/04 §4` (OpenToonz), fatia 1: **o papel que desliza no
+lightbox**. Um 8º `FlipMode` (**Trace**, chip na 3ª fileira do painel do Flip, ao lado do
+Colorize): arrastar no canvas DESLOCA o fantasma sob o cursor; **Ctrl gira** em torno do
+centro da arte; **Reset Shifts** (seção do modo) devolve tudo. **Só a exibição** — o
+desenho, a pose autorada e o documento nunca mudam; o animador posiciona a referência,
+volta ao Draw e traça com ela deslocada.
+
+- **O deslocamento é por CHAVE — a folha** (`FlipStrip.trace: BTreeMap<Frame, Pose>`,
+  sessão como pins/seleção, zero schema): deslocar a folha 4 desloca o fantasma dela em
+  toda camada. **3º cliente da porta `remap_session_*`** (a arquitetura da §2.2 previu).
+- **O shift compõe depois da pose, antes do objeto** (`art_to_world_traced` em
+  `flip_transform.rs`; o passe o recebe por `GhostSources.trace` → `GhostRef.shift`).
+  Identidade delega ao caminho antigo — **byte a byte** (gateado com mapa vazio).
+- **O hit segue o olho**: menor `|Δ|` = o fantasma que o render pinta POR CIMA; e
+  pergunta à caixa POSADA (folha já deslocada é pega onde ESTÁ). O Down **consome sempre**
+  no modo (a razão do Edit: cair adiante entregaria o clique ao gizmo de objeto).
+- **Os gates de varredura do painel morderam no nascimento, como projetado**
+  (`FlipMode::ALL` 7→8): as duas tabelas (`each_mode_shows_only_its_own_attributes` ·
+  `size_is_shared...`) ganharam a linha do Trace — só o Reset aparece, nada vaza, sem Size.
+- **Ids novos** (hash): `flip.mode.trace` + `flip.trace.reset`. O Reset é drenado por
+  `flip_strip::apply_panel_event` (a porta que já possui o `strip` — testável sem janela),
+  **não** por um braço inline no render_loop.
+- **Aberto, nomeado**: o **PEEK** (F1/F2/F3 — mostrar SÓ o desenho vizinho com a tecla
+  presa) é a fatia 2; precisa de roteamento de key-release no shell.
 
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
@@ -194,13 +221,16 @@ diferença some — o seed-versus-sample de sempre).
 | `panel-flip-frames`: `ruler` 4 · `strip_drag` 12 (7 + os 5 da seleção, §2.2) | 16 |
 | `panel-flip-frames/tests/seam.rs` (ponteiro REAL: toque, os 2 arrastos, os 18 botões) | 4 |
 | `ph2d-flip::onion` (light table) | 4 |
-| shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 2 · `flip_strip_smoke` 2 | 13 |
+| shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 5 (2 + os 3 do trace, §2.3) · `flip_strip_smoke` 2 · `flip_trace` 4 · `flip_pass` +1 (o shift no model) | 21 |
 | arch-gates de shell (ordem do frame · a costura do pin) | 3 |
+| `ph2d-panel-flip/tests/seam.rs`: as 2 tabelas de varredura ganharam a linha do **Trace** (`FlipMode::ALL` 7→8 as fez morder no nascimento, como projetado) | — |
 
-**15 mutações, 15 sangram** (as 10 da wave + as 5 da §2.2: fan-out do grupo cravado na
+**21 mutações, 21 sangram** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
 célula pega · emissão sempre na ordem da lista · preview só da pega · remap de move sem a
-seleção · remap do empurrão sem a seleção — e o guard do grupo obsoleto ganhou caso
-próprio no gate de sessão obsoleta):
+seleção · remap do empurrão sem a seleção; e o guard do grupo obsoleto ganhou caso
+próprio) + as 6 da §2.3 (o passe ignora o mapa · `pick` pelo mais DISTANTE · hit na caixa
+não-posada · rotação em torno da ORIGEM · remap de move sem as folhas · Reset sem o
+clear):
 
 | mutação | o que morre |
 |---|---|
@@ -247,16 +277,18 @@ terminal; em resumo:
 | c | **arrastar a borda direita** da caixa larga (a de 6): ela estica **EM TEMPO REAL** (sem contorno — pós-smoke 2026-07-24) e as seguintes são EMPURRADAS |
 | d | na caixa de **1 quadro** a barrinha do hold **não aparece** — a caixa inteira é de mover (deliberado) |
 | e | **Pin** na última chave + voltar ao quadro 0: a bola verde aparece como vulto, **e a vizinha amarela continua lá** |
-| f | **Shift+clique** na primeira e na última caixa (marcam) + arrastar uma delas: DOIS contornos, as duas pousam JUNTAS ao soltar, o destaque acompanha; arrastar uma NÃO marcada move só ela (§2.2, pendente de smoke) |
+| f | **Shift+clique** na primeira e na última caixa (marcam) + arrastar uma delas: DOIS contornos, as duas pousam JUNTAS ao soltar, o destaque acompanha; arrastar uma NÃO marcada move só ela (§2.2, ✅ smoke OK 2026-07-24) |
+| g | **Trace** (painel do Flip): arrastar o vulto o desliza (a arte fica); Ctrl+arrastar gira; voltar ao Draw mantém a folha deslocada; **Reset Shifts** devolve (§2.3, pendente de smoke — Teste 5 do roteiro) |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 
 | item | gatilho |
 |---|---|
 | **Persistir os pins** no documento | custa um bump de `PROJECT_SCHEMA` (recusa projetos salvos). Decisão de produto do Enio |
-| ~~Arrastar uma **SELEÇÃO** de células~~ | **FECHADO 2026-07-24** (§2.2) — pendente de smoke (roteiro: Teste 4 / linha *f* acima) |
+| ~~Arrastar uma **SELEÇÃO** de células~~ | **FECHADO e SMOKADO 2026-07-24** (§2.2) |
+| ~~Shift & Trace~~ (a metade do SHIFT) | **FECHADO 2026-07-24** (§2.3) — pendente de smoke (Teste 5 / linha *g*). A metade do **PEEK** (F1/F2/F3) fica: fatia própria, precisa de key-release no shell |
 | Zoom/pan da tira | ela **sempre cabe**, por desenho (`05 §6`) — só vira pergunta se um documento longo mostrar que a lasca ficou ilegível |
-| Backlog anterior da linha | pré-segmentação 4K · `trap_px` × `MAX_SIDE` · o `reach` do Gap Closure · a exceção `rayon` · Shift & Trace · timeline global — **inalterados** |
+| Backlog anterior da linha | pré-segmentação 4K · `trap_px` × `MAX_SIDE` · o `reach` do Gap Closure · a exceção `rayon` · timeline global — **inalterados** |
 
 ## 9. Depois da integração
 

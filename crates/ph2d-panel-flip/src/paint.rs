@@ -122,6 +122,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         y = b.erase_row(&snap, y);
         y = b.fill_section(&snap, y);
         y = b.colorize_section(&snap, y);
+        y = b.trace_section(&snap, y);
         y = b.reshape_section(&snap, y);
         y = b.edit_section(&snap, y);
     }

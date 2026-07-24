@@ -58,6 +58,18 @@ pub(crate) fn art_to_world(object: &Xform, key_pose: Pose) -> Xform {
     key_xform(key_pose).then(object)
 }
 
+/// **A arte de um quadro → MUNDO, com o papel deslizado** (Shift & Trace): a arte entra
+/// na pose autorada da chave, o `shift` de exibição desliza a folha POR CIMA, e o objeto
+/// leva tudo ao mundo. Com shift identidade delega ao [`art_to_world`] — byte a byte o
+/// caminho de sempre (é o pin de regressão do modo).
+#[must_use]
+pub(crate) fn art_to_world_traced(object: &Xform, key_pose: Pose, shift: Pose) -> Xform {
+    if shift.is_identity() {
+        return art_to_world(object, key_pose);
+    }
+    key_xform(key_pose).then(&key_xform(shift)).then(object)
+}
+
 /// **Um DELTA do espaço do OBJETO → o espaço da ARTE** (a parte LINEAR inversa da pose).
 ///
 /// O gesto de mover (traço ou ponto) mede o delta no funil pose-free do objeto (a regra

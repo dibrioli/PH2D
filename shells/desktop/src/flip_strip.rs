@@ -51,6 +51,12 @@ pub(crate) struct FlipStrip {
     /// (que RECUSA todo projeto já salvo) numa janela em que outras linhas também bumpam.
     /// Persistir é decisão de produto, nomeada no handoff.
     pub(crate) pinned: Vec<Frame>,
+    /// **Shift & Trace** (`docs/Flip/04 §4`): o DESLOCAMENTO de exibição de cada
+    /// fantasma, por chave — o papel que desliza no lightbox. Afim no espaço do OBJETO,
+    /// composto por cima da pose da chave só no PASSE de fantasmas; o documento nunca o
+    /// vê. Estado de SESSÃO como os vizinhos acima (mesma razão, mesmo remap — a porta
+    /// `remap_session_*` o carrega quando a chave anda).
+    pub(crate) trace: std::collections::BTreeMap<Frame, ph2d_flip::Pose>,
     /// **Falloff temporal** do multiframe (W7): com ele LIGADO, os quadros vizinhos
     /// recebem menos influência que o ativo. Desligado por padrão — o uso comum é
     /// *"aplique esta edição em todos os quadros que marquei"*, e o Blender também o expõe
@@ -93,6 +99,7 @@ impl Default for FlipStrip {
             tween_fade: false,
             selection: Vec::new(),
             pinned: Vec::new(),
+            trace: std::collections::BTreeMap::new(),
             falloff: false,
             tween_correct: None,
         }
@@ -437,6 +444,15 @@ pub(crate) fn apply_panel_event(
                 l.cycle.post = post;
                 return true;
             }
+            false
+        }
+
+        // ── Shift & Trace: o Reset devolve toda folha deslocada ao lugar ───────
+        //
+        // Mora AQUI (e não no render_loop) porque esta função já possui o `strip` — e é
+        // testável sem janela. Exibição, não documento: devolve `false` (sem undo).
+        PanelEvent::Click(id) if *id == ids::FLIP_TRACE_RESET => {
+            strip.trace.clear();
             false
         }
 

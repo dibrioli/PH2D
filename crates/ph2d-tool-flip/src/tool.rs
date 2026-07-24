@@ -328,6 +328,9 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_COLORIZE => {
                 self.mode = FlipMode::Colorize;
             }
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_TRACE => {
+                self.mode = FlipMode::Trace;
+            }
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,

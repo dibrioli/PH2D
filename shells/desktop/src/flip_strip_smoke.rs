@@ -208,7 +208,7 @@ impl crate::App {
              ------------------------------------------------------------\n\
              A cada clique a bola PULA para a pose daquele desenho (e\n\
              muda de cor), e os vultos mudam junto. Se isso funciona,\n\
-             va aos quatro testes.\n\
+             va aos cinco testes.\n\
              \n\
              ------------------------------------------------------------\n\
              TESTE 1 -- ARRASTAR UMA CAIXA muda o desenho de lugar no tempo\n\
@@ -255,6 +255,19 @@ impl crate::App {
              o grupo ENCOSTA nelas e para, como no Teste 1. Arrastar uma\n\
              caixa nao marcada move so ela. Para desmarcar, clique numa\n\
              caixa sem Shift.\n\
+             \n\
+             ------------------------------------------------------------\n\
+             TESTE 5 -- 'Trace': deslizar o VULTO para calcar\n\
+             ------------------------------------------------------------\n\
+             No painel do Flip (coluna DIREITA), clique no botao\n\
+             'Trace'. Agora arraste o VULTO azul no canvas: ele desliza\n\
+             com o mouse -- e' so a referencia; va ate a caixa daquele\n\
+             desenho e confira que a bola dele esta onde sempre esteve.\n\
+             Segure CTRL e arraste para GIRAR o vulto em torno do\n\
+             proprio centro. Volte a 'Draw': o vulto fica onde voce o\n\
+             deixou (a folha de papel deslizada do animador -- e' para\n\
+             desenhar por cima dela). De volta em 'Trace', o botao\n\
+             'Reset Shifts' devolve todos os vultos ao lugar.\n\
              \n\
              ============================================================\n\
              Se algo nao fizer o que esta escrito, me diga O QUE\n\

@@ -153,6 +153,9 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_MODE_COLORIZE);
     button(store, ids::FLIP_COLORIZE_APPLY);
     button(store, ids::FLIP_COLORIZE_CLEAR);
+    // Trace (Shift & Trace): modo + Reset. Registrados sempre, pintados só no modo Trace.
+    button(store, ids::FLIP_MODE_TRACE);
+    button(store, ids::FLIP_TRACE_RESET);
     // Bleed (6º smoke): quão fundo a cor entra pelo vão aberto (a lente). `0.5` = o pedágio
     // aprovado no 5º smoke. É o controle CONTÍNUO do vazamento; o Trap (reusado no Colorize)
     // é o selo BINÁRIO. Faixa 0..1 (fração), step contínuo.

@@ -40,7 +40,9 @@ impl FlipStrip {
     /// tem mais chave, e nada na tela explica por quê. O que ele fixou/marcou foi *aquele
     /// desenho*; mover o desenho no tempo não é soltá-lo. Uma porta só, de propósito: o
     /// próximo estado chaveado por quadro entra AQUI, não numa 3ª cópia da regra (foi
-    /// exatamente assim que a seleção ficou de fora quando os pins ganharam a sua).
+    /// exatamente assim que a seleção ficou de fora quando os pins ganharam a sua) —
+    /// e o **trace** (Shift & Trace) já entrou por ela: o deslocamento é do DESENHO,
+    /// então viaja com a chave dele.
     pub(crate) fn remap_session_after_move(&mut self, from: Frame, to: Frame) {
         for list in [&mut self.pinned, &mut self.selection] {
             if let Some(i) = list.iter().position(|&k| k == from) {
@@ -48,6 +50,9 @@ impl FlipStrip {
                 list.sort_unstable();
                 list.dedup();
             }
+        }
+        if let Some(shift) = self.trace.remove(&from) {
+            self.trace.entry(to).or_insert(shift);
         }
     }
 
@@ -71,5 +76,12 @@ impl FlipStrip {
             list.sort_unstable();
             list.dedup();
         }
+        // O empurrão desloca todo mundo DEPOIS de `key` na mesma direção — as entradas
+        // não se cruzam, então reconstruir o mapa preserva cada deslocamento.
+        let trace = std::mem::take(&mut self.trace);
+        self.trace = trace
+            .into_iter()
+            .map(|(k, v)| (if k > key { k + delta } else { k }, v))
+            .collect();
     }
 }

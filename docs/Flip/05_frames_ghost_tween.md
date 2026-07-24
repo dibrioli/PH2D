@@ -365,8 +365,23 @@ wave — mover/empurrar a chave marcada a orfanava (acento apagado, multiframe m
 fantasma), **latente já no arrasto de uma célula** — e a cura entrou na porta que os pins
 já usavam, para o próximo estado chaveado por quadro não nascer de fora.
 
-**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · Shift & Trace
-(transform por ghost).
+**Shift & Trace — a metade do SHIFT landou (2026-07-24, `docs/Flip/04 §4`):** o 8º
+`FlipMode` (**Trace**, chip na 3ª fileira ao lado do Colorize). Arrastar no canvas desloca
+o fantasma sob o cursor (Ctrl gira em torno do centro da arte) — **só a exibição**: o
+deslocamento é um `Pose` por CHAVE (`FlipStrip.trace`, a *folha de papel* do lightbox),
+composto por cima da pose autorada **apenas no passe de fantasmas**
+(`art_to_world_traced`; identidade = caminho de sempre, byte a byte). É o 3º estado de
+sessão chaveado por quadro e entra pela MESMA porta `remap_session_*` (mover célula /
+empurrão do hold o carregam). O hit segue o OLHO (menor `|Δ|` = o fantasma por cima) e
+pergunta à caixa POSADA (folha já deslocada é pega onde está). **Reset Shifts** no painel
+devolve tudo (sessão, sem undo). O Down consome SEMPRE no modo (a razão do Edit: cair no
+gizmo moveria o objeto). Gesto em `flip_trace.rs`; motor puro (`pick`/`rotated`)
+mutation-testado.
+
+**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · o **PEEK do
+Shift & Trace** (F1/F2/F3 do OpenToonz — o flip de papel que mostra SÓ o desenho
+anterior/atual/seguinte enquanto a tecla está presa; precisa de roteamento de key-release
+no shell, fatia própria).
 
 ---
 

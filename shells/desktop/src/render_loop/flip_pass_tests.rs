@@ -62,7 +62,14 @@ fn at(f: i32) -> Playhead {
 fn a_layers_ghost_sits_above_the_layers_below_it() {
     let doc = doc_bg_fg();
     let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
-    let (layers, _) = collect_layers(&doc, &ph, None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
+    let (layers, _) = collect_layers(
+        &doc,
+        &ph,
+        None,
+        None,
+        &[],
+        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+    );
 
     let kinds: Vec<&str> = layers
         .iter()
@@ -141,7 +148,14 @@ fn there_are_no_ghosts_without_the_tool_or_during_play() {
 
     let mut playing = at(8);
     playing.play();
-    let (layers, _) = collect_layers(&doc, &playing, None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
+    let (layers, _) = collect_layers(
+        &doc,
+        &playing,
+        None,
+        None,
+        &[],
+        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+    );
     assert!(layers.iter().all(|l| l.ghost.is_none()), "durante o play");
 }
 
@@ -216,7 +230,14 @@ fn each_slice_carries_the_pose_of_its_own_key() {
         .unwrap()
         .translate_frame(fg, 8, Vec2::new(100.0, 0.0));
 
-    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
+    let (layers, _) = collect_layers(
+        &doc,
+        &at(8),
+        None,
+        None,
+        &[],
+        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+    );
     // BG · fantasma do FG (quadro 0) · FG (quadro 8)
     let (ghost, art) = (&layers[1], &layers[2]);
 
@@ -303,4 +324,59 @@ fn the_stroke_thickness_is_fixed_in_the_world_and_scales_with_the_zoom() {
         "2x de zoom nao dobrou a espessura ({s_near}/{s_far}): a largura voltou a ser \
          de TELA (absoluta), e o traço encolhe em relação à arte ao aproximar"
     );
+}
+
+/// 🔴 **A folha deslizada (Shift & Trace) entra no model do FANTASMA — e só nele.**
+///
+/// Três metades num gate, porque as três falham separadas: (a) um mapa VAZIO é
+/// byte-idêntico ao caminho de sempre (o pin de regressão do modo — fora do Trace nada
+/// pode mudar um bit); (b) o shift desloca o model do fantasma exatamente pelo afim
+/// autorado; (c) a ARTE (a fatia não-fantasma) nunca o veste — o deslocamento é da
+/// referência, não da obra. Mutação que sangra: o `collect` ignorar `sources.trace`
+/// (b falha), ou aplicar o shift na fatia da camada (c falha).
+#[test]
+fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
+    use crate::render_loop::flip_pass_ghosts::GhostSources;
+    let doc = doc_bg_fg();
+    let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
+    let (base, _) = collect_layers(&doc, &ph, None, None, &[], Some(GhostSources::default()));
+
+    // (a) Mapa vazio fornecido = byte-idêntico ao default (nenhum model se move).
+    let empty = std::collections::BTreeMap::new();
+    let src_empty = GhostSources {
+        trace: Some(&empty),
+        ..Default::default()
+    };
+    let (with_empty, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_empty));
+    for (a, b) in base.iter().zip(with_empty.iter()) {
+        assert_eq!(a.model.0, b.model.0, "mapa vazio moveu um model");
+    }
+
+    // (b)+(c) Um shift na chave 0 (a do fantasma): SÓ o fantasma o veste.
+    let mut map = std::collections::BTreeMap::new();
+    map.insert(0, ph2d_flip::Pose::from_translation(Vec2::new(3.0, -2.0)));
+    let src_map = GhostSources {
+        trace: Some(&map),
+        ..Default::default()
+    };
+    let (shifted, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_map));
+    for (a, b) in base.iter().zip(shifted.iter()) {
+        if b.ghost.is_some() {
+            assert_eq!(
+                (b.model.0[4] - a.model.0[4], b.model.0[5] - a.model.0[5]),
+                (3.0, -2.0),
+                "o fantasma tinha de deslizar exatamente pelo shift autorado"
+            );
+            assert_eq!(
+                (b.model.0[0], b.model.0[1], b.model.0[2], b.model.0[3]),
+                (a.model.0[0], a.model.0[1], a.model.0[2], a.model.0[3]),
+                "translacao pura nao mexe na parte linear"
+            );
+        } else {
+            assert_eq!(
+                a.model.0, b.model.0,
+                "a ARTE nunca veste o shift da referencia"
+            );
+        }
+    }
 }

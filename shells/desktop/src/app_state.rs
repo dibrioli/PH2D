@@ -733,6 +733,9 @@ pub(crate) struct App {
     /// ADR-0114 W6.1: o GESTO em curso no modo Edit — a caixa do marquee, ou a translação
     /// da seleção. `None` fora de um arrasto. Ver `flip_edit_gesture`.
     pub(crate) flip_edit_gesture: Option<crate::flip_edit_gesture::EditGesture>,
+    /// Shift & Trace: o arrasto de DESLOCAR um fantasma em curso (modo Trace). O mapa
+    /// de deslocamentos mora em `flip_strip.trace`; aqui é só o gesto.
+    pub(crate) flip_trace_drag: Option<crate::flip_trace::TraceDrag>,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

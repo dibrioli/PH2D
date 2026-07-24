@@ -2374,6 +2374,11 @@ impl App {
         if self.flip_edit_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Shift & Trace: enquanto um arrasto de trace está aberto, cada movimento
+        // desloca (ou gira) a folha do fantasma pego. No-op sem gesto.
+        if self.flip_trace_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Flip W7.5: arrasto do gizmo de POSE em curso — cada movimento recomputa a
         // pose da chave (rotate/scale) a partir do snapshot do Down. No-op sem gesto.
         if self.flip_pose_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2727,6 +2732,14 @@ impl App {
         {
             return;
         }
+        // Shift & Trace: o pen-UP fecha o arrasto de trace (o deslocamento já está
+        // aplicado — é exibição, não documento). Como os outros UPs, vem antes dos DOWNs.
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_trace_canvas_up()
+        {
+            return;
+        }
         // Flip W7.5: o pen-UP fecha um arrasto do gizmo de pose (o passo de undo sai
         // do diff pós-frame, como os outros gestos).
         if kind == PointerKind::Up
@@ -2789,6 +2802,18 @@ impl App {
             && on_canvas
             && !menu_open_before
             && self.flip_colorize_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Shift & Trace: a pen-DOWN no modo Trace pega o fantasma sob o cursor (Ctrl =
+        // girar) e CONSOME mesmo errando — o Trace é dono do canvas (cair no gizmo
+        // moveria o objeto no meio do posicionamento da referência).
+        if self.flip_wants_trace()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_trace_canvas_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

@@ -76,17 +76,30 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        // Colorize (C2) numa 3ª fileira própria — o `segmented` não reflui, então um 7º
-        // chip numa fileira de três apertaria os rótulos.
+        // Colorize (C2) + Trace numa 3ª fileira própria — o `segmented` não reflui,
+        // então um 7º chip numa fileira de três apertaria os rótulos.
         self.segmented(
             "",
-            [(
-                ids::FLIP_MODE_COLORIZE,
-                "Colorize",
-                snap.mode == FlipMode::Colorize,
-            )],
+            [
+                (
+                    ids::FLIP_MODE_COLORIZE,
+                    "Colorize",
+                    snap.mode == FlipMode::Colorize,
+                ),
+                (ids::FLIP_MODE_TRACE, "Trace", snap.mode == FlipMode::Trace),
+            ],
             y,
         )
+    }
+
+    /// **Trace section** (Shift & Trace) — só no modo Trace: o Reset devolve todos os
+    /// fantasmas ao lugar do desenho. Os deslocamentos são SESSÃO do shell (nunca o
+    /// documento), então o botão viaja pelo bus como os do Colorize.
+    pub(crate) fn trace_section(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
+        if snap.mode != FlipMode::Trace {
+            return y;
+        }
+        self.segmented("Trace", [(ids::FLIP_TRACE_RESET, "Reset Shifts", false)], y)
     }
 
     /// **Edit section** (W6) — o que se faz com a SELEÇÃO de traços.

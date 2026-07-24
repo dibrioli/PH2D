@@ -15,9 +15,9 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale, InitialVelocity,
-    LockPositionX, LockPositionY, LockRotation, MassOverride, PhysicsBridge, RigidBody,
-    register_physics_components,
+    AreaForceWorldAxes, BodyKind, Ccd, Collider, ColliderShape, Dominance, GravityScale,
+    InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, PhysicsBridge,
+    RigidBody, register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -87,6 +87,11 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
         MassOverride(7.5),
         // The dominance (W-Dominance): a VALUED i8 that must round-trip.
         Dominance(5),
+        // The force FRAME marker (W-AreaFrame): another zero-field presence flag. It
+        // decides which way a zone blows, so losing it in a save turns a diagonal
+        // conveyor back into a horizontal one — silently, on load, with the row still
+        // reading "World".
+        AreaForceWorldAxes,
     ));
 
     let mut state = TransformPropagationState::new(src.world_mut());
@@ -153,6 +158,11 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     assert!(
         dst.world().get::<LockPositionY>(e).is_some(),
         "the LockPositionY marker did not survive the snapshot round trip (registered?)"
+    );
+    assert!(
+        dst.world().get::<AreaForceWorldAxes>(e).is_some(),
+        "the AreaForceWorldAxes marker did not survive the snapshot round trip \
+         (registered?) — a zone would silently load blowing the other way"
     );
     let mass = *dst
         .world()

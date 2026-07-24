@@ -80,8 +80,11 @@ fn the_dots_really_do_bunch_at_the_ends_and_spread_in_the_middle() {
         "MEDIDO  vao nas pontas {edge:.4}, no meio {middle:.4} ({:.0}x)",
         middle / edge
     );
+    // Medido 52× (âncora = key, ease nos dois extremos). O piso é 20×, com margem folgada
+    // sobre o 52 medido mas MUITO acima do que uma track quase-linear daria — um ease que
+    // enfraquecesse a ponto de os pontos não se juntarem cai aqui.
     assert!(
-        middle > 8.0 * edge,
+        middle > 20.0 * edge,
         "os pontos do meio ({middle:.4}) mal se esparramam contra os das pontas \
          ({edge:.4}) — o prólogo manda olhar uma coisa que não está lá"
     );
@@ -103,6 +106,62 @@ fn the_journey_runs_from_end_to_end_with_no_jump_at_the_start() {
     assert!(
         d(end, path.anchors()[path.len() - 1].anchor) < 1e-3,
         "o percurso termina em {end:?}, não na última âncora"
+    );
+}
+
+/// **A queixa do smoke, pinada onde nasceu: 4 âncoras = 4 keyframes, e arrastar
+/// qualquer uma NÃO encolhe o percurso.**
+///
+/// O smoke ANTIGO cravava 2 keys sobre 4 âncoras; o `rewrite_path_key_values` casa
+/// âncora `i` com key `i` por `zip`, então o primeiro arrasto colapsava a key de
+/// CHEGADA de `total` para a distância até a 2ª âncora, e o objeto parava no primeiro
+/// trecho — *"se tentar arrastar qualquer ponto a curva quebra"*. O oráculo é a key de
+/// chegada (ainda vale o percurso INTEIRO) e onde o objeto para no fim (na âncora movida).
+#[test]
+fn the_anchors_are_the_keys_and_a_drag_does_not_shrink_the_journey() {
+    let (mut doc, bits) = rig();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("binding")
+        .target;
+    let anchors = |d: &TimelineDoc| d.position_path(bits).unwrap().len();
+    let keys = |d: &TimelineDoc| d.active_clip().track(target).unwrap().keys().len();
+
+    assert_eq!(anchors(&doc), 4, "o S tem 4 âncoras");
+    assert_eq!(keys(&doc), 4, "uma key por âncora — as âncoras SÃO as keys");
+
+    // Arrasta a ÚLTIMA âncora para longe. O percurso muda; a contagem, não.
+    let mut last = doc.path_anchor(target, 3).unwrap();
+    last.anchor = [10.0, 6.0];
+    assert!(doc.move_path_anchor(target, 3, last));
+    assert_eq!(anchors(&doc), 4);
+    assert_eq!(keys(&doc), 4, "arrastar não perde nem cria keyframe");
+
+    // A key de chegada ainda vale o percurso INTEIRO — não colapsou para o 1º trecho.
+    let total = doc.position_path(bits).unwrap().length() as f32;
+    let AnimValue::Float(s) = doc
+        .active_clip()
+        .track(target)
+        .unwrap()
+        .keys()
+        .last()
+        .unwrap()
+        .value
+    else {
+        panic!("Position é escalar")
+    };
+    println!("MEDIDO  key de chegada {s:.4} / percurso {total:.4}");
+    assert!(
+        (s - total).abs() < 1e-3,
+        "a key de chegada guarda {s:.4}, o percurso mede {total:.4} — ela colapsou"
+    );
+
+    // E o objeto de fato para na âncora movida no instante da última key.
+    let end = at(&doc, bits, 3.0);
+    let d = ((end[0] - 10.0).powi(2) + (end[1] - 6.0).powi(2)).sqrt();
+    assert!(
+        d < 1e-2,
+        "o objeto para a {d:.4} da última âncora — o percurso encolheu"
     );
 }
 

@@ -222,6 +222,20 @@ impl TimelineDoc {
         let Some(track) = self.active_clip_mut().track_mut(target) else {
             return true;
         };
+        // ⚠️ **As âncoras SÃO as keys** (path.rs) — a contagem TEM de bater. O `zip`
+        // abaixo escreve só até a mais curta, então uma track com MENOS keys do que o
+        // caminho tem âncoras deixa a key de CHEGADA com a distância de uma âncora do
+        // MEIO em vez do `total`, e o percurso do objeto encolhe: era o *"se tentar
+        // arrastar qualquer ponto a curva quebra"* do smoke, causado por uma autoria que
+        // NÃO passou pela porta única (`add_path_key`). Aqui é um tripwire de dev — a
+        // autoria correta (K e Separate->Path) mantém os dois em passo por construção.
+        debug_assert_eq!(
+            track.len(),
+            lens.len(),
+            "a track tem {} keys para {} âncoras — a autoria não passou pela porta única",
+            track.len(),
+            lens.len()
+        );
         for (id, s) in track.ids().to_vec().into_iter().zip(lens) {
             track.set_value(id, AnimValue::Float(s as f32));
         }

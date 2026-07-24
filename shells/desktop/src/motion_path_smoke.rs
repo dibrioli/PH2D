@@ -61,38 +61,62 @@ pub(crate) fn demo_path() -> MotionPath {
     )
 }
 
-/// Autora a track: parte em repouso, acelera, e freia no fim — o ease que faz o
-/// espaçamento dos pontos DIZER alguma coisa. Uma track linear desenharia pontos
-/// igualmente espaçados, que é correto e não demonstra nada.
+/// Autora a track: **um keyframe por âncora** (as âncoras SÃO as keys — o modelo do
+/// After Effects, [`ph2d_timeline::MotionPath`]), parte em repouso, acelera, e freia no
+/// fim — o ease que faz o espaçamento dos pontos DIZER alguma coisa.
+///
+/// ⚠️ **Pela porta ÚNICA** (`key_the_path`), a MESMA do K e da conversão Separate->Path.
+/// O smoke ANTIGO cravava 2 keys sobre um caminho de 4 âncoras, e o
+/// `rewrite_path_key_values` casa âncora `i` com key `i` por `zip`: com a track mais
+/// curta que o caminho, o primeiro arrasto colapsava a key de CHEGADA de `total` para a
+/// distância até a 2ª âncora, e o percurso do objeto encolhia para o primeiro trecho.
+/// Era exatamente o *"se tentar arrastar qualquer ponto a curva quebra"* do smoke.
 pub(crate) fn author(doc: &mut TimelineDoc, bits: u64, path: &MotionPath) {
-    doc.bind(bits, PropKind::Position);
-    let total = path.length() as f32;
-    // ⚠️ A key de saída carrega o ease; a de chegada só fecha o segmento.
-    doc.insert_key(
-        bits,
-        PropKind::Position,
-        RationalTime::from_seconds(0.0),
-        AnimValue::Float(0.0),
-        Interp::Bezier {
-            x1: 0.85,
-            y1: 0.0,
-            x2: 0.15,
-            y2: 1.0,
-        },
-    );
-    doc.insert_key(
-        bits,
-        PropKind::Position,
-        RationalTime::from_seconds(3.0),
-        AnimValue::Float(total),
-        Interp::Linear,
-    );
-    let i = doc
-        .bindings()
-        .iter()
-        .position(|b| b.entity == bits && b.prop == PropKind::Position)
-        .expect("o bind acima");
-    doc.bindings_mut()[i].path = Some(path.clone());
+    // Uma key por âncora, distribuídas nos 3 s — a autoria cresce a trajetória âncora a
+    // âncora, re-suavizando, exatamente como o K faz. A track e o caminho nunca divergem.
+    let pts: Vec<[f32; 2]> = path.anchors().iter().map(|a| a.anchor).collect();
+    let n = pts.len().max(2);
+    for (i, p) in pts.iter().enumerate() {
+        let t = RationalTime::from_seconds(3.0 * i as f64 / (n - 1) as f64);
+        doc.key_the_path(bits, t, *p);
+    }
+
+    // O ease mora nos EXTREMOS (o ease é por segmento de SAÍDA): a 1ª key sai devagar do
+    // começo, a penúltima chega devagar ao fim, o meio é constante. Os pontos se juntam
+    // nas pontas e se esparramam no meio — a leitura inteira da figura. Uma track linear
+    // desenharia pontos igualmente espaçados, que é correto e não demonstra nada.
+    let Some(target) = doc.binding_for(bits, PropKind::Position).map(|b| b.target) else {
+        return;
+    };
+    let ids: Vec<_> = doc
+        .active_clip()
+        .track(target)
+        .map(|t| t.ids().to_vec())
+        .unwrap_or_default();
+    if ids.len() >= 2 {
+        let (first, penult) = (ids[0], ids[ids.len() - 2]);
+        if let Some(tr) = doc.active_clip_mut().track_mut(target) {
+            // Slow start / slow end (o "Easy Ease" do AE, nos dois extremos).
+            tr.set_interp(
+                first,
+                Interp::Bezier {
+                    x1: 0.85,
+                    y1: 0.0,
+                    x2: 1.0,
+                    y2: 1.0,
+                },
+            );
+            tr.set_interp(
+                penult,
+                Interp::Bezier {
+                    x1: 0.0,
+                    y1: 0.0,
+                    x2: 0.15,
+                    y2: 1.0,
+                },
+            );
+        }
+    }
 }
 
 impl crate::App {
@@ -146,9 +170,16 @@ impl crate::App {
         }
 
         let dots = (3.0 * self.timeline.doc.fps_display).round() as usize;
+        let keys = self
+            .timeline
+            .doc
+            .binding_for(bits, PropKind::Position)
+            .and_then(|b| self.timeline.doc.active_clip().track(b.target))
+            .map_or(0, |t| t.keys().len());
         eprintln!(
-            "[path-smoke] trajetoria em S: {} ancoras, {:.2} unidades de percurso, \
-             {dots} pontos de tempo em 3 s.",
+            "[path-smoke] trajetoria em S: {} ancoras = {keys} keyframes (uma por ponto, \
+             como no After Effects), {:.2} unidades de percurso, {dots} pontos de tempo \
+             em 3 s.",
             path.len(),
             path.length()
         );

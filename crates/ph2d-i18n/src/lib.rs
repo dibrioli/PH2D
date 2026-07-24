@@ -143,6 +143,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.envelope" => "Envelope",
         "panel.vector.section.textpath" => "Text on Path",
         "panel.vector.section.patternpath" => "Pattern on Path",
+        "panel.vector.section.contour" => "Contour",
         "panel.vector.section.effects" => "Effects",
         "panel.vector.section.stroke" => "Stroke",
         "panel.vector.section.fill" => "Fill",

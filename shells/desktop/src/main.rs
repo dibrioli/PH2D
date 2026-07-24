@@ -55,8 +55,8 @@ mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
 mod connector_live;
-/// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
-/// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
+/// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
+/// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod contour_live;
 mod corner_handles;
 mod cursor_pos;
@@ -119,6 +119,8 @@ mod morph_live;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
+/// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
+/// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
 mod palette_persist;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
@@ -443,6 +445,7 @@ impl App {
             pattern_live: crate::pattern_live::PatternLive::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
+            vec_contour_mirrored: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,

@@ -97,6 +97,16 @@ pub use ph2d_editor_core::ids::{
     VECTOR_TEXTPATH_OFFSET_NUM, VECTOR_TEXTPATH_PICK,
 };
 
+/// **Contour** (pesquisa `20_*` #9): a seção + os três comandos + os pares Steps/Offset/Accel + a
+/// swatch da cor-alvo + os dois trios exclusivos (Corner / Side).
+pub use ph2d_editor_core::ids::{
+    VECTOR_CONTOUR_ACCEL, VECTOR_CONTOUR_ACCEL_NUM, VECTOR_CONTOUR_ADD, VECTOR_CONTOUR_EXPAND,
+    VECTOR_CONTOUR_JOIN_BEVEL, VECTOR_CONTOUR_JOIN_MITER, VECTOR_CONTOUR_JOIN_ROUND,
+    VECTOR_CONTOUR_OFFSET, VECTOR_CONTOUR_OFFSET_NUM, VECTOR_CONTOUR_REMOVE,
+    VECTOR_CONTOUR_SIDE_BOTH, VECTOR_CONTOUR_SIDE_INNER, VECTOR_CONTOUR_SIDE_OUTER,
+    VECTOR_CONTOUR_STEPS, VECTOR_CONTOUR_STEPS_NUM, VECTOR_CONTOUR_TO, VECTOR_SECTION_CONTOUR,
+};
+
 /// **Pattern on Path** (plano 23): a seção + os quatro botões + os pares Spacing/Start/End/Slide/Offset.
 pub use ph2d_editor_core::ids::{
     VECTOR_PATTERNPATH_DETACH, VECTOR_PATTERNPATH_END, VECTOR_PATTERNPATH_END_NUM,

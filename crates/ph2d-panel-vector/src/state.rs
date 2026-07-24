@@ -86,17 +86,6 @@ thread_local! {
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
     /// unfocused (gesture ended), so the shell stays stateless.
     static ROT_LAST: Cell<f64> = const { Cell::new(0.0) };
-    /// Junção das quinas do **Offset Path** (`0` Miter · `1` Round · `2` Bevel).
-    ///
-    /// Panel-local e NÃO é o join do traço: um path pode não ter traço nenhum e ainda ser
-    /// offsetado, e mesmo tendo, a quina que o traço desenha e a quina que o offset produz
-    /// são escolhas diferentes. Reaproveitar `VECTOR_JOIN_*` faria um controle mexer em
-    /// dois fatos.
-    static EXPAND_JOIN: Cell<u8> = const { Cell::new(0) };
-    /// Qual contorno o **Offset Path** move (`0` Outer · `1` Inner · `2` Both). Default `2`
-    /// (Both) — num caminho sem furo é o único contorno de qualquer jeito. Panel-local, como o
-    /// `EXPAND_JOIN`: a shell o lê no clique/drag de offset e o motor o honra.
-    static EXPAND_SIDE: Cell<u8> = const { Cell::new(2) };
     /// Last measured scrollable content height (set by `paint`).
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
@@ -273,36 +262,6 @@ pub(crate) fn set_rot_last(v: f64) {
     ROT_LAST.with(|c| c.set(v));
 }
 
-/// A junção escolhida para o **Offset Path** (`0` Miter · `1` Round · `2` Bevel).
-///
-/// `pub` porque a SHELL a lê no clique de Offset Path — o painel escolhe, o motor honra.
-/// Uma cópia do lado da shell seria a segunda resposta a *"que quina o offset faz?"*, e
-/// divergiria no dia em que alguém acrescentasse um estilo de junção.
-#[must_use]
-pub fn expand_join() -> u8 {
-    EXPAND_JOIN.with(Cell::get)
-}
-
-/// `pub` porque o gate do RETUNE (shell) precisa armar a quina sem montar o painel — o
-/// produto só escreve pelo clique nos chips.
-pub fn set_expand_join(v: u8) {
-    EXPAND_JOIN.with(|c| c.set(v));
-}
-
-/// Qual contorno o **Offset Path** move (`0` Outer · `1` Inner · `2` Both).
-///
-/// `pub` pela mesma razão do [`expand_join`]: a SHELL a lê no gesto de offset, e uma cópia
-/// dela do outro lado seria a segunda resposta a *"que contorno o offset move?"*.
-#[must_use]
-pub fn expand_side() -> u8 {
-    EXPAND_SIDE.with(Cell::get)
-}
-
-/// `pub` pela razão do [`set_expand_join`].
-pub fn set_expand_side(v: u8) {
-    EXPAND_SIDE.with(|c| c.set(v));
-}
-
 #[must_use]
 pub fn last_content_h() -> f32 {
     LAST_CONTENT_H.with(|c| c.get())
@@ -371,6 +330,14 @@ pub(crate) use patternpath::{
 pub use patternpath::{
     set_current_patternpath, set_current_patternpath_can_link, set_current_patternpath_can_pick,
 };
+
+#[path = "state_expand.rs"] // Os knobs do Offset Path, irmão pelo teto de 600 LOC
+mod expand;
+pub use expand::{expand_join, expand_side, set_expand_join, set_expand_side};
+
+#[path = "state_contour.rs"] // Contour (pesquisa `20_*` #9), irmão pelo teto de 600 LOC
+pub(crate) mod contour;
+pub use contour::{set_current_contour, set_current_contour_can_add};
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {

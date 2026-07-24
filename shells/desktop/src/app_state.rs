@@ -841,6 +841,11 @@ pub(crate) struct App {
     /// republica; sem isto, escolher uma forma offsetada mostraria os knobs globais do painel e
     /// o chip mentiria sobre o que está na tela. Runtime-only.
     pub(crate) vec_offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
+    /// A forma cujo CONTOUR o painel está espelhando (os três sliders + os dois trios). Mesmo
+    /// papel do [`Self::vec_offset_mirrored`] e pela mesma razão: o `paint` lê o STORE primeiro
+    /// (senão o número saltaria durante o arrasto), então sem uma borda que reescreva o store na
+    /// troca de seleção, escolher outra forma mostraria os valores da anterior. Runtime-only.
+    pub(crate) vec_contour_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

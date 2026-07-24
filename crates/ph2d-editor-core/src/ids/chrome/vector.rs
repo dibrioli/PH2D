@@ -657,32 +657,3 @@ pub const VECTOR_FX_APPLY: NodeId = hash_node_id("vector.fx.apply");
 pub const VECTOR_MODE_FILLET: NodeId = hash_node_id("vector.mode.fillet");
 /// **Chamfer** — o 10º pill de modo: chanfrar quina (reta) por clicar-e-arrastar.
 pub const VECTOR_MODE_CHAMFER: NodeId = hash_node_id("vector.mode.chamfer");
-
-/// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
-/// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
-/// esquecer a marca faz o header virar um título MORTO, que não dobra).
-pub const VECTOR_SECTIONS: &[NodeId] = &[
-    VECTOR_SECTION_TOOL,
-    VECTOR_SECTION_SHAPE,
-    VECTOR_SECTION_SHAPE_PARAMS,
-    VECTOR_SECTION_STROKE,
-    VECTOR_SECTION_FILL,
-    VECTOR_SECTION_FILL_TYPE,
-    VECTOR_SECTION_SNAP,
-    VECTOR_SECTION_TRANSFORM,
-    VECTOR_SECTION_VERTEX,
-    VECTOR_SECTION_BOOLEAN,
-    VECTOR_SECTION_EXPAND,
-    VECTOR_SECTION_BLEND,
-    VECTOR_SECTION_MORPH,
-    VECTOR_SECTION_ENVELOPE,
-    VECTOR_SECTION_EFFECTS,
-    VECTOR_SECTION_ALIGN,
-    VECTOR_SECTION_ARRANGE,
-    VECTOR_SECTION_PATH,
-    VECTOR_SECTION_TEXT,
-    VECTOR_SECTION_FONT,
-    VECTOR_SECTION_PARAGRAPH,
-    VECTOR_SECTION_AXES,
-    VECTOR_SECTION_CONNECTOR,
-];

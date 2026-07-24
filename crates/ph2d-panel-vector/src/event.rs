@@ -138,6 +138,9 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_PATTERNPATH_ROTATION {
         return Some(forward_track(host, id, 0.5, crate::rotation_from_track));
     }
+    if let Some(consumed) = contour::contour_slider_event(host, id) {
+        return Some(consumed);
+    }
     None
 }
 
@@ -521,6 +524,20 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_PATTERNPATH_DETACH
         || id == ids::VECTOR_PATTERNPATH_FLIP
         || id == ids::VECTOR_PATTERNPATH_FLIP_OFF
+        // Contour: criar / materializar / apagar + os dois trios exclusivos. ⚠️ Corner e Side
+        // atravessam para a shell (≠ os gêmeos da seção Expand, que são panel-local): lá eles
+        // armam o PRÓXIMO offset, aqui retunam um contour que já está na tela, e o que a fileira
+        // mostra sai do componente. Guardá-los no painel seria uma segunda cópia do mesmo fato,
+        // e ela discordaria assim que o artista selecionasse outra forma.
+        || id == ids::VECTOR_CONTOUR_ADD
+        || id == ids::VECTOR_CONTOUR_EXPAND
+        || id == ids::VECTOR_CONTOUR_REMOVE
+        || id == ids::VECTOR_CONTOUR_JOIN_MITER
+        || id == ids::VECTOR_CONTOUR_JOIN_ROUND
+        || id == ids::VECTOR_CONTOUR_JOIN_BEVEL
+        || id == ids::VECTOR_CONTOUR_SIDE_OUTER
+        || id == ids::VECTOR_CONTOUR_SIDE_INNER
+        || id == ids::VECTOR_CONTOUR_SIDE_BOTH
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION
@@ -574,3 +591,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // possui. Fora daqui o botão pintaria e estaria MORTO.
         || id == ids::VECTOR_MARKER_BOTH
 }
+
+/// O roteamento dos controles do **Contour** — irmão pelo teto de 600 LOC do painel.
+#[path = "event_contour.rs"]
+mod contour;

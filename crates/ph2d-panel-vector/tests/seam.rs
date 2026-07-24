@@ -556,7 +556,9 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        23, // +1: EXPAND (Outline Stroke + Offset Path)
+        // +3 (2026-07-23): TEXTPATH e PATTERNPATH, que chegaram à `main` FORA da lista — os dois
+        // cabeçalhos pintavam chevron e não dobravam —, e CONTOUR, que entrou junto.
+        26,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

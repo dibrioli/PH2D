@@ -97,38 +97,7 @@ impl ContourLive {
             let mut world = path.cooked().into_owned();
             bake_xform(&mut world, &xform_of(xforms, path.id));
 
-            let fresh = self
-                .memo
-                .get(&path.id)
-                .is_some_and(|m| m.matches(&world, &spec));
-            if !fresh {
-                self.memo.insert(
-                    path.id,
-                    Memo {
-                        world: world.clone(),
-                        d: spec.d,
-                        join: spec.join,
-                        side: spec.side,
-                        accel: spec.accel,
-                        rings: Vec::new(),
-                    },
-                );
-            }
-            let Some(memo) = self.memo.get_mut(&path.id) else {
-                continue;
-            };
-            // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
-            while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
-                let k = u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) + 1;
-                let dist = spec.ring_distance(k);
-                memo.rings.push(ph2d_vec_boolean::offset_path(
-                    &world,
-                    dist,
-                    crate::vec_expand::join_of_code(spec.join),
-                    crate::vec_expand::side_of_code(spec.side),
-                ));
-            }
-
+            let memo = self.ensure(path.id, &world, &spec);
             let out = assemble(&world, memo, &spec);
             // ⚠️ Inserido MESMO com um anel vazio: vazio é a ANIQUILAÇÃO (o offset comeu a forma),
             // e desenhar o que sobrou é a resposta certa. A entrada AUSENTE significaria "desenhe a
@@ -141,6 +110,107 @@ impl ContourLive {
             .retain(|id, _| spec_of(sim, map, *id).is_some_and(|s| s.steps > 0));
     }
 
+    /// O memo de `id`, com os anéis que faltam já cozidos. **Porta única do cozimento** — o
+    /// `recook` (por frame) e o [`ContourLive::expand`] (no clique) passam por aqui, senão o
+    /// Expand entregaria anéis cozidos por um segundo caminho e as formas SALTARIAM no clique
+    /// que promete materializar o que está na tela.
+    fn ensure(&mut self, id: VecPathId, world: &VecPath, spec: &VecContour) -> &Memo {
+        let fresh = self.memo.get(&id).is_some_and(|m| m.matches(world, spec));
+        if !fresh {
+            self.memo.insert(
+                id,
+                Memo {
+                    world: world.clone(),
+                    d: spec.d,
+                    join: spec.join,
+                    side: spec.side,
+                    accel: spec.accel,
+                    rings: Vec::new(),
+                },
+            );
+        }
+        let memo = self.memo.entry(id).or_insert_with(|| Memo {
+            world: world.clone(),
+            d: spec.d,
+            join: spec.join,
+            side: spec.side,
+            accel: spec.accel,
+            rings: Vec::new(),
+        });
+        // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
+        while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
+            let k = u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) + 1;
+            memo.rings.push(ph2d_vec_boolean::offset_path(
+                world,
+                spec.ring_distance(k),
+                crate::vec_expand::join_of_code(spec.join),
+                crate::vec_expand::side_of_code(spec.side),
+            ));
+        }
+        memo
+    }
+
+    /// **Expand Contour** — materializa os anéis em formas REAIS na cena e descarta o efeito.
+    ///
+    /// É o *Break Contour Apart* do Corel, e o irmão exato do Expand do Blend (ADR-0128 Fase D):
+    /// o que estava na tela passa a ser geometria editável ponto a ponto. **A FONTE fica** (≠
+    /// booleana, que consome os operandos) — o contour era desenho por cima dela, e apagá-la seria
+    /// destruir a arte para entregar uma cópia.
+    ///
+    /// Os anéis saem da MESMA [`painted_rings`] que o `recook` desenha, sobre a MESMA [`ensure`]
+    /// que ele coze: é o ponto todo, e é o que garante que nada mude de forma ou de cor no clique.
+    /// Já vêm assados em MUNDO, então o path nasce sem pose (a entidade nasce na identidade no
+    /// `sync`) e a geometria está no lugar certo.
+    ///
+    /// Devolve **uma sequência de z (fundo → topo) por contour expandido**, para o chamador
+    /// enfileirar em `vec_restack`: quem manda no z é a ÁRVORE (ADR-0110), e as entidades dos
+    /// anéis só nascem no `sync` seguinte.
+    pub(crate) fn expand(
+        &mut self,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &VecEntityMap,
+        xforms: &VecXforms,
+        ids: &[VecPathId],
+    ) -> Vec<Vec<VecPathId>> {
+        let mut runs: Vec<Vec<VecPathId>> = Vec::new();
+        for &id in ids {
+            let Some(spec) = spec_of(sim, map, id) else {
+                continue;
+            };
+            let Some(src) = scene.paths().iter().find(|p| p.id == id) else {
+                continue;
+            };
+            let mut world = src.cooked().into_owned();
+            bake_xform(&mut world, &xform_of(xforms, id));
+            let rings = painted_rings(&world, self.ensure(id, &world, &spec), &spec);
+            if rings.is_empty() {
+                continue; // contour que aniquilou a forma: não há o que materializar
+            }
+            // A posição é buscada agora: uma inserção anterior já moveu os índices.
+            let at = scene
+                .paths()
+                .iter()
+                .position(|p| p.id == id)
+                .map_or(0, |z| z + 1);
+            let new: Vec<VecPathId> = rings
+                .into_iter()
+                .enumerate()
+                .map(|(k, p)| scene.insert_path(at + k, p))
+                .collect();
+            // O efeito foi consumido: a fonte deixa de carregar o componente, senão o frame
+            // seguinte re-cozeria anéis por cima dos que acabaram de virar formas.
+            if let Some(&bits) = map.get(&id)
+                && let Ok(mut em) = sim.world_mut().get_entity_mut(Entity::from_bits(bits))
+            {
+                em.remove::<VecContour>();
+            }
+            self.memo.remove(&id);
+            runs.push(stacked(new, id, spec.d));
+        }
+        runs
+    }
+
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os
     /// `VecPathId` são reciclados entre documentos.
     pub(crate) fn forget(&mut self) {
@@ -150,23 +220,44 @@ impl ContourLive {
 }
 
 /// Monta a lista final: os anéis pintados pela rampa + a fonte, **do maior para o menor**.
+fn assemble(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
+    stacked(painted_rings(world, memo, spec), world.clone(), spec.d)
+}
+
+/// **A ordem de desenho, fundo → topo** — os anéis (mais distante primeiro) e depois a FONTE.
 ///
-/// A fonte entra com a tinta DELA (é a forma do artista, não um passo da rampa) e o anel `k` com a
-/// cor interpolada em **Oklab** entre a fonte e o alvo, na fração `ramp_t(k)`.
+/// Genérica sobre o que está a ser ordenado porque a regra tem **dois** consumidores que ordenam
+/// coisas diferentes: o cozimento empilha `VecPath` para desenhar, e o [`expand`] empilha
+/// `VecPathId` para o `vec_zorder::restack`. Escrita duas vezes, ela divergiria — e a divergência
+/// seria *as formas saltarem de z no clique que promete entregar o que estava na tela*.
+fn stacked<T>(mut rings: Vec<T>, source: T, d: f64) -> Vec<T> {
+    rings.push(source);
+    // `d < 0` faz os anéis ENCOLHEREM, então "maior primeiro" é a ordem inversa desta.
+    if d < 0.0 {
+        rings.reverse();
+    }
+    rings
+}
+
+/// Os anéis já pintados pela rampa, do mais DISTANTE ao mais próximo.
+///
+/// A fonte não entra aqui: ela é a forma do artista, não um passo da rampa. O anel `k` leva a cor
+/// interpolada em **Oklab** entre a da fonte e o alvo, na fração `ramp_t(k)`.
 ///
 /// ⚠️ `ramp_t` **não** é a função que decidiu a distância daquele anel (`ring_distance`) — as duas
 /// divergem de propósito, e o porquê está no `accel` do [`VecContour`]. O que as mantém coerentes
 /// é serem MONÓTONAS na mesma direção: o anel mais distante é sempre o mais próximo do alvo.
-fn assemble(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
+///
+/// **Porta única do desenho de um anel**, e é por isso que o [`expand`] a chama em vez de recozer:
+/// uma 2ª porta faria os anéis mudarem de cor no clique que promete materializá-los como estão.
+fn painted_rings(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
     let from = source_rgba(world);
     let mut out: Vec<VecPath> = Vec::new();
     let n = spec
         .steps
         .min(u16::try_from(memo.rings.len()).unwrap_or(u16::MAX));
-    // Do mais distante ao mais próximo; a fonte por último = por cima (a regra do § do módulo).
     for k in (1..=n).rev() {
-        let t = spec.ramp_t(k);
-        let paint = Paint::solid(ramp(from, spec.to, t));
+        let paint = Paint::solid(ramp(from, spec.to, spec.ramp_t(k)));
         for ring in &memo.rings[usize::from(k - 1)] {
             let mut p = ring.clone();
             p.fill = Some(paint.clone());
@@ -175,11 +266,6 @@ fn assemble(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
             p.stroke = None;
             out.push(p);
         }
-    }
-    out.push(world.clone());
-    // `d < 0` faz os anéis ENCOLHEREM, então a ordem "maior primeiro" é a inversa desta.
-    if spec.d < 0.0 {
-        out.reverse();
     }
     out
 }
@@ -213,13 +299,146 @@ fn ramp(from: [u8; 4], to: [u8; 4], t: f64) -> Rgba8 {
     Rgba8::new(srgb.0[0], srgb.0[1], srgb.0[2], alpha)
 }
 
-/// O contour de `id`, se houver. Porta única: o cozimento, o painel e o Apply perguntam AQUI.
+/// O contour de `id`, se houver. Porta única: o cozimento, o painel e o Expand perguntam AQUI.
 #[must_use]
 pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecContour> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecContour>(Entity::from_bits(bits))
         .copied()
+}
+
+/// Os três comandos da seção — o que o clique num botão pede à cena.
+///
+/// `Add` e `Remove` são as duas portas do MODELO (o componente passa a existir, ou deixa de);
+/// `Expand` é a única que produz GEOMETRIA. Ficam num enum e não em três `bool` porque são
+/// mutuamente exclusivos por construção: um clique é um clique.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ContourCmd {
+    Add,
+    Remove,
+    Expand,
+}
+
+/// O código de quina que este id do painel endereça, se for um dos três chips de **Corner**.
+///
+/// Os códigos são os MESMOS do Expand (`0` Miter · `1` Round · `2` Bevel), resolvidos adiante pela
+/// MESMA porta (`vec_expand::join_of_code`) — um segundo vocabulário para a mesma pergunta é como
+/// o chip do artista passa a significar outra quina.
+#[must_use]
+pub(crate) fn join_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+    match id {
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_JOIN_MITER => Some(0),
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_JOIN_ROUND => Some(1),
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_JOIN_BEVEL => Some(2),
+        _ => None,
+    }
+}
+
+/// O código de lado que este id endereça, se for um dos três chips de **Side** (`0` Outer ·
+/// `1` Inner · `2` Both). Irmão do [`join_code_of_id`], mesmos códigos do Expand.
+#[must_use]
+pub(crate) fn side_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+    match id {
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_SIDE_OUTER => Some(0),
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_SIDE_INNER => Some(1),
+        i if i == ph2d_editor::ids::VECTOR_CONTOUR_SIDE_BOTH => Some(2),
+        _ => None,
+    }
+}
+
+/// A distância por passo com que um contour NASCE, em fração do tamanho da forma.
+///
+/// ⚠️ **Não é zero, e a razão é o primeiro frame.** O slider de Offset é bipolar e o neutro dele
+/// cai no centro do curso; armar no neutro daria N anéis exatamente sobre a forma, ou seja um
+/// clique em *Add Contour* que **não muda um pixel** — o artista concluiria que o botão está
+/// quebrado. 8% por passo × os 4 passos do default cresce a forma em ~32%: vê-se de imediato e
+/// ainda cabe na tela.
+const DEFAULT_D_FRAC: f64 = 0.08;
+
+/// **Arma** um contour em cada caminho de `ids` que ainda não tenha um.
+///
+/// `scale` é o tamanho da seleção em unidades de MUNDO (a mesma `vec_expand::offset_scale` que o
+/// Offset usa): o painel fala em FRAÇÃO — porque o mapa do store é estático e um rótulo em
+/// unidades de mundo mentiria a cada troca de seleção — e o componente guarda MUNDO, porque tem
+/// de sobreviver a essa troca. A conversão acontece aqui, na fronteira, e só aqui.
+///
+/// Uma forma que **já tem** contour é deixada como está: *Add* cria, não redefine — clicar duas
+/// vezes não pode apagar os valores que o artista acabou de afinar.
+///
+/// Devolve quantas entidades ganharam o componente.
+pub(crate) fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], scale: f64) -> usize {
+    let mut n = 0;
+    for id in ids {
+        let Some(&bits) = map.get(id) else { continue };
+        let e = Entity::from_bits(bits);
+        if sim.world().get::<VecContour>(e).is_some() {
+            continue;
+        }
+        let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+            continue;
+        };
+        em.insert(VecContour {
+            d: DEFAULT_D_FRAC * scale,
+            ..VecContour::default()
+        });
+        n += 1;
+    }
+    n
+}
+
+/// **Tira** o contour de `ids` — a forma volta a desenhar-se sozinha e nada é materializado.
+pub(crate) fn remove(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId]) -> usize {
+    let mut n = 0;
+    for id in ids {
+        let Some(&bits) = map.get(id) else { continue };
+        let e = Entity::from_bits(bits);
+        if sim.world().get::<VecContour>(e).is_none() {
+            continue;
+        }
+        if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+            em.remove::<VecContour>();
+            n += 1;
+        }
+    }
+    n
+}
+
+/// Edita os contours VIVOS de `ids` — os sliders, os chips de Corner/Side e a cor-alvo.
+///
+/// **Não arma nada:** um caminho sem contour continua sem. É o que faz mexer num controle sem ter
+/// clicado *Add Contour* não inventar um efeito de lugar nenhum — a mesma lei do `retune` do
+/// Offset, e a razão pela qual a seção mostra o botão em vez dos controles enquanto não há um.
+pub(crate) fn edit(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+    f: impl Fn(&mut VecContour),
+) {
+    for id in ids {
+        let Some(&bits) = map.get(id) else { continue };
+        let e = Entity::from_bits(bits);
+        let Some(mut cur) = sim.world().get::<VecContour>(e).copied() else {
+            continue;
+        };
+        f(&mut cur);
+        cur.steps = cur.steps.clamp(1, ph2d_ecs::MAX_CONTOUR_STEPS);
+        if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+            em.insert(cur);
+        }
+    }
+}
+
+/// O contour que o painel deve mostrar: o do PRIMEIRO caminho selecionado que tenha um.
+#[must_use]
+pub(crate) fn current(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+) -> Option<(VecPathId, VecContour)> {
+    selection
+        .iter()
+        .find_map(|&id| spec_of(sim, map, id).map(|s| (id, s)))
 }
 
 #[cfg(test)]

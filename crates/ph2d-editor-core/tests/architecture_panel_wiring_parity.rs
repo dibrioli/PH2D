@@ -64,6 +64,10 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // `populate.rs`. Dispatched by the colour-picker hit path in `pointer.rs`.
     ("ph2d-panel-vector", "VECTOR_STROKE_SWATCH"),
     ("ph2d-panel-vector", "VECTOR_FILL_SWATCH"),
+    // A cor-alvo do Contour é a TERCEIRA swatch do mesmo painel e pela mesma porta: marcada em
+    // `paint.rs` (`register_picker_swatch`), despachada pelo caminho do picker. A shell lê a
+    // escolha de volta no `render_loop` e a escreve no componente `VecContour`.
+    ("ph2d-panel-vector", "VECTOR_CONTOUR_TO"),
     // Flip tool Style panel (ADR-0114 W2/W4): the Stroke swatch and the bucket's
     // own Fill swatch are picker swatches — hit-indexed in paint via
     // `register_picker_swatch`, never in `populate.rs`. Dispatched by the

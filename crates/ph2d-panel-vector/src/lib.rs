@@ -24,6 +24,18 @@
 
 #![forbid(unsafe_code)]
 
+/// Os mapas track↔valor do **Contour** — porta única de cada um (ver o módulo).
+mod contour_params;
+/// Os três inversos, para a shell reescrever os controles quando a forma espelhada muda.
+///
+/// ⚠️ **Exportar o mapa é o que impede a shell de inventar um.** Ela precisa do inverso (valor →
+/// posição do trilho) e o mapa da aceleração é GEOMÉTRICO — uma re-derivação lá seria a segunda
+/// resposta a *"onde este slider fica?"*, e as duas discordariam no dia em que a faixa mudasse. É
+/// a mesma forma do `params::offset_frac_to_slider` que o Offset já usa.
+pub use contour_params::{
+    accel_to_track as contour_accel_to_track, d_to_track as contour_d_to_track,
+    steps_to_track as contour_steps_to_track,
+};
 mod event;
 mod font_dropdown;
 pub mod ids;
@@ -81,8 +93,9 @@ pub mod state;
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FillKind, FontPreview, FxParamView, FxRowView, PathFillRule, TextAxisSlot, VectorPanelState,
-    expand_join, expand_side, last_content_h, last_visible_h, set_current_convertible,
-    set_current_effects, set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
+    expand_join, expand_side, last_content_h, last_visible_h, set_current_contour,
+    set_current_contour_can_add, set_current_convertible, set_current_effects,
+    set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
     set_current_has_envelope, set_current_path_closed, set_current_patternpath,
     set_current_patternpath_can_link, set_current_patternpath_can_pick, set_current_pivot_edit,

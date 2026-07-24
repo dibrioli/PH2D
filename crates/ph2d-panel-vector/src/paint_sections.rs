@@ -64,6 +64,10 @@ mod textpath;
 #[path = "paint_patternpath.rs"]
 mod patternpath;
 
+/// A seção **Contour** (pesquisa `20_*` #9) — módulo irmão (teto de 600 LOC).
+#[path = "paint_contour.rs"]
+mod contour;
+
 /// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
 #[path = "paint_effects.rs"]
 mod effects;
@@ -216,6 +220,10 @@ impl BodyCtx<'_> {
         // Pattern on Path é da MESMA família (geometria derivada de uma relação: motivo + guia).
         // Só sobe quando há vínculo ou a seleção o permite (plano 23), então não vira ruído.
         y = self.step(y, Self::patternpath_section);
+        // Contour fecha a família da geometria derivada, e fica ao lado do Pattern on Path pelo
+        // mesmo critério: os anéis são desenho, a forma autorada segue intocada. Some inteira
+        // sem contour vivo nem seleção que o permita.
+        y = self.step(y, Self::contour_section);
         // Effects fica logo depois dos deformadores: os três são não-destrutivos, e a
         // pilha é a generalização deles (ADR-0132).
         y = self.step(y, Self::effects_section);

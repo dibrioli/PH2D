@@ -97,6 +97,11 @@ fn seed_and_publish(
     // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
     store.register_picker_swatch(ids::VECTOR_STROKE_SWATCH);
     store.register_picker_swatch(ids::VECTOR_FILL_SWATCH);
+    // A cor-alvo do Contour é a TERCEIRA swatch do painel, e passa pela mesma porta: o Down abre
+    // o picker OKLCH partilhado e a shell lê a escolha de volta (`vector_bridge`). Marcar aqui,
+    // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
+    // idempotente (uma pertença a conjunto), então não depende de a seção ter pintado.
+    store.register_picker_swatch(ids::VECTOR_CONTOUR_TO);
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();

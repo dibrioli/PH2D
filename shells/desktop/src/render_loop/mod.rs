@@ -1550,6 +1550,15 @@ impl crate::App {
             let mut pending_pp_end: Option<f64> = None;
             let mut pending_pp_slide: Option<f64> = None;
             let mut pending_pp_offset: Option<f64> = None;
+            // Contour (pesquisa `20_*` #9): os três comandos + os três sliders + os dois trios
+            // exclusivos. `Add`/`Remove` são portas do MODELO (armam/tiram o componente),
+            // `Expand` materializa; os knobs só editam o que já existe.
+            let mut pending_contour: Option<crate::contour_live::ContourCmd> = None;
+            let mut pending_contour_steps: Option<f64> = None;
+            let mut pending_contour_d: Option<f64> = None;
+            let mut pending_contour_accel: Option<f64> = None;
+            let mut pending_contour_join: Option<u8> = None;
+            let mut pending_contour_side: Option<u8> = None;
             let mut pending_pp_rotation: Option<f64> = None;
             // O Picker de guia (Enio 2026-07-23): o botão só ARMA — a shell captura a fonte e o
             // clique seguinte no canvas escolhe o guia. Um por feature; a fonte é resolvida no drain.
@@ -1762,6 +1771,16 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_FLIP_OFF {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Flip(false));
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_ADD {
+                                pending_contour = Some(crate::contour_live::ContourCmd::Add);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_REMOVE {
+                                pending_contour = Some(crate::contour_live::ContourCmd::Remove);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_EXPAND {
+                                pending_contour = Some(crate::contour_live::ContourCmd::Expand);
+                            } else if let Some(code) = crate::contour_live::join_code_of_id(*id) {
+                                pending_contour_join = Some(code);
+                            } else if let Some(code) = crate::contour_live::side_code_of_id(*id) {
+                                pending_contour_side = Some(code);
                             } else if let Some(hit) = crate::fx_bridge_dispatch::classify_click(*id)
                             {
                                 match hit {
@@ -1934,6 +1953,19 @@ impl crate::App {
                                 // Desvio perpendicular (unidades de mundo), ja' bipolar (`-2..2`)
                                 // convertido pelo event.rs do painel -- aqui e' valor.
                                 pending_pp_offset = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_STEPS {
+                                // Quantos aneis -- o `event.rs` do painel ja arredondou ao inteiro.
+                                pending_contour_steps = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_OFFSET {
+                                // A distancia POR PASSO, em FRACAO do tamanho da forma: o painel
+                                // fala fracao (um rotulo em unidades de mundo mentiria a cada troca
+                                // de selecao) e o componente guarda MUNDO. A conversao e' do `arm`
+                                // e do drain, com a MESMA `offset_scale` que o Offset usa.
+                                pending_contour_d = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_ACCEL {
+                                // A aceleracao da progressao -- o painel ja aplicou o mapa
+                                // GEOMETRICO do trilho; aqui e' valor.
+                                pending_contour_accel = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
@@ -2875,6 +2907,79 @@ impl crate::App {
                         "[ph2d-vec] text on path: pick armado -- clique no CAMINHO-guia (vazio = \
                          desiste)"
                     );
+                }
+            }
+            // Contour (pesquisa `20_*` #9): os comandos e os knobs, todos pela porta única
+            // `contour_live`. O `recook` do frame seguinte redesenha os anéis.
+            //
+            // ⚠️ **Add/Remove/Expand agem sobre a SELEÇÃO inteira** e os knobs também: uma seleção
+            // de duas formas ganha dois contours, e mexer no slider afina os dois. É o mesmo
+            // desenho do Offset vivo — e o oposto do Join da física, que precisa de fan-out
+            // BLOQUEADO porque criaria um objeto por par. Aqui cada forma tem o seu, e um efeito
+            // por forma é exatamente o que o artista pediu ao selecionar duas.
+            {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                match pending_contour {
+                    Some(crate::contour_live::ContourCmd::Add) => {
+                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                        let scale = crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
+                        let n = crate::contour_live::arm(sim, &self.vec_entities, &sel, scale);
+                        eprintln!("[ph2d-vec] contour: armado em {n} forma(s)");
+                    }
+                    Some(crate::contour_live::ContourCmd::Remove) => {
+                        let n = crate::contour_live::remove(sim, &self.vec_entities, &sel);
+                        eprintln!("[ph2d-vec] contour: removido de {n} forma(s)");
+                    }
+                    Some(crate::contour_live::ContourCmd::Expand) => {
+                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                        let runs =
+                            self.contour_live
+                                .expand(sim, vec_scene, &self.vec_entities, &xf, &sel);
+                        if runs.is_empty() {
+                            eprintln!(
+                                "[ph2d-vec] contour: nada a expandir (selecione uma forma com contour)"
+                            );
+                        } else {
+                            let n: usize = runs.iter().map(|r| r.len().saturating_sub(1)).sum();
+                            eprintln!("[ph2d-vec] contour: expandido em {n} anel(is)");
+                            self.vec_restack.extend(runs);
+                        }
+                    }
+                    None => {}
+                }
+                if let Some(v) = pending_contour_steps {
+                    let steps = v.max(1.0) as u16;
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.steps = steps);
+                }
+                if let Some(frac) = pending_contour_d {
+                    // FRAÇÃO → MUNDO na fronteira, com a MESMA escala do `arm` e do Offset.
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.d = d);
+                }
+                if let Some(v) = pending_contour_accel {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let accel = v as f32;
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.accel = accel);
+                }
+                if let Some(code) = pending_contour_join {
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.join = code);
+                }
+                if let Some(code) = pending_contour_side {
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.side = code);
+                }
+                // A COR-ALVO vem do picker OKLCH partilhado, lido de volta como o Stroke e o Fill
+                // fazem no `vector_bridge` — mas AQUI, porque o alvo da escrita é um componente
+                // ECS e este é o bloco que tem `sim` e o mapa em mãos. A swatch é marcada como
+                // picker-swatch no `paint.rs` do painel; o Down abre o picker por dispatch
+                // genérico, e o que chega cá é só a escolha.
+                if hero.store.picker_target() == Some(ph2d_editor::ids::VECTOR_CONTOUR_TO)
+                    && let Some((value, _, _, _)) = hero
+                        .store
+                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                {
+                    let to = value.rgba;
+                    crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.to = to);
                 }
             }
             // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
@@ -4062,6 +4167,73 @@ impl crate::App {
                         &sel,
                     )),
                 );
+                // Contour (pesquisa `20_*` #9): as MESMAS duas perguntas do Pattern — *"esta
+                // seleção permite criar?"* e *"o que está armado, com que valores?"*. `can_add`
+                // exige forma selecionada e nenhum contour nela: a seção mostra o botão OU os
+                // controles, nunca os dois, e é isso que impede a swatch de existir sem alvo.
+                let cont = crate::contour_live::current(sim, &self.vec_entities, &sel);
+                ph2d_panel_vector::set_current_contour_can_add(!sel.is_empty() && cont.is_none());
+                // O `d` do componente é MUNDO; o painel fala FRAÇÃO. A conversão usa a MESMA
+                // `offset_scale` do arm e do drain — três leituras da mesma régua, uma função.
+                let cont_scale = {
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf)
+                };
+                ph2d_panel_vector::set_current_contour(
+                    cont.is_some(),
+                    cont.map_or(4.0, |(_, c)| f64::from(c.steps)),
+                    cont.map_or(0.0, |(_, c)| {
+                        if cont_scale > 0.0 {
+                            c.d / cont_scale
+                        } else {
+                            0.0
+                        }
+                    }),
+                    cont.map_or(1.0, |(_, c)| f64::from(c.accel)),
+                    cont.map_or(1, |(_, c)| c.join),
+                    cont.map_or(0, |(_, c)| c.side),
+                    cont.map_or([255, 255, 255, 255], |(_, c)| c.to),
+                );
+                // A BORDA: quando a forma espelhada muda (trocou a seleção, ou o Add acabou de
+                // armar), os controles são reescritos no store a partir do componente. Sem isto o
+                // `paint` — que lê o store primeiro, para não brigar com o arrasto — mostraria os
+                // números da forma anterior sobre a forma nova.
+                let cont_mirror = cont.map(|(id, _)| id);
+                if cont_mirror != self.vec_contour_mirrored {
+                    self.vec_contour_mirrored = cont_mirror;
+                    if let Some((_, c)) = cont {
+                        let frac = if cont_scale > 0.0 {
+                            c.d / cont_scale
+                        } else {
+                            0.0
+                        };
+                        let steps = f64::from(c.steps);
+                        let accel = f64::from(c.accel);
+                        for (slider, chip, track, value) in [
+                            (
+                                ph2d_editor::ids::VECTOR_CONTOUR_STEPS,
+                                ph2d_editor::ids::VECTOR_CONTOUR_STEPS_NUM,
+                                ph2d_panel_vector::contour_steps_to_track(steps),
+                                steps,
+                            ),
+                            (
+                                ph2d_editor::ids::VECTOR_CONTOUR_OFFSET,
+                                ph2d_editor::ids::VECTOR_CONTOUR_OFFSET_NUM,
+                                ph2d_panel_vector::contour_d_to_track(frac),
+                                frac * 100.0, // LITERAL-PX-OK: fração -> percentual do readout
+                            ),
+                            (
+                                ph2d_editor::ids::VECTOR_CONTOUR_ACCEL,
+                                ph2d_editor::ids::VECTOR_CONTOUR_ACCEL_NUM,
+                                ph2d_panel_vector::contour_accel_to_track(accel),
+                                accel,
+                            ),
+                        ] {
+                            hero.store.set_slider_value(slider, track);
+                            hero.store.set_number_value(chip, value);
+                        }
+                    }
+                }
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.
                 let fx_target = crate::fx_bridge::sole_path(self.vec_pen.selected_paths());

@@ -397,18 +397,21 @@ pub(crate) fn default_interp() -> ph2d_anim::Interp {
 
 /// Map a "+Track" property-button id to its [`PropKind`] (the shell binds the
 /// selected sprite's matching property). `None` for non-"+Track" ids.
+///
+/// ⚠️ **Lê a tabela que o painel PINTA** (`ADDPROP_BUTTONS`), em vez de repetir o
+/// mapeamento aqui. Isto era uma segunda cópia escrita à mão, e ela apodreceu na
+/// primeira oportunidade: o `+Track → Position` (ADR-0141) foi para a tabela do painel,
+/// nasceu pintado, registrado e clicável, o clique chegou até aqui — e caiu no `_ =>
+/// None`, **sem erro e sem nada na tela**. O gate que existia amostrava três das sete
+/// entradas e nunca poderia ter pego.
+///
+/// A tabela já pareia id ↔ `PropKind` porque o painel precisa do rótulo; usar o mesmo
+/// par aqui faz uma linha nova nascer roteada, e não roteável.
 pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
-    use ph2d_editor::ids as c;
-    Some(match id {
-        _ if id == c::TIMELINE_ADDPROP_TX => PropKind::TranslationX,
-        _ if id == c::TIMELINE_ADDPROP_TY => PropKind::TranslationY,
-        _ if id == c::TIMELINE_ADDPROP_ROT => PropKind::Rotation,
-        _ if id == c::TIMELINE_ADDPROP_SX => PropKind::ScaleX,
-        _ if id == c::TIMELINE_ADDPROP_SY => PropKind::ScaleY,
-        _ if id == c::TIMELINE_ADDPROP_OPACITY => PropKind::Opacity,
-        _ if id == c::TIMELINE_ADDPROP_TIME => PropKind::TimeRemap,
-        _ => return None,
-    })
+    ph2d_panel_timeline::ids::ADDPROP_BUTTONS
+        .iter()
+        .find(|(bid, _)| *bid == id)
+        .map(|(_, prop)| *prop)
 }
 
 /// **What entering (or leaving) a container does to the transport loop** — called on the

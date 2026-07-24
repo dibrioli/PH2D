@@ -250,22 +250,26 @@ fn sample_reads_transform_and_opacity() {
     assert_eq!(sample_prop_value(&w, e.to_bits(), PropKind::Opacity), None);
 }
 
+/// **TODA linha do "+Track" mapeia**, varrendo a tabela que o painel pinta.
+///
+/// ⚠️ Este gate amostrava TRÊS das sete entradas, e por isso não pegou o `Position`
+/// entrando na tabela sem braço aqui — o clique chegava e morria no `_ => None`, sem
+/// erro e sem nada na tela. Um gate que amostra uma tabela testa a amostra; para
+/// testar a tabela é preciso percorrê-la.
 #[test]
-fn addprop_ids_map_to_prop_kinds() {
-    use ph2d_timeline::PropKind;
+fn every_addprop_id_maps_to_its_prop_kind() {
+    for (id, prop) in ph2d_panel_timeline::ids::ADDPROP_BUTTONS {
+        assert_eq!(
+            prop_for_addprop_id(id),
+            Some(prop),
+            "a linha {prop:?} do +Track chega ao shell e não mapeia para nada"
+        );
+    }
     assert_eq!(
-        prop_for_addprop_id(ids::TIMELINE_ADDPROP_TX),
-        Some(PropKind::TranslationX)
+        prop_for_addprop_id(ids::TIMELINE_PLAY),
+        None,
+        "e um id que não é do +Track continua a não mapear"
     );
-    assert_eq!(
-        prop_for_addprop_id(ids::TIMELINE_ADDPROP_OPACITY),
-        Some(PropKind::Opacity)
-    );
-    assert_eq!(
-        prop_for_addprop_id(ids::TIMELINE_ADDPROP_TIME),
-        Some(PropKind::TimeRemap)
-    );
-    assert_eq!(prop_for_addprop_id(ids::TIMELINE_PLAY), None);
 }
 
 /// **A lista de Containers recusa o play — e SÓ o play** (Enio, 2026-07-22).

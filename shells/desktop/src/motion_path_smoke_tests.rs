@@ -105,3 +105,57 @@ fn the_journey_runs_from_end_to_end_with_no_jump_at_the_start() {
         "o percurso termina em {end:?}, não na última âncora"
     );
 }
+
+/// **A cena `=2` mostra DUAS coisas diferentes, e a sonda confere que são diferentes.**
+///
+/// Um par (o que gira × o recusado) é o que torna "recusado" visível; se os dois
+/// resolvessem igual, o prólogo estaria a mandar olhar uma diferença que não existe.
+#[test]
+fn the_orient_scene_really_puts_an_active_one_next_to_a_refused_one() {
+    use ph2d_anim::{Interp, RationalTime};
+    use ph2d_timeline::AutoOrient;
+
+    let (follower, blocked) = (11_u64, 12_u64);
+    let mut doc = TimelineDoc::new();
+    let path = demo_path();
+    for bits in [follower, blocked] {
+        author(&mut doc, bits, &path);
+        doc.set_auto_orient(bits, true);
+    }
+    doc.insert_key(
+        blocked,
+        PropKind::Rotation,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(0.0),
+        Interp::Hold,
+    );
+
+    assert_eq!(doc.auto_orient(follower), AutoOrient::Active);
+    assert_eq!(
+        doc.auto_orient(blocked),
+        AutoOrient::BlockedByRotationTrack,
+        "as duas setas resolvem igual — a cena manda olhar uma diferença que não existe"
+    );
+
+    // E o que a cena promete VER: a laranja vira ao longo do S. O ângulo tem de varrer
+    // um arco de verdade, senão "ela encara para onde vai" é invisível num S suave.
+    let mut w = ph2d_ecs::World::new();
+    let e = w.spawn(ph2d_ecs::Transform::default()).id();
+    let mut solo = TimelineDoc::new();
+    author(&mut solo, e.to_bits(), &path);
+    solo.set_auto_orient(e.to_bits(), true);
+    let angles: Vec<f32> = (0..=6)
+        .map(|k| {
+            ph2d_timeline::apply_from_doc(&mut w, &mut solo, 3.0 * f64::from(k) / 6.0);
+            w.get::<ph2d_ecs::Transform>(e).unwrap().rotation
+        })
+        .collect();
+    let sweep = angles.iter().copied().fold(f32::MIN, f32::max)
+        - angles.iter().copied().fold(f32::MAX, f32::min);
+    println!("MEDIDO  o giro varre {:.1}°", sweep.to_degrees());
+    assert!(
+        sweep.to_degrees() > 60.0,
+        "a seta vira só {:.1}° ao longo do S — o giro não se vê",
+        sweep.to_degrees()
+    );
+}

@@ -1,4 +1,6 @@
-//! `PH2D_PATH_SMOKE=1` — a cena PRONTA PARA VER do **motion path** ([ADR-0141]).
+//! `PH2D_PATH_SMOKE=1|2` — as cenas PRONTAS PARA VER do **motion path** ([ADR-0141]).
+//!
+//! # `=1` — a trajetória e a leitura de tempo
 //!
 //! O que se olha, e a ordem:
 //!
@@ -12,6 +14,22 @@
 //! 4. O gráfico da timeline mostra **uma track só** — o valor dela é *distância
 //!    percorrida*, não X nem Y. A inclinação que você vê ali É a velocidade na tela.
 //! 5. Clique noutro objeto: a trajetória **some**. Ela é do que está na mão.
+//! 6. **Arraste um dos QUADRADOS** (as âncoras): a curva responde, os losangos se
+//!    reacomodam, e o objeto passa a fazer o caminho novo — no MESMO compasso, porque
+//!    puxar a curva é uma edição espacial. Um Ctrl+Z desfaz o arrasto inteiro.
+//! 7. Com o objeto selecionado, **K** acrescenta uma âncora onde ele está.
+//!
+//! # `=2` — o auto-orient, e a recusa
+//!
+//! 1. A seta LARANJA tem auto-orient ligado: ela **encara para onde vai**, e vira ao
+//!    longo da curva sem nenhuma key de rotação.
+//! 2. A seta AZUL tem a mesma trajetória, o mesmo pedido de auto-orient — e uma track
+//!    de **Rotation**. Ela NÃO gira com o caminho: o auto-orient está **recusado**,
+//!    porque dois autores do mesmo ângulo é o que ninguém quer descobrir por acidente.
+//!    ⚠️ Apague a track de Rotation dela (botão direito na label da row → *Delete
+//!    Track*) e ela passa a girar: o pedido sobreviveu à recusa.
+//! 3. O botão direito na label de uma track de **trajetória** tem uma linha que as
+//!    outras não têm — *Auto-Orient*. Desligue-a na laranja e ela para de virar.
 //!
 //! **Os números que esta cena afirma são MEDIDOS**, não escolhidos — a sonda headless
 //! roda em `motion_path_smoke_tests.rs` e imprime os mesmos que o prólogo anuncia.
@@ -90,6 +108,10 @@ impl crate::App {
             return; // ainda sem mundo; tenta no próximo frame
         }
         self.motion_path_smoke_done = true;
+        if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
+            self.path_scene_orient();
+            return;
+        }
 
         let bits = {
             let gfx = self.gfx.as_mut().expect("gfx");
@@ -133,6 +155,56 @@ impl crate::App {
         eprintln!(
             "[path-smoke] abra a timeline (L) e olhe o ESPACAMENTO dos losangos: \
              juntos nas pontas (ease), esparramados no meio. Play para conferir."
+        );
+    }
+
+    /// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**
+    ///
+    /// Duas setas na MESMA trajetória, com o MESMO pedido — e uma delas tem uma track
+    /// de Rotation. Sem o par, "recusado" seria uma palavra num doc; com ele, é a
+    /// diferença entre duas coisas na tela.
+    fn path_scene_orient(&mut self) {
+        let path = demo_path();
+        let mut spawn = |y: f32, tint: [f32; 4], name: &str| -> u64 {
+            let gfx = self.gfx.as_mut().expect("gfx");
+            gfx.sim
+                .world_mut()
+                .spawn((
+                    Transform::from_translation(Vec2::new(-6.0, -2.0 + y)),
+                    // Fina e comprida: um quadrado girando é indistinguível de um
+                    // quadrado parado, e o que esta cena mostra é EXATAMENTE o giro.
+                    Sprite::atlas(0, [1.4, 0.35], tint),
+                    Name::new(name),
+                ))
+                .id()
+                .to_bits()
+        };
+        let follower = spawn(0.0, [1.0, 0.55, 0.15, 1.0], "Follower");
+        let blocked = spawn(5.0, [0.35, 0.55, 1.0, 1.0], "Blocked");
+
+        let doc = &mut self.timeline.doc;
+        for bits in [follower, blocked] {
+            author(doc, bits, &path);
+            doc.set_auto_orient(bits, true);
+        }
+        // A track que RECUSA — um único key, que já basta: o conflito é sobre quem
+        // possui o campo, não sobre quanto ele se move.
+        doc.insert_key(
+            blocked,
+            PropKind::Rotation,
+            RationalTime::from_seconds(0.0),
+            AnimValue::Float(0.0),
+            Interp::Hold,
+        );
+
+        let (a, b) = (doc.auto_orient(follower), doc.auto_orient(blocked));
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.gizmo.replace_selection(Some(follower));
+        }
+        eprintln!("[path-smoke] laranja {a:?} | azul {b:?}");
+        eprintln!(
+            "[path-smoke] Play: a LARANJA encara para onde vai; a AZUL nao gira \
+             (tem track de Rotation, e o auto-orient dela esta RECUSADO)."
         );
     }
 }

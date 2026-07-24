@@ -107,6 +107,15 @@ pub fn render_region(
             // comparison of output can tell the two apart. The gate for this
             // is `the_glaze_checkbox_is_free_where_there_is_no_paint`, and it
             // has to time rather than compare.
+            //
+            // ⚠️ And it is a fix to THIS renderer, which today no product
+            // path calls — the live composite goes through
+            // [`render_pigment_region_visual`], whose glaze arm sits behind
+            // `la <= 0.0 { continue }` and so was never eager. The artist's
+            // glaze got faster from the tabulated transfer, not from here.
+            // Keep them consistent anyway: this is the SPEC §13 reference
+            // look, and the two must not drift into different answers about
+            // what an unpainted pixel costs or shows.
             let (mut lr, mut lg, mut lb) = (0.0, 0.0, 0.0);
             let mut in_linear = false;
 

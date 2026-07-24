@@ -166,10 +166,12 @@ pub fn linear_to_srgb(c: f64) -> f64 {
 // division. That division is the cheapest correctness in this module.
 // ---------------------------------------------------------------------------
 
-/// Reflectance floor: a pure black would send K/S to infinity. Mirrors
-/// [`super::R_FLOOR`] — this module owns the tabulated composition, so the
-/// constant is asserted equal in the accuracy test rather than imported into
-/// a cycle.
+/// Reflectance floor: a pure black would send K/S to infinity.
+///
+/// THE only copy — the forward half of the K–M conversion lives here, so the
+/// floor lives here with it. There used to be a second one next to a second
+/// forward half in `colorops`; both went when the door became single, because
+/// two floors is two answers to "how black is black" waiting to disagree.
 const R_FLOOR: f64 = 1.0 / 255.0;
 
 /// The exact chain the table stands in for: a 0..255 sRGB channel -> K/S.

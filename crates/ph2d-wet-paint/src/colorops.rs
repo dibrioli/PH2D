@@ -78,27 +78,15 @@ pub use transfer::{ks_of_srgb255, linear_to_srgb, srgb_to_linear, srgb255_of_lin
 // (1-R)^2 / 2R; mixtures are LINEAR in K/S, so convert, lerp, invert:
 // R = 1 + KS - sqrt(KS^2 + 2 KS). Reflectance floored at 1/255 so pure
 // black cannot make KS blow up.
+//
+// The forward half (colour -> K/S, floor included) is [`ks_of_srgb255`], in
+// `transfer` — it is the half a table can carry, and it owns the floor. Only
+// the inverse stays here, because it is one `sqrt` and nothing to tabulate.
 // ---------------------------------------------------------------------------
-
-const R_FLOOR: f64 = 1.0 / 255.0;
-
-#[inline]
-fn ks_of_reflectance(r: f64) -> f64 {
-    let rr = if r < R_FLOOR { R_FLOOR } else { r };
-    ((1.0 - rr) * (1.0 - rr)) / (2.0 * rr)
-}
 
 #[inline]
 fn reflectance_of_ks(ks: f64) -> f64 {
     1.0 + ks - (ks * ks + 2.0 * ks).sqrt()
-}
-
-/// Mix one linear-light channel toward another by weight w in K/S space.
-/// Both endpoints exact: w=0 -> dst, w=1 -> src.
-#[inline]
-pub fn km_mix_channel_linear(dst_lin: f64, src_lin: f64, w: f64) -> f64 {
-    let ks = (1.0 - w) * ks_of_reflectance(dst_lin) + w * ks_of_reflectance(src_lin);
-    reflectance_of_ks(ks)
 }
 
 /// How the engine blends two pigment colors. `Plain` is the default (the
@@ -149,10 +137,10 @@ impl ColorMix {
                     *out = [sr, sg, sb];
                     return;
                 }
-                // Otherwise the composition of [`km_mix_channel_linear`] over
-                // the transfer, with the `/255` rescale folded into the
-                // table's index (`transfer`'s K/S door): mixtures are linear
-                // in K/S, so the mix itself is a lerp.
+                // Otherwise: into K/S through the door, lerp (mixtures are
+                // LINEAR in K/S — that is the whole of the model), and back
+                // out through the inverse. The `/255` rescale and the floor
+                // ride inside the door's table index.
                 let iw = 1.0 - w;
                 let ks_r = iw * ks_of_srgb255(dr) + w * ks_of_srgb255(sr);
                 let ks_g = iw * ks_of_srgb255(dg) + w * ks_of_srgb255(sg);

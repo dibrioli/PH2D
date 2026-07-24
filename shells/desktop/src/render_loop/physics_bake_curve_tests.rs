@@ -297,6 +297,141 @@ fn a_baked_take_plays_with_the_simulation_disarmed() {
     );
 }
 
+/// A FLAT floor + a ball dropped from height, so its motion has a clean bounce
+/// feature (a small peak after the first floor contact) that a loose fit drops.
+fn bouncing_ball(secs: f64) -> (Vec<(f64, f32)>, TimelineState, SimWorld, Entity) {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Name;
+    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+
+    let build = || -> (SimWorld, Entity) {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 8.0,
+                    half_y: 0.2,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ));
+        let ball = sim
+            .world_mut()
+            .spawn((
+                Name::new("Ball"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    restitution: 0.75,
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 4.0)),
+            ))
+            .id();
+        (sim, ball)
+    };
+
+    let ticks = ticks_for(secs, DT);
+    // Truth: the dense per-tick Y.
+    let (mut tsim, tball) = build();
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut tsim, false, 0);
+    let mut truth: Vec<(f64, f32)> = Vec::new();
+    for tick in 0..=ticks {
+        if tick > 0 {
+            bridge.dispatch(&mut tsim, true, tick);
+        }
+        truth.push((
+            tick as f64 * DT,
+            tsim.world().get::<Transform>(tball).unwrap().translation.y,
+        ));
+    }
+
+    // Bake through the product path.
+    let (mut sim, ball) = build();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        0.0,
+        secs,
+        DT,
+        BakeChannels::All,
+        &queue,
+        &reg,
+    );
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &queue, &reg).expect("apply");
+    (truth, timeline, sim, ball)
+}
+
+/// **The bake's tight tolerance tracks the simulation, bounces and all** — the
+/// answer to Enio's "funciona mas é imperfeito" (W-BakeRange follow-up).
+///
+/// The fit's tolerance was inherited from the RECORD (1%), calibrated for a noisy
+/// hand. A solver has no noise, so 1% is too loose: it dropped a small bounce and
+/// rounded it (measured 2.53% error). `BAKE_SIMPLIFY_REL` is 10× tighter, which
+/// captures the bounce — and does NOT explode the key count, because the fit
+/// anchors at extrema (7 keys, not 181). This is the exact twin of
+/// `BAKE_SMOOTH_PASSES = 0`: a parameter of the input, not the fit.
+///
+/// The oracle is the product path (`apply_from_doc`) and the bar is 1% of the
+/// motion's range across the WHOLE curve. Mutation-tested: baking at
+/// `REC_SIMPLIFY_REL` (the record's 1%) instead of `BAKE_SIMPLIFY_REL` rounds the
+/// bounce to 2.53% and this goes red.
+#[test]
+fn the_bake_tracks_the_sim_closely_including_bounces() {
+    let (truth, mut timeline, mut sim, ball) = bouncing_ball(3.0);
+
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for &(_, y) in &truth {
+        lo = lo.min(y);
+        hi = hi.max(y);
+    }
+    let span = (hi - lo).max(1e-3);
+
+    // The fixture must actually CONTAIN a bounce, or the gate proves nothing: a
+    // local Y maximum strictly above the floor, after the first contact.
+    let has_bounce = (1..truth.len() - 1).any(|i| {
+        let y = truth[i].1;
+        y > truth[i - 1].1 && y >= truth[i + 1].1 && y > lo + span * 0.02
+    });
+    assert!(
+        has_bounce,
+        "the fixture has no bounce to capture — the gate would be vacuous"
+    );
+
+    let mut worst = 0.0f32;
+    let mut worst_t = 0.0;
+    for &(t, sim_y) in &truth {
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, t);
+        let fit_y = sim.world().get::<Transform>(ball).unwrap().translation.y;
+        let e = (fit_y - sim_y).abs();
+        if e > worst {
+            worst = e;
+            worst_t = t;
+        }
+    }
+    assert!(
+        worst / span < 0.01,
+        "the baked curve strays {:.2}% of range from the sim (worst at t={worst_t:.3}s) \
+         — the fit tolerance is too loose and is rounding the motion; at the record's 1% \
+         this bounce measured 2.53%",
+        worst / span * 100.0
+    );
+}
+
 /// Bake the fixture over the window `[start, end]` and hand back the doc.
 fn baked_over(start: f64, end: f64) -> (TimelineState, SimWorld, Entity) {
     let (mut sim, ball) = scene();

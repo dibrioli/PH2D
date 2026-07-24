@@ -1,6 +1,9 @@
 # 25 — O Painter na GPU: avaliação medida dos quatro modos
 
-> **Estado:** AVALIAÇÃO. Nada aqui foi construído. Pergunta do Enio (2026-07-23):
+> **Estado:** a avaliação virou WAVE. **Ondas 1 e 2 CONSTRUÍDAS** (2026-07-23) —
+> resultado medido na §10. O resto (Onda 3 em diante) segue por fazer.
+> A análise abaixo é o censo que decidiu a ordem, e fica como está: ela é o
+> *porquê*, e os números dela são o "antes". Pergunta do Enio (2026-07-23):
 > *"é a hora de levar o módulo Painter para GPU (tudo que for possível). Vamos tentar
 > superar apps PRO como o Procreate em performance. Faça avaliação geral da
 > possibilidade. Todos os modos de pintura."*
@@ -393,3 +396,104 @@ cargo test -p ph2d-tool-painter --release measure_ -- --ignored --nocapture --te
 cargo test -p ph2d-render --release --test layer_compositor_gpu -- --ignored --nocapture \
   measure_the_stack_depth_on_the_device
 ```
+
+
+---
+
+## 10. O que as Ondas 1 e 2 entregaram (2026-07-23)
+
+### 10.1 O resultado, medido dos dois lados
+
+O documento **mascarado** — o caso do achado A, e o mais comum que existe depois
+do próprio traço:
+
+| documento | tela | **antes (CPU)** | **agora (GPU)** | ganho |
+|---|---|---|---|---|
+| 2 camadas, uma **mascarada** | 2048² | 18,74 ms | **0,213 ms** | **88×** |
+| 2 camadas, uma **mascarada** | 4096² | 74,02 ms | **0,741 ms** | **100×** |
+| 6 camadas, uma **mascarada** | 4096² | 134,67 ms | **1,641 ms** | **82×** |
+| 1 raster + **HSB mascarado** | 2048² | 170,78 ms | **0,239 ms** | **715×** |
+| 1 raster + **HSB mascarado** | 4096² | **652,92 ms** | **0,831 ms** | **786×** |
+
+E o número que resume a wave: **a máscara passou a custar +9%**, não uma troca de
+máquina — 0,741 ms contra 0,680 ms do mesmo documento sem ela a 4096².
+
+O teto de camadas (achado B), na mesma tela de 4096²:
+
+| camadas | antes | agora |
+|---|---|---|
+| 8 | 2,05 ms | 2,05 ms |
+| **16** | ⛔ **recusado → 254 ms na CPU** | **3,88 ms** (**65×**) |
+
+### 10.2 O que mudou
+
+1. **A recusa de `is_reference` era um bug puro** — o compositor CPU, que é a
+   referência, **nunca lê o flag** (é *geometry source for ColorDrop*, §2.9). Um
+   documento inteiro ia para o produtor lento por algo que não muda um pixel.
+2. **Máscara e clipping viraram OPS.** `LayerOp::Layer` ganhou os dois
+   modificadores de cobertura, `LayerOp::Adjustment` ganhou a máscara, e a ordem
+   de dobra é a da CPU exatamente: *decode → máscara → clip → opacidade*.
+3. **O orçamento de camadas vem do dispositivo** (1 GiB discreta / 512 MiB
+   compartilhada), com o número **medido** e o recurso **nomeado**.
+
+### 10.3 As decisões que a implementação teve de tomar
+
+Todas espelham a referência CPU, e cada uma tem um gate:
+
+- o **clip base é o alpha CRU** — antes da máscara *dela* e da opacidade *dela*;
+- **clipping ENCADEIA**: duas camadas clipadas seguidas leem a MESMA base;
+- **grupo e ajuste QUEBRAM** a cadeia, e um grupo abre a própria ⇒ o `clip_base`
+  é um array **por profundidade**, não um escalar;
+- a **máscara do ajuste multiplica a FORÇA**, nunca a cobertura — um ajuste
+  mascarado desvanece o efeito, não fura a arte;
+- **máscara não-servível = SEM máscara**, não erro (a CPU cai em *fully visible*).
+
+⚠️ **Grupo mascarado/clipado CONTINUA recusado, de propósito.** O braço de Group
+da referência CPU **não lê nenhum dos dois**; honrá-los na GPU faria a mesma arte
+depender de qual produtor ganhou o frame — roteamento invisível para o artista, o
+pior resultado disponível. É cerca de Chesterton com o motivo escrito e um teste,
+e o marcador para quem for fechar o buraco: **conserte a CPU primeiro.**
+
+### 10.4 Higiene que veio junto
+
+Três doc-comments **mentiam** sobre o roteamento e foram corrigidos com o porquê
+(o flatten LÊ essas funções para decidir GPU-vs-CPU, então prosa velha ali é
+orçamento de frame perdido): a lista de recusa nomeava *"Bloom / Noise / Halftone
+/ ColorLookup / ShadowsHighlights"* como sem op GPU — **os cinco têm**; o
+`gpu_spatial_code` dizia que Bloom/S-H *"stay `None` until their kernel ships"*
+três linhas acima do `match` que devolve `Some(4)`/`Some(5)`; e o
+`feathers_coverage` se dizia *"BROADER"* que o conjunto espacial, sendo
+subconjunto estrito. Agora as três pertinências são pinadas por **enumeração** de
+`AdjustmentKind::ALL`.
+
+E o doc do orçamento errava a **própria aritmética**: *"~33.2 MB a slice, so 512 MB
+holds ~15 layers at 4K"* — 33,2 MB é 4096×2048, um frame de **vídeo**; a tela
+quadrada que um ilustrador abre custa 64 MiB, e a resposta real era **8**.
+
+### 10.5 Gates
+
+5 de paridade no **device real** (rampa de máscara nas duas polaridades · cadeia
+de clip com a base *usando* máscara — o único fixture que distingue alpha cru de
+mascarado · cadeia por profundidade através de grupo · máscara de ajuste que NÃO
+mexe na cobertura · máscara não-servível), **cada um com controle positivo** —
+comparar duas implementações passa igualmente bem quando as duas ignoram o
+modificador. Mais 3 de flatten, 2 de elegibilidade no shell, 2 de POD (tamanho
+**e ordem de campos**: trocar `mask_slot` com `flags` mantém 32 bytes e lê índice
+de slice como bitfield) e 1 do orçamento por-dispositivo.
+
+**7 mutações, 7 sangram, zero sobreviventes.**
+
+### 10.6 O que segue aberto
+
+- **Onda 3** (Watercolor/Impasto) e **Onda 4** (o ADR do Wet Paint) intocadas.
+- Os **6 ajustes** não portados seguem sendo recusa: `ColorBalance`,
+  `GradientMap`, `PhotoFilter`, `SelectiveColor`, `ChannelMixer`, `BlackAndWhite`.
+  ⚠️ Nem todos cabem no orçamento de 3 escalares do `AdjParams` — PhotoFilter e
+  BlackAndWhite querem mais, e o GradientMap é literalmente um LUT de 256
+  entradas, ou seja **já cabe na máquina de `adj_luts` que o Curves/Levels usa**.
+  É a próxima peça de melhor razão custo-benefício.
+- Um **grupo mascarado/clipado** exige fechar o buraco na CPU primeiro.
+- Subir o orçamento além de 1 GiB exige **alocação falível**
+  (`push_error_scope(OutOfMemory)`), não um literal maior.
+- Uma **máscara de ajuste ESPACIAL** ainda cai na CPU: o passo de combine do
+  pass-graph não tem entrada de máscara.

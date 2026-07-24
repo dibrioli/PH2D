@@ -3095,3 +3095,74 @@ fn measure_how_far_the_array_actually_goes() {
     }
     eprintln!();
 }
+
+/// **The number the wave promises**: what a MASKED document costs now, against
+/// what it cost when the mask sent it to the CPU.
+///
+/// The CPU side is measured by `ph2d-tool-painter`'s
+/// `measure_the_cost_of_falling_off_the_gpu` / `measure_the_adjustment_drag`;
+/// this is the same shape of work on the device, so the two tables in
+/// `docs/Painter/25_avaliacao_gpu.md` can be read side by side.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_masked_document() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    eprintln!(
+        "\n{:<34} {:>8} {:>14}",
+        "document", "canvas", "gpu floor ms"
+    );
+    for &size in &[2048u32, 4096] {
+        for &(label, layers, masked, with_adjustment) in &[
+            ("2 layers, plain", 2usize, false, false),
+            ("2 layers, one MASKED", 2, true, false),
+            ("6 layers, one MASKED", 6, true, false),
+            ("1 raster + HSB, MASKED adj", 1, true, true),
+        ] {
+            let mut prov = MapProvider::default();
+            let mut ops = Vec::new();
+            for k in 0..layers {
+                prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
+                ops.push(LayerOp::Layer {
+                    key: k as u64,
+                    blend_mode: 0,
+                    opacity: 1.0,
+                    mask: (masked && !with_adjustment && k + 1 == layers).then_some(LayerMask {
+                        key: 99,
+                        inverted: false,
+                    }),
+                    clipping: false,
+                });
+            }
+            if with_adjustment {
+                ops.push(LayerOp::Adjustment {
+                    kind: 0, // HSB — the OKLab cbrt-heavy worst case
+                    params: [0.15, 0.4, 0.1],
+                    blend_mode: 0,
+                    opacity: 1.0,
+                    mask: masked.then_some(LayerMask {
+                        key: 99,
+                        inverted: false,
+                    }),
+                });
+            }
+            if masked {
+                prov.insert(99, 1, mask_ramp(size, size));
+            }
+            let floor = measure_composite(
+                &gpu,
+                &mut comp,
+                &ops,
+                &prov,
+                size,
+                size,
+                Region::full(size, size),
+                16,
+            );
+            eprintln!("{label:<34} {size:>8} {floor:>14.3}");
+        }
+    }
+    eprintln!();
+}

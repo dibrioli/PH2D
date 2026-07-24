@@ -70,15 +70,45 @@ use super::shape::ShapeDesc;
 /// This is the door the SOLVER and the OVERLAY both ask, for the reason `scaled_shape`
 /// exists: an arrow drawn from a second answer would describe a wind that does not blow
 /// there, and nobody reads a number off a screenshot to catch it.
+///
+/// ⚠️ **O `mirror` entra ANTES da rotação, e a ordem é a do `Transform`.** A pose de mundo
+/// compõe como `R · S` (a escala age no espaço local, a rotação depois), então um vetor
+/// local vira `R · S · v` — espelhar e só então rodar. Trocar a ordem dá a reflexão sobre
+/// o eixo errado em toda zona que seja espelhada *e* rotacionada, que é o caso de uso
+/// inteiro (a metade espelhada de um nível).
+///
+/// ⚠️ **`world_axes` desliga o espelho junto com a rotação, e isso é o significado do
+/// toggle:** ele diz *"esta força é um vetor de MUNDO"*, e um vetor de mundo não é tocado
+/// por nada que o frame da zona faça. Sair antes das duas é a leitura literal disso.
 #[must_use]
-pub fn zone_force_world(force: [f32; 2], world_axes: bool, sin_r: f32, cos_r: f32) -> [f32; 2] {
+pub fn zone_force_world(
+    force: [f32; 2],
+    world_axes: bool,
+    sin_r: f32,
+    cos_r: f32,
+    mirror: [f32; 2],
+) -> [f32; 2] {
     if world_axes {
         return force;
     }
-    [
-        force[0] * cos_r - force[1] * sin_r,
-        force[0] * sin_r + force[1] * cos_r,
-    ]
+    let (fx, fy) = (force[0] * mirror[0], force[1] * mirror[1]);
+    [fx * cos_r - fy * sin_r, fx * sin_r + fy * cos_r]
+}
+
+/// **O fator de handedness do torque** — `+1` num frame normal, `−1` num espelhado
+/// (W-AreaMirror). É `det(S)`, e é a única coisa que uma reflexão faz a um pseudoescalar.
+///
+/// Porta própria porque a pergunta é UMA (*este frame trocou de mão?*) e os dois
+/// consumidores que a fazem — o solver e o glifo violeta do overlay — divergiriam calados:
+/// ninguém lê o sentido de um giro num screenshot, exatamente como ninguém lê a direção de
+/// uma seta ([`zone_force_world`] existe pelo mesmo motivo).
+///
+/// ⚠️ Espelhar os DOIS eixos **não** é uma reflexão — é uma rotação de 180°, e o produto
+/// devolve `+1` sozinho. A forma fechada apaga o caso especial que uma paridade
+/// por-eixo teria de enumerar.
+#[must_use]
+pub fn zone_spin_sign(mirror: [f32; 2]) -> f32 {
+    mirror[0] * mirror[1]
 }
 
 /// [`zone_force_world`] for a caller that holds the rotation as an ANGLE (radians) —
@@ -88,9 +118,14 @@ pub fn zone_force_world(force: [f32; 2], world_axes: bool, sin_r: f32, cos_r: f3
 /// and this is the one place an angle becomes a pair. The rule itself lives in
 /// [`zone_force_world`] — this only crosses the bridge to it.
 #[must_use]
-pub fn zone_force_world_at(force: [f32; 2], world_axes: bool, rotation: f32) -> [f32; 2] {
+pub fn zone_force_world_at(
+    force: [f32; 2],
+    world_axes: bool,
+    rotation: f32,
+    mirror: [f32; 2],
+) -> [f32; 2] {
     let (sin_r, cos_r) = libm::sincosf(rotation);
-    zone_force_world(force, world_axes, sin_r, cos_r)
+    zone_force_world(force, world_axes, sin_r, cos_r, mirror)
 }
 
 /// **Quanto desta zona chega a um corpo neste ponto** — a porta única do falloff
@@ -218,7 +253,9 @@ pub(crate) fn apply(
         };
         // The authored push, turned into world axes by the zone's own frame (or left
         // alone, when the artist pinned it to the world).
-        let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r);
+        let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r, effect.mirror);
+        // O sentido do giro num frame espelhado (pseudoescalar — ver `AreaEffect::mirror`).
+        let spin = zone_spin_sign(effect.mirror);
         let force = Vector2::new(f[0], f[1]);
         for (c1, c2, intersecting) in narrow_phase.intersection_pairs_with(zone_collider) {
             // `intersecting` is the real shape overlap; the pair exists as soon as
@@ -271,7 +308,7 @@ pub(crate) fn apply(
             // são EMPURRÕES da zona; o arrasto e o empuxo abaixo não são, e por isso não
             // recebem o fator (há gate nessa fronteira).
             if effect.torque != 0.0 {
-                b.apply_torque_impulse(effect.torque * dt * scale, true);
+                b.apply_torque_impulse(effect.torque * spin * dt * scale, true);
             }
             // The medium's resistance. ⚠️ Written as `v /= 1 + d·dt`, which is
             // *exactly* what rapier's own `linear_damping` integrator does — so the

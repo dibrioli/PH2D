@@ -205,7 +205,6 @@ pub(crate) fn body_desc(
             replace: matches!(d.mode, DampMode::Replace),
         }),
         one_way,
-        effector,
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
@@ -236,7 +235,25 @@ pub(crate) fn body_desc(
         // rapier then rotates this relative translation with the body; the overlay
         // reads `col.offset` through the same signed scale so the two agree.
         offset: [col.offset[0] * t.scale.x, col.offset[1] * t.scale.y],
+        // **A lateralidade do frame da zona** (W-AreaMirror) — o SINAL de cada eixo da
+        // escala de mundo, e nada mais. Mora aqui, encostado no offset, porque é a MESMA
+        // regra que a linha acima: um flip espelha o que tem lado. O offset é uma posição
+        // e vira de lado; a força da zona é um VETOR no frame dela e vira junto; o torque
+        // é um pseudoescalar e troca de sinal quando a mão do frame troca (o kernel resolve
+        // isso por `zone_spin_sign`, com a `mirror` que sai daqui).
+        //
+        // ⚠️ Um eixo de escala ZERO conta como não-espelhado: a forma já é degenerada, e
+        // inventar um sinal para ela seria escolher um lado onde não há nenhum.
+        effector: effector.map(|e| ph2d_physics::AreaEffect {
+            mirror: [sign_of(t.scale.x), sign_of(t.scale.y)],
+            ..e
+        }),
     }
+}
+
+/// `-1.0` para um eixo espelhado, `+1.0` para todo o resto (inclusive o zero degenerado).
+fn sign_of(s: f32) -> f32 {
+    if s < 0.0 { -1.0 } else { 1.0 }
 }
 
 #[cfg(test)]

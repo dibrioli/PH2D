@@ -12,8 +12,7 @@
 //! platform always happened to be spawned first.
 
 use ph2d_physics::{
-    AreaEffect, BodyDesc, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
-    zone_force_world,
+    AreaEffect, BodyDesc, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc, zone_force_world,
 };
 
 /// A body with everything neutral (the sibling file's helper, kept local so the two
@@ -63,6 +62,7 @@ fn zone(rotation: f32, force: [f32; 2], world_axes: bool, kind: RigidBodyType) -
             torque: 0.0,
             world_axes,
             falloff: 0.0,
+            mirror: [1.0, 1.0],
         }),
         ..desc(
             kind,
@@ -183,8 +183,14 @@ fn pinning_the_force_to_world_axes_keeps_the_blow_where_it_was() {
 #[test]
 fn an_unrotated_zone_is_bit_identical_in_both_frames() {
     for zone_first in [true, false] {
-        let local = run(zone(0.0, [2.0, 1.0], false, RigidBodyType::Fixed), zone_first);
-        let world = run(zone(0.0, [2.0, 1.0], true, RigidBodyType::Fixed), zone_first);
+        let local = run(
+            zone(0.0, [2.0, 1.0], false, RigidBodyType::Fixed),
+            zone_first,
+        );
+        let world = run(
+            zone(0.0, [2.0, 1.0], true, RigidBodyType::Fixed),
+            zone_first,
+        );
         assert_eq!(
             local.0.to_bits(),
             world.0.to_bits(),
@@ -289,7 +295,10 @@ fn the_torque_does_not_care_how_the_zone_is_turned() {
         w.bodies().get(b).expect("body alive").angvel()
     };
     let upright = spin(0.0, false);
-    assert!(upright.abs() > 0.1, "the fixture must actually spin: {upright}");
+    assert!(
+        upright.abs() > 0.1,
+        "the fixture must actually spin: {upright}"
+    );
     // The load-bearing one: TURNING the zone may not change the spin it imparts.
     for rotation in [0.7, std::f32::consts::FRAC_PI_2, -2.1] {
         let turned = spin(rotation, false);
@@ -315,10 +324,164 @@ fn the_torque_does_not_care_how_the_zone_is_turned() {
 fn the_door_rotates_ccw_and_passes_a_pinned_force_through_untouched() {
     // Pinned: byte-for-byte the same vector, whatever the pose says.
     let f = [1.25, -3.5];
-    let out = zone_force_world(f, true, 0.87, 0.49);
+    let out = zone_force_world(f, true, 0.87, 0.49, [1.0, 1.0]);
     assert_eq!(out[0].to_bits(), f[0].to_bits());
     assert_eq!(out[1].to_bits(), f[1].to_bits());
     // A quarter turn CCW sends +X to +Y (sin = 1, cos = 0).
-    let out = zone_force_world([2.0, 0.0], false, 1.0, 0.0);
-    assert!(out[0].abs() < 1e-6 && (out[1] - 2.0).abs() < 1e-6, "{out:?}");
+    let out = zone_force_world([2.0, 0.0], false, 1.0, 0.0, [1.0, 1.0]);
+    assert!(
+        out[0].abs() < 1e-6 && (out[1] - 2.0).abs() < 1e-6,
+        "{out:?}"
+    );
+}
+
+// ───────────────────── O ESPELHO (W-AreaMirror) ─────────────────────
+
+/// Uma zona espelhada: a MESMA força autorada, com a lateralidade que o `Transform` dá.
+fn mirrored(force: [f32; 2], torque: f32, mirror: [f32; 2], world_axes: bool) -> BodyDesc {
+    BodyDesc {
+        is_sensor: true,
+        effector: Some(AreaEffect {
+            force,
+            drag: 0.0,
+            density: 0.0,
+            form_drag: 0.0,
+            torque,
+            world_axes,
+            falloff: 0.0,
+            mirror,
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            0.0,
+            0.0,
+            ShapeDesc::Cuboid {
+                half_x: 3.0,
+                half_y: 3.0,
+            },
+        )
+    }
+}
+
+/// **Espelhar a zona espelha o VENTO.**
+///
+/// Até esta wave a zona honrava METADE do próprio frame: a rotação sim, a reflexão não —
+/// e o `Transform` carrega as duas. O artista virava o sprite de uma esteira para montar a
+/// metade espelhada do nível e a correia continuava correndo para o mesmo lado, com a seta
+/// do overlay concordando com ela e nada na tela dizendo por quê.
+///
+/// O precedente já estava escrito na função que dobra isto (`scale::body_desc`, W-Offset):
+/// *"escala SINCADA, não `abs` — o offset é POSIÇÃO, então um flip o ESPELHA"*. Uma força
+/// autorada no frame da zona é um VETOR nesse frame, logo obedece à mesma regra.
+#[test]
+fn mirroring_the_zone_mirrors_the_wind() {
+    for zone_first in [true, false] {
+        let plain = run(mirrored([3.0, 0.0], 0.0, [1.0, 1.0], false), zone_first);
+        assert!(
+            plain.0 > 0.5,
+            "controle: sem espelho o vento sopra em +X, e a bola está em {plain:?}"
+        );
+        let flipped = run(mirrored([3.0, 0.0], 0.0, [-1.0, 1.0], false), zone_first);
+        assert!(
+            flipped.0 < -0.5,
+            "zone_first={zone_first}: com o eixo X espelhado o vento tem de soprar para \
+             −X, mas a bola está em {flipped:?}"
+        );
+        assert!(
+            (flipped.0 + plain.0).abs() < 1e-3 && flipped.1.abs() < 1e-3,
+            "o espelho é uma REFLEXÃO, não um empurrão qualquer: a trajetória tem de ser a \
+             refletida ({plain:?} vs {flipped:?})"
+        );
+    }
+}
+
+/// **O espelho entra ANTES da rotação** — a ordem do `Transform` (`R · S`).
+///
+/// É o gate que separa as duas implementações possíveis, e a errada só aparece numa zona
+/// que seja espelhada *E* rotacionada — que é o caso de uso inteiro (a metade espelhada de
+/// um nível quase nunca está no eixo). Espelhar X e então girar 90° manda o vento para
+/// **−Y**; rodar primeiro e espelhar depois manda para **+Y**.
+#[test]
+fn the_mirror_lands_before_the_rotation() {
+    let z = BodyDesc {
+        rotation: std::f32::consts::FRAC_PI_2,
+        ..mirrored([3.0, 0.0], 0.0, [-1.0, 1.0], false)
+    };
+    let (x, y) = run(z, true);
+    assert!(
+        y < -0.5 && x.abs() < 1e-3,
+        "espelhar X e depois girar um quarto de volta manda o vento para −Y; a bola está \
+         em ({x}, {y}). Na ordem trocada ela iria para +Y — e as duas só divergem numa \
+         zona que é espelhada E rotacionada"
+    );
+}
+
+/// **`world_axes` desliga o espelho junto com a rotação.**
+///
+/// O toggle diz *"esta força é um vetor de MUNDO"*, e um vetor de mundo não é tocado por
+/// nada que o frame da zona faça. Sem esta metade o `Force Axes: World` seria uma promessa
+/// pela metade — e o artista que o usa justamente para desacoplar a força da pose veria a
+/// direção virar ao espelhar o sprite.
+#[test]
+fn a_world_pinned_force_ignores_the_mirror() {
+    let plain = run(mirrored([3.0, 0.0], 0.0, [1.0, 1.0], true), true);
+    let flipped = run(mirrored([3.0, 0.0], 0.0, [-1.0, 1.0], true), true);
+    assert_eq!(
+        (plain.0.to_bits(), plain.1.to_bits()),
+        (flipped.0.to_bits(), flipped.1.to_bits()),
+        "presa aos eixos de mundo a força não pode se mover um bit com o espelho \
+         ({plain:?} vs {flipped:?})"
+    );
+}
+
+/// **Um giro visto no ESPELHO gira ao contrário — e espelhar os DOIS eixos não é um
+/// espelho.**
+///
+/// É aqui que a força e o torque param de andar juntos, e a diferença é geometria, não
+/// escopo escolhido. Uma força é um VETOR: sob `diag(-1, 1)` ela vira `(−fx, fy)`. Um
+/// torque 2D é a componente z de um **PSEUDOVETOR**: sob a mesma reflexão ele **troca de
+/// sinal**. Foi por isso que o W-AreaFrame pôde afirmar que o torque é invariante — uma
+/// rotação no plano é *em torno de* Z e deixa um escalar-z quieto — e por que essa
+/// afirmação **não se estende** ao espelho, que é uma reflexão NO plano.
+///
+/// ⚠️ **O par de casos é o gate inteiro.** Espelhar UM eixo inverte o giro; espelhar os
+/// DOIS é uma rotação de 180°, `det = +1`, e o giro fica onde estava. Uma implementação
+/// por paridade-de-eixo-X — ou qualquer uma que negasse "se houver flip" — passa no
+/// primeiro caso e morre no segundo, que é exatamente o que o `det` apaga sem caso
+/// especial.
+#[test]
+fn a_mirrored_zone_spins_the_other_way_but_a_double_flip_does_not() {
+    let spin = |mirror: [f32; 2]| {
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let _z = w.spawn_body(mirrored([0.0, 0.0], 2.0, mirror, false));
+        let b = w.spawn_body(ball());
+        for _ in 0..30 {
+            w.step();
+        }
+        w.bodies().get(b).expect("body alive").angvel()
+    };
+    let plain = spin([1.0, 1.0]);
+    assert!(
+        plain > 0.1,
+        "controle: o torque +2 tem de girar CCW ({plain})"
+    );
+
+    for m in [[-1.0, 1.0], [1.0, -1.0]] {
+        let flipped = spin(m);
+        assert!(
+            (flipped + plain).abs() < 1e-4,
+            "mirror={m:?}: um eixo espelhado inverte o giro — {plain} tinha de virar \
+             {}, mas veio {flipped}. Um torque 2D é um PSEUDOescalar",
+            -plain
+        );
+    }
+
+    let double = spin([-1.0, -1.0]);
+    assert!(
+        (double - plain).abs() < 1e-4,
+        "espelhar os DOIS eixos é uma rotação de 180°, não uma reflexão: o giro tem de \
+         ficar em {plain}, e veio {double}. Uma implementação que nega 'se houver flip' \
+         passa no caso de um eixo e morre aqui"
+    );
 }

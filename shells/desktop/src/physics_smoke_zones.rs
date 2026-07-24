@@ -1,8 +1,9 @@
 //! **Cena de ZONA rotacional** (`PH2D_PHYSICS_SMOKE=32`) — a mesa giratória: uma área
 //! que GIRA o que está dentro dela (W-AreaTorque).
 //!
-//! Arquivo próprio para a família das ZONAS, hoje com quatro cenas: a mesa giratória (=32),
-//! a autoria dela pela UI (=33), o frame da força (=34) e o falloff (=35). As de força linear vivem
+//! Arquivo próprio para a família das ZONAS, hoje com cinco cenas: a mesa giratória (=32),
+//! a autoria dela pela UI (=33), o frame da força (=34), o falloff (=35) e o espelho (=36).
+//! As de força linear vivem
 //! em [`crate::physics_smoke_collision`] (=24) e [`crate::physics_smoke_contacts`]
 //! (=26/27/28); esta é a irmã do torque.
 
@@ -403,6 +404,145 @@ impl crate::App {
              'Falloff' -> digite 1: o anel laranja apagado do meio caminho aparece (a \
              silhueta encolhida a metade, que e a curva de nivel exata) e a fila dela passa a \
              se abrir tambem. B liga o contorno, a seta e o anel; deixe Physics MARCADO."
+        );
+    }
+
+    /// **Cena 36 (W-AreaMirror).** Virar o sprite vira a correia — e vira o giro ao contrário.
+    ///
+    /// A zona honrava METADE do próprio frame: a rotação sim, a reflexão não. O artista
+    /// espelhava uma esteira para montar a metade espelhada de um nível e ela continuava
+    /// correndo para o mesmo lado, com a seta do overlay concordando com ela.
+    ///
+    /// As quatro zonas carregam a MESMA autoria; só o **sinal da escala** difere. Medido
+    /// headless, 2 s:
+    ///
+    /// | faixa | `scale.x` | deslocamento | ângulo |
+    /// |---|---|---|---|
+    /// | vento, normal | `+1` | `(2,81, 2,36)` | **40°** — o da zona |
+    /// | vento, espelhado | `−1` | `(−2,81, −2,36)` | **−140°** — a reflexão exata |
+    /// | giro, normal | `+1` | — | **+117°** |
+    /// | giro, espelhado | `−1` | — | **−117°** |
+    ///
+    /// ⚠️ **A diferença entre as duas linhas de baixo e as duas de cima É a wave.** Uma
+    /// força é um VETOR e **reflete**; um torque 2D é um **PSEUDOescalar** e **troca de
+    /// sinal** — um redemoinho visto no espelho gira ao contrário. É por isso que o
+    /// W-AreaFrame pôde dizer que o torque é invariante sob ROTAÇÃO sem que isso valesse
+    /// para o espelho.
+    ///
+    /// ⚠️ Espelhar os DOIS eixos não é um espelho — é uma rotação de 180°, e o giro fica
+    /// onde estava. Não há faixa para isso na tela (seria indistinguível de uma zona
+    /// girada), mas há gate.
+    pub(crate) fn physics_smoke_mirror(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        // 40 graus na faixa do vento: nem eixo (onde o espelho e a identidade coincidem
+        // numa das componentes), nem 45 (onde as duas são iguais).
+        let rot = 40.0f32.to_radians();
+
+        let mut wind = |cx: f32, sx: f32, tag: &str, tint: [f32; 4]| {
+            world.spawn((
+                Transform {
+                    translation: Vec2::new(cx, 3.5),
+                    rotation: rot,
+                    scale: Vec2::new(sx, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+                Sprite::atlas(WHITE_TILE_KEY, [6.0, 6.0], tint),
+                Name::new(format!("{tag} wind")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 3.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                AreaEffector { force: [0.9, 0.0] },
+            ));
+            for (i, dy) in [-1.6f32, 0.0, 1.6].iter().enumerate() {
+                world.spawn((
+                    Transform::from_translation(Vec2::new(cx, 3.5 + *dy)),
+                    Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], [0.95, 0.80, 0.30, 1.0]),
+                    Name::new(format!("{tag} box {i}")),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 0.35,
+                            half_y: 0.35,
+                        },
+                        ..Collider::default()
+                    },
+                    GravityScale(0.0),
+                ));
+            }
+        };
+        wind(-9.0, 1.0, "Normal", [0.4, 0.7, 0.55, 0.16]);
+        wind(9.0, -1.0, "Mirrored", [0.55, 0.4, 0.85, 0.16]);
+
+        let mut spin = |cx: f32, sx: f32, tag: &str, tint: [f32; 4]| {
+            world.spawn((
+                Transform {
+                    translation: Vec2::new(cx, -4.5),
+                    rotation: 0.0,
+                    scale: Vec2::new(sx, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+                Sprite::atlas(WHITE_TILE_KEY, [6.0, 6.0], tint),
+                Name::new(format!("{tag} spin")),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 3.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                // ⚠️ 0,17 N·m e não 1: o giro tem de ficar SUB-REVOLUÇÃO para a mão ser
+                // legível — `Transform.rotation` dá a volta em ±pi, e a 1 N·m esta caixa
+                // passa de 680 graus em 2 s (a armadilha que o W-AreaTorque documentou).
+                AreaTorque(0.17),
+            ));
+            world.spawn((
+                Transform::from_translation(Vec2::new(cx, -4.5)),
+                Sprite::atlas(WHITE_TILE_KEY, [2.0, 0.5], [0.95, 0.80, 0.30, 1.0]),
+                Name::new(format!("{tag} rotor")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+                GravityScale(0.0),
+            ));
+        };
+        spin(-9.0, 1.0, "Normal", [0.4, 0.7, 0.55, 0.16]);
+        spin(9.0, -1.0, "Mirrored", [0.55, 0.4, 0.85, 0.16]);
+
+        eprintln!(
+            "[physics-smoke 36] O ESPELHO DA ZONA. Quatro zonas com a MESMA autoria; so o \
+             SINAL da escala difere (as da DIREITA tem scale.x = -1, o gesto de virar o \
+             sprite). EM CIMA, o vento a 40 graus: a esquerda as caixas sobem na diagonal \
+             -- medido em 2s, (2,81, 2,36) = 40,0 graus --, a direita elas vao para o lado \
+             REFLETIDO, (-2,81, -2,36) = -140,0 graus. EMBAIXO, o giro: a esquerda a barra \
+             gira +117 graus, a direita -117 -- ao CONTRARIO. Essa diferenca e a wave: uma \
+             forca e um VETOR e reflete; um torque 2D e um PSEUDOescalar e troca de sinal \
+             (um redemoinho visto no espelho gira ao contrario). B liga o contorno, a seta \
+             laranja e o glifo violeta -- os dois espelham junto com a fisica. Deixe \
+             Physics MARCADO. De Play."
         );
     }
 }

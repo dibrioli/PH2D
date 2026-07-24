@@ -301,6 +301,11 @@ pub(crate) fn outlines(
                         .get::<ph2d_physics_ecs::AreaForceWorldAxes>(e)
                         .is_some(),
                     t.rotation,
+                    // ⚠️ A lateralidade do frame vem da MESMA escala sincada que o `body_desc`
+                    // dobra para o solver (W-AreaMirror). Uma seta desenhada de um espelho
+                    // que o solver não usa aponta para onde o vento não sopra, e é o único
+                    // lugar onde uma pessoa lê essa direção.
+                    zone_mirror(t.scale),
                 ),
                 camera,
                 window,
@@ -317,7 +322,10 @@ pub(crate) fn outlines(
             && let Some(glyph) = torque_glyph(
                 t.translation.x + wox,
                 t.translation.y + woy,
-                a.0,
+                // ⚠️ Um giro visto num ESPELHO gira ao contrário — um torque 2D é um
+                // pseudoescalar. Pela mesma porta que o solver (`zone_spin_sign`), senão o
+                // glifo violeta apontaria a mão errada e ninguém confere isso numa foto.
+                a.0 * ph2d_physics_ecs::zone_spin_sign(zone_mirror(t.scale)),
                 camera,
                 window,
             )
@@ -360,6 +368,14 @@ pub(crate) fn outlines(
         }
     }
     out
+}
+
+/// **A lateralidade do frame desta zona** — o sinal de cada eixo da escala de mundo, na
+/// forma que as duas portas do kernel tomam (W-AreaMirror). Espelha a `sign_of` do
+/// `ph2d_physics_ecs::scale`, que é onde o solver a calcula.
+fn zone_mirror(scale: ph2d_core::Vec2) -> [f32; 2] {
+    let s = |v: f32| if v < 0.0 { -1.0 } else { 1.0 };
+    [s(scale.x), s(scale.y)]
 }
 
 /// **Esta zona empurra alguma coisa?** — força ou torque, os dois EMPURRÕES que o falloff

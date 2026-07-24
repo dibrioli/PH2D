@@ -327,3 +327,84 @@ fn a_zone_with_falloff_draws_the_half_way_ring_and_only_when_it_pushes() {
         "o anel apareceu numa zona que não empurra nada"
     );
 }
+
+/// **A seta e o glifo obedecem ao ESPELHO** (W-AreaMirror) — e o glifo o obedece ao
+/// contrário, porque um giro visto num espelho gira ao contrário.
+///
+/// As duas metades visíveis de uma zona espelhada, no mesmo gate porque é o mesmo `flip` do
+/// `Transform` que decide as duas — e porque a diferença entre elas É a wave: a seta é um
+/// VETOR e reflete; o glifo é um PSEUDOvetor e inverte o sentido. Uma seta desenhada de um
+/// espelho que o solver não usa aponta para onde o vento não sopra, e um screenshot é
+/// exatamente o que ninguém confere com um número.
+#[test]
+fn a_mirrored_zone_draws_a_mirrored_arrow_and_a_reversed_spin() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{AreaEffector, AreaTorque, Collider, RigidBody};
+
+    let zone = |sx: f32| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 1.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform {
+                translation: Vec2::new(0.0, 0.0),
+                rotation: 0.0,
+                scale: Vec2::new(sx, 1.0),
+                skew_x: 0.0,
+                skew_y: 0.0,
+            },
+            AreaEffector { force: [5.0, 0.0] },
+            AreaTorque(8.0),
+        ));
+        sim
+    };
+    let arrow_and_glyph = |sim: &mut ph2d_ecs::SimWorld| {
+        let drawn = outlines(true, false, sim, &[], &camera(), window());
+        let arrow = drawn
+            .iter()
+            .find(|(_, c)| *c == EFFECTOR_RGBA)
+            .map(|(p, _)| points(p))
+            .expect("a zona com força desenha uma seta");
+        let glyph = drawn
+            .iter()
+            .find(|(_, c)| *c == TORQUE_RGBA)
+            .map(|(p, _)| points(p))
+            .expect("a zona com torque desenha um glifo");
+        (arrow, glyph)
+    };
+    let (a_plain, g_plain) = arrow_and_glyph(&mut zone(1.0));
+    let (a_flip, g_flip) = arrow_and_glyph(&mut zone(-1.0));
+
+    // A SETA: a ponta tem de trocar de lado em torno da cauda (que é o centro da zona).
+    let (tail, tip_plain, tip_flip) = (a_plain[0], a_plain[1], a_flip[1]);
+    assert!(
+        tip_plain.0 > tail.0,
+        "controle: sem espelho a seta aponta para +X na tela"
+    );
+    assert!(
+        tip_flip.0 < tail.0,
+        "a seta de uma zona espelhada tem de apontar para o outro lado — cauda {tail:?}, \
+         ponta {tip_flip:?}"
+    );
+
+    // O GLIFO: os pontos do arco têm de mudar (o sentido do varrimento inverteu). Mesmo
+    // oráculo que o gate de sinal do W-AreaTorque usa, pelo mesmo motivo.
+    assert!(
+        g_plain
+            .iter()
+            .zip(g_flip.iter())
+            .any(|(p, q)| (p.0 - q.0).abs() > 1.0 || (p.1 - q.1).abs() > 1.0),
+        "o glifo de uma zona espelhada tem de girar ao contrário — um torque 2D é um \
+         pseudoescalar, e o espelho troca a mão do frame"
+    );
+}

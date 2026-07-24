@@ -70,6 +70,7 @@ fn effect() -> AreaEffect {
         torque: 0.0,
         world_axes: false,
         falloff: 0.0,
+        mirror: [1.0, 1.0],
     }
 }
 
@@ -133,12 +134,7 @@ fn the_measure_is_one_on_every_boundary_direction() {
     };
     for i in 0..=n {
         let u = -1.0 + 2.0 * (i as f32) / (n as f32);
-        for p in [
-            [u * hx, hy],
-            [u * hx, -hy],
-            [hx, u * hy],
-            [-hx, u * hy],
-        ] {
+        for p in [[u * hx, hy], [u * hx, -hy], [hx, u * hy], [-hx, u * hy]] {
             let t = cuboid.radial_fraction(p);
             assert!(
                 (t - 1.0).abs() < 1e-5,

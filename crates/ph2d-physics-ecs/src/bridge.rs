@@ -570,6 +570,10 @@ impl PhysicsBridge {
                 torque: zone_torque.unwrap_or(0.0),
                 world_axes: zone_world_axes,
                 falloff: zone_falloff.unwrap_or(0.0),
+                // A lateralidade do frame é função da POSE, não dos componentes, então ela
+                // não se decide aqui: `scale::body_desc` a dobra ao lado da linha que já
+                // dobra a escala sincada no offset (W-Offset), que é a mesma regra.
+                mirror: ph2d_physics::AreaEffect::UNMIRRORED,
             });
             let desc = crate::scale::body_desc(
                 rb,

@@ -15,7 +15,7 @@ authors.workspace = true
 # CI compares its hash across Linux/macOS/Windows (spike.yml).
 [[bin]]
 name = "physics_ecs_c9"
-path = "src/bin/physics_ecs_c9.rs"
+path = "src/bin/physics_ecs_c9/main.rs"
 
 [dependencies]
 # The ECS this bridge reads components from and writes Transform back to.

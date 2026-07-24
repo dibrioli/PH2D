@@ -29,11 +29,9 @@ pub use bridge::contacts::{
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
-    AreaTorque, BodyKind,
-    Ccd, Collider,
-    ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
-    InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
-    OneWayPlatform, RigidBody,
+    AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
+    Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
+    MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
 pub use joint::{JointKind, PhysicsJoint};
 pub use scale::scaled_shape;
@@ -45,7 +43,7 @@ pub use scale::scaled_shape;
 // blow that does not happen, and no gate reads a screenshot.
 pub use ph2d_physics::{
     CAPSULE_CAP_SEGS, ELLIPSE_SEGS, LayerMatrix, MAX_LAYERS, ShapeDesc, capsule_vertices,
-    ellipse_vertices, zone_force_world_at,
+    ellipse_vertices, zone_force_world_at, zone_spin_sign,
 };
 pub use settings::{
     DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,

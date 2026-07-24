@@ -172,3 +172,71 @@ fn the_marker_alone_does_not_make_a_zone() {
          is at ({x}, {y})"
     );
 }
+
+/// **Espelhar o sprite da zona espelha o vento — pela ESCALA do `Transform`** (W-AreaMirror).
+///
+/// A metade ECS: a lateralidade não vem de um componente novo, vem do `Transform` que o
+/// artista já manipula quando vira um sprite. `scale::body_desc` a dobra ao lado da linha
+/// que já dobra a escala sincada no offset (W-Offset) — *"um flip espelha o que tem lado"*
+/// —, então o precedente e a regra nova moram juntos e não podem divergir.
+///
+/// E o rewind: a `mirror` rida o `BodyDesc` que o mundo reconstrói, então um scrub até t=0
+/// tem de reproduzir a MESMA viagem. Sem isso a zona espelhada voltaria a soprar para o
+/// lado original depois de arrastar a régua — em silêncio, e só na segunda corrida.
+#[test]
+fn a_mirrored_zone_blows_the_other_way_and_a_rewind_preserves_it() {
+    let run = |sx: f32, rewind: bool| {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 3.0,
+                    },
+                    density: 1.0,
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                AreaEffector { force: [3.0, 0.0] },
+            ))
+            .id();
+        // O gesto do artista: virar o sprite. Só o SINAL de x muda.
+        sim.world_mut().entity_mut(e).insert(Transform {
+            translation: Vec2::new(0.0, 0.0),
+            rotation: 0.0,
+            scale: Vec2::new(sx, 1.0),
+            skew_x: 0.0,
+            skew_y: 0.0,
+        });
+        let b = drifter(&mut sim);
+        let mut bridge = PhysicsBridge::new();
+        bridge.set_settings(zero_gravity());
+        play_to(&mut bridge, &mut sim, 40);
+        if rewind {
+            bridge.dispatch(&mut sim, false, 0);
+            play_to(&mut bridge, &mut sim, 40);
+        }
+        pos_of(&sim, b).0
+    };
+    let plain = run(1.0, false);
+    assert!(
+        plain > 0.5,
+        "controle: sem espelho a bola vai para +X ({plain})"
+    );
+    let flipped = run(-1.0, false);
+    assert!(
+        flipped < -0.5,
+        "virar o sprite da zona tem de virar a correia: a bola está em {flipped}, e a \
+         ponte não está dobrando o sinal da escala no frame da zona"
+    );
+    let replayed = run(-1.0, true);
+    assert!(
+        (replayed - flipped).abs() < 1e-3,
+        "depois de um rewind o espelho não foi re-armado ({flipped} -> {replayed})"
+    );
+}

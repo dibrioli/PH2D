@@ -183,6 +183,38 @@ pub struct AreaEffect {
     /// número que o artista tem de manter de acordo com o tamanho da zona. Aqui a régua é
     /// a silhueta da própria zona.
     pub falloff: f32,
+    /// **A LATERALIDADE do frame da zona** — o sinal da escala em cada eixo, `+1` ou `-1`
+    /// (W-AreaMirror). `[1, 1]` (o default) é uma zona não-espelhada, byte-idêntica.
+    ///
+    /// Um frame não é só uma rotação: espelhar o sprite de uma esteira tem de virar a
+    /// correia. Até esta wave a zona honrava **metade** do próprio frame — a rotação sim, a
+    /// reflexão não —, e é o `Transform` que carrega as duas. O precedente estava escrito na
+    /// mesma função que dobra isto (`scale::body_desc`, W-Offset): *"escala SINCADA, não
+    /// `abs` — o offset é POSIÇÃO, então um flip o ESPELHA"*. Uma força autorada no frame da
+    /// zona é um **vetor** nesse frame, logo obedece à mesma regra.
+    ///
+    /// ⚠️ **E é aqui que a força e o torque param de andar juntos.** Uma força é um VETOR:
+    /// sob a reflexão `diag(-1, 1)` ela vira `(−fx, fy)`. Um torque 2D é a componente z de
+    /// um **PSEUDOVETOR**: sob a mesma reflexão ele **troca de sinal** — um redemoinho visto
+    /// no espelho gira ao contrário. É por isso que o W-AreaFrame pôde afirmar que o torque
+    /// é invariante e essa afirmação **não se estende** aqui: uma rotação no plano é em
+    /// torno de Z e deixa um escalar-z quieto, uma reflexão NO plano o nega. O fator é
+    /// `det = mirror[0]·mirror[1]`, então espelhar os DOIS eixos (que é uma rotação de 180°,
+    /// não uma reflexão) deixa o torque em paz — e há gate exatamente nesse par.
+    ///
+    /// ⚠️ **A silhueta e o falloff são cegos a isto, de propósito:** um retângulo espelhado é
+    /// o mesmo retângulo (`scaled_shape` usa o módulo onde a forma é um TAMANHO), e a régua
+    /// [`ShapeDesc::radial_fraction`](super::ShapeDesc::radial_fraction) é simétrica. Só o
+    /// que tem DIREÇÃO responde a um espelho.
+    pub mirror: [f32; 2],
+}
+
+impl AreaEffect {
+    /// O frame de mão normal — nenhum eixo espelhado. O que toda zona era antes do
+    /// W-AreaMirror, e o que a ponte escreve: quem CALCULA o espelho de verdade é
+    /// `ph2d_physics_ecs::body_desc`, ao lado da linha que já dobra a escala sincada no
+    /// offset, porque *"qual é o frame desta zona?"* é uma pergunta só.
+    pub const UNMIRRORED: [f32; 2] = [1.0, 1.0];
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

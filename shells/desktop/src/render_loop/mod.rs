@@ -4175,10 +4175,16 @@ impl crate::App {
                 ph2d_panel_vector::set_current_contour_can_add(!sel.is_empty() && cont.is_none());
                 // O `d` do componente é MUNDO; o painel fala FRAÇÃO. A conversão usa a MESMA
                 // `offset_scale` do arm e do drain — três leituras da mesma régua, uma função.
-                let cont_scale = {
+                // ⚠️ **Só com contour armado**, e é medida de custo, não de estilo: o
+                // `vec_transform::build` percorre TODO caminho da cena e sobe a cadeia de pais
+                // de cada um, alocando um mapa. Calculá-lo aqui incondicionalmente poria essa
+                // varredura em todo frame com o painel aberto, para publicar um número que só
+                // é lido quando há efeito — e sem contour o `d_frac` publicado é `0.0` de
+                // qualquer maneira, sem passar pela escala.
+                let cont_scale = cont.map_or(0.0, |_| {
                     let xf = crate::vec_transform::build(sim, &self.vec_entities);
                     crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf)
-                };
+                });
                 ph2d_panel_vector::set_current_contour(
                     cont.is_some(),
                     cont.map_or(4.0, |(_, c)| f64::from(c.steps)),

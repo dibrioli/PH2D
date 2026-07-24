@@ -115,8 +115,7 @@ impl ContourLive {
     /// Expand entregaria anéis cozidos por um segundo caminho e as formas SALTARIAM no clique
     /// que promete materializar o que está na tela.
     fn ensure(&mut self, id: VecPathId, world: &VecPath, spec: &VecContour) -> &Memo {
-        let fresh = self.memo.get(&id).is_some_and(|m| m.matches(world, spec));
-        if !fresh {
+        if !self.memo.get(&id).is_some_and(|m| m.matches(world, spec)) {
             self.memo.insert(
                 id,
                 Memo {
@@ -129,14 +128,10 @@ impl ContourLive {
                 },
             );
         }
-        let memo = self.memo.entry(id).or_insert_with(|| Memo {
-            world: world.clone(),
-            d: spec.d,
-            join: spec.join,
-            side: spec.side,
-            accel: spec.accel,
-            rings: Vec::new(),
-        });
+        let memo = self
+            .memo
+            .get_mut(&id)
+            .expect("o memo acabou de ser inserido se faltava");
         // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
         while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
             let k = u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) + 1;

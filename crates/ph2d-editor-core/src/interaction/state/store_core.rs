@@ -95,6 +95,7 @@ impl WidgetStore {
             timeline_double: false,
             timeline_wheel: BTreeMap::new(),
             timeline_canvas: BTreeMap::new(),
+            flip_strip: Default::default(),
             alt_held: false,
         }
     }

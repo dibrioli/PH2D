@@ -7,6 +7,7 @@ use super::curve::apply_curve_point_drag;
 use super::hover::update_hover;
 use super::number_input::update_drag_value;
 use super::text_ops::{byte_offset_from_click_xy, place_text_caret};
+use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture, TimelineGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
@@ -309,6 +310,23 @@ pub(super) fn dispatch_move<'frame>(
             store.note_timeline_pointer(event.x, event.y);
             let mods = store.gesture_mods();
             store.push_timeline_gesture(TimelineGesture {
+                surface,
+                kind,
+                phase: GesturePhase::Update,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            return;
+        }
+        // A tira do Flip, pela mesma lei: o Update continua mesmo com o ponteiro
+        // FORA do retângulo da célula — arrastar uma chave três células adiante é o
+        // gesto, não um escape.
+        if let Some((surface, kind)) = store.flip_strip_surface_at_id(active) {
+            store.note_flip_strip_pointer(event.x, event.y);
+            let mods = store.gesture_mods();
+            store.push_flip_strip_gesture(FlipStripGesture {
                 surface,
                 kind,
                 phase: GesturePhase::Update,

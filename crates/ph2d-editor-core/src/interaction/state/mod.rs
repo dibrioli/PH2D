@@ -32,6 +32,7 @@ use std::collections::BTreeMap;
 use super::drag::{
     HierarchyDragState, NumberInputDragState, NumberStepperHoldState, ScrollbarDragAnchor,
 };
+use super::flip_strip::FlipStripHitKind;
 use super::types::{
     BlenderHitKind, ContextMenuRequest, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData,
     TimelineGesture, TimelineHitKind, TimelineWheel,
@@ -202,6 +203,19 @@ pub enum InteractiveState {
         parent: NodeId,
         kind: TimelineHitKind,
         canvas: Rect,
+    },
+    /// Um alvo dentro da **tira de frames do Flip** (o corpo de uma célula ou a borda que
+    /// define o hold). Terceira da família `*Surface`: o dispatch captura no Down e
+    /// despeja [`FlipStripGesture`](super::FlipStripGesture)s para o painel da tira; o
+    /// editor-core nunca interpreta `kind`.
+    ///
+    /// **Sem `canvas`, de propósito** — os dois irmãos o carregam para o zoom/pan ancorado
+    /// da roda, e a tira *sempre cabe* (a escala é derivada do vão, sem scroll nem estado
+    /// de pan escondido — `docs/Flip/05 §6`). Um retângulo que ninguém lê é um retângulo
+    /// que envelhece calado.
+    FlipStripSurface {
+        parent: NodeId,
+        kind: FlipStripHitKind,
     },
     Modal {
         // Open/closed lives on the host; store only tracks ESC->dismiss intent.
@@ -654,6 +668,9 @@ pub struct WidgetStore {
     /// `dispatch_wheel` can tell when the cursor is over the dope-sheet (mirror
     /// of `graph_canvas`). Cleared while the panel is hidden.
     pub(super) timeline_canvas: BTreeMap<NodeId, Rect>,
+    /// O canal da **tira do Flip** (gestos + a folga do arrasto), agrupado num campo só —
+    /// os métodos e o porquê vivem em [`super::flip_strip`].
+    pub(super) flip_strip: super::flip_strip::FlipStripChannel,
     /// Latest Alt modifier state, mirror of [`Self::shift_held`]/[`Self::cmd_held`].
     /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
     pub(super) alt_held: bool,

@@ -5,6 +5,7 @@
 use super::focus::apply_click;
 use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
 use super::hover::set_widget_released;
+use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{GesturePhase, GraphGesture, TimelineGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
@@ -249,6 +250,31 @@ pub(super) fn dispatch_up<'frame>(
             };
             let mods = store.gesture_mods();
             store.push_timeline_gesture(TimelineGesture {
+                surface,
+                kind,
+                phase,
+                x: event.x,
+                y: event.y,
+                button: event.button,
+                mods,
+            });
+            store.set_active(None);
+            store.set_active_rect(None);
+            return;
+        }
+        // A tira do Flip: `End` se arrastou, senão `Click` (um toque). Sem
+        // `apply_click`/foco — a semântica é do painel. **Sem `DoubleClick`**, de
+        // propósito: nada na tira quer o segundo toque hoje, e a lista de quem quer
+        // é a pergunta do próprio kind quando alguém quiser (a enumeração inline
+        // é o que deixou a barra de container morta sob o mouse na timeline).
+        if let Some((surface, kind)) = store.flip_strip_surface_at_id(active) {
+            let phase = if store.take_flip_strip_moved() {
+                GesturePhase::End
+            } else {
+                GesturePhase::Click
+            };
+            let mods = store.gesture_mods();
+            store.push_flip_strip_gesture(FlipStripGesture {
                 surface,
                 kind,
                 phase,

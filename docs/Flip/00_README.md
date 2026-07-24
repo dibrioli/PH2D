@@ -36,22 +36,33 @@ justificativa registrada** — ex.: a quina do traço macio (o GP convive com o 
 issue #140075; nós o matamos — `03`), o pareamento do tween por índice (upgrade especificado
 no `04 §2`), o pós-processo do fill (Schneider > smooth 20×).
 
-## Estado (2026-07-12)
+## Estado (2026-07-23)
 
-- **W0 (dados) + W1 (render GPU) + W2 (tool+painel+borracha+Select/gizmo): ENTREGUES e
-  integrados ao main.** Detalhe: `../HANDOFF_flip_impl.md`.
-- **Wave WT (o traço) FECHADA em 2026-07-12** — a "mordida" morreu: a cobertura é a **união
-  global da polilinha** num único passe (janela `p0`/`p3` + vizinhos geométricos por broadphase
-  + `capsule_dn` única + par clamp/fade sub-pixel). 15 testes GPU, 5 mutações provadas, custo
-  real de 1.7 ms num traço de 4000 pontos. Smoke **aprovado pelo Enio**. Detalhe:
-  [`03`](03_traco_rasterizacao.md).
-- **Wave W3 (Frames · Ghost Frames · Tween) FECHADA em 2026-07-12** — o Flip virou app de
-  ANIMAÇÃO: tira de frames com exposição, transporte + ciclos por camada, Ghost Frames,
-  autokey por-tool, flip por desenho (↑/↓) e tween com auto-flip. Smoke **aprovado pelo Enio**
-  (após 2 rodadas de correção: o z do fantasma e os ciclos que não rodavam — `BUGS_flip.md` #6/#7).
-  Detalhe: [`05`](05_frames_ghost_tween.md).
-- Próximas waves: **W4 (Fill)** → W5 (Reshape) → W6 (Timeline global, **adiada até a timeline
-  principal ficar pronta** — Enio 2026-07-12).
+> ⚠️ Esta seção parou em 2026-07-12 por um ano de waves e **listava W4/W5/W6 como futuras
+> quando as três já estavam no `main`** — o modo de falha que faz a próxima LLM reconstruir o
+> que existe (o módulo de áudio já pagou por isso). A fonte de verdade do que LANDOU é a
+> tabela do [`01_plano_waves.md`](01_plano_waves.md); esta é o resumo de uma linha por wave.
+
+**Tudo abaixo está integrado ao `main`, com os smokes APROVADOS pelo Enio.** O Flip é um app
+de animação usável ponta-a-ponta: desenhar → frames/hold/ciclos/ghost → tween → balde →
+colorizar → esculpir → editar/selecionar/transformar → multiframe → salvar.
+
+| wave | uma linha | doc |
+|---|---|---|
+| **W0/W1/W2** | dados · render GPU · tool+painel+borracha+Select/gizmo | `../HANDOFF_flip_impl.md` |
+| **WT — o traço** | a "mordida" morreu: cobertura = **união global da polilinha** num passe (1,7 ms em 4000 pontos) | [`03`](03_traco_rasterizacao.md) |
+| **W3 — frames/ghost/tween** | tira com exposição, transporte + ciclos, Ghost Frames, autokey por-tool, flip por desenho | [`05`](05_frames_ghost_tween.md) |
+| **W4 — fill** | o balde: resultado = GEOMETRIA, Gap Closure persistente, Grow/Shrink, multiframe | [`06`](06_fill_balde.md) |
+| **W5 — reshape** | os 9 pincéis de escultura + o modo Sculpt no shell | [`07`](07_reshape_escultura.md) |
+| **W6 — Edit Mode** | selecionar traço/ponto/segmento + transformar a seleção | [`08`](08_edit_mode_selecao.md) |
+| **W7 — multiframe** | multi-seleção de chaves · Instance · pose de quadro · régua de scrub · falloff temporal | [`05 §8`](05_frames_ghost_tween.md) |
+| **Colorize C1/C2/C3** | Trap · LazyBrush (rabiscar cores) · onion fill (um Apply colore o range) | [`09`](09_colorize.md) |
+| **Região por curvas** | a malha do fill nasce dos vértices das linhas; o donut | [`10`](10_regiao_por_curvas.md) |
+| **Tween v2** | correspondência ótima + espiral logarítmica + correção de pares + fase da costura | [`11`](11_tween_v2.md) |
+
+**Adiado de propósito:** a integração com a **timeline global** (Enio 2026-07-12 — a tira
+própria é a UI de tempo até lá; o playhead já é o global) e o **export** (provavelmente
+pertence a um pipeline do projeto, não ao Flip).
 
 ## Princípios deste módulo (inegociáveis)
 

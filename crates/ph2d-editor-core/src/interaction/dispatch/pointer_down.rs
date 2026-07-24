@@ -14,6 +14,7 @@ use super::{
     commit_hex_buffer, commit_number_buffer, init_number_buffer, reset_focused_visual_state,
     select_all_in_text_widget,
 };
+use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{
     BlenderHitKind, ContextMenuKind, GesturePhase, GraphGesture, TimelineGesture,
 };
@@ -47,7 +48,9 @@ pub(super) fn dispatch_down<'frame>(
     if store.context_menu().is_some()
         && event.button != ph2d_host::PointerButton::Secondary
         && let Some((id, _)) = hit
-        && (store.graph_surface_at_id(id).is_some() || store.timeline_surface_at_id(id).is_some())
+        && (store.graph_surface_at_id(id).is_some()
+            || store.timeline_surface_at_id(id).is_some()
+            || store.flip_strip_surface_at_id(id).is_some())
     {
         store.close_context_menu();
         return;
@@ -102,6 +105,33 @@ pub(super) fn dispatch_down<'frame>(
         store.begin_timeline_press(event.x, event.y, is_double);
         let mods = store.gesture_mods();
         store.push_timeline_gesture(TimelineGesture {
+            surface,
+            kind,
+            phase: GesturePhase::Begin,
+            x: event.x,
+            y: event.y,
+            button: event.button,
+            mods,
+        });
+        return;
+    }
+
+    // A tira de frames do Flip captura pelo MESMO caminho (uma célula ou a borda
+    // que define o hold); o painel decide selecionar / mover a chave / esticar a
+    // exposição a partir do fluxo de gestos.
+    //
+    // Secondary NÃO é capturado, pela mesma razão dos irmãos acima: o botão direito
+    // sobre a tira pertence ao menu de contexto (`handle_down_menus`), e capturá-lo
+    // aqui retornaria antes de ele existir.
+    if event.button != ph2d_host::PointerButton::Secondary
+        && let Some((id, rect)) = hit
+        && let Some((surface, kind)) = store.flip_strip_surface_at_id(id)
+    {
+        store.set_active(Some(id));
+        store.set_active_rect(Some(rect));
+        store.begin_flip_strip_press(event.x, event.y);
+        let mods = store.gesture_mods();
+        store.push_flip_strip_gesture(FlipStripGesture {
             surface,
             kind,
             phase: GesturePhase::Begin,

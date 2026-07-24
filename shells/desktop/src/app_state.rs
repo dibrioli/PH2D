@@ -829,6 +829,10 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecPatternPath`, plano 23), irmão do `offset_live`. Runtime-only: o documento
     /// guarda a RELAÇÃO (o componente), e isto é o desenho derivado dela.
     pub(crate) pattern_live: crate::pattern_live::PatternLive,
+    /// O **cozimento do Contour VIVO** — os N anéis concêntricos com progressão de cor
+    /// (`ph2d_ecs::VecContour`, pesquisa `20_*` item #9), irmão do `offset_live` de que é a
+    /// generalização. Runtime-only e memoizado POR ANEL.
+    pub(crate) contour_live: crate::contour_live::ContourLive,
     /// Os knobs `(Corner, Side)` do painel no frame ANTERIOR. É o que distingue *"o artista
     /// clicou um chip"* (retunar os offsets vivos da seleção) de *"o painel está no valor de
     /// sempre"* — sem a borda, todo frame reescreveria o componente de toda forma selecionada.

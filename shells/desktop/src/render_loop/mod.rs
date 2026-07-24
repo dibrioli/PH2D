@@ -4342,12 +4342,23 @@ impl crate::App {
             // O Pattern Along Path vivo (plano 23): as cópias de um motivo ao longo de um guia,
             // cozidas aqui e desenhadas no z do motivo — a fonte nunca é tocada.
             self.pattern_live.recook(vec_scene, sim, &self.vec_entities);
-            // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern (não os dois),
-            // então fundir é seguro; começa do offset (em cena típica de pattern, vazio ⇒ clone
-            // trivial) e junta as cópias do pattern por cima.
+            // O Contour vivo (pesquisa 20 #9): os anéis concêntricos + a rampa de cor, cozidos
+            // aqui e desenhados no z da fonte — que entra na lista junto com eles.
+            self.contour_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern OU contour
+            // (nunca dois — cada um é um componente próprio e o painel oferece um de cada vez),
+            // então fundir é seguro; começa do offset (em cena típica dos outros, vazio ⇒ clone
+            // trivial) e junta os demais por cima.
             let mut vec_live = self.offset_live.live().clone();
             vec_live.extend(
                 self.pattern_live
+                    .live()
+                    .iter()
+                    .map(|(id, v)| (*id, v.clone())),
+            );
+            vec_live.extend(
+                self.contour_live
                     .live()
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),

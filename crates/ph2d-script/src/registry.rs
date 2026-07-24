@@ -31,7 +31,7 @@ mod tests {
         // + 1 script component (LuauScript). SAO TRES contadores desta
         // familia (ecs, render, script): registrar um componente novo no ECS
         // tem de somar nos tres, e cada um so roda na suite da sua crate.
-        assert_eq!(reg.len(), 37);
+        assert_eq!(reg.len(), 38);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

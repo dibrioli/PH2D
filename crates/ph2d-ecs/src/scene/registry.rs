@@ -289,6 +289,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Ctrl+Z com as cópias a voltarem deitadas -- e o vínculo, esse, sobreviveria: o pattern
     // pareceria certo e estaria errado.
     reg.register::<crate::VecPatternRotation>("ph2d::ecs::VecPatternRotation");
+    // O Contour: N anéis concêntricos com progressão de cor. Mesma razão de todos os irmãos — sem
+    // o registro, o snapshot o DESCARTA e um Ctrl+Z devolveria a forma sozinha, com os anéis
+    // sumidos e a cor-alvo perdida.
+    reg.register::<crate::VecContour>("ph2d::ecs::VecContour");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
@@ -348,7 +352,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 36);
+        assert_eq!(reg.len(), 37);
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());

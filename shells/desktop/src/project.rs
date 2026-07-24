@@ -337,6 +337,7 @@ impl crate::App {
         self.offset_live.forget();
         // O Pattern vivo pela MESMA razão (id reciclado entre documentos).
         self.pattern_live.forget();
+        self.contour_live.forget();
         self.vec_offset_mirrored = None;
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;

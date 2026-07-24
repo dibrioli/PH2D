@@ -104,10 +104,12 @@ pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecC
 /// de entidade — o undo respawna tudo, e um blend guardado por bits se soltaria a cada Ctrl+Z.
 mod vec_blend;
 pub use vec_blend::VecBlend;
+mod vec_contour;
 mod vec_offset;
 mod vec_pattern_path;
 mod vec_pattern_rotation;
 mod vec_text_path;
+pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
 pub use vec_pattern_rotation::VecPatternRotation;

@@ -23,7 +23,9 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{
+    Color as TokenColor, ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken,
+};
 
 /// Lado do marcador de desenho instanciado.
 const INSTANCE_DOT: f32 = 4.0; // LITERAL-PX-OK: instanced-drawing marker
@@ -119,111 +121,7 @@ pub(crate) fn paint(
     // `scrub_reserved_h()` (ver `paint.rs`), então elas mantêm a altura de sempre — a régua
     // não as espreme (Enio 2026-07-14: *"ficou apertado na vertical"*).
     for (i, cell) in snap.cells.iter().enumerate() {
-        let Some(r) = ruler.cell_rect(i, snap) else {
-            continue;
-        };
-        let id = ids::flip_cell_id(i);
-        // **A célula é uma SUPERFÍCIE de gesto, não mais um botão**: ela responde a toque
-        // (selecionar) E a arrasto (mover no tempo), e um widget primitivo só sabe a
-        // primeira. A aparência não muda — `paint_button` continua desenhando; o que era
-        // dado de graça pelo `InteractiveState::Button` (hover/press) passa a ser DERIVADO
-        // do próprio store, que é quem sabe quem está sob o ponteiro e quem está preso.
-        ctx.host.store_mut().register(
-            id,
-            InteractiveState::FlipStripSurface {
-                parent: ids::FLIP_STRIP_PANEL,
-                kind: FlipStripHitKind::Cell {
-                    index: u16::try_from(i).unwrap_or(u16::MAX),
-                },
-            },
-        );
-        let st = surface_button_state(ctx, id);
-        let w = r.w;
-        // O rótulo só entra quando cabe (numa tira longa a célula é uma lasca).
-        let label = if w > font * LABEL_FIT {
-            format!("{}", cell.exposure)
-        } else {
-            String::new()
-        };
-        // **Uma célula marcada para o MULTIFRAME veste a cor de ACENTO** (W7, Enio 2026-07-15).
-        // A marcada é pintada à mão (fundo clareado pelo falloff + número por CIMA) para o
-        // número NÃO ser lavado pelo clareamento ("apagou o número"); as demais são o botão
-        // canônico (`Default`, ou `Accent` para a chave que está NA TELA — sempre um alvo).
-        if cell.selected {
-            paint_marked_cell(ctx, theme, r, &label, cell.weight);
-        } else {
-            let kind = if snap.current_key == Some(cell.key) {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            };
-            paint_button(
-                &Button::new(id, label).state(st).kind(kind),
-                r,
-                ctx.scene,
-                ctx.text_system,
-                theme,
-            );
-        }
-        // **Fixada no light table**: uma marca no canto INFERIOR-esquerdo (o ponto de
-        // instância mora no superior — dois fatos diferentes sobre a mesma célula não
-        // podem dividir o mesmo canto).
-        if cell.pinned && w > INSTANCE_DOT * 2.0 {
-            let d = Rect::new(
-                r.x + Spacing::Xs.px(),
-                r.y + r.h - Spacing::Xs.px() - INSTANCE_DOT,
-                INSTANCE_DOT,
-                INSTANCE_DOT,
-            );
-            fill_rounded_rect(ctx.scene, d, Radius::Sm.px(), resolve(ColorToken::Accent, theme));
-        }
-        // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
-        if cell.instanced && w > INSTANCE_DOT * 2.0 {
-            let d = Rect::new(
-                r.x + Spacing::Xs.px(),
-                r.y + Spacing::Xs.px(),
-                INSTANCE_DOT,
-                INSTANCE_DOT,
-            );
-            fill_rounded_rect(
-                ctx.scene,
-                d,
-                Radius::Sm.px(),
-                resolve(ColorToken::Text2, theme),
-            );
-        }
-        ctx.host.hit_index_mut().register(id, r);
-
-        // **O pega-mão do hold**, na borda direita — registrado DEPOIS da célula porque o
-        // hit index resolve do último para o primeiro: o grip fica POR CIMA do corpo onde
-        // eles se sobrepõem. Numa célula estreita a régua não o oferece (`None`), e aí a
-        // célula inteira segue sendo alvo de mover.
-        if let Some(edge) = ruler.hold_edge_rect(i, snap) {
-            let eid = ph2d_editor_core::ids::flip_hold_edge_id(i);
-            ctx.host.store_mut().register(
-                eid,
-                InteractiveState::FlipStripSurface {
-                    parent: ids::FLIP_STRIP_PANEL,
-                    kind: FlipStripHitKind::HoldEdge {
-                        index: u16::try_from(i).unwrap_or(u16::MAX),
-                    },
-                },
-            );
-            // Uma barrinha discreta: o grip só se ANUNCIA sob o ponteiro (ou preso), senão
-            // toda célula ganharia uma listra permanente que compete com o número.
-            let armed = ctx.host.store().hot_id() == Some(eid)
-                || ctx.host.store().active_id() == Some(eid);
-            if armed {
-                let bar = Rect::new(edge.x + edge.w * 0.5 - GRIP_BAR_W * 0.5, edge.y, GRIP_BAR_W, edge.h);
-                fill_rounded_rect(
-                    ctx.scene,
-                    bar,
-                    Radius::Sm.px(),
-                    resolve(ColorToken::BorderEmph, theme),
-                );
-            }
-            ctx.host.hit_index_mut().register(eid, edge);
-        }
+        paint_cell(ctx, theme, &ruler, snap, i, cell, font);
     }
 
     // **O preview do arrasto**: onde a chave VAI cair, ou que largura o hold VAI ter. O
@@ -243,6 +141,139 @@ pub(crate) fn paint(
             Radius::Sm.px(),
             resolve(ColorToken::BorderEmph, theme),
         );
+    }
+}
+
+/// **Uma célula da tira**: o corpo (que move a chave), os dois marcadores e o pega-mão do
+/// hold (que estica a exposição).
+///
+/// Extraída do laço para o `paint` caber no teto de 200 LOC por função — mas o corte não é
+/// arbitrário: aqui está tudo o que é sobre UMA célula, e o que ficou lá é sobre a TIRA
+/// (trilho, régua de scrub, preview, playhead).
+#[allow(clippy::too_many_arguments)]
+fn paint_cell(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    ruler: &StripRuler,
+    snap: &FlipStripSnapshot,
+    i: usize,
+    cell: &crate::state::FlipCell,
+    font: f32,
+) {
+    let Some(r) = ruler.cell_rect(i, snap) else {
+        return; // célula sem geometria (a régua não a resolveu) — nada a pintar
+    };
+    let id = ids::flip_cell_id(i);
+    // **A célula é uma SUPERFÍCIE de gesto, não mais um botão**: ela responde a toque
+    // (selecionar) E a arrasto (mover no tempo), e um widget primitivo só sabe a
+    // primeira. A aparência não muda — `paint_button` continua desenhando; o que era
+    // dado de graça pelo `InteractiveState::Button` (hover/press) passa a ser DERIVADO
+    // do próprio store, que é quem sabe quem está sob o ponteiro e quem está preso.
+    ctx.host.store_mut().register(
+        id,
+        InteractiveState::FlipStripSurface {
+            parent: ids::FLIP_STRIP_PANEL,
+            kind: FlipStripHitKind::Cell {
+                index: u16::try_from(i).unwrap_or(u16::MAX),
+            },
+        },
+    );
+    let st = surface_button_state(ctx, id);
+    let w = r.w;
+    // O rótulo só entra quando cabe (numa tira longa a célula é uma lasca).
+    let label = if w > font * LABEL_FIT {
+        format!("{}", cell.exposure)
+    } else {
+        String::new()
+    };
+    // **Uma célula marcada para o MULTIFRAME veste a cor de ACENTO** (W7, Enio 2026-07-15).
+    // A marcada é pintada à mão (fundo clareado pelo falloff + número por CIMA) para o
+    // número NÃO ser lavado pelo clareamento ("apagou o número"); as demais são o botão
+    // canônico (`Default`, ou `Accent` para a chave que está NA TELA — sempre um alvo).
+    if cell.selected {
+        paint_marked_cell(ctx, theme, r, &label, cell.weight);
+    } else {
+        let kind = if snap.current_key == Some(cell.key) {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        };
+        paint_button(
+            &Button::new(id, label).state(st).kind(kind),
+            r,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+    }
+    // **Fixada no light table**: uma marca no canto INFERIOR-esquerdo (o ponto de
+    // instância mora no superior — dois fatos diferentes sobre a mesma célula não
+    // podem dividir o mesmo canto).
+    if cell.pinned && w > INSTANCE_DOT * 2.0 {
+        let d = Rect::new(
+            r.x + Spacing::Xs.px(),
+            r.y + r.h - Spacing::Xs.px() - INSTANCE_DOT,
+            INSTANCE_DOT,
+            INSTANCE_DOT,
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            d,
+            Radius::Sm.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+    }
+    // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
+    if cell.instanced && w > INSTANCE_DOT * 2.0 {
+        let d = Rect::new(
+            r.x + Spacing::Xs.px(),
+            r.y + Spacing::Xs.px(),
+            INSTANCE_DOT,
+            INSTANCE_DOT,
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            d,
+            Radius::Sm.px(),
+            resolve(ColorToken::Text2, theme),
+        );
+    }
+    ctx.host.hit_index_mut().register(id, r);
+
+    // **O pega-mão do hold**, na borda direita — registrado DEPOIS da célula porque o
+    // hit index resolve do último para o primeiro: o grip fica POR CIMA do corpo onde
+    // eles se sobrepõem. Numa célula estreita a régua não o oferece (`None`), e aí a
+    // célula inteira segue sendo alvo de mover.
+    if let Some(edge) = ruler.hold_edge_rect(i, snap) {
+        let eid = ph2d_editor_core::ids::flip_hold_edge_id(i);
+        ctx.host.store_mut().register(
+            eid,
+            InteractiveState::FlipStripSurface {
+                parent: ids::FLIP_STRIP_PANEL,
+                kind: FlipStripHitKind::HoldEdge {
+                    index: u16::try_from(i).unwrap_or(u16::MAX),
+                },
+            },
+        );
+        // Uma barrinha discreta: o grip só se ANUNCIA sob o ponteiro (ou preso), senão
+        // toda célula ganharia uma listra permanente que compete com o número.
+        let armed =
+            ctx.host.store().hot_id() == Some(eid) || ctx.host.store().active_id() == Some(eid);
+        if armed {
+            let bar = Rect::new(
+                edge.x + edge.w * 0.5 - GRIP_BAR_W * 0.5,
+                edge.y,
+                GRIP_BAR_W,
+                edge.h,
+            );
+            fill_rounded_rect(
+                ctx.scene,
+                bar,
+                Radius::Sm.px(),
+                resolve(ColorToken::BorderEmph, theme),
+            );
+        }
+        ctx.host.hit_index_mut().register(eid, edge);
     }
 }
 

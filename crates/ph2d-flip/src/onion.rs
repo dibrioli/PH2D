@@ -248,7 +248,10 @@ mod tests {
             mode: OnionMode::Absolute,
             ..Default::default()
         };
-        assert!(ghosts(&l, 12, &s, &[], &[]).is_empty(), "ninguém a ±1 QUADRO");
+        assert!(
+            ghosts(&l, 12, &s, &[], &[]).is_empty(),
+            "ninguém a ±1 QUADRO"
+        );
         assert_eq!(
             ghosts(&l, 12, &OnionSettings::default(), &[], &[]).len(),
             2,
@@ -334,9 +337,7 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            !ghosts(&l, 0, &s, &[], &[])
-                .iter()
-                .any(|g| g.key == 6),
+            !ghosts(&l, 0, &s, &[], &[]).iter().any(|g| g.key == 6),
             "sem pin, o breakdown é filtrado (o controle)"
         );
         assert!(

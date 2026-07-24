@@ -32,7 +32,7 @@ pub(crate) fn hold_grip_w() -> f32 {
 
 /// A fração máxima da largura da célula que o pega-mão do hold pode tomar. Acima disto a
 /// célula é estreita demais para hospedar os dois alvos e o hold não é oferecido.
-const HOLD_GRIP_MAX_SHARE: f32 = 0.4;
+const HOLD_GRIP_MAX_SHARE: f32 = 0.4; // LITERAL-PX-OK: fração da largura, não medida de design
 
 /// A régua desta pintura: onde cada quadro cai, e o inverso.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -197,7 +197,10 @@ mod tests {
             six.w,
             one.w
         );
-        assert!((six.x - r.x_of_frame(1)).abs() < 0.01, "começa na sua chave");
+        assert!(
+            (six.x - r.x_of_frame(1)).abs() < 0.01,
+            "começa na sua chave"
+        );
     }
 
     /// 🔴 **Numa célula estreita o hold NÃO é oferecido** — a célula inteira vira alvo de

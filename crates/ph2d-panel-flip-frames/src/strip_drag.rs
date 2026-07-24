@@ -225,9 +225,9 @@ pub(crate) fn process(
             ctx.host
                 .bus_mut()
                 .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
-                    ph2d_editor_core::tool::PanelEvent::Click(
-                        ph2d_editor_core::ids::flip_cell_id(index),
-                    ),
+                    ph2d_editor_core::tool::PanelEvent::Click(ph2d_editor_core::ids::flip_cell_id(
+                        index,
+                    )),
                 ));
         }
     }
@@ -372,7 +372,9 @@ mod tests {
         let _ = crate::state::drain_flip_strip_intents();
         let mut d = None;
         let kind = FlipStripHitKind::HoldEdge { index: 0 };
-        let edge = r.hold_edge_rect(0, &s).expect("a célula de 4 quadros tem grip");
+        let edge = r
+            .hold_edge_rect(0, &s)
+            .expect("a célula de 4 quadros tem grip");
         let start = edge.x + edge.w * 0.5;
         apply(&mut d, &r, &s, gesture(kind, GesturePhase::Begin, start));
         // Leva a borda até o meio do quadro 6 ⇒ exposição 7 (quadros 0..=6).
@@ -402,7 +404,12 @@ mod tests {
             gesture(kind, GesturePhase::Begin, edge.x + edge.w * 0.5),
         );
         let far_left = r.x_of_frame(-20);
-        apply(&mut d, &r, &s, gesture(kind, GesturePhase::Update, far_left));
+        apply(
+            &mut d,
+            &r,
+            &s,
+            gesture(kind, GesturePhase::Update, far_left),
+        );
         apply(&mut d, &r, &s, gesture(kind, GesturePhase::End, far_left));
         assert_eq!(
             crate::state::drain_flip_strip_intents(),

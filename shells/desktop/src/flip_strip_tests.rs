@@ -10,7 +10,7 @@ use ph2d_editor::tool::PanelEvent;
 use ph2d_flip::{DrawingId, FlipObjectId, Hold, KeyKind};
 
 /// Um doc com UM objeto, UMA camada e a chave 0 (com desenho próprio), playhead em 0.
-fn doc_with_key0() -> (FlipDoc, FlipObjectId, LayerId, Playhead) {
+pub(super) fn doc_with_key0() -> (FlipDoc, FlipObjectId, LayerId, Playhead) {
     let mut doc = FlipDoc::default();
     let oid = doc.push_object("Flip");
     let obj = doc.object_mut(oid).unwrap();
@@ -24,7 +24,7 @@ fn did_at(doc: &FlipDoc, oid: FlipObjectId, lid: LayerId, f: Frame) -> Option<Dr
 }
 
 /// Clica um botão da barra pelo caminho REAL (o `PanelEvent` que o painel empurra).
-fn click(
+pub(super) fn click(
     id: ph2d_editor::NodeId,
     doc: &mut FlipDoc,
     lid: LayerId,
@@ -581,73 +581,4 @@ fn the_add_button_uses_the_corrected_pairing() {
         (y - 50.0).abs() < 1e-3,
         "a correção A0<->B0 devia levar o traço 0 a y=50; deu {y:.1} — o Add ignorou a sessão"
     );
-}
-
-/// 🔴 **O botão Pin fixa a chave ATUAL no light table — e clicar de novo a solta.**
-///
-/// O gesto ponta a ponta pelo caminho real (o `PanelEvent` que o painel empurra). Sem o
-/// braço, o botão seria pintado, roteado, e inerte: a lista de fantasmas nunca mudaria e
-/// o artista concluiria que o light table "não faz nada".
-#[test]
-fn the_pin_button_toggles_the_current_key_in_the_light_table() {
-    let (mut doc, _oid, lid, mut ph) = doc_with_key0();
-    let mut strip = FlipStrip::default();
-    assert!(strip.pinned_keys().is_empty(), "nasce sem referência nenhuma");
-
-    let changed = click(
-        ph2d_editor::ids::FLIP_KEY_PIN,
-        &mut doc,
-        lid,
-        &mut ph,
-        &mut strip,
-    );
-    assert_eq!(strip.pinned_keys(), &[0], "a chave 0 virou referência");
-    assert!(
-        !changed,
-        "fixar não é edição de DOCUMENTO — nenhum pixel mudou, e um passo de undo por \
-         'quero ver aquele quadro' seria ruído na fila"
-    );
-
-    click(
-        ph2d_editor::ids::FLIP_KEY_PIN,
-        &mut doc,
-        lid,
-        &mut ph,
-        &mut strip,
-    );
-    assert!(
-        strip.pinned_keys().is_empty(),
-        "o mesmo botão solta (é um toggle, não dois verbos)"
-    );
-}
-
-/// 🔴 **Um pin fixado aparece como FANTASMA fora do alcance** — a ponta que fecha o
-/// light table (o T3.9 do plano W3).
-///
-/// Este é o gate que separa "o botão guarda um número" de "o artista vê o quadro": ele
-/// pergunta ao MESMO `ph2d_flip::ghosts` que o passe de render consome. Mutação que
-/// sangra: o snapshot deixar de passar `pinned_keys()` adiante (a chave 24 some da lista).
-#[test]
-fn a_pinned_key_reaches_the_ghost_pass_from_outside_the_range() {
-    let (mut doc, oid, lid, _ph) = doc_with_key0();
-    {
-        let obj = doc.object_mut(oid).unwrap();
-        obj.insert_frame(lid, 12, Hold::Implicit, KeyKind::Keyframe);
-        obj.insert_frame(lid, 24, Hold::Implicit, KeyKind::Keyframe);
-    }
-    let mut strip = FlipStrip::default();
-    strip.toggle_pin(24);
-
-    let obj = doc.object(oid).unwrap();
-    let layer = obj.layer(lid).unwrap();
-    // No quadro 0, com alcance ±1, a chave 24 está MUITO fora — só o pin a traz.
-    let ghosts = ph2d_flip::ghosts(layer, 0, &obj.onion, strip.selected_keys(), strip.pinned_keys());
-    assert!(
-        ghosts.iter().any(|g| g.key == 24),
-        "a referência fixada tem de chegar ao passe de fantasmas: {ghosts:?}"
-    );
-    // E sem o pin ela não chega (o controle — senão o gate ficaria verde num mundo onde
-    // TUDO vira fantasma).
-    let plain = ph2d_flip::ghosts(layer, 0, &obj.onion, strip.selected_keys(), &[]);
-    assert!(!plain.iter().any(|g| g.key == 24));
 }

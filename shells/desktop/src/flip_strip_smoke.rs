@@ -191,7 +191,11 @@ mod tests {
         // Elas TÊM de ser desiguais: uma tira de células iguais não mostra que a largura
         // significa alguma coisa, e o gesto de esticar não teria contra o que ser julgado.
         assert!(
-            exposures.iter().collect::<std::collections::BTreeSet<_>>().len() >= 3,
+            exposures
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                >= 3,
             "as exposições precisam ser visivelmente diferentes"
         );
         // E cada chave tem arte (um fantasma fixado só se julga se der para reconhecê-lo).

@@ -37,6 +37,15 @@ pub(crate) struct FlipStrip {
     /// **multiframe** (W7) a usa como alvo: com 2+ chaves marcadas, o MESMO gesto de
     /// escultura/balde age em todas.
     pub(crate) selection: Vec<Frame>,
+    /// **Light table** (T3.9): chaves fixadas como REFERÊNCIA — elas aparecem como
+    /// fantasma além dos vizinhos, em qualquer modo e fora do alcance.
+    ///
+    /// ⚠️ Estado de SESSÃO, como a `selection` ao lado: pins não viajam no arquivo. Levá-los
+    /// ao documento custaria um campo apendado numa struct serializada, e o `FlipDoc` viaja
+    /// DENTRO do `ProjectState` sem versão própria — ou seja, um bump de `PROJECT_SCHEMA`
+    /// (que RECUSA todo projeto já salvo) numa janela em que outras linhas também bumpam.
+    /// Persistir é decisão de produto, nomeada no handoff.
+    pub(crate) pinned: Vec<Frame>,
     /// **Falloff temporal** do multiframe (W7): com ele LIGADO, os quadros vizinhos
     /// recebem menos influência que o ativo. Desligado por padrão — o uso comum é
     /// *"aplique esta edição em todos os quadros que marquei"*, e o Blender também o expõe
@@ -78,6 +87,7 @@ impl Default for FlipStrip {
             tween_ease: 0,
             tween_fade: false,
             selection: Vec::new(),
+            pinned: Vec::new(),
             falloff: false,
             tween_correct: None,
         }
@@ -100,6 +110,29 @@ impl FlipStrip {
     /// as usa como alvo — `flip_multiframe::targets`).
     pub(crate) fn selected_keys(&self) -> &[Frame] {
         &self.selection
+    }
+
+    /// As chaves fixadas no light table (o passe de fantasmas as lê SEMPRE).
+    pub(crate) fn pinned_keys(&self) -> &[Frame] {
+        &self.pinned
+    }
+
+    /// Fixa/desafixa `key` no light table. Devolve `true` se passou a estar fixada.
+    ///
+    /// Um toggle, e não dois botões: o artista aponta o quadro e diz *"este eu quero
+    /// ver"* — dizer isso de novo é o que desfaz.
+    pub(crate) fn toggle_pin(&mut self, key: Frame) -> bool {
+        match self.pinned.iter().position(|&k| k == key) {
+            Some(i) => {
+                self.pinned.remove(i);
+                false
+            }
+            None => {
+                self.pinned.push(key);
+                self.pinned.sort_unstable();
+                true
+            }
+        }
     }
 }
 
@@ -360,6 +393,16 @@ pub(crate) fn apply_panel_event(
         // (`make_single_user`). É a volta da instância: sem ela, compartilhar arte seria
         // irreversível (só apagando a chave e redesenhando). No-op honesto quando o
         // desenho já é exclusivo — não há vínculo a quebrar.
+        // **Pin** (light table, T3.9) — fixa/desafixa a chave atual como REFERÊNCIA: ela
+        // vira fantasma em qualquer modo e fora do alcance. Não é edição de documento
+        // (nenhum pixel muda), então NÃO devolve `true`: é estado de sessão, como a
+        // seleção — e um passo de undo por "eu quis ver aquele quadro" seria ruído na fila.
+        PanelEvent::Click(id) if *id == ids::FLIP_KEY_PIN => {
+            if let Some(k) = key {
+                strip.toggle_pin(k);
+            }
+            false
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_KEY_UNLINK => {
             let Some(k) = key else { return false };
             let ok = flip

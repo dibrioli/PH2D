@@ -13,7 +13,7 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button
 use ph2d_editor_core::tool::PanelEvent;
 
 /// Os botões/toggles da barra + o X, todos encaminhados como `Click`.
-const BUTTONS: [ph2d_a11y::NodeId; 18] = [
+const BUTTONS: [ph2d_a11y::NodeId; 19] = [
     ids::FLIP_PREV_DRAWING,
     ids::FLIP_PLAY,
     ids::FLIP_NEXT_DRAWING,
@@ -25,6 +25,7 @@ const BUTTONS: [ph2d_a11y::NodeId; 18] = [
     ids::FLIP_KEY_DUP,
     ids::FLIP_KEY_INSTANCE,
     ids::FLIP_KEY_UNLINK,
+    ids::FLIP_KEY_PIN,
     ids::FLIP_KEY_DELETE,
     ids::FLIP_KEY_LEFT,
     ids::FLIP_KEY_RIGHT,
@@ -42,13 +43,6 @@ const NUMBERS: [ph2d_a11y::NodeId; 5] = [
     ids::FLIP_HOLD_NUM,
     ids::FLIP_TWEEN_NUM,
 ];
-
-/// A célula `index` da tira, se `id` for uma delas (as células são registradas por
-/// ÍNDICE, e o snapshot deste frame diz quantas existem).
-fn cell_index(id: ph2d_a11y::NodeId) -> Option<usize> {
-    let n = current_flip_strip().cells.len();
-    (0..n).find(|&i| ids::flip_cell_id(i) == id)
-}
 
 /// A opção `n` de um dos dropdowns, se `id` for uma delas — devolve TAMBÉM de qual chip,
 /// porque o dispatch precisa fechar o popover certo e mandar o `SelectOption` com o id do

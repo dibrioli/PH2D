@@ -62,7 +62,7 @@ fn at(f: i32) -> Playhead {
 fn a_layers_ghost_sits_above_the_layers_below_it() {
     let doc = doc_bg_fg();
     let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
-    let (layers, _) = collect_layers(&doc, &ph, None, None, &[], Some(&[]));
+    let (layers, _) = collect_layers(&doc, &ph, None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
 
     let kinds: Vec<&str> = layers
         .iter()
@@ -141,7 +141,7 @@ fn there_are_no_ghosts_without_the_tool_or_during_play() {
 
     let mut playing = at(8);
     playing.play();
-    let (layers, _) = collect_layers(&doc, &playing, None, None, &[], Some(&[]));
+    let (layers, _) = collect_layers(&doc, &playing, None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
     assert!(layers.iter().all(|l| l.ghost.is_none()), "durante o play");
 }
 
@@ -216,7 +216,7 @@ fn each_slice_carries_the_pose_of_its_own_key() {
         .unwrap()
         .translate_frame(fg, 8, Vec2::new(100.0, 0.0));
 
-    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], Some(&[]));
+    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()));
     // BG · fantasma do FG (quadro 0) · FG (quadro 8)
     let (ghost, art) = (&layers[1], &layers[2]);
 

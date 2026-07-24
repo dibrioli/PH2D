@@ -24,7 +24,7 @@
 use super::flip_pass_cache::TessCache;
 use crate::flip_transform::art_to_world;
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -126,7 +126,7 @@ pub(crate) fn render(
     // Ghost Frames: `Some(chaves selecionadas)` = a tool Flip está ativa (fantasmas
     // ligados, sujeitos aos gates do objeto/camada e ao "some no play"); `None` =
     // outra tool no comando — a cena Flip aparece limpa, sem fantasma.
-    ghosts: Option<&[Frame]>,
+    ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
@@ -339,7 +339,7 @@ fn collect_layers<'a>(
     preview: Option<&'a FlipGpuData>,
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
-    ghosts: Option<&[Frame]>,
+    ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
@@ -384,11 +384,11 @@ fn collect_layers<'a>(
             // Blend Normal + opacity 1: o fade/opacidade já estão no alpha do tint
             // (aplicá-los de novo pelo compositor os elevaria ao quadrado, e um
             // blend Multiply da camada tingiria o fantasma com a arte de baixo).
-            if let Some(selected) = ghosts {
+            if let Some(sources) = ghosts {
                 // No quadro-FONTE (o do ciclo): os vizinhos do desenho que está NA
                 // TELA. No quadro cru, um Loop na 2ª volta não teria vizinho nenhum.
                 let src = layer.source_frame(frame);
-                for g in super::flip_pass_ghosts::collect(obj, layer, src, playhead, selected) {
+                for g in super::flip_pass_ghosts::collect(obj, layer, src, playhead, sources) {
                     out.push(LayerRef {
                         key: ghost_key(obj.id.0, layer.id.0, g.delta),
                         blend: ph2d_flip::BlendMode::default().to_u8(),

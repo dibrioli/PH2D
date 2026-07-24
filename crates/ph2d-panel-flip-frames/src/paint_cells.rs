@@ -165,6 +165,18 @@ pub(crate) fn paint(
                 theme,
             );
         }
+        // **Fixada no light table**: uma marca no canto INFERIOR-esquerdo (o ponto de
+        // instância mora no superior — dois fatos diferentes sobre a mesma célula não
+        // podem dividir o mesmo canto).
+        if cell.pinned && w > INSTANCE_DOT * 2.0 {
+            let d = Rect::new(
+                r.x + Spacing::Xs.px(),
+                r.y + r.h - Spacing::Xs.px() - INSTANCE_DOT,
+                INSTANCE_DOT,
+                INSTANCE_DOT,
+            );
+            fill_rounded_rect(ctx.scene, d, Radius::Sm.px(), resolve(ColorToken::Accent, theme));
+        }
         // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
         if cell.instanced && w > INSTANCE_DOT * 2.0 {
             let d = Rect::new(

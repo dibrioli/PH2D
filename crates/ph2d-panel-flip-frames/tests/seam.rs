@@ -33,6 +33,7 @@ fn strip_snapshot() -> FlipStripSnapshot {
         breakdown: false,
         instanced: false,
         selected: false,
+        pinned: false,
         weight: 1.0,
     };
     FlipStripSnapshot {
@@ -271,6 +272,7 @@ fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             },
             FlipCell {
@@ -279,6 +281,7 @@ fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             },
             FlipCell {
@@ -287,6 +290,7 @@ fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             },
         ],
@@ -358,6 +362,7 @@ fn every_toolbar_control_is_actually_painted() {
             breakdown: false,
             instanced: false,
             selected: false,
+            pinned: false,
             weight: 1.0,
         }],
         fps: 12.0,
@@ -434,6 +439,7 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             },
             FlipCell {
@@ -442,6 +448,7 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             },
         ],
@@ -532,6 +539,7 @@ fn opening_one_dropdown_closes_the_other() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                pinned: false,
                 weight: 1.0,
             }],
             fps: 12.0,

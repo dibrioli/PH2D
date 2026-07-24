@@ -90,6 +90,11 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         Item::Toggle(ids::FLIP_GHOST, "Ghost", snap.ghost),
         Item::Number(ids::FLIP_GHOST_BEFORE_NUM, f64::from(snap.ghost_before)),
         Item::Number(ids::FLIP_GHOST_AFTER_NUM, f64::from(snap.ghost_after)),
+        // **Pin** (light table, T3.9): fixa a chave ATUAL como referência — ela vira
+        // fantasma além dos vizinhos, em qualquer modo e fora do alcance. Mora no grupo
+        // do Ghost porque é a mesma pergunta ("o que mais eu vejo enquanto desenho?"),
+        // e não uma op de chave: ele não cria, não apaga e não move nada.
+        Item::Toggle(ids::FLIP_KEY_PIN, "Pin", snap.current_pinned),
         Item::Gap,
         // Autoria: o que nasce ao desenhar depois do hold
         Item::Toggle(ids::FLIP_AUTOKEY, "Auto", snap.autokey),

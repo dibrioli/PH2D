@@ -93,6 +93,7 @@ fn strip_snapshot(
                 .is_some_and(|f| f.kind == ph2d_flip::KeyKind::Breakdown),
             instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
             selected: sel.contains(&key),
+            pinned: strip.pinned_keys().contains(&key),
             weight: crate::flip_multiframe::cell_weight(sel, raw, key, strip.falloff),
         })
         .collect();
@@ -114,6 +115,11 @@ fn strip_snapshot(
         autokey: strip.autokey,
         additive: strip.additive,
         falloff: strip.falloff,
+        // O toggle **Pin** descreve a chave ATIVA (como o Hold ao lado dele): ele acende
+        // quando o quadro em que se está é uma referência fixada.
+        current_pinned: layer
+            .active_key(frame)
+            .is_some_and(|k| strip.pinned_keys().contains(&k)),
         tween_count: strip.tween_count,
         tween_ease: strip.tween_ease,
         tween_fade: strip.tween_fade,

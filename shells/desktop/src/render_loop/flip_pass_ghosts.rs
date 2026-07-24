@@ -36,19 +36,33 @@ pub(super) struct GhostRef<'a> {
     pub(super) alpha: f32,
 }
 
+/// **De onde saem os fantasmas além da vizinhança**: as chaves marcadas na tira (que só o
+/// modo `Selected` lê) e os **pins** do light table (que todo modo lê).
+///
+/// Um struct, e não dois parâmetros, porque a cadeia que os carrega tem três degraus
+/// (`render` → `collect_layers` → `collect`) — cada fonte nova custaria um parâmetro em
+/// cada um, e a assinatura é onde esse tipo de crescimento aparece tarde demais.
+#[derive(Copy, Clone, Debug, Default)]
+pub(crate) struct GhostSources<'a> {
+    /// Chaves marcadas na tira (multiframe). Só o `OnionMode::Selected` as consome.
+    pub(crate) selected: &'a [Frame],
+    /// **Light table** (T3.9): referências fixas, visíveis em qualquer modo e fora do
+    /// alcance.
+    pub(crate) pinned: &'a [Frame],
+}
+
 /// Os fantasmas da camada `layer` no quadro `frame`, ou vazio se algum gate barra.
-/// `selected` são as chaves marcadas na tira (só o modo `Selected` as lê).
 pub(super) fn collect<'a>(
     obj: &'a FlipObject,
     layer: &FlipLayer,
     frame: Frame,
     playhead: &Playhead,
-    selected: &[Frame],
+    sources: GhostSources<'_>,
 ) -> Vec<GhostRef<'a>> {
     if playhead.is_playing() || !obj.onion.enabled || !layer.use_onion || !layer.visible {
         return Vec::new();
     }
-    ph2d_flip::ghosts(layer, frame, &obj.onion, selected)
+    ph2d_flip::ghosts(layer, frame, &obj.onion, sources.selected, sources.pinned)
         .into_iter()
         .filter_map(|g| {
             let art = obj.drawing(g.drawing)?;

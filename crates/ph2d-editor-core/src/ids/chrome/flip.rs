@@ -332,6 +332,11 @@ pub const FLIP_KEY_INSTANCE: NodeId = hash_node_id("flip.strip.key_instance");
 /// ela passa a ter um desenho só dela. A saída de emergência da instância — sem ela,
 /// instanciar seria irreversível.
 pub const FLIP_KEY_UNLINK: NodeId = hash_node_id("flip.strip.key_unlink");
+/// **Pin (light table, T3.9)** — marca a chave atual como REFERÊNCIA persistente: ela
+/// aparece como fantasma **além** dos vizinhos, em qualquer modo e fora do alcance. É o
+/// *bookmark* do TVPaint/OpenToonz — o quadro extremo que o animador quer no fundo da tela
+/// enquanto desenha o meio. Clicar de novo desmarca.
+pub const FLIP_KEY_PIN: NodeId = hash_node_id("flip.strip.key_pin");
 /// Delete the current key.
 pub const FLIP_KEY_DELETE: NodeId = hash_node_id("flip.strip.key_del");
 /// Exposure (hold) of the selected key, in frames.

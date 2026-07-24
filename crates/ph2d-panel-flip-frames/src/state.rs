@@ -26,6 +26,9 @@ pub struct FlipCell {
     /// as chaves marcadas. Sem o realce a feature seria invisível — o usuário marcaria
     /// quadros sem saber quais, e um gesto agiria onde ele não vê.
     pub selected: bool,
+    /// **Fixada no light table** (T3.9): esta chave é referência persistente e aparece
+    /// como fantasma além dos vizinhos. A célula ganha um pino.
+    pub pinned: bool,
     /// **O PESO do multiframe** desta chave `[0,1]` — a força com que o pincel a edita
     /// (o falloff temporal, W7). `1.0` fora do multiframe ou com o falloff desligado. A
     /// COR DO FUNDO da célula o desenha: a célula marcada veste o acento e CLAREIA por
@@ -75,6 +78,9 @@ pub struct FlipStripSnapshot {
     /// **Falloff temporal** do multiframe: os vizinhos recebem menos influência que o
     /// quadro ativo. Só PINCÉIS o respeitam (o balde é discreto).
     pub falloff: bool,
+    /// A chave ATIVA está fixada no light table? (é o estado do toggle **Pin** da barra —
+    /// ele descreve a chave em que se está, como o Hold ao lado).
+    pub current_pinned: bool,
 }
 
 impl FlipStripSnapshot {
@@ -189,6 +195,7 @@ mod scrub_tests {
             breakdown: false,
             instanced: false,
             selected: false,
+            pinned: false,
             weight: 1.0,
         }
     }

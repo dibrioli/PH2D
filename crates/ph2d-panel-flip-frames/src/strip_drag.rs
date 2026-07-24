@@ -247,6 +247,7 @@ mod tests {
             breakdown: false,
             instanced: false,
             selected: false,
+            pinned: false,
             weight: 1.0,
         }
     }

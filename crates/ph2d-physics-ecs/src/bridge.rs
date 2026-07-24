@@ -529,6 +529,13 @@ impl PhysicsBridge {
             // The rotational half (W-AreaTorque): a fifth optional component, folded into
             // the same `AreaEffect` bundle for the same reason as its siblings.
             let zone_torque = world.get::<crate::AreaTorque>(e).map(|t| t.0);
+            // The FRAME of the force (W-AreaFrame): a sixth optional component, and a
+            // MARKER — its presence pins the force to world axes, its absence (the
+            // default) authors it in the zone's own frame so turning the sensor turns
+            // the wind. It is deliberately NOT part of `any`: a marker alone describes
+            // the frame of a force that is not there, and registering an inert zone
+            // would cost the substep walk (and could wake a body) for nothing.
+            let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(e).is_some();
             let any = zone_force.is_some()
                 || zone_drag.is_some()
                 || zone_density.is_some()
@@ -540,6 +547,7 @@ impl PhysicsBridge {
                 density: zone_density.unwrap_or(0.0),
                 form_drag: zone_form.unwrap_or(0.0),
                 torque: zone_torque.unwrap_or(0.0),
+                world_axes: zone_world_axes,
             });
             let desc = crate::scale::body_desc(
                 rb,

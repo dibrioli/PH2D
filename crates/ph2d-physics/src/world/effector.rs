@@ -46,6 +46,52 @@ use super::buoyancy;
 use super::desc::{AreaEffect, BodyDesc};
 use super::form_drag;
 
+/// **The authored force, in world axes** — the single door for the zone's FRAME
+/// (W-AreaFrame).
+///
+/// A zone's force is authored in the zone's own frame by default, so **rotating the
+/// sensor rotates the wind** (a diagonal conveyor is a conveyor you turned). Pass
+/// `world_axes` to pin the direction to the world instead — the zone turns, the blow
+/// does not (Unity's `AreaEffector2D::useGlobalAngle`).
+///
+/// ⚠️ **It takes `(sin, cos)`, never an angle, and that is a determinism decision.**
+/// rapier stores a body's rotation as a `UnitComplex`, whose `im`/`re` ARE the sine and
+/// cosine — already exact. Asking it for `.angle()` would call `atan2`, and `atan2` is
+/// std's, not `libm`'s: it is not pinned across OSes, and this result feeds impulses that
+/// feed the `physics_ecs_c9` hash the CI compares between Linux, macOS and Windows (law 6
+/// — 1 ulp is a cross-OS bug). Callers holding an ANGLE use [`zone_force_world_at`], which
+/// crosses that bridge through `libm` exactly once.
+///
+/// ⚠️ **Byte-identical for an unrotated zone in BOTH modes:** `sin 0` is exactly `0.0` and
+/// `cos 0` exactly `1.0`, so the rotated branch reduces to the identity on the f32 bits.
+/// That is what let the default change without moving a single existing scene.
+///
+/// This is the door the SOLVER and the OVERLAY both ask, for the reason `scaled_shape`
+/// exists: an arrow drawn from a second answer would describe a wind that does not blow
+/// there, and nobody reads a number off a screenshot to catch it.
+#[must_use]
+pub fn zone_force_world(force: [f32; 2], world_axes: bool, sin_r: f32, cos_r: f32) -> [f32; 2] {
+    if world_axes {
+        return force;
+    }
+    [
+        force[0] * cos_r - force[1] * sin_r,
+        force[0] * sin_r + force[1] * cos_r,
+    ]
+}
+
+/// [`zone_force_world`] for a caller that holds the rotation as an ANGLE (radians) —
+/// the ECS side, whose `Transform.rotation` is one.
+///
+/// `libm::sincosf`, never `f32::sin_cos`: the module's transcendentals are pinned (law 6),
+/// and this is the one place an angle becomes a pair. The rule itself lives in
+/// [`zone_force_world`] — this only crosses the bridge to it.
+#[must_use]
+pub fn zone_force_world_at(force: [f32; 2], world_axes: bool, rotation: f32) -> [f32; 2] {
+    let (sin_r, cos_r) = libm::sincosf(rotation);
+    zone_force_world(force, world_axes, sin_r, cos_r)
+}
+
 /// **Is this body a force zone, and with what effect?** The single door.
 ///
 /// `None` for a body with no effector, for a zero force, and for a **solid**
@@ -112,16 +158,29 @@ pub(crate) fn apply(
     }
     let mut to_float: Vec<RigidBodyHandle> = Vec::new();
     for &(zone_body, effect) in zones {
-        let force = Vector2::new(effect.force[0], effect.force[1]);
         to_float.clear();
-        // The zone's own collider handle, copied out so the immutable borrow of
-        // `bodies` ends before the impulses below need it mutably.
-        let Some(zone_collider) = bodies
-            .get(zone_body)
-            .and_then(|b| b.colliders().first().copied())
-        else {
+        // The zone's own collider handle AND its pose, copied out so the immutable
+        // borrow of `bodies` ends before the impulses below need it mutably.
+        //
+        // ⚠️ The rotation is the LIVE one, read here every substep, not the one baked
+        // into the spawn `BodyDesc`. For the common static zone the two are the same
+        // number; they part company for a KINEMATIC zone a curve is turning — a fan
+        // sweeping the room — and there the live read is the whole behaviour: the blow
+        // sweeps with the housing. Baking it at spawn would forbid that in silence.
+        //
+        // `rot.im`/`rot.re` are the sine and cosine (rapier keeps rotations as a unit
+        // complex), handed to the door exactly as they are — see `zone_force_world` for
+        // why an angle must not appear on this path.
+        let Some((zone_collider, sin_r, cos_r)) = bodies.get(zone_body).and_then(|b| {
+            let rot = *b.rotation();
+            b.colliders().first().map(|&c| (c, rot.im, rot.re))
+        }) else {
             continue;
         };
+        // The authored push, turned into world axes by the zone's own frame (or left
+        // alone, when the artist pinned it to the world).
+        let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r);
+        let force = Vector2::new(f[0], f[1]);
         for (c1, c2, intersecting) in narrow_phase.intersection_pairs_with(zone_collider) {
             // `intersecting` is the real shape overlap; the pair exists as soon as
             // the bounding volumes touch, which is a bigger region than the area.

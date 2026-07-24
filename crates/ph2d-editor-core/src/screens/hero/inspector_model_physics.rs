@@ -167,6 +167,18 @@ pub struct InspectorPhysicsInfo {
     /// out rather than letting them in. It is the first §11 control gated on another
     /// CONTROL rather than on `kind_tag`.
     pub force: [f32; 2],
+    /// **In whose axes is [`force`](InspectorPhysicsInfo::force)?** (W-AreaFrame)
+    ///
+    /// `false` (the default) is the ZONE's own frame — rotating the sensor rotates the
+    /// wind, so a diagonal conveyor is a conveyor you turned. `true` pins the direction
+    /// to world axes: the zone turns, the blow does not (Unity's `useGlobalAngle`).
+    /// Mirrors the presence of the optional `AreaForceWorldAxes` marker.
+    ///
+    /// ⚠️ It qualifies the FORCE alone, which is geometry rather than a chosen scope: a
+    /// 2D torque is a scalar about Z and an in-plane rotation is about Z, drag is
+    /// isotropic, buoyancy takes its surface from gravity, and shape drag pushes along
+    /// the BODY's edge normals. Same Sensor condition as the rows it sits under.
+    pub force_world_axes: bool,
     /// **Area drag** (W-AreaDrag): the resistance the medium inside this sensor offers
     /// — the difference between wind and water. Mirrors the optional `AreaDrag`
     /// component; absent means an area that resists nothing. Offered under the same
@@ -283,6 +295,11 @@ pub enum PhysicsFieldEdit {
     /// One-way (jump-through) platform toggle (W-OneWay). Attaches/detaches the optional
     /// `OneWayPlatform` marker — the presence-override idiom. NOT Dynamic-only.
     OneWay(bool),
+    /// The FRAME of the zone's force (W-AreaFrame): `false` the zone's own axes (turning
+    /// the sensor turns the wind), `true` pinned to world axes. Attaches/detaches the
+    /// optional `AreaForceWorldAxes` marker — the presence-override idiom, so the default
+    /// costs no component. SENSOR-only, the condition the painter offers it under.
+    ForceWorldAxes(bool),
     /// Force-zone push, X axis, in newtons (W-Area). Read-modify-write on the optional
     /// `AreaEffector` component, detached at neutral (zero on both axes). Honoured only
     /// for a SENSOR collider — the same condition the painter offers it under.

@@ -240,6 +240,11 @@ const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 /// `1` a jump-through platform (solid only from its local +Y side).
 const ONEWAY_LABELS: [&str; 2] = ["Off", "On"];
 
+/// Force-frame labels, indexed by `world_axes as u8`: `0` the zone's own frame (turn
+/// the sensor and the wind turns with it), `1` pinned to world axes (the zone turns,
+/// the blow does not).
+const FORCE_AXES_LABELS: [&str; 2] = ["Zone", "World"];
+
 /// The per-collider COLLISION rules: which layer it is on, whether it is solid or a
 /// trigger, and then the one question that follows from THAT answer — a solid collider
 /// asks *from which side* (one-way), a sensor asks *with what force* (the force zone).
@@ -269,6 +274,7 @@ pub(super) fn paint_collision_rows(
     layer: u8,
     is_sensor: bool,
     one_way: bool,
+    force_world_axes: bool,
 ) -> f32 {
     let mut yy = y;
     // The per-body half of collision layers. The other half — WHICH layers collide —
@@ -314,6 +320,43 @@ pub(super) fn paint_collision_rows(
         for (label, id) in [
             ("Force X (N)", ids::INSP_PHYS_FORCE_X),
             ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
+        ] {
+            yy = num_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                label,
+                id,
+            );
+        }
+        // In WHOSE axes are those two numbers? Directly under them, and deliberately
+        // ABOVE everything else in this branch: it governs the FORCE and nothing else.
+        // That is geometry rather than a scope someone chose — a 2D torque is a scalar
+        // about Z and an in-plane rotation is about Z, so there is nothing to turn; drag
+        // is isotropic; buoyancy measures its surface from GRAVITY (water is level even
+        // in a tilted pool); and shape drag pushes along each edge normal of the BODY.
+        // Painted below the others, the row would read as qualifying all of them.
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Force Axes",
+            ids::INSP_LIVE_PHYSICS_FORCE_AXES,
+            &ids::INSP_PHYS_FORCE_AXES,
+            &FORCE_AXES_LABELS,
+            u8::from(force_world_axes),
+        );
+        for (label, id) in [
             ("Torque (N·m)", ids::INSP_PHYS_AREA_TORQUE),
             ("Drag", ids::INSP_PHYS_AREA_DRAG),
             ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),

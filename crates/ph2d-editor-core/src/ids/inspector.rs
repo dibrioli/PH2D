@@ -349,6 +349,18 @@ pub const INSP_PHYS_ONEWAY: [NodeId; 2] = [
 /// overlap for a solid one. Detaches its `AreaEffector` at zero on both axes.
 pub const INSP_PHYS_FORCE_X: NodeId = hash_node_id("insp_phys_force_x");
 pub const INSP_PHYS_FORCE_Y: NodeId = hash_node_id("insp_phys_force_y");
+/// §11 O FRAME da força da zona (W-AreaFrame) — grupo + as duas opções (Zone / World).
+/// Um controle de dois segmentos, sensor-only como as rows de força que ele qualifica.
+/// `Zone` (o default) autora a força no referencial da zona, então **girar o sensor gira o
+/// vento**; `World` prende a direção aos eixos de mundo (o `useGlobalAngle` da Unity).
+/// Governa a força e SÓ ela — o torque 2D é um escalar sobre Z e não tem o que girar, o
+/// arrasto é isotrópico e o empuxo mede pela gravidade. Marcador `AreaForceWorldAxes`:
+/// presente = World, ausente = Zone, então o default não custa componente nenhum.
+pub const INSP_LIVE_PHYSICS_FORCE_AXES: NodeId = hash_node_id("insp_live_physics_force_axes");
+pub const INSP_PHYS_FORCE_AXES: [NodeId; 2] = [
+    hash_node_id("insp_phys_force_axes_zone"),
+    hash_node_id("insp_phys_force_axes_world"),
+];
 /// §11 Torque de área (W-AreaTorque) — o giro (N·m) que este SENSOR imprime a cada corpo
 /// dentro dele, um redemoinho ou mesa giratória. O SINAL é o sentido; destaca seu
 /// `AreaTorque` em zero exato (não clampa negativo, ao contrário dos irmãos de arrasto).

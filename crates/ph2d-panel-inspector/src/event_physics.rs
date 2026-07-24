@@ -99,6 +99,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // offers it for a solid collider alone. Dim is not a refusal, so the same
             // condition is asked here (W-Area made this row exclusive with Force).
             (info.has_body && !info.is_sensor).then_some(PhysicsFieldEdit::OneWay(i == 1))
+        } else if let Some(i) = ids::INSP_PHYS_FORCE_AXES.iter().position(|&o| o == id) {
+            // Zone | World (W-AreaFrame) — the mirror image of the One-Way gate above:
+            // SENSOR-only, because it qualifies the force rows, and those only exist for
+            // a sensor. Dim is not a refusal, so the condition is asked here too.
+            (info.has_body && info.is_sensor).then_some(PhysicsFieldEdit::ForceWorldAxes(i == 1))
         } else if let Some(i) = ids::INSP_PHYS_DAMPMODE.iter().position(|&o| o == id) {
             // Damp mode: `0` Combine, `1` Replace (W-Damping). Dynamic-only, the same
             // gate the painter offers it under (damping decays a velocity only a

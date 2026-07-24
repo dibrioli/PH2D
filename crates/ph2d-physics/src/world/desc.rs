@@ -137,6 +137,26 @@ pub struct AreaEffect {
     /// e essa assimetria É a feature. Uma zona de *aceleração angular* seria independente
     /// da forma e uma segunda porta para o que a inércia já responde.
     pub torque: f32,
+    /// **Prender a [`force`](AreaEffect::force) aos eixos de MUNDO** (W-AreaFrame).
+    ///
+    /// `false` (o default) é o frame da ZONA: girar o sensor gira o vento, porque a força
+    /// é autorada no referencial dela e rodada pela pose dela
+    /// ([`super::effector::zone_force_world`]). `true` prende a direção ao mundo — girar a
+    /// zona deixa o sopro onde estava (o `useGlobalAngle` do `AreaEffector2D` da Unity).
+    ///
+    /// ⚠️ **Numa zona não-rotacionada os dois são BYTE-IDÊNTICOS** (`sin 0 = 0`, `cos 0 = 1`
+    /// exatos), e é por isso que o default pôde mudar sem mexer em nada que já existia: no
+    /// dia desta wave nenhuma zona de força do repositório — cena de smoke ou fixture —
+    /// tinha rotação diferente de zero.
+    ///
+    /// ⚠️ **Este flag governa a `force` e SÓ ela**, e isso é geometria, não escopo
+    /// escolhido: o [`torque`](AreaEffect::torque) 2D é um escalar sobre Z e uma rotação
+    /// *dentro do plano* é em torno de Z, então `τ_local ≡ τ_mundo`; o [`drag`](AreaEffect::drag)
+    /// é isotrópico; o empuxo mede a superfície pela GRAVIDADE (água é horizontal mesmo em
+    /// poça torta, `super::buoyancy`); e o [`form_drag`](AreaEffect::form_drag) empurra pela
+    /// normal de cada aresta do CORPO. A força é a única grandeza da área com direção
+    /// própria, logo a única que um frame pode girar.
+    pub world_axes: bool,
 }
 
 /// Snapshot of one rigid body for hashing / inspection. Sorted by

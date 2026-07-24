@@ -28,7 +28,8 @@ pub use bridge::contacts::{
 };
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
-    AreaBuoyancy, AreaDrag, AreaEffector, AreaFormDrag, AreaTorque, BodyKind, Ccd, Collider,
+    AreaBuoyancy, AreaDrag, AreaEffector, AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind,
+    Ccd, Collider,
     ColliderShape, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
     InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
     OneWayPlatform, RigidBody,
@@ -37,10 +38,13 @@ pub use joint::{JointKind, PhysicsJoint};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
 // the shell, which only deps this crate) draws the SAME resolved shape the
-// bridge simulates — one import path, one answer.
+// bridge simulates — one import path, one answer. `zone_force_world_at` is there
+// for the same reason and it matters more: the arrow IS the only place the wind's
+// direction is ever read by a person, so a second answer would be a picture of a
+// blow that does not happen, and no gate reads a screenshot.
 pub use ph2d_physics::{
     CAPSULE_CAP_SEGS, ELLIPSE_SEGS, LayerMatrix, MAX_LAYERS, ShapeDesc, capsule_vertices,
-    ellipse_vertices,
+    ellipse_vertices, zone_force_world_at,
 };
 pub use settings::{
     DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,
@@ -77,6 +81,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<AreaBuoyancy>("ph2d::physics::AreaBuoyancy");
     reg.register::<AreaFormDrag>("ph2d::physics::AreaFormDrag");
     reg.register::<AreaTorque>("ph2d::physics::AreaTorque");
+    reg.register::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
 }
 
 #[cfg(test)]
@@ -90,7 +95,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 19);
+        assert_eq!(reg.len(), 20);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -110,5 +115,9 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::AreaBuoyancy").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaFormDrag").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaTorque").is_some());
+        assert!(
+            reg.get_by_name("ph2d::physics::AreaForceWorldAxes")
+                .is_some()
+        );
     }
 }

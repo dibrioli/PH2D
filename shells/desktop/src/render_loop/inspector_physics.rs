@@ -69,6 +69,12 @@ pub(crate) fn build_physics_info(
     // Optional OneWayPlatform marker (W-OneWay); its presence is the flag. A collider
     // property, so it is read for any body kind (a platform is usually Static).
     let one_way = world.get::<OneWayPlatform>(entity).is_some();
+    // Optional AreaForceWorldAxes marker (W-AreaFrame); its presence pins the zone's
+    // force to world axes, its absence authors it in the zone's own frame. Read for any
+    // kind for the same reason as the marker above: it is a collider question.
+    let force_world_axes = world
+        .get::<ph2d_physics_ecs::AreaForceWorldAxes>(entity)
+        .is_some();
     // Optional AreaEffector (W-Area); absent = a body that pushes nothing. Read for any
     // kind here; the rows are SENSOR-only in paint, which is a collider question, not a
     // body-kind one.
@@ -125,6 +131,7 @@ pub(crate) fn build_physics_info(
             damp_mode_tag: 0,
             one_way: false,
             force: [0.0, 0.0],
+            force_world_axes: false,
             area_drag: 0.0,
             area_density: 0.0,
             area_form_drag: 0.0,
@@ -188,6 +195,7 @@ pub(crate) fn build_physics_info(
         damp_mode_tag: damping.mode.tag(),
         one_way,
         force,
+        force_world_axes,
         area_drag,
         area_density,
         area_form_drag,

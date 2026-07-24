@@ -240,6 +240,7 @@ pub(crate) fn paint_physics_section(
         info.layer,
         info.is_sensor,
         info.one_way,
+        info.force_world_axes,
     );
 
     paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)

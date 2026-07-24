@@ -623,3 +623,32 @@ impl AreaTorque {
 }
 
 impl SimComponent for AreaTorque {}
+
+/// **Prender a força da área aos eixos de MUNDO** (W-AreaFrame).
+///
+/// Sua **presença É o booleano**, como [`Ccd`]/[`LockRotation`]/[`OneWayPlatform`]. Ausente
+/// (o default), a [`AreaEffector`] é autorada no frame da ZONA e **girar o sensor gira o
+/// vento** — uma esteira diagonal é uma esteira que você virou. Presente, a direção fica
+/// presa ao mundo: a zona gira, o sopro não (o `useGlobalAngle` do `AreaEffector2D` da
+/// Unity, que existe para o caso de girar a zona só para encaixá-la na geometria da cena).
+///
+/// ⚠️ **Governa a força e SÓ ela, e isso é geometria — não escopo escolhido.** O
+/// [`AreaTorque`] 2D é um escalar sobre Z e girar a zona *dentro do plano* é uma rotação em
+/// torno de Z, então `τ_local ≡ τ_mundo` e não há o que rodar; o [`AreaDrag`] é isotrópico;
+/// o [`AreaBuoyancy`] mede a superfície pela GRAVIDADE (água é horizontal mesmo em poça
+/// torta); e o [`AreaFormDrag`] empurra pela normal de cada aresta do CORPO. A força é a
+/// única grandeza da área com direção própria.
+///
+/// ⚠️ **Um marcador, não um campo na [`AreaEffector`]** — pela sexta vez na família de
+/// zonas, e pela mesma razão: o blob de um componente é postcard POSICIONAL, então apendar
+/// campo seria bump de `PROJECT_SCHEMA`, e um bump **recusa todo projeto já salvo**. Um
+/// componente novo é chaveado pelo hash do próprio nome de tipo e é puramente aditivo. E um
+/// booleano não tem valor a carregar, que é o que faz do marcador a forma honesta.
+///
+/// A ponte dobra a presença em `AreaEffect.world_axes` (lado do wrapper, esse **não** é
+/// serializado), então ele rida o `BodyDesc` que o mundo reconstrói e **um rewind o
+/// re-arma**. Config, nunca estado vivo — como todo componente daqui.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AreaForceWorldAxes;
+
+impl SimComponent for AreaForceWorldAxes {}

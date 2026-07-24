@@ -52,7 +52,9 @@ pub(super) fn apply_marker_edit(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> bool {
-    use ph2d_physics_ecs::{Ccd, LockPositionX, LockPositionY, LockRotation, OneWayPlatform};
+    use ph2d_physics_ecs::{
+        AreaForceWorldAxes, Ccd, LockPositionX, LockPositionY, LockRotation, OneWayPlatform,
+    };
 
     if world.get::<ph2d_physics_ecs::RigidBody>(entity).is_none() {
         // Not "not mine": these edits ARE ours, they are simply refused here. Saying
@@ -64,6 +66,7 @@ pub(super) fn apply_marker_edit(
                 | PhysicsFieldEdit::LockPositionX(_)
                 | PhysicsFieldEdit::LockPositionY(_)
                 | PhysicsFieldEdit::OneWay(_)
+                | PhysicsFieldEdit::ForceWorldAxes(_)
         );
     }
     match edit {
@@ -107,6 +110,16 @@ pub(super) fn apply_marker_edit(
             entity_bits,
             "ph2d::physics::OneWayPlatform",
             &OneWayPlatform,
+        ),
+        // The frame of a force zone — also a COLLIDER property, and the second marker
+        // here that is not Dynamic-only (a wind column is Static scenery).
+        PhysicsFieldEdit::ForceWorldAxes(on) => set_or_clear(
+            on,
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::physics::AreaForceWorldAxes",
+            &AreaForceWorldAxes,
         ),
         _ => return false,
     }

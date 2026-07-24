@@ -473,12 +473,24 @@ pub(crate) fn outlines(
         // force is a property of the AREA, authored once, and it does not stop being
         // true because the simulation started (the launch arrow is hidden while
         // playing precisely because it stops being true the moment the body moves).
+        //
+        // ⚠️ The force is authored in the ZONE's frame, so the arrow is drawn through
+        // `zone_force_world_at` — the SAME door the solver's substep asks (re-exported
+        // for exactly this). Rotating `a.force` here with a second copy of the rule
+        // would draw a wind that does not blow: the arrow is the only place a person
+        // ever reads this direction, and a screenshot is not something a gate reads.
         if show
             && let Some(a) = world.get::<ph2d_physics_ecs::AreaEffector>(e)
             && let Some(arrow) = effector_arrow(
                 t.translation.x + wox,
                 t.translation.y + woy,
-                a.force,
+                ph2d_physics_ecs::zone_force_world_at(
+                    a.force,
+                    world
+                        .get::<ph2d_physics_ecs::AreaForceWorldAxes>(e)
+                        .is_some(),
+                    t.rotation,
+                ),
                 camera,
                 window,
             )

@@ -97,6 +97,19 @@ pub(super) fn dispatch(
     redo_requested: &mut bool,
     toasts: &mut ToastQueue,
 ) -> bool {
+    // Diagnostic TRAP for the mask-path FPS report (2026-07-24): `PH2D_PAINT_PERF=1` logs, per frame
+    // the painter is active, WHICH producer owned the preview + WHICH drain path ran + the phase
+    // timings + the canvas dims. This is what tells the difference between "the GPU producer's partial
+    // upload fired" and "the mask stroke fell to a full CPU composite every frame" — the two the
+    // headless proxy cannot tell apart. Zero cost when the var is unset.
+    let perf_t0 = std::env::var_os("PH2D_PAINT_PERF")
+        .is_some()
+        .then(std::time::Instant::now);
+    let mut dbg_trivial = false;
+    let mut dbg_gray = false;
+    let mut dbg_active_is_mask = false;
+    let mut dbg_dims = (0u32, 0u32);
+
     let painter_is_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
@@ -342,6 +355,14 @@ pub(super) fn dispatch(
         // change, unchanged on an idle frame (so the plan Skips). Read here, inside the downcast, in
         // both the drained and idle cases.
         cache_version = painter.canvas_version();
+
+        // PH2D_PAINT_PERF diagnostic context (cheap reads; only used when the var is set).
+        if perf_t0.is_some() {
+            dbg_trivial = painter.preview_is_trivial_stack();
+            dbg_gray = painter.mask_view_grayscale().is_some();
+            dbg_active_is_mask = painter.active_is_mask();
+            dbg_dims = painter.source_size();
+        }
         // Diagnostic TRAP, half 1 (BUGS_painter.md #11 — OPEN): `PH2D_PREVIEW_DIAG=1` logs which producer
         // owns the preview slot each frame + the CPU partial-upload bbox. This is what proved the per-layer
         // shape edits run on the CPU lane (`gpu_owns=false`) while a slider drag hands the slot to the GPU
@@ -601,6 +622,23 @@ pub(super) fn dispatch(
         painter_preview_gpu,
         toasts,
     );
+
+    if let Some(t0) = perf_t0
+        && painter_is_active
+    {
+        let producer = if gpu_owns_preview { "GPU" } else { "CPU" };
+        let cpu_lane = match painter_dirty_bbox {
+            Some((_, _, w, h)) => format!("partial {w}x{h}"),
+            None => "full/idle".to_string(),
+        };
+        eprintln!(
+            "[paint-perf] {producer} dispatch={:.2}ms canvas={}x{} trivial={dbg_trivial} \
+             mask_gray_view={dbg_gray} active_is_mask={dbg_active_is_mask} cpu_lane={cpu_lane}",
+            t0.elapsed().as_secs_f64() * 1e3,
+            dbg_dims.0,
+            dbg_dims.1,
+        );
+    }
     !apply_selection.is_empty()
 }
 

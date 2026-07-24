@@ -485,6 +485,12 @@ fn measure_the_masked_stroke_on_the_gpu_producer() {
                 &mut preview_gpu,
                 &mut toasts,
             );
+            // Force the queued GPU work (composite compute + the slot copy) to COMPLETE, so the
+            // measurement includes GPU execution and not just the CPU-side encode + staging. Without
+            // this, `queue.submit` returns immediately and the per-frame full-canvas composite + full
+            // 64 MiB slot copy `try_drive` issues (`seed_full = true`) are invisible — the proxy gap
+            // that hid the real mask-path cost behind a "fast" CPU-side number.
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
             moves.push(t0.elapsed().as_secs_f64() * 1e3);
         }
         moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));

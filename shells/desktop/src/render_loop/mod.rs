@@ -172,6 +172,23 @@ fn frame_prof_on() -> bool {
     })
 }
 
+/// `PH2D_PAINT_PERF=1` diagnostic (2026-07-24, the mask-path FPS report): logs the WHOLE-frame wall
+/// clock on drop, so it pairs with the per-dispatch `[paint-perf]` line from `painter_bridge`. The
+/// difference between the two says whether a slow frame's cost is IN the painter preview production
+/// (dispatch) or OUTSIDE it (panel, sim_extract, present) — the question the headless proxy could not
+/// answer. Only logs frames slower than 4 ms so quiet frames don't drown the signal.
+struct PaintFrameTimer(Option<std::time::Instant>);
+impl Drop for PaintFrameTimer {
+    fn drop(&mut self) {
+        if let Some(t0) = self.0 {
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            if ms > 4.0 {
+                eprintln!("[paint-perf] TOTAL frame={ms:.2}ms");
+            }
+        }
+    }
+}
+
 // The mixer panel is UI-only (no `ph2d-audio` dep); its sub-bus strips are
 // index-aligned with `BusId::SUB_BUSES` by convention. This asserts the two
 // counts agree at compile time, so adding a core bus without a panel strip (or
@@ -181,6 +198,12 @@ const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_B
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
+        // PH2D_PAINT_PERF: whole-frame timer (logs on scope exit, pairs with the per-dispatch line).
+        let _paint_frame_timer = PaintFrameTimer(
+            std::env::var_os("PH2D_PAINT_PERF")
+                .is_some()
+                .then(std::time::Instant::now),
+        );
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
         // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
         if let Some(audio) = self.audio.as_mut() {

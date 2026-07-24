@@ -533,8 +533,18 @@ pub(super) fn build_gpu_field_index_range_demo_document(
     // dense field (the panel demo's scale — legibly a grid, substantial on GPU).
     g.set_param(grid, "rows", 512.0);
     g.set_param(grid, "cols", 512.0);
-    g.set_param(grid, "gap_x", 1.0);
-    g.set_param(grid, "gap_y", 1.0);
+    // gap 0.024 makes the 512-wide field ~12 units (centred on origin), so it
+    // FRAMES at the default zoom instead of being a 512-unit wall you must zoom
+    // out to see. The 512-row count keeps the ordinal tilt at ~1/512 (a fine band
+    // edge, not a staircase).
+    g.set_param(grid, "gap_x", 0.024);
+    g.set_param(grid, "gap_y", 0.024);
+    // Shrink the unit quads to dots BEFORE the field writes `falloff` (absent =>
+    // reads its 1.0 identity => the scale is UNIFORM): 0.018 < the 0.024 gap, so
+    // the dots stay distinct instead of tiling into the sheet that hid the band.
+    // (motion.scale eased by falloff = 1 is the full amount — the STRENGTH cluster.)
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.018);
     let field = g.add_node("field.index_range");
     // The middle ~half of the ordinal range, soft-edged — a horizontal band of
     // rows (index is row-major), unmistakably index-keyed rather than spatial.
@@ -549,7 +559,7 @@ pub(super) fn build_gpu_field_index_range_demo_document(
     g.set_param(tint, "b", 0.15);
     g.set_param(tint, "a", 1.0);
     let out = g.add_node("motion.output");
-    for (i, n) in [grid, field, tint, out].into_iter().enumerate() {
+    for (i, n) in [grid, scale, field, tint, out].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -558,24 +568,14 @@ pub(super) fn build_gpu_field_index_range_demo_document(
             },
         );
     }
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (field, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (field, 0),
-        to: (tint, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (tint, 0),
-        to: (out, 0),
-        delayed: false,
-    })
-    .ok()?;
+    for (a, b) in [(grid, scale), (scale, field), (field, tint), (tint, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .ok()?;
+    }
     g.validate(reg).ok()?;
     Some(vec![out])
 }

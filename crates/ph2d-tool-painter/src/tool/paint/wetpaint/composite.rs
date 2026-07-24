@@ -70,17 +70,24 @@ impl PainterTool {
         // The visual terms (doc 22): the paper printed into the pigment and
         // the K–M glaze stacking ride the SAME single render body; both off
         // is the historical pigment render, byte for byte (engine-gated).
+        //
+        // ROW-PARALLEL ([ADR-0109](../../../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md),
+        // amendment 2): the same shape of work the ADR already sanctioned for
+        // the watercolor optical composite — a pure per-pixel map whose rows
+        // are independent, in the crate the ADR already opened. The ENGINE
+        // stays dependency-free and spawns nothing; it exposes one row
+        // (`render_pigment_row_visual`) and the fan-out lives here.
+        //
+        // Byte-identical by construction: every row computes exactly what the
+        // serial loop computed, and rows never read each other's output.
         let params = sess.engine.sim.gather_params(&sess.engine.tuning);
-        render_pigment_region_visual(
-            Some(&params),
-            &layers,
-            visual,
-            cx0,
-            cy0,
-            cx1,
-            cy1,
-            &mut sess.pigment,
-        );
+        let stride = w * 4;
+        sess.pigment[(cy0 - 1) * stride..cy1 * stride]
+            .par_chunks_mut(stride)
+            .enumerate()
+            .for_each(|(k, row)| {
+                render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row);
+            });
         drop(layers);
         // Straight-alpha OVER the frozen base, cell (cx,cy) → pixel (cx-1,cy-1).
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);

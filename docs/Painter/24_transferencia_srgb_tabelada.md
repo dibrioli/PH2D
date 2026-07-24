@@ -125,6 +125,48 @@ gate correspondente **cronometra** em vez de comparar.
 o checkbox custa **0,06 ms/tick**. O flood continua sendo o pior caso declarado,
 e lá o custo de ligar K–M é +8,5 ms sobre um orçamento de 12 — ver §8.
 
+## 6.1 ⚠️ O smoke reprovou: "ainda muito lento, mais lento que o HTML/JS"
+
+O reporte estava certo e a minha medição estava **incompleta** — eu media a 900×450
+(o tamanho do reference) enquanto o **smoke abre 1024²**, 2,6× as células. Medindo
+o FRAME do produto (um passo de 40 Hz + um composite):
+
+| canvas | knobs | step | composite | frame | fps |
+|---|---|---|---|---|---|
+| 900×450 (= o JS) | OFF | 3,10 | 4,29 | 7,40 | **135** |
+| 900×450 | ON | 11,23 | 8,45 | 19,68 | 51 |
+| **1024² (nosso smoke)** | **OFF** | 7,81 | 11,42 | **19,23** | **52** |
+| **1024² (nosso smoke)** | **ON** | 28,75 | 21,68 | **50,43** | **20** |
+
+Dois fatos que a tabela expõe e que a minha primeira leitura escondia:
+
+1. **No tamanho do reference nós somos ~3× mais rápidos que a barra dele** (o JS
+   pede o flood sob 15 ms/step; nós fazemos 11,3 mesmo com K–M). O "mais lento que
+   o JS" é, em boa parte, **canvas 2,6× maior**.
+2. **Com os knobs DESLIGADOS o app já estava a 52 fps** a 1024². Parte do que o
+   artista sentia **não eram os knobs** — era o custo-base naquele tamanho.
+
+### O composite virou ROW-PARALLEL (ADR-0109 emenda 2)
+
+Ele é um **map puro por-pixel sobre linhas disjuntas** — o caso que o ADR-0109 já
+sanciona para o composite óptico da aquarela, no mesmo crate. O engine expõe **uma
+linha** (`render_pigment_row_visual`) e **não spawna nada**; o leque abre no tool.
+
+| | serial | 32 vias | |
+|---|---|---|---|
+| composite 1024², glaze OFF | 15,82 ms | **1,62 ms** | 9,8× |
+| composite 1024², glaze ON | 44,00 ms | **3,49 ms** | 12,6× |
+
+**Byte-idêntico e não por argumento:** a medição compara os dois buffers e falha se
+um byte diferir.
+
+**Frame resultante a 1024²:** OFF 19,23 → **9,4 ms (52 → 106 fps)** · ON 50,43 →
+**32,2 ms (20 → 31 fps)**.
+
+⚠️ **O teto agora é o SOLVER**, que é **serial por semântica** (ADR-0134: o brake lê
+wetness viva escrita na mesma passada; o drying lê o vizinho pós-update; o advect
+subtrai dos cantos-fonte). Com Pigment mixing ligado ele é **89% do frame**.
+
 ## 7. Gates
 
 - **`tests/transfer_accuracy.rs`** (8) — precisão, condicionamento, deriva.

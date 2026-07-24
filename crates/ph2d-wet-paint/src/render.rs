@@ -336,9 +336,37 @@ pub fn render_pigment_region_visual(
     y1: usize,
     out: &mut [u8],
 ) {
+    let w = layers[0].grid.w;
+    for cy in y0..=y1 {
+        let row = &mut out[(cy - 1) * w * 4..cy * w * 4];
+        render_pigment_row_visual(p, layers, visual, cy, x0, x1, row);
+    }
+}
+
+/// ONE row of [`render_pigment_region_visual`], writing into that row's slice
+/// of the canvas (`w * 4` bytes) instead of into the whole buffer.
+///
+/// Why the row is its own entry point: this body is a PURE map — it reads the
+/// grids (including the four neighbours, read-only) and writes only its own
+/// row, so rows are independent and the caller may run them in parallel. The
+/// engine does not spawn anything itself; threading is the tool's business
+/// ([ADR-0109](../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md)
+/// sanctions rayon in `ph2d-tool-painter`, not here), and keeping the fan-out
+/// there is what lets this crate stay dependency-free and replay-exact.
+///
+/// `cy` is a CELL row (1..=H); `out` is the canvas row `cy - 1`.
+#[allow(clippy::too_many_arguments)]
+pub fn render_pigment_row_visual(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
+    cy: usize,
+    x0: usize,
+    x1: usize,
+    out: &mut [u8],
+) {
     let g0 = layers[0].grid;
     let s = g0.s;
-    let w = g0.w;
     let paper_on = visual.paper && p.is_some();
     let glaze_on = visual.km_glaze;
     let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
@@ -349,9 +377,9 @@ pub fn render_pigment_region_visual(
         ),
         _ => (0.0, 0.0, 0.0),
     };
-    for cy in y0..=y1 {
+    {
         let mut i = x0 + cy * s;
-        let mut o = ((cy - 1) * w + (x0 - 1)) * 4;
+        let mut o = (x0 - 1) * 4;
         for _cx in x0..=x1 {
             // Accumulate premultiplied, then unpremultiply at the end.
             let (mut pr, mut pg, mut pb, mut pa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);

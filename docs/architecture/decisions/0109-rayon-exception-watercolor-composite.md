@@ -91,3 +91,37 @@ tudo ligado, sem regressão no brush pequeno.
 - **Reduzir resolução/janela / estender o downsample das blurs a spread baixo / GPU.** Todas **mudam o
   resultado da pintura** — vetado pela restrição explícita do Enio ("nada que comprometa o resultado atual").
 - **Reuso de buffers (sem paralelismo).** Medido, **sem ganho** (spikes são compute-bound). Descartado.
+
+---
+
+## 5. Emenda 2 (2026-07-23) — o composite do WET PAINT entra na mesma exceção
+
+- **Status:** ACEITO. **Escopo somado:** o composite de pigmento do Wet Paint
+  (`tool/paint/wetpaint/composite.rs`), paralelizado **por LINHAS**.
+  Continua **não** abrindo `rayon` para o resto do codebase — nem, em
+  particular, para `ph2d-wet-paint`.
+
+**Por que é o mesmo caso, e não um caso novo:** é a mesma forma de trabalho que
+o §1 descreve — um **map puro por-pixel** que reconstrói a aparência por frame,
+com piso O(janela) single-thread, no mesmo crate que este ADR já abriu. Medido
+no canvas que o smoke abre (1024², folha cheia de tinta): **15,82 → 1,62 ms**
+(glaze OFF) e **44,00 → 3,49 ms** (glaze ON), 9,8× e 12,6× em 32 vias. Antes
+disso o composite era **metade do frame**; depois, 5%.
+
+**A fronteira que isto respeita, e que vale a pena escrever:** o `ph2d-wet-paint`
+é um **porte 1:1 com fingerprint** e sem dependências além do `libm` — ele não
+pode ganhar um thread-pool sem virar outra coisa. Então o engine expõe **uma
+LINHA** (`render::render_pigment_row_visual`) e **não spawna nada**; quem abre o
+leque é o tool, onde a exceção já mora. O corpo por-linha é o corpo serial
+literal — a região virou um laço que chama a linha — e as linhas nunca leem a
+saída umas das outras.
+
+**Byte-idêntico**, e não por argumento: a medição compara os dois buffers e
+falha se um byte diferir (`measure_row_parallel_composite`), e a suíte do tool
+(819 testes) roda sobre o caminho paralelo.
+
+**Não paralelizado, de propósito:** o SOLVER do Wet Paint. Ele é **serial por
+semântica** (o brake lê wetness viva escrita antes na mesma passada; o drying lê
+o vizinho da esquerda pós-update; o advect subtrai dos cantos-fonte) — a mesma
+razão que o ADR-0134 já registra. Depois desta emenda o passo de sim é **89% do
+frame** com Pigment mixing ligado, e é lá que fica o teto.

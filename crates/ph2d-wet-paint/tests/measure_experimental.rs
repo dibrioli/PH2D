@@ -327,3 +327,177 @@ fn measure_transfer_primitive() {
         ms2 * 1e6 / N as f64
     );
 }
+
+/// THE PRODUCT'S OWN FRAME, at the canvas the app actually opens.
+///
+/// The smoke spawns **1024²** (`wetpaint_smoke.rs`), while the JS reference
+/// paints **900×450** (SPEC §3) — 2.6x fewer cells. Comparing our app to the
+/// reference app therefore compares two different amounts of work, so measure
+/// BOTH sizes and both halves of the frame (one 40 Hz step + one composite).
+#[test]
+#[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
+fn measure_the_products_frame() {
+    println!("\n  THE PRODUCT'S FRAME — one 40 Hz step + one composite");
+    println!(
+        "    {:<26} {:>9} {:>9} {:>9} {:>9}",
+        "canvas / knobs", "step", "composite", "FRAME", "fps"
+    );
+    for (w, h, label) in [
+        (900usize, 450usize, "900x450 (the JS ref)"),
+        (1024, 1024, "1024x1024 (our smoke)"),
+    ] {
+        for km in [false, true] {
+            let mut e = Engine::new(w, h);
+            e.sim.km_mixing = km;
+            // A wash over ~40% of the sheet: a few real strokes' worth of
+            // water, not a full-canvas flood.
+            {
+                let g = e.active_grid_mut();
+                let s = g.s;
+                let (x0, y0) = (w / 6, h / 6);
+                let (x1, y1) = (w * 5 / 6, h * 2 / 3);
+                for y in y0..=y1 {
+                    for x in x0..=x1 {
+                        let i = x + y * s;
+                        g.film[i] = 4.0;
+                        g.susp[i] = 400.0;
+                        g.wet[i] = 200;
+                        let hh = ((x * 7919) ^ (y * 104_729)) as f32;
+                        g.susp_rgb[i] = [
+                            20.0 + (hh % 211.0),
+                            30.0 + (hh % 197.0),
+                            40.0 + (hh % 187.0),
+                        ];
+                        g.sett[i] = 150.0;
+                        g.sett_rgb[i] = [
+                            200.0 - (hh % 173.0),
+                            180.0 - (hh % 151.0),
+                            160.0 - (hh % 139.0),
+                        ];
+                    }
+                }
+                g.expand_bbox(x0 as i32, y0 as i32, x1 as i32, y1 as i32);
+            }
+            for _ in 0..12 {
+                e.step_simulation();
+            }
+            let mut steps = Vec::new();
+            for _ in 0..24 {
+                let t = Instant::now();
+                e.step_simulation();
+                steps.push(t.elapsed().as_secs_f64() * 1000.0);
+            }
+            let step = median(steps);
+            // The composite the tool runs, over the rect the engine dirtied.
+            let params = e.sim.gather_params(&e.tuning);
+            let layers: Vec<RenderLayer<'_>> = e
+                .layers
+                .iter()
+                .map(|l| RenderLayer {
+                    grid: &l.grid,
+                    opacity: l.opacity,
+                    visible: l.visible,
+                })
+                .collect();
+            let mut out = vec![0u8; w * h * 4];
+            let visual = PigmentVisual {
+                paper: false,
+                km_glaze: km,
+            };
+            let mut cs = Vec::new();
+            for _ in 0..12 {
+                let t = Instant::now();
+                render_pigment_region_visual(Some(&params), &layers, visual, 1, 1, w, h, &mut out);
+                cs.push(t.elapsed().as_secs_f64() * 1000.0);
+            }
+            let comp = median(cs);
+            let frame = step + comp;
+            println!(
+                "    {:<26} {step:>7.2}ms {comp:>7.2}ms {frame:>7.2}ms {:>8.1}",
+                format!("{label} {}", if km { "ON " } else { "OFF" }),
+                1000.0 / frame
+            );
+        }
+    }
+}
+
+/// What the row split buys the tool's composite.
+///
+/// The fan-out itself lives in `ph2d-tool-painter` (ADR-0109), which owns the
+/// rayon pool; this measures the SAME split with `std::thread::scope` so the
+/// engine crate can report the number without taking the dependency. Scoped
+/// threads are spawned per call, so this is a LOWER bound on what a warm pool
+/// delivers.
+#[test]
+#[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
+fn measure_row_parallel_composite() {
+    use ph2d_wet_paint::render::render_pigment_row_visual;
+    const W: usize = 1024;
+    const H: usize = 1024;
+    println!("\n  ROW-PARALLEL COMPOSITE — 1024x1024, the smoke's canvas");
+    for glaze in [false, true] {
+        let mut e = Engine::new(W, H);
+        {
+            let g = e.active_grid_mut();
+            let s = g.s;
+            for y in 1..=H {
+                for x in 1..=W {
+                    let i = x + y * s;
+                    g.sett[i] = 400.0;
+                    g.sett_rgb[i] = [180.0, 60.0, 40.0];
+                    g.susp[i] = 200.0;
+                    g.susp_rgb[i] = [40.0, 80.0, 170.0];
+                }
+            }
+            g.expand_bbox(1, 1, W as i32, H as i32);
+        }
+        let params = e.sim.gather_params(&e.tuning);
+        let layers: Vec<RenderLayer<'_>> = e
+            .layers
+            .iter()
+            .map(|l| RenderLayer {
+                grid: &l.grid,
+                opacity: l.opacity,
+                visible: l.visible,
+            })
+            .collect();
+        let visual = PigmentVisual {
+            paper: false,
+            km_glaze: glaze,
+        };
+        let mut out = vec![0u8; W * H * 4];
+        let mut serial = Vec::new();
+        for _ in 0..9 {
+            let t = Instant::now();
+            render_pigment_region_visual(Some(&params), &layers, visual, 1, 1, W, H, &mut out);
+            serial.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        let base = out.clone();
+        let threads = std::thread::available_parallelism().map_or(8, |n| n.get());
+        let band = H.div_ceil(threads);
+        let mut par = Vec::new();
+        for _ in 0..9 {
+            out.fill(0);
+            let t = Instant::now();
+            std::thread::scope(|sc| {
+                for (b, chunk) in out.chunks_mut(band * W * 4).enumerate() {
+                    let (params, layers) = (&params, &layers);
+                    sc.spawn(move || {
+                        for (k, row) in chunk.chunks_mut(W * 4).enumerate() {
+                            let cy = b * band + k + 1;
+                            render_pigment_row_visual(Some(params), layers, visual, cy, 1, W, row);
+                        }
+                    });
+                }
+            });
+            par.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        let (ms, mp) = (median(serial), median(par));
+        assert_eq!(base, out, "the row split changed a byte");
+        println!(
+            "    glaze {}  serial {ms:7.2} ms   {threads}-way {mp:7.2} ms   {:.1}x  (bytes identical)",
+            if glaze { "ON " } else { "OFF" },
+            ms / mp
+        );
+    }
+}

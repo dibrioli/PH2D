@@ -50,7 +50,10 @@
 
 use super::*;
 use ph2d_wet_paint::painter::{Dirty, Engine};
-use ph2d_wet_paint::render::{RenderLayer, render_pigment_region_visual};
+use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
+// The composite fans out over ROWS (ADR-0109 amendment 2); the engine
+// itself never spawns.
+use rayon::prelude::*;
 
 /// 40 Hz fixed-step (SPEC §5); at most 5 steps per frame, backlog dropped.
 const WET_STEP_S: f32 = 1.0 / 40.0;

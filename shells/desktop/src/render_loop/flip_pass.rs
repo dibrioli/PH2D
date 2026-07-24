@@ -179,7 +179,9 @@ fn composite_layers(
     // porque o `inject`/`composite` dimensionam o array de fatias por ela.
     let ops: Vec<LayerOp> = layers
         .iter()
-        .map(|l| LayerOp::Layer { mask: None, clipping: false,
+        .map(|l| LayerOp::Layer {
+            mask: None,
+            clipping: false,
             key: l.key,
             blend_mode: l.blend,
             opacity: l.opacity,

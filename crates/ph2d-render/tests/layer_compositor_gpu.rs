@@ -870,9 +870,19 @@ fn gpu_too_many_layers_errors_at_budget_cap() {
     let (w, h) = (4096u32, 4096u32);
     let mut comp = LayerCompositor::new(&gpu);
     let cap = comp.cache_cap(w, h);
+    // The cap is now a function of the DEVICE (1 GiB discrete / 512 MiB shared),
+    // so the expectation is derived the same way the compositor derives it —
+    // hard-coding `8` here would pin the old shared-memory number and go red on
+    // exactly the machine the raise was for.
+    let expected = ph2d_render::max_layers_for_budget(w, h, comp.cache_budget_bytes())
+        .min(gpu.device.limits().max_texture_array_layers);
     assert_eq!(
-        cap, 8,
-        "expected 512 MiB / 64 MiB = 8 at 4096^2 (device max permitting)"
+        cap, expected,
+        "cache_cap must equal budget/slice, device-capped"
+    );
+    assert!(
+        cap >= 8,
+        "a 4096² canvas must hold at least the historical 8 slices, got {cap}"
     );
 
     // One shared buffer reused for every key — the error fires in ensure_array
@@ -2533,15 +2543,13 @@ fn measure_the_stack_depth_on_the_device() {
                     opacity: 1.0,
                 });
             }
-            // The budget cap is part of the measurement, not an error: `LAYER_CACHE_BUDGET_BYTES`
-            // is 512 MB, so a 4096x4096 canvas (67 MB a slice) tops out at EIGHT layers and the
-            // compositor hands the document back to the CPU. Report that instead of panicking.
-            match comp.composite(&gpu, &ops, &prov, size, size, Region::full(size, size)) {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("{n:<10} {size:>8} {:>16}", format!("REFUSED: {e}"));
-                    continue;
-                }
+            // The budget cap is part of the measurement, not an error: past the
+            // device's cap the compositor hands the document back to the CPU.
+            // Report that instead of panicking.
+            if let Err(e) = comp.composite(&gpu, &ops, &prov, size, size, Region::full(size, size))
+            {
+                eprintln!("{n:<10} {size:>8} {:>16}", format!("REFUSED: {e}"));
+                continue;
             }
             let floor = measure_composite(
                 &gpu,
@@ -2992,4 +3000,98 @@ fn gpu_an_unservable_mask_degrades_to_no_mask() {
         .expect("composite");
     let want = comp.read_output(&gpu).expect("readback");
     assert_eq!(got, want, "a missing mask must composite as no mask at all");
+}
+
+/// **What this device actually advertises** — the input to any honest budget.
+///
+/// `CLAUDE.md` §0: a limit must say what RESOURCE it is a limit of, and carry the
+/// measurement. This prints what wgpu exposes so the budget can be derived from
+/// it rather than from a literal written for another class of machine.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_device_limits() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let info = gpu.adapter.get_info();
+    let l = gpu.device.limits();
+    eprintln!(
+        "\nadapter            {} ({:?}, {:?})",
+        info.name, info.device_type, info.backend
+    );
+    eprintln!("max_texture_2d     {}", l.max_texture_dimension_2d);
+    eprintln!("max_array_layers   {}", l.max_texture_array_layers);
+    eprintln!(
+        "max_buffer_size    {} MB",
+        l.max_buffer_size / (1024 * 1024)
+    );
+    eprintln!(
+        "max_storage_bind   {} MB",
+        l.max_storage_buffer_binding_size as u64 / (1024 * 1024)
+    );
+    for &size in &[1024u32, 2048, 4096, 8192] {
+        let per = (size as u64) * (size as u64) * 4;
+        eprintln!(
+            "  {size}x{size}: {:.1} MB/slice -> {} layers under this device's budget",
+            per as f64 / (1024.0 * 1024.0),
+            ph2d_render::max_layers_for_budget(
+                size,
+                size,
+                ph2d_render::layer_cache_budget(info.device_type)
+            )
+        );
+    }
+    eprintln!();
+}
+
+/// **Does a big array actually work on this device, and what does it cost?**
+///
+/// The budget is a VRAM budget, and the only honest way to pick one is to build
+/// the array and see. Walks the layer count up at 4096x4096 until the device
+/// refuses or the wall-clock says the composite left the interactive envelope.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_how_far_the_array_actually_goes() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let size = 4096u32;
+    eprintln!(
+        "\n{:<8} {:>10} {:>14} {:>12}",
+        "layers", "VRAM MB", "gpu floor ms", "outcome"
+    );
+    for &n in &[8usize, 16, 24, 32, 48, 64] {
+        // A fresh compositor per count: the array is sized on first use, and reusing
+        // one would measure the cache's regrow rather than the residency.
+        let mut comp = LayerCompositor::new(&gpu);
+        let mut prov = MapProvider::default();
+        let mut ops = Vec::new();
+        for k in 0..n {
+            prov.insert(k as u64, 1, varied_canvas(size, size, k as u32 + 1));
+            ops.push(LayerOp::Layer {
+                key: k as u64,
+                blend_mode: 0,
+                opacity: 1.0,
+                mask: None,
+                clipping: false,
+            });
+        }
+        let vram = (size as u64) * (size as u64) * 4 * (n as u64) / (1024 * 1024);
+        if let Err(e) = comp.composite(&gpu, &ops, &prov, size, size, Region::full(size, size)) {
+            eprintln!("{n:<8} {vram:>10} {:>14} {:>12}", "-", format!("{e}"));
+            continue;
+        }
+        let floor = measure_composite(
+            &gpu,
+            &mut comp,
+            &ops,
+            &prov,
+            size,
+            size,
+            Region::full(size, size),
+            8,
+        );
+        eprintln!("{n:<8} {vram:>10} {floor:>14.3} {:>12}", "ok");
+    }
+    eprintln!();
 }

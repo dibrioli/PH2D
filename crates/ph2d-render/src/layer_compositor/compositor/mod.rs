@@ -451,6 +451,9 @@ impl LayerCompositor {
             pipeline_grouped,
             bgl,
             device_max_layers: gpu.device.limits().max_texture_array_layers,
+            // Read ONCE at construction: `get_info()` round-trips to the backend, and
+            // the answer cannot change for the life of a device.
+            cache_budget_bytes: layer_cache_budget(gpu.adapter.get_info().device_type),
             array: None,
             out: None,
             cache: BTreeMap::new(),
@@ -500,7 +503,15 @@ impl LayerCompositor {
     /// per-budget cap and the device's `max_texture_array_layers`.
     #[must_use]
     pub fn cache_cap(&self, width: u32, height: u32) -> u32 {
-        max_layers_for_budget(width, height, LAYER_CACHE_BUDGET_BYTES).min(self.device_max_layers)
+        max_layers_for_budget(width, height, self.cache_budget_bytes).min(self.device_max_layers)
+    }
+
+    /// The VRAM budget this compositor resolved for its device — exposed so a
+    /// measurement (and a caller sizing a document) READS the budget in force
+    /// instead of re-deriving it from a const that may not be the one chosen.
+    #[must_use]
+    pub fn cache_budget_bytes(&self) -> u64 {
+        self.cache_budget_bytes
     }
 
     /// Number of cached layer slices currently resident.

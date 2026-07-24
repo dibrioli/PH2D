@@ -1,17 +1,60 @@
 use super::*;
 
+/// The budget is a function of WHERE the memory comes from, and the two answers
+/// must stay apart: a discrete card spends its own VRAM, an integrated one spends
+/// the system's. Collapsing them is how the shared-memory device inherits a
+/// gigabyte of layer cache it has to take from the OS.
+///
+/// The counts are asserted at 4096² — the size the old doc-comment got wrong by
+/// 2× (it priced a 4096×2048 video frame and concluded "~15 layers at 4K" for a
+/// budget that in fact held 8).
+#[test]
+fn the_budget_follows_the_device_and_the_4k_counts_are_what_they_say() {
+    use wgpu::DeviceType::{Cpu, DiscreteGpu, IntegratedGpu, Other, VirtualGpu};
+
+    assert_eq!(
+        layer_cache_budget(DiscreteGpu),
+        LAYER_CACHE_BUDGET_DISCRETE_BYTES
+    );
+    for shared in [IntegratedGpu, VirtualGpu, Cpu, Other] {
+        assert_eq!(
+            layer_cache_budget(shared),
+            LAYER_CACHE_BUDGET_SHARED_BYTES,
+            "{shared:?} shares host memory — it must not get the discrete budget"
+        );
+    }
+
+    // A square 4096² slice is 64 MiB. These are the numbers the docs quote.
+    assert_eq!(
+        max_layers_for_budget(4096, 4096, LAYER_CACHE_BUDGET_SHARED_BYTES),
+        8,
+        "the OLD budget held EIGHT layers at 4096², never the ~15 its doc claimed"
+    );
+    assert_eq!(
+        max_layers_for_budget(4096, 4096, LAYER_CACHE_BUDGET_DISCRETE_BYTES),
+        16
+    );
+    assert_eq!(
+        max_layers_for_budget(2048, 2048, LAYER_CACHE_BUDGET_DISCRETE_BYTES),
+        64
+    );
+}
+
 #[test]
 fn max_layers_for_budget_4k_and_degenerate() {
     // 4K RGBA8 = 33,177,600 B/slice; 512 MiB / that = 16 slices.
     assert_eq!(
-        max_layers_for_budget(3840, 2160, LAYER_CACHE_BUDGET_BYTES),
+        max_layers_for_budget(3840, 2160, LAYER_CACHE_BUDGET_SHARED_BYTES),
         16
     );
     // Zero-area canvas → 0 (no divide-by-zero).
-    assert_eq!(max_layers_for_budget(0, 0, LAYER_CACHE_BUDGET_BYTES), 0);
+    assert_eq!(
+        max_layers_for_budget(0, 0, LAYER_CACHE_BUDGET_SHARED_BYTES),
+        0
+    );
     // Tiny canvas is bounded by HARD_CAP_LAYERS, not the byte budget.
     assert_eq!(
-        max_layers_for_budget(1, 1, LAYER_CACHE_BUDGET_BYTES),
+        max_layers_for_budget(1, 1, LAYER_CACHE_BUDGET_SHARED_BYTES),
         HARD_CAP_LAYERS
     );
 }

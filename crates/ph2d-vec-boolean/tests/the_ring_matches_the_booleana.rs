@@ -105,6 +105,51 @@ fn the_direct_ring_fills_the_same_area_as_the_booleana() {
     }
 }
 
+/// **O offset direto é GROW-ONLY, e a booleana ENCOLHE** — o gate do report do Enio (*"Outer com
+/// offset negativo cresce em vez de encolher"*).
+///
+/// O bug era o `offset_ring` **escolher o laço errado** ao encolher: o `kurbo::stroke` emite dois
+/// contornos e a seleção antiga (por `area().abs()`) confundia a dilatação com a erosão numa forma
+/// côncava — a estrela CRESCIA ao encolher. A cura estrutural é o direto **só CRESCER** (a
+/// dilatação de Minkowski é robusta no kurbo; a erosão ele derruba a `|d|` grande, ver o doc de
+/// `offset_ring`) e delegar TODA a erosão à booleana, que a resolve por `base ∖ banda` — o mesmo
+/// caminho testado do Offset Path. Consistente (sem crossover direto↔booleana no meio de um
+/// contour).
+///
+/// Duas metades:
+/// 1. o direto **abstém** (`None`) em todo `d ≤ 0` — não há mais como ele mis-selecionar a erosão;
+/// 2. a booleana ENCOLHE de verdade (área < a da fonte), inclusive na ESTRELA côncava, onde o bug
+///    do sinal fazia crescer.
+///
+/// ⚠️ Mutação: `offset_ring` aceitar `d < 0` (voltar a escolher um laço ao encolher) ⇒ a metade 1
+/// sangra. E `offset_path` devolver a dilatação ao encolher ⇒ a metade 2 sangra na estrela.
+#[test]
+fn the_direct_ring_is_grow_only_and_the_booleana_shrinks() {
+    for (name, shape) in [
+        ("hexágono", poly(6, 1.2, 0.0)),
+        ("estrela-5", poly(5, 1.2, 0.45)), // CÔNCAVA — onde o sinal mentia
+    ] {
+        let src = nonzero_area(std::slice::from_ref(&shape));
+        for d in [-0.1, -0.2] {
+            // 1. o direto NÃO tenta encolher.
+            assert!(
+                ph2d_vec_boolean::offset_ring(&shape, d, LineJoin::Round, OffsetSide::Outer)
+                    .is_none(),
+                "{name} d={d}: o offset direto é grow-only, tinha de abster (`None`) ao encolher"
+            );
+            // 2. a booleana encolhe (área menor que a fonte), não cresce.
+            let boolean =
+                ph2d_vec_boolean::offset_path(&shape, d, LineJoin::Round, OffsetSide::Outer);
+            let a = nonzero_area(&boolean);
+            assert!(
+                a < src * 0.98,
+                "{name} d={d}: a booleana devia ENCOLHER, área {a:.3} vs fonte {src:.3} (o bug: \
+                 crescia)"
+            );
+        }
+    }
+}
+
 /// **O offset direto NUNCA panica** — a raiz do piscar. O `offset_path` (booleana) panica numa
 /// fração grande das distâncias (medido: estrela+Bevel 118/200); o `offset_ring` cobre o mesmo
 /// domínio sem tocar o `linesweeper`.

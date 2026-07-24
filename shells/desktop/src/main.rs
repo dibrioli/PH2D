@@ -98,6 +98,7 @@ mod flip_selection_gizmo;
 mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;
+mod flip_strip_drag;
 mod flip_transform;
 mod flip_tween_correct;
 mod flip_tween_pairs_smoke;

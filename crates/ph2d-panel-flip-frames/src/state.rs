@@ -129,6 +129,17 @@ thread_local! {
     static INTENTS: RefCell<Vec<FlipStripIntent>> = const { RefCell::new(Vec::new()) };
 }
 
+/// **Enfileira um pedido à mão — só para GATES.**
+///
+/// No produto quem enfileira é o [`crate::strip_drag`], a partir de um gesto real. Esta
+/// porta existe para o lado do SHELL poder testar o seu drain sem montar um painel e um
+/// ponteiro; a costura painel↔dispatch é provada no seam desta crate, que dirige o
+/// ponteiro de verdade.
+#[doc(hidden)]
+pub fn push_intent_for_tests(intent: FlipStripIntent) {
+    push_intent(intent);
+}
+
 /// Enfileira um pedido do arrasto (o painel escreve; o shell drena no mesmo frame).
 pub(crate) fn push_intent(intent: FlipStripIntent) {
     INTENTS.with(|c| c.borrow_mut().push(intent));

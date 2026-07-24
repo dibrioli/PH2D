@@ -4119,6 +4119,15 @@ impl crate::App {
             // the SIMULATION at the Playhead tick. Two bridges, two phases.
             self.show_colliders =
                 physics_panel_bridge::dispatch(hero, physics, self.show_colliders);
+            // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
+            // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
+            // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e
+            // a célula piscaria de volta por um frame.
+            // (o retorno diz se o documento mudou; ninguém precisa dele aqui — o undo é
+            // GLOBAL e por DIFF: `post_frame_undo` compara o `ProjectState`, do qual o
+            // `FlipDoc` faz parte. É o mesmo motivo pelo qual o drain do `PanelEvent`
+            // logo acima também ignora o seu.)
+            let _ = crate::flip_strip_drag::apply_strip_intents(flip, self.flip_active_layer);
             let (flip_active, flip_style) = flip_bridge::publish(
                 hero,
                 tools,

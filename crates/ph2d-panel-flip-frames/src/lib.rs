@@ -37,7 +37,7 @@ mod toolbar_plan;
 
 pub use state::{
     FlipCell, FlipStripIntent, FlipStripSnapshot, current_flip_strip, drain_flip_strip_intents,
-    set_current_flip_strip,
+    push_intent_for_tests, set_current_flip_strip,
 };
 
 use ph2d_a11y::NodeId;

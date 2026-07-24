@@ -3450,3 +3450,132 @@ selecionar — a prova do fix). Ambos **pendentes de smoke**.
 Falloff dentro da área (o giro é uniforme; um redemoinho real cai com o raio) · o torque é
 constante (não decai com a distância ao centro) · a família das zonas ainda tem **o frame da
 zona** (a força/torque em eixos de MUNDO — girar a zona não gira o vento) por fazer.
+
+---
+
+## W-AreaFrame — o FRAME da zona: girar o sensor gira o vento (2026-07-23, cena `=34`)
+
+A força de uma zona era autorada em **eixos de MUNDO**, então **girar o sensor não girava o
+sopro**: uma esteira diagonal era inexprimível, e uma coluna de vento virada só para encaixar na
+geometria da cena continuava soprando do jeito antigo, sem nada na tela dizendo por quê. Era o
+último item aberto da família das zonas junto com o falloff, nomeado desde o W-Area.
+
+Agora a força é autorada no **frame da ZONA** e o toggle **`Force Axes: Zone | World`** (§11,
+sensor-only, logo abaixo das rows de força que ele qualifica) prende a direção de volta ao mundo
+— o `useGlobalAngle` do `AreaEffector2D` da Unity. **Default = Zone**, toggle como escape
+(decisão do Enio).
+
+### Só a FORÇA é dependente do frame, e isso é geometria — não escopo escolhido
+
+O plano dizia *"a força **e o torque** estão em eixos de MUNDO"*. Lendo os quatro consumidores,
+só um pode girar:
+
+| grandeza | por quê é invariante |
+|---|---|
+| **torque** | escalar sobre **Z** em 2D, e uma rotação no plano é *em torno de* Z ⇒ `τ_local ≡ τ_mundo` |
+| **drag** | coeficiente isotrópico (`v /= 1+d·dt` no linear e no angular) |
+| **empuxo** | a superfície é ⊥ à **GRAVIDADE**, nunca aos eixos da zona (água é horizontal em poça torta) |
+| **shape drag** | empurra pela normal de cada aresta do **CORPO**, função da forma e da velocidade dele |
+
+Há gate pinando a invariância do torque, para ninguém "completar" a wave depois.
+
+### A porta única toma `(sin, cos)`, NUNCA um ângulo — e isso é determinismo
+
+`zone_force_world(force, world_axes, sin_r, cos_r)` é perguntada pelo **solver** e pela **SETA do
+overlay** (o motivo do `scaled_shape`: uma seta desenhada de uma segunda resposta descreveria um
+vento que não sopra ali, e ninguém lê um número numa screenshot).
+
+⚠️ Ela **não aceita ângulo** porque rapier guarda a rotação como `UnitComplex`, cujo `im`/`re`
+**já são** o seno e o cosseno — exatos. Pedir `.angle()` chamaria **`atan2`**, que é do `std` e
+**não está pinado cross-OS**, e este resultado alimenta impulsos que alimentam o
+`physics_ecs_c9` que o CI compara entre Linux/macOS/Windows (lei 6 — 1 ulp é bug cross-OS). Quem
+tem ângulo (o ECS, cujo `Transform.rotation` é um) usa `zone_force_world_at`, que cruza a ponte
+por **`libm::sincosf`** exatamente uma vez — e essa rota **não alcança o hash** (só o overlay;
+conferido por grep).
+
+### A pose é a VIVA, não a do spawn
+
+Lida a cada sub-passo do corpo da zona. Para a zona estática comum os dois números são o mesmo;
+eles se separam numa zona **KINEMATIC** que uma curva está girando — um ventilador varrendo a
+sala — e ali a leitura viva é o comportamento inteiro. Assar no spawn proibiria isso em silêncio.
+
+### Por que o default pôde mudar
+
+Zona não-rotacionada é **BYTE-IDÊNTICA** nos dois modos (`sin 0 = 0` e `cos 0 = 1` exatos ⇒ o
+ramo rodado reduz à identidade nos bits). E no dia da wave **nenhuma zona de força do
+repositório** — cena de smoke ou fixture — tinha rotação ≠ 0 (varrido: as três de
+`physics_smoke_collision`/`_contacts` são `from_translation`; a única fixture com rotação
+variável a põe no TRONCO que cai, não na zona). Então nada que já existe se move.
+
+### O marcador, e o bump que não houve
+
+**`AreaForceWorldAxes`** — a **presença é o booleano** (idioma do `Ccd`/`LockRotation`/
+`OneWayPlatform`), registro **19→20**, `PROJECT_SCHEMA` **fica em 29**. Sexta vez na família de
+zonas pela mesma razão: blob de componente é postcard **posicional**, então campo novo seria bump
+— e **um bump recusa todo projeto já salvo**. O lado do wrapper (`AreaEffect`) ganhou o campo de
+graça porque **não é serializado**.
+
+### Números medidos (cena `=34`, sonda headless antes da mensagem)
+
+Duas zonas idênticas, mesma rotação (**40°**) e mesma força (**0,9 N** no próprio +X); só a da
+direita carrega o marcador. 120 ticks:
+
+| faixa | deslocamento | ângulo |
+|---|---|---|
+| **Zone** | `(2,81, 2,36)` | **40,0°** — o da zona, ao décimo |
+| **World** | `(3,67, 0,00)` | **0,0°** — o vento velho |
+
+40° é escolhido: nem eixo (onde seno/cosseno são triviais e um frame errado passaria
+despercebido) nem 45° (onde as componentes são iguais e trocá-las não se vê). Força calibrada em
+0,9 — a 3,0 a caixa percorria 9,6 m em 2 s e **saía de quadro**.
+
+### c9: 77 → 79 corpos, hash `747dff39…`
+
+Uma zona rodada `0,9 rad` + o corpo dentro dela: o **único** corpo do harness cujo impulso passa
+pelo `zone_force_world`. Meia volta de propósito (nem eixo nem 45°), para que seno e cosseno
+sejam os dois não-triviais e um ulp em qualquer um mova o hash. Idêntico em **debug e release**.
+⚠️ **MUDA** vs main (`7d55a4ab…`) e isso é correto — o harness ganhou corpos.
+
+### As armadilhas desta wave (14 mutações, 12 sangram)
+
+- ⚠️ **O gate do torque nasceu inútil.** A 1ª versão comparava os dois **FLAGS** numa rotação
+  fixa, e a mutação *"gira o torque também"* passou por ela: ela escala os **dois** ramos pelo
+  mesmo fator ⇒ **razão sadia sobre dois doentes**
+  ([[feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase]]). O oráculo certo
+  é invariância sob a **ROTAÇÃO**.
+- ⚠️ **O gate da pose viva nasceu cego.** A fixture nascia em rotação 0, onde *"não roda"* e
+  *"rodou pela pose de spawn"* são **indistinguíveis**. Agora ela nasce em π/2 e é dirigida até
+  π, o que separa **três** kernels (vivo `x<0` · assado-no-spawn `x≈0` · sem-rotação `x>0`).
+- ⚠️ **Os dois chips estão no ponto cego do `architecture_panel_wiring_parity`**: ele só coleta
+  `.register(ids::LITERAL` escrito direto no paint, e um `seg_row` registra num **LAÇO** (o mesmo
+  buraco das 36 células do W2c). O `click` sintético do `seam_physics` **também** não os alcança
+  (pula a focabilidade) ⇒ nasceu o helper **`click_real`** ali, irmão do de `seam_joint.rs`.
+  Sem ele, tirar os chips do `populate` deixa **tudo** verde.
+- ⚠️ **Um comentário meu afirmava consequência FALSA:** eu escrevi que excluir o marcador do
+  `any` da ponte evita *"acordar um corpo"* — a mutação mostrou que não muda nada, porque
+  `zone_effect` já recusa a zona totalmente inerte. É **higiene**, não correção, e está escrito
+  assim agora (o molde que a própria função usa sobre as duas recusas dela).
+
+**2 sobreviventes, os dois documentados no fonte:** pôr o marcador no `any` (a 2ª camada pega) ·
+a row ignorar o valor autorado (a seleção de um `seg_row` é um **realce na cena**, e o testkit
+expõe valores de widget, não estado de pintura — o lado da FONTE está gateado no shell).
+
+### LOC: o overlay separou CONTORNO de ANOTAÇÃO
+
+O `file_loc_caps` da shell pegou (o gate que o handoff de reabertura manda rodar
+explicitamente). `physics_overlay_scene_tests.rs` 615 → **403** e `physics_overlay.rs` 605 →
+**416**, com os construtores de seta/glifo indo para `physics_overlay_annotations.rs` e os gates
+deles para `physics_overlay_annotation_tests.rs`. Não é hack de tamanho: **o falloff é outra
+anotação**, e agora tem casa.
+
+### Aberto no W-AreaFrame
+
+- ⚠️ **Espelhar a zona NÃO espelha o vento** — **medido**: `scale.x = -1` dá deslocamento
+  `(6,73, 0)`, idêntico ao da não-espelhada, e com rotação 45° os dois dão `(4,76, 4,76)`. O
+  frame honra a **rotação** e ignora a **reflexão**. Isto **contradiz o precedente do W-Offset**
+  (*"escala SINCADA, não `abs` — offset é POSIÇÃO ⇒ flip espelha"*), e é a mesma pergunta:
+  virar o sprite de uma esteira deveria virar a correia? **Decisão de produto, não construída
+  sem pedido.**
+- **Falloff dentro da área** — segue aberto, agora o único item da família (a força/torque são
+  uniformes; um redemoinho real cai com o raio). ⚠️ O caro é **de que ponto** se mede o raio numa
+  zona que não é redonda.

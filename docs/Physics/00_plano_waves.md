@@ -58,6 +58,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-ImpactForce** | *quão forte foi o toque* — o pico entre os sub-passos, não a carga | `=30` |
 | **W-TickContacts** | o toque RÁPIDO vira evento — diff por TICK sobre a união dos sub-passos | `=31` |
 | **W-AreaTorque** | a MESA GIRATÓRIA — uma área que GIRA o que está dentro (a metade rotacional do campo de força) | `=32` |
+| **W-AreaFrame** | o FRAME da zona — girar o sensor gira o vento (toggle `Force Axes: Zone \| World`) | `=34` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

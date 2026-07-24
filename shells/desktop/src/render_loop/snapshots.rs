@@ -101,10 +101,11 @@ pub(super) fn publish(
     // tool Flip (senão o gizmo comeria o clique do canvas).
     flip: &FlipDoc,
     flip_gizmo_on: bool,
-    // W4: how many seconds the §11 Bake button would cover. Resolved by the
-    // caller (which owns the clock) and shown ON the button — see
-    // `physics_bake::bake_seconds`.
-    bake_seconds: f32,
+    // W4: the `(start, end)` window in seconds the §11 Bake button would cover.
+    // Resolved by the caller (which owns the clock) and shown ON the button —
+    // see `physics_bake::bake_range`. Start is honoured now (W-BakeRange), so a
+    // `[2s, 5s]` loop bakes exactly that.
+    bake_range: (f32, f32),
     // Which pose channels the §11 Bake selector shows as chosen (the shell's
     // transient `bake_channels`, a global bake option).
     bake_channels_tag: u8,
@@ -715,7 +716,7 @@ pub(super) fn publish(
             sim.world(),
             b,
             can_join,
-            bake_seconds,
+            bake_range,
             bake_channels_tag,
         )
     });

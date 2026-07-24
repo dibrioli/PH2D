@@ -175,34 +175,41 @@ pub(crate) const DEFAULT_BAKE_SECONDS: f64 = 5.0;
 /// constant inside it.
 const BAKE_SMOOTH_PASSES: usize = 0;
 
-/// How many seconds a Bake covers, given the document and the transport.
+/// The window a Bake covers, `(start, end)` seconds, given the document and the
+/// transport.
 ///
-/// A bake always starts at tick 0 — the simulation is a function of the tick,
-/// so there is no such thing as starting it in the middle — which is why this
-/// answers a DURATION rather than a range.
+/// **The simulation still runs from tick 0** — it is a function of the tick, so
+/// there is no starting it in the middle — but only the samples in `[start,
+/// end]` become keys; the front `[0, start)` is simulated (the scene must be
+/// advanced through it for any body riding a baked platform) and then
+/// discarded. That discarding is the whole point: baking a `[2s, 5s]` loop used
+/// to write keys across `[0, 5s]`, ignoring the start the artist had set.
 ///
-/// In order: the armed loop's end, then the document's own extent, then
-/// [`DEFAULT_BAKE_SECONDS`]. The loop first because it is the control the
-/// artist already has for "this much of the timeline", and re-inventing a range
-/// field beside the button would be a second way to say the same thing. The
-/// document's extent next, so a scene that has been animated bakes to the
-/// length it already is. The default last, for the fresh scene that has said
-/// nothing — and it is shown ON the button, so it is never a surprise.
+/// The **loop is the control** for both ends, because it is the one the artist
+/// already has for "this much of the timeline" — inventing a start/end field
+/// beside the button would be a second way to say the same thing (the reasoning
+/// [`DEFAULT_BAKE_SECONDS`] already gives for the end applies to the start).
+/// So: an armed loop with a positive end gives `(loop_start, loop_end)`;
+/// otherwise the window starts at 0 and ends at the document's own extent, or
+/// [`DEFAULT_BAKE_SECONDS`] for a fresh scene. The range is shown ON the button,
+/// so it is never a surprise.
 #[must_use]
-pub(crate) fn bake_seconds(
+pub(crate) fn bake_range(
     doc: &ph2d_timeline::TimelineDoc,
     playhead: &ph2d_core::Playhead,
-) -> f64 {
-    if let Some((_, end)) = playhead.loop_range()
+) -> (f64, f64) {
+    if let Some((start, end)) = playhead.loop_range()
         && end > 0.0
     {
-        return end;
+        // `set_loop_range` already clamps the start to `>= 0`; `max(0.0)` here is
+        // belt-and-braces so a negative can never become a negative key time.
+        return (start.max(0.0), end);
     }
     let extent = doc.end_seconds();
     if extent > 0.0 {
-        return extent;
+        return (0.0, extent);
     }
-    DEFAULT_BAKE_SECONDS
+    (0.0, DEFAULT_BAKE_SECONDS)
 }
 
 /// One track's worth of work: whose, which property, and the dense samples that
@@ -275,11 +282,18 @@ pub(crate) fn ticks_for(seconds: f64, fixed_dt: f64) -> u64 {
     ((seconds / fixed_dt).round() as i64).max(1) as u64
 }
 
-/// Simulate `entities` over `seconds` and write the result as keys.
+/// Simulate `entities` over `[0, end]` seconds and write the samples in
+/// `[start, end]` as keys.
 ///
 /// One timeline undo step for the whole thing, however many bodies, channels
 /// and frames it covers — opened before the first key and committed after the
 /// fit, so the dense keys and their cleanup revert together.
+///
+/// ⚠️ **The simulation runs the whole `[0, end]`; only `[start, end]` becomes
+/// keys.** The sim is a function of the tick, so it cannot start in the middle,
+/// and the front must be simulated to advance the scene for any body riding a
+/// baked platform — but the front's samples are discarded rather than written,
+/// which is what makes a `[2s, 5s]` loop bake exactly `[2s, 5s]`.
 ///
 /// The bodies are flipped to `Kinematic` (module docs) via `queue`, which the
 /// caller applies with the rest of the frame's ECS edits.
@@ -289,13 +303,14 @@ pub(crate) fn bake_selection(
     physics: &mut PhysicsBridge,
     sim: &mut SimWorld,
     entities: &[Entity],
-    seconds: f64,
+    start: f64,
+    end: f64,
     fixed_dt: f64,
     channels: BakeChannels,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> BakeOutcome {
-    let ticks = ticks_for(seconds, fixed_dt);
+    let ticks = ticks_for(end, fixed_dt);
     // ⚠️ The bake advances the SCENE as well as the clock. Without it, every
     // body the timeline drives — which is every body baked before this one —
     // stands still through the whole simulation, and the curve written here
@@ -312,10 +327,12 @@ pub(crate) fn bake_selection(
     // found it had nothing to say would leave an empty step on the stack.
     let mut work: Vec<BakedTrack> = Vec::new();
     for traj in &trajectories {
-        // Only the SELECTED channels. A channel the artist chose to keep is
-        // never written, even where the sim moved it (layering).
+        // Only the SELECTED channels, and only the samples inside the bake
+        // window. A channel the artist chose to keep is never written, even
+        // where the sim moved it (layering); nor is the front `[0, start)`,
+        // which was simulated only to advance the scene.
         for &channel in channels.channels() {
-            if let Some(samples) = traj.channel(channel) {
+            if let Some(samples) = traj.channel_in(channel, start, end) {
                 work.push((traj.entity.to_bits(), prop_for(channel), samples));
             }
         }

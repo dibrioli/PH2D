@@ -21,9 +21,10 @@ pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
     can_join: bool,
-    bake_seconds: f32,
+    bake_range: (f32, f32),
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
+    let (bake_start_seconds, bake_seconds) = bake_range;
     use ph2d_physics_ecs::{
         AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaFormDrag, AreaTorque, Ccd, Collider,
         ColliderShape, DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX,
@@ -101,6 +102,7 @@ pub(crate) fn build_physics_info(
             entity_bits,
             has_body: false,
             bake_seconds,
+            bake_start_seconds,
             kind_tag: 0,
             shape_tag: 1,
             radius: 0.5,
@@ -176,6 +178,7 @@ pub(crate) fn build_physics_info(
         layer: col.layer,
         can_join,
         bake_seconds,
+        bake_start_seconds,
         is_sensor: col.is_sensor,
         bake_channels_tag,
         gravity_scale,
@@ -249,7 +252,7 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), false, 5.0, 0)
+            build_physics_info(&world, e.to_bits(), false, (0.0, 5.0), 0)
                 .expect("a zone has a Transform, so §11 describes it")
                 .force_world_axes
         };

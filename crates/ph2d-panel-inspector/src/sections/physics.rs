@@ -39,15 +39,25 @@ const FREEZE_POS_LABELS: [&str; 2] = ["Free", "Locked"];
 /// `1` position only, `2` rotation only.
 const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
 
-/// The Bake button's label, carrying the range it would cover.
+/// The Bake button's label, carrying the window it would cover.
 ///
 /// A function rather than an inline `format!` so the claim "the button shows
-/// the range" is something a test can hold: the number is the only thing
+/// the range" is something a test can hold: the numbers are the only thing
 /// telling the artist how much of the timeline they are about to write, and a
 /// button that silently baked five seconds when the document said two would be
 /// worse than one that asked.
-pub fn bake_label(seconds: f32) -> String {
-    format!("Bake {seconds:.1}s to Timeline")
+///
+/// When `start` is `0` (the common case — no loop, or a loop from the top) the
+/// label collapses to the plain `Bake Ns` form. A positive start (an armed loop
+/// like `[2s, 5s]`, W-BakeRange) shows the full window `Bake 2.0-5.0s`, because
+/// a partial-range bake writes keys at those absolute times and the artist has
+/// to know that before clicking.
+pub fn bake_label(start: f32, end: f32) -> String {
+    if start > 0.0 {
+        format!("Bake {start:.1}-{end:.1}s to Timeline")
+    } else {
+        format!("Bake {end:.1}s to Timeline")
+    }
 }
 
 /// Tag for the Dynamic body kind — the only kind with simulated motion to bake.
@@ -519,7 +529,11 @@ fn paint_body_actions(
     // same rule (`event_physics.rs`), because a refusal in the paint loop is
     // not a refusal.
     if info.kind_tag == KIND_DYNAMIC {
-        let r = paint_at(ids::INSP_PHYS_BAKE, &bake_label(info.bake_seconds), &mut yy);
+        let r = paint_at(
+            ids::INSP_PHYS_BAKE,
+            &bake_label(info.bake_start_seconds, info.bake_seconds),
+            &mut yy,
+        );
         hit_index.register(ids::INSP_PHYS_BAKE, r);
     }
 

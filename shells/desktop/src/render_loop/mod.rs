@@ -1566,7 +1566,12 @@ impl crate::App {
                 // W4: the range the §11 Bake button covers, resolved HERE
                 // because the shell owns both the document and the clock, and
                 // shown on the button so the artist never has to guess it.
-                physics_bake::bake_seconds(&self.timeline.doc, &self.playhead) as f32,
+                // Two numbers now — the loop's start is honoured (W-BakeRange),
+                // so a `[2s, 5s]` loop bakes `[2s, 5s]` and the button says so.
+                {
+                    let (bs, be) = physics_bake::bake_range(&self.timeline.doc, &self.playhead);
+                    (bs as f32, be as f32)
+                },
                 // Which pose channels the Bake selector shows as chosen.
                 self.bake_channels.tag(),
             );
@@ -5322,13 +5327,14 @@ impl crate::App {
                     .iter()
                     .map(|&b| ph2d_ecs::Entity::from_bits(b))
                     .collect();
-                let seconds = physics_bake::bake_seconds(&self.timeline.doc, &self.playhead);
+                let (start, end) = physics_bake::bake_range(&self.timeline.doc, &self.playhead);
                 let outcome = physics_bake::bake_selection(
                     &mut self.timeline,
                     physics,
                     sim,
                     &entities,
-                    seconds,
+                    start,
+                    end,
                     self.fixed_step.fixed_dt(),
                     self.bake_channels,
                     editor_queue,
@@ -5366,8 +5372,15 @@ impl crate::App {
                     // hand-over exists to prevent.
                     self.playhead.rewind();
                     self.playhead.pause();
+                    // The window mirrors the button: a partial range (W-BakeRange)
+                    // reads "2.0-5.0s", the common full-range bake just "5.0s".
+                    let window = if start > 0.0 {
+                        format!("{start:.1}-{end:.1}s")
+                    } else {
+                        format!("{end:.1}s")
+                    };
                     toasts.push(ph2d_editor::Toast::info(format!(
-                        "Baked {seconds:.1}s - {} bodies, {} tracks - now Kinematic",
+                        "Baked {window} - {} bodies, {} tracks - now Kinematic",
                         outcome.bodies, outcome.tracks
                     )));
                 }

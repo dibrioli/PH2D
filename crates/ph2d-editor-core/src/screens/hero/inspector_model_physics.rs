@@ -59,8 +59,8 @@ pub struct InspectorPhysicsInfo {
     /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors
     /// `Collider.offset`. Not Dynamic-only — any collider can be offset.
     pub offset: [f32; 2],
-    /// How many seconds a Bake would cover, resolved by the shell (W4): the
-    /// armed loop if there is one, else the document's extent, else the
+    /// Where a Bake's window ENDS, in seconds — resolved by the shell (W4): the
+    /// armed loop's end if there is one, else the document's extent, else the
     /// measured default.
     ///
     /// Shown ON the button, because a button whose effect depends on an
@@ -68,6 +68,12 @@ pub struct InspectorPhysicsInfo {
     /// resolves it once and both halves read the same answer — the painter to
     /// label it, the bake to honour it.
     pub bake_seconds: f32,
+    /// Where a Bake's window STARTS, in seconds (W-BakeRange): the armed loop's
+    /// start, else `0.0`. Honouring it lets a `[2s, 5s]` loop bake `[2s, 5s]`
+    /// instead of `[0, 5s]` — the front is simulated to advance the scene and
+    /// then discarded. `0.0` is the common case, and the label collapses to the
+    /// plain `Bake Ns` form there.
+    pub bake_start_seconds: f32,
     /// Is the current selection exactly **two** bodies? Then §11 offers the
     /// Join button (W3).
     ///

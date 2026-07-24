@@ -116,6 +116,7 @@ impl crate::App {
             "34" => self.physics_smoke_force_frame(),
             "35" => self.physics_smoke_falloff(),
             "36" => self.physics_smoke_mirror(),
+            "37" => self.physics_smoke_bake_range(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -135,7 +136,7 @@ impl crate::App {
         self.playhead.rewind();
         if matches!(
             which.trim(),
-            "3" | "7" | "14" | "15" | "16" | "17" | "21" | "22" | "23" | "24"
+            "3" | "7" | "14" | "15" | "16" | "17" | "21" | "22" | "23" | "24" | "37"
         ) {
             self.playhead.pause();
         } else {

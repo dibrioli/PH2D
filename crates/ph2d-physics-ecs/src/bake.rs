@@ -81,21 +81,44 @@ impl BakedTrajectory {
     /// a channel the sim DOES move. Undo is one press.
     #[must_use]
     pub fn channel(&self, channel: PoseChannel) -> Option<Vec<(f64, f64)>> {
+        self.channel_in(channel, f64::NEG_INFINITY, f64::INFINITY)
+    }
+
+    /// [`channel`](Self::channel), restricted to the samples in the closed
+    /// window `[start, end]` seconds — the keys a partial-range bake writes.
+    ///
+    /// ⚠️ **The window is applied BEFORE the constancy check, and that order is
+    /// load-bearing.** A body that fell during `[0, start)` and is at rest
+    /// across `[start, end]` moved over the *whole* trajectory but is CONSTANT
+    /// in the window; writing its motion would mean a flat two-key track laid
+    /// over whatever the artist animated inside the window — the exact
+    /// destruction the `None` of [`channel`](Self::channel) exists to prevent.
+    /// Constancy is a property of the samples that BECOME keys, not of the whole
+    /// simulation, so it is measured after the slice. (A front-to-end bake keeps
+    /// the old behaviour exactly: the infinite window selects every sample.)
+    ///
+    /// The front `[0, start)` is still SIMULATED by the caller — the sim is a
+    /// function of the tick, so there is no starting it in the middle, and the
+    /// scene must be advanced through the front for any body riding a baked
+    /// platform. This only decides which of those simulated samples become keys.
+    #[must_use]
+    pub fn channel_in(&self, channel: PoseChannel, start: f64, end: f64) -> Option<Vec<(f64, f64)>> {
         let pick = |s: &(f64, f32, f32, f32)| match channel {
             PoseChannel::X => s.1,
             PoseChannel::Y => s.2,
             PoseChannel::Rotation => s.3,
         };
-        let first = pick(self.samples.first()?);
-        if self.samples.iter().all(|s| pick(s) == first) {
+        let windowed: Vec<(f64, f64)> = self
+            .samples
+            .iter()
+            .filter(|s| s.0 >= start && s.0 <= end)
+            .map(|s| (s.0, f64::from(pick(s))))
+            .collect();
+        let first = windowed.first()?.1;
+        if windowed.iter().all(|&(_, v)| v == first) {
             return None;
         }
-        Some(
-            self.samples
-                .iter()
-                .map(|s| (s.0, f64::from(pick(s))))
-                .collect(),
-        )
+        Some(windowed)
     }
 }
 
@@ -214,6 +237,32 @@ mod tests {
         assert!(traj.channel(PoseChannel::Rotation).is_none());
         let y = traj.channel(PoseChannel::Y).expect("Y moved");
         assert_eq!(y, vec![(0.0, 5.0), (0.1, 4.0), (0.2, 3.0)]);
+    }
+
+    #[test]
+    fn a_window_hides_the_front_and_keeps_the_windowed_keys() {
+        // Y falls over [0.0, 0.2] and is at rest over [0.2, 0.4].
+        let traj = BakedTrajectory {
+            entity: Entity::from_bits(1),
+            samples: vec![
+                (0.0, 0.0, 5.0, 0.0),
+                (0.1, 0.0, 4.0, 0.0),
+                (0.2, 0.0, 3.0, 0.0),
+                (0.3, 0.0, 3.0, 0.0),
+                (0.4, 0.0, 3.0, 0.0),
+            ],
+        };
+        // The whole trajectory moved, so the un-windowed channel is written.
+        assert!(traj.channel(PoseChannel::Y).is_some());
+        // But over [0.2, 0.4] Y is CONSTANT: writing a flat track there would
+        // overwrite whatever the artist animated inside the window.
+        assert!(
+            traj.channel_in(PoseChannel::Y, 0.2, 0.4).is_none(),
+            "constancy must be judged on the windowed samples, not the whole sim"
+        );
+        // And a window over the moving part keeps exactly those keys.
+        let front = traj.channel_in(PoseChannel::Y, 0.0, 0.2).expect("front moved");
+        assert_eq!(front, vec![(0.0, 5.0), (0.1, 4.0), (0.2, 3.0)]);
     }
 
     #[test]

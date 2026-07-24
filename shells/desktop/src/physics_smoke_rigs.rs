@@ -282,7 +282,62 @@ impl crate::App {
                  · the un-baked box keeps whatever pose it has instead of falling:
                      one clock, and you decide whether the solver hears it.
              Range: it says 5.0s because nothing is animated yet. Arm a loop in the
-             transport and the button follows it."
+             transport and the button follows BOTH its ends -- scene 37 shows a
+             loop that starts at 0.5s baking exactly [0.5, 2.5]."
+        );
+    }
+
+    /// **Scene 37 (W-BakeRange).** The loop's START is honoured: an armed
+    /// `[0.5s, 2.5s]` loop bakes exactly that window, discarding the front.
+    ///
+    /// Before this, the bake read the loop's END and dropped its START — a
+    /// `[2s, 5s]` loop baked `[0, 5s]`, ignoring the start the artist had set.
+    /// The front `[0, 0.5s)` is still SIMULATED (the sim is a function of the
+    /// tick, and the scene must be advanced through it), but its samples are not
+    /// keys.
+    pub(crate) fn physics_smoke_bake_range(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+
+        // One ball dropped from the top: by 0.5s it is well into its fall, so
+        // the discarded front is VISIBLE — after the bake the ball holds its
+        // 0.5s pose (mid-air) until the window opens, instead of falling from
+        // the top.
+        gfx.sim.world_mut().spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], [0.95, 0.6, 0.2, 1.0]),
+            Name::new("Dropper".to_string()),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                restitution: 0.4,
+                ..Collider::default()
+            },
+        ));
+
+        // The control the artist reaches for — one loop, both ends honoured.
+        self.playhead.set_loop(0.5, 2.5);
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.panel_visibility.insert("timeline", true);
+        }
+
+        eprintln!(
+            "[physics-smoke 37] A dropper falling from the top. Clock PAUSED, a loop
+             armed over [0.5s, 2.5s], timeline open.
+             Press Play once to SEE the fall, then rewind and:
+                 1. select the Dropper.
+                 2. Inspector > Physics Body: the button must read 'Bake 0.5-2.5s'
+                     (NOT 'Bake 2.5s') -- the loop's start is honoured now.
+                 3. click it.
+             What must happen:
+                 · the timeline fills with keys only inside [0.5, 2.5] -- nothing
+                     before 0.5s. The front was simulated but discarded.
+                 · the toast reads 'Baked 0.5-2.5s'.
+                 · press Play (Physics toggle OFF, it is baked animation now): the
+                     ball HOLDS its 0.5s mid-air pose until 0.5s, then animates the
+                     physics. A full-range bake would have started it at the top."
         );
     }
 

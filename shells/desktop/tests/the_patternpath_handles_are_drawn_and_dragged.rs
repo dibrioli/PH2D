@@ -79,11 +79,21 @@ fn the_render_loop_wires_the_handle_gesture() {
         "o press das fichas (Select) tem de ser hit-testado ANTES do picking/gizmo genérico"
     );
     // E é irmão do press do texto — ambos no mesmo cluster de early-return do Select.
+    //
+    // ⚠️ **A afirmação é a PROPRIEDADE, não uma distância em bytes.** Isto media
+    // `< 1200` bytes entre os dois presses, e uma distância no fonte é um proxy que
+    // EXPIRA: qualquer feature que aterrisse entre eles o quebra sem que nada de errado
+    // tenha acontecido (a `line/Vector` já pagou isto duas vezes na integração de
+    // 2026-07-23, e o press da âncora do motion path foi a terceira ocasião). O que
+    // importa é que **nada GENÉRICO passe entre os dois** — se um `forward_to_hero`
+    // cair no meio, o segundo press deixou de ser um early-return do Select.
     let textpath_at = disp
         .find("self.vec_textpath_handle_down(w)")
         .expect("press da alça do texto");
+    let (lo, hi) = (handle_at.min(textpath_at), handle_at.max(textpath_at));
     assert!(
-        (handle_at as isize - textpath_at as isize).unsigned_abs() < 1200,
-        "as fichas do pattern e a alça do texto deviam estar no MESMO cluster de Select"
+        !disp[lo..hi].contains("forward_to_hero"),
+        "algo GENÉRICO passou entre o press do texto e o das fichas — o segundo já não \
+         é um early-return do cluster de Select"
     );
 }

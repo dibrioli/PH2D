@@ -94,7 +94,13 @@ pub fn apply_from_doc_except(
         // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
         // and `from_bits` would panic rather than tell us so.
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b, v);
+            // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
+            // `auto_orient` varre os bindings, então fazê-lo por binding tornaria o
+            // apply quadrático — a doença que o `clock.rs` já curou uma vez neste
+            // mesmo laço.
+            let orient = b.prop == PropKind::Position
+                && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+            write_prop(world, e, b, v, orient);
         }
     }
 
@@ -135,7 +141,13 @@ pub fn apply_container(
         )
         .map(AnimValue::Float);
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b, v);
+            // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
+            // `auto_orient` varre os bindings, então fazê-lo por binding tornaria o
+            // apply quadrático — a doença que o `clock.rs` já curou uma vez neste
+            // mesmo laço.
+            let orient = b.prop == PropKind::Position
+                && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+            write_prop(world, e, b, v, orient);
         }
     }
     doc.put_scratch(scratch);
@@ -231,7 +243,13 @@ pub fn apply_active_clip(
             }
         });
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b, v);
+            // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
+            // `auto_orient` varre os bindings, então fazê-lo por binding tornaria o
+            // apply quadrático — a doença que o `clock.rs` já curou uma vez neste
+            // mesmo laço.
+            let orient = b.prop == PropKind::Position
+                && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+            write_prop(world, e, b, v, orient);
         }
     }
 }
@@ -388,11 +406,17 @@ fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
 ///
 /// Takes the whole BINDING, not just the kind: [`PropKind::Position`]'s value is a
 /// distance, and turning it back into a place needs that binding's trajectory.
-fn write_prop(world: &mut World, entity: Entity, b: &crate::TargetBinding, v: AnimValue) {
+fn write_prop(
+    world: &mut World,
+    entity: Entity,
+    b: &crate::TargetBinding,
+    v: AnimValue,
+    orient: bool,
+) {
     let prop = b.prop;
     // The one channel whose value is not a coordinate (ADR-0141).
     if prop == PropKind::Position {
-        crate::apply_path::write_position(world, entity, b, v);
+        crate::apply_path::write_position(world, entity, b, v, orient);
         return;
     }
     if let Some(sp) = prop.as_sprite_transform() {

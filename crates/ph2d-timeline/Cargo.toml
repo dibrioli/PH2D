@@ -34,6 +34,11 @@ ph2d-core = { path = "../ph2d-core" }
 # `t`. Crate-folha ZERO-dep, partilhada com a pilha de efeitos do Vector -- duas
 # respostas para "quanto andei nesta curva" divergiriam.
 ph2d-arclen = { path = "../ph2d-arclen" }
+# libm — `atan2f` puro-Rust para o auto-orient (ADR-0141 Fatia 5). MESMO pin de
+# `ph2d-ecs`/`physics`/`flip`/`wet-paint`: o ângulo que ele produz vai para o
+# `Transform`, que o `physics_ecs_c9` compara BIT A BIT entre os três OSes, e
+# `f32::atan2` da std não promete a mesma última casa em toda plataforma.
+libm = { version = "=0.2.16", default-features = false }
 # Versioned document persistence (HR-14) + panel snapshot/intent (de)serialization.
 serde = { version = "1", features = ["derive"] }
 # Versioned on-disk format for the timeline document (W4 save/load).

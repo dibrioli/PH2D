@@ -2795,18 +2795,6 @@ impl App {
         {
             return;
         }
-        // **A ÂNCORA do MOTION PATH** (ADR-0141), antes do picking/gizmo pela mesma razão
-        // que as alças acima: a âncora do primeiro key cai em cima do sprite, e sem este
-        // arm a pressão iria para o gizmo — que moveria o OBJETO onde o dedo pediu a
-        // CURVA. Sem gate de ferramenta de propósito (ver `motion_path_anchor_down`).
-        if mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Down
-            && !menu_open_before
-            && self.over_canvas_or_gizmo(evt.x, evt.y)
-            && self.motion_path_anchor_down(evt.x, evt.y)
-        {
-            return;
-        }
         // O MESMO guard para as alças do PATTERN (W4): no Select a tool não captura o canvas e o
         // gizmo é inócuo sobre um motivo vinculado, então a ficha precisa deste arm antes do
         // picking/gizmo. Irmão do `vec_textpath_handle_down` logo acima.
@@ -2818,6 +2806,18 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
             && self.vec_patternpath_handle_down(w)
+        {
+            return;
+        }
+        // **A ÂNCORA do MOTION PATH** (ADR-0141), antes do picking/gizmo pela mesma razão
+        // que as alças acima: a âncora do primeiro key cai em cima do sprite, e sem este
+        // arm a pressão iria para o gizmo — que moveria o OBJETO onde o dedo pediu a
+        // CURVA. Sem gate de ferramenta de propósito (ver `motion_path_anchor_down`).
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.motion_path_anchor_down(evt.x, evt.y)
         {
             return;
         }

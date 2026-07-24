@@ -19,6 +19,7 @@ use crate::strip_edge_edit::{
 /// module under the LOC cap.
 #[path = "intent_loop_sync.rs"]
 mod intent_loop_sync;
+use crate::intent_apply_path;
 use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
 pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
 
@@ -119,11 +120,10 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
         }
         I::AddPathKey { entity, t, at } => {
-            let snapped = snap_time(t, fps, state.flags.frame_snap);
-            edit(state, |doc, _| {
-                doc.key_the_path(entity, snapped, at);
-            });
+            let t = snap_time(t, fps, state.flags.frame_snap);
+            intent_apply_path::add_key(state, entity, t, at);
         }
+        I::ToggleAutoOrient { entity } => intent_apply_path::toggle_orient(state, entity),
         I::MoveSelectedKeys { delta_seconds } => {
             // Rationalize the offset ONCE, against the display rate: a whole
             // number of frames must stay a whole number of frames after the move.
@@ -579,7 +579,7 @@ fn edit_at(
 
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
 /// only if the document changed.
-fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
+pub(crate) fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
     // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
     // mutate, and let the bracket's commit fold every frame of the gesture into
     // one. Outside it, the edit is atomic and brackets itself.

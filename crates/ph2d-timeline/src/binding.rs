@@ -91,6 +91,15 @@ pub struct TargetBinding {
     ///
     /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
     pub path: Option<MotionPath>,
+    /// **Auto-orient**: o objeto gira para a tangente do caminho enquanto o percorre
+    /// (o *Orient Along Path* do AE). Só faz sentido num binding
+    /// [`PropKind::Position`], e é **opt-in** — girar o objeto sem que ninguém peça
+    /// reescreve uma pose que o artista autorou.
+    ///
+    /// ⚠️ Autorado, mas não é a palavra final: [`crate::TimelineDoc::auto_orient`]
+    /// **RECUSA** quando a mesma entidade tem uma track de Rotation, porque aí seriam
+    /// dois autores do mesmo ângulo e o de trás venceria em silêncio. Appended (v12).
+    pub auto_orient: bool,
 }
 
 impl crate::doc::TimelineDoc {
@@ -131,8 +140,9 @@ impl TargetBinding {
             wire_id: WireId::NULL,
             entity,
             missing: false,
-            rest: None, // captured on the first live apply (see the field)
-            path: None, // a Position binding grows one with its first key
+            rest: None,         // captured on the first live apply (see the field)
+            path: None,         // a Position binding grows one with its first key
+            auto_orient: false, // opt-in: girar sem pedido reescreve a pose autorada
         }
     }
 

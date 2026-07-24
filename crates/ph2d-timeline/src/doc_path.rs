@@ -21,6 +21,20 @@ use crate::doc::TimelineDoc;
 use crate::path::PathAnchor;
 use crate::prop::PropKind;
 
+/// O estado RESOLVIDO do auto-orient de uma entidade — o que o apply honra e o que o
+/// painel mostra, da mesma função.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AutoOrient {
+    /// Não pedido (ou não há trajetória).
+    Off,
+    /// Pedido e honrado: o objeto gira para a tangente do caminho.
+    Active,
+    /// **Pedido e RECUSADO** porque a entidade tem uma track de Rotation. A recusa é
+    /// nomeada de propósito: um toggle que fica ligado sem efeito é pior que um
+    /// desligado, e o artista precisa saber o que apagar para o ter.
+    BlockedByRotationTrack,
+}
+
 impl TimelineDoc {
     /// **Move (ou remodela) a âncora `i` da trajetória de `target`, e reescreve as
     /// distâncias que as keys guardam** — as duas metades, numa operação.
@@ -154,6 +168,46 @@ impl TimelineDoc {
     pub fn key_the_path(&mut self, entity: u64, t: RationalTime, at: [f32; 2]) -> bool {
         let target = self.bind(entity, PropKind::Position);
         self.add_path_key(target, t, at)
+    }
+
+    /// **O auto-orient desta entidade vale, e se não vale, por quê** ([ADR-0141] §6).
+    ///
+    /// UMA porta com DOIS consumidores: o apply pergunta para saber se escreve o
+    /// ângulo, e o painel pergunta para saber o que MOSTRAR. Duas respostas divergem, e
+    /// aí o toggle diz "ligado" enquanto nada gira — o modo de falha que faz o artista
+    /// desconfiar da ferramenta inteira.
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    #[must_use]
+    pub fn auto_orient(&self, entity: u64) -> AutoOrient {
+        let Some(b) = self.binding_for(entity, PropKind::Position) else {
+            return AutoOrient::Off;
+        };
+        if !b.auto_orient {
+            return AutoOrient::Off;
+        }
+        // ⚠️ A RECUSA. Girar para a tangente escreve `Transform.rotation`, que é
+        // exatamente o que uma track de Rotation escreve — dois autores do mesmo campo,
+        // e o de trás vence em silêncio. O apply resolveria isso por ORDEM, que é a
+        // pior maneira: funcionaria, ninguém saberia por quê, e inverter a ordem um dia
+        // mudaria a animação de alguém sem nada no diff.
+        if self.binding_for(entity, PropKind::Rotation).is_some() {
+            return AutoOrient::BlockedByRotationTrack;
+        }
+        AutoOrient::Active
+    }
+
+    /// Liga/desliga o auto-orient do binding Position de `entity`. Devolve o estado
+    /// RESOLVIDO (que pode ser a recusa), nunca só o que foi escrito.
+    pub fn set_auto_orient(&mut self, entity: u64, on: bool) -> AutoOrient {
+        if let Some(b) = self
+            .bindings_mut()
+            .iter_mut()
+            .find(|b| b.entity == entity && b.prop == PropKind::Position)
+        {
+            b.auto_orient = on;
+        }
+        self.auto_orient(entity)
     }
 
     /// A âncora `i` da trajetória de `target`, se houver.

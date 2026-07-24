@@ -185,6 +185,9 @@ pub(crate) fn paint_rows(
                 parent: ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::Row {
                     target: track.target.get(),
+                    // Só o painel conhece o `PropKind` da row, e é ele que decide qual
+                    // menu o botão direito abre.
+                    path: track.prop == ph2d_timeline::PropKind::Position,
                 },
                 canvas: row_hit,
             },

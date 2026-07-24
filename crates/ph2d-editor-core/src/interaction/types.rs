@@ -242,6 +242,11 @@ pub enum ContextMenuKind {
     /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
     /// timeline panel resolves it against its snapshot and raises the intent.
     TimelineTrack { target: u64 },
+    /// O mesmo, para uma track de **TRAJETÓRIA** (`PropKind::Position`): o menu dela
+    /// tem uma linha a mais, o **Auto-Orient** (ADR-0141 §6), que não existe em canal
+    /// nenhum dos outros. Variante própria e não um campo, porque o overlay dispacha o
+    /// TABELA por variante — e é a tabela que difere.
+    TimelineTrackPath { target: u64 },
     /// Right-clicked a stack lane's LABEL (`ids::TIMELINE_LANE_MENU`): how the
     /// lane enters the blend, and whether it stays at all.
     TimelineLane {
@@ -460,6 +465,14 @@ pub enum TimelineHitKind {
     /// menu ([`ContextMenuKind::TimelineTrack`], Delete Track).
     Row {
         target: u64,
+        /// `true` quando esta row é uma track de TRAJETÓRIA (`PropKind::Position`).
+        ///
+        /// ⚠️ O fato viaja no HIT porque só o painel o sabe — o dispatch não conhece
+        /// `PropKind` —, e ele decide QUAL menu abre. A alternativa (uma linha
+        /// "Auto-Orient" no menu de toda track) seria um item morto em cinco de cada
+        /// seis rows, que é precisamente o que a forma "uma tabela, três consumidores"
+        /// destes menus existe para impedir.
+        path: bool,
     },
     /// The padlock on the Summary channel — a click toggles the column lock. When
     /// locked (default), grabbing any single key grabs its whole time column;
@@ -647,7 +660,10 @@ mod timeline_hit_kind_tests {
             K::Key { target: 0, key: 0 },
             K::SummaryKey { t_bits: 0 },
             K::Twirl { target: 0 },
-            K::Row { target: 0 },
+            K::Row {
+                target: 0,
+                path: false,
+            },
             K::SummaryLock,
             K::LabelSplitter,
             K::CurveAnchor { target: 0, key: 0 },

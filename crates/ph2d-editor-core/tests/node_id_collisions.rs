@@ -817,10 +817,19 @@ fn chrome_node_ids_are_pairwise_unique() {
             .iter()
             .chain(ids::TIMELINE_EASE_MENU.iter())
             .chain(ids::TIMELINE_TRACK_MENU.iter())
+            .chain(ids::TIMELINE_PATH_TRACK_MENU.iter())
             .chain(ids::TIMELINE_STRIP_MENU.iter())
             .chain(ids::TIMELINE_LANE_MENU.iter())
             .map(|(id, label, _)| (*id, *label)),
     );
+    // ⚠️ **Uma linha PODE aparecer em dois menus**, e isso não é uma colisão: o
+    // `Delete Track` é a MESMA ação no menu de uma track comum e no de uma track de
+    // trajetória (ADR-0141), e dar-lhe dois ids seria a doença das duas portas. Este
+    // gate pergunta *"dois nomes DIFERENTES hasham igual?"*, então a mesma linha
+    // listada duas vezes é ruído — deduplicada por (id, label), que é exatamente o par
+    // que a pergunta compara. Uma colisão de verdade tem labels diferentes e sobrevive.
+    sorted.sort_by_key(|(id, label)| (id.0, *label));
+    sorted.dedup();
     sorted.sort_by_key(|(id, _)| id.0);
 
     for w in sorted.windows(2) {

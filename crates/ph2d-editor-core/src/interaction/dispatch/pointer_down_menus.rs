@@ -104,7 +104,16 @@ pub(super) fn handle_down_menus(
                     K::SummaryKey { t_bits } => Some(ContextMenuKind::TimelineSegment {
                         scope: S::Column { t_bits },
                     }),
-                    K::Row { target } => Some(ContextMenuKind::TimelineTrack { target }),
+                    // O menu que abre é o menu DA COISA clicada: uma track de
+                    // trajetória tem uma ação que as outras não têm (o auto-orient), e
+                    // oferecê-la em toda row seria um item morto em cinco de seis.
+                    K::Row {
+                        target,
+                        path: false,
+                    } => Some(ContextMenuKind::TimelineTrack { target }),
+                    K::Row { target, path: true } => {
+                        Some(ContextMenuKind::TimelineTrackPath { target })
+                    }
                     // A strip — any of its three grab zones: the body and both
                     // trim edges open the same menu, because they are all the
                     // same strip and a right-click is not a drag.

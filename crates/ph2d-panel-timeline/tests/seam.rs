@@ -1016,3 +1016,45 @@ fn every_add_track_option_reaches_the_shell_including_position() {
     );
     assert_eq!(seen.len(), 8, "as seis da pose, o Time Remap e o Position");
 }
+
+/// **O gate anti-item-morto do menu da TRAJETÓRIA** — irmão do de cima, e a razão de
+/// haver duas tabelas: uma linha "Auto-Orient" no menu de toda track seria um item
+/// morto em cinco de cada seis rows.
+///
+/// Cada linha é dirigida pelo seam REAL e tem de ser consumida — e a do auto-orient
+/// tem de LEVANTAR O INTENT, porque consumir sem despachar é a outra metade do mesmo
+/// item morto (pintado, roteado, e sem efeito).
+#[test]
+fn every_path_track_menu_row_is_handled_and_the_orient_row_raises_its_intent() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(4, ph2d_timeline::PropKind::Position);
+    for (id, label, _) in ph2d_editor_core::ids::TIMELINE_PATH_TRACK_MENU {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        host.store_mut().open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::TimelineTrackPath { target },
+        });
+        host.store_mut().close_context_menu();
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "a linha `{label}` do menu de trajetória é pintada e não tem braço no event.rs"
+        );
+    }
+    let intents = ph2d_panel_timeline::drain_intents();
+    assert!(
+        intents.iter().any(|i| matches!(
+            i,
+            ph2d_timeline::TimelineIntent::ToggleAutoOrient { entity: 4 }
+        )),
+        "o Auto-Orient foi consumido e não despachou nada — pintado, roteado e sem \
+         efeito é a outra metade do item morto: {intents:?}"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

@@ -98,6 +98,16 @@ pub enum TimelineIntent {
         /// Onde o objeto está, em MUNDO.
         at: [f32; 2],
     },
+    /// **Liga/desliga o auto-orient** do binding Position de `entity` (ADR-0141 §6).
+    ///
+    /// Toggle e não um valor: quem clica está a alternar o que vê, e o estado
+    /// RESOLVIDO pode não ser o pedido (uma track de Rotation o recusa) — mandar um
+    /// `bool` daqui faria o painel adivinhar qual, e adivinhar errado é um botão que
+    /// mostra o oposto do que fez.
+    ToggleAutoOrient {
+        /// Live entity bits.
+        entity: u64,
+    },
     /// Shift every selected key by `delta_seconds`.
     MoveSelectedKeys {
         /// Signed time delta.

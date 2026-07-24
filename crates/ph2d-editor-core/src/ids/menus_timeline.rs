@@ -95,6 +95,24 @@ pub const CTX_MENU_TL_DELETE_TRACK: NodeId = hash_node_id("ctx_menu_tl_delete_tr
 pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
     [(CTX_MENU_TL_DELETE_TRACK, "Delete Track", None)];
 
+/// **Auto-orient** (ADR-0141 §6): o objeto encara a tangente do caminho enquanto o
+/// percorre. Só existe numa track de TRAJETÓRIA, e por isso mora numa tabela própria.
+pub const CTX_MENU_TL_AUTO_ORIENT: NodeId = hash_node_id("ctx_menu_tl_auto_orient");
+
+/// O menu de uma track de **trajetória** — o de cima mais o auto-orient.
+///
+/// Uma tabela por MENU, e não uma tabela com linhas condicionais: o overlay pinta o que
+/// a tabela diz, e uma linha que às vezes não se aplica seria um item morto na maioria
+/// das rows (a doença que esta forma existe para impedir).
+///
+/// ⚠️ **O `Delete Track` aparece nas DUAS tabelas, e é o mesmo id de propósito**: é a
+/// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
+/// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
+pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 2] = [
+    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    (CTX_MENU_TL_AUTO_ORIENT, "Auto-Orient", None),
+];
+
 // ── Timeline lane menu (ADR-0115 B5) ────────────────────────────────────────
 // Right-click a lane's LABEL. The lane's WEIGHT is a field on the row (a number
 // you nudge continuously belongs under the pointer, not two clicks deep); its

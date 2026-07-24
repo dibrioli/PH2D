@@ -381,7 +381,10 @@ fn right_clicking_a_row_label_opens_the_track_menu() {
     // A track row's LABEL owns the whole-track menu (Delete Track) — not the
     // per-key preset menu, and never a drag capture.
     use crate::interaction::ContextMenuKind;
-    let (mut store, hits) = timeline_setup(TimelineHitKind::Row { target: 42 });
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Row {
+        target: 42,
+        path: false,
+    });
     let arena = Bump::new();
     let _ = dispatch_pointer(
         &mut store,
@@ -393,6 +396,24 @@ fn right_clicking_a_row_label_opens_the_track_menu() {
         store.context_menu().map(|r| r.kind),
         Some(ContextMenuKind::TimelineTrack { target: 42 }),
         "right-click on a track row label must open the track menu"
+    );
+    // ⚠️ E a MESMA row marcada como trajetória abre o menu DELA — com o auto-orient,
+    // que canal nenhum dos outros tem. É a prova de que o fato viaja do painel (o
+    // único que conhece o `PropKind`) até a tabela que o overlay pinta.
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Row {
+        target: 42,
+        path: true,
+    });
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineTrackPath { target: 42 }),
+        "uma track de trajetória tem de abrir o menu que tem o Auto-Orient"
     );
     assert_eq!(
         store.drain_timeline_gestures().count(),

@@ -6939,6 +6939,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "dhat",
+ "libm",
  "ph2d-anim",
  "ph2d-arclen",
  "ph2d-core",

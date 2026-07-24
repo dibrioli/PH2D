@@ -263,6 +263,14 @@ pub(crate) fn sample_prop_value(
         // The timeline's own clock has no scene value to sample — the K flow
         // seeds it through `key_value_for` instead.
         PropKind::TimeRemap => return None,
+        // Position is not a scalar this function can sample, and that is the
+        // channel's shape rather than a gap: capturing one means ADDING AN ANCHOR at
+        // the object's current place, which moves the geometry and therefore rewrites
+        // the distance every later key holds (ADR-0141 §2). That is an edit to a
+        // trajectory, not a read of a number, so it goes through the path's own door
+        // — which is what the authoring slice builds. Refusing here keeps this
+        // function honest about what it is.
+        PropKind::Position => return None,
     })
 }
 

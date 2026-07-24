@@ -20,6 +20,7 @@
 //! as sibling modules following the same shape.
 
 pub mod apply;
+mod apply_path;
 pub mod autokey;
 pub mod binding;
 pub mod clipboard;
@@ -32,6 +33,7 @@ pub mod intent_apply;
 mod intent_apply_fade;
 pub mod nest;
 pub mod nest_map;
+pub mod path;
 pub mod persist;
 pub mod prop;
 mod refusal;
@@ -69,6 +71,7 @@ pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };
 pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
+pub use path::{MotionPath, PathAnchor, PathSample};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};

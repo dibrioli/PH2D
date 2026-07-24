@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_eleven() {
+fn schema_version_is_twelve() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -114,10 +114,13 @@ fn schema_version_is_eleven() {
     // v11 = the three EXPLICIT durations (`NamedClip.length_override`,
     //      `NamedContainer.length_override`, `TimelineDoc.scene_length`, appended) —
     //      the AE composition-duration model (Enio, 2026-07-23).
+    // v12 = the MOTION PATH (ADR-0141): `TargetBinding.path`, appended — the
+    //      trajectory a `PropKind::Position` binding follows, whose track measures
+    //      distance along it. `None` behaves exactly as v11.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 11);
-    assert_eq!(TimelineDoc::new().version, 11);
+    assert_eq!(DOC_VERSION, 12);
+    assert_eq!(TimelineDoc::new().version, 12);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

@@ -49,6 +49,27 @@ pub enum PropKind {
     /// shape), and `t` is not part of any sprite's pose. The artist keys it from the "+ Track"
     /// list. Appended — the discriminant is a frozen wire value.
     Morph = 7,
+    /// **Position** — the object's place on the canvas as ONE channel, following an
+    /// authored trajectory ([ADR-0141]): the After Effects model, where *Separate
+    /// Dimensions precludes having Spatial Keyframes* and the two are therefore
+    /// **modes**, not a mode plus a flag. Binding this kind IS choosing the path
+    /// mode; [`PropKind::TranslationX`]/`Y` remain the separate-axes mode, and the
+    /// conversion between them is an explicit, named operation.
+    ///
+    /// **The value of its track is DISTANCE ALONG THE PATH**, in world units — a
+    /// plain scalar, which is what lets the graph editor, weighted tangents, the
+    /// speed graph and roving keep working on it untouched. The trajectory itself
+    /// lives on the binding ([`crate::TargetBinding::path`]), and key `i` of the
+    /// track pairs with anchor `i` of that path.
+    ///
+    /// Outside [`PropKind::ALL`], like [`PropKind::TimeRemap`] and
+    /// [`PropKind::Morph`]: `ALL` is the *separate-axes* sprite pose the auto-key
+    /// samples ([`crate::PoseSample`] is exactly that array's shape), and a Position
+    /// track is the alternative to two of its entries, never a seventh member of it.
+    /// Appended — the discriminant is a frozen wire value.
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    Position = 8,
 }
 
 impl PropKind {
@@ -82,6 +103,8 @@ impl PropKind {
             4 => Some(PropKind::ScaleY),
             5 => Some(PropKind::Opacity),
             6 => Some(PropKind::TimeRemap),
+            7 => Some(PropKind::Morph),
+            8 => Some(PropKind::Position),
             _ => None,
         }
     }
@@ -100,6 +123,7 @@ impl PropKind {
             PropKind::Opacity => "opacity",
             PropKind::TimeRemap => "time",
             PropKind::Morph => "morph",
+            PropKind::Position => "position",
         }
     }
 
@@ -114,7 +138,9 @@ impl PropKind {
             PropKind::Rotation => Some(SpriteProp::Rotation),
             PropKind::ScaleX => Some(SpriteProp::ScaleX),
             PropKind::ScaleY => Some(SpriteProp::ScaleY),
-            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph => None,
+            // Position drives TWO Transform fields through a trajectory, so it is
+            // not one `SpriteProp` — `crate::apply_path` is its resolver.
+            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph | PropKind::Position => None,
         }
     }
 
@@ -147,7 +173,11 @@ impl PropKind {
             | PropKind::TranslationY
             | PropKind::ScaleX
             | PropKind::ScaleY
-            | PropKind::TimeRemap => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::TimeRemap
+            // Distance along a path. Bounded in principle by the path's length — but
+            // that bound MOVES when an anchor does, and a fit that clamped to a
+            // stale one would pin a recorded pose to the wrong end.
+            | PropKind::Position => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -174,6 +204,13 @@ impl PropKind {
             // additive lane means "advance further along it". By ratio, two lanes at 0.3 and 0.5
             // would give 0.15 — less progress than either, which is not a thing anyone meant.
             PropKind::Morph => Algebra::Sum,
+            // Distance travelled: neutral 0, and an additive lane means "go further
+            // along it" — the Morph argument exactly, for the same kind of quantity.
+            //
+            // Blending DISTANCES is also what keeps a crossfade ON the trajectory:
+            // halfway between "3 m along" and "7 m along" is "5 m along", still on
+            // the curve, where blending the two POINTS would cut the corner off it.
+            PropKind::Position => Algebra::Sum,
         }
     }
 }

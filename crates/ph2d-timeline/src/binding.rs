@@ -16,6 +16,7 @@
 use ph2d_anim::AnimTarget;
 use serde::{Deserialize, Serialize};
 
+use crate::path::MotionPath;
 use crate::prop::PropKind;
 
 /// A stable, save-surviving identity for a bound scene object. Resolved back to
@@ -68,7 +69,28 @@ pub struct TargetBinding {
     /// world still holds the authored pose then, because no track drives it yet),
     /// and persisted from there on. Rive shipped without this and had to add
     /// **Capture Base State**; Unreal calls it the **Base Pose**. Appended (v4).
+    ///
+    /// ⚠️ **It is in the TRACK's units, not the scene's.** For a
+    /// [`PropKind::Position`] binding the track measures *distance along the path*,
+    /// so `rest` is the distance of the path point nearest the authored pose
+    /// ([`MotionPath::project`]) — not a point, and not zero. Zero would be the
+    /// START of the trajectory, which is the same failure this field exists to
+    /// prevent: a sprite easing in would fly there from wherever it stood.
     pub rest: Option<f32>,
+    /// **The trajectory**, for a [`PropKind::Position`] binding and only for one
+    /// ([ADR-0141]). `None` on every other kind — and on a Position binding that has
+    /// no keys yet, which is a path with no anchors.
+    ///
+    /// It lives on the BINDING rather than in the clip because the trajectory is a
+    /// property of *this object's movement*, not of one clip's take on it: two clips
+    /// that both animate the object along it are two timings of the same journey,
+    /// which is precisely what the arc-length track expresses.
+    ///
+    /// Anchor `i` pairs with key `i` of the track, and the number that key holds is
+    /// [`MotionPath::arclen_at`]. Appended (v12).
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    pub path: Option<MotionPath>,
 }
 
 impl crate::doc::TimelineDoc {
@@ -110,6 +132,7 @@ impl TargetBinding {
             entity,
             missing: false,
             rest: None, // captured on the first live apply (see the field)
+            path: None, // a Position binding grows one with its first key
         }
     }
 

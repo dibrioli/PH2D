@@ -59,8 +59,14 @@ use crate::stack_frames::StackScratch;
 /// and a fresh loop read, cutting content past it non-destructively. `None` behaves
 /// exactly as v10.
 ///
+/// v12: **the motion path** ([ADR-0141]) — `TargetBinding.path`, appended: the
+/// trajectory a [`crate::PropKind::Position`] binding follows, whose track measures
+/// distance along it. `None` behaves exactly as v11, and every binding a v11
+/// document held is one of the kinds that never has a path.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
-pub const DOC_VERSION: u32 = 11;
+/// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+pub const DOC_VERSION: u32 = 12;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

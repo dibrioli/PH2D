@@ -94,7 +94,7 @@ pub fn apply_from_doc_except(
         // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
         // and `from_bits` would panic rather than tell us so.
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b.prop, v);
+            write_prop(world, e, b, v);
         }
     }
 
@@ -135,7 +135,7 @@ pub fn apply_container(
         )
         .map(AnimValue::Float);
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b.prop, v);
+            write_prop(world, e, b, v);
         }
     }
     doc.put_scratch(scratch);
@@ -176,7 +176,14 @@ fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc) {
             && doc.bindings()[i].rest.is_none()
             && prop != PropKind::TimeRemap
         {
-            doc.bindings_mut()[i].rest = read_prop(world, entity, prop);
+            // Position's `rest` is a DISTANCE along its path — the track's units —
+            // so it is read through the trajectory, never off a Transform field.
+            let rest = if prop == PropKind::Position {
+                crate::apply_path::read_rest(world, entity, &doc.bindings()[i])
+            } else {
+                read_prop(world, entity, prop)
+            };
+            doc.bindings_mut()[i].rest = rest;
         }
     }
 }
@@ -224,7 +231,7 @@ pub fn apply_active_clip(
             }
         });
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            write_prop(world, e, b.prop, v);
+            write_prop(world, e, b, v);
         }
     }
 }
@@ -378,7 +385,16 @@ fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.
-fn write_prop(world: &mut World, entity: Entity, prop: PropKind, v: AnimValue) {
+///
+/// Takes the whole BINDING, not just the kind: [`PropKind::Position`]'s value is a
+/// distance, and turning it back into a place needs that binding's trajectory.
+fn write_prop(world: &mut World, entity: Entity, b: &crate::TargetBinding, v: AnimValue) {
+    let prop = b.prop;
+    // The one channel whose value is not a coordinate (ADR-0141).
+    if prop == PropKind::Position {
+        crate::apply_path::write_position(world, entity, b, v);
+        return;
+    }
     if let Some(sp) = prop.as_sprite_transform() {
         let AnimValue::Float(f) = v else { return };
         if let Some(mut xf) = world.get_mut::<Transform>(entity) {

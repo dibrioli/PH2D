@@ -105,7 +105,7 @@ impl crate::App {
              \x20    re-cozinharia tudo.\n\
              \x20 3) Arraste **Offset** para NEGATIVO: os anéis encolhem PARA DENTRO e passam a\n\
              \x20    ser desenhados na FRENTE da forma (senão ela os taparia). É o *Inside* do\n\
-             \x20    Corel, e cai da mesma aritmética — não há um segundo modo.\n\
+             \x20    Corel — o mesmo que escolher **Side: Inner** com offset positivo.\n\
              \x20 4) Clique a swatch **To** e escolha uma cor bem diferente do preenchimento.\n\
              \x20    Olhe o MEIO da rampa: ela passa por tons saturados, não por um cinza\n\
              \x20    lamacento — a interpolação é em **Oklab**, o mesmo espaço do picker.\n\
@@ -113,8 +113,10 @@ impl crate::App {
              \x20    com eles; abaixo de 1 amontoam junto da forma. O neutro está no CENTRO do\n\
              \x20    trilho (a faixa é geométrica) — solte o slider no meio e confira que volta\n\
              \x20    a ser linear.\n\
-             \x20 6) **Corner** e **Side** re-cozinham na hora, sempre a partir da forma\n\
-             \x20    original. Num hexágono, Miter dá pontas afiadas e Round as arredonda.\n\
+             \x20 6) **Side** é a DIREÇÃO (modelo do Corel): **Outer** joga os anéis para fora,\n\
+             \x20    **Inner** para dentro (o espelho — nada mais some, como sumia antes), e\n\
+             \x20    **Both** para os dois lados ao mesmo tempo. **Corner** (Miter/Round/Bevel)\n\
+             \x20    re-cozinha na hora, sempre a partir da forma original.\n\
              \x20 7) Selecione o HEXÁGONO. Os controles têm de mostrar OS NÚMEROS DELE\n\
              \x20    ({DEMO_STEPS} passos, accel {DEMO_ACCEL}), não os da estrela — e voltar aos\n\
              \x20    da estrela quando você a selecionar de novo.\n\

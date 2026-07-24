@@ -5,13 +5,25 @@
 //! o modo Node edita —, e os anéis são desenho derivado, re-cozidos aqui e desenhados por
 //! [`ph2d_vec_render::dispatch`] no z dela.
 //!
-//! # A ordem de desenho é UMA regra: do maior para o menor
+//! # A ordem de desenho é UMA regra: por PROFUNDIDADE (distância assinada decrescente)
 //!
-//! Com `d > 0` os anéis são MAIORES que a fonte e têm de ficar atrás dela; com `d < 0` são
-//! MENORES e têm de ficar à frente, senão a fonte os tapa. As duas frases são a mesma: **desenhe
-//! do maior para o menor**, e a fonte entra na posição que lhe cabe nessa ordem. Um `if` por sinal
-//! seria duas respostas para uma pergunta, e a segunda envelheceria quando aparecesse o modo
-//! `Both`.
+//! Cada anel nasce a uma **distância assinada** da fonte: `> 0` é para FORA (maior, atrás dela);
+//! `< 0` é para DENTRO (menor, à frente dela, senão ela o tapa). A fonte está no `0`. Ordenar tudo
+//! por distância DECRESCENTE — o mais para fora primeiro (fundo), a fonte no meio, o mais para
+//! dentro por último (frente) — é UMA regra que serve os três Sides (Outer/Inner/Both) e os dois
+//! sinais do slider sem um `if` por caso.
+//!
+//! # O `side` do Contour é DIREÇÃO, não seleção de furos
+//!
+//! ⚠️ O `OffsetSide` do módulo Expand escolhe QUE contorno anda (a borda de fora × os furos), e
+//! isso é o certo para o *Offset Path*. Mas um Contour age sobre a **silhueta**, e a estrela do
+//! smoke não tem furos — então "Inner = só furos" não movia um pixel (o report do Enio). Aqui o
+//! `side` vira a **direção** do modelo do Corel: **Outer** = para fora (respeita o sinal do
+//! slider); **Inner** = o ESPELHO (a direção oposta); **Both** = os dois lados. O offset é sempre
+//! chamado com `OffsetSide::Outer` (a silhueta) e a direção sai do SINAL da distância, então o
+//! offset direto (`offset_ring`) cobre TODOS os Sides — o FPS e o pisca-pisca não voltam por Inner
+//! nem por Both. Um compound (com furos) cai no `offset_path` da silhueta, ignorando os furos:
+//! um contour segue a borda de fora, que é o que o artista espera.
 //!
 //! # O memo é POR ANEL, e é o que torna o slider de passos barato
 //!
@@ -31,9 +43,18 @@ use std::collections::BTreeMap;
 use ph2d_color::{LinearRgba, OklabColor, SrgbRgba};
 use ph2d_ecs::{Entity, SimWorld, VecContour};
 use ph2d_vec_render::LiveGeometry;
-use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
+use ph2d_vec_scene::{
+    LineJoin, OffsetSide, Paint, Rgba8, VecPath, VecPathId, VecScene, VecXforms, bake_xform,
+    xform_of,
+};
 
 use crate::vec_entities::VecEntityMap;
+
+/// A geometria de UM anel (rank `k`): uma lista de PEÇAS. Cada peça é `(distância assinada, os
+/// caminhos)` — a distância dá o z (para fora = atrás, para dentro = na frente) e a cor da rampa
+/// sai do rank. `Outer`/`Inner` têm UMA peça; `Both` tem duas (uma para cada lado). Os caminhos são
+/// um `Vec` porque um offset de compound pode partir em vários.
+type Ring = Vec<(f64, Vec<VecPath>)>;
 
 /// O que ENTROU (a geometria de mundo + tudo o que move TODOS os anéis) e os anéis que saíram.
 ///
@@ -45,10 +66,9 @@ struct Memo {
     join: u8,
     side: u8,
     accel: f32,
-    /// Os anéis já cozidos, do mais próximo (k=1) ao mais distante. Cada entrada é o que o
-    /// `offset_path` devolveu para aquele `k` — pode ser mais de um caminho (um donut offsetado
-    /// para dentro se parte em vários) ou nenhum (o anel morreu).
-    rings: Vec<Vec<VecPath>>,
+    /// Os anéis já cozidos, do rank 1 em diante. Cada [`Ring`] tem as peças daquele rank (uma por
+    /// direção que o `side` pede).
+    rings: Vec<Ring>,
     /// A ÚLTIMA geometria não-vazia de cada anel — a guarda de continuidade do FALLBACK booleano.
     ///
     /// ⚠️ **A CURA de verdade não é esta — é o offset DIRETO** (`offset_ring`), que gera os anéis
@@ -65,7 +85,10 @@ struct Memo {
     /// no pior caso) · offset iterado (1311 ms/frame) · `linesweeper` 0.4.0 (reduz mas não elimina
     /// o pânico) · fundir os sweeps / paralelizar (o Enio apontou a resposta certa: gerar os anéis
     /// como Pattern/Blend, por transformação barata, não pela booleana).
-    last_good: Vec<Vec<VecPath>>,
+    ///
+    /// É por-PEÇA (indexado `[rank][peça]`), como o [`Memo::rings`]: o `side` faz parte da chave do
+    /// memo, então a aridade das peças é estável enquanto o `last_good` sobrevive a um arrasto.
+    last_good: Vec<Ring>,
 }
 
 impl Memo {
@@ -155,36 +178,37 @@ impl ContourLive {
             .get_mut(&id)
             .expect("o memo acabou de ser inserido se faltava");
         // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
+        let join = crate::vec_expand::join_of_code(spec.join);
         while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
             let k = usize::from(u16::try_from(memo.rings.len()).unwrap_or(u16::MAX));
-            let dist =
-                spec.ring_distance(u16::try_from(k + 1).expect("k < steps <= MAX_CONTOUR_STEPS"));
-            let join = crate::vec_expand::join_of_code(spec.join);
-            let side = crate::vec_expand::side_of_code(spec.side);
-            // ⚠️ **O offset DIRETO primeiro — a cura do FPS e do piscar (report do Enio).** Ele é
-            // ~668× mais barato que a booleana e NUNCA passa pelo `linesweeper` (não panica), então
-            // no caso comum (contorno único, Outer) não há custo nem pânico — que era a raiz dos
-            // DOIS problemas. É a mesma técnica barata que o Pattern (afim por cópia) e o Blend
-            // (lerp por passo) usam; o Contour era o único a chamar a booleana por cópia.
-            let fresh =
-                ph2d_vec_boolean::offset_ring(world, dist, join, side).unwrap_or_else(|| {
-                    // Fora do domínio do offset direto (compound, Inner/Both): a booleana. É o caso
-                    // raro — e é por isso que o `last_good` FICA, para o piscar dele.
-                    ph2d_vec_boolean::offset_path(world, dist, join, side)
-                });
-            if fresh.is_empty() {
-                // Vazio: ou a forma sumiu ao encolher (offset direto), ou o sweep não respondeu
-                // (booleana, § do `last_good`). Nos dois casos o anel FICA onde estava; se nunca
-                // houve geometria boa, não há o que desenhar.
-                let held = memo.last_good.get(k).cloned().unwrap_or_default();
-                memo.rings.push(held);
-            } else {
-                if memo.last_good.len() <= k {
-                    memo.last_good.resize(k + 1, Vec::new());
-                }
-                memo.last_good[k].clone_from(&fresh);
-                memo.rings.push(fresh);
+            let rank = u16::try_from(k + 1).expect("k < steps <= MAX_CONTOUR_STEPS");
+            if memo.last_good.len() <= k {
+                memo.last_good.resize(k + 1, Ring::new());
             }
+            let mut ring: Ring = Vec::new();
+            for (j, dist) in signed_dists(spec, rank).into_iter().enumerate() {
+                let geom = match cook_piece(world, dist, join) {
+                    // O motor RESPONDEU (offset direto, ou booleana com sucesso). Vazio aqui é
+                    // ANIHILAÇÃO (a forma sumiu ao encolher) — desenhar nada é o certo. Definitivo,
+                    // então atualiza o `last_good` desta peça.
+                    Some(g) => {
+                        let lg = &mut memo.last_good[k];
+                        if lg.len() <= j {
+                            lg.resize(j + 1, (dist, Vec::new()));
+                        }
+                        lg[j] = (dist, g.clone());
+                        g
+                    }
+                    // Só a booleana FALHA (pânico do sweep isolado): segura o último bom desta peça,
+                    // para o anel ATRASAR em vez de piscar (a continuidade do fallback compound).
+                    None => memo.last_good[k]
+                        .get(j)
+                        .map(|(_, g)| g.clone())
+                        .unwrap_or_default(),
+                };
+                ring.push((dist, geom));
+            }
+            memo.rings.push(ring);
         }
         memo
     }
@@ -232,11 +256,13 @@ impl ContourLive {
                 .iter()
                 .position(|p| p.id == id)
                 .map_or(0, |z| z + 1);
-            let new: Vec<VecPathId> = rings
+            let mut z: Vec<(f64, VecPathId)> = rings
                 .into_iter()
                 .enumerate()
-                .map(|(k, p)| scene.insert_path(at + k, p))
+                .map(|(k, (dist, p))| (dist, scene.insert_path(at + k, p)))
                 .collect();
+            // A fonte entra no z-run na distância 0 (entre os anéis para fora e para dentro).
+            z.push((0.0, id));
             // O efeito foi consumido: a fonte deixa de carregar o componente, senão o frame
             // seguinte re-cozeria anéis por cima dos que acabaram de virar formas.
             if let Some(&bits) = map.get(&id)
@@ -245,7 +271,7 @@ impl ContourLive {
                 em.remove::<VecContour>();
             }
             self.memo.remove(&id);
-            runs.push(stacked(new, id, spec.d));
+            runs.push(ordered_by_depth(z));
         }
         runs
     }
@@ -258,52 +284,89 @@ impl ContourLive {
     }
 }
 
-/// Monta a lista final: os anéis pintados pela rampa + a fonte, **do maior para o menor**.
-fn assemble(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
-    stacked(painted_rings(world, memo, spec), world.clone(), spec.d)
+/// As distâncias assinadas dos anéis do rank `k`, uma por PEÇA. É aqui que o `side` do Contour vira
+/// DIREÇÃO (§ do módulo), e não a seleção de furos do `OffsetSide`.
+///
+/// - **Outer** (`0`): a distância assinada pelo slider (`+` para fora, `−` para dentro).
+/// - **Inner** (`1`): o ESPELHO — a direção oposta, para o mesmo sinal de slider.
+/// - **Both** (`2`): os DOIS lados (simétrico; o sinal do slider é irrelevante).
+fn signed_dists(spec: &VecContour, k: u16) -> Vec<f64> {
+    let sd = spec.ring_distance(k);
+    match spec.side {
+        1 => vec![-sd],     // Inner: o espelho do Outer
+        2 => vec![sd, -sd], // Both: os dois lados
+        _ => vec![sd],      // Outer (0) — e qualquer código desconhecido
+    }
 }
 
-/// **A ordem de desenho, fundo → topo** — os anéis (mais distante primeiro) e depois a FONTE.
+/// Coze UMA peça (uma distância assinada da silhueta).
+///
+/// Devolve `Some(geom)` quando o motor RESPONDEU: o offset DIRETO ([`ph2d_vec_boolean::offset_ring`],
+/// ~668× mais barato e sem tocar o `linesweeper`), ou a booleana com sucesso. Um `geom` vazio aí é
+/// ANIHILAÇÃO (a forma sumiu ao encolher), e desenhar nada é o certo. Devolve `None` só quando a
+/// booleana FALHOU (pânico do sweep isolado num compound) — aí o chamador segura o último bom.
+///
+/// ⚠️ Sempre `OffsetSide::Outer`: a direção sai do SINAL de `dist`, não do `OffsetSide`. É isso que
+/// deixa o offset direto cobrir TODOS os Sides do Contour (o FPS/piscar não voltam por Inner/Both).
+fn cook_piece(world: &VecPath, dist: f64, join: LineJoin) -> Option<Vec<VecPath>> {
+    match ph2d_vec_boolean::offset_ring(world, dist, join, OffsetSide::Outer) {
+        Some(g) => Some(g),
+        None => {
+            let g = ph2d_vec_boolean::offset_path(world, dist, join, OffsetSide::Outer);
+            if g.is_empty() { None } else { Some(g) }
+        }
+    }
+}
+
+/// Monta a lista final: os anéis pintados pela rampa + a fonte, ordenados por PROFUNDIDADE.
+fn assemble(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
+    let mut items = painted_rings(world, memo, spec);
+    items.push((0.0, world.clone())); // a fonte, na distância 0
+    ordered_by_depth(items)
+}
+
+/// **A ordem de desenho, fundo → topo** — por distância assinada DECRESCENTE (§ do módulo): o mais
+/// para FORA primeiro (atrás), a fonte no `0`, o mais para DENTRO por último (frente).
 ///
 /// Genérica sobre o que está a ser ordenado porque a regra tem **dois** consumidores que ordenam
-/// coisas diferentes: o cozimento empilha `VecPath` para desenhar, e o [`expand`] empilha
-/// `VecPathId` para o `vec_zorder::restack`. Escrita duas vezes, ela divergiria — e a divergência
-/// seria *as formas saltarem de z no clique que promete entregar o que estava na tela*.
-fn stacked<T>(mut rings: Vec<T>, source: T, d: f64) -> Vec<T> {
-    rings.push(source);
-    // `d < 0` faz os anéis ENCOLHEREM, então "maior primeiro" é a ordem inversa desta.
-    if d < 0.0 {
-        rings.reverse();
-    }
-    rings
+/// coisas diferentes: o cozimento empilha `VecPath` para desenhar, e o [`ContourLive::expand`]
+/// empilha `VecPathId` para o `vec_zorder::restack`. Escrita duas vezes, ela divergiria — e a
+/// divergência seria *as formas saltarem de z no clique que promete entregar o que estava na tela*.
+fn ordered_by_depth<T>(mut items: Vec<(f64, T)>) -> Vec<T> {
+    items.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    items.into_iter().map(|(_, t)| t).collect()
 }
 
-/// Os anéis já pintados pela rampa, do mais DISTANTE ao mais próximo.
+/// Os anéis já pintados pela rampa, cada um com a sua distância assinada (o z é resolvido depois,
+/// em [`ordered_by_depth`]).
 ///
-/// A fonte não entra aqui: ela é a forma do artista, não um passo da rampa. O anel `k` leva a cor
-/// interpolada em **Oklab** entre a da fonte e o alvo, na fração `ramp_t(k)`.
+/// A fonte não entra aqui: ela é a forma do artista, não um passo da rampa. O anel de rank `k` leva
+/// a cor interpolada em **Oklab** entre a da fonte e o alvo, na fração `ramp_t(k)`.
 ///
 /// ⚠️ `ramp_t` **não** é a função que decidiu a distância daquele anel (`ring_distance`) — as duas
 /// divergem de propósito, e o porquê está no `accel` do [`VecContour`]. O que as mantém coerentes
 /// é serem MONÓTONAS na mesma direção: o anel mais distante é sempre o mais próximo do alvo.
 ///
-/// **Porta única do desenho de um anel**, e é por isso que o [`expand`] a chama em vez de recozer:
-/// uma 2ª porta faria os anéis mudarem de cor no clique que promete materializá-los como estão.
-fn painted_rings(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<VecPath> {
+/// **Porta única do desenho de um anel**, e é por isso que o [`ContourLive::expand`] a chama em vez
+/// de recozer: uma 2ª porta faria os anéis mudarem de cor no clique que promete materializá-los como
+/// estão.
+fn painted_rings(world: &VecPath, memo: &Memo, spec: &VecContour) -> Vec<(f64, VecPath)> {
     let from = source_rgba(world);
-    let mut out: Vec<VecPath> = Vec::new();
+    let mut out: Vec<(f64, VecPath)> = Vec::new();
     let n = spec
         .steps
         .min(u16::try_from(memo.rings.len()).unwrap_or(u16::MAX));
-    for k in (1..=n).rev() {
+    for k in 1..=n {
         let paint = Paint::solid(ramp(from, spec.to, spec.ramp_t(k)));
-        for ring in &memo.rings[usize::from(k - 1)] {
-            let mut p = ring.clone();
-            p.fill = Some(paint.clone());
-            // O traço do anel é descartado: um contour é um empilhamento de PREENCHIMENTOS, e
-            // herdar o traço da fonte desenharia N contornos por cima da rampa.
-            p.stroke = None;
-            out.push(p);
+        for (dist, geom) in &memo.rings[usize::from(k - 1)] {
+            for ring in geom {
+                let mut p = ring.clone();
+                p.fill = Some(paint.clone());
+                // O traço do anel é descartado: um contour é um empilhamento de PREENCHIMENTOS, e
+                // herdar o traço da fonte desenharia N contornos por cima da rampa.
+                p.stroke = None;
+                out.push((*dist, p));
+            }
         }
     }
     out

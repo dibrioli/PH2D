@@ -59,12 +59,17 @@ pub struct VecContour {
     /// guardar um contour inerte (a lei do `VecOffset`, e a mesma da rotação do pattern).
     pub steps: u16,
     /// A distância **por passo**, em unidades de MUNDO. O anel `k` fica em `k · d` (§ do módulo).
-    /// Negativo encolhe — é o *Inside* do Corel, e cai da mesma aritmética sem um segundo modo.
+    /// Positivo cresce para FORA, negativo encolhe para DENTRO. ⚠️ Sob `side = Inner` o SINAL é
+    /// espelhado (Inner é a direção oposta do Outer); sob `Both` é irrelevante (os dois lados).
     pub d: f64,
     /// O estilo de quina, no código do painel: `0` Miter · `1` Round · `2` Bevel. Mesmos códigos
     /// do [`crate::VecOffset`], resolvidos pela MESMA porta (`vec_expand::join_of_code`).
     pub join: u8,
-    /// Que contorno anda, no código do painel: `0` Outer · `1` Inner · `2` Both.
+    /// A **DIREÇÃO** dos anéis, no código do painel — o modelo do Corel (Outside/Inside/Both), NÃO
+    /// a seleção de contornos-de-furo do `OffsetSide`: `0` Outer (para fora, respeita o sinal de
+    /// `d`) · `1` Inner (para dentro, o espelho) · `2` Both (os dois lados). A shell (`contour_live`)
+    /// consome isto como direção; o offset em si é sempre da silhueta. ⚠️ O `OffsetSide::Inner` só
+    /// move FUROS, e uma silhueta sólida não tem nenhum — por isso o Contour não o usa.
     pub side: u8,
     /// A cor do ÚLTIMO anel, em **sRGB** `[r, g, b, a]`. O primeiro parte da cor da FONTE, então a
     /// rampa tem os dois extremos sem o artista autorar o de partida.

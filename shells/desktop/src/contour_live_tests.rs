@@ -44,6 +44,21 @@ fn fill_of(p: &VecPath) -> [u8; 4] {
     }
 }
 
+/// O bbox das ÂNCORAS de um caminho — a régua de "cresceu ou encolheu". ⚠️ Fiável só para o join
+/// **Round** (o default): a Miter crava spikes de auto-interseção na erosão que devolvem o bbox ao
+/// tamanho da fonte (ver `probe_ring_loops`). Todos os gates aqui usam o default (Round).
+fn anchor_bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for v in &p.verts {
+        lo[0] = lo[0].min(v.anchor[0]);
+        lo[1] = lo[1].min(v.anchor[1]);
+        hi[0] = hi[0].max(v.anchor[0]);
+        hi[1] = hi[1].max(v.anchor[1]);
+    }
+    (lo, hi)
+}
+
 /// **N passos produzem N anéis MAIS a fonte**, e a fonte é a ÚLTIMA (por cima) quando os anéis
 /// crescem — senão eles a tapariam e o efeito seria um blob da cor do alvo.
 ///
@@ -161,6 +176,127 @@ fn adding_a_step_leaves_the_existing_rings_where_they_were() {
              de `steps` e o memo não pode reusar nada"
         );
     }
+}
+
+/// **Outer + offset NEGATIVO ENCOLHE para dentro** — o bug que o Enio reportou (*"para negativo,
+/// fica como na foto"*, i.e. crescia). A causa era o `offset_ring` escolher o laço do
+/// `kurbo::stroke` pelo shoelace, que MENTE numa forma côncava (a estrela CRESCIA ao encolher);
+/// curado escolhendo pelo SINAL da área (a erosão sai winding-invertida — `probe_ring_loops`).
+///
+/// A fonte fica ATRÁS (primeira) quando os anéis encolhem — senão ela os taparia —, e o anel da
+/// frente é MENOR que a fonte `[0,1]²`.
+///
+/// ⚠️ Mutação: `offset_ring` voltar a escolher por `area().abs()` ⇒ a erosão de uma quina Round
+/// ainda encolhe, mas o gate irmão da booleana (`the_ring_matches_the_booleana`) pega a estrela.
+/// Aqui a mutação que sangra é `signed_dists` do Outer negar o sinal ⇒ os anéis CRESCEM ⇒ RED.
+#[test]
+fn outer_with_negative_offset_shrinks_inward() {
+    let (scene, mut sim, map, id) = scene();
+    arm(
+        &mut sim,
+        &map,
+        id,
+        VecContour {
+            steps: 3,
+            d: -0.1,
+            side: 0, // Outer
+            to: [255, 255, 255, 255],
+            ..VecContour::default()
+        },
+    );
+    let mut live = ContourLive::default();
+    live.recook(&scene, &sim, &map, &VecXforms::default());
+    let out = &live.live()[&id];
+    assert!(out.len() >= 4, "3 anéis + a fonte, veio {}", out.len());
+    assert_eq!(
+        fill_of(&out[0]),
+        [0, 0, 0, 255],
+        "quando os anéis ENCOLHEM a fonte tem de ficar ATRÁS (primeira), senão os tapa"
+    );
+    let (lo, hi) = anchor_bbox(out.last().expect("anel da frente"));
+    assert!(
+        lo[0] > 0.0 && lo[1] > 0.0 && hi[0] < 1.0 && hi[1] < 1.0,
+        "Outer + `d` negativo devia ENCOLHER para dentro de [0,1]², bbox {lo:?}..{hi:?} \
+         (o bug: crescia para fora)"
+    );
+}
+
+/// **Side:Inner produz anéis PARA DENTRO** — o report do Enio (*"Inner completamente bugado, não
+/// aparece nada"*). A causa: `OffsetSide::Inner` move só os FUROS, e a estrela do smoke não tem
+/// nenhum ⇒ nada se movia. Curado tornando o `side` do Contour a DIREÇÃO (§ do módulo): Inner é o
+/// ESPELHO do Outer, então com `d` positivo os anéis vão para DENTRO (o *Inside* do Corel).
+///
+/// ⚠️ Mutação: `signed_dists` do Inner devolver `sd` em vez de `-sd` ⇒ os anéis CRESCEM ⇒ RED. E o
+/// comportamento ANTIGO (furos) deixaria os anéis do tamanho da fonte ⇒ bbox == `[0,1]²` ⇒ RED.
+#[test]
+fn inner_side_makes_rings_go_inward() {
+    let (scene, mut sim, map, id) = scene();
+    arm(
+        &mut sim,
+        &map,
+        id,
+        VecContour {
+            steps: 3,
+            d: 0.1,
+            side: 1, // Inner
+            to: [255, 255, 255, 255],
+            ..VecContour::default()
+        },
+    );
+    let mut live = ContourLive::default();
+    live.recook(&scene, &sim, &map, &VecXforms::default());
+    let out = &live.live()[&id];
+    assert!(
+        out.len() >= 4,
+        "Inner tem de produzir anéis VISÍVEIS (o report: nada aparecia), veio {}",
+        out.len()
+    );
+    let (lo, hi) = anchor_bbox(out.last().expect("anel da frente"));
+    assert!(
+        lo[0] > 0.0 && lo[1] > 0.0 && hi[0] < 1.0 && hi[1] < 1.0,
+        "Inner devia produzir anéis PARA DENTRO de [0,1]², bbox {lo:?}..{hi:?}"
+    );
+}
+
+/// **Side:Both produz anéis nos DOIS sentidos** — para fora E para dentro, simétrico. É o terceiro
+/// modo da direção, distinto de Outer e Inner.
+///
+/// ⚠️ Mutação: `signed_dists` do Both devolver só `[sd]` ⇒ metade dos anéis (contagem N+1, não
+/// 2N+1) e nada para dentro ⇒ RED.
+#[test]
+fn both_side_makes_rings_on_both_directions() {
+    let (scene, mut sim, map, id) = scene();
+    arm(
+        &mut sim,
+        &map,
+        id,
+        VecContour {
+            steps: 3,
+            d: 0.1,
+            side: 2, // Both
+            to: [255, 255, 255, 255],
+            ..VecContour::default()
+        },
+    );
+    let mut live = ContourLive::default();
+    live.recook(&scene, &sim, &map, &VecXforms::default());
+    let out = &live.live()[&id];
+    assert!(
+        out.len() >= 7,
+        "Both devia dar 2N anéis + a fonte (7), veio {}",
+        out.len()
+    );
+    // O de TRÁS (primeiro) é o mais para FORA; o da FRENTE (último) o mais para DENTRO.
+    let (back_lo, back_hi) = anchor_bbox(&out[0]);
+    let (front_lo, front_hi) = anchor_bbox(out.last().expect("anel da frente"));
+    assert!(
+        back_hi[0] > 1.0 && back_lo[0] < 0.0,
+        "o anel de TRÁS devia estar para FORA de [0,1]², bbox {back_lo:?}..{back_hi:?}"
+    );
+    assert!(
+        front_hi[0] < 1.0 && front_lo[0] > 0.0,
+        "o anel da FRENTE devia estar para DENTRO de [0,1]², bbox {front_lo:?}..{front_hi:?}"
+    );
 }
 
 /// **Sem componente não há anéis** — e a forma volta a desenhar-se sozinha (entrada AUSENTE, que é

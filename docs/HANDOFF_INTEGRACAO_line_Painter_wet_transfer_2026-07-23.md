@@ -9,7 +9,7 @@
 | branch | `line/Painter` |
 | HEAD | `e71f9e4c9` |
 | base do fork | `df91ef6ec` (= `main` no momento da abertura; rebase feito na abertura) |
-| commits | **6** |
+| commits | **8** |
 
 Commits, em ordem (têm dependência entre si — integre a sequência inteira):
 
@@ -19,6 +19,11 @@ Commits, em ordem (têm dependência entre si — integre a sequência inteira):
 4. `c086bd8f1` — `docs(wet)`: doc 24 + este handoff + a entrada na §5.
 5. `da124a5e9` — `docs(memory)`: a lição do ponto fixo.
 6. `e71f9e4c9` — `perf(wet)`: o composite vira **row-parallel** (ADR-0109 emenda 2).
+7. `e8414355c` — `docs(wet)`: handoff coerente com a 2ª rodada.
+8. `03e140752` — `docs(painter)`: a **avaliação GPU** (doc 25) + o harness de
+   medição dos 2 lados + o fix do LOC latente do commit 6. ⚠️ **Não faz parte
+   da wave da transferência** — é resposta a outra pergunta do Enio e não toca
+   `ph2d-wet-paint`; integra junto por estar na mesma branch.
 
 ⚠️ **O commit 6 é a 2ª rodada**, depois de o smoke reprovar (*"ainda muito
 lento, mais lento que HTML JS"*). Ele é o que traz o frame do produto de 20 para
@@ -82,6 +87,13 @@ dos dois usa `colorops::` diretamente** (verificado por grep). `cargo check
 - Gates de workspace rodados aqui (não caem no `cargo test -p`):
   `architecture_workspace_file_loc_cap` ✓ · `arch_safe_clamp_only` ✓ ·
   `ph2d-editor-core` inteiro ✓ · `shells/desktop::file_loc_caps` ✓.
+  ⚠️ **Esta linha esteve VERMELHA e a afirmação acima envelheceu:** o commit 6
+  (o fan-out do composite) acrescentou 3 imports e deixou `wetpaint.rs` em
+  **703/700** — eu rodei o gate depois do commit 3 e nunca mais. Corrigido em
+  `03e140752` (os imports foram para `wetpaint/composite.rs`, o único arquivo
+  que os usa) e re-rodado verde. É a mesma família do miss de `file_loc_caps`
+  que a `line/physics` documentou: **gate de workspace tem de rodar no ÚLTIMO
+  commit, não no penúltimo.**
 - `scripts/nextest-impacted.sh`: **3476 passaram, 0 falharam**.
 - LOC: maior arquivo tocado é `render.rs` com 447/700.
 

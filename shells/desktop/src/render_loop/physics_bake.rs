@@ -175,6 +175,36 @@ pub(crate) const DEFAULT_BAKE_SECONDS: f64 = 5.0;
 /// constant inside it.
 const BAKE_SMOOTH_PASSES: usize = 0;
 
+/// Fit tolerance for a bake — a fraction of the motion's range, **tighter than
+/// the record's** ([`super::record_fit::REC_SIMPLIFY_REL`]), and the same kind of
+/// argument as [`BAKE_SMOOTH_PASSES`]: a property of the INPUT, not the fit.
+///
+/// The record's 1% is calibrated for a noisy hand — loose enough not to
+/// over-subdivide on tremor. A solver has no tremor, so at 1% the fit was simply
+/// too loose: it DROPPED a small bounce and rounded it (Enio's "funciona mas é
+/// imperfeito"). The `min_prom` inside `fit_fcurve` (the least value-swing for a
+/// bounce to count as a real extremum) is derived from this tolerance, so
+/// tightening it is exactly what makes the bounce survive.
+///
+/// ⚠️ **But tighter is NOT monotonically better — there is a sweet spot, and it
+/// is the whole reason this is 0.3% and not 0.1%.** Measured on a bouncing ball
+/// (3 s, restitution 0.75); "remap" is the same curve read back under a
+/// half-speed Time Remap, which RE-SAMPLES it between the keys:
+///
+/// | tolerance | keys | error at keys | under a Time Remap |
+/// |---|---|---|---|
+/// | 1% (the record's) | 4 | **2.53%** (bounce dropped) | ok |
+/// | **0.3% (this)** | 5 | **0.67%** (bounce captured) | ok |
+/// | 0.1% | 7 | 0.27% | **6.6% — OVERSHOOT** |
+///
+/// Below ~0.2% the fit packs keys tightly around the sharp bounce, and a
+/// smooth-tangent cubic between two close keys OVERSHOOTS; sampling exactly on
+/// the ticks steps over it, but a Time Remap samples between them and hits it.
+/// So "eliminate the fit / make it arbitrarily tight" is the wrong instinct —
+/// one key per tick (181 keys) is unusable to edit AND the overshoot is worst
+/// there. 0.3% is the middle: bounce captured, no overshoot, 5 keys.
+const BAKE_SIMPLIFY_REL: f64 = 0.003;
+
 /// The window a Bake covers, `(start, end)` seconds, given the document and the
 /// transport.
 ///
@@ -415,7 +445,7 @@ pub(crate) fn bake_selection(
 
     // Inside the bracket, exactly as the record does it: the dense keys and the
     // curve that replaces them are one step, not two.
-    simplify_recorded(timeline, &record, BAKE_SMOOTH_PASSES);
+    simplify_recorded(timeline, &record, BAKE_SMOOTH_PASSES, BAKE_SIMPLIFY_REL);
     let doc = timeline.doc.clone();
     timeline.history.commit_if_changed(&doc);
 

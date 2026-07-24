@@ -40,7 +40,7 @@ use ph2d_ecs::World;
 use ph2d_editor::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
-use super::record_fit::{REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
+use super::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
 use super::timeline_bridge::{default_interp, sample_prop_value};
 
 /// The shell-owned state of the auto-key / pose machinery (one per `App`).
@@ -432,7 +432,7 @@ pub(crate) fn apply_samples(
         // A performing session just ended: simplify the dense per-frame keys it
         // recorded into clean minimal Bézier curves — WITHIN this same undo step,
         // so one Ctrl+Z reverts the whole record + cleanup.
-        simplify_recorded(timeline, &ak.record, REC_SMOOTH_PASSES);
+        simplify_recorded(timeline, &ak.record, REC_SMOOTH_PASSES, REC_SIMPLIFY_REL);
         ak.record.clear();
         let doc = timeline.doc.clone();
         timeline.history.commit_if_changed(&doc);

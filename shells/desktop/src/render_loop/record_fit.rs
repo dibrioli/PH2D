@@ -29,6 +29,13 @@ use ph2d_timeline::{PropKind, TimelineState};
 /// normalises by the range, so this reads the same on a pixel track and a radian
 /// track. (Paired with the low-pass below: together they take a noisy 120-sample
 /// gesture to ~5-6 clean keys; measured in `curve_fit` calibration.)
+///
+/// ⚠️ This is the RECORD's tolerance, and it is calibrated for a **noisy hand
+/// gesture** — 1% is loose enough not to over-subdivide on tremor. It is passed
+/// in (not hardcoded here) precisely because a different input wants a different
+/// number: the physics BAKE, which has no tremor, passes a much tighter one
+/// ([`super::physics_bake::BAKE_SIMPLIFY_REL`]). This is the exact twin of the
+/// smoothing passes below — a parameter of the INPUT, not of the fit.
 pub(crate) const REC_SIMPLIFY_REL: f64 = 0.01;
 /// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
 /// not get an impossibly tight tolerance that keeps every noise sample.
@@ -88,6 +95,7 @@ pub(crate) fn simplify_recorded(
     timeline: &mut TimelineState,
     record: &BTreeMap<(u64, PropKind), RecSpan>,
     smooth_passes: usize,
+    simplify_rel: f64,
 ) {
     // Group the session's tracks by entity — alignment is per OBJECT (two objects
     // recorded at once keep independent timing).
@@ -114,7 +122,7 @@ pub(crate) fn simplify_recorded(
             // channel's raw extent is one wrapped turn (~2π) however many times it
             // actually spun, so a raw-derived tolerance would be far too tight for
             // the unwrapped curve the fit now sees.
-            let tol = value_tol(&rs.samples);
+            let tol = value_tol(&rs.samples, simplify_rel);
             times.extend(
                 ph2d_anim::fit_fcurve(&rs.samples, tol, channel.bounds)
                     .iter()
@@ -150,15 +158,17 @@ pub(crate) fn simplify_recorded(
     }
 }
 
-/// The fit tolerance for one recorded track: a fraction of ITS value range, with
-/// an absolute floor so a near-constant channel is not held to an impossible bar.
-/// Measured on the PREPARED samples (see the caller) — the range the fit will
-/// actually see, which for an unwrapped spin is every turn, not one.
-fn value_tol(samples: &[(f64, f64)]) -> f64 {
+/// The fit tolerance for one recorded track: a fraction (`simplify_rel`) of ITS
+/// value range, with an absolute floor so a near-constant channel is not held to
+/// an impossible bar. Measured on the PREPARED samples (see the caller) — the
+/// range the fit will actually see, which for an unwrapped spin is every turn,
+/// not one. `simplify_rel` is the caller's: the record's noise-calibrated 1%,
+/// or the bake's tight value.
+fn value_tol(samples: &[(f64, f64)], simplify_rel: f64) -> f64 {
     let (mut v_min, mut v_max) = (f64::MAX, f64::MIN);
     for &(_, v) in samples {
         v_min = v_min.min(v);
         v_max = v_max.max(v);
     }
-    (REC_SIMPLIFY_REL * (v_max - v_min)).max(REC_SIMPLIFY_FLOOR)
+    (simplify_rel * (v_max - v_min)).max(REC_SIMPLIFY_FLOOR)
 }

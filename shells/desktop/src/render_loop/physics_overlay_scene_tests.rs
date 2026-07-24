@@ -472,6 +472,74 @@ fn a_force_zone_draws_its_push_even_while_the_clock_runs() {
     assert!(outlines(false, false, &mut pushing, &[], &camera(), window()).is_empty());
 }
 
+/// **The arrow turns with the zone** (W-AreaFrame), and stops turning when the artist
+/// pins the push to world axes.
+///
+/// The overlay resolves the direction through the SAME `zone_force_world_at` the solver's
+/// substep asks. A second copy of the rule here would draw a wind that does not blow —
+/// and the arrow is the only place a person ever reads this direction, so nothing else
+/// would catch it: a screenshot is not something a gate reads.
+#[test]
+fn the_push_arrow_turns_with_the_zone_unless_it_is_pinned_to_world_axes() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{AreaEffector, AreaForceWorldAxes, Collider, RigidBody};
+
+    // A zone turned a quarter turn, carrying a force along its OWN +X.
+    let zone = |world_axes: bool| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 1.0,
+                    },
+                    is_sensor: true,
+                    ..Collider::default()
+                },
+                Transform {
+                    translation: Vec2::new(0.0, 0.0),
+                    rotation: std::f32::consts::FRAC_PI_2,
+                    scale: Vec2::new(1.0, 1.0),
+                    skew_x: 0.0,
+                    skew_y: 0.0,
+                },
+                AreaEffector { force: [20.0, 0.0] },
+            ))
+            .id();
+        if world_axes {
+            sim.world_mut().entity_mut(e).insert(AreaForceWorldAxes);
+        }
+        sim
+    };
+
+    // Turned: the shaft must leave the origin along the SCREEN's vertical, not its
+    // horizontal. (Screen Y grows downward, so a world +Y push draws upward — the sign
+    // is not the claim here; running along Y rather than X is.)
+    let mut turned = zone(false);
+    let drawn = outlines(true, false, &mut turned, &[], &camera(), window());
+    let pts = points(&drawn[1].0);
+    assert!(
+        (pts[1].0 - pts[0].0).abs() < 1e-4 && (pts[1].1 - pts[0].1).abs() > 1.0,
+        "a zone turned a quarter turn must draw its arrow along the screen's vertical, \
+         got {pts:?} — the overlay is not resolving the force through the zone's frame"
+    );
+
+    // Pinned to world axes: the same zone, the same pose, and the arrow is back on +X.
+    let mut pinned = zone(true);
+    let drawn = outlines(true, false, &mut pinned, &[], &camera(), window());
+    let pts = points(&drawn[1].0);
+    assert!(
+        pts[1].0 > pts[0].0 && (pts[1].1 - pts[0].1).abs() < 1e-4,
+        "pinned to world axes the arrow must stay on +X whatever the pose, got {pts:?}"
+    );
+}
+
 /// **A torque zone draws a spin glyph showing which way it turns — and keeps drawing it
 /// while the clock runs** (W-AreaTorque).
 ///

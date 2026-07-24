@@ -202,3 +202,60 @@ pub(crate) fn build_physics_info(
         area_torque,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{
+        AreaEffector, AreaForceWorldAxes, BodyKind, Collider, ColliderShape, RigidBody,
+    };
+
+    /// **Selecting a zone shows the frame it was AUTHORED with** (W-AreaFrame).
+    ///
+    /// The read half of the marker. Its failure mode is the one Enio found in the five
+    /// area rows on 2026-07-22: authoring works, the solver honours it, and re-selecting
+    /// the zone shows the OTHER value — a control that lies about the state of the thing
+    /// it edits. The panel's chip highlight is drawn straight from this field, and it is
+    /// the only observable the seam cannot reach (a `seg_row`'s selection is a highlight
+    /// in the scene, not a widget value), so the gate belongs here, at the source.
+    #[test]
+    fn selecting_a_zone_shows_the_force_frame_it_was_authored_with() {
+        let zone = |marked: bool| {
+            let mut world = World::new();
+            let e = world
+                .spawn((
+                    Transform::from_translation(Vec2::new(0.0, 0.0)),
+                    RigidBody {
+                        kind: BodyKind::Static,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: 1.0,
+                            half_y: 1.0,
+                        },
+                        is_sensor: true,
+                        ..Collider::default()
+                    },
+                    AreaEffector { force: [3.0, 0.0] },
+                ))
+                .id();
+            if marked {
+                world.entity_mut(e).insert(AreaForceWorldAxes);
+            }
+            build_physics_info(&world, e.to_bits(), false, 5.0, 0)
+                .expect("a zone has a Transform, so §11 describes it")
+                .force_world_axes
+        };
+        assert!(
+            !zone(false),
+            "an unmarked zone is authored in its OWN frame — the default"
+        );
+        assert!(
+            zone(true),
+            "a zone carrying `AreaForceWorldAxes` must read back as world-axes; the \
+             builder is not reading the marker, so the chip would show the wrong side"
+        );
+    }
+}

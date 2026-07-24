@@ -532,9 +532,17 @@ impl PhysicsBridge {
             // The FRAME of the force (W-AreaFrame): a sixth optional component, and a
             // MARKER — its presence pins the force to world axes, its absence (the
             // default) authors it in the zone's own frame so turning the sensor turns
-            // the wind. It is deliberately NOT part of `any`: a marker alone describes
-            // the frame of a force that is not there, and registering an inert zone
-            // would cost the substep walk (and could wake a body) for nothing.
+            // the wind.
+            //
+            // ⚠️ It is deliberately NOT part of `any` — a marker alone describes the
+            // frame of a force that is not there — but that exclusion is HYGIENE, not
+            // correctness, and a mutation proved it: putting it in `any` leaves every
+            // gate green, because `effector::zone_effect` refuses a wholly inert zone
+            // anyway (zero force, zero torque, no drag). Same shape as the two refusals
+            // that function documents about itself, and worth writing down for the same
+            // reason: ask what a layer buys ALONE and be willing to answer "nothing"
+            // ([[feedback_layered_defenses_need_per_layer_gates]]). What it does buy is
+            // a `BodyDesc` that does not claim to be a zone when it is not.
             let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(e).is_some();
             let any = zone_force.is_some()
                 || zone_drag.is_some()

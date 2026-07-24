@@ -43,6 +43,10 @@ fn with_body() -> InspectorPhysicsInfo {
         can_join: false,
         bake_seconds: 5.0,
         is_sensor: false,
+        // The zone's own frame — the DEFAULT, declared rather than inherited. A fixture
+        // that reaches its state implicitly flips meaning the day the default moves and
+        // stays green testing the opposite.
+        force_world_axes: false,
         bake_channels_tag: 0,
         gravity_scale: 1.0,
         cap_half_height: 0.25,
@@ -83,6 +87,50 @@ fn click(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction>
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info));
     let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
+    let out = host.drained_actions();
+    set_current_inspector_physics(None);
+    out
+}
+
+/// Paint §11, then click the middle of `id` through the **real pointer dispatcher**.
+///
+/// ⚠️ The `click` helper above sends a synthetic `WidgetEvent::Click`, which SKIPS the
+/// store's focusability check — so it cannot see a widget that paints, hit-registers and
+/// routes but was never given an `InteractiveState` in `populate.rs`. For most §11
+/// controls the `architecture_panel_wiring_parity` gate covers that, but it only collects
+/// `.register(ids::LITERAL` written directly in paint code: a control painted through
+/// `seg_row`, whose ids reach the hit index inside a LOOP, is in that gate's documented
+/// blind spot (the same one the W2c layer matrix fell into). For those, THIS is the only
+/// thing standing between a chip and being stone dead under the mouse.
+fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(info));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let rect = rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .map(|(_, r)| *r)
+        .unwrap_or_else(|| panic!("§11 never painted the widget {id:?}"));
+    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+        "clicking the middle of {id:?} produced {events:?} — the widget is painted and \
+         hit-registered but the store does not consider it focusable, so it is dead \
+         under the mouse"
+    );
+    for ev in events {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
     let out = host.drained_actions();
     set_current_inspector_physics(None);
     out
@@ -1267,7 +1315,7 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
             set_current_inspector_physics(Some(info));
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_physics(None);
-            for &id in FORCE_IDS.iter() {
+            for &id in FORCE_IDS.iter().chain(ids::INSP_PHYS_FORCE_AXES.iter()) {
                 assert_eq!(
                     rects.iter().any(|(n, _)| *n == id),
                     is_sensor,
@@ -1293,6 +1341,32 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         PhysicsFieldEdit::ForceY(-3.25),
         "Force Y",
     );
+    // Zone | World (W-AreaFrame). Each chip asserts its OWN boolean, so a wiring that
+    // sent both to the same value — the half-dead two-way widget — fails here. ⚠️ Driven
+    // by `click_real` (the actual pointer), not the synthetic helper: these two are
+    // painted through `seg_row`, so their hit registration happens in a loop and the
+    // wiring-parity gate cannot see them. A mutation removing them from `populate.rs`
+    // leaves every OTHER gate in this file green.
+    for (i, &id) in ids::INSP_PHYS_FORCE_AXES.iter().enumerate() {
+        expect(
+            &click_real(sensor, id),
+            PhysicsFieldEdit::ForceWorldAxes(i == 1),
+            &format!("Force Axes toggle option {i}"),
+        );
+    }
+    // ... and it is REFUSED on a solid collider and on a bodyless entity, the mirror of
+    // the One-Way rule above. Dim is not a refusal, so the click is what is asked.
+    for &id in ids::INSP_PHYS_FORCE_AXES.iter() {
+        assert!(
+            click(with_body(), id).is_empty(),
+            "a Force Axes chip reached the bus on a SOLID collider, where there is no \
+             force for it to qualify"
+        );
+        assert!(
+            click(without_body(), id).is_empty(),
+            "a Force Axes chip reached the bus on an entity with no body"
+        );
+    }
     // ⚠️ A NEGATIVE value on purpose (W-AreaTorque): the sign is the spin direction, so it
     // must survive the event layer intact — a clamp here (as the drag rows take) would
     // silently drop the clockwise half.

@@ -57,6 +57,16 @@ pub struct PathAnchor {
     pub in_handle: [f32; 2],
     /// Outgoing handle, relative to `anchor`.
     pub out_handle: [f32; 2],
+    /// `true` while the handles are still whatever [`MotionPath::auto_smooth`] gave
+    /// them — i.e. the artist has not shaped this corner by hand.
+    ///
+    /// It is what lets a NEW key re-smooth its neighbours without destroying work:
+    /// re-smoothing an anchor someone shaped would throw that shape away, and never
+    /// re-smoothing leaves a visible kink on a curve that was smooth a moment ago.
+    /// After Effects makes the same distinction (Auto Bezier vs a keyframe you
+    /// touched), and it cannot be *derived* — a hand-shaped anchor can coincidentally
+    /// sit on the auto handles.
+    pub auto: bool,
 }
 
 impl PathAnchor {
@@ -69,6 +79,7 @@ impl PathAnchor {
             anchor,
             in_handle: [0.0, 0.0],
             out_handle: [0.0, 0.0],
+            auto: false,
         }
     }
 }
@@ -158,6 +169,30 @@ impl MotionPath {
         let r = f(&mut self.anchors);
         self.rebuild();
         r
+    }
+
+    /// **Re-derive the Auto Bezier handles of every anchor still marked `auto`.**
+    ///
+    /// An auto handle is a function of the two NEIGHBOURS, so inserting, removing or
+    /// moving an anchor invalidates the handles on either side of it. Anchors the
+    /// artist shaped ([`PathAnchor::auto`] `false`) are left exactly as they are — the
+    /// whole point of the flag.
+    ///
+    /// Runs through [`MotionPath::edit`], so the arc-length table follows.
+    pub fn resmooth_auto(&mut self) {
+        self.edit(|anchors| {
+            let pts: Vec<[f32; 2]> = anchors.iter().map(|a| a.anchor).collect();
+            for (i, a) in anchors.iter_mut().enumerate() {
+                if !a.auto {
+                    continue;
+                }
+                *a = Self::auto_smooth(
+                    (i > 0).then(|| pts[i - 1]),
+                    pts[i],
+                    (i + 1 < pts.len()).then(|| pts[i + 1]),
+                );
+            }
+        });
     }
 
     /// Move anchor `i` (or reshape its handles). Returns `false` if there is no
@@ -275,7 +310,17 @@ impl MotionPath {
         let dir = [b[0] - a[0], b[1] - a[1]];
         let n = (dir[0] * dir[0] + dir[1] * dir[1]).sqrt();
         if n <= f32::EPSILON {
-            return PathAnchor::corner(at);
+            // Sem vizinhos em que se apoiar (a primeira âncora de um caminho, ou dois
+            // pontos coincidentes) as alças colapsam — mas a âncora continua **auto**.
+            // ⚠️ Devolver [`PathAnchor::corner`] aqui a marcaria como MOLDADA, e
+            // [`MotionPath::resmooth_auto`] passaria a saltá-la para sempre: o caminho
+            // que o K constrói nasceria todo em quinas vivas, sem nada dizendo por quê.
+            return PathAnchor {
+                anchor: at,
+                in_handle: [0.0, 0.0],
+                out_handle: [0.0, 0.0],
+                auto: true,
+            };
         }
         let u = [dir[0] / n, dir[1] / n];
         let reach = |q: [f32; 2]| {
@@ -287,6 +332,7 @@ impl MotionPath {
             anchor: at,
             in_handle: [-u[0] * ri, -u[1] * ri],
             out_handle: [u[0] * ro, u[1] * ro],
+            auto: true,
         }
     }
 

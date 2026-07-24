@@ -12,16 +12,19 @@ fn swoop() -> MotionPath {
             anchor: [0.0, 0.0],
             in_handle: [0.0, 0.0],
             out_handle: [0.0, 6.0],
+            auto: false,
         },
         PathAnchor {
             anchor: [10.0, 10.0],
             in_handle: [-1.0, 0.0],
             out_handle: [4.0, 0.0],
+            auto: false,
         },
         PathAnchor {
             anchor: [20.0, 2.0],
             in_handle: [-0.5, 5.0],
             out_handle: [0.0, 0.0],
+            auto: false,
         },
     ])
 }

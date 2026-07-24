@@ -362,14 +362,29 @@ pub(crate) fn key_authoring_solo(
         ));
     }
     let value = sample_prop_value(world, entity, prop)?; // the raw pose = what you see
-    // The clip's authored duration cuts the solo clock BEFORE the remap — the
-    // same composition `apply_active_clip` runs. Past the cut the pose you see
-    // is frozen at `curve(cut)`, so K captures it AT the boundary (the visible
-    // frame); keying at the raw time would land at an instant the apply never
-    // samples, and the pose would snap back (seed == sample, 2026-07-23).
+    Some((value, solo_key_time(timeline, entity, clip_t)))
+}
+
+/// **Onde uma key autorada na vista Keys/solo aterrissa**, no relógio do clip.
+///
+/// A metade do TEMPO do [`key_authoring_solo`], extraída porque ganhou um segundo
+/// chamador: o K do modo Path, que não tem valor a amostrar (a âncora é que produz o
+/// número) mas precisa EXATAMENTE do mesmo instante. Duas cópias desta composição
+/// divergem, e o sintoma é a pose a saltar de volta
+/// ([[feedback_derived_coordinate_seed_must_match_sample]]).
+///
+/// A duração autorada do clip corta o relógio ANTES do remap — a mesma composição que o
+/// `apply_active_clip` roda. Além do corte a pose que se vê está congelada em
+/// `curve(corte)`, então o K captura NA fronteira (o quadro visível); keyar no tempo cru
+/// aterrissaria num instante que o apply nunca amostra.
+pub(crate) fn solo_key_time(
+    timeline: &TimelineState,
+    entity: u64,
+    clip_t: f64,
+) -> ph2d_anim::RationalTime {
+    let doc = &timeline.doc;
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
-    let t = ph2d_timeline::remapped_time(doc, entity, clip_t);
-    Some((value, ph2d_anim::RationalTime::from_seconds(t)))
+    ph2d_anim::RationalTime::from_seconds(ph2d_timeline::remapped_time(doc, entity, clip_t))
 }
 
 /// The default interpolation for a freshly inserted key (a gentle ease).

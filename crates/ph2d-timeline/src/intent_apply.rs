@@ -118,6 +118,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 sel.set_single(SelectedKey { target, key });
             });
         }
+        I::AddPathKey { entity, t, at } => {
+            let snapped = snap_time(t, fps, state.flags.frame_snap);
+            edit(state, |doc, _| {
+                doc.key_the_path(entity, snapped, at);
+            });
+        }
         I::MoveSelectedKeys { delta_seconds } => {
             // Rationalize the offset ONCE, against the display rate: a whole
             // number of frames must stay a whole number of frames after the move.

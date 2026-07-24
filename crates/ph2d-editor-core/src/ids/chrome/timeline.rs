@@ -315,6 +315,10 @@ pub const TIMELINE_ADDPROP_OPACITY: NodeId = hash_node_id("timeline.addprop.opac
 /// "+Track" for **Time Remap** (W5): binds the entity's per-object clock — a
 /// keyed curve retiming every other track it has (AE time remap).
 pub const TIMELINE_ADDPROP_TIME: NodeId = hash_node_id("timeline.addprop.time");
+/// "+Track" -> **Position**: o modo de trajetória (ADR-0141). Fora do `PropKind::ALL`
+/// como o Time Remap, e pela mesma razão — `ALL` é a pose de eixos SEPARADOS, e uma
+/// track de Position é a ALTERNATIVA a dois membros dela.
+pub const TIMELINE_ADDPROP_POS: NodeId = hash_node_id("timeline.addprop.position");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing

@@ -84,6 +84,20 @@ pub enum TimelineIntent {
         /// Interpolation from this key.
         interp: Interp,
     },
+    /// **Acrescentar uma ÂNCORA onde o objeto está** — o K do modo Path (ADR-0141).
+    ///
+    /// Intent PRÓPRIA e não uma `AddKey` com um valor, porque não há valor a passar: o
+    /// número que a key guarda é *distância ao longo do caminho*, e a distância só
+    /// existe DEPOIS de a âncora entrar (ela muda a geometria, que é o que mede). Quem
+    /// chama sabe onde o objeto está; quem aplica é que sabe quanto isso vale.
+    AddPathKey {
+        /// Live entity bits.
+        entity: u64,
+        /// Key time.
+        t: RationalTime,
+        /// Onde o objeto está, em MUNDO.
+        at: [f32; 2],
+    },
     /// Shift every selected key by `delta_seconds`.
     MoveSelectedKeys {
         /// Signed time delta.

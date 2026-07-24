@@ -35,6 +35,7 @@ mod intent_apply_fade;
 pub mod nest;
 pub mod nest_map;
 pub mod path;
+pub mod path_convert;
 pub mod persist;
 pub mod prop;
 mod refusal;
@@ -73,6 +74,7 @@ pub use nest::{
 };
 pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
 pub use path::{MotionPath, PathAnchor, PathSample};
+pub use path_convert::ConversionReport;
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};

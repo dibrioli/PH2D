@@ -148,3 +148,119 @@ fn the_rewritten_distances_still_only_go_forward() {
         "as distâncias deixaram de crescer: {vs:?}"
     );
 }
+
+/// **O K do modo Path**: capturar a pose é acrescentar uma ÂNCORA, e o percurso
+/// cresce. Três K's num objeto sem trajetória nenhuma constroem a curva inteira.
+#[test]
+fn keying_a_position_track_grows_the_trajectory() {
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(e.to_bits(), PropKind::Position);
+
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [10.0, 10.0]),
+    ] {
+        assert!(doc.add_path_key(target, RationalTime::from_seconds(t), p));
+    }
+    let path = doc.bindings()[0].path.as_ref().unwrap();
+    assert_eq!(path.len(), 3, "uma âncora por key");
+    // ⚠️ Auto Bezier num ângulo reto **abaúla para FORA**, não corta por dentro: a alça
+    // do meio segue a corda dos vizinhos (a diagonal), então a curva passa por fora da
+    // quina. Medido 20,7205 contra os 20,0 exatos do L de quina viva — e é esse excesso
+    // que prova que a âncora nasceu SUAVE. (Eu esperava um percurso menor; a medição
+    // disse o contrário, e o comportamento é o do AE.)
+    println!("MEDIDO  percurso das 3 keys = {:.4}", path.length());
+    assert!(
+        (20.05..21.5).contains(&path.length()),
+        "percurso {:.4}: 20,0 exato é o L de quina viva (ninguém suavizou)",
+        path.length()
+    );
+
+    // E o objeto de fato passa por onde o artista apertou K.
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [10.0, 10.0]),
+    ] {
+        apply_from_doc(&mut w, &mut doc, t);
+        let got = pos(&w, e);
+        let d = ((got[0] - p[0]).powi(2) + (got[1] - p[1]).powi(2)).sqrt();
+        assert!(
+            d < 1e-3,
+            "em t={t} o objeto está a {d:.4} de onde o K foi dado"
+        );
+    }
+}
+
+/// ⚠️ **Uma âncora inserida no MEIO re-suaviza os vizinhos `auto`, e SÓ os `auto`.**
+///
+/// Uma alça Auto Bezier é função dos dois vizinhos, então inserir entre dois pontos
+/// invalida as alças dos dois. Re-suavizar quem o artista moldou jogaria o trabalho
+/// dele fora; nunca re-suavizar deixa uma dobra visível numa curva que era lisa.
+#[test]
+fn a_new_anchor_resmooths_the_auto_neighbours_and_spares_the_shaped_one() {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [(0.0, [0.0_f32, 0.0]), (2.0, [20.0, 0.0])] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    // O artista MOLDA a primeira âncora (auto = false a partir daqui).
+    let mut shaped = doc.path_anchor(target, 0).unwrap();
+    shaped.out_handle = [1.0, 9.0];
+    shaped.auto = false;
+    assert!(doc.move_path_anchor(target, 0, shaped));
+    // A alça de ENTRADA do último — a de saída dele é zero por construção (não há
+    // vizinho adiante), então compará-la seria comparar dois zeros.
+    let before_auto = doc.path_anchor(target, 1).unwrap().in_handle;
+
+    // Um K no meio, bem fora da linha.
+    assert!(doc.add_path_key(target, RationalTime::from_seconds(1.0), [10.0, 12.0]));
+
+    assert_eq!(
+        doc.path_anchor(target, 0).unwrap().out_handle,
+        [1.0, 9.0],
+        "a âncora MOLDADA foi re-suavizada — o trabalho do artista foi jogado fora"
+    );
+    assert_ne!(
+        doc.path_anchor(target, 2).unwrap().in_handle,
+        before_auto,
+        "o vizinho AUTO não re-suavizou — a curva fica com uma dobra onde era lisa"
+    );
+    assert!(
+        doc.path_anchor(target, 1).unwrap().auto,
+        "a nova nasce auto"
+    );
+}
+
+/// Re-keyar um instante que já tem key **move** aquela âncora, não empilha uma segunda
+/// — o contrato do `upsert_key`, honrado também aqui.
+#[test]
+fn keying_the_same_instant_moves_that_anchor_instead_of_stacking_one() {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [(0.0, [0.0_f32, 0.0]), (1.0, [5.0, 0.0])] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    assert!(doc.add_path_key(target, RationalTime::from_seconds(1.0), [5.0, 9.0]));
+    assert_eq!(doc.bindings()[0].path.as_ref().unwrap().len(), 2);
+    assert_eq!(doc.path_anchor(target, 1).unwrap().anchor, [5.0, 9.0]);
+    assert_eq!(doc.active_clip().track(target).unwrap().keys().len(), 2);
+}
+
+/// A porta recusa o que não é Position, e a primeira âncora de um caminho não tem
+/// percurso — o que é o comportamento de qualquer canal com uma key só.
+#[test]
+fn the_first_key_has_no_journey_and_a_scalar_target_is_refused() {
+    let mut doc = TimelineDoc::new();
+    let scalar = doc.bind(1, PropKind::TranslationX);
+    assert!(!doc.add_path_key(scalar, RationalTime::from_seconds(0.0), [1.0, 1.0]));
+
+    let target = doc.bind(1, PropKind::Position);
+    assert!(doc.add_path_key(target, RationalTime::from_seconds(0.0), [3.0, 4.0]));
+    let path = doc.bindings()[1].path.as_ref().unwrap();
+    assert_eq!(path.len(), 1);
+    assert_eq!(path.length(), 0.0);
+}

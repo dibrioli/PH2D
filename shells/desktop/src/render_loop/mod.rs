@@ -1223,6 +1223,51 @@ impl crate::App {
                     .map(|b| b.prop)
                     .collect();
                 for prop in props {
+                    // ⚠️ **Position não amostra um escalar: ele acrescenta uma ÂNCORA**
+                    // (ADR-0141). "Capturar a pose" numa trajetória é uma edição da
+                    // GEOMETRIA — a âncora nova muda o percurso, que é o que as outras
+                    // keys medem —, então não há valor a computar aqui e o
+                    // `sample_prop_value` recusa este kind de propósito. O tempo é o
+                    // mesmo `k_time` das outras (o relógio da vista), e o intent leva o
+                    // LUGAR; quem aplica é que sabe quanto ele vale em distância.
+                    if prop == ph2d_timeline::PropKind::Position {
+                        if let Some(xf) = sim
+                            .world()
+                            .get::<ph2d_ecs::Transform>(ph2d_ecs::Entity::from_bits(entity))
+                        {
+                            // ⚠️ O tempo vem das MESMAS portas das outras keys: em
+                            // Keys, o relógio do clip cortado e remapeado
+                            // (`solo_key_time`, a metade extraída do
+                            // `key_authoring_solo`); em Arrange/container, o
+                            // `key_insert_time`, que pode RECUSAR (o clip não toca
+                            // aqui, ou toca duas vezes). Uma composição própria aqui
+                            // seria a pose a saltar de volta.
+                            let t = if keys_mode {
+                                Some(timeline_bridge::solo_key_time(
+                                    &self.timeline,
+                                    entity,
+                                    self.clip_playhead.time(),
+                                ))
+                            } else {
+                                timeline_bridge::key_insert_time(
+                                    &self.timeline,
+                                    entity,
+                                    prop,
+                                    k_time,
+                                )
+                            };
+                            if let Some(t) = t {
+                                self.timeline_intents.push(
+                                    ph2d_timeline::TimelineIntent::AddPathKey {
+                                        entity,
+                                        t,
+                                        at: [xf.translation.x, xf.translation.y],
+                                    },
+                                );
+                            }
+                        }
+                        continue;
+                    }
                     // In KEYS mode the animator sees the active clip soloed, so the
                     // pose IS the clip's value and the time is the clip playhead's —
                     // stored directly, and K never refuses (there is no stack to be

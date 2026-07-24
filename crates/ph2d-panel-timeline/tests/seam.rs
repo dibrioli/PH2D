@@ -978,3 +978,41 @@ fn dragging_the_lane_weight_is_one_undo_step_not_one_per_frame() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+/// **TODA opção do "+Track" chega ao shell** — inclusive a de Position (ADR-0141).
+///
+/// A tabela `ADDPROP_BUTTONS` tem quatro consumidores (pinta · popula · roteia · este
+/// gate), e é essa forma que faz um knob nascer pintado, registrado e vivo. Mas
+/// "nasceu por construção" é uma afirmação sobre o código, não sobre o clique — então
+/// o gate CLICA cada um, e a lista que ele varre é a MESMA tabela, sem cópia à mão que
+/// pudesse driftar da tela.
+#[test]
+fn every_add_track_option_reaches_the_shell_including_position() {
+    let mut seen = Vec::new();
+    for (id, prop) in ids::ADDPROP_BUTTONS {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState {
+            add_track_open: true,
+            ..TimelinePanelState::default()
+        };
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "{prop:?} não foi consumida"
+        );
+        assert!(!state.add_track_open, "{prop:?} não fechou o dropdown");
+        assert_eq!(
+            timeline_events(&mut host),
+            vec![PanelEvent::Click(id)],
+            "o clique em {prop:?} não chegou ao shell — o botão está morto sob o mouse"
+        );
+        seen.push(prop);
+    }
+    assert!(
+        seen.contains(&ph2d_timeline::PropKind::Position),
+        "Position não está na lista do +Track: o modo trajetória não teria como ser \
+         criado por gesto nenhum"
+    );
+    assert_eq!(seen.len(), 8, "as seis da pose, o Time Remap e o Position");
+}

@@ -10,7 +10,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::PhysicsFieldEdit;
+use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
 pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // §11 Physics Body — Add / Remove, the two segmented groups, and the
@@ -185,23 +185,10 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_ANGULAR_DAMPING if info.kind_tag == 0 => {
                 Some(PhysicsFieldEdit::AngularDamping(v))
             }
-            // Force zone (W-Area) — gated on the collider being a SENSOR, not on the
-            // body kind: the narrow phase records an overlap only for a sensor, so the
-            // force would be inert on a solid collider. The painter offers the rows
-            // under exactly this condition, and a refusal that lives in the paint loop
-            // is not a refusal.
-            ids::INSP_PHYS_FORCE_X if info.is_sensor => Some(PhysicsFieldEdit::ForceX(v)),
-            ids::INSP_PHYS_FORCE_Y if info.is_sensor => Some(PhysicsFieldEdit::ForceY(v)),
-            ids::INSP_PHYS_AREA_TORQUE if info.is_sensor => Some(PhysicsFieldEdit::AreaTorque(v)),
-            ids::INSP_PHYS_AREA_FALLOFF if info.is_sensor => {
-                Some(PhysicsFieldEdit::AreaFalloff(v))
-            }
-            ids::INSP_PHYS_AREA_DRAG if info.is_sensor => Some(PhysicsFieldEdit::AreaDrag(v)),
-            ids::INSP_PHYS_AREA_DENSITY if info.is_sensor => Some(PhysicsFieldEdit::AreaDensity(v)),
-            ids::INSP_PHYS_AREA_FORM_DRAG if info.is_sensor => {
-                Some(PhysicsFieldEdit::AreaFormDrag(v))
-            }
-            _ => None,
+            // As sete rows da ZONA — o que esta ÁREA faz a OUTROS corpos, extraídas para
+            // um irmão pelo cap de 200 LOC desta fn (o mesmo corte que separou
+            // `components/area.rs` e `inspector_physics_area.rs`).
+            other => area_edit(other, v, info),
         };
         if let Some(edit) = edit {
             host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
@@ -212,4 +199,37 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         }
     }
     false
+}
+
+/// **O roteamento das rows de ZONA** — a força, o frame dela, o torque, o falloff e os
+/// três knobs de meio (W-Area .. W-AreaFalloff).
+///
+/// ⚠️ **Todas gateadas em `is_sensor`, nunca no `kind_tag`**, e o motivo é o mesmo para as
+/// sete: a narrow phase registra sobreposição só quando um dos lados é sensor, então numa
+/// zona sólida qualquer destes números seria autorado e nunca lido. O painel oferece as
+/// rows sob exatamente essa condição — e uma recusa que mora no laço de pintura não é uma
+/// recusa, por isso ela é repetida aqui.
+///
+/// Extraída de [`apply_physics_event`] pelo cap de 200 LOC das fns de painel, na linha de
+/// corte que a família das zonas já vinha desenhando sozinha nos dois outros arquivos que
+/// ela obrigou a separar.
+fn area_edit(
+    id: ph2d_editor_core::NodeId,
+    v: f32,
+    info: InspectorPhysicsInfo,
+) -> Option<PhysicsFieldEdit> {
+    if !info.is_sensor {
+        return None;
+    }
+    match id {
+        ids::INSP_PHYS_FORCE_X => Some(PhysicsFieldEdit::ForceX(v)),
+        ids::INSP_PHYS_FORCE_Y => Some(PhysicsFieldEdit::ForceY(v)),
+        ids::INSP_PHYS_AREA_TORQUE => Some(PhysicsFieldEdit::AreaTorque(v)),
+        // Cru: a fração é clampada UMA vez, no apply da shell, onde ela vira componente.
+        ids::INSP_PHYS_AREA_FALLOFF => Some(PhysicsFieldEdit::AreaFalloff(v)),
+        ids::INSP_PHYS_AREA_DRAG => Some(PhysicsFieldEdit::AreaDrag(v)),
+        ids::INSP_PHYS_AREA_DENSITY => Some(PhysicsFieldEdit::AreaDensity(v)),
+        ids::INSP_PHYS_AREA_FORM_DRAG => Some(PhysicsFieldEdit::AreaFormDrag(v)),
+        _ => None,
+    }
 }

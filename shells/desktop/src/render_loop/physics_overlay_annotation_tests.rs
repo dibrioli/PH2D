@@ -247,7 +247,7 @@ fn a_zone_with_falloff_draws_the_half_way_ring_and_only_when_it_pushes() {
     use ph2d_ecs::Transform;
     use ph2d_physics_ecs::{AreaEffector, AreaFalloff, Collider, RigidBody};
 
-    /// `force` ligado ou não, `falloff` ligado ou não — as quatro combinações.
+    // `force` ligado ou não, `falloff` ligado ou não — as quatro combinações.
     let zone = |force: bool, falloff: f32| {
         let mut sim = ph2d_ecs::SimWorld::new();
         let e = sim

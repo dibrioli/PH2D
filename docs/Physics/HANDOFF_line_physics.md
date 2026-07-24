@@ -3576,6 +3576,138 @@ anotação**, e agora tem casa.
   (*"escala SINCADA, não `abs` — offset é POSIÇÃO ⇒ flip espelha"*), e é a mesma pergunta:
   virar o sprite de uma esteira deveria virar a correia? **Decisão de produto, não construída
   sem pedido.**
-- **Falloff dentro da área** — segue aberto, agora o único item da família (a força/torque são
-  uniformes; um redemoinho real cai com o raio). ⚠️ O caro é **de que ponto** se mede o raio numa
-  zona que não é redonda.
+- ~~**Falloff dentro da área**~~ — **FECHADO na wave seguinte** (W-AreaFalloff, abaixo). A
+  pergunta *"de que ponto se mede o raio numa zona que não é redonda?"* tinha resposta melhor
+  que "escolha um ponto": mede-se a **fração do caminho do centro até a BORDA**, que vale 1 em
+  toda direção e em toda forma.
+
+---
+
+## W-AreaFalloff — o empurrão desvanece do centro para a borda (2026-07-23, cena `=35`)
+
+O último item aberto da família das zonas. Até aqui uma área empurrava **igual em toda a sua
+extensão**: encostado na parede ou no olho da rajada, o mesmo empurrão — e o corpo que
+atravessava a fronteira passava de força cheia a nada dentro de um sub-passo.
+
+Agora o `Falloff` (0..1) faz a **força e o torque** desvanecerem, chegando a **zero exatamente
+na borda** com `falloff = 1`.
+
+### A régua, e por que ela é esta
+
+`ShapeDesc::radial_fraction(p) -> t` = **a fração do caminho do centro até a boundary, ao longo
+do raio que passa pelo ponto**. `0` no centro, `1` na fronteira em TODA direção, `>1` fora.
+
+Três propriedades decidem o desenho inteiro:
+
+1. **Não precisa de um segundo número.** Um "raio de falloff" próprio (o
+   `gravity_point_unit_distance` do Godot, o `distanceScale` do Unity) é um comprimento que o
+   artista tem de manter de acordo com o tamanho da zona — a falha de duas-portas que esta
+   linha já pagou várias vezes — e que discorda dela no instante em que ela é redimensionada.
+   Aqui a régua **é** a silhueta.
+2. **Chega a zero na borda, em todo lado.** É por isso que o corpo saindo da área sai por um
+   empurrão que já desvaneceu, em vez de cair de um degrau — o artefato que um fade existe para
+   remover.
+3. **É invariante sob mapas lineares** (`t(Sp; S·forma) ≡ t(p; forma)`). Corolários: a curva de
+   nível `t = 0.5` **é a silhueta encolhida à metade** (daí o anel do overlay ser exato e sair
+   pela `scaled_shape` que já existia), e o falloff acompanha a escala do W6 de graça.
+
+Três formas fechadas e nenhuma iteração: uma `Ball` é uma `Ellipse` de raios iguais, uma
+`Capsule` é um `Stadium` de calotas iguais, e todo `Stadium` é uma cápsula de raio unitário
+vista por `diag(rx, ry)`. ⚠️ **Sem `hypot` e sem transcendental** (lei 6): `hypot` é a libm da
+plataforma e não é pinada cross-OS, e este número alimenta os impulsos que o `physics_ecs_c9`
+compara entre os três sistemas. Só `+ - * /` e `sqrt`, todos corretamente arredondados.
+
+⚠️ **Descartado com motivo:** o caminho óbvio seria pedir a distância à borda ao próprio parry
+(`cast_local_ray` com `solid: false`). Para um convexo isso cai no **GJK** — iterativo, com
+`eps = 0.001` e `normalize()` — e meteria uma iteração numérica no caminho determinista do
+hash, para responder uma pergunta que tem forma fechada em cada uma das cinco silhuetas.
+
+### O escopo, que é geometria e não gosto
+
+O fator pesa a **força** e o **torque** — os dois EMPURRÕES. O `drag`, o `density` (empuxo) e o
+`form_drag` descrevem um **MEIO**, e um meio não fica mais ralo perto da própria margem: a água
+da beira da piscina molha igual. Há gate nessa fronteira
+(`the_falloff_leaves_the_medium_alone`), irmão do gate de invariância do torque que o
+W-AreaFrame escreveu, para ninguém "completar" a wave passando o fator adiante.
+
+⚠️ **O cap `t ≤ 1` é load-bearing.** A sobreposição que registra o par é forma-contra-forma,
+então o CENTRO de um corpo grande pode estar do lado de fora enquanto ele ainda encosta. Sem o
+cap, `1 − falloff·t` fica negativo e a zona **puxa para trás** exatamente na borda onde deveria
+soltar — sinal invertido que nenhum ledger acusa, porque a soma continua fechando.
+
+### A metade visível
+
+Um **anel laranja apagado** na curva de nível de meio caminho, quando a zona tem falloff **e**
+empurra alguma coisa. Sem ele o falloff seria o único número do modelo de área sem marca na
+tela: a seta continua do mesmo tamanho (ela desenha a força AUTORADA, que é a do centro), então
+uma rajada e um bloco de vento uniforme ficavam idênticos até alguém rodar a simulação.
+
+O anel sai da MESMA `collider_outline` do contorno, com a escala do corpo reduzida à metade
+pela MESMA `scaled_shape` — halvar as duas componentes preserva a igualdade `|sx| == |sy|` que
+decide círculo-ou-elipse, então o fantasma é sempre da mesma FAMÍLIA que o contorno.
+
+### Números medidos (cena `=35`)
+
+Duas rajadas redondas (raio 5), mesma força (1,2 N em +X), quatro caixas idênticas na coluna do
+centro a `t` = 0 / 0,28 / 0,56 / 0,84. Deslocamento em 3 s:
+
+| faixa | olho | 0,28 | 0,56 | 0,84 |
+|---|---|---|---|---|
+| **uniforme** | 10,01 | 9,95 | 9,70 | 8,96 |
+| **Falloff 1** | 7,64 | 6,43 | 4,35 | **1,71** |
+
+A fila voa junta à esquerda e **se abre em leque** à direita.
+
+### Contadores
+
+Componente **`AreaFalloff(f32)`** (valuado, idioma do `GravityScale`), registro **20 → 21**,
+`PROJECT_SCHEMA` **fica em 29** — sétima vez pela mesma razão (campo novo = postcard posicional
+= bump, e um bump **recusa todo projeto já salvo**). c9 **79 → 81 corpos**, hash
+`bfca28f7…` (igual em debug e release; **muda** vs. o da wave anterior, e é correto — o falloff
+muda a pose, ao contrário dos readouts).
+
+### Gates e mutações
+
+8 no kernel + 2 na ponte + persistência + seam (presença/ausência + commit) + gesto composto +
+overlay. **14 mutações, 13 sangram.** O sobrevivente é documentado no fonte: pôr o `AreaFalloff`
+no `any` da ponte deixa tudo verde, porque `zone_effect` já recusa a zona inerte — exatamente o
+mesmo formato do sobrevivente do W-AreaFrame.
+
+⚠️ **Um comentário meu foi corrigido pela mutação.** Eu tinha escrito que, para o falloff, ficar
+fora do `any` *"não é meramente higiene"*; a mutação diz que é. A frase foi trocada pela que
+sobrevive a ser testada ([[feedback_layered_defenses_need_per_layer_gates]]).
+
+⚠️ **O controle foi atropelado pelo próprio experimento (4ª vez nesta linha).** A 1ª versão do
+gate mediu deslocamento numa zona pequena, e o corpo da margem **saía** dela — "andou menos" e
+"saiu" são indistinguíveis. Agora a fixture declara a premissa (`assert` de que os dois ainda
+estão dentro), mede VELOCIDADE, e os corpos têm massa de verdade (raio 0,5): com um corpo
+minúsculo o mesmo vento acelera a 127 m/s² e atravessa a zona antes de o gate medir.
+
+⚠️ **E um `assert_ne!` que teria falhado sobre produto correto:** no eixo x uma caixa de
+meia-largura 12 e um disco de raio 12 medem o MESMO `t`. A fixture que distingue as duas formas
+é **fora do eixo** (0,45 contra 0,64).
+
+### LOC — três splits pela MESMA linha de corte
+
+O falloff foi o sétimo componente da mesma área e estourou três tetos de uma vez. Os três
+cortes são o mesmo: **o que este CORPO é** de um lado, **o que esta ÁREA faz a outros** do
+outro — e é onde a próxima wave de zona aterrissa.
+
+| arquivo | antes | depois | irmão novo |
+|---|---|---|---|
+| `ph2d-physics-ecs/src/components/overrides.rs` | 703 | 452 | `components/area.rs` (275) |
+| `shells/desktop/.../inspector_physics_apply.rs` | 614 | 498 | `inspector_physics_area.rs` (163) |
+| `ph2d-panel-inspector/.../event_physics.rs::apply_physics_event` | 201 (fn) | 165 | `area_edit` na mesma fn-family |
+
+⚠️ **O `every_physics_component_is_authorable` nasceu VERMELHO com o split** — ele enumera os
+arquivos de ESCRITA e o corte moveu seis componentes para fora da lista. Foi a falha ALTA que a
+lista existe para produzir; a entrada foi acrescentada (3 → 4 arquivos).
+
+### Aberto no W-AreaFalloff
+
+- **Perfis de falloff** — hoje é linear (`1 − f·t`). Um `smoothstep` ou um inverso-quadrado
+  seriam outra curva sobre a MESMA régua, e é **um knob de modo, não um número novo**. Só vale
+  com um pedido: o linear é o que os motores expõem e o que o smoke aprovar.
+- **O falloff não alcança o meio** — por decisão, com gate. Se um dia uma poça precisar afinar
+  na margem, isso é outra grandeza (uma *máscara* de meio), não este fator.
+- ⚠️ Herdado, ainda aberto: **espelhar a zona não espelha o vento** (acima).

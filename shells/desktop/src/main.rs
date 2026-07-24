@@ -102,6 +102,7 @@ mod flip_strip_drag;
 mod flip_transform;
 mod flip_tween_correct;
 mod flip_tween_pairs_smoke;
+mod flip_strip_smoke;
 mod flip_tween_phase_smoke;
 mod flip_tween_smoke;
 mod forwarding;

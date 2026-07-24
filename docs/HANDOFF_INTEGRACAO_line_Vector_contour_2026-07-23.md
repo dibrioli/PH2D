@@ -99,6 +99,43 @@ O que entrou **não é a cura, é a continuidade**: o memo guarda a última geom
 e, onde o sweep não responde, o anel FICA onde estava. O artista vê um anel que atrasa, não um que
 pisca. Gate `dragging_the_offset_never_makes_a_ring_blink` (35 quedas → 0; mutação sangra).
 
+### ⬛ A CURA DEFINITIVA — o Contour gera os anéis pela BORDA DO TRAÇO, não pela booleana
+
+Pós-smoke, o Enio: *"mais contínuo, contudo com queda importante de FPS. Vamos à correção
+definitiva"* — e a pergunta que a destravou: ***"como você resolveu Blend e Pattern, que lidam com
+muitas cópias?"***. Fui ver, e a resposta era a raiz de tudo:
+
+- **Pattern**: cada cópia é um **afim rígido** — 200 cópias / 0,597 ms. **Blend**: correspondência
+  cara 1× no `Plan`, cada passo um **lerp**. **Nenhum toca a booleana** (grep confirma).
+- **O Contour era o ÚNICO** a chamar `offset_path` (sweep booleano) por cópia = **0,334 ms/anel**,
+  e era o mesmo `linesweeper` que panicava. FPS e piscar tinham **uma raiz só**.
+
+A cura é a técnica de Pattern/Blend — operação barata por cópia. **`offset_ring`**
+(`ph2d-vec-boolean`): a dilatação de Minkowski é o **contorno externo do `kurbo::stroke(forma, 2d)`**,
+preenchido com **NonZero** — o Vello rasteriza com fill-rule, então a geometria do PREVIEW não
+precisa ser limpa (a booleana só limpava para *materializar*).
+
+| | booleana (antes) | offset direto (agora) |
+|---|---|---|
+| custo | 0,334 ms/anel; **N=16 = 7 ms** | **0,0005 ms/anel** (668×); N=16 = ~0,02 ms |
+| pânico | 47/400 hex, 118/200 estrela+Bevel | **nunca** (não toca o `linesweeper`) |
+| área NonZero vs booleana | — | **idêntica** (<1%, convexo E côncavo), correta onde a booleana panica |
+
+**Isolado no Contour vivo** — o `offset_path` e o Expand ficam intactos. **Sem threading** ⇒ não
+estende o ADR-0109 (a rota que eu ia propor; a pergunta do Enio a tornou desnecessária). Fora do
+domínio (compound / Inner / Both), o `offset_ring` se abstém (`None`) e cai no `offset_path`; o
+`last_good` sobrevive só para o piscar DESSE fallback raro.
+
+⚠️ **Duas armadilhas de medição**: a 1ª sonda de paridade reportou 6% de erro no côncavo medindo
+por **shoelace** (conta a auto-interseção com sinal, mente sobre o winding) — a área **NonZero
+real** é 0%; o gate mede NonZero. E o `linesweeper` **0.4.0** foi testado (reduz o pânico do
+hexágono 26→3, **não** o da estrela 83) e revertido — não vale o bump.
+
+**Gates novos**: 3 de paridade (`the_ring_matches_the_booleana`, fixture com estrela côncava) +
+não-panica + abstém-em-compound (crate) · `dragging_a_plain_contour_never_calls_the_booleana`
+(shell, ADR-0120: conta as chamadas ao sweep = 0; mutação `offset_ring`→`offset_path` ⇒ 1920, RED).
+`ph2d-vec-boolean` ganhou `offset_ring` + `__sweep_calls` (`#[doc(hidden)]`).
+
 ---
 
 ## §3 — Números que a integração precisa conferir
@@ -174,10 +211,12 @@ selecionada** (é ela que prova o seam, do `Add Contour` ao Expand, com a mão d
 
 ## §7 — Aberto, nomeado
 
-- **A cura de verdade do `linesweeper`** (§2) — anel que falta em certas distâncias. Precisa de
-  upgrade/patch do dep, que é decisão com ADR. A guarda de continuidade só esconde o sintoma.
-- **O sweep fundido do §2** (2-4× no `offset_path`, resultado idêntico) — medido e pronto, fora de
-  escopo desta wave por ser mudança no motor do Expand.
+- **A cura do `linesweeper` para o EXPAND** — o `offset_path` booleano ainda panica (apanhado pelo
+  `catch_unwind`); o Contour vivo já não o usa, mas o Expand e a seção Expand sim. É upgrade/patch
+  do dep, decisão com ADR.
+- **Compound / Inner / Both no Contour** ainda caem no `offset_path` (o `offset_ring` se abstém) —
+  estender o offset direto a eles é aditivo, mas a topologia (furo que encolhe, dois lados) é onde
+  a booleana ganha o custo dela; não medido como problema no uso real.
 - **Multi-seleção com contours diferentes**: os sliders são um número só e escrevem em todos os
   selecionados (mesmo desenho do Offset vivo).
 - **Contour + pilha de efeitos na mesma forma**: a resposta é o `LiveGeometry` alimentar um 2º

@@ -301,10 +301,50 @@ compensação primeiro; o gate `multiframe_is_art_anchored_not_world_anchored` a
 **Só translação.** Girar/escalar uma seleção não existe para desenho nenhum (é o gizmo de seleção,
 item aberto do W6.1) — quando existir, é a pose que ele vai escrever.
 
-**Follow-ups conscientes:** drag de célula (mover chave arrastando) e drag da borda (esticar o
-hold) — hoje isso é feito pelos botões `◀`/`▶` e pela caixa **Hold**, que dão o mesmo resultado
-sem exigir a infra de dispatch 2D do painel. Multi-seleção de chaves (que destravaria o modo
-`Selected` dos fantasmas, já pronto e testado no modelo). Marcadores fixos (light table).
+### §6.3 — A tira ganhou MÃOS (2026-07-23): arrastar a célula, esticar a borda, fixar o quadro
+
+Os "follow-ups conscientes" do §6 fecharam. Eles esperavam **a infra de dispatch 2D do
+painel**, e ela agora existe: a tira é a **terceira superfície arrastável** do app, ao lado do
+motion graph e do dope-sheet (`ph2d_editor_core::interaction::flip_strip` — `FlipStripHitKind`
++ `FlipStripGesture` + os três hooks no dispatch, tudo num arquivo irmão).
+
+- **Arrastar a célula move a chave no tempo.** O alvo é RELATIVO ao ponto de pega (com alvo
+  absoluto a célula salta para debaixo do dedo no primeiro pixel) e **ENCOSTA na vizinha** em
+  vez de ser recusado — `move_frame` devolve `false` num destino ocupado, e um gesto que às
+  vezes não faz nada ensina intermitência, não a regra.
+- **Arrastar a borda direita estica o hold.** O grip é uma faixa na borda, registrada DEPOIS
+  da célula (o hit index resolve do último para o primeiro). Numa célula estreita ele **não é
+  oferecido**: perder o *esticar* num zoom apertado é honesto — a caixa Hold segue na barra —,
+  perder o *mover* seria bug. Mesma lei da alça de fade da timeline.
+- **O documento muda UMA vez, no fim.** Um gesto = um passo de undo, e — o que morde — o
+  `index` do hit é uma posição na lista de células **do frame do Begin**: aplicar a cada
+  Update reordenaria a lista sob o próprio gesto.
+- **Nenhuma operação nova**: os dois pedidos caem no `move_frame`/`set_exposure` que os botões
+  `◀`/`▶` e a caixa Hold já chamam. O arrasto é uma segunda forma de PEDIR, não um segundo
+  caminho para fazer.
+- **A régua virou porta única** (`ruler.rs`): pintar e interpretar o gesto passaram a ter de
+  concordar sobre onde o quadro 7 cai na tela. Ela responde com **`floor`**, não `round` — um
+  quadro é uma FAIXA de pixels; arredondar faria meia célula de arrasto mover a chave um
+  quadro inteiro. (A régua de *scrub* arredonda de propósito: lá o handle é um PONTO.)
+- **A célula deixou de ser um botão** e virou superfície: um widget primitivo só sabe do
+  toque. A aparência não mudou (`paint_button` continua desenhando; hover/press passaram a ser
+  derivados de `hot_id`/`active_id`), e o TOQUE continua saindo pelo mesmo
+  `PanelEvent::Click(flip_cell_id(i))` — o shell não distingue as duas eras.
+
+**Light table (T3.9, fechada junto):** o botão **Pin** fixa a chave atual como REFERÊNCIA, e
+ela aparece como fantasma **além** dos vizinhos — em qualquer modo, fora do alcance e por cima
+do filtro de tipo (os três respondem *"que vizinho conta?"*, e um pin não é um vizinho). Difere
+do modo `Selected`, que SUBSTITUI a vizinhança. ⚠️ **O pin ACOMPANHA a chave**: mover a célula
+ou esticar um hold (que empurra as seguintes) remapeia os pins — sem isso as duas features
+desta mesma wave se quebravam, e o fantasma sumia sem ninguém ter soltado nada.
+
+⚠️ **Os pins são estado de SESSÃO** (ao lado da `selection`), e a razão é o custo: o `FlipDoc`
+viaja DENTRO do `ProjectState` sem versão própria, então levá-los ao documento seria um campo
+apendado numa struct serializada — um bump de `PROJECT_SCHEMA`, que **recusa todo projeto já
+salvo**. Persistir é decisão de produto, nomeada no handoff.
+
+**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · arrastar uma
+SELEÇÃO de células (hoje o gesto é por célula) · Shift & Trace (transform por ghost).
 
 ---
 

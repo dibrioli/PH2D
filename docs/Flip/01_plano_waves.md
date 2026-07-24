@@ -40,6 +40,7 @@
 | **Região por curvas** | a malha do fill nasce dos vértices das linhas; o donut (buraco = componente conexa); R3 revogada por medição | 2026-07-18 | doc [`10`](10_regiao_por_curvas.md) §11–§12; BUGS #19–#22; `flip_fill_curve_route.*`, `flip_fill_dilate.*` |
 | **Tween v2** | a correspondência de traços deixa de ser ordinal (custo + atribuição ótima) e o inbetween percorre o **arco** em vez da corda (espiral logarítmica) — mais o `Ease`/`Fade` da barra, que fecham a T3.7 | 2026-07-22 | doc [`11`](11_tween_v2.md); `tween_match.rs`, `tween_spiral.rs`, `tween.rs`; smoke `PH2D_FLIP_TWEEN_SMOKE=1` |
 | **Tween v2 — correção de pares** | a lição CACAni: o toggle **Pairs** abre um overlay da correspondência e o clique re-pareia; o Add commita corrigido | 2026-07-22 | doc [`11 §8`](11_tween_v2.md); `flip_tween_correct.rs`, `tween_match.rs::repair`; smoke `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
+| **A tira ganha MÃOS** | arrastar a célula move a chave · arrastar a borda estica o hold · **Pin** (light table, T3.9). A tira vira a 3ª superfície arrastável do app (`interaction::flip_strip`), e o toque continua saindo pelo mesmo `PanelEvent::Click` | 2026-07-23 | doc [`05 §6.3`](05_frames_ghost_tween.md); `ruler.rs`, `strip_drag.rs`, `flip_strip_drag.rs`, `flip_strip_pins.rs`; smoke `PH2D_FLIP_STRIP_SMOKE=1` |
 | **Tween v2 — fase da costura** | dois anéis fechados com o ponto 0 em lugares diferentes deixam de torcer no meio: correlação circular sobre a **virada** alinha o pareamento antes da espiral | 2026-07-22 | doc [`11 §9`](11_tween_v2.md); `tween_phase.rs`; smoke `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` |
 
 ## Regras permanentes (valem em TODA task)
@@ -163,13 +164,17 @@ células de exposição, pre/post behavior).
       compensa se o composite virar o gargalo — e isso se **mede** antes (memória
       `feedback_measure_perf_symptom_scale`). Fica como carry-over COM bench: ring keyed por
       (frame, escala), invalidação por (camada, desenho) sujo, drop de frame no relógio (04 §4).
-- [ ] **T3.9 — Marcadores fixos (light table)** — carry-over explícito (o passe de ghost já
-      aceita a lista; falta a UI de marcar).
+- [x] **T3.9 — Marcadores fixos (light table)** — **FECHADA em 2026-07-23** (doc
+      [`05 §6.3`](05_frames_ghost_tween.md)): botão **Pin** na barra fixa a chave atual, e ela
+      vira fantasma **além** dos vizinhos (ignora modo, alcance e filtro de tipo — os três
+      respondem *"que vizinho conta?"*, e um pin não é um vizinho). O pin **acompanha** a chave
+      quando ela é movida ou empurrada. Pins são de SESSÃO (persistir custaria um bump de
+      `PROJECT_SCHEMA`; decisão de produto, no handoff).
 
 **Carry-overs da W3:** **multi-seleção de chaves — LANDOU (W7.3)**: destravou o modo `Selected` dos
-fantasmas (`onion.rs` · `strip.selected_keys()`). **AINDA ABERTO:** drag de célula/borda na tira
-(mover chave e esticar hold por arrasto — hoje pelos botões ◀/▶ e pela caixa Hold) · **light table**
-(T3.9 — o passe de ghost já aceita a lista; falta a UI).
+fantasmas (`onion.rs` · `strip.selected_keys()`). **drag de célula/borda + light table — LANDARAM
+(2026-07-23, doc [`05 §6.3`](05_frames_ghost_tween.md)).** **AINDA ABERTO:** arrastar uma SELEÇÃO
+de células (o gesto é por célula) · zoom/pan da tira (ela sempre cabe, por desenho).
 
 **Gate W3:** smoke — 2 desenhos-chave, ghosts ligados, Add Tween, play com loop; goldens do
 onion; bench do cache.

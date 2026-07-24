@@ -282,6 +282,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // da cena -- e o caminho continuaria lá. As cópias são desenho derivado, então o que o snapshot
     // tem de guardar é a RELAÇÃO, e é este componente.
     reg.register::<crate::VecPatternPath>("ph2d::ecs::VecPatternPath");
+    // A ATITUDE do motivo sobre a guia (o par opcional do vínculo acima). Componente separado, e
+    // não um campo no `VecPatternPath`, porque o blob é postcard POSICIONAL: apender campo bumparia
+    // o `PROJECT_SCHEMA`, e um bump RECUSA todo projeto já salvo. Ausência = sem rotação, então
+    // documento antigo carrega inalterado. Sem o registro, o ângulo autorado morreria no primeiro
+    // Ctrl+Z com as cópias a voltarem deitadas -- e o vínculo, esse, sobreviveria: o pattern
+    // pareceria certo e estaria errado.
+    reg.register::<crate::VecPatternRotation>("ph2d::ecs::VecPatternRotation");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
@@ -341,7 +348,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 35);
+        assert_eq!(reg.len(), 36);
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());

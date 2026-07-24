@@ -106,9 +106,11 @@ mod vec_blend;
 pub use vec_blend::VecBlend;
 mod vec_offset;
 mod vec_pattern_path;
+mod vec_pattern_rotation;
 mod vec_text_path;
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
+pub use vec_pattern_rotation::VecPatternRotation;
 pub use vec_text_path::VecTextPath;
 
 mod vec_morph;

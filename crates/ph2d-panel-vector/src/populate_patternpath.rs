@@ -9,7 +9,18 @@ use crate::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 
 /// Passo do campo numérico do Spacing (múltiplos da largura do motivo).
-const PATTERNPATH_SPACING_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento
+///
+/// Acompanha o PISO da faixa (`SPACING_MIN`): com o piso em 0,01, um passo de 0,05 saltaria de
+/// 0,01 para 0,06 — **seis vezes** o valor — e a ponta densa da faixa deixaria de ser autorável
+/// pelo teclado. Um piso que só o arrasto alcança não é um piso.
+const PATTERNPATH_SPACING_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento
+/// Passo do campo numérico do Offset perpendicular, em **unidades de mundo**.
+///
+/// Const PRÓPRIA, e não o passo do Spacing que ele reusava: são grandezas em unidades diferentes
+/// (múltiplos da largura do motivo × unidades de mundo), e partilhar o número fazia mexer no piso
+/// de uma mexer no passo da outra — que foi exatamente o que quase aconteceu ao baixar
+/// `SPACING_MIN`. Fica no 0,05 que o Offset sempre teve.
+const PATTERNPATH_OFFSET_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento
 /// Passo do campo numérico do Start (fração do comprimento do caminho).
 const PATTERNPATH_START_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento
 /// Passo do campo numérico da Rotation, em GRAUS — 1° por tecla é o passo que se autora.
@@ -78,7 +89,7 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
         ids::VECTOR_PATTERNPATH_OFFSET_NUM,
         -crate::OFFSET_MAX,
         crate::OFFSET_MAX,
-        PATTERNPATH_SPACING_STEP,
+        PATTERNPATH_OFFSET_STEP,
     );
     // Rotation: a ORIENTAÇÃO em GRAUS, BIPOLAR (`−180..180`), `0.5` (o default) = deitado ao longo da
     // curva. Mesmo mapa do Offset; o `scale`/`offset` do chip são os MESMOS que o `event.rs` aplica.

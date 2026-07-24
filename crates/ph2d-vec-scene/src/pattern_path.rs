@@ -57,9 +57,31 @@ use crate::{Contour, VecPath, VecVertex};
 /// (a contagem `total/avanço` tem de ser finita); o `spacing` é quem controla o espaçamento real.
 const MIN_ADVANCE: f64 = 1e-3;
 
-/// Teto de cópias emitidas — guarda de **memória / contagem de vértices** (`N × verts(motivo)`),
-/// não um limite de produto. A perf real é medida no gate (`a_keystroke_recook_stays_under_the_kill`);
-/// este número só existe para uma guia longuíssima com um motivo minúsculo não alocar sem fim.
+/// Teto de cópias emitidas.
+///
+/// ⚠️ **Ele ERA inalcançável e deixou de ser — a nota foi reconferida quando o número que o
+/// tornava inalcançável se moveu.** Enquanto o piso do Spacing era `0.25`, este teto era guarda de
+/// **memória** que nenhum documento tocava, e este comentário dizia *"não é um limite de produto"*.
+/// Com o piso em `0.01` (2026-07-23, pedido do Enio) ele **é alcançado**, e passou a ser também o
+/// teto de **TEMPO** — MEDIDO, motivo de 4 vértices, guia reta:
+///
+/// | guia | spacing | cópias | re-cook |
+/// |---|---|---|---|
+/// | 400 | 0,25 | 40 | 0,08 ms |
+/// | 400 | 0,01 | 1000 | 1,81 ms |
+/// | 4000 | 0,05 | 2000 | 3,60 ms |
+/// | 4000 | 0,01 | **4096 (no teto)** | 7,53 ms |
+///
+/// 4096 cópias custam **7,53 ms**, contra o kill de 8 ms do re-cook por-frame
+/// (`a_keystroke_recook_stays_under_the_kill`; não há memo — vide `pattern_live`). Subir o teto
+/// **estoura o orçamento de frame**, então ele fica onde está: hoje o recurso que ele guarda é
+/// tempo, não memória.
+///
+/// ⚠️ **A condição em que o artista o encontra, e o que ele vê:** o teto morde quando
+/// `comprimento(guia) > 40,96 × largura(motivo)` no spacing mínimo — e a tilagem simplesmente
+/// **para no meio da curva, sem aviso**. Isso é conhecido e NÃO está resolvido: a saída natural é
+/// um cache por-params (plano 23 §0) que tire o re-cook do frame e liberte o teto, não subir o
+/// número com o custo onde está.
 const MAX_COPIES: usize = 4096;
 
 /// Folga de encaixe, em **frações de fatia** (unidades de `k`), na fronteira "a cópia cabe exato".

@@ -1940,3 +1940,36 @@ fn the_rotation_row_is_reachable_by_a_pointer() {
     );
     ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
 }
+
+/// **O piso do Spacing chega ao bus como `0.01`** — a ponta ESQUERDA do curso é o empacotamento
+/// mais denso, e é o pedido do Enio (2026-07-23).
+///
+/// Pina o piso ponta-a-ponta porque ele vive em TRÊS sítios que têm de concordar (a const, o
+/// `scale`/`offset` do chip no `populate`, e a conversão do `event.rs`) — e porque baixá-lo teve
+/// uma consequência medida que o número sozinho não conta: com o piso em 0,01 o `MAX_COPIES` do
+/// motor passou a ser alcançável (vide a tabela no doc dele).
+#[test]
+fn the_spacing_floor_reaches_the_bus() {
+    for (track, want) in [(0.0_f32, 0.01_f64), (1.0, 4.0)] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        host.set_slider_value(ids::VECTOR_PATTERNPATH_SPACING, track);
+        let _ = host.apply_panel_event::<VectorPanel>(
+            &mut panel_state,
+            WidgetEvent::ValueChanged(ids::VECTOR_PATTERNPATH_SPACING),
+        );
+        let got = host.drained_actions().into_iter().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
+                if c == ids::VECTOR_PATTERNPATH_SPACING =>
+            {
+                Some(v)
+            }
+            _ => None,
+        });
+        assert_eq!(
+            got,
+            Some(want),
+            "track {track} devia chegar como spacing {want}, chegou {got:?}"
+        );
+    }
+}

@@ -30,10 +30,10 @@ pub mod ids;
 mod paint;
 
 /// A faixa do Spacing do Pattern on Path (plano 23): o avanço por cópia em múltiplos da largura do
-/// motivo. `0.25` sobrepõe forte, `4.0` deixa vãos largos, `1.0` encaixa borda-a-borda. O track do
+/// motivo. `0.01` sobrepõe 100×, `4.0` deixa vãos largos, `1.0` encaixa borda-a-borda. O track do
 /// slider é `0..1` e mapeia nesta faixa — a MESMA porta é lida pelo paint (track→display), pelo
 /// populate (scale/offset do chip) e pelo event (track→valor), senão os três divergiriam.
-pub(crate) const SPACING_MIN: f64 = 0.25; // LITERAL-PX-OK: faixa no domínio do documento
+pub(crate) const SPACING_MIN: f64 = 0.01; // LITERAL-PX-OK: faixa no domínio do documento
 /// Ver [`SPACING_MIN`].
 pub(crate) const SPACING_MAX: f64 = 4.0; // LITERAL-PX-OK: faixa no domínio do documento
 /// A meia-faixa do Offset perpendicular do Pattern on Path, em unidades de MUNDO: o slider é

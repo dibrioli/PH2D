@@ -122,6 +122,28 @@ Se a tela discordar desses números, é a **mensagem** que está errada, não a 
 Conferir também: **Detach** solta o motivo e **a rotação morre com o vínculo** (re-prender não
 ressuscita o ângulo), e o campo numérico ao lado do slider aceita graus digitados.
 
+## 7b — Piso do Spacing 0,25 → 0,01 (pedido do Enio, pós-smoke)
+
+`SPACING_MIN` baixou para **0,01** (empacotamento 100× mais denso). Duas consequências, as duas
+medidas antes de mexer:
+
+1. **O `MAX_COPIES = 4096` do motor passou a ser ALCANÇÁVEL.** O doc dele dizia *"não é um limite
+   de produto"* — verdade com o piso em 0,25, falsa agora; foi reescrito com a tabela de medição.
+   Ele morde quando `comprimento(guia) > 40,96 × largura(motivo)` no piso, e a tilagem **para no
+   meio da curva sem aviso**. Não subi o teto: 4096 cópias custam **7,53 ms** contra o kill de 8 ms
+   do re-cook por-frame, então hoje o recurso que ele guarda é TEMPO. A saída é o cache por-params
+   (plano 23 §0), não um número maior com o custo onde está. **Decisão de produto para o Enio.**
+2. **O passo do chip acompanhou o piso** (0,05 → 0,01): de 0,01 um passo de 0,05 salta **6×** e a
+   ponta densa deixaria de ser autorável pelo teclado. ⚠️ Esse const era **reusado pelo chip do
+   Offset** — dei ao Offset um `PATTERNPATH_OFFSET_STEP` próprio (0,05, inalterado), senão baixar o
+   piso do Spacing mexeria num knob que ninguém pediu.
+
+**Ergonomia, não resolvida:** com a faixa `0,01..4,0` linear, o trecho denso `0,01..0,5` ocupa ~12%
+do curso do slider. Uma faixa não-linear (log) resolveria, mas é redesenho do widget e muda também
+Offset/Start/End por consistência — fora do pedido.
+
+Gate: `the_spacing_floor_reaches_the_bus` (track 0 → 0,01 · track 1 → 4,0), mutação = voltar ao 0,25.
+
 ## 8 — Aberto, nomeado em vez de contrabandeado
 
 - **O caminho do CHIP numérico até o bus não está gateado.** O chip não fala com o bus: ele dirige

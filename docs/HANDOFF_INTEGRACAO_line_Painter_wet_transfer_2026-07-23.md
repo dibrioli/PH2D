@@ -16,6 +16,13 @@ Commits, em ordem (têm dependência entre si — integre a sequência inteira):
 1. `117023207` — `perf(wet)`: a transferência sRGB vira tabela.
 2. `ffcebccb1` — `test(wet)`: gates de precisão e de razão.
 3. `bfc2cffa9` — `refactor(wet)`: uma porta só no forward do K–M, um `R_FLOOR` só.
+4. `c086bd8f1` — `docs(wet)`: doc 24 + este handoff + a entrada na §5.
+5. `da124a5e9` — `docs(memory)`: a lição do ponto fixo.
+6. `e71f9e4c9` — `perf(wet)`: o composite vira **row-parallel** (ADR-0109 emenda 2).
+
+⚠️ **O commit 6 é a 2ª rodada**, depois de o smoke reprovar (*"ainda muito
+lento, mais lento que HTML JS"*). Ele é o que traz o frame do produto de 20 para
+31 fps a 1024², e é onde está a emenda do ADR.
 
 ## 2. Foundational / compartilhado tocado
 
@@ -28,8 +35,10 @@ sem `shells/*`, sem `tokens`, sem i18n, sem registry gerado.
 essa crate **já** tinha por ADR-0109) — registrado como **emenda 2** naquele ADR,
 não contrabandeado. O engine continua sem thread-pool e sem dep nova.
 
-Arquivos: `src/colorops.rs` · `src/colorops/transfer.rs` (**novo**) ·
-`src/render.rs` · 4 arquivos de teste novos.
+Arquivos: `ph2d-wet-paint/src/colorops.rs` · `src/colorops/transfer.rs`
+(**novo**) · `src/render.rs` · 4 testes novos · `ph2d-tool-painter/src/tool/
+paint/wetpaint.rs` (imports) + `wetpaint/composite.rs` (o fan-out) ·
+`docs/architecture/decisions/0109-*.md` (emenda 2, **append**).
 
 ⚠️ O arquivo novo é um **módulo irmão** (`colorops/transfer.rs`), o padrão de
 isolamento da DIRETRIZ §1.5.2.1 — não engordou nenhum arquivo compartilhado.
@@ -57,16 +66,18 @@ dos dois usa `colorops::` diretamente** (verificado por grep). `cargo check
 ## 4. Contratos congelados encostados
 
 **NENHUM.** `Tool` / `RasterEditTool` / `CanvasPaintTool` / `PanelEvent` intactos
-(a linha não toca `ph2d-tool-painter`). Nós/vector idem.
+— a linha toca `ph2d-tool-painter` mas **só o corpo** de `wetpaint/composite.rs`
+(nenhum método de trait, nenhum variant de `PanelEvent`). Nós/vector idem.
 
 **Nenhum schema bumpou:** `PROJECT_SCHEMA` fica **29**, `DOC_VERSION` intacto,
 `VEC_SCENE` intacto. `BrushSpec` não é serde e não mudou.
 
 ## 5. O que só o `ship.sh` pega
 
-- `cargo fmt` e `clippy -p ph2d-wet-paint --all-targets` rodados e **limpos**;
-  `typos` não rodado.
-- **Nenhuma dep nova** — `Cargo.toml` da crate intocado, `Cargo.lock` intocado.
+- `cargo fmt` e `clippy --all-targets` rodados nas DUAS crates e **limpos**;
+  `typos` limpo nos arquivos novos.
+- **Nenhuma dep nova** — nenhum `Cargo.toml` tocado, `Cargo.lock` intocado (o
+  rayon do fan-out já era dependência do `ph2d-tool-painter` por ADR-0109).
   Logo `machete`/`deny`/`audit` não têm superfície nova.
 - Gates de workspace rodados aqui (não caem no `cargo test -p`):
   `architecture_workspace_file_loc_cap` ✓ · `arch_safe_clamp_only` ✓ ·
@@ -89,6 +100,7 @@ grupo **EXPERIMENTAL**.
    com a mesma aparência de antes; o que mudou é o custo (7,3×).
 3. ⚠️ **O par ligado/desligado deve ficar igual ao que era** — esta wave é
    performance, não aparência. Se a cor mudar visivelmente, é regressão.
+   O composite paralelo é **byte-idêntico** (a medição compara os buffers).
 4. **Os dois DESLIGADOS** (o default) estão pinados byte a byte pelo fingerprint,
    então não precisam de smoke — mas se algo parecer diferente ali, é grave.
 
@@ -96,17 +108,25 @@ grupo **EXPERIMENTAL**.
 
 ## 7. Ordem / dependências
 
-Os 3 commits são sequenciais e não conflitam com nada fora da crate. Nenhuma
-outra linha da jornada tocou `ph2d-wet-paint` até onde este handoff enxerga —
-se alguma tocou, o conflito seria em `colorops.rs`/`render.rs` e a resolução é
-**semântica** (a porta única do §3), não textual.
+Os 6 commits são sequenciais. ⚠️ O ponto de conflito plausível com outra linha
+é **`docs/architecture/decisions/0109-*.md`** (append no fim — resolução é a
+união) e `wetpaint/composite.rs`. Em `ph2d-wet-paint` o conflito seria em
+`colorops.rs`/`render.rs`, e a resolução é **semântica** (a porta única do §3),
+não textual.
 
 ## 8. Aberto (nomeado, não escondido)
 
+- **O SOLVER é agora 89% do frame** com Pigment mixing ligado (28,8 de 32,2 ms a
+  1024²) e é **serial POR SEMÂNTICA** (ADR-0134) — não há row-parallelism a
+  aplicar nele. É o teto atual, e o que sobra ali é piso de algoritmo (15
+  lookups + 3 `sqrt` por célula no `advect`, 18 + 6 no `drying_pass`).
 - **O flood com K–M ligado fica em 18,9 ms contra o kill de 12 ms** do caminho
   default. Era 122,8 ms. A cena é o *upper bound* declarado pelo ADR-0134, não o
-  caso típico (a sessão representativa custa 0,89 ms), mas o número **está acima
-  da barra** e fica nomeado. O resto ali é piso de algoritmo.
+  caso típico, mas o número **está acima da barra** e fica nomeado.
+- **O canvas do smoke (1024²) tem 2,6× as células do reference JS (900×450).**
+  Boa parte do *"mais lento que o HTML/JS"* é isso — na medida do reference nós
+  somos ~3× mais rápidos que a barra dele. Se o alvo é paridade percebida, o
+  tamanho do canvas é uma decisão de PRODUTO, não de perf.
 - A cadeia settle→rewet do `drying_pass` reconverte `susp_rgb` (~33% do custo de
   K–M naquela passada); fechar exige K/S através de `lift_settled`, que é porta
   **compartilhada** com as tools do doc 23 ⇒ seria segunda porta com numérica

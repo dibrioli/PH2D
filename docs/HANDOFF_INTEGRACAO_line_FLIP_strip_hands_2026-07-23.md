@@ -14,10 +14,10 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | `5b9d51517` |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `04985b666` + este commit de handoff) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **7** |
-| `main` andou desde o fork? | **não** (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo** |
+| commits à frente do `main` | **13** (7 da wave + cena do smoke reconstruída ×2 + hold vivo/ghost 0,25 + handoffs) |
+| `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D     # a árvore PRIMÁRIA

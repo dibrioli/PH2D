@@ -3868,6 +3868,49 @@ botão tem de ler `Bake 0.5-2.5s`; ao assar, as chaves pousam só em `[0.5, 2.5]
 de 0.5s) e o Play (Physics OFF) mostra a bola SEGURANDO a pose de meio-ar de 0.5s até a
 janela abrir — um bake de range cheio a teria começado no topo.
 
+### O smoke reprovou a FIDELIDADE — a tolerância do fit (follow-up, 2026-07-24)
+
+Enio: *"o bake funciona mas é imperfeito (provavelmente a simplificação da curva)"*. **Medido,
+não adivinhado.** O bake escreve chaves densas (uma por tick) e roda o fit Schneider, que
+colapsa para poucas chaves a uma tolerância. Essa tolerância era **1% herdado do RECORD** — e
+o record a calibrou para o **tremor da mão**. Um solver não tem tremor: a 1% o fit **descartava
+um quique pequeno e o arredondava** (2,53% de erro sobre uma bola quicando). É o **gêmeo exato
+do `BAKE_SMOOTH_PASSES = 0`** — o record precisa de 8 passadas de suavização para o tremor, o
+bake de 0; a tolerância é a mesma classe de parâmetro (do INPUT, não do fit).
+
+Fix: a tolerância virou **param de `simplify_recorded`** (`value_tol` a recebe) — o record
+passa `REC_SIMPLIFY_REL` (1%), o bake **`BAKE_SIMPLIFY_REL` (0,3%)**. O `min_prom` dentro do
+`fit_fcurve` (o menor balanço de valor para um quique contar) deriva da tolerância, então
+apertá-la é exatamente o que faz o quique sobreviver.
+
+⚠️ **NÃO é "apertar ao máximo", e a medição matou o instinto de eliminar o fit** — há um PONTO
+ÓTIMO. Medido na bola quicando (3 s, restituição 0.75); "remap" é a MESMA curva relida sob um
+Time Remap de meia velocidade, que a **reamostra entre as chaves**:
+
+| tolerância | chaves | erro nas chaves | sob Time Remap |
+|---|---|---|---|
+| 1% (do record) | 4 | **2,53%** (quique descartado) | ok |
+| **0,3% (esta)** | 5 | **0,67%** (quique capturado) | ok |
+| 0,1% | 7 | 0,27% | **6,6% — OVERSHOOT** |
+
+Abaixo de ~0,2% o fit empacota chaves perto do quique afiado e a **Bézier de tangente suave
+OVERSHOOTA** entre duas chaves próximas; amostrar exatamente nos ticks pula por cima, mas um
+Time Remap amostra entre eles e pega. Logo **eliminar o fit / apertar ao máximo é o instinto
+errado** — uma chave por tick (181 chaves) é ineditável E é onde o overshoot é pior. 0,3% é o
+meio: quique capturado, sem overshoot, 5 chaves.
+
+Gates que **bracketam** o ponto ótimo: `the_bake_tracks_the_sim_closely_including_bounces`
+(pior erro < 1% do range; mutação bake@1% ⇒ quique a 2,53% RED) é o limite INFERIOR;
+`a_bake_lands_on_the_clock_of_its_entity_not_the_playhead` (o gate do Time Remap, < 5%) é o
+SUPERIOR (a 0,1% overshoota a 6,6% ⇒ RED). O record é byte-idêntico (passa o mesmo
+`REC_SIMPLIFY_REL` que já era hardcoded; 37+10 gates de autokey/performing verdes).
+
+⚠️ **Re-smoke da cena 37 (ou 7): o movimento assado tem de replicar a queda/quique fielmente**
+— a bola não deve "flutuar" pela pose nem perder o quiquinho. Se ainda parecer arredondado num
+quique GRANDE (o canto afiado do contato, que a tangente suave ainda arredonda), o próximo
+passo é **broken-tangents no contato** (o item deferido §17.2 da timeline) — mas isso é motor
+de fit, decisão à parte.
+
 ### Aberto no W-BakeRange
 
 - **Um Ctrl+Z para as duas metades do bake NÃO foi construído — e não é mecânico.** São duas

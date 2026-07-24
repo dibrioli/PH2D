@@ -13,9 +13,11 @@ use ph2d_flip::{FlipDoc, LayerId};
 
 /// Aplica os pedidos que o arrasto da tira enfileirou neste frame.
 ///
-/// Devolve `true` se o documento MUDOU — o chamador marca a edição, e é isso que faz o
-/// gesto virar **um** passo na fila global de undo (o painel só enfileira no `End`, então
-/// um arrasto inteiro chega aqui como um pedido só).
+/// Devolve `true` se o documento MUDOU — o chamador marca a edição. **Mover** enfileira um
+/// pedido só, no `End`; o **hold é VIVO** (Enio 2026-07-24) e enfileira a cada mudança de
+/// alvo durante o percurso. O gesto ainda vira **um** passo na fila global de undo, mas por
+/// outra via: o `post_frame_undo` suprime o auto-commit enquanto `held_button` está preso,
+/// então as N aplicações do percurso são UM diff no soltar.
 pub(crate) fn apply_strip_intents(
     flip: &mut FlipDoc,
     active_layer: Option<LayerId>,

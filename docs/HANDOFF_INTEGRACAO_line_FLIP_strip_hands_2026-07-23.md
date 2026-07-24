@@ -3,9 +3,11 @@
 > **Para o agente INTEGRADOR.** A linha fechou a wave *"a tira de frames ganha autoria
 > direta"*. O implementador parou aqui (CLAUDE.md §0.7).
 >
-> ⚠️ **PENDENTE DE SMOKE.** Todos os gates estão verdes e a auditoria de 2 lentes rodou (ela
-> achou 2 defeitos, os dois corrigidos — §5), mas o veredito do Enio sobre a APARÊNCIA dos
-> três gestos ainda não veio. Cena pronta: `PH2D_FLIP_STRIP_SMOKE=1` (§7).
+> ✅ **SMOKE OK (Enio, 2026-07-24)** — aquecimento, mover e esticar aprovados. Do mesmo
+> smoke saíram duas ordens, ambas LANDADAS nesta linha: **ghost a 0,25 de opacidade** na
+> cena (metade do que ele viu; pinado no gate) e **o hold aplicado em TEMPO REAL** durante
+> o arrasto (§2.1 — o mover mantém o contorno + commit no soltar, aprovado como estava).
+> Todos os gates verdes; auditoria de 2 lentes rodou (2 defeitos achados e corrigidos — §5).
 
 ## 1. Identidade
 
@@ -41,6 +43,18 @@ Os "follow-ups conscientes" que o `docs/Flip/05 §6` declarou em 2026-07-12 — 
 **Nenhuma operação de documento nova**: os dois arrastos caem em `FlipObject::move_frame` e
 `set_exposure`, exatamente as que os botões já chamavam. O arrasto é uma segunda forma de
 **pedir**, não um segundo caminho para fazer.
+
+### 2.1 O hold é VIVO; o mover não (pós-smoke, Enio 2026-07-24)
+
+O mover mantém contorno + commit no `End` (o `index` do hit é posição na lista do Begin —
+aplicar por Update a reordenaria sob o gesto). O **hold aplica a cada Update**, e o vivo é
+seguro por três fatos, cada um com gate: `set_exposure` não move a chave arrastada nem
+reordena a lista · o undo segue **um passo por gesto** porque o `post_frame_undo` suprime o
+auto-commit com `held_button` preso (nada foi ensinado à fila) · e a **régua do gesto é
+CONGELADA no Begin** (`StripDrag::ruler`) — esticar muda o total de quadros e a tira
+re-escala; uma régua viva leria o mesmo x como um quadro maior a cada aplicação =
+**realimentação positiva** (gate `the_holds_mapping_is_frozen_at_the_grab`, mutação da régua
+viva sangra). O preview do hold morreu (a própria célula estica); o do mover fica.
 
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
@@ -170,7 +184,7 @@ limpo nas 4 crates · `file_loc_caps` (shell) · `architecture_workspace_file_lo
 `architecture_panel_loc_cap` · `no_magic_numeric` · `architecture_panel_wiring_parity` ·
 `arch_safe_clamp_only` · `no_tofu_glyphs`.
 
-## 7. O SMOKE — o que falta para o veredito
+## 7. O SMOKE — aprovado 2026-07-24; roteiro para o re-smoke pós-merge
 
 ```bash
 # ⚠️ ANTES da integração o smoke só existe na WORKTREE — rodar da raiz abre o
@@ -194,7 +208,7 @@ terminal; em resumo:
 |---|---|
 | a | **arrastar a caixa**: o contorno mostra onde ela vai cair, e ela só pousa ao SOLTAR; encosta na vizinha e para |
 | b | um **clique** simples continua levando o playhead até a chave (tremor de mão não pode mover nada) |
-| c | **arrastar a borda direita** da caixa larga (a de 6): ela cresce e as seguintes são EMPURRADAS |
+| c | **arrastar a borda direita** da caixa larga (a de 6): ela estica **EM TEMPO REAL** (sem contorno — pós-smoke 2026-07-24) e as seguintes são EMPURRADAS |
 | d | na caixa de **1 quadro** a barrinha do hold **não aparece** — a caixa inteira é de mover (deliberado) |
 | e | **Pin** na última chave + voltar ao quadro 0: a bola verde aparece como vulto, **e a vizinha amarela continua lá** |
 

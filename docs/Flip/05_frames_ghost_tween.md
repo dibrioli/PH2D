@@ -316,9 +316,16 @@ motion graph e do dope-sheet (`ph2d_editor_core::interaction::flip_strip` — `F
   da célula (o hit index resolve do último para o primeiro). Numa célula estreita ele **não é
   oferecido**: perder o *esticar* num zoom apertado é honesto — a caixa Hold segue na barra —,
   perder o *mover* seria bug. Mesma lei da alça de fade da timeline.
-- **O documento muda UMA vez, no fim.** Um gesto = um passo de undo, e — o que morde — o
-  `index` do hit é uma posição na lista de células **do frame do Begin**: aplicar a cada
-  Update reordenaria a lista sob o próprio gesto.
+- **MOVER muda o documento UMA vez, no fim; o HOLD estica em TEMPO REAL** (Enio, smoke
+  2026-07-24: *"melhor esticar e achatar em tempo real"*). No mover, o que morde é o
+  `index` do hit — uma posição na lista de células **do frame do Begin**: aplicar a cada
+  Update reordenaria a lista sob o próprio gesto. O hold escapa das três armadilhas:
+  `set_exposure` não move a chave arrastada nem reordena a lista (só as seguintes deslizam);
+  o undo continua um passo por gesto porque o `post_frame_undo` suprime com o botão preso; e
+  a **régua do gesto é CONGELADA no Begin** — esticar muda o total de quadros e a tira
+  re-escala, então uma régua viva leria o mesmo x como um quadro maior a cada aplicação
+  (realimentação positiva: a exposição dispararia sozinha). Sem preview no hold: a própria
+  célula estica; o contorno fica só no mover.
 - **Nenhuma operação nova**: os dois pedidos caem no `move_frame`/`set_exposure` que os botões
   `◀`/`▶` e a caixa Hold já chamam. O arrasto é uma segunda forma de PEDIR, não um segundo
   caminho para fazer.

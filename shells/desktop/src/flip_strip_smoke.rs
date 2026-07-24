@@ -113,6 +113,10 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     // invisível por construção. `fade` é setting autorável (o USE_FADE do GP);
     // desligá-lo é encenação legítima, não maquiagem.
     obj.onion.fade = false;
+    // Metade do default (0,5): no smoke de 2026-07-24 o Enio aprovou os gestos e
+    // pediu o vulto mais discreto — *"Reduza opacidade do ghost para metade"*.
+    // Ainda acima do piso GHOST_MIN_ALPHA (0,1), então o pin segue visível.
+    obj.onion.opacity = 0.25;
 
     // O chão PRIMEIRO: a camada ativa (título da tira, alvo dos gestos) é a
     // ÚLTIMA — tem de ser a da bola.
@@ -328,6 +332,13 @@ mod tests {
         assert!(
             !obj.onion.fade,
             "sem fade por distância — o vulto fixado a Δ=11 seria invisível"
+        );
+        // A metade pedida no smoke de 2026-07-24 — e ainda acima do piso, senão o
+        // clamp comeria a redução e o Pin voltaria a sumir.
+        assert_eq!(obj.onion.opacity, 0.25, "o vulto é discreto por ordem");
+        assert!(
+            obj.onion.opacity > ph2d_flip::GHOST_MIN_ALPHA,
+            "a opacidade pedida tem de sobreviver ao clamp do piso"
         );
     }
 

@@ -72,6 +72,33 @@ verdade é do `linesweeper` e não é desta linha** — fica nomeada aqui.
 **Consequência visível:** onde o sweep não responde, o anel sai VAZIO (falta um anel) em vez de
 matar o processo. A cena de smoke usa `accel = 1`, onde saem 6 de 6, e a mensagem avisa.
 
+### O piscar (report do Enio) e as quatro curas refutadas
+
+*"O efeito não é contínuo, mas dá saltos como se piscasse"*. **Cada anel que some e volta é um dos
+pânicos acima**, apanhado pelo `catch_unwind`. Contando o contador DENTRO do `offset_path` — porque
+envolvê-lo por FORA não conta nada, o de dentro já apanhou, e foi assim que **uma medição minha
+"curou" 1800 pânicos que continuavam a acontecer** — todo vazio é um pânico. Arrastar varre
+distâncias, então cada anel entra e sai da faixa ruim: **70 trocas de contagem** em 240 passos.
+
+Quatro curas foram medidas e **refutadas**; nenhuma foi shipada, todas ficam registradas para
+ninguém as re-tentar:
+
+| tentativa | resultado |
+|---|---|
+| descartar segmentos de comprimento zero antes do sweep | **zero efeito** |
+| empurrar a distância por `1e-4` | recupera ~50%, **12%** no pior caso |
+| offset ITERADO em passos pequenos | 48→18 falhas, mas **1311 ms/frame** (400×) |
+| fundir os três sweeps num só | falhas idênticas — **mas 2-4× mais rápido** |
+
+⚠️ **A quarta merece uma wave própria**: `Region::of(base ++ contorno_da_caneta, NonZero)` dá o
+mesmo resultado com 2-4× menos custo, porque a união sai da regra de preenchimento em vez de um 2º
+sweep + `combine`. Não entrou aqui porque é mudança de comportamento no motor do **Expand**, sem
+smoke do Expand, contrabandeada dentro de uma wave de Contour.
+
+O que entrou **não é a cura, é a continuidade**: o memo guarda a última geometria boa de cada anel
+e, onde o sweep não responde, o anel FICA onde estava. O artista vê um anel que atrasa, não um que
+pisca. Gate `dragging_the_offset_never_makes_a_ring_blink` (35 quedas → 0; mutação sangra).
+
 ---
 
 ## §3 — Números que a integração precisa conferir
@@ -148,7 +175,9 @@ selecionada** (é ela que prova o seam, do `Add Contour` ao Expand, com a mão d
 ## §7 — Aberto, nomeado
 
 - **A cura de verdade do `linesweeper`** (§2) — anel que falta em certas distâncias. Precisa de
-  upgrade/patch do dep, que é decisão com ADR.
+  upgrade/patch do dep, que é decisão com ADR. A guarda de continuidade só esconde o sintoma.
+- **O sweep fundido do §2** (2-4× no `offset_path`, resultado idêntico) — medido e pronto, fora de
+  escopo desta wave por ser mudança no motor do Expand.
 - **Multi-seleção com contours diferentes**: os sliders são um número só e escrevem em todos os
   selecionados (mesmo desenho do Offset vivo).
 - **Contour + pilha de efeitos na mesma forma**: a resposta é o `LiveGeometry` alimentar um 2º

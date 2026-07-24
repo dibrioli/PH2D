@@ -1,7 +1,6 @@
 //! **Comprimento de arco de uma cúbica** — e o inverso dele.
 //!
-//! É o motor que faltava a esta crate, e ele é pré-requisito de metade da fila de efeitos
-//! (Trim, Repeater, Pattern Along Path, texto em caminho). A pesquisa
+//! **A única resposta do repo para *"quanto andei nesta curva?"***. A pesquisa
 //! `20_pesquisa_ferramentas_de_artista.md` §1.2 nomeia a armadilha com todas as letras:
 //!
 //! > o parâmetro `t` de uma Bézier **não é proporcional ao comprimento de arco**.
@@ -9,24 +8,42 @@
 //! Espaçar por `t` aglomera nas curvas e espalha nas retas — e *parece certo numa reta*,
 //! que é o que faz a versão errada passar no primeiro olhar.
 //!
-//! # Por que aqui, e não pelo `kurbo`
+//! # Por que uma crate própria
 //!
-//! O `kurbo` tem `arclen`/`inv_arclen` prontos, e esta crate **não o alcança de propósito**:
-//! o `Cargo.toml` declara *"modelo puro de documento — sem vello/kurbo; a conversão para
-//! `kurbo::BezPath` vive no render"*. Como o `cooked()` é chamado de dentro desta própria
-//! crate (`inside`, `boundary`, `path_ops`, `space`), o efeito tem de ser avaliável aqui —
-//! e arrastar a stack Linebender para dentro do modelo de documento para obter 40 linhas de
-//! quadratura seria pagar caro por uma cerca que já foi decidida.
+//! Nasceu dentro da `ph2d-vec-scene` (pilha de efeitos do Vector, [ADR-0132]: Trim, Repeater,
+//! Pattern Along Path, texto em caminho) e mudou-se para cá quando apareceu um **segundo
+//! consumidor**: o motion path da timeline ([ADR-0141]), cuja track escalar mede exatamente
+//! comprimento de arco. Duas cópias divergiriam — e a crate de origem é um modelo de
+//! **documento**, que o runtime de animação não pode passar a depender só para obter 180
+//! linhas de quadratura.
+//!
+//! **Zero dependências, de propósito.** É o que permite ao modelo de documento do Vector (que
+//! se declara *sem-kurbo* no próprio `Cargo.toml`) e ao runtime da timeline consumirem a mesma
+//! resposta sem arrastar nada. A `ph2d-vec-scene` re-exporta este módulo como `arclen`, então
+//! os chamadores de lá seguem escrevendo `crate::arclen::…`.
 //!
 //! # O método
 //!
 //! Comprimento por **Gauss-Legendre de 16 nós** sobre `|B'(t)|` — exato para polinómios até
 //! grau 31, e `|B'|` não é polinómio (tem a raiz), mas o erro cai a ~1e-12 numa cúbica de
-//! curvatura sã. O inverso é **bisseção** sobre o comprimento acumulado: converge sempre,
-//! não precisa da derivada, e 40 iterações levam o intervalo a 1e-12 do domínio.
+//! curvatura sã.
+//!
+//! O inverso é **Newton com cerca de bisseção** (o `rtsafe` do Numerical Recipes): a derivada
+//! do comprimento é `ds/dt = |B'(t)|` e está disponível **de graça**, que é precisamente a
+//! condição em que Newton bate bisseção. O intervalo `[lo, hi]` é mantido a cada passo, e um
+//! passo de Newton que saia dele é substituído pelo ponto médio — então **converge sempre**,
+//! como a bisseção, e em ~4 iterações em vez de 40.
+//!
+//! ⚠️ **Foi bisseção pura de 40 iterações até 2026-07-23**, e o preço estava medido: cada
+//! iteração chama [`arclen_to`] (16 nós × 2 avaliações), ou seja **~1300 `sqrt` por inversa**,
+//! **1700 ns**. O motion path amostra isto por entidade e por frame; a medição está na Fatia 0
+//! do [ADR-0141] (`ph2d-timeline/tests/measure_motion_path.rs`) e deu **12×**.
 //!
 //! Só `sqrt` — que é exatamente arredondado em IEEE-754 e portanto não é fonte de skew entre
 //! plataformas, ao contrário de `sin`/`exp`/`powf`.
+//!
+//! [ADR-0132]: ../../../docs/architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md
+//! [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 
 /// Uma cúbica: `[P0, C1, C2, P3]`.
 pub type Cubic = [[f64; 2]; 4];
@@ -108,11 +125,24 @@ pub fn arclen(c: &Cubic) -> f64 {
     arclen_to(c, 1.0)
 }
 
+/// Quão perto do comprimento pedido a inversa tem de aterrissar, como fração do comprimento
+/// **total da cúbica**. `1e-12` é o que a bisseção de 40 iterações entregava (`2^-40 ≈ 9e-13`
+/// do domínio de `t`), e é deliberado: quem já dependia da precisão antiga não a perde.
+const INV_TOL_REL: f64 = 1e-12;
+
+/// Teto de iterações da inversa. Nunca alcançado no caminho normal (~4 passos), e a cerca de
+/// bisseção garante que mesmo o pior caso seja pelo menos tão bom quanto a bisseção pura.
+const INV_MAX_ITERS: usize = 40;
+
 /// **O `t` em que a cúbica alcançou o comprimento `s`** — o inverso de [`arclen_to`].
 ///
-/// Bisseção: monótona por construção (`|B'| >= 0`), então nunca diverge, e não pede a
-/// derivada do comprimento. Fora do domínio, satura nas pontas — um chamador que peça mais
-/// arco do que existe quer o fim da curva, não um erro.
+/// **Newton com cerca de bisseção** (`rtsafe`): `ds/dt = |B'(t)|` é a derivada exata e sai de
+/// graça de [`speed`], então o passo de Newton é quase sempre o certo; o intervalo `[lo, hi]`
+/// é mantido a cada passo e um Newton que saia dele (ou uma velocidade nula, numa cúspide) cai
+/// no ponto médio. **Converge sempre**, como a bisseção, em ~4 iterações em vez de 40.
+///
+/// Fora do domínio, satura nas pontas — um chamador que peça mais arco do que existe quer o fim
+/// da curva, não um erro.
 #[must_use]
 pub fn inv_arclen(c: &Cubic, s: f64) -> f64 {
     let total = arclen(c);
@@ -122,16 +152,31 @@ pub fn inv_arclen(c: &Cubic, s: f64) -> f64 {
     if s >= total {
         return 1.0;
     }
+    let tol = total * INV_TOL_REL;
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
-    for _ in 0..40 {
-        let mid = 0.5 * (lo + hi);
-        if arclen_to(c, mid) < s {
-            lo = mid;
-        } else {
-            hi = mid;
+    // Palpite inicial LINEAR em `s/total`: é exato numa reta e já perto em qualquer curva sã.
+    let mut t = s / total;
+    for _ in 0..INV_MAX_ITERS {
+        let err = arclen_to(c, t) - s;
+        if err.abs() <= tol {
+            return t;
         }
+        // O intervalo encolhe SEMPRE, mesmo quando o passo de Newton é descartado — é isso que
+        // torna o pior caso desta função a bisseção, e não uma divergência.
+        if err < 0.0 {
+            lo = t;
+        } else {
+            hi = t;
+        }
+        let sp = speed(c, t);
+        let next = t - err / sp;
+        t = if sp > 1e-12 && next > lo && next < hi {
+            next
+        } else {
+            0.5 * (lo + hi)
+        };
     }
-    0.5 * (lo + hi)
+    t
 }
 
 /// **O pedaço de `c` entre `t0` e `t1`**, ele mesmo uma cúbica exata.
@@ -176,5 +221,5 @@ fn lerp(a: [f64; 2], b: [f64; 2], t: f64) -> [f64; 2] {
 }
 
 #[cfg(test)]
-#[path = "arclen_tests.rs"]
+#[path = "tests.rs"]
 mod tests;

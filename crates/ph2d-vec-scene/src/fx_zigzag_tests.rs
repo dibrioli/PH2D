@@ -114,6 +114,20 @@ fn fnv(mut h: u64, x: u64) -> u64 {
 ///
 /// ⚠️ Se este gate falhar num commit que **pretendia** mudar o desenho do efeito, o número é que
 /// está velho. Num commit de refactor, o número está certo e o refactor não é o que diz ser.
+///
+/// # O número foi RE-PINADO uma vez (2026-07-23, ADR-0141)
+///
+/// A [`crate::arclen::inv_arclen`] trocou **bisseção de 40 iterações por Newton com cerca de
+/// bisseção**, por custo: 1700 ns → 140 ns por inversa (a Fatia 0 do ADR-0141 mediu; o Zig Zag,
+/// o Trim, o Pattern Along Path e o texto em caminho ganham os 12× junto). Duas respostas certas
+/// para a mesma raiz não caem nos mesmos bits — a bisseção para por CONTAGEM, o Newton por
+/// TOLERÂNCIA —, então o desenho mexeu no último dígito e este hash mudou.
+///
+/// **Quanto mexeu está medido, e é isso que um hash não sabe dizer:** `1,3e-10` unidades de
+/// mundo no pior caso (incluindo quase-cúspide), contra `~1e-2` que seria um pixel. O gate que
+/// carrega essa afirmação — a de MAGNITUDE, que é a que decide se é visível — é
+/// `the_newton_inverse_agrees_with_the_bisection_it_replaced`, na `ph2d-arclen`, e ele guarda a
+/// bisseção antiga como oráculo de teste.
 #[test]
 fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
     let cases: [(Vec<VecVertex>, bool, ZigZagSpec); 4] = [
@@ -159,9 +173,10 @@ fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
             h = fnv(h, w.kind as u64);
         }
     }
-    // Medida em 2026-07-22, ANTES da extração do walker (commit 5bc175013).
+    // Medida em 2026-07-22, ANTES da extração do walker (commit 5bc175013); RE-PINADA em
+    // 2026-07-23 pela troca da inversa de arco (ADR-0141) — ver a secção acima.
     assert_eq!(
-        h, 0xf6eb_ed49_0c31_322e,
+        h, 0xd52a_2b63_cd39_0e29,
         "o desenho do Zig Zag mudou (impressao digital {h:#018x})"
     );
 }

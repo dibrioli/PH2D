@@ -124,3 +124,75 @@ fn the_two_halves_of_a_split_sum_to_the_whole() {
         arclen(&c)
     );
 }
+
+/// **A bisseção que o Newton substituiu**, preservada como ORÁCULO de teste.
+///
+/// Não é uma segunda porta de produto: é a implementação de referência contra a qual a troca
+/// de algoritmo se justifica. Converge sempre e não pede derivada — 40 halvings levam o
+/// intervalo a `2^-40 ≈ 9e-13` do domínio de `t`.
+fn inv_arclen_bisect(c: &Cubic, s: f64) -> f64 {
+    let total = arclen(c);
+    if s <= 0.0 || total <= 0.0 {
+        return 0.0;
+    }
+    if s >= total {
+        return 1.0;
+    }
+    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    for _ in 0..40 {
+        let mid = 0.5 * (lo + hi);
+        if arclen_to(c, mid) < s {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
+/// **O Newton concorda com a bisseção que ele substituiu** — e o gate diz de QUANTO, porque
+/// "concorda" sem número é a afirmação que uma impressão digital já faz, e pior: um hash não
+/// distingue *mudou 1e-15* de *mudou tudo*.
+///
+/// A troca (2026-07-23, ADR-0141 Fatia 0) foi por CUSTO — 1700 ns → 140 ns, medido — e o preço
+/// dela é este épsilon. Ele é reportado em unidades de MUNDO sobre uma curva de tamanho de
+/// produto, que é a grandeza em que alguém decide se é visível.
+#[test]
+fn the_newton_inverse_agrees_with_the_bisection_it_replaced() {
+    let cs = [curved(), straightish(), sharp()];
+    let (mut worst_t, mut worst_p) = (0.0f64, 0.0f64);
+    for c in &cs {
+        let total = arclen(c);
+        for i in 0..=2000 {
+            let s = total * f64::from(i) / 2000.0;
+            let (a, b) = (inv_arclen(c, s), inv_arclen_bisect(c, s));
+            worst_t = worst_t.max((a - b).abs());
+            let (pa, pb) = (point_at(c, a), point_at(c, b));
+            worst_p = worst_p.max((pa[0] - pb[0]).hypot(pa[1] - pb[1]));
+        }
+    }
+    // Medido: 1e-12 em `t`, ~1e-10 unidades de mundo numa curva de ~100 unidades. O Newton é
+    // o MAIS preciso dos dois (para na tolerância; a bisseção para na contagem), então este
+    // número é a distância entre duas respostas certas, não um erro.
+    assert!(
+        worst_t < 1e-9,
+        "o `t` divergiu {worst_t:.3e} da bisseção — mais que os 1e-9 que a tolerância promete"
+    );
+    assert!(
+        worst_p < 1e-6,
+        "o PONTO divergiu {worst_p:.3e} unidades de mundo — visível seria ~1e-2"
+    );
+    eprintln!("Newton vs bisseção: dt = {worst_t:.3e}, dponto = {worst_p:.3e} unidades");
+}
+
+/// Uma cúbica quase reta: o palpite inicial do Newton (`s/total`) é EXATO aqui, então este é o
+/// caso em que ele sai numa iteração — e é o que garante que o caso fácil não regrediu.
+fn straightish() -> Cubic {
+    [[0.0, 0.0], [S, 0.1], [2.0 * S, -0.1], [3.0 * S, 0.0]]
+}
+
+/// Uma cúbica de curvatura forte com quase-cúspide: `|B'|` chega perto de zero no meio, que é
+/// onde Newton divide por quase-nada e a CERCA de bisseção tem de assumir.
+fn sharp() -> Cubic {
+    [[0.0, 0.0], [S, 0.0], [-S, 0.0], [0.0, S]]
+}

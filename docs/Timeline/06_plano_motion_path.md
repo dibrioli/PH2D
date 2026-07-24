@@ -20,7 +20,7 @@ graph, roving e presets vêm de graça.
 | Track escalar + `Interp` + weighted tangents | `ph2d-anim` | a curva de **timing** ao longo do caminho, **sem tipo novo** |
 | **Speed graph** (W5) | `ph2d-timeline::speed` | a `Position: Velocity` da Harmony, literal |
 | **Roving** | `ph2d-anim::rove` | o *Rove Across Time* do AE, no significado de origem |
-| Bézier + comprimento de arco | `kurbo` (já no workspace) | a geometria e a inversa de arco |
+| Bézier + comprimento de arco + a INVERSA | **`ph2d-arclen`** (crate-folha zero-dep, extraída da `ph2d-vec-scene` na Fatia 1) | a geometria, sem `kurbo` e sem duplicar o motor |
 | Afim por posição no arco | `line/Vector` (pattern along path, integrado 23/07) | o precedente medido do mesmo problema |
 | Clips, containers, stack, time remap, undo, save | `ph2d-timeline` | inalterados — continua sendo uma track |
 
@@ -82,8 +82,9 @@ Números e o raciocínio completo: **emenda ao §Kill do ADR-0141**.
 **O que a medição decidiu:**
 
 1. **A inversa que shipa hoje (bisseção de 40 iterações) custa 1700 ns/amostra** — ~1300 `sqrt`.
-   **Newton custa 140 ns** com o MESMO resultado (erro 1,3e-7 num caminho de 823 unidades), porque
-   `ds/dt = |B'(t)|` está disponível de graça. **12×.**
+   **Newton custa 190 ns** com o MESMO resultado (erro 1,7e-10 num caminho de 823 unidades), porque
+   `ds/dt = |B'(t)|` está disponível de graça. **9×** — e não 12×, porque a tolerância ficou em
+   1e-12 (a que a bisseção entregava) e apertá-la custa ~1 iteração.
 2. **O custo é plano no número de âncoras** (2 → 128): o prefixo somado + busca binária já isolam
    **um** segmento. Nenhuma estrutura nova é precisa — a `ArcPath` da linha Vector já é isso.
 3. ⚠️ **A barra declarada era o instrumento errado** e foi substituída por uma LEI ligada a um
@@ -110,8 +111,18 @@ da timeline seria arrastar o modelo de documento do Vector para dentro do runtim
 `from_contour` fica na `ph2d-vec-scene` como **adaptador**, e a estrutura ganha um irmão
 `from_cubics` na casa nova, que é por onde a timeline entra.
 
-⚠️ **Enquanto a mudança não acontece, o harness consome `ph2d-vec-scene` por `[dev-dependencies]`**
-(marcado TEMPORARY no `Cargo.toml`) — medição não compromete arquitetura, e a dep sai na Fatia 1.
+✅ **FEITO na Fatia 1** (2026-07-23): a crate `ph2d-arclen` existe, a `ph2d-vec-scene` re-exporta, a
+`ph2d-timeline` depende dela, e a inversa virou Newton. A suíte do Vector ficou verde (282/282) com
+**uma** exceção que teve de ser re-pinada — ver abaixo.
+
+⚠️ **O gate `the_zigzag_is_byte_identical_across_the_arc_walker_extraction` FALHOU e foi RE-PINADO.**
+Ele hasheia cada bit de cada coordenada do Zig Zag, e duas respostas certas para a mesma raiz não
+caem nos mesmos bits (a bisseção para por CONTAGEM, o Newton por TOLERÂNCIA). O protocolo estava
+escrito no próprio gate — *"se falhar num commit que PRETENDIA mudar o desenho, o número é que está
+velho"* —, e o deslocamento foi **medido antes de re-pinar**: `1,3e-10` unidades de mundo no pior
+caso, contra `~1e-2` de um pixel. O gate de MAGNITUDE que carrega essa afirmação (e guarda a
+bisseção antiga como oráculo) é `the_newton_inverse_agrees_with_the_bisection_it_replaced`, na
+`ph2d-arclen` — um hash diz *"diferente"*, e não distingue 1e-10 de tudo.
 
 ---
 

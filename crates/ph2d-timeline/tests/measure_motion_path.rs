@@ -8,7 +8,7 @@
 //!
 //! Em modo Path a track escalar mede **comprimento de arco** e a amostragem é
 //! `ponto = caminho.em_arco(track.sample(t))`. O único custo NOVO é a **inversa**: dado `s`,
-//! achar o `t` da cúbica. O motor que existe hoje ([`ph2d_vec_scene::arclen`]) a resolve por
+//! achar o `t` da cúbica. O motor ([`ph2d_arclen`]) resolvia por
 //! **bisseção de 40 iterações**, e cada iteração chama `arclen_to` = Gauss-Legendre de 16 nós =
 //! 32 avaliações de `|B'(t)|`, cada uma com um `sqrt`. **~1300 sqrt por amostra**, por entidade,
 //! por frame.
@@ -27,7 +27,7 @@
 use std::time::Instant;
 
 use ph2d_anim::{AnimValue, AttributeEvaluator, Interp, Key, RationalTime, Track};
-use ph2d_vec_scene::arclen::{Cubic, arclen, arclen_to, inv_arclen, point_at};
+use ph2d_arclen::{Cubic, arclen, arclen_to, inv_arclen, point_at};
 
 // ── a fixture: um caminho ondulado com N âncoras ────────────────────────────────────────────
 
@@ -88,9 +88,38 @@ fn seg_of(starts: &[f64], s: f64) -> usize {
         .min(starts.len() - 2)
 }
 
-// ── A: a inversa de hoje (bisseção de 40 iterações) ─────────────────────────────────────────
+// ── A: a inversa HISTÓRICA (bisseção de 40 iterações, até 2026-07-23) ───────────────────────
+
+/// A bisseção que o Newton substituiu, preservada AQUI para o 12× continuar reproduzível — a
+/// `ph2d_arclen::inv_arclen` já não é ela. Não é uma segunda porta de produto: é a linha de base
+/// histórica de uma tabela que afirma um ganho.
+fn inv_bisect(c: &Cubic, s: f64) -> f64 {
+    let total = arclen(c);
+    if s <= 0.0 || total <= 0.0 {
+        return 0.0;
+    }
+    if s >= total {
+        return 1.0;
+    }
+    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    for _ in 0..40 {
+        let mid = 0.5 * (lo + hi);
+        if arclen_to(c, mid) < s {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
 
 fn sample_bisect(cs: &[Cubic], starts: &[f64], s: f64) -> [f64; 2] {
+    let i = seg_of(starts, s);
+    point_at(&cs[i], inv_bisect(&cs[i], s - starts[i]))
+}
+
+/// O que SHIPA: `ph2d_arclen::inv_arclen` (Newton com cerca de bisseção, tolerância 1e-12).
+fn sample_shipped(cs: &[Cubic], starts: &[f64], s: f64) -> [f64; 2] {
     let i = seg_of(starts, s);
     point_at(&cs[i], inv_arclen(&cs[i], s - starts[i]))
 }
@@ -99,10 +128,6 @@ fn sample_bisect(cs: &[Cubic], starts: &[f64], s: f64) -> [f64; 2] {
 
 /// `ds/dt = |B'(t)|` — a derivada da função que estamos invertendo está DISPONÍVEL de graça,
 /// que é exatamente a condição em que Newton bate bisseção. Palpite inicial linear em `s/total`.
-fn inv_newton(c: &Cubic, s: f64, total: f64) -> f64 {
-    inv_newton_counted(c, s, total, &mut 0)
-}
-
 /// Newton com PARADA por tolerância (e a contagem de iterações, que é o que decide se vale
 /// gastar 4 fixas). `tol` é relativo ao comprimento do segmento: um erro de arco abaixo de
 /// 1e-9 do segmento é indistinguível do da bisseção de 40 iterações.
@@ -113,7 +138,7 @@ fn inv_newton_counted(c: &Cubic, s: f64, total: f64, iters: &mut usize) -> f64 {
     if s >= total {
         return 1.0;
     }
-    let tol = total * 1e-9;
+    let tol = total * 1e-12; // espelha `ph2d_arclen::INV_TOL_REL`
     let mut t = s / total;
     for _ in 0..8 {
         *iters += 1;
@@ -135,12 +160,6 @@ fn inv_newton_counted(c: &Cubic, s: f64, total: f64, iters: &mut usize) -> f64 {
         t = (t - err / sp).clamp(0.0, 1.0);
     }
     t
-}
-
-fn sample_newton(cs: &[Cubic], starts: &[f64], s: f64) -> [f64; 2] {
-    let i = seg_of(starts, s);
-    let total = starts[i + 1] - starts[i];
-    point_at(&cs[i], inv_newton(&cs[i], s - starts[i], total))
 }
 
 // ── C: LUT por segmento (K+1 amostras de t→s), construída uma vez ───────────────────────────
@@ -244,7 +263,7 @@ fn measure_the_arc_length_inverse() {
         let total = *st.last().unwrap();
 
         let ns_b = bench("bisect", |s| sample_bisect(&cs, &st, s), total);
-        let ns_n = bench("newton", |s| sample_newton(&cs, &st, s), total);
+        let ns_n = bench("newton", |s| sample_shipped(&cs, &st, s), total);
         let ns_l = bench("lut", |s| sample_lut(&cs, &st, &lut, s), total);
 
         // Quantas iterações o Newton de fato gasta (é o que diz se 4 fixas eram desperdício).
@@ -262,7 +281,7 @@ fn measure_the_arc_length_inverse() {
         for i in 0..2000 {
             let s = total * i as f64 / 2000.0;
             let r = sample_bisect(&cs, &st, s);
-            let dn = sample_newton(&cs, &st, s);
+            let dn = sample_shipped(&cs, &st, s);
             let dl = sample_lut(&cs, &st, &lut, s);
             e_n = e_n.max((dn[0] - r[0]).hypot(dn[1] - r[1]));
             e_l = e_l.max((dl[0] - r[0]).hypot(dl[1] - r[1]));

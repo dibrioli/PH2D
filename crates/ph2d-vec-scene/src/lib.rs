@@ -77,10 +77,13 @@ pub mod corners;
 pub mod corner_live;
 
 /// **Comprimento de arco de uma cúbica, e o inverso dele** — o motor que a pilha de efeitos
-/// (ADR-0132) precisa e que esta crate não tinha. Mora aqui, e não no `kurbo`, porque o
-/// `cooked()` é avaliado DENTRO desta crate (`inside`, `boundary`, `path_ops`, `space`) e o
-/// modelo de documento é sem-kurbo por decisão declarada no `Cargo.toml`.
-pub mod arclen;
+/// (ADR-0132) precisa. Mora na crate-folha [`ph2d_arclen`] (zero dependências) e é re-exportado
+/// aqui: ele ganhou um SEGUNDO consumidor — o motion path da timeline (ADR-0141), cuja track
+/// escalar mede comprimento de arco — e duas cópias de *"quanto andei nesta curva"* divergiriam.
+/// O modelo de documento continua sem-kurbo; a crate nova também não o alcança.
+pub mod arclen {
+    pub use ph2d_arclen::*;
+}
 
 /// **Um contorno parametrizado por arco** ([`arc_path::ArcPath`]) — irmão do [`arclen`], que
 /// responde por UMA cúbica. É a porta única de *"onde fica o arco `s` neste caminho inteiro?"*,

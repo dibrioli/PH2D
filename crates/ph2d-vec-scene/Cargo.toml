@@ -15,6 +15,11 @@ authors.workspace = true
 # (`ph2d-vec-render`), que alcança a stack Linebender pelas re-exports de
 # `ph2d-vector` (gate-proof + skew-proof). serde: undo por snapshot + save
 # futuros (mesma disciplina dos SimComponents de ph2d-ecs).
+# Comprimento de arco (e a inversa) da cuja casa esta crate foi a origem: extraido
+# para uma crate-folha ZERO-dep quando o motion path da timeline (ADR-0141) virou o
+# segundo consumidor. `pub mod arclen` re-exporta, entao os 5 sitios de chamada
+# desta crate seguem escrevendo `crate::arclen::...` verbatim.
+ph2d-arclen = { path = "../ph2d-arclen" }
 serde = { version = "1", features = ["derive"] }
 # Persistência (ADR-0108 Fase 2): save/load da cena via postcard (mesmo wire
 # format canônico do resto do repo). `alloc` p/ to_allocvec.

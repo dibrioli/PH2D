@@ -29,6 +29,11 @@ ph2d-anim = { path = "../ph2d-anim" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # The engine Playhead: transport intents drive it, and the view snapshot reads it.
 ph2d-core = { path = "../ph2d-core" }
+# Comprimento de arco de uma cubica e a INVERSA dele: em modo Path (ADR-0141) a
+# track escalar mede "quanto do caminho", e a amostragem inverte esse numero em
+# `t`. Crate-folha ZERO-dep, partilhada com a pilha de efeitos do Vector -- duas
+# respostas para "quanto andei nesta curva" divergiriam.
+ph2d-arclen = { path = "../ph2d-arclen" }
 # Versioned document persistence (HR-14) + panel snapshot/intent (de)serialization.
 serde = { version = "1", features = ["derive"] }
 # Versioned on-disk format for the timeline document (W4 save/load).
@@ -38,11 +43,6 @@ postcard = { version = "1", features = ["alloc"] }
 ph2d-render = { path = "../ph2d-render", optional = true }
 
 [dev-dependencies]
-# TEMPORARY (Fatia 0 do ADR-0141): a matematica de comprimento de arco vive hoje
-# em `ph2d-vec-scene::arclen` (crate do modulo Vector). O harness de medicao a
-# consome DAQUI para nao duplicar o motor enquanto o numero nao autoriza o
-# desenho; a Fatia 1 move o motor para uma casa compartilhada e esta linha SAI.
-ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # JSON round-trip of the document in serde tests.
 serde_json = "1"
 # HR-3 zero-alloc gate for the apply pass (tests/no_alloc_bridge.rs), mirroring

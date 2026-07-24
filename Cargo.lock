@@ -4921,6 +4921,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-arclen"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-asset"
 version = "0.0.0"
 dependencies = [
@@ -6936,10 +6940,10 @@ dependencies = [
  "bevy_ecs",
  "dhat",
  "ph2d-anim",
+ "ph2d-arclen",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-render",
- "ph2d-vec-scene",
  "postcard",
  "serde",
  "serde_json",
@@ -7252,6 +7256,7 @@ dependencies = [
 name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
+ "ph2d-arclen",
  "ph2d-warp-style",
  "postcard",
  "serde",

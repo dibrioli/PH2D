@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-arclen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Comprimento de arco de uma cúbica, e o INVERSO dele — a única resposta do repo
+# para "quanto andei nesta curva?". Nasceu dentro da `ph2d-vec-scene` (pilha de
+# efeitos do Vector, ADR-0132) e mudou-se para cá quando um SEGUNDO consumidor
+# apareceu: o motion path da timeline (ADR-0141), cuja track escalar mede
+# comprimento de arco. Duas cópias divergiriam, e a crate de origem é um modelo
+# de DOCUMENTO — o runtime de animação não pode depender dela para obter 180
+# linhas de quadratura.
+#
+# ZERO dependências, de propósito: é o que permite que tanto o modelo de
+# documento do Vector (que se declara sem-kurbo) quanto o runtime da timeline a
+# consumam sem arrastar nada.
+
+[lib]
+
+[dependencies]

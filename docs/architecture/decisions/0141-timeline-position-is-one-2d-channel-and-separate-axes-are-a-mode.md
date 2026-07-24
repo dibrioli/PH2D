@@ -197,10 +197,10 @@ Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../../crates/p
 
   âncoras │  bisseção │    Newton │  LUT K=16 │  err New │  err LUT │ it.New
   ────────┼───────────┼───────────┼───────────┼──────────┼──────────┼───────
-        2 │ 1683.5 ns │  150.6 ns │    7.2 ns │  1.25e-7 │  1.76e-1 │   3.80
-        8 │ 1745.7 ns │  131.0 ns │    9.3 ns │  1.26e-7 │  1.41e-1 │   3.30
-       32 │ 1715.8 ns │  133.9 ns │   12.0 ns │  1.27e-7 │  1.36e-1 │   3.24
-      128 │ 1743.2 ns │  144.8 ns │   15.7 ns │  1.25e-7 │  1.26e-1 │   3.22
+        2 │ 1623.4 ns │  203.8 ns │    7.2 ns │ 1.74e-10 │  1.76e-1 │   4.36
+        8 │ 1708.1 ns │  184.5 ns │    9.7 ns │ 1.79e-10 │  1.41e-1 │   3.63
+       32 │ 1773.4 ns │  184.3 ns │   12.4 ns │ 1.62e-10 │  1.36e-1 │   3.50
+      128 │ 1767.7 ns │  188.6 ns │   15.6 ns │ 1.64e-10 │  1.26e-1 │   3.47
 ```
 
 **Três leituras, e a terceira reescreve a barra:**
@@ -218,13 +218,15 @@ Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../../crates/p
    | método | 100 entidades Path | % de um frame de 60 Hz |
    |---|---|---|
    | bisseção (hoje) | 170 µs | **1,02 %** |
-   | **Newton** | **14 µs** | **0,084 %** |
+   | **Newton** | **19 µs** | **0,114 %** |
    | LUT K=16 | 1,2 µs | 0,007 % |
 
 **Decisão: Newton substitui a bisseção.** `ds/dt = |B'(t)|` — a derivada da função que se está a
 inverter está disponível de graça, que é exatamente a condição em que Newton bate bisseção:
-**12× mais barato, 3,2 iterações, e sem aproximação a defender** (1,3e-7 num caminho de 823
-unidades = 0,12 µm). O ADR não compra a LUT: ela é 10× mais barata ainda, mas erra **0,13
+**9× mais barato, 3,5 iterações, e sem aproximação a defender** (1,7e-10 num caminho de 823
+unidades). ⚠️ O ganho é 9× e não os 12× de uma primeira medição porque a tolerância ficou em
+**1e-12** — o que a bisseção de 40 iterações entregava —, e apertá-la custa ~1 iteração: quem já
+dependia da precisão antiga não a perde. O ADR não compra a LUT: ela é 10× mais barata ainda, mas erra **0,13
 unidades** — e uma aproximação que se paga em precisão sem que o orçamento a exija é um modo de
 falha comprado sem necessidade.
 

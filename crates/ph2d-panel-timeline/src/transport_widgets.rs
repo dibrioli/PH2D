@@ -61,7 +61,32 @@ pub(crate) fn dead_icon_button(
 }
 
 /// Paint one number chip (value mirrored from the snapshot when unfocused);
-/// register its `[0, ∞)` range + hit. Returns the right edge.
+/// register its `[0, ∞)` range + calibrated drag + hit. Returns the right edge.
+///
+/// **Sem TETO, e isso é o produto** (Enio, 2026-07-23: *"a timeline está limitando a
+/// simulação … permita que eu possa colocar qualquer valor em Dur"*). Os três chips do
+/// transporte — Time, Frame, Dur — são grandezas que este app não sabe limitar: nem o
+/// relógio, nem o quadro, nem a duração de uma composição têm máximo. O `f64::from(u16::MAX)`
+/// que ficava aqui não era medido, era um número redondo servindo de cerca — e o
+/// doc-comment acima já dizia `[0, ∞)`, ou seja o código contradizia a intenção escrita ao
+/// lado dele.
+///
+/// ⚠️ **Ele mordia por DUAS vias, e a segunda é a que o artista sente:** o stepper PARAVA
+/// em 65535, e o arrasto — o modelo de scrub deste app é *proporcional ao alcance*
+/// (`DRAG_RANGE_PX_H` = 250 px varrem `[min, max]` inteiro) — valia **262 segundos por
+/// pixel**. Não dava para pousar num número, e a caixa parecia recusar edição.
+///
+/// ⚠️ **O piso `0` e o `step` FICAM, e é por isso que o alcance não foi simplesmente
+/// apagado:** o `step` registrado É o incremento do stepper (sem ele o dispatch cai numa
+/// heurística de buffer — `0.01` para um valor com ponto —, e o clique de 0,2 s que o Enio
+/// pediu para a Dur some em silêncio), e uma duração/tempo/quadro negativo não é uma coisa.
+///
+/// ⚠️ **Registrar os DOIS é correto, e o doc do store dizia o contrário:** ele mandava não
+/// combinar `set_number_range` com `set_number_drag_rate`; o código faz o oposto do que
+/// aquele texto prometia — o rate **vence** o modelo proporcional (`pointer_move.rs`) *e*
+/// dispensa o clamp do arrasto. É essa precedência que deixa o alcance servir só de
+/// `step` + piso enquanto o arrasto ganha uma escala em que dá para pousar. O texto do
+/// store foi corrigido junto.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn chip(
     ctx: &mut PaintCtx,
@@ -77,7 +102,14 @@ pub(crate) fn chip(
     {
         let store = ctx.host.store_mut();
         mirror_number(store, id, value, decimals);
-        store.set_number_range(id, 0.0, f64::from(u16::MAX), step);
+        // Piso e `step` do stepper; teto ABERTO.
+        store.set_number_range(id, 0.0, f64::INFINITY, step);
+        // E a escala do arrasto, derivada do próprio incremento do chip: **um pixel vale um
+        // clique de stepper**. Não é um número escolhido — é o mesmo `step` que a setinha
+        // usa, então os três chips ficam coerentes sem ninguém calibrar nada à mão (Time
+        // um quadro/px, Frame um quadro/px, Dur 0,2 s/px). Sem ele o alcance infinito
+        // faria o modelo proporcional produzir um delta não-finito.
+        store.set_number_drag_rate(id, step);
     }
     let (state, _v, buf, caret, anchor) = read_number_input(ctx.host.store(), id);
     let buf = buf.to_string();

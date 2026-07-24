@@ -244,8 +244,19 @@ impl WidgetStore {
 
     /// Register a horizontal drag-scrub rate (**value-units per cursor pixel**)
     /// for an UNBOUNDED number box — the drag adds `rate·dx` (vertical `rate/10`),
-    /// no clamp. Do NOT also call [`set_number_range`](Self::set_number_range) on
-    /// the same id (the range's proportional model would win + re-impose bounds).
+    /// no clamp.
+    ///
+    /// ⚠️ **Este texto dizia para NÃO combinar com
+    /// [`set_number_range`](Self::set_number_range)** — *"o modelo proporcional do alcance
+    /// venceria e re-imporia limites"*. **O código faz o oposto** desde sempre: em
+    /// `dispatch::pointer_move` o rate é consultado ANTES do alcance (e vence), e o cálculo
+    /// de `bounds` devolve `None` assim que existe um rate (e vence de novo). Combinar os
+    /// dois é a forma **certa** de uma caixa que precisa de `step` e de piso mas não tem
+    /// TETO: o alcance serve de `step` para o stepper e de piso para o clamp dele, e o rate
+    /// dá ao arrasto uma escala calibrada em vez de uma proporção sobre um intervalo que não
+    /// termina. É o que os chips do transporte da timeline fazem
+    /// (`ph2d-panel-timeline::transport_widgets::chip`), e o texto anterior era exatamente
+    /// o que desencorajava a combinação correta ([[feedback_stale_comment_and_dead_code_lie]]).
     pub fn set_number_drag_rate(&mut self, id: NodeId, rate: f64) {
         self.number_drag_rate.insert(id, rate);
     }

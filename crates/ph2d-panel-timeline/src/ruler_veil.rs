@@ -85,9 +85,11 @@ pub(super) fn paint_duration_handle(
         ],
         color,
     );
-    // The grab target: tight around the ↔ glyph and NOTHING at the edge, so the loop
-    // brace at the duration end keeps its own grab. Across the ruler strip.
-    let hit = grab_rect(edge, region.y);
+    // The grab target: the WHOLE veil past the loop brace, so dragging anywhere in the
+    // dark dead-zone resizes the duration (Enio, `d489f9d67`: *"arrastar o véu na régua
+    // resize a duração"*). A grab tight on the ↔ glyph 40px out was a target most
+    // presses missed — the arrow stays as the visual cue, the grab is forgiving.
+    let hit = grab_rect(edge, region.y, right);
     ctx.host.store_mut().register(
         ids::TIMELINE_DUR_HANDLE,
         InteractiveState::TimelineSurface {
@@ -101,14 +103,19 @@ pub(super) fn paint_duration_handle(
         .register(ids::TIMELINE_DUR_HANDLE, hit);
 }
 
-/// The duration handle's grab rect for a veil edge at `edge` — tight around the ↔
-/// glyph, offset RIGHT so it never overlaps the loop brace's own grab at the edge.
-/// Pure, so the "clear of the edge" rule has an oracle the paint cannot give it.
-fn grab_rect(edge: f32, region_y: f32) -> Rect {
-    let gx = edge + DUR_ARROW_OFFSET;
-    let hit_left = gx - DUR_ARROW_HALF_W - DUR_ARROW_HEAD - DUR_ARROW_PAD;
-    let hit_right = gx + DUR_ARROW_HALF_W + DUR_ARROW_HEAD + DUR_ARROW_PAD;
-    Rect::new(hit_left, region_y, hit_right - hit_left, RULER_H)
+/// The duration handle's grab rect: the veil from just past the loop brace to the
+/// ruler's right edge (`region_right`). It starts a hair right of the edge so the
+/// loop brace at the duration end keeps its own grab, and spans the rest of the dark
+/// dead-zone so the whole veil is the grip. Pure, so the "clear of the edge" rule has
+/// an oracle the paint cannot give it.
+fn grab_rect(edge: f32, region_y: f32, region_right: f32) -> Rect {
+    let hit_left = edge + BRACE_HIT_HW + DUR_ARROW_PAD;
+    Rect::new(
+        hit_left,
+        region_y,
+        (region_right - hit_left).max(0.0),
+        RULER_H,
+    )
 }
 
 #[cfg(test)]
@@ -122,19 +129,20 @@ mod tests {
     /// loop runs to the end.
     #[test]
     fn the_grab_does_not_reach_the_edge_where_the_loop_brace_sits() {
-        let edge = 200.0;
-        let g = grab_rect(edge, 0.0);
+        let (edge, right) = (200.0, 800.0);
+        let g = grab_rect(edge, 0.0, right);
         assert!(
             g.x > edge + BRACE_HIT_HW,
             "grab starts at {} but the loop brace reaches to {}",
             g.x,
             edge + BRACE_HIT_HW
         );
-        // And it does cover the ↔ glyph (so the affordance is actually grabbable).
+        // And it covers the ↔ glyph AND the rest of the veil (so the whole dead-zone
+        // is the grip, not just the small arrow most presses missed).
         let gx = edge + DUR_ARROW_OFFSET;
         assert!(
-            g.x < gx && g.x + g.w > gx,
-            "the grab must cover the arrow at {gx}"
+            g.x < gx && g.x + g.w >= right,
+            "the grab must cover the arrow at {gx} and reach the right edge {right}"
         );
     }
 }

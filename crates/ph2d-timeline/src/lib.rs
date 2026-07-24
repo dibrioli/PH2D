@@ -26,6 +26,7 @@ pub mod binding;
 pub mod clipboard;
 mod clock;
 pub mod doc;
+pub mod doc_path;
 pub mod graph;
 pub mod history;
 pub mod intent;

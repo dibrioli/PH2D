@@ -156,6 +156,11 @@ impl crate::App {
             "[path-smoke] abra a timeline (L) e olhe o ESPACAMENTO dos losangos: \
              juntos nas pontas (ease), esparramados no meio. Play para conferir."
         );
+        eprintln!(
+            "[path-smoke] ARRASTE um QUADRADO (a ancora): a curva segue e NAO quebra \
+             (as alcas Auto Bezier re-suavizam). ARRASTE um CIRCULO (a ponta da alca): \
+             a curva se MOLDA a mao. As alcas so aparecem nas ancoras curvas do meio."
+        );
     }
 
     /// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**

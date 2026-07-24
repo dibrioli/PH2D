@@ -1758,6 +1758,10 @@ impl App {
     /// objeto. O alvo tem 7 px de raio e nada mais muda — é o mesmo trade que toda alça
     /// deste app faz, e o desenho (um quadrado, a forma universal de "isto se arrasta")
     /// é o que o anuncia.
+    ///
+    /// ⚠️ **Agarra a âncora OU uma alça de tangente** (`motion_path_hit`) — as duas são a
+    /// mesma pergunta ("o que está sob o cursor?"), e o gesto de move despacha sobre o
+    /// que veio.
     fn motion_path_anchor_down(&mut self, x: f32, y: f32) -> bool {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
@@ -1766,7 +1770,7 @@ impl App {
             .hero_screen
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
-        let Some(hit) = crate::render_loop::motion_path_overlay::anchor_at(
+        let Some(hit) = crate::render_loop::motion_path_overlay::motion_path_hit(
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -1783,26 +1787,35 @@ impl App {
         true
     }
 
-    /// Leva a âncora agarrada para o cursor. No-op (`false`) sem um arrasto vivo — a
-    /// mesma disciplina de early-return das alças do vetor.
+    /// Leva o que foi agarrado (âncora ou alça) para o cursor. No-op (`false`) sem um
+    /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
-    /// Escreve pela porta ÚNICA (`TimelineDoc::move_path_anchor`), que move a geometria e
-    /// reescreve as distâncias que as keys guardam na MESMA operação. As alças da âncora
-    /// são relativas a ela, então viajam junto de graça: arrastar uma âncora a MOVE, não
-    /// a remodela.
+    /// Escreve pela porta ÚNICA de cada gesto: `move_path_anchor` translada a curva (e
+    /// re-suaviza as âncoras `auto`, senão a curva quebra), `move_path_tangent` a molda.
+    /// As duas reescrevem as distâncias que as keys guardam na MESMA operação.
     fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
-        let Some((target, i)) = self.motion_path_drag else {
+        use crate::render_loop::motion_path_overlay::MotionPathGrab;
+        let Some(grab) = self.motion_path_drag else {
             return false;
         };
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
         let w = gfx.camera.screen_to_world((x, y), gfx.surface.size());
-        let Some(mut a) = self.timeline.doc.path_anchor(target, i) else {
-            return false;
-        };
-        a.anchor = [w[0], w[1]];
-        self.timeline.doc.move_path_anchor(target, i, a)
+        match grab {
+            MotionPathGrab::Anchor { target, i } => {
+                let Some(mut a) = self.timeline.doc.path_anchor(target, i) else {
+                    return false;
+                };
+                a.anchor = [w[0], w[1]];
+                self.timeline.doc.move_path_anchor(target, i, a)
+            }
+            MotionPathGrab::Tangent { target, i, out } => {
+                self.timeline
+                    .doc
+                    .move_path_tangent(target, i, out, [w[0], w[1]])
+            }
+        }
     }
 
     /// Arrasta a alça do PATTERN (Start/End, W4) armada para o cursor — no-op sem uma armada.

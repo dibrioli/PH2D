@@ -124,12 +124,19 @@ fn the_drag_writes_through_the_documents_single_door() {
     let disp = shell("input_dispatch.rs");
     assert!(
         disp.contains("move_path_anchor(target, i, a)"),
-        "o arrasto não escreve por `TimelineDoc::move_path_anchor` — se ele mexe no \
-         `MotionPath` direto, as keys ficam com as distâncias da curva antiga"
+        "o arrasto de ÂNCORA não escreve por `TimelineDoc::move_path_anchor` — se ele \
+         mexe no `MotionPath` direto, as keys ficam com as distâncias da curva antiga"
+    );
+    // A alça de tangente é o outro gesto, e vai pela SUA porta única (ADR-0141, Fatia
+    // 3c): moldar a curva sem reescrever as distâncias deixaria o objeto andando os
+    // números da forma anterior.
+    assert!(
+        disp.contains("move_path_tangent(target, i, out"),
+        "o arrasto de ALÇA não escreve por `TimelineDoc::move_path_tangent`"
     );
     assert!(
         !disp.contains("set_anchor("),
-        "o dispatch chama `MotionPath::set_anchor` direto, contornando a porta que \
-         reescreve as keys"
+        "o dispatch chama `MotionPath::set_anchor` direto, contornando as portas que \
+         reescrevem as keys"
     );
 }

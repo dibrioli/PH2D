@@ -264,3 +264,125 @@ fn the_first_key_has_no_journey_and_a_scalar_target_is_refused() {
     assert_eq!(path.len(), 1);
     assert_eq!(path.length(), 0.0);
 }
+
+/// **A queixa do smoke: arrastar uma âncora não pode QUEBRAR a curva.**
+///
+/// Numa trajetória toda-`auto`, mover uma âncora tem de re-derivar as alças Auto Bezier
+/// dela e dos vizinhos — senão elas continuam apontando para onde a âncora ESTAVA e a
+/// curva entorta. O oráculo é a alça de SAÍDA da âncora movida: numa Auto Bezier ela é
+/// paralela à corda dos vizinhos (`next − prev`); depois do arrasto tem de seguir a
+/// corda NOVA, não a velha.
+#[test]
+fn dragging_an_anchor_re_smooths_so_the_curve_does_not_break() {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [20.0, 0.0]),
+    ] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    // A do meio sobe muito. A corda dos vizinhos continua horizontal (0→20 em y=0), mas
+    // a POSIÇÃO da âncora mudou, e é a corda que manda na alça auto — então o teste real
+    // é a âncora do meio contra os vizinhos MOVIDOS, não ela.
+    let prev = doc.path_anchor(target, 0).unwrap().anchor;
+    let next = doc.path_anchor(target, 2).unwrap().anchor;
+    let mut mid = doc.path_anchor(target, 1).unwrap();
+    mid.anchor = [10.0, 12.0];
+    assert!(doc.move_path_anchor(target, 1, mid));
+
+    let a = doc.path_anchor(target, 1).unwrap();
+    assert!(a.auto, "a âncora movida continua auto (posição, não forma)");
+    // A alça de saída paralela à corda (next − prev): produto vetorial ≈ 0.
+    let chord = [next[0] - prev[0], next[1] - prev[1]];
+    let cross = a.out_handle[0] * chord[1] - a.out_handle[1] * chord[0];
+    let scale = a.out_handle[0].hypot(a.out_handle[1]) * chord[0].hypot(chord[1]);
+    println!("MEDIDO  cross/scale = {:.4}", cross / scale.max(1e-6));
+    assert!(
+        (cross / scale.max(1e-6)).abs() < 1e-3,
+        "a alça auto não seguiu a corda dos vizinhos — a curva quebrou"
+    );
+
+    // E um vizinho AUTO re-derivou: a alça de entrada do último aponta para a âncora
+    // do meio, que acabou de subir.
+    let last_in = doc.path_anchor(target, 2).unwrap().in_handle;
+    assert!(
+        last_in[1] > 0.1,
+        "o vizinho não re-suavizou: a alça dele ainda ignora a âncora que subiu ({last_in:?})"
+    );
+}
+
+/// **A alça de tangente MOLDA a curva** (o *"ainda não temos alças de manipulação"*).
+///
+/// Arrastar a ponta de uma alça: a âncora vira MOLDADA (`auto = false`), a alça
+/// arrastada aponta para a ponta, a OPOSTA espelha (fica collinear) e o objeto passa a
+/// fazer um caminho diferente — o percurso cresce.
+#[test]
+fn dragging_a_tangent_shapes_the_curve_and_marks_the_anchor() {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [20.0, 0.0]),
+    ] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    let before = doc.position_path(1).unwrap().length();
+
+    // Puxa a alça de SAÍDA da âncora do meio para bem longe, para cima.
+    let mid = doc.path_anchor(target, 1).unwrap().anchor;
+    assert!(doc.move_path_tangent(target, 1, true, [mid[0] + 3.0, mid[1] + 9.0]));
+
+    let a = doc.path_anchor(target, 1).unwrap();
+    assert!(!a.auto, "a âncora moldada deixa de ser auto");
+    assert_eq!(a.out_handle, [3.0, 9.0], "a alça de saída vai para a ponta");
+    // A oposta é collinear (produto vetorial ≈ 0) e aponta para o LADO OPOSTO.
+    let cross = a.in_handle[0] * a.out_handle[1] - a.in_handle[1] * a.out_handle[0];
+    assert!(
+        cross.abs() < 1e-4,
+        "a alça oposta não é collinear: {:?}",
+        a.in_handle
+    );
+    assert!(
+        a.in_handle[1] < 0.0,
+        "a oposta aponta para o lado contrário"
+    );
+
+    let after = doc.position_path(1).unwrap().length();
+    println!("MEDIDO  percurso {before:.4} -> {after:.4}");
+    assert!(after > before + 1.0, "moldar a curva não mudou o percurso");
+
+    // E uma edição de alça NÃO re-suaviza a âncora de volta (ela é moldada agora).
+    let m2 = doc.path_anchor(target, 1).unwrap().anchor;
+    doc.move_path_tangent(target, 1, false, [m2[0] - 1.0, m2[1] - 5.0]);
+    assert!(!doc.path_anchor(target, 1).unwrap().auto);
+}
+
+/// Numa PONTA do caminho a alça oposta é zero e o espelho não a acorda — puxar a alça
+/// de saída da primeira âncora não inventa uma alça de entrada onde não há vizinho.
+#[test]
+fn shaping_an_end_anchor_does_not_wake_the_zero_opposite_handle() {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [(0.0, [0.0_f32, 0.0]), (2.0, [10.0, 0.0])] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    assert!(doc.move_path_tangent(target, 0, true, [4.0, 6.0]));
+    let a = doc.path_anchor(target, 0).unwrap();
+    assert_eq!(a.out_handle, [4.0, 6.0]);
+    assert_eq!(
+        a.in_handle,
+        [0.0, 0.0],
+        "a ponta não ganhou alça de entrada"
+    );
+}
+
+/// A porta de tangente recusa o que não é uma trajetória Position.
+#[test]
+fn move_path_tangent_refuses_a_scalar_target() {
+    let mut doc = TimelineDoc::new();
+    let scalar = doc.bind(1, PropKind::TranslationX);
+    assert!(!doc.move_path_tangent(scalar, 0, true, [1.0, 1.0]));
+}

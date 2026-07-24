@@ -51,6 +51,14 @@ impl TimelineDoc {
     /// track as guarda (ordenada por tempo). Uma track com menos keys do que o caminho
     /// tem âncoras é escrita até onde alcança — o resto do caminho fica lá, e a
     /// autoria (Fatia 4) é quem mantém os dois do mesmo tamanho.
+    ///
+    /// ⚠️ **Re-suaviza as âncoras `auto` depois de mover** (a queixa do smoke: *"se
+    /// tentar arrastar qualquer ponto a curva quebra"*). Uma alça Auto Bezier é função
+    /// dos VIZINHOS, então mover uma âncora invalida as alças dela (se ainda `auto`) e
+    /// as dos vizinhos `auto`. Sem re-derivar, as alças ficam apontando para onde a
+    /// âncora ESTAVA e a curva entorta — é o mesmo que o AE faz ao arrastar um keyframe
+    /// Auto Bezier. Uma âncora que o artista MOLDOU (`auto = false`) tem as alças
+    /// **transladadas** com ela e é preservada ([`MotionPath::resmooth_auto`] a pula).
     pub fn move_path_anchor(&mut self, target: AnimTarget, i: usize, to: PathAnchor) -> bool {
         let Some(b) = self.bindings_mut().iter_mut().find(|b| b.target == target) else {
             return false;
@@ -64,9 +72,67 @@ impl TimelineDoc {
         if !path.set_anchor(i, to) {
             return false;
         }
+        path.resmooth_auto();
         // As distâncias novas, pela porta compartilhada — LIDAS do caminho que acabou de
         // ser reconstruído, nunca recalculadas aqui. Uma segunda aritmética é uma
         // segunda resposta, e o sintoma é o objeto a andar os números de outra curva.
+        self.rewrite_path_key_values(target)
+    }
+
+    /// **Move a ponta de uma alça de tangente da âncora `i`** — o gesto que MOLDA a
+    /// curva à mão (o *"ainda não temos alças de manipulação"* do smoke). `out` escolhe
+    /// a alça de saída (verdadeiro) ou a de entrada; `tip` é a nova ponta, em MUNDO.
+    ///
+    /// ⚠️ **Arrastar uma alça torna a âncora MOLDADA** (`auto = false`), senão o próximo
+    /// re-suavizar de um vizinho jogaria o trabalho fora. E a alça OPOSTA **espelha** a
+    /// direção mantendo o próprio comprimento (o *Continuous Bezier* do AE): é isso que
+    /// mantém a passagem pela âncora lisa em vez de criar uma quina a cada toque. Numa
+    /// ponta do caminho a alça oposta tem comprimento zero e continua zero — o espelho
+    /// não a acorda.
+    ///
+    /// Reescreve as distâncias das keys: mexer numa alça muda o comprimento de arco do
+    /// segmento, então o número que cada key seguinte guarda muda com ela.
+    pub fn move_path_tangent(
+        &mut self,
+        target: AnimTarget,
+        i: usize,
+        out: bool,
+        tip: [f32; 2],
+    ) -> bool {
+        let Some(b) = self.bindings_mut().iter_mut().find(|b| b.target == target) else {
+            return false;
+        };
+        if b.prop != PropKind::Position {
+            return false;
+        }
+        let Some(path) = b.path.as_mut() else {
+            return false;
+        };
+        let Some(mut a) = path.anchors().get(i).copied() else {
+            return false;
+        };
+        let h = [tip[0] - a.anchor[0], tip[1] - a.anchor[1]];
+        let n = (h[0] * h[0] + h[1] * h[1]).sqrt();
+        let unit = if n > f32::EPSILON {
+            [h[0] / n, h[1] / n]
+        } else {
+            [0.0, 0.0]
+        };
+        // A alça oposta mantém o COMPRIMENTO e vira collinear: `-unit * len`. Comprimento
+        // zero (ponta do caminho) fica zero.
+        let mirror = |oppo: [f32; 2]| {
+            let len = (oppo[0] * oppo[0] + oppo[1] * oppo[1]).sqrt();
+            [-unit[0] * len, -unit[1] * len]
+        };
+        if out {
+            a.in_handle = mirror(a.in_handle);
+            a.out_handle = h;
+        } else {
+            a.out_handle = mirror(a.out_handle);
+            a.in_handle = h;
+        }
+        a.auto = false;
+        path.set_anchor(i, a);
         self.rewrite_path_key_values(target)
     }
 

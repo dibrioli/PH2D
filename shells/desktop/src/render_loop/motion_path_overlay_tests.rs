@@ -4,7 +4,7 @@
 //! espaçados como a velocidade do objeto, em pixels de tela, nesta câmera"* é
 //! respondível headless — e a resposta é o que se vê.
 
-use super::marks;
+use super::{MotionPathGrab, marks};
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -35,6 +35,14 @@ fn points(path: &BezPath) -> Vec<(f64, f64)> {
             _ => None,
         })
         .collect()
+}
+
+/// O índice de âncora que um grab nomeia, se for uma âncora (não uma alça).
+fn anchor_of(g: Option<MotionPathGrab>) -> Option<usize> {
+    match g {
+        Some(MotionPathGrab::Anchor { i, .. }) => Some(i),
+        _ => None,
+    }
 }
 
 /// Uma reta de 20 unidades, com `keys` `(tempo, distância, interp)` — o documento e a
@@ -219,9 +227,9 @@ fn pressing_the_drawn_square_grabs_that_very_anchor() {
     // Quatro vértices por quadrado; o centro é a média do 1º e do 3º (cantos opostos).
     for (i, c) in squares.chunks(4).enumerate() {
         let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
-        let hit = super::anchor_at(&doc, Some(e), &cam, win, cx as f32, cy as f32);
+        let hit = super::motion_path_hit(&doc, Some(e), &cam, win, cx as f32, cy as f32);
         assert_eq!(
-            hit.map(|(_, k)| k),
+            anchor_of(hit),
             Some(i),
             "o quadrado {i} está desenhado em ({cx:.1}, {cy:.1}) e o hit-test não o \
              encontra ali — desenho e pega discordam sobre onde a âncora está"
@@ -238,13 +246,15 @@ fn the_grab_has_a_radius_and_a_far_click_passes_through() {
     let c = points(&marks(true, &doc, Some(e), &cam, win)[2].0);
     let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
 
-    assert!(super::anchor_at(&doc, Some(e), &cam, win, cx as f32, (cy + 3.0) as f32).is_some());
     assert!(
-        super::anchor_at(&doc, Some(e), &cam, win, cx as f32, (cy + 40.0) as f32).is_none(),
+        super::motion_path_hit(&doc, Some(e), &cam, win, cx as f32, (cy + 3.0) as f32).is_some()
+    );
+    assert!(
+        super::motion_path_hit(&doc, Some(e), &cam, win, cx as f32, (cy + 40.0) as f32).is_none(),
         "um clique a 40 px da âncora foi agarrado — a trajetória está roubando o canvas"
     );
     // E sem seleção não há o que pegar, do mesmo jeito que não há o que desenhar.
-    assert!(super::anchor_at(&doc, None, &cam, win, cx as f32, cy as f32).is_none());
+    assert!(super::motion_path_hit(&doc, None, &cam, win, cx as f32, cy as f32).is_none());
 }
 
 /// Com duas âncoras dentro do alvo vence a **mais próxima**, nunca a primeira da lista:
@@ -267,7 +277,112 @@ fn the_nearest_anchor_wins_not_the_first_one_listed() {
         (a.x - b.x).abs()
     );
     // Um clique colado na SEGUNDA tem de dar a segunda.
-    let hit = super::anchor_at(&doc, Some(e), &cam, win, b.x as f32, b.y as f32);
-    assert_eq!(hit.map(|(_, i)| i), Some(1));
+    let hit = super::motion_path_hit(&doc, Some(e), &cam, win, b.x as f32, b.y as f32);
+    assert_eq!(anchor_of(hit), Some(1));
     let _ = &mut doc;
+}
+
+/// Um caminho MOLDADO: a âncora do meio tem alças de tangente longas, para que elas
+/// sejam desenhadas e agarráveis (uma quina de handles zero não tem o que puxar).
+fn doc_shaped() -> (TimelineDoc, u64) {
+    let entity = 55_u64;
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(entity, PropKind::Position);
+    for (t, p) in [
+        (0.0_f64, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [20.0, 0.0]),
+    ] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    // Molda a do meio: alças bem longas em px de tela (câmera de 40 u de altura ⇒ 25
+    // px/u, então 4 u = 100 px, muito além do TANGENT_MIN_PX de 14).
+    doc.move_path_tangent(target, 1, true, [10.0 + 4.0, 4.0]);
+    (doc, entity)
+}
+
+/// **A alça de tangente é DESENHADA e a ponta DESENHADA é agarrável** — o gesto que o
+/// smoke pediu (*"ainda não temos alças de manipulação"*).
+///
+/// Prova a porta única do jeito que importa: apertar no centro do círculo que o desenho
+/// pinta agarra AQUELA alça de tangente, não a âncora nem nada. Uma segunda derivação
+/// pintaria a ponta num sítio e a agarraria noutro.
+#[test]
+fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
+    let (doc, e) = doc_shaped();
+    let (cam, win) = (camera(), window());
+    let groups = marks(true, &doc, Some(e), &cam, win);
+    // Com alças, há 5 grupos: fio, linhas de tangente, pontos, âncoras, pontas.
+    assert_eq!(groups.len(), 5, "fio, linhas, pontos, âncoras, pontas");
+
+    let tips = super::tangent_screen(&doc, Some(e), &cam, win);
+    assert!(
+        !tips.is_empty(),
+        "a âncora moldada não ofereceu alça nenhuma"
+    );
+
+    // ⚠️ O centro de cada círculo DESENHADO (grupo 4, as pontas) tem de coincidir com uma
+    // ponta que o hit-test conhece. Ler o DESENHO, não só a porta de hit, é o que fecha o
+    // buraco "pintado num sítio, agarrado noutro": mover o `push_circle` para a âncora
+    // deixa o hit intacto e só este oráculo sangra.
+    let tip_pts = points(&groups[4].0);
+    // push_circle desenha 1 move + TIP_SEGS line_to = 13 vértices por ponta.
+    let per = 13;
+    assert_eq!(tip_pts.len() % per, 0, "geometria de ponta inesperada");
+    let drawn: Vec<(f64, f64)> = tip_pts
+        .chunks(per)
+        .map(|c| {
+            let (sx, sy): (f64, f64) = c
+                .iter()
+                .fold((0.0, 0.0), |(ax, ay), p| (ax + p.0, ay + p.1));
+            (sx / c.len() as f64, sy / c.len() as f64)
+        })
+        .collect();
+    for (target, i, out, _anchor_pt, tip) in &tips {
+        // O círculo desenhado para esta ponta.
+        assert!(
+            drawn
+                .iter()
+                .any(|(dx, dy)| (dx - tip.x).hypot(dy - tip.y) < 0.5),
+            "o hit conhece uma ponta em ({:.1}, {:.1}) mas nenhum círculo foi DESENHADO ali",
+            tip.x,
+            tip.y
+        );
+        // E apertar no centro desenhado agarra AQUELA alça (a porta única, pelos dois lados).
+        let hit = super::motion_path_hit(&doc, Some(e), &cam, win, tip.x as f32, tip.y as f32);
+        assert_eq!(
+            hit,
+            Some(MotionPathGrab::Tangent {
+                target: *target,
+                i: *i,
+                out: *out
+            }),
+            "a ponta em ({:.1}, {:.1}) não é a agarrada ali",
+            tip.x,
+            tip.y
+        );
+    }
+}
+
+/// Uma alça CURTA demais (a ponta a menos de TANGENT_MIN_PX da âncora) não é oferecida —
+/// senão ela roubaria o alvo de mouse da própria âncora. É o mesmo pudor do grip de fade.
+#[test]
+fn a_tiny_tangent_is_not_offered_so_it_does_not_steal_the_anchor() {
+    let (doc, e) = doc_shaped();
+    // Câmera muito afastada: 4 u de alça viram ~2,5 px, abaixo do mínimo de 14.
+    let far = Camera2d {
+        height_world: 4000.0,
+        ..camera()
+    };
+    let win = window();
+    assert!(
+        super::tangent_screen(&doc, Some(e), &far, win).is_empty(),
+        "uma alça de ~2 px foi oferecida — vai competir com o quadrado da âncora"
+    );
+    // ...e a âncora continua agarrável (é o que o mínimo protege).
+    let a = super::anchor_screen(&doc, Some(e), &far, win)[1].2;
+    assert!(
+        super::motion_path_hit(&doc, Some(e), &far, win, a.x as f32, a.y as f32).is_some(),
+        "com a alça de fora, o clique na âncora tem de pegar a âncora"
+    );
 }

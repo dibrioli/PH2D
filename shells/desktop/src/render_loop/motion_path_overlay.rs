@@ -78,8 +78,48 @@ const PATH_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay
 /// O fio: a MESMA âmbar, fraca. Ele dá a forma e nunca disputa com os pontos.
 const THREAD_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.35]; // LITERAL-COLOR-OK: overlay de trajetoria
 
-/// O que desenhar para a trajetória do objeto `selected`: `(caminho, cor)`, já em px
-/// de tela.
+/// A LINHA de uma alça de tangente — a mesma âmbar, meia força: ela sai da âncora e
+/// termina na ponta agarrável, e é a coisa que diz *"esta âncora tem uma tangente
+/// para puxar"*. Mais forte que o fio (a alça se edita), mais fraca que os pontos.
+const TANGENT_LINE_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.6]; // LITERAL-COLOR-OK: overlay de trajetoria
+
+/// Raio do círculo da ponta de uma alça de tangente. Círculo, não quadrado: a âncora é
+/// o quadrado (o que translada a curva), a ponta é o círculo (o que a MOLDA) — a mesma
+/// distinção que todo editor vetorial faz.
+const TANGENT_TIP_R: f64 = 2.5; // LITERAL-PX-OK: chrome de overlay, geometria de tela
+
+/// A espessura com que a linha e a ponta de uma alça são traçadas.
+const TANGENT_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
+
+/// A alça só é oferecida (desenhada E agarrável) quando a ponta está a pelo menos isto
+/// da âncora, em px de tela. Duas razões, uma só: uma ponta colada na âncora vira ruído
+/// visual, E deixaria os dois alvos de mouse (âncora × ponta) disputarem o mesmo pixel.
+/// `2 × HIT_R_PX` é onde os dois alvos de raio `HIT_R_PX` só se tocam, sem sobrepor —
+/// então perto do quadrado pega-se a âncora, na ponta pega-se a alça. Numa alça curta
+/// demais (auto num zoom afastado) perder a alça é honesto; perder a âncora seria bug.
+const TANGENT_MIN_PX: f64 = 14.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
+
+/// Quantos segmentos aproximam o círculo de uma ponta. 12 é liso num alvo de ~5 px.
+const TIP_SEGS: usize = 12;
+
+/// O que o ponteiro agarrou na trajetória — a âncora (translada a curva) ou uma das
+/// duas alças de tangente (molda a curva). Um enum e não dois `Option` porque é UMA
+/// pergunta ("o que está sob o cursor?") com uma resposta, e o gesto de arrasto despacha
+/// sobre ela.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MotionPathGrab {
+    /// A âncora `i` de `target` — arrastar translada a curva ali.
+    Anchor { target: AnimTarget, i: usize },
+    /// A alça de tangente da âncora `i` — `out` escolhe a de saída (senão a de entrada).
+    Tangent {
+        target: AnimTarget,
+        i: usize,
+        out: bool,
+    },
+}
+
+/// O que desenhar para a trajetória do objeto `selected`: `(caminho, cor, espessura)`,
+/// já em px de tela.
 ///
 /// Vazio quando não há seleção, quando o selecionado não tem binding Position, quando
 /// esse binding não tem caminho, ou quando a track está vazia — em nenhum desses casos
@@ -90,7 +130,7 @@ pub(crate) fn marks(
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
-) -> Vec<(BezPath, [f32; 4])> {
+) -> Vec<(BezPath, [f32; 4], f64)> {
     let mut out = Vec::new();
     if !show {
         return out;
@@ -150,11 +190,26 @@ pub(crate) fn marks(
             }
         }
         if started {
-            out.push((thread, THREAD_RGBA));
+            out.push((thread, THREAD_RGBA, THREAD_PX));
         }
     }
 
-    // 2. OS PONTOS — o tempo. Um por quadro de exibição; o espaçamento é a velocidade.
+    // 2. AS LINHAS DAS TANGENTES — sob os pontos e as âncoras, porque a alça sai da
+    //    âncora e o quadrado dela tem de ficar por cima. Pela MESMA porta que o hit-test.
+    let mut tan_lines = BezPath::new();
+    let mut tan_tips = BezPath::new();
+    let mut any_tan = false;
+    for (_, _, _, anchor_pt, tip) in tangent_screen(doc, selected, camera, window) {
+        tan_lines.move_to(anchor_pt);
+        tan_lines.line_to(tip);
+        push_circle(&mut tan_tips, tip, TANGENT_TIP_R);
+        any_tan = true;
+    }
+    if any_tan {
+        out.push((tan_lines, TANGENT_LINE_RGBA, TANGENT_PX));
+    }
+
+    // 3. OS PONTOS — o tempo. Um por quadro de exibição; o espaçamento é a velocidade.
     let fps = doc.fps_display.max(1.0);
     let frames = ((span * fps).round() as usize).min(MAX_DOTS);
     let mut dots = BezPath::new();
@@ -170,10 +225,10 @@ pub(crate) fn marks(
         any_dot = true;
     }
     if any_dot {
-        out.push((dots, PATH_RGBA));
+        out.push((dots, PATH_RGBA, DOT_PX));
     }
 
-    // 3. AS ÂNCORAS — o que se pega, pela MESMA porta que o hit-test consulta.
+    // 4. AS ÂNCORAS — o que translada a curva, pela MESMA porta que o hit-test consulta.
     let mut anchors = BezPath::new();
     let mut any_anchor = false;
     for (_, _, p) in anchor_screen(doc, selected, camera, window) {
@@ -181,7 +236,13 @@ pub(crate) fn marks(
         any_anchor = true;
     }
     if any_anchor {
-        out.push((anchors, PATH_RGBA));
+        out.push((anchors, PATH_RGBA, DOT_PX));
+    }
+
+    // 5. AS PONTAS DAS TANGENTES — por cima de tudo, porque são o alvo mais fino de
+    //    agarrar e não podem ser enterradas pela linha nem pela âncora.
+    if any_tan {
+        out.push((tan_tips, PATH_RGBA, TANGENT_PX));
     }
     out
 }
@@ -225,26 +286,82 @@ pub(crate) fn anchor_screen(
         .collect()
 }
 
-/// **A âncora sob o cursor**, se houver — o que o press agarra.
+/// **As pontas de alça de tangente agarráveis**, em px de tela —
+/// `(alvo, índice, out, ponto_da_âncora, ponta)`.
 ///
-/// A MAIS PRÓXIMA dentro do raio, nunca a primeira encontrada: num caminho apertado
-/// duas âncoras podem estar as duas dentro do alvo, e "a primeira da lista" faria o
-/// dedo pegar a de trás sem nada na tela explicando por quê.
-pub(crate) fn anchor_at(
+/// A MESMA porta única do desenho e do hit-test, e pela mesma razão que a das âncoras.
+/// A alça oferecida só existe quando a ponta está ≥ [`TANGENT_MIN_PX`] da âncora: numa
+/// alça curta demais ela some (sem competir com o alvo da âncora) — o mesmo pudor que o
+/// grip de fade do strip tem ao não se oferecer numa strip estreita.
+///
+/// Lê os handles **autorados** (relativos à âncora), não uma re-amostragem: a alça é a
+/// coisa que o artista molda, e o objeto seguir a curva é derivado dela.
+pub(crate) fn tangent_screen(
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Vec<(AnimTarget, usize, bool, Point, Point)> {
+    let Some(entity) = selected else {
+        return Vec::new();
+    };
+    let Some(b) = doc
+        .bindings()
+        .iter()
+        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)
+    else {
+        return Vec::new();
+    };
+    let Some(path) = b.path.as_ref() else {
+        return Vec::new();
+    };
+    let to_screen = |p: [f32; 2]| {
+        let (sx, sy) = camera.world_to_screen(p, window);
+        Point::new(f64::from(sx), f64::from(sy))
+    };
+    let mut out = Vec::new();
+    for (i, a) in path.anchors().iter().enumerate() {
+        let anchor_pt = to_screen(a.anchor);
+        for (out_side, h) in [(false, a.in_handle), (true, a.out_handle)] {
+            let tip = to_screen([a.anchor[0] + h[0], a.anchor[1] + h[1]]);
+            if anchor_pt.distance(tip) >= TANGENT_MIN_PX {
+                out.push((b.target, i, out_side, anchor_pt, tip));
+            }
+        }
+    }
+    out
+}
+
+/// **O que o cursor agarrou na trajetória**, se algo — a âncora ou uma alça de
+/// tangente, a MAIS PRÓXIMA dentro do raio de pega.
+///
+/// Uma busca só sobre a união (âncoras + pontas de alça), porque a pergunta é uma:
+/// *"o que está sob o cursor?"*. O filtro de [`TANGENT_MIN_PX`] em [`tangent_screen`]
+/// já mantém as pontas fora do alvo da âncora, então perto do quadrado a âncora vence e
+/// na ponta a alça vence, sem regra de prioridade a manter.
+pub(crate) fn motion_path_hit(
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
     x: f32,
     y: f32,
-) -> Option<(AnimTarget, usize)> {
+) -> Option<MotionPathGrab> {
     let (px, py) = (f64::from(x), f64::from(y));
-    anchor_screen(doc, selected, camera, window)
-        .into_iter()
-        .map(|(t, i, p)| ((p.x - px).powi(2) + (p.y - py).powi(2), t, i))
-        .filter(|(d2, _, _)| *d2 <= HIT_R_PX * HIT_R_PX)
-        .min_by(|a, b| a.0.total_cmp(&b.0))
-        .map(|(_, t, i)| (t, i))
+    let d2 = |p: Point| (p.x - px).powi(2) + (p.y - py).powi(2);
+    let mut best: Option<(f64, MotionPathGrab)> = None;
+    let mut consider = |dist2: f64, grab: MotionPathGrab| {
+        if dist2 <= HIT_R_PX * HIT_R_PX && best.is_none_or(|(bd, _)| dist2 < bd) {
+            best = Some((dist2, grab));
+        }
+    };
+    for (target, i, p) in anchor_screen(doc, selected, camera, window) {
+        consider(d2(p), MotionPathGrab::Anchor { target, i });
+    }
+    for (target, i, out, _, tip) in tangent_screen(doc, selected, camera, window) {
+        consider(d2(tip), MotionPathGrab::Tangent { target, i, out });
+    }
+    best.map(|(_, g)| g)
 }
 
 /// Um losango de meia-largura `half` centrado em `c`. Losango e não círculo: um ponto
@@ -268,6 +385,29 @@ fn push_square(p: &mut BezPath, c: Point, half: f64) {
     p.close_path();
 }
 
+/// Um círculo aproximado por [`TIP_SEGS`] arestas — a ponta de uma alça de tangente.
+/// Sem transcendental no laço: os cossenos/senos das arestas são constantes de tabela
+/// pequenas, então uso um passo incremental de rotação (Chebyshev), fiel o bastante a
+/// ~5 px e livre de `sin`/`cos` por chamada (HR-5 em espírito, e é chrome de tela).
+fn push_circle(p: &mut BezPath, c: Point, r: f64) {
+    // Rotação incremental por (cos, sin) do passo, tabelados uma vez.
+    let (cs, sn) = STEP_COS_SIN;
+    let (mut dx, mut dy) = (r, 0.0);
+    p.move_to(Point::new(c.x + dx, c.y + dy));
+    for _ in 0..TIP_SEGS {
+        let nx = dx * cs - dy * sn;
+        let ny = dx * sn + dy * cs;
+        dx = nx;
+        dy = ny;
+        p.line_to(Point::new(c.x + dx, c.y + dy));
+    }
+    p.close_path();
+}
+
+/// `(cos, sin)` de `2π / TIP_SEGS` (30° para 12 arestas), tabelado — nenhum `sin`/`cos`
+/// roda por frame.
+const STEP_COS_SIN: (f64, f64) = (0.866_025_403_784_438_6, 0.5); // cos30°, sin30°
+
 /// Pinta. No-op quando [`marks`] não devolve nada.
 pub(super) fn draw(
     show: bool,
@@ -278,13 +418,7 @@ pub(super) fn draw(
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    for (path, rgba) in marks(show, doc, selected, camera, window) {
-        // O fio é mais fino que as marcas: a forma é fundo, o tempo é leitura.
-        let px = if rgba == THREAD_RGBA {
-            THREAD_PX
-        } else {
-            DOT_PX
-        };
+    for (path, rgba, px) in marks(show, doc, selected, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(px),
             Affine::IDENTITY,

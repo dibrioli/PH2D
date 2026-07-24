@@ -174,13 +174,21 @@ impl crate::App {
                 let flip_models = crate::flip_transform::build(sim, &self.flip_entities);
                 // Ghost Frames só existem enquanto a tool Flip está no comando (é
                 // chrome de autoria, não da cena) — e só fora do play.
-                let ghost_selection =
-                    self.flip_active
-                        .then(|| super::flip_pass_ghosts::GhostSources {
-                            selected: self.flip_strip.selected_keys(),
-                            pinned: self.flip_strip.pinned_keys(),
-                            trace: Some(&self.flip_strip.trace),
-                        });
+                // O PEEK (F1/F2/F3 presos): uma folha vizinha na mão — os fantasmas
+                // somem JUNTO (a folha na mão não é uma pilha translúcida) e não há
+                // peek no play (o relógio já está folheando por conta própria).
+                let peek = if self.flip_active && !self.playhead.is_playing() {
+                    self.flip_peek
+                } else {
+                    None
+                };
+                let ghost_selection = (self.flip_active && peek.is_none()).then(|| {
+                    super::flip_pass_ghosts::GhostSources {
+                        selected: self.flip_strip.selected_keys(),
+                        pinned: self.flip_strip.pinned_keys(),
+                        trace: Some(&self.flip_strip.trace),
+                    }
+                });
                 super::flip_pass::render(
                     flip,
                     flip_render,
@@ -191,6 +199,7 @@ impl crate::App {
                     &flip_models,
                     &self.playhead,
                     ghost_selection,
+                    peek,
                     game_rt,
                     camera,
                     window_size,

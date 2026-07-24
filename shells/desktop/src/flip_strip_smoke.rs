@@ -208,7 +208,7 @@ impl crate::App {
              ------------------------------------------------------------\n\
              A cada clique a bola PULA para a pose daquele desenho (e\n\
              muda de cor), e os vultos mudam junto. Se isso funciona,\n\
-             va aos cinco testes.\n\
+             va aos seis testes.\n\
              \n\
              ------------------------------------------------------------\n\
              TESTE 1 -- ARRASTAR UMA CAIXA muda o desenho de lugar no tempo\n\
@@ -268,6 +268,17 @@ impl crate::App {
              deixou (a folha de papel deslizada do animador -- e' para\n\
              desenhar por cima dela). De volta em 'Trace', o botao\n\
              'Reset Shifts' devolve todos os vultos ao lugar.\n\
+             \n\
+             ------------------------------------------------------------\n\
+             TESTE 6 -- F1/F2/F3: folhear os desenhos sem sair do lugar\n\
+             ------------------------------------------------------------\n\
+             Clique numa caixa do MEIO (a amarela ou a ciano). Agora\n\
+             SEGURE F1: a tela mostra SO o desenho anterior, na cor\n\
+             real, sem vulto nenhum -- e' voce levantando a folha de\n\
+             baixo para conferir o arco. Solte: tudo volta. F3 mostra o\n\
+             desenho SEGUINTE; F2 mostra o desenho ATUAL sozinho (os\n\
+             vultos somem enquanto segura). O playhead nao se move; na\n\
+             primeira caixa, F1 nao tem para onde folhear e fica.\n\
              \n\
              ============================================================\n\
              Se algo nao fizer o que esta escrito, me diga O QUE\n\

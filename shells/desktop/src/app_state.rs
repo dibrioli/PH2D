@@ -736,6 +736,9 @@ pub(crate) struct App {
     /// Shift & Trace: o arrasto de DESLOCAR um fantasma em curso (modo Trace). O mapa
     /// de deslocamentos mora em `flip_strip.trace`; aqui é só o gesto.
     pub(crate) flip_trace_drag: Option<crate::flip_trace::TraceDrag>,
+    /// O PEEK do Shift & Trace (fatia 2): a folha que F1/F2/F3 estão segurando —
+    /// `None` fora do aperto. Press arma (só com a tool Flip), release desarma sempre.
+    pub(crate) flip_peek: Option<crate::flip_peek::PeekDir>,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

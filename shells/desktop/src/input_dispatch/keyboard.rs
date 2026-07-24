@@ -65,6 +65,24 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // O PEEK do Flip (Shift & Trace fatia 2): F1/F2/F3 são o flip de papel —
+        // SEGURAR mostra só o desenho vizinho (anterior/atual/seguinte) sem mover o
+        // playhead; soltar volta. A política é pura (`flip_peek::key_transition`):
+        // press só arma com a tool Flip ativa; release SEMPRE desarma (trocar de tool
+        // com a tecla presa não pode deixar o peek preso).
+        if let PhysicalKey::Code(code) = physical_key {
+            let (next, consumed) = crate::flip_peek::key_transition(
+                self.flip_peek,
+                code,
+                state == ElementState::Pressed,
+                self.flip_active,
+            );
+            self.flip_peek = next;
+            if consumed {
+                return;
+            }
+        }
+
         // Texto vetorial: enquanto uma sessão de digitação está ativa (modo Text +
         // clicou no canvas), as teclas vão pro TEXTO — antes dos atalhos de forma e
         // do forward pros widgets. Ctrl/Super passam (Ctrl+Z etc. seguem globais).

@@ -378,10 +378,21 @@ devolve tudo (sessão, sem undo). O Down consome SEMPRE no modo (a razão do Edi
 gizmo moveria o objeto). Gesto em `flip_trace.rs`; motor puro (`pick`/`rotated`)
 mutation-testado.
 
-**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho) · o **PEEK do
-Shift & Trace** (F1/F2/F3 do OpenToonz — o flip de papel que mostra SÓ o desenho
-anterior/atual/seguinte enquanto a tecla está presa; precisa de roteamento de key-release
-no shell, fatia própria).
+**E o PEEK fechou o Shift & Trace (fatia 2, 2026-07-24):** com a tool Flip ativa,
+**segurar F1/F2/F3** mostra só o desenho **anterior/atual/seguinte** da camada ativa —
+sem mover o playhead, sem fantasmas (o shell passa `ghosts: None`: a folha na mão não é
+uma pilha translúcida); soltar volta. Duas metades puras (`flip_peek.rs`):
+`key_transition` (press só arma com a tool Flip; **release SEMPRE desarma**, mesmo com a
+tool trocada no meio — tecla presa não pode deixar o peek preso) e `peek_frame` (⚠️ a
+âncora é a **CHAVE ATIVA**, não o quadro cru: em meio-hold `prev_drawing_key(quadro)`
+devolve o início da exposição atual — o MESMO desenho da tela, e um peek que mostra o que
+já se vê não é um peek; sem vizinho fica onde está). O retime é da camada-alvo (a mesma
+resolução do preview) dentro do `collect_layers`; as outras camadas são o contexto.
+⚠️ **Uma mutação sobreviveu e nomeou a fixture**: "retimar TODAS as camadas" ficou verde
+com o BG de chave única (retimar quem não tem vizinho não o move) — o gate ganhou um BG
+com chaves próprias, onde o erro MOSTRA.
+
+**Follow-ups que FICAM:** zoom/pan da tira (ela sempre cabe, por desenho).
 
 ---
 

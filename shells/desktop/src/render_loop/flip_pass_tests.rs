@@ -69,6 +69,7 @@ fn a_layers_ghost_sits_above_the_layers_below_it() {
         None,
         &[],
         Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        None,
     );
 
     let kinds: Vec<&str> = layers
@@ -126,7 +127,7 @@ fn the_render_samples_through_the_cycle() {
     // Sem ciclo, o quadro 20 estaria além de tudo (o cru seguraria d8 pra sempre).
     // Com Loop, ele volta ao quadro 4 → d0. E o 28 volta ao 12 → d8.
     let layer_drawing = |doc: &FlipDoc, f: i32| {
-        let (layers, _) = collect_layers(doc, &at(f), None, None, &[], None);
+        let (layers, _) = collect_layers(doc, &at(f), None, None, &[], None, None);
         // A última fatia é a do FG (o BG vem primeiro; sem fantasmas aqui).
         layers.last().and_then(|l| {
             let (_, did) = l.cache_key;
@@ -143,7 +144,7 @@ fn the_render_samples_through_the_cycle() {
 #[test]
 fn there_are_no_ghosts_without_the_tool_or_during_play() {
     let doc = doc_bg_fg();
-    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], None);
+    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], None, None);
     assert!(layers.iter().all(|l| l.ghost.is_none()), "tool inativa");
 
     let mut playing = at(8);
@@ -155,6 +156,7 @@ fn there_are_no_ghosts_without_the_tool_or_during_play() {
         None,
         &[],
         Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        None,
     );
     assert!(layers.iter().all(|l| l.ghost.is_none()), "durante o play");
 }
@@ -237,6 +239,7 @@ fn each_slice_carries_the_pose_of_its_own_key() {
         None,
         &[],
         Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        None,
     );
     // BG · fantasma do FG (quadro 0) · FG (quadro 8)
     let (ghost, art) = (&layers[1], &layers[2]);
@@ -272,7 +275,7 @@ fn under_a_loop_the_pose_travels_with_the_drawing() {
     };
 
     // O quadro 16 é o quadro 0 de novo (2ª volta do Loop).
-    let (layers, _) = collect_layers(&doc, &at(16), None, None, &[], None);
+    let (layers, _) = collect_layers(&doc, &at(16), None, None, &[], None, None);
     let fg_slice = layers.last().expect("a camada FG compoe");
     assert_eq!(
         [fg_slice.model.0[4], fg_slice.model.0[5]],
@@ -339,7 +342,15 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
     use crate::render_loop::flip_pass_ghosts::GhostSources;
     let doc = doc_bg_fg();
     let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
-    let (base, _) = collect_layers(&doc, &ph, None, None, &[], Some(GhostSources::default()));
+    let (base, _) = collect_layers(
+        &doc,
+        &ph,
+        None,
+        None,
+        &[],
+        Some(GhostSources::default()),
+        None,
+    );
 
     // (a) Mapa vazio fornecido = byte-idêntico ao default (nenhum model se move).
     let empty = std::collections::BTreeMap::new();
@@ -347,7 +358,7 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
         trace: Some(&empty),
         ..Default::default()
     };
-    let (with_empty, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_empty));
+    let (with_empty, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_empty), None);
     for (a, b) in base.iter().zip(with_empty.iter()) {
         assert_eq!(a.model.0, b.model.0, "mapa vazio moveu um model");
     }
@@ -359,7 +370,7 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
         trace: Some(&map),
         ..Default::default()
     };
-    let (shifted, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_map));
+    let (shifted, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_map), None);
     for (a, b) in base.iter().zip(shifted.iter()) {
         if b.ghost.is_some() {
             assert_eq!(
@@ -379,4 +390,142 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
             );
         }
     }
+}
+
+/// 🔴 **O PEEK folheia a camada ATIVA para o desenho vizinho — e só ela.**
+///
+/// F1/F3 presos = a folha anterior/seguinte na mão (`docs/Flip/04 §4`): a fatia da
+/// camada ativa amostra o desenho vizinho DA CHAVE ATIVA, sem mover o playhead; o BG (o
+/// contexto sobre o qual se folheia) não se mexe. Mutação que sangra: ignorar o `peek`
+/// (a fatia não muda), ou retimar TODAS as camadas (o BG muda junto).
+#[test]
+fn holding_the_flip_keys_peeks_the_neighbour_drawing_of_the_active_layer() {
+    // ⚠️ As DUAS camadas têm chaves em 0 e 8 — de propósito: com um BG de chave única
+    // a mutação "retima TODAS as camadas" ficou VERDE (retimar um BG sem vizinho não o
+    // move; a fixture não continha o fenômeno). Aqui um BG folheado por engano MOSTRA.
+    let mut doc = FlipDoc::new();
+    let oid = doc.push_object("O");
+    let obj = doc.object_mut(oid).unwrap();
+    obj.fps = 12.0;
+    let mut lids = Vec::new();
+    for name in ["BG", "FG"] {
+        let l = obj.add_layer(name);
+        for k in [0, 8] {
+            let d = obj
+                .insert_frame(l, k, Hold::Implicit, KeyKind::Keyframe)
+                .unwrap();
+            let mut st = FlipStroke::new();
+            st.push_default(Vec2::new(k as f32, 0.0));
+            st.push_default(Vec2::new(k as f32 + 1.0, 1.0));
+            obj.drawing_mut(d).unwrap().strokes.push(st);
+        }
+        lids.push(l);
+    }
+    let obj = &doc.objects()[0];
+    let fg = obj.layer(lids[1]).unwrap();
+    let (fg_id, d0, d8) = (
+        fg.id,
+        fg.drawing_at(0).unwrap().0,
+        fg.drawing_at(8).unwrap().0,
+    );
+
+    // No quadro 8 (chave ativa 8), F1 = a folha ANTERIOR: a fatia do FG mostra o
+    // desenho da chave 0. O BG — que TEM um vizinho para onde folhear — fica parado.
+    let (base, _) = collect_layers(&doc, &at(8), None, Some(fg_id), &[], None, None);
+    let (prev, _) = collect_layers(
+        &doc,
+        &at(8),
+        None,
+        Some(fg_id),
+        &[],
+        None,
+        Some(crate::flip_peek::PeekDir::Prev),
+    );
+    assert_eq!(base.len(), 2, "BG + FG (sem fantasmas: ghosts None)");
+    assert_eq!(base[1].cache_key.1, d8, "sem peek o FG mostra a chave 8");
+    assert_eq!(
+        prev[1].cache_key.1, d0,
+        "com F1 o FG mostra a folha ANTERIOR"
+    );
+    assert_eq!(
+        prev[0].cache_key, base[0].cache_key,
+        "o BG (contexto) nao folheia junto"
+    );
+    assert_eq!(prev[0].model.0, base[0].model.0);
+
+    // E no quadro 0, F3 = a folha SEGUINTE (a chave 8).
+    let (next, _) = collect_layers(
+        &doc,
+        &at(0),
+        None,
+        Some(fg_id),
+        &[],
+        None,
+        Some(crate::flip_peek::PeekDir::Next),
+    );
+    assert_eq!(
+        next[1].cache_key.1, d8,
+        "com F3 o FG mostra a folha SEGUINTE"
+    );
+}
+
+/// **Onde não há para onde folhear, o peek fica onde está** — F2 (a folha atual,
+/// sozinha) e F1 na PRIMEIRA chave são byte-idênticos ao sem-peek: o que muda na tela
+/// nesses casos é só a ausência dos fantasmas, que é decisão do SHELL (`ghosts: None`).
+#[test]
+fn peeking_where_there_is_no_neighbour_stays_put() {
+    let doc = doc_bg_fg();
+    let fg_id = doc.objects()[0].layers().last().unwrap().id;
+    for (ph_frame, dir) in [
+        (8, crate::flip_peek::PeekDir::Here),
+        (0, crate::flip_peek::PeekDir::Prev),
+    ] {
+        let (base, _) = collect_layers(&doc, &at(ph_frame), None, Some(fg_id), &[], None, None);
+        let (peeked, _) =
+            collect_layers(&doc, &at(ph_frame), None, Some(fg_id), &[], None, Some(dir));
+        for (a, b) in base.iter().zip(peeked.iter()) {
+            assert_eq!(
+                a.cache_key, b.cache_key,
+                "{dir:?} em {ph_frame} moveu a arte"
+            );
+            assert_eq!(a.model.0, b.model.0);
+        }
+    }
+}
+
+/// 🔴 **A âncora do peek é a CHAVE ATIVA, não o quadro cru** — no meio de um hold,
+/// `prev_drawing_key(quadro)` devolve o INÍCIO da exposição atual: o MESMO desenho que
+/// já está na tela, e um peek que mostra o que já se vê não é um peek. Fixture com
+/// chaves 0/4/8, playhead no 5 (hold da 4): F1 tem de mostrar a folha da chave 0.
+#[test]
+fn mid_hold_the_peek_anchors_on_the_active_key_not_the_raw_frame() {
+    let mut doc = FlipDoc::new();
+    let oid = doc.push_object("O");
+    let obj = doc.object_mut(oid).unwrap();
+    obj.fps = 12.0;
+    let l = obj.add_layer("L");
+    for k in [0, 4, 8] {
+        let d = obj
+            .insert_frame(l, k, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(k as f32, 0.0));
+        s.push_default(Vec2::new(k as f32 + 1.0, 1.0));
+        obj.drawing_mut(d).unwrap().strokes.push(s);
+    }
+    let layer = doc.objects()[0].layer(l).unwrap();
+    let d0 = layer.drawing_at(0).unwrap().0;
+    let (peeked, _) = collect_layers(
+        &doc,
+        &at(5),
+        None,
+        Some(l),
+        &[],
+        None,
+        Some(crate::flip_peek::PeekDir::Prev),
+    );
+    assert_eq!(
+        peeked[0].cache_key.1, d0,
+        "no meio do hold da chave 4, a folha ANTERIOR e' a da chave 0 — nao a propria 4"
+    );
 }

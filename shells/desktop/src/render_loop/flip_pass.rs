@@ -127,6 +127,10 @@ pub(crate) fn render(
     // ligados, sujeitos aos gates do objeto/camada e ao "some no play"); `None` =
     // outra tool no comando — a cena Flip aparece limpa, sem fantasma.
     ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
+    // O PEEK (Shift & Trace fatia 2): `Some` = uma folha vizinha na mão (a camada
+    // ATIVA amostra o desenho anterior/atual/seguinte). O shell passa `ghosts: None`
+    // junto — o flip é uma folha na mão, não uma pilha translúcida.
+    peek: Option<crate::flip_peek::PeekDir>,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
@@ -136,7 +140,8 @@ pub(crate) fn render(
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas). Os fantasmas entram na MESMA lista,
     // cada um como uma fatia logo abaixo da sua camada.
-    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer, models, ghosts);
+    let (layers, unfolded) =
+        collect_layers(flip, playhead, preview, active_layer, models, ghosts, peek);
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
@@ -340,10 +345,21 @@ fn collect_layers<'a>(
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
     ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
+    peek: Option<crate::flip_peek::PeekDir>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
     let target: Option<(u64, LayerId)> = preview.and_then(|_| {
+        let obj = flip.objects().first()?;
+        let lid = active_layer
+            .filter(|id| obj.layer(*id).is_some())
+            .or_else(|| obj.layers().last().map(|l| l.id))?;
+        Some((obj.id.0, lid))
+    });
+
+    // A camada que o PEEK retima — a MESMA resolução do alvo do preview (a ativa do
+    // 1º objeto, ou o topo): é a camada que o animador está folheando.
+    let peek_target: Option<(u64, LayerId)> = peek.and_then(|_| {
         let obj = flip.objects().first()?;
         let lid = active_layer
             .filter(|id| obj.layer(*id).is_some())
@@ -370,10 +386,19 @@ fn collect_layers<'a>(
             } else {
                 None
             };
+            // O PEEK: a camada-alvo amostra a folha VIZINHA (âncora = chave ativa;
+            // `flip_peek::peek_frame`). As outras ficam no quadro — são o contexto
+            // sobre o qual se folheia. Sem peek, `sample == frame` e nada muda.
+            let sample = match peek {
+                Some(dir) if peek_target == Some((obj.id.0, layer.id)) => {
+                    crate::flip_peek::peek_frame(layer, frame, dir)
+                }
+                _ => frame,
+            };
             // **Pelo CICLO** (`drawing_at_cycled`), não pelo caminho cru: é aqui que
             // Loop/Ping-Pong existem. Amostrar cru fazia o último desenho segurar para
             // sempre e os ciclos não faziam NADA (o bug do 1º corte).
-            let did = layer.drawing_at_cycled(frame);
+            let did = layer.drawing_at_cycled(sample);
             let drawing = did.and_then(|d| obj.drawing(d));
             let has_geo = drawing.is_some_and(|d| !d.strokes.is_empty());
 
@@ -430,7 +455,7 @@ fn collect_layers<'a>(
                 // DESENHO pelo funil de entrada (`flip_active_world_to_local`, que desfaz
                 // a pose da chave ativa). As duas pontas usam a mesma transform, que é a
                 // única forma de o preview não folgar do traço assado.
-                model: art_to_world(&model, layer.pose_at_cycled(frame)),
+                model: art_to_world(&model, layer.pose_at_cycled(sample)),
                 ghost: None,
             });
         }

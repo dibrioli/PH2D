@@ -86,6 +86,7 @@ mod flip_fill_target;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_multiframe;
+mod flip_peek;
 mod flip_pose_gizmo;
 mod flip_pose_smoke;
 mod flip_reshape;
@@ -446,6 +447,7 @@ impl App {
             flip_segment_hover_at: None,
             flip_edit_gesture: None,
             flip_trace_drag: None,
+            flip_peek: None,
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,

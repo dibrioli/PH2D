@@ -20,7 +20,9 @@ pub use ph2d_editor_core::ids::{
     timeline_twirl_id,
 };
 
-pub use ph2d_editor_core::ids::{CTX_MENU_TL_AUTO_ORIENT, CTX_MENU_TL_DELETE_TRACK};
+pub use ph2d_editor_core::ids::{
+    CTX_MENU_TL_AUTO_ORIENT, CTX_MENU_TL_DELETE_TRACK, CTX_MENU_TL_TO_AXES, CTX_MENU_TL_TO_PATH,
+};
 pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_LANE_ADDITIVE, CTX_MENU_TL_LANE_DELETE, CTX_MENU_TL_LANE_OVERRIDE,
     CTX_MENU_TL_LANE_RENAME, TIMELINE_LANE_MENU, TIMELINE_LANE_ROW, TIMELINE_LANE_WEIGHT,

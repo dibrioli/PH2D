@@ -99,6 +99,21 @@ pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
 /// percorre. Só existe numa track de TRAJETÓRIA, e por isso mora numa tabela própria.
 pub const CTX_MENU_TL_AUTO_ORIENT: NodeId = hash_node_id("ctx_menu_tl_auto_orient");
 
+/// **Convert to Motion Path** (ADR-0141 §5): as duas tracks de eixo viram uma
+/// trajetória mais uma track de distância. Explícito e nomeado — a conversão PERDE
+/// coisa (instantes desemparelhados, eases), e o shell relata o que perdeu.
+pub const CTX_MENU_TL_TO_PATH: NodeId = hash_node_id("ctx_menu_tl_to_path");
+
+/// **Convert to Separate Axes**: o caminho inverso. Exato NAS KEYS e diferente entre
+/// elas — a forma da curva é o que o modo de eixos não sabe expressar.
+pub const CTX_MENU_TL_TO_AXES: NodeId = hash_node_id("ctx_menu_tl_to_axes");
+
+/// O menu de uma track de **EIXO** (`TranslationX`/`Y`) — o comum mais a conversão.
+pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 2] = [
+    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    (CTX_MENU_TL_TO_PATH, "Convert to Motion Path", None),
+];
+
 /// O menu de uma track de **trajetória** — o de cima mais o auto-orient.
 ///
 /// Uma tabela por MENU, e não uma tabela com linhas condicionais: o overlay pinta o que
@@ -108,9 +123,10 @@ pub const CTX_MENU_TL_AUTO_ORIENT: NodeId = hash_node_id("ctx_menu_tl_auto_orien
 /// ⚠️ **O `Delete Track` aparece nas DUAS tabelas, e é o mesmo id de propósito**: é a
 /// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
 /// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
-pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 2] = [
+pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
     (CTX_MENU_TL_AUTO_ORIENT, "Auto-Orient", None),
+    (CTX_MENU_TL_TO_AXES, "Convert to Separate Axes", None),
 ];
 
 // ── Timeline lane menu (ADR-0115 B5) ────────────────────────────────────────

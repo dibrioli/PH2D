@@ -119,11 +119,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 sel.set_single(SelectedKey { target, key });
             });
         }
-        I::AddPathKey { entity, t, at } => {
-            let t = snap_time(t, fps, state.flags.frame_snap);
-            intent_apply_path::add_key(state, entity, t, at);
-        }
+        I::AddPathKey { entity, t, at } => intent_apply_path::add_key(state, entity, t, at, fps),
         I::ToggleAutoOrient { entity } => intent_apply_path::toggle_orient(state, entity),
+        I::ConvertPositionMode { entity, to_path } => {
+            intent_apply_path::convert_mode(state, entity, to_path);
+        }
         I::MoveSelectedKeys { delta_seconds } => {
             // Rationalize the offset ONCE, against the display rate: a whole
             // number of frames must stay a whole number of frames after the move.

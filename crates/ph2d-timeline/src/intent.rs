@@ -108,6 +108,19 @@ pub enum TimelineIntent {
         /// Live entity bits.
         entity: u64,
     },
+    /// **Troca o MODO de posição** de `entity` (ADR-0141 §5): eixos separados ⇄
+    /// trajetória.
+    ///
+    /// Explícito e nomeado, porque a conversão **perde coisa** nos dois sentidos —
+    /// instantes que só um eixo tinha, eases, a forma entre as keys — e nada disso pode
+    /// acontecer por baixo do pano. As tracks de origem morrem: dois modos ao mesmo
+    /// tempo seriam dois autores da mesma pose.
+    ConvertPositionMode {
+        /// Live entity bits.
+        entity: u64,
+        /// `true` = eixos → trajetória; `false` = trajetória → eixos.
+        to_path: bool,
+    },
     /// Shift every selected key by `delta_seconds`.
     MoveSelectedKeys {
         /// Signed time delta.

@@ -6,6 +6,7 @@
 //! same behaviour (covered by `dispatch::tests`).
 
 use super::is_section_header_id;
+use crate::interaction::TrackMenuKind;
 use crate::interaction::types::{ContextMenuKind, ContextMenuRequest};
 use crate::interaction::{InteractiveState, WidgetStore};
 use crate::zones::Rect;
@@ -107,13 +108,11 @@ pub(super) fn handle_down_menus(
                     // O menu que abre é o menu DA COISA clicada: uma track de
                     // trajetória tem uma ação que as outras não têm (o auto-orient), e
                     // oferecê-la em toda row seria um item morto em cinco de seis.
-                    K::Row {
-                        target,
-                        path: false,
-                    } => Some(ContextMenuKind::TimelineTrack { target }),
-                    K::Row { target, path: true } => {
-                        Some(ContextMenuKind::TimelineTrackPath { target })
-                    }
+                    K::Row { target, menu } => Some(match menu {
+                        TrackMenuKind::Plain => ContextMenuKind::TimelineTrack { target },
+                        TrackMenuKind::Axis => ContextMenuKind::TimelineTrackAxis { target },
+                        TrackMenuKind::Path => ContextMenuKind::TimelineTrackPath { target },
+                    }),
                     // A strip — any of its three grab zones: the body and both
                     // trim edges open the same menu, because they are all the
                     // same strip and a right-click is not a drag.

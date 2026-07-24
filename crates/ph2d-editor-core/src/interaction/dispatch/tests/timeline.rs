@@ -383,7 +383,7 @@ fn right_clicking_a_row_label_opens_the_track_menu() {
     use crate::interaction::ContextMenuKind;
     let (mut store, hits) = timeline_setup(TimelineHitKind::Row {
         target: 42,
-        path: false,
+        menu: crate::interaction::TrackMenuKind::Plain,
     });
     let arena = Bump::new();
     let _ = dispatch_pointer(
@@ -402,7 +402,7 @@ fn right_clicking_a_row_label_opens_the_track_menu() {
     // único que conhece o `PropKind`) até a tabela que o overlay pinta.
     let (mut store, hits) = timeline_setup(TimelineHitKind::Row {
         target: 42,
-        path: true,
+        menu: crate::interaction::TrackMenuKind::Path,
     });
     let _ = dispatch_pointer(
         &mut store,

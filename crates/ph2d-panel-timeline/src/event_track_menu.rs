@@ -33,7 +33,10 @@ fn target_of(
         .or_else(|| host.store().last_context_menu())?;
     let target = match (req.kind, want_path) {
         (ContextMenuKind::TimelineTrackPath { target }, true)
-        | (ContextMenuKind::TimelineTrack { target }, false) => target,
+        | (ContextMenuKind::TimelineTrack { target }, false)
+        // Uma row de EIXO é "não-trajetória" para efeito de qual menu a pediu: o
+        // `Delete Track` dela e o `Convert to Motion Path` vêm da MESMA requisição.
+        | (ContextMenuKind::TimelineTrackAxis { target }, false) => target,
         _ => return None,
     };
     crate::state::current_snapshot()
@@ -62,6 +65,18 @@ pub(crate) fn delete_track(host: &mut dyn PanelHostInternal) -> EventOutcome {
     EventOutcome::Consumed
 }
 
+/// **Convert to Motion Path / to Separate Axes** (ADR-0141 §5) — a troca de MODO, que
+/// só faz sentido na família de track que tem o outro modo para ir.
+pub(crate) fn convert(host: &mut dyn PanelHostInternal, to_path: bool) -> EventOutcome {
+    // `want_path` é o inverso: quem vai PARA trajetória está numa row de EIXO.
+    if let Some((entity, _)) = target_of(host, !to_path) {
+        crate::state::push_intent(TimelineIntent::ConvertPositionMode { entity, to_path });
+        host.store_mut().close_context_menu();
+        host.store_mut().consume_last_context_menu();
+    }
+    EventOutcome::Consumed
+}
+
 /// Encaminha o Click, se ele for de uma linha deste menu. `None` = não é comigo.
 pub(crate) fn route(
     host: &mut dyn PanelHostInternal,
@@ -72,6 +87,12 @@ pub(crate) fn route(
     }
     if id == ids::CTX_MENU_TL_DELETE_TRACK {
         return Some(delete_track(host));
+    }
+    if id == ids::CTX_MENU_TL_TO_PATH {
+        return Some(convert(host, true));
+    }
+    if id == ids::CTX_MENU_TL_TO_AXES {
+        return Some(convert(host, false));
     }
     None
 }

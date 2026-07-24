@@ -338,6 +338,7 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::TimelineSegmentEase { .. } => &ids::TIMELINE_EASE_MENU,
         // Timeline track row (label column): whole-track actions.
         ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,
+        ContextMenuKind::TimelineTrackAxis { .. } => &ids::TIMELINE_AXIS_TRACK_MENU,
         ContextMenuKind::TimelineTrackPath { .. } => &ids::TIMELINE_PATH_TRACK_MENU,
         // Timeline clip strip (a stack lane): what a pointer cannot say.
         ContextMenuKind::TimelineStrip { .. } => &ids::TIMELINE_STRIP_MENU,

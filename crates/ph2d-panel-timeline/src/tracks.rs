@@ -11,7 +11,7 @@
 //! background) so the dope-sheet gestures reach `interact` (E5b: click-select,
 //! drag-move, clear-on-empty).
 
-use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
+use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
@@ -186,8 +186,14 @@ pub(crate) fn paint_rows(
                 kind: TimelineHitKind::Row {
                     target: track.target.get(),
                     // Só o painel conhece o `PropKind` da row, e é ele que decide qual
-                    // menu o botão direito abre.
-                    path: track.prop == ph2d_timeline::PropKind::Position,
+                    // menu o botão direito abre — cada família de track tem ações que
+                    // as outras não têm, e oferecê-las em toda row seria item morto.
+                    menu: match track.prop {
+                        ph2d_timeline::PropKind::Position => TrackMenuKind::Path,
+                        ph2d_timeline::PropKind::TranslationX
+                        | ph2d_timeline::PropKind::TranslationY => TrackMenuKind::Axis,
+                        _ => TrackMenuKind::Plain,
+                    },
                 },
                 canvas: row_hit,
             },

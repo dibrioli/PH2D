@@ -1058,3 +1058,81 @@ fn every_path_track_menu_row_is_handled_and_the_orient_row_raises_its_intent() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+/// **O menu de uma track de EIXO** — anti-item-morto, e a linha de conversão tem de
+/// LEVANTAR O INTENT.
+///
+/// Três tabelas, três famílias: uma track comum não pode oferecer *Convert to Motion
+/// Path* (não há para onde converter) e uma de trajetória não pode oferecer a mesma
+/// linha na mesma direção. Cada menu é o menu DA COISA clicada.
+#[test]
+fn every_axis_track_menu_row_is_handled_and_the_convert_row_raises_its_intent() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(5, ph2d_timeline::PropKind::TranslationX);
+    for (id, label, _) in ph2d_editor_core::ids::TIMELINE_AXIS_TRACK_MENU {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        host.store_mut().open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::TimelineTrackAxis { target },
+        });
+        host.store_mut().close_context_menu();
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "a linha `{label}` do menu de eixo é pintada e não tem braço no event.rs"
+        );
+    }
+    let intents = ph2d_panel_timeline::drain_intents();
+    assert!(
+        intents.iter().any(|i| matches!(
+            i,
+            ph2d_timeline::TimelineIntent::ConvertPositionMode {
+                entity: 5,
+                to_path: true
+            }
+        )),
+        "a conversão foi consumida e não despachou nada: {intents:?}"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// E o caminho INVERSO, do menu da trajetória.
+#[test]
+fn the_path_menu_converts_back_to_separate_axes() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(6, ph2d_timeline::PropKind::Position);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::TimelineTrackPath { target },
+    });
+    host.store_mut().close_context_menu();
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_TO_AXES),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    let intents = ph2d_panel_timeline::drain_intents();
+    assert!(
+        intents.iter().any(|i| matches!(
+            i,
+            ph2d_timeline::TimelineIntent::ConvertPositionMode {
+                entity: 6,
+                to_path: false
+            }
+        )),
+        "a volta para eixos separados não despachou: {intents:?}"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

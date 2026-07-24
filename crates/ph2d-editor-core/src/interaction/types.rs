@@ -242,10 +242,14 @@ pub enum ContextMenuKind {
     /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
     /// timeline panel resolves it against its snapshot and raises the intent.
     TimelineTrack { target: u64 },
+    /// O menu de uma track de **EIXO** (`TranslationX`/`Y`): tem *Convert to Motion
+    /// Path* (ADR-0141 §5), que canal nenhum dos outros tem.
+    TimelineTrackAxis { target: u64 },
     /// O mesmo, para uma track de **TRAJETÓRIA** (`PropKind::Position`): o menu dela
-    /// tem uma linha a mais, o **Auto-Orient** (ADR-0141 §6), que não existe em canal
-    /// nenhum dos outros. Variante própria e não um campo, porque o overlay dispacha o
-    /// TABELA por variante — e é a tabela que difere.
+    /// tem duas linhas a mais — o **Auto-Orient** e o *Convert to Separate Axes*
+    /// (ADR-0141) —, que não existem em canal nenhum dos outros. Variante própria e não
+    /// um campo, porque o overlay dispacha a TABELA por variante, e é a tabela que
+    /// difere.
     TimelineTrackPath { target: u64 },
     /// Right-clicked a stack lane's LABEL (`ids::TIMELINE_LANE_MENU`): how the
     /// lane enters the blend, and whether it stays at all.
@@ -465,14 +469,14 @@ pub enum TimelineHitKind {
     /// menu ([`ContextMenuKind::TimelineTrack`], Delete Track).
     Row {
         target: u64,
-        /// `true` quando esta row é uma track de TRAJETÓRIA (`PropKind::Position`).
+        /// **Qual menu esta row abre** — cada família de track tem ações que as outras
+        /// não têm.
         ///
-        /// ⚠️ O fato viaja no HIT porque só o painel o sabe — o dispatch não conhece
-        /// `PropKind` —, e ele decide QUAL menu abre. A alternativa (uma linha
-        /// "Auto-Orient" no menu de toda track) seria um item morto em cinco de cada
-        /// seis rows, que é precisamente o que a forma "uma tabela, três consumidores"
-        /// destes menus existe para impedir.
-        path: bool,
+        /// ⚠️ O fato viaja no HIT porque só o painel o sabe (o dispatch não conhece
+        /// `PropKind`). A alternativa — um menu só, com as linhas de todas as famílias —
+        /// seria um item morto na maioria das rows, que é precisamente o que a forma
+        /// "uma tabela, N consumidores" destes menus existe para impedir.
+        menu: super::TrackMenuKind,
     },
     /// The padlock on the Summary channel — a click toggles the column lock. When
     /// locked (default), grabbing any single key grabs its whole time column;
@@ -662,7 +666,7 @@ mod timeline_hit_kind_tests {
             K::Twirl { target: 0 },
             K::Row {
                 target: 0,
-                path: false,
+                menu: super::super::TrackMenuKind::Plain,
             },
             K::SummaryLock,
             K::LabelSplitter,

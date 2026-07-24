@@ -12,7 +12,7 @@
 | branch | `line/physics` |
 | HEAD | `63fc75df9` (o commit deste próprio doc; o integrador usa `git rev-parse line/physics`) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits à frente | **13** (1 doc herdado da sessão anterior + 6 do W-AreaFrame + 6 do W-AreaFalloff) |
+| commits à frente | **19** (1 doc herdado + 6 do W-AreaFrame + 6 do W-AreaFalloff + 2 do fix da Dur(s) + 3 do W-AreaMirror) |
 | working tree | limpa |
 
 Os commits, em ordem (o 1º já existia quando assumi a linha):
@@ -30,7 +30,13 @@ baedc8123 feat(physics): W-AreaFalloff -- o empurrao desvanece do centro para a 
 7abf8506a refactor(physics): a familia das ZONAS ganha casa propria (caps de LOC)
 fd3cc172c docs(physics): W-AreaFalloff no tracker/plano + handoff de integracao das 2 waves
 ca2367d50 docs(physics): CLAUDE.md 5 -- o W-AreaFalloff fecha a familia das zonas
-2f19baae4 docs(physics): o handoff de integracao pina os 12 commits reais
+96fcafb18 docs(physics): o handoff de integracao pina os commits reais
+a0d429305 fix(timeline): a Dur(s) aceita QUALQUER duracao -- o teto de u16::MAX era um palpite
+560936090 docs(physics): o handoff nomeia o fix da Dur(s) fora do dominio da linha
+2c589f8af feat(physics): W-AreaMirror -- espelhar a zona espelha o vento (e inverte o giro)
+b7bd434f9 docs(physics): W-AreaMirror no tracker e no plano
+bf9add666 docs(physics): CLAUDE.md 5 + handoff cobrem o W-AreaMirror
+(+ este commit)
 ```
 
 **Duas waves, uma branch.** Este handoff cobre as duas — o integrador lê um documento só.

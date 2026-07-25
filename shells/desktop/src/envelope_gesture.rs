@@ -44,6 +44,17 @@ pub(crate) fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
     cage_of(sim, bits).map_or(EnvelopeKind::Perspective, |(_, _, k)| k)
 }
 
+/// A entidade `bits` é um **container de Envelope** (carrega um `VecEnvelope`)?
+///
+/// O overlay de nós pergunta isto: quando a seleção é um envelope, a forma sob a gaiola é
+/// DERIVADA (os nós dela são saída do warp, não editáveis), então as alças de nó dela **não** se
+/// desenham — o artista edita a GAIOLA. Cobre os TRÊS gestos (Perspective/Mesh/Pins), ao contrário
+/// do [`view`], que devolve `None` no gesto Pins.
+#[must_use]
+pub(crate) fn is_envelope(sim: &SimWorld, bits: u64) -> bool {
+    cage_of(sim, bits).is_some()
+}
+
 /// O preset que gerou a gaiola do container `bits` (ou `None` se ela é manual) + a força dele.
 /// `None` no todo se `bits` não é um envelope.
 ///

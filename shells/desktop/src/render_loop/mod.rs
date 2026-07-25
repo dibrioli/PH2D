@@ -4598,16 +4598,29 @@ impl crate::App {
             let overlay =
                 crate::vec_overlay::vec_overlay_plan(vector_active, self.vec_draw_config.mode);
             if overlay.edit {
-                ph2d_vec_render::draw_overlays(
-                    vec_scene,
-                    &vec_view,
-                    self.vec_pen.selected(),
-                    self.vec_pen.selected_paths(),
-                    self.vec_pen.selected_verts(),
-                    &vec_xf,
-                    cam_affine,
-                    vector_scene,
-                );
+                // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,
+                // a forma sob a gaiola é DERIVADA (os nós dela são a SAÍDA do warp, não estado
+                // editável), então NÃO se desenham as alças de nó dela — elas confundem (não se
+                // pode arrastá-las) e expõem o handle longo que o refit deixa numa quina CÔNCAVA
+                // (o "traço à deriva" que o Enio reportou numa estrela sob envelope, 2026-07-24).
+                // Você edita a GAIOLA (desenhada abaixo). É o idioma do Illustrator/Affinity: com um
+                // envelope ativo, os nós do objeto somem.
+                let envelope_selected = hero
+                    .gizmo
+                    .selection
+                    .is_some_and(|bits| crate::envelope_gesture::is_envelope(sim, bits));
+                if !envelope_selected {
+                    ph2d_vec_render::draw_overlays(
+                        vec_scene,
+                        &vec_view,
+                        self.vec_pen.selected(),
+                        self.vec_pen.selected_paths(),
+                        self.vec_pen.selected_verts(),
+                        &vec_xf,
+                        cam_affine,
+                        vector_scene,
+                    );
+                }
                 // NOTA: as alças de raio de quina (Live Corners) não são mais desenhadas — o
                 // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
                 // clicar-e-arrastar). A exclusão de forma VIVA (`crate::corner_handles::has_derived_verts`)

@@ -27,6 +27,7 @@ pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectorie
 pub use bridge::contacts::{
     BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,
 };
+pub use bridge::views::JointView;
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,

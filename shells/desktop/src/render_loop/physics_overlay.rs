@@ -48,7 +48,7 @@ use super::physics_overlay_contacts::{
     CONTACT_FLASH_RGBA, CONTACT_RGBA, WATERLINE_RGBA, contact_flashes, contact_marks,
     waterline_marks,
 };
-use super::physics_overlay_joints::{JOINT_RGBA, joint_marks};
+use super::physics_overlay_joints::joint_marks;
 
 /// Outline thickness, in screen px. Thinner than the selection halo (2 px):
 /// a collider is standing information, not a thing you just did.
@@ -399,7 +399,8 @@ pub(super) fn draw(
     show: bool,
     show_velocity: bool,
     sim: &mut SimWorld,
-    joint_anchors: &[([f32; 2], [f32; 2])],
+    joint_views: &[ph2d_physics_ecs::JointView],
+    joint_gravity: [f32; 2],
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
@@ -455,11 +456,14 @@ pub(super) fn draw(
     }
     // Joints ON TOP of the colliders: the link runs between two bodies and
     // would otherwise be hidden by whichever outline was drawn last.
-    for path in joint_marks(show, joint_anchors, camera, window) {
+    //
+    // W-J1: uma cor por FATO (glifo · posse · limite · deformação), então o
+    // laço percorre pares — a mesma forma que o `outlines` já usa.
+    for (path, rgba) in joint_marks(show, joint_views, joint_gravity, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(Color::new(JOINT_RGBA)),
+            &Brush::Solid(Color::new(rgba)),
             None,
             &path,
         );

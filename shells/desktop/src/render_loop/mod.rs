@@ -119,6 +119,7 @@ mod physics_bridge_tests;
 pub(crate) mod physics_overlay;
 mod physics_overlay_annotations;
 mod physics_overlay_contacts;
+mod physics_overlay_joint_glyphs;
 mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
@@ -4359,7 +4360,18 @@ impl crate::App {
             // so two objects pinned together look exactly like two that merely
             // touch. The anchors come from the solver, not from the joint
             // entity's Transform (see `physics_overlay::joint_marks`).
-            let joint_anchors: Vec<([f32; 2], [f32; 2])> = physics.joint_anchors().collect();
+            //
+            // W-J1: a VIEW, not just the anchor pair — the drawing reads the
+            // very `JointDesc` the solver was handed (kind, limits, motor,
+            // length) plus the live poses, so the glyph cannot describe a joint
+            // the solver is not enforcing.
+            let joint_views: Vec<ph2d_physics_ecs::JointView> = physics.joint_views().collect();
+            // A corda frouxa pendura para onde as coisas caem — a MESMA fonte
+            // que decide a superfície de uma poça (W-Buoyancy).
+            let joint_gravity = {
+                let s = physics.settings();
+                [s.gravity_x, s.gravity_y]
+            };
             // Sensors that have a body inside them THIS frame — the overlay
             // lights them up. A sensor with nothing reading its overlaps would
             // be a dead flag (W7), so the visible reaction lives here.
@@ -4385,7 +4397,8 @@ impl crate::App {
                 self.show_colliders,
                 velocity_at_rest,
                 sim,
-                &joint_anchors,
+                &joint_views,
+                joint_gravity,
                 &contacts,
                 &flashes,
                 &waterlines,

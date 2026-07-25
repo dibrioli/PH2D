@@ -23,6 +23,7 @@ mod readback;
 mod rewind;
 mod space;
 mod triggers;
+pub mod views;
 
 pub use kinematic::{FrozenScene, SceneAtTick};
 

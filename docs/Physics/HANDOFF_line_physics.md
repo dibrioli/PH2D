@@ -4278,3 +4278,94 @@ estourou dois caps de painel -- `paint_join_gesture` foi pro `physics_rows.rs`, 
 `paint_joint_section` (231, latente da redesign do eyedropper) virou `paint_body_rows`; 3 literais de
 proporção (0.82/3.6/0.4, latentes) ganharam `// LITERAL-PX-OK`. Smoke: **`=40`** (cria um Rope pela
 seleção "Join As", a §12 abre já selecionada).
+
+---
+
+## W-J1 (plano 02) — O JOINT DESENHA O QUE ELE É (2026-07-25, `line/physics`, cena `=43`, pendente de smoke)
+
+A 1ª wave do [plano 02](02_plano_joints_ui_authoring.md), e a que a pesquisa
+apontou como a maior distância entre nós e todo o mercado exceto o RUBE: até
+aqui os **quatro tipos desenhavam a MESMA figura** (segmento + dois anéis), então
+o canvas dizia *"há um joint aqui"* e mais nada — tipo, alcance, comprimento,
+folga e **de quem é cada ponta** eram número cego no §12 ou não existiam.
+
+### O vocabulário
+
+| fato | como se vê |
+|---|---|
+| qual tipo | o GLIFO — anel (Pin) · quadrado girado com o corpo (Weld) · zigue-zague (Spring) · fio (Rope) |
+| de quem é cada ponta | linha de posse **A sólida, B TRACEJADA** |
+| alcance de um limite | arco com as duas paredes + a **agulha no ângulo VIVO** |
+| para que lado o motor gira | o MESMO glifo de giro da zona de torque, em âmbar |
+| repouso / máximo | anel de comprimento, construído em **MUNDO** |
+| a restrição não está sendo imposta | o vão entre as âncoras, em VERMELHO |
+
+⚠️ **A distinção entre as pontas é GEOMÉTRICA, não de cor** — a paleta do overlay
+está cheia (verde estático · ciano dinâmico · branco contato · laranja força ·
+violeta torque · amarelo lançamento · magenta sensor · ciano-claro linha d'água)
+e um azul-esverdeado novo leria como contorno de collider.
+
+⚠️ **Duas réguas, e a diferença é FÍSICA:** comprimento é comprimento (o anel é
+construído em mundo — 2 m valem 200 px a 1× e 400 a 2×), ângulo e ornamento não
+são (arco, quadrado, amplitude do zigue-zague são px de TELA constantes). É a
+mesma lei que separa a seta de força do arrowhead dela.
+
+### A porta única (plano 02, P2)
+
+O desenho lê **`PhysicsBridge::joint_views()`** — o `JointDesc` que o solver
+recebeu + as poses vivas — e **nunca** o componente ECS. As duas fontes divergem
+num caso real: um joint cujos corpos não resolvem (rename) segue autorado e
+**não está no solver**; desenhá-lo do componente pintaria uma relação que nada
+impõe. ⚠️ **O `rest` já é o desc pós-filtro**, então a view **não re-filtra por
+tipo** — a 1ª versão re-perguntava *"que params este tipo usa?"* e a mutação que
+apagou o filtro **não sangrou**, o que expôs a duplicata; hoje a regra vive só no
+`joint_desc`, e mutá-LA sangra.
+
+### Medições que mudaram o desenho
+
+- **A marca vermelha por CARGA é inalcançável:** um pino segurando 500× a massa
+  e outro levando um martelo de 400× abriram **0,00000 m** em 200 ticks. Os
+  impulse joints do rapier são RÍGIDOS — a linha vermelha do RUBE descreve os
+  joints *soft* do Box2D e **não porta**.
+- **O que ABRE o vão é a arquitetura:** um joint não move corpo **kinematic**
+  (massa infinita), então dois corpos curva-dirigidos que a animação afasta
+  ficam soltos com o pino desenhado por cima — medido **1,50 m = 150 px**. É
+  exatamente o estado em que o **W-BakeJoint** deixa um rig assado, e é por isso
+  que a marca fica (com o significado corrigido: *não está sendo imposta*).
+- Cena `=43`, medido headless: agulha do Pin **0,0° → 40,1°** e PARA na parede ·
+  mola autorada a **1,60 m** assenta em **1,240** (repouso 1,20 + 4 cm do peso) ·
+  corda **0,82 m** de vão para **1,60** de fio (nunca fica tesa) · weld leva o
+  ângulo relativo de **−0,400 rad a 0,000** no 1º passo.
+
+### Gates
+
+**15 novos** (11 overlay + 4 ponte... na verdade 5 na ponte) — **8 mutações, 8
+sangram**, e duas se pagaram achando defeito meu:
+
+- ⚠️ **`direction_flips` era aritmética morta:** comparava o produto vetorial de
+  um terno com o do MESMO terno com os dois vetores negados — que é ele próprio
+  — logo testava `cross² < 0` e contava **zero** inversões em qualquer figura.
+- ⚠️ **O gate do anel media a POSSE, não o anel:** no fixture a linha até o corpo
+  B alcança exatamente o mesmo raio do anel (200/400 px), então o `max` passava
+  com o anel AUSENTE — a mutação que cravava o raio em px de tela **sobreviveu**.
+  Oráculo trocado pela ASSINATURA do anel (26 pontos num raio só).
+- ⚠️ **O gate do arco media extensão**, que as linhas de posse dominam (200,0 px
+  nos dois casos) ⇒ não podia falhar; virou **espalhamento ANGULAR** na faixa de
+  raio do arco.
+- ⚠️ **O oráculo de forma descartava o ponto de CONTROLE** do `QuadTo`, onde a
+  barriga da corda mora inteira ⇒ frouxa e tesa mediam a mesma altura.
+
+**Zero componente, zero id, zero schema** (`PROJECT_SCHEMA` **31**, registro
+**21**); **c9 byte-idêntico** (`4e862761…`, 83 corpos) — readout puro.
+
+**LOC:** dois arquivos novos por responsabilidade (`physics_overlay_joint_glyphs.rs`
+= as figuras · `physics_overlay_joints_tests.rs` = os gates) + a cena em
+`physics_smoke_joint_glyphs.rs`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=43`** (os 4 tipos lado a lado, PAUSADA — a mensagem
+diz o que olhar parado e o que muda no Play).
+
+**Aberto (as waves seguintes do plano 02):** W-J2 duas alças + snap · W-J3
+pose-não-digite (arrastar as pontas do arco / o anel / a seta) · W-J4 criar onde
+se olha · W-J5 Slider · W-J6 servo + guincho · W-J7 break force · W-J8 higiene do
+par · W-JG grupo carrega o rig.

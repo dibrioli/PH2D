@@ -1,5 +1,7 @@
 //! **A cena pronta para o smoke do WARP** (`PH2D_BUILD_SMOKE=26`) — a família de efeitos
-//! paramétricos do menu *Effect > Warp* do Illustrator (Arc/Bulge/Wave/Fisheye/Rise).
+//! paramétricos do menu *Effect > Warp* do Illustrator, agora os NOVE estilos do catálogo ÚNICO
+//! (`ph2d_warp_style::WarpStyle`, a MESMA lista dos presets do Envelope): Arc, Arc Upper, Arc
+//! Lower, Bulge, Flag, Wave, Squeeze, Fisheye, Rise.
 //!
 //! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC, como o `text_fx_smoke`.
 //!
@@ -10,10 +12,10 @@
 //! deve parecer. A resposta é a mesma das cenas de Contour/física: **uma forma PELADA para autorar
 //! pela UI, e as PRONTAS para julgar o desenho**.
 //!
-//! - **cinco retângulos**, um por estilo, cada um com o Warp ARMADO numa dobra forte: é o
+//! - **nove retângulos**, um por estilo, cada um com o Warp ARMADO numa dobra forte: é o
 //!   render-and-look — um warp que a matemática produz feio aparece aqui de imediato;
 //! - **um retângulo PELADO**, selecionado: é ele que prova o seam (a seção Effects → menu Add →
-//!   os cinco estilos novos → o slider Bend).
+//!   os estilos → o slider Bend).
 
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::fx_warp_presets::{WarpSpec, WarpStyle};
@@ -48,7 +50,7 @@ fn rect(cx: f64, cy: f64, w: f64, h: f64, rgb: [u8; 3]) -> VecPath {
     }
 }
 
-/// Monta os cinco retângulos armados (um por estilo) + o pelado, e guarda o id do pelado.
+/// Monta os nove retângulos armados (um por estilo do catálogo) + o pelado, e guarda o id do pelado.
 fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
@@ -56,7 +58,7 @@ fn build(app: &mut crate::App) {
     let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
 
-    // Uma fileira dos cinco estilos, do canto esquerdo para a direita.
+    // Uma fileira dos nove estilos do catálogo, do canto esquerdo para a direita.
     let n = WarpStyle::ALL.len();
     #[allow(clippy::cast_precision_loss)]
     let span = 1.5_f64;
@@ -67,7 +69,7 @@ fn build(app: &mut crate::App) {
         let cx = x0 + (i as f64) * span;
         let id = scene.push_path(rect(cx, 1.1, 1.1, 0.8, [90, 150, 220]));
         if let Some(p) = scene.path_mut(id) {
-            // Só a dobra nos cinco demos, para cada estilo ler LIMPO; as duas perspectivas
+            // Só a dobra nos nove demos, para cada estilo ler LIMPO; as duas perspectivas
             // (Horizontal/Vertical) o artista experimenta no retângulo pelado.
             p.effects = vec![FxEntry::new(PathEffect::Warp(WarpSpec {
                 style,
@@ -95,12 +97,12 @@ fn arm(app: &mut crate::App) {
     let names: Vec<&str> = WarpStyle::ALL.iter().map(|s| s.label()).collect();
     eprintln!(
         "[smoke] WARP -- a familia Effect > Warp (menu Add da secao Effects).\n\
-         [smoke]   A fileira de CIMA: cinco retangulos azuis, um por estilo ({}), cada um com\n\
+         [smoke]   A fileira de CIMA: NOVE retangulos azuis, um por estilo ({}), cada um com\n\
          [smoke]   o Warp armado a Bend={DEMO_BEND}. E o render-and-look: cada silhueta tem de\n\
          [smoke]   deformar SUAVE (as bordas viram curvas, nao facetas) e reconhecivel --\n\
          [smoke]   Arc arqueia, Wave faz um S, Bulge/Fisheye abaulam, Rise inclina.\n\
          [smoke]   O retangulo LARANJA embaixo esta pelado e selecionado:\n\
-         [smoke]   1. Abra a secao **Effects** no painel. O menu Add tem de listar os cinco\n\
+         [smoke]   1. Abra a secao **Effects** no painel. O menu Add tem de listar os NOVE\n\
          [smoke]      estilos novos alem dos quatro velhos (Trim/Zig Zag/Repeater/Pucker&Bloat).\n\
          [smoke]   2. Clique **Add Arc** (ou outro). A forma deforma NA HORA (nasce neutra: o\n\
          [smoke]      clique nao move um pixel ate voce arrastar um slider).\n\

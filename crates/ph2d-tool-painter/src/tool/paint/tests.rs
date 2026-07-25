@@ -1012,6 +1012,60 @@ fn mask_brush_protects_and_keeps_the_layer_fully_visible() {
 }
 
 #[test]
+fn a_mask_stroke_takes_the_partial_lane_byte_identical_to_a_full_recompose() {
+    // While a Mask protection scratch is live, `take_preview_arc` used to `force_full` EVERY painted
+    // frame — a whole-canvas recompose + full 16 MiB upload for a dab-sized change (measured 17 ms
+    // preview + 6.9 ms upload @ 2048², CPU: the mask FPS drop Enio reported). But the overlay tint is
+    // PER-PIXEL and a mask dab changes coverage only inside its dirty rect, so the partial fast lane
+    // re-tints just that region (`apply_mask_overlay_region`) and is byte-identical to a full recompose.
+    //
+    // Mutations that must bleed: (a) re-adding `force_full = mask_scratch_active()` → the 2nd dab takes
+    // the FULL arm, not partial (the branch assert); (b) dropping `apply_mask_overlay_region` from the
+    // partial arm → the 2nd dab's region loses its tint and `partial != full`.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 64u32;
+    let mut t = white_canvas(size, 6.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    assert!(t.is_mask_mode());
+    // First dab: creating the scratch invalidates the composite, so this drain SEEDS the cache with
+    // the overlay via the full arm (composite is `None`).
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    let _seed = t.take_preview_arc().expect("seed drain");
+    assert_eq!(
+        t.preview_drain_diag().0,
+        crate::tool::DrainBranch::FullComposite,
+        "the first mask dab seeds the cache via a full recompose",
+    );
+    // Second dab elsewhere: the cache is seeded now, so this MUST take the partial fast lane.
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up));
+    let (partial, _, _) = t.take_preview_arc().expect("partial drain");
+    assert_eq!(
+        t.preview_drain_diag().0,
+        crate::tool::DrainBranch::PartialComposite,
+        "a mask dab over a seeded cache must take the partial fast lane, not force full",
+    );
+    let partial = (*partial).clone();
+    // Force a full recompose of the EXACT same scratch+layer state and compare byte-for-byte.
+    t.invalidate_composite();
+    let (full, _, _) = t.take_preview_arc().expect("full drain");
+    assert_eq!(
+        t.preview_drain_diag().0,
+        crate::tool::DrainBranch::FullComposite,
+        "invalidate → the next drain is a full recompose",
+    );
+    assert_eq!(
+        *full, partial,
+        "the partial-lane mask preview must equal a full recompose to the byte",
+    );
+}
+
+#[test]
 fn mask_stroke_undoes_and_redoes_with_the_global_timeline() {
     // A mask stroke mutates only the transient scratch (the layer's own pixels stay put), so the undo
     // model must capture that scratch — else the stroke produces a no-op undo entry and can't be rolled

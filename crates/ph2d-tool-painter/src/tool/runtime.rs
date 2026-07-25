@@ -248,11 +248,16 @@ impl PainterTool {
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
-        // While the Mask brush's scratch is live the composite carries the protection-overlay TINT over the
-        // whole frame; a partial-region blit can't re-tint the untouched area, so force the full recompose
-        // path (a single-layer recompose is cheap — not the 100k-sprite hot path).
-        let force_full = self.mask_scratch_active();
-        match (self.composited.is_some() && !force_full, dirty) {
+        // A live Mask scratch does NOT force the full path. Its protection-overlay tint is PER-PIXEL
+        // (`apply_mask_overlay`: a texel's tint depends only on its own coverage + colour, no global
+        // term), and a mask dab changes coverage only inside its `dirty_rect` (the stamp edits the
+        // scratch swapped into `canvas_rgba` — `stamp_dabs_mask`). The genuinely global overlay changes
+        // (colour swatch, canvas-op, first scratch) all `invalidate_composite()` → the full arm below.
+        // So the partial arm re-tints only the dab region (`apply_mask_overlay_region`), byte-identical
+        // to a full re-tint there. Forcing the full path here was a whole-canvas recompose + full 16 MiB
+        // upload per mask-painted frame (measured: 17 ms preview + 6.9 ms upload @ 2048² — the mask FPS
+        // drop Enio reported), when only a dab-sized rect changed.
+        match (self.composited.is_some(), dirty) {
             (true, Some(bbox)) => {
                 let region = {
                     let src = ToolPixelSource {
@@ -268,6 +273,10 @@ impl PainterTool {
                 // field, so the border is lit exactly as a full recompose would light it.
                 let mut region = region;
                 self.apply_impasto_light(&mut region, bbox);
+                // Mask overlay: re-tint ONLY this region by the (dab-updated) scratch coverage — the
+                // partial twin of the full arm's `apply_mask_overlay`, same per-pixel kernel, no-op
+                // without a live scratch. This is what lets a mask stroke take the fast lane.
+                self.apply_mask_overlay_region(&mut region, bbox);
                 let region = region;
                 self.compositor_cache.invalidate_from(active, &self.layers);
                 self.adjustment_cache_pending = false;

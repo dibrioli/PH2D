@@ -321,24 +321,39 @@ impl PainterTool {
         let scratch = &self.paint.mask_scratch_rgba;
         for i in 0..n {
             let cov = crate::compositor::mask_value(scratch, i);
-            let sa = (1.0 - cov) * OVERLAY_STRENGTH;
-            if sa <= 0.0 {
-                continue;
+            tint_pixel(&mut buf[i * 4..i * 4 + 4], film, cov);
+        }
+    }
+
+    /// The overlay applied to ONE re-composited sub-region — the partial fast lane's twin of
+    /// [`Self::apply_mask_overlay`]. `buf` is a `bbox`-sized region buffer (row-major within `bbox`);
+    /// the scratch is full-canvas, so each region pixel reads its GLOBAL coverage. The tint is
+    /// **per-pixel** (a texel's tint depends only on its own coverage and colour — no global term), so
+    /// re-tinting only the dab's `bbox` is byte-identical to a full re-tint there. The genuinely global
+    /// overlay changes (colour swatch, canvas-op, the first scratch) all `invalidate_composite()`, which
+    /// forces the full arm; the only non-invalidating change is a per-dab coverage edit, and that lives
+    /// inside `bbox`. Shares [`tint_pixel`] with the full path so the two cannot disagree on a texel.
+    pub(crate) fn apply_mask_overlay_region(&self, buf: &mut [u8], bbox: Region) {
+        if !self.mask_scratch_active() {
+            return;
+        }
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        if self.paint.mask_scratch_rgba.len() < n * 4 {
+            return;
+        }
+        let film = mask_overlay_rgb(self.paint.mask_overlay_color);
+        let scratch = &self.paint.mask_scratch_rgba;
+        for ry in 0..bbox.h {
+            for rx in 0..bbox.w {
+                let gidx = ((bbox.y + ry) * w + (bbox.x + rx)) as usize;
+                let b = ((ry * bbox.w + rx) * 4) as usize;
+                if gidx >= n || b + 4 > buf.len() {
+                    continue;
+                }
+                let cov = crate::compositor::mask_value(scratch, gidx);
+                tint_pixel(&mut buf[b..b + 4], film, cov);
             }
-            let b = i * 4;
-            let da = f32::from(buf[b + 3]) / 255.0;
-            let oa = sa + da * (1.0 - sa);
-            if oa <= 0.0 {
-                continue;
-            }
-            for c in 0..3 {
-                let s = f32::from(film[c]);
-                let d = f32::from(buf[b + c]);
-                buf[b + c] = ((s * sa + d * da * (1.0 - sa)) / oa)
-                    .round()
-                    .clamp(0.0, 255.0) as u8;
-            }
-            buf[b + 3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
         }
     }
 
@@ -367,6 +382,32 @@ impl PainterTool {
         }
         false
     }
+}
+
+/// Tint one composited RGBA pixel (`px` = a 4-byte slice) by the protection coverage `cov`: straight-
+/// alpha src-over of the overlay `film` at `(1 - cov) * OVERLAY_STRENGTH`, raising alpha. The single
+/// per-pixel kernel BOTH [`PainterTool::apply_mask_overlay`] (whole canvas) and
+/// [`PainterTool::apply_mask_overlay_region`] (partial lane) call — two copies of this math would let
+/// the full and partial recomposite paths disagree on a texel, which is exactly the class of bug the
+/// partial lane must never introduce.
+fn tint_pixel(px: &mut [u8], film: [u8; 3], cov: f32) {
+    let sa = (1.0 - cov) * OVERLAY_STRENGTH;
+    if sa <= 0.0 {
+        return;
+    }
+    let da = f32::from(px[3]) / 255.0;
+    let oa = sa + da * (1.0 - sa);
+    if oa <= 0.0 {
+        return;
+    }
+    for c in 0..3 {
+        let s = f32::from(film[c]);
+        let d = f32::from(px[c]);
+        px[c] = ((s * sa + d * da * (1.0 - sa)) / oa)
+            .round()
+            .clamp(0.0, 255.0) as u8;
+    }
+    px[3] = (oa * 255.0).round().clamp(0.0, 255.0) as u8;
 }
 
 /// Map a wire discriminant to the engine op (`None` for an out-of-range index).

@@ -5636,6 +5636,26 @@ impl crate::App {
                         editor_queue,
                         component_registry,
                     );
+                    // ⚠️ FLUSH per edit, exactly as `inspector_commits::dispatch`
+                    // does for every OTHER Inspector edit type (§11 physics,
+                    // ordering, blend, name…). `apply_joint_edit` only QUEUES a
+                    // `SetComponent`; this block was moved OUT of that dispatch
+                    // and shipped without the flush, so a joint parameter edit
+                    // sat in the queue until some other edit happened to drain it
+                    // — "sometimes it works". And it must be PER edit, not once
+                    // after the loop: `apply_joint_edit` read-modify-writes the
+                    // WHOLE component, so a second edit in the same frame that
+                    // read a not-yet-applied first one would silently drop it
+                    // (the same reason the ordering loop flushes per iteration).
+                    if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
+                        sim.world_mut(),
+                        editor_queue,
+                        component_registry,
+                    ) {
+                        toasts.push(ph2d_editor::Toast::error(format!(
+                            "Joint commit failed: {e}"
+                        )));
+                    }
                 }
             }
             if let Some((a, b)) = join_request

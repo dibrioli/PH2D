@@ -12,15 +12,27 @@
 //! the wrapper stays general. Collapsing the pair would make a 2 m rope hang
 //! its ball 2.5 m down whenever the authored point was not the ball's centre.
 //!
-//! # Joints are reconciled AFTER bodies, and re-described only at rest
+//! # Joints are reconciled AFTER bodies, and a PARAMETER edit re-describes live
 //!
-//! Both follow from the same fact: a joint's local anchors are derived from
-//! where the bodies *are*, so they have to be derived from where the artist
-//! *put* them. A joint spawned before its bodies would have nothing to bind
-//! to; one re-derived mid-simulation would bake in whatever offset the swing
-//! happened to have at that instant. The body half of the bridge already has
-//! this rule (`at_rest && b.rest != desc`), and joints ride it rather than
-//! inventing a second one.
+//! Reconciled after bodies for one fact: a joint's local anchors are derived
+//! from where the bodies *are*, so they have to be derived from where the
+//! artist *put* them, and a joint spawned before its bodies would have nothing
+//! to bind to.
+//!
+//! **Re-describing (a parameter or anchor edit rebuilding the rapier joint) is
+//! NOT gated on the clock being at rest** — the point of a spring is that you
+//! tune it while it bounces (W-JointParams, 2026-07-25). An earlier version
+//! gated the whole re-describe on `at_rest`, which meant every parameter edit —
+//! stiffness, motor speed, a rope's length — did nothing until a Reset. That
+//! gate was written in W3 to stop an ANCHOR being re-derived mid-swing, when a
+//! re-derive read the bodies' LIVE poses and would have baked in the swing
+//! offset. W-AnchorFollow moved the anchor to authored body-local state seeded
+//! from the bodies' **rest** poses (see the seed below — it uses `rest_pose`,
+//! never the live pose), so re-describing mid-play no longer touches the
+//! anchor's frame and the protection the `at_rest` gate provided moved with it.
+//! What remains true: a body MOVE never changes `desc` (the stored anchors are
+//! unchanged), so it never re-describes and never churns the checkpoint ring —
+//! only a genuine edit does (gate `an_unedited_joint_does_not_churn_the_scrub_cache`).
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
@@ -140,7 +152,6 @@ impl PhysicsBridge {
         self.joints_to_spawn.clear();
         self.joints_to_remove.clear();
         self.joints_to_seed.clear();
-        let at_rest = self.last_stepped == 0;
 
         for (e, joint, _local) in q.iter(world) {
             self.joints_seen.push(e);
@@ -229,10 +240,15 @@ impl PhysicsBridge {
             let desc = joint_desc(&joint.clamped(), la, lb);
             match self.joints.get(&e) {
                 None => self.joints_to_spawn.push((e, desc, handles, (ea, eb))),
-                // Re-described at rest, exactly as bodies are — and also when
-                // the bodies it binds have been re-spawned underneath it, or
-                // the joint would hold handles into an arena that has moved on.
-                Some(j) if (at_rest && j.rest != desc) || j.bodies != handles => {
+                // Re-described whenever `desc` changed — a parameter or anchor
+                // edit — with NO `at_rest` gate, so a spring tunes while it
+                // bounces (module docs; the anchor is safe because it is seeded
+                // from the rest pose). `desc` is stable frame-to-frame absent an
+                // edit, so a body move never lands here and never churns the
+                // ring. Also fires when the bodies it binds have been re-spawned
+                // underneath it, or the joint would hold handles into an arena
+                // that has moved on.
+                Some(j) if j.rest != desc || j.bodies != handles => {
                     self.joints_to_spawn.push((e, desc, handles, (ea, eb)));
                     self.joints_to_remove.push(e);
                 }

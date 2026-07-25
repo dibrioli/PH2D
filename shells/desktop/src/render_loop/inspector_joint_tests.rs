@@ -363,3 +363,59 @@ fn changing_the_kind_re_seeds_the_anchor() {
          anchors body B at its centre instead of keeping the Pin's shared point"
     );
 }
+
+/// **A parameter edit only LANDS after the queue is flushed — the render loop's
+/// job, and the one it forgot (W-JointParams, 2026-07-25).**
+///
+/// The user's report was in TWO parts: the bridge gated the re-describe on
+/// `at_rest` (fixed in `bridge/joints.rs`), AND the shell's §12 edit block
+/// pushed a `SetComponent` without flushing it — so a joint slider did nothing
+/// until some OTHER Inspector edit happened to drain the queue ("às vezes
+/// funciona"). This pins the fact that block must honour: `apply_joint_edit`
+/// only QUEUES; the component changes on `apply_editor_commands`. The arch-gate
+/// `the_joint_edit_loop_flushes_the_command_queue` proves the render loop calls
+/// it; this proves that call is load-bearing.
+#[test]
+fn a_joint_param_edit_lands_only_when_the_queue_is_flushed() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Spring).expect("join");
+    {
+        let mut j = sim
+            .world_mut()
+            .get_mut::<PhysicsJoint>(joint)
+            .expect("joint");
+        j.stiffness = 30.0;
+    }
+    let reg = registry();
+    let queue = EditorCommandQueue::default();
+
+    // The edit the panel emits: stiffen the spring.
+    apply_joint_edit(
+        &sim,
+        joint.to_bits(),
+        JointFieldEdit::Stiffness(300.0),
+        &queue,
+        &reg,
+    );
+    // ⚠️ Before the flush the component is UNCHANGED — the edit is only queued.
+    // This is the whole reason the render loop must flush; skipping it is what
+    // made the slider inert.
+    assert_eq!(
+        sim.world().get::<PhysicsJoint>(joint).unwrap().stiffness,
+        30.0,
+        "apply_joint_edit must only QUEUE — if it wrote the component directly \
+         the flush would not be load-bearing and the render-loop bug would be \
+         invisible here"
+    );
+
+    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commands apply");
+    assert_eq!(
+        sim.world().get::<PhysicsJoint>(joint).unwrap().stiffness,
+        300.0,
+        "after the flush the component must carry the new stiffness — this is the \
+         edit the render loop failed to flush, so the joint sat at k=30. The \
+         bridge picking a flushed component change up and tightening the spring \
+         is proven end to end in ph2d-physics-ecs/tests/joint_live_edit.rs"
+    );
+}

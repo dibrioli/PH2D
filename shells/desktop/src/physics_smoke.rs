@@ -96,6 +96,7 @@ impl crate::App {
             "39" => self.physics_smoke_bake_joint(),
             "40" => self.physics_smoke_author_joint(),
             "41" => self.physics_smoke_anchor_follows(),
+            "42" => self.physics_smoke_live_tune(),
             _ => self.physics_smoke_drop(),
         }
 

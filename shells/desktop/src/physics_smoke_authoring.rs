@@ -236,4 +236,73 @@ impl crate::App {
              Ctrl+Z undoes each move; the relationship is preserved either way."
         );
     }
+
+    /// **Scene 42 (W-JointParams).** A ball hanging on a SOFT spring, PLAYING —
+    /// the scene exists to smoke Enio's report *"os parâmetros de Spring não
+    /// mudam em nada o comportamento da mola"*. Until this wave, editing a joint
+    /// parameter while the clock ran did nothing (the re-describe was gated on
+    /// the clock being at rest), so tuning a spring while watching it bounce —
+    /// the whole point of a spring — was inert until a Reset.
+    ///
+    /// PLAYS on purpose (not in the pause list): the demonstration IS that the
+    /// edit lands live. The ball is heavy and the spring soft, so the sag is big
+    /// and cranking the stiffness visibly pulls the ball up.
+    pub(crate) fn physics_smoke_live_tune(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+        let world = gfx.sim.world_mut();
+
+        // A static hook up top, a heavy ball hanging a metre below on a spring.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 5.6)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.18, 0.18], [0.75, 0.75, 0.8, 1.0]),
+            Name::new("Hook".to_string()),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.09 },
+                ..Collider::default()
+            },
+        ));
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.6)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], [0.35, 0.6, 0.95, 1.0]),
+            Name::new("Ball".to_string()),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.35 },
+                ..Collider::default()
+            },
+        ));
+        // A SOFT spring (stiffness 10, under-damped) so the sag is dramatic and
+        // the bounce is visible — the artist stiffens it and the ball rises.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 5.6)),
+            Name::new("Spring".to_string()),
+            PhysicsJoint {
+                body_a: stable_name_id("Hook"),
+                body_b: stable_name_id("Ball"),
+                kind: ph2d_physics_ecs::JointKind::Spring,
+                rest_length: 1.0,
+                stiffness: 10.0,
+                damping: 0.3,
+                ..PhysicsJoint::default()
+            },
+        ));
+
+        eprintln!(
+            "[physics-smoke 42] A heavy ball on a SOFT spring, PLAYING.\n\
+             The bug: tuning a joint parameter while it ran did NOTHING until a Reset.\n  \
+               1. Watch the ball settle -- it sags ~0.4 m below the rest length (soft spring).\n  \
+               2. Select 'Spring' in the Hierarchy -> Inspector section 12 (Physics Joint).\n  \
+               3. DRAG the Stiffness slider UP (10 -> ~100) WHILE it plays. The ball must\n     \
+                  RISE as the spring tightens, LIVE -- before this wave it sat there.\n  \
+               4. Drag Damping down -> it bounces more; up -> it stops bouncing. Also live.\n  \
+               5. (Motor/limits on a Pin tune live too -- same fix, any parameter.)\n\
+             If the ball ignores the sliders until you press Reset, the fix regressed."
+        );
+    }
 }

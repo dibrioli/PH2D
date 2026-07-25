@@ -19,6 +19,7 @@ mod diagnostics;
 mod hold;
 mod joints;
 mod kinematic;
+mod readback;
 mod rewind;
 mod space;
 mod triggers;
@@ -108,6 +109,14 @@ pub struct PhysicsBridge {
     joints_seen: Vec<Entity>,
     joints_to_spawn: Vec<PendingJoint>,
     joints_to_remove: Vec<Entity>,
+    /// Joints whose body-local anchors were just derived from their world
+    /// `Transform` (the seed) — written back after the query borrow releases so
+    /// a body move never re-derives them again. Scratch: cleared per reconcile.
+    joints_to_seed: Vec<(Entity, [f32; 2], [f32; 2])>,
+    /// (joint, derived world pivot) pairs — `sync_joint_pivots` writes each into
+    /// the joint's `Transform.translation` so the anchor dot follows the body.
+    /// Scratch: taken out and refilled per sync, so the steady state never allocs.
+    joints_to_sync: Vec<(Entity, [f32; 2])>,
     /// Where each kinematic body stood when this dispatch began, so a
     /// multi-tick dispatch can spread its move across the ticks it owes
     /// instead of teleporting it on the first one. Scratch: cleared and
@@ -188,6 +197,8 @@ impl PhysicsBridge {
             joints_seen: Vec::new(),
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
+            joints_to_seed: Vec::new(),
+            joints_to_sync: Vec::new(),
             kin_start: Vec::new(),
             chain: Vec::new(),
             to_spawn: Vec::new(),
@@ -442,6 +453,15 @@ impl PhysicsBridge {
         // publishes what touches AT the tick the artist is now looking at, which is a
         // question even a scrub must answer. No-op (and no alloc) when nothing touches.
         self.rebuild_standing_contacts();
+        // Sync each joint's DISPLAY pivot (its `Transform.translation`) to where
+        // its authored body-local anchor now sits — so the anchor dot and the
+        // Inspector Position follow the body when a body moves. Rest-only: during
+        // play the dot is not shown and the overlay draws the live solver anchors
+        // (`joint_anchors`), so a per-frame write there would be a stale display
+        // value for no reader. `!playing` also covers a scrub that lands paused.
+        if !playing {
+            self.sync_joint_pivots(sim);
+        }
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned
@@ -655,45 +675,5 @@ impl PhysicsBridge {
             );
         }
         self.to_spawn.clear();
-    }
-
-    /// Aim every kinematic body at the pose its entity's `Transform` now
-    /// holds — the mirror image of [`Self::readback`], and the reason a baked
-    /// body still shoves the sim instead of ghosting through it.
-    ///
-    /// Nothing here decides WHERE the body goes; the scene already did, and
-    /// this stage only tells rapier. That is the whole contract of the kind:
-    /// the pose is an input, so a curve, a gizmo drag and a parent's motion
-    /// all drive it identically, with no branch per author.
-    /// Read each dynamic body's pose back into its entity's `Transform`
-    /// (meters, radians CCW, Y-up — no conversion; ADR-0131 D4). Static
-    /// bodies never move and kinematic ones are DRIVEN by that same
-    /// `Transform` ([`Self::drive_kinematic`]), so both are skipped — asked
-    /// through [`BodyKind::solver_owns_pose`], the one door, because a body
-    /// that both stages claimed would have its pose written twice a tick.
-    /// ⚠️ The solver answers in WORLD space and `Transform` is LOCAL, so the
-    /// pose goes back through [`space::write_world_pose`]. Assigning it raw
-    /// works for a root (where the two coincide) and is wrong for every child:
-    /// the renderer composes the parent onto it again, so the body simulates
-    /// in one place and draws in another. A parent that cannot be inverted
-    /// (scaled to zero) leaves the `Transform` untouched rather than storing
-    /// a non-finite pose that would poison the whole subtree.
-    fn readback(&mut self, sim: &mut SimWorld) {
-        let world = sim.world_mut();
-        for (&e, b) in self.bodies.iter() {
-            if !b.kind.solver_owns_pose() {
-                continue;
-            }
-            if let Some(pose) = self.world.body_pose(b.handle) {
-                space::write_world_pose(
-                    world,
-                    e,
-                    pose.translation.x,
-                    pose.translation.y,
-                    pose.rotation.angle(),
-                    &mut self.chain,
-                );
-            }
-        }
     }
 }

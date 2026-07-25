@@ -589,6 +589,22 @@ impl App {
                 }
             }
         }
+        // Anchor-dot drag: a physics joint's `Transform` is its authored world
+        // pivot, so a Translate on a joint entity REPOSITIONS the anchor. Mark it
+        // un-anchored each Move so the next reconcile re-derives the body-local
+        // anchors from the dragged pivot — the pin tracks the drag. Only a joint
+        // carries a `PhysicsJoint`; a body or sprite Translate is untouched.
+        if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+            && let Some(gfx) = self.gfx.as_mut()
+            && let Some(mut j) = gfx
+                .sim
+                .world_mut()
+                .get_mut::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(
+                    drag.entity_bits,
+                ))
+        {
+            j.anchored = false;
+        }
     }
 
     /// Compute the world-space center of the selected sprite's CONTENT

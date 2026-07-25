@@ -338,6 +338,12 @@ fn a_jointed_scene_hashes_the_same_twice() {
 /// existed, so the initial spawn read it. Here the joint has already been
 /// built and simulated, the clock is back at zero, and the artist drags the
 /// pin — the joint has to be re-described, exactly as a body is.
+///
+/// ⚠️ Since the gold-standard anchor (ADR-0131) the anchor is authored BODY-LOCAL
+/// and a body move no longer re-derives it — so REPOSITIONING the pivot is an
+/// explicit gesture: write the joint's `Transform` AND set `anchored = false`
+/// (exactly what the shell's anchor-dot drag and Inspector Position commit do).
+/// The next reconcile re-derives the body-local anchors from the new pivot.
 #[test]
 fn editing_the_anchor_at_rest_moves_the_pivot() {
     let mut sim = pendulum();
@@ -348,6 +354,10 @@ fn editing_the_anchor_at_rest_moves_the_pivot() {
     bridge.dispatch(&mut sim, false, 0); // back to rest — where authoring happens
 
     let pin = named(&mut sim, "Pin");
+    {
+        let mut j = sim.world_mut().get_mut::<PhysicsJoint>(pin).expect("joint");
+        j.anchored = false; // the reposition gesture requests a re-derive
+    }
     sim.world_mut()
         .get_mut::<Transform>(pin)
         .expect("transform")

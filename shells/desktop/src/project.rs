@@ -100,7 +100,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// lido CERTO; o bump existe pro caminho INVERSO — um save com um Weld, aberto por um binário v27,
 /// morre como erro de VERSÃO em vez de como um postcard perdido no discriminante 3 desconhecido
 /// (mesmo raciocínio do v24, os variants do vetor).
-const PROJECT_SCHEMA: u32 = 29;
+/// v30 (ADR-0131, gold-standard joint anchors): `PhysicsJoint` ganhou `local_a`/`local_b`/`anchored`
+/// APENDADOS — a âncora deixou de ser um ponto de MUNDO re-derivado (o `Transform` do joint) e
+/// passou a ser autorada BODY-LOCAL por corpo (a rep nativa do rapier), pra a âncora seguir o
+/// corpo quando ele se move. Layout posicional muda (mesmo padrão do v27/`is_sensor`): um save v29
+/// lido como v30 leria além do fim do blob do `PhysicsJoint`; um v30 lido por um binário v29 é
+/// recusado como erro de versão.
+const PROJECT_SCHEMA: u32 = 30;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

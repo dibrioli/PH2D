@@ -136,6 +136,11 @@ pub(crate) fn set_joint_body(
     if next.body_a == next.body_b {
         return false; // a self-joint is dormant — keep the pick armed instead
     }
+    // Re-picking a body changes which frame the stored local anchor belongs to,
+    // so it is meaningless for the new body: mark the joint un-anchored. The next
+    // reconcile re-derives both body-local anchors from the joint's current
+    // display pivot against the NEW bodies, re-gluing the pin where it visibly is.
+    next.anchored = false;
     let next = next.clamped();
     if next != current
         && let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(joint_e)

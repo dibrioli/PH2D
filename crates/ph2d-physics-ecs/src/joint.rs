@@ -33,6 +33,31 @@
 //! kill. See the docs on `stable_name_id` for the whole argument, including
 //! what it costs (renaming a body detaches its joints, exactly as it detaches
 //! its timeline tracks).
+//!
+//! # The anchor is authored BODY-LOCAL, so it follows the body (the gold standard)
+//!
+//! [`PhysicsJoint::local_a`] / `local_b` hold the anchor in **each body's own
+//! local frame** — the same pair rapier stores (`local_anchor1`/`local_anchor2`)
+//! and the pair Box2D's `Initialize` and Unity's `anchor`/`connectedAnchor`
+//! store. Because they are local, a body carries its anchor by construction:
+//! move a body on the canvas and the pin stays glued where the artist put it.
+//!
+//! This replaces the old model, where the anchor was a single WORLD point (the
+//! joint's `Transform.translation`) that the bridge re-derived to local **every
+//! reconcile** against the bodies' current poses. That re-derivation was the
+//! slide: moving a body left the world point put and shifted the local anchor
+//! along the body. The world point is now a DERIVED display value —
+//! `bridge::joints` syncs the joint's `Transform.translation = bodyA · local_a`
+//! at rest so the anchor dot and the Inspector Position follow the body.
+//!
+//! [`PhysicsJoint::anchored`] is the seed sentinel. A joint arriving with only a
+//! world `Transform` (a fresh `create_joint`, a bare test fixture, a re-pick)
+//! carries `anchored: false`; the first reconcile derives `local_a`/`local_b`
+//! from that `Transform` — the SAME conversion the old model did, once — and
+//! flips it true. An authoring gesture that REPOSITIONS the pivot (the anchor
+//! dot, the Inspector Position, re-picking a body) sets it back to `false` to
+//! request one more re-derive; a body MOVE never touches it, which is the whole
+//! fix.
 
 use ph2d_ecs::{Component, SimComponent};
 use serde::{Deserialize, Serialize};
@@ -123,6 +148,18 @@ pub struct PhysicsJoint {
     pub damping: f32,
     /// Rope: the distance the anchors may not exceed, meters.
     pub max_length: f32,
+    /// The anchor on body A, in **body A's local frame** (module docs). Where
+    /// the pin attaches ON the body, so it follows the body when the body moves.
+    pub local_a: [f32; 2],
+    /// The anchor on body B, likewise in B's local frame. For a two-ended joint
+    /// (Spring/Rope) this is body B's centre (`[0, 0]`).
+    pub local_b: [f32; 2],
+    /// Have `local_a`/`local_b` been derived yet? `false` on a joint that
+    /// arrives with only a world `Transform` (fresh create, bare fixture,
+    /// re-pick) — the first reconcile seeds the locals from the `Transform` and
+    /// flips this true. A reposition gesture sets it false again to re-seed; a
+    /// body move never does (the slide fix).
+    pub anchored: bool,
 }
 
 impl Default for PhysicsJoint {
@@ -144,6 +181,13 @@ impl Default for PhysicsJoint {
             stiffness: ph2d_physics::JointDesc::DEFAULT_STIFFNESS,
             damping: ph2d_physics::JointDesc::DEFAULT_DAMPING,
             max_length: 1.0,
+            // A fresh joint has no anchor yet: the first reconcile seeds the
+            // locals from the entity's `Transform`. `[0, 0]` is a valid local
+            // anchor (a body's centre), which is exactly why `anchored` — not a
+            // sentinel value — records whether the seed has happened.
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            anchored: false,
         }
     }
 }
@@ -203,6 +247,11 @@ impl PhysicsJoint {
         self.damping = finite(self.damping, d.damping).max(0.0);
         // rapier's own docs require a rope's distance to be strictly positive.
         self.max_length = finite(self.max_length, d.max_length).max(Self::MIN_LENGTH);
+        // A local anchor flows straight into rapier's `local_anchor1/2`; a NaN
+        // there poisons the body's pose (the same failure `stiffness = NaN`
+        // caused above). Guard each component back to the body's centre.
+        self.local_a = [finite(self.local_a[0], 0.0), finite(self.local_a[1], 0.0)];
+        self.local_b = [finite(self.local_b[0], 0.0), finite(self.local_b[1], 0.0)];
         self
     }
 

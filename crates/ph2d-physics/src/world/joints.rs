@@ -288,6 +288,20 @@ impl PhysicsWorld {
         [p.x, p.y]
     }
 
+    /// The inverse of [`Self::local_anchor_at_pose`]: a body-local anchor → the
+    /// WORLD point it sits at, given the body's pose.
+    ///
+    /// This is how the ECS side derives the joint's DISPLAY pivot from the
+    /// authored local anchor (`bridge::joints` syncs it into the joint's
+    /// `Transform` so the anchor dot follows the body). Uses rapier's own
+    /// `transform_point`, so it and `local_anchor_at_pose` round-trip exactly
+    /// (`world_from_local(pose, local_anchor_at_pose(pose, w)) == w`).
+    pub fn world_from_local_at_pose(pose: [f32; 3], local: [f32; 2]) -> [f32; 2] {
+        let iso = Isometry2::new(Vector2::new(pose[0], pose[1]), pose[2]);
+        let p = iso.transform_point(&Point2::new(local[0], local[1]));
+        [p.x, p.y]
+    }
+
     /// Two world points → the same two points in the bodies' own frames, using
     /// the poses the bodies are in **right now**.
     ///

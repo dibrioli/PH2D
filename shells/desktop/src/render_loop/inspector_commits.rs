@@ -10,13 +10,15 @@
 //!
 //! Behavior-preserving lift.
 //
-// ph2d-loc-cap: 616 LOC — `dispatch` is a sequence of independent per-field
+// ph2d-loc-cap: 651 LOC — `dispatch` is a sequence of independent per-field
 // commit drains (Transform / Visibility / Name / Sprite / Reimport) lifted
 // verbatim from mod.rs, plus inline unit tests. Splitting into per-field
 // sibling modules is a focused Sprite-Inspector follow-up: side-effecting
 // drain code with no isolation, where a blind split risks regressions the
 // gate can't catch. Pre-existing debt; tracked exception to unblock the
-// accumulated W2/W3 ship (Coord ship-prep 2026-06-02).
+// accumulated W2/W3 ship (Coord ship-prep 2026-06-02). +12 (gold-standard
+// joint anchor): a joint's Position commit sets `anchored = false` so the
+// bridge re-derives its body-local anchors from the new pivot.
 
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};
@@ -201,6 +203,19 @@ pub(super) fn dispatch(
                 toasts.push(Toast::error(format!("Transform encode failed: {e}")));
                 title_dirty = true;
             }
+        }
+        // A physics joint's `Transform` IS its authored world pivot, so an
+        // Inspector Position edit REPOSITIONS the anchor — mark it un-anchored so
+        // the bridge re-derives the body-local anchors from the new pivot (the
+        // same re-seat the anchor-dot drag does). A body's Position edit carries
+        // no `PhysicsJoint`, so it is untouched.
+        if let Some(mut j) =
+            sim.world_mut()
+                .get_mut::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(
+                    info.entity_bits,
+                ))
+        {
+            j.anchored = false;
         }
     }
     // M14.D: drain Inspector Visibility commit → same

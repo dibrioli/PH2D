@@ -22,7 +22,7 @@
 //! this rule (`at_rest && b.rest != desc`), and joints ride it rather than
 //! inventing a second one.
 
-use ph2d_ecs::{Entity, Name, SimWorld, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
 
 use super::BodyRef;
@@ -108,7 +108,13 @@ pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2])
 impl PhysicsBridge {
     /// Spawn / remove / re-describe joints to match the entities carrying
     /// [`PhysicsJoint`]. Called from `reconcile_structure`, after the bodies.
-    pub(super) fn reconcile_joints(&mut self, sim: &SimWorld) {
+    ///
+    /// Takes `&mut SimWorld` (unlike its body sibling) because it SEEDS a joint's
+    /// body-local anchors on first sight — writing `local_a`/`local_b`/`anchored`
+    /// back into the component. After the seed the anchors are authored state and
+    /// this only reads them, which is the whole slide fix (a body move no longer
+    /// re-derives against the world `Transform`).
+    pub(super) fn reconcile_joints(&mut self, sim: &mut SimWorld) {
         let world = sim.world();
 
         // Nothing to do, and — the part that matters — nothing to allocate or
@@ -133,6 +139,7 @@ impl PhysicsBridge {
         self.joints_seen.clear();
         self.joints_to_spawn.clear();
         self.joints_to_remove.clear();
+        self.joints_to_seed.clear();
         let at_rest = self.last_stepped == 0;
 
         for (e, joint, _local) in q.iter(world) {
@@ -184,32 +191,38 @@ impl PhysicsBridge {
                 drop_if_live(self);
                 continue;
             };
-            // Body B's centre for the spring/rope policy — its **rest**
-            // centre, for the same reason the anchor uses the rest pose.
-            let centre_b = [bb.rest.x, bb.rest.y];
             let handles = (ba.handle, bb.handle);
-            // World → local, ONCE, and **against the bodies' REST poses** —
-            // never against where they happen to be.
+            // The body-local anchors. Authored state once seeded; the whole
+            // slide fix is that a body move reads them UNCHANGED (the anchor
+            // follows the body) instead of re-deriving against the world point.
             //
-            // The anchor is a fact about the AUTHORED scene: the artist put the
-            // pin at the plank's left end, and that is where it is whether they
-            // pressed Join at tick 0 or mid-swing. Converting against the live
-            // pose makes the same authored point land somewhere else on the
-            // body depending on when the gesture happened — and then a Reset
-            // re-derives it a third way. Measured before this: the pin walked
-            // **1.771 m** along the plank across a Reset, with nobody touching
-            // anything.
-            //
-            // This is also what makes the rule the module header states TRUE
-            // rather than aspirational: it no longer matters when a joint is
-            // spawned, so nothing has to gate the gesture on the clock.
-            let (wa, wb) = anchor_points(
-                joint,
-                [transform.translation.x, transform.translation.y],
-                centre_b,
-            );
-            let la = PhysicsWorld::local_anchor_at_pose(rest_pose(ba), wa);
-            let lb = PhysicsWorld::local_anchor_at_pose(rest_pose(bb), wb);
+            // ⚠️ **Seed once, from the world `Transform`, against the bodies'
+            // REST poses.** A joint arriving with only a world anchor (fresh
+            // create, a bare fixture, a re-pick) has `anchored: false`; this is
+            // the SAME `anchor_points` + `local_anchor_at_pose` conversion the
+            // pre-fix model ran EVERY reconcile — the only change is that now it
+            // runs once and the result is persisted. Converting against the rest
+            // pose (not the live one) is why the pin does not walk across a
+            // Reset — the lesson that cost **1.771 m** of drift before it.
+            let (la, lb) = if joint.anchored {
+                (joint.local_a, joint.local_b)
+            } else {
+                // Body B's centre for the spring/rope policy — its **rest**
+                // centre, for the same reason the anchor uses the rest pose.
+                let centre_b = [bb.rest.x, bb.rest.y];
+                let (wa, wb) = anchor_points(
+                    joint,
+                    [transform.translation.x, transform.translation.y],
+                    centre_b,
+                );
+                let la = PhysicsWorld::local_anchor_at_pose(rest_pose(ba), wa);
+                let lb = PhysicsWorld::local_anchor_at_pose(rest_pose(bb), wb);
+                // Persist after the query borrow releases (below), and flip
+                // `anchored` so the next reconcile — and every body move — reads
+                // these instead of re-deriving.
+                self.joints_to_seed.push((e, la, lb));
+                (la, lb)
+            };
             // `clamped()` here and not only in the Inspector: a component is
             // serde and arrives from the project file too, and this is the last
             // door before rapier.
@@ -272,6 +285,75 @@ impl PhysicsBridge {
             }
         }
         self.joints_to_spawn.clear();
+
+        // Persist the anchors just seeded. Done after the query borrow so the
+        // component write does not alias the read; `anchored = true` so a body
+        // move never re-derives them — the seed is once, the follow is forever.
+        for i in 0..self.joints_to_seed.len() {
+            let (e, la, lb) = self.joints_to_seed[i];
+            if let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(e) {
+                j.local_a = la;
+                j.local_b = lb;
+                j.anchored = true;
+            }
+        }
+        self.joints_to_seed.clear();
+    }
+
+    /// Sync each joint's DISPLAY pivot — its `Transform.translation` — to where
+    /// its authored body-A anchor now sits (`bodyA_rest · local_a`). This is what
+    /// makes the anchor dot and the Inspector Position FOLLOW the body: move a
+    /// body and its stored `local_a` is unchanged, so the derived pivot — and the
+    /// dot drawn there — moves with it.
+    ///
+    /// Rest-only (the caller gates on `!playing`): during play the dot is not
+    /// shown and the overlay draws the live solver anchors, so writing a stale
+    /// display value every frame would be work for no reader.
+    ///
+    /// The write is idempotent after a seed/re-seat (the pivot equals what the
+    /// gesture set), so it never manufactures a diff — a body move and the pivot
+    /// that follows it land in the SAME undo step (one gesture).
+    ///
+    /// ⚠️ Joints are root entities, so `translation` IS the world pivot with no
+    /// parent compose (the same assumption `point_gizmo::build_point_view` makes).
+    pub(super) fn sync_joint_pivots(&mut self, sim: &mut SimWorld) {
+        if self.joints.is_empty() {
+            return;
+        }
+        // Take the scratch out so the collect (which borrows `self.joints` and
+        // `self.bodies`) does not clash with pushing into it.
+        let mut scratch = std::mem::take(&mut self.joints_to_sync);
+        scratch.clear();
+        {
+            let world = sim.world();
+            for (&e, j) in self.joints.iter() {
+                let (Some(ba), Some(joint)) =
+                    (self.bodies.get(&j.entities.0), world.get::<PhysicsJoint>(e))
+                else {
+                    continue;
+                };
+                // Only a seeded joint has a meaningful local anchor; an un-seeded
+                // one still carries the world `Transform` the seed will read, so
+                // leave it be until reconcile seeds it next dispatch.
+                if !joint.anchored {
+                    continue;
+                }
+                let pivot = PhysicsWorld::world_from_local_at_pose(rest_pose(ba), joint.local_a);
+                scratch.push((e, pivot));
+            }
+        }
+        for &(e, pivot) in scratch.iter() {
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+                // Write only on a real change so an untouched joint never
+                // manufactures a diff for the frame-level undo.
+                if t.translation.x != pivot[0] || t.translation.y != pivot[1] {
+                    t.translation.x = pivot[0];
+                    t.translation.y = pivot[1];
+                }
+            }
+        }
+        scratch.clear();
+        self.joints_to_sync = scratch;
     }
 
     /// Re-attach every joint after the bodies have been rebuilt from their rest

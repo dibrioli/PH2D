@@ -1053,16 +1053,16 @@ fn a_fill_only_drawing_renders_instead_of_crashing() {
 
 // ── O *tip* pontilhado (Dots/Squares, 03 §8) ──────────────────────────────────
 
-/// O fixture do *tip*: um traço horizontal reto no meio do alvo — px (6,32)→(58,32),
-/// largura 8 (raio 4). O `spacing` é a pitch como MÚLTIPLO do diâmetro (relativo à
-/// espessura): `1.5` ⇒ pitch = `1.5 × 8` = 12 px (mundo=px na câmera 1:1), vão de 4 px.
-fn dotted_line(tip: StrokeTip, spacing: f32) -> FlipDrawing {
+/// O fixture do *tip*: um traço horizontal reto no meio do alvo — px (6,32)→(58,32), com a
+/// `width` dada. O `spacing` é a pitch como MÚLTIPLO do diâmetro (relativo à espessura): `1.5`
+/// ⇒ pitch = `1.5 × width` (mundo=px na câmera 1:1).
+fn dotted_line(tip: StrokeTip, spacing: f32, width: f32) -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
     for x in [6.0, 32.0, 58.0] {
         s.push_point(Point {
             pos: Vec2::new(x, 32.0),
-            width: 8.0,
+            width,
             opacity: 1.0,
             color: Rgba::new(1.0, 1.0, 1.0, 1.0),
         });
@@ -1071,6 +1071,62 @@ fn dotted_line(tip: StrokeTip, spacing: f32) -> FlipDrawing {
     s.dot_spacing = spacing;
     d.strokes.push(s);
     d
+}
+
+/// Um traço GROSSO em curva suave (senoide, 13 pontos), pontilhado. Largura 12; é o mais perto
+/// de um traço desenhado à mão que dá para montar, e onde o *lens* de arco (o bug) estica as
+/// contas numa banana. A área coberta das contas mede se elas são DISCOS cheios ou lentes
+/// encolhidas.
+fn curved_thick_dotted(tip: StrokeTip, spacing: f32) -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    for i in 0..=12 {
+        let x = 6.0 + i as f32 * 4.3;
+        let y = 32.0 + 14.0 * (i as f32 * 0.55).sin();
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: 12.0,
+            opacity: 1.0,
+            color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+        });
+    }
+    s.tip = tip;
+    s.dot_spacing = spacing;
+    d.strokes.push(s);
+    d
+}
+
+/// 🔴 **As contas de um traço GROSSO numa CURVA são DISCOS EUCLIDIANOS cheios, não lentes de
+/// arco encolhidas.** O 2º report do Enio (2026-07-25, com screenshot): *"pontos deformados em
+/// linhas grossas"*. A métrica antiga `√(dn² + da_arco²)` mede a distância AO-LONGO do arco, que
+/// curva — então a conta esticava numa banana e ENCOLHIA a área coberta. Medindo o PONTO-centro
+/// 2D e a distância EUCLIDIANA `|frag − C|`, a conta fica redonda e cheia em qualquer curva.
+///
+/// O oráculo é a ÁREA coberta pelas contas: o disco Euclidiano cobre **710** px; o *lens* de
+/// arco encolhe para **621** (medido). O `bbox`/aspecto de uma conta isolada foi tentado e
+/// REPROVADO como oráculo — numa curva as contas vizinhas invadem a janela e poluem a medida
+/// (o disco cheio, sendo maior, polui MAIS, invertendo o sinal). A área é robusta e direta:
+/// *contas cheias vs encolhidas*. Mutação que sangra: trocar a distância Euclidiana pela
+/// métrica de arco (a área cai para ~621, < 665).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn dots_on_a_curved_thick_stroke_are_full_disks_not_shrunken_lenses() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let px = render(&device, &queue, &curved_thick_dotted(StrokeTip::Dots, 1.5));
+    let mut area = 0u32;
+    for y in 0..H {
+        for x in 0..W {
+            if alpha_at(&px, x, y) > 50 {
+                area += 1;
+            }
+        }
+    }
+    assert!(
+        area > 665,
+        "as contas da curva grossa encolheram numa banana de arco (area {area}; disco cheio ~710, lens ~621)"
+    );
 }
 
 /// 🔴 A linha CHEIA (`Continuous`) cobre a fileira do meio SEM buraco; a pontilhada (`Dots`)
@@ -1088,14 +1144,18 @@ fn dots_carve_gaps_that_a_continuous_line_does_not() {
     let row = 32;
     let span = || 10u32..54u32; // dentro do traço, longe das pontas
 
-    let cont = render(&device, &queue, &dotted_line(StrokeTip::Continuous, 1.5));
+    let cont = render(
+        &device,
+        &queue,
+        &dotted_line(StrokeTip::Continuous, 1.5, 8.0),
+    );
     let min_cont = span().map(|x| alpha_at(&cont, x, row)).min().unwrap();
     assert!(
         min_cont > 40,
         "a linha CHEIA nao pode ter buraco na fileira do meio (min alpha {min_cont})"
     );
 
-    let dots = render(&device, &queue, &dotted_line(StrokeTip::Dots, 1.5));
+    let dots = render(&device, &queue, &dotted_line(StrokeTip::Dots, 1.5, 8.0));
     let min_dots = span().map(|x| alpha_at(&dots, x, row)).min().unwrap();
     let max_dots = span().map(|x| alpha_at(&dots, x, row)).max().unwrap();
     assert!(
@@ -1111,6 +1171,11 @@ fn dots_carve_gaps_that_a_continuous_line_does_not() {
 /// A conta QUADRADA cobre mais área que a REDONDA (quadrado de lado 2r vs disco de raio r:
 /// 4r² vs πr² ≈ 1,27×) — é o que distingue `Squares` de `Dots` na tela. Mesmo fixture,
 /// mesmo espaçamento; só o `tip` muda.
+///
+/// ⚠️ **Largura 20 (raio 10), não 8** — a raio 4 o disco e o quadrado ambos preenchem a
+/// largura do traço (a conta é a meia-espessura), então a diferença mora só nas QUINAS, que
+/// caem na borda do traço, e o AA de ~1 px domina a contagem (a razão desaba para ~6 %). Com
+/// raio 10 o AA é uma fração pequena e a razão 4/π ≈ 1,27 aparece limpa.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
 fn squares_cover_more_area_than_round_dots() {
@@ -1128,11 +1193,15 @@ fn squares_cover_more_area_than_round_dots() {
         }
         n
     };
-    let dots = covered(&render(&device, &queue, &dotted_line(StrokeTip::Dots, 1.5)));
+    let dots = covered(&render(
+        &device,
+        &queue,
+        &dotted_line(StrokeTip::Dots, 1.5, 20.0),
+    ));
     let squares = covered(&render(
         &device,
         &queue,
-        &dotted_line(StrokeTip::Squares, 1.5),
+        &dotted_line(StrokeTip::Squares, 1.5, 20.0),
     ));
     assert!(
         squares > dots + dots / 10,

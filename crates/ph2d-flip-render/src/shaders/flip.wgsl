@@ -141,10 +141,13 @@ struct VsOut {
     @location(8) @interpolate(flat) radii: vec4<f32>,
     // (offset, count) dos vizinhos GEOMÉTRICOS deste segmento em `seg_extras`.
     @location(9) @interpolate(flat) extras: vec2<u32>,
-    // O *tip* pontilhado: (arc_a, arc_b) = o arco MUNDO nas duas pontas do segmento; `tip` =
+    // O *tip* pontilhado: `arc4` = o arco MUNDO nos 4 pontos da janela (p0,p1,p2,p3), medido
+    // por offsets LOCAIS a partir de `arc_len[p1]` (contínuo através da costura de um anel).
+    // O fragment lê o arco do PONTO MAIS PRÓXIMO da polilinha (união), não a projeção no
+    // segmento próprio — senão a conta ganha um degrau na junção de um traço grosso. `tip` =
     // 0/1/2; `dot_spacing` = a pitch como MÚLTIPLO do diâmetro; `ref_width` = a espessura de
     // referência do traço (mundo). `Continuous` (tip 0) ignora tudo isto.
-    @location(10) @interpolate(flat) arc: vec2<f32>,
+    @location(10) @interpolate(flat) arc4: vec4<f32>,
     @location(11) @interpolate(flat) tip: u32,
     @location(12) @interpolate(flat) dot_spacing: f32,
     @location(13) @interpolate(flat) ref_width: f32,
@@ -337,11 +340,15 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     // O segmento é identificado pelo seu ponto INICIAL (`gp`) — o mesmo índice que
     // a CPU usou ao preencher `seg_extra_range` (pack.rs).
     out.extras = seg_extra_range[gp];
-    // O *tip* pontilhado: o arco MUNDO nas duas pontas. `arc_a` vem da CPU (cumulativo);
-    // `arc_b = arc_a + |b−a|` é LOCAL, então o segmento de FECHO de um anel (b = first,
-    // arc_len[first]=0) fecha certo em vez de saltar para zero.
-    let arc_a = arc_len[gp];
-    out.arc = vec2<f32>(arc_a, arc_a + length(b.pos - a.pos));
+    // O *tip* pontilhado: o arco MUNDO nos 4 pontos da janela. `arc_p1` vem da CPU
+    // (cumulativo); p0/p2/p3 são offsets LOCAIS a partir dele (as mesmas |Δ| do quad), então
+    // o segmento de FECHO de um anel fecha certo em vez de saltar para zero, e um vizinho
+    // ausente (sentinela p==p1) tem offset 0 e cápsula degenerada — o fragment o ignora.
+    let arc_p1 = arc_len[gp];
+    let arc_p0 = arc_p1 - length(a.pos - p_prev.pos);
+    let arc_p2 = arc_p1 + length(b.pos - a.pos);
+    let arc_p3 = arc_p2 + length(p_next.pos - b.pos);
+    out.arc4 = vec4<f32>(arc_p0, arc_p1, arc_p2, arc_p3);
     out.tip = st.tip;
     out.dot_spacing = st.dot_spacing;
     out.ref_width = st.ref_width;
@@ -390,6 +397,45 @@ fn capsule_dn(frag: vec2<f32>, a: vec2<f32>, b: vec2<f32>, ra: f32, rb: f32) -> 
     return d / max(mix(ra, rb, t), 1e-4);
 }
 
+// Como `capsule_dn`, mas devolve `vec2(dn, arco)` — o arco MUNDO no ponto MAIS PRÓXIMO da
+// cápsula (o `t` clampado interpola entre `arc_a` e `arc_b`). O *tip* pontilhado escolhe o
+// arco da cápsula de menor `dn` (a que de fato cobre o pixel), e não a projeção no segmento
+// próprio: dois quads adjacentes que se sobrepõem numa junção contêm as MESMAS cápsulas na
+// janela ⇒ concordam no vencedor ⇒ o arco fica CONTÍNUO na costura, e a conta não ganha
+// degrau num traço grosso (o report "pontos deformados em linhas grossas"). Cápsula
+// degenerada (sentinela de borda) devolve `1e9` e nunca vence.
+fn capsule_dn_arc(
+    frag: vec2<f32>,
+    a: vec2<f32>,
+    b: vec2<f32>,
+    ra: f32,
+    rb: f32,
+    arc_a: f32,
+    arc_b: f32,
+) -> vec2<f32> {
+    let ab = b - a;
+    let len_sq = dot(ab, ab);
+    if (len_sq < 1e-6) {
+        return vec2<f32>(1e9, arc_a);
+    }
+    let t = clamp(dot(frag - a, ab) / len_sq, 0.0, 1.0);
+    let d = length(frag - a - t * ab);
+    return vec2<f32>(d / max(mix(ra, rb, t), 1e-4), mix(arc_a, arc_b, t));
+}
+
+// O PONTO (tela) do centro de conta no arco `sc`, interpolado no segmento `a`→`b` cujos
+// extremos estão nos arcos `arc_a`/`arc_b`. Como a câmera é uniforme, a fração de arco é a
+// fração de tela. Clampado — se `sc` cai fora do segmento, devolve o extremo (o chamador só
+// usa o segmento que de fato contém `sc`; o clamp é sanidade). Devolve `xy` = ponto, `zw` =
+// direção UNITÁRIA do segmento (para orientar o quadrado; reta degenerada → +x).
+fn bead_point(a: vec2<f32>, b: vec2<f32>, arc_a: f32, arc_b: f32, sc: f32) -> vec4<f32> {
+    let f = clamp((sc - arc_a) / max(arc_b - arc_a, 1e-6), 0.0, 1.0);
+    let p = a + (b - a) * f;
+    var dir = vec2<f32>(1.0, 0.0);
+    _ = safe_dir(b - a, &dir);
+    return vec4<f32>(p, dir);
+}
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // Pixel em SCREEN-SPACE bottom-up (o `@builtin(position)` é top-down → flip Y
@@ -423,36 +469,55 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             max(eb.width * 0.5 * cam.px_per_world, 0.0),
         ));
     }
-    // **O *tip* pontilhado** (Dots/Squares, 03 §8): a linha vira contas espaçadas por
-    // ARC-LENGTH. A distância normalizada ATRAVÉS do traço (`dn`) ganha um termo AO-LONGO
-    // do arco — uma conta é um DISCO (`sqrt(dn²+da²)`, Euclidiano) ou um QUADRADO
-    // (`max(dn, da)`, Chebyshev) de raio = a meia-espessura; a pitch entre centros é
-    // `dot_spacing × ref_width` — ou seja o espaçamento é RELATIVO À ESPESSURA (um múltiplo
-    // do diâmetro), não uma distância de mundo fixa. Sem isto, um traço grosso tem contas
-    // maiores que a pitch fixa e elas FUNDEM num borrão (o report do Enio, 2026-07-25). Com
-    // a pitch escalando com `ref_width`, o padrão aparece em qualquer espessura. `Continuous`
-    // (tip 0) NÃO toca em `dn` ⇒ byte-idêntico à linha cheia. A depth é por-TRAÇO (não muda
-    // com o tip), então as contas que se sobrepõem numa quina são first-wins (união) — nunca
-    // acumulam.
+    // **O *tip* pontilhado** (Dots/Squares, 03 §8): a linha vira CONTAS — cada uma um DISCO
+    // (ou QUADRADO) EUCLIDIANO de raio = a meia-espessura, centrado num ponto da linha-de-centro
+    // a cada `pitch = dot_spacing × ref_width` de ARCO. A pitch é RELATIVA À ESPESSURA (múltiplo
+    // do diâmetro), não uma distância de mundo fixa — senão um traço grosso funde as contas num
+    // borrão (1º report do Enio, 2026-07-25). ⚠️ A conta é a distância EUCLIDIANA `|frag − C|` ao
+    // PONTO-centro `C`, **não** `√(dn² + da_arco²)`: o arco curva, então a métrica mista esticava
+    // a conta numa banana ao longo da curva (2º report do Enio: *"pontos deformados em linhas
+    // grossas"* — medido: o L a 90° e a senoide saíam idênticos com/sem o arco de junção, então
+    // não era a costura, era o LENS de arco). Com o centro como ponto 2D e distância reta, a
+    // conta fica redonda em qualquer curva. `Continuous` (tip 0) NÃO toca em `dn` ⇒ byte-idêntico
+    // à linha cheia. A depth é por-TRAÇO, então contas que se sobrepõem numa quina são first-wins.
     if (in.tip != 0u && in.dot_spacing > 0.0) {
-        let seg = in.ss_p2 - in.ss_p1;
-        let t_own = clamp(dot(frag - in.ss_p1, seg) / max(dot(seg, seg), 1e-6), 0.0, 1.0);
-        let s = mix(in.arc.x, in.arc.y, t_own); // o arco MUNDO no pixel
-        // A pitch (mundo) = múltiplo do diâmetro de referência. `max(…,1e-6)` cobre o
-        // degenerado `ref_width == 0` (traço de largura zero, que nem renderiza): a pitch
-        // colapsa, `da_world → 0` e a conta vira a linha cheia — sem NaN.
+        // O arco `s` do PONTO MAIS PRÓXIMO da polilinha (união prev/own/next), não a projeção
+        // no segmento próprio — o vencedor de menor `dn` é o mesmo nos quads que se sobrepõem
+        // numa junção, então `s` (e o centro de conta escolhido) é CONTÍNUO na costura.
+        var best = capsule_dn_arc(
+            frag, in.ss_p1, in.ss_p2, in.radii.y, in.radii.z, in.arc4.y, in.arc4.z);
+        let cp = capsule_dn_arc(
+            frag, in.ss_p0, in.ss_p1, in.radii.x, in.radii.y, in.arc4.x, in.arc4.y);
+        if (cp.x < best.x) { best = cp; }
+        let cn = capsule_dn_arc(
+            frag, in.ss_p2, in.ss_p3, in.radii.z, in.radii.w, in.arc4.z, in.arc4.w);
+        if (cn.x < best.x) { best = cn; }
+        let s = best.y;
+        // A pitch. `max(…,1e-6)` cobre `ref_width == 0` (largura zero, que nem renderiza).
         let pitch = max(in.dot_spacing * in.ref_width, 1e-6);
-        let da_world = abs(fract(s / pitch + 0.5) - 0.5) * pitch;
-        // Normaliza pela meia-espessura LOCAL em MUNDO — a MESMA unidade que `dn` normaliza a
-        // distância ATRAVÉS (ambos = distância/raio, logo combináveis). O TAMANHO da conta
-        // segue a espessura local (pressão/taper); só a PITCH é a de referência do traço.
-        let r_world = in.thickness * 0.5 / max(cam.px_per_world, 1e-6);
-        let da_norm = da_world / max(r_world, 1e-6);
-        if (in.tip == TIP_SQUARES) {
-            dn = max(dn, da_norm);
-        } else {
-            dn = sqrt(dn * dn + da_norm * da_norm);
+        // O arco do centro de conta mais próximo, e o PONTO 2D (tela) ali — no segmento da
+        // janela que o contém (own / prev / next).
+        let sc = round(s / pitch) * pitch;
+        var c = bead_point(in.ss_p1, in.ss_p2, in.arc4.y, in.arc4.z, sc);
+        if (sc < in.arc4.y) {
+            c = bead_point(in.ss_p0, in.ss_p1, in.arc4.x, in.arc4.y, sc);
+        } else if (sc > in.arc4.z) {
+            c = bead_point(in.ss_p2, in.ss_p3, in.arc4.z, in.arc4.w, sc);
         }
+        // Distância EUCLIDIANA (tela) à conta, normalizada pela meia-espessura LOCAL — a mesma
+        // unidade que `dn`. O tamanho segue a espessura local; só a pitch é per-traço.
+        let r = max(in.thickness * 0.5, 1e-4);
+        let d = frag - c.xy;
+        var dn_dot: f32;
+        if (in.tip == TIP_SQUARES) {
+            // Quadrado orientado à TANGENTE local (gira com o traço, como o pincel manda).
+            let nrm = vec2<f32>(-c.w, c.z);
+            dn_dot = max(abs(dot(d, c.zw)), abs(dot(d, nrm))) / r;
+        } else {
+            dn_dot = length(d) / r;
+        }
+        // A conta é o traço ∩ o disco: `max` = a MENOR cobertura (perfil decrescente em `dn`).
+        dn = max(dn, dn_dot);
     }
     // `dn` é contínuo (os campos coincidem onde trocam de dono), então o `fwidth`
     // do AA só vê um salto de DERIVADA na costura do `min` — nunca um degrau.

@@ -88,6 +88,9 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_TRAP
                 || id == ids::FLIP_COLORIZE_BLEED
                 || id == ids::FLIP_PRECISION
+                // O Spacing do *tip* pontilhado (03 §8) — sem este arm o arrasto do slider
+                // era dropado em silêncio (o slider mexia na tela e nunca chegava ao tool).
+                || id == ids::FLIP_DOT_SPACING
                 // Os sliders PRÓPRIOS da borracha (§4.C) — só existem na tela com o
                 // link desligado, mas o arm vale sempre (o painel não gateia evento).
                 || id == ids::FLIP_ERASE_SIZE
@@ -113,6 +116,7 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_TRAP_NUM
                 || id == ids::FLIP_COLORIZE_BLEED_NUM
                 || id == ids::FLIP_PRECISION_NUM
+                || id == ids::FLIP_DOT_SPACING_NUM
                 || id == ids::FLIP_ERASE_SIZE_NUM
                 || id == ids::FLIP_ERASE_STRENGTH_NUM =>
         {

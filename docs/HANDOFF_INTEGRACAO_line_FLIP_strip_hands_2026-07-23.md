@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o **fix do espaçamento relativo à espessura** da §2.8; a co-rotação do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o **slider morto + o disco Euclidiano** da §2.8; a co-rotação do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **31** (§2.2..§2.6 + **§2.7 a torção do tween** ×2 + **§2.8 o pincel pontilhado** ×2 + **o fix do espaçamento relativo à espessura** ×1) — confira com `git rev-list --count main..HEAD` |
+| commits à frente do `main` | **32** (§2.2..§2.6 + **§2.7 a torção do tween** ×2 + **§2.8 o pincel pontilhado** ×2 + **espaçamento relativo à espessura** ×1 + **slider morto + disco Euclidiano** ×1) — confira com `git rev-list --count main..HEAD` |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -317,6 +317,27 @@ espaçadas por **ARC-LENGTH** (imune à densidade de input E ao zoom — medem M
   (não é mais mundo). Mutação-provado: reverter a pitch para mundo-absoluto (`in.dot_spacing` sem
   `× ref_width`) derruba `dots_carve_gaps` (a fixture fina de razão 1,5 colapsa em linha cheia). A
   cena do smoke ganhou um **4º traço GROSSO pontilhado** (o caso do report) + gate que o pina.
+- **⚠️ 2ª RODADA DE FIXES (Enio 2026-07-25, re-smoke: *"slider de spacing não funciona. pontos
+  deformados em linhas grossas"*):** dois bugs distintos.
+  - **O slider Spacing estava MORTO.** O arm de `ValueChanged` do `ph2d-panel-flip::event.rs`
+    ENUMERA os sliders do brush e o `FLIP_DOT_SPACING` ficou de fora
+    ([[feedback_a_condition_that_enumerates_its_readers_rots]]) — o arrasto era dropado em
+    silêncio; o teste do tool chamava `handle_panel_event` DIRETO, pulando a costura. Fix: os dois
+    arms (forward + swallow do `_NUM`) ganham o id; gate novo `seam.rs::dot_spacing_slider_drag_reaches_tool`
+    dirige o `ValueChanged` REAL pelo painel (mutação-provado: tirar o arm → RED).
+  - **As contas eram LENTES DE ARCO, não discos.** A métrica combinava `dn` (através) com `da`
+    AO-LONGO DO ARCO, que curva ⇒ numa curva grossa a conta esticava numa banana e ENCOLHIA.
+    Agora a conta é a distância EUCLIDIANA `|frag − C|` a um PONTO-centro 2D `C` (round) ou
+    `max(along,cross)` no frame local (square, gira com a tangente). `C` sai do arco do ponto
+    mais próximo (`arc4` = os 4 arcos da janela no VsOut, `capsule_dn_arc` + `bead_point`).
+    ⚠️ **Medido: o L a 90° e a senoide saíam idênticos com/sem o arco-de-junção-consistente** —
+    a costura NÃO era a causa, era o *lens*; o arco-de-junção foi reusado só para achar `C`
+    contínuo. Gate `dots_on_a_curved_thick_stroke_are_full_disks_not_shrunken_lenses` (área da
+    senoide: disco 710 vs lens 621, red-first). ⚠️ **O `squares_cover_more` mudou para RAIO 10**
+    — a raio 4 o disco e o quadrado ambos preenchem a largura do traço (o AA de ~1 px domina e a
+    razão 4/π some); a raio 10 a razão aparece limpa. `dotted_line` ganhou um param `width`.
+    Nenhum bump adicional (arc4 é derivado no vertex; o VsOut ganhou location 13/14, os buffers não
+    mudaram).
 - **Aberto (nomeado):** Self Overlap (a armadilha de beading medida) e corner types seguem
   deferidos; o dot radius = a largura do traço (um raio de conta próprio seria outro knob).
 

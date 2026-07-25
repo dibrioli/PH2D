@@ -401,16 +401,21 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   BEVEL/MITER do `segment_mask` com p0/p3 — a mesma janela do fix (§4.1) já carrega os dados.
 - ~~**Pincel pontilhado (dots/squares) estilo Ciallo/GP**~~ — **LANDOU 2026-07-25**
   (`PH2D_FLIP_TIP_SMOKE=1`): `FlipStroke::tip` = `Continuous`/`Dots`/`Squares` + `dot_spacing`.
-  O fragment recorta a cobertura por uma MÉTRICA — a distância normalizada ATRAVÉS
-  (`dn`) ganha um termo AO-LONGO do arco (`da`), e a conta é um DISCO (`√(dn²+da²)`, Euclidiano)
-  ou um QUADRADO (`max(dn, da)`, Chebyshev). Espaçamento por ARC-LENGTH (buffer `arc_len`
-  cumulativo por-ponto, binding 6; o vertex lê o início e soma `|b−a|`), imune à densidade de
-  input E ao zoom. `Continuous` **não toca `dn`** ⇒ byte-idêntico. **A depth é por-TRAÇO** (o
-  tip não a muda), então contas sobrepostas numa quina são first-wins (união), nunca acumulam
-  — o oposto da armadilha do *Self Overlap*. Seletor **Tip** + slider **Spacing** na seção
-  Brush (Draw). `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 29→30. Gates GPU
+  O fragment recorta a cobertura em CONTAS — cada uma um DISCO (ou QUADRADO) EUCLIDIANO de raio =
+  a meia-espessura, centrado num PONTO da linha-de-centro (`C`) a cada `pitch` de ARCO. A conta é
+  `|frag − C| / r` (round) ou `max(along, cross)/r` no frame local (square), combinada com o
+  traço por `dn = max(dn_traço, dn_conta)` (a MENOR cobertura ⇒ o traço ∩ o disco). Espaçamento
+  por ARC-LENGTH (buffer `arc_len` cumulativo por-ponto, binding 6; o vertex publica os 4 arcos
+  da janela em `arc4`), imune à densidade de input E ao zoom. `C` sai do arco `s` do PONTO MAIS
+  PRÓXIMO da polilinha (a cápsula de menor `dn` da união prev/own/next — `capsule_dn_arc`),
+  interpolado no segmento da janela que contém `sc = round(s/pitch)·pitch` (`bead_point`).
+  `Continuous` **não toca `dn`** ⇒ byte-idêntico. **A depth é por-TRAÇO** (o tip não a muda),
+  então contas sobrepostas numa quina são first-wins (união), nunca acumulam — o oposto da
+  armadilha do *Self Overlap*. Seletor **Tip** + slider **Spacing** na seção Brush (Draw).
+  `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 29→30. Gates GPU
   (`dots_carve_gaps_that_a_continuous_line_does_not` red-first mutação-provado +
-  `squares_cover_more_area_than_round_dots`).
+  `squares_cover_more_area_than_round_dots` a **raio 10** — a raio 4 o AA some com a razão 4/π +
+  `dots_on_a_curved_thick_stroke_are_full_disks_not_shrunken_lenses`).
   - ⚠️ **O espaçamento é RELATIVO À ESPESSURA, não mundo absoluto** (Enio 2026-07-25:
     *"o espaço deve ser relativo a espessura do traço pois traços grossos o padrão não
     aparece"*). A 1ª versão media `dot_spacing` em MUNDO, e o tamanho da conta (o diâmetro)
@@ -425,6 +430,22 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
     muda de SENTIDO, não de layout — a v9 nunca shipou). Mutação-provado: reverter a pitch para
     mundo-absoluto (`in.dot_spacing` sem `× ref_width`) derruba `dots_carve_gaps` (a fixture
     fina de razão 1,5 colapsa em linha cheia).
+  - ⚠️ **A conta é um DISCO EUCLIDIANO, não uma lente de arco** (2º report do Enio 2026-07-25:
+    *"pontos deformados em linhas grossas"*, com screenshot). A 1ª versão combinava `dn`
+    (através) com `da` = distância AO-LONGO DO ARCO — e o arco CURVA, então numa curva a conta
+    esticava numa banana e ENCOLHIA. Medindo o PONTO-centro 2D `C` e a distância reta
+    `|frag − C|`, a conta fica redonda em qualquer curvatura. ⚠️ **Medido, não adivinhado:** o L
+    a 90° e a senoide saíam IDÊNTICOS com/sem o arco-de-junção-consistente, então a costura
+    NÃO era a causa — era o *lens* de arco; o arco-de-junção (`arc4`/`capsule_dn_arc`) foi
+    REUSADO para achar `C` de forma contínua na junção. Gate `..._are_full_disks_not_shrunken_lenses`
+    (área da senoide grossa: disco 710 vs lens 621), red-first mutação-provado. O quadrado gira
+    com a TANGENTE local.
+  - ⚠️ **O slider Spacing estava MORTO** (report do Enio: *"slider de spacing não funciona"*) — o
+    arm de `ValueChanged` do `ph2d-panel-flip::event.rs` ENUMERA os sliders do brush e o
+    `FLIP_DOT_SPACING` ficou de fora ([[feedback_a_condition_that_enumerates_its_readers_rots]]);
+    o arrasto era dropado em silêncio. O teste do tool chamava `handle_panel_event` DIRETO,
+    pulando a costura. Fix: os dois arms (o de forward + o de swallow do `_NUM`) ganham o id;
+    gate `seam.rs::dot_spacing_slider_drag_reaches_tool` dirige o `ValueChanged` REAL pelo painel.
 - **Pincel airbrush analítico (Ciallo):** falloff por integral em forma fechada
   `A(y) = 1 − exp(−2αc·sqrt(R²−y²))` — semântica de acúmulo físico; casa com a flag Self
   Overlap. (Fórmulas do paper/tutorial; código do CialloResearch é GPL-3 — só comportamento.)

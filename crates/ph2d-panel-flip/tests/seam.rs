@@ -16,7 +16,7 @@ use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
 use ph2d_panel_flip::state::FlipPanelState;
 use ph2d_panel_flip::{FlipLayerRow, FlipLayersSnapshot, FlipPanel, LayerRename, ids};
-use ph2d_tool_flip::{FlipMode, FlipTool, WIDTH_MAX_PX};
+use ph2d_tool_flip::{DOT_SPACING_MAX, FlipMode, FlipTool, WIDTH_MAX_PX};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Drag the Size slider to its full end and prove the width reaches the tool —
@@ -89,6 +89,47 @@ fn colorize_bleed_slider_drag_reaches_tool() {
     assert!(
         (tool.ui_snapshot().colorize_bleed - 1.0).abs() < 1e-6,
         "slider→tool seam delivered the wrong Bleed fraction"
+    );
+}
+
+/// **O slider Spacing do *tip* pontilhado (03 §8) percorre a costura inteira** — do
+/// `populate` (registro) ao `event.rs` (arm) ao `handle_panel_event` (o múltiplo no tool).
+///
+/// Nasceu VERMELHO (o report do Enio 2026-07-25: *"slider de spacing não funciona"*): o arm de
+/// `ValueChanged` do `event.rs` ENUMERA os sliders do brush e o `FLIP_DOT_SPACING` ficou de
+/// fora — o slider mexia na tela e o arrasto era dropado em silêncio. O teste do TOOL
+/// (`the_tip_toggle_and_spacing_slider_reach_the_tool`) chamava `handle_panel_event` DIRETO,
+/// pulando exatamente a costura quebrada. Mutação que sangra: tirar `FLIP_DOT_SPACING` do arm.
+#[test]
+fn dot_spacing_slider_drag_reaches_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+
+    host.set_slider_value(ids::FLIP_DOT_SPACING, 1.0);
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::FLIP_DOT_SPACING),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignored the Spacing slider — `event.rs` arm for FLIP_DOT_SPACING is missing"
+    );
+    let mut forwarded = false;
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+            forwarded = true;
+        }
+    }
+    assert!(
+        forwarded,
+        "Spacing edit never reached the bus — the seam is dead"
+    );
+    assert!(
+        (tool.ui_snapshot().dot_spacing - DOT_SPACING_MAX).abs() < 1e-6,
+        "slider→tool seam delivered the wrong Spacing (track 1.0 → DOT_SPACING_MAX)"
     );
 }
 

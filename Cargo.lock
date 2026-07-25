@@ -5273,6 +5273,7 @@ dependencies = [
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
  "ph2d-node-value-math",
+ "ph2d-node-value-mix",
  "ph2d-node-value-noise",
  "ph2d-node-value-switch",
  "ph2d-nodegraph",
@@ -6371,6 +6372,7 @@ dependencies = [
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
  "ph2d-node-value-math",
+ "ph2d-node-value-mix",
  "ph2d-node-value-noise",
  "ph2d-node-value-switch",
 ]
@@ -6525,6 +6527,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-math"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-mix"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

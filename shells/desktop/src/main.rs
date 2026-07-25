@@ -55,6 +55,7 @@ mod motion_delay_smoke;
 mod motion_fx_smoke;
 mod value_curve_smoke;
 mod value_noise_smoke;
+mod value_mix_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).

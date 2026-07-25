@@ -54,6 +54,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_noise::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
     ph2d_node_value_noise::register(&mut reg).unwrap();
+    ph2d_node_value_mix::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -2878,6 +2879,97 @@ fn value_noise_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the noise drove nothing"
+    );
+}
+
+/// **`value.mix` on the device — the crossfader, with `t` DRIVEN by a port.**
+/// `grid → {lfo→a, noise→b, instance_field(Ramp)→t} → mix → drive(Y)`, no CPU
+/// seam. The `factor` param is a decoy `0.9`; the connected `t` port must win on
+/// BOTH paths, so this is the device proof of the `HAS_t_v` presence choice
+/// (`select(factor, port, HAS_t_v)`) — a regression to `false` would read `0.9`
+/// on the GPU while the CPU reads the ramp, diverging by `O(amplitude)`, far
+/// outside ε. `is_fully_gpu` PROVES the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_mix_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 11.0);
+    // a: a clean LFO; b: coherent noise; t: a per-element ramp (drives the fade).
+    let lfo = g.add_node("value.lfo");
+    g.set_param(lfo, "period", 0.71);
+    g.set_param(lfo, "amplitude", 2.3);
+    connect(&mut g, grid, lfo);
+    let noise = g.add_node("value.noise");
+    g.set_param(noise, "frequency", 0.19);
+    g.set_param(noise, "amplitude", 2.3);
+    g.set_param(noise, "seed", 5.0);
+    connect(&mut g, grid, noise);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: t varies per element in [0,1]
+    connect(&mut g, grid, field);
+    let mix = g.add_node("value.mix");
+    g.set_param(mix, "factor", 0.9); // a decoy — the connected `t` must win
+    g.connect(Edge {
+        from: (lfo, 0),
+        to: (mix, 0),
+        delayed: false,
+    })
+    .expect("a");
+    g.connect(Edge {
+        from: (noise, 0),
+        to: (mix, 1),
+        delayed: false,
+    })
+    .expect("b");
+    g.connect(Edge {
+        from: (field, 0),
+        to: (mix, 2),
+        delayed: false,
+    })
+    .expect("t");
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 1.2);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (mix, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("mixed value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "lfo/noise/mix → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.mix → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the crossfade drove nothing"
     );
 }
 

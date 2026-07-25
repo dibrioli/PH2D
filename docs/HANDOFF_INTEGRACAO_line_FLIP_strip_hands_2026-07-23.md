@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `9281fb6b8`, a aparência do helper da §2.6) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `37d6a5d8c`, os vãos pendentes da §2.6) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **21** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×3 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência do helper) |
+| commits à frente do `main` | **23** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×4 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + pendência do helper) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -214,6 +214,21 @@ real; **o motor do fill ignora os flags** — a porta segue única, o `fill_at` 
 pontas, extensão como fio fino translúcido **sem dot no corte**. Gate red-proven
 `the_helper_marks_only_real_tips_never_a_cut_point` (mutação "sempre tip" sangra). Sem
 schema, sem UI nova.
+
+**Só os vãos PENDENTES (Enio 2026-07-25, `37d6a5d8c`):** *"preview ainda abre se zoom de
+perto"*. O overlay mostrava TODO fechamento, inclusive nas **junções de traços que se
+sobrepõem** — onde a **solda das juntas (`weld`) já veda** porque os corpos pintados se
+tocam. ⚠️ **É o que o "de perto" nomeia com precisão:** no zoom de perto o `reach` em doc
+ENCOLHE (é `gap_px × px_to_world`), então só as pontas MUITO próximas entram no alcance —
+e essas são justamente as junções cobertas; os vãos legítimos (mais largos) caem fora. A
+referência do GP é *"helpers visíveis só nos gaps pendentes"*: um vão só é PENDENTE se a
+tinta não o cobre, `dist(a,b) > meia-largura(a) + meia-largura(b)` — a MESMA lei da solda,
+perguntada para NÃO desenhar onde ela já vedou. `GapHelper` ganhou **`pending: bool`**
+(pela porta única `weld::closest_on_segment`, agora `pub(crate)` — uma só lei de
+cobertura); o overlay desenha só os pendentes; **o motor do fill ignora o flag** (soma
+solda + fechamentos de qualquer jeito, o redundante é parede inofensiva). Gate red-proven
+`a_helper_is_pending_only_where_the_paint_does_not_bridge` (junção coberta = não-pendente;
+vão de verdade = pendente; mutação "sempre pending" sangra). Sem schema, sem UI nova.
 
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 

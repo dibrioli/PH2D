@@ -5071,6 +5071,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-curve"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-ecs"
 version = "0.0.0"
 dependencies = [
@@ -5676,6 +5680,7 @@ dependencies = [
 name = "ph2d-node-field-remap"
 version = "0.0.0"
 dependencies = [
+ "ph2d-curve",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

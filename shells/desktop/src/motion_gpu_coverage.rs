@@ -32,9 +32,10 @@ use super::gpu_deform_demo::{
 };
 use super::gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
-    build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
-    build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+    build_gpu_field_combine_demo_document, build_gpu_field_curve_demo_document,
+    build_gpu_field_index_range_demo_document, build_gpu_field_radial_sweep_demo_document,
+    build_gpu_field_remap_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -117,6 +118,12 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // sees the whole downstream-remap chain.
     push("demo=21 field.remap bands", &|d| {
         build_gpu_field_remap_demo_document(d, reg)
+    });
+    // The CURVE contour (A1) — box -> remap[Curve] -> tint. The remap DECLINES the GPU
+    // (mode 4's shape is a text param), so it names itself a CPU boundary here; wired in
+    // so the census sees the mixed chain and the boundary is not a silent surprise.
+    push("demo=22 field.remap curve", &|d| {
+        build_gpu_field_curve_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

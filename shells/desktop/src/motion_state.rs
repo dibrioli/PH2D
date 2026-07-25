@@ -53,9 +53,10 @@ use gpu_deform_demo::{
 };
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
-    build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
-    build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+    build_gpu_field_combine_demo_document, build_gpu_field_curve_demo_document,
+    build_gpu_field_index_range_demo_document, build_gpu_field_radial_sweep_demo_document,
+    build_gpu_field_remap_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
@@ -252,6 +253,12 @@ impl MotionState {
             // remap here), the C4D Remapping tab as a downstream node.
             Ok("21") => {
                 build_gpu_field_remap_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // The CURVE contour (A1): the same box ramp, remapped through a tent curve
+            // authored in the text param — a blue RING no ramp or Quantize can make. The
+            // kernel declines mode 4, so the remap cooks on the CPU (A1-gpu bakes the LUT).
+            Ok("22") => {
+                build_gpu_field_curve_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

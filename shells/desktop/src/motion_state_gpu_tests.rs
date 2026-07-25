@@ -662,3 +662,35 @@ fn the_field_remap_demo_is_fully_gpu() {
         plan.boundaries
     );
 }
+
+/// The **Curve contour demo is a MIXED plan** (`PH2D_GPU_COOK_DEMO=22`): the same
+/// `field.remap`, but with `contour = Curve`, whose shape is a text param the uniform
+/// layout cannot carry — so its kernel declines (`applicable` false at mode 4) and the
+/// remap is a CPU boundary while the box before it and the tint after it stay on the GPU.
+/// This pins the CPU↔GPU boundary at the PLAN level (the `motion.oscillator` precedent):
+/// were the kernel to stop declining, the smoke would cook a WRONG mask on the device with
+/// nothing on screen to say so. A1-gpu bakes the LUT and this demo becomes fully-GPU.
+#[test]
+fn the_field_curve_demo_falls_back_to_the_cpu_for_the_contour() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_field_curve_demo_document(&mut doc, &registry)
+        .expect("well-typed field.remap curve demo");
+    let out = *sinks.first().expect("one sink");
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    // NOT fully-GPU — the Curve contour cannot be a per-element WGSL uniform.
+    assert!(
+        !plan.is_fully_gpu(),
+        "the Curve contour must force a CPU boundary, not plan as fully-GPU"
+    );
+    // …and the boundary is the remap itself (the node that declines mode 4).
+    assert!(
+        plan.boundaries.iter().any(|&(n, _)| doc
+            .graph
+            .node(n)
+            .is_some_and(|node| node.type_name == "field.remap")),
+        "the CPU boundary must be the field.remap running the Curve contour: {:?}",
+        plan.boundaries
+    );
+}

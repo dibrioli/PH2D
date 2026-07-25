@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-curve"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Dependency-free and value-typed: a normalized 1-D transfer curve (model +
+# byte-exact text serialization + CPU eval), the A1 foundation the `field.*`
+# remap contour and (later) `value.curve` / `force.curve` consume. A leaf like
+# `ph2d-expr`'s IR — nodegraph does not depend back. The GPU LUT lowering
+# (`bake_lut` + a WGSL sampler) lands with A1-gpu, next to the sequencer channel
+# that carries the baked table, so it ships with a consumer and a parity test
+# rather than as an unproven primitive.
+[dependencies]

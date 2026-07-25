@@ -743,7 +743,10 @@ pub(super) fn build_gpu_field_combine_demo_document(
     g.set_param(tint, "b", 0.15);
     g.set_param(tint, "a", 1.0);
     let out = g.add_node("motion.output");
-    for (i, n) in [grid, scale, ir, bx, cmb, tint, out].into_iter().enumerate() {
+    for (i, n) in [grid, scale, ir, bx, cmb, tint, out]
+        .into_iter()
+        .enumerate()
+    {
         g.set_pos(
             n,
             Pos {
@@ -814,6 +817,71 @@ pub(super) fn build_gpu_field_remap_demo_document(
     g.set_param(remap, "steps", 3.0);
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 1.0);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, scale, field, remap, tint, out]
+        .into_iter()
+        .enumerate()
+    {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
+    }
+    for (a, b) in [
+        (grid, scale),
+        (scale, field),
+        (field, remap),
+        (remap, tint),
+        (tint, out),
+    ] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
+/// Demo `=22`: the **Curve contour** (A1). Same soft box as `=21`, but the remap runs a
+/// non-monotonic **tent** curve `(0,0)→(0.5,1)→(1,0)` authored in the text param — so the
+/// mask is white at the centre (falloff 1 → curve 0), full-blue at MID radius (falloff 0.5
+/// → curve 1), and white again at the edge (falloff 0 → curve 0): a blue RING. No ramp and
+/// no Quantize can make a ring — it is the unmistakable sign the custom transfer took. The
+/// kernel declines mode 4, so this cooks on the CPU (A1-gpu bakes the LUT).
+pub(super) fn build_gpu_field_curve_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    g.set_param(grid, "gap_x", 0.024);
+    g.set_param(grid, "gap_y", 0.024);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.018);
+    let field = g.add_node("field.box");
+    g.set_param(field, "width", 9.0);
+    g.set_param(field, "height", 9.0);
+    g.set_param(field, "soft", 4.5); // = half the extent — a linear ramp centre→edge
+    g.set_param(field, "curve", 0.0); // Linear ramp, so the curve reads the full [0,1]
+    let remap = g.add_node("field.remap");
+    g.set_param(remap, "contour", 4.0); // Curve
+    // A tent: peak at the middle of the ramp. Linear legs so the ring is crisp.
+    g.set_text_param(remap, "curve", "c1 0:0:L 0.5:1:L 1:0:L");
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered tint mode
     g.set_param(tint, "r", 0.16);
     g.set_param(tint, "g", 0.62);
     g.set_param(tint, "b", 0.94);

@@ -99,6 +99,15 @@ pub enum ParamWidget {
     /// (doc 32), and the panel renders the shared `TextInput` widget. `min/max/step`
     /// are inert for a text field.
     Text,
+    /// An interactive **transfer-curve editor** — the sibling of [`Self::Text`],
+    /// on the SAME text channel: the hint's `param` names a text-param key whose
+    /// value is a `ph2d-curve` serialized curve (`Graph::set_text_param`, doc
+    /// 32), never a `ParamSpec` (a curve is not one number). The panel draws the
+    /// unit-square editor (draggable points + per-point interp) and writes the
+    /// string back on edit. Reusable by every curve-valued transfer — the
+    /// `field.remap` **Curve** contour, and (later) `value.curve` / `force.curve`.
+    /// `min/max/step` are inert.
+    Curve,
 }
 
 impl ParamWidget {

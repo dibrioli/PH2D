@@ -372,12 +372,14 @@ pub(super) fn build_params_snapshot(
 
     let mut rows: Vec<ParamRow> = Vec::new();
 
-    // Text params (a `motion.expression` formula) are NOT `ParamSpec`s (f32-only), so they
-    // never appear in the manifest loop below — surface each `ParamWidget::Text` hint as a
-    // Text row first (the formula is the node's primary control), reading the graph's text
-    // channel (docs/Motion Nodes/32-33).
+    // Text params (a `motion.expression` formula, a `field.remap` Curve) are NOT
+    // `ParamSpec`s (f32-only), so they never appear in the manifest loop below — surface
+    // each as a row FIRST, reading the graph's text channel (docs/Motion Nodes/32-33).
+    // `Curve` rides the SAME text channel as `Text`; until the A1-ui interactive editor
+    // lands it renders as a text field over the serialized curve string (the
+    // `motion.expression` precedent — the plumbing A1-ui upgrades the row type onto).
     for h in hints.into_iter().flatten() {
-        if h.widget == ParamWidget::Text {
+        if h.widget == ParamWidget::Text || h.widget == ParamWidget::Curve {
             let value = motion
                 .doc
                 .graph

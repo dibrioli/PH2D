@@ -5,14 +5,21 @@
 //! existing mask value-by-value — it reads `falloff`, rewrites `falloff` (it does NOT
 //! multiply into it; a remap is not a field, it is a transfer function). It is the
 //! C4D **Remapping** tab as a node: `inner_offset` (the solid-core plateau), a
-//! `contour` transfer (None/Quadratic/Step/Quantize — **Curve** arrives with the A1
-//! widget), an output `[min, max]` range with a `multiplier`, a `clamp`, an `invert`,
-//! and a `strength` that blends input→remapped.
+//! `contour` transfer (None/Quadratic/Step/Quantize/**Curve**), an output `[min, max]`
+//! range with a `multiplier`, a `clamp`, an `invert`, and a `strength` that blends
+//! input→remapped.
 //!
 //! **Transcendental-free (HR-5).** Every transfer is `min`/`max`/`clamp`/`floor`/`round`
 //! and polynomials, so the mask is bit-identical CPU↔GPU (within FMA ULPs). The GPU
 //! kernel is a straight WGSL port; there is no `P` to read — a remap is position-blind,
 //! it reads the mask alone.
+//!
+//! **The Curve contour (mode 4)** is the one transfer whose shape is not a scalar: it
+//! is a `ph2d-curve` authored in a **text param** (`CURVE_KEY`), evaluated on the CPU
+//! (A1). Its WGSL LUT lowering is A1-gpu; until then the kernel declares itself
+//! `applicable` for modes 0–3 only, and the sequencer runs the CPU `eval` when the
+//! contour is Curve — the explicit CPU↔GPU boundary, never a wrong answer. An unset
+//! curve is the identity, so a Curve contour with nothing authored is a passthrough.
 //!
 //! **The neutral (D12).** `strength = 0` is a byte-identical passthrough (the mask is
 //! returned unchanged) — the "off" that never mutates the scene. A fresh node, however,
@@ -20,8 +27,9 @@
 //! so dropping it on a soft field sharpens the ramp — the sign that a remap is working,
 //! trivially reset to `None`/Linear.
 
+use ph2d_curve::Curve;
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{par_build, Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
@@ -29,6 +37,11 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// The text-param key carrying the Curve contour's shape (a `ph2d-curve`
+/// serialized string, read via `EvalCtx::text_param`). NOT a `ParamSpec` — a
+/// curve is not one number (the `motion.expression` precedent).
+const CURVE_KEY: &str = "curve";
 
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
 /// (ADR-0126); `NodeManifest` stays the frozen 8 fields.
@@ -51,7 +64,8 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
         ParamSpec {
-            // 0 None/Linear · 1 Quadratic · 2 Step · 3 Quantize · 4 Curve (A1, future).
+            // 0 None/Linear · 1 Quadratic · 2 Step · 3 Quantize · 4 Curve (shape in
+            // the `curve` text param, CPU-evaluated; A1-gpu bakes its LUT).
             name: "contour",
             default: 1.0,
         },
@@ -134,9 +148,9 @@ fn round_haz(x: f32) -> f32 {
 /// The **contour** transfer on `t ∈ [0,1]` — the C4D Remapping shapes, HR-5. `None`
 /// (0) is the identity; `Quadratic` (1) bends by `curvature` (`>0` ease-in `t²`, `<0`
 /// ease-out, `0` linear); `Step` (2) is a `steps`-level FLOOR staircase (holds, hits 0
-/// and 1); `Quantize` (3) is a `steps`-level ROUND (nearest). `Curve` (4) is the A1
-/// spline — a passthrough until the widget lands (documented, not a silent gap).
-fn contour(mode: i32, t: f32, curvature: f32, steps: f32) -> f32 {
+/// and 1); `Quantize` (3) is a `steps`-level ROUND (nearest); `Curve` (4) evaluates the
+/// authored `curve` (an unset/`None` curve is the identity — an exact passthrough).
+fn contour(mode: i32, t: f32, curvature: f32, steps: f32, curve: Option<&Curve>) -> f32 {
     match mode {
         1 => {
             let ease_in = t * t;
@@ -156,7 +170,8 @@ fn contour(mode: i32, t: f32, curvature: f32, steps: f32) -> f32 {
             let n = steps.max(2.0);
             round_haz(t * (n - 1.0)) / (n - 1.0)
         }
-        _ => t, // None/Linear (0) and Curve (4, future) both pass through for now.
+        4 => curve.map_or(t, |c| c.eval(t)),
+        _ => t, // None/Linear (0) passes through.
     }
 }
 
@@ -165,7 +180,7 @@ fn contour(mode: i32, t: f32, curvature: f32, steps: f32) -> f32 {
 /// offset saturate to 1); the contour shapes it; the `[min, max]` range + `multiplier`
 /// scale it; `clamp` bounds it to `[0,1]`; and `strength` blends input→remapped (so
 /// `strength = 0` is an exact passthrough).
-// The 11 params are the C4D Remapping pipeline; a struct would be a second model of the
+// The 12 args are the C4D Remapping pipeline; a struct would be a second model of the
 // same knobs the `NodeManifest` already lists (mirrors `field_gizmo`'s `view_from_params`).
 #[allow(clippy::too_many_arguments)]
 fn remap(
@@ -174,6 +189,7 @@ fn remap(
     mode: i32,
     curvature: f32,
     steps: f32,
+    curve: Option<&Curve>,
     lo: f32,
     hi: f32,
     multiplier: f32,
@@ -186,7 +202,7 @@ fn remap(
     // core is a flat 1. Clamped below 1 so the denominator is never 0.
     let io = inner_offset.clamp(0.0, 0.999);
     t = (t / (1.0 - io)).min(1.0);
-    t = contour(mode, t, curvature, steps);
+    t = contour(mode, t, curvature, steps, curve);
     let mut mapped = (lo + t * (hi - lo)) * multiplier;
     if clamp {
         mapped = mapped.clamp(0.0, 1.0);
@@ -199,6 +215,12 @@ fn remap(
 /// parity holds within float ULPs. There is no `P` binding — a remap is position-blind.
 /// `falloff` `ReadWrite` from the `1.0` identity mirrors the CPU (an absent mask reads
 /// full effect); it is REWRITTEN, not multiplied (a remap is a transfer function).
+///
+/// **Applicable to contour modes 0–3 only.** The Curve contour (mode 4) reads its shape
+/// from a text param the uniform layout cannot carry (a curve is not a scalar), so the
+/// kernel declines it and the sequencer runs the CPU `eval` for that node — the explicit
+/// CPU↔GPU boundary (the `motion.oscillator` precedent). A1-gpu bakes the curve to a LUT
+/// buffer and this gate goes away.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let rm_in = read_falloff(i);\n\
@@ -267,7 +289,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // Modes 0–3 are pure WGSL; the Curve contour (4) falls back to the CPU `eval`
+    // (its shape is a text param, not a uniform). Same shape as `motion.oscillator`.
+    applicable: Some(|p| p("contour").round() as i32 != 4),
 };
 
 struct FieldRemap;
@@ -290,6 +314,14 @@ impl NodeOp for FieldRemap {
         let strength = ctx.param("strength");
         let probability = ctx.param("probability");
         let seed = ctx.param("seed").max(0.0) as u32;
+        // The Curve contour's shape lives in the text channel — parse it ONCE per cook
+        // (not per instance). Only mode 4 reads it; an unset or malformed string yields
+        // `None`, which `contour` treats as the identity (a passthrough).
+        let curve: Option<Curve> = if mode == 4 {
+            ctx.text_param(CURVE_KEY).and_then(ph2d_curve::parse)
+        } else {
+            None
+        };
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -306,6 +338,7 @@ impl NodeOp for FieldRemap {
                     mode,
                     curvature,
                     steps,
+                    curve.as_ref(),
                     lo,
                     hi,
                     multiplier,
@@ -355,9 +388,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1): the C4D Remapping controls. `contour` is the transfer
-/// selector (Curve is the A1 spline, greyed until the widget lands); `curvature`
-/// bends the Quadratic; `steps` counts the Step/Quantize levels; `strength` is the
-/// input→remapped blend (0 = passthrough).
+/// selector; `curve` is the A1 curve editor (a text param, live when contour = Curve);
+/// `curvature` bends the Quadratic; `steps` counts the Step/Quantize levels; `strength`
+/// is the input→remapped blend (0 = passthrough).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "inner_offset",
@@ -376,6 +409,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             labels: &["None", "Quadratic", "Step", "Quantize", "Curve"],
         },
+    },
+    ParamUiHint {
+        // The Curve contour's shape — a TEXT param (`CURVE_KEY`), not a `ParamSpec`
+        // (the `motion.expression` Text precedent). The panel draws the curve editor;
+        // inert unless `contour = Curve`. `min/max/step` are inert for a curve widget.
+        param: CURVE_KEY,
+        label: "Curve",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Curve,
     },
     ParamUiHint {
         param: "curvature",

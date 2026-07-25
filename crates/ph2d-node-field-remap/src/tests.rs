@@ -125,7 +125,11 @@ fn strength_zero_is_an_exact_passthrough() {
     g.set_param(rm, "strength", 0.0);
     let input = vec![0.0, 0.137, 0.5, 0.813, 1.0];
     let ops = Ops::falloff(input.clone());
-    assert_eq!(falloff_of(&g, &ops, rm), input, "strength 0 must be a passthrough");
+    assert_eq!(
+        falloff_of(&g, &ops, rm),
+        input,
+        "strength 0 must be a passthrough"
+    );
 }
 
 #[test]
@@ -169,7 +173,11 @@ fn step_is_a_floor_staircase() {
     assert!(approx(got[0], 0.0), "0.1 → 0: {}", got[0]);
     // 🔴 0.2: floor(0.8)=0 → 0. A ROUND (Quantize) would give round(0.6)=1 → 1/3, so this
     // is the value that tells Step from Quantize — the phenomenon the fixture must contain.
-    assert!(approx(got[1], 0.0), "0.2 → 0 (floor, not round): {}", got[1]);
+    assert!(
+        approx(got[1], 0.0),
+        "0.2 → 0 (floor, not round): {}",
+        got[1]
+    );
     assert!(approx(got[2], third), "0.3 → 1/3: {}", got[2]);
     assert!(approx(got[3], 2.0 * third), "0.6 → 2/3: {}", got[3]);
     assert!(approx(got[4], 1.0), "0.9 → 1: {}", got[4]);
@@ -188,7 +196,11 @@ fn quantize_rounds_to_the_nearest_level() {
     assert!(approx(got[0], 0.0), "0.1 → 0: {}", got[0]);
     // 🔴 0.2: round(0.6)=1 → 1/3. A FLOOR (Step) would give floor(0.8)=0 → 0, so this is
     // the value that tells Quantize from Step.
-    assert!(approx(got[1], third), "0.2 → 1/3 (round, not floor): {}", got[1]);
+    assert!(
+        approx(got[1], third),
+        "0.2 → 1/3 (round, not floor): {}",
+        got[1]
+    );
     assert!(approx(got[2], 2.0 * third), "0.5 → 2/3: {}", got[2]);
     assert!(approx(got[3], 1.0), "0.9 → 1: {}", got[3]);
 }
@@ -338,11 +350,79 @@ fn round_haz_matches_rust_round() {
 }
 
 #[test]
-fn contour_none_and_curve_pass_through() {
-    // None (0) and Curve (4, the future A1 spline) are both the identity for now.
+fn contour_none_and_empty_curve_pass_through() {
+    // None (0) is the identity, and Curve (4) with NO authored curve is too — an
+    // unset text param is a passthrough (the documented neutral).
     for mode in [0, 4] {
         for t in [0.0, 0.3, 0.7, 1.0] {
-            assert!(approx(contour(mode, t, 0.7, 5.0), t), "mode {mode} at {t}");
+            assert!(
+                approx(contour(mode, t, 0.7, 5.0, None), t),
+                "mode {mode} at {t}"
+            );
         }
     }
+}
+
+#[test]
+fn curve_contour_applies_the_authored_shape() {
+    // An inverting curve (0->1, 1->0): the Curve contour must evaluate it, not pass
+    // through. This is the unit-level red-first — mode 4 was the identity until A1.
+    let inv = ph2d_curve::Curve {
+        points: vec![
+            ph2d_curve::Point {
+                x: 0.0,
+                y: 1.0,
+                interp: ph2d_curve::Interp::Linear,
+            },
+            ph2d_curve::Point {
+                x: 1.0,
+                y: 0.0,
+                interp: ph2d_curve::Interp::Linear,
+            },
+        ],
+    };
+    for t in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        assert!(
+            approx(contour(4, t, 0.0, 4.0, Some(&inv)), 1.0 - t),
+            "curve contour at {t} must invert"
+        );
+    }
+}
+
+#[test]
+fn a_curve_contour_changes_the_cooked_falloff() {
+    // Product-level proof: contour = Curve + an inverting curve in the text param
+    // rewrites the mask through the WHOLE cook. Was the identity before A1 (red-first:
+    // without the wiring the output would equal the input).
+    let (mut g, rm) = chain();
+    g.set_param(rm, "contour", 4.0); // Curve
+    g.set_text_param(rm, CURVE_KEY, "c1 0:1:L 1:0:L".to_string()); // invert
+    let input = vec![0.0, 0.25, 1.0];
+    let ops = Ops::falloff(input.clone());
+    let out = falloff_of(&g, &ops, rm);
+    let want = [1.0, 0.75, 0.0]; // 1 - t
+    for (got, exp) in out.iter().zip(want) {
+        assert!(
+            approx(*got, exp),
+            "curve-remapped falloff {out:?} != {want:?}"
+        );
+    }
+    assert_ne!(
+        out, input,
+        "the curve must change the mask (not a passthrough)"
+    );
+}
+
+#[test]
+fn the_kernel_declines_the_curve_contour_and_covers_the_rest() {
+    // The explicit CPU<->GPU boundary: the WGSL kernel handles contour modes 0-3 and
+    // declines Curve (4), so the sequencer runs the CPU eval for it (A1-gpu bakes the
+    // LUT and removes this). The `oscillator` precedent.
+    let f = GPU_KERNEL.applicable.expect("the kernel gates on contour");
+    for mode in [0.0, 1.0, 2.0, 3.0] {
+        let p = |name: &str| if name == "contour" { mode } else { 0.0 };
+        assert!(f(&p), "the kernel must cover contour mode {mode}");
+    }
+    let p = |name: &str| if name == "contour" { 4.0 } else { 0.0 };
+    assert!(!f(&p), "the kernel must DECLINE the Curve contour");
 }

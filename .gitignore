@@ -82,3 +82,11 @@ target/vector-scratch/
 # Artefatos de save local do editor (smoke)
 ph2d_project.postcard
 ph2d_vec_scene.postcard
+
+# MVPs paralelos e ferramental local: projetos AINDA sem associação com o PH2D.
+# TUDO local, fora do git em TODA máquina (decisão Enio 2026-07-23 / 2026-07-25).
+docs/Pixel Art/
+docs/Tilling/
+docs/PromptDeck/
+scripts/prompt-deck.py
+scripts/prompt-deck-sync.py

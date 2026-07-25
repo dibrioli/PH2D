@@ -24,6 +24,7 @@
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar
+- [Produto final, não MVP: params PRO por nó](feedback_final_product_every_node_ships_the_full_pro_param_set.md) — o superset do catálogo, conferido por nó (o miss da rotação)
 - [Wave de pesquisa RECURSA](feedback_a_research_fanout_recurses_bound_it.md) — limite; verifique você o fato decisivo
 - [Painter: 4 causas](feedback_painter_inefficiency_4_causes.md) — costura não-testada / audit=compilar / órfão
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md)
@@ -76,7 +77,7 @@
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra
-- [Disciplina de fixture (3)](reference_topic_fixture_discipline.md) — só prova o que contém
+- [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA
 - [Coordenada que WRAPA é oráculo ruim — meça a TAXA](feedback_a_wrapping_coordinate_is_a_bad_oracle_measure_the_rate.md) — ângulo mod 2π vira ruído acima de 1 volta; leia angvel, não rotation
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
@@ -100,6 +101,7 @@
 - [ISPC cross-process](feedback_ispc_cross_process_concurrency.md) — crasha com cargo concorrente
 - [Zero-alloc gate = capacidade](feedback_zero_alloc_gate_capacity_not_global_counter.md)
 - [`Arc::from(Vec)` SEMPRE copia](reference_arc_from_vec_always_copies.md) — `collect` TrustedLen não
+- [Clone segurado + detecção por ponteiro = copy-on-write por op](feedback_a_held_clone_plus_pointer_identity_change_detection_forces_copy_on_write.md) — versão, não `as_ptr` (ADR-0124 reincide: Painter 10ms/move @4K)
 - [Áudio: meter vivo, sem som](project_audio_multichannel_silence.md) — mute do WirePlumber
 - [Claimed-green ≠ seu-OS-green](project_painter_t19_latent_red_macos_2026_05_28.md)
 - [Painter "low-res" = canvas 64px](project_painter_canvas_res_64_not_sim_scale.md)

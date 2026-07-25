@@ -167,11 +167,20 @@ corpos unidos, que talvez seja a resposta certa) é **decisão de design**, não
   roteamento próprio; uni-las é mudar o *roteador de undo* do editor e tocar a timeline
   (outro domínio), exatamente o que o doc-header do `physics_bake.rs` avisa.
 
-#### C. Gizmo de âncora de joint no canvas
+#### C. Gizmo de âncora de joint no canvas — **FECHADO (2026-07-24, cena `=38`)**
 
-Refinamento, não buraco: a âncora **já é autorável** pelos campos Position da §12. O que falta
-é um handle de **PONTO**, e os três publicadores de `GizmoView` são **caixas com alças de
-escala** — é trabalho de gizmo, não de física.
+Era o handle de **PONTO** que os três publicadores de `GizmoView` (caixas com alças) não
+cobriam. Primitivo novo em editor-core: **`PointGizmoView` + `paint_point_gizmo`** (`gizmo/point.rs`)
+— um dot âmbar agarrável no anchor, hit `GIZMO_JOINT_ANCHOR` (id 964). O shell publica-o **só
+para um joint selecionado** (`render_loop/point_gizmo::build_point_view`, no `Transform.translation`
+— joint é raiz ⇒ local == mundo) e um ramo `began_joint_anchor` no Down abre um **`Translate` da
+SELEÇÃO** (um joint não tem sprite para o `pick_sprites_at_world` do Translate genérico resolver);
+o resto (mover a translation, undo em 1 passo) vem do `advance_gizmo_drag` + `post_frame_undo`, e o
+`rebuild_from_rest` re-deriva as âncoras locais. Gates mutação-provados (dot hittable · publish
+só-para-joint · o Down usa a seleção e não o pick · o paint desenha o `point_view`). ⚠️ **A
+armadilha de LOC latente reincidiu:** `gizmo/paint.rs` nasceu em 706 > 700 e o `cargo test -p`
+filtrado a mascarou — o helper de projeção foi para `camera.rs` (686). Handle de PONTO fica de
+graça para qualquer entidade-ponto futura.
 
 #### D. Readout de contatos na §11
 

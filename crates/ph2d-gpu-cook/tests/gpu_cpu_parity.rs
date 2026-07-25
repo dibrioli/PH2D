@@ -55,6 +55,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_lfo::register(&mut reg).unwrap();
     ph2d_node_value_noise::register(&mut reg).unwrap();
     ph2d_node_value_mix::register(&mut reg).unwrap();
+    ph2d_node_value_quantize::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -2970,6 +2971,72 @@ fn value_mix_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the crossfade drove nothing"
+    );
+}
+
+/// **`value.quantize` on the device — the staircase.** `grid → lfo →
+/// value.quantize(Floor) → drive(Y)`, no CPU seam. Floor is the mode where a
+/// CPU↔GPU `round` mismatch would show worst (half-to-even vs half-away-from-zero
+/// diverge exactly at grid midpoints), and a NON-round `step` (`0.37`) means the
+/// snapped levels are irrational-ish — a `/`-then-`×` slip can't hide behind a
+/// tidy multiple. `is_fully_gpu` PROVES the chain dispatches (no silent fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_quantize_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 11.0);
+    let lfo = g.add_node("value.lfo");
+    g.set_param(lfo, "period", 0.83);
+    g.set_param(lfo, "amplitude", 2.6);
+    g.set_param(lfo, "phase_stagger", 0.11); // a per-element travelling wave
+    connect(&mut g, grid, lfo);
+    let quant = g.add_node("value.quantize");
+    g.set_param(quant, "step", 0.37); // non-round grid
+    g.set_param(quant, "mode", 1.0); // Floor
+    connect(&mut g, lfo, quant);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 1.4);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (quant, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("quantized value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "lfo → quantize → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.quantize → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the staircase drove nothing"
     );
 }
 

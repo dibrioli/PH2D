@@ -91,6 +91,8 @@ ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 ph2d-node-value-noise = { path = "../ph2d-node-value-noise" }
 # The value-domain crossfader (port-overrides-param via HAS_t_v presence).
 ph2d-node-value-mix = { path = "../ph2d-node-value-mix" }
+# The value-domain staircase (snap to a grid; the posterize/stepped look).
+ph2d-node-value-quantize = { path = "../ph2d-node-value-quantize" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

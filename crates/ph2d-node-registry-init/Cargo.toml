@@ -113,6 +113,7 @@ ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-mix = { path = "../ph2d-node-value-mix" }
 ph2d-node-value-noise = { path = "../ph2d-node-value-noise" }
+ph2d-node-value-quantize = { path = "../ph2d-node-value-quantize" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
 # <ph2d-node-sync:end>
 

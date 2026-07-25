@@ -75,7 +75,7 @@ pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };
 pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
-pub use path::{MotionPath, PathAnchor, PathSample};
+pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};

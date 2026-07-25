@@ -13,18 +13,21 @@ fn swoop() -> MotionPath {
             in_handle: [0.0, 0.0],
             out_handle: [0.0, 6.0],
             auto: false,
+            kind: TangentKind::Smooth,
         },
         PathAnchor {
             anchor: [10.0, 10.0],
             in_handle: [-1.0, 0.0],
             out_handle: [4.0, 0.0],
             auto: false,
+            kind: TangentKind::Smooth,
         },
         PathAnchor {
             anchor: [20.0, 2.0],
             in_handle: [-0.5, 5.0],
             out_handle: [0.0, 0.0],
             auto: false,
+            kind: TangentKind::Smooth,
         },
     ])
 }
@@ -252,4 +255,117 @@ fn auto_smooth_rounds_a_corner_and_leaves_a_straight_line_straight() {
         let y = line.at(line.length() * f64::from(k) / 10.0).unwrap().point[1];
         assert!(y.abs() < 1e-5, "the line bulged to y = {y:e}");
     }
+}
+
+// ── the three handle types (TangentKind), mirrored from the vector module ────────
+//
+// `retype_anchor` is this feature's `retype_vertex`: Corner keeps the handles put and
+// only breaks the link; Smooth/Symmetric make them colinear along the current tangent,
+// Smooth keeping each length, Symmetric averaging the two; a straight cusp borrows the
+// neighbour Auto Bezier tangent. Each gate pins one arm so a mutation of it bleeds.
+
+/// A middle anchor whose two handles are **perpendicular** (in along −x len 2, out along
+/// +y len 3) — a fixture where "colinear" and "keeps each length" are both observable and
+/// where averaging (2.5) differs from keeping (2 and 3).
+fn perp_middle() -> MotionPath {
+    MotionPath::new(vec![
+        PathAnchor::corner([0.0, 0.0]),
+        PathAnchor {
+            anchor: [10.0, 0.0],
+            in_handle: [-2.0, 0.0],
+            out_handle: [0.0, 3.0],
+            auto: false,
+            kind: TangentKind::Corner,
+        },
+        PathAnchor::corner([20.0, 0.0]),
+    ])
+}
+
+/// **Corner keeps the handles exactly, and only breaks the link.** Retyping to Corner
+/// must move nothing on screen — it changes the *constraint* the next drag obeys, not the
+/// geometry (the vector module's `retype_vertex → Corner`).
+#[test]
+fn retype_to_corner_keeps_the_handles_and_only_breaks_the_link() {
+    let mut p = perp_middle();
+    // Start it Smooth+auto so we can see Corner did NOT rebuild along a tangent.
+    p.set_anchor(
+        1,
+        PathAnchor {
+            anchor: [10.0, 0.0],
+            in_handle: [-2.0, -1.0],
+            out_handle: [3.0, 4.0],
+            auto: true,
+            kind: TangentKind::Smooth,
+        },
+    );
+    assert!(p.retype_anchor(1, TangentKind::Corner));
+    let a = p.anchors()[1];
+    assert_eq!(a.in_handle, [-2.0, -1.0], "Corner moved the in handle");
+    assert_eq!(a.out_handle, [3.0, 4.0], "Corner moved the out handle");
+    assert_eq!(a.kind, TangentKind::Corner);
+    assert!(!a.auto, "choosing a kind ends auto");
+}
+
+/// **Smooth aligns both handles and keeps each its own length** (AE Continuous Bezier).
+#[test]
+fn retype_to_smooth_aligns_both_and_keeps_each_length() {
+    let mut p = perp_middle();
+    assert!(p.retype_anchor(1, TangentKind::Smooth));
+    let a = p.anchors()[1];
+    let li = a.in_handle[0].hypot(a.in_handle[1]);
+    let lo = a.out_handle[0].hypot(a.out_handle[1]);
+    assert!((li - 2.0).abs() < 1e-4, "in length {li} != 2 — Smooth must keep each length");
+    assert!((lo - 3.0).abs() < 1e-4, "out length {lo} != 3");
+    let cross = a.in_handle[0] * a.out_handle[1] - a.in_handle[1] * a.out_handle[0];
+    assert!(cross.abs() < 1e-4, "handles not colinear: {:?} {:?}", a.in_handle, a.out_handle);
+    let dot = a.in_handle[0] * a.out_handle[0] + a.in_handle[1] * a.out_handle[1];
+    assert!(dot < 0.0, "the two handles point the same way, not opposed");
+    assert_eq!(a.kind, TangentKind::Smooth);
+    assert!(!a.auto);
+}
+
+/// **Symmetric aligns both AND equalises length to the average** — the opposite is the
+/// exact mirror of the other through the anchor.
+#[test]
+fn retype_to_symmetric_mirrors_and_averages_the_lengths() {
+    let mut p = perp_middle();
+    assert!(p.retype_anchor(1, TangentKind::Symmetric));
+    let a = p.anchors()[1];
+    assert!(
+        (a.in_handle[0] + a.out_handle[0]).abs() < 1e-4
+            && (a.in_handle[1] + a.out_handle[1]).abs() < 1e-4,
+        "Symmetric handles are not exact mirrors: {:?} {:?}",
+        a.in_handle,
+        a.out_handle
+    );
+    let lo = a.out_handle[0].hypot(a.out_handle[1]);
+    assert!((lo - 2.5).abs() < 1e-4, "length {lo} != the average 2.5");
+    assert_eq!(a.kind, TangentKind::Symmetric);
+}
+
+/// **A straight cusp has no tangent of its own, so Smooth/Symmetric borrow the neighbours'
+/// Auto Bezier direction** (⅓ of the gap) instead of leaving zero handles.
+#[test]
+fn retype_a_straight_cusp_borrows_the_neighbour_tangent() {
+    // Zero-handle middle, horizontal neighbour chord (prev → next along +x).
+    let mut p = MotionPath::new(vec![
+        PathAnchor::corner([0.0, 0.0]),
+        PathAnchor::corner([10.0, 5.0]),
+        PathAnchor::corner([20.0, 0.0]),
+    ]);
+    assert!(p.retype_anchor(1, TangentKind::Smooth));
+    let a = p.anchors()[1];
+    let lo = a.out_handle[0].hypot(a.out_handle[1]);
+    assert!(lo > 0.1, "a cusp retyped to Smooth kept zero handles: {:?}", a.out_handle);
+    assert!(a.out_handle[1].abs() < 1e-3, "handle off the horizontal neighbour chord: {:?}", a.out_handle);
+    assert!(a.out_handle[0] > 0.0 && a.in_handle[0] < 0.0, "handles not opposed along the chord");
+}
+
+/// The convert refuses an index that names no anchor, touching nothing.
+#[test]
+fn retype_refuses_a_missing_anchor() {
+    let mut p = perp_middle();
+    let before = p.anchors()[1];
+    assert!(!p.retype_anchor(99, TangentKind::Symmetric));
+    assert_eq!(p.anchors()[1], before);
 }

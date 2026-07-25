@@ -4,7 +4,9 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Transform, World};
-use ph2d_timeline::{AutoOrient, MotionPath, PathAnchor, PropKind, TimelineDoc, apply_from_doc};
+use ph2d_timeline::{
+    AutoOrient, MotionPath, PathAnchor, PropKind, TangentKind, TimelineDoc, apply_from_doc,
+};
 
 /// Um quarto de volta: sai andando para +X e termina a subir em +Y, então o ângulo
 /// tem de varrer de 0 a π/2. Uma reta não distinguiria "girou" de "não girou".
@@ -15,12 +17,14 @@ fn quarter_turn() -> MotionPath {
             in_handle: [0.0, 0.0],
             out_handle: [6.0, 0.0],
             auto: false,
+            kind: TangentKind::Smooth,
         },
         PathAnchor {
             anchor: [10.0, 10.0],
             in_handle: [0.0, -6.0],
             out_handle: [0.0, 0.0],
             auto: false,
+            kind: TangentKind::Smooth,
         },
     ])
 }

@@ -41,6 +41,34 @@ const PROJECT_SAMPLES: usize = 16;
 /// `(2/3)^24 ≈ 1e-4`, i.e. well under a screen pixel on any path an artist draws.
 const PROJECT_REFINE: usize = 24;
 
+/// **The three handle types an anchor's tangents can carry** — the
+/// Corner/Smooth/Symmetric trio of Inkscape/Illustrator, mirrored from the vector
+/// module's `ph2d_vec_scene::VertexKind` (the repo has one answer for "what are a
+/// bezier point's handle modes"). It decides how the OPPOSITE handle reacts when the
+/// artist drags one, and what [`MotionPath::retype_anchor`] rebuilds on a convert.
+///
+/// ⚠️ **Orthogonal to [`PathAnchor::auto`].** An `auto` anchor derives BOTH handles
+/// from its neighbours every time they move (After Effects' Auto Bezier), so its kind
+/// is dormant until the artist shapes it — at which point `auto` clears and the kind
+/// takes over the drag. There is no "Auto" variant here on purpose: `auto` is the
+/// birth default a fresh key wears, and picking any of these three is the deliberate
+/// act that ends it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum TangentKind {
+    /// A cusp: the two handles are **independent** — dragging one leaves the other
+    /// exactly where it was, so the curve can kink at this anchor.
+    Corner,
+    /// Colinear tangents (the passage through the anchor stays smooth), but the
+    /// opposite handle keeps its **own length** — After Effects' *Continuous Bezier*.
+    /// The default a shaped anchor wears, and the byte-identical behaviour this door
+    /// had before the kinds existed.
+    #[default]
+    Smooth,
+    /// Colinear **and equal length**: dragging one handle mirrors the other through
+    /// the anchor. The most constrained of the three.
+    Symmetric,
+}
+
 /// One authored point the object passes through, with the two spatial handles that
 /// shape the curve on either side of it.
 ///
@@ -67,6 +95,10 @@ pub struct PathAnchor {
     /// touched), and it cannot be *derived* — a hand-shaped anchor can coincidentally
     /// sit on the auto handles.
     pub auto: bool,
+    /// Which of the three [`TangentKind`]s this anchor's handles obey when shaped.
+    /// Dormant while `auto` (the handles are re-derived from neighbours regardless);
+    /// it governs the drag and the convert once the artist has touched the anchor.
+    pub kind: TangentKind,
 }
 
 impl PathAnchor {
@@ -80,6 +112,7 @@ impl PathAnchor {
             in_handle: [0.0, 0.0],
             out_handle: [0.0, 0.0],
             auto: false,
+            kind: TangentKind::Corner,
         }
     }
 }
@@ -207,6 +240,68 @@ impl MotionPath {
         })
     }
 
+    /// **Change anchor `i`'s [`TangentKind`], reshaping its handles to obey it** — the
+    /// convert that a right-click on the anchor drives, mirroring the vector module's
+    /// `ph2d_vec_scene::retype_vertex`.
+    ///
+    /// - `Corner` keeps the handles exactly where they are (they only become
+    ///   *independent* from here on — nothing moves on screen);
+    /// - `Smooth`/`Symmetric` make both handles colinear along the current tangent
+    ///   (`out − in`, normalised). `Smooth` keeps each handle's own length; `Symmetric`
+    ///   gives both the **average** of the two lengths.
+    /// - A straight cusp (both handles collapsed onto the anchor) has no tangent of its
+    ///   own, so it borrows the [`MotionPath::auto_smooth`] direction from its
+    ///   neighbours — the same ⅓-of-the-gap Auto Bezier a fresh key is born with.
+    ///
+    /// ⚠️ **Marks the anchor shaped** (`auto = false`): choosing a type is a deliberate
+    /// act, and leaving it `auto` would let the next neighbour edit re-derive the very
+    /// handles the artist just asked for. Returns `false` if there is no anchor `i`.
+    /// Runs through [`MotionPath::edit`], so the arc-length table follows.
+    pub fn retype_anchor(&mut self, i: usize, kind: TangentKind) -> bool {
+        let n = self.anchors.len();
+        if i >= n {
+            return false;
+        }
+        let prev = (i > 0).then(|| self.anchors[i - 1].anchor);
+        let next = (i + 1 < n).then(|| self.anchors[i + 1].anchor);
+        self.edit(|anchors| {
+            let at = anchors[i].anchor;
+            let (mut in_rel, mut out_rel) = (anchors[i].in_handle, anchors[i].out_handle);
+            let a = &mut anchors[i];
+            a.auto = false;
+            a.kind = kind;
+            if kind == TangentKind::Corner {
+                // The handles stay put; only the constraint changes.
+                return;
+            }
+            // A straight cusp has no tangent to align to → take the neighbours' one.
+            let li = in_rel[0].hypot(in_rel[1]);
+            let lo = out_rel[0].hypot(out_rel[1]);
+            if li <= f32::EPSILON && lo <= f32::EPSILON {
+                let s = Self::auto_smooth(prev, at, next);
+                in_rel = s.in_handle;
+                out_rel = s.out_handle;
+            }
+            // Colinear along `out − in`; empty tangent (both handles equal) leaves them.
+            let d = [out_rel[0] - in_rel[0], out_rel[1] - in_rel[1]];
+            let dn = d[0].hypot(d[1]);
+            if dn <= f32::EPSILON {
+                return;
+            }
+            let tan = [d[0] / dn, d[1] / dn];
+            let (li, lo) = (in_rel[0].hypot(in_rel[1]), out_rel[0].hypot(out_rel[1]));
+            let (ti, to) = if kind == TangentKind::Symmetric {
+                let m = 0.5 * (li + lo);
+                (m, m)
+            } else {
+                (li, lo)
+            };
+            a.in_handle = [-tan[0] * ti, -tan[1] * ti];
+            a.out_handle = [tan[0] * to, tan[1] * to];
+        });
+        true
+    }
+
     /// Insert an anchor at `i` (clamped to the end).
     pub fn insert_anchor(&mut self, i: usize, a: PathAnchor) {
         self.edit(|anchors| anchors.insert(i.min(anchors.len()), a));
@@ -320,6 +415,7 @@ impl MotionPath {
                 in_handle: [0.0, 0.0],
                 out_handle: [0.0, 0.0],
                 auto: true,
+                kind: TangentKind::Smooth,
             };
         }
         let u = [dir[0] / n, dir[1] / n];
@@ -333,6 +429,7 @@ impl MotionPath {
             in_handle: [-u[0] * ri, -u[1] * ri],
             out_handle: [u[0] * ro, u[1] * ro],
             auto: true,
+            kind: TangentKind::Smooth,
         }
     }
 

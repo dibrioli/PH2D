@@ -18,7 +18,7 @@
 use ph2d_anim::{AnimTarget, AnimValue, RationalTime};
 
 use crate::doc::TimelineDoc;
-use crate::path::PathAnchor;
+use crate::path::{PathAnchor, TangentKind};
 use crate::prop::PropKind;
 
 /// O estado RESOLVIDO do auto-orient de uma entidade — o que o apply honra e o que o
@@ -84,11 +84,16 @@ impl TimelineDoc {
     /// a alça de saída (verdadeiro) ou a de entrada; `tip` é a nova ponta, em MUNDO.
     ///
     /// ⚠️ **Arrastar uma alça torna a âncora MOLDADA** (`auto = false`), senão o próximo
-    /// re-suavizar de um vizinho jogaria o trabalho fora. E a alça OPOSTA **espelha** a
-    /// direção mantendo o próprio comprimento (o *Continuous Bezier* do AE): é isso que
-    /// mantém a passagem pela âncora lisa em vez de criar uma quina a cada toque. Numa
-    /// ponta do caminho a alça oposta tem comprimento zero e continua zero — o espelho
-    /// não a acorda.
+    /// re-suavizar de um vizinho jogaria o trabalho fora. Como a alça OPOSTA acompanha
+    /// depende do [`TangentKind`] da âncora (o menu de botão direito o escolhe):
+    ///
+    /// - `Smooth` (o default, *Continuous Bezier* do AE): a oposta **espelha** a direção
+    ///   mantendo o **próprio comprimento** — mantém a passagem pela âncora lisa sem criar
+    ///   uma quina a cada toque. Numa ponta do caminho a alça oposta tem comprimento zero
+    ///   e continua zero, o espelho não a acorda;
+    /// - `Symmetric`: a oposta **espelha por completo** (`-h`), mesma direção e mesmo
+    ///   comprimento que a arrastada;
+    /// - `Corner`: a oposta fica **exatamente onde estava** — a curva pode dobrar aqui.
     ///
     /// Reescreve as distâncias das keys: mexer numa alça muda o comprimento de arco do
     /// segmento, então o número que cada key seguinte guarda muda com ela.
@@ -118,21 +123,59 @@ impl TimelineDoc {
         } else {
             [0.0, 0.0]
         };
-        // A alça oposta mantém o COMPRIMENTO e vira collinear: `-unit * len`. Comprimento
-        // zero (ponta do caminho) fica zero.
-        let mirror = |oppo: [f32; 2]| {
-            let len = (oppo[0] * oppo[0] + oppo[1] * oppo[1]).sqrt();
-            [-unit[0] * len, -unit[1] * len]
+        // Como a alça OPOSTA segue a arrastada, pelo tipo da âncora. `kind` é copiado para
+        // fora de `a` antes do closure, senão ele emprestaria `a` e as escritas abaixo não
+        // compilariam.
+        let kind = a.kind;
+        let opposite = |oppo: [f32; 2]| -> [f32; 2] {
+            match kind {
+                TangentKind::Corner => oppo,
+                TangentKind::Symmetric => [-h[0], -h[1]],
+                TangentKind::Smooth => {
+                    let len = (oppo[0] * oppo[0] + oppo[1] * oppo[1]).sqrt();
+                    [-unit[0] * len, -unit[1] * len]
+                }
+            }
         };
         if out {
-            a.in_handle = mirror(a.in_handle);
+            a.in_handle = opposite(a.in_handle);
             a.out_handle = h;
         } else {
-            a.out_handle = mirror(a.out_handle);
+            a.out_handle = opposite(a.out_handle);
             a.in_handle = h;
         }
         a.auto = false;
         path.set_anchor(i, a);
+        self.rewrite_path_key_values(target)
+    }
+
+    /// **Change the [`TangentKind`] of anchor `i` on `target`'s trajectory** — the
+    /// convert the right-click menu (*Corner / Smooth / Symmetric*) drives, the sibling
+    /// of the vector module's per-vertex retype.
+    ///
+    /// Goes through [`crate::MotionPath::retype_anchor`] (Corner keeps the handles put,
+    /// Smooth and Symmetric rebuild them colinear), then rewrites the key distances:
+    /// `Symmetric` averages the two handle lengths, which changes the segment's arc
+    /// length, so the number every following key stores changes with it. Refuses a
+    /// non-Position target or a missing anchor, touching nothing.
+    pub fn set_path_tangent_kind(
+        &mut self,
+        target: AnimTarget,
+        i: usize,
+        kind: TangentKind,
+    ) -> bool {
+        let Some(b) = self.bindings_mut().iter_mut().find(|b| b.target == target) else {
+            return false;
+        };
+        if b.prop != PropKind::Position {
+            return false;
+        }
+        let Some(path) = b.path.as_mut() else {
+            return false;
+        };
+        if !path.retype_anchor(i, kind) {
+            return false;
+        }
         self.rewrite_path_key_values(target)
     }
 

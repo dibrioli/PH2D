@@ -3,7 +3,7 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Transform, World};
 
-use crate::{MotionPath, PathAnchor, PropKind, TimelineDoc, apply_from_doc};
+use crate::{MotionPath, PathAnchor, PropKind, TangentKind, TimelineDoc, apply_from_doc};
 
 /// Um L de 10 + 10, com uma key por âncora, e o objeto que a percorre.
 fn rig() -> (World, ph2d_ecs::Entity, TimelineDoc) {
@@ -385,4 +385,94 @@ fn move_path_tangent_refuses_a_scalar_target() {
     let mut doc = TimelineDoc::new();
     let scalar = doc.bind(1, PropKind::TranslationX);
     assert!(!doc.move_path_tangent(scalar, 0, true, [1.0, 1.0]));
+}
+
+// ── the three handle types on the drag door (TangentKind) ────────────────────────
+//
+// `move_path_tangent`'s Smooth branch is the byte-identical old behaviour (covered by
+// `dragging_a_tangent_shapes_the_curve_and_marks_the_anchor`). These pin the other two
+// arms so a mutation of either bleeds, and the convert door that the menu drives.
+
+/// Build a straight 3-key horizontal path and return `(doc, target)`.
+fn straight3() -> (TimelineDoc, ph2d_anim::AnimTarget) {
+    let mut doc = TimelineDoc::new();
+    let target = doc.bind(1, PropKind::Position);
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 0.0]),
+        (2.0, [20.0, 0.0]),
+    ] {
+        doc.add_path_key(target, RationalTime::from_seconds(t), p);
+    }
+    (doc, target)
+}
+
+fn key_value(doc: &TimelineDoc, target: ph2d_anim::AnimTarget, i: usize) -> f32 {
+    match doc.active_clip().track(target).unwrap().keys()[i].value {
+        AnimValue::Float(v) => v,
+        _ => panic!(),
+    }
+}
+
+/// **Corner: dragging one handle leaves the OPPOSITE exactly where it was** — the cusp
+/// the artist reaches for to kink the trajectory.
+#[test]
+fn dragging_a_corner_tangent_leaves_the_opposite_handle_untouched() {
+    let (mut doc, target) = straight3();
+    assert!(doc.set_path_tangent_kind(target, 1, TangentKind::Corner));
+    let before_in = doc.path_anchor(target, 1).unwrap().in_handle;
+
+    let mid = doc.path_anchor(target, 1).unwrap().anchor;
+    assert!(doc.move_path_tangent(target, 1, true, [mid[0] + 3.0, mid[1] + 9.0]));
+
+    let a = doc.path_anchor(target, 1).unwrap();
+    assert_eq!(a.out_handle, [3.0, 9.0], "the dragged handle went to the tip");
+    assert_eq!(a.in_handle, before_in, "Corner: the opposite handle moved");
+    assert_eq!(a.kind, TangentKind::Corner, "the drag kept the kind");
+}
+
+/// **Symmetric: dragging one handle mirrors the opposite EXACTLY** (same length, opposite
+/// direction) — the most constrained of the three.
+#[test]
+fn dragging_a_symmetric_tangent_mirrors_the_opposite_exactly() {
+    let (mut doc, target) = straight3();
+    assert!(doc.set_path_tangent_kind(target, 1, TangentKind::Symmetric));
+
+    let mid = doc.path_anchor(target, 1).unwrap().anchor;
+    assert!(doc.move_path_tangent(target, 1, true, [mid[0] + 3.0, mid[1] + 9.0]));
+
+    let a = doc.path_anchor(target, 1).unwrap();
+    assert_eq!(a.out_handle, [3.0, 9.0]);
+    assert_eq!(
+        a.in_handle,
+        [-3.0, -9.0],
+        "Symmetric: the opposite is not the exact mirror of the dragged handle"
+    );
+}
+
+/// **Setting the kind rewrites the key distances**: `Symmetric` averages the two handle
+/// lengths, which changes a segment's arc length, so the number every following key stores
+/// changes with it (the single-door invariant of `rewrite_path_key_values`). And the door
+/// refuses a non-Position target and a missing anchor.
+#[test]
+fn setting_the_tangent_kind_rewrites_the_key_distances_and_refuses_bad_targets() {
+    let (mut doc, target) = straight3();
+    // Shape the middle asymmetrically: a long out handle; the Smooth mirror keeps the in
+    // handle's own (short auto) length, so in and out lengths now differ.
+    assert!(doc.move_path_tangent(target, 1, true, [12.0, 8.0]));
+    let last_before = key_value(&doc, target, 2);
+
+    // Convert to Symmetric → both handles take the average length → the arc changes.
+    assert!(doc.set_path_tangent_kind(target, 1, TangentKind::Symmetric));
+    let last_after = key_value(&doc, target, 2);
+    assert!(
+        (last_before - last_after).abs() > 1e-3,
+        "Symmetric averaged the handles but the key distance did not follow: \
+         {last_before} -> {last_after}"
+    );
+
+    // Refusals: a scalar target and an out-of-range anchor touch nothing.
+    let scalar = doc.bind(2, PropKind::TranslationX);
+    assert!(!doc.set_path_tangent_kind(scalar, 0, TangentKind::Corner));
+    assert!(!doc.set_path_tangent_kind(target, 99, TangentKind::Corner));
 }

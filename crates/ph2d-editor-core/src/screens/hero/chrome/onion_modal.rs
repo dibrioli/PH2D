@@ -37,7 +37,7 @@ const SWATCH_W: f32 = 56.0; // LITERAL-PX-OK: onion colour swatch width
 /// Close-X square in the title band.
 const CLOSE_W: f32 = 20.0; // LITERAL-PX-OK: onion modal close-X width
 /// Row count: title · opacity · before · after · past-colour · future-colour.
-const ROWS: f32 = 6.0;
+const ROWS: f32 = 6.0; // LITERAL-PX-OK: CONTAGEM de linhas (as seis listadas acima), nao medida
 
 /// Paint the Onion settings modal at `store.onion_modal_pos()`, clamped to `viewport`. No-op when the
 /// modal is closed. Mirrors [`super::fill_modal::paint_fill_adjust_modal`]'s card styling.
@@ -148,7 +148,7 @@ pub fn paint_onion_modal(
             scene,
             sw_rect,
             Radius::Sm.px(),
-            Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+            Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]), // LITERAL-COLOR-OK: user-color — a cor de fantasma AUTORADA pelo artista, nunca um token de tema
         );
         stroke_rounded_rect(
             scene,

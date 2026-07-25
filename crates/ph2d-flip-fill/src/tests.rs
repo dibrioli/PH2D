@@ -862,3 +862,57 @@ fn the_helper_marks_only_real_tips_never_a_cut_point() {
         "o corte (12,0) e' interior da vertical — nao pode ganhar dot"
     );
 }
+
+/// 🔴 **O helper só é PENDENTE onde a tinta NÃO cobre o vão** (a lei *"helpers só nos
+/// gaps pendentes"* do GP): numa junção de traços cujos corpos já se sobrepõem, a solda
+/// vale e o line-art está fechado — o helper ali é a tela apontando um vão inexistente
+/// (visível de perto, a queixa do smoke). Num vão de verdade, a tinta não alcança e o
+/// helper é legítimo.
+///
+/// Mutação que sangra: `preview_closures` cravar `pending: true` — o helper volta a
+/// aparecer na junção coberta.
+#[test]
+fn a_helper_is_pending_only_where_the_paint_does_not_bridge() {
+    // JUNÇÃO coberta: duas metades de uma linha, pontas a 0,05 doc uma da outra, corpo de
+    // meia-largura 0,1 cada (soma 0,2 > 0,05) — a tinta já se toca ali.
+    let junction_l = (
+        vec![Vec2::new(0.0, 0.0), Vec2::new(5.0, 0.0)],
+        vec![0.1; 2],
+        false,
+    );
+    let junction_r = (
+        vec![Vec2::new(5.05, 0.0), Vec2::new(10.0, 0.0)],
+        vec![0.1; 2],
+        false,
+    );
+    // VÃO de verdade: pontas a 1,0 doc, soma das meias-larguras 0,2 < 1,0 — aberto.
+    let gap_l = (
+        vec![Vec2::new(0.0, 3.0), Vec2::new(5.0, 3.0)],
+        vec![0.1; 2],
+        false,
+    );
+    let gap_r = (
+        vec![Vec2::new(6.0, 3.0), Vec2::new(10.0, 3.0)],
+        vec![0.1; 2],
+        false,
+    );
+    let strokes = [junction_l, junction_r, gap_l, gap_r];
+    let preview = preview_closures(&strokes, 2.0);
+
+    // O par da JUNÇÃO (perto de y=0) existe como fechamento, mas NÃO é pendente.
+    let junction = preview
+        .iter()
+        .find(|h| h.seg.a.y.abs() < 0.1 && h.seg.b.y.abs() < 0.1)
+        .expect("o par da juncao tinha de existir como fechamento");
+    assert!(
+        !junction.pending,
+        "a juncao coberta pela tinta NAO e' um vao pendente: {junction:?}"
+    );
+
+    // O par do VÃO (perto de y=3) é pendente — o helper deve aparecer.
+    let gap = preview
+        .iter()
+        .find(|h| (h.seg.a.y - 3.0).abs() < 0.1 && (h.seg.b.y - 3.0).abs() < 0.1)
+        .expect("o par do vao aberto tinha de existir");
+    assert!(gap.pending, "o vao aberto E' pendente: {gap:?}");
+}

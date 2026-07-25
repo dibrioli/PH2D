@@ -54,7 +54,12 @@ fn envelope(pts: &[Vec2], w: &[f32]) -> Envelope {
 }
 
 /// O ponto mais próximo de `p` no segmento `a..b`, como `(t, ponto, distância²)`.
-fn closest_on_segment(p: Vec2, a: Vec2, b: Vec2) -> (f32, Vec2, f32) {
+///
+/// `pub(crate)` porque o `preview_closures` pergunta a MESMA coisa para decidir se um
+/// vão é PENDENTE (a tinta não o cobre) — e a lei de cobertura da solda tem de ser UMA:
+/// duas cópias divergiriam sobre "a tinta chega aqui?", e o overlay mostraria um helper
+/// onde a solda já vedou (ou o contrário).
+pub(crate) fn closest_on_segment(p: Vec2, a: Vec2, b: Vec2) -> (f32, Vec2, f32) {
     let ab = b - a;
     let l2 = ab.x * ab.x + ab.y * ab.y;
     let t = if l2 <= 0.0 {

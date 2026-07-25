@@ -216,6 +216,16 @@ pub struct GapHelper {
     pub a_is_tip: bool,
     /// `seg.b` coincide com uma ponta real de um traço aberto?
     pub b_is_tip: bool,
+    /// **O vão é PENDENTE** — a tinta que o artista pintou NÃO o cobre?
+    ///
+    /// A killer feature do GP é *"helpers visíveis só nos gaps pendentes"*, e um vão só é
+    /// pendente se ele é um vão de verdade na TELA: se os corpos pintados das duas partes
+    /// já se tocam (`dist ≤ meia-largura + meia-largura`), a **solda das juntas** (`weld`)
+    /// já veda ali, o line-art está fechado, e um helper seria a tela apontando um vão que
+    /// não existe (visível de perto: a linha branca se vê contínua). O overlay desenha só
+    /// os pendentes; o motor do fill **ignora este flag** (ele soma solda + fechamentos de
+    /// qualquer jeito — o redundante é parede inofensiva).
+    pub pending: bool,
 }
 
 /// **Os fechamentos que um clique FARIA**, já anotados para o overlay — a porta do Gap
@@ -259,12 +269,49 @@ pub fn preview_closures(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], gap_reach: f32)
     };
     gap::closures(&bounds, gap_reach)
         .into_iter()
-        .map(|seg| GapHelper {
-            a_is_tip: is_tip(seg.a),
-            b_is_tip: is_tip(seg.b),
-            seg,
+        .map(|seg| {
+            // Pendente = a tinta não cobre o vão: `dist(a,b) > meia-largura(a) +
+            // meia-largura(b)`, a MESMA lei da solda (`weld`), só que aqui perguntada para
+            // NÃO desenhar o helper onde ela já vedou. A meia-largura de um ponto é a do
+            // traço mais próximo dele (a ponta lê a própria; o ponto de corte lê a parede
+            // em que caiu) — pela porta única `weld::closest_on_segment`.
+            let d = seg.b - seg.a;
+            let gap2 = d.x * d.x + d.y * d.y;
+            let cover = halfw_at(seg.a, strokes) + halfw_at(seg.b, strokes);
+            GapHelper {
+                a_is_tip: is_tip(seg.a),
+                b_is_tip: is_tip(seg.b),
+                pending: gap2 > cover * cover,
+                seg,
+            }
         })
         .collect()
+}
+
+/// A **meia-largura do corpo pintado** em `p`: a espessura interpolada no ponto mais
+/// próximo do traço mais próximo. É o `r_q` da solda (`weld`), perguntado para um ponto
+/// qualquer — a ponta de um traço lê a própria meia-largura (distância 0 do próprio
+/// traço); um ponto de corte lê a da parede em que caiu.
+fn halfw_at(p: Vec2, strokes: &[(Vec<Vec2>, Vec<f32>, bool)]) -> f32 {
+    let mut best_d2 = f32::INFINITY;
+    let mut best_w = 0.0f32;
+    for (pts, w, closed) in strokes {
+        let n = pts.len();
+        if n < 2 {
+            continue;
+        }
+        let last = if *closed { n } else { n - 1 };
+        for i in 0..last {
+            let (t, _, d2) = weld::closest_on_segment(p, pts[i], pts[(i + 1) % n]);
+            if d2 < best_d2 {
+                best_d2 = d2;
+                let ra = w.get(i).copied().unwrap_or(0.0);
+                let rb = w.get((i + 1) % n).copied().unwrap_or(0.0);
+                best_w = ra + (rb - ra) * t;
+            }
+        }
+    }
+    best_w
 }
 
 /// `strokes` são as polilinhas de fronteira (`(pontos, meia-espessura por ponto,

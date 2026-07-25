@@ -7,6 +7,13 @@
 //! no Vello o transform do `stroke` MULTIPLICA a espessura. A cadeia arte→tela é a MESMA
 //! que o render dobra (`câmera ∘ objeto ∘ pose_da_chave` — o `screen_affine` do tween).
 //!
+//! **Só os vãos PENDENTES** (`GapHelper::pending`): a killer feature do GP é *"helpers
+//! visíveis só nos gaps pendentes"*. Onde a tinta que o artista pintou já cobre o vão (as
+//! junções de traços que se sobrepõem), a solda das juntas já veda e o line-art está
+//! fechado — um helper ali seria a tela apontando um vão que não existe, e de perto fica
+//! gritante (a linha branca se vê contínua). O motor do fill sela tudo de qualquer jeito;
+//! o overlay só desenha o que ainda está ABERTO.
+//!
 //! **Duas camadas, porque o motor sela um vão de dois jeitos** (`GapHelper`): um **par
 //! ponta-a-ponta** é a PONTE limpa de um vão (as duas pontas são fatos do desenho) e uma
 //! **extensão** é uma ponta esticada na tangente até bater numa parede (a outra ponta é
@@ -60,6 +67,10 @@ pub(super) fn draw(
     let aff = screen_affine(l2w, pose, camera.world_to_screen_affine(window));
     let scene = vector_scene.inner_mut();
     for h in helpers {
+        // Só os vãos ABERTOS — onde a tinta já cobre, a solda vedou e não há o que mostrar.
+        if !h.pending {
+            continue;
+        }
         let a = aff * Point::new(f64::from(h.seg.a.x), f64::from(h.seg.a.y));
         let b = aff * Point::new(f64::from(h.seg.b.x), f64::from(h.seg.b.y));
         // Ponte = as DUAS pontas reais; qualquer outra coisa é um fio de extensão.

@@ -19,8 +19,12 @@ use crate::strip_edge_edit::{
 /// module under the LOC cap.
 #[path = "intent_loop_sync.rs"]
 mod intent_loop_sync;
+/// The post-edit invariant restoration (`settle`) — sibling module under the LOC cap.
+#[path = "intent_settle.rs"]
+mod intent_settle;
 use crate::intent_apply_path;
 use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
+use intent_settle::settle;
 pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
@@ -507,37 +511,6 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 }
             }
         }),
-    }
-}
-
-/// Restore every invariant an edit may have broken. Idempotent, cheap, and the
-/// SINGLE place either one is re-derived — which is the whole point: an invariant
-/// that any authoring path can break needs exactly one place that fixes it, or it
-/// is really N places and one of them will be forgotten.
-///
-/// 1. **Roving keys**: their time is a function of their neighbours' values, so it
-///    is re-derived after every add/move/scale/paste/value/interp/rove.
-/// 2. **Strip order**: a lane's strips are sorted by start time, and that is what
-///    `ClipLane::weight_at` reads to find the neighbour a crossfade blends with.
-///    Drag a strip past its neighbour and the order is stale — the drawn crossfade
-///    and the evaluated one would disagree, which is exactly the bug class that
-///    "one place" exists to prevent.
-fn settle(doc: &mut TimelineDoc) {
-    doc.active_clip_mut().resolve_roving();
-    for lane in doc.stack_mut() {
-        lane.resort();
-    }
-    // **Every stack, not just the document's** (ADR-0133). "Strips are sorted by start time"
-    // is the invariant the evaluator's neighbour logic rests on — `hold_at`, the crossfade,
-    // `gap_before` all read a lane in order. A strip dragged inside a CONTAINER would leave
-    // that lane unsorted, and the damage would show up as a crossfade against the wrong
-    // neighbour, one level down from where anyone is looking.
-    for i in 0..doc.containers().len() {
-        if let Some(lanes) = doc.container_stack_mut(i) {
-            for lane in lanes {
-                lane.resort();
-            }
-        }
     }
 }
 

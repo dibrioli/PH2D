@@ -1293,3 +1293,177 @@ fn arming_physics_reaches_the_snapshot_the_panel_paints() {
         );
     }
 }
+
+// ── the motion path stays 1:1 with its Position track under dope-sheet edits ─────
+//
+// ADR-0141: moving / merging / deleting / duplicating a Position key in the TIMELINE
+// edits the track alone; `settle` reconciles the trajectory so the anchor count never
+// drifts from the key count. The smoke reported the exact failure: separate X/Y,
+// displace one, re-join — the track's `merge_moved_over_stationary` absorbs a key, the
+// orphan anchor stayed, and dragging a point broke the curve (more anchors than keys).
+
+use ph2d_timeline::{AnimTarget, KeyId};
+
+/// Build a Position trajectory of `points` via the real K flow (`AddPathKey`), so each
+/// anchor is paired with a key exactly as the product does.
+fn build_path(st: &mut TimelineState, ph: &mut Playhead, points: &[(f64, [f32; 2])]) {
+    for &(t, at) in points {
+        apply_intent(st, ph, I::AddPathKey { entity: 1, t: s(t), at });
+    }
+}
+
+/// `(anchor count, key count)` for entity 1's Position binding — the two numbers that
+/// must stay equal, and whose drift is the bug.
+fn counts(st: &TimelineState) -> (usize, usize) {
+    let b = st.doc.binding_for(1, PropKind::Position).expect("position bound");
+    let anchors = b.path.as_ref().map_or(0, |p| p.len());
+    let keys = st
+        .doc
+        .active_clip()
+        .track(b.target)
+        .map_or(0, |t| t.keys().len());
+    (anchors, keys)
+}
+
+/// The `(target, key)` of entity 1's Position key nearest `secs`.
+fn key_at(st: &TimelineState, secs: f64) -> (AnimTarget, KeyId) {
+    let b = st.doc.binding_for(1, PropKind::Position).unwrap();
+    let track = st.doc.active_clip().track(b.target).unwrap();
+    let i = track
+        .keys()
+        .iter()
+        .position(|k| (k.t.to_seconds() - secs).abs() < 1e-6)
+        .expect("a key at that time");
+    (b.target, track.ids()[i])
+}
+
+/// **The exact smoke repro.** Four anchors (as Separate->Path leaves after a displaced
+/// axis), then re-join the extra key onto its neighbour — the dope-sheet merge absorbs a
+/// KEY, and the reconcile in `settle` must drop the orphan ANCHOR, or the next canvas
+/// drag meets 4 anchors and 3 keys and breaks.
+#[test]
+fn re_joining_a_moved_position_key_keeps_the_path_and_keys_one_to_one() {
+    let mut st = TimelineState::new(); // frame-snap on, fps 24 -> every time below is exact
+    let mut ph = Playhead::new(DT);
+    build_path(
+        &mut st,
+        &mut ph,
+        &[
+            (0.0, [0.0, 0.0]),
+            (1.0, [10.0, 0.0]),
+            (1.5, [10.0, 5.0]),
+            (2.0, [10.0, 10.0]),
+        ],
+    );
+    assert_eq!(counts(&st), (4, 4), "four anchors, four keys after the build");
+
+    // Re-join: drag the t=1.5 key onto t=1.0. `merge_moved_over_stationary` absorbs the
+    // stationary key -> the track drops to 3.
+    let (target, id) = key_at(&st, 1.5);
+    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: -0.5 });
+
+    assert_eq!(
+        counts(&st),
+        (3, 3),
+        "re-joining dropped a key but the orphan anchor stayed — the path is not 1:1 with \
+         the keys, which is exactly the count that breaks the canvas drag"
+    );
+
+    // And the object still lands on every key: the last key holds the FULL journey, not a
+    // truncated one (the `zip` in `rewrite_path_key_values` would shorten it on a mismatch).
+    let b = st.doc.binding_for(1, PropKind::Position).unwrap();
+    let total = b.path.as_ref().unwrap().length() as f32;
+    let last = match st.doc.active_clip().track(b.target).unwrap().keys().last().unwrap().value {
+        AnimValue::Float(v) => v,
+        _ => panic!(),
+    };
+    assert!(
+        (last - total).abs() < 1e-3,
+        "the last key holds {last}, the journey measures {total}: the drag would land the \
+         object short of the end"
+    );
+}
+
+/// Deleting a Position key drops its anchor — the simplest count-shrinking edit.
+#[test]
+fn deleting_a_position_key_drops_its_anchor() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    build_path(
+        &mut st,
+        &mut ph,
+        &[(0.0, [0.0, 0.0]), (1.0, [10.0, 0.0]), (2.0, [10.0, 10.0])],
+    );
+    assert_eq!(counts(&st), (3, 3));
+
+    let (target, id) = key_at(&st, 1.0);
+    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(&mut st, &mut ph, I::DeleteSelection);
+
+    assert_eq!(counts(&st), (2, 2), "deleting the middle key left an orphan anchor");
+}
+
+/// Duplicating a Position key grows an anchor on the curve — the count-GROWING edit
+/// (the other direction of the same drift).
+#[test]
+fn duplicating_a_position_key_grows_a_matching_anchor() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    build_path(
+        &mut st,
+        &mut ph,
+        &[(0.0, [0.0, 0.0]), (1.0, [10.0, 0.0]), (2.0, [10.0, 10.0])],
+    );
+    // The copy lands on the playhead — park it in a free gap so it does not overwrite.
+    apply_intent(&mut st, &mut ph, I::Scrub(1.5));
+    let (target, id) = key_at(&st, 1.0);
+    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(&mut st, &mut ph, I::DuplicateSelection);
+
+    assert_eq!(counts(&st), (4, 4), "the duplicated key got no anchor on the curve");
+}
+
+/// **Idempotent when in sync.** A plain time-move that neither reorders nor merges must
+/// leave the trajectory's GEOMETRY untouched — the reconcile is a no-op there, so no
+/// anchor shifts and no spurious undo churn.
+#[test]
+fn a_plain_time_move_does_not_disturb_the_path_geometry() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    build_path(
+        &mut st,
+        &mut ph,
+        &[(0.0, [0.0, 0.0]), (1.0, [10.0, 0.0]), (2.0, [10.0, 10.0])],
+    );
+    let before: Vec<[f32; 2]> = st
+        .doc
+        .binding_for(1, PropKind::Position)
+        .unwrap()
+        .path
+        .as_ref()
+        .unwrap()
+        .anchors()
+        .iter()
+        .map(|a| a.anchor)
+        .collect();
+
+    // Nudge the middle key later, but not past its neighbour (no reorder, no merge).
+    let (target, id) = key_at(&st, 1.0);
+    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
+
+    let after: Vec<[f32; 2]> = st
+        .doc
+        .binding_for(1, PropKind::Position)
+        .unwrap()
+        .path
+        .as_ref()
+        .unwrap()
+        .anchors()
+        .iter()
+        .map(|a| a.anchor)
+        .collect();
+    assert_eq!(before, after, "a plain retime perturbed the anchor positions");
+    assert_eq!(counts(&st), (3, 3));
+}

@@ -293,6 +293,121 @@ impl TimelineDoc {
         self.add_path_key(target, t, at)
     }
 
+    /// **Reconcilia TODA trajetória Position com a track do clip ativo** — o invariante
+    /// *"as âncoras SÃO as keys (1:1)"* mantido quando as keys são editadas pela TIMELINE,
+    /// não pelo canvas ([ADR-0141]).
+    ///
+    /// As portas do caminho (`add_path_key`/`move_path_anchor`/`move_path_tangent`) mantêm
+    /// âncoras e keys em passo. Mas **mover / fundir / apagar / duplicar uma key de Position
+    /// no dope-sheet edita a TRACK sozinha** — e aí a contagem de âncoras descola da de keys,
+    /// que é o *"mais pontos na curva do que keys na timeline → a curva quebra ao arrastar"*
+    /// que o smoke reportou (o caso real: separar X/Y, deslocar uma, juntar de volta — o
+    /// `merge_moved_over_stationary` da track absorve uma key, e a âncora órfã fica). Chamado
+    /// UMA vez pelo `settle` do [`crate::intent_apply`], junto do re-derivar dos roving e do
+    /// re-sort dos strips — o mesmo choke point que restaura todo invariante que uma edição
+    /// pode quebrar.
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    pub(crate) fn reconcile_position_paths(&mut self) {
+        let targets: Vec<AnimTarget> = self
+            .bindings()
+            .iter()
+            .filter(|b| b.prop == PropKind::Position && b.path.is_some())
+            .map(|b| b.target)
+            .collect();
+        for target in targets {
+            self.reconcile_one_position_path(target);
+        }
+    }
+
+    /// Reconcilia UMA trajetória com a track do clip ativo.
+    ///
+    /// Âncoras e keys vivem no MESMO eixo — distância de arco —, então cada key é casada com
+    /// a âncora cujo `arclen` bate com a distância que ela guarda (a mais próxima, gulosa,
+    /// dentro de uma tolerância relativa): uma key que manteve a distância mantém a âncora (e
+    /// a forma dela); uma que sumiu deixa a âncora órfã cair; e uma que apareceu
+    /// (duplicar/colar) faz nascer uma na curva, na distância dela. **Idempotente quando já
+    /// está em passo** — toda key casa a própria âncora, então um caminho intocado não é
+    /// perturbado (nenhum passo de undo espúrio).
+    fn reconcile_one_position_path(&mut self, target: AnimTarget) {
+        // As distâncias que as keys da track guardam, em ordem de TEMPO.
+        let Some(track) = self.active_clip().track(target) else {
+            return;
+        };
+        let key_ds: Vec<f64> = track
+            .keys()
+            .iter()
+            .map(|k| match k.value {
+                AnimValue::Float(v) => f64::from(v),
+                _ => 0.0,
+            })
+            .collect();
+
+        {
+            let Some(b) = self.bindings_mut().iter_mut().find(|b| b.target == target) else {
+                return;
+            };
+            let Some(path) = b.path.as_mut() else {
+                return;
+            };
+            let old = path.anchors().to_vec();
+            let arclen: Vec<f64> = (0..old.len())
+                .map(|i| path.arclen_at(i).unwrap_or(0.0))
+                .collect();
+
+            // Tolerância de casamento: a key guarda `arclen` em `f32` e a âncora o mede em
+            // `f64`, então o casamento EXATO tem um resíduo de arredondamento — relativo ao
+            // tamanho da distância. Larga o bastante para aceitá-lo, apertada o bastante para
+            // uma DUPLICATA (mesma distância, âncora já consumida) não roubar a âncora do
+            // vizinho e sim nascer coincidente.
+            let tol = |a: f64| 1e-4 * (a.abs() + 1.0);
+
+            // Já 1:1 e na mesma ordem → nada a fazer (o caminho rápido, byte-idempotente).
+            // Conferido por VALOR e não só por contagem: um reorder mantém a contagem mas
+            // ainda tem de re-costurar.
+            let in_sync = key_ds.len() == old.len()
+                && key_ds
+                    .iter()
+                    .zip(&arclen)
+                    .all(|(d, a)| (d - a).abs() <= tol(*a));
+            if in_sync {
+                return;
+            }
+
+            // Casamento guloso pela distância mais próxima, no eixo compartilhado.
+            let mut used = vec![false; old.len()];
+            let mut new_anchors: Vec<PathAnchor> = Vec::with_capacity(key_ds.len());
+            for &d in &key_ds {
+                let pick = (0..old.len()).filter(|&j| !used[j]).min_by(|&a, &c| {
+                    (arclen[a] - d)
+                        .abs()
+                        .partial_cmp(&(arclen[c] - d).abs())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+                match pick {
+                    Some(j) if (arclen[j] - d).abs() <= tol(arclen[j]) => {
+                        used[j] = true;
+                        new_anchors.push(old[j]); // preserva geometria + forma + kind
+                    }
+                    _ => {
+                        // Uma key sem âncora (duplicar/colar, ou fora de qualquer âncora):
+                        // nasce na curva, na distância que ela guarda; as alças as re-suaviza
+                        // o passo abaixo.
+                        let pos = path.at(d).map(|s| s.point).unwrap_or_else(|| {
+                            old.last().map(|a| a.anchor).unwrap_or([0.0, 0.0])
+                        });
+                        new_anchors.push(crate::MotionPath::auto_smooth(None, pos, None));
+                    }
+                }
+            }
+
+            *path = crate::MotionPath::new(new_anchors);
+            path.resmooth_auto();
+        }
+        // As distâncias seguem a nova lista de âncoras — pela porta única.
+        self.rewrite_path_key_values(target);
+    }
+
     /// **O auto-orient desta entidade vale, e se não vale, por quê** ([ADR-0141] §6).
     ///
     /// UMA porta com DOIS consumidores: o apply pergunta para saber se escreve o

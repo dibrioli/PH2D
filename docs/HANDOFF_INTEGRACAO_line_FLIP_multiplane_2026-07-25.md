@@ -7,16 +7,18 @@
 
 ## 0. GO — o essencial em 6 linhas
 
-- **1 commit** (`9ac0f2fe7`), **ff-only** sobre o `main` de hoje (a linha está
-  exatamente 1 à frente; `git rev-list --count main..line/FLIP` = 1).
+- **2 commits**, **ff-only** sobre o `main` de hoje (a linha está 2 à frente;
+  `git rev-list --count main..line/FLIP` = 2): `9ac0f2fe7` (o multiplano) +
+  `aebe3ae52` (polish pós-smoke — os sliders de camada viraram a linha CANÔNICA
+  label+track+chip, ver §2/§7).
 - **Bump de schema:** `FLIP_SCHEMA_VERSION` 9→**10**, `PROJECT_SCHEMA` 31→**32**,
   tripla do pin `(32, 10, 13)`. ⚠️ **O 32 se CONTA, não se escolhe** — se outra
   linha bumpar o `PROJECT_SCHEMA` na mesma janela, **renumere** (o certo é a soma,
-  não o que a linha escreveu) e atualize a tripla em `project_tests.rs:432`
+  não o que a linha escreveu) e atualize a tripla em `project_tests.rs`
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 - **Contratos congelados (§6): INTOCADOS.** Nenhum ADR novo (era um item já
-  aceito, §Decisão 3 do ADR-0114). `FlipLayerWidget::ALL` 7→8 é dado de UI, não
-  contrato.
+  aceito, §Decisão 3 do ADR-0114). `FlipLayerWidget::ALL` 7→**10** (Depth +
+  OpacityNum/DepthNum) é dado de UI, não contrato.
 - **Smoke:** `env PH2D_FLIP_MULTIPLANE_SMOKE=1 cargo run -p ph2d-host-desktop --release`.
 - **Gotchas do `ship.sh`** (herdados, não novos): `ph2d-flip-colorize` **panica em
   build DEBUG** e passa em `--release`/`ci-test`; os gates GPU do Flip são
@@ -51,12 +53,15 @@ deslocamento é **`depth × pan`**, exato.
 - **Wiring:** `composite_layers` recebe `cam_center: [f32;2]` (o callsite passa
   `camera.center`) e chama `parallax_model(&l.model, cam_center, l.depth)` por
   camada. `LayerRef.depth` é populado nos DOIS sítios de construção (arte + ghost).
-- **UI:** `FlipLayerWidget::Depth` (`ids/chrome/flip.rs`, `ALL` 7→8) · `FlipLayerRow.depth`
-  no snapshot (`state.rs` + `flip_bridge.rs`) · Line 4 do bloco por **porta única
-  `paint_bare_slider_row`** (Opacity e Depth são a MESMA linha `0..1` + `NN%` —
-  colapsei as duas cópias, que era o que estourava o cap de fn de 200 LOC) ·
-  `event.rs` roteia `ValueChanged → SetValue` (arm `Opacity | Depth`) · a shell
-  escreve `l.depth` clampado (`flip_layers.rs`).
+- **UI:** `FlipLayerWidget` ganha `Depth` + os chips `OpacityNum`/`DepthNum`
+  (`ids/chrome/flip.rs`, `ALL` 7→10) · `FlipLayerRow.depth` no snapshot (`state.rs`
+  + `flip_bridge.rs`) · Line 3/4 do bloco pela **porta única
+  `paint_labeled_slider_row`** — a linha CANÔNICA label+track+chip `%` (o MESMO
+  `paint_slider_with_chip_layout_adaptive` dos sliders do pincel; o polish pós-smoke,
+  §7), com o chip LIGADO ao slider por `link_slider_number_mapped_integer(.,.,100,0)`
+  · `event.rs` roteia `ValueChanged → SetValue` (arm `Opacity | Depth`) e engole o
+  eco do chip (`OpacityNum | DepthNum`) · a shell escreve `l.opacity`/`l.depth`
+  clampado (`flip_layers.rs`).
 
 ## 3. Gates (todos red-first, mutação-provados nesta sessão)
 
@@ -117,3 +122,20 @@ pela MESMA matriz que a GPU consome — determinístico, sem wgpu. É o que
   câmera de documento. Outro sistema; §Decisão 7.
 - O `unfolded` (preview fallback quando a camada-alvo está oculta) rende **flat**
   (sem paralaxe) — transitório e aceitável (o usuário nunca desenha às cegas).
+
+## 7. Polish pós-smoke (`aebe3ae52`) — os sliders de camada viraram canônicos
+
+O 1º smoke do multiplano aprovou a paralaxe, mas o Enio reprovou os sliders: *"estão
+fora do padrão do app e não têm label"* (duas linhas peladas idênticas — track + `%`
+solto, sem dizer qual é Opacity e qual Depth). Fix: Opacity **e** Depth agora usam a
+linha CANÔNICA `paint_slider_with_chip_layout_adaptive` — label + track + chip
+editável em `%` — a MESMA dos sliders do pincel (Size/Opacity), por uma porta única
+`paint_labeled_slider_row`. O chip é ligado ao slider por
+`link_slider_number_mapped_integer(.,.,100,0)` (mostra/edita em `%`); editar o chip
+espelha no slider (→ `ValueChanged` → `SetValue` → `l.opacity`/`l.depth`), então
+**nenhuma rota nova na shell**. `FlipLayerWidget` +2 chips (`OpacityNum`/`DepthNum`),
+`ALL` 8→10 — dado de UI, **sem schema/contrato**. O contorno de acento do bloco passa
+a medir pelas alturas de slider (a mesma `slider_with_chip_is_stacked` do painter, que
+demota a label ao estreitar). Gate reforçado
+`the_multiplane_depth_slider_is_the_canonical_labeled_row` (mutação-provado: tirar o
+link → chip morto → RED).

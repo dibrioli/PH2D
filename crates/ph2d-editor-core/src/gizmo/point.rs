@@ -145,7 +145,10 @@ mod tests {
         );
         // And a point far away misses it (the hit is a small handle, not the
         // whole canvas).
-        assert_ne!(hits.hit(s[0] + 200.0, s[1] + 200.0), Some(ids::GIZMO_JOINT_ANCHOR));
+        assert_ne!(
+            hits.hit(s[0] + 200.0, s[1] + 200.0),
+            Some(ids::GIZMO_JOINT_ANCHOR)
+        );
     }
 
     /// **The dot moves with the anchor.** Two anchors project to two different

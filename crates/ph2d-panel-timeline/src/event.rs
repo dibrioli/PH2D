@@ -56,6 +56,9 @@ fn is_toggle(id: NodeId) -> bool {
         || id == ids::TIMELINE_PHYSICS
         || id == ids::TIMELINE_AUTOKEY
         || id == ids::TIMELINE_RECORD
+        // Motion Path (ADR-0141): per-object, so it MUST reach the shell — the panel
+        // has no selection; the shell resolves the entity and converts it.
+        || id == ids::TIMELINE_MOTION_PATH
         || id == ids::TIMELINE_SNAP
 }
 

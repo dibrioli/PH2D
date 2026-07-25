@@ -119,6 +119,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, ids::TIMELINE_PHYSICS, false);
     toggle(store, ids::TIMELINE_AUTOKEY, false);
     toggle(store, ids::TIMELINE_RECORD, false);
+    // Motion Path (ADR-0141): without this the switch is painted but never a
+    // registered `Toggle`, so the store neither mirrors its value nor emits a click
+    // — painted, hit-registered, and DEAD under the mouse.
+    toggle(store, ids::TIMELINE_MOTION_PATH, false);
     toggle(store, ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
 

@@ -1215,6 +1215,77 @@ vida** (a época sobrevivia à troca de ferramenta e capava tinta comum), não p
 padrão da sessão agora existe e o commit obrigatório em toda edição do scratch é a peça que faltava — mas é
 **wave própria**, e é a 3ª rodada neste mesmo eixo, então **exige ordem do Enio**.
 
+### 13.13.4 A DECISÃO do Enio: o TETO (2026-07-25, construído)
+
+Ele escolheu a **layer-mask / alpha-lock**: o `keep` é aplicado UMA vez sobre a tinta acumulada
+livremente, e a proteção nunca erode.
+
+⚠️ **Isto É a época do §13.7** — a semântica nunca foi o que estava errado com ela. O que a matou foi o
+**CICLO DE VIDA**: ela tinha de ser commitada à mão em **22 escritores estrangeiros de canvas**, e um
+escritor que ninguém listou tinha os pixels projetados por cima no batch seguinte (*"o teto capava a tinta
+comum"*, §13.8). **Aqui os 22 sítios colapsam em UMA pergunta** feita no topo de todo batch — *algo mudou
+debaixo de mim?* — respondida por **três testemunhas**: a **camada**, a **geração do scratch** e o
+`pixel_clock` (`witness`). Enumeração apodrece; testemunha não.
+
+| | §13.7 (revertida) | esta wave |
+|---|---|---|
+| lei | `lerp(ref, free, keep)` | **a mesma** |
+| vida | a declaração de proteção | **a mesma** |
+| commit em escritor estrangeiro | 22 sítios à mão | **1 testemunha** (`pixel_clock`) |
+| commit em edição do scratch | sítios à mão | **1 geração** |
+| planos no `ModelSnapshot` | sim | **não** (a época morre no undo; ADR-0117) |
+| gêmeo do plano livre no preview | `PreviewPatch::free_pixels` | **o patch por-batch**, na porta única `restore_region` |
+
+**Resultado medido:**
+
+| | build-up (antes) | TETO (agora) |
+|---|---|---|
+| erosão em `keep = 0,522` após 8 traços | **1,000** | **0,522** |
+| pente, máscara fresca | 1,68 px | **0,05 px** |
+| pente, 15 passadas | 0,60 px | **0,12 px** |
+| rampa da TINTA vs rampa da MÁSCARA | 49,89 / 56,94 (razão 0,876) | **56,94 / 56,94 — idênticas** |
+| serra do contorno | 0,101 px | **0,042 px** |
+
+A rampa da tinta virar **exatamente** a rampa da máscara é a assinatura da lei: com a tinta livre saturada,
+o display é função PURA do `keep`, então a fronteira da tinta É o contorno do `keep`. E o pente residual
+(0,05–0,12 px) casa com a ondulação própria do campo `keep` medida na §13.13.1 (0,05 / 0,13 / 0,14) — não
+sobra nada do gate. Confirmado por **render-and-look**: as bordas internas dentadas ficaram limpas.
+
+### 13.13.5 O defeito que a MUTAÇÃO SOBREVIVENTE achou
+
+⚠️ Uma mutação (restaurar o plano livre de `base` em vez do patch por-batch) **não sangrava** — e a razão
+era um bug meu: o `mark_dirty` do próprio `restore_region` move o `pixel_clock`, ou seja **a época disparava
+a própria testemunha de escrita estrangeira**. Consequência: todo frame de preview de um método de
+**re-stamp** (Drag Dot, Line, todo shape editor) re-semeava a época — o teto revertia em silêncio para
+por-gesto naquela família inteira, e cada frame pagava um clone de canvas. Curado re-testemunhando no fim do
+`restore_region`; gate próprio (`the_ceiling_holds_for_a_restamp_method_too`, mutação sangra com a erosão
+subindo até 0,608 contra um `keep` de 0,522).
+
+**Um plano livre que é jogado fora e reconstruído todo frame não pode ser observado errado** — é por isso que
+a mutação passava. [[feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding]], na
+variante em que ela acusa o PRODUTO.
+
+### 13.13.6 Gates (8) e mutações (5, todas sangram)
+
+| gate | o que pina |
+|---|---|
+| `the_protection_never_erodes_no_matter_how_many_strokes_cross_it` | **A LEI**: 12 traços não passam do `keep` — e a tinta ainda BUILD-UP até ele (as duas metades: teto não é parede) |
+| `the_boundary_of_repeated_strokes_is_the_keep_contour_not_a_comb` | o pente ≤ 0,6 px (era 1,68) |
+| `the_ceiling_holds_for_a_restamp_method_too` | a família dos shape editors, onde o preview undo disparava a testemunha |
+| `the_epoch_outlives_the_stroke_and_dies_with_the_protection` | 5 metades: ungated não aloca · sobrevive ao pen-up · edição do scratch (traço) · **Modifier** (a camada que só a geração testemunha) · **escrita estrangeira** (o Fill SOBREVIVE) · undo |
+| os 4 da §13.12 | polling-independência, custo, fantasmas, byte-identidade com o brush |
+
+⚠️ **Duas metades desse gate nasceram FALSAS e foram reescritas:** a da escrita estrangeira afirmava que o
+NÚMERO da testemunha mudava — e ele muda nas nossas próprias escritas também, então o gate não podia falhar
+pelo motivo que alegava (a mutação sobreviveu). O oráculo virou *o Fill SOBREVIVE* (mutação: verde 0 → 224,
+o vazamento do §13.7 reproduzido). E a da edição do scratch passou com a geração congelada porque a
+esfregada de máscara move o `pixel_clock` — **defesa em camadas**; a camada que só a geração testemunha é o
+**Modifier** (`mask_canvas_op` nunca chama `mark_dirty`), e o gate novo dela sangra com 0,122 → 0,878.
+
+⚠️ **E o gate central desta wave foi DELETADO pela minha própria edição** (uma substituição por âncoras
+engoliu a região entre dois gates) — a suíte ficou **verde sem ele**. Pego contando os nomes dos testes, não
+pelo verde. *Depois de uma edição em massa em arquivo de teste, conte os gates.*
+
 **Sondas no repo:** `probe_what_is_left_after_the_gate` (a rampa da tinta rastreia a da máscara, razão
 0,876/0,875/0,847) · `probe_the_comb_on_the_boundary` (as duas refutações) ·
 `probe_the_comb_is_the_cross_stroke_buildup` (a previsão aritmética + a tabela de erosão).

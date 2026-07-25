@@ -150,12 +150,21 @@ fn probe_gated_stroke_cost() {
         }
         let per_move = t1.elapsed().as_secs_f64() * 1000.0 / f64::from(n);
         t.on_canvas_pointer(cp([c + 300.0, c], PointerPhase::Up));
+        // The SECOND stroke through the same protection: the epoch is already open, so it pays no seed at
+        // all — the canvas-sized clone is amortised over the whole protection, not over every gesture.
+        let t2 = std::time::Instant::now();
+        t.on_canvas_pointer(cp([c - 300.0, c + 40.0], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        let second_ms = t2.elapsed().as_secs_f64() * 1000.0;
+        t.on_canvas_pointer(cp([c + 300.0, c + 40.0], PointerPhase::Up));
         let tag = if gated {
             "COM proteção"
         } else {
             "sem proteção (controle)"
         };
-        println!("{size}^2 {tag:24}: pen-down {seed_ms:.2} ms | move {per_move:.2} ms");
+        println!(
+            "{size}^2 {tag:24}: pen-down {seed_ms:.2} ms | 2o pen-down {second_ms:.2} ms | move {per_move:.2} ms"
+        );
     }
 }
 
@@ -386,5 +395,8 @@ fn probe_the_comb_is_the_cross_stroke_buildup() {
             print!(" N={n}:{ink:.3}");
         }
     }
-    println!(" <- a proteção deixa passar quase TUDO se você insistir");
+    println!(
+        " <- sob o TETO (§13.13) a linha é PLANA em keep; \
+         sob a lei antiga ela subia 0,522 / 0,773 / 0,890 / 0,949 / 1,000 e a máscara morria"
+    );
 }

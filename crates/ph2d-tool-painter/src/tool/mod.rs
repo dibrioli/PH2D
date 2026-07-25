@@ -66,25 +66,46 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
 /// against a per-BATCH snapshot, so the surviving paint was `(1−keep)^N` with `N` = the mouse's polling
 /// rate — a law that was a fact about the sampling, not about the gesture).
 ///
-/// Born lazily at the first gated batch of a stroke, dies with the stroke ([`PainterTool::end_gate_session`]).
+/// It lives as long as the **PROTECTION DECLARATION** does, not as long as a stroke — and that is
+/// Enio's call (2026-07-25, §13.13): a protection that scales each stroke separately lets
+/// `1 − (1−keep)^N` through, so **eight passes and the mask stops protecting anything** (measured: 0.522
+/// → 0.949 at four → 1.000 at eight). A ceiling never erodes, and its boundary is exactly the `keep`
+/// contour — the residual comb goes from 1.68 px to the keep field's own 0.07 px.
 ///
-/// ⚠️ **Not to be confused with the ÉPOCA of §13.7** (`38c1f725b`, reverted in `569149dfc`): that one
-/// carried the same arithmetic for as long as the protection *declaration* stood — across strokes and
-/// across tool switches — which turned protection into a cross-stroke CEILING and leaked into the plain
-/// brush (the ceiling capped ordinary paint after you changed tools; §13.8). A session that cannot
-/// outlive its stroke cannot leak that way: there is nothing left to leak into.
+/// ⚠️ **This IS the épocha of §13.7** (`38c1f725b`, reverted in `569149dfc`) — the semantics was never what
+/// was wrong with it. What killed it was the **lifecycle**: it had to be committed by hand at **22 foreign
+/// canvas writers**, and a writer nobody listed silently had its pixels projected away on the next gated
+/// batch (*"o teto capava a tinta comum"*, §13.8). Here the 22 sites collapse into ONE question asked at
+/// the top of every batch — *did anything change under me?* — answered by three witnesses ([`Self::witness`],
+/// [`Self::scratch_gen`], [`Self::layer`]). Enumeration rots; a witness does not.
 pub(crate) struct GateSession {
-    /// The canvas as the stroke found it. An `Arc` clone, so seeding costs a refcount, not a copy (the
-    /// first `make_mut` on the canvas forks it once and the session keeps the pristine side).
+    /// The canvas as the protection found it — what a fully-protected texel keeps forever. An `Arc` clone,
+    /// so seeding costs a refcount, not a copy (the first `make_mut` on the canvas forks it once and the
+    /// session keeps the pristine side).
     pub(crate) base: Arc<Vec<u8>>,
-    /// What **unrestricted** painting would have produced. Swapped into `canvas_rgba` for the stamp, so
-    /// every route (colour, smear, blur, clone, composite) paints exactly what it would paint with no
-    /// gate at all — the gate has no say in WHAT is painted, only in what SHOWS.
+    /// What **unrestricted** painting would have produced, accumulated across every stroke of the epoch.
+    /// Swapped into `canvas_rgba` for the stamp, so every route (colour, smear, blur, clone, composite)
+    /// paints exactly what it would paint with no gate at all — the gate has no say in WHAT is painted,
+    /// only in what SHOWS. ⚠️ It accumulates **freely**, which is what makes the ceiling a ceiling and not
+    /// a wall: the brush still builds up toward full opacity, the RESULT just converges on `keep` instead
+    /// of past it. A cap applied to the brush instead would make the second stroke a no-op.
     pub(crate) free: Arc<Vec<u8>>,
-    /// The union of the regions stamped into `free` so far: exactly where it deviates from `base`. A
-    /// re-stamp method restores the canvas to pristine every preview frame, and this is what lets the
-    /// free plane be put back with it without assuming the two rects agree ([`PainterTool::restore_region`]).
-    pub(crate) dirty: Option<Region>,
+    /// The free plane's pixels under the last batch's region, saved before that batch stamped — the free
+    /// plane's own `DragPreview`. A re-stamp method undoes its last preview every frame, and with an epoch
+    /// that outlives strokes the free plane cannot simply be reset to `base`: everything the earlier
+    /// strokes put there is still owed ([`PainterTool::restore_region`]).
+    pub(crate) preview_patch: Option<(Region, Vec<u8>)>,
+    /// The layer the epoch belongs to. A layer switch is a different canvas and a dormant scratch.
+    pub(crate) layer: Option<RtLayerId>,
+    /// The mask scratch's generation when the epoch began. Editing the scratch ENDS the epoch — else
+    /// RAISING the protection would retroactively reveal stroke history that was already buried under it
+    /// (the §13.7 gate `lowering_protection_starts_a_new_epoch_not_a_replay_of_history`).
+    pub(crate) scratch_gen: u64,
+    /// `pixel_clock` right after the epoch's own last write. Anything else that touches canvas pixels goes
+    /// through `mark_dirty` → `bump_layer_pixels` and moves the clock, so a mismatch means a **foreign
+    /// write** — Fill, an adjustment bake, a Deform, a paste — and the epoch commits rather than projecting
+    /// over work it does not own.
+    pub(crate) witness: u64,
 }
 
 /// Painter — the layers + effects host. Stateful tool.
@@ -136,9 +157,15 @@ pub struct PainterTool {
     mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
     /// [`Self::canvas_rgba`] and the three relief planes rather than in `PaintState` (which holds
-    /// settings and per-stroke bookkeeping). `None` whenever no stroke is painting through a gate,
-    /// which is almost always: an ungated stroke never allocates it and is byte-identical to before.
+    /// settings and per-stroke bookkeeping). `None` whenever nothing is painting through a gate,
+    /// which is almost always: an ungated document never allocates it and is byte-identical to before.
     gate: Option<GateSession>,
+    /// The mask scratch's content generation — bumped by **every** write to `paint.mask_scratch_rgba`, and
+    /// the witness that ends a protection epoch when the artist edits the protection itself. A counter and
+    /// not the buffer's pointer, because `Arc::make_mut` on a uniquely-owned scratch writes IN PLACE and
+    /// leaves the pointer exactly where it was — the address cannot see the edit (the lesson the audio
+    /// editor paid for in ADR-0124, `SampleData::version`).
+    mask_scratch_gen: u64,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
@@ -276,6 +303,7 @@ impl Default for PainterTool {
             covers: BTreeMap::new(),
             mats: BTreeMap::new(),
             gate: None,
+            mask_scratch_gen: 0,
             composited: None,
             preview_upload_bbox: None,
             last_drain_branch: DrainBranch::Idle,

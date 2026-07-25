@@ -8,10 +8,11 @@
 //! - is edited by the sub-brush (Paint = protect / Erase = unprotect / Blur / Smear) — painting swaps the
 //!   scratch into `canvas_rgba` so the whole stamp pipeline edits it, then swaps back;
 //! - is edited by the whole-canvas **Modifiers** (Expand / Contract / Blur / Sharpen / Invert / Clear);
-//! - PROTECTS the painted region LIVE: every paint op ([`Self::stamp_dabs`]) paints into a per-stroke FREE
-//!   plane and shows `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]), so no tool can alter the
-//!   protected texels. The layer stays fully visible; [`Self::apply_mask_overlay`] only TINTS the protected
-//!   area so you can see it;
+//! - PROTECTS the painted region LIVE and **never erodes**: every paint op ([`Self::stamp_dabs`]) paints
+//!   into the protection's FREE plane and what shows is `lerp(base, free, keep)`
+//!   ([`Self::stamp_dabs_gated`]) — applied once per texel, so no number of passes can wear the protection
+//!   away (§13.13; it used to let `1 − (1−keep)^N` through, and eight passes erased it). The layer stays
+//!   fully visible; [`Self::apply_mask_overlay`] only TINTS the protected area so you can see it;
 //! - PERSISTS across tool switches (it stays live while its target layer is active, so you protect a
 //!   region in Mask mode, switch to the Brush, and paint freely around the frozen area); it goes dormant
 //!   when you switch layers. **Apply** ([`Self::apply_mask_scratch`]) is the (WIP) bridge to the
@@ -87,6 +88,7 @@ impl PainterTool {
             return;
         }
         self.paint.mask_scratch_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
+        self.bump_mask_scratch_gen();
         self.paint.mask_scratch_target = Some(active);
         self.invalidate_composite();
     }
@@ -111,6 +113,7 @@ impl PainterTool {
         target: Option<crate::layers::LayerId>,
     ) {
         self.paint.mask_scratch_rgba = rgba;
+        self.bump_mask_scratch_gen();
         self.paint.mask_scratch_target = target;
     }
 
@@ -173,6 +176,7 @@ impl PainterTool {
         };
         self.paint.mask_scratch_target = None;
         self.paint.mask_scratch_rgba = Arc::new(Vec::new());
+        self.bump_mask_scratch_gen();
         self.bump_layer_pixels(Some(touched));
         self.commit_structural_edit(before);
         self.invalidate_composite();
@@ -243,10 +247,10 @@ impl PainterTool {
     /// `(1−keep)^N` — measured 0,886 at 4 events/stroke against 0,992 at 60, with the paint's contour
     /// moving 4 px on nothing but the mouse's report rate.
     ///
-    /// **A single-batch stroke is byte-identical to that old door**, and the argument is one line: `base`
-    /// *is* the canvas the old code snapshotted, `free` *is* what the old code stamped, and the blend is
-    /// the same expression term for term. It is only from the SECOND batch that the two diverge — which
-    /// is the bug.
+    /// **A single-batch, single-stroke gesture is byte-identical to that old door**, and the argument is one
+    /// line: `base` *is* the canvas the old code snapshotted, `free` *is* what the old code stamped, and the
+    /// blend is the same expression term for term. It is from the SECOND batch — and the second STROKE —
+    /// that the two diverge, and both divergences are the fix (§13.12 and §13.13).
     pub(super) fn stamp_dabs_gated(
         &mut self,
         dabs: &[Dab],
@@ -254,44 +258,78 @@ impl PainterTool {
         mask_gate: bool,
         sel_gate: bool,
     ) {
-        // Seeded LAZILY: a stroke that never crosses a gate never allocates a canvas-sized plane, and
-        // an ungated document is byte-untouched by all of this. The size check is what makes it safe to
-        // hold a plane across a batch boundary — anything that re-sizes the canvas mid-stroke (or writes
-        // it wholesale) re-seeds instead of projecting stale pixels.
-        let n4 = self.canvas_rgba.len();
-        let stale = self
-            .gate
-            .as_ref()
-            .is_none_or(|g| g.base.len() != n4 || g.free.len() != n4);
-        if stale {
-            self.gate = Some(crate::tool::GateSession {
-                base: Arc::clone(&self.canvas_rgba),
-                free: Arc::new(self.canvas_rgba.as_ref().clone()),
-                dirty: None,
-            });
-        }
+        self.begin_or_keep_gate_epoch();
         let Some(mut sess) = self.gate.take() else {
             return; // unreachable (just seeded) — but never stamp ungated by accident
         };
+        // Save the free plane under this batch, so a re-stamp preview can undo exactly this batch and no
+        // more (the epoch outlives strokes, so resetting the plane to `base` would throw away every
+        // earlier stroke's paint — see `Self::restore_region`).
+        sess.preview_patch = Some((
+            region,
+            super::region::region_pixels(&sess.free, region, self.source_size.0),
+        ));
         std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
         self.stamp_dabs_routed(dabs);
         std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
-        sess.dirty = Some(
-            sess.dirty
-                .map_or(region, |acc| super::union_region(acc, region)),
-        );
         self.project_gate_region(&sess, region, mask_gate, sel_gate);
+        // The witness is taken AFTER our own writes, so the clock movement this batch caused is absorbed
+        // and only somebody ELSE's write can make the next batch see a mismatch.
+        sess.witness = self.pixel_clock;
         self.gate = Some(sess);
+    }
+
+    /// Open a protection epoch, or keep the live one — the **single** question that replaced §13.7's 22
+    /// hand-maintained commit sites: *is the epoch still describing this canvas?*
+    ///
+    /// Four ways it is not, and each is a bug if projected over: the canvas was **resized**, the artist
+    /// switched **layer**, the artist edited the **protection itself** (projecting then would reveal stroke
+    /// history already buried under the old protection), or a **foreign writer** touched the pixels (Fill, an
+    /// adjustment bake, a Deform, a paste — the class that killed the epoch, because a projection would
+    /// silently undo their work).
+    fn begin_or_keep_gate_epoch(&mut self) {
+        let n4 = self.canvas_rgba.len();
+        let layer = self.layers.active();
+        let sgen = self.mask_scratch_gen;
+        let clock = self.pixel_clock;
+        let keep_it = self.gate.as_ref().is_some_and(|g| {
+            g.base.len() == n4 && g.free.len() == n4 && g.layer == layer && g.scratch_gen == sgen
+                // `witness == clock` normally; the epoch's FIRST batch has not written yet, and the
+                // stroke's own undo snapshot does not move the clock, so nothing here is off by one.
+                && g.witness == clock
+        });
+        if keep_it {
+            return;
+        }
+        self.gate = Some(crate::tool::GateSession {
+            base: Arc::clone(&self.canvas_rgba),
+            free: Arc::new(self.canvas_rgba.as_ref().clone()),
+            preview_patch: None,
+            layer,
+            scratch_gen: sgen,
+            witness: clock,
+        });
+    }
+
+    /// Bump the mask scratch's content generation — called by **every** write to it. Editing the protection
+    /// ends the epoch, and this is how the epoch finds out.
+    pub(super) fn bump_mask_scratch_gen(&mut self) {
+        self.mask_scratch_gen = self.mask_scratch_gen.wrapping_add(1);
     }
 
     /// Re-derive `region` of the VISIBLE canvas from the session: `free·keep + base·(1−keep)`, where
     /// `keep = protection × selection` (each factor only when its gate is live — the two old restore
     /// doors, run in sequence against one snapshot, composed to exactly this product).
     ///
-    /// Nothing is made invisible — only the paint is gated (Blender Sculpt-mask semantics). Writing the
-    /// batch region alone is complete, not an approximation: `base` is frozen, `keep` cannot change while
-    /// a paint stroke is open (editing the scratch means Mask mode, where this gate is off), and `free`
-    /// changed only where this batch stamped.
+    /// Nothing is made invisible — only the paint is gated. ⚠️ The semantics is the **layer mask / alpha
+    /// lock** one (Photoshop, Krita), not the per-stroke scaling of a Blender sculpt mask: the keep factor
+    /// lands on the RESULT, once, so a protection is a ceiling the paint converges on rather than a
+    /// discount each stroke gets separately (§13.13 — Enio's call, after the second one was measured
+    /// letting everything through in eight passes).
+    ///
+    /// Writing the batch region alone is complete, not an approximation: `base` is frozen for the epoch,
+    /// `keep` changing ENDS the epoch ([`Self::begin_or_keep_gate_epoch`]), and `free` changed only where
+    /// this batch stamped.
     fn project_gate_region(
         &mut self,
         sess: &crate::tool::GateSession,
@@ -372,6 +410,9 @@ impl PainterTool {
         {
             let buf = Arc::make_mut(&mut self.paint.mask_scratch_rgba);
             ph2d_painter_brush::apply_mask_op(buf, w, h, mop, radius);
+        }
+        {
+            self.bump_mask_scratch_gen();
         }
         self.invalidate_composite();
         self.commit_structural_edit(before);
@@ -498,6 +539,9 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
 // The mask's own measurement probes + gates live in sibling files rather than at the end of the
 // 23k-line `paint::tests` (a wave's worth of gates appended there is a wave nobody can find again).
 // They hang off THIS module because `paint.rs` sits exactly at the 700-LOC cap.
+#[cfg(test)]
+#[path = "mask_gate_tests.rs"]
+mod mask_gate_tests;
 #[cfg(test)]
 #[path = "mask_probe.rs"]
 mod mask_probe;

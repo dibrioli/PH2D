@@ -68,31 +68,57 @@ impl PainterTool {
         }
         self.restore_gate_free();
         self.mark_dirty(*rect);
+        // ⚠️ And re-witness: `mark_dirty` moved the pixel clock, and this write is the EPOCH'S OWN — the
+        // undo of its last batch. Without this the foreign-write witness fires on our own hand, so every
+        // preview frame of a re-stamp method re-seeded the epoch: the ceiling silently reverted to
+        // per-gesture for every shape editor, and each frame paid a full canvas clone. Found by a
+        // surviving mutation (the free plane could be restored from `base` with no observable effect,
+        // because the plane was being thrown away and rebuilt anyway).
+        if let Some(sess) = self.gate.as_mut() {
+            sess.witness = self.pixel_clock;
+        }
     }
 
-    /// Put the protection session's free plane back to its base over everything it has stamped, and
-    /// forget that region. No-op without a session (the overwhelmingly common case: one `is_none` test).
+    /// Undo the last gated batch's write to the protection epoch's free plane, from the patch that batch
+    /// saved. No-op without a live epoch (the overwhelmingly common case: one `is_none` test).
+    ///
+    /// ⚠️ It restores a **patch**, not `base`. The epoch outlives strokes ([`crate::tool::GateSession`]), so
+    /// every earlier stroke's paint is still owed by the free plane — resetting it to `base` would delete
+    /// the whole session's work the first time a shape editor re-stamped.
     fn restore_gate_free(&mut self) {
         let stride = self.source_size.0 as usize * 4;
         let Some(sess) = self.gate.as_mut() else {
             return;
         };
-        let Some(dirty) = sess.dirty.take() else {
+        let Some((rect, pixels)) = sess.preview_patch.take() else {
             return;
         };
-        if sess.base.len() != sess.free.len() {
-            return; // a re-seed is due anyway (the size guard in `stamp_dabs_gated`)
-        }
-        let base = Arc::clone(&sess.base);
         let free = Arc::make_mut(&mut sess.free);
-        let rw = dirty.w as usize * 4;
-        for row in 0..dirty.h {
-            let at = (dirty.y + row) as usize * stride + dirty.x as usize * 4;
-            if at + rw <= free.len() {
-                free[at..at + rw].copy_from_slice(&base[at..at + rw]);
+        let rw = rect.w as usize * 4;
+        for row in 0..rect.h {
+            let at = (rect.y + row) as usize * stride + rect.x as usize * 4;
+            let src = row as usize * rw;
+            if at + rw <= free.len() && src + rw <= pixels.len() {
+                free[at..at + rw].copy_from_slice(&pixels[src..src + rw]);
             }
         }
     }
+}
+
+/// Copy `region`'s RGBA8 out of a canvas-sized `buf` (row-major over the region), tolerating a short
+/// buffer by leaving those rows zero. The free-plane sibling of [`PainterTool::save_region`], which reads
+/// `canvas_rgba` and cannot be pointed at another plane.
+pub(super) fn region_pixels(buf: &[u8], region: Region, canvas_w: u32) -> Vec<u8> {
+    let row = region.w as usize * 4;
+    let mut out = vec![0u8; row * region.h as usize];
+    for ry in 0..region.h {
+        let src = ((region.y + ry) as usize * canvas_w as usize + region.x as usize) * 4;
+        let dst = ry as usize * row;
+        if src + row <= buf.len() {
+            out[dst..dst + row].copy_from_slice(&buf[src..src + row]);
+        }
+    }
+    out
 }
 
 /// Smallest region covering both `a` and `b` — the routes' dirty-rect fold (every stamp route

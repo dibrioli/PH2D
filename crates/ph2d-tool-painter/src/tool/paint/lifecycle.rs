@@ -29,6 +29,7 @@ impl PainterTool {
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: the stash described the OLD canvas
         self.paint.inpaint_mask = Vec::new(); // Inpaint defect marks (rebuilt on the next paint_begin)
         self.paint.mask_scratch_rgba = std::sync::Arc::new(Vec::new()); // Mask scratch of the old sprite
+        self.bump_mask_scratch_gen(); // the protection changed ⇒ any epoch built on it is over
         self.paint.mask_scratch_target = None;
         self.paint.eyedropper_armed = false; // don't leave a colour pick armed on the new sprite
 

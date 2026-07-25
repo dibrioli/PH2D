@@ -143,7 +143,7 @@
 > lugar de contrabandear uma wave para fazer uma barra passar.
 >
 > **Suíte: 40 no colorize (release E debug) · 894 no shell · 62 no `flip-fill` · 23 no painel ·
-> 16 na tool.** Ainda ABERTO: `trap_px` não sobrevive ao clamp de `MAX_SIDE` (bola de 21,6 doc a
+> 16 na tool.** Ainda ABERTO: ~~`trap_px` não sobrevive ao clamp de `MAX_SIDE`~~ (**FECHADO 2026-07-24**, `Grid::px_from_requested` — BUGS #23) (bola de 21,6 doc a
 > 10× de zoom) · o re-Apply ao vivo custa 61-294 ms/frame contra o kill-criterion de 16 ms do
 > §7.2 · **o `fill_at` do BALDE tem o MESMO buraco de quina** e só não aparece porque ele tem o
 > Gap Closure manual (wave própria, não contrabando).
@@ -226,7 +226,8 @@
 > chegou a esta sessão com **1427/700**, vermelho de herança. ⚠️ **Sem gate NENHUM sobre a
 > costura do shell** (`precision_and_trap`): a auditoria mutou o `.max(seal_px)` para fora e
 > **862 testes de shell ficaram verdes** enquanto a entrega do 6º smoke morria — item aberto,
-> junto com o `trap_px` que não sobrevive ao clamp de `MAX_SIDE` (bola de 21,6 doc a 10× de
+> junto com ~~o `trap_px` que não sobrevive ao clamp de `MAX_SIDE`~~ (**FECHADO 2026-07-24**,
+> `Grid::px_from_requested` — BUGS #23) (bola de 21,6 doc a 10× de
 > zoom) e o custo do re-Apply ao vivo (61–294 ms/frame contra o kill-criterion de 16 ms do §7.2).
 >
 > **Estado (2026-07-20, noite VI): o selo virou um DEGRAU** (report do Enio: *"o bleed baixo

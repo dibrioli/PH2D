@@ -298,12 +298,13 @@ paint-behind, multiframe.
   **304 ms/tique** (3 quadros da C3, escala do produto) e **1,45 s** com zoom; o split refutou
   o cache (solve 76%, raster 4%), então o corte saiu para um `Job` com **um em voo** e o undo
   passou a tratar recálculo pendente como gesto em andamento · o `trap_px`
-  não sobrevive ao clamp de `MAX_SIDE`. ~~o `fill_at` do BALDE tem o mesmo buraco de quina~~ —
+  não sobrevive ao clamp de `MAX_SIDE` — **FECHADO 2026-07-24** (`Grid::px_from_requested`, porta única fill+colorize; BUGS #23). ~~o `fill_at` do BALDE tem o mesmo buraco de quina~~ —
   **FECHADO 2026-07-21** ([BUGS #23](BUGS_flip.md)): era pior que no Colorize (o balde
   **RECUSAVA** a partir da precisão 80, com o toast mandando subir o Gap Closure sobre uma
   quina fechada na tela); a `weld.rs` mudou de casa para a `ph2d-flip-fill` e serve os dois
-  consumidores por uma porta só. **Aberto de lá:** o `reach` do Gap Closure precisa de **4× o
-  vão** para fechá-lo, e o slider é rotulado pelo alcance — medido, nomeado, não perseguido.
+  consumidores por uma porta só. **Aberto de lá:** ~~o `reach` do Gap Closure precisa de 4× o vão~~ — **FECHADO 2026-07-24**: era MECANISMO
+  (colinear é paralelo para o `ray_hit`), curado pelo pareamento ponta-a-ponta (`gap.rs`
+  passe 3); `reach` = o vão no caso canônico (BUGS #23).
 - **Ghost extras:** light table (marcadores fixos) + Shift & Trace (transform por ghost +
   F1/F2/F3) (04 §4).
 - ~~**Edit Mode**~~ (seleção de traço/ponto/segmento + transform): **LANDOU (W6, 2026-07-13, doc

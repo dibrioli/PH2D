@@ -6365,6 +6365,7 @@ dependencies = [
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
+ "ph2d-node-value-curve",
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
@@ -6484,6 +6485,15 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-curve"
+version = "0.0.0"
+dependencies = [
+ "ph2d-curve",
+ "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
 

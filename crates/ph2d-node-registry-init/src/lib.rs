@@ -106,6 +106,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_sim_zone::register(reg)?;
     ph2d_node_util_reroute::register(reg)?;
     ph2d_node_value_attribute::register(reg)?;
+    ph2d_node_value_curve::register(reg)?;
     ph2d_node_value_instance_field::register(reg)?;
     ph2d_node_value_lfo::register(reg)?;
     ph2d_node_value_map_range::register(reg)?;

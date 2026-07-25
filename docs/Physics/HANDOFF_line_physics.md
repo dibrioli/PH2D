@@ -4136,16 +4136,117 @@ Gates novos RED-first mutação-provados (`tests/joint_anchor_follows.rs`): `the
 `a_schema_bump_anywhere` = `(30,8,13)`). LOC: `bridge.rs` 718→679 (`readback` → irmão
 `bridge/readback.rs`); markers `gizmo_drag.rs`/`inspector_commits.rs` atualizados. Smoke: **`=41`**.
 
-### Padrão-ouro: waves 2-5 (NÃO construídas — pendem do smoke da W1)
+## W-JointParams (P0 — correção) — TUNAR UM PARÂMETRO DE JOINT AO VIVO (2026-07-25, `line/physics`, cena `=42`, **smoke OK 2026-07-25**)
 
-O padrão-ouro avaliado com o Enio (facilidade máxima + capacidade máxima, rep nativa do rapier +
-hierarquia única). W1 (a coluna) fecha o report; o resto são enriquecimentos:
-2. **Grupo carrega o rig** — âncoras são locais ⇒ agrupar bodies+joint e mover o grupo preserva a
-   relação de graça (validar; provavelmente já cai da W1).
-3. **Duas alças de âncora + snap a features** (vértice/aresta/centro) no canvas — a alça do body B.
-4. **Limite (arco) e motor (seta) VISUAIS** — precisa do FRAME (o `angle_a/b` da rep, que a W1 NÃO
-   guardou de propósito: sem consumidor era campo órfão; entra aqui com seu consumidor).
-5. **Break force / break torque** — o joint arrebenta sob carga (casa com o canal W-ImpactForce).
+Report do Enio: *"os parâmetros das joints estão disfuncionais. Exemplo: os parâmetros de Spring não
+mudam em nada o comportamento da mola."* **DUAS causas raiz** (a 2ª só apareceu no smoke, *"Rope a
+mesma coisa, mas de forma inconsistente, tem hora que funciona"*) — uma na PONTE, uma na COSTURA da
+UI. É correção, não enriquecimento (por isso veio antes das waves 2-5: autorar limite/motor VISUAIS
+sobre um param que o solver ignora seria a UI de um número morto).
+
+### Medido primeiro — duas perguntas, sondas headless apagadas depois
+
+**(b) O `SpringJointBuilder` do rapier VARIA a força com o knob no spawn? SIM** — refutou a hipótese
+de que a causa fosse o builder. Varredura num spawn fresco (`ph2d-physics`, ball r=0.25):
+
+| knob | sweep | comportamento |
+|---|---|---|
+| stiffness 10/30/100/300 | sag 0,1876 / 0,0648 / 0,0187 / 0,0065 | textbook `m·g/k` (∝ 1/k) |
+| rest_length 0,5/1,0/2,0 | settled = rest + 0,063 | sag constante, correto |
+| damping 0,1/0,5/2,0/10 | rebound 0,113 / 0,077 / 0,019 / 0,000 | sobe damping, cai o quique |
+
+Logo o param **não morre no spawn**; a autoria at-rest também funciona (`editing_the_anchor_at_rest`
+já provava). **(a) O edit chega ao solver DEPOIS que o relógio andou? NÃO.** Sonda de ponte (`dispatch`
++ edit + `dispatch`), sag da mesma mola:
+
+| caso | sag | veredito |
+|---|---|---|
+| A — edita em REST, depois play | 0,0065 | edit pega |
+| B — play, tuna pausado, continua | 0,0648 → **0,0648** | **preso em k=30** |
+| C — tuna AO VIVO tocando | **0,0648** | **preso em k=30** |
+| D — tuna, Reset, replay | 0,0065 | o Reset resgata |
+
+Ou seja: **não dava para afinar uma mola olhando ela balançar** — exatamente o report. Geral (todo
+param cruza o mesmo gate).
+
+### A causa: um gate que envelheceu de dono
+
+O `reconcile_joints` re-descrevia um joint só `if at_rest` (`last_stepped == 0`). Esse gate nasceu no
+**W3** para impedir a ÂNCORA de ser re-derivada mid-swing (quando a re-derivação lia a pose VIVA e
+assaria o offset do balanço). O **W-AnchorFollow** moveu a âncora para estado body-local autorado,
+semeado da pose de **REPOUSO** (`rest_pose`, nunca a viva) — então re-descrever mid-play **não toca
+mais o frame da âncora**, e a proteção que o `at_rest` dava mudou de lugar junto. O gate ficou
+bloqueando **todo edit de parâmetro** sem motivo. [[feedback_a_condition_that_enumerates_its_readers_rots]]
+na variante temporal: a condição sobreviveu à mudança que tirou sua razão de existir.
+
+### O fix (uma linha) + higiene
+
+`bridge/joints.rs`: a condição de re-describe perdeu o `at_rest &&` (`Some(j) if j.rest != desc ||
+j.bodies != handles`). ⚠️ **Um body MOVE nunca re-descreve** (as âncoras stored não mudam ⇒ `desc`
+estável frame-a-frame ⇒ zero churn do ring) — só um edit GENUÍNO. O `let at_rest` órfão saiu (CI é
+`-D warnings`). Os doc-comments do módulo diziam *"re-described only at rest"* — **corrigidos** (comentário
+velho MENTE): a regra nova, o porquê do W3→W-AnchorFollow, e a garantia do no-churn estão no header.
+
+### Gates (novo arquivo `tests/joint_live_edit.rs`, mutação-provados)
+
+- `stiffening_a_spring_mid_play_tightens_it` — o exemplo do Enio: play, stiffen 30→300 ao vivo, o sag
+  cai de ~0,065 para <0,02.
+- `re_speeding_a_motor_mid_play_changes_the_spin` — **outra família de param** (Pin motor 2→6 rad/s ao
+  vivo) prova que o fix é geral, não spring-específico.
+- `an_unedited_joint_does_not_churn_the_scrub_cache` — o guard: mola tocando SEM edit → scrub replaya
+  ≤10 passos (o ring não é limpo por re-describe espúrio; W1.5 vivo).
+
+Mutação = reinstalar `at_rest &&`: os 2 comportamentais ficam **RED**, o guard fica verde (correto).
+Os 15 gates do `joints.rs` (proteção da âncora, scrub, reset, determinismo) **seguem verdes**. **c9
+byte-idêntico ao main** (`4e862761…`, 83 corpos) — o fix só muda comportamento sob edit mid-play, que
+a cena c9 não faz. Sem componente/id/schema/registro novo (`PROJECT_SCHEMA` **29**, registro **21**).
+
+### O SEGUNDO bug — a costura da UI não dava FLUSH ("às vezes funciona")
+
+O smoke reprovou o fix da ponte: *"Rope a mesma coisa, mas de forma inconsistente, tem hora que
+funciona."* **"Às vezes funciona" é a assinatura de um edit que só é aplicado quando OUTRA coisa dá o
+flush.** O `apply_joint_edit` apenas ENFILEIRA um `SetComponent` no `editor_queue`; o componente muda
+quando `apply_editor_commands` DRENA a fila. Todo outro edit do Inspector (§11 physics, ordering,
+blend, name…) dá flush logo após o próprio apply, dentro do `inspector_commits::dispatch`. O bloco de
+edit de JOINT (§12) foi mantido FORA daquele dispatch de propósito (`render_loop/mod.rs`, o drain de
+`joint_edits`) — **e shipou sem o flush**. Então um edit de slider de joint ficava na fila até um edit
+não-relacionado drená-la. ⚠️ E é pior que atraso: `apply_joint_edit` faz read-modify-write do
+componente INTEIRO, então dois campos editados no mesmo frame (o 2º lê o 1º ainda não-aplicado)
+perdiam um em silêncio — o mesmo motivo pelo qual o loop de ordering dá flush POR edit.
+
+**Fix:** flush por-edit no loop de `joint_edits`, espelhando os outros tipos
+(`apply_editor_commands(sim.world_mut(), editor_queue, component_registry)` após cada
+`apply_joint_edit`). Gates: `render_loop::inspector_joint_tests::a_joint_param_edit_lands_only_when_
+the_queue_is_flushed` (comportamental: apply só ENFILEIRA — componente inalterado — e só o flush o
+LANDA) + arch-gate de shell `the_joint_edit_loop_flushes_the_command_queue` (o flush é o único
+`apply_editor_commands` do `mod.rs`; ele TEM de estar entre `apply_joint_edit` e `create_joint`).
+Mutação = remover o flush do loop: o arch-gate fica RED, o comportamental fica verde (camada
+diferente — [[feedback_layered_defenses_need_per_layer_gates]]).
+
+⚠️ **A lição, minha:** os gates do `joint_live_edit.rs` provaram a PONTE com uma escrita DIRETA no
+componente (`get_mut().stiffness = 300`), **pulando a costura UI→componente** — a causa nº 1 de tempo
+perdido do Painter ([[feedback_painter_inefficiency_4_causes]]: "costura não-testada"). A ponte estava
+certa e o fix dela era necessário, mas o número que o Enio de fato mexe passa pela costura, e eu não a
+testei. O smoke pegou o que meu gate deixou passar. Um edit que passa por `queue_set` **exige** um
+gate que exercite o flush.
+
+### Cena `=42`
+
+Bola pesada (r=0,35) numa mola SOFT (k=10, `rest=1`, damping 0,3), **TOCANDO** (não pausada — a
+demonstração É que o edit pega ao vivo): sag ≈ **0,37 m** (segue o `m·g/k` medido); seleciona a
+Spring → §12 → arrasta Stiffness 10→~100 e a bola **SOBE** (sag → ~0,037 m) sem Reset. Damping ao vivo
+muda o quique. Se a bola ignora os sliders até um Reset, o fix regrediu.
+
+### Padrão-ouro: waves 2-5 — **ABSORVIDAS pelo plano 02 (2026-07-25)**
+
+⚠️ **Esta lista foi SUPERSEDIDA por [`02_plano_joints_ui_authoring.md`](02_plano_joints_ui_authoring.md)**
+— o plano pós-pesquisa (Unity/Unreal/Godot/Fyrox/RUBE/Algodoo/Newton + a superfície nativa do rapier
+lida do source + 44 screenshots em `~/Documentos/Recursos/UI_Reference/`). O mapa de absorção:
+W2-grupo → **W-JG** · W3-alças+snap → **W-J2** · W4-limite/motor visuais → **W-J1 + W-J3** (e o
+`angle_a/b`/FRAME entra ali com seu consumidor) · W5-break force → **W-J7**. O plano 02 acrescenta o
+que a pesquisa mostrou faltar: Slider/prismatic (W-J5), servo + guincho (W-J6), criação aim-first no
+canvas (W-J4), higiene do par (W-J8 — Active/Collide Connected/Swap/nome "A : B"). Leia o plano 02;
+esta seção fica como registro histórico da lista original.
 
 ---
 

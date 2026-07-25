@@ -364,6 +364,7 @@ P0 = diferencial imediato de motion design · P1 = completa a família · P2 = v
 | I6 | Ctrl+F find-navega; minimap opt-in |
 | I7 | **Spreadsheet de colunas** (painel novo `motion-spreadsheet`: instância×coluna, filtros, cru/cozido) |
 | I8 | Política de stamps: static-frame + toggle global |
+| I9 | **Editor de gradiente** para `motion.color-ramp` (fila — descoberto 2026-07-25 na auditoria "mesmo problema da curva A1", ordem do Enio). Hoje: 6 sliders crus `0..1` p/ **2 stops fixos**, sem swatch/preview/stops arrastáveis — o **único análogo real** do editor de curva. Reusa o primitivo `InteractiveState::CurvePoint` (posição do stop, só `x`) + o swatch OKLCH (`register_picker_swatch`, já reusado pelo vetor); stops MULTI, não 2 fixos. Painel-only, como o A1-ui. Candidato menor e DIFERENTE (não este): `value.attribute` = nome de coluna livre → quer dropdown populado em runtime (precisa o `ParamsSnapshot` enxergar o stream upstream). NÃO mexer: `motion.expression` (fórmula É texto legítimo, idioma de planilha). |
 | Aceitação | benchmark 5-gestos re-cronometrado a cada task; seams clicam tudo (a lei das 4 condições da física vale aqui) |
 
 ### W-J — SUBGRAFO = ASSET (D10)

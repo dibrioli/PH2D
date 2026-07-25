@@ -195,9 +195,14 @@ aparecer, pare**. Aperte **Add** e folheie 0 → 2 → 4 → 6 → 8:
    irmão `tween_phase`, sobre a **virada** e não as posições.
 2. ~~**O overlay de PARES + o re-par manual**~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
    (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`). Ver **§8**.
-3. **Rotação grande ainda torce** (o lerp do resíduo não-rígido). O estado da arte é
-   Sederberg 1992 / Alexa 2000 — e a correspondência, que esta wave entrega, era o
-   pré-requisito dos dois.
+3. ~~**Rotação grande ainda torce**~~ (o lerp do resíduo não-rígido) — **FECHADO 2026-07-25,
+   ver §10** (`PH2D_FLIP_TWEEN_TORSION_SMOKE=1`). O resíduo `r = b − S(a)` deixa de ser somado
+   no referencial FIXO do mundo e passa a ser **CO-ROTACIONADO** com o corpo (rodado `θ(u−1)`,
+   escalado `σ^(u−1)`). Medido: 160°+corcova, erro intrínseco **0,59 → 0,17** (a corcova do
+   meio parava de achatar). Subsume tudo (resíduo zero ⇒ termo zero ⇒ byte-idêntico ao espiral).
+   O estado da arte pleno (Sederberg 1992 / Alexa 2000, a reconstrução por-aresta) zeraria o
+   resíduo e cobriria ARTICULAÇÃO diferencial — a co-rotação já ajuda ali (90°+cotovelo, 0,35 →
+   0,10), mas o que sobra é a fronteira nomeada em §10, não construída.
 4. **A meia-volta EXATA é ambígua** e nenhuma ferramenta resolve: girar 180° para os dois
    lados dá a MESMA pose. O gate pina o que importa (mesmo ali o traço **não colapsa**);
    escolher o lado é trabalho do artista, e é a razão de o BetweenIT ter correção manual.
@@ -304,5 +309,51 @@ regressão usa blobs de mão com ruído diferente ([[feedback_oracle_must_model_
 moderadamente deslocadas (off 8-16) — é a **diferença genuína de forma** entre as duas chaves de
 mão (o ajuste acha um giro pequeno que a fase minimiza mas não zera), medido e nomeado, não um
 arco. Reduzi-lo mais pediria um **deadband de rotação pequena** para traço fechado na espiral (um
-blob fechado quase nunca *quer* girar), que é outra wave — decisão de produto. E a rotação grande
-ainda torce (o resíduo não-rígido, §7.3).
+blob fechado quase nunca *quer* girar), que é outra wave — decisão de produto. ~~E a rotação grande
+ainda torce (o resíduo não-rígido, §7.3).~~ — **FECHADO 2026-07-25, §10.**
+
+## §10 — A torção do resíduo (o item §7.3, fechado) — LANDOU 2026-07-25, pendente de smoke
+
+O tween tira o movimento RÍGIDO por uma espiral (§4) e soma o RESÍDUO — `r = b − S(a)`, *o que a
+similaridade global não explica* — por cima. Até aqui esse resíduo era somado no referencial FIXO
+do mundo (`advance(a,u) + r·u`), e sob giro GRANDE a forma do meio TORCE: o corpo já rodou `θ·u`,
+mas `r` foi medido em B (com o corpo a `θ` inteiro), então a feature (uma corcova, um cotovelo)
+aponta para a atitude ERRADA e se cancela contra o corpo. Medido numa asa que gira 160° ganhando
+uma corcova: **a corcova do meio ACHATAVA** (a sagita afundava 8,5 → 2,95 no quadro do meio).
+
+**A cura** (`tween_spiral::point_at`): o resíduo é **CO-ROTACIONADO** — carregado do referencial de
+B para o referencial PARCIAL em `u` (rodado `θ(u−1)`, escalado `σ^(u−1)`), então gira JUNTO com o
+corpo. A conta muda **uma linha**:
+
+```text
+antes:  advance(a,u) + r·u
+agora:  advance(a,u) + u·σ^(u−1)·R(θ(u−1))·r
+```
+
+**Por que é subsunção, não um modo novo:**
+- **Resíduo zero** (similaridade PURA) ⇒ `r = 0` ⇒ termo zero ⇒ **byte-idêntico** ao espiral de
+  antes ⇒ todos os gates de espiral (giro-de-braço, escala geométrica, pivô, extremos: todos com
+  `r = 0`) ficam intocados. Gate `a_pure_similarity_leaves_the_spiral_bit_identical`.
+- **θ=0 ∧ σ=1** (pura translação) já cai na variante `Translate`, onde não há giro para descasar —
+  segue byte-idêntico ao v1.
+- Fecha os extremos por construção: `u=1` ⇒ o mapa é a identidade ⇒ `r` inteiro ⇒ fecha em B;
+  `u=0` ⇒ o fator externo `·u` zera ⇒ abre em A.
+
+**Medido (oráculo INTRÍNSECO — os ângulos de virada, invariantes ao giro global, o critério do
+Sederberg):** erro do meio-caminho contra a interpolação de A→B — **resíduo preso 160°: 0,59
+(lerp) → 0,17 (co-rot)** · **articulação 90°+cotovelo 80°: 0,35 → 0,10**. A co-rotação AJUDA a
+articulação (o giro dominante é o global) mas não a zera — um giro global só não modela partes
+girando quantidades diferentes.
+
+**Gates (3 motor + 1 smoke, mutação-provados):** `the_residual_co_rotates_with_the_body_under_
+large_rotation` (a porta erra no máx. METADE do lerp; mutação = reverter para `advance+r·u`
+sangra) · `the_control_the_linear_residual_torts_under_large_rotation` (o lerp erra > 0,4 — o
+fixture CONTÉM a torção) · `a_pure_similarity_leaves_the_spiral_bit_identical` (a subsunção) · o
+smoke `the_torsion_smoke_keeps_the_wing_shape_through_the_turn` (a asa do meio não achata). Sonda
+`the_torsion_smoke_look` imprime a sagita quadro a quadro. Smoke: **`PH2D_FLIP_TWEEN_TORSION_SMOKE=1`**.
+
+**Aberto daqui:** a **reconstrução por-aresta do Sederberg 1992 / Alexa 2000** (interpolar cada
+aresta pela própria rotação e reassentar por mínimos quadrados) zeraria o resíduo E cobriria a
+articulação diferencial — mas é uma reescrita da interpolação de por-ponto para reconstrução
+global (com âncora + fecho de anel), e o ganho sobre a co-rotação (de ~1°/vértice para 0) é
+imperceptível no caso comum. Fica nomeado, medido, não construído.

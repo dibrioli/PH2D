@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `70e0acb8a`, o Gap em unidades de mundo da §2.6) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: a co-rotação do resíduo do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **24** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×4 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + pendência + Gap em mundo) |
+| commits à frente do `main` | **28** (a wave + smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + Gap em mundo + **§2.7 a torção do tween** ×2) — confira com `git rev-list --count main..HEAD` |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -247,6 +247,33 @@ enquadramento típico), chip com 2 casas, roda 0,05 doc/tique. Gate `the_gap_rea
 `obj_scale` e NÃO por `px_to_world`; controle positivo: `px_to_world` segue no arquivo para
 a precision/debug; mutação re-adicionando o fator sangra). Sem schema.
 
+### 2.7 A TORÇÃO do resíduo do tween (Enio 2026-07-25, "siga na implementação" → ARAP)
+
+Enio escolheu, entre as frentes abertas, a **torção do tween em rotação grande** — o último gap
+algorítmico da linha do tween (doc [`11 §10`](Flip/11_tween_v2.md)). O tween v2 tira o RÍGIDO por
+uma espiral e soma o RESÍDUO `r = b − S(a)` por cima; até aqui `r` era somado no referencial FIXO
+do mundo (`advance(a,u) + r·u`), e sob giro GRANDE a forma do meio TORCE (a feature aponta para a
+atitude de B enquanto o corpo só girou `θ·u`). **A cura é UMA linha em `tween_spiral::point_at`:** o
+resíduo é **CO-ROTACIONADO** — carregado do referencial de B para o parcial em `u` (rodado
+`θ(u−1)`, escalado `σ^(u−1)`), girando junto com o corpo.
+
+- **É SUBSUNÇÃO, medida:** resíduo zero (similaridade pura) ⇒ termo zero ⇒ **byte-idêntico** ao
+  espiral de antes (todos os gates de espiral intocados); `θ=0 ∧ σ=1` já cai em `Translate`
+  (byte-idêntico ao v1). Só muda o caso rotação+deformação — a torção. Erro intrínseco (ângulos
+  de virada, invariante ao giro global): **0,59 → 0,17** (resíduo preso 160°); **0,35 → 0,10**
+  (articulação). A reconstrução por-aresta plena (Sederberg/Alexa) zeraria o resíduo — nomeada,
+  **não construída** (ganho imperceptível sobre a co-rotação no caso comum, reescrita grande).
+- **Superfície:** ZERO nova. Só o corpo de `point_at` (pub(crate)) muda; nenhuma assinatura,
+  nenhum contrato, nenhum schema, nenhuma dep. `libm::sincosf`/`powf` já eram usados na espiral.
+- **Arquivos:** `crates/ph2d-flip/src/tween_spiral.rs` (a linha + doc) · `tween_spiral_tests.rs`
+  (3 gates + sonda) · shell `flip_tween_torsion_smoke.rs` (NOVO) + `mod` em `main.rs` + 1 chamada
+  no prólogo do `render_loop/mod.rs` (ao lado dos outros smokes).
+- **Gates (3 motor + 1 smoke, mutação-provados):** `the_residual_co_rotates_with_the_body_under_
+  large_rotation` (a porta erra ≤ METADE do lerp; mutação reverter→`advance+r·u` sangra RED) ·
+  `the_control_the_linear_residual_torts_under_large_rotation` (o lerp erra > 0,4 — o fixture
+  CONTÉM a torção) · `a_pure_similarity_leaves_the_spiral_bit_identical` (subsunção byte-exata) ·
+  smoke `the_torsion_smoke_keeps_the_wing_shape_through_the_turn`. Sonda `the_torsion_smoke_look`.
+
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
 ### 3.1 Foundational tocado (`ph2d-editor-core`), todo ADITIVO
@@ -422,6 +449,7 @@ terminal; em resumo:
 | h | **F1/F2/F3 SEGURADOS** numa caixa do meio: só o desenho anterior/atual/seguinte na tela, sem vultos, playhead parado; soltar volta; na 1ª caixa F1 fica (§2.4, ✅ smoke OK 2026-07-24) |
 | i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
 | j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom. ⚠️ **Aparência (aprovada 2026-07-25):** a PONTE do vão é verde cheia com dot nas 2 pontas; as extensões são fios finos SEM dot no corte (o "dot flutuante" acabou) — confira em vários zooms |
+| k | **(§2.7, cena PRÓPRIA: `PH2D_FLIP_TWEEN_TORSION_SMOKE=1`)** uma ASA em 2 quadros (0 e 8): aperte **Add** (3 inbetweens) e folheie 0→2→4→6→8. O quadro do meio tem de mostrar a asa **meio-girada com a corcova crescendo do lado CERTO** (a corcova acompanha o corpo); o ERRADO é a asa quase RETA no meio (a corcova ACHATA). É a torção do resíduo sob giro grande — a co-rotação a corrige |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 
@@ -433,7 +461,8 @@ terminal; em resumo:
 | Zoom/pan da tira | ela **sempre cabe**, por desenho (`05 §6`) — só vira pergunta se um documento longo mostrar que a lasca ficou ilegível |
 | ~~Ajuste modal ao vivo do Gap Closure~~ | **FECHADO 2026-07-25** (§2.6) — pendente do smoke (linha *j*) |
 | **BVH na colisão do `gap::closures`** | wave própria do ENGINE, nomeada pela medição da §2.6 (339 ms num quadro pesado é o custo O(raios×paredes); o GP usa BVH ali). O worker torna o custo pagável hoje; o BVH o tornaria barato |
-| Backlog anterior da linha | pré-segmentação 4K · a exceção `rayon` · timeline global — **inalterados** (~~`trap_px` × `MAX_SIDE`~~ e ~~o `reach` do Gap Closure~~ **FECHARAM na §2.5**) |
+| ~~torção do tween em rotação grande~~ | **FECHADA 2026-07-25** (§2.7, doc `11 §10`) — co-rotação do resíduo; a reconstrução por-aresta plena (Sederberg/Alexa) fica nomeada, não construída |
+| Backlog anterior da linha | pré-segmentação 4K · a exceção `rayon` · timeline global — **inalterados** (~~`trap_px` × `MAX_SIDE`~~, ~~o `reach` do Gap Closure~~ **FECHARAM na §2.5** · ~~torção do tween~~ **na §2.7**) |
 
 ## 9. Depois da integração
 

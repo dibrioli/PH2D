@@ -283,9 +283,12 @@ paint-behind, multiframe.
   plano corrigido. ~~o **alinhamento de FASE da costura** em traço fechado~~ — **LANDOU
   2026-07-22, pendente de smoke** (`PH2D_FLIP_TWEEN_PHASE_SMOKE=1`; crate nova `tween_phase.rs`,
   correlação circular sobre a **virada** e não as posições — a espiral tira o rígido depois, então
-  a fase tem de ser invariante à rotação; doc [`11 §9`](11_tween_v2.md)). **ABERTO de lá:** a
-  torção em rotação grande (Sederberg 1992 / Alexa 2000 — a correspondência era o pré-requisito
-  dos dois).
+  a fase tem de ser invariante à rotação; doc [`11 §9`](11_tween_v2.md)). ~~**ABERTO de lá:** a
+  torção em rotação grande~~ — **FECHADO 2026-07-25** (`PH2D_FLIP_TWEEN_TORSION_SMOKE=1`; doc
+  [`11 §10`](11_tween_v2.md)): o resíduo `b − S(a)` deixa de ser somado no referencial FIXO e é
+  **CO-ROTACIONADO** com o corpo (rodado `θ(u−1)`, escalado `σ^(u−1)`) — erro intrínseco 0,59 →
+  0,17; subsume tudo (resíduo zero ⇒ byte-idêntico ao espiral). A reconstrução por-aresta plena
+  (Sederberg 1992 / Alexa 2000), que zeraria a articulação diferencial, fica nomeada, não construída.
 - **Colorize:** **C1 (Trap) LANDOU** em `ph2d-flip-fill` (2026-07-18). **C3 (onion fill)
   LANDOU 2026-07-21, smoke APROVADO** — com chaves marcadas na tira um Apply colore todas; o
   que ela acrescenta NÃO é o range (esse é do W7) e sim a **SEMENTE**: o rabisco é autorado em

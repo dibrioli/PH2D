@@ -229,6 +229,74 @@ fn a_typed_value_inside_the_sliders_range_is_still_the_sliders_to_report() {
     );
 }
 
+fn curve_snapshot(value: &str) -> ParamsSnapshot {
+    ParamsSnapshot {
+        node: 9,
+        title: "Remap".into(),
+        rows: vec![ParamRow::Curve(CurveRow {
+            name: "curve",
+            label: "Curve".into(),
+            value: value.into(),
+        })],
+    }
+}
+
+/// The seam: a Curve row's handles must be REGISTERED, not merely drawn — a painted
+/// handle the store does not know is dead under the mouse. After a paint the three
+/// control points are `CurvePoint` widgets, so the dispatch can grab them.
+#[test]
+fn a_curve_row_paints_registered_draggable_handles() {
+    set_current_params(Some(curve_snapshot("c1 0:0:L 0.5:1:S 1:0:L")));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    host.paint::<MotionParamsPanel>(
+        &mut state,
+        ph2d_editor_core::zones::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 320.0,
+            h: 800.0,
+        },
+    );
+    for i in 0..3 {
+        assert!(
+            matches!(
+                host.store()
+                    .get(crate::snapshot::param_curve_point_id(0, i)),
+                Some(ph2d_editor_core::interaction::InteractiveState::CurvePoint { .. })
+            ),
+            "handle {i} must be a registered CurvePoint (painted but unregistered = dead)"
+        );
+    }
+    set_current_params(None);
+}
+
+/// The `+` button click routes through `apply_event` to a `SetTextParam` whose curve has
+/// one more point — the seam from a real button id to the document edit.
+#[test]
+fn the_add_button_emits_a_curve_with_one_more_point() {
+    let _ = drain_param_intents();
+    set_current_params(Some(curve_snapshot("c1 0:0:L 1:1:L")));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(crate::snapshot::param_curve_add_id(0)),
+    );
+    let intents = drain_param_intents();
+    assert_eq!(intents.len(), 1, "one edit");
+    let MotionParamIntent::SetTextParam { node, param, value } = &intents[0] else {
+        panic!("a curve edit rides SetTextParam");
+    };
+    assert_eq!((*node, *param), (9, "curve"));
+    assert_eq!(
+        ph2d_curve::parse(value).unwrap().points.len(),
+        3,
+        "+ grew the curve from 2 to 3 points"
+    );
+    set_current_params(None);
+}
+
 #[test]
 fn the_box_is_ranged_to_the_hard_limit_and_the_slider_to_the_soft_one() {
     // The other half of the split, and the one the two gates above CANNOT see:

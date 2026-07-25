@@ -89,6 +89,44 @@ fn selected_expression_node_yields_a_formula_text_row() {
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
 
+/// A selected `field.remap` resolves to an interactive **Curve** row (A1-ui), FIRST, that
+/// carries the graph's `curve` text-param — not a raw text field. Proves the
+/// `ParamWidget::Curve` hint surfaces as the draggable editor; FALSIFIED if it fell back
+/// to a Text row (the A1-core interim) or were dropped. The Contour selector + the scalar
+/// knobs remain below it.
+#[test]
+fn selected_field_remap_yields_an_interactive_curve_row() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let rm = motion.doc.graph.add_node("field.remap");
+    motion
+        .doc
+        .graph
+        .set_text_param(rm, "curve", "c1 0:0:L 0.5:1:S 1:0:L");
+    ph2d_panel_motion_graph::set_graph_selection(vec![rm.0]);
+
+    let snap = build_params_snapshot(&motion).expect("field.remap node is resolvable");
+    match &snap.rows[0] {
+        ParamRow::Curve(c) => {
+            assert_eq!(c.name, "curve");
+            assert_eq!(
+                c.value, "c1 0:0:L 0.5:1:S 1:0:L",
+                "the curve flows from the text channel to the editor"
+            );
+        }
+        other => panic!("first row should be the interactive Curve editor, got {other:?}"),
+    }
+    // The Contour enum + the scalar knobs remain below the curve.
+    assert!(
+        snap.rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "contour")),
+        "the Contour selector remains an enum row"
+    );
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
 /// The colour read-back is the inverse of the swatch display: writing a
 /// picked sRGB colour lands linear-straight channel values on the node, and
 /// re-reading them rebuilds the same sRGB swatch (round-trip stable). Guards

@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 
+mod curve_row;
 mod number_rows;
 mod rows_paint;
 mod snapshot;
@@ -28,11 +29,12 @@ use number_rows::{
     paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
-    AngleRow, ColorRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, SeedRow,
-    TextRow, ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
+    AngleRow, ColorRow, CurveRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow,
+    SeedRow, TextRow, ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
 };
 use snapshot::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
+    param_curve_add_id, param_curve_editor_id, param_curve_interp_id, param_curve_remove_id,
     param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
     push_param_intent,
 };
@@ -105,7 +107,10 @@ impl Panel for MotionParamsPanel {
         // colour swatch (label + right-aligned swatch, mirror of the Vector
         // Stroke/Fill rows). Both use the SHARED source-of-truth painters.
         let label_font = TypeToken::Base.px();
-        {
+        // `paint_rows` draws + registers hit rects (it holds `hit_index`); a Curve row's
+        // `CurvePoint`/`Button` STORE states cannot be registered through the immutable
+        // store here, so they ride back in `curve_widgets` for Phase C below.
+        let curve_widgets = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -122,17 +127,38 @@ impl Panel for MotionParamsPanel {
                 scene,
                 text_system,
                 theme,
-            );
-        }
+            )
+        };
 
         // Phase B (mutable store) — mark each colour swatch so a Down opens the
         // shared OKLCH picker (generic `is_picker_swatch` dispatch). Idempotent.
+        // Phase C — register the Curve editor's per-frame `CurvePoint` handles (the
+        // dispatch reads `canvas`/`index` off these to normalize a drag) + its buttons.
         {
             let store = ctx.host.store_mut();
             for row in &snap.rows {
                 if let ParamRow::Color(c) = row {
                     store.register_picker_swatch(param_swatch_id(c.channels[0]));
                 }
+            }
+            for &(id, parent, index, canvas) in &curve_widgets.points {
+                store.register(
+                    id,
+                    InteractiveState::CurvePoint {
+                        parent,
+                        channel: 0,
+                        index,
+                        canvas,
+                    },
+                );
+            }
+            for &id in &curve_widgets.buttons {
+                store.register(
+                    id,
+                    InteractiveState::Button {
+                        state: ButtonState::Normal,
+                    },
+                );
             }
         }
     }
@@ -146,9 +172,16 @@ impl Panel for MotionParamsPanel {
             return EventOutcome::Ignored;
         };
         match ev {
-            WidgetEvent::ValueChanged(id) => on_value_changed(id, host, &snap),
+            // A Curve handle drag arrives as ValueChanged(editor) — drain it FIRST (the
+            // dispatch stashed the normalized point); else it is a scalar slider / chip.
+            WidgetEvent::ValueChanged(id) => {
+                on_curve_drag(id, host, &snap).unwrap_or_else(|| on_value_changed(id, host, &snap))
+            }
             WidgetEvent::Toggled(id) => on_toggled(id, host, &snap),
-            WidgetEvent::Click(id) => on_click(id, &snap),
+            // A Curve +/−/interp button, else a segmented option / seed re-roll.
+            WidgetEvent::Click(id) => {
+                on_curve_click(id, &snap).unwrap_or_else(|| on_click(id, &snap))
+            }
             // A formula field commits on Enter (Submit) or focus-loss (Blur).
             WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => on_text_commit(id, host, &snap),
             _ => EventOutcome::Ignored,
@@ -203,6 +236,59 @@ impl Panel for MotionParamsPanel {
             }
         }
     }
+}
+
+/// A Curve handle drag: the dispatch stashed the normalized `(index, x, y)` in the
+/// store's `curve_point_drag` slot; fold it into the row's curve and emit the new
+/// serialized value. `Some` = the id WAS a Curve editor (handled), `None` = try the
+/// scalar path.
+fn on_curve_drag(
+    id: NodeId,
+    host: &mut dyn PanelHostInternal,
+    snap: &ParamsSnapshot,
+) -> Option<EventOutcome> {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        if id == param_curve_editor_id(slot) {
+            let ParamRow::Curve(row) = &snap.rows[slot] else {
+                return Some(EventOutcome::Ignored);
+            };
+            if let Some(value) = curve_row::drain_drag(host.store_mut(), slot, &row.value) {
+                push_param_intent(MotionParamIntent::SetTextParam {
+                    node: snap.node,
+                    param: row.name,
+                    value,
+                });
+            }
+            return Some(EventOutcome::Consumed);
+        }
+    }
+    None
+}
+
+/// A Curve `+` / `−` / interp button → the new serialized curve. `None` = not a Curve
+/// button (fall through to the enum / seed-reroll handler).
+fn on_curve_click(id: NodeId, snap: &ParamsSnapshot) -> Option<EventOutcome> {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        let ParamRow::Curve(row) = &snap.rows[slot] else {
+            continue;
+        };
+        let value = if id == param_curve_add_id(slot) {
+            curve_row::add_point(&row.value)
+        } else if id == param_curve_remove_id(slot) {
+            curve_row::remove_point(&row.value, slot)
+        } else if id == param_curve_interp_id(slot) {
+            curve_row::cycle_interp(&row.value, slot)
+        } else {
+            continue;
+        };
+        push_param_intent(MotionParamIntent::SetTextParam {
+            node: snap.node,
+            param: row.name,
+            value,
+        });
+        return Some(EventOutcome::Consumed);
+    }
+    None
 }
 
 /// A slider drag / chip commit → emit the scalar row value. A chip fires its own

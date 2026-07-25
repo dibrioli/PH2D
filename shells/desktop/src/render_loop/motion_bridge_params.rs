@@ -317,8 +317,8 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, TextRow,
-        ToggleRow,
+        AngleRow, ColorRow, CurveRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow,
+        TextRow, ToggleRow,
     };
 
     // The params panel shows the properties of whatever ONE subject is selected.
@@ -375,9 +375,8 @@ pub(super) fn build_params_snapshot(
     // Text params (a `motion.expression` formula, a `field.remap` Curve) are NOT
     // `ParamSpec`s (f32-only), so they never appear in the manifest loop below — surface
     // each as a row FIRST, reading the graph's text channel (docs/Motion Nodes/32-33).
-    // `Curve` rides the SAME text channel as `Text`; until the A1-ui interactive editor
-    // lands it renders as a text field over the serialized curve string (the
-    // `motion.expression` precedent — the plumbing A1-ui upgrades the row type onto).
+    // `Curve` rides the SAME text channel as `Text` but paints an interactive curve editor
+    // (A1-ui): draggable handles over the serialized curve, never the string.
     for h in hints.into_iter().flatten() {
         if h.widget == ParamWidget::Text || h.widget == ParamWidget::Curve {
             let value = motion
@@ -387,11 +386,13 @@ pub(super) fn build_params_snapshot(
                 .and_then(|m| m.get(h.param))
                 .cloned()
                 .unwrap_or_default();
-            rows.push(ParamRow::Text(TextRow {
-                name: h.param,
-                label: h.label.to_string(),
-                value,
-            }));
+            let name = h.param;
+            let label = h.label.to_string();
+            rows.push(if h.widget == ParamWidget::Curve {
+                ParamRow::Curve(CurveRow { name, label, value })
+            } else {
+                ParamRow::Text(TextRow { name, label, value })
+            });
         }
     }
 

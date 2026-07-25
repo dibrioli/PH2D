@@ -4,6 +4,7 @@
 //! number box, text field). `super` is the crate root, so the pooled-id helpers and the
 //! `normalized_track`/`row_value` mappers are in scope.
 
+use super::curve_row::{self, CurveWidgets};
 use super::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, ParamRow, normalized_track, paint_angle_row, paint_seed_row,
     paint_text_row, param_checkbox_id, param_chip_id, param_enum_id, param_number_id,
@@ -36,8 +37,9 @@ pub(crate) fn paint_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
+) -> CurveWidgets {
     let mut y = body_top;
+    let mut curve_widgets = CurveWidgets::new();
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
         match row {
             // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
@@ -226,6 +228,26 @@ pub(crate) fn paint_rows(
                 );
                 y += used + row_gap;
             }
+            ParamRow::Curve(row) => {
+                // The interactive Curve editor — a graph with draggable handles. Its
+                // `CurvePoint`/`Button` store states ride back in `curve_widgets` (this
+                // pass has only an immutable store); the caller registers them (Phase C).
+                let used = curve_row::paint_curve_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    y,
+                    label_font,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                    &mut curve_widgets,
+                );
+                y += used + row_gap;
+            }
         }
     }
+    curve_widgets
 }

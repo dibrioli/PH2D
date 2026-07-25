@@ -28,6 +28,24 @@ pub enum ParamRow {
     Angle(AngleRow),
     Seed(SeedRow),
     Text(TextRow),
+    Curve(CurveRow),
+}
+
+/// An interactive **transfer-curve editor** (A1) — a `ph2d-curve` serialized in a
+/// text param (`Graph::set_text_param`), drawn as a graph with **draggable control
+/// points** (the foundational `InteractiveState::CurvePoint` 2-D drag, reused from
+/// the Painter's falloff editor) + add/remove buttons. Like [`TextRow`] the value is
+/// a `String`, so an edit rides [`MotionParamIntent::SetTextParam`]; unlike it, the
+/// artist never sees the string — only the curve and the handles.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CurveRow {
+    /// The text-param key (`Graph::set_text_param`) — echoed in the intent.
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The current serialized curve (the text-param override, else empty → the
+    /// panel opens on the identity diagonal).
+    pub value: String,
 }
 
 /// A free-text row editing a **text param** (a `motion.expression` formula) — the
@@ -199,6 +217,11 @@ pub(crate) const MAX_PARAM_ROWS: usize = 8;
 /// the behaviours' channel / wave / easing sets with headroom).
 pub(crate) const MAX_ENUM_OPTIONS: usize = 8;
 
+/// Max control points a single Curve row's editor supports (matches the field.remap
+/// text param's practical ceiling; a handful of points shape any transfer). The
+/// per-point `CurvePoint` widgets are pooled positionally like the enum options.
+pub(crate) const MAX_CURVE_POINTS: usize = 8;
+
 /// Stable widget id for the `slot`-th param row's slider (pooled, positional —
 /// row `i` of whichever node is selected uses slot `i`).
 pub(crate) fn param_slider_id(slot: usize) -> NodeId {
@@ -244,6 +267,34 @@ pub(crate) fn param_reroll_id(slot: usize) -> NodeId {
 /// Stable widget id for the `slot`-th Text row's `TextInput` field (formula editor).
 pub(crate) fn param_text_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/text/{slot}"))
+}
+
+/// The `slot`-th Curve row's **editor parent** id — the `CurvePoint.parent` every
+/// handle carries, so `apply_event` routes the drained drag to the right row (the
+/// dispatch emits `ValueChanged(parent)` on a handle drag).
+pub(crate) fn param_curve_editor_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/curve/{slot}"))
+}
+
+/// The `slot`-th Curve row's `point`-th draggable control-point handle.
+pub(crate) fn param_curve_point_id(slot: usize, point: usize) -> NodeId {
+    fnv_id(&format!("motion_param/curve/{slot}/pt/{point}"))
+}
+
+/// The `slot`-th Curve row's **add-point** button.
+pub(crate) fn param_curve_add_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/curve/{slot}/add"))
+}
+
+/// The `slot`-th Curve row's **remove-point** button.
+pub(crate) fn param_curve_remove_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/curve/{slot}/remove"))
+}
+
+/// The `slot`-th Curve row's **interp** button — cycles the selected point's
+/// segment interpolation (Linear → Smooth → Hold).
+pub(crate) fn param_curve_interp_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/curve/{slot}/interp"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

@@ -620,3 +620,64 @@ byte-exatos (3/3, paridade 37/37).
 
 **Foundational:** `ph2d-render::LayerPixels` +1 campo (`dirty`), 5 sítios de construção
 atualizados (flip + 3 testes = `None`). Sem schema, sem contrato congelado.
+
+## 13. Onda 5c — o traço de MÁSCARA para de fazer recompose cheio por quadro (2026-07-24)
+
+A Onda 5b não resolveu a queda de FPS que o Enio reportava nos três cenários de máscara
+(pintar a máscara · pintar com máscara · pintar após limpar). A razão: o caminho DELE
+nem chegava ao produtor GPU da 5b — ficava 100 % na CPU.
+
+### 13.1 O diagnóstico nomeou o braço exato
+
+`PH2D_PAINT_PERF` foi partido em sub-fases (`preview`/`panel`/`overlay`/`upload`) e depois
+ganhou o **braço do drain** (`take_preview_arc`) + os dois predicados que decidem o braço.
+A linha do quadro caro, num traço de máscara:
+
+```
+frame p50=25.5 dispatch p50=24.2 [preview 17.3 panel 0.0 overlay 0.0 upload 6.8]
+WORST: CPU 2048x2048 branch=FULL-composite impasto=false mask_scratch=true ... trivial=true
+```
+
+Ou seja: `panel`/`overlay` = 0 (as hipóteses anteriores morreram), o custo é **`preview`
+≈ 17 ms + `upload` ≈ 6,9 ms**, na CPU, no braço **`FULL-composite`**, com **`mask_scratch=true`**.
+A flag `trivial=true` enganava — ela só reporta `is_trivial_stack()`, e o caminho rápido de
+verdade exige TAMBÉM `!mask_scratch_active() && !impasto_visible()`.
+
+### 13.2 A causa
+
+`take_preview_arc` fazia `force_full = mask_scratch_active()` (runtime.rs), mandando **todo
+quadro pintado com um scratch de máscara vivo** pro braço de recompose de tela inteira +
+upload cheio de 16 MiB — para uma mudança do tamanho de um dab. O comentário justificava:
+*"um blit parcial não consegue re-tingir a área não-tocada"*. Mas:
+
+- `apply_mask_overlay` é **PER-PIXEL** — o tint de um texel depende só da própria cobertura
+  e da cor do filme, **sem termo global**;
+- um dab de máscara muda a cobertura só dentro do próprio `dirty_rect` (o stamp edita o
+  scratch trocado dentro do `canvas_rgba`, `stamp_dabs_mask`);
+- as mudanças de tint genuinamente globais (swatch de cor, canvas-op Expand/Contract/…,
+  o primeiro scratch) **todas** já chamam `invalidate_composite()` → o braço cheio.
+
+Logo o `force_full` era pura super-cautela.
+
+### 13.3 A cura
+
+Removido o `force_full`. O braço parcial re-tinge **só a região do dab** via o novo
+`apply_mask_overlay_region` — byte-idêntico ao re-tint cheio ali, porque ele **compartilha
+o kernel per-pixel `tint_pixel`** com o `apply_mask_overlay` (duas cópias divergiriam num
+texel, que é exatamente a classe de bug que o braço parcial não pode introduzir). O seed
+(primeiro dab do scratch) segue cheio pelo `invalidate_composite` de `ensure_mask_scratch`;
+os dabs seguintes tomam a via parcial ⇒ `preview_upload_bbox = Some` ⇒ a via de upload
+parcial (5b) também dispara.
+
+Cobre os TRÊS cenários: Mask mode (`stamp_dabs_mask`), pintura-com-proteção
+(`restore_protected_region`, `paint_mode != Mask`), e pós-Clear (scratch branco vivo).
+
+### 13.4 Gate
+
+`a_mask_stroke_takes_the_partial_lane_byte_identical_to_a_full_recompose` (mutação-provado):
+seed com o 1º dab (full), 2º dab noutro ponto tem de tomar `PartialComposite`, e o resultado
+tem de bater byte-a-byte com um recompose cheio da MESMA cena. Mutações que sangram:
+(a) re-por `force_full` → o 2º dab vai pro braço cheio (assert de branch) · (b) tirar o
+`apply_mask_overlay_region` → a região do dab perde o tint, `partial != full` (assert de byte).
+
+**Sem schema, sem contrato congelado.** Só a `ph2d-tool-painter` (mask.rs + runtime.rs).

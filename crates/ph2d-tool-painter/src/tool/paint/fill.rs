@@ -165,6 +165,8 @@ impl PainterTool {
     /// fill from `fill_seed` at the current threshold with the current brush colour. Shared by the drop
     /// and every live threshold adjustment. No-op without a seed / snapshot.
     pub(super) fn refill_from_snapshot(&mut self) {
+        // Gate epoch: foreign canvas writer (the fill) — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let (Some(seed), size) = (self.paint.fill_seed, self.source_size) else {
             return;
         };
@@ -325,6 +327,8 @@ impl PainterTool {
     /// Discard the current fill (modal **Cancel**): restore the pre-fill pixels and drop the pending
     /// undo entry, so the layer is exactly as it was before the drop.
     pub fn fill_cancel(&mut self) {
+        // Gate epoch: foreign canvas writer (snapshot restore) — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         if self.paint.fill_seed.is_none() {
             return;
         }

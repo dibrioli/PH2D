@@ -23358,3 +23358,375 @@ fn the_mask_feather_does_not_harden_across_passes() {
          (envelope idempotent); {ndiff} bytes differ, max delta {maxd} — the feather is hardening",
     );
 }
+
+#[test]
+fn the_feather_is_a_ceiling_not_a_per_pass_multiplier() {
+    // "máscara RUIM" (Enio, 2026-07-25): painting MANY passes through a feathered protection edge
+    // EVAPORATED the feather — each batch moved a K-protected texel `keep` of the remaining way toward
+    // the paint (restore = per-batch lerp), so (1−keep)^N → 0 and every partially-protected texel
+    // saturated to full paint: a hard aliased cliff at the full-protection contour. Measured: at
+    // keep=9/255 (96% protected), 15 passes took the canvas from 218 to 25.
+    //
+    // The fix is the EPOCH PROJECTION: while the protection declaration stands, the canvas is always
+    // exactly `ref·(1−keep) + free·keep` — ref = the canvas when the epoch began, free = what
+    // unrestricted painting would have produced. N passes CONVERGE to the ceiling; the feather is a
+    // faithful keep-blend of the unrestricted painting forever, and never hardens.
+    //
+    // Oracle: paint 15 black passes through the feather; at probe texels chosen FROM THE SCRATCH
+    // (keep ≈ 0.3 mid-feather — the probe that kills the "stamp on the display" half-fix — and a
+    // near-frozen one), the canvas must sit at the ceiling 255·(1−keep) (free saturates to 0), and a
+    // fully-frozen texel must still read exactly 255. RED under the per-batch lerp (the mid probe
+    // reads near 0 instead of ~179).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.set_brush_size_px(60.0);
+    // One vertical mask stroke at x=110 → a feathered protection band around it.
+    t.on_canvas_pointer(cp([110.0, 40.0], PointerPhase::Down));
+    for y in 1..=30 {
+        t.on_canvas_pointer(cp([110.0, 40.0 + y as f32 * 6.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 220.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    // Probes from the ACTUAL scratch on row 128 (the fixture contains the phenomenon by construction):
+    // the frozen plateau, a mid-feather texel (keep in [0.2, 0.5]), and a near-frozen one (keep ≤ 0.1).
+    let keep_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.paint.mask_scratch_rgba[((128 * size + x) * 4) as usize]) / 255.0
+    };
+    // Scan LEFT→RIGHT and only accept feather probes to the RIGHT of the frozen plateau — the side
+    // the paint swath covers most deeply, so `free` genuinely saturates at the probes.
+    let mut frozen_x = None;
+    let mut mid_x = None;
+    let mut low_x = None;
+    for x in 60..220u32 {
+        let k = keep_at(&t, x);
+        if k == 0.0 {
+            frozen_x = Some(x); // ends as the LAST fully-frozen texel (nearest the right feather)
+            mid_x = None; // discard left-feather picks — probes must sit right of the plateau
+            low_x = None;
+        }
+        if mid_x.is_none() && (0.2..=0.5).contains(&k) {
+            mid_x = Some(x);
+        }
+        if low_x.is_none() && k > 0.0 && k <= 0.1 {
+            low_x = Some(x);
+        }
+    }
+    let (frozen_x, mid_x, low_x) = (
+        frozen_x.expect("a frozen plateau"),
+        mid_x.expect("a mid-feather texel"),
+        low_x.expect("a near-frozen texel"),
+    );
+    let (k_mid, k_low) = (keep_at(&t, mid_x), keep_at(&t, low_x));
+    // Back to the normal brush: 15 black passes sweeping the whole probe band (brush 120 px centred
+    // at x=170 covers x≈110..230 — every probe is deep inside the swath, so `free` saturates).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.set_brush_size_px(120.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    for _ in 0..15 {
+        t.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Down));
+        for y in 1..=30 {
+            t.on_canvas_pointer(cp([170.0, 40.0 + y as f32 * 6.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+    }
+    let canvas_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.canvas_rgba[((128 * size + x) * 4) as usize])
+    };
+    // Fully frozen: byte-exact 255 forever.
+    assert_eq!(
+        canvas_at(&t, frozen_x),
+        255.0,
+        "a fully-frozen texel must never move (x={frozen_x})",
+    );
+    // Mid-feather: at the ceiling 255·(1−keep), not evaporated toward 0. Tolerance 6 covers free not
+    // being exactly saturated + u8 rounding; the per-batch lerp puts this texel BELOW 40 — a mile off.
+    let target_mid = 255.0 * (1.0 - k_mid);
+    let got_mid = canvas_at(&t, mid_x);
+    assert!(
+        (got_mid - target_mid).abs() <= 6.0,
+        "mid-feather texel (x={mid_x}, keep={k_mid:.3}) must sit at the ceiling {target_mid:.0}, \
+         got {got_mid:.0} — the feather is eroding",
+    );
+    // Near-frozen: ceiling ≈ 255·(1−k_low) — under the old model this texel evaporated to ~25.
+    let target_low = 255.0 * (1.0 - k_low);
+    let got_low = canvas_at(&t, low_x);
+    assert!(
+        (got_low - target_low).abs() <= 6.0,
+        "near-frozen texel (x={low_x}, keep={k_low:.3}) must sit at the ceiling {target_low:.0}, \
+         got {got_low:.0} — the feather is eroding",
+    );
+}
+
+/// Shared fixture for the ceiling gates: a 256² white canvas with a soft vertical MASK stroke at
+/// x=110 (feathered protection), returned in BRUSH mode with a black 120 px brush ready to paint.
+fn feathered_protection_tool() -> PainterTool {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.set_brush_size_px(60.0);
+    t.on_canvas_pointer(cp([110.0, 40.0], PointerPhase::Down));
+    for y in 1..=30 {
+        t.on_canvas_pointer(cp([110.0, 40.0 + y as f32 * 6.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 220.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.set_brush_size_px(120.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    t
+}
+
+/// One vertical black paint pass through the protection band (the ceiling gates' stroke).
+fn ceiling_paint_pass(t: &mut PainterTool) {
+    t.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Down));
+    for y in 1..=30 {
+        t.on_canvas_pointer(cp([170.0, 40.0 + y as f32 * 6.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+}
+
+#[test]
+fn the_selection_feather_is_a_ceiling_too_and_the_two_gates_multiply() {
+    // The Selection mask's Feather had the SAME per-batch lerp (`restore_deselected_region`, retired
+    // with the mask's door) — painting repeatedly inside a feathered selection hardened its edge
+    // identically. Both gates now project through the ONE epoch door, so the feather sits at the
+    // ceiling 255·(1−ks) after any number of passes; and when BOTH gates are live, keep is their
+    // PRODUCT (mutation: summing or dropping one factor moves the double-gated probe).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    // A feathered rect selection: inside x>=140 (painting allowed), feathered boundary around it.
+    t.set_rect_selection(140, 0, 116, 256);
+    t.set_selection_feather(10.0);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.set_brush_size_px(120.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    // Probe from the ACTUAL selection mask on row 128: a mid-feather texel.
+    let ks_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.paint.selection_mask[(128 * size + x) as usize]) / 255.0
+    };
+    let mut mid_x = None;
+    for x in 120..180u32 {
+        let k = ks_at(&t, x);
+        if (0.2..=0.5).contains(&k) {
+            mid_x = Some(x);
+            break;
+        }
+    }
+    let mid_x = mid_x.expect("a mid-feather selection texel");
+    let ks = ks_at(&t, mid_x);
+    for _ in 0..15 {
+        ceiling_paint_pass(&mut t);
+    }
+    let canvas_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.canvas_rgba[((128 * size + x) * 4) as usize])
+    };
+    let target = 255.0 * (1.0 - ks);
+    let got = canvas_at(&t, mid_x);
+    assert!(
+        (got - target).abs() <= 6.0,
+        "selection feather texel (x={mid_x}, ks={ks:.3}) must sit at the ceiling {target:.0}, got {got:.0}",
+    );
+    // ── Both gates at once: keep = mask_keep × selection_keep (the PRODUCT). ──
+    let mut t2 = feathered_protection_tool();
+    // Overlay a feathered selection whose feather CROSSES the mask's feather band.
+    t2.set_rect_selection(130, 0, 126, 256);
+    t2.set_selection_feather(16.0);
+    // Probe where BOTH factors are properly fractional.
+    let km_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.paint.mask_scratch_rgba[((128 * size + x) * 4) as usize]) / 255.0
+    };
+    let mut both_x = None;
+    for x in 110..200u32 {
+        let (km, ks) = (km_at(&t2, x), ks_at(&t2, x));
+        if (0.25..=0.85).contains(&km) && (0.25..=0.85).contains(&ks) {
+            both_x = Some(x);
+            break;
+        }
+    }
+    let both_x = both_x.expect("a texel where both gates are fractional");
+    let keep = km_at(&t2, both_x) * ks_at(&t2, both_x);
+    for _ in 0..15 {
+        ceiling_paint_pass(&mut t2);
+    }
+    let target2 = 255.0 * (1.0 - keep);
+    let got2 = canvas_at(&t2, both_x);
+    assert!(
+        (got2 - target2).abs() <= 8.0,
+        "double-gated texel (x={both_x}, keep={keep:.3} = product) must sit at {target2:.0}, got {got2:.0}",
+    );
+}
+
+#[test]
+fn lowering_protection_starts_a_new_epoch_not_a_replay_of_history() {
+    // Raising `keep` (Mask-Erase) over a ceiling-saturated feather must NOT retroactively reveal the
+    // buried unrestricted painting: every keep-source edit COMMITS the epoch, so the next stroke's
+    // reference is what is ON SCREEN. Mutation that must bleed: dropping the `commit_gate_epoch` from
+    // the mask keep-source edits — the stale `free` (saturated black) would slam the probe to the
+    // buried history the moment any batch's region touches it.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = feathered_protection_tool();
+    for _ in 0..15 {
+        ceiling_paint_pass(&mut t);
+    }
+    // The display at a mid-feather probe (the ceiling).
+    let keep_at = |t: &PainterTool, x: u32| -> f32 {
+        f32::from(t.paint.mask_scratch_rgba[((128 * size + x) * 4) as usize]) / 255.0
+    };
+    let mut probe = None;
+    let mut frozen_seen = false;
+    for x in 60..220u32 {
+        let k = keep_at(&t, x);
+        if k == 0.0 {
+            frozen_seen = true;
+            probe = None;
+        }
+        if frozen_seen && probe.is_none() && (0.2..=0.5).contains(&k) {
+            probe = Some(x);
+        }
+    }
+    let probe = probe.expect("a right-feather probe");
+    let display_before = f32::from(t.canvas_rgba[((128 * size + probe) * 4) as usize]);
+    // ERASE the protection over the whole band (keep → ~1 everywhere the eraser covers).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.set_mask_brush(1); // Erase (unprotect)
+    t.set_brush_size_px(120.0);
+    t.on_canvas_pointer(cp([110.0, 40.0], PointerPhase::Down));
+    for y in 1..=30 {
+        t.on_canvas_pointer(cp([110.0, 40.0 + y as f32 * 6.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([110.0, 220.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    // One SMALL paint dab whose batch REGION covers the probe but whose falloff there is ~zero:
+    // the projection runs at the probe, and a stale epoch would replay the buried black there.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "brush".to_string(),
+    ));
+    t.set_brush_size_px(24.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    let dab_x = probe as f32 + 20.0; // probe sits at the dab's weak rim (r=12 → ~0 coverage there)
+    t.on_canvas_pointer(cp([dab_x, 128.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([dab_x, 128.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    let display_after = f32::from(t.canvas_rgba[((128 * size + probe) * 4) as usize]);
+    // The dab's real soft tail may nibble a few bytes at the probe (legitimate paint through the now
+    // unprotected texel) — the DISEASE is the probe slamming to the buried saturated black (~2): a
+    // stale epoch's `free` replayed through the raised keep. The threshold separates the two by an
+    // order of magnitude (measured: honest tail 179 vs buried replay ~2, from a before of 197).
+    assert!(
+        display_after > 120.0,
+        "erasing protection + one small dab must not replay buried history at the probe: \
+         before {display_before:.0}, after {display_after:.0} (buried black would read ~2)",
+    );
+}
+
+#[test]
+fn the_ceiling_survives_undo_and_repaint() {
+    // The epoch planes ride the `ModelSnapshot` (same-commit law): undoing a gated stroke and
+    // repainting it must land byte-identical to never having undone — dropping the planes on restore
+    // would re-seed the next epoch from a canvas that already carries feather paint, and the
+    // `(1−keep)` term would compound across undo-cut epochs (the disease, one level up). Mutation
+    // that must bleed: restore_model NOT reinstating `gate_ref`/`gate_free`.
+    let mut a = feathered_protection_tool();
+    for _ in 0..3 {
+        ceiling_paint_pass(&mut a);
+    }
+    let mut b = feathered_protection_tool();
+    for _ in 0..3 {
+        ceiling_paint_pass(&mut b);
+    }
+    assert!(b.undo_last(), "a gated stroke is an undo step");
+    ceiling_paint_pass(&mut b);
+    assert_eq!(
+        *a.canvas_rgba, *b.canvas_rgba,
+        "undo + repaint must equal the straight run to the byte (the planes ride the snapshot)",
+    );
+}
+
+#[test]
+fn a_shape_preview_does_not_pile_ghosts_into_the_free_plane() {
+    // Every preview frame re-stamps the whole shape through the gated dispatcher — into the FREE
+    // plane. Without the preview's free twin (`DragPreview::free_pixels`), each frame would pile one
+    // more phantom copy into the unrestricted painting and the projected feather would deepen while
+    // the artist merely MOVES the pointer. Oracle: a Line dragged through the feather across MANY
+    // preview frames commits identical (±1) to the same Line dragged in ONE frame. Mutation that must
+    // bleed: dropping the `restore_free_region` from the preview peel.
+    use ph2d_painter_brush::StrokeMethod;
+    let mut many = feathered_protection_tool();
+    many.paint.brush.stroke_method = StrokeMethod::Line;
+    // LOW flow + ACCUMULATE ON are the load-bearing halves of this fixture — twice the mutation
+    // survived without them, because the fixture did not contain the phenomenon: with an opaque
+    // brush the free plane saturates either way (the ceiling absorbs the ghosts), and with the
+    // default Accumulate OFF the per-stroke cap (`bands.rs` accumulate cap) already makes re-stamps
+    // idempotent on the free plane. Only an accumulating low-flow brush lets 30 piled ghost stamps
+    // read darker than one stamp.
+    many.paint.brush.flow = 0.2;
+    many.paint.brush.accumulate = true;
+    // Polyline model (the way Line actually works): click corner A, then PRESS corner B and sweep it —
+    // every Move re-stamps the whole line through the gated dispatcher (the drag-preview path).
+    many.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Down));
+    many.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Up)); // corner A
+    many.on_canvas_pointer(cp([170.0, 60.0], PointerPhase::Down)); // corner B pressed
+    for i in 1..=30 {
+        // wiggle the endpoint — 30 preview re-stamps through the gate
+        many.on_canvas_pointer(cp(
+            [170.0 + (i % 3) as f32, 60.0 + i as f32 * 5.0],
+            PointerPhase::Move,
+        ));
+        let _ = many.take_preview_arc();
+    }
+    many.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Move));
+    many.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Up));
+    let _ = many.take_preview_arc();
+    let mut once = feathered_protection_tool();
+    once.paint.brush.stroke_method = StrokeMethod::Line;
+    once.paint.brush.flow = 0.2;
+    once.paint.brush.accumulate = true;
+    once.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Down));
+    once.on_canvas_pointer(cp([170.0, 40.0], PointerPhase::Up)); // corner A
+    once.on_canvas_pointer(cp([170.0, 60.0], PointerPhase::Down)); // corner B pressed
+    once.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Move)); // ONE re-stamp to the endpoint
+    once.on_canvas_pointer(cp([170.0, 220.0], PointerPhase::Up));
+    let _ = once.take_preview_arc();
+    let mut maxd = 0i32;
+    for i in 0..many.canvas_rgba.len() {
+        maxd = maxd.max((i32::from(many.canvas_rgba[i]) - i32::from(once.canvas_rgba[i])).abs());
+    }
+    assert!(
+        maxd <= 1,
+        "a Line previewed over 30 frames must commit identical to a 1-frame Line (max delta {maxd}) \
+         — preview ghosts are piling into the free plane",
+    );
+}

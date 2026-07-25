@@ -13,6 +13,8 @@ impl PainterTool {
     /// `pre`. No-op before a session exists. Freeze holds the protected texels' displacement (they don't
     /// un-warp either, staying wherever they were — consistent with Freeze protecting a region from change).
     pub(super) fn warp_reconstruct_dab(&mut self, center: [f32; 2], radius: f32, pressure: f32) {
+        // Gate epoch: the Deform writes the canvas outside the gate — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let Some(bbox) = self.dab_bbox(center, radius) else {
             return;
         };

@@ -10,6 +10,12 @@ use super::*;
 pub(super) struct DragPreview {
     pub(super) rect: Region,
     pub(super) pixels: Vec<u8>,
+    /// The gate epoch's FREE-plane pixels under `rect` (pre-stamp), when an epoch was live. Each
+    /// preview frame re-stamps the whole shape through the gated dispatcher, which stamps into the
+    /// FREE plane — without peeling it alongside the canvas, every preview frame would pile one more
+    /// phantom copy into the unrestricted painting and the projected feather would deepen while the
+    /// artist merely LOOKS at the shape ([`gate`]).
+    pub(super) free_pixels: Option<Vec<u8>>,
 }
 
 impl PainterTool {
@@ -43,6 +49,7 @@ impl PainterTool {
         }
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_free_region(&prev.rect, prev.free_pixels.as_deref());
         }
         // The pixels were just restored to their pre-preview state and the WHOLE shape is about to be
         // re-stamped — so the relief has to be restored too. Without this the height envelope keeps the
@@ -75,9 +82,20 @@ impl PainterTool {
         self.paint.last_smear_pos = None;
         match bbox {
             Some(rect) => {
+                // Seed the epoch BEFORE saving so the free twin can be captured on the preview's very
+                // first frame (the lazy seed inside `stamp_dabs` would otherwise happen after this save,
+                // and frame 1's ghost would stay in the free plane forever).
+                if self.mask_protection_active() || self.selection_restricts_paint() {
+                    self.ensure_gate_epoch();
+                }
                 let pixels = self.save_region(&rect);
+                let free_pixels = self.save_free_region(&rect);
                 self.stamp_dabs(dabs);
-                self.paint.drag_preview = Some(DragPreview { rect, pixels });
+                self.paint.drag_preview = Some(DragPreview {
+                    rect,
+                    pixels,
+                    free_pixels,
+                });
             }
             None => self.stamp_dabs(dabs),
         }
@@ -107,6 +125,7 @@ impl PainterTool {
     pub(super) fn peel_drag_preview(&mut self) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_free_region(&prev.rect, prev.free_pixels.as_deref());
             self.wetpaint_rearm_after_own_write();
         }
         self.paint.wetpaint.pending_deposit.clear();
@@ -177,6 +196,7 @@ impl PainterTool {
         // Peel the previous frame's footprint → the pristine (pre-shape) canvas.
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_free_region(&prev.rect, prev.free_pixels.as_deref());
         }
         // Seamless Tiling (doc 13 #2): replicate the dabs across the wrapped sprite edges so the SHAPE
         // preview's wash ALSO forms on the opposite edge — the plain stroke does this in `stamp_dabs`, but
@@ -196,7 +216,12 @@ impl PainterTool {
             return; // empty batch (no dabs) — the peel above already cleared the last preview
         };
         let pixels = self.save_region(&rect);
-        self.paint.drag_preview = Some(DragPreview { rect, pixels });
+        // Watercolor bypasses the gated dispatcher — nothing is stamped into the free plane here.
+        self.paint.drag_preview = Some(DragPreview {
+            rect,
+            pixels,
+            free_pixels: None,
+        });
         // Freeze the ground ONCE per shape session (expensive: `build_wet_backdrop` composites the layers
         // below; static within the session). Subsequent frames keep it; the base is re-pointed below.
         if !self.paint.wet_shape_active {

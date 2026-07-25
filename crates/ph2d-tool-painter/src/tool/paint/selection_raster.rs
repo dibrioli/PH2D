@@ -139,6 +139,8 @@ impl PainterTool {
     /// Recompute `selection_mask` = Feather(`selection_crisp`). Feather is a separable box blur (HR-5
     /// transcendental-free) whose radius scales with the Feather amount; `0` copies the crisp mask.
     pub(super) fn derive_effective(&mut self) {
+        // Gate epoch: the effective selection (a keep source) is recomputed — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let crisp = Arc::clone(&self.paint.selection_crisp);
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let radius =

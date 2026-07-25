@@ -118,6 +118,8 @@ impl PainterTool {
 
     /// Reconstruct the marked region and clear the heal mask. No-op when nothing is marked.
     pub(super) fn heal_inpaint(&mut self) {
+        // Gate epoch: foreign canvas writer — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         if fw == 0 || fh == 0 || self.paint.inpaint_mask.len() != fw * fh {

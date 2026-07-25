@@ -44,6 +44,8 @@ impl PainterTool {
     /// **Color Fill**: paint the brush colour into the selected region of the active layer, blended by the
     /// selection coverage (feathered edges partial). No-op without a live selection. One undo entry.
     pub fn selection_color_fill(&mut self) {
+        // Gate epoch: foreign canvas writer — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         if !self.selection_restricts_paint() {
             return;
         }
@@ -139,6 +141,8 @@ impl PainterTool {
     /// **Paste**: composite the clipboard back over the active layer at its original location (source-over
     /// by the clip's alpha). One undo entry. No-op with an empty clipboard.
     pub fn selection_paste(&mut self) {
+        // Gate epoch: foreign canvas writer — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let Some(clip) = self.paint.selection_clipboard.clone() else {
             return;
         };

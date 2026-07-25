@@ -62,6 +62,7 @@ impl PainterTool {
         // (1) Peel the flat preview back to pristine.
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_free_region(&prev.rect, prev.free_pixels.as_deref());
         }
         // (2) Our write — the live session survives it.
         self.wetpaint_rearm_after_own_write();

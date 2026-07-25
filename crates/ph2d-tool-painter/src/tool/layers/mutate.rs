@@ -176,6 +176,8 @@ impl PainterTool {
     /// bottom) is NOT removable. No-op (`false`) mid-stroke, if `id` is unknown,
     /// or if `id` is the base.
     pub fn delete_layer(&mut self, id: RtLayerId) -> bool {
+        // Gate epoch: the canvas may be swapped to another layer — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         if self.layers.get(id).is_none() {
             return false;
         }
@@ -421,6 +423,8 @@ impl PainterTool {
     /// the `selection` set bookkeeping. A Group id is resolved to its first
     /// paintable descendant (a group can never be the paint target).
     pub(crate) fn set_active_layer(&mut self, id: RtLayerId) {
+        // Gate epoch: the canvas is swapped to another layer — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         // A Group has NO pixel buffer — making it the paint target would load a
         // throwaway transparent `canvas_rgba` (the composite never reads it) and
         // silently swallow strokes. Resolve a group to its first paintable

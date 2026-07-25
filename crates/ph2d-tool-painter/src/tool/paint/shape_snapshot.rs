@@ -52,6 +52,7 @@ impl PainterTool {
                 w: p.rect.w,
                 h: p.rect.h,
                 pixels: p.pixels.clone(),
+                free_pixels: p.free_pixels.clone(),
             });
         m
     }
@@ -76,6 +77,7 @@ impl PainterTool {
                 h: p.h,
             };
             self.restore_region(&rect, &p.pixels);
+            self.restore_free_region(&rect, p.free_pixels.as_deref());
         }
         // Doc 21: deliberately NOT `peel_drag_preview` — this is the UNDO path, a
         // wholesale foreign restore; re-arming the wet guard here would let the

@@ -7,6 +7,8 @@ impl RasterEditTool for PainterTool {
     /// Initialize the working canvas from the sprite source. RGBA8 straight; it
     /// is the base of the single-raster layer stack the layers panel grows from.
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+        // Gate epoch: the canvas is replaced — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         assert_eq!(
             rgba.len(),
             (width as usize) * (height as usize) * 4,
@@ -95,6 +97,8 @@ impl RasterEditTool for PainterTool {
     /// Bake the final canvas for commit (Apply): the full layer COMPOSITE (base + every layer's
     /// opacity / blend / visibility / adjustments) — exactly what the live preview shows.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        // Gate epoch: Apply bakes and replaces the canvas — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         let (w, h) = self.source_size;
         // Apply flattens the stack into the SPRITE, which is RGBA and nothing else — the height field
         // does not survive it. So the shading has to be baked in, or Apply would silently throw the
@@ -126,6 +130,8 @@ impl RasterEditTool for PainterTool {
     }
 
     fn deactivate(&mut self) {
+        // Gate epoch: teardown — the projection's inputs stop describing the world ([`gate`]).
+        self.commit_gate_epoch();
         self.canvas_rgba = Arc::new(Vec::new());
         self.source_size = (0, 0);
         self.preview_dirty = false;

@@ -438,3 +438,92 @@ fn the_shader_does_not_touch_bare_paper() {
          it does not invent it"
     );
 }
+
+/// **Um upload PARCIAL escreve a janela onde ela está, em qualquer largura.**
+///
+/// O report do smoke (Enio, 2026-07-25) é um retângulo branco que aparece **pintando** — e um bloco
+/// retangular de branco é o que se vê quando os planos recebem LIXO ali: normais absurdas, a luz
+/// estoura. O suspeito é a forma do upload que esta wave introduziu, a única com origem não-zero e
+/// buffer empacotado por região: `bytes_per_row = region.w x texel`, um passo ARBITRÁRIO.
+///
+/// O repo já tinha a forma segura e ela é outra — `layer_compositor`'s `upload_slice_region` mantém o
+/// buffer de tela CHEIA e usa `offset` + o passo da linha inteira. Se o passo arbitrário for o defeito,
+/// ele aparece em larguras que não são múltiplos convenientes, e é exatamente isso que os gates de
+/// paridade não cobriam: eles sobem a tela inteira.
+///
+/// Então: para várias larguras (ímpar, primo, não-alinhada), sobe a janela e confronta com o que o
+/// upload de tela CHEIA desenha nos mesmos texels. Divergir é o bug reportado.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let t = sculpted(0.6, 0.4, 0.0, 0.0);
+    let base = backdrop();
+    let whole = t.impasto_gpu_planes().expect("planos");
+    let full_lit = gpu_lit(&gpu, &whole, &base);
+
+    // Larguras deliberadamente inconvenientes: 1 texel de linha (17 e 33 bytes num plano rgba8) nunca é
+    // múltiplo de 256, que é o alinhamento que uma cópia buffer->textura exigiria.
+    for w in [17u32, 31, 33, 63, 100] {
+        let win = (
+            3u32,
+            5u32,
+            w.min(whole.width - 3),
+            11u32.min(whole.height - 5),
+        );
+        let part = t.impasto_gpu_planes_in(win).expect("a janela tem planos");
+        assert_eq!(part.region, win, "a janela reporta onde vai (w={w})");
+
+        // Um passe NOVO por largura: ele precisa da SEMEADURA cheia antes do parcial (é o contrato que
+        // `planes_seeded` guarda), e reusar um passe entre larguras esconderia uma janela que só
+        // funciona porque a anterior já escreveu ali.
+        let mut pass = ImpastoLightPass::new(&gpu);
+        let src = make_src(&gpu, &base);
+        let lamps: Vec<GpuLamp> = whole
+            .lamps
+            .iter()
+            .map(|l| GpuLamp {
+                dir: l.dir,
+                half: l.half,
+                tint: l.tint,
+            })
+            .collect();
+        fn mk<'a>(p: &'a ImpastoPlanes, lamps: &'a [GpuLamp]) -> ImpastoLightInput<'a> {
+            ImpastoLightInput {
+                width: p.width,
+                height: p.height,
+                region: GpuRegion::full(p.width, p.height),
+                plane_region: GpuRegion {
+                    x: p.region.0,
+                    y: p.region.1,
+                    w: p.region.2,
+                    h: p.region.3,
+                },
+                relief: &p.relief,
+                cover: &p.cover,
+                mat0: &p.mat0,
+                mat1: &p.mat1,
+                lamps,
+                spec_lut: p.spec_lut,
+                lut_width: p.lut_width,
+                rough_levels: p.rough_levels,
+            }
+        }
+        // Semeia cheio, depois re-sobe SÓ a janela (com os mesmos valores) — o resultado tem de ficar
+        // igual ao de tela cheia. Se o passo arbitrário desalinhar, a janela vira lixo e diverge.
+        pass.run(&gpu, &src, &mk(&whole, &lamps))
+            .expect("semeadura");
+        let out = pass.run(&gpu, &src, &mk(&part, &lamps)).expect("janela");
+        let got = readback(&gpu, out);
+        let d = compare(&full_lit, &got);
+        assert!(
+            d.max <= MAX_DELTA && d.differing <= MAX_DIFFERING_BYTES,
+            "janela de {w} texels de largura divergiu do upload cheio: pior {} em {} bytes \
+             (um bloco retangular de lixo é o report do smoke)",
+            d.max,
+            d.differing
+        );
+    }
+}

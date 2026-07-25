@@ -161,6 +161,45 @@ impl PathEffect {
             },
             flag("Swap"),
         ];
+        /// Um inteiro numa faixa qualquer (contagem/semente).
+        const fn count(name: &'static str, min: f64, max: f64) -> FxParam {
+            FxParam {
+                name,
+                min,
+                max,
+                toggle: false,
+                integer: true,
+            }
+        }
+        // O Sketch: quantas passadas, o tremor (% da forma), a frequência do ruído e a semente
+        // (o "outra tentativa" que o Roughen não tem). `Passes 1..12`/`Detail 2..32` são faixas de
+        // AUTORIA (o motor guarda mais); `Roughness 0..20` porque 5% já treme forte.
+        const SKETCH: &[FxParam] = &[
+            count("Passes", 1.0, 12.0),
+            FxParam {
+                name: "Roughness",
+                min: 0.0,
+                max: 20.0,
+                toggle: false,
+                integer: false,
+            },
+            count("Detail", 2.0, 32.0),
+            count("Seed", 0.0, 64.0),
+        ];
+        // O Hatch: o ângulo, o espaçamento (% da forma — `0` é o neutro/off, como a amplitude 0 do
+        // Zig Zag) e o cross-hatch. `Spacing 0..30` é faixa de AUTORIA (o `MAX_LINES` de guarda
+        // para muito antes).
+        const HATCH: &[FxParam] = &[
+            turn("Angle"),
+            FxParam {
+                name: "Spacing",
+                min: 0.0,
+                max: 30.0,
+                toggle: false,
+                integer: false,
+            },
+            flag("Cross"),
+        ];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
@@ -169,6 +208,8 @@ impl PathEffect {
             Self::Warp(_) => WARP,
             Self::Twist(_) => TWIST,
             Self::Knot(_) => KNOT,
+            Self::Sketch(_) => SKETCH,
+            Self::Hatch(_) => HATCH,
             // O Falloff descreve os próprios params (a lista muda com a FORMA), então delega — a
             // porta única que impede o painel e o motor de discordarem sobre o layout por-forma.
             Self::Falloff(f) => f.params(),
@@ -203,6 +244,18 @@ impl PathEffect {
             (Self::Twist(t), 0) => t.angle,
             (Self::Knot(k), 0) => k.gap,
             (Self::Knot(k), 1) => f64::from(u8::from(k.swap)),
+            (Self::Sketch(s), 0) => s.passes,
+            (Self::Sketch(s), 1) => s.roughness,
+            (Self::Sketch(s), 2) => s.detail,
+            (Self::Sketch(s), 3) => {
+                #[allow(clippy::cast_precision_loss)]
+                {
+                    s.seed as f64
+                }
+            }
+            (Self::Hatch(h), 0) => h.angle,
+            (Self::Hatch(h), 1) => h.spacing,
+            (Self::Hatch(h), 2) => f64::from(u8::from(h.cross)),
             _ => 0.0,
         }
     }
@@ -247,6 +300,18 @@ impl PathEffect {
             (Self::Twist(t), 0) => t.angle = v,
             (Self::Knot(k), 0) => k.gap = v,
             (Self::Knot(k), 1) => k.swap = v >= 0.5,
+            (Self::Sketch(s), 0) => s.passes = v,
+            (Self::Sketch(s), 1) => s.roughness = v,
+            (Self::Sketch(s), 2) => s.detail = v,
+            (Self::Sketch(s), 3) => {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    s.seed = v.max(0.0) as u64;
+                }
+            }
+            (Self::Hatch(h), 0) => h.angle = v,
+            (Self::Hatch(h), 1) => h.spacing = v,
+            (Self::Hatch(h), 2) => h.cross = v >= 0.5,
             _ => {}
         }
     }

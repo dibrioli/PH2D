@@ -157,6 +157,11 @@ impl crate::App {
             crate::knot_smoke::frame(self, f);
             return;
         }
+        // As cenas do SKETCH (=31) e do HATCH (=32) — irmão `sketch_hatch_smoke`, mesma razão.
+        if level == 31 || level == 32 {
+            crate::sketch_hatch_smoke::frame(self, f, level);
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

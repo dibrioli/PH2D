@@ -186,6 +186,20 @@ fn arm_knot_swap(fx: &mut PathEffect, c: usize) {
     fx.set(0, 4.0 * c as f64);
     fx.set(1, 1.0);
 }
+fn arm_sketch(fx: &mut PathEffect, c: usize) {
+    // 2 passadas; o tremor cresce por coluna (0 % → 12 %).
+    fx.set(0, 2.0);
+    fx.set(1, 3.0 * c as f64);
+}
+fn arm_hatch(fx: &mut PathEffect, c: usize) {
+    // Espaçamento decresce por coluna (mais denso à direita): 14 % → 6 %. Coluna 0 = espaçamento
+    // largo (poucas linhas).
+    fx.set(1, 14.0 - 2.0 * c as f64);
+}
+fn arm_hatch_cross(fx: &mut PathEffect, c: usize) {
+    fx.set(1, 14.0 - 2.0 * c as f64);
+    fx.set(2, 1.0); // cross-hatch
+}
 
 const ROWS: &[Row] = &[
     Row {
@@ -237,14 +251,15 @@ const ROWS: &[Row] = &[
         arm: arm_bloat,
         shape: circle,
     },
-    // ⚠️ Twist e Knot são os DOIS últimos KINDS (nesta ordem): Twist = `len()-2`, Knot = `len()-1`.
-    // Se um KIND novo for apendado depois, estes índices deslocam-se — mas a sonda é visual (`#[ignore]`)
-    // e o gate `every_effect_kind_is_reachable` cobre a consistência KINDS<->from_kind à parte.
+    // ⚠️ Os QUATRO últimos KINDS, nesta ordem: Twist = `len()-4`, Knot = `len()-3`, Sketch =
+    // `len()-2`, Hatch = `len()-1`. Se um KIND novo for apendado depois, estes índices deslocam-se —
+    // mas a sonda é visual (`#[ignore]`) e o gate `every_effect_kind_is_reachable` cobre a
+    // consistência KINDS<->from_kind à parte.
     // O Twist sobre um QUADRADO — o caso que a cerca do `fx_warp` diz ter rasgado. Se a coluna 360°
     // aparecer como um remoinho de tinta cheia (e não buracos/fios soltos), a volta é boa.
     Row {
         name: "Twist QUADRADO (0 → 360° na borda) -- o caso de falha da cerca",
-        kind: PathEffect::KINDS.len() - 2,
+        kind: PathEffect::KINDS.len() - 4,
         scale: 0.85,
         arm: arm_twist,
         shape: square,
@@ -252,7 +267,7 @@ const ROWS: &[Row] = &[
     // O mesmo Twist num CÍRCULO, para separar "a curva está errada" de "as quinas rasgam".
     Row {
         name: "Twist CIRCULO (0 → 360° na borda)",
-        kind: PathEffect::KINDS.len() - 2,
+        kind: PathEffect::KINDS.len() - 4,
         scale: 0.85,
         arm: arm_twist,
         shape: circle,
@@ -262,7 +277,7 @@ const ROWS: &[Row] = &[
     // a de cima inteira -- lido como tecido.
     Row {
         name: "Knot PENTAGRAMA (Gap 0 -> 16%) -- alterna cima/baixo",
-        kind: PathEffect::KINDS.len() - 1,
+        kind: PathEffect::KINDS.len() - 3,
         scale: 1.2,
         arm: arm_knot,
         shape: pentagram,
@@ -270,10 +285,36 @@ const ROWS: &[Row] = &[
     // O MESMO, com Swap -- quem passa por cima inverte em toda travessia.
     Row {
         name: "Knot PENTAGRAMA + Swap (Gap 0 -> 16%)",
-        kind: PathEffect::KINDS.len() - 1,
+        kind: PathEffect::KINDS.len() - 3,
         scale: 1.2,
         arm: arm_knot_swap,
         shape: pentagram,
+    },
+    // O SKETCH num CÍRCULO — o tremor cresce por coluna. Coluna 0 = 2 passadas coincidentes (o
+    // círculo limpo); à direita as duas linhas se afastam e tremem = "desenhado à mão".
+    Row {
+        name: "Sketch CIRCULO (2 passadas, tremor 0 -> 12%)",
+        kind: PathEffect::KINDS.len() - 2,
+        scale: 1.1,
+        arm: arm_sketch,
+        shape: circle,
+    },
+    // O HATCH num QUADRADO — o espaçamento decresce por coluna (mais denso à direita). O outline
+    // fica; as linhas enchem o interior a 45°.
+    Row {
+        name: "Hatch QUADRADO (espacamento 14% -> 6%)",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 1.1,
+        arm: arm_hatch,
+        shape: square,
+    },
+    // O MESMO com CROSS -- uma 2a familia a 90 graus.
+    Row {
+        name: "Hatch QUADRADO + Cross (14% -> 6%)",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 1.1,
+        arm: arm_hatch_cross,
+        shape: square,
     },
 ];
 

@@ -133,6 +133,8 @@ mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
 mod ktx2_smoke;
+/// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
+mod sketch_hatch_smoke;
 mod label_live;
 mod mask_smoke;
 mod morph_live;

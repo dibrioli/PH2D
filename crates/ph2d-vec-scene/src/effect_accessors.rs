@@ -5,7 +5,9 @@
 
 use super::PathEffect;
 use crate::fx_falloff::FalloffSpec;
+use crate::fx_hatch::HatchSpec;
 use crate::fx_knot::KnotSpec;
+use crate::fx_sketch::SketchSpec;
 use crate::fx_trim::TrimSpec;
 use crate::fx_twist::TwistSpec;
 use crate::fx_zigzag::ZigZagSpec;
@@ -26,7 +28,9 @@ impl PathEffect {
             | Self::Warp(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -40,7 +44,9 @@ impl PathEffect {
             | Self::Warp(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -55,7 +61,9 @@ impl PathEffect {
             | Self::Warp(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -69,7 +77,9 @@ impl PathEffect {
             | Self::Warp(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -92,6 +102,8 @@ impl PathEffect {
             Self::Falloff(f) => f.shape.label(),
             Self::Twist(_) => "Twist",
             Self::Knot(_) => "Knot",
+            Self::Sketch(_) => "Sketch",
+            Self::Hatch(_) => "Hatch",
         }
     }
 
@@ -106,7 +118,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -120,7 +134,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Falloff(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -135,7 +151,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -149,7 +167,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Twist(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -164,7 +184,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Falloff(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -178,7 +200,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Falloff(_)
-            | Self::Knot(_) => None,
+            | Self::Knot(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -193,7 +217,9 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Falloff(_)
-            | Self::Twist(_) => None,
+            | Self::Twist(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -207,7 +233,75 @@ impl PathEffect {
             | Self::Bloat(_)
             | Self::Warp(_)
             | Self::Falloff(_)
-            | Self::Twist(_) => None,
+            | Self::Twist(_)
+            | Self::Sketch(_)
+            | Self::Hatch(_) => None,
+        }
+    }
+
+    /// O Sketch deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_sketch(&self) -> Option<&SketchSpec> {
+        match self {
+            Self::Sketch(s) => Some(s),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_)
+            | Self::Knot(_)
+            | Self::Hatch(_) => None,
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_sketch`].
+    pub fn as_sketch_mut(&mut self) -> Option<&mut SketchSpec> {
+        match self {
+            Self::Sketch(s) => Some(s),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_)
+            | Self::Knot(_)
+            | Self::Hatch(_) => None,
+        }
+    }
+
+    /// O Hatch deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_hatch(&self) -> Option<&HatchSpec> {
+        match self {
+            Self::Hatch(h) => Some(h),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_)
+            | Self::Knot(_)
+            | Self::Sketch(_) => None,
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_hatch`].
+    pub fn as_hatch_mut(&mut self) -> Option<&mut HatchSpec> {
+        match self {
+            Self::Hatch(h) => Some(h),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_)
+            | Self::Knot(_)
+            | Self::Sketch(_) => None,
         }
     }
 }

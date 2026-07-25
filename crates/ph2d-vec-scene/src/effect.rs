@@ -36,7 +36,9 @@
 //! é isso que mantém aberto o caminho de um dia embrulhá-la num nó (ADR-0132 §4).
 
 use crate::fx_falloff::{Falloff, FalloffSpec};
+use crate::fx_hatch;
 use crate::fx_knot::{self, KnotSpec};
+use crate::fx_sketch;
 use crate::fx_trim::{self, TrimSpec};
 use crate::fx_twist::{self, TwistSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
@@ -203,6 +205,12 @@ pub enum PathEffect {
     /// **Knot** — o entrelace celta: onde o caminho se cruza, a fita de baixo ganha um vão e a de
     /// cima passa inteira. Ver [`crate::fx_knot`]. **Apendado por último**: postcard é posicional.
     Knot(KnotSpec),
+    /// **Sketch** — o traço à mão: N passadas com wobble coerente. Multi-output como o Repeater.
+    /// Ver [`crate::fx_sketch`]. **Apendado por último**: postcard é posicional.
+    Sketch(fx_sketch::SketchSpec),
+    /// **Hatch** — enche a forma fechada com linhas paralelas (scanline clip; cross-hatch opcional).
+    /// Ver [`crate::fx_hatch`]. **Apendado por último**: postcard é posicional.
+    Hatch(fx_hatch::HatchSpec),
 }
 
 impl PathEffect {
@@ -221,6 +229,8 @@ impl PathEffect {
             Self::Falloff(f) => f.is_neutral(),
             Self::Twist(t) => t.is_neutral(),
             Self::Knot(k) => k.is_neutral(),
+            Self::Sketch(s) => s.is_neutral(),
+            Self::Hatch(h) => h.is_neutral(),
         }
     }
 
@@ -233,8 +243,17 @@ impl PathEffect {
     #[must_use]
     pub fn takes_falloff(&self) -> bool {
         match self {
-            Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) | Self::Twist(_) => true,
-            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) | Self::Knot(_) => false,
+            // Sketch escala o tremor por-amostra pelo campo, como o Zig Zag ⇒ CONSOME o Falloff.
+            Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) | Self::Twist(_) | Self::Sketch(_) => {
+                true
+            }
+            // Hatch recorta uma região (sem "força" por-ponto que um campo module) ⇒ inerte, como
+            // Trim/Repeat/Knot.
+            Self::Trim(_)
+            | Self::Repeat(_)
+            | Self::Falloff(_)
+            | Self::Knot(_)
+            | Self::Hatch(_) => false,
         }
     }
 
@@ -273,6 +292,10 @@ impl PathEffect {
         "Twist",
         // ⚠️ O Knot, no fim — outro variant só. `label(Knot) == "Knot"`, mesmo gate.
         "Knot",
+        // ⚠️ O Sketch e o Hatch, no fim — dois variants só (sem família de formas). `label` de
+        // cada um bate o nome, então `every_effect_kind_is_reachable` fica VERMELHO num typo.
+        "Sketch",
+        "Hatch",
     ];
 
     /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
@@ -287,6 +310,12 @@ impl PathEffect {
 
     /// O índice do Knot em [`Self::KINDS`] — logo depois do Twist. Também um KIND só.
     const KNOT_KIND: usize = Self::TWIST_KIND + 1;
+
+    /// O índice do Sketch em [`Self::KINDS`] — logo depois do Knot. `label(Sketch) == "Sketch"`.
+    const SKETCH_KIND: usize = Self::KNOT_KIND + 1;
+
+    /// O índice do Hatch em [`Self::KINDS`] — logo depois do Sketch. `label(Hatch) == "Hatch"`.
+    const HATCH_KIND: usize = Self::SKETCH_KIND + 1;
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -308,6 +337,8 @@ impl PathEffect {
                 .get(k - Self::FALLOFF_BASE)
                 .map(|&s| Self::Falloff(FalloffSpec::new(s))),
             // O Twist é um KIND só.
+            k if k == Self::SKETCH_KIND => Some(Self::Sketch(fx_sketch::SketchSpec::default())),
+            k if k == Self::HATCH_KIND => Some(Self::Hatch(fx_hatch::HatchSpec::default())),
             k if k == Self::TWIST_KIND => Some(Self::Twist(TwistSpec::new())),
             // O Knot, o KIND seguinte.
             k if k == Self::KNOT_KIND => Some(Self::Knot(KnotSpec::new())),
@@ -329,6 +360,8 @@ impl PathEffect {
             Self::Falloff(f) => Self::FALLOFF_BASE + f.shape as usize,
             Self::Twist(_) => Self::TWIST_KIND,
             Self::Knot(_) => Self::KNOT_KIND,
+            Self::Sketch(_) => Self::SKETCH_KIND,
+            Self::Hatch(_) => Self::HATCH_KIND,
         }
     }
 
@@ -379,6 +412,12 @@ impl PathEffect {
             // ⚠️ O Knot NÃO passa pelo `apply_per_contour`: uma travessia pode ser ENTRE dois
             // contornos, então ele olha o caminho inteiro de uma vez (como o Repeater).
             Self::Knot(spec) => out = fx_knot::knot_path(path, spec, ctx),
+            // ⚠️ Sketch e Hatch MULTIPLICAM contornos (N passadas / N linhas) ⇒ olham o caminho
+            // inteiro e emitem muitos contornos, como o Repeater — não passam pelo per-contour.
+            Self::Sketch(spec) => {
+                out = fx_sketch::sketch_path(path, spec, ctx.ref_size, falloff);
+            }
+            Self::Hatch(spec) => out = fx_hatch::hatch_path(path, spec, ctx.ref_size),
             // O Falloff não é geometria: ele é CONSUMIDO pelo `run_stack`, que o passa como o
             // `falloff` do efeito seguinte. Chamar `apply` num Falloff (fora da pilha) é um no-op.
             Self::Falloff(_) => {}

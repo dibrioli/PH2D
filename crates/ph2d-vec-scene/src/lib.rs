@@ -132,6 +132,14 @@ pub mod fx_twist;
 /// arco do `fx_trim`. Módulo irmão.
 pub mod fx_knot;
 
+/// **Sketch** — o traço à mão: N passadas do caminho, cada uma com um wobble coerente próprio.
+/// Multi-output como o `fx_repeat`. Módulo irmão.
+pub mod fx_sketch;
+
+/// **Hatch** — enche uma forma fechada com linhas paralelas (scanline clip; cross-hatch opcional).
+/// Multi-output. Módulo irmão.
+pub mod fx_hatch;
+
 /// **Falloff** — o campo escalar espacial que modula a FORÇA do deformador seguinte na pilha
 /// (a ideia do *Falloff* do Cavalry). Ele não deforma nada sozinho: entra no deformador e escala
 /// o deslocamento por-ponto. Módulo irmão de `fx_warp_presets`.

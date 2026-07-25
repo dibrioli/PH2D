@@ -573,8 +573,9 @@ pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects"
 /// alinhou a lista do Warp à do Envelope: 4 base + 9 estilos; 13→17 com o **Falloff** (Cavalry,
 /// Enio 2026-07-25): 4 formas analíticas (Radial/Linear/Rect/Sweep) apendadas ao FIM da tabela;
 /// 17→18 com o **Twist** (o remoinho, um KIND só) apendado depois delas; 18→19 com o **Knot** (o
-/// entrelace celta, também um KIND só) no fim.
-pub const MAX_FX_KINDS: usize = 19;
+/// entrelace celta, também um KIND só) no fim; 19→21 com **Sketch** (traço à mão) e **Hatch**
+/// (hachura), dois KINDs só, apendados no fim.
+pub const MAX_FX_KINDS: usize = 21;
 /// O teto de efeitos numa pilha.
 pub const MAX_FX_ROWS: usize = 4;
 /// O teto de parâmetros por efeito.

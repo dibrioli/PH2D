@@ -14,11 +14,12 @@ Detalhe técnico completo: [`docs/Painter/25_avaliacao_gpu.md` §13.9](Painter/2
 | branch | `line/Painter` |
 | HEAD | o tip de `line/Painter` — **o último commit é este handoff** (um sha literal aqui se auto-invalidaria a cada correção do próprio arquivo; `git log --oneline main..HEAD` é a fonte) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits desta wave | **8**: `d8018d6bc` a lei · `535df958c` o controle morto · `29b5a9e56` o smoke · `800f89596` doc 25 §13.9 · `3f60b9b1e` os handoffs · `edd0602b1` CLAUDE.md §5 · `495b85010` fmt · + este handoff |
-| commits da linha desde a base | 8 (a linha estava no depósito original + os reverts do §13.8, já em `main`) |
+| commits desta wave | **9**, de `d8018d6bc` até o tip: a lei · o controle morto · o smoke · doc 25 §13.9 · os handoffs · CLAUDE.md §5 · fmt · este handoff · 1 de memória |
+| commits da linha desde a base | ⚠️ **46** — esta wave são os **9 do topo**; os 37 abaixo são **waves ANTERIORES da mesma linha que ainda não integraram** (ver §7) |
 
-⚠️ A linha **não tem** commits pendentes de waves anteriores: o tip anterior (`40191df75`) era o handoff
-de tarefa, e os dois reverts (`1d390d926`, `569149dfc`) já estavam nela.
+⚠️ **CORREÇÃO de uma afirmação que eu quase shipei errada:** a 1ª versão deste handoff dizia que a linha
+não tinha commits pendentes de waves anteriores. **Tem 37** — `git rev-list --count main..HEAD` dá 46, e
+só os 9 do topo são desta wave. Ver §7 para a lista e o que ela significa para a ordem de integração.
 
 ## 2. Foundational / compartilhado tocado, e por quê
 
@@ -97,7 +98,7 @@ gate da árvore combinada (não como conflito textual) — a conversão é mecâ
 
 ## 6. Ordem, dependências e o que smoke-testar
 
-**Ordem:** os 8 commits são sequenciais e independentes entre si exceto que o `535df958c` (a row
+**Ordem:** os 9 commits desta wave são sequenciais e independentes entre si exceto que o `535df958c` (a row
 Accumulate) só faz sentido depois do `d8018d6bc` (a lei). Nenhum depende de outra linha.
 
 **Gate desta linha, rodado antes de fechar:** `nextest-impacted.sh` = **4073 testes, 4073 passaram**
@@ -133,7 +134,31 @@ resultado passa a depender da taxa de quadros). Doc §13.9.8.
 
 ---
 
-**Resumo:** linha `Painter` pronta (8 commits sobre `df91ef6ec`). Foundational tocado: `ph2d-painter-brush`
+**Resumo:** linha `Painter` pronta — **9 commits desta wave**, sobre 37 de waves anteriores ainda não integradas (§7). Foundational tocado: `ph2d-painter-brush`
 (arquivo irmão novo + troca de tipo num parâmetro, 4 chamadores) · `ph2d-panel-painter-layers` (1
 condição + 1 gate) · shell (smoke novo, 4 sítios). Zero id/const/token novo; zero contrato congelado;
 zero schema. Aguardo ordem de integração.
+
+---
+
+## 7. ⚠️ A linha carrega waves ANTERIORES não-integradas (37 commits)
+
+`git rev-list --count main..HEAD` = **46**. Os 9 do topo são esta wave; os **37** abaixo dela são
+trabalho anterior da MESMA linha que nunca integrou, e o integrador precisa saber disso antes de
+sequenciar:
+
+| bloco | o quê | estado |
+|---|---|---|
+| `d8018d6bc`..tip (9) | **esta wave** — a lei do canal de cobertura | gates verdes, **pendente de smoke** |
+| `40191df75` + 3 reverts + `1c23b4130`/`38c1f725b`/`c8b48e2e3`/`600a79606` | o §13.6 (envelope entre traços) e o §13.7 (teto por época), **construídos e REVERTIDOS**, + o handoff-tarefa | reprovados pelo Enio; os reverts estão aqui, **não** em `main` |
+| `2da916c99`..`4280ba572` + os 4 `diag(painter)` | Onda 5c (máscara toma a via parcial + upload cheio) e o instrumento `PH2D_PAINT_PERF` | doc 25 §13.3-§13.5, smoke OK |
+| `abe0123ec`/`608cfa038` | Onda 5b (upload parcial da região suja) | doc 25 §12 |
+| `a9057588c`/`ed9563b0d` | Onda 5a (a pintura para de copiar o canvas por move) | doc 25 §11 |
+| `97f0ab0a2`..`73fe5b67e` | Ondas 1 e 2 da GPU (máscara/clipping como ops, orçamento do dispositivo) | doc 25 §10 |
+| `117023207`..`e8414355c` | doc 24 (transferência sRGB tabelada) + o composite row-parallel | doc 24 |
+
+**Consequência prática:** integrar esta wave integra as anteriores com ela — o que é o esperado para uma
+linha, mas muda o tamanho do diff e a superfície de conflito (as Ondas 1/2 mexem no compositor de
+`ph2d-render`, e o doc 24 na `ph2d-wet-paint`). Os handoffs de integração DAQUELAS waves já existem em
+`docs/` (`HANDOFF_INTEGRACAO_line_Painter_gpu_onda5*`, `..._gpu_ondas_1_2_*`, `..._wet_transfer_*`) e
+seguem valendo; este documento cobre **só** a cobertura da máscara.

@@ -29,34 +29,138 @@ fn bbox(verts: &[VecVertex]) -> ([f64; 2], [f64; 2]) {
     (lo, hi)
 }
 
-/// Aplica um estilo com dobra `bend` ao quadrado e devolve os verts warpados.
+/// Aplica um estilo com dobra `bend` (sem distorção) ao quadrado e devolve os verts warpados.
 fn warp(style: WarpStyle, bend: f64) -> Vec<VecVertex> {
+    warp_spec(WarpSpec {
+        style,
+        bend,
+        h_distort: 0.0,
+        v_distort: 0.0,
+    })
+}
+
+/// Aplica um `WarpSpec` inteiro ao quadrado — usado pelos gates de distorção, que precisam de
+/// mais que a dobra.
+fn warp_spec(spec: WarpSpec) -> Vec<VecVertex> {
     let p = square();
-    let (out, _) = warp_contour(
-        &p.verts,
-        p.closed,
-        &WarpSpec { style, bend },
-        &FxCtx::of(&p),
-    );
+    let (out, _) = warp_contour(&p.verts, p.closed, &spec, &FxCtx::of(&p));
     out
 }
 
-/// **`bend == 0` é no-op BYTE-idêntico** — o que a pilha exige de todo efeito, senão não pode
-/// saltá-lo e o `Cow::Borrowed` morre (ADR-0132).
+/// **Os TRÊS controles em zero são no-op BYTE-idêntico** — o que a pilha exige de todo efeito,
+/// senão não pode saltá-lo e o `Cow::Borrowed` morre (ADR-0132). ⚠️ Antes das perspectivas
+/// bastava `bend == 0`; agora a dobra E as duas distorções têm de estar em zero, e este gate
+/// prova que uma delas sozinha JÁ deforma (via os gates de keystone abaixo).
 #[test]
 fn the_neutral_warp_is_a_byte_identical_no_op() {
     let p = square();
     let c = FxCtx::of(&p);
     for &style in WarpStyle::ALL {
-        let (out, closed) = warp_contour(&p.verts, p.closed, &WarpSpec { style, bend: 0.0 }, &c);
+        let spec = WarpSpec {
+            style,
+            bend: 0.0,
+            h_distort: 0.0,
+            v_distort: 0.0,
+        };
+        let (out, closed) = warp_contour(&p.verts, p.closed, &spec, &c);
         assert_eq!(
             out,
             p.verts,
-            "{}: bend 0 tem de devolver a fonte",
+            "{}: os três em zero têm de devolver a fonte",
             style.label()
         );
         assert!(closed, "{}: não abre a forma", style.label());
     }
+}
+
+/// **A distorção HORIZONTAL faz o keystone** — com dobra zero, `h_distort > 0` alarga a borda de
+/// CIMA contra a de baixo (o topo passa a ter mais x-extensão que a base). O oráculo é a razão
+/// entre as larguras das duas metades — robusto à reamostragem, e a APARÊNCIA do keystone, não a
+/// fórmula.
+#[test]
+fn the_horizontal_distortion_keystones_the_shape() {
+    let out = warp_spec(WarpSpec {
+        style: WarpStyle::Arc,
+        bend: 0.0,
+        h_distort: 60.0,
+        v_distort: 0.0,
+    });
+    // Largura em x das âncoras de cada metade (acima/abaixo do centro y=20).
+    let x_spread = |upper: bool| {
+        let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+        for v in &out {
+            if (v.anchor[1] >= 20.0) == upper {
+                lo = lo.min(v.anchor[0]);
+                hi = hi.max(v.anchor[0]);
+            }
+        }
+        hi - lo
+    };
+    let (top, bot) = (x_spread(true), x_spread(false));
+    assert!(
+        top > bot * 1.5,
+        "h_distort devia alargar o topo contra a base (keystone): topo {top:.2}, base {bot:.2}"
+    );
+}
+
+/// **A distorção VERTICAL é o keystone do outro eixo** — `v_distort > 0` alonga a borda da
+/// DIREITA contra a esquerda. Espelho exato do gate horizontal.
+#[test]
+fn the_vertical_distortion_keystones_the_shape() {
+    let out = warp_spec(WarpSpec {
+        style: WarpStyle::Arc,
+        bend: 0.0,
+        h_distort: 0.0,
+        v_distort: 60.0,
+    });
+    let y_spread = |right: bool| {
+        let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+        for v in &out {
+            if (v.anchor[0] >= 20.0) == right {
+                lo = lo.min(v.anchor[1]);
+                hi = hi.max(v.anchor[1]);
+            }
+        }
+        hi - lo
+    };
+    let (right, left) = (y_spread(true), y_spread(false));
+    assert!(
+        right > left * 1.5,
+        "v_distort devia alongar a direita contra a esquerda: dir {right:.2}, esq {left:.2}"
+    );
+}
+
+/// **As perspectivas COMPÕEM com a dobra** — Arc+Horizontal não é Arc sozinho nem Horizontal
+/// sozinho: a perspectiva lê o ponto JÁ arqueado, então o resultado difere dos dois. É o
+/// invariante que separa *compor* de *escolher entre*.
+#[test]
+fn the_distortion_composes_with_the_bend() {
+    let bend_only = warp_spec(WarpSpec {
+        style: WarpStyle::Arc,
+        bend: 50.0,
+        h_distort: 0.0,
+        v_distort: 0.0,
+    });
+    let dist_only = warp_spec(WarpSpec {
+        style: WarpStyle::Arc,
+        bend: 0.0,
+        h_distort: 50.0,
+        v_distort: 0.0,
+    });
+    let both = warp_spec(WarpSpec {
+        style: WarpStyle::Arc,
+        bend: 50.0,
+        h_distort: 50.0,
+        v_distort: 0.0,
+    });
+    assert_ne!(
+        both, bend_only,
+        "compor com Horizontal tem de mudar o Arc dobrado"
+    );
+    assert_ne!(
+        both, dist_only,
+        "compor com a dobra tem de mudar o keystone"
+    );
 }
 
 /// **Todo estilo DEFORMA a silhueta, e os cinco dão resultados DIFERENTES** — senão seriam
@@ -146,7 +250,12 @@ fn the_warp_is_resampling_independent() {
         let (out_d, _) = warp_contour(
             &dense.verts,
             dense.closed,
-            &WarpSpec { style, bend: 40.0 },
+            &WarpSpec {
+                style,
+                bend: 40.0,
+                h_distort: 0.0,
+                v_distort: 0.0,
+            },
             &FxCtx::of(&dense),
         );
         let b = bbox(&out_d);

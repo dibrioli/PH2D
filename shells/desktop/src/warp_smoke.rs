@@ -67,9 +67,13 @@ fn build(app: &mut crate::App) {
         let cx = x0 + (i as f64) * span;
         let id = scene.push_path(rect(cx, 1.1, 1.1, 0.8, [90, 150, 220]));
         if let Some(p) = scene.path_mut(id) {
+            // Só a dobra nos cinco demos, para cada estilo ler LIMPO; as duas perspectivas
+            // (Horizontal/Vertical) o artista experimenta no retângulo pelado.
             p.effects = vec![FxEntry::new(PathEffect::Warp(WarpSpec {
                 style,
                 bend: DEMO_BEND,
+                h_distort: 0.0,
+                v_distort: 0.0,
             }))];
         }
     }
@@ -99,8 +103,11 @@ fn arm(app: &mut crate::App) {
          [smoke]   1. Abra a secao **Effects** no painel. O menu Add tem de listar os cinco\n\
          [smoke]      estilos novos alem dos quatro velhos (Trim/Zig Zag/Repeater/Pucker&Bloat).\n\
          [smoke]   2. Clique **Add Arc** (ou outro). A forma deforma NA HORA (nasce neutra: o\n\
-         [smoke]      clique nao move um pixel ate voce arrastar o Bend).\n\
-         [smoke]   3. Arraste **Bend** para os dois lados -- positivo e negativo espelham.\n\
+         [smoke]      clique nao move um pixel ate voce arrastar um slider).\n\
+         [smoke]   3. Sao TRES sliders, como o dialogo Warp do Illustrator: **Bend** dobra;\n\
+         [smoke]      **Horizontal** e **Vertical** dao a PERSPECTIVA (o keystone -- uma borda\n\
+         [smoke]      alarga contra a oposta). Arraste os tres, e os dois lados espelham; H/V\n\
+         [smoke]      compoem com a dobra (Arc + Horizontal = um arco em fuga).\n\
          [smoke]   4. Empilhe: Add um 2o warp por cima; a ordem importa (Arc-depois-Wave nao e\n\
          [smoke]      Wave-depois-Arc). **Apply** assa a pilha na geometria.",
         names.join(" / ")

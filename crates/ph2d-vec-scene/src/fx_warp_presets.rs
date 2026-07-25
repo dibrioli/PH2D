@@ -5,6 +5,14 @@
 //! distintos do [`crate::fx_warp`] (Pucker & Bloat), que é RADIAL e mexe âncora-contra-alça; estes
 //! deformam a **silhueta inteira** segundo a posição 2D de cada ponto.
 //!
+//! # Três controles, como o diálogo real
+//!
+//! O diálogo Warp do Illustrator tem **três** sliders, e este motor tem os três: o **Bend** (a
+//! dobra do estilo) e as duas distorções de **perspectiva** — *Horizontal* e *Vertical* — que dão
+//! o *keystone* (uma borda alarga contra a oposta). As duas perspectivas leem o ponto JÁ dobrado,
+//! então **compõem** com o estilo em vez de o preceder: um Arc com Horizontal é um arco em fuga,
+//! não um arco OU uma fuga.
+//!
 //! # Reamostra por ARCO, como o Zig Zag — e é o que os torna baratos SEM rasgar
 //!
 //! Um warp é um campo não-afim; aplicá-lo só às âncoras faz o *lowpoly* que matou o Twist (a saga
@@ -110,19 +118,33 @@ pub struct WarpSpec {
     pub style: WarpStyle,
     /// A dobra, em **percentagem** `-100..100` (o *Bend* do Illustrator).
     pub bend: f64,
+    /// A distorção de perspectiva HORIZONTAL, em **percentagem** `-100..100` (o *Horizontal
+    /// Distortion* do Illustrator): alarga a borda de CIMA contra a de baixo em função da altura
+    /// — o *keystone*. **Apendada por último** (postcard é posicional).
+    pub h_distort: f64,
+    /// A distorção de perspectiva VERTICAL, em **percentagem** `-100..100` (o *Vertical
+    /// Distortion*): o *keystone* do outro eixo, alongando a borda da DIREITA contra a esquerda.
+    /// **Apendada por último**.
+    pub v_distort: f64,
 }
 
 impl WarpSpec {
     /// Um Warp novo do estilo `style`, no ponto NEUTRO.
     #[must_use]
     pub fn new(style: WarpStyle) -> Self {
-        Self { style, bend: 0.0 }
+        Self {
+            style,
+            bend: 0.0,
+            h_distort: 0.0,
+            v_distort: 0.0,
+        }
     }
 
-    /// Sem dobra não há deformação — e o neutro tem de ser no-op byte-idêntico (ADR-0132).
+    /// Sem dobra NEM distorção não há deformação — e o neutro tem de ser no-op byte-idêntico
+    /// (ADR-0132), então os TRÊS têm de estar em zero (o `Cow::Borrowed` do `cooked()` depende).
     #[must_use]
     pub fn is_neutral(&self) -> bool {
-        self.bend.abs() <= EPS
+        self.bend.abs() <= EPS && self.h_distort.abs() <= EPS && self.v_distort.abs() <= EPS
     }
 }
 
@@ -153,6 +175,7 @@ pub fn warp_contour(
         return (verts.to_vec(), closed);
     }
     let b = spec.bend / 100.0;
+    let (dh, dv) = (spec.h_distort / 100.0, spec.v_distort / 100.0);
 
     // A grade uniforme por arco + a UNIÃO com as âncoras de entrada (as quinas sobrevivem exatas),
     // o mesmo padrão do Zig Zag — sem ela, reamostrar seria amostrar mais grosso que a curva.
@@ -192,7 +215,12 @@ pub fn warp_contour(
             0.0
         };
         let (u2, v2) = spec.style.deform(u, v, b);
-        [u2.mul_add(hx, ctx.center[0]), v2.mul_add(hy, ctx.center[1])]
+        // As duas perspectivas (o *keystone*): a horizontal alarga uma borda vertical contra a
+        // oposta em função da ALTURA; a vertical faz o inverso. Ambas leem o ponto JÁ dobrado
+        // `(u2, v2)`, então compõem com o estilo — um Arc em fuga, não Arc-ou-fuga.
+        let u3 = u2 * dh.mul_add(v2, 1.0);
+        let v3 = v2 * dv.mul_add(u2, 1.0);
+        [u3.mul_add(hx, ctx.center[0]), v3.mul_add(hy, ctx.center[1])]
     };
     let pts: Vec<[f64; 2]> = at.iter().map(|&s| warp(ap.frame_at(s).0)).collect();
     (catmull_rom_verts(&pts, closed), closed)

@@ -450,15 +450,19 @@ impl PathEffect {
             toggle: false,
             integer: false,
         }];
-        // Um só knob, partilhado por todos os estilos: a DOBRA (o *Bend* do Illustrator). O
-        // estilo já foi escolhido no Add — não é um parâmetro. H/V ficam para uma cauda.
-        const WARP: &[FxParam] = &[FxParam {
-            name: "Bend",
-            min: -100.0,
-            max: 100.0,
-            toggle: false,
-            integer: false,
-        }];
+        // Os TRÊS sliders do diálogo Warp do Illustrator (o estilo já foi escolhido no Add, não é
+        // parâmetro): a DOBRA e as duas distorções de perspectiva, cada uma em `-100..100`. As
+        // perspectivas compõem com a dobra — ver [`crate::fx_warp_presets`].
+        const fn pct(name: &'static str) -> FxParam {
+            FxParam {
+                name,
+                min: -100.0,
+                max: 100.0,
+                toggle: false,
+                integer: false,
+            }
+        }
+        const WARP: &[FxParam] = &[pct("Bend"), pct("Horizontal"), pct("Vertical")];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
@@ -487,6 +491,8 @@ impl PathEffect {
             (Self::Repeat(r), 5) => r.orbit,
             (Self::Bloat(b), 0) => b.amount,
             (Self::Warp(w), 0) => w.bend,
+            (Self::Warp(w), 1) => w.h_distort,
+            (Self::Warp(w), 2) => w.v_distort,
             _ => 0.0,
         }
     }
@@ -521,6 +527,8 @@ impl PathEffect {
             (Self::Repeat(r), 5) => r.orbit = v,
             (Self::Bloat(b), 0) => b.amount = v,
             (Self::Warp(w), 0) => w.bend = v,
+            (Self::Warp(w), 1) => w.h_distort = v,
+            (Self::Warp(w), 2) => w.v_distort = v,
             _ => {}
         }
     }

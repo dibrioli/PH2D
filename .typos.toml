@@ -433,6 +433,10 @@ rever = "rever"
 impactos = "impactos"
 exclusivas = "exclusivas"
 precisou = "precisou"
+# pt-BR do Warp paramétrico (`ph2d-vec-scene/src/fx_warp_presets*`): as duas distorções de
+# PERSPECTIVA que dão o keystone. A singular `perspectiva` passa; só o plural é lido como
+# "perspectives" torto.
+perspectivas = "perspectivas"
 
 [files]
 extend-exclude = [

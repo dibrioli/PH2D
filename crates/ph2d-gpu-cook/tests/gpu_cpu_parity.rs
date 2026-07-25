@@ -42,8 +42,9 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
-    // The field.* focus-field family (index-keyed `falloff` mask).
+    // The field.* focus-field family (index-keyed + spatial-box `falloff` masks).
     ph2d_node_field_index_range::register(&mut reg).unwrap();
+    ph2d_node_field_box::register(&mut reg).unwrap();
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
@@ -539,6 +540,42 @@ fn field_index_range_kernel_matches_the_cpu_within_epsilon() {
     connect(&mut g, foc, tint);
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + index_range + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_box_kernel_matches_the_cpu_within_epsilon() {
+    // The spatial field: a mask keyed by POSITION (reads `P`, unlike the ordinal
+    // index field). A rectangle with a soft plateau, coloured by a Solid tint, so
+    // the box ramp becomes a colour gradient across the 160×160 grid — the box's
+    // per-axis width/height AND the soft edge run at INTERMEDIATE values (a box
+    // larger than the grid would stay green with the whole mask deleted). Extents
+    // and centre are un-round so a swapped axis or a dropped param cannot hide.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 31.4);
+    g.set_param(bx, "height", 21.7);
+    g.set_param(bx, "soft", 7.3);
+    g.set_param(bx, "center_x", 2.9);
+    g.set_param(bx, "center_y", -1.7);
+    g.set_param(bx, "curve", 2.0); // Smooth — the polynomial the ε budget covers
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, bx);
+    connect(&mut g, bx, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + box + tint
 }
 
 #[test]

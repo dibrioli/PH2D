@@ -52,7 +52,7 @@ use gpu_deform_demo::{
     build_gpu_spherize_demo_document,
 };
 use gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
     build_gpu_field_index_range_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
@@ -229,6 +229,10 @@ impl MotionState {
             Ok("17") => {
                 build_gpu_field_index_range_demo_document(&mut doc, &registry).unwrap_or_default()
             }
+            // The spatial sibling: `field.box` masks by POSITION — a wide, thin box
+            // is the razor-horizontal band (flat by y) that the ordinal index field
+            // cannot draw. Blue, to read against `=17`'s red ordinal band.
+            Ok("18") => build_gpu_field_box_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

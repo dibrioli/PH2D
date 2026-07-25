@@ -5211,6 +5211,7 @@ dependencies = [
  "naga",
  "ph2d-eval-motion",
  "ph2d-gpu",
+ "ph2d-node-field-box",
  "ph2d-node-field-index-range",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",
@@ -5632,6 +5633,14 @@ name = "ph2d-node-debug-wave"
 version = "0.0.0"
 dependencies = [
  "ph2d-expr",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-field-box"
+version = "0.0.0"
+dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6204,6 +6213,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
+ "ph2d-node-field-box",
  "ph2d-node-field-index-range",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",

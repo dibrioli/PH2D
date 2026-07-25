@@ -550,3 +550,31 @@ fn the_field_index_range_demo_is_fully_gpu() {
         plan.boundaries
     );
 }
+
+/// The **spatial** field smoke really runs on the device (`PH2D_GPU_COOK_DEMO=18`).
+/// `field.box` reads `P` and writes the `falloff` mask on the GPU; the whole
+/// `grid -> motion.scale -> field.box -> tint -> output` chain must be claimed
+/// whole, or the artist smokes the CPU pump's memo, not the device.
+#[test]
+fn the_field_box_demo_is_fully_gpu() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks =
+        build_gpu_field_box_demo_document(&mut doc, &registry).expect("well-typed field.box demo");
+    let out = *sinks.first().expect("one sink");
+    assert!(
+        doc.graph
+            .nodes()
+            .iter()
+            .any(|n| n.type_id() == ph2d_nodegraph::node::NodeTypeId::of("field.box")),
+        "the demo must contain the field.box node it exists to smoke"
+    );
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "field.box -> tint must be claimed whole — a CPU boundary here and the \
+         smoke would be reading the pump's memo, not the device: {:?}",
+        plan.boundaries
+    );
+}

@@ -579,3 +579,59 @@ pub(super) fn build_gpu_field_index_range_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The **spatial** field smoke (`PH2D_GPU_COOK_DEMO=18`): `grid(512×512) →
+/// motion.scale → field.box → tint(Solid) → output` — **262.144 instances**,
+/// 100 % GPU-resident. The sibling of `=17`: where `field.index_range` masks by
+/// ORDINAL (and so tilts ~1 row on a grid), `field.box` masks by POSITION. A
+/// wide-`width`, thin-`height` box is a **razor-horizontal blue band** — flat by
+/// y, no tilt — the spatial answer to "make it perfectly horizontal". Same
+/// frame-on-load sizing as `=17`; auto-plays on tool entry.
+pub(super) fn build_gpu_field_box_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    g.set_param(grid, "gap_x", 0.024);
+    g.set_param(grid, "gap_y", 0.024);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.018);
+    let field = g.add_node("field.box");
+    // Wider than the ~12-unit field in x (half 15 > 6, so the band spans the full
+    // width), thin in y (a ~5-unit-tall band, half 2.5) with a soft edge: a flat
+    // horizontal stripe, razor-level because the mask reads y, not rank.
+    g.set_param(field, "width", 30.0);
+    g.set_param(field, "height", 5.0);
+    g.set_param(field, "soft", 1.5);
+    g.set_param(field, "curve", 2.0); // Smooth edges
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 1.0);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, scale, field, tint, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
+    }
+    for (a, b) in [(grid, scale), (scale, field), (field, tint), (tint, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

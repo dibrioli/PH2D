@@ -550,7 +550,13 @@ fn plane(
 /// Upload one plane's WINDOW. `bytes` is exactly `region.w × region.h` texels, tightly packed, and lands
 /// at the window's origin — the texels outside keep what the last upload put there, which is what makes
 /// the canvas-sized texture survive a rect-sized fold.
-fn write_plane(gpu: &GpuContext, p: &Plane, bytes: &[u8], row: u32, region: crate::layer_compositor::Region) {
+fn write_plane(
+    gpu: &GpuContext,
+    p: &Plane,
+    bytes: &[u8],
+    row: u32,
+    region: crate::layer_compositor::Region,
+) {
     gpu.queue.write_texture(
         wgpu::TexelCopyTextureInfo {
             texture: &p.texture,

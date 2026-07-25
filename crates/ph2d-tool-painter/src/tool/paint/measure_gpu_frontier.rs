@@ -322,7 +322,10 @@ fn measure_what_the_fold_is_made_of() {
                     }
                 }
                 s.push(t0.elapsed().as_secs_f64() * 1e3);
-                assert!(sink.is_finite(), "the sink keeps the walk from being optimised away");
+                assert!(
+                    sink.is_finite(),
+                    "the sink keeps the walk from being optimised away"
+                );
             }
             s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
             s[s.len() / 2]

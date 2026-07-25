@@ -55,6 +55,9 @@ mod inspector_physics_markers;
 #[cfg(test)]
 mod inspector_physics_tests;
 mod inspector_visibility;
+/// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
+#[cfg(test)]
+mod measure_bridge_phases;
 pub(crate) mod motion_bridge;
 /// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
 pub(crate) mod motion_path_overlay;
@@ -97,13 +100,13 @@ mod painter_preview_handoff_tests;
 /// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
 #[cfg(test)]
 mod painter_preview_ownership_tests;
-/// O que a tela mostra DEPOIS de um undo — o report de resquício do smoke de 2026-07-25.
-#[cfg(test)]
-mod painter_preview_undo_tests;
 /// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]
 mod painter_preview_pipeline_tests;
+/// O que a tela mostra DEPOIS de um undo — o report de resquício do smoke de 2026-07-25.
+#[cfg(test)]
+mod painter_preview_undo_tests;
 pub(crate) mod physics_bake;
 pub(crate) mod physics_bridge;
 /// The transport's Physics toggle at the seam the frame loop runs — a `hold`

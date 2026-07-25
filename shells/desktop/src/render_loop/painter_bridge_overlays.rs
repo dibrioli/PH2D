@@ -33,7 +33,18 @@ pub(super) fn draw_overlays(
     vector_scene: &mut VectorScene,
     text_system: &mut ph2d_text::TextSystem,
     cursor: (f32, f32),
+    // `PH2D_PAINT_PERF` split: per-call ms, in call order (`paint_perf::CHROME_LABELS`). Written only
+    // when `timing` — otherwise this function does not read the clock at all.
+    perf: &mut [f32; super::paint_perf::CHROME_SUB],
+    timing: bool,
 ) {
+    let mut t = std::time::Instant::now();
+    let mut mark = |slot: &mut f32, t: &mut std::time::Instant| {
+        if timing {
+            *slot = t.elapsed().as_secs_f64() as f32 * 1e3;
+            *t = std::time::Instant::now();
+        }
+    };
     // Wetness sheen FIRST — under the brush ring + editor guides (#12a).
     super::painter_bridge_wetness::draw_wetness_overlay(
         painter,
@@ -43,6 +54,7 @@ pub(super) fn draw_overlays(
         window_size,
         vector_scene,
     );
+    mark(&mut perf[0], &mut t);
     super::painter_bridge_brush_ring::draw_brush_ring(
         painter,
         hero,
@@ -52,6 +64,7 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    mark(&mut perf[1], &mut t);
     super::painter_bridge_curve_overlay::draw_curve_overlay(
         painter,
         hero,
@@ -61,7 +74,9 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    mark(&mut perf[2], &mut t);
     draw_ellipse_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    mark(&mut perf[3], &mut t);
     super::painter_bridge_line_overlay::draw_line_overlay(
         painter,
         hero,
@@ -72,7 +87,9 @@ pub(super) fn draw_overlays(
         text_system,
         cursor,
     );
+    mark(&mut perf[4], &mut t);
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    mark(&mut perf[5], &mut t);
     // Multi-shape op badges — the `+`/`−`/`○` type-square glyph per shape + a frame per parked shape.
     super::painter_bridge_op_badges::draw_op_badges(
         painter,
@@ -82,6 +99,7 @@ pub(super) fn draw_overlays(
         window_size,
         vector_scene,
     );
+    mark(&mut perf[6], &mut t);
     // Isolated SELECTION gizmos (ADR-0103 Am.2 v2) — every editable selection shape's gizmo at once.
     super::painter_bridge_selection_gizmos::draw_selection_gizmos(
         painter,
@@ -92,6 +110,7 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    mark(&mut perf[7], &mut t);
     // Deform Transform gizmo (Wave 2) — the whole-region bounding box, when Transform temperament is active.
     super::painter_bridge_deform_gizmo::draw_deform_gizmo(
         painter,
@@ -102,6 +121,7 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    mark(&mut perf[8], &mut t);
     draw_stencil_overlay(
         painter,
         hero,
@@ -111,8 +131,11 @@ pub(super) fn draw_overlays(
         vector_scene,
         cursor,
     );
+    mark(&mut perf[9], &mut t);
     draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    mark(&mut perf[10], &mut t);
     super::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
+    mark(&mut perf[11], &mut t);
 }
 
 /// Sync the painter's shape-editor grab tolerance to the LIVE camera, once per frame BEFORE the overlays

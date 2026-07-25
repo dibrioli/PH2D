@@ -13,6 +13,18 @@ use std::cell::RefCell;
 /// ~1.5 s at 60 fps: stable medians, few enough lines to paste.
 const WINDOW: usize = 90;
 
+/// Steps of the PANEL phase, in call order.
+pub(super) const PANEL_SUB: usize = 5;
+pub(super) const PANEL_LABELS: [&str; PANEL_SUB] =
+    ["commit", "layerclone", "brushsnap", "pub", "shapebake"];
+
+/// The twelve calls `draw_overlays` makes, in call order.
+pub(super) const CHROME_SUB: usize = 12;
+pub(super) const CHROME_LABELS: [&str; CHROME_SUB] = [
+    "wet", "ring", "curve", "ellipse", "line", "poly", "badges", "selgiz", "deform", "stencil",
+    "symm", "fill",
+];
+
 #[derive(Clone, Copy, Default)]
 pub(super) struct FrameInfo {
     pub gpu: bool,
@@ -28,6 +40,12 @@ pub(super) struct FrameInfo {
     pub ov_tol_ms: f32,
     pub ov_selection_ms: f32,
     pub ov_chrome_ms: f32,
+    /// The PANEL phase split by step (labels in [`PANEL_LABELS`]) — a 3,8 ms number shared by a
+    /// revision-gated clone, a `brush_settings` snapshot and two shape re-bakes names none of them.
+    pub panel_sub: [f32; PANEL_SUB],
+    /// The CHROME call (`draw_overlays`) split by the twelve overlays it aggregates
+    /// (labels in [`CHROME_LABELS`]).
+    pub chrome_sub: [f32; CHROME_SUB],
     pub upload_ms: f32,
     pub w: u32,
     pub h: u32,
@@ -148,6 +166,26 @@ fn emit(a: &Agg) {
         },
         worst.trivial,
     );
+    // The two aggregate phases, split by step. Printed on their own lines (and only for the steps that
+    // register anything) so the dominant one is named rather than shared.
+    let mut panel = String::new();
+    for (i, name) in PANEL_LABELS.iter().enumerate() {
+        let v = p50(&a.samples.iter().map(|f| f.panel_sub[i]).collect::<Vec<_>>());
+        let mx = a.samples.iter().fold(0.0f32, |m, f| m.max(f.panel_sub[i]));
+        panel.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
+    }
+    eprintln!("[paint-perf]   PANEL p50/max:{panel}");
+    let mut chrome = String::new();
+    for (i, name) in CHROME_LABELS.iter().enumerate() {
+        let v = p50(&a
+            .samples
+            .iter()
+            .map(|f| f.chrome_sub[i])
+            .collect::<Vec<_>>());
+        let mx = a.samples.iter().fold(0.0f32, |m, f| m.max(f.chrome_sub[i]));
+        chrome.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
+    }
+    eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
 }
 
 /// What the preview-diag trap reports: who owns the slot, and the CPU partial-upload bbox.

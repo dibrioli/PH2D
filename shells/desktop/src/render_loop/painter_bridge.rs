@@ -266,6 +266,9 @@ pub(super) fn dispatch(
     // …and the OVERLAY phase split by CALL, because 3,9 ms shared by three of them names none of
     // them (Enio, 2026-07-25, 4096²: o preview zerou e o custo mudou de lugar).
     let (mut ph_ov_tol, mut ph_ov_selection, mut ph_ov_chrome) = (0f32, 0f32, 0f32);
+    // …and the same treatment for PANEL (by step) and CHROME (by overlay call).
+    let mut ph_panel_sub = [0f32; super::paint_perf::PANEL_SUB];
+    let mut ph_chrome_sub = [0f32; super::paint_perf::CHROME_SUB];
     let elapsed_ms =
         |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
     let m_preview = perf_t0.map(|_| std::time::Instant::now());
@@ -399,10 +402,13 @@ pub(super) fn dispatch(
             }
         }
         // Apply / commit capture — same trait path as bgremoval.
+        let mut m_p = perf_t0.map(|_| std::time::Instant::now());
         apply_selection = ph2d_tool_runtime::drive_pending_commit(
             painter as &mut dyn ph2d_editor::tool::RasterEditTool,
             hero.gizmo.iter_selected(),
         );
+        ph_panel_sub[0] = elapsed_ms(m_p);
+        m_p = perf_t0.map(|_| std::time::Instant::now());
 
         // (B.5 perf) Layers snapshot publish pro docked layers panel.
         // The panel paints a row per layer off this clone. **Gated on
@@ -427,6 +433,8 @@ pub(super) fn dispatch(
             if LAST_LAYERS_REV.swap(rev, Ordering::Relaxed) != rev {
                 ph2d_panel_painter_layers::set_current_layers(Some(painter.layers().clone()));
             }
+            ph_panel_sub[1] = elapsed_ms(m_p);
+            m_p = perf_t0.map(|_| std::time::Instant::now());
             // (W3 multi-select) Publish the selection set every frame — a tiny
             // BTreeSet (≤ HARD_CAP_LAYERS u64s). NOT gated on `layers_revision`:
             // a plain re-click that collapses a multi-selection onto the
@@ -444,6 +452,8 @@ pub(super) fn dispatch(
             // gated: brush edits don't bump `layers_revision`, and the cost is a
             // few floats.
             let brush_snapshot = painter.brush_settings();
+            ph_panel_sub[2] = elapsed_ms(m_p);
+            m_p = perf_t0.map(|_| std::time::Instant::now());
             let stroke_method_u8 = brush_snapshot.stroke_method;
             ph2d_panel_painter_layers::set_current_brush(Some(brush_snapshot));
             // Wet Tuning side panel (doc 22): same snapshot, same cadence — and
@@ -545,6 +555,8 @@ pub(super) fn dispatch(
             // it when that sprite changed (paint / opacity / visibility / undo) — keeping the per-layer
             // colours. Cheap revision compare per frame; re-captures only on a change. Before the preview
             // refresh so the preview reflects the re-captured Shape the same frame.
+            ph_panel_sub[3] = elapsed_ms(m_p);
+            m_p = perf_t0.map(|_| std::time::Instant::now());
             painter.refresh_shape_source_if_changed();
             // (Shape preview, Per-Layer Color) Publish the multi-layer COLOURED composite so the Shape
             // preview shows the per-layer colours — the colours need the per-layer pixels, which only the
@@ -555,6 +567,7 @@ pub(super) fn dispatch(
                     painter.shape_color_preview(),
                 );
             }
+            ph_panel_sub[4] = elapsed_ms(m_p);
         }
 
         // PH2D_PAINT_PERF: close the PANEL phase (snapshot publish + shape re-bake), open OVERLAY.
@@ -609,6 +622,8 @@ pub(super) fn dispatch(
             vector_scene,
             text_system,
             cursor,
+            &mut ph_chrome_sub,
+            perf_t0.is_some(),
         );
         // PH2D_PAINT_PERF: close the OVERLAY phase (and its last sub-call).
         ph_ov_chrome = elapsed_ms(m_ov_chrome);
@@ -675,6 +690,8 @@ pub(super) fn dispatch(
             ov_tol_ms: ph_ov_tol,
             ov_selection_ms: ph_ov_selection,
             ov_chrome_ms: ph_ov_chrome,
+            panel_sub: ph_panel_sub,
+            chrome_sub: ph_chrome_sub,
             upload_ms: elapsed_ms(m_upload),
             w: dbg_dims.0,
             h: dbg_dims.1,

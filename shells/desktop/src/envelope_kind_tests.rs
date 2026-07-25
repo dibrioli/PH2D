@@ -265,6 +265,30 @@ fn a_preset_deforms_the_art_and_zero_bend_returns_it() {
     );
 }
 
+/// **A GAIOLA APARECE — `view` devolve `Some` com o container selecionado** (o Enio reportou "o
+/// cage sumiu de novo", 2026-07-25). Recém-criada (Perspective) E depois de um preset (Mesh), o
+/// overlay tem o que desenhar. Se `view` devolvesse `None` aqui, o `render_loop` não pintaria a
+/// gaiola — o sintoma exato. (Um envelope sem seleção não tem gaiola: é o `None` do caso vazio.)
+#[test]
+fn the_cage_view_is_present_for_a_fresh_and_a_preset_envelope() {
+    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    assert!(
+        crate::envelope_gesture::view(&sim, Some(container), None).is_some(),
+        "a gaiola sumiu num envelope recém-criado (Perspective)"
+    );
+    // Um preset põe a gaiola em Mesh — a `view` tem de continuar devolvendo a gaiola (com alças).
+    crate::envelope_live::apply_preset(&mut sim, container, EnvelopeWarp::Rise, 0.5);
+    assert!(
+        crate::envelope_gesture::view(&sim, Some(container), None).is_some(),
+        "a gaiola sumiu após um preset (Rise/Mesh)"
+    );
+    // Sem seleção não há gaiola — o caso vazio, para o Some acima não passar por vacuidade.
+    assert!(
+        crate::envelope_gesture::view(&sim, None, None).is_none(),
+        "sem seleção não devia haver gaiola"
+    );
+}
+
 /// **O PRESET PÕE A GAIOLA EM MESH.** Com lados retos não há preset a exprimir — um "Arc" de 4
 /// cantos retos é um trapézio. Sem isto o botão pareceria não fazer nada em Perspective.
 #[test]

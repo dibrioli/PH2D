@@ -2,17 +2,16 @@
 //!
 //! Mirrors the Painter layers panel idiom: an Add / Delete toolbar + one block
 //! per layer (top→bottom) with an eye (visibility), a padlock (lock), the name
-//! (click selects), reorder ↑↓ arrows, a blend-mode dropdown, and a bare opacity
-//! slider. The active layer gets an accent outline. Per-row widgets use the
-//! runtime-hashed id family (`flip_layer_widget_id`) since the layer count is
+//! (click selects), reorder ↑↓ arrows, a blend-mode dropdown, and the canonical
+//! Opacity + multiplane Depth slider rows (label + track + `%` chip, like the
+//! brush sliders). The active layer gets an accent outline. Per-row widgets use
+//! the runtime-hashed id family (`flip_layer_widget_id`) since the layer count is
 //! only known at runtime; a disabled reorder arrow paints dim and is NOT
-//! hit-registered, so it no-ops (mirror of the painter).
-//!
-//! Takes `ctx: &mut PaintCtx` directly (not the `BodyCtx` bundle) because the
-//! per-row widgets need `register_if_absent` (a mutable store), interleaved with
-//! the immutable-store reads + hit registration — the painter-layers pattern.
+//! hit-registered, so it no-ops. Takes `ctx: &mut PaintCtx` directly (the per-row
+//! widgets need `register_if_absent`, interleaved with reads + hit registration).
 
 use crate::ids;
+use crate::paint_sections::LABEL_COL_W;
 use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState, LayerRename};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::FlipLayerWidget;
@@ -21,11 +20,13 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption,
-    DropdownState, Slider, SliderState, TextInput, TextInputState, paint_button,
-    paint_dropdown_chip, paint_dropdown_popover_scrolled, paint_slider,
-    paint_text_input_with_buffer, scrollbar_is_needed, scrollbar_track_rect,
+    Button, ButtonKind, ButtonState, DEFAULT_CHIP_W, DROPDOWN_SCROLLBAR_ID, Dropdown,
+    DropdownOption, DropdownState, SliderOrientation, SliderState, TextInput, TextInputState,
+    paint_button, paint_dropdown_chip, paint_dropdown_popover_scrolled,
+    paint_slider_with_chip_layout_adaptive, paint_text_input_with_buffer, scrollbar_is_needed,
+    scrollbar_track_rect, slider_with_chip_is_stacked,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
@@ -212,11 +213,19 @@ fn paint_layer_block(
 ) -> f32 {
     let line_gap = Spacing::Xs.px();
     let block_top = y;
-    // Rows (eye/name/↑↓, [blend], opacity, depth) + inter-row gaps — line COUNTS,
-    // not a design metric. The base layer drops the blend line; every layer has the
-    // multiplane Depth line (2.5D, ADR-0114 §Decisão 3).
-    let rows = if is_base { 3.0 } else { 4.0 }; // LITERAL-PX-OK: line COUNT (3 or 4), not a metric
-    let block_h = m.row_h * rows + line_gap * (rows - 1.0); // LITERAL-PX-OK: row/gap counts
+    // Opacity + Depth são sliders CANÔNICOS (label+track+chip); o painter demota a
+    // label quando o painel estreita, então cada um mede `slider_h` — a MESMA função
+    // de stacking do painter, senão o contorno de acento é dimensionado por uma regra e
+    // preenchido por outra. Não-slider: eye/name/↑↓ + [blend] (base dropa o blend).
+    let slider_content_w = m.inner_w - Spacing::Xs.px() * 2.0;
+    let slider_h = if slider_with_chip_is_stacked(slider_content_w, LABEL_COL_W, DEFAULT_CHIP_W) {
+        m.row_h + SECTION_LABEL_TO_CONTROL_PX + m.row_h
+    } else {
+        m.row_h
+    };
+    let non_slider = if is_base { 1.0 } else { 2.0 }; // LITERAL-PX-OK: line COUNT (1 or 2)
+    let n_rows = non_slider + 2.0; // + Opacity + Depth
+    let block_h = m.row_h * non_slider + slider_h * 2.0 + line_gap * (n_rows - 1.0);
 
     // Active-row accent outline (painted first, behind the controls).
     if active {
@@ -347,80 +356,110 @@ fn paint_layer_block(
         y += m.row_h + line_gap;
     }
 
-    // ── Line 3: bare opacity slider · Line 4: multiplane Depth slider ──
-    // Ambas são a MESMA linha (slider `0..1` + readout NN%) por uma porta ÚNICA
-    // (`paint_bare_slider_row`) — duas cópias divergiriam em silêncio. A Depth é a
-    // fração de paralaxe (2.5D, ADR-0114 §Decisão 3): 100% = flat/front (o default),
-    // 0% = fundo distante. O gap entre elas é o `line_gap`; após a última, o `row_gap`.
-    y = paint_bare_slider_row(
+    // ── Line 3: Opacity · Line 4: multiplane Depth ── sliders CANÔNICOS (label+track+
+    // chip `%`) iguais aos do pincel, por UMA porta. A Depth é a fração de paralaxe
+    // (2.5D, ADR-0114 §Decisão 3): 100% = flat/front (default), 0% = fundo distante.
+    y = paint_labeled_slider_row(
         ctx,
         theme,
         m,
         row.id,
+        "Opacity",
         FlipLayerWidget::Opacity,
+        FlipLayerWidget::OpacityNum,
         row.opacity,
         y,
     );
     y += line_gap;
-    y = paint_bare_slider_row(ctx, theme, m, row.id, FlipLayerWidget::Depth, row.depth, y);
+    y = paint_labeled_slider_row(
+        ctx,
+        theme,
+        m,
+        row.id,
+        "Depth",
+        FlipLayerWidget::Depth,
+        FlipLayerWidget::DepthNum,
+        row.depth,
+        y,
+    );
     y += m.row_gap;
     y
 }
 
-/// Uma linha de slider `0..1` + readout `NN%` — a porta ÚNICA das Line 3 (Opacity)
-/// e Line 4 (Depth) do bloco de camada. Registra o slider (semeando com `fallback`
-/// na 1ª vez), lê o valor VIVO do store (o drag em curso), pinta o slider + o `%`, e
-/// registra o hit. Devolve o `y` no rodapé da linha (SEM o gap — o chamador o soma).
-fn paint_bare_slider_row(
+/// A linha CANÔNICA de um valor `0..1` mostrado como `%` — label + track + chip
+/// editável, o MESMO `paint_slider_with_chip_layout_adaptive` dos sliders do pincel.
+/// Porta ÚNICA das Line 3 (Opacity) e 4 (Depth). Registra o slider (semeado com
+/// `fallback`) + o chip `NumberInput` e os LIGA (escala 100 ⇒ chip em `%`); editar o
+/// chip espelha no slider, que dispara o próprio `ValueChanged` (o `event.rs`
+/// forwarda). Devolve o `y` no rodapé (`used` = 1 linha, ou 2 se a label demota).
+#[allow(clippy::too_many_arguments)]
+fn paint_labeled_slider_row(
     ctx: &mut PaintCtx,
     theme: Theme,
     m: &LayerMetrics,
     layer_id: u64,
-    kind: FlipLayerWidget,
+    label: &str,
+    slider_kind: FlipLayerWidget,
+    chip_kind: FlipLayerWidget,
     fallback: f32,
     y: f32,
 ) -> f32 {
     let gap = Spacing::Xs.px();
-    let id = ids::flip_layer_widget_id(layer_id, kind);
-    ctx.host.store_mut().register_if_absent(
-        id,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: fallback,
-            orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
-        },
-    );
-    let pct_w = 40.0; // LITERAL-PX-OK: fixed "NN%" readout column
-    let slider_w = (m.inner_w - gap * 2.0 - pct_w).max(0.0);
-    let rect = Rect::new(m.inner_x + gap, y, slider_w, m.row_h);
-    let st = ctx
-        .host
-        .store()
-        .slider(id)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
+    let slider_id = ids::flip_layer_widget_id(layer_id, slider_kind);
+    let chip_id = ids::flip_layer_widget_id(layer_id, chip_kind);
+    {
+        let store = ctx.host.store_mut();
+        store.register_if_absent(
+            slider_id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: fallback,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register_if_absent(
+            chip_id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: f64::from(fallback) * 100.0, // LITERAL-PX-OK: fraction→percent chip
+                buffer: String::new(),
+                caret: 0,
+                last_committed: f64::from(fallback) * 100.0,
+                selection_anchor: None,
+            },
+        );
+        // O chip vive em `%` (0..100) e o slider em `0..1` — escala 100, offset 0.
+        store.link_slider_number_mapped_integer(slider_id, chip_id, 100.0, 0.0);
+    }
     let val = ctx
         .host
         .store()
-        .slider(id)
+        .slider(slider_id)
         .map(|(_, v)| v)
         .unwrap_or(fallback);
-    let mut slider = Slider::new(id, "").accent(true).state(st);
-    slider.value = val;
-    paint_slider(&slider, rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(id, rect);
-    let pct = (val * 100.0).round() as i64; // LITERAL-PX-OK: fraction→percent readout
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{pct}%"),
-        m.inner_x + gap + slider_w + gap,
-        y + (m.row_h - m.font) * 0.5,
-        m.font,
-        pct_w,
-        resolve(ColorToken::Text2, theme),
+    let pct = f64::from(val) * 100.0; // LITERAL-PX-OK: fraction→percent chip
+    let display = format!("{}", pct.round() as i64);
+    let rect = Rect::new(m.inner_x + gap, y, m.inner_w - gap * 2.0, m.row_h);
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_slider_with_chip_layout_adaptive(
+        rect,
+        label,
+        val,
+        pct,
+        Some(&display),
+        slider_id,
+        chip_id,
+        LABEL_COL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
     );
-    y + m.row_h
+    y + used
 }
 
 /// A reorder arrow: dim + not hit-registered when disabled (no-op), else an

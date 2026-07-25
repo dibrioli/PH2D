@@ -978,31 +978,54 @@ fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
     );
 }
 
-/// 🔴 **O slider de Depth multiplano é PINTADO, registrado e o arrasto vira
-/// `SetValue`** (2.5D, ADR-0114 §Decisão 3). As três condições de UI numa gate: o
-/// widget existe na tela (clicável, não morto sob o mouse) e o `ValueChanged` do
-/// painel forwarda `SetValue(depth_id, v)` — a shell escreve `l.depth` (coberto no
-/// gate irmão de `flip_layers`).
+/// 🔴 **O slider de Depth multiplano é a linha CANÔNICA (label + track + chip
+/// editável), pintada, ligada e o arrasto vira `SetValue`** (2.5D, ADR-0114
+/// §Decisão 3). O report do Enio (2026-07-25): a linha antiga era um slider PELADO,
+/// sem label e fora do padrão do app. Agora é o MESMO `paint_slider_with_chip` dos
+/// sliders do pincel: o track E o chip `%` existem, o chip está LIGADO ao slider
+/// (escala 100 ⇒ mostra `0..100`), e o `ValueChanged` do slider forwarda
+/// `SetValue(depth_id, v)` — a shell escreve `l.depth` (gate irmão de `flip_layers`).
 ///
-/// Mutação que sangra: tirar `FlipLayerWidget::Depth` do arm de `ValueChanged` no
-/// `event.rs` (o arrasto é engolido, nada forwarda) ou não pintar a Line 4 do bloco
-/// de camada (o `depth_id` some do painted).
+/// Mutações que sangram: voltar à linha pelada (o `depth_chip_id` some do painted) ·
+/// tirar o `link_slider_number_mapped_integer` (o chip fica MORTO, `linked_number`
+/// vira `None`) · tirar `FlipLayerWidget::Depth` do arm de `ValueChanged` (o arrasto
+/// é engolido, nada forwarda).
 #[test]
-fn the_multiplane_depth_slider_paints_and_forwards_setvalue() {
+fn the_multiplane_depth_slider_is_the_canonical_labeled_row() {
     let a = 9u64;
     one_layer(a, "A");
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
     let mut st = FlipPanelState::default();
     let depth_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Depth);
+    let depth_chip_id = ids::flip_layer_widget_id(a, FlipLayerWidget::DepthNum);
 
-    // (1) Pintado e hit-registrado.
+    // (1) O track E o chip `%` são pintados e hit-registrados (a linha canônica, não a
+    // pelada) — os dois clicáveis, nenhum morto sob o mouse.
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
         painted.iter().any(|(w, r)| *w == depth_id && r.w > 0.0),
-        "o slider de Depth nao foi pintado/registrado — controle inalcancavel"
+        "o slider de Depth nao foi pintado/registrado"
+    );
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == depth_chip_id && r.w > 0.0),
+        "o CHIP de valor do Depth nao foi pintado — a linha voltou a ser pelada"
     );
 
-    // (2) O arrasto chega ao barramento como SetValue(depth_id, ~0.2).
+    // (2) O chip está LIGADO ao slider com a escala de porcentagem (0..1 ↔ 0..100).
+    assert_eq!(
+        host.store().linked_number(depth_id),
+        Some(depth_chip_id),
+        "o chip nao esta ligado ao slider — editar o `%` nao mexe na paralaxe"
+    );
+    assert_eq!(
+        host.store().linked_slider_mapping(depth_chip_id),
+        (100.0, 0.0),
+        "o chip deve mostrar/editar em `%` (escala 100), como o Opacity do pincel"
+    );
+
+    // (3) O arrasto do slider chega ao barramento como SetValue(depth_id, ~0.2).
     host.set_slider_value(depth_id, 0.2);
     let outcome = host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::ValueChanged(depth_id));
     assert_eq!(

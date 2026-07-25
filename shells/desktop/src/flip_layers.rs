@@ -162,7 +162,13 @@ pub(crate) fn apply_panel_event(
                 FlipLayerWidget::MoveDown => {
                     flip.object_mut(oid).is_some_and(|o| o.lower_layer(layer))
                 }
-                FlipLayerWidget::Opacity | FlipLayerWidget::Depth | FlipLayerWidget::Blend => false,
+                // Sliders + value chips + blend aren't Click-driven doc edits (sliders/
+                // chips arrive as SetValue via ValueChanged; blend via SelectOption).
+                FlipLayerWidget::Opacity
+                | FlipLayerWidget::OpacityNum
+                | FlipLayerWidget::Depth
+                | FlipLayerWidget::DepthNum
+                | FlipLayerWidget::Blend => false,
             }
         }
         PanelEvent::SetValue(id, v) => match decode_widget(flip, *id) {

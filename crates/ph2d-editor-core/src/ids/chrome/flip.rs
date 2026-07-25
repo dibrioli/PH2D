@@ -235,9 +235,15 @@ pub enum FlipLayerWidget {
     Lock,
     /// The opacity slider (stores `0..1`).
     Opacity,
+    /// The opacity value CHIP (`NumberInput`, shows `0..100 %`, linked to
+    /// [`Self::Opacity`] via `link_slider_number_mapped_integer`). The canonical
+    /// label+slider+chip row, mirror of the brush sliders.
+    OpacityNum,
     /// The multiplane depth slider (2.5D, ADR-0114 §Decisão 3): stores the parallax
     /// follow-fraction `0..1` (`1` = flat/front, `0` = far/static background).
     Depth,
+    /// The depth value CHIP (`NumberInput`, `0..100 %`, linked to [`Self::Depth`]).
+    DepthNum,
     /// The blend-mode dropdown chip (opens the blend popover).
     Blend,
     /// The move-up (↑) reorder button — moves the layer toward the top.
@@ -256,7 +262,9 @@ impl FlipLayerWidget {
             Self::Visibility => "vis",
             Self::Lock => "lock",
             Self::Opacity => "opacity",
+            Self::OpacityNum => "opacity_num",
             Self::Depth => "depth",
+            Self::DepthNum => "depth_num",
             Self::Blend => "blend",
             Self::MoveUp => "move_up",
             Self::MoveDown => "move_down",
@@ -264,12 +272,14 @@ impl FlipLayerWidget {
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [FlipLayerWidget; 8] = [
+    pub const ALL: [FlipLayerWidget; 10] = [
         Self::Row,
         Self::Visibility,
         Self::Lock,
         Self::Opacity,
+        Self::OpacityNum,
         Self::Depth,
+        Self::DepthNum,
         Self::Blend,
         Self::MoveUp,
         Self::MoveDown,

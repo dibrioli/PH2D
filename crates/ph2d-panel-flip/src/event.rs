@@ -229,10 +229,9 @@ pub(crate) fn apply_event(
                 None => false,
             }
         }
-        // Per-row opacity slider → forward the track (the shell drain sets the
-        // layer's opacity).
+        // Per-row Opacity/Depth sliders (canonical label+track+chip rows).
         WidgetEvent::ValueChanged(id) => match decode_layer_widget(id) {
-            // Opacity and multiplane Depth are both bare `0..1` sliders forwarded as
+            // Opacity and multiplane Depth are both `0..1` sliders forwarded as
             // `SetValue(id, v)` — the shell decodes the id to know which one it is.
             Some((_, FlipLayerWidget::Opacity | FlipLayerWidget::Depth)) => {
                 let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
@@ -243,6 +242,9 @@ pub(crate) fn apply_event(
                     )));
                 true
             }
+            // The value CHIPS echo their edit onto the linked slider (handled above) —
+            // swallow to avoid a double notify. Mirror of the brush `*_NUM` arm.
+            Some((_, FlipLayerWidget::OpacityNum | FlipLayerWidget::DepthNum)) => true,
             _ => false,
         },
         _ => false,

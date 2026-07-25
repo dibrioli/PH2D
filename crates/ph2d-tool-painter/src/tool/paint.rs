@@ -29,7 +29,6 @@ mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstru
 mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
-mod gate; // the protection/selection GATE as an epoch projection — the ceiling that never erodes
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
 pub use self::stroke_multi::StrokeOpBadge;
@@ -230,9 +229,12 @@ pub(crate) struct PaintState {
     /// **Line** stroke method: live dx/dy + corner-angle CAD overlay while drawing. Default `true`;
     /// a per-Line display pref (the "Dimensions" checkbox).
     line_show_dimensions: bool,
-    mask_brush: u8, // Mask sub-brush: 0 Paint · 1 Erase · 2 Blur · 3 Smear. [`mask`]
-    mask_overlay_color: u8, // Mask overlay tint index (0 gray + 4 fluorescent). [`mask`]
-    eyedropper_armed: bool, // next canvas Down samples the composite into the brush colour. [`eyedropper`]
+    /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
+    mask_brush: u8,
+    /// **Mask** overlay tint index (`0` gray + 4 fluorescent) — tints the composite where a mask conceals. [`mask`].
+    mask_overlay_color: u8,
+    /// **Eyedropper** armed: the next canvas Down samples the composited pixel into the brush colour, then disarms. [`eyedropper`].
+    eyedropper_armed: bool,
     /// Whether the LIVE brush's falloff was installed by a tool-default ARM (never by the artist) —
     /// the provenance that lets a verb switch re-arm its own default without ever overriding a
     /// deliberate choice (`arm_tool_falloff_defaults`). Cleared by the artist's falloff setter;
@@ -241,8 +243,6 @@ pub(crate) struct PaintState {
     mask_scratch_rgba: Arc<Vec<u8>>, // Mask COMMITTED coverage (scratch, white=reveal); Paint/Erase fold in by ENVELOPE. [`mask`]
     mask_stroke_rgba: Arc<Vec<u8>>, // Mask per-STROKE product buffer; folded into scratch by min/max (`fold_mask_stroke`)
     mask_scratch_target: Option<crate::layers::LayerId>,
-    gate_ref_rgba: Arc<Vec<u8>>, // gate EPOCH: the canvas when the protection/selection epoch began (empty = none). [`gate`]
-    gate_free_rgba: Arc<Vec<u8>>, // gate EPOCH: what UNRESTRICTED painting would have produced. [`gate`]
     /// **Selection** mask (ADR-0103): a document-wide single-channel coverage buffer (`w*h` bytes,
     /// `0` = outside / `255` = inside; Feather softens the edge). Gates every paint op to the selected
     /// region ([`selection`]) and is undo-integrated via the `ModelSnapshot` exactly like `mask_scratch`.

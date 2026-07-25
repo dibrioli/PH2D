@@ -70,8 +70,6 @@ impl PainterTool {
     /// discarding any stale scratch) if the active layer changed. No-op if the active layer isn't a raster
     /// or the canvas is empty. Called before a Mask stroke / a Modifier op.
     pub(super) fn ensure_mask_scratch(&mut self) {
-        // Gate epoch: the scratch (a keep source) is about to exist/change — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let Some(active) = self.layers.active() else {
             return;
         };
@@ -130,48 +128,24 @@ impl PainterTool {
     /// wins). Idempotent across strokes because the within-stroke product is monotonic, so re-painting
     /// the same spot converges at the single-pass feather instead of piling into a hard edge. Grayscale
     /// coverage (R=G=B) ⇒ per-byte min/max equals luminance min/max; alpha stays 255.
-    /// An active Selection scales the stroke's contribution HERE, at the fold — once, against the
-    /// stroke's NEUTRAL — never per batch against the mutating envelope (the retired per-batch clip
-    /// compounded `keep` inside the very buffer the envelope exists to keep idempotent: at keep=0.5 a
-    /// held scribble went 255→128→64→32 across its own batches).
     pub(super) fn fold_mask_stroke(&mut self, region: Region) {
         let (w, _h) = self.source_size;
         let take_min = self.paint.mask_brush == 0; // Paint = min, Erase = max
-        let neutral: f32 = if take_min { 255.0 } else { 0.0 };
-        let sel_on = self.selection_restricts_paint();
-        let sel = Arc::clone(&self.paint.selection_mask);
         let stroke = Arc::clone(&self.paint.mask_stroke_rgba);
         let committed = Arc::make_mut(&mut self.paint.mask_scratch_rgba);
-        let mut n = (stroke.len() / 4).min(committed.len() / 4);
-        if sel_on {
-            n = n.min(sel.len());
-        }
+        let n = (stroke.len() / 4).min(committed.len() / 4);
         for ry in 0..region.h {
             for rx in 0..region.w {
                 let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
                 if gidx >= n {
                     continue;
                 }
-                let ks = if sel_on {
-                    f32::from(sel[gidx]) / 255.0
-                } else {
-                    1.0
-                };
                 let b = gidx * 4;
-                for c in 0..3 {
-                    let s = if ks >= 1.0 {
-                        stroke[b + c]
-                    } else {
-                        // scale the distance from neutral by the selection keep, once (idempotent)
-                        (neutral + (f32::from(stroke[b + c]) - neutral) * ks)
-                            .round()
-                            .clamp(0.0, 255.0) as u8
-                    };
+                for c in 0..4 {
+                    let s = stroke[b + c];
                     let d = committed[b + c];
                     committed[b + c] = if take_min { d.min(s) } else { d.max(s) };
                 }
-                // alpha: both planes carry 255 — the fold keeps it saturated.
-                committed[b + 3] = committed[b + 3].max(stroke[b + 3]);
             }
         }
     }
@@ -206,8 +180,6 @@ impl PainterTool {
     /// INTO it (coverage refine, `α_new = α_old × scratch`). One structural undo step. No-op without a
     /// live scratch, or at the layer hard-cap (the scratch is then left intact). The Apply button.
     pub fn apply_mask_scratch(&mut self) {
-        // Gate epoch: Apply clears the keep source — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         if !self.mask_scratch_active() {
             return;
         }
@@ -318,17 +290,57 @@ impl PainterTool {
         })
     }
 
-    // `snapshot_region` + `restore_protected_region` (the per-batch protection lerp) RETIRED
-    // 2026-07-25: that door made the protection a per-pass MULTIPLIER — `(1−keep)^N` over N batches
-    // evaporated the feather into a hard aliased cliff (Enio's "máscara RUIM"). The protection is now
-    // a CEILING via the gate epoch projection ([`gate`], `project_gated_region`), one door shared with
-    // the Selection mask.
+    /// Snapshot `region`'s RGBA from `canvas_rgba` (region-sized, row-major) before a stamp — the
+    /// pre-paint pixels the protection gate reverts the frozen texels to.
+    pub(super) fn snapshot_region(&self, region: Region) -> Vec<u8> {
+        let (w, _h) = self.source_size;
+        let row = (region.w * 4) as usize;
+        let mut out = vec![0u8; (region.w as usize) * (region.h as usize) * 4];
+        for ry in 0..region.h {
+            let src = (((region.y + ry) * w + region.x) * 4) as usize;
+            let dst = (ry * region.w * 4) as usize;
+            if src + row <= self.canvas_rgba.len() {
+                out[dst..dst + row].copy_from_slice(&self.canvas_rgba[src..src + row]);
+            }
+        }
+        out
+    }
+
+    /// Restore the PROTECTED texels of `region` from `before` after a stamp: blend the pre-stamp pixel
+    /// back by the protection factor `1 - mask_value(scratch)`, so a fully-painted scratch texel
+    /// (protect = 1) reverts entirely (frozen) and an unpainted one (protect = 0) keeps the fresh paint.
+    /// Nothing is made invisible — only the paint is gated (Blender Sculpt-mask semantics).
+    pub(super) fn restore_protected_region(&mut self, region: Region, before: &[u8]) {
+        let (w, _h) = self.source_size;
+        let scratch = Arc::clone(&self.paint.mask_scratch_rgba);
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let n = (scratch.len() / 4).min(buf.len() / 4);
+        for ry in 0..region.h {
+            for rx in 0..region.w {
+                let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
+                if gidx >= n {
+                    continue;
+                }
+                let keep = crate::compositor::mask_value(&scratch, gidx); // 1 = keep paint, 0 = frozen
+                if keep >= 1.0 {
+                    continue; // unprotected → keep the fresh paint untouched
+                }
+                let b = gidx * 4;
+                let s = ((ry * region.w + rx) * 4) as usize;
+                for c in 0..4 {
+                    let painted = f32::from(buf[b + c]);
+                    let orig = f32::from(before[s + c]);
+                    buf[b + c] = (painted * keep + orig * (1.0 - keep))
+                        .round()
+                        .clamp(0.0, 255.0) as u8;
+                }
+            }
+        }
+    }
 
     /// Apply a whole-canvas Modifier (Expand / Contract / Blur / Sharpen / Invert / Clear) to the scratch
     /// mask (creating it first). No-op if the active layer can't hold a scratch or the canvas is empty.
     pub fn mask_canvas_op(&mut self, op: u8) {
-        // Gate epoch: a Modifier rewrites the keep source — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let Some(mop) = mask_op_from_u8(op) else {
             return;
         };

@@ -99,8 +99,6 @@ impl PainterTool {
     /// `base` first (the hole), loops only the deformed mesh bbox (+ the previous frame's). No-op without a
     /// patch / mesh.
     pub(super) fn composite_mesh(&mut self) {
-        // Gate epoch: the Deform writes the canvas outside the gate — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         let (Some(fp), Some(mesh)) = (

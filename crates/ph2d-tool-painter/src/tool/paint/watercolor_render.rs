@@ -47,8 +47,6 @@ impl PainterTool {
     /// dirty rect (dabs since the last composite) padded by the influence radius; the pen-up bake makes
     /// one cumulative pass from a tracked bbox — never a full scan. Returns the region (`None` = no-op).
     pub(super) fn apply_watercolor(&mut self, commit: bool) -> Option<Region> {
-        // Gate epoch: watercolor bypasses the gate and writes the canvas itself — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         // Window arithmetic (frozen bases + dirty-rect consumption + influence
         // padding + read window) — moved verbatim to [`window::WashWindow`];
         // `None` = nothing to composite, and the commit still drops the base.

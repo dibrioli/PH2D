@@ -13,7 +13,7 @@
 //! [`super::selection_edit`], the shape-list model in [`super::selection_shapes`], and Wave-5 actions in
 //! [`super::selection_actions`].
 
-use super::PainterTool;
+use super::{PainterTool, Region};
 use std::sync::Arc;
 
 impl PainterTool {
@@ -76,9 +76,37 @@ impl PainterTool {
         self.paint.selection_active && !self.paint.selection_mask.is_empty()
     }
 
-    // `restore_deselected_region` (the per-batch selection lerp) RETIRED 2026-07-25: same disease,
-    // same door as the protection mask's — the feathered selection edge hardened under repeated
-    // strokes. Both gates now project through the ONE epoch door ([`super::gate`]).
+    /// Restore the DESELECTED texels of `region` from `before` after a stamp: blend the pre-stamp pixel
+    /// back by `1 - coverage`, so a fully-selected texel (coverage = 1) keeps the fresh paint and an
+    /// unselected one (coverage = 0) reverts entirely. Mirror of [`Self::restore_protected_region`], but
+    /// keyed on the selection coverage instead of the protection mask.
+    pub(super) fn restore_deselected_region(&mut self, region: Region, before: &[u8]) {
+        let (w, _h) = self.source_size;
+        let mask = Arc::clone(&self.paint.selection_mask);
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let n = mask.len().min(buf.len() / 4);
+        for ry in 0..region.h {
+            for rx in 0..region.w {
+                let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
+                if gidx >= n {
+                    continue;
+                }
+                let keep = f32::from(mask[gidx]) / 255.0; // 1 = inside (keep paint), 0 = outside (revert)
+                if keep >= 1.0 {
+                    continue; // fully selected → keep the fresh paint untouched
+                }
+                let b = gidx * 4;
+                let s = ((ry * region.w + rx) * 4) as usize;
+                for c in 0..4 {
+                    let painted = f32::from(buf[b + c]);
+                    let orig = f32::from(before[s + c]);
+                    buf[b + c] = (painted * keep + orig * (1.0 - keep))
+                        .round()
+                        .clamp(0.0, 255.0) as u8;
+                }
+            }
+        }
+    }
 
     /// Ensure the selection buffer is sized to the current canvas (`w*h`, zero-filled = nothing selected).
     /// Re-allocates only when the size changed.
@@ -97,8 +125,6 @@ impl PainterTool {
     /// joins the single interleaved queue. Seeds the shape list with one 4-sided [`SelectionShape::Polygon`]
     /// (corner-phase → an axis-aligned rectangle) so the rect carries the editable polygon gizmo.
     pub fn set_rect_selection(&mut self, x: u32, y: u32, rw: u32, rh: u32) {
-        // Gate epoch: the selection (a keep source) is replaced — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
@@ -127,8 +153,6 @@ impl PainterTool {
     /// **Clear** (deselect) — no active selection, painting unrestricted again. Records one structural undo
     /// entry (no-op when there is nothing selected). Also drops the shape list + hides the gizmos.
     pub fn clear_selection(&mut self) {
-        // Gate epoch: the selection (a keep source) is dropped — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         if !self.paint.selection_active {
             return;
         }

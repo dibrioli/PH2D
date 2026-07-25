@@ -172,8 +172,6 @@ impl PainterTool {
     /// vacated. Loops only the patch's source + destination bbox (+ the previous frame's), never the whole
     /// canvas. No-op without a lifted patch or a singular `m`.
     pub(super) fn composite_transform(&mut self, m: Mat3) {
-        // Gate epoch: the Deform writes the canvas outside the gate — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         let Some(fp) = self.paint.deform.xform_patch.clone() else {

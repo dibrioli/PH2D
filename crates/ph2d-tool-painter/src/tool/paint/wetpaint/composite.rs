@@ -37,8 +37,6 @@ impl PainterTool {
     /// [`Self::wetpaint_composite`] with the show-wet veil explicit — the
     /// end-session door forces `false` so the veil never bakes.
     pub(super) fn wetpaint_composite_veiled(&mut self, veil: bool) {
-        // Gate epoch: wet paint bypasses the gate and writes the canvas itself — the projection's inputs stop describing the world ([`gate`]).
-        self.commit_gate_epoch();
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
         let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();

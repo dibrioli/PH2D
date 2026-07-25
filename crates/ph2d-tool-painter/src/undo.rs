@@ -105,14 +105,6 @@ pub struct ModelSnapshot {
     /// Reconstruct could no longer un-warp the remaining deform (Enio 2026-07-04). Empty `Arc`s + `false`
     /// = no session. `Arc`-shared, so a non-deform snapshot carries an empty (0-byte) map for free.
     pub(crate) deform: WarpSnap,
-    /// The protection/selection GATE epoch at capture time ([`gate`]): `ref` = the canvas when the
-    /// epoch began, `free` = the unrestricted painting. Captured under the same-commit law so
-    /// undo/redo restores the CEILING mid-epoch — dropping the planes instead would re-seed the next
-    /// stroke's epoch from a canvas that already ate one epoch's worth of feather paint, and the
-    /// `(1−keep)` term would compound across undo-cut epochs (the disease, one level up). Empty = no
-    /// epoch; `Arc`-shared, so a non-gated snapshot carries two 0-byte handles for free.
-    pub gate_ref: Arc<Vec<u8>>,
-    pub gate_free: Arc<Vec<u8>>,
     /// The **Sculpt** session at capture time (`docs/Painter/18…` §10.4).
     ///
     /// Captured for a reason the Deform did NOT have, and it is the reason the plan demanded it: the
@@ -285,11 +277,6 @@ pub struct PreviewPatch {
     pub w: u32,
     pub h: u32,
     pub pixels: Vec<u8>,
-    /// The gate epoch's FREE-plane pixels under the same rect (pre-preview), when an epoch was live —
-    /// the undo twin of `DragPreview::free_pixels`. Restoring the canvas rect without peeling the free
-    /// rect would leave the preview's ghost in the unrestricted plane, and the shape re-stamp after an
-    /// undo would deepen the feather by one phantom stroke.
-    pub free_pixels: Option<Vec<u8>>,
 }
 
 /// Default cap on retained undo entries (ring depth). The caller can raise or
@@ -486,8 +473,6 @@ mod tests {
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
             selection_shapes: Vec::new(),
-            gate_ref: Arc::new(Vec::new()),
-            gate_free: Arc::new(Vec::new()),
             deform: WarpSnap {
                 disp: Arc::new(Vec::new()),
                 pre: Arc::new(Vec::new()),

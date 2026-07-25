@@ -44,8 +44,6 @@ impl PainterTool {
             // The parametric shape list is the source of truth the mask derives from — capture it so undo
             // restores the editable shapes (curve points/handles, box params), not just the raster mask.
             selection_shapes: self.selection_shapes_snapshot(),
-            gate_ref: self.gate_for_snapshot().0,
-            gate_free: self.gate_for_snapshot().1,
             deform,
             sculpt,
         }
@@ -89,9 +87,6 @@ impl PainterTool {
             m.selection_crisp,
             m.selection_feather,
         );
-        // Reinstate the gate epoch planes captured with this state (same-commit law) — the ceiling
-        // survives undo/redo instead of re-seeding against a canvas that already ate feather paint.
-        self.restore_gate_epoch(m.gate_ref, m.gate_free);
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
         // Reinstate the ACTIVE shape's boolean op so undoing a centre-square op-cycle tap rolls it back.

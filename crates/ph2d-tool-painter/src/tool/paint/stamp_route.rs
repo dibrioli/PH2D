@@ -105,22 +105,22 @@ impl PainterTool {
             self.stamp_dabs_routed(dabs);
             return;
         }
-        // Two footprint gates, ONE epoch projection ([`gate`]): the Sculpt-style protection mask (freeze
-        // painted texels) and the Selection mask (restrict paint to the selected region, ADR-0103). The
-        // batch stamps into the epoch's FREE plane (the unrestricted painting) and the canvas is then
-        // re-projected as `ref·(1−keep) + free·keep` over the footprint — a CEILING, not the retired
-        // per-batch lerp whose `(1−keep)^N` compounding evaporated the feather over repeated passes
-        // (Enio 2026-07-25; the gate `the_feather_is_a_ceiling_not_a_per_pass_multiplier`).
+        // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)
+        // and the Selection mask (restrict paint to the selected region, ADR-0103). Snapshot the footprint
+        // once, stamp, then revert whatever each active gate protects.
         let mask_gate = self.mask_protection_active();
         let sel_gate = self.selection_restricts_paint();
         if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
         {
-            self.ensure_gate_epoch();
-            std::mem::swap(&mut self.canvas_rgba, &mut self.paint.gate_free_rgba);
+            let before = self.snapshot_region(region);
             self.stamp_dabs_routed(dabs);
-            std::mem::swap(&mut self.canvas_rgba, &mut self.paint.gate_free_rgba);
-            self.project_gated_region(region);
+            if mask_gate {
+                self.restore_protected_region(region, &before);
+            }
+            if sel_gate {
+                self.restore_deselected_region(region, &before);
+            }
             return;
         }
         self.stamp_dabs_routed(dabs);
@@ -208,13 +208,15 @@ impl PainterTool {
                 self.begin_mask_stroke();
             }
         }
-        // A pre-stamp copy of the COMMITTED scratch for the spatial sub-brushes (Blur/Smear), so an
-        // active selection can revert mask edits that landed outside it (ADR-0103). The ENVELOPE
-        // sub-brushes (Paint/Erase) apply the selection at the FOLD instead — clipping the per-stroke
-        // envelope per batch re-multiplied `keep` inside the very buffer that exists to be idempotent
-        // (255→128→64→32 at keep=0.5 across one held scribble's batches).
-        let scratch_before = (!envelope && self.selection_restricts_paint())
-            .then(|| (*self.paint.mask_scratch_rgba).clone());
+        // A pre-stamp copy of the target buffer, so an active selection can revert mask strokes that
+        // landed outside it (the swap hides the edit from the canvas-side stamp gate, ADR-0103).
+        let scratch_before = self.selection_restricts_paint().then(|| {
+            if envelope {
+                (*self.paint.mask_stroke_rgba).clone()
+            } else {
+                (*self.paint.mask_scratch_rgba).clone()
+            }
+        });
         // Swap the target into `canvas_rgba` so the stamp pipeline edits it (disjoint fields), swapped
         // back below.
         if envelope {

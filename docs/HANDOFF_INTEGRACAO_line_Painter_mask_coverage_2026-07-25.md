@@ -105,9 +105,18 @@ claras. O que ele **vai** mostrar, porque segue aberto: a borda **endurece** se 
 de rampa numa passada, 1,38 em quinze). Essa é a queixa original; a §13.10.4 lista as três hipóteses que
 sobraram (o overlay · os defaults do pincel · aceitar), e nenhuma é a lei do acúmulo.
 
-**Não smokado / fora desta wave, NOMEADO:** os métodos de SHAPE (Line/Curve/Ellipse/Polygon/Free Hand) em
-modo máscara **não pintam nada** — o roteador de shape intercepta o Down antes do `paint_begin`, o
-`ensure_mask_scratch` nunca roda e o scratch fica com 0 bytes (medido, sonda 4). Pré-existente.
+**Não smokado / fora desta wave, NOMEADO:**
+
+- ⚠️ **A TINTA atravessando a proteção sai CRAQUELADA** — reportado pelo Enio depois de a cobertura ser
+  aprovada, **diagnosticado e medido nesta linha** (doc 25 §13.11): `restore_protected_region` puxa de volta
+  uma vez por BATCH, então a força da proteção depende da taxa de polling do mouse (num texel de `keep=0.5`
+  a tinta sobrevivente é **0,886 com 4 eventos por traço e 0,992 com 60**). A cura mínima foi implementada,
+  medida e **refutada** (ela inverte a dependência: 0,667 → 0,141) e está revertida. A lei certa exige
+  separar a tinta LIVRE do que se mostra — **é a próxima wave**, e o red-first dela já está no repo
+  (`probe_paint_through_the_protection`).
+- os métodos de SHAPE (Line/Curve/Ellipse/Polygon/Free Hand) em modo máscara **não pintam nada** — o
+  roteador de shape intercepta o Down antes do `paint_begin`, o `ensure_mask_scratch` nunca roda e o scratch
+  fica com 0 bytes (medido, sonda 4). Pré-existente.
 
 ---
 

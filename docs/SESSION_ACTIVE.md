@@ -54,13 +54,14 @@ as crates-nó `ph2d-node-fx-glow` (FX de passe: RT HDR, mip bloom COD/Jimenez, t
 (o canal por onde o que o APP possui entra no grafo) · o **W4.T4** (timeline docada no Motion) ·
 e os docs de decisão 63/64/66/67. Tag: **`wip/motion-value-2026-07-15`**.
 
-> ⚠️ **NÃO rebasear os 17 commits.** O contrato congelado não mudou desde 14/07
-> (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`), então as 3 crates-nó entram como **drop-crates**
-> — não existem no `main`, conflito zero. O que **não** é mecânico é o `external.rs`: ele vive
-> dentro do `cook.rs`, que as linhas de GPU **reconstruíram** desde então (grid · reduces · luts ·
-> o caminho GPU-resident). A rota é reabrir como linha usando os commits antigos de **referência,
-> não de base** — e o doc 66 já declarou FALSA uma premissa de FX de passe uma vez, então replayar
-> um desenho de julho sobre outro substrato é como se planta a segunda.
+> ⚠️ **Quem reabrir começa por
+> [`HANDOFF_REABERTURA_line_motion_value_2026-07-25.md`](HANDOFF_REABERTURA_line_motion_value_2026-07-25.md)**
+> — ele traz a distância até o `main` **medida** (o foundational que esta linha toca quase não se
+> moveu: o `cook.rs` ganhou **13 linhas**, e todo o trabalho de GPU entrou em módulos IRMÃOS), o
+> contrato congelado **inalterado** desde 14/07 (as 3 crates-nó entram como drop-crates, conflito
+> impossível), e a armadilha que nasceu em 25/07: **existem DOIS `motion_path_smoke.rs`** — o Motion
+> Path da TIMELINE (ADR-0141, no `main`) e o nó `motion.path` (aqui). Mesmo nome, features sem
+> relação; a resolução é renomear, nunca fundir.
 
 **`line/cook-parallel` foi DESCARTADA (2026-07-25)** — estava subsumida: o rayon no cook, o
 `cook_determinism.rs` e o ADR de kernel-side-metadata já estão no `main`, levados adiante pela

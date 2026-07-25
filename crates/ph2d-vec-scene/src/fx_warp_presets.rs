@@ -44,69 +44,11 @@ const MAX_SAMPLES: usize = 4096;
 /// Duas amostras mais próximas do que esta fração do caminho são o mesmo sítio (a segunda cai).
 const MERGE_FRACTION: f64 = 1e-6;
 
-/// **Os estilos de Warp.** A ordem é a das entradas no menu Add ([`crate::effect::PathEffect`]).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum WarpStyle {
-    /// Arqueia a forma — o meio sobe/desce em relação às pontas (o *Arc/Arch*).
-    Arc,
-    /// Abaula/aperta os quatro lados de uma vez (o *Bulge*, a almofada).
-    Bulge,
-    /// Uma onda senoidal única ao longo do eixo x (o *Wave*, o S).
-    Wave,
-    /// Lente esférica: o centro incha e a borda encolhe (o *Fisheye*).
-    Fisheye,
-    /// Inclina a forma da esquerda para a direita (o *Rise*, a perspectiva/cisalhamento).
-    Rise,
-}
-
-impl WarpStyle {
-    /// Todos os estilos, na ordem do menu — a fonte única do menu Add e do `from_kind`.
-    pub const ALL: &'static [WarpStyle] = &[
-        WarpStyle::Arc,
-        WarpStyle::Bulge,
-        WarpStyle::Wave,
-        WarpStyle::Fisheye,
-        WarpStyle::Rise,
-    ];
-
-    /// O nome que o painel mostra (o `label` do efeito sai daqui).
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            WarpStyle::Arc => "Arc",
-            WarpStyle::Bulge => "Bulge",
-            WarpStyle::Wave => "Wave",
-            WarpStyle::Fisheye => "Fisheye",
-            WarpStyle::Rise => "Rise",
-        }
-    }
-
-    /// O deslocamento em espaço NORMALIZADO `[-1, 1]²`. `b` é a dobra (Bend) em `[-1, 1]`.
-    ///
-    /// Cada fórmula é fechada e distinta; nenhuma é o gizmo (uma escala uniforme não é um efeito).
-    fn deform(self, u: f64, v: f64, b: f64) -> (f64, f64) {
-        match self {
-            // O meio (`u≈0`) levanta `b`; as pontas (`|u|≈1`) ficam — o arco.
-            WarpStyle::Arc => (u, v + b * (1.0 - u * u)),
-            // Cada eixo escala pelo quão CENTRAL é o outro ⇒ os quatro lados abaúlam juntos
-            // (`b>0`) ou apertam (`b<0`). O centro é o ponto fixo.
-            WarpStyle::Bulge => (u * (1.0 + b * (1.0 - v * v)), v * (1.0 + b * (1.0 - u * u))),
-            // Uma onda inteira ao longo de x: cada coluna sobe por `b·sin(π·u)`.
-            WarpStyle::Wave => (u, v + b * (std::f64::consts::PI * u).sin()),
-            // Escala radial que decai com o raio, NORMALIZADO pelo canto (`√2` na caixa
-            // unitária): o centro estica por `1+b`, o CANTO fica, e as bordas abaúlam no meio —
-            // um barril. ⚠️ Normalizar por `1` (não `√2`) deixava a silhueta inerte: o contorno
-            // de um quadrado vive todo em `r ≥ 1`, então o clamp o congelava.
-            WarpStyle::Fisheye => {
-                let r = (u * u + v * v).sqrt();
-                let s = 1.0 + b * (1.0 - (r / std::f64::consts::SQRT_2).min(1.0));
-                (u * s, v * s)
-            }
-            // Cisalhamento vertical linear em x — a forma sobe da esquerda para a direita.
-            WarpStyle::Rise => (u, v + b * u),
-        }
-    }
-}
+/// **Os estilos de Warp vêm do CATÁLOGO ÚNICO** [`ph2d_warp_style::WarpStyle`] — a MESMA lista que
+/// os presets do Envelope, para os dois não divergirem (Enio 2026-07-25). O efeito usa o estilo como
+/// CAMPO ([`WarpStyle::deform`]); o Envelope, como gaiola (`WarpStyle::cage`). São 9: Arc, ArcUpper,
+/// ArcLower, Bulge, Flag, Wave, Squeeze, Fisheye, Rise.
+pub use ph2d_warp_style::WarpStyle;
 
 /// **Os parâmetros de um Warp.** Neutro em `bend == 0`.
 ///

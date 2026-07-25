@@ -163,21 +163,23 @@ fn the_distortion_composes_with_the_bend() {
     );
 }
 
-/// **Todo estilo DEFORMA a silhueta, e os cinco dão resultados DIFERENTES** — senão seriam
-/// nomes diferentes para o mesmo efeito (ou para o gizmo, que uma escala uniforme seria).
+/// **Todo estilo DEFORMA a silhueta, e os NOVE dão resultados DIFERENTES** — senão seriam nomes
+/// diferentes para o mesmo efeito.
 ///
-/// ⚠️ Mutação: qualquer `deform` colapsar na identidade ⇒ o bbox não muda ⇒ RED; dois estilos
-/// com a mesma fórmula ⇒ os verts coincidem ⇒ RED.
+/// ⚠️ O oráculo de "deformou" é *os VÉRTICES mudaram*, não o bbox: o **Squeeze** afina a cintura
+/// e deixa as QUINAS onde estão, então o bbox fica igual enquanto a silhueta muda (um bbox como
+/// oráculo o daria como inerte — falso). Mutação: `deform` colapsar na identidade ⇒ verts iguais
+/// à fonte ⇒ RED; dois estilos com a mesma fórmula ⇒ os verts coincidem ⇒ RED.
 #[test]
 fn every_style_bends_the_shape_and_the_styles_differ() {
-    let src = bbox(&square().verts);
+    let src = square();
     let mut seen: Vec<Vec<VecVertex>> = Vec::new();
     for &style in WarpStyle::ALL {
         let out = warp(style, 50.0);
         assert_ne!(
-            bbox(&out),
-            src,
-            "{}: bend 50 não mudou o bbox — a silhueta ficou igual",
+            out,
+            src.verts,
+            "{}: bend 50 não mudou os vértices — a silhueta ficou igual",
             style.label()
         );
         for prev in &seen {

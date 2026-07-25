@@ -568,9 +568,10 @@ pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects"
 ///
 /// ⚠️ Tem de ser `>=` a `PathEffect::KINDS.len()` do motor, senão os últimos tipos ficam
 /// inalcançáveis no menu Add (o `.take(MAX_FX_KINDS)` os corta). Gate em
-/// `ph2d_vec_scene::effect::tests::the_engine_and_panel_agree_on_the_kind_ceiling`. Passou de 8
-/// para 9 com a família Warp (Arc/Bulge/Wave/Fisheye/Rise).
-pub const MAX_FX_KINDS: usize = 9;
+/// `ph2d_vec_scene::effect::tests::the_engine_and_panel_agree_on_the_kind_ceiling`. 8→9 com a
+/// família Warp (Arc/Bulge/Wave/Fisheye/Rise); 9→13 com o catálogo ÚNICO (Enio 2026-07-25), que
+/// alinhou a lista do Warp à do Envelope: 4 base + 9 estilos.
+pub const MAX_FX_KINDS: usize = 13;
 /// O teto de efeitos numa pilha.
 pub const MAX_FX_ROWS: usize = 4;
 /// O teto de parâmetros por efeito.

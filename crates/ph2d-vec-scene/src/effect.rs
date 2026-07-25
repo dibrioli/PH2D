@@ -286,13 +286,18 @@ impl PathEffect {
         "Zig Zag",
         "Repeater",
         "Pucker & Bloat",
-        // ⚠️ Os cinco warps DEPOIS dos quatro base, na ordem de [`crate::fx_warp_presets::
-        // WarpStyle::ALL`]. Não são uma 2ª lista solta: o gate `every_effect_kind_is_reachable`
-        // exige `from_kind(i).label() == KINDS[i]`, e o `label` de um Warp É o da `WarpStyle` —
-        // um typo aqui fica VERMELHO.
+        // ⚠️ Os NOVE warps do catálogo ÚNICO, DEPOIS dos quatro base, na ordem de
+        // [`ph2d_warp_style::WarpStyle::ALL`] (a MESMA lista que os presets do Envelope). Não são
+        // uma 2ª lista solta: o gate `every_effect_kind_is_reachable` exige
+        // `from_kind(i).label() == KINDS[i]`, e o `label` de um Warp É o da `WarpStyle` — um typo
+        // aqui fica VERMELHO. (Uma tabela por-KIND ainda; o dropdown de estilo é a próxima fatia.)
         "Arc",
+        "Arc Upper",
+        "Arc Lower",
         "Bulge",
+        "Flag",
         "Wave",
+        "Squeeze",
         "Fisheye",
         "Rise",
     ];

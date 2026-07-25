@@ -19,3 +19,7 @@ serde = { version = "1", features = ["derive"] }
 # Persistência (ADR-0108 Fase 2): save/load da cena via postcard (mesmo wire
 # format canônico do resto do repo). `alloc` p/ to_allocvec.
 postcard = { version = "1", features = ["alloc"] }
+# O catálogo ÚNICO de estilos de warp (Enio 2026-07-25): o efeito Warp e os presets
+# do Envelope re-exportam o MESMO `WarpStyle`, então não podem divergir. Folha pura
+# (só serde) — não fere a pureza da cena.
+ph2d-warp-style = { path = "../ph2d-warp-style" }

@@ -381,8 +381,8 @@ fn the_curve_box_hugs_the_cooked_shape_and_an_empty_one_has_none() {
 /// número LITERAL e a mensagem diz onde está o outro lado — o mesmo padrão do teto de parâmetros.
 #[test]
 fn the_engine_and_panel_agree_on_the_kind_ceiling() {
-    // `ph2d_editor_core::ids::MAX_FX_KINDS`, em ids/chrome/vector.rs.
-    const PANEL_MAX_FX_KINDS: usize = 9;
+    // `ph2d_editor_core::ids::MAX_FX_KINDS`, em ids/chrome/vector.rs (9→13 com o catálogo único).
+    const PANEL_MAX_FX_KINDS: usize = 13;
     assert!(
         PathEffect::KINDS.len() <= PANEL_MAX_FX_KINDS,
         "o motor publica {} tipos e o menu Add do painel só regista {PANEL_MAX_FX_KINDS} \

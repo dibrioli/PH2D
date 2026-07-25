@@ -30,9 +30,17 @@ fn the_two_sections_read_the_same_catalogue() {
     assert_eq!(effect.len(), 9, "o catálogo devia ter 9 estilos");
 }
 
-/// **O menu Add do efeito Warp lista exatamente os rótulos do catálogo** — a porção warp de
-/// `PathEffect::KINDS` (depois dos 4 base) é `WarpStyle::ALL.map(label)`, byte a byte. Um typo em
-/// `KINDS` ou uma reordenação de `WarpStyle` sangra aqui.
+/// **O menu Add do efeito Warp lista exatamente os rótulos do catálogo** — os rótulos de
+/// `WarpStyle::ALL` aparecem em `PathEffect::KINDS` **contíguos, na ordem, exatamente uma vez**.
+/// Um typo em `KINDS` ou uma reordenação de `WarpStyle` sangra aqui.
+///
+/// ⚠️ **A janela é LOCALIZADA, nunca posicional.** A versão anterior lia a CAUDA de `KINDS`
+/// (`&kinds[kinds.len() - labels.len()..]`) — verdade só enquanto o warp fosse a ÚLTIMA família,
+/// e essa premissa expirou no instante em que Falloff/Twist/Knot foram apendados depois dele,
+/// na MESMA linha. O produto estava certo (o bloco segue contíguo em `WARP_BASE = 4`); quem
+/// envelheceu foi o proxy — e ele já contradizia o próprio docstring, que dizia *"depois dos 4
+/// base"* enquanto o código media do fim. Achar o bloco em vez de assumir onde ele está torna o
+/// gate imune ao próximo apêndice, sem afrouxar nada ([[reference_topic_gate_discipline]]).
 #[test]
 fn the_add_menu_matches_the_catalogue() {
     let labels: Vec<&'static str> = WarpStyle::ALL.iter().map(|s| s.label()).collect();
@@ -41,10 +49,13 @@ fn the_add_menu_matches_the_catalogue() {
         kinds.len() >= labels.len(),
         "KINDS tem menos entradas que estilos de warp"
     );
-    let warp_portion = &kinds[kinds.len() - labels.len()..];
+    let occurrences = kinds
+        .windows(labels.len())
+        .filter(|w| *w == labels.as_slice())
+        .count();
     assert_eq!(
-        warp_portion,
-        labels.as_slice(),
-        "o menu Add do Warp não bate com o catálogo (a porção warp de KINDS ≠ WarpStyle::ALL)"
+        occurrences, 1,
+        "o catálogo do Warp tem de aparecer em KINDS contíguo, na ordem de WarpStyle::ALL e \
+         EXATAMENTE uma vez — achei {occurrences}.\n  KINDS     = {kinds:?}\n  catálogo  = {labels:?}"
     );
 }

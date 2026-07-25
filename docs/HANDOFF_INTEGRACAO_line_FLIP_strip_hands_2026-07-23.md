@@ -1,5 +1,60 @@
 # Handoff de INTEGRAÇÃO — `line/FLIP` → `main` (a tira ganha MÃOS, 2026-07-23)
 
+## §0 — 🟢 GO: LUZ VERDE PARA MESCLAR (Enio, 2026-07-25)
+
+**Ordem explícita do Enio:** *"smoke ok. Vamos integrar tudo ao main."* Todos os smokes
+desta jornada foram aprovados (o último: o pincel pontilhado com espaçamento relativo à
+espessura + disco Euclidiano + o slider vivo — §2.8). A linha está **FECHADA**; o
+implementador escreveu este handoff e PAROU (CLAUDE.md §0.7). **Você, integrador, mescla.**
+
+### O caso é o mais simples possível: FAST-FORWARD LIMPO
+`line/FLIP` está **32 commits à frente** e **0 atrás** de `main` (`merge-base == main == df91ef6ec`).
+Não há foundational a fundir, nem rebase, nem conflito. **Confira antes de mesclar** (o `main`
+pode ter andado se outra linha integrou primeiro — aí caia na rota de conflito da DIRETRIZ §1.5.5
+e ⚠️ **RENUMERE os schemas**, ver o gotcha de schema abaixo).
+
+### Passos (rode da árvore PRIMÁRIA `/home/enio/Documentos/Projetos/PH2D`)
+```bash
+cd /home/enio/Documentos/Projetos/PH2D
+git status --short                              # tem de estar LIMPA
+git rev-list --count HEAD..line/FLIP            # =0? então é ff. Se >0, PARE (main andou)
+git merge --ff-only line/FLIP                   # mescla
+cargo check --workspace                         # sanidade da árvore combinada
+./scripts/ship.sh                               # paridade EXATA com o CI — corrija TODO ✗ (drena latentes, 2-4 iterações)
+git push origin main                            # 1× por jornada; babysit até success
+```
+Link do CI: `https://github.com/dibrioli/PH2D/actions` (`gh run watch`).
+
+### ⚠️ TRÊS gotchas que o `ship.sh` NÃO pega sozinho
+1. **Os gates GPU do Flip são `#[ignore]`** — precisam de um adapter e rodam com `--ignored`.
+   O `ship.sh`/CI não os roda. Rode-os você, na RTX, para confirmar o pincel pontilhado:
+   `cargo test -p ph2d-flip-render --test gpu_render --release -- --ignored` (**20/20 na RTX**,
+   já conferido pelo implementador). Sem adapter, eles fazem *skip gracioso* (não falham).
+2. **O `ph2d-flip-colorize` PANICA em build DEBUG** e passa em `--release`/`ci-test` (a
+   `voronoi.rs` estoura em `y==0`; memória [[project_flip_module_grease_pencil_2d]]). O
+   `ship.sh` usa `--cargo-profile ci-test` (opt), então passa — **não rode a suíte dele em
+   debug e conclua que está quebrada**.
+3. **Os schemas desta linha são `PROJECT_SCHEMA=30 · FLIP_SCHEMA=9 · VEC_SCENE=13`** (pin em
+   `project_tests.rs:422`, gate `a_schema_bump_anywhere_must_bump_the_project_schema`). O `30`
+   parte do `29` do `main`. Se OUTRA linha integrou e levou o `PROJECT_SCHEMA` além de 29, o
+   número se **CONTA, não se escolhe** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]):
+   bumpe para `max(nºs em disputa)+1` e ajuste o pin (30→N) — o `FLIP_SCHEMA=9` é blob-próprio
+   (não colide) e o `VEC_SCENE=13` é herdado do fork (não muda).
+
+### Checklist verde já rodado pelo implementador (na worktree, antes deste handoff)
+- `fmt --check` limpo · LOC caps OK (todos os arquivos tocados sob 600/700) ·
+  `architecture_panel_wiring_parity` · `node_id_collisions` · `no_downcast…` ·
+  `file_loc_caps` (shell) · `a_schema_bump…` (pin 30/9/13) — **todos verdes**.
+- Suítes: `ph2d-flip` 148 · `ph2d-tool-flip` 24 · `ph2d-panel-flip` seam 34 · `ph2d-flip-render` lib 17
+  + **GPU 20/20** (`--ignored`, RTX) — verdes. Shell compila.
+
+### Smokes para o Enio conferir no `main` pós-merge (todos já aprovados na linha)
+`PH2D_FLIP_STRIP_SMOKE=1` (a tira: mover/esticar/pin) · `PH2D_FLIP_TWEEN_SMOKE=1` /
+`_PAIRS_SMOKE=1` / `_PHASE_SMOKE=1` (tween v2) · `PH2D_FLIP_TWEEN_TORSION_SMOKE=1` (§2.7) ·
+**`PH2D_FLIP_TIP_SMOKE=1`** (§2.8 — o pincel pontilhado; `--release`). Todos com `--release`.
+
+---
+
 > **Para o agente INTEGRADOR.** A linha fechou a wave *"a tira de frames ganha autoria
 > direta"*. O implementador parou aqui (CLAUDE.md §0.7).
 >

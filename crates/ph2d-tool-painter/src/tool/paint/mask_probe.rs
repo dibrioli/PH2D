@@ -563,9 +563,16 @@ fn probe_mask_per_layer_colour_route() {
     arm(&mut scrub);
     scrub.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Down));
     for leg in 0..4u32 {
-        let (p, q) = if leg % 2 == 0 { (60.0, 200.0) } else { (200.0, 60.0) };
+        let (p, q) = if leg % 2 == 0 {
+            (60.0, 200.0)
+        } else {
+            (200.0, 60.0)
+        };
         for i in 1..=25u32 {
-            scrub.on_canvas_pointer(cp([128.0, p + (q - p) * (i as f32) / 25.0], PointerPhase::Move));
+            scrub.on_canvas_pointer(cp(
+                [128.0, p + (q - p) * (i as f32) / 25.0],
+                PointerPhase::Move,
+            ));
         }
     }
     scrub.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Up));

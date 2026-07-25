@@ -177,3 +177,82 @@ fn the_drag_writes_through_the_documents_single_door() {
          reescrevem as keys"
     );
 }
+
+/// **O botão DIREITO sobre a âncora abre o menu de tipo de alça** (Corner/Smooth/Symmetric,
+/// ADR-0141) — o pedido do Enio. É um braço Secondary-Down (o Primary é o arrasto), e a
+/// identidade da âncora VIAJA no menu (`target`+`i`), porque uma âncora não tem seleção
+/// persistente que o drain possa recuperar depois. Nenhum teste de unidade pega a costura
+/// do ponteiro (precisa de `App`+janela).
+#[test]
+fn the_secondary_click_opens_the_anchor_handle_menu() {
+    let disp = shell("input_dispatch.rs");
+    let call = disp
+        .find("self.motion_path_open_anchor_menu(evt.x, evt.y)")
+        .expect("o Secondary-Down não abre o menu da âncora");
+    // O guard do braço é a tupla `(PointerButton::_, PointerKind::_)` imediatamente antes da
+    // chamada — a MESMA unidade sintática, não uma distância entre coisas que se movem
+    // ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]). Ancorado no
+    // token do guard e não numa janela fixa.
+    let guard_at = disp[..call]
+        .rfind("(ph2d_host::PointerButton::")
+        .expect("o guard do braço");
+    let guard = &disp[guard_at..call];
+    assert!(
+        guard.contains("Secondary") && guard.contains("Down"),
+        "o menu da âncora não está sob um braço Secondary-Down — o botão errado o abriria"
+    );
+    // O opener: filtra por ÂNCORA (não pela ponta de tangente), abre o menu certo pela porta
+    // do editor-core, e carrega a identidade da âncora — tudo pelo hit-test COMPARTILHADO.
+    let body_at = disp
+        .find("fn motion_path_open_anchor_menu")
+        .expect("o opener");
+    let body = &disp[body_at..(body_at + 1400).min(disp.len())];
+    assert!(
+        body.contains("MotionPathGrab::Anchor"),
+        "o opener não filtra por ÂNCORA — abriria sobre uma ponta de tangente também"
+    );
+    assert!(
+        body.contains("ContextMenuKind::MotionPathAnchor"),
+        "o opener não abre o menu MotionPathAnchor"
+    );
+    assert!(
+        body.contains("target.get()") && body.contains("i as u32"),
+        "o opener não carrega a identidade da âncora (target, i) no menu — o drain não \
+         saberia QUAL âncora converter"
+    );
+    assert!(
+        body.contains("motion_path_hit"),
+        "o opener não usa o hit-test COMPARTILHADO (`motion_path_hit`) — pintura e picking \
+         divergiriam sobre onde a âncora está"
+    );
+}
+
+/// **O drain converte a âncora escolhida** — o `render_loop` consome o pick que o chrome
+/// parkou (`pending_motion_path_handle`), mapeia o wire u8 nos três tipos e chama a porta do
+/// documento, num passo de undo próprio. Mutar qualquer metade deixa a workspace verde (o
+/// laço de render precisa de janela).
+#[test]
+fn the_render_loop_drains_the_pick_and_converts_the_anchor() {
+    let rl = shell("render_loop/mod.rs");
+    let take = rl
+        .find("pending_motion_path_handle.take()")
+        .expect("o drain não consome `pending_motion_path_handle` — o pick nunca chega ao doc");
+    let call = rl
+        .find("set_path_tangent_kind(")
+        .expect("o drain não chama `set_path_tangent_kind` — o menu não converteria nada");
+    assert!(
+        take < call,
+        "a conversão ({call}) vem antes de consumir o pick ({take}) — o drain está fora de ordem"
+    );
+    // O corpo do drain: os três tipos do wire u8 + o passo de undo (o irmão do arrasto).
+    let body = &rl[take..(call + 240).min(rl.len())];
+    for (needle, what) in [
+        ("TangentKind::Corner", "o wire 0 não vira Corner"),
+        ("TangentKind::Symmetric", "o wire 2 não vira Symmetric"),
+        ("TangentKind::Smooth", "o default não vira Smooth"),
+        ("history.begin", "a conversão não ABRE um passo de undo"),
+        ("commit_if_changed", "a conversão não FECHA o passo de undo"),
+    ] {
+        assert!(body.contains(needle), "{what}");
+    }
+}

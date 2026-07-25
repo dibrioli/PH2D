@@ -331,6 +331,12 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_CURVE_HANDLE_VECTOR, "Vector", None),
             (ids::CTX_MENU_CURVE_HANDLE_AUTO, "Auto", None),
         ],
+        // On-canvas motion-path anchor handle types (the vector Node trio, ADR-0141).
+        ContextMenuKind::MotionPathAnchor { .. } => &[
+            (ids::CTX_MENU_PATH_HANDLE_CORNER, "Corner", None),
+            (ids::CTX_MENU_PATH_HANDLE_SMOOTH, "Smooth", None),
+            (ids::CTX_MENU_PATH_HANDLE_SYMMETRIC, "Symmetric", None),
+        ],
         // Timeline key: the interpolation leaving it, and the family submenu the
         // three cascade rows open. Both tables live in `ids` so the overlay, the
         // populate pass and the shell's resolver can never drift apart.

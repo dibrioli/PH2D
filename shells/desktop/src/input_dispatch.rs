@@ -1787,6 +1787,45 @@ impl App {
         true
     }
 
+    /// Secondary Down sobre uma **âncora** da trajetória: abre o menu de tipo de alça
+    /// (Corner / Smooth / Symmetric) no cursor (ADR-0141) — o espelho do menu de ponto de
+    /// curva do Painter. Devolve `true` (consumindo) só quando uma âncora foi atingida; uma
+    /// ponta de tangente ou tela vazia cai fora (pan / outros handlers).
+    ///
+    /// ⚠️ A identidade da âncora VIAJA no `ContextMenuKind` (`{target, i}`), porque uma
+    /// âncora de caminho não tem seleção persistente que o shell possa recuperar depois — o
+    /// chrome a lê de volta do `last_context_menu` e o drain (`render_loop`) a converte.
+    fn motion_path_open_anchor_menu(&mut self, x: f32, y: f32) -> bool {
+        use crate::render_loop::motion_path_overlay::{MotionPathGrab, motion_path_hit};
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let selected = gfx
+            .hero_screen
+            .as_ref()
+            .and_then(|h| h.gizmo.iter_selected().next());
+        // Só a ÂNCORA (o quadrado) abre o menu — a ponta de tangente é para arrastar, e o
+        // tipo de alça é propriedade do NÓ, não da alça.
+        let Some(MotionPathGrab::Anchor { target, i }) =
+            motion_path_hit(&self.timeline.doc, selected, &gfx.camera, gfx.surface.size(), x, y)
+        else {
+            return false;
+        };
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return false;
+        };
+        hero.store
+            .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
+                x,
+                y,
+                kind: ph2d_editor::interaction::ContextMenuKind::MotionPathAnchor {
+                    target: target.get(),
+                    i: i as u32,
+                },
+            });
+        true
+    }
+
     /// Leva o que foi agarrado (âncora ou alça) para o cursor. No-op (`false`) sem um
     /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
@@ -3462,6 +3501,13 @@ impl App {
             // handle-type menu (Vector / Auto). No-op off a point.
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
                 if self.painter_falloff_open_point_menu(evt.x, evt.y) =>
+            {
+                return;
+            }
+            // On-canvas motion-path anchor: right-click a trajectory node → open the
+            // handle-type menu (Corner / Smooth / Symmetric, ADR-0141). No-op off an anchor.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.motion_path_open_anchor_menu(evt.x, evt.y) =>
             {
                 return;
             }

@@ -1110,6 +1110,27 @@ impl crate::App {
             let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
             self.timeline_intents.extend(picked);
         }
+        // The on-canvas motion-path anchor handle-type pick (ADR-0141): editor-core parked
+        // `(target bits, anchor index, kind u8)` on the hero when the artist chose Corner /
+        // Smooth / Symmetric from the anchor's right-click menu. Convert that anchor's
+        // tangents here — upstream of the bridge, so the trajectory redraws THIS frame — in
+        // its own undo step (the sibling of the drag's `history.begin`/`commit_if_changed`).
+        if let Some((bits, i, kind)) = hero_screen
+            .as_mut()
+            .and_then(|h| h.pending_motion_path_handle.take())
+        {
+            let target = ph2d_timeline::AnimTarget::new(bits);
+            let tk = match kind {
+                0 => ph2d_timeline::TangentKind::Corner,
+                2 => ph2d_timeline::TangentKind::Symmetric,
+                _ => ph2d_timeline::TangentKind::Smooth,
+            };
+            self.timeline.history.begin(&self.timeline.doc);
+            self.timeline
+                .doc
+                .set_path_tangent_kind(target, i as usize, tk);
+            self.timeline.history.commit_if_changed(&self.timeline.doc);
+        }
         // K (capture-the-pose): a one-shot AddKey on every bound track of the
         // selected sprite (its own undo step). AutoKey — the pose-following
         // that keys ANY UI edit — is a single pass AFTER all the frame's

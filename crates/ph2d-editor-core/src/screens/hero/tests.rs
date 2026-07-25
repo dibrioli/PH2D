@@ -499,6 +499,41 @@ fn curve_point_handle_menu_routes_each_kind_to_pending_wire() {
 }
 
 #[test]
+fn motion_path_anchor_menu_routes_each_kind_carrying_the_anchor() {
+    crate::test_support::ensure_panel_registry();
+    // Each entry parks `(target bits, anchor index, wire u8)` in `pending_motion_path_handle`
+    // (Corner/Smooth/Symmetric = 0/1/2) and closes the menu; the shell drains it and calls
+    // `TimelineDoc::set_path_tangent_kind`. Unlike the curve/falloff menus, the anchor identity
+    // travels IN the menu kind (a path anchor has no persistent selection to recall) — so the
+    // gate pins that `(77, 3)` survives the round-trip, not just the kind.
+    let cases = [
+        (ids::CTX_MENU_PATH_HANDLE_CORNER, 0u8),
+        (ids::CTX_MENU_PATH_HANDLE_SMOOTH, 1),
+        (ids::CTX_MENU_PATH_HANDLE_SYMMETRIC, 2),
+    ];
+    for (entry_id, expected) in cases {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::MotionPathAnchor { target: 77, i: 3 },
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(entry_id));
+        assert!(consumed, "path-handle entry click should be consumed");
+        assert_eq!(
+            hero.pending_motion_path_handle.take(),
+            Some((77, 3, expected)),
+            "entry must park (target, i, kind) — the anchor identity travels with the menu"
+        );
+        assert!(
+            hero.store.context_menu().is_none(),
+            "menu must close after pick"
+        );
+    }
+}
+
+#[test]
 fn simple_row_context_menu_items_are_populate_registered() {
     // Regression gate for the Painter Falloff "Vector handle does nothing" bug.
     //
@@ -525,6 +560,10 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC,
         ids::CTX_MENU_CURVE_HANDLE_VECTOR,
         ids::CTX_MENU_CURVE_HANDLE_AUTO,
+        // On-canvas motion-path anchor handle types (the vector Node trio, ADR-0141).
+        ids::CTX_MENU_PATH_HANDLE_CORNER,
+        ids::CTX_MENU_PATH_HANDLE_SMOOTH,
+        ids::CTX_MENU_PATH_HANDLE_SYMMETRIC,
         // HierarchyRow items — every entry of the per-row menu (`context_menu_overlay`,
         // `ContextMenuKind::HierarchyRow`). "Use as Brush Shape" shipped dead because it was
         // hit-painted but OMITTED here (the Grain twin was registered) — Enio 2026-06-25.

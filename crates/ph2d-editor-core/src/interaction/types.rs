@@ -224,6 +224,12 @@ pub enum ContextMenuKind {
     /// it and calls `PainterTool::set_curve_handle_kind` (crosses as a u8 since
     /// editor-core can't depend on the tool crate).
     CurvePointHandle,
+    /// Right-clicked an on-canvas **motion-path anchor** (ADR-0141): Corner / Smooth /
+    /// Symmetric, mirroring the vector Node `VertexKind`. The anchor has no persistent
+    /// selection, so its identity rides in the menu (`target` bits + index `i`, like
+    /// `TimelineTrackPath`); the chrome handler parks `(target, i, kind)` (wire u8 `0/1/2`)
+    /// in `HeroScreen.pending_motion_path_handle` for the shell → `set_path_tangent_kind`.
+    MotionPathAnchor { target: u64, i: u32 },
     /// Right-clicked a timeline key (its dope-sheet diamond or its graph anchor),
     /// or a Summary column. Menu offers the presets for the interpolation LEAVING
     /// the keys in `scope` (W3.E4): Hold / Linear / three easing cascades /

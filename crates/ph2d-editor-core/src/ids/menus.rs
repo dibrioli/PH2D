@@ -183,6 +183,11 @@ pub const CTX_MENU_CURVE_HANDLE_ALIGNED: NodeId = hash_node_id("ctx_menu_curve_h
 pub const CTX_MENU_CURVE_HANDLE_SYMMETRIC: NodeId = hash_node_id("ctx_menu_curve_handle_symmetric");
 pub const CTX_MENU_CURVE_HANDLE_VECTOR: NodeId = hash_node_id("ctx_menu_curve_handle_vector");
 pub const CTX_MENU_CURVE_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_curve_handle_auto");
+
+// On-canvas motion-path anchor handle types (ADR-0141), the vector Node trio.
+pub const CTX_MENU_PATH_HANDLE_CORNER: NodeId = hash_node_id("ctx_menu_path_handle_corner");
+pub const CTX_MENU_PATH_HANDLE_SMOOTH: NodeId = hash_node_id("ctx_menu_path_handle_smooth");
+pub const CTX_MENU_PATH_HANDLE_SYMMETRIC: NodeId = hash_node_id("ctx_menu_path_handle_symmetric");
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = hash_node_id("ctx_scene_search");
 pub const CTX_SCENE_ROW_0: NodeId = hash_node_id("ctx_scene_row_0");

@@ -59,6 +59,7 @@ mod flip_toggle;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
+mod motion_path_handle;
 mod motion_toggle;
 mod new_image;
 mod palette_rename;
@@ -123,6 +124,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
         || curve_point_handle::apply(hero, event)
+        || motion_path_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
         || flip_toggle::apply(hero, event)

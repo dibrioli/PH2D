@@ -168,6 +168,11 @@ pub struct HeroScreen {
     /// Pending on-canvas Curve / Free Hand point handle kind from the right-click menu (wire u8 `0`=Free /
     /// `1`=Aligned / `2`=Vector / `3`=Auto); `.take()`n by the shell onto `set_curve_handle_kind`.
     pub pending_curve_point_handle: Option<u8>,
+    /// Pending on-canvas motion-path anchor handle type from its right-click menu (ADR-0141):
+    /// `(target bits, anchor index, kind wire u8 `0`=Corner / `1`=Smooth / `2`=Symmetric)`. Unlike the
+    /// curve/falloff slots, it carries the anchor identity because a motion-path anchor has no persistent
+    /// selection; `.take()`n by the shell onto `TimelineDoc::set_path_tangent_kind`.
+    pub pending_motion_path_handle: Option<(u64, u32, u8)>,
     /// Pending timeline interpolation preset from the segment right-click menu
     /// (W3.E4); `.take()`n by the shell, which resolves it into a
     /// `TimelineIntent::SetInterp`.
@@ -254,6 +259,7 @@ impl HeroScreen {
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             pending_falloff_point_handle: None,
             pending_curve_point_handle: None,
+            pending_motion_path_handle: None,
             pending_timeline_interp: None,
         }
     }

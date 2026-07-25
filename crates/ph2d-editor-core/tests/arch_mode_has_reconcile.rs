@@ -197,6 +197,14 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
         "Painter multi-shape Operation mode (Overlay/Add/Remove): retags the active shape's op and \
          calls `refill_open_shape` to recompose the derived pixels (a boolean/offset result may change)",
     ),
+    (
+        "set_position_mode",
+        "separate_to_path",
+        "Timeline Position mode (ADR-0141): flipping Path <-> Separate axes CONVERTS the animation \
+         between representations — `separate_to_path`/`path_to_separate` carry the poses across and \
+         rewrite the entity's bindings + tracks, which IS the reconciliation (the two modes cannot \
+         coexist, so a flip is never a bare field write).",
+    ),
 ];
 
 #[test]

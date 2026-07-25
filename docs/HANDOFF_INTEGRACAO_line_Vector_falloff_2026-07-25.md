@@ -1,8 +1,15 @@
-# HANDOFF DE INTEGRAÇÃO — `line/Vector` · O FALLOFF (2026-07-25)
+# HANDOFF DE INTEGRAÇÃO — `line/Vector` · FALLOFF + TWIST (2026-07-25)
 
-**Estado:** linha FECHADA para esta wave, **pendente de smoke do Enio**, aguardando ordem
-EXPLÍCITA de integração. Commit local **`772f830eb`** em `line/Vector`. **NÃO integrei nem
-pushei** (§0.7 / [[feedback_integration_only_enio_command_end_of_all_lines]]).
+**Estado:** linha FECHADA para DUAS waves da mesma sessão, aguardando ordem EXPLÍCITA de
+integração. **NÃO integrei nem pushei** (§0.7 / [[feedback_integration_only_enio_command_end_of_all_lines]]).
+
+- **Wave 1 — o FALLOFF** (commit **`772f830eb`**): **smoke APROVADO pelo Enio.** Detalhe abaixo.
+- **Wave 2 — o TWIST** (commit **`afe16fce5`**): **pendente de smoke** (`PH2D_BUILD_SMOKE=29`). Seção
+  própria no fim deste documento.
+
+> Os números de commit e schema abaixo são da Wave 1; a Wave 2 **não move o schema** (variant
+> apendado, `PROJECT_SCHEMA` fica 29). As duas waves tocam o MESMO conjunto de arquivos
+> (`ph2d-vec-scene/src/effect*.rs`, `fx_warp_presets.rs`, `MAX_FX_KINDS`), então integram JUNTAS.
 
 ## O que é
 
@@ -109,3 +116,81 @@ antes de olhar.
   consome o campo (documentado).
 - O smoke mostra a modulação em Zig Zag (as duas formas de campo mais legíveis); Warp/Bloat ficam
   por conta dos gates. Se o Enio quiser ver o Bulge modulado ao vivo, é um `=28` com uma 4ª forma.
+
+---
+
+# WAVE 2 — O TWIST (commit `afe16fce5`, pendente de smoke)
+
+## O que é
+
+O **remoinho** — o último membro da família de path-operators do AE (ZigZag/Roughen/Bloat/Warp já
+existiam; era o único que faltava). Cada ponto gira em torno do centro por um ângulo que cresce com
+a distância: centro parado, borda gira o ângulo inteiro, ponta enrola mais — o *pinwheel* do
+*Distort & Transform > Twist* do Illustrator / *Twist* do AE. Um variant novo `PathEffect::Twist`,
+um param só (**Angle**, `-360..360` graus).
+
+## ⚠️ A cerca, e por que esta volta é legítima (LEIA antes de julgar)
+
+Houve um Twist **CORTADO em 2026-07-18** (a cerca vive no cabeçalho de `crates/ph2d-vec-scene/src/
+fx_warp.rs`): a 1ª versão mapeava só os pontos de controle (o *"lowpoly"*), e quatro tentativas com
+uma subdivisão adaptativa **anterior** rasgavam sobre formas com quinas — veredito de defeito do
+MODELO, e a cerca pedia *render-and-look, não um palpite* para reabrir.
+
+**Legitimidade desta volta, por construção:**
+1. **Esqueleto maduro.** Os presets de Warp (que POST-datam o corte) trouxeram um esqueleto de
+   reamostragem densa por ARCO + união com âncoras + Catmull-Rom que os campos não-afins usam SEM
+   rasgar. Extraí-o para a **porta única `fx_warp_presets::resample_displace`**; o Twist rida ele. O
+   `warp_contour` ficou **byte-idêntico** (os 9 goldens do warp passam — é *pure code motion*).
+2. **A sonda de olhar preenche em nonzero-winding** — uma silhueta auto-intersectada (o que um
+   twist forte faz de propósito) aparece TINTA CHEIA, não rasgada; o artefato de even-odd que
+   confundia o diagnóstico morreu.
+3. **Render-and-look feito.** `tests/fx_look.rs` ganhou duas linhas — Twist num **QUADRADO** (o caso
+   de falha documentado) e num círculo, 0→360°. O quadrado sai **pinwheel de tinta cheia** (não
+   facetado, não rasgado, sem buracos); o círculo continua círculo. É o que a cerca mandou provar.
+   Rodar: `PH2D_FX_LOOK_DIR=<dir> cargo test -p ph2d-vec-scene --test fx_look --release -- --ignored`.
+
+## Arquivos (todos no MESMO conjunto da Wave 1 — integram juntas)
+
+- **`src/fx_twist.rs`** (NOVO): `TwistSpec` (1 param) + `twist_contour` (rida `resample_displace`).
+- **`src/fx_twist_tests.rs`** (NOVO): 4 gates mutação-provados.
+- **`src/fx_warp_presets.rs`**: extraída a `resample_displace` (pub(crate)); `warp_contour`
+  byte-idêntico; nota do cabeçalho do Twist atualizada (a cerca apontava "não entra aqui ainda").
+- **`src/effect.rs`**: variant `Twist` apendado; `is_neutral`/`label`/`as_twist`/`as_twist_mut`/
+  `takes_falloff`(=true)/`from_kind`/`kind_index`/`apply`/`KINDS`(+1)/`TWIST_KIND` atualizados.
+- **`src/effect_params.rs`**: param **Angle** + `get`/`set`.
+- **`src/lib.rs`**: `pub mod fx_twist;`. **`src/effect_tests.rs`**: `PANEL_MAX_FX_KINDS` 17→18.
+- **`tests/fx_look.rs`**: as 2 linhas de render-and-look do Twist.
+- **`crates/ph2d-editor-core/src/ids/chrome/vector.rs`**: `MAX_FX_KINDS` **17→18** (append-only).
+- **`shells/desktop/src/twist_smoke.rs`** (NOVO) + `build_smoke.rs`/`main.rs`: `PH2D_BUILD_SMOKE=29`.
+
+## Contratos / schema — INTOCADOS
+
+`NodeOp`/`OpResolver`/`NodeManifest` intactos (Twist é dado de `VecPath.effects`). **ZERO bump:**
+variant apendado não move os índices postcard (`PROJECT_SCHEMA` **fica 29**, `VEC_SCENE` **fica 13**).
+
+## Gates (todos VERDES)
+
+- `ph2d-vec-scene`: **317 lib** (313 + 4 Twist) + reachability/neutral/round-trip/ceiling
+  auto-cobrem o Twist. Mutações: identidade → RED nos 2 gates de rotação; escala → RED no de
+  cisalhamento (provado e restaurado).
+- warp goldens (9, byte-identidade da extração), panel-vector (70), shell fx_bridge(19)+dispatch(9),
+  `file_loc_caps`+workspace LOC-cap, clippy `--all-targets` limpo, `cargo check --workspace` limpo.
+
+## Smoke
+
+```
+env PH2D_BUILD_SMOKE=29 cargo run -p ph2d-host-desktop --release
+```
+
+Três quadrados: **esquerda** Twist 90° (remoinho suave) · **meio (selecionado)** Twist 200° (o card
+Twist com o slider **Angle** na seção Effects — arraste e veja o giro apertar) · **direita** o MESMO
+Twist 200° precedido de um **Falloff Radial** (só o miolo gira, as quinas ficam) — o campo da Wave 1
+modulando o giro da Wave 2. Desligar o olho do Falloff devolve o remoinho cheio.
+
+## Aberto (deferido, com motivo)
+
+- **Um dropdown de forma para o Twist não faz sentido** (é 1 KIND, sem família — ao contrário de
+  Warp/Falloff). Um `center` autorável (offset do pivô, como o AE) seria um 2º param — só se pedido.
+- **Além de ~270° numa forma de quinas afiadas o twist fica extremo** (509° no canto a 360°) — é a
+  natureza de um twist forte, não um defeito; o slider vai a ±360 (uma volta), e a fidelidade da
+  reamostragem (`SAMPLES=128`) foi o recurso que definiu o teto, não um palpite.

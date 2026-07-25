@@ -5,7 +5,7 @@
 
 > ## O resumo
 >
-> **63 commits, seis waves, um só assunto de risco.** Cinco delas são perf/GPU e já têm handoff próprio
+> **~64 commits, seis waves, um só assunto de risco.** Cinco delas são perf/GPU e já têm handoff próprio
 > (§3); a sexta é a que o Enio smokou em 25/07 e é a única que **muda comportamento de produto**: a tinta
 > atravessando uma máscara emplumada saía **craquelada**, e a cura passou por duas rodadas —
 > (a) o `keep` deixou de ser composto **por batch** (a força da proteção era um fato sobre a taxa de
@@ -23,7 +23,7 @@
 |---|---|
 | branch | `line/Painter` |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits | **63** (`git log --oneline main..HEAD`) |
+| commits | **~64** — a fonte é `git rev-list --count main..HEAD`; ⚠️ **este handoff é um deles**, então um número cravado aqui envelhece no instante em que é commitado |
 | `main` à frente da base | **0 commits** ⇒ `git merge --ff-only line/Painter` |
 | superfície | **80 arquivos**, +10 823 / −777 |
 | HEAD | o tip da branch — um sha literal aqui se auto-invalidaria |
@@ -145,8 +145,11 @@ display é função pura do `keep`). Confirmado por render-and-look.
 | `arch_safe_clamp_only` | verde |
 | `typos` | **zero hits novos** (os 7 do `BUGS_painter.md` são falso-positivos de português **pré-existentes**, todos fora da entrada nova) |
 
-⚠️ **Flake conhecida e PRÉ-EXISTENTE:** `ph2d-timeline::nesting_clock the_cost_of_depth_is_linear_not_explosive`
-é gate de RAZÃO sensível a carga. Passa isolado; **re-rode sozinho antes de suspeitar do merge**.
+⚠️ **Flake conhecida e PRÉ-EXISTENTE — ela apareceu no fechamento desta linha, e a inocência é verificável:**
+`ph2d-timeline::nesting_clock the_cost_of_depth_is_linear_not_explosive` é gate de RAZÃO sensível a carga.
+Na varredura ela falhou uma vez e **passou isolada na sequência**; e esta linha toca **ZERO arquivos** em
+`ph2d-timeline` (`git diff --name-only main...HEAD -- crates/ph2d-timeline` = vazio). **Re-rode sozinho
+antes de suspeitar do merge.**
 
 ## 7. O smoke
 

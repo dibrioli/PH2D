@@ -45,15 +45,27 @@ O `cd` + `pwd` não é zelo: a janela abre na raiz (= `main`) e **o mesmo path r
 duas árvores** — editar a errada compila e commita sem erro
 ([`MODELO_TROCA_DE_AGENTE_NA_LINHA`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
 
-**Duas linhas carregam trabalho que NUNCA entrou no `main`** (confira com
-`git -C Worktrees/<linha> rev-list --count main..HEAD` — o número é a fonte, não esta linha):
+**UMA linha carrega trabalho que NUNCA entrou no `main`** (confira com
+`git -C Worktrees/line-motion-value rev-list --count main..HEAD` — o número é a fonte, não esta linha):
 
-| linha | commits fora do `main` (2026-07-25) |
-|---|---|
-| `line/motion-value` | **17** |
-| `line/cook-parallel` | **2** |
+**`line/motion-value` — 17 commits (2026-07-14/15), ~1158 atrás do `main`.** Existe **só** nela:
+as crates-nó `ph2d-node-fx-glow` (FX de passe: RT HDR, mip bloom COD/Jimenez, tint OKLCH),
+`ph2d-node-motion-delay` e `ph2d-node-motion-path` · o foundational **`ph2d-nodegraph::external`**
+(o canal por onde o que o APP possui entra no grafo) · o **W4.T4** (timeline docada no Motion) ·
+e os docs de decisão 63/64/66/67. Tag: **`wip/motion-value-2026-07-15`**.
 
-Rebasear essas duas sobre 1150+ commits **não é mecânico** — decisão do Enio antes de tocar.
+> ⚠️ **NÃO rebasear os 17 commits.** O contrato congelado não mudou desde 14/07
+> (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`), então as 3 crates-nó entram como **drop-crates**
+> — não existem no `main`, conflito zero. O que **não** é mecânico é o `external.rs`: ele vive
+> dentro do `cook.rs`, que as linhas de GPU **reconstruíram** desde então (grid · reduces · luts ·
+> o caminho GPU-resident). A rota é reabrir como linha usando os commits antigos de **referência,
+> não de base** — e o doc 66 já declarou FALSA uma premissa de FX de passe uma vez, então replayar
+> um desenho de julho sobre outro substrato é como se planta a segunda.
+
+**`line/cook-parallel` foi DESCARTADA (2026-07-25)** — estava subsumida: o rayon no cook, o
+`cook_determinism.rs` e o ADR de kernel-side-metadata já estão no `main`, levados adiante pela
+`line/gpu-nodes` (21/07), que ficou **à frente** (8 casos de teste contra os 2 dela). Worktree e
+branch removidas; o histórico vive na tag **`archive/cook-parallel-2026-07-15`**.
 
 > Os `target/` de todas as worktrees foram limpos no fim-de-dia de 2026-07-25 (389 GB): o
 > primeiro build de cada linha é **frio**, servido pelo `~/.cache/sccache` (~46 GB, quente —

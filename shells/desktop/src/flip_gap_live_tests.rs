@@ -37,15 +37,15 @@ fn canonical_gap_drawing() -> FlipDrawing {
     d
 }
 
-/// O helper do vão canônico está na lista?
-fn has_tip_pair(segments: &[ph2d_flip_fill::Closure]) -> bool {
-    segments.iter().any(|c| {
-        let (lo, hi) = if c.a.y < c.b.y {
-            (c.a, c.b)
+/// O helper do vão canônico está na lista — e é uma PONTE (as duas pontas reais)?
+fn has_tip_pair(segments: &[ph2d_flip_fill::GapHelper]) -> bool {
+    segments.iter().any(|h| {
+        let (lo, hi) = if h.seg.a.y < h.seg.b.y {
+            (h.seg.a, h.seg.b)
         } else {
-            (c.b, c.a)
+            (h.seg.b, h.seg.a)
         };
-        (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3
+        (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3 && h.a_is_tip && h.b_is_tip
     })
 }
 

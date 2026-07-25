@@ -783,30 +783,32 @@ fn the_preview_door_is_the_clicks_own_first_step() {
         ),
     ];
     let preview = preview_closures(&strokes, 1.0);
+    // O helper do vão colinear existe — e é uma PONTE: as duas pontas são reais.
     assert!(
-        preview.iter().any(|c| {
-            let (lo, hi) = if c.a.y < c.b.y {
-                (c.a, c.b)
+        preview.iter().any(|h| {
+            let (lo, hi) = if h.seg.a.y < h.seg.b.y {
+                (h.seg.a, h.seg.b)
             } else {
-                (c.b, c.a)
+                (h.seg.b, h.seg.a)
             };
-            (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3
+            (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3 && h.a_is_tip && h.b_is_tip
         }),
-        "o helper do vao colinear tinha de existir no alcance exato: {preview:?}"
+        "o helper do vao colinear tinha de existir como PONTE (2 pontas reais): {preview:?}"
     );
     // Abaixo do vão, nenhum helper PARA AQUELE vão (o slider não mente).
     assert!(
-        !preview_closures(&strokes, 0.9).iter().any(|c| {
-            let (lo, hi) = if c.a.y < c.b.y {
-                (c.a, c.b)
+        !preview_closures(&strokes, 0.9).iter().any(|h| {
+            let (lo, hi) = if h.seg.a.y < h.seg.b.y {
+                (h.seg.a, h.seg.b)
             } else {
-                (c.b, c.a)
+                (h.seg.b, h.seg.a)
             };
             (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3
         }),
         "alcance menor que o vao nao pode mostrar helper nele"
     );
-    // E o clique materializa A MESMA lista — a tela e o clique não podem discordar.
+    // E o clique materializa A MESMA lista de SEGMENTOS — a tela e o clique não podem
+    // discordar (a anotação de ponta é presentação; o motor usa só os `seg`).
     let r = fill_at(
         &strokes,
         Vec2::new(0.0, 0.0),
@@ -816,8 +818,47 @@ fn the_preview_door_is_the_clicks_own_first_step() {
         },
     )
     .expect("com o vao fechado pelo par, a caixa preenche");
+    let preview_segs: Vec<Closure> = preview.iter().map(|h| h.seg).collect();
     assert_eq!(
-        r.closures, preview,
-        "o fill_at tem de materializar exatamente o que o overlay mostrou"
+        r.closures, preview_segs,
+        "o fill_at tem de materializar exatamente os segmentos que o overlay mostrou"
+    );
+}
+
+/// 🔴 **O marcador só cai numa ponta REAL** (a lei *as pontas são o FATO*): num par
+/// ponta-a-ponta as duas pontas são reais; numa EXTENSÃO, a origem é ponta real e o
+/// ponto de CORTE não é — pôr um dot ali desenha um nó que não existe (o "dot flutuante"
+/// do smoke). É este flag que o overlay lê para decidir onde vai o marcador.
+///
+/// Mutação que sangra: `preview_closures` cravar `a_is_tip`/`b_is_tip` em `true` — o
+/// corte volta a ganhar dot.
+#[test]
+fn the_helper_marks_only_real_tips_never_a_cut_point() {
+    // Uma ponta que se estende e ENCOSTA noutra linha: a origem (10,0) é ponta real; o
+    // corte (12,0) é INTERIOR da vertical (as pontas dela são (12,±5)) — não é ponta.
+    let h = (
+        vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)],
+        vec![0.1; 2],
+        false,
+    );
+    let v = (
+        vec![Vec2::new(12.0, -5.0), Vec2::new(12.0, 5.0)],
+        vec![0.1; 2],
+        false,
+    );
+    let strokes = [h, v];
+    let preview = preview_closures(&strokes, 3.0);
+    // A extensão (10,0)→(12,0): origem ponta, corte não-ponta.
+    let ext = preview
+        .iter()
+        .find(|hlp| {
+            (hlp.seg.a - Vec2::new(10.0, 0.0)).x.abs() < 1e-3
+                && (hlp.seg.b - Vec2::new(12.0, 0.0)).x.abs() < 1e-3
+        })
+        .expect("a extensao ate a vertical tinha de existir");
+    assert!(ext.a_is_tip, "a origem (10,0) e' uma ponta real");
+    assert!(
+        !ext.b_is_tip,
+        "o corte (12,0) e' interior da vertical — nao pode ganhar dot"
     );
 }

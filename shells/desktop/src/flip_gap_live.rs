@@ -23,7 +23,7 @@
 
 use ph2d_editor::Job;
 use ph2d_flip::FlipDrawing;
-use ph2d_flip_fill::{Closure, preview_closures};
+use ph2d_flip_fill::{GapHelper, preview_closures};
 use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot};
 
 /// A chave de um cálculo: (fingerprint do desenho, bits do alcance em doc).
@@ -97,9 +97,9 @@ pub(crate) struct GapHelpers {
     /// A chave do resultado INSTALADO — o que o overlay está desenhando.
     key: Option<GapKey>,
     /// Os segmentos instalados, em coords de ARTE (o overlay projeta por frame).
-    pub(crate) segments: Vec<Closure>,
+    pub(crate) segments: Vec<GapHelper>,
     /// O cálculo em voo (no máximo UM) e a chave que ele computa.
-    job: Option<(GapKey, Job<Vec<Closure>>)>,
+    job: Option<(GapKey, Job<Vec<GapHelper>>)>,
 }
 
 impl GapHelpers {

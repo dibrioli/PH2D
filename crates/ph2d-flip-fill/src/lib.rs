@@ -50,6 +50,7 @@ pub use dilate::{
 };
 pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
+// `GapHelper` mora abaixo (é o retorno anotado do `preview_closures`).
 pub use raster::{BOUNDARY, FILLED, Grid, INK};
 pub use trace::{RDP_EPSILON_PX, signed_area, simplify_ring, trace_contours};
 pub use weld::{Weld, welds};
@@ -196,20 +197,39 @@ pub enum FillError {
     BallTooFat,
 }
 
-/// **Preenche** a região que contém `click`, delimitada por `strokes`.
+/// Um fechamento **com a metadata de apresentação** que o overlay precisa: quais das
+/// duas pontas do segmento são **pontas REAIS do desenho** (extremos de um traço aberto),
+/// e não pontos de corte de uma extensão.
 ///
-/// **Os fechamentos que um clique FARIA** — a porta do overlay do Gap Closure
-/// (doc `06 §8`: os helpers ao vivo nos vãos pendentes).
+/// A distinção existe porque `gap::closures` devolve dois tipos de segmento que a lei do
+/// módulo trata diferente na tela: um **par ponta-a-ponta** (a ponte de um vão — as duas
+/// pontas são fatos do desenho) e uma **extensão** (a→ponta real, b→onde o raio foi
+/// CORTADO numa parede — um lugar arbitrário). Um ponto gordo no ponto de corte lê como
+/// um nó que não existe; o overlay põe o marcador **só nas pontas reais** (*as pontas são
+/// o FATO, o segmento é a promessa*), e desenha a extensão como um fio fino sem marcador
+/// no corte. O motor do fill **ignora estes flags** — para ele todo `seg` é uma parede.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GapHelper {
+    /// O segmento que sela o vão (o que o `fill_at` rasteriza como parede).
+    pub seg: Closure,
+    /// `seg.a` coincide com uma ponta real de um traço aberto?
+    pub a_is_tip: bool,
+    /// `seg.b` coincide com uma ponta real de um traço aberto?
+    pub b_is_tip: bool,
+}
+
+/// **Os fechamentos que um clique FARIA**, já anotados para o overlay — a porta do Gap
+/// Closure ao vivo (doc `06 §8`: os helpers nos vãos pendentes).
 ///
-/// É o passo 1 do [`fill_at`], que **delega aqui**: uma porta só constrói as fronteiras
-/// e chama o motor, então o helper desenhado na tela e o fechamento que o clique
-/// materializa são, por construção, a mesma lista — duas cópias divergiriam no único
-/// lugar em que ninguém compara números (a tela contra o clique).
+/// É o **passo 1 do [`fill_at`]**, que **delega aqui** e usa só os `seg`: o helper
+/// desenhado na tela e o fechamento que o clique materializa são, por construção, a mesma
+/// lista — duas cópias divergiriam no único lugar em que ninguém compara números (a tela
+/// contra o clique). A anotação de ponta é presentação pura; o motor a descarta.
 ///
 /// `strokes` no formato do `fill_at` (`(pontos, meia-espessura, fechado)`); a espessura
 /// não participa (o Gap Closure trabalha no EIXO, como todo o resto do solver).
 #[must_use]
-pub fn preview_closures(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], gap_reach: f32) -> Vec<Closure> {
+pub fn preview_closures(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], gap_reach: f32) -> Vec<GapHelper> {
     let bounds: Vec<Boundary<'_>> = strokes
         .iter()
         .map(|(p, _, c)| Boundary {
@@ -217,7 +237,34 @@ pub fn preview_closures(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], gap_reach: f32)
             closed: *c,
         })
         .collect();
+    // As pontas REAIS: os dois extremos de todo traço ABERTO (uma cíclica não tem ponta,
+    // e uma linha de 1 ponto não é fronteira). Os interiores (as quinas) NÃO entram: uma
+    // extensão de quina é um segmento sem marcador nenhum, o que é honesto (uma quina não
+    // é uma ponta).
+    let mut tips: Vec<Vec2> = Vec::new();
+    for (p, _, c) in strokes {
+        if !c && p.len() >= 2 {
+            tips.push(p[0]);
+            tips.push(p[p.len() - 1]);
+        }
+    }
+    // Os extremos das extensões vêm dos `s.points[..]` bit-a-bit (o `origin` de um raio é
+    // copiado do vértice), então a igualdade é exata; o épsilon só protege contra um
+    // arredondamento que nunca deveria acontecer.
+    let is_tip = |v: Vec2| {
+        tips.iter().any(|t| {
+            let d = *t - v;
+            d.x * d.x + d.y * d.y < 1e-10
+        })
+    };
     gap::closures(&bounds, gap_reach)
+        .into_iter()
+        .map(|seg| GapHelper {
+            a_is_tip: is_tip(seg.a),
+            b_is_tip: is_tip(seg.b),
+            seg,
+        })
+        .collect()
 }
 
 /// `strokes` são as polilinhas de fronteira (`(pontos, meia-espessura por ponto,
@@ -234,8 +281,12 @@ pub fn fill_at(
     }
     // 1. Gap Closure: as extensões que fecham os vãos (já cortadas na colisão) — pela
     //    MESMA porta que o overlay dos helpers desenha (`preview_closures`): o clique e
-    //    o que o artista viu na tela não podem discordar sobre quais vãos fecham.
-    let closures = preview_closures(strokes, params.gap_reach);
+    //    o que o artista viu na tela não podem discordar sobre quais vãos fecham. O motor
+    //    usa só os `seg` (a anotação de ponta é presentação, para o overlay).
+    let closures: Vec<Closure> = preview_closures(strokes, params.gap_reach)
+        .into_iter()
+        .map(|h| h.seg)
+        .collect();
 
     // 2. A grade: bbox de tudo (linhas + clique + fechamentos), com margem.
     let (mut lo, mut hi) = (click, click);

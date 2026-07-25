@@ -22,7 +22,7 @@
 //! On a **multi-input** node every reader is qualified by port name
 //! (`read_rest_P`, `HAS_forces_vel`) — see [`accessor_suffix`].
 
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec, ReduceSpec};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec, LutSpec, ReduceSpec};
 use ph2d_nodegraph::port::Dim;
 
 pub use crate::field_name::wgsl_field;
@@ -274,6 +274,7 @@ pub fn kernel_module(
     port_names: &[&str],
     grid: Option<&GridSpec>,
     reduces: &[ReduceSpec],
+    luts: &[LutSpec],
     mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
     // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
@@ -358,6 +359,17 @@ pub fn kernel_module(
         src.push_str(&format!(
             "@group(0) @binding({slot}) var<storage, read> reduce_buf_{}: array<f32>;\n",
             r.name
+        ));
+        slot += 1;
+    }
+    // The lookup tables (A1-gpu), LAST of all — after the columns, the grid AND
+    // the reductions, so a node that samples a curve never shifts anybody's slot.
+    // Each is an `f32` table the sequencer filled from a text param before this
+    // pass; the sequencer appends them to the bind group in this same order.
+    for l in luts {
+        src.push_str(&format!(
+            "@group(0) @binding({slot}) var<storage, read> lut_{}: array<f32>;\n",
+            l.name
         ));
         slot += 1;
     }
@@ -476,6 +488,29 @@ pub fn kernel_module(
         ));
     }
     if !reduces.is_empty() {
+        src.push('\n');
+    }
+
+    // The LUT accessors (A1-gpu) — `<name>_sample(t)` reads the authored shape at
+    // `t ∈ [0,1]` by clamped LINEAR interpolation between the two neighbouring
+    // samples. It sits BEFORE `wgsl_lib` because a library function samples it
+    // (`field.remap`'s `rm_contour` calls `remap_curve_sample` for its Curve
+    // mode). Transcendental-free (HR-5): `clamp`/`floor`/`mix` only. A one-sample
+    // table (never built — `resolution` is ≥ 2 by construction) would divide by
+    // zero, so `n - 1` is guarded by the same `max(…, 1u)` the length cannot need.
+    for l in luts {
+        src.push_str(&format!(
+            "fn {n}_sample(t: f32) -> f32 {{\n\
+             \x20   let last = max(arrayLength(&lut_{n}), 1u) - 1u;\n\
+             \x20   let x = clamp(t, 0.0, 1.0) * f32(last);\n\
+             \x20   let i0 = u32(floor(x));\n\
+             \x20   let i1 = min(i0 + 1u, last);\n\
+             \x20   return mix(lut_{n}[i0], lut_{n}[i1], x - f32(i0));\n\
+             }}\n",
+            n = l.name
+        ));
+    }
+    if !luts.is_empty() {
         src.push('\n');
     }
 

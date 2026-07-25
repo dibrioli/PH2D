@@ -689,6 +689,105 @@ fn field_remap_kernel_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 4); // grid + box + remap + tint
 }
 
+/// A1-gpu, the PLAN half — no GPU adapter needed, so it runs in CI. Before the LUT
+/// channel the Curve contour (mode 4) declined its kernel (`applicable`), so a chain
+/// using it was NOT fully GPU: the whole `field.remap` node dropped to the CPU. Now
+/// the curve bakes to a LUT and every contour mode cooks on the device, so the chain
+/// is claimed whole. Restoring the old `applicable` gate makes this `is_fully_gpu`
+/// FALSE — the mutation that proves the gate.
+#[test]
+fn the_curve_contour_is_claimed_for_the_gpu() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 64.0);
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 41.0);
+    g.set_param(bx, "height", 41.0);
+    g.set_param(bx, "soft", 17.0);
+    let rm = g.add_node("field.remap");
+    g.set_param(rm, "contour", 4.0); // Curve — the mode that used to fall back
+    g.set_text_param(rm, "curve", "c1 0:0:L 0.5:1:L 1:0:L".to_string()); // a tent
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, bx);
+    connect(&mut g, bx, rm);
+    connect(&mut g, rm, out);
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the Curve contour must cook on the device (A1-gpu), never fall back to the CPU"
+    );
+}
+
+/// A1-gpu, the DEVICE half. A `field.box` paints the grid a soft ramp; a TENT curve
+/// (`0 -> 1 -> 0`) remaps it — a shape no SCALAR contour can make, so if the GPU tracks
+/// it the LUT is doing its job. The tint is `colour x remapped_falloff`, so the curve's
+/// effect lands there. Compared within the LUT's ε — WIDER than the ULP parity of the
+/// scalar contours, because a 256-sample table + lerp cuts the tent's peak corner by
+/// ~one sample-step (the documented trade). Dropping the LUT (identity ramp) diverges by
+/// the whole tent, ~a hundredfold over this bound.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_remap_curve_contour_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 41.0);
+    g.set_param(bx, "height", 41.0);
+    g.set_param(bx, "soft", 17.0);
+    let rm = g.add_node("field.remap");
+    g.set_param(rm, "contour", 4.0); // Curve
+    g.set_text_param(rm, "curve", "c1 0:0:L 0.5:1:L 1:0:L".to_string());
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, bx);
+    connect(&mut g, bx, rm);
+    connect(&mut g, rm, tint);
+    connect(&mut g, tint, out);
+
+    g.validate(&reg).expect("well-typed");
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+    )
+    .expect("cpu cook");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu(), "the Curve chain must cook whole on the device");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let n = gc
+        .cook(
+            &gpu, &g, &reg, &reg, &plan, &[], CookClock::at(PLAYHEAD), DEFAULT_UV, DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+    assert_eq!(n as usize, cpu.len());
+    let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+    // The curve reaches the render only through the tint (colour x remapped falloff).
+    const LUT_TOL: f32 = 6e-3;
+    let mut max_tint = 0.0f32;
+    for (i, (c, gg)) in cpu.iter().zip(&gpu_out).enumerate() {
+        for k in 0..4 {
+            max_tint = max_tint.max((c.tint[k] - gg.tint[k]).abs());
+            assert_close("tint", i, c.tint[k], gg.tint[k], LUT_TOL);
+        }
+    }
+    eprintln!(
+        "curve LUT parity: {} instances, max |Δtint| = {max_tint:e}",
+        cpu.len()
+    );
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn field_combine_kernel_matches_the_cpu_within_epsilon() {

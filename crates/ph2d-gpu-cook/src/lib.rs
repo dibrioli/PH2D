@@ -203,6 +203,10 @@ pub struct GpuCook {
     /// The 4-byte reduction results a kernel pass binds, held for the same
     /// window — one set per reducing stage this cook.
     reduce_results_hold: Vec<reduce_stage::ReduceResults>,
+    /// The LUT tables a kernel pass samples (A1-gpu), held for the same window —
+    /// filled from a text param and bound like the reduction results. One flat
+    /// Vec across the cook, cleared at the top like the others.
+    lut_hold: Vec<wgpu::Buffer>,
     /// The structural stream-op pipelines (ADR-0136), built on first use like
     /// the tap and the grid — `Option` because `GpuCook` is `Default`.
     stream_op_pipes: Option<stream_op::StreamOpPipes>,
@@ -294,6 +298,8 @@ impl GpuCook {
         self.reduce_hold.clear();
         self.reduce_hold_bufs.clear();
         self.reduce_results_hold.clear();
+        // The LUT transients (A1-gpu), same window as the reductions.
+        self.lut_hold.clear();
         // The stream-op transients (ADR-0136), same window.
         self.stream_op_hold.clear();
         self.stream_op_hold_bufs.clear();
@@ -516,6 +522,12 @@ impl GpuCook {
                 .map(|p| resolve_param(graph, stage.node, manifest, p))
                 .map_or(1i64, |v| (v.round() as i64).clamp(0, MAX_SWEEPS))
                 as u32;
+            // This stage's lookup tables (A1-gpu), filled from the node's text
+            // params ONCE — the curve shape is a function of a text param,
+            // invariant to the columns a sweep moves, so it is built OUTSIDE the
+            // loop (unlike the grid and the reductions, which a sweep invalidates).
+            let lut_specs = kernels.luts(stage.ty);
+            let mut lut_buffers = self.build_luts(gpu, lut_specs, graph, stage.node);
             let mut out = base.clone();
             for _ in 0..sweeps {
                 // The grid is rebuilt from the CURRENT positions every sweep — a
@@ -567,6 +579,7 @@ impl GpuCook {
                     base.clone(),
                     grid_spec.zip(grid_buffers.as_ref()),
                     (reduce_specs, &reduce_results.buffers),
+                    (lut_specs, &lut_buffers),
                 );
                 self.reduce_results_hold.push(reduce_results);
                 if let Some(gb) = grid_buffers {
@@ -587,6 +600,10 @@ impl GpuCook {
                     }
                 }
             }
+            // Keep this stage's LUT buffers alive until this cook's submit — the
+            // bind group referenced them and the pass is not encoded yet. Built
+            // once above, so held once here (not per sweep).
+            self.lut_hold.append(&mut lut_buffers);
             // A SourceRows kernel wrote its rows; gather the template's other
             // columns at them so the newborns inherit the whole vocabulary
             // (ADR-0136 — the CPU's `newborns` copies every column but `id`).

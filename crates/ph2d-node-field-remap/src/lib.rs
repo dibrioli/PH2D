@@ -15,11 +15,11 @@
 //! it reads the mask alone.
 //!
 //! **The Curve contour (mode 4)** is the one transfer whose shape is not a scalar: it
-//! is a `ph2d-curve` authored in a **text param** (`CURVE_KEY`), evaluated on the CPU
-//! (A1). Its WGSL LUT lowering is A1-gpu; until then the kernel declares itself
-//! `applicable` for modes 0–3 only, and the sequencer runs the CPU `eval` when the
-//! contour is Curve — the explicit CPU↔GPU boundary, never a wrong answer. An unset
-//! curve is the identity, so a Curve contour with nothing authored is a passthrough.
+//! is a `ph2d-curve` authored in a **text param** (`CURVE_KEY`). On the CPU it is
+//! `eval`'d directly; on the GPU the sequencer bakes it to a LUT (A1-gpu, see [`LUTS`])
+//! and the kernel samples `rm_curve_sample(t)` — so ALL five contour modes cook on the
+//! device, no CPU fallback. An unset curve is the identity, so a Curve contour with
+//! nothing authored is a passthrough on both.
 //!
 //! **The neutral (D12).** `strength = 0` is a byte-identical passthrough (the mask is
 //! returned unchanged) — the "off" that never mutates the scene. A fresh node, however,
@@ -32,7 +32,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, LutSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -216,11 +216,13 @@ fn remap(
 /// `falloff` `ReadWrite` from the `1.0` identity mirrors the CPU (an absent mask reads
 /// full effect); it is REWRITTEN, not multiplied (a remap is a transfer function).
 ///
-/// **Applicable to contour modes 0–3 only.** The Curve contour (mode 4) reads its shape
-/// from a text param the uniform layout cannot carry (a curve is not a scalar), so the
-/// kernel declines it and the sequencer runs the CPU `eval` for that node — the explicit
-/// CPU↔GPU boundary (the `motion.oscillator` precedent). A1-gpu bakes the curve to a LUT
-/// buffer and this gate goes away.
+/// **All five contour modes cook on the DEVICE.** Modes 0–3 are pure WGSL; the Curve
+/// contour (mode 4) reads its shape from a `ph2d-curve` text param the uniform layout
+/// cannot carry (a curve is not a scalar), so A1-gpu bakes it to a LUT (see [`LUTS`])
+/// and `rm_contour` samples `rm_curve_sample(t)`. No `applicable` gate — the sequencer
+/// never falls back to the CPU for this node, which is what the GPU-resident field
+/// pipeline (the "maximize GPU" north) wants. Parity for mode 4 holds within a small ε
+/// (the LUT's resolution ÷ its slope), wider than the ULP parity of modes 0–3.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let rm_in = read_falloff(i);\n\
@@ -264,6 +266,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
                 let n = max(steps, 2.0);\n\
                 return rm_round(t * (n - 1.0)) / (n - 1.0);\n\
             }\n\
+            if (mode == 4) { return rm_curve_sample(t); }\n\
             return t;\n\
         }\n",
     bindings: &[ColumnBinding {
@@ -289,10 +292,44 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     count_law: None,
     variant_by_param: None,
-    // Modes 0–3 are pure WGSL; the Curve contour (4) falls back to the CPU `eval`
-    // (its shape is a text param, not a uniform). Same shape as `motion.oscillator`.
-    applicable: Some(|p| p("contour").round() as i32 != 4),
+    // No fallback: the Curve contour (mode 4) samples the LUT (A1-gpu), so every
+    // mode is device-resident. The gate that declined mode 4 is gone.
+    applicable: None,
 };
+
+/// The Curve contour's LUT resolution (A1-gpu) — samples of the authored curve over
+/// `t ∈ [0,1]`. 256 keeps a smooth transfer within a few thousandths of the CPU `eval`
+/// while costing 1 KiB the sequencer uploads per cook.
+const LUT_RESOLUTION: u32 = 256;
+
+/// The LUT channel this node registers (A1-gpu): the sequencer samples the authored
+/// curve (the `CURVE_KEY` text param) to [`LUT_RESOLUTION`] floats and binds them, so
+/// `rm_contour`'s `mode == 4` branch reads `rm_curve_sample(t)` on the DEVICE instead of
+/// the whole node dropping to the CPU. Naming it `rm_curve` makes the accessor
+/// `rm_curve_sample`, matching the WGSL call.
+static LUTS: &[LutSpec] = &[LutSpec {
+    name: "rm_curve",
+    text_key: CURVE_KEY,
+    resolution: LUT_RESOLUTION,
+    fill: fill_curve_lut,
+}];
+
+/// Sample the authored curve into `out` at `t = k/(n−1)` — the NODE-side half of the LUT
+/// channel (`ph2d-nodegraph` stays curve-library-agnostic; the sampling lives here).
+/// Mirrors the CPU `contour(4, t, …)`: an unset or malformed string is the identity
+/// [`Curve`] (`eval(t) = t`), which is exactly the passthrough the CPU takes on `None`.
+fn fill_curve_lut(text: &str, out: &mut [f32]) {
+    let curve = ph2d_curve::parse(text).unwrap_or_else(Curve::identity);
+    let n = out.len();
+    for (k, slot) in out.iter_mut().enumerate() {
+        let t = if n <= 1 {
+            0.0
+        } else {
+            k as f32 / (n - 1) as f32
+        };
+        *slot = curve.eval(t);
+    }
+}
 
 struct FieldRemap;
 
@@ -382,6 +419,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_luts(MANIFEST.id, LUTS);
     Ok(())
 }
 

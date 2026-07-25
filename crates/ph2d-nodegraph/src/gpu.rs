@@ -328,6 +328,42 @@ pub struct StateSelect {
     pub transients: &'static [&'static str],
 }
 
+/// A **lookup-table** channel (A1-gpu): a node whose kernel samples a shape that
+/// is not a scalar — a transfer CURVE, a colour RAMP — declares a LUT, registered
+/// on the side like a [`ReduceSpec`]. The shape lives in a TEXT param (a
+/// `ph2d-curve` string, the A1 canonical non-`f32` param), which the frozen
+/// `KernelParams` uniform cannot carry — *a curve is not one number*. The
+/// sequencer reads that text param at cook time, calls [`Self::fill`] to sample
+/// the table into an `f32` buffer, and the generated module gains
+/// `@binding var<storage, read> lut_<name>` plus a `<name>_sample(t)`
+/// clamped-lerp accessor the body calls. This is what lets the Curve contour of
+/// `field.remap` cook on the DEVICE instead of falling back to the CPU `eval`.
+///
+/// **Pure data** (ADR-0126): the sampling math lives in the node crate (behind
+/// the [`Self::fill`] fn pointer, exactly as [`GpuKernel::count_law`] does), so
+/// `ph2d-nodegraph` stays curve-library-agnostic — the substrate knows only
+/// *"a text param names a shape, sampled to N floats"*. Declaring a LUT is
+/// append-only side metadata; no kernel that lacks one changes.
+#[derive(Copy, Clone, Debug)]
+pub struct LutSpec {
+    /// The generated accessor is `<name>_sample(t: f32) -> f32`; the storage
+    /// binding is `lut_<name>`. Namespaced by the node like a reduction.
+    pub name: &'static str,
+    /// The text-param key whose string authors the table (`Graph::set_text_param`).
+    pub text_key: &'static str,
+    /// Samples over `t ∈ [0,1]` — the buffer length. The `_sample` accessor lerps
+    /// between neighbours, so a finite table trades a bounded ε (the CPU eval's
+    /// slope ÷ resolution) for a device-resident sample. Never zero (a table with
+    /// no samples has nothing to lerp).
+    pub resolution: u32,
+    /// Fills `out` (`out.len() == resolution`) from the text param's string, at
+    /// `t = k / (resolution − 1)`. Lives in the NODE crate (which imports
+    /// `ph2d-curve`, not this one). An empty or malformed string must fill the
+    /// **identity ramp** (`out[k] = t`), matching the CPU `eval`'s passthrough on
+    /// an unset curve — the two paths agree on "nothing authored = a no-op".
+    pub fill: fn(&str, &mut [f32]),
+}
+
 /// Resolves a node type id to its registered GPU kernel — the side-channel
 /// mirror of [`crate::cook::OpResolver`], implemented by the node registry.
 /// Kept as a trait so the GPU sequencer is decoupled from the registry crate
@@ -375,6 +411,18 @@ pub trait KernelResolver {
     /// "declares an empty list of reductions" are the same fact, and one
     /// representation for one fact means no site has to handle both.
     fn reduces(&self, _ty: NodeTypeId) -> &'static [ReduceSpec] {
+        &[]
+    }
+
+    /// The lookup tables this node's kernel samples, if any — the LUT channel
+    /// (see [`LutSpec`], A1-gpu). Default **empty**, so a node opts in by
+    /// registering specs exactly as it opts into a [`ReduceSpec`]; every existing
+    /// kernel declares nothing and nothing about it changes.
+    ///
+    /// Empty slice rather than `Option<&[_]>`, for the same reason as
+    /// [`Self::reduces`]: "declares no LUT" and "declares an empty list" are one
+    /// fact, so one representation means no site handles both.
+    fn luts(&self, _ty: NodeTypeId) -> &'static [LutSpec] {
         &[]
     }
 

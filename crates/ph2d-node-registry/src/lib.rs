@@ -14,7 +14,7 @@
 
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::{
-    GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, ReduceSpec, StateSelect, StreamOp,
+    GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, LutSpec, ReduceSpec, StateSelect, StreamOp,
 };
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
@@ -69,6 +69,11 @@ pub struct NodeRegistry {
     /// channel. Same side-channel shape; a node opts in with a slice of
     /// [`ReduceSpec`]s the sequencer folds before its kernel pass.
     reduces: BTreeMap<NodeTypeId, &'static [ReduceSpec]>,
+    /// A1-gpu — per-type lookup tables the kernel samples (the LUT channel, a
+    /// transfer curve / colour ramp whose shape lives in a text param). Same
+    /// side-channel shape; a node opts in with a slice of [`LutSpec`]s the
+    /// sequencer fills from that text param before its kernel pass.
+    luts: BTreeMap<NodeTypeId, &'static [LutSpec]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -205,6 +210,15 @@ impl NodeRegistry {
     pub fn register_reduces(&mut self, id: NodeTypeId, specs: &'static [ReduceSpec]) {
         self.reduces.insert(id, specs);
     }
+
+    /// Declare the lookup tables this node's kernel samples — the LUT channel
+    /// (A1-gpu). Additive, last-write-wins, pure `'static` data, like
+    /// [`Self::register_reduces`]. The sequencer fills each table from the named
+    /// text param before the node's kernel pass and gives the body
+    /// `<name>_sample(t)`.
+    pub fn register_luts(&mut self, id: NodeTypeId, specs: &'static [LutSpec]) {
+        self.luts.insert(id, specs);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
@@ -234,6 +248,10 @@ impl KernelResolver for NodeRegistry {
 
     fn reduces(&self, ty: NodeTypeId) -> &'static [ReduceSpec] {
         self.reduces.get(&ty).copied().unwrap_or(&[])
+    }
+
+    fn luts(&self, ty: NodeTypeId) -> &'static [LutSpec] {
+        self.luts.get(&ty).copied().unwrap_or(&[])
     }
 }
 

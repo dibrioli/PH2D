@@ -259,6 +259,8 @@ impl GpuCook {
             // per element whether the element survives, and a number about the
             // whole stream would be a number about a stream that is changing.
             (&[], &[]),
+            // Nor a LUT — a predicate samples no authored curve (A1-gpu).
+            (&[], &[]),
         );
         let Some(flags) = pred_out.cols.get(KEEP_FLAG_COL).map(|c| c.buffer.clone()) else {
             // A predicate that does not write the flag is an authoring bug in the

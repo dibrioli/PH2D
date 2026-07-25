@@ -131,6 +131,11 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 // empty list here would validate a module the sequencer never
                 // builds and miss a misspelled reduction entirely.
                 reg.reduces(manifest.id),
+                // The node's LUTs, asked of the REGISTRY for the same reason as the
+                // reductions: the body samples `<name>_sample(t)`, so an empty list
+                // here would validate a module without that accessor and miss a
+                // misdeclared LUT (A1-gpu).
+                reg.luts(manifest.id),
                 |b| {
                     let idx = kernel
                         .bindings
@@ -165,6 +170,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 &port_names,
                 None,
                 &[],
+                &[], // a predicate samples no LUT (A1-gpu)
                 |b| {
                     let idx = predicate
                         .bindings

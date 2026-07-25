@@ -414,15 +414,46 @@ fn a_curve_contour_changes_the_cooked_falloff() {
 }
 
 #[test]
-fn the_kernel_declines_the_curve_contour_and_covers_the_rest() {
-    // The explicit CPU<->GPU boundary: the WGSL kernel handles contour modes 0-3 and
-    // declines Curve (4), so the sequencer runs the CPU eval for it (A1-gpu bakes the
-    // LUT and removes this). The `oscillator` precedent.
-    let f = GPU_KERNEL.applicable.expect("the kernel gates on contour");
-    for mode in [0.0, 1.0, 2.0, 3.0] {
-        let p = |name: &str| if name == "contour" { mode } else { 0.0 };
-        assert!(f(&p), "the kernel must cover contour mode {mode}");
+fn every_contour_mode_including_the_curve_cooks_on_the_gpu() {
+    // A1-gpu: no `applicable` gate — the Curve contour (mode 4) samples the LUT on the
+    // device, so every mode is device-resident and the sequencer never falls back to
+    // the CPU for this node. Before A1-gpu it declined mode 4 (the `oscillator`
+    // precedent); the LUT channel dissolved that boundary.
+    assert!(
+        GPU_KERNEL.applicable.is_none(),
+        "no CPU fallback: the LUT makes every contour mode device-resident"
+    );
+    // The LUT it registers carries the SAME text key the CPU `eval` reads, and its name
+    // is what makes the WGSL accessor `rm_curve_sample`.
+    assert_eq!(LUTS.len(), 1, "one LUT: the Curve contour's shape");
+    assert_eq!(LUTS[0].text_key, CURVE_KEY, "same key the CPU eval parses");
+    assert_eq!(LUTS[0].name, "rm_curve", "the accessor is `rm_curve_sample`");
+    assert!(LUTS[0].resolution >= 2, "at least two samples to lerp between");
+}
+
+#[test]
+fn fill_curve_lut_samples_the_curve_and_falls_back_to_identity() {
+    // The node-side half of the LUT channel — the CI-runnable proof, since the GPU
+    // parity gate is `#[ignore]`. An unset or malformed string is the identity ramp
+    // (the SAME passthrough the CPU takes on `None`); a valid curve is `eval` at the
+    // sample points.
+    let mut buf = [0.0f32; 5];
+    for bad in ["", "not a curve", "c1 garbage"] {
+        fill_curve_lut(bad, &mut buf);
+        for (k, v) in buf.iter().enumerate() {
+            let t = k as f32 / 4.0;
+            assert!(
+                (v - t).abs() < 1e-6,
+                "an unauthored/malformed curve is the identity ramp; {bad:?} at {k}: {v} != {t}"
+            );
+        }
     }
-    let p = |name: &str| if name == "contour" { 4.0 } else { 0.0 };
-    assert!(!f(&p), "the kernel must DECLINE the Curve contour");
+    // A tent (0 -> 1 -> 0): each sample equals `Curve::eval`, and the mid-sample peaks.
+    let tent = ph2d_curve::parse("c1 0:0:L 0.5:1:L 1:0:L").expect("valid tent");
+    fill_curve_lut("c1 0:0:L 0.5:1:L 1:0:L", &mut buf);
+    for (k, v) in buf.iter().enumerate() {
+        let t = k as f32 / 4.0;
+        assert!((v - tent.eval(t)).abs() < 1e-6, "tent sample {k}: {v}");
+    }
+    assert!((buf[2] - 1.0).abs() < 1e-6, "the tent peaks at t = 0.5");
 }

@@ -18,7 +18,7 @@ use crate::{
     CachedPipeline, GpuColumn, GpuCook, GpuStream, UNIFORM_BYTES, codegen, create_pipeline, stream,
 };
 use ph2d_gpu::GpuContext;
-use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, ReduceSpec, SourceWindow};
+use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, LutSpec, ReduceSpec, SourceWindow};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
 
@@ -51,6 +51,7 @@ impl GpuCook {
         base: GpuStream,
         grid: Option<(&GridSpec, &GridBuffers)>,
         reduces: (&'static [ReduceSpec], &[wgpu::Buffer]),
+        luts: (&'static [LutSpec], &[wgpu::Buffer]),
     ) -> GpuStream {
         use codegen::BindingPlan;
 
@@ -86,6 +87,7 @@ impl GpuCook {
                     &port_names,
                     grid.map(|(s, _)| s),
                     reduces.0,
+                    luts.0,
                     present,
                 );
                 CachedPipeline {
@@ -212,6 +214,16 @@ impl GpuCook {
             });
             slot += 1;
         }
+        // The LUT tables, LAST of all — the exact order `kernel_module` declared
+        // them (spec order, after the reductions). One buffer per spec; the
+        // sequencer filled each from a text param before this pass.
+        for buf in luts.1 {
+            entries.push(wgpu::BindGroupEntry {
+                binding: slot,
+                resource: buf.as_entire_binding(),
+            });
+            slot += 1;
+        }
         let _ = slot;
         let pipeline = &self
             .kernel_pipelines
@@ -263,6 +275,50 @@ impl GpuCook {
             out.cols.insert(name, col);
         }
         out
+    }
+
+    /// Fill this stage's lookup tables (A1-gpu) from the node's text params and
+    /// upload them as read-only storage buffers — one per [`LutSpec`], in spec
+    /// order (the order [`Self::encode_kernel_stage`] binds them and
+    /// [`codegen::kernel_module`] declares them). The SHAPE is authored (a
+    /// `ph2d-curve` string in the named text param); the SAMPLING lives in the
+    /// node crate via [`LutSpec::fill`], so an unset/malformed string fills the
+    /// identity ramp there, matching the CPU `eval`'s passthrough.
+    ///
+    /// No encoder: a LUT is CPU-computed data written straight to a buffer, not a
+    /// compute pass. Immutable `&self` (unlike the grid, which owns a pipeline) so
+    /// the caller can build it before its `&mut self` encode loop.
+    pub(crate) fn build_luts(
+        &self,
+        gpu: &GpuContext,
+        specs: &[LutSpec],
+        graph: &Graph,
+        node: NodeId,
+    ) -> Vec<wgpu::Buffer> {
+        specs
+            .iter()
+            .map(|spec| {
+                let text = graph
+                    .node_text_param_overrides(node)
+                    .and_then(|m| m.get(spec.text_key))
+                    .map_or("", String::as_str);
+                // At least 2 samples: the `_sample` lerp needs two neighbours, and
+                // a node's `resolution` is ≥ 2 by construction — this only guards a
+                // future misdeclaration from a zero-length buffer.
+                let n = spec.resolution.max(2) as usize;
+                let mut table = vec![0.0f32; n];
+                (spec.fill)(text, &mut table);
+                let bytes: Vec<u8> = table.iter().flat_map(|v| v.to_le_bytes()).collect();
+                let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ph2d-gpu-cook lut"),
+                    size: bytes.len() as u64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                gpu.queue.write_buffer(&buffer, 0, &bytes);
+                buffer
+            })
+            .collect()
     }
 
     /// Build the neighbourhood grid for a stage (ADR-0140 D2) into the cook's

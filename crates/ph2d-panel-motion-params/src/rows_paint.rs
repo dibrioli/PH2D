@@ -22,6 +22,54 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+/// **A row DIRIGIDA (doc 58) — o único caso que não é um widget.** O fio decide o número,
+/// então não há nada a registrar: sem hit rect, sem arrasto, sem id no store. É por isso que
+/// ela sai do laço em vez de virar mais um braço parecido com os outros — os oito braços
+/// restantes registram e despacham; este só *mostra*, e o acento diz que o valor vem de fora.
+/// (Extraída para o `paint_rows` caber no teto de 200 LOC de fn de painel, HR-18.)
+#[allow(clippy::too_many_arguments)]
+fn paint_driven_row(
+    row: &super::ScalarRow,
+    inner_x: f32,
+    inner_w: f32,
+    y: f32,
+    label_font: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let mid = y + (ROW_H_PX - label_font) * 0.5;
+    paint_text(
+        text_system,
+        scene,
+        &row.label,
+        inner_x,
+        mid,
+        label_font,
+        DEFAULT_LABEL_W,
+        resolve(ColorToken::Text2, theme),
+    );
+    let display = row_value(
+        normalized_track(row.value, row.min, (row.max - row.min).max(f64::EPSILON)),
+        row.min,
+        row.max,
+        row.integer,
+    );
+    paint_text(
+        text_system,
+        scene,
+        // The SAME formatter the chip uses — a second one would show the same
+        // number with two faces.
+        &ph2d_editor_core::widget::format_number(display),
+        inner_x + DEFAULT_LABEL_W,
+        mid,
+        label_font,
+        inner_w - DEFAULT_LABEL_W,
+        // The accent says it: this number is coming from somewhere else.
+        resolve(ColorToken::Accent, theme),
+    );
+}
+
 /// Paint each param row from `body_top` down, registering hit rects as it goes.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_rows(
@@ -46,35 +94,8 @@ pub(crate) fn paint_rows(
             // just the label and the live value. Nothing is registered, so nothing can be
             // dragged; the artist unplugs the wire to take the knob back.
             ParamRow::Scalar(row) if row.driven => {
-                let mid = y + (ROW_H_PX - label_font) * 0.5;
-                paint_text(
-                    text_system,
-                    scene,
-                    &row.label,
-                    inner_x,
-                    mid,
-                    label_font,
-                    DEFAULT_LABEL_W,
-                    resolve(ColorToken::Text2, theme),
-                );
-                let display = row_value(
-                    normalized_track(row.value, row.min, (row.max - row.min).max(f64::EPSILON)),
-                    row.min,
-                    row.max,
-                    row.integer,
-                );
-                paint_text(
-                    text_system,
-                    scene,
-                    // The SAME formatter the chip uses — a second one would show the same
-                    // number with two faces.
-                    &ph2d_editor_core::widget::format_number(display),
-                    inner_x + DEFAULT_LABEL_W,
-                    mid,
-                    label_font,
-                    inner_w - DEFAULT_LABEL_W,
-                    // The accent says it: this number is coming from somewhere else.
-                    resolve(ColorToken::Accent, theme),
+                paint_driven_row(
+                    row, inner_x, inner_w, y, label_font, scene, text_system, theme,
                 );
                 y += ROW_H_PX + row_gap;
             }

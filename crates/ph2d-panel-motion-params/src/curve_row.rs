@@ -21,6 +21,7 @@ use crate::snapshot::{
 use ph2d_a11y::NodeId;
 use ph2d_curve::{Curve, Interp, Point, parse, serialize};
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_polyline,
     stroke_rounded_rect,
@@ -40,7 +41,7 @@ const RING_W: f32 = 1.5; // LITERAL-PX-OK: handle ring width
 const BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/− button width
 const INTERP_W: f32 = 64.0; // LITERAL-PX-OK: interp cycle-button width
 const GRID_DIVS: usize = 4; // quarter grid
-const MIN_DX: f32 = 0.001; // min x gap so two points never collapse / cross
+const MIN_DX: f32 = 0.001; // LITERAL-PX-OK: vao minimo em x NORMALIZADO (0..1) — separacao, nao medida
 
 thread_local! {
     /// `(slot, point index)` of the last-grabbed handle — the target of `−` / interp
@@ -109,7 +110,7 @@ pub(crate) fn paint_curve_row(
         x,
         y + (ROW_H_PX - label_font) * 0.5,
         label_font,
-        w - INTERP_W - BTN_W * 2.0 - gap * 3.0,
+        w - INTERP_W - BTN_W * 2.0 - gap * 3.0, // LITERAL-PX-OK: CONTAGEM (3 vaos entre os 4 elementos), nao medida
         resolve(ColorToken::Text2, theme),
     );
     let rem = Rect::new(x + w - BTN_W, y, BTN_W, ROW_H_PX);
@@ -237,7 +238,11 @@ pub(crate) fn drain_drag(store: &mut WidgetStore, slot: usize, value: &str) -> O
     } else {
         1.0
     };
-    curve.points[i].x = x.clamp(lo.min(hi), hi.max(lo));
+    // ⚠️ `safe_clamp`, não `f32::clamp`: os limites saem dos VIZINHOS (não são literais), então
+    // uma curva degenerada pode entregá-los invertidos — e `f32::clamp` entra em pânico com
+    // `min > max`. O `lo.min(hi), hi.max(lo)` que morava aqui já tolerava a troca, mas deixava
+    // NaN passar; o `safe_clamp` é a porta única que trata os DOIS (ph2d_editor_core::math).
+    curve.points[i].x = safe_clamp(x, lo, hi);
     curve.points[i].y = y.clamp(0.0, 1.0);
     SELECTED.with(|s| s.set(Some((slot, i))));
     Some(serialize(&curve))

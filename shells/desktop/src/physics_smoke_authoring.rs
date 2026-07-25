@@ -83,4 +83,84 @@ impl crate::App {
              fields; the dot is the canvas handle."
         );
     }
+
+    /// **Scene 40 (joint authoring, end to end).** Three PLAIN physics bodies,
+    /// no joint yet — the artist AUTHORS one from scratch. The scene answers
+    /// "where is the UI to create a joint?": it has been there since W3; this
+    /// walks the whole loop (create -> pick kind -> tune -> drag the anchor ->
+    /// re-pick a body), which no scene demonstrated before, so an artist thought
+    /// it was missing.
+    ///
+    /// PAUSED: authoring a joint on a scene that is already falling would fight
+    /// the artist.
+    pub(crate) fn physics_smoke_author_joint(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+        let world = gfx.sim.world_mut();
+
+        // Two bodies to JOIN (a static hook, a dynamic plank) and a spare static
+        // anchor (Post) to demonstrate RE-PICKING a body afterwards.
+        for (name, x, kind, w, h, colour) in [
+            (
+                "Hook",
+                -1.5f32,
+                BodyKind::Static,
+                0.2f32,
+                0.2f32,
+                [0.75, 0.75, 0.8, 1.0],
+            ),
+            (
+                "Plank",
+                -0.4,
+                BodyKind::Dynamic,
+                1.2,
+                0.18,
+                [0.95, 0.6, 0.2, 1.0],
+            ),
+            (
+                "Post",
+                1.7,
+                BodyKind::Static,
+                0.2,
+                0.2,
+                [0.4, 0.85, 0.55, 1.0],
+            ),
+        ] {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 4.5)),
+                Sprite::atlas(WHITE_TILE_KEY, [w, h], colour),
+                Name::new(name.to_string()),
+                RigidBody { kind },
+                Collider {
+                    shape: if h < 0.19 {
+                        ColliderShape::Cuboid {
+                            half_x: w * 0.5,
+                            half_y: h * 0.5,
+                        }
+                    } else {
+                        ColliderShape::Ball { radius: w * 0.5 }
+                    },
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        eprintln!(
+            "[physics-smoke 40] Three bodies, NO joint yet -- author one end to end.\n\
+             PAUSED. The UI to create a joint has existed since W3; this is the walk:\n  \
+               1. Select Hook AND Plank (click Hook, then Ctrl-click Plank).\n  \
+               2. Inspector > Physics Body grows 'Join Selected Bodies' -> click it.\n     \
+                  A Pin joint appears in the Hierarchy, and Plank now hangs from Hook.\n  \
+               3. Select the joint -> the 'Physics Joint' section (12) appears. Switch\n     \
+                  its Kind (Pin/Spring/Rope/Weld); turn Limits or a Motor on and tune.\n  \
+               4. Press B: an amber DOT sits at the pivot -- DRAG it to move the anchor.\n  \
+               5. RE-PICK a body: with the joint still selected, Ctrl-click 'Post'. The\n     \
+                  section grows 'Set Body A: Post' and 'Set Body B: Post' -- click\n     \
+                  'Set Body A'. The joint now hangs from POST instead of Hook, without\n     \
+                  deleting and re-making it. (The buttons are DIMMED until a single body\n     \
+                  is selected alongside the joint.)\n  \
+               6. Play: the plank swings from wherever you left the anchor.\n\
+             Ctrl+Z undoes each step; Ctrl+S / Ctrl+O: the joint survives a round trip."
+        );
+    }
 }

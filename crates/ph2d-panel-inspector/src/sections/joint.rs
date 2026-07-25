@@ -101,6 +101,34 @@ pub(crate) fn paint_joint_section(
     );
     yy += h;
 
+    // Re-pick which body each slot binds. Dimmed until a single OTHER body is
+    // selected alongside the joint — the shell owns that fact
+    // (`rebind_target_name`), the same shell-owned-selection idiom the Join
+    // button uses. When live the button shows the target's name, so the artist
+    // sees what the click will bind before pressing it. Fixes a mis-joined pair
+    // without deleting and re-creating the joint. A Disabled button registers no
+    // hit — a dimmed control that dispatches lies.
+    for (id, slot) in [(ids::INSP_JOINT_SET_A, 'A'), (ids::INSP_JOINT_SET_B, 'B')] {
+        let brect = Rect::new(x, yy, w, h);
+        let label = match &info.rebind_target_name {
+            Some(name) => format!("Set Body {slot}: {name}"),
+            None => format!("Set Body {slot}"),
+        };
+        let state = if info.rebind_target_name.is_some() {
+            store.button_state(id).unwrap_or(ButtonState::Normal)
+        } else {
+            ButtonState::Disabled
+        };
+        let btn = Button::new(id, &label)
+            .kind(ButtonKind::Default)
+            .state(state);
+        paint_button(&btn, brect, scene, text_system, theme);
+        if info.rebind_target_name.is_some() {
+            hit_index.register(id, brect);
+        }
+        yy += h;
+    }
+
     yy = seg_row(
         scene,
         text_system,

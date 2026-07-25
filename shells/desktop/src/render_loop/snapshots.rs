@@ -729,7 +729,7 @@ pub(super) fn publish(
     let inspector_joint = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_joint::build_joint_info(sim, b));
+        .and_then(|b| super::inspector_joint::build_joint_info(sim, b, sel));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),

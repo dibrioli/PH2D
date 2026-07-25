@@ -101,7 +101,15 @@ fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_KIND);
     register_button_ids(store, &ids::INSP_JOINT_LIMITS);
     register_button_ids(store, &ids::INSP_JOINT_MOTOR);
-    register_button_ids(store, &[ids::INSP_JOINT_REMOVE, ids::INSP_PHYS_JOIN]);
+    register_button_ids(
+        store,
+        &[
+            ids::INSP_JOINT_REMOVE,
+            ids::INSP_JOINT_SET_A,
+            ids::INSP_JOINT_SET_B,
+            ids::INSP_PHYS_JOIN,
+        ],
+    );
     // Physical quantities again — degrees, meters, N·m, spring constants —
     // so none of these literals has a design token to come from.
     for (id, value, min, max, step) in [

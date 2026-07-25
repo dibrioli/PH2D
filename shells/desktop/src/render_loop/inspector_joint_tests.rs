@@ -13,7 +13,9 @@ use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::JointFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, PhysicsJoint, RigidBody};
 
-use super::inspector_joint::{apply_joint_edit, build_joint_info, create_joint};
+use super::inspector_joint::{
+    apply_joint_edit, build_joint_info, create_joint, rebind_target, set_joint_body,
+};
 
 fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();
@@ -158,7 +160,7 @@ fn the_angle_fields_convert_at_the_boundary() {
         j.limit_max
     );
     // And it comes back out in degrees, so the round trip is closed.
-    let info = build_joint_info(&mut sim, joint.to_bits()).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), &[]).expect("info");
     assert!((info.limit_max_deg - 90.0).abs() < 1e-3);
 }
 
@@ -171,13 +173,13 @@ fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
     let (mut sim, hook, plank) = two_bodies(true);
     let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
 
-    let info = build_joint_info(&mut sim, joint.to_bits()).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), &[]).expect("info");
     assert_eq!(info.body_a_name, "Hook");
     assert_eq!(info.body_b_name, "Plank");
     assert!(info.bound);
 
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Renamed");
-    let info = build_joint_info(&mut sim, joint.to_bits()).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), &[]).expect("info");
     assert!(
         !info.bound && info.body_b_name.is_empty(),
         "after the rename the section must report the link as broken, not \
@@ -189,7 +191,7 @@ fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
 #[test]
 fn a_plain_body_has_no_joint_section() {
     let (mut sim, hook, _) = two_bodies(true);
-    assert!(build_joint_info(&mut sim, hook.to_bits()).is_none());
+    assert!(build_joint_info(&mut sim, hook.to_bits(), &[]).is_none());
 }
 
 /// **Two bodies that share a name cannot be joined, and the gesture says so.**
@@ -210,4 +212,95 @@ fn two_bodies_sharing_a_name_cannot_be_joined() {
     );
     let mut q = sim.world_mut().query::<&PhysicsJoint>();
     assert_eq!(q.iter(sim.world()).count(), 0);
+}
+
+/// Spawn a named physical body — a third body for the re-pick tests.
+fn body(sim: &mut SimWorld, x: f32, y: f32, kind: BodyKind, name: &str) -> Entity {
+    sim.world_mut()
+        .spawn((
+            RigidBody { kind },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(x, y)),
+            Name::new(name),
+        ))
+        .id()
+}
+
+/// **`rebind_target` is the single OTHER selected body — and nothing else.**
+///
+/// The one door both halves ask: the snapshot to label/enable the Set buttons,
+/// the edit to resolve the click. Offers a target only for `joint + exactly one
+/// body`; ambiguous or bodiless selections offer nothing.
+#[test]
+fn rebind_target_is_the_one_other_selected_body() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let crate_e = body(&mut sim, 2.0, 5.0, BodyKind::Dynamic, "Crate");
+    let sprite = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(3.0, 3.0)),
+            Name::new("Sprite"),
+        ))
+        .id();
+    let j = joint.to_bits();
+    // joint + exactly one body -> that body.
+    assert_eq!(
+        rebind_target(sim.world(), j, &[j, crate_e.to_bits()]),
+        Some(crate_e)
+    );
+    // joint alone -> nothing to bind to.
+    assert_eq!(rebind_target(sim.world(), j, &[j]), None);
+    // joint + two bodies -> ambiguous, so nothing.
+    assert_eq!(
+        rebind_target(sim.world(), j, &[j, plank.to_bits(), crate_e.to_bits()]),
+        None
+    );
+    // joint + a non-body -> nothing (a joint binds bodies, not plain sprites).
+    assert_eq!(rebind_target(sim.world(), j, &[j, sprite.to_bits()]), None);
+}
+
+/// **Setting a body re-binds that slot, and the joint still binds.**
+///
+/// Re-pick slot A from Hook to a new anchor Post: the component names Post, slot
+/// B is untouched, and the joint still reaches the solver. Mutation-tested:
+/// writing the WRONG slot leaves `body_a` on Hook, and not writing does the same
+/// — both go red on the `body_a == Post` assertion.
+#[test]
+fn set_joint_body_rebinds_slot_a_and_the_joint_still_binds() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let post = body(&mut sim, 3.0, 6.0, BodyKind::Static, "Post");
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+
+    set_joint_body(&mut sim, joint.to_bits(), false, post, &queue, &reg);
+    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("apply");
+
+    let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert_eq!(
+        j.body_a,
+        stable_name_id("Post"),
+        "slot A did not re-bind to Post"
+    );
+    assert_eq!(
+        j.body_b,
+        stable_name_id("Plank"),
+        "slot B was touched — the wrong slot moved"
+    );
+
+    // Not dormant: the re-bound joint still reaches the solver.
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=60 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    assert_eq!(
+        bridge.joint_count(),
+        1,
+        "the re-bound joint never reached the solver"
+    );
+    let _ = plank;
 }

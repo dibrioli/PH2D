@@ -49,6 +49,9 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         stiffness: 30.0,
         damping: 0.5,
         max_length: 2.0,
+        // No re-pick target by default — the base fixture is a joint being
+        // tuned, not one being re-bound. The Set-Body sweep supplies its own.
+        rebind_target_name: None,
     }
 }
 
@@ -144,6 +147,46 @@ fn delete_joint_is_dispatched() {
         JointFieldEdit::Remove,
         "Delete Joint",
     );
+}
+
+/// **The Set-Body buttons dispatch, and ONLY when there is a target.**
+///
+/// Live (a body selected alongside the joint → `rebind_target_name` is `Some`):
+/// both buttons are painted, focusable, and each writes its own slot. Dimmed (no
+/// target → `None`): they register no hit, so a click where they sit does
+/// nothing — a dimmed control that dispatches lies (the §12/§11 rule). The shell
+/// is what supplies the target; here we prove the panel honours the presence.
+#[test]
+fn the_set_body_buttons_dispatch_only_with_a_target() {
+    let live = InspectorJointInfo {
+        rebind_target_name: Some("Crate".into()),
+        ..joint(0)
+    };
+    expect(
+        &click_real(live.clone(), ids::INSP_JOINT_SET_A),
+        JointFieldEdit::SetBodyA,
+        "Set Body A",
+    );
+    expect(
+        &click_real(live, ids::INSP_JOINT_SET_B),
+        JointFieldEdit::SetBodyB,
+        "Set Body B",
+    );
+
+    // No target → the buttons are painted dimmed but register NO hit, so they
+    // are absent from the returned hit rects.
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_joint(Some(joint(0))); // rebind_target_name: None
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_joint(None);
+    for id in [ids::INSP_JOINT_SET_A, ids::INSP_JOINT_SET_B] {
+        assert!(
+            !rects.iter().any(|(n, _)| *n == id),
+            "{id:?} was hit-registered with no re-pick target — a dimmed button \
+             that dispatches lies"
+        );
+    }
 }
 
 /// **Every number box commits to its own field.**

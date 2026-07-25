@@ -5305,17 +5305,38 @@ impl crate::App {
             // "Delete Joint" despawns it through the same path any other object
             // takes, and gets the same undo step for free.
             for &(bits, edit) in &joint_edits {
-                if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
-                    let e = ph2d_ecs::Entity::from_bits(bits);
-                    let _ = sim.world_mut().despawn(e);
-                } else {
-                    inspector_joint::apply_joint_edit(
+                match edit {
+                    ph2d_editor::JointFieldEdit::Remove => {
+                        let e = ph2d_ecs::Entity::from_bits(bits);
+                        let _ = sim.world_mut().despawn(e);
+                    }
+                    // Re-pick a body: the target is the one OTHER selected body,
+                    // resolved HERE for the same reason Join is — the shell owns
+                    // the selection, so the button carries no operand and a
+                    // button that was live always has a target (`rebind_target`).
+                    ph2d_editor::JointFieldEdit::SetBodyA
+                    | ph2d_editor::JointFieldEdit::SetBodyB => {
+                        if let Some(target) =
+                            inspector_joint::rebind_target(sim.world(), bits, &inspector_selection)
+                        {
+                            let slot_b = matches!(edit, ph2d_editor::JointFieldEdit::SetBodyB);
+                            inspector_joint::set_joint_body(
+                                sim,
+                                bits,
+                                slot_b,
+                                target,
+                                editor_queue,
+                                component_registry,
+                            );
+                        }
+                    }
+                    _ => inspector_joint::apply_joint_edit(
                         sim,
                         bits,
                         edit,
                         editor_queue,
                         component_registry,
-                    );
+                    ),
                 }
             }
             if let Some((a, b)) = join_request {

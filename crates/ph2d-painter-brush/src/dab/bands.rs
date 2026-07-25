@@ -144,7 +144,7 @@ pub(super) struct DabCtx<'a> {
 pub(super) fn stamp_band(
     ctx: &DabCtx,
     dst: &mut [u8],
-    mut mask: Option<&mut [u8]>,
+    mut cover: Option<crate::stroke_cover::StrokeCover<'_>>,
     band_y0: i64,
 ) -> bool {
     let blend = ctx.spec.blend;
@@ -254,39 +254,29 @@ pub(super) fn stamp_band(
                 }
                 stamp_rgba(prev, color, stamp_alpha, m)
             } else {
-                let a = match mask.as_deref_mut() {
-                    // Accumulate OFF: cap each pixel at the TEXTURE-WEIGHTED target `coverage × g`, so a
-                    // grain texel tops at `g·Strength` however many dabs cross it (`w` builds toward the
-                    // cap). `g = 1` (no texture) ⇒ byte-identical to the old flat cap (Enio 2026-06-27).
-                    //
-                    // Under the film's screen-space AA (BUGS #16) `w` at a rim texel is its fractional
-                    // AREA, and the plain build-up would converge it right back to a hard edge (measured:
-                    // 0.64 → 0.94 over a stroke's overlapping dabs). The AA branch caps the texel at the
-                    // film's AREA (`w·coverage`) while the per-dab opacity still builds WITHIN it — and
-                    // at `cap = 1` (the whole interior at full pressure) `add = a_dab·(1 − m)` and
-                    // `a = add/(1 − m) = a_dab`, the EXACT maskless alpha sequence: the interior is
-                    // byte-identical, mask or no mask. (The first arming attempt jumped every texel to
-                    // `w·g·cov` — which silently enforced the Grain cap on full-strength strokes and
-                    // shifted every grain-textured interior; caught by the wax/shine material gates.)
-                    // Without AA the old premise holds: the hard film's rim `w` is exactly zero, so the
-                    // cut survives the build model for free.
-                    Some(m_buf) => {
+                let a = match cover.as_mut() {
+                    // The per-stroke coverage buffer answers "how much of THIS stroke is here?", and
+                    // its LAW is the caller's ([`crate::stroke_cover`]): pigment's Accumulate-OFF cap
+                    // (`BuildUp`) or the coverage channel's envelope (`Envelope`, the Mask brush).
+                    // Whatever the law, `a = add/(1 − m)` makes the canvas hold exactly
+                    // `pre_stroke·(1 − m) + colour·m` — the deposit lands on the state the stroke
+                    // started from, by telescoping and with no copy of the canvas (see the module).
+                    // At `cap = 1` under BuildUp this reduces to the EXACT maskless alpha sequence, so
+                    // a full-strength interior is byte-identical whether the buffer is threaded or not.
+                    Some(cover) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
-                        let m = f32::from(m_buf[mi]) / 255.0;
-                        let add = if ctx.film_aa.is_some() {
-                            let cap = (w * ctx.coverage).min(1.0);
-                            if m >= cap {
-                                continue; // the film's area is fully laid here
-                            }
-                            (w * g * ctx.coverage) * (1.0 - m / cap.max(1e-4))
-                        } else {
-                            let cap = (g * ctx.coverage).min(1.0);
-                            if m >= cap {
-                                continue; // already at this texel's weighted cap
-                            }
-                            w * (cap - m)
+                        let m = f32::from(cover.buf[mi]) / 255.0;
+                        let Some(add) = crate::stroke_cover::cover_add(
+                            cover.law,
+                            m,
+                            w,
+                            g,
+                            ctx.coverage,
+                            ctx.film_aa.is_some(),
+                        ) else {
+                            continue; // this dab adds nothing here
                         };
-                        m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
+                        cover.buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
                         let a = add / (1.0 - m).max(1e-4);
                         if ctx.preserve_alpha { a * prev[3] } else { a }
                     }

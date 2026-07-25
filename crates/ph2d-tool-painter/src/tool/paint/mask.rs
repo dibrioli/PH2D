@@ -423,6 +423,16 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
     })
 }
 
+// The mask's own measurement probes + gates live in sibling files rather than at the end of the
+// 23k-line `paint::tests` (a wave's worth of gates appended there is a wave nobody can find again).
+// They hang off THIS module because `paint.rs` sits exactly at the 700-LOC cap.
+#[cfg(test)]
+#[path = "mask_probe.rs"]
+mod mask_probe;
+#[cfg(test)]
+#[path = "mask_tests.rs"]
+mod mask_tests;
+
 /// The overlay tint palette (straight sRGB `0..=255`): index `0` a DARK gray (default), `1..=4`
 /// fluorescent highlighter hues (yellow / pink / green / orange). Out-of-range falls back to dark gray.
 fn mask_overlay_rgb(idx: u8) -> [u8; 3] {

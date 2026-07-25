@@ -351,7 +351,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             None,
             None,
             None,
-            Some(&mut mask),
+            Some(crate::StrokeCover::build_up(&mut mask)),
             [1.0, 0.0],
         );
     }
@@ -431,7 +431,7 @@ fn accumulate_off_grain_caps_each_texel_at_its_weighted_coverage() {
             Some(&basis),
             Some(&img),
             None,
-            Some(&mut mask),
+            Some(crate::StrokeCover::build_up(&mut mask)),
             [1.0, 0.0],
         );
     }

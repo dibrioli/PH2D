@@ -6,7 +6,7 @@
 use super::PaintMode;
 use super::ramp_lut::RampLutOwner;
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushBlend, Dab, StrokeMethod};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, StrokeCoverLaw, StrokeMethod};
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -124,6 +124,35 @@ impl PainterTool {
             return;
         }
         self.stamp_dabs_routed(dabs);
+    }
+
+    /// **The one door** for *"does this stroke track its own coverage, and by which law?"* — asked by
+    /// the route selection (a tracked stroke cannot use the constant-orientation caches, which have no
+    /// buffer to thread) AND by the two routes that thread it ([`super::stamp_cache`]). The predicate
+    /// used to be spelled out in all three places; three copies of a rule this load-bearing is how one
+    /// route ends up capping a stroke the next one builds up.
+    ///
+    /// - **Mask mode ⇒ [`StrokeCoverLaw::Envelope`]**: the Mask brush paints a COVERAGE CHANNEL, and a
+    ///   coverage channel wants Krita's Wash law — the dab profile is the target, kept by `max`, so
+    ///   scrubbing over a spot cannot sharpen its feather (measured before the change: the transition
+    ///   band fell 3.53 px → 1.38 px over fifteen passes while the contour's sawtooth tripled, which is
+    ///   the reported jagged edge). Only the Paint/Erase sub-brushes arrive here; Blur/Smear are spatial
+    ///   ops on the committed buffer and short-circuit in [`Self::stamp_dabs_mask`] before this.
+    /// - **Otherwise the pigment cap** (`BuildUp`, Accumulate OFF where the cap is observable) — the law
+    ///   and the arithmetic that shipped, byte for byte. Pigment WANTS crossing again to deepen.
+    #[must_use]
+    pub(super) fn stroke_cover_law(&self, brush: &BrushSpec) -> Option<StrokeCoverLaw> {
+        if matches!(self.paint.paint_mode, PaintMode::Mask) {
+            return Some(StrokeCoverLaw::Envelope);
+        }
+        (!brush.accumulate
+            && (brush.strength < 1.0
+                // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the old
+                // premise ("the cap is observable only under Strength < 1") is false once a texel's
+                // target alpha is fractional at full strength, because overlapping dabs would build
+                // the rim right back to a hard edge (measured: 0.64 -> 0.94).
+                || brush.film_aa_wanted(brush.shape.is_active())))
+        .then_some(StrokeCoverLaw::BuildUp)
     }
 
     /// Route a batch of dabs to one of the stamp paths (Smear / Blur / Clone / Mask / composite / cached /
@@ -332,7 +361,18 @@ impl PainterTool {
         // Per-layer-colour Shape (multi-layer, mode on): the z-ordered tinted layers recomposite onto the
         // canvas. Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the
         // Shape was reset to None) can never route a non-Image Shape into the coloured path (Enio).
-        if self.paint.shape_layers.is_color_mode() && brush.shape_silhouette_active(has_shape_image)
+        // ⚠️ NEVER for the Mask (found auditing the coverage-law wave): this branch is decided BEFORE
+        // the ramp/cache ones and never consulted [`Self::stroke_cover_law`], so a mask stroke with
+        // Per-Layer Color armed escaped the coverage law entirely — measured, its edge came out at
+        // **0.80 px**, harder than either law's, because nothing threaded the stroke's coverage buffer.
+        // And it is wrong twice: the path takes its colours from the LAYER STACK, while
+        // [`Self::stamp_dabs_mask`] forces black/white + Mix exactly to keep the scratch a pure
+        // COVERAGE channel — layer colours in a coverage buffer are not a colour, they are noise.
+        // (Pigment's routing is untouched: per-layer colour + Accumulate-OFF keeps its long-standing
+        // behaviour, because moving the paint path is not this wave's to do.)
+        if !matches!(self.paint.paint_mode, PaintMode::Mask)
+            && self.paint.shape_layers.is_color_mode()
+            && brush.shape_silhouette_active(has_shape_image)
         {
             // Per-dab dynamics the constant-orientation cached path can't express → the per-pixel dynamic
             // path: Shape Rake / Random rotation, Randomize Color, or Grain Jitter Rotate. Randomize Color
@@ -370,14 +410,11 @@ impl PainterTool {
         // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).
         let per_dab_rotation =
             brush.has_per_dab_rotation() || brush.shape_has_per_dab_rotation(has_shape_image);
-        // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
-        let accumulate_cap = !brush.accumulate
-            && (brush.strength < 1.0
-                // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the
-                // old premise ("the cap is observable only under Strength < 1") is false once a
-                // texel's target alpha is fractional at full strength, because overlapping dabs
-                // would build the rim right back to a hard edge (measured: 0.64 -> 0.94).
-                || brush.film_aa_wanted(brush.shape.is_active()));
+        // A stroke that TRACKS its own coverage ([`Self::stroke_cover_law`] — pigment's Accumulate-OFF
+        // cap, or the Mask brush's envelope) cannot be served by the constant-orientation caches: they
+        // scale-blit a baked stamp and have no per-stroke buffer to thread, so they would silently
+        // ignore the law. Same door the threading routes ask, so the two cannot disagree.
+        let accumulate_cap = self.stroke_cover_law(&brush).is_some();
         // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
         // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
         // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the

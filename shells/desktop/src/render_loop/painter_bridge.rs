@@ -256,6 +256,12 @@ pub(super) fn dispatch(
     // True when the GPU producer owns the preview slot this frame (representable
     // stack) — gates the CPU lifecycle block off so the two never fight the slot.
     let mut gpu_owns_preview = false;
+    // PH2D_PAINT_PERF sub-phase accumulators (ms) — which part of dispatch a slow frame spends its
+    // time in. `elapsed_ms` reads the mark only when the env is on (the `Instant` is `None` otherwise).
+    let (mut ph_preview, mut ph_panel, mut ph_overlay) = (0f32, 0f32, 0f32);
+    let elapsed_ms =
+        |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
+    let m_preview = perf_t0.map(|_| std::time::Instant::now());
     if let Some(tool) = tools.active_mut()
         && let Some(painter) = tool
             .as_any_mut()
@@ -353,6 +359,10 @@ pub(super) fn dispatch(
         // change, unchanged on an idle frame (so the plan Skips). Read here, inside the downcast, in
         // both the drained and idle cases.
         cache_version = painter.canvas_version();
+
+        // PH2D_PAINT_PERF: close the PREVIEW phase (try_drive + drain), open the PANEL phase.
+        ph_preview = elapsed_ms(m_preview);
+        let m_panel = perf_t0.map(|_| std::time::Instant::now());
 
         // PH2D_PAINT_PERF diagnostic context (cheap reads; only used when the var is set).
         if perf_t0.is_some() {
@@ -529,6 +539,10 @@ pub(super) fn dispatch(
             }
         }
 
+        // PH2D_PAINT_PERF: close the PANEL phase (snapshot publish + shape re-bake), open OVERLAY.
+        ph_panel = elapsed_ms(m_panel);
+        let m_overlay = perf_t0.map(|_| std::time::Instant::now());
+
         // Keep the shape-editor grab tolerance in sync with the live camera every frame (not just on a
         // painter Down/Move/Up), so the on-canvas handles are drawn where they'll be grabbed — no snap
         // when the first grab after a zoom refreshes the tol.
@@ -574,6 +588,8 @@ pub(super) fn dispatch(
             text_system,
             cursor,
         );
+        // PH2D_PAINT_PERF: close the OVERLAY phase.
+        ph_overlay = elapsed_ms(m_overlay);
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,
@@ -611,6 +627,7 @@ pub(super) fn dispatch(
     //
     // On a GPU-owned frame the GPU producer fills the slot; hide the CPU cache
     // from this block so it neither re-uploads nor releases that slot.
+    let m_upload = perf_t0.map(|_| std::time::Instant::now());
     upload_cpu_preview(
         renderer,
         painter_preview.as_ref().filter(|_| !gpu_owns_preview),
@@ -624,11 +641,15 @@ pub(super) fn dispatch(
     if let Some(t0) = perf_t0
         && painter_is_active
     {
-        // Record this frame's dispatch info; the frame timer (`run_render_frame`) pairs it with the
-        // whole-frame time and the aggregator prints ONE summary line per window, not per frame.
+        // Record this frame's dispatch info + sub-phase split; the frame timer (`run_render_frame`)
+        // pairs it with the whole-frame time and the aggregator prints ONE summary per window.
         super::paint_perf::record_dispatch(super::paint_perf::FrameInfo {
             gpu: gpu_owns_preview,
             dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
+            preview_ms: ph_preview,
+            panel_ms: ph_panel,
+            overlay_ms: ph_overlay,
+            upload_ms: elapsed_ms(m_upload),
             w: dbg_dims.0,
             h: dbg_dims.1,
             gray: dbg_gray,

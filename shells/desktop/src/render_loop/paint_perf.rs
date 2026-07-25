@@ -1,10 +1,12 @@
 //! `PH2D_PAINT_PERF` aggregation — ONE summary line per window, not one per frame.
 //!
 //! The per-frame log drowned the terminal. Instead, `painter_bridge::dispatch` records this frame's
-//! dispatch cost + producer + flags via [`record_dispatch`], and `run_render_frame`'s frame timer
-//! reports the whole-frame cost via [`end_frame`]; the two are paired here and a compact summary
-//! (median + max of both, producer mix, the flags) is printed once every [`WINDOW`] painter frames.
-//! So painting a scenario for ~2 s yields one or two lines to paste — enough to locate the cost.
+//! dispatch cost — split into sub-phases — plus the producer + flags via [`record_dispatch`], and
+//! `run_render_frame`'s frame timer reports the whole-frame cost via [`end_frame`]; the two are paired
+//! and a compact summary is printed once every [`WINDOW`] painter frames. It reports the p50 of each
+//! sub-phase (so the dominant one is obvious) and the flags of the WORST-dispatch frame (so they
+//! describe the expensive case, not an idle tail frame). Painting a scenario for ~2 s yields one or
+//! two lines to paste — enough to locate the cost inside dispatch.
 
 use std::cell::RefCell;
 
@@ -15,6 +17,13 @@ const WINDOW: usize = 90;
 pub(super) struct FrameInfo {
     pub gpu: bool,
     pub dispatch_ms: f32,
+    /// Sub-phases of dispatch (they sum to ~`dispatch_ms`): the preview drain (try_drive + the CPU
+    /// drain), the layers-panel snapshot publish + shape re-bake, the on-canvas overlays, the CPU
+    /// preview upload. Whichever dominates is the cost.
+    pub preview_ms: f32,
+    pub panel_ms: f32,
+    pub overlay_ms: f32,
+    pub upload_ms: f32,
     pub w: u32,
     pub h: u32,
     pub gray: bool,
@@ -25,22 +34,19 @@ pub(super) struct FrameInfo {
 
 #[derive(Default)]
 struct Agg {
-    /// This frame's dispatch info, set by `record_dispatch`, consumed by `end_frame`. `None` on a
-    /// frame the painter was not active — that frame is not counted.
     cur: Option<FrameInfo>,
-    samples: Vec<(f32, f32)>, // (dispatch_ms, total_frame_ms)
+    samples: Vec<FrameInfo>,
     gpu: u32,
     cpu: u32,
-    last: FrameInfo,
+    frame_ms: Vec<f32>,
 }
 
 thread_local! {
     static AGG: RefCell<Agg> = RefCell::new(Agg::default());
-    /// Cached env probe (-1 = unknown, 0 = off, 1 = on) — avoid a syscall per frame.
     static ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
 }
 
-/// Whether `PH2D_PAINT_PERF` is set (cached).
+/// Whether `PH2D_PAINT_PERF` is set (cached — no per-frame syscall).
 pub(super) fn on() -> bool {
     ON.with(|c| {
         if c.get() < 0 {
@@ -61,54 +67,69 @@ pub(super) fn end_frame(total_ms: f32) {
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let Some(cur) = a.cur.take() else { return };
-        a.samples.push((cur.dispatch_ms, total_ms));
+        a.samples.push(cur);
+        a.frame_ms.push(total_ms);
         if cur.gpu {
             a.gpu += 1;
         } else {
             a.cpu += 1;
         }
-        a.last = cur;
         if a.samples.len() >= WINDOW {
             emit(a);
             a.samples.clear();
+            a.frame_ms.clear();
             a.gpu = 0;
             a.cpu = 0;
         }
     });
 }
 
-fn pct(sorted: &[f32], p: f64) -> f32 {
-    if sorted.is_empty() {
+fn p50(v: &[f32]) -> f32 {
+    if v.is_empty() {
         return 0.0;
     }
-    sorted[((sorted.len() as f64 * p) as usize).min(sorted.len() - 1)]
+    let mut s = v.to_vec();
+    s.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
+    s[s.len() / 2]
 }
 
 fn emit(a: &Agg) {
     let n = a.samples.len();
-    let mut disp: Vec<f32> = a.samples.iter().map(|s| s.0).collect();
-    let mut total: Vec<f32> = a.samples.iter().map(|s| s.1).collect();
-    disp.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
-    total.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
-    let f = a.last;
+    let phase = |f: fn(&FrameInfo) -> f32| p50(&a.samples.iter().map(f).collect::<Vec<_>>());
+    // The flags of the SLOWEST-dispatch frame, so they describe the expensive case (not an idle tail).
+    let worst = a
+        .samples
+        .iter()
+        .copied()
+        .max_by(|x, y| {
+            x.dispatch_ms
+                .partial_cmp(&y.dispatch_ms)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .unwrap_or_default();
     eprintln!(
-        "[paint-perf] {n} frames: GPU {} / CPU {} | dispatch p50={:.2} max={:.2} ms | \
-         frame p50={:.2} max={:.2} ms | canvas {}x{} gray={} mask={} lane={} trivial={}",
+        "[paint-perf] {n}f GPU {}/CPU {} | frame p50={:.1} | dispatch p50={:.1} max={:.1} \
+         [preview {:.1} panel {:.1} overlay {:.1} upload {:.1}] | \
+         WORST: {} {}x{} gray={} mask={} lane={} trivial={}",
         a.gpu,
         a.cpu,
-        pct(&disp, 0.5),
-        disp.last().copied().unwrap_or(0.0),
-        pct(&total, 0.5),
-        total.last().copied().unwrap_or(0.0),
-        f.w,
-        f.h,
-        f.gray,
-        f.active_is_mask,
-        if f.lane_partial {
+        p50(&a.frame_ms),
+        phase(|f| f.dispatch_ms),
+        worst.dispatch_ms,
+        phase(|f| f.preview_ms),
+        phase(|f| f.panel_ms),
+        phase(|f| f.overlay_ms),
+        phase(|f| f.upload_ms),
+        if worst.gpu { "GPU" } else { "CPU" },
+        worst.w,
+        worst.h,
+        worst.gray,
+        worst.active_is_mask,
+        if worst.lane_partial {
             "partial"
         } else {
             "full/idle"
         },
-        f.trivial,
+        worst.trivial,
     );
 }

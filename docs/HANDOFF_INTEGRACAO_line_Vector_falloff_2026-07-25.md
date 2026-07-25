@@ -1,15 +1,18 @@
-# HANDOFF DE INTEGRAÇÃO — `line/Vector` · FALLOFF + TWIST (2026-07-25)
+# HANDOFF DE INTEGRAÇÃO — `line/Vector` · FALLOFF + TWIST + KNOT (2026-07-25)
 
-**Estado:** linha FECHADA para DUAS waves da mesma sessão, aguardando ordem EXPLÍCITA de
+**Estado:** linha FECHADA para TRÊS waves da mesma sessão, aguardando ordem EXPLÍCITA de
 integração. **NÃO integrei nem pushei** (§0.7 / [[feedback_integration_only_enio_command_end_of_all_lines]]).
 
 - **Wave 1 — o FALLOFF** (commit **`772f830eb`**): **smoke APROVADO pelo Enio.** Detalhe abaixo.
-- **Wave 2 — o TWIST** (commit **`afe16fce5`**): **pendente de smoke** (`PH2D_BUILD_SMOKE=29`). Seção
+- **Wave 2 — o TWIST** (commit **`afe16fce5`**): **smoke APROVADO pelo Enio** (`PH2D_BUILD_SMOKE=29`).
+  Seção própria mais abaixo.
+- **Wave 3 — o KNOT** (commit **`d38cae8f2`**): **pendente de smoke** (`PH2D_BUILD_SMOKE=30`). Seção
   própria no fim deste documento.
 
-> Os números de commit e schema abaixo são da Wave 1; a Wave 2 **não move o schema** (variant
-> apendado, `PROJECT_SCHEMA` fica 29). As duas waves tocam o MESMO conjunto de arquivos
-> (`ph2d-vec-scene/src/effect*.rs`, `fx_warp_presets.rs`, `MAX_FX_KINDS`), então integram JUNTAS.
+> Nenhuma wave move o schema (variants apendados, `PROJECT_SCHEMA` fica **29**). As três tocam o
+> MESMO conjunto de arquivos (`ph2d-vec-scene/src/effect*.rs`, `fx_*`, `MAX_FX_KINDS`), então
+> integram JUNTAS. Estado no tip: `MAX_FX_KINDS` **19** (13 base+warp, +4 falloff, +Twist, +Knot);
+> splits de LOC: `effect_params.rs` (params) + `effect_accessors.rs` (as_*+label).
 
 ## O que é
 
@@ -194,3 +197,87 @@ modulando o giro da Wave 2. Desligar o olho do Falloff devolve o remoinho cheio.
 - **Além de ~270° numa forma de quinas afiadas o twist fica extremo** (509° no canto a 360°) — é a
   natureza de um twist forte, não um defeito; o slider vai a ±360 (uma volta), e a fidelidade da
   reamostragem (`SAMPLES=128`) foi o recurso que definiu o teto, não um palpite.
+
+---
+
+# WAVE 3 — O KNOT (commit `d38cae8f2`, pendente de smoke)
+
+## O que é
+
+O **entrelace celta** — onde o caminho se cruza (auto-interseção OU entre contornos), a fita de
+BAIXO ganha um VÃO e a de CIMA passa inteira. É o *Knot* LPE do Inkscape, o item "médio, e é lindo"
+da pesquisa `20_*`. Um variant novo `PathEffect::Knot`, dois params: **Gap** (a espessura aparente,
+% da forma) e **Swap** (quem passa por cima).
+
+## A espinha (não re-litigar)
+
+- **Detecta na POLIGONAL, corta na CURVA.** As travessias saem da poligonal densa (interseção
+  reta-reta com a posição de arco de cada passagem); o vão é cortado na Bézier pela MESMA máquina de
+  arco do Trim. Extraí `pieces_between`/`rebuild` do `fx_trim` para `pub(crate)` (**porta única**:
+  Trim revela UM intervalo, Knot corta o COMPLEMENTO de vários) — o `fx_trim` fica **byte-idêntico**
+  (goldens intactos).
+- **Alternância = parece tecido.** `over` vira a cada ponta de cruzamento em ordem de arco (seguindo
+  uma fita ela alterna cima/baixo — o "nó sem fim"). Garante **exatamente um vão por travessia**
+  (nunca dois, que apagaria a fita; nunca zero, que a deixaria sólida); empate de paridade → mergulha
+  a passagem de arco maior. `Swap` inverte todos.
+- **Sem z-buffer:** as duas fitas têm o mesmo traço e a de cima tem tinta onde a de baixo tem o vão —
+  o vão É a sombra (o método do Inkscape).
+- **Whole-path** (como o Repeater, NÃO `apply_per_contour`): uma travessia pode ser entre dois
+  contornos. Caminho sem travessia sai clonado (nada a tecer). `takes_falloff = false`.
+
+## Arquivos (mesmo conjunto das waves 1-2 — integram juntas)
+
+- **`src/fx_knot.rs`** (NOVO): `KnotSpec` + `knot_path` (detecção + alternância + corte).
+- **`src/fx_knot_tests.rs`** (NOVO): 4 gates mutação-provados (pentagrama).
+- **`src/fx_trim.rs`**: `Piece`/`pieces_between`/`rebuild` → `pub(crate)` (byte-idêntico).
+- **`src/effect.rs`**: variant `Knot` + `is_neutral`/`takes_falloff`(=false)/`from_kind`/`kind_index`/
+  `apply`(whole-path)/`KINDS`(+1)/`KNOT_KIND`. ⚠️ **Split de LOC:** os acessores `as_*`+`label` saíram
+  para **`src/effect_accessors.rs`** (NOVO, irmão do `effect_params.rs`) — effect.rs 705→510.
+- **`src/effect_accessors.rs`** (NOVO): `impl PathEffect` com os `as_*` (agora incluindo `as_knot`).
+- **`src/effect_params.rs`**: params **Gap**+**Swap** + `get`/`set`.
+- **`src/lib.rs`**: `pub mod fx_knot;`. **`src/effect_tests.rs`**: `PANEL_MAX_FX_KINDS` 18→19.
+- **`tests/fx_look.rs`**: pentagrama + 2 linhas de render-and-look (Knot + Swap); ⚠️ as linhas de
+  Twist passaram de `KINDS.len()-1` para `-2` (Knot é agora o último KIND).
+- **`crates/ph2d-editor-core/src/ids/chrome/vector.rs`**: `MAX_FX_KINDS` **18→19** (append-only).
+- **`shells/desktop/src/knot_smoke.rs`** (NOVO) + `build_smoke.rs`/`main.rs`: `PH2D_BUILD_SMOKE=30`.
+
+## Contratos / schema — INTOCADOS
+
+`NodeOp`/`OpResolver`/`NodeManifest` intactos. **ZERO bump** (`PROJECT_SCHEMA` fica **29**,
+`VEC_SCENE` **13**).
+
+## Gates (todos VERDES)
+
+- `ph2d-vec-scene`: **321 lib** (317 + 4 Knot) + reachability/neutral/round-trip/ceiling auto-cobrem
+  o Knot. Mutações: não-cortar-vão → RED em one-gap+swap; ignorar-swap → RED só no swap.
+- fx_trim goldens (byte-identidade do `pub(crate)`), panel-vector, shell fx_bridge(19)+dispatch(9),
+  `architecture_workspace_file_loc_cap`+`file_loc_caps`, clippy `--all-targets` limpo, `cargo check
+  --workspace` limpo.
+
+## Render-and-look (a folha de contacto)
+
+`PH2D_FX_LOOK_DIR=<dir> cargo test -p ph2d-vec-scene --test fx_look --release -- --ignored` — as
+linhas do Knot (pentagrama) mostram as 5 travessias abrindo vão ALTERNADO, e o Swap pondo o vão na
+outra fita. (A folha preenche as fitas abertas — ruído do desenhador; o smoke usa **traço**, sem
+fill, e lê como fita limpa.)
+
+## Smoke
+
+```
+env PH2D_BUILD_SMOKE=30 cargo run -p ph2d-host-desktop --release
+```
+
+Três pentagramas traçados como FITA: **esquerda** Gap 6% · **meio (selecionado)** Gap 10% (card do
+Knot com Gap + Swap na seção Effects; seguindo uma fita ela alterna cima/baixo) · **direita** Gap 10%
++ **Swap** (inverte quem passa por cima em toda travessia).
+
+## Aberto (deferido, com motivo)
+
+- **Toggle por-travessia** (o clique-para-inverter do Inkscape): hoje só o `Swap` global. Precisa de
+  um gesto de canvas que aponte a travessia — é uma feature própria, não um branch no `dive_gaps`.
+- **A alternância é por PARIDADE de arco** — perfeita no nó alternante (pentagrama, (5,2) torus); numa
+  projeção não-alternante a regra garante um vão por travessia mas não a alternância ideal. O toggle
+  por-travessia é o escape (item acima).
+- **Detecção na poligonal** (`SAMPLES_PER_SEG=16`): a posição do vão tem precisão ~1/16 de segmento;
+  o vão tem largura, então não aparece. Curva↔curva exata (Bézier-Bézier, até 9 raízes) seria um
+  motor próprio, não justificado.

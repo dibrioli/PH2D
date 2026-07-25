@@ -107,6 +107,10 @@ pub(super) fn dispatch(
     let mut dbg_gray = false;
     let mut dbg_active_is_mask = false;
     let mut dbg_dims = (0u32, 0u32);
+    // Which arm the last drain took + WHY a trivial stack fell to the full arm (impasto / mask scratch).
+    let mut dbg_branch = ph2d_tool_painter::DrainBranch::Idle;
+    let mut dbg_impasto = false;
+    let mut dbg_mask_scratch = false;
 
     let painter_is_active = tools
         .active()
@@ -370,6 +374,10 @@ pub(super) fn dispatch(
             dbg_gray = painter.mask_view_grayscale().is_some();
             dbg_active_is_mask = painter.active_is_mask();
             dbg_dims = painter.source_size();
+            let (branch, impasto, mask_scratch) = painter.preview_drain_diag();
+            dbg_branch = branch;
+            dbg_impasto = impasto;
+            dbg_mask_scratch = mask_scratch;
         }
         // Diagnostic TRAP, half 1 (BUGS_painter.md #11 — OPEN): `PH2D_PREVIEW_DIAG=1` logs which producer
         // owns the preview slot each frame + the CPU partial-upload bbox. This is what proved the per-layer
@@ -656,6 +664,9 @@ pub(super) fn dispatch(
             active_is_mask: dbg_active_is_mask,
             lane_partial: painter_dirty_bbox.is_some(),
             trivial: dbg_trivial,
+            branch: dbg_branch,
+            impasto: dbg_impasto,
+            mask_scratch: dbg_mask_scratch,
         });
     }
     !apply_selection.is_empty()

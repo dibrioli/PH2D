@@ -30,6 +30,11 @@ pub(super) struct FrameInfo {
     pub active_is_mask: bool,
     pub lane_partial: bool,
     pub trivial: bool,
+    /// Which arm the drain took — the decisive signal (`FULL-composite` is the O(W×H) cost).
+    pub branch: ph2d_tool_painter::DrainBranch,
+    /// WHY a trivial stack fell to the full arm: relief is lit / a mask brush scratch is live.
+    pub impasto: bool,
+    pub mask_scratch: bool,
 }
 
 #[derive(Default)]
@@ -110,7 +115,7 @@ fn emit(a: &Agg) {
     eprintln!(
         "[paint-perf] {n}f GPU {}/CPU {} | frame p50={:.1} | dispatch p50={:.1} max={:.1} \
          [preview {:.1} panel {:.1} overlay {:.1} upload {:.1}] | \
-         WORST: {} {}x{} gray={} mask={} lane={} trivial={}",
+         WORST: {} {}x{} branch={} impasto={} mask_scratch={} gray={} mask={} lane={} trivial={}",
         a.gpu,
         a.cpu,
         p50(&a.frame_ms),
@@ -123,6 +128,9 @@ fn emit(a: &Agg) {
         if worst.gpu { "GPU" } else { "CPU" },
         worst.w,
         worst.h,
+        worst.branch.name(),
+        worst.impasto,
+        worst.mask_scratch,
         worst.gray,
         worst.active_is_mask,
         if worst.lane_partial {

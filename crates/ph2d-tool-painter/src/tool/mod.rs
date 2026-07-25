@@ -113,6 +113,11 @@ pub struct PainterTool {
     /// The dirty bbox the LAST `take_preview_arc` recomposed (`Some` for a
     /// partial fast-lane update the bridge may upload as a sub-rect).
     preview_upload_bbox: Option<Region>,
+    /// Which arm the LAST `take_preview_arc` took — a `PH2D_PAINT_PERF` diagnostic so the shell can
+    /// name the exact cost (the trivial fast lane vs the full O(W×H) composite+light), which the
+    /// coarse `is_trivial_stack` flag cannot (a trivial stack still falls to the full arm under
+    /// impasto or a live mask scratch). Purely observational.
+    last_drain_branch: DrainBranch,
     /// Monotonic counter bumped on every change to the PUBLISHED layer structure
     /// (add / select / reorder / visibility / opacity / blend / source reset).
     /// The bridge publishes the `LayerStack` snapshot only when this changes.
@@ -196,6 +201,38 @@ pub struct PainterTool {
     mask_view_grayscale: Option<RtLayerId>,
 }
 
+/// Which arm the last preview drain ([`PainterTool::take_preview_arc`]) took. A `PH2D_PAINT_PERF`
+/// diagnostic (see [`PainterTool::last_drain_branch`]) — the cost profile is entirely different per
+/// arm, and the shell's `trivial`/`mask` flags cannot distinguish them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum DrainBranch {
+    /// Not dirty (or empty canvas) — the drain returned `None`. The cheapest frame.
+    #[default]
+    Idle,
+    /// A mask row's grayscale-view eye is open — full grayscale buffer.
+    Gray,
+    /// The zero-copy trivial fast lane (`Arc::clone(canvas_rgba)`) — O(1).
+    TrivialFast,
+    /// Partial recompose of a cached composite over the dirty bbox — O(N×bbox), partial upload.
+    PartialComposite,
+    /// Full recompose + full-canvas impasto light — O(N×W×H), full upload. The expensive arm.
+    FullComposite,
+}
+
+impl DrainBranch {
+    /// A short label for the perf summary line.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            DrainBranch::Idle => "idle",
+            DrainBranch::Gray => "gray",
+            DrainBranch::TrivialFast => "trivial-fast",
+            DrainBranch::PartialComposite => "partial-composite",
+            DrainBranch::FullComposite => "FULL-composite",
+        }
+    }
+}
+
 impl Default for PainterTool {
     fn default() -> Self {
         Self {
@@ -208,6 +245,7 @@ impl Default for PainterTool {
             mats: BTreeMap::new(),
             composited: None,
             preview_upload_bbox: None,
+            last_drain_branch: DrainBranch::Idle,
             layers_revision: 0,
             layer_pixel_versions: BTreeMap::new(),
             pixel_clock: 0,

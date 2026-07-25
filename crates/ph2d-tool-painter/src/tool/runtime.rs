@@ -199,6 +199,7 @@ impl PainterTool {
     #[must_use]
     pub fn take_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
+            self.last_drain_branch = crate::tool::DrainBranch::Idle;
             return None;
         }
         // Past the guard we are returning a fresh preview, so the CONTENT changed since the last drain:
@@ -212,6 +213,7 @@ impl PainterTool {
         if let Some(gray) = self.mask_grayscale_view_pixels() {
             self.composited = Some(Arc::new(gray));
             self.preview_upload_bbox = None;
+            self.last_drain_branch = crate::tool::DrainBranch::Gray;
             return Some((
                 Arc::clone(self.composited.as_ref().expect("just set")),
                 w,
@@ -237,6 +239,7 @@ impl PainterTool {
             // footprint. If the texture isn't seeded yet the bridge's guard falls
             // back to a full upload anyway, so an early bbox can never desync it.
             self.preview_upload_bbox = self.dirty_rect.take();
+            self.last_drain_branch = crate::tool::DrainBranch::TrivialFast;
             return Some((Arc::clone(&self.canvas_rgba), w, h));
         }
         let active = self.layers.active().unwrap_or(RtLayerId(0));
@@ -271,6 +274,7 @@ impl PainterTool {
                 let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
                 blit_region(cache, w, &region, bbox);
                 self.preview_upload_bbox = Some(bbox);
+                self.last_drain_branch = crate::tool::DrainBranch::PartialComposite;
             }
             _ => {
                 // Mask brush: the active layer composites NORMALLY (fully visible) — the protection scratch
@@ -296,6 +300,7 @@ impl PainterTool {
                 self.apply_mask_overlay(&mut composed);
                 self.composited = Some(Arc::new(composed));
                 self.preview_upload_bbox = None;
+                self.last_drain_branch = crate::tool::DrainBranch::FullComposite;
             }
         }
         Some((
@@ -331,5 +336,18 @@ impl PainterTool {
     #[must_use]
     pub fn canvas_version(&self) -> u64 {
         self.preview_version
+    }
+
+    /// `PH2D_PAINT_PERF` diagnostic: `(which arm the last drain took, impasto_visible, mask_scratch)`.
+    /// The branch names the cost (the O(W×H) `FullComposite` arm vs the O(1) `TrivialFast`); the two
+    /// predicates name WHY a trivial stack fell to the full arm — the coarse `is_trivial_stack` flag
+    /// the shell already logs cannot tell those apart. Purely observational; no state change.
+    #[must_use]
+    pub fn preview_drain_diag(&self) -> (crate::tool::DrainBranch, bool, bool) {
+        (
+            self.last_drain_branch,
+            self.impasto_visible(),
+            self.mask_scratch_active(),
+        )
     }
 }

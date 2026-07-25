@@ -47,6 +47,11 @@ pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> Node
         // distinto do da pose (os dois nunca coexistem, mas a distinção mantém o
         // gizmo_hit_map limpo se um frame publicar os dois por engano).
         GizmoTarget::FlipSelection => NodeId(canonical_id.0 ^ 0x_5F1E_C7A0_2B94_D6E3),
+        // Motion Nodes (fields): espaço de id próprio para os handles do gizmo de um
+        // field espacial — scrambler distinto dos demais (o gizmo de field nunca
+        // coexiste com os de sprite/flip por modalidade da tool, mas a distinção
+        // mantém o gizmo_hit_map limpo em qualquer frame).
+        GizmoTarget::MotionField => NodeId(canonical_id.0 ^ 0x_2D4B_86F1_9E0A_7C53),
     }
 }
 

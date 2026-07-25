@@ -151,7 +151,7 @@ pub(super) fn apply_param_edits(
 
 /// The current value of one param on a node (per-instance override, else the
 /// manifest default; unknown param → `0`).
-pub(super) fn param_value(
+pub(crate) fn param_value(
     motion: &MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     name: &str,
@@ -298,7 +298,7 @@ fn driven_value(
     ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
 }
 
-pub(super) fn selected_motion_node() -> Option<u32> {
+pub(crate) fn selected_motion_node() -> Option<u32> {
     match ph2d_panel_motion_graph::current_graph_selection()[..] {
         [only] => Some(only),
         _ => None,

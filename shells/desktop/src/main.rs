@@ -92,6 +92,9 @@ mod flip_select_pick;
 mod flip_select_points;
 mod flip_select_segment;
 mod flip_selection_gizmo;
+/// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
+/// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
+mod field_gizmo;
 mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;
@@ -430,6 +433,7 @@ impl App {
             flip_edit_gesture: None,
             flip_pose_drag: None,
             flip_selection_drag: None,
+            field_gizmo_drag: None,
             flip_edit_domain: None,
             vec_marquee: None,
             vec_connect: None,

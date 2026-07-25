@@ -2174,6 +2174,11 @@ impl App {
         if self.flip_selection_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Motion Nodes: arrasto do gizmo de FIELD em curso — cada movimento recomputa o TRS
+        // (do snapshot do Down) e escreve os params do NÓ. No-op sem gesto.
+        if self.field_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2517,6 +2522,14 @@ impl App {
         {
             return;
         }
+        // Motion Nodes: o pen-UP fecha um arrasto do gizmo de field e commita o passo de
+        // undo (um arrasto = um passo, como um drag de nó).
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.field_gizmo_up()
+        {
+            return;
+        }
         if self.flip_wants_canvas()
             && kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2602,6 +2615,18 @@ impl App {
             && mapped_button == ph2d_host::PointerButton::Primary
             && !menu_open_before
             && self.flip_selection_gizmo_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Motion Nodes: um handle do gizmo de FIELD sob o cursor abre o arrasto (rotate/
+        // scale/translate escrito nos params do NÓ). Como os do Flip, vem ANTES do caminho
+        // genérico de gizmo — um handle no hit-index o alcançaria e escreveria um
+        // `Transform`. O método só consome quando o hit é `GizmoTarget::MotionField`, que
+        // só existe com a tool Motion ativa + um field espacial selecionado no grafo.
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.field_gizmo_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

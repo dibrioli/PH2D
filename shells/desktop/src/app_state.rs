@@ -732,6 +732,10 @@ pub(crate) struct App {
     /// exclusiva) — rotate/scale assando o delta na geometria dos pontos selecionados.
     /// `None` fora de um arrasto. Ver `flip_selection_gizmo`.
     pub(crate) flip_selection_drag: Option<crate::flip_selection_gizmo::FlipSelectionDrag>,
+    /// Motion Nodes: o arrasto do gizmo de canvas de um field espacial em curso (ver
+    /// [`crate::field_gizmo`]). `None` = nenhum. Espelho do `flip_selection_drag`, mas o
+    /// apply escreve os params do NÓ (via `Graph::set_param`), nunca um `Transform`.
+    pub(crate) field_gizmo_drag: Option<crate::field_gizmo::FieldGizmoDrag>,
     /// ADR-0114 W8: o DOMÍNIO da seleção do frame ANTERIOR — a memória que deixa a
     /// troca do toggle (Stroke↔Point) converter a seleção no documento UMA vez
     /// (broadcast/promoção, `flip_select::flip_edit_domain_refresh`). `None` = tool

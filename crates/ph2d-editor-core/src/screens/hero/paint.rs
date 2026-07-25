@@ -193,6 +193,21 @@ pub fn paint_hero_screen(
             1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de seleção (mesma do primário)
         );
     }
+    // Motion Nodes (fields): o gizmo de canvas de um field espacial (tool Motion ativa
+    // + field selecionado no grafo). Keyed como `MotionField`, sem interior — o apply
+    // escreve os params do NÓ, não um `Transform`, e o gizmo de sprite (`view`) fica
+    // intocado. Nunca coexiste com o de sprite/flip por modalidade da tool.
+    if let Some(v) = hero.gizmo.field_view {
+        crate::gizmo::paint_sprite_gizmo_keyed(
+            scene,
+            &v,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.gizmo_hit_map,
+            crate::gizmo::GizmoTarget::MotionField,
+            1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de field (mesma do primário)
+        );
+    }
     // Onda 2C + z-order fix: the multi-selection extra + global gizmos
     // paint here — at the SAME layer as the primary gizmo, i.e. above the
     // scene but BELOW the floating panels (painted later in this fn). They

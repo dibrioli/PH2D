@@ -36,7 +36,7 @@ mod gpu;
 
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_params.rs"]
-mod params;
+pub(crate) mod params;
 
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_color.rs"]

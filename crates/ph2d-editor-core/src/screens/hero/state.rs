@@ -153,6 +153,12 @@ pub struct GizmoStateGroup {
     /// translate da seleção é o arrasto de canvas do W6.1/W8). Mutuamente exclusiva
     /// com `pose_view` (pose = instância, seleção = arte exclusiva). `None` ⇒ nada.
     pub selection_view: Option<crate::gizmo::GizmoView>,
+    /// Motion Nodes (fields): a view do gizmo de canvas de um **field espacial**
+    /// (`field.box`, …), publicada pelo shell SÓ com a tool Motion ativa + um field
+    /// espacial selecionado no grafo. Desenhada keyed (`GizmoTarget::MotionField`),
+    /// sem interior — o field não é entidade, então o gizmo de sprite (`view`) fica
+    /// intocado e os dois nunca coexistem por modalidade da tool. `None` ⇒ nada.
+    pub field_view: Option<crate::gizmo::GizmoView>,
     /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
     /// which handle of it) was clicked. The painters populate this
     /// map every frame for the primary, every extra, and the global

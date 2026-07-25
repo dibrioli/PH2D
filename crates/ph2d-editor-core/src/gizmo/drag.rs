@@ -94,6 +94,14 @@ pub enum GizmoTarget {
     /// de id próprio (ver `keyed_handle_id`); o dispatch do shell o reconhece ANTES do
     /// caminho genérico de gizmo e o consome.
     FlipSelection,
+    /// Motion Nodes (fields): o gizmo de canvas de um **field espacial** (`field.box`,
+    /// …). Espelho do `FlipSelection`, mas o apply escreve os **params do NÓ**
+    /// (`center_x`/`center_y`/`rotation`/`width`/`height` via `Graph::set_param`),
+    /// NUNCA um `Transform` de entidade — um field é um nó do grafo, não uma entidade.
+    /// Espaço de id próprio (ver `keyed_handle_id`); só existe com a tool Motion ativa
+    /// e um field espacial selecionado, então nunca coexiste com o gizmo de sprite. O
+    /// dispatch do shell o reconhece ANTES do caminho genérico e o consome.
+    MotionField,
 }
 
 /// Onda 2C: a single drag-target lookup entry, populated by the

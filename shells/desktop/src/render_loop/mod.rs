@@ -1507,6 +1507,20 @@ impl crate::App {
                     )
                 })
                 .flatten();
+            // Motion Nodes: o gizmo de canvas de um FIELD ESPACIAL (`field.box`, …) — só com
+            // a tool Motion ativa + um field espacial selecionado no grafo. Slot próprio
+            // (`field_view`), desenhado keyed (`MotionField`) ⇒ o gizmo de sprite (`view`)
+            // fica INTOCADO e os dois nunca coexistem por modalidade da tool. `tools` é o
+            // local (não `self.motion_tool_active()`, que re-emprestaria `self.gfx`), espelho
+            // do `flip_edit_mode` acima.
+            let motion_tool_active = tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
+            hero.gizmo.field_view = motion_tool_active
+                .then(|| {
+                    crate::field_gizmo::field_view(motion, camera, window_size, self.last_pointer)
+                })
+                .flatten();
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
             // ─────────────────────────────────────────────────────────

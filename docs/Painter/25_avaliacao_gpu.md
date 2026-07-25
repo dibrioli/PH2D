@@ -975,3 +975,71 @@ mais dura do que é, e o realce podia ser desenhado de outro jeito); **(b)** os 
 máscara (falloff/hardness/spacing — o endurecimento é função do nº de dabs por texel, que o Spacing
 governa); **(c)** aceitar o endurecimento como o produto (é o que o brush digital faz, e é o que a ordem
 atual pede). Nenhuma delas mexe na lei do acúmulo — e é justamente isso que o §13.10 fixa.
+
+## 13.11 A TINTA atravessando a proteção — a força da máscara depende da taxa de POLLING (2026-07-25, ABERTO)
+
+**Reporte do Enio (2ª rodada, com duas fotos):** *"A máscara agora é desenhada corretamente, mas sofre
+novamente com bordas craqueladas na pintura quando muitas pinceladas são dadas repetidamente. Existe algum
+problema no algoritmo de mascaramento que gera baixa resolução nas áreas com alpha na máscara?"*
+
+**Sim, existe — e não é resolução.** A máscara está lisa (é o controle desta medição: dente-de-serra do
+contorno dela **0,040 px**). Quem craquela é a TINTA, e a causa é onde a proteção é aplicada.
+
+### 13.11.1 O mecanismo, medido
+
+`restore_protected_region` puxa os texels protegidos de volta **uma vez por BATCH** (por evento de
+ponteiro), contra o snapshot daquele batch. Então o fator `keep` é composto `N` vezes, onde `N` é quantos
+batches cruzaram o texel — e `N` é a taxa de polling do mouse, não uma propriedade do gesto:
+
+| referência do pull-back | tinta onde `keep = 0.5`, 4 ev/traço | 60 ev/traço | serra do contorno da tinta |
+|---|---|---|---|
+| o snapshot do BATCH (o que ship a) | 0,886 | **0,992** | 0,061 → **0,164 px** |
+| a base do TRAÇO (`stroke_undo.canvas_rgba`) | 0,667 | **0,141** | 0,077 → 0,039 px |
+
+A máscara manda passar **metade** e o produto entrega 89 % ou 99 % — ou, com a outra referência, 67 % ou
+14 %. O contorno da tinta anda **4 px** só por trocar o número de eventos. É a MESMA doença que esta linha
+curou 4× no relevo (*"a lei é função do CAMINHO, nunca de quão fino o motor amostrou o caminho"*), agora no
+gate de proteção.
+
+**Por que isso lê como "baixa resolução":** no feather a tinta satura (99 %), então o que sobra visível é a
+fronteira onde `keep ≈ 0` — e essa fronteira é recortada pelos **RETÂNGULOS** dos batches (cada um puxa de
+volta só a sua região), o que produz degraus axis-aligned. O olho lê degrau retangular como "baixa
+resolução da máscara".
+
+### 13.11.2 A cura mínima foi implementada e REFUTADA (não repita)
+
+Trocar a referência do pull-back pela base do TRAÇO (que já existe e tem dono: o `canvas_rgba` do snapshot
+de undo que o `paint_begin` tira) **conserta o dente-de-serra** (0,164 → 0,039 px, abaixo do da própria
+máscara) **e inverte a dependência do polling, piorando a magnitude** (0,886→0,992 vira 0,667→0,141). O
+ponto fixo dela é `base·(1−keep)/(1−keep + keep·a)`, onde `a` é a opacidade POR BATCH — ou seja, ainda uma
+propriedade do sampling. **Ambas as referências erram**; o problema é puxar de volta por batch, não qual
+snapshot se usa.
+
+### 13.11.3 A lei certa, e por que é uma WAVE e não um patch
+
+O que a máscara significa é `final = lerp(base_do_traço, tinta_LIVRE, keep)`, aplicado **uma vez** — a
+semântica de máscara de camada do Photoshop, e o que o §7 do handoff da máscara já chamava de
+*composite-time*. Para calcular isso é preciso que a tinta acumule **sem interferência** (livre) e que o
+que se MOSTRA seja o lerp — duas coisas diferentes onde hoje existe uma. As três arquiteturas possíveis,
+com o preço de cada uma:
+
+1. **Buffer livre por-traço** (swap do buffer no stamp, como o `stamp_dabs_mask` já faz com o scratch; o
+   canvas segue sempre exibível, então nenhum consumidor muda). Custo: +1 buffer canvas-sized durante um
+   traço protegido (16 MB @2048²) e +1 passe por região. **Exato.**
+2. **Proteção no PREVIEW** (o canvas guarda tinta livre, o lerp entra na porta de publicação). Sem buffer
+   novo, mas o COMPOSITE lê o canvas — ele veria tinta desprotegida —, e todo caminho de teardown teria de
+   assar o lerp ou a tinta livre vaza para o commitado. **Enumeração de teardown = a classe de bug que este
+   repo mais paga.**
+3. **Cobertura por-traço da TINTA** (`m_free` num buffer de 1 B/px, que já existe como `stroke_mask`): o
+   display é `lerp(base, cor, m_free·keep)`. Barato, mas só vale para traço de cor CONSTANTE — Randomize
+   Color, ramps e texturas quebram a premissa. É o parente da tentativa do §13.7, que vazou no brush.
+
+**Recomendado: (1).** ⚠️ E qualquer uma delas mexe no caminho de depósito, onde a lei desta linha é
+*"brush normal byte-idêntico"* — então a wave começa pelo gate de fingerprint do pigmento, não pelo fix.
+
+### 13.11.4 O que já está no repo para a próxima sessão
+
+`probe_paint_through_the_protection` (em `mask_probe.rs`, `#[ignore]`) monta a cena exata do reporte —
+proteção com orla macia + N traços de tinta cruzando — e imprime a tabela acima, incluindo o controle
+(o contorno da máscara). Ela é o red-first da wave: hoje ela MEDE o defeito; depois do fix, a tinta em
+`keep = 0.5` tem de dar **0,5 nas duas colunas**.

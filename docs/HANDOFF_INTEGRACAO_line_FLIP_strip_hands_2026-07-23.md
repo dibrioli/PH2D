@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `37d6a5d8c`, os vãos pendentes da §2.6) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `70e0acb8a`, o Gap em unidades de mundo da §2.6) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **23** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×4 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + pendência do helper) |
+| commits à frente do `main` | **24** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×4 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + pendência + Gap em mundo) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -229,6 +229,23 @@ cobertura); o overlay desenha só os pendentes; **o motor do fill ignora o flag*
 solda + fechamentos de qualquer jeito, o redundante é parede inofensiva). Gate red-proven
 `a_helper_is_pending_only_where_the_paint_does_not_bridge` (junção coberta = não-pendente;
 vão de verdade = pendente; mutação "sempre pending" sangra). Sem schema, sem UI nova.
+
+**O Gap mede MUNDO, não px de tela (Enio 2026-07-25, `70e0acb8a`):** *"de perto some"* — o
+oposto do report anterior. A **investigação (agente paralelo, medida)** provou que NÃO era
+bug do filtro de pendência (esse é sólido, só tirou o ruído das junções que MASCARAVA o
+efeito): o slider Gap era **px de tela** (`reach = gap_px × px_to_world`), e aproximar a
+câmera encolhe `px_to_world` ⇒ um vão de tamanho fixo em documento passa a ocupar mais px
+de tela e SAI de alcance, então o `gap::closures` nem forma o fechamento. O GP faz igual
+(fill em espaço de tela) — mas o **Size do pincel do Flip já mede MUNDO** (§4.C.6), e o Gap
+sofria da mesma mentira que fez o Enio reverter o brush px→mundo em 17/07. Decisão do Enio:
+**o Gap passa a medir MUNDO** — um vão de 0,2 doc fecha com o slider ≥ 0,20 em QUALQUER
+zoom. Reach = `gap × obj_scale` (só mundo→local, SEM `px_to_world`) no clique E no overlay;
+o motor `gap.rs` já falava doc (a conversão px morava só no shell). Campo `gap_px`→`gap`,
+`GAP_MAX_PX 40`→`GAP_MAX_WORLD 1.0` (medido: o teto antigo dava 0,37-1,0 doc num
+enquadramento típico), chip com 2 casas, roda 0,05 doc/tique. Gate `the_gap_reach_is_zoom_invariant`
+(arch-gate de shell: as DUAS réguas — clique + overlay, ambas gfx-gated — convertem por
+`obj_scale` e NÃO por `px_to_world`; controle positivo: `px_to_world` segue no arquivo para
+a precision/debug; mutação re-adicionando o fator sangra). Sem schema.
 
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 

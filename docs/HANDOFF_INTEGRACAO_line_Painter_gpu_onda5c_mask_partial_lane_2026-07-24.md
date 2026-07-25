@@ -125,6 +125,23 @@ congelado**; `paint.rs` no teto de 700 LOC.
 os 35 de máscara) · clippy `--all-targets` limpo · fmt limpo · `architecture_workspace_file_loc_cap`
 verde · render-and-look confirma 15 passadas == 1 (liso).
 
+## 9d. Continuação (2026-07-25, tarde) — o TETO por época: pintar através do feather
+
+O smoke do 9b(ii) seguiu serrilhado — o produto restante era a TINTA através da proteção
+(`restore_protected_region` = multiplicador por batch, `(1−keep)^N`; a Seleção idem). Fix:
+**projeção por época** (`tool/paint/gate.rs` — planos `ref`+`free`, canvas =
+`ref·(1−keep)+free·keep`, keep = máscara×seleção, 22 commit-sites, undo carrega os planos,
+preview pela o gêmeo do free). Detalhe completo: doc 25 §13.7. Commit `38c1f725b`; 24 arquivos da `ph2d-tool-painter`, **nenhum foundational, nenhum schema,
+nenhum contrato**. 6 gates novos mutation-provados (5 mutações sangram); suíte 827 verde;
+uma passada byte-idêntica à porta aposentada (single-gate single-batch).
+
+⚠️ **Para o integrador:** as funções `snapshot_region`/`restore_protected_region`/
+`restore_deselected_region` foram APOSENTADAS (deletadas). Se outra linha as chamar, o merge
+quebra em compilação — a resposta é rotear pela projeção (`project_gated_region`), nunca
+reintroduzir o lerp por-batch. `ModelSnapshot` ganhou 2 campos (`gate_ref`/`gate_free`) e
+`PreviewPatch` ganhou `free_pixels` — construção fora da crate quebra em `E0063` (correção:
+`Arc::new(Vec::new())` / `None`).
+
 ## 9c. Smoke pendente (Enio)
 
 Build padrão (sem env), 2048², os 3 cenários de máscara, com MUITAS passadas no mesmo lugar:

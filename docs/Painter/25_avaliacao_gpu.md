@@ -746,3 +746,48 @@ aprofunde com pincel mais forte/lento ou traços sobrepostos.
 15 passadas idênticas têm de deixar a cobertura byte-idêntica a 1 (envelope idempotente);
 RED sob o produto antigo (37764 bytes diferem, delta máx 197); mutação `envelope=false`
 re-sangra. Sem schema, sem contrato congelado; `paint.rs` mantido no teto de 700 LOC.
+
+## 13.7 "não melhorou!" — o produto restante era a TINTA através do feather: o TETO por época
+
+O smoke do §13.6 seguiu serrilhado. Três agentes em paralelo (modelo · pesquisa de referência ·
+varredura) fecharam com **prova aritmética**: a cobertura estava sã (15 passadas TREMIDAS de
+máscara = feather liso), mas **pintar através da proteção** ainda era um multiplicador por
+passada — `restore_protected_region` lerpava contra o snapshot do BATCH, então
+`(1−keep)^N → 0`: a keep=9/255 (96% protegido), 15 passadas levaram o canvas de 218 a **25**
+(`pass15 = 255·(pass1/255)^15`, texel a texel). A **Seleção** (`restore_deselected_region`)
+era o gêmeo byte-a-byte. **Pesquisa (agente 2):** seleções em PS/Krita COMPÕEM (no PS é até
+técnica), mas tudo cuja promessa é PROTEÇÃO (layer mask, alpha lock) é um **TETO** que nunca
+endurece — nossa máscara É proteção, e a Seleção mostrava o artefato idêntico ⇒ **as duas
+tomam o teto** (divergência deliberada e documentada da semântica de seleção do PS).
+
+**O modelo (projeção por ÉPOCA, `gate.rs`):** enquanto a declaração de proteção/seleção vale,
+vivem dois planos — `ref` (o canvas quando a época nasceu) e `free` (o que a pintura
+IRRESTRITA teria produzido; cada batch gateado carimba nele, via swap) — e o canvas é sempre
+`ref·(1−keep) + free·keep`, com `keep = máscara × seleção` (o PRODUTO — as duas portas
+aposentadas compunham exatamente isso). N passadas **convergem** no teto; a densidade ainda
+constrói no feather **proporcionalmente** (o feather é para sempre um keep-blend fiel da
+pintura irrestrita); `keep==0` re-pina `free` em `ref` (texel congelado não acumula tinta
+oculta ⇒ o Smear arrasta o que o artista vê). **Ciclo de vida:** semeada lazy (2 `Arc::clone`);
+COMMITADA em toda edição de keep-source (senão subir a proteção REVELARIA história enterrada
+— gate `lowering_protection_starts_a_new_epoch…`) e em todo escritor estrangeiro de canvas
+(**22 sítios**: fill/inpaint/Deform/ops de seleção/watercolor/wet/troca de camada/teardown).
+O undo carrega os planos no `ModelSnapshot` (lei do mesmo-commit; gate byte-exato
+`the_ceiling_survives_undo_and_repaint`); o drag-preview pela o **gêmeo do free**
+(`free_pixels`) — sem ele cada frame de preview empilharia um fantasma
+(`a_shape_preview_does_not_pile_ghosts…`). **D3 (varredura):** o clip de seleção do envelope
+de máscara re-multiplicava POR BATCH dentro do próprio buffer idempotente (255→128→64→32 num
+rabisco a keep=0.5) ⇒ a keep aplica UMA vez, na fusão, contra o neutro.
+
+**5 mutações, 5 sangram** (re-seed por batch · stamp no display · commit ausente · planos fora
+do snapshot · gêmeo do preview ausente). ⚠️ **A do preview sobreviveu DUAS fixtures** que não
+continham o fenômeno (tinta opaca = o próprio teto absorve fantasmas; accumulate-cap default
+= re-stamps já idempotentes; e o Line é POLILINHA — a coreografia errada não emitia dab
+nenhum): a fixture final é accumulate=true + flow 0.2 + polilinha, RED com delta 209.
+
+**Uma passada continua byte-idêntica** (single-gate, single-batch: a mesma aritmética termo a
+termo); suíte 827 intacta. Aposentadas: `snapshot_region`/`restore_protected_region`/
+`restore_deselected_region`. **Aberto nomeado:** o Fill IGNORA a proteção (buraco
+pré-existente, confirmado) · watercolor/wet mantêm as próprias portas keep-lerp por-traço/
+sessão (divergência documentada) · arch-gate p/ futuros escritores de canvas (allowlist de
+`make_mut`) · D4/D5 da varredura (smear do watercolor por-batch · color-fill por-clique,
+PS-consistente).

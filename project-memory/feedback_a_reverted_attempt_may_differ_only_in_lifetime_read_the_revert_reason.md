@@ -23,6 +23,13 @@ undo e o gêmeo do preview que a época exigia **somem todos**. Mesma aritmétic
 ESCOPO dela, então a nota afirma mais do que mediu. Ler o diff confirma que a fórmula é a mesma e faz você
 concluir o oposto do que a evidência sustenta — o custo é jogar fora a cura certa e ficar com o bug.
 
+**Segunda instância, no MESMO dia e no mesmo eixo — e ela fecha o círculo:** horas depois, a lei per-traço
+foi medida deixando `1 − (1−keep)^N` passar (oito passadas e a proteção morria), e a resposta certa era **a
+própria época** — a semântica revertida, inteira. O que mudou não foi a lei nem o tempo de vida: foi o
+**mecanismo de fim de vida** (22 sítios enumerados à mão → **uma pergunta com três testemunhas**). Então a
+pergunta a fazer a um revert é ainda mais estreita: *o que exatamente falhou — a lei, o escopo, ou a
+MÁQUINA que fecha o escopo?*
+
 **How to apply:** achou um revert que contém a sua ideia? (1) leia a **mensagem** do commit revertido e a
 do revert, procurando o mecanismo da falha; (2) escreva numa frase *por quanto tempo* a regra valia lá e
 *por quanto tempo* vale na sua; (3) se diferem, monte a **tabela lado a lado** (vida · o que muda entre

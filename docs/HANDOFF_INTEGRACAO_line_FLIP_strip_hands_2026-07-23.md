@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o pincel pontilhado da §2.8; a co-rotação do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o **fix do espaçamento relativo à espessura** da §2.8; a co-rotação do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **30** (§2.2..§2.6 + **§2.7 a torção do tween** ×2 + **§2.8 o pincel pontilhado** ×2) — confira com `git rev-list --count main..HEAD` |
+| commits à frente do `main` | **31** (§2.2..§2.6 + **§2.7 a torção do tween** ×2 + **§2.8 o pincel pontilhado** ×2 + **o fix do espaçamento relativo à espessura** ×1) — confira com `git rev-list --count main..HEAD` |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -303,6 +303,20 @@ espaçadas por **ARC-LENGTH** (imune à densidade de input E ao zoom — medem M
   `the_tip_toggle_and_spacing_slider_reach_the_tool` (o seam do tool) + o teste da cena. Smoke:
   **`PH2D_FLIP_TIP_SMOKE=1`** (3 traços de referência Line/Dots/Squares; o artista pega Draw→Tip
   no painel REAL — nada armado por baixo).
+- **⚠️ FIX pós-smoke (Enio 2026-07-25, `PH2D_FLIP_TIP_SMOKE=1` aprovado com ressalva): *"o espaço
+  deve ser relativo a espessura do traço pois traços grossos o padrão não aparece"***. A 1ª versão
+  media `dot_spacing` em MUNDO, e o TAMANHO da conta (o diâmetro) também é mundo — então num traço
+  grosso a conta crescia além da pitch fixa e as contas FUNDIAM num borrão sólido (o traço da
+  direita da screenshot). Agora `dot_spacing` é um **MÚLTIPLO do diâmetro**: a pitch é
+  `dot_spacing × ref_width`, com `ref_width` = a largura MÁXIMA do traço, empacotada no slot
+  `_pad0` livre do `GpuStroke` (**32 bytes intactos, NENHUM bump — o número muda de SENTIDO, não de
+  layout; a v9 nunca shipou**) e passada ao fragment (VsOut location 13). A pitch escala com a
+  grossura ⇒ o padrão aparece em qualquer espessura; o TAMANHO da conta segue a espessura LOCAL
+  (`in.thickness`), só a PITCH usa a referência per-traço (senão `fract(s/pitch)` deriva). Default
+  `2.0` (vão de 1 diâmetro), faixa `[0, 6]`; `DOT_SPACING_MAX_WORLD` renomeada `DOT_SPACING_MAX`
+  (não é mais mundo). Mutação-provado: reverter a pitch para mundo-absoluto (`in.dot_spacing` sem
+  `× ref_width`) derruba `dots_carve_gaps` (a fixture fina de razão 1,5 colapsa em linha cheia). A
+  cena do smoke ganhou um **4º traço GROSSO pontilhado** (o caso do report) + gate que o pina.
 - **Aberto (nomeado):** Self Overlap (a armadilha de beading medida) e corner types seguem
   deferidos; o dot radius = a largura do traço (um raio de conta próprio seria outro knob).
 
@@ -482,7 +496,7 @@ terminal; em resumo:
 | i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
 | j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom. ⚠️ **Aparência (aprovada 2026-07-25):** a PONTE do vão é verde cheia com dot nas 2 pontas; as extensões são fios finos SEM dot no corte (o "dot flutuante" acabou) — confira em vários zooms |
 | k | **(§2.7, cena PRÓPRIA: `PH2D_FLIP_TWEEN_TORSION_SMOKE=1`)** uma ASA em 2 quadros (0 e 8): aperte **Add** (3 inbetweens) e folheie 0→2→4→6→8. O quadro do meio tem de mostrar a asa **meio-girada com a corcova crescendo do lado CERTO** (a corcova acompanha o corpo); o ERRADO é a asa quase RETA no meio (a corcova ACHATA). É a torção do resíduo sob giro grande — a co-rotação a corrige |
-| l | **(§2.8, cena PRÓPRIA: `PH2D_FLIP_TIP_SMOKE=1`)** 3 traços de referência (Line/Dots/Squares). No painel: modo **Draw** → seção Brush → seletor **Tip**. Pegue **Dots** e desenhe: contas REDONDAS do tamanho da largura, espaçadas; **Squares** = quadrados; **Spacing** afasta/aproxima; **Line** volta à linha cheia e o Spacing SOME. Zoom in/out: as contas mantêm o tamanho em DOCUMENTO (medem mundo) |
+| l | **(§2.8, cena PRÓPRIA: `PH2D_FLIP_TIP_SMOKE=1`)** 3 traços finos de referência (Line/Dots/Squares) **+ 1 GROSSO pontilhado** (o report do Enio). No painel: modo **Draw** → seção Brush → seletor **Tip**. Pegue **Dots**, suba o **Size** para um pincel GROSSO e desenhe: o padrão aparece IGUAL ao fino (o espaçamento é relativo à espessura — antes o grosso fundia num borrão); **Squares** = quadrados; **Spacing** (1.0 encostadas .. 6.0 esparsas) afasta/aproxima; **Line** volta à linha cheia e o Spacing SOME. Zoom in/out: as contas mantêm o tamanho em DOCUMENTO |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 

@@ -73,10 +73,13 @@ struct GpuStroke {
     hardness: f32,
     material: u32,
     // A PONTA ao longo do traço (o *tip* pontilhado — pack.rs `tip_code`): 0=Continuous,
-    // 1=Dots, 2=Squares. `dot_spacing` = o vão entre contas em MUNDO.
+    // 1=Dots, 2=Squares. `dot_spacing` = o espaçamento centro-a-centro das contas como
+    // MÚLTIPLO do diâmetro do traço (relativo à espessura, NÃO mundo absoluto — senão um
+    // traço grosso funde as contas num borrão). `ref_width` = a espessura de referência do
+    // traço (mundo, a largura MÁXIMA — pack.rs), o que dá a pitch escala com a grossura.
     tip: u32,
     dot_spacing: f32,
-    _pad0: u32,
+    ref_width: f32,
 }
 
 // Os códigos do *tip* — TÊM de bater com `pack.rs::tip_code`.
@@ -139,10 +142,12 @@ struct VsOut {
     // (offset, count) dos vizinhos GEOMÉTRICOS deste segmento em `seg_extras`.
     @location(9) @interpolate(flat) extras: vec2<u32>,
     // O *tip* pontilhado: (arc_a, arc_b) = o arco MUNDO nas duas pontas do segmento; `tip` =
-    // 0/1/2; `dot_spacing` = o vão em mundo. `Continuous` (tip 0) ignora tudo isto.
+    // 0/1/2; `dot_spacing` = a pitch como MÚLTIPLO do diâmetro; `ref_width` = a espessura de
+    // referência do traço (mundo). `Continuous` (tip 0) ignora tudo isto.
     @location(10) @interpolate(flat) arc: vec2<f32>,
     @location(11) @interpolate(flat) tip: u32,
     @location(12) @interpolate(flat) dot_spacing: f32,
+    @location(13) @interpolate(flat) ref_width: f32,
 }
 
 fn to_screen(world: vec2<f32>) -> vec2<f32> {
@@ -339,6 +344,7 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     out.arc = vec2<f32>(arc_a, arc_a + length(b.pos - a.pos));
     out.tip = st.tip;
     out.dot_spacing = st.dot_spacing;
+    out.ref_width = st.ref_width;
     return out;
 }
 
@@ -420,18 +426,26 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // **O *tip* pontilhado** (Dots/Squares, 03 §8): a linha vira contas espaçadas por
     // ARC-LENGTH. A distância normalizada ATRAVÉS do traço (`dn`) ganha um termo AO-LONGO
     // do arco — uma conta é um DISCO (`sqrt(dn²+da²)`, Euclidiano) ou um QUADRADO
-    // (`max(dn, da)`, Chebyshev) de raio = a meia-espessura; o vão entre centros é
-    // `dot_spacing` (mundo). `Continuous` (tip 0) NÃO toca em `dn` ⇒ byte-idêntico à linha
-    // cheia de sempre. A depth é por-TRAÇO (não muda com o tip), então as contas que se
-    // sobrepõem numa quina são first-wins (união) — nunca acumulam.
+    // (`max(dn, da)`, Chebyshev) de raio = a meia-espessura; a pitch entre centros é
+    // `dot_spacing × ref_width` — ou seja o espaçamento é RELATIVO À ESPESSURA (um múltiplo
+    // do diâmetro), não uma distância de mundo fixa. Sem isto, um traço grosso tem contas
+    // maiores que a pitch fixa e elas FUNDEM num borrão (o report do Enio, 2026-07-25). Com
+    // a pitch escalando com `ref_width`, o padrão aparece em qualquer espessura. `Continuous`
+    // (tip 0) NÃO toca em `dn` ⇒ byte-idêntico à linha cheia. A depth é por-TRAÇO (não muda
+    // com o tip), então as contas que se sobrepõem numa quina são first-wins (união) — nunca
+    // acumulam.
     if (in.tip != 0u && in.dot_spacing > 0.0) {
         let seg = in.ss_p2 - in.ss_p1;
         let t_own = clamp(dot(frag - in.ss_p1, seg) / max(dot(seg, seg), 1e-6), 0.0, 1.0);
         let s = mix(in.arc.x, in.arc.y, t_own); // o arco MUNDO no pixel
-        // Distância (mundo) ao centro de conta mais próximo (contas a cada `dot_spacing`).
-        let da_world = abs(fract(s / in.dot_spacing + 0.5) - 0.5) * in.dot_spacing;
-        // Normaliza pela meia-espessura em MUNDO — a MESMA unidade que `dn` normaliza a
-        // distância ATRAVÉS (ambos = distância/raio, logo combináveis).
+        // A pitch (mundo) = múltiplo do diâmetro de referência. `max(…,1e-6)` cobre o
+        // degenerado `ref_width == 0` (traço de largura zero, que nem renderiza): a pitch
+        // colapsa, `da_world → 0` e a conta vira a linha cheia — sem NaN.
+        let pitch = max(in.dot_spacing * in.ref_width, 1e-6);
+        let da_world = abs(fract(s / pitch + 0.5) - 0.5) * pitch;
+        // Normaliza pela meia-espessura LOCAL em MUNDO — a MESMA unidade que `dn` normaliza a
+        // distância ATRAVÉS (ambos = distância/raio, logo combináveis). O TAMANHO da conta
+        // segue a espessura local (pressão/taper); só a PITCH é a de referência do traço.
         let r_world = in.thickness * 0.5 / max(cam.px_per_world, 1e-6);
         let da_norm = da_world / max(r_world, 1e-6);
         if (in.tip == TIP_SQUARES) {

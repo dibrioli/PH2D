@@ -239,7 +239,8 @@ fn build_stroke(
     }
     s.hardness = style.hardness;
     // **O *tip* pontilhado** (03 §8): o traço herda a ponta do pincel (linha cheia ou
-    // contas). `dot_spacing` é MUNDO, direto para o modelo (o fragment o usa em mundo).
+    // contas). `dot_spacing` é um MÚLTIPLO do diâmetro (relativo à espessura), direto para o
+    // modelo — o fragment o escala pela largura de referência do traço.
     s.tip = style.tip;
     s.dot_spacing = style.dot_spacing as f32;
     // **O traço PREENCHIDO** (o material stroke+fill do GP — como o Suzanne é feito):

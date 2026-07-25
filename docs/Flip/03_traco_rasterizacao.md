@@ -400,8 +400,8 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
 - **Corner types Round/Sharp(miter-limit)/Flat por ponto** (paridade SVG/GP-2025): as cunhas
   BEVEL/MITER do `segment_mask` com p0/p3 — a mesma janela do fix (§4.1) já carrega os dados.
 - ~~**Pincel pontilhado (dots/squares) estilo Ciallo/GP**~~ — **LANDOU 2026-07-25**
-  (`PH2D_FLIP_TIP_SMOKE=1`): `FlipStroke::tip` = `Continuous`/`Dots`/`Squares` + `dot_spacing`
-  (MUNDO). O fragment recorta a cobertura por uma MÉTRICA — a distância normalizada ATRAVÉS
+  (`PH2D_FLIP_TIP_SMOKE=1`): `FlipStroke::tip` = `Continuous`/`Dots`/`Squares` + `dot_spacing`.
+  O fragment recorta a cobertura por uma MÉTRICA — a distância normalizada ATRAVÉS
   (`dn`) ganha um termo AO-LONGO do arco (`da`), e a conta é um DISCO (`√(dn²+da²)`, Euclidiano)
   ou um QUADRADO (`max(dn, da)`, Chebyshev). Espaçamento por ARC-LENGTH (buffer `arc_len`
   cumulativo por-ponto, binding 6; o vertex lê o início e soma `|b−a|`), imune à densidade de
@@ -411,6 +411,20 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   Brush (Draw). `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 29→30. Gates GPU
   (`dots_carve_gaps_that_a_continuous_line_does_not` red-first mutação-provado +
   `squares_cover_more_area_than_round_dots`).
+  - ⚠️ **O espaçamento é RELATIVO À ESPESSURA, não mundo absoluto** (Enio 2026-07-25:
+    *"o espaço deve ser relativo a espessura do traço pois traços grossos o padrão não
+    aparece"*). A 1ª versão media `dot_spacing` em MUNDO, e o tamanho da conta (o diâmetro)
+    também é mundo — então num traço grosso a conta crescia além da pitch fixa e as contas
+    FUNDIAM num borrão sólido. Agora `dot_spacing` é um MÚLTIPLO do diâmetro: a pitch é
+    `dot_spacing × ref_width`, com `ref_width` = a largura MÁXIMA do traço, empacotada por
+    `GpuStroke` (o slot `_pad0` livre — 32 bytes intactos, nenhum bump). A pitch escala com a
+    grossura ⇒ o padrão aparece em qualquer espessura. O TAMANHO da conta segue a espessura
+    LOCAL (pressão/taper, via `in.thickness`); só a PITCH usa a referência per-traço, pois
+    `fract(s/pitch)` só é contínuo com uma pitch constante ao longo do traço. Default `2.0`
+    (centros a 2 diâmetros = vão de 1 diâmetro), faixa `[0, 6]`. Sem novo schema (o número
+    muda de SENTIDO, não de layout — a v9 nunca shipou). Mutação-provado: reverter a pitch para
+    mundo-absoluto (`in.dot_spacing` sem `× ref_width`) derruba `dots_carve_gaps` (a fixture
+    fina de razão 1,5 colapsa em linha cheia).
 - **Pincel airbrush analítico (Ciallo):** falloff por integral em forma fechada
   `A(y) = 1 − exp(−2αc·sqrt(R²−y²))` — semântica de acúmulo físico; casa com a flag Self
   Overlap. (Fórmulas do paper/tutorial; código do CialloResearch é GPL-3 — só comportamento.)

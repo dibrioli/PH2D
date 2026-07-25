@@ -240,9 +240,9 @@ impl FlipTool {
     pub fn set_tip(&mut self, tip: StrokeTip) {
         self.tip = tip;
     }
-    /// Define o vão entre contas (MUNDO, clampado a `[0, DOT_SPACING_MAX_WORLD]`).
-    pub fn set_dot_spacing(&mut self, world: f32) {
-        self.dot_spacing = world.clamp(0.0, crate::params::DOT_SPACING_MAX_WORLD as f32);
+    /// Define o espaçamento das contas (múltiplo do diâmetro, clampado a `[0, DOT_SPACING_MAX]`).
+    pub fn set_dot_spacing(&mut self, ratio: f32) {
+        self.dot_spacing = ratio.clamp(0.0, crate::params::DOT_SPACING_MAX as f32);
     }
     /// Define a opacidade do traço `0..=1` (clampada).
     pub fn set_opacity(&mut self, o: f32) {
@@ -394,11 +394,9 @@ impl Tool for FlipTool {
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GAP => {
                 self.gap = v.clamp(0.0, 1.0) * GAP_MAX_WORLD;
             }
-            // Spacing do *tip* pontilhado: track `0..1` → MUNDO `0..DOT_SPACING_MAX_WORLD`.
+            // Spacing do *tip* pontilhado: track `0..1` → múltiplo do diâmetro `0..DOT_SPACING_MAX`.
             PanelEvent::SetValue(id, v) if id == ids::FLIP_DOT_SPACING => {
-                self.set_dot_spacing(
-                    (v.clamp(0.0, 1.0) * crate::params::DOT_SPACING_MAX_WORLD) as f32,
-                );
+                self.set_dot_spacing((v.clamp(0.0, 1.0) * crate::params::DOT_SPACING_MAX) as f32);
             }
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GROW => {
                 self.grow = GROW_MIN + v.clamp(0.0, 1.0) * (GROW_MAX - GROW_MIN);
@@ -553,9 +551,9 @@ mod tests {
         assert_eq!(t.tip(), StrokeTip::Squares);
         t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_LINE));
         assert_eq!(t.tip(), StrokeTip::Continuous);
-        // O slider: track `0..1` → mundo `0..DOT_SPACING_MAX_WORLD`, e chega ao snapshot.
+        // O slider: track `0..1` → múltiplo do diâmetro `0..DOT_SPACING_MAX`, e chega ao snapshot.
         t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_DOT_SPACING, 0.5));
-        let want = 0.5 * crate::params::DOT_SPACING_MAX_WORLD;
+        let want = 0.5 * crate::params::DOT_SPACING_MAX;
         assert!(
             (t.ui_snapshot().dot_spacing - want).abs() < 1e-6,
             "spacing {} != {want}",

@@ -253,7 +253,7 @@ fn the_torsion_smoke_look() {
             continue;
         };
         let p = obj.drawing(d).expect("arte").strokes[0].positions();
-        println!("  {f:^6}   {:^16.3}", sagitta(&p));
+        println!("  {f:^6}   {:^16.3}", sagitta(p));
     }
     println!(
         "\n  a sagita (o abaulamento da asa) tem de CRESCER suave de 0 (quadro 0) ao maximo\n\

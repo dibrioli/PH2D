@@ -32,8 +32,9 @@ pub enum Cap {
 /// **A PONTA do pincel ao longo do traço** — o *tip* pontilhado do Ciallo/GP (03 §8).
 /// `Continuous` é a linha cheia de sempre; `Dots`/`Squares` recortam a cobertura em contas
 /// espaçadas por ARC-LENGTH (não por densidade de input — dois traços da mesma forma pontilham
-/// igual, tenha um 10 pontos e o outro 1000). O tamanho da conta é a espessura do traço; o vão
-/// entre contas é [`FlipStroke::dot_spacing`].
+/// igual, tenha um 10 pontos e o outro 1000). O tamanho da conta é a espessura do traço; o
+/// espaçamento entre contas é [`FlipStroke::dot_spacing`], **relativo à espessura** (para o
+/// padrão aparecer em qualquer grossura).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum StrokeTip {
     /// A linha cheia — o comportamento de sempre (byte-idêntico ao traço sem *tip*).
@@ -45,9 +46,11 @@ pub enum StrokeTip {
     Squares,
 }
 
-/// Espaçamento default entre contas (mundo) quando o *tip* é pontilhado. `0` = ignorado
-/// (o `Continuous` nem lê). ~5× a espessura default ⇒ contas com vão claro; o artista ajusta.
-pub const DEFAULT_DOT_SPACING: f32 = 0.05;
+/// Espaçamento default entre contas quando o *tip* é pontilhado, como **MÚLTIPLO do diâmetro
+/// do traço** (relativo à espessura, não mundo absoluto — senão um traço grosso funde as
+/// contas). `2.0` = centros a 2 diâmetros ⇒ vão de 1 diâmetro (contas claramente separadas);
+/// `1.0` = contas encostadas; `0` = ignorado (o `Continuous` nem lê). O artista ajusta.
+pub const DEFAULT_DOT_SPACING: f32 = 2.0;
 
 /// Preenchimento por-curva. Ausente (`None` no [`FlipStroke::fill`]) = traço sem
 /// fill (o `fill_id == 0` do GP). O agrupamento de fills compostos (várias curvas
@@ -110,8 +113,11 @@ pub struct FlipStroke {
     /// **A ponta ao longo do traço** ([`StrokeTip`]): linha cheia (default) ou contas
     /// pontilhadas/quadradas. É atributo POR-CURVA (o pincel decide), como `hardness`.
     pub tip: StrokeTip,
-    /// **O vão entre contas** (mundo) quando [`Self::tip`] é pontilhado. Ignorado no
-    /// `Continuous`. Medido em MUNDO (invariante ao zoom, como a espessura e o Gap).
+    /// **O espaçamento centro-a-centro das contas** como MÚLTIPLO do diâmetro do traço,
+    /// quando [`Self::tip`] é pontilhado. Ignorado no `Continuous`. Relativo à ESPESSURA (não
+    /// mundo absoluto): a pitch escala com a grossura, então traço grosso e fino mostram o
+    /// padrão igual (o report do Enio 2026-07-25 — em mundo absoluto o grosso fundia as
+    /// contas). `2.0` = vão de 1 diâmetro; `1.0` = encostadas.
     pub dot_spacing: f32,
     /// Material (paleta). `0` = default.
     pub material: MaterialId,

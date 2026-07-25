@@ -65,10 +65,15 @@ pub struct GpuStroke {
     /// A PONTA ao longo do traço ([`ph2d_flip::StrokeTip`] como `u32`): `0` = Continuous
     /// (linha cheia), `1` = Dots, `2` = Squares. O fragment recorta a cobertura em contas.
     pub tip: u32,
-    /// O vão entre contas (MUNDO) quando `tip != 0`. Ignorado no Continuous.
+    /// O espaçamento centro-a-centro das contas como MÚLTIPLO do diâmetro do traço (relativo
+    /// à espessura, não mundo absoluto) quando `tip != 0`. Ignorado no Continuous.
     pub dot_spacing: f32,
-    /// Padding para alinhar a 32 bytes (storage buffer stride estável).
-    pub _pad: [u32; 1],
+    /// A **espessura de referência** do traço (mundo) — a largura MÁXIMA dos seus pontos. É o
+    /// que faz a pitch das contas (`dot_spacing × ref_width`) escalar com a grossura, para o
+    /// padrão aparecer em qualquer espessura (sem isto, um traço grosso funde as contas). O
+    /// TAMANHO da conta segue a espessura LOCAL (o fragment); só a PITCH usa esta referência,
+    /// pois `fract(s/pitch)` só é contínuo com uma pitch constante ao longo do traço.
+    pub ref_width: f32,
 }
 
 /// Um segmento vizinho GEOMÉTRICO, resolvido em índices GLOBAIS de ponto — o par
@@ -251,6 +256,9 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
         // sem dilatação (ou um fechamento de gap, que é invisível de propósito) tem
         // largura zero e continua sem gerar quad nenhum.
         let dilated = s.widths().iter().any(|w| *w > 0.0);
+        // Espessura de referência do *tip* pontilhado: a largura MÁXIMA do traço (a pitch das
+        // contas escala com ela). `0` num traço sem largura (o degenerado nem gera quad).
+        let ref_width = s.widths().iter().copied().fold(0.0f32, f32::max);
         if s.hide_stroke && !dilated {
             g.strokes.push(GpuStroke {
                 first_point,
@@ -260,7 +268,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                 material: s.material.0,
                 tip: tip_code(s.tip),
                 dot_spacing: s.dot_spacing,
-                _pad: [0; 1],
+                ref_width,
             });
         } else {
             let w = s.widths();
@@ -291,7 +299,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                 material: s.material.0,
                 tip: tip_code(s.tip),
                 dot_spacing: s.dot_spacing,
-                _pad: [0; 1],
+                ref_width,
             });
 
             // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;
@@ -425,6 +433,9 @@ mod tests {
         assert_eq!(g.strokes[0].point_count, 2);
         assert_eq!(g.strokes[0].flags, 0, "aberto, caps round");
         assert_eq!(g.strokes[0].hardness, ph2d_flip::DEFAULT_HARDNESS);
+        // ref_width do *tip* = a largura MÁXIMA (pontos 1.0 e 2.0 ⇒ 2.0), a espessura de
+        // referência que faz a pitch das contas escalar com a grossura.
+        assert_eq!(g.strokes[0].ref_width, 2.0);
         // Pontos do traço 0 (atributos por-ponto preservados).
         assert_eq!(g.points[0].pos, [0.0, 0.0]);
         assert_eq!(g.points[1].width, 2.0);

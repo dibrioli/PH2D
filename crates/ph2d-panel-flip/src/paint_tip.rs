@@ -6,7 +6,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use ph2d_tool_flip::{DOT_SPACING_MAX_WORLD, FlipMode, FlipStyleSnapshot, StrokeTip};
+use ph2d_tool_flip::{DOT_SPACING_MAX, FlipMode, FlipStyleSnapshot, StrokeTip};
 
 impl BodyCtx<'_> {
     /// A linha **Tip** [Line | Dots | Squares] + o slider **Spacing** (só com contas).
@@ -32,7 +32,7 @@ impl BodyCtx<'_> {
                 .store
                 .slider(ids::FLIP_DOT_SPACING)
                 .map(|(_, v)| v)
-                .unwrap_or((snap.dot_spacing / DOT_SPACING_MAX_WORLD) as f32);
+                .unwrap_or((snap.dot_spacing / DOT_SPACING_MAX) as f32);
             let world = self
                 .store
                 .number_value(ids::FLIP_DOT_SPACING_NUM)

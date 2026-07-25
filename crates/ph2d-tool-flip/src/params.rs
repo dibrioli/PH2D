@@ -170,11 +170,18 @@ pub enum FillMode {
 /// padrão (`size_to_world(6) = 0,06`). O default segue **0** (desligado).
 pub const GAP_MAX_WORLD: f64 = 1.0;
 
-/// Teto do **vão entre contas** do *tip* pontilhado (MUNDO). ~10× a largura do traço padrão
-/// (`size_to_world(6) = 0,06`) ⇒ contas bem esparsas no topo; o default é
-/// [`ph2d_flip::DEFAULT_DOT_SPACING`] (0,05, ~1 largura). Mundo, não px, para ser
-/// zoom-invariante como o Gap e o Size.
-pub const DOT_SPACING_MAX_WORLD: f64 = 0.6;
+/// Teto do **espaçamento** do *tip* pontilhado, como MÚLTIPLO do diâmetro do traço.
+///
+/// ⚠️ **Relativo à espessura, não mundo** (Enio 2026-07-25: *"o espaço deve ser relativo a
+/// espessura do traço pois traços grossos o padrão não aparece"*). Em mundo absoluto, um
+/// traço grosso tinha contas maiores que a pitch fixa e elas fundiam num borrão. Agora a
+/// pitch é `dot_spacing × diâmetro`, então o padrão aparece em qualquer grossura.
+///
+/// O teto **6,0** = centros a 6 diâmetros (5 diâmetros de vão) ⇒ contas bem esparsas
+/// (linha tracejada Morse); o default é [`ph2d_flip::DEFAULT_DOT_SPACING`] (2,0 = vão de 1
+/// diâmetro). Não é teto de recurso — é a faixa de UX do slider (a pitch é grátis no
+/// fragment); o mín. útil é ~1,0 (abaixo disso as contas encostam = linha cheia).
+pub const DOT_SPACING_MAX: f64 = 6.0;
 
 /// Faixa do **Grow/Shrink** (px de tela): o offset assinado do contorno a partir do
 /// **EIXO** da linha (BUGS #14). O default 0 já é exato em qualquer espessura e zoom;
@@ -304,8 +311,9 @@ pub struct FlipStyleSnapshot {
     /// **A PONTA ao longo do traço** ([`ph2d_flip::StrokeTip`]): linha cheia (default) ou
     /// contas pontilhadas/quadradas. O traço desenhado herda isto (`flip_draw`).
     pub tip: ph2d_flip::StrokeTip,
-    /// **O vão entre contas** em unidades de MUNDO (zoom-invariante, como o Gap e o Size).
-    /// Só relevante quando `tip` é pontilhado. Ver [`DOT_SPACING_MAX_WORLD`].
+    /// **O espaçamento centro-a-centro das contas** como MÚLTIPLO do diâmetro do traço
+    /// (relativo à espessura ⇒ o padrão aparece em qualquer grossura). Só relevante quando
+    /// `tip` é pontilhado. Ver [`DOT_SPACING_MAX`].
     pub dot_spacing: f64,
     /// Opacidade do traço `0..=1`.
     pub opacity: f32,

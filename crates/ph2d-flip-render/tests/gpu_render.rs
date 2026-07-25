@@ -1054,7 +1054,8 @@ fn a_fill_only_drawing_renders_instead_of_crashing() {
 // ── O *tip* pontilhado (Dots/Squares, 03 §8) ──────────────────────────────────
 
 /// O fixture do *tip*: um traço horizontal reto no meio do alvo — px (6,32)→(58,32),
-/// largura 8 (raio 4). O *tip* e o espaçamento (mundo=px na câmera 1:1) são do chamador.
+/// largura 8 (raio 4). O `spacing` é a pitch como MÚLTIPLO do diâmetro (relativo à
+/// espessura): `1.5` ⇒ pitch = `1.5 × 8` = 12 px (mundo=px na câmera 1:1), vão de 4 px.
 fn dotted_line(tip: StrokeTip, spacing: f32) -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
@@ -1087,14 +1088,14 @@ fn dots_carve_gaps_that_a_continuous_line_does_not() {
     let row = 32;
     let span = || 10u32..54u32; // dentro do traço, longe das pontas
 
-    let cont = render(&device, &queue, &dotted_line(StrokeTip::Continuous, 12.0));
+    let cont = render(&device, &queue, &dotted_line(StrokeTip::Continuous, 1.5));
     let min_cont = span().map(|x| alpha_at(&cont, x, row)).min().unwrap();
     assert!(
         min_cont > 40,
         "a linha CHEIA nao pode ter buraco na fileira do meio (min alpha {min_cont})"
     );
 
-    let dots = render(&device, &queue, &dotted_line(StrokeTip::Dots, 12.0));
+    let dots = render(&device, &queue, &dotted_line(StrokeTip::Dots, 1.5));
     let min_dots = span().map(|x| alpha_at(&dots, x, row)).min().unwrap();
     let max_dots = span().map(|x| alpha_at(&dots, x, row)).max().unwrap();
     assert!(
@@ -1127,15 +1128,11 @@ fn squares_cover_more_area_than_round_dots() {
         }
         n
     };
-    let dots = covered(&render(
-        &device,
-        &queue,
-        &dotted_line(StrokeTip::Dots, 12.0),
-    ));
+    let dots = covered(&render(&device, &queue, &dotted_line(StrokeTip::Dots, 1.5)));
     let squares = covered(&render(
         &device,
         &queue,
-        &dotted_line(StrokeTip::Squares, 12.0),
+        &dotted_line(StrokeTip::Squares, 1.5),
     ));
     assert!(
         squares > dots + dots / 10,

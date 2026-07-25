@@ -14,9 +14,9 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_flip::{
     DEFAULT_DOT_SPACING, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING,
-    DEFAULT_WIDTH_PX, DOT_SPACING_MAX_WORLD, GAP_MAX_WORLD, GROW_MAX, GROW_MIN,
-    OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, TRAP_MAX_PX, WIDTH_SLIDER_OFFSET,
-    WIDTH_SLIDER_SCALE, px_to_slider,
+    DEFAULT_WIDTH_PX, DOT_SPACING_MAX, GAP_MAX_WORLD, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE,
+    PRECISION_MAX, PRECISION_MIN, TRAP_MAX_PX, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
+    px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -184,16 +184,17 @@ pub fn populate(store: &mut WidgetStore) {
         0.0,
         0.05, // step do dominio: unidades de MUNDO (o Gap mede mundo, nao px) // LITERAL-PX-OK: granularidade do valor, nao design
     );
-    // Spacing do *tip* pontilhado (03 §8): o vão entre contas, MUNDO. Semeado no default.
+    // Spacing do *tip* pontilhado (03 §8): a pitch das contas como MÚLTIPLO do diâmetro
+    // (relativo à espessura). Semeado no default.
     slider_chip(
         store,
         ids::FLIP_DOT_SPACING,
         ids::FLIP_DOT_SPACING_NUM,
-        (f64::from(DEFAULT_DOT_SPACING) / DOT_SPACING_MAX_WORLD) as f32,
+        (f64::from(DEFAULT_DOT_SPACING) / DOT_SPACING_MAX) as f32,
         f64::from(DEFAULT_DOT_SPACING),
-        DOT_SPACING_MAX_WORLD as f32,
+        DOT_SPACING_MAX as f32,
         0.0,
-        0.02, // step do dominio: unidades de MUNDO // LITERAL-PX-OK: granularidade do valor, nao design
+        0.1, // step do dominio: multiplo do diametro // LITERAL-PX-OK: granularidade do valor, nao design
     );
     slider_chip(
         store,

@@ -1,6 +1,6 @@
 # Handoff — REESCREVER a máscara de proteção do zero (com referência de alta qualidade)
 
-> ## ✅ FEITO (2026-07-25, 4 commits, `d8018d6bc`..`800f89596`) — **pendente de smoke**
+> ## ⚠️ EXECUTADA E REPROVADA NO SMOKE (2026-07-25) — leia a §13.10 do doc 25 antes de qualquer coisa
 >
 > A tarefa deste handoff foi executada. **Não a reconstrua**; leia
 > [`docs/Painter/25_avaliacao_gpu.md` §13.9](Painter/25_avaliacao_gpu.md) (a pesquisa, as medições
@@ -18,9 +18,20 @@
 > num único pen-down** já colapsava a band de 3,53 para 1,88 px (118 níveis no corpo). Essa metade agora
 > é totalmente inerte (2 níveis).
 >
-> **Segue aberto** (§7 daqui, intocado): pintar COR ATRAVÉS da proteção emplumada. E um gap
+> **⛔ E O VEREDITO:** a lei foi construída, mediu tudo o que prometia (esfregar de 118 para 2 níveis, band
+> de 3,53 para 6,21 px) e o Enio **reprovou na tela**: *"péssimo resultado. A máscara deve pintar exatamente
+> como o brush digital normal."* O traço saía em **CONTAS** — o produto per-dab SATURA a estrutura por-dab e
+> o `max` a deixa à vista. A lei foi **removida** (`d41b0a71b`); ficou a higiene (uma porta, uma cópia da
+> aritmética), os gates, as sondas e o smoke.
+>
+> **Portanto: o alvo deste handoff (o serrilhado sob muitas passadas) SEGUE ABERTO**, e a §5 abaixo está
+> agora **falsificada no essencial**: a cura não é a lei do acúmulo — as DUAS possíveis foram tentadas e
+> cada uma tem seu artefato. As três hipóteses que sobraram estão na §13.10.4 do doc 25 (o overlay · os
+> defaults do pincel · aceitar o endurecimento).
+>
+> **Segue aberto também** (§7 daqui, intocado): pintar COR ATRAVÉS da proteção emplumada. E um gap
 > pré-existente foi NOMEADO em vez de contrabandeado: métodos de shape em modo máscara não pintam nada
-> (doc 25 §13.9.8).
+> (doc 25 §13.10).
 
 **Para:** o próximo agente que assume `line/Painter`. **De:** o agente da sessão de 2026-07-25.
 **Ordem do Enio (2026-07-25):** *"Resolvemos o problema do alfa da máscara mas ainda temos o

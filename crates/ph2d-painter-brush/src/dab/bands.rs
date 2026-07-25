@@ -144,7 +144,7 @@ pub(super) struct DabCtx<'a> {
 pub(super) fn stamp_band(
     ctx: &DabCtx,
     dst: &mut [u8],
-    mut cover: Option<crate::stroke_cover::StrokeCover<'_>>,
+    mut mask: Option<&mut [u8]>,
     band_y0: i64,
 ) -> bool {
     let blend = ctx.spec.blend;
@@ -254,20 +254,19 @@ pub(super) fn stamp_band(
                 }
                 stamp_rgba(prev, color, stamp_alpha, m)
             } else {
-                let a = match cover.as_mut() {
-                    // The per-stroke coverage buffer answers "how much of THIS stroke is here?", and
-                    // its LAW is the caller's ([`crate::stroke_cover`]): pigment's Accumulate-OFF cap
-                    // (`BuildUp`) or the coverage channel's envelope (`Envelope`, the Mask brush).
-                    // Whatever the law, `a = add/(1 − m)` makes the canvas hold exactly
+                let a = match mask.as_deref_mut() {
+                    // The per-stroke coverage buffer answers "how much of THIS stroke's paint is here?",
+                    // and its law lives in ONE place ([`crate::stroke_cover::cover_add`]): the
+                    // Accumulate-OFF cap, where the dab profile is a RATE toward the ceiling. Whatever
+                    // the numbers, `a = add/(1 − m)` makes the canvas hold exactly
                     // `pre_stroke·(1 − m) + colour·m` — the deposit lands on the state the stroke
                     // started from, by telescoping and with no copy of the canvas (see the module).
-                    // At `cap = 1` under BuildUp this reduces to the EXACT maskless alpha sequence, so
-                    // a full-strength interior is byte-identical whether the buffer is threaded or not.
-                    Some(cover) => {
+                    // At `cap = 1` this reduces to the EXACT maskless alpha sequence, so a full-strength
+                    // interior is byte-identical whether the buffer is threaded or not.
+                    Some(m_buf) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
-                        let m = f32::from(cover.buf[mi]) / 255.0;
+                        let m = f32::from(m_buf[mi]) / 255.0;
                         let Some(add) = crate::stroke_cover::cover_add(
-                            cover.law,
                             m,
                             w,
                             g,
@@ -276,7 +275,7 @@ pub(super) fn stamp_band(
                         ) else {
                             continue; // this dab adds nothing here
                         };
-                        cover.buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
+                        m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
                         let a = add / (1.0 - m).max(1e-4);
                         if ctx.preserve_alpha { a * prev[3] } else { a }
                     }

@@ -1,251 +1,163 @@
-//! Gates for the **Mask coverage law** (the rewrite of 2026-07-25, doc 25 §13.9).
+//! Gates da **cobertura da máscara** (2026-07-25, doc 25 §13.10).
 //!
-//! Each one states a property of the *look* — the transition band, the valley between neighbours —
-//! not a restatement of the implementation, because the defect they exist to catch lived for months
-//! under a green suite whose fixtures could not grow a feather at all (`hardness = 1`, a hard disk).
-//! The oracle helpers are the probe's ([`super::mask_probe`]), so the numbers here mean exactly what
-//! the measurements that motivated them meant.
+//! ## A ordem que estes gates pinam
 //!
-//! Every bar below is a number the measurement GAVE, with the old law's value next to it:
+//! *"A máscara deve pintar exatamente como o brush digital normal"* (Enio, depois do smoke). Ela não tem
+//! lei própria: roda o MESMO pipeline de dabs, com o MESMO acúmulo per-dab, e a única diferença é o que a
+//! cor significa (preto = proteger, branco = desproteger, e o destino é o scratch em vez da camada).
 //!
-//! | property | old (product build-up) | new (Krita-Wash envelope) |
-//! |---|---|---|
-//! | one pass, transition band | 3.53 px | **6.21 px** (analytic feather 5.40) |
-//! | 15 passes, transition band | 1.38 px | **2.10 px** |
-//! | scrub in one pen-down, body Δ | 118 levels | **2 levels** |
-//! | scrub in one pen-down, band | 3.53 → 1.88 px | **6.21 → 6.18 px** |
-//! | two neighbours, valley | fills (hardened) | **fills (sums)** |
+//! ## Por que existiu uma lei própria por algumas horas, e por que ela morreu
+//!
+//! A borda da máscara endurece sob muitas passadas (o produto per-dab afia a cauda do falloff — medido:
+//! band 3,53 px numa passada → 1,38 px em quinze). A cura tentada foi o **envelope do modo Wash do
+//! Krita** (`max` por-traço em vez do produto), que de fato mata o endurecimento — **e foi REPROVADA na
+//! tela**: sem a saturação do produto, a modulação por-dab do perfil fica visível e o traço sai em
+//! **CONTAS** ao longo do ombro. Renderizado nas duas leis, com a mesma sonda
+//! ([`super::mask_probe::probe_mask_beading_along_the_axis`]).
+//!
+//! ⚠️ **A lição de medição que isso deixou:** a modulação foi medida **no EIXO** do traço (6 níveis de
+//! 255) e chamada de invisível. As contas não vivem no eixo — vivem no **OMBRO**, onde o perfil é íngreme,
+//! e lá a mesma modulação é enorme na aparência. Um número no lugar errado disse o contrário do que a foto
+//! dizia (`reference_topic_oracle_discipline`).
+//!
+//! Então: **as duas leis têm artefato**, e a cura do endurecimento — se voltar à mesa — não é a lei da
+//! cobertura. Não reconstrua nenhuma das duas sem um render-and-look que mostre as contas ausentes.
 
-use super::mask_probe::{band_px, coverage, cp, cross_x, mask_tool, vstroke};
+use super::mask_probe::{band_px, coverage, cp, mask_tool, vstroke};
 use crate::tool::PainterTool;
 use crate::tool::paint::PaintMode;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
-use ph2d_painter_brush::StrokeCoverLaw;
 
 const S: u32 = 256;
 
-/// The mask brush's default falloff (`Smooth`, `w = t²(3 − 2t)` with `t = 1 − d/r`) crosses 0.9 at
-/// `d = 0.736·r` and 0.1 at `d = 0.804·… ` — solved numerically below rather than pinned, so the bar
-/// tracks the BRUSH instead of encoding one fixture's radius.
-fn analytic_feather_px(radius: f32) -> f32 {
-    let d_at = |target: f32| {
-        // Bisection on w(t) = t²(3−2t), monotone on [0,1].
-        let (mut lo, mut hi) = (0.0_f32, 1.0_f32);
-        for _ in 0..40 {
-            let mid = 0.5 * (lo + hi);
-            if mid * mid * (3.0 - 2.0 * mid) < target {
-                lo = mid;
-            } else {
-                hi = mid;
-            }
-        }
-        radius * (1.0 - 0.5 * (lo + hi)) // t → distance
-    };
-    d_at(0.1) - d_at(0.9)
-}
-
-/// **THE law.** Scrubbing back and forth WITHOUT lifting the pen must not move the feather: the
-/// stroke's coverage is the ENVELOPE of its dabs (Krita's Wash / Alpha Darken), so a dab that re-lays
-/// what is already there adds nothing. This is the half of the reported "muitas passadas" defect that
-/// happens inside a single gesture, and it is where the old law was worst — it drove the body 118
-/// levels darker and collapsed the band from 3.53 px to 1.88 px in ONE pen-down.
+/// **A ORDEM, pinada.** A cobertura que um traço de máscara deixa tem de ser, **byte a byte**, o ALFA que
+/// o mesmo traço do brush digital depositaria — mesma geometria, mesmo pincel, mesmo acúmulo.
 ///
-/// The oracle deliberately ignores the stroke's END CAPS: the scrub finishes where it started, so its
-/// last dab lands at the other end of the segment and the two strokes genuinely differ there (measured
-/// 172 levels at `y = 202`, which is geometry, not the law). The BODY is where the law lives.
+/// O oráculo é o produto de verdade: pinta-se o MESMO traço duas vezes, uma em modo Mask (lendo o
+/// scratch) e uma em modo Paint com tinta preta sobre branco (lendo o canvas). Se a máscara ganhar
+/// qualquer lei própria — um envelope, um teto, um cap por-modo — os dois campos divergem e isto fica
+/// vermelho, que é exactamente o que se quer: foi assim que a lei do canal foi construída, e é assim que
+/// ela (ou outra) não volta em silêncio.
 ///
-/// Mutation that must bleed: `stroke_cover_law` returning `BuildUp` for Mask mode.
+/// **Mutação que deve sangrar** (medida): forçar o buffer por-traço na máscara + a lei `max` (o envelope
+/// Wash) faz **3020 texels divergirem, pior delta 120 de 255**.
 #[test]
-fn a_scrub_within_one_mask_stroke_cannot_move_the_feather() {
-    let single = {
-        let mut t = mask_tool(S);
-        vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-        coverage(&t, S)
-    };
-    let scrubbed = {
-        let mut t = mask_tool(S);
-        t.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Down));
-        for leg in 0..4u32 {
-            let (a, b) = if leg % 2 == 0 {
-                (60.0, 200.0)
-            } else {
-                (200.0, 60.0)
-            };
-            for i in 1..=25u32 {
-                let y = a + (b - a) * (i as f32) / 25.0;
-                t.on_canvas_pointer(cp([128.0, y], PointerPhase::Move));
-            }
-        }
-        t.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Up));
-        let _ = t.take_preview_arc();
-        coverage(&t, S)
-    };
-    let body = (90..170)
-        .flat_map(|y| (100..160).map(move |x| y * S as usize + x))
-        .map(|i| (scrubbed[i] - single[i]).abs())
-        .fold(0.0_f32, f32::max);
-    let levels = (body * 255.0).round();
-    assert!(
-        levels <= 4.0,
-        "a scrub must be inert in the stroke's body (measured 2 of 255 under the envelope, \
-         118 under the old build-up); got {levels} levels"
-    );
-    let (b1, b4) = (band_px(&single, S, 130), band_px(&scrubbed, S, 130));
-    assert!(
-        (b4 - b1).abs() / b1 < 0.05,
-        "scrubbing must not narrow the feather (single {b1:.2} px, scrubbed {b4:.2} px; \
-         the old law went 3.53 -> 1.88)"
-    );
-}
+fn the_mask_lays_exactly_what_the_digital_brush_lays() {
+    let stroke = |t: &mut PainterTool| vstroke(t, 128.0, 60.0, 200.0, 25);
 
-/// **One pass shows the brush you chose.** The transition band a single mask stroke leaves must be at
-/// least the brush's own analytic feather — the old law pre-hardened it (3.53 px against an analytic
-/// 5.40 px at r = 10), which is why even ONE pass read harder than the cursor promised.
-///
-/// Mutation that must bleed: `BuildUp` for Mask mode (3.53 px).
-#[test]
-fn one_mask_pass_lays_the_brushs_own_feather() {
-    let mut t = mask_tool(S);
-    let r = t.paint.brush.radius_px;
-    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-    let band = band_px(&coverage(&t, S), S, 130);
-    let want = analytic_feather_px(r);
-    assert!(
-        band >= want * 0.9,
-        "one pass must lay the brush's own feather: got {band:.2} px, brush's analytic feather is \
-         {want:.2} px (r = {r}); the old product build-up gave 3.53 px"
-    );
-}
+    // (a) modo Mask: a cobertura é `1 − luma` do scratch.
+    let mut m = mask_tool(S);
+    stroke(&mut m);
+    let mask_cov = coverage(&m, S);
 
-/// **The reported picture.** After the pass count a human actually does, the edge must still be a
-/// RAMP — a boundary thinner than a texel is what stair-steps on a curve, and that is the "serrilhado".
-///
-/// ⚠️ This is NOT invariance, and the doc says so: cross-stroke build-up narrows the ramp as
-/// `N^(−1/2)` (measured 6.21 / 2.10 / 1.94 / 1.55 px at 1 / 15 / 30 / 45 passes), and the only law
-/// that would freeze it is the cross-stroke union — which cannot fill the valley between two strokes
-/// and was rejected for exactly that (doc 25 §13.8). What the envelope buys is ~1.5× the ramp at every
-/// pass count, plus a scrub that costs nothing.
-///
-/// Mutation that must bleed: `BuildUp` for Mask mode (1.38 px at fifteen passes).
-#[test]
-fn the_mask_edge_still_has_an_anti_aliased_ramp_after_fifteen_passes() {
-    let mut t = mask_tool(S);
-    for _ in 0..15 {
-        vstroke(&mut t, 128.0, 60.0, 200.0, 25);
+    // (b) modo Paint, tinta PRETA sobre branco: a cobertura equivalente é `1 − luma` do canvas. O pincel
+    //     é o do slot de máscara, copiado para todos os slots, para que a única diferença seja o MODO.
+    let mut p = PainterTool::default();
+    p.set_source(vec![255u8; (S * S * 4) as usize], S, S);
+    let mut mask_brush = m.paint.brush;
+    mask_brush.color = [0.0, 0.0, 0.0];
+    p.paint.brush = mask_brush;
+    for slot in &mut p.paint.brush_by_mode {
+        *slot = mask_brush;
     }
-    let band = band_px(&coverage(&t, S), S, 130);
-    assert!(
-        band >= 1.8,
-        "fifteen passes must leave a ramp at least ~2 texels wide (measured 2.10 px under the \
-         envelope, 1.38 px under the old build-up); got {band:.2} px"
-    );
-}
+    stroke(&mut p); // (o `vstroke` já drena o preview; o campo pintado mora no canvas)
+    let canvas = p.canvas_rgba.clone();
 
-/// **No seams.** Two overlapping strokes must SUM where they meet, strictly darker than either alone.
-/// The rejected §13.6 attempt folded strokes by `min` (a union), which left the valley at the *larger*
-/// of the two tails — lighter than its surroundings, i.e. the white lines Enio reported.
-///
-/// Mutation that must bleed: keeping the coverage buffer across strokes (never clearing it in
-/// `paint_begin`), which turns the per-stroke envelope into a global union — the valley then reads the
-/// same as a single stroke.
-#[test]
-fn neighbour_mask_strokes_sum_where_they_overlap() {
-    let lone = {
-        let mut t = mask_tool(S);
-        let r = t.paint.brush.radius_px;
-        vstroke(&mut t, 128.0 - r * 0.5, 60.0, 200.0, 25);
-        coverage(&t, S)
-    };
-    let mut t = mask_tool(S);
-    let r = t.paint.brush.radius_px;
-    for x in [128.0 - r * 0.5, 128.0 + r * 0.5] {
-        vstroke(&mut t, x, 60.0, 200.0, 25);
-    }
-    let both = coverage(&t, S);
-    let mid = 130usize * S as usize + 128;
-    assert!(
-        both[mid] > lone[mid] + 0.1,
-        "the second stroke must ADD in the valley (one stroke {:.3}, two {:.3}) — a union would \
-         leave it at the larger tail and read as a light seam",
-        lone[mid],
-        both[mid]
-    );
-    // …and the valley must not be the darkest-lightest outlier of the pair: with two strokes half a
-    // radius apart the midline reads at least three quarters of the lane centres.
-    let centre = 130usize * S as usize + (128.0 - r * 0.5) as usize;
-    assert!(
-        both[mid] >= both[centre] * 0.75,
-        "valley {:.3} vs lane centre {:.3}: the overlap of two half-radius-apart strokes must not \
-         dip below three quarters of the lanes",
-        both[mid],
-        both[centre]
-    );
-}
-
-/// **The pigment path never asks for the coverage channel's law.** The whole byte-identity claim for
-/// normal paint rests on this door answering `BuildUp` (or nothing) for every mode that is not Mask —
-/// the epoch-projection attempt of §13.7 leaked into the brush precisely because a mask-shaped
-/// decision reached a pigment stroke.
-#[test]
-fn only_the_mask_asks_for_the_coverage_channels_law() {
-    let brush = ph2d_painter_brush::BrushSpec::default();
-    for mode in [
-        PaintMode::Paint,
-        PaintMode::Smear,
-        PaintMode::Knife,
-        PaintMode::Blur,
-        PaintMode::Clone,
-        PaintMode::Sculpt,
-        PaintMode::Inpaint,
-        PaintMode::Selection,
-        PaintMode::WetPaint,
-        PaintMode::Mask,
-    ] {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (S * S * 4) as usize], S, S);
-        t.paint.paint_mode = mode;
-        let law = t.stroke_cover_law(&brush);
-        if matches!(mode, PaintMode::Mask) {
-            assert_eq!(
-                law,
-                Some(StrokeCoverLaw::Envelope),
-                "the Mask brush paints a coverage channel and must get the envelope"
-            );
-        } else {
-            assert!(
-                law != Some(StrokeCoverLaw::Envelope),
-                "{mode:?} is pigment: the envelope must never reach it (got {law:?})"
-            );
+    let mut diff = 0usize;
+    let mut worst = 0i32;
+    for i in 0..(S as usize * S as usize) {
+        let paint_cov = 255 - i32::from(canvas[i * 4]);
+        let mask_val = (mask_cov[i] * 255.0).round() as i32;
+        let d = (paint_cov - mask_val).abs();
+        if d > 0 {
+            diff += 1;
+            worst = worst.max(d);
         }
     }
-    // And the pigment cap still arms exactly where it used to: Accumulate off + Strength < 1.
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (S * S * 4) as usize], S, S);
-    let capped = ph2d_painter_brush::BrushSpec {
-        accumulate: false,
-        strength: 0.5,
-        ..brush
-    };
     assert_eq!(
-        t.stroke_cover_law(&capped),
-        Some(StrokeCoverLaw::BuildUp),
-        "Accumulate-OFF under full Strength must still get the pigment cap"
+        diff, 0,
+        "a máscara tem de depositar o MESMO campo que o brush digital: {diff} texels diferem, pior \
+         delta {worst} de 255"
     );
-    assert_eq!(
-        t.stroke_cover_law(&ph2d_painter_brush::BrushSpec {
-            accumulate: true,
-            ..capped
+}
+
+// ⚠️ **NÃO existe aqui um gate numérico das CONTAS**, e a razão é medida: sob o envelope reprovado o
+// pico-a-pico da modulação por-dab é **5 níveis de 255**, contra **3** sob a lei do brush — os dois na
+// mesma ordem, porque o que o olho vê não é a amplitude, é a ONDULAÇÃO PERIÓDICA sobre um campo
+// quase-sólido (uma ripple de 2% de contraste é visível; um bar de pico-a-pico não a separa do ruído de
+// quantização). Um gate com bar 4 seria um gate que não pode falhar pelo motivo que alega. O oráculo das
+// contas é o RENDER (a sonda `probe_mask_beading_along_the_axis` + a foto no doc 25 §13.10), e o gate que
+// de fato as impede é o de byte-identidade acima: o brush digital não faz contas, então a máscara não faz.
+
+/// O cap de Accumulate segue armando exactamente onde armava, e **o MODO não entra na conta** — é isso
+/// que "pinta como o brush digital" significa na porta.
+#[test]
+fn the_coverage_cap_arms_where_it_always_did() {
+    let mut t = mask_tool(S);
+    let base = ph2d_painter_brush::BrushSpec::default();
+    assert!(
+        !t.stroke_cover_wanted(&base),
+        "Strength cheia + Accumulate OFF: o cap é inobservável, ninguém threada buffer"
+    );
+    assert!(
+        t.stroke_cover_wanted(&ph2d_painter_brush::BrushSpec {
+            strength: 0.5,
+            accumulate: false,
+            ..base
         }),
-        None,
-        "Accumulate ON tracks no coverage at all (the plain per-dab build-up)"
+        "Strength < 1 + Accumulate OFF: o cap é observável e o buffer é threadado"
+    );
+    assert!(
+        !t.stroke_cover_wanted(&ph2d_painter_brush::BrushSpec {
+            strength: 0.5,
+            accumulate: true,
+            ..base
+        }),
+        "Accumulate ON não rastreia cobertura em modo nenhum"
+    );
+    let capped = ph2d_painter_brush::BrushSpec {
+        strength: 0.5,
+        ..base
+    };
+    t.paint.paint_mode = PaintMode::Paint;
+    let in_paint = t.stroke_cover_wanted(&capped);
+    t.paint.paint_mode = PaintMode::Mask;
+    let in_mask = t.stroke_cover_wanted(&capped);
+    assert_eq!(
+        in_paint, in_mask,
+        "a porta da cobertura não pode olhar o MODO: a máscara acumula como o brush digital"
     );
 }
 
-/// **The cost is the FOOTPRINT's, not the canvas's.** The envelope threads a canvas-sized byte buffer
-/// the mask stroke did not use before, so the thing to prove is that no pass started walking the whole
-/// plane: quadrupling the canvas must not move the per-move cost. A RATIO first (immune to machine
-/// drift), then a generous wall-clock kill — measured 0.9 ms mean / 2.5 ms worst at BOTH sizes, in
-/// debug and in release, against a 16.7 ms frame.
+/// A máscara é um passo de undo, e o traço seguinte deposita normal — o ciclo de vida que qualquer lei de
+/// cobertura tem de respeitar (o buffer por-traço é transiente, não estado de documento).
+#[test]
+fn a_mask_stroke_is_one_undo_step_and_the_next_stroke_starts_fresh() {
+    let mut t = mask_tool(S);
+    let blank = coverage(&t, S)[130 * S as usize + 128];
+    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
+    let painted = coverage(&t, S)[130 * S as usize + 128];
+    assert!(
+        painted > 0.9 && blank < 0.01,
+        "fixture: o traço tem de proteger o miolo ({blank:.3} -> {painted:.3})"
+    );
+    assert!(t.undo_last(), "um traço de máscara é um passo de undo");
+    let undone = coverage(&t, S)[130 * S as usize + 128];
+    assert!(
+        undone < 0.01,
+        "o undo tem de devolver a cobertura pré-traço, got {undone:.3}"
+    );
+    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
+    let again = coverage(&t, S)[130 * S as usize + 128];
+    assert!(
+        (again - painted).abs() < 0.01,
+        "re-pintar depois do undo tem de depositar o mesmo ({painted:.3} depois {again:.3})"
+    );
+}
+
+/// **O custo é da PEGADA, não do canvas.** Quadruplicar a tela não pode mover o custo por movimento —
+/// razão primeiro (imune à deriva da máquina), depois um kill de wall-clock generoso. Medido ~1,0× e
+/// 0,9 ms médio / 2,5 ms pior nos dois perfis, contra um frame de 16,7 ms.
 #[test]
 fn the_mask_stroke_cost_does_not_follow_the_canvas() {
     let cost = |size: u32| -> f64 {
@@ -268,136 +180,31 @@ fn the_mask_stroke_cost_does_not_follow_the_canvas() {
     let big = cost(2048);
     assert!(
         big < small * 1.6 + 0.15,
-        "a mask move must be footprint-bound: {small:.2} ms @1024² vs {big:.2} ms @2048² \
-         (measured ~1.0× — quadrupling the canvas moved nothing; a pass that walked the plane \
-         would show 4×)"
+        "um move de máscara é limitado pela pegada: {small:.2} ms @1024² vs {big:.2} ms @2048² \
+         (um passe que percorresse o plano daria 4×)"
     );
     assert!(
         big < 8.0,
-        "a mask move must fit a frame with room to spare: {big:.2} ms @2048² (kill 8 ms)"
+        "um move de máscara cabe num frame com folga: {big:.2} ms @2048² (kill 8 ms)"
     );
 }
 
-/// The overlay is unchanged by the rewrite, and the coverage it reads is the same buffer — a
-/// regression guard for the one thing a coverage-law change could silently break: full protection must
-/// still be reachable (two passes measured exactly 1.000, one pass 0.984 — the honest peak of a soft
-/// brush whose dab centres never land dead on a texel centre).
+/// A borda que a lei do brush deixa, **MEDIDA** — não uma asserção de que ela é boa. Existe para que o
+/// número do endurecimento fique num teste executável e ninguém precise re-medir para saber do que se
+/// fala: o traço nasce com ~3,5 px de rampa e ela aperta com as passadas. **É o defeito que segue ABERTO**
+/// (doc 25 §13.10), e a cura não é a lei da cobertura — as duas leis foram tentadas.
 #[test]
-fn two_mask_passes_reach_full_protection() {
+fn the_documented_hardening_is_still_there_and_this_is_its_number() {
     let mut t = mask_tool(S);
     vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-    let one = coverage(&t, S)[130 * S as usize + 128];
-    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-    let two = coverage(&t, S)[130 * S as usize + 128];
-    assert!(
-        one > 0.97,
-        "one pass must protect the core almost fully (measured 0.984), got {one:.3}"
-    );
-    assert!(
-        two >= 1.0,
-        "two passes must protect it FULLY (measured 1.000), got {two:.3}"
-    );
-    assert!(
-        cross_x(&coverage(&t, S), S, 130, 0.5).is_some(),
-        "the coverage must still have an edge to cross"
-    );
-}
-
-/// **The per-stroke buffer is TRANSIENT, and undo proves it.** The envelope lives in the stroke's own
-/// coverage buffer, not in the document: a mask stroke is one undo step back to the coverage that was
-/// there before it, and the NEXT stroke must not inherit the undone stroke's envelope (which would
-/// silently make it a no-op — the buffer says "already laid"). This is the `mats`/impasto lesson from
-/// the other direction: a new plane either enters the snapshot in the same commit, or it must be
-/// provably per-stroke. `stroke_mask` is the latter, and `paint_begin` is where that is established.
-#[test]
-fn a_mask_stroke_is_one_undo_step_and_the_next_stroke_starts_fresh() {
-    let mut t = mask_tool(S);
-    let blank = coverage(&t, S)[130 * S as usize + 128];
-    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-    let painted = coverage(&t, S)[130 * S as usize + 128];
-    assert!(
-        painted > 0.9 && blank < 0.01,
-        "fixture: the stroke must protect the core (blank {blank:.3} -> painted {painted:.3})"
-    );
-    assert!(t.undo_last(), "a mask stroke is an undo step");
-    let undone = coverage(&t, S)[130 * S as usize + 128];
-    assert!(
-        undone < 0.01,
-        "undo must restore the pre-stroke coverage, got {undone:.3}"
-    );
-    // The re-paint must land the same coverage as the first time — if the envelope had survived the
-    // undo, every texel would report "already laid" and the stroke would deposit NOTHING.
-    vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-    let again = coverage(&t, S)[130 * S as usize + 128];
-    assert!(
-        (again - painted).abs() < 0.01,
-        "re-painting after an undo must deposit the same coverage ({painted:.3} then {again:.3})"
-    );
-}
-
-/// **The route that escaped the door** (found auditing this wave, lens 1 — "does the law reach EVERY
-/// mask stroke?"). The per-layer-COLOUR path (layers-as-brush) is decided BEFORE the ramp/cache branches
-/// and never consulted [`super::PainterTool::stroke_cover_law`], so a mask stroke painted with it left
-/// the coverage law behind: **measured, scrubbing one pen-down darkened the body by 16 levels of 255
-/// with the route open, and by 0 with it closed.** It is also wrong in kind — that path takes its
-/// colours from the LAYER STACK, while `stamp_dabs_mask` forces black/white + Mix precisely to keep the
-/// scratch a pure COVERAGE channel.
-///
-/// Pigment's routing is untouched (per-layer colour + Accumulate-OFF keeps its long-standing
-/// behaviour) — moving the paint path is not this wave's to do.
-///
-/// ⚠️ **Two oracles were tried and only the third is honest.** The FEATHER cannot answer: arming layers
-/// also installs them as the Shape silhouette, and a Shape image stamps a hard border by design (`t = 1`,
-/// the bow-wave anchor note), so the band is ~0.8 px either way. The COLOUR cannot answer either: the
-/// coloured route still resolves to grayscale here, so that assertion passed with the bug in place —
-/// a gate that could not fail. The SCRUB answers, because it is the very property the law is about.
-///
-/// Mutation that must bleed: dropping the `!Mask` guard in `stamp_dabs_inner`'s per-layer-colour branch.
-#[test]
-fn per_layer_colour_never_hijacks_a_mask_stroke() {
-    let arm = |t: &mut PainterTool| {
-        let red: Vec<u8> = (0..64).flat_map(|_| [220u8, 20, 20, 255]).collect();
-        let blue: Vec<u8> = (0..64).flat_map(|_| [20u8, 20, 220, 255]).collect();
-        t.set_brush_shape_layers(vec![(red, 8, 8), (blue, 8, 8)]);
-        t.toggle_brush_shape_per_layer_color();
-    };
-    let single = {
-        let mut t = mask_tool(S);
-        arm(&mut t);
-        assert!(
-            t.brush_settings().shape_per_layer_color && t.brush_settings().shape_layer_count == 2,
-            "fixture: per-layer colour must be armed for this gate to mean anything"
-        );
+    let one = band_px(&coverage(&t, S), S, 130);
+    for _ in 0..14 {
         vstroke(&mut t, 128.0, 60.0, 200.0, 25);
-        coverage(&t, S)
-    };
-    let scrubbed = {
-        let mut t = mask_tool(S);
-        arm(&mut t);
-        t.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Down));
-        for leg in 0..4u32 {
-            let (a, b) = if leg % 2 == 0 {
-                (60.0, 200.0)
-            } else {
-                (200.0, 60.0)
-            };
-            for i in 1..=25u32 {
-                let y = a + (b - a) * (i as f32) / 25.0;
-                t.on_canvas_pointer(cp([128.0, y], PointerPhase::Move));
-            }
-        }
-        t.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Up));
-        let _ = t.take_preview_arc();
-        coverage(&t, S)
-    };
-    let body = (90..170)
-        .flat_map(|y| (100..160).map(move |x| y * S as usize + x))
-        .map(|i| (scrubbed[i] - single[i]).abs())
-        .fold(0.0_f32, f32::max);
-    let levels = (body * 255.0).round();
+    }
+    let fifteen = band_px(&coverage(&t, S), S, 130);
     assert!(
-        levels <= 2.0,
-        "a mask stroke with Per-Layer Color armed must still obey the coverage law: the scrub moved \
-         it {levels} levels (measured 0 with the route closed, 16 with it open)"
+        (one - 3.53).abs() < 0.5 && (fifteen - 1.38).abs() < 0.5,
+        "o endurecimento documentado mudou de número (era 3.53 px numa passada e 1.38 em quinze): \
+         got {one:.2} e {fifteen:.2}. Se foi de propósito, atualize o doc 25 §13.10 com a medição nova"
     );
 }

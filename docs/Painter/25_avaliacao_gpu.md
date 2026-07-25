@@ -763,7 +763,15 @@ o **Wash/opacity mode** (cap por-traço + aditivo entre traços), provavelmente 
 armadilhas completos em **[`../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md`](../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md)**.
 Os §13.6/§13.7 ficam como HISTÓRICO do que já foi tentado e reprovado — não reconstrua.
 
-## 13.9 A cobertura da máscara REESCRITA — a lei do canal é o Wash do Krita, não o build-up do pigmento (2026-07-25)
+## 13.9 ⚠️ REVERTIDA no mesmo dia — leia a §13.10 ANTES desta seção
+
+> A lei do canal descrita abaixo (o envelope Wash do Krita) foi construída, medida, **renderizada e
+> REPROVADA pelo Enio** horas depois: *"péssimo resultado. A máscara deve pintar exatamente como o brush
+> digital normal"*. O que segue vale como **registro do que foi tentado** — a pesquisa, os números e o
+> raciocínio seguem corretos e úteis; a CONCLUSÃO (adotar o envelope) não. O estado que ficou, o motivo
+> e a foto estão na **§13.10**.
+
+## 13.9 A cobertura da máscara reescrita — a lei do canal é o Wash do Krita, não o build-up do pigmento (2026-07-25, REVERTIDA)
 
 **Ordem do Enio:** *"ainda temos o problema dos artefatos após múltiplas pinceladas. Creio que o melhor
 será reescrever do zero, baseado em código de alta qualidade como referência."*
@@ -894,3 +902,76 @@ níveis) · `!is_mask` fora da condição da row (1 RED).
 **Sem schema, sem contrato congelado.** `ph2d-painter-brush` não é superfície congelada (os ABIs de
 pintura foram revogados pelo ADR-0099); `Tool`/`CanvasPaintTool`/`PanelEvent` intactos. Smoke:
 **`PH2D_MASK_SMOKE=1`**.
+
+
+## 13.10 A lei do canal foi REPROVADA na tela — a máscara pinta exactamente como o brush digital (2026-07-25)
+
+**Ordem do Enio, depois do smoke do §13.9:** *"péssimo resultado. A máscara deve pintar exatamente como o
+brush digital normal."* Com a foto: o traço de máscara saía em **CONTAS** — uma fileira de discos ao longo
+da pincelada, mais as emendas claras nos cruzamentos.
+
+### 13.10.1 O mecanismo (medido e renderizado, não inferido)
+
+A mesma sonda reproduziu as contas headless em um traço só, com o pincel grande, e o A/B entre as duas
+leis nomeou a causa:
+
+> **O produto per-dab SATURA a estrutura por-dab; o envelope a deixa à vista.**
+
+Sob o produto, o interior do traço vai a ~1,0 em qualquer texel que 2+ dabs cruzem, então a modulação
+*"onde exatamente estão os centros dos dabs"* desaparece. Sob o `max`, cada texel guarda o pico do perfil
+do dab mais próximo — e o perfil tem pico no CENTRO do dab, então a cobertura ondula com o período do
+espaçamento. A ondulação é pequena em amplitude (**pico-a-pico 5 níveis de 255**, contra 3 sob o produto) e
+**grande na percepção**, porque é periódica sobre um campo quase-sólido — 2% de contraste repetido é
+visível, e é isso que a tela mostrou.
+
+⚠️ **A medição que me enganou, e a lição:** eu medi a modulação **no EIXO** do traço, achei 6 níveis e
+escrevi "invisível" (§13.9.6, item 3, e no comentário que dizia que a esparramada de 0,05 px era
+desprezível). O eixo satura em qualquer lei — as contas vivem no **ombro e no interior fracionário**. Um
+número no lugar errado disse o contrário do que a foto dizia
+([[feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding]] é a irmã disto: aqui não
+foi a mutação, foi a COLUNA).
+
+### 13.10.2 O que ficou
+
+**A máscara não tem lei própria.** O `StrokeCoverLaw`/`StrokeCover` foram removidos; `stroke_cover.rs`
+guarda apenas a aritmética do cap de Accumulate (o que sempre shipou), numa cópia só, com o gate que a
+compara termo a termo com as expressões que estavam inline. A porta do tool virou
+**`stroke_cover_wanted(brush) -> bool`** — ela **não olha o MODO**, e é isso que "pinta como o brush
+digital" significa em código. As três cópias do predicado seguem colapsadas em uma (o único ganho de
+higiene que sobreviveu à reversão, e ele é real).
+
+Saíram com a lei: o guard que desviava a máscara da rota de Per-Layer Color (o desvio a faria pintar
+DIFERENTE do brush, que é o que a ordem proíbe — o achado fica nomeado no §13.9.7 como pré-existente) e o
+esconde-esconde da row **Accumulate** (o campo é lido outra vez em modo máscara, então esconder passaria a
+ser o controle FALTANDO).
+
+### 13.10.3 O gate que pina a ordem
+
+`the_mask_lays_exactly_what_the_digital_brush_lays`: o MESMO traço, pintado uma vez em modo Mask (lendo o
+scratch) e uma vez em modo Paint com tinta preta sobre branco (lendo o canvas), tem de dar campos
+**byte-idênticos**. Mutação medida: forçar o buffer por-traço na máscara + a lei `max` faz **3020 texels
+divergirem, pior delta 120 de 255**.
+
+⚠️ **Não existe gate numérico das CONTAS**, e a razão está medida acima: 3 níveis contra 5 é a mesma ordem,
+porque o que o olho vê é a ondulação periódica e não a amplitude. Um bar de pico-a-pico em 4 seria um gate
+que não pode falhar pelo motivo que alega. O oráculo das contas é o RENDER
+(`probe_mask_beading_along_the_axis`), e o gate que de fato as impede é o de byte-identidade: **o brush
+digital não faz contas, então a máscara não faz**.
+
+### 13.10.4 O defeito original segue ABERTO, e a cura não é a lei da cobertura
+
+O endurecimento da borda sob muitas passadas é real e está medido num teste executável
+(`the_documented_hardening_is_still_there_and_this_is_its_number`: **3,53 px de rampa numa passada, 1,38 em
+quinze**). As **duas** leis possíveis para o acúmulo já foram tentadas e cada uma tem seu artefato:
+
+| lei | mata o endurecimento? | artefato |
+|---|---|---|
+| produto per-dab (a que ship a, = o brush digital) | não | a rampa aperta com as passadas |
+| envelope `max` por-traço (Wash do Krita) | sim | **contas** por-dab, reprovadas na tela |
+
+Então a próxima hipótese tem de estar em outro lugar. As três que sobram, sem nenhuma medição ainda:
+**(a)** o OVERLAY (ele pinta `(1−cov)·0,8` de um filme sólido — uma rampa de cobertura fica visualmente
+mais dura do que é, e o realce podia ser desenhado de outro jeito); **(b)** os DEFAULTS do pincel de
+máscara (falloff/hardness/spacing — o endurecimento é função do nº de dabs por texel, que o Spacing
+governa); **(c)** aceitar o endurecimento como o produto (é o que o brush digital faz, e é o que a ordem
+atual pede). Nenhuma delas mexe na lei do acúmulo — e é justamente isso que o §13.10 fixa.

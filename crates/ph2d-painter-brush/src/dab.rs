@@ -172,11 +172,10 @@ pub fn stamp_dab_textured(
     )
 }
 
-/// As [`stamp_dab_textured`], plus the per-stroke coverage buffer `cover` (canvas-sized, 1 byte/px)
-/// and the LAW it accumulates by ([`crate::stroke_cover`]): pigment's Accumulate-OFF cap
-/// (`BuildUp` — overlapping / back-and-forth dabs build toward but never past the dab target) or the
-/// coverage channel's `Envelope` (the dab profile is the target, kept by `max`, so re-crossing is
-/// inert and the feather never hardens). `None` ⇒ exactly [`stamp_dab_textured`].
+/// As [`stamp_dab_textured`], plus the **Accumulate-OFF** per-stroke coverage `mask` (canvas-sized, 1
+/// byte/px): with `Some`, each pixel's stroke coverage caps at the dab target (Strength) — overlapping /
+/// back-and-forth dabs build toward but never past it ([`crate::stroke_cover`]). `None` ⇒ exactly
+/// [`stamp_dab_textured`].
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_textured_masked(
@@ -190,7 +189,7 @@ pub fn stamp_dab_textured_masked(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
-    cover: Option<crate::stroke_cover::StrokeCover<'_>>,
+    mask: Option<&mut [u8]>,
     dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
@@ -206,7 +205,7 @@ pub fn stamp_dab_textured_masked(
         shape,
         None,
         RampAlphaMode::None,
-        cover,
+        mask,
         dab_rotation,
     )
 }
@@ -233,7 +232,7 @@ pub fn stamp_dab_ramped(
     alpha_mode: RampAlphaMode,
     // Per-stroke coverage buffer + law so a Color-Ramp stroke honours Accumulate (TextureAlpha
     // uncapped), Enio 2026-06-25.
-    cover: Option<crate::stroke_cover::StrokeCover<'_>>,
+    mask: Option<&mut [u8]>,
     dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
@@ -249,7 +248,7 @@ pub fn stamp_dab_ramped(
         shape,
         Some(ramp),
         alpha_mode,
-        cover,
+        mask,
         dab_rotation,
     )
 }
@@ -269,11 +268,10 @@ fn stamp_dab_inner(
     shape: Option<ShapeInput>,
     ramp: Option<&[[f32; 4]]>,
     alpha_mode: RampAlphaMode,
-    // The per-stroke coverage buffer (canvas-sized, 1 byte/pixel) + its law. `Some` ⇒ the stroke's
-    // coverage is tracked and the dab's alpha is derived from it (`BuildUp` = pigment's cap, threaded
-    // when Accumulate is off and the cap is observable; `Envelope` = the coverage channel, the Mask
-    // brush); `None` ⇒ the plain per-dab build-up.
-    cover: Option<crate::stroke_cover::StrokeCover<'_>>,
+    // **Accumulate OFF** per-stroke coverage mask (canvas-sized, 1 byte/pixel). `Some` ⇒ cap each
+    // pixel's stroke coverage at the dab target (the tool passes it when Accumulate is off and the cap
+    // is observable); `None` ⇒ the plain per-dab build-up.
+    mask: Option<&mut [u8]>,
     // The dab's composed footprint rotor ([`crate::BrushSpec::dab_rotor`], `[1, 0]` = none): the
     // per-dab **Jitter Rotate** spin composed with the **stroke-follow** rotation. It spins the whole
     // footprint — falloff + Shape + View-Grain — together, which is what keeps a following tip and the
@@ -347,17 +345,12 @@ fn stamp_dab_inner(
     // to serial, so the texture stays fully visible during the drag. The Accumulate-cap path reads+
     // writes the shared per-stroke mask, so it runs SERIALLY (one band over the dab's rows) — small
     // soft-brush dabs anyway, where the cap is observable.
-    let touched = match cover {
-        Some(cover) => {
+    let touched = match mask {
+        Some(mask) => {
             let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
             let mrow = width as usize;
-            // The band carries the SAME law: the buffer and the law travel together, so a band can
-            // never accumulate by one medium's rule into another medium's buffer.
-            let band = crate::stroke_cover::StrokeCover {
-                buf: &mut cover.buf[(y0 as usize) * mrow..(y1 as usize) * mrow],
-                law: cover.law,
-            };
-            stamp_band(&ctx, region, Some(band), y0)
+            let mask_region = &mut mask[(y0 as usize) * mrow..(y1 as usize) * mrow];
+            stamp_band(&ctx, region, Some(mask_region), y0)
         }
         None => parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
             stamp_band(&ctx, dst, None, band_y0)

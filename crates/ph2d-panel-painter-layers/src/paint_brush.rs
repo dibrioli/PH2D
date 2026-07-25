@@ -213,14 +213,13 @@ pub(crate) fn paint_brush_body(
     //    onde estava: as duas metades da mesma tinta discordando sobre o que uma segunda passada
     //    significa. Estender o acúmulo ao relevo foi construído e **reprovado no smoke**, então a
     //    resposta honesta é não oferecer o controle onde ele só faz metade do que promete.
-    //    Escondido também na **MÁSCARA** (2026-07-25, a reescrita da cobertura — doc 25 §13.9): ali a
-    //    cobertura acumula pela lei do CANAL (o envelope Wash do Krita, `StrokeCoverLaw::Envelope`),
-    //    que é escolhida pelo MODO e nunca consulta `accumulate` — o checkbox ficaria pintado e inerte,
-    //    a terceira vez que esta row precisa se esconder pelo mesmo motivo (aquarela · impasto · aqui).
-    //    ⚠️ O comentário acima dizia "em Eraser/Mask/Inpaint o Accumulate volta a significar algo": era
-    //    verdade até a máscara ganhar lei própria, e ficou FALSO no mesmo commit — Eraser e Inpaint
-    //    seguem valendo, a Mask não.
-    if !brush.paints_no_color() && !brush.watercolor_active && !brush.impasto && !brush.is_mask {
+    //    ⚠️ **A MÁSCARA fica na lista dos que MOSTRAM** (2026-07-25): por algumas horas ela escondeu esta
+    //    row, quando a cobertura da máscara tinha lei própria (o envelope Wash) e o campo não era lido.
+    //    Aquela lei foi **reprovada na tela** (doc 25 §13.10) e a máscara voltou a pintar exactamente como
+    //    o brush digital — então `accumulate` volta a significar ali o que significa aqui, e esconder a
+    //    row passaria a ser o controle FALTANDO em vez do morto. A frase acima ("em Eraser/Mask/Inpaint o
+    //    Accumulate volta a significar algo") está correta como está.
+    if !brush.paints_no_color() && !brush.watercolor_active && !brush.impasto {
         y = paint_checkbox_row(
             ctx,
             theme,

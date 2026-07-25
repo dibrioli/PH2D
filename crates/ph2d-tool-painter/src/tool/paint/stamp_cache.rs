@@ -311,12 +311,11 @@ impl PainterTool {
         // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
-        // Does this stroke track its own coverage, and by which law? ONE door
-        // ([`Self::stroke_cover_law`]) — so a Color-Ramp stroke honours Accumulate (Enio 2026-06-25)
-        // and a Mask stroke gets the coverage-channel envelope, without either route holding its own
+        // Does this stroke track its own coverage? ONE door ([`Self::stroke_cover_wanted`]) — so a
+        // Color-Ramp stroke honours Accumulate (Enio 2026-06-25) without this route holding its own
         // opinion about the rule.
-        let cover_law = self.stroke_cover_law(brush);
-        if cover_law.is_some() {
+        let accumulate_cap = self.stroke_cover_wanted(brush);
+        if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,
                 (w as usize) * (h as usize),
@@ -324,10 +323,8 @@ impl PainterTool {
             );
         }
         let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let mut cover = cover_law.map(|law| ph2d_painter_brush::StrokeCover {
-            buf: self.paint.stroke_mask.as_mut_slice(),
-            law,
-        });
+        let mut mask: Option<&mut [u8]> =
+            accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -383,9 +380,7 @@ impl PainterTool {
                 shape_in,
                 lut,
                 alpha_mode,
-                cover
-                    .as_mut()
-                    .map(ph2d_painter_brush::StrokeCover::reborrow),
+                mask.as_deref_mut(),
                 rotor,
             ) {
                 let rect = Region {
@@ -428,12 +423,12 @@ impl PainterTool {
         // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
-        // Hand the per-pixel blit this stroke's coverage buffer + law ([`Self::stroke_cover_law`]:
-        // pigment's Accumulate-OFF cap, or the Mask brush's envelope). `paint_begin` cleared it on
-        // pointer-down; grow it to canvas size (only the first dab of a stroke actually zero-fills —
-        // later dabs/frames keep the accumulation, which is what makes the law per-STROKE).
-        let cover_law = self.stroke_cover_law(brush);
-        if cover_law.is_some() {
+        // Hand the per-pixel blit this stroke's coverage buffer ([`Self::stroke_cover_wanted`]: the
+        // Accumulate-OFF cap). `paint_begin` cleared it on pointer-down; grow it to canvas size (only
+        // the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation, which
+        // is what makes the cap per-STROKE).
+        let accumulate_cap = self.stroke_cover_wanted(brush);
+        if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,
                 (w as usize) * (h as usize),
@@ -441,10 +436,8 @@ impl PainterTool {
             );
         }
         let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let mut cover = cover_law.map(|law| ph2d_painter_brush::StrokeCover {
-            buf: self.paint.stroke_mask.as_mut_slice(),
-            law,
-        });
+        let mut mask: Option<&mut [u8]> =
+            accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -500,9 +493,7 @@ impl PainterTool {
                 basis.as_ref(),
                 image.as_ref(),
                 shape_in,
-                cover
-                    .as_mut()
-                    .map(ph2d_painter_brush::StrokeCover::reborrow),
+                mask.as_deref_mut(),
                 rotor,
             ) {
                 let rect = Region {

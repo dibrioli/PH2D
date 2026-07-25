@@ -1,9 +1,15 @@
 //! **Measurement probe** for the Mask coverage rewrite (`HANDOFF_line_Painter_mask_rewrite_2026-07-25`).
 //!
-//! Not a gate: these are `#[ignore]`d probes that MEASURE the reported defect (the mask edge goes
-//! jagged/torn under many passes) and DUMP the coverage so it can be looked at. The gates that pin the
-//! cure live in `mask_tests.rs`; this file is the "render and look" half the handoff §8 prescribes, kept
-//! so the next agent can re-measure instead of re-arguing.
+//! Not a gate: these are `#[ignore]`d probes that MEASURE the mask's coverage and DUMP it so it can be
+//! LOOKED at — the half that decided this wave twice. They are kept, with their numbers, so the next
+//! agent re-measures instead of re-arguing.
+//!
+//! ⚠️ **As duas leis já foram medidas aqui, e as duas têm artefato** (doc 25 §13.10): o produto per-dab
+//! (o que ship a, e o que o brush digital usa) ENDURECE a borda sob muitas passadas — band 3,53 px numa
+//! passada → 1,38 em quinze; o envelope Wash do Krita mata o endurecimento e deixa as CONTAS por-dab à
+//! vista, reprovadas na tela. A sonda 10 renderiza as contas; a 11 diz em que coluna a modulação vive
+//! (o pico-a-pico é 3 níveis contra 5 — a diferença que o olho vê é a ondulação periódica, não a
+//! amplitude, e é por isso que não existe gate numérico dela).
 //!
 //! It also OWNS the measurement helpers (`band_px`, `cross_x`, `vstroke`, …) that the gates in
 //! `mask_tests.rs` stand on — one copy of the oracle, so a gate and the probe that motivated it can
@@ -593,5 +599,64 @@ fn probe_mask_per_layer_colour_route() {
                 .filter(|&i| s[i] != s[i + 1] || s[i + 1] != s[i + 2])
                 .count()
         }
+    );
+}
+
+/// **PROBE 10 — as CONTAS do smoke reprovado (2026-07-25).** Pincel GRANDE, um traço, e a modulação
+/// por-dab ao longo do eixo: o produto SATURA o miolo (contas somem), o envelope deixa o miolo no pico
+/// do perfil (as contas aparecem). Dumpa para olhar.
+#[test]
+#[ignore]
+fn probe_mask_beading_along_the_axis() {
+    const SZ: u32 = 512;
+    for size_px in [60.0_f32, 230.0] {
+        let mut t = mask_tool(SZ);
+        t.set_brush_size_px(size_px);
+        let r = t.paint.brush.radius_px;
+        vstroke(&mut t, 256.0, 80.0, 430.0, 40);
+        let cov = coverage(&t, SZ);
+        // Ao longo do EIXO do traço (x = 256), a coordenada onde a modulação por-dab vive.
+        let axis: Vec<f32> = (100..410).map(|y| cov[y * SZ as usize + 256]).collect();
+        let mn = axis.iter().copied().fold(f32::MAX, f32::min);
+        let mx = axis.iter().copied().fold(f32::MIN, f32::max);
+        println!(
+            "size {size_px:5.0} px (r={r:5.1}, spacing {:.3}): eixo min={mn:.4} max={mx:.4} \
+             modulação = {:.4} ({} níveis de 255)",
+            t.paint.brush.spacing,
+            mx - mn,
+            ((mx - mn) * 255.0).round()
+        );
+        dump(&format!("beads_{size_px:.0}"), &cov, SZ);
+    }
+}
+
+/// **PROBE 11 — ONDE vive a modulação por-dab.** Para cada coluna do traço, o pico-a-pico ao longo do
+/// eixo: é isso que desenha as contas, e o gate precisa medir na coluna onde ela é MÁXIMA, não numa
+/// escolhida a olho (a primeira tentativa mediu o contorno de 50% e as duas leis empataram em 2 níveis).
+#[test]
+#[ignore]
+fn probe_mask_where_the_modulation_lives() {
+    const SZ: u32 = 256;
+    let mut t = mask_tool(SZ);
+    t.set_brush_size_px(30.0);
+    vstroke(&mut t, 128.0, 60.0, 200.0, 40);
+    let cov = coverage(&t, SZ);
+    let mut worst = (0usize, 0.0_f32, 0.0_f32);
+    println!("  x  cobertura(y=130)  modulação p2p ao longo de y (níveis de 255)");
+    for x in 128..170usize {
+        let col: Vec<f32> = (95..165).map(|y| cov[y * SZ as usize + x]).collect();
+        let mn = col.iter().copied().fold(f32::MAX, f32::min);
+        let mx = col.iter().copied().fold(f32::MIN, f32::max);
+        let lv = (mx - mn) * 255.0;
+        if lv > worst.1 {
+            worst = (x, lv, cov[130 * SZ as usize + x]);
+        }
+        if x % 3 == 0 {
+            println!("{x:3}  {:15.3}  {lv:6.1}", cov[130 * SZ as usize + x]);
+        }
+    }
+    println!(
+        "PICO: x={} com {:.1} níveis (cobertura ali = {:.3})",
+        worst.0, worst.1, worst.2
     );
 }

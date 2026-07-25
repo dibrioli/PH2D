@@ -64,9 +64,9 @@ pub mod stamp;
 pub mod stamp_color;
 pub mod stamp_ramped;
 pub mod stroke;
-// The per-stroke coverage buffer + the two laws a stroke can accumulate by (pigment build-up vs
-// the coverage-channel envelope). Its own file: it is a LAW, not a helper — see the module docs.
-pub mod stroke_cover;
+// A aritmética do cap por-traço (Accumulate OFF), numa cópia só. Arquivo próprio: é uma LEI, não um
+// helper — e o módulo registra a lei alternativa que foi construída e REPROVADA (doc 25 §13.10).
+pub(crate) mod stroke_cover;
 pub mod stroke_method;
 pub mod symmetry;
 pub mod texture;
@@ -110,7 +110,6 @@ pub use stroke::{
     Dab, POLY_MAX_SIDES, POLY_MIN_SIDES, Stroke, StrokePoint, ellipse_perimeter,
     flatten_catmull_rom, polygon_perimeter,
 };
-pub use stroke_cover::{StrokeCover, StrokeCoverLaw};
 pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
 pub use texture::patterns::{render_texture_layer, render_texture_preview};

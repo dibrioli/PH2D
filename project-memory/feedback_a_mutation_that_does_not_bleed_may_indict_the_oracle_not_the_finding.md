@@ -27,3 +27,10 @@ tanto falso-verde (o gate não pode falhar) quanto falso-descarte (o achado pare
 morto — [[reference_topic_fixture_discipline]]); (3) só declare o achado falso depois de um oráculo que
 mede a propriedade DIRETO. E registre os oráculos reprovados no gate: o próximo agente tentaria os
 mesmos.
+
+**Segunda instância, no mesmo dia e no mesmo módulo (a variante sem mutação):** a lei nova da cobertura da
+máscara deixava contas por-dab visíveis; eu medi a modulação **no EIXO** do traço (6 níveis de 255) e
+escrevi *"invisível"*. O eixo **satura em qualquer lei** — as contas vivem no **OMBRO**. A foto do Enio
+disse o contrário do meu número, e o número não estava errado: estava no lugar errado. Antes de concluir
+"desprezível" a partir de uma amostra, pergunte **onde a grandeza é MÁXIMA** e amostre lá (uma varredura de
+coluna custa dez linhas de sonda).

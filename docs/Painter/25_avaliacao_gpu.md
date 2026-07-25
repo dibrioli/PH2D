@@ -762,3 +762,135 @@ cauda do falloff); a cura precisa somar-como-tinta E ser idempotente no mesmo po
 o **Wash/opacity mode** (cap por-traço + aditivo entre traços), provavelmente do Krita. Plano e
 armadilhas completos em **[`../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md`](../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md)**.
 Os §13.6/§13.7 ficam como HISTÓRICO do que já foi tentado e reprovado — não reconstrua.
+
+## 13.9 A cobertura da máscara REESCRITA — a lei do canal é o Wash do Krita, não o build-up do pigmento (2026-07-25)
+
+**Ordem do Enio:** *"ainda temos o problema dos artefatos após múltiplas pinceladas. Creio que o melhor
+será reescrever do zero, baseado em código de alta qualidade como referência."*
+
+### 13.9.1 A pesquisa (as duas referências discordam, e a discordância é a resposta)
+
+- **GIMP, paint core** (`gimppaintcore.c` + `gimp-gegl-loops.cc`): no modo `GIMP_PAINT_CONSTANT` (o
+  default, "Incremental" desmarcado) a cobertura do dab acumula num **buffer por-traço**
+  (`core->canvas_buffer`) e o resultado é aplicado **a partir do snapshot de undo**
+  (`gimp_applicator_set_src_buffer(applicator, undo_buffer)`), com `paint_opacity` como **teto**. A
+  aritmética, verbatim, é `if (opacity > dest) dest += (opacity - dest) * mask * opacity` — o perfil do
+  dab é uma **TAXA** rumo ao teto.
+- **Krita, modo Wash** (internamente o *Alpha Darken*): a opacidade é do **TRAÇO**, não do dab, e a
+  regra *"não deixa o alfa DIMINUIR"* — um `max`. A própria doc diz para que serve: *"ensures the line
+  doesn't get darker when you cross it again and again"*, sem *"the circular pattern you can see in
+  Build-Up"*.
+
+⚠️ **A arquitetura das duas é a MESMA** (buffer por-traço + aplicar sobre o estado congelado) e a **lei
+é diferente**: taxa (GIMP) × alvo (Krita). Com opacidade 100% o teto do GIMP é vácuo, então **todo app
+endurece a borda nesse regime** — é o Wash que existe justamente para não endurecer. Um canal de
+cobertura quer o Wash; pigmento quer o build-up (*"passe por cima para aprofundar"*).
+
+### 13.9.2 O que JÁ existia aqui — e por que a máscara não o usava
+
+O motor já tinha o buffer por-traço (`PaintState.stroke_mask`, threaded pelas rotas per-pixel/ramped
+quando **Accumulate OFF**), e a lei dele era **exatamente a do GIMP** (`m += w·(cap − m)`). Mas o
+predicado que o armava era `!accumulate && (strength < 1 || film_aa)` — e o pincel de máscara tem
+`strength = 1`, onde o teto é vácuo ⇒ **a máscara caía no produto per-dab puro**.
+
+### 13.9.3 A medição do defeito (sonda `mask_probe.rs`, render-and-look)
+
+Pincel default da máscara (r = 10, hardness 0, Smooth, spacing 10%, strength/flow 1):
+
+| | 1 passada | 15 | 20 | 45 |
+|---|---|---|---|---|
+| band 0.9→0.1 (reta) | 3.53 px | 1.38 | 1.43 | — |
+| band (arco r = 70) | 3.95 px | 1.65 | — | — |
+| sawtooth do contorno (arco) | 0.035 px | 0.106 | — | — |
+
+E o pior caso não precisava de 15 pincelada nenhuma: **ESFREGAR sem soltar a caneta** (4 pernas num
+pen-down) já levava o corpo 118 níveis mais escuro e colapsava a band **3.53 → 1.88 px dentro do mesmo
+gesto**. Renderizado, o arco de 15 passadas é uma borda dura serrilhada; o de 1 passada é macio.
+
+⚠️ **Uma hipótese MORREU na medição:** a lei já era função do CAMINHO no que depende do polling — o
+mesmo traço entregue em 5 ou 100 eventos de ponteiro dá `max |Δcov| = 0.0000`. O que a envenenava era a
+CONTAGEM de dabs sobre o texel (o spacing), não o batching.
+
+### 13.9.4 A cura
+
+**`ph2d-painter-brush::stroke_cover`** — `StrokeCoverLaw { BuildUp, Envelope }` + `StrokeCover { buf,
+law }`, e `cover_add` com a aritmética das duas leis num lugar só (o `BuildUp` é *pure code motion* das
+duas ramas que estavam inline no `bands.rs`, com gate comparando as duas expressões termo a termo).
+
+**Uma porta no tool:** `PainterTool::stroke_cover_law(brush)` responde *"este traço rastreia cobertura, e
+por qual lei?"* — e é a MESMA porta que (a) escolhe a rota (um traço rastreado não pode usar os caches,
+que não têm buffer para threadar) e (b) threada o buffer nas duas rotas que o aceitam. Antes o predicado
+estava escrito em **três** lugares.
+
+**O `a = add/(1 − m)` que já estava ali é a outra metade do GIMP, de graça:** ele telescopa exato
+(`Π(1−a_k) = 1−m_n`), então o canvas sempre vale `pre_traço·(1−m) + cor·m` — o depósito pousa no estado
+em que o traço começou, **sem guardar cópia do canvas**. É por isso que traços consecutivos SOMAM
+(`c' = c + m(1−c)`) e o vale entre dois vizinhos enche — o oposto da união do §13.6.
+
+### 13.9.5 O resultado (mesma sonda)
+
+| | antes | depois |
+|---|---|---|
+| band, 1 passada (reta) | 3.53 px | **6.21 px** (feather analítico do pincel: 5.40) |
+| band, 15 passadas | 1.38 px | **2.10 px** |
+| ESFREGAR num pen-down (corpo) | 118 níveis · band 3.53→1.88 | **2 níveis · band 6.21→6.18** |
+| arco, 15 passadas | 1.65 px, borda dura | **2.36 px, rampa macia** |
+| custo por move (pincel r = 60) | — | **0,9 ms médio / 2,5 ms pior, IGUAL @2048² e @4096²** |
+
+### 13.9.6 Os trades, MEDIDOS e nomeados (é o que o smoke vai julgar)
+
+1. **Uma passada é mais MACIA** — ela agora deposita o feather do próprio pincel em vez de um
+   pré-endurecido. Quem quiser borda dura tem Hardness/falloff, que é onde isso mora.
+2. **Uma passada deixa o miolo em 0.984, não 1.000** (o centro de um dab nunca cai exatamente no centro
+   de um texel). A segunda passada dá 1.000 exato.
+3. **Rabisco de lanes a 1 raio de distância ondula na PRIMEIRA varredura** (interior 0.75 contra 0.98) —
+   é o perfil macio somando honestamente. A 2ª varredura fecha (0.94) e a 3ª some (0.98); a 0.6 raio já
+   nasce fechado (0.95 → 0.996). Sob a lei antiga o interior nascia chapado **porque tudo endurecia**.
+4. ⚠️ **A rampa AINDA aperta com muitas passadas, como `N^(−1/2)`** — 6.21 / 2.10 / 1.94 / 1.55 px a
+   1 / 15 / 30 / 45. **Não existe lei que dê build-up entre traços E borda invariante**: a única que
+   congela a borda é a união entre traços, que não enche o vale (o §13.6, reprovado). O que o envelope
+   compra é ~1,5× a rampa em QUALQUER contagem de passadas, e o esfregar sair de graça. Isto está escrito
+   no gate, no smoke e aqui de propósito — não é invariância, e prometer invariância seria mentira.
+
+### 13.9.7 Dois achados da auditoria (as duas lentes)
+
+- **Uma rota escapava da porta:** o caminho de **Per-Layer Color** é decidido ANTES das ramas de
+  ramp/cache e nunca consultava o predicado ⇒ com ele armado, o traço de máscara voltava ao build-up
+  (**medido: esfregar movia 16 níveis com a rota aberta, 0 com ela fechada**) e ainda tirava as cores da
+  PILHA de camadas, num buffer que `stamp_dabs_mask` força a preto/branco justamente para ser só
+  cobertura. A máscara não toma essa rota (o roteamento do pigmento fica intocado). ⚠️ **Dois oráculos
+  foram tentados e reprovados antes:** o *feather* não responde (armar camadas instala a silhueta de
+  Shape, que tem borda dura por desenho) e a *cor* não responde (a rota resolve para cinza ali, então o
+  gate passava COM o bug). Quem responde é o ESFREGAR — a propriedade de que a lei trata.
+- **Um checkbox virou morto:** `Accumulate` não é lido em modo máscara (a lei vem do MODO), então a row
+  se esconde ali — 3ª vez que essa row precisa se esconder, e cada vez por um motivo diferente
+  (aquarela = provadamente inerte · impasto = governa metade da tinta · **máscara = o campo nunca é
+  lido**). O comentário do painel afirmava *"em Eraser/Mask/Inpaint o Accumulate volta a significar
+  algo"*: ficou FALSO para a Mask no mesmo commit, e foi corrigido junto.
+
+### 13.9.8 Aberto, NOMEADO, e fora desta wave
+
+**Os métodos de SHAPE (Line/Curve/Ellipse/Polygon/Free Hand) em modo máscara não pintam nada** — o
+roteador de shape intercepta o Down antes do `paint_begin`, então `ensure_mask_scratch` nunca roda e o
+scratch fica com **0 bytes** (medido, sonda 4). É pré-existente e ortogonal à lei; consertar direito
+exige também uma base congelada por traço (senão o re-stamp por frame re-multiplica o scratch, e o
+resultado passa a depender da taxa de quadros). Wave própria.
+
+### 13.9.9 Gates (10) e mutações (6, todas sangram)
+
+`mask_tests.rs`: o esfregar é inerte · uma passada deposita o feather analítico · a rampa sobrevive a 15
+passadas · vizinhos SOMAM no vale · só a máscara pede a lei do canal · custo não segue o canvas (razão) ·
+duas passadas protegem 100% · undo é 1 passo e o traço seguinte deposita normal · Per-Layer Color não
+sequestra o traço. `stroke_cover_tests.rs`: o `BuildUp` é a aritmética que shipou (termo a termo) · o
+envelope é um `max` (ordem-invariante, repetição inerte) · o ombro sobrevive onde o do build-up colapsa
+(com controle: o build-up CRESCE com sampling mais denso) · Strength/Grain seguem valendo.
+`seam.rs`: a row Accumulate se esconde na máscara (presença E ausência).
+
+**Mutações:** lei da máscara → `BuildUp` (4 gates RED) · buffer não reseta por traço, i.e. união global
+(2 RED, reproduzindo o vale claro do §13.6: 0.573 contra 0.984) · envelope reinicia por BATCH (3 RED) ·
+`add = target` sem subtrair o que já está lá (2+1 RED) · rota Per-Layer Color reaberta (1 RED, 16
+níveis) · `!is_mask` fora da condição da row (1 RED).
+
+**Sem schema, sem contrato congelado.** `ph2d-painter-brush` não é superfície congelada (os ABIs de
+pintura foram revogados pelo ADR-0099); `Tool`/`CanvasPaintTool`/`PanelEvent` intactos. Smoke:
+**`PH2D_MASK_SMOKE=1`**.

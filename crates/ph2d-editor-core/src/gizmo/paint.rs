@@ -145,14 +145,13 @@ const PIVOT_DOT_SIZE: f32 = 12.0;
 /// math the grid painter uses ([`crate::grid`]). Inlined here so the
 /// gizmo module has no cross-imports against the grid painter.
 pub(super) fn world_to_screen(view: &GizmoView, world_pos: [f32; 2]) -> [f32; 2] {
-    let aspect = view.window_w / view.window_h;
-    let half_h = view.camera_height_world * 0.5;
-    let half_w = half_h * aspect;
-    let cx = view.camera_center[0];
-    let cy = view.camera_center[1];
-    let tx = (world_pos[0] - (cx - half_w)) / (2.0 * half_w);
-    let ty = (world_pos[1] - (cy - half_h)) / (2.0 * half_h);
-    [tx * view.window_w, view.window_h - ty * view.window_h]
+    super::camera::world_to_screen_px(
+        view.camera_center,
+        view.camera_height_world,
+        view.window_w,
+        view.window_h,
+        world_pos,
+    )
 }
 
 /// Paint the gizmo over the selection. Registers hit rects for every

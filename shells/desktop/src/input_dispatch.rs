@@ -3910,8 +3910,60 @@ impl App {
                             began_pivot = true;
                         }
                     }
-                    if began_pivot {
-                        // MovePivot drag opened; Move events drive it.
+                    // Joint-anchor point handle: a Down on the joint's dot opens
+                    // a plain Translate drag of the JOINT entity (= the
+                    // selection). A joint has no sprite for the canvas-pick
+                    // Translate path (`pick_sprites_at_world`) to resolve, so it
+                    // is recognised HERE by its hit id, before the generic handle
+                    // path — the same shape as `began_pivot` and the Flip
+                    // targets. Moving it writes `Transform.translation`, which is
+                    // the joint's authored anchor; `advance_gizmo_drag` does the
+                    // write and `post_frame_undo` makes it one global step.
+                    let mut began_joint_anchor = false;
+                    if hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR)
+                        && hero.store.panel_at(evt.x, evt.y).is_none()
+                        && !menu_open_before
+                        && let Some(entity_bits) = hero.gizmo.selection
+                    {
+                        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                        if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
+                            && let Some(t) = gfx.sim.world().get::<Transform>(entity)
+                        {
+                            let window_size = gfx.surface.size();
+                            let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                            let snap_t = ph2d_editor::TransformSnapshot {
+                                translation: [t.translation.x, t.translation.y],
+                                rotation: t.rotation,
+                                scale: [t.scale.x, t.scale.y],
+                            };
+                            let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
+                            let parent_world = ph2d_editor::TransformSnapshot {
+                                translation: [pw.translation.x, pw.translation.y],
+                                rotation: pw.rotation,
+                                scale: [pw.scale.x, pw.scale.y],
+                            };
+                            hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
+                                kind: ph2d_editor::GizmoDragKind::Translate,
+                                entity_bits,
+                                start_screen: (evt.x, evt.y),
+                                cursor_screen: (evt.x, evt.y),
+                                start_transform: snap_t,
+                                // Ignored by Translate; set to the anchor for
+                                // clarity.
+                                pivot_world: [t.translation.x, t.translation.y],
+                                start_cursor_world: world_pos,
+                                // A point has no half-extent — it never scales.
+                                sprite_half_intrinsic: [0.0, 0.0],
+                                anchor_is_center: false,
+                                target: ph2d_editor::GizmoTarget::PrimaryIndividual,
+                                parent_world,
+                                turns: 0,
+                            });
+                            began_joint_anchor = true;
+                        }
+                    }
+                    if began_pivot || began_joint_anchor {
+                        // Pivot or joint-anchor drag opened; Move events drive it.
                     } else if is_specific_handle
                         && !over_open_vec_stroke
                         && !over_flip_art

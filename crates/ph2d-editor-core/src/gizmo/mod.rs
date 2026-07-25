@@ -33,6 +33,7 @@ pub mod camera;
 pub mod drag;
 pub mod hit;
 pub mod paint;
+pub mod point;
 pub mod transform;
 
 #[cfg(test)]
@@ -44,6 +45,7 @@ pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,
 };
+pub use point::{PointGizmoView, paint_point_gizmo};
 pub use transform::{
     anchor_pivot_world, compose_snapshot, compute_gizmo_transform, move_pivot_transform,
     pivot_snap_candidates, world_delta_to_local, world_translation_to_local,

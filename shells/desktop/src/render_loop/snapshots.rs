@@ -403,6 +403,12 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|bits| build_view(bits, sim, present));
+    // The POINT gizmo — a selected joint's anchor. A joint has a `Transform` but
+    // no box (so `build_view` returns None for it); this is the handle it gets.
+    // The "which entities get one" rule lives in `point_gizmo` so it is gated
+    // headless (the publish here needs a live HeroScreen the test cannot build).
+    hero.gizmo.point_view =
+        super::point_gizmo::build_point_view(sim, hero.gizmo.selection, camera, window_size);
     hero.gizmo.extra_views.clear();
     for bits in hero.gizmo.extra_selection.clone() {
         if let Some(v) = build_view(bits, sim, present) {

@@ -159,6 +159,13 @@ pub struct GizmoStateGroup {
     /// sem interior — o field não é entidade, então o gizmo de sprite (`view`) fica
     /// intocado e os dois nunca coexistem por modalidade da tool. `None` ⇒ nada.
     pub field_view: Option<crate::gizmo::GizmoView>,
+    /// The POINT gizmo — a single grabbable dot at a world anchor, for a selected
+    /// entity that is a point rather than a box (a physics joint, whose
+    /// `Transform.translation` is its authored anchor). The shell publishes it
+    /// each frame when such an entity is selected; the painter draws the dot and
+    /// registers `GIZMO_JOINT_ANCHOR`. `None` ⇒ nothing painted. See
+    /// [`crate::gizmo::point`].
+    pub point_view: Option<crate::gizmo::PointGizmoView>,
     /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
     /// which handle of it) was clicked. The painters populate this
     /// map every frame for the primary, every extra, and the global

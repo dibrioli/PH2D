@@ -162,6 +162,12 @@ pub fn paint_hero_screen(
     if let Some(view) = hero.gizmo.view {
         crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
+    // The POINT gizmo — a joint's anchor dot. A joint entity has a `Transform`
+    // but no box, so it never publishes a `GizmoView` above; this is the only
+    // handle it gets. Painted at the same layer as the primary gizmo.
+    if let Some(view) = hero.gizmo.point_view {
+        crate::gizmo::paint_point_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
+    }
     // Flip W7.5: o gizmo da POSE da chave (modo Edit + quadro instanciado). Pintado
     // como gizmo KEYED — rotate/scale nos ids do espaço `FlipPose`, sem interior
     // (o arrasto de canvas do Edit já move a instância; um interior aqui comeria o

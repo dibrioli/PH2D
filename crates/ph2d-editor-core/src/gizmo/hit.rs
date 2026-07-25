@@ -110,4 +110,10 @@ pub mod ids {
     pub const GIZMO_ROTATE_TR: NodeId = NodeId(961);
     pub const GIZMO_ROTATE_BL: NodeId = NodeId(962);
     pub const GIZMO_ROTATE_BR: NodeId = NodeId(963);
+    /// The POINT gizmo's single grabbable dot (the joint-anchor handle). Not a
+    /// box handle, so it is deliberately absent from [`super::gizmo_kind_for_id`]
+    /// — the host recognises this id explicitly and opens a `Translate` drag of
+    /// the selected entity (which has no sprite to `pick_sprites_at_world`), the
+    /// same way `MovePivot`/Flip targets are recognised before the generic path.
+    pub const GIZMO_JOINT_ANCHOR: NodeId = NodeId(964);
 }

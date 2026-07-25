@@ -66,3 +66,26 @@ impl GizmoCamera {
         [self.center[0] + nx * half_w, self.center[1] - ny * half_h]
     }
 }
+
+/// Forward-project a world point to screen pixels, camera fields passed raw.
+///
+/// The gizmo painters carry the camera inside a `GizmoView`, but the point gizmo
+/// carries no bbox — so the projection lives here, taking the fields directly,
+/// and both the box painter (`paint::world_to_screen`) and the point painter
+/// share the exact same math instead of each re-deriving it.
+pub(crate) fn world_to_screen_px(
+    camera_center: [f32; 2],
+    camera_height_world: f32,
+    window_w: f32,
+    window_h: f32,
+    world_pos: [f32; 2],
+) -> [f32; 2] {
+    let aspect = window_w / window_h;
+    let half_h = camera_height_world * 0.5;
+    let half_w = half_h * aspect;
+    let cx = camera_center[0];
+    let cy = camera_center[1];
+    let tx = (world_pos[0] - (cx - half_w)) / (2.0 * half_w);
+    let ty = (world_pos[1] - (cy - half_h)) / (2.0 * half_h);
+    [tx * window_w, window_h - ty * window_h]
+}

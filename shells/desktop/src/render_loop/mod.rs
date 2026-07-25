@@ -131,6 +131,9 @@ pub(crate) mod painter_bridge_selection_gizmos;
 pub(crate) mod painter_bridge_selection_overlay;
 pub(crate) mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
+/// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
+/// "which entity gets a point handle" is gated headless.
+mod point_gizmo;
 mod present;
 mod sim_extract;
 mod snapshots;

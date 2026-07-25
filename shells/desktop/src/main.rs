@@ -139,6 +139,7 @@ mod palette_persist;
 mod pattern_live;
 mod pattern_path_smoke;
 mod physics_smoke;
+mod physics_smoke_authoring;
 mod physics_smoke_collision;
 mod physics_smoke_contacts;
 mod physics_smoke_damping;

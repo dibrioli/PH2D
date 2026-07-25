@@ -163,7 +163,12 @@ pub(crate) fn fill_click(
         // `precision` = pixels do buffer por unidade do documento. Um px de tela vale
         // `doc_per_px` unidades, então "1 buffer-px por px de tela" é `1/doc_per_px`.
         precision,
-        gap_reach: (style.gap_px as f32) * doc_per_px,
+        // **O Gap é em unidades de MUNDO** (Enio 2026-07-25), como o Size — a geometria é
+        // LOCAL (ADR-0111), então só a escala do objeto atravessa (mundo→local), SEM o
+        // `px_to_world`. É isso que o torna zoom-invariante: aproximar a câmera não muda
+        // mais o alcance em documento, e o vão que o artista vê de perto continua fechável
+        // (o *"de perto some"* era o `px_to_world` encolhendo o alcance no zoom).
+        gap_reach: (style.gap as f32) * obj_scale,
         // **O Grow é em px de TELA** (é o que o usuário vê e ajusta), e o solver conta em
         // px de BUFFER — que valem `1/style.precision` px de tela. Sem esta conversão,
         // subir a Precision *encolhia* o Grow em silêncio: dois controles independentes
@@ -192,7 +197,7 @@ pub(crate) fn fill_click(
              | grow={} px de buffer = {:.1} px de TELA",
             style.precision,
             style.grow,
-            style.gap_px,
+            style.gap,
             params.precision,
             1.0 / (params.precision * px_to_world).max(1e-9),
             half0 / px_to_world,

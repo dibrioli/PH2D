@@ -15,8 +15,8 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
-    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, slider_to_px, slider_to_unit,
+    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD, GROW_MAX,
+    GROW_MIN, PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, slider_to_px, slider_to_unit,
 };
 
 /// Largura default do traço (px de tela) — uma linha média.
@@ -63,7 +63,7 @@ pub struct FlipTool {
     //    a trocar a cor do traço para pintar uma região seria hostil.
     fill_color: [u8; 4],
     fill_mode: FillMode,
-    gap_px: f64,
+    gap: f64,
     grow: f64,
     precision: f64,
     /// Raio da trapped ball em px de tela (`0` = desligado). COLORIZE C1.
@@ -102,7 +102,7 @@ impl Default for FlipTool {
             link_strength: true,
             fill_color: DEFAULT_FILL,
             fill_mode: FillMode::Paint,
-            gap_px: 0.0,
+            gap: 0.0,
             // Grow 0: com a âncora no EIXO da linha (BUGS #14), o default já é exato em
             // qualquer espessura e zoom — o Grow é só o ajuste estilístico.
             grow: 0.0,
@@ -256,7 +256,7 @@ impl FlipTool {
             draw_filled: self.draw_filled,
             reshape: self.reshape,
             edit_domain: self.edit_domain,
-            gap_px: self.gap_px,
+            gap: self.gap,
             grow: self.grow,
             precision: self.precision,
             trap: self.trap,
@@ -368,7 +368,7 @@ impl Tool for FlipTool {
             // painel usa no `link_slider_number_mapped`, senão o knob e o valor
             // divergem no 1º arrasto.
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GAP => {
-                self.gap_px = v.clamp(0.0, 1.0) * GAP_MAX_PX;
+                self.gap = v.clamp(0.0, 1.0) * GAP_MAX_WORLD;
             }
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GROW => {
                 self.grow = GROW_MIN + v.clamp(0.0, 1.0) * (GROW_MAX - GROW_MIN);

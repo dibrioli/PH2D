@@ -156,8 +156,19 @@ pub enum FillMode {
     Unpaint,
 }
 
-/// Faixa do slider **Gap Closure** (alcance da extensão, em px de tela).
-pub const GAP_MAX_PX: f64 = 40.0;
+/// Faixa do slider **Gap Closure** (alcance da extensão, em unidades de MUNDO).
+///
+/// ⚠️ **Mundo, não px de tela** (Enio 2026-07-25): o Gap é a distância entre as pontas
+/// de um vão, e ela vive no DESENHO — igual ao Size do pincel, que já mede mundo (§4.C.6).
+/// Medido em px de tela, o alcance encolhia ao aproximar a câmera e o vão que o artista
+/// via de perto ficava "fora de alcance" (*"de perto some"*). Em mundo, um vão de 0,2 doc
+/// fecha com o slider ≥ 0,2 em QUALQUER zoom.
+///
+/// O teto **1,0 doc** vem da medição: o teto antigo (40 px) dava, num enquadramento de
+/// trabalho típico (a arte ~15 doc de largura, câmera `height_world` ~10-27), um alcance
+/// de 0,37 a 1,0 doc — este teto cobre esse regime com folga, e ~16× a largura do traço
+/// padrão (`size_to_world(6) = 0,06`). O default segue **0** (desligado).
+pub const GAP_MAX_WORLD: f64 = 1.0;
 /// Faixa do **Grow/Shrink** (px de tela): o offset assinado do contorno a partir do
 /// **EIXO** da linha (BUGS #14). O default 0 já é exato em qualquer espessura e zoom;
 /// isto é só o ajuste estilístico (o "off-register" para +, o vão deliberado para −).
@@ -329,8 +340,9 @@ pub struct FlipStyleSnapshot {
     pub reshape: ReshapeKind,
     /// O DOMÍNIO da seleção (só relevante em [`FlipMode::Edit`]) — traço ou ponto (W8).
     pub edit_domain: EditDomain,
-    /// Alcance do Gap Closure em px de tela (`0` = desligado).
-    pub gap_px: f64,
+    /// Alcance do Gap Closure em unidades de MUNDO (`0` = desligado). Mundo, não px de
+    /// tela, para ser zoom-invariante como o Size (ver [`GAP_MAX_WORLD`]).
+    pub gap: f64,
     /// Grow/Shrink em px de tela: offset assinado do contorno a partir do EIXO da
     /// linha (o shell converte para px de buffer via `precision`).
     pub grow: f64,
@@ -373,7 +385,7 @@ impl Default for FlipStyleSnapshot {
             draw_filled: false,
             reshape: ReshapeKind::Smooth,
             edit_domain: EditDomain::Stroke,
-            gap_px: 0.0,
+            gap: 0.0,
             grow: 0.0,
             trap: 0.0,      // opt-in: o default é o balde do W4, sem mudança nenhuma
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre

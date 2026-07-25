@@ -96,30 +96,33 @@ fn helpers_exist_only_in_fill_mode_and_never_in_unpaint() {
     assert!(!wants_gap_helpers(true, None));
 }
 
-/// 🔴 **A roda anda 1 px de tela por tique e clampa nas pontas** — e só fala em modo
-/// Fill (fora dele a roda é do zoom, e devolver `Some` aqui roubaria o zoom).
+/// 🔴 **A roda anda um passo de mundo (0,05 doc) por tique e clampa nas pontas** — e só
+/// fala em modo Fill (fora dele a roda é do zoom, e devolver `Some` aqui roubaria o zoom).
 ///
 /// Mutação que sangra: tirar o clamp (o track passa de 1.0 e o tool clamparia sozinho,
 /// mas o KNOB do painel desenharia fora do trilho) — ou inverter o passo.
 #[test]
-fn the_wheel_moves_one_screen_px_per_notch_and_clamps() {
-    use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX};
-    let fill = |gap_px| {
+fn the_wheel_moves_one_world_step_per_notch_and_clamps() {
+    use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD};
+    let fill = |gap| {
         Some(FlipStyleSnapshot {
             mode: FlipMode::Fill,
             fill_mode: FillMode::Paint,
-            gap_px,
+            gap,
             ..Default::default()
         })
     };
-    // +1 tique de 5 px → 6 px (em track: 6/40).
-    let t = gap_wheel_track(true, fill(5.0), 1.0).expect("modo Fill responde");
-    assert!((t - 6.0 / GAP_MAX_PX).abs() < 1e-9, "5 px + 1 tique = 6 px");
+    // +1 tique de 0,25 doc → 0,30 doc (o passo é 0,05; em track: 0,30/1,0).
+    let t = gap_wheel_track(true, fill(0.25), 1.0).expect("modo Fill responde");
+    assert!(
+        (t - 0.30 / GAP_MAX_WORLD).abs() < 1e-9,
+        "0,25 + 1 tique = 0,30 doc"
+    );
     // −1 tique de 0 → segue 0 (clamp de baixo).
     let t = gap_wheel_track(true, fill(0.0), -1.0).expect("clamp de baixo");
     assert!(t.abs() < 1e-9);
-    // +10 tiques de 39 → 40, não 49 (clamp de cima).
-    let t = gap_wheel_track(true, fill(39.0), 10.0).expect("clamp de cima");
+    // +100 tiques de 0,98 → 1,0, não 5,98 (clamp de cima).
+    let t = gap_wheel_track(true, fill(0.98), 100.0).expect("clamp de cima");
     assert!((t - 1.0).abs() < 1e-9);
     // Fora do modo Fill (ou parado), a roda não é do Gap.
     assert!(
@@ -127,7 +130,7 @@ fn the_wheel_moves_one_screen_px_per_notch_and_clamps() {
             true,
             Some(FlipStyleSnapshot {
                 mode: FlipMode::Draw,
-                gap_px: 5.0,
+                gap: 0.25,
                 ..Default::default()
             }),
             1.0
@@ -135,7 +138,7 @@ fn the_wheel_moves_one_screen_px_per_notch_and_clamps() {
         .is_none(),
         "em Draw a roda e' do zoom"
     );
-    assert!(gap_wheel_track(true, fill(5.0), 0.0).is_none());
+    assert!(gap_wheel_track(true, fill(0.25), 0.0).is_none());
 }
 
 /// **Alcance zero instala vazio SEM worker** — é o default do slider, e pagar uma

@@ -14,7 +14,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_flip::{
     DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX,
-    GAP_MAX_PX, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN,
+    GAP_MAX_WORLD, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN,
     TRAP_MAX_PX, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
 };
 
@@ -175,9 +175,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::FLIP_GAP_NUM,
         0.0,
         0.0,
-        GAP_MAX_PX as f32,
+        GAP_MAX_WORLD as f32,
         0.0,
-        1.0, // step do dominio: unidades inteiras (px / %)
+        0.05, // step do dominio: unidades de MUNDO (o Gap mede mundo, nao px) // LITERAL-PX-OK: granularidade do valor, nao design
     );
     slider_chip(
         store,

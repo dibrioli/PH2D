@@ -8,7 +8,7 @@ pub(crate) fn style(mode: ToolFillMode) -> FlipStyleSnapshot {
     FlipStyleSnapshot {
         fill_mode: mode,
         fill_color: [200, 100, 50, 255],
-        gap_px: 0.0,
+        gap: 0.0,
         grow: 2.0,
         precision: 1.0,
         ..Default::default()
@@ -189,7 +189,7 @@ fn gap_closure_leaves_a_persistent_invisible_stroke() {
 
     // Com Gap Closure: fecha, e o fechamento FICA no documento.
     let s = FlipStyleSnapshot {
-        gap_px: 15.0,
+        gap: 15.0,
         ..style(ToolFillMode::Paint)
     };
     fill_click(&mut d, &s, Vec2::new(10.0, 10.0), 1.0, &Xform::IDENTITY)
@@ -207,7 +207,7 @@ fn gap_closure_leaves_a_persistent_invisible_stroke() {
     // Gap Closure ligado — o vão ficou fechado. É todo o ponto do twist do Harmony.
     let mut plain = style(ToolFillMode::Paint);
     plain.fill_color = [10, 200, 10, 255];
-    plain.gap_px = 0.0;
+    plain.gap = 0.0;
     fill_click(&mut d, &plain, Vec2::new(10.0, 10.0), 1.0, &Xform::IDENTITY)
         .expect("o vão já está fechado: re-preencher não precisa do Gap Closure");
 }
@@ -320,7 +320,7 @@ fn readjusting_from_the_pristine_base_replaces_instead_of_accumulating() {
         d
     };
     let with_gap = |gap: f64| FlipStyleSnapshot {
-        gap_px: gap,
+        gap,
         ..style(ToolFillMode::Paint)
     };
 

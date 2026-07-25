@@ -17,8 +17,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_flip::{
-    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, px_to_slider,
+    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD, GROW_MAX,
+    GROW_MIN, PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, px_to_slider,
 };
 use ph2d_vector::VectorScene;
 
@@ -493,20 +493,22 @@ impl BodyCtx<'_> {
             y,
         );
 
-        // Gap Closure (px de tela; 0 = desligado) — o knob que salva o line-art aberto.
+        // Gap Closure (unidades de MUNDO; 0 = desligado) — o knob que salva o line-art
+        // aberto. Mundo, não px de tela, para ser zoom-invariante como o Size.
         let track = self
             .store
             .slider(ids::FLIP_GAP)
             .map(|(_, v)| v)
-            .unwrap_or((snap.gap_px / GAP_MAX_PX) as f32);
-        let gap = f64::from(track) * GAP_MAX_PX;
+            .unwrap_or((snap.gap / GAP_MAX_WORLD) as f32);
+        let gap = f64::from(track) * GAP_MAX_WORLD;
         y = self.slider_row(
             "Gap",
             ids::FLIP_GAP,
             ids::FLIP_GAP_NUM,
             track,
             gap,
-            &format!("{}", gap.round() as i64),
+            // Unidades de mundo são fracionárias (0,20 · 0,37); 2 casas, não inteiro-px.
+            &format!("{gap:.2}"),
             y,
         );
         // Trap (px de tela; 0 = desligado): o raio da bola que nao passa por um vao

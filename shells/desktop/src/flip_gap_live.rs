@@ -39,7 +39,7 @@ pub(crate) fn wants_gap_helpers(active: bool, style: Option<FlipStyleSnapshot>) 
 
 /// **Um tique da roda em modo Fill** → o track novo (0..1) do slider `FLIP_GAP`, ou
 /// `None` se a roda não é do Gap (modo errado). `notches` positivo = aumentar; 1 tique
-/// = 1 px de tela ([`GAP_WHEEL_STEP_PX`]), a granularidade que o chip numérico mostra.
+/// = [`GAP_WHEEL_STEP`] unidades de MUNDO.
 ///
 /// Devolve o TRACK (normalizado) porque os dois consumidores falam track: o valor do
 /// widget no store e o `SetValue` que o tool clampa — o mesmo par que o próprio slider
@@ -54,12 +54,13 @@ pub(crate) fn gap_wheel_track(
         return None;
     }
     let s = style?;
-    let new = f64::from(notches).mul_add(GAP_WHEEL_STEP_PX, s.gap_px);
-    Some(new.clamp(0.0, ph2d_tool_flip::GAP_MAX_PX) / ph2d_tool_flip::GAP_MAX_PX)
+    let new = f64::from(notches).mul_add(GAP_WHEEL_STEP, s.gap);
+    Some(new.clamp(0.0, ph2d_tool_flip::GAP_MAX_WORLD) / ph2d_tool_flip::GAP_MAX_WORLD)
 }
 
-/// Px de tela de Gap por tique da roda (o slider vai de 0 a 40 e o chip mostra inteiro).
-const GAP_WHEEL_STEP_PX: f64 = 1.0;
+/// Unidades de MUNDO de Gap por tique da roda — 0,05 doc (20 tiques no alcance de 0 a 1,0),
+/// a mesma ordem de granularidade dos ~40 tiques que o antigo 1 px/tique dava em 0..40.
+const GAP_WHEEL_STEP: f64 = 0.05;
 
 /// FNV-1a sobre o CONTEÚDO do desenho — posições, larguras, `closed` e os flags que
 /// separam linha de preenchimento. É um SUPERSET do que o `boundaries()` filtra, de
@@ -166,18 +167,17 @@ impl crate::App {
             self.flip_gap.clear();
             return;
         };
-        // **O MESMO `doc_per_px` do clique** (`fill_click`): o Gap é em px de TELA e o
-        // desenho vive em unidades do documento — helpers convertidos por outra régua
-        // fechariam vãos que o clique não fecha.
+        // **A MESMA régua do clique** (`fill_click`): o Gap é em unidades de MUNDO, a
+        // geometria é LOCAL, então só a escala do objeto atravessa (mundo→local) — SEM
+        // `px_to_world`. Helper e clique têm de usar a mesma fórmula, senão a tela mostra
+        // um vão que o clique não fecha. É a régua zoom-invariante (Enio 2026-07-25).
         let w2l = self.flip_active_world_to_local();
         let obj_scale = w2l.mean_scale() as f32;
         let Some(gfx) = self.gfx.as_ref() else {
             self.flip_gap.clear();
             return;
         };
-        let win = gfx.surface.size();
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-        let reach = (style.gap_px as f32) * px_to_world * obj_scale;
+        let reach = (style.gap as f32) * obj_scale;
 
         // O desenho NA TELA, read-only — nunca o `flip_autokey` (que CRIA chave; um
         // overlay que autora seria o gesto acontecendo sem ninguém gesticular).

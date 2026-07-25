@@ -132,9 +132,9 @@ impl crate::App {
         // até `meia-largura + meia-largura` — com a tinta padrão do smoke (0,28) isso é
         // 0,28 de alcance, então a caixa usa tinta FINA (0,12 ⇒ solda ≤ 0,12) para o
         // vão de 0,2 ficar FORA dela (senão o balde preenche com Gap 0 e o teste morre).
-        // (b) O Gap é em px de TELA com teto 40, e 1 unidade de mundo ≈ 108 px na câmera
-        // default (10 unidades em 1080p): 0,2 unidade ≈ 22 px de Gap — alcançável com
-        // folga, e ainda alcançável depois de o artista afastar a câmera.
+        // (b) O Gap é em unidades de MUNDO (Enio 2026-07-25), com teto 1,0 doc: o vão de
+        // 0,2 fecha com o slider ≥ 0,20 — e agora ZOOM-INVARIANTE (aproximar a câmera não
+        // faz o vão "sair de alcance": era o *"de perto some"*).
         let thin = |pts: &[Vec2], seed: usize| {
             let mut s = hand(pts, seed, false);
             s.widths_mut().fill(0.12);
@@ -171,12 +171,12 @@ impl crate::App {
              3) IDENTIDADE — preencha a forma da DIREITA, va pro Sculpt, selecione SO a\n   \
                 linha dela e esculpa: a cor tem de ir junto. (Sem selecao as duas rotas\n   \
                 empatam; e a selecao que as separa.)\n\
-             4) GAP AO VIVO — a caixa de BAIXO tem um vao deliberado na parede de cima.\n   \
-                Com Gap 0 o clique dentro VAZA (toast). Segure Ctrl e role a RODA sobre\n   \
-                o canvas: o Gap sobe/desce 1 px por tique (o slider acompanha) e, quando\n   \
-                o alcance atinge o vao, um segmento VERDE aparece tapando a boca — o\n   \
-                helper mostra exatamente o que o clique vai selar. Clique dentro:\n   \
-                preenche. (A roda SEM Ctrl segue sendo zoom.)\n\
+             4) GAP AO VIVO — a caixa de BAIXO tem um vao deliberado (0,2 doc) na parede\n   \
+                de cima. Com Gap 0 o clique dentro VAZA (toast). Segure Ctrl e role a RODA\n   \
+                sobre o canvas: o Gap sobe/desce 0,05 doc por tique (o slider acompanha), e\n   \
+                em >= 0,20 um segmento VERDE aparece tapando a boca — clique dentro:\n   \
+                preenche. ZOOM-INVARIANTE: o Gap agora mede MUNDO, entao APROXIME bem a\n   \
+                camera e o helper NAO some (era o 'de perto some'). A roda SEM Ctrl e' zoom.\n\
              \n\
              Grow e Trap em ZERO para ver a rota nova — armados, o balde cai na rota velha\n\
              de proposito (ela sabe deslocar; a nova poe a fronteira no eixo).\n"

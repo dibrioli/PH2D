@@ -19,7 +19,7 @@ use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 const PICKER_W: f32 = 280.0; // LITERAL-PX-OK: Blender color picker fixed width (chrome-specific)
-const PICKER_H: f32 = 560.0; // LITERAL-PX-OK: Blender color picker fixed height (chrome-specific)
+const PICKER_H: f32 = 620.0; // LITERAL-PX-OK: Blender color picker fixed height (chrome-specific; +60 for the Color Harmonies section)
 const VIEWPORT_MIN_MARGIN: f32 = 40.0; // LITERAL-PX-OK: min viewport margin to host picker (chrome-specific)
 
 /// Compute the picker rect for the current viewport + drag offset.
@@ -132,6 +132,9 @@ pub fn paint_blender_picker_demo(
             ids::BLENDER_SWATCH_25,
             ids::BLENDER_SWATCH_26,
         ],
+        harmony_schemes: ids::BLENDER_HARMONY_SCHEMES,
+        harmony_swatches: ids::BLENDER_HARMONY_SWATCHES,
+        harmony_add: ids::BLENDER_HARMONY_ADD,
     };
     crate::widget::paint_blender_color_picker_with_store(
         &cp,

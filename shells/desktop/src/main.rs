@@ -70,6 +70,8 @@ mod falloff_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;
+/// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
+mod harmony_smoke;
 mod flip_autokey;
 mod flip_colorize;
 mod flip_colorize_smoke;
@@ -380,6 +382,7 @@ impl App {
             stack_smoke_done: false,
             motion_path_smoke_done: false,
             timeline_onion_smoke_done: false,
+            harmony_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

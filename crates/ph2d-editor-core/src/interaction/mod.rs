@@ -37,6 +37,7 @@ pub mod flip_strip;
 pub mod hit;
 pub mod state;
 pub mod types;
+mod types_blender;
 mod types_menu;
 pub mod util;
 

@@ -85,6 +85,9 @@ pub struct BlenderColorPicker {
     pub hsv_h: f32,
     /// Retained HSV saturation (0..1). Same role as `hsv_h`.
     pub hsv_s: f32,
+    /// The selected Color-Harmonies scheme (view-state; the partner colors are DERIVED from
+    /// `value` + this by [`super::harmony::partners`], never stored). Default `None`.
+    pub harmony: super::harmony::Harmony,
 }
 
 impl BlenderColorPicker {
@@ -105,9 +108,17 @@ impl BlenderColorPicker {
             // expressed a preference yet.
             hsv_h: 0.0,
             hsv_s: 1.0,
+            harmony: super::harmony::Harmony::None,
         };
         s.sync_hex();
         s
+    }
+
+    /// Set the Color-Harmonies scheme (builder form).
+    #[must_use]
+    pub fn harmony(mut self, harmony: super::harmony::Harmony) -> Self {
+        self.harmony = harmony;
+        self
     }
 
     pub fn value(mut self, value: ColorValue) -> Self {

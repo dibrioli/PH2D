@@ -188,6 +188,35 @@ pub(super) fn apply_blender_hit(
             store.blender_palette_push(parent, cur);
             Some(parent)
         }
+        BlenderHitKind::HarmonyScheme(idx) => {
+            // Select the harmony scheme (view-state; partners stay derived).
+            if let Some(&scheme) = crate::widget::Harmony::ALL.get(idx as usize) {
+                store.set_blender_harmony(parent, scheme);
+            }
+            Some(parent)
+        }
+        BlenderHitKind::HarmonySwatch(idx) => {
+            // Re-derive the partners from the CURRENT value + scheme (the SAME door the painter
+            // used) and set the clicked partner as the picker's value.
+            let (cur, _, _, _) = store.blender_picker(parent)?;
+            let scheme = store.blender_harmony(parent);
+            let colors = crate::widget::harmony_partners(cur, scheme);
+            if let Some(&c) = colors.get(idx as usize) {
+                store.set_blender_value(parent, c);
+                Some(parent)
+            } else {
+                None
+            }
+        }
+        BlenderHitKind::HarmonyAdd => {
+            // Append every derived partner to the active palette.
+            let (cur, _, _, _) = store.blender_picker(parent)?;
+            let scheme = store.blender_harmony(parent);
+            for c in crate::widget::harmony_partners(cur, scheme) {
+                store.blender_palette_push(parent, c);
+            }
+            Some(parent)
+        }
         BlenderHitKind::PaletteTab(idx) => {
             // Dropdown option row → select that palette, then close the popover.
             store.blender_select_palette(parent, idx as usize);

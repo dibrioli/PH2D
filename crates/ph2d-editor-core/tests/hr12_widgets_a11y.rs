@@ -27,6 +27,12 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     ("tool_rail/tests.rs", "test module; parent owns a11y"),
+    // Color-Harmonies engine gates — pure `partners()` math, no user-facing widget; the section is
+    // painted by `harmony.rs` (which wires a11y) and the picker owns the announcements.
+    (
+        "blender_color_picker/harmony_tests.rs",
+        "test module; harmony.rs / picker own a11y",
+    ),
     // The dropdown's OPEN list, split out for the widget LOC cap. Paint only: the parent
     // `dropdown/mod.rs` builds the ComboBox node AND one `ListBoxOption` per row
     // (`build_a11y`/`build_option_a11y`), so the rows painted here are already announced.

@@ -355,6 +355,9 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("BLENDER_SWATCH_24", ids::BLENDER_SWATCH_24),
     ("BLENDER_SWATCH_25", ids::BLENDER_SWATCH_25),
     ("BLENDER_SWATCH_26", ids::BLENDER_SWATCH_26),
+    // Color Harmonies "add all partners" button (the scheme/partner arrays are
+    // folded into the uniqueness test below, like the timeline menu tables).
+    ("BLENDER_HARMONY_ADD", ids::BLENDER_HARMONY_ADD),
     // Widget Gallery
     ("GAL_PANEL", ids::GAL_PANEL),
     ("GAL_DRAG_HANDLE", ids::GAL_DRAG_HANDLE),
@@ -822,6 +825,37 @@ fn chrome_node_ids_are_pairwise_unique() {
             .chain(ids::TIMELINE_STRIP_MENU.iter())
             .chain(ids::TIMELINE_LANE_MENU.iter())
             .map(|(id, label, _)| (*id, *label)),
+    );
+    // Color Harmonies: the scheme selector and partner-swatch slots are arrays,
+    // pulled from the arrays themselves so a widened array can never slip past.
+    // Distinct label per element — a shared label would let the (id, label) dedup
+    // mask an intra-array hash collision, which is exactly what this gate catches.
+    const HARMONY_SCHEME_LABELS: [&str; 7] = [
+        "BLENDER_HARMONY_SCHEMES[0]",
+        "BLENDER_HARMONY_SCHEMES[1]",
+        "BLENDER_HARMONY_SCHEMES[2]",
+        "BLENDER_HARMONY_SCHEMES[3]",
+        "BLENDER_HARMONY_SCHEMES[4]",
+        "BLENDER_HARMONY_SCHEMES[5]",
+        "BLENDER_HARMONY_SCHEMES[6]",
+    ];
+    const HARMONY_SWATCH_LABELS: [&str; 4] = [
+        "BLENDER_HARMONY_SWATCHES[0]",
+        "BLENDER_HARMONY_SWATCHES[1]",
+        "BLENDER_HARMONY_SWATCHES[2]",
+        "BLENDER_HARMONY_SWATCHES[3]",
+    ];
+    sorted.extend(
+        ids::BLENDER_HARMONY_SCHEMES
+            .iter()
+            .zip(HARMONY_SCHEME_LABELS)
+            .map(|(id, label)| (*id, label)),
+    );
+    sorted.extend(
+        ids::BLENDER_HARMONY_SWATCHES
+            .iter()
+            .zip(HARMONY_SWATCH_LABELS)
+            .map(|(id, label)| (*id, label)),
     );
     // ⚠️ **Uma linha PODE aparecer em dois menus**, e isso não é uma colisão: o
     // `Delete Track` é a MESMA ação no menu de uma track comum e no de uma track de

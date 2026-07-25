@@ -132,6 +132,7 @@ pub fn paint_blender_color_picker_with_store(
         local.hsv_h = h;
         local.hsv_s = s;
     }
+    local.harmony = store.blender_harmony(parent_id);
     let radius = Radius::Md.px();
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
@@ -342,6 +343,21 @@ pub fn paint_blender_color_picker_with_store(
         hit_index.register(ids.eyedropper, eye_rect);
     }
     y += HEX_ROW_H + ROW_GAP;
+
+    // Color Harmonies — the scheme selector + derived partner swatches. Because this is the ONE
+    // shared picker every module opens, adding it here is the "global tool" (Enio 2026-07-25): Painter,
+    // Vector, Inspector all get it. The section returns the height it drew (selector only when Off).
+    let harmony_rect = Rect::new(rect.x + pad, y, inner_w, super::harmony::HARMONY_SEL_H);
+    let harmony_used = super::harmony::paint_harmony_section(
+        &local,
+        harmony_rect,
+        ids,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += harmony_used + ROW_GAP;
 
     // Rebuild the local picker's palette set from the store (the runtime source of truth): every named
     // palette's name + swatches, so the dropdown + swatch grid reflect every CRUD / import edit.

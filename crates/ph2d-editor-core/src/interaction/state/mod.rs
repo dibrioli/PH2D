@@ -152,6 +152,8 @@ pub enum InteractiveState {
         /// preserved across V→0 transitions where round-tripping
         /// through RGBA loses the value.
         hsv_s: f32,
+        /// The selected Color-Harmonies scheme (view-state; partners are DERIVED). Default `None`.
+        harmony: crate::widget::Harmony,
     },
     /// Sub-control hit shim: pointing at a sub-rect of a parent
     /// BlenderPicker. The dispatcher uses `kind` to route the click

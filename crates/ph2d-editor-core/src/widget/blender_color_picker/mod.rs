@@ -29,6 +29,7 @@
 //! - `sub_ids.rs` — the `BlenderSubIds` hit-id bundle.
 
 pub mod channels;
+pub mod harmony;
 pub mod hex_field;
 pub mod paint;
 pub mod palette;
@@ -42,6 +43,7 @@ pub mod wheel;
 mod tests;
 
 pub use channels::{hsv_to_rgba8, oklch_norm_channels, oklch_set_channel, rgba_to_hsv};
+pub use harmony::{Harmony, partners as harmony_partners};
 pub use hex_field::parse_hex;
 pub use paint::{
     paint_blender_color_picker, paint_blender_color_picker_with_store,

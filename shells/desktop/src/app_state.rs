@@ -462,6 +462,8 @@ pub(crate) struct App {
     pub(crate) motion_path_smoke_done: bool,
     /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
     pub(crate) timeline_onion_smoke_done: bool,
+    /// Latch do `PH2D_HARMONY_SMOKE` (abre o picker com Triad, uma vez).
+    pub(crate) harmony_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,

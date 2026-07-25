@@ -20,6 +20,7 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
             active_palette: 0,
             hsv_h: 0.0,
             hsv_s: 0.0,
+            harmony: crate::widget::Harmony::None,
         },
     );
     store.init_blender_palette(
@@ -75,6 +76,32 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
             },
         );
     }
+    // Color Harmonies: the 7 scheme segments + up-to-4 partner swatches + the "add all" button.
+    for (idx, id) in ids::BLENDER_HARMONY_SCHEMES.into_iter().enumerate() {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: BlenderHitKind::HarmonyScheme(idx as u8),
+            },
+        );
+    }
+    for (idx, id) in ids::BLENDER_HARMONY_SWATCHES.into_iter().enumerate() {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: BlenderHitKind::HarmonySwatch(idx as u8),
+            },
+        );
+    }
+    store.register(
+        ids::BLENDER_HARMONY_ADD,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: BlenderHitKind::HarmonyAdd,
+        },
+    );
     for (id, idx) in [
         (ids::BLENDER_NUM_0, 0u8),
         (ids::BLENDER_NUM_1, 1),

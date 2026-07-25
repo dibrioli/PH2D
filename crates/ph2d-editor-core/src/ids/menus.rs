@@ -304,6 +304,24 @@ pub const BLENDER_PALETTE_TABS: [NodeId; 8] = [
 ];
 pub const BLENDER_NEW_PALETTE: NodeId = hash_node_id("blender_new_palette");
 pub const BLENDER_DELETE_PALETTE: NodeId = hash_node_id("blender_delete_palette");
+// Color Harmonies: the 7 scheme selector segments (index = `Harmony::ALL` position), the up-to-4
+// derived partner swatches (click → set as value), and the "add all to palette" button.
+pub const BLENDER_HARMONY_SCHEMES: [NodeId; 7] = [
+    hash_node_id("blender_harmony_scheme_0"),
+    hash_node_id("blender_harmony_scheme_1"),
+    hash_node_id("blender_harmony_scheme_2"),
+    hash_node_id("blender_harmony_scheme_3"),
+    hash_node_id("blender_harmony_scheme_4"),
+    hash_node_id("blender_harmony_scheme_5"),
+    hash_node_id("blender_harmony_scheme_6"),
+];
+pub const BLENDER_HARMONY_SWATCHES: [NodeId; 4] = [
+    hash_node_id("blender_harmony_swatch_0"),
+    hash_node_id("blender_harmony_swatch_1"),
+    hash_node_id("blender_harmony_swatch_2"),
+    hash_node_id("blender_harmony_swatch_3"),
+];
+pub const BLENDER_HARMONY_ADD: NodeId = hash_node_id("blender_harmony_add");
 // Active-palette rename field (a TextInput; Enter commits the new name).
 pub const BLENDER_PALETTE_NAME: NodeId = hash_node_id("blender_palette_name");
 // Palette dropdown chip (click → toggle the palette-select popover) + Rename (R) button.

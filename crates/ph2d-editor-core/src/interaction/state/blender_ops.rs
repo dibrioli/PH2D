@@ -349,6 +349,22 @@ impl WidgetStore {
         }
     }
 
+    /// The picker's selected Color-Harmonies scheme (default `None` when not a picker). The partner
+    /// colors are DERIVED from `value` + this, never stored (see [`crate::widget::harmony_partners`]).
+    pub fn blender_harmony(&self, id: NodeId) -> crate::widget::Harmony {
+        match self.states.get(&id) {
+            Some(InteractiveState::BlenderPicker { harmony, .. }) => *harmony,
+            _ => crate::widget::Harmony::None,
+        }
+    }
+
+    /// Set the picker's Color-Harmonies scheme. No-op if `id` isn't a picker.
+    pub fn set_blender_harmony(&mut self, id: NodeId, scheme: crate::widget::Harmony) {
+        if let Some(InteractiveState::BlenderPicker { harmony, .. }) = self.states.get_mut(&id) {
+            *harmony = scheme;
+        }
+    }
+
     /// Mutate the BlenderPicker's value (the "set a concrete colour" path: eyedropper, hex commit,
     /// swatch pick, RGB chip). Refreshes the retained (h, s) anchor so EVERY picker surface — the
     /// SV-rect cursor + backdrop, the hue strip, the HSV chips — tracks the new colour, not just the

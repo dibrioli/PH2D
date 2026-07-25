@@ -57,6 +57,12 @@ pub struct BlenderSubIds {
     /// cover user "+ swatch" additions (capped to keep the array
     /// fixed-size).
     pub swatches: [NodeId; 27],
+    /// Color-Harmonies scheme selector segment ids (index = [`super::Harmony::ALL`] position).
+    pub harmony_schemes: [NodeId; 7],
+    /// Derived harmony partner swatch ids (up to [`super::Harmony::MAX_COLORS`]).
+    pub harmony_swatches: [NodeId; 4],
+    /// "Add harmony to palette" button id.
+    pub harmony_add: NodeId,
 }
 
 impl BlenderSubIds {
@@ -87,6 +93,9 @@ impl BlenderSubIds {
             drag_handle: NodeId(0),
             close: NodeId(0),
             swatches: [NodeId(0); 27],
+            harmony_schemes: [NodeId(0); 7],
+            harmony_swatches: [NodeId(0); 4],
+            harmony_add: NodeId(0),
         }
     }
 }

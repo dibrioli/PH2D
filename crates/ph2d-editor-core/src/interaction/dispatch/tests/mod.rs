@@ -98,6 +98,7 @@ fn blender_picker_setup() -> (WidgetStore, HitIndex) {
             active_palette: 0,
             hsv_h: 0.07,
             hsv_s: 0.75,
+            harmony: crate::widget::Harmony::None,
         },
     );
     // Seed the picker's palette so swatch clicks have something
@@ -279,6 +280,7 @@ fn focused_text_input(text: &str, caret: usize, anchor: Option<usize>) -> Widget
 mod clipboard;
 mod curve;
 mod graph;
+mod harmony;
 mod inputs;
 mod number_drag;
 mod timeline;

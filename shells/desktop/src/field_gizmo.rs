@@ -240,7 +240,7 @@ pub(crate) fn field_view(
 ) -> Option<GizmoView> {
     let (nid, spec) = selected_field(motion)?;
     let p = |name: &str| crate::render_loop::motion_bridge::params::param_value(motion, nid, name);
-    let half = spec.size.half(&p);
+    let half = spec.size.half(p);
     Some(view_from_params(
         p(spec.center_x),
         p(spec.center_y),
@@ -254,7 +254,7 @@ pub(crate) fn field_view(
 }
 
 /// O arrasto de gizmo de field em curso: o estado genérico do gizmo + o NÓ alvo + a spec
-/// + a meia-extensão intrínseca congelada no Down. `Copy` como o [`GizmoDragState`] (nada
+/// e a meia-extensão intrínseca congelada no Down. `Copy` como o [`GizmoDragState`] (nada
 /// de `Vec`, ≠ `FlipSelectionDrag`).
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct FieldGizmoDrag {
@@ -331,7 +331,7 @@ impl crate::App {
             let p = |name: &str| {
                 crate::render_loop::motion_bridge::params::param_value(&gfx.motion, nid, name)
             };
-            let intrinsic_half = spec.size.half(&p);
+            let intrinsic_half = spec.size.half(p);
             let start = seed_start(p(spec.center_x), p(spec.center_y), p(spec.rotation));
             // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
             // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do

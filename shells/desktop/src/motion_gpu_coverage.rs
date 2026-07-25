@@ -31,11 +31,13 @@ use super::gpu_deform_demo::{
     build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
 };
 use super::gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_combine_demo_document, build_gpu_field_curve_demo_document,
-    build_gpu_field_index_range_demo_document, build_gpu_field_radial_sweep_demo_document,
-    build_gpu_field_remap_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+};
+use super::gpu_field_demos::{
+    build_gpu_field_box_demo_document, build_gpu_field_combine_demo_document,
+    build_gpu_field_curve_demo_document, build_gpu_field_index_range_demo_document,
+    build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;

@@ -29,6 +29,10 @@ mod strobe;
 mod gpu_deform_demo;
 #[path = "motion_state_gpu_demos.rs"]
 mod gpu_demos;
+/// The FIELD scenes (`field.*`, =17..=22 incl. the A1-gpu Curve contour), split
+/// out at the HR-18 cap — a cohesive family like the deformers next door.
+#[path = "motion_state_gpu_field_demos.rs"]
+mod gpu_field_demos;
 /// The NEIGHBOURHOOD scenes (ADR-0140), split out for the same reason: they
 /// answer the interacting-sim question none of the throughput scenes can.
 #[path = "motion_state_gpu_neighbour_demos.rs"]
@@ -52,11 +56,13 @@ use gpu_deform_demo::{
     build_gpu_spherize_demo_document,
 };
 use gpu_demos::{
-    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_combine_demo_document, build_gpu_field_curve_demo_document,
-    build_gpu_field_index_range_demo_document, build_gpu_field_radial_sweep_demo_document,
-    build_gpu_field_remap_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_hybrid_demo_document,
     build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+};
+use gpu_field_demos::{
+    build_gpu_field_box_demo_document, build_gpu_field_combine_demo_document,
+    build_gpu_field_curve_demo_document, build_gpu_field_index_range_demo_document,
+    build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
 };
 use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
@@ -415,6 +421,10 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_gpu_tests.rs"]
 mod gpu_tests;
+
+#[cfg(test)]
+#[path = "motion_state_gpu_field_tests.rs"]
+mod gpu_field_tests;
 
 #[cfg(test)]
 #[path = "motion_state_gpu_neighbour_tests.rs"]

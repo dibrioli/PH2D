@@ -234,6 +234,7 @@ fn scene_window_wh_is_the_subrect_under_a_split_full_window_without() {
 
 // Um `FieldGizmoDrag` de teste com um gizmo genérico já semeado — o mínimo para dirigir
 // `apply_field_drag` sem uma janela.
+#[allow(clippy::too_many_arguments)] // a fixture mirrors the drag's own fields
 fn make_drag(
     node: NodeId,
     spec: FieldGizmoSpec,

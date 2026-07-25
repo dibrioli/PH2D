@@ -2,8 +2,14 @@
 
 **Propósito:** post-it compartilhado da posse VIVA da orquestração multi-agente —
 quem está escrevendo o quê AGORA, para evitar colisão de git entre agentes
-paralelos. **Modelo atual (DIRETRIZ §6.8):** 1 Coordenador (absorve PR/CI/ship) +
+paralelos. **Modelo (DIRETRIZ §6.8):** 1 Coordenador (absorve PR/CI/ship) +
 N Implementadores; os Implementadores **leem antes de cada burst** e não escrevem aqui.
+
+> ⚠️ **O MODO é função do hardware, não uma escolha** (CLAUDE.md §0.5 / [ADR-0106](architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md)):
+> `constrained` = **Modo C** (shared tree + Coordenador, o parágrafo acima) · `workstation` =
+> **Modo L** (uma worktree por linha, sem Coordenador; integração e ship por um **agente
+> integrador dedicado**, só por ordem explícita do Enio). Rode `bash scripts/hw-profile.sh`
+> antes de assumir qual dos dois vale nesta máquina.
 
 **Não é log histórico nem fonte de estado.**
 - Estado por-módulo (waves/tasks) → **CLAUDE.md §5**.
@@ -13,14 +19,45 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## ⚠️ Integração pendente — LEIA antes de integrar (Modo L)
+## Integração — NADA pendente (2026-07-25)
 
-**main saltou `cdfd91b7` → `ee416ccb` com o cutover Vector (ADR-0108): 30 crates deletadas + motor novo.**
-Linhas ainda não integradas (`line/audio`, `line/imageio`, novas) rebaseiam sobre isso.
-(`line/Painter` **integrou em 2026-07-18** — ver `docs/HANDOFF_INTEGRACAO_line_Painter_2026-07-18.md`;
-o worktree segue vivo e continua a partir do main integrado, não da base do cutover.)
-**Antes de `scripts/foundational-integrate.sh` + ship, leia** [`NOTAS_INTEGRACAO_vector_cutover_2026-07-06.md`](IntegracaoMultiAgente/NOTAS_INTEGRACAO_vector_cutover_2026-07-06.md)
-(arquivos foundational tocados · conflitos mecânicos · 3 gates que passam local e vermelham no CI · gotchas de máquina).
+**Nenhuma integração em curso.** A jornada de 2026-07-25 integrou **6 linhas**
+(`Painter` · `Vector` · `motion-nodes` · `anim` · `physics` · `FLIP`), shipou e o CI fechou
+**verde nos 3 OSes** (incl. o C9 de determinismo). `main` = `33c21c46c`.
+
+> O bloco que vivia aqui avisava de uma "integração pendente" do **cutover Vector de 2026-07-06**
+> — que fechou há três semanas, com a `line/audio` integrada em 14/07 e a `line/imageio` já sem
+> worktree. Um aviso vencido neste arquivo é pior que arquivo vazio: ele é o **primeiro** que um
+> agente novo lê, e mandava rebasear sobre um `main` que não existe mais.
+
+### ⚠️ Ao REABRIR uma linha: rebase primeiro
+
+**Toda worktree está ATRÁS do `main`** (de 2 a ~1150 commits, conforme há quanto tempo a linha
+parou) — nenhuma continua de onde parou sem rebase. Rota "linha reaberta" do
+[`MODELO_ABERTURA_LINHA`](IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md):
+
+```
+cd Worktrees/<linha> && pwd && git branch --show-current   # ANTES de ler ou editar qualquer arquivo
+git rebase main
+```
+
+O `cd` + `pwd` não é zelo: a janela abre na raiz (= `main`) e **o mesmo path relativo existe nas
+duas árvores** — editar a errada compila e commita sem erro
+([`MODELO_TROCA_DE_AGENTE_NA_LINHA`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
+
+**Duas linhas carregam trabalho que NUNCA entrou no `main`** (confira com
+`git -C Worktrees/<linha> rev-list --count main..HEAD` — o número é a fonte, não esta linha):
+
+| linha | commits fora do `main` (2026-07-25) |
+|---|---|
+| `line/motion-value` | **17** |
+| `line/cook-parallel` | **2** |
+
+Rebasear essas duas sobre 1150+ commits **não é mecânico** — decisão do Enio antes de tocar.
+
+> Os `target/` de todas as worktrees foram limpos no fim-de-dia de 2026-07-25 (389 GB): o
+> primeiro build de cada linha é **frio**, servido pelo `~/.cache/sccache` (~46 GB, quente —
+> **nunca apague**, DIRETIVA_FIM_DE_DIA §3).
 
 ## Estado da orquestração
 

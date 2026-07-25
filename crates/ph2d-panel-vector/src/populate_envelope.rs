@@ -44,7 +44,7 @@ pub(super) fn populate_envelope(store: &mut WidgetStore) {
 
 /// O `bend` com que um envelope nasce, no domínio do documento (`-1..1`).
 ///
-/// ⚠️ **Tem de concordar com `ph2d_ecs::EnvelopeWarp::DEFAULT_BEND`**, e não pode simplesmente
+/// ⚠️ **Tem de concordar com `ph2d_ecs::ENVELOPE_DEFAULT_BEND`**, e não pode simplesmente
 /// LÊ-LO: este painel não depende do `ph2d-ecs` (a UI vive de snapshots publicados, não do mundo).
 /// A concordância importa só até o primeiro frame — dali em diante o `paint` desenha o bend que o
 /// shell publicou —, mas sem ela o slider nasceria num lugar e saltaria para outro no 1º frame.

@@ -22,7 +22,140 @@
 | [13](#bug-13--varredura-a-família-do-12-o-guard-que-pergunta-existe-em-vez-de-que-forma-tem) | **Varredura**: +1 PANIC (trocar de sprite com tinta molhada) + 4 vazamentos silenciosos entre sprites | Lifecycle de rebind de documento · compositor · aquarela | ✅ 3 fixes (RED verificado em cada) | 2026-07-12 |
 | [15](#bug-15--impasto-os-chips-do-rig-de-luzes-pintam-e-não-clicam-aberto) | **Impasto**: os chips do rig de luzes **pintam e não clicam** (nem o checkbox) | Seam da UI (painel ↔ tool) — **não** a matemática | 🔎 **ABERTO** (fila: amanhã, gate do seam PRIMEIRO) | 2026-07-12 |
 | [14](#bug-14--impasto-a-tinta-extravasava-o-relevo-o-suporte-batia-e-a-foto-estava-errada) | **Impasto**: "a tinta extravasa o relevo" — 3 rodadas; o gate ficava **verde** e a foto do Enio, errada | Depósito de pigmento (alpha do dab) × corpo × luz | ✅ Resolvido (o FILME + opacidade Beer-Lambert; névoa 52% → 13,5%) | 2026-07-12 |
+| [17](#bug-17--a-tinta-atravessando-a-máscara-saía-craquelada-a-proteção-era-um-fato-sobre-o-mouse-e-depois-um-teto-que-erodia) | **A tinta atravessando a máscara saía CRAQUELADA** — a força da proteção era um fato sobre o MOUSE, e depois um teto que ERODIA | Gate de proteção/seleção (`stamp_dabs` → o pull-back) | ✅ Resolvido em 2 rodadas (smoke Enio 2026-07-25) | 2026-07-25 |
 | [16](#bug-16--aquarela-borda-dura-pixelada-o-aa-alimentado-na-densidade-era-comido-pela-saturação-óptica) | **Aquarela**: "borda dura pixelada" em traço fino — o 1º fix foi verde nos gates e invisível no produto | Watercolor composite (hardening + óptica exponencial) | ✅ Resolvido (forma × sombreamento: fração como ALPHA linear na aparência; estendido a todo traço + Ragged Edge alto) | 2026-07-20 |
+
+## Bug #17 — A tinta atravessando a máscara saía CRAQUELADA: a proteção era um fato sobre o MOUSE, e depois um teto que ERODIA
+
+**Área:** o gate de proteção/seleção do stamp (`paint/stamp_route.rs::stamp_dabs` → `paint/mask.rs`),
+não a máscara e não o pincel.
+**Estado:** ✅ Resolvido em **duas rodadas** (smoke do Enio 2026-07-25: 1ª rodada *"sanou quase 85% do
+problema"*, 2ª rodada OK). Gates em `mask_gate_tests.rs`; sondas em `mask_probe_gate.rs`.
+**Detalhe técnico:** [`25_avaliacao_gpu.md`](25_avaliacao_gpu.md) §13.11 (diagnóstico) → §13.12 (o `keep`
+vale uma vez) → §13.13 (o TETO).
+
+### Sintoma (Enio, 2026-07-25, com duas fotos)
+
+> *"A máscara agora é desenhada corretamente, mas sofre novamente com bordas craqueladas na pintura quando
+> muitas pinceladas são dadas repetidamente. Existe algum problema no algoritmo de mascaramento que gera
+> baixa resolução nas áreas com alpha na máscara?"*
+
+Pintar COR atravessando uma proteção de orla macia deixava a fronteira **craquelada / em degraus
+retangulares** — e só depois de MUITAS pinceladas repetidas. Uma passada parecia boa.
+
+⚠️ **A pergunta do Enio nomeava o suspeito errado, e a medição inocentou a máscara na primeira linha:** a
+serra do contorno DELA é **0,040 px** (o controle da sonda). Quem craquelava era a TINTA.
+
+### Causa-raiz — DUAS, uma por rodada
+
+**(1ª) O `keep` era composto uma vez por BATCH.** `restore_protected_region` carimbava o traço normalmente
+e depois puxava os texels protegidos de volta contra o snapshot **daquele batch**. Logo o que sobrevivia a
+`N` batches era `(1−keep)^N` — e **`N` é a taxa de polling do mouse**, não uma propriedade do gesto:
+
+| | 4 eventos/traço | 60 eventos/traço |
+|---|---|---|
+| tinta que sobrevive em `keep = 0,5` | 0,886 | **0,992** |
+| serra do contorno da TINTA | 0,061 px | **0,164 px** |
+| posição do contorno | — | andava **4 px** |
+
+E o que sobrava visível — a fronteira `keep ≈ 0` — era recortado pelos **RETÂNGULOS dos batches** (cada um
+puxava de volta só a sua região), o que produz o degrau axis-aligned da foto. **É a mesma doença que esta
+linha curou 4× no relevo** (*a lei é função do CAMINHO, nunca de quão fino o motor amostrou o caminho*),
+agora no gate de proteção — a **5ª instância**.
+
+**(2ª, os 15% que sobraram) Cada TRAÇO era escalado por `keep`.** Curada a 1ª causa, o Enio reportou 85%.
+O resto tinha causa exata: com o `keep` aplicado por traço, `N` traços deixam passar `1 − (1−keep)^N`. Duas
+consequências:
+
+- **o PENTE:** o contorno de meia-tinta senta em `keep` **0,2929** para `N=2` e **0,2063** para `N=3`, e
+  `N` varia com a linha (quantos traços vizinhos a cobriram) ⇒ `Δkeep / |∇keep|` **é** o pente. Previsão
+  puramente aritmética **1,64 px** contra **1,68 medido** (e 0,49 vs 0,60 com a máscara esfregada).
+- **A PROTEÇÃO ERODIA**, e ninguém tinha posto isso num número: em `keep = 0,522`, `N=1` deixava passar
+  0,522 · `N=4` → **0,949** · `N=8` → **1,000**. Oito passadas e a máscara não protegia mais nada — sob
+  **literalmente o gesto que o Enio reportou**.
+
+### Tentativas que falharam (não repetir)
+
+| tentativa | por que falhou |
+|---|---|
+| **§13.6** envelope cross-stroke na COBERTURA da máscara (`600a79606`) | matou o endurecimento, mas o `min` deixava **linhas brancas nos cruzamentos** (union em vez de soma). Revertida. |
+| **§13.7** o TETO por ÉPOCA (`38c1f725b`) | a semântica estava CERTA; o **ciclo de vida** a matou — 22 escritores estrangeiros de canvas commitados à mão, e um que ninguém listou tinha os pixels projetados por cima. Revertida. |
+| **§13.9** a lei do canal (Wash/Alpha-Darken do Krita) na cobertura da máscara | curava o endurecimento nos números e **REPROVADA na tela**: sem a saturação do produto o traço sai em **CONTAS**. Revertida. |
+| **cura mínima:** puxar de volta contra a base do TRAÇO em vez do batch | conserta o dente-de-serra (0,164 → 0,039 px) e **inverte a dependência, piorando a magnitude** (0,886→0,992 vira 0,667→**0,141**). O ponto fixo dela ainda é função do sampling. **As duas referências erram**: puxar de volta por batch é a doença, não a referência escolhida. |
+| **duas explicações "fáceis" para os 15%** | (a) *a tinta livre ondula e o gradiente raso amplifica* — a tinta livre na fronteira é **1,000 ± 0,000**, zero ondulação a amplificar; (b) *o ombro da máscara tem contas e o contorno as herda* — a ondulação do `keep` vale **0,07 px** contra um pente de 1,68, **24× pequeno demais**. As duas refutadas por medição antes de a verdadeira aparecer. |
+
+### Solução
+
+**O `keep` é aplicado UMA vez por texel, sobre a tinta acumulada LIVREMENTE, e a época dura o que a
+PROTEÇÃO durar.** `GateSession { base, free, preview_patch, layer, scratch_gen, witness }` mora no
+`PainterTool`, ao lado do `canvas_rgba` e dos 3 planos de relevo:
+
+- **`base`** = o canvas como a proteção o encontrou (`Arc` clone ⇒ refcount, não cópia).
+- **`free`** = o que a pintura **irrestrita** teria produzido, **trocado para dentro do `canvas_rgba`**
+  durante o stamp (o mesmo truque do scratch da máscara) ⇒ **toda rota** — cor, smear, blur, clone,
+  composite — pinta o que pintaria sem gate nenhum: *o gate não tem voto sobre O QUE é pintado, só sobre o
+  que APARECE*.
+- o que se vê é `free·keep + base·(1−keep)`, com `keep = proteção × seleção` — o produto que as duas
+  portas antigas, rodadas em sequência contra um snapshot, compunham **exatamente** (conferido na álgebra).
+
+⚠️ **É a época do §13.7, e a diferença é a MÁQUINA que a fecha:** os **22 sítios enumerados à mão** viraram
+**UMA pergunta** no topo de todo batch — *algo mudou debaixo de mim?* — respondida por **três testemunhas**:
+a **camada**, a **geração do scratch** (`mask_scratch_gen`, bumpada por todo escritor do scratch) e o
+**`pixel_clock`** (que todo escritor de canvas move via `mark_dirty`). *Enumeração apodrece; testemunha não.*
+
+⚠️ **O teto não é uma PAREDE:** `free` acumula livremente e o `keep` pousa no RESULTADO, então o brush ainda
+**constrói até** o teto. Um cap aplicado ao BRUSH faria o 2º traço ser um no-op silencioso — a forma exata
+de *"o brush parou de funcionar"*.
+
+⚠️ **A reposição do plano livre num re-stamp mora DENTRO do `restore_region`**, não nos 5 chamadores dele
+(regra escrita uma vez por chamador é regra que o 6º nasce sem), e restaura um **patch por-batch**, não o
+`base` — a época atravessa traços, então zerar para `base` deletaria tudo o que os traços anteriores
+deixaram.
+
+**Resultado medido:**
+
+| | antes (1ª rodada) | depois do §13.12 | depois do TETO (§13.13) |
+|---|---|---|---|
+| tinta em `keep≈0,5` a 4 vs 60 eventos | 0,886 vs 0,992 | **0,800 nas duas** | 0,800 nas duas |
+| erosão em `keep=0,522` após 8 traços | 1,000 | 1,000 | **0,522** |
+| pente da fronteira (máscara fresca) | 1,68 px | 1,68 px | **0,05 px** |
+| rampa da TINTA ÷ rampa da MÁSCARA | 0,876 | 0,876 | **1,000 (idênticas)** |
+| serra do contorno | 0,164 px | 0,082 px | **0,042 px** |
+
+A rampa da tinta virar **exatamente** a da máscara é a assinatura da lei: com a tinta livre saturada, o
+display é função **pura** do `keep`, então a fronteira da tinta **é** o contorno do `keep`. Confirmado por
+**render-and-look** (as bordas internas dentadas ficaram limpas).
+
+### Lições generalizáveis
+
+1. **Uma lei que depende de em quantos pedaços o motor recebeu o gesto é um bug, sempre.** 5ª instância
+   nesta linha (mordida do bow wave · cápsula do relevo · smear · aro · agora o gate). O sinal diagnóstico é
+   barato: **rode a MESMA cena a duas taxas de polling e imprima as duas linhas lado a lado**. Iguais = a lei
+   é do gesto; diferentes = é do mouse.
+2. **Um revert com a SUA fórmula dentro pode diferir só no tempo de vida — e o que falhou pode ser a
+   MÁQUINA que fecha o escopo, não a lei.** Ler o *diff* do revert confirma que a fórmula é a mesma e faz
+   você concluir o oposto do que a evidência sustenta; leia o **motivo**.
+   ([[feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason]])
+3. **Refute as explicações fáceis com número antes de aceitar a difícil.** As duas primeiras hipóteses do
+   resíduo eram plausíveis e **erradas por 24×**; a verdadeira ficou provada porque a previsão puramente
+   aritmética (1,64 px) casou com a medição (1,68) em 2%. *Uma causa que prevê o número é um diagnóstico;
+   uma que só o explica é uma história.*
+4. **Um gate que vigia um NÚMERO mudar não pode falhar pelo motivo que alega.** A metade da testemunha
+   afirmava *"o `witness` mudou"* — ele muda nas nossas próprias escritas também, e a mutação **sobreviveu**.
+   O oráculo virou ***o Fill SOBREVIVE***, e aí a mutação sangra reproduzindo o vazamento original
+   (verde 0 → 224).
+5. **Defesa em camadas precisa de gate por camada.** A metade da "edição do scratch" passava com a geração
+   congelada porque a esfregada de máscara **também** move o `pixel_clock`; a camada que só a geração
+   testemunha é o **Modifier** (`mask_canvas_op` nunca chama `mark_dirty`) — gate próprio, sangra 0,122 →
+   0,878. ([[feedback_layered_defenses_need_per_layer_gates]])
+6. **Um plano que é jogado fora e reconstruído todo frame não pode ser observado errado.** Uma mutação
+   sobrevivente (restaurar o plano livre da fonte errada) denunciou um bug MEU: o `mark_dirty` do próprio
+   `restore_region` disparava a testemunha de escrita estrangeira, então **todo método de re-stamp** (Drag
+   Dot, Line, todo shape editor) re-semeava a época por frame de preview — o teto revertia em silêncio para
+   por-gesto naquela família inteira, e cada frame pagava um clone de canvas.
+7. **Depois de uma edição em massa num arquivo de teste, CONTE os gates.** Uma substituição por âncoras
+   engoliu a região entre dois testes e **deletou o gate central da wave**; a suíte ficou verde sem ele.
+   Verde não prova que o gate que você escreveu ainda existe.
 
 ## Bug #16 — Aquarela: "borda dura pixelada" — o AA alimentado na DENSIDADE era comido pela saturação óptica
 

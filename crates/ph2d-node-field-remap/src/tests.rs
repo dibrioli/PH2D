@@ -281,6 +281,56 @@ fn remap_replaces_the_mask_it_does_not_multiply() {
 }
 
 #[test]
+fn probability_one_keeps_everyone() {
+    // The neutral: probability 1 (default) ⇒ the gate is 1 for every instance (the hash
+    // is always < 1), so with a passthrough remap the mask is unchanged.
+    let (mut g, rm) = chain();
+    linear(&mut g, rm);
+    let input = vec![0.2, 0.5, 0.8, 1.0];
+    let ops = Ops::falloff(input.clone());
+    assert_eq!(falloff_of(&g, &ops, rm), input);
+}
+
+#[test]
+fn probability_gates_by_a_stable_hash() {
+    // probability 0.5 keeps ~half the instances (gate 1) and ZEROES the rest — a binary
+    // mask, and deterministic (the SAME instances every cook, from the index hash).
+    let (mut g, rm) = chain();
+    linear(&mut g, rm);
+    g.set_param(rm, "probability", 0.5);
+    let ops = Ops::falloff(vec![1.0; 1000]);
+    let a = falloff_of(&g, &ops, rm);
+    let b = falloff_of(&g, &ops, rm);
+    assert_eq!(a, b, "the selection is deterministic");
+    assert!(a.iter().all(|&v| v == 0.0 || v == 1.0), "binary mask");
+    let kept = a.iter().filter(|&&v| v == 1.0).count();
+    assert!((400..=600).contains(&kept), "keeps ~half: {kept}");
+}
+
+#[test]
+fn seed_changes_which_instances_survive() {
+    let (mut g, rm) = chain();
+    linear(&mut g, rm);
+    g.set_param(rm, "probability", 0.5);
+    let ops = Ops::falloff(vec![1.0; 500]);
+    let a = falloff_of(&g, &ops, rm);
+    g.set_param(rm, "seed", 12345.0);
+    let b = falloff_of(&g, &ops, rm);
+    assert_ne!(a, b, "a different seed selects different instances");
+}
+
+#[test]
+fn hash01_is_in_range_and_varies() {
+    // The spine of the gate: a stable per-index hash in [0,1), varying by id AND seed.
+    for id in 0..100u32 {
+        let h = hash01(id, 0);
+        assert!((0.0..1.0).contains(&h), "hash01({id}) = {h} out of [0,1)");
+    }
+    assert_ne!(hash01(0, 0), hash01(1, 0), "adjacent ids differ");
+    assert_ne!(hash01(5, 0), hash01(5, 1), "seed changes the hash");
+}
+
+#[test]
 fn round_haz_matches_rust_round() {
     for x in [-2.5, -0.5, 0.0, 0.5, 1.5, 2.5, 2.4, 2.6] {
         assert_eq!(round_haz(x), x.round(), "round_haz({x})");

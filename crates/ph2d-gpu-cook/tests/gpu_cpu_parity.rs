@@ -670,6 +670,11 @@ fn field_remap_kernel_matches_the_cpu_within_epsilon() {
     g.set_param(rm, "max", 0.9);
     g.set_param(rm, "multiplier", 1.1);
     g.set_param(rm, "strength", 0.8);
+    // The probability gate: ~40 % of instances are zeroed by an integer hash of their
+    // index. It is BIT-identical CPU↔GPU (integer ops), so both devices must zero the
+    // EXACT same instances — a mismatch would diverge by the whole tint, not ε.
+    g.set_param(rm, "probability", 0.6);
+    g.set_param(rm, "seed", 7.0);
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
     g.set_param(tint, "r", 0.16);

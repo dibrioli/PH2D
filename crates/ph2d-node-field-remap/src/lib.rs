@@ -90,9 +90,36 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "strength",
             default: 1.0,
         },
+        ParamSpec {
+            // Field → binary mask: each instance survives with this probability, decided
+            // by a stable hash of its index. `1` (default) keeps everyone (neutral).
+            name: "probability",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "seed",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// A stable per-instance hash in `[0, 1)` from the instance index + seed — the
+/// probability gate's randomness. Integer ops only (`wrapping_mul`/`xor`/`shift`), so it
+/// is **bit-identical** CPU↔GPU (not just ε): `x >> 8` is `≤ 2²⁴−1` and exactly
+/// representable, and `/ 2²⁴` is exact. Because it is strictly `< 1`, `probability = 1`
+/// keeps EVERY instance with no special case (the gate is `hash < probability`).
+fn hash01(id: u32, seed: u32) -> f32 {
+    let mut x = id
+        .wrapping_mul(0x9E37_79B9)
+        .wrapping_add(seed.wrapping_mul(0x85EB_CA6B));
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7FEB_352D);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846C_A68B);
+    x ^= x >> 16;
+    (x >> 8) as f32 / 16_777_216.0
+}
 
 /// Round half-away-from-zero — matching Rust's `f32::round` (the WGSL `round` is
 /// half-even), so Step/Quantize land on the same level on both devices.
@@ -183,10 +210,21 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         var rm_mapped = (params.min + rm_t * (params.max - params.min)) * params.multiplier;\n\
         if (params.clamp >= 0.5) { rm_mapped = clamp(rm_mapped, 0.0, 1.0); }\n\
         let rm_out = rm_in + (rm_mapped - rm_in) * params.strength;\n\
-        write_falloff(i, rm_out);\n",
+        // The probability gate — the SAME integer hash as the CPU (bit-identical).\n\
+        let rm_gate = select(0.0, 1.0, rm_hash01(i, u32(max(params.seed, 0.0))) < params.probability);\n\
+        write_falloff(i, rm_out * rm_gate);\n",
     wgsl_lib: "\
         fn rm_round(x: f32) -> f32 {\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn rm_hash01(id: u32, seed: u32) -> f32 {\n\
+            var x = id * 0x9E3779B9u + seed * 0x85EBCA6Bu;\n\
+            x = x ^ (x >> 16u);\n\
+            x = x * 0x7FEB352Du;\n\
+            x = x ^ (x >> 15u);\n\
+            x = x * 0x846CA68Bu;\n\
+            x = x ^ (x >> 16u);\n\
+            return f32(x >> 8u) / 16777216.0;\n\
         }\n\
         fn rm_contour(mode: i32, t: f32, curvature: f32, steps: f32) -> f32 {\n\
             if (mode == 1) {\n\
@@ -224,6 +262,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "clamp",
         "invert",
         "strength",
+        "probability",
+        "seed",
     ],
     count_law: None,
     variant_by_param: None,
@@ -248,6 +288,8 @@ impl NodeOp for FieldRemap {
         let clamp = ctx.param("clamp") >= 0.5;
         let invert = ctx.param("invert") >= 0.5;
         let strength = ctx.param("strength");
+        let probability = ctx.param("probability");
+        let seed = ctx.param("seed").max(0.0) as u32;
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -258,7 +300,7 @@ impl NodeOp for FieldRemap {
             };
             let fall = par_build(n, |i| {
                 let t_in = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
-                remap(
+                let m = remap(
                     t_in,
                     inner_offset,
                     mode,
@@ -270,7 +312,15 @@ impl NodeOp for FieldRemap {
                     clamp,
                     invert,
                     strength,
-                )
+                );
+                // The probability gate: keep or zero the WHOLE instance by a stable hash
+                // of its index. `probability = 1` keeps everyone (hash < 1 always).
+                let gate = if hash01(i as u32, seed) < probability {
+                    1.0
+                } else {
+                    0.0
+                };
+                m * gate
             });
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
@@ -389,6 +439,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "probability",
+        label: "Probability",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 9999.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
 ];

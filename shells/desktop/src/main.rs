@@ -67,6 +67,9 @@ mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
 mod falloff_smoke;
+/// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
+/// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
+mod field_gizmo;
 mod flip_autokey;
 mod flip_colorize;
 mod flip_colorize_smoke;
@@ -92,9 +95,6 @@ mod flip_select_pick;
 mod flip_select_points;
 mod flip_select_segment;
 mod flip_selection_gizmo;
-/// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
-/// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
-mod field_gizmo;
 mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;

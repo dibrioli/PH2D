@@ -52,7 +52,9 @@ use crate::motion_state::MotionState;
 #[must_use]
 pub(crate) fn scene_window_wh(center_split: CenterSplit, window: WindowSize) -> (f32, f32) {
     let (w, h) = (window.width as f32, window.height as f32);
-    center_split.scene_viewport(w, h).map_or((w, h), |r| (r[2], r[3]))
+    center_split
+        .scene_viewport(w, h)
+        .map_or((w, h), |r| (r[2], r[3]))
 }
 
 /// Como a caixa do gizmo mapeia para os params de TAMANHO de um field — a única parte da
@@ -283,8 +285,14 @@ fn apply_field_drag(
     let g = &mut motion.doc.graph;
     g.set_param(fgd.node, fgd.spec.center_x, new_t.translation[0]);
     g.set_param(fgd.node, fgd.spec.center_y, new_t.translation[1]);
-    g.set_param(fgd.node, fgd.spec.rotation, wrap180(new_t.rotation.to_degrees()));
-    fgd.spec.size.write(g, fgd.node, fgd.intrinsic_half, new_t.scale);
+    g.set_param(
+        fgd.node,
+        fgd.spec.rotation,
+        wrap180(new_t.rotation.to_degrees()),
+    );
+    fgd.spec
+        .size
+        .write(g, fgd.node, fgd.intrinsic_half, new_t.scale);
     motion.pump.mark_dirty();
     new_t
 }
@@ -320,8 +328,9 @@ impl crate::App {
             let Some((nid, spec)) = selected_field(&gfx.motion) else {
                 return false;
             };
-            let p =
-                |name: &str| crate::render_loop::motion_bridge::params::param_value(&gfx.motion, nid, name);
+            let p = |name: &str| {
+                crate::render_loop::motion_bridge::params::param_value(&gfx.motion, nid, name)
+            };
             let intrinsic_half = spec.size.half(&p);
             let start = seed_start(p(spec.center_x), p(spec.center_y), p(spec.rotation));
             // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do

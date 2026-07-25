@@ -1524,7 +1524,13 @@ impl crate::App {
                 crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
             hero.gizmo.field_view = motion_tool_active
                 .then(|| {
-                    crate::field_gizmo::field_view(motion, camera, scene_w, scene_h, self.last_pointer)
+                    crate::field_gizmo::field_view(
+                        motion,
+                        camera,
+                        scene_w,
+                        scene_h,
+                        self.last_pointer,
+                    )
                 })
                 .flatten();
             // ─────────────────────────────────────────────────────────

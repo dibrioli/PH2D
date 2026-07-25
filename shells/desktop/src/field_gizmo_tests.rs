@@ -47,10 +47,22 @@ fn spec_names_match_the_nodes() {
     // Os nomes TÊM de bater com os params reais dos nós (ph2d-node-field-box /
     // ph2d-node-field-radial-sweep). Um typo aqui = gizmo que escreve num param fantasma.
     let bx = spec_for(NodeTypeId::of("field.box")).unwrap();
-    assert_eq!((bx.center_x, bx.center_y, bx.rotation), ("center_x", "center_y", "rotation"));
-    assert_eq!(bx.size, FieldSize::Rect { width: "width", height: "height" });
+    assert_eq!(
+        (bx.center_x, bx.center_y, bx.rotation),
+        ("center_x", "center_y", "rotation")
+    );
+    assert_eq!(
+        bx.size,
+        FieldSize::Rect {
+            width: "width",
+            height: "height"
+        }
+    );
     let rs = spec_for(NodeTypeId::of("field.radial_sweep")).unwrap();
-    assert_eq!((rs.center_x, rs.center_y, rs.rotation), ("center_x", "center_y", "rotation"));
+    assert_eq!(
+        (rs.center_x, rs.center_y, rs.rotation),
+        ("center_x", "center_y", "rotation")
+    );
     assert_eq!(rs.size, FieldSize::Disk { radius: "radius" });
 }
 
@@ -64,7 +76,14 @@ fn rect_size_reads_full_extents_as_half() {
         "height" => 4.0,
         _ => 0.0,
     };
-    assert_eq!(FieldSize::Rect { width: "width", height: "height" }.half(p), [4.0, 2.0]);
+    assert_eq!(
+        FieldSize::Rect {
+            width: "width",
+            height: "height"
+        }
+        .half(p),
+        [4.0, 2.0]
+    );
 }
 
 #[test]
@@ -88,7 +107,10 @@ fn w2s(cam: &GizmoCamera, world: [f32; 2]) -> (f32, f32) {
     let half_w = half_h * aspect;
     let nx = (world[0] - cam.center[0]) / half_w;
     let ny = -(world[1] - cam.center[1]) / half_h;
-    ((nx + 1.0) * 0.5 * cam.window_w, (ny + 1.0) * 0.5 * cam.window_h)
+    (
+        (nx + 1.0) * 0.5 * cam.window_w,
+        (ny + 1.0) * 0.5 * cam.window_h,
+    )
 }
 
 #[test]
@@ -97,12 +119,11 @@ fn rect_write_scales_the_full_extents() {
     // `2·meia·escala` em cada eixo, independentes.
     let mut motion = MotionState::new();
     let bx = motion.doc.graph.add_node("field.box");
-    FieldSize::Rect { width: "width", height: "height" }.write(
-        &mut motion.doc.graph,
-        bx,
-        [4.0, 2.0],
-        [1.5, 2.0],
-    );
+    FieldSize::Rect {
+        width: "width",
+        height: "height",
+    }
+    .write(&mut motion.doc.graph, bx, [4.0, 2.0], [1.5, 2.0]);
     assert!(approx(radius_of(&motion, bx, "width"), 12.0));
     assert!(approx(radius_of(&motion, bx, "height"), 8.0));
 }
@@ -201,8 +222,14 @@ fn scene_window_wh_is_the_subrect_under_a_split_full_window_without() {
     let win = WindowSize::new(800, 600);
     assert_eq!(scene_window_wh(CenterSplit::None, win), (800.0, 600.0));
     // 🔴 Horizontal: a cena é a banda de cima (h·t). Mata "o chrome ignora o split".
-    assert_eq!(scene_window_wh(CenterSplit::Horizontal { t: 0.5 }, win), (800.0, 300.0));
-    assert_eq!(scene_window_wh(CenterSplit::Vertical { t: 0.5 }, win), (400.0, 600.0));
+    assert_eq!(
+        scene_window_wh(CenterSplit::Horizontal { t: 0.5 }, win),
+        (800.0, 300.0)
+    );
+    assert_eq!(
+        scene_window_wh(CenterSplit::Vertical { t: 0.5 }, win),
+        (400.0, 600.0)
+    );
 }
 
 // Um `FieldGizmoDrag` de teste com um gizmo genérico já semeado — o mínimo para dirigir
@@ -246,16 +273,43 @@ fn a_box_field_drag_writes_node_params_never_a_transform() {
     // extensões (a box tem width/height) intactas.
     let mut motion = MotionState::new();
     let bid = motion.doc.graph.add_node("field.box");
-    for (n, v) in [("center_x", 0.0), ("center_y", 0.0), ("width", 8.0), ("height", 4.0), ("rotation", 0.0)] {
+    for (n, v) in [
+        ("center_x", 0.0),
+        ("center_y", 0.0),
+        ("width", 8.0),
+        ("height", 4.0),
+        ("rotation", 0.0),
+    ] {
         motion.doc.graph.set_param(bid, n, v);
     }
     let spec = spec_for(NodeTypeId::of("field.box")).unwrap();
-    let cam = GizmoCamera { center: [0.0, 0.0], height_world: 20.0, window_w: 800.0, window_h: 600.0 };
+    let cam = GizmoCamera {
+        center: [0.0, 0.0],
+        height_world: 20.0,
+        window_w: 800.0,
+        window_h: 600.0,
+    };
     let start_screen = (400.0, 300.0);
     let start = seed_start(0.0, 0.0, 0.0);
-    let mut fgd = make_drag(bid, spec, [4.0, 2.0], GizmoDragKind::Translate, &cam, start_screen, start, [0.0, 0.0]);
+    let mut fgd = make_drag(
+        bid,
+        spec,
+        [4.0, 2.0],
+        GizmoDragKind::Translate,
+        &cam,
+        start_screen,
+        start,
+        [0.0, 0.0],
+    );
 
-    let new_t = apply_field_drag(&mut motion, &mut fgd, (550.0, 200.0), &cam, GizmoModifiers::default(), GizmoSnap::default());
+    let new_t = apply_field_drag(
+        &mut motion,
+        &mut fgd,
+        (550.0, 200.0),
+        &cam,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+    );
 
     let pv = |name| radius_of(&motion, bid, name);
     // O writeback caiu nos PARAMS do NÓ — a leitura pela MESMA porta do painel confirma.
@@ -263,7 +317,10 @@ fn a_box_field_drag_writes_node_params_never_a_transform() {
     assert_eq!(pv("center_y"), new_t.translation[1]);
     // 🔴 Um Translate MOVE o centro (mata "apply não escreve center") e NÃO mexe nas
     // extensões (escala fica em 1).
-    assert!(pv("center_x") != 0.0 || pv("center_y") != 0.0, "o centro do field tinha de andar");
+    assert!(
+        pv("center_x") != 0.0 || pv("center_y") != 0.0,
+        "o centro do field tinha de andar"
+    );
     assert!(approx(pv("width"), 8.0));
     assert!(approx(pv("height"), 4.0));
 }
@@ -279,22 +336,50 @@ fn a_radial_field_drag_scales_the_radius() {
     motion.doc.graph.set_param(sid, "center_x", 0.0);
     motion.doc.graph.set_param(sid, "center_y", 0.0);
     let spec = spec_for(NodeTypeId::of("field.radial_sweep")).unwrap();
-    let cam = GizmoCamera { center: [0.0, 0.0], height_world: 20.0, window_w: 800.0, window_h: 600.0 };
+    let cam = GizmoCamera {
+        center: [0.0, 0.0],
+        height_world: 20.0,
+        window_w: 800.0,
+        window_h: 600.0,
+    };
     // Handle de canto (+x, −y = BottomRight); o pivô fica no canto OPOSTO (a política do
     // sprite).
-    let kind = GizmoDragKind::ScaleCorner { dx_sign: 1.0, dy_sign: -1.0 };
+    let kind = GizmoDragKind::ScaleCorner {
+        dx_sign: 1.0,
+        dy_sign: -1.0,
+    };
     let intrinsic_half = spec.size.half(|n: &str| radius_of(&motion, sid, n)); // [5, 5]
     let start = seed_start(0.0, 0.0, 0.0);
     let start_screen = w2s(&cam, [intrinsic_half[0], -intrinsic_half[1]]);
     let pivot = ph2d_editor::anchor_pivot_world(kind, intrinsic_half, start, false);
-    let mut fgd = make_drag(sid, spec, intrinsic_half, kind, &cam, start_screen, start, pivot);
+    let mut fgd = make_drag(
+        sid,
+        spec,
+        intrinsic_half,
+        kind,
+        &cam,
+        start_screen,
+        start,
+        pivot,
+    );
 
     // Arrasta o canto para longe do pivô ⇒ a escala cresce ⇒ o raio cresce.
     let far = w2s(&cam, [intrinsic_half[0] * 2.0, -intrinsic_half[1] * 2.0]);
-    apply_field_drag(&mut motion, &mut fgd, far, &cam, GizmoModifiers::default(), GizmoSnap::default());
+    apply_field_drag(
+        &mut motion,
+        &mut fgd,
+        far,
+        &cam,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+    );
 
     // 🔴 O `radius` cresceu (mata "Disk::write não escreve radius"); ele é um PARAM do nó,
     // e nenhum `Transform` foi tocado (sem `SimWorld`).
-    assert!(radius_of(&motion, sid, "radius") > 5.0, "o raio tinha de crescer: {}", radius_of(&motion, sid, "radius"));
+    assert!(
+        radius_of(&motion, sid, "radius") > 5.0,
+        "o raio tinha de crescer: {}",
+        radius_of(&motion, sid, "radius")
+    );
     set_graph_selection(vec![]); // higiene
 }

@@ -1,5 +1,12 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP` · 2.5D MULTIPLANO (2026-07-25)
 
+> ⚠️ **DESATUALIZADO como visão-geral da linha:** a `line/FLIP` recebeu depois o **Self Overlap**
+> (`ef391420d`) e está agora **5 commits** à frente do main. O handoff do TIP atual (com a contagem
+> de schema `(33, 11, 13)` e o GO das 5) é
+> [`HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md).
+> Este doc segue válido para os DETALHES do multiplano + polish dos sliders (os 4 primeiros commits).
+
+
 > **Para o AGENTE INTEGRADOR.** A linha `line/FLIP` foi reaberta após a integração
 > da wave "A tira ganhou mãos" (2026-07-25) e recebeu **UM commit**: o **multiplano
 > 2.5D** (paralaxe por camada, ADR-0114 §Decisão 3). Aprovado pelo Enio ("sim,

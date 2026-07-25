@@ -12,10 +12,10 @@ Detalhe técnico completo: [`docs/Painter/25_avaliacao_gpu.md` §13.9](Painter/2
 | | |
 |---|---|
 | branch | `line/Painter` |
-| HEAD | `800f89596` |
+| HEAD | o tip de `line/Painter` — **o último commit é este handoff** (um sha literal aqui se auto-invalidaria a cada correção do próprio arquivo; `git log --oneline main..HEAD` é a fonte) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits desta wave | **4** (`d8018d6bc` lei · `535df958c` controle morto · `29b5a9e56` smoke · `800f89596` doc) |
-| commits da linha desde a base | 4 (a linha estava no depósito original + os reverts do §13.8, já em `main`) |
+| commits desta wave | **8**: `d8018d6bc` a lei · `535df958c` o controle morto · `29b5a9e56` o smoke · `800f89596` doc 25 §13.9 · `3f60b9b1e` os handoffs · `edd0602b1` CLAUDE.md §5 · `495b85010` fmt · + este handoff |
+| commits da linha desde a base | 8 (a linha estava no depósito original + os reverts do §13.8, já em `main`) |
 
 ⚠️ A linha **não tem** commits pendentes de waves anteriores: o tip anterior (`40191df75`) era o handoff
 de tarefa, e os dois reverts (`1d390d926`, `569149dfc`) já estavam nela.
@@ -97,12 +97,15 @@ gate da árvore combinada (não como conflito textual) — a conversão é mecâ
 
 ## 6. Ordem, dependências e o que smoke-testar
 
-**Ordem:** os 4 commits são sequenciais e independentes entre si exceto que o `535df958c` (a row
+**Ordem:** os 8 commits são sequenciais e independentes entre si exceto que o `535df958c` (a row
 Accumulate) só faz sentido depois do `d8018d6bc` (a lei). Nenhum depende de outra linha.
 
-**Gate desta linha, rodado antes de fechar:** `nextest-impacted.sh` = **3802 testes, 3802 passaram**
+**Gate desta linha, rodado antes de fechar:** `nextest-impacted.sh` = **4073 testes, 4073 passaram**
 (1092 deles da shell, então os arch-gates de `shells/desktop/tests/` foram alcançados — a lição da
 `line/Vector` de 23/07). Suítes por crate: `ph2d-painter-brush` 269 · `ph2d-tool-painter` 830.
+⚠️ Na primeira volta o `ph2d-timeline::nesting_clock the_cost_of_depth_is_linear_not_explosive` falhou:
+é a **flake conhecida e PRÉ-EXISTENTE** que o CLAUDE.md §5 nomeia (gate de RAZÃO sensível a carga).
+Passa isolado (conferido) e passou na volta seguinte — não é resíduo desta linha.
 **Rode as DUAS configurações** (debug e `--release`): o Flip provou que `--release` sozinho esconde
 pânico. Ambas rodadas aqui; a sonda de perf dá os mesmos números nas duas (0,9 ms).
 
@@ -130,7 +133,7 @@ resultado passa a depender da taxa de quadros). Doc §13.9.8.
 
 ---
 
-**Resumo:** linha `Painter` pronta (HEAD `800f89596`, 4 commits). Foundational tocado: `ph2d-painter-brush`
+**Resumo:** linha `Painter` pronta (8 commits sobre `df91ef6ec`). Foundational tocado: `ph2d-painter-brush`
 (arquivo irmão novo + troca de tipo num parâmetro, 4 chamadores) · `ph2d-panel-painter-layers` (1
 condição + 1 gate) · shell (smoke novo, 4 sítios). Zero id/const/token novo; zero contrato congelado;
 zero schema. Aguardo ordem de integração.

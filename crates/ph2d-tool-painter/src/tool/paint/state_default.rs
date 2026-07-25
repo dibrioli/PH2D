@@ -74,6 +74,7 @@ impl Default for PaintState {
             eyedropper_armed: false,
             falloff_armed: false,
             mask_scratch_rgba: Arc::new(Vec::new()),
+            mask_stroke_rgba: Arc::new(Vec::new()),
             mask_scratch_target: None,
             selection_mask: Arc::new(Vec::new()),
             selection_active: false,

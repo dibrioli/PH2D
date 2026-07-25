@@ -23296,3 +23296,65 @@ fn a_live_stroke_beats_the_hover_preview() {
         "the live stroke's heading must win over the hover preview, got {painting:?}"
     );
 }
+
+#[test]
+fn the_mask_feather_does_not_harden_across_passes() {
+    // The reported "máscara RUIM": painting MANY passes over the same spot collapsed the soft feather
+    // into a hard, aliased edge. Cause (arithmetically proven): the mask coverage built up as a PRODUCT
+    // across passes (255·m^N), sharpening the falloff tail without bound. The one-pass feather is a
+    // smooth line integral and is CORRECT; the collapse is purely re-multiplication ACROSS strokes.
+    // Fix (Enio's choice): combine strokes by an ENVELOPE (min for Paint), not a product — so N
+    // identical passes give the SAME coverage as 1 (idempotent), and the feather never hardens.
+    //
+    // Oracle: with no jitter the dabs are deterministic, so 15 identical strokes must leave the coverage
+    // BYTE-IDENTICAL to 1 stroke. RED before the fix (255·m^15 ≪ 255·m). Mutation that must bleed:
+    // reverting to the product build-up (stamp onto the persistent scratch) → pass 15 ≠ pass 1.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    let mut px = vec![255u8; (size * size * 4) as usize];
+    for c in px.chunks_exact_mut(4) {
+        c[0] = 200;
+        c[1] = 30;
+        c[2] = 30;
+        c[3] = 255;
+    }
+    t.set_source(px, size, size);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.set_brush_size_px(40.0);
+    let stroke = |t: &mut PainterTool| {
+        t.on_canvas_pointer(cp([128.0, 60.0], PointerPhase::Down));
+        for y in 1..=25 {
+            t.on_canvas_pointer(cp([128.0, 60.0 + y as f32 * 5.6], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([128.0, 200.0], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+    };
+    stroke(&mut t);
+    let pass1 = (*t.paint.mask_scratch_rgba).clone();
+    for _ in 0..14 {
+        stroke(&mut t);
+    }
+    let pass15 = (*t.paint.mask_scratch_rgba).clone();
+    // The envelope is idempotent for identical strokes → byte-for-byte equal.
+    let ndiff = pass1
+        .iter()
+        .zip(pass15.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    let maxd = pass1
+        .iter()
+        .zip(pass15.iter())
+        .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs())
+        .max()
+        .unwrap_or(0);
+    assert_eq!(
+        ndiff, 0,
+        "15 identical mask passes must leave the coverage byte-identical to 1 pass \
+         (envelope idempotent); {ndiff} bytes differ, max delta {maxd} — the feather is hardening",
+    );
+}

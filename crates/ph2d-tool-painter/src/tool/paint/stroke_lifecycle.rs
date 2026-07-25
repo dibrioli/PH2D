@@ -27,6 +27,10 @@ impl PainterTool {
         // created) before the stroke paints into it.
         if matches!(self.paint.paint_mode, PaintMode::Mask) {
             self.ensure_mask_scratch();
+            // Start this stroke's isolated ENVELOPE buffer at the neutral extreme (Paint/Erase). Strokes
+            // combine into the committed scratch by min/max, not by re-multiplying — so N passes over the
+            // same spot give the same soft feather as one, instead of hardening into an aliased edge.
+            self.begin_mask_stroke();
         }
         // Inpaint heal brush: start a fresh defect mask for this stroke (the previous stroke's mark was
         // consumed + cleared on its pen-up).

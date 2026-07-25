@@ -91,6 +91,65 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Start a Paint/Erase mask stroke's per-stroke ENVELOPE buffer at the neutral extreme, so this
+    /// stroke's product is isolated and folded into the committed scratch by `min`/`max` (see the
+    /// field docs on `mask_stroke_rgba`). Neutral = **white** (255) for Paint (product darkens toward
+    /// black/protected → combined by `min`) and **black** (0) for Erase (Mix-toward-white lightens →
+    /// combined by `max`); alpha is 255 so the Mix blend matches the committed scratch exactly (a first
+    /// pass is therefore byte-identical to the old direct build-up). No-op for Blur/Smear sub-brushes —
+    /// they are spatial ops on the committed buffer and never re-multiply, so they keep painting it
+    /// directly. Called from `paint_begin` on a mask pen-down.
+    pub(super) fn begin_mask_stroke(&mut self) {
+        if !matches!(self.paint.mask_brush, 0 | 1) {
+            return; // Blur/Smear: no per-stroke buffer (they edit the committed scratch in place)
+        }
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize) * 4;
+        if n == 0 {
+            return;
+        }
+        let rgb = if self.paint.mask_brush == 1 {
+            0u8
+        } else {
+            255u8
+        }; // Erase black · Paint white
+        let buf = Arc::make_mut(&mut self.paint.mask_stroke_rgba);
+        buf.clear();
+        buf.resize(n, 255); // alpha 255 everywhere
+        for px in buf.chunks_exact_mut(4) {
+            px[0] = rgb;
+            px[1] = rgb;
+            px[2] = rgb;
+        }
+    }
+
+    /// Fold this batch's per-stroke product buffer into the committed scratch by the ENVELOPE, over the
+    /// dab-batch `region`: `min` for Paint (deepest protection wins), `max` for Erase (most unprotection
+    /// wins). Idempotent across strokes because the within-stroke product is monotonic, so re-painting
+    /// the same spot converges at the single-pass feather instead of piling into a hard edge. Grayscale
+    /// coverage (R=G=B) ⇒ per-byte min/max equals luminance min/max; alpha stays 255.
+    pub(super) fn fold_mask_stroke(&mut self, region: Region) {
+        let (w, _h) = self.source_size;
+        let take_min = self.paint.mask_brush == 0; // Paint = min, Erase = max
+        let stroke = Arc::clone(&self.paint.mask_stroke_rgba);
+        let committed = Arc::make_mut(&mut self.paint.mask_scratch_rgba);
+        let n = (stroke.len() / 4).min(committed.len() / 4);
+        for ry in 0..region.h {
+            for rx in 0..region.w {
+                let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
+                if gidx >= n {
+                    continue;
+                }
+                let b = gidx * 4;
+                for c in 0..4 {
+                    let s = stroke[b + c];
+                    let d = committed[b + c];
+                    committed[b + c] = if take_min { d.min(s) } else { d.max(s) };
+                }
+            }
+        }
+    }
+
     /// Snapshot the Mask scratch buffer + target for the undo model — the scratch lives in `PaintState`
     /// (private to this module), so the general `snapshot_model` (in `tool::layers::undo`) reaches it
     /// through here. `Arc`-shared, so the clone is cheap.

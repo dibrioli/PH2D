@@ -199,13 +199,14 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
 
 /// **`SetTransportLoop` arma o RELÓGIO e não toca o documento** — a metade que protege o
 /// loop autorado da cena.
-/// **Uma duracao AUTORADA e' um fim DURO** (Enio, 2026-07-23): o playhead nunca
-/// fica alem dela — scrub, tempo digitado, frame step e play passam todos pelo
-/// `run()` uma vez por frame, e o clamp mora la'. Play que alcanca o fim PARA e
-/// PAUSA (o fim de comp do AE). Sem Dur autorada, nada muda — e' o que mantem o
-/// Play de uma cena de fisica (timeline vazia dirigindo a sim) vivo.
+/// **O PLAYHEAD É LIVRE — a duração autorada NÃO é mais uma parede** (Enio, 2026-07-25). O
+/// transporte também dirige a física dinâmica, e o clamp capava a simulação no fim da timeline.
+/// Agora scrub/play atravessam o fim autorado em TODA vista (cena · Keys de clip · interior de
+/// container) e o play NÃO pausa — a AVALIAÇÃO (o `cut`) segue clampando o relógio do avaliador,
+/// mas o relógio do transporte corre. Mutação: re-introduzir o `pause()+seek(view_authored_end)`
+/// no `run()` deixa este gate VERMELHO.
 #[test]
-fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
+fn the_playhead_runs_free_past_the_authored_end() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let mut st = TimelineState::new();
     let mut intents = Vec::new();
@@ -229,7 +230,8 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
         "sem Dur: aberto como sempre"
     );
 
-    // COM duracao autorada da CENA: o mesmo scrub e' preso no fim, e o play pausa.
+    // COM duracao autorada da CENA: o scrub alem do fim fica LIVRE, e o play NAO pausa (a
+    // fisica dirigida pelo transporte precisa correr para alem da timeline).
     st.doc.set_scene_length(Some(2.0));
     run(
         sim.world_mut(),
@@ -241,9 +243,12 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
         false,
         None,
     );
-    assert!((ph.time() - 2.0).abs() < 1e-9, "preso no fim autorado");
+    assert!(
+        (ph.time() - 9.0).abs() < 1e-9,
+        "livre alem do fim autorado da cena"
+    );
     ph.play();
-    ph.seek(5.0); // o play que atravessou o fim neste frame
+    ph.seek(5.0); // o play atravessa o fim neste frame — e segue tocando
     run(
         sim.world_mut(),
         &mut st,
@@ -254,10 +259,10 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
         false,
         None,
     );
-    assert!((ph.time() - 2.0).abs() < 1e-9);
+    assert!((ph.time() - 5.0).abs() < 1e-9, "o play nao e' preso no fim");
     assert!(
-        !ph.is_playing(),
-        "play que alcanca o fim PAUSA (fim de comp)"
+        ph.is_playing(),
+        "play que alcanca o fim NAO pausa (o transporte dirige a fisica)"
     );
 
     // O escopo e' o da VISTA: em Keys quem manda e' o CLIP; a cena nao alcanca.
@@ -286,11 +291,11 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
         None,
     );
     assert!(
-        (clip_ph.time() - 1.0).abs() < 1e-9,
-        "o clip autorado prende o Keys"
+        (clip_ph.time() - 9.0).abs() < 1e-9,
+        "o clip autorado NAO prende o Keys (livre)"
     );
 
-    // E dentro de um container, o do CONTAINER.
+    // E dentro de um container, o interior tambem e' livre.
     let c = st.doc.add_container("C".into());
     let mut cont_ph = Playhead::new(1.0 / 60.0);
     cont_ph.seek(9.0);
@@ -306,19 +311,17 @@ fn an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it() {
         Some(c),
     );
     assert!(
-        (cont_ph.time() - 1.5).abs() < 1e-9,
-        "o container autorado prende o interior"
+        (cont_ph.time() - 9.0).abs() < 1e-9,
+        "o container autorado NAO prende o interior (livre)"
     );
 }
 
-/// **A duração de CLIP prende o playhead mesmo SEM pilha** (Enio, 2026-07-23, o
-/// re-smoke): o painel publica `keys_mode = shows_keys() && stacked()`, então na aba
-/// Keys de uma cena não-arranjada `solo` chega FALSO — e o clamp lia `scene_length`
-/// (None), deixando o playhead passar do fim autorado do clip. O gate antigo só
-/// exercitava `solo=true` (com pilha), então o fixture não continha o fenômeno.
-/// Agora o clamp pergunta `view_authored_end`, que sem pilha honra o override do clip.
+/// **O Dur de CLIP também NÃO prende o playhead sem pilha** (Enio, 2026-07-25): a aba Keys de
+/// uma cena não-arranjada (`solo = false`, `container = None`) é onde uma cena de FÍSICA de um
+/// clip só vive — e é justamente onde o clamp antigo mordia. Livre aqui é o que deixa a sim
+/// correr para além da timeline. A AVALIAÇÃO do clip (o `cut`) segue intacta; só o relógio corre.
 #[test]
-fn a_clip_duration_pins_the_playhead_even_with_no_stack_and_solo_false() {
+fn a_clip_duration_no_longer_pins_the_playhead_with_no_stack() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let mut st = TimelineState::new();
     let mut intents = Vec::new();
@@ -330,7 +333,7 @@ fn a_clip_duration_pins_the_playhead_even_with_no_stack_and_solo_false() {
     // `solo = false` (nenhum stack para solar), `container = None` — exatamente o que
     // o shell passa na aba Keys de uma cena não-arranjada.
     let mut ph = Playhead::new(1.0 / 60.0);
-    ph.seek(2.333); // além do fim autorado, como na foto (Time(s)=2.333)
+    ph.seek(2.333); // além do fim autorado — e fica onde caiu
     run(
         sim.world_mut(),
         &mut st,
@@ -338,16 +341,15 @@ fn a_clip_duration_pins_the_playhead_even_with_no_stack_and_solo_false() {
         &mut intents,
         None,
         &mut ak,
-        false, // solo — FALSO sem pilha, o cerne do bug
+        false, // solo — FALSO sem pilha, exatamente o caso da cena de fisica de 1 clip
         None,
     );
     assert!(
-        (ph.time() - 2.0).abs() < 1e-9,
-        "sem pilha o Dur do clip prende o playhead em 2 (era 2.333: o clamp lia \
-         scene_length em vez do override do clip)"
+        (ph.time() - 2.333).abs() < 1e-9,
+        "sem pilha o Dur do clip NAO prende o playhead — livre em 2.333"
     );
 
-    // Play que atravessa o fim PAUSA (fim de comp), também sem pilha.
+    // Play que atravessa o fim NAO pausa (o transporte dirige a fisica), também sem pilha.
     ph.play();
     ph.seek(5.0);
     run(
@@ -360,8 +362,11 @@ fn a_clip_duration_pins_the_playhead_even_with_no_stack_and_solo_false() {
         false,
         None,
     );
-    assert!((ph.time() - 2.0).abs() < 1e-9);
-    assert!(!ph.is_playing(), "o play que alcança o fim autorado pausa");
+    assert!((ph.time() - 5.0).abs() < 1e-9);
+    assert!(
+        ph.is_playing(),
+        "o play que alcança o fim autorado NAO pausa"
+    );
 }
 
 #[test]

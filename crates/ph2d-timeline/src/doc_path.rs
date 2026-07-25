@@ -486,9 +486,10 @@ impl TimelineDoc {
                         // Uma key sem âncora (duplicar/colar, ou fora de qualquer âncora):
                         // nasce na curva, na distância que ela guarda; as alças as re-suaviza
                         // o passo abaixo.
-                        let pos = path.at(d).map(|s| s.point).unwrap_or_else(|| {
-                            old.last().map(|a| a.anchor).unwrap_or([0.0, 0.0])
-                        });
+                        let pos = path
+                            .at(d)
+                            .map(|s| s.point)
+                            .unwrap_or_else(|| old.last().map(|a| a.anchor).unwrap_or([0.0, 0.0]));
                         new_anchors.push(crate::MotionPath::auto_smooth(None, pos, None));
                     }
                 }

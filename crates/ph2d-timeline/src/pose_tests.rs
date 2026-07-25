@@ -26,7 +26,13 @@ fn same(a: &Transform, b: &Transform, ctx: &str) {
 }
 
 fn key(doc: &mut TimelineDoc, e: u64, prop: PropKind, t: f64, v: f32, interp: Interp) {
-    doc.insert_key(e, prop, RationalTime::from_seconds(t), AnimValue::Float(v), interp);
+    doc.insert_key(
+        e,
+        prop,
+        RationalTime::from_seconds(t),
+        AnimValue::Float(v),
+        interp,
+    );
 }
 
 /// `pose_at` num mundo em repouso vs `apply` num mundo gêmeo. Os dois partem da MESMA pose
@@ -36,7 +42,9 @@ fn assert_equivalent(build: impl Fn() -> (World, u64, TimelineDoc), times: &[f64
     for &t in times {
         let (mut wa, e, mut da) = build();
         apply_from_doc(&mut wa, &mut da, t);
-        let after_apply = *wa.get::<Transform>(Entity::try_from_bits(e).unwrap()).unwrap();
+        let after_apply = *wa
+            .get::<Transform>(Entity::try_from_bits(e).unwrap())
+            .unwrap();
 
         let (wb, e2, db) = build();
         let via_pose = pose_at(&wb, &db, e2, t).unwrap();
@@ -58,10 +66,38 @@ fn pose_at_matches_apply_on_every_scalar_channel() {
         let e = w.spawn(xf).id();
         let mut doc = TimelineDoc::new();
         let b = e.to_bits();
-        key(&mut doc, b, PropKind::TranslationX, 0.0, 0.0, Interp::Linear);
-        key(&mut doc, b, PropKind::TranslationX, 4.0, 10.0, Interp::Linear);
-        key(&mut doc, b, PropKind::TranslationY, 0.0, 0.0, Interp::Linear);
-        key(&mut doc, b, PropKind::TranslationY, 4.0, -8.0, Interp::Linear);
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            0.0,
+            0.0,
+            Interp::Linear,
+        );
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            4.0,
+            10.0,
+            Interp::Linear,
+        );
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationY,
+            0.0,
+            0.0,
+            Interp::Linear,
+        );
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationY,
+            4.0,
+            -8.0,
+            Interp::Linear,
+        );
         key(&mut doc, b, PropKind::Rotation, 0.0, 0.0, Interp::Linear);
         key(&mut doc, b, PropKind::Rotation, 4.0, 3.0, Interp::Linear);
         key(&mut doc, b, PropKind::ScaleX, 0.0, 1.0, Interp::Linear);
@@ -107,8 +143,22 @@ fn pose_at_honours_the_time_remap_clock() {
         let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
         let b = e.to_bits();
         let mut doc = TimelineDoc::new();
-        key(&mut doc, b, PropKind::TranslationX, 0.0, 0.0, Interp::Linear);
-        key(&mut doc, b, PropKind::TranslationX, 4.0, 10.0, Interp::Linear);
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            0.0,
+            0.0,
+            Interp::Linear,
+        );
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            4.0,
+            10.0,
+            Interp::Linear,
+        );
         key(&mut doc, b, PropKind::TimeRemap, 0.0, 0.0, Interp::Linear);
         key(&mut doc, b, PropKind::TimeRemap, 2.0, 4.0, Interp::Linear);
         (w, b, doc)
@@ -126,8 +176,22 @@ fn pose_at_honours_the_clip_duration_cut() {
         let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
         let b = e.to_bits();
         let mut doc = TimelineDoc::new();
-        key(&mut doc, b, PropKind::TranslationX, 0.0, 0.0, Interp::Linear);
-        key(&mut doc, b, PropKind::TranslationX, 4.0, 10.0, Interp::Linear);
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            0.0,
+            0.0,
+            Interp::Linear,
+        );
+        key(
+            &mut doc,
+            b,
+            PropKind::TranslationX,
+            4.0,
+            10.0,
+            Interp::Linear,
+        );
         doc.set_clip_length_override(doc.active_index(), Some(2.0));
         (w, b, doc)
     };
@@ -152,25 +216,80 @@ fn entity_key_times_are_the_deduped_union_across_tracks() {
         key(&mut doc, e, p, t, 0.0, Interp::Linear);
     }
     let times = crate::entity_key_times(&doc, e);
-    assert_eq!(times, vec![0.0, 1.0, 2.0, 3.0], "união deduplicada, sem o Time Remap");
+    assert_eq!(
+        times,
+        vec![0.0, 1.0, 2.0, 3.0],
+        "união deduplicada, sem o Time Remap"
+    );
 }
 
 #[test]
 fn animated_entities_lists_each_entity_once() {
     let mut w = World::new();
-    let e1 = w.spawn(Transform::from_translation(Vec2::ZERO)).id().to_bits();
-    let e2 = w.spawn(Transform::from_translation(Vec2::ZERO)).id().to_bits();
+    let e1 = w
+        .spawn(Transform::from_translation(Vec2::ZERO))
+        .id()
+        .to_bits();
+    let e2 = w
+        .spawn(Transform::from_translation(Vec2::ZERO))
+        .id()
+        .to_bits();
     let mut doc = TimelineDoc::new();
     // e1 tem X e Y keyados (dois bindings, uma entidade); e2 só X.
-    key(&mut doc, e1, PropKind::TranslationX, 0.0, 0.0, Interp::Linear);
-    key(&mut doc, e1, PropKind::TranslationX, 4.0, 10.0, Interp::Linear);
-    key(&mut doc, e1, PropKind::TranslationY, 0.0, 0.0, Interp::Linear);
-    key(&mut doc, e1, PropKind::TranslationY, 4.0, 5.0, Interp::Linear);
-    key(&mut doc, e2, PropKind::TranslationX, 0.0, 0.0, Interp::Linear);
-    key(&mut doc, e2, PropKind::TranslationX, 4.0, 3.0, Interp::Linear);
+    key(
+        &mut doc,
+        e1,
+        PropKind::TranslationX,
+        0.0,
+        0.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        e1,
+        PropKind::TranslationX,
+        4.0,
+        10.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        e1,
+        PropKind::TranslationY,
+        0.0,
+        0.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        e1,
+        PropKind::TranslationY,
+        4.0,
+        5.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        e2,
+        PropKind::TranslationX,
+        0.0,
+        0.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        e2,
+        PropKind::TranslationX,
+        4.0,
+        3.0,
+        Interp::Linear,
+    );
     let mut got = crate::animated_entities(&doc);
     got.sort_unstable();
     let mut want = vec![e1, e2];
     want.sort_unstable();
-    assert_eq!(got, want, "cada entidade animada aparece exatamente uma vez");
+    assert_eq!(
+        got, want,
+        "cada entidade animada aparece exatamente uma vez"
+    );
 }

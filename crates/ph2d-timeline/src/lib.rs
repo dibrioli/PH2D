@@ -71,17 +71,17 @@ pub use graph::{
     speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
-pub use onion::{OnionMode, OnionSettings};
-pub use pose::{animated_entities, entity_key_times, pose_at};
 pub use intent::TimelineIntent;
 pub use intent_apply::{apply_intent, snap_time, sync_container_loop, sync_transport_loop};
 pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };
 pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
+pub use onion::{OnionMode, OnionSettings};
 pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
+pub use pose::{animated_entities, entity_key_times, pose_at};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};
 pub use snapshot::{ContainerView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};

@@ -426,7 +426,11 @@ fn dragging_a_corner_tangent_leaves_the_opposite_handle_untouched() {
     assert!(doc.move_path_tangent(target, 1, true, [mid[0] + 3.0, mid[1] + 9.0]));
 
     let a = doc.path_anchor(target, 1).unwrap();
-    assert_eq!(a.out_handle, [3.0, 9.0], "the dragged handle went to the tip");
+    assert_eq!(
+        a.out_handle,
+        [3.0, 9.0],
+        "the dragged handle went to the tip"
+    );
     assert_eq!(a.in_handle, before_in, "Corner: the opposite handle moved");
     assert_eq!(a.kind, TangentKind::Corner, "the drag kept the kind");
 }
@@ -516,8 +520,16 @@ fn inserting_a_point_preserves_the_shape_and_the_motion() {
         .collect();
 
     // Insert a point 40% along the FIRST segment (mid-curve, not on an anchor).
-    let d = doc.position_path(e.to_bits()).unwrap().arclen_at(1).unwrap() * 0.4;
-    assert!(doc.insert_path_anchor_at(target, d), "the point was not inserted");
+    let d = doc
+        .position_path(e.to_bits())
+        .unwrap()
+        .arclen_at(1)
+        .unwrap()
+        * 0.4;
+    assert!(
+        doc.insert_path_anchor_at(target, d),
+        "the point was not inserted"
+    );
 
     // 1:1 grew by one, on both sides.
     let path = doc.position_path(e.to_bits()).unwrap();
@@ -548,7 +560,11 @@ fn inserting_a_point_preserves_the_shape_and_the_motion() {
 #[test]
 fn the_inserted_anchor_sits_at_the_clicked_point() {
     let mut doc = TimelineDoc::new();
-    for (t, p) in [(0.0, [0.0_f32, 0.0]), (1.0, [10.0, 4.0]), (2.0, [16.0, -4.0])] {
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 4.0]),
+        (2.0, [16.0, -4.0]),
+    ] {
         doc.key_the_path(1, RationalTime::from_seconds(t), p);
     }
     let target = doc.bindings()[0].target;
@@ -567,7 +583,10 @@ fn the_inserted_anchor_sits_at_the_clicked_point() {
         dd(got, want) < 1e-2,
         "the new anchor sits at {got:?}, the clicked point was {want:?}"
     );
-    assert!(!path.anchors()[i].auto, "the inserted anchor is shaped, not auto");
+    assert!(
+        !path.anchors()[i].auto,
+        "the inserted anchor is shaped, not auto"
+    );
 }
 
 /// The door refuses a non-Position target and a path too short to have a segment.
@@ -575,10 +594,16 @@ fn the_inserted_anchor_sits_at_the_clicked_point() {
 fn insert_refuses_a_scalar_target_and_a_bare_path() {
     let mut doc = TimelineDoc::new();
     let scalar = doc.bind(1, PropKind::TranslationX);
-    assert!(!doc.insert_path_anchor_at(scalar, 5.0), "TranslationX has no path");
+    assert!(
+        !doc.insert_path_anchor_at(scalar, 5.0),
+        "TranslationX has no path"
+    );
 
     // A one-anchor path has no segment to split.
     let target = doc.bind(2, PropKind::Position);
     doc.add_path_key(target, RationalTime::from_seconds(0.0), [0.0, 0.0]);
-    assert!(!doc.insert_path_anchor_at(target, 0.0), "a one-point path cannot be split");
+    assert!(
+        !doc.insert_path_anchor_at(target, 0.0),
+        "a one-point path cannot be split"
+    );
 }

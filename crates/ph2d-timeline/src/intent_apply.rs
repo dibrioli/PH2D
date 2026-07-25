@@ -24,8 +24,8 @@ mod intent_loop_sync;
 mod intent_settle;
 use crate::intent_apply_path;
 use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
-use intent_settle::settle;
 pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
+use intent_settle::settle;
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
 /// are grouped as a single undo step.

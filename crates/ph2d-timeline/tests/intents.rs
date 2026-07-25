@@ -1316,7 +1316,10 @@ fn setting_the_onion_reaches_the_state_and_the_snapshot() {
 
     let mut snap = TimelineViewSnapshot::default();
     snap.rebuild(&mut st, &playhead, false);
-    assert_eq!(snap.onion, want, "o snapshot que o painel pinta não carrega o onion");
+    assert_eq!(
+        snap.onion, want,
+        "o snapshot que o painel pinta não carrega o onion"
+    );
 }
 
 // ── the motion path stays 1:1 with its Position track under dope-sheet edits ─────
@@ -1333,14 +1336,25 @@ use ph2d_timeline::{AnimTarget, KeyId};
 /// anchor is paired with a key exactly as the product does.
 fn build_path(st: &mut TimelineState, ph: &mut Playhead, points: &[(f64, [f32; 2])]) {
     for &(t, at) in points {
-        apply_intent(st, ph, I::AddPathKey { entity: 1, t: s(t), at });
+        apply_intent(
+            st,
+            ph,
+            I::AddPathKey {
+                entity: 1,
+                t: s(t),
+                at,
+            },
+        );
     }
 }
 
 /// `(anchor count, key count)` for entity 1's Position binding — the two numbers that
 /// must stay equal, and whose drift is the bug.
 fn counts(st: &TimelineState) -> (usize, usize) {
-    let b = st.doc.binding_for(1, PropKind::Position).expect("position bound");
+    let b = st
+        .doc
+        .binding_for(1, PropKind::Position)
+        .expect("position bound");
     let anchors = b.path.as_ref().map_or(0, |p| p.len());
     let keys = st
         .doc
@@ -1380,13 +1394,27 @@ fn re_joining_a_moved_position_key_keeps_the_path_and_keys_one_to_one() {
             (2.0, [10.0, 10.0]),
         ],
     );
-    assert_eq!(counts(&st), (4, 4), "four anchors, four keys after the build");
+    assert_eq!(
+        counts(&st),
+        (4, 4),
+        "four anchors, four keys after the build"
+    );
 
     // Re-join: drag the t=1.5 key onto t=1.0. `merge_moved_over_stationary` absorbs the
     // stationary key -> the track drops to 3.
     let (target, id) = key_at(&st, 1.5);
-    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
-    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: -0.5 });
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: id }),
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::MoveSelectedKeys {
+            delta_seconds: -0.5,
+        },
+    );
 
     assert_eq!(
         counts(&st),
@@ -1399,7 +1427,16 @@ fn re_joining_a_moved_position_key_keeps_the_path_and_keys_one_to_one() {
     // truncated one (the `zip` in `rewrite_path_key_values` would shorten it on a mismatch).
     let b = st.doc.binding_for(1, PropKind::Position).unwrap();
     let total = b.path.as_ref().unwrap().length() as f32;
-    let last = match st.doc.active_clip().track(b.target).unwrap().keys().last().unwrap().value {
+    let last = match st
+        .doc
+        .active_clip()
+        .track(b.target)
+        .unwrap()
+        .keys()
+        .last()
+        .unwrap()
+        .value
+    {
         AnimValue::Float(v) => v,
         _ => panic!(),
     };
@@ -1423,10 +1460,18 @@ fn deleting_a_position_key_drops_its_anchor() {
     assert_eq!(counts(&st), (3, 3));
 
     let (target, id) = key_at(&st, 1.0);
-    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: id }),
+    );
     apply_intent(&mut st, &mut ph, I::DeleteSelection);
 
-    assert_eq!(counts(&st), (2, 2), "deleting the middle key left an orphan anchor");
+    assert_eq!(
+        counts(&st),
+        (2, 2),
+        "deleting the middle key left an orphan anchor"
+    );
 }
 
 /// Duplicating a Position key grows an anchor on the curve — the count-GROWING edit
@@ -1443,10 +1488,18 @@ fn duplicating_a_position_key_grows_a_matching_anchor() {
     // The copy lands on the playhead — park it in a free gap so it does not overwrite.
     apply_intent(&mut st, &mut ph, I::Scrub(1.5));
     let (target, id) = key_at(&st, 1.0);
-    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: id }),
+    );
     apply_intent(&mut st, &mut ph, I::DuplicateSelection);
 
-    assert_eq!(counts(&st), (4, 4), "the duplicated key got no anchor on the curve");
+    assert_eq!(
+        counts(&st),
+        (4, 4),
+        "the duplicated key got no anchor on the curve"
+    );
 }
 
 /// **Idempotent when in sync.** A plain time-move that neither reorders nor merges must
@@ -1475,7 +1528,11 @@ fn a_plain_time_move_does_not_disturb_the_path_geometry() {
 
     // Nudge the middle key later, but not past its neighbour (no reorder, no merge).
     let (target, id) = key_at(&st, 1.0);
-    apply_intent(&mut st, &mut ph, I::SelectSingle(SelectedKey { target, key: id }));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey { target, key: id }),
+    );
     apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
 
     let after: Vec<[f32; 2]> = st
@@ -1489,6 +1546,9 @@ fn a_plain_time_move_does_not_disturb_the_path_geometry() {
         .iter()
         .map(|a| a.anchor)
         .collect();
-    assert_eq!(before, after, "a plain retime perturbed the anchor positions");
+    assert_eq!(
+        before, after,
+        "a plain retime perturbed the anchor positions"
+    );
     assert_eq!(counts(&st), (3, 3));
 }

@@ -54,28 +54,18 @@ pub(crate) fn run(
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
     }
-    // **An AUTHORED duration is a hard end** (Enio, 2026-07-23): the playhead never
-    // leaves `[0, end]` on a view whose duration is explicit. Every road in — scrub,
-    // typed time, frame step, play — passes through here once per frame, so this is
-    // the one door; play that reaches the end parks there and PAUSES (the AE comp
-    // end). A view with no authored Dur keeps today's open-ended run — which is what
-    // keeps a physics scene's Play (an empty timeline driving a sim) alive.
+    // **O PLAYHEAD É LIVRE — não há parede na duração autorada** (Enio, 2026-07-25). O transporte
+    // também dirige a FÍSICA dinâmica, e um clamp aqui capava a simulação no fim da timeline; então
+    // a duração de composição segue sendo a duração VISÍVEL (o véu) e o alvo de NAVEGAÇÃO (go-to-end,
+    // o loop recém-armado — mecanismos à parte, intactos), mas NÃO um muro que para o relógio.
     //
-    // Through `view_authored_end` — the SAME door the veil asks (`snapshot`), so the
-    // darkened dead zone and the wall the playhead hits are the same fact. `solo` is
-    // `keys_mode`, and without a stack that is FALSE even on the Keys tab; the door
-    // handles it (a clip's `length_override` closes the no-stack view). Reading
-    // `scene_length` here directly missed exactly that — a clip Dur that darkened
-    // nothing and pinned nothing (Enio, 2026-07-23).
-    let authored_end = timeline.doc.view_authored_end(container, solo);
-    if let Some(end) = authored_end
-        && playhead.time() > end
-    {
-        if playhead.is_playing() {
-            playhead.pause();
-        }
-        playhead.seek(end);
-    }
+    // ⚠️ **A AVALIAÇÃO de clips/strips/containers/Arrange é INTOCADA:** `clip_cut`/`container_cut`/
+    // `cut_scene` clampam o RELÓGIO que o AVALIADOR lê (`apply_active_clip`/`apply_container` abaixo),
+    // então a animação ainda CONGELA no fim autorado — só o playhead passa, e a física continua a
+    // simular. Aqui havia um `pause() + seek(view_authored_end)` (a "parede" do AE comp end, 07-23);
+    // foi removido DE PROPÓSITO — o gate `the_playhead_runs_free_past_the_authored_end` (nos
+    // `timeline_bridge_container_tests`) impede re-introduzi-lo. `view_authored_end` segue vivo: é a
+    // porta do VÉU (`snapshot`).
     // A playhead move (scrub, play, frame step) reclaims every displaced pose
     // for the animation — Blender semantics: the un-keyed pose is discarded.
     if playhead.time() != ak.displaced_t {

@@ -314,10 +314,18 @@ fn retype_to_smooth_aligns_both_and_keeps_each_length() {
     let a = p.anchors()[1];
     let li = a.in_handle[0].hypot(a.in_handle[1]);
     let lo = a.out_handle[0].hypot(a.out_handle[1]);
-    assert!((li - 2.0).abs() < 1e-4, "in length {li} != 2 — Smooth must keep each length");
+    assert!(
+        (li - 2.0).abs() < 1e-4,
+        "in length {li} != 2 — Smooth must keep each length"
+    );
     assert!((lo - 3.0).abs() < 1e-4, "out length {lo} != 3");
     let cross = a.in_handle[0] * a.out_handle[1] - a.in_handle[1] * a.out_handle[0];
-    assert!(cross.abs() < 1e-4, "handles not colinear: {:?} {:?}", a.in_handle, a.out_handle);
+    assert!(
+        cross.abs() < 1e-4,
+        "handles not colinear: {:?} {:?}",
+        a.in_handle,
+        a.out_handle
+    );
     let dot = a.in_handle[0] * a.out_handle[0] + a.in_handle[1] * a.out_handle[1];
     assert!(dot < 0.0, "the two handles point the same way, not opposed");
     assert_eq!(a.kind, TangentKind::Smooth);
@@ -356,9 +364,20 @@ fn retype_a_straight_cusp_borrows_the_neighbour_tangent() {
     assert!(p.retype_anchor(1, TangentKind::Smooth));
     let a = p.anchors()[1];
     let lo = a.out_handle[0].hypot(a.out_handle[1]);
-    assert!(lo > 0.1, "a cusp retyped to Smooth kept zero handles: {:?}", a.out_handle);
-    assert!(a.out_handle[1].abs() < 1e-3, "handle off the horizontal neighbour chord: {:?}", a.out_handle);
-    assert!(a.out_handle[0] > 0.0 && a.in_handle[0] < 0.0, "handles not opposed along the chord");
+    assert!(
+        lo > 0.1,
+        "a cusp retyped to Smooth kept zero handles: {:?}",
+        a.out_handle
+    );
+    assert!(
+        a.out_handle[1].abs() < 1e-3,
+        "handle off the horizontal neighbour chord: {:?}",
+        a.out_handle
+    );
+    assert!(
+        a.out_handle[0] > 0.0 && a.in_handle[0] < 0.0,
+        "handles not opposed along the chord"
+    );
 }
 
 /// The convert refuses an index that names no anchor, touching nothing.

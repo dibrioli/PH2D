@@ -93,8 +93,7 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
         else {
             continue;
         };
-        let orient =
-            b.prop == PropKind::Position && doc.auto_orient(entity) == AutoOrient::Active;
+        let orient = b.prop == PropKind::Position && doc.auto_orient(entity) == AutoOrient::Active;
         set_transform_field(&mut xf, b, v, orient);
     }
     Some(xf)

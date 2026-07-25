@@ -195,8 +195,9 @@ fn a_key_authored_beyond_the_cut_lands_on_the_boundary() {
 }
 
 /// **Without a stack a clip's authored duration CLOSES the view** (Enio, 2026-07-23):
-/// the veil and the playhead clamp ask `view_authored_end`, and it must return the
-/// clip override even with `keys_mode = false` — which is what the panel publishes on
+/// the veil asks `view_authored_end` (the playhead clamp that also asked it was REMOVED
+/// 2026-07-25 — the playhead is free so the timeline can drive physics past its end), and
+/// it must return the clip override even with `keys_mode = false` — which is what the panel publishes on
 /// the Keys tab when nothing is arranged (`shows_keys() && stacked()`). The Dur(s) box
 /// already showed the number (via `clip_end_seconds`); this is the door that makes the
 /// two consumers agree. A REAL stack keeps the clip override out (the scene decides).

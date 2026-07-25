@@ -327,9 +327,8 @@ impl MotionPath {
         let u = inv_arclen(&c, d - self.starts[i]);
         // de Casteljau at `u`: the split point S and the six control points that make the
         // two sub-cubics equal the original. All in the arc engine's `f64`.
-        let lerp = |a: [f64; 2], b: [f64; 2], t: f64| {
-            [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
-        };
+        let lerp =
+            |a: [f64; 2], b: [f64; 2], t: f64| [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
         let (p0, p1, p2, p3) = (c[0], c[1], c[2], c[3]);
         let q0 = lerp(p0, p1, u);
         let q1 = lerp(p1, p2, u);

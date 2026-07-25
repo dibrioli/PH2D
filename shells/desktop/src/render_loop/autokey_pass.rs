@@ -177,9 +177,11 @@ pub(crate) fn apply_samples(
     // strip by `cut_source`). Past the cut the pose is FROZEN at `curve(cut)`, so
     // a diff that reads `curve(raw)` sees a phantom delta and mints a key per
     // scrubbed frame, at a time the apply never samples (the 2026-07-23 superbug).
-    // The playhead clamp upstream is UX; THIS is the correctness boundary — there
-    // are roads past the clamp (the Arrange clamp arm reads `scene_length`, which
-    // can be unauthored while the clip's own cut is live).
+    // THIS cut is the SOLE correctness boundary — and stays so now that the playhead
+    // clamp upstream is GONE (removed 2026-07-25: the playhead is free so the transport
+    // can drive physics past the authored end). The playhead routinely runs past the cut;
+    // the evaluator freezes the pose at `curve(cut)`, so the diff never sees a phantom
+    // delta. The autokey correctness never depended on the clamp — only on this cut.
     // Which cut mirrors which apply:
     //  - Keys/solo, and Arrange with an EMPTY stack: the active clip's own cut.
     //  - A real stack / container: the view's frame-0 cut. The diff there reads

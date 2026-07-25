@@ -37,10 +37,6 @@ use ph2d_render::Camera2d;
 use ph2d_timeline::{AnimTarget, PropKind, TimelineDoc};
 use ph2d_vector::{BezPath, Point, VectorScene};
 
-/// A espessura do fio da trajetória, em px de tela. Mais fino que o contorno de
-/// collider (1,5): o fio existe para dar FORMA, e quem se lê são os pontos.
-const THREAD_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
-
 /// O traço com que um ponto de tempo é desenhado.
 const DOT_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 
@@ -76,9 +72,6 @@ const MAX_DOTS: usize = 600;
 /// fisicamente* — uma trajetória não é uma resposta a essa pergunta.
 const PATH_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de trajetoria
 
-/// O fio: a MESMA âmbar, fraca. Ele dá a forma e nunca disputa com os pontos.
-const THREAD_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.35]; // LITERAL-COLOR-OK: overlay de trajetoria
-
 /// A LINHA de uma alça de tangente — a mesma âmbar, meia força: ela sai da âncora e
 /// termina na ponta agarrável, e é a coisa que diz *"esta âncora tem uma tangente
 /// para puxar"*. Mais forte que o fio (a alça se edita), mais fraca que os pontos.
@@ -102,6 +95,15 @@ const TANGENT_MIN_PX: f64 = 14.0; // LITERAL-PX-OK: chrome de overlay, alvo de m
 
 /// Quantos segmentos aproximam o círculo de uma ponta. 12 é liso num alvo de ~5 px.
 const TIP_SEGS: usize = 12;
+
+// A fita de velocidade e os papéis dos grupos de desenho moram no módulo irmão (o teto
+// de LOC do shell): consts `RIBBON_*`/rampa, `heat_ramp`, `MarkRole`, `OverlayMark`.
+#[path = "motion_path_overlay_marks.rs"]
+mod marks_mod;
+use marks_mod::{
+    heat_ramp, MarkRole, OverlayMark, RIBBON_BANDS, RIBBON_FLAT_REL, RIBBON_GLOW_PX,
+    RIBBON_GLOW_RGBA, RIBBON_PX,
+};
 
 /// O que o ponteiro agarrou na trajetória — a âncora (translada a curva) ou uma das
 /// duas alças de tangente (molda a curva). Um enum e não dois `Option` porque é UMA
@@ -131,7 +133,7 @@ pub(crate) fn marks(
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
-) -> Vec<(BezPath, [f32; 4], f64)> {
+) -> Vec<OverlayMark> {
     let mut out = Vec::new();
     if !show {
         return out;
@@ -172,26 +174,77 @@ pub(crate) fn marks(
     let (t0, t1) = (first.t.to_seconds(), last.t.to_seconds());
     let span = t1 - t0;
 
-    // 1. O FIO — a forma. Amostrado no TEMPO, não no arco: é o percurso que o objeto
-    //    de fato faz, então um trecho que a track nunca alcança não é desenhado.
+    // 1. A FITA — a forma, colorida pelo RITMO. Amostrada no TEMPO, não no arco: é o
+    //    percurso que o objeto de fato faz, então um trecho que a track nunca alcança não
+    //    é desenhado. Cada segmento ganha a cor da sua velocidade (comprimento de MUNDO ∝
+    //    velocidade, já que o `dt` entre amostras é constante), normalizada pelo PRÓPRIO
+    //    caminho — um GLOW largo e fraco por baixo, N bandas nítidas por cima.
     if span > 0.0 {
         let n = ((span * THREAD_SAMPLES_PER_SECOND).ceil() as usize).clamp(2, 4096);
-        let mut thread = BezPath::new();
-        let mut started = false;
+        // Segmentos `(a_tela, b_tela, comprimento_mundo)`; um `None` (track não alcança)
+        // quebra a fita ali, sem ligar por cima do vão.
+        let mut segs: Vec<(Point, Point, f64)> = Vec::with_capacity(n);
+        let mut prev: Option<([f32; 2], Point)> = None;
         for k in 0..=n {
-            let Some(p) = at(t0 + span * k as f64 / n as f64) else {
-                continue;
-            };
-            let sp = to_screen(p);
-            if started {
-                thread.line_to(sp);
-            } else {
-                thread.move_to(sp);
-                started = true;
+            let cur = at(t0 + span * k as f64 / n as f64).map(|p| (p, to_screen(p)));
+            if let (Some((pw, ps)), Some((cw, cs))) = (prev, cur) {
+                let len = f64::from(((cw[0] - pw[0]).powi(2) + (cw[1] - pw[1]).powi(2)).sqrt());
+                segs.push((ps, cs, len));
             }
+            prev = cur;
         }
-        if started {
-            out.push((thread, THREAD_RGBA, THREAD_PX));
+        if !segs.is_empty() {
+            // O GLOW: todos os segmentos num traço largo e fraco, por baixo de tudo.
+            let mut glow = BezPath::new();
+            for (a, b, _) in &segs {
+                glow.move_to(*a);
+                glow.line_to(*b);
+            }
+            out.push(OverlayMark {
+                path: glow,
+                rgba: RIBBON_GLOW_RGBA,
+                width: RIBBON_GLOW_PX,
+                role: MarkRole::Glow,
+            });
+
+            // Normaliza a velocidade pelo próprio caminho; velocidade ~constante (range
+            // desprezível) ⇒ tudo na âmbar do meio, uma fita uniforme (a leitura honesta).
+            let (mut lo, mut hi) = (f64::INFINITY, 0.0f64);
+            for (_, _, len) in &segs {
+                lo = lo.min(*len);
+                hi = hi.max(*len);
+            }
+            // A flatness guard that is RELATIVE, not absolute: a straight constant-speed
+            // path has segment lengths that agree to ~1e-5 in relative terms (pure `f64`
+            // noise from `to_screen`), and an absolute `> 1e-9` would amplify that noise
+            // across the whole ramp. A speed swing under `RIBBON_FLAT_REL` reads as
+            // uniform anyway — it is below what the eye separates over 24 bands, and two
+            // orders of magnitude above the measured noise floor.
+            let range = hi - lo;
+            let flat = hi <= 0.0 || range <= hi * RIBBON_FLAT_REL;
+            let mut bands: Vec<BezPath> = vec![BezPath::new(); RIBBON_BANDS];
+            for (a, b, len) in &segs {
+                let u = if flat {
+                    0.5
+                } else {
+                    ((len - lo) / range) as f32
+                };
+                let band = ((u * RIBBON_BANDS as f32) as usize).min(RIBBON_BANDS - 1);
+                bands[band].move_to(*a);
+                bands[band].line_to(*b);
+            }
+            for (band, path) in bands.into_iter().enumerate() {
+                if path.elements().is_empty() {
+                    continue;
+                }
+                let u = (band as f32 + 0.5) / RIBBON_BANDS as f32;
+                out.push(OverlayMark {
+                    path,
+                    rgba: heat_ramp(u),
+                    width: RIBBON_PX,
+                    role: MarkRole::Ribbon,
+                });
+            }
         }
     }
 
@@ -207,7 +260,12 @@ pub(crate) fn marks(
         any_tan = true;
     }
     if any_tan {
-        out.push((tan_lines, TANGENT_LINE_RGBA, TANGENT_PX));
+        out.push(OverlayMark {
+            path: tan_lines,
+            rgba: TANGENT_LINE_RGBA,
+            width: TANGENT_PX,
+            role: MarkRole::TangentLine,
+        });
     }
 
     // 3. OS PONTOS — o tempo. Um por quadro de exibição; o espaçamento é a velocidade.
@@ -226,7 +284,12 @@ pub(crate) fn marks(
         any_dot = true;
     }
     if any_dot {
-        out.push((dots, PATH_RGBA, DOT_PX));
+        out.push(OverlayMark {
+            path: dots,
+            rgba: PATH_RGBA,
+            width: DOT_PX,
+            role: MarkRole::Dot,
+        });
     }
 
     // 4. AS ÂNCORAS — o que translada a curva, pela MESMA porta que o hit-test consulta.
@@ -237,13 +300,23 @@ pub(crate) fn marks(
         any_anchor = true;
     }
     if any_anchor {
-        out.push((anchors, PATH_RGBA, DOT_PX));
+        out.push(OverlayMark {
+            path: anchors,
+            rgba: PATH_RGBA,
+            width: DOT_PX,
+            role: MarkRole::Anchor,
+        });
     }
 
     // 5. AS PONTAS DAS TANGENTES — por cima de tudo, porque são o alvo mais fino de
     //    agarrar e não podem ser enterradas pela linha nem pela âncora.
     if any_tan {
-        out.push((tan_tips, PATH_RGBA, TANGENT_PX));
+        out.push(OverlayMark {
+            path: tan_tips,
+            rgba: PATH_RGBA,
+            width: TANGENT_PX,
+            role: MarkRole::TangentTip,
+        });
     }
     out
 }
@@ -457,13 +530,18 @@ pub(super) fn draw(
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    for (path, rgba, px) in marks(show, doc, selected, camera, window) {
+    // A ordem de pintura é o PAPEL de cada marca, não a ordem em que `marks` a empurrou:
+    // glow por baixo, a ponta da alça por cima. Estável, então bandas de mesma camada
+    // mantêm a ordem em que nasceram.
+    let mut ms = marks(show, doc, selected, camera, window);
+    ms.sort_by_key(|m| m.role.layer());
+    for m in ms {
         vector_scene.inner_mut().stroke(
-            &Stroke::new(px),
+            &Stroke::new(m.width),
             Affine::IDENTITY,
-            &Brush::Solid(Color::new(rgba)),
+            &Brush::Solid(Color::new(m.rgba)),
             None,
-            &path,
+            &m.path,
         );
     }
 }

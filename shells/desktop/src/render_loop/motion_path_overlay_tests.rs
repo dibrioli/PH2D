@@ -4,7 +4,7 @@
 //! espaçados como a velocidade do objeto, em pixels de tela, nesta câmera"* é
 //! respondível headless — e a resposta é o que se vê.
 
-use super::{MotionPathGrab, marks};
+use super::{MarkRole, MotionPathGrab, OverlayMark, marks};
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -35,6 +35,19 @@ fn points(path: &BezPath) -> Vec<(f64, f64)> {
             _ => None,
         })
         .collect()
+}
+
+/// O primeiro grupo de um dado PAPEL — os grupos se acham por função, não por posição
+/// (a fita virou N bandas, então índice fixo mentiria).
+fn only(out: &[OverlayMark], role: MarkRole) -> &OverlayMark {
+    out.iter()
+        .find(|m| m.role == role)
+        .unwrap_or_else(|| panic!("nenhum grupo de papel {role:?}"))
+}
+
+/// Todos os grupos de um papel (a fita tem vários — um por banda de cor).
+fn all(out: &[OverlayMark], role: MarkRole) -> Vec<&OverlayMark> {
+    out.iter().filter(|m| m.role == role).collect()
 }
 
 /// O índice de âncora que um grab nomeia, se for uma âncora (não uma alça).
@@ -90,7 +103,7 @@ fn the_spacing_of_the_dots_is_the_speed() {
     ]);
     let out = marks(true, &doc, Some(e), &camera(), window());
     // O grupo dos PONTOS: um losango por quadro, 4 vértices cada.
-    let dots = &out[1].0;
+    let dots = &only(&out, MarkRole::Dot).path;
     let vs = points(dots);
     assert!(vs.len() >= 4 * 24, "poucos pontos: {}", vs.len());
 
@@ -116,7 +129,10 @@ fn the_spacing_of_the_dots_is_the_speed() {
 fn a_constant_speed_track_draws_evenly_spaced_dots() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let out = marks(true, &doc, Some(e), &camera(), window());
-    let centres: Vec<f64> = points(&out[1].0).chunks(4).map(|c| c[0].0).collect();
+    let centres: Vec<f64> = points(&only(&out, MarkRole::Dot).path)
+        .chunks(4)
+        .map(|c| c[0].0)
+        .collect();
     let gaps: Vec<f64> = centres.windows(2).map(|w| (w[1] - w[0]).abs()).collect();
     let max = gaps.iter().copied().fold(0.0f64, f64::max);
     let min = gaps.iter().copied().fold(f64::INFINITY, f64::min);
@@ -135,7 +151,7 @@ fn the_marks_keep_their_screen_size_at_any_zoom() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let side = |cam: &Camera2d| -> f64 {
         let out = marks(true, &doc, Some(e), cam, window());
-        let vs = points(&out[2].0); // as âncoras
+        let vs = points(&only(&out, MarkRole::Anchor).path); // as âncoras
         (vs[1].0 - vs[0].0).abs()
     };
     let close = Camera2d {
@@ -154,10 +170,10 @@ fn the_marks_keep_their_screen_size_at_any_zoom() {
     );
     // ...e o CONTROLE: a câmera de fato mudou alguma coisa, senão o gate acima
     // compararia dois desenhos idênticos.
-    let (p_close, p_far) = (
-        points(&marks(true, &doc, Some(e), &close, window())[2].0)[0].0,
-        points(&marks(true, &doc, Some(e), &far, window())[2].0)[0].0,
-    );
+    let anchor_x = |cam: &Camera2d| {
+        points(&only(&marks(true, &doc, Some(e), cam, window()), MarkRole::Anchor).path)[0].0
+    };
+    let (p_close, p_far) = (anchor_x(&close), anchor_x(&far));
     assert!(
         (p_close - p_far).abs() > 1.0,
         "a âncora caiu no mesmo px de tela nas duas câmeras — o zoom não mudou nada"
@@ -197,20 +213,29 @@ fn nothing_is_drawn_when_there_is_no_trajectory_to_show() {
     );
 }
 
-/// O fio e as marcas são grupos SEPARADOS, porque são pintados com espessuras
-/// diferentes — e é isso que impede a forma de competir com a leitura de tempo.
+/// A fita, os pontos e as âncoras são grupos SEPARADOS, por papel. O GLOW é o mais
+/// fraco (halo, nunca disputa), e pontos e âncoras compartilham a âmbar da identidade.
 #[test]
-fn the_thread_the_dots_and_the_anchors_are_three_groups() {
+fn the_overlay_groups_are_tagged_by_role() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let out = marks(true, &doc, Some(e), &camera(), window());
-    assert_eq!(out.len(), 3, "fio, pontos, âncoras");
+    // O glow, a fita, os pontos e as âncoras existem cada um por seu papel.
+    let glow = only(&out, MarkRole::Glow);
     assert!(
-        out[0].1[3] < out[1].1[3],
-        "o fio é mais fraco que os pontos"
+        !all(&out, MarkRole::Ribbon).is_empty(),
+        "a fita de velocidade não foi desenhada"
     );
-    assert_eq!(out[1].1, out[2].1, "pontos e âncoras na mesma âmbar");
+    let dots = only(&out, MarkRole::Dot);
+    let anchors = only(&out, MarkRole::Anchor);
+    assert!(
+        glow.rgba[3] < dots.rgba[3],
+        "o glow ({}) não é mais fraco que os pontos ({}) — ele é halo, não leitura",
+        glow.rgba[3],
+        dots.rgba[3]
+    );
+    assert_eq!(dots.rgba, anchors.rgba, "pontos e âncoras na mesma âmbar");
     // Duas âncoras, quatro vértices cada.
-    assert_eq!(points(&out[2].0).len(), 8);
+    assert_eq!(points(&anchors.path).len(), 8);
 }
 
 /// **A porta única, provada onde ela importa:** apertar no centro de cada quadrado
@@ -223,7 +248,7 @@ fn the_thread_the_dots_and_the_anchors_are_three_groups() {
 fn pressing_the_drawn_square_grabs_that_very_anchor() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let (cam, win) = (camera(), window());
-    let squares = points(&marks(true, &doc, Some(e), &cam, win)[2].0);
+    let squares = points(&only(&marks(true, &doc, Some(e), &cam, win), MarkRole::Anchor).path);
     // Quatro vértices por quadrado; o centro é a média do 1º e do 3º (cantos opostos).
     for (i, c) in squares.chunks(4).enumerate() {
         let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
@@ -243,7 +268,7 @@ fn pressing_the_drawn_square_grabs_that_very_anchor() {
 fn the_grab_has_a_radius_and_a_far_click_passes_through() {
     let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
     let (cam, win) = (camera(), window());
-    let c = points(&marks(true, &doc, Some(e), &cam, win)[2].0);
+    let c = points(&only(&marks(true, &doc, Some(e), &cam, win), MarkRole::Anchor).path);
     let (cx, cy) = ((c[0].0 + c[2].0) / 2.0, (c[0].1 + c[2].1) / 2.0);
 
     assert!(
@@ -312,8 +337,12 @@ fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
     let (doc, e) = doc_shaped();
     let (cam, win) = (camera(), window());
     let groups = marks(true, &doc, Some(e), &cam, win);
-    // Com alças, há 5 grupos: fio, linhas de tangente, pontos, âncoras, pontas.
-    assert_eq!(groups.len(), 5, "fio, linhas, pontos, âncoras, pontas");
+    // Com alças, os papéis de linha e de ponta de tangente aparecem.
+    assert!(
+        !all(&groups, MarkRole::TangentLine).is_empty(),
+        "a âncora moldada não desenhou as linhas de tangente"
+    );
+    let tips_group = only(&groups, MarkRole::TangentTip);
 
     let tips = super::tangent_screen(&doc, Some(e), &cam, win);
     assert!(
@@ -325,7 +354,7 @@ fn a_shaped_anchor_draws_a_grabbable_tangent_handle() {
     // ponta que o hit-test conhece. Ler o DESENHO, não só a porta de hit, é o que fecha o
     // buraco "pintado num sítio, agarrado noutro": mover o `push_circle` para a âncora
     // deixa o hit intacto e só este oráculo sangra.
-    let tip_pts = points(&groups[4].0);
+    let tip_pts = points(&tips_group.path);
     // push_circle desenha 1 move + TIP_SEGS line_to = 13 vértices por ponta.
     let per = 13;
     assert_eq!(tip_pts.len() % per, 0, "geometria de ponta inesperada");
@@ -384,5 +413,66 @@ fn a_tiny_tangent_is_not_offered_so_it_does_not_steal_the_anchor() {
     assert!(
         super::motion_path_hit(&doc, Some(e), &far, win, a.x as f32, a.y as f32).is_some(),
         "com a alça de fora, o clique na âncora tem de pegar a âncora"
+    );
+}
+
+/// **A curva é mais QUENTE onde o objeto é mais RÁPIDO** — a fita de velocidade, a coisa
+/// que a torna bela E legível de um relance. Um ease-in-out acelera no meio e freia nas
+/// pontas, então a banda do meio tem de sair mais quente (mais perto do ouro branco) que
+/// as das pontas. O calor é lido do canal verde da rampa (0,28 brasa → 0,95 quente),
+/// monótono, então "mais quente" é comparável.
+#[test]
+fn the_ribbon_is_hotter_where_the_object_is_faster() {
+    let (doc, e) = doc_with(&[
+        (
+            0.0,
+            0.0,
+            Interp::Bezier {
+                x1: 0.8,
+                y1: 0.0,
+                x2: 0.2,
+                y2: 1.0,
+            },
+        ),
+        (2.0, 20.0, Interp::Linear),
+    ]);
+    let out = marks(true, &doc, Some(e), &camera(), window());
+    // (x do meio do segmento, calor=canal verde) por todas as bandas da fita.
+    let mut samples: Vec<(f64, f32)> = Vec::new();
+    for m in all(&out, MarkRole::Ribbon) {
+        for seg in points(&m.path).chunks(2) {
+            if seg.len() == 2 {
+                samples.push(((seg[0].0 + seg[1].0) / 2.0, m.rgba[1]));
+            }
+        }
+    }
+    assert!(samples.len() >= 20, "poucos segmentos de fita: {}", samples.len());
+    samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let n = samples.len();
+    let ends = (samples[0].1 + samples[n - 1].1) / 2.0;
+    let middle = samples[n / 2].1;
+    println!("MEDIDO  calor nas pontas {ends:.2}, no meio {middle:.2}");
+    assert!(
+        middle > ends + 0.1,
+        "a fita não está mais quente no meio ({middle:.2}, rápido) que nas pontas \
+         ({ends:.2}, lento) — a cor não está dizendo a velocidade"
+    );
+}
+
+/// O CONTROLE: velocidade constante ⇒ fita UNIFORME. Sem ele, "quente no meio" poderia
+/// ser uma propriedade do desenho e não do timing.
+#[test]
+fn a_constant_speed_track_paints_a_uniform_ribbon() {
+    let (doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
+    let out = marks(true, &doc, Some(e), &camera(), window());
+    let bands = all(&out, MarkRole::Ribbon);
+    assert!(!bands.is_empty(), "sem fita");
+    let greens: Vec<f32> = bands.iter().map(|m| m.rgba[1]).collect();
+    let max = greens.iter().copied().fold(0.0f32, f32::max);
+    let min = greens.iter().copied().fold(f32::INFINITY, f32::min);
+    assert!(
+        max - min < 0.01,
+        "a fita de uma velocidade constante variou de cor ({min:.2}..{max:.2}) — o ritmo \
+         uniforme não deu uma fita uniforme"
     );
 }

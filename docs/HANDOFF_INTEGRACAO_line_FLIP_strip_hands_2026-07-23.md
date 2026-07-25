@@ -10,19 +10,21 @@
 > Todos os gates verdes; auditoria de 2 lentes rodou (2 defeitos achados e corrigidos — §5).
 >
 > ➕ **FASES SEGUINTES na mesma linha (ordens do Enio 2026-07-24, "siga"):** o arrasto de
-> **SELEÇÃO** (§2.2 — ✅ smoke OK 2026-07-24), o **Shift & Trace / SHIFT** (§2.3 — o 8º
-> `FlipMode`) e o **PEEK F1/F2/F3** (§2.4) — os dois últimos **pendentes de smoke**
-> (Testes 5 e 6 do roteiro / linhas *g* e *h* da §7). O remap de sessão virou UMA porta
-> (pins + seleção + folhas do trace).
+> **SELEÇÃO** (§2.2), o **Shift & Trace / SHIFT** (§2.3) e o **PEEK F1/F2/F3** (§2.4) —
+> ✅ **todos com smoke OK (2026-07-24)**. E **as duas promessas quebradas do balde** (§2.5,
+> engine-only, provada por gates): o Gap Closure fecha `reach = o VÃO` (pareamento
+> ponta-a-ponta — o colinear era CEGO) e o `trap_px` sobrevive ao clamp de `MAX_SIDE`
+> (porta única fill+colorize). O remap de sessão virou UMA porta (pins + seleção + folhas
+> do trace).
 
 ## 1. Identidade
 
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.4, o PEEK) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.5, as promessas do balde) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **16** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs + §2.2 + §2.3 + §2.4) |
+| commits à frente do `main` | **17** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs + §2.2 + §2.3 + §2.4 + §2.5) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -141,6 +143,32 @@ F1/F2/F3 do `docs/Flip/04 §4`.
 - **F2 não colide com o rename do graph**: aquele F2 é do keymap do painel de grafo
   (Motion); o peek só arma com a tool FLIP ativa, e teclas fora dela não são consumidas.
 
+### 2.5 As duas promessas quebradas do balde (mesma ordem "siga"; engine-only)
+
+As duas dívidas nomeadas do BUGS #23, pagas juntas (detalhe completo no adendo de lá):
+
+- **O Gap Closure fecha `reach = o VÃO`.** O "4× o vão" medido não era ergonomia — era
+  MECANISMO: no vão canônico (traço em dois tempos, pontas COLINEARES frente a frente) o
+  `ray_hit` trata colinear como paralelo, as extensões se atravessavam sem "colidir", e o
+  vão só fechava quando o raio alcançava uma parede DISTANTE por acidente. Cura: **pontas
+  emparelhadas** (`gap.rs` passe 3, a ponte do Harmony) — pontas que se apontam a
+  `dist ≤ reach` fecham pela reta entre elas; guard de direção (hachura lado a lado não
+  vira tubo); emenda ponta-na-ponta não gera par degenerado. O gate da disjunção trocou o
+  controle positivo de 4,0 para **1,0 = o vão** (e 0,9 segue vazando).
+- **O `trap_px` sobrevive ao clamp de `MAX_SIDE`** (`Grid::px_from_requested`, porta
+  única consumida pelo balde E pelo Colorize): o raio do Trap é promessa na escala
+  PEDIDA; num desenho grande a grade cede resolução e o raio cru inflava a bola na razão
+  do clamp (a "bola de 21,6 doc a 10× de zoom" do doc 09) — no balde isso RECUSAVA com
+  `BallTooFat` um clique com folga de sobra (gate red-proven, corredor 2000×2 doc).
+  ⚠️ **Achado honesto:** o oráculo comportamental do lado do Colorize NÃO separa (a
+  atribuição unifica as câmaras pela moldura de papel externa — medido, cru e convertido
+  idênticos); está dito no próprio gate em vez de um verde-por-construção, e a prova
+  mora no gate do balde + no gate da porta com os números da lei do clamp à mão.
+
+**Sem UI nova e sem schema**: os dois são a engine honrando o que os sliders já
+prometiam. Verificação manual (linha *i* da §7): desenhar uma caixa em DOIS traços
+deixando um vão, medir o vão a olho, digitar esse número no Gap Closure — o balde enche.
+
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
 ### 3.1 Foundational tocado (`ph2d-editor-core`), todo ADITIVO
@@ -248,16 +276,20 @@ diferença some — o seed-versus-sample de sempre).
 | `ph2d-flip::onion` (light table) | 4 |
 | shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 5 (2 + os 3 do trace, §2.3) · `flip_strip_smoke` 2 · `flip_trace` 4 · `flip_peek` 3 · `flip_pass` +4 (o shift no model · o peek ×3) | 27 |
 | arch-gates de shell (ordem do frame · a costura do pin) | 3 |
+| §2.5: `gap` +3 (colinear fecha no vão · hachura não pareia · emenda não degenera) · `tests` +2 (trap no clamp red-proven · a porta com números à mão) · disjunção re-cravada em `reach = vão` · colorize +1 (contrato no clamp, com o achado honesto no doc) | 6 |
 | `ph2d-panel-flip/tests/seam.rs`: as 2 tabelas de varredura ganharam a linha do **Trace** (`FlipMode::ALL` 7→8 as fez morder no nascimento, como projetado) | — |
 
-**24 mutações, 24 sangram** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
+**28 mutações, 27 sangram + 1 sobrevivente DOCUMENTADO** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
 célula pega · emissão sempre na ordem da lista · preview só da pega · remap de move sem a
 seleção · remap do empurrão sem a seleção; e o guard do grupo obsoleto ganhou caso
 próprio) + as 6 da §2.3 (o passe ignora o mapa · `pick` pelo mais DISTANTE · hit na caixa
 não-posada · rotação em torno da ORIGEM · remap de move sem as folhas · Reset sem o
 clear) + as 3 da §2.4 (o passe ignora o peek · retimar TODAS as camadas — ⚠️ sobreviveu à
 1ª fixture e a nomeou: BG de chave única não move ao ser retimado; o gate ganhou um BG
-com vizinho próprio · âncora no quadro CRU em vez da chave ativa):
+com vizinho próprio · âncora no quadro CRU em vez da chave ativa) + as 4 da §2.5
+(pareamento morto · guard de direção morto · porta identidade · trap cru no balde — e o
+**sobrevivente documentado**: trap cru no COLORIZE, porque o oráculo de lá não separa; o
+porquê está no doc do próprio gate):
 
 | mutação | o que morre |
 |---|---|
@@ -305,8 +337,9 @@ terminal; em resumo:
 | d | na caixa de **1 quadro** a barrinha do hold **não aparece** — a caixa inteira é de mover (deliberado) |
 | e | **Pin** na última chave + voltar ao quadro 0: a bola verde aparece como vulto, **e a vizinha amarela continua lá** |
 | f | **Shift+clique** na primeira e na última caixa (marcam) + arrastar uma delas: DOIS contornos, as duas pousam JUNTAS ao soltar, o destaque acompanha; arrastar uma NÃO marcada move só ela (§2.2, ✅ smoke OK 2026-07-24) |
-| g | **Trace** (painel do Flip): arrastar o vulto o desliza (a arte fica); Ctrl+arrastar gira; voltar ao Draw mantém a folha deslocada; **Reset Shifts** devolve (§2.3, pendente de smoke — Teste 5 do roteiro) |
-| h | **F1/F2/F3 SEGURADOS** numa caixa do meio: só o desenho anterior/atual/seguinte na tela, sem vultos, playhead parado; soltar volta; na 1ª caixa F1 fica (§2.4, pendente de smoke — Teste 6) |
+| g | **Trace** (painel do Flip): arrastar o vulto o desliza (a arte fica); Ctrl+arrastar gira; voltar ao Draw mantém a folha deslocada; **Reset Shifts** devolve (§2.3, ✅ smoke OK 2026-07-24) |
+| h | **F1/F2/F3 SEGURADOS** numa caixa do meio: só o desenho anterior/atual/seguinte na tela, sem vultos, playhead parado; soltar volta; na 1ª caixa F1 fica (§2.4, ✅ smoke OK 2026-07-24) |
+| i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 
@@ -316,7 +349,7 @@ terminal; em resumo:
 | ~~Arrastar uma **SELEÇÃO** de células~~ | **FECHADO e SMOKADO 2026-07-24** (§2.2) |
 | ~~Shift & Trace~~ (SHIFT **e** PEEK) | **FECHADO 2026-07-24** (§2.3 + §2.4) — pendente de smoke (Testes 5 e 6 / linhas *g* e *h*) |
 | Zoom/pan da tira | ela **sempre cabe**, por desenho (`05 §6`) — só vira pergunta se um documento longo mostrar que a lasca ficou ilegível |
-| Backlog anterior da linha | pré-segmentação 4K · `trap_px` × `MAX_SIDE` · o `reach` do Gap Closure · a exceção `rayon` · timeline global — **inalterados** |
+| Backlog anterior da linha | pré-segmentação 4K · a exceção `rayon` · timeline global — **inalterados** (~~`trap_px` × `MAX_SIDE`~~ e ~~o `reach` do Gap Closure~~ **FECHARAM na §2.5**) |
 
 ## 9. Depois da integração
 

@@ -660,3 +660,36 @@ fn a_diagonal_pinch_is_sealed_even_with_zero_toll() {
         "a frente escorreu POR DENTRO da corrente diagonal (a peneira)"
     );
 }
+
+/// **O Trap no clamp de `MAX_SIDE` NÃO infla a bola do Colorize** — a conversão é a MESMA
+/// porta do balde (`Grid::px_from_requested`), onde o gate comportamental vive (red-proven:
+/// `the_trap_ball_survives_the_max_side_clamp` no `ph2d-flip-fill` — lá a bola inflada
+/// RECUSA com `BallTooFat`, um oráculo que separa). ⚠️ **Aqui o oráculo comportamental NÃO
+/// separa, e fica dito o porquê** em vez de um gate verde-por-construção: na atribuição do
+/// Colorize a moldura de papel EXTERNA conecta as câmaras por fora, então costurar uma
+/// passagem interna não muda o rótulo de nenhum pixel de saída (medido nesta fase: o
+/// cenário de duas câmaras deu o MESMO resultado com a bola crua e a convertida). O que
+/// este gate pina é o CONTRATO local: num desenho grande o suficiente para clampar, o
+/// Colorize continua produzindo a região e ela continua colada na arte.
+#[test]
+fn the_trap_survives_the_max_side_clamp() {
+    // Caixa 2000 × 2 doc selada; precisão 80 estoura o teto (2000·80 ≫ 4096).
+    let w = 0.1;
+    let seg = |a: Vec2, b: Vec2| (vec![a, b], vec![w; 2], false);
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = vec![
+        seg(Vec2::new(0.0, 0.0), Vec2::new(2000.0, 0.0)),
+        seg(Vec2::new(0.0, 2.0), Vec2::new(2000.0, 2.0)),
+        seg(Vec2::new(0.0, 0.0), Vec2::new(0.0, 2.0)),
+        seg(Vec2::new(2000.0, 0.0), Vec2::new(2000.0, 2.0)),
+    ];
+    let scribbles = vec![Scribble {
+        label: 0,
+        points: vec![Vec2::new(900.0, 1.0), Vec2::new(1100.0, 1.0)],
+        width: 0.4,
+    }];
+    let regions = colorize(&strokes, &scribbles, 80.0, 4.0);
+    assert!(
+        !regions.is_empty(),
+        "um desenho grande (grade clampada) segue colorizavel com Trap ligado"
+    );
+}

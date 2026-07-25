@@ -267,7 +267,13 @@ pub fn colorize_with(
 
     // 4. O multiway guloso (`09 §3`): índice de rótulo por pixel. A EDT sai junto — o
     //    `snap` a usa de pré-filtro (a mesma da partição, nunca uma 2ª porta).
-    let (assign, ink_dist2) = solve(&grid, &labels, trap_px, squeeze);
+    //
+    //    ⚠️ O `trap_px` é uma promessa na escala PEDIDA — quando o `MAX_SIDE` cede
+    //    resolução, o raio cru infla a bola na razão do clamp (a "bola de 21,6 doc a
+    //    10× de zoom" do §7). A conversão é a porta do `Grid` (`px_from_requested`) —
+    //    a MESMA do balde, senão os dois discordariam sobre o tamanho do mesmo Trap.
+    let trap = grid.px_from_requested(trap_px, scale);
+    let (assign, ink_dist2) = solve(&grid, &labels, trap, squeeze);
 
     // 5. Vetoriza por REGIÃO conexa — o back-end do balde, com as bordas sobre a tinta
     //    cravadas no EIXO (`snap.rs` — o serrilhado do 5º smoke).

@@ -648,15 +648,101 @@ fn a_deliberate_gap_still_leaks_and_still_needs_the_gap_closure() {
         "um vão de 1,0 doc contra 0,26 de tinta é DELIBERADO — a solda não pode fechá-lo, \
          senão o Gap Closure vira um knob que não muda nada"
     );
-    // ⚠️ **Achado do controle positivo, medido e NÃO perseguido aqui:** o `reach` que fecha
-    // este vão de 1,0 doc é **4,0** — 4× o vão (varrido: 0,5 · 1,0 · 1,5 · 2,0 = `Leaked`;
-    // 4,0 preenche). O slider é rotulado pelo ALCANCE da extensão, então o artista que mede
-    // o próprio vão e digita esse número recebe um `Leaked`. É ergonomia do **Gap Closure**,
-    // não da solda (que já não toca este vão — é o que a asserção acima prova), e por isso
-    // fica NOMEADO em vez de contrabandeado. O número aqui é o MEDIDO, não um palpite.
+    // **A régua do slider é HONESTA (a dívida do 4× foi PAGA):** o vão é de 1,0 doc e o
+    // `reach` que o fecha é **1,0** — o pareamento ponta-a-ponta (`gap.rs`, passe 3)
+    // fechou o buraco do colinear (o `ray_hit` trata colinear como paralelo, então as
+    // extensões destas duas pontas se atravessavam sem "colidir", e o vão só fechava a
+    // reach 4,0, quando o raio alcançava a quina DISTANTE da caixa por acidente). O
+    // artista que mede o próprio vão e digita esse número agora recebe o preenchimento.
     assert!(
-        fill_at(&strokes, Vec2::new(0.0, 0.0), params(4.0)).is_ok(),
-        "controle positivo: o Gap Closure continua sendo a ferramenta de quem quer fechar \
-         o que decidiu deixar aberto"
+        fill_at(&strokes, Vec2::new(0.0, 0.0), params(1.0)).is_ok(),
+        "controle positivo: reach = o VAO fecha — o rotulo do slider e' verdadeiro"
+    );
+    // E abaixo do vão segue aberto: o slider não mente para o outro lado.
+    assert_eq!(
+        fill_at(&strokes, Vec2::new(0.0, 0.0), params(0.9)).unwrap_err(),
+        FillError::Leaked,
+        "reach menor que o vao nao fecha"
+    );
+}
+
+/// 🔴 **O Trap sobrevive ao clamp de `MAX_SIDE`** (o aberto do doc 09: *"bola de 21,6 doc
+/// a 10× de zoom"*). O raio do Trap é uma promessa na escala PEDIDA; num desenho grande a
+/// grade cede resolução (`Grid::new` clampa o `scale`) e o raio CRU inflava a bola na
+/// razão do clamp — aqui, 4 px a 80/doc prometem 0,05 doc, e crus na grade efetiva
+/// (~2 px/doc) viram ~2 doc: MAIOR que o corredor, e o balde recusava com `BallTooFat`
+/// um clique que na tela tem folga de sobra. Mutação que sangra: consumir `trap_px` cru
+/// (voltar o `px_from_requested` para a identidade).
+#[test]
+fn the_trap_ball_survives_the_max_side_clamp() {
+    // Corredor 2000 × 2 doc, selado: a precisão pedida (80) estoura o teto (2000·80 ≫
+    // 4096) e a resolução cede para ~2 px/doc.
+    let w = 0.1;
+    let strokes: Vec<(Vec<Vec2>, Vec<f32>, bool)> = vec![
+        (
+            vec![Vec2::new(0.0, 0.0), Vec2::new(2000.0, 0.0)],
+            vec![w; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(0.0, 2.0), Vec2::new(2000.0, 2.0)],
+            vec![w; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(0.0, 0.0), Vec2::new(0.0, 2.0)],
+            vec![w; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(2000.0, 0.0), Vec2::new(2000.0, 2.0)],
+            vec![w; 2],
+            false,
+        ),
+    ];
+    let r = fill_at(
+        &strokes,
+        Vec2::new(1000.0, 1.0),
+        FillParams {
+            precision: 80.0,
+            trap_px: 4.0,
+            ..Default::default()
+        },
+    );
+    assert!(
+        r.is_ok(),
+        "a bola PROMETIDA (4 px a 80/doc = 0,05 doc) cabe folgada no corredor de 2 doc — \
+         a recusa e' a bola inflada pelo clamp: {:?}",
+        r.err()
+    );
+}
+
+/// 🔴 **A porta da conversão, contra números computados À MÃO da lei do clamp** (nunca
+/// re-derivados da função — o oráculo que usa a função sob teste é sempre-verde).
+///
+/// Sem clamp: `scale` pedido cabe no budget ⇒ conversão é a IDENTIDADE, bit a bit.
+/// Com clamp: bbox 2000 doc, margem 20, teto 4096 ⇒ budget = 4096 − 40 = 4056 px de
+/// arte ⇒ escala efetiva = 4056/2000 = **2,028** ⇒ 4 px pedidos a 80/doc valem
+/// `4 × 2,028/80 = 0,1014` px efetivos (a MESMA fração do documento: 0,05 doc).
+#[test]
+fn the_requested_px_door_follows_the_clamp_law() {
+    // Sem clamp: 10 doc × 10 px/doc = 100 px ≪ 4096.
+    let small = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0), 10.0, 20, 4096);
+    assert_eq!(
+        small.px_from_requested(4.0, 10.0),
+        4.0,
+        "sem clamp a conversao e' a identidade"
+    );
+    // Com clamp: os números acima, escritos à mão.
+    let big = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(2000.0, 2.0), 80.0, 20, 4096);
+    assert!(
+        (big.scale - 2.028).abs() < 1e-3,
+        "a lei do clamp: budget 4056 / 2000 doc = 2,028 px/doc (saiu {})",
+        big.scale
+    );
+    let eff = big.px_from_requested(4.0, 80.0);
+    assert!(
+        (eff - 0.1014).abs() < 1e-3,
+        "4 px a 80/doc sao 0,05 doc = 0,1014 px efetivos (saiu {eff})"
     );
 }

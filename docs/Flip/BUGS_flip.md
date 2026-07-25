@@ -1689,6 +1689,25 @@ extensão**, então o artista que mede o próprio vão e digita esse número rec
 É ergonomia do **Gap Closure**, não da solda, e fica **nomeado** aqui em vez de contrabandeado
 dentro desta wave ([[feedback_ergonomics_verdict_is_a_design_bug]]).
 
+**✅ PAGO (2026-07-24, junto com o `trap_px` × `MAX_SIDE`):** o 4× **não era ergonomia — era
+MECANISMO**. O vão da fixture tem as pontas COLINEARES frente a frente (o traço feito em dois
+tempos, o vão canônico), e `ray_hit` trata colinear como PARALELO (`denom ≈ 0` ⇒ `None`): as
+extensões se atravessavam sem "colidir", e o vão só fechava quando o raio alcançava a quina
+DISTANTE da caixa (a 2,5 do vão — o "4,0" era o degrau seguinte do varrido, não o mínimo).
+Cura: **pontas EMPARELHADAS** (`gap.rs` passe 3, a ponte do Harmony) — duas pontas que se
+apontam a `dist ≤ reach` fecham pela reta entre elas, com guard de direção (hachura lado a
+lado não vira tubo) e sem par degenerado (emenda ponta-na-ponta). **`reach` = o VÃO** no caso
+que o artista mede. E o `trap_px` ganhou a régua que sobrevive ao clamp
+(`Grid::px_from_requested`, porta única dos DOIS consumidores): o raio é promessa na escala
+PEDIDA, e cru na grade clampada inflava a bola na razão do clamp (a "bola de 21,6 doc" do
+doc 09) — no balde isso RECUSAVA com `BallTooFat` um clique com folga de sobra (gate
+red-proven no corredor 2000×2). ⚠️ **Achado honesto do lado do Colorize:** o oráculo
+comportamental da bola inflada NÃO separa lá — a atribuição unifica as câmaras pela moldura
+de papel EXTERNA, então costurar uma passagem interna não muda rótulo de saída (medido: cru
+e convertido idênticos no cenário de duas câmaras). A conversão entra pela MESMA porta; quem
+carrega a prova é o gate do balde + o gate da porta com os números da lei do clamp escritos
+à mão (`the_requested_px_door_follows_the_clamp_law`).
+
 ---
 
 ## #24 — O proxy que não separava: espalhamento e correlação contra a MEDIANA

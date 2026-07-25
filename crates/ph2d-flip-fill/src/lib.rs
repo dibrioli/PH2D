@@ -314,8 +314,12 @@ pub fn fill_at(
         // o resto do pipeline (o `expand_under_ink`, o Grow, a vetorização) é o mesmo
         // código, lendo o mesmo bit `FILLED`. Duas respostas para "onde a região termina"
         // divergiriam, e é a doença de todo bug desta linha.
+        //
+        // ⚠️ O raio é uma promessa na escala PEDIDA — se o `MAX_SIDE` cedeu resolução, o
+        // raio cru inflaria a bola na razão do clamp (`px_from_requested`, doc 09).
+        let trap = grid.px_from_requested(params.trap_px, scale);
         let ball = TrapBall::new(&grid);
-        let Some(region) = ball.region_from(seed, params.trap_px) else {
+        let Some(region) = ball.region_from(seed, trap) else {
             // A bola não cabe na semente: o vão é mais estreito que ela. É o mesmo
             // "não deu" do clique em cima da linha — e o toast manda baixar o Trap.
             return Err(FillError::BallTooFat);

@@ -72,6 +72,20 @@ impl Grid {
         }
     }
 
+    /// **Um comprimento em px autorado na escala PEDIDA, nos px EFETIVOS desta grade** —
+    /// a régua que sobrevive ao clamp de `max_side` (doc 09, o aberto do BUGS #23).
+    ///
+    /// O `trap_px` do painel é uma promessa na escala que o chamador PEDIU; quando o
+    /// teto cede resolução, consumi-lo cru infla a bola na razão do clamp — medido:
+    /// **21,6 unidades de documento** a 10× de zoom, uma bola maior que o desenho. A
+    /// grandeza autorada tem de cruzar a conversão do CONSUMIDOR
+    /// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]). Sem
+    /// clamp `self.scale == requested` e a conversão é a identidade, bit a bit.
+    #[must_use]
+    pub fn px_from_requested(&self, px: f32, requested_scale: f32) -> f32 {
+        px * (self.scale / requested_scale.max(1e-6))
+    }
+
     /// Documento → pixel (centro de pixel; o `-0.5` fica no `to_doc`).
     #[must_use]
     pub fn to_px(&self, p: Vec2) -> (f32, f32) {

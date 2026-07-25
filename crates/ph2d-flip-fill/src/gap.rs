@@ -11,15 +11,27 @@
 //! quadro vizinho, ou reabrir o arquivo amanhã **não depende de a ferramenta estar
 //! com os mesmos parâmetros**. O gap ficou fechado.
 //!
-//! Duas fontes de extensão (as duas do GP):
+//! Três fontes de fechamento (as duas do GP + a ponte do Harmony):
 //! 1. **Pontas** — cada extremidade de um traço aberto se prolonga na tangente.
 //! 2. **Quinas mid-stroke** — onde o traço vira mais apertado que a própria espessura
 //!    (raio de curvatura < espessura), o GP também estende. É por isso que ele fecha
 //!    cantos em "V" que outros baldes não fecham: num "V" as duas pernas se cruzam
 //!    *visualmente*, mas o vértice fica fora do preenchimento.
+//! 3. **Pontas EMPARELHADAS** (BUGS #23, a régua honesta do slider): duas pontas que
+//!    apontam uma para a outra a `dist ≤ reach` fecham pela RETA entre elas. Sem isto o
+//!    vão CANÔNICO — o traço feito em dois tempos, pontas colineares frente a frente —
+//!    era invisível: `ray_hit` trata colinear como PARALELO (`denom ≈ 0` ⇒ `None`),
+//!    então as extensões se atravessavam sem "colidir" e o vão só fechava por acidente,
+//!    quando o raio alcançava alguma parede DISTANTE (o "4× o vão" medido era isso — a
+//!    quina do outro lado da caixa, a 2,5 do vão de 1,0). Com o par, **`reach` = o VÃO**
+//!    no caso que o artista mede na tela — o que o rótulo do slider sempre prometeu.
+//!    ⚠️ **O guard de direção é quem impede a hachura de virar tubo**: pontas lado a
+//!    lado (traços paralelos) têm o vetor entre elas PERPENDICULAR às tangentes — cada
+//!    uma tem de apontar PARA a outra (`d·(o₂−o₁) > 0` dos dois lados).
 //!
 //! **Corte por colisão:** uma extensão para onde encosta em outra linha (ou noutra
-//! extensão). Sem isso, as extensões varam o desenho e cortam regiões ao meio.
+//! extensão). Sem isso, as extensões varam o desenho e cortam regiões ao meio. (O par
+//! ponta-a-ponta não corta: ele liga dois pontos REAIS do desenho.)
 
 use ph2d_core::Vec2;
 
@@ -51,7 +63,8 @@ pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
         return Vec::new();
     }
     // As candidatas: os raios (origem + direção), com o índice do traço-dono (para não
-    // colidirem com a própria linha na origem).
+    // colidirem com a própria linha na origem). As PONTAS (não as quinas) também são as
+    // candidatas ao pareamento ponta-a-ponta — anotamos onde elas terminam na lista.
     let mut rays: Vec<(usize, Vec2, Vec2)> = Vec::new();
     for (si, s) in strokes.iter().enumerate() {
         if s.closed || s.points.len() < 2 {
@@ -66,6 +79,13 @@ pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
         if let Some(d) = dir(s.points[n - 2], s.points[n - 1]) {
             rays.push((si, s.points[n - 1], d));
         }
+    }
+    let tip_count = rays.len();
+    for (si, s) in strokes.iter().enumerate() {
+        if s.closed || s.points.len() < 2 {
+            continue;
+        }
+        let n = s.points.len();
         // **Quinas apertadas** (o "V"): onde a virada é mais fechada que ~60°, a
         // bissetriz EXTERNA vira um raio. É o que fecha o vértice de um "V" cujo bico
         // ficou de fora da região.
@@ -161,6 +181,27 @@ pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
                     origin.y + (far.y - origin.y) * best,
                 ),
             });
+        }
+    }
+
+    // **Passe 3 — pontas EMPARELHADAS** (a fonte 3 do doc, BUGS #23): duas pontas que se
+    // apontam a `dist ≤ reach` fecham pela RETA entre elas — é o que torna o rótulo do
+    // slider verdadeiro (`reach` = o vão que se mede na tela). Só PONTAS pareiam (as
+    // quinas seguem por colisão); pontas coincidentes (quinas que se tocam) não geram
+    // fechamento degenerado; e o guard de direção — cada uma apontando PARA a outra —
+    // é o que separa um vão (frente a frente) de uma hachura (lado a lado: o vetor
+    // entre as pontas é PERPENDICULAR às tangentes, e o par não fecha).
+    for (i, &(_, o1, d1)) in rays.iter().take(tip_count).enumerate() {
+        for &(_, o2, d2) in rays.iter().take(tip_count).skip(i + 1) {
+            let v = o2 - o1;
+            let dist2 = v.x * v.x + v.y * v.y;
+            if dist2 > reach * reach || dist2 < MIN_EXTENSION * MIN_EXTENSION {
+                continue;
+            }
+            if d1.x * v.x + d1.y * v.y <= 0.0 || d2.x * v.x + d2.y * v.y >= 0.0 {
+                continue;
+            }
+            out.push(Closure { a: o1, b: o2 });
         }
     }
     out
@@ -324,6 +365,102 @@ mod tests {
             (hit.b.y + 2.0).abs() < 1e-3,
             "o raio da quina desce e encosta no teto: {:?}",
             hit.b
+        );
+    }
+
+    /// 🔴 **O vão CANÔNICO — pontas colineares frente a frente — fecha com `reach` = o
+    /// VÃO** (BUGS #23). É o traço feito em dois tempos: a mão levanta e volta na mesma
+    /// linha. Antes do pareamento este caso era INVISÍVEL: `ray_hit` trata colinear como
+    /// paralelo, as extensões se atravessavam sem "colidir", e o vão de 1,0 só fechava
+    /// com reach 4,0 — quando o raio alcançava uma parede DISTANTE por acidente. Mutação
+    /// que sangra: remover o passe 3 (o par não nasce e o vão volta a ser cego).
+    #[test]
+    fn facing_collinear_tips_close_at_the_reach_that_names_the_gap() {
+        // Duas metades da mesma linha vertical, vão de 1,0 entre (2,-0.5) e (2,0.5).
+        let a = line((2.0, -2.0), (2.0, -0.5));
+        let b = line((2.0, 0.5), (2.0, 2.0));
+        let strokes = [
+            Boundary {
+                points: &a,
+                closed: false,
+            },
+            Boundary {
+                points: &b,
+                closed: false,
+            },
+        ];
+        let cl = closures(&strokes, 1.0); // reach = o vão, exatamente
+        assert!(
+            cl.iter().any(|c| {
+                let (lo, hi) = if c.a.y < c.b.y {
+                    (c.a, c.b)
+                } else {
+                    (c.b, c.a)
+                };
+                (lo - Vec2::new(2.0, -0.5)).y.abs() < 1e-3
+                    && (hi - Vec2::new(2.0, 0.5)).y.abs() < 1e-3
+            }),
+            "o par ponta-a-ponta tinha de fechar o vao colinear: {cl:?}"
+        );
+        // E abaixo do vão continua aberto (o slider não mente para o outro lado).
+        assert!(
+            closures(&strokes, 0.9).is_empty(),
+            "reach menor que o vao nao pode fechar"
+        );
+    }
+
+    /// 🔴 **Hachura não vira tubo**: pontas LADO A LADO (traços paralelos terminando
+    /// juntos) não pareiam — o vetor entre elas é perpendicular às tangentes, e o guard
+    /// de direção (cada ponta apontando PARA a outra) as recusa. Mutação que sangra:
+    /// remover o guard (todo fim de hachura fecharia num pente selado).
+    #[test]
+    fn side_by_side_hatching_tips_do_not_pair() {
+        // Três traços de hachura paralelos, terminando alinhados a 0,5 um do outro.
+        let h1 = line((0.0, 0.0), (10.0, 0.0));
+        let h2 = line((0.0, 0.5), (10.0, 0.5));
+        let h3 = line((0.0, 1.0), (10.0, 1.0));
+        let strokes = [
+            Boundary {
+                points: &h1,
+                closed: false,
+            },
+            Boundary {
+                points: &h2,
+                closed: false,
+            },
+            Boundary {
+                points: &h3,
+                closed: false,
+            },
+        ];
+        assert!(
+            closures(&strokes, 2.0).is_empty(),
+            "pontas lado a lado nao sao um vao — fechar aqui selaria a hachura"
+        );
+    }
+
+    /// **Pontas COINCIDENTES (quinas que se tocam) não geram fechamento degenerado** —
+    /// o desenho comum tem traços emendados ponta na ponta, e um `Closure` de
+    /// comprimento zero por emenda seria ruído para todo consumidor.
+    #[test]
+    fn coincident_tips_do_not_pair() {
+        let a = line((0.0, 0.0), (10.0, 0.0));
+        let b = line((10.0, 0.0), (10.0, 10.0)); // começa ONDE a outra termina
+        let strokes = [
+            Boundary {
+                points: &a,
+                closed: false,
+            },
+            Boundary {
+                points: &b,
+                closed: false,
+            },
+        ];
+        assert!(
+            closures(&strokes, 5.0)
+                .iter()
+                .all(|c| (c.a - c.b).x.abs() > 1e-3 || (c.a - c.b).y.abs() > 1e-3),
+            "emenda ponta-na-ponta nao e' vao"
         );
     }
 

@@ -78,13 +78,26 @@ pub struct ImpastoLightInput<'a> {
     /// the same persistent-output contract the compositor's region dispatch runs on, which means the
     /// caller owes this pass a full-canvas dispatch before its first partial one.
     pub region: crate::layer_compositor::Region,
-    /// Composed height, post-ceiling: `width × height` floats.
+    /// **Where the plane buffers below go**, in canvas coords — the window the CPU folded this frame.
+    ///
+    /// The plane textures are canvas-sized and PERSISTENT, so a window leaves every texel outside it
+    /// holding what the last upload put there. That is what lets the fold shrink from the canvas to the
+    /// dirty rect (measured: 202 ms → 2,8 ms at 4096²) while the shader's central difference still clamps
+    /// to the CANVAS — the reason the planes were canvas-sized in the first place, and a property of the
+    /// texture, not of the upload.
+    ///
+    /// A window is only sound when nothing outside it changed. The pass cannot know that and does not
+    /// guess: it knows only whether it has ever had a FULL window for this canvas ([`Self::region`]'s
+    /// sibling question, answered by [`ImpastoLightPass::planes_seeded`]), and refuses a partial upload
+    /// before that with [`ImpastoLightError::PlanesNotSeeded`].
+    pub plane_region: crate::layer_compositor::Region,
+    /// Composed height, post-ceiling: `plane_region.w × plane_region.h` floats.
     pub relief: &'a [f32],
-    /// Composed coverage: `width × height` bytes.
+    /// Composed coverage: `plane_region.w × plane_region.h` bytes.
     pub cover: &'a [u8],
-    /// `[shine, roughness, metallic, wax]` per texel.
+    /// `[shine, roughness, metallic, wax]` per texel of `plane_region`.
     pub mat0: &'a [u8],
-    /// `[wax_r, wax_g, wax_b, _]` per texel.
+    /// `[wax_r, wax_g, wax_b, _]` per texel of `plane_region`.
     pub mat1: &'a [u8],
     /// The lit lamps (1..=[`IMPASTO_MAX_LIGHTS`]). Empty is a caller bug — the CPU seam returns no planes
     /// at all when every lamp is off, which is how an unlit canvas stays byte-identical instead of being
@@ -109,9 +122,19 @@ impl ImpastoLightInput<'_> {
     ///
     /// [`ImpastoLightError`] naming the first thing that does not fit.
     pub fn check(&self) -> Result<(), ImpastoLightError> {
-        let n = (self.width as usize) * (self.height as usize);
+        // The planes are sized by the WINDOW now, not by the canvas. Checking them against the canvas
+        // would pass a full upload and reject every partial one — and checking nothing would let a short
+        // buffer reach `write_texture`, where the failure is a driver error instead of a named refusal.
+        let n = (self.plane_region.w as usize) * (self.plane_region.h as usize);
         if self.width == 0 || self.height == 0 || self.region.w == 0 || self.region.h == 0 {
             return Err(ImpastoLightError::EmptyExtent);
+        }
+        if self.plane_region.w == 0
+            || self.plane_region.h == 0
+            || self.plane_region.x + self.plane_region.w > self.width
+            || self.plane_region.y + self.plane_region.h > self.height
+        {
+            return Err(ImpastoLightError::PlaneSize);
         }
         if self.relief.len() != n
             || self.cover.len() != n
@@ -138,8 +161,15 @@ impl ImpastoLightInput<'_> {
 pub enum ImpastoLightError {
     /// A zero-area canvas or region.
     EmptyExtent,
-    /// A plane is not `width × height` (times its texel size).
+    /// A plane is not `plane_region.w × plane_region.h` (times its texel size), or the window does not
+    /// fit the canvas.
     PlaneSize,
+    /// A PARTIAL plane upload arrived before this canvas ever had a full one.
+    ///
+    /// The texels outside the window would be whatever the texture was born with — zeros — so the pass
+    /// would light most of the painting as if it were flat. Refused rather than drawn, and the caller's
+    /// fix is to ask [`ImpastoLightPass::planes_seeded`] first and fold the whole canvas when it says no.
+    PlanesNotSeeded,
     /// No lamp, or more than [`IMPASTO_MAX_LIGHTS`].
     LampCount,
     /// The specular table is not `rough_levels × lut_width`.
@@ -179,6 +209,13 @@ struct Plane {
 struct Canvas {
     width: u32,
     height: u32,
+    /// Has this canvas ever had a FULL plane upload? Born `false` with the textures, which is the honest
+    /// state: they hold zeros, and zeros are a flat painting, not the artist's.
+    ///
+    /// Kept HERE and not on the pass because it is a fact about these textures — resize rebuilds them and
+    /// the answer goes back to `false` for free, where a flag one level up would survive the rebuild and
+    /// claim a fresh texture was seeded.
+    planes_seeded: bool,
     relief: Plane,
     cover: Plane,
     mat0: Plane,
@@ -303,8 +340,17 @@ impl ImpastoLightPass {
         input.check()?;
         let (w, h) = (input.width, input.height);
         self.ensure_canvas(gpu, w, h);
+        // Asked AFTER `ensure_canvas`, because a resize rebuilt the textures and un-seeded them: asking
+        // first would answer about the canvas the artist just left.
+        let full = input.plane_region.w == w && input.plane_region.h == h;
+        if !full && !self.planes_seeded(w, h) {
+            return Err(ImpastoLightError::PlanesNotSeeded);
+        }
         self.ensure_lut(gpu, input);
         self.write_planes(gpu, input);
+        if full && let Some(c) = self.canvas.as_mut() {
+            c.planes_seeded = true;
+        }
         self.write_globals(gpu, input);
 
         let canvas = self.canvas.as_ref().expect("just ensured");
@@ -365,6 +411,7 @@ impl ImpastoLightPass {
         self.canvas = Some(Canvas {
             width: w,
             height: h,
+            planes_seeded: false,
             relief: plane(gpu, "relief", w, h, F::R32Float, read),
             cover: plane(gpu, "cover", w, h, F::R8Unorm, read),
             mat0: plane(gpu, "mat0", w, h, F::Rgba8Unorm, read),
@@ -398,24 +445,47 @@ impl ImpastoLightPass {
             wgpu::TextureFormat::R32Float,
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         );
-        write_plane(gpu, &p, bytemuck::cast_slice(input.spec_lut), w * 4, w, h);
+        // The LUT is always whole — it is a pure function of nothing but itself, uploaded once per
+        // process. It shares `write_plane` because it is the same `write_texture`, not because it is a
+        // plane of the painting.
+        write_plane(
+            gpu,
+            &p,
+            bytemuck::cast_slice(input.spec_lut),
+            w * 4,
+            crate::layer_compositor::Region::full(w, h),
+        );
         self.lut = Some((p, w, h));
     }
 
     fn write_planes(&self, gpu: &GpuContext, input: &ImpastoLightInput<'_>) {
         let Some(c) = &self.canvas else { return };
-        let (w, h) = (input.width, input.height);
+        let r = input.plane_region;
         write_plane(
             gpu,
             &c.relief,
             bytemuck::cast_slice(input.relief),
-            w * 4,
-            w,
-            h,
+            r.w * 4,
+            r,
         );
-        write_plane(gpu, &c.cover, input.cover, w, w, h);
-        write_plane(gpu, &c.mat0, input.mat0, w * 4, w, h);
-        write_plane(gpu, &c.mat1, input.mat1, w * 4, w, h);
+        write_plane(gpu, &c.cover, input.cover, r.w, r);
+        write_plane(gpu, &c.mat0, input.mat0, r.w * 4, r);
+        write_plane(gpu, &c.mat1, input.mat1, r.w * 4, r);
+    }
+
+    /// **Do the plane textures for this canvas hold the artist's relief, everywhere?**
+    ///
+    /// The question a caller must ask before folding only a window. `false` on a fresh or resized canvas
+    /// — the textures are zeros there, and lighting from zeros draws the painting flat outside the window.
+    ///
+    /// The pass answers it because the pass owns the textures. A caller keeping its own "have I seeded
+    /// it?" flag would be a second answer to a question about somebody else's state, and it would go on
+    /// saying yes through the resize that threw the textures away.
+    #[must_use]
+    pub fn planes_seeded(&self, width: u32, height: u32) -> bool {
+        self.canvas
+            .as_ref()
+            .is_some_and(|c| c.planes_seeded && c.width == width && c.height == height)
     }
 
     fn write_globals(&self, gpu: &GpuContext, input: &ImpastoLightInput<'_>) {
@@ -477,168 +547,35 @@ fn plane(
     Plane { texture, view }
 }
 
-fn write_plane(gpu: &GpuContext, p: &Plane, bytes: &[u8], row: u32, w: u32, h: u32) {
+/// Upload one plane's WINDOW. `bytes` is exactly `region.w × region.h` texels, tightly packed, and lands
+/// at the window's origin — the texels outside keep what the last upload put there, which is what makes
+/// the canvas-sized texture survive a rect-sized fold.
+fn write_plane(gpu: &GpuContext, p: &Plane, bytes: &[u8], row: u32, region: crate::layer_compositor::Region) {
     gpu.queue.write_texture(
         wgpu::TexelCopyTextureInfo {
             texture: &p.texture,
             mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
+            origin: wgpu::Origin3d {
+                x: region.x,
+                y: region.y,
+                z: 0,
+            },
             aspect: wgpu::TextureAspect::All,
         },
         bytes,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(row),
-            rows_per_image: Some(h),
+            rows_per_image: Some(region.h),
         },
         wgpu::Extent3d {
-            width: w,
-            height: h,
+            width: region.w,
+            height: region.h,
             depth_or_array_layers: 1,
         },
     );
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn impasto_light_wgsl_parses_and_validates_via_naga() {
-        let module = naga::front::wgsl::parse_str(IMPASTO_LIGHT_WGSL)
-            .unwrap_or_else(|e| panic!("impasto_light.wgsl failed naga parse: {e:?}"));
-        let mut validator = naga::valid::Validator::new(
-            naga::valid::ValidationFlags::all(),
-            naga::valid::Capabilities::empty(),
-        );
-        let r = validator.validate(&module);
-        assert!(
-            r.is_ok(),
-            "impasto_light.wgsl failed naga validation: {:?}",
-            r.err()
-        );
-    }
-
-    /// **The literal-level parity gate**, and the one that needs no device — so it runs on every CI
-    /// runner, not only the GPU lane.
-    ///
-    /// Runtime output cannot be bit-identical across backends (a backend may contract `a * b + c` into an
-    /// FMA), so what CAN be pinned exactly is pinned exactly: the constants. `DEPTH_UNIT_PX` is the
-    /// height-to-pixel gain the whole model hangs on — a shader carrying a stale copy would render the
-    /// same painting at a different depth and no gate downstream would say why.
-    #[test]
-    fn impasto_light_shader_constants_match_the_cpu_pass() {
-        // Kept as string checks against the WGSL source rather than shared constants, because the WGSL is
-        // a separate compilation unit: it is exactly the drift a shared `const` cannot catch.
-        for (decl, why) in [
-            (
-                "const DEPTH_UNIT_PX: f32 = 16.0;",
-                "the height-to-pixel gain (impasto_light::DEPTH_UNIT_PX)",
-            ),
-            (
-                "const AMBIENT: f32 = 0.35;",
-                "the diffuse floor (impasto_light::AMBIENT)",
-            ),
-            (
-                "const SPEC_LUT_LAST: f32 = 255.0;",
-                "material::SPEC_LUT - 1",
-            ),
-            ("const ROUGH_LAST: i32 = 64;", "material::ROUGH_LEVELS - 1"),
-            (
-                "const FLAT_FLOOR: f32 = 1.0e-4;",
-                "the divisor floor in `channel`",
-            ),
-            ("array<Lamp, 4>", "impasto_rig::MAX_LIGHTS"),
-        ] {
-            assert!(
-                IMPASTO_LIGHT_WGSL.contains(decl),
-                "impasto_light.wgsl must declare `{decl}` — {why}"
-            );
-        }
-        assert_eq!(
-            IMPASTO_MAX_LIGHTS, 4,
-            "the uniform's lamp array and impasto_rig::MAX_LIGHTS are the same number"
-        );
-    }
-
-    /// The shader must NOT reach for the fast reciprocal square root. The CPU normalises by `sqrt` and a
-    /// divide; `inverseSqrt` is allowed to be approximate, and swapping it in would move the normal — and
-    /// therefore every lit pixel — for a handful of ALU cycles nobody asked for.
-    #[test]
-    fn the_normal_is_a_real_sqrt_not_an_approximation() {
-        assert!(
-            !IMPASTO_LIGHT_WGSL.contains("inverseSqrt"),
-            "the normal must divide by a real sqrt, as the CPU pass does"
-        );
-        assert!(
-            IMPASTO_LIGHT_WGSL.contains("max(sqrt("),
-            "…and floor the length exactly as `Rig::shade` does"
-        );
-    }
-
-    /// Every mis-shaped request is refused BEFORE a GPU resource is touched, so this runs device-free.
-    /// A plane of the wrong size is the dangerous one: it would light the painting from a relief that is
-    /// not on it, and the result would look like a bug in the sculpt rather than a bug in the upload.
-    #[test]
-    fn a_mis_shaped_request_is_refused_without_a_device() {
-        let lamp = ImpastoLamp {
-            dir: [0.0, 0.0, 1.0],
-            half: [0.0, 0.0, 1.0],
-            tint: [1.0; 3],
-        };
-        let lut = vec![0.0f32; 8];
-        let relief = vec![0.0f32; 4];
-        let cover = vec![0u8; 4];
-        let mats = vec![0u8; 16];
-        let base = || ImpastoLightInput {
-            width: 2,
-            height: 2,
-            region: crate::layer_compositor::Region::full(2, 2),
-            relief: &relief,
-            cover: &cover,
-            mat0: &mats,
-            mat1: &mats,
-            lamps: std::slice::from_ref(&lamp),
-            spec_lut: &lut,
-            lut_width: 4,
-            rough_levels: 2,
-        };
-        assert_eq!(base().check(), Ok(()), "a well-formed request passes");
-
-        let mut short_relief = base();
-        short_relief.relief = &relief[..3];
-        assert_eq!(
-            short_relief.check(),
-            Err(ImpastoLightError::PlaneSize),
-            "a short relief plane is refused, not silently read past"
-        );
-
-        let mut short_mat = base();
-        short_mat.mat1 = &mats[..12];
-        assert_eq!(
-            short_mat.check(),
-            Err(ImpastoLightError::PlaneSize),
-            "…and so is a short material plane"
-        );
-
-        let mut dark = base();
-        dark.lamps = &[];
-        assert_eq!(
-            dark.check(),
-            Err(ImpastoLightError::LampCount),
-            "no lamp is a caller bug: the CPU seam hands over no planes at all when the rig is dark"
-        );
-
-        let mut bad_lut = base();
-        bad_lut.lut_width = 3;
-        assert_eq!(bad_lut.check(), Err(ImpastoLightError::LutSize));
-
-        let mut empty = base();
-        empty.region.w = 0;
-        assert_eq!(
-            empty.check(),
-            Err(ImpastoLightError::EmptyExtent),
-            "an empty region would dispatch nothing and report success"
-        );
-    }
-}
+#[path = "impasto_light_tests.rs"]
+mod tests;

@@ -66,6 +66,15 @@ pub struct ImpastoLamp {
 pub struct ImpastoPlanes {
     pub width: u32,
     pub height: u32,
+    /// **Where in the canvas these buffers go** — `(x, y, w, h)`. The planes are a WINDOW, not the
+    /// canvas: [`PainterTool::impasto_gpu_planes_in`] folds only this rect, and the pass writes only
+    /// this rect into its persistent plane textures.
+    ///
+    /// `width`/`height` above stay the CANVAS, because they are what the shader clamps its central
+    /// difference to. A window that renamed itself the canvas would move the clamp to the window's edge
+    /// and draw a seam along a rectangle nobody could explain — the reason the planes were canvas-sized
+    /// in the first place. Persisting the textures keeps that clamp while letting the fold shrink.
+    pub region: (u32, u32, u32, u32),
     /// Composed height, **post-ceiling** — literally what `height_at` returns.
     pub relief: Vec<f32>,
     /// Composed coverage (`R8Unorm`): the shader's `byte / 255` is the CPU's `f32::from(c) / 255.0`,
@@ -105,13 +114,51 @@ impl PainterTool {
     /// path agree about when there is no light" a property rather than a coincidence.
     #[must_use]
     pub fn impasto_gpu_planes(&self) -> Option<ImpastoPlanes> {
+        let (w, h) = self.source_size;
+        self.impasto_gpu_planes_in((0, 0, w, h))
+    }
+
+    /// The same fold, over a WINDOW — the door every caller actually goes through.
+    ///
+    /// # Why this exists
+    ///
+    /// The full-canvas fold was measured at **202 ms per frame at 4096²** (`measure_the_impasto_fold`),
+    /// and the GPU preview runs it on every dirty frame, which during a stroke means every pointer move.
+    /// Dissected (`measure_what_the_fold_is_made_of`): 0,15 ms of allocation and **180 ms of per-texel
+    /// walk** — so the cost is the number of texels and nothing else, and the same walk over a 512² rect
+    /// costs **2,82 ms at BOTH canvas sizes**. Folding the rect that changed instead of the canvas that
+    /// did not is therefore a ~64× cut at 4K, with no change to what any texel says.
+    ///
+    /// # What makes a partial fold SOUND
+    ///
+    /// The pass's plane textures persist, so texels outside `region` keep what the last upload put
+    /// there. That is correct exactly when the composed relief outside `region` did not change — and that
+    /// is not a hope, it is the invariant the CPU lane's partial recompose already runs on:
+    /// `invalidate_composite` drops `dirty_rect` to `None` for every structural or metadata edit
+    /// (opacity, blend, visibility, reorder, add, select, `impasto_depth`), so the rect the GPU lane
+    /// stashes ([`PainterTool::preview_gpu_region`]) is `Some` **only** when the change was confined to
+    /// it. A caller with no confined rect asks for the whole canvas and gets the old behaviour, to the
+    /// byte.
+    ///
+    /// The window is clamped to the canvas rather than refused: a rect that pokes over the edge is a
+    /// caller being generous about what changed, which is safe, where refusing would drop a frame's light.
+    #[must_use]
+    pub fn impasto_gpu_planes_in(&self, region: (u32, u32, u32, u32)) -> Option<ImpastoPlanes> {
         if !self.impasto_visible() {
             return None;
         }
         let fields = self.impasto_fields()?;
         let lamps = super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
         let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
+        if (w as usize) * (h as usize) == 0 {
+            return None;
+        }
+        let (rx, ry, rw, rh) = region;
+        let rx = rx.min(w);
+        let ry = ry.min(h);
+        let rw = rw.min(w - rx);
+        let rh = rh.min(h - ry);
+        let n = (rw as usize) * (rh as usize);
         if n == 0 {
             return None;
         }
@@ -119,8 +166,11 @@ impl PainterTool {
         let mut cover = Vec::with_capacity(n);
         let mut mat0 = Vec::with_capacity(n * 4);
         let mut mat1 = Vec::with_capacity(n * 4);
-        for y in 0..i64::from(h) {
-            for x in 0..i64::from(w) {
+        // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
+        // window carries the identical bytes a full fold would have given it. That is what makes
+        // "partial" a statement about how MUCH is folded and never about WHAT it says.
+        for y in i64::from(ry)..i64::from(ry + rh) {
+            for x in i64::from(rx)..i64::from(rx + rw) {
                 relief.push(fields.height_at(x, y));
                 // Quantised the way the canvas already stores coverage, so the shader's unorm decode
                 // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
@@ -134,6 +184,7 @@ impl PainterTool {
         Some(ImpastoPlanes {
             width: w,
             height: h,
+            region: (rx, ry, rw, rh),
             relief,
             cover,
             mat0,
@@ -234,6 +285,108 @@ mod tests {
         assert!(
             touched > 200,
             "the fixture must actually carry relief (only {touched} texels do)"
+        );
+    }
+
+    /// **A window says the same thing the canvas said, inside it.** The whole safety of the partial fold
+    /// is that "partial" is a claim about how MUCH is folded and never about WHAT it says: the pass keeps
+    /// the texels outside the window from the previous upload, so a window that disagreed with the full
+    /// fold would paint a rectangle of a different painting into the middle of this one.
+    ///
+    /// Compared against the FULL door's own output rather than against `height_at` again — the full door
+    /// is what shipped and what every existing gate pins, so it is the oracle a regression has to break.
+    #[test]
+    fn a_window_folds_exactly_what_the_whole_canvas_folded_there() {
+        let t = sculpted();
+        let whole = t.impasto_gpu_planes().expect("a sculpted canvas has planes");
+        // A window that CONTAINS the stroke — a rect over bare paper would agree trivially, since two
+        // zero-filled buffers match whatever the fold does ([[feedback_a_fixture_only_proves_what_it_contains]]).
+        let win = (10u32, 16u32, 28u32, 16u32);
+        let part = t
+            .impasto_gpu_planes_in(win)
+            .expect("…and so does a window of it");
+        assert_eq!(part.region, win, "the window reports where it goes");
+        assert_eq!(
+            (part.width, part.height),
+            (whole.width, whole.height),
+            "the CANVAS dims are unchanged — they are what the shader clamps to"
+        );
+        let (rx, ry, rw, rh) = win;
+        let mut carried = 0usize;
+        for j in 0..rh as usize {
+            for i in 0..rw as usize {
+                let p = j * (rw as usize) + i;
+                let c = (ry as usize + j) * (SIZE as usize) + (rx as usize + i);
+                assert_eq!(part.relief[p], whole.relief[c], "relief at ({i}, {j})");
+                assert_eq!(part.cover[p], whole.cover[c], "cover at ({i}, {j})");
+                assert_eq!(&part.mat0[p * 4..p * 4 + 4], &whole.mat0[c * 4..c * 4 + 4]);
+                assert_eq!(&part.mat1[p * 4..p * 4 + 4], &whole.mat1[c * 4..c * 4 + 4]);
+                if part.relief[p] != 0.0 {
+                    carried += 1;
+                }
+            }
+        }
+        assert!(
+            carried > 100,
+            "the WINDOW must contain relief, or this compares two empty buffers (only {carried} texels do)"
+        );
+    }
+
+    /// **The fold is bounded by the WINDOW, not by the canvas** — the property whose absence cost 202 ms
+    /// a frame at 4096², and the one no gate in this module could see.
+    ///
+    /// A RATIO, not a wall clock: the same window folded on two canvases must cost the same, because the
+    /// work is per texel and the window has the same texels either way. A ratio is also immune to machine
+    /// drift and to the profile the suite happens to build in, which a millisecond bar is not.
+    ///
+    /// **Mutation that must bleed:** point the shell's fold back at `impasto_gpu_planes()` (or make
+    /// `impasto_gpu_planes_in` ignore its argument) and this quadruples with the canvas.
+    #[test]
+    fn the_fold_costs_what_the_window_costs_not_what_the_canvas_costs() {
+        /// Median wall clock of the same window folded on a canvas of `size`.
+        fn window_ms(size: u32) -> f64 {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+            let b = BrushSpec {
+                radius_px: 24.0,
+                hardness: 1.0,
+                falloff: Falloff::Constant,
+                color: [0.1, 0.2, 0.3],
+                space_attenuation: false,
+                impasto: true,
+                impasto_depth: 0.5,
+                impasto_smoothing: 0.0,
+                impasto_body: 1.0,
+                ..Default::default()
+            };
+            t.paint.brush = b;
+            for slot in &mut t.paint.brush_by_mode {
+                *slot = b;
+            }
+            let mid = (size / 2) as f32;
+            t.on_canvas_pointer(cp([40.0, mid], PointerPhase::Down));
+            t.on_canvas_pointer(cp([160.0, mid], PointerPhase::Move));
+            t.on_canvas_pointer(cp([160.0, mid], PointerPhase::Up));
+            let win = (20u32, (size / 2) - 64, 128, 128);
+            let mut s = Vec::new();
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                let p = t.impasto_gpu_planes_in(win).expect("sculpted and lit");
+                s.push(t0.elapsed().as_secs_f64() * 1e3);
+                drop(p);
+            }
+            s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            s[s.len() / 2]
+        }
+        let small = window_ms(512);
+        let large = window_ms(1024);
+        // 4x the canvas, the same window. Anything that walks the plane shows up as ~4x here; the bar
+        // sits well below that and well above the noise of two sub-millisecond samples.
+        let ratio = large / small.max(1e-6);
+        assert!(
+            ratio < 2.0,
+            "the fold must be bounded by the window: 512²={small:.4} ms vs 1024²={large:.4} ms \
+             ({ratio:.2}x — a canvas-bound fold quadruples)"
         );
     }
 

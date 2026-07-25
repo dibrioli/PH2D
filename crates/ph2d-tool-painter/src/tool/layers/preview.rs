@@ -104,6 +104,26 @@ impl PainterTool {
         dirty
     }
 
+    /// **What the last GPU-lane drain claimed changed** — `(x, y, w, h)`, or `None` for "not confined".
+    ///
+    /// The GPU-lane twin of [`Self::take_preview_upload_bbox`], and the same rect the compositor's
+    /// provider already uses to re-upload one sub-rect of the changed layer. Exposed so the rest of the
+    /// lane can honour it too: the impasto fold (`impasto_gpu_planes_in`) walks a rect instead of the
+    /// canvas, which measured 202 ms → 2,8 ms at 4096².
+    ///
+    /// **A PEEK, deliberately.** `take_preview_dirty` already consumed `dirty_rect` into this stash, and
+    /// the stash has more than one reader in the same frame (the layer provider, then the fold). A
+    /// consuming read here would hand the rect to whichever of them ran first and silently give the other
+    /// a full-canvas frame — the second reader would still be CORRECT, just slow, which is the shape of a
+    /// perf bug that no gate notices.
+    ///
+    /// `None` means the change was not confined (a structural edit routes through
+    /// `invalidate_composite`, which drops the rect), and every caller reads that as *do it whole*.
+    #[must_use]
+    pub fn preview_gpu_region(&self) -> Option<(u32, u32, u32, u32)> {
+        self.preview_dirty_region.map(|r| (r.x, r.y, r.w, r.h))
+    }
+
     /// Public projection of [`Self::is_trivial_stack`] for the shell's GPU
     /// preview producer (it bows out of GPU compositing on a trivial stack so
     /// the zero-copy CPU fast path owns the slot).

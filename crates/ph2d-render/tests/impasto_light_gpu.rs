@@ -172,6 +172,15 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         width: planes.width,
         height: planes.height,
         region: GpuRegion::full(planes.width, planes.height),
+        // The window the CPU folded. `impasto_gpu_planes` folds the whole canvas, so this reconciliation
+        // runs the SEEDING upload — which is also the only one a parity gate may run, since a partial
+        // upload's correctness is a statement about the frame BEFORE it and this fixture has none.
+        plane_region: GpuRegion {
+            x: planes.region.0,
+            y: planes.region.1,
+            w: planes.region.2,
+            h: planes.region.3,
+        },
         relief: &planes.relief,
         cover: &planes.cover,
         mat0: &planes.mat0,

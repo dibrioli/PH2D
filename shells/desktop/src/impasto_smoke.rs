@@ -101,6 +101,27 @@ pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_IMPASTO_SMOKE").is_some()
 }
 
+/// The canvas edge this run paints on.
+///
+/// `PH2D_IMPASTO_SMOKE=2` opens a **4096²** canvas — the tela where the fold regression lived and the
+/// only one where its cure is something the artist can FEEL. Measured on the RTX, per pointer move, on
+/// the GPU producer that a sculpted document takes:
+///
+/// | canvas | antes | agora |
+/// |---|---|---|
+/// | 2048² | 57,1 ms | **1,98 ms** |
+/// | 4096² | **225,6 ms** | **2,62 ms** |
+///
+/// 225 ms a move is ~4 fps: the brush lags a whole hand's width behind the cursor. At 1024² — what `=1`
+/// opens — the same defect cost ~11 ms, which reads as "a bit heavy" and is exactly why it survived a
+/// smoke. A cure whose scene cannot show the disease is a scene that will approve the disease back.
+fn canvas_edge() -> u32 {
+    match std::env::var("PH2D_IMPASTO_SMOKE").as_deref() {
+        Ok("2") => 4096,
+        _ => 1024,
+    }
+}
+
 /// Spawn the blank paint canvas when `PH2D_IMPASTO_SMOKE=1`. Returns the entity bits so the caller can
 /// seat the selection on it (so the artist lands ON the canvas, not hunting for it).
 pub(crate) fn spawn_if_enabled(
@@ -119,17 +140,29 @@ pub(crate) fn spawn_if_enabled(
         renderer,
         asset_db,
         cell_idx,
-        1024,
+        canvas_edge(),
         2, // opaque white — relief reads clearest on a light ground
         Vec2::new(0.0, 0.0),
         pixels_per_meter,
         atlas_asset_map,
     ) {
         Ok((label, bits)) => {
+            let edge = canvas_edge();
             println!(
-                "PH2D_IMPASTO_SMOKE: canvas '{label}' ready — pick the Painter tool. It opens in \
-                 DIGITAL; pick Impasto from the Paint Mode dropdown (Grain = None, size 40), then drag."
+                "PH2D_IMPASTO_SMOKE: canvas '{label}' ({edge}x{edge}) ready — pick the Painter tool. \
+                 It opens in DIGITAL; pick Impasto from the Paint Mode dropdown (Grain = None, \
+                 size 40), then drag."
             );
+            if edge >= 4096 {
+                println!(
+                    "PH2D_IMPASTO_SMOKE=2: o que julgar e o numero que ele tinha. Pinte um traco \
+                     LONGO e continuo, e depois va e volte sobre ele. O pincel tem de acompanhar o \
+                     cursor. Medido nesta tela, por movimento: 225,6 ms antes (aprox. 4 fps, o pincel \
+                     ficava uma mao atras do cursor) contra 2,62 ms agora. O desenho nao muda -- a \
+                     wave e so velocidade -- entao se a tinta parecer diferente da de 1024, isso e um \
+                     achado e nao um detalhe."
+                );
+            }
             Some(bits)
         }
         Err(e) => {

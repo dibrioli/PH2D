@@ -196,6 +196,155 @@ fn measure_the_stack_depth() {
     println!();
 }
 
+/// **The fold the GPU path still pays on the CPU** — `impasto_gpu_planes`, once per dirty frame.
+///
+/// Every other composite number in this file is the CPU lane, and a sculpted document does not take it
+/// any more: the GPU compositor and the GPU light claimed that frame in 2026-07-18. What the product
+/// still pays is this — the composed relief materialised CANVAS-WIDE so the shader has planes to read
+/// ([`super::impasto_gpu::ImpastoPlanes`], which calls the choice deliberate v1 and names the fix). It is
+/// the one impasto cost no measurement here could see, so "which impasto number is the biggest" was being
+/// answered without it.
+///
+/// Two axes, for the same reason as the census: canvas size says whether the cost is plane-bound (it is —
+/// the loop is per texel), and layer count says what the fold itself costs on top of the walk.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_impasto_fold() {
+    /// A canvas with `layers` sculpted layers, each carrying a stroke of its own — the fold has to have
+    /// something to fold, and a single layer would report the walk while hiding the composite modes.
+    fn sculpted(size: u32, layers: usize) -> PainterTool {
+        let mut t = armed(size, PaintMedia::Impasto, 100.0);
+        let mid = (size / 2) as f32;
+        for i in 0..layers {
+            if i > 0 {
+                t.add_raster_layer("L");
+            }
+            let y = mid + (i as f32) * 40.0;
+            t.on_canvas_pointer(cp([200.0, y], PointerPhase::Down));
+            t.on_canvas_pointer(cp([700.0, y], PointerPhase::Move));
+            t.on_canvas_pointer(cp([700.0, y], PointerPhase::Up));
+        }
+        t
+    }
+    println!(
+        "\n{:<10} {:>8} {:>12} {:>14}",
+        "layers", "canvas", "fold ms", "MB/frame"
+    );
+    for layers in [1usize, 4] {
+        for size in [2048u32, 4096] {
+            let t = sculpted(size, layers);
+            assert!(
+                t.impasto_gpu_planes().is_some(),
+                "the fixture must CARRY relief, or this measures a `None` early-out"
+            );
+            let mut samples = Vec::new();
+            for _ in 0..7 {
+                let t0 = Instant::now();
+                let p = t.impasto_gpu_planes().expect("sculpted and lit");
+                samples.push(t0.elapsed().as_secs_f64() * 1e3);
+                // Dropped OUTSIDE the clock on purpose: freeing four canvas-sized `Vec`s is part of the
+                // frame, but it is not part of the fold, and folding the free in would report the
+                // allocator as if it were the loop.
+                drop(p);
+            }
+            samples.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let n = (size as f64) * (size as f64);
+            println!(
+                "{:<10} {:>8} {:>12.3} {:>14.1}",
+                t.layers().len(),
+                size,
+                samples[samples.len() / 2],
+                // relief f32 + cover u8 + mat0 + mat1 = 13 bytes a texel.
+                n * 13.0 / (1024.0 * 1024.0)
+            );
+        }
+    }
+    println!();
+}
+
+/// **What the fold is MADE of** — the three candidate cures, priced before any of them is written.
+///
+/// [`measure_the_impasto_fold`] says the fold is the biggest per-frame number in the Painter. It does not
+/// say *why*, and the three cures are different waves with different risks:
+///
+/// * **allocation floor** — four canvas-sized `Vec`s built fresh every frame. If the floor is most of the
+///   number, the cure is a reused scratch and nothing else.
+/// * **the walk** — `height_at`/`cover_at`/`material_at` per texel. Whatever is left above the floor.
+/// * **a REGION** — the same walk over the dirty rect instead of the canvas. This is the number that says
+///   whether persistent plane textures with a partial re-fold is worth the epoch machinery it needs.
+///
+/// Measured through the light's OWN samplers, the same ones `impasto_gpu_planes` calls — a loop of my own
+/// arithmetic here would price a fold the product does not run.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_what_the_fold_is_made_of() {
+    fn sculpted(size: u32) -> PainterTool {
+        let mut t = armed(size, PaintMedia::Impasto, 100.0);
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
+        t.on_canvas_pointer(cp([700.0, mid], PointerPhase::Move));
+        t.on_canvas_pointer(cp([700.0, mid], PointerPhase::Up));
+        t
+    }
+    /// The dirty rect a 100px brush actually marks — the region a partial fold would have to cover.
+    const REGION_EDGE: i64 = 512;
+    println!(
+        "\n{:<8} {:>12} {:>12} {:>12} {:>14}",
+        "canvas", "alloc ms", "full ms", "region ms", "region edge"
+    );
+    for size in [2048u32, 4096] {
+        let t = sculpted(size);
+        let n = (size as usize) * (size as usize);
+        let mut alloc = Vec::new();
+        for _ in 0..7 {
+            let t0 = Instant::now();
+            let planes = (
+                vec![0f32; n],
+                vec![0u8; n],
+                vec![0u8; n * 4],
+                vec![0u8; n * 4],
+            );
+            alloc.push(t0.elapsed().as_secs_f64() * 1e3);
+            drop(planes);
+        }
+        let f = t.impasto_fields().expect("sculpted and lit");
+        // The walk, over the whole canvas and over a rect — same samplers, same order, only the bounds
+        // differ, so the ratio between the two columns is the region's saving and nothing else.
+        let walk = |x0: i64, y0: i64, x1: i64, y1: i64| -> f64 {
+            let mut s = Vec::new();
+            for _ in 0..5 {
+                let t0 = Instant::now();
+                let mut sink = 0.0f32;
+                for y in y0..y1 {
+                    for x in x0..x1 {
+                        sink += f.height_at(x, y) + f.cover_at(x, y);
+                        sink += f32::from(f.material_at(x, y)[0]);
+                    }
+                }
+                s.push(t0.elapsed().as_secs_f64() * 1e3);
+                assert!(sink.is_finite(), "the sink keeps the walk from being optimised away");
+            }
+            s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            s[s.len() / 2]
+        };
+        let edge = i64::from(size);
+        let full = walk(0, 0, edge, edge);
+        let mid = edge / 2;
+        let half = REGION_EDGE / 2;
+        let region = walk(mid - half, mid - half, mid + half, mid + half);
+        alloc.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        println!(
+            "{:<8} {:>12.3} {:>12.3} {:>12.3} {:>14}",
+            size,
+            alloc[alloc.len() / 2],
+            full,
+            region,
+            REGION_EDGE
+        );
+    }
+    println!();
+}
+
 /// **The shell holds the drained Arc, and that is the whole cost of a plain stroke.**
 ///
 /// Every other MOVE measurement in this file drops the `take_preview_arc` result on the floor

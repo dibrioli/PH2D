@@ -942,6 +942,81 @@ ponteiro está, e o cursor físico pode ter falado por último).
 
 ---
 
+## Bug #19 — "A gaiola do envelope não aparece, mas o efeito se aplica" (2026-07-24) — **FECHADO**
+
+### Sintoma
+
+O artista seleciona uma forma, clica **Envelope**, entra no modo **Node** — a forma deforma pela
+gaiola de perspectiva (o efeito aplica), mas **a gaiola não aparece**: no lugar dos 4 cantos
+arrastáveis, o que se vê são as **alças de nó da própria forma** (quadrados de âncora + pontos de
+tangente), que não editam nada útil. Reportado com screenshot; *"Some depois de quê? Nem aparece."*
+
+⚠️ **Quase foi diagnosticado como build velho.** O smoke `=27` (a estrela envelopada) renderizava a
+gaiola **corretamente** — provado por três vias: um teste headless (`gizmo.selection` = container,
+`is_envelope` = true, `view()` = Some, estável por 4 frames), o diagnóstico de runtime do app real
+(`[vec-diag] render selection=…(container) is_envelope=true`) e uma **captura de tela** do `=27`
+(trapézio + 4 círculos, estrela limpa). Foi essa contradição — smoke OK, produto quebrado — que
+apontou a causa: **a ordem do smoke não era a ordem do produto**.
+
+### Causa
+
+As duas metades do overlay do Node dependem de o gizmo carregar o **CONTAINER** do envelope:
+
+- as alças de nó da forma são **suprimidas** só quando `is_envelope(hero.gizmo.selection)` (a forma
+  sob a gaiola é derivada — seus nós são a SAÍDA do warp, não editáveis);
+- a gaiola é desenhada por `envelope_gesture::view(sim, hero.gizmo.selection, …)`, que devolve `None`
+  quando a seleção não carrega um `VecEnvelope`.
+
+Alças aparecendo **e** gaiola ausente = `gizmo.selection` era o **FILHO**, não o container.
+
+A promoção filho→container mora no `vec_selection::sync_selection` (a regra "seleção-só-o-container"
+do ADR-0129 Fatia 3, via `envelope_live::sole_container`). Mas o `sync_selection` só **reroda** essa
+promoção quando **o pen muda** (`pen_now != state.paths`, branch 1) ou **o conjunto vetorial do
+gizmo muda** (branch 2). E o gesto do produto — *selecionar a forma, DEPOIS clicar Envelope* —
+não faz nenhum dos dois: enveloparr **re-parenteia o filho sem tocar o pen**. Sequência exata:
+
+1. artista seleciona a forma → sync branch 1 roda, `sole_container([forma])` = `None` (ainda sem
+   envelope) → `gizmo = forma`, `state.paths = [forma]`;
+2. artista clica **Envelope** → `create()` re-parenteia a forma sob o container novo, **pen intacto**;
+3. próximo `sync_selection`: `pen == state.paths` ⇒ branch 1 pulado; a forma ainda é "vetorial-nossa"
+   ⇒ branch 2 vê o mesmo conjunto e retorna cedo ⇒ **gizmo fica na forma, para sempre**.
+
+O `create()` **já DEVOLVE** os bits do container "para a seleção/gizmo" (o próprio doc dele diz
+isso) — o `render_loop` simplesmente **descartava o valor** (`Some(_) =>` só imprimia).
+
+### Correção
+
+`VecSelSync::invalidate()` (limpa `state.paths`) forçando o `sync_selection` do MESMO frame a
+rerodar a promoção pela branch 1 — que agora acha `sole_container([forma])` = o container recém-criado
+e promove o gizmo. O `create` do `render_loop` a dispara ao ter sucesso; o smoke `=27` faz o mesmo.
+Reusa a lógica de promoção que já existe (zero 2ª porta).
+
+### Correção do SMOKE (a fixture mascarava o bug)
+
+O `=27` criava o envelope e **só então** selecionava a forma — **tudo num frame**. Nessa ordem o
+`select_many` MUDA o pen, então a branch 1 roda e a promoção acontece **por acidente**, com a gaiola
+aparecendo. Passou à **ordem do produto**: seleciona no **frame 4**, envelopa no **frame 5** (dois
+frames separados — é a separação que reproduz o bug). O smoke agora exercita a correção de verdade.
+
+### Gate
+
+`enveloping_a_selected_shape_promotes_the_gizmo_to_the_container` (`vec_selection.rs`) espelha o
+gesto do produto: seleciona → sync (gizmo = forma) → `create()` → `invalidate()` → sync, e exige
+`gizmo.selection == container` **e** `view().is_some()`. **Mutação-provado:** sem o `invalidate()`,
+o gizmo fica no filho e o gate fica **VERMELHO** (`assertion left == right failed`).
+
+### Lição
+
+**A ordem de SETUP de um fixture esconde bugs dependentes de ORDEM.** O smoke montava o estado no
+caminho *conveniente* (criar-depois-selecionar), que dispara a promoção por outra via; o produto usa
+a ordem *inversa* (selecionar-depois-criar), onde nada a dispara. Quando o report descreve um GESTO
+(*"acrescentei envelope"*), o gate/smoke tem de reproduzir a MESMA sequência, em frames separados se
+o produto os separa. E o corolário do processo: quando o smoke passa e o produto falha, **não
+declare "build velho" — instrumente** (headless + runtime diag + captura) até a contradição nomear a
+causa. Família: [[reference_topic_fixture_discipline]].
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

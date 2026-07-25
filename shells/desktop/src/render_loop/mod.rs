@@ -636,6 +636,7 @@ impl crate::App {
         self.flip_tween_pairs_smoke();
         self.flip_strip_smoke();
         self.flip_tween_phase_smoke();
+        self.flip_tween_torsion_smoke();
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();

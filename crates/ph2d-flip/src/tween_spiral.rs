@@ -180,9 +180,9 @@ impl StrokeMotion {
         }
     }
 
-    /// **Onde o ponto pareado `a ↔ b` está no fator `u`** — rígido + resíduo, a porta única
-    /// do ponto INTERPOLADO (o `advance` responde outra pergunta: onde vai um passageiro
-    /// que não tem par).
+    /// **Onde o ponto pareado `a ↔ b` está no fator `u`** — rígido + resíduo CO-ROTACIONADO,
+    /// a porta única do ponto INTERPOLADO (o `advance` responde outra pergunta: onde vai um
+    /// passageiro que não tem par).
     ///
     /// ⚠️ **Na `Translate` a conta é escrita como `a + (b − a)·u`, e isso é load-bearing:**
     /// é algebricamente a mesma expressão (`a + d·u + (b − a − d)·u`), mas com **uma**
@@ -190,10 +190,41 @@ impl StrokeMotion {
     /// ao tween do v1 em vez de a um ulp dele. A forma de duas parcelas errava o último bit
     /// (medido: `36.175` × `36.174995`), e um gate de bits é muito mais difícil de fraudar
     /// que um de épsilon.
+    ///
+    /// ⚠️ **Na `Spiral` o resíduo é CO-ROTACIONADO, não somado no referencial do MUNDO** — é
+    /// a cura do §9 do plano (*"rotação grande ainda torce o lerp do resíduo"*). O resíduo
+    /// `r = b − S(a)` é *o que a similaridade global não explica*: uma feature (uma corcova,
+    /// um cotovelo) **presa ao corpo**. E o corpo GIRA. No meio do caminho ele já rodou `θ·u`,
+    /// mas `r` foi medido em B, com o corpo a `θ` inteiro. Somar `r·u` no referencial fixo (o
+    /// v2 anterior) deixa a feature apontando para a atitude ERRADA, e a forma TORCE quanto
+    /// MAIOR o giro — medido: 160°+corcova, o meio ACHATAVA a corcova (erro intrínseco 0,59
+    /// contra 0,17 co-rotacionado). A cura carrega `r` do referencial de B para o referencial
+    /// PARCIAL em `u`: rodado `θ(u−1)`, escalado `σ^(u−1)`.
+    ///
+    /// Fecha os dois extremos por construção: em `u=1` o mapa é a identidade (`R(0)`, `σ⁰`) ⇒
+    /// `r` inteiro ⇒ fecha em B; em `u=0` o fator externo `·u` zera ⇒ abre em A.
+    ///
+    /// **Resíduo zero (similaridade PURA) ⇒ termo zero ⇒ byte-idêntico ao espiral de antes**
+    /// — é o que preserva todos os gates existentes (giro-de-braço, escala geométrica, pivô,
+    /// extremos: todos com `r = 0`). E `θ=0 ∧ σ=1` já cai em `Translate`, onde não há giro
+    /// para descasar. É subsunção, não um modo novo.
+    ///
+    /// ⚠️ **Sozinho, um giro global não modela ARTICULAÇÃO** (partes girando quantidades
+    /// diferentes) — mas ainda AJUDA (medido: 90°+cotovelo 80°, erro 0,35 → 0,10), porque o
+    /// giro dominante é o global. O resíduo que sobra (a rotação diferencial) é a fronteira da
+    /// reconstrução por-aresta do Sederberg, nomeada no §9 do plano, não construída aqui.
     pub(crate) fn point_at(&self, a: Vec2, b: Vec2, u: f32) -> Vec2 {
         match *self {
             Self::Translate(_) => a + (b - a) * u,
-            Self::Spiral { .. } => self.advance(a, u) + self.residual(a, b) * u,
+            Self::Spiral { angle, scale, .. } => {
+                let r = self.residual(a, b);
+                // `r` do referencial de B (rodado θ, escalado σ) para o de `u` (rodado θu,
+                // escalado σᵘ): rotaciona por θ(u−1) e escala por σ^(u−1).
+                let (sin, cos) = libm::sincosf(angle * (u - 1.0));
+                let k = libm::powf(scale, u - 1.0);
+                let carried = Vec2::new(k * (cos * r.x - sin * r.y), k * (sin * r.x + cos * r.y));
+                self.advance(a, u) + carried * u
+            }
         }
     }
 

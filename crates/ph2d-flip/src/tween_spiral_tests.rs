@@ -249,6 +249,234 @@ fn the_spiral_ruler() {
     println!("\n  DET_MIN = {DET_MIN:e}\n");
 }
 
+/// O ângulo de virada com sinal em cada vértice INTERNO (o intrínseco do Sederberg): a
+/// forma LOCAL, invariante à rotação e à translação globais.
+fn turning_angles(pts: &[Vec2]) -> Vec<f32> {
+    pts.windows(3)
+        .map(|w| {
+            let e0 = w[1] - w[0];
+            let e1 = w[2] - w[1];
+            libm::atan2f(e0.x * e1.y - e0.y * e1.x, e0.x * e1.x + e0.y * e1.y)
+        })
+        .collect()
+}
+
+/// A diferença angular pelo caminho mais curto (`y − x` reduzido a `(−π, π]`).
+fn short_delta(x: f32, y: f32) -> f32 {
+    let mut d = y - x;
+    while d > std::f32::consts::PI {
+        d -= std::f32::consts::TAU;
+    }
+    while d <= -std::f32::consts::PI {
+        d += std::f32::consts::TAU;
+    }
+    d
+}
+
+/// O fixture da torção: um braço reto que gira `deg` graus E ganha uma CORCOVA perpendicular
+/// PRESA ao corpo (`B = R(deg)·(A + δ)`). O resíduo é então `R(deg)·δ` — uma feature do corpo,
+/// e é o giro grande que a faz apontar para o lado errado no meio do caminho pelo lerp.
+fn bumped_arm(deg: f32) -> (Vec<Vec2>, Vec<Vec2>) {
+    let n = 9;
+    let a: Vec<Vec2> = (0..n).map(|i| Vec2::new(i as f32 * 12.0, 0.0)).collect();
+    let deformed: Vec<Vec2> = a
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| {
+            let bump = 34.0 * (std::f32::consts::PI * i as f32 / (n - 1) as f32).sin();
+            p + Vec2::new(0.0, bump)
+        })
+        .collect();
+    let b = pose(&deformed, Vec2::ZERO, deg, 1.0);
+    (a, b)
+}
+
+/// O ponto interpolado pelo LERP do resíduo no referencial do mundo — o v2 ANTERIOR, o
+/// controle contra o qual a cura se mede (nunca é `point_at`; é a forma explícita, sempre
+/// disponível para a mutação não conseguir se esconder atrás da porta).
+fn mid_linear(m: StrokeMotion, a: &[Vec2], b: &[Vec2], u: f32) -> Vec<Vec2> {
+    a.iter()
+        .zip(b)
+        .map(|(&p, &q)| m.advance(p, u) + m.residual(p, q) * u)
+        .collect()
+}
+
+/// O erro INTRÍNSECO de um meio-caminho: quão longe os ângulos de virada (a forma LOCAL,
+/// invariante à rotação global) estão da interpolação de A→B. É o oráculo da torção.
+fn intrinsic_error(mid: &[Vec2], a: &[Vec2], b: &[Vec2], u: f32) -> f32 {
+    let (ta, tb) = (turning_angles(a), turning_angles(b));
+    turning_angles(mid)
+        .iter()
+        .zip(ta.iter().zip(&tb))
+        .map(|(&g, (&x, &y))| short_delta(x + short_delta(x, y) * u, g).abs())
+        .sum()
+}
+
+/// 🔴 **O gate que justifica a wave.** Sob giro GRANDE (160°) com um resíduo preso ao corpo, o
+/// meio-caminho pela PORTA (`point_at`) tem de manter a forma LOCAL — o resíduo co-rotaciona
+/// com o corpo em vez de achatar. Medido contra a interpolação intrínseca de A→B, a porta erra
+/// no MÁXIMO METADE do que o lerp erra.
+///
+/// ⚠️ Nasce VERMELHO no v2 anterior (o lerp do resíduo): a razão é 1,0, não < 0,5.
+/// Mutação que sangra: reverter `point_at` para `advance + residual·u`.
+#[test]
+fn the_residual_co_rotates_with_the_body_under_large_rotation() {
+    let (a, b) = bumped_arm(160.0);
+    let m = StrokeMotion::fit(&a, &b);
+    let u = 0.5;
+    let door: Vec<Vec2> = a.iter().zip(&b).map(|(&p, &q)| at(m, p, q, u)).collect();
+
+    let e_door = intrinsic_error(&door, &a, &b, u);
+    let e_lerp = intrinsic_error(&mid_linear(m, &a, &b, u), &a, &b, u);
+    assert!(
+        e_door < e_lerp * 0.5,
+        "a porta devia carregar o resíduo co-rotacionado (erro {e_door:.4}), \
+         não somá-lo no mundo (lerp {e_lerp:.4})"
+    );
+}
+
+/// **O CONTROLE:** o lerp do resíduo de fato TORCE este fixture — sem isto, "a porta manteve a
+/// forma" poderia ser verdade por acaso (um fixture que não contém a torção). O erro intrínseco
+/// do lerp é GRANDE (a corcova achata sob o giro de 160°).
+#[test]
+fn the_control_the_linear_residual_torts_under_large_rotation() {
+    let (a, b) = bumped_arm(160.0);
+    let m = StrokeMotion::fit(&a, &b);
+    let e_lerp = intrinsic_error(&mid_linear(m, &a, &b, 0.5), &a, &b, 0.5);
+    assert!(
+        e_lerp > 0.4,
+        "o fixture tem de CONTER a torção (o lerp erra {e_lerp:.4}); \
+         senão o gate da cura passa de graça"
+    );
+}
+
+/// **Subsunção: similaridade PURA ⇒ resíduo zero ⇒ a co-rotação não muda NADA.** Um giro-com-
+/// escala sem deformação (`B = R·σ·A`) tem `r = 0`; a co-rotação de `0` é `0`, então a porta é
+/// **byte-idêntica** ao espiral puro (`advance`). É o que preserva todos os gates de espiral —
+/// e o gate que impede alguém de "otimizar" a co-rotação num termo que dispara com `r = 0`.
+#[test]
+fn a_pure_similarity_leaves_the_spiral_bit_identical() {
+    // Constrói B EXATAMENTE do espiral (`b = advance(a, 1)`) ⇒ o resíduo `b − advance(a,1)` é
+    // zero AO BIT, não zero-por-ajuste. É a única forma de afirmar byte-identidade: um fixture
+    // AJUSTADO deixa um resíduo de ~1e-5 (imprecisão do `f32`), e a co-rotação dele é uma
+    // diferença real de poucos ulps — imperceptível, mas não byte-idêntica.
+    let m = StrokeMotion::Spiral {
+        fixed: Vec2::new(11.0, -3.0),
+        angle: 137f32.to_radians(), // giro GRANDE
+        scale: 1.6,
+    };
+    let a: Vec<Vec2> = (0..=7)
+        .map(|i| Vec2::new(i as f32 * 9.0 - 20.0, 4.0))
+        .collect();
+    let b: Vec<Vec2> = a.iter().map(|&p| m.advance(p, 1.0)).collect();
+    for u in [0.0, 0.2, 0.5, 0.75, 1.0, 1.4, -0.3] {
+        for (&p, &q) in a.iter().zip(&b) {
+            assert_eq!(
+                at(m, p, q, u).to_array(),
+                m.advance(p, u).to_array(),
+                "resíduo zero mas a porta divergiu do espiral em u={u}"
+            );
+        }
+    }
+}
+
+/// **A PROVA da wave (medição).** Um braço que gira MUITO (150°) *e* deforma (a ponta
+/// entorta): o resíduo não-rígido, somado no referencial FIXO do mundo, não gira com o
+/// corpo — o meio-caminho torce. Imprime a virada total do meio pelo lerp do resíduo
+/// (o v2 de hoje) contra o resíduo CO-ROTACIONADO (a cura), e os dois traços.
+///
+/// `cargo test -p ph2d-flip --release the_residual_torsion_probe -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: mede a torção do resíduo sob rotação grande"]
+fn the_residual_torsion_probe() {
+    let n = 9;
+    let a: Vec<Vec2> = (0..n).map(|i| Vec2::new(i as f32 * 12.0, 0.0)).collect();
+
+    // FIXTURE 1 — resíduo PRESO ao corpo: uma corcova perpendicular (mean-free) girada 160°.
+    // B = R(160°)·(A + δ). É a torção que a wave nomeia: o resíduo, somado no referencial do
+    // mundo, não gira com o corpo.
+    let amp = 34.0;
+    let deformed: Vec<Vec2> = a
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| {
+            let bump = amp * (std::f32::consts::PI * i as f32 / (n - 1) as f32).sin();
+            p + Vec2::new(0.0, bump)
+        })
+        .collect();
+    let b_bump = pose(&deformed, Vec2::ZERO, 160.0, 1.0);
+
+    // FIXTURE 2 — ARTICULAÇÃO: o antebraço dobra 80° no cotovelo E o braço todo gira 90°.
+    // Duas partes girando quantidades DIFERENTES: nem o espiral nem o resíduo co-rotacionado
+    // (uma rotação global só) modelam isso — é o teste do limite da cura.
+    let elbow = 4usize;
+    let bent: Vec<Vec2> = a
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| {
+            if i <= elbow {
+                p
+            } else {
+                pose(&[p], a[elbow], 80.0, 1.0)[0]
+            }
+        })
+        .collect();
+    let b_artic = pose(&bent, Vec2::ZERO, 90.0, 1.0);
+
+    for (name, b) in [
+        ("resíduo preso (160°)", &b_bump),
+        ("articulação (90°+80°)", &b_artic),
+    ] {
+        let m = StrokeMotion::fit(&a, b);
+        let (theta, scale) = match m {
+            StrokeMotion::Spiral { angle, scale, .. } => (angle, scale),
+            StrokeMotion::Translate(_) => (0.0, 1.0),
+        };
+        let u = 0.5;
+        let mid_linear: Vec<Vec2> = a
+            .iter()
+            .zip(b)
+            .map(|(&p, &q)| m.advance(p, u) + m.residual(p, q) * u)
+            .collect();
+        let mid_corot: Vec<Vec2> = a
+            .iter()
+            .zip(b)
+            .map(|(&p, &q)| {
+                let r = m.residual(p, q);
+                let (s, c) = libm::sincosf(theta * (u - 1.0));
+                let k = libm::powf(scale, u - 1.0);
+                let rot = Vec2::new(k * (c * r.x - s * r.y), k * (s * r.x + c * r.y));
+                m.advance(p, u) + rot * u
+            })
+            .collect();
+
+        // Oráculo INTRÍNSECO (Sederberg): os ângulos de virada por-vértice — INVARIANTES à
+        // rotação global — devem INTERPOLAR de A para B. O global (a rotação) é do espiral; o
+        // LOCAL (a forma) tem de interpolar, e é isso que a torção quebra.
+        let (ta, tb) = (turning_angles(&a), turning_angles(b));
+        let target: Vec<f32> = ta
+            .iter()
+            .zip(&tb)
+            .map(|(&x, &y)| x + short_delta(x, y) * u)
+            .collect();
+        let err = |mid: &[Vec2]| -> f32 {
+            turning_angles(mid)
+                .iter()
+                .zip(&target)
+                .map(|(&g, &t)| short_delta(t, g).abs())
+                .sum()
+        };
+        println!(
+            "\n  [{name}]  θ = {:.1}°  σ = {scale:.3}",
+            theta.to_degrees()
+        );
+        println!("  erro intrínseco (Σ|Δvirada| vs a interpolação A→B):");
+        println!("     LERP (v2 hoje) = {:.4}", err(&mid_linear));
+        println!("     CO-ROT (cura)  = {:.4}", err(&mid_corot));
+    }
+    println!();
+}
+
 /// A espiral inteira em `f64` — a referência da régua (**não** é o produto: é o mesmo
 /// algoritmo sem o degrau de precisão, que é justamente o que a régua quer medir).
 fn reference_f64(a: &[Vec2], b: &[Vec2], i: usize, u: f64) -> (f64, f64) {

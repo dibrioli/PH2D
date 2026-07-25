@@ -1,5 +1,7 @@
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier;
+#[path = "measure_window_premise.rs"]
+mod measure_window_premise;
 
 use super::*;
 use crate::tool::paint::{ImpastoLight, MAX_IMPASTO_LIGHTS};

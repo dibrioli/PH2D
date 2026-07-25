@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `ab96b1813`, o Gap Closure ao vivo da §2.6) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `9281fb6b8`, a aparência do helper da §2.6) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **19** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×2 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6) |
+| commits à frente do `main` | **21** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×3 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência do helper) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -201,6 +201,20 @@ line-art é load-bearing — documentada no próprio `on_mouse_wheel`).
   tinta FINA (o trade está comentado na cena: fora do alcance da solda 0,12 · dentro do
   teto de 40 px do slider na câmera default).
 
+**Aparência corrigida pós-smoke (Enio 2026-07-25, `9281fb6b8`):** o helper funcionava,
+mas ficava "mal desenhado a depender do zoom" (dot flutuante + stub diagonal). O
+`closures()` sela um vão de dois jeitos e o overlay desenhava os dois igual: um **par
+ponta-a-ponta** (a PONTE de um vão — as duas pontas são pontos reais) e uma **extensão**
+(uma ponta esticada na tangente até bater numa parede — a outra ponta é um ponto de
+CORTE arbitrário). O dot gordo no corte era o nó que não existe. Cura pela própria lei do
+módulo (*as pontas são o FATO, o segmento é a promessa*): `preview_closures` passou a
+devolver **`GapHelper { seg, a_is_tip, b_is_tip }`** (anota se cada extremo é uma ponta
+real; **o motor do fill ignora os flags** — a porta segue única, o `fill_at` extrai
+`.seg`), e o overlay desenha em **duas camadas** — ponte verde cheia com dot nas 2
+pontas, extensão como fio fino translúcido **sem dot no corte**. Gate red-proven
+`the_helper_marks_only_real_tips_never_a_cut_point` (mutação "sempre tip" sangra). Sem
+schema, sem UI nova.
+
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
 ### 3.1 Foundational tocado (`ph2d-editor-core`), todo ADITIVO
@@ -309,10 +323,10 @@ diferença some — o seed-versus-sample de sempre).
 | shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 5 (2 + os 3 do trace, §2.3) · `flip_strip_smoke` 2 · `flip_trace` 4 · `flip_peek` 3 · `flip_pass` +4 (o shift no model · o peek ×3) | 27 |
 | arch-gates de shell (ordem do frame · a costura do pin) | 3 |
 | §2.5: `gap` +3 (colinear fecha no vão · hachura não pareia · emenda não degenera) · `tests` +2 (trap no clamp red-proven · a porta com números à mão) · disjunção re-cravada em `reach = vão` · colorize +1 (contrato no clamp, com o achado honesto no doc) | 6 |
-| §2.6: engine +1 (contrato preview==clique, red-proven) + shell `flip_gap_live` 7 (porta do modo/Unpaint · roda 1 px+clamp · reach 0 sem worker · instala+cacheia · segue o alcance · fingerprint invalida · stale descartado) — a costura da roda no `on_mouse_wheel` fica com o smoke (Teste 4), o padrão da costura do PEEK | 8 |
+| §2.6: engine +2 (contrato preview==clique · o helper marca só ponta REAL, red-proven) + shell `flip_gap_live` 7 (porta do modo/Unpaint · roda 1 px+clamp · reach 0 sem worker · instala+cacheia · segue o alcance · fingerprint invalida · stale descartado) — a costura da roda no `on_mouse_wheel` fica com o smoke (Teste 4), o padrão da costura do PEEK | 9 |
 | `ph2d-panel-flip/tests/seam.rs`: as 2 tabelas de varredura ganharam a linha do **Trace** (`FlipMode::ALL` 7→8 as fez morder no nascimento, como projetado) | — |
 
-**35 mutações, 34 sangram + 1 sobrevivente DOCUMENTADO** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
+**36 mutações, 35 sangram + 1 sobrevivente DOCUMENTADO** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
 célula pega · emissão sempre na ordem da lista · preview só da pega · remap de move sem a
 seleção · remap do empurrão sem a seleção; e o guard do grupo obsoleto ganhou caso
 próprio) + as 6 da §2.3 (o passe ignora o mapa · `pick` pelo mais DISTANTE · hit na caixa
@@ -324,7 +338,7 @@ com vizinho próprio · âncora no quadro CRU em vez da chave ativa) + as 4 da �
 **sobrevivente documentado**: trap cru no COLORIZE, porque o oráculo de lá não separa; o
 porquê está no doc do próprio gate) + as 7 da §2.6 (preview com alcance escalado · worker
 nunca sai · cache ignorado relança sempre · roda sem clamp · porta aceita Unpaint ·
-instalar stale incondicional · fingerprint constante cego a edição):
+instalar stale incondicional · fingerprint constante cego a edição) + a 1 da aparência (`a_is_tip`/`b_is_tip` cravados em `true` => o dot volta ao ponto de corte):
 
 | mutação | o que morre |
 |---|---|
@@ -375,7 +389,7 @@ terminal; em resumo:
 | g | **Trace** (painel do Flip): arrastar o vulto o desliza (a arte fica); Ctrl+arrastar gira; voltar ao Draw mantém a folha deslocada; **Reset Shifts** devolve (§2.3, ✅ smoke OK 2026-07-24) |
 | h | **F1/F2/F3 SEGURADOS** numa caixa do meio: só o desenho anterior/atual/seguinte na tela, sem vultos, playhead parado; soltar volta; na 1ª caixa F1 fica (§2.4, ✅ smoke OK 2026-07-24) |
 | i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
-| j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper VERDE aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom |
+| j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom. ⚠️ **Aparência (aprovada 2026-07-25):** a PONTE do vão é verde cheia com dot nas 2 pontas; as extensões são fios finos SEM dot no corte (o "dot flutuante" acabou) — confira em vários zooms |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 

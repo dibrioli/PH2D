@@ -38,16 +38,14 @@ pub(super) fn toggle_orient(state: &mut TimelineState, entity: u64) {
     });
 }
 
-/// **Troca o modo de posição.** O relatório é DESCARTADO aqui de propósito: quem o
-/// mostra é o shell, que chama a conversão por outra porta quando quer relatar. Este
-/// caminho existe para o gesto do menu, onde o efeito já está na tela — a trajetória
-/// aparece, ou os dois eixos aparecem.
+/// **Troca o modo de posição** (o toggle do transporte e o menu *Convert to…*). O
+/// relatório da conversão é DESCARTADO aqui de propósito: quem o mostra é o shell,
+/// que chama a conversão por outra porta quando quer relatar. Vai pela porta única
+/// [`crate::TimelineDoc::set_position_mode`], que **converte** um objeto com animação
+/// e **marca** um objeto fresco (binding vazio no modo escolhido) — então o toggle
+/// per-objeto gruda mesmo antes da 1ª key. Uma linha, um objeto.
 pub(super) fn convert_mode(state: &mut TimelineState, entity: u64, to_path: bool) {
     edit(state, |doc, _| {
-        if to_path {
-            doc.separate_to_path(entity);
-        } else {
-            doc.path_to_separate(entity);
-        }
+        doc.set_position_mode(entity, to_path);
     });
 }

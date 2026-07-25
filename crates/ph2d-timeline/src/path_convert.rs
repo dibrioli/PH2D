@@ -199,7 +199,8 @@ impl TimelineDoc {
     /// coexist, and keying the wrong one is precisely the *"even with points on the
     /// canvas the auto-key writes X/Y"* conflict. A fresh entity (no position
     /// animation yet) has no mode of its own, so it takes `default_path` (the
-    /// transport toggle, [`crate::TimelineFlags::motion_path_keys`]).
+    /// After Effects default is Path; the per-object toggle marks it otherwise via
+    /// [`Self::set_position_mode`]).
     ///
     /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
     #[must_use]
@@ -214,6 +215,36 @@ impl TimelineDoc {
             PositionKeyMode::Path
         } else {
             PositionKeyMode::Separate
+        }
+    }
+
+    /// **Switch `entity` to Path or Separate** — the door the transport toggle and
+    /// the menu (*Convert to Motion Path* / *Convert to Separate Axes*) both drive
+    /// ([ADR-0141]). Per object: two objects on the same timeline can sit in
+    /// different modes, and this only touches `entity`.
+    ///
+    /// An object with animation is **converted** ([`Self::separate_to_path`] /
+    /// [`Self::path_to_separate`], which carry the poses across and report what the
+    /// conversion drops). A fresh one is **marked** — an empty binding in the target
+    /// mode — so the choice sticks per object and the next `K`/auto-key authors in
+    /// it. Either way it ends in exactly ONE mode: the two are mutually exclusive,
+    /// and a stray binding of the other mode is cleared here.
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    pub fn set_position_mode(&mut self, entity: u64, to_path: bool) {
+        if to_path {
+            // Converts if X/Y carried keys; a no-op (returns `None`) if they were
+            // empty markers or absent. Either way, clear any X/Y binding left and
+            // mark Path with an (empty, if fresh) Position binding.
+            self.separate_to_path(entity);
+            self.unbind(entity, PropKind::TranslationX);
+            self.unbind(entity, PropKind::TranslationY);
+            self.bind(entity, PropKind::Position);
+        } else {
+            self.path_to_separate(entity);
+            self.unbind(entity, PropKind::Position);
+            self.bind(entity, PropKind::TranslationX);
+            self.bind(entity, PropKind::TranslationY);
         }
     }
 }

@@ -200,9 +200,9 @@ pub(crate) fn intent_for_transport(
         }
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_RECORD => Some(I::SetPerforming(on)),
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_MOTION_PATH => {
-            Some(I::SetMotionPathKeys(on))
-        }
+        // TIMELINE_MOTION_PATH is NOT translated here: it is per-object and needs the
+        // selection, which this pure translator does not have — the shell resolves the
+        // entity and emits `ConvertPositionMode` (mod.rs, mirror of the +Track path).
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),
         _ => None,
     }

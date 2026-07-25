@@ -45,6 +45,43 @@ fn the_render_loop_draws_the_trajectory_for_the_selected_object() {
     );
 }
 
+/// **O toggle Motion Path é PER-OBJETO** (ADR-0141): o bridge não o traduz (devolve
+/// `None` de propósito — não tem a seleção), então o shell tem de resolver o objeto
+/// selecionado e emitir `ConvertPositionMode`. Sem isto o clique no toggle não faria
+/// nada, e nenhum teste de unidade pega (o laço de evento precisa do `App` + janela).
+#[test]
+fn the_toggle_converts_the_selected_objects_position_mode() {
+    let rl = shell("render_loop/mod.rs");
+    let guard = rl.find("TIMELINE_MOTION_PATH").unwrap_or_else(|| {
+        panic!(
+            "a `render_loop` não trata o toggle Motion Path — ele é per-objeto e precisa \
+             da seleção, que só o shell tem (o bridge o recusa de propósito)"
+        )
+    });
+    let emit = rl.find("ConvertPositionMode").unwrap_or_else(|| {
+        panic!("o toggle não emite ConvertPositionMode — clicar não converteria o objeto")
+    });
+    // O guard do toggle vem ANTES da emissão (o toggle É o gatilho), e a seleção é
+    // resolvida entre os dois — sem ela converteria o objeto errado, ou nenhum. É a
+    // PROPRIEDADE (quem dispara, com que entidade), não uma distância em bytes.
+    assert!(
+        guard < emit,
+        "ConvertPositionMode não está sob o guard do toggle TIMELINE_MOTION_PATH"
+    );
+    assert!(
+        rl[guard..emit].contains("iter_selected"),
+        "a conversão não resolve a SELEÇÃO entre o toggle e a emissão — converteria o \
+         objeto errado (ou nenhum)"
+    );
+    // `to_path` mora DENTRO do struct do intent (depois da palavra `ConvertPositionMode`),
+    // então o campo é conferido no corpo do handler, do guard até logo após a emissão.
+    let handler = &rl[guard..(emit + 200).min(rl.len())];
+    assert!(
+        handler.contains("to_path"),
+        "a conversão não carrega o estado do switch (trajetória vs eixos separados)"
+    );
+}
+
 /// O GESTO está costurado no ponteiro: press (arma + abre o undo), move (arrasta),
 /// release (limpa + FECHA o undo).
 #[test]

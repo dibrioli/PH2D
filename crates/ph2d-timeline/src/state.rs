@@ -123,21 +123,6 @@ pub struct TimelineFlags {
     /// with an active manipulation gesture, never the passive pose the curve is
     /// driving. Off by default — it is a modal, explicit mode.
     pub performing: bool,
-    /// **New position keys are a motion-path point, not separate X/Y** (ADR-0141).
-    ///
-    /// The DEFAULT for an entity that has no position animation yet — the mode a
-    /// fresh position key is born in when `K` or auto-key first touches it. It is a
-    /// default, **not** an override: an entity that already animates in ONE mode
-    /// keys in THAT mode regardless (a Position path stays a path, separate X/Y
-    /// stays separate — ADR-0141's two modes are mutually exclusive per entity, and
-    /// mixing them is exactly the conflict this flag resolves). Switching an entity
-    /// that already has animation is the explicit conversion gesture
-    /// ([`crate::TimelineIntent::ConvertPositionMode`]).
-    ///
-    /// On by default: Position is ONE channel following a trajectory (the After
-    /// Effects default), and that is what the motion path exists to give. The
-    /// transport toggle flips it to separate X/Y for an axis-precise workflow.
-    pub motion_path_keys: bool,
     /// **Play drives the rigid simulation too** (ADR-0131).
     ///
     /// The transport is ONE clock with two consumers: the curves in this
@@ -173,9 +158,6 @@ impl Default for TimelineFlags {
             frame_snap: true,
             // Record is modal and deliberate — never armed on its own.
             performing: false,
-            // Position is a motion path by default (After Effects). A fresh position
-            // key is a trajectory point; the toggle picks separate X/Y instead.
-            motion_path_keys: true,
             // Physics is opted into: Play means "play my animation" until the
             // artist says otherwise. See the field docs.
             simulate_physics: false,

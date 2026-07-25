@@ -1237,11 +1237,9 @@ impl crate::App {
                     )
                 });
                 if !has_position {
-                    match self
-                        .timeline
-                        .doc
-                        .position_key_mode(entity, self.timeline.flags.motion_path_keys)
-                    {
+                    // Fresh object → the After Effects default (motion path); the
+                    // per-object toggle marks it Separate otherwise.
+                    match self.timeline.doc.position_key_mode(entity, true) {
                         ph2d_timeline::PositionKeyMode::Path => {
                             props.push(ph2d_timeline::PropKind::Position);
                         }
@@ -1403,6 +1401,15 @@ impl crate::App {
         };
         self.timeline_view
             .rebuild(&mut self.timeline, active_playhead, keys_mode);
+        // The Motion Path toggle reflects the SELECTED object's position mode, so
+        // switching objects updates it (ADR-0141). Filled here because the document
+        // has no selection; fresh / no single selection → Path (the default).
+        self.timeline_view.position_is_path = selected_now.is_none_or(|e| {
+            matches!(
+                self.timeline.doc.position_key_mode(e, true),
+                ph2d_timeline::PositionKeyMode::Path
+            )
+        });
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         // Global rigid physics (ADR-0131 W1): step the rapier world at the
         // Playhead tick and read poses back into Transform, BEFORE
@@ -2218,6 +2225,21 @@ impl crate::App {
                             if let Some(entity) = hero.gizmo.iter_selected().next() {
                                 self.timeline_intents
                                     .push(ph2d_timeline::TimelineIntent::Bind { entity, prop });
+                            }
+                        } else if let ph2d_editor::tool::PanelEvent::Toggle(id, on) = &ev
+                            && *id == ph2d_editor::ids::TIMELINE_MOTION_PATH
+                        {
+                            // The Motion Path toggle is PER OBJECT (like +Track, the
+                            // panel doesn't know the selection): convert THIS object's
+                            // position to a trajectory (`on`) or separate X/Y — Convert
+                            // to Motion Path / to Separate Axes (ADR-0141).
+                            if let Some(entity) = hero.gizmo.iter_selected().next() {
+                                self.timeline_intents.push(
+                                    ph2d_timeline::TimelineIntent::ConvertPositionMode {
+                                        entity,
+                                        to_path: *on,
+                                    },
+                                );
                             }
                         } else if let Some(intent) = timeline_bridge::intent_for_transport(
                             &ev,

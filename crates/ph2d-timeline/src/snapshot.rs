@@ -210,9 +210,13 @@ pub struct TimelineViewSnapshot {
     pub frame_snap: bool,
     /// Performing (record-during-play) armed.
     pub performing: bool,
-    /// New position keys are a motion path (`true`) or separate X/Y (`false`) —
-    /// [`crate::TimelineFlags::motion_path_keys`] (ADR-0141).
-    pub motion_path_keys: bool,
+    /// **The SELECTED object's position mode** — `true` = motion path, `false` =
+    /// separate X/Y (ADR-0141). The transport's Motion Path toggle reflects it, so
+    /// selecting a different object updates the switch. Per object: it is NOT a
+    /// document flag but a projection of the selection, filled by the shell after
+    /// [`Self::rebuild`] (the doc has no selection; the shell does). Defaults to Path
+    /// (the fresh-object default) when nothing single is selected.
+    pub position_is_path: bool,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// The clip stack, bottom lane first. **Empty is the norm**: a document with
@@ -349,7 +353,9 @@ impl TimelineViewSnapshot {
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
         self.performing = state.flags.performing;
-        self.motion_path_keys = state.flags.motion_path_keys;
+        // `position_is_path` is NOT set here: it is a projection of the SELECTION,
+        // which the document does not know. The shell fills it after this rebuild,
+        // before the panel reads the snapshot.
         self.simulate_physics = state.flags.simulate_physics;
 
         // Clips (reuse buffer): names only — the panel never touches the curves of

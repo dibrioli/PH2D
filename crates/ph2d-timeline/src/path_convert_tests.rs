@@ -195,3 +195,56 @@ fn converting_nothing_is_refused() {
     doc.bind(1, PropKind::Position);
     assert_eq!(doc.path_to_separate(1), None);
 }
+
+/// **O modo é POR OBJETO** (o pedido do Enio: *"na mesma timeline pode haver um objeto
+/// usando o path e outro que usa o translate"*). `set_position_mode` só toca o objeto
+/// nomeado, e a resolução reflete o que cada um tem.
+#[test]
+fn two_objects_can_sit_in_different_modes() {
+    use crate::PositionKeyMode;
+    let mut doc = TimelineDoc::new();
+    doc.set_position_mode(1, true); // objeto 1 → Path
+    doc.set_position_mode(2, false); // objeto 2 → Separate
+    assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Path);
+    assert_eq!(doc.position_key_mode(2, true), PositionKeyMode::Separate);
+    // Um terceiro, fresco, toma o default (Path) — sem ter sido tocado.
+    assert_eq!(doc.position_key_mode(3, true), PositionKeyMode::Path);
+}
+
+/// Um objeto FRESCO é **marcado** (binding vazio no modo), então o toggle gruda antes
+/// da 1ª key — e alternar de volta troca o modo, sem deixar os dois.
+#[test]
+fn set_position_mode_marks_a_fresh_object_and_toggles_cleanly() {
+    use crate::PositionKeyMode;
+    let mut doc = TimelineDoc::new();
+    // fresco → Separate: nasce marcado, sem trajetória.
+    doc.set_position_mode(1, false);
+    assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Separate);
+    assert!(doc.position_path(1).is_none());
+    assert!(doc.binding_for(1, PropKind::TranslationX).is_some());
+    // alterna para Path: os eixos somem, vira trajetória.
+    doc.set_position_mode(1, true);
+    assert_eq!(doc.position_key_mode(1, true), PositionKeyMode::Path);
+    assert!(doc.binding_for(1, PropKind::TranslationX).is_none());
+    assert!(doc.binding_for(1, PropKind::TranslationY).is_none());
+    assert!(doc.binding_for(1, PropKind::Position).is_some());
+}
+
+/// Com ANIMAÇÃO, `set_position_mode` **converte** (leva as poses), não só marca — o
+/// binding de origem morre e a trajetória nasce com os pontos.
+#[test]
+fn set_position_mode_converts_an_animated_object() {
+    use crate::PositionKeyMode;
+    let (_, e, mut doc) = separate(); // X/Y animados em tempos diferentes
+    let bits = e.to_bits();
+    doc.set_position_mode(bits, true); // Separate → Path
+    assert_eq!(doc.position_key_mode(bits, true), PositionKeyMode::Path);
+    assert!(
+        doc.binding_for(bits, PropKind::TranslationX).is_none(),
+        "os eixos não sobrevivem à conversão — dois modos ao mesmo tempo"
+    );
+    assert!(
+        doc.position_path(bits).is_some_and(|p| p.len() >= 2),
+        "converter um objeto animado tem de CRIAR a trajetória, não só marcar"
+    );
+}

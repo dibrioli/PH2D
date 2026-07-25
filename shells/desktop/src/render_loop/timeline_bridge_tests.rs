@@ -36,14 +36,16 @@ fn transport_ids_map_to_intents() {
         intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_RECORD, true), &st, &ph),
         Some(TimelineIntent::SetPerforming(true))
     );
-    // Motion Path (ADR-0141): the keying-mode toggle for position.
+    // Motion Path (ADR-0141) is PER-OBJECT, so the pure translator does NOT map it —
+    // it needs the selection, which the shell resolves into `ConvertPositionMode`.
     assert_eq!(
         intent_for_transport(
             &PanelEvent::Toggle(ids::TIMELINE_MOTION_PATH, false),
             &st,
             &ph
         ),
-        Some(TimelineIntent::SetMotionPathKeys(false))
+        None,
+        "the per-object toggle is handled in the shell, not translated here"
     );
     assert_eq!(
         intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),

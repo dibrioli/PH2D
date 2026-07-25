@@ -486,9 +486,10 @@ fn paint_item(
                 snap.performing,
             );
         }
-        // Motion Path keying mode (ADR-0141) — a new position key is a trajectory
-        // point (on) or separate X/Y (off). Reads the snapshot like every other
-        // toggle, so the painted switch matches what K/auto-key will actually do.
+        // Motion Path mode (ADR-0141) — the SELECTED object animates its position as
+        // one trajectory (on) or separate X/Y (off). Reflects the selection (the shell
+        // fills `position_is_path`), so switching objects updates it; clicking it
+        // converts THIS object (Convert to Motion Path / to Separate Axes).
         Item::MotionPath => {
             toggle(
                 ctx,
@@ -497,7 +498,7 @@ fn paint_item(
                 y,
                 ids::TIMELINE_MOTION_PATH,
                 ph2d_i18n::tr("panel.timeline.motion_path"),
-                snap.motion_path_keys,
+                snap.position_is_path,
             );
         }
         Item::Snap => {

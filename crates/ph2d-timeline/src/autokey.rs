@@ -188,7 +188,9 @@ fn autokey_props_in(
     // **The motion-path anchor**, decided once from both axes. A Transform always
     // carries a translation, so both are present; the anchor lands where the object
     // now is, when that is off the trajectory the scene is drawing.
-    if mode == PositionKeyMode::Path && let (Some(x), Some(y)) = (world[0], world[1]) {
+    if mode == PositionKeyMode::Path
+        && let (Some(x), Some(y)) = (world[0], world[1])
+    {
         let want = [x, y];
         let moved = match position_shown(doc, entity, t_secs, solo) {
             // Bound to a path: key when the object left the curve it sits on.
@@ -201,8 +203,7 @@ fn autokey_props_in(
             // binds+creates the trajectory from this first anchor.
             None => {
                 allow_create
-                    && (baseline[0].is_some_and(|b| b != x)
-                        || baseline[1].is_some_and(|b| b != y))
+                    && (baseline[0].is_some_and(|b| b != x) || baseline[1].is_some_and(|b| b != y))
             }
         };
         if moved {

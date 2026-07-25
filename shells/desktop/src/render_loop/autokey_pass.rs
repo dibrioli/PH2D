@@ -202,10 +202,11 @@ pub(crate) fn apply_samples(
         timeline.flags.frame_snap,
     );
 
-    // The default mode for an entity with no position animation yet (the transport
-    // toggle). An entity already in one mode keeps it — `position_key_mode` resolves
-    // that; this is only the fresh-entity fallback (ADR-0141).
-    let default_path = timeline.flags.motion_path_keys;
+    // The fresh-object default: Position is a motion path (the After Effects
+    // default). An object already in one mode keeps it — `position_key_mode`
+    // resolves that; this is only the fallback for one with no position animation
+    // yet, and the per-object toggle marks it otherwise (ADR-0141).
+    let default_path = true;
 
     // Diff each sprite against its curve (bound) or last frame (unbound), and
     // rebuild the baseline in one pass. The diff reads the document BEFORE any
@@ -400,8 +401,9 @@ pub(crate) fn apply_samples(
         // A path anchor (`to_path`) is a discrete edit too — in Path mode there are
         // no scalar keys, so bracketing on `to_key` alone would author the anchor
         // outside any undo step.
-        let discrete =
-            !drag_now && !(to_key.is_empty() && to_path.is_empty()) && !timeline.history.is_open();
+        let discrete = !drag_now
+            && (!to_key.is_empty() || !to_path.is_empty())
+            && !timeline.history.is_open();
         if discrete {
             timeline.history.begin(&timeline.doc);
         }

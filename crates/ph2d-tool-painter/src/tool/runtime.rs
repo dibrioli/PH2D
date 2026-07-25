@@ -208,6 +208,12 @@ impl PainterTool {
         // on `preview_version`: the version replaces the shell's old `Arc::as_ptr` compare, which forced a
         // whole-canvas copy per move.)
         self.preview_version += 1;
+        // Esta pista está prestes a CONSUMIR o `dirty_rect` que a pista GPU também usaria para saber
+        // o que mudou. A GPU não vê este frame, então tudo o que sai daqui é uma edição que o cache
+        // dela (fatias por-camada no compositor + as texturas de plano do impasto) não conhece:
+        // marque-o, para a próxima drenagem dela recusar confinamento e refazer inteiro. Espelho do
+        // `composited = None` que a pista GPU faz na direção oposta (`take_preview_dirty`).
+        self.gpu_lane_stale = true;
         let (w, h) = self.source_size;
         // A mask row's grayscale-VIEW eye is open → show that mask's grayscale instead of the composite.
         if let Some(gray) = self.mask_grayscale_view_pixels() {

@@ -137,30 +137,35 @@ fn the_screen_after_an_undo_is_what_the_other_producer_would_draw() {
 /// 4096²: o retângulo *"aparece pintando"* e *"fica até nova pintura sobrepor"*, e ele confirmou ter
 /// **alternado entre Digital e Impasto** durante a sessão.
 ///
-/// ## ⚠️ ESTE GATE NASCE VERMELHO, E O FOLD REGIONAL FOI INOCENTADO POR BISSECAO
-///
-/// Forcando `plane_win = (0, 0, width, height)` — o caminho de ANTES da wave do fold regional — a
-/// falha e **byte-identica**: 197.172 bytes, primeiro em (34, 62), pior 255 niveis. Logo a causa NAO
-/// e a janela do fold; ela mora na costura de handoff de produtor, e e anterior a esta linha.
-///
-/// ## O mecanismo que este gate persegue
+/// ## O mecanismo (diagnosticado por bisseção, curado por `gpu_lane_stale`)
 ///
 /// A pista GPU só é tomada quando há relevo (`gpu_eligible` recusa um documento trivial SEM relevo).
-/// Então a sessão real oscila: impasto (GPU) -> undo, o relevo some (CPU) -> pintar em Digital (CPU) ->
-/// impasto de novo (GPU).
+/// Então a sessão real oscila: impasto (GPU) → undo, o relevo some (CPU) → pintar em Digital (CPU) →
+/// impasto de novo (GPU). O `dirty_rect` é **compartilhado** pelas duas pistas e **consumido por quem
+/// drena**: enquanto a CPU é dona ela o leva para o `preview_upload_bbox` dela, então no frame em que a
+/// GPU retoma o rect descreve só o ÚLTIMO frame da CPU — não a era inteira que a GPU não viu.
 ///
-/// Enquanto a **CPU** é dona, `take_preview_arc` faz `preview_upload_bbox = dirty_rect.take()` — ele
-/// **CONSOME** o retângulo sujo. Quando a GPU retoma, `preview_gpu_region()` só conhece o que sujou
-/// *desde então*, e `planes_seeded` continua `true` (as texturas foram inteiras UMA vez, lá atrás) —
-/// então o fold é PARCIAL e os planos ficam velhos em tudo que foi pintado no trecho da CPU.
-/// `planes_seeded` responde *"já foram inteiros alguma vez?"*; a janela exige *"ainda estão atuais?"*.
+/// ⚠️ **A causa NÃO era o fold regional, e isso foi medido ANTES de consertar:** forçando
+/// `plane_win = (0, 0, width, height)` — o caminho de ANTES daquela wave — a falha era
+/// **byte-idêntica** (197.172 bytes, primeiro em (34, 62), pior 255 níveis). Os DOIS consumidores do
+/// `preview_dirty_region` adoeciam juntos: o compositor remendava um sub-rect numa fatia por-camada
+/// cacheada de antes da era CPU, e o fold dobrava a mesma janela sobre planos da mesma era. Corrigir só
+/// UM deixa o outro desenhando o retângulo — que é exatamente por que a bisseção não moveu um byte.
+///
+/// A cura é o ESPELHO da que a Fase D deu ao sentido oposto (`take_preview_dirty` derruba o
+/// `composited` para a próxima `take_preview_arc` recompor inteiro): toda drenagem da CPU levanta
+/// `gpu_lane_stale`, e a próxima drenagem da GPU o consome declarando **não-confinado** — `None`, que
+/// todo consumidor já lê como *faça inteiro*. Um frame cheio na retomada, confinado de novo em seguida.
+///
+/// **Mutação que sangra (medida):** `self.gpu_lane_stale = true` → `false` em `take_preview_arc`
+/// devolve os 197.172 bytes EXATOS, o mesmo primeiro pixel e o mesmo pior delta.
 ///
 /// ⚠️ O oráculo é o OUTRO produtor: a pergunta é se as duas pistas desenham a mesma imagem, e uma
 /// re-derivação do que ELAS deveriam desenhar concordaria com o bug que as duas compartilham.
 ///
 /// `#[ignore]`: precisa de adapter; rode com `--release --ignored`.
 #[test]
-#[ignore = "RED: reproduz um defeito ABERTO e PRE-EXISTENTE do handoff de produtor (nao roda no gate)"]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_planes_are_current_when_the_gpu_lane_takes_the_frame_back() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         eprintln!("no GPU adapter on this machine — nothing to assert");

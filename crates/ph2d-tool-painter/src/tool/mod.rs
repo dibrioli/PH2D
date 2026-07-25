@@ -224,6 +224,23 @@ pub struct PainterTool {
     /// layer instead of the whole slice per move. The CPU lane's equivalent is `preview_upload_bbox`;
     /// this is its GPU-lane twin (the GPU lane bypasses `take_preview_arc`).
     preview_dirty_region: Option<Region>,
+    /// **A pista GPU perdeu edições que nunca viu** — o bit que obriga a próxima drenagem dela a
+    /// declarar *não-confinado*.
+    ///
+    /// `dirty_rect` é COMPARTILHADO pelas duas pistas e **consumido por quem drena**. Enquanto a CPU
+    /// é dona ela o leva para o `preview_upload_bbox` dela, então no frame em que a GPU retoma o
+    /// `dirty_rect` descreve só o último frame da CPU — não a era inteira que a GPU não viu. Sem este
+    /// bit a retomada confina o trabalho a esse retângulo minúsculo e **os dois** consumidores do
+    /// `preview_dirty_region` servem estado velho: o compositor remenda um sub-rect numa fatia
+    /// cacheada de antes da era CPU, e o fold do impasto dobra a mesma janela sobre planos da mesma
+    /// era. É o retângulo que o Enio fotografou (`PH2D_IMPASTO_SMOKE=2`, 2026-07-25).
+    ///
+    /// É o ESPELHO EXATO da cura que a Fase D deu ao sentido oposto: lá `take_preview_dirty` derruba
+    /// o `composited` (o cache da CPU) para a próxima `take_preview_arc` recompor inteiro. A pista
+    /// CPU não tinha como dizer o mesmo, porque o cache da GPU não mora aqui — mora nas texturas do
+    /// shell. Este bool é essa frase, e é a única forma dela que não pode ser esquecida por
+    /// enumeração: **toda** drenagem da CPU o levanta, **toda** drenagem da GPU o consome.
+    gpu_lane_stale: bool,
     /// Multi-selection — the set of layer rows highlighted in the panel. Plain
     /// click collapses to one; Cmd/Ctrl-click toggles; Shift-click selects a run.
     selection: BTreeSet<RtLayerId>,
@@ -319,6 +336,7 @@ impl Default for PainterTool {
             undo: crate::undo::UndoController::default(),
             dirty_rect: None,
             preview_dirty_region: None,
+            gpu_lane_stale: false,
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,

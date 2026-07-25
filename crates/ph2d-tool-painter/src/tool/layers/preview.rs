@@ -99,7 +99,18 @@ impl PainterTool {
             // it here (union-accumulated by `mark_dirty` since the last drain, reset now) makes the
             // region cover EXACTLY the changes since the last GPU upload — drain and upload are one
             // `try_drive` call, so they stay in lockstep even if a frame is dropped.
-            self.preview_dirty_region = self.dirty_rect.take();
+            // …a menos que a pista CPU tenha sido dona no meio-tempo. Aí o `dirty_rect` descreve só o
+            // último frame DELA (ela consome o mesmo campo), enquanto o cache desta pista é anterior à
+            // era inteira que ela pintou — confinar a esse retângulo serve estado velho em volta dele.
+            // Ver `gpu_lane_stale`: `None` significa *não confinado*, e todo consumidor lê isso como
+            // *faça inteiro*. Consome-se o rect nos DOIS ramos — deixá-lo acumular faria a próxima
+            // reivindicação incluir área que este frame já refez.
+            let rect = self.dirty_rect.take();
+            self.preview_dirty_region = if std::mem::take(&mut self.gpu_lane_stale) {
+                None
+            } else {
+                rect
+            };
         }
         dirty
     }

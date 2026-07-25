@@ -776,11 +776,12 @@ pub(super) fn build_gpu_field_combine_demo_document(
 /// The **remap** smoke (`PH2D_GPU_COOK_DEMO=21`): `grid(512×512) → motion.scale →
 /// field.box → field.remap(Quantize) → tint(Solid) → output` — **262.144 instances**,
 /// 100 % GPU-resident. The keystone of the field family's D1 factoring: `field.box`
-/// paints a soft radial-ish ramp, and `field.remap` QUANTIZES it into **five discrete
-/// bands** — topographic contour lines the box alone cannot make. It is the C4D
-/// Remapping tab as a downstream node (every spatial field defers its remap here), and
-/// it REWRITES the mask (a transfer function), not multiplies. Same frame-on-load
-/// sizing as `=17`/`=18`; auto-plays on tool entry.
+/// paints a soft ramp SMALLER than the grid (so the grid rides the FULL `[0,1]` range,
+/// with a `0` white frame outside the box), and `field.remap` QUANTIZES it into **four
+/// discrete bands** — nested-square topographic contours the box alone cannot make. It
+/// is the C4D Remapping tab as a downstream node (every spatial field defers its remap
+/// here), and it REWRITES the mask (a transfer function), not multiplies. Same
+/// frame-on-load sizing as `=17`/`=18`; auto-plays on tool entry.
 pub(super) fn build_gpu_field_remap_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -794,17 +795,20 @@ pub(super) fn build_gpu_field_remap_demo_document(
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");
     g.set_param(scale, "amount", 0.018);
-    // A big soft box: the whole grid rides its edge ramp, so the mask spans [0,1] and
-    // there is a full gradient for the remap to band.
+    // A soft box SMALLER than the ~12-unit grid (half-extent 4.5 vs the grid's ±6.1),
+    // so the grid sees the FULL ramp: falloff 1 at the centre down to 0 at the box edge,
+    // then a flat 0 (white) frame out to the grid edge. Without this the grid rode only
+    // the top of the ramp ([0.53, 1]) and Quantize barely banded — the "faint" smoke.
     let field = g.add_node("field.box");
-    g.set_param(field, "width", 26.0);
-    g.set_param(field, "height", 26.0);
-    g.set_param(field, "soft", 13.0); // half the extent — a ramp from centre to edge
+    g.set_param(field, "width", 9.0);
+    g.set_param(field, "height", 9.0);
+    g.set_param(field, "soft", 4.5); // = half the extent — a linear ramp centre→edge
     g.set_param(field, "curve", 0.0); // Linear ramp, so the bands are evenly spaced
-    // Quantize the ramp into 5 discrete levels — the topographic bands.
+    // Quantize the ramp into 4 discrete levels {0, ⅓, ⅔, 1} — bigger jumps than 5 read
+    // as crisper bands: a white frame, then light/medium/full-blue nested squares.
     let remap = g.add_node("field.remap");
     g.set_param(remap, "contour", 3.0); // Quantize
-    g.set_param(remap, "steps", 5.0);
+    g.set_param(remap, "steps", 4.0);
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
     g.set_param(tint, "r", 0.16);

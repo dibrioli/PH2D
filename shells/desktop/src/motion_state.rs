@@ -248,7 +248,7 @@ impl MotionState {
                 build_gpu_field_radial_sweep_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             // The REMAPPER: `field.box` paints a soft ramp, `field.remap` Quantizes it
-            // into five topographic bands — the D1 factoring (every field defers its
+            // into four topographic bands — the D1 factoring (every field defers its
             // remap here), the C4D Remapping tab as a downstream node.
             Ok("21") => {
                 build_gpu_field_remap_demo_document(&mut doc, &registry).unwrap_or_default()

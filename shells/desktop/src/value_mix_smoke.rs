@@ -14,13 +14,13 @@
 //!   é a mistura constante — uma onda permanentemente meio-ruidosa. É o fallback do
 //!   knob (o socket Factor do Blender, que um fio sobrepõe).
 //!
-//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
-//! `value.mix` marcado `>> EVALUATE <<` é o de baixo (FACTOR). Selecione-o → o
-//! painel mostra **Factor** (a mistura constante) e **Clamp**; arraste o Factor de
-//! 0 (só a onda) a 1 (só o ruído). Cozinha 100% na GPU — a escolha
-//! porta-sobrepõe-param sai do `HAS_t_v` do kernel, sem CPU.
+//! O grafo inteiro é **arrumado pelo auto-layout em camadas** (`smoke_layout` →
+//! `ph2d_nodegraph::layout`), sem sobreposições, e o `value.mix` marcado
+//! `>> EVALUATE <<` é o de baixo (FACTOR). Selecione-o → o painel mostra
+//! **Factor** (a mistura constante) e **Clamp**; arraste o Factor de 0 (só a
+//! onda) a 1 (só o ruído). Cozinha 100% na GPU — a escolha porta-sobrepõe-param
+//! sai do `HAS_t_v` do kernel, sem CPU.
 
-use crate::smoke_layout::{lay_horizontal, ROW_GAP};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A amplitude do deslocamento em Y de ambos os drivers (onda e ruído), para o
@@ -30,8 +30,8 @@ const AMP: f32 = 3.0;
 /// Monta uma fileira `grid → move → drive(Y)` cujo valor vem de
 /// `mix(a = lfo, b = noise, t)`. `driven` liga um `value.lfo` triangular lento em
 /// `t` (crossfade animado); senão a porta `t` fica solta e o `factor` param manda —
-/// e essa é a fileira MARCADA para avaliação. Devolve o sink.
-fn row(g: &mut Graph, driven: bool, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
+/// e essa é a fileira MARCADA para avaliação. Devolve `(sink, hero)`.
+fn row(g: &mut Graph, driven: bool, canvas_dy: f32) -> Option<(NodeId, Option<NodeId>)> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let lfo = g.add_node("value.lfo");
@@ -93,12 +93,8 @@ fn row(g: &mut Graph, driven: bool, canvas_dy: f32, panel_y: f32) -> Option<Node
         g.set_param(mix, "factor", 0.5); // the constant half-blend fallback
     }
 
-    // Arrange as one straight line; mark the FACTOR row's mix (the one you drag).
-    let mut nodes = vec![grid, mv, lfo, noise];
-    nodes.extend(t_lfo);
-    nodes.extend([mix, drive, out]);
-    lay_horizontal(g, &nodes, panel_y, (!driven).then_some(mix));
-    Some(out)
+    // The FACTOR row's mix (the one you drag) is the node under evaluation.
+    Some((out, (!driven).then_some(mix)))
 }
 
 /// Ligado? Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro).
@@ -118,10 +114,17 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima o crossfade DIRIGIDO (linha 1); de baixo o FACTOR fixo, marcado (linha 2).
-        let driven = row(g, true, 2.4, 80.0);
-        let factor = row(g, false, -2.4, 80.0 + ROW_GAP);
-        gfx.motion.sinks.extend(driven.into_iter().chain(factor));
+        // De cima o crossfade DIRIGIDO (referência); de baixo o FACTOR fixo, marcado.
+        let driven = row(g, true, 2.4);
+        let factor = row(g, false, -2.4);
+        let mut heroes = Vec::new();
+        let mut sinks = Vec::new();
+        for (sink, hero) in [driven, factor].into_iter().flatten() {
+            sinks.push(sink);
+            heroes.extend(hero);
+        }
+        crate::smoke_layout::arrange_and_mark(g, &heroes);
+        gfx.motion.sinks.extend(sinks);
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }
 }

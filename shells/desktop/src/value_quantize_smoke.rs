@@ -12,12 +12,12 @@
 //!   onda snapada numa grade de 1 unidade — os pontos pousam em Y discretos: uma
 //!   **senoide em degraus** que salta em vez de deslizar.
 //!
-//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
-//! nó marcado `>> EVALUATE <<` é o `value.quantize` a avaliar. Selecione-o → o
-//! painel mostra **Step** (o espaçamento da grade — suba para degraus mais grossos,
-//! zere para passthrough) e **Mode** (Round/Floor/Ceil). Cozinha 100% na GPU.
+//! O grafo inteiro é **arrumado pelo auto-layout em camadas** (`smoke_layout` →
+//! `ph2d_nodegraph::layout`), sem sobreposições, e o nó marcado `>> EVALUATE <<`
+//! é o `value.quantize` a avaliar. Selecione-o → o painel mostra **Step** (o
+//! espaçamento da grade — suba para degraus mais grossos, zere para passthrough)
+//! e **Mode** (Round/Floor/Ceil). Cozinha 100% na GPU.
 
-use crate::smoke_layout::{lay_horizontal, ROW_GAP};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A amplitude da onda em Y — o LFO oscila em `[-AMP, AMP]`, e o `step = 1` do
@@ -28,8 +28,9 @@ const STEP: f32 = 1.0;
 
 /// Monta uma fileira `grid → move → drive(Y)` cujo valor vem de um `value.lfo`
 /// viajante, opcionalmente passado por `value.quantize`. `canvas_dy` desloca a
-/// fileira na tela; `panel_y` é a altura da linha no grafo. Devolve o sink.
-fn row(g: &mut Graph, stepped: bool, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
+/// fileira na tela. Devolve `(sink, hero)`: o sink e o `value.quantize` a avaliar
+/// (só a fileira STEPPED tem um).
+fn row(g: &mut Graph, stepped: bool, canvas_dy: f32) -> Option<(NodeId, Option<NodeId>)> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let lfo = g.add_node("value.lfo");
@@ -75,13 +76,9 @@ fn row(g: &mut Graph, stepped: bool, canvas_dy: f32, panel_y: f32) -> Option<Nod
         .ok()?;
     }
 
-    // Arrange this row as one straight horizontal line; mark the quantize (only the
-    // stepped row has one — the smooth row is the unmarked reference).
-    let mut nodes = vec![grid, mv, lfo];
-    nodes.extend(quant);
-    nodes.extend([drive, out]);
-    lay_horizontal(g, &nodes, panel_y, quant);
-    Some(out)
+    // The quantize is the node under evaluation (only the stepped row has one —
+    // the smooth row is the unmarked reference).
+    Some((out, quant))
 }
 
 /// Ligado? Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro).
@@ -101,10 +98,17 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima a onda SUAVE (linha 1); de baixo a MESMA onda em degraus (linha 2).
-        let smooth = row(g, false, 2.4, 80.0);
-        let stepped = row(g, true, -2.4, 80.0 + ROW_GAP);
-        gfx.motion.sinks.extend(smooth.into_iter().chain(stepped));
+        // De cima a onda SUAVE (referência); de baixo a MESMA onda em degraus, marcada.
+        let smooth = row(g, false, 2.4);
+        let stepped = row(g, true, -2.4);
+        let mut heroes = Vec::new();
+        let mut sinks = Vec::new();
+        for (sink, hero) in [smooth, stepped].into_iter().flatten() {
+            sinks.push(sink);
+            heroes.extend(hero);
+        }
+        crate::smoke_layout::arrange_and_mark(g, &heroes);
+        gfx.motion.sinks.extend(sinks);
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }
 }

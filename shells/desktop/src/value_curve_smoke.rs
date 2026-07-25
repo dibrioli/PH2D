@@ -15,12 +15,13 @@
 //! **De baixo (RAMP):** a MESMA `value.curve` **sem curva desenhada** = identidade =
 //! `value.map_range` — uma **rampa** reta.
 //!
-//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
-//! `value.curve` marcado `>> EVALUATE <<` é o de cima (ARCH). Selecione-o → o painel
-//! de params mostra o **editor de curva arrastável** (A1); arraste um ponto e o arco
-//! muda de forma ao vivo. E o nó cozinha **100% na GPU** (o canal de LUT do A1-gpu).
+//! O grafo inteiro (a cena de neve do boot + estas duas fileiras) é **arrumado
+//! pelo auto-layout em camadas** (`smoke_layout` → `ph2d_nodegraph::layout`), sem
+//! sobreposições, e o `value.curve` marcado `>> EVALUATE <<` é o de cima (ARCH).
+//! Selecione-o → o painel de params mostra o **editor de curva arrastável** (A1);
+//! arraste um ponto e o arco muda de forma ao vivo. E o nó cozinha **100% na GPU**
+//! (o canal de LUT do A1-gpu).
 
-use crate::smoke_layout::{lay_horizontal, ROW_GAP};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A altura do arco em unidades de mundo — `value.curve` mapeia a rampa `[0,1]` para
@@ -32,8 +33,10 @@ const TENT: &str = "c1 0:0:S 0.5:1:S 1:0:S";
 /// Monta uma fileira `grid → move → drive(Y)` com o valor vindo de
 /// `instance_field(Ramp) → value.curve[curve]`. `curve = None` deixa a `value.curve`
 /// na identidade (uma rampa reta) e é a fileira de referência (sem marca). Devolve
-/// o sink (`motion.output`).
-fn row(g: &mut Graph, curve: Option<&str>, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
+/// `(sink, hero)`: o sink (`motion.output`) e o nó a avaliar (a `value.curve` só na
+/// fileira desenhada). O posicionamento é do auto-layout, feito uma vez sobre o
+/// grafo inteiro pelo chamador.
+fn row(g: &mut Graph, curve: Option<&str>, canvas_dy: f32) -> Option<(NodeId, Option<NodeId>)> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let field = g.add_node("value.instance_field");
@@ -68,10 +71,9 @@ fn row(g: &mut Graph, curve: Option<&str>, canvas_dy: f32, panel_y: f32) -> Opti
         })
         .ok()?;
     }
-    // Arrange as one straight line; mark the value.curve only on the drawn (ARCH) row.
+    // The value.curve is the node under evaluation, but only on the drawn (ARCH) row.
     let hero = curve.is_some().then_some(vc);
-    lay_horizontal(g, &[grid, mv, field, vc, drive, out], panel_y, hero);
-    Some(out)
+    Some((out, hero))
 }
 
 /// Ligado? Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro).
@@ -91,10 +93,17 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima ARQUEIA (tent), marcada (linha 1); de baixo a mesma sem curva (linha 2).
-        let arch = row(g, Some(TENT), 2.4, 80.0);
-        let ramp = row(g, None, -0.6, 80.0 + ROW_GAP);
-        gfx.motion.sinks.extend(arch.into_iter().chain(ramp));
+        // De cima ARQUEIA (tent), marcada; de baixo a mesma sem curva (referência).
+        let arch = row(g, Some(TENT), 2.4);
+        let ramp = row(g, None, -0.6);
+        let mut heroes = Vec::new();
+        let mut sinks = Vec::new();
+        for (sink, hero) in [arch, ramp].into_iter().flatten() {
+            sinks.push(sink);
+            heroes.extend(hero);
+        }
+        crate::smoke_layout::arrange_and_mark(g, &heroes);
+        gfx.motion.sinks.extend(sinks);
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }
 }

@@ -35,6 +35,7 @@ mod intent_apply_fade;
 mod intent_apply_path;
 pub mod nest;
 pub mod nest_map;
+pub mod onion;
 pub mod path;
 pub mod path_convert;
 pub mod persist;
@@ -70,6 +71,7 @@ pub use graph::{
     speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
+pub use onion::{OnionMode, OnionSettings};
 pub use pose::{animated_entities, entity_key_times, pose_at};
 pub use intent::TimelineIntent;
 pub use intent_apply::{apply_intent, snap_time, sync_container_loop, sync_transport_loop};

@@ -73,13 +73,17 @@ enum Item {
     MotionPath,
     Snap,
     Speed,
+    /// **Onion** on/off (ADR-0142) — desenha as poses-fantasma do objeto selecionado.
+    Onion,
+    /// **Onion Keys** — ligado = fantasmas nas keyframes vizinhas; desligado = a t±k quadros.
+    OnionMode,
 }
 
 // ⚠️ A contagem se CONTA, não se escolhe: a `main` trazia 13, a `line/physics`
 // acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
 // MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
 // dos dois lados do conflito.
-const ITEMS: [Item; 17] = [
+const ITEMS: [Item; 19] = [
     Item::Tabs,
     Item::Crumbs,
     Item::Clips,
@@ -105,6 +109,10 @@ const ITEMS: [Item; 17] = [
     Item::MotionPath,
     Item::Snap,
     Item::Speed,
+    // Onion (ADR-0142) fica com o Speed: os dois são toggles de VISTA (o que a tela
+    // MOSTRA), não comandos de documento nem de autoria. O modo (Keys/Frames) ao lado.
+    Item::Onion,
+    Item::OnionMode,
 ];
 
 /// The panel-local VIEW state the bar reflects — what the panel is SHOWING, as
@@ -223,7 +231,9 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
         | Item::Record
         | Item::MotionPath
         | Item::Snap
-        | Item::Speed => toggle_w(),
+        | Item::Speed
+        | Item::Onion
+        | Item::OnionMode => toggle_w(),
     }
 }
 
@@ -518,18 +528,10 @@ fn paint_item(
                 snap.frame_snap,
             );
         }
-        // Speed-graph view (W5) — panel-local, NOT a document command: flips every
-        // expanded graph band between the value curve and the velocity curve.
-        Item::Speed => {
-            toggle(
-                ctx,
-                theme,
-                x,
-                y,
-                ids::TIMELINE_SPEED,
-                ph2d_i18n::tr("panel.timeline.speed"),
-                view.speed_view,
-            );
+        // Os toggles de VISTA (Speed · Onion · Onion Keys) — o que a tela MOSTRA, não
+        // comando de documento. Vivem no módulo irmão (cap de LOC do `paint_item`).
+        Item::Speed | Item::Onion | Item::OnionMode => {
+            view_toggles::paint(ctx, theme, x, y, item, snap, view);
         }
     }
     None
@@ -561,6 +563,11 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 #[path = "transport_widgets.rs"]
 mod widgets;
 pub(crate) use widgets::{chip, icon_button, label, mirror_number, toggle};
+
+/// Os toggles de VISTA da barra (Speed · Onion · Onion Keys) — separados do `paint_item`
+/// (cap de LOC de fn/arquivo) por serem um grupo coeso: nenhum é comando de documento.
+#[path = "transport_view.rs"]
+mod view_toggles;
 
 #[cfg(test)]
 #[path = "transport_playback_tests.rs"]

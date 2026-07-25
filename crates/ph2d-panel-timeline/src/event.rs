@@ -200,6 +200,24 @@ pub(crate) fn apply_event(
             }
             EventOutcome::Consumed
         }
+        // Onion (ADR-0142) — estado de vista GLOBAL (não per-objeto como o Motion Path),
+        // então vai direto pelo canal de intent (como o Dur(s)), sem passar pela shell:
+        // lê o onion autoritativo do snapshot, vira o bit, e reenvia o struct inteiro.
+        WidgetEvent::Toggled(id) if id == ids::TIMELINE_ONION => {
+            let mut onion = crate::state::current_snapshot().onion;
+            onion.enabled = !onion.enabled;
+            crate::state::push_intent(ph2d_timeline::TimelineIntent::SetOnion(onion));
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Toggled(id) if id == ids::TIMELINE_ONION_MODE => {
+            let mut onion = crate::state::current_snapshot().onion;
+            onion.mode = match onion.mode {
+                ph2d_timeline::OnionMode::Keys => ph2d_timeline::OnionMode::Frames,
+                ph2d_timeline::OnionMode::Frames => ph2d_timeline::OnionMode::Keys,
+            };
+            crate::state::push_intent(ph2d_timeline::TimelineIntent::SetOnion(onion));
+            EventOutcome::Consumed
+        }
         WidgetEvent::Toggled(id) if is_toggle(id) => {
             let on = host.store().toggle(id).map(|(_, on)| on).unwrap_or(false);
             host.bus_mut()

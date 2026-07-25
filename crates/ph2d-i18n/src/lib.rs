@@ -120,6 +120,10 @@ pub fn tr(key: &str) -> &'static str {
         // Says what the clock DRIVES, not what the scene contains — the scene
         // has physics bodies either way; this is whether Play steps them.
         "panel.timeline.physics" => "Physics",
+        // Onion (ADR-0142): ghost poses of the selected object. "Onion" is the term
+        // of art; "Keys" toggles pose-to-pose (neighbouring keyframes) vs t±k frames.
+        "panel.timeline.onion" => "Onion",
+        "panel.timeline.onion_keys" => "Keys",
         // The three view tabs, in the order things are assembled: keys make a
         // clip, clips make a container, containers and clips make the scene.
         // Named for what you SEE there, not for a mode you enter.

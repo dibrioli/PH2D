@@ -369,7 +369,6 @@ impl App {
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,
-            onion: crate::render_loop::timeline_onion::OnionSettings::default(),
             onion_ghosts: Vec::new(),
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
             gilrs,

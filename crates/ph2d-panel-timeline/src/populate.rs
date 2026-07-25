@@ -125,6 +125,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, ids::TIMELINE_MOTION_PATH, false);
     toggle(store, ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
+    // Onion (ADR-0142): dois toggles de vista — on/off + modo (Keys/Frames).
+    toggle(store, ids::TIMELINE_ONION, false);
+    toggle(store, ids::TIMELINE_ONION_MODE, true);
 
     // The view tabs. Each is a plain Button — which is what makes its Click reach
     // `apply_event` at all: `dispatch_pointer`'s Down only makes a hit ACTIVE when

@@ -4147,7 +4147,7 @@ impl crate::App {
             // desenha noutra). No-op quando desligado / sem seleção animada.
             self.onion_ghosts.clear();
             timeline_onion::collect_onion_ghosts(
-                &self.onion,
+                &self.timeline.onion,
                 sim.world(),
                 present,
                 &self.timeline.doc,

@@ -1294,6 +1294,31 @@ fn arming_physics_reaches_the_snapshot_the_panel_paints() {
     }
 }
 
+/// **`SetOnion` chega ao estado E ao snapshot que o painel pinta** (ADR-0142 W3) — o
+/// mesmo round-trip do Physics: o painel manda o struct, `apply_intent` o grava em
+/// `TimelineState::onion`, e o snapshot o devolve para o painel refletir.
+#[test]
+fn setting_the_onion_reaches_the_state_and_the_snapshot() {
+    use ph2d_timeline::{OnionMode, OnionSettings, TimelineViewSnapshot};
+
+    let mut st = TimelineState::new();
+    let mut playhead = Playhead::default();
+    assert!(!st.onion.enabled, "o onion nasce desligado");
+
+    let want = OnionSettings {
+        enabled: true,
+        mode: OnionMode::Frames,
+        frames_before: 4,
+        ..OnionSettings::default()
+    };
+    apply_intent(&mut st, &mut playhead, I::SetOnion(want));
+    assert_eq!(st.onion, want, "SetOnion não chegou ao TimelineState");
+
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &playhead, false);
+    assert_eq!(snap.onion, want, "o snapshot que o painel pinta não carrega o onion");
+}
+
 // ── the motion path stays 1:1 with its Position track under dope-sheet edits ─────
 //
 // ADR-0141: moving / merging / deleting / duplicating a Position key in the TIMELINE

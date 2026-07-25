@@ -468,11 +468,6 @@ pub(crate) struct App {
     /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
     /// one door, so the key and the checkbox can never disagree.
     pub(crate) show_colliders: bool,
-    /// **O onion da timeline** (ADR-0142): as configurações dos fantasmas (passado/futuro,
-    /// contagens, opacidade, cores). Estado de VISTA — NÃO serializado (a classe do toggle
-    /// Physics / Speed graph: a resposta a *"o que a tela mostra"* não muda sozinha após um
-    /// load). Nasce desligado. A UI do painel é W3; hoje o smoke o arma.
-    pub(crate) onion: crate::render_loop::timeline_onion::OnionSettings,
     /// Os fantasmas do onion cozidos NESTE frame (bloco de overlay do `run_render_frame`)
     /// e lidos pelo `run_present_phase` para o slot `extra` do passe de sprite — o mesmo
     /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando

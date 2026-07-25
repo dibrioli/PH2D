@@ -221,6 +221,12 @@ pub struct TimelineState {
     /// looking. Session state; a document does not remember which container was open, exactly
     /// as Animate does not.
     pub edit_path: Vec<crate::EnterStep>,
+    /// **O onion da timeline** (ADR-0142): as configurações dos fantasmas de pose. Estado
+    /// de VISTA como [`Self::flags`] — não serializado, nasce desligado. Fica FORA de
+    /// `flags` porque tem `f32` (cores/opacidade) e `TimelineFlags` é `Eq`. O painel o
+    /// edita por [`crate::TimelineIntent::SetOnion`]; o shell o LÊ para desenhar os
+    /// fantasmas no passe de sprite.
+    pub onion: crate::OnionSettings,
 }
 
 impl TimelineState {

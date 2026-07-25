@@ -52,6 +52,12 @@ pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");
 /// well as the curves? One transport, two consumers; this is which of them the
 /// clock reaches. Off by default (`TimelineFlags::simulate_physics`).
 pub const TIMELINE_PHYSICS: NodeId = hash_node_id("timeline.physics");
+/// **Onion** toggle (ADR-0142) — desenha as poses-fantasma do objeto selecionado.
+/// Estado de vista (`TimelineState::onion`), desligado por default.
+pub const TIMELINE_ONION: NodeId = hash_node_id("timeline.onion");
+/// **Onion Keys** toggle (ADR-0142 §4) — ligado = fantasmas nas keyframes vizinhas
+/// (pose-a-pose); desligado = a `t±k` quadros. Só significa algo com o Onion ligado.
+pub const TIMELINE_ONION_MODE: NodeId = hash_node_id("timeline.onion_mode");
 
 // ── View tabs (ADR-0115 R8, amended) ─────────────────────────────────────────
 /// The tab strip itself (the `TabList` a11y parent).

@@ -250,6 +250,10 @@ pub enum TimelineIntent {
     /// Arm/disarm the rigid simulation on the transport (ADR-0131) — see
     /// [`crate::TimelineFlags::simulate_physics`].
     SetSimulatePhysics(bool),
+    /// **Configura o onion da timeline** (ADR-0142) — o painel manda o struct inteiro
+    /// atualizado, que o `apply_intent` grava em [`crate::TimelineState::onion`]. Estado de
+    /// vista, não-undoable (como `SetSimulatePhysics`).
+    SetOnion(crate::OnionSettings),
     /// **Arm/clear the TRANSPORT's loop, leaving the document alone** — what the Loop and
     /// PingPong toggles mean INSIDE a container (Enio, 2026-07-20: *"o loop dentro do
     /// container deve se ajustar automaticamente quando ligado às strips"*).

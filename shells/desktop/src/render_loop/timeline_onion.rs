@@ -18,60 +18,14 @@ use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef, World};
 use ph2d_render::RenderInstance;
 use ph2d_timeline::{TimelineDoc, animated_entities, entity_key_times, pose_at};
 
-/// **O que os fantasmas vizinhos SÃO** (ADR-0142 §4). O onion serve os dois fluxos de um
-/// timeline de keyframes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum OnionMode {
-    /// Fantasmas a `t ± k` QUADROS — mostra o espaçamento dos inbetweens (o ritmo).
-    Frames,
-    /// Fantasmas nas KEYFRAMES vizinhas — o pose-a-pose, o modelo do animador. O default.
-    Keys,
-}
+// As configurações do onion (`OnionSettings`/`OnionMode`) moram em `ph2d-timeline` (dados
+// puros), para o `TimelineState`, o `apply_intent`, o snapshot e o painel compartilharem a
+// MESMA língua (ADR-0142 W3). Aqui fica o MOTOR de fantasmas (silhueta em `RenderInstance`).
+pub(crate) use ph2d_timeline::{OnionMode, OnionSettings};
 
 /// Piso de opacidade de um fantasma — o mais distante ainda tem de ser visível. Espelha o
 /// `GHOST_MIN_ALPHA` do onion do Flip.
 pub(crate) const GHOST_MIN_ALPHA: f32 = 0.06;
-
-/// Como os fantasmas do onion da timeline se parecem. Estado de VISTA (ADR-0142 W3): não
-/// é serializado — a resposta a *"o que a tela mostra"* não deve mudar sozinha após um
-/// load (a classe do toggle Physics / Speed graph).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct OnionSettings {
-    /// Desligado por default: um onion que se arma sozinho é cena que já mudou ao olhar.
-    pub enabled: bool,
-    /// Quantos quadros ANTES do playhead ganham fantasma.
-    pub frames_before: u32,
-    /// Quantos quadros DEPOIS.
-    pub frames_after: u32,
-    /// A opacidade do fantasma mais PRÓXIMO; os mais distantes desvanecem a partir dela.
-    pub opacity: f32,
-    /// A cor (RGB) de um fantasma do passado — frio, o vocabulário do Flip.
-    pub color_before: [f32; 3],
-    /// A cor de um fantasma do futuro — o azul do Flip.
-    pub color_after: [f32; 3],
-    /// Quadros por segundo, para converter `frames_before/after` em tempo de clip
-    /// (modo `Frames`).
-    pub fps: f64,
-    /// Fantasmas por QUADRO ou por KEYFRAME (ADR-0142 §4). Default `Keys`.
-    pub mode: OnionMode,
-}
-
-impl Default for OnionSettings {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            frames_before: 2,
-            frames_after: 2,
-            opacity: 0.5,
-            // Os defaults do `ph2d_flip::OnionSettings` (ADR-0142 §3).
-            color_before: [0.145, 0.420, 0.137], // LITERAL-COLOR-OK: onion, espelha o Flip
-            color_after: [0.125, 0.082, 0.529],  // LITERAL-COLOR-OK: onion, espelha o Flip
-            fps: 24.0,
-            // Pose-a-pose é o modelo do animador num timeline de keyframes (ADR-0142 §4).
-            mode: OnionMode::Keys,
-        }
-    }
-}
 
 /// A opacidade de um fantasma a `k` quadros de distância, de um total de `n`: o mais
 /// próximo (`k=1`) recebe `opacity` cheia, o mais distante desvanece, com piso

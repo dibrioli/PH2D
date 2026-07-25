@@ -84,9 +84,16 @@ verde, futuro azul) para o app ter UM vocabulário de fantasma, e uma unificaç�
   keys · o fps não move um fantasma de modo Keys (mutação → RED). ⚠️ Sob Time Remap a
   vizinhança-por-key é aproximada (a inversa `fonte→clip` não é única — a mesma razão do
   bake recusar instante ambíguo).
-- **W3:** a UI no painel da timeline (modo, contagens, opacidade, cores, escopo) + tokens
-  + i18n. Estado de VISTA, **não serializado** (a classe do toggle Physics/Speed graph —
-  a resposta a *"o que a tela mostra"* não deve mudar sozinha após um load).
+- **W3 (LANDOU, o toggle):** os toggles **Onion** (on/off) e **Onion Keys** (Keys/Frames)
+  na barra de transporte + i18n. `OnionSettings`/`OnionMode` mudaram-se para
+  **`ph2d-timeline`** (dados puros) para o `TimelineState`, o `apply_intent`, o snapshot e o
+  painel falarem UMA língua — o espelho EXATO do `SetSimulatePhysics`: o onion vive em
+  `TimelineState::onion` (não serializado, fora de `TimelineFlags` porque tem `f32`), o
+  painel edita por `TimelineIntent::SetOnion`, o snapshot o carrega, e o shell LÊ
+  `self.timeline.onion` para o passe de fantasmas. Gates: seam que CLICA os dois toggles →
+  `SetOnion` (mutação: fora do `populate` = morto sob o mouse) · `apply_intent`→estado→
+  snapshot · id-collision. **Aberto (W3b):** contagens/opacidade/cores num card próprio
+  (hoje nos defaults; o smoke os arma).
 - **Futuro (Chesterton):** rigs parenteados (compor a cadeia como a física W5 fez) ·
   "todos animados" · unificação de crate com o Flip.
 

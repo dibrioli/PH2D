@@ -84,22 +84,22 @@ impl crate::App {
             ];
             author_poses(&mut self.timeline.doc, mover, &poses);
             author_poses(&mut self.timeline.doc, bystander, &poses);
-            self.onion.mode = OnionMode::Keys;
+            self.timeline.onion.mode = OnionMode::Keys;
         } else {
             author_mover(&mut self.timeline.doc, mover, -6.0, 6.0, 1.2);
             author_mover(&mut self.timeline.doc, bystander, -6.0, 6.0, 1.2);
-            self.onion.mode = OnionMode::Frames;
+            self.timeline.onion.mode = OnionMode::Frames;
         }
 
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.gizmo.replace_selection(Some(mover));
         }
 
-        self.onion.enabled = true;
-        self.onion.frames_before = if keys_scene { 2 } else { 3 };
-        self.onion.frames_after = if keys_scene { 2 } else { 3 };
-        self.onion.opacity = 0.6;
-        self.onion.fps = self.timeline.doc.fps_display;
+        self.timeline.onion.enabled = true;
+        self.timeline.onion.frames_before = if keys_scene { 2 } else { 3 };
+        self.timeline.onion.frames_after = if keys_scene { 2 } else { 3 };
+        self.timeline.onion.opacity = 0.6;
+        self.timeline.onion.fps = self.timeline.doc.fps_display;
 
         // Pausado no MEIO (2 s de 4), para os dois lados do onion aparecerem.
         self.playhead.seek(2.0);
@@ -116,10 +116,14 @@ impl crate::App {
                 "[onion-smoke] modo FRAMES: fantasmas VERDES atras / AZUIS a frente a t±k \
                  quadros ({} de cada lado), fps {:.1}, playhead a 2,00 s. O espacamento \
                  conta o ease. Bystander (nao selecionado) NAO tem fantasma.",
-                self.onion.frames_before, self.onion.fps
+                self.timeline.onion.frames_before, self.timeline.onion.fps
             );
         }
         eprintln!("[onion-smoke] Clique o Bystander: o onion migra para ele (so o selecionado).");
+        eprintln!(
+            "[onion-smoke] Abra a timeline (L): os toggles Onion e Keys estao na barra de \
+             transporte (ja armados pela cena) -- clique para ligar/desligar e trocar o modo."
+        );
     }
 }
 

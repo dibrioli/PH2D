@@ -10,9 +10,12 @@
 > envelope Wash do Krita) foi construída e **REPROVADA na tela** (o traço saía em contas) ⇒ revertida, e o
 > estado que ficou é *a máscara pinta exactamente como o brush digital normal* — ordem do Enio, pinada num
 > gate de byte-identidade. Esse defeito (a borda endurece sob muitas passadas) **segue ABERTO** (§13.10.4).
-> (b) **A TINTA atravessando a proteção saía craquelada, e ISSO FECHOU** (§13.11 diagnóstico → **§13.12**
-> cura): a proteção era composta uma vez por BATCH, logo a força dela seguia a taxa de polling do mouse;
-> agora é uma **sessão por-TRAÇO** com o `keep` aplicado UMA vez. 6 gates novos, 4 mutações, 4 sangram.
+> (b) **A TINTA atravessando a proteção saía craquelada, e ISSO FECHOU EM DUAS RODADAS** (§13.11 diagnóstico → **§13.12**
+> cura): a proteção era composta uma vez por BATCH, logo a força dela seguia a taxa de polling do mouse.
+> O smoke do Enio devolveu *"sanou quase 85%"*, e os 15% tinham causa exata e medida — a proteção **ERODIA**
+> (`1−(1−keep)^N`: oito passadas e a máscara não protegia nada) ⇒ por ordem dele a lei virou o **TETO**
+> (§13.13), com a época do §13.7 de volta e as suas **22 sítios de commit trocados por três testemunhas**.
+> 14 gates novos no eixo do gate, 9 mutações, 9 sangram.
 
 ---
 
@@ -23,7 +26,7 @@
 | branch | `line/Painter` |
 | HEAD | o tip da branch (`git log --oneline main..HEAD` é a fonte; um sha literal aqui se auto-invalidaria) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits desta wave | **15**: `d8018d6bc`..`edd0602b1` constroem a lei do canal · `d41b0a71b` **a remove** (doc §13.10) · `a5c5a14f2` os handoffs · `afbcd5e8a`+`c05b1ede1`+`6d801604c` o **diagnóstico** do craquelado (§13.11) · `b75eda4c1` **a CURA** (§13.12: o plano livre por-traço) |
+| commits desta wave | **20**: `d8018d6bc`..`edd0602b1` constroem a lei do canal · `d41b0a71b` **a remove** (doc §13.10) · `a5c5a14f2` os handoffs · `afbcd5e8a`+`c05b1ede1`+`6d801604c` o **diagnóstico** do craquelado (§13.11) · `b75eda4c1` a cura da 1ª rodada (§13.12: o plano livre por-traço) · `6f8c4d167` o **diagnóstico dos 15%** (§13.13) · `4dca0b14e` **o TETO** · `a1b97ba5d`+`9389fcc2e`+`81cadcb17` smoke/§5/memória |
 | commits da linha desde a base | ⚠️ **~49** — esta wave são os 11 do topo; o resto são **waves ANTERIORES da mesma linha que ainda não integraram** (§7) |
 
 ⚠️ **Os commits desta wave NÃO são um caminho reto:** `d8018d6bc`..`edd0602b1` constroem a lei do canal e
@@ -101,7 +104,7 @@ commitado não mudou de representação.
 
 ## 6. Ordem, dependências e o que smoke-testar
 
-**Gate desta linha:** `nextest-impacted.sh` = **4072 testes, 4072 passaram** (~1090 da shell, então os
+**Gate desta linha:** `nextest-impacted.sh` = **4074 testes, 4074 passaram** (~1090 da shell, então os
 arch-gates de `shells/desktop/tests/` foram alcançados). ⚠️ O `ph2d-timeline::nesting_clock
 the_cost_of_depth_is_linear_not_explosive` falhou numa volta: é a **flake conhecida e PRÉ-EXISTENTE** que o
 CLAUDE.md §5 nomeia (gate de RAZÃO sensível a carga); passa isolado (conferido) e passou nas voltas
@@ -138,6 +141,26 @@ Reescrito com o que o build de fato faz.
   fica com 0 bytes (medido, sonda 4). Pré-existente.
 
 ---
+
+## 6.1 ⚠️ A 2ª rodada: o TETO (§13.13) — o que muda de COMPORTAMENTO
+
+| | antes | depois |
+|---|---|---|
+| repetir sobre um texel meio-protegido | build-up: `1−(1−keep)^N`, **8 passadas deixam passar 1,000** | **converge em `keep` e nunca passa** |
+| a fronteira da tinta | dentada, **1,68 px** de pente | **0,05 px** = a ondulação própria do `keep` |
+| a rampa da tinta | 0,876 da rampa da máscara | **idêntica a ela** |
+| vida da sessão de proteção | um traço | a **declaração de proteção** (época) |
+
+⚠️ **É a semântica de layer mask / alpha lock**, e substitui a do sculpt mask do Blender que o código
+declarava — decisão do Enio depois de a erosão ser medida. O `Collider` do risco é o ciclo de vida: os **22
+sítios** que o §13.7 mantinha à mão são agora **três testemunhas** (camada · geração do scratch ·
+`pixel_clock`), e há gate por camada, incluindo *o Fill SOBREVIVE* (a mutação reproduz o vazamento
+original: verde 0 → 224).
+
+⚠️ **Um bug meu que só a mutação sobrevivente achou:** o `mark_dirty` do próprio `restore_region` disparava
+a testemunha, então **todo método de re-stamp** (Drag Dot, Line, todo shape editor) re-semeava a época por
+frame de preview — o teto revertia para por-gesto naquela família e cada frame pagava um clone de canvas.
+Curado + gateado.
 
 ## 7. ⚠️ A linha carrega waves ANTERIORES não-integradas
 

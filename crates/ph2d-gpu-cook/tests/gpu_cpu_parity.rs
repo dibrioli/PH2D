@@ -47,6 +47,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_field_box::register(&mut reg).unwrap();
     ph2d_node_field_combine::register(&mut reg).unwrap();
     ph2d_node_field_radial_sweep::register(&mut reg).unwrap();
+    ph2d_node_field_remap::register(&mut reg).unwrap();
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
@@ -638,6 +639,49 @@ fn field_radial_sweep_kernel_matches_the_cpu_within_epsilon() {
     connect(&mut g, sw, tint);
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + radial_sweep + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_remap_kernel_matches_the_cpu_within_epsilon() {
+    // The REMAPPER: it transforms an existing `falloff`, so it must be FED one — a
+    // `field.box` with a soft plateau paints the grid an intermediate ramp, and the
+    // remap Quantizes it into bands. Every remap param runs at a non-trivial value so
+    // a dropped one cannot hide: Quantize with an odd `steps`, an `inner_offset`
+    // plateau, a shifted `[min, max]` range, a `multiplier`, and a partial `strength`
+    // (the blend that must land the SAME lerp on both devices). The whole
+    // `grid -> box -> remap -> tint` chain runs on the device.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 41.0);
+    g.set_param(bx, "height", 41.0);
+    g.set_param(bx, "soft", 17.0); // a wide soft ramp, so the remap sees the [0,1] range
+    let rm = g.add_node("field.remap");
+    g.set_param(rm, "contour", 3.0); // Quantize
+    g.set_param(rm, "steps", 5.0);
+    g.set_param(rm, "inner_offset", 0.15);
+    g.set_param(rm, "min", 0.1);
+    g.set_param(rm, "max", 0.9);
+    g.set_param(rm, "multiplier", 1.1);
+    g.set_param(rm, "strength", 0.8);
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, bx);
+    connect(&mut g, bx, rm);
+    connect(&mut g, rm, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 4); // grid + box + remap + tint
 }
 
 #[test]

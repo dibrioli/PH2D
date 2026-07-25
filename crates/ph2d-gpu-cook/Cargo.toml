@@ -74,6 +74,7 @@ ph2d-node-field-index-range = { path = "../ph2d-node-field-index-range" }
 ph2d-node-field-box = { path = "../ph2d-node-field-box" }
 ph2d-node-field-combine = { path = "../ph2d-node-field-combine" }
 ph2d-node-field-radial-sweep = { path = "../ph2d-node-field-radial-sweep" }
+ph2d-node-field-remap = { path = "../ph2d-node-field-remap" }
 # ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

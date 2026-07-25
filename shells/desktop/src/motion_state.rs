@@ -54,7 +54,7 @@ use gpu_deform_demo::{
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
     build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
-    build_gpu_field_radial_sweep_demo_document,
+    build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
     build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use gpu_neighbour_demos::{
@@ -246,6 +246,12 @@ impl MotionState {
             // gizmo drives (D9).
             Ok("20") => {
                 build_gpu_field_radial_sweep_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // The REMAPPER: `field.box` paints a soft ramp, `field.remap` Quantizes it
+            // into five topographic bands — the D1 factoring (every field defers its
+            // remap here), the C4D Remapping tab as a downstream node.
+            Ok("21") => {
+                build_gpu_field_remap_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

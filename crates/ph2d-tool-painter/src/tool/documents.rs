@@ -219,6 +219,8 @@ impl PainterTool {
         self.preview_dirty = true;
         self.dirty_rect = None;
         self.preview_upload_bbox = None;
+        // The GPU-lane twin — same reason as its sibling above, and the impasto fold reads it.
+        self.preview_dirty_region = None;
         self.edited_since_bind = false;
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }

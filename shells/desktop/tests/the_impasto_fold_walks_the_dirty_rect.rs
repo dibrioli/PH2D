@@ -44,6 +44,22 @@
 
 const SRC: &str = include_str!("../src/render_loop/painter_gpu_preview.rs");
 
+/// A EXPRESSÃO que liga `plane_win` — do `let` até o `;` que a fecha.
+///
+/// Ler daqui, e não do arquivo, é o que impede um comentário de satisfazer as asserções abaixo. Se o
+/// binding for renomeado o gate falha alto, que é o modo certo de falhar: quem move a decisão tem de
+/// mover o gate junto.
+fn plane_win_binding() -> &'static str {
+    let start = SRC.find("let plane_win").expect(
+        "o produtor não liga mais `plane_win` — se a decisão foi movida, mova este gate junto",
+    );
+    let end = SRC[start..]
+        .find(';')
+        .map(|o| start + o)
+        .expect("o binding de `plane_win` não termina");
+    &SRC[start..end]
+}
+
 /// Controle positivo: o arquivo foi mesmo lido, e é o que este gate pensa que é.
 ///
 /// Sem isto, um `include_str!` apontando para o lugar errado (ou um arquivo esvaziado) deixaria todo
@@ -76,19 +92,25 @@ fn the_gate_reads_the_producer_it_claims_to_read() {
 /// **Mutações que devem sangrar:** trocar `impasto_gpu_planes_in(plane_win)` por
 /// `impasto_gpu_planes()` (mata 1) · cravar `plane_win` em `(0, 0, width, height)` (mata 2) · tirar o
 /// `planes_seeded` do filtro (mata 3).
+///
+/// ⚠️ As asserções olham a EXPRESSÃO que liga `plane_win`, nunca o arquivo inteiro: sobre o arquivo elas
+/// seriam satisfazíveis por um COMENTÁRIO — bastaria alguém escrever `preview_gpu_region()` em prosa
+/// para desarmar o gate em silêncio (achado da auditoria adversarial, 2026-07-25). Uma âncora que aceita
+/// prosa não é um gate, é um lembrete.
 #[test]
 fn the_shell_folds_the_window_the_tool_reports_dirty() {
+    let bind = plane_win_binding();
     assert!(
-        SRC.contains("impasto_gpu_planes_in("),
+        bind.contains("impasto_gpu_planes_in(") || SRC.contains("impasto_gpu_planes_in(plane_win)"),
         "a shell precisa chamar a porta REGIONAL do fold — a de tela cheia custa 202 ms/frame a 4096²"
     );
     assert!(
-        SRC.contains("preview_gpu_region()"),
+        bind.contains("preview_gpu_region()"),
         "a janela tem de vir do retângulo sujo do tool; qualquer outra origem é um segundo dono do \
          fato \"o que mudou neste frame\""
     );
     assert!(
-        SRC.contains("planes_seeded("),
+        bind.contains("planes_seeded("),
         "a shell tem de perguntar ao PASSE se os planos já foram semeados — um upload parcial sobre \
          uma textura recém-criada ilumina o resto da pintura como se fosse chapada"
     );

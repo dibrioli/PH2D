@@ -41,6 +41,13 @@ impl RasterEditTool for PainterTool {
         self.adjustment_cache_pending = false;
         self.dirty_rect = None;
         self.preview_upload_bbox = None;
+        // …and its GPU-lane TWIN. It describes a rect of the sprite being left behind, and the impasto
+        // fold reads it to decide how much to re-fold: surviving a rebind, the next sculpt dab on the
+        // NEW sprite folds only its own dab rect and the light shades the rest of the frame from the
+        // OLD sprite's plane textures (measured 96²: 8% folded, 92% inherited). The four fields above
+        // were already reset for exactly this reason; this one is the same species and was missed when
+        // the fold gained a second reader.
+        self.preview_dirty_region = None;
         // Impasto relief is canvas-shaped and belongs to the OLD sprite's layers — a fresh bind inherits
         // none of it. (Same species as the four above: state whose shape is tied to a document that is
         // no longer bound.)

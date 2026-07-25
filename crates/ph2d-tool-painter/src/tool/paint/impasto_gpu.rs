@@ -298,7 +298,9 @@ mod tests {
     #[test]
     fn a_window_folds_exactly_what_the_whole_canvas_folded_there() {
         let t = sculpted();
-        let whole = t.impasto_gpu_planes().expect("a sculpted canvas has planes");
+        let whole = t
+            .impasto_gpu_planes()
+            .expect("a sculpted canvas has planes");
         // A window that CONTAINS the stroke — a rect over bare paper would agree trivially, since two
         // zero-filled buffers match whatever the fold does ([[feedback_a_fixture_only_proves_what_it_contains]]).
         let win = (10u32, 16u32, 28u32, 16u32);
@@ -387,6 +389,40 @@ mod tests {
             ratio < 2.0,
             "the fold must be bounded by the window: 512²={small:.4} ms vs 1024²={large:.4} ms \
              ({ratio:.2}x — a canvas-bound fold quadruples)"
+        );
+    }
+
+    /// **Trocar de sprite ESQUECE o retângulo sujo da pista GPU.**
+    ///
+    /// Achado da auditoria adversarial (2026-07-25), CONFIRMADO por medição a 96²: `preview_dirty_region`
+    /// é o retângulo que o fold usa para decidir quanto re-dobrar, e ele sobrevivia a um rebind. Então o
+    /// 1º dab de escultura no sprite NOVO dobrava só a pegada dele — 8% do quadro — e a luz sombreava os
+    /// outros 92% a partir das texturas de plano do sprite ANTIGO: contaminação entre DOCUMENTOS.
+    ///
+    /// Os quatro campos irmãos (`dirty_rect`, `preview_upload_bbox`, `composited`, os 3 planos) já eram
+    /// zerados aqui, sob um comentário que os chama de *"state whose shape is tied to a document that is
+    /// no longer bound"*. Este é da mesma espécie e foi esquecido quando o fold lhe deu um SEGUNDO leitor.
+    ///
+    /// **Mutação que deve sangrar:** tirar `preview_dirty_region = None` do `set_source`.
+    #[test]
+    fn binding_a_new_sprite_forgets_the_old_ones_dirty_region() {
+        let mut t = sculpted();
+        // A pista GPU drena o flag SEM compositar, e é isso que move o rect para o stash que o fold lê.
+        assert!(
+            t.take_preview_dirty(),
+            "precondição: o traço sujou o preview"
+        );
+        assert!(
+            t.preview_gpu_region().is_some(),
+            "precondição: a pista GPU tem um retângulo do sprite ANTIGO em mãos"
+        );
+        // O artista troca de sprite.
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        assert_eq!(
+            t.preview_gpu_region(),
+            None,
+            "o retângulo do documento anterior não pode sobreviver ao rebind — o fold o leria como \
+             'só isto mudou' e a luz sombraria o resto do quadro com o relevo do sprite antigo"
         );
     }
 

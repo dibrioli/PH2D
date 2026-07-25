@@ -152,7 +152,7 @@ Reescrito com o que o build de fato faz.
 | vida da sessão de proteção | um traço | a **declaração de proteção** (época) |
 
 ⚠️ **É a semântica de layer mask / alpha lock**, e substitui a do sculpt mask do Blender que o código
-declarava — decisão do Enio depois de a erosão ser medida. O `Collider` do risco é o ciclo de vida: os **22
+declarava — decisão do Enio depois de a erosão ser medida. O risco todo mora no ciclo de vida: os **22
 sítios** que o §13.7 mantinha à mão são agora **três testemunhas** (camada · geração do scratch ·
 `pixel_clock`), e há gate por camada, incluindo *o Fill SOBREVIVE* (a mutação reproduz o vazamento
 original: verde 0 → 224).

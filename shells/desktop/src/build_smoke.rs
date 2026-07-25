@@ -147,6 +147,11 @@ impl crate::App {
             crate::falloff_smoke::frame(self, f);
             return;
         }
+        // A cena do TWIST (o remoinho, e o Falloff a modulá-lo) — irmão `twist_smoke`, mesma razão.
+        if level == 29 {
+            crate::twist_smoke::frame(self, f);
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

@@ -153,6 +153,8 @@ mod theme;
 mod timeline_orphan_tests;
 mod timeline_persist;
 mod transport;
+/// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
+mod twist_smoke;
 mod undo;
 mod undo_route;
 mod vec_blend;

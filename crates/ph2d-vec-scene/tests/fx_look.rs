@@ -157,6 +157,10 @@ fn arm_orbit(fx: &mut PathEffect, c: usize) {
 fn arm_bloat(fx: &mut PathEffect, c: usize) {
     fx.set(0, -60.0 + 30.0 * c as f64);
 }
+/// O TWIST sobre uma forma COM QUINAS (o caso de falha documentado): 0 → 360° na borda.
+fn arm_twist(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 90.0 * c as f64);
+}
 
 const ROWS: &[Row] = &[
     Row {
@@ -206,6 +210,24 @@ const ROWS: &[Row] = &[
         kind: 3,
         scale: 1.1,
         arm: arm_bloat,
+        shape: circle,
+    },
+    // ⚠️ O Twist sobre um QUADRADO — o caso que a cerca do `fx_warp` diz ter rasgado. Se a coluna
+    // 360° aparecer como um remoinho de tinta cheia (e não como buracos/fios soltos), a volta é boa.
+    // O Twist é o ÚLTIMO KIND da tabela; `KINDS.len() - 1` fica robusto a novos tipos.
+    Row {
+        name: "Twist QUADRADO (0 → 360° na borda) -- o caso de falha da cerca",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 0.85,
+        arm: arm_twist,
+        shape: square,
+    },
+    // O mesmo Twist num CÍRCULO, para separar "a curva está errada" de "as quinas rasgam".
+    Row {
+        name: "Twist CIRCULO (0 → 360° na borda)",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 0.85,
+        arm: arm_twist,
         shape: circle,
     },
 ];

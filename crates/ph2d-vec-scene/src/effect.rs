@@ -37,6 +37,7 @@
 
 use crate::fx_falloff::{Falloff, FalloffSpec};
 use crate::fx_trim::{self, TrimSpec};
+use crate::fx_twist::{self, TwistSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
 use crate::{Contour, VecPath, VecPathId, VecScene};
 
@@ -192,6 +193,12 @@ pub enum PathEffect {
     /// deformador SEGUINTE na pilha (a ideia do *Falloff* do Cavalry). Ver [`crate::fx_falloff`].
     /// **Apendado por último**: postcard é posicional.
     Falloff(FalloffSpec),
+    /// **Twist** — o remoinho: gira cada ponto em torno do centro por um ângulo que cresce com a
+    /// distância. Ver [`crate::fx_twist`]. **Apendado por último**: postcard é posicional.
+    ///
+    /// ⚠️ Houve um `Twist` cortado em 2026-07-18 (cabeçalho do [`crate::fx_warp`]); este é a volta,
+    /// sobre o esqueleto de reamostragem maduro dos presets de Warp, provada por render-and-look.
+    Twist(TwistSpec),
 }
 
 impl PathEffect {
@@ -208,6 +215,7 @@ impl PathEffect {
             Self::Bloat(b) => b.is_neutral(),
             Self::Warp(w) => w.is_neutral(),
             Self::Falloff(f) => f.is_neutral(),
+            Self::Twist(t) => t.is_neutral(),
         }
     }
 
@@ -224,7 +232,8 @@ impl PathEffect {
             | Self::Repeat(_)
             | Self::Bloat(_)
             | Self::Warp(_)
-            | Self::Falloff(_) => None,
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -236,7 +245,8 @@ impl PathEffect {
             | Self::Repeat(_)
             | Self::Bloat(_)
             | Self::Warp(_)
-            | Self::Falloff(_) => None,
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -245,9 +255,12 @@ impl PathEffect {
     pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) | Self::Falloff(_) => {
-                None
-            }
+            Self::Trim(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -255,9 +268,12 @@ impl PathEffect {
     pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) | Self::Falloff(_) => {
-                None
-            }
+            Self::Trim(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -278,6 +294,7 @@ impl PathEffect {
             Self::Bloat(_) => "Pucker & Bloat",
             Self::Warp(w) => w.style.label(),
             Self::Falloff(f) => f.shape.label(),
+            Self::Twist(_) => "Twist",
         }
     }
 
@@ -290,7 +307,8 @@ impl PathEffect {
             | Self::ZigZag(_)
             | Self::Repeat(_)
             | Self::Bloat(_)
-            | Self::Falloff(_) => None,
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -302,7 +320,8 @@ impl PathEffect {
             | Self::ZigZag(_)
             | Self::Repeat(_)
             | Self::Bloat(_)
-            | Self::Falloff(_) => None,
+            | Self::Falloff(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -311,9 +330,12 @@ impl PathEffect {
     pub fn as_falloff(&self) -> Option<&FalloffSpec> {
         match self {
             Self::Falloff(f) => Some(f),
-            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => {
-                None
-            }
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Twist(_) => None,
         }
     }
 
@@ -321,21 +343,51 @@ impl PathEffect {
     pub fn as_falloff_mut(&mut self) -> Option<&mut FalloffSpec> {
         match self {
             Self::Falloff(f) => Some(f),
-            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => {
-                None
-            }
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Twist(_) => None,
+        }
+    }
+
+    /// O Twist deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_twist(&self) -> Option<&TwistSpec> {
+        match self {
+            Self::Twist(t) => Some(t),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_) => None,
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_twist`].
+    pub fn as_twist_mut(&mut self) -> Option<&mut TwistSpec> {
+        match self {
+            Self::Twist(t) => Some(t),
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_) => None,
         }
     }
 
     /// **Este efeito CONSOME um campo de Falloff?** Só os deformadores por-ponto (Pucker & Bloat,
-    /// Warp, Zig Zag) sabem escalar a força amostra a amostra. Trim (revela um trecho) e Repeat
-    /// (multiplica contornos) não têm uma "força" que um campo espacial module, então um Falloff
-    /// imediatamente acima deles é **inerte na geometria** — e o painel diz isso, em vez de deixar
-    /// o artista adivinhar (a lei do "nenhum controle mudo", DIRETIVA §2).
+    /// Warp, Zig Zag, Twist) sabem escalar a força amostra a amostra. Trim (revela um trecho) e
+    /// Repeat (multiplica contornos) não têm uma "força" que um campo espacial module, então um
+    /// Falloff imediatamente acima deles é **inerte na geometria** — e o painel diz isso, em vez de
+    /// deixar o artista adivinhar (a lei do "nenhum controle mudo", DIRETIVA §2).
     #[must_use]
     pub fn takes_falloff(&self) -> bool {
         match self {
-            Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) => true,
+            Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) | Self::Twist(_) => true,
             Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) => false,
         }
     }
@@ -369,6 +421,10 @@ impl PathEffect {
         "Falloff Linear",
         "Falloff Rect",
         "Falloff Sweep",
+        // ⚠️ O Twist, DEPOIS de tudo — um variant só (sem família de formas). `from_kind`/`kind_index`
+        // o tratam pelo índice `TWIST_KIND`, e `label(Twist) == "Twist"`, então o gate
+        // `every_effect_kind_is_reachable` (`from_kind(i).label() == KINDS[i]`) fica VERMELHO num typo.
+        "Twist",
     ];
 
     /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
@@ -376,6 +432,10 @@ impl PathEffect {
 
     /// Quantos KINDS vêm ANTES da família de falloff — os 4 base + os estilos de warp.
     const FALLOFF_BASE: usize = Self::WARP_BASE + crate::fx_warp_presets::WarpStyle::ALL.len();
+
+    /// O índice do Twist em [`Self::KINDS`] — depois das formas de falloff. Um KIND só (o Twist não
+    /// tem família de formas, ao contrário de Warp/Falloff).
+    const TWIST_KIND: usize = Self::FALLOFF_BASE + crate::fx_falloff::FalloffShape::ALL.len();
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -393,9 +453,12 @@ impl PathEffect {
                 .get(k - Self::WARP_BASE)
                 .map(|&s| Self::Warp(crate::fx_warp_presets::WarpSpec::new(s))),
             // ...e um KIND por forma de falloff, todos o MESMO variant `Falloff` (mesmo padrão).
-            k => crate::fx_falloff::FalloffShape::ALL
+            k if k < Self::TWIST_KIND => crate::fx_falloff::FalloffShape::ALL
                 .get(k - Self::FALLOFF_BASE)
                 .map(|&s| Self::Falloff(FalloffSpec::new(s))),
+            // O Twist é um KIND só, no fim.
+            k if k == Self::TWIST_KIND => Some(Self::Twist(TwistSpec::new())),
+            _ => None,
         }
     }
 
@@ -411,6 +474,7 @@ impl PathEffect {
             Self::Warp(w) => Self::WARP_BASE + w.style as usize,
             // A forma, na ordem da `FalloffShape::ALL`, deslocada pelos base + os warps.
             Self::Falloff(f) => Self::FALLOFF_BASE + f.shape as usize,
+            Self::Twist(_) => Self::TWIST_KIND,
         }
     }
 
@@ -451,6 +515,11 @@ impl PathEffect {
             Self::Warp(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
                     crate::fx_warp_presets::warp_contour(v, c, spec, ctx, falloff)
+                });
+            }
+            Self::Twist(spec) => {
+                apply_per_contour(path, &mut out, |v, c| {
+                    fx_twist::twist_contour(v, c, spec, ctx, falloff)
                 });
             }
             // O Falloff não é geometria: ele é CONSUMIDO pelo `run_stack`, que o passa como o

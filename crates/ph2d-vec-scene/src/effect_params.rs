@@ -137,12 +137,24 @@ impl PathEffect {
             }
         }
         const WARP: &[FxParam] = &[pct("Bend"), pct("Horizontal"), pct("Vertical")];
+        // O ângulo do Twist, em GRAUS, entregue na borda. A faixa `-360..360` (uma volta em cada
+        // sentido) não é um teto físico — a matemática não tem cap: é onde a reamostragem
+        // (`SAMPLES = 128`) ainda desenha o remoinho liso; além de ~1 volta ela faceta antes de a
+        // curva importar. Quem quiser mais voltas re-mede a densidade de amostras.
+        const TWIST: &[FxParam] = &[FxParam {
+            name: "Angle",
+            min: -360.0,
+            max: 360.0,
+            toggle: false,
+            integer: false,
+        }];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
             Self::Repeat(_) => REPEAT,
             Self::Bloat(_) => BLOAT,
             Self::Warp(_) => WARP,
+            Self::Twist(_) => TWIST,
             // O Falloff descreve os próprios params (a lista muda com a FORMA), então delega — a
             // porta única que impede o painel e o motor de discordarem sobre o layout por-forma.
             Self::Falloff(f) => f.params(),
@@ -174,6 +186,7 @@ impl PathEffect {
             (Self::Warp(w), 0) => w.bend,
             (Self::Warp(w), 1) => w.h_distort,
             (Self::Warp(w), 2) => w.v_distort,
+            (Self::Twist(t), 0) => t.angle,
             _ => 0.0,
         }
     }
@@ -215,6 +228,7 @@ impl PathEffect {
             (Self::Warp(w), 0) => w.bend = v,
             (Self::Warp(w), 1) => w.h_distort = v,
             (Self::Warp(w), 2) => w.v_distort = v,
+            (Self::Twist(t), 0) => t.angle = v,
             _ => {}
         }
     }

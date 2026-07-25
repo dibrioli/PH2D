@@ -19,11 +19,14 @@
 //! no cabeçalho de [`crate::fx_warp`]). A cura é a MESMA do [`crate::fx_zigzag`]: reamostrar o
 //! caminho denso por comprimento de arco — **união com as âncoras de entrada**, para as quinas
 //! sobreviverem exatas — e deslocar cada amostra. As alças saem de **Catmull-Rom** sobre os pontos
-//! DEFORMADOS, então a poligonal densa lê como uma curva lisa.
+//! DEFORMADOS, então a poligonal densa lê como uma curva lisa. Esse esqueleto é [`resample_displace`],
+//! partilhado com quem mais aproxima um campo não-afim.
 //!
-//! ⚠️ **O Twist NÃO entra aqui** (ainda). Ele foi cortado de propósito (`fx_warp.rs`: rasgava mesmo
-//! com subdivisão), e reabri-lo exige *render-and-look*, não um palpite — a reamostragem densa é
-//! condição necessária, não prova de que basta.
+//! ⚠️ **O Twist voltou** — mora no módulo irmão [`crate::fx_twist`], e RIDA ESTE esqueleto
+//! ([`resample_displace`]). Ele foi cortado em 2026-07-18 (`fx_warp.rs`: rasgava mesmo com uma
+//! subdivisão *anterior* a este esqueleto), e a cerca dizia que reabri-lo exigia *render-and-look*,
+//! não um palpite — a reamostragem densa é condição necessária, não prova de que basta. A prova é a
+//! folha de contacto (`tests/fx_look.rs`) sobre uma forma COM QUINAS, o caso de falha documentado.
 
 use crate::arc_path::ArcPath;
 use crate::effect::FxCtx;
@@ -115,39 +118,8 @@ pub fn warp_contour(
     if spec.is_neutral() || verts.len() < 2 || (hx <= EPS && hy <= EPS) {
         return (verts.to_vec(), closed);
     }
-    let Some(ap) = ArcPath::from_contour(verts, closed) else {
-        return (verts.to_vec(), closed);
-    };
-    let total = ap.total();
-    if total <= EPS {
-        return (verts.to_vec(), closed);
-    }
     let b = spec.bend / 100.0;
     let (dh, dv) = (spec.h_distort / 100.0, spec.v_distort / 100.0);
-
-    // A grade uniforme por arco + a UNIÃO com as âncoras de entrada (as quinas sobrevivem exatas),
-    // o mesmo padrão do Zig Zag — sem ela, reamostrar seria amostrar mais grosso que a curva.
-    let grid_n = if closed { SAMPLES } else { SAMPLES + 1 };
-    #[allow(clippy::cast_precision_loss)]
-    let step = total / SAMPLES as f64;
-    let mut at: Vec<f64> = (0..grid_n)
-        .map(|k| {
-            #[allow(clippy::cast_precision_loss)]
-            let s = k as f64 * step;
-            s.min(total)
-        })
-        .collect();
-    at.extend_from_slice(ap.anchor_arcs());
-    if !closed {
-        at.push(total);
-    }
-    at.sort_by(f64::total_cmp);
-    let merge = total * MERGE_FRACTION;
-    at.dedup_by(|a, b| (*a - *b).abs() <= merge);
-    at.truncate(MAX_SAMPLES);
-    if at.len() < 2 {
-        return (verts.to_vec(), closed);
-    }
 
     // Normaliza -> deforma -> desnormaliza. Um eixo degenerado (`half==0`) fica em 0 e o warp não
     // o toca (uma linha horizontal warpada só na vertical, o que é honesto).
@@ -170,13 +142,68 @@ pub fn warp_contour(
         let v3 = v2 * dv.mul_add(u2, 1.0);
         [u3.mul_add(hx, ctx.center[0]), v3.mul_add(hy, ctx.center[1])]
     };
+    match resample_displace(verts, closed, falloff, warp) {
+        Some(v) => (v, closed),
+        None => (verts.to_vec(), closed),
+    }
+}
+
+/// **Reamostra um contorno denso por ARCO e desloca cada amostra** — o esqueleto partilhado pelos
+/// deformadores que aproximam um campo NÃO-AFIM (Warp, Twist). Uma segunda cópia deste laço seria
+/// duas respostas à mesma pergunta (*"como se reamostra um caminho sem o facetar?"*), e divergiriam
+/// no primeiro fix.
+///
+/// A grade uniforme por arco + a UNIÃO com as âncoras de entrada (as quinas sobrevivem exatas) é o
+/// mesmo padrão do Zig Zag — sem ela, reamostrar seria amostrar mais grosso que a curva. Cada
+/// amostra é `lerp(original, deslocada, w(original))`, com o `w` do Falloff avaliado na posição
+/// ANTES do deslocamento, então `w = 0` reconstrói a curva de entrada. As alças saem de Catmull-Rom
+/// sobre os pontos DESLOCADOS.
+///
+/// Devolve `None` quando não há geometria a reamostrar — o CHAMADOR devolve a entrada intacta.
+/// Ele também verifica o seu próprio ponto neutro e a sua própria degenerescência ANTES de chamar;
+/// aqui só a geometria decide.
+pub(crate) fn resample_displace(
+    verts: &[VecVertex],
+    closed: bool,
+    falloff: Option<&Falloff>,
+    displace: impl Fn([f64; 2]) -> [f64; 2],
+) -> Option<Vec<VecVertex>> {
+    if verts.len() < 2 {
+        return None;
+    }
+    let ap = ArcPath::from_contour(verts, closed)?;
+    let total = ap.total();
+    if total <= EPS {
+        return None;
+    }
+    let grid_n = if closed { SAMPLES } else { SAMPLES + 1 };
+    #[allow(clippy::cast_precision_loss)]
+    let step = total / SAMPLES as f64;
+    let mut at: Vec<f64> = (0..grid_n)
+        .map(|k| {
+            #[allow(clippy::cast_precision_loss)]
+            let s = k as f64 * step;
+            s.min(total)
+        })
+        .collect();
+    at.extend_from_slice(ap.anchor_arcs());
+    if !closed {
+        at.push(total);
+    }
+    at.sort_by(f64::total_cmp);
+    let merge = total * MERGE_FRACTION;
+    at.dedup_by(|a, b| (*a - *b).abs() <= merge);
+    at.truncate(MAX_SAMPLES);
+    if at.len() < 2 {
+        return None;
+    }
     let pts: Vec<[f64; 2]> = at
         .iter()
         .map(|&s| {
             let orig = ap.frame_at(s).0;
-            let d = warp(orig);
-            // `w` na posição ORIGINAL (antes da dobra) — é onde o Falloff diz quanta força há
-            // *naquele sítio* da forma. `w = 0` deixa a amostra na curva de entrada.
+            let d = displace(orig);
+            // `w` na posição ORIGINAL (antes do deslocamento) — é onde o Falloff diz quanta força
+            // há *naquele sítio* da forma. `w = 0` deixa a amostra na curva de entrada.
             let w = falloff.map_or(1.0, |f| f.eval(orig));
             [
                 (d[0] - orig[0]).mul_add(w, orig[0]),
@@ -184,7 +211,7 @@ pub fn warp_contour(
             ]
         })
         .collect();
-    (catmull_rom_verts(&pts, closed), closed)
+    Some(catmull_rom_verts(&pts, closed))
 }
 
 /// Vértices lisos (C¹) que passam por `pts`, com alças de **Catmull-Rom** (tensão 0): a alça de

@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o commit da §2.5, as promessas do balde) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: `ab96b1813`, o Gap Closure ao vivo da §2.6) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **17** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs + §2.2 + §2.3 + §2.4 + §2.5) |
+| commits à frente do `main` | **19** (7 da wave + cena do smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs ×2 + §2.2 + §2.3 + §2.4 + §2.5 + §2.6) |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -169,6 +169,38 @@ As duas dívidas nomeadas do BUGS #23, pagas juntas (detalhe completo no adendo 
 prometiam. Verificação manual (linha *i* da §7): desenhar uma caixa em DOIS traços
 deixando um vão, medir o vão a olho, digitar esse número no Gap Closure — o balde enche.
 
+### 2.6 O Gap Closure AO VIVO (mesma ordem "siga"; fecha o carry-over da W4, doc 06 §8)
+
+A killer feature de UX do GP: em **modo Fill**, cada vão que o alcance ATUAL fecha
+aparece como um **segmento verde** no canvas (pontas = pontos reais do desenho), e
+**Ctrl+roda** sobre o canvas ajusta o Gap 1 px por tique **com o slider acompanhando** —
+o artista vê o que o clique vai selar antes de clicar. A roda CRUA segue sendo zoom
+(**divergência deliberada do GP**, que toma a roda inteira durante o fill; inspecionar o
+line-art é load-bearing — documentada no próprio `on_mouse_wheel`).
+
+- **A porta é o passo 1 do clique**: `ph2d_flip_fill::preview_closures()` — o `fill_at`
+  DELEGA nela, então a tela e o clique não podem discordar sobre quais vãos fecham
+  (gate de contrato red-proven sobre o vão canônico do BUGS #23).
+- **O custo foi MEDIDO antes do desenho** (`tests/measure_closures.rs`, fica no repo):
+  **5 ms** num quadro típico (60 traços), **339 ms** num pesado (300) — recompute por
+  frame REFUTADO, e o síncrono por tique de scroll também. Daí o **worker**
+  (`flip_gap_live.rs`, o padrão do ajuste ao vivo do Colorize: um em voo, alvo
+  coalescido), com duas diferenças deliberadas: **display-only** (zero interação com o
+  undo) e **resultado STALE descartado pela chave** (fingerprint de conteúdo + alcance)
+  — um helper velho na tela é a feature mentindo. Baratear o kernel (o BVH que o GP usa
+  na colisão) é wave própria do engine, nomeada no §8.
+- **A roda escreve pelas MESMAS duas metades do slider** (`store.set_slider_value` —
+  que **JÁ EXISTIA** em `store_core.rs`, com recentro do chip vinculado; quase criei a
+  2ª porta — + o `SetValue` que o tool clampa). O knob do painel acompanha.
+- A pose da projeção virou **porta única** (`flip_transform::active_pose`): a autoria
+  (`flip_active_pose`) e o overlay chamam a mesma, com borrows diferentes.
+- **Unpaint NÃO ganha helper nem roda** (não roda o solver — helper ali prometeria um
+  fechamento que o clique não faz); a porta do modo é `wants_gap_helpers`, perguntada
+  pelo tick, pelo overlay e pela roda.
+- Smoke: **Teste 4** na cena do balde — caixa com vão DELIBERADO de 0,2 unidade em
+  tinta FINA (o trade está comentado na cena: fora do alcance da solda 0,12 · dentro do
+  teto de 40 px do slider na câmera default).
+
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
 ### 3.1 Foundational tocado (`ph2d-editor-core`), todo ADITIVO
@@ -277,9 +309,10 @@ diferença some — o seed-versus-sample de sempre).
 | shell: `flip_strip_drag` 9 (6 + os 3 da seleção) · `flip_strip_pin_tests` 5 (2 + os 3 do trace, §2.3) · `flip_strip_smoke` 2 · `flip_trace` 4 · `flip_peek` 3 · `flip_pass` +4 (o shift no model · o peek ×3) | 27 |
 | arch-gates de shell (ordem do frame · a costura do pin) | 3 |
 | §2.5: `gap` +3 (colinear fecha no vão · hachura não pareia · emenda não degenera) · `tests` +2 (trap no clamp red-proven · a porta com números à mão) · disjunção re-cravada em `reach = vão` · colorize +1 (contrato no clamp, com o achado honesto no doc) | 6 |
+| §2.6: engine +1 (contrato preview==clique, red-proven) + shell `flip_gap_live` 7 (porta do modo/Unpaint · roda 1 px+clamp · reach 0 sem worker · instala+cacheia · segue o alcance · fingerprint invalida · stale descartado) — a costura da roda no `on_mouse_wheel` fica com o smoke (Teste 4), o padrão da costura do PEEK | 8 |
 | `ph2d-panel-flip/tests/seam.rs`: as 2 tabelas de varredura ganharam a linha do **Trace** (`FlipMode::ALL` 7→8 as fez morder no nascimento, como projetado) | — |
 
-**28 mutações, 27 sangram + 1 sobrevivente DOCUMENTADO** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
+**35 mutações, 34 sangram + 1 sobrevivente DOCUMENTADO** — as 10 da wave + as 5 da §2.2 (fan-out do grupo cravado na
 célula pega · emissão sempre na ordem da lista · preview só da pega · remap de move sem a
 seleção · remap do empurrão sem a seleção; e o guard do grupo obsoleto ganhou caso
 próprio) + as 6 da §2.3 (o passe ignora o mapa · `pick` pelo mais DISTANTE · hit na caixa
@@ -289,7 +322,9 @@ clear) + as 3 da §2.4 (o passe ignora o peek · retimar TODAS as camadas — �
 com vizinho próprio · âncora no quadro CRU em vez da chave ativa) + as 4 da §2.5
 (pareamento morto · guard de direção morto · porta identidade · trap cru no balde — e o
 **sobrevivente documentado**: trap cru no COLORIZE, porque o oráculo de lá não separa; o
-porquê está no doc do próprio gate):
+porquê está no doc do próprio gate) + as 7 da §2.6 (preview com alcance escalado · worker
+nunca sai · cache ignorado relança sempre · roda sem clamp · porta aceita Unpaint ·
+instalar stale incondicional · fingerprint constante cego a edição):
 
 | mutação | o que morre |
 |---|---|
@@ -340,6 +375,7 @@ terminal; em resumo:
 | g | **Trace** (painel do Flip): arrastar o vulto o desliza (a arte fica); Ctrl+arrastar gira; voltar ao Draw mantém a folha deslocada; **Reset Shifts** devolve (§2.3, ✅ smoke OK 2026-07-24) |
 | h | **F1/F2/F3 SEGURADOS** numa caixa do meio: só o desenho anterior/atual/seguinte na tela, sem vultos, playhead parado; soltar volta; na 1ª caixa F1 fica (§2.4, ✅ smoke OK 2026-07-24) |
 | i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
+| j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper VERDE aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 
@@ -347,8 +383,10 @@ terminal; em resumo:
 |---|---|
 | **Persistir os pins** no documento | custa um bump de `PROJECT_SCHEMA` (recusa projetos salvos). Decisão de produto do Enio |
 | ~~Arrastar uma **SELEÇÃO** de células~~ | **FECHADO e SMOKADO 2026-07-24** (§2.2) |
-| ~~Shift & Trace~~ (SHIFT **e** PEEK) | **FECHADO 2026-07-24** (§2.3 + §2.4) — pendente de smoke (Testes 5 e 6 / linhas *g* e *h*) |
+| ~~Shift & Trace~~ (SHIFT **e** PEEK) | **FECHADO e SMOKADO 2026-07-24** (§2.3 + §2.4, linhas *g* e *h*) |
 | Zoom/pan da tira | ela **sempre cabe**, por desenho (`05 §6`) — só vira pergunta se um documento longo mostrar que a lasca ficou ilegível |
+| ~~Ajuste modal ao vivo do Gap Closure~~ | **FECHADO 2026-07-25** (§2.6) — pendente do smoke (linha *j*) |
+| **BVH na colisão do `gap::closures`** | wave própria do ENGINE, nomeada pela medição da §2.6 (339 ms num quadro pesado é o custo O(raios×paredes); o GP usa BVH ali). O worker torna o custo pagável hoje; o BVH o tornaria barato |
 | Backlog anterior da linha | pré-segmentação 4K · a exceção `rayon` · timeline global — **inalterados** (~~`trap_px` × `MAX_SIDE`~~ e ~~o `reach` do Gap Closure~~ **FECHARAM na §2.5**) |
 
 ## 9. Depois da integração

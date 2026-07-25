@@ -222,9 +222,13 @@ dar zoom** para o balde recusar uma forma fechada com "Fill leaked". Gate:
   pelo quadro ATIVO). *Ficou listado aqui como pendência por três rodadas depois de pronto — e
   o handoff da wave Colorize repetiu a lista. Uma pendência velha faz a próxima LLM construir o
   que já existe.*
-- **Ajuste modal ao vivo do Gap Closure** (scroll com os helpers visuais nos vãos pendentes — a
-  killer feature de UX do GP): hoje o Gap é um slider. O `closures()` já devolve os segmentos, então
-  o overlay é desenhar o que ele devolve.
+- ~~**Ajuste modal ao vivo do Gap Closure**~~ — ✅ **FEITO (2026-07-25, §2.6 do handoff da linha)**:
+  em modo Fill os vãos que o alcance atual fecha aparecem como segmentos verdes no canvas
+  (`flip_gap_overlay`), e **Ctrl+roda** ajusta o Gap com o slider acompanhando. A porta é
+  `preview_closures()` = o passo 1 do `fill_at` (a tela e o clique não podem discordar); o custo
+  foi MEDIDO (5–339 ms, `measure_closures.rs`) ⇒ worker fora da thread de UI (`flip_gap_live.rs`,
+  o padrão do ajuste ao vivo do Colorize). A roda CRUA segue sendo zoom — divergência deliberada
+  do GP, que toma a roda inteira durante o fill.
 - **Modo Radius do Gap Closure** (círculos-guia nas pontas, linha centro-a-centro): o Extend cobre a
   maioria dos casos; o Radius fecha os que o Extend não vê.
 - **Colorize** (LazyBrush / trapped-ball — o "colorir tudo" e o *onion fill*): é wave própria

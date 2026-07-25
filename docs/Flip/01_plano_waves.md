@@ -173,8 +173,9 @@ células de exposição, pre/post behavior).
 
 **Carry-overs da W3:** **multi-seleção de chaves — LANDOU (W7.3)**: destravou o modo `Selected` dos
 fantasmas (`onion.rs` · `strip.selected_keys()`). **drag de célula/borda + light table — LANDARAM
-(2026-07-23, doc [`05 §6.3`](05_frames_ghost_tween.md)).** **AINDA ABERTO:** arrastar uma SELEÇÃO
-de células (o gesto é por célula) · zoom/pan da tira (ela sempre cabe, por desenho).
+(2026-07-23, doc [`05 §6.3`](05_frames_ghost_tween.md)).** ~~arrastar uma SELEÇÃO
+de células~~ — **FEITO (2026-07-24, §2.2: o drag de grupo rígido, limitado pelos vizinhos
+não-selecionados)**. **AINDA ABERTO:** zoom/pan da tira (ela sempre cabe, por desenho).
 
 **Gate W3:** smoke — 2 desenhos-chave, ghosts ligados, Add Tween, play com loop; goldens do
 onion; bench do cache.
@@ -209,8 +210,9 @@ Referências: `02` §6 (pipeline exato + constantes) e `04` §3 (upgrades decidi
 
 **Carry-overs da W4:** **fill multiframe — LANDOU (W7)** (`flip_fill.rs:405`) · **Colorize C1 (Trap)
 — LANDOU** em `ph2d-flip-fill` (2026-07-18); **C2 (LazyBrush) + C3 (onion-fill) = a wave ABERTA**
-([`09`](09_colorize.md) §7). **AINDA ABERTO:** ajuste modal ao vivo do Gap Closure (scroll + helpers
-nos vãos pendentes — o `closures()` já devolve os segmentos, falta o overlay) · modo **Radius** do
+([`09`](09_colorize.md) §7). ~~ajuste modal ao vivo do Gap Closure~~ — **FEITO (2026-07-25, §2.6)**: helpers
+verdes nos vãos que o alcance fecha + Ctrl+roda (worker `flip_gap_live`; custo MEDIDO 5–339 ms ⇒
+nunca por frame). **AINDA ABERTO:** modo **Radius** do
 Gap Closure — ⚠️ **candidato a APOSENTADORIA** (o Trap responde melhor à mesma pergunta; handoff §3.3).
 
 **Gate W4:** smoke — line-art com gaps, preencher com preview dos helpers, Grow/Shrink,

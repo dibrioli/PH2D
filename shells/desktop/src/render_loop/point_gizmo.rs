@@ -112,7 +112,11 @@ mod tests {
             .world_mut()
             .spawn((
                 Transform::from_translation(Vec2::new(0.0, 0.0)),
-                Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+                Sprite::atlas(
+                    ph2d_render::WHITE_TILE_KEY,
+                    [1.0, 1.0],
+                    [1.0, 1.0, 1.0, 1.0],
+                ),
                 Name::new("Box".to_string()),
             ))
             .id();

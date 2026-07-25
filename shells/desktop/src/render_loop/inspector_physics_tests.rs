@@ -87,8 +87,8 @@ fn removing_a_body_detaches_both_components() {
     );
     assert!(sim.world().get::<Collider>(e).is_none(), "Collider stayed");
 
-    let info =
-        build_physics_info(sim.world(), e.to_bits(), false, (0.0, 5.0), 0).expect("still inspectable");
+    let info = build_physics_info(sim.world(), e.to_bits(), false, (0.0, 5.0), 0)
+        .expect("still inspectable");
     assert!(
         !info.has_body,
         "the panel would still show the body rows for an entity with no body"

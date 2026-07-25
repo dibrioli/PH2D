@@ -16,9 +16,8 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
     AreaFalloff, AreaForceWorldAxes, BodyKind, Ccd, Collider, ColliderShape, Dominance,
-    GravityScale,
-    InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, PhysicsBridge,
-    RigidBody, register_physics_components,
+    GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride,
+    PhysicsBridge, RigidBody, register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {

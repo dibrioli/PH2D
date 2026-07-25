@@ -102,7 +102,12 @@ impl BakedTrajectory {
     /// scene must be advanced through the front for any body riding a baked
     /// platform. This only decides which of those simulated samples become keys.
     #[must_use]
-    pub fn channel_in(&self, channel: PoseChannel, start: f64, end: f64) -> Option<Vec<(f64, f64)>> {
+    pub fn channel_in(
+        &self,
+        channel: PoseChannel,
+        start: f64,
+        end: f64,
+    ) -> Option<Vec<(f64, f64)>> {
         let pick = |s: &(f64, f32, f32, f32)| match channel {
             PoseChannel::X => s.1,
             PoseChannel::Y => s.2,
@@ -261,7 +266,9 @@ mod tests {
             "constancy must be judged on the windowed samples, not the whole sim"
         );
         // And a window over the moving part keeps exactly those keys.
-        let front = traj.channel_in(PoseChannel::Y, 0.0, 0.2).expect("front moved");
+        let front = traj
+            .channel_in(PoseChannel::Y, 0.0, 0.2)
+            .expect("front moved");
         assert_eq!(front, vec![(0.0, 5.0), (0.1, 4.0), (0.2, 3.0)]);
     }
 

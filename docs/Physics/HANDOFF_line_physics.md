@@ -3933,3 +3933,70 @@ do próprio solver (interpenetração ~mm entre ticks), não do bake.
   tocar a timeline (outro domínio) — exatamente o que o doc-header do `physics_bake.rs` já
   avisa (*"a change to the editor's undo architecture and not to the bake"*). **Reportado ao
   Enio, não contrabandeado numa linha de física.**
+
+---
+
+## W-BakeJoint — assar um joint puxa o grupo articulado inteiro (2026-07-25, cena `=39`)
+
+Front B da reabertura. **A pergunta de design dissolveu na arquitetura.** *"Assar de modo que
+a articulação sobreviva DINAMICAMENTE"* é impossível: o bake vira o corpo **Kinematic** (o
+`readback` da física escreve o `Transform` DEPOIS do apply da timeline, então um Dynamic
+recém-assado é sobrescrito pelo solver — doc-header do `physics_bake.rs`), e um joint do rapier
+**não move um corpo kinematic** (`KinematicPositionBased` = massa infinita, movido só por
+`set_next_kinematic_pose`). Logo *curva-dirigido* e *joint-articulado* no MESMO corpo se
+excluem. A leitura coerente — a de todo DCC (Blender/Maya/Unity assam física-com-restrições em
+keyframes) — é: o movimento **articulado** já é capturado (a sim roda uma vez do repouso, então
+a trajetória de cada elo reflete o acoplamento do joint) e o rig sobrevive **não-destrutivamente**
+(a entidade-joint não é apagada; Ctrl+Z / re-ligar Physics devolve o rig vivo).
+
+### O footgun que existia: bake PARCIAL
+
+O bake operava só na **seleção, sem fan-out** pelo grafo de joints. Assar UM elo de uma corrente
+deixava os vizinhos Dynamic → com Physics off eles **congelam** (nada dá passo no solver)
+enquanto o elo assado toca, e o segmento do joint estica entre uma âncora que se move e uma
+parada. Não há bake parcial coerente de um rig acoplado.
+
+### `ph2d_physics_ecs::jointed_group(world, seed) -> Vec<Entity>` (`joint_group.rs`)
+
+Assar qualquer corpo puxa o **componente conexo** pelo grafo de joints.
+
+- **Função PURA sobre o ECS AUTORADO** — `PhysicsJoint` resolvido por `Name`/`stable_name_id`
+  (a mesma chave do reconcile), **não** sobre o `self.joints` vivo do bridge. O grafo autorado
+  está sempre atual (inclui um joint feito neste frame) e não precisa de dispatch → **headless-
+  testável** (o gate monta o rig e pede o grupo sem step).
+- **Só corpos DINÂMICOS conduzem, e é FÍSICA, não arrumação.** Três kinds sob "Physics off
+  após o bake": **Dynamic** congela E transmite o acoplamento (vizinhos se puxam pelo joint) →
+  entra e conduz; **Kinematic** já segue curva (`settle` o rastreia, não congela) e um joint
+  não o move → fronteira; **Static** é fixo → fronteira. O grupo é o componente conexo
+  **Dynamic**; Static/Kinematic são alcançados por uma aresta mas nunca cruzados. **É isso que
+  mantém dois pêndulos no MESMO gancho estático independentes** — o gancho é uma parede, não um
+  fio.
+- `bake_selection` expande a seleção para `jointed_group` **antes de qualquer leitura**. A
+  contagem de corpos do toast reflete o grupo (a metade VISÍVEL): selecionar um elo e ver
+  "Baked 3 bodies" é o rig ter sido puxado.
+
+**Sem componente/id/schema/registro novo** — comportamento do bake, não config. `PROJECT_SCHEMA`
+fica **29**, registro **21**, `physics_ecs_c9` **intocado**.
+
+### Gates (mutação-provados)
+
+- **Crate** (`tests/joint_group.rs`, 5, headless): a corrente é puxada por QUALQUER elo (drop
+  do BFS → RED) · dois pêndulos no gancho comum ficam separados **e** vizinho Kinematic é
+  fronteira (conduzir por não-dinâmico → RED nos dois) · corpo solo é o próprio grupo · o seed
+  passa verbatim.
+- **Shell** (`physics_bake_joint_tests.rs`, split do `physics_bake_tests.rs` que bateria
+  624 > 600): assar UM elo de uma corrente vira **ambos** Kinematic e assa **2** corpos, o Hook
+  estático fica de fora (drop da expansão em `bake_selection` → assa 1, L1 fica Dynamic, RED).
+
+### Smoke `=39`
+
+Corrente de 3 elos pendurada de LADO de um gancho estático, PAUSADA (bake mid-swing = cena
+meio-caída, regra da cena 7). Selecione UM elo → Bake → toast **"Baked 3 bodies"** (não 1) → B
+mostra os 3 contornos VIOLETA → descarte Physics, Play → a corrente inteira reproduz o balanço.
+Números medidos headless (5 s): os elos viajam **0,7 / 2,5 / 4,2 m** (a corrente chicoteia).
+
+### Aberto
+
+- **Assar a RESTRIÇÃO viva** (o joint articula no resultado) é **impossível** pela arquitetura
+  acima — não é adiamento, é contradição. Documentado para ninguém reabrir.
+- **Um Ctrl+Z para as duas metades** (herdado do W4/W-BakeRange) segue aberto e não-mecânico.

@@ -153,11 +153,23 @@ Pergunte antes de escolher; ele decide a frente. Da mais valiosa para a menos:
 - **O cata-vento aparece sozinho** no dia em que um lastro deslocar o centro de massa (o
   kernel já aplica por aresta) — há gate pinando a ausência dele para ninguém inventar torque.
 
-#### B. Assar um JOINT
+#### B. Assar um JOINT — **FECHADO (2026-07-25, cena `=39`)**
 
-O bake lê a pose de **corpos**; uma corrente assada vira N kinematic com curvas próprias —
-reproduz o movimento e **descarta a articulação**. Assar *a restrição* (ou **recusar** assar
-corpos unidos, que talvez seja a resposta certa) é **decisão de design**, não mecânica.
+A pergunta de design dissolveu na arquitetura: *"a articulação sobrevive dinamicamente"* é
+**impossível** — o bake vira o corpo **Kinematic** (o `readback` escreve o `Transform` DEPOIS
+do apply, então um Dynamic recém-assado é sobrescrito) e um joint do rapier **não move um
+corpo kinematic** (massa infinita). Logo *curva-dirigido* e *joint-articulado* no mesmo corpo
+se excluem. A leitura coerente, que casa com todo DCC: o movimento **articulado** já é
+capturado (a sim roda uma vez, a trajetória de cada elo reflete o acoplamento) e o rig
+sobrevive de forma não-destrutiva (o joint não é apagado).
+
+O footgun real era **bake PARCIAL**: assar um elo deixava os vizinhos Dynamic, que **congelam**
+com Physics off enquanto o elo assado toca. Fix: **`ph2d_physics_ecs::jointed_group`** — assar
+qualquer corpo puxa o componente conexo **DINÂMICO** pelo grafo de joints (Static/Kinematic são
+fronteiras — não congelam, não transmitem acoplamento; é isso que mantém dois pêndulos no mesmo
+gancho estático independentes). Sem componente/id/schema novo. Gates: 5 no crate (headless,
+mutação-provados) + 1 comportamental na shell; smoke `=39` (corrente de 3 elos, selecione UM,
+toast "Baked 3 bodies").
 
 - ~~alcance com **início**~~ — **FECHADO** (W-BakeRange, 2026-07-24, cena `=37`): o loop já
   tinha um `start` e o bake o descartava; agora `[2s, 5s]` assa exatamente `[2s, 5s]`,
@@ -166,6 +178,9 @@ corpos unidos, que talvez seja a resposta certa) é **decisão de design**, não
   são duas pilhas de undo separadas (a global captura o `kind`, a da timeline as chaves) com
   roteamento próprio; uni-las é mudar o *roteador de undo* do editor e tocar a timeline
   (outro domínio), exatamente o que o doc-header do `physics_bake.rs` avisa.
+- **Assar a RESTRIÇÃO viva** (o joint sobrevive articulado no resultado) segue impossível pela
+  arquitetura acima — não é trabalho adiado, é uma contradição; documentado para ninguém
+  reabrir.
 
 #### C. Gizmo de âncora de joint no canvas — **FECHADO (2026-07-24, cena `=38`)**
 

@@ -759,15 +759,33 @@ fn field_remap_curve_contour_matches_the_cpu_on_the_device() {
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
     ph2d_eval_motion::evaluate_motion_into(
-        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
     )
     .expect("cpu cook");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert!(plan.is_fully_gpu(), "the Curve chain must cook whole on the device");
+    assert!(
+        plan.is_fully_gpu(),
+        "the Curve chain must cook whole on the device"
+    );
     let mut gc = ph2d_gpu_cook::GpuCook::new();
     let n = gc
         .cook(
-            &gpu, &g, &reg, &reg, &plan, &[], CookClock::at(PLAYHEAD), DEFAULT_UV, DEFAULT_SIZE,
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());

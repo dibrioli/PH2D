@@ -214,13 +214,19 @@ impl WidgetStore {
     }
 
     /// Open the **Onion settings** floating modal (ADR-0142 W3b) with its top-left at `(x, y)` (screen
-    /// px), seeding the three sliders (`0..1`) and two colour swatches. Registers the sliders, the close
-    /// + handle buttons, and marks the swatches as picker swatches so the generic pointer dispatch drives
-    /// them. Takes ONLY primitives — editor-core stays timeline-agnostic; the shell owns the count↔slider
-    /// mapping and the `OnionSettings` type. Idempotent: re-opening re-seeds every value.
+    /// px), seeding the three sliders (`0..1`) and two colour swatches. Registers the sliders, the
+    /// close and handle buttons, and marks the swatches as picker swatches so the generic pointer
+    /// dispatch drives them. Takes ONLY primitives — editor-core stays timeline-agnostic; the shell
+    /// owns the count↔slider mapping and the `OnionSettings` type. Idempotent: re-opening re-seeds
+    /// every value.
     ///
     /// `opacity` / `before_frac` / `after_frac` are the slider tracks (`0..1`); `color_before` /
     /// `color_after` are `[u8; 4]` RGBA seeds for the swatches.
+    // The eight primitives ARE the design (see above): bundling them would mean either a second
+    // shape of the same data living here, or `OnionSettings` itself — and the whole point is that
+    // editor-core never learns what a timeline is. Same stance as the other seeder/painter entry
+    // points in this crate.
+    #[allow(clippy::too_many_arguments)]
     pub fn open_onion_modal(
         &mut self,
         x: f32,

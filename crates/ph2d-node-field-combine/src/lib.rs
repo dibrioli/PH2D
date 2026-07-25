@@ -21,7 +21,7 @@
 //! identity) is also the base unchanged — a fresh node does something predictable.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{par_build, Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
@@ -231,7 +231,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 mod tests {
     use super::*;
     use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+    use ph2d_nodegraph::graph::{Edge, Graph};
 
     // Two sources, each emitting a `falloff` column, so `field.combine` has an
     // `a` and a `b` branch to blend. Same count/order (the composition contract).

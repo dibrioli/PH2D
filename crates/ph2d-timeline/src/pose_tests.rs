@@ -106,7 +106,7 @@ fn pose_at_matches_apply_on_every_scalar_channel() {
         key(&mut doc, b, PropKind::ScaleY, 4.0, 0.25, Interp::Linear);
         (w, b, doc)
     };
-    assert_equivalent(&build, &[0.0, 1.0, 2.5, 4.0, 5.0], "scalars");
+    assert_equivalent(build, &[0.0, 1.0, 2.5, 4.0, 5.0], "scalars");
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn pose_at_matches_apply_for_a_position_path_with_auto_orient() {
         doc.set_auto_orient(b, true);
         (w, b, doc)
     };
-    assert_equivalent(&build, &[0.0, 1.0, 2.0, 3.0, 4.0], "position+orient");
+    assert_equivalent(build, &[0.0, 1.0, 2.0, 3.0, 4.0], "position+orient");
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn pose_at_honours_the_time_remap_clock() {
         key(&mut doc, b, PropKind::TimeRemap, 2.0, 4.0, Interp::Linear);
         (w, b, doc)
     };
-    assert_equivalent(&build, &[0.0, 0.5, 1.0, 1.5, 2.0], "time-remap");
+    assert_equivalent(build, &[0.0, 0.5, 1.0, 1.5, 2.0], "time-remap");
 }
 
 #[test]
@@ -196,7 +196,7 @@ fn pose_at_honours_the_clip_duration_cut() {
         (w, b, doc)
     };
     // t=3 e t=5 estão além do corte de 2 s — os dois têm de congelar no mesmo x.
-    assert_equivalent(&build, &[1.0, 2.0, 3.0, 5.0], "clip-cut");
+    assert_equivalent(build, &[1.0, 2.0, 3.0, 5.0], "clip-cut");
 }
 
 #[test]

@@ -146,7 +146,7 @@ pub(super) fn build_gpu_field_box_demo_document(
 /// masks by ANGLE about a centre. `repetitions = 6` tiles a 30° wedge six times ⇒
 /// a **six-pointed blue star** (a fan / radar) — the Cavalry Sweep signature, and
 /// the picture that a rectangle cannot make. It is the HR-5 pseudo-angle sector on
-/// the device (no `atan2`), `min`ned with the radial clip. Same frame-on-load
+/// the device (no `atan2`), taken as a `min` against the radial clip. Same frame-on-load
 /// sizing as `=17`/`=18`; auto-plays on tool entry.
 pub(super) fn build_gpu_field_radial_sweep_demo_document(
     doc: &mut MotionDoc,

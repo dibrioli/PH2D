@@ -95,7 +95,14 @@ pub(crate) fn paint_rows(
             // dragged; the artist unplugs the wire to take the knob back.
             ParamRow::Scalar(row) if row.driven => {
                 paint_driven_row(
-                    row, inner_x, inner_w, y, label_font, scene, text_system, theme,
+                    row,
+                    inner_x,
+                    inner_w,
+                    y,
+                    label_font,
+                    scene,
+                    text_system,
+                    theme,
                 );
                 y += ROW_H_PX + row_gap;
             }

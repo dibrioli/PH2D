@@ -178,7 +178,9 @@ fn a_read_write_columns_presence_moves_the_signature() {
     );
     // …and they really are different modules, which is why.
     assert!(kernel_module(&RW, RW.bindings, &["in"], None, &[], &[], |_| true).contains("in_size"));
-    assert!(!kernel_module(&RW, RW.bindings, &["in"], None, &[], &[], |_| false).contains("in_size"));
+    assert!(
+        !kernel_module(&RW, RW.bindings, &["in"], None, &[], &[], |_| false).contains("in_size")
+    );
 }
 
 #[test]
@@ -246,7 +248,9 @@ fn a_present_dense_id_activates_the_arithmetic_gather() {
     // prev_first`, `gather_paired` bounds-checks against `prev_n`, and the
     // prior state's min id is read RAW off element 0 of the STATE port's id
     // (not the base's). VALUE casts (`u32(max(...))`), never `bitcast`.
-    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, &[], &[], |_| true);
+    let src = kernel_module(&GATHER, GATHER.bindings, SIM_PORTS, None, &[], &[], |_| {
+        true
+    });
     assert!(
         src.contains("gather_prev_n: u32,"),
         "the prior-count uniform exists"

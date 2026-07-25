@@ -49,9 +49,12 @@ fn read_back_writes_the_onion_while_open() {
         [10, 100, 10, 255],
         [30, 20, 130, 255],
     );
-    let mut onion = OnionSettings::default();
-    onion.enabled = true; // owned by the transport toggle, not the modal — must survive.
-    onion.mode = OnionMode::Frames;
+    // `enabled`/`mode` are owned by the transport toggle, not the modal — they must survive.
+    let mut onion = OnionSettings {
+        enabled: true,
+        mode: OnionMode::Frames,
+        ..Default::default()
+    };
     read_into(&store, &mut onion);
 
     assert!((onion.opacity - 0.25).abs() < 1e-6, "opacity read back");
@@ -72,9 +75,11 @@ fn read_back_writes_the_onion_while_open() {
 #[test]
 fn read_back_is_a_no_op_when_closed() {
     let store = WidgetStore::default(); // never opened
-    let mut onion = OnionSettings::default();
-    onion.opacity = 0.9;
-    onion.frames_before = 7;
+    let mut onion = OnionSettings {
+        opacity: 0.9,
+        frames_before: 7,
+        ..Default::default()
+    };
     read_into(&store, &mut onion);
     assert!(
         (onion.opacity - 0.9).abs() < 1e-6,

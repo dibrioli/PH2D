@@ -427,8 +427,14 @@ fn every_contour_mode_including_the_curve_cooks_on_the_gpu() {
     // is what makes the WGSL accessor `rm_curve_sample`.
     assert_eq!(LUTS.len(), 1, "one LUT: the Curve contour's shape");
     assert_eq!(LUTS[0].text_key, CURVE_KEY, "same key the CPU eval parses");
-    assert_eq!(LUTS[0].name, "rm_curve", "the accessor is `rm_curve_sample`");
-    assert!(LUTS[0].resolution >= 2, "at least two samples to lerp between");
+    assert_eq!(
+        LUTS[0].name, "rm_curve",
+        "the accessor is `rm_curve_sample`"
+    );
+    assert!(
+        LUTS[0].resolution >= 2,
+        "at least two samples to lerp between"
+    );
 }
 
 #[test]

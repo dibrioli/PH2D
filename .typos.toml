@@ -438,6 +438,33 @@ precisou = "precisou"
 # "perspectives" torto.
 perspectivas = "perspectivas"
 
+# pt-BR da jornada de 2026-07-25 (integração de 6 linhas). Todas em doc-comment ou em string
+# de CENA DE SMOKE (impressa no terminal, não é UI — a UI segue 100% inglês, HR-15). Lidas
+# como inglês torto pelo dicionário en-US; são as palavras portuguesas.
+#   `altas` — as frequências ALTAS do Zig Zag e as regiões de peso ALTAS do Falloff
+#     (`ph2d-vec-scene/src/fx_zigzag.rs`, `shells/desktop/src/falloff_smoke.rs`).
+#   `artic` — abreviação de "articulação" no fixture do tween em espiral
+#     (`b_artic`, `ph2d-flip/src/tween_spiral_tests.rs`): a pose de dois segmentos
+#     dobrados que separa o giro rígido da TORÇÃO.
+#   `atitude` — a ATITUDE (pose angular) que a espiral logarítmica preserva
+#     (`ph2d-flip/src/tween_spiral.rs`, `flip_tween_torsion_smoke.rs`).
+#   `compasso` — o COMPASSO do objeto no motion path (o ritmo com que ele percorre o
+#     caminho), preservado quando uma âncora é inserida (`ph2d-timeline/src/doc_path.rs`).
+#   `consumirem` — "…o editor e o runtime da timeline CONSUMIREM a mesma resposta"
+#     (`ph2d-arclen/src/lib.rs`): a razão de a crate existir.
+#   `intervalos` — os INTERVALOS que o Trim recorta (`ph2d-vec-scene/src/fx_trim.rs`).
+#   `invertendo` — "…INVERTENDO o sinal" nos gates de render e de medição.
+#   `irracional` — a razão IRRACIONAL que o gate de medição usa para o playhead nunca
+#     cair na grade (`ph2d-timeline/tests/measure_motion_path.rs`).
+altas = "altas"
+artic = "artic"
+atitude = "atitude"
+compasso = "compasso"
+consumirem = "consumirem"
+intervalos = "intervalos"
+invertendo = "invertendo"
+irracional = "irracional"
+
 [files]
 extend-exclude = [
     "target/**",

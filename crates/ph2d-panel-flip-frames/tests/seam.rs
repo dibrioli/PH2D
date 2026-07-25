@@ -18,12 +18,12 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_panel_flip_frames::state::FlipStripState;
-use ph2d_panel_flip_frames::{FlipCell, FlipFramesPanel, FlipStripSnapshot, ids};
-use ph2d_ui_testkit::MockPanelHost;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_flip_frames::FlipStripIntent;
+use ph2d_panel_flip_frames::state::FlipStripState;
+use ph2d_panel_flip_frames::{FlipCell, FlipFramesPanel, FlipStripSnapshot, ids};
+use ph2d_ui_testkit::MockPanelHost;
 
 /// Três chaves em 0/4/8, cada uma expondo 4 quadros — a fixture das células.
 fn strip_snapshot() -> FlipStripSnapshot {
@@ -625,7 +625,9 @@ fn every_toolbar_button_answers_a_real_pointer() {
             .unwrap_or_else(|| panic!("o botao '{name}' nao esta pintado"));
         let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
         assert!(
-            events.iter().any(|e| matches!(e, WidgetEvent::Click(i) if *i == id)),
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(i) if *i == id)),
             "o botao '{name}' esta PINTADO mas MORTO sob o mouse — falta a linha dele no \
              `populate` (sem estado no store o dispatch nunca o torna ativo)"
         );

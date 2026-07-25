@@ -8,7 +8,7 @@
 //! **Nenhuma função aqui nomeia um efeito.** Acrescentar um tipo ao motor não toca neste
 //! arquivo — é a mesma propriedade que o `paint_effects` ganhou, do outro lado da fronteira.
 
-use ph2d_panel_vector::{FxParamView, FxRowView};
+use ph2d_panel_vector::{FalloffRole, FxParamView, FxRowView};
 use ph2d_vec_scene::effect::{FxEntry, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -30,7 +30,8 @@ pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
     scene.path(id).map_or_else(Vec::new, |p| {
         p.effects
             .iter()
-            .map(|e| FxRowView {
+            .enumerate()
+            .map(|(row, e)| FxRowView {
                 label: e.effect.label(),
                 enabled: e.enabled,
                 params: e
@@ -47,9 +48,32 @@ pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
                         value: e.effect.get(i),
                     })
                     .collect(),
+                // Se este é um Falloff: para onde a força aponta. Procura o próximo efeito LIGADO
+                // que NÃO é Falloff (falloffs compõem entre si — o alvo é o deformador). É a MESMA
+                // pergunta que o `run_stack` responde ao consumir o campo; o painel só a exibe.
+                falloff_role: falloff_role(&p.effects, row),
             })
             .collect()
     })
+}
+
+/// O papel de dica de um Falloff na linha `row` — a metade que só a ponte conhece (ela vê o
+/// motor). O painel a desenha; um Falloff sozinho não pode parecer quebrado (DIRETIVA §2).
+///
+/// O alvo é o próximo efeito **ligado** que NÃO é Falloff (dois Falloffs compõem sobre o mesmo
+/// deformador, como no `run_stack`). Se esse alvo consome força (`takes_falloff`), o campo modula
+/// abaixo; senão (nada abaixo, ou só Trim/Repeater), é inerte na geometria.
+fn falloff_role(effects: &[FxEntry], row: usize) -> FalloffRole {
+    if effects[row].effect.as_falloff().is_none() {
+        return FalloffRole::NotFalloff;
+    }
+    let target = effects[row + 1..]
+        .iter()
+        .find(|n| n.enabled && n.effect.as_falloff().is_none());
+    match target {
+        Some(n) if n.effect.takes_falloff() => FalloffRole::ModulatesBelow,
+        _ => FalloffRole::Inert,
+    }
 }
 
 /// **Põe** um efeito do tipo `kind` no fim da pilha. Ele nasce NEUTRO, então o clique não pode

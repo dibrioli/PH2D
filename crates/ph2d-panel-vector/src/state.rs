@@ -301,7 +301,7 @@ pub(crate) fn convertible() -> bool {
 /// O estado dos **Effects** (ADR-0132) — módulo irmão pelo teto de 600 LOC deste arquivo.
 #[path = "state_effects.rs"]
 mod effects;
-pub use effects::{FxParamView, FxRowView, set_current_effects};
+pub use effects::{FalloffRole, FxParamView, FxRowView, set_current_effects};
 pub(crate) use effects::{has_target, kinds, stack};
 
 /// O estado do **Envelope** (ADR-0129) — módulo irmão pelo mesmo teto de 600 LOC.

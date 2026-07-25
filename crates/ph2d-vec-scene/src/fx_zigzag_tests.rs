@@ -69,7 +69,7 @@ fn world_amp(v: &[VecVertex], pct: f64) -> f64 {
 /// Roda o efeito com a referência de escala TIRADA DA PRÓPRIA FORMA — que é o que o
 /// `run_stack` faz no produto.
 fn zz(v: &[VecVertex], closed: bool, spec: &ZigZagSpec) -> (Vec<VecVertex>, bool) {
-    zigzag_contour(v, closed, spec, ref_of(v))
+    zigzag_contour(v, closed, spec, ref_of(v), None)
 }
 
 fn spec(amplitude: f64) -> ZigZagSpec {
@@ -142,7 +142,7 @@ fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for (v, closed, s) in cases {
-        let (out, c) = zigzag_contour(&v, closed, &s, ref_of(&v));
+        let (out, c) = zigzag_contour(&v, closed, &s, ref_of(&v), None);
         h = fnv(h, u64::from(c));
         h = fnv(h, out.len() as u64);
         for w in &out {
@@ -495,6 +495,6 @@ fn the_same_size_looks_the_same_at_any_scale() {
 #[test]
 fn a_degenerate_shape_has_no_scale_and_the_effect_is_inert() {
     let dot: Vec<VecVertex> = (0..4).map(|_| VecVertex::corner([3.0, 7.0])).collect();
-    let (out, _) = zigzag_contour(&dot, true, &spec(50.0), 0.0);
+    let (out, _) = zigzag_contour(&dot, true, &spec(50.0), 0.0, None);
     assert_eq!(out, dot);
 }

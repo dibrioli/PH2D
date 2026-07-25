@@ -43,7 +43,7 @@ fn warp(style: WarpStyle, bend: f64) -> Vec<VecVertex> {
 /// mais que a dobra.
 fn warp_spec(spec: WarpSpec) -> Vec<VecVertex> {
     let p = square();
-    let (out, _) = warp_contour(&p.verts, p.closed, &spec, &FxCtx::of(&p));
+    let (out, _) = warp_contour(&p.verts, p.closed, &spec, &FxCtx::of(&p), None);
     out
 }
 
@@ -62,7 +62,7 @@ fn the_neutral_warp_is_a_byte_identical_no_op() {
             h_distort: 0.0,
             v_distort: 0.0,
         };
-        let (out, closed) = warp_contour(&p.verts, p.closed, &spec, &c);
+        let (out, closed) = warp_contour(&p.verts, p.closed, &spec, &c, None);
         assert_eq!(
             out,
             p.verts,
@@ -259,6 +259,7 @@ fn the_warp_is_resampling_independent() {
                 v_distort: 0.0,
             },
             &FxCtx::of(&dense),
+            None,
         );
         let b = bbox(&out_d);
         for k in 0..2 {

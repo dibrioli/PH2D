@@ -66,6 +66,7 @@ mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
+mod falloff_smoke;
 mod flip_autokey;
 mod flip_colorize;
 mod flip_colorize_smoke;
@@ -146,7 +147,6 @@ mod stack_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
-mod warp_smoke;
 mod theme;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]
@@ -185,6 +185,7 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+mod warp_smoke;
 mod wetpaint_smoke;
 mod winit_host;
 

@@ -43,6 +43,7 @@
 //! função só da geometria, e é isso que o gate afirma.
 
 use crate::arc_path::ArcPath;
+use crate::fx_falloff::Falloff;
 use crate::{VecVertex, VertexKind};
 
 /// Abaixo desta amplitude (em unidades de mundo) o efeito é o ponto neutro.
@@ -141,12 +142,17 @@ fn ridge_wave(s: f64, total: f64, ridges: usize) -> f64 {
 /// **Aplica o Zig Zag a UM contorno.** Devolve `(verts, closed)`.
 ///
 /// O contorno **mantém** o seu `closed`: ondular não abre nem fecha uma forma.
+///
+/// `falloff` (opcional) escala a amplitude de cada crista pela força `w` no ponto-base daquela
+/// amostra: `w = 0` deixa a amostra na curva original (crista nula), `w = 1` é a onda cheia. Ondas
+/// altas no centro e planas na borda saem de um Radial. `None` é byte-idêntico ao Zig Zag sem campo.
 #[must_use]
 pub fn zigzag_contour(
     verts: &[VecVertex],
     closed: bool,
     spec: &ZigZagSpec,
     ref_size: f64,
+    falloff: Option<&Falloff>,
 ) -> (Vec<VecVertex>, bool) {
     let n = verts.len();
     // Sem referência de tamanho não há distância a construir — e é a mesma resposta do neutro.
@@ -226,11 +232,15 @@ pub fn zigzag_contour(
         // transcendental (HR-5). Numa cúspide não há direção: o ponto entra sem deslocamento,
         // em vez de ser DESCARTADO — descartar tirava uma crista da conta em silêncio.
         let normal = [-tangent[1], tangent[0]];
-        let lift = if spec.rough_seed.is_some() {
+        // O `signed_unit` do Roughen roda SEMPRE (antes de aplicar `w`), senão o stream
+        // pseudo-aleatório dependeria do campo e o mesmo documento desenharia diferente.
+        let raw = if spec.rough_seed.is_some() {
             signed_unit(&mut state)
         } else {
             ridge_wave(s, total, ridges)
-        } * amplitude;
+        };
+        let w = falloff.map_or(1.0, |f| f.eval(point));
+        let lift = raw * amplitude * w;
         let anchor = [
             normal[0].mul_add(lift, point[0]),
             normal[1].mul_add(lift, point[1]),

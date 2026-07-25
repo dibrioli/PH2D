@@ -145,6 +145,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.patternpath" => "Pattern on Path",
         "panel.vector.section.contour" => "Contour",
         "panel.vector.section.effects" => "Effects",
+        // O Falloff modula a FORÇA do deformador abaixo dele na pilha; o card diz para onde ele
+        // aponta, para que um Falloff sozinho (sem deformador abaixo) não pareça quebrado.
+        "panel.vector.fx.falloff.modulates" => "modulates the effect below",
+        "panel.vector.fx.falloff.inert" => "add a deformer below (Bulge/Warp/Zig Zag)",
         "panel.vector.section.stroke" => "Stroke",
         "panel.vector.section.fill" => "Fill",
         "panel.vector.section.fill_type" => "Fill Type",

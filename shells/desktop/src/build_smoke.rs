@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=28` — a cena do **FALLOFF** (Cavalry; pesquisa `20_*` #10): três formas —
+//!   Zig Zag uniforme (controle), Zig Zag + Falloff Linear (cristas em rampa, selecionada), e
+//!   Warp Bulge + Falloff Radial (bojo localizado). O campo modula a FORÇA do deformador abaixo.
 //! - `PH2D_BUILD_SMOKE=25` — a cena do **CONTOUR** (pesquisa `20_*` #9): uma estrela PELADA
 //!   (selecionada — é ela que prova o seam, do `Add Contour` ao Expand) e um hexágono que já vem
 //!   com 6 anéis armados, para o olho ter a que comparar.
@@ -136,6 +139,12 @@ impl crate::App {
         // de LOC: cinco retângulos armados + um pelado para autorar pela seção Effects.
         if level == 26 {
             crate::warp_smoke::frame(self, f);
+            return;
+        }
+        // A cena do FALLOFF (o campo escalar que modula a força do deformador seguinte) — irmão
+        // `falloff_smoke`, mesma razão de LOC.
+        if level == 28 {
+            crate::falloff_smoke::frame(self, f);
             return;
         }
         if matches!(level, 13 | 14) {

@@ -27,6 +27,7 @@
 
 use crate::arc_path::ArcPath;
 use crate::effect::FxCtx;
+use crate::fx_falloff::Falloff;
 use crate::{VecVertex, VertexKind};
 
 /// Abaixo desta dobra (fração) o efeito é o ponto neutro.
@@ -97,12 +98,17 @@ impl Default for WarpSpec {
 }
 
 /// **Aplica o Warp a UM contorno.** Devolve `(verts, closed)` — deformar não abre nem fecha.
+///
+/// `falloff` (opcional) escala a força por-amostra: cada amostra é `lerp(original, deformado,
+/// w(original))`, avaliado na posição ANTES da dobra, então `w = 0` reconstrói a curva de entrada
+/// (a região sem influência) e `w = 1` é a dobra cheia. `None` é byte-idêntico ao Warp sem campo.
 #[must_use]
 pub fn warp_contour(
     verts: &[VecVertex],
     closed: bool,
     spec: &WarpSpec,
     ctx: &FxCtx,
+    falloff: Option<&Falloff>,
 ) -> (Vec<VecVertex>, bool) {
     let (hx, hy) = (ctx.half[0], ctx.half[1]);
     // Neutro, poucos pontos, ou caixa degenerada nos dois eixos: nada a normalizar.
@@ -164,7 +170,20 @@ pub fn warp_contour(
         let v3 = v2 * dv.mul_add(u2, 1.0);
         [u3.mul_add(hx, ctx.center[0]), v3.mul_add(hy, ctx.center[1])]
     };
-    let pts: Vec<[f64; 2]> = at.iter().map(|&s| warp(ap.frame_at(s).0)).collect();
+    let pts: Vec<[f64; 2]> = at
+        .iter()
+        .map(|&s| {
+            let orig = ap.frame_at(s).0;
+            let d = warp(orig);
+            // `w` na posição ORIGINAL (antes da dobra) — é onde o Falloff diz quanta força há
+            // *naquele sítio* da forma. `w = 0` deixa a amostra na curva de entrada.
+            let w = falloff.map_or(1.0, |f| f.eval(orig));
+            [
+                (d[0] - orig[0]).mul_add(w, orig[0]),
+                (d[1] - orig[1]).mul_add(w, orig[1]),
+            ]
+        })
+        .collect();
     (catmull_rom_verts(&pts, closed), closed)
 }
 

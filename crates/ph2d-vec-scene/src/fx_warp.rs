@@ -28,6 +28,7 @@
 
 use crate::VecVertex;
 use crate::effect::FxCtx;
+use crate::fx_falloff::Falloff;
 
 /// Abaixo disto o efeito é o ponto neutro.
 const EPS: f64 = 1e-12;
@@ -50,12 +51,17 @@ impl BloatSpec {
 }
 
 /// **Aplica o Pucker & Bloat a um contorno.**
+///
+/// `falloff` (opcional) escala a força por-ponto: cada vértice é `lerp(original, deformado,
+/// w(âncora))`, então `w = 0` deixa o vértice onde estava e `w = 1` é o efeito cheio. `None` é
+/// byte-idêntico ao efeito sem modulação.
 #[must_use]
 pub fn bloat_contour(
     verts: &[VecVertex],
     closed: bool,
     spec: &BloatSpec,
     ctx: &FxCtx,
+    falloff: Option<&Falloff>,
 ) -> (Vec<VecVertex>, bool) {
     if spec.is_neutral() {
         return (verts.to_vec(), closed);
@@ -81,18 +87,30 @@ pub fn bloat_contour(
             (p[1] - ctx.center[1]).mul_add(k, ctx.center[1]),
         ]
     };
+    // `lerp(original, deformado, w)` — em `w = 1` é o efeito cheio (`p_def`), em `w = 0` o ponto
+    // fica onde estava. `w` é avaliado na ÂNCORA do vértice e vale para o vértice inteiro (âncora
+    // e alças), que é a força que o Falloff descreve *naquele sítio*.
+    let mix = |orig: [f64; 2], def: [f64; 2], w: f64| -> [f64; 2] {
+        [
+            (def[0] - orig[0]).mul_add(w, orig[0]),
+            (def[1] - orig[1]).mul_add(w, orig[1]),
+        ]
+    };
     (
         verts
             .iter()
-            .map(|v| VecVertex {
-                anchor: scale(v.anchor, ka),
-                in_handle: scale(v.in_handle, kh),
-                out_handle: scale(v.out_handle, kh),
-                kind: v.kind,
-                // O raio de quina é um comprimento local ANCORADO na âncora, então segue o
-                // fator dela. Os dois fatores divergem, e escolher o das alças poria o raio a
-                // crescer enquanto a quina que ele arredonda encolhe.
-                corner_radius: v.corner_radius * ka.abs(),
+            .map(|v| {
+                let w = falloff.map_or(1.0, |f| f.eval(v.anchor));
+                VecVertex {
+                    anchor: mix(v.anchor, scale(v.anchor, ka), w),
+                    in_handle: mix(v.in_handle, scale(v.in_handle, kh), w),
+                    out_handle: mix(v.out_handle, scale(v.out_handle, kh), w),
+                    kind: v.kind,
+                    // O raio de quina é um comprimento local ANCORADO na âncora, então segue o
+                    // fator dela. Os dois fatores divergem, e escolher o das alças poria o raio a
+                    // crescer enquanto a quina que ele arredonda encolhe.
+                    corner_radius: v.corner_radius * ka.abs(),
+                }
             })
             .collect(),
         closed,

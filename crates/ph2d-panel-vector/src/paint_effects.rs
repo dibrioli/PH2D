@@ -81,7 +81,14 @@ impl BodyCtx<'_> {
         let params = fx.params.len().min(ids::MAX_FX_ROW_PARAMS);
         #[allow(clippy::cast_precision_loss)]
         let body_h = params as f32 * (self.row_h + self.row_gap);
-        let card_h = pad + head_h + body_h + pad;
+        // Um Falloff ganha uma LINHA de dica ("modula abaixo" / "adicione um deformador"): ele não
+        // deforma nada sozinho, e sem a dica um Falloff sem deformador abaixo pareceria quebrado.
+        let note_h = if fx.falloff_role == state::FalloffRole::NotFalloff {
+            0.0
+        } else {
+            self.row_h
+        };
+        let card_h = pad + head_h + note_h + body_h + pad;
         let card_rect = Rect::new(self.inner_x, y, self.inner_w, card_h);
 
         // O card em si (moldura + fundo) — o mesmo primitivo que o painel do Painter usa, para
@@ -93,12 +100,32 @@ impl BodyCtx<'_> {
         let inner_w = self.inner_w - pad * 2.0;
         self.effect_header(row, fx, total, Rect::new(inner_x, y + pad, inner_w, head_h));
 
+        // A linha de dica do Falloff, logo abaixo do cabeçalho, apagada (é meta-informação, não um
+        // parâmetro). O texto sai de i18n (HR-15), nunca hardcoded.
+        if note_h > 0.0 {
+            let note = match fx.falloff_role {
+                state::FalloffRole::ModulatesBelow => tr("panel.vector.fx.falloff.modulates"),
+                state::FalloffRole::Inert => tr("panel.vector.fx.falloff.inert"),
+                state::FalloffRole::NotFalloff => "",
+            };
+            paint_text(
+                self.text_system,
+                self.scene,
+                note,
+                inner_x,
+                y + pad + head_h + (note_h - self.font) * 0.5,
+                self.font,
+                inner_w,
+                resolve(ColorToken::Text3, self.theme),
+            );
+        }
+
         // Os parâmetros, indentados dentro do card. Guardo e restauro a coluna: o `slider_row`
         // desenha no `inner_x`/`inner_w` do CONTEXTO, e a alternativa seria duplicá-lo.
         let (keep_x, keep_w) = (self.inner_x, self.inner_w);
         self.inner_x = inner_x;
         self.inner_w = inner_w;
-        let mut py = y + pad + head_h;
+        let mut py = y + pad + head_h + note_h;
         for (param, p) in fx.params.iter().enumerate().take(ids::MAX_FX_ROW_PARAMS) {
             py = self.fx_param(row, param, p, py);
         }

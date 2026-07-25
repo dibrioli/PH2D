@@ -1266,6 +1266,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
                 value: 0.0,
             },
         ],
+        falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
     };
     let publish = || {
         ph2d_panel_vector::set_current_effects(true, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
@@ -1398,6 +1399,7 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
             label: "Zig Zag",
             enabled: true,
             params,
+            falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
         }],
     );
     let mut host = MockPanelHost::with_panel::<VectorPanel>();

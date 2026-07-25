@@ -25,7 +25,7 @@ fn ctx() -> FxCtx {
 fn the_neutral_point_is_a_byte_identical_no_op() {
     let p = square();
     assert_eq!(
-        bloat_contour(&p.verts, true, &BloatSpec::default(), &ctx()).0,
+        bloat_contour(&p.verts, true, &BloatSpec::default(), &ctx(), None).0,
         p.verts
     );
 }
@@ -55,6 +55,7 @@ fn the_bloat_moves_anchors_and_handles_in_opposite_directions() {
         false,
         &BloatSpec { amount: 50.0 },
         &c,
+        None,
     )
     .0;
     let (a1, h1) = (r(out[0].anchor), r(out[0].out_handle));
@@ -64,7 +65,7 @@ fn the_bloat_moves_anchors_and_handles_in_opposite_directions() {
          Os dois no mesmo sentido são uma escala."
     );
 
-    let out = bloat_contour(&[v], false, &BloatSpec { amount: -50.0 }, &c).0;
+    let out = bloat_contour(&[v], false, &BloatSpec { amount: -50.0 }, &c, None).0;
     let (a2, h2) = (r(out[0].anchor), r(out[0].out_handle));
     assert!(
         a2 > a0 && h2 < h0,
@@ -79,7 +80,7 @@ fn the_bloat_scales_the_corner_radius_with_the_anchor() {
     let c = ctx();
     let mut v = VecVertex::corner([c.center[0] + 20.0, c.center[1]]);
     v.corner_radius = 6.0;
-    let out = bloat_contour(&[v], false, &BloatSpec { amount: -100.0 }, &c).0;
+    let out = bloat_contour(&[v], false, &BloatSpec { amount: -100.0 }, &c, None).0;
     assert!(
         (out[0].corner_radius - 12.0).abs() < 1e-9,
         "com as âncoras a duplicar, o raio devia duplicar; deu {}",
@@ -92,6 +93,6 @@ fn the_bloat_scales_the_corner_radius_with_the_anchor() {
 fn the_contour_keeps_its_closedness() {
     let p = square();
     let c = ctx();
-    assert!(bloat_contour(&p.verts, true, &BloatSpec { amount: 40.0 }, &c).1);
-    assert!(!bloat_contour(&p.verts, false, &BloatSpec { amount: 40.0 }, &c).1);
+    assert!(bloat_contour(&p.verts, true, &BloatSpec { amount: 40.0 }, &c, None).1);
+    assert!(!bloat_contour(&p.verts, false, &BloatSpec { amount: 40.0 }, &c, None).1);
 }

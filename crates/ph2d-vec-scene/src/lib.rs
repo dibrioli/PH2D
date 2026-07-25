@@ -121,6 +121,11 @@ pub mod fx_warp;
 /// **Warp** — a família paramétrica do menu *Effect > Warp* (Arc/Bulge/Wave/Fisheye/Rise).
 pub mod fx_warp_presets;
 
+/// **Falloff** — o campo escalar espacial que modula a FORÇA do deformador seguinte na pilha
+/// (a ideia do *Falloff* do Cavalry). Ele não deforma nada sozinho: entra no deformador e escala
+/// o deslocamento por-ponto. Módulo irmão de `fx_warp_presets`.
+pub mod fx_falloff;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).

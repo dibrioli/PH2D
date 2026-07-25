@@ -92,9 +92,9 @@ pub mod state;
 
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
-    FillKind, FontPreview, FxParamView, FxRowView, PathFillRule, TextAxisSlot, VectorPanelState,
-    expand_join, expand_side, last_content_h, last_visible_h, set_current_contour,
-    set_current_contour_can_add, set_current_convertible, set_current_effects,
+    FalloffRole, FillKind, FontPreview, FxParamView, FxRowView, PathFillRule, TextAxisSlot,
+    VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h,
+    set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
     set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
     set_current_has_envelope, set_current_path_closed, set_current_patternpath,

@@ -45,6 +45,23 @@ pub struct FxRowView {
     pub enabled: bool,
     /// Os parâmetros, na ordem em que o painel os desenha.
     pub params: Vec<FxParamView>,
+    /// Se este efeito é um Falloff: para onde a força dele aponta. O painel pinta uma linha de
+    /// dica no card — um Falloff sozinho (sem deformador abaixo) não pode parecer quebrado, e a
+    /// resposta (`takes_falloff` do efeito abaixo) é conhecida pela ponte, não pelo painel.
+    pub falloff_role: FalloffRole,
+}
+
+/// O papel de uma linha da pilha enquanto Falloff — decidido pela ponte (que conhece o motor),
+/// desenhado pelo painel (que não).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum FalloffRole {
+    /// Não é um Falloff — sem dica.
+    #[default]
+    NotFalloff,
+    /// É um Falloff e há um deformador abaixo que consome a força.
+    ModulatesBelow,
+    /// É um Falloff mas nada abaixo consome a força (nenhum deformador, ou só Trim/Repeater).
+    Inert,
 }
 
 thread_local! {

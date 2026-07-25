@@ -35,6 +35,7 @@
 //! [`PathEffect::is_neutral`]. A matemática mora num módulo próprio e não conhece a pilha;
 //! é isso que mantém aberto o caminho de um dia embrulhá-la num nó (ADR-0132 §4).
 
+use crate::fx_falloff::{Falloff, FalloffSpec};
 use crate::fx_trim::{self, TrimSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
 use crate::{Contour, VecPath, VecPathId, VecScene};
@@ -187,6 +188,10 @@ pub enum PathEffect {
     /// A família de warp paramétrico (Arc/Bulge/Wave/Fisheye/Rise) — o menu *Effect > Warp* do
     /// Illustrator. Ver [`crate::fx_warp_presets`]. **Apendado por último**: postcard é posicional.
     Warp(crate::fx_warp_presets::WarpSpec),
+    /// **Falloff** — um campo escalar espacial que NÃO deforma nada sozinho: modula a FORÇA do
+    /// deformador SEGUINTE na pilha (a ideia do *Falloff* do Cavalry). Ver [`crate::fx_falloff`].
+    /// **Apendado por último**: postcard é posicional.
+    Falloff(FalloffSpec),
 }
 
 impl PathEffect {
@@ -202,6 +207,7 @@ impl PathEffect {
             Self::Repeat(r) => r.is_neutral(),
             Self::Bloat(b) => b.is_neutral(),
             Self::Warp(w) => w.is_neutral(),
+            Self::Falloff(f) => f.is_neutral(),
         }
     }
 
@@ -214,7 +220,11 @@ impl PathEffect {
     pub fn as_trim(&self) -> Option<&TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
+            Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_) => None,
         }
     }
 
@@ -222,7 +232,11 @@ impl PathEffect {
     pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
-            Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
+            Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Warp(_)
+            | Self::Falloff(_) => None,
         }
     }
 
@@ -231,7 +245,9 @@ impl PathEffect {
     pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) | Self::Falloff(_) => {
+                None
+            }
         }
     }
 
@@ -239,7 +255,9 @@ impl PathEffect {
     pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
         match self {
             Self::ZigZag(z) => Some(z),
-            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => None,
+            Self::Trim(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) | Self::Falloff(_) => {
+                None
+            }
         }
     }
 
@@ -259,6 +277,7 @@ impl PathEffect {
             Self::Repeat(_) => "Repeater",
             Self::Bloat(_) => "Pucker & Bloat",
             Self::Warp(w) => w.style.label(),
+            Self::Falloff(f) => f.shape.label(),
         }
     }
 
@@ -267,7 +286,11 @@ impl PathEffect {
     pub fn as_warp(&self) -> Option<&crate::fx_warp_presets::WarpSpec> {
         match self {
             Self::Warp(w) => Some(w),
-            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Falloff(_) => None,
         }
     }
 
@@ -275,7 +298,45 @@ impl PathEffect {
     pub fn as_warp_mut(&mut self) -> Option<&mut crate::fx_warp_presets::WarpSpec> {
         match self {
             Self::Warp(w) => Some(w),
-            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) => None,
+            Self::Trim(_)
+            | Self::ZigZag(_)
+            | Self::Repeat(_)
+            | Self::Bloat(_)
+            | Self::Falloff(_) => None,
+        }
+    }
+
+    /// O Falloff deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_falloff(&self) -> Option<&FalloffSpec> {
+        match self {
+            Self::Falloff(f) => Some(f),
+            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => {
+                None
+            }
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_falloff`].
+    pub fn as_falloff_mut(&mut self) -> Option<&mut FalloffSpec> {
+        match self {
+            Self::Falloff(f) => Some(f),
+            Self::Trim(_) | Self::ZigZag(_) | Self::Repeat(_) | Self::Bloat(_) | Self::Warp(_) => {
+                None
+            }
+        }
+    }
+
+    /// **Este efeito CONSOME um campo de Falloff?** Só os deformadores por-ponto (Pucker & Bloat,
+    /// Warp, Zig Zag) sabem escalar a força amostra a amostra. Trim (revela um trecho) e Repeat
+    /// (multiplica contornos) não têm uma "força" que um campo espacial module, então um Falloff
+    /// imediatamente acima deles é **inerte na geometria** — e o painel diz isso, em vez de deixar
+    /// o artista adivinhar (a lei do "nenhum controle mudo", DIRETIVA §2).
+    #[must_use]
+    pub fn takes_falloff(&self) -> bool {
+        match self {
+            Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) => true,
+            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) => false,
         }
     }
 
@@ -300,10 +361,21 @@ impl PathEffect {
         "Squeeze",
         "Fisheye",
         "Rise",
+        // ⚠️ As QUATRO formas de Falloff, DEPOIS de tudo, na ordem de
+        // [`crate::fx_falloff::FalloffShape::ALL`] — como os warps, um KIND por forma, todos o
+        // MESMO variant `Falloff`. O `label` de um Falloff É o da `FalloffShape`, então o gate
+        // `every_effect_kind_is_reachable` (`from_kind(i).label() == KINDS[i]`) fica VERMELHO num typo.
+        "Falloff Radial",
+        "Falloff Linear",
+        "Falloff Rect",
+        "Falloff Sweep",
     ];
 
     /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
     const WARP_BASE: usize = 4;
+
+    /// Quantos KINDS vêm ANTES da família de falloff — os 4 base + os estilos de warp.
+    const FALLOFF_BASE: usize = Self::WARP_BASE + crate::fx_warp_presets::WarpStyle::ALL.len();
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -317,9 +389,13 @@ impl PathEffect {
             3 => Some(Self::Bloat(crate::fx_warp::BloatSpec::default())),
             // Um KIND por estilo de warp, todos o MESMO variant `Warp` — o estilo é escolhido no
             // Add, não é parâmetro vivo (ver `WarpSpec`).
-            k => crate::fx_warp_presets::WarpStyle::ALL
+            k if k < Self::FALLOFF_BASE => crate::fx_warp_presets::WarpStyle::ALL
                 .get(k - Self::WARP_BASE)
                 .map(|&s| Self::Warp(crate::fx_warp_presets::WarpSpec::new(s))),
+            // ...e um KIND por forma de falloff, todos o MESMO variant `Falloff` (mesmo padrão).
+            k => crate::fx_falloff::FalloffShape::ALL
+                .get(k - Self::FALLOFF_BASE)
+                .map(|&s| Self::Falloff(FalloffSpec::new(s))),
         }
     }
 
@@ -333,208 +409,8 @@ impl PathEffect {
             Self::Bloat(_) => 3,
             // O estilo, na ordem da `WarpStyle::ALL`, deslocado pelos base.
             Self::Warp(w) => Self::WARP_BASE + w.style as usize,
-        }
-    }
-
-    /// Os parâmetros que este efeito oferece, na ordem em que o painel os desenha.
-    ///
-    /// ⚠️ Nunca mais de [`MAX_FX_PARAMS`] — há gate.
-    #[must_use]
-    pub fn params(&self) -> &'static [FxParam] {
-        /// Um slider de fração `0..=1`, a forma mais comum.
-        const fn frac(name: &'static str) -> FxParam {
-            FxParam {
-                name,
-                min: 0.0,
-                max: 1.0,
-                toggle: false,
-                integer: false,
-            }
-        }
-        /// Uma caixinha (o valor só é 0 ou 1).
-        const fn flag(name: &'static str) -> FxParam {
-            FxParam {
-                name,
-                min: 0.0,
-                max: 1.0,
-                toggle: true,
-                integer: false,
-            }
-        }
-        const TRIM: &[FxParam] = &[frac("Start"), frac("End"), frac("Offset")];
-        const ZIGZAG: &[FxParam] = &[
-            // `Size` é PERCENTAGEM da forma: 100 = a média das dimensões dela. A faixa já era
-            // `0..100`, mas em unidades de MUNDO — e era isso que a tornava inútil.
-            FxParam {
-                name: "Size",
-                min: 0.0,
-                max: 100.0,
-                toggle: false,
-                integer: false,
-            },
-            // **128, e o número é MEDIDO** (§0 do CLAUDE.md — um teto diz de que recurso é).
-            // O recurso é o tempo de `cooked()`, que é chamado por vários consumidores por
-            // frame; o custo é LINEAR nas cristas. Medido em release, círculo de 4 âncoras:
-            //
-            // | cristas |  8   |  32  |  64  | 128  | 256  |
-            // |---------|------|------|------|------|------|
-            // | ms/cook |0,019 |0,104 |0,219 |0,475 |0,902 |
-            //
-            // Enio pediu 128 (2026-07-18) e 128 custa 0,41 ms. Não há parede física antes de
-            // ~2000 (o `MAX_SAMPLES` de guarda); quem quiser subir só tem de re-medir.
-            FxParam {
-                name: "Ridges",
-                min: 1.0,
-                max: 128.0,
-                toggle: false,
-                integer: true,
-            },
-            flag("Smooth"),
-            flag("Rough"),
-        ];
-        /// Um eixo de cópia: quantas, e quanto anda cada uma.
-        const fn axis(count: &'static str, mv: &'static str) -> [FxParam; 2] {
-            [
-                // **128 por eixo, e o número saiu da MEDIÇÃO** (CLAUDE.md §0): o custo de
-                // `cooked()` é linear nas cópias, medido numa silhueta de 24 âncoras —
-                //
-                // | cópias  |  2   |  8   |  16  |  32  |  64  | 128  |
-                // |---------|------|------|------|------|------|------|
-                // | ms/cook |0,0008|0,0042|0,0086|0,0144|0,0290|0,0614|
-                //
-                // ⚠️ O cozimento NÃO é o recurso que limita isto — 0,06 ms não limita nada. O
-                // custo por medir é o RENDER dos contornos. Há um teto separado no PRODUTO dos
-                // dois eixos (`MAX_TOTAL`), porque o teto de um eixo não é o teto de uma grelha.
-                FxParam {
-                    name: count,
-                    min: 1.0,
-                    max: 128.0,
-                    toggle: false,
-                    integer: true,
-                },
-                // Distâncias em PERCENTAGEM e POR EIXO — o *Relative Offset* do Array do
-                // Blender: `100` encaixa sem folga, porque x mede pela LARGURA e y pela ALTURA.
-                FxParam {
-                    name: mv,
-                    min: -200.0,
-                    max: 200.0,
-                    toggle: false,
-                    integer: false,
-                },
-            ]
-        }
-        const AX: [FxParam; 2] = axis("Copies X", "Move X");
-        const AY: [FxParam; 2] = axis("Copies Y", "Move Y");
-        /// Uma rotação por cópia, em graus.
-        const fn turn(name: &'static str) -> FxParam {
-            FxParam {
-                name,
-                min: -180.0,
-                max: 180.0,
-                toggle: false,
-                integer: false,
-            }
-        }
-        const REPEAT: &[FxParam] = &[
-            AX[0],
-            AX[1],
-            AY[0],
-            AY[1],
-            // **Duas rotações, porque fazem coisas diferentes** (Enio, 2026-07-18). O `Spin`
-            // roda cada cópia sobre o centro dela; o `Orbit` roda-a em torno do centro do
-            // original — é o *Object Offset* do Blender, e é de onde saem as espirais.
-            turn("Spin"),
-            turn("Orbit"),
-        ];
-        // Um parametro cada. O Twist entrega o angulo na BORDA da forma; o Bloat e' uma
-        // percentagem do raio de cada ponto (`-100` colapsa no centro, `100` duplica).
-        const BLOAT: &[FxParam] = &[FxParam {
-            name: "Amount",
-            min: -100.0,
-            max: 100.0,
-            toggle: false,
-            integer: false,
-        }];
-        // Os TRÊS sliders do diálogo Warp do Illustrator (o estilo já foi escolhido no Add, não é
-        // parâmetro): a DOBRA e as duas distorções de perspectiva, cada uma em `-100..100`. As
-        // perspectivas compõem com a dobra — ver [`crate::fx_warp_presets`].
-        const fn pct(name: &'static str) -> FxParam {
-            FxParam {
-                name,
-                min: -100.0,
-                max: 100.0,
-                toggle: false,
-                integer: false,
-            }
-        }
-        const WARP: &[FxParam] = &[pct("Bend"), pct("Horizontal"), pct("Vertical")];
-        match self {
-            Self::Trim(_) => TRIM,
-            Self::ZigZag(_) => ZIGZAG,
-            Self::Repeat(_) => REPEAT,
-            Self::Bloat(_) => BLOAT,
-            Self::Warp(_) => WARP,
-        }
-    }
-
-    /// O valor do parâmetro `i`, ou `0.0` se ele não existe.
-    #[must_use]
-    pub fn get(&self, i: usize) -> f64 {
-        match (self, i) {
-            (Self::Trim(t), 0) => t.start,
-            (Self::Trim(t), 1) => t.end,
-            (Self::Trim(t), 2) => t.offset,
-            (Self::ZigZag(z), 0) => z.amplitude,
-            (Self::ZigZag(z), 1) => z.ridges,
-            (Self::ZigZag(z), 2) => f64::from(u8::from(z.smooth)),
-            (Self::ZigZag(z), 3) => f64::from(u8::from(z.rough_seed.is_some())),
-            (Self::Repeat(r), 0) => r.copies_x,
-            (Self::Repeat(r), 1) => r.move_x,
-            (Self::Repeat(r), 2) => r.copies_y,
-            (Self::Repeat(r), 3) => r.move_y,
-            (Self::Repeat(r), 4) => r.spin,
-            (Self::Repeat(r), 5) => r.orbit,
-            (Self::Bloat(b), 0) => b.amount,
-            (Self::Warp(w), 0) => w.bend,
-            (Self::Warp(w), 1) => w.h_distort,
-            (Self::Warp(w), 2) => w.v_distort,
-            _ => 0.0,
-        }
-    }
-
-    /// Escreve o parâmetro `i`. Índice inexistente é no-op.
-    ///
-    /// Um parâmetro de CONTAGEM é arredondado **aqui**, na porta única de escrita — assim é o
-    /// DOCUMENTO que guarda o inteiro, e o motor, o chip e o slider não podem discordar sobre
-    /// que número está em uso. Arredondar só na exibição deixaria o chip a mostrar `37,42`
-    /// enquanto a geometria desenha `37`.
-    pub fn set(&mut self, i: usize, v: f64) {
-        let v = if self.params().get(i).is_some_and(|p| p.integer) {
-            v.round()
-        } else {
-            v
-        };
-        match (self, i) {
-            (Self::Trim(t), 0) => t.start = v,
-            (Self::Trim(t), 1) => t.end = v,
-            (Self::Trim(t), 2) => t.offset = v,
-            (Self::ZigZag(z), 0) => z.amplitude = v,
-            (Self::ZigZag(z), 1) => z.ridges = v,
-            (Self::ZigZag(z), 2) => z.smooth = v >= 0.5,
-            // A seed é FIXA por enquanto: o que o artista liga é o *modo* Roughen. Um knob de
-            // seed entra quando alguém quiser duas rugosidades diferentes na mesma cena.
-            (Self::ZigZag(z), 3) => z.rough_seed = (v >= 0.5).then_some(1),
-            (Self::Repeat(r), 0) => r.copies_x = v,
-            (Self::Repeat(r), 1) => r.move_x = v,
-            (Self::Repeat(r), 2) => r.copies_y = v,
-            (Self::Repeat(r), 3) => r.move_y = v,
-            (Self::Repeat(r), 4) => r.spin = v,
-            (Self::Repeat(r), 5) => r.orbit = v,
-            (Self::Bloat(b), 0) => b.amount = v,
-            (Self::Warp(w), 0) => w.bend = v,
-            (Self::Warp(w), 1) => w.h_distort = v,
-            (Self::Warp(w), 2) => w.v_distort = v,
-            _ => {}
+            // A forma, na ordem da `FalloffShape::ALL`, deslocada pelos base + os warps.
+            Self::Falloff(f) => Self::FALLOFF_BASE + f.shape as usize,
         }
     }
 
@@ -544,8 +420,13 @@ impl PathEffect {
     /// Effects). Um contorno que o efeito esvazie é DESCARTADO em vez de virar um contorno
     /// de zero vértices: um buraco vazio num compound não é geometria, é ruído para a
     /// booleana e para o preenchimento.
+    ///
+    /// `falloff` é o campo de FORÇA do(s) Falloff(s) que precedem este efeito na pilha
+    /// ([`run_stack`]). Os deformadores por-ponto (Bloat/Warp/Zig Zag) o passam adiante e escalam o
+    /// deslocamento amostra a amostra; os outros o ignoram. `None` = sem modulação, byte-idêntico
+    /// ao que era antes do Falloff existir.
     #[must_use]
-    pub fn apply(&self, path: &VecPath, ctx: &FxCtx) -> VecPath {
+    pub fn apply(&self, path: &VecPath, ctx: &FxCtx, falloff: Option<&Falloff>) -> VecPath {
         let mut out = path.clone();
         match self {
             Self::Trim(spec) => {
@@ -553,7 +434,7 @@ impl PathEffect {
             }
             Self::ZigZag(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
-                    fx_zigzag::zigzag_contour(v, c, spec, ctx.ref_size)
+                    fx_zigzag::zigzag_contour(v, c, spec, ctx.ref_size, falloff)
                 });
             }
             // ⚠️ O Repeater NÃO passa pelo `apply_per_contour`: ele multiplica a forma inteira,
@@ -564,14 +445,17 @@ impl PathEffect {
             Self::Repeat(spec) => out = crate::fx_repeat::repeat_path(path, spec),
             Self::Bloat(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
-                    crate::fx_warp::bloat_contour(v, c, spec, ctx)
+                    crate::fx_warp::bloat_contour(v, c, spec, ctx, falloff)
                 });
             }
             Self::Warp(spec) => {
                 apply_per_contour(path, &mut out, |v, c| {
-                    crate::fx_warp_presets::warp_contour(v, c, spec, ctx)
+                    crate::fx_warp_presets::warp_contour(v, c, spec, ctx, falloff)
                 });
             }
+            // O Falloff não é geometria: ele é CONSUMIDO pelo `run_stack`, que o passa como o
+            // `falloff` do efeito seguinte. Chamar `apply` num Falloff (fora da pilha) é um no-op.
+            Self::Falloff(_) => {}
         }
         out
     }
@@ -626,8 +510,19 @@ pub fn run_stack(path: &VecPath, stack: &[FxEntry]) -> Option<VecPath> {
     // independentemente de onde o efeito está na pilha.
     let ctx = FxCtx::of(path);
     let mut cur: Option<VecPath> = None;
+    // O campo de força que se acumula até o próximo deformador consumi-lo. Dois Falloffs seguidos
+    // COMPÕEM (produto dos pesos = interseção das influências); o deformador seguinte é modulado e
+    // o campo é zerado. Um Falloff sobre um efeito que não o consome (Trim/Repeat) é inerte na
+    // geometria — o painel diz isso (`takes_falloff`).
+    let mut pending = Falloff::default();
     for e in active {
-        cur = Some(e.effect.apply(cur.as_ref().unwrap_or(path), &ctx));
+        if let PathEffect::Falloff(spec) = &e.effect {
+            pending.push(spec, &ctx);
+            continue;
+        }
+        let field = (!pending.is_empty()).then_some(&pending);
+        cur = Some(e.effect.apply(cur.as_ref().unwrap_or(path), &ctx, field));
+        pending = Falloff::default();
     }
     let mut out = cur?;
     out.effects.clear();
@@ -673,6 +568,11 @@ impl VecScene {
         true
     }
 }
+
+/// A superfície de PARÂMETROS (`params`/`get`/`set`) — `impl PathEffect` continuado noutro
+/// arquivo pelo teto de LOC.
+#[path = "effect_params.rs"]
+mod params_surface;
 
 #[cfg(test)]
 #[path = "effect_tests.rs"]

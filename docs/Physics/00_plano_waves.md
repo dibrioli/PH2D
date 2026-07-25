@@ -65,6 +65,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-JointAnchor** | a âncora de um joint ganha um DOT âmbar agarrável no canvas (handle de PONTO — os 3 publicadores de `GizmoView` são caixas), arrasta = `Translate` da seleção | `=38` |
 | **W-BakeJoint** | assar UM corpo de um rig articulado puxa o componente conexo DINÂMICO inteiro (`jointed_group`) — não há bake parcial coerente de um rig acoplado | `=39` |
 | **W-JointAuthoring** | §12 redesenhada: linha por corpo (Body A/B + nome vigente + eyedropper que ARMA um canvas-pick) + smoke de autoria do zero; a criação já existia desde o W3, faltava descobribilidade | `=40` |
+| **W-AnchorFollow** (padrão-ouro W1) | a âncora vira **body-local por corpo** (`PhysicsJoint.local_a/b`, rep nativa do rapier) e SEGUE o corpo — mover um corpo não desliza mais o pino (`PROJECT_SCHEMA` 30). A coluna do padrão-ouro; waves 2-5 (grupo carrega o rig · 2 alças + snap · limite/motor visuais · break force) pendem do smoke | `=41` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

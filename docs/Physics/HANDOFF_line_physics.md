@@ -4094,3 +4094,55 @@ O que MORREU da v1: `rebind_target` (o canvas-pick não usa a seleção), o camp
 e o routing no drain (os edits agora armam no action loop). **Sem componente/id de física/schema
 novo.** LOC: `physics_smoke.rs` bateu 606 e a tabela de doc estagnada (parava na cena 28) foi
 trocada por um ponteiro ao `00_plano_waves.md` (581).
+
+---
+
+## W-AnchorFollow (padrão-ouro W1) — A ÂNCORA É BODY-LOCAL E SEGUE O CORPO (2026-07-25, `6f337986c`, cena `=41`, pendente de smoke)
+
+> ⚠️ Nome distinto do **W-JointAnchor** (=38, o DOT âmbar no canvas); este é o modelo body-local.
+
+Report do Enio + avaliação do padrão-ouro (*"estado da arte, sem pensar em custo"*): se um corpo
+Kinematic é animado, ou movido no canvas, a âncora do joint **DESLIZAVA** pelo corpo — as
+relações de distância se perdiam. **Medido** antes: mover a prancha 2 m arrastava o pino 2 m ao
+longo dela (corpo de 0,2 m). **Causa:** a âncora era um ponto de MUNDO (o `Transform` do joint)
+que o bridge re-derivava para local TODO reconcile contra a pose viva — o oposto de
+rapier/Box2D/Unity, que guardam a âncora **body-local** por corpo (segue o corpo por construção).
+
+Esta é a **Wave 1** do padrão-ouro (a coluna; destrava as próximas — ver "Padrão-ouro: waves 2-5"
+abaixo).
+
+- **`PhysicsJoint` ganhou `local_a`/`local_b`/`anchored`** (a rep NATIVA do rapier,
+  `local_anchor1/2`). A âncora virou estado AUTORADO body-local por corpo.
+- **`reconcile_joints` LÊ os locais guardados** (o slide fix); `&mut sim` agora. `anchored` é o
+  sentinela do seed: joint que chega só com um `Transform` de mundo (create novo, fixture crua,
+  re-pick) é seedado UMA vez do `Transform` contra a pose de REPOUSO (a MESMA conversão do modelo
+  antigo, agora uma vez) e `anchored` vira true. Depois disso um **MOVE de corpo nunca re-deriva**.
+- **`sync_joint_pivots`** (rest-only, `bridge/joints.rs`) escreve `Transform = bodyA·local_a` pra
+  o dot e o campo Position SEGUIREM o corpo. O **dot único segue body A** de propósito (as 2 pontas
+  de um Pin coincidem em repouso; a 2ª alça é wave 3).
+- **Reposicionar o pivô = gesto EXPLÍCITO** (`anchored = false` → reconcile re-deriva do novo
+  pivô), costurado nos 3 sítios: alça-dot (`advance_gizmo_drag`, Translate num joint), commit de
+  Position (`inspector_commits`), re-pick (`set_joint_body`). Um MOVE de corpo não passa por
+  nenhum → segue, não desliza.
+- **Runtime já estava certo** (o play congela os locais e o corpo Kinematic animado arrasta o body
+  B pelo constraint) — o bug era só de AUTORIA; o solver não foi tocado.
+
+Gates novos RED-first mutação-provados (`tests/joint_anchor_follows.rs`): `the_anchor_follows_the_body_when_it_moves`
+(mutação = ignorar `anchored` → +2 m RED) · `the_display_pivot_follows_body_a` (mutação = tirar
+`sync_joint_pivots` → dot congela) · `re_authoring_the_pivot_re_glues_the_bodies`.
+`editing_the_anchor_at_rest_moves_the_pivot` atualizado ao novo contrato (Transform + anchored=false).
+
+**`PROJECT_SCHEMA` 29→30** (campos apendados ao `PhysicsJoint`, postcard posicional; tripla do gate
+`a_schema_bump_anywhere` = `(30,8,13)`). LOC: `bridge.rs` 718→679 (`readback` → irmão
+`bridge/readback.rs`); markers `gizmo_drag.rs`/`inspector_commits.rs` atualizados. Smoke: **`=41`**.
+
+### Padrão-ouro: waves 2-5 (NÃO construídas — pendem do smoke da W1)
+
+O padrão-ouro avaliado com o Enio (facilidade máxima + capacidade máxima, rep nativa do rapier +
+hierarquia única). W1 (a coluna) fecha o report; o resto são enriquecimentos:
+2. **Grupo carrega o rig** — âncoras são locais ⇒ agrupar bodies+joint e mover o grupo preserva a
+   relação de graça (validar; provavelmente já cai da W1).
+3. **Duas alças de âncora + snap a features** (vértice/aresta/centro) no canvas — a alça do body B.
+4. **Limite (arco) e motor (seta) VISUAIS** — precisa do FRAME (o `angle_a/b` da rep, que a W1 NÃO
+   guardou de propósito: sem consumidor era campo órfão; entra aqui com seu consumidor).
+5. **Break force / break torque** — o joint arrebenta sob carga (casa com o canal W-ImpactForce).

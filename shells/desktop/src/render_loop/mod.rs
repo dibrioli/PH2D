@@ -1516,9 +1516,15 @@ impl crate::App {
             let motion_tool_active = tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
+            // As dims da CENA (o sub-retângulo do split, `CenterSplit::scene_viewport`) — o
+            // gizmo é pintado e arrastado com ELAS, casando com o `set_viewport` do render
+            // (present.rs). É o fix do drift crônico: sob o split a cena renderiza na banda
+            // e o chrome projetava a janela cheia. Fora do split = janela cheia (no-op).
+            let (scene_w, scene_h) =
+                crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
             hero.gizmo.field_view = motion_tool_active
                 .then(|| {
-                    crate::field_gizmo::field_view(motion, camera, window_size, self.last_pointer)
+                    crate::field_gizmo::field_view(motion, camera, scene_w, scene_h, self.last_pointer)
                 })
                 .flatten();
             // ─────────────────────────────────────────────────────────
@@ -4936,6 +4942,12 @@ impl crate::App {
                             || id == ph2d_editor::ToolId::new("vector_pen")
                             || id == ph2d_editor::ToolId::new("vector_pencil")
                             || id == ph2d_editor::ToolId::new("vector_shape")
+                            // Motion Nodes: a tool Motion é dona do canvas (o único gizmo é o
+                            // do field, slot próprio `field_view`). Um sprite selecionado por
+                            // acaso ao entrar mostraria seu gizmo de sprite projetado na
+                            // janela CHEIA (deslocado da cena que renderiza na banda do split)
+                            // — some junto com o resto do chrome de sprite.
+                            || id == ph2d_editor::ToolId::new("motion")
                     })
                     .unwrap_or(false);
             if suppress_gizmo {

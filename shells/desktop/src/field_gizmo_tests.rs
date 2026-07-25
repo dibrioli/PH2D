@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::motion_state::MotionState;
+use ph2d_editor::screens::layout::CenterSplit;
 use ph2d_editor::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,
     TransformSnapshot,
@@ -139,14 +140,33 @@ fn field_view_is_published_exactly_when_a_field_is_selected() {
     let mut motion = MotionState::new();
     let bid = motion.doc.graph.add_node("field.box");
     let cam = Camera2d::new([0.0, 0.0], 20.0);
-    let win = WindowSize::new(800, 600);
     // 🔴 field selecionado ⇒ a view é publicada (o gizmo aparece). Mata "field_view ignora
     // a seleção".
     set_graph_selection(vec![bid.0]);
-    assert!(field_view(&motion, &cam, win, (0.0, 0.0)).is_some());
+    assert!(field_view(&motion, &cam, 800.0, 600.0, (0.0, 0.0)).is_some());
     // Sem field selecionado ⇒ nada publicado (zero hit-region no canvas dos sprites).
     set_graph_selection(vec![]);
-    assert!(field_view(&motion, &cam, win, (0.0, 0.0)).is_none());
+    assert!(field_view(&motion, &cam, 800.0, 600.0, (0.0, 0.0)).is_none());
+}
+
+#[test]
+fn scene_window_wh_is_the_subrect_under_a_split_full_window_without() {
+    // O fix do drift crônico do Motion: sob o split a CENA renderiza num sub-retângulo, e o
+    // chrome (grade + gizmo + drag) TEM de mapear mundo↔tela com as MESMAS dims.
+    let win = WindowSize::new(800, 600);
+    // Sem split: a janela cheia — o chrome e o render coincidem, byte-idêntico ao antigo.
+    assert_eq!(scene_window_wh(CenterSplit::None, win), (800.0, 600.0));
+    // 🔴 Horizontal: a cena é a banda de cima (h·t). Mata "o chrome ignora o split" — a
+    // mutação que É o drift crônico (chrome full-window sob a cena na banda).
+    assert_eq!(
+        scene_window_wh(CenterSplit::Horizontal { t: 0.5 }, win),
+        (800.0, 300.0)
+    );
+    // Vertical: a cena é a faixa da esquerda (w·t).
+    assert_eq!(
+        scene_window_wh(CenterSplit::Vertical { t: 0.5 }, win),
+        (400.0, 600.0)
+    );
 }
 
 #[test]

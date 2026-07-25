@@ -81,21 +81,20 @@ impl crate::App {
         // left for a vertical one) in RENDER-TARGET pixels — the SAME fraction
         // the graph panel uses, so scene and graph align at any DPI without
         // plumbing the editor-core layout rect.
-        let scene_viewport: Option<[f32; 4]> = if motion_active {
-            let w = window_size.width as f32;
-            let h = window_size.height as f32;
-            match hero_screen.as_ref().map(|hs| hs.view.center_split) {
-                Some(ph2d_editor::screens::layout::CenterSplit::Horizontal { t }) => {
-                    Some([0.0, 0.0, w, h * t])
-                }
-                Some(ph2d_editor::screens::layout::CenterSplit::Vertical { t }) => {
-                    Some([0.0, 0.0, w * t, h])
-                }
-                _ => None,
-            }
-        } else {
-            None
-        };
+        // PORTA ÚNICA (`CenterSplit::scene_viewport`): o MESMO sub-retângulo que o chrome
+        // (a grade do mundo + o gizmo de field, em `snapshots`/`field_gizmo`) usa para
+        // mapear mundo↔tela — senão a cena e o chrome discordam sobre onde um ponto de
+        // mundo cai (o drift crônico do Motion). O split só é != None na tool Motion, mas
+        // o gate em `motion_active` fica por robustez.
+        let scene_viewport: Option<[f32; 4]> = motion_active
+            .then(|| {
+                hero_screen.as_ref().and_then(|hs| {
+                    hs.view
+                        .center_split
+                        .scene_viewport(window_size.width as f32, window_size.height as f32)
+                })
+            })
+            .flatten();
 
         // M14.7 polish (10.1 fix): `surface.acquire_frame()` can block
         // until the next swap-chain texture is ready. Under a vsync

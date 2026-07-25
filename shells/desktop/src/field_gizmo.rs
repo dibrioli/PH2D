@@ -30,6 +30,7 @@
 //! ([`seed_start`]) — um round-trip sob transform identidade devolve os mesmos params (a
 //! lição recorrente `feedback_derived_coordinate_seed_must_match_sample`).
 
+use ph2d_editor::screens::layout::CenterSplit;
 use ph2d_editor::{
     GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget, GizmoView,
     TransformSnapshot,
@@ -40,6 +41,19 @@ use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_render::Camera2d;
 
 use crate::motion_state::MotionState;
+
+/// As dims `(w, h)` que a CENA de fato ocupa — o sub-retângulo do split (a porta única
+/// [`CenterSplit::scene_viewport`]) quando a tool Motion divide o centro, ou a janela cheia
+/// fora do split. ⚠️ **Todo mapeamento mundo↔tela do chrome da cena (a grade do mundo, o
+/// gizmo de field e o drag dele) TEM de usar isto**, casando com o `uniform_for_subrect` +
+/// `set_viewport` que o render usa (present.rs) — senão a cena renderiza na banda e o
+/// chrome projeta a janela cheia, e um ponto de mundo cai em dois lugares (o drift crônico
+/// do Motion, 2026-07-25). O sub-retângulo é ancorado em `(0,0)`, então só as DIMS mudam.
+#[must_use]
+pub(crate) fn scene_window_wh(center_split: CenterSplit, window: WindowSize) -> (f32, f32) {
+    let (w, h) = (window.width as f32, window.height as f32);
+    center_split.scene_viewport(w, h).map_or((w, h), |r| (r[2], r[3]))
+}
 
 /// Os nomes dos params de um field espacial que o gizmo dirige. Uma tabela por tipo de
 /// field (v1: só `field.box`) — quando `field.radial_sweep` etc. chegarem, cada um
@@ -93,8 +107,11 @@ fn wrap180(deg: f32) -> f32 {
 /// de sprite (caixa não-rotacionada center±half, rotação carregada à parte e aplicada em
 /// torno do pivô). Para um field o pivô É o centro (âncora zero), então
 /// `bbox = center ± half` direto.
-// Um builder de `GizmoView` legitimamente carrega a pose (5) + câmera + janela + cursor;
-// espelha o `gizmo_view_from` do `vec_gizmo_view` (mesmo domínio).
+// Um builder de `GizmoView` legitimamente carrega a pose (5) + câmera + dims da cena +
+// cursor; espelha o `gizmo_view_from` do `vec_gizmo_view` (mesmo domínio). ⚠️ `win_w`/
+// `win_h` são as dims da CENA ([`scene_window_wh`]), NÃO da janela cheia — é o que casa o
+// gizmo com o `set_viewport` do render sob o split (o fix do drift). O `canvas` (scissor)
+// usa as mesmas dims, então o gizmo é recortado na banda em vez de invadir o painel do grafo.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 fn view_from_params(
@@ -104,7 +121,8 @@ fn view_from_params(
     h: f32,
     rot_deg: f32,
     camera: &Camera2d,
-    window_size: WindowSize,
+    win_w: f32,
+    win_h: f32,
     last_pointer: (f32, f32),
 ) -> GizmoView {
     let half = [(w * 0.5).abs(), (h * 0.5).abs()];
@@ -116,14 +134,9 @@ fn view_from_params(
         rotation: rot_deg.to_radians(),
         camera_center: camera.center,
         camera_height_world: camera.height_world,
-        window_w: window_size.width as f32,
-        window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
-            0.0,
-            0.0,
-            window_size.width as f32,
-            window_size.height as f32,
-        ),
+        window_w: win_w,
+        window_h: win_h,
+        canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, win_w, win_h),
         cursor_screen: Some(last_pointer),
     }
 }
@@ -178,7 +191,8 @@ pub(crate) fn selected_field(motion: &MotionState) -> Option<(NodeId, FieldGizmo
 pub(crate) fn field_view(
     motion: &MotionState,
     camera: &Camera2d,
-    window_size: WindowSize,
+    win_w: f32,
+    win_h: f32,
     last_pointer: (f32, f32),
 ) -> Option<GizmoView> {
     let (nid, spec) = selected_field(motion)?;
@@ -190,7 +204,8 @@ pub(crate) fn field_view(
         p(spec.height),
         p(spec.rotation),
         camera,
-        window_size,
+        win_w,
+        win_h,
         last_pointer,
     ))
 }
@@ -273,8 +288,18 @@ impl crate::App {
                 p(spec.height),
                 p(spec.rotation),
             );
-            let win = gfx.surface.size();
-            let world_pos = gfx.camera.screen_to_world((x, y), win);
+            // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
+            // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do
+            // que o gizmo é PINTADO (o mesmo drift do chrome). A `GizmoCamera` do
+            // sub-retângulo espelha o `set_viewport` do render.
+            let (sw, sh) = scene_window_wh(hero.view.center_split, gfx.surface.size());
+            let scene_cam = GizmoCamera {
+                center: gfx.camera.center,
+                height_world: gfx.camera.height_world,
+                window_w: sw,
+                window_h: sh,
+            };
+            let world_pos = scene_cam.screen_to_world((x, y));
             // Rotate pivota no centro; scale, no canto/borda OPOSTOS (ou no centro com
             // Ctrl) — a mesma política do sprite/pose. `parent_world` = identidade: um
             // field não tem pai, e o param JÁ é de mundo, então o `world_snap` é o `start`.
@@ -326,11 +351,18 @@ impl crate::App {
             return true;
         };
         let size = gfx.surface.size();
+        // As MESMAS dims da CENA que o `down` usou e que o gizmo é pintado (o fix do drift).
+        let (sw, sh) = scene_window_wh(
+            gfx.hero_screen
+                .as_ref()
+                .map_or(CenterSplit::None, |h| h.view.center_split),
+            size,
+        );
         let cam = GizmoCamera {
             center: gfx.camera.center,
             height_world: gfx.camera.height_world,
-            window_w: size.width as f32,
-            window_h: size.height as f32,
+            window_w: sw,
+            window_h: sh,
         };
         let snap = gfx
             .hero_screen

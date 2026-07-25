@@ -170,11 +170,17 @@ pub(super) fn publish(
     // hero paints its world grid overlay. `canvas` is a
     // placeholder — `paint_hero_screen` overrides it with
     // the layout-computed canvas rect.
+    // Motion Nodes drift fix (2026-07-25): sob o split da tool Motion a CENA renderiza num
+    // sub-retângulo (present.rs, via `CenterSplit::scene_viewport`), mas a grade do mundo
+    // projetava a janela CHEIA — as linhas não pousavam sobre os sprites/instâncias do
+    // Motion. A grade usa as MESMAS dims da cena (a porta única); fora do split é a janela
+    // cheia, byte-idêntico.
+    let (grid_w, grid_h) = crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
     hero.set_grid_view(Some(ph2d_editor::GridView {
         camera_center: camera.center,
         camera_height_world: camera.height_world,
-        window_w: window_size.width as f32,
-        window_h: window_size.height as f32,
+        window_w: grid_w,
+        window_h: grid_h,
         canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
     }));
     // M14.4g Telemetry Phase A: publish real stats. Sprite

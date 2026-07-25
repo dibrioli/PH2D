@@ -68,6 +68,30 @@ impl CenterSplit {
         !matches!(self, Self::None)
     }
 
+    /// O sub-retângulo `[x, y, w, h]` (px do alvo, **ancorado no topo-esquerda**) que a
+    /// CENA ocupa quando o centro está dividido — a MESMA fração que o painel do grafo
+    /// usa (top para `Horizontal`, esquerda para `Vertical`). `None` quando não há split
+    /// (a cena é a janela cheia).
+    ///
+    /// **PORTA ÚNICA (2026-07-25):** o *render* da cena (`present`, via
+    /// `Camera2d::uniform_for_subrect` + `set_viewport`) E todo o *chrome* que mapeia
+    /// mundo↔tela sobre a cena (a grade do mundo, o gizmo de field e o drag dele)
+    /// derivam a projeção DAQUI. Antes, o present calculava o sub-retângulo e o chrome
+    /// projetava a janela CHEIA — duas cópias que discordavam, e um ponto de mundo caía
+    /// comprimido na banda (cena) e cheio (grade+gizmo). Era o **drift crônico do Motion**
+    /// (a cena divide o centro, mas a grade/gizmo ignoravam). Como o sub-retângulo é
+    /// ancorado em `(0,0)`, o chrome só precisa das DIMS: `view_proj_for_subrect(w,h)` é
+    /// idêntico a `view_proj(WindowSize{w,h})`, então passar `[r[2], r[3]]` como a janela
+    /// do `world_to_screen`/`screen_to_world` casa o chrome com o `set_viewport` da cena.
+    #[must_use]
+    pub fn scene_viewport(self, w: f32, h: f32) -> Option<[f32; 4]> {
+        match self {
+            Self::Horizontal { t } => Some([0.0, 0.0, w, h * t]),
+            Self::Vertical { t } => Some([0.0, 0.0, w * t, h]),
+            Self::None => None,
+        }
+    }
+
     /// `true` for a vertical split (side-by-side, divider drawn vertically) —
     /// the shell reads this to pick the divider's resize cursor (`EwResize` for
     /// a vertical divider, `NsResize` for a horizontal one).

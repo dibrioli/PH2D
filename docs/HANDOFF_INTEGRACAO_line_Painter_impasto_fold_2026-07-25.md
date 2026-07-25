@@ -4,13 +4,17 @@
 **Ordem que abriu a sessão (Enio):** *"continuar a tarefa de levar o painter para o GPU o máximo que for
 possível"* — a Onda 3 do [`docs/Painter/25_avaliacao_gpu.md`](Painter/25_avaliacao_gpu.md) §7.
 
-> ## O resumo em três linhas
+> ## O resumo em quatro linhas
 >
-> A re-medição que a Onda 3 exigia **não confirmou a lista dela: encontrou uma regressão viva.** O traço
-> esculpido comum rodava a **~4 fps a 4096²** na pista GPU — **106× mais lento** que a pista CPU que ela
-> substituiu — porque o fold do relevo era materializado na **tela inteira, na CPU, por movimento**.
-> Agora ele anda o **retângulo sujo**: **225,6 → 2,62 ms** por movimento a 4096² (**86×**), com o desenho
-> byte a byte intocado.
+> **(1) PERF.** A re-medição que a Onda 3 exigia **não confirmou a lista dela: encontrou uma regressão
+> viva.** O traço esculpido comum rodava a **~4 fps a 4096²** na pista GPU — **106× mais lento** que a
+> pista CPU que ela substituiu — porque o fold do relevo era materializado na **tela inteira, na CPU, por
+> movimento**. Agora ele anda o **retângulo sujo**: **225,6 → 2,62 ms** por movimento a 4096² (**86×**),
+> com o desenho byte a byte intocado.
+> **(2) O RETÂNGULO do smoke FECHOU** — era a pista que retoma o frame herdando um confinamento que não é
+> dela (§9). **(3) O SIGSEGV do fechamento FECHOU** — a superfície EGL morria depois do `wl_display`;
+> é da SHELL, não desta linha, e o Enio mandou consertar aqui (§10). **(4)** Uma afirmação minha de
+> "bloqueia a integração" foi **medida e retirada** (§11).
 
 ---
 
@@ -190,3 +194,126 @@ cargo test -p ph2d-host-desktop --release --bins measure_the_sculpted_stroke_on_
 reboot**. Se o cargo falhar com *"failed to create directory … Not a directory"*, rode
 `bash scripts/target-on-tmpfs.sh`. A regra `tmpfiles.d` de reboot-safety **não está instalada nesta
 máquina** (precisa de sudo) — o próprio script imprime as duas linhas.
+
+
+---
+
+## 9. O RETÂNGULO do smoke — FECHADO (`ee35433f8`)
+
+**Report do Enio** (`PH2D_IMPASTO_SMOKE=2`, com foto): um retângulo branco *"aparece pintando"* e
+*"fica até nova pintura sobrepor"*, numa sessão em que ele **alternou Digital e Impasto**.
+
+**Causa.** O `dirty_rect` é **COMPARTILHADO** pelas duas pistas de preview e **CONSUMIDO por quem
+drena**. Enquanto a CPU é dona, `take_preview_arc` o leva para o `preview_upload_bbox` dela; então no
+frame em que a GPU retoma, o rect descreve **só o último frame da CPU** — não a era inteira que a GPU
+não viu. Os **dois** consumidores do `preview_dirty_region` passam a servir estado velho em volta desse
+retângulo: o compositor remenda um sub-rect numa **fatia por-camada cacheada de antes da era CPU**, e o
+fold do impasto dobra a mesma janela sobre **planos da mesma era**.
+
+⚠️ **O fold regional foi INOCENTADO por medição, ANTES do fix.** Forçando `plane_win = (0,0,w,h)` — o
+caminho de ANTES daquela wave — a falha era **byte-idêntica**: 197.172 bytes, primeiro em (34, 62), pior
+255 níveis. Consertar só UM dos dois consumidores não move um byte, e é exatamente isso que a bisseção
+mostrou. **O defeito PRECEDE esta linha.**
+
+**Cura:** o espelho exato da que a Fase D deu ao sentido oposto (a drenagem da GPU derruba o
+`composited` da CPU). Campo novo **`gpu_lane_stale`**: toda drenagem da CPU o levanta, toda drenagem da
+GPU o consome declarando **não-confinado** (`None`), que todo consumidor já lê como *faça inteiro*. Um
+frame cheio na retomada, confinado de novo em seguida — e as duas pontas são **incondicionais**, então
+não há o que esquecer por enumeração.
+
+O repro deixou de ser `#[ignore = "RED"]` e virou gate
+(`the_planes_are_current_when_the_gpu_lane_takes_the_frame_back`). **Mutação** (`gpu_lane_stale = true`
+→ `false`) devolve os **197.172 bytes EXATOS**, o mesmo primeiro pixel e o mesmo pior delta.
+
+**Perf inalterada:** sculpted-move **1,97 ms @2048²** (0,9× da CPU) e **2,61 @4096²** (1,2×).
+
+---
+
+## 10. O SIGSEGV do fechamento — FECHADO (`6fec52715`), e ele é da SHELL
+
+⚠️ **Não é desta linha:** **217 coredumps desde 2026-07-22, com a MESMA stack, nas SEIS worktrees.** O
+Enio mandou consertar aqui em vez de abrir linha própria.
+
+**Causa (stack do coredump 751257, não suposição):**
+
+```
+wl_proxy_marshal_array_flags  (libwayland-client)
+  <- libnvidia-egl-wayland2 <- libEGL_nvidia <- ph2d-host-desktop   (epílogo do main)
+```
+
+O `EventLoop` é **consumido** por `run_app`, então ele — e com ele a conexão Wayland — morre quando
+`run_app` retorna, e só **depois** o `App` desenrola seus campos. A `SurfaceContext` do `AppGfx` caía
+nesse rabo e destruía uma superfície EGL sobre um `wl_display` que já se foi. Benigno (dispara depois do
+`exited cleanly`) e mesmo assim caro: **devolve 139** e some com todo `$status` que um smoke checaria.
+
+**Cura:** a MESMA que a shell já aplicava ao `cpal::Stream` três linhas acima — derrube o recurso de
+plataforma no `on_close_request`, enquanto tudo está vivo. Ordem inversa à da construção, cada passo uma
+dependência real: **`gfx`** (quem fala EGL) → **`host`** → **`window`** (quem possui o `wl_surface`).
+Flag `exiting` porque winit ainda entrega eventos na mesma iteração depois do `exit()`.
+
+**O oráculo é o `$?` do processo, e agora existe:** `PH2D_EXIT_AFTER_FRAMES=<n>` fecha pela **MESMA
+porta do X da janela** (nunca por um `exit()` próprio — um caminho de saída paralelo provaria a ordem de
+destruição de um caminho que o artista nunca toma).
+
+| build | `$?` |
+|---|---|
+| com o teardown | **0** |
+| sem ele (**mutação rodada**) | **139** |
+| com o teardown, de novo | **0** |
+
+Medido em 4 cenas: `IMPASTO=1`, `IMPASTO=2` (4096²), `WETPAINT`, `MASK` — **todas 0**.
+
+Para o CI, que roda sem display, fica o arch-gate
+**`the_close_gesture_tears_down_the_gpu_first`** (3 asserts + controle positivo): afirma a **ORDEM**
+dentro do `on_close_request`, nunca uma distância em bytes. Mutação (gfx depois do `exit()`) sangra.
+
+⚠️ **Isto toca a shell inteira** (`input_dispatch.rs`, `main.rs`, `app_state.rs`) — é o único ponto desta
+linha fora do Painter, e é onde o integrador deve olhar com mais cuidado num rebase.
+
+---
+
+## 11. ⚠️ Uma afirmação minha, MEDIDA e RETIRADA (`277b8dd40`)
+
+Eu disse ao Enio que *"a premissa central do desenho é FALSA em pelo menos dois caminhos"* e que isso
+**bloqueava a integração**. **Medido, o veredito estava exagerado** (sonda executável
+`measure_window_premise.rs`, 96²):
+
+| cenário | reivindicação | texels FORA | pior Δcover | pior Δh |
+|---|---|---|---|---|
+| traço comum (**CONTROLE**) | `11,29 34x23` | **0** | 0 | 0,000 |
+| drag dot **ENCOLHENDO** | `41,14 15x36` | **4** | 85/255 | **0,000** |
+| sculpt inflate | — | *cenário não montou nesta sonda* | | |
+
+A premissa vale **exatamente onde o produto passa a vida** (um traço comum não escapa um texel) e vaza
+**4 texels** no re-stamp que encolhe — em **cobertura apenas**, com a altura intacta.
+
+⚠️ **E não é da pista GPU:** as duas pistas leem o MESMO `dirty_rect` (o `preview_upload_bbox` é o gêmeo
+dele), então o mesmo resíduo existe no caminho CPU e **precede** a wave do fold regional. É
+contabilidade do **re-stamp** — quem restaura a pegada MAIOR anterior não a une ao retângulo — e o dono
+daquele caminho é quem deve fechá-la. **Não bloqueia esta integração.**
+
+A sonda fica executável (`#[ignore]`, imprime, não afirma) para o próximo não ter de re-derivar nem
+confiar na minha prosa.
+
+---
+
+## 12. Estado final da linha
+
+- **`PROJECT_SCHEMA` 29** · nenhum contrato congelado tocado · nenhum ADR · nenhum id/token novo.
+- **`nextest-impacted`: 3688 testes, 3688 passam** · `clippy --workspace --all-targets`: **0**.
+- Gates de arquitetura conferidos: `file_loc_caps` (shell) · `architecture_workspace_file_loc_cap` ·
+  `arch_safe_clamp_only` · `architecture_panel_wiring_parity`.
+- Gates de GPU na RTX: **18 passam**. ⚠️ O único vermelho, `audio::editor::delivery_smoke::write_mobile_to_disk`,
+  é **sonda manual da `line/audio`** que exige `PROBE_OUT=<path>` — não é gate e não é desta linha.
+
+### Smokes que o Enio deve rodar
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter
+
+# o retângulo: alterne Digital <-> Impasto e pinte; nada de resíduo em volta do traço
+env PH2D_IMPASTO_SMOKE=2 cargo run -p ph2d-host-desktop --release
+
+# o fechamento: feche a janela no X e confira o código de saída (0, nunca 139)
+env PH2D_IMPASTO_SMOKE=1 cargo run -p ph2d-host-desktop --release; echo $status
+```

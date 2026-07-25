@@ -780,8 +780,10 @@ pub(super) fn build_gpu_field_combine_demo_document(
 /// with a `0` white frame outside the box), and `field.remap` QUANTIZES it into **four
 /// discrete bands** — nested-square topographic contours the box alone cannot make. It
 /// is the C4D Remapping tab as a downstream node (every spatial field defers its remap
-/// here), and it REWRITES the mask (a transfer function), not multiplies. Same
-/// frame-on-load sizing as `=17`/`=18`; auto-plays on tool entry.
+/// here), and it REWRITES the mask (a transfer function), not multiplies. Three levels
+/// (not four) so the bands are maximally spaced — the tint is one blue at three
+/// opacities over white, and adjacent opacities blur, so `{white, half-blue, full-blue}`
+/// reads far crisper than four close shades. Same frame-on-load sizing; auto-plays.
 pub(super) fn build_gpu_field_remap_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -804,11 +806,12 @@ pub(super) fn build_gpu_field_remap_demo_document(
     g.set_param(field, "height", 9.0);
     g.set_param(field, "soft", 4.5); // = half the extent — a linear ramp centre→edge
     g.set_param(field, "curve", 0.0); // Linear ramp, so the bands are evenly spaced
-    // Quantize the ramp into 4 discrete levels {0, ⅓, ⅔, 1} — bigger jumps than 5 read
-    // as crisper bands: a white frame, then light/medium/full-blue nested squares.
+    // Quantize the ramp into 3 discrete levels {0, ½, 1} — the widest possible jumps, so
+    // the bands are maximally distinct: a white frame, a half-blue ring, a full-blue
+    // core. (4+ levels crowd the opacities of one colour into shades that blur.)
     let remap = g.add_node("field.remap");
     g.set_param(remap, "contour", 3.0); // Quantize
-    g.set_param(remap, "steps", 4.0);
+    g.set_param(remap, "steps", 3.0);
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
     g.set_param(tint, "r", 0.16);

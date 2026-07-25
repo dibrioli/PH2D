@@ -4000,3 +4000,68 @@ Números medidos headless (5 s): os elos viajam **0,7 / 2,5 / 4,2 m** (a corrent
 - **Assar a RESTRIÇÃO viva** (o joint articula no resultado) é **impossível** pela arquitetura
   acima — não é adiamento, é contradição. Documentado para ninguém reabrir.
 - **Um Ctrl+Z para as duas metades** (herdado do W4/W-BakeRange) segue aberto e não-mecânico.
+
+---
+
+## W-JointAuthoring — re-pick dos corpos de um joint + smoke de autoria (2026-07-25, cena `=40`)
+
+A pergunta do Enio — *"quando teremos UI para criar joints?"* — revelou que a criação **JÁ
+EXISTE desde o W3** e é apenas **indescobrível**: o botão **"Join Selected Bodies"** aparece na
+§11 (Physics Body) quando exatamente DOIS corpos estão selecionados; clicar cria um Pin como
+entidade na Hierarquia; a §12 (Physics Joint) escolhe tipo (Pin/Spring/Rope/Weld) e afina;
+a âncora é autorável pelos campos Position OU pelo dot âmbar (W-JointAnchor). Todos os smokes
+de joint (`=6`/`=38`/`=39`) montam os joints **programaticamente**, então o gesto de CRIAR
+nunca foi demonstrado. Esta wave fecha as duas metades da AUTORIA: **descobribilidade** (smoke
+`=40`) e **corrigir um par mal-unido** (re-pick, o único item aberto do W3).
+
+### RE-PICK (§12): dois botões "Set Body A/B", espelhando o Join
+
+O design não inventa nada — reusa o idiom do Join (a shell é dona da SELEÇÃO):
+
+- **Oferecido quando o joint é PRIMÁRIO e há exatamente UM outro corpo selecionado.** A §12 só
+  aparece com o joint primário; `add_to_selection`/`toggle_in_selection`
+  ([`state.rs:219`](../../crates/ph2d-editor-core/src/screens/hero/state.rs)) **mantêm o
+  primário no 1º selecionado**, então selecionar o joint e depois Ctrl-clicar o corpo deixa a
+  §12 aberta. **Zero App-state, zero intercept de canvas, zero módulo novo** — o oposto do
+  canvas-pick que eu quase construí (avaliado e descartado: mais superfície, e o modelo de
+  seleção já resolve).
+- ⚠️ **`inspector_joint::rebind_target(world, joint, selection)` é a PORTA ÚNICA:** o snapshot
+  pergunta a ela para o rótulo + o enable do botão, o drain pergunta a ela para resolver o
+  clique. Duas cópias divergiriam sobre *qual* corpo o botão liga.
+- **`set_joint_body`** nomeia o alvo se ele não tem nome (um joint refere corpo por hash de
+  `Name`, a mesma exigência do `create_joint`) e escreve o slot pelo MESMO `clamped()` + queue
+  do `apply_joint_edit`.
+- ⚠️ **Um Disabled (sem alvo) NÃO registra hit** — dimmed que despacha mente. O botão nasce
+  aceso só quando há alvo, e mostra o NOME dele no rótulo ("Set Body A: Post").
+
+### Roteamento e escopo
+
+`SetBodyA`/`SetBodyB` (`JointFieldEdit`) são roteados **no drain** de `render_loop/mod.rs`
+(que tem a seleção), como o Join e o Remove — **não** no `apply_joint_edit` per-joint, que não
+tem a seleção. **Sem componente/id de física/schema novo** — é UI sobre o `PhysicsJoint` que já
+existe: `PROJECT_SCHEMA` **29**, registro **21**, `physics_ecs_c9` **intocado**. Ids novos só de
+painel (`INSP_JOINT_SET_A/B`).
+
+### Gates (mutação-provados)
+
+- **Painel** (`ph2d-panel-inspector/tests/seam_joint.rs`): os dois botões despacham
+  `SetBodyA`/`SetBodyB`, e **SÓ com alvo** (`rebind_target_name: Some`); sem alvo eles pintam
+  dimmed e **não registram hit** (`click_at` REAL, não `WidgetEvent` sintético).
+- **Shell** (`inspector_joint_tests.rs`, headless): `rebind_target` é o ÚNICO corpo extra e nada
+  mais (joint+2 corpos = ambíguo → `None`; joint+não-corpo → `None`) — dropar a guarda de
+  ambiguidade fica RED; `set_joint_body` religa o slot certo (`body_a == Post`, `body_b`
+  intocado) e o joint segue no solver — escrever o slot errado fica RED.
+
+### Smoke `=40`
+
+Três corpos (Hook estático · Plank dinâmico · Post estático de reserva), **NENHUM joint** —
+o artista autora um do zero, PAUSADO: Selecionar Hook+Plank → **Join Selected Bodies** → §12
+escolhe tipo/afina → **B** mostra o dot âmbar, arraste-o → **re-pick:** com o joint selecionado,
+Ctrl-clique **Post** → o botão cresce **"Set Body A: Post"** → clique → o joint pendura de Post
+sem deletar+refazer → Play. É a cena de autoria que faltava.
+
+### Aberto
+
+- O re-pick por SELEÇÃO exige o joint PRIMÁRIO (selecione-o primeiro). Um canvas-pick (clicar o
+  corpo) seria mais espacial, mas foi descartado por superfície — o modelo de seleção resolve.
+- Nada da autoria toca o solver — é UI pura sobre o contrato do W3.

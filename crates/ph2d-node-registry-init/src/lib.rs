@@ -20,6 +20,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_field_box::register(reg)?;
     ph2d_node_field_combine::register(reg)?;
     ph2d_node_field_index_range::register(reg)?;
+    ph2d_node_field_radial_sweep::register(reg)?;
     ph2d_node_force_attractor::register(reg)?;
     ph2d_node_force_buoyancy::register(reg)?;
     ph2d_node_force_curl::register(reg)?;

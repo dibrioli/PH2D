@@ -36,7 +36,7 @@ use ph2d_editor::{
     TransformSnapshot,
 };
 use ph2d_host::WindowSize;
-use ph2d_nodegraph::graph::NodeId;
+use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_render::Camera2d;
 
@@ -55,31 +55,91 @@ pub(crate) fn scene_window_wh(center_split: CenterSplit, window: WindowSize) -> 
     center_split.scene_viewport(w, h).map_or((w, h), |r| (r[2], r[3]))
 }
 
+/// Como a caixa do gizmo mapeia para os params de TAMANHO de um field — a única parte da
+/// spec que varia por FORMA. `Rect` (a box) tem duas extensões cheias independentes;
+/// `Disk` (o radial sweep) tem um `radius` (meia-extensão, isotrópico) e a caixa do gizmo
+/// é o quadrado que o circunscreve. Todo o resto (centro + rotação) é comum, então o radar
+/// **herda** a máquina do gizmo trocando só isto.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum FieldSize {
+    /// Duas extensões CHEIAS independentes (meia = extensão/2): `field.box`.
+    Rect {
+        width: &'static str,
+        height: &'static str,
+    },
+    /// Um `radius` (meia-extensão; a caixa do gizmo é o quadrado circunscrito, meia =
+    /// `[radius, radius]`): `field.radial_sweep`. Isotrópico — todo handle redimensiona
+    /// uniforme.
+    Disk { radius: &'static str },
+}
+
+impl FieldSize {
+    /// A meia-extensão `[hx, hy]` do gizmo a partir dos params do field. `Rect` divide cada
+    /// extensão cheia; `Disk` é o quadrado `[radius, radius]` que circunscreve o disco.
+    #[must_use]
+    fn half(self, p: impl Fn(&str) -> f32) -> [f32; 2] {
+        match self {
+            Self::Rect { width, height } => [(p(width) * 0.5).abs(), (p(height) * 0.5).abs()],
+            Self::Disk { radius } => {
+                let r = p(radius).abs();
+                [r, r]
+            }
+        }
+    }
+
+    /// Escreve a meia-extensão nova (a `intrinsic_half` congelada × a `scale` do gizmo) de
+    /// volta nos params deste tamanho. `Rect` escreve cada extensão cheia independente;
+    /// `Disk` é isotrópico — MEDIA as escalas dos dois eixos, então um arrasto de CANTO
+    /// (escala igual) redimensiona exato e um arrasto de BORDA a meio-passo (a caixa se
+    /// re-quadra ao novo raio a cada frame — sem salto-de-volta). Um field é simétrico ⇒
+    /// `abs` (flip é no-op, uma extensão nunca é negativa).
+    fn write(self, g: &mut Graph, node: NodeId, intrinsic_half: [f32; 2], scale: [f32; 2]) {
+        match self {
+            Self::Rect { width, height } => {
+                g.set_param(node, width, (2.0 * intrinsic_half[0] * scale[0]).abs());
+                g.set_param(node, height, (2.0 * intrinsic_half[1] * scale[1]).abs());
+            }
+            Self::Disk { radius } => {
+                let s = (scale[0].abs() + scale[1].abs()) * 0.5;
+                g.set_param(node, radius, (intrinsic_half[0] * s).abs());
+            }
+        }
+    }
+}
+
 /// Os nomes dos params de um field espacial que o gizmo dirige. Uma tabela por tipo de
-/// field (v1: só `field.box`) — quando `field.radial_sweep` etc. chegarem, cada um
-/// acrescenta uma [`FieldGizmoSpec`], sem tocar a máquina do gizmo. `center`/`rotation`/
-/// as extensões são a "Coordinates" da família (doc 63 §0.1); um field NÃO-espacial
-/// (`index_range`, por rank) não tem spec e não ganha gizmo.
+/// field — cada um acrescenta uma [`FieldGizmoSpec`], sem tocar a máquina do gizmo (a
+/// forma vive no [`FieldSize`]). `center`/`rotation`/`size` são a "Coordinates" da família
+/// (doc 63 §0.1); um field NÃO-espacial (`index_range`, por rank) não tem spec e não ganha
+/// gizmo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct FieldGizmoSpec {
     pub(crate) center_x: &'static str,
     pub(crate) center_y: &'static str,
-    /// Extensão CHEIA no eixo local X (a meia-extensão do gizmo é `/2`).
-    pub(crate) width: &'static str,
-    /// Extensão CHEIA no eixo local Y.
-    pub(crate) height: &'static str,
-    /// Rotação em GRAUS (o `field.box` a consome como `cos_sin_cycles(rotation/360)`).
+    /// Rotação em GRAUS (os fields a consomem como `cos_sin_cycles(rotation/360)`).
     pub(crate) rotation: &'static str,
+    /// Como o tamanho mapeia para os params (retângulo × disco).
+    pub(crate) size: FieldSize,
 }
 
-/// A spec do `field.box`: os nomes canônicos dos seus params (ver
-/// `ph2d-node-field-box`). Extensões CHEIAS, rotação em graus.
+/// A spec do `field.box`: retângulo de extensões cheias, rotação em graus.
 const BOX_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     center_x: "center_x",
     center_y: "center_y",
-    width: "width",
-    height: "height",
     rotation: "rotation",
+    size: FieldSize::Rect {
+        width: "width",
+        height: "height",
+    },
+};
+
+/// A spec do `field.radial_sweep`: disco de raio único, rotação em graus (ver
+/// `ph2d-node-field-radial-sweep`). O gizmo gira o setor e a escala dirige o `radius`.
+const RADIAL_SWEEP_SPEC: FieldGizmoSpec = FieldGizmoSpec {
+    center_x: "center_x",
+    center_y: "center_y",
+    rotation: "rotation",
+    size: FieldSize::Disk { radius: "radius" },
 };
 
 /// A [`FieldGizmoSpec`] de um tipo de nó, ou `None` se o nó **não** é um field
@@ -89,6 +149,8 @@ const BOX_SPEC: FieldGizmoSpec = FieldGizmoSpec {
 pub(crate) fn spec_for(type_id: NodeTypeId) -> Option<FieldGizmoSpec> {
     if type_id == NodeTypeId::of("field.box") {
         Some(BOX_SPEC)
+    } else if type_id == NodeTypeId::of("field.radial_sweep") {
+        Some(RADIAL_SWEEP_SPEC)
     } else {
         None
     }
@@ -117,15 +179,13 @@ fn wrap180(deg: f32) -> f32 {
 fn view_from_params(
     cx: f32,
     cy: f32,
-    w: f32,
-    h: f32,
+    half: [f32; 2],
     rot_deg: f32,
     camera: &Camera2d,
     win_w: f32,
     win_h: f32,
     last_pointer: (f32, f32),
 ) -> GizmoView {
-    let half = [(w * 0.5).abs(), (h * 0.5).abs()];
     GizmoView {
         bbox_min_world: [cx - half[0], cy - half[1]],
         bbox_max_world: [cx + half[0], cy + half[1]],
@@ -141,36 +201,17 @@ fn view_from_params(
     }
 }
 
-/// O `TransformSnapshot` de PARTIDA (Down) de um field na linguagem do gizmo + a
-/// meia-extensão INTRÍNSECA (pré-escala). A escala começa em `1`, a rotação em radianos;
-/// `width`/`height` são extensões CHEIAS ⇒ meia = `/2`. O writeback ([`params_from`])
-/// multiplica a escala do gizmo por esta meia-extensão congelada.
+/// O `TransformSnapshot` de PARTIDA (Down) de um field na linguagem do gizmo: centro na
+/// translation, rotação em radianos, escala `1`. A meia-extensão intrínseca (pré-escala) é
+/// a `half` da [`FieldSize`], congelada à parte pelo chamador — o writeback ([`FieldSize::write`])
+/// multiplica a escala do gizmo por ela.
 #[must_use]
-fn seed_start(cx: f32, cy: f32, w: f32, h: f32, rot_deg: f32) -> (TransformSnapshot, [f32; 2]) {
-    (
-        TransformSnapshot {
-            translation: [cx, cy],
-            rotation: rot_deg.to_radians(),
-            scale: [1.0, 1.0],
-        },
-        [(w * 0.5).abs(), (h * 0.5).abs()],
-    )
-}
-
-/// Os params do field a partir do `TransformSnapshot` novo do gizmo + a meia-extensão
-/// intrínseca — o inverso exato de [`seed_start`], e o espelho do writeback de entidade
-/// (que escreve translation/rotation/scale de uma vez): centro = translation, extensões =
-/// `2·meia·escala` (`abs` — um field é simétrico, então flip é no-op e uma extensão nunca
-/// é negativa), rotação = radianos→graus embrulhada em `[-180, 180]`.
-#[must_use]
-fn params_from(new_t: TransformSnapshot, intrinsic_half: [f32; 2]) -> (f32, f32, f32, f32, f32) {
-    (
-        new_t.translation[0],
-        new_t.translation[1],
-        (2.0 * intrinsic_half[0] * new_t.scale[0]).abs(),
-        (2.0 * intrinsic_half[1] * new_t.scale[1]).abs(),
-        wrap180(new_t.rotation.to_degrees()),
-    )
+fn seed_start(cx: f32, cy: f32, rot_deg: f32) -> TransformSnapshot {
+    TransformSnapshot {
+        translation: [cx, cy],
+        rotation: rot_deg.to_radians(),
+        scale: [1.0, 1.0],
+    }
 }
 
 /// O nó selecionado no grafo SE ele for um field espacial (+ sua [`FieldGizmoSpec`]).
@@ -197,11 +238,11 @@ pub(crate) fn field_view(
 ) -> Option<GizmoView> {
     let (nid, spec) = selected_field(motion)?;
     let p = |name: &str| crate::render_loop::motion_bridge::params::param_value(motion, nid, name);
+    let half = spec.size.half(&p);
     Some(view_from_params(
         p(spec.center_x),
         p(spec.center_y),
-        p(spec.width),
-        p(spec.height),
+        half,
         p(spec.rotation),
         camera,
         win_w,
@@ -223,10 +264,12 @@ pub(crate) struct FieldGizmoDrag {
 
 /// O núcleo do writeback de um arrasto de field, SEM a janela: avança o cursor pelo drag
 /// (o contador de voltas do Rotate mora aí), recomputa o TRS pelo motor canônico e escreve
-/// os CINCO params do NÓ. ⚠️ **A única escrita é `motion.doc.graph.set_param`** — esta
-/// função nem recebe um `SimWorld`, então por CONSTRUÇÃO não pode tocar nenhum `Transform`
-/// de entidade (a prova de que o gizmo de field não interfere na manipulação de sprites).
-/// Devolve os params escritos. Porta única do [`crate::App::field_gizmo_move`] e do gate.
+/// os params do NÓ — centro + rotação (universais) + o(s) param(s) de TAMANHO pela porta
+/// [`FieldSize::write`] (retângulo × disco). ⚠️ **A única escrita é `motion.doc.graph.set_param`**
+/// — esta função nem recebe um `SimWorld`, então por CONSTRUÇÃO não pode tocar nenhum
+/// `Transform` de entidade (a prova de que o gizmo de field não interfere na manipulação de
+/// sprites). Devolve o `TransformSnapshot` computado. Porta única do
+/// [`crate::App::field_gizmo_move`] e do gate.
 fn apply_field_drag(
     motion: &mut MotionState,
     fgd: &mut FieldGizmoDrag,
@@ -234,18 +277,16 @@ fn apply_field_drag(
     cam: &GizmoCamera,
     mods: GizmoModifiers,
     snap: GizmoSnap,
-) -> (f32, f32, f32, f32, f32) {
+) -> TransformSnapshot {
     fgd.drag.advance_cursor(cursor, cam);
     let new_t = ph2d_editor::compute_gizmo_transform(&fgd.drag, cam, mods, snap, None);
-    let (cx, cy, w, h, rot) = params_from(new_t, fgd.intrinsic_half);
     let g = &mut motion.doc.graph;
-    g.set_param(fgd.node, fgd.spec.center_x, cx);
-    g.set_param(fgd.node, fgd.spec.center_y, cy);
-    g.set_param(fgd.node, fgd.spec.width, w);
-    g.set_param(fgd.node, fgd.spec.height, h);
-    g.set_param(fgd.node, fgd.spec.rotation, rot);
+    g.set_param(fgd.node, fgd.spec.center_x, new_t.translation[0]);
+    g.set_param(fgd.node, fgd.spec.center_y, new_t.translation[1]);
+    g.set_param(fgd.node, fgd.spec.rotation, wrap180(new_t.rotation.to_degrees()));
+    fgd.spec.size.write(g, fgd.node, fgd.intrinsic_half, new_t.scale);
     motion.pump.mark_dirty();
-    (cx, cy, w, h, rot)
+    new_t
 }
 
 impl crate::App {
@@ -281,13 +322,8 @@ impl crate::App {
             };
             let p =
                 |name: &str| crate::render_loop::motion_bridge::params::param_value(&gfx.motion, nid, name);
-            let (start, intrinsic_half) = seed_start(
-                p(spec.center_x),
-                p(spec.center_y),
-                p(spec.width),
-                p(spec.height),
-                p(spec.rotation),
-            );
+            let intrinsic_half = spec.size.half(&p);
+            let start = seed_start(p(spec.center_x), p(spec.center_y), p(spec.rotation));
             // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
             // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do
             // que o gizmo é PINTADO (o mesmo drift do chrome). A `GizmoCamera` do

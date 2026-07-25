@@ -5663,6 +5663,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-field-radial-sweep"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-force-attractor"
 version = "0.0.0"
 dependencies = [
@@ -6225,6 +6233,7 @@ dependencies = [
  "ph2d-node-field-box",
  "ph2d-node-field-combine",
  "ph2d-node-field-index-range",
+ "ph2d-node-field-radial-sweep",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",
  "ph2d-node-force-curl",

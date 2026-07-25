@@ -12,11 +12,13 @@
 //!   onda snapada numa grade de 1 unidade — os pontos pousam em Y discretos: uma
 //!   **senoide em degraus** que salta em vez de deslizar.
 //!
-//! Selecione o `value.quantize` de baixo → o painel mostra **Step** (o espaçamento
-//! da grade — suba para degraus mais grossos, zere para passthrough) e **Mode**
-//! (Round/Floor/Ceil). O nó cozinha **100% na GPU**, sem cair pra CPU.
+//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
+//! nó marcado `>> EVALUATE <<` é o `value.quantize` a avaliar. Selecione-o → o
+//! painel mostra **Step** (o espaçamento da grade — suba para degraus mais grossos,
+//! zere para passthrough) e **Mode** (Round/Floor/Ceil). Cozinha 100% na GPU.
 
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
+use crate::smoke_layout::{lay_horizontal, ROW_GAP};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A amplitude da onda em Y — o LFO oscila em `[-AMP, AMP]`, e o `step = 1` do
 /// quantize corta isso em ~`2·AMP + 1` degraus visíveis.
@@ -25,8 +27,9 @@ const AMP: f32 = 3.0;
 const STEP: f32 = 1.0;
 
 /// Monta uma fileira `grid → move → drive(Y)` cujo valor vem de um `value.lfo`
-/// viajante, opcionalmente passado por `value.quantize`. Devolve o sink.
-fn row(g: &mut Graph, stepped: bool, y_off: f32, tag: &str) -> Option<NodeId> {
+/// viajante, opcionalmente passado por `value.quantize`. `canvas_dy` desloca a
+/// fileira na tela; `panel_y` é a altura da linha no grafo. Devolve o sink.
+fn row(g: &mut Graph, stepped: bool, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let lfo = g.add_node("value.lfo");
@@ -36,7 +39,7 @@ fn row(g: &mut Graph, stepped: bool, y_off: f32, tag: &str) -> Option<NodeId> {
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
-    g.set_param(mv, "dy", y_off);
+    g.set_param(mv, "dy", canvas_dy);
     g.set_param(lfo, "wave", 0.0); // sine
     g.set_param(lfo, "period", 2.5);
     g.set_param(lfo, "amplitude", AMP);
@@ -48,26 +51,15 @@ fn row(g: &mut Graph, stepped: bool, y_off: f32, tag: &str) -> Option<NodeId> {
     let quant = stepped.then(|| {
         let q = g.add_node("value.quantize");
         g.set_param(q, "step", STEP);
-        g.set_pos(q, Pos { x: 440.0, y: 300.0 });
         q
     });
     // The value the drive reads: the quantize when stepped, else the raw LFO.
     let value_src = quant.unwrap_or(lfo);
 
-    for (n, (x, y)) in [
-        (grid, (60.0, 200.0)),
-        (mv, (240.0, 120.0)),
-        (lfo, (240.0, 300.0)),
-        (drive, (640.0, 200.0)),
-        (out, (840.0, 200.0)),
-    ] {
-        g.set_pos(n, Pos { x, y });
-    }
-
     let mut edges = vec![
         (grid, mv, 0u16),
-        (mv, drive, 0),  // geometry into drive's `in`
-        (grid, lfo, 0),  // lfo reads the grid for count
+        (mv, drive, 0),        // geometry into drive's `in`
+        (grid, lfo, 0),        // lfo reads the grid for count
         (value_src, drive, 1), // the (maybe quantized) value into drive's `value`
         (drive, out, 0),
     ];
@@ -82,9 +74,13 @@ fn row(g: &mut Graph, stepped: bool, y_off: f32, tag: &str) -> Option<NodeId> {
         })
         .ok()?;
     }
-    let label_node = quant.unwrap_or(lfo);
-    g.set_label(label_node, tag);
-    g.set_label(out, tag);
+
+    // Arrange this row as one straight horizontal line; mark the quantize (only the
+    // stepped row has one — the smooth row is the unmarked reference).
+    let mut nodes = vec![grid, mv, lfo];
+    nodes.extend(quant);
+    nodes.extend([drive, out]);
+    lay_horizontal(g, &nodes, panel_y, quant);
     Some(out)
 }
 
@@ -105,9 +101,9 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima a onda SUAVE; de baixo a MESMA onda em degraus.
-        let smooth = row(g, false, 2.4, "SMOOTH");
-        let stepped = row(g, true, -2.4, "STEPPED");
+        // De cima a onda SUAVE (linha 1); de baixo a MESMA onda em degraus (linha 2).
+        let smooth = row(g, false, 2.4, 80.0);
+        let stepped = row(g, true, -2.4, 80.0 + ROW_GAP);
         gfx.motion.sinks.extend(smooth.into_iter().chain(stepped));
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }

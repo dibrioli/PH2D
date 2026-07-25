@@ -53,6 +53,7 @@ mod chrome_hit;
 mod motion_node_path_smoke;
 mod motion_delay_smoke;
 mod motion_fx_smoke;
+mod smoke_layout;
 mod value_curve_smoke;
 mod value_noise_smoke;
 mod value_mix_smoke;

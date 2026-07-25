@@ -1,8 +1,8 @@
 //! **A cena pronta para o smoke do `value.curve`** (`PH2D_VALUE_CURVE_SMOKE=1`, doc 68).
 //!
-//! Um nó de VALOR não se vê — ele produz um número por instância que **dirige** outra
-//! coisa. Então a cena mostra a curva do jeito mais direto possível: **a forma da curva
-//! vira o perfil ESPACIAL de uma fileira.**
+//! Um nó de VALOR não se vê — ele produz um número por instância que **dirige**
+//! outra coisa. Então a cena mostra a curva do jeito mais direto possível: **a
+//! forma da curva vira o perfil ESPACIAL de uma fileira.**
 //!
 //! Duas fileiras de 24 instâncias, o MESMO grafo, só a curva difere:
 //!
@@ -13,14 +13,15 @@
 //! **De cima (ARCH):** a curva é um TENT (`0 → 1 → 0`) — o meio da fileira sobe, as
 //! pontas ficam no chão: um **arco**. É a forma que nenhum remap linear faz.
 //! **De baixo (RAMP):** a MESMA `value.curve` **sem curva desenhada** = identidade =
-//! `value.map_range` — uma **rampa** reta. A única diferença entre as duas fileiras é a
-//! curva no text param, exatamente o que o editor arrastável do painel escreve.
+//! `value.map_range` — uma **rampa** reta.
 //!
-//! Selecione o nó `value.curve` de cima no grafo → o painel de params mostra o **editor
-//! de curva arrastável** (A1); arraste um ponto e o arco muda de forma ao vivo. E o nó
-//! cozinha **100% na GPU** (o canal de LUT do A1-gpu), sem cair pra CPU.
+//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
+//! `value.curve` marcado `>> EVALUATE <<` é o de cima (ARCH). Selecione-o → o painel
+//! de params mostra o **editor de curva arrastável** (A1); arraste um ponto e o arco
+//! muda de forma ao vivo. E o nó cozinha **100% na GPU** (o canal de LUT do A1-gpu).
 
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
+use crate::smoke_layout::{lay_horizontal, ROW_GAP};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A altura do arco em unidades de mundo — `value.curve` mapeia a rampa `[0,1]` para
 /// `[0, ARCH]`, então o pico do tent sobe `ARCH` e as pontas ficam em 0.
@@ -29,9 +30,10 @@ const ARCH: f32 = 4.0;
 const TENT: &str = "c1 0:0:S 0.5:1:S 1:0:S";
 
 /// Monta uma fileira `grid → move → drive(Y)` com o valor vindo de
-/// `instance_field(Ramp) → value.curve[curve]`. `curve = None` deixa a `value.curve` na
-/// identidade (uma rampa reta). Devolve o sink (`motion.output`).
-fn row(g: &mut Graph, curve: Option<&str>, y_off: f32, tag: &str) -> Option<NodeId> {
+/// `instance_field(Ramp) → value.curve[curve]`. `curve = None` deixa a `value.curve`
+/// na identidade (uma rampa reta) e é a fileira de referência (sem marca). Devolve
+/// o sink (`motion.output`).
+fn row(g: &mut Graph, curve: Option<&str>, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let field = g.add_node("value.instance_field");
@@ -42,7 +44,7 @@ fn row(g: &mut Graph, curve: Option<&str>, y_off: f32, tag: &str) -> Option<Node
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
-    g.set_param(mv, "dy", y_off);
+    g.set_param(mv, "dy", canvas_dy);
     g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
     g.set_param(vc, "out_hi", ARCH); // map the ramp [0,1] -> [0, ARCH]
     if let Some(c) = curve {
@@ -51,16 +53,6 @@ fn row(g: &mut Graph, curve: Option<&str>, y_off: f32, tag: &str) -> Option<Node
     g.set_param(drive, "channel", 1.0); // Y
     g.set_param(drive, "mode", 0.0); // Add
 
-    for (n, (x, y)) in [
-        (grid, (60.0, 200.0)),
-        (mv, (240.0, 120.0)),
-        (field, (240.0, 300.0)),
-        (vc, (440.0, 300.0)),
-        (drive, (640.0, 200.0)),
-        (out, (840.0, 200.0)),
-    ] {
-        g.set_pos(n, Pos { x, y });
-    }
     for (from, to, port) in [
         (grid, mv, 0u16),
         (mv, drive, 0),   // geometry into drive's `in`
@@ -76,8 +68,9 @@ fn row(g: &mut Graph, curve: Option<&str>, y_off: f32, tag: &str) -> Option<Node
         })
         .ok()?;
     }
-    g.set_label(vc, tag);
-    g.set_label(out, tag);
+    // Arrange as one straight line; mark the value.curve only on the drawn (ARCH) row.
+    let hero = curve.is_some().then_some(vc);
+    lay_horizontal(g, &[grid, mv, field, vc, drive, out], panel_y, hero);
     Some(out)
 }
 
@@ -98,9 +91,9 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // A de cima ARQUEIA (tent); a de baixo é a mesma coisa sem curva (rampa).
-        let arch = row(g, Some(TENT), 2.4, "ARCH");
-        let ramp = row(g, None, -0.6, "RAMP");
+        // De cima ARQUEIA (tent), marcada (linha 1); de baixo a mesma sem curva (linha 2).
+        let arch = row(g, Some(TENT), 2.4, 80.0);
+        let ramp = row(g, None, -0.6, 80.0 + ROW_GAP);
         gfx.motion.sinks.extend(arch.into_iter().chain(ramp));
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }

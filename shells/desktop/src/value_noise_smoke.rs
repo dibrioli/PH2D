@@ -14,12 +14,13 @@
 //!   motion.drive(Y)`. Um hash por instância → vizinhos **descorrelacionados**: uma
 //!   fileira **serrilhada e estática**. É o contraste que define o `value.noise`.
 //!
-//! Selecione o nó `value.noise` de cima no grafo → o painel mostra os knobs
-//! (Frequency = detalhe espacial, Speed = evolução no tempo, Octaves/Roughness =
-//! o fBm). Aumente Frequency e a onda ganha ondulações; zere Speed e ela congela.
-//! E o nó cozinha **100% na GPU** (o kernel WGSL de lattice + fade + fBm), sem CPU.
+//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o nó
+//! marcado `>> EVALUATE <<` é o `value.noise` a avaliar. Selecione-o → o painel
+//! mostra os knobs (Frequency = detalhe espacial, Speed = evolução no tempo,
+//! Octaves/Roughness = o fBm). O nó cozinha 100% na GPU.
 
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
+use crate::smoke_layout::{lay_horizontal, ROW_GAP};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A amplitude do deslocamento em Y — o `value.noise` mapeia o campo `[-1,1]` para
 /// `[-ARCH, ARCH]`, e o `value.map_range` da fileira branca casa a mesma faixa.
@@ -27,7 +28,7 @@ const ARCH: f32 = 3.0;
 
 /// Monta a fileira COERENTE: `grid → move → drive(Y)` com o valor vindo de um
 /// `value.noise` (que lê o grid só para a contagem). Devolve o sink.
-fn noise_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
+fn noise_row(g: &mut Graph, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let vn = g.add_node("value.noise");
@@ -37,7 +38,7 @@ fn noise_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
-    g.set_param(mv, "dy", y_off);
+    g.set_param(mv, "dy", canvas_dy);
     g.set_param(vn, "frequency", 0.28); // a smooth swell across the row
     g.set_param(vn, "speed", 1.0); // drifts over time
     g.set_param(vn, "octaves", 2.0); // a touch of fBm detail
@@ -45,20 +46,11 @@ fn noise_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
     g.set_param(drive, "channel", 1.0); // Y
     g.set_param(drive, "mode", 0.0); // Add
 
-    for (n, (x, y)) in [
-        (grid, (60.0, 200.0)),
-        (mv, (240.0, 120.0)),
-        (vn, (240.0, 300.0)),
-        (drive, (640.0, 200.0)),
-        (out, (840.0, 200.0)),
-    ] {
-        g.set_pos(n, Pos { x, y });
-    }
     for (from, to, port) in [
         (grid, mv, 0u16),
-        (mv, drive, 0),   // geometry into drive's `in`
-        (grid, vn, 0),    // value.noise reads the grid for its count
-        (vn, drive, 1),   // the noise value into drive's `value` port
+        (mv, drive, 0), // geometry into drive's `in`
+        (grid, vn, 0),  // value.noise reads the grid for its count
+        (vn, drive, 1), // the noise value into drive's `value` port
         (drive, out, 0),
     ] {
         g.connect(Edge {
@@ -68,14 +60,13 @@ fn noise_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
         })
         .ok()?;
     }
-    g.set_label(vn, "NOISE");
-    g.set_label(out, "NOISE");
+    lay_horizontal(g, &[grid, mv, vn, drive, out], panel_y, Some(vn));
     Some(out)
 }
 
 /// Monta a fileira BRANCA: `grid → move → drive(Y)` com o valor vindo de
 /// `instance_field(Random) → map_range([0,1] → [-ARCH, ARCH])`. Devolve o sink.
-fn white_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
+fn white_row(g: &mut Graph, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let field = g.add_node("value.instance_field");
@@ -86,23 +77,13 @@ fn white_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
-    g.set_param(mv, "dy", y_off);
+    g.set_param(mv, "dy", canvas_dy);
     g.set_param(field, "mode", 2.0); // Random: a white per-instance hash in [0,1)
     g.set_param(map, "out_lo", -ARCH); // match the noise row's amplitude
     g.set_param(map, "out_hi", ARCH);
     g.set_param(drive, "channel", 1.0); // Y
     g.set_param(drive, "mode", 0.0); // Add
 
-    for (n, (x, y)) in [
-        (grid, (60.0, 500.0)),
-        (mv, (240.0, 420.0)),
-        (field, (240.0, 600.0)),
-        (map, (440.0, 600.0)),
-        (drive, (640.0, 500.0)),
-        (out, (840.0, 500.0)),
-    ] {
-        g.set_pos(n, Pos { x, y });
-    }
     for (from, to, port) in [
         (grid, mv, 0u16),
         (mv, drive, 0),
@@ -118,8 +99,8 @@ fn white_row(g: &mut Graph, y_off: f32) -> Option<NodeId> {
         })
         .ok()?;
     }
-    g.set_label(field, "WHITE");
-    g.set_label(out, "WHITE");
+    // The reference row — no mark (only the noise row is evaluated).
+    lay_horizontal(g, &[grid, mv, field, map, drive, out], panel_y, None);
     Some(out)
 }
 
@@ -140,9 +121,9 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima a onda COERENTE (value.noise); de baixo a serrilhada BRANCA.
-        let coherent = noise_row(g, 2.4);
-        let white = white_row(g, -2.4);
+        // De cima a onda COERENTE (value.noise, linha 1); de baixo a BRANCA (linha 2).
+        let coherent = noise_row(g, 2.4, 80.0);
+        let white = white_row(g, -2.4, 80.0 + ROW_GAP);
         gfx.motion.sinks.extend(coherent.into_iter().chain(white));
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }

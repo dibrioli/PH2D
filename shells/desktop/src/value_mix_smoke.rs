@@ -14,12 +14,14 @@
 //!   é a mistura constante — uma onda permanentemente meio-ruidosa. É o fallback do
 //!   knob (o socket Factor do Blender, que um fio sobrepõe).
 //!
-//! Selecione o `value.mix` de baixo → o painel mostra **Factor** (a mistura
-//! constante) e **Clamp**; arraste o Factor de 0 (só a onda) a 1 (só o ruído). E o
-//! nó cozinha **100% na GPU** — a escolha porta-sobrepõe-param sai do `HAS_t_v` do
-//! kernel, sem CPU.
+//! O grafo é arrumado em duas **linhas horizontais retas** (`smoke_layout`), e o
+//! `value.mix` marcado `>> EVALUATE <<` é o de baixo (FACTOR). Selecione-o → o
+//! painel mostra **Factor** (a mistura constante) e **Clamp**; arraste o Factor de
+//! 0 (só a onda) a 1 (só o ruído). Cozinha 100% na GPU — a escolha
+//! porta-sobrepõe-param sai do `HAS_t_v` do kernel, sem CPU.
 
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
+use crate::smoke_layout::{lay_horizontal, ROW_GAP};
+use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A amplitude do deslocamento em Y de ambos os drivers (onda e ruído), para o
 /// crossfade misturar duas coisas da MESMA escala.
@@ -27,8 +29,9 @@ const AMP: f32 = 3.0;
 
 /// Monta uma fileira `grid → move → drive(Y)` cujo valor vem de
 /// `mix(a = lfo, b = noise, t)`. `driven` liga um `value.lfo` triangular lento em
-/// `t` (crossfade animado); senão a porta `t` fica solta e o `factor` param manda.
-fn row(g: &mut Graph, driven: bool, y_off: f32, tag: &str) -> Option<NodeId> {
+/// `t` (crossfade animado); senão a porta `t` fica solta e o `factor` param manda —
+/// e essa é a fileira MARCADA para avaliação. Devolve o sink.
+fn row(g: &mut Graph, driven: bool, canvas_dy: f32, panel_y: f32) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let lfo = g.add_node("value.lfo");
@@ -40,7 +43,7 @@ fn row(g: &mut Graph, driven: bool, y_off: f32, tag: &str) -> Option<NodeId> {
     g.set_param(grid, "rows", 1.0);
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
-    g.set_param(mv, "dy", y_off);
+    g.set_param(mv, "dy", canvas_dy);
     // a: a clean travelling sine across the row.
     g.set_param(lfo, "wave", 0.0); // sine
     g.set_param(lfo, "period", 2.0);
@@ -62,21 +65,8 @@ fn row(g: &mut Graph, driven: bool, y_off: f32, tag: &str) -> Option<NodeId> {
         g.set_param(t, "period", 6.0); // slow sweep
         g.set_param(t, "amplitude", 0.5);
         g.set_param(t, "offset", 0.5); // -> [0, 1]
-        g.set_pos(t, Pos { x: 240.0, y: 380.0 });
         t
     });
-
-    for (n, (x, y)) in [
-        (grid, (60.0, 200.0)),
-        (mv, (240.0, 120.0)),
-        (lfo, (240.0, 260.0)),
-        (noise, (240.0, 320.0)),
-        (mix, (460.0, 300.0)),
-        (drive, (660.0, 200.0)),
-        (out, (860.0, 200.0)),
-    ] {
-        g.set_pos(n, Pos { x, y });
-    }
 
     let mut edges = vec![
         (grid, mv, 0u16),
@@ -102,8 +92,12 @@ fn row(g: &mut Graph, driven: bool, y_off: f32, tag: &str) -> Option<NodeId> {
     if !driven {
         g.set_param(mix, "factor", 0.5); // the constant half-blend fallback
     }
-    g.set_label(mix, tag);
-    g.set_label(out, tag);
+
+    // Arrange as one straight line; mark the FACTOR row's mix (the one you drag).
+    let mut nodes = vec![grid, mv, lfo, noise];
+    nodes.extend(t_lfo);
+    nodes.extend([mix, drive, out]);
+    lay_horizontal(g, &nodes, panel_y, (!driven).then_some(mix));
     Some(out)
 }
 
@@ -124,9 +118,9 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut().expect("gfx");
         let g = &mut gfx.motion.doc.graph;
-        // De cima o crossfade DIRIGIDO (transita onda↔ruído); de baixo o FACTOR fixo.
-        let driven = row(g, true, 2.4, "DRIVEN");
-        let factor = row(g, false, -2.4, "FACTOR");
+        // De cima o crossfade DIRIGIDO (linha 1); de baixo o FACTOR fixo, marcado (linha 2).
+        let driven = row(g, true, 2.4, 80.0);
+        let factor = row(g, false, -2.4, 80.0 + ROW_GAP);
         gfx.motion.sinks.extend(driven.into_iter().chain(factor));
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }

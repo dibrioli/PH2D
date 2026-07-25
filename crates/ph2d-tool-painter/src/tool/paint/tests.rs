@@ -1050,6 +1050,14 @@ fn a_mask_stroke_takes_the_partial_lane_byte_identical_to_a_full_recompose() {
         crate::tool::DrainBranch::PartialComposite,
         "a mask dab over a seeded cache must take the partial fast lane, not force full",
     );
+    // The COMPOSITE is partial (fast), but the UPLOAD is forced FULL for the translucent mask overlay:
+    // the shell's partial GPU upload leaves visible seams for it on the real device (Enio smoke
+    // 2026-07-24), so the mask drain reports NO upload bbox → the shell uploads the whole texture.
+    // (Mutation: `Some(bbox)` unconditionally → this is Some → the seam-prone partial upload returns.)
+    assert!(
+        t.take_preview_upload_bbox().is_none(),
+        "a live mask scratch forces a FULL upload (no partial-upload seam), even on the partial composite",
+    );
     let partial = (*partial).clone();
     // Force a full recompose of the EXACT same scratch+layer state and compare byte-for-byte.
     t.invalidate_composite();

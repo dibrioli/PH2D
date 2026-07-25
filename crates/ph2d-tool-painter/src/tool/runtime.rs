@@ -282,7 +282,19 @@ impl PainterTool {
                 self.adjustment_cache_pending = false;
                 let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
                 blit_region(cache, w, &region, bbox);
-                self.preview_upload_bbox = Some(bbox);
+                // The COMPOSITE stays partial (the 17 ms → ~2 ms win). But the mask overlay is a
+                // TRANSLUCENT tint, and the shell's PARTIAL GPU upload of a sub-rect leaves visible
+                // seams for it on the real device (Enio smoke 2026-07-24) — even though the CPU cache
+                // is byte-identical to a full recompose (proven headless; a real-wgpu-only artifact,
+                // mechanism not yet isolated). So force a FULL upload while a scratch is live: at 2048²
+                // it is ~6 ms, well under the 16.7 ms frame budget (measured: dispatch ~8 ms, 60 fps).
+                // Follow-up (doc 25 §13): isolate the partial-upload device seam so the fast path is
+                // clean too (matters at 4096², where a full upload would overrun the budget).
+                self.preview_upload_bbox = if self.mask_scratch_active() {
+                    None
+                } else {
+                    Some(bbox)
+                };
                 self.last_drain_branch = crate::tool::DrainBranch::PartialComposite;
             }
             _ => {

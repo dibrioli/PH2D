@@ -72,6 +72,9 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             // layout this kernel can ask for" without them would measure a
             // module the sequencer never builds.
             reg.reduces(manifest.id),
+            // The node's LUTs — a Curve contour's module carries a `lut_*` storage
+            // binding + a `_sample` accessor, so the widest layout includes them.
+            reg.luts(manifest.id),
             |_| true,
         );
         let struct_body = src

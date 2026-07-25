@@ -119,9 +119,10 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push("demo=21 field.remap bands", &|d| {
         build_gpu_field_remap_demo_document(d, reg)
     });
-    // The CURVE contour (A1) — box -> remap[Curve] -> tint. The remap DECLINES the GPU
-    // (mode 4's shape is a text param), so it names itself a CPU boundary here; wired in
-    // so the census sees the mixed chain and the boundary is not a silent surprise.
+    // The CURVE contour (A1-gpu) — box -> remap[Curve] -> tint. The remap's mode-4 shape
+    // is a text param the uniform cannot carry, so it USED to name itself a CPU boundary;
+    // the LUT channel now bakes the curve to a device buffer, so this chain is FULLY GPU
+    // and the census prints it as such (the boundary demo is the sort in `=2`).
     push("demo=22 field.remap curve", &|d| {
         build_gpu_field_curve_demo_document(d, reg)
     });

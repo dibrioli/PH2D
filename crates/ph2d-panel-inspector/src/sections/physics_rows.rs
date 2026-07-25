@@ -404,3 +404,58 @@ pub(super) fn paint_collision_rows(
     }
     yy
 }
+
+/// Join-kind labels, indexed by `JointKind` tag — the TYPE the next
+/// *Join Selected Bodies* creates. Same order as §12's `KIND_LABELS`.
+const JOIN_KIND_LABELS: [&str; 4] = ["Pin", "Spring", "Rope", "Weld"];
+
+/// Paint the joint-creation gesture: the "Join As" kind selector (Pin/Spring/
+/// Rope/Weld) and the "Join Selected Bodies" button. Split here for the panel's
+/// 600-LOC file cap (the join-kind selector pushed `physics.rs` over); the caller
+/// gates on `can_join`. Takes the resolved `join_kind_tag`, not the whole info,
+/// like every sibling in this file. The gold standard is creating the joint TYPE
+/// you want in one gesture, not making a Pin and converting it in §12.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_join_gesture(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    join_kind_tag: u8,
+) -> f32 {
+    // Choose the TYPE first — defaults to Pin, so the common case is still one
+    // click on the button below.
+    let mut yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        "Join As",
+        ids::INSP_LIVE_PHYSICS_SECTION,
+        &ids::INSP_PHYS_JOIN_KIND,
+        &JOIN_KIND_LABELS,
+        join_kind_tag,
+    );
+    // A LITERAL `hit_index.register` id, the only form
+    // `architecture_panel_wiring_parity` can see.
+    let rect = Rect::new(x, yy, w, ROW_H_PX);
+    let btn = Button::new(ids::INSP_PHYS_JOIN, "Join Selected Bodies")
+        .kind(ButtonKind::Default)
+        .state(
+            store
+                .button_state(ids::INSP_PHYS_JOIN)
+                .unwrap_or(ButtonState::Normal),
+        );
+    paint_button(&btn, rect, scene, text_system, theme);
+    hit_index.register(ids::INSP_PHYS_JOIN, rect);
+    yy += ROW_H_PX + Spacing::Sm.px();
+    yy
+}

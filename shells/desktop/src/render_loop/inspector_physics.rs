@@ -21,6 +21,7 @@ pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
     can_join: bool,
+    join_kind_tag: u8,
     bake_range: (f32, f32),
     bake_channels_tag: u8,
 ) -> Option<InspectorPhysicsInfo> {
@@ -115,6 +116,7 @@ pub(crate) fn build_physics_info(
             // An entity with no body cannot be half of a joint, whatever the
             // selection looks like.
             can_join: false,
+            join_kind_tag,
             is_sensor: false,
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
@@ -177,6 +179,7 @@ pub(crate) fn build_physics_info(
         friction: col.friction,
         layer: col.layer,
         can_join,
+        join_kind_tag,
         bake_seconds,
         bake_start_seconds,
         is_sensor: col.is_sensor,
@@ -252,7 +255,7 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), false, (0.0, 5.0), 0)
+            build_physics_info(&world, e.to_bits(), false, 0, (0.0, 5.0), 0)
                 .expect("a zone has a Transform, so §11 describes it")
                 .force_world_axes
         };

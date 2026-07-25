@@ -11,7 +11,9 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::JointFieldEdit;
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, PhysicsJoint, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,
+};
 
 use super::inspector_joint::{apply_joint_edit, build_joint_info, create_joint, set_joint_body};
 
@@ -60,7 +62,7 @@ fn two_bodies(named: bool) -> (SimWorld, Entity, Entity) {
 #[test]
 fn joining_two_bodies_makes_a_joint_that_holds() {
     let (mut sim, hook, plank) = two_bodies(true);
-    create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
 
     let mut bridge = PhysicsBridge::new();
     for tick in 1..=120 {
@@ -96,7 +98,8 @@ fn joining_unnamed_bodies_names_them_first() {
         "fixture precondition"
     );
 
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
 
     let a = sim.world().get::<Name>(hook).expect("hook was named");
     let b = sim.world().get::<Name>(plank).expect("plank was named");
@@ -111,7 +114,7 @@ fn joining_unnamed_bodies_names_them_first() {
 #[test]
 fn joining_a_body_to_itself_creates_nothing() {
     let (mut sim, hook, _) = two_bodies(true);
-    assert!(create_joint(&mut sim, hook.to_bits(), hook.to_bits()).is_none());
+    assert!(create_joint(&mut sim, hook.to_bits(), hook.to_bits(), JointKind::Pin).is_none());
     let mut q = sim.world_mut().query::<&PhysicsJoint>();
     assert_eq!(q.iter(sim.world()).count(), 0);
 }
@@ -123,7 +126,8 @@ fn joining_a_body_to_itself_creates_nothing() {
 #[test]
 fn the_new_joint_lands_between_the_two_bodies() {
     let (mut sim, hook, plank) = two_bodies(true);
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
     let t = sim.world().get::<Transform>(joint).expect("transform");
     assert_eq!(
         t.translation.y, 5.5,
@@ -138,7 +142,8 @@ fn the_new_joint_lands_between_the_two_bodies() {
 #[test]
 fn the_angle_fields_convert_at_the_boundary() {
     let (mut sim, hook, plank) = two_bodies(true);
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
     let reg = registry();
     let queue = EditorCommandQueue::default();
 
@@ -169,7 +174,8 @@ fn the_angle_fields_convert_at_the_boundary() {
 #[test]
 fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
     let (mut sim, hook, plank) = two_bodies(true);
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
 
     let info = build_joint_info(&mut sim, joint.to_bits(), 0).expect("info");
     assert_eq!(info.body_a_name, "Hook");
@@ -204,7 +210,7 @@ fn two_bodies_sharing_a_name_cannot_be_joined() {
     let (mut sim, hook, plank) = two_bodies(true);
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Hook");
     assert!(
-        create_joint(&mut sim, hook.to_bits(), plank.to_bits()).is_none(),
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).is_none(),
         "a joint was created between two bodies that share a name — it can \
          never bind, because the two ids it stores are the same number"
     );
@@ -239,7 +245,8 @@ fn body(sim: &mut SimWorld, x: f32, y: f32, kind: BodyKind, name: &str) -> Entit
 #[test]
 fn set_joint_body_rebinds_slot_a_and_the_joint_still_binds() {
     let (mut sim, hook, plank) = two_bodies(true);
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
     let post = body(&mut sim, 3.0, 6.0, BodyKind::Static, "Post");
 
     assert!(
@@ -282,7 +289,8 @@ fn set_joint_body_rebinds_slot_a_and_the_joint_still_binds() {
 #[test]
 fn set_joint_body_refuses_a_self_joint() {
     let (mut sim, hook, plank) = two_bodies(true);
-    let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits()).expect("join");
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
     let before = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     // Slot A is currently Hook; re-pick it to Plank, which is already slot B.
     assert!(
@@ -291,4 +299,67 @@ fn set_joint_body_refuses_a_self_joint() {
     );
     let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     assert_eq!(before, after, "a refused re-pick must not touch the joint");
+}
+
+/// **Creating a joint makes the KIND the artist chose** (gold standard: create
+/// the type you want, not a Pin you convert in §12). Mutation-tested:
+/// `create_joint` ignoring its `kind` and spawning the default Pin makes the
+/// Spring/Rope/Weld iterations go red.
+#[test]
+fn create_joint_makes_the_requested_kind() {
+    for kind in [
+        JointKind::Pin,
+        JointKind::Spring,
+        JointKind::Rope,
+        JointKind::Weld,
+    ] {
+        let (mut sim, hook, plank) = two_bodies(true);
+        let joint = create_joint(&mut sim, hook.to_bits(), plank.to_bits(), kind).expect("join");
+        let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+        assert_eq!(
+            j.kind, kind,
+            "create_joint ignored the chosen kind {kind:?}"
+        );
+    }
+}
+
+/// **Changing the kind re-seeds the anchor.** The anchor POLICY depends on the
+/// kind — a Pin/Weld shares a point, a Spring/Rope anchors body B at its centre
+/// — so a kind change marks the joint un-anchored, and the next reconcile
+/// re-derives the body-local anchors under the new policy. Without it a Pin
+/// turned into a Rope keeps the shared-point anchor and the rope hangs from the
+/// wrong spot on body B. Mutation-tested: dropping `next.anchored = false` in
+/// `apply_joint_edit`'s Kind arm leaves it anchored and this goes red.
+#[test]
+fn changing_the_kind_re_seeds_the_anchor() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+
+    // Seed the anchors: the first reconcile flips `anchored` to true.
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    assert!(
+        sim.world().get::<PhysicsJoint>(joint).unwrap().anchored,
+        "the pin should be seeded after a dispatch"
+    );
+
+    let reg = registry();
+    let queue = EditorCommandQueue::default();
+    apply_joint_edit(
+        &sim,
+        joint.to_bits(),
+        JointFieldEdit::Kind(2), // Rope
+        &queue,
+        &reg,
+    );
+    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commands apply");
+
+    let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert_eq!(j.kind, JointKind::Rope, "the kind did not change");
+    assert!(
+        !j.anchored,
+        "a kind change must mark the joint for re-seed, so the two-ended Rope \
+         anchors body B at its centre instead of keeping the Pin's shared point"
+    );
 }

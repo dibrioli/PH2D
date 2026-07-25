@@ -487,6 +487,28 @@ fn paint_body_actions(
         );
     }
 
+    // The joint creation gesture (W3) — the "Join As" kind selector + the Join
+    // button — in its own fn for the 200-LOC panel-fn cap, and placed HERE,
+    // before the `paint_at` closure below, because `seg_row` cannot borrow
+    // `scene`/`text_system` while the closure holds them. It lives in the body
+    // section because a joint does not exist yet when you want to make one: the
+    // control has to be where you already are, looking at the two bodies you
+    // selected. Offered only for two selected bodies (`can_join`, a fact only
+    // the shell knows).
+    if info.can_join {
+        yy = super::physics_rows::paint_join_gesture(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            info.join_kind_tag,
+        );
+    }
+
     let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {
         let rect = Rect::new(x, *yy, w, h);
         let btn = Button::new(id, label)
@@ -507,15 +529,9 @@ fn paint_body_actions(
     // panel suite AND the parity gate green, with two buttons painted,
     // hit-registered and dead under the mouse.
 
-    // The creation gesture for a joint (W3). It lives HERE, in the body
-    // section, because a joint does not exist yet when you want to make one —
-    // the button has to be somewhere you already are, looking at the two
-    // bodies you have selected. Offered only when the selection is exactly two
-    // bodies, which is a fact only the shell can know.
-    if info.can_join {
-        let r = paint_at(ids::INSP_PHYS_JOIN, "Join Selected Bodies", &mut yy);
-        hit_index.register(ids::INSP_PHYS_JOIN, r);
-    }
+    // (The joint creation gesture — the "Join As" selector + the Join button —
+    // is painted ABOVE, before the `paint_at` closure, because it uses `seg_row`
+    // which cannot borrow `scene`/`text_system` while the closure holds them.)
 
     // Bake (W4): the simulated motion becomes timeline curves, and the body is
     // handed over to the scene (`BodyKind::Kinematic`). The label carries the

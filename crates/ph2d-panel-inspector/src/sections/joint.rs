@@ -68,83 +68,10 @@ pub(crate) fn paint_joint_section(
 
     let mut yy = y + header_h;
     let h = ROW_H_PX;
-    let label_font = TypeToken::Sm.px();
 
-    // One row per body END: the label ("Body A"/"Body B"), the CURRENT body's
-    // name, and an eyedropper to re-pick it. Shown for any selected joint — no
-    // other object needs selecting (the redesign's whole point). Clicking the
-    // eyedropper ARMS a canvas pick; the next click on a body re-binds that end.
-    // A body whose name no longer resolves shows "(missing)" dimmed — the
-    // per-end replacement for the old combined "not connected" line, which said
-    // it once for both ends and could not point at WHICH end broke.
-    let icon_w = (h * 0.82).min(w); // compact square button, inset in the row
-    // "Body A" / "Body B" column, wide enough for the label at this font.
-    let label_w = (label_font * 3.6).min(w * 0.4);
-    let gap = Spacing::Sm.px();
-    for (slot_label, name, id, armed) in [
-        (
-            "Body A",
-            &info.body_a_name,
-            ids::INSP_JOINT_PICK_A,
-            info.pick_armed == 1,
-        ),
-        (
-            "Body B",
-            &info.body_b_name,
-            ids::INSP_JOINT_PICK_B,
-            info.pick_armed == 2,
-        ),
-    ] {
-        let text_y = yy + (h - label_font) * 0.5;
-        paint_text(
-            text_system,
-            scene,
-            slot_label,
-            x,
-            text_y,
-            label_font,
-            label_w,
-            resolve(ColorToken::Text2, theme),
-        );
-        let shown = display_name(name);
-        let name_x = x + label_w;
-        let name_w = (w - label_w - icon_w - gap).max(0.0);
-        paint_text(
-            text_system,
-            scene,
-            shown,
-            name_x,
-            text_y,
-            label_font,
-            name_w,
-            resolve(
-                if name.is_empty() {
-                    ColorToken::Text3
-                } else {
-                    ColorToken::Text1
-                },
-                theme,
-            ),
-        );
-        // The eyedropper, right-aligned. Pressed (accent) while its pick is
-        // ARMED, so the artist sees which end is waiting for a body click.
-        let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
-        let state = if armed {
-            ButtonState::Pressed
-        } else {
-            store.button_state(id).unwrap_or(ButtonState::Normal)
-        };
-        paint_icon_button(
-            brect,
-            IconGlyph::Builtin(IconId::Eyedropper),
-            IconButtonStyle::Compact,
-            state,
-            scene,
-            theme,
-        );
-        hit_index.register(id, brect);
-        yy += h;
-    }
+    // One row per body END (label + current name + re-pick eyedropper), in its
+    // own fn for the 200-LOC panel-fn cap.
+    yy = paint_body_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
     yy = seg_row(
         scene,
@@ -276,6 +203,100 @@ pub(crate) fn paint_joint_section(
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     yy + h + SECTION_BOTTOM_PAD_PX
+}
+
+/// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's
+/// name, and an eyedropper to re-pick it. Its own fn for the 200-LOC panel-fn
+/// cap. Shown for any selected joint — no other object needs selecting (the
+/// redesign's whole point). Clicking the eyedropper ARMS a canvas pick; the next
+/// click on a body re-binds that end. A body whose name no longer resolves shows
+/// "(missing)" dimmed — the per-end replacement for the old combined "not
+/// connected" line, which said it once for both ends and could not point at
+/// WHICH end broke.
+#[allow(clippy::too_many_arguments)]
+fn paint_body_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorJointInfo,
+) -> f32 {
+    let mut yy = y;
+    let h = ROW_H_PX;
+    let label_font = TypeToken::Sm.px();
+    let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
+    // "Body A" / "Body B" column, wide enough for the label at this font.
+    let label_w = (label_font * 3.6).min(w * 0.4); // LITERAL-PX-OK: label = 3.6 char-heights, capped at 0.4 of the row
+    let gap = Spacing::Sm.px();
+    for (slot_label, name, id, armed) in [
+        (
+            "Body A",
+            &info.body_a_name,
+            ids::INSP_JOINT_PICK_A,
+            info.pick_armed == 1,
+        ),
+        (
+            "Body B",
+            &info.body_b_name,
+            ids::INSP_JOINT_PICK_B,
+            info.pick_armed == 2,
+        ),
+    ] {
+        let text_y = yy + (h - label_font) * 0.5;
+        paint_text(
+            text_system,
+            scene,
+            slot_label,
+            x,
+            text_y,
+            label_font,
+            label_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        let shown = display_name(name);
+        let name_x = x + label_w;
+        let name_w = (w - label_w - icon_w - gap).max(0.0);
+        paint_text(
+            text_system,
+            scene,
+            shown,
+            name_x,
+            text_y,
+            label_font,
+            name_w,
+            resolve(
+                if name.is_empty() {
+                    ColorToken::Text3
+                } else {
+                    ColorToken::Text1
+                },
+                theme,
+            ),
+        );
+        // The eyedropper, right-aligned. Pressed (accent) while its pick is
+        // ARMED, so the artist sees which end is waiting for a body click.
+        let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
+        let state = if armed {
+            ButtonState::Pressed
+        } else {
+            store.button_state(id).unwrap_or(ButtonState::Normal)
+        };
+        paint_icon_button(
+            brect,
+            IconGlyph::Builtin(IconId::Eyedropper),
+            IconButtonStyle::Compact,
+            state,
+            scene,
+            theme,
+        );
+        hit_index.register(id, brect);
+        yy += h;
+    }
+    yy
 }
 
 /// A body name for display, with a stand-in when it could not be resolved.

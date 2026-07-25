@@ -110,6 +110,10 @@ fn populate_joint(store: &mut WidgetStore) {
             ids::INSP_PHYS_JOIN,
         ],
     );
+    // The join-kind selector's four chips (Pin/Spring/Rope/Weld). Registered in a
+    // loop, which `architecture_panel_wiring_parity` cannot see — the const array
+    // covers them for `node_id_collisions`, and the seam test clicks each.
+    register_button_ids(store, &ids::INSP_PHYS_JOIN_KIND);
     // Physical quantities again — degrees, meters, N·m, spring constants —
     // so none of these literals has a design token to come from.
     for (id, value, min, max, step) in [

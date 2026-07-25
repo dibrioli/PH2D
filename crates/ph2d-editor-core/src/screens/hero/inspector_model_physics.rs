@@ -84,6 +84,11 @@ pub struct InspectorPhysicsInfo {
     /// and the event handler decides whether to HONOUR the click, and both
     /// have to read the same fact.
     pub can_join: bool,
+    /// The kind the join-kind selector will create, `JointKind` tag (`0` Pin ·
+    /// `1` Spring · `2` Rope · `3` Weld). App state the shell owns (the pending
+    /// choice for the next *Join Selected Bodies*), mirrored here so the segmented
+    /// paints its selection. Only meaningful when `can_join`.
+    pub join_kind_tag: u8,
     /// Is this collider a **sensor** (trigger, W7)? Passes through, reports overlaps; the overlay lights it up. `false` is solid.
     pub is_sensor: bool,
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation (a global bake option the shell owns).
@@ -337,9 +342,15 @@ pub enum PhysicsFieldEdit {
     AreaFalloff(f32),
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation.
     BakeChannels(u8),
+    /// Choose the kind the next *Join Selected Bodies* will create — `JointKind`
+    /// tag (`0` Pin · `1` Spring · `2` Rope · `3` Weld). App state the shell
+    /// stores until `Join` reads it; the gold standard is creating the joint type
+    /// you want, not making a Pin and converting it in §12.
+    JoinKind(u8),
     /// Create a joint between the two selected bodies (W3). Carries no
-    /// operands: the shell owns the selection, and a second copy of "which
-    /// two" would be a second answer to a question only one half can answer.
+    /// operands: the shell owns the selection AND the pending `JoinKind`, and a
+    /// second copy of either would be a second answer to a question only one
+    /// half can answer.
     Join,
     /// Bake the selection's simulated motion into timeline curves (W4).
     ///

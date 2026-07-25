@@ -18,8 +18,10 @@ const JOINT: &str = "ph2d::physics::PhysicsJoint";
 
 /// Tag ↔ kind, in one place. The panel speaks tags (it never sees
 /// `ph2d-physics-ecs`), so this is the only conversion and both directions
-/// live next to each other where a mismatch is visible.
-fn kind_of(tag: u8) -> JointKind {
+/// live next to each other where a mismatch is visible. `pub(crate)` so the
+/// Join gesture can create a joint of the artist's chosen kind (the join-kind
+/// selector stores a tag).
+pub(crate) fn kind_of(tag: u8) -> JointKind {
     match tag {
         1 => JointKind::Spring,
         2 => JointKind::Rope,
@@ -169,7 +171,18 @@ pub(crate) fn apply_joint_edit(
     };
     let mut next = current;
     match edit {
-        JointFieldEdit::Kind(tag) => next.kind = kind_of(tag),
+        JointFieldEdit::Kind(tag) => {
+            next.kind = kind_of(tag);
+            // The anchor POLICY depends on the kind: a shared-point joint
+            // (Pin/Weld) anchors both bodies at the pivot, a two-ended one
+            // (Spring/Rope) anchors body B at its own centre. So a kind change is
+            // a reposition of the B-end — mark it un-anchored so the next
+            // reconcile re-derives the body-local anchors under the NEW policy
+            // (the 4th authoring site, beside the dot drag, Position and re-pick).
+            // Without this a Pin turned into a Rope keeps the Pin's shared-point
+            // anchor and the rope hangs from the wrong spot on body B.
+            next.anchored = false;
+        }
         JointFieldEdit::LimitsEnabled(on) => next.limits_enabled = on,
         // Degrees on the way in, radians in the component — the same boundary
         // `Transform::rotation_rad` keeps.
@@ -211,7 +224,18 @@ pub(crate) fn apply_joint_edit(
 /// every kind: for a Pin between two touching bodies — a chain link, the
 /// common case — the midpoint IS the correct pivot, and for the others it is a
 /// sensible place to start dragging from.
-pub(crate) fn create_joint(sim: &mut SimWorld, a_bits: u64, b_bits: u64) -> Option<Entity> {
+///
+/// `kind` is the artist's choice from §11's join-kind selector — the gold
+/// standard is to create the type you want, not to make a Pin and convert it.
+/// `anchored` is left `false` (the default): the first reconcile seeds the
+/// body-local anchors from the midpoint under THIS kind's policy (a Spring/Rope
+/// anchors body B at its centre, a Pin/Weld at the shared point).
+pub(crate) fn create_joint(
+    sim: &mut SimWorld,
+    a_bits: u64,
+    b_bits: u64,
+    kind: JointKind,
+) -> Option<Entity> {
     let (a, b) = (Entity::from_bits(a_bits), Entity::from_bits(b_bits));
     if a == b {
         return None;
@@ -237,6 +261,7 @@ pub(crate) fn create_joint(sim: &mut SimWorld, a_bits: u64, b_bits: u64) -> Opti
             PhysicsJoint {
                 body_a: stable_name_id(&name_a),
                 body_b: stable_name_id(&name_b),
+                kind,
                 ..PhysicsJoint::default()
             },
             Transform::from_translation(mid),

@@ -642,3 +642,12 @@ pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 /// a joint does not exist yet when you want to make one, so the button has to
 /// be somewhere you already are — looking at two bodies you have selected.
 pub const INSP_PHYS_JOIN: NodeId = hash_node_id("insp_phys_join");
+/// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
+/// Weld). Painted beside *Join Selected Bodies* so the artist creates the joint
+/// TYPE they want in one gesture, instead of making a Pin and converting it.
+pub const INSP_PHYS_JOIN_KIND: [NodeId; 4] = [
+    hash_node_id("insp_phys_join_kind_pin"),
+    hash_node_id("insp_phys_join_kind_spring"),
+    hash_node_id("insp_phys_join_kind_rope"),
+    hash_node_id("insp_phys_join_kind_weld"),
+];

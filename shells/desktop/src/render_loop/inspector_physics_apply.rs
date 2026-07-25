@@ -348,9 +348,13 @@ pub(crate) fn apply_physics_edit(
         // instead of one joint, `Bake` because it would re-run the whole
         // simulation once per body and file a separate undo step each time.
         // Reaching either arm means an interception was removed. `BakeChannels`
-        // joins them: it is a GLOBAL bake option (app state), not a Collider
-        // edit, and the render loop consumes it before this fan-out.
-        PhysicsFieldEdit::Join | PhysicsFieldEdit::Bake | PhysicsFieldEdit::BakeChannels(_) => {}
+        // and `JoinKind` join them: both are GLOBAL app-state options (the next
+        // bake's channels; the next Join's kind), not Collider edits, and the
+        // render loop consumes them before this fan-out.
+        PhysicsFieldEdit::Join
+        | PhysicsFieldEdit::Bake
+        | PhysicsFieldEdit::BakeChannels(_)
+        | PhysicsFieldEdit::JoinKind(_) => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

@@ -46,6 +46,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // refusal that lives in the paint loop is not a refusal
             // ([[feedback_disabled_button_still_dispatches]]).
             Some(PhysicsFieldEdit::Join)
+        } else if let Some(i) = ids::INSP_PHYS_JOIN_KIND.iter().position(|&o| o == id) {
+            // The join-kind selector qualifies the Join button, so it is offered
+            // under the SAME `can_join` gate. Dim is not a refusal, so the check
+            // lives here too ([[feedback_disabled_button_still_dispatches]]).
+            info.can_join.then_some(PhysicsFieldEdit::JoinKind(i as u8))
         } else if let Some(i) = ids::INSP_PHYS_KIND.iter().position(|&o| o == id) {
             // Gated like every sibling. Kind and Shape were the only two §11
             // controls with NO `has_body` check, which made `Kind` a second

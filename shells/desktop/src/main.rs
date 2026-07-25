@@ -460,6 +460,7 @@ impl App {
             vec_patternpath_handle: None,
             vec_path_pick: None,
             joint_body_pick: None,
+            join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

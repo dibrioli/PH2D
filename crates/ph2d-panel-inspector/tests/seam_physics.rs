@@ -41,6 +41,7 @@ fn with_body() -> InspectorPhysicsInfo {
         friction: 0.5,
         layer: 0,
         can_join: false,
+        join_kind_tag: 0,
         bake_seconds: 5.0,
         // A full-range bake starts at 0; W-BakeRange's partial start is exercised
         // by the label gate below, not this base fixture.
@@ -521,6 +522,61 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
         "Join fired with can_join=false — the refusal lives only in the paint \
          loop, which is not a refusal"
     );
+}
+
+/// **The join-kind selector picks each kind, and only when joinable.** It
+/// qualifies the Join button (create the TYPE you want, not a Pin you convert),
+/// so it lives under the same `can_join` gate: painted only for two selected
+/// bodies, and honoured only then — dim is not a refusal
+/// ([[feedback_disabled_button_still_dispatches]]).
+#[test]
+fn join_kind_chips_pick_their_kind_only_when_joinable() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    // Each chip is painted only when joinable, and picks its own kind.
+    for can in [false, true] {
+        let mut host = Host::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(InspectorPhysicsInfo {
+            can_join: can,
+            ..with_body()
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        for &id in &ids::INSP_PHYS_JOIN_KIND {
+            assert_eq!(
+                rects.iter().any(|(n, _)| *n == id),
+                can,
+                "join-kind chip painted for can_join={can}"
+            );
+        }
+    }
+
+    // ...and honoured only when joinable.
+    for (i, &id) in ids::INSP_PHYS_JOIN_KIND.iter().enumerate() {
+        let joinable = InspectorPhysicsInfo {
+            can_join: true,
+            ..with_body()
+        };
+        expect(
+            &click(joinable, id),
+            PhysicsFieldEdit::JoinKind(i as u8),
+            &format!("join-kind chip {i}"),
+        );
+        assert!(
+            click(with_body(), id).is_empty(),
+            "join-kind chip {i} fired with can_join=false — a paint-loop refusal \
+             is not a refusal"
+        );
+    }
 }
 
 /// **The Bake button is painted, FOCUSABLE, and reaches the bus.** (W4.)

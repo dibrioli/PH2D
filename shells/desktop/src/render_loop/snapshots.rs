@@ -109,6 +109,9 @@ pub(super) fn publish(
     // Which pose channels the §11 Bake selector shows as chosen (the shell's
     // transient `bake_channels`, a global bake option).
     bake_channels_tag: u8,
+    // The kind the §11 join-kind selector shows as chosen (the shell's transient
+    // `App.join_kind`, the pending TYPE for the next *Join Selected Bodies*).
+    join_kind_tag: u8,
     // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
     // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
     joint_body_pick: Option<(u64, bool)>,
@@ -725,6 +728,7 @@ pub(super) fn publish(
             sim.world(),
             b,
             can_join,
+            join_kind_tag,
             bake_range,
             bake_channels_tag,
         )

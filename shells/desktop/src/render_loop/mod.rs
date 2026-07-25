@@ -1577,6 +1577,8 @@ impl crate::App {
                 },
                 // Which pose channels the Bake selector shows as chosen.
                 self.bake_channels.tag(),
+                // The pending join KIND the §11 selector shows as chosen.
+                self.join_kind,
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
@@ -2554,6 +2556,11 @@ impl crate::App {
                             // No fan-out, no Collider write — just the app state
                             // the Bake button reads.
                             self.bake_channels = physics_bake::BakeChannels::from_tag(tag);
+                        } else if let ph2d_editor::PhysicsFieldEdit::JoinKind(tag) = edit {
+                            // The pending join KIND, the same class as BakeChannels:
+                            // an app-state option the Join gesture reads, not a
+                            // per-body edit. No fan-out, no Collider write.
+                            self.join_kind = tag;
                         } else if inspector_selection.is_empty() {
                             physics_edits.push((entity_bits, edit));
                         } else {
@@ -5336,8 +5343,21 @@ impl crate::App {
                     );
                 }
             }
-            if let Some((a, b)) = join_request {
-                inspector_joint::create_joint(sim, a, b);
+            if let Some((a, b)) = join_request
+                && let Some(joint) = inspector_joint::create_joint(
+                    sim,
+                    a,
+                    b,
+                    inspector_joint::kind_of(self.join_kind),
+                )
+            {
+                // Select the new joint so §12 (Physics Joint) appears
+                // immediately — the Kind selector and tuning are right there.
+                // Otherwise the two bodies stay selected (§11) and the joint is
+                // only reachable by hunting for it in the Hierarchy by hand,
+                // which is why creating anything but a Pin felt impossible.
+                hero.gizmo.selection = Some(joint.to_bits());
+                hero.gizmo.extra_selection.clear();
             }
             // W4 - bake the selection's simulated motion into curves. After the
             // joint work above because a baked body stops being simulated, and

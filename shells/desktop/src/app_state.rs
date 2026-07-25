@@ -832,6 +832,12 @@ pub(crate) struct App {
     /// selection/gizmo. Runtime-only: the pick is not the document, the binding
     /// it writes is.
     pub(crate) joint_body_pick: Option<(u64, bool)>,
+    /// **The pending join KIND** for the next *Join Selected Bodies* — a
+    /// `JointKind` tag (`0` Pin · `1` Spring · `2` Rope · `3` Weld). The §11
+    /// join-kind selector sets it; `create_joint` reads it, so the artist creates
+    /// the joint TYPE they want in one gesture. Runtime-only: it is a pending UI
+    /// choice, not the document. Defaults to Pin.
+    pub(crate) join_kind: u8,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

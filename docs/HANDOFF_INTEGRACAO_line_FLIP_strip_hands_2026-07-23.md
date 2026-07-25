@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | branch | `line/FLIP` |
-| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: a co-rotação do resíduo do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
+| HEAD | o tip da branch — confira com `git rev-parse line/FLIP` (último descrito aqui: o pincel pontilhado da §2.8; a co-rotação do tween da §2.7; o Gap em mundo da §2.6 é `70e0acb8a`) |
 | base do fork (merge-base) | `df91ef6ec` |
-| commits à frente do `main` | **28** (a wave + smoke ×2 + hold vivo/ghost 0,25 + handoffs/docs + §2.2 + §2.3 + §2.4 + §2.5 + §2.6 + aparência + Gap em mundo + **§2.7 a torção do tween** ×2) — confira com `git rev-list --count main..HEAD` |
+| commits à frente do `main` | **30** (§2.2..§2.6 + **§2.7 a torção do tween** ×2 + **§2.8 o pincel pontilhado** ×2) — confira com `git rev-list --count main..HEAD` |
 | `main` andou desde o fork? | **não** na última conferência (`git rev-list --count HEAD..main` = 0) ⇒ **fast-forward limpo**; re-confira antes do merge |
 
 ```bash
@@ -274,6 +274,38 @@ resíduo é **CO-ROTACIONADO** — carregado do referencial de B para o parcial 
   CONTÉM a torção) · `a_pure_similarity_leaves_the_spiral_bit_identical` (subsunção byte-exata) ·
   smoke `the_torsion_smoke_keeps_the_wing_shape_through_the_turn`. Sonda `the_torsion_smoke_look`.
 
+### 2.8 O PINCEL PONTILHADO (dots/squares, Enio 2026-07-25, "polimento (traço)")
+
+Enio escolheu, do balde de polimento, o **pincel pontilhado** (03 §8 — deferido do traço). O
+traço ganha uma PONTA ao longo dele: a linha cheia de sempre, ou **contas** redondas/quadradas
+espaçadas por **ARC-LENGTH** (imune à densidade de input E ao zoom — medem MUNDO).
+
+- **O motor é uma MÉTRICA no fragment** (`flip.wgsl`): a distância normalizada ATRAVÉS do traço
+  (`dn`) ganha um termo AO-LONGO do arco (`da`); a conta é um **disco** (`√(dn²+da²)`) ou um
+  **quadrado** (`max(dn, da)`). `Continuous` (tip 0) **não toca `dn`** ⇒ byte-idêntico à linha de
+  sempre. **A depth é por-TRAÇO** — o tip não a muda —, então contas sobrepostas numa quina são
+  first-wins (união), **nunca acumulam** (o oposto exato da armadilha de *beading* do Self
+  Overlap, que foi por isso preterido).
+- **Foundational GPU tocado, aditivo:** buffer novo **`arc_len`** (cumulativo por-ponto, binding
+  **6**, VERTEX-visível, padrão do `point_stroke`) + `GpuStroke` ganhou `tip`+`dot_spacing` nos
+  slots de `_pad` (**32 bytes intactos**). O `append` de `FlipGpuData` concatena `arc_len`
+  (paralelo a `points`).
+- **Contrato/modelo:** `FlipStroke` ganhou `tip: StrokeTip` + `dot_spacing: f32` (campos no MEIO
+  ⇒ **`FLIP_SCHEMA` 8→9**, **`PROJECT_SCHEMA` 29→30**, tripla `(30, 9, 13)`). `StrokeTip`
+  {Continuous, Dots, Squares} é `pub` no `ph2d-flip` (+ `DEFAULT_DOT_SPACING`). ⚠️ **`ph2d-tool-flip`
+  ganhou dep `ph2d-flip`** (o tool SETA um atributo do modelo — fonte única do enum, não espelho).
+- **UI:** seletor **Tip** [Line|Dots|Squares] + slider **Spacing** (só com contas) na seção Brush
+  do Draw. Ids novos `FLIP_TIP_{LINE,DOTS,SQUARES}` + `FLIP_DOT_SPACING`/`_NUM`. Seção pintada no
+  módulo-irmão **`paint_tip.rs`** (`paint_sections.rs` bateu o teto de LOC do painel ⇒ split;
+  allowlist a11y como o `paint_arrange` do vetor — delega a `segmented`/`slider_row`).
+- **Gates:** GPU `dots_carve_gaps_that_a_continuous_line_does_not` (red-first, mutação "neutraliza
+  a métrica" sangra — dots perdem os vãos) + `squares_cover_more_area_than_round_dots` +
+  `the_tip_toggle_and_spacing_slider_reach_the_tool` (o seam do tool) + o teste da cena. Smoke:
+  **`PH2D_FLIP_TIP_SMOKE=1`** (3 traços de referência Line/Dots/Squares; o artista pega Draw→Tip
+  no painel REAL — nada armado por baixo).
+- **Aberto (nomeado):** Self Overlap (a armadilha de beading medida) e corner types seguem
+  deferidos; o dot radius = a largura do traço (um raio de conta próprio seria outro knob).
+
 ## 3. ⚠️ O que o integrador precisa saber ANTES de mesclar
 
 ### 3.1 Foundational tocado (`ph2d-editor-core`), todo ADITIVO
@@ -450,6 +482,7 @@ terminal; em resumo:
 | i | **(§2.5, opcional)** caixa em DOIS traços com um vão: digitar o TAMANHO DO VÃO no Gap Closure enche; e Trap alto + zoom forte não recusa mais com `BallTooFat` |
 | j | **(§2.6, cena PRÓPRIA: `PH2D_FLIP_FILL_SMOKE=1`, Teste 4)** modo Fill: com Gap 0 a caixa de baixo VAZA; **Ctrl+roda** sobe o Gap (o slider acompanha), o helper aparece tapando o vão quando o alcance o atinge, e o clique preenche; a roda SEM Ctrl segue sendo zoom. ⚠️ **Aparência (aprovada 2026-07-25):** a PONTE do vão é verde cheia com dot nas 2 pontas; as extensões são fios finos SEM dot no corte (o "dot flutuante" acabou) — confira em vários zooms |
 | k | **(§2.7, cena PRÓPRIA: `PH2D_FLIP_TWEEN_TORSION_SMOKE=1`)** uma ASA em 2 quadros (0 e 8): aperte **Add** (3 inbetweens) e folheie 0→2→4→6→8. O quadro do meio tem de mostrar a asa **meio-girada com a corcova crescendo do lado CERTO** (a corcova acompanha o corpo); o ERRADO é a asa quase RETA no meio (a corcova ACHATA). É a torção do resíduo sob giro grande — a co-rotação a corrige |
+| l | **(§2.8, cena PRÓPRIA: `PH2D_FLIP_TIP_SMOKE=1`)** 3 traços de referência (Line/Dots/Squares). No painel: modo **Draw** → seção Brush → seletor **Tip**. Pegue **Dots** e desenhe: contas REDONDAS do tamanho da largura, espaçadas; **Squares** = quadrados; **Spacing** afasta/aproxima; **Line** volta à linha cheia e o Spacing SOME. Zoom in/out: as contas mantêm o tamanho em DOCUMENTO (medem mundo) |
 
 ## 8. O que fica ABERTO (nomeado, não escondido)
 

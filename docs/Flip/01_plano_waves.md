@@ -273,8 +273,9 @@ paint-behind, multiframe.
 
 ## Deferidos explícitos (backlog qualificado — cada um com spec pronta nos docs)
 
-- **Traço:** flag *Self Overlap* · corner types por-ponto · pincel dots/squares (Ciallo-style)
-  · pincel airbrush analítico · variante SDF da escalada (tudo: 03 §8).
+- **Traço:** flag *Self Overlap* · corner types por-ponto · ~~pincel dots/squares (Ciallo-style)~~
+  **LANDOU 2026-07-25** (`PH2D_FLIP_TIP_SMOKE=1`; `FlipStroke::tip`, 03 §8) · pincel airbrush
+  analítico · variante SDF da escalada (o resto: 03 §8).
 - ~~**Tween v2:** matching espacial + espiral logarítmica~~ — **LANDOU 2026-07-22, SMOKE APROVADO**
   (doc [`11`](11_tween_v2.md)). ~~a **UI de correção de pares** (o overlay + o re-par manual —
   a lição CACAni)~~ — **LANDOU 2026-07-22, SMOKE APROVADO** (`PH2D_FLIP_TWEEN_PAIRS_SMOKE=1`;

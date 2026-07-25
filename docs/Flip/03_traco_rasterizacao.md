@@ -399,9 +399,18 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   canônica ao "parte nova por cima" do smoke da 3ª rodada.
 - **Corner types Round/Sharp(miter-limit)/Flat por ponto** (paridade SVG/GP-2025): as cunhas
   BEVEL/MITER do `segment_mask` com p0/p3 — a mesma janela do fix (§4.1) já carrega os dados.
-- **Pincel pontilhado (dots/squares) estilo Ciallo/GP:** dots sintetizados NO fragment
-  (interseção de cápsula desigual + early-out em saturação) — zero geometria extra, espaçamento
-  independente da densidade de input. Arquitetura pronta no GP (`frag:337-516`).
+- ~~**Pincel pontilhado (dots/squares) estilo Ciallo/GP**~~ — **LANDOU 2026-07-25**
+  (`PH2D_FLIP_TIP_SMOKE=1`): `FlipStroke::tip` = `Continuous`/`Dots`/`Squares` + `dot_spacing`
+  (MUNDO). O fragment recorta a cobertura por uma MÉTRICA — a distância normalizada ATRAVÉS
+  (`dn`) ganha um termo AO-LONGO do arco (`da`), e a conta é um DISCO (`√(dn²+da²)`, Euclidiano)
+  ou um QUADRADO (`max(dn, da)`, Chebyshev). Espaçamento por ARC-LENGTH (buffer `arc_len`
+  cumulativo por-ponto, binding 6; o vertex lê o início e soma `|b−a|`), imune à densidade de
+  input E ao zoom. `Continuous` **não toca `dn`** ⇒ byte-idêntico. **A depth é por-TRAÇO** (o
+  tip não a muda), então contas sobrepostas numa quina são first-wins (união), nunca acumulam
+  — o oposto da armadilha do *Self Overlap*. Seletor **Tip** + slider **Spacing** na seção
+  Brush (Draw). `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 29→30. Gates GPU
+  (`dots_carve_gaps_that_a_continuous_line_does_not` red-first mutação-provado +
+  `squares_cover_more_area_than_round_dots`).
 - **Pincel airbrush analítico (Ciallo):** falloff por integral em forma fechada
   `A(y) = 1 − exp(−2αc·sqrt(R²−y²))` — semântica de acúmulo físico; casa com a flag Self
   Overlap. (Fórmulas do paper/tutorial; código do CialloResearch é GPL-3 — só comportamento.)

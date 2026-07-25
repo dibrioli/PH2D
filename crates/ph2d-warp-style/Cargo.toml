@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-warp-style"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O CATÁLOGO ÚNICO dos estilos de warp (Enio 2026-07-25): uma casa só p/ o enum
+# `WarpStyle`, que o efeito Warp (`ph2d-vec-scene`, via `deform`) E os presets do
+# Envelope (`ph2d-ecs`, via `cage`) re-exportam — assim eles NÃO PODEM divergir.
+# `ph2d-ecs` é fundação e `ph2d-vec-scene` é puro; nenhum depende do outro, então
+# o catálogo tem de ser esta folha, sem dep pesada. serde: o enum viaja no save do
+# Envelope (`VecEnvelope.warp`) e do efeito (`WarpSpec.style`). Sem `postcard`: só o
+# tipo é serializado, quem escreve o wire é o consumidor.
+serde = { version = "1", features = ["derive"] }

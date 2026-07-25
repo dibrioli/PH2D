@@ -455,6 +455,8 @@ pub(crate) struct App {
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
     /// Latch do `PH2D_PATH_SMOKE` (a cena do motion path, uma vez).
     pub(crate) motion_path_smoke_done: bool,
+    /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
+    pub(crate) timeline_onion_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,
@@ -466,6 +468,16 @@ pub(crate) struct App {
     /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
     /// one door, so the key and the checkbox can never disagree.
     pub(crate) show_colliders: bool,
+    /// **O onion da timeline** (ADR-0142): as configurações dos fantasmas (passado/futuro,
+    /// contagens, opacidade, cores). Estado de VISTA — NÃO serializado (a classe do toggle
+    /// Physics / Speed graph: a resposta a *"o que a tela mostra"* não muda sozinha após um
+    /// load). Nasce desligado. A UI do painel é W3; hoje o smoke o arma.
+    pub(crate) onion: crate::render_loop::timeline_onion::OnionSettings,
+    /// Os fantasmas do onion cozidos NESTE frame (bloco de overlay do `run_render_frame`)
+    /// e lidos pelo `run_present_phase` para o slot `extra` do passe de sprite — o mesmo
+    /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando
+    /// o onion está desligado.
+    pub(crate) onion_ghosts: Vec<ph2d_render::RenderInstance>,
     /// Which pose channels the next physics Bake writes (§11). Transient — a
     /// bake-time preference, not saved: it says how the button behaves, not what
     /// the document is. Default `All`.

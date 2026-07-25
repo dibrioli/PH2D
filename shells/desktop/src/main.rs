@@ -126,6 +126,7 @@ mod label_live;
 mod mask_smoke;
 mod morph_live;
 mod motion_path_smoke;
+mod timeline_onion_smoke;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
@@ -364,9 +365,12 @@ impl App {
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
             motion_path_smoke_done: false,
+            timeline_onion_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,
+            onion: crate::render_loop::timeline_onion::OnionSettings::default(),
+            onion_ghosts: Vec::new(),
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
             gilrs,
             audio,

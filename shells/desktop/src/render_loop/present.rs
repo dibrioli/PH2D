@@ -30,6 +30,10 @@ impl crate::App {
         let flip_preview = self
             .flip_preview_data()
             .or_else(|| self.flip_colorize_preview_data());
+        // Os fantasmas do onion, cozidos no bloco de overlay deste frame (ADR-0142).
+        // Retirados ANTES do borrow de `self.gfx`; concatenados ao slot `extra` do passe
+        // de sprite abaixo. Vazio quando o onion está desligado.
+        let onion_ghosts = std::mem::take(&mut self.onion_ghosts);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -139,13 +143,28 @@ impl crate::App {
                     } else {
                         &[]
                     };
+                // O slot `extra` do passe carrega DOIS produtores CPU: os fantasmas do
+                // onion (ADR-0142) + o stream do Motion. Concatenados num só slice; os dois
+                // raramente coexistem, então o `Vec` é vazio no caso comum.
+                let sprite_extra: Vec<ph2d_render::RenderInstance> = if onion_ghosts.is_empty()
+                {
+                    // Sem fantasmas: passa o slice do Motion direto (zero alloc no caso comum).
+                    Vec::new()
+                } else {
+                    onion_ghosts.iter().chain(motion_slice).copied().collect()
+                };
+                let extra: &[ph2d_render::RenderInstance] = if sprite_extra.is_empty() {
+                    motion_slice
+                } else {
+                    &sprite_extra
+                };
                 renderer.render_with_streams(
                     game_rt.view(),
                     present,
                     camera,
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
-                    motion_slice,
+                    extra,
                     motion_gpu,
                     scene_viewport,
                 );

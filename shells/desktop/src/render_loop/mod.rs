@@ -114,6 +114,7 @@ pub(crate) mod physics_panel_bridge;
 mod push_look_probe;
 pub(crate) mod record_fit;
 mod timeline_bridge;
+pub(crate) mod timeline_onion;
 mod timeline_presets;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
@@ -618,6 +619,7 @@ impl crate::App {
         self.build_smoke();
         self.stack_smoke();
         self.motion_path_smoke();
+        self.timeline_onion_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.flip_pose_smoke();
@@ -4138,6 +4140,20 @@ impl crate::App {
                 camera,
                 window_size,
                 vector_scene,
+            );
+            // O ONION da timeline (ADR-0142): as poses-fantasma do objeto selecionado em
+            // t±k, cozidas AQUI (temos sim/present/doc/seleção) e desenhadas pelo passe de
+            // sprite em `run_present_phase` — o padrão do Motion (cozinha numa fase,
+            // desenha noutra). No-op quando desligado / sem seleção animada.
+            self.onion_ghosts.clear();
+            timeline_onion::collect_onion_ghosts(
+                &self.onion,
+                sim.world(),
+                present,
+                &self.timeline.doc,
+                hero.gizmo.iter_selected().next(),
+                self.playhead.time(),
+                &mut self.onion_ghosts,
             );
             // O realce da seleção (W6): uma seleção que não se VÊ não existe. Overlay
             // (chrome), nunca render de traço — ver o cabeçalho do módulo.

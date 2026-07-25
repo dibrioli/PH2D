@@ -1,9 +1,11 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector` · FALLOFF + TWIST + KNOT (2026-07-25)
 
-**Estado:** linha FECHADA, **TODOS os 3 smokes APROVADOS pelo Enio**, **ordem de integração DADA**
-(2026-07-25). Tip da branch: **`d38cae8f2`** (feature) / **`c96e31dda`** (este handoff). PRONTA para
-o agente integrador fundir em `main` via `scripts/foundational-integrate.sh`. **Ship (push) é ordem
-SEPARADA** — não faz parte desta ordem (§0.7 / o guia: *"o ship só depois, também por ordem sua"*).
+**Estado:** linha FECHADA, **TODOS os 3 smokes APROVADOS pelo Enio** (2026-07-25). Tip da branch:
+**`d38cae8f2`** (feature) / **`<este handoff>`**. **A integração será feita por um agente integrador
+DEDICADO, fundindo TODAS as linhas da jornada juntas** (decisão do Enio) — esta linha só entrega o
+handoff e PARA (§0.7). O que segue é o que o integrador precisa saber sobre **esta** linha; a ORDEM
+entre linhas e a resolução cross-linha são dele, com os handoffs de todas. **Ship (push) é ordem
+SEPARADA.**
 
 - **Wave 1 — o FALLOFF** (commit **`772f830eb`**): **smoke APROVADO.** Detalhe abaixo.
 - **Wave 2 — o TWIST** (commit **`afe16fce5`**): **smoke APROVADO** (`PH2D_BUILD_SMOKE=29`). Seção
@@ -13,37 +15,45 @@ SEPARADA** — não faz parte desta ordem (§0.7 / o guia: *"o ship só depois, 
 
 > Nenhuma wave move o schema (variants apendados, `PROJECT_SCHEMA` fica **29**). As três tocam o
 > MESMO conjunto de arquivos (`ph2d-vec-scene/src/effect*.rs`, `fx_*`, `MAX_FX_KINDS`), então
-> integram JUNTAS (um único rebase + gate). Estado no tip: `MAX_FX_KINDS` **19** (13 base+warp, +4
+> integram JUNTAS (um único rebase por-linha). Estado no tip: `MAX_FX_KINDS` **19** (13 base+warp, +4
 > falloff, +Twist, +Knot); splits de LOC: `effect_params.rs` (params) + `effect_accessors.rs`
 > (as_*+label).
 
-## ⚠️ PRÉ-CONDIÇÃO DA INTEGRAÇÃO (o integrador confere ANTES)
+## ⚠️ O QUE ESTA LINHA TOCA FORA DE `ph2d-vec-scene` (checar colisão CROSS-LINHA)
 
-`foundational-integrate.sh` **recusa um primário sujo**. No momento do fechamento o checkout `main`
-(`/home/enio/Documentos/Projetos/PH2D`) tinha **alterações NÃO-commitadas** — `.gitignore` +
-vários `project-memory/*` (memória versionada, `M` e `??`). **Não são desta linha** (a linha vive na
-worktree). Antes de integrar: o Enio limpa o primário (commit da memória como `chore(memory)`, ou
-stash). ⚠️ **O integrador NÃO comita esses arquivos por conta própria** (§0.4: `M`/`??` alheio →
-reportar, não comitar).
+Só APÊNDICES, mas o integrador multi-linha confere se outra linha mexeu nos mesmos pontos:
 
-## Contrato congelado (§6) — INTOCADO nas 3 waves
+- **`crates/ph2d-editor-core/src/ids/chrome/vector.rs`** — `MAX_FX_KINDS` **13→19** (const bump,
+  append-only). ⚠️ Se outra linha também mexeu, é o valor que **se CONTA, não se escolhe**
+  ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]) — mas aqui é um teto de UM domínio
+  (efeitos de vetor), improvável cruzar.
+- **`crates/ph2d-i18n/src/lib.rs`** — **+2 chaves** (`panel.vector.fx.falloff.modulates`,
+  `panel.vector.fx.falloff.inert`). Append; colisão só se outra linha adicionar as MESMAS chaves.
+- **`crates/ph2d-panel-vector/`** — `FalloffRole` (enum novo) + a linha de nota do card no
+  `paint_effects.rs` + re-export. **`shells/desktop/`** — `fx_bridge.rs` (falloff_role) + 3 mods de
+  smoke novos (`falloff_smoke`/`twist_smoke`/`knot_smoke`) + rotas `=28/=29/=30` no `build_smoke.rs`
+  + 3 `mod` no `main.rs`. Tudo aditivo.
+- **`PROJECT_SCHEMA`**: **INTOCADO (29)** — nenhuma disputa de número de schema com outras linhas.
+- **Contrato congelado (§6): INTOCADO** — `NodeOp=2`/`OpResolver=1`/`NodeManifest=8` não tocados
+  (grep; os efeitos são dado de `VecPath.effects`, não do `NodeManifest`). `PathEffect` **não é**
+  contrato congelado (append-only). Nenhum ADR necessário.
 
-`NodeOp=2`/`OpResolver=1`/`NodeManifest=8` não tocados (conferido por grep; os efeitos são dado de
-`VecPath.effects`, não do `NodeManifest`). Os variants entram por APÊNDICE no `PathEffect`, que **não
-é** contrato congelado. Nenhum ADR necessário.
-
-## Procedimento (o integrador, da worktree `line/Vector`, com o primário LIMPO)
+## Procedimento p/ ESTA linha (o integrador roda da worktree, com o primário LIMPO)
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector
 git rev-parse --abbrev-ref HEAD          # confirmar line/Vector
-bash scripts/foundational-integrate.sh   # rebase main -> re-sync -> BUILD+TEST do tip -> ff-merge
+bash scripts/foundational-integrate.sh   # rebase main -> re-sync -> BUILD+TEST do tip combinado -> ff-merge
 ```
 
-Conflitos legítimos esperados (DIRETRIZ §1.5.5): **nenhum previsto** — a linha só APENDA (variants,
-`KINDS`, `MAX_FX_KINDS`, chaves i18n do Falloff, mods novos). Se `Cargo.lock`/`*-registry-init`
-conflitarem, seguir a receita do próprio script (nunca à mão). **NÃO** dar `git push` — ship é ordem
-separada.
+Conflitos legítimos esperados (DIRETRIZ §1.5.5): **nenhum previsto** desta linha — ela só APENDA. Se
+`Cargo.lock`/`*-registry-init`/`icons.rs` conflitarem (por causa de OUTRA linha), seguir a receita do
+próprio script (nunca à mão). **NÃO** dar `git push` — ship é ordem separada.
+
+> **Nota de estado do primário (não é tarefa desta linha):** no fechamento o checkout `main` tinha
+> `.gitignore` + `project-memory/*` não-commitados (memória versionada + a linha do Pixel Art no
+> gitignore) — **alheios a esta linha**. O `foundational-integrate.sh` recusa primário sujo, então
+> alguém limpa isso antes (é WIP do Enio; §0.4: não comitar alheio).
 
 ## O que é
 

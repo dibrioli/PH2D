@@ -4,13 +4,15 @@
 **Detalhe técnico:** [`docs/Painter/25_avaliacao_gpu.md`](Painter/25_avaliacao_gpu.md) §13.9 (revertida) +
 **§13.10** (o que ficou).
 
-> ## O resumo em três linhas
+> ## O resumo em quatro linhas
 >
-> A wave tentou dar à máscara uma **lei de cobertura própria** (o envelope Wash do Krita) para curar o
-> endurecimento da borda; a lei funcionou nos números e **foi REPROVADA na tela** (o traço saía em contas).
-> **O estado que ficou é: a máscara pinta exactamente como o brush digital normal** — ordem do Enio, pinada
-> num gate de byte-identidade. O defeito original (a borda endurece sob muitas passadas) **segue ABERTO**, e
-> a §13.10.4 do doc diz por que a cura não é a lei do acúmulo.
+> **Duas entregas, dois eixos.** (a) A tentativa de dar à máscara uma **lei de cobertura própria** (o
+> envelope Wash do Krita) foi construída e **REPROVADA na tela** (o traço saía em contas) ⇒ revertida, e o
+> estado que ficou é *a máscara pinta exactamente como o brush digital normal* — ordem do Enio, pinada num
+> gate de byte-identidade. Esse defeito (a borda endurece sob muitas passadas) **segue ABERTO** (§13.10.4).
+> (b) **A TINTA atravessando a proteção saía craquelada, e ISSO FECHOU** (§13.11 diagnóstico → **§13.12**
+> cura): a proteção era composta uma vez por BATCH, logo a força dela seguia a taxa de polling do mouse;
+> agora é uma **sessão por-TRAÇO** com o `keep` aplicado UMA vez. 6 gates novos, 4 mutações, 4 sangram.
 
 ---
 
@@ -21,7 +23,7 @@
 | branch | `line/Painter` |
 | HEAD | o tip da branch (`git log --oneline main..HEAD` é a fonte; um sha literal aqui se auto-invalidaria) |
 | base (merge-base com `main`) | `df91ef6ec` |
-| commits desta wave | **11**: `d8018d6bc` a lei · `535df958c` a row Accumulate · `29b5a9e56` o smoke · `800f89596` doc §13.9 · `3f60b9b1e` os handoffs · `edd0602b1` CLAUDE.md · `495b85010` fmt · `a5457997e`+`f7b48063d` correções do handoff · `a83739e24` a memória · `d41b0a71b` **a reversão + doc §13.10** |
+| commits desta wave | **15**: `d8018d6bc`..`edd0602b1` constroem a lei do canal · `d41b0a71b` **a remove** (doc §13.10) · `a5c5a14f2` os handoffs · `afbcd5e8a`+`c05b1ede1`+`6d801604c` o **diagnóstico** do craquelado (§13.11) · `b75eda4c1` **a CURA** (§13.12: o plano livre por-traço) |
 | commits da linha desde a base | ⚠️ **~49** — esta wave são os 11 do topo; o resto são **waves ANTERIORES da mesma linha que ainda não integraram** (§7) |
 
 ⚠️ **Os commits desta wave NÃO são um caminho reto:** `d8018d6bc`..`edd0602b1` constroem a lei do canal e
@@ -39,7 +41,12 @@ que é o argumento da §13.10.4).
 | `crates/ph2d-painter-brush/src/dab/bands.rs` | o kernel per-pixel chama `cover_add` em vez de ter a aritmética inline | não (mesmas operações, mesma ordem) |
 | `crates/ph2d-tool-painter/src/tool/paint/stamp_route.rs` | **`stroke_cover_wanted(brush) -> bool`** — a porta ÚNICA do predicado que estava em 3 lugares; **não olha o modo** | sim (método novo) |
 | `crates/ph2d-tool-painter/src/tool/paint/stamp_cache.rs` | as 2 rotas que threadam o buffer perguntam à porta | não |
-| `crates/ph2d-tool-painter/src/tool/paint/mask.rs` | declara os 2 módulos de teste irmãos | sim, 6 linhas |
+| `crates/ph2d-tool-painter/src/tool/mod.rs` | **`GateSession`** + o campo `gate` (canvas-shaped, ao lado do `canvas_rgba` e dos planos de relevo) | sim |
+| `crates/ph2d-tool-painter/src/tool/paint/mask.rs` | **`stamp_dabs_gated`** + `project_gate_region` + `end_gate_session`; as 2 portas antigas (`snapshot_region`/`restore_protected_region`) **removidas**; declara os 3 módulos de teste irmãos | não (a lei muda do 2º batch em diante) |
+| `crates/ph2d-tool-painter/src/tool/paint/region.rs` | `restore_region` repõe o plano livre — a **porta única** que evita enumerar os 5 chamadores | não |
+| `crates/ph2d-tool-painter/src/tool/paint/selection.rs` | `restore_deselected_region` **removida** (a seleção virou um FATOR do `keep`) | não |
+| `crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs` + `stamp_preview.rs` + `layers/undo.rs` | as 4 mortes da sessão (os MESMOS sítios do sculpt) | sim |
+| `crates/ph2d-tool-painter/src/tool/paint/mask_probe_gate.rs` | **NOVO** — as 2 sondas do gate (o reporte + o custo), split por ASSUNTO quando `mask_probe.rs` bateu 810 LOC | sim |
 | `crates/ph2d-tool-painter/src/tool/paint/mask_probe.rs` | **NOVO** — 11 sondas de medição (`#[ignore]`, com dump p/ render-and-look) + os helpers de oráculo | sim |
 | `crates/ph2d-tool-painter/src/tool/paint/mask_tests.rs` | **NOVO** — 5 gates (byte-identidade com o brush · o cap · undo · custo · o número do endurecimento) | sim |
 | `shells/desktop/src/mask_smoke.rs` + `main.rs` + `app_state.rs` + `render_loop/mod.rs` | **NOVO** a cena `PH2D_MASK_SMOKE=1` + 3 sítios de wiring | sim |
@@ -48,7 +55,11 @@ que é o argumento da §13.10.4).
 | `CLAUDE.md` | 1 parágrafo na §5 | sim (só adiciona) |
 | `project-memory/` | 1 memória nova + 1 linha no índice + o tópico de oráculo 5→6 | sim |
 
-**Comportamento do produto, contra `main`: NENHUMA mudança.** A máscara acumula como acumulava (que é como
+**Comportamento do produto, contra `main`: UMA mudança, e é a correção.** A tinta atravessando uma
+proteção emplumada deixa de depender da taxa de polling (o craquelado); consequência nomeada: **Smear /
+Blur / Clone** arrastados sobre uma zona protegida agora leem a tinta **IRRESTRITA** (semântica de máscara
+de camada) em vez do display — o desenho antigo lia o display, mas o que ele lia dependia do polling, então
+não era referência estável. **O smoke decide** (§13.12, último parágrafo). No resto: A máscara acumula como acumulava (que é como
 o brush digital acumula), o pigmento é byte-idêntico, a row Accumulate aparece onde aparecia. O que entra é
 **higiene** (uma cópia do predicado, uma da aritmética), **gates** (5+2, mutação-provados), **medição** (11
 sondas), o **smoke** e a **documentação do que foi tentado**.
@@ -60,6 +71,8 @@ sondas), o **smoke** e a **documentação do que foi tentado**.
 | símbolo | forma | onde |
 |---|---|---|
 | `stroke_cover::cover_add` | `pub(crate) fn` | `ph2d-painter-brush` |
+| `GateSession` | `pub(crate) struct` | `ph2d-tool-painter::tool` |
+| `PainterTool::{stamp_dabs_gated, end_gate_session}` | `pub(super)` / `pub(crate)` | `tool/paint/mask.rs` |
 | `PainterTool::stroke_cover_wanted` | `pub(super) fn` | `tool/paint/stamp_route.rs` |
 | `mask_smoke_done` | `bool` em `AppState` | `shells/desktop/src/app_state.rs` |
 | `PH2D_MASK_SMOKE` | env var nova | `shells/desktop/src/mask_smoke.rs` |
@@ -88,7 +101,7 @@ commitado não mudou de representação.
 
 ## 6. Ordem, dependências e o que smoke-testar
 
-**Gate desta linha:** `nextest-impacted.sh` = **4066 testes, 4066 passaram** (~1090 da shell, então os
+**Gate desta linha:** `nextest-impacted.sh` = **4072 testes, 4072 passaram** (~1090 da shell, então os
 arch-gates de `shells/desktop/tests/` foram alcançados). ⚠️ O `ph2d-timeline::nesting_clock
 the_cost_of_depth_is_linear_not_explosive` falhou numa volta: é a **flake conhecida e PRÉ-EXISTENTE** que o
 CLAUDE.md §5 nomeia (gate de RAZÃO sensível a carga); passa isolado (conferido) e passou nas voltas
@@ -100,20 +113,26 @@ seguintes. Rodado em debug **e** release.
 env PH2D_MASK_SMOKE=1 cargo run --release -p ph2d-host-desktop
 ```
 
-O que ele deve mostrar: a máscara pintando **como o brush digital** — miolo sólido, sem contas, sem emendas
-claras. O que ele **vai** mostrar, porque segue aberto: a borda **endurece** se você esfregar muito (3,53 px
-de rampa numa passada, 1,38 em quinze). Essa é a queixa original; a §13.10.4 lista as três hipóteses que
-sobraram (o overlay · os defaults do pincel · aceitar), e nenhuma é a lei do acúmulo.
+O que ele deve mostrar, e o **passo 4 é a estrela desta rodada**: pintar atravessando a zona protegida
+muitas vezes, **LENTO e depois RÁPIDO** — a fronteira onde a tinta morre tem de ser uma rampa lisa e ficar
+**igual nas duas velocidades** (era aí que o craquelado vivia). A máscara em si tem de pintar **como o brush
+digital** (miolo sólido, sem contas, sem emendas claras). O que ele **vai** mostrar, porque segue aberto: a
+borda da MÁSCARA **endurece** se você esfregar muito (3,53 px de rampa numa passada, 1,38 em quinze) — essa é
+a queixa original do outro eixo; a §13.10.4 lista as três hipóteses que sobraram (o overlay · os defaults do
+pincel · aceitar), e nenhuma é a lei do acúmulo.
+
+⚠️ **O doc do smoke estava MENTINDO** até este commit: ele descrevia a lei do envelope **revertida** como o
+build de hoje (*"one pass is SOFTER than it used to be"*, os números 6,21/2,10 px, a união cross-stroke).
+Reescrito com o que o build de fato faz.
 
 **Não smokado / fora desta wave, NOMEADO:**
 
-- ⚠️ **A TINTA atravessando a proteção sai CRAQUELADA** — reportado pelo Enio depois de a cobertura ser
-  aprovada, **diagnosticado e medido nesta linha** (doc 25 §13.11): `restore_protected_region` puxa de volta
-  uma vez por BATCH, então a força da proteção depende da taxa de polling do mouse (num texel de `keep=0.5`
-  a tinta sobrevivente é **0,886 com 4 eventos por traço e 0,992 com 60**). A cura mínima foi implementada,
-  medida e **refutada** (ela inverte a dependência: 0,667 → 0,141) e está revertida. A lei certa exige
-  separar a tinta LIVRE do que se mostra — **é a próxima wave**, e o red-first dela já está no repo
-  (`probe_paint_through_the_protection`).
+- ⚠️ **O CUSTO do pen-down de um traço protegido** — 7,43 ms @2048² (contra 3,02 sem proteção) e
+  **24,53 @4096²** (contra 11,26): o plano livre é canvas-sized e é alocado uma vez por traço. O **move** é
+  plano na tela (1,20 / 1,13 ms) e está gateado por RAZÃO. A 4096² é um quadro perdido no início de um traço
+  protegido — **e já era um antes desta wave** (o snapshot de undo força o próprio fork do canvas). Receita
+  da wave de perf (semeadura lazy por TILE + reuso da alocação) escrita na §13.12.5; deliberadamente **não**
+  feita dentro de uma wave de correção.
 - os métodos de SHAPE (Line/Curve/Ellipse/Polygon/Free Hand) em modo máscara **não pintam nada** — o
   roteador de shape intercepta o Down antes do `paint_begin`, o `ensure_mask_scratch` nunca roda e o scratch
   fica com 0 bytes (medido, sonda 4). Pré-existente.

@@ -54,6 +54,7 @@ use gpu_deform_demo::{
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
     build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
+    build_gpu_field_radial_sweep_demo_document,
     build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use gpu_neighbour_demos::{
@@ -238,6 +239,13 @@ impl MotionState {
             // whole fan-out on the device (the field family's thesis).
             Ok("19") => {
                 build_gpu_field_combine_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
+            // The ANGULAR field: `field.radial_sweep` — a 30° wedge repeated 6× into a
+            // six-pointed blue star (a fan / radar). The shape a rectangle cannot make,
+            // the HR-5 pseudo-angle sector on the device, and the 2nd field the canvas
+            // gizmo drives (D9).
+            Ok("20") => {
+                build_gpu_field_radial_sweep_demo_document(&mut doc, &registry).unwrap_or_default()
             }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };

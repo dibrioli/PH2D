@@ -606,3 +606,31 @@ fn the_field_combine_demo_is_fully_gpu() {
         plan.boundaries
     );
 }
+
+/// `field.radial_sweep` reads `P` and writes the `falloff` mask on the GPU; the
+/// whole `grid -> motion.scale -> field.radial_sweep -> tint -> output` chain must
+/// be claimed whole, or the `=20` smoke reads the CPU pump's memo, not the device.
+/// The angular sector is HR-5 (no `atan2`), so nothing about it forces a boundary.
+#[test]
+fn the_field_radial_sweep_demo_is_fully_gpu() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_field_radial_sweep_demo_document(&mut doc, &registry)
+        .expect("well-typed field.radial_sweep demo");
+    let out = *sinks.first().expect("one sink");
+    assert!(
+        doc.graph
+            .nodes()
+            .iter()
+            .any(|n| n.type_id() == ph2d_nodegraph::node::NodeTypeId::of("field.radial_sweep")),
+        "the demo must contain the field.radial_sweep node it exists to smoke"
+    );
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "field.radial_sweep -> tint must be claimed whole — a CPU boundary here and \
+         the smoke reads the pump's memo, not the device: {:?}",
+        plan.boundaries
+    );
+}

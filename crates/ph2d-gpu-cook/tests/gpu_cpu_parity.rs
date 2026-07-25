@@ -46,6 +46,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_field_index_range::register(&mut reg).unwrap();
     ph2d_node_field_box::register(&mut reg).unwrap();
     ph2d_node_field_combine::register(&mut reg).unwrap();
+    ph2d_node_field_radial_sweep::register(&mut reg).unwrap();
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
@@ -150,7 +151,20 @@ fn assert_parity(cpu: &[RenderInstance], gpu: &[RenderInstance]) {
         }
         for k in 0..4 {
             assert_close("atlas_uv", i, c.atlas_uv[k], g.atlas_uv[k], 1e-6);
-            assert_close("tint", i, c.tint[k], g.tint[k], 1e-6);
+            // **`tint` gets `1e-5`, because the falloff mask it now carries runs
+            // richer arithmetic.** The Solid tint is `colour × falloff`, so a field's
+            // mask reaches this field; `1e-6` was calibrated when only `field.box`
+            // drove it (its rotation is one FMA site, and it stayed under `1e-6`).
+            // `field.radial_sweep` adds a `sqrt` (the radial distance), a division
+            // (the pseudo-angle), a `wrap_sym` fold and the smooth curve — each an
+            // FMA site where a GPU fuses `a*b + c` and the CPU rounds twice, so the
+            // deltas ACCUMULATE. Measured, from the identical arithmetic: worst
+            // **1,37e-6** on the `=20` star scene — an honest FMA delta (the
+            // compositor already declares runtime is not bit-identical across
+            // backends), 7× under this bound. What this must catch — a kernel writing
+            // the WRONG mask (a dropped ramp, a swapped axis) — diverges by about the
+            // mask amplitude (~0,1..1), five orders of magnitude above the bound.
+            assert_close("tint", i, c.tint[k], g.tint[k], 1e-5);
             assert_close("basis", i, c.basis[k], g.basis[k], 1e-4);
             assert_close("uv_xform", i, c.uv_xform[k], g.uv_xform[k], 0.0);
             for corner in 0..4 {
@@ -581,6 +595,49 @@ fn field_box_kernel_matches_the_cpu_within_epsilon() {
     connect(&mut g, bx, tint);
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + box + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_radial_sweep_kernel_matches_the_cpu_within_epsilon() {
+    // The ANGULAR field: a mask keyed by the point's ANGLE about a centre (reads
+    // `P`), the HR-5 pseudo-angle sector. Every param runs at an INTERMEDIATE,
+    // un-round value so a swapped/dropped one cannot hide, and the scene exercises
+    // ALL the divergence-prone paths at once: `repetitions = 3` drives the
+    // `wrap_sym` fold; a `radius` that CROSSES the grid drives the `sqrt` radial
+    // ramp at intermediate values (a huge radius would stay full with the whole
+    // clip deleted); a non-zero `rotation` + the `start`/`end` → pseudo-bounds run
+    // the shared parabolic-sine basis on both paths; and points all around the
+    // centre hit all four octant branches of `pseudo_angle`. `end − start = 66 <
+    // 360`, so the non-`full` angular branch (the hard one) is the one under test.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let sw = g.add_node("field.radial_sweep");
+    g.set_param(sw, "radius", 13.5);
+    g.set_param(sw, "start_angle", 12.0);
+    g.set_param(sw, "end_angle", 78.0);
+    g.set_param(sw, "repetitions", 3.0);
+    g.set_param(sw, "soft", 0.35);
+    g.set_param(sw, "center_x", 2.9);
+    g.set_param(sw, "center_y", -1.7);
+    g.set_param(sw, "rotation", 23.0);
+    g.set_param(sw, "curve", 2.0); // Smooth — the polynomial the ε budget covers
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, sw);
+    connect(&mut g, sw, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + radial_sweep + tint
 }
 
 #[test]

@@ -33,7 +33,8 @@ use super::gpu_deform_demo::{
 use super::gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
     build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
-    build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+    build_gpu_field_radial_sweep_demo_document, build_gpu_hybrid_demo_document,
+    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -103,6 +104,13 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // fan-out ever refused the device, the census would name the boundary.
     push("demo=19 field.combine cross", &|d| {
         build_gpu_field_combine_demo_document(d, reg)
+    });
+    // The ANGULAR field — reads P, writes `falloff`; the pseudo-angle sector +
+    // radial clip, fully-GPU like its rectangular sibling. Wired in so the census
+    // is not BLIND to it (a hole nobody puts in a document is an absence, not a
+    // clean frontier — the lesson the deformer scene below pins).
+    push("demo=20 field.radial_sweep star", &|d| {
+        build_gpu_field_radial_sweep_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

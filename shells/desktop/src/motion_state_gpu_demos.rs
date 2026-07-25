@@ -640,6 +640,67 @@ pub(super) fn build_gpu_field_box_demo_document(
     Some(vec![out])
 }
 
+/// The **angular** field smoke (`PH2D_GPU_COOK_DEMO=20`): `grid(512×512) →
+/// motion.scale → field.radial_sweep → tint(Solid) → output` — **262.144
+/// instances**, 100 % GPU-resident. The third spatial field and the second the
+/// canvas gizmo drives: where `field.box` masks by an axis-aligned rectangle, this
+/// masks by ANGLE about a centre. `repetitions = 6` tiles a 30° wedge six times ⇒
+/// a **six-pointed blue star** (a fan / radar) — the Cavalry Sweep signature, and
+/// the picture that a rectangle cannot make. It is the HR-5 pseudo-angle sector on
+/// the device (no `atan2`), `min`ned with the radial clip. Same frame-on-load
+/// sizing as `=17`/`=18`; auto-plays on tool entry.
+pub(super) fn build_gpu_field_radial_sweep_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    g.set_param(grid, "gap_x", 0.024);
+    g.set_param(grid, "gap_y", 0.024);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.018);
+    let field = g.add_node("field.radial_sweep");
+    // A 30° wedge repeated 6× (60° period) ⇒ six beams with six gaps: a star. Radius
+    // 7 covers most of the ~12-unit grid but leaves a disk edge visible; a soft edge
+    // feathers both the arc and the rim. This is the shape a box CANNOT express — the
+    // reason the angular field exists.
+    g.set_param(field, "radius", 7.0);
+    g.set_param(field, "start_angle", 0.0);
+    g.set_param(field, "end_angle", 30.0);
+    g.set_param(field, "repetitions", 6.0);
+    g.set_param(field, "soft", 0.2);
+    g.set_param(field, "curve", 2.0); // Smooth edges
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.16);
+    g.set_param(tint, "g", 0.62);
+    g.set_param(tint, "b", 0.94);
+    g.set_param(tint, "a", 1.0);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, scale, field, tint, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
+    }
+    for (a, b) in [(grid, scale), (scale, field), (field, tint), (tint, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
 /// The **composition** smoke (`PH2D_GPU_COOK_DEMO=19`) — the field family's whole
 /// thesis on the device: TWO fields fanned off one `motion.scale`, blended by
 /// `field.combine`. `field.index_range` draws a horizontal ORDINAL band, `field.box`

@@ -39,6 +39,10 @@ pub const FLIP_TIP_SQUARES: NodeId = hash_node_id("flip.tip.squares");
 pub const FLIP_DOT_SPACING: NodeId = hash_node_id("flip.tip.spacing");
 pub const FLIP_DOT_SPACING_NUM: NodeId = hash_node_id("flip.tip.spacing.num");
 
+/// Self Overlap (Draw mode, 03 §8): a toggle — when on, a stroke that crosses itself ACCUMULATES
+/// (darkens at the crossing, like a marker) instead of the flat union. The GP `GP_STROKE_OVERLAP`.
+pub const FLIP_SELF_OVERLAP: NodeId = hash_node_id("flip.self_overlap");
+
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 

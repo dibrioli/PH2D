@@ -315,6 +315,11 @@ pub struct FlipStyleSnapshot {
     /// (relativo à espessura ⇒ o padrão aparece em qualquer grossura). Só relevante quando
     /// `tip` é pontilhado. Ver [`DOT_SPACING_MAX`].
     pub dot_spacing: f64,
+    /// **Auto-sobreposição com ACÚMULO** ([`ph2d_flip::FlipStroke::self_overlap`], 03 §8): quando
+    /// ligado, o traço que cruza a si mesmo ESCURECE no cruzamento (marcador/nanquim expressivo)
+    /// em vez de ficar a união chapada. O traço desenhado herda isto (`flip_draw`). Só relevante
+    /// em [`FlipMode::Draw`]; visível com opacidade < 1.
+    pub self_overlap: bool,
     /// Opacidade do traço `0..=1`.
     pub opacity: f32,
     /// Intensidade do active smoothing `0..=1` (o "assentar" da cauda).
@@ -394,6 +399,7 @@ impl Default for FlipStyleSnapshot {
             hardness: 1.0,
             tip: ph2d_flip::StrokeTip::Continuous,
             dot_spacing: ph2d_flip::DEFAULT_DOT_SPACING as f64,
+            self_overlap: false,
             opacity: 1.0,
             smoothing: 0.5,
             mode: FlipMode::Select,

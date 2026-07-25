@@ -22,6 +22,43 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_effects::MAX_BLEND_MODES;
 
+/// The STYLE/mode/erase/fill buttons that are forwarded verbatim to the tool as a
+/// `PanelEvent::Click` (the tool sets the mode / flips a flag). Extracted from the
+/// `apply_event` match guard (that fn sits at the 200-LOC cap) — a pure predicate,
+/// so a seam test can drive each id without the whole router.
+fn is_style_forward_click(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::FLIP_MODE_SELECT
+        || id == ids::FLIP_MODE_DRAW
+        || id == ids::FLIP_MODE_ERASE
+        || id == ids::FLIP_MODE_FILL
+        || id == ids::FLIP_MODE_RESHAPE
+        || id == ids::FLIP_MODE_EDIT
+        || id == ids::FLIP_MODE_COLORIZE
+        || id == ids::FLIP_MODE_TRACE
+        || id == ids::FLIP_EDIT_DOM_STROKE
+        || id == ids::FLIP_EDIT_DOM_POINT
+        || id == ids::FLIP_EDIT_DOM_SEGMENT
+        || id == ids::FLIP_SHAPE_LINE
+        || id == ids::FLIP_SHAPE_FILLED
+        // Tip (Draw, 03 §8): linha cheia / contas / quadrados.
+        || id == ids::FLIP_TIP_LINE
+        || id == ids::FLIP_TIP_DOTS
+        || id == ids::FLIP_TIP_SQUARES
+        // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição — a tool inverte.
+        || id == ids::FLIP_SELF_OVERLAP
+        || id == ids::FLIP_ERASE_SOFT
+        || id == ids::FLIP_ERASE_HARD
+        || id == ids::FLIP_ERASE_STROKE
+        // Os toggles de LINK da borracha (§4.C) — a tool inverte o flag.
+        || id == ids::FLIP_LINK_SIZE
+        || id == ids::FLIP_LINK_STRENGTH
+        || id == ids::FLIP_FILL_PAINT
+        || id == ids::FLIP_FILL_BEHIND
+        || id == ids::FLIP_FILL_UNPAINT
+        // Os oito pincéis de escultura (W5) — a tabela é a ordem do painel.
+        || ids::FLIP_RESHAPE_KIND_IDS.contains(&id)
+}
+
 /// Decode a runtime per-row widget id → `(layer_u64, kind)` via the published
 /// layer list (brute-force over rows × kinds — a handful of layers).
 fn decode_layer_widget(id: ph2d_a11y::NodeId) -> Option<(u64, FlipLayerWidget)> {
@@ -122,37 +159,9 @@ pub(crate) fn apply_event(
         {
             true
         }
-        // ── Mode + Erase sub-mode buttons → the tool sets the mode. ──
-        WidgetEvent::Click(id)
-            if id == ids::FLIP_MODE_SELECT
-                || id == ids::FLIP_MODE_DRAW
-                || id == ids::FLIP_MODE_ERASE
-                || id == ids::FLIP_MODE_FILL
-                || id == ids::FLIP_MODE_RESHAPE
-                || id == ids::FLIP_MODE_EDIT
-                || id == ids::FLIP_MODE_COLORIZE
-                || id == ids::FLIP_MODE_TRACE
-                || id == ids::FLIP_EDIT_DOM_STROKE
-                || id == ids::FLIP_EDIT_DOM_POINT
-                || id == ids::FLIP_EDIT_DOM_SEGMENT
-                || id == ids::FLIP_SHAPE_LINE
-                || id == ids::FLIP_SHAPE_FILLED
-                // Tip (Draw, 03 §8): linha cheia / contas / quadrados.
-                || id == ids::FLIP_TIP_LINE
-                || id == ids::FLIP_TIP_DOTS
-                || id == ids::FLIP_TIP_SQUARES
-                || id == ids::FLIP_ERASE_SOFT
-                || id == ids::FLIP_ERASE_HARD
-                || id == ids::FLIP_ERASE_STROKE
-                // Os toggles de LINK da borracha (§4.C) — a tool inverte o flag.
-                || id == ids::FLIP_LINK_SIZE
-                || id == ids::FLIP_LINK_STRENGTH
-                || id == ids::FLIP_FILL_PAINT
-                || id == ids::FLIP_FILL_BEHIND
-                || id == ids::FLIP_FILL_UNPAINT
-                // Os oito pincéis de escultura (W5) — a tabela é a ordem do painel.
-                || ids::FLIP_RESHAPE_KIND_IDS.contains(&id) =>
-        {
+        // ── Style/mode/erase/fill buttons → forwarded to the tool as a Click.
+        //    (The forwarded-id set is the pure `is_style_forward_click` above.) ──
+        WidgetEvent::Click(id) if is_style_forward_click(id) => {
             seam_reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

@@ -439,7 +439,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ A `line/FLIP` escreveu 32 aqui e a `line/physics` reivindicou o MESMO 32 (o
         // servo do W-J6) — a 2ª colisão entre estas duas linhas, depois do 30 de 25/07.
         // O valor certo se CONTA a partir do main do dia, e não está em nenhum dos lados.
-        (35, 10, 13),
+        // FLIP 10→11 + PROJECT 35→36: o `FlipStroke` ganhou `self_overlap` (auto-sobreposição
+        // com acúmulo, 03 §8) — campo no MEIO do struct (após `dot_spacing`), layout posicional
+        // muda ⇒ v10 lê os campos seguintes deslocados.
+        (36, 11, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

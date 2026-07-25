@@ -162,6 +162,65 @@ fn draw_mode_button_switches_the_tool_mode() {
     );
 }
 
+/// 🔴 **O toggle Self Overlap é pintado NO DRAW (e só nele) e o clique chega à tool** (03 §8).
+/// As três metades da costura: PINTADO+clicável (área > 0), MODAL (some fora do Draw — a
+/// doutrina deste painel proíbe controle invisível-e-clicável), e o Click FORWARDS ao flag.
+/// Mutação que sangra: tirar `FLIP_SELF_OVERLAP` do arm de `event.rs` (o chip morre sob o mouse,
+/// a lição do slider de Spacing que ficou de fora do arm).
+#[test]
+fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+
+    // (a) PINTADO + clicável no Draw.
+    ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Draw,
+        ..Default::default()
+    }));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    let Some((_, r)) = painted.iter().find(|(w, _)| *w == ids::FLIP_SELF_OVERLAP) else {
+        panic!("o toggle Self Overlap NAO e pintado no Draw: nao existe na tela");
+    };
+    assert!(
+        r.w > 0.0 && r.h > 0.0,
+        "o toggle Self Overlap foi pintado com area ZERO: invisivel e inclicavel ({r:?})"
+    );
+
+    // (b) MODAL: some fora do Draw (o *self overlap* é atributo do traço desenhado).
+    ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Select,
+        ..Default::default()
+    }));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        !painted.iter().any(|(w, _)| *w == ids::FLIP_SELF_OVERLAP),
+        "o toggle Self Overlap nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
+    );
+
+    // (c) O Click FORWARDS ao flag da tool, pela costura real (event.rs → barramento).
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+    assert!(!tool.self_overlap(), "nasce OFF");
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::FLIP_SELF_OVERLAP),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "panel ignorou o toggle — o arm de FLIP_SELF_OVERLAP falta em `event.rs`"
+    );
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert!(
+        tool.self_overlap(),
+        "o clique nao chegou ao flag da tool — a costura esta morta"
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PAINTED ≠ POPULATED (a auditoria do "não existe botão fill")
 //

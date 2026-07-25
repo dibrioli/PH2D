@@ -424,12 +424,12 @@ fn paint_labeled_slider_row(
                 value: f64::from(fallback) * 100.0, // LITERAL-PX-OK: fraction→percent chip
                 buffer: String::new(),
                 caret: 0,
-                last_committed: f64::from(fallback) * 100.0,
+                last_committed: f64::from(fallback) * 100.0, // LITERAL-PX-OK: fraction→percent chip
                 selection_anchor: None,
             },
         );
         // O chip vive em `%` (0..100) e o slider em `0..1` — escala 100, offset 0.
-        store.link_slider_number_mapped_integer(slider_id, chip_id, 100.0, 0.0);
+        store.link_slider_number_mapped_integer(slider_id, chip_id, 100.0, 0.0); // LITERAL-PX-OK: fraction→percent scale
     }
     let val = ctx
         .host

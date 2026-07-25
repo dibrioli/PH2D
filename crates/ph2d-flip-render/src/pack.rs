@@ -31,6 +31,12 @@ pub const FLAG_CLOSED: u32 = 1 << 0;
 pub const FLAG_START_FLAT: u32 = 1 << 1;
 /// Ponta FINAL reta (`Cap::Flat`). Sem o bit = arredondada.
 pub const FLAG_END_FLAT: u32 = 1 << 2;
+/// **Auto-sobreposição com ACÚMULO** (`FlipStroke::self_overlap`, 03 §8). Com o bit, o shader
+/// dá a cada segmento uma profundidade PRÓPRIA (por-segmento, não por-traço), então as faces
+/// sobrepostas de partes diferentes do mesmo traço BLENDam (premult over) em vez de serem
+/// descartadas pelo depth GREATER estrito — a tinta escurece no cruzamento. Sem o bit é
+/// byte-idêntico ao traço de sempre. **Cabe no bitfield `flags` — nenhum campo novo no GpuStroke.**
+pub const FLAG_SELF_OVERLAP: u32 = 1 << 3;
 
 /// Um ponto na GPU: posição (mundo, 2D), largura e opacidade por-ponto, cor RGBA
 /// linear straight-alpha. `repr(C)` + `Pod` = 8×`f32` = 32 bytes, sem padding.
@@ -190,7 +196,7 @@ fn tip_code(tip: StrokeTip) -> u32 {
 }
 
 /// Empacota `flags` a partir dos atributos por-curva.
-fn stroke_flags(closed: bool, cap: (Cap, Cap)) -> u32 {
+fn stroke_flags(closed: bool, cap: (Cap, Cap), self_overlap: bool) -> u32 {
     let mut f = 0;
     if closed {
         f |= FLAG_CLOSED;
@@ -200,6 +206,9 @@ fn stroke_flags(closed: bool, cap: (Cap, Cap)) -> u32 {
     }
     if cap.1 == Cap::Flat {
         f |= FLAG_END_FLAT;
+    }
+    if self_overlap {
+        f |= FLAG_SELF_OVERLAP;
     }
     f
 }
@@ -263,7 +272,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             g.strokes.push(GpuStroke {
                 first_point,
                 point_count: 0,
-                flags: stroke_flags(s.closed, s.cap),
+                flags: stroke_flags(s.closed, s.cap, s.self_overlap),
                 hardness: s.hardness,
                 material: s.material.0,
                 tip: tip_code(s.tip),
@@ -294,7 +303,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             g.strokes.push(GpuStroke {
                 first_point,
                 point_count: pos.len() as u32,
-                flags: stroke_flags(s.closed, s.cap),
+                flags: stroke_flags(s.closed, s.cap, s.self_overlap),
                 hardness: s.hardness,
                 material: s.material.0,
                 tip: tip_code(s.tip),
@@ -452,6 +461,40 @@ mod tests {
         );
         assert_eq!(g.strokes[1].hardness, 0.3);
         assert_eq!(g.strokes[1].material, 4);
+    }
+
+    /// 🔴 **Self Overlap** (03 §8): `self_overlap` vira o bit `FLAG_SELF_OVERLAP` no `flags`,
+    /// e SÓ ele — sem a flag, o `flags` é byte-idêntico ao traço de sempre (o caminho OFF não
+    /// muda um bit). Mutação que sangra: `stroke_flags` ignorar `self_overlap`.
+    #[test]
+    fn self_overlap_sets_the_flag_bit_and_nothing_else() {
+        let mut d = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(0.0, 0.0));
+        s.push_default(Vec2::new(1.0, 0.0));
+        // OFF (o default): o bit fica 0 — byte-idêntico ao traço de sempre.
+        d.strokes.push(s.clone());
+        // ON: o mesmo traço com a flag.
+        s.self_overlap = true;
+        d.strokes.push(s);
+
+        let g = pack_drawing(&d);
+        assert_eq!(
+            g.strokes[0].flags & FLAG_SELF_OVERLAP,
+            0,
+            "OFF (default) nao liga o bit"
+        );
+        assert_eq!(
+            g.strokes[1].flags & FLAG_SELF_OVERLAP,
+            FLAG_SELF_OVERLAP,
+            "ON liga o bit FLAG_SELF_OVERLAP"
+        );
+        // E ele é o ÚNICO bit de diferença entre os dois (mesma geometria, aberto, caps round).
+        assert_eq!(
+            g.strokes[0].flags ^ g.strokes[1].flags,
+            FLAG_SELF_OVERLAP,
+            "a unica diferenca de flags e o bit de self-overlap"
+        );
     }
 
     #[test]

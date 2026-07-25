@@ -25,7 +25,9 @@
 //    auto-cruzamento) é DESCARTADA, não misturada → zero acúmulo. É o default do
 //    GP ("the stroke cannot overlap itself", `gpencil_vert.glsl`); o modo
 //    per-ponto (`GP_STROKE_OVERLAP`) que deixa o traço acumular sobre si é opção
-//    de material, não o default.
+//    de material, não o default. Aqui ele é o bit `FLAG_SELF_OVERLAP` por-traço
+//    (`FlipStroke::self_overlap`, 03 §8): a depth vira por-SEGMENTO e as faces
+//    sobrepostas passam a BLENDAR — a tinta escurece no cruzamento (opt-in).
 // 3. **Discard de fragmento ~transparente** (`gpencil_frag.glsl`: `a < 0.001`):
 //    sem ele, o canto transparente de um quad escreve depth e FURA a geometria
 //    que chega depois (era o "escamado"/corrente-de-ovais do stadium+GREATER).
@@ -107,6 +109,10 @@ const TIP_SQUARES: u32 = 2u;
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
 const FLAG_END_FLAT: u32 = 4u;
+// Auto-sobreposição com ACÚMULO (`FlipStroke::self_overlap`, 03 §8) — TÊM de bater com
+// `pack.rs::FLAG_SELF_OVERLAP`. Com o bit, a profundidade vira por-SEGMENTO (abaixo, no
+// vertex) e as faces sobrepostas do mesmo traço BLENDam em vez de serem descartadas.
+const FLAG_SELF_OVERLAP: u32 = 8u;
 // `miter_break` do GP (`gpencil_vertex` ~l.696): a quina deixa de mitrar quando
 // `cos_angle > 0.5` (virada > 120°). cos_angle = -dot(dir_in, dir_out): -1 numa
 // reta, +1 num hairpin. Abaixo do limite o esticão do miter é ≤ 1/cos(60°) = 2 —
@@ -325,8 +331,20 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     // (sobreposição do próprio traço) a 2ª face é descartada — o traço pinta uma
     // vez, nunca acumula ("the stroke cannot overlap itself", gpencil_vert.glsl).
     // Fill do traço em (2·sid+1), abaixo.
+    //
+    // **Self Overlap** (FLAG_SELF_OVERLAP, 03 §8): a profundidade vira por-SEGMENTO —
+    // cada segmento ganha um degrau próprio DENTRO do slot do traço `[(2sid+2), (2sid+3))`
+    // (acima do próprio fill em `2sid+1`, abaixo do próximo fill em `2sid+3`). As faces
+    // sobrepostas de partes DIFERENTES do mesmo traço passam então o GREATER estrito e
+    // BLENDam (premult over) em vez de serem descartadas → a tinta ESCURECE no cruzamento
+    // (o `GP_STROKE_OVERLAP`, opção de material do GP). O degrau `li/count·1.9e-7 < 2e-7`
+    // fica no slot; `Depth32Float` resolve o passo. Sem a flag: byte-idêntico (o ramo nem roda).
     out.clip = to_clip(corner);
-    out.clip.z = f32(2u * sid + 2u) * 2e-7;
+    var z = f32(2u * sid + 2u) * 2e-7;
+    if ((st.flags & FLAG_SELF_OVERLAP) != 0u) {
+        z = z + f32(li) / f32(count) * 1.9e-7;
+    }
+    out.clip.z = z;
     out.ss_p1 = sa;
     out.ss_p2 = sb;
     out.hardness = st.hardness;

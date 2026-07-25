@@ -243,6 +243,9 @@ fn build_stroke(
     // modelo — o fragment o escala pela largura de referência do traço.
     s.tip = style.tip;
     s.dot_spacing = style.dot_spacing as f32;
+    // **Self Overlap** (03 §8): o traço herda do pincel se cruzar a si mesmo ACUMULA (escurece)
+    // ou fica a união chapada. Default OFF ⇒ o traço de sempre.
+    s.self_overlap = style.self_overlap;
     // **O traço PREENCHIDO** (o material stroke+fill do GP — como o Suzanne é feito):
     // o fill é a triangulação dos pontos DESTE traço, então linha e cor são UMA
     // geometria. Esculpir a linha move a cor exatamente junto, no mesmo frame — nada a

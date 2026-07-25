@@ -346,6 +346,78 @@ fn a_stroke_crossing_itself_is_a_clean_union_without_accumulation() {
     );
 }
 
+/// 🔴 **Self Overlap ON: o cruzamento ACUMULA** (03 §8). O MESMO X do teste acima (1 traço,
+/// opacity 0.5), agora com `self_overlap = true`: a profundidade vira por-SEGMENTO, então no
+/// cruzamento a 2ª passagem BLENDA sobre a 1ª em vez de ser descartada — `α = 0.5 + 0.5·(1−0.5)
+/// = 0.75 → ~191`, enquanto um braço (1 passagem) fica em `0.5 → ~128`. É o `GP_STROKE_OVERLAP`
+/// do Grease Pencil (marcador/nanquim expressivo).
+///
+/// **Red-first:** com o código de hoje sem a flag (ou com a depth de volta a por-TRAÇO) o
+/// cruzamento pinta UMA vez (`cross == arm`), e a asserção `cross > arm` fica VERMELHA. A
+/// mutação que sangra é a depth por-segmento → por-traço (`z = base`, ignorando `li/count`).
+///
+/// ⚠️ **A quina afiada TAMBÉM acumula, por design** (as fitas estendidas do `miter_break` se
+/// sobrepõem) — é o *bleed* de marcador, o preço do modelo; a asserção `corner > arm` o PINA
+/// (para ninguém "consertá-lo" de volta em silêncio; o smoke o mostra e o Enio decide se quer
+/// quina limpa depois). Curva SUAVE não acumula (as fitas mitram/abutam).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_stroke_with_self_overlap_accumulates_at_the_crossing() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let red = Rgba::new(1.0, 0.0, 0.0, 1.0);
+    let blue = Rgba::new(0.0, 0.0, 1.0, 1.0);
+    // O MESMO X do teste OFF: cruzamento em (32,32), quinas afiadas em (48,48)/(48,16).
+    for (p, c) in [
+        (Vec2::new(16.0, 16.0), red),
+        (Vec2::new(48.0, 48.0), red),
+        (Vec2::new(48.0, 16.0), blue),
+        (Vec2::new(16.0, 48.0), blue),
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 8.0,
+            opacity: 0.5,
+            color: c,
+        });
+    }
+    s.hardness = 1.0;
+    s.self_overlap = true; // <-- a única diferença para o teste OFF acima
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    let arm = i32::from(alpha_at(&px, 20, 20));
+    let cross = i32::from(alpha_at(&px, 32, 32));
+    // Um braço é UMA passagem: 0.5 → ~128 (byte-idêntico ao caso OFF; a flag não muda o braço).
+    assert!((arm - 128).abs() <= 6, "braço a opacity 0.5: {arm}");
+    // O cruzamento é DUAS passagens compostas (over): 0.5 + 0.5·0.5 = 0.75 → ~191, mais ESCURO
+    // que o braço. (No OFF era `cross == arm`; a flag é exatamente esta diferença.)
+    assert!(
+        (cross - 191).abs() <= 8,
+        "cruzamento acumula 2 camadas (0.75): cross={cross} (braço={arm})"
+    );
+    assert!(
+        cross > arm + 40,
+        "Self Overlap: o cruzamento tem de ficar mais ESCURO que o braço: cross={cross} arm={arm}"
+    );
+    // A passagem MAIS NOVA (azul, seg. de índice maior) fica por cima no blend — o oposto do
+    // first-wins do OFF (onde a vermelha, mais antiga, vencia).
+    let rgb = rgb_at(&px, 32, 32);
+    assert!(
+        rgb[2] > rgb[0],
+        "Self Overlap: a passagem mais nova (azul) compõe por cima: {rgb:?}"
+    );
+    // ⚠️ A quina afiada (miter_break em (48,48)) também acumula, por design (marcador bleed).
+    let corner = i32::from(alpha_at(&px, 48, 48));
+    assert!(
+        corner > arm + 30,
+        "a quina afiada tambem acumula (bleed de marcador, por design): corner={corner} arm={arm}"
+    );
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
 fn a_sharp_corner_is_a_round_join_without_an_outward_spike() {

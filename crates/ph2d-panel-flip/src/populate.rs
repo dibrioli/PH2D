@@ -29,6 +29,21 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
+/// The Draw-mode style buttons (Shape · Tip · Self Overlap). Extracted from `populate`
+/// (which sits at the 200-LOC cap) — they register the same way; the grouping keeps
+/// `populate` under the cap without a comment shave.
+fn draw_style_buttons(store: &mut WidgetStore) {
+    // Shape (Draw): o traço carrega o próprio preenchimento?
+    button(store, ids::FLIP_SHAPE_LINE);
+    button(store, ids::FLIP_SHAPE_FILLED);
+    // Tip (Draw, 03 §8): a ponta ao longo do traço — linha cheia / contas / quadrados.
+    button(store, ids::FLIP_TIP_LINE);
+    button(store, ids::FLIP_TIP_DOTS);
+    button(store, ids::FLIP_TIP_SQUARES);
+    // Self Overlap (Draw, 03 §8): the accumulate toggle-chip.
+    button(store, ids::FLIP_SELF_OVERLAP);
+}
+
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
 ///
 /// **O range da caixa é registrado aqui, e isso não é opcional.** Sem
@@ -97,13 +112,8 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_EDIT_DOM_STROKE);
     button(store, ids::FLIP_EDIT_DOM_POINT);
     button(store, ids::FLIP_EDIT_DOM_SEGMENT);
-    // Shape (Draw): o traço carrega o próprio preenchimento?
-    button(store, ids::FLIP_SHAPE_LINE);
-    button(store, ids::FLIP_SHAPE_FILLED);
-    // Tip (Draw, 03 §8): a ponta ao longo do traço — linha cheia / contas / quadrados.
-    button(store, ids::FLIP_TIP_LINE);
-    button(store, ids::FLIP_TIP_DOTS);
-    button(store, ids::FLIP_TIP_SQUARES);
+    // Shape · Tip · Self Overlap (Draw) — o grupo de estilo, no módulo-helper.
+    draw_style_buttons(store);
 
     // Brush sliders — seeded at the tool defaults.
     slider_chip(

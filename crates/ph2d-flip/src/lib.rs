@@ -104,7 +104,10 @@ pub use ph2d_painter_effects::BlendMode;
 /// todo `FlipStroke` salvo em v8 lê os campos seguintes deslocados ⇒ bump obrigatório.
 /// v10 (2.5D multiplane, ADR-0114 §Decisão 3): a `FlipLayer` ganhou `depth` (a fração de
 /// paralaxe da câmera). Campo apendado ⇒ um doc v9 lê `depth` sobre o fim do buffer ⇒ bump.
-pub const FLIP_SCHEMA_VERSION: u32 = 10;
+/// v11 (Self Overlap, 03 §8): o traço ganhou `self_overlap` (auto-sobreposição com acúmulo).
+/// Postcard é POSICIONAL, e o campo entrou no MEIO do `FlipStroke` (após `dot_spacing`) ⇒ todo
+/// `FlipStroke` salvo em v10 lê os campos seguintes deslocados ⇒ bump obrigatório.
+pub const FLIP_SCHEMA_VERSION: u32 = 11;
 
 #[cfg(test)]
 mod tests {

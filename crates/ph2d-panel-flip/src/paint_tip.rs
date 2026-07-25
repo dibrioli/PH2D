@@ -47,6 +47,14 @@ impl BodyCtx<'_> {
                 y,
             );
         }
+        // **Self Overlap** (03 §8) — o toggle de auto-sobreposição com acúmulo. Um chip
+        // largura-cheia (segmented de 1 opção, sem caption): destaca quando ligado, e o
+        // clique ALTERNA (o `PanelEvent::Click` cai no arm de toggle da tool). Só no Draw.
+        y = self.segmented(
+            "",
+            [(ids::FLIP_SELF_OVERLAP, "Self Overlap", snap.self_overlap)],
+            y,
+        );
         y
     }
 }

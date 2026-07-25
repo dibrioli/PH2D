@@ -143,7 +143,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `line/physics` reivindicou o MESMO 32 na mesma janela (o servo do W-J6) — a SEGUNDA vez
 /// que estas duas linhas colidem no mesmo número, depois do 30 de 25/07. O valor certo se
 /// CONTA a partir do `main` do dia (34 + 1), e não estava em nenhum dos dois lados.
-const PROJECT_SCHEMA: u32 = 35;
+/// v36 (Flip, Self Overlap, 03 §8): o `FlipStroke` ganhou `self_overlap` (auto-sobreposição com
+/// acúmulo) no MEIO do struct (após `dot_spacing`) ⇒ layout posicional muda, um save v35 leria os
+/// campos seguintes deslocados. `FLIP_SCHEMA_VERSION` 10→11.
+const PROJECT_SCHEMA: u32 = 36;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

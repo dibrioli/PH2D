@@ -187,7 +187,25 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 [235, 175, 60],
             ));
         }
+        // ⚠️ ORDEM DO PRODUTO, de propósito (Enio 2026-07-24): o artista SELECIONA a forma (frame 4)
+        // e SÓ ENTÃO clica Envelope (frame 5). Nos DOIS frames separados — não num só — é que o bug
+        // aparecia: enveloparr re-parenteia sem tocar o pen, então o `sync_selection` não rerodava a
+        // promoção filho→container e a gaiola nunca acendia. A versão antiga do smoke criava e SÓ
+        // ENTÃO selecionava (tudo num frame), o que MASCARAVA o bug (o pen mudava e a promoção
+        // rerodava por acidente). Gate: `enveloping_a_selected_shape_promotes_the_gizmo_to_the_container`.
         (4, 27) => {
+            // O artista seleciona a estrela e entra no Node — o gizmo pousa NA FORMA (ainda sem
+            // envelope). O `sync_selection` deste frame promove o pen ao gizmo.
+            if let Some(id) = self_
+                .gfx
+                .as_ref()
+                .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
+            {
+                self_.vec_pen.select_many(&[id]);
+            }
+            self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+        }
+        (5, 27) => {
             let container = {
                 let Some(gfx) = self_.gfx.as_mut() else {
                     return;
@@ -203,6 +221,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 )
             };
             let Some(container) = container else { return };
+            // O MESMO que o render_loop faz ao clicar Envelope: invalida a memória do sync para a
+            // promoção filho→container rerodar (o pen não mudou — enveloparr só re-parenteou).
+            self_.vec_sel.invalidate();
             // Puxa o topo a 40% da base — o MESMO trapézio de perspectiva do `=11`, para a estrela
             // nascer deformada e o olho julgar sem arrastar. BL/BR ficam; TR/TL vêm ao centro-topo.
             if let Some(gfx) = self_.gfx.as_mut() {
@@ -223,21 +244,13 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                     );
                 }
             }
-            if let Some(id) = self_
-                .gfx
-                .as_ref()
-                .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
-            {
-                self_.vec_pen.select_many(&[id]);
-            }
-            self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
             eprintln!(
-                "[envelope-smoke 27] ESTRELA (fonte concava) deformada por gaiola de perspectiva \
-                 (modo NODE) -- o caso que voce reportou. VERIFIQUE: (a) a estrela segue a gaiola \
-                 LISO, sem rasgar; (b) as alcas sao os 4 CANTOS da gaiola, LIMPOS -- NENHUMA alca \
-                 solta espalhada nem linha reta a deriva. Arraste um canto: re-deforma ao vivo, \
-                 convexo obrigatorio. Se aparecer alca bugada AQUI, e' bug real desta linha; se \
-                 estiver limpo, o que voce viu antes veio de um build velho da pasta primaria."
+                "[envelope-smoke 27] ESTRELA (fonte concava) envelopada na ORDEM DO PRODUTO \
+                 (selecionou no frame 4, clicou Envelope no frame 5). A GAIOLA TEM DE APARECER na \
+                 hora: 4 cantos com circulos + moldura trapezoidal (perspectiva), e a estrela \
+                 deformada LISA. NAO deve haver alcas de no soltas sobre a estrela. Este era o bug: \
+                 selecionar-e-depois-envelopar deixava o gizmo no FILHO e a gaiola nao acendia. \
+                 Arraste um canto: re-deforma ao vivo, convexo obrigatorio."
             );
         }
         _ => {}

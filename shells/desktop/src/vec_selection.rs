@@ -31,6 +31,17 @@ pub(crate) struct VecSelSync {
     paths: Vec<VecPathId>,
 }
 
+impl VecSelSync {
+    /// Força o próximo [`sync_selection`] a RE-RODAR a promoção filho→container. O sync só a reroda
+    /// quando o pen MUDA (branch 1) ou o conjunto vetorial do gizmo muda (branch 2) — e criar um
+    /// **Envelope** re-parenteia o filho SEM mexer em nenhum dos dois. Sem esta invalidação, o gizmo
+    /// fica no filho e a gaiola do envelope recém-criado nunca acende (alças de nó em vez da gaiola).
+    /// Chamado pelo `create` do render_loop, logo antes do `sync` do mesmo frame.
+    pub(crate) fn invalidate(&mut self) {
+        self.paths.clear();
+    }
+}
+
 /// A entidade é "nossa": ela ou algum descendente é um path vetorial. É o que
 /// separa, dentro da seleção **compartilhada** do gizmo, o que a linha do vetor
 /// pode reescrever do que é de outro tipo (um sprite) e deve ficar intocado.
@@ -350,6 +361,46 @@ mod tests {
             gizmo.selection,
             Some(container),
             "e o container é o primário"
+        );
+    }
+
+    /// **A gaiola acende ao ENVELOPAR uma seleção já feita** (Enio 2026-07-24: "a gaiola não aparece,
+    /// mas o efeito se aplica"). A ordem do PRODUTO é *selecionar a forma, DEPOIS* clicar Envelope —
+    /// o oposto do smoke (que cria e só então seleciona). Enveloparr RE-PARENTEIA o filho sem mexer
+    /// no pen, então `sync_selection` não reroda a promoção filho→container (nem o pen mudou, nem o
+    /// conjunto vetorial do gizmo) e o gizmo FICA no filho: alças de nó em vez da gaiola. O fix é o
+    /// `invalidate()` que o `create` do render_loop dispara. Mutação: sem ele, o gizmo fica no filho.
+    #[test]
+    fn enveloping_a_selected_shape_promotes_the_gizmo_to_the_container() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        let a_bits = map[&a];
+
+        let mut gizmo = GizmoStateGroup::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        let mut state = VecSelSync::default();
+
+        // 1. O artista SELECIONA a forma (o gizmo pousa nela — ainda não há envelope).
+        pen.select_many(&[a]);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        assert_eq!(gizmo.selection, Some(a_bits), "o gizmo pousou na forma");
+
+        // 2. O artista clica **Envelope**: re-parenteia SEM tocar o pen.
+        let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+        // 3. O fix: o create invalida a memória do sync (o render_loop faz o mesmo).
+        state.invalidate();
+
+        // 4. O sync do frame promove filho→container; a gaiola pode acender.
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        assert_eq!(
+            gizmo.selection,
+            Some(container),
+            "o gizmo subiu para o container — a gaiola tem quem desenhar"
+        );
+        assert!(
+            crate::envelope_gesture::view(&sim, gizmo.selection, None).is_some(),
+            "e a `view` devolve a gaiola"
         );
     }
 

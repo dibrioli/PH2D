@@ -3071,11 +3071,21 @@ impl crate::App {
             if pending_create_envelope {
                 let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 match crate::envelope_live::create(sim, vec_scene, &self.vec_entities, &ids) {
-                    Some(_) => eprintln!(
-                        "[ph2d-vec] envelope: {} forma(s) envolvida(s) -- va' para o modo Node e \
-                         arraste os CANTOS da gaiola",
-                        ids.len()
-                    ),
+                    Some(_) => {
+                        // O artista SELECIONOU a forma e SÓ ENTÃO clicou Envelope: enveloparr
+                        // re-parenteia o filho sem tocar o pen, então o `sync_selection` deste
+                        // frame não reroda a promoção filho→container (nem o pen mudou, nem o
+                        // conjunto vetorial do gizmo) — e o gizmo ficaria no FILHO, sem gaiola para
+                        // desenhar (alças de nó em vez da gaiola). Invalidar a memória do sync força
+                        // a promoção no `sync_selection` logo abaixo. Gate:
+                        // `enveloping_a_selected_shape_promotes_the_gizmo_to_the_container`.
+                        self.vec_sel.invalidate();
+                        eprintln!(
+                            "[ph2d-vec] envelope: {} forma(s) envolvida(s) -- va' para o modo Node \
+                             e arraste os CANTOS da gaiola",
+                            ids.len()
+                        );
+                    }
                     None => eprintln!("[ph2d-vec] envelope: selecione ao menos UMA forma"),
                 }
             }

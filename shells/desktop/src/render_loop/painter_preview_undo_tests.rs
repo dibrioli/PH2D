@@ -180,13 +180,13 @@ fn the_planes_are_current_when_the_gpu_lane_takes_the_frame_back() {
     let (mut session, mut preview, mut toasts) =
         (None, None, ph2d_editor::toast::ToastQueue::default());
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
-    let mut stroke = |t: &mut PainterTool,
-                      renderer: &mut ph2d_render::SpriteRenderer,
-                      session: &mut _,
-                      preview: &mut Option<PainterPreview>,
-                      preview_gpu: &mut Option<PainterPreviewGpu>,
-                      toasts: &mut _,
-                      y: f32|
+    let stroke = |t: &mut PainterTool,
+                  renderer: &mut ph2d_render::SpriteRenderer,
+                  session: &mut _,
+                  preview: &mut Option<PainterPreview>,
+                  preview_gpu: &mut Option<PainterPreviewGpu>,
+                  toasts: &mut _,
+                  y: f32|
      -> bool {
         let mut owns = false;
         t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));

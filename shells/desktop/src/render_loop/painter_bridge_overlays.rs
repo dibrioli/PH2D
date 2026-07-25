@@ -39,7 +39,7 @@ pub(super) fn draw_overlays(
     timing: bool,
 ) {
     let mut t = std::time::Instant::now();
-    let mut mark = |slot: &mut f32, t: &mut std::time::Instant| {
+    let mark = |slot: &mut f32, t: &mut std::time::Instant| {
         if timing {
             *slot = t.elapsed().as_secs_f64() as f32 * 1e3;
             *t = std::time::Instant::now();

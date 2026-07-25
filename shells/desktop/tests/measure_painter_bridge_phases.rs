@@ -35,7 +35,7 @@ fn where_the_panel_and_chrome_phases_spend_a_frame() {
         let mut t = tool(size);
         // Warm: the first frame builds whatever is lazy.
         let _ = t.brush_settings();
-        let _ = t.refresh_shape_source_if_changed();
+        t.refresh_shape_source_if_changed();
         let _ = t.refresh_shape_color_preview();
         println!("\n=== canvas {size}x{size} (ms, median of 200) ===");
 

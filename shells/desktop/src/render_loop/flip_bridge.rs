@@ -36,6 +36,7 @@ fn layers_snapshot(flip: &FlipDoc, active: Option<LayerId>) -> ph2d_panel_flip::
             name: l.name.clone(),
             blend: l.blend.to_u8(),
             opacity: l.opacity,
+            depth: l.depth,
             visible: l.visible,
             locked: l.locked,
         })

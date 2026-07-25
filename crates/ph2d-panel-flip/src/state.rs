@@ -24,6 +24,10 @@ pub struct FlipLayerRow {
     pub blend: u8,
     /// Opacity `0..1`.
     pub opacity: f32,
+    /// Multiplane parallax depth `0..1` (2.5D, ADR-0114 §Decisão 3): the fraction
+    /// of the camera pan this layer follows. `1` = flat/front (moves with the
+    /// scene, the default); `0` = far/static background (pinned in world).
+    pub depth: f32,
     /// The eye.
     pub visible: bool,
     /// The padlock.

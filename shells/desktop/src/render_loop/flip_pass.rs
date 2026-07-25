@@ -107,6 +107,10 @@ struct LayerRef<'a> {
     /// (era o bug do 1º corte — o fundo opaco comia o fantasma da camada de cima) e
     /// a arte do quadro atual, essa sim, cai por cima dele.
     ghost: Option<([f32; 3], f32)>,
+    /// **Profundidade multiplano** (2.5D, ADR-0114 §Decisão 3) — a fração com que
+    /// esta camada acompanha a câmera (`1.0` = flat, o comum). `< 1.0` desloca a
+    /// translação do `model` por `parallax_model` para dar paralaxe ao panhar.
+    depth: f32,
 }
 
 /// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
@@ -156,6 +160,7 @@ pub(crate) fn render(
             flip_composite,
             game_rt,
             &cam,
+            camera.center,
             (w, h),
             gpu,
         );
@@ -178,6 +183,9 @@ fn composite_layers(
     flip_composite: &mut Option<FlipComposite>,
     game_rt: &GameRt,
     cam: &CameraRaw,
+    // O centro (pan) da câmera-viewport em MUNDO — a paralaxe multiplano lerpa a
+    // translação de cada camada entre ele e a origem do objeto por `depth`.
+    cam_center: [f32; 2],
     (w, h): (u32, u32),
     gpu: &GpuContext,
 ) {
@@ -231,13 +239,18 @@ fn composite_layers(
                 tess.get(&l.cache_key).expect("garantido no passe 1")
             };
             // A geometria é LOCAL; o `model` do objeto entra pelo `world_to_clip`
-            // (e a espessura pela escala). Identidade = a câmera base, sem custo.
+            // (e a espessura pela escala). A **paralaxe multiplano** (2.5D, ADR-0114
+            // §Decisão 3) desloca a translação do `model` por `depth` ANTES do fold —
+            // a MESMA porta que a arte assada e o preview desta camada usam, senão o
+            // esboço vivo descolaria. `depth == 1.0` devolve o model intacto ⇒ o caminho
+            // comum (todas as camadas flat) fica byte-idêntico.
             // Numa fatia de FANTASMA, a mesma câmera carrega o tint (a cobertura é a
             // mesma do desenho; só a cor e o alpha mudam).
-            let mut layer_cam = if l.model.is_identity() {
+            let model = parallax_model(&l.model, cam_center, l.depth);
+            let mut layer_cam = if model.is_identity() {
                 *cam
             } else {
-                fold_model(cam, &l.model)
+                fold_model(cam, &model)
             };
             if let Some((rgb, a)) = l.ghost {
                 layer_cam = layer_cam.with_ghost_tint(rgb, a);
@@ -432,6 +445,9 @@ fn collect_layers<'a>(
                             g.shift,
                         ),
                         ghost: Some((g.tint, g.alpha)),
+                        // O fantasma paralaxa NO plano da própria camada (um ghost de
+                        // fundo mora no fundo), senão ele descolaria da arte que sombreia.
+                        depth: layer.depth,
                     });
                 }
             }
@@ -457,6 +473,7 @@ fn collect_layers<'a>(
                 // única forma de o preview não folgar do traço assado.
                 model: art_to_world(&model, layer.pose_at_cycled(sample)),
                 ghost: None,
+                depth: layer.depth,
             });
         }
     }
@@ -476,6 +493,33 @@ fn ghost_key(object_id: u64, layer_id: u32, delta: i32) -> u64 {
 /// reuso; a mistura é transcendental-free (HR-5).
 fn layer_key(object_id: u64, layer_id: u32) -> u64 {
     object_id.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (layer_id as u64)
+}
+
+/// **A porta ÚNICA da paralaxe multiplano** (2.5D, ADR-0114 §Decisão 3): desloca a
+/// TRANSLAÇÃO do `model` do objeto por `(cam_center − origem)·(1 − depth)`, uma translação
+/// de MUNDO. A camada passa a renderizar como se a câmera estivesse a
+/// `lerp(cam_center, origem, depth)` — `depth = 1` (flat, o comum) devolve o model
+/// **intacto** (`is_identity` segue verdadeiro ⇒ caminho byte-idêntico); `depth = 0` fixa a
+/// origem do objeto no centro da tela (fundo estático). Só a translação muda; a parte linear
+/// (rotação/escala) do gizmo fica. **Uma porta** — a arte assada, o fantasma e o traço de
+/// preview desta camada TODOS passam por aqui, senão o esboço vivo folgaria da arte.
+///
+/// A âncora é a origem do objeto `(e, f)`: enquadrado de frente (a câmera sobre ela), todos
+/// os planos coincidem; panhar os separa por `depth` (o deslocamento de tela = `depth × pan`).
+pub(super) fn parallax_model(model: &Xform, cam_center: [f32; 2], depth: f32) -> Xform {
+    if depth == 1.0 {
+        return *model; // flat: intacto (byte-idêntico ao pré-multiplano)
+    }
+    let [a, b, c, d, e, f] = model.0;
+    let k = 1.0 - depth as f64;
+    Xform([
+        a,
+        b,
+        c,
+        d,
+        e + (cam_center[0] as f64 - e) * k,
+        f + (cam_center[1] as f64 - f) * k,
+    ])
 }
 
 /// A câmera do passe com o `model` LOCAL→mundo do objeto dobrado: `world_to_clip ·
@@ -536,3 +580,7 @@ fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
 #[cfg(test)]
 #[path = "flip_pass_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "flip_multiplane_tests.rs"]
+mod multiplane_tests;

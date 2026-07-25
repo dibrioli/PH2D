@@ -19,6 +19,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Bound;
 
+/// Profundidade multiplano default: `1.0` = no plano da câmera (segue 100%, o
+/// comportamento flat de sempre). Ver [`FlipLayer::depth`].
+pub const DEFAULT_LAYER_DEPTH: f32 = 1.0;
+
 /// Uma máscara de camada: a camada `source` mascara esta. Espelha o
 /// `LayerMask` do GP (referência por camada), com o flag de inversão.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +60,17 @@ pub struct FlipLayer {
     /// Esta camada participa dos Ghost Frames (W3.T3.3). Ligada por padrão — o
     /// artista desliga nas camadas de fundo/referência, que só poluiriam.
     pub use_onion: bool,
+    /// **Profundidade multiplano** (2.5D, ADR-0114 §Decisão 3) — a FRAÇÃO com que
+    /// esta camada acompanha a câmera. `1.0` (default) = no plano da câmera, segue
+    /// 100% (o comportamento flat de sempre); `0.0` = infinitamente longe, travada
+    /// na cena (estática enquanto a câmera panha). O deslocamento de tela por
+    /// unidade de pan é exatamente `depth`, então camadas de FUNDO recebem valores
+    /// baixos e rastejam, dando a paralaxe da câmera multiplano da Disney.
+    ///
+    /// Ancorada na ORIGEM do objeto Flip: enquadrado de frente, todos os planos
+    /// coincidem; o render lerpa o centro da câmera da fatia entre a origem do
+    /// objeto e o centro real por `depth` (ver o `parallax_camera` do shell).
+    pub depth: f32,
 }
 
 impl FlipLayer {
@@ -73,6 +88,7 @@ impl FlipLayer {
             masks: Vec::new(),
             cycle: LayerCycle::default(),
             use_onion: true,
+            depth: DEFAULT_LAYER_DEPTH,
         }
     }
 
@@ -352,6 +368,22 @@ mod tests {
             l.add_frame(k, d(i as u32), KeyKind::Keyframe, Hold::Implicit);
         }
         l
+    }
+
+    /// 🔴 **A profundidade multiplano nasce em `1.0` (flat) e sobrevive ao round-trip**
+    /// (2.5D, ADR-0114 §Decisão 3). Default `1.0` = a camada segue a câmera 100% ⇒ arte
+    /// antiga byte-idêntica. Uma camada de fundo com `depth` baixo tem de voltar da
+    /// serialização com o valor — senão a paralaxe se perde ao salvar/abrir.
+    #[test]
+    fn depth_defaults_to_flat_and_survives_the_round_trip() {
+        assert_eq!(layer().depth, DEFAULT_LAYER_DEPTH);
+        assert_eq!(DEFAULT_LAYER_DEPTH, 1.0, "flat = segue a camera 100%");
+        let mut l = layer();
+        l.depth = 0.2; // camada de fundo: rasteja a 20% do pan
+        let bytes = postcard::to_allocvec(&l).unwrap();
+        let back: FlipLayer = postcard::from_bytes(&bytes).unwrap();
+        assert_eq!(back.depth, 0.2, "o depth sobrevive ao postcard");
+        assert_eq!(back, l);
     }
 
     /// O vão: da 1ª chave real ao fim. Sem sentinela, a última chave expõe UM

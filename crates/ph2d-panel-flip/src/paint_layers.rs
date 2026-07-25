@@ -212,9 +212,10 @@ fn paint_layer_block(
 ) -> f32 {
     let line_gap = Spacing::Xs.px();
     let block_top = y;
-    // Rows (eye/name/↑↓, [blend], opacity) + inter-row gaps — line COUNTS, not a
-    // design metric. The base layer drops the blend line (2 rows).
-    let rows = if is_base { 2.0 } else { 3.0 }; // LITERAL-PX-OK: line COUNT (2 or 3), not a metric
+    // Rows (eye/name/↑↓, [blend], opacity, depth) + inter-row gaps — line COUNTS,
+    // not a design metric. The base layer drops the blend line; every layer has the
+    // multiplane Depth line (2.5D, ADR-0114 §Decisão 3).
+    let rows = if is_base { 3.0 } else { 4.0 }; // LITERAL-PX-OK: line COUNT (3 or 4), not a metric
     let block_h = m.row_h * rows + line_gap * (rows - 1.0); // LITERAL-PX-OK: row/gap counts
 
     // Active-row accent outline (painted first, behind the controls).
@@ -346,35 +347,68 @@ fn paint_layer_block(
         y += m.row_h + line_gap;
     }
 
-    // ── Line 3: bare opacity slider + NN% readout ──
-    let op_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Opacity);
+    // ── Line 3: bare opacity slider · Line 4: multiplane Depth slider ──
+    // Ambas são a MESMA linha (slider `0..1` + readout NN%) por uma porta ÚNICA
+    // (`paint_bare_slider_row`) — duas cópias divergiriam em silêncio. A Depth é a
+    // fração de paralaxe (2.5D, ADR-0114 §Decisão 3): 100% = flat/front (o default),
+    // 0% = fundo distante. O gap entre elas é o `line_gap`; após a última, o `row_gap`.
+    y = paint_bare_slider_row(
+        ctx,
+        theme,
+        m,
+        row.id,
+        FlipLayerWidget::Opacity,
+        row.opacity,
+        y,
+    );
+    y += line_gap;
+    y = paint_bare_slider_row(ctx, theme, m, row.id, FlipLayerWidget::Depth, row.depth, y);
+    y += m.row_gap;
+    y
+}
+
+/// Uma linha de slider `0..1` + readout `NN%` — a porta ÚNICA das Line 3 (Opacity)
+/// e Line 4 (Depth) do bloco de camada. Registra o slider (semeando com `fallback`
+/// na 1ª vez), lê o valor VIVO do store (o drag em curso), pinta o slider + o `%`, e
+/// registra o hit. Devolve o `y` no rodapé da linha (SEM o gap — o chamador o soma).
+fn paint_bare_slider_row(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    m: &LayerMetrics,
+    layer_id: u64,
+    kind: FlipLayerWidget,
+    fallback: f32,
+    y: f32,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let id = ids::flip_layer_widget_id(layer_id, kind);
     ctx.host.store_mut().register_if_absent(
-        op_id,
+        id,
         InteractiveState::Slider {
             state: SliderState::Normal,
-            value: row.opacity,
+            value: fallback,
             orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
         },
     );
     let pct_w = 40.0; // LITERAL-PX-OK: fixed "NN%" readout column
     let slider_w = (m.inner_w - gap * 2.0 - pct_w).max(0.0);
-    let op_rect = Rect::new(m.inner_x + gap, y, slider_w, m.row_h);
+    let rect = Rect::new(m.inner_x + gap, y, slider_w, m.row_h);
     let st = ctx
         .host
         .store()
-        .slider(op_id)
+        .slider(id)
         .map(|(s, _)| s)
         .unwrap_or(SliderState::Normal);
     let val = ctx
         .host
         .store()
-        .slider(op_id)
+        .slider(id)
         .map(|(_, v)| v)
-        .unwrap_or(row.opacity);
-    let mut slider = Slider::new(op_id, "").accent(true).state(st);
+        .unwrap_or(fallback);
+    let mut slider = Slider::new(id, "").accent(true).state(st);
     slider.value = val;
-    paint_slider(&slider, op_rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(op_id, op_rect);
+    paint_slider(&slider, rect, ctx.scene, theme);
+    ctx.host.hit_index_mut().register(id, rect);
     let pct = (val * 100.0).round() as i64; // LITERAL-PX-OK: fraction→percent readout
     paint_text(
         ctx.text_system,
@@ -386,8 +420,7 @@ fn paint_layer_block(
         pct_w,
         resolve(ColorToken::Text2, theme),
     );
-    y += m.row_h + m.row_gap;
-    y
+    y + m.row_h
 }
 
 /// A reorder arrow: dim + not hit-registered when disabled (no-op), else an

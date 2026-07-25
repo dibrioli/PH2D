@@ -102,7 +102,9 @@ pub use ph2d_painter_effects::BlendMode;
 /// v9 (03 §8): o traço ganhou `tip` ([`StrokeTip`]) + `dot_spacing` — o pincel pontilhado.
 /// Postcard é POSICIONAL, e os campos entraram no MEIO do `FlipStroke` (após `hardness`) ⇒
 /// todo `FlipStroke` salvo em v8 lê os campos seguintes deslocados ⇒ bump obrigatório.
-pub const FLIP_SCHEMA_VERSION: u32 = 9;
+/// v10 (2.5D multiplane, ADR-0114 §Decisão 3): a `FlipLayer` ganhou `depth` (a fração de
+/// paralaxe da câmera). Campo apendado ⇒ um doc v9 lê `depth` sobre o fim do buffer ⇒ bump.
+pub const FLIP_SCHEMA_VERSION: u32 = 10;
 
 #[cfg(test)]
 mod tests {

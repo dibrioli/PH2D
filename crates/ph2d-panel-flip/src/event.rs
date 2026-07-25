@@ -232,7 +232,9 @@ pub(crate) fn apply_event(
         // Per-row opacity slider → forward the track (the shell drain sets the
         // layer's opacity).
         WidgetEvent::ValueChanged(id) => match decode_layer_widget(id) {
-            Some((_, FlipLayerWidget::Opacity)) => {
+            // Opacity and multiplane Depth are both bare `0..1` sliders forwarded as
+            // `SetValue(id, v)` — the shell decodes the id to know which one it is.
+            Some((_, FlipLayerWidget::Opacity | FlipLayerWidget::Depth)) => {
                 let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

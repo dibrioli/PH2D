@@ -898,6 +898,7 @@ fn one_layer(id: u64, name: &str) {
             name: name.to_string(),
             blend: 0,
             opacity: 1.0,
+            depth: 1.0,
             visible: true,
             locked: false,
         }],
@@ -974,6 +975,51 @@ fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
     assert!(
         st.layer_rename.is_none(),
         "o campo de rename fica FECHADO apos o commit"
+    );
+}
+
+/// 🔴 **O slider de Depth multiplano é PINTADO, registrado e o arrasto vira
+/// `SetValue`** (2.5D, ADR-0114 §Decisão 3). As três condições de UI numa gate: o
+/// widget existe na tela (clicável, não morto sob o mouse) e o `ValueChanged` do
+/// painel forwarda `SetValue(depth_id, v)` — a shell escreve `l.depth` (coberto no
+/// gate irmão de `flip_layers`).
+///
+/// Mutação que sangra: tirar `FlipLayerWidget::Depth` do arm de `ValueChanged` no
+/// `event.rs` (o arrasto é engolido, nada forwarda) ou não pintar a Line 4 do bloco
+/// de camada (o `depth_id` some do painted).
+#[test]
+fn the_multiplane_depth_slider_paints_and_forwards_setvalue() {
+    let a = 9u64;
+    one_layer(a, "A");
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    let depth_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Depth);
+
+    // (1) Pintado e hit-registrado.
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        painted.iter().any(|(w, r)| *w == depth_id && r.w > 0.0),
+        "o slider de Depth nao foi pintado/registrado — controle inalcancavel"
+    );
+
+    // (2) O arrasto chega ao barramento como SetValue(depth_id, ~0.2).
+    host.set_slider_value(depth_id, 0.2);
+    let outcome = host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::ValueChanged(depth_id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o arrasto do Depth foi IGNORADO"
+    );
+    let forwarded = host.drained_actions().into_iter().any(|act| {
+        matches!(
+            act,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
+                if id == depth_id && (v - 0.2).abs() < 1e-6
+        )
+    });
+    assert!(
+        forwarded,
+        "o Depth nao forwardou SetValue(depth_id, v) — a paralaxe nunca chega na camada"
     );
 }
 

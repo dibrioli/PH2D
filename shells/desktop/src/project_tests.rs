@@ -434,7 +434,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 33→34: `PhysicsJoint` ganhou `active`+`collide_connected`
         // (W-J8 — a higiene do par). Dois campos apendados; o Swap A↔B da mesma
         // wave não move schema nenhum, porque só reescreve campos existentes.
-        (34, 9, 13),
+        // FLIP 9→10 + PROJECT 34→35: a `FlipLayer` ganhou `depth` (a paralaxe multiplano,
+        // ADR-0114 §Decisão 3) — campo apendado, mas postcard é posicional ⇒ v9 lê errado.
+        // ⚠️ A `line/FLIP` escreveu 32 aqui e a `line/physics` reivindicou o MESMO 32 (o
+        // servo do W-J6) — a 2ª colisão entre estas duas linhas, depois do 30 de 25/07.
+        // O valor certo se CONTA a partir do main do dia, e não está em nenhum dos lados.
+        (35, 10, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

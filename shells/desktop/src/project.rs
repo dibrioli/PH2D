@@ -136,7 +136,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// A↔B** da mesma wave NÃO move nada aqui — ele reescreve campos que já
 /// existem (as duas pontas, as duas âncoras, e os sinais medidos entre elas),
 /// que é exatamente por que um bump se CONTA em vez de acompanhar a wave.
-const PROJECT_SCHEMA: u32 = 34;
+/// v35 (Flip, 2.5D multiplane, ADR-0114 §Decisão 3): a `FlipLayer` ganhou `depth` (a fração de
+/// paralaxe da câmera) APENDADO — o `FlipDoc` viaja no `ProjectState`, então o layout posicional
+/// muda e um save v34 lido como v35 leria `depth` além do fim do buffer. `FLIP_SCHEMA_VERSION`
+/// 9→10, e o `PROJECT_SCHEMA` acompanha. ⚠️ A `line/FLIP` escreveu **32** aqui e a
+/// `line/physics` reivindicou o MESMO 32 na mesma janela (o servo do W-J6) — a SEGUNDA vez
+/// que estas duas linhas colidem no mesmo número, depois do 30 de 25/07. O valor certo se
+/// CONTA a partir do `main` do dia (34 + 1), e não estava em nenhum dos dois lados.
+const PROJECT_SCHEMA: u32 = 35;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

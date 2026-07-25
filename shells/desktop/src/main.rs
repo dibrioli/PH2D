@@ -101,6 +101,7 @@ mod flip_select_pick;
 mod flip_select_points;
 mod flip_select_segment;
 mod flip_selection_gizmo;
+mod flip_multiplane_smoke;
 mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;

@@ -162,13 +162,21 @@ pub(crate) fn apply_panel_event(
                 FlipLayerWidget::MoveDown => {
                     flip.object_mut(oid).is_some_and(|o| o.lower_layer(layer))
                 }
-                FlipLayerWidget::Opacity | FlipLayerWidget::Blend => false,
+                FlipLayerWidget::Opacity | FlipLayerWidget::Depth | FlipLayerWidget::Blend => false,
             }
         }
         PanelEvent::SetValue(id, v) => match decode_widget(flip, *id) {
             Some((layer, FlipLayerWidget::Opacity)) => {
                 if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
                     l.opacity = (*v as f32).clamp(0.0, 1.0);
+                    return true;
+                }
+                false
+            }
+            // Multiplane Depth (2.5D, ADR-0114 §Decisão 3): the parallax follow-fraction.
+            Some((layer, FlipLayerWidget::Depth)) => {
+                if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
+                    l.depth = (*v as f32).clamp(0.0, 1.0);
                     return true;
                 }
                 false
@@ -435,5 +443,44 @@ mod tests {
             BlendMode::Multiply,
             "blend option applied through the seam"
         );
+    }
+
+    /// 🔴 **Arrastar o slider de Depth chega na camada** (2.5D, ADR-0114 §Decisão 3):
+    /// o `ValueChanged` do painel vira `SetValue(depth_id, v)` e a shell escreve
+    /// `l.depth` (clampado a `0..1`). Espelho do de opacity — a paralaxe é inerte se
+    /// o número nunca sai do painel.
+    ///
+    /// Mutação que sangra: remover o arm `FlipLayerWidget::Depth` do `SetValue` no
+    /// `apply_panel_event` ⇒ o clique é engolido e `depth` fica em `1.0` (flat).
+    #[test]
+    fn depth_setvalue_sets_the_layer_depth() {
+        let (mut doc, _a, b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        assert_eq!(
+            doc.object(oid).unwrap().layer(b).unwrap().depth,
+            1.0,
+            "camada nasce flat (depth 1.0)"
+        );
+        assert!(apply_panel_event(
+            &PanelEvent::SetValue(wid(b, FlipLayerWidget::Depth), 0.2),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        ));
+        assert!(
+            (doc.object(oid).unwrap().layer(b).unwrap().depth - 0.2).abs() < 1e-6,
+            "o drag de Depth chegou na camada pela seam"
+        );
+        // Fora do intervalo é clampado (o painel manda 0..1, mas a porta garante).
+        apply_panel_event(
+            &PanelEvent::SetValue(wid(b, FlipLayerWidget::Depth), 5.0),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        );
+        assert_eq!(doc.object(oid).unwrap().layer(b).unwrap().depth, 1.0);
     }
 }

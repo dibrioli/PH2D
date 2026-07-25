@@ -235,6 +235,9 @@ pub enum FlipLayerWidget {
     Lock,
     /// The opacity slider (stores `0..1`).
     Opacity,
+    /// The multiplane depth slider (2.5D, ADR-0114 §Decisão 3): stores the parallax
+    /// follow-fraction `0..1` (`1` = flat/front, `0` = far/static background).
+    Depth,
     /// The blend-mode dropdown chip (opens the blend popover).
     Blend,
     /// The move-up (↑) reorder button — moves the layer toward the top.
@@ -253,6 +256,7 @@ impl FlipLayerWidget {
             Self::Visibility => "vis",
             Self::Lock => "lock",
             Self::Opacity => "opacity",
+            Self::Depth => "depth",
             Self::Blend => "blend",
             Self::MoveUp => "move_up",
             Self::MoveDown => "move_down",
@@ -260,11 +264,12 @@ impl FlipLayerWidget {
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [FlipLayerWidget; 7] = [
+    pub const ALL: [FlipLayerWidget; 8] = [
         Self::Row,
         Self::Visibility,
         Self::Lock,
         Self::Opacity,
+        Self::Depth,
         Self::Blend,
         Self::MoveUp,
         Self::MoveDown,

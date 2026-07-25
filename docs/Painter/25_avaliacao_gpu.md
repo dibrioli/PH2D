@@ -746,3 +746,19 @@ aprofunde com pincel mais forte/lento ou traços sobrepostos.
 15 passadas idênticas têm de deixar a cobertura byte-idêntica a 1 (envelope idempotente);
 RED sob o produto antigo (37764 bytes diferem, delta máx 197); mutação `envelope=false`
 re-sangra. Sem schema, sem contrato congelado; `paint.rs` mantido no teto de 700 LOC.
+
+## 13.8 ⚠️ §13.6 (envelope) e §13.7 (teto por época) foram REVERTIDAS — a máscara vai ser REESCRITA
+
+O smoke do Enio (2026-07-25) reprovou as duas: o **envelope** do §13.6 matou o hardening no mesmo
+ponto mas o `min` deixava **linhas brancas nos cruzamentos** (union em vez de soma); o **teto** do
+§13.7 (que era para o axis DIFERENTE de pintar-cor-através-da-proteção) **vazou no brush normal**
+(a proteção persiste ao trocar de ferramenta ⇒ o teto capava a tinta comum). Ambas revertidas
+(`1d390d926`, `569149dfc`/`7e26fa833`); a máscara está no **depósito original** (produto por-dab)
++ o fix de FPS (§13.5), com o brush normal **byte-idêntico** ao aprovado.
+
+**Decisão do Enio:** reescrever a cobertura da máscara do zero, com referência de alta qualidade
+(pesquisa). O serrilhado sob muitas passadas é a doença "product-over-dabs" (o `255·mⁿ` afia a
+cauda do falloff); a cura precisa somar-como-tinta E ser idempotente no mesmo ponto — o candidato é
+o **Wash/opacity mode** (cap por-traço + aditivo entre traços), provavelmente do Krita. Plano e
+armadilhas completos em **[`../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md`](../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md)**.
+Os §13.6/§13.7 ficam como HISTÓRICO do que já foi tentado e reprovado — não reconstrua.

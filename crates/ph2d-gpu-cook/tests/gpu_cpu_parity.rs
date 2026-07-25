@@ -565,6 +565,10 @@ fn field_box_kernel_matches_the_cpu_within_epsilon() {
     g.set_param(bx, "soft", 7.3);
     g.set_param(bx, "center_x", 2.9);
     g.set_param(bx, "center_y", -1.7);
+    // A non-zero, un-round rotation so the shared parabolic-sine basis (trig.rs,
+    // the SAME polynomial on both paths) is exercised in parity, not just the
+    // axis-aligned fast path.
+    g.set_param(bx, "rotation", 23.0);
     g.set_param(bx, "curve", 2.0); // Smooth — the polynomial the ε budget covers
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode

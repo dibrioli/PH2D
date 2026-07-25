@@ -30,6 +30,9 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod trig;
+use trig::cos_sin_cycles;
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
@@ -66,6 +69,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "center_y",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "rotation",
             default: 0.0,
         },
         ParamSpec {
@@ -128,9 +135,14 @@ fn box_mask(dx: f32, dy: f32, width: f32, height: f32, soft: f32, curve_kind: i3
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let fb_p = read_P(i);\n\
+        let fb_dx = fb_p.x - params.center_x;\n\
+        let fb_dy = fb_p.y - params.center_y;\n\
+        // Rotate the offset by -rotation into the box's local frame.\n\
+        let fb_b = fb_cos_sin(params.rotation / 360.0);\n\
+        let fb_lx = fb_dx * fb_b.x + fb_dy * fb_b.y;\n\
+        let fb_ly = -fb_dx * fb_b.y + fb_dy * fb_b.x;\n\
         let fb_m = fb_box_mask(\n\
-            fb_p.x - params.center_x,\n\
-            fb_p.y - params.center_y,\n\
+            fb_lx, fb_ly,\n\
             params.width,\n\
             params.height,\n\
             params.soft,\n\
@@ -142,6 +154,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         fn fb_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn fb_sin_cycles(phase: f32) -> f32 {\n\
+            // The corrected parabolic sine (see trig.rs) — the SAME polynomial as\n\
+            // the CPU, so parity holds; phase is in cycles (deg / 360).\n\
+            let ff = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (ff < 0.5) { let u = ff * 2.0; p = 4.0 * u * (1.0 - u); }\n\
+            else { let u = (ff - 0.5) * 2.0; p = -4.0 * u * (1.0 - u); }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn fb_cos_sin(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(fb_sin_cycles(phase + 0.25), fb_sin_cycles(phase));\n\
         }\n\
         fn fb_curve(kind: i32, s: f32) -> f32 {\n\
             if (kind == 1) { return s * s; }\n\
@@ -177,7 +201,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &[
-        "width", "height", "soft", "center_x", "center_y", "curve", "invert",
+        "width", "height", "soft", "center_x", "center_y", "rotation", "curve", "invert",
     ],
     count_law: None,
     variant_by_param: None,
@@ -196,6 +220,10 @@ impl NodeOp for FieldBox {
         let height = ctx.param("height");
         let soft = ctx.param("soft");
         let (cx, cy) = (ctx.param("center_x"), ctx.param("center_y"));
+        // The rotation basis, computed ONCE (a per-cook constant): cos/sin of the
+        // field's rotation. Rotating a world offset by −rotation brings it into the
+        // box's local frame, where the test is axis-aligned.
+        let (rc, rs) = cos_sin_cycles(ctx.param("rotation") / 360.0);
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
         let out = {
@@ -211,7 +239,10 @@ impl NodeOp for FieldBox {
             };
             let fall = par_build(n, |i| {
                 let p = positions.get(i).copied().unwrap_or([0.0, 0.0]);
-                let m = box_mask(p[0] - cx, p[1] - cy, width, height, soft, curve_kind);
+                let (dx, dy) = (p[0] - cx, p[1] - cy);
+                // Rotate the offset by −rotation into the box's local frame.
+                let (lx, ly) = (dx * rc + dy * rs, -dx * rs + dy * rc);
+                let m = box_mask(lx, ly, width, height, soft, curve_kind);
                 let f = if invert { 1.0 - m } else { m };
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 base * f
@@ -290,6 +321,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 10.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "rotation",
+        label: "Rotation",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
     },
     ParamUiHint {
         param: "curve",
@@ -410,6 +449,38 @@ mod tests {
             [0.0, 5.0],
         ]);
         assert_eq!(falloff_of(&g, &ops, bx), vec![1.0, 1.0, 1.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn rotation_90_swaps_the_axes() {
+        // A wide (x), thin (y) box rotated 90° becomes a wide-y, thin-x box — a
+        // VERTICAL band. `cos_sin_cycles(0.25)` is exactly `(0, 1)`, so the frame
+        // maps (dx, dy) → (dy, −dx): a point above the horizontal band is now inside
+        // the rotated (vertical) one, and a point in the old wide band is outside.
+        let (mut g, bx) = chain();
+        g.set_param(bx, "width", 20.0); // wide in local x
+        g.set_param(bx, "height", 4.0); // thin in local y
+        g.set_param(bx, "soft", 0.0);
+        g.set_param(bx, "rotation", 90.0);
+        // (0, 8): local (8, 0) → inside (|8| < 10, |0| < 2). (8, 0): local (0, −8)
+        // → outside (|−8| > 2).
+        let ops = Ops::new(vec![[0.0, 8.0], [8.0, 0.0]]);
+        assert_eq!(falloff_of(&g, &ops, bx), vec![1.0, 0.0]);
+    }
+
+    #[test]
+    fn rotation_zero_is_byte_identical_to_the_unrotated_box() {
+        // The default (rotation 0) must be EXACTLY the axis-aligned box (the trig
+        // basis is exactly (1, 0)), so every prior golden and the parity 0e0 hold.
+        let (g, bx) = chain();
+        let ops = Ops::new(vec![[0.0, 0.0], [4.0, 0.0], [3.5, 0.0], [5.0, 5.0]]);
+        // Same as default_box: 1 at centre, 0 at/after the edge; (3.5,0) on the
+        // Smooth ramp; (5,5) outside.
+        let got = falloff_of(&g, &ops, bx);
+        assert_eq!(got[0], 1.0);
+        assert_eq!(got[1], 0.0);
+        assert_eq!(got[3], 0.0);
+        assert!(got[2] > 0.0 && got[2] < 1.0);
     }
 
     #[test]

@@ -607,6 +607,10 @@ pub(super) fn build_gpu_field_box_demo_document(
     g.set_param(field, "width", 30.0);
     g.set_param(field, "height", 5.0);
     g.set_param(field, "soft", 1.5);
+    // Tilted by the Rotation param — the field ROTATES (set it to 0 for the
+    // razor-horizontal band). Proof that spatial fields carry an orientation, the
+    // C4D/Cavalry model, HR-5-safe via the shared parabolic-sine basis.
+    g.set_param(field, "rotation", 30.0);
     g.set_param(field, "curve", 2.0); // Smooth edges
     let tint = g.add_node("motion.tint");
     g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode

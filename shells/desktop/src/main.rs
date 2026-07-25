@@ -328,6 +328,7 @@ impl App {
             window: None,
             host: None,
             gfx: None,
+            exiting: false,
             handler: LoggingHandler::new(),
             fixed_step: FixedStep::default(),
             // Start paused: the transport should not run the moment the window
@@ -592,6 +593,12 @@ impl App {
     /// [`crate::render_loop`] (Wave 3.1 stage C). See its module docs
     /// for the rationale + the split-impl pattern.
     fn render_frame(&mut self) {
+        // A janela já está fechando e a GPU já foi derrubada por `on_close_request` — winit pode
+        // entregar um `RedrawRequested` atrasado na mesma iteração, e desenhá-lo seria pedir um frame
+        // a um dispositivo que não existe mais.
+        if self.exiting {
+            return;
+        }
         // §4.C — o PEDAÇO sob o cursor no modo Segment (hover). ANTES do render: o overlay
         // o lê no mesmo frame. Barato e guardado (só recomputa quando o cursor move).
         self.flip_segment_hover_refresh();
@@ -651,7 +658,10 @@ impl ApplicationHandler for App {
             WindowEvent::MouseWheel { delta, .. } => self.on_mouse_wheel(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
             WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_input(event),
-            WindowEvent::RedrawRequested => self.render_frame(),
+            WindowEvent::RedrawRequested => {
+                self.render_frame();
+                self.exit_after_frames_tick(event_loop);
+            }
             _ => {}
         }
     }

@@ -1233,9 +1233,58 @@ impl App {
                 {
                     self.audio = None;
                 }
+                // **E a GPU pela MESMA razão, medida no mesmo lugar.** O `EventLoop` é CONSUMIDO por
+                // `run_app`, então ele — e com ele a conexão Wayland — morre quando `run_app` retorna,
+                // e só DEPOIS o `App` desenrola seus campos. A `SurfaceContext` do `AppGfx` cai nesse
+                // rabo, e destruir uma superfície EGL sobre um `wl_display` que já se foi marshala num
+                // proxy morto: `wl_proxy_marshal_array_flags` <- libnvidia-egl-wayland2 <- libEGL_nvidia,
+                // dentro do epílogo do `main` (stack de 217 coredumps desde 2026-07-22, idêntica nas
+                // SEIS worktrees — é da shell, não de linha nenhuma). Benigno, porque dispara depois do
+                // "exited cleanly"; mas devolve 139 e some com todo `$status` que um smoke checaria.
+                //
+                // A ordem aqui é a INVERSA da construção, e cada passo é uma dependência real: a
+                // superfície/dispositivo primeiro (o que fala EGL), o host depois, a janela por último —
+                // ela é quem possui o `wl_surface` que os outros dois referenciam.
+                self.gfx = None;
+                self.host = None;
+                self.window = None;
+                // Todo frame daqui em diante é um frame sem dispositivo (`render_frame` desiste).
+                self.exiting = true;
                 event_loop.exit();
             }
             CloseAction::Cancel => {}
+        }
+    }
+
+    /// **O oráculo do teardown: feche a janela sozinho depois de `n` frames.**
+    /// `PH2D_EXIT_AFTER_FRAMES=<n>` (não-setado = inerte, zero custo além de um `Relaxed` load).
+    ///
+    /// O defeito que ele mede vive no DESLIGAMENTO, então nenhum teste headless o alcança: só um app
+    /// de verdade, com janela de verdade e superfície EGL de verdade, tem o que destruir na ordem
+    /// errada. Com este gancho o oráculo passa a ser o `$?` do processo — **139 = a superfície morreu
+    /// depois do `wl_display`; 0 = a ordem está certa** —, o que qualquer smoke pode checar sem olho
+    /// humano nenhum.
+    ///
+    /// ⚠️ Ele passa pela **MESMA porta** que o X da janela (`on_close_request`), nunca por um
+    /// `exit()` próprio. Um caminho de saída paralelo provaria a ordem de destruição de um caminho
+    /// que o artista nunca toma — verde sobre nada.
+    pub(crate) fn exit_after_frames_tick(&mut self, event_loop: &ActiveEventLoop) {
+        use std::sync::OnceLock;
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static LIMIT: OnceLock<Option<u32>> = OnceLock::new();
+        static SEEN: AtomicU32 = AtomicU32::new(0);
+        let Some(limit) = *LIMIT.get_or_init(|| {
+            std::env::var("PH2D_EXIT_AFTER_FRAMES")
+                .ok()
+                .and_then(|v| v.parse::<u32>().ok())
+        }) else {
+            return;
+        };
+        if SEEN.fetch_add(1, Ordering::Relaxed) + 1 >= limit && !self.exiting {
+            println!(
+                "PH2D_EXIT_AFTER_FRAMES={limit} atingido — fechando pela porta do X da janela."
+            );
+            self.on_close_request(event_loop);
         }
     }
 

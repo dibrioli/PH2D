@@ -368,6 +368,11 @@ pub(crate) struct App {
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) host: Option<WinitHost>,
     pub(crate) gfx: Option<AppGfx>,
+    /// **A janela está fechando** — o gesto de fechar já derrubou a GPU (ver `on_close_request`), então
+    /// todo frame a partir daqui é um frame sem dispositivo. winit ainda pode entregar eventos na mesma
+    /// iteração depois do `exit()`, e um `RedrawRequested` atrasado desenharia sobre um `gfx` que não
+    /// existe mais. Um bool aqui é a única forma da pergunta que não depende de enumerar quem sobrou.
+    pub(crate) exiting: bool,
     pub(crate) handler: LoggingHandler,
     pub(crate) fixed_step: FixedStep,
     /// Engine-wide timeline cursor. Advanced once per fixed tick; every

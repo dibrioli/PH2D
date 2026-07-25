@@ -144,6 +144,7 @@ mod physics_smoke_collision;
 mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;
+mod physics_smoke_joint_bake;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_zones;

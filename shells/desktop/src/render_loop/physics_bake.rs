@@ -74,7 +74,9 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{PhysicsBridge, PoseChannel, SceneAtTick, bake_trajectories_with_scene};
+use ph2d_physics_ecs::{
+    PhysicsBridge, PoseChannel, SceneAtTick, bake_trajectories_with_scene, jointed_group,
+};
 use ph2d_timeline::{PropKind, TimelineState};
 
 /// Which pose channels a bake writes into the timeline.
@@ -301,6 +303,17 @@ pub(crate) fn bake_selection(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> BakeOutcome {
+    // ⚠️ **Baking one link of a jointed rig bakes the WHOLE rig.** A bake flips
+    // its bodies to Kinematic; with the Physics toggle off, any un-baked DYNAMIC
+    // neighbour freezes (nothing steps the solver) while the baked links play,
+    // and the joint stretches. There is no coherent partial bake of a coupled
+    // rig, so the selection is expanded to its jointed connected component before
+    // anything reads it. Static/Kinematic bodies do not conduct (module docs of
+    // `jointed_group`); a body with no joints expands to itself. The toast's body
+    // count reflects the expanded set, so a rig pulled in is visible.
+    let group = jointed_group(sim.world_mut(), entities);
+    let entities: &[Entity] = &group;
+
     let ticks = ticks_for(end, fixed_dt);
     // ⚠️ The bake advances the SCENE as well as the clock. Without it, every
     // body the timeline drives — which is every body baked before this one —
@@ -445,6 +458,9 @@ pub(crate) fn bake_selection(
 #[cfg(test)]
 #[path = "physics_bake_curve_tests.rs"]
 mod curve_tests;
+#[cfg(test)]
+#[path = "physics_bake_joint_tests.rs"]
+mod joint_tests;
 #[cfg(test)]
 #[path = "physics_bake_tests.rs"]
 mod tests;

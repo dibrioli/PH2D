@@ -19,6 +19,7 @@ pub mod bake;
 mod bridge;
 mod components;
 mod joint;
+mod joint_group;
 mod scale;
 pub mod settings;
 
@@ -34,6 +35,7 @@ pub use components::{
     MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
 pub use joint::{JointKind, PhysicsJoint};
+pub use joint_group::jointed_group;
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
 // the shell, which only deps this crate) draws the SAME resolved shape the

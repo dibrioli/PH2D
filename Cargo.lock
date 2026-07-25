@@ -5082,6 +5082,7 @@ dependencies = [
  "ph2d-asset-cooker",
  "ph2d-core",
  "ph2d-render",
+ "ph2d-warp-style",
  "postcard",
  "serde",
 ]
@@ -7194,6 +7195,7 @@ dependencies = [
 name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
+ "ph2d-warp-style",
  "postcard",
  "serde",
 ]
@@ -7239,6 +7241,13 @@ version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
  "ph2d-color",
+]
+
+[[package]]
+name = "ph2d-warp-style"
+version = "0.0.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

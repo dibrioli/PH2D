@@ -9,6 +9,9 @@
 //! - `PH2D_BUILD_SMOKE=25` — a cena do **CONTOUR** (pesquisa `20_*` #9): uma estrela PELADA
 //!   (selecionada — é ela que prova o seam, do `Add Contour` ao Expand) e um hexágono que já vem
 //!   com 6 anéis armados, para o olho ter a que comparar.
+//! - `PH2D_BUILD_SMOKE=27` — a cena do **ENVELOPE sobre ESTRELA** (o caso do Enio, 2026-07-24): uma
+//!   estrela CÔNCAVA deformada por gaiola de perspectiva (modo NODE), para provar que a fonte
+//!   côncava deforma limpo e as alças de canto ficam sãs (vive no irmão `envelope_smoke`).
 //! - `PH2D_BUILD_SMOKE=21` — a cena da **W0** (texto + efeitos): a palavra "PATH" com um Zig Zag
 //!   ATIVO, já selecionada. Mexa em qualquer knob da seção **Text** (ou escreva mais uma letra) —
 //!   **a rugosidade tem de continuar lá**. Antes da W0 ela sumia neste gesto, em silêncio.
@@ -112,7 +115,7 @@ impl crate::App {
         // LOC. Elas só usam os frames 3 e 4 e nenhum braço compartilhado, então sair do `match`
         // aqui é a MESMA sequência de antes: um nível fora de 11/12 nunca entrava nesses braços, e
         // 11/12 nunca chegavam aos genéricos (os específicos vinham primeiro).
-        if matches!(level, 11 | 12) {
+        if matches!(level, 11 | 12 | 27) {
             crate::envelope_smoke::frame(self, f, level);
             return;
         }

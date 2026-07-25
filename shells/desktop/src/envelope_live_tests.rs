@@ -585,3 +585,8 @@ fn create_over_no_live_shapes_is_none() {
 /// fixtures deste arquivo por `use super::*`.
 #[path = "envelope_kind_tests.rs"]
 mod kind;
+
+/// O gate do Envelope sobre uma ESTRELA côncava (o caso do Enio, smoke `=27`) — módulo filho, teto
+/// de LOC. Herda os fixtures deste arquivo por `use super::*`.
+#[path = "envelope_live_star_tests.rs"]
+mod star;

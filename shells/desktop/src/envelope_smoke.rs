@@ -1,9 +1,10 @@
 //! As cenas de smoke do **ENVELOPE** (ADR-0129) — módulo irmão do [`crate::build_smoke`], teto de
 //! LOC (HR-18).
 //!
-//! `PH2D_BUILD_SMOKE=11` monta o caso `N=1` (uma elipse, gaiola já puxada num trapézio) e `=12` o
-//! *warp group* (duas elipses sob UMA gaiola). Elas usam só os frames 3 e 4, e é por isso que
-//! podem sair do `match` do irmão sem mudar a sequência de ninguém.
+//! `PH2D_BUILD_SMOKE=11` monta o caso `N=1` (uma elipse, gaiola já puxada num trapézio), `=12` o
+//! *warp group* (duas elipses sob UMA gaiola) e **`=27` o caso do Enio: um envelope sobre uma
+//! ESTRELA (fonte CÔNCAVA)**. Elas usam só os frames 3 e 4, e é por isso que podem sair do `match`
+//! do irmão sem mudar a sequência de ninguém.
 //!
 //! ⚠️ **Elas não são mais a única porta.** Desde as Fatias 4+5 a seção **Envelope** do painel cria,
 //! expande e solta um envelope sem env nenhuma — estas cenas ficam por serem o atalho de sempre
@@ -164,6 +165,79 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                  As duas curvam pela MESMA perspectiva. NODE: arraste um CANTO da gaiola -- \
                  as duas re-deformam juntas. SELECT (pill do painel): o GIZMO abraça as DUAS \
                  e move/gira/escala o grupo inteiro -- sem cisalhar (a caixa e' a uniao)."
+            );
+        }
+        // A cena do ENVELOPE sobre uma ESTRELA (o caso reportado pelo Enio, 2026-07-24): a fonte é
+        // CÔNCAVA (uma estrela de 5 pontas), não uma elipse convexa. A gaiola envolve a BBOX (um
+        // retângulo, igual à elipse), então a correção prova que a concavidade da FONTE não muda a
+        // gaiola — a estrela deformada segue liso, e as 4 alças de canto ficam LIMPAS (sem alça
+        // solta nem linha à deriva, que foi o sintoma da foto — vindo de um build velho da pasta
+        // primária, não desta linha).
+        (3, 27) => {
+            let Some(gfx) = self_.gfx.as_mut() else {
+                return;
+            };
+            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+            // A estrela EXATA do smoke do Contour (=25): 5 pontas, razão interna 0.45.
+            gfx.vec_scene.push_path(shape(
+                ShapeKind::Star,
+                [-2.4, -1.8],
+                [2.4, 1.8],
+                &[5.0, 0.45, 0.0],
+                [235, 175, 60],
+            ));
+        }
+        (4, 27) => {
+            let container = {
+                let Some(gfx) = self_.gfx.as_mut() else {
+                    return;
+                };
+                let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
+                    return;
+                };
+                crate::envelope_live::create(
+                    &mut gfx.sim,
+                    &mut gfx.vec_scene,
+                    &self_.vec_entities,
+                    &[id],
+                )
+            };
+            let Some(container) = container else { return };
+            // Puxa o topo a 40% da base — o MESMO trapézio de perspectiva do `=11`, para a estrela
+            // nascer deformada e o olho julgar sem arrastar. BL/BR ficam; TR/TL vêm ao centro-topo.
+            if let Some(gfx) = self_.gfx.as_mut() {
+                let e = ph2d_ecs::Entity::from_bits(container);
+                if let Some(mut env) = gfx.sim.world_mut().get_mut::<ph2d_ecs::VecEnvelope>(e) {
+                    let [bl, br, tr, tl] = env.corners;
+                    let cx = (tl[0] + tr[0]) * 0.5;
+                    let k = 0.4;
+                    env.corners = [
+                        bl,
+                        br,
+                        [cx + (tr[0] - cx) * k, tr[1]],
+                        [cx + (tl[0] - cx) * k, tl[1]],
+                    ];
+                    debug_assert!(
+                        ph2d_vec_envelope::QuadWarp::is_convex(&env.corners),
+                        "a gaiola do smoke tem de ser convexa"
+                    );
+                }
+            }
+            if let Some(id) = self_
+                .gfx
+                .as_ref()
+                .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
+            {
+                self_.vec_pen.select_many(&[id]);
+            }
+            self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+            eprintln!(
+                "[envelope-smoke 27] ESTRELA (fonte concava) deformada por gaiola de perspectiva \
+                 (modo NODE) -- o caso que voce reportou. VERIFIQUE: (a) a estrela segue a gaiola \
+                 LISO, sem rasgar; (b) as alcas sao os 4 CANTOS da gaiola, LIMPOS -- NENHUMA alca \
+                 solta espalhada nem linha reta a deriva. Arraste um canto: re-deforma ao vivo, \
+                 convexo obrigatorio. Se aparecer alca bugada AQUI, e' bug real desta linha; se \
+                 estiver limpo, o que voce viu antes veio de um build velho da pasta primaria."
             );
         }
         _ => {}

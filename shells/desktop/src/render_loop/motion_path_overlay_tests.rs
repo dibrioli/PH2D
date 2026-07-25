@@ -446,7 +446,11 @@ fn the_ribbon_is_hotter_where_the_object_is_faster() {
             }
         }
     }
-    assert!(samples.len() >= 20, "poucos segmentos de fita: {}", samples.len());
+    assert!(
+        samples.len() >= 20,
+        "poucos segmentos de fita: {}",
+        samples.len()
+    );
     samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     let n = samples.len();
     let ends = (samples[0].1 + samples[n - 1].1) / 2.0;

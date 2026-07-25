@@ -58,6 +58,30 @@ pub const TIMELINE_ONION: NodeId = hash_node_id("timeline.onion");
 /// **Onion Keys** toggle (ADR-0142 §4) — ligado = fantasmas nas keyframes vizinhas
 /// (pose-a-pose); desligado = a `t±k` quadros. Só significa algo com o Onion ligado.
 pub const TIMELINE_ONION_MODE: NodeId = hash_node_id("timeline.onion_mode");
+/// **Onion Settings** button (ADR-0142 W3b) — abre o card flutuante das contagens/opacidade/
+/// cores. O botão VIVE na barra de transporte (panel), mas o card é chrome flutuante no shell
+/// (não cabe na timeline); o clique é resolvido shell-side (tem `hero.store`), como o
+/// [`TIMELINE_MOTION_PATH`].
+pub const TIMELINE_ONION_SETTINGS: NodeId = hash_node_id("timeline.onion_settings");
+
+// ── Onion settings modal (ADR-0142 W3b) — floating draggable card, hero chrome ──
+/// Title band = the drag handle (Primary Down here starts a modal-move, shell-driven).
+pub const TIMELINE_ONION_MODAL_HANDLE: NodeId = hash_node_id("timeline.onion_modal_handle");
+/// Close (X) button in the title band.
+pub const TIMELINE_ONION_MODAL_CLOSE: NodeId = hash_node_id("timeline.onion_modal_close");
+/// Opacity slider (`0..1`) — the nearest ghost's alpha.
+pub const TIMELINE_ONION_MODAL_OPACITY: NodeId = hash_node_id("timeline.onion_modal_opacity");
+/// "Ghosts before" slider — `0..1` mapped to a count by the shell (the count↔slider mapping
+/// lives ONLY there, so there is one copy of it — editor-core stays timeline-agnostic).
+pub const TIMELINE_ONION_MODAL_BEFORE: NodeId = hash_node_id("timeline.onion_modal_before");
+/// "Ghosts after" slider — same mapping.
+pub const TIMELINE_ONION_MODAL_AFTER: NodeId = hash_node_id("timeline.onion_modal_after");
+/// Past-ghost colour swatch (opens the shared OKLCH picker — `register_picker_swatch`).
+pub const TIMELINE_ONION_MODAL_COLOR_BEFORE: NodeId =
+    hash_node_id("timeline.onion_modal_color_before");
+/// Future-ghost colour swatch.
+pub const TIMELINE_ONION_MODAL_COLOR_AFTER: NodeId =
+    hash_node_id("timeline.onion_modal_color_after");
 
 // ── View tabs (ADR-0115 R8, amended) ─────────────────────────────────────────
 /// The tab strip itself (the `TabList` a11y parent).

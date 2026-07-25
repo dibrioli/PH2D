@@ -126,13 +126,14 @@ mod label_live;
 mod mask_smoke;
 mod morph_live;
 mod motion_path_smoke;
-mod timeline_onion_smoke;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
+/// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
+mod onion_modal;
 mod palette_persist;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
@@ -156,6 +157,7 @@ mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
 mod theme;
+mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]
 mod timeline_orphan_tests;

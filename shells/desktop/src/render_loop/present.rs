@@ -146,8 +146,7 @@ impl crate::App {
                 // O slot `extra` do passe carrega DOIS produtores CPU: os fantasmas do
                 // onion (ADR-0142) + o stream do Motion. Concatenados num só slice; os dois
                 // raramente coexistem, então o `Vec` é vazio no caso comum.
-                let sprite_extra: Vec<ph2d_render::RenderInstance> = if onion_ghosts.is_empty()
-                {
+                let sprite_extra: Vec<ph2d_render::RenderInstance> = if onion_ghosts.is_empty() {
                     // Sem fantasmas: passa o slice do Motion direto (zero alloc no caso comum).
                     Vec::new()
                 } else {

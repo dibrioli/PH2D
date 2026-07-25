@@ -450,6 +450,12 @@ pub struct WidgetStore {
     /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.
     pub(super) fill_modal: Option<(f32, f32)>,
+    /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
+    /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
+    /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its
+    /// slider/swatch values live in the `TIMELINE_ONION_MODAL_*` widgets — the shell reads them back
+    /// into `TimelineState::onion` each frame the modal is open (WidgetStore is the shared blackboard).
+    pub(super) onion_modal: Option<(f32, f32)>,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

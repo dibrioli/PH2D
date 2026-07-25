@@ -77,13 +77,17 @@ enum Item {
     Onion,
     /// **Onion Keys** — ligado = fantasmas nas keyframes vizinhas; desligado = a t±k quadros.
     OnionMode,
+    /// **Onion Settings** (ADR-0142 W3b) — a gear that opens the floating card (counts/opacity/
+    /// cores). Um BOTÃO, não toggle: o clique vira `PanelEvent::Click` e o shell abre o card
+    /// (que vive no `hero.store`, fora do alcance do painel — não cabe na barra de transporte).
+    OnionSettings,
 }
 
 // ⚠️ A contagem se CONTA, não se escolhe: a `main` trazia 13, a `line/physics`
 // acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
 // MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
 // dos dois lados do conflito.
-const ITEMS: [Item; 19] = [
+const ITEMS: [Item; 20] = [
     Item::Tabs,
     Item::Crumbs,
     Item::Clips,
@@ -113,6 +117,8 @@ const ITEMS: [Item; 19] = [
     // MOSTRA), não comandos de documento nem de autoria. O modo (Keys/Frames) ao lado.
     Item::Onion,
     Item::OnionMode,
+    // The gear that opens the settings card sits right after the two onion toggles it configures.
+    Item::OnionSettings,
 ];
 
 /// The panel-local VIEW state the bar reflects — what the panel is SHOWING, as
@@ -221,7 +227,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
             let n = TRANSPORT_BTNS as f32;
             BTN_W * n + half * (n - 1.0)
         }
-        Item::ReverseKeys => BTN_W,
+        Item::ReverseKeys | Item::OnionSettings => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
         Item::TimeChip | Item::FrameChip | Item::LengthChip => CHIP_LABEL_W + half + CHIP_W,
         Item::Loop
@@ -529,8 +535,9 @@ fn paint_item(
             );
         }
         // Os toggles de VISTA (Speed · Onion · Onion Keys) — o que a tela MOSTRA, não
-        // comando de documento. Vivem no módulo irmão (cap de LOC do `paint_item`).
-        Item::Speed | Item::Onion | Item::OnionMode => {
+        // comando de documento. Vivem no módulo irmão (cap de LOC do `paint_item`) — incluindo a
+        // engrenagem OnionSettings (um botão, mas mora com o cluster do onion).
+        Item::Speed | Item::Onion | Item::OnionMode | Item::OnionSettings => {
             view_toggles::paint(ctx, theme, x, y, item, snap, view);
         }
     }

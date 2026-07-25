@@ -36,6 +36,9 @@ fn is_button(id: NodeId) -> bool {
         || id == ids::TIMELINE_GO_END
         || id == ids::TIMELINE_PREV_FRAME
         || id == ids::TIMELINE_NEXT_FRAME
+        // Onion Settings (ADR-0142 W3b): a plain button whose Click reaches the shell, which owns
+        // the `hero.store` the settings card lives in (the panel cannot open hero chrome).
+        || id == ids::TIMELINE_ONION_SETTINGS
         || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 

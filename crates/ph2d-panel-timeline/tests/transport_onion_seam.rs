@@ -9,8 +9,10 @@
 //! sintético: pintado-sem-registro, registrado-fora-do-`populate` (morto sob o mouse), e
 //! roteado-para-lugar-nenhum.
 
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::{TimelinePanelState, drain_intents, set_current_timeline};
@@ -73,20 +75,67 @@ fn the_onion_toggle_paints_clicks_and_pushes_set_onion() {
     assert!(out.enabled, "clicar Onion (off) tem de armar o onion");
 
     // On no snapshot ⇒ o clique o desliga.
-    let on = OnionSettings { enabled: true, ..OnionSettings::default() };
+    let on = OnionSettings {
+        enabled: true,
+        ..OnionSettings::default()
+    };
     let out = click_onion(ids::TIMELINE_ONION, transport(on));
     assert!(!out.enabled, "clicar Onion (on) tem de desligar");
 }
 
 #[test]
 fn the_onion_mode_toggle_flips_keys_and_frames() {
-    let keys = OnionSettings { mode: OnionMode::Keys, ..OnionSettings::default() };
+    let keys = OnionSettings {
+        mode: OnionMode::Keys,
+        ..OnionSettings::default()
+    };
     let out = click_onion(ids::TIMELINE_ONION_MODE, transport(keys));
     assert_eq!(out.mode, OnionMode::Frames, "Keys -> Frames");
 
-    let frames = OnionSettings { mode: OnionMode::Frames, ..OnionSettings::default() };
+    let frames = OnionSettings {
+        mode: OnionMode::Frames,
+        ..OnionSettings::default()
+    };
     let out = click_onion(ids::TIMELINE_ONION_MODE, transport(frames));
     assert_eq!(out.mode, OnionMode::Keys, "Frames -> Keys");
+}
+
+#[test]
+fn the_onion_settings_gear_paints_clicks_and_forwards_a_panel_click() {
+    // The gear is a plain BUTTON, not a view toggle: its Click leaves the panel as a
+    // `PanelEvent::Click` (the shell opens the card, which lives in `hero.store`, out of the panel's
+    // reach — ADR-0142 W3b). The gate paints for real, drives a real pointer, and drains the bus,
+    // so the same three omissions the toggle test guards against are caught here too: painted-without-
+    // register, registered-outside-`populate` (dead under the mouse), and routed-to-nowhere.
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let regs = paint(&mut host, &mut state, transport(OnionSettings::default()));
+    let r = regs
+        .iter()
+        .find(|(w, _)| *w == ids::TIMELINE_ONION_SETTINGS)
+        .map(|(_, r)| *r)
+        .expect("a engrenagem foi pintada mas nunca hit-registrada");
+
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let evs = host.click_at(cx, cy);
+    let click = evs
+        .iter()
+        .find(|e| matches!(e, WidgetEvent::Click(t) if *t == ids::TIMELINE_ONION_SETTINGS))
+        .copied()
+        .unwrap_or_else(|| panic!("o ponteiro caiu na engrenagem mas nenhum Click saiu — {evs:?}"));
+
+    host.apply_panel_event::<TimelinePanel>(&mut state, click);
+    let forwarded = host.drained_actions().into_iter().any(|a| {
+        matches!(
+            a,
+            EditorAction::TimelinePanelEvent(PanelEvent::Click(id))
+                if id == ids::TIMELINE_ONION_SETTINGS
+        )
+    });
+    assert!(
+        forwarded,
+        "clicar a engrenagem tem de encaminhar um PanelEvent::Click para a shell abrir o card"
+    );
 }
 
 #[test]
@@ -97,7 +146,11 @@ fn the_painted_onion_switches_show_the_snapshot() {
         for mode in [OnionMode::Frames, OnionMode::Keys] {
             let mut host = MockPanelHost::with_panel::<TimelinePanel>();
             let mut state = TimelinePanelState::default();
-            let onion = OnionSettings { enabled, mode, ..OnionSettings::default() };
+            let onion = OnionSettings {
+                enabled,
+                mode,
+                ..OnionSettings::default()
+            };
             paint(&mut host, &mut state, transport(onion));
 
             let (_, on) = host
@@ -110,7 +163,11 @@ fn the_painted_onion_switches_show_the_snapshot() {
                 .store()
                 .toggle(ids::TIMELINE_ONION_MODE)
                 .expect("o toggle Onion Keys não está registrado — veja populate.rs");
-            assert_eq!(keys_on, mode == OnionMode::Keys, "o switch Keys discorda do snapshot");
+            assert_eq!(
+                keys_on,
+                mode == OnionMode::Keys,
+                "o switch Keys discorda do snapshot"
+            );
         }
     }
 }

@@ -36,9 +36,20 @@ fn the_keys_scene_authors_a_pose_per_instant() {
     use super::author_poses;
     let mut doc = TimelineDoc::new();
     let bits = 3_u64;
-    let poses = [(0.0, -6.0, -3.0, 0.0), (1.0, -3.0, 1.0, 0.5), (2.0, 0.0, -2.0, -0.4)];
+    let poses = [
+        (0.0, -6.0, -3.0, 0.0),
+        (1.0, -3.0, 1.0, 0.5),
+        (2.0, 0.0, -2.0, -0.4),
+    ];
     author_poses(&mut doc, bits, &poses);
     // Cada instante vira uma coluna de keys (X, Y, Rotação) — logo 3 tempos de key.
-    assert_eq!(ph2d_timeline::entity_key_times(&doc, bits), vec![0.0, 1.0, 2.0]);
-    assert_eq!(keys(&doc, bits, PropKind::TranslationY), 3, "Y keyado por pose");
+    assert_eq!(
+        ph2d_timeline::entity_key_times(&doc, bits),
+        vec![0.0, 1.0, 2.0]
+    );
+    assert_eq!(
+        keys(&doc, bits, PropKind::TranslationY),
+        3,
+        "Y keyado por pose"
+    );
 }

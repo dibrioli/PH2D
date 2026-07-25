@@ -401,9 +401,8 @@ pub(crate) fn apply_samples(
         // A path anchor (`to_path`) is a discrete edit too — in Path mode there are
         // no scalar keys, so bracketing on `to_key` alone would author the anchor
         // outside any undo step.
-        let discrete = !drag_now
-            && (!to_key.is_empty() || !to_path.is_empty())
-            && !timeline.history.is_open();
+        let discrete =
+            !drag_now && (!to_key.is_empty() || !to_path.is_empty()) && !timeline.history.is_open();
         if discrete {
             timeline.history.begin(&timeline.doc);
         }

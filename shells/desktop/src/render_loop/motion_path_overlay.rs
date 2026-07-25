@@ -101,8 +101,8 @@ const TIP_SEGS: usize = 12;
 #[path = "motion_path_overlay_marks.rs"]
 mod marks_mod;
 use marks_mod::{
-    heat_ramp, MarkRole, OverlayMark, RIBBON_BANDS, RIBBON_FLAT_REL, RIBBON_GLOW_PX,
-    RIBBON_GLOW_RGBA, RIBBON_PX,
+    MarkRole, OverlayMark, RIBBON_BANDS, RIBBON_FLAT_REL, RIBBON_GLOW_PX, RIBBON_GLOW_RGBA,
+    RIBBON_PX, heat_ramp,
 };
 
 /// O que o ponteiro agarrou na trajetória — a âncora (translada a curva) ou uma das

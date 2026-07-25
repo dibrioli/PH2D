@@ -213,6 +213,88 @@ impl WidgetStore {
         self.fill_modal = None;
     }
 
+    /// Open the **Onion settings** floating modal (ADR-0142 W3b) with its top-left at `(x, y)` (screen
+    /// px), seeding the three sliders (`0..1`) and two colour swatches. Registers the sliders, the close
+    /// + handle buttons, and marks the swatches as picker swatches so the generic pointer dispatch drives
+    /// them. Takes ONLY primitives — editor-core stays timeline-agnostic; the shell owns the count↔slider
+    /// mapping and the `OnionSettings` type. Idempotent: re-opening re-seeds every value.
+    ///
+    /// `opacity` / `before_frac` / `after_frac` are the slider tracks (`0..1`); `color_before` /
+    /// `color_after` are `[u8; 4]` RGBA seeds for the swatches.
+    pub fn open_onion_modal(
+        &mut self,
+        x: f32,
+        y: f32,
+        opacity: f32,
+        before_frac: f32,
+        after_frac: f32,
+        color_before: [u8; 4],
+        color_after: [u8; 4],
+    ) {
+        self.onion_modal = Some((x, y));
+        for (id, v) in [
+            (crate::ids::TIMELINE_ONION_MODAL_OPACITY, opacity),
+            (crate::ids::TIMELINE_ONION_MODAL_BEFORE, before_frac),
+            (crate::ids::TIMELINE_ONION_MODAL_AFTER, after_frac),
+        ] {
+            self.register(
+                id,
+                InteractiveState::Slider {
+                    state: SliderState::Normal,
+                    value: v.clamp(0.0, 1.0),
+                    orientation: SliderOrientation::Horizontal,
+                },
+            );
+            // Re-seed even if already registered (`register` overwrites, but be explicit — the value
+            // must mirror the current onion every time the card is (re)opened).
+            if let Some(InteractiveState::Slider { value, .. }) = self.get_mut(id) {
+                *value = v.clamp(0.0, 1.0);
+            }
+        }
+        for id in [
+            crate::ids::TIMELINE_ONION_MODAL_CLOSE,
+            crate::ids::TIMELINE_ONION_MODAL_HANDLE,
+        ] {
+            self.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+        for (id, rgba) in [
+            (crate::ids::TIMELINE_ONION_MODAL_COLOR_BEFORE, color_before),
+            (crate::ids::TIMELINE_ONION_MODAL_COLOR_AFTER, color_after),
+        ] {
+            self.register_picker_swatch(id);
+            self.set_widget_color(id, rgba);
+        }
+    }
+
+    /// Close the Onion settings modal (the X button / a dismissal).
+    pub fn close_onion_modal(&mut self) {
+        self.onion_modal = None;
+    }
+
+    /// The Onion modal's top-left `(x, y)` in screen px, or `None` when closed. The painter gates the
+    /// card's render + hit registration on this being `Some`; the shell gates the store→onion read-back
+    /// on it too.
+    #[must_use]
+    pub fn onion_modal_pos(&self) -> Option<(f32, f32)> {
+        self.onion_modal
+    }
+
+    /// Offset the Onion modal's position by `(dx, dy)` screen px (the title-band drag). No-op when
+    /// closed. Not clamped here — the painter clamps to the viewport when it draws (so the accumulated
+    /// delta always equals `cursor − grab_offset` and the drag never dead-zones), mirroring
+    /// [`Self::move_fill_modal`].
+    pub fn move_onion_modal(&mut self, dx: f32, dy: f32) {
+        if let Some((x, y)) = self.onion_modal.as_mut() {
+            *x += dx;
+            *y += dy;
+        }
+    }
+
     /// The Fill modal's top-left `(x, y)` in screen px, or `None` when the modal is closed. The painter
     /// gates the modal's render + hit registration on this being `Some`.
     #[must_use]

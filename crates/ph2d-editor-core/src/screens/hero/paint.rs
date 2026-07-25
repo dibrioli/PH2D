@@ -475,6 +475,16 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
+    // Onion settings modal (ADR-0142 W3b) — a floating, draggable card opened from the timeline's
+    // Onion-settings button (no-op when closed). Same floating-dialog layer as the Fill modal.
+    chrome::paint_onion_modal(
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        viewport,
+    );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to
     // import" hint while the OS drag is active.

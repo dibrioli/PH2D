@@ -92,8 +92,36 @@ verde, futuro azul) para o app ter UM vocabulário de fantasma, e uma unificaç�
   painel edita por `TimelineIntent::SetOnion`, o snapshot o carrega, e o shell LÊ
   `self.timeline.onion` para o passe de fantasmas. Gates: seam que CLICA os dois toggles →
   `SetOnion` (mutação: fora do `populate` = morto sob o mouse) · `apply_intent`→estado→
-  snapshot · id-collision. **Aberto (W3b):** contagens/opacidade/cores num card próprio
-  (hoje nos defaults; o smoke os arma).
+  snapshot · id-collision.
+- **W3b (LANDOU, o card):** contagens/opacidade/cores **não cabem na barra** (Enio:
+  *"esse card deve viver num modal … mas o botão para abrí-lo fica na timeline e todas as
+  edições devem ser vistas em tempo real no canvas"* · *"o modal deve ser arrastável com o
+  mouse e deve ter o botão de fechar funcional"*). Card flutuante **arrastável** com **X**,
+  aberto por uma **engrenagem** na barra de transporte, editando ao vivo (Opacity · Ghosts
+  Before/After · Past/Future colour). **É hero chrome, espelho EXATO do `fill_modal`** — o
+  shell não roteia `WidgetEvent`s da própria chrome (registra hit-rect mas não tem dispatch
+  interativo; isso mora no `chrome::dispatch_all` do editor-core). ⚠️ **A `WidgetStore` é o
+  quadro-negro compartilhado:** o editor-core NÃO enxerga `OnionSettings`, então os widgets
+  vivem no store (dirigidos pelo dispatch genérico) e o **shell lê de volta** para
+  `self.timeline.onion` a cada frame (o passe de fantasmas relê ⇒ tempo real de graça);
+  `onion_modal::apply` **não encaminha nada** (não há tool; nenhum `EditorAction` nomeia
+  onion), só fecha no X e consome o handle/sliders. **O mapeamento contagem↔slider vive SÓ
+  no shell** (`crate::onion_modal`, uma cópia): o open-seed e o read-back o usam. O botão é
+  BOTÃO (não toggle): seu `PanelEvent::Click` chega ao shell, que abre o card seeded de
+  `self.timeline.onion` (shell-side porque o card mora no `hero.store`, fora do alcance do
+  painel — espelho do `TIMELINE_MOTION_PATH`). A **cor** vai pelo `register_picker_swatch`
+  (o `BlenderColorPicker` compartilhado; read-back por `widget_color`). O **drag** é uma
+  máquina de estado no shell (`ONION_MODAL_DRAG`), byte-a-byte o `fill_drag`. As contagens
+  são **sliders** (`0..MAX_GHOSTS=8`, arredondadas na leitura) — o label é estático (como o
+  "Threshold" do `fill_modal`) e o preenchimento comunica o nível; mostrar o inteiro é
+  refinamento (exigiria plumbing do `MAX` até o painter). Gates: paint gated em
+  `onion_modal_pos()` (mutação: pinta fechado) · X fecha · handle consome sem fechar ·
+  slider consome · open semeia + swatches marcadas + move desloca · a **engrenagem** pinta,
+  CLICA e encaminha `PanelEvent::Click` (mutação: fora do `populate` = morto sob o mouse) ·
+  o **read-back** escreve o onion enquanto aberto e é no-op fechado (mutação: `read_into`
+  no-op) · contagem/cor round-trip. Smoke: `PH2D_ONION_SMOKE=1`/`=2` abrem o card semeado.
+  **Refinamento aberto:** mostrar o inteiro da contagem no label; e o card não persiste
+  posição (reabre no canto — deliberado, o artista arrasta).
 - **Futuro (Chesterton):** rigs parenteados (compor a cadeia como a física W5 fez) ·
   "todos animados" · unificação de crate com o Flip.
 

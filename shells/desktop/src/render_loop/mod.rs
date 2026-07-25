@@ -2264,6 +2264,28 @@ impl crate::App {
                                     },
                                 );
                             }
+                        } else if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
+                            && *id == ph2d_editor::ids::TIMELINE_ONION_SETTINGS
+                        {
+                            // Open the onion settings card (hero chrome), seeded from the current
+                            // onion. Shell-side because the card lives in `hero.store`, out of the
+                            // panel's reach (mirror of the Motion Path case above). `OnionSettings`
+                            // is `Copy`, so this holds no borrow while `hero.store` is written; the
+                            // count↔slider + rgb↔u8 mappings live in `crate::onion_modal`.
+                            let o = self.timeline.onion;
+                            let (ax, ay) = hero
+                                .hit_index
+                                .rect_for(*id)
+                                .map_or((120.0, 120.0), |r| (r.x - 90.0, r.y - 236.0));
+                            hero.store.open_onion_modal(
+                                ax,
+                                ay,
+                                o.opacity,
+                                crate::onion_modal::count_to_frac(o.frames_before),
+                                crate::onion_modal::count_to_frac(o.frames_after),
+                                crate::onion_modal::rgb_to_u8(o.color_before),
+                                crate::onion_modal::rgb_to_u8(o.color_after),
+                            );
                         } else if let Some(intent) = timeline_bridge::intent_for_transport(
                             &ev,
                             &self.timeline,
@@ -4145,6 +4167,11 @@ impl crate::App {
             // t±k, cozidas AQUI (temos sim/present/doc/seleção) e desenhadas pelo passe de
             // sprite em `run_present_phase` — o padrão do Motion (cozinha numa fase,
             // desenha noutra). No-op quando desligado / sem seleção animada.
+            // Onion settings modal (ADR-0142 W3b): while the card is open, read its slider/swatch
+            // values back into the onion each frame — live edits on the canvas (the ghost pass
+            // below re-reads `self.timeline.onion`). No-op when closed. The store is the shared
+            // blackboard; `enabled`/`mode` stay owned by the transport toggles.
+            crate::onion_modal::read_into(&hero.store, &mut self.timeline.onion);
             self.onion_ghosts.clear();
             timeline_onion::collect_onion_ghosts(
                 &self.timeline.onion,

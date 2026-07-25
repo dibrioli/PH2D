@@ -128,6 +128,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // Onion (ADR-0142): dois toggles de vista — on/off + modo (Keys/Frames).
     toggle(store, ids::TIMELINE_ONION, false);
     toggle(store, ids::TIMELINE_ONION_MODE, true);
+    // Onion Settings (ADR-0142 W3b): the gear that opens the floating card. A plain Button, so
+    // its Click reaches `event.rs` — without this it is painted, hit-registered, and dead under
+    // the mouse ([[feedback_widget_is_done_when_a_test_clicks_it]]).
+    button(store, ids::TIMELINE_ONION_SETTINGS);
 
     // The view tabs. Each is a plain Button — which is what makes its Click reach
     // `apply_event` at all: `dispatch_pointer`'s Down only makes a hit ACTIVE when

@@ -1806,9 +1806,14 @@ impl App {
             .and_then(|h| h.gizmo.iter_selected().next());
         // Só a ÂNCORA (o quadrado) abre o menu — a ponta de tangente é para arrastar, e o
         // tipo de alça é propriedade do NÓ, não da alça.
-        let Some(MotionPathGrab::Anchor { target, i }) =
-            motion_path_hit(&self.timeline.doc, selected, &gfx.camera, gfx.surface.size(), x, y)
-        else {
+        let Some(MotionPathGrab::Anchor { target, i }) = motion_path_hit(
+            &self.timeline.doc,
+            selected,
+            &gfx.camera,
+            gfx.surface.size(),
+            x,
+            y,
+        ) else {
             return false;
         };
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
@@ -2347,6 +2352,10 @@ impl App {
         // Fill "Fill adjust" modal title-band drag (SHELL-only): while the card is grabbed, motion moves
         // it. Early-return so it doesn't pan / drive a gizmo. No-ops unless a modal drag is armed.
         if self.fill_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Onion settings modal title-band drag (ADR-0142 W3b) — same shape as the Fill modal's.
+        if self.onion_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // ADR-0108 Fase 1: node box-select marquee — while Shift+dragging, grow
@@ -3541,6 +3550,10 @@ impl App {
             if self.arm_fill_modal_drag_if_on_handle(evt.x, evt.y) {
                 return;
             }
+            // A Primary Down on the onion modal's title band starts a modal-move (ADR-0142 W3b).
+            if self.arm_onion_modal_drag_if_on_handle(evt.x, evt.y) {
+                return;
+            }
         }
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
@@ -3651,6 +3664,8 @@ impl App {
                 self.fill_drag_up();
                 // End a Fill "Fill adjust" modal title-band drag. No-op when not dragging the modal.
                 self.fill_modal_drag_up();
+                // End an onion settings modal title-band drag (ADR-0142 W3b). No-op when not dragging.
+                self.onion_modal_drag_up();
             }
             _ => {}
         }

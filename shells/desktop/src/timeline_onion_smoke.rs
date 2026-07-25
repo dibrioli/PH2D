@@ -25,11 +25,34 @@ fn author_mover(doc: &mut TimelineDoc, bits: u64, x0: f32, x1: f32, rot: f32) {
         PropKind::TranslationX,
         s(0.0),
         AnimValue::Float(x0),
-        Interp::Bezier { x1: 0.8, y1: 0.0, x2: 0.2, y2: 1.0 },
+        Interp::Bezier {
+            x1: 0.8,
+            y1: 0.0,
+            x2: 0.2,
+            y2: 1.0,
+        },
     );
-    doc.insert_key(bits, PropKind::TranslationX, s(4.0), AnimValue::Float(x1), Interp::Linear);
-    doc.insert_key(bits, PropKind::Rotation, s(0.0), AnimValue::Float(0.0), Interp::Linear);
-    doc.insert_key(bits, PropKind::Rotation, s(4.0), AnimValue::Float(rot), Interp::Linear);
+    doc.insert_key(
+        bits,
+        PropKind::TranslationX,
+        s(4.0),
+        AnimValue::Float(x1),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        bits,
+        PropKind::Rotation,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        bits,
+        PropKind::Rotation,
+        s(4.0),
+        AnimValue::Float(rot),
+        Interp::Linear,
+    );
 }
 
 /// Modo Keys: uma POSE autorada por instante (x, y, rot) — o zigue-zague que faz cada
@@ -37,9 +60,27 @@ fn author_mover(doc: &mut TimelineDoc, bits: u64, x0: f32, x1: f32, rot: f32) {
 fn author_poses(doc: &mut TimelineDoc, bits: u64, poses: &[(f64, f32, f32, f32)]) {
     let s = RationalTime::from_seconds;
     for &(t, x, y, rot) in poses {
-        doc.insert_key(bits, PropKind::TranslationX, s(t), AnimValue::Float(x), Interp::Linear);
-        doc.insert_key(bits, PropKind::TranslationY, s(t), AnimValue::Float(y), Interp::Linear);
-        doc.insert_key(bits, PropKind::Rotation, s(t), AnimValue::Float(rot), Interp::Linear);
+        doc.insert_key(
+            bits,
+            PropKind::TranslationX,
+            s(t),
+            AnimValue::Float(x),
+            Interp::Linear,
+        );
+        doc.insert_key(
+            bits,
+            PropKind::TranslationY,
+            s(t),
+            AnimValue::Float(y),
+            Interp::Linear,
+        );
+        doc.insert_key(
+            bits,
+            PropKind::Rotation,
+            s(t),
+            AnimValue::Float(rot),
+            Interp::Linear,
+        );
     }
 }
 
@@ -101,6 +142,21 @@ impl crate::App {
         self.timeline.onion.opacity = 0.6;
         self.timeline.onion.fps = self.timeline.doc.fps_display;
 
+        // W3b: abre o CARD de settings (arrastável, com X) já semeado — o artista arrasta a alça,
+        // fecha no X, e move os sliders/cores vendo os fantasmas mudarem AO VIVO no canvas.
+        let o = self.timeline.onion;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.open_onion_modal(
+                60.0,
+                60.0,
+                o.opacity,
+                crate::onion_modal::count_to_frac(o.frames_before),
+                crate::onion_modal::count_to_frac(o.frames_after),
+                crate::onion_modal::rgb_to_u8(o.color_before),
+                crate::onion_modal::rgb_to_u8(o.color_after),
+            );
+        }
+
         // Pausado no MEIO (2 s de 4), para os dois lados do onion aparecerem.
         self.playhead.seek(2.0);
         self.playhead.pause();
@@ -123,6 +179,11 @@ impl crate::App {
         eprintln!(
             "[onion-smoke] Abra a timeline (L): os toggles Onion e Keys estao na barra de \
              transporte (ja armados pela cena) -- clique para ligar/desligar e trocar o modo."
+        );
+        eprintln!(
+            "[onion-smoke] O CARD de settings (W3b) ja abriu no topo-esquerdo: arraste-o pela \
+             barra do titulo, feche no X, e mova Opacity/Ghosts/cores vendo os fantasmas mudarem \
+             ao vivo. Reabre pela engrenagem na barra de transporte."
         );
     }
 }

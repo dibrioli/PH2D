@@ -88,7 +88,11 @@ fn ghost_times(
             (1..=count)
                 .map(|k| {
                     let off = k as f64 * dt;
-                    if past { live_clip_t - off } else { live_clip_t + off }
+                    if past {
+                        live_clip_t - off
+                    } else {
+                        live_clip_t + off
+                    }
                 })
                 .collect()
         }

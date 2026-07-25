@@ -62,6 +62,7 @@ mod io_menu;
 mod motion_path_handle;
 mod motion_toggle;
 mod new_image;
+mod onion_modal;
 mod palette_rename;
 mod radius;
 mod rail_painter_tools;
@@ -95,6 +96,10 @@ pub use rail_painter_tools::sync_rail_to_stroke_method as sync_painter_rail_to_s
 /// so the hero paint pass can render it above the canvas alongside the other floating dialogs.
 pub use fill_modal::paint_fill_adjust_modal;
 
+/// Paint the Onion settings floating modal (ADR-0142 W3b; gated on `store.onion_modal_pos()`).
+/// Re-exported so the hero paint pass renders it alongside the other floating dialogs.
+pub use onion_modal::paint_onion_modal;
+
 /// Walk every chrome handler in z-order; stop at the first that consumes the
 /// event. Order comes from each handler's `// ph2d-chrome-sync:z=NN` marker
 /// (lower wins on id overlap). The chain body below is **generated** — run
@@ -120,6 +125,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || fill_modal::apply(hero, event)
+        || onion_modal::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

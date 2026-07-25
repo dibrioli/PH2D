@@ -29,8 +29,20 @@ fn rig() -> (World, u64, TimelineDoc) {
     let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
     let b = e.to_bits();
     let mut doc = TimelineDoc::new();
-    doc.insert_key(b, PropKind::TranslationX, RationalTime::from_seconds(0.0), AnimValue::Float(0.0), Interp::Linear);
-    doc.insert_key(b, PropKind::TranslationX, RationalTime::from_seconds(4.0), AnimValue::Float(10.0), Interp::Linear);
+    doc.insert_key(
+        b,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        b,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(4.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
     (w, b, doc)
 }
 
@@ -54,7 +66,13 @@ fn rig_keys() -> (World, u64, TimelineDoc) {
     let b = e.to_bits();
     let mut doc = TimelineDoc::new();
     for t in [0.0, 1.0, 2.0, 3.0, 4.0] {
-        doc.insert_key(b, PropKind::TranslationX, RationalTime::from_seconds(t), AnimValue::Float((2.5 * t) as f32), Interp::Linear);
+        doc.insert_key(
+            b,
+            PropKind::TranslationX,
+            RationalTime::from_seconds(t),
+            AnimValue::Float((2.5 * t) as f32),
+            Interp::Linear,
+        );
     }
     (w, b, doc)
 }
@@ -90,8 +108,14 @@ fn past_ghosts_are_cool_and_future_ghosts_are_warm() {
         );
     }
     // E os dois lados de fato existem (senão "todos frios" passaria vazio).
-    assert!(out.iter().any(|g| g.world_pos[0] < live_x), "sem fantasma passado");
-    assert!(out.iter().any(|g| g.world_pos[0] > live_x), "sem fantasma futuro");
+    assert!(
+        out.iter().any(|g| g.world_pos[0] < live_x),
+        "sem fantasma passado"
+    );
+    assert!(
+        out.iter().any(|g| g.world_pos[0] > live_x),
+        "sem fantasma futuro"
+    );
 }
 
 #[test]
@@ -147,8 +171,15 @@ fn a_ghost_is_a_flat_silhouette() {
             g.flip_uv & RenderInstance::TINT_FILL_BIT != 0,
             "o fantasma não está em modo silhueta (tint_fill)"
         );
-        assert_eq!(g.per_corner_tint, [[1.0, 1.0, 1.0, 1.0]; 4], "per-corner não-neutro tingiria a silhueta");
-        assert_eq!(g.opacity, 1.0, "a opacity herdada apagaria o falloff da tinta");
+        assert_eq!(
+            g.per_corner_tint,
+            [[1.0, 1.0, 1.0, 1.0]; 4],
+            "per-corner não-neutro tingiria a silhueta"
+        );
+        assert_eq!(
+            g.opacity, 1.0,
+            "a opacity herdada apagaria o falloff da tinta"
+        );
     }
 }
 
@@ -156,7 +187,10 @@ fn a_ghost_is_a_flat_silhouette() {
 fn the_onion_is_off_by_default_and_when_disabled() {
     assert!(!OnionSettings::default().enabled, "o onion nasce desligado");
     let (w, e, doc) = rig();
-    let s = OnionSettings { enabled: false, ..settings() };
+    let s = OnionSettings {
+        enabled: false,
+        ..settings()
+    };
     let mut out = Vec::new();
     build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, &mut out);
     assert!(out.is_empty(), "desligado não desenha fantasma");
@@ -175,7 +209,13 @@ fn keys_mode_ghosts_the_neighboring_keyframes() {
     // Keys em 0,1,2,3,4; playhead em 2 (sobre um key); antes=2/depois=2 ⇒ fantasmas nas
     // keys 1 e 0 (passado) e 3 e 4 (futuro) — as poses AUTORADAS vizinhas.
     let (w, e, doc) = rig_keys();
-    let s = OnionSettings { enabled: true, frames_before: 2, frames_after: 2, mode: OnionMode::Keys, ..OnionSettings::default() };
+    let s = OnionSettings {
+        enabled: true,
+        frames_before: 2,
+        frames_after: 2,
+        mode: OnionMode::Keys,
+        ..OnionSettings::default()
+    };
     let mut out = Vec::new();
     build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, &mut out);
     assert_eq!(out.len(), 4, "duas keys de cada lado do playhead");
@@ -183,8 +223,15 @@ fn keys_mode_ghosts_the_neighboring_keyframes() {
     // 7.5 e 10.0 (futuro). O live (5.0) NÃO está entre elas.
     let mut xs: Vec<f32> = out.iter().map(|g| g.world_pos[0]).collect();
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    assert_eq!(xs, vec![0.0, 2.5, 7.5, 10.0], "os fantasmas caem NAS keyframes vizinhas");
-    assert!(!xs.contains(&5.0), "a pose viva (uma key) não vira fantasma");
+    assert_eq!(
+        xs,
+        vec![0.0, 2.5, 7.5, 10.0],
+        "os fantasmas caem NAS keyframes vizinhas"
+    );
+    assert!(
+        !xs.contains(&5.0),
+        "a pose viva (uma key) não vira fantasma"
+    );
 }
 
 #[test]
@@ -192,7 +239,13 @@ fn keys_mode_ignores_the_frame_grid() {
     // O CONTROLE do modo Keys: os fantasmas caem nas KEYS, então mudar o fps (a grade de
     // quadros) não muda onde eles estão. Mutação (Keys usar `live ± k·dt`) ⇒ RED.
     let (w, e, doc) = rig_keys();
-    let base = OnionSettings { enabled: true, frames_before: 2, frames_after: 2, mode: OnionMode::Keys, ..OnionSettings::default() };
+    let base = OnionSettings {
+        enabled: true,
+        frames_before: 2,
+        frames_after: 2,
+        mode: OnionMode::Keys,
+        ..OnionSettings::default()
+    };
     let x_of = |fps: f64| -> Vec<f32> {
         let s = OnionSettings { fps, ..base };
         let mut out = Vec::new();
@@ -201,6 +254,14 @@ fn keys_mode_ignores_the_frame_grid() {
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
         xs
     };
-    assert_eq!(x_of(4.0), x_of(60.0), "o fps não pode mover um fantasma de modo Keys");
-    assert_eq!(x_of(4.0), vec![0.0, 2.5, 7.5, 10.0], "e eles estão NAS keys");
+    assert_eq!(
+        x_of(4.0),
+        x_of(60.0),
+        "o fps não pode mover um fantasma de modo Keys"
+    );
+    assert_eq!(
+        x_of(4.0),
+        vec![0.0, 2.5, 7.5, 10.0],
+        "e eles estão NAS keys"
+    );
 }

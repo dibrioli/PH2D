@@ -718,7 +718,9 @@ fn probe_paint_through_the_protection() {
         let red: Vec<f32> = (0..(SZ as usize * SZ as usize))
             .map(|i| 1.0 - f32::from(t.canvas_rgba[i * 4]) / 255.0)
             .collect();
-        let xs: Vec<f32> = (70..160).filter_map(|y| cross_x(&red, SZ, y, 0.5)).collect();
+        let xs: Vec<f32> = (70..160)
+            .filter_map(|y| cross_x(&red, SZ, y, 0.5))
+            .collect();
         let saw = if xs.len() > 3 {
             xs.windows(3)
                 .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())
@@ -731,7 +733,9 @@ fn probe_paint_through_the_protection() {
             xs.iter().copied().fold(f32::MAX, f32::min),
             xs.iter().copied().fold(f32::MIN, f32::max),
         );
-        let pxs: Vec<f32> = (70..160).filter_map(|y| cross_x(&prot, SZ, y, 0.5)).collect();
+        let pxs: Vec<f32> = (70..160)
+            .filter_map(|y| cross_x(&prot, SZ, y, 0.5))
+            .collect();
         let psaw = pxs
             .windows(3)
             .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())

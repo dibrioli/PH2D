@@ -240,8 +240,8 @@ pub(crate) struct PaintState {
     /// deliberate choice (`arm_tool_falloff_defaults`). Cleared by the artist's falloff setter;
     /// re-presumed on a brush-slot switch from the factory value.
     falloff_armed: bool,
-    mask_scratch_rgba: Arc<Vec<u8>>, // Mask COMMITTED coverage (scratch, white=reveal); Paint/Erase fold in by ENVELOPE. [`mask`]
-    mask_stroke_rgba: Arc<Vec<u8>>, // Mask per-STROKE product buffer; folded into scratch by min/max (`fold_mask_stroke`)
+    /// **Mask** brush transient scratch (tool-side mask for `mask_scratch_target`, white=reveal; NOT a stack layer). [`mask`].
+    mask_scratch_rgba: Arc<Vec<u8>>,
     mask_scratch_target: Option<crate::layers::LayerId>,
     /// **Selection** mask (ADR-0103): a document-wide single-channel coverage buffer (`w*h` bytes,
     /// `0` = outside / `255` = inside; Feather softens the edge). Gates every paint op to the selected

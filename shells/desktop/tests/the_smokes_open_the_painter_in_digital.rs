@@ -22,6 +22,7 @@
 
 const IMPASTO: &str = include_str!("../src/impasto_smoke.rs");
 const WETPAINT: &str = include_str!("../src/wetpaint_smoke.rs");
+const MASK: &str = include_str!("../src/mask_smoke.rs");
 
 /// Nenhum smoke chama `set_paint_media(PaintMedia::<não-Digital>)`.
 ///
@@ -30,7 +31,7 @@ const WETPAINT: &str = include_str!("../src/wetpaint_smoke.rs");
 /// dos dois `arm_brush_once`.
 #[test]
 fn no_painter_smoke_forces_a_medium() {
-    for (name, src) in [("impasto", IMPASTO), ("wetpaint", WETPAINT)] {
+    for (name, src) in [("impasto", IMPASTO), ("wetpaint", WETPAINT), ("mask", MASK)] {
         for medium in ["Impasto", "Watercolor", "WetPaint"] {
             // A chamada exata que abre num meio; a prosa dos docs cita os meios em texto, nunca nesta
             // forma de chamada, então isto não pega comentário.
@@ -57,6 +58,18 @@ fn the_smokes_still_prepare_a_canvas() {
              arquivo fosse esvaziado; se o smoke foi renomeado/removido, atualize-o de propósito"
         );
     }
+    // O smoke da MÁSCARA não tem `arm_brush_once` de propósito (ele não arma NADA além do canvas — a
+    // máscara é um chip do rail, não um meio do dropdown), então a sua metade positiva é outra: o canvas
+    // + o roteiro que manda o artista pegar o chip e ESFREGAR (o gesto sem o qual a cena não julga nada).
+    assert!(
+        MASK.contains("fn spawn_if_enabled") && MASK.contains("spawn_blank_canvas"),
+        "o mask_smoke perdeu o preparo do canvas"
+    );
+    assert!(
+        MASK.contains("MASK") && MASK.to_lowercase().contains("scrub"),
+        "o mask_smoke não instrui mais a pegar o chip MASK e esfregar — sem o scrub a cena não mostra o \
+         defeito que ela existe para julgar (uma passada sempre pareceu boa)"
+    );
     // …e cada um ainda diz ao artista para escolher o SEU meio no dropdown.
     assert!(
         IMPASTO.contains("pick Impasto from the Paint Mode dropdown"),

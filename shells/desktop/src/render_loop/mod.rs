@@ -779,6 +779,35 @@ impl crate::App {
             }
         }
 
+        // Mask smoke (`PH2D_MASK_SMOKE=1`): the same dance for the mask coverage law (doc 25 §13.9).
+        // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the
+        // shipped default mask brush rather than a rigged one.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::mask_smoke::enabled()
+            && !std::mem::replace(&mut self.mask_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::mask_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Mask smoke: paint some art, then the MASK chip — and SCRUB".to_string(),
+                ));
+            }
+        }
+
         // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
         // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
         if let Some(hero) = hero_screen.as_mut()

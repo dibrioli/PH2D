@@ -120,6 +120,7 @@ mod keymap;
 mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
+mod mask_smoke;
 mod morph_live;
 mod motion_state;
 mod name_unique;
@@ -355,6 +356,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,
+            mask_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
             nest_smoke_done: false,

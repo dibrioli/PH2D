@@ -64,7 +64,7 @@ são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cad
 | **W-BakeRange** | o INÍCIO do loop é honrado — um loop `[2s, 5s]` assa exatamente `[2s, 5s]`, simulando o front e descartando-o (a metade do bake que estava aberta desde o W4) | `=37` |
 | **W-JointAnchor** | a âncora de um joint ganha um DOT âmbar agarrável no canvas (handle de PONTO — os 3 publicadores de `GizmoView` são caixas), arrasta = `Translate` da seleção | `=38` |
 | **W-BakeJoint** | assar UM corpo de um rig articulado puxa o componente conexo DINÂMICO inteiro (`jointed_group`) — não há bake parcial coerente de um rig acoplado | `=39` |
-| **W-JointAuthoring** | re-pick dos corpos de um joint (§12 "Set Body A/B", espelha o Join) + smoke de autoria do zero; a criação já existia desde o W3, faltava descobribilidade | `=40` |
+| **W-JointAuthoring** | §12 redesenhada: linha por corpo (Body A/B + nome vigente + eyedropper que ARMA um canvas-pick) + smoke de autoria do zero; a criação já existia desde o W3, faltava descobribilidade | `=40` |
 
 ⚠️ **Esta tabela estava faltando até 2026-07-21**, e um plano *normativo* que não menciona metade do módulo é
 pior que um plano velho: ele faz a próxima LLM concluir que a linha parou no W5. A regra: **wave nova fora do

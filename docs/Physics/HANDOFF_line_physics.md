@@ -4065,3 +4065,32 @@ sem deletar+refazer → Play. É a cena de autoria que faltava.
 - O re-pick por SELEÇÃO exige o joint PRIMÁRIO (selecione-o primeiro). Um canvas-pick (clicar o
   corpo) seria mais espacial, mas foi descartado por superfície — o modelo de seleção resolve.
 - Nada da autoria toca o solver — é UI pura sobre o contrato do W3.
+
+### Redesenho: linha por corpo + eyedropper de pick (2026-07-25)
+
+Report do Enio (com screenshot): *"Mostre quem são o Body A e B vigentes. Ao lado de cada
+nome um botão picker com ícone. Não deve ser necessário selecionar outro objeto além da joint
+para que apareçam os nomes e botões."* Isso **reverte o re-pick por-seleção acima** para um
+**CANVAS-PICK** — o requisito do Enio o torna o design certo.
+
+- A §12 mostra **uma linha por corpo**: `Body A: <nome>  [eyedropper]` / `Body B: <nome>
+  [eyedropper]`, com o nome vigente **sempre visível** (só a joint selecionada), e um
+  eyedropper (`IconId::Eyedropper`, `IconButtonStyle::Compact`) por ponta. Nome que não resolve
+  mostra **"(missing)"** apagado POR PONTA — substitui a linha combinada "X ↔ Y not connected".
+- O eyedropper **ARMA um canvas-pick** para aquele slot; o próximo clique num corpo religa a
+  ponta. Idiom de pick do app (arma, clica o alvo — como o eyedropper de cor). O ícone do slot
+  armado pinta **Pressed**.
+- **Wiring** (espelha o `vec_path_pick` do Vector): `App.joint_body_pick: Option<(u64, bool)>`
+  (runtime-only) · `JointFieldEdit::PickBodyA/PickBodyB` ARMAM (sem operando), no **action
+  loop** (onde `self` é mutável, como o Join) · `input_dispatch` intercepta um Down MODAL
+  (precede picking/gizmo, independe da ferramenta) → resolve o corpo sob o cursor
+  (`pick_sprites_at_world` + filtro `RigidBody`, ≠ a própria joint) → `set_joint_body`.
+- ⚠️ **`set_joint_body` escreve IN PLACE** (o pick resolve mid-frame no handler de ponteiro; o
+  undo global por-diff captura), pelo mesmo `clamped()`; **recusa self-joint** (`body_a ==
+  body_b`) e devolve bool, então o pick segue armado em vez de deixar uma joint dormente.
+
+O que MORREU da v1: `rebind_target` (o canvas-pick não usa a seleção), o campo
+`rebind_target_name` (→ `pick_armed: u8`), os ids `INSP_JOINT_SET_A/B` (→ `INSP_JOINT_PICK_A/B`),
+e o routing no drain (os edits agora armam no action loop). **Sem componente/id de física/schema
+novo.** LOC: `physics_smoke.rs` bateu 606 e a tabela de doc estagnada (parava na cena 28) foi
+trocada por um ponteiro ao `00_plano_waves.md` (581).

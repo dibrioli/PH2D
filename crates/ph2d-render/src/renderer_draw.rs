@@ -81,6 +81,55 @@ impl SpriteRenderer {
         // Collect scene instances + the `extra` slice into `scratch` and sort
         // (extracted to keep this file under its LOC cap; M0.T11).
         crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
+        self.draw_scratch(target, camera, window, clear_color, gpu_extra, scene_viewport);
+    }
+
+    /// Render ONLY `instances` into `target` — the isolation path for Motion's
+    /// own HDR FX pass (glow). Unlike [`render_with_extra`](Self::render_with_extra)
+    /// it does **not** drain `PresentWorld`: the scene is exactly the slice you
+    /// pass, drawn into a target you own (a second `Rgba16Float` RT). The scene's
+    /// fused sprite+motion pass is untouched — this is an *additional* render, so
+    /// the frame is byte-identical whenever the caller declines to run it.
+    ///
+    /// Motion instances are all atlas (`texture_id == 0`), no clip/mask, no
+    /// `gpu_extra` — the plain single-pass path of [`draw_scratch`](Self::draw_scratch).
+    /// Clearing with a transparent `clear_color` yields a premultiplied HDR image
+    /// the FX pass can bright-pass and blur.
+    ///
+    /// `scene_viewport` **must be the same sub-rect the fused scene pass used**
+    /// this frame: the FX target has to place the Motion pixels at the SAME screen
+    /// coordinates as the scene, or the glow lands where the sparks aren't
+    /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
+    pub fn render_instances_only(
+        &mut self,
+        target: &wgpu::TextureView,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        instances: &[RenderInstance],
+        scene_viewport: Option<[f32; 4]>,
+    ) {
+        self.scratch.clear();
+        self.scratch.extend_from_slice(instances);
+        crate::sprite_collect::sort_render_order(&mut self.scratch);
+        self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
+    }
+
+    /// The draw pass over the already-filled `self.scratch`: compute runs, upload,
+    /// and encode the normal + optional clip/mask passes into a fresh encoder. The
+    /// shared tail of every `render*` entry point — each fills `scratch` its own
+    /// way (from `PresentWorld`, or a raw slice for the glow isolation), then hands
+    /// it here.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_scratch(
+        &mut self,
+        target: &wgpu::TextureView,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        gpu_extra: Option<(&wgpu::Buffer, u32)>,
+        scene_viewport: Option<[f32; 4]>,
+    ) {
         compute_runs(&self.scratch, &mut self.runs);
         // Ensure an atlas bind group exists for every distinct sampling
         // used by an atlas run (built lazily; one per filter/repeat pair).

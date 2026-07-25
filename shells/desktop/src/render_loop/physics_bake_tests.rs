@@ -123,18 +123,19 @@ pub(super) fn baked() -> (TimelineState, SimWorld, Entity, BakeOutcome) {
     (timeline, sim, ball, outcome)
 }
 
-/// **The baked curve reproduces the simulated trajectory.**
+/// **The baked curve reproduces the simulated trajectory EXACTLY at every tick.**
 ///
 /// An APPEARANCE oracle: read the curve back through `apply_from_doc` — the
 /// frame loop's own function — into a `Transform`, and compare against what the
-/// sim did at that instant. Sampled at every tick, not at the ends, because a
-/// curve pinned at both ends and wrong in the middle is exactly the failure a
-/// fit produces.
+/// sim did at that instant. Sampled at every tick, which is where the keys are:
+/// with one key per tick and no fit, the curve returns the simulated pose
+/// verbatim.
 ///
-/// The bar is the fit's declared fidelity (~1-3% of the motion's range, the
-/// trade signed off in the timeline's §17.2), expressed against the RANGE of
-/// the motion rather than an absolute distance — a 2 m drop and a 2 cm nudge
-/// are not held to the same millimetre.
+/// The bar was the fit's declared fidelity (~1-3% of range); it is now the noise
+/// floor, because there is no fit — the keys ARE the samples. Expressed against
+/// each channel's RANGE so a 2 m drop and a 2 cm nudge are not held to the same
+/// millimetre. (Between-tick behaviour — no overshoot — is the bouncing-ball
+/// gate in the sibling file; this one is the at-tick exactness.)
 #[test]
 fn the_baked_curve_reproduces_the_simulated_motion() {
     let ticks = ticks_for(BAKE_SECONDS, DT);
@@ -150,7 +151,11 @@ fn the_baked_curve_reproduces_the_simulated_motion() {
         (hi - lo).max(1e-3)
     };
     let (span_x, span_y, span_r) = (span(|s| s.1), span(|s| s.2), span(|s| s.3));
-    const TOL: f32 = 0.05;
+    // Exact, not "close": one key per tick means the sampled pose IS the key
+    // value at the tick times. The bar is a noise floor, orders of magnitude
+    // under the fit's old 1-3% — a mutation that re-introduced a fit would round
+    // the motion above this at once.
+    const TOL: f32 = 1e-3;
 
     let mut worst = 0.0f32;
     for s in &truth {
@@ -163,8 +168,9 @@ fn the_baked_curve_reproduces_the_simulated_motion() {
         assert!(
             dx < TOL && dy < TOL && dr < TOL,
             "at t={:.3}s the baked curve is at ({:.4}, {:.4}, {:.4}) but the \
-             simulation was at ({:.4}, {:.4}, {:.4}) — {:.1}% / {:.1}% / {:.1}% \
-             of each channel's range",
+             simulation was at ({:.4}, {:.4}, {:.4}) — {:.2}% / {:.2}% / {:.2}% \
+             of each channel's range; one key per tick must reproduce this \
+             exactly",
             s.0,
             t.translation.x,
             t.translation.y,
@@ -177,19 +183,14 @@ fn the_baked_curve_reproduces_the_simulated_motion() {
             dr * 100.0
         );
     }
-    assert!(
-        worst > 0.0,
-        "the curve matched the simulation EXACTLY at every sample — the fit \
-         cannot have run, so this gate is measuring the dense keys and would \
-         not notice a broken fit"
-    );
+    let _ = worst;
 }
 
 /// **A bake is ONE undo step, not one per frame.** (The plan's gate 3.)
 ///
-/// 90 ticks × 3 channels = 270 dense keys, plus the fit that replaces them.
-/// The artist pressed one button, so Ctrl+Z is one press. Counted through the
-/// real `TimelineHistory`, which is what Ctrl+Z actually pops.
+/// 90 ticks × 3 channels = 270 dense keys, all written inside one bracket. The
+/// artist pressed one button, so Ctrl+Z is one press. Counted through the real
+/// `TimelineHistory`, which is what Ctrl+Z actually pops.
 #[test]
 fn a_whole_bake_is_a_single_undo_step() {
     let (mut sim, ball) = scene();

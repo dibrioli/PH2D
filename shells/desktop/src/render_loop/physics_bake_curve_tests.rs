@@ -16,20 +16,20 @@ use ph2d_timeline::{PropKind, TimelineState};
 use super::tests::{BAKE_SECONDS, DT, baked, registry, scene, simulated};
 use super::{BakeChannels, DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
 
-/// **The bake produces a CURVE, not one key per frame.**
+/// **The bake writes ONE KEY PER TICK — no fit.** (Enio: "sem simplificação;
+/// busque o padrão ouro".)
 ///
-/// The wave's actual deliverable, and the one every other gate here is blind
-/// to: with the fit removed, the tracks hold one key per tick, which reproduces
-/// the simulation *exactly* (so the fidelity gate is greener than ever), costs
-/// one undo step (so that gate passes), and is completely useless — nobody
-/// edits ninety keyframes per second. "Runtime truth becomes animation" means
-/// animation somebody can grab.
+/// The exact reversal of what this gate used to assert. A fit RESAMPLES the
+/// motion, and a resampled bounce is a rounded one; the gold standard for
+/// reproducing a discrete simulation is to not resample it at all — every tick
+/// the solver advanced becomes a key, linear between. Sampled at 60 fps that is
+/// byte-exact to the sim (the reproduction gates), and the cost is density,
+/// which is the trade "sem simplificação" asks for: fidelity over editability.
 ///
-/// The bar is generous on purpose: the point is orders of magnitude, not a
-/// pinned count that a tolerance tweak would have to chase. A bounce over 1.5 s
-/// is a handful of keys; 90 is the un-fitted signal.
+/// Mutation-tested: re-introducing any fit (`simplify_recorded`) collapses a
+/// moving channel from ~90 keys to single digits, and this goes red.
 #[test]
-fn the_bake_writes_a_curve_not_a_key_per_frame() {
+fn the_bake_writes_one_key_per_tick() {
     let (timeline, _sim, ball, outcome) = baked();
     let ticks = ticks_for(BAKE_SECONDS, DT) as usize;
     assert!(
@@ -47,14 +47,13 @@ fn the_bake_writes_a_curve_not_a_key_per_frame() {
             continue;
         };
         let n = track.keys().len();
+        // One key per simulated tick (tick 0..=ticks is `ticks + 1` samples). A
+        // fit would collapse a moving channel to a handful; the un-fitted signal
+        // is dense.
         assert!(
-            n > 1,
-            "{prop:?} collapsed to {n} key(s) — the fit ate the motion"
-        );
-        assert!(
-            n * 4 < ticks,
-            "{prop:?} holds {n} keys for {ticks} ticks — that is the dense \
-             per-frame recording, not a curve. The fit did not run."
+            n >= ticks,
+            "{prop:?} holds only {n} keys for {ticks} ticks — a fit ran and ate \
+             the per-tick fidelity the artist asked for"
         );
     }
 }
@@ -62,10 +61,12 @@ fn the_bake_writes_a_curve_not_a_key_per_frame() {
 /// **Every channel of one body keys at the SAME times.**
 ///
 /// Column alignment: the animator grabs a column in the dope sheet and re-times
-/// the whole object. It is the reason `simplify_recorded` does three passes
-/// instead of fitting each track independently, and it was ungated — a mutation
-/// that stopped merging near-coincident times into shared columns left every
-/// gate green.
+/// the whole object. With one key per tick this is free — every channel is
+/// sampled on the one tick grid, so they land on identical times by
+/// construction (the fit's three-pass column merge, which the record needs to
+/// align hand-keyed extrema, is not in this path at all). It is still worth a
+/// gate: a bug that offset one channel's key times would break re-timing, and
+/// nothing else here would notice.
 #[test]
 fn a_bodys_channels_key_on_shared_columns() {
     let (timeline, _sim, ball, _) = baked();
@@ -99,15 +100,12 @@ fn a_bodys_channels_key_on_shared_columns() {
         "only one channel was baked, so this gate compared nothing"
     );
 
-    // ⚠️ No crowding assertion here, and that is a MEASUREMENT rather than an
-    // omission. `record_fit`'s near-coincident-time merge (`COLUMN_MERGE_S`) is
-    // inert for a bake: a hand crosses each axis's extremum a few milliseconds
-    // apart, which is what the merge exists for, but a bake samples every
-    // channel on ONE tick grid, so the extrema land on exactly the same times.
-    // Measured on this fixture — columns are `[0.0, 0.583, 1.5]` with the merge
-    // and `[0.0, 0.583, 1.5]` without it. A gate on the merge would be a gate
-    // that cannot fail here; the constant belongs to the record and is the
-    // record's to prove.
+    // ⚠️ No crowding assertion here. A bake samples every channel on ONE tick
+    // grid, so the times are identical by construction — there is nothing to
+    // merge and nothing a merge could get wrong. `record_fit`'s near-coincident
+    // column merge (`COLUMN_MERGE_S`) exists to align hand-keyed extrema that
+    // land a few milliseconds apart; it is not in this path, and is the record's
+    // to prove.
     let _ = columns;
 }
 
@@ -376,22 +374,29 @@ fn bouncing_ball(secs: f64) -> (Vec<(f64, f32)>, TimelineState, SimWorld, Entity
     (truth, timeline, sim, ball)
 }
 
-/// **The bake's tight tolerance tracks the simulation, bounces and all** — the
-/// answer to Enio's "funciona mas é imperfeito" (W-BakeRange follow-up).
+/// **The baked curve reproduces the sim EXACTLY at every tick, and never
+/// overshoots between them** — the gold standard "sem simplificação" delivers
+/// (Enio: "funciona mas é imperfeito" → "busque a perfeição").
 ///
-/// The fit's tolerance was inherited from the RECORD (1%), calibrated for a noisy
-/// hand. A solver has no noise, so 1% is too loose: it dropped a small bounce and
-/// rounded it (measured 2.53% error). `BAKE_SIMPLIFY_REL` is 10× tighter, which
-/// captures the bounce — and does NOT explode the key count, because the fit
-/// anchors at extrema (7 keys, not 181). This is the exact twin of
-/// `BAKE_SMOOTH_PASSES = 0`: a parameter of the input, not the fit.
+/// The old fit RESAMPLED the motion, and both directions were wrong: at the
+/// record's 1% tolerance it dropped a small bounce and rounded its cusp (2.53%
+/// error), and tightening it traded that for a 6.6% OVERSHOOT under a Time
+/// Remap (a smooth-tangent cubic packed around a sharp bounce). One key per
+/// tick has neither, and this pins both halves:
 ///
-/// The oracle is the product path (`apply_from_doc`) and the bar is 1% of the
-/// motion's range across the WHOLE curve. Mutation-tested: baking at
-/// `REC_SIMPLIFY_REL` (the record's 1%) instead of `BAKE_SIMPLIFY_REL` rounds the
-/// bounce to 2.53% and this goes red.
+///  - **exact at ticks** — the playhead lands on the tick times, so the curve
+///    returns the simulated pose verbatim; worst error is at the noise floor,
+///    orders of magnitude under the fit's 1-3%;
+///  - **no overshoot between ticks** — linear interpolation cannot leave the
+///    band its two endpoints define, so a mid-segment sample can never bulge
+///    past the bracketing ticks (the exact failure the tight fit had).
+///
+/// The bounce is the point: the fixture CONTAINS one (asserted), and it is
+/// precisely the feature a fit rounds. Mutation-tested: re-introducing any fit
+/// (`simplify_recorded`) rounds the bounce (breaks the at-tick half) and its
+/// cubic overshoots (breaks the between-tick half).
 #[test]
-fn the_bake_tracks_the_sim_closely_including_bounces() {
+fn the_bake_reproduces_the_sim_exactly_with_no_overshoot() {
     let (truth, mut timeline, mut sim, ball) = bouncing_ball(3.0);
 
     let (mut lo, mut hi) = (f32::MAX, f32::MIN);
@@ -412,23 +417,51 @@ fn the_bake_tracks_the_sim_closely_including_bounces() {
         "the fixture has no bounce to capture — the gate would be vacuous"
     );
 
-    let mut worst = 0.0f32;
+    let y_at = |ts: &mut TimelineState, sim: &mut SimWorld, t: f64| -> f32 {
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut ts.doc, t);
+        sim.world().get::<Transform>(ball).unwrap().translation.y
+    };
+
+    // Half 1 — exact at every tick.
+    let mut worst_tick = 0.0f32;
     let mut worst_t = 0.0;
     for &(t, sim_y) in &truth {
-        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, t);
-        let fit_y = sim.world().get::<Transform>(ball).unwrap().translation.y;
-        let e = (fit_y - sim_y).abs();
-        if e > worst {
-            worst = e;
+        let e = (y_at(&mut timeline, &mut sim, t) - sim_y).abs();
+        if e > worst_tick {
+            worst_tick = e;
             worst_t = t;
         }
     }
     assert!(
-        worst / span < 0.01,
-        "the baked curve strays {:.2}% of range from the sim (worst at t={worst_t:.3}s) \
-         — the fit tolerance is too loose and is rounding the motion; at the record's 1% \
-         this bounce measured 2.53%",
-        worst / span * 100.0
+        worst_tick / span < 1e-3,
+        "the baked curve is not exact at the ticks: it strays {:.4}% of range \
+         (worst at t={worst_t:.3}s) — one key per tick must reproduce the \
+         simulated pose verbatim",
+        worst_tick / span * 100.0
+    );
+
+    // Half 2 — between ticks it never leaves the band the two bracketing ticks
+    // define. Linear cannot; a fit's cubic can, and that is the overshoot.
+    let mut worst_over = 0.0f32;
+    let mut over_t = 0.0;
+    for w in truth.windows(2) {
+        let (t0, y0) = w[0];
+        let (t1, y1) = w[1];
+        let (band_lo, band_hi) = (y0.min(y1), y0.max(y1));
+        let mid = (t0 + t1) * 0.5;
+        let ym = y_at(&mut timeline, &mut sim, mid);
+        let over = (ym - band_hi).max(band_lo - ym).max(0.0);
+        if over > worst_over {
+            worst_over = over;
+            over_t = mid;
+        }
+    }
+    assert!(
+        worst_over / span < 1e-3,
+        "the baked curve overshoots between ticks by {:.4}% of range (worst at \
+         t={over_t:.3}s) — a mid-segment sample left the band its two bracketing \
+         keys define, which linear interpolation cannot do and a fit's cubic can",
+        worst_over / span * 100.0
     );
 }
 

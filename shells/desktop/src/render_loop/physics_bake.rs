@@ -1,8 +1,39 @@
 //! **Bake — the simulated pose becomes editable keys** (ADR-0131 D11, W4).
 //!
 //! `ph2d_physics_ecs::bake` reads the trajectory out of the simulation. This is
-//! the other half: turning those numbers into tracks, in ONE undo step, through
-//! the same fit the timeline's record already uses ([`super::record_fit`]).
+//! the other half: turning those numbers into tracks, in ONE undo step.
+//!
+//! # The curve IS the simulation, tick for tick — no fit (Enio: "sem
+//! # simplificação; busque o padrão ouro, a perfeição")
+//!
+//! The bake used to run the samples through the record's curve-fit, the same
+//! one a hand-dragged gesture uses. That was wrong for a solver, and the smokes
+//! said so: any fit RESAMPLES the motion, and a resampled bounce is a rounded
+//! one — the fit drops a small bounce or smooths its cusp. Tightening the
+//! tolerance made it worse in the other direction (a smooth-tangent cubic packed
+//! tightly around a sharp bounce OVERSHOOTS between its keys), so there was a
+//! narrow sweet spot and it still "não ficou bom".
+//!
+//! The gold standard for reproducing a DISCRETE simulation is to not resample it
+//! at all. So the bake writes **one key per tick, linear between them**:
+//!
+//! - **Exact at 60 fps.** The playhead advances one tick per frame, so it lands
+//!   on the times the keys are at — sampling returns the key value verbatim, and
+//!   playback is byte-for-byte the simulation. A fit can only approximate that.
+//! - **No overshoot, ever.** Linear interpolation stays between its endpoints by
+//!   construction; the 6.6%-under-a-Time-Remap failure the tight fit had cannot
+//!   happen.
+//! - **A bounce is a sharp corner**, a key where the velocity reverses, not a
+//!   tangent a fit rounded off. That is what the smokes were missing.
+//!
+//! The cost is honest: a channel that moves is one key per tick (~60/s), which
+//! is many to hand-edit. That is the trade "sem simplificação" asks for —
+//! fidelity over editability — and it is why a channel the sim never moved still
+//! writes no track at all (`BakedTrajectory::channel`) rather than a dense flat
+//! one. (A future refinement could capture the solver's per-tick velocity and
+//! write value-space tangents, making even sub-frame sampling exact for a
+//! ballistic arc; it buys nothing at 60 fps, adds overshoot risk at contacts,
+//! and is deliberately not built.)
 //!
 //! # Baking flips the body to Kinematic, and that IS the bake
 //!
@@ -40,15 +71,11 @@
 //! gesture that undoes as two. Closing it means one queue owning both halves,
 //! which is a change to the editor's undo architecture and not to the bake.
 
-use ph2d_anim::{AnimValue, RationalTime};
+use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PoseChannel, SceneAtTick, bake_trajectories_with_scene};
 use ph2d_timeline::{PropKind, TimelineState};
-use std::collections::BTreeMap;
-
-use super::record_fit::{RecSpan, simplify_recorded};
-use super::timeline_bridge::default_interp;
 
 /// Which pose channels a bake writes into the timeline.
 ///
@@ -138,72 +165,6 @@ fn kinematic_tag() -> u8 {
 /// It is a DEFAULT, not a ceiling: arming a loop in the transport overrides it,
 /// and a document with keys uses its own extent.
 pub(crate) const DEFAULT_BAKE_SECONDS: f64 = 5.0;
-
-/// Low-pass passes applied to the samples before the fit — **none**, and that
-/// is the whole point.
-///
-/// `record_fit`'s own default is 8, because a gesture recorded off a mouse
-/// carries hand tremor and an unsmoothed fit over-subdivides on every noise
-/// bump. A simulation carries none: it is a deterministic solver, sampled at
-/// exactly the tick it advanced, and every wiggle in the signal is a wiggle the
-/// body really had.
-///
-/// Smoothing it is therefore not conservative, it is damage — and it lands
-/// precisely on the moments that matter, because a physics trajectory is made
-/// of IMPACTS. A bounce is a cusp; a binomial kernel over a cusp rounds its
-/// apex, and the apex is the bounce.
-///
-/// Measured on the gate's own scene (a ball dropped onto a floor, worst error
-/// against the simulated pose as a fraction of the motion's range):
-///
-/// | passes | worst error |
-/// |---|---|
-/// | **0** | **2.13%** |
-/// | 1 | 2.02% |
-/// | 2 | 2.48% |
-/// | 4 | 3.31% |
-/// | 8 (the record's) | 5.70% |
-///
-/// Monotonic past one pass: the number the smoothing exists to improve is the
-/// one it was making worse. `1` measures a hair better than `0` and is not
-/// chosen — the difference is inside the noise of a single fixture, and "the
-/// solver has no tremor to remove" is a reason, while "one pass scored 0.1%
-/// better on one scene" is a coincidence.
-///
-/// The passes are a property of the INPUT (a hand, or a solver), never of the
-/// fit — which is why they are an argument to `simplify_recorded` and not a
-/// constant inside it.
-const BAKE_SMOOTH_PASSES: usize = 0;
-
-/// Fit tolerance for a bake — a fraction of the motion's range, **tighter than
-/// the record's** ([`super::record_fit::REC_SIMPLIFY_REL`]), and the same kind of
-/// argument as [`BAKE_SMOOTH_PASSES`]: a property of the INPUT, not the fit.
-///
-/// The record's 1% is calibrated for a noisy hand — loose enough not to
-/// over-subdivide on tremor. A solver has no tremor, so at 1% the fit was simply
-/// too loose: it DROPPED a small bounce and rounded it (Enio's "funciona mas é
-/// imperfeito"). The `min_prom` inside `fit_fcurve` (the least value-swing for a
-/// bounce to count as a real extremum) is derived from this tolerance, so
-/// tightening it is exactly what makes the bounce survive.
-///
-/// ⚠️ **But tighter is NOT monotonically better — there is a sweet spot, and it
-/// is the whole reason this is 0.3% and not 0.1%.** Measured on a bouncing ball
-/// (3 s, restitution 0.75); "remap" is the same curve read back under a
-/// half-speed Time Remap, which RE-SAMPLES it between the keys:
-///
-/// | tolerance | keys | error at keys | under a Time Remap |
-/// |---|---|---|---|
-/// | 1% (the record's) | 4 | **2.53%** (bounce dropped) | ok |
-/// | **0.3% (this)** | 5 | **0.67%** (bounce captured) | ok |
-/// | 0.1% | 7 | 0.27% | **6.6% — OVERSHOOT** |
-///
-/// Below ~0.2% the fit packs keys tightly around the sharp bounce, and a
-/// smooth-tangent cubic between two close keys OVERSHOOTS; sampling exactly on
-/// the ticks steps over it, but a Time Remap samples between them and hits it.
-/// So "eliminate the fit / make it arbitrarily tight" is the wrong instinct —
-/// one key per tick (181 keys) is unusable to edit AND the overshoot is worst
-/// there. 0.3% is the middle: bounce captured, no overshoot, 5 keys.
-const BAKE_SIMPLIFY_REL: f64 = 0.003;
 
 /// The window a Bake covers, `(start, end)` seconds, given the document and the
 /// transport.
@@ -396,8 +357,10 @@ pub(crate) fn bake_selection(
     }
     timeline.history.begin(&timeline.doc);
 
-    let interp = default_interp();
-    let mut record: BTreeMap<(u64, PropKind), RecSpan> = BTreeMap::new();
+    // One key per tick, LINEAR between them — no fit (module docs). Sampled at
+    // 60 fps the playhead lands on the tick times, so this reproduces the sim
+    // verbatim; linear cannot overshoot; a bounce stays a sharp corner.
+    let interp = Interp::Linear;
     for (entity_bits, prop, samples) in &work {
         for &(t, v) in samples {
             // ⚠️ The key lands on the ENTITY's clock, not the playhead's, and
@@ -436,16 +399,11 @@ pub(crate) fn bake_selection(
                 AnimValue::Float(v as f32),
                 interp,
             );
-            record
-                .entry((*entity_bits, *prop))
-                .and_modify(|s| s.extend(t, v))
-                .or_insert_with(|| RecSpan::seed(t, v));
         }
     }
 
-    // Inside the bracket, exactly as the record does it: the dense keys and the
-    // curve that replaces them are one step, not two.
-    simplify_recorded(timeline, &record, BAKE_SMOOTH_PASSES, BAKE_SIMPLIFY_REL);
+    // Every dense key was written inside the one bracket, so the whole bake is
+    // still a single undo step (there is no fit to fold in anymore).
     let doc = timeline.doc.clone();
     timeline.history.commit_if_changed(&doc);
 

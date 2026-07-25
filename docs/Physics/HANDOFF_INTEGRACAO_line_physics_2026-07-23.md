@@ -235,12 +235,13 @@ Um `Dropper` caindo do topo, relógio **pausado**, loop armado `[0.5s, 2.5s]`, t
 3. **O front descartado é visível:** desmarque **Physics** no transporte e dê Play — a bola
    **SEGURA a pose de meio-ar de 0.5s** até a janela abrir, então anima a queda. Um bake de
    range cheio a teria começado no TOPO.
-4. **A FIDELIDADE (o que o Enio reprovou):** o movimento assado tem de replicar a queda **e o
-   quique** — a bola não deve "flutuar" pela pose nem perder o quiquinho. A tolerância do fit
-   foi apertada de 1% (herdada do record, calibrada pro tremor da mão) para 0,3%, o **ponto
-   ótimo** (abaixo dele a Bézier overshoota, medido). Se num quique GRANDE o canto do contato
-   ainda parecer arredondado, é a tangente suave (broken-tangents no contato é item deferido do
-   fit, decisão à parte — nomeado no tracker).
+4. **A FIDELIDADE (o que o Enio reprovou DUAS vezes):** o movimento assado tem de replicar a
+   queda **e o quique** — a bola não deve "flutuar" pela pose nem perder o quiquinho. O fit foi
+   **ELIMINADO do bake** (2ª rodada: *"não fica bom. Melhor sem simplificação. Busque o padrão
+   ouro, a perfeição."*): agora é **uma chave por tick, `Interp::Linear`, sem fit** ⇒ a 60 fps é
+   **byte-exata à sim** (o playhead pousa nos tempos das chaves) e linear **não pode overshootar**.
+   Qualquer arredondamento residual visível é do próprio solver (interpenetração ~mm entre ticks),
+   não do bake. Detalhe no tracker (*"O fit MORREU no bake"*).
 
 ⚠️ **Já aprovados** (não precisam de re-smoke): `=33` e `=34`.
 

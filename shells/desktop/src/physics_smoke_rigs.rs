@@ -185,7 +185,9 @@ impl crate::App {
     /// The whole gesture is: select, Bake, watch the curve replay. So the
     /// scene is built to make the bake VISIBLE rather than merely correct —
     /// bodies whose motion has shape (a bounce, a roll, a spin), because a
-    /// curve that only says "went down" proves nothing about the fit.
+    /// curve that only says "went down" proves nothing about the fidelity (the
+    /// bake writes one key per tick, no fit, so it must reproduce that shape
+    /// exactly — see `physics_bake` module docs).
     ///
     /// Paused on purpose: the sim starts at the pose the artist sees, and
     /// baking a scene that has already been running would bake from tick 0

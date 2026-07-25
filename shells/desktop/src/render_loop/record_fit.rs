@@ -1,18 +1,18 @@
 //! **Dense samples in, a curve out** — the cleanup that ends a recording
-//! session, shared by everything that records one.
+//! session.
 //!
-//! Two things in this editor produce a value per frame and then have to become
-//! keyframes an animator can edit: the timeline's **record** (a gizmo dragged
-//! while the clock runs) and W4's **bake** (the physics simulation read out
-//! tick by tick). They are the same problem — hundreds of dense keys that must
-//! collapse to a handful without moving — and this module is the one answer, so
-//! a baked curve and a recorded curve cannot come out looking like they were
-//! made by different tools.
+//! The timeline's **record** produces a value per frame (a gizmo dragged while
+//! the clock runs) and has to turn hundreds of dense keys into a handful an
+//! animator can edit without moving the motion. This module is that fit.
 //!
-//! It was extracted FROM the record rather than written for the bake: the
-//! calibration below is the record's, arrived at through Enio's smokes (§17 of
-//! the timeline handoff), and re-deriving it for the bake would have been a
-//! second set of numbers to keep in agreement with the first.
+//! ⚠️ **The physics BAKE used to share this and no longer does.** A fit
+//! RESAMPLES the motion, and a resampled bounce is a rounded one — the smokes
+//! rejected it (Enio: "sem simplificação; busque a perfeição"), so the bake now
+//! writes one key per tick with no fit at all (`super::physics_bake` module
+//! docs). The record keeps this because a *hand* gesture is noisy and dense with
+//! tremor the animator does not want as keys; a solver is neither. The two
+//! inputs turned out to want opposite treatments, which is why the calibration
+//! below (the record's, from Enio's §17 smokes) is the record's alone.
 //!
 //! The pipeline, per entity: fit every track to find the times it wants → merge
 //! near-coincident times into shared columns → re-fit every track AT those
@@ -32,10 +32,11 @@ use ph2d_timeline::{PropKind, TimelineState};
 ///
 /// ⚠️ This is the RECORD's tolerance, and it is calibrated for a **noisy hand
 /// gesture** — 1% is loose enough not to over-subdivide on tremor. It is passed
-/// in (not hardcoded here) precisely because a different input wants a different
-/// number: the physics BAKE, which has no tremor, passes a much tighter one
-/// ([`super::physics_bake::BAKE_SIMPLIFY_REL`]). This is the exact twin of the
-/// smoothing passes below — a parameter of the INPUT, not of the fit.
+/// into [`simplify_recorded`] rather than hardcoded there because it is a
+/// property of the INPUT, not of the fit — the exact twin of the smoothing
+/// passes below. (The physics bake, the other input this once served, wanted the
+/// opposite of a fit and no longer calls in — see the module docs; the record is
+/// the sole caller today.)
 pub(crate) const REC_SIMPLIFY_REL: f64 = 0.01;
 /// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
 /// not get an impossibly tight tolerance that keeps every noise sample.

@@ -163,4 +163,75 @@ impl crate::App {
              Ctrl+Z undoes each step; Ctrl+S / Ctrl+O: the joint survives a round trip."
         );
     }
+
+    /// **Scene 41 (gold-standard anchor: it FOLLOWS the body).** A pendulum
+    /// pinned at the plank's LEFT end, PAUSED. The scene exists to show the fix
+    /// for Enio's report: moving a body used to SLIDE the pin along it (the
+    /// anchor was a world point re-derived every frame); now the anchor is
+    /// body-local, so a body carries its pin with it.
+    ///
+    /// The two things to try, and what each proves:
+    ///   - Move the PLANK (body B): the pin stays glued to its left end (before
+    ///     this wave it slid toward the centre / off the end). Press B and Play
+    ///     to confirm the plank swings from its END, not its middle.
+    ///   - Move the HOOK (body A): the amber DOT follows the hook — the display
+    ///     pivot tracks body A.
+    pub(crate) fn physics_smoke_anchor_follows(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+        let world = gfx.sim.world_mut();
+
+        // A static hook, a dynamic plank pinned at the plank's LEFT end (which
+        // sits exactly under the hook). The plank's centre is 0.7 m to the right
+        // of the pin, so "where on the plank is the pin" has teeth: a slide is
+        // visible as the plank hanging from its middle instead of its end.
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.4)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.18, 0.18], [0.75, 0.75, 0.8, 1.0]),
+            Name::new("Hook".to_string()),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.09 },
+                ..Collider::default()
+            },
+        ));
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.7, 4.4)),
+            Sprite::atlas(WHITE_TILE_KEY, [1.4, 0.18], [0.95, 0.6, 0.2, 1.0]),
+            Name::new("Plank".to_string()),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.7,
+                    half_y: 0.09,
+                },
+                ..Collider::default()
+            },
+        ));
+        world.spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.4)),
+            Name::new("Pivot".to_string()),
+            PhysicsJoint {
+                body_a: stable_name_id("Hook"),
+                body_b: stable_name_id("Plank"),
+                ..PhysicsJoint::default()
+            },
+        ));
+
+        eprintln!(
+            "[physics-smoke 41] A pendulum pinned at the plank's LEFT end, PAUSED.\n\
+             The fix: an anchor is BODY-LOCAL, so moving a body carries its pin.\n  \
+               1. Press B to see the amber joint link (it starts at the plank's LEFT end).\n  \
+               2. Select 'Plank' -> drag it around. The pin STAYS glued to its left end\n     \
+                  (before this fix it slid toward the plank's centre). Play: it swings\n     \
+                  from its END, not its middle.\n  \
+               3. Select 'Hook' (body A) -> move it. The amber DOT follows the hook --\n     \
+                  the display pivot tracks body A.\n\
+             Ctrl+Z undoes each move; the relationship is preserved either way."
+        );
+    }
 }

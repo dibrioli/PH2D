@@ -263,6 +263,9 @@ pub(super) fn dispatch(
     // PH2D_PAINT_PERF sub-phase accumulators (ms) — which part of dispatch a slow frame spends its
     // time in. `elapsed_ms` reads the mark only when the env is on (the `Instant` is `None` otherwise).
     let (mut ph_preview, mut ph_panel, mut ph_overlay) = (0f32, 0f32, 0f32);
+    // …and the OVERLAY phase split by CALL, because 3,9 ms shared by three of them names none of
+    // them (Enio, 2026-07-25, 4096²: o preview zerou e o custo mudou de lugar).
+    let (mut ph_ov_tol, mut ph_ov_selection, mut ph_ov_chrome) = (0f32, 0f32, 0f32);
     let elapsed_ms =
         |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
     let m_preview = perf_t0.map(|_| std::time::Instant::now());
@@ -383,10 +386,17 @@ pub(super) fn dispatch(
         // owns the preview slot each frame + the CPU partial-upload bbox. This is what proved the per-layer
         // shape edits run on the CPU lane (`gpu_owns=false`) while a slider drag hands the slot to the GPU
         // producer — the CPU↔GPU handoff the headless harness cannot reach. Zero cost when unset.
+        // ⚠️ Logs on CHANGE, not per frame. Per-frame it emitted 60 lines a second and the interesting
+        // ones — a producer flip, a bbox going `None` — scrolled off before anyone could read them
+        // (Enio, 2026-07-25: *"Muitos logs. tente diminuir"*). What this trap exists to show is a
+        // TRANSITION, and a line per frame is the one format that hides transitions.
         if std::env::var_os("PH2D_PREVIEW_DIAG").is_some() {
-            eprintln!(
-                "[preview-diag] gpu_owns={gpu_owns_preview} cpu_dirty_bbox={painter_dirty_bbox:?}"
-            );
+            let now = (gpu_owns_preview, painter_dirty_bbox);
+            if super::paint_perf::preview_diag_changed(now) {
+                eprintln!(
+                    "[preview-diag] gpu_owns={gpu_owns_preview} cpu_dirty_bbox={painter_dirty_bbox:?}"
+                );
+            }
         }
         // Apply / commit capture — same trait path as bgremoval.
         apply_selection = ph2d_tool_runtime::drive_pending_commit(
@@ -561,6 +571,8 @@ pub(super) fn dispatch(
             camera,
             window_size,
         );
+        ph_ov_tol = elapsed_ms(m_overlay);
+        let m_ov_sel = perf_t0.map(|_| std::time::Instant::now());
         // Repeat Image FIRST: the 3×3 tile preview is canvas CONTENT (the composite at the 8 neighbour
         // positions), so it must sit UNDER all editing chrome. Drawn after the overlays it covered any
         // chrome extending past the sprite border — a shape crossing the seam lost its editor overlay
@@ -586,6 +598,8 @@ pub(super) fn dispatch(
             vector_scene,
             cursor,
         );
+        ph_ov_selection = elapsed_ms(m_ov_sel);
+        let m_ov_chrome = perf_t0.map(|_| std::time::Instant::now());
         super::painter_bridge_overlays::draw_overlays(
             painter,
             hero,
@@ -596,7 +610,8 @@ pub(super) fn dispatch(
             text_system,
             cursor,
         );
-        // PH2D_PAINT_PERF: close the OVERLAY phase.
+        // PH2D_PAINT_PERF: close the OVERLAY phase (and its last sub-call).
+        ph_ov_chrome = elapsed_ms(m_ov_chrome);
         ph_overlay = elapsed_ms(m_overlay);
     }
 
@@ -657,6 +672,9 @@ pub(super) fn dispatch(
             preview_ms: ph_preview,
             panel_ms: ph_panel,
             overlay_ms: ph_overlay,
+            ov_tol_ms: ph_ov_tol,
+            ov_selection_ms: ph_ov_selection,
+            ov_chrome_ms: ph_ov_chrome,
             upload_ms: elapsed_ms(m_upload),
             w: dbg_dims.0,
             h: dbg_dims.1,

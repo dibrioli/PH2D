@@ -23,6 +23,11 @@ pub(super) struct FrameInfo {
     pub preview_ms: f32,
     pub panel_ms: f32,
     pub overlay_ms: f32,
+    /// The OVERLAY phase, split by call — it aggregated three of them, and a 3,9 ms number that could
+    /// belong to any of the three is a number nobody can act on (Enio, 2026-07-25, 4096²).
+    pub ov_tol_ms: f32,
+    pub ov_selection_ms: f32,
+    pub ov_chrome_ms: f32,
     pub upload_ms: f32,
     pub w: u32,
     pub h: u32,
@@ -114,7 +119,7 @@ fn emit(a: &Agg) {
         .unwrap_or_default();
     eprintln!(
         "[paint-perf] {n}f GPU {}/CPU {} | frame p50={:.1} | dispatch p50={:.1} max={:.1} \
-         [preview {:.1} panel {:.1} overlay {:.1} upload {:.1}] | \
+         [preview {:.1} panel {:.1} overlay {:.1} (tol {:.1} sel {:.1} chrome {:.1}) upload {:.1}] | \
          WORST: {} {}x{} branch={} impasto={} mask_scratch={} gray={} mask={} lane={} trivial={}",
         a.gpu,
         a.cpu,
@@ -124,6 +129,9 @@ fn emit(a: &Agg) {
         phase(|f| f.preview_ms),
         phase(|f| f.panel_ms),
         phase(|f| f.overlay_ms),
+        phase(|f| f.ov_tol_ms),
+        phase(|f| f.ov_selection_ms),
+        phase(|f| f.ov_chrome_ms),
         phase(|f| f.upload_ms),
         if worst.gpu { "GPU" } else { "CPU" },
         worst.w,
@@ -140,4 +148,31 @@ fn emit(a: &Agg) {
         },
         worst.trivial,
     );
+}
+
+/// What the preview-diag trap reports: who owns the slot, and the CPU partial-upload bbox.
+pub(super) type PreviewDiagState = (bool, Option<(u32, u32, u32, u32)>);
+
+/// Has the preview-diag state CHANGED since the last frame? (`PH2D_PREVIEW_DIAG`.)
+///
+/// The trap answers *"which producer owns the slot, and what bbox did the CPU upload"* — both of which
+/// are interesting exactly when they MOVE. Logged per frame they emitted 60 lines a second, and the
+/// transition everyone was hunting scrolled past between two identical neighbours.
+///
+/// State lives here, next to the other diagnostic's accumulators, rather than in the bridge: a `static`
+/// declared inside a `dispatch` that already carries a dozen `dbg_` locals is a thirteenth thing to read
+/// past, and this one has to persist across frames.
+pub(super) fn preview_diag_changed(now: PreviewDiagState) -> bool {
+    use std::sync::Mutex;
+    static LAST: Mutex<Option<PreviewDiagState>> = Mutex::new(None);
+    let Ok(mut last) = LAST.lock() else {
+        // A poisoned lock must not silence a diagnostic — logging one extra line is the harmless
+        // direction to be wrong in.
+        return true;
+    };
+    if last.as_ref() == Some(&now) {
+        return false;
+    }
+    *last = Some(now);
+    true
 }

@@ -148,6 +148,19 @@ impl PathEffect {
             toggle: false,
             integer: false,
         }];
+        // O Knot: o VÃO (percentagem da forma — a espessura aparente do entrelace) + o Swap (quem
+        // passa por cima). `0..25` é faixa de AUTORIA: o vão útil é ~2-3x a largura do traço, e a
+        // matemática não tem teto (o recurso da detecção é o `SAMPLES` da poligonal, não o vão).
+        const KNOT: &[FxParam] = &[
+            FxParam {
+                name: "Gap",
+                min: 0.0,
+                max: 25.0,
+                toggle: false,
+                integer: false,
+            },
+            flag("Swap"),
+        ];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
@@ -155,6 +168,7 @@ impl PathEffect {
             Self::Bloat(_) => BLOAT,
             Self::Warp(_) => WARP,
             Self::Twist(_) => TWIST,
+            Self::Knot(_) => KNOT,
             // O Falloff descreve os próprios params (a lista muda com a FORMA), então delega — a
             // porta única que impede o painel e o motor de discordarem sobre o layout por-forma.
             Self::Falloff(f) => f.params(),
@@ -187,6 +201,8 @@ impl PathEffect {
             (Self::Warp(w), 1) => w.h_distort,
             (Self::Warp(w), 2) => w.v_distort,
             (Self::Twist(t), 0) => t.angle,
+            (Self::Knot(k), 0) => k.gap,
+            (Self::Knot(k), 1) => f64::from(u8::from(k.swap)),
             _ => 0.0,
         }
     }
@@ -229,6 +245,8 @@ impl PathEffect {
             (Self::Warp(w), 1) => w.h_distort = v,
             (Self::Warp(w), 2) => w.v_distort = v,
             (Self::Twist(t), 0) => t.angle = v,
+            (Self::Knot(k), 0) => k.gap = v,
+            (Self::Knot(k), 1) => k.swap = v >= 0.5,
             _ => {}
         }
     }

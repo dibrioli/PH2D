@@ -382,8 +382,8 @@ fn the_curve_box_hugs_the_cooked_shape_and_an_empty_one_has_none() {
 #[test]
 fn the_engine_and_panel_agree_on_the_kind_ceiling() {
     // `ph2d_editor_core::ids::MAX_FX_KINDS`, em ids/chrome/vector.rs (9→13 catálogo único; 13→17
-    // com as 4 formas de Falloff; 17→18 com o Twist).
-    const PANEL_MAX_FX_KINDS: usize = 18;
+    // com as 4 formas de Falloff; 17→18 com o Twist; 18→19 com o Knot).
+    const PANEL_MAX_FX_KINDS: usize = 19;
     assert!(
         PathEffect::KINDS.len() <= PANEL_MAX_FX_KINDS,
         "o motor publica {} tipos e o menu Add do painel só regista {PANEL_MAX_FX_KINDS} \

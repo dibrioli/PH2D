@@ -55,6 +55,22 @@ fn square() -> VecPath {
     }
 }
 
+/// Um PENTAGRAMA `{5/2}` — cinco pontos ligados de dois em dois, cinco auto-interseções. É a forma
+/// canônica de nó celta, e o caso de teste do Knot (o entrelace tem de alternar cima/baixo).
+fn pentagram() -> VecPath {
+    const R: f64 = 72.0;
+    VecPath {
+        verts: (0..5)
+            .map(|k| {
+                let a = (90.0 + f64::from(k) * 144.0).to_radians();
+                VecVertex::corner([R * a.cos(), R * a.sin()])
+            })
+            .collect(),
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
 /// Achata os contornos COZIDOS em polilinhas, já em coordenadas de pixel da célula.
 fn flatten(path: &VecPath, ox: f64, oy: f64, scale: f64) -> (Vec<Vec<[f64; 2]>>, Vec<[f64; 2]>) {
     const STEPS: usize = 24;
@@ -161,6 +177,15 @@ fn arm_bloat(fx: &mut PathEffect, c: usize) {
 fn arm_twist(fx: &mut PathEffect, c: usize) {
     fx.set(0, 90.0 * c as f64);
 }
+/// O KNOT: o vão cresce 0 → 16% da forma (a espessura aparente do entrelace).
+fn arm_knot(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 4.0 * c as f64);
+}
+/// O mesmo Knot com o SWAP ligado — quem passa por cima inverte em todo cruzamento.
+fn arm_knot_swap(fx: &mut PathEffect, c: usize) {
+    fx.set(0, 4.0 * c as f64);
+    fx.set(1, 1.0);
+}
 
 const ROWS: &[Row] = &[
     Row {
@@ -212,12 +237,14 @@ const ROWS: &[Row] = &[
         arm: arm_bloat,
         shape: circle,
     },
-    // ⚠️ O Twist sobre um QUADRADO — o caso que a cerca do `fx_warp` diz ter rasgado. Se a coluna
-    // 360° aparecer como um remoinho de tinta cheia (e não como buracos/fios soltos), a volta é boa.
-    // O Twist é o ÚLTIMO KIND da tabela; `KINDS.len() - 1` fica robusto a novos tipos.
+    // ⚠️ Twist e Knot são os DOIS últimos KINDS (nesta ordem): Twist = `len()-2`, Knot = `len()-1`.
+    // Se um KIND novo for apendado depois, estes índices deslocam-se — mas a sonda é visual (`#[ignore]`)
+    // e o gate `every_effect_kind_is_reachable` cobre a consistência KINDS<->from_kind à parte.
+    // O Twist sobre um QUADRADO — o caso que a cerca do `fx_warp` diz ter rasgado. Se a coluna 360°
+    // aparecer como um remoinho de tinta cheia (e não buracos/fios soltos), a volta é boa.
     Row {
         name: "Twist QUADRADO (0 → 360° na borda) -- o caso de falha da cerca",
-        kind: PathEffect::KINDS.len() - 1,
+        kind: PathEffect::KINDS.len() - 2,
         scale: 0.85,
         arm: arm_twist,
         shape: square,
@@ -225,10 +252,28 @@ const ROWS: &[Row] = &[
     // O mesmo Twist num CÍRCULO, para separar "a curva está errada" de "as quinas rasgam".
     Row {
         name: "Twist CIRCULO (0 → 360° na borda)",
-        kind: PathEffect::KINDS.len() - 1,
+        kind: PathEffect::KINDS.len() - 2,
         scale: 0.85,
         arm: arm_twist,
         shape: circle,
+    },
+    // O KNOT sobre um PENTAGRAMA (5 travessias) — o entrelace tem de ALTERNAR cima/baixo. A coluna 0
+    // e' a estrela sólida; conforme o vão cresce, cada travessia mostra uma fita por baixo (o vão) e
+    // a de cima inteira -- lido como tecido.
+    Row {
+        name: "Knot PENTAGRAMA (Gap 0 -> 16%) -- alterna cima/baixo",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 1.2,
+        arm: arm_knot,
+        shape: pentagram,
+    },
+    // O MESMO, com Swap -- quem passa por cima inverte em toda travessia.
+    Row {
+        name: "Knot PENTAGRAMA + Swap (Gap 0 -> 16%)",
+        kind: PathEffect::KINDS.len() - 1,
+        scale: 1.2,
+        arm: arm_knot_swap,
+        shape: pentagram,
     },
 ];
 

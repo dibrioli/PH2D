@@ -36,6 +36,7 @@
 //! é isso que mantém aberto o caminho de um dia embrulhá-la num nó (ADR-0132 §4).
 
 use crate::fx_falloff::{Falloff, FalloffSpec};
+use crate::fx_knot::{self, KnotSpec};
 use crate::fx_trim::{self, TrimSpec};
 use crate::fx_twist::{self, TwistSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
@@ -199,6 +200,9 @@ pub enum PathEffect {
     /// ⚠️ Houve um `Twist` cortado em 2026-07-18 (cabeçalho do [`crate::fx_warp`]); este é a volta,
     /// sobre o esqueleto de reamostragem maduro dos presets de Warp, provada por render-and-look.
     Twist(TwistSpec),
+    /// **Knot** — o entrelace celta: onde o caminho se cruza, a fita de baixo ganha um vão e a de
+    /// cima passa inteira. Ver [`crate::fx_knot`]. **Apendado por último**: postcard é posicional.
+    Knot(KnotSpec),
 }
 
 impl PathEffect {
@@ -216,179 +220,21 @@ impl PathEffect {
             Self::Warp(w) => w.is_neutral(),
             Self::Falloff(f) => f.is_neutral(),
             Self::Twist(t) => t.is_neutral(),
-        }
-    }
-
-    /// Este efeito é um Trim? Devolve os parâmetros dele.
-    ///
-    /// ⚠️ O `match` é **exaustivo de propósito**: quando o 2º tipo de efeito entrar, isto
-    /// deixa de compilar e quem o acrescentar TEM de decidir o que este acessor responde.
-    /// Um `_ => None` hoje seria um silêncio que ninguém voltaria a ler.
-    #[must_use]
-    pub fn as_trim(&self) -> Option<&TrimSpec> {
-        match self {
-            Self::Trim(t) => Some(t),
-            Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O irmão mutável do [`Self::as_trim`] — para quem AJUSTA um parâmetro.
-    pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
-        match self {
-            Self::Trim(t) => Some(t),
-            Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O Zig Zag deste efeito, se for um — irmão do [`Self::as_trim`].
-    #[must_use]
-    pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
-        match self {
-            Self::ZigZag(z) => Some(z),
-            Self::Trim(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O irmão mutável do [`Self::as_zigzag`].
-    pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
-        match self {
-            Self::ZigZag(z) => Some(z),
-            Self::Trim(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O nome que o painel mostra. Mora aqui (e não numa tabela no painel) porque uma
-    /// segunda lista dos efeitos divergiria da primeira assim que alguém acrescentasse um.
-    #[must_use]
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Trim(_) => "Trim Path",
-            Self::ZigZag(z) => {
-                if z.rough_seed.is_some() {
-                    "Roughen"
-                } else {
-                    "Zig Zag"
-                }
-            }
-            Self::Repeat(_) => "Repeater",
-            Self::Bloat(_) => "Pucker & Bloat",
-            Self::Warp(w) => w.style.label(),
-            Self::Falloff(f) => f.shape.label(),
-            Self::Twist(_) => "Twist",
-        }
-    }
-
-    /// O Warp deste efeito, se for um — irmão do [`Self::as_trim`].
-    #[must_use]
-    pub fn as_warp(&self) -> Option<&crate::fx_warp_presets::WarpSpec> {
-        match self {
-            Self::Warp(w) => Some(w),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O irmão mutável do [`Self::as_warp`].
-    pub fn as_warp_mut(&mut self) -> Option<&mut crate::fx_warp_presets::WarpSpec> {
-        match self {
-            Self::Warp(w) => Some(w),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Falloff(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O Falloff deste efeito, se for um — irmão do [`Self::as_trim`].
-    #[must_use]
-    pub fn as_falloff(&self) -> Option<&FalloffSpec> {
-        match self {
-            Self::Falloff(f) => Some(f),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O irmão mutável do [`Self::as_falloff`].
-    pub fn as_falloff_mut(&mut self) -> Option<&mut FalloffSpec> {
-        match self {
-            Self::Falloff(f) => Some(f),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Twist(_) => None,
-        }
-    }
-
-    /// O Twist deste efeito, se for um — irmão do [`Self::as_trim`].
-    #[must_use]
-    pub fn as_twist(&self) -> Option<&TwistSpec> {
-        match self {
-            Self::Twist(t) => Some(t),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_) => None,
-        }
-    }
-
-    /// O irmão mutável do [`Self::as_twist`].
-    pub fn as_twist_mut(&mut self) -> Option<&mut TwistSpec> {
-        match self {
-            Self::Twist(t) => Some(t),
-            Self::Trim(_)
-            | Self::ZigZag(_)
-            | Self::Repeat(_)
-            | Self::Bloat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_) => None,
+            Self::Knot(k) => k.is_neutral(),
         }
     }
 
     /// **Este efeito CONSOME um campo de Falloff?** Só os deformadores por-ponto (Pucker & Bloat,
-    /// Warp, Zig Zag, Twist) sabem escalar a força amostra a amostra. Trim (revela um trecho) e
-    /// Repeat (multiplica contornos) não têm uma "força" que um campo espacial module, então um
-    /// Falloff imediatamente acima deles é **inerte na geometria** — e o painel diz isso, em vez de
-    /// deixar o artista adivinhar (a lei do "nenhum controle mudo", DIRETIVA §2).
+    /// Warp, Zig Zag, Twist) sabem escalar a força amostra a amostra. Trim (revela um trecho),
+    /// Repeat (multiplica contornos) e Knot (corta vãos nas travessias) não têm uma "força" que um
+    /// campo espacial module, então um Falloff imediatamente acima deles é **inerte na geometria**
+    /// — e o painel diz isso, em vez de deixar o artista adivinhar (a lei do "nenhum controle
+    /// mudo", DIRETIVA §2).
     #[must_use]
     pub fn takes_falloff(&self) -> bool {
         match self {
             Self::ZigZag(_) | Self::Bloat(_) | Self::Warp(_) | Self::Twist(_) => true,
-            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) => false,
+            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) | Self::Knot(_) => false,
         }
     }
 
@@ -425,6 +271,8 @@ impl PathEffect {
         // o tratam pelo índice `TWIST_KIND`, e `label(Twist) == "Twist"`, então o gate
         // `every_effect_kind_is_reachable` (`from_kind(i).label() == KINDS[i]`) fica VERMELHO num typo.
         "Twist",
+        // ⚠️ O Knot, no fim — outro variant só. `label(Knot) == "Knot"`, mesmo gate.
+        "Knot",
     ];
 
     /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
@@ -436,6 +284,9 @@ impl PathEffect {
     /// O índice do Twist em [`Self::KINDS`] — depois das formas de falloff. Um KIND só (o Twist não
     /// tem família de formas, ao contrário de Warp/Falloff).
     const TWIST_KIND: usize = Self::FALLOFF_BASE + crate::fx_falloff::FalloffShape::ALL.len();
+
+    /// O índice do Knot em [`Self::KINDS`] — logo depois do Twist. Também um KIND só.
+    const KNOT_KIND: usize = Self::TWIST_KIND + 1;
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -456,8 +307,10 @@ impl PathEffect {
             k if k < Self::TWIST_KIND => crate::fx_falloff::FalloffShape::ALL
                 .get(k - Self::FALLOFF_BASE)
                 .map(|&s| Self::Falloff(FalloffSpec::new(s))),
-            // O Twist é um KIND só, no fim.
+            // O Twist é um KIND só.
             k if k == Self::TWIST_KIND => Some(Self::Twist(TwistSpec::new())),
+            // O Knot, o KIND seguinte.
+            k if k == Self::KNOT_KIND => Some(Self::Knot(KnotSpec::new())),
             _ => None,
         }
     }
@@ -475,6 +328,7 @@ impl PathEffect {
             // A forma, na ordem da `FalloffShape::ALL`, deslocada pelos base + os warps.
             Self::Falloff(f) => Self::FALLOFF_BASE + f.shape as usize,
             Self::Twist(_) => Self::TWIST_KIND,
+            Self::Knot(_) => Self::KNOT_KIND,
         }
     }
 
@@ -522,6 +376,9 @@ impl PathEffect {
                     fx_twist::twist_contour(v, c, spec, ctx, falloff)
                 });
             }
+            // ⚠️ O Knot NÃO passa pelo `apply_per_contour`: uma travessia pode ser ENTRE dois
+            // contornos, então ele olha o caminho inteiro de uma vez (como o Repeater).
+            Self::Knot(spec) => out = fx_knot::knot_path(path, spec, ctx),
             // O Falloff não é geometria: ele é CONSUMIDO pelo `run_stack`, que o passa como o
             // `falloff` do efeito seguinte. Chamar `apply` num Falloff (fora da pilha) é um no-op.
             Self::Falloff(_) => {}
@@ -642,6 +499,11 @@ impl VecScene {
 /// arquivo pelo teto de LOC.
 #[path = "effect_params.rs"]
 mod params_surface;
+
+/// A superfície de ACESSORES (`as_trim`/`as_zigzag`/… + `label`) — `impl PathEffect` continuado
+/// noutro arquivo pelo teto de LOC.
+#[path = "effect_accessors.rs"]
+mod accessors_surface;
 
 #[cfg(test)]
 #[path = "effect_tests.rs"]

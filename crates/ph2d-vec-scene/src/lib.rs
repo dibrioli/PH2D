@@ -125,6 +125,10 @@ pub mod fx_warp_presets;
 /// distância. Rida o esqueleto de reamostragem do `fx_warp_presets`. Módulo irmão.
 pub mod fx_twist;
 
+/// **Knot** — o entrelace celta: nas travessias, a fita de baixo ganha um vão. Rida o corte por
+/// arco do `fx_trim`. Módulo irmão.
+pub mod fx_knot;
+
 /// **Falloff** — o campo escalar espacial que modula a FORÇA do deformador seguinte na pilha
 /// (a ideia do *Falloff* do Cavalry). Ele não deforma nada sozinho: entra no deformador e escala
 /// o deslocamento por-ponto. Módulo irmão de `fx_warp_presets`.

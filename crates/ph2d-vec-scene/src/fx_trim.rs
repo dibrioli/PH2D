@@ -62,10 +62,14 @@ impl TrimSpec {
 }
 
 /// Um pedaço a emitir: o segmento `seg` do contorno, de `t0` a `t1`.
-struct Piece {
-    seg: usize,
-    t0: f64,
-    t1: f64,
+///
+/// `pub(crate)` porque o [`crate::fx_knot`] reusa a mesma máquina de corte por arco: um Trim
+/// revela UM intervalo, um Knot corta os vãos das passagens de baixo (o COMPLEMENTO de vários
+/// intervalos). Duas cópias do corte por arco divergiriam no 1º ajuste.
+pub(crate) struct Piece {
+    pub(crate) seg: usize,
+    pub(crate) t0: f64,
+    pub(crate) t1: f64,
 }
 
 /// **Aplica o Trim a UM contorno.** Devolve `(verts, closed)`.
@@ -116,7 +120,7 @@ pub fn trim_contour(verts: &[VecVertex], closed: bool, spec: &TrimSpec) -> (Vec<
 /// Num fechado `hi` pode passar de 1: o percurso dá a volta e o índice de segmento continua
 /// a andar módulo `seg_count`. É por isso que a caminhada é por *comprimento acumulado a
 /// partir de `lo`*, e não por "de que segmento é `lo`, de que segmento é `hi`".
-fn pieces_between(
+pub(crate) fn pieces_between(
     segs: &[Cubic],
     lens: &[f64],
     total: f64,
@@ -171,7 +175,12 @@ fn pieces_between(
 /// (`t == 0` ou `t == 1`); um ponto de CORTE nasce `Corner`, porque não há suavidade a
 /// preservar de um lado que deixou de existir. O `corner_radius` sai zero em todos: o
 /// estágio da quina já correu (ADR-0132 §3), e a pilha trabalha sobre geometria plana.
-fn rebuild(verts: &[VecVertex], segs: &[Cubic], pieces: &[Piece], n: usize) -> Vec<VecVertex> {
+pub(crate) fn rebuild(
+    verts: &[VecVertex],
+    segs: &[Cubic],
+    pieces: &[Piece],
+    n: usize,
+) -> Vec<VecVertex> {
     if pieces.is_empty() {
         return Vec::new();
     }

@@ -116,6 +116,8 @@ mod input_handlers;
 mod input_log;
 mod integration;
 mod keymap;
+/// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
+mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
 mod morph_live;

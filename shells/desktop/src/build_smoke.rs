@@ -152,6 +152,11 @@ impl crate::App {
             crate::twist_smoke::frame(self, f);
             return;
         }
+        // A cena do KNOT (o entrelace celta over/under) — irmão `knot_smoke`, mesma razão.
+        if level == 30 {
+            crate::knot_smoke::frame(self, f);
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

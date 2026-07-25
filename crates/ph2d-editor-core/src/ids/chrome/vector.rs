@@ -572,8 +572,9 @@ pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects"
 /// família Warp (Arc/Bulge/Wave/Fisheye/Rise); 9→13 com o catálogo ÚNICO (Enio 2026-07-25), que
 /// alinhou a lista do Warp à do Envelope: 4 base + 9 estilos; 13→17 com o **Falloff** (Cavalry,
 /// Enio 2026-07-25): 4 formas analíticas (Radial/Linear/Rect/Sweep) apendadas ao FIM da tabela;
-/// 17→18 com o **Twist** (o remoinho, um KIND só) apendado depois delas.
-pub const MAX_FX_KINDS: usize = 18;
+/// 17→18 com o **Twist** (o remoinho, um KIND só) apendado depois delas; 18→19 com o **Knot** (o
+/// entrelace celta, também um KIND só) no fim.
+pub const MAX_FX_KINDS: usize = 19;
 /// O teto de efeitos numa pilha.
 pub const MAX_FX_ROWS: usize = 4;
 /// O teto de parâmetros por efeito.

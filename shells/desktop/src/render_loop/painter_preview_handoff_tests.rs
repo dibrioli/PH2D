@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// the tool and runs the real upload door ([`super::painter_bridge::upload_cpu_preview`]).
 /// Returns whether the GPU producer owned the slot this frame.
 #[allow(clippy::too_many_arguments)]
-fn app_frame(
+pub(super) fn app_frame(
     renderer: &mut ph2d_render::SpriteRenderer,
     painter: &mut PainterTool,
     session: &mut Option<super::painter_gpu_preview::PainterGpuPreview>,

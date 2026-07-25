@@ -97,6 +97,9 @@ mod painter_preview_handoff_tests;
 /// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
 #[cfg(test)]
 mod painter_preview_ownership_tests;
+/// O que a tela mostra DEPOIS de um undo — o report de resquício do smoke de 2026-07-25.
+#[cfg(test)]
+mod painter_preview_undo_tests;
 /// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]

@@ -1826,6 +1826,53 @@ impl App {
         true
     }
 
+    /// Janela do duplo-clique no canvas (a mesma do texto) e a folga de posição.
+    const MOTION_PATH_DCLICK_MS: u128 = 350;
+    const MOTION_PATH_DCLICK_SLOP_PX: f32 = 5.0;
+
+    /// **Duplo-clique no CAMINHO insere um ponto ali** (ADR-0141) — o "adicionar ponto" de
+    /// um editor de vetor. Um clique SIMPLES cairia toda hora perto da trajetória (que fica
+    /// sempre visível para o objeto selecionado); o duplo é deliberado. A forma da curva e o
+    /// compasso do objeto são PRESERVADOS (`insert_path_anchor_at` divide por de Casteljau e
+    /// keya no tempo exato em que o objeto passa ali). `true` = inseriu (o chamador consome).
+    ///
+    /// ⚠️ O canvas não emite `DoubleClick` (é evento por-widget do chrome), então o par
+    /// (instante, posição) é rastreado aqui — o mesmo recurso do `vec_text_double_click`.
+    fn motion_path_curve_double_click(&mut self, x: f32, y: f32) -> bool {
+        let now = std::time::Instant::now();
+        let is_double = self.motion_path_last_click.is_some_and(|(t, (px, py))| {
+            now.duration_since(t).as_millis() <= Self::MOTION_PATH_DCLICK_MS
+                && (x - px).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
+                && (y - py).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
+        });
+        self.motion_path_last_click = Some((now, (x, y)));
+        if !is_double {
+            return false;
+        }
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let selected = gfx
+            .hero_screen
+            .as_ref()
+            .and_then(|h| h.gizmo.iter_selected().next());
+        let Some((target, d)) = crate::render_loop::motion_path_overlay::motion_path_curve_hit(
+            &self.timeline.doc,
+            selected,
+            &gfx.camera,
+            gfx.surface.size(),
+            x,
+            y,
+        ) else {
+            return false;
+        };
+        // Um passo de undo próprio, como o arrasto de âncora.
+        self.timeline.history.begin(&self.timeline.doc);
+        let ok = self.timeline.doc.insert_path_anchor_at(target, d);
+        self.timeline.history.commit_if_changed(&self.timeline.doc);
+        ok
+    }
+
     /// Leva o que foi agarrado (âncora ou alça) para o cursor. No-op (`false`) sem um
     /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
@@ -2858,6 +2905,18 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
             && self.vec_patternpath_handle_down(w)
+        {
+            return;
+        }
+        // **DUPLO-clique no CAMINHO insere um ponto** (ADR-0141), ANTES do arrasto de âncora:
+        // um duplo-clique sobre a curva é "adicionar ponto", não "arrastar". O 1º clique do
+        // par devolve `false` (não é duplo) e cai adiante como um clique normal; só o 2º sobre
+        // a curva consome.
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.motion_path_curve_double_click(evt.x, evt.y)
         {
             return;
         }

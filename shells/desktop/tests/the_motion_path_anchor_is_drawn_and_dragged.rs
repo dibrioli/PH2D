@@ -227,6 +227,47 @@ fn the_secondary_click_opens_the_anchor_handle_menu() {
     );
 }
 
+/// **Duplo-clique no caminho INSERE um ponto** (ADR-0141) — o "adicionar ponto" do editor.
+/// É um braço Primary-Down que corre ANTES do arrasto de âncora (um duplo sobre a curva é
+/// adicionar, não arrastar), usa o hit-test COMPARTILHADO da curva, e escreve pela porta do
+/// documento num passo de undo. Nenhum teste de unidade pega a costura (precisa de janela +
+/// tempo do duplo-clique).
+#[test]
+fn the_double_click_on_the_curve_inserts_a_point() {
+    let disp = shell("input_dispatch.rs");
+    let dclick = disp
+        .find("self.motion_path_curve_double_click(evt.x, evt.y)")
+        .expect("o duplo-clique no caminho não está no dispatch do ponteiro");
+    let anchor = disp
+        .find("self.motion_path_anchor_down(evt.x, evt.y)")
+        .expect("o arrasto de âncora");
+    // Ordem, não distância: o braço do duplo-clique PRECEDE o do arrasto, senão um duplo
+    // sobre a curva armaria um arrasto de âncora em vez de inserir um ponto.
+    assert!(
+        dclick < anchor,
+        "o braço do duplo-clique ({dclick}) vem DEPOIS do arrasto de âncora ({anchor})"
+    );
+    // O handler: hit-test compartilhado + a porta do documento + um passo de undo próprio.
+    let body_at = disp
+        .find("fn motion_path_curve_double_click")
+        .expect("o handler");
+    let body = &disp[body_at..(body_at + 1600).min(disp.len())];
+    assert!(
+        body.contains("motion_path_curve_hit"),
+        "o handler não usa o hit-test COMPARTILHADO da curva (`motion_path_curve_hit`)"
+    );
+    assert!(
+        body.contains("insert_path_anchor_at"),
+        "o handler não insere pela porta única `TimelineDoc::insert_path_anchor_at`"
+    );
+    for (needle, what) in [
+        ("history.begin", "a inserção não ABRE um passo de undo"),
+        ("commit_if_changed", "a inserção não FECHA o passo de undo"),
+    ] {
+        assert!(body.contains(needle), "{what}");
+    }
+}
+
 /// **O drain converte a âncora escolhida** — o `render_loop` consome o pick que o chrome
 /// parkou (`pending_motion_path_handle`), mapeia o wire u8 nos três tipos e chama a porta do
 /// documento, num passo de undo próprio. Mutar qualquer metade deixa a workspace verde (o

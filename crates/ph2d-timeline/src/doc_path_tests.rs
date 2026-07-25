@@ -476,3 +476,109 @@ fn setting_the_tangent_kind_rewrites_the_key_distances_and_refuses_bad_targets()
     assert!(!doc.set_path_tangent_kind(scalar, 0, TangentKind::Corner));
     assert!(!doc.set_path_tangent_kind(target, 99, TangentKind::Corner));
 }
+
+fn dd(a: [f32; 2], b: [f32; 2]) -> f32 {
+    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt()
+}
+
+// ── inserting a point on the path (ADR-0141): shape + motion preserved ───────────
+//
+// Double-clicking the curve adds a waypoint by de Casteljau split — the "add point" of a
+// vector editor. The promise is that the object passes exactly the same place at the same
+// time; the new anchor is an editable handle, not a bump.
+
+/// **The money gate.** Adding a point on the path must change NEITHER the curve's shape NOR
+/// the object's motion — it only grows an editable anchor. A curved path with linear keys,
+/// sampled before and after: every sample lands in the same place.
+#[test]
+fn inserting_a_point_preserves_the_shape_and_the_motion() {
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let mut doc = TimelineDoc::new();
+    // Three K's -> a CURVED auto-smooth path with a LINEAR distance track.
+    for (t, p) in [
+        (0.0, [0.0_f32, 0.0]),
+        (1.0, [10.0, 4.0]),
+        (2.0, [16.0, -4.0]),
+    ] {
+        doc.key_the_path(e.to_bits(), RationalTime::from_seconds(t), p);
+    }
+    let target = doc.bindings()[0].target;
+
+    // Where the object is at a handful of times, BEFORE the insert.
+    let times = [0.3_f64, 0.7, 1.2, 1.6];
+    let before: Vec<[f32; 2]> = times
+        .iter()
+        .map(|&t| {
+            apply_from_doc(&mut w, &mut doc, t);
+            pos(&w, e)
+        })
+        .collect();
+
+    // Insert a point 40% along the FIRST segment (mid-curve, not on an anchor).
+    let d = doc.position_path(e.to_bits()).unwrap().arclen_at(1).unwrap() * 0.4;
+    assert!(doc.insert_path_anchor_at(target, d), "the point was not inserted");
+
+    // 1:1 grew by one, on both sides.
+    let path = doc.position_path(e.to_bits()).unwrap();
+    assert_eq!(path.len(), 4, "no fourth anchor");
+    assert_eq!(
+        doc.active_clip().track(target).unwrap().keys().len(),
+        4,
+        "the keys did not follow the anchors 1:1"
+    );
+
+    // And the motion is UNTOUCHED: every sample lands where it did.
+    let mut worst = 0.0f32;
+    for (k, &t) in times.iter().enumerate() {
+        apply_from_doc(&mut w, &mut doc, t);
+        let now = pos(&w, e);
+        worst = worst.max(dd(now, before[k]));
+    }
+    println!("MEASURED worst drift after inserting a point = {worst:e}");
+    assert!(
+        worst < 1e-2,
+        "the object moved {worst:e} after inserting a point — the insert warped the path or \
+         shifted the timing (it must do neither)"
+    );
+}
+
+/// The inserted anchor sits at the CLICKED distance, at the point the path already had
+/// there — the de Casteljau split point, not a re-invented one.
+#[test]
+fn the_inserted_anchor_sits_at_the_clicked_point() {
+    let mut doc = TimelineDoc::new();
+    for (t, p) in [(0.0, [0.0_f32, 0.0]), (1.0, [10.0, 4.0]), (2.0, [16.0, -4.0])] {
+        doc.key_the_path(1, RationalTime::from_seconds(t), p);
+    }
+    let target = doc.bindings()[0].target;
+    let d = doc.position_path(1).unwrap().length() * 0.55;
+    let want = doc.position_path(1).unwrap().at(d).unwrap().point;
+
+    assert!(doc.insert_path_anchor_at(target, d));
+
+    // Which anchor is new? The one whose distance is ~d.
+    let path = doc.position_path(1).unwrap();
+    let i = (0..path.len())
+        .find(|&i| (path.arclen_at(i).unwrap() - d).abs() < 1e-2)
+        .expect("an anchor landed at the clicked distance");
+    let got = path.anchors()[i].anchor;
+    assert!(
+        dd(got, want) < 1e-2,
+        "the new anchor sits at {got:?}, the clicked point was {want:?}"
+    );
+    assert!(!path.anchors()[i].auto, "the inserted anchor is shaped, not auto");
+}
+
+/// The door refuses a non-Position target and a path too short to have a segment.
+#[test]
+fn insert_refuses_a_scalar_target_and_a_bare_path() {
+    let mut doc = TimelineDoc::new();
+    let scalar = doc.bind(1, PropKind::TranslationX);
+    assert!(!doc.insert_path_anchor_at(scalar, 5.0), "TranslationX has no path");
+
+    // A one-anchor path has no segment to split.
+    let target = doc.bind(2, PropKind::Position);
+    doc.add_path_key(target, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    assert!(!doc.insert_path_anchor_at(target, 0.0), "a one-point path cannot be split");
+}

@@ -55,6 +55,7 @@ const ANCHOR_HALF: f64 = 4.0; // LITERAL-PX-OK: chrome de overlay, geometria de 
 /// alvo de mouse quer folga, e esta é a mesma generosidade que a alça do texto em
 /// caminho e a do conector já assumem.
 const HIT_R_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
+const CURVE_HIT_R_PX: f64 = 6.0; // LITERAL-PX-OK: alvo do duplo-clique na curva (ADR-0141)
 
 /// Quantos segmentos de reta aproximam a curva por trecho entre pontos de tempo.
 /// O fio é redesenhado por frame e só precisa parecer liso.
@@ -362,6 +363,44 @@ pub(crate) fn motion_path_hit(
         consider(d2(tip), MotionPathGrab::Tangent { target, i, out });
     }
     best.map(|(_, g)| g)
+}
+
+/// **Onde na CURVA o cursor está**, se sobre ela — o alvo e a distância de arco do ponto
+/// mais próximo. É o que o duplo-clique de "adicionar ponto" usa (ADR-0141). `None` quando
+/// não há trajetória, quando o cursor está sobre uma ÂNCORA/alça (essas têm prioridade — o
+/// duplo-clique nelas não é "na curva") ou quando está LONGE da curva.
+///
+/// ⚠️ O `project` sozinho aceita qualquer clique (devolve o ponto mais próximo do caminho
+/// esteja onde estiver o cursor). Então a distância volta pra TELA e se confere que o
+/// cursor está mesmo em cima da curva, dentro de [`CURVE_HIT_R_PX`] — senão um duplo-clique
+/// no vazio inseriria um ponto.
+pub(crate) fn motion_path_curve_hit(
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+    camera: &Camera2d,
+    window: WindowSize,
+    x: f32,
+    y: f32,
+) -> Option<(AnimTarget, f64)> {
+    // Âncora/alça vence: sobre uma delas, o clique não conta como "na curva".
+    if motion_path_hit(doc, selected, camera, window, x, y).is_some() {
+        return None;
+    }
+    let entity = selected?;
+    let b = doc
+        .bindings()
+        .iter()
+        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)?;
+    let path = b.path.as_ref()?;
+    if path.len() < 2 {
+        return None;
+    }
+    let w = camera.screen_to_world((x, y), window);
+    let d = path.project([w[0], w[1]])?;
+    let on = path.at(d)?.point;
+    let (sx, sy) = camera.world_to_screen(on, window);
+    let dist2 = (f64::from(sx) - f64::from(x)).powi(2) + (f64::from(sy) - f64::from(y)).powi(2);
+    (dist2 <= CURVE_HIT_R_PX * CURVE_HIT_R_PX).then_some((b.target, d))
 }
 
 /// Um losango de meia-largura `half` centrado em `c`. Losango e não círculo: um ponto

@@ -293,6 +293,99 @@ impl TimelineDoc {
         self.add_path_key(target, t, at)
     }
 
+    /// **Insere uma âncora onde o artista clicou no CAMINHO** — o "adicionar ponto" da
+    /// trajetória ([ADR-0141]). `d` é a distância de arco do ponto clicado
+    /// ([`crate::MotionPath::project`]).
+    ///
+    /// Três coisas ao mesmo tempo, uma só operação:
+    /// 1. a **forma** da curva é preservada (de Casteljau, [`crate::MotionPath::split_segment_at`])
+    ///    — ganhar um ponto nunca deforma o caminho;
+    /// 2. a key nova entra no **TEMPO** em que o objeto passa por ali — proporcional ao arco
+    ///    dentro do segmento, que é EXATO no timing linear (o default do K) e próximo num ease;
+    /// 3. o **valor** sai do rewrite (a distância que a âncora nova mede).
+    ///
+    /// Junto, isso quer dizer que o objeto **passa exatamente pelo mesmo lugar no mesmo
+    /// compasso** — o ponto novo é um alça editável, não um solavanco.
+    ///
+    /// ⚠️ **O tempo NÃO é snapado a quadro**, e é de propósito: um ponto num quadro
+    /// próximo estaria numa distância diferente da clicada, e aí ganhar o ponto MOVERIA o
+    /// objeto — o oposto do que a operação promete. O tempo exato (a fração de arco) é o
+    /// único que mantém a pose e o compasso intactos; a chave sub-quadro é um detalhe de
+    /// uma âncora espacial. Recusa se o ponto não cai ESTRITAMENTE entre os dois keys
+    /// vizinhos (clique colado numa âncora — mas o hit-test de âncora tem prioridade e não
+    /// deixa chegar aqui), um alvo não-Position, ou um caminho de menos de 2 âncoras.
+    ///
+    /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+    pub fn insert_path_anchor_at(&mut self, target: AnimTarget, d: f64) -> bool {
+        // Fase 1 (leitura): o segmento, as distâncias dos vizinhos, e a entidade.
+        let (entity, i, di, dn, d) = {
+            let Some(b) = self.bindings().iter().find(|b| b.target == target) else {
+                return false;
+            };
+            if b.prop != PropKind::Position {
+                return false;
+            }
+            let Some(path) = b.path.as_ref() else {
+                return false;
+            };
+            if path.len() < 2 {
+                return false;
+            }
+            let d = d.clamp(0.0, path.length());
+            let i = path.segment_of(d);
+            (
+                b.entity,
+                i,
+                path.arclen_at(i).unwrap_or(0.0),
+                path.arclen_at(i + 1).unwrap_or(0.0),
+                d,
+            )
+        };
+        // Fase 2 (leitura): os tempos dos dois keys que cercam o ponto — âncora i é key i.
+        let (ti, tn) = {
+            let Some(track) = self.active_clip().track(target) else {
+                return false;
+            };
+            let ks = track.keys();
+            if i + 1 >= ks.len() {
+                return false;
+            }
+            (ks[i].t.to_seconds(), ks[i + 1].t.to_seconds())
+        };
+        let frac = if (dn - di).abs() > 1e-9 {
+            (d - di) / (dn - di)
+        } else {
+            0.5
+        };
+        // O tempo EXATO em que o objeto passa pela distância `d` (sem snap — ver a doc).
+        let t_secs = ti + (tn - ti) * frac;
+        // Estritamente entre os vizinhos: senão o upsert fundiria a key nova.
+        if t_secs <= ti + 1e-9 || t_secs >= tn - 1e-9 {
+            return false;
+        }
+        let t_new = RationalTime::from_seconds(t_secs);
+        // Fase 3 (escrita): divide a curva, planta a key; o valor certo vem do rewrite.
+        {
+            let Some(b) = self.bindings_mut().iter_mut().find(|b| b.target == target) else {
+                return false;
+            };
+            let Some(path) = b.path.as_mut() else {
+                return false;
+            };
+            if path.split_segment_at(d).is_none() {
+                return false;
+            }
+        }
+        self.upsert_key(
+            entity,
+            PropKind::Position,
+            t_new,
+            AnimValue::Float(d as f32),
+            crate::Interp::Linear,
+        );
+        self.rewrite_path_key_values(target)
+    }
+
     /// **Reconcilia TODA trajetória Position com a track do clip ativo** — o invariante
     /// *"as âncoras SÃO as keys (1:1)"* mantido quando as keys são editadas pela TIMELINE,
     /// não pelo canvas ([ADR-0141]).

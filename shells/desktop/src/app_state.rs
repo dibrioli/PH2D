@@ -803,6 +803,11 @@ pub(crate) struct App {
     /// qual binding é — a seleção pode mudar no meio de um arrasto (um atalho, um undo), e
     /// o gesto continua sendo sobre o que foi pego.
     pub(crate) motion_path_drag: Option<crate::render_loop::motion_path_overlay::MotionPathGrab>,
+    /// O último clique primário no canvas — `(instante, posição)` — para detectar o
+    /// DUPLO-clique no caminho (ADR-0141), que insere um ponto na trajetória. O canvas não
+    /// emite `DoubleClick` (é evento por-widget do chrome), então o par é rastreado aqui, o
+    /// mesmo recurso do duplo-clique de texto (`vec_last_canvas_click`). Runtime-only.
+    pub(crate) motion_path_last_click: Option<(std::time::Instant, (f32, f32))>,
     /// Qual das duas alças do PATTERN (Start/End, plano 23 W4) está sob arrasto, se alguma. Armada
     /// no press de Select, limpa no release. Runtime-only: o arrasto não é documento — o resultado
     /// (`start_offset`/`end_offset`) é, e vive no `VecPatternPath`. Um `Option` e não um booleano

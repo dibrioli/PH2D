@@ -307,6 +307,62 @@ impl MotionPath {
         self.edit(|anchors| anchors.insert(i.min(anchors.len()), a));
     }
 
+    /// **Insert an anchor at arc distance `d`, PRESERVING the curve's shape** — the "add
+    /// point" of a vector editor, by a de Casteljau split. The segment containing `d` is
+    /// cut into two cubics that together reproduce the original, so the curve does not move
+    /// when it gains the point.
+    ///
+    /// The new anchor is born SHAPED (with the split handles), and its two neighbours have
+    /// their adjacent handle adjusted (the split requires it) and are marked shaped too —
+    /// otherwise a later [`MotionPath::resmooth_auto`] would re-derive them and undo the
+    /// split. Returns the new anchor's index, or `None` on a path of fewer than two anchors.
+    /// Runs through [`MotionPath::edit`], so the arc-length table follows.
+    pub fn split_segment_at(&mut self, d: f64) -> Option<usize> {
+        if self.anchors.len() < 2 {
+            return None;
+        }
+        let d = d.clamp(0.0, self.length());
+        let i = self.segment_index(d);
+        let c = self.segment(i);
+        let u = inv_arclen(&c, d - self.starts[i]);
+        // de Casteljau at `u`: the split point S and the six control points that make the
+        // two sub-cubics equal the original. All in the arc engine's `f64`.
+        let lerp = |a: [f64; 2], b: [f64; 2], t: f64| {
+            [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+        };
+        let (p0, p1, p2, p3) = (c[0], c[1], c[2], c[3]);
+        let q0 = lerp(p0, p1, u);
+        let q1 = lerp(p1, p2, u);
+        let q2 = lerp(p2, p3, u);
+        let r0 = lerp(q0, q1, u);
+        let r1 = lerp(q1, q2, u);
+        let s = lerp(r0, r1, u);
+        let rel = |a: [f64; 2], b: [f64; 2]| [(a[0] - b[0]) as f32, (a[1] - b[1]) as f32];
+        let new_anchor = PathAnchor {
+            anchor: [s[0] as f32, s[1] as f32],
+            in_handle: rel(r0, s),
+            out_handle: rel(r1, s),
+            auto: false,
+            kind: TangentKind::Smooth,
+        };
+        let out_i = rel(q0, p0);
+        let in_next = rel(q2, p3);
+        self.edit(|anchors| {
+            anchors[i].out_handle = out_i;
+            anchors[i].auto = false;
+            anchors[i + 1].in_handle = in_next;
+            anchors[i + 1].auto = false;
+            anchors.insert(i + 1, new_anchor);
+        });
+        Some(i + 1)
+    }
+
+    /// Which segment contains arc distance `d` — the index of the anchor it starts at.
+    #[must_use]
+    pub fn segment_of(&self, d: f64) -> usize {
+        self.segment_index(d.clamp(0.0, self.length()))
+    }
+
     /// Remove anchor `i`, returning it.
     pub fn remove_anchor(&mut self, i: usize) -> Option<PathAnchor> {
         self.edit(|anchors| (i < anchors.len()).then(|| anchors.remove(i)))

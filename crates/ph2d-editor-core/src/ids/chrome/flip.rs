@@ -31,6 +31,14 @@ pub const FLIP_MODE_FILL: NodeId = hash_node_id("flip.mode.fill");
 pub const FLIP_SHAPE_LINE: NodeId = hash_node_id("flip.shape.line");
 pub const FLIP_SHAPE_FILLED: NodeId = hash_node_id("flip.shape.filled");
 
+/// Tip (Draw mode, 03 §8): the brush POINT along the stroke — a full line, or beads spaced
+/// by arc-length (round Dots / Squares). `FLIP_DOT_SPACING` is the gap between beads (WORLD).
+pub const FLIP_TIP_LINE: NodeId = hash_node_id("flip.tip.line");
+pub const FLIP_TIP_DOTS: NodeId = hash_node_id("flip.tip.dots");
+pub const FLIP_TIP_SQUARES: NodeId = hash_node_id("flip.tip.squares");
+pub const FLIP_DOT_SPACING: NodeId = hash_node_id("flip.tip.spacing");
+pub const FLIP_DOT_SPACING_NUM: NodeId = hash_node_id("flip.tip.spacing.num");
+
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 

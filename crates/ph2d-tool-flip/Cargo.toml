@@ -23,5 +23,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget canonical (HR-13 boot check).
 ph2d-core = { path = "../ph2d-core" }
+# StrokeTip + DEFAULT_DOT_SPACING (o *tip* pontilhado do traço) — o tool SETA um atributo
+# do modelo, então usa o enum do modelo (fonte única) em vez de espelhá-lo.
+ph2d-flip = { path = "../ph2d-flip" }
 # kurbo BezPath for the pill icon glyph (same source the Vector tool uses).
 ph2d-vector = { path = "../ph2d-vector" }

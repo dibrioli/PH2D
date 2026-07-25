@@ -301,6 +301,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
+    // Flip *tip* selector (Line/Dots/Squares + Spacing) — a thin section painter split from
+    // `paint_sections.rs` for the 600-LOC cap. It owns no widget: it delegates to
+    // `BodyCtx::segmented` / `slider_row` (in paint_rows/paint_sections), which paint via the
+    // a11y-wired `paint_segmented` / `paint_slider` primitives.
+    (
+        "ph2d-panel-flip/src/paint_tip.rs",
+        "delegates to BodyCtx::segmented/slider_row (paint_segmented/paint_slider-backed)",
+    ),
     // Vector connector subsection (Route / Jetty / Spread) — mesmo caso do
     // `paint_arrange` acima: a seção não tem widget PRÓPRIO. As três linhas dela são
     // `BodyCtx::labeled_choice_button` / `labeled_number_field` (em `paint_modes`), que

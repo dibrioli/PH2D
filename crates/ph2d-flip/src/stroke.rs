@@ -29,6 +29,26 @@ pub enum Cap {
     Flat,
 }
 
+/// **A PONTA do pincel ao longo do traço** — o *tip* pontilhado do Ciallo/GP (03 §8).
+/// `Continuous` é a linha cheia de sempre; `Dots`/`Squares` recortam a cobertura em contas
+/// espaçadas por ARC-LENGTH (não por densidade de input — dois traços da mesma forma pontilham
+/// igual, tenha um 10 pontos e o outro 1000). O tamanho da conta é a espessura do traço; o vão
+/// entre contas é [`FlipStroke::dot_spacing`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum StrokeTip {
+    /// A linha cheia — o comportamento de sempre (byte-idêntico ao traço sem *tip*).
+    #[default]
+    Continuous,
+    /// Contas REDONDAS (discos) ao longo do arco.
+    Dots,
+    /// Contas QUADRADAS ao longo do arco.
+    Squares,
+}
+
+/// Espaçamento default entre contas (mundo) quando o *tip* é pontilhado. `0` = ignorado
+/// (o `Continuous` nem lê). ~5× a espessura default ⇒ contas com vão claro; o artista ajusta.
+pub const DEFAULT_DOT_SPACING: f32 = 0.05;
+
 /// Preenchimento por-curva. Ausente (`None` no [`FlipStroke::fill`]) = traço sem
 /// fill (o `fill_id == 0` do GP). O agrupamento de fills compostos (várias curvas
 /// = um fill com buracos) é do W1/W4 — aqui a cor e opacidade bastam.
@@ -87,6 +107,12 @@ pub struct FlipStroke {
     pub cap: (Cap, Cap),
     /// Dureza da borda `[0,1]` — `1` = dura, `0` = airbrush (`1 - softness`).
     pub hardness: f32,
+    /// **A ponta ao longo do traço** ([`StrokeTip`]): linha cheia (default) ou contas
+    /// pontilhadas/quadradas. É atributo POR-CURVA (o pincel decide), como `hardness`.
+    pub tip: StrokeTip,
+    /// **O vão entre contas** (mundo) quando [`Self::tip`] é pontilhado. Ignorado no
+    /// `Continuous`. Medido em MUNDO (invariante ao zoom, como a espessura e o Gap).
+    pub dot_spacing: f32,
     /// Material (paleta). `0` = default.
     pub material: MaterialId,
     /// Preenchimento, se houver.
@@ -142,6 +168,8 @@ impl Default for FlipStroke {
             closed: false,
             cap: (Cap::Round, Cap::Round),
             hardness: DEFAULT_HARDNESS,
+            tip: StrokeTip::Continuous,
+            dot_spacing: DEFAULT_DOT_SPACING,
             material: MaterialId::default(),
             fill: None,
             holes: Vec::new(),
@@ -246,6 +274,8 @@ impl FlipStroke {
             closed: self.closed,
             cap: self.cap,
             hardness: self.hardness,
+            tip: self.tip,
+            dot_spacing: self.dot_spacing,
             material: self.material,
             fill: self.fill,
             holes: self.holes.clone(),

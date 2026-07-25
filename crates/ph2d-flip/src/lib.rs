@@ -57,7 +57,10 @@ pub use object::{DEFAULT_FPS, DupMode, FlipObject};
 pub use onion::{GHOST_MIN_ALPHA, Ghost, OnionMode, OnionSettings, ghosts};
 pub use pose::Pose;
 pub use segment::{Cutter, cuts, piece_of_point, probe_point};
-pub use stroke::{Cap, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke, Point};
+pub use stroke::{
+    Cap, DEFAULT_DOT_SPACING, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke,
+    Point, StrokeTip,
+};
 pub use tween::{TweenOptions, TweenRequest, tween_drawing};
 pub use tween_match::{PAIR_REJECT_COST, StrokeFeatures, TweenPlan, features};
 
@@ -96,7 +99,10 @@ pub use ph2d_painter_effects::BlendMode;
 /// obrigatório: sem ele o postcard lê um `width: 6.0` antigo **com sucesso** e o
 /// interpreta como 6 unidades de mundo — ~100× a espessura pretendida, arte destruída
 /// em SILÊNCIO. Um quebra de layout falha alto; uma troca de unidade, não.
-pub const FLIP_SCHEMA_VERSION: u32 = 8;
+/// v9 (03 §8): o traço ganhou `tip` ([`StrokeTip`]) + `dot_spacing` — o pincel pontilhado.
+/// Postcard é POSICIONAL, e os campos entraram no MEIO do `FlipStroke` (após `hardness`) ⇒
+/// todo `FlipStroke` salvo em v8 lê os campos seguintes deslocados ⇒ bump obrigatório.
+pub const FLIP_SCHEMA_VERSION: u32 = 9;
 
 #[cfg(test)]
 mod tests {

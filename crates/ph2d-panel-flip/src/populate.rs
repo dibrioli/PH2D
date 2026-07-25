@@ -13,9 +13,10 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_flip::{
-    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX,
-    GAP_MAX_WORLD, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN,
-    TRAP_MAX_PX, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
+    DEFAULT_DOT_SPACING, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING,
+    DEFAULT_WIDTH_PX, DOT_SPACING_MAX_WORLD, GAP_MAX_WORLD, GROW_MAX, GROW_MIN,
+    OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, TRAP_MAX_PX, WIDTH_SLIDER_OFFSET,
+    WIDTH_SLIDER_SCALE, px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -99,6 +100,10 @@ pub fn populate(store: &mut WidgetStore) {
     // Shape (Draw): o traço carrega o próprio preenchimento?
     button(store, ids::FLIP_SHAPE_LINE);
     button(store, ids::FLIP_SHAPE_FILLED);
+    // Tip (Draw, 03 §8): a ponta ao longo do traço — linha cheia / contas / quadrados.
+    button(store, ids::FLIP_TIP_LINE);
+    button(store, ids::FLIP_TIP_DOTS);
+    button(store, ids::FLIP_TIP_SQUARES);
 
     // Brush sliders — seeded at the tool defaults.
     slider_chip(
@@ -178,6 +183,17 @@ pub fn populate(store: &mut WidgetStore) {
         GAP_MAX_WORLD as f32,
         0.0,
         0.05, // step do dominio: unidades de MUNDO (o Gap mede mundo, nao px) // LITERAL-PX-OK: granularidade do valor, nao design
+    );
+    // Spacing do *tip* pontilhado (03 §8): o vão entre contas, MUNDO. Semeado no default.
+    slider_chip(
+        store,
+        ids::FLIP_DOT_SPACING,
+        ids::FLIP_DOT_SPACING_NUM,
+        (f64::from(DEFAULT_DOT_SPACING) / DOT_SPACING_MAX_WORLD) as f32,
+        f64::from(DEFAULT_DOT_SPACING),
+        DOT_SPACING_MAX_WORLD as f32,
+        0.0,
+        0.02, // step do dominio: unidades de MUNDO // LITERAL-PX-OK: granularidade do valor, nao design
     );
     slider_chip(
         store,

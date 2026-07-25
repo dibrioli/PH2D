@@ -106,7 +106,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// corpo quando ele se move. Layout posicional muda (mesmo padrão do v27/`is_sensor`): um save v29
 /// lido como v30 leria além do fim do blob do `PhysicsJoint`; um v30 lido por um binário v29 é
 /// recusado como erro de versão.
-const PROJECT_SCHEMA: u32 = 30;
+/// v31 (Flip, 03 §8): o `FlipStroke` ganhou `tip` + `dot_spacing` (o pincel pontilhado) — campos
+/// no MEIO do struct (após `hardness`), então o layout posicional do `FlipDoc` embutido muda. É o
+/// mesmo motivo dos bumps anteriores do `FlipStroke` (v7 `holes`/`hide_stroke`, v8 `selected`):
+/// `FLIP_SCHEMA_VERSION` 8→9, e `PROJECT_SCHEMA` acompanha porque o `FlipDoc` viaja DENTRO do
+/// `ProjectState`.
+///
+/// ⚠️ Este bump nasceu `30` na `line/FLIP` e virou **31** na integração de 2026-07-25: a
+/// `line/physics` reivindicou o mesmo 30 na MESMA janela, por outro motivo (a âncora body-local
+/// do joint, o parágrafo acima). O valor certo se CONTA, não se escolhe — ele não estava em
+/// nenhum dos dois lados do conflito ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 31;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

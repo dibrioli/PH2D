@@ -104,6 +104,7 @@ mod flip_strip_drag;
 mod flip_strip_pins;
 mod flip_strip_resolve;
 mod flip_strip_smoke;
+mod flip_tip_smoke;
 mod flip_trace;
 mod flip_transform;
 mod flip_tween_correct;

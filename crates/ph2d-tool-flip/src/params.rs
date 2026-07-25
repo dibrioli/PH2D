@@ -169,6 +169,13 @@ pub enum FillMode {
 /// de 0,37 a 1,0 doc — este teto cobre esse regime com folga, e ~16× a largura do traço
 /// padrão (`size_to_world(6) = 0,06`). O default segue **0** (desligado).
 pub const GAP_MAX_WORLD: f64 = 1.0;
+
+/// Teto do **vão entre contas** do *tip* pontilhado (MUNDO). ~10× a largura do traço padrão
+/// (`size_to_world(6) = 0,06`) ⇒ contas bem esparsas no topo; o default é
+/// [`ph2d_flip::DEFAULT_DOT_SPACING`] (0,05, ~1 largura). Mundo, não px, para ser
+/// zoom-invariante como o Gap e o Size.
+pub const DOT_SPACING_MAX_WORLD: f64 = 0.6;
+
 /// Faixa do **Grow/Shrink** (px de tela): o offset assinado do contorno a partir do
 /// **EIXO** da linha (BUGS #14). O default 0 já é exato em qualquer espessura e zoom;
 /// isto é só o ajuste estilístico (o "off-register" para +, o vão deliberado para −).
@@ -294,6 +301,12 @@ pub struct FlipStyleSnapshot {
     pub width_px: f64,
     /// Dureza da borda `0..=1` (1 = borda dura).
     pub hardness: f32,
+    /// **A PONTA ao longo do traço** ([`ph2d_flip::StrokeTip`]): linha cheia (default) ou
+    /// contas pontilhadas/quadradas. O traço desenhado herda isto (`flip_draw`).
+    pub tip: ph2d_flip::StrokeTip,
+    /// **O vão entre contas** em unidades de MUNDO (zoom-invariante, como o Gap e o Size).
+    /// Só relevante quando `tip` é pontilhado. Ver [`DOT_SPACING_MAX_WORLD`].
+    pub dot_spacing: f64,
     /// Opacidade do traço `0..=1`.
     pub opacity: f32,
     /// Intensidade do active smoothing `0..=1` (o "assentar" da cauda).
@@ -371,6 +384,8 @@ impl Default for FlipStyleSnapshot {
             stroke: [240, 240, 245, 255],
             width_px: 6.0,
             hardness: 1.0,
+            tip: ph2d_flip::StrokeTip::Continuous,
+            dot_spacing: ph2d_flip::DEFAULT_DOT_SPACING as f64,
             opacity: 1.0,
             smoothing: 0.5,
             mode: FlipMode::Select,

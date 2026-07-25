@@ -13,6 +13,7 @@
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_flip::{DEFAULT_DOT_SPACING, StrokeTip};
 
 use crate::params::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD, GROW_MAX,
@@ -47,6 +48,9 @@ pub struct FlipTool {
     stroke: [u8; 4],
     width_px: f64,
     hardness: f32,
+    /// A PONTA ao longo do traço (o *tip* pontilhado) + o vão entre contas (MUNDO).
+    tip: StrokeTip,
+    dot_spacing: f32,
     opacity: f32,
     smoothing: f32,
     mode: FlipMode,
@@ -90,6 +94,8 @@ impl Default for FlipTool {
             stroke: DEFAULT_STROKE,
             width_px: DEFAULT_WIDTH_PX,
             hardness: DEFAULT_HARDNESS,
+            tip: StrokeTip::Continuous,
+            dot_spacing: DEFAULT_DOT_SPACING,
             opacity: DEFAULT_OPACITY,
             smoothing: DEFAULT_SMOOTHING,
             // Default = Select (gizmo transforma o objeto; arbitragem ADR-0112).
@@ -226,6 +232,18 @@ impl FlipTool {
     pub fn set_hardness(&mut self, h: f32) {
         self.hardness = h.clamp(0.0, 1.0);
     }
+    /// A PONTA ao longo do traço (linha cheia / contas pontilhadas/quadradas).
+    pub fn tip(&self) -> StrokeTip {
+        self.tip
+    }
+    /// Define a ponta ao longo do traço (o *tip* pontilhado).
+    pub fn set_tip(&mut self, tip: StrokeTip) {
+        self.tip = tip;
+    }
+    /// Define o vão entre contas (MUNDO, clampado a `[0, DOT_SPACING_MAX_WORLD]`).
+    pub fn set_dot_spacing(&mut self, world: f32) {
+        self.dot_spacing = world.clamp(0.0, crate::params::DOT_SPACING_MAX_WORLD as f32);
+    }
     /// Define a opacidade do traço `0..=1` (clampada).
     pub fn set_opacity(&mut self, o: f32) {
         self.opacity = o.clamp(0.0, 1.0);
@@ -242,6 +260,8 @@ impl FlipTool {
             stroke: self.stroke,
             width_px: self.width_px,
             hardness: self.hardness,
+            tip: self.tip,
+            dot_spacing: f64::from(self.dot_spacing),
             opacity: self.opacity,
             smoothing: self.smoothing,
             mode: self.mode,
@@ -334,6 +354,10 @@ impl Tool for FlipTool {
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
+            // Tip (Draw, 03 §8): a ponta ao longo do traço.
+            PanelEvent::Click(id) if id == ids::FLIP_TIP_LINE => self.tip = StrokeTip::Continuous,
+            PanelEvent::Click(id) if id == ids::FLIP_TIP_DOTS => self.tip = StrokeTip::Dots,
+            PanelEvent::Click(id) if id == ids::FLIP_TIP_SQUARES => self.tip = StrokeTip::Squares,
             // O domínio da seleção (modo Edit, W8 + §4.B): traço inteiro, ponto ou pedaço.
             PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_STROKE => {
                 self.edit_domain = EditDomain::Stroke;
@@ -369,6 +393,12 @@ impl Tool for FlipTool {
             // divergem no 1º arrasto.
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GAP => {
                 self.gap = v.clamp(0.0, 1.0) * GAP_MAX_WORLD;
+            }
+            // Spacing do *tip* pontilhado: track `0..1` → MUNDO `0..DOT_SPACING_MAX_WORLD`.
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_DOT_SPACING => {
+                self.set_dot_spacing(
+                    (v.clamp(0.0, 1.0) * crate::params::DOT_SPACING_MAX_WORLD) as f32,
+                );
             }
             PanelEvent::SetValue(id, v) if id == ids::FLIP_GROW => {
                 self.grow = GROW_MIN + v.clamp(0.0, 1.0) * (GROW_MAX - GROW_MIN);
@@ -506,6 +536,33 @@ mod tests {
     /// 🔴 **Linkado (o DEFAULT) a borracha É o pincel** — um número só, como sempre foi.
     /// Mexer no Size do pincel move o raio da borracha junto; esse é o comportamento
     /// que o projeto tinha antes do §4.C e que o toggle preserva por default.
+    /// O *tip* pontilhado (03 §8): os 3 botões e o slider de spacing chegam ao tool, e o
+    /// snapshot (o que o traço desenhado herda) carrega o valor. Default = linha cheia.
+    #[test]
+    fn the_tip_toggle_and_spacing_slider_reach_the_tool() {
+        let mut t = FlipTool::new();
+        assert_eq!(t.tip(), StrokeTip::Continuous, "default = linha cheia");
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_DOTS));
+        assert_eq!(t.tip(), StrokeTip::Dots);
+        assert_eq!(
+            t.ui_snapshot().tip,
+            StrokeTip::Dots,
+            "o snapshot leva o tip"
+        );
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_SQUARES));
+        assert_eq!(t.tip(), StrokeTip::Squares);
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_LINE));
+        assert_eq!(t.tip(), StrokeTip::Continuous);
+        // O slider: track `0..1` → mundo `0..DOT_SPACING_MAX_WORLD`, e chega ao snapshot.
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_DOT_SPACING, 0.5));
+        let want = 0.5 * crate::params::DOT_SPACING_MAX_WORLD;
+        assert!(
+            (t.ui_snapshot().dot_spacing - want).abs() < 1e-6,
+            "spacing {} != {want}",
+            t.ui_snapshot().dot_spacing
+        );
+    }
+
     #[test]
     fn linked_by_default_the_eraser_follows_the_brush() {
         let mut t = FlipTool::new();

@@ -32,6 +32,7 @@ mod paint_colorize;
 mod paint_layers;
 mod paint_rows;
 mod paint_sections;
+mod paint_tip;
 pub mod populate;
 pub mod state;
 

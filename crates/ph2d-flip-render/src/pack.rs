@@ -18,7 +18,7 @@ use crate::fill::FillVertex;
 use crate::fill_holes;
 use crate::neighbors::{self, Seg};
 use ph2d_core::Vec2;
-use ph2d_flip::{Cap, FlipDrawing};
+use ph2d_flip::{Cap, FlipDrawing, StrokeTip};
 
 /// Espaçamento de profundidade por-traço (GP §2, `2e-7`). Cada traço ocupa 2
 /// slots: fill em `2·sid+1`, traço em `2·sid+2` (o traço ganha o GREATER sobre o
@@ -62,8 +62,13 @@ pub struct GpuStroke {
     pub hardness: f32,
     /// Material (paleta) — chave de batching futuro.
     pub material: u32,
+    /// A PONTA ao longo do traço ([`ph2d_flip::StrokeTip`] como `u32`): `0` = Continuous
+    /// (linha cheia), `1` = Dots, `2` = Squares. O fragment recorta a cobertura em contas.
+    pub tip: u32,
+    /// O vão entre contas (MUNDO) quando `tip != 0`. Ignorado no Continuous.
+    pub dot_spacing: f32,
     /// Padding para alinhar a 32 bytes (storage buffer stride estável).
-    pub _pad: [u32; 3],
+    pub _pad: [u32; 1],
 }
 
 /// Um segmento vizinho GEOMÉTRICO, resolvido em índices GLOBAIS de ponto — o par
@@ -85,6 +90,13 @@ pub struct FlipGpuData {
     /// vertex shader achar `first_point`/`point_count`/`flags` do vizinho (clamp
     /// aberto / wrap fechado) sem varrer a tabela.
     pub point_stroke: Vec<u32>,
+    /// Paralelo a `points`: o comprimento de arco CUMULATIVO (MUNDO) do início do traço
+    /// até este ponto — o que faz o *tip* pontilhado espaçar as contas por ARC-LENGTH e não
+    /// por densidade de input. O vertex lê `arc_len[gp]` (o início do segmento) e soma o
+    /// comprimento LOCAL `|b−a|` para o fim (assim o segmento de FECHO de um anel fecha
+    /// certo, sem depender do `arc_len[first]=0`). Cumulativo NÃO é local ⇒ pré-computado
+    /// na CPU. Sempre `0.0` no primeiro ponto de cada traço.
+    pub arc_len: Vec<f32>,
     /// Vértices de fill (triângulos já triangulados), dos traços fechados com
     /// preenchimento. Rasterizados ABAIXO do traço (profundidade menor).
     pub fills: Vec<FillVertex>,
@@ -126,6 +138,9 @@ impl FlipGpuData {
         let stroke_base = self.strokes.len() as u32;
         let extra_base = self.seg_extras.len() as u32;
         self.points.extend_from_slice(&other.points);
+        // `arc_len` é cumulativo DENTRO de cada traço (0 no início de cada um), então concatena
+        // sem offset — paralelo a `points`, como o `point_stroke`.
+        self.arc_len.extend_from_slice(&other.arc_len);
         self.point_stroke
             .extend(other.point_stroke.iter().map(|&s| s + stroke_base));
         self.strokes.extend(other.strokes.iter().map(|s| {
@@ -156,6 +171,16 @@ impl FlipGpuData {
             v.depth += depth_shift;
             v
         }));
+    }
+}
+
+/// O código `u32` do *tip* que o shader lê (o `enum` não é `Pod`; o mapeamento vive AQUI, a
+/// porta única CPU→GPU). ⚠️ Tem de bater com os `const TIP_*` do `flip.wgsl`.
+fn tip_code(tip: StrokeTip) -> u32 {
+    match tip {
+        StrokeTip::Continuous => 0,
+        StrokeTip::Dots => 1,
+        StrokeTip::Squares => 2,
     }
 }
 
@@ -233,12 +258,17 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                 flags: stroke_flags(s.closed, s.cap),
                 hardness: s.hardness,
                 material: s.material.0,
-                _pad: [0; 3],
+                tip: tip_code(s.tip),
+                dot_spacing: s.dot_spacing,
+                _pad: [0; 1],
             });
         } else {
             let w = s.widths();
             let op = s.opacities();
             let col = s.colors();
+            // Comprimento de arco cumulativo (MUNDO), reiniciado neste traço: o `arc_len`
+            // do ponto `i` é a soma das distâncias `|pos[k+1]−pos[k]|` até `i` (0 no início).
+            let mut arc = 0.0f32;
             for i in 0..pos.len() {
                 g.points.push(GpuPoint {
                     pos: [pos[i].x, pos[i].y],
@@ -247,7 +277,11 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                     color: col[i].0,
                 });
                 g.point_stroke.push(sid);
+                g.arc_len.push(arc);
                 g.seg_extra_range.push([0, 0]); // preenchido abaixo
+                if i + 1 < pos.len() {
+                    arc += (pos[i + 1] - pos[i]).length();
+                }
             }
             g.strokes.push(GpuStroke {
                 first_point,
@@ -255,7 +289,9 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                 flags: stroke_flags(s.closed, s.cap),
                 hardness: s.hardness,
                 material: s.material.0,
-                _pad: [0; 3],
+                tip: tip_code(s.tip),
+                dot_spacing: s.dot_spacing,
+                _pad: [0; 1],
             });
 
             // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;

@@ -67,6 +67,8 @@ pub struct FlipRenderer {
     // a lista concatenada (FRAGMENT).
     seg_range_buf: Option<wgpu::Buffer>,
     seg_extras_buf: Option<wgpu::Buffer>,
+    // Comprimento de arco cumulativo por-ponto (o *tip* pontilhado).
+    arc_len_buf: Option<wgpu::Buffer>,
     bind_group: Option<wgpu::BindGroup>,
     /// Nº de vértices a desenhar no próximo/último `render` (= point_count · 6).
     vertex_count: u32,
@@ -115,6 +117,9 @@ impl FlipRenderer {
                 storage_entry(4),
                 // seg_extras: a lista concatenada, lida no FRAGMENT.
                 storage_entry_frag(5),
+                // arc_len: comprimento de arco cumulativo por-ponto, lido no VERTEX (o *tip*
+                // pontilhado; viaja por varying flat p/ o fragment).
+                storage_entry(6),
             ],
         });
 
@@ -223,6 +228,7 @@ impl FlipRenderer {
             points_buf: None,
             strokes_buf: None,
             point_stroke_buf: None,
+            arc_len_buf: None,
             seg_range_buf: None,
             seg_extras_buf: None,
             bind_group: None,
@@ -309,6 +315,7 @@ impl FlipRenderer {
             &data.seg_extra_range,
         );
         let seg_extras = storage_slice(device, queue, "ph2d-flip seg_extras", &data.seg_extras);
+        let arc_len = storage_slice(device, queue, "ph2d-flip arc_len", &data.arc_len);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-flip bind group"),
@@ -338,6 +345,10 @@ impl FlipRenderer {
                     binding: 5,
                     resource: seg_extras.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: arc_len.as_entire_binding(),
+                },
             ],
         });
 
@@ -346,6 +357,7 @@ impl FlipRenderer {
         self.point_stroke_buf = Some(point_stroke);
         self.seg_range_buf = Some(seg_range);
         self.seg_extras_buf = Some(seg_extras);
+        self.arc_len_buf = Some(arc_len);
         self.bind_group = Some(bind_group);
         self.vertex_count = data.point_count() as u32 * 6;
     }

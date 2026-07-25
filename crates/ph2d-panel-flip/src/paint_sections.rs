@@ -357,7 +357,7 @@ impl BodyCtx<'_> {
             .slider(ids::FLIP_SMOOTHING)
             .map(|(_, v)| v)
             .unwrap_or(snap.smoothing);
-        self.slider_row(
+        y = self.slider_row(
             "Smoothing",
             ids::FLIP_SMOOTHING,
             ids::FLIP_SMOOTHING_NUM,
@@ -365,7 +365,10 @@ impl BodyCtx<'_> {
             f64::from(track),
             &format!("{track:.2}"),
             y,
-        )
+        );
+        // **O *tip* pontilhado** (03 §8) — a linha Tip + o Spacing, no módulo-irmão
+        // `paint_tip.rs` (o teto de LOC deste arquivo). Só no Draw (o método é no-op fora).
+        self.tip_section(snap, y)
     }
 
     /// Color section — a Stroke colour swatch (opens the shared OKLCH picker).

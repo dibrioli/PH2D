@@ -238,6 +238,10 @@ fn build_stroke(
         });
     }
     s.hardness = style.hardness;
+    // **O *tip* pontilhado** (03 §8): o traço herda a ponta do pincel (linha cheia ou
+    // contas). `dot_spacing` é MUNDO, direto para o modelo (o fragment o usa em mundo).
+    s.tip = style.tip;
+    s.dot_spacing = style.dot_spacing as f32;
     // **O traço PREENCHIDO** (o material stroke+fill do GP — como o Suzanne é feito):
     // o fill é a triangulação dos pontos DESTE traço, então linha e cor são UMA
     // geometria. Esculpir a linha move a cor exatamente junto, no mesmo frame — nada a

@@ -133,6 +133,10 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_EDIT_DOM_SEGMENT
                 || id == ids::FLIP_SHAPE_LINE
                 || id == ids::FLIP_SHAPE_FILLED
+                // Tip (Draw, 03 §8): linha cheia / contas / quadrados.
+                || id == ids::FLIP_TIP_LINE
+                || id == ids::FLIP_TIP_DOTS
+                || id == ids::FLIP_TIP_SQUARES
                 || id == ids::FLIP_ERASE_SOFT
                 || id == ids::FLIP_ERASE_HARD
                 || id == ids::FLIP_ERASE_STROKE

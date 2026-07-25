@@ -6,7 +6,7 @@
 //! `--ignored`; skip gracioso sem GPU), como os testes do `ph2d-gpu`.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
+use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba, StrokeTip};
 use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 
 const W: u32 = 64;
@@ -1049,4 +1049,96 @@ fn a_fill_only_drawing_renders_instead_of_crashing() {
     let c = rgb_at(&px, 32, 32);
     assert!(c[1] > 200 && c[0] < 60, "o miolo e verde: {c:?}");
     assert_eq!(alpha_at(&px, 4, 4), 0, "fora do quadrado, vazio");
+}
+
+// ── O *tip* pontilhado (Dots/Squares, 03 §8) ──────────────────────────────────
+
+/// O fixture do *tip*: um traço horizontal reto no meio do alvo — px (6,32)→(58,32),
+/// largura 8 (raio 4). O *tip* e o espaçamento (mundo=px na câmera 1:1) são do chamador.
+fn dotted_line(tip: StrokeTip, spacing: f32) -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    for x in [6.0, 32.0, 58.0] {
+        s.push_point(Point {
+            pos: Vec2::new(x, 32.0),
+            width: 8.0,
+            opacity: 1.0,
+            color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+        });
+    }
+    s.tip = tip;
+    s.dot_spacing = spacing;
+    d.strokes.push(s);
+    d
+}
+
+/// 🔴 A linha CHEIA (`Continuous`) cobre a fileira do meio SEM buraco; a pontilhada (`Dots`)
+/// RECORTA a MESMA fileira em contas — vãos onde a cheia é sólida.
+///
+/// Red-first (o *tip* é novo) e provado dos DOIS lados: a mutação "ignore o tip" (sempre
+/// Continuous) tira os vãos da Dots e derruba a 2ª metade; "sempre Dots" (tirar o guard
+/// `tip != 0`) dá vãos à Continuous e derruba a 1ª. O guard E o recorte sangram.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn dots_carve_gaps_that_a_continuous_line_does_not() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let row = 32;
+    let span = || 10u32..54u32; // dentro do traço, longe das pontas
+
+    let cont = render(&device, &queue, &dotted_line(StrokeTip::Continuous, 12.0));
+    let min_cont = span().map(|x| alpha_at(&cont, x, row)).min().unwrap();
+    assert!(
+        min_cont > 40,
+        "a linha CHEIA nao pode ter buraco na fileira do meio (min alpha {min_cont})"
+    );
+
+    let dots = render(&device, &queue, &dotted_line(StrokeTip::Dots, 12.0));
+    let min_dots = span().map(|x| alpha_at(&dots, x, row)).min().unwrap();
+    let max_dots = span().map(|x| alpha_at(&dots, x, row)).max().unwrap();
+    assert!(
+        min_dots < 10,
+        "a pontilhada tem de ter VAO (min alpha {min_dots}) — as contas sao espacadas"
+    );
+    assert!(
+        max_dots > 100,
+        "a pontilhada tem de ter CONTAS (max alpha {max_dots})"
+    );
+}
+
+/// A conta QUADRADA cobre mais área que a REDONDA (quadrado de lado 2r vs disco de raio r:
+/// 4r² vs πr² ≈ 1,27×) — é o que distingue `Squares` de `Dots` na tela. Mesmo fixture,
+/// mesmo espaçamento; só o `tip` muda.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn squares_cover_more_area_than_round_dots() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let covered = |px: &[u8]| -> u32 {
+        let mut n = 0;
+        for y in 0..H {
+            for x in 0..W {
+                if alpha_at(px, x, y) > 50 {
+                    n += 1;
+                }
+            }
+        }
+        n
+    };
+    let dots = covered(&render(
+        &device,
+        &queue,
+        &dotted_line(StrokeTip::Dots, 12.0),
+    ));
+    let squares = covered(&render(
+        &device,
+        &queue,
+        &dotted_line(StrokeTip::Squares, 12.0),
+    ));
+    assert!(
+        squares > dots + dots / 10,
+        "o quadrado cobre >10% mais que o disco: quadrado {squares}, disco {dots}"
+    );
 }

@@ -420,7 +420,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (30, 8, 13),
+        // FLIP 8→9 + PROJECT 30→31: o `FlipStroke` ganhou `tip`+`dot_spacing` (o pincel
+        // pontilhado, 03 §8) — campos no MEIO do struct, layout posicional muda.
+        // ⚠️ A `line/FLIP` escreveu `30` aqui; a `line/physics` reivindicou o MESMO 30 na
+        // mesma janela (âncora body-local do joint), então o valor certo é 31 — e ele não
+        // estava em nenhum dos dois lados. O número se CONTA, não se escolhe.
+        (31, 9, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

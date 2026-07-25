@@ -414,21 +414,12 @@ fn write_prop(
     orient: bool,
 ) {
     let prop = b.prop;
-    // The one channel whose value is not a coordinate (ADR-0141).
-    if prop == PropKind::Position {
-        crate::apply_path::write_position(world, entity, b, v, orient);
-        return;
-    }
-    if let Some(sp) = prop.as_sprite_transform() {
-        let AnimValue::Float(f) = v else { return };
+    // Position (uma distância → ponto, ADR-0141) e os cinco de sprite-transform são POSE:
+    // vão pela porta única `pose::set_transform_field`, a MESMA que o `pose_at` do onion
+    // usa, para que não haja uma 2ª derivação da pose a divergir (ADR-0142).
+    if prop == PropKind::Position || prop.as_sprite_transform().is_some() {
         if let Some(mut xf) = world.get_mut::<Transform>(entity) {
-            match sp {
-                SpriteProp::TranslationX => xf.translation.x = f,
-                SpriteProp::TranslationY => xf.translation.y = f,
-                SpriteProp::Rotation => xf.rotation = f,
-                SpriteProp::ScaleX => xf.scale.x = f,
-                SpriteProp::ScaleY => xf.scale.y = f,
-            }
+            crate::pose::set_transform_field(&mut xf, b, v, orient);
         }
         return;
     }

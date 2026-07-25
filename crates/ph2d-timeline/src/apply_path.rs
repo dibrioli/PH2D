@@ -9,7 +9,6 @@
 //!
 //! [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 
-use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Transform, World};
 
 use crate::binding::TargetBinding;
@@ -32,43 +31,6 @@ pub(crate) fn read_rest(world: &World, entity: Entity, b: &TargetBinding) -> Opt
     Some(s as f32)
 }
 
-/// Write a sampled **distance** into the entity, by asking the trajectory where that
-/// distance is.
-///
-/// A binding with no path writes nothing — the same silence a track with no keys
-/// gets, and for the same reason: there is no answer yet, and a default would move
-/// the object somewhere nobody authored.
-pub(crate) fn write_position(
-    world: &mut World,
-    entity: Entity,
-    b: &TargetBinding,
-    v: AnimValue,
-    orient: bool,
-) {
-    let (Some(path), AnimValue::Float(s)) = (b.path.as_ref(), v) else {
-        return;
-    };
-    let Some(sample) = path.at(f64::from(s)) else {
-        return;
-    };
-    if let Some(mut xf) = world.get_mut::<Transform>(entity) {
-        xf.translation.x = sample.point[0];
-        xf.translation.y = sample.point[1];
-        // **Auto-orient** (ADR-0141 §6): o objeto encara a tangente do caminho.
-        //
-        // ⚠️ **Numa CÚSPIDE não se escreve nada, e é assim que o ângulo se SEGURA.**
-        // `tangent_at` devolve `None` onde a velocidade da curva é zero — ali não há
-        // direção, e inventar uma produz o pico solto. Não escrever deixa a `rotation`
-        // exatamente como estava, que É "segurar o último ângulo válido", **sem estado
-        // nenhum**: nada a guardar, nada a invalidar num scrub, nada que discorde entre
-        // um replay e uma reprodução ao vivo.
-        //
-        // ⚠️ E este canal não tem o bug publicado do AE (*"flips when stopping
-        // motion"*) por CONSTRUÇÃO, não por cuidado: lá o ângulo vem do vetor
-        // VELOCIDADE, que desaparece quando o objeto para; aqui vem da GEOMETRIA da
-        // curva, que continua lá com o objeto parado em cima dela.
-        if orient && let Some(t) = sample.tangent {
-            xf.rotation = libm::atan2f(t[1], t[0]);
-        }
-    }
-}
+// A escrita da distância no `Transform` (Position → ponto + auto-orient) mudou-se para
+// `crate::pose::set_transform_field`, a porta única que o apply e o `pose_at` do onion
+// compartilham (ADR-0142). Aqui fica só o `read_rest` (a captura da distância autorada).

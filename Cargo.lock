@@ -5212,6 +5212,7 @@ dependencies = [
  "ph2d-eval-motion",
  "ph2d-gpu",
  "ph2d-node-field-box",
+ "ph2d-node-field-combine",
  "ph2d-node-field-index-range",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",
@@ -5639,6 +5640,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-field-box"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-field-combine"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -6214,6 +6223,7 @@ dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
  "ph2d-node-field-box",
+ "ph2d-node-field-combine",
  "ph2d-node-field-index-range",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",

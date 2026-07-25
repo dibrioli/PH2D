@@ -32,8 +32,8 @@ use super::gpu_deform_demo::{
 };
 use super::gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_index_range_demo_document, build_gpu_hybrid_demo_document,
-    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+    build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
+    build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -97,6 +97,12 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // ordinal sibling, so a boundary here is a real regression.
     push("demo=18 field.box band", &|d| {
         build_gpu_field_box_demo_document(d, reg)
+    });
+    // The 2-input composer over a FAN-OUT (two field branches off one grid) — the
+    // first field scene that is not a single chain. If `field.combine` or the
+    // fan-out ever refused the device, the census would name the boundary.
+    push("demo=19 field.combine cross", &|d| {
+        build_gpu_field_combine_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

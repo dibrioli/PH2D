@@ -635,3 +635,75 @@ pub(super) fn build_gpu_field_box_demo_document(
     g.validate(reg).ok()?;
     Some(vec![out])
 }
+
+/// The **composition** smoke (`PH2D_GPU_COOK_DEMO=19`) — the field family's whole
+/// thesis on the device: TWO fields fanned off one `motion.scale`, blended by
+/// `field.combine`. `field.index_range` draws a horizontal ORDINAL band, `field.box`
+/// a thin VERTICAL band; `Max` (union) lights a red **cross** wherever EITHER field
+/// is on — the vertical arm razor-straight (spatial), the horizontal arm faintly
+/// tilted (ordinal), so one picture shows both kinds of field AND that they compose.
+/// **262.144 instances**, the whole fan-out claimed fully-GPU. Same frame-on-load
+/// sizing as `=17`/`=18`; auto-plays on tool entry.
+pub(super) fn build_gpu_field_combine_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    g.set_param(grid, "gap_x", 0.024);
+    g.set_param(grid, "gap_y", 0.024);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 0.018);
+    // Branch A: a horizontal ordinal band (the middle ~third of the rows).
+    let ir = g.add_node("field.index_range");
+    g.set_param(ir, "start", 0.36);
+    g.set_param(ir, "end", 0.64);
+    g.set_param(ir, "soft", 0.05);
+    // Branch B: a thin VERTICAL band (narrow in x, tall enough to span y) — the
+    // razor-straight spatial arm.
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 3.0);
+    g.set_param(bx, "height", 40.0);
+    g.set_param(bx, "soft", 0.8);
+    // Union of the two masks ⇒ a cross.
+    let cmb = g.add_node("field.combine");
+    g.set_param(cmb, "mode", 6.0); // Max (union)
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.95);
+    g.set_param(tint, "g", 0.25);
+    g.set_param(tint, "b", 0.15);
+    g.set_param(tint, "a", 1.0);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, scale, ir, bx, cmb, tint, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 60.0 + i as f32 * 160.0,
+                y: 120.0,
+            },
+        );
+    }
+    // grid → scale, then scale FANS OUT to both fields; combine takes a = ir, b = box.
+    for (a, b, port) in [
+        (grid, scale, 0),
+        (scale, ir, 0),
+        (scale, bx, 0),
+        (ir, cmb, 0),
+        (bx, cmb, 1),
+        (cmb, tint, 0),
+        (tint, out, 0),
+    ] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, port),
+            delayed: false,
+        })
+        .ok()?;
+    }
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}

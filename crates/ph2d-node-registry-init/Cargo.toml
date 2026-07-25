@@ -18,6 +18,7 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-node-debug-const = { path = "../ph2d-node-debug-const" }
 ph2d-node-debug-wave = { path = "../ph2d-node-debug-wave" }
 ph2d-node-field-box = { path = "../ph2d-node-field-box" }
+ph2d-node-field-combine = { path = "../ph2d-node-field-combine" }
 ph2d-node-field-index-range = { path = "../ph2d-node-field-index-range" }
 ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
 ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }

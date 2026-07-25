@@ -44,6 +44,8 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // writing `falloff`.
     ph2d_node_field_index_range::register(&mut reg).unwrap();
     ph2d_node_field_box::register(&mut reg).unwrap();
+    // The 2-input composer — port-qualified readers `read_a_falloff`/`read_b_falloff`.
+    ph2d_node_field_combine::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();

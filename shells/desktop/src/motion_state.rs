@@ -53,8 +53,8 @@ use gpu_deform_demo::{
 };
 use gpu_demos::{
     build_gpu_demo_document, build_gpu_emitter_demo_document, build_gpu_field_box_demo_document,
-    build_gpu_field_index_range_demo_document, build_gpu_hybrid_demo_document,
-    build_gpu_sea_demo_document, build_gpu_sim_demo_document,
+    build_gpu_field_combine_demo_document, build_gpu_field_index_range_demo_document,
+    build_gpu_hybrid_demo_document, build_gpu_sea_demo_document, build_gpu_sim_demo_document,
 };
 use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
@@ -233,6 +233,12 @@ impl MotionState {
             // is the razor-horizontal band (flat by y) that the ordinal index field
             // cannot draw. Blue, to read against `=17`'s red ordinal band.
             Ok("18") => build_gpu_field_box_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // Composition: two fields (ordinal band + spatial vertical band) fanned
+            // off one grid and unioned by `field.combine` into a red cross — the
+            // whole fan-out on the device (the field family's thesis).
+            Ok("19") => {
+                build_gpu_field_combine_demo_document(&mut doc, &registry).unwrap_or_default()
+            }
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {

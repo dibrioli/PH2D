@@ -45,6 +45,7 @@ fn registry() -> NodeRegistry {
     // The field.* focus-field family (index-keyed + spatial-box `falloff` masks).
     ph2d_node_field_index_range::register(&mut reg).unwrap();
     ph2d_node_field_box::register(&mut reg).unwrap();
+    ph2d_node_field_combine::register(&mut reg).unwrap();
     ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
@@ -576,6 +577,60 @@ fn field_box_kernel_matches_the_cpu_within_epsilon() {
     connect(&mut g, bx, tint);
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + box + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn field_combine_kernel_matches_the_cpu_within_epsilon() {
+    // The 2-input COMPOSER: two field branches off ONE grid (a fan-out) — an
+    // ordinal band and a spatial box — blended by an explicit mode. This exercises
+    // the port-qualified readers `read_a_falloff`/`read_b_falloff` AND that the
+    // fan-out plans fully-GPU (the grid is cooked once, reused by both branches:
+    // 5 dispatching stages, not 6). Max (union) so BOTH branches' masks reach the
+    // output at intermediate values — a Min/Multiply where one branch is 0 could
+    // hide the other's arithmetic. Params are un-round so nothing hides.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let ir = g.add_node("field.index_range");
+    g.set_param(ir, "start", 0.33);
+    g.set_param(ir, "end", 0.66);
+    g.set_param(ir, "soft", 0.11);
+    let bx = g.add_node("field.box");
+    g.set_param(bx, "width", 6.7);
+    g.set_param(bx, "height", 40.0);
+    g.set_param(bx, "soft", 2.3);
+    let cmb = g.add_node("field.combine");
+    g.set_param(cmb, "mode", 6.0); // Max (union)
+    g.set_param(cmb, "strength", 0.85);
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid
+    g.set_param(tint, "r", 0.9);
+    g.set_param(tint, "g", 0.31);
+    g.set_param(tint, "b", 0.22);
+    g.set_param(tint, "a", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, ir);
+    connect(&mut g, grid, bx);
+    g.connect(Edge {
+        from: (ir, 0),
+        to: (cmb, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (bx, 0),
+        to: (cmb, 1),
+        delayed: false,
+    })
+    .unwrap();
+    connect(&mut g, cmb, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 5); // grid + ir + box + combine + tint
 }
 
 #[test]

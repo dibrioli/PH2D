@@ -72,6 +72,7 @@ ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 # parity gate (a downstream `tint` makes the mask a visible RenderInstance field).
 ph2d-node-field-index-range = { path = "../ph2d-node-field-index-range" }
 ph2d-node-field-box = { path = "../ph2d-node-field-box" }
+ph2d-node-field-combine = { path = "../ph2d-node-field-combine" }
 # ADR-0139 — the engine-algorithm family: Lloyd/JFA voronoi.
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }

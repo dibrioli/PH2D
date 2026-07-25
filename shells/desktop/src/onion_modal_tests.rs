@@ -2,22 +2,13 @@
 //! store→onion read-back. The drag `impl App` fns are covered by the shell's pointer-dispatch smoke
 //! (they need a window); here we gate the pure glue.
 
-use super::{MAX_GHOSTS, count_to_frac, frac_to_count, read_into, rgb_to_u8, u8_to_rgb};
+use super::{count_to_frac, read_into, rgb_to_u8, u8_to_rgb};
 use ph2d_editor::interaction::WidgetStore;
 use ph2d_timeline::{OnionMode, OnionSettings};
 
-/// The count↔slider mapping round-trips every whole ghost count in range.
-#[test]
-fn count_slider_mapping_round_trips() {
-    for n in 0..=MAX_GHOSTS {
-        assert_eq!(frac_to_count(count_to_frac(n)), n, "count {n} round-trips");
-    }
-    // Midpoint of the track is half the ghosts.
-    assert_eq!(frac_to_count(0.5), MAX_GHOSTS / 2);
-    // The track clamps.
-    assert_eq!(frac_to_count(2.0), MAX_GHOSTS);
-    assert_eq!(frac_to_count(-1.0), 0);
-}
+// The count↔slider mapping (`MAX_GHOSTS`/`count_to_frac`/`frac_to_count`) now lives in editor-core
+// next to the modal's painter, gated there (`the_count_mapping_round_trips_every_whole_count`). The
+// shell only re-exports it; the read-back gate below exercises the re-export end to end.
 
 /// The colour mapping round-trips (alpha is dropped — a ghost's alpha is the Opacity slider).
 #[test]

@@ -5,8 +5,10 @@
 //!
 //! * [`read_into`] — each frame the card is open, read its slider/swatch values back into
 //!   [`OnionSettings`] (the ghost pass re-reads that struct every frame ⇒ live edits on the canvas).
-//!   ⚠️ **The WidgetStore is the shared blackboard** — editor-core cannot see `OnionSettings`, so the
-//!   count↔slider mapping (the ghost counts are `u32`, the sliders `0..1`) lives HERE, in one place.
+//!   ⚠️ **The WidgetStore is the shared blackboard** — editor-core cannot see `OnionSettings`. The
+//!   count↔slider mapping ([`MAX_GHOSTS`] / [`count_to_frac`] / [`frac_to_count`]) lives in
+//!   editor-core, next to the modal's painter that displays the count, and is **re-exported here** so
+//!   there is one copy; the read-back and open-seed both use it.
 //! * The title-band **drag** ([`App::arm_onion_modal_drag_if_on_handle`] / `…_move` / `…_up`) — a
 //!   shell state machine, a byte-for-byte mirror of the Fill modal's (`input_dispatch::fill_drag`).
 //!
@@ -22,21 +24,10 @@ use ph2d_timeline::OnionSettings;
 
 use crate::App;
 
-/// The ghost-count slider range: `0..MAX_GHOSTS` mapped onto the `0..1` track. Lives ONLY here — the
-/// open-seed and the read-back both use it, so there is one copy of the mapping.
-pub const MAX_GHOSTS: u32 = 8;
-
-/// A ghost count → its slider track (`0..1`).
-#[must_use]
-pub fn count_to_frac(n: u32) -> f32 {
-    (n as f32 / MAX_GHOSTS as f32).clamp(0.0, 1.0)
-}
-
-/// A slider track (`0..1`) → a ghost count (rounded to the nearest whole ghost).
-#[must_use]
-pub fn frac_to_count(v: f32) -> u32 {
-    (v.clamp(0.0, 1.0) * MAX_GHOSTS as f32).round() as u32
-}
+/// The ghost-count↔slider mapping. Defined in editor-core next to the modal's painter (the one that
+/// displays the count) so there is ONE copy; re-exported here so `crate::onion_modal::…` and the
+/// read-back below keep resolving.
+pub use ph2d_editor::screens::hero::chrome::{count_to_frac, frac_to_count};
 
 /// `OnionSettings` RGB (`[f32; 3]`, linear-ish 0..1) → an `[u8; 4]` swatch seed (opaque).
 #[must_use]

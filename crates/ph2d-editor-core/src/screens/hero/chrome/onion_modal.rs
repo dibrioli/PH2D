@@ -15,9 +15,12 @@
 //! (updated by the generic pointer dispatch); the SHELL reads them back into `TimelineState::onion`
 //! every frame the modal is open (live edits on the canvas). So `apply` forwards NOTHING — there is
 //! no tool to forward to (the onion is timeline view state, not a tool), and no `EditorAction`
-//! variant naming an onion (editor-core stays timeline-agnostic). The count↔slider mapping (the ghost
-//! counts are `u32`, the sliders are `0..1`) lives ONLY in the shell, so there is one copy of it; the
-//! labels here are static, and the slider fill communicates the level.
+//! variant naming an onion (editor-core stays timeline-agnostic). The count↔slider mapping
+//! ([`MAX_GHOSTS`] / [`count_to_frac`] / [`frac_to_count`]) lives HERE, next to the painter that
+//! shows the count, so there is ONE copy — the shell imports it for its read-back / open-seed. Each
+//! slider carries a **left label** (mirroring the colour rows below, so a sighted artist can tell the
+//! sliders apart), and the two count sliders **append their whole ghost count** to that label — the
+//! fill alone can't tell 4 ghosts from 5.
 
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
@@ -30,14 +33,45 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
-/// Card width — fits a "Ghosts Before" label + slider on one row.
-const MODAL_W: f32 = 240.0; // LITERAL-PX-OK: onion settings card width
+/// Card width — fits a `"Ghosts Before (8)"` label column + the slider track on one row.
+const MODAL_W: f32 = 256.0; // LITERAL-PX-OK: onion settings card width
 /// Colour-swatch width in a colour row (the label fills the rest).
 const SWATCH_W: f32 = 56.0; // LITERAL-PX-OK: onion colour swatch width
 /// Close-X square in the title band.
 const CLOSE_W: f32 = 20.0; // LITERAL-PX-OK: onion modal close-X width
+/// Left-label column for each slider row (fits the longest label plus its count, e.g.
+/// `"Ghosts Before (8)"`); the track takes the rest of the row.
+const SLIDER_LABEL_W: f32 = 132.0; // LITERAL-PX-OK: onion slider label column width
 /// Row count: title · opacity · before · after · past-colour · future-colour.
 const ROWS: f32 = 6.0; // LITERAL-PX-OK: CONTAGEM de linhas (as seis listadas acima), nao medida
+
+/// The ghost-count slider range: `0..MAX_GHOSTS` mapped onto the `0..1` track. Lives HERE (next to
+/// the painter that displays the count) so there is ONE copy — the shell's read-back and open-seed
+/// import it.
+pub const MAX_GHOSTS: u32 = 8;
+
+/// A ghost count -> its slider track (`0..1`).
+#[must_use]
+pub fn count_to_frac(n: u32) -> f32 {
+    (n as f32 / MAX_GHOSTS as f32).clamp(0.0, 1.0)
+}
+
+/// A slider track (`0..1`) -> a ghost count (rounded to the nearest whole ghost).
+#[must_use]
+pub fn frac_to_count(v: f32) -> u32 {
+    (v.clamp(0.0, 1.0) * MAX_GHOSTS as f32).round() as u32
+}
+
+/// The label a slider row shows. The two count sliders **append their whole ghost count** (the fill
+/// can't tell 4 ghosts from 5); Opacity keeps its plain label (the fill is self-evident). `label` is
+/// the already-translated string. Pure so a gate can prove which rows carry a number and what it reads.
+fn slider_label(id: NodeId, label: &str, frac: f32) -> String {
+    if id == ids::TIMELINE_ONION_MODAL_BEFORE || id == ids::TIMELINE_ONION_MODAL_AFTER {
+        format!("{label} ({})", frac_to_count(frac))
+    } else {
+        label.to_string()
+    }
+}
 
 /// Paint the Onion settings modal at `store.onion_modal_pos()`, clamped to `viewport`. No-op when the
 /// modal is closed. Mirrors [`super::fill_modal::paint_fill_adjust_modal`]'s card styling.
@@ -95,7 +129,11 @@ pub fn paint_onion_modal(
     paint_button(&close, close_rect, scene, text_system, theme);
     cy += row_h + gap;
 
-    // ── Three sliders: Opacity, Ghosts Before, Ghosts After. ──
+    // ── Three sliders: Opacity, Ghosts Before, Ghosts After. Each row is a left label + a track
+    //    (mirroring the colour rows below), and the two count rows fold the whole ghost count into
+    //    that label. The hit rect is the TRACK, so the label column isn't draggable. ──
+    let track_x = inner_x + SLIDER_LABEL_W + gap;
+    let track_w = (inner_w - SLIDER_LABEL_W - gap).max(1.0);
     for (id, key) in [
         (
             ids::TIMELINE_ONION_MODAL_OPACITY,
@@ -110,12 +148,23 @@ pub fn paint_onion_modal(
             "panel.timeline.onion_after",
         ),
     ] {
-        let slider_rect = Rect::new(inner_x, cy, inner_w, row_h);
-        hit_index.register(id, slider_rect);
         let (st, v) = store.slider(id).unwrap_or((SliderState::Normal, 0.5));
-        let mut slider = Slider::new(id, ph2d_i18n::tr(key)).accent(true).state(st);
+        let label = slider_label(id, ph2d_i18n::tr(key), v);
+        paint_text(
+            text_system,
+            scene,
+            &label,
+            inner_x,
+            cy + (row_h - font) * 0.5,
+            font,
+            SLIDER_LABEL_W,
+            resolve(ColorToken::Text1, theme),
+        );
+        let track_rect = Rect::new(track_x, cy, track_w, row_h);
+        hit_index.register(id, track_rect);
+        let mut slider = Slider::new(id, label).accent(true).state(st);
         slider.set_value(v);
-        paint_slider(&slider, slider_rect, scene, theme);
+        paint_slider(&slider, track_rect, scene, theme);
         cy += row_h + gap;
     }
 
@@ -381,6 +430,38 @@ mod tests {
         );
         hero.store.move_onion_modal(15.0, -25.0);
         assert_eq!(hero.store.onion_modal_pos(), Some((215.0, 125.0)));
+    }
+
+    /// The two count sliders fold their whole ghost count into the label; Opacity does not.
+    /// (Mutation: append the count for ALL ids → the Opacity assert fails; drop the count → the
+    /// count asserts fail.)
+    #[test]
+    fn count_sliders_carry_the_whole_ghost_count_and_opacity_does_not() {
+        assert_eq!(
+            slider_label(ids::TIMELINE_ONION_MODAL_BEFORE, "Ghosts Before", count_to_frac(4)),
+            "Ghosts Before (4)"
+        );
+        assert_eq!(
+            slider_label(ids::TIMELINE_ONION_MODAL_AFTER, "Ghosts After", count_to_frac(7)),
+            "Ghosts After (7)"
+        );
+        assert_eq!(
+            slider_label(ids::TIMELINE_ONION_MODAL_OPACITY, "Opacity", 0.5),
+            "Opacity"
+        );
+    }
+
+    /// The count↔slider mapping round-trips every whole count in range (mutation: drop the
+    /// `.round()` in `frac_to_count` → a mid-range count fails to round-trip).
+    #[test]
+    fn the_count_mapping_round_trips_every_whole_count() {
+        for n in 0..=MAX_GHOSTS {
+            assert_eq!(frac_to_count(count_to_frac(n)), n, "count {n} round-trips");
+        }
+        // Midpoint of the track is half the ghosts; the track clamps at both ends.
+        assert_eq!(frac_to_count(0.5), MAX_GHOSTS / 2);
+        assert_eq!(frac_to_count(2.0), MAX_GHOSTS);
+        assert_eq!(frac_to_count(-1.0), 0);
     }
 
     /// Events are ignored while the modal is closed.

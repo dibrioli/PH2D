@@ -100,6 +100,10 @@ pub use fill_modal::paint_fill_adjust_modal;
 /// Re-exported so the hero paint pass renders it alongside the other floating dialogs.
 pub use onion_modal::paint_onion_modal;
 
+/// The onion ghost-count↔slider mapping (ADR-0142). Lives next to the modal's painter (which shows
+/// the count) so there is ONE copy; the shell imports it for its read-back / open-seed.
+pub use onion_modal::{MAX_GHOSTS, count_to_frac, frac_to_count};
+
 /// Walk every chrome handler in z-order; stop at the first that consumes the
 /// event. Order comes from each handler's `// ph2d-chrome-sync:z=NN` marker
 /// (lower wins on id overlap). The chain body below is **generated** — run

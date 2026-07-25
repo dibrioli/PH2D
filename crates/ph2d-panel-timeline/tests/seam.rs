@@ -129,8 +129,14 @@ fn the_length_chip_writes_the_scope_the_one_door_names() {
         edit(&mut host, &mut state, 0.0),
         vec![I::SetSceneLength { len: None }]
     );
-    // Keys, fonte = clip: o CLIP ativo.
+    // Keys COM pilha (`keys_mode`), fonte = clip: o CLIP ativo. ⚠️ O escopo se decide
+    // pelo `keys_mode` do snapshot, não pela aba — uma vista Keys de UM clip (sem
+    // pilha) edita a cena que a veil mostra (`duration_drag_tests`).
     state.tab = ph2d_panel_timeline::tab::Tab::Keys;
+    ph2d_panel_timeline::state::set_current_timeline(Some(ph2d_timeline::TimelineViewSnapshot {
+        keys_mode: true,
+        ..Default::default()
+    }));
     assert_eq!(
         edit(&mut host, &mut state, 1.5),
         vec![I::SetClipLength { len: Some(1.5) }]

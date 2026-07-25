@@ -257,11 +257,17 @@ pub(crate) enum LengthScope {
     Scene,
 }
 
-/// See [`LengthScope`].
-pub(crate) fn length_scope(container_open: Option<usize>, tab: Tab) -> LengthScope {
+/// See [`LengthScope`]. ⚠️ Keyed on the snapshot's **`keys_mode`** (= the Keys tab
+/// WITH a stack), NOT `tab == Keys` alone: that is exactly the number the veil and the
+/// Dur(s) box already read (`view_end_seconds(keys_mode)` — snapshot.rs). Keyed on the
+/// tab, a single-clip (no-stack) Keys view showed the SCENE's veil but wrote the CLIP,
+/// so the veil never moved and the box appeared to do nothing (Enio: *"não consigo
+/// arrastar o véu em Keys, nem mesmo mudando na caixa de texto"*). One clip is the
+/// timeline, so its duration IS the scene's, and both tabs edit the same number.
+pub(crate) fn length_scope(container_open: Option<usize>, keys_mode: bool) -> LengthScope {
     if let Some(c) = container_open {
         LengthScope::Container(c)
-    } else if tab == Tab::Keys {
+    } else if keys_mode {
         LengthScope::Clip
     } else {
         LengthScope::Scene

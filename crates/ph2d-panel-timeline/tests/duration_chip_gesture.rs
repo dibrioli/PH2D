@@ -43,13 +43,17 @@ fn enter() -> KeyEvent {
     }
 }
 
-/// Paint the Keys tab over a document showing `secs` and return the chip's RECT.
-/// `explicit=false` mirrors the report's derived-end screenshot.
+/// Paint a stacked Keys view (`keys_mode`) over a document showing `secs` and return
+/// the chip's RECT. `explicit=false` mirrors the report's derived-end screenshot;
+/// `keys_mode=true` is a Keys view soloing a clip, so the chip authors the CLIP scope
+/// — the scope keys on `keys_mode`, not the tab (a no-stack Keys view edits the scene,
+/// covered by `duration_drag_tests`).
 fn painted_dur_rect(host: &mut MockPanelHost, state: &mut TimelinePanelState, secs: f64) -> Rect {
     set_current_timeline(Some(TimelineViewSnapshot {
         fps: 60.0,
         view_length_seconds: secs,
         view_length_explicit: false,
+        keys_mode: true,
         ..TimelineViewSnapshot::default()
     }));
     let regs = host.paint::<TimelinePanel>(state, VIEWPORT);

@@ -75,7 +75,7 @@ fn emit_length(
     let len = Some(t);
     // The SAME door the Dur(s) chip router uses (`event.rs`), so dragging the veil
     // and typing the box author the identical scope.
-    let intent = match length_scope(snap.container_open, state.tab) {
+    let intent = match length_scope(snap.container_open, snap.keys_mode) {
         LengthScope::Container(c) => TimelineIntent::SetContainerLength { container: c, len },
         LengthScope::Clip => TimelineIntent::SetClipLength { len },
         LengthScope::Scene => TimelineIntent::SetSceneLength { len },

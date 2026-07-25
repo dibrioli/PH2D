@@ -6,14 +6,27 @@ use crate::tab::Tab;
 use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
 use ph2d_host::PointerButton;
 
-/// 100 px/s from x = 0, 60 fps, frame-snap on, an authored 4 s duration.
+/// 100 px/s from x = 0, 60 fps, frame-snap on, an authored 4 s duration. `keys_mode`
+/// true = a Keys view soloing a clip in a stack, so the edit scope is the CLIP — the
+/// scope is keyed on this, NOT on `state.tab` (a no-stack Keys view has `keys_mode`
+/// false and edits the SCENE, which the veil reads there).
 fn snap() -> TimelineViewSnapshot {
     TimelineViewSnapshot {
         fps: 60.0,
         frame_snap: true,
         view_length_seconds: 4.0,
         view_length_explicit: true,
+        keys_mode: true,
         ..TimelineViewSnapshot::default()
+    }
+}
+
+/// The scene scope: Arrange, or a single-clip (no-stack) Keys view — both carry
+/// `keys_mode: false` and edit the scene the veil shows.
+fn snap_scene() -> TimelineViewSnapshot {
+    TimelineViewSnapshot {
+        keys_mode: false,
+        ..snap()
     }
 }
 
@@ -114,10 +127,26 @@ fn the_arrange_tab_authors_the_scene_duration() {
         tab: Tab::Arrange,
         ..TimelinePanelState::default()
     };
-    let got = drag(&mut st, &snap(), 200.0);
+    let got = drag(&mut st, &snap_scene(), 200.0);
     assert!(
         got.contains(&TimelineIntent::SetSceneLength { len: Some(2.0) }),
         "Arrange -> the SCENE scope, got {got:?}"
+    );
+}
+
+/// **A single-clip (no-stack) Keys view edits the SCENE the veil shows** — the
+/// reported bug (Enio: *"consigo arrastar o véu em Arrange mas não em Keys"*). With
+/// one clip, `keys_mode` is false (no stack to solo), so the veil reads the scene;
+/// keyed on the tab, the drag wrote the clip and the veil never moved. Keyed on
+/// `keys_mode`, it writes the scene it shows.
+#[test]
+fn a_single_clip_keys_view_edits_the_scene_the_veil_shows() {
+    let mut st = TimelinePanelState::default(); // tab: Keys, but no stack
+    let got = drag(&mut st, &snap_scene(), 200.0);
+    assert!(
+        got.contains(&TimelineIntent::SetSceneLength { len: Some(2.0) }),
+        "a no-stack Keys view must edit the scene the veil shows, not the clip \
+         (the veil would never move), got {got:?}"
     );
 }
 

@@ -131,7 +131,11 @@ pub(crate) fn apply_event(
             let v = host.store().number_value(id).unwrap_or(0.0);
             let len = (v > 0.0).then_some(v);
             let snap = crate::state::current_snapshot();
-            let intent = match crate::transport::length_scope(snap.container_open, state.tab) {
+            // `snap.keys_mode`, NOT `state.tab`: the same number the box READ
+            // (`view_end_seconds(keys_mode)`), so reading and writing cannot diverge —
+            // which they did on a single-clip Keys tab (box showed the scene, typed the
+            // clip).
+            let intent = match crate::transport::length_scope(snap.container_open, snap.keys_mode) {
                 crate::transport::LengthScope::Container(c) => {
                     ph2d_timeline::TimelineIntent::SetContainerLength { container: c, len }
                 }

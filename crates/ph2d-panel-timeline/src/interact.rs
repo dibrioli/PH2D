@@ -284,6 +284,9 @@ mod tests {
         let s = TimelineViewSnapshot {
             view_length_explicit: true,
             view_length_seconds: 4.0,
+            // A stacked Keys view solos a clip → the clip scope. The scope keys on
+            // `keys_mode`, not the tab (a no-stack Keys view edits the scene).
+            keys_mode: true,
             ..snap()
         };
         feed(

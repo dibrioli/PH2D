@@ -707,4 +707,42 @@ Byte-idêntico à referência, 60 fps @ 2048². Gate estendido: o drain de másc
 **Aberto (o "melhores que Procreate"):** (a) isolar a costura do upload parcial no device
 para o caminho rápido ser limpo TAMBÉM — importa a 4096², onde o upload cheio estoura o
 orçamento; (b) a qualidade da borda da máscara em si (a versão lisa é a referência antiga
-e o Enio quer superá-la) — item de qualidade separado, a especificar.
+e o Enio quer superá-la) — **FECHADO na §13.6**.
+
+## 13.6 A borda da máscara endurecia sob MUITAS passadas — o build-up era um PRODUTO
+
+O Enio mostrou (zoom) que a máscara fica **serrilhada/mosqueada** após MUITAS passadas no
+mesmo lugar (uma passada = lisa). Eu não via porque dava poucas passadas.
+
+**Diagnóstico (3 agentes em paralelo, prova aritmética):** a cobertura da máscara acumulava
+como um **PRODUTO** entre passadas — `valor = 255·m^N` após N passadas — batendo texel a
+texel com a medição (`199→6`, `247→156`). Isso empurra a borda de 50% para a **cauda
+estreita do falloff**, então a banda do feather encolhe ~1/N e serrilha numa curva.
+⚠️ **NÃO é** o caminho parcial, o upload, a rasterização (centros f32, falloff suave, sem
+snapping) nem o 8-bit. É o **build-up per-dab compartilhado**, então a pintura normal
+endurece **byte-idêntica** (medido); a máscara só REVELA porque o overlay é translúcido
+(tinta opaca esconde a borda dura). A **UMA passada é uma INTEGRAL DE LINHA** suave e está
+CORRETA — dabs mais densos CONVERGEM nela, não a afiam; o colapso é toda a re-multiplicação
+ENTRE traços. É a mesma "doença do produto sobre a lista de dabs" que a linha curou 3×
+(smear/bow-wave/cápsula) — a cura é sempre um **ENVELOPE (max)**, não um produto.
+
+**Fix (escolha de produto do Enio: Envelope):** cada traço compõe exatamente como hoje (⇒
+UMA passada byte-idêntica, o fingerprint da pintura intacto), e os **traços** se combinam
+por **envelope** em vez de produto. Um traço Paint/Erase carimba num buffer POR-TRAÇO a
+partir do neutro (255 Paint / 0 Erase — o produto within-stroke de sempre), e cada batch o
+funde no scratch committed por `min` (Paint, mais proteção) / `max` (Erase, mais des-
+proteção). A fusão é **idempotente entre traços** (o produto within-stroke é monotônico),
+então N passadas idênticas dão o MESMO feather suave de uma — a borda **nunca endurece**
+(render confirmou: 15 passadas == 1, liso). **Escopo: só a rota da máscara**
+(`stamp_dabs_mask` + o buffer por-traço); o caminho per-dab compartilhado e o build-up
+cross-stroke da pintura normal ("passar por cima pra aprofundar") ficam intactos — os dois
+meios querem comportamento cross-stroke OPOSTO. Blur/Smear são ops espaciais no committed
+(não re-multiplicam) e seguem pintando-o direto.
+
+**Trade documentado:** passadas rápidas idênticas agora CONVERGEM na profundidade de uma —
+aprofunde com pincel mais forte/lento ou traços sobrepostos.
+
+**Gate (red-first, mutação-provado):** `the_mask_feather_does_not_harden_across_passes` —
+15 passadas idênticas têm de deixar a cobertura byte-idêntica a 1 (envelope idempotente);
+RED sob o produto antigo (37764 bytes diferem, delta máx 197); mutação `envelope=false`
+re-sangra. Sem schema, sem contrato congelado; `paint.rs` mantido no teto de 700 LOC.

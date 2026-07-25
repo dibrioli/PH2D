@@ -89,6 +89,48 @@ Sprite **2048²**, Painter aberto, com `env PH2D_PAINT_PERF=1`:
    cheio (gate); o tint só é re-derivado na região do dab. Se alguma cor/borda de proteção
    piscar ou ficar velha fora do dab, é regressão (e o gate a pegaria).
 
+## 9b. Continuação (2026-07-25) — smoke do Enio: dois defeitos de QUALIDADE da máscara
+
+O smoke aprovou o FPS mas achou dois defeitos VISUAIS (a máscara é translúcida ⇒ revela o
+que a tinta opaca esconde). Ambos mask-route, integram com o resto.
+
+**(i) Retângulos/blocos translúcidos (commit `2da916c99`).** O upload PARCIAL da GPU do
+overlay translúcido deixava costuras no device (byte-idêntico no cache da CPU e num sim
+headless — artefato só-wgpu). Bissectado com `PH2D_PAINT_FULL_UPLOAD=1`. Fix: a máscara
+mantém o **composite PARCIAL** (o ganho) mas força **upload CHEIO** (`preview_upload_bbox =
+None` com scratch vivo) — ~6 ms @ 2048², sob os 16,7 ms ⇒ **60 fps**, byte-idêntico à
+referência. Gate estendido (`a_mask_stroke_takes_the_partial_lane…` afirma `bbox=None` p/
+máscara). Doc 25 §13.5. **Aberto:** isolar a costura do upload parcial no device (importa a
+4096², onde o upload cheio estoura o orçamento).
+
+**(ii) A borda ENDURECE sob muitas passadas (commit `600a79606`).** A cobertura da máscara
+acumulava como PRODUTO entre traços (`255·m^N`, prova aritmética por 3 agentes) ⇒ o feather
+colapsa numa borda dura/serrilhada. É o build-up per-dab COMPARTILHADO (pintura normal
+endurece igual; a máscara só revela). Fix (escolha do Enio: **Envelope**): traços se
+combinam por `min` (Paint) / `max` (Erase) num buffer por-traço, idempotente ⇒ N passadas =
+1, borda nunca endurece; UMA passada byte-idêntica (fingerprint intacto). **Escopo: só a
+rota da máscara** (`stamp_dabs_mask` + `begin_mask_stroke`/`fold_mask_stroke` + o campo
+`mask_stroke_rgba`); caminho per-dab e build-up da pintura normal INTOCADOS. Gate red-first
+`the_mask_feather_does_not_harden_across_passes` (mutação-provado). Doc 25 §13.6.
+**Trade documentado:** passadas rápidas idênticas convergem (não empilham); aprofunde com
+pincel mais forte/lento ou traços sobrepostos.
+
+**Arquivos (ii):** `crates/ph2d-tool-painter/src/tool/paint.rs` (campo `mask_stroke_rgba`) ·
+`…/paint/state_default.rs` (init) · `…/paint/mask.rs` (`begin_mask_stroke`/`fold_mask_stroke`) ·
+`…/paint/stroke_lifecycle.rs` (chama `begin_mask_stroke`) · `…/paint/stamp_route.rs`
+(`stamp_dabs_mask` ramo envelope) · `…/paint/tests.rs` (o gate). **Sem schema, sem contrato
+congelado**; `paint.rs` no teto de 700 LOC.
+
+**Rodei:** `cargo test -p ph2d-tool-painter` **822 pass / 44 ign** (inclui os 2 gates novos +
+os 35 de máscara) · clippy `--all-targets` limpo · fmt limpo · `architecture_workspace_file_loc_cap`
+verde · render-and-look confirma 15 passadas == 1 (liso).
+
+## 9c. Smoke pendente (Enio)
+
+Build padrão (sem env), 2048², os 3 cenários de máscara, com MUITAS passadas no mesmo lugar:
+a borda tem de continuar **lisa** (não serrilha/endurece) e a 60 fps. Se ainda serrilhar,
+`PH2D_PAINT_PERF=1` mostra o branch; mas o gate + o render headless já provam 15==1 passada.
+
 ## 10. Aberto (nomeado)
 
 - **`impasto=true` num stack de UMA camada** ainda seria `FULL-composite` na CPU (o

@@ -5,8 +5,10 @@
 //! enough that keeping them inline tipped the window-event dispatch hub
 //! past 600 LOC. The begin/end of a drag still live in the MouseInput
 //! arm; only the per-move advance moved here.
-// ph2d-loc-cap: 604 LOC (4 over) — the keyed-handle-id multi-select rotate/scale/translate
+// ph2d-loc-cap: 680 LOC — the keyed-handle-id multi-select rotate/scale/translate
 // advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
+// +12 (gold-standard joint anchor): a Translate on a joint marks it `anchored = false`
+// so the bridge re-derives its body-local anchors from the dragged pivot.
 
 use crate::{App, Transform};
 

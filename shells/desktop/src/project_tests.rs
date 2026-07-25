@@ -386,6 +386,9 @@ fn project_file_round_trips_through_postcard() {
 /// `VEC_SCENE_SCHEMA_VERSION` 8→9) · **v23** a entrada da pilha virou `FxEntry` (o efeito +
 /// se está LIGADO — o olho desarma sem perder os parâmetros), `VEC_SCENE_SCHEMA_VERSION` 9→10 ·
 /// **v24** os variants `Repeat`/`Twist`/`Bloat` na pilha (`VEC_SCENE_SCHEMA_VERSION` 10→11).
+/// (v27 triggers, v28 Weld, v29 offset do collider — ver `project.rs`.) · **v30** a âncora
+/// body-local do joint (ADR-0131 padrão-ouro): `PhysicsJoint` ganhou
+/// `local_a`/`local_b`/`anchored` APENDADOS, pra a âncora seguir o corpo em vez de deslizar.
 ///
 /// ⚠️ As entradas do Vector nasceram em **v19..v23** na linha dela e foram **renumeradas para
 /// v22..v26 na integração de 2026-07-19**: a `line/physics` bumpou três vezes na MESMA jornada,
@@ -417,7 +420,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (29, 8, 13),
+        (30, 8, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

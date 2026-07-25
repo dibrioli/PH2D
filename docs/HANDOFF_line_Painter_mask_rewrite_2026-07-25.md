@@ -1,5 +1,27 @@
 # Handoff — REESCREVER a máscara de proteção do zero (com referência de alta qualidade)
 
+> ## ✅ FEITO (2026-07-25, 4 commits, `d8018d6bc`..`800f89596`) — **pendente de smoke**
+>
+> A tarefa deste handoff foi executada. **Não a reconstrua**; leia
+> [`docs/Painter/25_avaliacao_gpu.md` §13.9](Painter/25_avaliacao_gpu.md) (a pesquisa, as medições
+> antes/depois, os trades) e o handoff de integração
+> [`HANDOFF_INTEGRACAO_line_Painter_mask_coverage_2026-07-25.md`](HANDOFF_INTEGRACAO_line_Painter_mask_coverage_2026-07-25.md).
+>
+> **O que a §5 abaixo previu bem:** o candidato certo era o **Wash do Krita** — cap/alvo por-traço,
+> aditivo entre traços. **O que ela previu errado, e importa:** *"acumulação por-traço com CAP na
+> opacidade"* descreve a lei do **GIMP** (`dest += (opacity − dest)·mask·opacity`), que com opacidade
+> 100% é vácuo e **endurece igual**. A lei que serve é o **max** (Alpha Darken): o perfil do dab é o
+> ALVO, não a taxa. E o motor já tinha a metade errada implementada (o cap), o que explica por que a
+> máscara caía no produto: `strength = 1` torna o cap inobservável.
+>
+> **A §3 também errava um detalhe factual:** o serrilhado NÃO precisa de várias pinceladas — **ESFREGAR
+> num único pen-down** já colapsava a band de 3,53 para 1,88 px (118 níveis no corpo). Essa metade agora
+> é totalmente inerte (2 níveis).
+>
+> **Segue aberto** (§7 daqui, intocado): pintar COR ATRAVÉS da proteção emplumada. E um gap
+> pré-existente foi NOMEADO em vez de contrabandeado: métodos de shape em modo máscara não pintam nada
+> (doc 25 §13.9.8).
+
 **Para:** o próximo agente que assume `line/Painter`. **De:** o agente da sessão de 2026-07-25.
 **Ordem do Enio (2026-07-25):** *"Resolvemos o problema do alfa da máscara mas ainda temos o
 problema dos artefatos após múltiplas pinceladas. Creio que o melhor será reescrever do zero,
